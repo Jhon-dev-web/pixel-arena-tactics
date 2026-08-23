@@ -1,3 +1,45 @@
 {
-  "sprites": {}
+  "spritesheets": {
+    "knight": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/spritesheet-1787528931025.png",
+      "description": "Armored knight warrior, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": { "start": 0, "end": 3 },
+        "attack": { "start": 4, "end": 7 },
+        "hurt": { "start": 8, "end": 11 },
+        "death": { "start": 12, "end": 15 }
+      },
+      "metadata": {}
+    },
+    "orc": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/spritesheet-1787528916991.png",
+      "description": "Green orc warrior with battle axe, facing right (flipped in-game), 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": { "start": 0, "end": 3 },
+        "attack": { "start": 4, "end": 7 },
+        "hurt": { "start": 8, "end": 11 },
+        "death": { "start": 12, "end": 15 }
+      },
+      "metadata": {}
+    }
+  },
+  "background": {
+    "arena": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/background-1787528925778.png",
+      "description": "Pixel art dark fantasy arena background, stone colosseum with torches and banners",
+      "metadata": {}
+    }
+  }
 }

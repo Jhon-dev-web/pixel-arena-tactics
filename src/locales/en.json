@@ -1,0 +1,29 @@
+{
+  "ui": {
+    "victories": "🏆 Victories: {n}",
+    "gold": "🪙 Gold: {n}",
+    "shop": "🏪 Shop",
+    "attack": "⚔️ ATTACK",
+    "shield": "🛡️ SHIELD",
+    "focus": "⚡ FOCUS",
+    "close": "Close",
+    "nextDuel": "Next Duel ⚔️",
+    "retry": "Revive ⚔️",
+    "weapon": "Upgrade Weapon",
+    "armor": "Upgrade Armor",
+    "level": "Lv {n}",
+    "cost": "Cost: {n} Gold",
+    "owned": "Gold: {n}",
+    "free": "Free"
+  },
+  "combat": {
+    "critical": "CRITICAL!",
+    "blocked": "BLOCKED!",
+    "stamina": "Stamina",
+    "hp": "HP",
+    "victoryTitle": "Victory!",
+    "loot": "Loot: +{n} Gold",
+    "defeatTitle": "Defeat",
+    "defeatHint": "You fell in battle."
+  }
+}
