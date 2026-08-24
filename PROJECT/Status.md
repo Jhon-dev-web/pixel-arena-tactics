@@ -12,7 +12,13 @@
   hurt/death animations, guard badge, focus glow.
 - Victory loot popup (+gold, +victory, "Next Duel" scaling orc HP) and defeat popup (revive).
 - Shop modal (weapon/armor upgrades with level-scaled costs).
-- Persistent save via `localStorage` (gold, victories, weapon/armor levels).
+- Shop modal with two tabs — **Upgrades** (level-based weapon/armor) and **Armory** (gear
+  inventory): weapon/armor/relic slots with BUY / EQUIP / EQUIPPED states.
+- Equipment & gear system: 3 weapon tiers (Iron/Steel/Dragon Flameblade with burn), 3 armor tiers
+  (Cuirass/Knight's Plate/Aegis with shield-reflect), 3 relics (Vitality/Swiftness/Berserker Crest).
+  Knight glows by weapon tier; enemies show a burn glow. Gear unlocks/equips persist in
+  `localStorage`.
+- Persistent save via `localStorage` (gold, victories, weapon/armor levels, owned + equipped gear).
 - Retro 8-bit/16-bit SFX (slash/hit/block/focus/crit/victory/click) with ±5% pitch variation on
   combat hits, plus a looping dark-arena ambient track; mute toggle in the top header.
 - Live tuning panel wired (`DebugPanel.define`) with combat / progression / ui / advanced groups.

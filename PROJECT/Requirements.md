@@ -16,9 +16,18 @@
 
 ## Progression & shop
 
-- Weapon upgrade: +5 attack/level, cost = level × 50 gold.
-- Armor upgrade: +20 max HP/level, cost = level × 50 gold (also heals the gained amount).
-- Gold, victories, and upgrade levels persist in `localStorage`.
+- **Upgrades tab**: weapon upgrade +5 attack/level (cost = level × 50 gold); armor upgrade +20 max
+  HP/level (cost = level × 50 gold, also heals the gained amount).
+- **Armory tab (gear)**: 3 slots — weapon, armor, relic.
+  - Weapon: Iron Longsword (+5 dmg, default) → Steel Broadsword (+15 dmg, +5% crit, 150g) →
+    Dragon Flameblade (+30 dmg, burn 5/turn, 400g).
+  - Armor: Soldier Cuirass (+20 HP, default) → Knight's Plate (+50 HP, +5% resist, 150g) →
+    Aegis Titan Armor (+100 HP, shield reflects 20%, 400g).
+  - Relic: Ring of Vitality (Focus +15 HP, 200g), Amulet of Swiftness (attack stamina 15→10, 250g),
+    Berserker Crest (crit 2.5×, 350g).
+- Owned gear can be equipped; owned + equipped gear persist in `localStorage`. Higher-tier weapons
+  add a glow to the knight sprite; the burn DoT shows a glow on the enemy.
+- Gold, victories, upgrade levels, and gear unlock/equip state persist in `localStorage`.
 
 ## Coding patterns
 

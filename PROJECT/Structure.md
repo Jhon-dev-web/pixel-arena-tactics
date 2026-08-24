@@ -47,10 +47,19 @@ Asset manifest:
 `progression`, `ui` (cssVar-bound layout), `advanced`. Exports `setTunableListener` so React can
 re-render when a displayed tunable changes.
 
+## `src/game/gear.ts`
+
+Gear catalog (content data): `GearItem`, `GearSlot` (`weapon`/`armor`/`relic`), `EquippedGear`,
+`GEAR` (9 items: 3 weapon tiers, 3 armor tiers, 3 relics), `DEFAULT_OWNED`/`DEFAULT_EQUIPPED`,
+`getGear`, `gearBySlot`, `getEquipped`. Gear names/descriptions are locale keys.
+
 ## `src/game/engine.ts`
 
-Pure game logic: `FighterState`, `SaveData`, `CombatEvent`, `resolveTurn`, `rollEnemyAction`,
-`makePlayer`, `makeEnemy`, `playerMaxHp`, `enemyHpForRound`, `loadSave`/`persistSave`/`defaultSave`.
+Pure game logic: `FighterState` (incl. `burnTurns`), `SaveData` (incl. `owned`/`equipped` gear),
+`CombatEvent` (incl. `reflect`/`burn`), `resolveTurn` (applies weapon/armor/relic modifiers:
+damage, crit chance, burn, max HP, resistance, shield reflect, focus heal bonus, stamina reduction,
+crit multiplier), `tickBurn`, `playerMaxHp`, `effectiveAttackStamina`, `makePlayer`, `makeEnemy`,
+`enemyHpForRound`, `loadSave`/`persistSave`/`defaultSave`.
 
 ## `src/game/audio.ts`
 

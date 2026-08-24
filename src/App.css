@@ -515,3 +515,148 @@ body {
     opacity: 1;
   }
 }
+
+/* --- shop tabs --- */
+.shop-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 86vh;
+}
+
+.shop-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.tab {
+  flex: 1;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  color: #d8c9a0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid #3a2a4a;
+  border-radius: 8px;
+  padding: 10px 8px;
+  cursor: pointer;
+}
+.tab.active {
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border-color: #8a6a3a;
+}
+
+.shop-body,
+.armory {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* --- armory / gear list --- */
+.gear-section {
+  margin-bottom: 12px;
+}
+.gear-section-title {
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffd76a;
+  text-align: left;
+  margin-bottom: 6px;
+  padding-left: 2px;
+}
+.gear-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #3a2a4a;
+  border-radius: 10px;
+  text-align: left;
+}
+.gear-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.gear-name {
+  font-size: var(--font-size);
+  color: #fff;
+}
+.gear-desc {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.gear-cost {
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffd76a;
+}
+.gear-action {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a1108;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.gear-action:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a1108;
+}
+.gear-action.equipped {
+  color: #6fe08a;
+  border-color: #2fbf4f;
+  background: linear-gradient(180deg, #1f3a24, #14251a);
+  box-shadow: 0 3px 0 #0d1a10;
+  cursor: default;
+}
+.gear-action.buy:disabled {
+  filter: grayscale(0.9) brightness(0.5);
+  cursor: not-allowed;
+}
+
+/* --- weapon / status glow --- */
+.glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+}
+.steel-glow {
+  box-shadow: 0 0 20px rgba(150, 200, 255, 0.55);
+}
+.flame-glow {
+  box-shadow: 0 0 28px rgba(255, 130, 30, 0.85);
+  animation: flameFlicker 0.45s ease-in-out infinite;
+}
+.burn-glow {
+  box-shadow: 0 0 20px rgba(255, 90, 20, 0.7);
+  animation: flameFlicker 0.6s ease-in-out infinite;
+}
+@keyframes flameFlicker {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+.float-reflect {
+  color: #7ce8d0;
+}
+.float-burn {
+  color: #ff9a3a;
+}

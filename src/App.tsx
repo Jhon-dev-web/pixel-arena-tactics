@@ -5,6 +5,7 @@ import {
   CombatEventKind,
   FighterState,
   PlayerAction,
+  effectiveAttackStamina,
   loadSave,
   makeEnemy,
   makePlayer,
@@ -12,7 +13,9 @@ import {
   playerMaxHp,
   resolveTurn,
   SaveData,
+  tickBurn,
 } from './game/engine';
+import { GEAR_SLOTS, GearItem, GearSlot, gearBySlot, getEquipped, getGear } from './game/gear';
 import SpriteSheet from './components/SpriteSheet';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
@@ -52,6 +55,10 @@ function floatLabel(ev: FloatState): string {
       return `+${ev.value} ${Text.combat.hp}`;
     case 'stamina':
       return `+${ev.value} ${Text.combat.stamina}`;
+    case 'reflect':
+      return `${Text.combat.reflect} -${ev.value}`;
+    case 'burn':
+      return `${Text.combat.burn} -${ev.value}`;
   }
 }
 
@@ -91,6 +98,47 @@ function Burst({ count }: { count: number }) {
   );
 }
 
+const gearText = (key: string): string => (Text.gear as Record<string, string>)[key];
+
+function GearRow({
+  item,
+  owned,
+  equipped,
+  gold,
+  onBuy,
+  onEquip,
+}: {
+  item: GearItem;
+  owned: boolean;
+  equipped: boolean;
+  gold: number;
+  onBuy: (id: string) => void;
+  onEquip: (id: string) => void;
+}) {
+  return (
+    <div className="gear-row">
+      <div className="gear-info">
+        <span className="gear-name">{gearText(item.nameKey)}</span>
+        <span className="gear-desc">{gearText(item.descKey)}</span>
+        {!owned && <span className="gear-cost">{fmt(Text.ui.cost, item.cost)}</span>}
+      </div>
+      {equipped ? (
+        <button className="gear-action equipped" disabled data-ui>
+          {Text.gear.equipped}
+        </button>
+      ) : owned ? (
+        <button className="gear-action" onClick={() => onEquip(item.id)} data-ui>
+          {Text.gear.equip}
+        </button>
+      ) : (
+        <button className="gear-action buy" onClick={() => onBuy(item.id)} disabled={gold < item.cost} data-ui>
+          {Text.gear.buy}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [save, setSave] = useState<SaveData>(() => loadSave());
   const [round, setRound] = useState(1);
@@ -108,6 +156,7 @@ function App() {
   const [floats, setFloats] = useState<FloatState[]>([]);
   const [bursts, setBursts] = useState<BurstState[]>([]);
   const [shopOpen, setShopOpen] = useState(false);
+  const [shopTab, setShopTab] = useState<'upgrades' | 'armory'>('upgrades');
   const [loot, setLoot] = useState<number | null>(null);
   const [version, setVersion] = useState(0);
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
@@ -187,8 +236,28 @@ function App() {
         addBurst(ev.target);
         triggerShake();
         if (!blockedTargets.has(ev.target)) playSfx('hit', 0.05);
+      } else if (ev.kind === 'reflect') {
+        addBurst(ev.target);
+        triggerShake();
+        playSfx('hit', 0.05);
+      } else if (ev.kind === 'burn') {
+        playSfx('hit', 0.05);
       }
     }
+  };
+
+  const finishVictory = async () => {
+    triggerShake();
+    await sleep(200);
+    const gold = randInt(T.progression.goldMin, T.progression.goldMax);
+    setLoot(gold);
+    playSfx('victory');
+    setSaveBoth({
+      ...saveRef.current,
+      gold: saveRef.current.gold + gold,
+      victories: saveRef.current.victories + 1,
+    });
+    setPhase('victory');
   };
 
   const doTurn = async (action: PlayerAction) => {
@@ -196,6 +265,21 @@ function App() {
     busyRef.current = true;
     setPhase('busy');
     unlockAudio();
+
+    // Burn tick (enemy takes damage over time)
+    const burn = tickBurn(enemyRef.current);
+    if (burn.damage > 0) {
+      setEnemyBoth(burn.enemy);
+      addFloat({ target: 'enemy', kind: 'burn', value: burn.damage });
+      playSfx('hit', 0.05);
+    }
+    if (burn.enemy.hp <= 0) {
+      setEnemyAnim('death');
+      await sleep(820);
+      await finishVictory();
+      busyRef.current = false;
+      return;
+    }
 
     const result = resolveTurn(action, playerRef.current, enemyRef.current, saveRef.current);
     const enemyKilled = result.enemyMid.hp <= 0;
@@ -252,18 +336,13 @@ function App() {
     setPlayerFocus(false);
 
     // End check
+    const enemyDeadNow = result.enemyEnd.hp <= 0;
     if (enemyKilled) {
-      triggerShake();
-      await sleep(200);
-      const gold = randInt(T.progression.goldMin, T.progression.goldMax);
-      setLoot(gold);
-      playSfx('victory');
-      setSaveBoth({
-        ...saveRef.current,
-        gold: saveRef.current.gold + gold,
-        victories: saveRef.current.victories + 1,
-      });
-      setPhase('victory');
+      await finishVictory();
+    } else if (enemyDeadNow) {
+      setEnemyAnim('death');
+      await sleep(620);
+      await finishVictory();
     } else if (result.playerEnd.hp <= 0) {
       triggerShake();
       await sleep(820);
@@ -330,11 +409,51 @@ function App() {
     });
   };
 
+  const buyGear = (id: string) => {
+    const item = getGear(id);
+    if (saveRef.current.gold < item.cost || saveRef.current.owned.includes(id)) return;
+    playSfx('click');
+    setSaveBoth({
+      ...saveRef.current,
+      gold: saveRef.current.gold - item.cost,
+      owned: [...saveRef.current.owned, id],
+    });
+  };
+
+  const equipGear = (id: string) => {
+    const item = getGear(id);
+    if (saveRef.current.equipped[item.slot] === id) return;
+    playSfx('click');
+    const next: SaveData = {
+      ...saveRef.current,
+      equipped: { ...saveRef.current.equipped, [item.slot]: id },
+    };
+    setSaveBoth(next);
+    if (item.slot === 'armor') {
+      const newMax = playerMaxHp(next);
+      const delta = newMax - playerRef.current.maxHp;
+      setPlayerBoth({
+        ...playerRef.current,
+        maxHp: newMax,
+        hp: Math.max(1, Math.min(newMax, playerRef.current.hp + delta)),
+      });
+    }
+  };
+
   const weaponCost = save.weaponLevel * T.progression.weaponBaseCost;
   const armorCost = save.armorLevel * T.progression.armorBaseCost;
-  const canAttack = phase === 'player' && player.stamina >= T.combat.attackStamina;
+  const atkCost = effectiveAttackStamina(save);
+  const build = getEquipped(save.equipped);
+  const weaponTier = build.weapon?.tier ?? 1;
+  const canAttack = phase === 'player' && player.stamina >= atkCost;
   const canShield = phase === 'player' && player.stamina >= T.combat.shieldStamina;
   const canFocus = phase === 'player';
+
+  const equippedName = (slot: GearSlot): string => {
+    const id = save.equipped[slot];
+    if (!id) return Text.gear.none;
+    return gearText(getGear(id).nameKey);
+  };
 
   const renderFloats = (target: 'player' | 'enemy') =>
     floats
@@ -383,6 +502,8 @@ function App() {
               </div>
             </div>
             <div className="sprite-wrap">
+              {weaponTier >= 3 && <span className="glow flame-glow" />}
+              {weaponTier === 2 && <span className="glow steel-glow" />}
               {playerGuard && <span className="guard-badge">🛡️</span>}
               {playerFocus && <span className="focus-ring" />}
               <SpriteSheet
@@ -408,6 +529,7 @@ function App() {
               </div>
             </div>
             <div className="sprite-wrap">
+              {enemy.burnTurns > 0 && <span className="glow burn-glow" />}
               {enemyGuard && <span className="guard-badge">🛡️</span>}
               {enemyFocus && <span className="focus-ring" />}
               <SpriteSheet
@@ -429,7 +551,7 @@ function App() {
         <footer className="controls">
           <button className="action attack" onClick={() => doTurn('attack')} disabled={!canAttack} data-ui>
             <span className="action-label">{Text.ui.attack}</span>
-            <span className="action-cost">{`-${T.combat.attackStamina} ${Text.combat.stamina}`}</span>
+            <span className="action-cost">{`-${atkCost} ${Text.combat.stamina}`}</span>
           </button>
           <button className="action shield" onClick={() => doTurn('shield')} disabled={!canShield} data-ui>
             <span className="action-label">{Text.ui.shield}</span>
@@ -448,25 +570,67 @@ function App() {
             <h2 className="modal-title">{Text.ui.shop}</h2>
             <p className="shop-gold">{fmt(Text.ui.owned, save.gold)}</p>
 
-            <div className="shop-row">
-              <div className="shop-info">
-                <span className="shop-name">⚔️ {Text.ui.weapon}</span>
-                <span className="shop-level">{fmt(Text.ui.level, save.weaponLevel)}</span>
-              </div>
-              <button className="shop-buy" onClick={buyWeapon} disabled={save.gold < weaponCost} data-ui>
-                {fmt(Text.ui.cost, weaponCost)}
+            <div className="shop-tabs">
+              <button
+                className={`tab${shopTab === 'upgrades' ? ' active' : ''}`}
+                onClick={() => setShopTab('upgrades')}
+                data-ui
+              >
+                {Text.gear.upgradesTab}
+              </button>
+              <button
+                className={`tab${shopTab === 'armory' ? ' active' : ''}`}
+                onClick={() => setShopTab('armory')}
+                data-ui
+              >
+                {Text.gear.armoryTab}
               </button>
             </div>
 
-            <div className="shop-row">
-              <div className="shop-info">
-                <span className="shop-name">🛡️ {Text.ui.armor}</span>
-                <span className="shop-level">{fmt(Text.ui.level, save.armorLevel)}</span>
+            {shopTab === 'upgrades' ? (
+              <div className="shop-body">
+                <div className="shop-row">
+                  <div className="shop-info">
+                    <span className="shop-name">⚔️ {Text.ui.weapon}</span>
+                    <span className="shop-level">{fmt(Text.ui.level, save.weaponLevel)}</span>
+                  </div>
+                  <button className="shop-buy" onClick={buyWeapon} disabled={save.gold < weaponCost} data-ui>
+                    {fmt(Text.ui.cost, weaponCost)}
+                  </button>
+                </div>
+
+                <div className="shop-row">
+                  <div className="shop-info">
+                    <span className="shop-name">🛡️ {Text.ui.armor}</span>
+                    <span className="shop-level">{fmt(Text.ui.level, save.armorLevel)}</span>
+                  </div>
+                  <button className="shop-buy" onClick={buyArmor} disabled={save.gold < armorCost} data-ui>
+                    {fmt(Text.ui.cost, armorCost)}
+                  </button>
+                </div>
               </div>
-              <button className="shop-buy" onClick={buyArmor} disabled={save.gold < armorCost} data-ui>
-                {fmt(Text.ui.cost, armorCost)}
-              </button>
-            </div>
+            ) : (
+              <div className="armory">
+                {GEAR_SLOTS.map((slot) => (
+                  <div className="gear-section" key={slot}>
+                    <div className="gear-section-title">
+                      {gearText(slot)} · {equippedName(slot)}
+                    </div>
+                    {gearBySlot(slot).map((item) => (
+                      <GearRow
+                        key={item.id}
+                        item={item}
+                        owned={save.owned.includes(item.id)}
+                        equipped={save.equipped[item.slot] === item.id}
+                        gold={save.gold}
+                        onBuy={buyGear}
+                        onEquip={equipGear}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
 
             <button className="modal-close" onClick={() => { playSfx('click'); setShopOpen(false); }} data-ui>
               {Text.ui.close}

@@ -53,6 +53,8 @@ const T = DebugPanel.define({
     enemyHpScale: { value: 0.15, min: 0, max: 1, step: 0.05, label: 'Enemy HP growth per round' },
     enemyHeal: { value: 18, min: 1, max: 80, step: 1, label: 'Enemy Focus heal' },
     enemyShieldReduction: { value: 0.7, min: 0.1, max: 0.95, step: 0.05, label: 'Enemy shield reduction' },
+    burnDamage: { value: 5, min: 1, max: 30, step: 1, label: 'Burn damage per turn' },
+    burnTurns: { value: 2, min: 1, max: 6, step: 1, label: 'Burn duration (turns)' },
     playerMaxStamina: { value: 100, min: 40, max: 200, step: 5, label: 'Player max stamina' },
     shakeMs: { value: 350, min: 0, max: 1000, step: 25, label: 'Screen shake duration (ms)' },
     textFloatMs: { value: 900, min: 300, max: 2000, step: 50, label: 'Damage text float (ms)' },
