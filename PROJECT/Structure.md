@@ -28,11 +28,11 @@ All player-visible text (UI labels, combat float labels, modal strings) with `{n
 ## `src/assets.json`
 
 Asset manifest:
-- `spritesheets.knight` / `spritesheets.orc` — 4x4 pixel-art sheets (idle/attack/hurt/death rows)
-  with frame metadata (1024px, 256px frames).
+- `spritesheets.knight` / `spritesheets.orc` / `spritesheets.goblin` / `spritesheets.warlock` /
+  `spritesheets.boss` — 4x4 pixel-art sheets (idle/attack/hurt/death rows) with frame metadata.
 - `background.arena` — pixel-art colosseum background (covered to fill the stage).
 - `sfx.*` — one-shot 8-bit/16-bit effects: `slash`, `hit`, `block`, `focus`, `crit`, `victory`,
-  `click` (OGG).
+  `click`, `boss_intro`, `slam`, `dodge`, `curse`, `charge` (OGG).
 - `music.ambient` — looping dark-dungeon ambient track (60s, OGG).
 
 ## `src/components/SpriteSheet.tsx`
@@ -53,13 +53,21 @@ Gear catalog (content data): `GearItem`, `GearSlot` (`weapon`/`armor`/`relic`), 
 `GEAR` (9 items: 3 weapon tiers, 3 armor tiers, 3 relics), `DEFAULT_OWNED`/`DEFAULT_EQUIPPED`,
 `getGear`, `gearBySlot`, `getEquipped`. Gear names/descriptions are locale keys.
 
+## `src/game/enemies.ts`
+
+Enemy catalog (content data): `EnemyKind` (`goblin`/`orc`/`warlock`/`boss`), `EnemyDef` (multipliers
+relative to the tunable enemy stats + per-enemy mechanics: dodge, poison, shield/focus/charge
+weights, slam range, boss flag), `ENEMIES`, `getEnemyDef`, `enemyKindForDuel` (boss every 5th duel,
+3-type rotation otherwise).
+
 ## `src/game/engine.ts`
 
-Pure game logic: `FighterState` (incl. `burnTurns`), `SaveData` (incl. `owned`/`equipped` gear),
-`CombatEvent` (incl. `reflect`/`burn`), `resolveTurn` (applies weapon/armor/relic modifiers:
-damage, crit chance, burn, max HP, resistance, shield reflect, focus heal bonus, stamina reduction,
-crit multiplier), `tickBurn`, `playerMaxHp`, `effectiveAttackStamina`, `makePlayer`, `makeEnemy`,
-`enemyHpForRound`, `loadSave`/`persistSave`/`defaultSave`.
+Pure game logic: `FighterState` (incl. `burnTurns`, `poisonTurns`, `charging`), `SaveData` (incl.
+`owned`/`equipped` gear + `shards`), `CombatEvent` (incl. `reflect`/`burn`/`poison`/`dodge`/`curse`/
+`slam`), `resolveTurn` (applies weapon/armor/relic modifiers and the enemy def's dodge/poison/
+shield/charge/slam mechanics), `rollEnemyAction`, `tickBurn`, `tickPoison`, `playerMaxHp`,
+`effectiveAttackStamina`, `makePlayer`, `makeEnemy(kind, round)`, `enemyHpForRound`,
+`loadSave`/`persistSave`/`defaultSave`.
 
 ## `src/game/audio.ts`
 

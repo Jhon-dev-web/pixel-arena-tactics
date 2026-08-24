@@ -33,6 +33,57 @@
         "death": { "start": 12, "end": 15 }
       },
       "metadata": {}
+    },
+    "goblin": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/spritesheet-1787536755100.png",
+      "description": "Goblin rogue with dagger, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": { "start": 0, "end": 3 },
+        "attack": { "start": 4, "end": 7 },
+        "hurt": { "start": 8, "end": 11 },
+        "death": { "start": 12, "end": 15 }
+      },
+      "metadata": {}
+    },
+    "warlock": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/spritesheet-1787536752841.png",
+      "description": "Skeleton warlock with staff, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": { "start": 0, "end": 3 },
+        "attack": { "start": 4, "end": 7 },
+        "hurt": { "start": 8, "end": 11 },
+        "death": { "start": 12, "end": 15 }
+      },
+      "metadata": {}
+    },
+    "boss": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/spritesheet-1787536769086.png",
+      "description": "Minotaur warlord boss, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": { "start": 0, "end": 3 },
+        "attack": { "start": 4, "end": 7 },
+        "hurt": { "start": 8, "end": 11 },
+        "death": { "start": 12, "end": 15 }
+      },
+      "metadata": {}
     }
   },
   "background": {
@@ -76,6 +127,31 @@
     "click": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-a3ac77fb-54b5-4258-96b6-cf9acbc4aeb9.ogg",
       "description": "Subtle UI click blip (shop open/close/buy)",
+      "metadata": { "duration": 1 }
+    },
+    "boss_intro": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-5d936c02-edd5-4e48-9cc6-0b37764c9451.ogg",
+      "description": "Ominous boss entrance horn/drone",
+      "metadata": { "duration": 3 }
+    },
+    "slam": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-a71a8c88-3b2e-4501-a5ba-e9ec100366d9.ogg",
+      "description": "Massive heavy slam impact (boss)",
+      "metadata": { "duration": 2 }
+    },
+    "dodge": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-335436c3-9604-49cf-abbe-3ade39dcdee1.ogg",
+      "description": "Quick dodge/miss whoosh",
+      "metadata": { "duration": 1 }
+    },
+    "curse": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-2b5d2814-54da-43a1-a12e-7d9eedea1d1d.ogg",
+      "description": "Dark spell cast / curse hex (warlock)",
+      "metadata": { "duration": 1 }
+    },
+    "charge": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-06c0067a-8f01-45f9-b8a6-647377e86f60.ogg",
+      "description": "Rising charge-up warning (boss slam windup)",
       "metadata": { "duration": 1 }
     }
   },

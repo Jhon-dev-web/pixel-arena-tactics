@@ -14,8 +14,10 @@ import {
   resolveTurn,
   SaveData,
   tickBurn,
+  tickPoison,
 } from './game/engine';
 import { GEAR_SLOTS, GearItem, GearSlot, gearBySlot, getEquipped, getGear } from './game/gear';
+import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
 import SpriteSheet from './components/SpriteSheet';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
@@ -59,6 +61,14 @@ function floatLabel(ev: FloatState): string {
       return `${Text.combat.reflect} -${ev.value}`;
     case 'burn':
       return `${Text.combat.burn} -${ev.value}`;
+    case 'poison':
+      return `${Text.combat.poison} -${ev.value}`;
+    case 'dodge':
+      return Text.combat.dodge;
+    case 'curse':
+      return Text.combat.curse;
+    case 'slam':
+      return `${Text.combat.slam} -${ev.value}`;
   }
 }
 
@@ -99,6 +109,7 @@ function Burst({ count }: { count: number }) {
 }
 
 const gearText = (key: string): string => (Text.gear as Record<string, string>)[key];
+const enemyText = (key: string): string => (Text.enemies as Record<string, string>)[key];
 
 function GearRow({
   item,
@@ -141,9 +152,12 @@ function GearRow({
 
 function App() {
   const [save, setSave] = useState<SaveData>(() => loadSave());
-  const [round, setRound] = useState(1);
   const [player, setPlayerState] = useState<FighterState>(() => makePlayer(loadSave()));
-  const [enemy, setEnemyState] = useState<FighterState>(() => makeEnemy(1));
+  const [enemy, setEnemyState] = useState<FighterState>(() => {
+    const s = loadSave();
+    return makeEnemy(enemyKindForDuel(s.victories + 1), s.victories + 1);
+  });
+  const [enemyKind, setEnemyKindState] = useState<EnemyKind>(() => enemyKindForDuel(loadSave().victories + 1));
 
   const [phase, setPhase] = useState<Phase>('player');
   const [playerAnim, setPlayerAnim] = useState<AnimName>('idle');
@@ -157,14 +171,15 @@ function App() {
   const [bursts, setBursts] = useState<BurstState[]>([]);
   const [shopOpen, setShopOpen] = useState(false);
   const [shopTab, setShopTab] = useState<'upgrades' | 'armory'>('upgrades');
-  const [loot, setLoot] = useState<number | null>(null);
+  const [loot, setLoot] = useState<{ gold: number; shards: number } | null>(null);
   const [version, setVersion] = useState(0);
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
+  const [bossFlash, setBossFlash] = useState(false);
 
   const playerRef = useRef(player);
   const enemyRef = useRef(enemy);
   const saveRef = useRef(save);
-  const roundRef = useRef(round);
+  const enemyKindRef = useRef(enemyKind);
   const busyRef = useRef(false);
   const idRef = useRef(0);
 
@@ -179,6 +194,10 @@ function App() {
   const setSaveBoth = (s: SaveData) => {
     saveRef.current = s;
     setSave(s);
+  };
+  const setEnemyKindBoth = (k: EnemyKind) => {
+    enemyKindRef.current = k;
+    setEnemyKindState(k);
   };
 
   useEffect(() => {
@@ -222,6 +241,18 @@ function App() {
     window.setTimeout(() => setShaking(false), T.advanced.shakeMs);
   };
 
+  const spawnEnemy = (duel: number) => {
+    const kind = enemyKindForDuel(duel);
+    setEnemyKindBoth(kind);
+    setEnemyBoth(makeEnemy(kind, duel));
+    if (kind === 'boss') {
+      playSfx('boss_intro');
+      triggerShake();
+      setBossFlash(true);
+      window.setTimeout(() => setBossFlash(false), 700);
+    }
+  };
+
   const applyEvents = (events: CombatEvent[]) => {
     const blockedTargets = new Set(events.filter((e) => e.kind === 'blocked').map((e) => e.target));
     for (const ev of events) {
@@ -242,6 +273,14 @@ function App() {
         playSfx('hit', 0.05);
       } else if (ev.kind === 'burn') {
         playSfx('hit', 0.05);
+      } else if (ev.kind === 'slam') {
+        addBurst(ev.target);
+        triggerShake();
+        playSfx('slam', 0.05);
+      } else if (ev.kind === 'dodge') {
+        playSfx('dodge');
+      } else if (ev.kind === 'curse') {
+        playSfx('curse');
       }
     }
   };
@@ -249,13 +288,16 @@ function App() {
   const finishVictory = async () => {
     triggerShake();
     await sleep(200);
-    const gold = randInt(T.progression.goldMin, T.progression.goldMax);
-    setLoot(gold);
+    const isBoss = enemyKindRef.current === 'boss';
+    const gold = randInt(T.progression.goldMin, T.progression.goldMax) * (isBoss ? 3 : 1);
+    const shards = isBoss ? 1 : 0;
+    setLoot({ gold, shards });
     playSfx('victory');
     setSaveBoth({
       ...saveRef.current,
       gold: saveRef.current.gold + gold,
       victories: saveRef.current.victories + 1,
+      shards: saveRef.current.shards + shards,
     });
     setPhase('victory');
   };
@@ -281,7 +323,28 @@ function App() {
       return;
     }
 
-    const result = resolveTurn(action, playerRef.current, enemyRef.current, saveRef.current);
+    // Poison tick (player takes damage over time)
+    const pois = tickPoison(playerRef.current);
+    if (pois.damage > 0) {
+      setPlayerBoth(pois.player);
+      addFloat({ target: 'player', kind: 'poison', value: pois.damage });
+      playSfx('curse', 0.05);
+    }
+    if (pois.player.hp <= 0) {
+      setPlayerAnim('death');
+      await sleep(820);
+      setPhase('defeat');
+      busyRef.current = false;
+      return;
+    }
+
+    const result = resolveTurn(
+      action,
+      playerRef.current,
+      enemyRef.current,
+      saveRef.current,
+      getEnemyDef(enemyKindRef.current),
+    );
     const enemyKilled = result.enemyMid.hp <= 0;
 
     // Player acts
@@ -319,6 +382,19 @@ function App() {
         setPlayerAnim(result.playerEnd.hp <= 0 ? 'death' : 'hurt');
         await sleep(result.playerEnd.hp <= 0 ? 620 : 280);
         if (result.playerEnd.hp > 0) setPlayerAnim('idle');
+      } else if (result.enemyAction === 'slam') {
+        setEnemyAnim('attack');
+        await sleep(520);
+        applyEvents(result.enemyEvents);
+        setPlayerBoth(result.playerEnd);
+        setEnemyBoth(result.enemyEnd);
+        setPlayerAnim(result.playerEnd.hp <= 0 ? 'death' : 'hurt');
+        await sleep(result.playerEnd.hp <= 0 ? 620 : 300);
+        if (result.playerEnd.hp > 0) setPlayerAnim('idle');
+      } else if (result.enemyAction === 'charge') {
+        playSfx('charge');
+        setEnemyBoth(result.enemyEnd);
+        await sleep(600);
       } else if (result.enemyAction === 'shield') {
         setEnemyGuard(true);
         setEnemyBoth(result.enemyEnd);
@@ -355,11 +431,8 @@ function App() {
   };
 
   const nextDuel = () => {
-    const next = roundRef.current + 1;
-    roundRef.current = next;
-    setRound(next);
     setPlayerBoth(makePlayer(saveRef.current));
-    setEnemyBoth(makeEnemy(next));
+    spawnEnemy(saveRef.current.victories + 1);
     setPlayerAnim('idle');
     setEnemyAnim('idle');
     setFloats([]);
@@ -370,7 +443,7 @@ function App() {
 
   const retryDuel = () => {
     setPlayerBoth(makePlayer(saveRef.current));
-    setEnemyBoth(makeEnemy(roundRef.current));
+    spawnEnemy(saveRef.current.victories + 1);
     setPlayerAnim('idle');
     setEnemyAnim('idle');
     setFloats([]);
@@ -445,6 +518,19 @@ function App() {
   const atkCost = effectiveAttackStamina(save);
   const build = getEquipped(save.equipped);
   const weaponTier = build.weapon?.tier ?? 1;
+  const enemyDef = getEnemyDef(enemyKind);
+  const enemyName = enemyDef.boss
+    ? fmt(Text.enemies.bossName, enemyText(enemyDef.nameKey))
+    : enemyText(enemyDef.nameKey);
+  const enemySpriteUrl =
+    enemyKind === 'goblin'
+      ? Assets.spritesheets.goblin.url
+      : enemyKind === 'orc'
+        ? Assets.spritesheets.orc.url
+        : enemyKind === 'warlock'
+          ? Assets.spritesheets.warlock.url
+          : Assets.spritesheets.boss.url;
+  const enemySize = enemyKind === 'boss' ? 'calc(var(--sprite-size, 132px) * 1.3)' : 'var(--sprite-size, 132px)';
   const canAttack = phase === 'player' && player.stamina >= atkCost;
   const canShield = phase === 'player' && player.stamina >= T.combat.shieldStamina;
   const canFocus = phase === 'player';
@@ -474,11 +560,13 @@ function App() {
       <div className={`stage${shaking ? ' shaking' : ''}`} data-tv={version}>
         <div className="bg" style={{ backgroundImage: `url(${Assets.background.arena.url})` }} />
         <div className="vignette" />
+        {bossFlash && <div className="boss-flash" />}
 
         <header className="topbar">
           <div className="stats">
             <span className="stat">{fmt(Text.ui.victories, save.victories)}</span>
             <span className="stat gold">{fmt(Text.ui.gold, save.gold)}</span>
+            <span className="stat shards">{fmt(Text.ui.shards, save.shards)}</span>
           </div>
           <div className="topbar-right">
             <button className="mute-btn" onClick={toggleMute} aria-label="Toggle sound" data-ui>
@@ -521,20 +609,25 @@ function App() {
             </div>
           </div>
 
-          <div className="fighter enemy">
+          <div className={`fighter enemy${enemyDef.boss ? ' boss' : ''}`}>
             <div className="bars">
+              {enemyDef.boss && <span className="boss-tag">{Text.combat.bossTag}</span>}
+              <span className="enemy-name">{enemyName}</span>
               <div className="bar hp enemy-hp">
                 <div className="bar-fill enemy-hp-fill" style={{ width: `${pct(enemy.hp, enemy.maxHp)}%` }} />
                 <span className="bar-label">{`${enemy.hp}/${enemy.maxHp}`}</span>
               </div>
             </div>
             <div className="sprite-wrap">
+              {enemyDef.boss && <span className="glow boss-aura" />}
+              {enemy.charging && <span className="charge-flash" />}
+              {enemy.charging && <span className="charge-warning">!</span>}
               {enemy.burnTurns > 0 && <span className="glow burn-glow" />}
               {enemyGuard && <span className="guard-badge">🛡️</span>}
               {enemyFocus && <span className="focus-ring" />}
               <SpriteSheet
-                src={Assets.spritesheets.orc.url}
-                size="var(--sprite-size, 132px)"
+                src={enemySpriteUrl}
+                size={enemySize}
                 row={ANIM_ROW[enemyAnim]}
                 flip
                 playOnce={enemyAnim !== 'idle'}
@@ -643,7 +736,8 @@ function App() {
         <div className="modal-backdrop">
           <div className="modal result-modal victory">
             <h2 className="modal-title win">{Text.combat.victoryTitle}</h2>
-            <p className="loot-text">{fmt(Text.combat.loot, loot)}</p>
+            <p className="loot-text">{fmt(Text.combat.loot, loot.gold)}</p>
+            {loot.shards > 0 && <p className="loot-text shard">{fmt(Text.combat.shardLoot, loot.shards)}</p>}
             <button className="result-btn" onClick={nextDuel} data-ui>
               {Text.ui.nextDuel}
             </button>

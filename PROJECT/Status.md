@@ -18,7 +18,12 @@
   (Cuirass/Knight's Plate/Aegis with shield-reflect), 3 relics (Vitality/Swiftness/Berserker Crest).
   Knight glows by weapon tier; enemies show a burn glow. Gear unlocks/equips persist in
   `localStorage`.
-- Persistent save via `localStorage` (gold, victories, weapon/armor levels, owned + equipped gear).
+- Persistent save via `localStorage` (gold, victories, weapon/armor levels, owned + equipped gear,
+  shards).
+- Enemy rotation: Goblin Rogue (25% dodge) → Orc Berserker → Skeleton Warlock (2-turn poison DoT),
+  cycling by victory count, with a **Minotaur Warlord boss every 5th duel** (2× HP, BOSS tag,
+  red aura, 1-turn-telegraphed Heavy Slam, 3× gold + guaranteed Relic Shard, ominous intro).
+- Enemy name shown above the HP bar; boss entrance plays an intro sting + red flash + screen shake.
 - Retro 8-bit/16-bit SFX (slash/hit/block/focus/crit/victory/click) with ±5% pitch variation on
   combat hits, plus a looping dark-arena ambient track; mute toggle in the top header.
 - Live tuning panel wired (`DebugPanel.define`) with combat / progression / ui / advanced groups.

@@ -14,6 +14,17 @@
 - Defeat (player HP 0) → death animation + defeat popup (revive, same round, keep gold/victories).
 - Next duel scales orc HP by +15% per round (`enemyBaseHp * (1 + 0.15*(round-1))`).
 
+## Enemy variety & boss
+
+- 3 enemy types rotate by victory count: **Goblin Rogue** (0.8× HP, 25% dodge, always attacks),
+  **Orc Berserker** (baseline, attacks/shields/heals), **Skeleton Warlock** (1.1× HP, casts a 2-turn
+  poison DoT on hit).
+- **Boss (every 5th duel)**: Minotaur Warlord (2× HP, red aura, "⚠️ BOSS" tag). Boss actions include
+  a telegraphed **Heavy Slam** (charges 1 turn with a red-flash/`!` warning, then deals 40–55 damage,
+  reduced 70% by Shield). Boss victory awards 3× gold + 1 Relic Shard (persistent, shown in the top
+  bar and victory popup).
+- Enemy name is displayed above the HP bar; boss entry plays an ominous sting, red flash, and shake.
+
 ## Progression & shop
 
 - **Upgrades tab**: weapon upgrade +5 attack/level (cost = level × 50 gold); armor upgrade +20 max

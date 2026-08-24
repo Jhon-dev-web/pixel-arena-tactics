@@ -2,6 +2,7 @@
   "ui": {
     "victories": "🏆 Victories: {n}",
     "gold": "🪙 Gold: {n}",
+    "shards": "◆ Shards: {n}",
     "shop": "🏪 Shop",
     "attack": "⚔️ ATTACK",
     "shield": "🛡️ SHIELD",
@@ -23,8 +24,14 @@
     "hp": "HP",
     "reflect": "REFLECT!",
     "burn": "BURN",
+    "poison": "POISON",
+    "dodge": "DODGED!",
+    "curse": "CURSED!",
+    "slam": "SLAM!",
+    "bossTag": "BOSS",
     "victoryTitle": "Victory!",
     "loot": "Loot: +{n} Gold",
+    "shardLoot": "Relic Shard: +{n}",
     "defeatTitle": "Defeat",
     "defeatHint": "You fell in battle."
   },
@@ -56,5 +63,12 @@
     "amulet_swiftness_d": "Attack costs 10 stamina",
     "berserker_crest": "Berserker Crest",
     "berserker_crest_d": "Crits deal 2.5x damage"
+  },
+  "enemies": {
+    "goblinRogue": "Goblin Rogue",
+    "orcBerserker": "Orc Berserker",
+    "skeletonWarlock": "Skeleton Warlock",
+    "minotaurWarlord": "Minotaur Warlord",
+    "bossName": "⚠️ BOSS: {n}"
   }
 }

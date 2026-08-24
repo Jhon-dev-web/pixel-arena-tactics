@@ -1,8 +1,9 @@
 import T from './tunables';
 import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_OWNED, getEquipped } from './gear';
+import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
 
 export type PlayerAction = 'attack' | 'shield' | 'focus';
-export type EnemyAction = 'attack' | 'shield' | 'focus';
+export type EnemyAction = 'attack' | 'shield' | 'focus' | 'slam' | 'charge';
 
 export interface FighterState {
   maxHp: number;
@@ -12,9 +13,22 @@ export interface FighterState {
   shielding: boolean;
   focusReady: boolean;
   burnTurns: number;
+  poisonTurns: number;
+  charging: boolean;
 }
 
-export type CombatEventKind = 'damage' | 'crit' | 'blocked' | 'heal' | 'stamina' | 'reflect' | 'burn';
+export type CombatEventKind =
+  | 'damage'
+  | 'crit'
+  | 'blocked'
+  | 'heal'
+  | 'stamina'
+  | 'reflect'
+  | 'burn'
+  | 'poison'
+  | 'dodge'
+  | 'curse'
+  | 'slam';
 
 export interface CombatEvent {
   target: 'player' | 'enemy';
@@ -25,6 +39,7 @@ export interface CombatEvent {
 export interface SaveData {
   gold: number;
   victories: number;
+  shards: number;
   weaponLevel: number;
   armorLevel: number;
   owned: string[];
@@ -46,11 +61,20 @@ const SAVE_KEY = 'arena-rpg-save-v1';
 const randInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
-export function rollEnemyAction(): EnemyAction {
-  const r = Math.random();
-  if (r < 0.5) return 'attack';
-  if (r < 0.75) return 'shield';
-  return 'focus';
+function rollEnemyAction(def: EnemyDef, wasCharging: boolean): { action: EnemyAction; charging: boolean } {
+  if (def.slam && wasCharging) return { action: 'slam', charging: false };
+
+  const attackW = 0.5;
+  const shieldW = def.shieldWeight ?? 0;
+  const focusW = def.focusWeight ?? 0;
+  const chargeW = def.chargeWeight ?? 0;
+  const total = attackW + shieldW + focusW + chargeW;
+
+  let r = Math.random() * total;
+  if ((r -= chargeW) < 0) return { action: 'charge', charging: true };
+  if ((r -= shieldW) < 0) return { action: 'shield', charging: false };
+  if ((r -= focusW) < 0) return { action: 'focus', charging: false };
+  return { action: 'attack', charging: false };
 }
 
 export function playerMaxHp(save: SaveData): number {
@@ -67,8 +91,8 @@ export function effectiveAttackStamina(save: SaveData): number {
   return Math.max(0, T.combat.attackStamina - (relic?.attackStaminaReduction ?? 0));
 }
 
-export function enemyHpForRound(round: number): number {
-  return Math.round(T.advanced.enemyBaseHp * (1 + T.advanced.enemyHpScale * (round - 1)));
+export function enemyHpForRound(def: EnemyDef, round: number): number {
+  return Math.round(T.advanced.enemyBaseHp * def.hpMult * (1 + T.advanced.enemyHpScale * (round - 1)));
 }
 
 export function makePlayer(save: SaveData): FighterState {
@@ -81,12 +105,25 @@ export function makePlayer(save: SaveData): FighterState {
     shielding: false,
     focusReady: false,
     burnTurns: 0,
+    poisonTurns: 0,
+    charging: false,
   };
 }
 
-export function makeEnemy(round: number): FighterState {
-  const maxHp = enemyHpForRound(round);
-  return { maxHp, hp: maxHp, stamina: 0, maxStamina: 0, shielding: false, focusReady: false, burnTurns: 0 };
+export function makeEnemy(kind: EnemyKind, round: number): FighterState {
+  const def = getEnemyDef(kind);
+  const maxHp = enemyHpForRound(def, round);
+  return {
+    maxHp,
+    hp: maxHp,
+    stamina: 0,
+    maxStamina: 0,
+    shielding: false,
+    focusReady: false,
+    burnTurns: 0,
+    poisonTurns: 0,
+    charging: false,
+  };
 }
 
 export function resolveTurn(
@@ -94,8 +131,10 @@ export function resolveTurn(
   player: FighterState,
   enemy: FighterState,
   save: SaveData,
+  enemyDef: EnemyDef,
 ): TurnResult {
-  const enemyAction = rollEnemyAction();
+  const roll = rollEnemyAction(enemyDef, enemy.charging);
+  const enemyAction = roll.action;
   const enemyShielded = enemyAction === 'shield';
 
   const { weapon, armor, relic } = getEquipped(save.equipped);
@@ -106,28 +145,34 @@ export function resolveTurn(
   const enemyEvents: CombatEvent[] = [];
 
   let pMid: FighterState = { ...player, shielding: false };
-  let eMid: FighterState = { ...enemy, shielding: false };
+  let eMid: FighterState = { ...enemy, shielding: false, charging: roll.charging };
 
   // -- Player action --
   if (action === 'attack') {
     pMid = { ...pMid, stamina: pMid.stamina - attackStamina };
-    const upgradeBonus = (save.weaponLevel - 1) * T.progression.weaponDmgPerLvl;
-    let dmg = randInt(T.combat.attackMin, T.combat.attackMax) + upgradeBonus + (weapon?.damage ?? 0);
+    const dodged = (enemyDef.dodge ?? 0) > 0 && Math.random() < (enemyDef.dodge ?? 0);
 
-    const randomCrit = Math.random() < (weapon?.critChance ?? 0);
-    const crit = pMid.focusReady || randomCrit;
-    if (crit) {
-      dmg = Math.round(dmg * critMult);
-      if (pMid.focusReady) pMid = { ...pMid, focusReady: false };
-    }
+    if (dodged) {
+      playerEvents.push({ target: 'enemy', kind: 'dodge', value: 0 });
+    } else {
+      const upgradeBonus = (save.weaponLevel - 1) * T.progression.weaponDmgPerLvl;
+      let dmg = randInt(T.combat.attackMin, T.combat.attackMax) + upgradeBonus + (weapon?.damage ?? 0);
 
-    if (enemyShielded) {
-      dmg = Math.round(dmg * (1 - T.advanced.enemyShieldReduction));
-      playerEvents.push({ target: 'enemy', kind: 'blocked', value: dmg });
+      const randomCrit = Math.random() < (weapon?.critChance ?? 0);
+      const crit = pMid.focusReady || randomCrit;
+      if (crit) {
+        dmg = Math.round(dmg * critMult);
+        if (pMid.focusReady) pMid = { ...pMid, focusReady: false };
+      }
+
+      if (enemyShielded) {
+        dmg = Math.round(dmg * (1 - T.advanced.enemyShieldReduction));
+        playerEvents.push({ target: 'enemy', kind: 'blocked', value: dmg });
+      }
+      playerEvents.push({ target: 'enemy', kind: crit ? 'crit' : 'damage', value: dmg });
+      eMid = { ...eMid, hp: Math.max(0, eMid.hp - dmg) };
+      if (weapon?.burn) eMid = { ...eMid, burnTurns: T.advanced.burnTurns };
     }
-    playerEvents.push({ target: 'enemy', kind: crit ? 'crit' : 'damage', value: dmg });
-    eMid = { ...eMid, hp: Math.max(0, eMid.hp - dmg) };
-    if (weapon?.burn) eMid = { ...eMid, burnTurns: T.advanced.burnTurns };
   } else if (action === 'shield') {
     pMid = { ...pMid, stamina: pMid.stamina - T.combat.shieldStamina, shielding: true };
   } else {
@@ -143,12 +188,12 @@ export function resolveTurn(
   let pEnd: FighterState = pMid;
   let eEnd: FighterState = eMid;
 
-  if (enemyAction === 'attack') {
-    let dmg = randInt(T.combat.enemyAtkMin, T.combat.enemyAtkMax);
+  const applyIncoming = (dmg: number, kind: CombatEventKind): number => {
+    let d = dmg;
     if (pMid.shielding) {
-      const absorbed = dmg * T.combat.shieldReduction;
-      dmg = dmg * (1 - T.combat.shieldReduction);
-      enemyEvents.push({ target: 'player', kind: 'blocked', value: Math.round(dmg) });
+      const absorbed = d * T.combat.shieldReduction;
+      d = d * (1 - T.combat.shieldReduction);
+      enemyEvents.push({ target: 'player', kind: 'blocked', value: Math.round(d) });
       const reflect = armor?.reflect ?? 0;
       if (reflect > 0) {
         const reflected = Math.round(absorbed * reflect);
@@ -156,15 +201,34 @@ export function resolveTurn(
         enemyEvents.push({ target: 'enemy', kind: 'reflect', value: reflected });
       }
     }
-    dmg = Math.round(dmg * (1 - (armor?.resistance ?? 0)));
-    enemyEvents.push({ target: 'player', kind: 'damage', value: dmg });
+    d = Math.round(d * (1 - (armor?.resistance ?? 0)));
+    enemyEvents.push({ target: 'player', kind, value: d });
+    return d;
+  };
+
+  if (enemyAction === 'attack') {
+    const dmg = applyIncoming(
+      randInt(
+        Math.round(T.combat.enemyAtkMin * enemyDef.atkMult),
+        Math.round(T.combat.enemyAtkMax * enemyDef.atkMult),
+      ),
+      'damage',
+    );
+    pEnd = { ...pMid, hp: Math.max(0, pMid.hp - dmg) };
+    if (enemyDef.poison) {
+      pEnd = { ...pEnd, poisonTurns: T.advanced.poisonTurns };
+      enemyEvents.push({ target: 'player', kind: 'curse', value: 0 });
+    }
+  } else if (enemyAction === 'slam') {
+    const dmg = applyIncoming(randInt(enemyDef.slamMin ?? 40, enemyDef.slamMax ?? 55), 'slam');
     pEnd = { ...pMid, hp: Math.max(0, pMid.hp - dmg) };
   } else if (enemyAction === 'focus') {
-    const hp = Math.min(eMid.maxHp, eMid.hp + T.advanced.enemyHeal);
+    const heal = Math.round(T.advanced.enemyHeal * enemyDef.healMult);
+    const hp = Math.min(eMid.maxHp, eMid.hp + heal);
     eEnd = { ...eMid, hp };
-    enemyEvents.push({ target: 'enemy', kind: 'heal', value: T.advanced.enemyHeal });
+    enemyEvents.push({ target: 'enemy', kind: 'heal', value: heal });
   }
-  // enemyAction === 'shield': already applied during the player phase.
+  // 'charge' / 'shield': no further damage this turn.
 
   return {
     enemyAction,
@@ -186,10 +250,20 @@ export function tickBurn(enemy: FighterState): { enemy: FighterState; damage: nu
   };
 }
 
+export function tickPoison(player: FighterState): { player: FighterState; damage: number } {
+  if (player.poisonTurns <= 0) return { player, damage: 0 };
+  const dmg = T.advanced.poisonDamage;
+  return {
+    player: { ...player, hp: Math.max(0, player.hp - dmg), poisonTurns: player.poisonTurns - 1 },
+    damage: dmg,
+  };
+}
+
 export function defaultSave(): SaveData {
   return {
     gold: 0,
     victories: 0,
+    shards: 0,
     weaponLevel: 1,
     armorLevel: 1,
     owned: [...DEFAULT_OWNED],
