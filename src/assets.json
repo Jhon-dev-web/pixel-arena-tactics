@@ -41,5 +41,49 @@
       "description": "Pixel art dark fantasy arena background, stone colosseum with torches and banners",
       "metadata": {}
     }
+  },
+  "sfx": {
+    "slash": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-cdb7b473-4243-4d58-ba65-dace833e143b.ogg",
+      "description": "Retro 8-bit sword slash whoosh (Attack button)",
+      "metadata": { "duration": 1 }
+    },
+    "hit": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-5b192c42-263c-4a25-ae81-ed3cfba446c9.ogg",
+      "description": "Solid 16-bit punch/impact (unshielded hit)",
+      "metadata": { "duration": 1 }
+    },
+    "block": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-0c8edcf5-012b-4b38-99c1-af3b6b56d218.ogg",
+      "description": "Heavy metallic clank / shield block parry",
+      "metadata": { "duration": 1 }
+    },
+    "focus": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-9dca7804-4d4f-4906-8e24-b5bf76a836e1.ogg",
+      "description": "Rising magical power-up chime (Focus button)",
+      "metadata": { "duration": 1 }
+    },
+    "crit": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-0f3bab40-401c-42df-b7ba-b418f2f653f9.ogg",
+      "description": "Powerful explosive blast (critical hit)",
+      "metadata": { "duration": 1 }
+    },
+    "victory": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-294d3967-59a9-4a12-9472-6e6281c71098.ogg",
+      "description": "Triumphant victory fanfare with coin sparkle",
+      "metadata": { "duration": 3 }
+    },
+    "click": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-a3ac77fb-54b5-4258-96b6-cf9acbc4aeb9.ogg",
+      "description": "Subtle UI click blip (shop open/close/buy)",
+      "metadata": { "duration": 1 }
+    }
+  },
+  "music": {
+    "ambient": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-99573780-7d0a-484b-95bc-e854761a2997.ogg",
+      "description": "Dark fantasy dungeon ambient loop (8-bit chipmusic pad + torch/wind)",
+      "metadata": { "duration": 60, "loop": true }
+    }
   }
 }

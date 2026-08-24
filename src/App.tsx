@@ -14,6 +14,7 @@ import {
   SaveData,
 } from './game/engine';
 import SpriteSheet from './components/SpriteSheet';
+import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
 import Text from './locales/en.json';
 import './App.css';
@@ -109,6 +110,7 @@ function App() {
   const [shopOpen, setShopOpen] = useState(false);
   const [loot, setLoot] = useState<number | null>(null);
   const [version, setVersion] = useState(0);
+  const [muted, setMutedState] = useState<boolean>(() => loadMuted());
 
   const playerRef = useRef(player);
   const enemyRef = useRef(enemy);
@@ -139,6 +141,17 @@ function App() {
     return () => setTunableListener(null);
   }, []);
 
+  useEffect(() => {
+    void initAudio();
+  }, []);
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+    if (!next) playSfx('click');
+  };
+
   const addFloat = (ev: CombatEvent) => {
     const id = idRef.current++;
     setFloats((f) => [...f, { id, target: ev.target, kind: ev.kind, value: ev.value }]);
@@ -161,11 +174,19 @@ function App() {
   };
 
   const applyEvents = (events: CombatEvent[]) => {
+    const blockedTargets = new Set(events.filter((e) => e.kind === 'blocked').map((e) => e.target));
     for (const ev of events) {
       addFloat(ev);
-      if (ev.kind === 'damage' || ev.kind === 'crit') {
+      if (ev.kind === 'blocked') {
+        playSfx('block', 0.05);
+      } else if (ev.kind === 'crit') {
         addBurst(ev.target);
         triggerShake();
+        playSfx('crit', 0.05);
+      } else if (ev.kind === 'damage') {
+        addBurst(ev.target);
+        triggerShake();
+        if (!blockedTargets.has(ev.target)) playSfx('hit', 0.05);
       }
     }
   };
@@ -174,12 +195,14 @@ function App() {
     if (busyRef.current || phase !== 'player') return;
     busyRef.current = true;
     setPhase('busy');
+    unlockAudio();
 
     const result = resolveTurn(action, playerRef.current, enemyRef.current, saveRef.current);
     const enemyKilled = result.enemyMid.hp <= 0;
 
     // Player acts
     if (action === 'attack') {
+      playSfx('slash', 0.05);
       setPlayerAnim('attack');
       await sleep(420);
       applyEvents(result.playerEvents);
@@ -193,6 +216,7 @@ function App() {
       setPlayerBoth(result.playerMid);
       await sleep(450);
     } else {
+      playSfx('focus');
       setPlayerFocus(true);
       setPlayerBoth(result.playerMid);
       applyEvents(result.playerEvents);
@@ -233,6 +257,7 @@ function App() {
       await sleep(200);
       const gold = randInt(T.progression.goldMin, T.progression.goldMax);
       setLoot(gold);
+      playSfx('victory');
       setSaveBoth({
         ...saveRef.current,
         gold: saveRef.current.gold + gold,
@@ -278,6 +303,7 @@ function App() {
   const buyWeapon = () => {
     const cost = saveRef.current.weaponLevel * T.progression.weaponBaseCost;
     if (saveRef.current.gold < cost) return;
+    playSfx('click');
     setSaveBoth({
       ...saveRef.current,
       gold: saveRef.current.gold - cost,
@@ -288,6 +314,7 @@ function App() {
   const buyArmor = () => {
     const cost = saveRef.current.armorLevel * T.progression.armorBaseCost;
     if (saveRef.current.gold < cost) return;
+    playSfx('click');
     const next: SaveData = {
       ...saveRef.current,
       gold: saveRef.current.gold - cost,
@@ -334,9 +361,14 @@ function App() {
             <span className="stat">{fmt(Text.ui.victories, save.victories)}</span>
             <span className="stat gold">{fmt(Text.ui.gold, save.gold)}</span>
           </div>
-          <button className="shop-btn" onClick={() => setShopOpen(true)} data-ui>
-            {Text.ui.shop}
-          </button>
+          <div className="topbar-right">
+            <button className="mute-btn" onClick={toggleMute} aria-label="Toggle sound" data-ui>
+              {muted ? '🔇' : '🔊'}
+            </button>
+            <button className="shop-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
+              {Text.ui.shop}
+            </button>
+          </div>
         </header>
 
         <div className="arena">
@@ -436,7 +468,7 @@ function App() {
               </button>
             </div>
 
-            <button className="modal-close" onClick={() => setShopOpen(false)} data-ui>
+            <button className="modal-close" onClick={() => { playSfx('click'); setShopOpen(false); }} data-ui>
               {Text.ui.close}
             </button>
           </div>

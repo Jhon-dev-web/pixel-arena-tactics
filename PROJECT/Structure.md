@@ -31,6 +31,9 @@ Asset manifest:
 - `spritesheets.knight` / `spritesheets.orc` — 4x4 pixel-art sheets (idle/attack/hurt/death rows)
   with frame metadata (1024px, 256px frames).
 - `background.arena` — pixel-art colosseum background (covered to fill the stage).
+- `sfx.*` — one-shot 8-bit/16-bit effects: `slash`, `hit`, `block`, `focus`, `crit`, `victory`,
+  `click` (OGG).
+- `music.ambient` — looping dark-dungeon ambient track (60s, OGG).
 
 ## `src/components/SpriteSheet.tsx`
 
@@ -48,6 +51,13 @@ re-render when a displayed tunable changes.
 
 Pure game logic: `FighterState`, `SaveData`, `CombatEvent`, `resolveTurn`, `rollEnemyAction`,
 `makePlayer`, `makeEnemy`, `playerMaxHp`, `enemyHpForRound`, `loadSave`/`persistSave`/`defaultSave`.
+
+## `src/game/audio.ts`
+
+Web Audio sound manager. Preloads/decodes all `sfx.*` + `music.ambient` into `AudioBuffer`s on
+`initAudio()`; `playSfx(key, pitchVariance)` plays a one-shot (optional ±pitch), `setMuted`/`loadMuted`
+persist the mute flag and start/stop the looping ambient track, `unlockAudio` seeds the ambient loop
+on first user gesture. Uses a single shared `AudioContext`.
 
 ## `index.html`
 
