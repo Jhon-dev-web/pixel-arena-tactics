@@ -1689,3 +1689,138 @@ body {
     opacity: 0;
   }
 }
+
+/* ===== forge craft cards ===== */
+.craft-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3a2a4a;
+  border-radius: 10px;
+  text-align: left;
+}
+.craft-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.craft-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.craft-name {
+  font-size: var(--font-size);
+  color: #fff;
+}
+.craft-desc {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.craft-req {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.req-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.req-plus {
+  color: #8a7aa8;
+  font-size: calc(var(--font-size) - 2px);
+}
+.req-amount {
+  font-size: calc(var(--font-size) - 3px);
+  color: #e8d9a8;
+  white-space: nowrap;
+}
+.req-amount.missing {
+  color: #ff6b5e;
+}
+.mat-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #14101c;
+  border: 1px solid #3a2a4a;
+  border-radius: 5px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.mat-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.craft-btn {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  text-transform: uppercase;
+  color: #ffd9a0;
+  background: linear-gradient(180deg, #6a3010, #3a1a08);
+  border: 2px solid #e06a20;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a0d04;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.craft-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a0d04;
+}
+.craft-btn:disabled {
+  filter: grayscale(0.9) brightness(0.55);
+  cursor: not-allowed;
+}
+.craft-btn.equipped {
+  color: #6fe08a;
+  border-color: #2fbf4f;
+  background: linear-gradient(180deg, #1f3a24, #14251a);
+  box-shadow: 0 3px 0 #0d1a10;
+  cursor: default;
+}
+
+/* --- forge scrollbar (dark brown) --- */
+.forge-body::-webkit-scrollbar {
+  width: 8px;
+}
+.forge-body::-webkit-scrollbar-track {
+  background: #1a1208;
+  border-radius: 4px;
+}
+.forge-body::-webkit-scrollbar-thumb {
+  background: #5a3a20;
+  border-radius: 4px;
+  border: 1px solid #2a1608;
+}
+.forge-body {
+  scrollbar-width: thin;
+  scrollbar-color: #5a3a20 #1a1208;
+}
+.gear-material {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.rarity-icon {
+  width: 10px;
+  height: 10px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}

@@ -1,18 +1,25 @@
+import Assets from '../assets.json';
 import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
 import { GEAR, GEAR_SLOTS, GearItem, gearBySlot } from '../game/gear';
-import { hasMaterials } from '../game/materials';
+import { MaterialId, hasMaterials, materialIconUrl } from '../game/materials';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
 const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
 
-function recipeText(item: GearItem): string {
-  const parts = [`${item.cost} Gold`];
-  for (const [mid, count] of Object.entries(item.recipe ?? {})) {
-    parts.push(`${count}× ${matText(`mat_${mid}`)}`);
+function rarityIcon(key: string): string {
+  switch (key) {
+    case 'material_bronze':
+    case 'material_iron':
+      return Assets.icons.ore.url;
+    case 'material_steel':
+      return Assets.icons.steel.url;
+    case 'material_dragon':
+      return Assets.icons.dragon_scales.url;
+    default:
+      return '';
   }
-  return parts.join('  +  ');
 }
 
 export default function ForgeModal({
@@ -46,29 +53,58 @@ export default function ForgeModal({
                   const equipped = save.equipped[item.slot] === item.id;
                   const ok = canForge(item);
                   return (
-                    <div className="gear-row" key={item.id}>
-                      <div className="gear-info">
-                        <span className="gear-name">
-                          {gearText(item.nameKey)}
+                    <div className="craft-card" key={item.id}>
+                      <div className="craft-info">
+                        <div className="craft-header">
+                          <span className="craft-name">{gearText(item.nameKey)}</span>
                           {item.materialKey && (
                             <span className={`gear-material ${item.materialKey.replace('material_', '')}`}>
+                              {rarityIcon(item.materialKey) && (
+                                <img className="rarity-icon" src={rarityIcon(item.materialKey)} alt="" />
+                              )}
                               {gearText(item.materialKey)}
                             </span>
                           )}
-                        </span>
-                        <span className="gear-desc">{gearText(item.descKey)}</span>
-                        {!owned && <span className="gear-recipe">{recipeText(item)}</span>}
+                        </div>
+                        <span className="craft-desc">{gearText(item.descKey)}</span>
+                        {!owned && (
+                          <div className="craft-req">
+                            <span className="req-item">
+                              <span className="mat-icon">
+                                <img src={Assets.icons.gold.url} alt="" />
+                              </span>
+                              <span className={`req-amount${save.gold < item.cost ? ' missing' : ''}`}>
+                                {item.cost}
+                              </span>
+                            </span>
+                            {Object.entries(item.recipe ?? {}).map(([mid, count]) => {
+                              const need = count as number;
+                              const have = save.materials[mid as MaterialId] ?? 0;
+                              return (
+                                <span className="req-item" key={mid}>
+                                  <span className="req-plus">+</span>
+                                  <span className="mat-icon">
+                                    <img src={materialIconUrl(mid as MaterialId)} alt="" />
+                                  </span>
+                                  <span className={`req-amount${have < need ? ' missing' : ''}`}>
+                                    {need}× {matText(`mat_${mid}`)}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                       {equipped ? (
-                        <button className="gear-action equipped" disabled data-ui>
+                        <button className="craft-btn equipped" disabled data-ui>
                           {Text.forge.equipped}
                         </button>
                       ) : owned ? (
-                        <button className="gear-action" onClick={() => onEquip(item.id)} data-ui>
+                        <button className="craft-btn" onClick={() => onEquip(item.id)} data-ui>
                           {Text.forge.equip}
                         </button>
                       ) : (
-                        <button className="gear-action forge" onClick={() => onForge(item.id)} disabled={!ok} data-ui>
+                        <button className="craft-btn forge" onClick={() => onForge(item.id)} disabled={!ok} data-ui>
                           {Text.forge.forge}
                         </button>
                       )}

@@ -403,5 +403,37 @@
       "description": "Dragon flame blade weapon sprite (tier 4)",
       "metadata": {}
     }
+  },
+  "icons": {
+    "gold": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787772530225.png",
+      "description": "Stacked gold coins icon",
+      "metadata": {}
+    },
+    "ore": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787772528403.png",
+      "description": "Metal ore ingot icon (bronze / iron)",
+      "metadata": {}
+    },
+    "leather": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787772531256.png",
+      "description": "Tanned leather roll icon",
+      "metadata": {}
+    },
+    "steel": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787772527586.png",
+      "description": "Silver steel bars icon",
+      "metadata": {}
+    },
+    "essence": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787772537188.png",
+      "description": "Arcane essence flask icon",
+      "metadata": {}
+    },
+    "dragon_scales": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787772533670.png",
+      "description": "Scarlet dragon scales icon",
+      "metadata": {}
+    }
   }
 }
