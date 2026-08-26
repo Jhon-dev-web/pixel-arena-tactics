@@ -3,6 +3,7 @@
     "victories": "🏆 Victories: {n}",
     "gold": "🪙 Gold: {n}",
     "shards": "◆ Shards: {n}",
+    "cp": "⚔️ CP {n}",
     "shop": "🛒 Shop",
     "forge": "⚒️ Forge",
     "attack": "⚔️ ATTACK",
@@ -96,7 +97,7 @@
     "goldPerSec": "+{n} Gold/s",
     "xpPerSec": "+{n} XP/s",
     "resting": "Your hero trains and gathers loot while you rest.",
-    "cp": "⚡ CP: {n}",
+    "cp": "⚔️ CP: {n}",
     "name": "Name",
     "attributes": "Attributes",
     "useElixir": "💪 Use Elixir (+20% next duel)",
@@ -133,7 +134,7 @@
     "maxHp": "Max HP",
     "defense": "Defense",
     "critRate": "Crit Rate",
-    "cp": "Combat Power",
+    "cp": "CP",
     "distribute": "⚡ DISTRIBUTE ATTRIBUTES"
   },
   "shop": {
@@ -170,7 +171,7 @@
     "res": "Resistance",
     "resDesc": "+ Damage Reduction",
     "points": "Available Points: {n}",
-    "cp": "⚡ CP: {n}"
+    "cp": "⚔️ CP: {n}"
   },
   "admin": {
     "button": "⚙️",

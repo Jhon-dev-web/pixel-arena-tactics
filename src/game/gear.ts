@@ -40,7 +40,7 @@ export const GEAR_SLOTS: GearSlot[] = ['weapon', 'armor', 'relic'];
 
 export const GEAR: GearItem[] = [
   // Weapons (Tier 0-4) — hierarchical crafting
-  { id: 'wooden_club', slot: 'weapon', nameKey: 'wooden_club', descKey: 'wooden_club_d', materialKey: 'material_wood', cost: 0, tier: 0, damage: 0 },
+  { id: 'wooden_club', slot: 'weapon', nameKey: 'wooden_club', descKey: 'wooden_club_d', materialKey: 'material_wood', iconUrl: Assets.weapons.club.url, cost: 0, tier: 0, damage: 0 },
   { id: 'bronze_dagger', slot: 'weapon', nameKey: 'bronze_dagger', descKey: 'bronze_dagger_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.dagger.url, cost: 40, tier: 1, damage: 6, recipe: { materials: { iron: 2, leather: 1 } } },
   { id: 'iron_short_sword', slot: 'weapon', nameKey: 'iron_short_sword', descKey: 'iron_short_sword_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.sword_iron.url, cost: 120, tier: 2, damage: 15, critChance: 0.05, recipe: { items: { bronze_dagger: 2 }, materials: { iron: 3 } } },
   { id: 'steel_greatsword', slot: 'weapon', nameKey: 'steel_greatsword', descKey: 'steel_greatsword_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.sword_steel.url, cost: 300, tier: 3, damage: 30, recipe: { items: { iron_short_sword: 2 }, materials: { steel: 4, essence: 2 } } },
