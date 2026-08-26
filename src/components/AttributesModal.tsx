@@ -58,8 +58,8 @@ export default function AttributesModal({
           </div>
         ))}
 
-        <button className="modal-close" onClick={onClose} data-ui>
-          {Text.ui.close}
+        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+          ✕
         </button>
       </div>
     </div>

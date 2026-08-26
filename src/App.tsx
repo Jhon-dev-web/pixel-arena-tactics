@@ -32,6 +32,8 @@ import AttributesModal from './components/AttributesModal';
 import WeaponOverlay from './components/WeaponOverlay';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
+import TopHud from './components/TopHud';
+import BottomNav from './components/BottomNav';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
 import Text from './locales/en.json';
@@ -218,6 +220,10 @@ function App() {
     setElixirBoth(false);
     startDuel();
     setScene('camp');
+  };
+
+  const goBase = () => {
+    if (scene === 'arena') returnToCamp();
   };
 
   const buyPotion = (id: 'hp' | 'stamina' | 'elixir') => {
@@ -601,44 +607,25 @@ function App() {
         <div className="vignette" />
         {bossFlash && <div className="boss-flash" />}
 
-        <header className="topbar">
-          <div className="stats">
-            <span className="stat">{fmt(Text.ui.victories, save.victories)}</span>
-            <span className="stat gold">{fmt(Text.ui.gold, save.gold)}</span>
-            <span className="stat shards">{fmt(Text.ui.shards, save.shards)}</span>
-          </div>
-          <div className="topbar-right">
-            <button className="mute-btn" onClick={() => setAdminOpen(true)} aria-label="Admin" data-ui>
-              {Text.admin.button}
-            </button>
-            <button className="mute-btn" onClick={toggleMute} aria-label="Toggle sound" data-ui>
-              {muted ? '🔇' : '🔊'}
-            </button>
-            <button className="shop-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
-              {Text.ui.forge}
-            </button>
-            <button className="shop-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
-              {Text.ui.shop}
-            </button>
-          </div>
-        </header>
+        <TopHud
+          save={save}
+          muted={muted}
+          spriteUrl={playerSpriteUrl}
+          onToggleMute={toggleMute}
+          onOpenAdmin={() => setAdminOpen(true)}
+          onRename={renameHero}
+        />
 
         {scene === 'camp' ? (
           <CampScene
             save={save}
             spriteUrl={playerSpriteUrl}
-            weaponUrl={weaponSpriteUrl}
             elixirActive={elixirActive}
             onEnterArena={enterArena}
-            onOpenAttributes={() => setAttrsOpen(true)}
             onUseElixir={useElixir}
-            onRename={renameHero}
           />
         ) : (
           <>
-            <button className="return-camp" onClick={returnToCamp} data-ui>
-              {Text.camp.returnCamp}
-            </button>
             <div className="arena">
           <div className="fighter player">
             <div className="bars">
@@ -728,6 +715,14 @@ function App() {
         </footer>
           </>
         )}
+
+        <BottomNav
+          baseActive={scene === 'camp'}
+          onBase={goBase}
+          onForge={() => { playSfx('click'); setForgeOpen(true); }}
+          onShop={() => { playSfx('click'); setShopOpen(true); }}
+          onAttributes={() => { playSfx('click'); setAttrsOpen(true); }}
+        />
       </div>
 
       {shopOpen && (

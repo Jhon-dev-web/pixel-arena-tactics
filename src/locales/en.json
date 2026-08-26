@@ -88,7 +88,7 @@
   },
   "camp": {
     "title": "Base Camp",
-    "enterArena": "⚔️ Enter Dungeon",
+    "enterArena": "⚔️ ENTER DUNGEON",
     "returnCamp": "🏕️ Return to Camp",
     "training": "Training...",
     "level": "Lv {n}",
@@ -153,5 +153,11 @@
     "close": "Close",
     "on": "ON",
     "off": "OFF"
+  },
+  "nav": {
+    "base": "Base / AFK",
+    "forge": "Forge",
+    "shop": "Shop",
+    "attributes": "Attributes"
   }
 }

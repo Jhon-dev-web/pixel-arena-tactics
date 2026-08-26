@@ -36,8 +36,8 @@ export default function AdminModal({
         <button className="admin-btn danger" onClick={onReset} data-ui>
           {Text.admin.reset}
         </button>
-        <button className="modal-close" onClick={onClose} data-ui>
-          {Text.admin.close}
+        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+          ✕
         </button>
       </div>
     </div>

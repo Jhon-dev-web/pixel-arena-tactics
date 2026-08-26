@@ -11,10 +11,21 @@ the turn orchestrator `doTurn`, the AFK accumulation loop, scene switching (`cam
 admin/cheat handlers, and renders the shared top bar, camp-or-arena content, and the victory/defeat
 popups. Uses refs to mirror state for the async turn flow.
 
+## `src/components/TopHud.tsx`
+
+Compact top HUD: avatar + editable hero name (pencil), `Lv. N` + thin XP bar, gold `⚡ CP`, and
+right-aligned gold/shards icons with `⚙️` (admin) and `🔊` (mute) buttons.
+
+## `src/components/BottomNav.tsx`
+
+Fixed bottom navigation bar with 4 tabs: `Base / AFK`, `Forge`, `Shop`, `Attributes` — the primary
+navigation (opens the camp, forge/shop/attributes modals).
+
 ## `src/components/CampScene.tsx`
 
-The AFK base screen: shows the hero in a looping idle animation (current armor sprite), level + XP
-progress, gold/XP per-second rates, and the `[⚔️ Enter Dungeon]` button.
+The AFK base screen: the hero (current armor sprite) trains by swinging at the dummy (no heavy
+panel/name input), with subtle gold/XP-per-second readouts, an elixir pill, and the
+`[⚔️ ENTER DUNGEON]` button.
 
 ## `src/components/ShopModal.tsx`
 

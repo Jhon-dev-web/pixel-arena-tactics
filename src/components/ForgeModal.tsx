@@ -80,8 +80,8 @@ export default function ForgeModal({
           })}
         </div>
 
-        <button className="modal-close" onClick={onClose} data-ui>
-          {Text.ui.close}
+        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+          ✕
         </button>
       </div>
     </div>
