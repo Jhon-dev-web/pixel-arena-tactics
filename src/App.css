@@ -1501,15 +1501,6 @@ body {
 }
 
 /* ===== campfire flame animation ===== */
-.firelight {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background: radial-gradient(ellipse at 50% 62%, rgba(255, 176, 60, 0.32) 0%, rgba(255, 140, 30, 0.14) 32%, transparent 60%);
-  mix-blend-mode: screen;
-  animation: firelightPulse 1.3s ease-in-out infinite;
-}
 .campfire {
   position: absolute;
   left: 50%;
@@ -1519,17 +1510,6 @@ body {
   height: 100px;
   pointer-events: none;
   z-index: 2;
-}
-.campfire-glow {
-  position: absolute;
-  left: 50%;
-  bottom: -14px;
-  width: 190px;
-  height: 78px;
-  margin-left: -95px;
-  background: radial-gradient(ellipse at center, rgba(255, 176, 60, 0.5) 0%, rgba(255, 140, 30, 0.18) 55%, transparent 72%);
-  border-radius: 50%;
-  animation: glowPulse 1.3s ease-in-out infinite;
 }
 .campfire-flame {
   position: absolute;
@@ -1594,36 +1574,6 @@ body {
   border-radius: 50%;
   opacity: 0;
   animation: emberRise linear infinite;
-}
-@keyframes firelightPulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  25% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-  75% {
-    opacity: 0.9;
-  }
-}
-@keyframes glowPulse {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: scaleX(1);
-  }
-  30% {
-    opacity: 0.8;
-    transform: scaleX(1.15);
-  }
-  60% {
-    opacity: 0.6;
-    transform: scaleX(1.06);
-  }
 }
 @keyframes flameDanceOuter {
   0% {
@@ -2052,29 +2002,31 @@ body {
   flex-direction: column;
   gap: 12px;
 }
-.hero-slots {
-  display: flex;
-  gap: 10px;
+.hero-subtitle {
+  margin: -8px 0 0;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffd76a;
+  text-align: center;
 }
-.hero-slot {
-  flex: 1;
+.hero-equip {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+.hero-equip-card {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 12px 8px;
+  gap: 10px;
+  padding: 10px 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid #3a2a4a;
   border-radius: 10px;
-  text-align: center;
+  text-align: left;
 }
-.hero-slot-label {
-  font-size: calc(var(--font-size) - 3px);
-  color: #b8a8d8;
-}
-.hero-slot-icon {
-  width: 56px;
-  height: 56px;
+.hero-equip-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2083,41 +2035,75 @@ body {
   border-radius: 8px;
   overflow: hidden;
 }
-.hero-slot-icon .gear-icon-img {
+.hero-equip-icon .gear-icon-img {
   width: 80%;
   height: 80%;
 }
-.hero-slot-icon .gear-icon-emoji {
-  font-size: 26px;
+.hero-equip-icon .gear-icon-emoji {
+  font-size: 22px;
 }
-.hero-slot-name {
+.hero-equip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.hero-equip-name {
   font-size: var(--font-size);
   color: #fff;
 }
-.hero-slot-stat {
+.hero-equip-stat {
   font-size: calc(var(--font-size) - 3px);
   color: #6fe08a;
 }
-.hero-stats {
-  display: flex;
-  flex-direction: column;
+.hero-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
-.hero-stat-row {
+.hero-stat-cell {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
   padding: 8px 10px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid #3a2a4a;
   border-radius: 8px;
-  font-size: calc(var(--font-size) - 1px);
 }
-.hero-stat-row span:first-child {
+.hero-stat-cell span:first-child {
+  font-size: calc(var(--font-size) - 3px);
   color: #d8c9a0;
 }
-.hero-stat-row span:last-child {
+.hero-stat-cell span:last-child {
+  font-size: calc(var(--font-size) - 1px);
   color: #ffd76a;
+  align-self: flex-end;
+}
+.hero-cp-bar {
+  text-align: center;
+  padding: 10px;
+  font-size: var(--font-size);
+  color: #1a1108;
+  background: linear-gradient(180deg, #ffd76a, #d9a532);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.distribute-btn {
+  width: 100%;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffd76a;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a1108;
+}
+.distribute-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a1108;
 }
 .level-btn {
   font-family: inherit;

@@ -121,6 +121,8 @@
     "materialDesc": "Crafting material"
   },
   "profile": {
+    "title": "⚔️ HERO PROFILE",
+    "subtitle": "• Level {n}",
     "weapon": "Weapon",
     "armor": "Armor",
     "damage": "Damage",
@@ -129,7 +131,7 @@
     "defense": "Defense",
     "critRate": "Crit Rate",
     "cp": "Combat Power",
-    "attributes": "⚡ Distribute Attributes"
+    "distribute": "⚡ DISTRIBUTE ATTRIBUTES"
   },
   "shop": {
     "title": "🛒 Shop",

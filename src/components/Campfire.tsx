@@ -16,7 +16,6 @@ export default function Campfire() {
 
   return (
     <>
-      <div className="firelight" aria-hidden />
       <div className="campfire" aria-hidden>
         <div className="campfire-flame">
           <span className="flame-inner" />

@@ -1,9 +1,10 @@
 import T from '../game/tunables';
 import Text from '../locales/en.json';
-import { SaveData, computeCP, formatNumber, playerMaxHp } from '../game/engine';
+import { SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
 import { getEquipped } from '../game/gear';
 import GearIcon from './GearIcon';
 
+const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
 
 export default function HeroModal({
@@ -16,6 +17,7 @@ export default function HeroModal({
   onClose: () => void;
 }) {
   const { weapon, armor } = getEquipped(save.equipped);
+  const level = playerLevel(save.xp);
 
   const maxHp = playerMaxHp(save);
   const totalDmg = Math.round(
@@ -27,56 +29,61 @@ export default function HeroModal({
   return (
     <div className="modal-backdrop">
       <div className="modal hero-modal">
-        <h2 className="modal-title">{save.heroName}</h2>
+        <h2 className="modal-title">{Text.profile.title}</h2>
+        <p className="hero-subtitle">
+          {save.heroName} {fmt(Text.profile.subtitle, level)}
+        </p>
 
-        <div className="hero-slots">
-          <div className="hero-slot">
-            <span className="hero-slot-label">⚔️ {Text.profile.weapon}</span>
-            <span className="hero-slot-icon">
+        <div className="hero-equip">
+          <div className="hero-equip-card">
+            <span className="hero-equip-icon">
               <GearIcon item={weapon} />
             </span>
-            <span className="hero-slot-name">{gearText(weapon.nameKey)}</span>
-            <span className="hero-slot-stat">
-              +{weapon?.damage ?? 0} {Text.profile.damage}
-            </span>
+            <div className="hero-equip-info">
+              <span className="hero-equip-name">{gearText(weapon.nameKey)}</span>
+              <span className="hero-equip-stat">
+                +{weapon?.damage ?? 0} {Text.profile.damage}
+              </span>
+            </div>
           </div>
-          <div className="hero-slot">
-            <span className="hero-slot-label">🛡️ {Text.profile.armor}</span>
-            <span className="hero-slot-icon">
+          <div className="hero-equip-card">
+            <span className="hero-equip-icon">
               <GearIcon item={armor} />
             </span>
-            <span className="hero-slot-name">{gearText(armor.nameKey)}</span>
-            <span className="hero-slot-stat">
-              +{armor?.maxHp ?? 0} {Text.profile.hp}
-            </span>
+            <div className="hero-equip-info">
+              <span className="hero-equip-name">{gearText(armor.nameKey)}</span>
+              <span className="hero-equip-stat">
+                +{armor?.maxHp ?? 0} {Text.profile.hp}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="hero-stats">
-          <div className="hero-stat-row">
+        <div className="hero-stats-grid">
+          <div className="hero-stat-cell">
             <span>❤️ {Text.profile.maxHp}</span>
             <span>{formatNumber(maxHp)}</span>
           </div>
-          <div className="hero-stat-row">
+          <div className="hero-stat-cell">
             <span>⚔️ {Text.profile.damage}</span>
             <span>{formatNumber(totalDmg)}</span>
           </div>
-          <div className="hero-stat-row">
+          <div className="hero-stat-cell">
             <span>🛡️ {Text.profile.defense}</span>
             <span>{defensePct}%</span>
           </div>
-          <div className="hero-stat-row">
+          <div className="hero-stat-cell">
             <span>💥 {Text.profile.critRate}</span>
             <span>{critPct}%</span>
           </div>
-          <div className="hero-stat-row">
-            <span>⚡ {Text.profile.cp}</span>
-            <span>{formatNumber(computeCP(save))}</span>
-          </div>
         </div>
 
-        <button className="admin-btn" onClick={onOpenAttributes} data-ui>
-          {Text.profile.attributes}
+        <div className="hero-cp-bar">
+          ⚡ {Text.profile.cp}: {formatNumber(computeCP(save))}
+        </div>
+
+        <button className="distribute-btn" onClick={onOpenAttributes} data-ui>
+          {Text.profile.distribute}
         </button>
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
