@@ -25,7 +25,6 @@ import SpriteSheet from './components/SpriteSheet';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
 import ForgeModal from './components/ForgeModal';
-import AttributesModal from './components/AttributesModal';
 import InventoryModal from './components/InventoryModal';
 import HeroModal from './components/HeroModal';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
@@ -71,7 +70,6 @@ function App() {
   const [bursts, setBursts] = useState<BurstState[]>([]);
   const [shopOpen, setShopOpen] = useState(false);
   const [forgeOpen, setForgeOpen] = useState(false);
-  const [attrsOpen, setAttrsOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [heroOpen, setHeroOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -774,17 +772,6 @@ function App() {
         />
       )}
 
-      {attrsOpen && (
-        <AttributesModal
-          save={save}
-          onAttrChange={attrChange}
-          onClose={() => {
-            playSfx('click');
-            setAttrsOpen(false);
-          }}
-        />
-      )}
-
       {bagOpen && (
         <InventoryModal
           save={save}
@@ -800,7 +787,7 @@ function App() {
       {heroOpen && (
         <HeroModal
           save={save}
-          onOpenAttributes={() => setAttrsOpen(true)}
+          onAttrChange={attrChange}
           onClose={() => {
             playSfx('click');
             setHeroOpen(false);

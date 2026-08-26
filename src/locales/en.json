@@ -123,6 +123,9 @@
   "profile": {
     "title": "⚔️ HERO PROFILE",
     "subtitle": "• Level {n}",
+    "equipTab": "🛡️ Equipment & Status",
+    "attrsTab": "⚡ Attributes",
+    "confirmPoints": "CONFIRM POINTS",
     "weapon": "Weapon",
     "armor": "Armor",
     "damage": "Damage",
@@ -159,14 +162,14 @@
   "attributes": {
     "title": "Attributes",
     "str": "Strength",
-    "strDesc": "Damage & AFK gains",
+    "strDesc": "+ Physical Damage",
     "vit": "Vitality",
-    "vitDesc": "Max HP",
+    "vitDesc": "+ Max HP",
     "agi": "Agility",
-    "agiDesc": "Dodge chance",
+    "agiDesc": "+ Dodge / Attack Speed",
     "res": "Resistance",
-    "resDesc": "Damage reduction",
-    "points": "Points to spend: {n}",
+    "resDesc": "+ Damage Reduction",
+    "points": "Available Points: {n}",
     "cp": "⚡ CP: {n}"
   },
   "admin": {
