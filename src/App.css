@@ -1920,6 +1920,15 @@ body {
   object-fit: contain;
   image-rendering: pixelated;
 }
+.gear-icon-sheet {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-size: 400% 400%;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
 .gear-icon-emoji {
   font-size: inherit;
   line-height: 1;
@@ -2080,7 +2089,10 @@ body {
   align-self: flex-end;
 }
 .hero-cp-bar {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 10px;
   font-size: var(--font-size);
   color: #1a1108;
@@ -2088,6 +2100,9 @@ body {
   border: 2px solid #8a6a3a;
   border-radius: 8px;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.hero-cp-icon {
+  line-height: 1;
 }
 .distribute-btn {
   width: 100%;

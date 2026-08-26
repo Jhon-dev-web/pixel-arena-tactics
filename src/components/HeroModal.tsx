@@ -106,7 +106,12 @@ export default function HeroModal({
               </div>
             </div>
 
-            <div className="hero-cp-bar">⚔️ {Text.profile.cp}: {formatNumber(computeCP(save))}</div>
+            <div className="hero-cp-bar">
+              <span className="hero-cp-icon">⚔️</span>
+              <span>
+                {Text.profile.cp}: {formatNumber(computeCP(save))}
+              </span>
+            </div>
           </>
         ) : (
           <>
