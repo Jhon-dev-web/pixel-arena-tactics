@@ -1245,7 +1245,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 96px;
+  max-width: 112px;
   text-shadow: 0 1px 0 #000;
 }
 .name-input {
@@ -1389,14 +1389,24 @@ body {
 }
 .camp-hero {
   position: absolute;
-  left: 20%;
-  bottom: 96px;
+  left: 10%;
+  bottom: 86px;
 }
-.camp-sprite {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.camp-rest {
+  width: calc(var(--sprite-size, 132px) * 1.2);
+  height: auto;
+  image-rendering: pixelated;
+  animation: restBreath 3s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes restBreath {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.04);
+  }
 }
 .camp-rates {
   position: absolute;

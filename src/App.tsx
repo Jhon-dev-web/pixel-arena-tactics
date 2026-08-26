@@ -22,14 +22,13 @@ import {
 import { GEAR, getEquipped, getGear } from './game/gear';
 import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
-import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier, spriteForWeaponTier } from './game/sprites';
+import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier } from './game/sprites';
 import SpriteSheet from './components/SpriteSheet';
 import CampScene from './components/CampScene';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
 import ForgeModal from './components/ForgeModal';
 import AttributesModal from './components/AttributesModal';
-import WeaponOverlay from './components/WeaponOverlay';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
@@ -572,7 +571,6 @@ function App() {
   const weaponTier = build.weapon?.tier ?? 0;
   const armorTier = build.armor?.tier ?? 0;
   const playerSpriteUrl = spriteForArmorTier(armorTier);
-  const weaponSpriteUrl = spriteForWeaponTier(weaponTier);
   const enemyDef = getEnemyDef(enemyKind);
   const enemyName = enemyDef.boss
     ? fmt(Text.enemies.bossName, enemyText(enemyDef.nameKey))
@@ -617,11 +615,7 @@ function App() {
         />
 
         {scene === 'camp' ? (
-          <CampScene
-            save={save}
-            spriteUrl={playerSpriteUrl}
-            onEnterArena={enterArena}
-          />
+          <CampScene save={save} onEnterArena={enterArena} />
         ) : (
           <>
             <div className="arena">
@@ -649,7 +643,6 @@ function App() {
                   if (playerAnim !== 'death') setPlayerAnim('idle');
                 }}
               />
-              <WeaponOverlay url={weaponSpriteUrl} mode={playerAnim === 'attack' ? 'swing' : 'idle'} />
               {renderBursts('player')}
               {renderFloats('player')}
             </div>

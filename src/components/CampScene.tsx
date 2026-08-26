@@ -1,18 +1,10 @@
-import SpriteSheet from './SpriteSheet';
+import Assets from '../assets.json';
 import Text from '../locales/en.json';
 import { SaveData, afkGoldRate, afkXpRate } from '../game/engine';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 
-export default function CampScene({
-  save,
-  spriteUrl,
-  onEnterArena,
-}: {
-  save: SaveData;
-  spriteUrl: string;
-  onEnterArena: () => void;
-}) {
+export default function CampScene({ save, onEnterArena }: { save: SaveData; onEnterArena: () => void }) {
   return (
     <div className="camp">
       <div className="camp-rates">
@@ -20,9 +12,7 @@ export default function CampScene({
         <span className="camp-rate xp">+{afkXpRate(save).toFixed(1)} XP/s</span>
       </div>
       <div className="camp-hero">
-        <div className="camp-sprite">
-          <SpriteSheet src={spriteUrl} size="calc(var(--sprite-size, 132px) * 1.3)" row={0} />
-        </div>
+        <img className="camp-rest" src={Assets.characters.resting.url} alt="" draggable={false} />
       </div>
       <button className="camp-enter" onClick={onEnterArena} data-ui>
         {Text.camp.enterArena}

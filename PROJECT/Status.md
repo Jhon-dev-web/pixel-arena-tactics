@@ -25,9 +25,9 @@
   as a Tier-0 peasant (80 HP, 10–15 base damage). Gear unlocks/equips persist in `localStorage`.
 - **Distinct sprite per armor tier** (0–4: peasant / bronze / iron / steel-knight / dragon), swapped
   instantly in both the arena and the base when armor is equipped.
-- **AFK base (camp) scene** (Legend of Mushroom style): the hero trains in a looping idle animation
-  and passively accrues gold + XP per second; XP levels up (each level grants +5 max HP).
-  `[⚔️ Enter Dungeon]` / `[🏕️ Return to Camp]` switch scenes.
+- **AFK base (camp) scene** (Legend of Mushroom style): the hero sits resting beside the tent
+  (breathing idle, no combat posture) and passively accrues gold + XP per second; XP levels up
+  (each level grants +5 max HP). `[⚔️ Enter Dungeon]` / `[🏕️ Return to Camp]` switch scenes.
 - **Admin / cheat panel** (`⚙️` button or `F2`): +10,000 gold, +50 shards, unlock all weapons/armors,
   God Mode / One-Hit Kill toggle, Reset Save (in-page, no reload). Changes persist to `localStorage`.
 - **Shop (consumables) vs Forge (crafting) split**: `[🛒 Shop]` sells HP/stamina potions, the

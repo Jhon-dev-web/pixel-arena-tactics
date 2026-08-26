@@ -235,6 +235,13 @@
       "metadata": { "duration": 60, "loop": true }
     }
   },
+  "characters": {
+    "resting": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/character-1787769055601.png",
+      "description": "Hero sitting/resting by the campfire (base camp idle pose)",
+      "metadata": {}
+    }
+  },
   "weapons": {
     "club": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787765669626.png",
