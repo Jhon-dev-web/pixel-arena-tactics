@@ -28,8 +28,9 @@ All player-visible text (UI labels, combat float labels, modal strings) with `{n
 ## `src/assets.json`
 
 Asset manifest:
-- `spritesheets.knight` / `spritesheets.orc` / `spritesheets.goblin` / `spritesheets.warlock` /
-  `spritesheets.boss` — 4x4 pixel-art sheets (idle/attack/hurt/death rows) with frame metadata.
+- `spritesheets.peasant` / `spritesheets.knight` / `spritesheets.orc` / `spritesheets.goblin` /
+  `spritesheets.warlock` / `spritesheets.boss` — 4x4 pixel-art sheets (idle/attack/hurt/death rows)
+  with frame metadata. `peasant` is the Tier-0 "rags & club" player sprite; `knight` is Tier 1+.
 - `background.arena` — pixel-art colosseum background (covered to fill the stage).
 - `sfx.*` — one-shot 8-bit/16-bit effects: `slash`, `hit`, `block`, `focus`, `crit`, `victory`,
   `click`, `boss_intro`, `slam`, `dodge`, `curse`, `charge` (OGG).
@@ -50,8 +51,9 @@ re-render when a displayed tunable changes.
 ## `src/game/gear.ts`
 
 Gear catalog (content data): `GearItem`, `GearSlot` (`weapon`/`armor`/`relic`), `EquippedGear`,
-`GEAR` (9 items: 3 weapon tiers, 3 armor tiers, 3 relics), `DEFAULT_OWNED`/`DEFAULT_EQUIPPED`,
-`getGear`, `gearBySlot`, `getEquipped`. Gear names/descriptions are locale keys.
+`GEAR` (11 items: 4 weapon tiers + 4 armor tiers + 3 relics, "Zero to Hero"), `DEFAULT_OWNED` /
+`DEFAULT_EQUIPPED`, `getGear`, `gearBySlot`, `getEquipped`, `sanitizeSaveGear` (migrates stale gear
+IDs to current defaults). Gear names/descriptions are locale keys.
 
 ## `src/game/enemies.ts`
 

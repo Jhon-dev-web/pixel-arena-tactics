@@ -517,7 +517,10 @@ function App() {
   const armorCost = save.armorLevel * T.progression.armorBaseCost;
   const atkCost = effectiveAttackStamina(save);
   const build = getEquipped(save.equipped);
-  const weaponTier = build.weapon?.tier ?? 1;
+  const weaponTier = build.weapon?.tier ?? 0;
+  const armorTier = build.armor?.tier ?? 0;
+  const playerSpriteUrl =
+    weaponTier === 0 && armorTier === 0 ? Assets.spritesheets.peasant.url : Assets.spritesheets.knight.url;
   const enemyDef = getEnemyDef(enemyKind);
   const enemyName = enemyDef.boss
     ? fmt(Text.enemies.bossName, enemyText(enemyDef.nameKey))
@@ -592,10 +595,12 @@ function App() {
             <div className="sprite-wrap">
               {weaponTier >= 3 && <span className="glow flame-glow" />}
               {weaponTier === 2 && <span className="glow steel-glow" />}
+              {armorTier >= 3 && <span className="glow gold-glow" />}
+              {armorTier === 2 && <span className="glow iron-glow" />}
               {playerGuard && <span className="guard-badge">🛡️</span>}
               {playerFocus && <span className="focus-ring" />}
               <SpriteSheet
-                src={Assets.spritesheets.knight.url}
+                src={playerSpriteUrl}
                 size="var(--sprite-size, 132px)"
                 row={ANIM_ROW[playerAnim]}
                 flip={false}

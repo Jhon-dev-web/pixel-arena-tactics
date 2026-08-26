@@ -5,7 +5,7 @@
 - Turn order: player acts first (with animation/effects), then the enemy acts. Enemy intent is hidden
   and rolled randomly each turn (50% attack / 25% shield / 25% focus).
 - Player actions:
-  - **Attack** (15 stamina): 22–30 damage + weapon bonus; guaranteed crit (2×) when Focus buff active.
+  - **Attack** (15 stamina): 10–15 base damage + weapon bonus; guaranteed crit (2×) when Focus buff active.
   - **Shield** (25 stamina): reduces incoming damage by 70% that turn.
   - **Focus** (0 stamina): +40 stamina, +12 HP, primes next attack for crit.
 - No passive stamina regen; Attack/Shield buttons disable when stamina is too low.
@@ -29,13 +29,16 @@
 
 - **Upgrades tab**: weapon upgrade +5 attack/level (cost = level × 50 gold); armor upgrade +20 max
   HP/level (cost = level × 50 gold, also heals the gained amount).
-- **Armory tab (gear)**: 3 slots — weapon, armor, relic.
-  - Weapon: Iron Longsword (+5 dmg, default) → Steel Broadsword (+15 dmg, +5% crit, 150g) →
-    Dragon Flameblade (+30 dmg, burn 5/turn, 400g).
-  - Armor: Soldier Cuirass (+20 HP, default) → Knight's Plate (+50 HP, +5% resist, 150g) →
-    Aegis Titan Armor (+100 HP, shield reflects 20%, 400g).
+- **Armory tab (gear)** — "Zero to Hero" progression, 3 slots (weapon, armor, relic):
+  - Weapon: Wooden Club (+0, default) → Rusty Dagger (+6 dmg, 40g) → Iron Short Sword
+    (+15 dmg, +5% crit, 120g) → Flaming Longsword (+30 dmg, burn, 350g).
+  - Armor: Ragged Clothes (+0, default, 80 HP) → Leather Tunic (+25 HP, 50g) → Iron Chainmail
+    (+60 HP, +5% resist, 130g) → Full Knight Armor (+120 HP, shield reflects 20%, 350g).
   - Relic: Ring of Vitality (Focus +15 HP, 200g), Amulet of Swiftness (attack stamina 15→10, 250g),
     Berserker Crest (crit 2.5×, 350g).
+- The knight sprite swaps to a rags-and-club peasant at Tier 0 and gains an aura by equipment tier
+  (steel/flame for weapons, iron/gold for armor); the visual updates instantly on equip. Base HP is
+  80 and base damage is 10–15.
 - Owned gear can be equipped; owned + equipped gear persist in `localStorage`. Higher-tier weapons
   add a glow to the knight sprite; the burn DoT shows a glow on the enemy.
 - Gold, victories, upgrade levels, and gear unlock/equip state persist in `localStorage`.

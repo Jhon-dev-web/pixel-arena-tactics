@@ -1,5 +1,5 @@
 import T from './tunables';
-import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_OWNED, getEquipped } from './gear';
+import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_OWNED, getEquipped, sanitizeSaveGear } from './gear';
 import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
 
 export type PlayerAction = 'attack' | 'shield' | 'focus';
@@ -277,11 +277,12 @@ export function loadSave(): SaveData {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<SaveData>;
       const base = defaultSave();
+      const gear = sanitizeSaveGear(parsed.owned ?? base.owned, parsed.equipped ?? base.equipped);
       return {
         ...base,
         ...parsed,
-        owned: parsed.owned?.length ? parsed.owned : base.owned,
-        equipped: { ...base.equipped, ...(parsed.equipped ?? {}) },
+        owned: gear.owned,
+        equipped: gear.equipped,
       };
     }
   } catch {

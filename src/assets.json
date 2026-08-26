@@ -1,5 +1,22 @@
 {
   "spritesheets": {
+    "peasant": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/spritesheet-1787757595348.png",
+      "description": "Tier-0 peasant in rags with wooden club, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": { "start": 0, "end": 3 },
+        "attack": { "start": 4, "end": 7 },
+        "hurt": { "start": 8, "end": 11 },
+        "death": { "start": 12, "end": 15 }
+      },
+      "metadata": {}
+    },
     "knight": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/spritesheet-1787528931025.png",
       "description": "Armored knight warrior, facing right, 4 animation rows (idle/attack/hurt/death)",

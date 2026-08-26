@@ -17,8 +17,8 @@ const bump = () => {
 const T = DebugPanel.define({
   combat: {
     _label: 'Combat',
-    attackMin: { value: 22, min: 5, max: 80, step: 1, label: 'Attack damage (min)' },
-    attackMax: { value: 30, min: 5, max: 100, step: 1, label: 'Attack damage (max)' },
+    attackMin: { value: 10, min: 5, max: 80, step: 1, label: 'Attack damage (min)' },
+    attackMax: { value: 15, min: 5, max: 100, step: 1, label: 'Attack damage (max)' },
     critMult: { value: 2, min: 1.5, max: 4, step: 0.1, label: 'Critical multiplier (×)' },
     attackStamina: { value: 15, min: 0, max: 60, step: 1, label: 'Attack stamina cost', onChange: bump },
     shieldStamina: { value: 25, min: 0, max: 60, step: 1, label: 'Shield stamina cost', onChange: bump },
@@ -36,7 +36,7 @@ const T = DebugPanel.define({
     armorBaseCost: { value: 50, min: 10, max: 500, step: 5, label: 'Armor upgrade base cost' },
     weaponDmgPerLvl: { value: 5, min: 1, max: 30, step: 1, label: 'Weapon damage per level' },
     armorHpPerLvl: { value: 20, min: 5, max: 100, step: 1, label: 'Armor HP per level' },
-    playerBaseHp: { value: 100, min: 40, max: 300, step: 5, label: 'Player base HP' },
+    playerBaseHp: { value: 80, min: 40, max: 300, step: 5, label: 'Player base HP' },
   },
   ui: {
     _label: 'UI Layout',

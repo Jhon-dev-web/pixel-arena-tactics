@@ -645,6 +645,13 @@ body {
   box-shadow: 0 0 28px rgba(255, 130, 30, 0.85);
   animation: flameFlicker 0.45s ease-in-out infinite;
 }
+.gold-glow {
+  box-shadow: 0 0 26px rgba(255, 210, 80, 0.85);
+  animation: flameFlicker 0.7s ease-in-out infinite;
+}
+.iron-glow {
+  box-shadow: 0 0 18px rgba(180, 190, 210, 0.6);
+}
 .burn-glow {
   box-shadow: 0 0 20px rgba(255, 90, 20, 0.7);
   animation: flameFlicker 0.6s ease-in-out infinite;

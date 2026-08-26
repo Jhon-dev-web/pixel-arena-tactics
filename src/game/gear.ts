@@ -27,14 +27,16 @@ export interface EquippedGear {
 export const GEAR_SLOTS: GearSlot[] = ['weapon', 'armor', 'relic'];
 
 export const GEAR: GearItem[] = [
-  // Weapons
-  { id: 'iron_longsword', slot: 'weapon', nameKey: 'iron_longsword', descKey: 'iron_longsword_d', cost: 0, tier: 1, damage: 5 },
-  { id: 'steel_broadsword', slot: 'weapon', nameKey: 'steel_broadsword', descKey: 'steel_broadsword_d', cost: 150, tier: 2, damage: 15, critChance: 0.05 },
-  { id: 'dragon_flameblade', slot: 'weapon', nameKey: 'dragon_flameblade', descKey: 'dragon_flameblade_d', cost: 400, tier: 3, damage: 30, burn: true },
-  // Armor
-  { id: 'soldier_cuirass', slot: 'armor', nameKey: 'soldier_cuirass', descKey: 'soldier_cuirass_d', cost: 0, tier: 1, maxHp: 20 },
-  { id: 'knights_plate', slot: 'armor', nameKey: 'knights_plate', descKey: 'knights_plate_d', cost: 150, tier: 2, maxHp: 50, resistance: 0.05 },
-  { id: 'aegis_titan_armor', slot: 'armor', nameKey: 'aegis_titan_armor', descKey: 'aegis_titan_armor_d', cost: 400, tier: 3, maxHp: 100, reflect: 0.2 },
+  // Weapons (Zero to Hero)
+  { id: 'wooden_club', slot: 'weapon', nameKey: 'wooden_club', descKey: 'wooden_club_d', cost: 0, tier: 0, damage: 0 },
+  { id: 'rusty_dagger', slot: 'weapon', nameKey: 'rusty_dagger', descKey: 'rusty_dagger_d', cost: 40, tier: 1, damage: 6 },
+  { id: 'iron_short_sword', slot: 'weapon', nameKey: 'iron_short_sword', descKey: 'iron_short_sword_d', cost: 120, tier: 2, damage: 15, critChance: 0.05 },
+  { id: 'flaming_longsword', slot: 'weapon', nameKey: 'flaming_longsword', descKey: 'flaming_longsword_d', cost: 350, tier: 3, damage: 30, burn: true },
+  // Armors (Zero to Hero)
+  { id: 'ragged_clothes', slot: 'armor', nameKey: 'ragged_clothes', descKey: 'ragged_clothes_d', cost: 0, tier: 0, maxHp: 0 },
+  { id: 'leather_tunic', slot: 'armor', nameKey: 'leather_tunic', descKey: 'leather_tunic_d', cost: 50, tier: 1, maxHp: 25 },
+  { id: 'iron_chainmail', slot: 'armor', nameKey: 'iron_chainmail', descKey: 'iron_chainmail_d', cost: 130, tier: 2, maxHp: 60, resistance: 0.05 },
+  { id: 'knight_full_armor', slot: 'armor', nameKey: 'knight_full_armor', descKey: 'knight_full_armor_d', cost: 350, tier: 3, maxHp: 120, reflect: 0.2 },
   // Relics
   { id: 'ring_vitality', slot: 'relic', nameKey: 'ring_vitality', descKey: 'ring_vitality_d', cost: 200, focusHpBonus: 15 },
   { id: 'amulet_swiftness', slot: 'relic', nameKey: 'amulet_swiftness', descKey: 'amulet_swiftness_d', cost: 250, attackStaminaReduction: 5 },
@@ -43,11 +45,11 @@ export const GEAR: GearItem[] = [
 
 const GEAR_BY_ID: Record<string, GearItem> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
 
-export const DEFAULT_OWNED = ['iron_longsword', 'soldier_cuirass'];
+export const DEFAULT_OWNED = ['wooden_club', 'ragged_clothes'];
 
 export const DEFAULT_EQUIPPED: EquippedGear = {
-  weapon: 'iron_longsword',
-  armor: 'soldier_cuirass',
+  weapon: 'wooden_club',
+  armor: 'ragged_clothes',
   relic: null,
 };
 
@@ -64,5 +66,22 @@ export function getEquipped(equipped: EquippedGear) {
     weapon: getGear(equipped.weapon),
     armor: getGear(equipped.armor),
     relic: equipped.relic ? getGear(equipped.relic) : null,
+  };
+}
+
+export function sanitizeSaveGear(
+  owned: string[],
+  equipped: EquippedGear,
+): { owned: string[]; equipped: EquippedGear } {
+  const valid = new Set(GEAR.map((g) => g.id));
+  const ownedSet = new Set(owned.filter((id) => valid.has(id)));
+  DEFAULT_OWNED.forEach((id) => ownedSet.add(id));
+  return {
+    owned: [...ownedSet],
+    equipped: {
+      weapon: valid.has(equipped.weapon) ? equipped.weapon : DEFAULT_EQUIPPED.weapon,
+      armor: valid.has(equipped.armor) ? equipped.armor : DEFAULT_EQUIPPED.armor,
+      relic: equipped.relic && valid.has(equipped.relic) ? equipped.relic : null,
+    },
   };
 }

@@ -14,10 +14,11 @@
 - Shop modal (weapon/armor upgrades with level-scaled costs).
 - Shop modal with two tabs — **Upgrades** (level-based weapon/armor) and **Armory** (gear
   inventory): weapon/armor/relic slots with BUY / EQUIP / EQUIPPED states.
-- Equipment & gear system: 3 weapon tiers (Iron/Steel/Dragon Flameblade with burn), 3 armor tiers
-  (Cuirass/Knight's Plate/Aegis with shield-reflect), 3 relics (Vitality/Swiftness/Berserker Crest).
-  Knight glows by weapon tier; enemies show a burn glow. Gear unlocks/equips persist in
-  `localStorage`.
+- Equipment & gear system — **"Zero to Hero" progression**: 4 weapon tiers (Wooden Club → Rusty
+  Dagger → Iron Short Sword → Flaming Longsword) and 4 armor tiers (Ragged Clothes → Leather Tunic →
+  Iron Chainmail → Full Knight Armor) plus 3 relics. The player starts as a Tier-0 peasant (80 HP,
+  10–15 base damage) with a rags-and-club sprite, swapping to the armored knight + tier aura as gear
+  is equipped. Gear unlocks/equips persist in `localStorage`.
 - Persistent save via `localStorage` (gold, victories, weapon/armor levels, owned + equipped gear,
   shards).
 - Enemy rotation: Goblin Rogue (25% dodge) → Orc Berserker → Skeleton Warlock (2-turn poison DoT),
