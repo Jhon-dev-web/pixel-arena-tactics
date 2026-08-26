@@ -1,16 +1,18 @@
-import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import T, { setTunableListener } from './game/tunables';
 import {
   CombatEvent,
-  CombatEventKind,
   FighterState,
   PlayerAction,
+  afkGoldRate,
+  afkXpRate,
   effectiveAttackStamina,
   defaultSave,
   loadSave,
   makeEnemy,
   makePlayer,
   persistSave,
+  playerLevel,
   playerMaxHp,
   resolveTurn,
   SaveData,
@@ -19,10 +21,17 @@ import {
 } from './game/engine';
 import { GEAR, getEquipped, getGear } from './game/gear';
 import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
+import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
+import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier, spriteForWeaponTier } from './game/sprites';
 import SpriteSheet from './components/SpriteSheet';
 import CampScene from './components/CampScene';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
+import ForgeModal from './components/ForgeModal';
+import AttributesModal from './components/AttributesModal';
+import WeaponOverlay from './components/WeaponOverlay';
+import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
+import ResultPopup from './components/ResultPopup';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
 import Text from './locales/en.json';
@@ -37,80 +46,6 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
-
-interface FloatState {
-  id: number;
-  target: 'player' | 'enemy';
-  kind: CombatEventKind;
-  value: number;
-}
-interface BurstState {
-  id: number;
-  target: 'player' | 'enemy';
-}
-
-function floatLabel(ev: FloatState): string {
-  switch (ev.kind) {
-    case 'crit':
-      return `${Text.combat.critical} -${ev.value}`;
-    case 'blocked':
-      return Text.combat.blocked;
-    case 'damage':
-      return `-${ev.value}`;
-    case 'heal':
-      return `+${ev.value} ${Text.combat.hp}`;
-    case 'stamina':
-      return `+${ev.value} ${Text.combat.stamina}`;
-    case 'reflect':
-      return `${Text.combat.reflect} -${ev.value}`;
-    case 'burn':
-      return `${Text.combat.burn} -${ev.value}`;
-    case 'poison':
-      return `${Text.combat.poison} -${ev.value}`;
-    case 'dodge':
-      return Text.combat.dodge;
-    case 'curse':
-      return Text.combat.curse;
-    case 'slam':
-      return `${Text.combat.slam} -${ev.value}`;
-  }
-}
-
-function Burst({ count }: { count: number }) {
-  const dots = useMemo(
-    () =>
-      Array.from({ length: count }, (_, i) => {
-        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
-        const dist = 22 + Math.random() * 36;
-        return {
-          dx: Math.cos(angle) * dist,
-          dy: Math.sin(angle) * dist,
-          size: 3 + Math.random() * 4,
-          delay: Math.random() * 50,
-        };
-      }),
-    [count],
-  );
-  return (
-    <span className="burst">
-      {dots.map((d, i) => (
-        <span
-          key={i}
-          className="burst-dot"
-          style={
-            {
-              '--dx': `${d.dx}px`,
-              '--dy': `${d.dy}px`,
-              width: `${d.size}px`,
-              height: `${d.size}px`,
-              animationDelay: `${d.delay}ms`,
-            } as CSSProperties
-          }
-        />
-      ))}
-    </span>
-  );
-}
 
 const enemyText = (key: string): string => (Text.enemies as Record<string, string>)[key];
 
@@ -134,7 +69,8 @@ function App() {
   const [floats, setFloats] = useState<FloatState[]>([]);
   const [bursts, setBursts] = useState<BurstState[]>([]);
   const [shopOpen, setShopOpen] = useState(false);
-  const [shopTab, setShopTab] = useState<'upgrades' | 'armory'>('upgrades');
+  const [forgeOpen, setForgeOpen] = useState(false);
+  const [attrsOpen, setAttrsOpen] = useState(false);
   const [loot, setLoot] = useState<{ gold: number; shards: number } | null>(null);
   const [version, setVersion] = useState(0);
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
@@ -142,6 +78,7 @@ function App() {
   const [scene, setScene] = useState<'camp' | 'arena'>('camp');
   const [cheatMode, setCheatMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [elixirActive, setElixirActive] = useState(false);
 
   const playerRef = useRef(player);
   const enemyRef = useRef(enemy);
@@ -150,6 +87,7 @@ function App() {
   const busyRef = useRef(false);
   const idRef = useRef(0);
   const cheatModeRef = useRef(false);
+  const elixirRef = useRef(false);
 
   const setPlayerBoth = (p: FighterState) => {
     playerRef.current = p;
@@ -167,6 +105,10 @@ function App() {
     enemyKindRef.current = k;
     setEnemyKindState(k);
   };
+  const setElixirBoth = (v: boolean) => {
+    elixirRef.current = v;
+    setElixirActive(v);
+  };
 
   useEffect(() => {
     persistSave(save);
@@ -183,12 +125,22 @@ function App() {
 
   useEffect(() => {
     if (scene !== 'camp') return;
+    let goldAcc = 0;
+    let xpAcc = 0;
     const id = window.setInterval(() => {
-      setSaveBoth({
-        ...saveRef.current,
-        gold: saveRef.current.gold + T.advanced.afkGoldPerSec,
-        xp: saveRef.current.xp + T.advanced.afkXpPerSec,
-      });
+      goldAcc += afkGoldRate(saveRef.current);
+      xpAcc += afkXpRate(saveRef.current);
+      const g = Math.floor(goldAcc);
+      const x = Math.floor(xpAcc);
+      if (g > 0 || x > 0) {
+        goldAcc -= g;
+        xpAcc -= x;
+        setSaveBoth({
+          ...saveRef.current,
+          gold: saveRef.current.gold + g,
+          xp: saveRef.current.xp + x,
+        });
+      }
     }, 1000);
     return () => window.clearInterval(id);
   }, [scene]);
@@ -244,14 +196,116 @@ function App() {
     }
   };
 
+  const startDuel = () => {
+    setPlayerBoth(makePlayer(saveRef.current));
+    spawnEnemy(saveRef.current.victories + 1);
+    setPlayerAnim('idle');
+    setEnemyAnim('idle');
+    setFloats([]);
+    setBursts([]);
+    setLoot(null);
+    setPhase('player');
+  };
+
   const enterArena = () => {
     playSfx('click');
+    startDuel();
     setScene('arena');
   };
 
   const returnToCamp = () => {
     playSfx('click');
+    setElixirBoth(false);
+    startDuel();
     setScene('camp');
+  };
+
+  const buyPotion = (id: 'hp' | 'stamina' | 'elixir') => {
+    const cost = id === 'hp' ? 30 : id === 'stamina' ? 25 : 60;
+    if (saveRef.current.gold < cost) return;
+    playSfx('click');
+    setSaveBoth({
+      ...saveRef.current,
+      gold: saveRef.current.gold - cost,
+      potions: { ...saveRef.current.potions, [id]: saveRef.current.potions[id] + 1 },
+    });
+  };
+
+  const buyMaterial = (id: MaterialId) => {
+    const def = MATERIALS.find((m) => m.id === id);
+    if (!def || saveRef.current.gold < def.packCost) return;
+    playSfx('click');
+    setSaveBoth({
+      ...saveRef.current,
+      gold: saveRef.current.gold - def.packCost,
+      materials: { ...saveRef.current.materials, [id]: (saveRef.current.materials[id] ?? 0) + def.packSize },
+    });
+  };
+
+  const forgeItem = (id: string) => {
+    const item = getGear(id);
+    if (!item || saveRef.current.owned.includes(id)) return;
+    if (saveRef.current.gold < item.cost || !hasMaterials(saveRef.current.materials, item.recipe)) return;
+    playSfx('click');
+    const mats = { ...saveRef.current.materials };
+    for (const [mid, count] of Object.entries(item.recipe ?? {})) {
+      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - count;
+    }
+    setSaveBoth({
+      ...saveRef.current,
+      gold: saveRef.current.gold - item.cost,
+      materials: mats,
+      owned: [...saveRef.current.owned, id],
+    });
+  };
+
+  const attrChange = (attr: 'str' | 'vit' | 'agi' | 'res', delta: number) => {
+    const cur = saveRef.current[attr];
+    const next = cur + delta;
+    if (next < 0) return;
+    const totalPoints = playerLevel(saveRef.current.xp) * 3;
+    const spent = saveRef.current.str + saveRef.current.vit + saveRef.current.agi + saveRef.current.res;
+    if (delta > 0 && spent + 1 > totalPoints) return;
+    playSfx('click');
+    setSaveBoth({ ...saveRef.current, [attr]: next });
+  };
+
+  const useElixir = () => {
+    if (saveRef.current.potions.elixir <= 0 || elixirActive) return;
+    playSfx('click');
+    setSaveBoth({
+      ...saveRef.current,
+      potions: { ...saveRef.current.potions, elixir: saveRef.current.potions.elixir - 1 },
+    });
+    setElixirBoth(true);
+  };
+
+  const renameHero = (name: string) => {
+    setSaveBoth({ ...saveRef.current, heroName: name });
+  };
+
+  const useHpPotion = () => {
+    if (saveRef.current.potions.hp <= 0 || playerRef.current.hp >= playerRef.current.maxHp) return;
+    playSfx('focus');
+    const heal = 40;
+    setSaveBoth({ ...saveRef.current, potions: { ...saveRef.current.potions, hp: saveRef.current.potions.hp - 1 } });
+    setPlayerBoth({ ...playerRef.current, hp: Math.min(playerRef.current.maxHp, playerRef.current.hp + heal) });
+    addFloat({ target: 'player', kind: 'heal', value: heal });
+  };
+
+  const useStaminaPotion = () => {
+    if (saveRef.current.potions.stamina <= 0) return;
+    playSfx('focus');
+    const gain = 30;
+    setSaveBoth({
+      ...saveRef.current,
+      potions: { ...saveRef.current.potions, stamina: saveRef.current.potions.stamina - 1 },
+    });
+    setPlayerBoth({
+      ...playerRef.current,
+      stamina: Math.min(playerRef.current.maxStamina, playerRef.current.stamina + gain),
+    });
+    addFloat({ target: 'player', kind: 'stamina', value: gain });
   };
 
   const adminAddGold = () => {
@@ -286,6 +340,7 @@ function App() {
     setEnemyKindBoth(enemyKindForDuel(1));
     cheatModeRef.current = false;
     setCheatMode(false);
+    setElixirBoth(false);
     setPhase('player');
     setScene('camp');
     setFloats([]);
@@ -328,6 +383,7 @@ function App() {
   };
 
   const finishVictory = async () => {
+    setElixirBoth(false);
     triggerShake();
     await sleep(200);
     const isBoss = enemyKindRef.current === 'boss';
@@ -375,6 +431,7 @@ function App() {
     if (pois.player.hp <= 0) {
       setPlayerAnim('death');
       await sleep(820);
+      setElixirBoth(false);
       setPhase('defeat');
       busyRef.current = false;
       return;
@@ -386,7 +443,7 @@ function App() {
       enemyRef.current,
       saveRef.current,
       getEnemyDef(enemyKindRef.current),
-      { godMode: cheatModeRef.current, oneHitKill: cheatModeRef.current },
+      { godMode: cheatModeRef.current, oneHitKill: cheatModeRef.current, elixir: elixirRef.current },
     );
     const enemyKilled = result.enemyMid.hp <= 0;
 
@@ -465,6 +522,7 @@ function App() {
     } else if (result.playerEnd.hp <= 0) {
       triggerShake();
       await sleep(820);
+      setElixirBoth(false);
       setPhase('defeat');
     } else {
       setPhase('player');
@@ -474,66 +532,13 @@ function App() {
   };
 
   const nextDuel = () => {
-    setPlayerBoth(makePlayer(saveRef.current));
-    spawnEnemy(saveRef.current.victories + 1);
-    setPlayerAnim('idle');
-    setEnemyAnim('idle');
-    setFloats([]);
-    setBursts([]);
-    setLoot(null);
-    setPhase('player');
+    setElixirBoth(false);
+    startDuel();
   };
 
   const retryDuel = () => {
-    setPlayerBoth(makePlayer(saveRef.current));
-    spawnEnemy(saveRef.current.victories + 1);
-    setPlayerAnim('idle');
-    setEnemyAnim('idle');
-    setFloats([]);
-    setBursts([]);
-    setLoot(null);
-    setPhase('player');
-  };
-
-  const buyWeapon = () => {
-    const cost = saveRef.current.weaponLevel * T.progression.weaponBaseCost;
-    if (saveRef.current.gold < cost) return;
-    playSfx('click');
-    setSaveBoth({
-      ...saveRef.current,
-      gold: saveRef.current.gold - cost,
-      weaponLevel: saveRef.current.weaponLevel + 1,
-    });
-  };
-
-  const buyArmor = () => {
-    const cost = saveRef.current.armorLevel * T.progression.armorBaseCost;
-    if (saveRef.current.gold < cost) return;
-    playSfx('click');
-    const next: SaveData = {
-      ...saveRef.current,
-      gold: saveRef.current.gold - cost,
-      armorLevel: saveRef.current.armorLevel + 1,
-    };
-    setSaveBoth(next);
-    const newMax = playerMaxHp(next);
-    const delta = newMax - playerRef.current.maxHp;
-    setPlayerBoth({
-      ...playerRef.current,
-      maxHp: newMax,
-      hp: Math.min(newMax, playerRef.current.hp + delta),
-    });
-  };
-
-  const buyGear = (id: string) => {
-    const item = getGear(id);
-    if (saveRef.current.gold < item.cost || saveRef.current.owned.includes(id)) return;
-    playSfx('click');
-    setSaveBoth({
-      ...saveRef.current,
-      gold: saveRef.current.gold - item.cost,
-      owned: [...saveRef.current.owned, id],
-    });
+    setElixirBoth(false);
+    startDuel();
   };
 
   const equipGear = (id: string) => {
@@ -560,27 +565,14 @@ function App() {
   const build = getEquipped(save.equipped);
   const weaponTier = build.weapon?.tier ?? 0;
   const armorTier = build.armor?.tier ?? 0;
-  const ARMOR_SPRITES: Record<number, string> = {
-    0: Assets.spritesheets.peasant.url,
-    1: Assets.spritesheets.bronze.url,
-    2: Assets.spritesheets.iron.url,
-    3: Assets.spritesheets.knight.url,
-    4: Assets.spritesheets.dragon.url,
-  };
-  const playerSpriteUrl = ARMOR_SPRITES[armorTier] ?? Assets.spritesheets.knight.url;
+  const playerSpriteUrl = spriteForArmorTier(armorTier);
+  const weaponSpriteUrl = spriteForWeaponTier(weaponTier);
   const enemyDef = getEnemyDef(enemyKind);
   const enemyName = enemyDef.boss
     ? fmt(Text.enemies.bossName, enemyText(enemyDef.nameKey))
     : enemyText(enemyDef.nameKey);
-  const enemySpriteUrl =
-    enemyKind === 'goblin'
-      ? Assets.spritesheets.goblin.url
-      : enemyKind === 'orc'
-        ? Assets.spritesheets.orc.url
-        : enemyKind === 'warlock'
-          ? Assets.spritesheets.warlock.url
-          : Assets.spritesheets.boss.url;
-  const enemySize = enemyKind === 'boss' ? 'calc(var(--sprite-size, 132px) * 1.3)' : 'var(--sprite-size, 132px)';
+  const enemySprite = enemySpriteUrl(enemyKind);
+  const enemySize = enemySpriteSize(enemyKind);
   const canAttack = phase === 'player' && player.stamina >= atkCost;
   const canShield = phase === 'player' && player.stamina >= T.combat.shieldStamina;
   const canFocus = phase === 'player';
@@ -622,6 +614,9 @@ function App() {
             <button className="mute-btn" onClick={toggleMute} aria-label="Toggle sound" data-ui>
               {muted ? '🔇' : '🔊'}
             </button>
+            <button className="shop-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
+              {Text.ui.forge}
+            </button>
             <button className="shop-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
               {Text.ui.shop}
             </button>
@@ -629,7 +624,16 @@ function App() {
         </header>
 
         {scene === 'camp' ? (
-          <CampScene save={save} spriteUrl={playerSpriteUrl} onEnterArena={enterArena} />
+          <CampScene
+            save={save}
+            spriteUrl={playerSpriteUrl}
+            weaponUrl={weaponSpriteUrl}
+            elixirActive={elixirActive}
+            onEnterArena={enterArena}
+            onOpenAttributes={() => setAttrsOpen(true)}
+            onUseElixir={useElixir}
+            onRename={renameHero}
+          />
         ) : (
           <>
             <button className="return-camp" onClick={returnToCamp} data-ui>
@@ -660,6 +664,7 @@ function App() {
                   if (playerAnim !== 'death') setPlayerAnim('idle');
                 }}
               />
+              <WeaponOverlay url={weaponSpriteUrl} mode={playerAnim === 'attack' ? 'swing' : 'idle'} />
               {renderBursts('player')}
               {renderFloats('player')}
             </div>
@@ -682,7 +687,7 @@ function App() {
               {enemyGuard && <span className="guard-badge">🛡️</span>}
               {enemyFocus && <span className="focus-ring" />}
               <SpriteSheet
-                src={enemySpriteUrl}
+                src={enemySprite}
                 size={enemySize}
                 row={ANIM_ROW[enemyAnim]}
                 flip
@@ -698,18 +703,28 @@ function App() {
         </div>
 
         <footer className="controls">
-          <button className="action attack" onClick={() => doTurn('attack')} disabled={!canAttack} data-ui>
-            <span className="action-label">{Text.ui.attack}</span>
-            <span className="action-cost">{`-${atkCost} ${Text.combat.stamina}`}</span>
-          </button>
-          <button className="action shield" onClick={() => doTurn('shield')} disabled={!canShield} data-ui>
-            <span className="action-label">{Text.ui.shield}</span>
-            <span className="action-cost">{`-${T.combat.shieldStamina} ${Text.combat.stamina}`}</span>
-          </button>
-          <button className="action focus" onClick={() => doTurn('focus')} disabled={!canFocus} data-ui>
-            <span className="action-label">{Text.ui.focus}</span>
-            <span className="action-cost">{Text.ui.free}</span>
-          </button>
+          <div className="potion-bar">
+            <button className="potion-btn" onClick={useHpPotion} disabled={phase !== 'player' || save.potions.hp <= 0} data-ui>
+              🧪 ×{save.potions.hp}
+            </button>
+            <button className="potion-btn" onClick={useStaminaPotion} disabled={phase !== 'player' || save.potions.stamina <= 0} data-ui>
+              ⚡ ×{save.potions.stamina}
+            </button>
+          </div>
+          <div className="action-row">
+            <button className="action attack" onClick={() => doTurn('attack')} disabled={!canAttack} data-ui>
+              <span className="action-label">{Text.ui.attack}</span>
+              <span className="action-cost">{`-${atkCost} ${Text.combat.stamina}`}</span>
+            </button>
+            <button className="action shield" onClick={() => doTurn('shield')} disabled={!canShield} data-ui>
+              <span className="action-label">{Text.ui.shield}</span>
+              <span className="action-cost">{`-${T.combat.shieldStamina} ${Text.combat.stamina}`}</span>
+            </button>
+            <button className="action focus" onClick={() => doTurn('focus')} disabled={!canFocus} data-ui>
+              <span className="action-label">{Text.ui.focus}</span>
+              <span className="action-cost">{Text.ui.free}</span>
+            </button>
+          </div>
         </footer>
           </>
         )}
@@ -718,12 +733,8 @@ function App() {
       {shopOpen && (
         <ShopModal
           save={save}
-          shopTab={shopTab}
-          onTabChange={setShopTab}
-          onBuyWeapon={buyWeapon}
-          onBuyArmor={buyArmor}
-          onBuyGear={buyGear}
-          onEquipGear={equipGear}
+          onBuyPotion={buyPotion}
+          onBuyMaterial={buyMaterial}
           onClose={() => {
             playSfx('click');
             setShopOpen(false);
@@ -731,30 +742,32 @@ function App() {
         />
       )}
 
-      {phase === 'victory' && loot !== null && (
-        <div className="modal-backdrop">
-          <div className="modal result-modal victory">
-            <h2 className="modal-title win">{Text.combat.victoryTitle}</h2>
-            <p className="loot-text">{fmt(Text.combat.loot, loot.gold)}</p>
-            {loot.shards > 0 && <p className="loot-text shard">{fmt(Text.combat.shardLoot, loot.shards)}</p>}
-            <button className="result-btn" onClick={nextDuel} data-ui>
-              {Text.ui.nextDuel}
-            </button>
-          </div>
-        </div>
+      {forgeOpen && (
+        <ForgeModal
+          save={save}
+          onForge={forgeItem}
+          onEquip={equipGear}
+          onClose={() => {
+            playSfx('click');
+            setForgeOpen(false);
+          }}
+        />
       )}
 
-      {phase === 'defeat' && (
-        <div className="modal-backdrop">
-          <div className="modal result-modal defeat">
-            <h2 className="modal-title lose">{Text.combat.defeatTitle}</h2>
-            <p className="loot-text">{Text.combat.defeatHint}</p>
-            <button className="result-btn" onClick={retryDuel} data-ui>
-              {Text.ui.retry}
-            </button>
-          </div>
-        </div>
+      {attrsOpen && (
+        <AttributesModal
+          save={save}
+          onAttrChange={attrChange}
+          onClose={() => {
+            playSfx('click');
+            setAttrsOpen(false);
+          }}
+        />
       )}
+
+      {phase === 'victory' || phase === 'defeat' ? (
+        <ResultPopup phase={phase} loot={loot} onNext={nextDuel} onRetry={retryDuel} />
+      ) : null}
 
       {adminOpen && (
         <AdminModal

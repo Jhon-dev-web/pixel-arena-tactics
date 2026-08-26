@@ -18,8 +18,29 @@ progress, gold/XP per-second rates, and the `[⚔️ Enter Dungeon]` button.
 
 ## `src/components/ShopModal.tsx`
 
-The two-tab shop (`Upgrades` / `Armory`), including the `GearRow` list (BUY / EQUIP / EQUIPPED with
-forge-material badges). Owned/equipped state and costs are derived from the `SaveData` prop.
+The consumables shop: health/stamina potions, the Strength Elixir, and forge-material packs (bought
+with gold). Owned counts are derived from the `SaveData` prop.
+
+## `src/components/ForgeModal.tsx`
+
+The blacksmith forge: lists craftable gear (weapons/armors/relics with `recipe`), shows gold +
+material requirements, and exposes FORGE / EQUIP / EQUIPPED states.
+
+## `src/components/AttributesModal.tsx`
+
+STR/VIT/AGI/RES allocation (3 points per level) with ± buttons and the ⚡ CP readout.
+
+## `src/components/WeaponOverlay.tsx`
+
+Renders the equipped weapon sprite over the character (idle / one-shot swing / training loop).
+
+## `src/components/CombatFx.tsx`
+
+Floating-text `floatLabel`, the `Burst` particle component, and the `FloatState`/`BurstState` types.
+
+## `src/components/ResultPopup.tsx`
+
+The victory/defeat modal (loot + Next Duel / Revive).
 
 ## `src/components/AdminModal.tsx`
 
@@ -73,6 +94,16 @@ Gear catalog (content data): `GearItem` (incl. `materialKey`), `GearSlot` (`weap
 forge materials), `DEFAULT_OWNED` / `DEFAULT_EQUIPPED`, `getGear`, `gearBySlot`, `getEquipped`,
 `sanitizeSaveGear` (migrates stale gear IDs to current defaults). Names/descriptions/materials are
 locale keys.
+
+## `src/game/materials.ts`
+
+Forge-material catalog: `MaterialId` (`iron`/`steel`/`leather`/`essence`), `Materials`, `MATERIALS`
+(pack size/cost), `emptyMaterials`, `hasMaterials`.
+
+## `src/game/sprites.ts`
+
+Sprite lookups: `spriteForArmorTier` / `spriteForWeaponTier` (per-tier player/weapon sprites) and
+`enemySpriteUrl` / `enemySpriteSize` (per enemy kind).
 
 ## `src/game/enemies.ts`
 

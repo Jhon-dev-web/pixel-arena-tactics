@@ -3,7 +3,8 @@
     "victories": "🏆 Victories: {n}",
     "gold": "🪙 Gold: {n}",
     "shards": "◆ Shards: {n}",
-    "shop": "🏪 Shop",
+    "shop": "🛒 Shop",
+    "forge": "⚒️ Forge",
     "attack": "⚔️ ATTACK",
     "shield": "🛡️ SHIELD",
     "focus": "⚡ FOCUS",
@@ -94,7 +95,52 @@
     "xp": "XP: {n}",
     "goldPerSec": "+{n} Gold/s",
     "xpPerSec": "+{n} XP/s",
-    "resting": "Your hero trains and gathers loot while you rest."
+    "resting": "Your hero trains and gathers loot while you rest.",
+    "cp": "⚡ CP: {n}",
+    "name": "Name",
+    "attributes": "Attributes",
+    "useElixir": "💪 Use Elixir (+20% next duel)",
+    "elixirActive": "Elixir active!"
+  },
+  "materials": {
+    "mat_iron": "Iron Ingot",
+    "mat_steel": "Steel Bar",
+    "mat_leather": "Tanned Leather",
+    "mat_essence": "Arcane Essence"
+  },
+  "shop": {
+    "title": "🛒 Shop",
+    "potionHp": "Lesser Health Potion",
+    "potionHpDesc": "Restores 40 HP in combat",
+    "potionStamina": "Stamina Potion",
+    "potionStaminaDesc": "Restores 30 stamina instantly",
+    "elixir": "Strength Elixir",
+    "elixirDesc": "+20% damage for the next duel",
+    "youHave": "You have {n}",
+    "buyPack": "Buy {n}×",
+    "consumables": "Consumables",
+    "materials": "Forge Materials"
+  },
+  "forge": {
+    "title": "⚒️ Forge",
+    "forge": "FORGE",
+    "equip": "EQUIP",
+    "equipped": "EQUIPPED",
+    "cost": "Cost",
+    "missing": "Missing materials"
+  },
+  "attributes": {
+    "title": "Attributes",
+    "str": "Strength",
+    "strDesc": "Damage & AFK gains",
+    "vit": "Vitality",
+    "vitDesc": "Max HP",
+    "agi": "Agility",
+    "agiDesc": "Dodge chance",
+    "res": "Resistance",
+    "resDesc": "Damage reduction",
+    "points": "Points to spend: {n}",
+    "cp": "⚡ CP: {n}"
   },
   "admin": {
     "button": "⚙️",

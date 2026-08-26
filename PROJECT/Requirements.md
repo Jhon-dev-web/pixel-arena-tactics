@@ -44,9 +44,24 @@
 
 ## Base camp (AFK) & leveling
 
-- A camp scene shows the hero training in a loop; the player passively accrues gold + XP per second
-  while resting there. XP levels the hero up (each level grants +5 max HP).
-- `[⚔️ Enter Dungeon]` → arena; `[🏕️ Return to Camp]` → back to base (state preserved).
+- A camp scene shows the hero training in a loop (swinging at a dummy); the player passively accrues
+  gold + XP per second while resting there. XP levels the hero up (each level grants +5 max HP).
+- AFK rates scale with level and STR: gold/s = `2 + lvl*0.5 + STR*0.2`, XP/s = `3 + lvl*0.8 + STR*0.3`.
+- `[⚔️ Enter Dungeon]` → arena; `[🏕️ Return to Camp]` mid-fight abandons the duel (no rewards) and
+  re-entry restarts from the last conquered duel (total victories preserved).
+- Camp shows the editable hero name, level + XP bar, and ⚡ Combat Power; an Attributes modal
+  distributes 3 points/level across STR (damage + AFK), VIT (max HP), AGI (dodge), RES (resist).
+
+## Shop vs Forge
+
+- **Shop (consumables)**: lesser health potion (40 HP), stamina potion (30 sta), strength elixir
+  (+20% damage next duel), and forge-material packs (Iron Ingot / Steel Bar / Tanned Leather /
+  Arcane Essence) — all bought with gold. Potions are usable in combat (free action).
+- **Forge (blacksmith modal)**: crafts weapons/armors/relics (tiers 1–4) for gold + materials
+  (e.g. 5× Iron Ingot + 2× Tanned Leather); FORGE activates when resources suffice, then the item
+  goes to inventory to be equipped.
+- The equipped weapon is drawn in-hand (club / bronze gladius / iron sword / steel greatsword /
+  dragon blade) in both camp and arena.
 
 ## Admin / cheat mode
 

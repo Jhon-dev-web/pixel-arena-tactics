@@ -234,5 +234,32 @@
       "description": "Dark fantasy dungeon ambient loop (8-bit chipmusic pad + torch/wind)",
       "metadata": { "duration": 60, "loop": true }
     }
+  },
+  "weapons": {
+    "club": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787765669626.png",
+      "description": "Wooden club weapon sprite (tier 0)",
+      "metadata": {}
+    },
+    "bronze": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787765668573.png",
+      "description": "Bronze gladius weapon sprite (tier 1)",
+      "metadata": {}
+    },
+    "iron": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787765685879.png",
+      "description": "Iron longsword weapon sprite (tier 2)",
+      "metadata": {}
+    },
+    "steel": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787765674533.png",
+      "description": "Steel greatsword weapon sprite (tier 3)",
+      "metadata": {}
+    },
+    "dragon": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787765670906.png",
+      "description": "Dragon flame blade weapon sprite (tier 4)",
+      "metadata": {}
+    }
   }
 }

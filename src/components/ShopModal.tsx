@@ -1,152 +1,79 @@
-import T from '../game/tunables';
 import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
-import { GEAR_SLOTS, GearItem, GearSlot, gearBySlot, getGear } from '../game/gear';
+import { MATERIALS, MaterialId } from '../game/materials';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
-const gearText = (key: string): string => (Text.gear as Record<string, string>)[key];
+const shopText = (k: string): string => (Text.shop as Record<string, string>)[k];
+const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
 
-function GearRow({
-  item,
-  owned,
-  equipped,
-  gold,
-  onBuy,
-  onEquip,
-}: {
-  item: GearItem;
-  owned: boolean;
-  equipped: boolean;
-  gold: number;
-  onBuy: (id: string) => void;
-  onEquip: (id: string) => void;
-}) {
-  return (
-    <div className="gear-row">
-      <div className="gear-info">
-        <span className="gear-name">
-          {gearText(item.nameKey)}
-          {item.materialKey && (
-            <span className={`gear-material ${item.materialKey.replace('material_', '')}`}>
-              {gearText(item.materialKey)}
-            </span>
-          )}
-        </span>
-        <span className="gear-desc">{gearText(item.descKey)}</span>
-        {!owned && <span className="gear-cost">{fmt(Text.ui.cost, item.cost)}</span>}
-      </div>
-      {equipped ? (
-        <button className="gear-action equipped" disabled data-ui>
-          {Text.gear.equipped}
-        </button>
-      ) : owned ? (
-        <button className="gear-action" onClick={() => onEquip(item.id)} data-ui>
-          {Text.gear.equip}
-        </button>
-      ) : (
-        <button className="gear-action buy" onClick={() => onBuy(item.id)} disabled={gold < item.cost} data-ui>
-          {Text.gear.buy}
-        </button>
-      )}
-    </div>
-  );
-}
+const CONSUMABLES: { id: 'hp' | 'stamina' | 'elixir'; nameKey: string; descKey: string; cost: number; icon: string }[] = [
+  { id: 'hp', nameKey: 'potionHp', descKey: 'potionHpDesc', cost: 30, icon: '🧪' },
+  { id: 'stamina', nameKey: 'potionStamina', descKey: 'potionStaminaDesc', cost: 25, icon: '⚡' },
+  { id: 'elixir', nameKey: 'elixir', descKey: 'elixirDesc', cost: 60, icon: '💪' },
+];
 
 export default function ShopModal({
   save,
-  shopTab,
-  onTabChange,
-  onBuyWeapon,
-  onBuyArmor,
-  onBuyGear,
-  onEquipGear,
+  onBuyPotion,
+  onBuyMaterial,
   onClose,
 }: {
   save: SaveData;
-  shopTab: 'upgrades' | 'armory';
-  onTabChange: (tab: 'upgrades' | 'armory') => void;
-  onBuyWeapon: () => void;
-  onBuyArmor: () => void;
-  onBuyGear: (id: string) => void;
-  onEquipGear: (id: string) => void;
+  onBuyPotion: (id: 'hp' | 'stamina' | 'elixir') => void;
+  onBuyMaterial: (id: MaterialId) => void;
   onClose: () => void;
 }) {
-  const weaponCost = save.weaponLevel * T.progression.weaponBaseCost;
-  const armorCost = save.armorLevel * T.progression.armorBaseCost;
-
-  const equippedName = (slot: GearSlot): string => {
-    const id = save.equipped[slot];
-    if (!id) return Text.gear.none;
-    return gearText(getGear(id).nameKey);
-  };
-
   return (
     <div className="modal-backdrop">
       <div className="modal shop-modal">
-        <h2 className="modal-title">{Text.ui.shop}</h2>
+        <h2 className="modal-title">{Text.shop.title}</h2>
         <p className="shop-gold">{fmt(Text.ui.owned, save.gold)}</p>
 
-        <div className="shop-tabs">
-          <button
-            className={`tab${shopTab === 'upgrades' ? ' active' : ''}`}
-            onClick={() => onTabChange('upgrades')}
-            data-ui
-          >
-            {Text.gear.upgradesTab}
-          </button>
-          <button
-            className={`tab${shopTab === 'armory' ? ' active' : ''}`}
-            onClick={() => onTabChange('armory')}
-            data-ui
-          >
-            {Text.gear.armoryTab}
-          </button>
+        <div className="shop-body">
+          <div className="shop-section-title">{Text.shop.consumables}</div>
+          {CONSUMABLES.map((c) => (
+            <div className="gear-row" key={c.id}>
+              <div className="gear-info">
+                <span className="gear-name">
+                  {c.icon} {shopText(c.nameKey)}
+                  <span className="gear-count">{fmt(Text.shop.youHave, save.potions[c.id])}</span>
+                </span>
+                <span className="gear-desc">{shopText(c.descKey)}</span>
+                <span className="gear-cost">{fmt(Text.ui.cost, c.cost)}</span>
+              </div>
+              <button
+                className="gear-action buy"
+                onClick={() => onBuyPotion(c.id)}
+                disabled={save.gold < c.cost}
+                data-ui
+              >
+                {Text.gear.buy}
+              </button>
+            </div>
+          ))}
+
+          <div className="shop-section-title">{Text.shop.materials}</div>
+          {MATERIALS.map((m) => (
+            <div className="gear-row" key={m.id}>
+              <div className="gear-info">
+                <span className="gear-name">
+                  {m.icon} {matText(m.nameKey)}
+                  <span className="gear-count">{fmt(Text.shop.youHave, save.materials[m.id])}</span>
+                </span>
+                <span className="gear-desc">{fmt(Text.shop.buyPack, m.packSize)}</span>
+                <span className="gear-cost">{fmt(Text.ui.cost, m.packCost)}</span>
+              </div>
+              <button
+                className="gear-action buy"
+                onClick={() => onBuyMaterial(m.id)}
+                disabled={save.gold < m.packCost}
+                data-ui
+              >
+                {Text.gear.buy}
+              </button>
+            </div>
+          ))}
         </div>
-
-        {shopTab === 'upgrades' ? (
-          <div className="shop-body">
-            <div className="shop-row">
-              <div className="shop-info">
-                <span className="shop-name">⚔️ {Text.ui.weapon}</span>
-                <span className="shop-level">{fmt(Text.ui.level, save.weaponLevel)}</span>
-              </div>
-              <button className="shop-buy" onClick={onBuyWeapon} disabled={save.gold < weaponCost} data-ui>
-                {fmt(Text.ui.cost, weaponCost)}
-              </button>
-            </div>
-
-            <div className="shop-row">
-              <div className="shop-info">
-                <span className="shop-name">🛡️ {Text.ui.armor}</span>
-                <span className="shop-level">{fmt(Text.ui.level, save.armorLevel)}</span>
-              </div>
-              <button className="shop-buy" onClick={onBuyArmor} disabled={save.gold < armorCost} data-ui>
-                {fmt(Text.ui.cost, armorCost)}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="armory">
-            {GEAR_SLOTS.map((slot) => (
-              <div className="gear-section" key={slot}>
-                <div className="gear-section-title">
-                  {gearText(slot)} · {equippedName(slot)}
-                </div>
-                {gearBySlot(slot).map((item) => (
-                  <GearRow
-                    key={item.id}
-                    item={item}
-                    owned={save.owned.includes(item.id)}
-                    equipped={save.equipped[item.slot] === item.id}
-                    gold={save.gold}
-                    onBuy={onBuyGear}
-                    onEquip={onEquipGear}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
 
         <button className="modal-close" onClick={onClose} data-ui>
           {Text.ui.close}

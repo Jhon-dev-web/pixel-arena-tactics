@@ -26,8 +26,22 @@
   `[⚔️ Enter Dungeon]` / `[🏕️ Return to Camp]` switch scenes.
 - **Admin / cheat panel** (`⚙️` button or `F2`): +10,000 gold, +50 shards, unlock all weapons/armors,
   God Mode / One-Hit Kill toggle, Reset Save (in-page, no reload). Changes persist to `localStorage`.
-- Persistent save via `localStorage` (gold, victories, shards, xp, weapon/armor levels, owned +
-  equipped gear).
+- **Shop (consumables) vs Forge (crafting) split**: `[🛒 Shop]` sells HP/stamina potions, the
+  Strength Elixir (+20% damage next duel), and forge-material packs (Iron/Steel/Leather/Essence).
+  `[⚒️ Forge]` is a blacksmith-themed modal that crafts weapons/armors/relics (gold + materials),
+  with FORGE / EQUIP / EQUIPPED states.
+- **Attributes, name & CP**: editable hero name, level + XP bar, and ⚡ Combat Power shown in the
+  camp; an Attributes modal distributes 3 points/level across STR (damage + AFK), VIT (max HP),
+  AGI (dodge), RES (damage resist). All persisted.
+- **AFK scaling**: gold/XP per-second scales with level and STR (`2 + lvl*0.5 + STR*0.2` gold,
+  `3 + lvl*0.8 + STR*0.3` XP). The camp hero swings at a training dummy (attack loop + impact) with
+  the equipped weapon drawn in-hand.
+- **Equipped weapon visual**: a separate weapon sprite layer (Club/Bronze Gladius/Iron Sword/Steel
+  Greatsword/Dragon Blade) overlaid on the character in both camp and arena, swinging on attack.
+- **Dungeon escape rule**: returning to camp mid-fight abandons the duel (no gold/shards); entering
+  the dungeon restarts from the last conquered duel without resetting total victories.
+- Persistent save via `localStorage` (gold, victories, shards, xp, hero name, attributes, materials,
+  potions, weapon/armor levels, owned + equipped gear).
 - Enemy rotation: Goblin Rogue (25% dodge) → Orc Berserker → Skeleton Warlock (2-turn poison DoT),
   cycling by victory count, with a **Minotaur Warlord boss every 5th duel** (2× HP, BOSS tag,
   red aura, 1-turn-telegraphed Heavy Slam, 3× gold + guaranteed Relic Shard, ominous intro).

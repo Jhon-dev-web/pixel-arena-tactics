@@ -1,6 +1,7 @@
 import T from './tunables';
 import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_OWNED, getEquipped, sanitizeSaveGear } from './gear';
 import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
+import { Materials, emptyMaterials } from './materials';
 
 export type PlayerAction = 'attack' | 'shield' | 'focus';
 export type EnemyAction = 'attack' | 'shield' | 'focus' | 'slam' | 'charge';
@@ -45,11 +46,19 @@ export interface SaveData {
   armorLevel: number;
   owned: string[];
   equipped: EquippedGear;
+  heroName: string;
+  str: number;
+  vit: number;
+  agi: number;
+  res: number;
+  materials: Materials;
+  potions: { hp: number; stamina: number; elixir: number };
 }
 
 export interface Cheats {
   godMode?: boolean;
   oneHitKill?: boolean;
+  elixir?: boolean;
 }
 
 export interface TurnResult {
@@ -93,7 +102,38 @@ export function playerMaxHp(save: SaveData): number {
     T.progression.playerBaseHp +
     (save.armorLevel - 1) * T.progression.armorHpPerLvl +
     (armor?.maxHp ?? 0) +
-    (playerLevel(save.xp) - 1) * T.progression.levelHpBonus
+    (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
+    save.vit * T.advanced.vitHpPerPoint
+  );
+}
+
+export function computeCP(save: SaveData): number {
+  const { weapon } = getEquipped(save.equipped);
+  return Math.round(
+    (T.combat.attackMin + T.combat.attackMax) / 2 +
+    (weapon?.damage ?? 0) +
+    save.str * 3 +
+    save.vit * 3 +
+    save.agi * 2 +
+    save.res * 2 +
+    playerMaxHp(save) / 10 +
+    playerLevel(save.xp) * 5,
+  );
+}
+
+export function afkGoldRate(save: SaveData): number {
+  return (
+    T.advanced.afkGoldPerSec +
+    playerLevel(save.xp) * T.advanced.afkGoldLevelMult +
+    save.str * T.advanced.afkGoldStrMult
+  );
+}
+
+export function afkXpRate(save: SaveData): number {
+  return (
+    T.advanced.afkXpPerSec +
+    playerLevel(save.xp) * T.advanced.afkXpLevelMult +
+    save.str * T.advanced.afkXpStrMult
   );
 }
 
@@ -174,7 +214,12 @@ export function resolveTurn(
         dmg = enemy.maxHp;
       } else {
         const upgradeBonus = (save.weaponLevel - 1) * T.progression.weaponDmgPerLvl;
-        dmg = randInt(T.combat.attackMin, T.combat.attackMax) + upgradeBonus + (weapon?.damage ?? 0);
+        dmg =
+          randInt(T.combat.attackMin, T.combat.attackMax) +
+          upgradeBonus +
+          (weapon?.damage ?? 0) +
+          save.str * T.advanced.strDmgPerPoint;
+        if (cheats?.elixir) dmg = Math.round(dmg * (1 + T.advanced.elixirDamageBonus));
         const randomCrit = Math.random() < (weapon?.critChance ?? 0);
         crit = pMid.focusReady || randomCrit;
         if (crit) {
@@ -208,6 +253,11 @@ export function resolveTurn(
 
   const applyIncoming = (dmg: number, kind: CombatEventKind): number => {
     if (cheats?.godMode) return 0;
+    const dodgeChance = Math.min(0.5, save.agi * T.advanced.agiDodgePerPoint);
+    if (dodgeChance > 0 && Math.random() < dodgeChance) {
+      enemyEvents.push({ target: 'player', kind: 'dodge', value: 0 });
+      return 0;
+    }
     let d = dmg;
     if (pMid.shielding) {
       const absorbed = d * T.combat.shieldReduction;
@@ -220,7 +270,7 @@ export function resolveTurn(
         enemyEvents.push({ target: 'enemy', kind: 'reflect', value: reflected });
       }
     }
-    d = Math.round(d * (1 - (armor?.resistance ?? 0)));
+    d = Math.round(d * (1 - ((armor?.resistance ?? 0) + save.res * T.advanced.resResistPerPoint)));
     enemyEvents.push({ target: 'player', kind, value: d });
     return d;
   };
@@ -288,6 +338,13 @@ export function defaultSave(): SaveData {
     armorLevel: 1,
     owned: [...DEFAULT_OWNED],
     equipped: { ...DEFAULT_EQUIPPED },
+    heroName: 'Hero',
+    str: 0,
+    vit: 0,
+    agi: 0,
+    res: 0,
+    materials: emptyMaterials(),
+    potions: { hp: 0, stamina: 0, elixir: 0 },
   };
 }
 
@@ -303,6 +360,8 @@ export function loadSave(): SaveData {
         ...parsed,
         owned: gear.owned,
         equipped: gear.equipped,
+        materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
+        potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
       };
     }
   } catch {
