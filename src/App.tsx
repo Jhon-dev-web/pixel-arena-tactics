@@ -26,6 +26,7 @@ import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
 import ForgeModal from './components/ForgeModal';
 import AttributesModal from './components/AttributesModal';
+import InventoryModal from './components/InventoryModal';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
@@ -46,6 +47,7 @@ const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
 
 const enemyText = (key: string): string => (Text.enemies as Record<string, string>)[key];
+const gearText = (key: string): string => (Text.gear as Record<string, string>)[key];
 
 function App() {
   const [save, setSave] = useState<SaveData>(() => loadSave());
@@ -69,6 +71,8 @@ function App() {
   const [shopOpen, setShopOpen] = useState(false);
   const [forgeOpen, setForgeOpen] = useState(false);
   const [attrsOpen, setAttrsOpen] = useState(false);
+  const [bagOpen, setBagOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [loot, setLoot] = useState<{ gold: number; shards: number } | null>(null);
   const [version, setVersion] = useState(0);
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
@@ -106,6 +110,13 @@ function App() {
   const setElixirBoth = (v: boolean) => {
     elixirRef.current = v;
     setElixirActive(v);
+  };
+
+  const toastTimeout = useRef<number | null>(null);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    if (toastTimeout.current) window.clearTimeout(toastTimeout.current);
+    toastTimeout.current = window.setTimeout(() => setToast(null), 1600);
   };
 
   useEffect(() => {
@@ -220,19 +231,33 @@ function App() {
 
   const forgeItem = (id: string) => {
     const item = getGear(id);
-    if (!item || saveRef.current.owned.includes(id)) return;
-    if (saveRef.current.gold < item.cost || !hasMaterials(saveRef.current.materials, item.recipe)) return;
-    playSfx('click');
-    const mats = { ...saveRef.current.materials };
-    for (const [mid, count] of Object.entries(item.recipe ?? {})) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - count;
+    if (!item) return;
+    const s = saveRef.current;
+    const recipe = item.recipe ?? {};
+    if (s.gold < item.cost) return;
+    if (!hasMaterials(s.materials, recipe.materials)) return;
+    for (const [itemId, need] of Object.entries(recipe.items ?? {})) {
+      if ((s.inventory[itemId] ?? 0) < (need as number)) return;
+    }
+    if ((recipe.shards ?? 0) > 0 && s.shards < (recipe.shards ?? 0)) return;
+
+    const mats = { ...s.materials };
+    for (const [mid, count] of Object.entries(recipe.materials ?? {})) {
+      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
+    }
+    const inv = { ...s.inventory };
+    for (const [itemId, need] of Object.entries(recipe.items ?? {})) {
+      inv[itemId] = (inv[itemId] ?? 0) - (need as number);
     }
     setSaveBoth({
-      ...saveRef.current,
-      gold: saveRef.current.gold - item.cost,
+      ...s,
+      gold: s.gold - item.cost,
       materials: mats,
-      owned: [...saveRef.current.owned, id],
+      inventory: { ...inv, [id]: (inv[id] ?? 0) + 1 },
+      shards: s.shards - (recipe.shards ?? 0),
     });
+    playSfx('victory');
+    showToast(`✓ Forged ${gearText(item.nameKey)}`);
   };
 
   const attrChange = (attr: 'str' | 'vit' | 'agi' | 'res', delta: number) => {
@@ -297,7 +322,9 @@ function App() {
   const adminUnlockAll = () => {
     playSfx('click');
     const all = GEAR.filter((g) => g.slot !== 'relic').map((g) => g.id);
-    setSaveBoth({ ...saveRef.current, owned: [...new Set([...saveRef.current.owned, ...all])] });
+    const inv = { ...saveRef.current.inventory };
+    for (const id of all) inv[id] = Math.max(inv[id] ?? 0, 1);
+    setSaveBoth({ ...saveRef.current, inventory: inv });
   };
 
   const adminToggleCheat = () => {
@@ -539,6 +566,27 @@ function App() {
     }
   };
 
+  const unequipGear = (id: string) => {
+    const item = getGear(id);
+    if (!item) return;
+    playSfx('click');
+    const fallback = item.slot === 'relic' ? null : item.slot === 'weapon' ? 'wooden_club' : 'ragged_clothes';
+    const next: SaveData = {
+      ...saveRef.current,
+      equipped: { ...saveRef.current.equipped, [item.slot]: fallback },
+    };
+    setSaveBoth(next);
+    if (item.slot === 'armor') {
+      const newMax = playerMaxHp(next);
+      const delta = newMax - playerRef.current.maxHp;
+      setPlayerBoth({
+        ...playerRef.current,
+        maxHp: newMax,
+        hp: Math.max(1, Math.min(newMax, playerRef.current.hp + delta)),
+      });
+    }
+  };
+
   const atkCost = effectiveAttackStamina(save);
   const build = getEquipped(save.equipped);
   const weaponTier = build.weapon?.tier ?? 0;
@@ -585,6 +633,7 @@ function App() {
           onToggleMute={toggleMute}
           onOpenAdmin={() => setAdminOpen(true)}
           onOpenAttributes={() => setAttrsOpen(true)}
+          onOpenBag={() => setBagOpen(true)}
           onRename={renameHero}
         />
 
@@ -734,6 +783,20 @@ function App() {
           }}
         />
       )}
+
+      {bagOpen && (
+        <InventoryModal
+          save={save}
+          onEquip={equipGear}
+          onUnequip={unequipGear}
+          onClose={() => {
+            playSfx('click');
+            setBagOpen(false);
+          }}
+        />
+      )}
+
+      {toast && <div className="toast">{toast}</div>}
 
       {phase === 'victory' || phase === 'defeat' ? (
         <ResultPopup phase={phase} loot={loot} onNext={nextDuel} onRetry={retryDuel} />

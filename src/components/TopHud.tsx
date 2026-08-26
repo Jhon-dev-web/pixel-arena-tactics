@@ -18,6 +18,7 @@ export default function TopHud({
   onToggleMute,
   onOpenAdmin,
   onOpenAttributes,
+  onOpenBag,
   onRename,
 }: {
   save: SaveData;
@@ -26,6 +27,7 @@ export default function TopHud({
   onToggleMute: () => void;
   onOpenAdmin: () => void;
   onOpenAttributes: () => void;
+  onOpenBag: () => void;
   onRename: (name: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -82,6 +84,9 @@ export default function TopHud({
       <div className="resources">
         <span className="res gold">🪙 {formatNumber(save.gold)}</span>
         <span className="res shards">🔷 {formatNumber(save.shards)}</span>
+        <button className="icon-btn" onClick={onOpenBag} data-ui>
+          🎒
+        </button>
         <button className="icon-btn" onClick={onOpenAdmin} data-ui>
           ⚙️
         </button>

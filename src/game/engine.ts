@@ -1,5 +1,5 @@
 import T from './tunables';
-import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_OWNED, getEquipped, sanitizeSaveGear } from './gear';
+import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, getEquipped, sanitizeSaveInventory } from './gear';
 import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
 import { Materials, emptyMaterials } from './materials';
 
@@ -44,7 +44,7 @@ export interface SaveData {
   xp: number;
   weaponLevel: number;
   armorLevel: number;
-  owned: string[];
+  inventory: Record<string, number>;
   equipped: EquippedGear;
   heroName: string;
   str: number;
@@ -353,7 +353,7 @@ export function defaultSave(): SaveData {
     xp: 0,
     weaponLevel: 1,
     armorLevel: 1,
-    owned: [...DEFAULT_OWNED],
+    inventory: { ...DEFAULT_INVENTORY },
     equipped: { ...DEFAULT_EQUIPPED },
     heroName: 'Hero',
     str: 0,
@@ -371,14 +371,18 @@ export function loadSave(): SaveData {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<SaveData>;
       const base = defaultSave();
-      const gear = sanitizeSaveGear(parsed.owned ?? base.owned, parsed.equipped ?? base.equipped);
+      const legacyOwned = (parsed as { owned?: string[] }).owned;
+      const inventory =
+        parsed.inventory ??
+        (legacyOwned ? Object.fromEntries(legacyOwned.map((id) => [id, 1])) : base.inventory);
+      const gear = sanitizeSaveInventory(inventory, parsed.equipped ?? base.equipped);
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
       if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
       return {
         ...base,
         ...parsed,
         xp,
-        owned: gear.owned,
+        inventory: gear.inventory,
         equipped: gear.equipped,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },

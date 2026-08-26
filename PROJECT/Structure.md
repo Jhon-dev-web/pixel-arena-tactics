@@ -34,6 +34,11 @@ material requirements, and exposes FORGE / EQUIP / EQUIPPED states.
 
 STR/VIT/AGI/RES allocation (3 points per level) with ± buttons and the ⚡ CP readout.
 
+## `src/components/InventoryModal.tsx`
+
+The bag/inventory modal: tabs (All / Equipment / Materials), a slot grid, item details, and
+Equip/Unequip actions.
+
 ## `src/components/CombatFx.tsx`
 
 Floating-text `floatLabel`, the `Burst` particle component, and the `FloatState`/`BurstState` types.

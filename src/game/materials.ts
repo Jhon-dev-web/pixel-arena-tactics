@@ -1,6 +1,6 @@
 import Assets from '../assets.json';
 
-export type MaterialId = 'iron' | 'steel' | 'leather' | 'essence';
+export type MaterialId = 'iron' | 'steel' | 'leather' | 'essence' | 'dragon_scales';
 
 export type Materials = Record<MaterialId, number>;
 
@@ -18,6 +18,7 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'steel', nameKey: 'mat_steel', icon: '🔩', iconUrl: Assets.icons.steel.url, packSize: 3, packCost: 150 },
   { id: 'leather', nameKey: 'mat_leather', icon: '🟤', iconUrl: Assets.icons.leather.url, packSize: 3, packCost: 45 },
   { id: 'essence', nameKey: 'mat_essence', icon: '🔮', iconUrl: Assets.icons.essence.url, packSize: 2, packCost: 200 },
+  { id: 'dragon_scales', nameKey: 'mat_dragon_scales', icon: '🟥', iconUrl: Assets.icons.dragon_scales.url, packSize: 2, packCost: 250 },
 ];
 
 export function materialIconUrl(id: MaterialId): string {
@@ -25,7 +26,7 @@ export function materialIconUrl(id: MaterialId): string {
 }
 
 export function emptyMaterials(): Materials {
-  return { iron: 0, steel: 0, leather: 0, essence: 0 };
+  return { iron: 0, steel: 0, leather: 0, essence: 0, dragon_scales: 0 };
 }
 
 export function hasMaterials(have: Materials, need: Partial<Record<MaterialId, number>>): boolean {

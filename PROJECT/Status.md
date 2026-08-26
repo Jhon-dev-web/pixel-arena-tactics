@@ -32,9 +32,13 @@
 - **Admin / cheat panel** (`⚙️` button or `F2`): +10,000 gold, +50 shards, unlock all weapons/armors,
   God Mode / One-Hit Kill toggle, Reset Save (in-page, no reload). Changes persist to `localStorage`.
 - **Shop (consumables) vs Forge (crafting) split**: `[🛒 Shop]` sells HP/stamina potions, the
-  Strength Elixir (+20% damage next duel), and forge-material packs (Iron/Steel/Leather/Essence).
-  `[⚒️ Forge]` is a blacksmith-themed modal that crafts weapons/armors/relics (gold + materials),
-  with FORGE / EQUIP / EQUIPPED states.
+  Strength Elixir (+20% damage next duel), and forge-material packs (Iron/Steel/Leather/Essence/
+  Dragon Scales). `[⚒️ Forge]` is a blacksmith-themed modal with hierarchical crafting — higher-tier
+  gear consumes lower-tier items + materials + shards (validated, removed from inventory, with a
+  toast + sound on success).
+- **Inventory / bag** (`🎒` in the HUD): a slot grid with All/Equipment/Materials tabs, item details,
+  and Equip/Unequip. Item ownership is now a quantity map (`inventory: id → qty`) persisted in
+  `localStorage` (with migration from the old `owned` list).
 - **Attributes, name & CP**: editable hero name, level + XP bar, and ⚡ Combat Power shown in the
   camp; an Attributes modal distributes 3 points/level across STR (damage + AFK), VIT (max HP),
   AGI (dodge), RES (damage resist). All persisted.

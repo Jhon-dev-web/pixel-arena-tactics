@@ -1827,3 +1827,138 @@ body {
   object-fit: contain;
   image-rendering: pixelated;
 }
+
+/* ===== inventory modal ===== */
+.inventory-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 82vh;
+}
+.inv-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 2px;
+  align-content: start;
+}
+.inv-slot {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1220;
+  border: 1px solid #3a2a4a;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+.inv-slot.active {
+  border-color: #ffd76a;
+  box-shadow: 0 0 6px rgba(255, 215, 106, 0.5);
+}
+.inv-slot.empty {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: #241a30;
+  cursor: default;
+}
+.inv-icon {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.inv-icon img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.inv-qty {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: calc(var(--font-size) - 5px);
+  color: #ffd76a;
+  text-shadow: 0 1px 0 #000;
+}
+.inv-detail {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+.inv-detail-name {
+  font-size: var(--font-size);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inv-detail-desc {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.inv-detail-empty {
+  font-size: calc(var(--font-size) - 2px);
+  color: #8a7aa8;
+  margin: auto;
+}
+.inv-detail .craft-btn {
+  margin-top: 4px;
+}
+.mat-icon-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.mat-icon.shard {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* --- toast --- */
+.toast {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  font-family: inherit;
+  font-size: var(--font-size);
+  color: #ffd76a;
+  background: rgba(20, 14, 28, 0.95);
+  border: 2px solid #8a6a3a;
+  border-radius: 10px;
+  padding: 10px 16px;
+  box-shadow: 0 4px 0 #000;
+  animation: toastIn 0.2s ease-out;
+  white-space: nowrap;
+}
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

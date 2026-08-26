@@ -1,12 +1,14 @@
 import Assets from '../assets.json';
 import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
-import { GEAR, GEAR_SLOTS, GearItem, gearBySlot } from '../game/gear';
+import { GEAR, GEAR_SLOTS, GearItem, gearBySlot, getGear } from '../game/gear';
 import { MaterialId, hasMaterials, materialIconUrl } from '../game/materials';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
 const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
+
+const slotIcon = (g: GearItem): string => (g.slot === 'weapon' ? '⚔️' : g.slot === 'armor' ? '🛡️' : '💍');
 
 function rarityIcon(key: string): string {
   switch (key) {
@@ -33,7 +35,15 @@ export default function ForgeModal({
   onEquip: (id: string) => void;
   onClose: () => void;
 }) {
-  const canForge = (item: GearItem) => save.gold >= item.cost && hasMaterials(save.materials, item.recipe);
+  const canForge = (item: GearItem): boolean => {
+    if (save.gold < item.cost) return false;
+    if (!hasMaterials(save.materials, item.recipe?.materials)) return false;
+    for (const [itemId, need] of Object.entries(item.recipe?.items ?? {})) {
+      if ((save.inventory[itemId] ?? 0) < (need as number)) return false;
+    }
+    if ((item.recipe?.shards ?? 0) > 0 && save.shards < (item.recipe?.shards ?? 0)) return false;
+    return true;
+  };
 
   return (
     <div className="modal-backdrop">
@@ -49,7 +59,7 @@ export default function ForgeModal({
               <div className="gear-section" key={slot}>
                 <div className="gear-section-title">{gearText(slot)}</div>
                 {items.map((item) => {
-                  const owned = save.owned.includes(item.id);
+                  const owned = (save.inventory[item.id] ?? 0) > 0;
                   const equipped = save.equipped[item.slot] === item.id;
                   const ok = canForge(item);
                   return (
@@ -67,33 +77,52 @@ export default function ForgeModal({
                           )}
                         </div>
                         <span className="craft-desc">{gearText(item.descKey)}</span>
-                        {!owned && (
-                          <div className="craft-req">
-                            <span className="req-item">
-                              <span className="mat-icon">
-                                <img src={Assets.icons.gold.url} alt="" />
+                        <div className="craft-req">
+                          <span className="req-item">
+                            <span className="mat-icon">
+                              <img src={Assets.icons.gold.url} alt="" />
+                            </span>
+                            <span className={`req-amount${save.gold < item.cost ? ' missing' : ''}`}>{item.cost}</span>
+                          </span>
+                          {Object.entries(item.recipe?.items ?? {}).map(([itemId, count]) => {
+                            const need = count as number;
+                            const have = save.inventory[itemId] ?? 0;
+                            const g = getGear(itemId);
+                            return (
+                              <span className="req-item" key={`item-${itemId}`}>
+                                <span className="req-plus">+</span>
+                                <span className="mat-icon">{slotIcon(g)}</span>
+                                <span className={`req-amount${have < need ? ' missing' : ''}`}>
+                                  {gearText(g.nameKey)}: {have}/{need}
+                                </span>
                               </span>
-                              <span className={`req-amount${save.gold < item.cost ? ' missing' : ''}`}>
-                                {item.cost}
+                            );
+                          })}
+                          {Object.entries(item.recipe?.materials ?? {}).map(([mid, count]) => {
+                            const need = count as number;
+                            const have = save.materials[mid as MaterialId] ?? 0;
+                            return (
+                              <span className="req-item" key={`mat-${mid}`}>
+                                <span className="req-plus">+</span>
+                                <span className="mat-icon">
+                                  <img src={materialIconUrl(mid as MaterialId)} alt="" />
+                                </span>
+                                <span className={`req-amount${have < need ? ' missing' : ''}`}>
+                                  {need}× {matText(`mat_${mid}`)}
+                                </span>
+                              </span>
+                            );
+                          })}
+                          {(item.recipe?.shards ?? 0) > 0 && (
+                            <span className="req-item">
+                              <span className="req-plus">+</span>
+                              <span className="mat-icon shard">🔷</span>
+                              <span className={`req-amount${save.shards < (item.recipe?.shards ?? 0) ? ' missing' : ''}`}>
+                                {item.recipe?.shards}× Shards
                               </span>
                             </span>
-                            {Object.entries(item.recipe ?? {}).map(([mid, count]) => {
-                              const need = count as number;
-                              const have = save.materials[mid as MaterialId] ?? 0;
-                              return (
-                                <span className="req-item" key={mid}>
-                                  <span className="req-plus">+</span>
-                                  <span className="mat-icon">
-                                    <img src={materialIconUrl(mid as MaterialId)} alt="" />
-                                  </span>
-                                  <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                                    {need}× {matText(`mat_${mid}`)}
-                                  </span>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                       {equipped ? (
                         <button className="craft-btn equipped" disabled data-ui>

@@ -106,7 +106,19 @@
     "mat_iron": "Iron Ingot",
     "mat_steel": "Steel Bar",
     "mat_leather": "Tanned Leather",
-    "mat_essence": "Arcane Essence"
+    "mat_essence": "Arcane Essence",
+    "mat_dragon_scales": "Dragon Scales"
+  },
+  "inventory": {
+    "title": "Bag",
+    "all": "All",
+    "equipment": "Equipment",
+    "materials": "Materials",
+    "equip": "EQUIP",
+    "unequip": "UNEQUIP",
+    "equipped": "EQUIPPED",
+    "hint": "Select an item to see details",
+    "materialDesc": "Crafting material"
   },
   "shop": {
     "title": "🛒 Shop",
