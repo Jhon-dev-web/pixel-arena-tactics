@@ -1,5 +1,5 @@
 import T from './tunables';
-import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, getEquipped, sanitizeSaveInventory } from './gear';
+import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, refineLevel, sanitizeSaveInventory } from './gear';
 import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
 import { Materials, emptyMaterials } from './materials';
 
@@ -46,6 +46,7 @@ export interface SaveData {
   armorLevel: number;
   inventory: Record<string, number>;
   equipped: EquippedGear;
+  upgrades: Record<string, number>;
   heroName: string;
   str: number;
   vit: number;
@@ -131,27 +132,28 @@ function trimDec(v: number): string {
 
 export function playerMaxHp(save: SaveData): number {
   const { armor } = getEquipped(save.equipped);
+  const armorLvl = refineLevel(save.upgrades, save.equipped.armor);
   return (
     T.progression.playerBaseHp +
     (save.armorLevel - 1) * T.progression.armorHpPerLvl +
-    (armor?.maxHp ?? 0) +
+    effectiveMaxHp(armor, armorLvl) +
     (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
     save.vit * T.advanced.vitHpPerPoint
   );
 }
 
 export function computeCP(save: SaveData): number {
-  const { weapon } = getEquipped(save.equipped);
-  return Math.round(
+  const { weapon, armor } = getEquipped(save.equipped);
+  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
+  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
+  const totalDamage =
     (T.combat.attackMin + T.combat.attackMax) / 2 +
-    (weapon?.damage ?? 0) +
-    save.str * 3 +
-    save.vit * 3 +
-    save.agi * 2 +
-    save.res * 2 +
-    playerMaxHp(save) / 10 +
-    playerLevel(save.xp) * 5,
-  );
+    effectiveDamage(weapon, wLvl) +
+    save.str * T.advanced.strDmgPerPoint;
+  const totalMaxHp = playerMaxHp(save);
+  const totalDefense = (effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint) * 100;
+  const totalCrit = effectiveCrit(weapon, wLvl) * 100;
+  return Math.floor(totalDamage * 1.5 + totalMaxHp * 0.2 + totalDefense * 2 + totalCrit * 3);
 }
 
 export function effectiveAttackStamina(save: SaveData): number {
@@ -209,6 +211,8 @@ export function resolveTurn(
   const { weapon, armor, relic } = getEquipped(save.equipped);
   const attackStamina = Math.max(0, T.combat.attackStamina - (relic?.attackStaminaReduction ?? 0));
   const critMult = T.combat.critMult + (relic?.critMultBonus ?? 0);
+  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
+  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
 
   const playerEvents: CombatEvent[] = [];
   const enemyEvents: CombatEvent[] = [];
@@ -234,10 +238,10 @@ export function resolveTurn(
         dmg =
           randInt(T.combat.attackMin, T.combat.attackMax) +
           upgradeBonus +
-          (weapon?.damage ?? 0) +
+          effectiveDamage(weapon, wLvl) +
           save.str * T.advanced.strDmgPerPoint;
         if (cheats?.elixir) dmg = Math.round(dmg * (1 + T.advanced.elixirDamageBonus));
-        const randomCrit = Math.random() < (weapon?.critChance ?? 0);
+        const randomCrit = Math.random() < effectiveCrit(weapon, wLvl);
         crit = pMid.focusReady || randomCrit;
         if (crit) {
           dmg = Math.round(dmg * critMult);
@@ -287,7 +291,7 @@ export function resolveTurn(
         enemyEvents.push({ target: 'enemy', kind: 'reflect', value: reflected });
       }
     }
-    d = Math.round(d * (1 - ((armor?.resistance ?? 0) + save.res * T.advanced.resResistPerPoint)));
+    d = Math.round(d * (1 - (effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint)));
     enemyEvents.push({ target: 'player', kind, value: d });
     return d;
   };
@@ -355,6 +359,7 @@ export function defaultSave(): SaveData {
     armorLevel: 1,
     inventory: { ...DEFAULT_INVENTORY },
     equipped: { ...DEFAULT_EQUIPPED },
+    upgrades: {},
     heroName: 'Hero',
     str: 0,
     vit: 0,
@@ -378,12 +383,18 @@ export function loadSave(): SaveData {
       const gear = sanitizeSaveInventory(inventory, parsed.equipped ?? base.equipped);
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
       if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
+      const upgrades: Record<string, number> = {};
+      for (const [id, lvl] of Object.entries(parsed.upgrades ?? {})) {
+        const n = Math.floor(Number(lvl));
+        if (getGear(id) && Number.isFinite(n) && n > 0) upgrades[id] = Math.min(8, n);
+      }
       return {
         ...base,
         ...parsed,
         xp,
         inventory: gear.inventory,
         equipped: gear.equipped,
+        upgrades,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
       };

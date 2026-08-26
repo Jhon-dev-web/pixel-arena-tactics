@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
-import { GEAR, GearItem, getGear } from '../game/gear';
+import { GEAR, GearItem, getGear, refineLevel } from '../game/gear';
 import { MATERIALS, MaterialId } from '../game/materials';
 import GearIcon from './GearIcon';
 
 const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
 const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
+
+const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 
@@ -95,6 +97,7 @@ export default function InventoryModal({
                   <GearIcon item={selectedGear} />
                 </span>
                 {gearText(selectedGear.nameKey)}
+                <span className="refine-tag">{refineTag(refineLevel(save.upgrades, selectedGear.id))}</span>
                 <span className="inv-qty">×{save.inventory[selectedGear.id]}</span>
               </div>
               <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>

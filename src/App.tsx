@@ -17,7 +17,7 @@ import {
   tickBurn,
   tickPoison,
 } from './game/engine';
-import { GEAR, getEquipped, getGear } from './game/gear';
+import { GEAR, getEquipped, getGear, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
 import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
 import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier } from './game/sprites';
@@ -258,6 +258,38 @@ function App() {
     });
     playSfx('victory');
     showToast(Text.forge.toBag.replace('{n}', gearText(item.nameKey)));
+  };
+
+  const upgradeItem = (id: string) => {
+    const item = getGear(id);
+    if (!item) return;
+    const s = saveRef.current;
+    const lvl = refineLevel(s.upgrades, id);
+    if (lvl >= MAX_REFINE) return;
+    const cost = upgradeCost(item, lvl);
+    if (s.gold < cost.gold) return;
+    if (!hasMaterials(s.materials, cost.materials)) return;
+    if ((cost.shards ?? 0) > 0 && s.shards < (cost.shards ?? 0)) return;
+
+    const mats = { ...s.materials };
+    for (const [mid, count] of Object.entries(cost.materials ?? {})) {
+      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
+    }
+    const success = Math.random() < upgradeChance(lvl);
+    setSaveBoth({
+      ...s,
+      gold: s.gold - cost.gold,
+      materials: mats,
+      shards: s.shards - (cost.shards ?? 0),
+      upgrades: success ? { ...s.upgrades, [id]: lvl + 1 } : s.upgrades,
+    });
+    if (success) {
+      playSfx('victory');
+      showToast(`✓ ${gearText(item.nameKey)} +${lvl + 1}!`);
+    } else {
+      playSfx('block');
+      showToast('✗ Upgrade failed');
+    }
   };
 
   const attrChange = (attr: 'str' | 'vit' | 'agi' | 'res', delta: number) => {
@@ -765,6 +797,7 @@ function App() {
         <ForgeModal
           save={save}
           onForge={forgeItem}
+          onUpgrade={upgradeItem}
           onClose={() => {
             playSfx('click');
             setForgeOpen(false);

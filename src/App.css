@@ -2104,6 +2104,22 @@ body {
 .hero-cp-icon {
   line-height: 1;
 }
+.forge-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.refine-tag {
+  color: #ffd76a;
+  font-size: calc(var(--font-size) - 2px);
+  margin-left: 4px;
+}
+.upgrade-chance {
+  display: block;
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+  margin-top: 2px;
+}
 .distribute-btn {
   width: 100%;
   font-family: inherit;

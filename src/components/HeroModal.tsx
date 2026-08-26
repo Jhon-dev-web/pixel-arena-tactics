@@ -2,12 +2,13 @@ import { useState } from 'react';
 import T from '../game/tunables';
 import Text from '../locales/en.json';
 import { SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
-import { getEquipped } from '../game/gear';
+import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, refineLevel } from '../game/gear';
 import GearIcon from './GearIcon';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
 const attrsText = (k: string): string => (Text.attributes as Record<string, string>)[k];
+const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
 type AttrKey = 'str' | 'vit' | 'agi' | 'res';
 
@@ -30,13 +31,15 @@ export default function HeroModal({
   const [tab, setTab] = useState<'equip' | 'attrs'>('equip');
   const { weapon, armor } = getEquipped(save.equipped);
   const level = playerLevel(save.xp);
+  const wLvl = refineLevel(save.upgrades, weapon.id);
+  const aLvl = refineLevel(save.upgrades, armor.id);
 
   const maxHp = playerMaxHp(save);
   const totalDmg = Math.round(
-    (T.combat.attackMin + T.combat.attackMax) / 2 + (weapon?.damage ?? 0) + save.str * T.advanced.strDmgPerPoint,
+    (T.combat.attackMin + T.combat.attackMax) / 2 + effectiveDamage(weapon, wLvl) + save.str * T.advanced.strDmgPerPoint,
   );
-  const defensePct = Math.round(((armor?.resistance ?? 0) + save.res * T.advanced.resResistPerPoint) * 100);
-  const critPct = Math.round((weapon?.critChance ?? 0) * 100);
+  const defensePct = Math.round((effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint) * 100);
+  const critPct = Math.round(effectiveCrit(weapon, wLvl) * 100);
 
   const totalPoints = level * 3;
   const spent = save.str + save.vit + save.agi + save.res;
@@ -68,9 +71,12 @@ export default function HeroModal({
                   <GearIcon item={weapon} />
                 </span>
                 <div className="hero-equip-info">
-                  <span className="hero-equip-name">{gearText(weapon.nameKey)}</span>
+                  <span className="hero-equip-name">
+                    {gearText(weapon.nameKey)}
+                    <span className="refine-tag">{refineTag(refineLevel(save.upgrades, weapon.id))}</span>
+                  </span>
                   <span className="hero-equip-stat damage">
-                    +{weapon?.damage ?? 0} {Text.profile.damage}
+                    +{effectiveDamage(weapon, wLvl)} {Text.profile.damage}
                   </span>
                 </div>
               </div>
@@ -79,9 +85,12 @@ export default function HeroModal({
                   <GearIcon item={armor} />
                 </span>
                 <div className="hero-equip-info">
-                  <span className="hero-equip-name">{gearText(armor.nameKey)}</span>
+                  <span className="hero-equip-name">
+                    {gearText(armor.nameKey)}
+                    <span className="refine-tag">{refineTag(refineLevel(save.upgrades, armor.id))}</span>
+                  </span>
                   <span className="hero-equip-stat hp">
-                    +{armor?.maxHp ?? 0} {Text.profile.hp}
+                    +{effectiveMaxHp(armor, aLvl)} {Text.profile.hp}
                   </span>
                 </div>
               </div>

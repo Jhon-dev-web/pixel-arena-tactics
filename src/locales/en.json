@@ -153,6 +153,11 @@
   "forge": {
     "title": "⚒️ Forge",
     "forge": "FORGE",
+    "forgeTab": "FORGE",
+    "upgradeTab": "⬆️ UPGRADE",
+    "upgrade": "UPGRADE",
+    "max": "MAX",
+    "chance": "Chance: {n}%",
     "forged": "✓ Forged!",
     "toBag": "+1 {n} sent to Bag!",
     "equip": "EQUIP",
