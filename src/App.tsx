@@ -257,7 +257,7 @@ function App() {
       shards: s.shards - (recipe.shards ?? 0),
     });
     playSfx('victory');
-    showToast(`✓ Forged ${gearText(item.nameKey)}`);
+    showToast(Text.forge.toBag.replace('{n}', gearText(item.nameKey)));
   };
 
   const attrChange = (attr: 'str' | 'vit' | 'agi' | 'res', delta: number) => {
@@ -765,7 +765,6 @@ function App() {
         <ForgeModal
           save={save}
           onForge={forgeItem}
-          onEquip={equipGear}
           onClose={() => {
             playSfx('click');
             setForgeOpen(false);

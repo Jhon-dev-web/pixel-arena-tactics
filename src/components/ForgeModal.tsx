@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Assets from '../assets.json';
 import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
@@ -28,14 +29,14 @@ const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('m
 export default function ForgeModal({
   save,
   onForge,
-  onEquip,
   onClose,
 }: {
   save: SaveData;
   onForge: (id: string) => void;
-  onEquip: (id: string) => void;
   onClose: () => void;
 }) {
+  const [justForged, setJustForged] = useState<string | null>(null);
+
   const canForge = (item: GearItem): boolean => {
     if (save.gold < item.cost) return false;
     if (!hasMaterials(save.materials, item.recipe?.materials)) return false;
@@ -44,6 +45,12 @@ export default function ForgeModal({
     }
     if ((item.recipe?.shards ?? 0) > 0 && save.shards < (item.recipe?.shards ?? 0)) return false;
     return true;
+  };
+
+  const handleForge = (id: string) => {
+    onForge(id);
+    setJustForged(id);
+    window.setTimeout(() => setJustForged(null), 1500);
   };
 
   return (
@@ -60,9 +67,8 @@ export default function ForgeModal({
               <div className="gear-section" key={slot}>
                 <div className="gear-section-title">{gearText(slot)}</div>
                 {items.map((item) => {
-                  const owned = (save.inventory[item.id] ?? 0) > 0;
-                  const equipped = save.equipped[item.slot] === item.id;
                   const ok = canForge(item);
+                  const forged = justForged === item.id;
                   return (
                     <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
                       <span className="craft-icon">
@@ -130,19 +136,14 @@ export default function ForgeModal({
                           )}
                         </div>
                       </div>
-                      {equipped ? (
-                        <button className="craft-btn equipped" disabled data-ui>
-                          {Text.forge.equipped}
-                        </button>
-                      ) : owned ? (
-                        <button className="craft-btn" onClick={() => onEquip(item.id)} data-ui>
-                          {Text.forge.equip}
-                        </button>
-                      ) : (
-                        <button className="craft-btn forge" onClick={() => onForge(item.id)} disabled={!ok} data-ui>
-                          {Text.forge.forge}
-                        </button>
-                      )}
+                      <button
+                        className={`craft-btn forge${forged ? ' forged' : ''}`}
+                        onClick={() => handleForge(item.id)}
+                        disabled={!ok}
+                        data-ui
+                      >
+                        {forged ? Text.forge.forged : Text.forge.forge}
+                      </button>
                     </div>
                   );
                 })}

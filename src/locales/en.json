@@ -136,6 +136,8 @@
   "forge": {
     "title": "⚒️ Forge",
     "forge": "FORGE",
+    "forged": "✓ Forged!",
+    "toBag": "+1 {n} sent to Bag!",
     "equip": "EQUIP",
     "equipped": "EQUIPPED",
     "cost": "Cost",

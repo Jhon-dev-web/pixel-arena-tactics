@@ -2040,3 +2040,8 @@ body {
 .craft-card.rarity-dragon {
   border-left: 3px solid #ff9a3a;
 }
+.craft-btn.forged {
+  color: #6fe08a;
+  border-color: #2fbf4f;
+  background: linear-gradient(180deg, #1f3a24, #14251a);
+}
