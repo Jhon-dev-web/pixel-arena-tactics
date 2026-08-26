@@ -10,10 +10,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     },
@@ -27,10 +39,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     },
@@ -44,10 +68,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     },
@@ -61,10 +97,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     },
@@ -78,10 +126,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     },
@@ -95,10 +155,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     },
@@ -112,10 +184,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     },
@@ -129,10 +213,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     },
@@ -146,10 +242,22 @@
       "gridRows": 4,
       "gridCols": 4,
       "animations": {
-        "idle": { "start": 0, "end": 3 },
-        "attack": { "start": 4, "end": 7 },
-        "hurt": { "start": 8, "end": 11 },
-        "death": { "start": 12, "end": 15 }
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
       },
       "metadata": {}
     }
@@ -170,69 +278,96 @@
     "slash": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-cdb7b473-4243-4d58-ba65-dace833e143b.ogg",
       "description": "Retro 8-bit sword slash whoosh (Attack button)",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     },
     "hit": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-5b192c42-263c-4a25-ae81-ed3cfba446c9.ogg",
       "description": "Solid 16-bit punch/impact (unshielded hit)",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     },
     "block": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-0c8edcf5-012b-4b38-99c1-af3b6b56d218.ogg",
       "description": "Heavy metallic clank / shield block parry",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     },
     "focus": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-9dca7804-4d4f-4906-8e24-b5bf76a836e1.ogg",
       "description": "Rising magical power-up chime (Focus button)",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     },
     "crit": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-0f3bab40-401c-42df-b7ba-b418f2f653f9.ogg",
       "description": "Powerful explosive blast (critical hit)",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     },
     "victory": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-294d3967-59a9-4a12-9472-6e6281c71098.ogg",
       "description": "Triumphant victory fanfare with coin sparkle",
-      "metadata": { "duration": 3 }
+      "metadata": {
+        "duration": 3
+      }
     },
     "click": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-a3ac77fb-54b5-4258-96b6-cf9acbc4aeb9.ogg",
       "description": "Subtle UI click blip (shop open/close/buy)",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     },
     "boss_intro": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-5d936c02-edd5-4e48-9cc6-0b37764c9451.ogg",
       "description": "Ominous boss entrance horn/drone",
-      "metadata": { "duration": 3 }
+      "metadata": {
+        "duration": 3
+      }
     },
     "slam": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-a71a8c88-3b2e-4501-a5ba-e9ec100366d9.ogg",
       "description": "Massive heavy slam impact (boss)",
-      "metadata": { "duration": 2 }
+      "metadata": {
+        "duration": 2
+      }
     },
     "dodge": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-335436c3-9604-49cf-abbe-3ade39dcdee1.ogg",
       "description": "Quick dodge/miss whoosh",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     },
     "curse": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-2b5d2814-54da-43a1-a12e-7d9eedea1d1d.ogg",
       "description": "Dark spell cast / curse hex (warlock)",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     },
     "charge": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-06c0067a-8f01-45f9-b8a6-647377e86f60.ogg",
       "description": "Rising charge-up warning (boss slam windup)",
-      "metadata": { "duration": 1 }
+      "metadata": {
+        "duration": 1
+      }
     }
   },
   "music": {
     "ambient": {
       "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/audio-99573780-7d0a-484b-95bc-e854761a2997.ogg",
       "description": "Dark fantasy dungeon ambient loop (8-bit chipmusic pad + torch/wind)",
-      "metadata": { "duration": 60, "loop": true }
+      "metadata": {
+        "duration": 60,
+        "loop": true
+      }
     }
   },
   "characters": {
