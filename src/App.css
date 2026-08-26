@@ -1672,6 +1672,7 @@ body {
 .craft-name {
   font-size: var(--font-size);
   color: #fff;
+  white-space: nowrap;
 }
 .craft-desc {
   font-size: calc(var(--font-size) - 3px);
@@ -1860,6 +1861,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 .inv-detail-desc {
   font-size: calc(var(--font-size) - 3px);
@@ -2060,6 +2062,7 @@ body {
 .hero-equip-name {
   font-size: var(--font-size);
   color: #fff;
+  white-space: nowrap;
 }
 .hero-equip-stat {
   font-size: calc(var(--font-size) - 3px);
