@@ -29,6 +29,7 @@ import AttributesModal from './components/AttributesModal';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
+import Campfire from './components/Campfire';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
 import Text from './locales/en.json';
@@ -588,17 +589,20 @@ function App() {
         />
 
         {scene === 'camp' ? (
-          <div className="camp-actions">
-            <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
-              {Text.ui.forge}
-            </button>
-            <button className="camp-main-btn" onClick={enterArena} data-ui>
-              {Text.camp.enterArena}
-            </button>
-            <button className="camp-side-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
-              {Text.ui.shop}
-            </button>
-          </div>
+          <>
+            <Campfire />
+            <div className="camp-actions">
+              <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
+                {Text.ui.forge}
+              </button>
+              <button className="camp-main-btn" onClick={enterArena} data-ui>
+                {Text.camp.enterArena}
+              </button>
+              <button className="camp-side-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
+                {Text.ui.shop}
+              </button>
+            </div>
+          </>
         ) : (
           <>
             <button className="return-camp" onClick={returnToCamp} data-ui>
