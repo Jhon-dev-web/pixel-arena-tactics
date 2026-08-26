@@ -154,24 +154,6 @@ export function computeCP(save: SaveData): number {
   );
 }
 
-export function afkGoldRate(save: SaveData): number {
-  const level = playerLevel(save.xp);
-  return (
-    T.advanced.afkGoldPerSec +
-    Math.floor(level * T.advanced.afkGoldLevelMult) +
-    Math.floor(save.str * T.advanced.afkGoldStrMult)
-  );
-}
-
-export function afkXpRate(save: SaveData): number {
-  const level = playerLevel(save.xp);
-  return (
-    T.advanced.afkXpPerSec +
-    Math.floor(level * T.advanced.afkXpLevelMult) +
-    Math.floor(save.str * T.advanced.afkXpStrMult)
-  );
-}
-
 export function effectiveAttackStamina(save: SaveData): number {
   const { relic } = getEquipped(save.equipped);
   return Math.max(0, T.combat.attackStamina - (relic?.attackStaminaReduction ?? 0));

@@ -7,25 +7,18 @@ Entry point. Mounts `<App />` into `#root` with React 18 `createRoot` under `Str
 ## `src/App.tsx`
 
 Root component. Holds combat state (player/enemy fighters, phase, animations, floating text, bursts),
-the turn orchestrator `doTurn`, the AFK accumulation loop, scene switching (`camp`/`arena`), the
-admin/cheat handlers, and renders the shared top bar, camp-or-arena content, and the victory/defeat
-popups. Uses refs to mirror state for the async turn flow.
+the turn orchestrator `doTurn`, scene switching (`camp`/`arena`), the
+admin/cheat handlers, and renders the shared top bar, camp action bar / arena content, and the
+victory/defeat popups. Uses refs to mirror state for the async turn flow.
 
 ## `src/components/TopHud.tsx`
 
-Compact top HUD: avatar + editable hero name (pencil), `Lv. N` + thin XP bar, gold `⚡ CP`, and
-right-aligned gold/shards icons with `⚙️` (admin) and `🔊` (mute) buttons.
+Compact top HUD: clickable avatar (opens Attributes) + editable hero name (pencil), `Lv. N` + thin XP
+bar, gold `⚡ CP` (center), and right-aligned gold/shards icons with `⚙️` (admin) and `🔊` (mute).
 
-## `src/components/BottomNav.tsx`
+## `src/components/ResultPopup.tsx`
 
-Fixed bottom navigation bar with 4 tabs: `Base / AFK`, `Forge`, `Shop`, `Attributes` — the primary
-navigation (opens the camp, forge/shop/attributes modals).
-
-## `src/components/CampScene.tsx`
-
-The AFK base screen: the hero (current armor sprite) trains by swinging at the dummy (no heavy
-panel/name input), with subtle gold/XP-per-second readouts, an elixir pill, and the
-`[⚔️ ENTER DUNGEON]` button.
+The victory/defeat modal (loot + Next Duel / Revive).
 
 ## `src/components/ShopModal.tsx`
 
@@ -41,17 +34,9 @@ material requirements, and exposes FORGE / EQUIP / EQUIPPED states.
 
 STR/VIT/AGI/RES allocation (3 points per level) with ± buttons and the ⚡ CP readout.
 
-## `src/components/WeaponOverlay.tsx`
-
-Renders the equipped weapon sprite over the character (idle / one-shot swing / training loop).
-
 ## `src/components/CombatFx.tsx`
 
 Floating-text `floatLabel`, the `Burst` particle component, and the `FloatState`/`BurstState` types.
-
-## `src/components/ResultPopup.tsx`
-
-The victory/defeat modal (loot + Next Duel / Revive).
 
 ## `src/components/AdminModal.tsx`
 

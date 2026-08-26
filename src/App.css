@@ -1443,3 +1443,64 @@ body {
 .controls {
   bottom: 62px;
 }
+
+/* ===== cleanup: camp action bar (no bottom nav) ===== */
+.avatar {
+  padding: 0;
+  cursor: pointer;
+}
+.camp-actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 8px;
+  background: linear-gradient(180deg, rgba(10, 6, 16, 0), rgba(10, 6, 16, 0.75));
+}
+.camp-side-btn {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  text-transform: uppercase;
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a1108;
+  white-space: nowrap;
+}
+.camp-side-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a1108;
+}
+.camp-main-btn {
+  font-family: inherit;
+  font-size: var(--font-size);
+  color: #fff;
+  background: linear-gradient(180deg, #e0483a, #8a1f16);
+  border: 2px solid #000;
+  border-radius: 12px;
+  padding: 15px 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  text-shadow: 0 2px 0 #000;
+  white-space: nowrap;
+}
+.camp-main-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #000;
+}
+.return-camp {
+  top: 58px;
+}
+.arena {
+  bottom: calc(var(--action-h) + 84px);
+}
+.controls {
+  bottom: 12px;
+}

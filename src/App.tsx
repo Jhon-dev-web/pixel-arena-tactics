@@ -4,8 +4,6 @@ import {
   CombatEvent,
   FighterState,
   PlayerAction,
-  afkGoldRate,
-  afkXpRate,
   effectiveAttackStamina,
   defaultSave,
   loadSave,
@@ -24,7 +22,6 @@ import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
 import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier } from './game/sprites';
 import SpriteSheet from './components/SpriteSheet';
-import CampScene from './components/CampScene';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
 import ForgeModal from './components/ForgeModal';
@@ -32,7 +29,6 @@ import AttributesModal from './components/AttributesModal';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
-import BottomNav from './components/BottomNav';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
 import Text from './locales/en.json';
@@ -125,28 +121,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (scene !== 'camp') return;
-    let goldAcc = 0;
-    let xpAcc = 0;
-    const id = window.setInterval(() => {
-      goldAcc += afkGoldRate(saveRef.current);
-      if (playerLevel(saveRef.current.xp) < 100) xpAcc += afkXpRate(saveRef.current);
-      const g = Math.floor(goldAcc);
-      const x = Math.floor(xpAcc);
-      if (g > 0 || x > 0) {
-        goldAcc -= g;
-        xpAcc -= x;
-        setSaveBoth({
-          ...saveRef.current,
-          gold: saveRef.current.gold + g,
-          xp: saveRef.current.xp + x,
-        });
-      }
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [scene]);
-
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'F2') {
         e.preventDefault();
@@ -219,10 +193,6 @@ function App() {
     setElixirBoth(false);
     startDuel();
     setScene('camp');
-  };
-
-  const goBase = () => {
-    if (scene === 'arena') returnToCamp();
   };
 
   const buyPotion = (id: 'hp' | 'stamina' | 'elixir') => {
@@ -394,6 +364,7 @@ function App() {
     const isBoss = enemyKindRef.current === 'boss';
     const gold = randInt(T.progression.goldMin, T.progression.goldMax) * (isBoss ? 3 : 1);
     const shards = isBoss ? 1 : 0;
+    const xp = playerLevel(saveRef.current.xp) >= 100 ? 0 : T.advanced.victoryXp;
     setLoot({ gold, shards });
     playSfx('victory');
     setSaveBoth({
@@ -401,6 +372,7 @@ function App() {
       gold: saveRef.current.gold + gold,
       victories: saveRef.current.victories + 1,
       shards: saveRef.current.shards + shards,
+      xp: saveRef.current.xp + xp,
     });
     setPhase('victory');
   };
@@ -611,13 +583,27 @@ function App() {
           spriteUrl={playerSpriteUrl}
           onToggleMute={toggleMute}
           onOpenAdmin={() => setAdminOpen(true)}
+          onOpenAttributes={() => setAttrsOpen(true)}
           onRename={renameHero}
         />
 
         {scene === 'camp' ? (
-          <CampScene save={save} onEnterArena={enterArena} />
+          <div className="camp-actions">
+            <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
+              {Text.ui.forge}
+            </button>
+            <button className="camp-main-btn" onClick={enterArena} data-ui>
+              {Text.camp.enterArena}
+            </button>
+            <button className="camp-side-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
+              {Text.ui.shop}
+            </button>
+          </div>
         ) : (
           <>
+            <button className="return-camp" onClick={returnToCamp} data-ui>
+              {Text.camp.returnCamp}
+            </button>
             <div className="arena">
           <div className="fighter player">
             <div className="bars">
@@ -706,14 +692,6 @@ function App() {
         </footer>
           </>
         )}
-
-        <BottomNav
-          baseActive={scene === 'camp'}
-          onBase={goBase}
-          onForge={() => { playSfx('click'); setForgeOpen(true); }}
-          onShop={() => { playSfx('click'); setShopOpen(true); }}
-          onAttributes={() => { playSfx('click'); setAttrsOpen(true); }}
-        />
       </div>
 
       {shopOpen && (

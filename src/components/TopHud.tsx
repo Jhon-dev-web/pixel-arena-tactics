@@ -17,6 +17,7 @@ export default function TopHud({
   spriteUrl,
   onToggleMute,
   onOpenAdmin,
+  onOpenAttributes,
   onRename,
 }: {
   save: SaveData;
@@ -24,6 +25,7 @@ export default function TopHud({
   spriteUrl: string;
   onToggleMute: () => void;
   onOpenAdmin: () => void;
+  onOpenAttributes: () => void;
   onRename: (name: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -45,9 +47,9 @@ export default function TopHud({
   return (
     <header className="topbar">
       <div className="profile">
-        <div className="avatar">
+        <button className="avatar" onClick={onOpenAttributes} aria-label="Attributes" data-ui>
           <SpriteSheet src={spriteUrl} size="28px" row={0} />
-        </div>
+        </button>
         <div className="profile-info">
           <div className="profile-top">
             {editing ? (
