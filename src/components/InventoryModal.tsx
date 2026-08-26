@@ -3,11 +3,12 @@ import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
 import { GEAR, GearItem, getGear } from '../game/gear';
 import { MATERIALS, MaterialId } from '../game/materials';
+import GearIcon from './GearIcon';
 
 const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
 const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
 
-const slotIcon = (g: GearItem): string => (g.slot === 'weapon' ? '⚔️' : g.slot === 'armor' ? '🛡️' : '💍');
+const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 
 export default function InventoryModal({
   save,
@@ -57,11 +58,13 @@ export default function InventoryModal({
             gearItems.map((g) => (
               <button
                 key={g.id}
-                className={`inv-slot${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
+                className={`inv-slot ${rarityClass(g)}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
                 onClick={() => setSelected({ kind: 'gear', id: g.id })}
                 data-ui
               >
-                <span className="inv-icon">{slotIcon(g)}</span>
+                <span className="inv-icon">
+                  <GearIcon item={g} />
+                </span>
                 <span className="inv-qty">×{save.inventory[g.id]}</span>
               </button>
             ))}
@@ -88,7 +91,10 @@ export default function InventoryModal({
           {selectedGear ? (
             <>
               <div className="inv-detail-name">
-                {slotIcon(selectedGear)} {gearText(selectedGear.nameKey)}
+                <span className="inv-detail-icon">
+                  <GearIcon item={selectedGear} />
+                </span>
+                {gearText(selectedGear.nameKey)}
                 <span className="inv-qty">×{save.inventory[selectedGear.id]}</span>
               </div>
               <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>

@@ -3,12 +3,11 @@ import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
 import { GEAR, GEAR_SLOTS, GearItem, gearBySlot, getGear } from '../game/gear';
 import { MaterialId, hasMaterials, materialIconUrl } from '../game/materials';
+import GearIcon from './GearIcon';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
 const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
-
-const slotIcon = (g: GearItem): string => (g.slot === 'weapon' ? '⚔️' : g.slot === 'armor' ? '🛡️' : '💍');
 
 function rarityIcon(key: string): string {
   switch (key) {
@@ -23,6 +22,8 @@ function rarityIcon(key: string): string {
       return '';
   }
 }
+
+const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 
 export default function ForgeModal({
   save,
@@ -63,7 +64,10 @@ export default function ForgeModal({
                   const equipped = save.equipped[item.slot] === item.id;
                   const ok = canForge(item);
                   return (
-                    <div className="craft-card" key={item.id}>
+                    <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
+                      <span className="craft-icon">
+                        <GearIcon item={item} />
+                      </span>
                       <div className="craft-info">
                         <div className="craft-header">
                           <span className="craft-name">{gearText(item.nameKey)}</span>
@@ -91,7 +95,9 @@ export default function ForgeModal({
                             return (
                               <span className="req-item" key={`item-${itemId}`}>
                                 <span className="req-plus">+</span>
-                                <span className="mat-icon">{slotIcon(g)}</span>
+                                <span className="mat-icon">
+                                  <GearIcon item={g} />
+                                </span>
                                 <span className={`req-amount${have < need ? ' missing' : ''}`}>
                                   {gearText(g.nameKey)}: {have}/{need}
                                 </span>

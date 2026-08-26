@@ -435,5 +435,47 @@
       "description": "Scarlet dragon scales icon",
       "metadata": {}
     }
+  },
+  "gear_icons": {
+    "dagger": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787778655402.png",
+      "description": "Bronze dagger icon",
+      "metadata": {}
+    },
+    "sword_iron": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787778655680.png",
+      "description": "Iron short sword icon",
+      "metadata": {}
+    },
+    "sword_steel": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787778660782.png",
+      "description": "Steel greatsword icon",
+      "metadata": {}
+    },
+    "sword_dragon": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787778666397.png",
+      "description": "Dragon flameblade icon",
+      "metadata": {}
+    },
+    "armor_leather": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787778665057.png",
+      "description": "Leather armor icon",
+      "metadata": {}
+    },
+    "armor_iron": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787778676666.png",
+      "description": "Iron chainmail icon",
+      "metadata": {}
+    },
+    "armor_steel": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787778667444.png",
+      "description": "Steel plate armor icon",
+      "metadata": {}
+    },
+    "armor_dragon": {
+      "url": "https://agent8-games.verse8.io/0xb403fd66835cca17056ced56df7eadfe642c2e41/mcp-uploads/static-assets/item-1787778668006.png",
+      "description": "Dragon scale armor icon",
+      "metadata": {}
+    }
   }
 }
