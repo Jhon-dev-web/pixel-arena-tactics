@@ -39,6 +39,11 @@ STR/VIT/AGI/RES allocation (3 points per level) with ± buttons and the ⚡ CP r
 The bag/inventory modal: tabs (All / Equipment / Materials), a slot grid, item details, and
 Equip/Unequip actions.
 
+## `src/components/HeroModal.tsx`
+
+The hero profile modal (opened from the HUD avatar / `Lv. N`): equipped weapon + armor slots with
+sprite/name/stat, and consolidated calculated stats (Max HP, damage, defense, crit rate, CP).
+
 ## `src/components/CombatFx.tsx`
 
 Floating-text `floatLabel`, the `Burst` particle component, and the `FloatState`/`BurstState` types.

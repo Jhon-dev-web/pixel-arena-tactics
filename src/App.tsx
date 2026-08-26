@@ -27,6 +27,7 @@ import ShopModal from './components/ShopModal';
 import ForgeModal from './components/ForgeModal';
 import AttributesModal from './components/AttributesModal';
 import InventoryModal from './components/InventoryModal';
+import HeroModal from './components/HeroModal';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
@@ -72,6 +73,7 @@ function App() {
   const [forgeOpen, setForgeOpen] = useState(false);
   const [attrsOpen, setAttrsOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
+  const [heroOpen, setHeroOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [loot, setLoot] = useState<{ gold: number; shards: number } | null>(null);
   const [version, setVersion] = useState(0);
@@ -632,7 +634,7 @@ function App() {
           spriteUrl={playerSpriteUrl}
           onToggleMute={toggleMute}
           onOpenAdmin={() => setAdminOpen(true)}
-          onOpenAttributes={() => setAttrsOpen(true)}
+          onOpenProfile={() => setHeroOpen(true)}
           onOpenBag={() => setBagOpen(true)}
           onRename={renameHero}
         />
@@ -791,6 +793,17 @@ function App() {
           onClose={() => {
             playSfx('click');
             setBagOpen(false);
+          }}
+        />
+      )}
+
+      {heroOpen && (
+        <HeroModal
+          save={save}
+          onOpenAttributes={() => setAttrsOpen(true)}
+          onClose={() => {
+            playSfx('click');
+            setHeroOpen(false);
           }}
         />
       )}

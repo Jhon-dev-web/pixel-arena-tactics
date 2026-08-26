@@ -17,7 +17,7 @@ export default function TopHud({
   spriteUrl,
   onToggleMute,
   onOpenAdmin,
-  onOpenAttributes,
+  onOpenProfile,
   onOpenBag,
   onRename,
 }: {
@@ -26,7 +26,7 @@ export default function TopHud({
   spriteUrl: string;
   onToggleMute: () => void;
   onOpenAdmin: () => void;
-  onOpenAttributes: () => void;
+  onOpenProfile: () => void;
   onOpenBag: () => void;
   onRename: (name: string) => void;
 }) {
@@ -49,7 +49,7 @@ export default function TopHud({
   return (
     <header className="topbar">
       <div className="profile">
-        <button className="avatar" onClick={onOpenAttributes} aria-label="Attributes" data-ui>
+        <button className="avatar" onClick={onOpenProfile} aria-label="Profile" data-ui>
           <SpriteSheet src={spriteUrl} size="28px" row={0} />
         </button>
         <div className="profile-info">
@@ -71,7 +71,9 @@ export default function TopHud({
                 {save.heroName} <span className="pencil">✏️</span>
               </button>
             )}
-            <span className="level">{isMax ? 'Lv. MAX' : `Lv. ${level}`}</span>
+            <button className="level-btn" onClick={onOpenProfile} data-ui>
+              {isMax ? 'Lv. MAX' : `Lv. ${level}`}
+            </button>
           </div>
           <div className="xp-bar">
             <div className="xp-fill" style={{ width: `${xpPct}%` }} />

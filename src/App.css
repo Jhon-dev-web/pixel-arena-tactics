@@ -2045,3 +2045,88 @@ body {
   border-color: #2fbf4f;
   background: linear-gradient(180deg, #1f3a24, #14251a);
 }
+
+/* ===== hero profile modal ===== */
+.hero-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.hero-slots {
+  display: flex;
+  gap: 10px;
+}
+.hero-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3a2a4a;
+  border-radius: 10px;
+  text-align: center;
+}
+.hero-slot-label {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.hero-slot-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #14101c;
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.hero-slot-icon .gear-icon-img {
+  width: 80%;
+  height: 80%;
+}
+.hero-slot-icon .gear-icon-emoji {
+  font-size: 26px;
+}
+.hero-slot-name {
+  font-size: var(--font-size);
+  color: #fff;
+}
+.hero-slot-stat {
+  font-size: calc(var(--font-size) - 3px);
+  color: #6fe08a;
+}
+.hero-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hero-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+  font-size: calc(var(--font-size) - 1px);
+}
+.hero-stat-row span:first-child {
+  color: #d8c9a0;
+}
+.hero-stat-row span:last-child {
+  color: #ffd76a;
+}
+.level-btn {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 #000;
+}

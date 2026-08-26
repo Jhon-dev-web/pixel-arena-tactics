@@ -120,6 +120,17 @@
     "hint": "Select an item to see details",
     "materialDesc": "Crafting material"
   },
+  "profile": {
+    "weapon": "Weapon",
+    "armor": "Armor",
+    "damage": "Damage",
+    "hp": "HP",
+    "maxHp": "Max HP",
+    "defense": "Defense",
+    "critRate": "Crit Rate",
+    "cp": "Combat Power",
+    "attributes": "⚡ Distribute Attributes"
+  },
   "shop": {
     "title": "🛒 Shop",
     "potionHp": "Lesser Health Potion",
