@@ -1196,13 +1196,16 @@ body {
   top: 0;
   left: 0;
   right: 0;
+  width: 100%;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 7px 10px 9px;
+  padding: 6px 10px;
   z-index: 20;
-  background: linear-gradient(180deg, rgba(10, 6, 16, 0.9), rgba(10, 6, 16, 0));
+  background: rgba(10, 10, 15, 0.85);
+  border-bottom: 2px solid #5a422d;
 }
 .profile {
   display: flex;
@@ -1266,6 +1269,7 @@ body {
   font-size: calc(var(--font-size) - 2px);
   color: #b8a8d8;
   white-space: nowrap;
+  text-shadow: 0 1px 0 #000;
 }
 .cp {
   font-size: calc(var(--font-size) - 2px);
@@ -1451,17 +1455,16 @@ body {
 }
 .camp-actions {
   position: absolute;
-  bottom: 0;
+  bottom: 16px;
   left: 0;
   right: 0;
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  z-index: 5;
-  background: linear-gradient(180deg, rgba(10, 6, 16, 0), rgba(10, 6, 16, 0.75));
+  gap: 10px;
+  padding: 0 16px;
+  z-index: 50;
 }
 .camp-side-btn,
 .camp-main-btn {
