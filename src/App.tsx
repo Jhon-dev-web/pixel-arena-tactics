@@ -620,10 +620,7 @@ function App() {
           <CampScene
             save={save}
             spriteUrl={playerSpriteUrl}
-            weaponUrl={weaponSpriteUrl}
-            elixirActive={elixirActive}
             onEnterArena={enterArena}
-            onUseElixir={useElixir}
           />
         ) : (
           <>
@@ -729,8 +726,10 @@ function App() {
       {shopOpen && (
         <ShopModal
           save={save}
+          elixirActive={elixirActive}
           onBuyPotion={buyPotion}
           onBuyMaterial={buyMaterial}
+          onUseElixir={useElixir}
           onClose={() => {
             playSfx('click');
             setShopOpen(false);

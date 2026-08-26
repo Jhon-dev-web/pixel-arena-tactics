@@ -14,13 +14,17 @@ const CONSUMABLES: { id: 'hp' | 'stamina' | 'elixir'; nameKey: string; descKey: 
 
 export default function ShopModal({
   save,
+  elixirActive,
   onBuyPotion,
   onBuyMaterial,
+  onUseElixir,
   onClose,
 }: {
   save: SaveData;
+  elixirActive: boolean;
   onBuyPotion: (id: 'hp' | 'stamina' | 'elixir') => void;
   onBuyMaterial: (id: MaterialId) => void;
+  onUseElixir: () => void;
   onClose: () => void;
 }) {
   return (
@@ -51,6 +55,12 @@ export default function ShopModal({
               </button>
             </div>
           ))}
+
+          {save.potions.elixir > 0 && (
+            <button className="admin-btn" onClick={onUseElixir} disabled={elixirActive} data-ui>
+              {elixirActive ? Text.camp.elixirActive : Text.camp.useElixir}
+            </button>
+          )}
 
           <div className="shop-section-title">{Text.shop.materials}</div>
           {MATERIALS.map((m) => (
