@@ -92,8 +92,41 @@ function rollEnemyAction(def: EnemyDef, wasCharging: boolean): { action: EnemyAc
   return { action: 'attack', charging: false };
 }
 
+export const MAX_LEVEL = 100;
+
+export function xpForNextLevel(level: number): number {
+  return Math.round(T.progression.xpBase * Math.pow(T.progression.xpGrowth, level - 1));
+}
+
+export function xpToReachLevel(level: number): number {
+  let total = 0;
+  for (let l = 1; l < level; l++) total += xpForNextLevel(l);
+  return total;
+}
+
 export function playerLevel(xp: number): number {
-  return Math.floor(xp / T.progression.xpPerLevel) + 1;
+  let level = 1;
+  let total = 0;
+  while (level < MAX_LEVEL) {
+    const need = xpForNextLevel(level);
+    if (xp < total + need) return level;
+    total += need;
+    level++;
+  }
+  return MAX_LEVEL;
+}
+
+export function formatNumber(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return trimDec(n / 1e9) + 'B';
+  if (abs >= 1e6) return trimDec(n / 1e6) + 'M';
+  if (abs >= 1e3) return trimDec(n / 1e3) + 'K';
+  return String(Math.floor(n));
+}
+
+function trimDec(v: number): string {
+  const r = Math.round(v * 10) / 10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }
 
 export function playerMaxHp(save: SaveData): number {
@@ -122,18 +155,20 @@ export function computeCP(save: SaveData): number {
 }
 
 export function afkGoldRate(save: SaveData): number {
+  const level = playerLevel(save.xp);
   return (
     T.advanced.afkGoldPerSec +
-    playerLevel(save.xp) * T.advanced.afkGoldLevelMult +
-    save.str * T.advanced.afkGoldStrMult
+    Math.floor(level * T.advanced.afkGoldLevelMult) +
+    Math.floor(save.str * T.advanced.afkGoldStrMult)
   );
 }
 
 export function afkXpRate(save: SaveData): number {
+  const level = playerLevel(save.xp);
   return (
     T.advanced.afkXpPerSec +
-    playerLevel(save.xp) * T.advanced.afkXpLevelMult +
-    save.str * T.advanced.afkXpStrMult
+    Math.floor(level * T.advanced.afkXpLevelMult) +
+    Math.floor(save.str * T.advanced.afkXpStrMult)
   );
 }
 
@@ -355,9 +390,12 @@ export function loadSave(): SaveData {
       const parsed = JSON.parse(raw) as Partial<SaveData>;
       const base = defaultSave();
       const gear = sanitizeSaveGear(parsed.owned ?? base.owned, parsed.equipped ?? base.equipped);
+      let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
+      if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
       return {
         ...base,
         ...parsed,
+        xp,
         owned: gear.owned,
         equipped: gear.equipped,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },

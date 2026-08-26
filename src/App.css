@@ -971,13 +971,13 @@ body {
 /* --- weapon overlay --- */
 .weapon {
   position: absolute;
-  right: -10px;
+  right: -8px;
   top: 38%;
-  width: 52%;
+  width: 55%;
   height: 30%;
   pointer-events: none;
-  z-index: 2;
-  transform-origin: 12% 55%;
+  z-index: 3;
+  transform-origin: 10% 55%;
 }
 .weapon img {
   width: 100%;
@@ -993,10 +993,10 @@ body {
 }
 @keyframes weaponSwing {
   0% {
-    transform: rotate(0deg);
+    transform: rotate(-30deg);
   }
-  40% {
-    transform: rotate(-55deg);
+  45% {
+    transform: rotate(18deg);
   }
   100% {
     transform: rotate(0deg);
@@ -1005,10 +1005,13 @@ body {
 @keyframes weaponTrain {
   0%,
   55% {
-    transform: rotate(0deg);
+    transform: rotate(-32deg);
   }
   18% {
-    transform: rotate(-60deg);
+    transform: rotate(18deg);
+  }
+  32% {
+    transform: rotate(-32deg);
   }
 }
 
@@ -1204,6 +1207,31 @@ body {
     opacity: 0;
   }
 }
+.training-dmg {
+  position: absolute;
+  right: -46px;
+  top: 18%;
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffd54a;
+  text-shadow: 0 1px 0 #000;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: trainingDmg 1.2s ease-out infinite;
+}
+@keyframes trainingDmg {
+  0%,
+  55% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-24px);
+  }
+  30% {
+    opacity: 0;
+  }
+}
 .topbar-right {
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -1231,12 +1259,12 @@ body {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1;
+  flex-shrink: 1;
 }
 .avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   overflow: hidden;
   border: 2px solid #8a6a3a;
   background: #1a1220;
@@ -1265,6 +1293,9 @@ body {
   padding: 0;
   cursor: pointer;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 58px;
   text-shadow: 0 1px 0 #000;
 }
 .name-input {
@@ -1292,8 +1323,16 @@ body {
   white-space: nowrap;
   text-shadow: 0 1px 0 #000;
 }
+.cp-center {
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffd76a;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 1px 0 #000;
+  padding: 0 2px;
+}
 .xp-bar {
-  width: 110px;
+  width: 74px;
   height: 5px;
   background: rgba(0, 0, 0, 0.6);
   border-radius: 3px;
@@ -1322,12 +1361,12 @@ body {
 }
 .icon-btn {
   font-family: inherit;
-  font-size: calc(var(--font-size) - 1px);
+  font-size: calc(var(--font-size) - 2px);
   color: #ffe9a8;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 5px 7px;
+  border-radius: 6px;
+  padding: 4px 6px;
   cursor: pointer;
   line-height: 1;
 }
@@ -1416,6 +1455,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: translateX(34px);
 }
 .camp-rates {
   display: flex;

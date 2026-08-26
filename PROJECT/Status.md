@@ -37,11 +37,14 @@
 - **Attributes, name & CP**: editable hero name, level + XP bar, and ⚡ Combat Power shown in the
   camp; an Attributes modal distributes 3 points/level across STR (damage + AFK), VIT (max HP),
   AGI (dodge), RES (damage resist). All persisted.
-- **AFK scaling**: gold/XP per-second scales with level and STR (`2 + lvl*0.5 + STR*0.2` gold,
-  `3 + lvl*0.8 + STR*0.3` XP). The camp hero swings at a training dummy (attack loop + impact) with
-  the equipped weapon drawn in-hand.
+- **AFK scaling**: gold/XP per-second scales with level and STR (`1 + ⌊lvl*0.4⌋ + ⌊STR*0.1⌋` gold,
+  `2 + ⌊lvl*0.5⌋ + ⌊STR*0.15⌋` XP). Level is capped at **Lv 100** (`MAX` display + frozen XP) with an
+  exponential XP curve (`100 × 1.15^(lvl-1)`); bugged saves beyond the cap reset to Lv 1 / 0 XP.
+  The HUD shows compact big-number suffixes (1.5K / 1.2M) for gold, shards, and CP.
 - **Equipped weapon visual**: a separate weapon sprite layer (Club/Bronze Gladius/Iron Sword/Steel
-  Greatsword/Dragon Blade) overlaid on the character in both camp and arena, swinging on attack.
+  Greatsword/Dragon Blade) overlaid on the character in the arena (one-shot swing) and camp (training
+  loop), blade facing the target and layered in front; camp training shows impact sparks + floating
+  damage numbers.
 - **Dungeon escape rule**: returning to camp mid-fight abandons the duel (no gold/shards); entering
   the dungeon restarts from the last conquered duel without resetting total victories.
 - Persistent save via `localStorage` (gold, victories, shards, xp, hero name, attributes, materials,

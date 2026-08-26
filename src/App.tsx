@@ -131,7 +131,7 @@ function App() {
     let xpAcc = 0;
     const id = window.setInterval(() => {
       goldAcc += afkGoldRate(saveRef.current);
-      xpAcc += afkXpRate(saveRef.current);
+      if (playerLevel(saveRef.current.xp) < 100) xpAcc += afkXpRate(saveRef.current);
       const g = Math.floor(goldAcc);
       const x = Math.floor(xpAcc);
       if (g > 0 || x > 0) {
@@ -620,6 +620,7 @@ function App() {
           <CampScene
             save={save}
             spriteUrl={playerSpriteUrl}
+            weaponUrl={weaponSpriteUrl}
             elixirActive={elixirActive}
             onEnterArena={enterArena}
             onUseElixir={useElixir}

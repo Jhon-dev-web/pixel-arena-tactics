@@ -1,4 +1,5 @@
 import SpriteSheet from './SpriteSheet';
+import WeaponOverlay from './WeaponOverlay';
 import Text from '../locales/en.json';
 import { SaveData, afkGoldRate, afkXpRate } from '../game/engine';
 
@@ -7,12 +8,14 @@ const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 export default function CampScene({
   save,
   spriteUrl,
+  weaponUrl,
   elixirActive,
   onEnterArena,
   onUseElixir,
 }: {
   save: SaveData;
   spriteUrl: string;
+  weaponUrl: string;
   elixirActive: boolean;
   onEnterArena: () => void;
   onUseElixir: () => void;
@@ -21,8 +24,10 @@ export default function CampScene({
     <div className="camp">
       <div className="camp-hero">
         <div className="camp-sprite">
-          <SpriteSheet src={spriteUrl} size="calc(var(--sprite-size, 132px) * 1.7)" row={1} />
+          <SpriteSheet src={spriteUrl} size="calc(var(--sprite-size, 132px) * 1.3)" row={1} />
+          <WeaponOverlay url={weaponUrl} mode="train" />
           <span className="training-hit" />
+          <span className="training-dmg">-20</span>
         </div>
       </div>
       <div className="camp-rates">
