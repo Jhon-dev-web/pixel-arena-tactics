@@ -40,10 +40,16 @@ export interface SaveData {
   gold: number;
   victories: number;
   shards: number;
+  xp: number;
   weaponLevel: number;
   armorLevel: number;
   owned: string[];
   equipped: EquippedGear;
+}
+
+export interface Cheats {
+  godMode?: boolean;
+  oneHitKill?: boolean;
 }
 
 export interface TurnResult {
@@ -77,12 +83,17 @@ function rollEnemyAction(def: EnemyDef, wasCharging: boolean): { action: EnemyAc
   return { action: 'attack', charging: false };
 }
 
+export function playerLevel(xp: number): number {
+  return Math.floor(xp / T.progression.xpPerLevel) + 1;
+}
+
 export function playerMaxHp(save: SaveData): number {
   const { armor } = getEquipped(save.equipped);
   return (
     T.progression.playerBaseHp +
     (save.armorLevel - 1) * T.progression.armorHpPerLvl +
-    (armor?.maxHp ?? 0)
+    (armor?.maxHp ?? 0) +
+    (playerLevel(save.xp) - 1) * T.progression.levelHpBonus
   );
 }
 
@@ -132,6 +143,7 @@ export function resolveTurn(
   enemy: FighterState,
   save: SaveData,
   enemyDef: EnemyDef,
+  cheats?: Cheats,
 ): TurnResult {
   const roll = rollEnemyAction(enemyDef, enemy.charging);
   const enemyAction = roll.action;
@@ -150,28 +162,34 @@ export function resolveTurn(
   // -- Player action --
   if (action === 'attack') {
     pMid = { ...pMid, stamina: pMid.stamina - attackStamina };
-    const dodged = (enemyDef.dodge ?? 0) > 0 && Math.random() < (enemyDef.dodge ?? 0);
+    const oneHitKill = !!cheats?.oneHitKill;
+    const dodged = !oneHitKill && (enemyDef.dodge ?? 0) > 0 && Math.random() < (enemyDef.dodge ?? 0);
 
     if (dodged) {
       playerEvents.push({ target: 'enemy', kind: 'dodge', value: 0 });
     } else {
-      const upgradeBonus = (save.weaponLevel - 1) * T.progression.weaponDmgPerLvl;
-      let dmg = randInt(T.combat.attackMin, T.combat.attackMax) + upgradeBonus + (weapon?.damage ?? 0);
-
-      const randomCrit = Math.random() < (weapon?.critChance ?? 0);
-      const crit = pMid.focusReady || randomCrit;
-      if (crit) {
-        dmg = Math.round(dmg * critMult);
-        if (pMid.focusReady) pMid = { ...pMid, focusReady: false };
+      let dmg: number;
+      let crit = false;
+      if (oneHitKill) {
+        dmg = enemy.maxHp;
+      } else {
+        const upgradeBonus = (save.weaponLevel - 1) * T.progression.weaponDmgPerLvl;
+        dmg = randInt(T.combat.attackMin, T.combat.attackMax) + upgradeBonus + (weapon?.damage ?? 0);
+        const randomCrit = Math.random() < (weapon?.critChance ?? 0);
+        crit = pMid.focusReady || randomCrit;
+        if (crit) {
+          dmg = Math.round(dmg * critMult);
+          if (pMid.focusReady) pMid = { ...pMid, focusReady: false };
+        }
       }
 
-      if (enemyShielded) {
+      if (enemyShielded && !oneHitKill) {
         dmg = Math.round(dmg * (1 - T.advanced.enemyShieldReduction));
         playerEvents.push({ target: 'enemy', kind: 'blocked', value: dmg });
       }
       playerEvents.push({ target: 'enemy', kind: crit ? 'crit' : 'damage', value: dmg });
       eMid = { ...eMid, hp: Math.max(0, eMid.hp - dmg) };
-      if (weapon?.burn) eMid = { ...eMid, burnTurns: T.advanced.burnTurns };
+      if (weapon?.burn && !oneHitKill) eMid = { ...eMid, burnTurns: T.advanced.burnTurns };
     }
   } else if (action === 'shield') {
     pMid = { ...pMid, stamina: pMid.stamina - T.combat.shieldStamina, shielding: true };
@@ -189,6 +207,7 @@ export function resolveTurn(
   let eEnd: FighterState = eMid;
 
   const applyIncoming = (dmg: number, kind: CombatEventKind): number => {
+    if (cheats?.godMode) return 0;
     let d = dmg;
     if (pMid.shielding) {
       const absorbed = d * T.combat.shieldReduction;
@@ -215,7 +234,7 @@ export function resolveTurn(
       'damage',
     );
     pEnd = { ...pMid, hp: Math.max(0, pMid.hp - dmg) };
-    if (enemyDef.poison) {
+    if (enemyDef.poison && !cheats?.godMode) {
       pEnd = { ...pEnd, poisonTurns: T.advanced.poisonTurns };
       enemyEvents.push({ target: 'player', kind: 'curse', value: 0 });
     }
@@ -264,6 +283,7 @@ export function defaultSave(): SaveData {
     gold: 0,
     victories: 0,
     shards: 0,
+    xp: 0,
     weaponLevel: 1,
     armorLevel: 1,
     owned: [...DEFAULT_OWNED],

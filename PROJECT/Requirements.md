@@ -29,19 +29,30 @@
 
 - **Upgrades tab**: weapon upgrade +5 attack/level (cost = level × 50 gold); armor upgrade +20 max
   HP/level (cost = level × 50 gold, also heals the gained amount).
-- **Armory tab (gear)** — "Zero to Hero" progression, 3 slots (weapon, armor, relic):
-  - Weapon: Wooden Club (+0, default) → Rusty Dagger (+6 dmg, 40g) → Iron Short Sword
-    (+15 dmg, +5% crit, 120g) → Flaming Longsword (+30 dmg, burn, 350g).
-  - Armor: Ragged Clothes (+0, default, 80 HP) → Leather Tunic (+25 HP, 50g) → Iron Chainmail
-    (+60 HP, +5% resist, 130g) → Full Knight Armor (+120 HP, shield reflects 20%, 350g).
+- **Armory tab (gear)** — "Zero to Hero" progression, 3 slots (weapon, armor, relic), 5 tiers each
+  with a forge material (Wood/Bronze/Iron/Steel/Dragon Scales; Cloth for rags):
+  - Weapon: Wooden Club (+0, default) → Bronze Dagger (+6, 40g) → Iron Short Sword (+15, +5% crit,
+    120g) → Steel Greatsword (+30, 300g) → Dragon Flameblade (+45, burn, 500g).
+  - Armor: Ragged Clothes (+0, default, 80 HP) → Bronze-studded Leather (+25, 50g) → Iron Chainmail
+    (+60, +5% resist, 130g) → Full Steel Plate (+120, reflects 20%, 350g) → Dragon Scale Armor
+    (+200, +10% resist, 600g).
   - Relic: Ring of Vitality (Focus +15 HP, 200g), Amulet of Swiftness (attack stamina 15→10, 250g),
     Berserker Crest (crit 2.5×, 350g).
-- The knight sprite swaps to a rags-and-club peasant at Tier 0 and gains an aura by equipment tier
-  (steel/flame for weapons, iron/gold for armor); the visual updates instantly on equip. Base HP is
-  80 and base damage is 10–15.
-- Owned gear can be equipped; owned + equipped gear persist in `localStorage`. Higher-tier weapons
-  add a glow to the knight sprite; the burn DoT shows a glow on the enemy.
-- Gold, victories, upgrade levels, and gear unlock/equip state persist in `localStorage`.
+- The player sprite is one distinct sheet **per armor tier** (0–4), swapped instantly in both the
+  base and the arena on equip; the Dragon Flameblade adds a flame aura. Base HP is 80 and base damage
+  is 10–15.
+
+## Base camp (AFK) & leveling
+
+- A camp scene shows the hero training in a loop; the player passively accrues gold + XP per second
+  while resting there. XP levels the hero up (each level grants +5 max HP).
+- `[⚔️ Enter Dungeon]` → arena; `[🏕️ Return to Camp]` → back to base (state preserved).
+
+## Admin / cheat mode
+
+- `⚙️` button in the top bar (or `F2`) opens the admin panel: +10,000 gold, +50 relic shards, unlock
+  all weapons/armors, God Mode / One-Hit Kill toggle (invulnerable + lethal hits), Reset Save
+  (in-page). Changes persist to `localStorage` like normal progress.
 
 ## Coding patterns
 

@@ -14,13 +14,20 @@
 - Shop modal (weapon/armor upgrades with level-scaled costs).
 - Shop modal with two tabs — **Upgrades** (level-based weapon/armor) and **Armory** (gear
   inventory): weapon/armor/relic slots with BUY / EQUIP / EQUIPPED states.
-- Equipment & gear system — **"Zero to Hero" progression**: 4 weapon tiers (Wooden Club → Rusty
-  Dagger → Iron Short Sword → Flaming Longsword) and 4 armor tiers (Ragged Clothes → Leather Tunic →
-  Iron Chainmail → Full Knight Armor) plus 3 relics. The player starts as a Tier-0 peasant (80 HP,
-  10–15 base damage) with a rags-and-club sprite, swapping to the armored knight + tier aura as gear
-  is equipped. Gear unlocks/equips persist in `localStorage`.
-- Persistent save via `localStorage` (gold, victories, weapon/armor levels, owned + equipped gear,
-  shards).
+- Equipment & gear system — **"Zero to Hero" progression**: 5 weapon tiers (Wooden Club → Bronze
+  Dagger → Iron Short Sword → Steel Greatsword → Dragon Flameblade) and 5 armor tiers (Ragged Clothes
+  → Bronze-studded Leather → Iron Chainmail → Full Steel Plate → Dragon Scale Armor) plus 3 relics,
+  each tagged with a forge material (Wood/Bronze/Iron/Steel/Dragon Scales/Cloth). The player starts
+  as a Tier-0 peasant (80 HP, 10–15 base damage). Gear unlocks/equips persist in `localStorage`.
+- **Distinct sprite per armor tier** (0–4: peasant / bronze / iron / steel-knight / dragon), swapped
+  instantly in both the arena and the base when armor is equipped.
+- **AFK base (camp) scene** (Legend of Mushroom style): the hero trains in a looping idle animation
+  and passively accrues gold + XP per second; XP levels up (each level grants +5 max HP).
+  `[⚔️ Enter Dungeon]` / `[🏕️ Return to Camp]` switch scenes.
+- **Admin / cheat panel** (`⚙️` button or `F2`): +10,000 gold, +50 shards, unlock all weapons/armors,
+  God Mode / One-Hit Kill toggle, Reset Save (in-page, no reload). Changes persist to `localStorage`.
+- Persistent save via `localStorage` (gold, victories, shards, xp, weapon/armor levels, owned +
+  equipped gear).
 - Enemy rotation: Goblin Rogue (25% dodge) → Orc Berserker → Skeleton Warlock (2-turn poison DoT),
   cycling by victory count, with a **Minotaur Warlord boss every 5th duel** (2× HP, BOSS tag,
   red aura, 1-turn-telegraphed Heavy Slam, 3× gold + guaranteed Relic Shard, ominous intro).
@@ -33,7 +40,8 @@
 ## Next steps / possible improvements
 
 - More enemy variety and a difficulty ramp beyond HP scaling.
-- Weapon/armor visual variation on the knight sprite.
+- Offline (closed-app) AFK accumulation using timestamps.
+- Use relic shards to buy relics.
 
 ## Legacy
 

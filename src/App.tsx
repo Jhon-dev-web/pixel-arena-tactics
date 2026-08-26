@@ -6,6 +6,7 @@ import {
   FighterState,
   PlayerAction,
   effectiveAttackStamina,
+  defaultSave,
   loadSave,
   makeEnemy,
   makePlayer,
@@ -16,9 +17,12 @@ import {
   tickBurn,
   tickPoison,
 } from './game/engine';
-import { GEAR_SLOTS, GearItem, GearSlot, gearBySlot, getEquipped, getGear } from './game/gear';
+import { GEAR, getEquipped, getGear } from './game/gear';
 import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
 import SpriteSheet from './components/SpriteSheet';
+import CampScene from './components/CampScene';
+import AdminModal from './components/AdminModal';
+import ShopModal from './components/ShopModal';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
 import Text from './locales/en.json';
@@ -108,47 +112,7 @@ function Burst({ count }: { count: number }) {
   );
 }
 
-const gearText = (key: string): string => (Text.gear as Record<string, string>)[key];
 const enemyText = (key: string): string => (Text.enemies as Record<string, string>)[key];
-
-function GearRow({
-  item,
-  owned,
-  equipped,
-  gold,
-  onBuy,
-  onEquip,
-}: {
-  item: GearItem;
-  owned: boolean;
-  equipped: boolean;
-  gold: number;
-  onBuy: (id: string) => void;
-  onEquip: (id: string) => void;
-}) {
-  return (
-    <div className="gear-row">
-      <div className="gear-info">
-        <span className="gear-name">{gearText(item.nameKey)}</span>
-        <span className="gear-desc">{gearText(item.descKey)}</span>
-        {!owned && <span className="gear-cost">{fmt(Text.ui.cost, item.cost)}</span>}
-      </div>
-      {equipped ? (
-        <button className="gear-action equipped" disabled data-ui>
-          {Text.gear.equipped}
-        </button>
-      ) : owned ? (
-        <button className="gear-action" onClick={() => onEquip(item.id)} data-ui>
-          {Text.gear.equip}
-        </button>
-      ) : (
-        <button className="gear-action buy" onClick={() => onBuy(item.id)} disabled={gold < item.cost} data-ui>
-          {Text.gear.buy}
-        </button>
-      )}
-    </div>
-  );
-}
 
 function App() {
   const [save, setSave] = useState<SaveData>(() => loadSave());
@@ -175,6 +139,9 @@ function App() {
   const [version, setVersion] = useState(0);
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
   const [bossFlash, setBossFlash] = useState(false);
+  const [scene, setScene] = useState<'camp' | 'arena'>('camp');
+  const [cheatMode, setCheatMode] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   const playerRef = useRef(player);
   const enemyRef = useRef(enemy);
@@ -182,6 +149,7 @@ function App() {
   const enemyKindRef = useRef(enemyKind);
   const busyRef = useRef(false);
   const idRef = useRef(0);
+  const cheatModeRef = useRef(false);
 
   const setPlayerBoth = (p: FighterState) => {
     playerRef.current = p;
@@ -211,6 +179,29 @@ function App() {
 
   useEffect(() => {
     void initAudio();
+  }, []);
+
+  useEffect(() => {
+    if (scene !== 'camp') return;
+    const id = window.setInterval(() => {
+      setSaveBoth({
+        ...saveRef.current,
+        gold: saveRef.current.gold + T.advanced.afkGoldPerSec,
+        xp: saveRef.current.xp + T.advanced.afkXpPerSec,
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [scene]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        setAdminOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const toggleMute = () => {
@@ -251,6 +242,57 @@ function App() {
       setBossFlash(true);
       window.setTimeout(() => setBossFlash(false), 700);
     }
+  };
+
+  const enterArena = () => {
+    playSfx('click');
+    setScene('arena');
+  };
+
+  const returnToCamp = () => {
+    playSfx('click');
+    setScene('camp');
+  };
+
+  const adminAddGold = () => {
+    playSfx('click');
+    setSaveBoth({ ...saveRef.current, gold: saveRef.current.gold + 10000 });
+  };
+
+  const adminAddShards = () => {
+    playSfx('click');
+    setSaveBoth({ ...saveRef.current, shards: saveRef.current.shards + 50 });
+  };
+
+  const adminUnlockAll = () => {
+    playSfx('click');
+    const all = GEAR.filter((g) => g.slot !== 'relic').map((g) => g.id);
+    setSaveBoth({ ...saveRef.current, owned: [...new Set([...saveRef.current.owned, ...all])] });
+  };
+
+  const adminToggleCheat = () => {
+    setCheatMode((c) => {
+      cheatModeRef.current = !c;
+      return !c;
+    });
+  };
+
+  const adminReset = () => {
+    playSfx('click');
+    const fresh = defaultSave();
+    setSaveBoth(fresh);
+    setPlayerBoth(makePlayer(fresh));
+    setEnemyBoth(makeEnemy(enemyKindForDuel(1), 1));
+    setEnemyKindBoth(enemyKindForDuel(1));
+    cheatModeRef.current = false;
+    setCheatMode(false);
+    setPhase('player');
+    setScene('camp');
+    setFloats([]);
+    setBursts([]);
+    setLoot(null);
+    setAdminOpen(false);
+    setShopOpen(false);
   };
 
   const applyEvents = (events: CombatEvent[]) => {
@@ -344,6 +386,7 @@ function App() {
       enemyRef.current,
       saveRef.current,
       getEnemyDef(enemyKindRef.current),
+      { godMode: cheatModeRef.current, oneHitKill: cheatModeRef.current },
     );
     const enemyKilled = result.enemyMid.hp <= 0;
 
@@ -513,14 +556,18 @@ function App() {
     }
   };
 
-  const weaponCost = save.weaponLevel * T.progression.weaponBaseCost;
-  const armorCost = save.armorLevel * T.progression.armorBaseCost;
   const atkCost = effectiveAttackStamina(save);
   const build = getEquipped(save.equipped);
   const weaponTier = build.weapon?.tier ?? 0;
   const armorTier = build.armor?.tier ?? 0;
-  const playerSpriteUrl =
-    weaponTier === 0 && armorTier === 0 ? Assets.spritesheets.peasant.url : Assets.spritesheets.knight.url;
+  const ARMOR_SPRITES: Record<number, string> = {
+    0: Assets.spritesheets.peasant.url,
+    1: Assets.spritesheets.bronze.url,
+    2: Assets.spritesheets.iron.url,
+    3: Assets.spritesheets.knight.url,
+    4: Assets.spritesheets.dragon.url,
+  };
+  const playerSpriteUrl = ARMOR_SPRITES[armorTier] ?? Assets.spritesheets.knight.url;
   const enemyDef = getEnemyDef(enemyKind);
   const enemyName = enemyDef.boss
     ? fmt(Text.enemies.bossName, enemyText(enemyDef.nameKey))
@@ -537,12 +584,6 @@ function App() {
   const canAttack = phase === 'player' && player.stamina >= atkCost;
   const canShield = phase === 'player' && player.stamina >= T.combat.shieldStamina;
   const canFocus = phase === 'player';
-
-  const equippedName = (slot: GearSlot): string => {
-    const id = save.equipped[slot];
-    if (!id) return Text.gear.none;
-    return gearText(getGear(id).nameKey);
-  };
 
   const renderFloats = (target: 'player' | 'enemy') =>
     floats
@@ -561,7 +602,10 @@ function App() {
   return (
     <div className="game-root">
       <div className={`stage${shaking ? ' shaking' : ''}`} data-tv={version}>
-        <div className="bg" style={{ backgroundImage: `url(${Assets.background.arena.url})` }} />
+        <div
+          className="bg"
+          style={{ backgroundImage: `url(${scene === 'camp' ? Assets.background.camp.url : Assets.background.arena.url})` }}
+        />
         <div className="vignette" />
         {bossFlash && <div className="boss-flash" />}
 
@@ -572,6 +616,9 @@ function App() {
             <span className="stat shards">{fmt(Text.ui.shards, save.shards)}</span>
           </div>
           <div className="topbar-right">
+            <button className="mute-btn" onClick={() => setAdminOpen(true)} aria-label="Admin" data-ui>
+              {Text.admin.button}
+            </button>
             <button className="mute-btn" onClick={toggleMute} aria-label="Toggle sound" data-ui>
               {muted ? '🔇' : '🔊'}
             </button>
@@ -581,7 +628,14 @@ function App() {
           </div>
         </header>
 
-        <div className="arena">
+        {scene === 'camp' ? (
+          <CampScene save={save} spriteUrl={playerSpriteUrl} onEnterArena={enterArena} />
+        ) : (
+          <>
+            <button className="return-camp" onClick={returnToCamp} data-ui>
+              {Text.camp.returnCamp}
+            </button>
+            <div className="arena">
           <div className="fighter player">
             <div className="bars">
               <div className="bar hp">
@@ -593,10 +647,7 @@ function App() {
               </div>
             </div>
             <div className="sprite-wrap">
-              {weaponTier >= 3 && <span className="glow flame-glow" />}
-              {weaponTier === 2 && <span className="glow steel-glow" />}
-              {armorTier >= 3 && <span className="glow gold-glow" />}
-              {armorTier === 2 && <span className="glow iron-glow" />}
+              {weaponTier >= 4 && <span className="glow flame-glow" />}
               {playerGuard && <span className="guard-badge">🛡️</span>}
               {playerFocus && <span className="focus-ring" />}
               <SpriteSheet
@@ -660,81 +711,24 @@ function App() {
             <span className="action-cost">{Text.ui.free}</span>
           </button>
         </footer>
+          </>
+        )}
       </div>
 
       {shopOpen && (
-        <div className="modal-backdrop">
-          <div className="modal shop-modal">
-            <h2 className="modal-title">{Text.ui.shop}</h2>
-            <p className="shop-gold">{fmt(Text.ui.owned, save.gold)}</p>
-
-            <div className="shop-tabs">
-              <button
-                className={`tab${shopTab === 'upgrades' ? ' active' : ''}`}
-                onClick={() => setShopTab('upgrades')}
-                data-ui
-              >
-                {Text.gear.upgradesTab}
-              </button>
-              <button
-                className={`tab${shopTab === 'armory' ? ' active' : ''}`}
-                onClick={() => setShopTab('armory')}
-                data-ui
-              >
-                {Text.gear.armoryTab}
-              </button>
-            </div>
-
-            {shopTab === 'upgrades' ? (
-              <div className="shop-body">
-                <div className="shop-row">
-                  <div className="shop-info">
-                    <span className="shop-name">⚔️ {Text.ui.weapon}</span>
-                    <span className="shop-level">{fmt(Text.ui.level, save.weaponLevel)}</span>
-                  </div>
-                  <button className="shop-buy" onClick={buyWeapon} disabled={save.gold < weaponCost} data-ui>
-                    {fmt(Text.ui.cost, weaponCost)}
-                  </button>
-                </div>
-
-                <div className="shop-row">
-                  <div className="shop-info">
-                    <span className="shop-name">🛡️ {Text.ui.armor}</span>
-                    <span className="shop-level">{fmt(Text.ui.level, save.armorLevel)}</span>
-                  </div>
-                  <button className="shop-buy" onClick={buyArmor} disabled={save.gold < armorCost} data-ui>
-                    {fmt(Text.ui.cost, armorCost)}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="armory">
-                {GEAR_SLOTS.map((slot) => (
-                  <div className="gear-section" key={slot}>
-                    <div className="gear-section-title">
-                      {gearText(slot)} · {equippedName(slot)}
-                    </div>
-                    {gearBySlot(slot).map((item) => (
-                      <GearRow
-                        key={item.id}
-                        item={item}
-                        owned={save.owned.includes(item.id)}
-                        equipped={save.equipped[item.slot] === item.id}
-                        gold={save.gold}
-                        onBuy={buyGear}
-                        onEquip={equipGear}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button className="modal-close" onClick={() => { playSfx('click'); setShopOpen(false); }} data-ui>
-              {Text.ui.close}
-            </button>
-          </div>
-        </div>
+        <ShopModal
+          save={save}
+          shopTab={shopTab}
+          onTabChange={setShopTab}
+          onBuyWeapon={buyWeapon}
+          onBuyArmor={buyArmor}
+          onBuyGear={buyGear}
+          onEquipGear={equipGear}
+          onClose={() => {
+            playSfx('click');
+            setShopOpen(false);
+          }}
+        />
       )}
 
       {phase === 'victory' && loot !== null && (
@@ -760,6 +754,18 @@ function App() {
             </button>
           </div>
         </div>
+      )}
+
+      {adminOpen && (
+        <AdminModal
+          cheatMode={cheatMode}
+          onGold={adminAddGold}
+          onShards={adminAddShards}
+          onUnlock={adminUnlockAll}
+          onToggleCheat={adminToggleCheat}
+          onReset={adminReset}
+          onClose={() => setAdminOpen(false)}
+        />
       )}
     </div>
   );

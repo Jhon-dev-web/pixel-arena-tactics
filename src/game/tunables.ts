@@ -37,6 +37,8 @@ const T = DebugPanel.define({
     weaponDmgPerLvl: { value: 5, min: 1, max: 30, step: 1, label: 'Weapon damage per level' },
     armorHpPerLvl: { value: 20, min: 5, max: 100, step: 1, label: 'Armor HP per level' },
     playerBaseHp: { value: 80, min: 40, max: 300, step: 5, label: 'Player base HP' },
+    xpPerLevel: { value: 100, min: 10, max: 1000, step: 10, label: 'XP per level' },
+    levelHpBonus: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP bonus per level' },
   },
   ui: {
     _label: 'UI Layout',
@@ -57,6 +59,8 @@ const T = DebugPanel.define({
     burnTurns: { value: 2, min: 1, max: 6, step: 1, label: 'Burn duration (turns)' },
     poisonDamage: { value: 6, min: 1, max: 30, step: 1, label: 'Poison damage per turn' },
     poisonTurns: { value: 2, min: 1, max: 6, step: 1, label: 'Poison duration (turns)' },
+    afkGoldPerSec: { value: 2, min: 0, max: 100, step: 1, label: 'AFK gold per second' },
+    afkXpPerSec: { value: 3, min: 0, max: 100, step: 1, label: 'AFK XP per second' },
     playerMaxStamina: { value: 100, min: 40, max: 200, step: 5, label: 'Player max stamina' },
     shakeMs: { value: 350, min: 0, max: 1000, step: 25, label: 'Screen shake duration (ms)' },
     textFloatMs: { value: 900, min: 300, max: 2000, step: 50, label: 'Damage text float (ms)' },

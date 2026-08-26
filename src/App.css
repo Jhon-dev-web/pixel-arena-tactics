@@ -592,6 +592,10 @@ body {
 .gear-name {
   font-size: var(--font-size);
   color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .gear-desc {
   font-size: calc(var(--font-size) - 3px);
@@ -763,4 +767,196 @@ body {
   to {
     opacity: 0;
   }
+}
+
+/* --- camp / base scene --- */
+.camp {
+  position: absolute;
+  top: 78px;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+}
+.camp-panel {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(138, 106, 58, 0.6);
+  border-radius: 14px;
+  padding: 18px 14px;
+}
+.camp-title {
+  font-size: calc(var(--font-size) + 4px);
+  color: #ffd76a;
+  text-shadow: 0 2px 0 #000;
+}
+.camp-hero {
+  animation: heroBob 1.6s ease-in-out infinite;
+}
+@keyframes heroBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.camp-level-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.camp-level {
+  font-size: var(--font-size);
+  color: #9d8bff;
+  white-space: nowrap;
+}
+.camp-xp-bar {
+  flex: 1;
+  height: 10px;
+  background: #1a1220;
+  border: 1px solid #000;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.camp-xp-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #9d8bff, #5a46c8);
+  transition: width 0.4s ease;
+}
+.camp-xp-text {
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+}
+.camp-rates {
+  display: flex;
+  gap: 16px;
+}
+.camp-rate {
+  font-size: calc(var(--font-size) - 2px);
+}
+.camp-rate.gold {
+  color: #ffd76a;
+}
+.camp-rate.xp {
+  color: #9d8bff;
+}
+.camp-hint {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+  text-align: center;
+  margin: 0;
+}
+.camp-enter {
+  font-family: inherit;
+  font-size: var(--font-size);
+  color: #fff;
+  width: 100%;
+  max-width: 320px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #000;
+  cursor: pointer;
+  background: linear-gradient(180deg, #e0483a, #8a1f16);
+  box-shadow: 0 4px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  text-shadow: 0 2px 0 #000;
+}
+.camp-enter:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #000;
+}
+
+.return-camp {
+  position: absolute;
+  top: 78px;
+  left: 10px;
+  z-index: 10;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a1108;
+}
+.return-camp:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a1108;
+}
+
+/* --- admin panel --- */
+.admin-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin-btn {
+  font-family: inherit;
+  font-size: var(--font-size);
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a1108;
+}
+.admin-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a1108;
+}
+.admin-btn.cheat.active {
+  color: #6fe08a;
+  border-color: #2fbf4f;
+}
+.admin-btn.danger {
+  color: #ff8a7a;
+  border-color: #b23a2a;
+  background: linear-gradient(180deg, #5a1f16, #2a0f0a);
+}
+
+/* --- gear material badges --- */
+.gear-material {
+  font-size: calc(var(--font-size) - 4px);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+.gear-material.wood {
+  background: #6b4a2b;
+  color: #e8c9a0;
+}
+.gear-material.bronze {
+  background: #8a5a2a;
+  color: #ffd9a0;
+}
+.gear-material.iron {
+  background: #5a6268;
+  color: #d8e0e8;
+}
+.gear-material.steel {
+  background: #3a4a5a;
+  color: #b8d8ff;
+}
+.gear-material.dragon {
+  background: #4a1420;
+  color: #ff7a5a;
+}
+.gear-material.cloth {
+  background: #5a5248;
+  color: #d8d0c0;
 }

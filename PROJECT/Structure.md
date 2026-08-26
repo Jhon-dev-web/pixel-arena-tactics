@@ -6,9 +6,25 @@ Entry point. Mounts `<App />` into `#root` with React 18 `createRoot` under `Str
 
 ## `src/App.tsx`
 
-Root component and the whole game UI. Holds combat state (player/enemy fighters, phase, animations,
-floating text, bursts), the turn orchestrator `doTurn`, and renders the top bar, arena, controls,
-shop modal, and victory/defeat popups. Uses refs to mirror state for the async turn flow.
+Root component. Holds combat state (player/enemy fighters, phase, animations, floating text, bursts),
+the turn orchestrator `doTurn`, the AFK accumulation loop, scene switching (`camp`/`arena`), the
+admin/cheat handlers, and renders the shared top bar, camp-or-arena content, and the victory/defeat
+popups. Uses refs to mirror state for the async turn flow.
+
+## `src/components/CampScene.tsx`
+
+The AFK base screen: shows the hero in a looping idle animation (current armor sprite), level + XP
+progress, gold/XP per-second rates, and the `[⚔️ Enter Dungeon]` button.
+
+## `src/components/ShopModal.tsx`
+
+The two-tab shop (`Upgrades` / `Armory`), including the `GearRow` list (BUY / EQUIP / EQUIPPED with
+forge-material badges). Owned/equipped state and costs are derived from the `SaveData` prop.
+
+## `src/components/AdminModal.tsx`
+
+The admin/cheat panel: +10,000 gold, +50 shards, unlock all weapons/armors, God Mode / One-Hit Kill
+toggle, Reset Save, and Close.
 
 ## `src/App.css`
 
@@ -28,10 +44,12 @@ All player-visible text (UI labels, combat float labels, modal strings) with `{n
 ## `src/assets.json`
 
 Asset manifest:
-- `spritesheets.peasant` / `spritesheets.knight` / `spritesheets.orc` / `spritesheets.goblin` /
-  `spritesheets.warlock` / `spritesheets.boss` — 4x4 pixel-art sheets (idle/attack/hurt/death rows)
-  with frame metadata. `peasant` is the Tier-0 "rags & club" player sprite; `knight` is Tier 1+.
-- `background.arena` — pixel-art colosseum background (covered to fill the stage).
+- `spritesheets.peasant` / `spritesheets.bronze` / `spritesheets.iron` / `spritesheets.knight` /
+  `spritesheets.dragon` — the 5 player armor-tier sprites (0–4); `spritesheets.orc` /
+  `spritesheets.goblin` / `spritesheets.warlock` / `spritesheets.boss` — enemies. All are 4x4
+  pixel-art sheets (idle/attack/hurt/death rows) with frame metadata.
+- `background.arena` — pixel-art colosseum background; `background.camp` — campsite background for
+  the AFK base (both covered to fill the stage).
 - `sfx.*` — one-shot 8-bit/16-bit effects: `slash`, `hit`, `block`, `focus`, `crit`, `victory`,
   `click`, `boss_intro`, `slam`, `dodge`, `curse`, `charge` (OGG).
 - `music.ambient` — looping dark-dungeon ambient track (60s, OGG).
@@ -50,10 +68,11 @@ re-render when a displayed tunable changes.
 
 ## `src/game/gear.ts`
 
-Gear catalog (content data): `GearItem`, `GearSlot` (`weapon`/`armor`/`relic`), `EquippedGear`,
-`GEAR` (11 items: 4 weapon tiers + 4 armor tiers + 3 relics, "Zero to Hero"), `DEFAULT_OWNED` /
-`DEFAULT_EQUIPPED`, `getGear`, `gearBySlot`, `getEquipped`, `sanitizeSaveGear` (migrates stale gear
-IDs to current defaults). Gear names/descriptions are locale keys.
+Gear catalog (content data): `GearItem` (incl. `materialKey`), `GearSlot` (`weapon`/`armor`/`relic`),
+`EquippedGear`, `GEAR` (13 items: 5 weapon tiers + 5 armor tiers + 3 relics, "Zero to Hero" with
+forge materials), `DEFAULT_OWNED` / `DEFAULT_EQUIPPED`, `getGear`, `gearBySlot`, `getEquipped`,
+`sanitizeSaveGear` (migrates stale gear IDs to current defaults). Names/descriptions/materials are
+locale keys.
 
 ## `src/game/enemies.ts`
 
@@ -65,11 +84,11 @@ weights, slam range, boss flag), `ENEMIES`, `getEnemyDef`, `enemyKindForDuel` (b
 ## `src/game/engine.ts`
 
 Pure game logic: `FighterState` (incl. `burnTurns`, `poisonTurns`, `charging`), `SaveData` (incl.
-`owned`/`equipped` gear + `shards`), `CombatEvent` (incl. `reflect`/`burn`/`poison`/`dodge`/`curse`/
-`slam`), `resolveTurn` (applies weapon/armor/relic modifiers and the enemy def's dodge/poison/
-shield/charge/slam mechanics), `rollEnemyAction`, `tickBurn`, `tickPoison`, `playerMaxHp`,
-`effectiveAttackStamina`, `makePlayer`, `makeEnemy(kind, round)`, `enemyHpForRound`,
-`loadSave`/`persistSave`/`defaultSave`.
+`owned`/`equipped` gear + `shards` + `xp`), `Cheats` (godMode/oneHitKill), `CombatEvent` (incl.
+`reflect`/`burn`/`poison`/`dodge`/`curse`/`slam`), `resolveTurn` (weapon/armor/relic modifiers +
+enemy dodge/poison/shield/charge/slam + cheats), `rollEnemyAction`, `tickBurn`, `tickPoison`,
+`playerLevel`, `playerMaxHp` (incl. level bonus), `effectiveAttackStamina`, `makePlayer`,
+`makeEnemy(kind, round)`, `enemyHpForRound`, `loadSave`/`persistSave`/`defaultSave`.
 
 ## `src/game/audio.ts`
 
