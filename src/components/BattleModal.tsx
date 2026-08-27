@@ -8,6 +8,7 @@ import { effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, refin
 import { FloorDef } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, spriteForArmorTier } from '../game/sprites';
+import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
 import { isMiniBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 
@@ -21,7 +22,7 @@ interface FloatItem {
   id: number;
   side: 'p' | 'e';
   text: string;
-  kind: 'damage' | 'crit';
+  kind: 'damage' | 'crit' | 'heal';
 }
 
 type Phase = 'battle' | 'intermission' | 'retreat' | 'defeat';
@@ -33,11 +34,13 @@ export default function BattleModal({
   floor,
   onRetreat,
   onDefeat,
+  onUsePotion,
 }: {
   save: SaveData;
   floor: FloorDef;
   onRetreat: (rewards: RunRewards) => void;
   onDefeat: (rewards: RunRewards) => void;
+  onUsePotion: () => void;
 }) {
   const def = getEnemyDef(floor.enemyKind);
   const build = getEquipped(save.equipped);
@@ -64,7 +67,9 @@ export default function BattleModal({
   const [playerFlash, setPlayerFlash] = useState(false);
   const [enemyFlash, setEnemyFlash] = useState(false);
   const [speed, setSpeed] = useState<1 | 2>(1);
-  const [turnProgress, setTurnProgress] = useState(0);
+  const [heroProgress, setHeroProgress] = useState(0);
+  const [enemyProgress, setEnemyProgress] = useState(0);
+  const [potionsLeft, setPotionsLeft] = useState(save.potions.hp);
   const [accumGold, setAccumGold] = useState(0);
   const [accumCount, setAccumCount] = useState(0);
   const [finalRewards, setFinalRewards] = useState<RunRewards | null>(null);
@@ -81,14 +86,19 @@ export default function BattleModal({
     shards: 0,
     count: 0,
   });
-  const waveStartRef = useRef(0);
+  const heroNextAtkRef = useRef(0);
+  const enemyNextAtkRef = useRef(0);
+  const potionCooldownUntilRef = useRef(0);
+  const potionsLeftRef = useRef(save.potions.hp);
   const idRef = useRef(0);
   const onRetreatRef = useRef(onRetreat);
   onRetreatRef.current = onRetreat;
   const onDefeatRef = useRef(onDefeat);
   onDefeatRef.current = onDefeat;
+  const onUsePotionRef = useRef(onUsePotion);
+  onUsePotionRef.current = onUsePotion;
 
-  const addFloat = (side: 'p' | 'e', text: string, kind: 'damage' | 'crit') => {
+  const addFloat = (side: 'p' | 'e', text: string, kind: 'damage' | 'crit' | 'heal') => {
     const id = idRef.current++;
     setFloats((f) => [...f, { id, side, text, kind }]);
     window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), T.advanced.textFloatMs);
@@ -98,7 +108,8 @@ export default function BattleModal({
     if (phaseRef.current !== 'battle' && phaseRef.current !== 'intermission') return;
     phaseRef.current = outcome;
     setPhase(outcome);
-    setTurnProgress(0);
+    setHeroProgress(0);
+    setEnemyProgress(0);
     const acc = accumRef.current;
     const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold / 2);
     setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, stages: clearedRef.current });
@@ -106,7 +117,10 @@ export default function BattleModal({
 
   useEffect(() => {
     let raf = 0;
-    waveStartRef.current = performance.now();
+    const now0 = performance.now();
+    heroNextAtkRef.current = now0;
+    enemyNextAtkRef.current = now0;
+    potionCooldownUntilRef.current = 0;
 
     const applyLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number) => {
       const acc = accumRef.current;
@@ -131,8 +145,11 @@ export default function BattleModal({
       setEnemyHp(nmax);
       setMiniBoss(isMiniBoss(next));
       setWaveClear(null);
-      setTurnProgress(0);
-      waveStartRef.current = performance.now();
+      setHeroProgress(0);
+      setEnemyProgress(0);
+      const now = performance.now();
+      heroNextAtkRef.current = now;
+      enemyNextAtkRef.current = now;
       phaseRef.current = 'battle';
       setPhase('battle');
     };
@@ -148,12 +165,12 @@ export default function BattleModal({
       setWaveClear({ stage: st, gold: r.gold, drops: r.drops, shards: r.shards });
       phaseRef.current = 'intermission';
       setPhase('intermission');
-      setTurnProgress(0);
+      setHeroProgress(0);
+      setEnemyProgress(0);
       window.setTimeout(startNextWave, T.battle.intermissionMs);
     };
 
-    const runTurn = () => {
-      const st = stageRef.current;
+    const heroAttack = () => {
       const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
       const total = baseDmg + effectiveDamage(weapon, wLvl) + save.str * T.advanced.strDmgPerPoint;
       const crit = Math.random() < effectiveCrit(weapon, wLvl);
@@ -172,9 +189,11 @@ export default function BattleModal({
 
       if (hp.current.e <= 0) {
         clearWave();
-        return;
       }
+    };
 
+    const monsterAttack = () => {
+      const st = stageRef.current;
       const reduction = effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint;
       const eFinal = Math.max(1, Math.round(stageEnemyDmg(def, st) * (1 - reduction)));
       hp.current.p = Math.max(0, hp.current.p - eFinal);
@@ -194,15 +213,44 @@ export default function BattleModal({
       }
     };
 
+    const tryAutoPotion = (now: number) => {
+      if (potionsLeftRef.current <= 0) return;
+      if (now < potionCooldownUntilRef.current) return;
+      if (hp.current.p >= playerMax * T.battle.potionThreshold) return;
+      potionsLeftRef.current -= 1;
+      setPotionsLeft(potionsLeftRef.current);
+      potionCooldownUntilRef.current = now + T.battle.potionCooldownMs;
+      onUsePotionRef.current();
+      const heal = Math.max(1, Math.round(playerMax * T.battle.potionHealRatio));
+      hp.current.p = Math.min(playerMax, hp.current.p + heal);
+      setPlayerHp(hp.current.p);
+      addFloat('p', `+${heal}`, 'heal');
+      playSfx('focus');
+    };
+
     const step = (now: number) => {
       raf = requestAnimationFrame(step);
       if (phaseRef.current !== 'battle') return;
-      const effTurn = T.battle.turnMs / speedRef.current;
-      const elapsed = now - waveStartRef.current;
-      setTurnProgress(Math.min(1, elapsed / effTurn));
-      if (elapsed >= effTurn) {
-        waveStartRef.current = now;
-        runTurn();
+      const spd = speedRef.current;
+
+      tryAutoPotion(now);
+
+      const heroMs = T.battle.heroAttackMs * (1 - save.agi * T.battle.agiSpeedPerPoint);
+      const heroInterval = heroMs / spd;
+      const heroElapsed = now - heroNextAtkRef.current;
+      setHeroProgress(Math.min(1, heroElapsed / heroInterval));
+      if (heroElapsed >= heroInterval) {
+        heroNextAtkRef.current = now;
+        heroAttack();
+        if (phaseRef.current !== 'battle') return;
+      }
+
+      const enemyInterval = def.atkSpeedMs / spd;
+      const enemyElapsed = now - enemyNextAtkRef.current;
+      setEnemyProgress(Math.min(1, enemyElapsed / enemyInterval));
+      if (enemyElapsed >= enemyInterval) {
+        enemyNextAtkRef.current = now;
+        monsterAttack();
       }
     };
 
@@ -268,6 +316,7 @@ export default function BattleModal({
 
         <div className="battle-loot-hud">
           <span className="loot-gold">{dungeonText('accumGold').replace('{n}', String(accumGold))}</span>
+          <span className="loot-potions">{dungeonText('potions').replace('{n}', String(potionsLeft))}</span>
           <span className="loot-drops">{dungeonText('accumDrops').replace('{n}', String(accumCount))}</span>
         </div>
 
@@ -283,7 +332,7 @@ export default function BattleModal({
               </span>
             </div>
             <div className="battle-atkbar">
-              <div className="battle-atkbar-fill" style={{ width: `${turnProgress * 100}%` }} />
+              <div className="battle-atkbar-fill hero" style={{ width: `${heroProgress * 100}%` }} />
             </div>
           </div>
 
@@ -301,7 +350,7 @@ export default function BattleModal({
               </span>
             </div>
             <div className="battle-atkbar">
-              <div className="battle-atkbar-fill" style={{ width: `${turnProgress * 100}%` }} />
+              <div className="battle-atkbar-fill enemy" style={{ width: `${enemyProgress * 100}%` }} />
             </div>
           </div>
         </div>

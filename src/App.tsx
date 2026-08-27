@@ -255,6 +255,12 @@ function App() {
     setExpeditionOpen(true);
   };
 
+  const useAutoPotion = () => {
+    const s = saveRef.current;
+    if (s.potions.hp <= 0) return;
+    setSaveBoth({ ...s, potions: { ...s.potions, hp: s.potions.hp - 1 } });
+  };
+
   const collectExpedition = (rewards: ExpeditionRewards) => {
     const s = saveRef.current;
     const mats = { ...s.materials };
@@ -916,6 +922,7 @@ function App() {
           floor={getFloor(battleFloor)}
           onRetreat={(rewards) => finishRun(battleFloor, rewards, 'retreat')}
           onDefeat={(rewards) => finishRun(battleFloor, rewards, 'defeat')}
+          onUsePotion={useAutoPotion}
         />
       )}
 

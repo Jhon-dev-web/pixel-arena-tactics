@@ -2351,6 +2351,11 @@ body {
   color: #d8c9a0;
   white-space: nowrap;
 }
+.loot-potions {
+  font-size: calc(var(--font-size) - 1px);
+  color: #6fe08a;
+  white-space: nowrap;
+}
 .battle-top {
   display: flex;
   justify-content: space-between;
@@ -2399,6 +2404,9 @@ body {
   height: 100%;
   background: linear-gradient(90deg, #7cc4ff, #4a9dff);
   border-radius: 3px;
+}
+.battle-atkbar-fill.enemy {
+  background: linear-gradient(90deg, #ff9a7c, #ff5f4a);
 }
 .battle-arena {
   flex: 1;

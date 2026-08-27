@@ -5,6 +5,7 @@ export interface EnemyDef {
   nameKey: string;
   hp: number;
   dmg: number;
+  atkSpeedMs: number;
   hpMult: number;
   atkMult: number;
   healMult: number;
@@ -25,6 +26,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     nameKey: 'goblinRogue',
     hp: 45,
     dmg: 6,
+    atkSpeedMs: 1500,
     hpMult: 0.8,
     atkMult: 0.85,
     healMult: 0,
@@ -35,6 +37,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     nameKey: 'orcBerserker',
     hp: 110,
     dmg: 18,
+    atkSpeedMs: 1700,
     hpMult: 1,
     atkMult: 1,
     healMult: 1,
@@ -46,6 +49,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     nameKey: 'skeletonWarlock',
     hp: 240,
     dmg: 38,
+    atkSpeedMs: 1800,
     hpMult: 1.1,
     atkMult: 0.9,
     healMult: 0.9,
@@ -57,6 +61,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     nameKey: 'minotaurWarlord',
     hp: 550,
     dmg: 75,
+    atkSpeedMs: 2000,
     hpMult: 2,
     atkMult: 1.15,
     healMult: 1.6,

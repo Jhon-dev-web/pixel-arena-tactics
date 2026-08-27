@@ -218,6 +218,7 @@
     "stageLabel": "🚩 Stage {f}-{s}",
     "accumGold": "🪙 {n}",
     "accumDrops": "🎒 {n} items",
+    "potions": "🧪 {n}",
     "retreatTitle": "🏃 RETREAT!",
     "waveCleared": "⚡ Wave {n} Cleared!",
     "miniBoss": "MINI-BOSS",

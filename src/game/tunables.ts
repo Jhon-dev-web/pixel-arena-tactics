@@ -30,7 +30,8 @@ const T = DebugPanel.define({
   },
   battle: {
     _label: 'Auto-Battle',
-    turnMs: { value: 1200, min: 400, max: 3000, step: 50, label: 'Turn time (ms)' },
+    heroAttackMs: { value: 1200, min: 300, max: 3000, step: 50, label: 'Hero attack interval (ms)' },
+    agiSpeedPerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Attack speed per AGI point' },
     lungeMs: { value: 320, min: 80, max: 900, step: 20, cssVar: '--lunge-ms', unit: 'ms', label: 'Lunge animation (ms)' },
     flashMs: { value: 250, min: 50, max: 800, step: 25, cssVar: '--flash-ms', unit: 'ms', label: 'Hit flash (ms)' },
     lungeDist: { value: 18, min: 4, max: 60, step: 2, cssVar: '--lunge-dist', unit: 'px', label: 'Lunge distance' },
@@ -43,6 +44,9 @@ const T = DebugPanel.define({
     miniBossHpMult: { value: 1.5, min: 1, max: 3, step: 0.1, label: 'Mini-boss HP multiplier' },
     miniBossDmgMult: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Mini-boss damage multiplier' },
     miniBossShards: { value: 2, min: 1, max: 5, step: 1, label: 'Mini-boss shard drop' },
+    potionThreshold: { value: 0.35, min: 0.05, max: 0.9, step: 0.05, label: 'Auto-potion HP threshold (ratio)' },
+    potionHealRatio: { value: 0.35, min: 0.05, max: 1, step: 0.05, label: 'Auto-potion heal (ratio of max HP)' },
+    potionCooldownMs: { value: 5000, min: 1000, max: 15000, step: 500, label: 'Auto-potion cooldown (ms)' },
   },
   expedition: {
     _label: 'Expedition',

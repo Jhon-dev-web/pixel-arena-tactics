@@ -68,6 +68,13 @@
   hero sprite vs. floor monster with HP bars, ~1.2s turn loop, floating damage/CRIT numbers, and
   victory (gold + materials + shards) / defeat overlays. Collecting rewards persists loot + XP and
   unlocks the next floor.
+- **ATB combat (independent attack timers)**: hero and monster no longer strike in lockstep.
+  The hero attacks on its own interval (base 1.2s, slightly reduced by AGI) and each monster has its
+  own speed (1.5s–2.0s via `EnemyDef.atkSpeedMs`); each side lunges + flashes independently as its
+  own attack-progress bar fills.
+- **Auto-potion**: during a dungeon run, when hero HP drops below 35% of max, a Health Potion is
+  consumed automatically (5s cooldown), restoring 35% max HP instantly with a green `+HP` float and a
+  heal chime. Runs dry gracefully when the Bag has no potions; a `🧪 ×N` counter shows in the HUD.
 - **Continuous Wave Combat (endless stages)**: the dungeon auto-battle now runs endless waves within
   a floor (`Stage {floor}-{n}`). Each cleared wave grants loot immediately (floating `+Gold/+materials`
   banner), heals 10% of max HP, and spawns the next wave after 1s. Monster HP/damage scale per stage

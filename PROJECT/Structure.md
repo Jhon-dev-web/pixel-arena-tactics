@@ -56,10 +56,12 @@ Floor-selection modal: 4 floors with recommended CP, drop previews, progressive 
 
 ## `src/components/BattleModal.tsx`
 
-Continuous-wave auto-battle: hero (armor-tier sprite) vs a floor's monster across endless stages
-(`Stage {floor}-{n}`). Per-wave auto-turn loop (tunable), floating damage/CRIT numbers, lunge + hit
-flash, per-side HP + attack-progress bars, `1x/2x` speed toggle, accumulated-loot HUD, and
-`RETREAT WITH LOOT` / defeat (50% gold) outcomes. Wave scaling + reward math live in `waves.ts`.
+Continuous-wave ATB auto-battle: hero (armor-tier sprite) vs a floor's monster across endless stages
+(`Stage {floor}-{n}`). Hero and monster attack on independent timers (hero base 1.2s scaled by AGI,
+monster per `EnemyDef.atkSpeedMs`) with per-side attack-progress bars, floating damage/CRIT/heal
+numbers, lunge + hit-flash feedback, `1x/2x` speed toggle, accumulated-loot HUD, **auto-potion**
+(threshold + cooldown + `onUsePotion` callback), and `RETREAT WITH LOOT` / defeat (50% gold) outcomes.
+Wave scaling + reward math live in `waves.ts`.
 
 ## `src/game/waves.ts`
 
