@@ -21,7 +21,7 @@ import { GEAR, gearSellValue, getEquipped, getGear, MAX_REFINE, refineLevel, upg
 import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
 import { CONSUMABLE_STACK, ConsumableId, getConsumable } from './game/consumables';
-import { MATERIAL_STACK, isBagFull } from './game/inventory';
+import { isBagFull } from './game/inventory';
 import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier } from './game/sprites';
 import SpriteSheet from './components/SpriteSheet';
 import AdminModal from './components/AdminModal';
@@ -324,27 +324,6 @@ function App() {
     setSaveBoth({ ...s, gold: s.gold - def.cost, consumables: { ...(s.consumables ?? {}), [id]: qty + 1 } });
   };
 
-  const buyMaterial = (id: MaterialId) => {
-    const def = MATERIALS.find((m) => m.id === id);
-    if (!def || saveRef.current.gold < def.packCost) return;
-    const s = saveRef.current;
-    const qty = s.materials[id] ?? 0;
-    if (qty >= MATERIAL_STACK) {
-      showToast(Text.shop.stackFull);
-      return;
-    }
-    if (qty === 0 && isBagFull(s)) {
-      showToast(Text.shop.bagFull);
-      return;
-    }
-    playSfx('click');
-    setSaveBoth({
-      ...s,
-      gold: s.gold - def.packCost,
-      materials: { ...s.materials, [id]: Math.min(MATERIAL_STACK, qty + def.packSize) },
-    });
-  };
-
   const sellItem = (kind: 'gear' | 'material' | 'consumable', id: string, qty: number) => {
     const s = saveRef.current;
     if (kind === 'material') {
@@ -385,21 +364,6 @@ function App() {
       setSaveBoth({ ...s, inventory: inv });
     }
     playSfx('click');
-  };
-
-  const sellMaterial = (id: MaterialId) => {
-    const s = saveRef.current;
-    const def = MATERIALS.find((m) => m.id === id);
-    const qty = s.materials[id] ?? 0;
-    if (!def || qty <= 0) return;
-    const total = qty * def.sellValue;
-    playSfx('click');
-    setSaveBoth({
-      ...s,
-      gold: s.gold + total,
-      materials: { ...s.materials, [id]: 0 },
-    });
-    showToast(fmt(Text.shop.sold, total));
   };
 
   const forgeItem = (id: string) => {
@@ -965,8 +929,6 @@ function App() {
         <ShopModal
           save={save}
           onBuyConsumable={buyConsumable}
-          onBuyMaterial={buyMaterial}
-          onSellMaterial={sellMaterial}
           onClose={() => {
             playSfx('click');
             setShopOpen(false);

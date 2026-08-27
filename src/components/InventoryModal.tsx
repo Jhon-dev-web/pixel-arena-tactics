@@ -3,7 +3,7 @@ import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
 import { GEAR, GearItem, gearSellValue, getGear, refineLevel } from '../game/gear';
 import { MATERIALS, MaterialId } from '../game/materials';
-import { CONSUMABLES, getConsumable, ConsumableId } from '../game/consumables';
+import { CONSUMABLES, getConsumable } from '../game/consumables';
 import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
 import GearIcon from './GearIcon';
 
@@ -34,11 +34,10 @@ export default function InventoryModal({
 }) {
   const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables'>('all');
   const [selected, setSelected] = useState<{ kind: SelKind; id: string } | null>(null);
-  const [sellQty, setSellQty] = useState(1);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
-  const gearItems = GEAR.filter((g) => (save.inventory[g.id] ?? 0) > 0);
-  const materialItems = MATERIALS.map((m) => ({ ...m, qty: save.materials[m.id] ?? 0 })).filter((m) => m.qty > 0);
+  const gearItems = GEAR.filter((g) => (save.inventory?.[g.id] ?? 0) > 0);
+  const materialItems = MATERIALS.map((m) => ({ ...m, qty: save.materials?.[m.id] ?? 0 })).filter((m) => m.qty > 0);
   const consumableItems = CONSUMABLES.map((c) => ({ ...c, qty: save.consumables?.[c.id] ?? 0 })).filter((c) => c.qty > 0);
 
   const showEquipment = tab === 'all' || tab === 'equipment';
@@ -49,7 +48,6 @@ export default function InventoryModal({
 
   const select = (kind: SelKind, id: string) => {
     setSelected({ kind, id });
-    setSellQty(1);
     setConfirmDiscard(false);
   };
 
@@ -60,9 +58,9 @@ export default function InventoryModal({
     selected?.kind === 'consumable' ? getConsumable(selected.id) : null;
 
   const selQty = selectedGear
-    ? save.inventory[selectedGear.id] ?? 0
+    ? save.inventory?.[selectedGear.id] ?? 0
     : selectedMaterial
-      ? save.materials[selectedMaterial.id] ?? 0
+      ? save.materials?.[selectedMaterial.id] ?? 0
       : selectedConsumable
         ? save.consumables?.[selectedConsumable.id] ?? 0
         : 0;
@@ -76,6 +74,7 @@ export default function InventoryModal({
         : 0;
 
   const isEquipped = !!selectedGear && save.equipped[selectedGear.slot] === selectedGear.id;
+  const isEquippable = !!selectedGear && (selectedGear.slot === 'weapon' || selectedGear.slot === 'armor');
 
   const handleDiscard = () => {
     if (!selected) return;
@@ -88,13 +87,16 @@ export default function InventoryModal({
     setConfirmDiscard(false);
   };
 
-  const maxQty = selQty;
+  const sell1 = () => selected && onSell(selected.kind, selected.id, 1);
+  const sellAll = () => selected && onSell(selected.kind, selected.id, selQty);
 
   return (
     <div className="modal-backdrop">
       <div className="modal inventory-modal">
         <h2 className="modal-title">🎒 {Text.inventory.title}</h2>
-        <p className="shop-space">{Text.inventory.space.replace('{n}', String(slots)).replace('{m}', String(MAX_SLOTS))}</p>
+        <p className="shop-space">
+          {Text.inventory.space.replace('{n}', String(slots)).replace('{m}', String(MAX_SLOTS))}
+        </p>
 
         <div className="inv-tabs">
           <button className={`tab${tab === 'all' ? ' active' : ''}`} onClick={() => setTab('all')} data-ui>
@@ -169,15 +171,16 @@ export default function InventoryModal({
                 <span className="inv-qty">×{save.inventory[selectedGear.id]}</span>
               </div>
               <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
-              {isEquipped ? (
-                <button className="craft-btn equipped" onClick={() => onUnequip(selectedGear.id)} data-ui>
-                  {Text.inventory.unequip}
-                </button>
-              ) : (
-                <button className="craft-btn" onClick={() => onEquip(selectedGear.id)} data-ui>
-                  {Text.inventory.equip}
-                </button>
-              )}
+              {isEquippable &&
+                (isEquipped ? (
+                  <button className="craft-btn equipped" onClick={() => onUnequip(selectedGear.id)} data-ui>
+                    {Text.inventory.unequip}
+                  </button>
+                ) : (
+                  <button className="craft-btn" onClick={() => onEquip(selectedGear.id)} data-ui>
+                    {Text.inventory.equip}
+                  </button>
+                ))}
             </>
           ) : selectedMaterial ? (
             <>
@@ -201,19 +204,21 @@ export default function InventoryModal({
 
           {selected && !isEquipped && selQty > 0 && (
             <div className="inv-actions">
-              <div className="sell-row">
-                <div className="stepper">
-                  <button className="step-btn" onClick={() => setSellQty((q) => Math.max(1, q - 1))} disabled={maxQty <= 1} data-ui>
-                    −
+              <div className="sell-actions">
+                {selQty > 1 ? (
+                  <>
+                    <button className="inv-sell" onClick={sell1} data-ui>
+                      {fmt(Text.inventory.sellOne, unitValue)}
+                    </button>
+                    <button className="inv-sell all" onClick={sellAll} data-ui>
+                      {fmt(Text.inventory.sellAll, selQty * unitValue)}
+                    </button>
+                  </>
+                ) : (
+                  <button className="inv-sell" onClick={sell1} data-ui>
+                    {fmt(Text.inventory.sell, unitValue)}
                   </button>
-                  <span className="step-num">{sellQty}</span>
-                  <button className="step-btn" onClick={() => setSellQty((q) => Math.min(maxQty, q + 1))} disabled={maxQty <= 1} data-ui>
-                    +
-                  </button>
-                </div>
-                <button className="inv-sell" onClick={() => selected && onSell(selected.kind, selected.id, sellQty)} data-ui>
-                  {Text.inventory.sell} {fmt(Text.inventory.sellFor, sellQty * unitValue)}
-                </button>
+                )}
               </div>
               <button className={`inv-discard${confirmDiscard ? ' confirm' : ''}`} onClick={handleDiscard} data-ui>
                 {confirmDiscard ? Text.inventory.confirm : Text.inventory.discard}

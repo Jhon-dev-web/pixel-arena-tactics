@@ -113,19 +113,20 @@
   "inventory": {
     "title": "Bag",
     "all": "All",
-    "equipment": "Equipment",
-    "materials": "Materials",
-    "consumables": "Consumables",
+    "equipment": "Gear",
+    "materials": "Mats",
+    "consumables": "Pots",
     "equip": "EQUIP",
     "unequip": "UNEQUIP",
     "equipped": "EQUIPPED",
     "hint": "Select an item to see details",
     "materialDesc": "Crafting material",
     "space": "🎒 Space: {n} / {m}",
-    "sell": "💰 Sell",
+    "sell": "💰 Sell ({n} Gold)",
+    "sellOne": "💰 Sell 1 ({n} Gold)",
+    "sellAll": "💰 Sell All ({n} Gold)",
     "discard": "🗑️ Discard",
     "confirm": "Confirm discard?",
-    "sellFor": "+{n} Gold",
     "full": "Bag full!"
   },
   "profile": {
@@ -167,13 +168,11 @@
   },
   "consumables": {
     "small_hp": "Small Health Potion",
-    "small_hp_d": "Restores +50 HP in battle",
+    "small_hp_d": "Heals +50 HP in the Dungeon",
     "large_hp": "Large Health Potion",
-    "large_hp_d": "Restores +150 HP in battle",
-    "atk_elixir": "Attack Elixir",
-    "atk_elixir_d": "+10% damage for the current run",
-    "iron_skin": "Iron Skin Flask",
-    "iron_skin_d": "+10% defense for the current run"
+    "large_hp_d": "Heals +150 HP in the Dungeon",
+    "atk_elixir": "Battle Elixir",
+    "atk_elixir_d": "+10% damage for the current run"
   },
   "forge": {
     "title": "⚒️ Forge",

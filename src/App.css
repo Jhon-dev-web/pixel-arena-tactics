@@ -1818,8 +1818,13 @@ body {
 }
 .inv-tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  width: 100%;
   margin-bottom: 10px;
+}
+.inv-tabs .tab {
+  padding: 8px 4px;
+  font-size: calc(var(--font-size) - 3px);
 }
 .inv-grid {
   display: grid;
@@ -1969,6 +1974,10 @@ body {
   padding: 8px 12px;
   cursor: pointer;
   white-space: nowrap;
+}
+.sell-actions {
+  display: flex;
+  gap: 6px;
 }
 .inv-discard {
   font-family: inherit;
