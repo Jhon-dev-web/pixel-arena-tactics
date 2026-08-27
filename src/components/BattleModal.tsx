@@ -159,7 +159,7 @@ export default function BattleModal({
       const r = waveRewards(floor, st);
       applyLoot(r.gold, r.drops, r.shards);
       clearedRef.current += 1;
-      const healed = Math.min(playerMax, hp.current.p + playerMax * T.battle.waveHeal);
+      const healed = Math.min(playerMax, Math.round(hp.current.p + playerMax * T.battle.waveHeal));
       hp.current.p = healed;
       setPlayerHp(healed);
       setWaveClear({ stage: st, gold: r.gold, drops: r.drops, shards: r.shards });
@@ -328,7 +328,7 @@ export default function BattleModal({
                 <div className="bar-fill hp-fill" style={{ width: `${pct(playerHp, playerMax)}%` }} />
               </div>
               <span className="hp-num">
-                {playerHp} / {playerMax}
+                {Math.round(playerHp)} / {playerMax}
               </span>
             </div>
             <div className="battle-atkbar">
@@ -346,7 +346,7 @@ export default function BattleModal({
                 <div className="bar-fill enemy-hp-fill" style={{ width: `${pct(enemyHp, enemyMax)}%` }} />
               </div>
               <span className="hp-num">
-                {enemyHp} / {enemyMax}
+                {Math.round(enemyHp)} / {enemyMax}
               </span>
             </div>
             <div className="battle-atkbar">

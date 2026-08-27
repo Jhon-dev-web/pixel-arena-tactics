@@ -134,12 +134,12 @@ function trimDec(v: number): string {
 export function playerMaxHp(save: SaveData): number {
   const { armor } = getEquipped(save.equipped);
   const armorLvl = refineLevel(save.upgrades, save.equipped.armor);
-  return (
+  return Math.round(
     T.progression.playerBaseHp +
-    (save.armorLevel - 1) * T.progression.armorHpPerLvl +
-    effectiveMaxHp(armor, armorLvl) +
-    (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
-    save.vit * T.advanced.vitHpPerPoint
+      (save.armorLevel - 1) * T.progression.armorHpPerLvl +
+      effectiveMaxHp(armor, armorLvl) +
+      (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
+      save.vit * T.advanced.vitHpPerPoint,
   );
 }
 
