@@ -211,6 +211,21 @@
     "defeated": "💀 DEFEATED!",
     "collect": "Collect & Return",
     "return": "Return to Camp",
-    "rewards": "Rewards"
+    "rewards": "Rewards",
+    "heroLabel": "Hero",
+    "speed": "{n}x",
+    "run": "🏃 Run",
+    "expedition": "🏕️ Expedition"
+  },
+  "expedition": {
+    "title": "🏕️ Expedition",
+    "name": "Quick Forage",
+    "desc": "Send your hero to gather leather and ore — 100% success, no danger.",
+    "send": "Send Hero",
+    "duration": "{n}s",
+    "inProgress": "Gathering...",
+    "complete": "Expedition complete!",
+    "return": "Collect",
+    "back": "Close"
   }
 }

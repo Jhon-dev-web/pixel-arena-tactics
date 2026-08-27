@@ -68,6 +68,17 @@
   hero sprite vs. floor monster with HP bars, ~1.2s turn loop, floating damage/CRIT numbers, and
   victory (gold + materials + shards) / defeat overlays. Collecting rewards persists loot + XP and
   unlocks the next floor.
+- **Auto-battle polish**: combatants lunge forward on their strike and flash red/white when hit;
+  crits float as enlarged gold `💥 CRIT!` numbers (scale-in) while normal damage floats fade out.
+  Hero and monster HP are separated left/right at the top, each with a thin blue attack-progress bar
+  filling toward the next round. Top controls add a `1x/2x` speed toggle and a `🏃 Run` button to
+  flee safely back to camp (no rewards).
+- **Dungeon rebalance (nerf)**: monsters carry explicit per-floor `hp`/`dmg` — Goblin Rogue 45/6,
+  Orc Berserker 110/18, Skeleton Warlock 240/38, Minotaur Warlord 550/75. A fresh hero with the
+  wooden club clears Floor 1 in ~4 hits while surviving comfortably.
+- **Camp Expeditions**: the dungeon map now exposes `[🏕️ Expedition]` (`ExpeditionModal`) — a
+  100%-success, no-risk "Quick Forage" (30s by default, tunable) granting `20 Gold + 1 Tanned
+  Leather + 1 Iron Ingot`, an alternate route to forge the first Bronze Dagger before fighting.
 
 ## Next steps / possible improvements
 

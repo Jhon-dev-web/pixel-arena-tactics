@@ -57,7 +57,15 @@ Floor-selection modal: 4 floors with recommended CP, drop previews, progressive 
 ## `src/components/BattleModal.tsx`
 
 Auto-battle duel: hero (armor-tier sprite) vs floor monster with HP bars, automatic turn loop
-(~1.2s), floating damage/CRIT numbers, and victory (rewards) / defeat overlays.
+(~1.2s, tunable), floating damage/CRIT numbers, lunge + hit-flash feedback, per-side attack-progress
+bars, `1x/2x` speed toggle, and a `Run` escape. Victory (rewards) / defeat overlays. Enemy HP/damage
+come straight from the floor's `EnemyDef.hp`/`.dmg`.
+
+## `src/game/expedition.ts` + `src/components/ExpeditionModal.tsx`
+
+Camp expedition (alternative progression): `EXPEDITION` defines a risk-free "Quick Forage"
+(20 gold + leather + iron). `ExpeditionModal` runs a tunable-duration countdown (default 30s) and
+grants rewards on completion, for forging the first Bronze Dagger without combat.
 
 ## `src/components/CombatFx.tsx`
 

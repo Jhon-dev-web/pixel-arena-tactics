@@ -3,6 +3,8 @@ export type EnemyKind = 'goblin' | 'orc' | 'warlock' | 'boss';
 export interface EnemyDef {
   id: EnemyKind;
   nameKey: string;
+  hp: number;
+  dmg: number;
   hpMult: number;
   atkMult: number;
   healMult: number;
@@ -21,6 +23,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   goblin: {
     id: 'goblin',
     nameKey: 'goblinRogue',
+    hp: 45,
+    dmg: 6,
     hpMult: 0.8,
     atkMult: 0.85,
     healMult: 0,
@@ -29,6 +33,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   orc: {
     id: 'orc',
     nameKey: 'orcBerserker',
+    hp: 110,
+    dmg: 18,
     hpMult: 1,
     atkMult: 1,
     healMult: 1,
@@ -38,6 +44,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   warlock: {
     id: 'warlock',
     nameKey: 'skeletonWarlock',
+    hp: 240,
+    dmg: 38,
     hpMult: 1.1,
     atkMult: 0.9,
     healMult: 0.9,
@@ -47,6 +55,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   boss: {
     id: 'boss',
     nameKey: 'minotaurWarlord',
+    hp: 550,
+    dmg: 75,
     hpMult: 2,
     atkMult: 1.15,
     healMult: 1.6,

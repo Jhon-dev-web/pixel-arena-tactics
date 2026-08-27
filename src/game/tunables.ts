@@ -28,6 +28,17 @@ const T = DebugPanel.define({
     enemyAtkMin: { value: 18, min: 5, max: 80, step: 1, label: 'Enemy damage (min)' },
     enemyAtkMax: { value: 26, min: 5, max: 100, step: 1, label: 'Enemy damage (max)' },
   },
+  battle: {
+    _label: 'Auto-Battle',
+    turnMs: { value: 1200, min: 400, max: 3000, step: 50, label: 'Turn time (ms)' },
+    lungeMs: { value: 320, min: 80, max: 900, step: 20, cssVar: '--lunge-ms', unit: 'ms', label: 'Lunge animation (ms)' },
+    flashMs: { value: 250, min: 50, max: 800, step: 25, cssVar: '--flash-ms', unit: 'ms', label: 'Hit flash (ms)' },
+    lungeDist: { value: 18, min: 4, max: 60, step: 2, cssVar: '--lunge-dist', unit: 'px', label: 'Lunge distance' },
+  },
+  expedition: {
+    _label: 'Expedition',
+    durationMs: { value: 30000, min: 5000, max: 120000, step: 1000, label: 'Expedition duration (ms)' },
+  },
   progression: {
     _label: 'Progression',
     goldMin: { value: 35, min: 5, max: 200, step: 1, label: 'Loot gold (min)' },

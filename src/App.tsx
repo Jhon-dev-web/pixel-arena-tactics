@@ -29,7 +29,9 @@ import InventoryModal from './components/InventoryModal';
 import HeroModal from './components/HeroModal';
 import DungeonMapModal from './components/DungeonMapModal';
 import BattleModal from './components/BattleModal';
+import ExpeditionModal from './components/ExpeditionModal';
 import { BattleRewards, getFloor } from './game/dungeon';
+import { ExpeditionRewards } from './game/expedition';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
@@ -77,6 +79,7 @@ function App() {
   const [heroOpen, setHeroOpen] = useState(false);
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
+  const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [loot, setLoot] = useState<{ gold: number; shards: number } | null>(null);
   const [version, setVersion] = useState(0);
@@ -226,6 +229,24 @@ function App() {
   const returnFromBattle = () => {
     playSfx('click');
     setBattleFloor(null);
+  };
+
+  const openExpedition = () => {
+    playSfx('click');
+    setDungeonOpen(false);
+    setExpeditionOpen(true);
+  };
+
+  const collectExpedition = (rewards: ExpeditionRewards) => {
+    const s = saveRef.current;
+    const mats = { ...s.materials };
+    for (const [mid, qty] of Object.entries(rewards.drops ?? {})) {
+      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
+    }
+    setSaveBoth({ ...s, gold: s.gold + rewards.gold, materials: mats });
+    playSfx('victory');
+    setExpeditionOpen(false);
+    showToast(Text.expedition.complete);
   };
 
   const collectRewards = (floor: number, rewards: BattleRewards) => {
@@ -873,9 +894,20 @@ function App() {
         <DungeonMapModal
           save={save}
           onBattle={startBattle}
+          onExpedition={openExpedition}
           onClose={() => {
             playSfx('click');
             setDungeonOpen(false);
+          }}
+        />
+      )}
+
+      {expeditionOpen && (
+        <ExpeditionModal
+          onCollect={collectExpedition}
+          onClose={() => {
+            playSfx('click');
+            setExpeditionOpen(false);
           }}
         />
       )}

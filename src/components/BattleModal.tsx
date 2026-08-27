@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import T from '../game/tunables';
 import Text from '../locales/en.json';
 import Assets from '../assets.json';
-import { SaveData, enemyHpForRound, playerMaxHp } from '../game/engine';
+import { SaveData, playerMaxHp } from '../game/engine';
 import { getEnemyDef } from '../game/enemies';
 import { effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, refineLevel } from '../game/gear';
 import { BattleRewards, FloorDef } from '../game/dungeon';
@@ -12,6 +12,7 @@ import SpriteSheet from './SpriteSheet';
 
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const enemyText = (k: string): string => (Text.enemies as Record<string, string>)[k];
+const dungeonText = (k: string): string => (Text.dungeon as Record<string, string>)[k];
 const materialName = (mid: string): string => (Text.materials as Record<string, string>)[`mat_${mid}`];
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
 
@@ -45,7 +46,7 @@ export default function BattleModal({
   const critMult = T.combat.critMult + (build.relic?.critMultBonus ?? 0);
 
   const playerMax = playerMaxHp(save);
-  const enemyMax = enemyHpForRound(def, floor.floor);
+  const enemyMax = def.hp;
 
   const [playerHp, setPlayerHp] = useState(playerMax);
   const [enemyHp, setEnemyHp] = useState(enemyMax);
@@ -53,20 +54,41 @@ export default function BattleModal({
   const [floats, setFloats] = useState<FloatItem[]>([]);
   const [playerAnim, setPlayerAnim] = useState<'idle' | 'attack' | 'hurt'>('idle');
   const [enemyAnim, setEnemyAnim] = useState<'idle' | 'attack' | 'hurt'>('idle');
+  const [playerLunge, setPlayerLunge] = useState(false);
+  const [enemyLunge, setEnemyLunge] = useState(false);
+  const [playerFlash, setPlayerFlash] = useState(false);
+  const [enemyFlash, setEnemyFlash] = useState(false);
+  const [speed, setSpeed] = useState<1 | 2>(1);
+  const [turnProgress, setTurnProgress] = useState(0);
   const [rewards, setRewards] = useState<BattleRewards | null>(null);
 
   const hp = useRef({ p: playerMax, e: enemyMax });
+  const phaseRef = useRef<'battle' | 'victory' | 'defeat'>('battle');
+  const speedRef = useRef<1 | 2>(1);
   const idRef = useRef(0);
 
   const addFloat = (side: 'p' | 'e', text: string, kind: 'damage' | 'crit') => {
     const id = idRef.current++;
     setFloats((f) => [...f, { id, side, text, kind }]);
-    window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 900);
+    window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), T.advanced.textFloatMs);
+  };
+
+  const finish = (won: boolean) => {
+    if (won) {
+      setRewards({ gold: randInt(floor.goldMin, floor.goldMax), drops: floor.drops, shards: floor.shards ?? 0 });
+    }
+    setPhase(won ? 'victory' : 'defeat');
+    phaseRef.current = won ? 'victory' : 'defeat';
+    setTurnProgress(0);
   };
 
   useEffect(() => {
-    let timer: number;
+    let raf = 0;
+    let last = performance.now();
+    let elapsed = 0;
+
     const runTurn = () => {
+      // Player attacks enemy
       const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
       const total = baseDmg + effectiveDamage(weapon, wLvl) + save.str * T.advanced.strDmgPerPoint;
       const crit = Math.random() < effectiveCrit(weapon, wLvl);
@@ -74,67 +96,118 @@ export default function BattleModal({
       hp.current.e = Math.max(0, hp.current.e - dmg);
       setEnemyHp(hp.current.e);
       setPlayerAnim('attack');
-      addFloat('e', crit ? `CRIT! -${dmg}` : `-${dmg}`, crit ? 'crit' : 'damage');
-      window.setTimeout(() => setPlayerAnim('idle'), 320);
+      setPlayerLunge(true);
+      setEnemyFlash(true);
+      addFloat('e', crit ? `💥 CRIT! -${dmg}` : `-${dmg}`, crit ? 'crit' : 'damage');
+      window.setTimeout(() => {
+        setPlayerLunge(false);
+        setPlayerAnim('idle');
+      }, T.battle.lungeMs);
+      window.setTimeout(() => setEnemyFlash(false), T.battle.flashMs);
 
       if (hp.current.e <= 0) {
-        setRewards({ gold: randInt(floor.goldMin, floor.goldMax), drops: floor.drops, shards: floor.shards ?? 0 });
-        setPhase('victory');
+        finish(true);
         return;
       }
 
-      const eDmg = randInt(
-        Math.round(T.combat.enemyAtkMin * def.atkMult),
-        Math.round(T.combat.enemyAtkMax * def.atkMult),
-      );
+      // Enemy attacks player
       const reduction = effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint;
-      const eFinal = Math.max(1, Math.round(eDmg * (1 - reduction)));
+      const eFinal = Math.max(1, Math.round(def.dmg * (1 - reduction)));
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);
       setEnemyAnim('attack');
+      setEnemyLunge(true);
+      setPlayerFlash(true);
       addFloat('p', `-${eFinal}`, 'damage');
-      window.setTimeout(() => setEnemyAnim('idle'), 320);
+      window.setTimeout(() => {
+        setEnemyLunge(false);
+        setEnemyAnim('idle');
+      }, T.battle.lungeMs);
+      window.setTimeout(() => setPlayerFlash(false), T.battle.flashMs);
 
       if (hp.current.p <= 0) {
-        setPhase('defeat');
+        finish(false);
+      }
+    };
+
+    const step = (now: number) => {
+      const dt = now - last;
+      last = now;
+      if (phaseRef.current !== 'battle') {
         return;
       }
-
-      timer = window.setTimeout(runTurn, 1200);
+      elapsed += dt * speedRef.current;
+      const turnMs = T.battle.turnMs;
+      setTurnProgress(Math.min(1, elapsed / turnMs));
+      if (elapsed >= turnMs) {
+        elapsed = 0;
+        runTurn();
+        if (phaseRef.current !== 'battle') {
+          return;
+        }
+      }
+      raf = requestAnimationFrame(step);
     };
-    timer = window.setTimeout(runTurn, 800);
-    return () => window.clearTimeout(timer);
+
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const toggleSpeed = () => {
+    const next = speedRef.current === 1 ? 2 : 1;
+    speedRef.current = next;
+    setSpeed(next);
+  };
 
   const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
 
   return (
     <div className="modal-backdrop battle-backdrop">
       <div className="battle">
+        <div className="battle-controls">
+          <button className="battle-speed" onClick={toggleSpeed} data-ui>
+            {dungeonText('speed').replace('{n}', String(speed))}
+          </button>
+          <button className="battle-run" onClick={onReturn} data-ui>
+            {dungeonText('run')}
+          </button>
+        </div>
+
         <div className="battle-top">
-          <div className="battle-hp">
-            <span className="hp-label">Hero</span>
-            <div className="bar hp">
-              <div className="bar-fill hp-fill" style={{ width: `${pct(playerHp, playerMax)}%` }} />
+          <div className="battle-hud hero">
+            <span className="hp-label">{dungeonText('heroLabel')}</span>
+            <div className="battle-hp-row">
+              <div className="bar hp">
+                <div className="bar-fill hp-fill" style={{ width: `${pct(playerHp, playerMax)}%` }} />
+              </div>
+              <span className="hp-num">
+                {playerHp} / {playerMax}
+              </span>
             </div>
-            <span className="hp-num">
-              {playerHp} / {playerMax}
-            </span>
+            <div className="battle-atkbar">
+              <div className="battle-atkbar-fill" style={{ width: `${turnProgress * 100}%` }} />
+            </div>
           </div>
-          <div className="battle-hp">
+
+          <div className="battle-hud enemy">
             <span className="hp-label">{enemyText(def.nameKey)}</span>
-            <div className="bar hp enemy-hp">
-              <div className="bar-fill enemy-hp-fill" style={{ width: `${pct(enemyHp, enemyMax)}%` }} />
+            <div className="battle-hp-row">
+              <div className="bar hp enemy-hp">
+                <div className="bar-fill enemy-hp-fill" style={{ width: `${pct(enemyHp, enemyMax)}%` }} />
+              </div>
+              <span className="hp-num">
+                {enemyHp} / {enemyMax}
+              </span>
             </div>
-            <span className="hp-num">
-              {enemyHp} / {enemyMax}
-            </span>
+            <div className="battle-atkbar">
+              <div className="battle-atkbar-fill" style={{ width: `${turnProgress * 100}%` }} />
+            </div>
           </div>
         </div>
 
         <div className="battle-arena">
-          <div className="battle-side player">
+          <div className={`battle-side player${playerLunge ? ' lunge' : ''}${playerFlash ? ' flash' : ''}`}>
             <SpriteSheet
               src={spriteForArmorTier(armorTier)}
               size="calc(var(--sprite-size, 132px) * 1.1)"
@@ -147,7 +220,7 @@ export default function BattleModal({
             ))}
           </div>
           <div className="battle-vs">VS</div>
-          <div className="battle-side enemy">
+          <div className={`battle-side enemy${enemyLunge ? ' lunge' : ''}${enemyFlash ? ' flash' : ''}`}>
             <SpriteSheet
               src={enemySpriteUrl(floor.enemyKind)}
               size="calc(var(--sprite-size, 132px) * 1.1)"

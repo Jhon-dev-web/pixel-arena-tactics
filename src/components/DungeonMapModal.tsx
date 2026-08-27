@@ -11,10 +11,12 @@ const matText = (k: string): string => (Text.materials as Record<string, string>
 export default function DungeonMapModal({
   save,
   onBattle,
+  onExpedition,
   onClose,
 }: {
   save: SaveData;
   onBattle: (floor: number) => void;
+  onExpedition: () => void;
   onClose: () => void;
 }) {
   return (
@@ -73,6 +75,10 @@ export default function DungeonMapModal({
             );
           })}
         </div>
+
+        <button className="expedition-entry" onClick={onExpedition} data-ui>
+          {Text.dungeon.expedition}
+        </button>
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
           ✕
