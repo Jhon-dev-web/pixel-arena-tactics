@@ -56,10 +56,16 @@ Floor-selection modal: 4 floors with recommended CP, drop previews, progressive 
 
 ## `src/components/BattleModal.tsx`
 
-Auto-battle duel: hero (armor-tier sprite) vs floor monster with HP bars, automatic turn loop
-(~1.2s, tunable), floating damage/CRIT numbers, lunge + hit-flash feedback, per-side attack-progress
-bars, `1x/2x` speed toggle, and a `Run` escape. Victory (rewards) / defeat overlays. Enemy HP/damage
-come straight from the floor's `EnemyDef.hp`/`.dmg`.
+Continuous-wave auto-battle: hero (armor-tier sprite) vs a floor's monster across endless stages
+(`Stage {floor}-{n}`). Per-wave auto-turn loop (tunable), floating damage/CRIT numbers, lunge + hit
+flash, per-side HP + attack-progress bars, `1x/2x` speed toggle, accumulated-loot HUD, and
+`RETREAT WITH LOOT` / defeat (50% gold) outcomes. Wave scaling + reward math live in `waves.ts`.
+
+## `src/game/waves.ts`
+
+Endless-wave math: `stageEnemyHp`/`stageEnemyDmg` (per-stage HP/damage growth), `waveRewards`
+(gold/drop growth + mini-boss guaranteed shards/steel), `isMiniBoss`, and the `RunRewards` result
+type.
 
 ## `src/game/expedition.ts` + `src/components/ExpeditionModal.tsx`
 

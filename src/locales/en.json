@@ -214,7 +214,14 @@
     "rewards": "Rewards",
     "heroLabel": "Hero",
     "speed": "{n}x",
-    "run": "🏃 Run",
+    "retreat": "🏃 RETREAT WITH LOOT",
+    "stageLabel": "🚩 Stage {f}-{s}",
+    "accumGold": "🪙 {n}",
+    "accumDrops": "🎒 {n} items",
+    "retreatTitle": "🏃 RETREAT!",
+    "waveCleared": "⚡ Wave {n} Cleared!",
+    "miniBoss": "MINI-BOSS",
+    "goldPenalty": "Gold retained: -50%",
     "expedition": "🏕️ Expedition"
   },
   "expedition": {

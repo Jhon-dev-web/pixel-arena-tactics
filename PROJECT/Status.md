@@ -68,11 +68,17 @@
   hero sprite vs. floor monster with HP bars, ~1.2s turn loop, floating damage/CRIT numbers, and
   victory (gold + materials + shards) / defeat overlays. Collecting rewards persists loot + XP and
   unlocks the next floor.
+- **Continuous Wave Combat (endless stages)**: the dungeon auto-battle now runs endless waves within
+  a floor (`Stage {floor}-{n}`). Each cleared wave grants loot immediately (floating `+Gold/+materials`
+  banner), heals 10% of max HP, and spawns the next wave after 1s. Monster HP/damage scale per stage
+  (`+15%` HP, `+12%` damage), rewards grow `+15%` per stage, and every 5th wave is a **MINI-BOSS**
+  (boosted stats + guaranteed shards/steel). A top HUD shows `🚩 Stage`, accumulated `🪙` gold and
+  `🎒` item count. `[🏃 RETREAT WITH LOOT]` ends the run and banks the full haul (+victory, unlocks the
+  next floor); defeat retains materials but keeps only 50% of the run's gold.
 - **Auto-battle polish**: combatants lunge forward on their strike and flash red/white when hit;
   crits float as enlarged gold `💥 CRIT!` numbers (scale-in) while normal damage floats fade out.
   Hero and monster HP are separated left/right at the top, each with a thin blue attack-progress bar
-  filling toward the next round. Top controls add a `1x/2x` speed toggle and a `🏃 Run` button to
-  flee safely back to camp (no rewards).
+  filling toward the next round, plus a `1x/2x` speed toggle.
 - **Dungeon rebalance (nerf)**: monsters carry explicit per-floor `hp`/`dmg` — Goblin Rogue 45/6,
   Orc Berserker 110/18, Skeleton Warlock 240/38, Minotaur Warlord 550/75. A fresh hero with the
   wooden club clears Floor 1 in ~4 hits while surviving comfortably.

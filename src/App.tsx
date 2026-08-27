@@ -30,7 +30,8 @@ import HeroModal from './components/HeroModal';
 import DungeonMapModal from './components/DungeonMapModal';
 import BattleModal from './components/BattleModal';
 import ExpeditionModal from './components/ExpeditionModal';
-import { BattleRewards, getFloor } from './game/dungeon';
+import { getFloor } from './game/dungeon';
+import { RunRewards } from './game/waves';
 import { ExpeditionRewards } from './game/expedition';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
@@ -226,8 +227,25 @@ function App() {
     setBattleFloor(floor);
   };
 
-  const returnFromBattle = () => {
-    playSfx('click');
+  const finishRun = (floor: number, rewards: RunRewards, outcome: 'retreat' | 'defeat') => {
+    const s = saveRef.current;
+    const mats = { ...s.materials };
+    for (const [mid, qty] of Object.entries(rewards.drops ?? {})) {
+      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
+    }
+    const stages = Math.max(0, rewards.stages);
+    const success = outcome === 'retreat' && stages > 0;
+    const atCap = playerLevel(s.xp) >= 100;
+    setSaveBoth({
+      ...s,
+      gold: s.gold + rewards.gold,
+      materials: mats,
+      shards: s.shards + rewards.shards,
+      xp: atCap ? s.xp : s.xp + T.advanced.victoryXp * stages,
+      victories: s.victories + (success ? 1 : 0),
+      highestFloor: success ? Math.max(s.highestFloor, Math.min(4, floor + 1)) : s.highestFloor,
+    });
+    playSfx(outcome === 'retreat' ? 'victory' : 'hit');
     setBattleFloor(null);
   };
 
@@ -247,26 +265,6 @@ function App() {
     playSfx('victory');
     setExpeditionOpen(false);
     showToast(Text.expedition.complete);
-  };
-
-  const collectRewards = (floor: number, rewards: BattleRewards) => {
-    const s = saveRef.current;
-    const mats = { ...s.materials };
-    for (const [mid, qty] of Object.entries(rewards.drops ?? {})) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
-    }
-    const atCap = playerLevel(s.xp) >= 100;
-    setSaveBoth({
-      ...s,
-      gold: s.gold + rewards.gold,
-      materials: mats,
-      shards: s.shards + rewards.shards,
-      xp: atCap ? s.xp : s.xp + T.advanced.victoryXp,
-      victories: s.victories + 1,
-      highestFloor: Math.max(s.highestFloor, Math.min(4, floor + 1)),
-    });
-    playSfx('victory');
-    setBattleFloor(null);
   };
 
   const buyPotion = (id: 'hp' | 'stamina' | 'elixir') => {
@@ -916,8 +914,8 @@ function App() {
         <BattleModal
           save={save}
           floor={getFloor(battleFloor)}
-          onCollect={(rewards) => collectRewards(battleFloor, rewards)}
-          onReturn={returnFromBattle}
+          onRetreat={(rewards) => finishRun(battleFloor, rewards, 'retreat')}
+          onDefeat={(rewards) => finishRun(battleFloor, rewards, 'defeat')}
         />
       )}
 

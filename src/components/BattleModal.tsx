@@ -5,16 +5,17 @@ import Assets from '../assets.json';
 import { SaveData, playerMaxHp } from '../game/engine';
 import { getEnemyDef } from '../game/enemies';
 import { effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, refineLevel } from '../game/gear';
-import { BattleRewards, FloorDef } from '../game/dungeon';
+import { FloorDef } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, spriteForArmorTier } from '../game/sprites';
 import SpriteSheet from './SpriteSheet';
+import { isMiniBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 
-const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const enemyText = (k: string): string => (Text.enemies as Record<string, string>)[k];
 const dungeonText = (k: string): string => (Text.dungeon as Record<string, string>)[k];
 const materialName = (mid: string): string => (Text.materials as Record<string, string>)[`mat_${mid}`];
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
+const stageLabel = (f: number, s: number) => Text.dungeon.stageLabel.replace('{f}', String(f)).replace('{s}', String(s));
 
 interface FloatItem {
   id: number;
@@ -23,18 +24,20 @@ interface FloatItem {
   kind: 'damage' | 'crit';
 }
 
+type Phase = 'battle' | 'intermission' | 'retreat' | 'defeat';
+
 const ANIM_ROW: Record<string, number> = { idle: 0, attack: 1, hurt: 2 };
 
 export default function BattleModal({
   save,
   floor,
-  onCollect,
-  onReturn,
+  onRetreat,
+  onDefeat,
 }: {
   save: SaveData;
   floor: FloorDef;
-  onCollect: (rewards: BattleRewards) => void;
-  onReturn: () => void;
+  onRetreat: (rewards: RunRewards) => void;
+  onDefeat: (rewards: RunRewards) => void;
 }) {
   const def = getEnemyDef(floor.enemyKind);
   const build = getEquipped(save.equipped);
@@ -46,11 +49,13 @@ export default function BattleModal({
   const critMult = T.combat.critMult + (build.relic?.critMultBonus ?? 0);
 
   const playerMax = playerMaxHp(save);
-  const enemyMax = def.hp;
 
+  const [stage, setStage] = useState(1);
+  const [miniBoss, setMiniBoss] = useState(false);
+  const [enemyMax, setEnemyMax] = useState(() => stageEnemyHp(def, 1));
   const [playerHp, setPlayerHp] = useState(playerMax);
-  const [enemyHp, setEnemyHp] = useState(enemyMax);
-  const [phase, setPhase] = useState<'battle' | 'victory' | 'defeat'>('battle');
+  const [enemyHp, setEnemyHp] = useState(() => stageEnemyHp(def, 1));
+  const [phase, setPhase] = useState<Phase>('battle');
   const [floats, setFloats] = useState<FloatItem[]>([]);
   const [playerAnim, setPlayerAnim] = useState<'idle' | 'attack' | 'hurt'>('idle');
   const [enemyAnim, setEnemyAnim] = useState<'idle' | 'attack' | 'hurt'>('idle');
@@ -60,12 +65,28 @@ export default function BattleModal({
   const [enemyFlash, setEnemyFlash] = useState(false);
   const [speed, setSpeed] = useState<1 | 2>(1);
   const [turnProgress, setTurnProgress] = useState(0);
-  const [rewards, setRewards] = useState<BattleRewards | null>(null);
+  const [accumGold, setAccumGold] = useState(0);
+  const [accumCount, setAccumCount] = useState(0);
+  const [finalRewards, setFinalRewards] = useState<RunRewards | null>(null);
+  const [waveClear, setWaveClear] = useState<{ stage: number; gold: number; drops: Partial<Record<MaterialId, number>>; shards: number } | null>(null);
 
-  const hp = useRef({ p: playerMax, e: enemyMax });
-  const phaseRef = useRef<'battle' | 'victory' | 'defeat'>('battle');
+  const hp = useRef({ p: playerMax, e: stageEnemyHp(def, 1) });
+  const phaseRef = useRef<Phase>('battle');
   const speedRef = useRef<1 | 2>(1);
+  const stageRef = useRef(1);
+  const clearedRef = useRef(0);
+  const accumRef = useRef<{ gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; count: number }>({
+    gold: 0,
+    drops: {},
+    shards: 0,
+    count: 0,
+  });
+  const waveStartRef = useRef(0);
   const idRef = useRef(0);
+  const onRetreatRef = useRef(onRetreat);
+  onRetreatRef.current = onRetreat;
+  const onDefeatRef = useRef(onDefeat);
+  onDefeatRef.current = onDefeat;
 
   const addFloat = (side: 'p' | 'e', text: string, kind: 'damage' | 'crit') => {
     const id = idRef.current++;
@@ -73,22 +94,66 @@ export default function BattleModal({
     window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), T.advanced.textFloatMs);
   };
 
-  const finish = (won: boolean) => {
-    if (won) {
-      setRewards({ gold: randInt(floor.goldMin, floor.goldMax), drops: floor.drops, shards: floor.shards ?? 0 });
-    }
-    setPhase(won ? 'victory' : 'defeat');
-    phaseRef.current = won ? 'victory' : 'defeat';
+  const endCombat = (outcome: 'retreat' | 'defeat') => {
+    if (phaseRef.current !== 'battle' && phaseRef.current !== 'intermission') return;
+    phaseRef.current = outcome;
+    setPhase(outcome);
     setTurnProgress(0);
+    const acc = accumRef.current;
+    const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold / 2);
+    setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, stages: clearedRef.current });
   };
 
   useEffect(() => {
     let raf = 0;
-    let last = performance.now();
-    let elapsed = 0;
+    waveStartRef.current = performance.now();
+
+    const applyLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number) => {
+      const acc = accumRef.current;
+      const merged = { ...acc.drops };
+      for (const [mid, qty] of Object.entries(drops)) {
+        merged[mid as MaterialId] = (merged[mid as MaterialId] ?? 0) + (qty as number);
+      }
+      const count = Object.values(merged).reduce((a, b) => a + (b as number), 0);
+      accumRef.current = { gold: acc.gold + gold, drops: merged, shards: acc.shards + shards, count };
+      setAccumGold(accumRef.current.gold);
+      setAccumCount(count);
+    };
+
+    const startNextWave = () => {
+      if (phaseRef.current !== 'intermission') return;
+      const next = stageRef.current + 1;
+      stageRef.current = next;
+      setStage(next);
+      const nmax = stageEnemyHp(def, next);
+      hp.current.e = nmax;
+      setEnemyMax(nmax);
+      setEnemyHp(nmax);
+      setMiniBoss(isMiniBoss(next));
+      setWaveClear(null);
+      setTurnProgress(0);
+      waveStartRef.current = performance.now();
+      phaseRef.current = 'battle';
+      setPhase('battle');
+    };
+
+    const clearWave = () => {
+      const st = stageRef.current;
+      const r = waveRewards(floor, st);
+      applyLoot(r.gold, r.drops, r.shards);
+      clearedRef.current += 1;
+      const healed = Math.min(playerMax, hp.current.p + playerMax * T.battle.waveHeal);
+      hp.current.p = healed;
+      setPlayerHp(healed);
+      setWaveClear({ stage: st, gold: r.gold, drops: r.drops, shards: r.shards });
+      phaseRef.current = 'intermission';
+      setPhase('intermission');
+      setTurnProgress(0);
+      window.setTimeout(startNextWave, T.battle.intermissionMs);
+    };
 
     const runTurn = () => {
-      // Player attacks enemy
+      const st = stageRef.current;
       const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
       const total = baseDmg + effectiveDamage(weapon, wLvl) + save.str * T.advanced.strDmgPerPoint;
       const crit = Math.random() < effectiveCrit(weapon, wLvl);
@@ -106,13 +171,12 @@ export default function BattleModal({
       window.setTimeout(() => setEnemyFlash(false), T.battle.flashMs);
 
       if (hp.current.e <= 0) {
-        finish(true);
+        clearWave();
         return;
       }
 
-      // Enemy attacks player
       const reduction = effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint;
-      const eFinal = Math.max(1, Math.round(def.dmg * (1 - reduction)));
+      const eFinal = Math.max(1, Math.round(stageEnemyDmg(def, st) * (1 - reduction)));
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);
       setEnemyAnim('attack');
@@ -126,27 +190,20 @@ export default function BattleModal({
       window.setTimeout(() => setPlayerFlash(false), T.battle.flashMs);
 
       if (hp.current.p <= 0) {
-        finish(false);
+        endCombat('defeat');
       }
     };
 
     const step = (now: number) => {
-      const dt = now - last;
-      last = now;
-      if (phaseRef.current !== 'battle') {
-        return;
-      }
-      elapsed += dt * speedRef.current;
-      const turnMs = T.battle.turnMs;
-      setTurnProgress(Math.min(1, elapsed / turnMs));
-      if (elapsed >= turnMs) {
-        elapsed = 0;
-        runTurn();
-        if (phaseRef.current !== 'battle') {
-          return;
-        }
-      }
       raf = requestAnimationFrame(step);
+      if (phaseRef.current !== 'battle') return;
+      const effTurn = T.battle.turnMs / speedRef.current;
+      const elapsed = now - waveStartRef.current;
+      setTurnProgress(Math.min(1, elapsed / effTurn));
+      if (elapsed >= effTurn) {
+        waveStartRef.current = now;
+        runTurn();
+      }
     };
 
     raf = requestAnimationFrame(step);
@@ -162,16 +219,56 @@ export default function BattleModal({
 
   const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
 
+  const renderLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number) => (
+    <>
+      <span className="floor-drop">
+        <span className="mat-icon">
+          <img src={Assets.icons.gold.url} alt="" />
+        </span>
+        <span>+{gold} Gold</span>
+      </span>
+      {Object.entries(drops ?? {}).map(([mid, qty]) => (
+        <span className="floor-drop" key={mid}>
+          <span className="mat-icon">
+            <img src={materialIcon(mid)} alt="" />
+          </span>
+          <span>
+            +{qty}× {materialName(mid)}
+          </span>
+        </span>
+      ))}
+      {shards > 0 && (
+        <span className="floor-drop">
+          <span className="mat-icon shard">🔷</span>
+          <span>+{shards} Shards</span>
+        </span>
+      )}
+    </>
+  );
+
   return (
     <div className="modal-backdrop battle-backdrop">
       <div className="battle">
         <div className="battle-controls">
-          <button className="battle-speed" onClick={toggleSpeed} data-ui>
-            {dungeonText('speed').replace('{n}', String(speed))}
-          </button>
-          <button className="battle-run" onClick={onReturn} data-ui>
-            {dungeonText('run')}
-          </button>
+          <span className="stage-indicator">{stageLabel(floor.floor, stage)}</span>
+          <div className="battle-control-btns">
+            <button className="battle-speed" onClick={toggleSpeed} data-ui>
+              {dungeonText('speed').replace('{n}', String(speed))}
+            </button>
+            <button
+              className="battle-run"
+              onClick={() => endCombat('retreat')}
+              disabled={phase === 'retreat' || phase === 'defeat'}
+              data-ui
+            >
+              {Text.dungeon.retreat}
+            </button>
+          </div>
+        </div>
+
+        <div className="battle-loot-hud">
+          <span className="loot-gold">{dungeonText('accumGold').replace('{n}', String(accumGold))}</span>
+          <span className="loot-drops">{dungeonText('accumDrops').replace('{n}', String(accumCount))}</span>
         </div>
 
         <div className="battle-top">
@@ -191,7 +288,10 @@ export default function BattleModal({
           </div>
 
           <div className="battle-hud enemy">
-            <span className="hp-label">{enemyText(def.nameKey)}</span>
+            <span className="hp-label">
+              {enemyText(def.nameKey)}
+              {miniBoss && <span className="miniboss-tag">{Text.dungeon.miniBoss}</span>}
+            </span>
             <div className="battle-hp-row">
               <div className="bar hp enemy-hp">
                 <div className="bar-fill enemy-hp-fill" style={{ width: `${pct(enemyHp, enemyMax)}%` }} />
@@ -233,45 +333,31 @@ export default function BattleModal({
               </span>
             ))}
           </div>
+
+          {waveClear && phase === 'intermission' && (
+            <div className="wave-banner">
+              <div className="wave-title">{dungeonText('waveCleared').replace('{n}', String(waveClear.stage))}</div>
+              <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards)}</div>
+            </div>
+          )}
         </div>
 
-        {phase !== 'battle' && (
+        {(phase === 'retreat' || phase === 'defeat') && finalRewards && (
           <div className="battle-result">
-            {phase === 'victory' ? (
+            {phase === 'retreat' ? (
               <>
-                <h2 className="result-title win">{Text.dungeon.victory}</h2>
-                <div className="result-rewards">
-                  <span className="floor-drop">
-                    <span className="mat-icon">
-                      <img src={Assets.icons.gold.url} alt="" />
-                    </span>
-                    <span>+{rewards?.gold} Gold</span>
-                  </span>
-                  {Object.entries(rewards?.drops ?? {}).map(([mid, qty]) => (
-                    <span className="floor-drop" key={mid}>
-                      <span className="mat-icon">
-                        <img src={materialIcon(mid)} alt="" />
-                      </span>
-                      <span>
-                        +{qty}× {materialName(mid)}
-                      </span>
-                    </span>
-                  ))}
-                  {(rewards?.shards ?? 0) > 0 && (
-                    <span className="floor-drop">
-                      <span className="mat-icon shard">🔷</span>
-                      <span>+{rewards?.shards} Shards</span>
-                    </span>
-                  )}
-                </div>
-                <button className="result-btn" onClick={() => onCollect(rewards!)} data-ui>
+                <h2 className="result-title win">{Text.dungeon.retreatTitle}</h2>
+                <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
+                <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
                   {Text.dungeon.collect}
                 </button>
               </>
             ) : (
               <>
                 <h2 className="result-title lose">{Text.dungeon.defeated}</h2>
-                <button className="result-btn" onClick={onReturn} data-ui>
+                <div className="gold-penalty">{Text.dungeon.goldPenalty}</div>
+                <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
+                <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
                   {Text.dungeon.return}
                 </button>
               </>

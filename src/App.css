@@ -2294,7 +2294,19 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+.stage-indicator {
+  font-size: calc(var(--font-size) - 1px);
+  font-weight: bold;
+  color: #ffd76a;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 #000;
+}
+.battle-control-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .battle-speed,
 .battle-run {
@@ -2304,15 +2316,40 @@ body {
   background: linear-gradient(180deg, #4a3420, #2a1c10);
   border: 2px solid #8a6a3a;
   border-radius: 8px;
-  padding: 8px 14px;
+  padding: 8px 12px;
   cursor: pointer;
   box-shadow: 0 3px 0 #1a1108;
   white-space: nowrap;
+}
+.battle-run:disabled {
+  filter: grayscale(0.9) brightness(0.5);
+  cursor: not-allowed;
 }
 .battle-speed:active,
 .battle-run:active {
   transform: translateY(2px);
   box-shadow: 0 1px 0 #1a1108;
+}
+.battle-loot-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 215, 106, 0.06);
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+}
+.loot-gold {
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffd76a;
+  white-space: nowrap;
+}
+.loot-drops {
+  font-size: calc(var(--font-size) - 1px);
+  color: #d8c9a0;
+  white-space: nowrap;
 }
 .battle-top {
   display: flex;
@@ -2417,6 +2454,42 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  justify-content: center;
+}
+.miniboss-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: calc(var(--font-size) - 4px);
+  color: #1a1108;
+  background: #ff6b5e;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+.gold-penalty {
+  font-size: calc(var(--font-size) - 1px);
+  color: #ff6b5e;
+}
+.wave-banner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.wave-title {
+  font-size: calc(var(--font-size) + 6px);
+  font-weight: bold;
+  color: #ffd76a;
+  text-shadow: 0 2px 0 #000;
+}
+.wave-loot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: center;
 }
 
