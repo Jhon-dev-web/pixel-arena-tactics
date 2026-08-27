@@ -295,6 +295,21 @@ function App() {
     });
   };
 
+  const sellMaterial = (id: MaterialId) => {
+    const s = saveRef.current;
+    const def = MATERIALS.find((m) => m.id === id);
+    const qty = s.materials[id] ?? 0;
+    if (!def || qty <= 0) return;
+    const total = qty * def.sellValue;
+    playSfx('click');
+    setSaveBoth({
+      ...s,
+      gold: s.gold + total,
+      materials: { ...s.materials, [id]: 0 },
+    });
+    showToast(fmt(Text.shop.sold, total));
+  };
+
   const forgeItem = (id: string) => {
     const item = getGear(id);
     if (!item) return;
@@ -851,6 +866,7 @@ function App() {
           elixirActive={elixirActive}
           onBuyPotion={buyPotion}
           onBuyMaterial={buyMaterial}
+          onSellMaterial={sellMaterial}
           onUseElixir={useElixir}
           onClose={() => {
             playSfx('click');

@@ -11,14 +11,15 @@ export interface MaterialDef {
   iconUrl: string;
   packSize: number;
   packCost: number;
+  sellValue: number;
 }
 
 export const MATERIALS: MaterialDef[] = [
-  { id: 'iron', nameKey: 'mat_iron', icon: '🪨', iconUrl: Assets.icons.ore.url, packSize: 5, packCost: 50 },
-  { id: 'steel', nameKey: 'mat_steel', icon: '🔩', iconUrl: Assets.icons.steel.url, packSize: 3, packCost: 150 },
-  { id: 'leather', nameKey: 'mat_leather', icon: '🟤', iconUrl: Assets.icons.leather.url, packSize: 3, packCost: 45 },
-  { id: 'essence', nameKey: 'mat_essence', icon: '🔮', iconUrl: Assets.icons.essence.url, packSize: 2, packCost: 200 },
-  { id: 'dragon_scales', nameKey: 'mat_dragon_scales', icon: '🟥', iconUrl: Assets.icons.dragon_scales.url, packSize: 2, packCost: 250 },
+  { id: 'iron', nameKey: 'mat_iron', icon: '🪨', iconUrl: Assets.icons.ore.url, packSize: 5, packCost: 50, sellValue: 5 },
+  { id: 'steel', nameKey: 'mat_steel', icon: '🔩', iconUrl: Assets.icons.steel.url, packSize: 3, packCost: 150, sellValue: 25 },
+  { id: 'leather', nameKey: 'mat_leather', icon: '🟤', iconUrl: Assets.icons.leather.url, packSize: 3, packCost: 45, sellValue: 7 },
+  { id: 'essence', nameKey: 'mat_essence', icon: '🔮', iconUrl: Assets.icons.essence.url, packSize: 2, packCost: 200, sellValue: 50 },
+  { id: 'dragon_scales', nameKey: 'mat_dragon_scales', icon: '🟥', iconUrl: Assets.icons.dragon_scales.url, packSize: 2, packCost: 250, sellValue: 60 },
 ];
 
 export function materialIconUrl(id: MaterialId): string {

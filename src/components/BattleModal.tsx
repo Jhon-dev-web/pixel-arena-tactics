@@ -298,20 +298,20 @@ export default function BattleModal({
     <div className="modal-backdrop battle-backdrop">
       <div className="battle">
         <div className="battle-controls">
-          <span className="stage-indicator">{stageLabel(floor.floor, stage)}</span>
-          <div className="battle-control-btns">
+          <div className="battle-left">
+            <span className="stage-indicator">{stageLabel(floor.floor, stage)}</span>
             <button className="battle-speed" onClick={toggleSpeed} data-ui>
               {dungeonText('speed').replace('{n}', String(speed))}
             </button>
-            <button
-              className="battle-run"
-              onClick={() => endCombat('retreat')}
-              disabled={phase === 'retreat' || phase === 'defeat'}
-              data-ui
-            >
-              {Text.dungeon.retreat}
-            </button>
           </div>
+          <button
+            className="battle-run"
+            onClick={() => endCombat('retreat')}
+            disabled={phase === 'retreat' || phase === 'defeat'}
+            data-ui
+          >
+            {Text.dungeon.retreat}
+          </button>
         </div>
 
         <div className="battle-loot-hud">

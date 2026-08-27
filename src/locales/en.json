@@ -148,7 +148,13 @@
     "youHave": "You have {n}",
     "buyPack": "Buy {n}×",
     "consumables": "Consumables",
-    "materials": "Forge Materials"
+    "materials": "Forge Materials",
+    "sellMaterials": "Sell Materials",
+    "sell": "SELL",
+    "sellEach": "Value: {n} Gold each",
+    "sellTotal": "Total: +{n} Gold",
+    "sellEmpty": "No materials to sell",
+    "sold": "+{n} Gold"
   },
   "forge": {
     "title": "⚒️ Forge",
@@ -214,7 +220,7 @@
     "rewards": "Rewards",
     "heroLabel": "Hero",
     "speed": "{n}x",
-    "retreat": "🏃 RETREAT WITH LOOT",
+    "retreat": "🏃 Retreat",
     "stageLabel": "🚩 Stage {f}-{s}",
     "accumGold": "🪙 {n}",
     "accumDrops": "🎒 {n} items",

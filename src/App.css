@@ -659,6 +659,18 @@ body {
   filter: grayscale(0.9) brightness(0.5);
   cursor: not-allowed;
 }
+.gear-action.sell {
+  color: #1a1108;
+  font-weight: bold;
+  background: linear-gradient(180deg, #ffd76a, #e0a83a);
+  border-color: #8a6a3a;
+}
+.sell-empty {
+  font-size: calc(var(--font-size) - 2px);
+  color: #8a7aa8;
+  text-align: center;
+  margin: 4px 0 10px;
+}
 
 /* --- weapon / status glow --- */
 .glow {
@@ -2286,7 +2298,7 @@ body {
   background: linear-gradient(180deg, #1a1420, #0f0a14);
   border: 3px solid #6a4a2a;
   border-radius: 14px;
-  padding: 18px 16px 14px;
+  padding: 14px 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
 }
 .battle-controls {
@@ -2303,10 +2315,11 @@ body {
   white-space: nowrap;
   text-shadow: 0 1px 0 #000;
 }
-.battle-control-btns {
+.battle-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-width: 0;
 }
 .battle-speed,
 .battle-run {
@@ -2316,10 +2329,13 @@ body {
   background: linear-gradient(180deg, #4a3420, #2a1c10);
   border: 2px solid #8a6a3a;
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   cursor: pointer;
   box-shadow: 0 3px 0 #1a1108;
   white-space: nowrap;
+}
+.battle-run {
+  flex-shrink: 0;
 }
 .battle-run:disabled {
   filter: grayscale(0.9) brightness(0.5);

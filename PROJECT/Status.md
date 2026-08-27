@@ -36,6 +36,8 @@
   Dragon Scales). `[⚒️ Forge]` is a blacksmith-themed modal with hierarchical crafting — higher-tier
   gear consumes lower-tier items + materials + shards (validated, removed from inventory, with a
   toast + sound on success).
+- **Sell Materials** (`[🛒 Shop]` → "Sell Materials"): each material with stock can be sold back as a
+  full stack for quick gold (per-unit `sellValue` in the materials catalog; a `+N Gold` toast confirms).
 - **Inventory / bag** (`🎒` in the HUD): a slot grid with All/Equipment/Materials tabs, item details,
   and Equip/Unequip. Item ownership is now a quantity map (`inventory: id → qty`) persisted in
   `localStorage` (with migration from the old `owned` list).

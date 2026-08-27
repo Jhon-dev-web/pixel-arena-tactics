@@ -17,6 +17,7 @@ export default function ShopModal({
   elixirActive,
   onBuyPotion,
   onBuyMaterial,
+  onSellMaterial,
   onUseElixir,
   onClose,
 }: {
@@ -24,9 +25,11 @@ export default function ShopModal({
   elixirActive: boolean;
   onBuyPotion: (id: 'hp' | 'stamina' | 'elixir') => void;
   onBuyMaterial: (id: MaterialId) => void;
+  onSellMaterial: (id: MaterialId) => void;
   onUseElixir: () => void;
   onClose: () => void;
 }) {
+  const sellable = MATERIALS.filter((m) => (save.materials[m.id] ?? 0) > 0);
   return (
     <div className="modal-backdrop">
       <div className="modal shop-modal">
@@ -83,6 +86,31 @@ export default function ShopModal({
               </button>
             </div>
           ))}
+
+          <div className="shop-section-title">{Text.shop.sellMaterials}</div>
+          {sellable.length === 0 ? (
+            <p className="sell-empty">{Text.shop.sellEmpty}</p>
+          ) : (
+            sellable.map((m) => {
+              const qty = save.materials[m.id] ?? 0;
+              const total = qty * m.sellValue;
+              return (
+                <div className="gear-row" key={m.id}>
+                  <div className="gear-info">
+                    <span className="gear-name">
+                      {m.icon} {matText(m.nameKey)}
+                      <span className="gear-count">{fmt(Text.shop.youHave, qty)}</span>
+                    </span>
+                    <span className="gear-desc">{fmt(Text.shop.sellEach, m.sellValue)}</span>
+                    <span className="gear-cost">{fmt(Text.shop.sellTotal, total)}</span>
+                  </div>
+                  <button className="gear-action sell" onClick={() => onSellMaterial(m.id)} data-ui>
+                    {Text.shop.sell}
+                  </button>
+                </div>
+              );
+            })
+          )}
         </div>
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
