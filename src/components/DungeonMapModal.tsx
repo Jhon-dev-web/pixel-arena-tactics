@@ -29,11 +29,14 @@ export default function DungeonMapModal({
               <div className={`floor-card${unlocked ? '' : ' locked'}`} key={floor.floor}>
                 <div className="floor-header">
                   <span className="floor-name">
-                    {floor.floor}. {dungeonText(floor.nameKey)}
+                    <span className="floor-number">{fmt(Text.dungeon.floorLabel, floor.floor)}</span>
+                    <span className="floor-title">{dungeonText(floor.nameKey)}</span>
                   </span>
                   <span className="floor-cp">{fmt(Text.dungeon.cp, floor.cp)}</span>
                 </div>
+
                 <div className="floor-drops">
+                  <span className="drops-label">{Text.dungeon.drops}:</span>
                   <span className="floor-drop">
                     <span className="mat-icon">
                       <img src={Assets.icons.gold.url} alt="" />
@@ -59,8 +62,9 @@ export default function DungeonMapModal({
                     </span>
                   )}
                 </div>
+
                 {unlocked ? (
-                  <button className="craft-btn forge" onClick={() => onBattle(floor.floor)} data-ui>
+                  <button className="battle-btn" onClick={() => onBattle(floor.floor)} data-ui>
                     {Text.dungeon.battle}
                   </button>
                 ) : (
