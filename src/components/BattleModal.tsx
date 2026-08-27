@@ -1,22 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import T from '../game/tunables';
-import { t } from '../locales';
+import Text from '../locales/en.json';
 import Assets from '../assets.json';
 import { SaveData, playerMaxHp } from '../game/engine';
 import { getEnemyDef } from '../game/enemies';
-import { effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, refineLevel } from '../game/gear';
+import { durabilityFactor, effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, MAX_DURABILITY, refineLevel } from '../game/gear';
 import { FloorDef } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, spriteForArmorTier } from '../game/sprites';
 import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
 import { isMiniBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
+import { totalGemBonuses } from '../game/gems';
 
-const enemyText = (k: string): string => t(`enemies.${k}`);
-const dungeonText = (k: string): string => t(`dungeon.${k}`);
-const materialName = (mid: string): string => t(`materials.mat_${mid}`);
+const enemyText = (k: string): string => (Text.enemies as Record<string, string>)[k];
+const dungeonText = (k: string): string => (Text.dungeon as Record<string, string>)[k];
+const materialName = (mid: string): string => (Text.materials as Record<string, string>)[`mat_${mid}`];
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
-const stageLabel = (f: number, s: number) => t('dungeon.stageLabel', { f, s });
+const stageLabel = (f: number, s: number) => Text.dungeon.stageLabel.replace('{f}', String(f)).replace('{s}', String(s));
 
 interface FloatItem {
   id: number;
@@ -49,7 +50,13 @@ export default function BattleModal({
   const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
   const aLvl = refineLevel(save.upgrades, save.equipped.armor);
   const armorTier = armor?.tier ?? 0;
-  const critMult = T.combat.critMult + (build.relic?.critMultBonus ?? 0);
+  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
+  const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
+  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
+  const wFactor = durabilityFactor(wDur);
+  const aFactor = durabilityFactor(aDur);
+  const critMult = T.combat.critMult + (build.relic?.critMultBonus ?? 0) + gems.critDamageBonus;
+  const blessedMult = save.blessed ? 1.05 : 1;
 
   const playerMax = playerMaxHp(save);
 
@@ -172,8 +179,8 @@ export default function BattleModal({
 
     const heroAttack = () => {
       const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
-      const total = baseDmg + effectiveDamage(weapon, wLvl) + save.str * T.advanced.strDmgPerPoint;
-      const crit = Math.random() < effectiveCrit(weapon, wLvl);
+      const total = (baseDmg + effectiveDamage(weapon, wLvl) * wFactor + save.str * T.advanced.strDmgPerPoint) * blessedMult;
+      const crit = Math.random() < effectiveCrit(weapon, wLvl) * wFactor;
       const dmg = Math.max(1, Math.round(total * (crit ? critMult : 1)));
       hp.current.e = Math.max(0, hp.current.e - dmg);
       setEnemyHp(hp.current.e);
@@ -194,7 +201,7 @@ export default function BattleModal({
 
     const monsterAttack = () => {
       const st = stageRef.current;
-      const reduction = effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint;
+      const reduction = effectiveResistance(armor, aLvl) * aFactor + save.res * T.advanced.resResistPerPoint + gems.resistance;
       const eFinal = Math.max(1, Math.round(stageEnemyDmg(def, st) * (1 - reduction)));
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);
@@ -273,7 +280,7 @@ export default function BattleModal({
         <span className="mat-icon">
           <img src={Assets.icons.gold.url} alt="" />
         </span>
-        <span>{t('ui.goldReward', { n: gold })}</span>
+        <span>+{gold} Gold</span>
       </span>
       {Object.entries(drops ?? {}).map(([mid, qty]) => (
         <span className="floor-drop" key={mid}>
@@ -288,7 +295,7 @@ export default function BattleModal({
       {shards > 0 && (
         <span className="floor-drop">
           <span className="mat-icon shard">🔷</span>
-          <span>{t('ui.shardsReward', { n: shards })}</span>
+          <span>+{shards} Shards</span>
         </span>
       )}
     </>
@@ -310,14 +317,14 @@ export default function BattleModal({
             disabled={phase === 'retreat' || phase === 'defeat'}
             data-ui
           >
-            {t('dungeon.retreat')}
+            {Text.dungeon.retreat}
           </button>
         </div>
 
         <div className="battle-loot-hud">
-          <span className="loot-gold">{t('dungeon.accumGold', { n: accumGold })}</span>
-          <span className="loot-potions">{t('dungeon.potions', { n: potionsLeft })}</span>
-          <span className="loot-drops">{t('dungeon.accumDrops', { n: accumCount })}</span>
+          <span className="loot-gold">{dungeonText('accumGold').replace('{n}', String(accumGold))}</span>
+          <span className="loot-potions">{dungeonText('potions').replace('{n}', String(potionsLeft))}</span>
+          <span className="loot-drops">{dungeonText('accumDrops').replace('{n}', String(accumCount))}</span>
         </div>
 
         <div className="battle-top">
@@ -339,7 +346,7 @@ export default function BattleModal({
           <div className="battle-hud enemy">
             <span className="hp-label">
               {enemyText(def.nameKey)}
-              {miniBoss && <span className="miniboss-tag">{t('dungeon.miniBoss')}</span>}
+              {miniBoss && <span className="miniboss-tag">{Text.dungeon.miniBoss}</span>}
             </span>
             <div className="battle-hp-row">
               <div className="bar hp enemy-hp">
@@ -385,7 +392,7 @@ export default function BattleModal({
 
           {waveClear && phase === 'intermission' && (
             <div className="wave-banner">
-              <div className="wave-title">{t('dungeon.waveCleared', { n: waveClear.stage })}</div>
+              <div className="wave-title">{dungeonText('waveCleared').replace('{n}', String(waveClear.stage))}</div>
               <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards)}</div>
             </div>
           )}
@@ -395,19 +402,19 @@ export default function BattleModal({
           <div className="battle-result">
             {phase === 'retreat' ? (
               <>
-                <h2 className="result-title win">{t('dungeon.retreatTitle')}</h2>
+                <h2 className="result-title win">{Text.dungeon.retreatTitle}</h2>
                 <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
                 <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
-                  {t('dungeon.collect')}
+                  {Text.dungeon.collect}
                 </button>
               </>
             ) : (
               <>
-                <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
-                <div className="gold-penalty">{t('dungeon.goldPenalty')}</div>
+                <h2 className="result-title lose">{Text.dungeon.defeated}</h2>
+                <div className="gold-penalty">{Text.dungeon.goldPenalty}</div>
                 <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
                 <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
-                  {t('dungeon.return')}
+                  {Text.dungeon.return}
                 </button>
               </>
             )}

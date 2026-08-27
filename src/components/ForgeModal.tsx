@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import Assets from '../assets.json';
-import { t } from '../locales';
+import Text from '../locales/en.json';
 import { SaveData } from '../game/engine';
 import {
   GEAR,
   GEAR_SLOTS,
   GearItem,
+  MAX_DURABILITY,
   MAX_REFINE,
   effectiveDamage,
   effectiveMaxHp,
@@ -13,15 +14,18 @@ import {
   getEquipped,
   getGear,
   refineLevel,
+  repairCost,
   upgradeChance,
   upgradeCost,
 } from '../game/gear';
 import { MaterialId, hasMaterials, materialIconUrl } from '../game/materials';
+import { GEMS, GemId, getGem, socketsForTier } from '../game/gems';
 import GearIcon from './GearIcon';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
-const gearText = (k: string): string => t(`gear.${k}`);
-const matText = (k: string): string => t(`materials.${k}`);
+const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
+const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
+const gemText = (k: string): string => (Text.gems as Record<string, string>)[k];
 
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
@@ -45,14 +49,20 @@ export default function ForgeModal({
   save,
   onForge,
   onUpgrade,
+  onRepair,
+  onSocket,
+  onUnsocket,
   onClose,
 }: {
   save: SaveData;
   onForge: (id: string) => void;
   onUpgrade: (id: string) => void;
+  onRepair: (id: string, blessed: boolean) => void;
+  onSocket: (itemId: string, gemId: GemId) => void;
+  onUnsocket: (itemId: string, index: number) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<'forge' | 'upgrade'>('forge');
+  const [tab, setTab] = useState<'forge' | 'upgrade' | 'repair' | 'socket'>('forge');
   const [justForged, setJustForged] = useState<string | null>(null);
 
   const canForge = (item: GearItem): boolean => {
@@ -88,19 +98,25 @@ export default function ForgeModal({
   return (
     <div className="modal-backdrop">
       <div className="modal forge-modal">
-        <h2 className="modal-title">{t('forge.title')}</h2>
-        <p className="shop-gold">{fmt(t('ui.owned'), save.gold)}</p>
+        <h2 className="modal-title">{Text.forge.title}</h2>
+        <p className="shop-gold">{fmt(Text.ui.owned, save.gold)}</p>
 
         <div className="forge-tabs">
           <button className={`tab${tab === 'forge' ? ' active' : ''}`} onClick={() => setTab('forge')} data-ui>
-            {t('forge.forgeTab')}
+            {Text.forge.forgeTab}
           </button>
           <button className={`tab${tab === 'upgrade' ? ' active' : ''}`} onClick={() => setTab('upgrade')} data-ui>
-            {t('forge.upgradeTab')}
+            {Text.forge.upgradeTab}
+          </button>
+          <button className={`tab${tab === 'repair' ? ' active' : ''}`} onClick={() => setTab('repair')} data-ui>
+            {Text.forge.repairTab}
+          </button>
+          <button className={`tab${tab === 'socket' ? ' active' : ''}`} onClick={() => setTab('socket')} data-ui>
+            {Text.forge.socketTab}
           </button>
         </div>
 
-        {tab === 'forge' ? (
+        {tab === 'forge' && (
           <div className="forge-body">
             {GEAR_SLOTS.map((slot) => {
               const items = gearBySlot(slot).filter((g) => g.recipe);
@@ -172,7 +188,7 @@ export default function ForgeModal({
                                 <span className="req-plus">+</span>
                                 <span className="mat-icon shard">🔷</span>
                                 <span className={`req-amount${save.shards < (item.recipe?.shards ?? 0) ? ' missing' : ''}`}>
-                                  {t('ui.shardsX', { n: item.recipe?.shards ?? 0 })}
+                                  {item.recipe?.shards}× Shards
                                 </span>
                               </span>
                             )}
@@ -184,7 +200,7 @@ export default function ForgeModal({
                           disabled={!ok}
                           data-ui
                         >
-                          {forged ? t('forge.forged') : t('forge.forge')}
+                          {forged ? Text.forge.forged : Text.forge.forge}
                         </button>
                       </div>
                     );
@@ -193,7 +209,9 @@ export default function ForgeModal({
               );
             })}
           </div>
-        ) : (
+        )}
+
+        {tab === 'upgrade' && (
           <div className="forge-body">
             {equipped.map((item) => {
               const lvl = refineLevel(save.upgrades, item.id);
@@ -214,9 +232,7 @@ export default function ForgeModal({
                       </span>
                     </div>
                     <span className="craft-desc">
-                      {item.slot === 'weapon'
-                        ? `+${stat} ${t('profile.damage')}`
-                        : `+${stat} ${t('profile.hp')}`}
+                      {item.slot === 'weapon' ? `+${stat} ${Text.profile.damage}` : `+${stat} ${Text.profile.hp}`}
                     </span>
                     {!isMax && (
                       <div className="craft-req">
@@ -246,17 +262,17 @@ export default function ForgeModal({
                             <span className="req-plus">+</span>
                             <span className="mat-icon shard">🔷</span>
                             <span className={`req-amount${save.shards < (cost.shards ?? 0) ? ' missing' : ''}`}>
-                              {t('ui.shardsX', { n: cost.shards ?? 0 })}
+                              {cost.shards}× Shards
                             </span>
                           </span>
                         )}
                       </div>
                     )}
-                    {!isMax && <span className="upgrade-chance">{fmt(t('forge.chance'), chance)}</span>}
+                    {!isMax && <span className="upgrade-chance">{fmt(Text.forge.chance, chance)}</span>}
                   </div>
                   {isMax ? (
                     <button className="craft-btn equipped" disabled data-ui>
-                      {t('forge.max')}
+                      {Text.forge.max}
                     </button>
                   ) : (
                     <button
@@ -265,12 +281,119 @@ export default function ForgeModal({
                       disabled={!canUpgrade(item)}
                       data-ui
                     >
-                      {t('forge.upgrade')}
+                      {Text.forge.upgrade}
                     </button>
                   )}
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {tab === 'repair' && (
+          <div className="forge-body">
+            {equipped.map((item) => {
+              const dur = save.durability?.[item.id] ?? MAX_DURABILITY;
+              const broken = dur <= 0;
+              const cost = repairCost(item.tier ?? 0);
+              return (
+                <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
+                  <span className="craft-icon">
+                    <GearIcon item={item} />
+                  </span>
+                  <div className="craft-info">
+                    <span className="craft-name">{gearText(item.nameKey)}</span>
+                    <span className={`durability-text${broken ? ' broken' : dur < 30 ? ' worn' : ''}`}>
+                      {broken ? Text.forge.broken : fmt(Text.forge.durability, dur, MAX_DURABILITY)}
+                    </span>
+                    <div className="durability-bar">
+                      <div className={`durability-fill${broken ? ' broken' : dur < 30 ? ' worn' : ''}`} style={{ width: `${dur}%` }} />
+                    </div>
+                    <div className="repair-btns">
+                      <button
+                        className="craft-btn forge"
+                        onClick={() => onRepair(item.id, false)}
+                        disabled={save.gold < cost || dur >= MAX_DURABILITY}
+                        data-ui
+                      >
+                        {Text.forge.repair} ({cost} G)
+                      </button>
+                      <button
+                        className="craft-btn blessed"
+                        onClick={() => onRepair(item.id, true)}
+                        disabled={save.gold < cost || save.shards < 1 || dur >= MAX_DURABILITY}
+                        data-ui
+                      >
+                        {Text.forge.blessedRepair} (+1 🔷)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === 'socket' && (
+          <div className="forge-body">
+            {equipped.map((item) => {
+              const maxSockets = socketsForTier(item.tier ?? 0);
+              const list = save.sockets?.[item.id] ?? [];
+              const ownedGems = GEMS.filter((g) => (save.gems?.[g.id] ?? 0) > 0);
+              return (
+                <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
+                  <span className="craft-icon">
+                    <GearIcon item={item} />
+                  </span>
+                  <div className="craft-info">
+                    <span className="craft-name">
+                      {gearText(item.nameKey)}
+                      <span className="socket-count">
+                        {maxSockets > 0 ? ` ${list.length}/${maxSockets}` : ''}
+                      </span>
+                    </span>
+                    {maxSockets > 0 ? (
+                      <>
+                        <div className="socket-slots">
+                          {Array.from({ length: maxSockets }).map((_, i) => {
+                            const gem = getGem(list[i] ?? '');
+                            return gem ? (
+                              <button className="socket filled" key={i} onClick={() => onUnsocket(item.id, i)} title={gemText(gem.nameKey)} data-ui>
+                                {gem.icon}
+                              </button>
+                            ) : (
+                              <span className="socket empty" key={i} />
+                            );
+                          })}
+                        </div>
+                        {list.length < maxSockets && ownedGems.length > 0 && (
+                          <div className="socket-gem-row">
+                            {ownedGems.map((g) => (
+                              <button className="socket-gem-btn" key={g.id} onClick={() => onSocket(item.id, g.id)} data-ui>
+                                {g.icon} ×{save.gems?.[g.id]}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="socket-none">{Text.forge.socketEmpty}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div className="gem-library">
+              <div className="gear-section-title">{Text.gems.title}</div>
+              {GEMS.map((g) => (
+                <div className="gem-library-row" key={g.id}>
+                  <span className="gem-library-name">
+                    {g.icon} {gemText(g.nameKey)} <span className="gem-desc">{gemText(g.descKey)}</span>
+                  </span>
+                  <span className="gem-library-owned">×{save.gems?.[g.id] ?? 0}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

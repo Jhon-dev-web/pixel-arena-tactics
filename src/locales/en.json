@@ -17,10 +17,7 @@
     "level": "Lv {n}",
     "cost": "Cost: {n} Gold",
     "owned": "Gold: {n}",
-    "free": "Free",
-    "goldReward": "+{n} Gold",
-    "shardsReward": "+{n} Shards",
-    "shardsX": "{n}× Shards"
+    "free": "Free"
   },
   "combat": {
     "critical": "CRITICAL!",
@@ -167,7 +164,10 @@
     "sellEmpty": "No materials to sell",
     "sold": "+{n} Gold",
     "bagFull": "Bag full!",
-    "stackFull": "Stack full!"
+    "stackFull": "Stack full!",
+    "gems": "💎 Gems",
+    "gemCost": "{n} 🔷",
+    "youOwn": "You own {n}"
   },
   "consumables": {
     "small_hp": "Small Health Potion",
@@ -182,6 +182,8 @@
     "forge": "FORGE",
     "forgeTab": "FORGE",
     "upgradeTab": "⬆️ UPGRADE",
+    "repairTab": "🔨 Repair",
+    "socketTab": "💎 Socket",
     "upgrade": "UPGRADE",
     "max": "MAX",
     "chance": "Chance: {n}%",
@@ -190,7 +192,23 @@
     "equip": "EQUIP",
     "equipped": "EQUIPPED",
     "cost": "Cost",
-    "missing": "Missing materials"
+    "missing": "Missing materials",
+    "durability": "Durability: {n} / {m}",
+    "broken": "[QUEBRADO]",
+    "repair": "🔨 Repair with Gold",
+    "blessedRepair": "✨ Blessed Repair",
+    "sockets": "Sockets",
+    "socketEmpty": "Empty socket",
+    "socketHint": "Select a gem below to insert"
+  },
+  "gems": {
+    "title": "💎 Gems",
+    "gem_ruby": "Rough Ruby",
+    "gem_ruby_d": "+15% Critical Damage",
+    "gem_sapphire": "Rough Sapphire",
+    "gem_sapphire_d": "+8% Defense",
+    "gem_emerald": "Rough Emerald",
+    "gem_emerald_d": "+60 Max HP"
   },
   "attributes": {
     "title": "Attributes",

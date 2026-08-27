@@ -61,6 +61,15 @@
   Greatsword/Dragon Blade) overlaid on the character in the arena (one-shot swing) and camp (training
   loop), blade facing the target and layered in front; camp training shows impact sparks + floating
   damage numbers.
+- **Equipment durability**: equipped weapon/armor track `Durability 100/100` (shown in the Hero
+  profile and Forge → Repair). Each cleared dungeon wave drops `-2` durability; below 30% applies a
+  `-25%` stat penalty and at 0 a red `[QUEBRADO]` `-60%` penalty (applied to item damage/HP/defense/
+  crit and reflected in CP). The Forge Repair tab restores via `🔨 Repair with Gold` (tier-scaled
+  cost) or `✨ Blessed Repair` (gold + 1 shard → also grants +5% damage on the next run).
+- **Gem sockets**: gear sockets scale by tier (0/1/2/3). Gems (bought in the Shop for 2 shards) —
+  🔴 Rough Ruby (+15% crit damage), 🔵 Rough Sapphire (+8% defense), 🟢 Rough Emerald (+60 HP) — are
+  socketed into the equipped weapon/armor via the Forge → Socket tab and add straight to hero stats
+  and CP.
 - **Dungeon escape rule**: returning to camp mid-fight abandons the duel (no gold/shards); entering
   the dungeon restarts from the last conquered duel without resetting total victories.
 - Persistent save via `localStorage` (gold, victories, shards, xp, hero name, attributes, materials,
@@ -73,9 +82,6 @@
   combat hits, plus a looping dark-arena ambient track; mute toggle in the top header.
 - Live tuning panel wired (`DebugPanel.define`) with combat / progression / ui / advanced groups.
 - Localization file (`src/locales/en.json`) for all player-visible text.
-- **PT-BR translation**: added `src/locales/pt.json` (full Brazilian Portuguese) + `src/locales/index.ts`
-  with a `t(path, vars)` resolver. Language auto-follows the browser (`navigator.language`), falling
-  back to English; all components now read text through `t()` instead of importing `en.json` directly.
 - **Dungeon system**: `[⚔️ ENTER DUNGEON]` now opens a 4-floor map (`DungeonMapModal` —
   Goblin Forest → Orc Caverns → Undead Crypt → Minotaur's Lair) with recommended CP, drop previews,
   and progressive unlocking via `highestFloor`. Each floor launches an **auto-battle** (`BattleModal`):

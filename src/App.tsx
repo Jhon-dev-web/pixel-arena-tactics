@@ -17,11 +17,12 @@ import {
   tickBurn,
   tickPoison,
 } from './game/engine';
-import { GEAR, gearSellValue, getEquipped, getGear, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
+import { DURABILITY_LOSS_PER_STAGE, GEAR, gearSellValue, getEquipped, getGear, MAX_DURABILITY, MAX_REFINE, refineLevel, repairCost, upgradeChance, upgradeCost } from './game/gear';
 import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
 import { CONSUMABLE_STACK, ConsumableId, getConsumable } from './game/consumables';
 import { isBagFull } from './game/inventory';
+import { GEMS, GemId, socketsForTier } from './game/gems';
 import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier } from './game/sprites';
 import SpriteSheet from './components/SpriteSheet';
 import AdminModal from './components/AdminModal';
@@ -43,7 +44,7 @@ import TopHud from './components/TopHud';
 import Campfire from './components/Campfire';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
-import { t } from './locales';
+import Text from './locales/en.json';
 import './App.css';
 
 type AnimName = 'idle' | 'attack' | 'hurt' | 'death';
@@ -53,10 +54,11 @@ const ANIM_ROW: Record<AnimName, number> = { idle: 0, attack: 1, hurt: 2, death:
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
 
-const enemyText = (key: string): string => t(`enemies.${key}`);
-const gearText = (key: string): string => t(`gear.${key}`);
+const enemyText = (key: string): string => (Text.enemies as Record<string, string>)[key];
+const gearText = (key: string): string => (Text.gear as Record<string, string>)[key];
 
 function App() {
   const [save, setSave] = useState<SaveData>(() => loadSave());
@@ -240,6 +242,13 @@ function App() {
     const stages = Math.max(0, rewards.stages);
     const success = outcome === 'retreat' && stages > 0;
     const atCap = playerLevel(s.xp) >= 100;
+    const dur = { ...(s.durability ?? {}) };
+    if (stages > 0) {
+      for (const slot of ['weapon', 'armor'] as const) {
+        const id = s.equipped[slot];
+        if (id) dur[id] = Math.max(0, (dur[id] ?? MAX_DURABILITY) - DURABILITY_LOSS_PER_STAGE * stages);
+      }
+    }
     setSaveBoth({
       ...s,
       gold: s.gold + rewards.gold,
@@ -248,9 +257,71 @@ function App() {
       xp: atCap ? s.xp : s.xp + T.advanced.victoryXp * stages,
       victories: s.victories + (success ? 1 : 0),
       highestFloor: success ? Math.max(s.highestFloor, Math.min(4, floor + 1)) : s.highestFloor,
+      durability: dur,
+      blessed: false,
     });
     playSfx(outcome === 'retreat' ? 'victory' : 'hit');
     setBattleFloor(null);
+  };
+
+  const repairItem = (id: string, blessed: boolean) => {
+    const item = getGear(id);
+    if (!item) return;
+    const s = saveRef.current;
+    const cost = repairCost(item.tier ?? 0);
+    if (s.gold < cost) return;
+    if (blessed && s.shards < 1) return;
+    playSfx('victory');
+    setSaveBoth({
+      ...s,
+      gold: s.gold - cost,
+      shards: blessed ? s.shards - 1 : s.shards,
+      durability: { ...(s.durability ?? {}), [id]: MAX_DURABILITY },
+      blessed: blessed ? true : s.blessed,
+    });
+  };
+
+  const buyGem = (id: GemId) => {
+    const def = GEMS.find((g) => g.id === id);
+    if (!def) return;
+    const s = saveRef.current;
+    if (s.shards < def.shardCost) return;
+    playSfx('click');
+    setSaveBoth({ ...s, shards: s.shards - def.shardCost, gems: { ...(s.gems ?? {}), [id]: (s.gems?.[id] ?? 0) + 1 } });
+  };
+
+  const socketGem = (itemId: string, gemId: GemId) => {
+    const s = saveRef.current;
+    const item = getGear(itemId);
+    if (!item) return;
+    if ((s.gems?.[gemId] ?? 0) <= 0) return;
+    const sockets = { ...(s.sockets ?? {}) };
+    const list = [...(sockets[itemId] ?? [])];
+    if (list.length >= socketsForTier(item.tier ?? 0)) return;
+    list.push(gemId);
+    sockets[itemId] = list;
+    playSfx('click');
+    setSaveBoth({
+      ...s,
+      gems: { ...(s.gems ?? {}), [gemId]: (s.gems?.[gemId] ?? 0) - 1 },
+      sockets,
+    });
+  };
+
+  const unsocketGem = (itemId: string, index: number) => {
+    const s = saveRef.current;
+    const sockets = { ...(s.sockets ?? {}) };
+    const list = [...(sockets[itemId] ?? [])];
+    const gemId = list[index];
+    if (!gemId) return;
+    list.splice(index, 1);
+    sockets[itemId] = list;
+    playSfx('click');
+    setSaveBoth({
+      ...s,
+      gems: { ...(s.gems ?? {}), [gemId]: (s.gems?.[gemId] ?? 0) + 1 },
+      sockets,
+    });
   };
 
   const openExpedition = () => {
@@ -312,11 +383,11 @@ function App() {
     if (s.gold < def.cost) return;
     const qty = s.consumables?.[id] ?? 0;
     if (qty >= CONSUMABLE_STACK) {
-      showToast(t('shop.stackFull'));
+      showToast(Text.shop.stackFull);
       return;
     }
     if (qty === 0 && isBagFull(s)) {
-      showToast(t('shop.bagFull'));
+      showToast(Text.shop.bagFull);
       return;
     }
     playSfx('click');
@@ -393,7 +464,7 @@ function App() {
       shards: s.shards - (recipe.shards ?? 0),
     });
     playSfx('victory');
-    showToast(t('forge.toBag', { n: gearText(item.nameKey) }));
+    showToast(Text.forge.toBag.replace('{n}', gearText(item.nameKey)));
   };
 
   const upgradeItem = (id: string) => {
@@ -762,7 +833,7 @@ function App() {
   const playerSpriteUrl = spriteForArmorTier(armorTier);
   const enemyDef = getEnemyDef(enemyKind);
   const enemyName = enemyDef.boss
-    ? t('enemies.bossName', { n: enemyText(enemyDef.nameKey) })
+    ? fmt(Text.enemies.bossName, enemyText(enemyDef.nameKey))
     : enemyText(enemyDef.nameKey);
   const enemySprite = enemySpriteUrl(enemyKind);
   const enemySize = enemySpriteSize(enemyKind);
@@ -819,20 +890,20 @@ function App() {
             />
             <div className="camp-actions">
               <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
-                {t('ui.forge')}
+                {Text.ui.forge}
               </button>
               <button className="camp-main-btn" onClick={openDungeon} data-ui>
-                {t('camp.enterArena')}
+                {Text.camp.enterArena}
               </button>
               <button className="camp-side-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
-                {t('ui.shop')}
+                {Text.ui.shop}
               </button>
             </div>
           </>
         ) : (
           <>
             <button className="return-camp" onClick={returnToCamp} data-ui>
-              {t('camp.returnCamp')}
+              {Text.camp.returnCamp}
             </button>
             <div className="arena">
           <div className="fighter player">
@@ -866,7 +937,7 @@ function App() {
 
           <div className={`fighter enemy${enemyDef.boss ? ' boss' : ''}`}>
             <div className="bars">
-              {enemyDef.boss && <span className="boss-tag">{t('combat.bossTag')}</span>}
+              {enemyDef.boss && <span className="boss-tag">{Text.combat.bossTag}</span>}
               <span className="enemy-name">{enemyName}</span>
               <div className="bar hp enemy-hp">
                 <div className="bar-fill enemy-hp-fill" style={{ width: `${pct(enemy.hp, enemy.maxHp)}%` }} />
@@ -907,16 +978,16 @@ function App() {
           </div>
           <div className="action-row">
             <button className="action attack" onClick={() => doTurn('attack')} disabled={!canAttack} data-ui>
-              <span className="action-label">{t('ui.attack')}</span>
-              <span className="action-cost">{`-${atkCost} ${t('combat.stamina')}`}</span>
+              <span className="action-label">{Text.ui.attack}</span>
+              <span className="action-cost">{`-${atkCost} ${Text.combat.stamina}`}</span>
             </button>
             <button className="action shield" onClick={() => doTurn('shield')} disabled={!canShield} data-ui>
-              <span className="action-label">{t('ui.shield')}</span>
-              <span className="action-cost">{`-${T.combat.shieldStamina} ${t('combat.stamina')}`}</span>
+              <span className="action-label">{Text.ui.shield}</span>
+              <span className="action-cost">{`-${T.combat.shieldStamina} ${Text.combat.stamina}`}</span>
             </button>
             <button className="action focus" onClick={() => doTurn('focus')} disabled={!canFocus} data-ui>
-              <span className="action-label">{t('ui.focus')}</span>
-              <span className="action-cost">{t('ui.free')}</span>
+              <span className="action-label">{Text.ui.focus}</span>
+              <span className="action-cost">{Text.ui.free}</span>
             </button>
           </div>
         </footer>
@@ -928,6 +999,7 @@ function App() {
         <ShopModal
           save={save}
           onBuyConsumable={buyConsumable}
+          onBuyGem={buyGem}
           onClose={() => {
             playSfx('click');
             setShopOpen(false);
@@ -940,6 +1012,9 @@ function App() {
           save={save}
           onForge={forgeItem}
           onUpgrade={upgradeItem}
+          onRepair={repairItem}
+          onSocket={socketGem}
+          onUnsocket={unsocketGem}
           onClose={() => {
             playSfx('click');
             setForgeOpen(false);

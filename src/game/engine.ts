@@ -1,9 +1,10 @@
 import T from './tunables';
-import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, refineLevel, sanitizeSaveInventory } from './gear';
+import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, MAX_DURABILITY, refineLevel, sanitizeSaveInventory } from './gear';
 import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
 import { Materials, emptyMaterials } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
 import { ConsumableId, emptyConsumables } from './consumables';
+import { GemId, emptyGems, getGem, totalGemBonuses } from './gems';
 
 export type PlayerAction = 'attack' | 'shield' | 'focus';
 export type EnemyAction = 'attack' | 'shield' | 'focus' | 'slam' | 'charge';
@@ -59,6 +60,10 @@ export interface SaveData {
   potions: { hp: number; stamina: number; elixir: number };
   consumables: Record<ConsumableId, number>;
   expedition: ActiveExpedition | null;
+  durability: Record<string, number>;
+  gems: Record<GemId, number>;
+  sockets: Record<string, GemId[]>;
+  blessed: boolean;
 }
 
 export interface Cheats {
@@ -138,12 +143,15 @@ function trimDec(v: number): string {
 export function playerMaxHp(save: SaveData): number {
   const { armor } = getEquipped(save.equipped);
   const armorLvl = refineLevel(save.upgrades, save.equipped.armor);
+  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
+  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
   return Math.round(
     T.progression.playerBaseHp +
       (save.armorLevel - 1) * T.progression.armorHpPerLvl +
-      effectiveMaxHp(armor, armorLvl) +
+      effectiveMaxHp(armor, armorLvl) * durabilityFactor(aDur) +
       (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
-      save.vit * T.advanced.vitHpPerPoint,
+      save.vit * T.advanced.vitHpPerPoint +
+      gems.maxHp,
   );
 }
 
@@ -151,14 +159,18 @@ export function computeCP(save: SaveData): number {
   const { weapon, armor } = getEquipped(save.equipped);
   const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
   const aLvl = refineLevel(save.upgrades, save.equipped.armor);
+  const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
+  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
+  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
   const totalDamage =
     (T.combat.attackMin + T.combat.attackMax) / 2 +
-    effectiveDamage(weapon, wLvl) +
+    effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) +
     save.str * T.advanced.strDmgPerPoint;
   const totalMaxHp = playerMaxHp(save);
-  const totalDefense = (effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint) * 100;
-  const totalCrit = effectiveCrit(weapon, wLvl) * 100;
-  return Math.floor(totalDamage * 1.5 + totalMaxHp * 0.2 + totalDefense * 2 + totalCrit * 3);
+  const totalDefense =
+    (effectiveResistance(armor, aLvl) * durabilityFactor(aDur) + save.res * T.advanced.resResistPerPoint + gems.resistance) * 100;
+  const totalCrit = effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) * 100;
+  return Math.floor(totalDamage * 1.5 + totalMaxHp * 0.2 + totalDefense * 2 + totalCrit * 3 + gems.critDamageBonus * 300);
 }
 
 export function effectiveAttackStamina(save: SaveData): number {
@@ -375,6 +387,10 @@ export function defaultSave(): SaveData {
     potions: { hp: 0, stamina: 0, elixir: 0 },
     consumables: emptyConsumables(),
     expedition: null,
+    durability: {},
+    gems: emptyGems(),
+    sockets: {},
+    blessed: false,
   };
 }
 
@@ -402,6 +418,22 @@ export function loadSave(): SaveData {
         exp && typeof exp.id === 'string' && getExpedition(exp.id) && typeof exp.endsAt === 'number' && Number.isFinite(exp.endsAt)
           ? { id: exp.id, endsAt: exp.endsAt }
           : null;
+      const durability: Record<string, number> = {};
+      for (const [id, d] of Object.entries(parsed.durability ?? {})) {
+        if (!getGear(id)) continue;
+        const n = Math.floor(Number(d));
+        if (Number.isFinite(n)) durability[id] = Math.max(0, Math.min(MAX_DURABILITY, n));
+      }
+      const gems = { ...emptyGems() };
+      for (const k of Object.keys(gems) as GemId[]) {
+        const n = Math.floor(Number((parsed.gems ?? {})[k]));
+        gems[k] = Number.isFinite(n) && n > 0 ? n : 0;
+      }
+      const sockets: Record<string, GemId[]> = {};
+      for (const [id, list] of Object.entries(parsed.sockets ?? {})) {
+        if (!getGear(id) || !Array.isArray(list)) continue;
+        sockets[id] = (list as string[]).filter((g) => getGem(g)).slice(0, 4) as GemId[];
+      }
       return {
         ...base,
         ...parsed,
@@ -414,6 +446,10 @@ export function loadSave(): SaveData {
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
         consumables: { ...emptyConsumables(), ...(parsed.consumables ?? {}) },
         expedition,
+        durability,
+        gems,
+        sockets,
+        blessed: !!parsed.blessed,
       };
     }
   } catch {

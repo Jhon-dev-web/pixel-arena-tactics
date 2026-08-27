@@ -138,6 +138,20 @@ export function gearSellValue(item: GearItem): number {
   return Math.max(0, Math.floor((item.cost ?? 0) * 0.4));
 }
 
+// --- Durability ---
+export const MAX_DURABILITY = 100;
+export const DURABILITY_LOSS_PER_STAGE = 2;
+
+export function durabilityFactor(durability: number): number {
+  if (durability <= 0) return 0.4;
+  if (durability < 30) return 0.75;
+  return 1;
+}
+
+export function repairCost(tier: number): number {
+  return 20 + tier * 25;
+}
+
 export interface UpgradeCost {
   gold: number;
   materials?: Partial<Record<MaterialId, number>>;
