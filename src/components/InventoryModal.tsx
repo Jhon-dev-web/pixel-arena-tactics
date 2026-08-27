@@ -39,7 +39,7 @@ export default function InventoryModal({
 
   const gearItems = GEAR.filter((g) => (save.inventory[g.id] ?? 0) > 0);
   const materialItems = MATERIALS.map((m) => ({ ...m, qty: save.materials[m.id] ?? 0 })).filter((m) => m.qty > 0);
-  const consumableItems = CONSUMABLES.map((c) => ({ ...c, qty: save.consumables[c.id] ?? 0 })).filter((c) => c.qty > 0);
+  const consumableItems = CONSUMABLES.map((c) => ({ ...c, qty: save.consumables?.[c.id] ?? 0 })).filter((c) => c.qty > 0);
 
   const showEquipment = tab === 'all' || tab === 'equipment';
   const showMaterials = tab === 'all' || tab === 'materials';
@@ -64,7 +64,7 @@ export default function InventoryModal({
     : selectedMaterial
       ? save.materials[selectedMaterial.id] ?? 0
       : selectedConsumable
-        ? save.consumables[selectedConsumable.id] ?? 0
+        ? save.consumables?.[selectedConsumable.id] ?? 0
         : 0;
 
   const unitValue = selectedGear
@@ -191,7 +191,7 @@ export default function InventoryModal({
             <>
               <div className="inv-detail-name">
                 <span className="inv-emoji">{selectedConsumable.icon}</span> {conText(selectedConsumable.nameKey)}
-                <span className="inv-qty">×{save.consumables[selectedConsumable.id]}</span>
+                <span className="inv-qty">×{save.consumables?.[selectedConsumable.id] ?? 0}</span>
               </div>
               <div className="inv-detail-desc">{conText(selectedConsumable.descKey)}</div>
             </>

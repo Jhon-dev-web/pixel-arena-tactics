@@ -262,9 +262,9 @@ function App() {
 
   const useAutoPotion = () => {
     const s = saveRef.current;
-    const qty = s.consumables.small_hp ?? 0;
+    const qty = s.consumables?.small_hp ?? 0;
     if (qty <= 0) return;
-    setSaveBoth({ ...s, consumables: { ...s.consumables, small_hp: qty - 1 } });
+    setSaveBoth({ ...s, consumables: { ...(s.consumables ?? {}), small_hp: qty - 1 } });
   };
 
   const startExpedition = (id: string) => {
@@ -311,7 +311,7 @@ function App() {
     if (!def) return;
     const s = saveRef.current;
     if (s.gold < def.cost) return;
-    const qty = s.consumables[id] ?? 0;
+    const qty = s.consumables?.[id] ?? 0;
     if (qty >= CONSUMABLE_STACK) {
       showToast(Text.shop.stackFull);
       return;
@@ -321,7 +321,7 @@ function App() {
       return;
     }
     playSfx('click');
-    setSaveBoth({ ...s, gold: s.gold - def.cost, consumables: { ...s.consumables, [id]: qty + 1 } });
+    setSaveBoth({ ...s, gold: s.gold - def.cost, consumables: { ...(s.consumables ?? {}), [id]: qty + 1 } });
   };
 
   const buyMaterial = (id: MaterialId) => {
@@ -355,10 +355,10 @@ function App() {
       setSaveBoth({ ...s, gold: s.gold + n * m.sellValue, materials: { ...s.materials, [id as MaterialId]: have - n } });
     } else if (kind === 'consumable') {
       const c = getConsumable(id);
-      const have = s.consumables[id as ConsumableId] ?? 0;
+      const have = s.consumables?.[id as ConsumableId] ?? 0;
       const n = Math.max(1, Math.min(qty, have));
       if (!c || have <= 0) return;
-      setSaveBoth({ ...s, gold: s.gold + n * c.sellValue, consumables: { ...s.consumables, [id as ConsumableId]: have - n } });
+      setSaveBoth({ ...s, gold: s.gold + n * c.sellValue, consumables: { ...(s.consumables ?? {}), [id as ConsumableId]: have - n } });
     } else {
       const g = getGear(id);
       const have = s.inventory[id] ?? 0;
@@ -376,7 +376,7 @@ function App() {
       delete mats[id as MaterialId];
       setSaveBoth({ ...s, materials: mats });
     } else if (kind === 'consumable') {
-      const cons = { ...s.consumables };
+      const cons = { ...(s.consumables ?? {}) };
       cons[id as ConsumableId] = 0;
       setSaveBoth({ ...s, consumables: cons });
     } else {

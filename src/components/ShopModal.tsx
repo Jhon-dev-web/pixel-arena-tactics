@@ -36,7 +36,7 @@ export default function ShopModal({
         <div className="shop-body">
           <div className="shop-section-title">{Text.shop.consumables}</div>
           {CONSUMABLES.map((c) => {
-            const qty = save.consumables[c.id] ?? 0;
+            const qty = save.consumables?.[c.id] ?? 0;
             const disabled = save.gold < c.cost || qty >= CONSUMABLE_STACK;
             return (
               <div className="gear-row" key={c.id}>
