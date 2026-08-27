@@ -69,7 +69,7 @@ export default function BattleModal({
   const [speed, setSpeed] = useState<1 | 2>(1);
   const [heroProgress, setHeroProgress] = useState(0);
   const [enemyProgress, setEnemyProgress] = useState(0);
-  const [potionsLeft, setPotionsLeft] = useState(save.potions.hp);
+  const [potionsLeft, setPotionsLeft] = useState(save.consumables.small_hp ?? 0);
   const [accumGold, setAccumGold] = useState(0);
   const [accumCount, setAccumCount] = useState(0);
   const [finalRewards, setFinalRewards] = useState<RunRewards | null>(null);
@@ -89,7 +89,7 @@ export default function BattleModal({
   const heroNextAtkRef = useRef(0);
   const enemyNextAtkRef = useRef(0);
   const potionCooldownUntilRef = useRef(0);
-  const potionsLeftRef = useRef(save.potions.hp);
+  const potionsLeftRef = useRef(save.consumables.small_hp ?? 0);
   const idRef = useRef(0);
   const onRetreatRef = useRef(onRetreat);
   onRetreatRef.current = onRetreat;
@@ -221,7 +221,7 @@ export default function BattleModal({
       setPotionsLeft(potionsLeftRef.current);
       potionCooldownUntilRef.current = now + T.battle.potionCooldownMs;
       onUsePotionRef.current();
-      const heal = Math.max(1, Math.round(playerMax * T.battle.potionHealRatio));
+      const heal = Math.max(1, Math.round(T.battle.potionHeal));
       hp.current.p = Math.min(playerMax, hp.current.p + heal);
       setPlayerHp(hp.current.p);
       addFloat('p', `+${heal}`, 'heal');

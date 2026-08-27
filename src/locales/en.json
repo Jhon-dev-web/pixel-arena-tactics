@@ -115,11 +115,18 @@
     "all": "All",
     "equipment": "Equipment",
     "materials": "Materials",
+    "consumables": "Consumables",
     "equip": "EQUIP",
     "unequip": "UNEQUIP",
     "equipped": "EQUIPPED",
     "hint": "Select an item to see details",
-    "materialDesc": "Crafting material"
+    "materialDesc": "Crafting material",
+    "space": "🎒 Space: {n} / {m}",
+    "sell": "💰 Sell",
+    "discard": "🗑️ Discard",
+    "confirm": "Confirm discard?",
+    "sellFor": "+{n} Gold",
+    "full": "Bag full!"
   },
   "profile": {
     "title": "⚔️ HERO PROFILE",
@@ -154,7 +161,19 @@
     "sellEach": "Value: {n} Gold each",
     "sellTotal": "Total: +{n} Gold",
     "sellEmpty": "No materials to sell",
-    "sold": "+{n} Gold"
+    "sold": "+{n} Gold",
+    "bagFull": "Bag full!",
+    "stackFull": "Stack full!"
+  },
+  "consumables": {
+    "small_hp": "Small Health Potion",
+    "small_hp_d": "Restores +50 HP in battle",
+    "large_hp": "Large Health Potion",
+    "large_hp_d": "Restores +150 HP in battle",
+    "atk_elixir": "Attack Elixir",
+    "atk_elixir_d": "+10% damage for the current run",
+    "iron_skin": "Iron Skin Flask",
+    "iron_skin_d": "+10% defense for the current run"
   },
   "forge": {
     "title": "⚒️ Forge",

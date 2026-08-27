@@ -3,6 +3,7 @@ import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, effectiveCrit, effec
 import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
 import { Materials, emptyMaterials } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
+import { ConsumableId, emptyConsumables } from './consumables';
 
 export type PlayerAction = 'attack' | 'shield' | 'focus';
 export type EnemyAction = 'attack' | 'shield' | 'focus' | 'slam' | 'charge';
@@ -56,6 +57,7 @@ export interface SaveData {
   res: number;
   materials: Materials;
   potions: { hp: number; stamina: number; elixir: number };
+  consumables: Record<ConsumableId, number>;
   expedition: ActiveExpedition | null;
 }
 
@@ -371,6 +373,7 @@ export function defaultSave(): SaveData {
     res: 0,
     materials: emptyMaterials(),
     potions: { hp: 0, stamina: 0, elixir: 0 },
+    consumables: emptyConsumables(),
     expedition: null,
   };
 }
@@ -409,6 +412,7 @@ export function loadSave(): SaveData {
         highestFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
+        consumables: { ...emptyConsumables(), ...(parsed.consumables ?? {}) },
         expedition,
       };
     }

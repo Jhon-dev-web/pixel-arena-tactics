@@ -45,7 +45,7 @@ const T = DebugPanel.define({
     miniBossDmgMult: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Mini-boss damage multiplier' },
     miniBossShards: { value: 2, min: 1, max: 5, step: 1, label: 'Mini-boss shard drop' },
     potionThreshold: { value: 0.35, min: 0.05, max: 0.9, step: 0.05, label: 'Auto-potion HP threshold (ratio)' },
-    potionHealRatio: { value: 0.35, min: 0.05, max: 1, step: 0.05, label: 'Auto-potion heal (ratio of max HP)' },
+    potionHeal: { value: 50, min: 10, max: 500, step: 10, label: 'Auto-potion heal (HP)' },
     potionCooldownMs: { value: 5000, min: 1000, max: 15000, step: 500, label: 'Auto-potion cooldown (ms)' },
   },
   progression: {

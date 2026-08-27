@@ -17,9 +17,11 @@ import {
   tickBurn,
   tickPoison,
 } from './game/engine';
-import { GEAR, getEquipped, getGear, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
+import { GEAR, gearSellValue, getEquipped, getGear, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
 import { EnemyKind, enemyKindForDuel, getEnemyDef } from './game/enemies';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
+import { CONSUMABLE_STACK, ConsumableId, getConsumable } from './game/consumables';
+import { MATERIAL_STACK, isBagFull } from './game/inventory';
 import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier } from './game/sprites';
 import SpriteSheet from './components/SpriteSheet';
 import AdminModal from './components/AdminModal';
@@ -260,8 +262,9 @@ function App() {
 
   const useAutoPotion = () => {
     const s = saveRef.current;
-    if (s.potions.hp <= 0) return;
-    setSaveBoth({ ...s, potions: { ...s.potions, hp: s.potions.hp - 1 } });
+    const qty = s.consumables.small_hp ?? 0;
+    if (qty <= 0) return;
+    setSaveBoth({ ...s, consumables: { ...s.consumables, small_hp: qty - 1 } });
   };
 
   const startExpedition = (id: string) => {
@@ -303,26 +306,85 @@ function App() {
     setClaimResult({ nameKey: def.nameKey, rewards });
   };
 
-  const buyPotion = (id: 'hp' | 'stamina' | 'elixir') => {
-    const cost = id === 'hp' ? 30 : id === 'stamina' ? 25 : 60;
-    if (saveRef.current.gold < cost) return;
+  const buyConsumable = (id: ConsumableId) => {
+    const def = getConsumable(id);
+    if (!def) return;
+    const s = saveRef.current;
+    if (s.gold < def.cost) return;
+    const qty = s.consumables[id] ?? 0;
+    if (qty >= CONSUMABLE_STACK) {
+      showToast(Text.shop.stackFull);
+      return;
+    }
+    if (qty === 0 && isBagFull(s)) {
+      showToast(Text.shop.bagFull);
+      return;
+    }
     playSfx('click');
-    setSaveBoth({
-      ...saveRef.current,
-      gold: saveRef.current.gold - cost,
-      potions: { ...saveRef.current.potions, [id]: saveRef.current.potions[id] + 1 },
-    });
+    setSaveBoth({ ...s, gold: s.gold - def.cost, consumables: { ...s.consumables, [id]: qty + 1 } });
   };
 
   const buyMaterial = (id: MaterialId) => {
     const def = MATERIALS.find((m) => m.id === id);
     if (!def || saveRef.current.gold < def.packCost) return;
+    const s = saveRef.current;
+    const qty = s.materials[id] ?? 0;
+    if (qty >= MATERIAL_STACK) {
+      showToast(Text.shop.stackFull);
+      return;
+    }
+    if (qty === 0 && isBagFull(s)) {
+      showToast(Text.shop.bagFull);
+      return;
+    }
     playSfx('click');
     setSaveBoth({
-      ...saveRef.current,
-      gold: saveRef.current.gold - def.packCost,
-      materials: { ...saveRef.current.materials, [id]: (saveRef.current.materials[id] ?? 0) + def.packSize },
+      ...s,
+      gold: s.gold - def.packCost,
+      materials: { ...s.materials, [id]: Math.min(MATERIAL_STACK, qty + def.packSize) },
     });
+  };
+
+  const sellItem = (kind: 'gear' | 'material' | 'consumable', id: string, qty: number) => {
+    const s = saveRef.current;
+    if (kind === 'material') {
+      const m = MATERIALS.find((x) => x.id === id);
+      const have = s.materials[id as MaterialId] ?? 0;
+      const n = Math.max(1, Math.min(qty, have));
+      if (!m || have <= 0) return;
+      setSaveBoth({ ...s, gold: s.gold + n * m.sellValue, materials: { ...s.materials, [id as MaterialId]: have - n } });
+    } else if (kind === 'consumable') {
+      const c = getConsumable(id);
+      const have = s.consumables[id as ConsumableId] ?? 0;
+      const n = Math.max(1, Math.min(qty, have));
+      if (!c || have <= 0) return;
+      setSaveBoth({ ...s, gold: s.gold + n * c.sellValue, consumables: { ...s.consumables, [id as ConsumableId]: have - n } });
+    } else {
+      const g = getGear(id);
+      const have = s.inventory[id] ?? 0;
+      const n = Math.max(1, Math.min(qty, have));
+      if (!g || have <= 0) return;
+      setSaveBoth({ ...s, gold: s.gold + n * gearSellValue(g), inventory: { ...s.inventory, [id]: have - n } });
+    }
+    playSfx('click');
+  };
+
+  const discardItem = (kind: 'gear' | 'material' | 'consumable', id: string) => {
+    const s = saveRef.current;
+    if (kind === 'material') {
+      const mats = { ...s.materials };
+      delete mats[id as MaterialId];
+      setSaveBoth({ ...s, materials: mats });
+    } else if (kind === 'consumable') {
+      const cons = { ...s.consumables };
+      cons[id as ConsumableId] = 0;
+      setSaveBoth({ ...s, consumables: cons });
+    } else {
+      const inv = { ...s.inventory };
+      delete inv[id];
+      setSaveBoth({ ...s, inventory: inv });
+    }
+    playSfx('click');
   };
 
   const sellMaterial = (id: MaterialId) => {
@@ -902,11 +964,9 @@ function App() {
       {shopOpen && (
         <ShopModal
           save={save}
-          elixirActive={elixirActive}
-          onBuyPotion={buyPotion}
+          onBuyConsumable={buyConsumable}
           onBuyMaterial={buyMaterial}
           onSellMaterial={sellMaterial}
-          onUseElixir={useElixir}
           onClose={() => {
             playSfx('click');
             setShopOpen(false);
@@ -931,6 +991,8 @@ function App() {
           save={save}
           onEquip={equipGear}
           onUnequip={unequipGear}
+          onSell={sellItem}
+          onDiscard={discardItem}
           onClose={() => {
             playSfx('click');
             setBagOpen(false);

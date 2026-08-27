@@ -38,6 +38,13 @@
   toast + sound on success).
 - **Sell Materials** (`[🛒 Shop]` → "Sell Materials"): each material with stock can be sold back as a
   full stack for quick gold (per-unit `sellValue` in the materials catalog; a `+N Gold` toast confirms).
+- **Consumables shop**: `[🛒 Shop]` now sells 4 consumables (Small/Large Health Potion, Attack Elixir,
+  Iron Skin Flask) that land in the Bag (`save.consumables`), each with cost + sell value. Buying
+  checks the Bag's capacity and per-stack limits.
+- **Bag limits & sell/discard**: the Bag caps at `20` slots (indicator `🎒 Space: X / 20`) with stack
+  limits — materials `99x`, potions/elixirs `20x`, equipment `1` per equipment slot. Selecting any
+  item opens a detail panel with a quantity stepper + `💰 Sell` and a `🗑️ Discard` (quick-confirm) to
+  free grid space; full-bag/stack-full purchases are blocked with a "Bag full!"/"Stack full!" toast.
 - **Inventory / bag** (`🎒` in the HUD): a slot grid with All/Equipment/Materials tabs, item details,
   and Equip/Unequip. Item ownership is now a quantity map (`inventory: id → qty`) persisted in
   `localStorage` (with migration from the old `owned` list).

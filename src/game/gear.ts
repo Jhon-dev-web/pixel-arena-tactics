@@ -134,6 +134,10 @@ export function tierMaterial(tier: number): MaterialId {
   return 'dragon_scales';
 }
 
+export function gearSellValue(item: GearItem): number {
+  return Math.max(0, Math.floor((item.cost ?? 0) * 0.4));
+}
+
 export interface UpgradeCost {
   gold: number;
   materials?: Partial<Record<MaterialId, number>>;
