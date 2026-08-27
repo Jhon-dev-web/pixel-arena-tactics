@@ -47,6 +47,7 @@ export interface SaveData {
   inventory: Record<string, number>;
   equipped: EquippedGear;
   upgrades: Record<string, number>;
+  highestFloor: number;
   heroName: string;
   str: number;
   vit: number;
@@ -360,6 +361,7 @@ export function defaultSave(): SaveData {
     inventory: { ...DEFAULT_INVENTORY },
     equipped: { ...DEFAULT_EQUIPPED },
     upgrades: {},
+    highestFloor: 1,
     heroName: 'Hero',
     str: 0,
     vit: 0,
@@ -388,6 +390,7 @@ export function loadSave(): SaveData {
         const n = Math.floor(Number(lvl));
         if (getGear(id) && Number.isFinite(n) && n > 0) upgrades[id] = Math.min(8, n);
       }
+      const highestFloor = Math.max(1, Math.min(4, Math.floor(Number(parsed.highestFloor ?? 1)) || 1));
       return {
         ...base,
         ...parsed,
@@ -395,6 +398,7 @@ export function loadSave(): SaveData {
         inventory: gear.inventory,
         equipped: gear.equipped,
         upgrades,
+        highestFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
       };

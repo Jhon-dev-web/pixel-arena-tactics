@@ -2123,6 +2123,158 @@ body {
   color: #d8c9a0;
   margin-top: 2px;
 }
+
+/* ===== dungeon map modal ===== */
+.dungeon-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 82vh;
+}
+.dungeon-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.floor-card {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3a2a4a;
+  border-radius: 10px;
+  text-align: left;
+}
+.floor-card.locked {
+  opacity: 0.5;
+}
+.floor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.floor-name {
+  font-size: var(--font-size);
+  color: #fff;
+}
+.floor-cp {
+  font-size: calc(var(--font-size) - 3px);
+  color: #ffd76a;
+  white-space: nowrap;
+}
+.floor-drops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.floor-drop {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+}
+.floor-locked {
+  display: inline-block;
+  font-size: calc(var(--font-size) - 2px);
+  color: #8a7aa8;
+  padding: 8px 0;
+}
+
+/* ===== battle modal ===== */
+.battle-backdrop {
+  background: rgba(0, 0, 0, 0.85);
+}
+.battle {
+  position: relative;
+  width: min(92vw, 360px);
+  height: min(86vh, 640px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #1a1420, #0f0a14);
+  border: 3px solid #6a4a2a;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+}
+.battle-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.battle-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.battle-hp .bar {
+  flex: 1;
+}
+.hp-label {
+  font-size: calc(var(--font-size) - 2px);
+  color: #f5e9c8;
+  white-space: nowrap;
+  min-width: 64px;
+}
+.battle-hp:last-child .hp-label {
+  text-align: right;
+}
+.hp-num {
+  font-size: calc(var(--font-size) - 2px);
+  color: #fff;
+  white-space: nowrap;
+}
+.battle-arena {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 8px;
+}
+.battle-side {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.battle-vs {
+  font-size: calc(var(--font-size) + 2px);
+  color: #ffd76a;
+  text-shadow: 0 2px 0 #000;
+}
+.battle-result {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+.result-title {
+  font-size: calc(var(--font-size) + 8px);
+  margin: 0;
+}
+.result-title.win {
+  color: #ffd76a;
+}
+.result-title.lose {
+  color: #ff6b5e;
+}
+.result-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
 .distribute-btn {
   width: 100%;
   font-family: inherit;

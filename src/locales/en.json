@@ -195,5 +195,21 @@
     "forge": "Forge",
     "shop": "Shop",
     "attributes": "Attributes"
+  },
+  "dungeon": {
+    "title": "⚔️ DUNGEON",
+    "floor1": "Goblin Forest",
+    "floor2": "Orc Caverns",
+    "floor3": "Undead Crypt",
+    "floor4": "Minotaur's Lair",
+    "cp": "Recommended: {n} CP",
+    "drops": "Drops",
+    "battle": "BATTLE",
+    "locked": "🔒 Locked",
+    "victory": "🏆 VICTORY!",
+    "defeated": "💀 DEFEATED!",
+    "collect": "Collect & Return",
+    "return": "Return to Camp",
+    "rewards": "Rewards"
   }
 }

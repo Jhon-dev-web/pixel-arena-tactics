@@ -44,6 +44,21 @@ Equip/Unequip actions.
 The hero profile modal (opened from the HUD avatar / `Lv. N`): equipped weapon + armor slots with
 sprite/name/stat, and consolidated calculated stats (Max HP, damage, defense, crit rate, CP).
 
+## `src/game/dungeon.ts`
+
+Dungeon floor definitions: `FloorDef` (name, recommended CP, enemy kind, gold/drop/shards rewards)
+and `FLOORS` (Goblin Forest → Orc Caverns → Undead Crypt → Minotaur's Lair).
+
+## `src/components/DungeonMapModal.tsx`
+
+Floor-selection modal: 4 floors with recommended CP, drop previews, progressive unlocking, and a
+`[BATTLE]` button per unlocked floor.
+
+## `src/components/BattleModal.tsx`
+
+Auto-battle duel: hero (armor-tier sprite) vs floor monster with HP bars, automatic turn loop
+(~1.2s), floating damage/CRIT numbers, and victory (rewards) / defeat overlays.
+
 ## `src/components/CombatFx.tsx`
 
 Floating-text `floatLabel`, the `Burst` particle component, and the `FloatState`/`BurstState` types.

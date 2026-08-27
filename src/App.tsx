@@ -27,6 +27,9 @@ import ShopModal from './components/ShopModal';
 import ForgeModal from './components/ForgeModal';
 import InventoryModal from './components/InventoryModal';
 import HeroModal from './components/HeroModal';
+import DungeonMapModal from './components/DungeonMapModal';
+import BattleModal from './components/BattleModal';
+import { BattleRewards, getFloor } from './game/dungeon';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
@@ -72,6 +75,8 @@ function App() {
   const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [heroOpen, setHeroOpen] = useState(false);
+  const [dungeonOpen, setDungeonOpen] = useState(false);
+  const [battleFloor, setBattleFloor] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [loot, setLoot] = useState<{ gold: number; shards: number } | null>(null);
   const [version, setVersion] = useState(0);
@@ -205,6 +210,42 @@ function App() {
     setElixirBoth(false);
     startDuel();
     setScene('camp');
+  };
+
+  const openDungeon = () => {
+    playSfx('click');
+    setDungeonOpen(true);
+  };
+
+  const startBattle = (floor: number) => {
+    playSfx('click');
+    setDungeonOpen(false);
+    setBattleFloor(floor);
+  };
+
+  const returnFromBattle = () => {
+    playSfx('click');
+    setBattleFloor(null);
+  };
+
+  const collectRewards = (floor: number, rewards: BattleRewards) => {
+    const s = saveRef.current;
+    const mats = { ...s.materials };
+    for (const [mid, qty] of Object.entries(rewards.drops ?? {})) {
+      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
+    }
+    const atCap = playerLevel(s.xp) >= 100;
+    setSaveBoth({
+      ...s,
+      gold: s.gold + rewards.gold,
+      materials: mats,
+      shards: s.shards + rewards.shards,
+      xp: atCap ? s.xp : s.xp + T.advanced.victoryXp,
+      victories: s.victories + 1,
+      highestFloor: Math.max(s.highestFloor, Math.min(4, floor + 1)),
+    });
+    playSfx('victory');
+    setBattleFloor(null);
   };
 
   const buyPotion = (id: 'hp' | 'stamina' | 'elixir') => {
@@ -676,7 +717,7 @@ function App() {
               <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
                 {Text.ui.forge}
               </button>
-              <button className="camp-main-btn" onClick={enterArena} data-ui>
+              <button className="camp-main-btn" onClick={openDungeon} data-ui>
                 {Text.camp.enterArena}
               </button>
               <button className="camp-side-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
@@ -825,6 +866,26 @@ function App() {
             playSfx('click');
             setHeroOpen(false);
           }}
+        />
+      )}
+
+      {dungeonOpen && (
+        <DungeonMapModal
+          save={save}
+          onBattle={startBattle}
+          onClose={() => {
+            playSfx('click');
+            setDungeonOpen(false);
+          }}
+        />
+      )}
+
+      {battleFloor !== null && (
+        <BattleModal
+          save={save}
+          floor={getFloor(battleFloor)}
+          onCollect={(rewards) => collectRewards(battleFloor, rewards)}
+          onReturn={returnFromBattle}
         />
       )}
 
