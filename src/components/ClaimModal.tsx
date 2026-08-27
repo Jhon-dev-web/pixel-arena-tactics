@@ -1,10 +1,10 @@
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import Assets from '../assets.json';
 import { ExpeditionRewards } from '../game/expedition';
 import { MaterialId, materialIconUrl } from '../game/materials';
 
-const expText = (k: string): string => (Text.expedition as Record<string, string>)[k];
-const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
+const expText = (k: string): string => t(`expedition.${k}`);
+const matText = (k: string): string => t(`materials.${k}`);
 
 export default function ClaimModal({
   nameKey,
@@ -18,7 +18,7 @@ export default function ClaimModal({
   return (
     <div className="modal-backdrop">
       <div className="modal claim-modal">
-        <h2 className="modal-title">{Text.expedition.rewards}</h2>
+        <h2 className="modal-title">{t('expedition.rewards')}</h2>
         <p className="claim-name">{expText(nameKey)}</p>
 
         <div className="result-rewards">
@@ -26,7 +26,7 @@ export default function ClaimModal({
             <span className="mat-icon">
               <img src={Assets.icons.gold.url} alt="" />
             </span>
-            <span>+{rewards.gold} Gold</span>
+            <span>{t('ui.goldReward', { n: rewards.gold })}</span>
           </span>
           {Object.entries(rewards.drops ?? {}).map(([mid, qty]) => (
             <span className="floor-drop" key={mid}>
@@ -41,13 +41,13 @@ export default function ClaimModal({
           {rewards.shards > 0 && (
             <span className="floor-drop">
               <span className="mat-icon shard">🔷</span>
-              <span>+{rewards.shards} Shards</span>
+              <span>{t('ui.shardsReward', { n: rewards.shards })}</span>
             </span>
           )}
         </div>
 
         <button className="result-btn" onClick={onClose} data-ui>
-          {Text.expedition.close}
+          {t('expedition.close')}
         </button>
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>

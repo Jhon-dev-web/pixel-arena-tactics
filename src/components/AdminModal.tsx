@@ -1,4 +1,4 @@
-import Text from '../locales/en.json';
+import { t } from '../locales';
 
 export default function AdminModal({
   cheatMode,
@@ -20,21 +20,21 @@ export default function AdminModal({
   return (
     <div className="modal-backdrop">
       <div className="modal admin-modal">
-        <h2 className="modal-title">{Text.admin.title}</h2>
+        <h2 className="modal-title">{t('admin.title')}</h2>
         <button className="admin-btn" onClick={onGold} data-ui>
-          {Text.admin.gold}
+          {t('admin.gold')}
         </button>
         <button className="admin-btn" onClick={onShards} data-ui>
-          {Text.admin.shards}
+          {t('admin.shards')}
         </button>
         <button className="admin-btn" onClick={onUnlock} data-ui>
-          {Text.admin.unlock}
+          {t('admin.unlock')}
         </button>
         <button className={`admin-btn cheat${cheatMode ? ' active' : ''}`} onClick={onToggleCheat} data-ui>
-          {Text.admin.cheatMode}: {cheatMode ? Text.admin.on : Text.admin.off}
+          {t('admin.cheatMode')}: {cheatMode ? t('admin.on') : t('admin.off')}
         </button>
         <button className="admin-btn danger" onClick={onReset} data-ui>
-          {Text.admin.reset}
+          {t('admin.reset')}
         </button>
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
           ✕

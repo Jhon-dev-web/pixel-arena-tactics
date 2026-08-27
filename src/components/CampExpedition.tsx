@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import { ActiveExpedition, getExpedition } from '../game/expedition';
 
-const expText = (k: string): string => (Text.expedition as Record<string, string>)[k];
+const expText = (k: string): string => t(`expedition.${k}`);
 
 function formatRemaining(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -33,7 +33,7 @@ export default function CampExpedition({
   if (!expedition) {
     return (
       <button className="camp-expedition-btn" onClick={onStart} data-ui>
-        🏕️ Expedition
+        {t('dungeon.expedition')}
       </button>
     );
   }
@@ -51,7 +51,7 @@ export default function CampExpedition({
       <div className="camp-expedition-name">{expText(def.nameKey)}</div>
       {done ? (
         <button className="camp-expedition-claim blink" onClick={onClaim} data-ui>
-          {Text.expedition.collect}
+          {t('expedition.collect')}
         </button>
       ) : (
         <>
@@ -59,10 +59,10 @@ export default function CampExpedition({
             <div className="camp-expedition-fill" style={{ width: `${progress * 100}%` }} />
           </div>
           <span className="camp-expedition-time">
-            {expText('inExpedition').replace('{n}', formatRemaining(remaining))}
+            {t('expedition.inExpedition', { n: formatRemaining(remaining) })}
           </span>
           <button className="camp-expedition-cancel" onClick={onCancel} data-ui>
-            {Text.expedition.cancel}
+            {t('expedition.cancel')}
           </button>
         </>
       )}

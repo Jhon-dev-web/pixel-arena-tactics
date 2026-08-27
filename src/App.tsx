@@ -43,7 +43,7 @@ import TopHud from './components/TopHud';
 import Campfire from './components/Campfire';
 import { initAudio, loadMuted, playSfx, setMuted, unlockAudio } from './game/audio';
 import Assets from './assets.json';
-import Text from './locales/en.json';
+import { t } from './locales';
 import './App.css';
 
 type AnimName = 'idle' | 'attack' | 'hurt' | 'death';
@@ -53,11 +53,10 @@ const ANIM_ROW: Record<AnimName, number> = { idle: 0, attack: 1, hurt: 2, death:
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
 
-const enemyText = (key: string): string => (Text.enemies as Record<string, string>)[key];
-const gearText = (key: string): string => (Text.gear as Record<string, string>)[key];
+const enemyText = (key: string): string => t(`enemies.${key}`);
+const gearText = (key: string): string => t(`gear.${key}`);
 
 function App() {
   const [save, setSave] = useState<SaveData>(() => loadSave());
@@ -313,11 +312,11 @@ function App() {
     if (s.gold < def.cost) return;
     const qty = s.consumables?.[id] ?? 0;
     if (qty >= CONSUMABLE_STACK) {
-      showToast(Text.shop.stackFull);
+      showToast(t('shop.stackFull'));
       return;
     }
     if (qty === 0 && isBagFull(s)) {
-      showToast(Text.shop.bagFull);
+      showToast(t('shop.bagFull'));
       return;
     }
     playSfx('click');
@@ -394,7 +393,7 @@ function App() {
       shards: s.shards - (recipe.shards ?? 0),
     });
     playSfx('victory');
-    showToast(Text.forge.toBag.replace('{n}', gearText(item.nameKey)));
+    showToast(t('forge.toBag', { n: gearText(item.nameKey) }));
   };
 
   const upgradeItem = (id: string) => {
@@ -763,7 +762,7 @@ function App() {
   const playerSpriteUrl = spriteForArmorTier(armorTier);
   const enemyDef = getEnemyDef(enemyKind);
   const enemyName = enemyDef.boss
-    ? fmt(Text.enemies.bossName, enemyText(enemyDef.nameKey))
+    ? t('enemies.bossName', { n: enemyText(enemyDef.nameKey) })
     : enemyText(enemyDef.nameKey);
   const enemySprite = enemySpriteUrl(enemyKind);
   const enemySize = enemySpriteSize(enemyKind);
@@ -820,20 +819,20 @@ function App() {
             />
             <div className="camp-actions">
               <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
-                {Text.ui.forge}
+                {t('ui.forge')}
               </button>
               <button className="camp-main-btn" onClick={openDungeon} data-ui>
-                {Text.camp.enterArena}
+                {t('camp.enterArena')}
               </button>
               <button className="camp-side-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
-                {Text.ui.shop}
+                {t('ui.shop')}
               </button>
             </div>
           </>
         ) : (
           <>
             <button className="return-camp" onClick={returnToCamp} data-ui>
-              {Text.camp.returnCamp}
+              {t('camp.returnCamp')}
             </button>
             <div className="arena">
           <div className="fighter player">
@@ -867,7 +866,7 @@ function App() {
 
           <div className={`fighter enemy${enemyDef.boss ? ' boss' : ''}`}>
             <div className="bars">
-              {enemyDef.boss && <span className="boss-tag">{Text.combat.bossTag}</span>}
+              {enemyDef.boss && <span className="boss-tag">{t('combat.bossTag')}</span>}
               <span className="enemy-name">{enemyName}</span>
               <div className="bar hp enemy-hp">
                 <div className="bar-fill enemy-hp-fill" style={{ width: `${pct(enemy.hp, enemy.maxHp)}%` }} />
@@ -908,16 +907,16 @@ function App() {
           </div>
           <div className="action-row">
             <button className="action attack" onClick={() => doTurn('attack')} disabled={!canAttack} data-ui>
-              <span className="action-label">{Text.ui.attack}</span>
-              <span className="action-cost">{`-${atkCost} ${Text.combat.stamina}`}</span>
+              <span className="action-label">{t('ui.attack')}</span>
+              <span className="action-cost">{`-${atkCost} ${t('combat.stamina')}`}</span>
             </button>
             <button className="action shield" onClick={() => doTurn('shield')} disabled={!canShield} data-ui>
-              <span className="action-label">{Text.ui.shield}</span>
-              <span className="action-cost">{`-${T.combat.shieldStamina} ${Text.combat.stamina}`}</span>
+              <span className="action-label">{t('ui.shield')}</span>
+              <span className="action-cost">{`-${T.combat.shieldStamina} ${t('combat.stamina')}`}</span>
             </button>
             <button className="action focus" onClick={() => doTurn('focus')} disabled={!canFocus} data-ui>
-              <span className="action-label">{Text.ui.focus}</span>
-              <span className="action-cost">{Text.ui.free}</span>
+              <span className="action-label">{t('ui.focus')}</span>
+              <span className="action-cost">{t('ui.free')}</span>
             </button>
           </div>
         </footer>

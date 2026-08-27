@@ -73,6 +73,9 @@
   combat hits, plus a looping dark-arena ambient track; mute toggle in the top header.
 - Live tuning panel wired (`DebugPanel.define`) with combat / progression / ui / advanced groups.
 - Localization file (`src/locales/en.json`) for all player-visible text.
+- **PT-BR translation**: added `src/locales/pt.json` (full Brazilian Portuguese) + `src/locales/index.ts`
+  with a `t(path, vars)` resolver. Language auto-follows the browser (`navigator.language`), falling
+  back to English; all components now read text through `t()` instead of importing `en.json` directly.
 - **Dungeon system**: `[⚔️ ENTER DUNGEON]` now opens a 4-floor map (`DungeonMapModal` —
   Goblin Forest → Orc Caverns → Undead Crypt → Minotaur's Lair) with recommended CP, drop previews,
   and progressive unlocking via `highestFloor`. Each floor launches an **auto-battle** (`BattleModal`):

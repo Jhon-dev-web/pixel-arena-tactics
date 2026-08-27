@@ -1,12 +1,12 @@
 import Assets from '../assets.json';
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import { SaveData } from '../game/engine';
 import { FLOORS } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
-const dungeonText = (k: string): string => (Text.dungeon as Record<string, string>)[k];
-const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
+const dungeonText = (k: string): string => t(`dungeon.${k}`);
+const matText = (k: string): string => t(`materials.${k}`);
 
 export default function DungeonMapModal({
   save,
@@ -22,7 +22,7 @@ export default function DungeonMapModal({
   return (
     <div className="modal-backdrop">
       <div className="modal dungeon-modal">
-        <h2 className="modal-title">{Text.dungeon.title}</h2>
+        <h2 className="modal-title">{t('dungeon.title')}</h2>
 
         <div className="dungeon-body">
           {FLOORS.map((floor) => {
@@ -31,13 +31,13 @@ export default function DungeonMapModal({
               <div className={`floor-card${unlocked ? '' : ' locked'}`} key={floor.floor}>
                 <div className="floor-header">
                   <span className="floor-name">
-                    {fmt(Text.dungeon.floorLabel, floor.floor)}: {dungeonText(floor.nameKey)}
+                    {fmt(t('dungeon.floorLabel'), floor.floor)}: {dungeonText(floor.nameKey)}
                   </span>
-                  <span className="floor-cp">{fmt(Text.dungeon.cp, floor.cp)}</span>
+                  <span className="floor-cp">{fmt(t('dungeon.cp'), floor.cp)}</span>
                 </div>
 
                 <div className="floor-drops">
-                  <span className="drops-label">{Text.dungeon.drops}:</span>
+                  <span className="drops-label">{t('dungeon.drops')}:</span>
                   <span className="floor-drop">
                     <span className="mat-icon">
                       <img src={Assets.icons.gold.url} alt="" />
@@ -59,17 +59,17 @@ export default function DungeonMapModal({
                   {(floor.shards ?? 0) > 0 && (
                     <span className="floor-drop">
                       <span className="mat-icon shard">🔷</span>
-                      <span>{floor.shards}× Shards</span>
+                      <span>{t('ui.shardsX', { n: floor.shards })}</span>
                     </span>
                   )}
                 </div>
 
                 {unlocked ? (
                   <button className="battle-btn" onClick={() => onBattle(floor.floor)} data-ui>
-                    {Text.dungeon.battle}
+                    {t('dungeon.battle')}
                   </button>
                 ) : (
-                  <span className="floor-locked">{Text.dungeon.locked}</span>
+                  <span className="floor-locked">{t('dungeon.locked')}</span>
                 )}
               </div>
             );
@@ -77,7 +77,7 @@ export default function DungeonMapModal({
         </div>
 
         <button className="expedition-entry" onClick={onExpedition} data-ui>
-          {Text.dungeon.expedition}
+          {t('dungeon.expedition')}
         </button>
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>

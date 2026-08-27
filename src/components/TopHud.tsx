@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import SpriteSheet from './SpriteSheet';
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import {
   SaveData,
   computeCP,
@@ -82,7 +82,7 @@ export default function TopHud({
         </div>
       </div>
 
-      <div className="cp-center">{Text.ui.cp.replace('{n}', formatNumber(computeCP(save)))}</div>
+      <div className="cp-center">{t('ui.cp', { n: formatNumber(computeCP(save)) })}</div>
 
       <div className="resources">
         <span className="res gold">🪙 {formatNumber(save.gold)}</span>

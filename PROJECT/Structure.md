@@ -97,9 +97,13 @@ whose defaults match the tunable schema and whose `var()` fallbacks are the publ
 
 Tailwind directives (kept; unused by the game UI).
 
-## `src/locales/en.json`
+## `src/locales/en.json` + `src/locales/pt.json` + `src/locales/index.ts`
 
-All player-visible text (UI labels, combat float labels, modal strings) with `{n}` placeholders.
+All player-visible text (UI labels, combat float labels, modal strings) with `{n}`/`{m}`/`{f}`/`{s}`
+placeholders. `en.json` is the English source (fallback); `pt.json` is the Brazilian Portuguese
+translation (identical key structure). `index.ts` exposes `t(path, vars)` — it resolves the active
+locale from `localStorage`/`navigator.language`, falls back to English on a missing key, and exports
+`setLocale`/`locales` for a future language switcher.
 
 ## `src/assets.json`
 

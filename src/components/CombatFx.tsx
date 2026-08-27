@@ -1,6 +1,6 @@
 import { CSSProperties, useMemo } from 'react';
 import { CombatEventKind } from '../game/engine';
-import Text from '../locales/en.json';
+import { t } from '../locales';
 
 export interface FloatState {
   id: number;
@@ -16,27 +16,27 @@ export interface BurstState {
 export function floatLabel(ev: FloatState): string {
   switch (ev.kind) {
     case 'crit':
-      return `${Text.combat.critical} -${ev.value}`;
+      return `${t('combat.critical')} -${ev.value}`;
     case 'blocked':
-      return Text.combat.blocked;
+      return t('combat.blocked');
     case 'damage':
       return `-${ev.value}`;
     case 'heal':
-      return `+${ev.value} ${Text.combat.hp}`;
+      return `+${ev.value} ${t('combat.hp')}`;
     case 'stamina':
-      return `+${ev.value} ${Text.combat.stamina}`;
+      return `+${ev.value} ${t('combat.stamina')}`;
     case 'reflect':
-      return `${Text.combat.reflect} -${ev.value}`;
+      return `${t('combat.reflect')} -${ev.value}`;
     case 'burn':
-      return `${Text.combat.burn} -${ev.value}`;
+      return `${t('combat.burn')} -${ev.value}`;
     case 'poison':
-      return `${Text.combat.poison} -${ev.value}`;
+      return `${t('combat.poison')} -${ev.value}`;
     case 'dodge':
-      return Text.combat.dodge;
+      return t('combat.dodge');
     case 'curse':
-      return Text.combat.curse;
+      return t('combat.curse');
     case 'slam':
-      return `${Text.combat.slam} -${ev.value}`;
+      return `${t('combat.slam')} -${ev.value}`;
   }
 }
 

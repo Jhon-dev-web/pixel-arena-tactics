@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import { SaveData } from '../game/engine';
 import { GEAR, GearItem, gearSellValue, getGear, refineLevel } from '../game/gear';
 import { MATERIALS, MaterialId } from '../game/materials';
@@ -7,10 +7,9 @@ import { CONSUMABLES, getConsumable } from '../game/consumables';
 import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
 import GearIcon from './GearIcon';
 
-const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
-const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
-const conText = (k: string): string => (Text.consumables as Record<string, string>)[k];
-const fmt = (s: string, n: number) => s.replace('{n}', String(n));
+const gearText = (k: string): string => t(`gear.${k}`);
+const matText = (k: string): string => t(`materials.${k}`);
+const conText = (k: string): string => t(`consumables.${k}`);
 
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
@@ -93,23 +92,21 @@ export default function InventoryModal({
   return (
     <div className="modal-backdrop">
       <div className="modal inventory-modal">
-        <h2 className="modal-title">🎒 {Text.inventory.title}</h2>
-        <p className="shop-space">
-          {Text.inventory.space.replace('{n}', String(slots)).replace('{m}', String(MAX_SLOTS))}
-        </p>
+        <h2 className="modal-title">🎒 {t('inventory.title')}</h2>
+        <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>
 
         <div className="inv-tabs">
           <button className={`tab${tab === 'all' ? ' active' : ''}`} onClick={() => setTab('all')} data-ui>
-            {Text.inventory.all}
+            {t('inventory.all')}
           </button>
           <button className={`tab${tab === 'equipment' ? ' active' : ''}`} onClick={() => setTab('equipment')} data-ui>
-            {Text.inventory.equipment}
+            {t('inventory.equipment')}
           </button>
           <button className={`tab${tab === 'materials' ? ' active' : ''}`} onClick={() => setTab('materials')} data-ui>
-            {Text.inventory.materials}
+            {t('inventory.materials')}
           </button>
           <button className={`tab${tab === 'consumables' ? ' active' : ''}`} onClick={() => setTab('consumables')} data-ui>
-            {Text.inventory.consumables}
+            {t('inventory.consumables')}
           </button>
         </div>
 
@@ -174,11 +171,11 @@ export default function InventoryModal({
               {isEquippable &&
                 (isEquipped ? (
                   <button className="craft-btn equipped" onClick={() => onUnequip(selectedGear.id)} data-ui>
-                    {Text.inventory.unequip}
+                    {t('inventory.unequip')}
                   </button>
                 ) : (
                   <button className="craft-btn" onClick={() => onEquip(selectedGear.id)} data-ui>
-                    {Text.inventory.equip}
+                    {t('inventory.equip')}
                   </button>
                 ))}
             </>
@@ -188,7 +185,7 @@ export default function InventoryModal({
                 <img className="mat-icon-img" src={selectedMaterial.iconUrl} alt="" /> {matText(selectedMaterial.nameKey)}
                 <span className="inv-qty">×{save.materials[selectedMaterial.id]}</span>
               </div>
-              <div className="inv-detail-desc">{Text.inventory.materialDesc}</div>
+              <div className="inv-detail-desc">{t('inventory.materialDesc')}</div>
             </>
           ) : selectedConsumable ? (
             <>
@@ -199,7 +196,7 @@ export default function InventoryModal({
               <div className="inv-detail-desc">{conText(selectedConsumable.descKey)}</div>
             </>
           ) : (
-            <div className="inv-detail-empty">{Text.inventory.hint}</div>
+            <div className="inv-detail-empty">{t('inventory.hint')}</div>
           )}
 
           {selected && !isEquipped && selQty > 0 && (
@@ -208,20 +205,20 @@ export default function InventoryModal({
                 {selQty > 1 ? (
                   <>
                     <button className="inv-sell" onClick={sell1} data-ui>
-                      {fmt(Text.inventory.sellOne, unitValue)}
+                      {t('inventory.sellOne', { n: unitValue })}
                     </button>
                     <button className="inv-sell all" onClick={sellAll} data-ui>
-                      {fmt(Text.inventory.sellAll, selQty * unitValue)}
+                      {t('inventory.sellAll', { n: selQty * unitValue })}
                     </button>
                   </>
                 ) : (
                   <button className="inv-sell" onClick={sell1} data-ui>
-                    {fmt(Text.inventory.sell, unitValue)}
+                    {t('inventory.sell', { n: unitValue })}
                   </button>
                 )}
               </div>
               <button className={`inv-discard${confirmDiscard ? ' confirm' : ''}`} onClick={handleDiscard} data-ui>
-                {confirmDiscard ? Text.inventory.confirm : Text.inventory.discard}
+                {confirmDiscard ? t('inventory.confirm') : t('inventory.discard')}
               </button>
             </div>
           )}

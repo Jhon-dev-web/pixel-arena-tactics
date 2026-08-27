@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import T from '../game/tunables';
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import { SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
 import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, refineLevel } from '../game/gear';
 import GearIcon from './GearIcon';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
-const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
-const attrsText = (k: string): string => (Text.attributes as Record<string, string>)[k];
+const gearText = (k: string): string => t(`gear.${k}`);
+const attrsText = (k: string): string => t(`attributes.${k}`);
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
 type AttrKey = 'str' | 'vit' | 'agi' | 'res';
@@ -48,17 +48,17 @@ export default function HeroModal({
   return (
     <div className="modal-backdrop">
       <div className="modal hero-modal">
-        <h2 className="modal-title">{Text.profile.title}</h2>
+        <h2 className="modal-title">{t('profile.title')}</h2>
         <p className="hero-subtitle">
-          {save.heroName} {fmt(Text.profile.subtitle, level)}
+          {save.heroName} {fmt(t('profile.subtitle'), level)}
         </p>
 
         <div className="hero-tabs">
           <button className={`tab${tab === 'equip' ? ' active' : ''}`} onClick={() => setTab('equip')} data-ui>
-            {Text.profile.equipTab}
+            {t('profile.equipTab')}
           </button>
           <button className={`tab${tab === 'attrs' ? ' active' : ''}`} onClick={() => setTab('attrs')} data-ui>
-            {Text.profile.attrsTab}
+            {t('profile.attrsTab')}
             {remaining > 0 && <span className="tab-badge">{remaining}</span>}
           </button>
         </div>
@@ -76,7 +76,7 @@ export default function HeroModal({
                     <span className="refine-tag">{refineTag(refineLevel(save.upgrades, weapon.id))}</span>
                   </span>
                   <span className="hero-equip-stat damage">
-                    +{effectiveDamage(weapon, wLvl)} {Text.profile.damage}
+                    +{effectiveDamage(weapon, wLvl)} {t('profile.damage')}
                   </span>
                 </div>
               </div>
@@ -90,7 +90,7 @@ export default function HeroModal({
                     <span className="refine-tag">{refineTag(refineLevel(save.upgrades, armor.id))}</span>
                   </span>
                   <span className="hero-equip-stat hp">
-                    +{effectiveMaxHp(armor, aLvl)} {Text.profile.hp}
+                    +{effectiveMaxHp(armor, aLvl)} {t('profile.hp')}
                   </span>
                 </div>
               </div>
@@ -98,19 +98,19 @@ export default function HeroModal({
 
             <div className="hero-stats-grid">
               <div className="hero-stat-cell">
-                <span>❤️ {Text.profile.maxHp}</span>
+                <span>❤️ {t('profile.maxHp')}</span>
                 <span>{formatNumber(maxHp)}</span>
               </div>
               <div className="hero-stat-cell">
-                <span>⚔️ {Text.profile.damage}</span>
+                <span>⚔️ {t('profile.damage')}</span>
                 <span>{formatNumber(totalDmg)}</span>
               </div>
               <div className="hero-stat-cell">
-                <span>🛡️ {Text.profile.defense}</span>
+                <span>🛡️ {t('profile.defense')}</span>
                 <span>{defensePct}%</span>
               </div>
               <div className="hero-stat-cell">
-                <span>💥 {Text.profile.critRate}</span>
+                <span>💥 {t('profile.critRate')}</span>
                 <span>{critPct}%</span>
               </div>
             </div>
@@ -118,15 +118,15 @@ export default function HeroModal({
             <div className="hero-cp-bar">
               <span className="hero-cp-icon">⚔️</span>
               <span>
-                {Text.profile.cp}: {formatNumber(computeCP(save))}
+                {t('profile.cp')}: {formatNumber(computeCP(save))}
               </span>
             </div>
           </>
         ) : (
           <>
             <div className="attrs-header">
-              <span>{fmt(Text.attributes.points, remaining)}</span>
-              <span>{fmt(Text.attributes.cp, computeCP(save))}</span>
+              <span>{fmt(t('attributes.points'), remaining)}</span>
+              <span>{fmt(t('attributes.cp'), computeCP(save))}</span>
             </div>
             <div className="attrs-list">
               {ATTRS.map((a) => (
@@ -156,7 +156,7 @@ export default function HeroModal({
               ))}
             </div>
             <button className="distribute-btn" onClick={onClose} data-ui>
-              {Text.profile.confirmPoints}
+              {t('profile.confirmPoints')}
             </button>
           </>
         )}

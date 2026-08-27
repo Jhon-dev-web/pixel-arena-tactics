@@ -17,7 +17,10 @@
     "level": "Lv {n}",
     "cost": "Cost: {n} Gold",
     "owned": "Gold: {n}",
-    "free": "Free"
+    "free": "Free",
+    "goldReward": "+{n} Gold",
+    "shardsReward": "+{n} Shards",
+    "shardsX": "{n}× Shards"
   },
   "combat": {
     "critical": "CRITICAL!",

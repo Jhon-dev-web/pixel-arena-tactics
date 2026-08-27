@@ -1,10 +1,10 @@
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import Assets from '../assets.json';
 import { EXPEDITIONS } from '../game/expedition';
 import { MaterialId, materialIconUrl } from '../game/materials';
 
-const expText = (k: string): string => (Text.expedition as Record<string, string>)[k];
-const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
+const expText = (k: string): string => t(`expedition.${k}`);
+const matText = (k: string): string => t(`materials.${k}`);
 
 export default function ExpeditionModal({
   onStart,
@@ -16,8 +16,8 @@ export default function ExpeditionModal({
   return (
     <div className="modal-backdrop">
       <div className="modal expedition-modal">
-        <h2 className="modal-title">{Text.expedition.title}</h2>
-        <p className="expedition-note">{Text.expedition.background}</p>
+        <h2 className="modal-title">{t('expedition.title')}</h2>
+        <p className="expedition-note">{t('expedition.background')}</p>
 
         <div className="expedition-list">
           {EXPEDITIONS.map((def) => (
@@ -32,7 +32,7 @@ export default function ExpeditionModal({
                   <span className="mat-icon">
                     <img src={Assets.icons.gold.url} alt="" />
                   </span>
-                  <span>+{def.gold} Gold</span>
+                  <span>{t('ui.goldReward', { n: def.gold })}</span>
                 </span>
                 {Object.entries(def.drops).map(([mid, qty]) => (
                   <span className="floor-drop" key={mid}>
@@ -47,12 +47,12 @@ export default function ExpeditionModal({
                 {def.shards > 0 && (
                   <span className="floor-drop">
                     <span className="mat-icon shard">🔷</span>
-                    <span>{def.shards}× Shards</span>
+                    <span>{t('ui.shardsX', { n: def.shards })}</span>
                   </span>
                 )}
               </div>
               <button className="battle-btn" onClick={() => onStart(def.id)} data-ui>
-                {Text.expedition.start}
+                {t('expedition.start')}
               </button>
             </div>
           ))}
