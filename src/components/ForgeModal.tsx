@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Assets from '../assets.json';
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import { SaveData } from '../game/engine';
 import {
   GEAR,
@@ -22,10 +22,9 @@ import { MaterialId, hasMaterials, materialIconUrl } from '../game/materials';
 import { GEMS, GemId, getGem, socketsForTier } from '../game/gems';
 import GearIcon from './GearIcon';
 
-const fmt = (s: string, n: number) => s.replace('{n}', String(n));
-const gearText = (k: string): string => (Text.gear as Record<string, string>)[k];
-const matText = (k: string): string => (Text.materials as Record<string, string>)[k];
-const gemText = (k: string): string => (Text.gems as Record<string, string>)[k];
+const gearText = (k: string): string => t(`gear.${k}`);
+const matText = (k: string): string => t(`materials.${k}`);
+const gemText = (k: string): string => t(`gems.${k}`);
 
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
@@ -98,21 +97,21 @@ export default function ForgeModal({
   return (
     <div className="modal-backdrop">
       <div className="modal forge-modal">
-        <h2 className="modal-title">{Text.forge.title}</h2>
-        <p className="shop-gold">{fmt(Text.ui.owned, save.gold)}</p>
+        <h2 className="modal-title">{t('forge.title')}</h2>
+        <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
 
         <div className="forge-tabs">
           <button className={`tab${tab === 'forge' ? ' active' : ''}`} onClick={() => setTab('forge')} data-ui>
-            {Text.forge.forgeTab}
+            {t('forge.forgeTab')}
           </button>
           <button className={`tab${tab === 'upgrade' ? ' active' : ''}`} onClick={() => setTab('upgrade')} data-ui>
-            {Text.forge.upgradeTab}
+            {t('forge.upgradeTab')}
           </button>
           <button className={`tab${tab === 'repair' ? ' active' : ''}`} onClick={() => setTab('repair')} data-ui>
-            {Text.forge.repairTab}
+            {t('forge.repairTab')}
           </button>
           <button className={`tab${tab === 'socket' ? ' active' : ''}`} onClick={() => setTab('socket')} data-ui>
-            {Text.forge.socketTab}
+            {t('forge.socketTab')}
           </button>
         </div>
 
@@ -188,7 +187,7 @@ export default function ForgeModal({
                                 <span className="req-plus">+</span>
                                 <span className="mat-icon shard">🔷</span>
                                 <span className={`req-amount${save.shards < (item.recipe?.shards ?? 0) ? ' missing' : ''}`}>
-                                  {item.recipe?.shards}× Shards
+                                  {t('ui.shardsX', { n: item.recipe?.shards ?? 0 })}
                                 </span>
                               </span>
                             )}
@@ -200,7 +199,7 @@ export default function ForgeModal({
                           disabled={!ok}
                           data-ui
                         >
-                          {forged ? Text.forge.forged : Text.forge.forge}
+                          {forged ? t('forge.forged') : t('forge.forge')}
                         </button>
                       </div>
                     );
@@ -232,7 +231,7 @@ export default function ForgeModal({
                       </span>
                     </div>
                     <span className="craft-desc">
-                      {item.slot === 'weapon' ? `+${stat} ${Text.profile.damage}` : `+${stat} ${Text.profile.hp}`}
+                      {item.slot === 'weapon' ? `+${stat} ${t('profile.damage')}` : `+${stat} ${t('profile.hp')}`}
                     </span>
                     {!isMax && (
                       <div className="craft-req">
@@ -262,17 +261,17 @@ export default function ForgeModal({
                             <span className="req-plus">+</span>
                             <span className="mat-icon shard">🔷</span>
                             <span className={`req-amount${save.shards < (cost.shards ?? 0) ? ' missing' : ''}`}>
-                              {cost.shards}× Shards
+                              {t('ui.shardsX', { n: cost.shards ?? 0 })}
                             </span>
                           </span>
                         )}
                       </div>
                     )}
-                    {!isMax && <span className="upgrade-chance">{fmt(Text.forge.chance, chance)}</span>}
+                    {!isMax && <span className="upgrade-chance">{t('forge.chance', { n: chance })}</span>}
                   </div>
                   {isMax ? (
                     <button className="craft-btn equipped" disabled data-ui>
-                      {Text.forge.max}
+                      {t('forge.max')}
                     </button>
                   ) : (
                     <button
@@ -281,7 +280,7 @@ export default function ForgeModal({
                       disabled={!canUpgrade(item)}
                       data-ui
                     >
-                      {Text.forge.upgrade}
+                      {t('forge.upgrade')}
                     </button>
                   )}
                 </div>
@@ -304,7 +303,7 @@ export default function ForgeModal({
                   <div className="craft-info">
                     <span className="craft-name">{gearText(item.nameKey)}</span>
                     <span className={`durability-text${broken ? ' broken' : dur < 30 ? ' worn' : ''}`}>
-                      {broken ? Text.forge.broken : fmt(Text.forge.durability, dur, MAX_DURABILITY)}
+                      {broken ? t('forge.broken') : t('forge.durability', { n: dur, m: MAX_DURABILITY })}
                     </span>
                     <div className="durability-bar">
                       <div className={`durability-fill${broken ? ' broken' : dur < 30 ? ' worn' : ''}`} style={{ width: `${dur}%` }} />
@@ -316,7 +315,7 @@ export default function ForgeModal({
                         disabled={save.gold < cost || dur >= MAX_DURABILITY}
                         data-ui
                       >
-                        {Text.forge.repair} ({cost} G)
+                        {t('forge.repair')} ({cost} 🪙)
                       </button>
                       <button
                         className="craft-btn blessed"
@@ -324,7 +323,7 @@ export default function ForgeModal({
                         disabled={save.gold < cost || save.shards < 1 || dur >= MAX_DURABILITY}
                         data-ui
                       >
-                        {Text.forge.blessedRepair} (+1 🔷)
+                        {t('forge.blessedRepair')} (+1 🔷)
                       </button>
                     </div>
                   </div>
@@ -377,14 +376,14 @@ export default function ForgeModal({
                         )}
                       </>
                     ) : (
-                      <span className="socket-none">{Text.forge.socketEmpty}</span>
+                      <span className="socket-none">{t('forge.socketEmpty')}</span>
                     )}
                   </div>
                 </div>
               );
             })}
             <div className="gem-library">
-              <div className="gear-section-title">{Text.gems.title}</div>
+              <div className="gear-section-title">{t('gems.title')}</div>
               {GEMS.map((g) => (
                 <div className="gem-library-row" key={g.id}>
                   <span className="gem-library-name">

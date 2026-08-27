@@ -1,12 +1,11 @@
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import { SaveData } from '../game/engine';
 import { CONSUMABLES, CONSUMABLE_STACK, ConsumableId } from '../game/consumables';
 import { GEMS, GemId } from '../game/gems';
 import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
 
-const fmt = (s: string, n: number) => s.replace('{n}', String(n));
-const conText = (k: string): string => (Text.consumables as Record<string, string>)[k];
-const gemText = (k: string): string => (Text.gems as Record<string, string>)[k];
+const conText = (k: string): string => t(`consumables.${k}`);
+const gemText = (k: string): string => t(`gems.${k}`);
 
 export default function ShopModal({
   save,
@@ -24,11 +23,9 @@ export default function ShopModal({
   return (
     <div className="modal-backdrop">
       <div className="modal shop-modal">
-        <h2 className="modal-title">{Text.shop.title}</h2>
-        <p className="shop-gold">{fmt(Text.ui.owned, save.gold)}</p>
-        <p className="shop-space">
-          {Text.inventory.space.replace('{n}', String(slots)).replace('{m}', String(MAX_SLOTS))}
-        </p>
+        <h2 className="modal-title">{t('shop.title')}</h2>
+        <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
+        <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>
 
         <div className="shop-body">
           {CONSUMABLES.map((c) => {
@@ -39,19 +36,19 @@ export default function ShopModal({
                 <div className="gear-info">
                   <span className="gear-name">
                     {c.icon} {conText(c.nameKey)}
-                    <span className="gear-count">{fmt(Text.shop.youHave, qty)}</span>
+                    <span className="gear-count">{t('shop.youHave', { n: qty })}</span>
                   </span>
                   <span className="gear-desc">{conText(c.descKey)}</span>
-                  <span className="gear-cost">{fmt(Text.ui.cost, c.cost)}</span>
+                  <span className="gear-cost">{t('ui.cost', { n: c.cost })}</span>
                 </div>
                 <button className="gear-action buy" onClick={() => onBuyConsumable(c.id)} disabled={disabled} data-ui>
-                  {Text.gear.buy}
+                  {t('gear.buy')}
                 </button>
               </div>
             );
           })}
 
-          <div className="shop-section-title">{Text.shop.gems}</div>
+          <div className="shop-section-title">{t('shop.gems')}</div>
           {GEMS.map((g) => {
             const owned = save.gems?.[g.id] ?? 0;
             const disabled = save.shards < g.shardCost;
@@ -60,13 +57,13 @@ export default function ShopModal({
                 <div className="gear-info">
                   <span className="gear-name">
                     {g.icon} {gemText(g.nameKey)}
-                    <span className="gear-count">{fmt(Text.shop.youOwn, owned)}</span>
+                    <span className="gear-count">{t('shop.youOwn', { n: owned })}</span>
                   </span>
                   <span className="gear-desc">{gemText(g.descKey)}</span>
-                  <span className="gear-cost">{fmt(Text.shop.gemCost, g.shardCost)}</span>
+                  <span className="gear-cost">{t('shop.gemCost', { n: g.shardCost })}</span>
                 </div>
                 <button className="gear-action buy" onClick={() => onBuyGem(g.id)} disabled={disabled} data-ui>
-                  {Text.gear.buy}
+                  {t('gear.buy')}
                 </button>
               </div>
             );

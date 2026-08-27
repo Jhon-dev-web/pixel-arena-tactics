@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import T from '../game/tunables';
-import Text from '../locales/en.json';
+import { t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData, playerMaxHp } from '../game/engine';
 import { getEnemyDef } from '../game/enemies';
@@ -13,11 +13,11 @@ import SpriteSheet from './SpriteSheet';
 import { isMiniBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 import { totalGemBonuses } from '../game/gems';
 
-const enemyText = (k: string): string => (Text.enemies as Record<string, string>)[k];
-const dungeonText = (k: string): string => (Text.dungeon as Record<string, string>)[k];
-const materialName = (mid: string): string => (Text.materials as Record<string, string>)[`mat_${mid}`];
+const enemyText = (k: string): string => t(`enemies.${k}`);
+const dungeonText = (k: string): string => t(`dungeon.${k}`);
+const materialName = (mid: string): string => t(`materials.mat_${mid}`);
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
-const stageLabel = (f: number, s: number) => Text.dungeon.stageLabel.replace('{f}', String(f)).replace('{s}', String(s));
+const stageLabel = (f: number, s: number) => t('dungeon.stageLabel', { f, s });
 
 interface FloatItem {
   id: number;
@@ -280,7 +280,7 @@ export default function BattleModal({
         <span className="mat-icon">
           <img src={Assets.icons.gold.url} alt="" />
         </span>
-        <span>+{gold} Gold</span>
+        <span>{t('ui.goldReward', { n: gold })}</span>
       </span>
       {Object.entries(drops ?? {}).map(([mid, qty]) => (
         <span className="floor-drop" key={mid}>
@@ -295,7 +295,7 @@ export default function BattleModal({
       {shards > 0 && (
         <span className="floor-drop">
           <span className="mat-icon shard">🔷</span>
-          <span>+{shards} Shards</span>
+          <span>{t('ui.shardsReward', { n: shards })}</span>
         </span>
       )}
     </>
@@ -317,7 +317,7 @@ export default function BattleModal({
             disabled={phase === 'retreat' || phase === 'defeat'}
             data-ui
           >
-            {Text.dungeon.retreat}
+            {t('dungeon.retreat')}
           </button>
         </div>
 
@@ -346,7 +346,7 @@ export default function BattleModal({
           <div className="battle-hud enemy">
             <span className="hp-label">
               {enemyText(def.nameKey)}
-              {miniBoss && <span className="miniboss-tag">{Text.dungeon.miniBoss}</span>}
+              {miniBoss && <span className="miniboss-tag">{t('dungeon.miniBoss')}</span>}
             </span>
             <div className="battle-hp-row">
               <div className="bar hp enemy-hp">
@@ -402,19 +402,19 @@ export default function BattleModal({
           <div className="battle-result">
             {phase === 'retreat' ? (
               <>
-                <h2 className="result-title win">{Text.dungeon.retreatTitle}</h2>
+                <h2 className="result-title win">{t('dungeon.retreatTitle')}</h2>
                 <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
                 <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
-                  {Text.dungeon.collect}
+                  {t('dungeon.collect')}
                 </button>
               </>
             ) : (
               <>
-                <h2 className="result-title lose">{Text.dungeon.defeated}</h2>
-                <div className="gold-penalty">{Text.dungeon.goldPenalty}</div>
+                <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
+                <div className="gold-penalty">{t('dungeon.goldPenalty')}</div>
                 <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
                 <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
-                  {Text.dungeon.return}
+                  {t('dungeon.return')}
                 </button>
               </>
             )}

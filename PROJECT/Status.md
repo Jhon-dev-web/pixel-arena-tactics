@@ -81,7 +81,10 @@
 - Retro 8-bit/16-bit SFX (slash/hit/block/focus/crit/victory/click) with ±5% pitch variation on
   combat hits, plus a looping dark-arena ambient track; mute toggle in the top header.
 - Live tuning panel wired (`DebugPanel.define`) with combat / progression / ui / advanced groups.
-- Localization file (`src/locales/en.json`) for all player-visible text.
+- Localization via `src/locales/` (i18n `t()` + `en.json` fallback + full **PT-BR `pt.json`**,
+  the default locale). All player-visible text is routed through `t()` — including the previously
+  direct-imported components (App, Shop, Hero, Battle, Forge) — with `{n}/{m}/{f}/{s}` placeholders
+  handled by `t()` so `Durabilidade: 92 / 100` renders correctly.
 - **Dungeon system**: `[⚔️ ENTER DUNGEON]` now opens a 4-floor map (`DungeonMapModal` —
   Goblin Forest → Orc Caverns → Undead Crypt → Minotaur's Lair) with recommended CP, drop previews,
   and progressive unlocking via `highestFloor`. Each floor launches an **auto-battle** (`BattleModal`):

@@ -167,7 +167,10 @@
     "sellEmpty": "Nada para vender",
     "sold": "+{n} Ouro",
     "bagFull": "Mochila cheia!",
-    "stackFull": "Pilha cheia!"
+    "stackFull": "Pilha cheia!",
+    "gems": "💎 Gemas",
+    "gemCost": "{n} 🔷",
+    "youOwn": "Você possui {n}"
   },
   "consumables": {
     "small_hp": "Poção de Vida Pequena",
@@ -190,7 +193,25 @@
     "equip": "EQUIPAR",
     "equipped": "EQUIPADO",
     "cost": "Custo",
-    "missing": "Materiais insuficientes"
+    "missing": "Materiais insuficientes",
+    "durability": "Durabilidade: {n} / {m}",
+    "broken": "[QUEBRADO]",
+    "repairTab": "🔨 Reparo",
+    "socketTab": "💎 Engaste",
+    "repair": "🔨 Reparar com Ouro",
+    "blessedRepair": "✨ Reparo Abençoado",
+    "sockets": "Encaixes",
+    "socketEmpty": "Encaixe vazio",
+    "socketHint": "Selecione uma gema abaixo para inserir"
+  },
+  "gems": {
+    "title": "💎 Gemas",
+    "gem_ruby": "Rubi Bruto",
+    "gem_ruby_d": "+15% de Dano Crítico",
+    "gem_sapphire": "Safira Bruta",
+    "gem_sapphire_d": "+8% de Defesa",
+    "gem_emerald": "Esmeralda Bruta",
+    "gem_emerald_d": "+60 de PV Máx"
   },
   "attributes": {
     "title": "Atributos",

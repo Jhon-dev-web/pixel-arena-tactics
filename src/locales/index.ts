@@ -1,7 +1,7 @@
 import en from './en.json';
 import pt from './pt.json';
 
-const DEFAULT_LOCALE = 'en';
+const DEFAULT_LOCALE = 'pt';
 const LOCALES = { en, pt } as const;
 type Locale = keyof typeof LOCALES;
 
