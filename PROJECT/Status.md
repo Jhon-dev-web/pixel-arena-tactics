@@ -62,12 +62,17 @@
   combat hits, plus a looping dark-arena ambient track; mute toggle in the top header.
 - Live tuning panel wired (`DebugPanel.define`) with combat / progression / ui / advanced groups.
 - Localization file (`src/locales/en.json`) for all player-visible text.
+- **Dungeon system**: `[⚔️ ENTER DUNGEON]` now opens a 4-floor map (`DungeonMapModal` —
+  Goblin Forest → Orc Caverns → Undead Crypt → Minotaur's Lair) with recommended CP, drop previews,
+  and progressive unlocking via `highestFloor`. Each floor launches an **auto-battle** (`BattleModal`):
+  hero sprite vs. floor monster with HP bars, ~1.2s turn loop, floating damage/CRIT numbers, and
+  victory (gold + materials + shards) / defeat overlays. Collecting rewards persists loot + XP and
+  unlocks the next floor.
 
 ## Next steps / possible improvements
 
 - More enemy variety and a difficulty ramp beyond HP scaling.
 - Offline (closed-app) AFK accumulation using timestamps.
-- Use relic shards to buy relics.
 
 ## Legacy
 
