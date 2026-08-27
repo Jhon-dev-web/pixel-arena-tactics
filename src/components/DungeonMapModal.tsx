@@ -29,8 +29,7 @@ export default function DungeonMapModal({
               <div className={`floor-card${unlocked ? '' : ' locked'}`} key={floor.floor}>
                 <div className="floor-header">
                   <span className="floor-name">
-                    <span className="floor-number">{fmt(Text.dungeon.floorLabel, floor.floor)}</span>
-                    <span className="floor-title">{dungeonText(floor.nameKey)}</span>
+                    {fmt(Text.dungeon.floorLabel, floor.floor)}: {dungeonText(floor.nameKey)}
                   </span>
                   <span className="floor-cp">{fmt(Text.dungeon.cp, floor.cp)}</span>
                 </div>
