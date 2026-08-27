@@ -48,10 +48,6 @@ const T = DebugPanel.define({
     potionHealRatio: { value: 0.35, min: 0.05, max: 1, step: 0.05, label: 'Auto-potion heal (ratio of max HP)' },
     potionCooldownMs: { value: 5000, min: 1000, max: 15000, step: 500, label: 'Auto-potion cooldown (ms)' },
   },
-  expedition: {
-    _label: 'Expedition',
-    durationMs: { value: 30000, min: 5000, max: 120000, step: 1000, label: 'Expedition duration (ms)' },
-  },
   progression: {
     _label: 'Progression',
     goldMin: { value: 35, min: 5, max: 200, step: 1, label: 'Loot gold (min)' },

@@ -69,11 +69,13 @@ Endless-wave math: `stageEnemyHp`/`stageEnemyDmg` (per-stage HP/damage growth), 
 (gold/drop growth + mini-boss guaranteed shards/steel), `isMiniBoss`, and the `RunRewards` result
 type.
 
-## `src/game/expedition.ts` + `src/components/ExpeditionModal.tsx`
+## `src/game/expedition.ts` + `src/components/ExpeditionModal.tsx` + `CampExpedition.tsx` + `ClaimModal.tsx`
 
-Camp expedition (alternative progression): `EXPEDITION` defines a risk-free "Quick Forage"
-(20 gold + leather + iron). `ExpeditionModal` runs a tunable-duration countdown (default 30s) and
-grants rewards on completion, for forging the first Bronze Dagger without combat.
+Timed expeditions: `EXPEDITIONS` defines 4 durations (5m/30m/2h/8h) with escalating rewards,
+`ActiveExpedition` (`{ id, endsAt }`), and `expeditionRewards()` (with optional shard roll).
+`ExpeditionModal` is the config screen (choose duration → start), `CampExpedition` renders the
+camp progress/countdown/cancel/collect card (ticking via `setInterval`), and `ClaimModal` shows the
+collected rewards. The active expedition is stored on `SaveData.expedition` for offline progress.
 
 ## `src/components/CombatFx.tsx`
 

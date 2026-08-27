@@ -233,13 +233,24 @@
   },
   "expedition": {
     "title": "🏕️ Expedition",
-    "name": "Quick Forage",
-    "desc": "Send your hero to gather leather and ore — 100% success, no danger.",
-    "send": "Send Hero",
-    "duration": "{n}s",
-    "inProgress": "Gathering...",
-    "complete": "Expedition complete!",
-    "return": "Collect",
-    "back": "Close"
+    "start": "Start Expedition",
+    "inExpedition": "🏕️ On Expedition: {n} left",
+    "cancel": "Cancel",
+    "collect": "🎁 Collect Rewards",
+    "rewards": "🎁 Expedition Rewards",
+    "close": "Close",
+    "background": "Expeditions continue while you're away.",
+    "exp_scout": "Quick Scout",
+    "exp_scout_d": "A 5-minute forage for quick resources.",
+    "exp_patrol": "Forest Patrol",
+    "exp_patrol_d": "A 30-minute patrol of the woods.",
+    "exp_deep": "Deep Cavern Run",
+    "exp_deep_d": "A 2-hour delve for rare materials.",
+    "exp_overnight": "Overnight Expedition",
+    "exp_overnight_d": "An 8-hour overnight expedition.",
+    "dur_5m": "5 min",
+    "dur_30m": "30 min",
+    "dur_2h": "2 hours",
+    "dur_8h": "8 hours"
   }
 }

@@ -30,9 +30,11 @@ import HeroModal from './components/HeroModal';
 import DungeonMapModal from './components/DungeonMapModal';
 import BattleModal from './components/BattleModal';
 import ExpeditionModal from './components/ExpeditionModal';
+import CampExpedition from './components/CampExpedition';
+import ClaimModal from './components/ClaimModal';
 import { getFloor } from './game/dungeon';
 import { RunRewards } from './game/waves';
-import { ExpeditionRewards } from './game/expedition';
+import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
@@ -81,6 +83,7 @@ function App() {
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
   const [expeditionOpen, setExpeditionOpen] = useState(false);
+  const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [loot, setLoot] = useState<{ gold: number; shards: number } | null>(null);
   const [version, setVersion] = useState(0);
@@ -261,16 +264,43 @@ function App() {
     setSaveBoth({ ...s, potions: { ...s.potions, hp: s.potions.hp - 1 } });
   };
 
-  const collectExpedition = (rewards: ExpeditionRewards) => {
+  const startExpedition = (id: string) => {
+    const def = getExpedition(id);
+    if (!def) return;
     const s = saveRef.current;
+    if (s.expedition) return;
+    playSfx('click');
+    setSaveBoth({ ...s, expedition: { id, endsAt: Date.now() + def.durationMs } });
+    setExpeditionOpen(false);
+  };
+
+  const cancelExpedition = () => {
+    const s = saveRef.current;
+    if (!s.expedition) return;
+    playSfx('click');
+    setSaveBoth({ ...s, expedition: null });
+  };
+
+  const claimExpedition = () => {
+    const s = saveRef.current;
+    const exp = s.expedition;
+    if (!exp) return;
+    const def = getExpedition(exp.id);
+    if (!def) return;
+    const rewards = expeditionRewards(def);
     const mats = { ...s.materials };
     for (const [mid, qty] of Object.entries(rewards.drops ?? {})) {
       mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
     }
-    setSaveBoth({ ...s, gold: s.gold + rewards.gold, materials: mats });
+    setSaveBoth({
+      ...s,
+      gold: s.gold + rewards.gold,
+      materials: mats,
+      shards: s.shards + rewards.shards,
+      expedition: null,
+    });
     playSfx('victory');
-    setExpeditionOpen(false);
-    showToast(Text.expedition.complete);
+    setClaimResult({ nameKey: def.nameKey, rewards });
   };
 
   const buyPotion = (id: 'hp' | 'stamina' | 'elixir') => {
@@ -753,6 +783,15 @@ function App() {
         {scene === 'camp' ? (
           <>
             <Campfire />
+            <CampExpedition
+              expedition={save.expedition}
+              onStart={() => {
+                playSfx('click');
+                setExpeditionOpen(true);
+              }}
+              onCancel={cancelExpedition}
+              onClaim={claimExpedition}
+            />
             <div className="camp-actions">
               <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
                 {Text.ui.forge}
@@ -924,10 +963,21 @@ function App() {
 
       {expeditionOpen && (
         <ExpeditionModal
-          onCollect={collectExpedition}
+          onStart={startExpedition}
           onClose={() => {
             playSfx('click');
             setExpeditionOpen(false);
+          }}
+        />
+      )}
+
+      {claimResult && (
+        <ClaimModal
+          nameKey={claimResult.nameKey}
+          rewards={claimResult.rewards}
+          onClose={() => {
+            playSfx('click');
+            setClaimResult(null);
           }}
         />
       )}

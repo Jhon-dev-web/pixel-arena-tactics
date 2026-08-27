@@ -91,9 +91,13 @@
 - **Dungeon rebalance (nerf)**: monsters carry explicit per-floor `hp`/`dmg` — Goblin Rogue 45/6,
   Orc Berserker 110/18, Skeleton Warlock 240/38, Minotaur Warlord 550/75. A fresh hero with the
   wooden club clears Floor 1 in ~4 hits while surviving comfortably.
-- **Camp Expeditions**: the dungeon map now exposes `[🏕️ Expedition]` (`ExpeditionModal`) — a
-  100%-success, no-risk "Quick Forage" (30s by default, tunable) granting `20 Gold + 1 Tanned
-  Leather + 1 Iron Ingot`, an alternate route to forge the first Bronze Dagger before fighting.
+- **Expeditions (timed, background-tracked)**: the dungeon map exposes `[🏕️ Expedition]`
+  (`ExpeditionModal`) with 4 durations — Quick Scout (5m), Forest Patrol (30m), Deep Cavern Run (2h,
+  shard chance), Overnight Expedition (8h, 3 shards) — each with escalating gold/material rewards.
+  Starting stores a `{ id, endsAt }` timestamp in the save so the timer runs even while the game is
+  closed. The camp shows a `CampExpedition` card with a progress bar + `MM:SS` countdown and a
+  `Cancel` (no rewards) option; on completion it flips to a blinking `🎁 Collect Rewards` button that
+  opens a `ClaimModal` listing the haul and deposits it into the Bag/balance.
 
 ## Next steps / possible improvements
 

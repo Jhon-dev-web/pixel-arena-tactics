@@ -2517,52 +2517,168 @@ body {
   justify-content: center;
 }
 
-/* ===== expedition modal ===== */
+/* ===== expedition config modal ===== */
 .expedition-modal {
-  width: min(90vw, 400px);
+  width: min(90vw, 420px);
+  max-height: 88vh;
 }
-.expedition-card {
-  padding: 16px;
+.expedition-note {
+  font-size: calc(var(--font-size) - 2px);
+  color: #8a7aa8;
+  margin: -6px 0 12px;
+}
+.expedition-list {
+  overflow-y: auto;
+  max-height: 62vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #6a4a2a transparent;
+}
+.expedition-option {
+  padding: 12px;
   background: #1c1322;
   border: 2px solid #a87c3a;
   border-radius: 12px;
-  text-align: center;
+  text-align: left;
 }
-.expedition-name {
-  font-size: calc(var(--font-size) + 2px);
+.expedition-option-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.expedition-option-name {
+  font-size: var(--font-size);
   color: #ffd76a;
   font-weight: bold;
-  margin-bottom: 6px;
 }
-.expedition-desc {
-  font-size: calc(var(--font-size) - 1px);
+.expedition-option-dur {
+  flex-shrink: 0;
+  font-size: calc(var(--font-size) - 2px);
+  color: #7cc4ff;
+  background: rgba(124, 196, 255, 0.1);
+  border: 1px solid #3a5a7a;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.expedition-option-desc {
+  font-size: calc(var(--font-size) - 2px);
   color: #d8c9a0;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
 }
-.expedition-rewards {
+.expedition-option-rewards {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
-.expedition-progress {
+
+/* ===== camp expedition ===== */
+.camp-expedition-btn {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  font-family: inherit;
+  font-size: var(--font-size);
+  color: #eaffd8;
+  background: linear-gradient(180deg, #3a4a2a, #223018);
+  border: 2px solid #8a6a3a;
+  border-radius: 10px;
+  padding: 10px 18px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a1108;
+  white-space: nowrap;
+}
+.camp-expedition-card {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(88vw, 320px);
+  padding: 10px 12px;
+  background: #1c1322;
+  border: 2px solid #a87c3a;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
-.expedition-progress .bar {
-  width: 100%;
-}
-.expedition-timer {
+.camp-expedition-name {
   font-size: calc(var(--font-size) - 1px);
+  color: #ffd76a;
+  font-weight: bold;
+}
+.camp-expedition-bar {
+  width: 100%;
+  height: 8px;
+  background: #1a1220;
+  border: 1px solid #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.camp-expedition-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7ce88a, #2fbf4f);
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+.camp-expedition-time {
+  font-size: calc(var(--font-size) - 2px);
   color: #b8a8d8;
 }
-.expedition-done {
-  font-size: calc(var(--font-size) + 2px);
-  color: #6fe08a;
-  margin-bottom: 12px;
+.camp-expedition-cancel {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ff8a7a;
+  background: none;
+  border: 1px solid #5a3a3a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.camp-expedition-claim {
+  font-family: inherit;
+  font-size: var(--font-size);
+  font-weight: bold;
+  color: #1a1108;
+  background: linear-gradient(180deg, #ffd76a, #e0a83a);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #6a4a20;
+}
+.camp-expedition-claim.blink {
+  animation: claimBlink 1s ease-in-out infinite;
+}
+@keyframes claimBlink {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.6);
+    box-shadow: 0 0 14px #ffd76a;
+  }
+}
+
+/* ===== claim modal ===== */
+.claim-modal {
+  width: min(90vw, 400px);
+}
+.claim-name {
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffd76a;
+  margin: 0 0 12px;
 }
 .distribute-btn {
   width: 100%;

@@ -2,6 +2,7 @@ import T from './tunables';
 import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, refineLevel, sanitizeSaveInventory } from './gear';
 import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
 import { Materials, emptyMaterials } from './materials';
+import { ActiveExpedition, getExpedition } from './expedition';
 
 export type PlayerAction = 'attack' | 'shield' | 'focus';
 export type EnemyAction = 'attack' | 'shield' | 'focus' | 'slam' | 'charge';
@@ -55,6 +56,7 @@ export interface SaveData {
   res: number;
   materials: Materials;
   potions: { hp: number; stamina: number; elixir: number };
+  expedition: ActiveExpedition | null;
 }
 
 export interface Cheats {
@@ -369,6 +371,7 @@ export function defaultSave(): SaveData {
     res: 0,
     materials: emptyMaterials(),
     potions: { hp: 0, stamina: 0, elixir: 0 },
+    expedition: null,
   };
 }
 
@@ -391,6 +394,11 @@ export function loadSave(): SaveData {
         if (getGear(id) && Number.isFinite(n) && n > 0) upgrades[id] = Math.min(8, n);
       }
       const highestFloor = Math.max(1, Math.min(4, Math.floor(Number(parsed.highestFloor ?? 1)) || 1));
+      const exp = parsed.expedition;
+      const expedition =
+        exp && typeof exp.id === 'string' && getExpedition(exp.id) && typeof exp.endsAt === 'number' && Number.isFinite(exp.endsAt)
+          ? { id: exp.id, endsAt: exp.endsAt }
+          : null;
       return {
         ...base,
         ...parsed,
@@ -401,6 +409,7 @@ export function loadSave(): SaveData {
         highestFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
+        expedition,
       };
     }
   } catch {
