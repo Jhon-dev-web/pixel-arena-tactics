@@ -202,7 +202,9 @@
     "blessedRepair": "✨ Reparo Abençoado",
     "sockets": "Encaixes",
     "socketEmpty": "Encaixe vazio",
-    "socketHint": "Selecione uma gema abaixo para inserir"
+    "socketHint": "Selecione uma gema abaixo para inserir",
+    "upgradeOk": "✓ {n} +{m}!",
+    "upgradeFail": "✗ Falha na melhoria"
   },
   "gems": {
     "title": "💎 Gemas",
@@ -294,5 +296,36 @@
     "dur_30m": "30 min",
     "dur_2h": "2 horas",
     "dur_8h": "8 horas"
+  },
+  "quests": {
+    "title": "📜 Missões",
+    "button": "📜 MISSÕES",
+    "dailyTab": "📅 Diárias",
+    "achievementsTab": "🏆 Conquistas",
+    "claim": "Resgatar",
+    "claimed": "Resgatado",
+    "progress": "{n} / {m}",
+    "rewardToast": "🎉 Recompensa Resgatada: +{g} Ouro / +{s} Fragmentos!",
+    "rewardToastGold": "🎉 Recompensa Resgatada: +{g} Ouro!",
+    "q_hunter": "Caçador de Monstros",
+    "q_hunter_d": "Derrote 15 monstros na Masmorra",
+    "q_forge": "Mestre da Forja",
+    "q_forge_d": "Forje ou melhore 3 vezes",
+    "q_economy": "Economia Ativa",
+    "q_economy_d": "Compre 2 poções ou elixires",
+    "q_explorer": "Explorador",
+    "q_explorer_d": "Conclua 1 Expedição",
+    "a_first_blood": "Primeiro Sangue",
+    "a_first_blood_d": "Derrote seu primeiro monstro",
+    "a_cp150": "Poder Crescente",
+    "a_cp150_d": "Alcance 150 de CP",
+    "a_cp500": "Lenda Viva",
+    "a_cp500_d": "Alcance 500 de CP",
+    "a_blacksmith": "Ferreiro Lendário",
+    "a_blacksmith_d": "Refine uma arma até +8",
+    "a_crypt": "Conquistador da Cripta",
+    "a_crypt_d": "Derrote o Warlock no Andar 3",
+    "a_minotaur": "Terror do Minotauro",
+    "a_minotaur_d": "Conclua o Andar 4 da Masmorra"
   }
 }

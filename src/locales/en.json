@@ -202,7 +202,9 @@
     "blessedRepair": "✨ Blessed Repair",
     "sockets": "Sockets",
     "socketEmpty": "Empty socket",
-    "socketHint": "Select a gem below to insert"
+    "socketHint": "Select a gem below to insert",
+    "upgradeOk": "✓ {n} +{m}!",
+    "upgradeFail": "✗ Upgrade failed"
   },
   "gems": {
     "title": "💎 Gems",
@@ -294,5 +296,36 @@
     "dur_30m": "30 min",
     "dur_2h": "2 hours",
     "dur_8h": "8 hours"
+  },
+  "quests": {
+    "title": "📜 Quests",
+    "button": "📜 QUESTS",
+    "dailyTab": "📅 Daily",
+    "achievementsTab": "🏆 Achievements",
+    "claim": "Claim",
+    "claimed": "Claimed",
+    "progress": "{n} / {m}",
+    "rewardToast": "🎉 Reward Claimed: +{g} Gold / +{s} Shards!",
+    "rewardToastGold": "🎉 Reward Claimed: +{g} Gold!",
+    "q_hunter": "Monster Hunter",
+    "q_hunter_d": "Defeat 15 monsters in the Dungeon",
+    "q_forge": "Forge Master",
+    "q_forge_d": "Forge or upgrade 3 times",
+    "q_economy": "Active Economy",
+    "q_economy_d": "Buy 2 potions or elixirs",
+    "q_explorer": "Explorer",
+    "q_explorer_d": "Complete 1 Expedition",
+    "a_first_blood": "First Blood",
+    "a_first_blood_d": "Defeat your first monster",
+    "a_cp150": "Growing Power",
+    "a_cp150_d": "Reach 150 CP",
+    "a_cp500": "Living Legend",
+    "a_cp500_d": "Reach 500 CP",
+    "a_blacksmith": "Legendary Blacksmith",
+    "a_blacksmith_d": "Refine a weapon to +8",
+    "a_crypt": "Crypt Conqueror",
+    "a_crypt_d": "Defeat the Warlock on Floor 3",
+    "a_minotaur": "Minotaur Terror",
+    "a_minotaur_d": "Complete Floor 4"
   }
 }

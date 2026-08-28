@@ -4,6 +4,7 @@ import {
   CombatEvent,
   FighterState,
   PlayerAction,
+  computeCP,
   effectiveAttackStamina,
   defaultSave,
   loadSave,
@@ -35,9 +36,11 @@ import BattleModal from './components/BattleModal';
 import ExpeditionModal from './components/ExpeditionModal';
 import CampExpedition from './components/CampExpedition';
 import ClaimModal from './components/ClaimModal';
+import QuestsModal from './components/QuestsModal';
 import { getFloor } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
+import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
@@ -86,6 +89,7 @@ function App() {
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
+  const [questsOpen, setQuestsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [loot, setLoot] = useState<{ gold: number; shards: number } | null>(null);
   const [version, setVersion] = useState(0);
@@ -248,6 +252,14 @@ function App() {
         if (id) dur[id] = Math.max(0, (dur[id] ?? MAX_DURABILITY) - DURABILITY_LOSS_PER_STAGE * stages);
       }
     }
+    const quests = { ...s.quests };
+    if (stages > 0) {
+      quests.daily = { ...quests.daily, kills: (quests.daily.kills ?? 0) + stages };
+      quests.counters = { ...quests.counters, kills: (quests.counters.kills ?? 0) + stages };
+      if (success) {
+        quests.counters.maxFloorCleared = Math.max(quests.counters.maxFloorCleared ?? 0, floor);
+      }
+    }
     setSaveBoth({
       ...s,
       gold: s.gold + rewards.gold,
@@ -258,6 +270,7 @@ function App() {
       highestFloor: success ? Math.max(s.highestFloor, Math.min(4, floor + 1)) : s.highestFloor,
       durability: dur,
       blessed: false,
+      quests,
     });
     playSfx(outcome === 'retreat' ? 'victory' : 'hit');
     setBattleFloor(null);
@@ -336,6 +349,23 @@ function App() {
     setSaveBoth({ ...s, consumables: { ...(s.consumables ?? {}), small_hp: qty - 1 } });
   };
 
+  const claimQuest = (id: string) => {
+    const s = saveRef.current;
+    const def = [...QUESTS_DAILY, ...QUESTS_ACHIEVEMENTS].find((q) => q.id === id);
+    if (!def || isClaimed(def, s.quests)) return;
+    const ctx: QuestContext = { cp: computeCP(s), maxRefine: Math.max(0, ...Object.values(s.upgrades ?? {})) };
+    if (!isComplete(def, s.quests, ctx)) return;
+    const quests = { ...s.quests };
+    if (def.kind === 'daily') {
+      quests.dailyClaimed = [...quests.dailyClaimed, id];
+    } else {
+      quests.claimed = [...quests.claimed, id];
+    }
+    setSaveBoth({ ...s, gold: s.gold + def.gold, shards: s.shards + def.shards, quests });
+    playSfx('victory');
+    showToast(def.shards > 0 ? t('quests.rewardToast', { g: def.gold, s: def.shards }) : t('quests.rewardToastGold', { g: def.gold }));
+  };
+
   const startExpedition = (id: string) => {
     const def = getExpedition(id);
     if (!def) return;
@@ -370,6 +400,10 @@ function App() {
       materials: mats,
       shards: s.shards + rewards.shards,
       expedition: null,
+      quests: {
+        ...s.quests,
+        daily: { ...s.quests.daily, expeditions: (s.quests.daily.expeditions ?? 0) + 1 },
+      },
     });
     playSfx('victory');
     setClaimResult({ nameKey: def.nameKey, rewards });
@@ -390,7 +424,15 @@ function App() {
       return;
     }
     playSfx('click');
-    setSaveBoth({ ...s, gold: s.gold - def.cost, consumables: { ...(s.consumables ?? {}), [id]: qty + 1 } });
+    setSaveBoth({
+      ...s,
+      gold: s.gold - def.cost,
+      consumables: { ...(s.consumables ?? {}), [id]: qty + 1 },
+      quests: {
+        ...s.quests,
+        daily: { ...s.quests.daily, purchases: (s.quests.daily.purchases ?? 0) + 1 },
+      },
+    });
   };
 
   const sellItem = (kind: 'gear' | 'material' | 'consumable', id: string, qty: number) => {
@@ -461,6 +503,10 @@ function App() {
       materials: mats,
       inventory: { ...inv, [id]: (inv[id] ?? 0) + 1 },
       shards: s.shards - (recipe.shards ?? 0),
+      quests: {
+        ...s.quests,
+        daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
+      },
     });
     playSfx('victory');
     showToast(t('forge.toBag', { n: gearText(item.nameKey) }));
@@ -488,13 +534,17 @@ function App() {
       materials: mats,
       shards: s.shards - (cost.shards ?? 0),
       upgrades: success ? { ...s.upgrades, [id]: lvl + 1 } : s.upgrades,
+      quests: {
+        ...s.quests,
+        daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
+      },
     });
     if (success) {
       playSfx('victory');
-      showToast(`✓ ${gearText(item.nameKey)} +${lvl + 1}!`);
+      showToast(t('forge.upgradeOk', { n: gearText(item.nameKey), m: lvl + 1 }));
     } else {
       playSfx('block');
-      showToast('✗ Upgrade failed');
+      showToast(t('forge.upgradeFail'));
     }
   };
 
@@ -872,6 +922,11 @@ function App() {
           onOpenAdmin={() => setAdminOpen(true)}
           onOpenProfile={() => setHeroOpen(true)}
           onOpenBag={() => setBagOpen(true)}
+          onOpenQuests={() => {
+            playSfx('click');
+            setQuestsOpen(true);
+          }}
+          questsBadge={claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) })}
           onRename={renameHero}
         />
 
@@ -1075,6 +1130,17 @@ function App() {
           onClose={() => {
             playSfx('click');
             setClaimResult(null);
+          }}
+        />
+      )}
+
+      {questsOpen && (
+        <QuestsModal
+          save={save}
+          onClaim={claimQuest}
+          onClose={() => {
+            playSfx('click');
+            setQuestsOpen(false);
           }}
         />
       )}

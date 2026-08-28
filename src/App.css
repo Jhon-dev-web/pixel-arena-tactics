@@ -1355,6 +1355,25 @@ body {
   cursor: pointer;
   line-height: 1;
 }
+.quests-btn {
+  position: relative;
+}
+.quests-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 6px rgba(255, 59, 48, 0.8);
+}
 
 /* --- bottom navigation --- */
 .bottom-nav {
@@ -2889,6 +2908,115 @@ body {
   font-size: calc(var(--font-size) - 1px);
   color: #ffd76a;
   margin: 0 0 12px;
+}
+
+/* ===== quests modal ===== */
+.quests-modal {
+  width: min(90vw, 420px);
+  max-height: 88vh;
+}
+.quests-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #6a4a2a transparent;
+}
+.quest-card {
+  padding: 12px;
+  background: #1c1322;
+  border: 2px solid #a87c3a;
+  border-radius: 12px;
+  text-align: left;
+}
+.quest-card.claimed {
+  opacity: 0.6;
+}
+.quest-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.quest-name {
+  font-size: var(--font-size);
+  font-weight: bold;
+  color: #ffd76a;
+}
+.quest-reward {
+  font-size: calc(var(--font-size) - 2px);
+  color: #d8c9a0;
+  white-space: nowrap;
+}
+.quest-shards {
+  color: #8ecbff;
+}
+.quest-desc {
+  display: block;
+  font-size: calc(var(--font-size) - 2px);
+  color: #d8c9a0;
+  margin-bottom: 8px;
+}
+.quest-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.quest-bar {
+  flex: 1;
+  height: 10px;
+  background: #1a1220;
+  border: 1px solid #000;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.quest-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7cc4ff, #4a9dff);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.quest-bar-fill.done {
+  background: linear-gradient(90deg, #7ce88a, #2fbf4f);
+}
+.quest-count {
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+  white-space: nowrap;
+}
+.quest-btn {
+  width: 100%;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 1px);
+  font-weight: bold;
+  color: #8a7aa8;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid #4a3a55;
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: not-allowed;
+}
+.quest-btn.claim {
+  color: #1a1108;
+  background: linear-gradient(180deg, #ffd76a, #e0a83a);
+  border: 2px solid #8a6a3a;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #6a4a20;
+}
+.quest-btn.claim:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #6a4a20;
+}
+.quest-btn.claimed {
+  color: #6fe08a;
+  border-color: #2fbf4f;
+  background: rgba(47, 191, 79, 0.12);
 }
 .distribute-btn {
   width: 100%;

@@ -5,6 +5,7 @@ import { Materials, emptyMaterials } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
 import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems, getGem, totalGemBonuses } from './gems';
+import { QuestState, emptyQuestState } from './quests';
 
 export type PlayerAction = 'attack' | 'shield' | 'focus';
 export type EnemyAction = 'attack' | 'shield' | 'focus' | 'slam' | 'charge';
@@ -64,6 +65,7 @@ export interface SaveData {
   gems: Record<GemId, number>;
   sockets: Record<string, GemId[]>;
   blessed: boolean;
+  quests: QuestState;
 }
 
 export interface Cheats {
@@ -391,6 +393,7 @@ export function defaultSave(): SaveData {
     gems: emptyGems(),
     sockets: {},
     blessed: false,
+    quests: emptyQuestState(),
   };
 }
 
@@ -434,6 +437,20 @@ export function loadSave(): SaveData {
         if (!getGear(id) || !Array.isArray(list)) continue;
         sockets[id] = (list as string[]).filter((g) => getGem(g)).slice(0, 4) as GemId[];
       }
+      const today = new Date().toDateString();
+      const q = parsed.quests ?? {};
+      const quests: QuestState = {
+        dailyDay: typeof q.dailyDay === 'string' ? q.dailyDay : '',
+        daily: { ...emptyQuestState().daily, ...((q as { daily?: Record<string, number> }).daily ?? {}) },
+        dailyClaimed: Array.isArray(q.dailyClaimed) ? (q.dailyClaimed as string[]) : [],
+        counters: { ...emptyQuestState().counters, ...((q as { counters?: Record<string, number> }).counters ?? {}) },
+        claimed: Array.isArray(q.claimed) ? (q.claimed as string[]) : [],
+      };
+      if (quests.dailyDay !== today) {
+        quests.dailyDay = today;
+        quests.daily = { kills: 0, forge: 0, purchases: 0, expeditions: 0 };
+        quests.dailyClaimed = [];
+      }
       return {
         ...base,
         ...parsed,
@@ -450,6 +467,7 @@ export function loadSave(): SaveData {
         gems,
         sockets,
         blessed: !!parsed.blessed,
+        quests,
       };
     }
   } catch {

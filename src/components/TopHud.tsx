@@ -20,6 +20,8 @@ export default function TopHud({
   onOpenAdmin,
   onOpenProfile,
   onOpenBag,
+  onOpenQuests,
+  questsBadge,
   onRename,
 }: {
   save: SaveData;
@@ -29,6 +31,8 @@ export default function TopHud({
   onOpenAdmin: () => void;
   onOpenProfile: () => void;
   onOpenBag: () => void;
+  onOpenQuests: () => void;
+  questsBadge: number;
   onRename: (name: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -89,6 +93,10 @@ export default function TopHud({
         <span className="res shards">🔷 {formatNumber(save.shards)}</span>
         <button className="icon-btn" onClick={onOpenBag} data-ui>
           🎒
+        </button>
+        <button className="icon-btn quests-btn" onClick={onOpenQuests} data-ui>
+          📜
+          {questsBadge > 0 && <span className="quests-badge">{questsBadge}</span>}
         </button>
         <button className="icon-btn" onClick={onOpenAdmin} data-ui>
           ⚙️

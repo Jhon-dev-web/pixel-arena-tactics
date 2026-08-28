@@ -119,6 +119,12 @@
   closed. The camp shows a `CampExpedition` card with a progress bar + `MM:SS` countdown and a
   `Cancel` (no rewards) option; on completion it flips to a blinking `🎁 Collect Rewards` button that
   opens a `ClaimModal` listing the haul and deposits it into the Bag/balance.
+- **Quests & Achievements**: a `📜` button (red badge when rewards are ready) in the top HUD opens the
+  `QuestsModal` with two tabs. **Daily** tasks (monster kills, forge/upgrade, shop purchases,
+  expedition) auto-track and reset each day, while **Achievements** (first kill, CP 150/500, +8
+  refine, clear floors 3/4) are permanent milestones. Progress counters live in
+  `SaveData.quests` (persisted) and are bumped in the relevant handlers; claiming grants gold/shards
+  with a `🎉 Reward Claimed` toast.
 
 ## Next steps / possible improvements
 
