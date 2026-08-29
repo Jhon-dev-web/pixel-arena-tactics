@@ -5,6 +5,7 @@ import { GEAR, GearItem, gearSellValue, getGear, refineLevel } from '../game/gea
 import { MATERIALS, MaterialId } from '../game/materials';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
 import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
+import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import GearIcon from './GearIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
@@ -13,6 +14,7 @@ const conText = (k: string): string => t(`consumables.${k}`);
 
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
+const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
 
 type SelKind = 'gear' | 'material' | 'consumable';
 
@@ -22,6 +24,7 @@ export default function InventoryModal({
   onUnequip,
   onSell,
   onDiscard,
+  onReforge,
   onClose,
 }: {
   save: SaveData;
@@ -29,6 +32,7 @@ export default function InventoryModal({
   onUnequip: (id: string) => void;
   onSell: (kind: SelKind, id: string, qty: number) => void;
   onDiscard: (kind: SelKind, id: string) => void;
+  onReforge: (id: string) => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables'>('all');
@@ -74,6 +78,8 @@ export default function InventoryModal({
 
   const isEquipped = !!selectedGear && save.equipped[selectedGear.slot] === selectedGear.id;
   const isEquippable = !!selectedGear && (selectedGear.slot === 'weapon' || selectedGear.slot === 'armor');
+  const selectedRarity = selectedGear ? save.itemRarity?.[selectedGear.id] ?? 'common' : 'common';
+  const selectedSubs = selectedGear ? save.itemSubstats?.[selectedGear.id] ?? [] : [];
 
   const handleDiscard = () => {
     if (!selected) return;
@@ -115,7 +121,7 @@ export default function InventoryModal({
             gearItems.map((g) => (
               <button
                 key={g.id}
-                className={`inv-slot ${rarityClass(g)}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
+                className={`inv-slot ${rarityClass(g)} ${rarClass(save.itemRarity?.[g.id])}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
                 onClick={() => select('gear', g.id)}
                 data-ui
               >
@@ -168,6 +174,18 @@ export default function InventoryModal({
                 <span className="inv-qty">×{save.inventory[selectedGear.id]}</span>
               </div>
               <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
+              {selectedRarity !== 'common' && (
+                <div className={`rarity-line ${rarClass(selectedRarity)}`}>{t(`rarity.${rarityDef(selectedRarity).nameKey}`)}</div>
+              )}
+              {selectedSubs.length > 0 && (
+                <div className="substat-list">
+                  {selectedSubs.map((s, i) => (
+                    <span className="substat-line" key={i}>
+                      +{substatLabel(s)} {t(`rarity.${substatNameKey(s.type)}`)}
+                    </span>
+                  ))}
+                </div>
+              )}
               {isEquippable &&
                 (isEquipped ? (
                   <button className="craft-btn equipped" onClick={() => onUnequip(selectedGear.id)} data-ui>
@@ -178,6 +196,11 @@ export default function InventoryModal({
                     {t('inventory.equip')}
                   </button>
                 ))}
+              {selectedRarity !== 'common' && (
+                <button className="reforge-btn" onClick={() => onReforge(selectedGear.id)} disabled={save.shards < 1} data-ui>
+                  {t('forge.reforge')}
+                </button>
+              )}
             </>
           ) : selectedMaterial ? (
             <>

@@ -6,6 +6,7 @@ import { ActiveExpedition, getExpedition } from './expedition';
 import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems, getGem, totalGemBonuses } from './gems';
 import { QuestState, emptyQuestState } from './quests';
+import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 
 export type PlayerAction = 'attack' | 'shield' | 'focus';
 export type EnemyAction = 'attack' | 'shield' | 'focus' | 'slam' | 'charge';
@@ -66,6 +67,8 @@ export interface SaveData {
   sockets: Record<string, GemId[]>;
   blessed: boolean;
   quests: QuestState;
+  itemRarity: Record<string, Rarity>;
+  itemSubstats: Record<string, Substat[]>;
 }
 
 export interface Cheats {
@@ -146,14 +149,17 @@ export function playerMaxHp(save: SaveData): number {
   const { armor } = getEquipped(save.equipped);
   const armorLvl = refineLevel(save.upgrades, save.equipped.armor);
   const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
+  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
   const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
+  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
   return Math.round(
     T.progression.playerBaseHp +
       (save.armorLevel - 1) * T.progression.armorHpPerLvl +
-      effectiveMaxHp(armor, armorLvl) * durabilityFactor(aDur) +
+      effectiveMaxHp(armor, armorLvl) * durabilityFactor(aDur) * aRarity +
       (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
       save.vit * T.advanced.vitHpPerPoint +
-      gems.maxHp,
+      gems.maxHp +
+      subs.maxHp,
   );
 }
 
@@ -163,16 +169,22 @@ export function computeCP(save: SaveData): number {
   const aLvl = refineLevel(save.upgrades, save.equipped.armor);
   const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
   const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
+  const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
+  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
   const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
+  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
   const totalDamage =
     (T.combat.attackMin + T.combat.attackMax) / 2 +
-    effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) +
+    effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) * wRarity +
     save.str * T.advanced.strDmgPerPoint;
   const totalMaxHp = playerMaxHp(save);
   const totalDefense =
-    (effectiveResistance(armor, aLvl) * durabilityFactor(aDur) + save.res * T.advanced.resResistPerPoint + gems.resistance) * 100;
-  const totalCrit = effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) * 100;
-  return Math.floor(totalDamage * 1.5 + totalMaxHp * 0.2 + totalDefense * 2 + totalCrit * 3 + gems.critDamageBonus * 300);
+    (effectiveResistance(armor, aLvl) * durabilityFactor(aDur) * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100) *
+    100;
+  const totalCrit = (effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) + subs.critRate / 100) * 100;
+  const critDmgTerm = (T.combat.critMult + gems.critDamageBonus + subs.critDamage / 100) * 300;
+  const extraSub = subs.lifesteal * 5 + subs.goldBonus * 2;
+  return Math.floor(totalDamage * 1.5 + totalMaxHp * 0.2 + totalDefense * 2 + totalCrit * 3 + critDmgTerm + extraSub);
 }
 
 export function effectiveAttackStamina(save: SaveData): number {
@@ -394,6 +406,8 @@ export function defaultSave(): SaveData {
     sockets: {},
     blessed: false,
     quests: emptyQuestState(),
+    itemRarity: {},
+    itemSubstats: {},
   };
 }
 
@@ -451,6 +465,15 @@ export function loadSave(): SaveData {
         quests.daily = { kills: 0, forge: 0, purchases: 0, expeditions: 0 };
         quests.dailyClaimed = [];
       }
+      const itemRarity: Record<string, Rarity> = {};
+      for (const [id, r] of Object.entries(parsed.itemRarity ?? {})) {
+        if (getGear(id) && (r === 'common' || r === 'rare' || r === 'epic' || r === 'legendary')) itemRarity[id] = r as Rarity;
+      }
+      const itemSubstats: Record<string, Substat[]> = {};
+      for (const [id, list] of Object.entries(parsed.itemSubstats ?? {})) {
+        if (!getGear(id) || !Array.isArray(list)) continue;
+        itemSubstats[id] = (list as Substat[]).filter((s) => s && typeof s.value === 'number').slice(0, 4);
+      }
       return {
         ...base,
         ...parsed,
@@ -468,6 +491,8 @@ export function loadSave(): SaveData {
         sockets,
         blessed: !!parsed.blessed,
         quests,
+        itemRarity,
+        itemSubstats,
       };
     }
   } catch {

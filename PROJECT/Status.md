@@ -128,6 +128,11 @@
   refine, clear floors 3/4) are permanent milestones. Progress counters live in
   `SaveData.quests` (persisted) and are bumped in the relevant handlers; claiming grants gold/shards
   with a `🎉 Reward Claimed` toast.
+- **Item rarity & random substats**: forging a weapon/armor rolls a rarity — ⚪ Common (60%), 🟢 Rare
+  (25%, 1 substat), 🟣 Epic (12%, +5% base stats + 2 substats), 🟠 Legendary (3%, +15% base stats +
+  3 substats) — shown as a colored border + name (`r-*`). Substats (crit rate/damage, lifesteal,
+  defense, max HP, dungeon-gold bonus) are rolled per tier and feed directly into combat, CP, and
+  dungeon gold. A `🎲 Reforge Stats (1 🔷)` button in the Bag re-rolls substats, keeping rarity.
 
 ## Next steps / possible improvements
 

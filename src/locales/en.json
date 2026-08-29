@@ -204,7 +204,21 @@
     "socketEmpty": "Empty socket",
     "socketHint": "Select a gem below to insert",
     "upgradeOk": "✓ {n} +{m}!",
-    "upgradeFail": "✗ Upgrade failed"
+    "upgradeFail": "✗ Upgrade failed",
+    "reforge": "🎲 Reforge Stats (1 🔷)",
+    "reforged": "🎲 Stats reforged!"
+  },
+  "rarity": {
+    "rar_common": "Common",
+    "rar_rare": "Rare",
+    "rar_epic": "Epic",
+    "rar_legendary": "Legendary",
+    "sub_critRate": "Crit Rate",
+    "sub_critDmg": "Crit Damage",
+    "sub_lifesteal": "Lifesteal",
+    "sub_defense": "Defense",
+    "sub_maxHp": "Max HP",
+    "sub_gold": "Bonus Gold"
   },
   "gems": {
     "title": "💎 Gems",

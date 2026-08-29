@@ -204,7 +204,21 @@
     "socketEmpty": "Encaixe vazio",
     "socketHint": "Selecione uma gema abaixo para inserir",
     "upgradeOk": "✓ {n} +{m}!",
-    "upgradeFail": "✗ Falha na melhoria"
+    "upgradeFail": "✗ Falha na melhoria",
+    "reforge": "🎲 Reforjar Status (1 🔷)",
+    "reforged": "🎲 Status reforjados!"
+  },
+  "rarity": {
+    "rar_common": "Comum",
+    "rar_rare": "Raro",
+    "rar_epic": "Épico",
+    "rar_legendary": "Lendário",
+    "sub_critRate": "Taxa Crítica",
+    "sub_critDmg": "Dano Crítico",
+    "sub_lifesteal": "Roubo de Vida",
+    "sub_defense": "Defesa",
+    "sub_maxHp": "Vida Máxima",
+    "sub_gold": "Ouro Extra"
   },
   "gems": {
     "title": "💎 Gemas",

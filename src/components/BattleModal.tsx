@@ -12,6 +12,7 @@ import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
 import { isMiniBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 import { totalGemBonuses } from '../game/gems';
+import { rarityStatMult, totalSubstatTotals } from '../game/rarity';
 
 const enemyText = (k: string): string => t(`enemies.${k}`);
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
@@ -51,11 +52,14 @@ export default function BattleModal({
   const aLvl = refineLevel(save.upgrades, save.equipped.armor);
   const armorTier = armor?.tier ?? 0;
   const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
+  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
+  const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
+  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
   const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
   const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
   const wFactor = durabilityFactor(wDur);
   const aFactor = durabilityFactor(aDur);
-  const critMult = T.combat.critMult + (build.relic?.critMultBonus ?? 0) + gems.critDamageBonus;
+  const critMult = T.combat.critMult + (build.relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100;
   const blessedMult = save.blessed ? 1.05 : 1;
 
   const playerMax = playerMaxHp(save);
@@ -179,8 +183,8 @@ export default function BattleModal({
 
     const heroAttack = () => {
       const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
-      const total = (baseDmg + effectiveDamage(weapon, wLvl) * wFactor + save.str * T.advanced.strDmgPerPoint) * blessedMult;
-      const crit = Math.random() < effectiveCrit(weapon, wLvl) * wFactor;
+      const total = (baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + save.str * T.advanced.strDmgPerPoint) * blessedMult;
+      const crit = Math.random() < effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100;
       const dmg = Math.max(1, Math.round(total * (crit ? critMult : 1)));
       hp.current.e = Math.max(0, hp.current.e - dmg);
       setEnemyHp(hp.current.e);
@@ -188,6 +192,12 @@ export default function BattleModal({
       setPlayerLunge(true);
       setEnemyFlash(true);
       addFloat('e', crit ? `💥 CRIT! -${dmg}` : `-${dmg}`, crit ? 'crit' : 'damage');
+      if (subs.lifesteal > 0) {
+        const heal = Math.max(1, Math.round(dmg * (subs.lifesteal / 100)));
+        hp.current.p = Math.min(playerMax, hp.current.p + heal);
+        setPlayerHp(hp.current.p);
+        addFloat('p', `+${heal}`, 'heal');
+      }
       window.setTimeout(() => {
         setPlayerLunge(false);
         setPlayerAnim('idle');
@@ -201,7 +211,8 @@ export default function BattleModal({
 
     const monsterAttack = () => {
       const st = stageRef.current;
-      const reduction = effectiveResistance(armor, aLvl) * aFactor + save.res * T.advanced.resResistPerPoint + gems.resistance;
+      const reduction =
+        effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
       const eFinal = Math.max(1, Math.round(stageEnemyDmg(def, st) * (1 - reduction)));
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);

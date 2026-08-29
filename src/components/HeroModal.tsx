@@ -3,6 +3,7 @@ import T from '../game/tunables';
 import { t } from '../locales';
 import { SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
 import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, MAX_DURABILITY, refineLevel } from '../game/gear';
+import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import GearIcon from './GearIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
@@ -39,6 +40,11 @@ export default function HeroModal({
   const wDur = save.durability?.[weapon.id] ?? MAX_DURABILITY;
   const aDur = save.durability?.[armor.id] ?? MAX_DURABILITY;
   const durClass = (d: number) => (d <= 0 ? ' broken' : d < 30 ? ' worn' : '');
+  const wRar: Rarity = save.itemRarity?.[weapon.id] ?? 'common';
+  const aRar: Rarity = save.itemRarity?.[armor.id] ?? 'common';
+  const rarClass = (r: Rarity) => `r-${r}`;
+  const wSubs = save.itemSubstats?.[weapon.id] ?? [];
+  const aSubs = save.itemSubstats?.[armor.id] ?? [];
 
   const maxHp = playerMaxHp(save);
   const totalDmg = Math.round(
@@ -102,7 +108,7 @@ export default function HeroModal({
         {tab === 'equip' ? (
           <>
             <div className="hero-equip">
-              <div className="hero-equip-card">
+              <div className={`hero-equip-card ${rarClass(wRar)}`}>
                 <span className="hero-equip-icon">
                   <GearIcon item={weapon} />
                 </span>
@@ -111,13 +117,19 @@ export default function HeroModal({
                     {gearText(weapon.nameKey)}
                     <span className="refine-tag">{refineTag(refineLevel(save.upgrades, weapon.id))}</span>
                   </span>
+                  {wRar !== 'common' && <span className={`rarity-line ${rarClass(wRar)}`}>{t(`rarity.${rarityDef(wRar).nameKey}`)}</span>}
                   <span className="hero-equip-stat damage">
                     +{effectiveDamage(weapon, wLvl)} {t('profile.damage')}
                   </span>
+                  {wSubs.map((s, i) => (
+                    <span className="substat-line" key={i}>
+                      +{substatLabel(s)} {t(`rarity.${substatNameKey(s.type)}`)}
+                    </span>
+                  ))}
                   <span className={`hero-durability${durClass(wDur)}`}>{t('forge.durability', { n: wDur, m: MAX_DURABILITY })}</span>
                 </div>
               </div>
-              <div className="hero-equip-card">
+              <div className={`hero-equip-card ${rarClass(aRar)}`}>
                 <span className="hero-equip-icon">
                   <GearIcon item={armor} />
                 </span>
@@ -126,9 +138,15 @@ export default function HeroModal({
                     {gearText(armor.nameKey)}
                     <span className="refine-tag">{refineTag(refineLevel(save.upgrades, armor.id))}</span>
                   </span>
+                  {aRar !== 'common' && <span className={`rarity-line ${rarClass(aRar)}`}>{t(`rarity.${rarityDef(aRar).nameKey}`)}</span>}
                   <span className="hero-equip-stat hp">
                     +{effectiveMaxHp(armor, aLvl)} {t('profile.hp')}
                   </span>
+                  {aSubs.map((s, i) => (
+                    <span className="substat-line" key={i}>
+                      +{substatLabel(s)} {t(`rarity.${substatNameKey(s.type)}`)}
+                    </span>
+                  ))}
                   <span className={`hero-durability${durClass(aDur)}`}>{t('forge.durability', { n: aDur, m: MAX_DURABILITY })}</span>
                 </div>
               </div>

@@ -41,6 +41,7 @@ import { getFloor } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
+import { rollRarity, rollSubstats, totalSubstatTotals } from './game/rarity';
 import { Burst, BurstState, FloatState, floatLabel } from './components/CombatFx';
 import ResultPopup from './components/ResultPopup';
 import TopHud from './components/TopHud';
@@ -260,9 +261,11 @@ function App() {
         quests.counters.maxFloorCleared = Math.max(quests.counters.maxFloorCleared ?? 0, floor);
       }
     }
+    const subs = totalSubstatTotals(s.equipped, s.itemSubstats ?? {});
+    const goldGain = Math.round(rewards.gold * (1 + subs.goldBonus / 100));
     setSaveBoth({
       ...s,
-      gold: s.gold + rewards.gold,
+      gold: s.gold + goldGain,
       materials: mats,
       shards: s.shards + rewards.shards,
       xp: atCap ? s.xp : s.xp + T.advanced.victoryXp * stages,
@@ -497,6 +500,8 @@ function App() {
     for (const [itemId, need] of Object.entries(recipe.items ?? {})) {
       inv[itemId] = (inv[itemId] ?? 0) - (need as number);
     }
+    const rarity = rollRarity();
+    const subs = rollSubstats(rarity, item.tier ?? 0);
     setSaveBoth({
       ...s,
       gold: s.gold - item.cost,
@@ -507,9 +512,27 @@ function App() {
         ...s.quests,
         daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
       },
+      itemRarity: { ...(s.itemRarity ?? {}), [id]: rarity },
+      itemSubstats: { ...(s.itemSubstats ?? {}), [id]: subs },
     });
     playSfx('victory');
     showToast(t('forge.toBag', { n: gearText(item.nameKey) }));
+  };
+
+  const reforgeItem = (id: string) => {
+    const item = getGear(id);
+    if (!item) return;
+    const s = saveRef.current;
+    if (s.shards < 1) return;
+    const rarity = s.itemRarity?.[id] ?? 'common';
+    const subs = rollSubstats(rarity, item.tier ?? 0);
+    setSaveBoth({
+      ...s,
+      shards: s.shards - 1,
+      itemSubstats: { ...(s.itemSubstats ?? {}), [id]: subs },
+    });
+    playSfx('click');
+    showToast(t('forge.reforged'));
   };
 
   const upgradeItem = (id: string) => {
@@ -1099,6 +1122,7 @@ function App() {
           onUnequip={unequipGear}
           onSell={sellItem}
           onDiscard={discardItem}
+          onReforge={reforgeItem}
           onClose={() => {
             playSfx('click');
             setBagOpen(false);

@@ -2302,6 +2302,57 @@ body {
 .inv-slot.rarity-dragon {
   border-color: #ff9a3a;
 }
+.inv-slot.r-rare {
+  border-color: #4ad67c;
+  box-shadow: inset 0 0 5px rgba(74, 214, 124, 0.25);
+}
+.inv-slot.r-epic {
+  border-color: #b06cff;
+  box-shadow: inset 0 0 5px rgba(176, 108, 255, 0.3);
+}
+.inv-slot.r-legendary {
+  border-color: #ffa940;
+  box-shadow: inset 0 0 5px rgba(255, 169, 64, 0.35);
+}
+.rarity-line {
+  font-size: calc(var(--font-size) - 2px);
+  font-weight: bold;
+}
+.rarity-line.r-rare {
+  color: #4ad67c;
+}
+.rarity-line.r-epic {
+  color: #b06cff;
+}
+.rarity-line.r-legendary {
+  color: #ffa940;
+}
+.substat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.substat-line {
+  font-size: calc(var(--font-size) - 3px);
+  color: #8ecbff;
+}
+.reforge-btn {
+  width: 100%;
+  margin-top: 6px;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  font-weight: bold;
+  color: #1a1108;
+  background: linear-gradient(180deg, #c79bff, #8a5ad6);
+  border: 2px solid #6a3aa8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.reforge-btn:disabled {
+  filter: grayscale(0.9) brightness(0.5);
+  cursor: not-allowed;
+}
 .craft-card.rarity-bronze {
   border-left: 3px solid #8a5a2a;
 }
@@ -2346,6 +2397,15 @@ body {
   border: 1px solid #3a2a4a;
   border-radius: 10px;
   text-align: left;
+}
+.hero-equip-card.r-rare {
+  border-color: #4ad67c;
+}
+.hero-equip-card.r-epic {
+  border-color: #b06cff;
+}
+.hero-equip-card.r-legendary {
+  border-color: #ffa940;
 }
 .hero-equip-icon {
   width: 48px;
