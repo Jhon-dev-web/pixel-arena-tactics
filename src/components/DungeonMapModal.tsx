@@ -2,7 +2,7 @@ import Assets from '../assets.json';
 import { t } from '../locales';
 import { SaveData } from '../game/engine';
 import { FLOORS } from '../game/dungeon';
-import { MaterialId, materialIconUrl } from '../game/materials';
+import { materialIconUrl } from '../game/materials';
 
 const fmt = (s: string, n: number) => s.replace('{n}', String(n));
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
@@ -46,13 +46,14 @@ export default function DungeonMapModal({
                       {floor.goldMin}-{floor.goldMax}
                     </span>
                   </span>
-                  {Object.entries(floor.drops).map(([mid, qty]) => (
-                    <span className="floor-drop" key={mid}>
+                  {floor.drops.map((entry) => (
+                    <span className="floor-drop" key={entry.material}>
                       <span className="mat-icon">
-                        <img src={materialIconUrl(mid as MaterialId)} alt="" />
+                        <img src={materialIconUrl(entry.material)} alt="" />
                       </span>
                       <span>
-                        {qty}× {matText(`mat_${mid}`)}
+                        {entry.chance < 1 ? `${Math.round(entry.chance * 100)}% ` : ''}
+                        {entry.qty}× {matText(`mat_${entry.material}`)}
                       </span>
                     </span>
                   ))}

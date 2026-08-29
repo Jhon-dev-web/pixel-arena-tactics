@@ -39,7 +39,7 @@ const T = DebugPanel.define({
     intermissionMs: { value: 1000, min: 300, max: 3000, step: 100, label: 'Wave interval (ms)' },
     hpGrowth: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Monster HP growth per stage' },
     dmgGrowth: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Monster damage growth per stage' },
-    rewardGrowth: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Reward growth per stage' },
+    rewardGrowth: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'Reward growth per stage' },
     miniBossEvery: { value: 5, min: 3, max: 10, step: 1, label: 'Mini-boss every N stages' },
     miniBossHpMult: { value: 1.5, min: 1, max: 3, step: 0.1, label: 'Mini-boss HP multiplier' },
     miniBossDmgMult: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Mini-boss damage multiplier' },

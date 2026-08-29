@@ -111,7 +111,9 @@
   filling toward the next round, plus a `1x/2x` speed toggle.
 - **Dungeon rebalance (nerf)**: monsters carry explicit per-floor `hp`/`dmg` — Goblin Rogue 45/6,
   Orc Berserker 110/18, Skeleton Warlock 240/38, Minotaur Warlord 550/75. A fresh hero with the
-  wooden club clears Floor 1 in ~4 hits while surviving comfortably.
+  wooden club clears Floor 1 in ~4 hits while surviving comfortably. Floor drops are now
+  chance-based (`DropEntry` list): Floor 1 gives `4–8` gold + leather (35%) / iron (25%) with no
+  guaranteed metals, and reward growth was cut from +15% to +5% per stage to curb inflation.
 - **Expeditions (timed, background-tracked)**: the dungeon map exposes `[🏕️ Expedition]`
   (`ExpeditionModal`) with 4 durations — Quick Scout (5m), Forest Patrol (30m), Deep Cavern Run (2h,
   shard chance), Overnight Expedition (8h, 3 shards) — each with escalating gold/material rewards.

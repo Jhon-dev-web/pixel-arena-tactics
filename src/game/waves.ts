@@ -36,8 +36,10 @@ export function waveRewards(floor: FloorDef, stage: number): WaveRewards {
   const baseGold = randInt(floor.goldMin, floor.goldMax);
   const gold = Math.round(baseGold * (1 + T.battle.rewardGrowth * (stage - 1)));
   const drops: Partial<Record<MaterialId, number>> = {};
-  for (const [mid, qty] of Object.entries(floor.drops)) {
-    drops[mid as MaterialId] = Math.max(1, Math.round((qty as number) * (1 + T.battle.rewardGrowth * (stage - 1))));
+  for (const entry of floor.drops) {
+    if (entry.chance < 1 && Math.random() >= entry.chance) continue;
+    const qty = Math.max(1, Math.round(entry.qty * (1 + T.battle.rewardGrowth * (stage - 1))));
+    drops[entry.material] = (drops[entry.material] ?? 0) + qty;
   }
   let shards = 0;
   if (isMiniBoss(stage)) {

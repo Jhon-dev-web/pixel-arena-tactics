@@ -1,16 +1,7 @@
 import { useState } from 'react';
 import SpriteSheet from './SpriteSheet';
 import { t } from '../locales';
-import {
-  SaveData,
-  computeCP,
-  formatNumber,
-  playerLevel,
-  xpForNextLevel,
-  xpToReachLevel,
-} from '../game/engine';
-
-const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
+import { SaveData, computeCP, formatNumber, playerLevel } from '../game/engine';
 
 export default function TopHud({
   save,
@@ -38,9 +29,6 @@ export default function TopHud({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const level = playerLevel(save.xp);
-  const isMax = level >= 100;
-  const xpInLevel = save.xp - xpToReachLevel(level);
-  const xpPct = isMax ? 100 : pct(xpInLevel, xpForNextLevel(level));
 
   const startEdit = () => {
     setDraft(save.heroName);
@@ -58,35 +46,29 @@ export default function TopHud({
           <SpriteSheet src={spriteUrl} size="28px" row={0} />
         </button>
         <div className="profile-info">
-          <div className="profile-top">
-            {editing ? (
-              <input
-                className="name-input"
-                autoFocus
-                value={draft}
-                maxLength={16}
-                onChange={(e) => setDraft(e.target.value)}
-                onBlur={commit}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commit();
-                }}
-              />
-            ) : (
-              <button className="name-btn" onClick={startEdit} data-ui>
-                {save.heroName} <span className="pencil">✏️</span>
-              </button>
-            )}
-            <button className="level-btn" onClick={onOpenProfile} data-ui>
-              {isMax ? 'Lv. MAX' : `Lv. ${level}`}
+          {editing ? (
+            <input
+              className="name-input"
+              autoFocus
+              value={draft}
+              maxLength={16}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commit();
+              }}
+            />
+          ) : (
+            <button className="name-btn" onClick={startEdit} data-ui>
+              {save.heroName} <span className="pencil">✏️</span>
             </button>
-          </div>
-          <div className="xp-bar">
-            <div className="xp-fill" style={{ width: `${xpPct}%` }} />
+          )}
+          <div className="profile-stats">
+            <span className="level">{t('camp.level', { n: level })}</span>
+            <span className="cp-inline">{t('ui.cp', { n: formatNumber(computeCP(save)) })}</span>
           </div>
         </div>
       </div>
-
-      <div className="cp-center">{t('ui.cp', { n: formatNumber(computeCP(save)) })}</div>
 
       <div className="resources">
         <span className="res gold">🪙 {formatNumber(save.gold)}</span>
