@@ -2481,9 +2481,16 @@ body {
   line-height: 1;
 }
 .forge-tabs {
-  display: flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  width: 100%;
   margin-bottom: 12px;
+}
+.forge-tabs .tab {
+  padding: 8px 2px;
+  font-size: calc(var(--font-size) - 3px);
+  white-space: nowrap;
 }
 .refine-tag {
   color: #ffd76a;

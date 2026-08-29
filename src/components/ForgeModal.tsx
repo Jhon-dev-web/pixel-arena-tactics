@@ -376,7 +376,7 @@ export default function ForgeModal({
                         )}
                       </>
                     ) : (
-                      <span className="socket-none">{t('forge.socketEmpty')}</span>
+                      <span className="socket-none">{t('forge.noSockets')}</span>
                     )}
                   </div>
                 </div>

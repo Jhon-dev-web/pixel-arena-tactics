@@ -173,18 +173,15 @@ export function computeCP(save: SaveData): number {
   const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
   const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
   const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
-  const totalDamage =
-    (T.combat.attackMin + T.combat.attackMax) / 2 +
-    effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) * wRarity +
-    save.str * T.advanced.strDmgPerPoint;
-  const totalMaxHp = playerMaxHp(save);
-  const totalDefense =
+  const damage = effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) * wRarity + save.str * T.advanced.strDmgPerPoint;
+  const hp = playerMaxHp(save);
+  const defensePct =
     (effectiveResistance(armor, aLvl) * durabilityFactor(aDur) * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100) *
     100;
-  const totalCrit = (effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) + subs.critRate / 100) * 100;
-  const critDmgTerm = (T.combat.critMult + gems.critDamageBonus + subs.critDamage / 100) * 300;
-  const extraSub = subs.lifesteal * 5 + subs.goldBonus * 2;
-  return Math.floor(totalDamage * 1.5 + totalMaxHp * 0.2 + totalDefense * 2 + totalCrit * 3 + critDmgTerm + extraSub);
+  const critRatePct = (effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) + subs.critRate / 100) * 100;
+  const critDamagePct = (gems.critDamageBonus + subs.critDamage / 100) * 100;
+  const lifestealPct = subs.lifesteal;
+  return Math.round(damage * 2 + hp * 0.4 + defensePct * 1.5 + critRatePct * 0.8 + critDamagePct * 0.3 + lifestealPct);
 }
 
 export function effectiveAttackStamina(save: SaveData): number {

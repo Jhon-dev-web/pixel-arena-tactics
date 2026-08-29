@@ -53,7 +53,9 @@
   `localStorage` (with migration from the old `owned` list).
 - **Attributes, name & CP**: editable hero name, level + XP bar, and ⚡ Combat Power shown in the
   camp; an Attributes modal distributes 3 points/level across STR (damage + AFK), VIT (max HP),
-  AGI (dodge), RES (damage resist). All persisted.
+  AGI (dodge), RES (damage resist). All persisted. CP uses a clean proportional formula —
+  `damage·2 + HP·0.4 + defense%·1.5 + critRate%·0.8 + critDmg%·0.3 + lifesteal%` — with the base
+  attack excluded, so a fresh hero sits at ~32 CP (no exponential inflation).
 - **AFK scaling**: gold/XP per-second scales with level and STR (`1 + ⌊lvl*0.4⌋ + ⌊STR*0.1⌋` gold,
   `2 + ⌊lvl*0.5⌋ + ⌊STR*0.15⌋` XP). Level is capped at **Lv 100** (`MAX` display + frozen XP) with an
   exponential XP curve (`100 × 1.15^(lvl-1)`); bugged saves beyond the cap reset to Lv 1 / 0 XP.
