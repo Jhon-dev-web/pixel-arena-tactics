@@ -1516,40 +1516,82 @@ body {
 }
 .camp-actions {
   position: absolute;
-  bottom: 16px;
+  bottom: 14px;
   left: 0;
   right: 0;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  padding: 0 16px;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  gap: 8px;
+  width: 92%;
+  margin: 0 auto;
   z-index: 50;
 }
 .camp-side-btn,
 .camp-main-btn {
   font-family: inherit;
-  font-size: calc(var(--font-size) - 3px);
   text-transform: uppercase;
-  color: #ffe9a8;
-  background: linear-gradient(180deg, #4a3420, #2a1c10);
-  border: 2px solid #8a6a3a;
   border-radius: 10px;
-  height: 52px;
-  padding: 0 14px;
+  height: 54px;
+  padding: 0 10px;
   cursor: pointer;
   box-shadow: 0 3px 0 #1a1108, inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  text-shadow: 0 1px 0 #000;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+}
+.camp-side-btn {
+  font-size: calc(var(--font-size) - 3px);
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  text-shadow: 0 1px 0 #000;
+}
+.camp-main-btn {
+  font-size: calc(var(--font-size) - 2px);
+  font-weight: bold;
+  color: #1a1108;
+  background: linear-gradient(180deg, #ffd76a, #e0a83a);
+  border: 2px solid #b8863a;
+  text-shadow: none;
+  box-shadow: 0 3px 0 #6a4a20, 0 0 14px rgba(255, 215, 106, 0.35);
 }
 .camp-side-btn:active,
 .camp-main-btn:active {
   transform: translateY(2px);
   box-shadow: 0 1px 0 #1a1108;
+}
+
+/* ===== side action buttons ===== */
+.side-actions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+}
+.side-btn {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  font-family: inherit;
+  font-size: var(--font-size);
+  color: #ffe9a8;
+  background: rgba(10, 10, 15, 0.7);
+  border: 2px solid #8a6a3a;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.side-btn:active {
+  transform: scale(0.94);
 }
 .return-camp {
   top: 58px;
@@ -2825,6 +2867,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
+  width: min(72%, 280px);
   font-family: inherit;
   font-size: var(--font-size);
   color: #eaffd8;

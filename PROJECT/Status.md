@@ -3,10 +3,11 @@
 ## Implemented
 
 - Vertical 9:16 dark-fantasy arena layout (centered stage, letterboxed on wider screens).
-- **AFK RPG mobile layout** (Legend of Mushroom style): compact top HUD (avatar, editable hero name
-  + ✏️, `Lv. N`, thin XP bar, ⚡ CP, gold/shards, ⚙️/🔊), an uncluttered centered hero training at the
-  dummy, a prominent `[⚔️ ENTER DUNGEON]` button, and a fixed 4-tab bottom nav (Base / Forge / Shop /
-  Attributes). Modals open as bounded pop-ups with an `[X]` close button.
+- **AFK RPG mobile layout** (Legend of Mushroom style): a clean top HUD (avatar, `Nv. N`, ⚡ CP,
+  gold/shards), floating right-side action buttons (`🎒` bag, `📜` quests, `⚙️` admin, `🔊` mute), a
+  centered `[🏕️ Expedition]` button, and a bottom nav bar (`grid 1fr 1.6fr 1fr`) with Forge / Dungeon
+  (gold highlight) / Shop. Hero name editing lives in the Hero profile modal. Modals open as bounded
+  pop-ups with an `[X]` close button.
 - Pixel-art knight + orc sprite sheets (idle/attack/hurt/death), sliced & animated via `SpriteSheet`.
 - Top bar: victories + gold + shop button.
 - HP bars (green player / red enemy) with smooth width transitions; blue stamina bar under player HP.

@@ -92,7 +92,7 @@
   },
   "camp": {
     "title": "Base Camp",
-    "enterArena": "⚔️ ENTER DUNGEON",
+    "enterArena": "⚔️ DUNGEON",
     "returnCamp": "🏕️ Return to Camp",
     "training": "Training...",
     "level": "Lv {n}",

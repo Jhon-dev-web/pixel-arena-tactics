@@ -916,18 +916,8 @@ function App() {
 
         <TopHud
           save={save}
-          muted={muted}
           spriteUrl={playerSpriteUrl}
-          onToggleMute={toggleMute}
-          onOpenAdmin={() => setAdminOpen(true)}
           onOpenProfile={() => setHeroOpen(true)}
-          onOpenBag={() => setBagOpen(true)}
-          onOpenQuests={() => {
-            playSfx('click');
-            setQuestsOpen(true);
-          }}
-          questsBadge={claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) })}
-          onRename={renameHero}
         />
 
         {scene === 'camp' ? (
@@ -942,6 +932,32 @@ function App() {
               onCancel={cancelExpedition}
               onClaim={claimExpedition}
             />
+            <div className="side-actions">
+              <button className="side-btn" onClick={() => { playSfx('click'); setBagOpen(true); }} data-ui>
+                🎒
+              </button>
+              <button
+                className="side-btn quests-btn"
+                onClick={() => {
+                  playSfx('click');
+                  setQuestsOpen(true);
+                }}
+                data-ui
+              >
+                📜
+                {claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) }) > 0 && (
+                  <span className="quests-badge">
+                    {claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) })}
+                  </span>
+                )}
+              </button>
+              <button className="side-btn" onClick={() => setAdminOpen(true)} data-ui>
+                ⚙️
+              </button>
+              <button className="side-btn" onClick={toggleMute} data-ui>
+                {muted ? '🔇' : '🔊'}
+              </button>
+            </div>
             <div className="camp-actions">
               <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
                 {t('ui.forge')}
@@ -1094,6 +1110,7 @@ function App() {
         <HeroModal
           save={save}
           onAttrChange={attrChange}
+          onRename={renameHero}
           onClose={() => {
             playSfx('click');
             setHeroOpen(false);

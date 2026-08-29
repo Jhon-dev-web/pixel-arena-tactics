@@ -21,13 +21,17 @@ const ATTRS: { key: AttrKey; nameKey: string; descKey: string }[] = [
 export default function HeroModal({
   save,
   onAttrChange,
+  onRename,
   onClose,
 }: {
   save: SaveData;
   onAttrChange: (attr: AttrKey, delta: number) => void;
+  onRename: (name: string) => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<'equip' | 'attrs'>('equip');
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
   const { weapon, armor } = getEquipped(save.equipped);
   const level = playerLevel(save.xp);
   const wLvl = refineLevel(save.upgrades, weapon.id);
@@ -52,7 +56,37 @@ export default function HeroModal({
       <div className="modal hero-modal">
         <h2 className="modal-title">{t('profile.title')}</h2>
         <p className="hero-subtitle">
-          {save.heroName} {t('profile.subtitle', { n: level })}
+          {editingName ? (
+            <input
+              className="name-input"
+              autoFocus
+              value={nameDraft}
+              maxLength={16}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onBlur={() => {
+                onRename((nameDraft.trim() || save.heroName).slice(0, 16));
+                setEditingName(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  onRename((nameDraft.trim() || save.heroName).slice(0, 16));
+                  setEditingName(false);
+                }
+              }}
+            />
+          ) : (
+            <button
+              className="name-btn"
+              onClick={() => {
+                setNameDraft(save.heroName);
+                setEditingName(true);
+              }}
+              data-ui
+            >
+              {save.heroName} <span className="pencil">✏️</span>
+            </button>
+          )}{' '}
+          {t('profile.subtitle', { n: level })}
         </p>
 
         <div className="hero-tabs">
