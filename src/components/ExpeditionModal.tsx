@@ -97,7 +97,9 @@ export default function ExpeditionModal({
                     ))}
                     {def.shards > 0 && (
                       <span className="floor-drop">
-                        <span className="mat-icon shard">🔷</span>
+                        <span className="mat-icon shard">
+                          <img src="/assets/icons/shards.png" alt="" />
+                        </span>
                         <span>{t('ui.shardsX', { n: def.shards })}</span>
                       </span>
                     )}

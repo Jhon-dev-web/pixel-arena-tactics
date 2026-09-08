@@ -14,6 +14,7 @@ import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEne
 import { getGem, totalGemBonuses } from '../game/gems';
 import { rarityStatMult, totalSubstatTotals } from '../game/rarity';
 import { getTitleDef } from '../game/titles';
+import GemIcon from './GemIcon';
 
 const enemyText = (k: string): string => t(`enemies.${k}`);
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
@@ -320,7 +321,9 @@ export default function BattleModal({
       ))}
       {shards > 0 && (
         <span className="floor-drop">
-          <span className="mat-icon shard">🔷</span>
+          <span className="mat-icon shard">
+            <img src="/assets/icons/shards.png" alt="" />
+          </span>
           <span>{t('ui.shardsReward', { n: shards })}</span>
         </span>
       )}
@@ -350,15 +353,20 @@ export default function BattleModal({
                 </span>
                 <span>{t('ui.goldReward', { n: reward.gold })}</span>
               </span>
-              {Object.entries(reward.gems).map(([gid, qty]) => (
-                <span className="floor-drop" key={gid}>
-                  <span className="mat-icon">{getGem(gid)?.icon ?? '💎'}</span>
-                  <span>+{qty as number}</span>
-                </span>
-              ))}
+              {Object.entries(reward.gems).map(([gid, qty]) => {
+                const gemDef = getGem(gid);
+                return (
+                  <span className="floor-drop" key={gid}>
+                    <span className="mat-icon">{gemDef ? <GemIcon item={gemDef} /> : '💎'}</span>
+                    <span>+{qty as number}</span>
+                  </span>
+                );
+              })}
               {!!reward.oneTokenBalance && (
                 <span className="floor-drop">
-                  <span className="mat-icon">🔶</span>
+                  <span className="mat-icon">
+                    <img src="/assets/icons/one_token.png" alt="" />
+                  </span>
                   <span>ONE +{reward.oneTokenBalance}</span>
                 </span>
               )}

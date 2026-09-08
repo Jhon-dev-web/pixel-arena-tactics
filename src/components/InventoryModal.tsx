@@ -9,6 +9,7 @@ import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
+import ConsumableIcon from './ConsumableIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -174,7 +175,9 @@ export default function InventoryModal({
                 onClick={() => select('consumable', c.id)}
                 data-ui
               >
-                <span className="inv-icon inv-emoji">{c.icon}</span>
+                <span className="inv-icon">
+                  <ConsumableIcon item={c} />
+                </span>
                 <span className="inv-qty">×{c.qty}</span>
               </button>
             ))}
@@ -264,7 +267,7 @@ export default function InventoryModal({
           ) : selectedConsumable ? (
             <>
               <div className="inv-detail-name">
-                <span className="inv-emoji">{selectedConsumable.icon}</span>
+                <ConsumableIcon item={selectedConsumable} className="mat-icon-img" />
                 <span className="inv-detail-name-text">{conText(selectedConsumable.nameKey)}</span>
                 <span className="inv-qty">×{save.consumables?.[selectedConsumable.id] ?? 0}</span>
               </div>

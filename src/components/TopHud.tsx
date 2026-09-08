@@ -36,7 +36,9 @@ export default function TopHud({
 
       <div className="resources">
         <span className="res gold">🪙 {formatNumber(save.gold)}</span>
-        <span className="res shards">🔷 {formatNumber(save.shards)}</span>
+        <span className="res shards">
+          <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {formatNumber(save.shards)}
+        </span>
       </div>
     </header>
   );

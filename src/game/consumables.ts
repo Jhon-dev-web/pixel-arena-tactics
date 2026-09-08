@@ -5,6 +5,7 @@ export interface ConsumableDef {
   nameKey: string;
   descKey: string;
   icon: string;
+  iconUrl?: string;
   cost: number;
   sellValue: number;
 }
@@ -12,9 +13,9 @@ export interface ConsumableDef {
 export const CONSUMABLE_STACK = 20;
 
 export const CONSUMABLES: ConsumableDef[] = [
-  { id: 'small_hp', nameKey: 'small_hp', descKey: 'small_hp_d', icon: '🧪', cost: 30, sellValue: 12 },
-  { id: 'large_hp', nameKey: 'large_hp', descKey: 'large_hp_d', icon: '🧪', cost: 80, sellValue: 32 },
-  { id: 'atk_elixir', nameKey: 'atk_elixir', descKey: 'atk_elixir_d', icon: '⚔️', cost: 120, sellValue: 48 },
+  { id: 'small_hp', nameKey: 'small_hp', descKey: 'small_hp_d', icon: '🧪', iconUrl: '/assets/icons/potion_small_hp.png', cost: 30, sellValue: 12 },
+  { id: 'large_hp', nameKey: 'large_hp', descKey: 'large_hp_d', icon: '🧪', iconUrl: '/assets/icons/potion_large_hp.png', cost: 80, sellValue: 32 },
+  { id: 'atk_elixir', nameKey: 'atk_elixir', descKey: 'atk_elixir_d', icon: '⚔️', iconUrl: '/assets/icons/potion_atk_elixir.png', cost: 120, sellValue: 48 },
 ];
 
 export function getConsumable(id: string): ConsumableDef | undefined {

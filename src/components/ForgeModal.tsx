@@ -21,6 +21,7 @@ import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
+import GemIcon from './GemIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -204,7 +205,7 @@ export default function ForgeModal({
                               return (
                                 <span className="req-item" key={`gem-${gid}`}>
                                   <span className="req-plus">+</span>
-                                  <span className="mat-icon">{g?.icon ?? '💎'}</span>
+                                  <span className="mat-icon">{g ? <GemIcon item={g} /> : '💎'}</span>
                                   <span className={`req-amount${have < need ? ' missing' : ''}`}>
                                     {need}× {g ? gemText(g.nameKey) : gid}
                                   </span>
@@ -214,7 +215,9 @@ export default function ForgeModal({
                             {(item.recipe?.shards ?? 0) > 0 && (
                               <span className="req-item">
                                 <span className="req-plus">+</span>
-                                <span className="mat-icon shard">🔷</span>
+                                <span className="mat-icon shard">
+                                  <img src="/assets/icons/shards.png" alt="" />
+                                </span>
                                 <span className={`req-amount${save.shards < (item.recipe?.shards ?? 0) ? ' missing' : ''}`}>
                                   {t('ui.shardsX', { n: item.recipe?.shards ?? 0 })}
                                 </span>
@@ -288,7 +291,9 @@ export default function ForgeModal({
                         {(cost.shards ?? 0) > 0 && (
                           <span className="req-item">
                             <span className="req-plus">+</span>
-                            <span className="mat-icon shard">🔷</span>
+                            <span className="mat-icon shard">
+                              <img src="/assets/icons/shards.png" alt="" />
+                            </span>
                             <span className={`req-amount${save.shards < (cost.shards ?? 0) ? ' missing' : ''}`}>
                               {t('ui.shardsX', { n: cost.shards ?? 0 })}
                             </span>
@@ -352,7 +357,7 @@ export default function ForgeModal({
                         disabled={save.gold < cost || save.shards < 1 || dur >= MAX_DURABILITY}
                         data-ui
                       >
-                        {t('forge.blessedRepair')} (+1 🔷)
+                        {t('forge.blessedRepair')} (+1 <img className="inline-icon" src="/assets/icons/shards.png" alt="" />)
                       </button>
                     </div>
                   </div>
@@ -387,7 +392,7 @@ export default function ForgeModal({
                             const gem = getGem(list[i] ?? '');
                             return gem ? (
                               <button className="socket filled" key={i} onClick={() => onUnsocket(item.id, i)} title={gemText(gem.nameKey)} data-ui>
-                                {gem.icon}
+                                <GemIcon item={gem} className="inline-icon" />
                               </button>
                             ) : (
                               <span className="socket empty" key={i} />
@@ -398,7 +403,7 @@ export default function ForgeModal({
                           <div className="socket-gem-row">
                             {ownedGems.map((g) => (
                               <button className="socket-gem-btn" key={g.id} onClick={() => onSocket(item.id, g.id)} data-ui>
-                                {g.icon} ×{save.gems?.[g.id]}
+                                <GemIcon item={g} className="inline-icon" /> ×{save.gems?.[g.id]}
                               </button>
                             ))}
                           </div>
@@ -416,7 +421,7 @@ export default function ForgeModal({
               {GEMS.map((g) => (
                 <div className="gem-library-row" key={g.id}>
                   <span className="gem-library-name">
-                    {g.icon} {gemText(g.nameKey)} <span className="gem-desc">{gemText(g.descKey)}</span>
+                    <GemIcon item={g} className="inline-icon" /> {gemText(g.nameKey)} <span className="gem-desc">{gemText(g.descKey)}</span>
                   </span>
                   <span className="gem-library-owned">×{save.gems?.[g.id] ?? 0}</span>
                 </div>

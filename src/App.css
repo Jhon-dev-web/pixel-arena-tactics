@@ -1923,6 +1923,13 @@ body {
   font-size: 14px;
   line-height: 1;
 }
+.inline-icon {
+  width: 15px;
+  height: 15px;
+  vertical-align: -3px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 
 /* --- toast --- */
 .toast {

@@ -3,6 +3,8 @@ import { SaveData } from '../game/engine';
 import { CONSUMABLES, CONSUMABLE_STACK, ConsumableId } from '../game/consumables';
 import { GEMS, GemId } from '../game/gems';
 import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
+import ConsumableIcon from './ConsumableIcon';
+import GemIcon from './GemIcon';
 
 const conText = (k: string): string => t(`consumables.${k}`);
 const gemText = (k: string): string => t(`gems.${k}`);
@@ -36,7 +38,7 @@ export default function ShopModal({
                 <div className="gear-info">
                   <span className="gear-name">
                     <span className="gear-name-text">
-                      {c.icon} {conText(c.nameKey)}
+                      <ConsumableIcon item={c} className="inline-icon" /> {conText(c.nameKey)}
                     </span>
                     <span className="gear-count">{t('shop.youHave', { n: qty })}</span>
                   </span>
@@ -59,7 +61,7 @@ export default function ShopModal({
                 <div className="gear-info">
                   <span className="gear-name">
                     <span className="gear-name-text">
-                      {g.icon} {gemText(g.nameKey)}
+                      <GemIcon item={g} className="inline-icon" /> {gemText(g.nameKey)}
                     </span>
                     <span className="gear-count">{t('shop.youOwn', { n: owned })}</span>
                   </span>

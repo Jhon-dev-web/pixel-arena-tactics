@@ -7,6 +7,7 @@ export interface GemDef {
   nameKey: string;
   descKey: string;
   icon: string;
+  iconUrl?: string;
   shardCost: number;
   critDamageBonus?: number;
   resistance?: number;
@@ -14,9 +15,9 @@ export interface GemDef {
 }
 
 export const GEMS: GemDef[] = [
-  { id: 'ruby', nameKey: 'gem_ruby', descKey: 'gem_ruby_d', icon: '🔴', shardCost: 2, critDamageBonus: 0.15 },
-  { id: 'sapphire', nameKey: 'gem_sapphire', descKey: 'gem_sapphire_d', icon: '🔵', shardCost: 2, resistance: 0.08 },
-  { id: 'emerald', nameKey: 'gem_emerald', descKey: 'gem_emerald_d', icon: '🟢', shardCost: 2, maxHp: 60 },
+  { id: 'ruby', nameKey: 'gem_ruby', descKey: 'gem_ruby_d', icon: '🔴', iconUrl: '/assets/icons/gem_ruby.png', shardCost: 2, critDamageBonus: 0.15 },
+  { id: 'sapphire', nameKey: 'gem_sapphire', descKey: 'gem_sapphire_d', icon: '🔵', iconUrl: '/assets/icons/gem_sapphire.png', shardCost: 2, resistance: 0.08 },
+  { id: 'emerald', nameKey: 'gem_emerald', descKey: 'gem_emerald_d', icon: '🟢', iconUrl: '/assets/icons/gem_emerald.png', shardCost: 2, maxHp: 60 },
 ];
 
 export function socketsForTier(tier: number): number {

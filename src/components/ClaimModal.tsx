@@ -40,7 +40,9 @@ export default function ClaimModal({
           ))}
           {rewards.shards > 0 && (
             <span className="floor-drop">
-              <span className="mat-icon shard">🔷</span>
+              <span className="mat-icon shard">
+                <img src="/assets/icons/shards.png" alt="" />
+              </span>
               <span>{t('ui.shardsReward', { n: rewards.shards })}</span>
             </span>
           )}

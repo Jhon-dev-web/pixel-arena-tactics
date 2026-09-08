@@ -44,7 +44,7 @@ export const MATERIALS: MaterialDef[] = [
   // Open Hunting drops — never sold via the Shop, exclusive to monster drops
   { id: 'leather_scrap', nameKey: 'mat_leather_scrap', icon: '🟫', packSize: 5, packCost: 30, sellValue: 4 },
   { id: 'demon_claw', nameKey: 'mat_demon_claw', icon: '🐾', packSize: 3, packCost: 120, sellValue: 22 },
-  { id: 'demon_core', nameKey: 'mat_demon_core', icon: '🟣', packSize: 1, packCost: 800, sellValue: 180 },
+  { id: 'demon_core', nameKey: 'mat_demon_core', icon: '🟣', iconUrl: '/assets/icons/demon_core.png', packSize: 1, packCost: 800, sellValue: 180 },
   { id: 'bone_fragment', nameKey: 'mat_bone_fragment', icon: '🦴', packSize: 5, packCost: 30, sellValue: 4 },
   { id: 'concentrated_blood', nameKey: 'mat_concentrated_blood', icon: '🩸', packSize: 3, packCost: 120, sellValue: 22 },
   { id: 'corrupted_crystal', nameKey: 'mat_corrupted_crystal', icon: '🔮', packSize: 1, packCost: 800, sellValue: 180 },

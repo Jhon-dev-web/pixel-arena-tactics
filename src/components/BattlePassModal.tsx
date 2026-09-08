@@ -1,22 +1,32 @@
+import { ReactNode } from 'react';
 import { t } from '../locales';
 import { battlePassXpForLevel, isBattlePassActive, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/engine';
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
 import { MATERIALS } from '../game/materials';
 import { getConsumable } from '../game/consumables';
 import { getGem } from '../game/gems';
+import MaterialIcon from './MaterialIcon';
+import ConsumableIcon from './ConsumableIcon';
+import GemIcon from './GemIcon';
 
-function rewardIcon(reward: BattlePassReward): string {
+function rewardIcon(reward: BattlePassReward): ReactNode {
   switch (reward.kind) {
     case 'gold':
       return '🪙';
-    case 'material':
-      return MATERIALS.find((m) => m.id === reward.id)?.icon ?? '📦';
-    case 'consumable':
-      return getConsumable(reward.id ?? '')?.icon ?? '🧪';
-    case 'gem':
-      return getGem(reward.id ?? '')?.icon ?? '💎';
+    case 'material': {
+      const def = MATERIALS.find((m) => m.id === reward.id);
+      return def ? <MaterialIcon item={def} className="inline-icon" /> : '📦';
+    }
+    case 'consumable': {
+      const def = getConsumable(reward.id ?? '');
+      return def ? <ConsumableIcon item={def} className="inline-icon" /> : '🧪';
+    }
+    case 'gem': {
+      const def = getGem(reward.id ?? '');
+      return def ? <GemIcon item={def} className="inline-icon" /> : '💎';
+    }
     case 'oneToken':
-      return '🔶';
+      return <img className="inline-icon" src="/assets/icons/one_token.png" alt="" />;
     case 'cosmetic':
       return '🎖️';
     default:

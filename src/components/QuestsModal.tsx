@@ -45,7 +45,12 @@ export default function QuestsModal({
                   <span className="quest-name">{questText(q.nameKey)}</span>
                   <span className="quest-reward">
                     🪙 {q.gold}
-                    {q.shards > 0 && <span className="quest-shards"> 🔷 {q.shards}</span>}
+                    {q.shards > 0 && (
+                      <span className="quest-shards">
+                        {' '}
+                        <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {q.shards}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <span className="quest-desc">{questText(q.descKey)}</span>
