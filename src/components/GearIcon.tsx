@@ -1,6 +1,20 @@
+import { useState } from 'react';
 import { GearItem } from '../game/gear';
 
+const SLOT_EMOJI: Record<string, string> = {
+  weapon: '⚔️',
+  armor: '🛡️',
+  relic: '💍',
+  shield: '🛡️',
+  helmet: '⛑️',
+  pickaxe: '⛏️',
+  axe: '🪓',
+  rod: '🎣',
+};
+
 export default function GearIcon({ item }: { item: GearItem }) {
+  const [brokenSrc, setBrokenSrc] = useState<string | null>(null);
+
   if (item.iconSheet && item.iconUrl) {
     return (
       <span
@@ -10,9 +24,11 @@ export default function GearIcon({ item }: { item: GearItem }) {
       />
     );
   }
+  if (item.icon && item.icon !== brokenSrc) {
+    return <img className="pixel-icon" src={item.icon} alt="" draggable={false} onError={() => setBrokenSrc(item.icon!)} />;
+  }
   if (item.iconUrl) {
     return <img className="gear-icon-img" src={item.iconUrl} alt="" draggable={false} />;
   }
-  const emoji = item.slot === 'weapon' ? '⚔️' : item.slot === 'armor' ? '🛡️' : '💍';
-  return <span className="gear-icon-emoji">{emoji}</span>;
+  return <span className="gear-icon-emoji">{SLOT_EMOJI[item.slot] ?? '❔'}</span>;
 }

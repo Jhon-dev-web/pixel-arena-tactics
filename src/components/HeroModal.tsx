@@ -2,12 +2,14 @@ import { useState } from 'react';
 import T from '../game/tunables';
 import { t } from '../locales';
 import { SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
-import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, MAX_DURABILITY, refineLevel } from '../game/gear';
+import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, gearBySlot, MAX_DURABILITY, refineLevel } from '../game/gear';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
+import { getTitleDef, TITLES } from '../game/titles';
 import GearIcon from './GearIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const attrsText = (k: string): string => t(`attributes.${k}`);
+const profileText = (k: string): string => t(`profile.${k}`);
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
 type AttrKey = 'str' | 'vit' | 'agi' | 'res';
@@ -19,21 +21,45 @@ const ATTRS: { key: AttrKey; nameKey: string; descKey: string }[] = [
   { key: 'res', nameKey: 'res', descKey: 'resDesc' },
 ];
 
+type ToolSlot = 'pickaxe' | 'axe' | 'rod';
+
+const TOOL_SLOTS: { slot: ToolSlot; labelKey: string; powerKey: 'miningPower' | 'woodcuttingPower' | 'fishingPower'; powerLabelKey: string }[] = [
+  { slot: 'pickaxe', labelKey: 'pickaxe', powerKey: 'miningPower', powerLabelKey: 'miningPower' },
+  { slot: 'axe', labelKey: 'axe', powerKey: 'woodcuttingPower', powerLabelKey: 'woodcuttingPower' },
+  { slot: 'rod', labelKey: 'rod', powerKey: 'fishingPower', powerLabelKey: 'fishingPower' },
+];
+
 export default function HeroModal({
   save,
   onAttrChange,
   onRename,
+  onEquip,
+  onUnequip,
+  onSelectTitle,
   onClose,
 }: {
   save: SaveData;
   onAttrChange: (attr: AttrKey, delta: number) => void;
   onRename: (name: string) => void;
+  onEquip: (id: string) => void;
+  onUnequip: (id: string) => void;
+  onSelectTitle: (id: string | null) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<'equip' | 'attrs'>('equip');
+  const [tab, setTab] = useState<'equip' | 'attrs' | 'titles'>('equip');
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const { weapon, armor } = getEquipped(save.equipped);
+
+  const toggleTool = (slot: ToolSlot) => {
+    const equippedId = save.equipped[slot];
+    if (equippedId) {
+      onUnequip(equippedId);
+      return;
+    }
+    const owned = gearBySlot(slot).find((g) => (save.inventory[g.id] ?? 0) > 0);
+    if (owned) onEquip(owned.id);
+  };
   const level = playerLevel(save.xp);
   const wLvl = refineLevel(save.upgrades, weapon.id);
   const aLvl = refineLevel(save.upgrades, armor.id);
@@ -56,6 +82,10 @@ export default function HeroModal({
   const totalPoints = level * 3;
   const spent = save.str + save.vit + save.agi + save.res;
   const remaining = Math.max(0, totalPoints - spent);
+
+  const activeTitleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
+  const activeTitleLabel = activeTitleDef ? t(`titles.${activeTitleDef.nameKey}`) : null;
+  const ownedTitles = TITLES.filter((def) => save.cosmetics.includes(def.id));
 
   return (
     <div className="modal-backdrop">
@@ -94,6 +124,7 @@ export default function HeroModal({
           )}{' '}
           {t('profile.subtitle', { n: level })}
         </p>
+        {activeTitleLabel && <p className="hero-title-line">• {activeTitleLabel}</p>}
 
         <div className="hero-tabs">
           <button className={`tab${tab === 'equip' ? ' active' : ''}`} onClick={() => setTab('equip')} data-ui>
@@ -103,9 +134,35 @@ export default function HeroModal({
             {t('profile.attrsTab')}
             {remaining > 0 && <span className="tab-badge">{remaining}</span>}
           </button>
+          <button className={`tab${tab === 'titles' ? ' active' : ''}`} onClick={() => setTab('titles')} data-ui>
+            {t('profile.titlesTab')}
+          </button>
         </div>
 
-        {tab === 'equip' ? (
+        {tab === 'titles' ? (
+          <div className="titles-body">
+            <button
+              className={`title-row${!save.activeTitle ? ' active' : ''}`}
+              onClick={() => onSelectTitle(null)}
+              data-ui
+            >
+              <span className="title-name">{t('titles.none')}</span>
+              {!save.activeTitle && <span className="title-tag">{t('titles.active')}</span>}
+            </button>
+            {ownedTitles.length === 0 && <p className="titles-empty">{t('titles.empty')}</p>}
+            {ownedTitles.map((def) => (
+              <button
+                key={def.id}
+                className={`title-row${save.activeTitle === def.id ? ' active' : ''}`}
+                onClick={() => onSelectTitle(def.id)}
+                data-ui
+              >
+                <span className="title-name">{t(`titles.${def.nameKey}`)}</span>
+                {save.activeTitle === def.id && <span className="title-tag">{t('titles.active')}</span>}
+              </button>
+            ))}
+          </div>
+        ) : tab === 'equip' ? (
           <>
             <div className="hero-equip">
               <div className={`hero-equip-card ${rarClass(wRar)}`}>
@@ -150,6 +207,38 @@ export default function HeroModal({
                   <span className={`hero-durability${durClass(aDur)}`}>{t('forge.durability', { n: aDur, m: MAX_DURABILITY })}</span>
                 </div>
               </div>
+            </div>
+
+            <div className="gear-section-title">{profileText('toolsTitle')}</div>
+            <div className="hero-tools-grid">
+              {TOOL_SLOTS.map(({ slot, labelKey, powerKey, powerLabelKey }) => {
+                const equippedId = save.equipped[slot];
+                const item = equippedId ? getGear(equippedId) : null;
+                const owned = !item && gearBySlot(slot).some((g) => (save.inventory[g.id] ?? 0) > 0);
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    className={`hero-tool-card${item ? ' equipped' : ''}`}
+                    onClick={() => toggleTool(slot)}
+                    disabled={!item && !owned}
+                    data-ui
+                  >
+                    <span className="hero-equip-icon">
+                      {item ? <GearIcon item={item} /> : <span className="gear-icon-emoji">➕</span>}
+                    </span>
+                    <div className="hero-equip-info">
+                      <span className="hero-equip-name">{profileText(labelKey)}</span>
+                      <span className="hero-equip-stat">{item ? gearText(item.nameKey) : profileText('emptySlot')}</span>
+                      {item && (
+                        <span className="hero-equip-stat">
+                          +{item[powerKey] ?? 0} {profileText(powerLabelKey)}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="hero-stats-grid">

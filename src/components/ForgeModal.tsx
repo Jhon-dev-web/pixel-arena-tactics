@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import Assets from '../assets.json';
 import { t } from '../locales';
-import { SaveData } from '../game/engine';
+import { playerLevel, SaveData } from '../game/engine';
 import {
-  GEAR,
   GEAR_SLOTS,
   GearItem,
   MAX_DURABILITY,
@@ -18,9 +17,10 @@ import {
   upgradeChance,
   upgradeCost,
 } from '../game/gear';
-import { MaterialId, hasMaterials, materialIconUrl } from '../game/materials';
-import { GEMS, GemId, getGem, socketsForTier } from '../game/gems';
+import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
+import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
 import GearIcon from './GearIcon';
+import MaterialIcon from './MaterialIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -37,6 +37,8 @@ function rarityIcon(key: string): string {
       return Assets.icons.steel.url;
     case 'material_dragon':
       return Assets.icons.dragon_scales.url;
+    case 'material_gold':
+      return '/assets/icons/ore_gold.png';
     default:
       return '';
   }
@@ -64,9 +66,13 @@ export default function ForgeModal({
   const [tab, setTab] = useState<'forge' | 'upgrade' | 'repair' | 'socket'>('forge');
   const [justForged, setJustForged] = useState<string | null>(null);
 
+  const level = playerLevel(save.xp);
+
   const canForge = (item: GearItem): boolean => {
     if (save.gold < item.cost) return false;
+    if (level < (item.recipe?.requiredLevel ?? 0)) return false;
     if (!hasMaterials(save.materials, item.recipe?.materials)) return false;
+    if (!hasGems(save.gems, item.recipe?.gems)) return false;
     for (const [itemId, need] of Object.entries(item.recipe?.items ?? {})) {
       if ((save.inventory[itemId] ?? 0) < (need as number)) return false;
     }
@@ -151,6 +157,15 @@ export default function ForgeModal({
                               </span>
                               <span className={`req-amount${save.gold < item.cost ? ' missing' : ''}`}>{item.cost}</span>
                             </span>
+                            {(item.recipe?.requiredLevel ?? 0) > 0 && (
+                              <span className="req-item">
+                                <span className="req-plus">+</span>
+                                <span className="mat-icon level">⭐</span>
+                                <span className={`req-amount${level < (item.recipe?.requiredLevel ?? 0) ? ' missing' : ''}`}>
+                                  {t('forge.levelReq', { n: item.recipe?.requiredLevel ?? 0 })}
+                                </span>
+                              </span>
+                            )}
                             {Object.entries(item.recipe?.items ?? {}).map(([itemId, count]) => {
                               const need = count as number;
                               const have = save.inventory[itemId] ?? 0;
@@ -174,10 +189,24 @@ export default function ForgeModal({
                                 <span className="req-item" key={`mat-${mid}`}>
                                   <span className="req-plus">+</span>
                                   <span className="mat-icon">
-                                    <img src={materialIconUrl(mid as MaterialId)} alt="" />
+                                    <MaterialIcon item={getMaterial(mid as MaterialId)!} />
                                   </span>
                                   <span className={`req-amount${have < need ? ' missing' : ''}`}>
                                     {need}× {matText(`mat_${mid}`)}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                            {Object.entries(item.recipe?.gems ?? {}).map(([gid, count]) => {
+                              const need = count as number;
+                              const have = save.gems[gid as GemId] ?? 0;
+                              const g = getGem(gid);
+                              return (
+                                <span className="req-item" key={`gem-${gid}`}>
+                                  <span className="req-plus">+</span>
+                                  <span className="mat-icon">{g?.icon ?? '💎'}</span>
+                                  <span className={`req-amount${have < need ? ' missing' : ''}`}>
+                                    {need}× {g ? gemText(g.nameKey) : gid}
                                   </span>
                                 </span>
                               );
@@ -248,7 +277,7 @@ export default function ForgeModal({
                             <span className="req-item" key={`up-${mid}`}>
                               <span className="req-plus">+</span>
                               <span className="mat-icon">
-                                <img src={materialIconUrl(mid as MaterialId)} alt="" />
+                                <MaterialIcon item={getMaterial(mid as MaterialId)!} />
                               </span>
                               <span className={`req-amount${have < need ? ' missing' : ''}`}>
                                 {need}× {matText(`mat_${mid}`)}

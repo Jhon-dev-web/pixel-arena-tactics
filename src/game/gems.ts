@@ -34,6 +34,13 @@ export function emptyGems(): Record<GemId, number> {
   return { ruby: 0, sapphire: 0, emerald: 0 };
 }
 
+export function hasGems(have: Record<GemId, number>, need: Partial<Record<GemId, number>> | undefined): boolean {
+  for (const [k, v] of Object.entries(need ?? {}) as [GemId, number][]) {
+    if ((have[k] ?? 0) < v) return false;
+  }
+  return true;
+}
+
 export interface GemBonuses {
   critDamageBonus: number;
   resistance: number;

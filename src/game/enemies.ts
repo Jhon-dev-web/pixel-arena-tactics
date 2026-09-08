@@ -78,9 +78,3 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
 export function getEnemyDef(kind: EnemyKind): EnemyDef {
   return ENEMIES[kind];
 }
-
-export function enemyKindForDuel(duel: number): EnemyKind {
-  if (duel % 5 === 0) return 'boss';
-  const rotation: EnemyKind[] = ['goblin', 'goblin', 'orc', 'warlock'];
-  return rotation[(duel - 1) % rotation.length];
-}

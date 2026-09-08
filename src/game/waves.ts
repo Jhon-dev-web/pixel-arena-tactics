@@ -1,7 +1,7 @@
 import T from './tunables';
 import { EnemyDef } from './enemies';
 import { MaterialId } from './materials';
-import { FloorDef } from './dungeon';
+import { DungeonBiomeDef, isDungeonBoss, isDungeonCheckpoint } from './dungeon';
 
 export interface WaveRewards {
   gold: number;
@@ -18,33 +18,36 @@ export interface RunRewards {
 
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-export function isMiniBoss(stage: number): boolean {
-  return stage % T.battle.miniBossEvery === 0;
-}
+export { isDungeonBoss, isDungeonCheckpoint };
 
 export function stageEnemyHp(def: EnemyDef, stage: number): number {
   const base = def.hp * (1 + T.battle.hpGrowth * (stage - 1));
-  return Math.round(isMiniBoss(stage) ? base * T.battle.miniBossHpMult : base);
+  const mult = isDungeonBoss(stage) ? T.battle.bossHpMult : isDungeonCheckpoint(stage) ? T.battle.miniBossHpMult : 1;
+  return Math.round(base * mult);
 }
 
 export function stageEnemyDmg(def: EnemyDef, stage: number): number {
   const base = def.dmg * (1 + T.battle.dmgGrowth * (stage - 1));
-  return Math.round(isMiniBoss(stage) ? base * T.battle.miniBossDmgMult : base);
+  const mult = isDungeonBoss(stage) ? T.battle.bossDmgMult : isDungeonCheckpoint(stage) ? T.battle.miniBossDmgMult : 1;
+  return Math.round(base * mult);
 }
 
-export function waveRewards(floor: FloorDef, stage: number): WaveRewards {
-  const baseGold = randInt(floor.goldMin, floor.goldMax);
-  const gold = Math.round(baseGold * (1 + T.battle.rewardGrowth * (stage - 1)));
+export function waveRewards(biome: DungeonBiomeDef, stage: number): WaveRewards {
+  const baseGold = randInt(biome.goldMin, biome.goldMax);
+  let gold = Math.round(baseGold * (1 + T.battle.rewardGrowth * (stage - 1)));
   const drops: Partial<Record<MaterialId, number>> = {};
-  for (const entry of floor.drops) {
+  for (const entry of biome.drops) {
     if (entry.chance < 1 && Math.random() >= entry.chance) continue;
     const qty = Math.max(1, Math.round(entry.qty * (1 + T.battle.rewardGrowth * (stage - 1))));
     drops[entry.material] = (drops[entry.material] ?? 0) + qty;
   }
   let shards = 0;
-  if (isMiniBoss(stage)) {
+  if (isDungeonBoss(stage)) {
+    shards = T.battle.bossShards;
+    gold = Math.round(gold * T.battle.bossGoldMult);
+  } else if (isDungeonCheckpoint(stage)) {
     shards = T.battle.miniBossShards;
-    drops.steel = (drops.steel ?? 0) + 1;
+    gold = Math.round(gold * T.battle.miniBossGoldMult);
   }
   return { gold, drops, shards };
 }

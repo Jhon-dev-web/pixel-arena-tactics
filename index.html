@@ -80,6 +80,23 @@
         <div class="spinner"></div>
       </div>
     </div>
+    <script>
+      // TEMP local-preview shim: window.DebugPanel is normally injected by the deploy platform.
+      window.DebugPanel = {
+        define(schema) {
+          function resolve(node) {
+            if (node && typeof node === 'object') {
+              if ('value' in node) return node.value;
+              const out = {};
+              for (const k in node) out[k] = resolve(node[k]);
+              return out;
+            }
+            return node;
+          }
+          return resolve(schema);
+        },
+      };
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

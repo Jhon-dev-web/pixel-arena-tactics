@@ -1,4 +1,20 @@
-const DebugPanel = (window as any).DebugPanel;
+type Tunable<T> = T extends { value: infer V }
+  ? V
+  : T extends object
+    ? { [K in keyof T]: Tunable<T[K]> }
+    : T;
+
+interface DebugPanelApi {
+  define<S extends object>(schema: S): Tunable<S>;
+}
+
+declare global {
+  interface Window {
+    DebugPanel: DebugPanelApi;
+  }
+}
+
+const DebugPanel = window.DebugPanel;
 
 /* TUNABLES CONTRACT — read before editing this file.
    1. Every gameplay/UI constant lives in the DebugPanel.define schema below. Never inline new literals.
@@ -40,10 +56,16 @@ const T = DebugPanel.define({
     hpGrowth: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Monster HP growth per stage' },
     dmgGrowth: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Monster damage growth per stage' },
     rewardGrowth: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'Reward growth per stage' },
-    miniBossEvery: { value: 5, min: 3, max: 10, step: 1, label: 'Mini-boss every N stages' },
-    miniBossHpMult: { value: 1.5, min: 1, max: 3, step: 0.1, label: 'Mini-boss HP multiplier' },
-    miniBossDmgMult: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Mini-boss damage multiplier' },
-    miniBossShards: { value: 2, min: 1, max: 5, step: 1, label: 'Mini-boss shard drop' },
+    miniBossEvery: { value: 10, min: 3, max: 20, step: 1, label: 'Dungeon checkpoint every N floors' },
+    miniBossHpMult: { value: 1.5, min: 1, max: 3, step: 0.1, label: 'Checkpoint HP multiplier' },
+    miniBossDmgMult: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Checkpoint damage multiplier' },
+    miniBossShards: { value: 2, min: 1, max: 5, step: 1, label: 'Checkpoint shard drop' },
+    bossEvery: { value: 25, min: 10, max: 50, step: 5, label: 'Dungeon main boss every N floors' },
+    bossHpMult: { value: 2.2, min: 1.5, max: 5, step: 0.1, label: 'Main boss HP multiplier' },
+    bossDmgMult: { value: 1.8, min: 1.5, max: 4, step: 0.1, label: 'Main boss damage multiplier' },
+    bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
+    miniBossGoldMult: { value: 2.5, min: 1, max: 10, step: 0.5, label: 'Checkpoint wave gold multiplier' },
+    bossGoldMult: { value: 5, min: 1, max: 15, step: 0.5, label: 'Main boss wave gold multiplier' },
     potionThreshold: { value: 0.35, min: 0.05, max: 0.9, step: 0.05, label: 'Auto-potion HP threshold (ratio)' },
     potionHeal: { value: 50, min: 10, max: 500, step: 10, label: 'Auto-potion heal (HP)' },
     potionCooldownMs: { value: 5000, min: 1000, max: 15000, step: 500, label: 'Auto-potion cooldown (ms)' },
@@ -60,6 +82,28 @@ const T = DebugPanel.define({
     xpBase: { value: 100, min: 10, max: 1000, step: 10, label: 'Base XP (level 1)' },
     xpGrowth: { value: 1.15, min: 1, max: 2, step: 0.01, label: 'XP growth per level' },
     levelHpBonus: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP bonus per level' },
+  },
+  mining: {
+    _label: 'Idle Mining',
+    capHours: { value: 4, min: 1, max: 24, step: 1, label: 'Offline storage cap (hours)' },
+    oreRatePerPower: { value: 1, min: 0.1, max: 10, step: 0.1, label: 'Ore per hour per Mining Power point' },
+    goldRatePerPower: { value: 2, min: 0, max: 20, step: 0.5, label: 'Gold per hour per Mining Power point' },
+  },
+  hunting: {
+    _label: 'Open Zone Hunting',
+    tickMs: { value: 2200, min: 800, max: 6000, step: 100, label: 'Visual attack pulse interval (ms)' },
+    encountersPerHour: { value: 12, min: 1, max: 60, step: 1, label: 'Kills per hour (drop-chance pacing)' },
+  },
+  battlePass: {
+    _label: 'Battle Pass',
+    xpBase: { value: 100, min: 20, max: 500, step: 10, label: 'Pass XP required for level 2' },
+    xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Pass XP growth per level' },
+    durationDays: { value: 30, min: 1, max: 90, step: 1, label: 'Pass duration on activation (days)' },
+    capHours: { value: 24, min: 4, max: 48, step: 1, label: 'Offline storage cap with pass (hours)' },
+    dropRateMultiplier: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Drop rate multiplier with pass' },
+    xpPerFloor: { value: 15, min: 1, max: 100, step: 1, label: 'Pass XP per dungeon floor cleared' },
+    xpPerHuntHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Hunting claimed' },
+    xpPerMiningHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Mining claimed' },
   },
   ui: {
     _label: 'UI Layout',
@@ -81,6 +125,8 @@ const T = DebugPanel.define({
     poisonDamage: { value: 6, min: 1, max: 30, step: 1, label: 'Poison damage per turn' },
     poisonTurns: { value: 2, min: 1, max: 6, step: 1, label: 'Poison duration (turns)' },
     victoryXp: { value: 60, min: 10, max: 500, step: 5, label: 'XP per victory' },
+    checkpointXpBonus: { value: 200, min: 0, max: 2000, step: 10, label: 'Bonus XP per checkpoint cleared' },
+    bossXpBonus: { value: 500, min: 0, max: 5000, step: 25, label: 'Bonus XP per biome boss cleared' },
     strDmgPerPoint: { value: 1, min: 0, max: 10, step: 0.5, label: 'Damage per STR point' },
     vitHpPerPoint: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP per VIT point' },
     agiDodgePerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Dodge chance per AGI point' },

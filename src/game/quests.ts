@@ -46,8 +46,8 @@ export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   { id: 'ach_cp150', kind: 'achievement', nameKey: 'a_cp150', descKey: 'a_cp150_d', target: 150, gold: 300, shards: 3, metric: 'cp' },
   { id: 'ach_cp500', kind: 'achievement', nameKey: 'a_cp500', descKey: 'a_cp500_d', target: 500, gold: 1000, shards: 10, metric: 'cp' },
   { id: 'ach_blacksmith', kind: 'achievement', nameKey: 'a_blacksmith', descKey: 'a_blacksmith_d', target: 8, gold: 800, shards: 5, metric: 'max_refine' },
-  { id: 'ach_crypt', kind: 'achievement', nameKey: 'a_crypt', descKey: 'a_crypt_d', target: 3, gold: 500, shards: 4, metric: 'max_floor' },
-  { id: 'ach_minotaur', kind: 'achievement', nameKey: 'a_minotaur', descKey: 'a_minotaur_d', target: 4, gold: 2000, shards: 15, metric: 'max_floor' },
+  { id: 'ach_crypt', kind: 'achievement', nameKey: 'a_crypt', descKey: 'a_crypt_d', target: 51, gold: 500, shards: 4, metric: 'max_floor' },
+  { id: 'ach_minotaur', kind: 'achievement', nameKey: 'a_minotaur', descKey: 'a_minotaur_d', target: 100, gold: 2000, shards: 15, metric: 'max_floor' },
 ];
 
 export function emptyQuestState(): QuestState {

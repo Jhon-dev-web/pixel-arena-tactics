@@ -1,46 +1,14 @@
 import T from './tunables';
 import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, MAX_DURABILITY, refineLevel, sanitizeSaveInventory } from './gear';
-import { EnemyDef, getEnemyDef, EnemyKind } from './enemies';
-import { Materials, emptyMaterials } from './materials';
+import { Materials, MaterialId, emptyMaterials } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
 import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems, getGem, totalGemBonuses } from './gems';
 import { QuestState, emptyQuestState } from './quests';
 import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
-
-export type PlayerAction = 'attack' | 'shield' | 'focus';
-export type EnemyAction = 'attack' | 'shield' | 'focus' | 'slam' | 'charge';
-
-export interface FighterState {
-  maxHp: number;
-  hp: number;
-  stamina: number;
-  maxStamina: number;
-  shielding: boolean;
-  focusReady: boolean;
-  burnTurns: number;
-  poisonTurns: number;
-  charging: boolean;
-}
-
-export type CombatEventKind =
-  | 'damage'
-  | 'crit'
-  | 'blocked'
-  | 'heal'
-  | 'stamina'
-  | 'reflect'
-  | 'burn'
-  | 'poison'
-  | 'dodge'
-  | 'curse'
-  | 'slam';
-
-export interface CombatEvent {
-  target: 'player' | 'enemy';
-  kind: CombatEventKind;
-  value: number;
-}
+import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
+import { DEFAULT_HUNTING_ZONE, getHuntingZone, HUNTING_ZONES } from './huntingZones';
+import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 
 export interface SaveData {
   gold: number;
@@ -52,7 +20,7 @@ export interface SaveData {
   inventory: Record<string, number>;
   equipped: EquippedGear;
   upgrades: Record<string, number>;
-  highestFloor: number;
+  highestDungeonFloor: number;
   heroName: string;
   str: number;
   vit: number;
@@ -69,46 +37,27 @@ export interface SaveData {
   quests: QuestState;
   itemRarity: Record<string, Rarity>;
   itemSubstats: Record<string, Substat[]>;
-}
-
-export interface Cheats {
-  godMode?: boolean;
-  oneHitKill?: boolean;
-  elixir?: boolean;
-}
-
-export interface TurnResult {
-  enemyAction: EnemyAction;
-  playerMid: FighterState;
-  enemyMid: FighterState;
-  playerEnd: FighterState;
-  enemyEnd: FighterState;
-  playerEvents: CombatEvent[];
-  enemyEvents: CombatEvent[];
+  activeOreId: string | null;
+  lastMiningClaim: number;
+  miningCapHours: number;
+  activeHuntingZone: string | null;
+  huntingOfflineStart: number;
+  unlockedHuntingZones: string[];
+  hasBattlePass: boolean;
+  battlePassExpiresAt: number | null;
+  battlePassLevel: number;
+  battlePassXp: number;
+  claimedPassRewards: { free: number[]; premium: number[] };
+  oneTokenBalance: number;
+  cosmetics: string[];
+  activeTitle: string | null;
+  dungeonCheckpoints: number[];
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
 
-const randInt = (min: number, max: number) =>
-  Math.floor(Math.random() * (max - min + 1)) + min;
-
-function rollEnemyAction(def: EnemyDef, wasCharging: boolean): { action: EnemyAction; charging: boolean } {
-  if (def.slam && wasCharging) return { action: 'slam', charging: false };
-
-  const attackW = 0.5;
-  const shieldW = def.shieldWeight ?? 0;
-  const focusW = def.focusWeight ?? 0;
-  const chargeW = def.chargeWeight ?? 0;
-  const total = attackW + shieldW + focusW + chargeW;
-
-  let r = Math.random() * total;
-  if ((r -= chargeW) < 0) return { action: 'charge', charging: true };
-  if ((r -= shieldW) < 0) return { action: 'shield', charging: false };
-  if ((r -= focusW) < 0) return { action: 'focus', charging: false };
-  return { action: 'attack', charging: false };
-}
-
 export const MAX_LEVEL = 100;
+export const MAX_BATTLE_PASS_LEVEL = 30;
 
 export function xpForNextLevel(level: number): number {
   return Math.round(T.progression.xpBase * Math.pow(T.progression.xpGrowth, level - 1));
@@ -184,197 +133,88 @@ export function computeCP(save: SaveData): number {
   return Math.round(damage * 2 + hp * 0.4 + defensePct * 1.5 + critRatePct * 0.8 + critDamagePct * 0.3 + lifestealPct);
 }
 
-export function effectiveAttackStamina(save: SaveData): number {
-  const { relic } = getEquipped(save.equipped);
-  return Math.max(0, T.combat.attackStamina - (relic?.attackStaminaReduction ?? 0));
+export function isBattlePassActive(save: SaveData, now: number): boolean {
+  return save.hasBattlePass && (save.battlePassExpiresAt === null || save.battlePassExpiresAt > now);
 }
 
-export function enemyHpForRound(def: EnemyDef, round: number): number {
-  return Math.round(T.advanced.enemyBaseHp * def.hpMult * (1 + T.advanced.enemyHpScale * (round - 1)));
+export function battlePassXpForLevel(level: number): number {
+  return Math.round(T.battlePass.xpBase * Math.pow(T.battlePass.xpGrowth, level - 1));
 }
 
-export function makePlayer(save: SaveData): FighterState {
-  const maxHp = playerMaxHp(save);
-  return {
-    maxHp,
-    hp: maxHp,
-    stamina: T.advanced.playerMaxStamina,
-    maxStamina: T.advanced.playerMaxStamina,
-    shielding: false,
-    focusReady: false,
-    burnTurns: 0,
-    poisonTurns: 0,
-    charging: false,
-  };
-}
-
-export function makeEnemy(kind: EnemyKind, round: number): FighterState {
-  const def = getEnemyDef(kind);
-  const maxHp = enemyHpForRound(def, round);
-  return {
-    maxHp,
-    hp: maxHp,
-    stamina: 0,
-    maxStamina: 0,
-    shielding: false,
-    focusReady: false,
-    burnTurns: 0,
-    poisonTurns: 0,
-    charging: false,
-  };
-}
-
-export function resolveTurn(
-  action: PlayerAction,
-  player: FighterState,
-  enemy: FighterState,
-  save: SaveData,
-  enemyDef: EnemyDef,
-  cheats?: Cheats,
-): TurnResult {
-  const roll = rollEnemyAction(enemyDef, enemy.charging);
-  const enemyAction = roll.action;
-  const enemyShielded = enemyAction === 'shield';
-
-  const { weapon, armor, relic } = getEquipped(save.equipped);
-  const attackStamina = Math.max(0, T.combat.attackStamina - (relic?.attackStaminaReduction ?? 0));
-  const critMult = T.combat.critMult + (relic?.critMultBonus ?? 0);
-  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
-  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
-
-  const playerEvents: CombatEvent[] = [];
-  const enemyEvents: CombatEvent[] = [];
-
-  let pMid: FighterState = { ...player, shielding: false };
-  let eMid: FighterState = { ...enemy, shielding: false, charging: roll.charging };
-
-  // -- Player action --
-  if (action === 'attack') {
-    pMid = { ...pMid, stamina: pMid.stamina - attackStamina };
-    const oneHitKill = !!cheats?.oneHitKill;
-    const dodged = !oneHitKill && (enemyDef.dodge ?? 0) > 0 && Math.random() < (enemyDef.dodge ?? 0);
-
-    if (dodged) {
-      playerEvents.push({ target: 'enemy', kind: 'dodge', value: 0 });
-    } else {
-      let dmg: number;
-      let crit = false;
-      if (oneHitKill) {
-        dmg = enemy.maxHp;
-      } else {
-        const upgradeBonus = (save.weaponLevel - 1) * T.progression.weaponDmgPerLvl;
-        dmg =
-          randInt(T.combat.attackMin, T.combat.attackMax) +
-          upgradeBonus +
-          effectiveDamage(weapon, wLvl) +
-          save.str * T.advanced.strDmgPerPoint;
-        if (cheats?.elixir) dmg = Math.round(dmg * (1 + T.advanced.elixirDamageBonus));
-        const randomCrit = Math.random() < effectiveCrit(weapon, wLvl);
-        crit = pMid.focusReady || randomCrit;
-        if (crit) {
-          dmg = Math.round(dmg * critMult);
-          if (pMid.focusReady) pMid = { ...pMid, focusReady: false };
-        }
-      }
-
-      if (enemyShielded && !oneHitKill) {
-        dmg = Math.round(dmg * (1 - T.advanced.enemyShieldReduction));
-        playerEvents.push({ target: 'enemy', kind: 'blocked', value: dmg });
-      }
-      playerEvents.push({ target: 'enemy', kind: crit ? 'crit' : 'damage', value: dmg });
-      eMid = { ...eMid, hp: Math.max(0, eMid.hp - dmg) };
-      if (weapon?.burn && !oneHitKill) eMid = { ...eMid, burnTurns: T.advanced.burnTurns };
-    }
-  } else if (action === 'shield') {
-    pMid = { ...pMid, stamina: pMid.stamina - T.combat.shieldStamina, shielding: true };
-  } else {
-    const heal = T.combat.focusHp + (relic?.focusHpBonus ?? 0);
-    const st = Math.min(pMid.maxStamina, pMid.stamina + T.combat.focusStamina);
-    const hp = Math.min(pMid.maxHp, pMid.hp + heal);
-    pMid = { ...pMid, stamina: st, hp, focusReady: true };
-    playerEvents.push({ target: 'player', kind: 'stamina', value: T.combat.focusStamina });
-    playerEvents.push({ target: 'player', kind: 'heal', value: heal });
+export function addBattlePassXp(save: SaveData, amount: number): { battlePassLevel: number; battlePassXp: number } {
+  if (save.battlePassLevel >= MAX_BATTLE_PASS_LEVEL) {
+    return { battlePassLevel: MAX_BATTLE_PASS_LEVEL, battlePassXp: 0 };
   }
-
-  // -- Enemy action --
-  let pEnd: FighterState = pMid;
-  let eEnd: FighterState = eMid;
-
-  const applyIncoming = (dmg: number, kind: CombatEventKind): number => {
-    if (cheats?.godMode) return 0;
-    const dodgeChance = Math.min(0.5, save.agi * T.advanced.agiDodgePerPoint);
-    if (dodgeChance > 0 && Math.random() < dodgeChance) {
-      enemyEvents.push({ target: 'player', kind: 'dodge', value: 0 });
-      return 0;
-    }
-    let d = dmg;
-    if (pMid.shielding) {
-      const absorbed = d * T.combat.shieldReduction;
-      d = d * (1 - T.combat.shieldReduction);
-      enemyEvents.push({ target: 'player', kind: 'blocked', value: Math.round(d) });
-      const reflect = armor?.reflect ?? 0;
-      if (reflect > 0) {
-        const reflected = Math.round(absorbed * reflect);
-        eEnd = { ...eEnd, hp: Math.max(0, eEnd.hp - reflected) };
-        enemyEvents.push({ target: 'enemy', kind: 'reflect', value: reflected });
-      }
-    }
-    d = Math.round(d * (1 - (effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint)));
-    enemyEvents.push({ target: 'player', kind, value: d });
-    return d;
-  };
-
-  if (enemyAction === 'attack') {
-    const dmg = applyIncoming(
-      randInt(
-        Math.round(T.combat.enemyAtkMin * enemyDef.atkMult),
-        Math.round(T.combat.enemyAtkMax * enemyDef.atkMult),
-      ),
-      'damage',
-    );
-    pEnd = { ...pMid, hp: Math.max(0, pMid.hp - dmg) };
-    if (enemyDef.poison && !cheats?.godMode) {
-      pEnd = { ...pEnd, poisonTurns: T.advanced.poisonTurns };
-      enemyEvents.push({ target: 'player', kind: 'curse', value: 0 });
-    }
-  } else if (enemyAction === 'slam') {
-    const dmg = applyIncoming(randInt(enemyDef.slamMin ?? 40, enemyDef.slamMax ?? 55), 'slam');
-    pEnd = { ...pMid, hp: Math.max(0, pMid.hp - dmg) };
-  } else if (enemyAction === 'focus') {
-    const heal = Math.round(T.advanced.enemyHeal * enemyDef.healMult);
-    const hp = Math.min(eMid.maxHp, eMid.hp + heal);
-    eEnd = { ...eMid, hp };
-    enemyEvents.push({ target: 'enemy', kind: 'heal', value: heal });
+  let level = save.battlePassLevel;
+  let xp = save.battlePassXp + Math.max(0, amount);
+  while (level < MAX_BATTLE_PASS_LEVEL) {
+    const need = battlePassXpForLevel(level);
+    if (xp < need) break;
+    xp -= need;
+    level++;
   }
-  // 'charge' / 'shield': no further damage this turn.
-
-  return {
-    enemyAction,
-    playerMid: pMid,
-    enemyMid: eMid,
-    playerEnd: pEnd,
-    enemyEnd: eEnd,
-    playerEvents,
-    enemyEvents,
-  };
+  if (level >= MAX_BATTLE_PASS_LEVEL) {
+    level = MAX_BATTLE_PASS_LEVEL;
+    xp = 0;
+  }
+  return { battlePassLevel: level, battlePassXp: xp };
 }
 
-export function tickBurn(enemy: FighterState): { enemy: FighterState; damage: number } {
-  if (enemy.burnTurns <= 0) return { enemy, damage: 0 };
-  const dmg = T.advanced.burnDamage;
-  return {
-    enemy: { ...enemy, hp: Math.max(0, enemy.hp - dmg), burnTurns: enemy.burnTurns - 1 },
-    damage: dmg,
-  };
+export interface MiningStatus {
+  capMs: number;
+  pendingMs: number;
+  oreId: MaterialId | null;
+  oreReady: number;
+  goldReady: number;
+  full: boolean;
 }
 
-export function tickPoison(player: FighterState): { player: FighterState; damage: number } {
-  if (player.poisonTurns <= 0) return { player, damage: 0 };
-  const dmg = T.advanced.poisonDamage;
-  return {
-    player: { ...player, hp: Math.max(0, player.hp - dmg), poisonTurns: player.poisonTurns - 1 },
-    damage: dmg,
-  };
+export function computeMiningStatus(save: SaveData, now: number): MiningStatus {
+  const passActive = isBattlePassActive(save, now);
+  const capHours = passActive ? Math.max(save.miningCapHours, T.battlePass.capHours) : save.miningCapHours;
+  const capMs = capHours * 3600 * 1000;
+  const tier = save.activeOreId ? getOreTier(save.activeOreId) : undefined;
+  if (!tier) {
+    return { capMs, pendingMs: 0, oreId: null, oreReady: 0, goldReady: 0, full: false };
+  }
+  const elapsedMs = Math.max(0, now - save.lastMiningClaim);
+  const pendingMs = Math.min(elapsedMs, capMs);
+  const hours = pendingMs / (3600 * 1000);
+  const power = getGear(tier.pickaxeId)?.miningPower ?? 0;
+  const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
+  const oreReady = Math.floor(hours * power * T.mining.oreRatePerPower * dropMult);
+  const goldReady = Math.floor(hours * power * T.mining.goldRatePerPower);
+  return { capMs, pendingMs, oreId: tier.id, oreReady, goldReady, full: pendingMs >= capMs };
+}
+
+export interface HuntingStatus {
+  capMs: number;
+  pendingMs: number;
+  goldReady: number;
+  drops: Partial<Record<MaterialId, number>>;
+  full: boolean;
+}
+
+export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus {
+  const zone = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
+  if (!zone) {
+    return { capMs: 0, pendingMs: 0, goldReady: 0, drops: {}, full: false };
+  }
+  const passActive = isBattlePassActive(save, now);
+  const capHours = passActive ? Math.max(zone.offlineCapHours, T.battlePass.capHours) : zone.offlineCapHours;
+  const capMs = capHours * 3600 * 1000;
+  const elapsedMs = Math.max(0, now - save.huntingOfflineStart);
+  const pendingMs = Math.min(elapsedMs, capMs);
+  const hours = pendingMs / (3600 * 1000);
+  const goldReady = Math.floor(hours * zone.goldPerHour);
+  const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
+  const encounters = hours * T.hunting.encountersPerHour;
+  const drops: Partial<Record<MaterialId, number>> = {};
+  for (const entry of zone.drops) {
+    const qty = Math.floor(encounters * entry.chance * entry.qty * dropMult);
+    if (qty > 0) drops[entry.material] = (drops[entry.material] ?? 0) + qty;
+  }
+  return { capMs, pendingMs, goldReady, drops, full: pendingMs >= capMs };
 }
 
 export function defaultSave(): SaveData {
@@ -388,7 +228,7 @@ export function defaultSave(): SaveData {
     inventory: { ...DEFAULT_INVENTORY },
     equipped: { ...DEFAULT_EQUIPPED },
     upgrades: {},
-    highestFloor: 1,
+    highestDungeonFloor: 1,
     heroName: 'Hero',
     str: 0,
     vit: 0,
@@ -405,6 +245,21 @@ export function defaultSave(): SaveData {
     quests: emptyQuestState(),
     itemRarity: {},
     itemSubstats: {},
+    activeOreId: null,
+    lastMiningClaim: Date.now(),
+    miningCapHours: T.mining.capHours,
+    activeHuntingZone: null,
+    huntingOfflineStart: Date.now(),
+    unlockedHuntingZones: [DEFAULT_HUNTING_ZONE],
+    hasBattlePass: false,
+    battlePassExpiresAt: null,
+    battlePassLevel: 1,
+    battlePassXp: 0,
+    claimedPassRewards: { free: [], premium: [] },
+    oneTokenBalance: 0,
+    cosmetics: [],
+    activeTitle: null,
+    dungeonCheckpoints: [],
   };
 }
 
@@ -426,7 +281,7 @@ export function loadSave(): SaveData {
         const n = Math.floor(Number(lvl));
         if (getGear(id) && Number.isFinite(n) && n > 0) upgrades[id] = Math.min(8, n);
       }
-      const highestFloor = Math.max(1, Math.min(4, Math.floor(Number(parsed.highestFloor ?? 1)) || 1));
+      const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
       const exp = parsed.expedition;
       const expedition =
         exp && typeof exp.id === 'string' && getExpedition(exp.id) && typeof exp.endsAt === 'number' && Number.isFinite(exp.endsAt)
@@ -449,13 +304,13 @@ export function loadSave(): SaveData {
         sockets[id] = (list as string[]).filter((g) => getGem(g)).slice(0, 4) as GemId[];
       }
       const today = new Date().toDateString();
-      const q = parsed.quests ?? {};
+      const q: Partial<QuestState> = parsed.quests ?? {};
       const quests: QuestState = {
         dailyDay: typeof q.dailyDay === 'string' ? q.dailyDay : '',
-        daily: { ...emptyQuestState().daily, ...((q as { daily?: Record<string, number> }).daily ?? {}) },
-        dailyClaimed: Array.isArray(q.dailyClaimed) ? (q.dailyClaimed as string[]) : [],
-        counters: { ...emptyQuestState().counters, ...((q as { counters?: Record<string, number> }).counters ?? {}) },
-        claimed: Array.isArray(q.claimed) ? (q.claimed as string[]) : [],
+        daily: { ...emptyQuestState().daily, ...(q.daily ?? {}) },
+        dailyClaimed: Array.isArray(q.dailyClaimed) ? q.dailyClaimed : [],
+        counters: { ...emptyQuestState().counters, ...(q.counters ?? {}) },
+        claimed: Array.isArray(q.claimed) ? q.claimed : [],
       };
       if (quests.dailyDay !== today) {
         quests.dailyDay = today;
@@ -471,6 +326,59 @@ export function loadSave(): SaveData {
         if (!getGear(id) || !Array.isArray(list)) continue;
         itemSubstats[id] = (list as Substat[]).filter((s) => s && typeof s.value === 'number').slice(0, 4);
       }
+      const oreTierIds = new Set(ORE_TIERS.map((t) => t.id as string));
+      const legacyMiningActive = (parsed as { miningActive?: boolean }).miningActive === true;
+      const activeOreId =
+        typeof parsed.activeOreId === 'string' && oreTierIds.has(parsed.activeOreId)
+          ? parsed.activeOreId
+          : legacyMiningActive
+            ? DEFAULT_ORE_TIER
+            : null;
+      const lastMiningClaim =
+        typeof parsed.lastMiningClaim === 'number' && Number.isFinite(parsed.lastMiningClaim) && parsed.lastMiningClaim > 0
+          ? parsed.lastMiningClaim
+          : Date.now();
+      const miningCapHours =
+        typeof parsed.miningCapHours === 'number' && Number.isFinite(parsed.miningCapHours) && parsed.miningCapHours > 0
+          ? parsed.miningCapHours
+          : T.mining.capHours;
+      const knownZoneIds = new Set(HUNTING_ZONES.map((z) => z.id));
+      const unlockedHuntingZones = Array.isArray(parsed.unlockedHuntingZones)
+        ? Array.from(new Set([DEFAULT_HUNTING_ZONE, ...parsed.unlockedHuntingZones.filter((id) => knownZoneIds.has(id))]))
+        : [DEFAULT_HUNTING_ZONE];
+      const activeHuntingZone =
+        typeof parsed.activeHuntingZone === 'string' && unlockedHuntingZones.includes(parsed.activeHuntingZone)
+          ? parsed.activeHuntingZone
+          : null;
+      const huntingOfflineStart =
+        typeof parsed.huntingOfflineStart === 'number' && Number.isFinite(parsed.huntingOfflineStart) && parsed.huntingOfflineStart > 0
+          ? parsed.huntingOfflineStart
+          : Date.now();
+      const hasBattlePass = !!parsed.hasBattlePass;
+      const battlePassExpiresAt =
+        typeof parsed.battlePassExpiresAt === 'number' && Number.isFinite(parsed.battlePassExpiresAt) && parsed.battlePassExpiresAt > 0
+          ? parsed.battlePassExpiresAt
+          : null;
+      const battlePassLevelRaw = Math.floor(Number(parsed.battlePassLevel));
+      const battlePassLevel =
+        Number.isFinite(battlePassLevelRaw) && battlePassLevelRaw > 0 ? Math.min(MAX_BATTLE_PASS_LEVEL, battlePassLevelRaw) : 1;
+      const battlePassXp =
+        typeof parsed.battlePassXp === 'number' && Number.isFinite(parsed.battlePassXp) && parsed.battlePassXp >= 0 ? parsed.battlePassXp : 0;
+      const rawClaimed = parsed.claimedPassRewards as { free?: unknown; premium?: unknown } | undefined;
+      const sanitizeLevels = (arr: unknown): number[] =>
+        Array.isArray(arr)
+          ? Array.from(new Set(arr.filter((n): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= MAX_BATTLE_PASS_LEVEL)))
+          : [];
+      const claimedPassRewards = { free: sanitizeLevels(rawClaimed?.free), premium: sanitizeLevels(rawClaimed?.premium) };
+      const oneTokenBalance =
+        typeof parsed.oneTokenBalance === 'number' && Number.isFinite(parsed.oneTokenBalance) && parsed.oneTokenBalance >= 0
+          ? parsed.oneTokenBalance
+          : 0;
+      const cosmetics = Array.isArray(parsed.cosmetics) ? parsed.cosmetics.filter((c): c is string => typeof c === 'string') : [];
+      const activeTitle = typeof parsed.activeTitle === 'string' && cosmetics.includes(parsed.activeTitle) ? parsed.activeTitle : null;
+      const dungeonCheckpoints = Array.isArray(parsed.dungeonCheckpoints)
+        ? Array.from(new Set(parsed.dungeonCheckpoints.filter((f): f is number => typeof f === 'number' && MILESTONE_FLOORS.includes(f))))
+        : [];
       return {
         ...base,
         ...parsed,
@@ -478,7 +386,7 @@ export function loadSave(): SaveData {
         inventory: gear.inventory,
         equipped: gear.equipped,
         upgrades,
-        highestFloor,
+        highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
         consumables: { ...emptyConsumables(), ...(parsed.consumables ?? {}) },
@@ -490,6 +398,21 @@ export function loadSave(): SaveData {
         quests,
         itemRarity,
         itemSubstats,
+        activeOreId,
+        lastMiningClaim,
+        miningCapHours,
+        activeHuntingZone,
+        huntingOfflineStart,
+        unlockedHuntingZones,
+        hasBattlePass,
+        battlePassExpiresAt,
+        battlePassLevel,
+        battlePassXp,
+        claimedPassRewards,
+        oneTokenBalance,
+        cosmetics,
+        activeTitle,
+        dungeonCheckpoints,
       };
     }
   } catch {

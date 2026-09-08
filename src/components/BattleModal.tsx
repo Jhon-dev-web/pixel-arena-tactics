@@ -3,22 +3,24 @@ import T from '../game/tunables';
 import { t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData, playerMaxHp } from '../game/engine';
-import { getEnemyDef } from '../game/enemies';
+import { EnemyDef, getEnemyDef } from '../game/enemies';
 import { durabilityFactor, effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, MAX_DURABILITY, refineLevel } from '../game/gear';
-import { FloorDef } from '../game/dungeon';
+import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, spriteForArmorTier } from '../game/sprites';
 import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
-import { isMiniBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
-import { totalGemBonuses } from '../game/gems';
+import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
+import { getGem, totalGemBonuses } from '../game/gems';
 import { rarityStatMult, totalSubstatTotals } from '../game/rarity';
+import { getTitleDef } from '../game/titles';
 
 const enemyText = (k: string): string => t(`enemies.${k}`);
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
+const biomeText = (k: string): string => t(`dungeon.${k}`);
 const materialName = (mid: string): string => t(`materials.mat_${mid}`);
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
-const stageLabel = (f: number, s: number) => t('dungeon.stageLabel', { f, s });
+const enemyDefForFloor = (floor: number): EnemyDef => getEnemyDef(dungeonEnemyKindForFloor(floor));
 
 interface FloatItem {
   id: number;
@@ -33,18 +35,17 @@ const ANIM_ROW: Record<string, number> = { idle: 0, attack: 1, hurt: 2 };
 
 export default function BattleModal({
   save,
-  floor,
+  startFloor,
   onRetreat,
   onDefeat,
   onUsePotion,
 }: {
   save: SaveData;
-  floor: FloorDef;
+  startFloor: number;
   onRetreat: (rewards: RunRewards) => void;
   onDefeat: (rewards: RunRewards) => void;
   onUsePotion: () => void;
 }) {
-  const def = getEnemyDef(floor.enemyKind);
   const build = getEquipped(save.equipped);
   const weapon = build.weapon;
   const armor = build.armor;
@@ -64,11 +65,13 @@ export default function BattleModal({
 
   const playerMax = playerMaxHp(save);
 
-  const [stage, setStage] = useState(1);
-  const [miniBoss, setMiniBoss] = useState(false);
-  const [enemyMax, setEnemyMax] = useState(() => stageEnemyHp(def, 1));
+  const [stage, setStage] = useState(startFloor);
+  const [milestone, setMilestone] = useState<'checkpoint' | 'boss' | null>(
+    isDungeonBoss(startFloor) ? 'boss' : isDungeonCheckpoint(startFloor) ? 'checkpoint' : null,
+  );
+  const [enemyMax, setEnemyMax] = useState(() => stageEnemyHp(enemyDefForFloor(startFloor), startFloor));
   const [playerHp, setPlayerHp] = useState(playerMax);
-  const [enemyHp, setEnemyHp] = useState(() => stageEnemyHp(def, 1));
+  const [enemyHp, setEnemyHp] = useState(() => stageEnemyHp(enemyDefForFloor(startFloor), startFloor));
   const [phase, setPhase] = useState<Phase>('battle');
   const [floats, setFloats] = useState<FloatItem[]>([]);
   const [playerAnim, setPlayerAnim] = useState<'idle' | 'attack' | 'hurt'>('idle');
@@ -85,11 +88,12 @@ export default function BattleModal({
   const [accumCount, setAccumCount] = useState(0);
   const [finalRewards, setFinalRewards] = useState<RunRewards | null>(null);
   const [waveClear, setWaveClear] = useState<{ stage: number; gold: number; drops: Partial<Record<MaterialId, number>>; shards: number } | null>(null);
+  const [dungeonComplete, setDungeonComplete] = useState(false);
 
-  const hp = useRef({ p: playerMax, e: stageEnemyHp(def, 1) });
+  const hp = useRef({ p: playerMax, e: stageEnemyHp(enemyDefForFloor(startFloor), startFloor) });
   const phaseRef = useRef<Phase>('battle');
   const speedRef = useRef<1 | 2>(1);
-  const stageRef = useRef(1);
+  const stageRef = useRef(startFloor);
   const clearedRef = useRef(0);
   const accumRef = useRef<{ gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; count: number }>({
     gold: 0,
@@ -108,6 +112,7 @@ export default function BattleModal({
   onDefeatRef.current = onDefeat;
   const onUsePotionRef = useRef(onUsePotion);
   onUsePotionRef.current = onUsePotion;
+  const dungeonCompleteRef = useRef(false);
 
   const addFloat = (side: 'p' | 'e', text: string, kind: 'damage' | 'crit' | 'heal') => {
     const id = idRef.current++;
@@ -121,6 +126,7 @@ export default function BattleModal({
     setPhase(outcome);
     setHeroProgress(0);
     setEnemyProgress(0);
+    setDungeonComplete(dungeonCompleteRef.current);
     const acc = accumRef.current;
     const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold / 2);
     setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, stages: clearedRef.current });
@@ -148,13 +154,18 @@ export default function BattleModal({
     const startNextWave = () => {
       if (phaseRef.current !== 'intermission') return;
       const next = stageRef.current + 1;
+      if (next > MAX_DUNGEON_FLOOR) {
+        dungeonCompleteRef.current = true;
+        endCombat('retreat');
+        return;
+      }
       stageRef.current = next;
       setStage(next);
-      const nmax = stageEnemyHp(def, next);
+      const nmax = stageEnemyHp(enemyDefForFloor(next), next);
       hp.current.e = nmax;
       setEnemyMax(nmax);
       setEnemyHp(nmax);
-      setMiniBoss(isMiniBoss(next));
+      setMilestone(isDungeonBoss(next) ? 'boss' : isDungeonCheckpoint(next) ? 'checkpoint' : null);
       setWaveClear(null);
       setHeroProgress(0);
       setEnemyProgress(0);
@@ -167,7 +178,7 @@ export default function BattleModal({
 
     const clearWave = () => {
       const st = stageRef.current;
-      const r = waveRewards(floor, st);
+      const r = waveRewards(getBiomeForFloor(st), st);
       applyLoot(r.gold, r.drops, r.shards);
       clearedRef.current += 1;
       const healed = Math.min(playerMax, Math.round(hp.current.p + playerMax * T.battle.waveHeal));
@@ -213,7 +224,7 @@ export default function BattleModal({
       const st = stageRef.current;
       const reduction =
         effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
-      const eFinal = Math.max(1, Math.round(stageEnemyDmg(def, st) * (1 - reduction)));
+      const eFinal = Math.max(1, Math.round(stageEnemyDmg(enemyDefForFloor(st), st) * (1 - reduction)));
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);
       setEnemyAnim('attack');
@@ -263,7 +274,7 @@ export default function BattleModal({
         if (phaseRef.current !== 'battle') return;
       }
 
-      const enemyInterval = def.atkSpeedMs / spd;
+      const enemyInterval = enemyDefForFloor(stageRef.current).atkSpeedMs / spd;
       const enemyElapsed = now - enemyNextAtkRef.current;
       setEnemyProgress(Math.min(1, enemyElapsed / enemyInterval));
       if (enemyElapsed >= enemyInterval) {
@@ -284,6 +295,10 @@ export default function BattleModal({
   };
 
   const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
+
+  const currentEnemyKind = dungeonEnemyKindForFloor(stage);
+  const currentDef = getEnemyDef(currentEnemyKind);
+  const currentBiome = getBiomeForFloor(stage);
 
   const renderLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number) => (
     <>
@@ -312,12 +327,55 @@ export default function BattleModal({
     </>
   );
 
+  // Milestones only ever bank on a successful retreat — a defeat must never show or grant them,
+  // even if a boss earlier in this same run was genuinely killed.
+  const crossedMilestones =
+    phase === 'retreat' && finalRewards && finalRewards.stages > 0
+      ? crossedMilestoneFloors(startFloor, finalRewards.stages, save.dungeonCheckpoints)
+      : [];
+
+  const renderMilestoneBanner = () => (
+    <div className="milestone-banner">
+      {crossedMilestones.map((floor) => {
+        const reward = getMilestoneReward(floor);
+        if (!reward) return null;
+        const titleDef = reward.titleId ? getTitleDef(reward.titleId) : undefined;
+        return (
+          <div className="milestone-card" key={floor}>
+            <div className="milestone-title">🏆 {t('dungeon.milestoneCleared', { n: floor })}</div>
+            <div className="milestone-rewards">
+              <span className="floor-drop">
+                <span className="mat-icon">
+                  <img src={Assets.icons.gold.url} alt="" />
+                </span>
+                <span>{t('ui.goldReward', { n: reward.gold })}</span>
+              </span>
+              {Object.entries(reward.gems).map(([gid, qty]) => (
+                <span className="floor-drop" key={gid}>
+                  <span className="mat-icon">{getGem(gid)?.icon ?? '💎'}</span>
+                  <span>+{qty as number}</span>
+                </span>
+              ))}
+              {!!reward.oneTokenBalance && (
+                <span className="floor-drop">
+                  <span className="mat-icon">🔶</span>
+                  <span>ONE +{reward.oneTokenBalance}</span>
+                </span>
+              )}
+            </div>
+            {titleDef && <div className="milestone-title-unlocked">🎖️ {t(`titles.${titleDef.nameKey}`)}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="modal-backdrop battle-backdrop">
       <div className="battle">
         <div className="battle-controls">
           <div className="battle-left">
-            <span className="stage-indicator">{stageLabel(floor.floor, stage)}</span>
+            <span className="stage-indicator">{t('dungeon.floorProgress', { n: stage, m: MAX_DUNGEON_FLOOR })}</span>
             <button className="battle-speed" onClick={toggleSpeed} data-ui>
               {dungeonText('speed').replace('{n}', String(speed))}
             </button>
@@ -331,6 +389,7 @@ export default function BattleModal({
             {t('dungeon.retreat')}
           </button>
         </div>
+        <span className="battle-biome">{biomeText(currentBiome.nameKey)}</span>
 
         <div className="battle-loot-hud">
           <span className="loot-gold">{dungeonText('accumGold').replace('{n}', String(accumGold))}</span>
@@ -340,7 +399,9 @@ export default function BattleModal({
 
         <div className="battle-top">
           <div className="battle-hud hero">
-            <span className="hp-label">{dungeonText('heroLabel')}</span>
+            <span className="hp-label">
+              <span className="hp-name-text">{dungeonText('heroLabel')}</span>
+            </span>
             <div className="battle-hp-row">
               <div className="bar hp">
                 <div className="bar-fill hp-fill" style={{ width: `${pct(playerHp, playerMax)}%` }} />
@@ -356,8 +417,9 @@ export default function BattleModal({
 
           <div className="battle-hud enemy">
             <span className="hp-label">
-              {enemyText(def.nameKey)}
-              {miniBoss && <span className="miniboss-tag">{t('dungeon.miniBoss')}</span>}
+              <span className="hp-name-text">{enemyText(currentDef.nameKey)}</span>
+              {milestone === 'boss' && <span className="miniboss-tag boss">👑 {t('dungeon.mainBoss')}</span>}
+              {milestone === 'checkpoint' && <span className="miniboss-tag">💀 {t('dungeon.miniBoss')}</span>}
             </span>
             <div className="battle-hp-row">
               <div className="bar hp enemy-hp">
@@ -389,7 +451,7 @@ export default function BattleModal({
           <div className="battle-vs">VS</div>
           <div className={`battle-side enemy${enemyLunge ? ' lunge' : ''}${enemyFlash ? ' flash' : ''}`}>
             <SpriteSheet
-              src={enemySpriteUrl(floor.enemyKind)}
+              src={enemySpriteUrl(currentEnemyKind)}
               size="calc(var(--sprite-size, 132px) * 1.1)"
               row={ANIM_ROW[enemyAnim]}
               flip
@@ -403,7 +465,7 @@ export default function BattleModal({
 
           {waveClear && phase === 'intermission' && (
             <div className="wave-banner">
-              <div className="wave-title">{dungeonText('waveCleared').replace('{n}', String(waveClear.stage))}</div>
+              <div className="wave-title">{dungeonText('floorCleared').replace('{n}', String(waveClear.stage))}</div>
               <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards)}</div>
             </div>
           )}
@@ -411,24 +473,27 @@ export default function BattleModal({
 
         {(phase === 'retreat' || phase === 'defeat') && finalRewards && (
           <div className="battle-result">
-            {phase === 'retreat' ? (
-              <>
-                <h2 className="result-title win">{t('dungeon.retreatTitle')}</h2>
-                <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
-                <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
-                  {t('dungeon.collect')}
-                </button>
-              </>
-            ) : (
-              <>
-                <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
-                <div className="gold-penalty">{t('dungeon.goldPenalty')}</div>
-                <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
-                <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
-                  {t('dungeon.return')}
-                </button>
-              </>
-            )}
+            <div className="battle-result-panel">
+              {phase === 'retreat' ? (
+                <>
+                  <h2 className="result-title win">{dungeonComplete ? t('dungeon.dungeonComplete') : t('dungeon.retreatTitle')}</h2>
+                  {crossedMilestones.length > 0 && renderMilestoneBanner()}
+                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
+                  <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
+                    {t('dungeon.collect')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
+                  <div className="gold-penalty">{t('dungeon.goldPenalty')}</div>
+                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
+                  <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
+                    {t('dungeon.return')}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

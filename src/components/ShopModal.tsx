@@ -35,7 +35,9 @@ export default function ShopModal({
               <div className="gear-row" key={c.id}>
                 <div className="gear-info">
                   <span className="gear-name">
-                    {c.icon} {conText(c.nameKey)}
+                    <span className="gear-name-text">
+                      {c.icon} {conText(c.nameKey)}
+                    </span>
                     <span className="gear-count">{t('shop.youHave', { n: qty })}</span>
                   </span>
                   <span className="gear-desc">{conText(c.descKey)}</span>
@@ -56,7 +58,9 @@ export default function ShopModal({
               <div className="gear-row" key={g.id}>
                 <div className="gear-info">
                   <span className="gear-name">
-                    {g.icon} {gemText(g.nameKey)}
+                    <span className="gear-name-text">
+                      {g.icon} {gemText(g.nameKey)}
+                    </span>
                     <span className="gear-count">{t('shop.youOwn', { n: owned })}</span>
                   </span>
                   <span className="gear-desc">{gemText(g.descKey)}</span>

@@ -1,12 +1,15 @@
 import { MaterialId } from './materials';
+import { GemId } from './gems';
 import Assets from '../assets.json';
 
-export type GearSlot = 'weapon' | 'armor' | 'relic';
+export type GearSlot = 'weapon' | 'shield' | 'armor' | 'helmet' | 'pickaxe' | 'axe' | 'rod' | 'relic';
 
 export interface Recipe {
   materials?: Partial<Record<MaterialId, number>>;
   items?: Record<string, number>;
+  gems?: Partial<Record<GemId, number>>;
   shards?: number;
+  requiredLevel?: number;
 }
 
 export interface GearItem {
@@ -17,6 +20,7 @@ export interface GearItem {
   materialKey?: string;
   iconUrl?: string;
   iconSheet?: boolean;
+  icon?: string;
   cost: number;
   recipe?: Recipe;
   tier?: number;
@@ -25,46 +29,76 @@ export interface GearItem {
   burn?: boolean;
   maxHp?: number;
   resistance?: number;
+  reflect?: number;
   focusHpBonus?: number;
   attackStaminaReduction?: number;
   critMultBonus?: number;
+  miningPower?: number;
+  woodcuttingPower?: number;
+  fishingPower?: number;
 }
 
 export interface EquippedGear {
   weapon: string;
   armor: string;
   relic: string | null;
+  shield: string | null;
+  helmet: string | null;
+  pickaxe: string | null;
+  axe: string | null;
+  rod: string | null;
 }
 
-export const GEAR_SLOTS: GearSlot[] = ['weapon', 'armor', 'relic'];
+export const GEAR_SLOTS: GearSlot[] = ['weapon', 'armor', 'relic', 'pickaxe'];
 
 export const GEAR: GearItem[] = [
   // Weapons (Tier 0-4) — hierarchical crafting
   { id: 'wooden_club', slot: 'weapon', nameKey: 'wooden_club', descKey: 'wooden_club_d', materialKey: 'material_wood', iconUrl: Assets.weapons.club.url, cost: 0, tier: 0, damage: 0 },
-  { id: 'bronze_dagger', slot: 'weapon', nameKey: 'bronze_dagger', descKey: 'bronze_dagger_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.dagger.url, cost: 40, tier: 1, damage: 12, critChance: 0.03, recipe: { materials: { iron: 2, leather: 1 } } },
-  { id: 'iron_short_sword', slot: 'weapon', nameKey: 'iron_short_sword', descKey: 'iron_short_sword_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.sword_iron.url, cost: 120, tier: 2, damage: 30, critChance: 0.06, recipe: { items: { bronze_dagger: 2 }, materials: { iron: 3 } } },
-  { id: 'steel_greatsword', slot: 'weapon', nameKey: 'steel_greatsword', descKey: 'steel_greatsword_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.sword_steel.url, cost: 300, tier: 3, damage: 65, critChance: 0.1, recipe: { items: { iron_short_sword: 2 }, materials: { steel: 4, essence: 2 } } },
+  { id: 'bronze_dagger', slot: 'weapon', nameKey: 'bronze_dagger', descKey: 'bronze_dagger_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.dagger.url, cost: 40, tier: 1, damage: 12, critChance: 0.03, recipe: { materials: { copper: 3, leather: 1 } } },
+  { id: 'iron_short_sword', slot: 'weapon', nameKey: 'iron_short_sword', descKey: 'iron_short_sword_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.sword_iron.url, cost: 120, tier: 2, damage: 30, critChance: 0.06, recipe: { items: { bronze_dagger: 2 }, materials: { iron: 3, leather_scrap: 2 }, requiredLevel: 10 } },
+  { id: 'steel_greatsword', slot: 'weapon', nameKey: 'steel_greatsword', descKey: 'steel_greatsword_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.sword_steel.url, cost: 300, tier: 3, damage: 65, critChance: 0.1, recipe: { items: { iron_short_sword: 2 }, materials: { silver: 4, essence: 2, bone_fragment: 3, demon_claw: 1 }, gems: { ruby: 1 }, requiredLevel: 25 } },
+  { id: 'gilded_warblade', slot: 'weapon', nameKey: 'gilded_warblade', descKey: 'gilded_warblade_d', materialKey: 'material_gold', cost: 600, tier: 4, damage: 90, critChance: 0.14, recipe: { items: { steel_greatsword: 1 }, materials: { gold_ore: 5, concentrated_blood: 3, demon_core: 1 }, requiredLevel: 50 } },
   { id: 'dragon_flameblade', slot: 'weapon', nameKey: 'dragon_flameblade', descKey: 'dragon_flameblade_d', materialKey: 'material_dragon', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 1000, tier: 4, damage: 120, critChance: 0.18, burn: true, recipe: { items: { steel_greatsword: 1 }, materials: { dragon_scales: 3 }, shards: 5 } },
   // Armors (Tier 0-4) — hierarchical crafting
   { id: 'ragged_clothes', slot: 'armor', nameKey: 'ragged_clothes', descKey: 'ragged_clothes_d', materialKey: 'material_cloth', iconUrl: Assets.spritesheets.peasant.url, iconSheet: true, cost: 0, tier: 0, maxHp: 0 },
-  { id: 'bronze_leather', slot: 'armor', nameKey: 'bronze_leather', descKey: 'bronze_leather_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.armor_leather.url, cost: 50, tier: 1, maxHp: 40, resistance: 0.03, recipe: { materials: { iron: 2, leather: 3 } } },
-  { id: 'iron_chainmail', slot: 'armor', nameKey: 'iron_chainmail', descKey: 'iron_chainmail_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.armor_iron.url, cost: 130, tier: 2, maxHp: 90, resistance: 0.06, recipe: { items: { bronze_leather: 2 }, materials: { iron: 3 } } },
-  { id: 'steel_plate', slot: 'armor', nameKey: 'steel_plate', descKey: 'steel_plate_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.armor_steel.url, cost: 350, tier: 3, maxHp: 160, resistance: 0.1, recipe: { items: { iron_chainmail: 2 }, materials: { steel: 4, essence: 2 } } },
+  { id: 'bronze_leather', slot: 'armor', nameKey: 'bronze_leather', descKey: 'bronze_leather_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.armor_leather.url, cost: 50, tier: 1, maxHp: 40, resistance: 0.03, recipe: { materials: { copper: 3, leather: 3 } } },
+  { id: 'iron_chainmail', slot: 'armor', nameKey: 'iron_chainmail', descKey: 'iron_chainmail_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.armor_iron.url, cost: 130, tier: 2, maxHp: 90, resistance: 0.06, recipe: { items: { bronze_leather: 2 }, materials: { iron: 3, leather_scrap: 2 }, requiredLevel: 10 } },
+  { id: 'steel_plate', slot: 'armor', nameKey: 'steel_plate', descKey: 'steel_plate_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.armor_steel.url, cost: 350, tier: 3, maxHp: 160, resistance: 0.1, reflect: 0.2, recipe: { items: { iron_chainmail: 2 }, materials: { silver: 4, essence: 2, bone_fragment: 3, demon_claw: 1 }, gems: { sapphire: 1 }, requiredLevel: 25 } },
+  { id: 'gilded_aegis', slot: 'armor', nameKey: 'gilded_aegis', descKey: 'gilded_aegis_d', materialKey: 'material_gold', cost: 650, tier: 4, maxHp: 220, resistance: 0.13, recipe: { items: { steel_plate: 1 }, materials: { gold_ore: 5, concentrated_blood: 3, corrupted_crystal: 1 }, requiredLevel: 50 } },
   { id: 'dragon_scale_armor', slot: 'armor', nameKey: 'dragon_scale_armor', descKey: 'dragon_scale_armor_d', materialKey: 'material_dragon', iconUrl: Assets.gear_icons.armor_dragon.url, cost: 1000, tier: 4, maxHp: 260, resistance: 0.15, recipe: { items: { steel_plate: 1 }, materials: { dragon_scales: 3 }, shards: 5 } },
   // Relics
   { id: 'ring_vitality', slot: 'relic', nameKey: 'ring_vitality', descKey: 'ring_vitality_d', cost: 200, focusHpBonus: 15, recipe: { materials: { essence: 3 } } },
   { id: 'amulet_swiftness', slot: 'relic', nameKey: 'amulet_swiftness', descKey: 'amulet_swiftness_d', cost: 250, attackStaminaReduction: 5, recipe: { materials: { essence: 3 } } },
   { id: 'berserker_crest', slot: 'relic', nameKey: 'berserker_crest', descKey: 'berserker_crest_d', cost: 350, critMultBonus: 0.5, recipe: { materials: { essence: 5 } } },
+  // Profession tools
+  { id: 'rusty_pickaxe', slot: 'pickaxe', nameKey: 'rusty_pickaxe', descKey: 'rusty_pickaxe_d', icon: '/assets/icons/pickaxe.png', cost: 0, tier: 0, miningPower: 5 },
+  { id: 'iron_pickaxe', slot: 'pickaxe', nameKey: 'iron_pickaxe', descKey: 'iron_pickaxe_d', icon: '/assets/icons/pickaxe.png', cost: 60, tier: 1, miningPower: 12, recipe: { materials: { iron: 4, leather_scrap: 2 }, requiredLevel: 10 } },
+  { id: 'steel_pickaxe', slot: 'pickaxe', nameKey: 'steel_pickaxe', descKey: 'steel_pickaxe_d', icon: '/assets/icons/pickaxe.png', cost: 150, tier: 2, miningPower: 22, recipe: { items: { iron_pickaxe: 1 }, materials: { iron: 5, demon_claw: 2, concentrated_blood: 2 }, requiredLevel: 25 } },
+  { id: 'mithril_pickaxe', slot: 'pickaxe', nameKey: 'mithril_pickaxe', descKey: 'mithril_pickaxe_d', icon: '/assets/icons/pickaxe.png', cost: 400, tier: 3, miningPower: 38, recipe: { items: { steel_pickaxe: 1 }, materials: { silver: 5, demon_core: 1, corrupted_crystal: 1 }, requiredLevel: 50 } },
+  { id: 'runic_pickaxe', slot: 'pickaxe', nameKey: 'runic_pickaxe', descKey: 'runic_pickaxe_d', icon: '/assets/icons/pickaxe.png', cost: 900, tier: 4, miningPower: 60, recipe: { items: { mithril_pickaxe: 1 }, materials: { gold_ore: 5, demon_core: 2, corrupted_crystal: 2 }, requiredLevel: 75 } },
+  { id: 'worn_axe', slot: 'axe', nameKey: 'worn_axe', descKey: 'worn_axe_d', icon: '/assets/icons/axe.png', cost: 0, tier: 0, woodcuttingPower: 5 },
+  { id: 'bamboo_rod', slot: 'rod', nameKey: 'bamboo_rod', descKey: 'bamboo_rod_d', icon: '/assets/icons/rod.png', cost: 0, tier: 0, fishingPower: 5 },
 ];
 
 const GEAR_BY_ID: Record<string, GearItem> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
 
-export const DEFAULT_INVENTORY: Record<string, number> = { wooden_club: 1, ragged_clothes: 1 };
+export const DEFAULT_INVENTORY: Record<string, number> = {
+  wooden_club: 1,
+  ragged_clothes: 1,
+  rusty_pickaxe: 1,
+  worn_axe: 1,
+  bamboo_rod: 1,
+};
 
 export const DEFAULT_EQUIPPED: EquippedGear = {
   weapon: 'wooden_club',
   armor: 'ragged_clothes',
   relic: null,
+  shield: null,
+  helmet: null,
+  pickaxe: 'rusty_pickaxe',
+  axe: 'worn_axe',
+  rod: 'bamboo_rod',
 };
 
 export function getGear(id: string): GearItem {
@@ -80,6 +114,11 @@ export function getEquipped(equipped: EquippedGear) {
     weapon: getGear(equipped.weapon),
     armor: getGear(equipped.armor),
     relic: equipped.relic ? getGear(equipped.relic) : null,
+    shield: equipped.shield ? getGear(equipped.shield) : null,
+    helmet: equipped.helmet ? getGear(equipped.helmet) : null,
+    pickaxe: equipped.pickaxe ? getGear(equipped.pickaxe) : null,
+    axe: equipped.axe ? getGear(equipped.axe) : null,
+    rod: equipped.rod ? getGear(equipped.rod) : null,
   };
 }
 
@@ -101,6 +140,11 @@ export function sanitizeSaveInventory(
       weapon: valid.has(equipped.weapon) ? equipped.weapon : DEFAULT_EQUIPPED.weapon,
       armor: valid.has(equipped.armor) ? equipped.armor : DEFAULT_EQUIPPED.armor,
       relic: equipped.relic && valid.has(equipped.relic) ? equipped.relic : null,
+      shield: equipped.shield && valid.has(equipped.shield) ? equipped.shield : null,
+      helmet: equipped.helmet && valid.has(equipped.helmet) ? equipped.helmet : null,
+      pickaxe: equipped.pickaxe && valid.has(equipped.pickaxe) ? equipped.pickaxe : null,
+      axe: equipped.axe && valid.has(equipped.axe) ? equipped.axe : null,
+      rod: equipped.rod && valid.has(equipped.rod) ? equipped.rod : null,
     },
   };
 }
