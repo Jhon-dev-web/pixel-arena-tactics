@@ -1,5 +1,5 @@
 import { CSSProperties, useMemo } from 'react';
-import { CombatEventKind } from '../game/engine';
+import { CombatEventKind } from './duelEngine';
 import { t } from '../locales';
 
 export interface FloatState {
