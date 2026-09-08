@@ -42,12 +42,12 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'gold_ore', nameKey: 'mat_gold_ore', icon: '🟡', iconUrl: '/assets/icons/ore_gold.png', packSize: 3, packCost: 400, sellValue: 45 },
   { id: 'obsidian', nameKey: 'mat_obsidian', icon: '🟣', iconUrl: '/assets/icons/ore_obsidian.png', packSize: 2, packCost: 900, sellValue: 110 },
   // Open Hunting drops — never sold via the Shop, exclusive to monster drops
-  { id: 'leather_scrap', nameKey: 'mat_leather_scrap', icon: '🟫', packSize: 5, packCost: 30, sellValue: 4 },
-  { id: 'demon_claw', nameKey: 'mat_demon_claw', icon: '🐾', packSize: 3, packCost: 120, sellValue: 22 },
+  { id: 'leather_scrap', nameKey: 'mat_leather_scrap', icon: '🟫', iconUrl: '/assets/icons/leather_scrap.png', packSize: 5, packCost: 30, sellValue: 4 },
+  { id: 'demon_claw', nameKey: 'mat_demon_claw', icon: '🐾', iconUrl: '/assets/icons/demon_claw.png', packSize: 3, packCost: 120, sellValue: 22 },
   { id: 'demon_core', nameKey: 'mat_demon_core', icon: '🟣', iconUrl: '/assets/icons/demon_core.png', packSize: 1, packCost: 800, sellValue: 180 },
-  { id: 'bone_fragment', nameKey: 'mat_bone_fragment', icon: '🦴', packSize: 5, packCost: 30, sellValue: 4 },
-  { id: 'concentrated_blood', nameKey: 'mat_concentrated_blood', icon: '🩸', packSize: 3, packCost: 120, sellValue: 22 },
-  { id: 'corrupted_crystal', nameKey: 'mat_corrupted_crystal', icon: '🔮', packSize: 1, packCost: 800, sellValue: 180 },
+  { id: 'bone_fragment', nameKey: 'mat_bone_fragment', icon: '🦴', iconUrl: '/assets/icons/bone_fragment.png', packSize: 5, packCost: 30, sellValue: 4 },
+  { id: 'concentrated_blood', nameKey: 'mat_concentrated_blood', icon: '🩸', iconUrl: '/assets/icons/concentrated_blood.png', packSize: 3, packCost: 120, sellValue: 22 },
+  { id: 'corrupted_crystal', nameKey: 'mat_corrupted_crystal', icon: '🔮', iconUrl: '/assets/icons/corrupted_crystal.png', packSize: 1, packCost: 800, sellValue: 180 },
 ];
 
 export function getMaterial(id: MaterialId): MaterialDef | undefined {
