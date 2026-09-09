@@ -179,7 +179,7 @@ export default function HeroModal({
             })}
           </div>
         ) : tab === 'equip' ? (
-          <>
+          <div className="hero-tab-scroll">
             <div className="hero-equip">
               <div className={`hero-equip-card ${rarClass(wRar)}`}>
                 <span className="hero-equip-icon">
@@ -311,7 +311,9 @@ export default function HeroModal({
                 </div>
               );
             })()}
-
+          </div>
+        ) : (
+          <div className="hero-tab-scroll">
             <div className="hero-stats-grid">
               <div className="hero-stat-cell">
                 <span>❤️ {t('profile.maxHp')}</span>
@@ -337,9 +339,7 @@ export default function HeroModal({
                 {t('profile.cp')}: <span className="num-abbr">{formatNumber(computeCP(save))}</span>
               </span>
             </div>
-          </>
-        ) : (
-          <>
+
             <div className="attrs-header">
               <span>{t('attributes.points', { n: remaining })}</span>
               <span>{t('attributes.cp', { n: computeCP(save) })}</span>
@@ -371,10 +371,12 @@ export default function HeroModal({
                 </div>
               ))}
             </div>
-            <button className="distribute-btn" onClick={onClose} data-ui>
-              {t('profile.confirmPoints')}
-            </button>
-          </>
+          </div>
+        )}
+        {tab === 'attrs' && (
+          <button className="distribute-btn" onClick={onClose} data-ui>
+            {t('profile.confirmPoints')}
+          </button>
         )}
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
