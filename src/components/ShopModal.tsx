@@ -27,7 +27,9 @@ export default function ShopModal({
   return (
     <div className="modal-backdrop">
       <div className="modal shop-modal">
-        <h2 className="modal-title">{t('shop.title')}</h2>
+        <h2 className="modal-title">
+          <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {t('shop.title')}
+        </h2>
         <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
         <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>
 
@@ -59,7 +61,9 @@ export default function ShopModal({
             );
           })}
 
-          <div className="shop-section-title">{t('shop.gems')}</div>
+          <div className="shop-section-title">
+            <img className="inline-icon" src="/assets/icons/gem_ruby.png" alt="" /> {t('shop.gems')}
+          </div>
           {GEMS.map((g) => {
             const owned = save.gems?.[g.id] ?? 0;
             const disabled = save.shards < g.shardCost;

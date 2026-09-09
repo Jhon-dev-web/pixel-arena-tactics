@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { t } from '../locales';
+import Assets from '../assets.json';
 import { SaveData, computeCP } from '../game/engine';
 import { QUESTS_DAILY, QUESTS_ACHIEVEMENTS, QuestDef, QuestContext, isClaimed, isComplete, questProgress } from '../game/quests';
 
@@ -46,7 +47,9 @@ export default function QuestsModal({
                 <div className="quest-head">
                   <span className="quest-name">{questText(q.nameKey)}</span>
                   <span className="quest-reward">
-                    <span className="quest-reward-item">🪙 {q.gold}</span>
+                    <span className="quest-reward-item">
+                    <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {q.gold}
+                  </span>
                     {q.shards > 0 && (
                       <span className="quest-reward-item quest-shards">
                         <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {q.shards}

@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { t } from '../locales';
 import Assets from '../assets.json';
 import { ActiveExpedition, EXPEDITIONS, getExpedition } from '../game/expedition';
-import { MaterialId, materialIconUrl } from '../game/materials';
 
 const expText = (k: string): string => t(`expedition.${k}`);
-const matText = (k: string): string => t(`materials.${k}`);
 
 function formatRemaining(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -88,16 +86,10 @@ export default function ExpeditionModal({
                       </span>
                       <span>{t('ui.goldReward', { n: def.gold })}</span>
                     </span>
-                    {Object.entries(def.drops).map(([mid, qty]) => (
-                      <span className="floor-drop" key={mid}>
-                        <span className="mat-icon">
-                          <img src={materialIconUrl(mid as MaterialId)} alt="" />
-                        </span>
-                        <span>
-                          {qty}× {matText(`mat_${mid}`)}
-                        </span>
-                      </span>
-                    ))}
+                    <span className="floor-drop">
+                      <span className="mat-icon xp">XP</span>
+                      <span>{t('ui.xpReward', { n: def.xp })}</span>
+                    </span>
                     {def.shards > 0 && (
                       <span className="floor-drop">
                         <span className="mat-icon shard">

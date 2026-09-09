@@ -104,7 +104,9 @@ export default function ForgeModal({
   return (
     <div className="modal-backdrop">
       <div className="modal forge-modal">
-        <h2 className="modal-title">{t('forge.title')}</h2>
+        <h2 className="modal-title">
+          <img className="inline-icon" src={Assets.gear_icons.sword_iron.url} alt="" /> {t('forge.title')}
+        </h2>
         <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
 
         <div className="forge-tabs">
@@ -118,7 +120,7 @@ export default function ForgeModal({
             {t('forge.repairTab')}
           </button>
           <button className={`tab${tab === 'socket' ? ' active' : ''}`} onClick={() => setTab('socket')} data-ui>
-            {t('forge.socketTab')}
+            <img className="inline-icon" src="/assets/icons/gem_ruby.png" alt="" /> {t('forge.socketTab')}
           </button>
         </div>
 

@@ -27,6 +27,7 @@ import ForgeModal from './components/ForgeModal';
 import InventoryModal from './components/InventoryModal';
 import HeroModal from './components/HeroModal';
 import DungeonMapModal from './components/DungeonMapModal';
+import HuntModal from './components/HuntModal';
 import BattleModal from './components/BattleModal';
 import ExpeditionModal from './components/ExpeditionModal';
 import MiningModal from './components/MiningModal';
@@ -58,6 +59,7 @@ function App() {
   const [bagOpen, setBagOpen] = useState(false);
   const [heroOpen, setHeroOpen] = useState(false);
   const [dungeonOpen, setDungeonOpen] = useState(false);
+  const [huntOpen, setHuntOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [mineOpen, setMineOpen] = useState(false);
@@ -125,6 +127,11 @@ function App() {
   const openDungeon = () => {
     playSfx('click');
     setDungeonOpen(true);
+  };
+
+  const openHunt = () => {
+    playSfx('click');
+    setHuntOpen(true);
   };
 
   const enterDungeon = () => {
@@ -282,7 +289,6 @@ function App() {
 
   const openExpedition = () => {
     playSfx('click');
-    setDungeonOpen(false);
     setExpeditionOpen(true);
   };
 
@@ -337,14 +343,11 @@ function App() {
     const def = getExpedition(exp.id);
     if (!def) return;
     const rewards = expeditionRewards(def);
-    const mats = { ...s.materials };
-    for (const [mid, qty] of Object.entries(rewards.drops ?? {})) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
-    }
+    const atCap = playerLevel(s.xp) >= 100;
     setSaveBoth({
       ...s,
       gold: s.gold + rewards.gold,
-      materials: mats,
+      xp: atCap ? s.xp : s.xp + rewards.xp,
       shards: s.shards + rewards.shards,
       expedition: null,
       quests: {
@@ -837,6 +840,14 @@ function App() {
           >
             <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />
           </button>
+          <button className="side-btn hunt-btn" onClick={openHunt} data-ui>
+            🏹
+            {!!save.activeHuntingZone && <span className="quests-badge">•</span>}
+          </button>
+          <button className="side-btn expedition-btn" onClick={openExpedition} data-ui>
+            🏕️
+            {save.expedition && Date.now() >= save.expedition.endsAt && <span className="quests-badge">•</span>}
+          </button>
           <button
             className="side-btn"
             onClick={() => {
@@ -947,12 +958,21 @@ function App() {
         <DungeonMapModal
           save={save}
           onEnterDungeon={enterDungeon}
-          onStartHunt={startHunt}
-          onStopHunt={stopHunt}
-          onExpedition={openExpedition}
           onClose={() => {
             playSfx('click');
             setDungeonOpen(false);
+          }}
+        />
+      )}
+
+      {huntOpen && (
+        <HuntModal
+          save={save}
+          onStartHunt={startHunt}
+          onStopHunt={stopHunt}
+          onClose={() => {
+            playSfx('click');
+            setHuntOpen(false);
           }}
         />
       )}

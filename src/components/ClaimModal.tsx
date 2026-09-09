@@ -1,10 +1,8 @@
 import { t } from '../locales';
 import Assets from '../assets.json';
 import { ExpeditionRewards } from '../game/expedition';
-import { MaterialId, materialIconUrl } from '../game/materials';
 
 const expText = (k: string): string => t(`expedition.${k}`);
-const matText = (k: string): string => t(`materials.${k}`);
 
 export default function ClaimModal({
   nameKey,
@@ -28,16 +26,10 @@ export default function ClaimModal({
             </span>
             <span>{t('ui.goldReward', { n: rewards.gold })}</span>
           </span>
-          {Object.entries(rewards.drops ?? {}).map(([mid, qty]) => (
-            <span className="floor-drop" key={mid}>
-              <span className="mat-icon">
-                <img src={materialIconUrl(mid as MaterialId)} alt="" />
-              </span>
-              <span>
-                +{qty}× {matText(`mat_${mid}`)}
-              </span>
-            </span>
-          ))}
+          <span className="floor-drop">
+            <span className="mat-icon xp">XP</span>
+            <span>{t('ui.xpReward', { n: rewards.xp })}</span>
+          </span>
           {rewards.shards > 0 && (
             <span className="floor-drop">
               <span className="mat-icon shard">

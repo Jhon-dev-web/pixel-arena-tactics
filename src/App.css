@@ -3,10 +3,16 @@
    to a monospace fallback so numbers stay legible everywhere. Scoped to
    0-9 only: K/M/B are real letters used in real words elsewhere (e.g.
    "Mochila"), so they can't be safely swapped game-wide the same way —
-   see .num-abbr for the formatNumber() abbreviation suffix case. */
+   see .num-abbr for the formatNumber() abbreviation suffix case.
+   The fallback's glyphs measure ~55% the width and ~80% the height of
+   Press Start 2P's at the same font-size (verified via canvas
+   measureText), which made every number in the UI look tiny next to its
+   surrounding letters — size-adjust compensates so digits read at a
+   matching visual size instead of just matching font-size. */
 @font-face {
   font-family: 'Press Start 2P';
   unicode-range: U+0030-0039;
+  size-adjust: 160%;
   src:
     local('Consolas'),
     local('Menlo'),
@@ -1121,7 +1127,9 @@ body {
   cursor: pointer;
   line-height: 1;
 }
-.quests-btn {
+.quests-btn,
+.hunt-btn,
+.expedition-btn {
   position: relative;
 }
 .quests-badge {
@@ -2008,8 +2016,20 @@ body {
   font-size: 14px;
   line-height: 1;
 }
+.mat-icon.xp {
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 1;
+  color: #8ad0ff;
+}
+/* Same Consolas-vs-Press-Start-2P size mismatch as the digit @font-face
+   above (this class fully overrides font-family instead of relying on
+   unicode-range, so it needs its own compensation) — 160% verified the
+   same way, by side-by-side rendering against surrounding pixel-font
+   labels at several multipliers. */
 .num-abbr {
   font-family: 'Consolas', 'Menlo', 'Roboto Mono', 'Courier New', 'Courier', monospace;
+  font-size: 160%;
 }
 .inline-icon {
   width: 15px;
