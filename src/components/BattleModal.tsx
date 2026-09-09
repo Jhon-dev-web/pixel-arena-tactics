@@ -400,9 +400,15 @@ export default function BattleModal({
         <span className="battle-biome">{biomeText(currentBiome.nameKey)}</span>
 
         <div className="battle-loot-hud">
-          <span className="loot-gold">{dungeonText('accumGold').replace('{n}', String(accumGold))}</span>
-          <span className="loot-potions">{dungeonText('potions').replace('{n}', String(potionsLeft))}</span>
-          <span className="loot-drops">{dungeonText('accumDrops').replace('{n}', String(accumCount))}</span>
+          <span className="loot-gold">
+            <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {accumGold}
+          </span>
+          <span className="loot-potions">
+            <img className="inline-icon" src="/assets/icons/potion_small_hp.png" alt="" /> {potionsLeft}
+          </span>
+          <span className="loot-drops">
+            <img className="inline-icon" src="/assets/icons/nav_bag.png" alt="" /> {dungeonText('accumDrops').replace('{n}', String(accumCount))}
+          </span>
         </div>
 
         <div className="battle-top">
