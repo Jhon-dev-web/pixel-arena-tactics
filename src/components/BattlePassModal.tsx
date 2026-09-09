@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { t } from '../locales';
+import Assets from '../assets.json';
 import { battlePassXpForLevel, isBattlePassActive, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/engine';
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
 import { MATERIALS } from '../game/materials';
@@ -12,7 +13,7 @@ import GemIcon from './GemIcon';
 function rewardIcon(reward: BattlePassReward): ReactNode {
   switch (reward.kind) {
     case 'gold':
-      return '🪙';
+      return <img className="inline-icon" src={Assets.icons.gold.url} alt="" />;
     case 'material': {
       const def = MATERIALS.find((m) => m.id === reward.id);
       return def ? <MaterialIcon item={def} className="inline-icon" /> : '📦';
@@ -115,7 +116,9 @@ export default function BattlePassModal({
   return (
     <div className="modal-backdrop">
       <div className="modal dungeon-modal bp-modal">
-        <h2 className="modal-title">{t('battlePass.title')}</h2>
+        <h2 className="modal-title">
+          <img className="inline-icon" src="/assets/icons/nav_battlepass.png" alt="" /> {t('battlePass.title')}
+        </h2>
 
         <div className="bp-status-card">
           <span className={`bp-status-label${active ? ' active' : ''}`}>

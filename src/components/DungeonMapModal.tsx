@@ -28,14 +28,14 @@ export default function DungeonMapModal({
   save,
   onEnterDungeon,
   onStartHunt,
-  onClaimHunt,
+  onStopHunt,
   onExpedition,
   onClose,
 }: {
   save: SaveData;
   onEnterDungeon: () => void;
   onStartHunt: (zoneId: string) => void;
-  onClaimHunt: () => void;
+  onStopHunt: () => void;
   onExpedition: () => void;
   onClose: () => void;
 }) {
@@ -63,6 +63,7 @@ export default function DungeonMapModal({
   const cpInsufficient = playerCp < recommendedCp;
   const huntStatus = computeHuntingStatus(save, now);
   const playerSpriteUrl = spriteForArmorTier(getEquipped(save.equipped).armor?.tier ?? 0);
+  const huntingBusy = !!save.activeHuntingZone;
 
   return (
     <div className="modal-backdrop">
@@ -99,6 +100,7 @@ export default function DungeonMapModal({
                 </span>
               </div>
               {cpInsufficient && <div className="cp-warning-banner">{t('dungeon.cpWarning', { n: recommendedCp })}</div>}
+              {huntingBusy && <div className="cp-warning-banner">{t('hunting.busyOther')}</div>}
               {milestone && (
                 <div className="floor-drops">
                   <span className="drops-label">
@@ -109,7 +111,7 @@ export default function DungeonMapModal({
                   </span>
                 </div>
               )}
-              <button className="battle-btn" onClick={onEnterDungeon} data-ui>
+              <button className="battle-btn" onClick={onEnterDungeon} disabled={huntingBusy} data-ui>
                 {dungeonText('enterDungeon')}
               </button>
             </div>
@@ -177,13 +179,8 @@ export default function DungeonMapModal({
                               ))}
                             </div>
                           )}
-                          <button
-                            className="battle-btn"
-                            onClick={onClaimHunt}
-                            disabled={huntStatus.goldReady <= 0 && Object.keys(huntStatus.drops).length === 0}
-                            data-ui
-                          >
-                            {huntText('collect')}
+                          <button className="camp-expedition-cancel" onClick={onStopHunt} data-ui>
+                            {huntText('stop')}
                           </button>
                         </>
                       ) : (

@@ -31,6 +31,7 @@ import BattleModal from './components/BattleModal';
 import ExpeditionModal from './components/ExpeditionModal';
 import MiningModal from './components/MiningModal';
 import ClaimModal from './components/ClaimModal';
+import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
 import BattlePassModal from './components/BattlePassModal';
 import { crossedMilestoneFloors, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
@@ -61,6 +62,12 @@ function App() {
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [mineOpen, setMineOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
+  const [huntReward, setHuntReward] = useState<{
+    timeMs: number;
+    pendingMs: number;
+    gold: number;
+    drops: Partial<Record<MaterialId, number>>;
+  } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -124,6 +131,10 @@ function App() {
     const s = saveRef.current;
     if (s.activeOreId) {
       showToast(t('mining.busyDungeon'));
+      return;
+    }
+    if (s.activeHuntingZone) {
+      showToast(t('hunting.busyOther'));
       return;
     }
     playSfx('click');
@@ -296,7 +307,6 @@ function App() {
     }
     setSaveBoth({ ...s, gold: s.gold + def.gold, shards: s.shards + def.shards, quests });
     playSfx('victory');
-    showToast(def.shards > 0 ? t('quests.rewardToast', { g: def.gold, s: def.shards }) : t('quests.rewardToastGold', { g: def.gold }));
   };
 
   const startExpedition = (id: string) => {
@@ -304,6 +314,10 @@ function App() {
     if (!def) return;
     const s = saveRef.current;
     if (s.expedition) return;
+    if (s.activeHuntingZone) {
+      showToast(t('hunting.busyOther'));
+      return;
+    }
     playSfx('click');
     setSaveBoth({ ...s, expedition: { id, endsAt: Date.now() + def.durationMs } });
     setExpeditionOpen(false);
@@ -348,6 +362,10 @@ function App() {
     if (!tier || !isOreTierUnlocked(tier, playerLevel(s.xp), s.inventory) || s.activeOreId === oreId) return;
     if (battleFloor !== null) {
       showToast(t('mining.busyBattle'));
+      return;
+    }
+    if (s.activeHuntingZone) {
+      showToast(t('hunting.busyOther'));
       return;
     }
     playSfx('click');
@@ -404,20 +422,29 @@ function App() {
     setSaveBoth({ ...s, gold, materials: mats, activeHuntingZone: zoneId, huntingOfflineStart: Date.now() });
   };
 
-  const claimHunt = () => {
+  const stopHunt = () => {
     const s = saveRef.current;
     if (!s.activeHuntingZone) return;
     const status = computeHuntingStatus(s, Date.now());
-    if (status.goldReady <= 0 && Object.keys(status.drops).length === 0) return;
-    playSfx('victory');
+    const timeMs = Date.now() - s.huntingOfflineStart;
+    playSfx('click');
+    setSaveBoth({ ...s, activeHuntingZone: null });
+    setHuntReward({ timeMs, pendingMs: status.pendingMs, gold: status.goldReady, drops: status.drops });
+  };
+
+  const confirmHuntReward = () => {
+    const reward = huntReward;
+    if (!reward) return;
+    const s = saveRef.current;
     const mats = { ...s.materials };
-    for (const [mid, qty] of Object.entries(status.drops)) {
+    for (const [mid, qty] of Object.entries(reward.drops)) {
       mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
     }
-    const hours = status.pendingMs / (3600 * 1000);
+    const hours = reward.pendingMs / (3600 * 1000);
     const { battlePassLevel, battlePassXp } = addBattlePassXp(s, Math.floor(hours * T.battlePass.xpPerHuntHour));
-    setSaveBoth({ ...s, gold: s.gold + status.goldReady, materials: mats, huntingOfflineStart: Date.now(), battlePassLevel, battlePassXp });
-    showToast(t('hunting.readyGold', { n: status.goldReady }));
+    playSfx('victory');
+    setSaveBoth({ ...s, gold: s.gold + reward.gold, materials: mats, huntingOfflineStart: Date.now(), battlePassLevel, battlePassXp });
+    setHuntReward(null);
   };
 
   const activateBattlePass = () => {
@@ -808,7 +835,7 @@ function App() {
             }}
             data-ui
           >
-            ⛏️
+            <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />
           </button>
           <button
             className="side-btn"
@@ -818,10 +845,10 @@ function App() {
             }}
             data-ui
           >
-            🎫
+            <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />
           </button>
           <button className="side-btn" onClick={() => { playSfx('click'); setBagOpen(true); }} data-ui>
-            🎒
+            <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />
           </button>
           <button
             className="side-btn quests-btn"
@@ -831,7 +858,7 @@ function App() {
             }}
             data-ui
           >
-            📜
+            <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />
             {claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) }) > 0 && (
               <span className="quests-badge">
                 {claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) })}
@@ -921,7 +948,7 @@ function App() {
           save={save}
           onEnterDungeon={enterDungeon}
           onStartHunt={startHunt}
-          onClaimHunt={claimHunt}
+          onStopHunt={stopHunt}
           onExpedition={openExpedition}
           onClose={() => {
             playSfx('click');
@@ -933,6 +960,7 @@ function App() {
       {expeditionOpen && (
         <ExpeditionModal
           expedition={save.expedition}
+          huntingActive={!!save.activeHuntingZone}
           onStart={startExpedition}
           onCancel={cancelExpedition}
           onClaim={claimExpedition}
@@ -964,6 +992,15 @@ function App() {
             playSfx('click');
             setClaimResult(null);
           }}
+        />
+      )}
+
+      {huntReward && (
+        <HuntRewardModal
+          timeMs={huntReward.timeMs}
+          gold={huntReward.gold}
+          drops={huntReward.drops}
+          onClaim={confirmHuntReward}
         />
       )}
 

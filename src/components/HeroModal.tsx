@@ -85,7 +85,6 @@ export default function HeroModal({
 
   const activeTitleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
   const activeTitleLabel = activeTitleDef ? t(`titles.${activeTitleDef.nameKey}`) : null;
-  const ownedTitles = TITLES.filter((def) => save.cosmetics.includes(def.id));
 
   return (
     <div className="modal-backdrop">
@@ -149,18 +148,27 @@ export default function HeroModal({
               <span className="title-name">{t('titles.none')}</span>
               {!save.activeTitle && <span className="title-tag">{t('titles.active')}</span>}
             </button>
-            {ownedTitles.length === 0 && <p className="titles-empty">{t('titles.empty')}</p>}
-            {ownedTitles.map((def) => (
-              <button
-                key={def.id}
-                className={`title-row${save.activeTitle === def.id ? ' active' : ''}`}
-                onClick={() => onSelectTitle(def.id)}
-                data-ui
-              >
-                <span className="title-name">{t(`titles.${def.nameKey}`)}</span>
-                {save.activeTitle === def.id && <span className="title-tag">{t('titles.active')}</span>}
-              </button>
-            ))}
+            {TITLES.map((def) => {
+              const unlocked = save.cosmetics.includes(def.id);
+              const isActive = save.activeTitle === def.id;
+              return (
+                <button
+                  key={def.id}
+                  className={`title-row${isActive ? ' active' : ''}${unlocked ? '' : ' locked'}`}
+                  onClick={() => unlocked && onSelectTitle(def.id)}
+                  disabled={!unlocked}
+                  data-ui
+                >
+                  <div className="title-row-main">
+                    <span className="title-name">{t(`titles.${def.nameKey}`)}</span>
+                    {!unlocked && <span className="title-req">{t(`titles.${def.reqKey}`)}</span>}
+                  </div>
+                  {isActive && <span className="title-tag">{t('titles.active')}</span>}
+                  {unlocked && !isActive && <span className="title-tag equip">{t('titles.equip')}</span>}
+                  {!unlocked && <span className="title-lock">🔒</span>}
+                </button>
+              );
+            })}
           </div>
         ) : tab === 'equip' ? (
           <>
@@ -171,7 +179,7 @@ export default function HeroModal({
                 </span>
                 <div className="hero-equip-info">
                   <span className="hero-equip-name">
-                    {gearText(weapon.nameKey)}
+                    <span className="hero-equip-name-text">{gearText(weapon.nameKey)}</span>
                     <span className="refine-tag">{refineTag(refineLevel(save.upgrades, weapon.id))}</span>
                   </span>
                   {wRar !== 'common' && <span className={`rarity-line ${rarClass(wRar)}`}>{t(`rarity.${rarityDef(wRar).nameKey}`)}</span>}
@@ -192,7 +200,7 @@ export default function HeroModal({
                 </span>
                 <div className="hero-equip-info">
                   <span className="hero-equip-name">
-                    {gearText(armor.nameKey)}
+                    <span className="hero-equip-name-text">{gearText(armor.nameKey)}</span>
                     <span className="refine-tag">{refineTag(refineLevel(save.upgrades, armor.id))}</span>
                   </span>
                   {aRar !== 'common' && <span className={`rarity-line ${rarClass(aRar)}`}>{t(`rarity.${rarityDef(aRar).nameKey}`)}</span>}
@@ -244,11 +252,11 @@ export default function HeroModal({
             <div className="hero-stats-grid">
               <div className="hero-stat-cell">
                 <span>❤️ {t('profile.maxHp')}</span>
-                <span>{formatNumber(maxHp)}</span>
+                <span className="num-abbr">{formatNumber(maxHp)}</span>
               </div>
               <div className="hero-stat-cell">
                 <span>⚔️ {t('profile.damage')}</span>
-                <span>{formatNumber(totalDmg)}</span>
+                <span className="num-abbr">{formatNumber(totalDmg)}</span>
               </div>
               <div className="hero-stat-cell">
                 <span>🛡️ {t('profile.defense')}</span>
@@ -263,7 +271,7 @@ export default function HeroModal({
             <div className="hero-cp-bar">
               <span className="hero-cp-icon">⚔️</span>
               <span>
-                {t('profile.cp')}: {formatNumber(computeCP(save))}
+                {t('profile.cp')}: <span className="num-abbr">{formatNumber(computeCP(save))}</span>
               </span>
             </div>
           </>

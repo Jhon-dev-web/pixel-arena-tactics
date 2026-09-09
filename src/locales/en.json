@@ -172,9 +172,9 @@
   "profile": {
     "title": "⚔️ HERO PROFILE",
     "subtitle": "• Level {n}",
-    "equipTab": "🛡️ Equipment & Status",
-    "attrsTab": "⭐ Attributes",
-    "titlesTab": "🎖️ Titles",
+    "equipTab": "Equipment",
+    "attrsTab": "Attributes",
+    "titlesTab": "Titles",
     "confirmPoints": "CONFIRM POINTS",
     "weapon": "Weapon",
     "armor": "Armor",
@@ -244,8 +244,8 @@
     "missing": "Missing materials",
     "durability": "Durability: {n} / {m}",
     "broken": "[QUEBRADO]",
-    "repair": "🔨 Repair with Gold",
-    "blessedRepair": "✨ Blessed Repair",
+    "repair": "Repair",
+    "blessedRepair": "Blessed",
     "sockets": "Sockets",
     "socketEmpty": "Empty socket",
     "socketHint": "Select a gem below to insert",
@@ -361,6 +361,12 @@
     "full": "📦 Storage Full!",
     "perHour": "+{n}/h",
     "collect": "Collect",
+    "stop": "🛑 Stop Hunting",
+    "rewardsTitle": "🏹 Hunt Rewards",
+    "timeHunted": "Time hunted: {t}",
+    "claimAndExit": "Claim and Exit",
+    "noneReady": "No rewards accumulated yet.",
+    "busyOther": "Your hero is on an Open Hunt. Stop hunting before starting another activity.",
     "readyGold": "🪙 +{n}",
     "tier_common": "Common",
     "tier_uncommon": "Refined",
@@ -413,7 +419,7 @@
     "ore_obsidian": "Obsidian"
   },
   "quests": {
-    "title": "📜 Quests",
+    "title": "Quests",
     "button": "📜 QUESTS",
     "dailyTab": "📅 Daily",
     "achievementsTab": "🏆 Achievements",
@@ -437,14 +443,14 @@
     "a_cp500": "Living Legend",
     "a_cp500_d": "Reach 500 CP",
     "a_blacksmith": "Legendary Blacksmith",
-    "a_blacksmith_d": "Refine a weapon to +8",
+    "a_blacksmith_d": "Refine a weapon to +8",
     "a_crypt": "Crypt Conqueror",
     "a_crypt_d": "Reach Floor 51 (Warlock Crypt)",
     "a_minotaur": "Minotaur Terror",
     "a_minotaur_d": "Complete Floor 100 of the Dungeon"
   },
   "battlePass": {
-    "title": "🎫 Adventurer's Pass",
+    "title": "Adventurer's Pass",
     "statusFree": "Basic Pass (Free)",
     "statusActive": "🎫 Adventurer's Pass Active",
     "expiresIn": "Expires in {n}",
@@ -462,12 +468,19 @@
   "titles": {
     "none": "None",
     "active": "Active",
+    "equip": "Equip",
     "empty": "No titles unlocked yet.",
     "title_adventurer": "The Adventurer",
     "title_brave": "The Brave",
     "title_legend": "Season Legend",
     "title_shadow_pathfinder": "Shadow Pathfinder",
     "title_abyss_conqueror": "Abyss Conqueror",
-    "title_100_floors_legend": "Legend of the 100 Floors"
+    "title_100_floors_legend": "Legend of the 100 Floors",
+    "req_season_lv10": "Reach Level 10 of the Adventurer's Pass (Premium)",
+    "req_season_lv20": "Reach Level 20 of the Adventurer's Pass (Premium)",
+    "req_season_lv30": "Reach Level 30 of the Adventurer's Pass (Premium)",
+    "req_shadow_pathfinder": "Defeat the Dungeon's Floor 50 boss",
+    "req_abyss_conqueror": "Defeat the Dungeon's Floor 75 boss",
+    "req_100_floors_legend": "Defeat the Dungeon's Floor 100 boss"
   }
 }

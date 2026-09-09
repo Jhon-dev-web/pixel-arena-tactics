@@ -22,7 +22,9 @@ export default function QuestsModal({
   return (
     <div className="modal-backdrop">
       <div className="modal quests-modal">
-        <h2 className="modal-title">{t('quests.title')}</h2>
+        <h2 className="modal-title">
+          <img className="inline-icon" src="/assets/icons/nav_quests.png" alt="" /> {t('quests.title')}
+        </h2>
 
         <div className="inv-tabs">
           <button className={`tab${tab === 'daily' ? ' active' : ''}`} onClick={() => setTab('daily')} data-ui>
@@ -44,10 +46,9 @@ export default function QuestsModal({
                 <div className="quest-head">
                   <span className="quest-name">{questText(q.nameKey)}</span>
                   <span className="quest-reward">
-                    🪙 {q.gold}
+                    <span className="quest-reward-item">🪙 {q.gold}</span>
                     {q.shards > 0 && (
-                      <span className="quest-shards">
-                        {' '}
+                      <span className="quest-reward-item quest-shards">
                         <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {q.shards}
                       </span>
                     )}

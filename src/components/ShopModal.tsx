@@ -1,4 +1,5 @@
 import { t } from '../locales';
+import Assets from '../assets.json';
 import { SaveData } from '../game/engine';
 import { CONSUMABLES, CONSUMABLE_STACK, ConsumableId } from '../game/consumables';
 import { GEMS, GemId } from '../game/gems';
@@ -8,6 +9,7 @@ import GemIcon from './GemIcon';
 
 const conText = (k: string): string => t(`consumables.${k}`);
 const gemText = (k: string): string => t(`gems.${k}`);
+const costLabel = (): string => t('forge.cost');
 
 export default function ShopModal({
   save,
@@ -32,7 +34,8 @@ export default function ShopModal({
         <div className="shop-body">
           {CONSUMABLES.map((c) => {
             const qty = save.consumables?.[c.id] ?? 0;
-            const disabled = save.gold < c.cost || qty >= CONSUMABLE_STACK;
+            const bagFull = qty === 0 && slots >= MAX_SLOTS;
+            const disabled = save.gold < c.cost || qty >= CONSUMABLE_STACK || bagFull;
             return (
               <div className="gear-row" key={c.id}>
                 <div className="gear-info">
@@ -43,10 +46,14 @@ export default function ShopModal({
                     <span className="gear-count">{t('shop.youHave', { n: qty })}</span>
                   </span>
                   <span className="gear-desc">{conText(c.descKey)}</span>
-                  <span className="gear-cost">{t('ui.cost', { n: c.cost })}</span>
+                  <span className="gear-cost">
+                    <span>{costLabel()}:</span>
+                    <img className="inline-icon" src={Assets.icons.gold.url} alt="" />
+                    <span className="cost-value">{c.cost}</span>
+                  </span>
                 </div>
                 <button className="gear-action buy" onClick={() => onBuyConsumable(c.id)} disabled={disabled} data-ui>
-                  {t('gear.buy')}
+                  {bagFull ? t('shop.bagFull') : t('gear.buy')}
                 </button>
               </div>
             );
@@ -66,7 +73,11 @@ export default function ShopModal({
                     <span className="gear-count">{t('shop.youOwn', { n: owned })}</span>
                   </span>
                   <span className="gear-desc">{gemText(g.descKey)}</span>
-                  <span className="gear-cost">{t('shop.gemCost', { n: g.shardCost })}</span>
+                  <span className="gear-cost">
+                    <span>{costLabel()}:</span>
+                    <img className="inline-icon" src="/assets/icons/shards.png" alt="" />
+                    <span className="cost-value">{g.shardCost}</span>
+                  </span>
                 </div>
                 <button className="gear-action buy" onClick={() => onBuyGem(g.id)} disabled={disabled} data-ui>
                   {t('gear.buy')}

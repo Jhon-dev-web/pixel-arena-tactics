@@ -4,6 +4,7 @@ import { computeMiningStatus, playerLevel, SaveData } from '../game/engine';
 import { getGear } from '../game/gear';
 import { isOreTierUnlocked, ORE_TIERS, oreTierMissingPickaxe } from '../game/ores';
 import { materialIconUrl } from '../game/materials';
+import GearIcon from './GearIcon';
 
 const oreText = (k: string): string => t(`ore.${k}`);
 const gearText = (k: string): string => t(`gear.${k}`);
@@ -41,13 +42,16 @@ export default function MiningModal({
   }, []);
 
   const level = playerLevel(save.xp);
+  const huntingBusy = !!save.activeHuntingZone;
   const status = computeMiningStatus(save, now);
   const progress = status.capMs <= 0 ? 0 : Math.max(0, Math.min(1, status.pendingMs / status.capMs));
 
   return (
     <div className="modal-backdrop">
       <div className="modal dungeon-modal">
-        <h2 className="modal-title">⛏️ {t('mining.title')}</h2>
+        <h2 className="modal-title">
+          <img className="inline-icon" src="/assets/icons/nav_mining.png" alt="" /> {t('mining.title')}
+        </h2>
 
         <div className="dungeon-body">
           {ORE_TIERS.map((tier) => {
@@ -72,6 +76,11 @@ export default function MiningModal({
                     <div className="floor-drops">
                       <span className="drops-label">{t('mining.pickaxeLabel')}:</span>
                       <span className="floor-drop">
+                        {pickaxe && (
+                          <span className="mat-icon">
+                            <GearIcon item={pickaxe} />
+                          </span>
+                        )}
                         <span>{pickaxe ? gearText(pickaxe.nameKey) : tier.pickaxeId}</span>
                       </span>
                     </div>
@@ -104,14 +113,32 @@ export default function MiningModal({
                         </button>
                       </>
                     ) : (
-                      <button className="battle-btn" onClick={() => onStartOre(tier.id)} data-ui>
-                        {t('mining.available')}
-                      </button>
+                      <>
+                        <button
+                          className="battle-btn"
+                          onClick={() => onStartOre(tier.id)}
+                          disabled={huntingBusy}
+                          title={huntingBusy ? t('hunting.busyOther') : undefined}
+                          data-ui
+                        >
+                          {t('mining.available')}
+                        </button>
+                        {huntingBusy && <span className="floor-locked">{t('hunting.busyOther')}</span>}
+                      </>
                     )}
                   </>
                 ) : (
                   <span className="floor-locked">
-                    {missingPickaxe ? t('mining.needsPickaxe', { item: gearText(pickaxe.nameKey) }) : t('mining.locked', { n: tier.requiredLevel })}
+                    {missingPickaxe ? (
+                      <>
+                        <span className="mat-icon">
+                          <GearIcon item={pickaxe} />
+                        </span>{' '}
+                        {t('mining.needsPickaxe', { item: gearText(pickaxe.nameKey) })}
+                      </>
+                    ) : (
+                      t('mining.locked', { n: tier.requiredLevel })
+                    )}
                   </span>
                 )}
               </div>

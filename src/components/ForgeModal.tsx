@@ -344,20 +344,26 @@ export default function ForgeModal({
                     </div>
                     <div className="repair-btns">
                       <button
-                        className="craft-btn forge"
+                        className="craft-btn forge repair-action-btn"
                         onClick={() => onRepair(item.id, false)}
                         disabled={save.gold < cost || dur >= MAX_DURABILITY}
                         data-ui
                       >
-                        {t('forge.repair')} ({cost} 🪙)
+                        <span>{t('forge.repair')}</span>
+                        <span className="repair-cost">
+                          (<img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {cost})
+                        </span>
                       </button>
                       <button
-                        className="craft-btn blessed"
+                        className="craft-btn blessed repair-action-btn"
                         onClick={() => onRepair(item.id, true)}
                         disabled={save.gold < cost || save.shards < 1 || dur >= MAX_DURABILITY}
                         data-ui
                       >
-                        {t('forge.blessedRepair')} (+1 <img className="inline-icon" src="/assets/icons/shards.png" alt="" />)
+                        <span>{t('forge.blessedRepair')}</span>
+                        <span className="repair-cost">
+                          (+1 <img className="inline-icon" src="/assets/icons/shards.png" alt="" />)
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -420,10 +426,13 @@ export default function ForgeModal({
               <div className="gear-section-title">{t('gems.title')}</div>
               {GEMS.map((g) => (
                 <div className="gem-library-row" key={g.id}>
-                  <span className="gem-library-name">
-                    <GemIcon item={g} className="inline-icon" /> {gemText(g.nameKey)} <span className="gem-desc">{gemText(g.descKey)}</span>
-                  </span>
-                  <span className="gem-library-owned">×{save.gems?.[g.id] ?? 0}</span>
+                  <div className="gem-library-top">
+                    <span className="gem-library-name">
+                      <GemIcon item={g} className="inline-icon" /> {gemText(g.nameKey)}
+                    </span>
+                    <span className="gem-library-owned">×{save.gems?.[g.id] ?? 0}</span>
+                  </div>
+                  <span className="gem-desc">{gemText(g.descKey)}</span>
                 </div>
               ))}
             </div>

@@ -1,5 +1,6 @@
 import SpriteSheet from './SpriteSheet';
 import { t } from '../locales';
+import Assets from '../assets.json';
 import { SaveData, computeCP, formatNumber, playerLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 
@@ -29,15 +30,21 @@ export default function TopHud({
           </div>
           <div className="profile-stats">
             <span className="level">{t('camp.level', { n: level })}</span>
-            <span className="cp-inline">{t('ui.cp', { n: formatNumber(computeCP(save)) })}</span>
+            <span className="cp-inline">
+              ⚔️ CP <span className="num-abbr">{formatNumber(computeCP(save))}</span>
+            </span>
           </div>
         </div>
       </div>
 
       <div className="resources">
-        <span className="res gold">🪙 {formatNumber(save.gold)}</span>
+        <span className="res gold">
+          <img className="inline-icon" src={Assets.icons.gold.url} alt="" />
+          <span className="num-abbr">{formatNumber(save.gold)}</span>
+        </span>
         <span className="res shards">
-          <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {formatNumber(save.shards)}
+          <img className="inline-icon" src="/assets/icons/shards.png" alt="" />
+          <span className="num-abbr">{formatNumber(save.shards)}</span>
         </span>
       </div>
     </header>

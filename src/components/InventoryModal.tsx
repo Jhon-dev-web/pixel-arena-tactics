@@ -120,7 +120,9 @@ export default function InventoryModal({
   return (
     <div className="modal-backdrop">
       <div className="modal inventory-modal">
-        <h2 className="modal-title">🎒 {t('inventory.title')}</h2>
+        <h2 className="modal-title">
+          <img className="inline-icon" src="/assets/icons/nav_bag.png" alt="" /> {t('inventory.title')}
+        </h2>
         <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>
 
         <div className="inv-tabs">

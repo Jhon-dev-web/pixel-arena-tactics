@@ -172,9 +172,9 @@
   "profile": {
     "title": "⚔️ PERFIL DO HERÓI",
     "subtitle": "• Nível {n}",
-    "equipTab": "🛡️ Equipamento e Status",
-    "attrsTab": "⭐ Atributos",
-    "titlesTab": "🎖️ Títulos",
+    "equipTab": "Equipamento",
+    "attrsTab": "Atributos",
+    "titlesTab": "Títulos",
     "confirmPoints": "CONFIRMAR PONTOS",
     "weapon": "Arma",
     "armor": "Armadura",
@@ -244,8 +244,8 @@
     "broken": "[QUEBRADO]",
     "repairTab": "🔨 Reparo",
     "socketTab": "💎 Gemas",
-    "repair": "🔨 Reparar com Ouro",
-    "blessedRepair": "✨ Reparo Abençoado",
+    "repair": "Reparar",
+    "blessedRepair": "Abençoado",
     "sockets": "Encaixes",
     "socketEmpty": "Encaixe vazio",
     "socketHint": "Selecione uma gema abaixo para inserir",
@@ -361,6 +361,12 @@
     "full": "📦 Armazém Cheio!",
     "perHour": "+{n}/h",
     "collect": "Coletar",
+    "stop": "🛑 Parar Caça",
+    "rewardsTitle": "🏹 Recompensas da Caça",
+    "timeHunted": "Tempo caçado: {t}",
+    "claimAndExit": "Resgatar e Sair",
+    "noneReady": "Nenhuma recompensa acumulada ainda.",
+    "busyOther": "Seu herói está em Caça Aberta. Pare a caça antes de iniciar outra atividade.",
     "readyGold": "🪙 +{n}",
     "tier_common": "Comum",
     "tier_uncommon": "Refino",
@@ -413,7 +419,7 @@
     "ore_obsidian": "Obsidiana"
   },
   "quests": {
-    "title": "📜 Missões",
+    "title": "Missões",
     "button": "📜 MISSÕES",
     "dailyTab": "📅 Diárias",
     "achievementsTab": "🏆 Conquistas",
@@ -437,14 +443,14 @@
     "a_cp500": "Lenda Viva",
     "a_cp500_d": "Alcance 500 de CP",
     "a_blacksmith": "Ferreiro Lendário",
-    "a_blacksmith_d": "Refine uma arma até +8",
+    "a_blacksmith_d": "Refine uma arma até +8",
     "a_crypt": "Conquistador da Cripta",
     "a_crypt_d": "Alcance o Andar 51 (Cripta dos Bruxos)",
     "a_minotaur": "Terror do Minotauro",
     "a_minotaur_d": "Conclua o Andar 100 da Masmorra"
   },
   "battlePass": {
-    "title": "🎫 Passe de Aventureiro",
+    "title": "Passe de Aventureiro",
     "statusFree": "Passe Básico (Free)",
     "statusActive": "🎫 Passe de Aventureiro Ativo",
     "expiresIn": "Expira em {n}",
@@ -462,12 +468,19 @@
   "titles": {
     "none": "Nenhum",
     "active": "Ativo",
+    "equip": "Equipar",
     "empty": "Nenhum título desbloqueado ainda.",
     "title_adventurer": "O Aventureiro",
     "title_brave": "O Bravo",
     "title_legend": "Lenda da Temporada",
     "title_shadow_pathfinder": "Desbravador das Sombras",
     "title_abyss_conqueror": "Conquistador do Abismo",
-    "title_100_floors_legend": "Lenda dos 100 Andares"
+    "title_100_floors_legend": "Lenda dos 100 Andares",
+    "req_season_lv10": "Alcance o Nível 10 do Passe de Aventureiro (Premium)",
+    "req_season_lv20": "Alcance o Nível 20 do Passe de Aventureiro (Premium)",
+    "req_season_lv30": "Alcance o Nível 30 do Passe de Aventureiro (Premium)",
+    "req_shadow_pathfinder": "Derrote o chefão do Andar 50 da Masmorra",
+    "req_abyss_conqueror": "Derrote o chefão do Andar 75 da Masmorra",
+    "req_100_floors_legend": "Derrote o chefão do Andar 100 da Masmorra"
   }
 }

@@ -18,12 +18,14 @@ function formatRemaining(ms: number): string {
 
 export default function ExpeditionModal({
   expedition,
+  huntingActive,
   onStart,
   onCancel,
   onClaim,
   onClose,
 }: {
   expedition: ActiveExpedition | null;
+  huntingActive: boolean;
   onStart: (id: string) => void;
   onCancel: () => void;
   onClaim: () => void;
@@ -70,6 +72,7 @@ export default function ExpeditionModal({
         ) : (
           <>
             <p className="expedition-note">{t('expedition.background')}</p>
+            {huntingActive && <div className="cp-warning-banner">{t('hunting.busyOther')}</div>}
             <div className="expedition-list">
               {EXPEDITIONS.map((def) => (
                 <div className="expedition-option" key={def.id}>
@@ -104,7 +107,7 @@ export default function ExpeditionModal({
                       </span>
                     )}
                   </div>
-                  <button className="battle-btn" onClick={() => onStart(def.id)} data-ui>
+                  <button className="battle-btn" onClick={() => onStart(def.id)} disabled={huntingActive} data-ui>
                     {t('expedition.start')}
                   </button>
                 </div>
