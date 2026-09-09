@@ -195,6 +195,15 @@
     "fishingPower": "Fishing",
     "emptySlot": "Empty"
   },
+  "huntPouch": {
+    "title": "Hunting Pouch",
+    "slots": "{n} Slots",
+    "upgrade": "Upgrade",
+    "pouch_t1": "Basic Pockets",
+    "pouch_t2": "Leather Pouch",
+    "pouch_t3": "Reinforced Backpack",
+    "pouch_t4": "Dimensional Satchel"
+  },
   "shop": {
     "title": "🛒 Shop",
     "potionHp": "Lesser Health Potion",
@@ -371,7 +380,11 @@
     "readyGold": "🪙 +{n}",
     "tier_common": "Common",
     "tier_uncommon": "Refined",
-    "tier_rare": "Noble"
+    "tier_rare": "Noble",
+    "lostItemsWarning": "You didn't have enough pouch space to carry these items! Upgrade your Pouch in the Hero Profile.",
+    "bagFullWarning": "Bag full! Free up inventory space to unload the rest.",
+    "pouchLabel": "Pouch ({n}/{m})",
+    "pouchFull": "Pouch full — losing"
   },
   "expedition": {
     "title": "Expedition",

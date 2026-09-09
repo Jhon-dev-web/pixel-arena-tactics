@@ -1,15 +1,21 @@
 import { useState } from 'react';
 import T from '../game/tunables';
 import { t } from '../locales';
+import Assets from '../assets.json';
 import { SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
 import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, gearBySlot, MAX_DURABILITY, refineLevel } from '../game/gear';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import { getTitleDef, TITLES } from '../game/titles';
+import { getMaterial, hasMaterials, MaterialId } from '../game/materials';
+import { getHuntPouchTierDef, nextHuntPouchTierDef } from '../game/huntPouch';
 import GearIcon from './GearIcon';
+import MaterialIcon from './MaterialIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const attrsText = (k: string): string => t(`attributes.${k}`);
 const profileText = (k: string): string => t(`profile.${k}`);
+const pouchText = (k: string): string => t(`huntPouch.${k}`);
+const matText = (k: string): string => t(`materials.${k}`);
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
 type AttrKey = 'str' | 'vit' | 'agi' | 'res';
@@ -36,6 +42,7 @@ export default function HeroModal({
   onEquip,
   onUnequip,
   onSelectTitle,
+  onUpgradePouch,
   onClose,
 }: {
   save: SaveData;
@@ -44,6 +51,7 @@ export default function HeroModal({
   onEquip: (id: string) => void;
   onUnequip: (id: string) => void;
   onSelectTitle: (id: string | null) => void;
+  onUpgradePouch: () => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<'equip' | 'attrs' | 'titles'>('equip');
@@ -248,6 +256,61 @@ export default function HeroModal({
                 );
               })}
             </div>
+
+            {(() => {
+              const pouchTier = getHuntPouchTierDef(save.huntPouch.tier);
+              const next = nextHuntPouchTierDef(save.huntPouch.tier);
+              const canAfford = !!next?.cost && save.gold >= next.cost.gold && hasMaterials(save.materials, next.cost.materials);
+              return (
+                <div className="craft-card pouch-card">
+                  <div className="pouch-card-top">
+                    <span className="hero-equip-icon">
+                      <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />
+                    </span>
+                    <div className="craft-info">
+                      <div className="craft-header">
+                        <span className="craft-name">{pouchText(pouchTier?.nameKey ?? 'pouch_t1')}</span>
+                        <span className="pouch-slots-tag">{t('huntPouch.slots', { n: pouchTier?.slots ?? 2 })}</span>
+                      </div>
+                    </div>
+                    {next ? (
+                      <button className="craft-btn forge" onClick={onUpgradePouch} disabled={!canAfford} data-ui>
+                        {pouchText('upgrade')}
+                      </button>
+                    ) : (
+                      <button className="craft-btn equipped" disabled data-ui>
+                        {t('forge.max')}
+                      </button>
+                    )}
+                  </div>
+                  {next?.cost && (
+                    <div className="craft-req pouch-req">
+                      <span className="req-item">
+                        <span className="mat-icon">
+                          <img src={Assets.icons.gold.url} alt="" />
+                        </span>
+                        <span className={`req-amount${save.gold < next.cost.gold ? ' missing' : ''}`}>{next.cost.gold}</span>
+                      </span>
+                      {Object.entries(next.cost.materials).map(([mid, need]) => {
+                        const have = save.materials[mid as MaterialId] ?? 0;
+                        const needN = need as number;
+                        return (
+                          <span className="req-item" key={mid}>
+                            <span className="req-plus">+</span>
+                            <span className="mat-icon">
+                              <MaterialIcon item={getMaterial(mid as MaterialId)!} />
+                            </span>
+                            <span className={`req-amount${have < needN ? ' missing' : ''}`}>
+                              {have}/{needN} {matText(`mat_${mid}`)}
+                            </span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="hero-stats-grid">
               <div className="hero-stat-cell">

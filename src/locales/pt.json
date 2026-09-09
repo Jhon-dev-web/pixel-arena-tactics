@@ -195,6 +195,15 @@
     "fishingPower": "Pesca",
     "emptySlot": "Vazio"
   },
+  "huntPouch": {
+    "title": "Bolsa de Caça",
+    "slots": "{n} Slots",
+    "upgrade": "Melhorar",
+    "pouch_t1": "Bolsos Básicos",
+    "pouch_t2": "Bolsa de Couro",
+    "pouch_t3": "Mochila Reforçada",
+    "pouch_t4": "Alforge Dimensional"
+  },
   "shop": {
     "title": "Loja",
     "potionHp": "Poção de Vida Menor",
@@ -371,7 +380,11 @@
     "readyGold": "🪙 +{n}",
     "tier_common": "Comum",
     "tier_uncommon": "Refino",
-    "tier_rare": "Nobre"
+    "tier_rare": "Nobre",
+    "lostItemsWarning": "Você não tinha espaço suficiente na bolsa para carregar estes itens! Melhore sua Bolsa no Perfil do Herói.",
+    "bagFullWarning": "Mochila cheia! Libere espaço no inventário para descarregar o restante.",
+    "pouchLabel": "Bolsa ({n}/{m})",
+    "pouchFull": "Bolsa cheia — perdendo"
   },
   "expedition": {
     "title": "Expedição",

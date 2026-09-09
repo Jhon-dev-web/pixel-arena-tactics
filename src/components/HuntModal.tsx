@@ -3,9 +3,10 @@ import Assets from '../assets.json';
 import { t } from '../locales';
 import { computeHuntingStatus, SaveData } from '../game/engine';
 import { HUNTING_ZONES, isZoneUnlocked } from '../game/huntingZones';
-import { getMaterial, MaterialId } from '../game/materials';
+import { getMaterial } from '../game/materials';
 import { getEquipped } from '../game/gear';
 import { spriteForArmorTier } from '../game/sprites';
+import { allocateToPouch, getHuntPouchTierDef } from '../game/huntPouch';
 import HuntBattleView from './HuntBattleView';
 import MaterialIcon from './MaterialIcon';
 
@@ -104,20 +105,44 @@ export default function HuntModal({
                           {huntStatus.full ? huntText('full') : huntText('hunting')} ·{' '}
                           {t('mining.capProgress', { cur: formatHours(huntStatus.pendingMs), cap: formatHours(huntStatus.capMs) })}
                         </span>
-                        {Object.keys(huntStatus.drops).length > 0 && (
-                          <div className="floor-drops">
-                            {Object.entries(huntStatus.drops).map(([mid, qty]) => (
-                              <span className="floor-drop" key={mid}>
-                                <span className="mat-icon">
-                                  <MaterialIcon item={getMaterial(mid as MaterialId)!} />
-                                </span>
-                                <span>
-                                  {matText(mid)} +{qty as number}
-                                </span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        {(() => {
+                          const capacity = getHuntPouchTierDef(save.huntPouch.tier)?.slots ?? 2;
+                          const preview = allocateToPouch(save.huntPouch, huntStatus.drops, zone.drops.map((d) => d.material));
+                          return (
+                            <>
+                              {preview.items.length > 0 && (
+                                <div className="floor-drops">
+                                  <span className="drops-label">{t('hunting.pouchLabel', { n: preview.items.length, m: capacity })}:</span>
+                                  {preview.items.map((item) => (
+                                    <span className="floor-drop" key={item.itemId}>
+                                      <span className="mat-icon">
+                                        <MaterialIcon item={getMaterial(item.itemId)!} />
+                                      </span>
+                                      <span>
+                                        {matText(item.itemId)} +{item.count}
+                                      </span>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {preview.lostItems.length > 0 && (
+                                <div className="floor-drops">
+                                  <span className="drops-label pouch-full-label">{t('hunting.pouchFull')}:</span>
+                                  {preview.lostItems.map((item) => (
+                                    <span className="floor-drop lost" key={item.itemId}>
+                                      <span className="mat-icon">
+                                        <MaterialIcon item={getMaterial(item.itemId)!} />
+                                      </span>
+                                      <span>
+                                        {matText(item.itemId)} +{item.count}
+                                      </span>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                         <button className="camp-expedition-cancel" onClick={onStopHunt} data-ui>
                           {huntText('stop')}
                         </button>

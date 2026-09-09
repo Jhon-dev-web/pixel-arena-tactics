@@ -1,6 +1,6 @@
 import T from './tunables';
 import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, MAX_DURABILITY, refineLevel, sanitizeSaveInventory } from './gear';
-import { Materials, MaterialId, emptyMaterials } from './materials';
+import { Materials, MaterialId, emptyMaterials, getMaterial } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
 import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems, getGem, totalGemBonuses } from './gems';
@@ -9,6 +9,7 @@ import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_ZONE, getHuntingZone, HUNTING_ZONES } from './huntingZones';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
+import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
 
 export interface SaveData {
   gold: number;
@@ -52,6 +53,7 @@ export interface SaveData {
   cosmetics: string[];
   activeTitle: string | null;
   dungeonCheckpoints: number[];
+  huntPouch: HuntPouchState;
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
@@ -260,6 +262,7 @@ export function defaultSave(): SaveData {
     cosmetics: [],
     activeTitle: null,
     dungeonCheckpoints: [],
+    huntPouch: defaultHuntPouch(),
   };
 }
 
@@ -379,6 +382,19 @@ export function loadSave(): SaveData {
       const dungeonCheckpoints = Array.isArray(parsed.dungeonCheckpoints)
         ? Array.from(new Set(parsed.dungeonCheckpoints.filter((f): f is number => typeof f === 'number' && MILESTONE_FLOORS.includes(f))))
         : [];
+      const sanitizePouchItems = (arr: unknown): HuntPouchItem[] =>
+        Array.isArray(arr)
+          ? (arr as HuntPouchItem[])
+              .filter((i) => i && typeof i.itemId === 'string' && !!getMaterial(i.itemId) && Number.isFinite(i.count) && i.count > 0)
+              .map((i) => ({ itemId: i.itemId, count: Math.floor(i.count) }))
+          : [];
+      const rawPouch = parsed.huntPouch as Partial<HuntPouchState> | undefined;
+      const pouchTierRaw = Math.floor(Number(rawPouch?.tier));
+      const huntPouch: HuntPouchState = {
+        tier: getHuntPouchTierDef(pouchTierRaw) ? pouchTierRaw : 1,
+        items: sanitizePouchItems(rawPouch?.items),
+        lostItems: sanitizePouchItems(rawPouch?.lostItems),
+      };
       return {
         ...base,
         ...parsed,
@@ -413,6 +429,7 @@ export function loadSave(): SaveData {
         cosmetics,
         activeTitle,
         dungeonCheckpoints,
+        huntPouch,
       };
     }
   } catch {

@@ -2439,6 +2439,47 @@ body {
 .hero-tool-card.equipped {
   border-color: #ffd76a;
 }
+.pouch-card {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.pouch-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pouch-card .craft-info {
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+.pouch-slots-tag {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.pouch-req {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 8px;
+}
+.pouch-req .req-item {
+  width: 100%;
+}
+.pouch-req .req-amount {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  font-size: calc(var(--font-size) - 2px);
+}
+.pouch-card .craft-btn {
+  align-self: center;
+  margin-top: 0;
+  flex-shrink: 0;
+}
 .hero-tool-card:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -2588,6 +2629,9 @@ body {
   color: #8a7aa8;
   margin-right: 2px;
 }
+.drops-label.pouch-full-label {
+  color: #ff8a7a;
+}
 .floor-drop {
   display: inline-flex;
   align-items: center;
@@ -2708,6 +2752,25 @@ body {
   border-radius: 8px;
   padding: 6px 10px;
   margin-bottom: 10px;
+}
+.pouch-lost-card {
+  background: rgba(255, 138, 122, 0.1);
+  border: 1px solid #a03020;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 10px 0;
+}
+.pouch-lost-text {
+  font-size: calc(var(--font-size) - 3px);
+  color: #ff8a7a;
+  margin: 0 0 8px;
+}
+.floor-drop.lost {
+  color: #ff8a7a;
+  opacity: 0.85;
+}
+.floor-drop.lost .mat-icon {
+  filter: grayscale(0.6);
 }
 .expedition-entry {
   width: 100%;

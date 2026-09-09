@@ -1,6 +1,7 @@
 import { t } from '../locales';
 import Assets from '../assets.json';
-import { MaterialId, materialIconUrl } from '../game/materials';
+import { materialIconUrl } from '../game/materials';
+import { HuntPouchState } from '../game/huntPouch';
 
 const matText = (k: string): string => t(`materials.${k}`);
 
@@ -14,15 +15,16 @@ function formatDuration(ms: number): string {
 export default function HuntRewardModal({
   timeMs,
   gold,
-  drops,
+  pouch,
   onClaim,
 }: {
   timeMs: number;
   gold: number;
-  drops: Partial<Record<MaterialId, number>>;
+  pouch: HuntPouchState;
   onClaim: () => void;
 }) {
-  const hasDrops = Object.keys(drops).length > 0;
+  const hasItems = pouch.items.length > 0;
+  const hasLost = pouch.lostItems.length > 0;
 
   return (
     <div className="modal-backdrop">
@@ -39,22 +41,40 @@ export default function HuntRewardModal({
               <span>{t('ui.goldReward', { n: gold })}</span>
             </span>
           )}
-          {Object.entries(drops).map(([mid, qty]) => (
-            <span className="floor-drop" key={mid}>
+          {pouch.items.map((item) => (
+            <span className="floor-drop" key={item.itemId}>
               <span className="mat-icon">
-                <img src={materialIconUrl(mid as MaterialId)} alt="" />
+                <img src={materialIconUrl(item.itemId)} alt="" />
               </span>
               <span>
-                +{qty}× {matText(`mat_${mid}`)}
+                +{item.count}× {matText(`mat_${item.itemId}`)}
               </span>
             </span>
           ))}
-          {!hasDrops && gold <= 0 && (
+          {!hasItems && gold <= 0 && (
             <span className="floor-drop">
               <span>{t('hunting.noneReady')}</span>
             </span>
           )}
         </div>
+
+        {hasLost && (
+          <div className="pouch-lost-card">
+            <p className="pouch-lost-text">{t('hunting.lostItemsWarning')}</p>
+            <div className="result-rewards">
+              {pouch.lostItems.map((item) => (
+                <span className="floor-drop lost" key={item.itemId}>
+                  <span className="mat-icon">
+                    <img src={materialIconUrl(item.itemId)} alt="" />
+                  </span>
+                  <span>
+                    {item.count}× {matText(`mat_${item.itemId}`)}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button className="result-btn" onClick={onClaim} data-ui>
           {t('hunting.claimAndExit')}

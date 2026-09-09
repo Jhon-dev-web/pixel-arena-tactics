@@ -16,7 +16,7 @@ import { getBattlePassLevelDef } from './game/battlepass';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, gearSellValue, getEquipped, getGear, MAX_DURABILITY, MAX_REFINE, refineLevel, repairCost, upgradeChance, upgradeCost } from './game/gear';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
 import { CONSUMABLE_STACK, ConsumableId, getConsumable } from './game/consumables';
-import { isBagFull } from './game/inventory';
+import { isBagFull, inventorySlotsUsed, MAX_SLOTS } from './game/inventory';
 import { GEMS, GemId, hasGems, socketsForTier } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { canSalvage, getSalvageReturn, SALVAGE_BONUS_CHANCE } from './game/salvage';
@@ -38,6 +38,7 @@ import BattlePassModal from './components/BattlePassModal';
 import { crossedMilestoneFloors, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { getHuntingZone, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
+import { allocateToPouch, drainPouchToMaterials, nextHuntPouchTierDef } from './game/huntPouch';
 import { getOreTier, isOreTierUnlocked } from './game/ores';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
@@ -64,12 +65,7 @@ function App() {
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [mineOpen, setMineOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
-  const [huntReward, setHuntReward] = useState<{
-    timeMs: number;
-    pendingMs: number;
-    gold: number;
-    drops: Partial<Record<MaterialId, number>>;
-  } | null>(null);
+  const [huntReward, setHuntReward] = useState<{ timeMs: number; pendingMs: number; gold: number } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -414,40 +410,63 @@ function App() {
     }
     playSfx('click');
     let gold = s.gold;
-    const mats = { ...s.materials };
+    let huntPouch = s.huntPouch;
     if (s.activeHuntingZone) {
+      const priorZone = getHuntingZone(s.activeHuntingZone);
       const prior = computeHuntingStatus(s, Date.now());
       gold += prior.goldReady;
-      for (const [mid, qty] of Object.entries(prior.drops)) {
-        mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
+      if (priorZone) {
+        huntPouch = allocateToPouch(huntPouch, prior.drops, priorZone.drops.map((d) => d.material));
       }
     }
-    setSaveBoth({ ...s, gold, materials: mats, activeHuntingZone: zoneId, huntingOfflineStart: Date.now() });
+    setSaveBoth({ ...s, gold, huntPouch, activeHuntingZone: zoneId, huntingOfflineStart: Date.now() });
   };
 
   const stopHunt = () => {
     const s = saveRef.current;
     if (!s.activeHuntingZone) return;
+    const zone = getHuntingZone(s.activeHuntingZone);
     const status = computeHuntingStatus(s, Date.now());
     const timeMs = Date.now() - s.huntingOfflineStart;
+    const huntPouch = zone ? allocateToPouch(s.huntPouch, status.drops, zone.drops.map((d) => d.material)) : s.huntPouch;
     playSfx('click');
-    setSaveBoth({ ...s, activeHuntingZone: null });
-    setHuntReward({ timeMs, pendingMs: status.pendingMs, gold: status.goldReady, drops: status.drops });
+    setSaveBoth({ ...s, activeHuntingZone: null, huntPouch });
+    setHuntReward({ timeMs, pendingMs: status.pendingMs, gold: status.goldReady });
   };
 
   const confirmHuntReward = () => {
     const reward = huntReward;
     if (!reward) return;
     const s = saveRef.current;
-    const mats = { ...s.materials };
-    for (const [mid, qty] of Object.entries(reward.drops)) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
-    }
     const hours = reward.pendingMs / (3600 * 1000);
     const { battlePassLevel, battlePassXp } = addBattlePassXp(s, Math.floor(hours * T.battlePass.xpPerHuntHour));
+    const slotsUsed = inventorySlotsUsed(s);
+    const { materials, remaining, blocked } = drainPouchToMaterials(s.huntPouch.items, s.materials, slotsUsed, MAX_SLOTS);
     playSfx('victory');
-    setSaveBoth({ ...s, gold: s.gold + reward.gold, materials: mats, huntingOfflineStart: Date.now(), battlePassLevel, battlePassXp });
+    setSaveBoth({
+      ...s,
+      gold: s.gold + reward.gold,
+      materials,
+      huntPouch: { ...s.huntPouch, items: remaining, lostItems: [] },
+      huntingOfflineStart: Date.now(),
+      battlePassLevel,
+      battlePassXp,
+    });
+    if (blocked) showToast(t('hunting.bagFullWarning'));
     setHuntReward(null);
+  };
+
+  const upgradeHuntPouch = () => {
+    const s = saveRef.current;
+    const next = nextHuntPouchTierDef(s.huntPouch.tier);
+    if (!next || !next.cost) return;
+    if (s.gold < next.cost.gold || !hasMaterials(s.materials, next.cost.materials)) return;
+    playSfx('click');
+    const materials = { ...s.materials };
+    for (const [mid, need] of Object.entries(next.cost.materials)) {
+      materials[mid as MaterialId] = (materials[mid as MaterialId] ?? 0) - (need as number);
+    }
+    setSaveBoth({ ...s, gold: s.gold - next.cost.gold, materials, huntPouch: { ...s.huntPouch, tier: next.tier } });
   };
 
   const activateBattlePass = () => {
@@ -947,6 +966,7 @@ function App() {
           onEquip={equipGear}
           onUnequip={unequipGear}
           onSelectTitle={selectTitle}
+          onUpgradePouch={upgradeHuntPouch}
           onClose={() => {
             playSfx('click');
             setHeroOpen(false);
@@ -1019,7 +1039,7 @@ function App() {
         <HuntRewardModal
           timeMs={huntReward.timeMs}
           gold={huntReward.gold}
-          drops={huntReward.drops}
+          pouch={save.huntPouch}
           onClaim={confirmHuntReward}
         />
       )}
