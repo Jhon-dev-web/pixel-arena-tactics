@@ -6,6 +6,7 @@ import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
 import { MATERIALS } from '../game/materials';
 import { getConsumable } from '../game/consumables';
 import { getGem } from '../game/gems';
+import { getTitleDef } from '../game/titles';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
 import GemIcon from './GemIcon';
@@ -14,6 +15,8 @@ function rewardIcon(reward: BattlePassReward): ReactNode {
   switch (reward.kind) {
     case 'gold':
       return <img className="inline-icon" src={Assets.icons.gold.url} alt="" />;
+    case 'shards':
+      return <img className="inline-icon" src="/assets/icons/shards.png" alt="" />;
     case 'material': {
       const def = MATERIALS.find((m) => m.id === reward.id);
       return def ? <MaterialIcon item={def} className="inline-icon" /> : '📦';
@@ -39,6 +42,8 @@ function rewardLabel(reward: BattlePassReward): string {
   switch (reward.kind) {
     case 'gold':
       return `+${reward.amount}`;
+    case 'shards':
+      return `+${reward.amount}`;
     case 'material': {
       const def = MATERIALS.find((m) => m.id === reward.id);
       return `${def ? t(`materials.${def.nameKey}`) : reward.id} x${reward.amount}`;
@@ -53,8 +58,10 @@ function rewardLabel(reward: BattlePassReward): string {
     }
     case 'oneToken':
       return `ONE +${reward.amount}`;
-    case 'cosmetic':
-      return t('battlePass.cosmeticReward');
+    case 'cosmetic': {
+      const title = reward.id ? getTitleDef(reward.id) : undefined;
+      return title ? t(`titles.${title.nameKey}`) : t('battlePass.cosmeticReward');
+    }
     default:
       return '';
   }
@@ -130,6 +137,9 @@ export default function BattlePassModal({
           <div className="bp-perks">
             <span className="bp-perk">{t('battlePass.perkStorage')}</span>
             <span className="bp-perk">{t('battlePass.perkLuck')}</span>
+            <span className="bp-perk">{t('battlePass.perkExpedition')}</span>
+            <span className="bp-perk">{t('battlePass.perkPouch')}</span>
+            <span className="bp-perk">{t('battlePass.perkRepair')}</span>
           </div>
           <div className="bp-level-header">
             <span>{t('battlePass.levelLabel', { n: save.battlePassLevel, m: MAX_BATTLE_PASS_LEVEL })}</span>

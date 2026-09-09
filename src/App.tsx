@@ -6,16 +6,19 @@ import {
   computeHuntingStatus,
   computeMiningStatus,
   defaultSave,
+  effectivePouchSlots,
+  effectiveRepairCost,
   isBattlePassActive,
   loadSave,
+  maxExpeditionSlots,
   persistSave,
   playerLevel,
   SaveData,
 } from './game/engine';
 import { getBattlePassLevelDef } from './game/battlepass';
-import { DURABILITY_LOSS_PER_STAGE, GEAR, gearSellValue, getEquipped, getGear, MAX_DURABILITY, MAX_REFINE, refineLevel, repairCost, upgradeChance, upgradeCost } from './game/gear';
+import { DURABILITY_LOSS_PER_STAGE, GEAR, gearSellValue, getEquipped, getGear, MAX_DURABILITY, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
-import { CONSUMABLE_STACK, ConsumableId, getConsumable } from './game/consumables';
+import { CONSUMABLE_STACK, ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from './game/consumables';
 import { isBagFull, inventorySlotsUsed, MAX_SLOTS } from './game/inventory';
 import { GEMS, GemId, hasGems, socketsForTier } from './game/gems';
 import { getTitleDef } from './game/titles';
@@ -65,7 +68,7 @@ function App() {
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [mineOpen, setMineOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
-  const [huntReward, setHuntReward] = useState<{ timeMs: number; pendingMs: number; gold: number } | null>(null);
+  const [huntReward, setHuntReward] = useState<{ timeMs: number; pendingMs: number; gold: number; xp: number } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -227,7 +230,7 @@ function App() {
     const item = getGear(id);
     if (!item) return;
     const s = saveRef.current;
-    const cost = repairCost(item.tier ?? 0);
+    const cost = effectiveRepairCost(s, item.tier ?? 0, Date.now());
     if (s.gold < cost) return;
     if (blessed && s.shards < 1) return;
     playSfx('victory');
@@ -315,26 +318,25 @@ function App() {
     const def = getExpedition(id);
     if (!def) return;
     const s = saveRef.current;
-    if (s.expedition) return;
+    if (s.expeditions.length >= maxExpeditionSlots(s, Date.now())) return;
     if (s.activeHuntingZone) {
       showToast(t('hunting.busyOther'));
       return;
     }
     playSfx('click');
-    setSaveBoth({ ...s, expedition: { id, endsAt: Date.now() + def.durationMs } });
-    setExpeditionOpen(false);
+    setSaveBoth({ ...s, expeditions: [...s.expeditions, { id, endsAt: Date.now() + def.durationMs }] });
   };
 
-  const cancelExpedition = () => {
+  const cancelExpedition = (index: number) => {
     const s = saveRef.current;
-    if (!s.expedition) return;
+    if (!s.expeditions[index]) return;
     playSfx('click');
-    setSaveBoth({ ...s, expedition: null });
+    setSaveBoth({ ...s, expeditions: s.expeditions.filter((_, i) => i !== index) });
   };
 
-  const claimExpedition = () => {
+  const claimExpedition = (index: number) => {
     const s = saveRef.current;
-    const exp = s.expedition;
+    const exp = s.expeditions[index];
     if (!exp) return;
     const def = getExpedition(exp.id);
     if (!def) return;
@@ -345,7 +347,7 @@ function App() {
       gold: s.gold + rewards.gold,
       xp: atCap ? s.xp : s.xp + rewards.xp,
       shards: s.shards + rewards.shards,
-      expedition: null,
+      expeditions: s.expeditions.filter((_, i) => i !== index),
       quests: {
         ...s.quests,
         daily: { ...s.quests.daily, expeditions: (s.quests.daily.expeditions ?? 0) + 1 },
@@ -353,6 +355,18 @@ function App() {
     });
     playSfx('victory');
     setClaimResult({ nameKey: def.nameKey, rewards });
+  };
+
+  const useExpeditionTicket = (index: number, ticketId: ConsumableId) => {
+    const s = saveRef.current;
+    const exp = s.expeditions[index];
+    const skipMs = EXPEDITION_TICKET_SKIP_MS[ticketId];
+    if (!exp || !skipMs) return;
+    if ((s.consumables[ticketId] ?? 0) < 1) return;
+    playSfx('click');
+    const expeditions = [...s.expeditions];
+    expeditions[index] = { ...exp, endsAt: Math.max(Date.now(), exp.endsAt - skipMs) };
+    setSaveBoth({ ...s, expeditions, consumables: { ...s.consumables, [ticketId]: (s.consumables[ticketId] ?? 0) - 1 } });
   };
 
   const startMining = (oreId: string) => {
@@ -410,16 +424,18 @@ function App() {
     }
     playSfx('click');
     let gold = s.gold;
+    let xp = s.xp;
     let huntPouch = s.huntPouch;
     if (s.activeHuntingZone) {
       const priorZone = getHuntingZone(s.activeHuntingZone);
       const prior = computeHuntingStatus(s, Date.now());
       gold += prior.goldReady;
+      if (playerLevel(xp) < 100) xp += prior.xpReady;
       if (priorZone) {
-        huntPouch = allocateToPouch(huntPouch, prior.drops, priorZone.drops.map((d) => d.material));
+        huntPouch = allocateToPouch(huntPouch, prior.drops, priorZone.drops.map((d) => d.material), effectivePouchSlots(s, Date.now()));
       }
     }
-    setSaveBoth({ ...s, gold, huntPouch, activeHuntingZone: zoneId, huntingOfflineStart: Date.now() });
+    setSaveBoth({ ...s, gold, xp, huntPouch, activeHuntingZone: zoneId, huntingOfflineStart: Date.now() });
   };
 
   const stopHunt = () => {
@@ -428,10 +444,12 @@ function App() {
     const zone = getHuntingZone(s.activeHuntingZone);
     const status = computeHuntingStatus(s, Date.now());
     const timeMs = Date.now() - s.huntingOfflineStart;
-    const huntPouch = zone ? allocateToPouch(s.huntPouch, status.drops, zone.drops.map((d) => d.material)) : s.huntPouch;
+    const huntPouch = zone
+      ? allocateToPouch(s.huntPouch, status.drops, zone.drops.map((d) => d.material), effectivePouchSlots(s, Date.now()))
+      : s.huntPouch;
     playSfx('click');
     setSaveBoth({ ...s, activeHuntingZone: null, huntPouch });
-    setHuntReward({ timeMs, pendingMs: status.pendingMs, gold: status.goldReady });
+    setHuntReward({ timeMs, pendingMs: status.pendingMs, gold: status.goldReady, xp: status.xpReady });
   };
 
   const confirmHuntReward = () => {
@@ -440,12 +458,14 @@ function App() {
     const s = saveRef.current;
     const hours = reward.pendingMs / (3600 * 1000);
     const { battlePassLevel, battlePassXp } = addBattlePassXp(s, Math.floor(hours * T.battlePass.xpPerHuntHour));
+    const atCap = playerLevel(s.xp) >= 100;
     const slotsUsed = inventorySlotsUsed(s);
     const { materials, remaining, blocked } = drainPouchToMaterials(s.huntPouch.items, s.materials, slotsUsed, MAX_SLOTS);
     playSfx('victory');
     setSaveBoth({
       ...s,
       gold: s.gold + reward.gold,
+      xp: atCap ? s.xp : s.xp + reward.xp,
       materials,
       huntPouch: { ...s.huntPouch, items: remaining, lostItems: [] },
       huntingOfflineStart: Date.now(),
@@ -490,10 +510,14 @@ function App() {
     const gems = { ...s.gems };
     const cosmetics = [...s.cosmetics];
     let gold = s.gold;
+    let shards = s.shards;
     let oneTokenBalance = s.oneTokenBalance;
     switch (reward.kind) {
       case 'gold':
         gold += reward.amount;
+        break;
+      case 'shards':
+        shards += reward.amount;
         break;
       case 'material':
         if (reward.id) materials[reward.id as MaterialId] = (materials[reward.id as MaterialId] ?? 0) + reward.amount;
@@ -514,6 +538,7 @@ function App() {
     return {
       ...s,
       gold,
+      shards,
       materials,
       consumables,
       gems,
@@ -717,7 +742,7 @@ function App() {
     showToast(t('forge.reforged'));
   };
 
-  const upgradeItem = (id: string) => {
+  const performUpgrade = (id: string, useCatalyst: boolean) => {
     const item = getGear(id);
     if (!item) return;
     const s = saveRef.current;
@@ -727,17 +752,21 @@ function App() {
     if (s.gold < cost.gold) return;
     if (!hasMaterials(s.materials, cost.materials)) return;
     if ((cost.shards ?? 0) > 0 && s.shards < (cost.shards ?? 0)) return;
+    if (useCatalyst && (s.consumables.refine_catalyst ?? 0) < 1) return;
 
     const mats = { ...s.materials };
     for (const [mid, count] of Object.entries(cost.materials ?? {})) {
       mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
     }
-    const success = Math.random() < upgradeChance(lvl);
+    const success = useCatalyst || Math.random() < upgradeChance(lvl);
     setSaveBoth({
       ...s,
       gold: s.gold - cost.gold,
       materials: mats,
       shards: s.shards - (cost.shards ?? 0),
+      consumables: useCatalyst
+        ? { ...s.consumables, refine_catalyst: (s.consumables.refine_catalyst ?? 0) - 1 }
+        : s.consumables,
       upgrades: success ? { ...s.upgrades, [id]: lvl + 1 } : s.upgrades,
       quests: {
         ...s.quests,
@@ -752,6 +781,9 @@ function App() {
       showToast(t('forge.upgradeFail'));
     }
   };
+
+  const upgradeItem = (id: string) => performUpgrade(id, false);
+  const upgradeItemWithCatalyst = (id: string) => performUpgrade(id, true);
 
   const attrChange = (attr: 'str' | 'vit' | 'agi' | 'res', delta: number) => {
     const cur = saveRef.current[attr];
@@ -865,7 +897,7 @@ function App() {
           </button>
           <button className="side-btn expedition-btn" onClick={openExpedition} data-ui>
             🏕️
-            {save.expedition && Date.now() >= save.expedition.endsAt && <span className="quests-badge">•</span>}
+            {save.expeditions.some((e) => Date.now() >= e.endsAt) && <span className="quests-badge">•</span>}
           </button>
           <button
             className="side-btn"
@@ -932,6 +964,7 @@ function App() {
           save={save}
           onForge={forgeItem}
           onUpgrade={upgradeItem}
+          onUpgradeWithCatalyst={upgradeItemWithCatalyst}
           onRepair={repairItem}
           onSocket={socketGem}
           onUnsocket={unsocketGem}
@@ -999,11 +1032,13 @@ function App() {
 
       {expeditionOpen && (
         <ExpeditionModal
-          expedition={save.expedition}
+          save={save}
+          maxSlots={maxExpeditionSlots(save, Date.now())}
           huntingActive={!!save.activeHuntingZone}
           onStart={startExpedition}
           onCancel={cancelExpedition}
           onClaim={claimExpedition}
+          onUseTicket={useExpeditionTicket}
           onClose={() => {
             playSfx('click');
             setExpeditionOpen(false);
@@ -1039,6 +1074,7 @@ function App() {
         <HuntRewardModal
           timeMs={huntReward.timeMs}
           gold={huntReward.gold}
+          xp={huntReward.xp}
           pouch={save.huntPouch}
           onClaim={confirmHuntReward}
         />

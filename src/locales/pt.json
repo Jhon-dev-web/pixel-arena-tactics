@@ -198,6 +198,7 @@
   "huntPouch": {
     "title": "Bolsa de Caça",
     "slots": "{n} Slots",
+    "passBonus": "Passe",
     "upgrade": "Melhorar",
     "pouch_t1": "Bolsos Básicos",
     "pouch_t2": "Bolsa de Couro",
@@ -234,7 +235,15 @@
     "large_hp": "Poção de Vida Grande",
     "large_hp_d": "Cura +150 PV na Masmorra",
     "atk_elixir": "Elixir de Batalha",
-    "atk_elixir_d": "+10% de dano na run atual"
+    "atk_elixir_d": "+10% de dano na run atual",
+    "refine_catalyst": "Catalisador de Refino",
+    "refine_catalyst_d": "Garante sucesso na próxima melhoria de equipamento",
+    "expedition_ticket_1h": "Tíquete de Expedição (1h)",
+    "expedition_ticket_1h_d": "Adianta 1 hora em uma Expedição ativa",
+    "expedition_ticket_2h": "Tíquete de Aceleração (2h)",
+    "expedition_ticket_2h_d": "Adianta 2 horas em uma Expedição ativa",
+    "expedition_ticket_4h": "Tíquete de Aceleração (4h)",
+    "expedition_ticket_4h_d": "Adianta 4 horas em uma Expedição ativa"
   },
   "forge": {
     "title": "Forja",
@@ -242,6 +251,8 @@
     "forgeTab": "Forjar",
     "upgradeTab": "Melhorar",
     "upgrade": "MELHORAR",
+    "useCatalyst": "CATALISAR",
+    "catalystHint": "Consome 1 Catalisador de Refino e garante o sucesso desta melhoria",
     "max": "MÁX",
     "chance": "Chance: {n}%",
     "forged": "✓ Forjado!",
@@ -388,6 +399,7 @@
   },
   "expedition": {
     "title": "Expedição",
+    "slots": "Slots: {n} / {m}",
     "start": "Despachar Expedição",
     "inExpedition": "Em Expedição: {n} restante",
     "cancel": "Cancelar",
@@ -469,6 +481,9 @@
     "hours": "{n} horas",
     "perkStorage": "Armazém 24h",
     "perkLuck": "+25% Sorte em Drops",
+    "perkExpedition": "+1 Slot de Expedição",
+    "perkPouch": "+2 Slots na Bolsa de Caça",
+    "perkRepair": "-20% Custo de Reparo",
     "levelLabel": "Nível {n} / {m}",
     "xpProgress": "{cur} / {need} XP",
     "activate": "Ativar Passe de Aventureiro",

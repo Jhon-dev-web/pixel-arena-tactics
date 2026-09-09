@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Assets from '../assets.json';
 import { t } from '../locales';
-import { playerLevel, SaveData } from '../game/engine';
+import { effectiveRepairCost, isBattlePassActive, playerLevel, SaveData } from '../game/engine';
 import {
   GEAR_SLOTS,
   GearItem,
@@ -13,15 +13,16 @@ import {
   getEquipped,
   getGear,
   refineLevel,
-  repairCost,
   upgradeChance,
   upgradeCost,
 } from '../game/gear';
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
+import { getConsumable } from '../game/consumables';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
+import ConsumableIcon from './ConsumableIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -51,6 +52,7 @@ export default function ForgeModal({
   save,
   onForge,
   onUpgrade,
+  onUpgradeWithCatalyst,
   onRepair,
   onSocket,
   onUnsocket,
@@ -59,6 +61,7 @@ export default function ForgeModal({
   save: SaveData;
   onForge: (id: string) => void;
   onUpgrade: (id: string) => void;
+  onUpgradeWithCatalyst: (id: string) => void;
   onRepair: (id: string, blessed: boolean) => void;
   onSocket: (itemId: string, gemId: GemId) => void;
   onUnsocket: (itemId: string, index: number) => void;
@@ -66,6 +69,7 @@ export default function ForgeModal({
 }) {
   const [tab, setTab] = useState<'forge' | 'upgrade' | 'repair' | 'socket'>('forge');
   const [justForged, setJustForged] = useState<string | null>(null);
+  const catalystCount = save.consumables?.refine_catalyst ?? 0;
 
   const level = playerLevel(save.xp);
 
@@ -310,14 +314,28 @@ export default function ForgeModal({
                       {t('forge.max')}
                     </button>
                   ) : (
-                    <button
-                      className="craft-btn forge"
-                      onClick={() => onUpgrade(item.id)}
-                      disabled={!canUpgrade(item)}
-                      data-ui
-                    >
-                      {t('forge.upgrade')}
-                    </button>
+                    <div className="repair-btns upgrade-btns">
+                      <button
+                        className="craft-btn forge repair-action-btn"
+                        onClick={() => onUpgrade(item.id)}
+                        disabled={!canUpgrade(item)}
+                        data-ui
+                      >
+                        {t('forge.upgrade')}
+                      </button>
+                      {catalystCount > 0 && (
+                        <button
+                          className="craft-btn blessed repair-action-btn"
+                          onClick={() => onUpgradeWithCatalyst(item.id)}
+                          disabled={!canUpgrade(item)}
+                          data-ui
+                          title={t('forge.catalystHint')}
+                        >
+                          <ConsumableIcon item={getConsumable('refine_catalyst')!} className="inline-icon" />
+                          <span>{t('forge.useCatalyst')}</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -330,7 +348,8 @@ export default function ForgeModal({
             {equipped.map((item) => {
               const dur = save.durability?.[item.id] ?? MAX_DURABILITY;
               const broken = dur <= 0;
-              const cost = repairCost(item.tier ?? 0);
+              const cost = effectiveRepairCost(save, item.tier ?? 0, Date.now());
+              const discounted = isBattlePassActive(save, Date.now());
               return (
                 <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
                   <span className="craft-icon">
@@ -353,7 +372,8 @@ export default function ForgeModal({
                       >
                         <span>{t('forge.repair')}</span>
                         <span className="repair-cost">
-                          (<img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {cost})
+                          (<img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {cost}
+                          {discounted && <span className="repair-discount-tag"> -20%</span>})
                         </span>
                       </button>
                       <button

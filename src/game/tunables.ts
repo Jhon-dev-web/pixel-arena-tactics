@@ -87,7 +87,9 @@ const T = DebugPanel.define({
     _label: 'Idle Mining',
     capHours: { value: 4, min: 1, max: 24, step: 1, label: 'Offline storage cap (hours)' },
     oreRatePerPower: { value: 1, min: 0.1, max: 10, step: 0.1, label: 'Ore per hour per Mining Power point' },
-    goldRatePerPower: { value: 2, min: 0, max: 20, step: 0.5, label: 'Gold per hour per Mining Power point' },
+    // Economy design: Mining is an unattended, bot-friendly loop — it must stay an exclusive
+    // raw-material faucet (ore/gems) with zero liquid currency, or it hyperinflates gold.
+    goldRatePerPower: { value: 0, min: 0, max: 20, step: 0.5, label: 'Gold per hour per Mining Power point (kept at 0 — see economy note)' },
   },
   hunting: {
     _label: 'Open Zone Hunting',
@@ -104,6 +106,9 @@ const T = DebugPanel.define({
     xpPerFloor: { value: 15, min: 1, max: 100, step: 1, label: 'Pass XP per dungeon floor cleared' },
     xpPerHuntHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Hunting claimed' },
     xpPerMiningHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Mining claimed' },
+    expeditionBonusSlots: { value: 1, min: 0, max: 3, step: 1, label: 'Extra simultaneous Expedition slots while active' },
+    pouchBonusSlots: { value: 2, min: 0, max: 6, step: 1, label: 'Extra Hunting Pouch slots while active' },
+    repairDiscount: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Forge repair gold discount while active' },
   },
   ui: {
     _label: 'UI Layout',

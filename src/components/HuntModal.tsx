@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { t } from '../locales';
-import { computeHuntingStatus, SaveData } from '../game/engine';
+import { computeHuntingStatus, effectivePouchSlots, SaveData } from '../game/engine';
 import { HUNTING_ZONES, isZoneUnlocked } from '../game/huntingZones';
 import { getMaterial } from '../game/materials';
 import { getEquipped } from '../game/gear';
 import { spriteForArmorTier } from '../game/sprites';
-import { allocateToPouch, getHuntPouchTierDef } from '../game/huntPouch';
+import { allocateToPouch } from '../game/huntPouch';
 import HuntBattleView from './HuntBattleView';
 import MaterialIcon from './MaterialIcon';
 
@@ -78,6 +78,10 @@ export default function HuntModal({
                         </span>
                         <span>{t('hunting.perHour', { n: zone.goldPerHour })}</span>
                       </span>
+                      <span className="floor-drop">
+                        <span className="mat-icon xp">XP</span>
+                        <span>{t('hunting.perHour', { n: zone.xpPerHour })}</span>
+                      </span>
                     </div>
                     <div className="hunt-drop-tiers">
                       {zone.drops.map((d) => (
@@ -106,8 +110,8 @@ export default function HuntModal({
                           {t('mining.capProgress', { cur: formatHours(huntStatus.pendingMs), cap: formatHours(huntStatus.capMs) })}
                         </span>
                         {(() => {
-                          const capacity = getHuntPouchTierDef(save.huntPouch.tier)?.slots ?? 2;
-                          const preview = allocateToPouch(save.huntPouch, huntStatus.drops, zone.drops.map((d) => d.material));
+                          const capacity = effectivePouchSlots(save, now);
+                          const preview = allocateToPouch(save.huntPouch, huntStatus.drops, zone.drops.map((d) => d.material), capacity);
                           return (
                             <>
                               {preview.items.length > 0 && (

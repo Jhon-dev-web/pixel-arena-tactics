@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import { t } from '../locales';
 import Assets from '../assets.json';
-import { ActiveExpedition, EXPEDITIONS, getExpedition } from '../game/expedition';
+import { SaveData } from '../game/engine';
+import { EXPEDITIONS, getExpedition } from '../game/expedition';
+import { ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from '../game/consumables';
+import ConsumableIcon from './ConsumableIcon';
 
 const expText = (k: string): string => t(`expedition.${k}`);
+
+const TICKET_IDS = Object.keys(EXPEDITION_TICKET_SKIP_MS) as ConsumableId[];
 
 function formatRemaining(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -15,43 +20,51 @@ function formatRemaining(ms: number): string {
 }
 
 export default function ExpeditionModal({
-  expedition,
+  save,
+  maxSlots,
   huntingActive,
   onStart,
   onCancel,
   onClaim,
+  onUseTicket,
   onClose,
 }: {
-  expedition: ActiveExpedition | null;
+  save: SaveData;
+  maxSlots: number;
   huntingActive: boolean;
   onStart: (id: string) => void;
-  onCancel: () => void;
-  onClaim: () => void;
+  onCancel: (index: number) => void;
+  onClaim: (index: number) => void;
+  onUseTicket: (index: number, ticketId: ConsumableId) => void;
   onClose: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!expedition) return;
+    if (save.expeditions.length === 0) return;
     const iv = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(iv);
-  }, [expedition]);
+  }, [save.expeditions.length]);
 
-  const activeDef = expedition ? getExpedition(expedition.id) : undefined;
+  const hasFreeSlot = save.expeditions.length < maxSlots;
 
   return (
     <div className="modal-backdrop">
       <div className="modal expedition-modal">
         <h2 className="modal-title">{t('expedition.title')}</h2>
+        <p className="expedition-slots">{t('expedition.slots', { n: save.expeditions.length, m: maxSlots })}</p>
 
-        {expedition && activeDef ? (
-          <div className="expedition-active-card">
-            <div className="camp-expedition-name">{expText(activeDef.nameKey)}</div>
-            {(() => {
-              const remaining = expedition.endsAt - now;
-              const done = remaining <= 0;
-              const progress = done ? 1 : Math.max(0, Math.min(1, (activeDef.durationMs - remaining) / activeDef.durationMs));
-              return done ? (
-                <button className="camp-expedition-claim blink" onClick={onClaim} data-ui>
+        {save.expeditions.map((expedition, index) => {
+          const activeDef = getExpedition(expedition.id);
+          if (!activeDef) return null;
+          const remaining = expedition.endsAt - now;
+          const done = remaining <= 0;
+          const progress = done ? 1 : Math.max(0, Math.min(1, (activeDef.durationMs - remaining) / activeDef.durationMs));
+          const ownedTickets = TICKET_IDS.filter((id) => (save.consumables[id] ?? 0) > 0);
+          return (
+            <div className="expedition-active-card" key={index}>
+              <div className="camp-expedition-name">{expText(activeDef.nameKey)}</div>
+              {done ? (
+                <button className="camp-expedition-claim blink" onClick={() => onClaim(index)} data-ui>
                   {t('expedition.collect')}
                 </button>
               ) : (
@@ -60,14 +73,29 @@ export default function ExpeditionModal({
                     <div className="camp-expedition-fill" style={{ width: `${progress * 100}%` }} />
                   </div>
                   <span className="camp-expedition-time">{t('expedition.inExpedition', { n: formatRemaining(remaining) })}</span>
-                  <button className="camp-expedition-cancel" onClick={onCancel} data-ui>
+                  {ownedTickets.length > 0 && (
+                    <div className="expedition-tickets">
+                      {ownedTickets.map((id) => {
+                        const def = getConsumable(id);
+                        if (!def) return null;
+                        return (
+                          <button className="expedition-ticket-btn" key={id} onClick={() => onUseTicket(index, id)} data-ui>
+                            <ConsumableIcon item={def} className="inline-icon" /> {t(`consumables.${def.nameKey}`)} ×{save.consumables[id]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <button className="camp-expedition-cancel" onClick={() => onCancel(index)} data-ui>
                     {t('expedition.cancel')}
                   </button>
                 </>
-              );
-            })()}
-          </div>
-        ) : (
+              )}
+            </div>
+          );
+        })}
+
+        {hasFreeSlot && (
           <>
             <p className="expedition-note">{t('expedition.background')}</p>
             {huntingActive && <div className="cp-warning-banner">{t('hunting.busyOther')}</div>}

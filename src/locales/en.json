@@ -198,6 +198,7 @@
   "huntPouch": {
     "title": "Hunting Pouch",
     "slots": "{n} Slots",
+    "passBonus": "Pass",
     "upgrade": "Upgrade",
     "pouch_t1": "Basic Pockets",
     "pouch_t2": "Leather Pouch",
@@ -234,7 +235,15 @@
     "large_hp": "Large Health Potion",
     "large_hp_d": "Heals +150 HP in the Dungeon",
     "atk_elixir": "Battle Elixir",
-    "atk_elixir_d": "+10% damage for the current run"
+    "atk_elixir_d": "+10% damage for the current run",
+    "refine_catalyst": "Refine Catalyst",
+    "refine_catalyst_d": "Guarantees success on the next gear upgrade",
+    "expedition_ticket_1h": "Expedition Ticket (1h)",
+    "expedition_ticket_1h_d": "Advances an active Expedition by 1 hour",
+    "expedition_ticket_2h": "Acceleration Ticket (2h)",
+    "expedition_ticket_2h_d": "Advances an active Expedition by 2 hours",
+    "expedition_ticket_4h": "Acceleration Ticket (4h)",
+    "expedition_ticket_4h_d": "Advances an active Expedition by 4 hours"
   },
   "forge": {
     "title": "Forge",
@@ -244,6 +253,8 @@
     "repairTab": "Repair",
     "socketTab": "Gems",
     "upgrade": "UPGRADE",
+    "useCatalyst": "CATALYZE",
+    "catalystHint": "Consumes 1 Refine Catalyst and guarantees this upgrade succeeds",
     "max": "MAX",
     "chance": "Chance: {n}%",
     "forged": "✓ Forged!",
@@ -388,6 +399,7 @@
   },
   "expedition": {
     "title": "Expedition",
+    "slots": "Slots: {n} / {m}",
     "start": "Dispatch Expedition",
     "inExpedition": "On Expedition: {n} left",
     "cancel": "Cancel",
@@ -469,6 +481,9 @@
     "hours": "{n} hours",
     "perkStorage": "24h Storage",
     "perkLuck": "+25% Drop Luck",
+    "perkExpedition": "+1 Expedition Slot",
+    "perkPouch": "+2 Hunting Pouch Slots",
+    "perkRepair": "-20% Repair Cost",
     "levelLabel": "Level {n} / {m}",
     "xpProgress": "{cur} / {need} XP",
     "activate": "Activate Adventurer's Pass",

@@ -1,5 +1,5 @@
 import T from './tunables';
-import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, MAX_DURABILITY, refineLevel, sanitizeSaveInventory } from './gear';
+import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, MAX_DURABILITY, refineLevel, repairCost, sanitizeSaveInventory } from './gear';
 import { Materials, MaterialId, emptyMaterials, getMaterial } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
 import { ConsumableId, emptyConsumables } from './consumables';
@@ -30,7 +30,7 @@ export interface SaveData {
   materials: Materials;
   potions: { hp: number; stamina: number; elixir: number };
   consumables: Record<ConsumableId, number>;
-  expedition: ActiveExpedition | null;
+  expeditions: ActiveExpedition[];
   durability: Record<string, number>;
   gems: Record<GemId, number>;
   sockets: Record<string, GemId[]>;
@@ -139,6 +139,24 @@ export function isBattlePassActive(save: SaveData, now: number): boolean {
   return save.hasBattlePass && (save.battlePassExpiresAt === null || save.battlePassExpiresAt > now);
 }
 
+// Battle Pass convenience perks: extra parallel Expeditions, extra Hunting Pouch buffer,
+// and a repair discount — its role is player-facing convenience/retention, not a new faucet.
+export const BASE_EXPEDITION_SLOTS = 1;
+
+export function maxExpeditionSlots(save: SaveData, now: number): number {
+  return BASE_EXPEDITION_SLOTS + (isBattlePassActive(save, now) ? T.battlePass.expeditionBonusSlots : 0);
+}
+
+export function effectivePouchSlots(save: SaveData, now: number): number {
+  const base = getHuntPouchTierDef(save.huntPouch.tier)?.slots ?? 2;
+  return base + (isBattlePassActive(save, now) ? T.battlePass.pouchBonusSlots : 0);
+}
+
+export function effectiveRepairCost(save: SaveData, tier: number, now: number): number {
+  const base = repairCost(tier);
+  return isBattlePassActive(save, now) ? Math.ceil(base * (1 - T.battlePass.repairDiscount)) : base;
+}
+
 export function battlePassXpForLevel(level: number): number {
   return Math.round(T.battlePass.xpBase * Math.pow(T.battlePass.xpGrowth, level - 1));
 }
@@ -193,6 +211,7 @@ export interface HuntingStatus {
   capMs: number;
   pendingMs: number;
   goldReady: number;
+  xpReady: number;
   drops: Partial<Record<MaterialId, number>>;
   full: boolean;
 }
@@ -200,7 +219,7 @@ export interface HuntingStatus {
 export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus {
   const zone = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
   if (!zone) {
-    return { capMs: 0, pendingMs: 0, goldReady: 0, drops: {}, full: false };
+    return { capMs: 0, pendingMs: 0, goldReady: 0, xpReady: 0, drops: {}, full: false };
   }
   const passActive = isBattlePassActive(save, now);
   const capHours = passActive ? Math.max(zone.offlineCapHours, T.battlePass.capHours) : zone.offlineCapHours;
@@ -209,6 +228,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
   const pendingMs = Math.min(elapsedMs, capMs);
   const hours = pendingMs / (3600 * 1000);
   const goldReady = Math.floor(hours * zone.goldPerHour);
+  const xpReady = Math.floor(hours * zone.xpPerHour);
   const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
   const encounters = hours * T.hunting.encountersPerHour;
   const drops: Partial<Record<MaterialId, number>> = {};
@@ -216,7 +236,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     const qty = Math.floor(encounters * entry.chance * entry.qty * dropMult);
     if (qty > 0) drops[entry.material] = (drops[entry.material] ?? 0) + qty;
   }
-  return { capMs, pendingMs, goldReady, drops, full: pendingMs >= capMs };
+  return { capMs, pendingMs, goldReady, xpReady, drops, full: pendingMs >= capMs };
 }
 
 export function defaultSave(): SaveData {
@@ -239,7 +259,7 @@ export function defaultSave(): SaveData {
     materials: emptyMaterials(),
     potions: { hp: 0, stamina: 0, elixir: 0 },
     consumables: emptyConsumables(),
-    expedition: null,
+    expeditions: [],
     durability: {},
     gems: emptyGems(),
     sockets: {},
@@ -285,11 +305,18 @@ export function loadSave(): SaveData {
         if (getGear(id) && Number.isFinite(n) && n > 0) upgrades[id] = Math.min(8, n);
       }
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
-      const exp = parsed.expedition;
-      const expedition =
-        exp && typeof exp.id === 'string' && getExpedition(exp.id) && typeof exp.endsAt === 'number' && Number.isFinite(exp.endsAt)
-          ? { id: exp.id, endsAt: exp.endsAt }
+      const sanitizeExpedition = (exp: unknown): ActiveExpedition | null => {
+        const e = exp as Partial<ActiveExpedition> | null | undefined;
+        return e && typeof e.id === 'string' && getExpedition(e.id) && typeof e.endsAt === 'number' && Number.isFinite(e.endsAt)
+          ? { id: e.id, endsAt: e.endsAt }
           : null;
+      };
+      const legacyExpedition = (parsed as { expedition?: unknown }).expedition;
+      const rawExpeditions = Array.isArray(parsed.expeditions) ? parsed.expeditions : legacyExpedition ? [legacyExpedition] : [];
+      const expeditions = rawExpeditions
+        .map(sanitizeExpedition)
+        .filter((e): e is ActiveExpedition => !!e)
+        .slice(0, 4);
       const durability: Record<string, number> = {};
       for (const [id, d] of Object.entries(parsed.durability ?? {})) {
         if (!getGear(id)) continue;
@@ -406,7 +433,7 @@ export function loadSave(): SaveData {
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
         consumables: { ...emptyConsumables(), ...(parsed.consumables ?? {}) },
-        expedition,
+        expeditions,
         durability,
         gems,
         sockets,

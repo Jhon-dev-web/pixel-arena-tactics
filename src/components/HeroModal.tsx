@@ -2,7 +2,7 @@ import { useState } from 'react';
 import T from '../game/tunables';
 import { t } from '../locales';
 import Assets from '../assets.json';
-import { SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
+import { effectivePouchSlots, isBattlePassActive, SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
 import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, gearBySlot, MAX_DURABILITY, refineLevel } from '../game/gear';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import { getTitleDef, TITLES } from '../game/titles';
@@ -261,6 +261,8 @@ export default function HeroModal({
               const pouchTier = getHuntPouchTierDef(save.huntPouch.tier);
               const next = nextHuntPouchTierDef(save.huntPouch.tier);
               const canAfford = !!next?.cost && save.gold >= next.cost.gold && hasMaterials(save.materials, next.cost.materials);
+              const passActive = isBattlePassActive(save, Date.now());
+              const effectiveSlots = effectivePouchSlots(save, Date.now());
               return (
                 <div className="craft-card pouch-card">
                   <div className="pouch-card-top">
@@ -270,7 +272,10 @@ export default function HeroModal({
                     <div className="craft-info">
                       <div className="craft-header">
                         <span className="craft-name">{pouchText(pouchTier?.nameKey ?? 'pouch_t1')}</span>
-                        <span className="pouch-slots-tag">{t('huntPouch.slots', { n: pouchTier?.slots ?? 2 })}</span>
+                        <span className="pouch-slots-tag">
+                          {t('huntPouch.slots', { n: effectiveSlots })}
+                          {passActive && <span className="pouch-bonus-tag"> ({t('huntPouch.passBonus')})</span>}
+                        </span>
                       </div>
                     </div>
                     {next ? (

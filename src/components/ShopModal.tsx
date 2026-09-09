@@ -34,7 +34,7 @@ export default function ShopModal({
         <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>
 
         <div className="shop-body">
-          {CONSUMABLES.map((c) => {
+          {CONSUMABLES.filter((c) => c.purchasable).map((c) => {
             const qty = save.consumables?.[c.id] ?? 0;
             const bagFull = qty === 0 && slots >= MAX_SLOTS;
             const disabled = save.gold < c.cost || qty >= CONSUMABLE_STACK || bagFull;
