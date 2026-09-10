@@ -10,8 +10,9 @@ import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, spriteForArmorTier } from '../game/sprites';
 import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
-import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
-import { getGem, totalGemBonuses } from '../game/gems';
+import { eliteBossDmg, eliteBossHp, isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
+import { getEliteReward } from '../game/dungeon';
+import { getGem, GemId, totalGemBonuses } from '../game/gems';
 import { rarityStatMult, totalSubstatTotals } from '../game/rarity';
 import { getTitleDef } from '../game/titles';
 import GemIcon from './GemIcon';
@@ -40,12 +41,20 @@ export default function BattleModal({
   onRetreat,
   onDefeat,
   onUsePotion,
+  elite = false,
+  alreadyDefeatedElite = false,
+  onEliteWin,
 }: {
   save: SaveData;
   startFloor: number;
   onRetreat: (rewards: RunRewards) => void;
   onDefeat: (rewards: RunRewards) => void;
   onUsePotion: () => void;
+  // Optional Elite re-fight of an already-beaten gate boss: single stage, own (harsher) HP/DMG
+  // curve, own exclusive loot, zero effect on floor progress/milestones/XP.
+  elite?: boolean;
+  alreadyDefeatedElite?: boolean;
+  onEliteWin?: () => void;
 }) {
   const build = getEquipped(save.equipped);
   const weapon = build.weapon;
@@ -65,14 +74,17 @@ export default function BattleModal({
   const blessedMult = save.blessed ? 1.05 : 1;
 
   const playerMax = playerMaxHp(save);
+  const enemyHpForStage = (st: number) => (elite ? eliteBossHp(enemyDefForFloor(st), st) : stageEnemyHp(enemyDefForFloor(st), st));
+  const enemyDmgForStage = (st: number) => (elite ? eliteBossDmg(enemyDefForFloor(st), st) : stageEnemyDmg(enemyDefForFloor(st), st));
 
   const [stage, setStage] = useState(startFloor);
   const [milestone, setMilestone] = useState<'checkpoint' | 'boss' | null>(
-    isDungeonBoss(startFloor) ? 'boss' : isDungeonCheckpoint(startFloor) ? 'checkpoint' : null,
+    elite ? 'boss' : isDungeonBoss(startFloor) ? 'boss' : isDungeonCheckpoint(startFloor) ? 'checkpoint' : null,
   );
-  const [enemyMax, setEnemyMax] = useState(() => stageEnemyHp(enemyDefForFloor(startFloor), startFloor));
+  const [enemyMax, setEnemyMax] = useState(() => enemyHpForStage(startFloor));
   const [playerHp, setPlayerHp] = useState(playerMax);
-  const [enemyHp, setEnemyHp] = useState(() => stageEnemyHp(enemyDefForFloor(startFloor), startFloor));
+  const [enemyHp, setEnemyHp] = useState(() => enemyHpForStage(startFloor));
+  const [eliteWon, setEliteWon] = useState(false);
   const [phase, setPhase] = useState<Phase>('battle');
   const [floats, setFloats] = useState<FloatItem[]>([]);
   const [playerAnim, setPlayerAnim] = useState<'idle' | 'attack' | 'hurt'>('idle');
@@ -88,18 +100,25 @@ export default function BattleModal({
   const [accumGold, setAccumGold] = useState(0);
   const [accumCount, setAccumCount] = useState(0);
   const [finalRewards, setFinalRewards] = useState<RunRewards | null>(null);
-  const [waveClear, setWaveClear] = useState<{ stage: number; gold: number; drops: Partial<Record<MaterialId, number>>; shards: number } | null>(null);
+  const [waveClear, setWaveClear] = useState<{
+    stage: number;
+    gold: number;
+    drops: Partial<Record<MaterialId, number>>;
+    shards: number;
+    gems: Partial<Record<GemId, number>>;
+  } | null>(null);
   const [dungeonComplete, setDungeonComplete] = useState(false);
 
-  const hp = useRef({ p: playerMax, e: stageEnemyHp(enemyDefForFloor(startFloor), startFloor) });
+  const hp = useRef({ p: playerMax, e: enemyHpForStage(startFloor) });
   const phaseRef = useRef<Phase>('battle');
   const speedRef = useRef<1 | 2>(1);
   const stageRef = useRef(startFloor);
   const clearedRef = useRef(0);
-  const accumRef = useRef<{ gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; count: number }>({
+  const accumRef = useRef<{ gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; gems: Partial<Record<GemId, number>>; count: number }>({
     gold: 0,
     drops: {},
     shards: 0,
+    gems: {},
     count: 0,
   });
   const heroNextAtkRef = useRef(0);
@@ -130,7 +149,7 @@ export default function BattleModal({
     setDungeonComplete(dungeonCompleteRef.current);
     const acc = accumRef.current;
     const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold / 2);
-    setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, stages: clearedRef.current });
+    setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, stages: clearedRef.current });
   };
 
   useEffect(() => {
@@ -140,14 +159,18 @@ export default function BattleModal({
     enemyNextAtkRef.current = now0;
     potionCooldownUntilRef.current = 0;
 
-    const applyLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number) => {
+    const applyLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number, gemDrops: Partial<Record<GemId, number>>) => {
       const acc = accumRef.current;
       const merged = { ...acc.drops };
       for (const [mid, qty] of Object.entries(drops)) {
         merged[mid as MaterialId] = (merged[mid as MaterialId] ?? 0) + (qty as number);
       }
+      const mergedGems = { ...acc.gems };
+      for (const [gid, qty] of Object.entries(gemDrops)) {
+        mergedGems[gid as GemId] = (mergedGems[gid as GemId] ?? 0) + (qty as number);
+      }
       const count = Object.values(merged).reduce((a, b) => a + (b as number), 0);
-      accumRef.current = { gold: acc.gold + gold, drops: merged, shards: acc.shards + shards, count };
+      accumRef.current = { gold: acc.gold + gold, drops: merged, shards: acc.shards + shards, gems: mergedGems, count };
       setAccumGold(accumRef.current.gold);
       setAccumCount(count);
     };
@@ -162,7 +185,7 @@ export default function BattleModal({
       }
       stageRef.current = next;
       setStage(next);
-      const nmax = stageEnemyHp(enemyDefForFloor(next), next);
+      const nmax = enemyHpForStage(next);
       hp.current.e = nmax;
       setEnemyMax(nmax);
       setEnemyHp(nmax);
@@ -179,13 +202,24 @@ export default function BattleModal({
 
     const clearWave = () => {
       const st = stageRef.current;
+      if (elite) {
+        // Single-encounter mode: no next wave, no floor-progress side effects — just the win screen.
+        phaseRef.current = 'retreat';
+        setPhase('retreat');
+        setDungeonComplete(false);
+        setFinalRewards({ gold: 0, drops: {}, shards: 0, gems: {}, stages: 0 });
+        setHeroProgress(0);
+        setEnemyProgress(0);
+        setEliteWon(true);
+        return;
+      }
       const r = waveRewards(getBiomeForFloor(st), st);
-      applyLoot(r.gold, r.drops, r.shards);
+      applyLoot(r.gold, r.drops, r.shards, r.gems);
       clearedRef.current += 1;
       const healed = Math.min(playerMax, Math.round(hp.current.p + playerMax * T.battle.waveHeal));
       hp.current.p = healed;
       setPlayerHp(healed);
-      setWaveClear({ stage: st, gold: r.gold, drops: r.drops, shards: r.shards });
+      setWaveClear({ stage: st, gold: r.gold, drops: r.drops, shards: r.shards, gems: r.gems });
       phaseRef.current = 'intermission';
       setPhase('intermission');
       setHeroProgress(0);
@@ -225,7 +259,7 @@ export default function BattleModal({
       const st = stageRef.current;
       const reduction =
         effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
-      const eFinal = Math.max(1, Math.round(stageEnemyDmg(enemyDefForFloor(st), st) * (1 - reduction)));
+      const eFinal = Math.max(1, Math.round(enemyDmgForStage(st) * (1 - reduction)));
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);
       setEnemyAnim('attack');
@@ -301,14 +335,21 @@ export default function BattleModal({
   const currentDef = getEnemyDef(currentEnemyKind);
   const currentBiome = getBiomeForFloor(stage);
 
-  const renderLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number) => (
+  const renderLoot = (
+    gold: number,
+    drops: Partial<Record<MaterialId, number>>,
+    shards: number,
+    gemsReward?: Partial<Record<GemId, number>>,
+  ) => (
     <>
-      <span className="floor-drop">
-        <span className="mat-icon">
-          <img src={Assets.icons.gold.url} alt="" />
+      {gold > 0 && (
+        <span className="floor-drop">
+          <span className="mat-icon">
+            <img src={Assets.icons.gold.url} alt="" />
+          </span>
+          <span>{t('ui.goldReward', { n: gold })}</span>
         </span>
-        <span>{t('ui.goldReward', { n: gold })}</span>
-      </span>
+      )}
       {Object.entries(drops ?? {}).map(([mid, qty]) => (
         <span className="floor-drop" key={mid}>
           <span className="mat-icon">
@@ -327,8 +368,45 @@ export default function BattleModal({
           <span>{t('ui.shardsReward', { n: shards })}</span>
         </span>
       )}
+      {Object.entries(gemsReward ?? {}).map(([gid, qty]) => {
+        const gemDef = getGem(gid);
+        if (!gemDef) return null;
+        return (
+          <span className="floor-drop" key={gid}>
+            <span className="mat-icon">
+              <GemIcon item={gemDef} />
+            </span>
+            <span>
+              +{qty}× {t(`gems.${gemDef.nameKey}`)}
+            </span>
+          </span>
+        );
+      })}
     </>
   );
+
+  const eliteReward = getEliteReward(startFloor, alreadyDefeatedElite);
+
+  const renderEliteLoot = () => {
+    if (!eliteReward) return null;
+    return (
+      <>
+        {renderLoot(eliteReward.gold, {}, eliteReward.shards, eliteReward.gems)}
+        {eliteReward.catalysts > 0 && (
+          <span className="floor-drop">
+            <span className="mat-icon">⚗️</span>
+            <span>+{eliteReward.catalysts}× {t('consumables.refine_catalyst')}</span>
+          </span>
+        )}
+        {!!eliteReward.oneTokenBalance && (
+          <span className="floor-drop">
+            <span className="mat-icon">🪙</span>
+            <span>ONE +{eliteReward.oneTokenBalance}</span>
+          </span>
+        )}
+      </>
+    );
+  };
 
   // Milestones only ever bank on a successful retreat — a defeat must never show or grant them,
   // even if a boss earlier in this same run was genuinely killed.
@@ -432,8 +510,9 @@ export default function BattleModal({
           <div className="battle-hud enemy">
             <span className="hp-label">
               <span className="hp-name-text">{enemyText(currentDef.nameKey)}</span>
-              {milestone === 'boss' && <span className="miniboss-tag boss">👑 {t('dungeon.mainBoss')}</span>}
-              {milestone === 'checkpoint' && <span className="miniboss-tag">💀 {t('dungeon.miniBoss')}</span>}
+              {elite && <span className="miniboss-tag boss">⚔️ {t('dungeon.eliteTag')}</span>}
+              {!elite && milestone === 'boss' && <span className="miniboss-tag boss">👑 {t('dungeon.mainBoss')}</span>}
+              {!elite && milestone === 'checkpoint' && <span className="miniboss-tag">💀 {t('dungeon.miniBoss')}</span>}
             </span>
             <div className="battle-hp-row">
               <div className="bar hp enemy-hp">
@@ -480,19 +559,42 @@ export default function BattleModal({
           {waveClear && phase === 'intermission' && (
             <div className="wave-banner">
               <div className="wave-title">{dungeonText('floorCleared').replace('{n}', String(waveClear.stage))}</div>
-              <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards)}</div>
+              <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards, waveClear.gems)}</div>
             </div>
           )}
         </div>
 
-        {(phase === 'retreat' || phase === 'defeat') && finalRewards && (
+        {elite && (phase === 'retreat' || phase === 'defeat') && (
+          <div className="battle-result">
+            <div className="battle-result-panel">
+              {eliteWon ? (
+                <>
+                  <h2 className="result-title win">{t('dungeon.eliteWin')}</h2>
+                  <div className="result-rewards">{renderEliteLoot()}</div>
+                  <button className="result-btn" onClick={() => onEliteWin?.()} data-ui>
+                    {t('dungeon.collect')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h2 className="result-title lose">{t('dungeon.eliteLose')}</h2>
+                  <button className="result-btn" onClick={() => (phase === 'retreat' ? onRetreat(finalRewards!) : onDefeat(finalRewards!))} data-ui>
+                    {t('dungeon.return')}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!elite && (phase === 'retreat' || phase === 'defeat') && finalRewards && (
           <div className="battle-result">
             <div className="battle-result-panel">
               {phase === 'retreat' ? (
                 <>
                   <h2 className="result-title win">{dungeonComplete ? t('dungeon.dungeonComplete') : t('dungeon.retreatTitle')}</h2>
                   {crossedMilestones.length > 0 && renderMilestoneBanner()}
-                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
+                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems)}</div>
                   <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
                     {t('dungeon.collect')}
                   </button>
@@ -501,7 +603,7 @@ export default function BattleModal({
                 <>
                   <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
                   <div className="gold-penalty">{t('dungeon.goldPenalty')}</div>
-                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards)}</div>
+                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems)}</div>
                   <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
                     {t('dungeon.return')}
                   </button>

@@ -61,9 +61,17 @@ const T = DebugPanel.define({
     miniBossDmgMult: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Checkpoint damage multiplier' },
     miniBossShards: { value: 2, min: 1, max: 5, step: 1, label: 'Checkpoint shard drop' },
     bossEvery: { value: 25, min: 10, max: 50, step: 5, label: 'Dungeon main boss every N floors' },
-    bossHpMult: { value: 2.2, min: 1.5, max: 5, step: 0.1, label: 'Main boss HP multiplier' },
-    bossDmgMult: { value: 1.8, min: 1.5, max: 4, step: 0.1, label: 'Main boss damage multiplier' },
+    // Applied on top of the already-compounded hpGrowth/dmgGrowth curve (see stageEnemyHp/Dmg in waves.ts) —
+    // at high stages that curve alone already tracks a level-appropriate build's power, so these stay low:
+    // bossHpMult keeps HP moderately above a same-stage mob (fight length), bossDmgMult intentionally sits
+    // under 1x so a boss's per-hit damage doesn't outscale what a same-tier build's defense can absorb.
+    bossHpMult: { value: 1.2, min: 0.5, max: 5, step: 0.05, label: 'Main boss HP multiplier' },
+    bossDmgMult: { value: 0.3, min: 0.1, max: 4, step: 0.05, label: 'Main boss damage multiplier' },
     bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
+    // Optional Elite re-fight of an already-beaten gate boss (same stage curve, no floor-progress
+    // stakes) — reuses the pre-rebalance boss multipliers as its intentionally-brutal baseline.
+    eliteHpMult: { value: 2.2, min: 1, max: 6, step: 0.1, label: 'Elite challenge HP multiplier' },
+    eliteDmgMult: { value: 1.8, min: 1, max: 5, step: 0.1, label: 'Elite challenge damage multiplier' },
     miniBossGoldMult: { value: 2.5, min: 1, max: 10, step: 0.5, label: 'Checkpoint wave gold multiplier' },
     bossGoldMult: { value: 5, min: 1, max: 15, step: 0.5, label: 'Main boss wave gold multiplier' },
     potionThreshold: { value: 0.35, min: 0.05, max: 0.9, step: 0.05, label: 'Auto-potion HP threshold (ratio)' },

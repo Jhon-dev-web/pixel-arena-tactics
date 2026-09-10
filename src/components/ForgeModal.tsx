@@ -39,6 +39,8 @@ function rarityIcon(key: string): string {
       return Assets.icons.steel.url;
     case 'material_dragon':
       return Assets.icons.dragon_scales.url;
+    case 'material_obsidian':
+      return '/assets/icons/ore_obsidian.png';
     case 'material_gold':
       return '/assets/icons/ore_gold.png';
     default:

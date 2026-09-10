@@ -54,6 +54,7 @@ export interface SaveData {
   cosmetics: string[];
   activeTitle: string | null;
   dungeonCheckpoints: number[];
+  dungeonEliteDefeated: number[];
   huntPouch: HuntPouchState;
 }
 
@@ -287,6 +288,7 @@ export function defaultSave(): SaveData {
     cosmetics: [],
     activeTitle: null,
     dungeonCheckpoints: [],
+    dungeonEliteDefeated: [],
     huntPouch: defaultHuntPouch(),
   };
 }
@@ -421,6 +423,9 @@ export function loadSave(): SaveData {
       const dungeonCheckpoints = Array.isArray(parsed.dungeonCheckpoints)
         ? Array.from(new Set(parsed.dungeonCheckpoints.filter((f): f is number => typeof f === 'number' && MILESTONE_FLOORS.includes(f))))
         : [];
+      const dungeonEliteDefeated = Array.isArray(parsed.dungeonEliteDefeated)
+        ? Array.from(new Set(parsed.dungeonEliteDefeated.filter((f): f is number => typeof f === 'number' && MILESTONE_FLOORS.includes(f))))
+        : [];
       const sanitizePouchItems = (arr: unknown): HuntPouchItem[] =>
         Array.isArray(arr)
           ? (arr as HuntPouchItem[])
@@ -469,6 +474,7 @@ export function loadSave(): SaveData {
         cosmetics,
         activeTitle,
         dungeonCheckpoints,
+        dungeonEliteDefeated,
         huntPouch,
       };
     }

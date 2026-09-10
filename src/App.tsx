@@ -38,7 +38,7 @@ import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
 import BattlePassModal from './components/BattlePassModal';
-import { crossedMilestoneFloors, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
+import { crossedMilestoneFloors, getEliteReward, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
 import { allocateToPouch, drainPouchToMaterials, nextHuntPouchTierDef } from './game/huntPouch';
@@ -65,6 +65,7 @@ function App() {
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [huntOpen, setHuntOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
+  const [eliteFloor, setEliteFloor] = useState<number | null>(null);
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [mineOpen, setMineOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
@@ -148,6 +149,51 @@ function App() {
     setBattleFloor(s.highestDungeonFloor);
   };
 
+  const enterEliteDungeon = (floor: number) => {
+    const s = saveRef.current;
+    if (s.activeOreId) {
+      showToast(t('mining.busyDungeon'));
+      return;
+    }
+    if (s.activeHuntingZone) {
+      showToast(t('hunting.busyOther'));
+      return;
+    }
+    playSfx('click');
+    setDungeonOpen(false);
+    setEliteFloor(floor);
+  };
+
+  // Elite is a same-floor optional re-fight with zero effect on floor progress, milestones, or XP —
+  // it only ever grants its own exclusive loot on a win, and marks the floor as elite-cleared once.
+  const finishEliteRun = (floor: number, won: boolean) => {
+    const s = saveRef.current;
+    if (!won) {
+      setEliteFloor(null);
+      playSfx('hit');
+      return;
+    }
+    const alreadyDefeated = s.dungeonEliteDefeated.includes(floor);
+    const reward = getEliteReward(floor, alreadyDefeated);
+    if (!reward) {
+      setEliteFloor(null);
+      return;
+    }
+    const gems = { ...s.gems };
+    for (const [gid, qty] of Object.entries(reward.gems)) gems[gid as GemId] = (gems[gid as GemId] ?? 0) + (qty as number);
+    setSaveBoth({
+      ...s,
+      gold: s.gold + reward.gold,
+      gems,
+      shards: s.shards + reward.shards,
+      consumables: { ...s.consumables, refine_catalyst: (s.consumables.refine_catalyst ?? 0) + reward.catalysts },
+      oneTokenBalance: s.oneTokenBalance + (reward.oneTokenBalance ?? 0),
+      dungeonEliteDefeated: alreadyDefeated ? s.dungeonEliteDefeated : [...s.dungeonEliteDefeated, floor],
+    });
+    playSfx('victory');
+    setEliteFloor(null);
+  };
+
   const finishRun = (startFloor: number, rewards: RunRewards, outcome: 'retreat' | 'defeat') => {
     const s = saveRef.current;
     const mats = { ...s.materials };
@@ -187,6 +233,12 @@ function App() {
     const crossed = success ? crossedMilestoneFloors(startFloor, stages, s.dungeonCheckpoints) : [];
     let gold = s.gold + goldGain;
     let gems = s.gems;
+    // Per-clear gate-boss gem drop (waveRewards) — kept even on a defeat, same as its shards/drops.
+    if (rewards.gems && Object.keys(rewards.gems).length > 0) {
+      const g = { ...gems };
+      for (const [gid, qty] of Object.entries(rewards.gems)) g[gid as GemId] = (g[gid as GemId] ?? 0) + (qty as number);
+      gems = g;
+    }
     let cosmetics = s.cosmetics;
     let oneTokenBalance = s.oneTokenBalance;
     let dungeonCheckpoints = s.dungeonCheckpoints;
@@ -375,7 +427,7 @@ function App() {
     const s = saveRef.current;
     const tier = getOreTier(oreId);
     if (!tier || !isOreTierUnlocked(tier, playerLevel(s.xp), s.inventory) || s.activeOreId === oreId) return;
-    if (battleFloor !== null) {
+    if (battleFloor !== null || eliteFloor !== null) {
       showToast(t('mining.busyBattle'));
       return;
     }
@@ -1015,6 +1067,7 @@ function App() {
         <DungeonMapModal
           save={save}
           onEnterDungeon={enterDungeon}
+          onEnterElite={enterEliteDungeon}
           onClose={() => {
             playSfx('click');
             setDungeonOpen(false);
@@ -1114,6 +1167,19 @@ function App() {
           startFloor={battleFloor}
           onRetreat={(rewards) => finishRun(battleFloor, rewards, 'retreat')}
           onDefeat={(rewards) => finishRun(battleFloor, rewards, 'defeat')}
+          onUsePotion={useAutoPotion}
+        />
+      )}
+
+      {eliteFloor !== null && (
+        <BattleModal
+          save={save}
+          startFloor={eliteFloor}
+          elite
+          alreadyDefeatedElite={save.dungeonEliteDefeated.includes(eliteFloor)}
+          onEliteWin={() => finishEliteRun(eliteFloor, true)}
+          onRetreat={() => finishEliteRun(eliteFloor, false)}
+          onDefeat={() => finishEliteRun(eliteFloor, false)}
           onUsePotion={useAutoPotion}
         />
       )}

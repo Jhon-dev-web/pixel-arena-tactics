@@ -23,7 +23,8 @@ export const GEMS: GemDef[] = [
 export function socketsForTier(tier: number): number {
   if (tier <= 0) return 0;
   if (tier === 1) return 1;
-  if (tier === 4) return 3;
+  if (tier >= 6) return 4;
+  if (tier >= 4) return 3;
   return 2;
 }
 

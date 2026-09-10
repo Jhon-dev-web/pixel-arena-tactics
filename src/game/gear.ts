@@ -59,6 +59,9 @@ export const GEAR: GearItem[] = [
   { id: 'steel_greatsword', slot: 'weapon', nameKey: 'steel_greatsword', descKey: 'steel_greatsword_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.sword_steel.url, cost: 300, tier: 3, damage: 65, critChance: 0.1, recipe: { items: { iron_short_sword: 2 }, materials: { silver: 4, essence: 2, bone_fragment: 3, demon_claw: 1 }, gems: { ruby: 1 }, requiredLevel: 25 } },
   { id: 'gilded_warblade', slot: 'weapon', nameKey: 'gilded_warblade', descKey: 'gilded_warblade_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_warblade.png', cost: 600, tier: 4, damage: 90, critChance: 0.14, recipe: { items: { steel_greatsword: 1 }, materials: { gold_ore: 5, concentrated_blood: 3, demon_core: 1 }, requiredLevel: 50 } },
   { id: 'dragon_flameblade', slot: 'weapon', nameKey: 'dragon_flameblade', descKey: 'dragon_flameblade_d', materialKey: 'material_dragon', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 1000, tier: 4, damage: 120, critChance: 0.18, burn: true, recipe: { items: { steel_greatsword: 1 }, materials: { dragon_scales: 3 }, shards: 5 } },
+  // Tier 5-6 — post-tier-4 continuation so gear keeps pace with floors 51-100, not just tier-4 refine.
+  { id: 'voidsteel_blade', slot: 'weapon', nameKey: 'voidsteel_blade', descKey: 'voidsteel_blade_d', materialKey: 'material_obsidian', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 1800, tier: 5, damage: 160, critChance: 0.2, burn: true, recipe: { items: { dragon_flameblade: 1 }, materials: { obsidian: 4, corrupted_crystal: 3, demon_core: 2 }, requiredLevel: 70 } },
+  { id: 'abyssal_greatblade', slot: 'weapon', nameKey: 'abyssal_greatblade', descKey: 'abyssal_greatblade_d', materialKey: 'material_obsidian', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 3200, tier: 6, damage: 220, critChance: 0.24, burn: true, recipe: { items: { voidsteel_blade: 1 }, materials: { obsidian: 8, corrupted_crystal: 5 }, shards: 6, requiredLevel: 90 } },
   // Armors (Tier 0-4) — hierarchical crafting
   { id: 'ragged_clothes', slot: 'armor', nameKey: 'ragged_clothes', descKey: 'ragged_clothes_d', materialKey: 'material_cloth', iconUrl: Assets.spritesheets.peasant.url, iconSheet: true, cost: 0, tier: 0, maxHp: 0 },
   { id: 'bronze_leather', slot: 'armor', nameKey: 'bronze_leather', descKey: 'bronze_leather_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.armor_leather.url, cost: 50, tier: 1, maxHp: 40, resistance: 0.03, recipe: { materials: { copper: 3, leather: 3 } } },
@@ -66,6 +69,8 @@ export const GEAR: GearItem[] = [
   { id: 'steel_plate', slot: 'armor', nameKey: 'steel_plate', descKey: 'steel_plate_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.armor_steel.url, cost: 350, tier: 3, maxHp: 160, resistance: 0.1, reflect: 0.2, recipe: { items: { iron_chainmail: 2 }, materials: { silver: 4, essence: 2, bone_fragment: 3, demon_claw: 1 }, gems: { sapphire: 1 }, requiredLevel: 25 } },
   { id: 'gilded_aegis', slot: 'armor', nameKey: 'gilded_aegis', descKey: 'gilded_aegis_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_aegis.png', cost: 650, tier: 4, maxHp: 220, resistance: 0.13, recipe: { items: { steel_plate: 1 }, materials: { gold_ore: 5, concentrated_blood: 3, corrupted_crystal: 1 }, requiredLevel: 50 } },
   { id: 'dragon_scale_armor', slot: 'armor', nameKey: 'dragon_scale_armor', descKey: 'dragon_scale_armor_d', materialKey: 'material_dragon', iconUrl: Assets.gear_icons.armor_dragon.url, cost: 1000, tier: 4, maxHp: 260, resistance: 0.15, recipe: { items: { steel_plate: 1 }, materials: { dragon_scales: 3 }, shards: 5 } },
+  { id: 'voidsteel_plate', slot: 'armor', nameKey: 'voidsteel_plate', descKey: 'voidsteel_plate_d', materialKey: 'material_obsidian', iconUrl: Assets.gear_icons.armor_dragon.url, cost: 1900, tier: 5, maxHp: 340, resistance: 0.17, recipe: { items: { dragon_scale_armor: 1 }, materials: { obsidian: 4, concentrated_blood: 3, demon_core: 2 }, requiredLevel: 70 } },
+  { id: 'abyssal_bulwark', slot: 'armor', nameKey: 'abyssal_bulwark', descKey: 'abyssal_bulwark_d', materialKey: 'material_obsidian', iconUrl: Assets.gear_icons.armor_dragon.url, cost: 3300, tier: 6, maxHp: 440, resistance: 0.2, recipe: { items: { voidsteel_plate: 1 }, materials: { obsidian: 8, concentrated_blood: 5 }, shards: 6, requiredLevel: 90 } },
   // Relics
   { id: 'ring_vitality', slot: 'relic', nameKey: 'ring_vitality', descKey: 'ring_vitality_d', icon: '/assets/icons/ring_vitality.png', cost: 200, focusHpBonus: 15, recipe: { materials: { essence: 3 } } },
   { id: 'amulet_swiftness', slot: 'relic', nameKey: 'amulet_swiftness', descKey: 'amulet_swiftness_d', icon: '/assets/icons/amulet_swiftness.png', cost: 250, attackStaminaReduction: 5, recipe: { materials: { essence: 3 } } },
@@ -175,7 +180,8 @@ export function effectiveResistance(item: GearItem, level: number): number {
 export function tierMaterial(tier: number): MaterialId {
   if (tier <= 2) return 'iron';
   if (tier === 3) return 'steel';
-  return 'dragon_scales';
+  if (tier === 4) return 'dragon_scales';
+  return 'obsidian';
 }
 
 export function gearSellValue(item: GearItem): number {
