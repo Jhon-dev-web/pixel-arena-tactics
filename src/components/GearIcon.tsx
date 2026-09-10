@@ -27,8 +27,8 @@ export default function GearIcon({ item }: { item: GearItem }) {
   if (item.icon && item.icon !== brokenSrc) {
     return <img className="pixel-icon" src={item.icon} alt="" draggable={false} onError={() => setBrokenSrc(item.icon!)} />;
   }
-  if (item.iconUrl) {
-    return <img className="gear-icon-img" src={item.iconUrl} alt="" draggable={false} />;
+  if (item.iconUrl && item.iconUrl !== brokenSrc) {
+    return <img className="gear-icon-img" src={item.iconUrl} alt="" draggable={false} onError={() => setBrokenSrc(item.iconUrl!)} />;
   }
   return <span className="gear-icon-emoji">{SLOT_EMOJI[item.slot] ?? '❔'}</span>;
 }

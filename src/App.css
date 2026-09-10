@@ -1133,7 +1133,8 @@ body {
 }
 .quests-btn,
 .hunt-btn,
-.expedition-btn {
+.expedition-btn,
+.garden-btn {
   position: relative;
 }
 .quests-badge {
@@ -1507,6 +1508,38 @@ body {
   border-radius: 10px;
   text-align: left;
 }
+/* Refino tab cards carry a lot less info per item (no material badge, no desc, 1-2 inputs) than a
+   Forjar card — compact them so all 3 stations (Fornalha/Curtume/Alquimia) need less scrolling. */
+.refine-card {
+  align-items: center;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  gap: 6px;
+}
+/* Descendant selectors (not a standalone .refine-card-icon class) so these reliably win over the
+   later, same-specificity .craft-icon/.craft-btn base rules regardless of source order. */
+.refine-card .craft-icon {
+  width: 28px;
+  height: 28px;
+}
+.refine-card .craft-name {
+  font-size: calc(var(--font-size) - 1px);
+}
+.refine-card .craft-req {
+  gap: 5px;
+  margin-top: 1px;
+}
+.refine-card .mat-icon {
+  width: 18px;
+  height: 18px;
+}
+/* CONVERTER at the base .craft-btn size (10px/12px padding) alone ate over a third of a Refino
+   card's width, leaving too little for the requirement column — this was the real cause of
+   "Minério"/"Farrapo"/"Essência" not fitting even at whole-word width. */
+.refine-card .craft-btn {
+  padding: 6px 8px;
+  font-size: calc(var(--font-size) - 4px);
+}
 .craft-info {
   flex: 1;
   min-width: 0;
@@ -1546,7 +1579,10 @@ body {
   align-items: center;
   gap: 4px;
   max-width: 100%;
-  min-width: 0;
+  /* Do NOT shrink below natural content width — .craft-req already wraps whole chips onto a new
+     line via flex-wrap, so letting flexbox squeeze an individual chip (min-width:0 + flex-shrink)
+     is what forced overflow-wrap to break mid-word ("Farra po de Couro") instead of at a space. */
+  flex-shrink: 0;
 }
 .req-plus {
   color: #8a7aa8;
@@ -2060,6 +2096,12 @@ body {
   object-fit: contain;
   image-rendering: pixelated;
 }
+.inline-icon-emoji {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  vertical-align: -2px;
+}
 
 /* --- toast --- */
 .toast {
@@ -2558,7 +2600,7 @@ body {
 }
 .forge-tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 4px;
   width: 100%;
   margin-bottom: 12px;
@@ -2566,10 +2608,14 @@ body {
 .forge-tabs .tab {
   min-width: 0;
   padding: 8px 1px;
-  font-size: calc(var(--font-size) - 5px);
+  font-size: calc(var(--font-size) - 6px);
   white-space: normal;
   line-height: 1.25;
   word-break: normal;
+  /* .tab (base rule) sets overflow-wrap: break-word — with 5 equal-width grid columns that's what
+     was splitting "Melhorar" into "Melhora"/"r". Single-word labels have no space to wrap at, so
+     let a slightly-too-wide label spill a couple px rather than force a mid-word break. */
+  overflow-wrap: normal;
 }
 .refine-tag {
   color: #ffd76a;
@@ -2621,6 +2667,55 @@ body {
 .floor-card.equipped {
   border-color: #ffd76a;
   box-shadow: 0 0 10px rgba(255, 215, 106, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.garden-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.garden-slot {
+  padding: 10px;
+  background: #1c1322;
+  border: 2px solid #a87c3a;
+  border-radius: 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.garden-slot.empty {
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  border-style: dashed;
+  border-color: #5a4a35;
+}
+.garden-slot.equipped {
+  border-color: #ffd76a;
+  box-shadow: 0 0 10px rgba(255, 215, 106, 0.3);
+}
+.garden-slot-name {
+  font-size: calc(var(--font-size) - 1px);
+  color: #fff;
+}
+.garden-slot-empty {
+  font-size: calc(var(--font-size) - 2px);
+  color: #8a7aa8;
+}
+.garden-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.garden-stepper-count {
+  min-width: 24px;
+  text-align: center;
+  font-size: var(--font-size);
+  color: #ffd76a;
 }
 .floor-header {
   display: flex;

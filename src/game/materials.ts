@@ -10,12 +10,18 @@ export type MaterialId =
   | 'silver'
   | 'gold_ore'
   | 'obsidian'
+  | 'silver_ingot'
+  | 'gold_bar'
+  | 'refined_obsidian'
   | 'leather_scrap'
   | 'demon_claw'
   | 'demon_core'
   | 'bone_fragment'
   | 'concentrated_blood'
-  | 'corrupted_crystal';
+  | 'corrupted_crystal'
+  | 'common_herb'
+  | 'uncommon_root'
+  | 'rare_flower';
 
 export type DropRarity = 'common' | 'uncommon' | 'rare';
 
@@ -41,6 +47,10 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'silver', nameKey: 'mat_silver', icon: '⚪', iconUrl: '/assets/icons/ore_silver.png', packSize: 4, packCost: 120, sellValue: 15 },
   { id: 'gold_ore', nameKey: 'mat_gold_ore', icon: '🟡', iconUrl: '/assets/icons/ore_gold.png', packSize: 3, packCost: 400, sellValue: 45 },
   { id: 'obsidian', nameKey: 'mat_obsidian', icon: '🟣', iconUrl: '/assets/icons/ore_obsidian.png', packSize: 2, packCost: 900, sellValue: 110 },
+  // Furnace-refined — never mined/dropped directly, only produced by converting the raw ore above
+  { id: 'silver_ingot', nameKey: 'mat_silver_ingot', icon: '🥈', packSize: 3, packCost: 450, sellValue: 75 },
+  { id: 'gold_bar', nameKey: 'mat_gold_bar', icon: '🥇', packSize: 2, packCost: 900, sellValue: 225 },
+  { id: 'refined_obsidian', nameKey: 'mat_refined_obsidian', icon: '💠', packSize: 1, packCost: 1100, sellValue: 550 },
   // Open Hunting drops — never sold via the Shop, exclusive to monster drops
   { id: 'leather_scrap', nameKey: 'mat_leather_scrap', icon: '🟫', iconUrl: '/assets/icons/leather_scrap.png', packSize: 5, packCost: 30, sellValue: 4 },
   { id: 'demon_claw', nameKey: 'mat_demon_claw', icon: '🐾', iconUrl: '/assets/icons/demon_claw.png', packSize: 3, packCost: 120, sellValue: 22 },
@@ -48,6 +58,10 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'bone_fragment', nameKey: 'mat_bone_fragment', icon: '🦴', iconUrl: '/assets/icons/bone_fragment.png', packSize: 5, packCost: 30, sellValue: 4 },
   { id: 'concentrated_blood', nameKey: 'mat_concentrated_blood', icon: '🩸', iconUrl: '/assets/icons/concentrated_blood.png', packSize: 3, packCost: 120, sellValue: 22 },
   { id: 'corrupted_crystal', nameKey: 'mat_corrupted_crystal', icon: '🔮', iconUrl: '/assets/icons/corrupted_crystal.png', packSize: 1, packCost: 800, sellValue: 180 },
+  // Garden harvests — Alchemy ingredients (erva/raiz/flor), never dropped by Hunting/Mining/Dungeon.
+  { id: 'common_herb', nameKey: 'mat_common_herb', icon: '🌿', packSize: 5, packCost: 20, sellValue: 3 },
+  { id: 'uncommon_root', nameKey: 'mat_uncommon_root', icon: '🥕', packSize: 3, packCost: 90, sellValue: 15 },
+  { id: 'rare_flower', nameKey: 'mat_rare_flower', icon: '🌸', packSize: 1, packCost: 300, sellValue: 65 },
 ];
 
 export function getMaterial(id: MaterialId): MaterialDef | undefined {
@@ -69,12 +83,18 @@ export function emptyMaterials(): Materials {
     silver: 0,
     gold_ore: 0,
     obsidian: 0,
+    silver_ingot: 0,
+    gold_bar: 0,
+    refined_obsidian: 0,
     leather_scrap: 0,
     demon_claw: 0,
     demon_core: 0,
     bone_fragment: 0,
     concentrated_blood: 0,
     corrupted_crystal: 0,
+    common_herb: 0,
+    uncommon_root: 0,
+    rare_flower: 0,
   };
 }
 

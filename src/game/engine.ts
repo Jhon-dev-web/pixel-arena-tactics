@@ -10,6 +10,29 @@ import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, effectiveDropChance, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
+import { getPlant, PlantId } from './garden';
+
+export const GARDEN_SLOTS = 4;
+
+export interface GardenSlot {
+  plantId: PlantId | null;
+  startedAt: number;
+}
+
+function emptyGardenSlot(): GardenSlot {
+  return { plantId: null, startedAt: 0 };
+}
+
+function emptyGardenSlots(): GardenSlot[] {
+  return Array.from({ length: GARDEN_SLOTS }, emptyGardenSlot);
+}
+
+function sanitizeGardenSlot(raw: unknown): GardenSlot {
+  const r = (raw ?? {}) as Partial<GardenSlot>;
+  const plantId = typeof r.plantId === 'string' && getPlant(r.plantId) ? (r.plantId as PlantId) : null;
+  const startedAt = plantId && typeof r.startedAt === 'number' && Number.isFinite(r.startedAt) ? r.startedAt : 0;
+  return { plantId, startedAt };
+}
 
 export interface SaveData {
   gold: number;
@@ -56,6 +79,7 @@ export interface SaveData {
   dungeonCheckpoints: number[];
   dungeonEliteDefeated: number[];
   huntPouch: HuntPouchState;
+  gardenSlots: GardenSlot[];
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
@@ -209,6 +233,33 @@ export function computeMiningStatus(save: SaveData, now: number): MiningStatus {
   return { capMs, pendingMs, oreId: tier.id, oreReady, goldReady, full: pendingMs >= capMs };
 }
 
+export interface GardenStatus {
+  plantId: PlantId | null;
+  durationMs: number;
+  elapsedMs: number;
+  remainingMs: number;
+  ready: boolean;
+}
+
+// Unlike Mining/Hunting (continuous accrual capped at a rollover window), each Garden slot is a
+// single fixed-duration harvest per planting — elapsed time past durationMs never yields more, it
+// just sits "ready" until collected. Still timestamp-based like the others, so offline time counts
+// the same way (no separate offline-catchup code path needed).
+export function computeGardenSlotStatus(save: SaveData, now: number, slotIndex: number): GardenStatus {
+  const slot = save.gardenSlots[slotIndex];
+  const def = slot?.plantId ? getPlant(slot.plantId) : undefined;
+  if (!slot || !def) {
+    return { plantId: null, durationMs: 0, elapsedMs: 0, remainingMs: 0, ready: false };
+  }
+  const elapsedMs = Math.max(0, now - slot.startedAt);
+  const remainingMs = Math.max(0, def.durationMs - elapsedMs);
+  return { plantId: def.id, durationMs: def.durationMs, elapsedMs, remainingMs, ready: elapsedMs >= def.durationMs };
+}
+
+export function computeGardenStatuses(save: SaveData, now: number): GardenStatus[] {
+  return save.gardenSlots.map((_, i) => computeGardenSlotStatus(save, now, i));
+}
+
 export interface HuntingStatus {
   capMs: number;
   pendingMs: number;
@@ -289,6 +340,7 @@ export function defaultSave(): SaveData {
     activeTitle: null,
     dungeonCheckpoints: [],
     dungeonEliteDefeated: [],
+    gardenSlots: emptyGardenSlots(),
     huntPouch: defaultHuntPouch(),
   };
 }
@@ -426,6 +478,20 @@ export function loadSave(): SaveData {
       const dungeonEliteDefeated = Array.isArray(parsed.dungeonEliteDefeated)
         ? Array.from(new Set(parsed.dungeonEliteDefeated.filter((f): f is number => typeof f === 'number' && MILESTONE_FLOORS.includes(f))))
         : [];
+      // v2: 4 independent slots. v1 saves only ever had one active plant (activePlant/plantStartedAt)
+      // — migrate that into slot 0 so nobody's in-progress planting is lost, rest start empty.
+      const legacyPlant = parsed as unknown as { activePlant?: unknown; plantStartedAt?: unknown };
+      let gardenSlots: GardenSlot[];
+      if (Array.isArray(parsed.gardenSlots)) {
+        gardenSlots = Array.from({ length: GARDEN_SLOTS }, (_, i) => sanitizeGardenSlot(parsed.gardenSlots[i]));
+      } else if (typeof legacyPlant.activePlant === 'string' && getPlant(legacyPlant.activePlant)) {
+        gardenSlots = [
+          sanitizeGardenSlot({ plantId: legacyPlant.activePlant, startedAt: legacyPlant.plantStartedAt }),
+          ...Array.from({ length: GARDEN_SLOTS - 1 }, emptyGardenSlot),
+        ];
+      } else {
+        gardenSlots = emptyGardenSlots();
+      }
       const sanitizePouchItems = (arr: unknown): HuntPouchItem[] =>
         Array.isArray(arr)
           ? (arr as HuntPouchItem[])
@@ -476,6 +542,7 @@ export function loadSave(): SaveData {
         dungeonCheckpoints,
         dungeonEliteDefeated,
         huntPouch,
+        gardenSlots,
       };
     }
   } catch {

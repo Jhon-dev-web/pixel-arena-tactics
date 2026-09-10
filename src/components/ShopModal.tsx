@@ -6,6 +6,7 @@ import { GEMS, GemId } from '../game/gems';
 import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
 import ConsumableIcon from './ConsumableIcon';
 import GemIcon from './GemIcon';
+import TitleIcon from './TitleIcon';
 
 const conText = (k: string): string => t(`consumables.${k}`);
 const gemText = (k: string): string => t(`gems.${k}`);
@@ -28,7 +29,7 @@ export default function ShopModal({
     <div className="modal-backdrop">
       <div className="modal shop-modal">
         <h2 className="modal-title">
-          <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {t('shop.title')}
+          <TitleIcon src={Assets.icons.gold.url} fallback="🛒" /> {t('shop.title')}
         </h2>
         <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
         <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>

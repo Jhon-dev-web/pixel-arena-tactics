@@ -3,6 +3,8 @@ import T, { setTunableListener } from './game/tunables';
 import {
   addBattlePassXp,
   computeCP,
+  computeGardenSlotStatus,
+  computeGardenStatuses,
   computeHuntingStatus,
   computeMiningStatus,
   defaultSave,
@@ -18,6 +20,7 @@ import {
 import { getBattlePassLevelDef } from './game/battlepass';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, gearSellValue, getEquipped, getGear, MAX_DURABILITY, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
+import { getRefiningRecipe } from './game/refining';
 import { CONSUMABLE_STACK, ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from './game/consumables';
 import { isBagFull, inventorySlotsUsed, MAX_SLOTS } from './game/inventory';
 import { GEMS, GemId, hasGems, socketsForTier } from './game/gems';
@@ -34,6 +37,7 @@ import HuntModal from './components/HuntModal';
 import BattleModal from './components/BattleModal';
 import ExpeditionModal from './components/ExpeditionModal';
 import MiningModal from './components/MiningModal';
+import GardenModal from './components/GardenModal';
 import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
@@ -43,6 +47,7 @@ import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
 import { allocateToPouch, drainPouchToMaterials, nextHuntPouchTierDef } from './game/huntPouch';
 import { getOreTier, isOreTierUnlocked } from './game/ores';
+import { getPlant } from './game/garden';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
 import { rollRarity, rollSubstats, totalSubstatTotals } from './game/rarity';
@@ -68,6 +73,7 @@ function App() {
   const [eliteFloor, setEliteFloor] = useState<number | null>(null);
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [mineOpen, setMineOpen] = useState(false);
+  const [gardenOpen, setGardenOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
   const [huntReward, setHuntReward] = useState<{ timeMs: number; pendingMs: number; gold: number; xp: number } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
@@ -468,6 +474,55 @@ function App() {
     setSaveBoth({ ...s, activeOreId: null });
   };
 
+  const startPlanting = (plantId: string, count: number) => {
+    const s = saveRef.current;
+    const def = getPlant(plantId);
+    if (!def) return;
+    if (playerLevel(s.xp) < def.requiredLevel) return;
+    const emptyIndices = s.gardenSlots.reduce<number[]>((acc, slot, i) => {
+      if (!slot.plantId) acc.push(i);
+      return acc;
+    }, []);
+    const n = Math.min(Math.max(1, Math.floor(count)), emptyIndices.length);
+    if (n <= 0) {
+      showToast(t('garden.busy'));
+      return;
+    }
+    playSfx('click');
+    const now = Date.now();
+    const gardenSlots = [...s.gardenSlots];
+    for (let k = 0; k < n; k++) {
+      gardenSlots[emptyIndices[k]] = { plantId: def.id, startedAt: now };
+    }
+    setSaveBoth({ ...s, gardenSlots });
+  };
+
+  const harvestGardenSlot = (slotIndex: number) => {
+    const s = saveRef.current;
+    const status = computeGardenSlotStatus(s, Date.now(), slotIndex);
+    if (!status.ready || !status.plantId) return;
+    const def = getPlant(status.plantId);
+    if (!def) return;
+    playSfx('victory');
+    const gardenSlots = [...s.gardenSlots];
+    gardenSlots[slotIndex] = { plantId: null, startedAt: 0 };
+    setSaveBoth({
+      ...s,
+      materials: { ...s.materials, [def.material]: (s.materials[def.material] ?? 0) + def.qty },
+      gardenSlots,
+    });
+    showToast(`${t('garden.harvest')} +${def.qty} ${t(`materials.mat_${def.material}`)}`);
+  };
+
+  const cancelGardenSlot = (slotIndex: number) => {
+    const s = saveRef.current;
+    if (!s.gardenSlots[slotIndex]?.plantId) return;
+    playSfx('click');
+    const gardenSlots = [...s.gardenSlots];
+    gardenSlots[slotIndex] = { plantId: null, startedAt: 0 };
+    setSaveBoth({ ...s, gardenSlots });
+  };
+
   const startHunt = (zoneId: string, depth: HuntingDepth = DEFAULT_HUNTING_DEPTH) => {
     const s = saveRef.current;
     const zone = getHuntingZone(zoneId);
@@ -782,6 +837,33 @@ function App() {
     showToast(t('forge.toBag', { n: gearText(item.nameKey) }));
   };
 
+  const refineMaterial = (recipeId: string) => {
+    const recipe = getRefiningRecipe(recipeId);
+    if (!recipe) return;
+    const s = saveRef.current;
+    if (s.gold < recipe.cost) return;
+    if (playerLevel(s.xp) < recipe.requiredLevel) return;
+    if (!hasMaterials(s.materials, recipe.input)) return;
+
+    const mats = { ...s.materials };
+    for (const [mid, count] of Object.entries(recipe.input)) {
+      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
+    }
+    mats[recipe.output] = (mats[recipe.output] ?? 0) + recipe.outputQty;
+
+    playSfx('click');
+    setSaveBoth({
+      ...s,
+      gold: s.gold - recipe.cost,
+      materials: mats,
+      quests: {
+        ...s.quests,
+        daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
+      },
+    });
+    showToast(t('forge.toBag', { n: t(`materials.mat_${recipe.output}`) }));
+  };
+
   const reforgeItem = (id: string) => {
     const item = getGear(id);
     if (!item) return;
@@ -947,6 +1029,17 @@ function App() {
           >
             <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />
           </button>
+          <button
+            className="side-btn garden-btn"
+            onClick={() => {
+              playSfx('click');
+              setGardenOpen(true);
+            }}
+            data-ui
+          >
+            🌱
+            {computeGardenStatuses(save, Date.now()).some((s) => s.ready) && <span className="quests-badge">•</span>}
+          </button>
           <button className="side-btn hunt-btn" onClick={openHunt} data-ui>
             🏹
             {!!save.activeHuntingZone && <span className="quests-badge">•</span>}
@@ -1019,6 +1112,7 @@ function App() {
         <ForgeModal
           save={save}
           onForge={forgeItem}
+          onRefine={refineMaterial}
           onUpgrade={upgradeItem}
           onUpgradeWithCatalyst={upgradeItemWithCatalyst}
           onRepair={repairItem}
@@ -1112,6 +1206,19 @@ function App() {
           onClose={() => {
             playSfx('click');
             setMineOpen(false);
+          }}
+        />
+      )}
+
+      {gardenOpen && (
+        <GardenModal
+          save={save}
+          onPlant={startPlanting}
+          onHarvest={harvestGardenSlot}
+          onCancel={cancelGardenSlot}
+          onClose={() => {
+            playSfx('click');
+            setGardenOpen(false);
           }}
         />
       )}

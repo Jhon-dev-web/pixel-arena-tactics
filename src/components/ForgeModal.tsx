@@ -19,6 +19,7 @@ import {
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
 import { getConsumable } from '../game/consumables';
+import { RefiningRecipe, refiningRecipesForStation } from '../game/refining';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
@@ -53,6 +54,7 @@ const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('m
 export default function ForgeModal({
   save,
   onForge,
+  onRefine,
   onUpgrade,
   onUpgradeWithCatalyst,
   onRepair,
@@ -62,6 +64,7 @@ export default function ForgeModal({
 }: {
   save: SaveData;
   onForge: (id: string) => void;
+  onRefine: (recipeId: string) => void;
   onUpgrade: (id: string) => void;
   onUpgradeWithCatalyst: (id: string) => void;
   onRepair: (id: string, blessed: boolean) => void;
@@ -69,8 +72,9 @@ export default function ForgeModal({
   onUnsocket: (itemId: string, index: number) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<'forge' | 'upgrade' | 'repair' | 'socket'>('forge');
+  const [tab, setTab] = useState<'forge' | 'refine' | 'upgrade' | 'repair' | 'socket'>('forge');
   const [justForged, setJustForged] = useState<string | null>(null);
+  const [justRefined, setJustRefined] = useState<string | null>(null);
   const catalystCount = save.consumables?.refine_catalyst ?? 0;
 
   const level = playerLevel(save.xp);
@@ -93,6 +97,18 @@ export default function ForgeModal({
     window.setTimeout(() => setJustForged(null), 1500);
   };
 
+  const canRefine = (recipe: RefiningRecipe): boolean => {
+    if (save.gold < recipe.cost) return false;
+    if (level < recipe.requiredLevel) return false;
+    return hasMaterials(save.materials, recipe.input);
+  };
+
+  const handleRefine = (recipeId: string) => {
+    onRefine(recipeId);
+    setJustRefined(recipeId);
+    window.setTimeout(() => setJustRefined(null), 1500);
+  };
+
   const { weapon, armor } = getEquipped(save.equipped);
   const equipped = [weapon, armor];
 
@@ -111,13 +127,19 @@ export default function ForgeModal({
     <div className="modal-backdrop">
       <div className="modal forge-modal">
         <h2 className="modal-title">
-          <img className="inline-icon" src={Assets.gear_icons.sword_iron.url} alt="" /> {t('forge.title')}
+          {/* A 15px inline sword sprite reads as a stray "!"/vertical dash at this size (confirmed
+              live — it loads fine, it's just illegible that small), not worth the misread risk for
+              a purely decorative title icon. Reuse the hammer emoji already used for Forge elsewhere. */}
+          <span className="inline-icon-emoji">⚒️</span> {t('forge.title')}
         </h2>
         <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
 
         <div className="forge-tabs">
           <button className={`tab${tab === 'forge' ? ' active' : ''}`} onClick={() => setTab('forge')} data-ui>
             {t('forge.forgeTab')}
+          </button>
+          <button className={`tab${tab === 'refine' ? ' active' : ''}`} onClick={() => setTab('refine')} data-ui>
+            {t('forge.refineTab')}
           </button>
           <button className={`tab${tab === 'upgrade' ? ' active' : ''}`} onClick={() => setTab('upgrade')} data-ui>
             {t('forge.upgradeTab')}
@@ -240,6 +262,83 @@ export default function ForgeModal({
                           data-ui
                         >
                           {forged ? t('forge.forged') : t('forge.forge')}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === 'refine' && (
+          <div className="forge-body">
+            {([
+              ['furnace', t('forge.furnaceSection')],
+              ['tannery', t('forge.tannerySection')],
+              ['alchemy', t('forge.alchemySection')],
+            ] as const).map(([station, sectionTitle]) => {
+              const recipes = refiningRecipesForStation(station);
+              if (recipes.length === 0) return null;
+              return (
+                <div className="gear-section" key={station}>
+                  <div className="gear-section-title">{sectionTitle}</div>
+                  {recipes.map((recipe) => {
+                    const ok = canRefine(recipe);
+                    const refined = justRefined === recipe.id;
+                    const outputMat = getMaterial(recipe.output)!;
+                    return (
+                      <div className="craft-card refine-card" key={recipe.id}>
+                        <span className="craft-icon">
+                          <MaterialIcon item={outputMat} />
+                        </span>
+                        <div className="craft-info">
+                          <div className="craft-header">
+                            <span className="craft-name">
+                              {recipe.outputQty}× {matText(`mat_${recipe.output}`)}
+                            </span>
+                          </div>
+                          <div className="craft-req">
+                            <span className="req-item">
+                              <span className="mat-icon">
+                                <img src={Assets.icons.gold.url} alt="" />
+                              </span>
+                              <span className={`req-amount${save.gold < recipe.cost ? ' missing' : ''}`}>{recipe.cost}</span>
+                            </span>
+                            {recipe.requiredLevel > 0 && (
+                              <span className="req-item">
+                                <span className="req-plus">+</span>
+                                <span className="mat-icon level">⭐</span>
+                                <span className={`req-amount${level < recipe.requiredLevel ? ' missing' : ''}`}>
+                                  {t('forge.levelReq', { n: recipe.requiredLevel })}
+                                </span>
+                              </span>
+                            )}
+                            {Object.entries(recipe.input).map(([mid, count]) => {
+                              const need = count as number;
+                              const have = save.materials[mid as MaterialId] ?? 0;
+                              return (
+                                <span className="req-item" key={`in-${mid}`}>
+                                  <span className="req-plus">+</span>
+                                  <span className="mat-icon">
+                                    <MaterialIcon item={getMaterial(mid as MaterialId)!} />
+                                  </span>
+                                  <span className={`req-amount${have < need ? ' missing' : ''}`}>
+                                    {need}× {matText(`mat_${mid}`)}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <button
+                          className={`craft-btn forge${refined ? ' forged' : ''}`}
+                          onClick={() => handleRefine(recipe.id)}
+                          disabled={!ok}
+                          data-ui
+                        >
+                          {refined ? t('forge.forged') : t('forge.refine')}
                         </button>
                       </div>
                     );
