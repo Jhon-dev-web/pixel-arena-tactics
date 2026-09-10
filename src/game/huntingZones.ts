@@ -32,6 +32,71 @@ export interface HuntingZoneDef {
 
 export const DEFAULT_HUNTING_ZONE = 'demon_glade';
 
+// Depth is a per-session choice layered on top of a zone, not a separate zone: same enemy, same
+// art, same materials — only pace and drop mix change. Raso is exactly today's numbers (1x
+// everywhere) so existing saves/behavior are unaffected by default. Denso/Profundo trade a lower
+// share of Common for a much richer Uncommon/Rare mix, gated behind a higher recommended CP so the
+// payoff scales with how strong the hero already is — not just AFK time.
+export type HuntingDepth = 'shallow' | 'dense' | 'deep';
+
+export interface HuntingDepthDef {
+  id: HuntingDepth;
+  nameKey: string;
+  cpMultiplier: number;
+  itemsPerHourMultiplier: number;
+  xpMultiplier: number;
+  rarityWeight: Record<DropRarity, number>;
+}
+
+export const HUNTING_DEPTHS: HuntingDepthDef[] = [
+  {
+    id: 'shallow',
+    nameKey: 'depth_shallow',
+    cpMultiplier: 1,
+    itemsPerHourMultiplier: 1,
+    xpMultiplier: 1,
+    rarityWeight: { common: 1, uncommon: 1, rare: 1 },
+  },
+  {
+    id: 'dense',
+    nameKey: 'depth_dense',
+    cpMultiplier: 1.15,
+    itemsPerHourMultiplier: 1.3,
+    xpMultiplier: 1.15,
+    rarityWeight: { common: 0.85, uncommon: 1.3, rare: 1.6 },
+  },
+  {
+    id: 'deep',
+    nameKey: 'depth_deep',
+    cpMultiplier: 1.3,
+    itemsPerHourMultiplier: 1.6,
+    xpMultiplier: 1.3,
+    rarityWeight: { common: 0.65, uncommon: 1.6, rare: 2.2 },
+  },
+];
+
+export const DEFAULT_HUNTING_DEPTH: HuntingDepth = 'shallow';
+
+export function getHuntingDepthDef(depth: HuntingDepth): HuntingDepthDef {
+  return HUNTING_DEPTHS.find((d) => d.id === depth) ?? HUNTING_DEPTHS[0];
+}
+
+export function recommendedCpForDepth(zone: HuntingZoneDef, depth: HuntingDepth): number {
+  return Math.round(zone.cp * getHuntingDepthDef(depth).cpMultiplier);
+}
+
+export function isDepthUnlocked(zone: HuntingZoneDef, depth: HuntingDepth, playerCp: number): boolean {
+  return playerCp >= recommendedCpForDepth(zone, depth);
+}
+
+// Effective per-encounter chance for one of the zone's drop entries at a given depth: the overall
+// pace multiplier and the rarity-tier weight both apply, so a deeper run drops noticeably more
+// Uncommon/Rare per hour while Common stays close to its Raso rate instead of flooding the bag.
+export function effectiveDropChance(entry: HuntingDrop, depth: HuntingDepth): number {
+  const def = getHuntingDepthDef(depth);
+  return entry.chance * def.itemsPerHourMultiplier * def.rarityWeight[entry.rarity];
+}
+
 // Economy design (faucet/sink discipline — see Sunflower Land, Big Time, Pixels): Open Hunting is
 // an unattended, bot-friendly loop, so it must NEVER be a meaningful liquid-currency source — that
 // job belongs entirely to time-capped Expeditions. Hunting stays a pure crafting-input + character

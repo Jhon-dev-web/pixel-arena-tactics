@@ -149,5 +149,8 @@ export function getMilestoneReward(floor: number): MilestoneReward | undefined {
 export function crossedMilestoneFloors(startFloor: number, stagesCleared: number, alreadyClaimed: number[]): number[] {
   if (stagesCleared <= 0) return [];
   const lastClearedFloor = startFloor + stagesCleared - 1;
-  return MILESTONE_FLOORS.filter((f) => f > startFloor && f <= lastClearedFloor && !alreadyClaimed.includes(f));
+  // Inclusive of startFloor itself: since a defeat now banks the floor checkpoint (see finishRun),
+  // a run can legitimately start exactly on an unclaimed milestone floor — e.g. you died on the
+  // floor-25 boss last time, come back, and beat it this run. That must still count as crossing it.
+  return MILESTONE_FLOORS.filter((f) => f >= startFloor && f <= lastClearedFloor && !alreadyClaimed.includes(f));
 }

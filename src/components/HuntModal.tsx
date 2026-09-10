@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { t } from '../locales';
-import { computeHuntingStatus, effectivePouchSlots, SaveData } from '../game/engine';
-import { HUNTING_ZONES, isZoneUnlocked } from '../game/huntingZones';
+import { computeCP, computeHuntingStatus, effectivePouchSlots, SaveData } from '../game/engine';
+import {
+  DEFAULT_HUNTING_DEPTH,
+  effectiveDropChance,
+  HUNTING_DEPTHS,
+  HUNTING_ZONES,
+  HuntingDepth,
+  HuntingZoneDef,
+  isDepthUnlocked,
+  isZoneUnlocked,
+  recommendedCpForDepth,
+} from '../game/huntingZones';
 import { getMaterial } from '../game/materials';
 import { getEquipped } from '../game/gear';
 import { spriteForArmorTier } from '../game/sprites';
@@ -24,6 +34,43 @@ function formatHours(ms: number): string {
   return h >= 10 ? h.toFixed(0) : h.toFixed(1);
 }
 
+function DepthPicker({
+  zone,
+  selected,
+  playerCp,
+  onPick,
+}: {
+  zone: HuntingZoneDef;
+  selected: HuntingDepth;
+  playerCp: number;
+  onPick: (depth: HuntingDepth) => void;
+}) {
+  return (
+    <div className="hunt-depth-row">
+      {HUNTING_DEPTHS.map((def) => {
+        const recommendedCp = recommendedCpForDepth(zone, def.id);
+        const unlocked = isDepthUnlocked(zone, def.id, playerCp);
+        const isSelected = selected === def.id;
+        return (
+          <button
+            key={def.id}
+            type="button"
+            className={`hunt-depth-btn${isSelected ? ' active' : ''}${unlocked ? '' : ' locked'}`}
+            onClick={() => unlocked && onPick(def.id)}
+            disabled={!unlocked}
+            title={unlocked ? undefined : t('hunting.depthLocked', { n: recommendedCp })}
+            data-ui
+          >
+            <span className="hunt-depth-name">{!unlocked && '🔒 '}{huntText(def.nameKey)}</span>
+            <span className="hunt-depth-cp">{t('dungeon.cp', { n: recommendedCp })}</span>
+            <span className="hunt-depth-rate">{t('hunting.rateMultiplier', { n: def.itemsPerHourMultiplier.toFixed(1) })}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function HuntModal({
   save,
   onStartHunt,
@@ -31,11 +78,12 @@ export default function HuntModal({
   onClose,
 }: {
   save: SaveData;
-  onStartHunt: (zoneId: string) => void;
+  onStartHunt: (zoneId: string, depth: HuntingDepth) => void;
   onStopHunt: () => void;
   onClose: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
+  const [selectedDepth, setSelectedDepth] = useState<Record<string, HuntingDepth>>({});
 
   useEffect(() => {
     const iv = window.setInterval(() => setNow(Date.now()), 1000);
@@ -51,6 +99,7 @@ export default function HuntModal({
 
   const huntStatus = computeHuntingStatus(save, now);
   const playerSpriteUrl = spriteForArmorTier(getEquipped(save.equipped).armor?.tier ?? 0);
+  const playerCp = computeCP(save);
 
   return (
     <div className="modal-backdrop">
@@ -61,6 +110,8 @@ export default function HuntModal({
           {HUNTING_ZONES.map((zone) => {
             const unlocked = isZoneUnlocked(zone, save.highestDungeonFloor);
             const isActive = save.activeHuntingZone === zone.id;
+            const depth = isActive ? save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH : selectedDepth[zone.id] ?? DEFAULT_HUNTING_DEPTH;
+            const canStartAtDepth = isDepthUnlocked(zone, depth, playerCp);
             return (
               <div className={`floor-card${unlocked ? '' : ' locked'}`} key={zone.id}>
                 <div className="floor-header">
@@ -80,7 +131,7 @@ export default function HuntModal({
                       </span>
                       <span className="floor-drop">
                         <span className="mat-icon xp">XP</span>
-                        <span>{t('hunting.perHour', { n: zone.xpPerHour })}</span>
+                        <span>{t('hunting.perHour', { n: Math.round(zone.xpPerHour * HUNTING_DEPTHS.find((d) => d.id === depth)!.xpMultiplier) })}</span>
                       </span>
                     </div>
                     <div className="hunt-drop-tiers">
@@ -91,13 +142,14 @@ export default function HuntModal({
                           </span>
                           <span className="hunt-drop-tier-label">{huntText(`tier_${d.rarity}`)}</span>
                           <span className="hunt-drop-name">{matText(d.material)}</span>
-                          <span className="hunt-drop-chance">{formatChance(d.chance)}</span>
+                          <span className="hunt-drop-chance">{formatChance(effectiveDropChance(d, depth))}</span>
                         </span>
                       ))}
                     </div>
 
                     {isActive ? (
                       <>
+                        <div className="hunt-depth-current">{t('hunting.currentDepth', { depth: huntText(HUNTING_DEPTHS.find((d) => d.id === depth)!.nameKey) })}</div>
                         <HuntBattleView enemyId={zone.enemyId} playerSpriteUrl={playerSpriteUrl} />
                         <div className="camp-mine-bar">
                           <div
@@ -152,9 +204,17 @@ export default function HuntModal({
                         </button>
                       </>
                     ) : (
-                      <button className="battle-btn" onClick={() => onStartHunt(zone.id)} data-ui>
-                        {huntText('start')}
-                      </button>
+                      <>
+                        <DepthPicker
+                          zone={zone}
+                          selected={depth}
+                          playerCp={playerCp}
+                          onPick={(d) => setSelectedDepth((prev) => ({ ...prev, [zone.id]: d }))}
+                        />
+                        <button className="battle-btn" onClick={() => onStartHunt(zone.id, depth)} disabled={!canStartAtDepth} data-ui>
+                          {huntText('start')}
+                        </button>
+                      </>
                     )}
                   </>
                 ) : (

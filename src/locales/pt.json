@@ -395,7 +395,13 @@
     "lostItemsWarning": "Você não tinha espaço suficiente na bolsa para carregar estes itens! Melhore sua Bolsa no Perfil do Herói.",
     "bagFullWarning": "Mochila cheia! Libere espaço no inventário para descarregar o restante.",
     "pouchLabel": "Bolsa ({n}/{m})",
-    "pouchFull": "Bolsa cheia — perdendo"
+    "pouchFull": "Bolsa cheia — perdendo",
+    "depth_shallow": "Raso",
+    "depth_dense": "Denso",
+    "depth_deep": "Profundo",
+    "depthLocked": "Requer {n} CP",
+    "rateMultiplier": "{n}x itens/h",
+    "currentDepth": "Profundidade: {depth}"
   },
   "expedition": {
     "title": "Expedição",

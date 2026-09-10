@@ -40,7 +40,7 @@ import QuestsModal from './components/QuestsModal';
 import BattlePassModal from './components/BattlePassModal';
 import { crossedMilestoneFloors, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
-import { getHuntingZone, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
+import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
 import { allocateToPouch, drainPouchToMaterials, nextHuntPouchTierDef } from './game/huntPouch';
 import { getOreTier, isOreTierUnlocked } from './game/ores';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
@@ -164,24 +164,26 @@ function App() {
         if (id) dur[id] = Math.max(0, (dur[id] ?? MAX_DURABILITY) - DURABILITY_LOSS_PER_STAGE * stages);
       }
     }
-    const nextFloor = success ? Math.min(MAX_DUNGEON_FLOOR, startFloor + stages) : s.highestDungeonFloor;
+    // Floor checkpoint: every stage actually defeated this run is banked permanently, win or lose the
+    // run overall — dying deep in a run no longer discards floors you already cleared to get there.
+    // Only the one-time milestone loot below (gold/gems/title at 25/50/75/100) stays retreat-gated.
+    const clearedFloor = stages > 0 ? Math.min(MAX_DUNGEON_FLOOR, startFloor + stages) : s.highestDungeonFloor;
+    const nextFloor = Math.max(s.highestDungeonFloor, clearedFloor);
     const quests = { ...s.quests };
     let battlePassLevel = s.battlePassLevel;
     let battlePassXp = s.battlePassXp;
     if (stages > 0) {
       quests.daily = { ...quests.daily, kills: (quests.daily.kills ?? 0) + stages };
       quests.counters = { ...quests.counters, kills: (quests.counters.kills ?? 0) + stages };
-      if (success) {
-        quests.counters.maxFloorCleared = Math.max(quests.counters.maxFloorCleared ?? 0, nextFloor);
-      }
+      quests.counters.maxFloorCleared = Math.max(quests.counters.maxFloorCleared ?? 0, clearedFloor);
       ({ battlePassLevel, battlePassXp } = addBattlePassXp(s, T.battlePass.xpPerFloor * stages));
     }
     const subs = totalSubstatTotals(s.equipped, s.itemSubstats ?? {});
     const goldGain = Math.round(rewards.gold * (1 + subs.goldBonus / 100));
     const unlockedHuntingZones = Array.from(new Set([...s.unlockedHuntingZones, ...unlockedZoneIds(nextFloor)]));
 
-    // Milestone (first-clear) rewards only ever apply to a successful retreat — a run that ends in
-    // defeat must never bank a checkpoint, even if a boss earlier in that same run was genuinely killed.
+    // Milestone (first-clear) rewards only ever apply to a successful retreat — dying still banks the
+    // floor checkpoint above, but forfeits this run's shot at the milestone's bonus gold/gems/title.
     const crossed = success ? crossedMilestoneFloors(startFloor, stages, s.dungeonCheckpoints) : [];
     let gold = s.gold + goldGain;
     let gems = s.gems;
@@ -414,10 +416,12 @@ function App() {
     setSaveBoth({ ...s, activeOreId: null });
   };
 
-  const startHunt = (zoneId: string) => {
+  const startHunt = (zoneId: string, depth: HuntingDepth = DEFAULT_HUNTING_DEPTH) => {
     const s = saveRef.current;
     const zone = getHuntingZone(zoneId);
-    if (!zone || !isZoneUnlocked(zone, s.highestDungeonFloor) || s.activeHuntingZone === zoneId) return;
+    if (!zone || !isZoneUnlocked(zone, s.highestDungeonFloor)) return;
+    if (s.activeHuntingZone === zoneId && s.activeHuntingDepth === depth) return;
+    if (!isDepthUnlocked(zone, depth, computeCP(s))) return;
     if (s.activeOreId) {
       showToast(t('mining.busyDungeon'));
       return;
@@ -435,7 +439,7 @@ function App() {
         huntPouch = allocateToPouch(huntPouch, prior.drops, priorZone.drops.map((d) => d.material), effectivePouchSlots(s, Date.now()));
       }
     }
-    setSaveBoth({ ...s, gold, xp, huntPouch, activeHuntingZone: zoneId, huntingOfflineStart: Date.now() });
+    setSaveBoth({ ...s, gold, xp, huntPouch, activeHuntingZone: zoneId, activeHuntingDepth: depth, huntingOfflineStart: Date.now() });
   };
 
   const stopHunt = () => {
@@ -448,7 +452,7 @@ function App() {
       ? allocateToPouch(s.huntPouch, status.drops, zone.drops.map((d) => d.material), effectivePouchSlots(s, Date.now()))
       : s.huntPouch;
     playSfx('click');
-    setSaveBoth({ ...s, activeHuntingZone: null, huntPouch });
+    setSaveBoth({ ...s, activeHuntingZone: null, activeHuntingDepth: null, huntPouch });
     setHuntReward({ timeMs, pendingMs: status.pendingMs, gold: status.goldReady, xp: status.xpReady });
   };
 

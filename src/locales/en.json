@@ -395,7 +395,13 @@
     "lostItemsWarning": "You didn't have enough pouch space to carry these items! Upgrade your Pouch in the Hero Profile.",
     "bagFullWarning": "Bag full! Free up inventory space to unload the rest.",
     "pouchLabel": "Pouch ({n}/{m})",
-    "pouchFull": "Pouch full — losing"
+    "pouchFull": "Pouch full — losing",
+    "depth_shallow": "Shallow",
+    "depth_dense": "Dense",
+    "depth_deep": "Deep",
+    "depthLocked": "Requires {n} CP",
+    "rateMultiplier": "{n}x items/h",
+    "currentDepth": "Depth: {depth}"
   },
   "expedition": {
     "title": "Expedition",

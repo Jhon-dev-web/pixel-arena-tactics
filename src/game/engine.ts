@@ -7,7 +7,7 @@ import { GemId, emptyGems, getGem, totalGemBonuses } from './gems';
 import { QuestState, emptyQuestState } from './quests';
 import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
-import { DEFAULT_HUNTING_ZONE, getHuntingZone, HUNTING_ZONES } from './huntingZones';
+import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, effectiveDropChance, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
 
@@ -42,6 +42,7 @@ export interface SaveData {
   lastMiningClaim: number;
   miningCapHours: number;
   activeHuntingZone: string | null;
+  activeHuntingDepth: HuntingDepth | null;
   huntingOfflineStart: number;
   unlockedHuntingZones: string[];
   hasBattlePass: boolean;
@@ -226,14 +227,17 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
   const capMs = capHours * 3600 * 1000;
   const elapsedMs = Math.max(0, now - save.huntingOfflineStart);
   const pendingMs = Math.min(elapsedMs, capMs);
+  const depthDef = getHuntingDepthDef(save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH);
   const hours = pendingMs / (3600 * 1000);
+  // Depth never touches gold — Hunting stays a non-currency faucet by design at every depth.
   const goldReady = Math.floor(hours * zone.goldPerHour);
-  const xpReady = Math.floor(hours * zone.xpPerHour);
+  const xpReady = Math.floor(hours * zone.xpPerHour * depthDef.xpMultiplier);
   const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
   const encounters = hours * T.hunting.encountersPerHour;
   const drops: Partial<Record<MaterialId, number>> = {};
   for (const entry of zone.drops) {
-    const qty = Math.floor(encounters * entry.chance * entry.qty * dropMult);
+    const chance = effectiveDropChance(entry, save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH);
+    const qty = Math.floor(encounters * chance * entry.qty * dropMult);
     if (qty > 0) drops[entry.material] = (drops[entry.material] ?? 0) + qty;
   }
   return { capMs, pendingMs, goldReady, xpReady, drops, full: pendingMs >= capMs };
@@ -271,6 +275,7 @@ export function defaultSave(): SaveData {
     lastMiningClaim: Date.now(),
     miningCapHours: T.mining.capHours,
     activeHuntingZone: null,
+    activeHuntingDepth: null,
     huntingOfflineStart: Date.now(),
     unlockedHuntingZones: [DEFAULT_HUNTING_ZONE],
     hasBattlePass: false,
@@ -380,6 +385,13 @@ export function loadSave(): SaveData {
         typeof parsed.activeHuntingZone === 'string' && unlockedHuntingZones.includes(parsed.activeHuntingZone)
           ? parsed.activeHuntingZone
           : null;
+      const knownDepths = new Set(HUNTING_DEPTHS.map((d) => d.id));
+      const activeHuntingDepth =
+        activeHuntingZone && typeof parsed.activeHuntingDepth === 'string' && knownDepths.has(parsed.activeHuntingDepth as HuntingDepth)
+          ? (parsed.activeHuntingDepth as HuntingDepth)
+          : activeHuntingZone
+            ? DEFAULT_HUNTING_DEPTH
+            : null;
       const huntingOfflineStart =
         typeof parsed.huntingOfflineStart === 'number' && Number.isFinite(parsed.huntingOfflineStart) && parsed.huntingOfflineStart > 0
           ? parsed.huntingOfflineStart
@@ -445,6 +457,7 @@ export function loadSave(): SaveData {
         lastMiningClaim,
         miningCapHours,
         activeHuntingZone,
+        activeHuntingDepth,
         huntingOfflineStart,
         unlockedHuntingZones,
         hasBattlePass,
