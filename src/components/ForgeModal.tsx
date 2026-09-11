@@ -20,6 +20,7 @@ import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
 import { getConsumable } from '../game/consumables';
 import { RefiningRecipe, refiningRecipesForStation } from '../game/refining';
+import { POTION_RECIPES, PotionRecipe } from '../game/potions';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
@@ -28,6 +29,7 @@ import ConsumableIcon from './ConsumableIcon';
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
 const gemText = (k: string): string => t(`gems.${k}`);
+const conText = (k: string): string => t(`consumables.${k}`);
 
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
@@ -55,6 +57,7 @@ export default function ForgeModal({
   save,
   onForge,
   onRefine,
+  onCraftPotion,
   onUpgrade,
   onUpgradeWithCatalyst,
   onRepair,
@@ -65,6 +68,7 @@ export default function ForgeModal({
   save: SaveData;
   onForge: (id: string) => void;
   onRefine: (recipeId: string) => void;
+  onCraftPotion: (recipeId: string) => void;
   onUpgrade: (id: string) => void;
   onUpgradeWithCatalyst: (id: string) => void;
   onRepair: (id: string, blessed: boolean) => void;
@@ -75,6 +79,7 @@ export default function ForgeModal({
   const [tab, setTab] = useState<'forge' | 'refine' | 'upgrade' | 'repair' | 'socket'>('forge');
   const [justForged, setJustForged] = useState<string | null>(null);
   const [justRefined, setJustRefined] = useState<string | null>(null);
+  const [justCraftedPotion, setJustCraftedPotion] = useState<string | null>(null);
   const catalystCount = save.consumables?.refine_catalyst ?? 0;
 
   const level = playerLevel(save.xp);
@@ -107,6 +112,18 @@ export default function ForgeModal({
     onRefine(recipeId);
     setJustRefined(recipeId);
     window.setTimeout(() => setJustRefined(null), 1500);
+  };
+
+  const canCraftPotion = (recipe: PotionRecipe): boolean => {
+    if (save.gold < recipe.cost) return false;
+    if (level < recipe.requiredLevel) return false;
+    return hasMaterials(save.materials, recipe.input);
+  };
+
+  const handleCraftPotion = (recipeId: string) => {
+    onCraftPotion(recipeId);
+    setJustCraftedPotion(recipeId);
+    window.setTimeout(() => setJustCraftedPotion(null), 1500);
   };
 
   const { weapon, armor } = getEquipped(save.equipped);
@@ -346,6 +363,70 @@ export default function ForgeModal({
                 </div>
               );
             })}
+
+            <div className="gear-section">
+              <div className="gear-section-title">{t('forge.potionsSection')}</div>
+              {POTION_RECIPES.map((recipe) => {
+                const consumable = getConsumable(recipe.id)!;
+                const ok = canCraftPotion(recipe);
+                const crafted = justCraftedPotion === recipe.id;
+                const owned = save.consumables?.[recipe.id] ?? 0;
+                return (
+                  <div className="craft-card refine-card" key={recipe.id}>
+                    <span className="craft-icon">
+                      <ConsumableIcon item={consumable} />
+                    </span>
+                    <div className="craft-info">
+                      <div className="craft-header">
+                        <span className="craft-name">{conText(consumable.nameKey)}</span>
+                        <span className="gear-count">{t('shop.youHave', { n: owned })}</span>
+                      </div>
+                      <span className="craft-desc">{conText(consumable.descKey)}</span>
+                      <div className="craft-req">
+                        <span className="req-item">
+                          <span className="mat-icon">
+                            <img src={Assets.icons.gold.url} alt="" />
+                          </span>
+                          <span className={`req-amount${save.gold < recipe.cost ? ' missing' : ''}`}>{recipe.cost}</span>
+                        </span>
+                        {recipe.requiredLevel > 0 && (
+                          <span className="req-item">
+                            <span className="req-plus">+</span>
+                            <span className="mat-icon level">⭐</span>
+                            <span className={`req-amount${level < recipe.requiredLevel ? ' missing' : ''}`}>
+                              {t('forge.levelReq', { n: recipe.requiredLevel })}
+                            </span>
+                          </span>
+                        )}
+                        {Object.entries(recipe.input).map(([mid, count]) => {
+                          const need = count as number;
+                          const have = save.materials[mid as MaterialId] ?? 0;
+                          return (
+                            <span className="req-item" key={`in-${mid}`}>
+                              <span className="req-plus">+</span>
+                              <span className="mat-icon">
+                                <MaterialIcon item={getMaterial(mid as MaterialId)!} />
+                              </span>
+                              <span className={`req-amount${have < need ? ' missing' : ''}`}>
+                                {need}× {matText(`mat_${mid}`)}
+                              </span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <button
+                      className={`craft-btn forge${crafted ? ' forged' : ''}`}
+                      onClick={() => handleCraftPotion(recipe.id)}
+                      disabled={!ok}
+                      data-ui
+                    >
+                      {crafted ? t('forge.forged') : t('forge.forge')}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

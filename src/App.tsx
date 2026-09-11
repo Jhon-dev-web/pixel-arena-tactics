@@ -21,6 +21,7 @@ import { getBattlePassLevelDef } from './game/battlepass';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, gearSellValue, getEquipped, getGear, MAX_DURABILITY, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
 import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
 import { getRefiningRecipe } from './game/refining';
+import { getPotionRecipe } from './game/potions';
 import { CONSUMABLE_STACK, ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from './game/consumables';
 import { isBagFull, inventorySlotsUsed, MAX_SLOTS } from './game/inventory';
 import { GEMS, GemId, hasGems, socketsForTier } from './game/gems';
@@ -351,11 +352,74 @@ function App() {
     setExpeditionOpen(true);
   };
 
-  const useAutoPotion = () => {
+  const useAutoPotion = (id: ConsumableId) => {
     const s = saveRef.current;
-    const qty = s.consumables.small_hp ?? 0;
+    const qty = s.consumables[id] ?? 0;
     if (qty <= 0) return;
-    setSaveBoth({ ...s, consumables: { ...s.consumables, small_hp: qty - 1 } });
+    setSaveBoth({ ...s, consumables: { ...s.consumables, [id]: qty - 1 } });
+  };
+
+  const craftPotion = (recipeId: string) => {
+    const recipe = getPotionRecipe(recipeId);
+    if (!recipe) return;
+    const s = saveRef.current;
+    if (s.gold < recipe.cost) return;
+    if (playerLevel(s.xp) < recipe.requiredLevel) return;
+    if (!hasMaterials(s.materials, recipe.input)) return;
+
+    const mats = { ...s.materials };
+    for (const [mid, count] of Object.entries(recipe.input)) {
+      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
+    }
+
+    playSfx('click');
+    setSaveBoth({
+      ...s,
+      gold: s.gold - recipe.cost,
+      materials: mats,
+      consumables: { ...s.consumables, [recipe.id]: (s.consumables[recipe.id] ?? 0) + 1 },
+      quests: {
+        ...s.quests,
+        daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
+      },
+    });
+    showToast(t('forge.toBag', { n: t(`consumables.${recipe.id}`) }));
+  };
+
+  const applyXpPotion = () => {
+    const s = saveRef.current;
+    const qty = s.consumables.xp_potion ?? 0;
+    if (qty <= 0) return;
+    const atCap = playerLevel(s.xp) >= 100;
+    playSfx('victory');
+    setSaveBoth({
+      ...s,
+      consumables: { ...s.consumables, xp_potion: qty - 1 },
+      xp: atCap ? s.xp : s.xp + T.battle.xpPotionAmount,
+    });
+    showToast(`+${T.battle.xpPotionAmount} XP`);
+  };
+
+  // Using another Strength Elixir while one is active refreshes the full duration from now rather
+  // than stacking magnitude or extending additively — simplest to reason about, matches how a
+  // single-slot buff usually reads ("you're topped up to 30min again"), and keeps the damage bonus
+  // itself constant so it can't be stacked into something the boss-fight balance wasn't tuned for.
+  const applyStrengthElixir = () => {
+    const s = saveRef.current;
+    const qty = s.consumables.strength_elixir ?? 0;
+    if (qty <= 0) return;
+    playSfx('victory');
+    setSaveBoth({
+      ...s,
+      consumables: { ...s.consumables, strength_elixir: qty - 1 },
+      activeBuff: { type: 'strength', expiresAt: Date.now() + T.battle.strengthElixirMinutes * 60 * 1000 },
+    });
+    showToast(t('consumables.strength_elixir_active'));
+  };
+
+  const useConsumableManually = (id: string) => {
+    if (id === 'xp_potion') applyXpPotion();
+    else if (id === 'strength_elixir') applyStrengthElixir();
   };
 
   const claimQuest = (id: string) => {
@@ -1113,6 +1177,7 @@ function App() {
           save={save}
           onForge={forgeItem}
           onRefine={refineMaterial}
+          onCraftPotion={craftPotion}
           onUpgrade={upgradeItem}
           onUpgradeWithCatalyst={upgradeItemWithCatalyst}
           onRepair={repairItem}
@@ -1134,6 +1199,7 @@ function App() {
           onDiscard={discardItem}
           onReforge={reforgeItem}
           onSalvage={salvageItem}
+          onUseConsumable={useConsumableManually}
           onClose={() => {
             playSfx('click');
             setBagOpen(false);

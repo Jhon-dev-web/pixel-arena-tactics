@@ -19,6 +19,9 @@ const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
 const EQUIPPABLE_SLOTS = new Set(['weapon', 'armor', 'pickaxe', 'axe', 'rod']);
+// The rest of the consumables are consumed automatically in their own context (auto-potion during
+// combat, expedition ticket skip flow) — these two only make sense as a deliberate player action.
+const MANUALLY_USABLE = new Set(['xp_potion', 'strength_elixir']);
 
 type SelKind = 'gear' | 'material' | 'consumable';
 
@@ -30,6 +33,7 @@ export default function InventoryModal({
   onDiscard,
   onReforge,
   onSalvage,
+  onUseConsumable,
   onClose,
 }: {
   save: SaveData;
@@ -39,6 +43,7 @@ export default function InventoryModal({
   onDiscard: (kind: SelKind, id: string) => void;
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
+  onUseConsumable: (id: string) => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables'>('all');
@@ -277,6 +282,21 @@ export default function InventoryModal({
             </>
           ) : (
             <div className="inv-detail-empty">{t('inventory.hint')}</div>
+          )}
+
+          {selected?.kind === 'consumable' && MANUALLY_USABLE.has(selected.id) && selQty > 0 && (
+            <div className="inv-actions">
+              <button
+                className="inv-sell"
+                onClick={() => {
+                  onUseConsumable(selected.id);
+                  setSelected(null);
+                }}
+                data-ui
+              >
+                {t('inventory.use')}
+              </button>
+            </div>
           )}
 
           {selected && !isEquipped && selQty > 0 && (

@@ -12,6 +12,13 @@ import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
 import { getPlant, PlantId } from './garden';
 
+export type BuffType = 'strength';
+
+export interface ActiveBuff {
+  type: BuffType;
+  expiresAt: number;
+}
+
 export const GARDEN_SLOTS = 4;
 
 export interface GardenSlot {
@@ -80,6 +87,7 @@ export interface SaveData {
   dungeonEliteDefeated: number[];
   huntPouch: HuntPouchState;
   gardenSlots: GardenSlot[];
+  activeBuff: ActiveBuff | null;
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
@@ -260,6 +268,17 @@ export function computeGardenStatuses(save: SaveData, now: number): GardenStatus
   return save.gardenSlots.map((_, i) => computeGardenSlotStatus(save, now, i));
 }
 
+// Timestamp-based like Mining/Hunting/Garden — no ticking interval needed to know if it's still
+// valid, only checked at read time (e.g. right before a damage calc, or when rendering the HUD).
+export function isBuffActive(save: SaveData, type: BuffType, now: number): boolean {
+  return !!save.activeBuff && save.activeBuff.type === type && save.activeBuff.expiresAt > now;
+}
+
+export function buffRemainingMs(save: SaveData, now: number): number {
+  if (!save.activeBuff) return 0;
+  return Math.max(0, save.activeBuff.expiresAt - now);
+}
+
 export interface HuntingStatus {
   capMs: number;
   pendingMs: number;
@@ -341,6 +360,7 @@ export function defaultSave(): SaveData {
     dungeonCheckpoints: [],
     dungeonEliteDefeated: [],
     gardenSlots: emptyGardenSlots(),
+    activeBuff: null,
     huntPouch: defaultHuntPouch(),
   };
 }
@@ -492,6 +512,11 @@ export function loadSave(): SaveData {
       } else {
         gardenSlots = emptyGardenSlots();
       }
+      const rawBuff = parsed.activeBuff as Partial<ActiveBuff> | undefined;
+      const activeBuff: ActiveBuff | null =
+        rawBuff && rawBuff.type === 'strength' && typeof rawBuff.expiresAt === 'number' && Number.isFinite(rawBuff.expiresAt)
+          ? { type: 'strength', expiresAt: rawBuff.expiresAt }
+          : null;
       const sanitizePouchItems = (arr: unknown): HuntPouchItem[] =>
         Array.isArray(arr)
           ? (arr as HuntPouchItem[])
@@ -543,6 +568,7 @@ export function loadSave(): SaveData {
         dungeonEliteDefeated,
         huntPouch,
         gardenSlots,
+        activeBuff,
       };
     }
   } catch {

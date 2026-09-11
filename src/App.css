@@ -2717,6 +2717,36 @@ body {
   font-size: var(--font-size);
   color: #ffd76a;
 }
+.garden-tabs {
+  grid-template-columns: repeat(2, 1fr);
+}
+/* Compact variant for the "Canteiros" tab — a quick-glance progress check shouldn't need the same
+   vertical room as the "Plantar" tab's full cards (icon/level/drops/description/stepper). */
+.garden-slot.compact {
+  padding: 8px;
+  gap: 3px;
+}
+.garden-slot-name.compact {
+  font-size: calc(var(--font-size) - 2px);
+}
+.camp-mine-bar.thin {
+  height: 4px;
+}
+.camp-mine-time.compact {
+  font-size: calc(var(--font-size) - 3px);
+}
+.repair-btns.compact {
+  gap: 6px;
+}
+.craft-btn.small {
+  padding: 5px 6px;
+  font-size: calc(var(--font-size) - 4px);
+}
+.garden-slot-empty-icon {
+  font-size: 20px;
+  color: #5a4a35;
+  line-height: 1;
+}
 .floor-header {
   display: flex;
   justify-content: space-between;
@@ -3060,6 +3090,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 8px;
   padding: 6px 10px;
@@ -3080,6 +3111,11 @@ body {
 .loot-potions {
   font-size: calc(var(--font-size) - 1px);
   color: #6fe08a;
+  white-space: nowrap;
+}
+.loot-buff {
+  font-size: calc(var(--font-size) - 1px);
+  color: #ff9a5a;
   white-space: nowrap;
 }
 .battle-top {

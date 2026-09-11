@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import T from '../game/tunables';
 import { t } from '../locales';
 import Assets from '../assets.json';
-import { SaveData, playerMaxHp } from '../game/engine';
+import { buffRemainingMs, isBuffActive, SaveData, playerMaxHp } from '../game/engine';
+import { ConsumableId } from '../game/consumables';
 import { EnemyDef, getEnemyDef } from '../game/enemies';
 import { durabilityFactor, effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, MAX_DURABILITY, refineLevel } from '../game/gear';
 import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
@@ -23,6 +24,13 @@ const biomeText = (k: string): string => t(`dungeon.${k}`);
 const materialName = (mid: string): string => t(`materials.mat_${mid}`);
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
 const enemyDefForFloor = (floor: number): EnemyDef => getEnemyDef(dungeonEnemyKindForFloor(floor));
+
+function formatBuffTime(ms: number): string {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 interface FloatItem {
   id: number;
@@ -49,7 +57,7 @@ export default function BattleModal({
   startFloor: number;
   onRetreat: (rewards: RunRewards) => void;
   onDefeat: (rewards: RunRewards) => void;
-  onUsePotion: () => void;
+  onUsePotion: (id: ConsumableId) => void;
   // Optional Elite re-fight of an already-beaten gate boss: single stage, own (harsher) HP/DMG
   // curve, own exclusive loot, zero effect on floor progress/milestones/XP.
   elite?: boolean;
@@ -96,7 +104,8 @@ export default function BattleModal({
   const [speed, setSpeed] = useState<1 | 2>(1);
   const [heroProgress, setHeroProgress] = useState(0);
   const [enemyProgress, setEnemyProgress] = useState(0);
-  const [potionsLeft, setPotionsLeft] = useState(save.consumables?.small_hp ?? 0);
+  const totalPotions = (c: SaveData['consumables']) => (c?.greater_elixir ?? 0) + (c?.large_hp ?? 0) + (c?.small_hp ?? 0);
+  const [potionsLeft, setPotionsLeft] = useState(totalPotions(save.consumables));
   const [accumGold, setAccumGold] = useState(0);
   const [accumCount, setAccumCount] = useState(0);
   const [finalRewards, setFinalRewards] = useState<RunRewards | null>(null);
@@ -124,7 +133,11 @@ export default function BattleModal({
   const heroNextAtkRef = useRef(0);
   const enemyNextAtkRef = useRef(0);
   const potionCooldownUntilRef = useRef(0);
-  const potionsLeftRef = useRef(save.consumables?.small_hp ?? 0);
+  const potionStockRef = useRef({
+    greater_elixir: save.consumables?.greater_elixir ?? 0,
+    large_hp: save.consumables?.large_hp ?? 0,
+    small_hp: save.consumables?.small_hp ?? 0,
+  });
   const idRef = useRef(0);
   const onRetreatRef = useRef(onRetreat);
   onRetreatRef.current = onRetreat;
@@ -229,7 +242,9 @@ export default function BattleModal({
 
     const heroAttack = () => {
       const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
-      const total = (baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + save.str * T.advanced.strDmgPerPoint) * blessedMult;
+      const strengthMult = isBuffActive(save, 'strength', Date.now()) ? 1 + T.battle.strengthElixirDmgPct : 1;
+      const total =
+        (baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + save.str * T.advanced.strDmgPerPoint) * blessedMult * strengthMult;
       const crit = Math.random() < effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100;
       const dmg = Math.max(1, Math.round(total * (crit ? critMult : 1)));
       hp.current.e = Math.max(0, hp.current.e - dmg);
@@ -278,17 +293,31 @@ export default function BattleModal({
     };
 
     const tryAutoPotion = (now: number) => {
-      if (potionsLeftRef.current <= 0) return;
       if (now < potionCooldownUntilRef.current) return;
       if (hp.current.p >= playerMax * T.battle.potionThreshold) return;
-      potionsLeftRef.current -= 1;
-      setPotionsLeft(potionsLeftRef.current);
+      const stock = potionStockRef.current;
+      // Best available potion first: Greater Elixir (% heal, Alchemy-tier) > large_hp > small_hp.
+      let id: ConsumableId | null = null;
+      let heal = 0;
+      if (stock.greater_elixir > 0) {
+        id = 'greater_elixir';
+        heal = playerMax * T.battle.greaterElixirHealPct;
+      } else if (stock.large_hp > 0) {
+        id = 'large_hp';
+        heal = T.battle.largePotionHeal;
+      } else if (stock.small_hp > 0) {
+        id = 'small_hp';
+        heal = T.battle.potionHeal;
+      }
+      if (!id) return;
+      stock[id] -= 1;
+      setPotionsLeft(stock.greater_elixir + stock.large_hp + stock.small_hp);
       potionCooldownUntilRef.current = now + T.battle.potionCooldownMs;
-      onUsePotionRef.current();
-      const heal = Math.max(1, Math.round(T.battle.potionHeal));
-      hp.current.p = Math.min(playerMax, hp.current.p + heal);
+      onUsePotionRef.current(id);
+      const healRounded = Math.max(1, Math.round(heal));
+      hp.current.p = Math.min(playerMax, hp.current.p + healRounded);
       setPlayerHp(hp.current.p);
-      addFloat('p', `+${heal}`, 'heal');
+      addFloat('p', `+${healRounded}`, 'heal');
       playSfx('focus');
     };
 
@@ -487,6 +516,11 @@ export default function BattleModal({
           <span className="loot-drops">
             <img className="inline-icon" src="/assets/icons/nav_bag.png" alt="" /> {dungeonText('accumDrops').replace('{n}', String(accumCount))}
           </span>
+          {isBuffActive(save, 'strength', Date.now()) && (
+            <span className="loot-buff" title={t('consumables.strength_elixir')}>
+              🔥 {formatBuffTime(buffRemainingMs(save, Date.now()))}
+            </span>
+          )}
         </div>
 
         <div className="battle-top">
