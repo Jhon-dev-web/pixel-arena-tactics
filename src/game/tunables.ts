@@ -109,6 +109,16 @@ const T = DebugPanel.define({
     tickMs: { value: 2200, min: 800, max: 6000, step: 100, label: 'Visual attack pulse interval (ms)' },
     encountersPerHour: { value: 12, min: 1, max: 60, step: 1, label: 'Kills per hour (drop-chance pacing)' },
   },
+  dungeon: {
+    _label: 'Dungeon Access',
+    // Economy design: normal Dungeon runs are throttled by daily attempt count, not by XP value —
+    // per-kill XP now scales with floor difficulty (dungeon.ts stageVictoryXp), which would let a
+    // player farm it endlessly if entries weren't capped. Extra sessions cost Shards (not Gold/ONE):
+    // Shards are the one resource Dungeon already earns and already spends on gear refinement, so
+    // this stays a closed loop inside Dungeon's own economy instead of touching the gold/ONE faucets.
+    freeSessionsPerDay: { value: 3, min: 1, max: 10, step: 1, label: 'Free Dungeon sessions per day' },
+    extraSessionShardCost: { value: 5, min: 1, max: 50, step: 1, label: 'Shard cost per Dungeon session beyond the free daily allowance' },
+  },
   battlePass: {
     _label: 'Battle Pass',
     xpBase: { value: 100, min: 20, max: 500, step: 10, label: 'Pass XP required for level 2' },

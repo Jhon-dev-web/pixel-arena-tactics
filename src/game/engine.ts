@@ -88,6 +88,8 @@ export interface SaveData {
   huntPouch: HuntPouchState;
   gardenSlots: GardenSlot[];
   activeBuff: ActiveBuff | null;
+  dungeonSessionsDay: string;
+  dungeonSessionsUsed: number;
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
@@ -362,6 +364,8 @@ export function defaultSave(): SaveData {
     gardenSlots: emptyGardenSlots(),
     activeBuff: null,
     huntPouch: defaultHuntPouch(),
+    dungeonSessionsDay: '',
+    dungeonSessionsUsed: 0,
   };
 }
 
@@ -425,6 +429,12 @@ export function loadSave(): SaveData {
         quests.dailyDay = today;
         quests.daily = { kills: 0, forge: 0, purchases: 0, expeditions: 0 };
         quests.dailyClaimed = [];
+      }
+      let dungeonSessionsDay = typeof parsed.dungeonSessionsDay === 'string' ? parsed.dungeonSessionsDay : '';
+      let dungeonSessionsUsed = Number.isFinite(Number(parsed.dungeonSessionsUsed)) ? Math.max(0, Math.floor(Number(parsed.dungeonSessionsUsed))) : 0;
+      if (dungeonSessionsDay !== today) {
+        dungeonSessionsDay = today;
+        dungeonSessionsUsed = 0;
       }
       const itemRarity: Record<string, Rarity> = {};
       for (const [id, r] of Object.entries(parsed.itemRarity ?? {})) {
@@ -569,6 +579,8 @@ export function loadSave(): SaveData {
         huntPouch,
         gardenSlots,
         activeBuff,
+        dungeonSessionsDay,
+        dungeonSessionsUsed,
       };
     }
   } catch {

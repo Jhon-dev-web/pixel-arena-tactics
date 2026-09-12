@@ -26,10 +26,6 @@ export default function ClaimModal({
             </span>
             <span>{t('ui.goldReward', { n: rewards.gold })}</span>
           </span>
-          <span className="floor-drop">
-            <span className="mat-icon xp">XP</span>
-            <span>{t('ui.xpReward', { n: rewards.xp })}</span>
-          </span>
           {rewards.shards > 0 && (
             <span className="floor-drop">
               <span className="mat-icon shard">

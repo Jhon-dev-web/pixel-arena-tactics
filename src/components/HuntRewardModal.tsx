@@ -15,13 +15,11 @@ function formatDuration(ms: number): string {
 export default function HuntRewardModal({
   timeMs,
   gold,
-  xp,
   pouch,
   onClaim,
 }: {
   timeMs: number;
   gold: number;
-  xp: number;
   pouch: HuntPouchState;
   onClaim: () => void;
 }) {
@@ -43,12 +41,6 @@ export default function HuntRewardModal({
               <span>{t('ui.goldReward', { n: gold })}</span>
             </span>
           )}
-          {xp > 0 && (
-            <span className="floor-drop">
-              <span className="mat-icon xp">XP</span>
-              <span>{t('ui.xpReward', { n: xp })}</span>
-            </span>
-          )}
           {pouch.items.map((item) => (
             <span className="floor-drop" key={item.itemId}>
               <span className="mat-icon">
@@ -59,7 +51,7 @@ export default function HuntRewardModal({
               </span>
             </span>
           ))}
-          {!hasItems && gold <= 0 && xp <= 0 && (
+          {!hasItems && gold <= 0 && (
             <span className="floor-drop">
               <span>{t('hunting.noneReady')}</span>
             </span>

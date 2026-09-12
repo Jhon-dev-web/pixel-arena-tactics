@@ -120,6 +120,22 @@ export function milestoneXpBonus(startFloor: number, stagesCleared: number): num
   return bonus;
 }
 
+// Per-kill XP now scales with floor difficulty (same rewardGrowth curve gold already uses) instead of a
+// flat rate — a floor-99 kill is worth far more than a floor-1 kill. This only matters now because normal
+// Dungeon runs are capped to a few sessions/day (see App.tsx enterDungeon), so it's safe for a deep run to
+// pay out a lot without becoming a farmable-forever XP faucet the way flat per-kill XP would have been.
+export function stageVictoryXp(floor: number): number {
+  return Math.round(T.advanced.victoryXp * (1 + T.battle.rewardGrowth * (floor - 1)));
+}
+
+export function dungeonRunXp(startFloor: number, stagesCleared: number): number {
+  let total = 0;
+  for (let f = startFloor; f <= startFloor + stagesCleared - 1; f++) {
+    total += stageVictoryXp(Math.min(MAX_DUNGEON_FLOOR, f));
+  }
+  return total;
+}
+
 // One-time "first clear" milestone payouts — biome-boss floors only (25/50/75/100).
 export interface MilestoneReward {
   floor: number;

@@ -23,10 +23,14 @@ export interface ActiveExpedition {
 
 // Offline dispatch missions — timed, no combat. Rewards are gold/XP/shards only,
 // deliberately excluding material drops so they never compete with Hunting's economy.
+// xp is deliberately huge and flat-per-hour (~55k/h at every duration tier) — see the matching
+// comment in huntingZones.ts: character level 90 needs ~168M XP, and these rates plus Hunting's
+// are calibrated so idle play alone (best Hunting zone + 2 Expedition slots w/ Battle Pass) closes
+// that gap in ~5 weeks, landing within a 5-7.5 week range depending on how fast zones/slots unlock.
 export const EXPEDITIONS: ExpeditionDef[] = [
-  { id: 'short', nameKey: 'exp_short', descKey: 'exp_short_d', durationKey: 'dur_1h', durationMs: 1 * 60 * 60 * 1000, gold: 250, xp: 80, shards: 0 },
-  { id: 'long', nameKey: 'exp_long', descKey: 'exp_long_d', durationKey: 'dur_4h', durationMs: 4 * 60 * 60 * 1000, gold: 1100, xp: 320, shards: 1 },
-  { id: 'epic', nameKey: 'exp_epic', descKey: 'exp_epic_d', durationKey: 'dur_8h', durationMs: 8 * 60 * 60 * 1000, gold: 2600, xp: 700, shards: 2, shardsChance: 0.5 },
+  { id: 'short', nameKey: 'exp_short', descKey: 'exp_short_d', durationKey: 'dur_1h', durationMs: 1 * 60 * 60 * 1000, gold: 250, xp: 55000, shards: 0 },
+  { id: 'long', nameKey: 'exp_long', descKey: 'exp_long_d', durationKey: 'dur_4h', durationMs: 4 * 60 * 60 * 1000, gold: 1100, xp: 220000, shards: 1 },
+  { id: 'epic', nameKey: 'exp_epic', descKey: 'exp_epic_d', durationKey: 'dur_8h', durationMs: 8 * 60 * 60 * 1000, gold: 2600, xp: 440000, shards: 2, shardsChance: 0.5 },
 ];
 
 export function getExpedition(id: string): ExpeditionDef | undefined {

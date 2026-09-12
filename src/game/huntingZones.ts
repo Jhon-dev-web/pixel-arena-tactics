@@ -102,6 +102,12 @@ export function effectiveDropChance(entry: HuntingDrop, depth: HuntingDepth): nu
 // job belongs entirely to time-capped Expeditions. Hunting stays a pure crafting-input + character
 // XP faucet: gold here is symbolic pocket change (a few coins/hour), never worth farming for wealth.
 // Materials only ever drop here — never in the Dungeon — and accrue slowly by design:
+// xpPerHour is deliberately huge (17.5k-69.5k) relative to goldPerHour: reaching character level
+// 90 (the real gate for surviving the Floor 100 boss) needs ~168M XP, and pre-rebalance Dungeon
+// combat was the only viable source of that at years-long timescales. These rates, combined with
+// Expedition's, close that idle-only to ~5-7.5 weeks (calibrated against xpToReachLevel(90) in
+// engine.ts) without making Dungeon farming pointless — Dungeon still grants no material/XP idle
+// equivalent, and later zones here stay floor-gated, so a player still has to climb to unlock them.
 // Common (25-35%): base Forge input. Uncommon (8-12%): mid-tier refine bottleneck.
 // Rare (1-3%): high-value trade good, scarce even with the Battle Pass's 24h cap.
 export const HUNTING_ZONES: HuntingZoneDef[] = [
@@ -111,7 +117,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'demon',
     cp: 20,
     goldPerHour: 3,
-    xpPerHour: 15,
+    xpPerHour: 17500,
     drops: [
       { material: 'leather_scrap', rarity: 'common', chance: 0.25, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.08, qty: 1 },
@@ -126,7 +132,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'blood_monster',
     cp: 70,
     goldPerHour: 5,
-    xpPerHour: 25,
+    xpPerHour: 29000,
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.28, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.09, qty: 1 },
@@ -141,7 +147,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'demon',
     cp: 140,
     goldPerHour: 8,
-    xpPerHour: 40,
+    xpPerHour: 46500,
     drops: [
       { material: 'leather_scrap', rarity: 'common', chance: 0.32, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.105, qty: 1 },
@@ -156,7 +162,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'blood_monster',
     cp: 230,
     goldPerHour: 12,
-    xpPerHour: 60,
+    xpPerHour: 69500,
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.35, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.12, qty: 1 },

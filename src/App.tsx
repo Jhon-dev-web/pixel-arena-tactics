@@ -43,7 +43,7 @@ import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
 import BattlePassModal from './components/BattlePassModal';
-import { crossedMilestoneFloors, getEliteReward, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
+import { crossedMilestoneFloors, dungeonRunXp, getEliteReward, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
 import { allocateToPouch, drainPouchToMaterials, nextHuntPouchTierDef } from './game/huntPouch';
@@ -88,16 +88,25 @@ function App() {
   const saveRef = useRef(save);
   const cheatModeRef = useRef(false);
 
-  const setSaveBoth = (s: SaveData) => {
-    saveRef.current = s;
-    setSave(s);
-  };
-
   const toastTimeout = useRef<number | null>(null);
   const showToast = (msg: string) => {
     setToast(msg);
     if (toastTimeout.current) window.clearTimeout(toastTimeout.current);
     toastTimeout.current = window.setTimeout(() => setToast(null), 1600);
+  };
+
+  // Character XP is intentionally never shown as a number anywhere in the UI (see TopHud/HeroModal/
+  // HuntModal/ExpeditionModal/HuntRewardModal) — a level-up toast is the only XP-gain feedback left,
+  // so it's centralized here rather than duplicated at every xp-granting call site.
+  const setSaveBoth = (s: SaveData) => {
+    const prevLevel = playerLevel(saveRef.current.xp);
+    const nextLevel = playerLevel(s.xp);
+    saveRef.current = s;
+    setSave(s);
+    if (nextLevel > prevLevel) {
+      playSfx('victory');
+      showToast(t('ui.levelUp', { n: nextLevel }));
+    }
   };
 
   useEffect(() => {
@@ -141,6 +150,9 @@ function App() {
     setHuntOpen(true);
   };
 
+  // A "session" is one full Dungeon attempt (enter -> climb until death or voluntary retreat), not
+  // per-floor — only normal Dungeon runs are capped this way; Elite stays uncapped (finishEliteRun),
+  // since it's a same-floor re-fight with its own separate, already-throttled reward table.
   const enterDungeon = () => {
     const s = saveRef.current;
     if (s.activeOreId) {
@@ -150,6 +162,19 @@ function App() {
     if (s.activeHuntingZone) {
       showToast(t('hunting.busyOther'));
       return;
+    }
+    const today = new Date().toDateString();
+    const used = s.dungeonSessionsDay === today ? s.dungeonSessionsUsed : 0;
+    const cost = T.dungeon.extraSessionShardCost;
+    if (used >= T.dungeon.freeSessionsPerDay) {
+      if (s.shards < cost) {
+        showToast(t('dungeon.sessionsExhausted', { n: cost }));
+        return;
+      }
+      setSaveBoth({ ...s, shards: s.shards - cost, dungeonSessionsDay: today, dungeonSessionsUsed: used + 1 });
+      showToast(t('dungeon.extraSessionPaid', { n: cost }));
+    } else {
+      setSaveBoth({ ...s, dungeonSessionsDay: today, dungeonSessionsUsed: used + 1 });
     }
     playSfx('click');
     setDungeonOpen(false);
@@ -262,7 +287,7 @@ function App() {
         if (reward.oneTokenBalance) oneTokenBalance += reward.oneTokenBalance;
       }
     }
-    const xpGain = T.advanced.victoryXp * stages + milestoneXpBonus(startFloor, stages);
+    const xpGain = dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages);
 
     setSaveBoth({
       ...s,
@@ -1304,7 +1329,6 @@ function App() {
         <HuntRewardModal
           timeMs={huntReward.timeMs}
           gold={huntReward.gold}
-          xp={huntReward.xp}
           pouch={save.huntPouch}
           onClaim={confirmHuntReward}
         />

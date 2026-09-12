@@ -21,7 +21,8 @@
     "goldReward": "+{n} Gold",
     "xpReward": "+{n}",
     "shardsReward": "+{n} Shards",
-    "shardsX": "{n}× Shards"
+    "shardsX": "{n}× Shards",
+    "levelUp": "🎉 Level Up! Lv {n}"
   },
   "combat": {
     "critical": "CRITICAL!",
@@ -371,6 +372,10 @@
     "hunt4": "Ancestral Blood Abyss",
     "cp": "Rec: {n} CP",
     "drops": "Drops",
+    "sessionsLeft": "🎟️ Free sessions today: {n}/{m}",
+    "sessionsPaidNotice": "🎟️ Today's free sessions used up — next entry costs {n}◆ Shards",
+    "sessionsExhausted": "No free sessions left today and not enough Shards (needs {n}◆)",
+    "extraSessionPaid": "🎟️ Extra session: -{n}◆ Shards",
     "battle": "⚔️ BATTLE",
     "locked": "🔒 Locked (Clear previous floor)",
     "victory": "🏆 VICTORY!",

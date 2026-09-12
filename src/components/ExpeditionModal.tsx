@@ -114,10 +114,6 @@ export default function ExpeditionModal({
                       </span>
                       <span>{t('ui.goldReward', { n: def.gold })}</span>
                     </span>
-                    <span className="floor-drop">
-                      <span className="mat-icon xp">XP</span>
-                      <span>{t('ui.xpReward', { n: def.xp })}</span>
-                    </span>
                     {def.shards > 0 && (
                       <span className="floor-drop">
                         <span className="mat-icon shard">

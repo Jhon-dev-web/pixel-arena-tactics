@@ -129,10 +129,6 @@ export default function HuntModal({
                         </span>
                         <span>{t('hunting.perHour', { n: zone.goldPerHour })}</span>
                       </span>
-                      <span className="floor-drop">
-                        <span className="mat-icon xp">XP</span>
-                        <span>{t('hunting.perHour', { n: Math.round(zone.xpPerHour * HUNTING_DEPTHS.find((d) => d.id === depth)!.xpMultiplier) })}</span>
-                      </span>
                     </div>
                     <div className="hunt-drop-tiers">
                       {zone.drops.map((d) => (

@@ -1,4 +1,5 @@
 import { t } from '../locales';
+import T from '../game/tunables';
 import { computeCP, SaveData } from '../game/engine';
 import {
   getBiomeForFloor,
@@ -36,6 +37,8 @@ export default function DungeonMapModal({
   // "boss" enemy kind is shared by every gate floor (25/50/75/100) — see dungeonEnemyKindForFloor.
   const bossName = enemyText(getEnemyDef('boss').nameKey);
   const eliteFloors = MILESTONE_FLOORS.filter((f) => isEliteUnlocked(f, save.dungeonCheckpoints));
+  const sessionsUsedToday = save.dungeonSessionsDay === new Date().toDateString() ? save.dungeonSessionsUsed : 0;
+  const freeSessionsLeft = Math.max(0, T.dungeon.freeSessionsPerDay - sessionsUsedToday);
 
   return (
     <div className="modal-backdrop">
@@ -63,6 +66,13 @@ export default function DungeonMapModal({
             </div>
             {cpInsufficient && <div className="cp-warning-banner">{t('dungeon.cpWarning', { n: recommendedCp })}</div>}
             {huntingBusy && <div className="cp-warning-banner">{t('hunting.busyOther')}</div>}
+            <div className="floor-drops">
+              <span className="drops-label">
+                {freeSessionsLeft > 0
+                  ? t('dungeon.sessionsLeft', { n: freeSessionsLeft, m: T.dungeon.freeSessionsPerDay })
+                  : t('dungeon.sessionsPaidNotice', { n: T.dungeon.extraSessionShardCost })}
+              </span>
+            </div>
             {milestone && (
               <div className="floor-drops">
                 <span className="drops-label">

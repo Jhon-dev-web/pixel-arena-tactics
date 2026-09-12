@@ -21,7 +21,8 @@
     "goldReward": "+{n} Ouro",
     "xpReward": "+{n}",
     "shardsReward": "+{n} Fragmentos",
-    "shardsX": "{n}× Fragmentos"
+    "shardsX": "{n}× Fragmentos",
+    "levelUp": "🎉 Subiu de Nível! Nv {n}"
   },
   "combat": {
     "critical": "CRÍTICO!",
@@ -371,6 +372,10 @@
     "hunt4": "Abismo de Sangue Ancestral",
     "cp": "Rec: {n} CP",
     "drops": "Drops",
+    "sessionsLeft": "🎟️ Sessões grátis hoje: {n}/{m}",
+    "sessionsPaidNotice": "🎟️ Sessões grátis de hoje esgotadas — próxima entrada custa {n}◆ Fragmentos",
+    "sessionsExhausted": "Sem sessões grátis hoje e Fragmentos insuficientes (precisa de {n}◆)",
+    "extraSessionPaid": "🎟️ Sessão extra: -{n}◆ Fragmentos",
     "battle": "⚔️ BATALHAR",
     "locked": "🔒 Bloqueado (Conclua o andar anterior)",
     "victory": "🏆 VITÓRIA!",
