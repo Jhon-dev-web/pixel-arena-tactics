@@ -49,19 +49,25 @@ export interface EquippedGear {
   rod: string | null;
 }
 
-export const GEAR_SLOTS: GearSlot[] = ['weapon', 'armor', 'relic', 'pickaxe'];
+export const GEAR_SLOTS: GearSlot[] = ['weapon', 'armor', 'relic', 'pickaxe', 'axe'];
 
+// wood_handle_* retrofit (weapons only now — pickaxe/axe tiers were removed in favor of Skill Level
+// gating, see the "Profession tools" comment below; never armor/relics, they don't have a haft): every
+// tier-N weapon recipe here takes the wood-handle tier at index (N-1), matching the exact same
+// convention the existing ore materials already use (steel_greatsword/tier3 needs silver_ingot = ore
+// tier 2, not tier 3's own gold_ore). Tier 6 clamps to the same top handle (wood_handle_ancient) tier 5
+// uses, mirroring how tier 5-6 already share refined_obsidian. See woodcutting.ts/refining.ts.
 export const GEAR: GearItem[] = [
   // Weapons (Tier 0-4) — hierarchical crafting
   { id: 'wooden_club', slot: 'weapon', nameKey: 'wooden_club', descKey: 'wooden_club_d', materialKey: 'material_wood', iconUrl: Assets.weapons.club.url, cost: 0, tier: 0, damage: 0 },
-  { id: 'bronze_dagger', slot: 'weapon', nameKey: 'bronze_dagger', descKey: 'bronze_dagger_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.dagger.url, cost: 40, tier: 1, damage: 12, critChance: 0.03, recipe: { materials: { copper: 3, leather: 1 } } },
-  { id: 'iron_short_sword', slot: 'weapon', nameKey: 'iron_short_sword', descKey: 'iron_short_sword_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.sword_iron.url, cost: 120, tier: 2, damage: 30, critChance: 0.06, recipe: { items: { bronze_dagger: 2 }, materials: { iron: 3, leather_scrap: 2 }, requiredLevel: 10 } },
-  { id: 'steel_greatsword', slot: 'weapon', nameKey: 'steel_greatsword', descKey: 'steel_greatsword_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.sword_steel.url, cost: 300, tier: 3, damage: 65, critChance: 0.1, recipe: { items: { iron_short_sword: 2 }, materials: { silver_ingot: 1, essence: 2, bone_fragment: 3, demon_claw: 1 }, gems: { ruby: 1 }, requiredLevel: 25 } },
-  { id: 'gilded_warblade', slot: 'weapon', nameKey: 'gilded_warblade', descKey: 'gilded_warblade_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_warblade.png', cost: 600, tier: 4, damage: 90, critChance: 0.14, recipe: { items: { steel_greatsword: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, demon_core: 1 }, requiredLevel: 50 } },
-  { id: 'dragon_flameblade', slot: 'weapon', nameKey: 'dragon_flameblade', descKey: 'dragon_flameblade_d', materialKey: 'material_dragon', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 1000, tier: 4, damage: 120, critChance: 0.18, burn: true, recipe: { items: { steel_greatsword: 1 }, materials: { dragon_scales: 3 }, shards: 5 } },
+  { id: 'bronze_dagger', slot: 'weapon', nameKey: 'bronze_dagger', descKey: 'bronze_dagger_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.dagger.url, cost: 40, tier: 1, damage: 12, critChance: 0.03, recipe: { materials: { copper: 3, leather: 1, wood_handle_common: 1 } } },
+  { id: 'iron_short_sword', slot: 'weapon', nameKey: 'iron_short_sword', descKey: 'iron_short_sword_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.sword_iron.url, cost: 120, tier: 2, damage: 30, critChance: 0.06, recipe: { items: { bronze_dagger: 2 }, materials: { iron: 3, leather_scrap: 2, wood_handle_oak: 1 }, requiredLevel: 10 } },
+  { id: 'steel_greatsword', slot: 'weapon', nameKey: 'steel_greatsword', descKey: 'steel_greatsword_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.sword_steel.url, cost: 300, tier: 3, damage: 65, critChance: 0.1, recipe: { items: { iron_short_sword: 2 }, materials: { silver_ingot: 1, essence: 2, bone_fragment: 3, demon_claw: 1, wood_handle_ebony: 1 }, gems: { ruby: 1 }, requiredLevel: 25 } },
+  { id: 'gilded_warblade', slot: 'weapon', nameKey: 'gilded_warblade', descKey: 'gilded_warblade_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_warblade.png', cost: 600, tier: 4, damage: 90, critChance: 0.14, recipe: { items: { steel_greatsword: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, demon_core: 1, wood_handle_elven: 2 }, requiredLevel: 50 } },
+  { id: 'dragon_flameblade', slot: 'weapon', nameKey: 'dragon_flameblade', descKey: 'dragon_flameblade_d', materialKey: 'material_dragon', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 1000, tier: 4, damage: 120, critChance: 0.18, burn: true, recipe: { items: { steel_greatsword: 1 }, materials: { dragon_scales: 3, wood_handle_elven: 2 }, shards: 5 } },
   // Tier 5-6 — post-tier-4 continuation so gear keeps pace with floors 51-100, not just tier-4 refine.
-  { id: 'voidsteel_blade', slot: 'weapon', nameKey: 'voidsteel_blade', descKey: 'voidsteel_blade_d', materialKey: 'material_obsidian', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 1800, tier: 5, damage: 160, critChance: 0.2, burn: true, recipe: { items: { dragon_flameblade: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 3, demon_core: 2 }, requiredLevel: 70 } },
-  { id: 'abyssal_greatblade', slot: 'weapon', nameKey: 'abyssal_greatblade', descKey: 'abyssal_greatblade_d', materialKey: 'material_obsidian', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 3200, tier: 6, damage: 220, critChance: 0.24, burn: true, recipe: { items: { voidsteel_blade: 1 }, materials: { refined_obsidian: 2, corrupted_crystal: 5 }, shards: 6, requiredLevel: 90 } },
+  { id: 'voidsteel_blade', slot: 'weapon', nameKey: 'voidsteel_blade', descKey: 'voidsteel_blade_d', materialKey: 'material_obsidian', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 1800, tier: 5, damage: 160, critChance: 0.2, burn: true, recipe: { items: { dragon_flameblade: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 3, demon_core: 2, wood_handle_ancient: 2 }, requiredLevel: 70 } },
+  { id: 'abyssal_greatblade', slot: 'weapon', nameKey: 'abyssal_greatblade', descKey: 'abyssal_greatblade_d', materialKey: 'material_obsidian', iconUrl: Assets.gear_icons.sword_dragon.url, cost: 3200, tier: 6, damage: 220, critChance: 0.24, burn: true, recipe: { items: { voidsteel_blade: 1 }, materials: { refined_obsidian: 2, corrupted_crystal: 5, wood_handle_ancient: 3 }, shards: 6, requiredLevel: 90 } },
   // Armors (Tier 0-4) — hierarchical crafting
   { id: 'ragged_clothes', slot: 'armor', nameKey: 'ragged_clothes', descKey: 'ragged_clothes_d', materialKey: 'material_cloth', iconUrl: Assets.spritesheets.peasant.url, iconSheet: true, cost: 0, tier: 0, maxHp: 0 },
   { id: 'bronze_leather', slot: 'armor', nameKey: 'bronze_leather', descKey: 'bronze_leather_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.armor_leather.url, cost: 50, tier: 1, maxHp: 40, resistance: 0.03, recipe: { materials: { copper: 3, leather: 3 } } },
@@ -75,12 +81,11 @@ export const GEAR: GearItem[] = [
   { id: 'ring_vitality', slot: 'relic', nameKey: 'ring_vitality', descKey: 'ring_vitality_d', icon: '/assets/icons/ring_vitality.png', cost: 200, focusHpBonus: 15, recipe: { materials: { essence: 3 } } },
   { id: 'amulet_swiftness', slot: 'relic', nameKey: 'amulet_swiftness', descKey: 'amulet_swiftness_d', icon: '/assets/icons/amulet_swiftness.png', cost: 250, attackStaminaReduction: 5, recipe: { materials: { essence: 3 } } },
   { id: 'berserker_crest', slot: 'relic', nameKey: 'berserker_crest', descKey: 'berserker_crest_d', icon: '/assets/icons/berserker_crest.png', cost: 350, critMultBonus: 0.5, recipe: { materials: { essence: 5 } } },
-  // Profession tools
+  // Profession tools — exactly one per profession, forever. Mining/Woodcutting tier gates are Skill
+  // Level now (see skills.ts/ores.ts/woodcutting.ts), not character level or a better tool — the old
+  // iron/steel/mithril/runic pickaxe and axe tiers are gone, along with the gold/material sink they
+  // used to represent (see gatherPower in skills.ts for how power now scales without them).
   { id: 'rusty_pickaxe', slot: 'pickaxe', nameKey: 'rusty_pickaxe', descKey: 'rusty_pickaxe_d', icon: '/assets/icons/pickaxe_rusty.png', cost: 0, tier: 0, miningPower: 5 },
-  { id: 'iron_pickaxe', slot: 'pickaxe', nameKey: 'iron_pickaxe', descKey: 'iron_pickaxe_d', icon: '/assets/icons/pickaxe_iron.png', cost: 60, tier: 1, miningPower: 12, recipe: { materials: { iron: 4, leather_scrap: 2 }, requiredLevel: 10 } },
-  { id: 'steel_pickaxe', slot: 'pickaxe', nameKey: 'steel_pickaxe', descKey: 'steel_pickaxe_d', icon: '/assets/icons/pickaxe_steel.png', cost: 150, tier: 2, miningPower: 22, recipe: { items: { iron_pickaxe: 1 }, materials: { iron: 5, demon_claw: 2, concentrated_blood: 2 }, requiredLevel: 25 } },
-  { id: 'mithril_pickaxe', slot: 'pickaxe', nameKey: 'mithril_pickaxe', descKey: 'mithril_pickaxe_d', icon: '/assets/icons/pickaxe_mithril.png', cost: 400, tier: 3, miningPower: 38, recipe: { items: { steel_pickaxe: 1 }, materials: { silver_ingot: 1, demon_core: 1, corrupted_crystal: 1 }, requiredLevel: 50 } },
-  { id: 'runic_pickaxe', slot: 'pickaxe', nameKey: 'runic_pickaxe', descKey: 'runic_pickaxe_d', icon: '/assets/icons/pickaxe_runic.png', cost: 900, tier: 4, miningPower: 60, recipe: { items: { mithril_pickaxe: 1 }, materials: { gold_bar: 1, demon_core: 2, corrupted_crystal: 2 }, requiredLevel: 75 } },
   { id: 'worn_axe', slot: 'axe', nameKey: 'worn_axe', descKey: 'worn_axe_d', icon: '/assets/icons/axe.png', cost: 0, tier: 0, woodcuttingPower: 5 },
   { id: 'bamboo_rod', slot: 'rod', nameKey: 'bamboo_rod', descKey: 'bamboo_rod_d', icon: '/assets/icons/rod.png', cost: 0, tier: 0, fishingPower: 5 },
 ];
@@ -214,9 +219,16 @@ export function upgradeCost(item: GearItem, level: number): UpgradeCost {
   // tiers' refine materials are consumed at directly — keep the same qty here and refining tier 5-6
   // would quietly cost 5x more raw obsidian per attempt than it used to.
   const refined = mat === 'refined_obsidian';
+  // Attempts reaching +5..+8 (current level 4-7) also cost Refining Dust — a sink for the leftover
+  // common materials (see refining.ts DUST_RECIPES) that used to have nowhere to go but Discard.
+  const dust = level >= 4 ? 2 * (level - 3) : 0;
   if (level < 3) return { gold: 50 * (level + 1) };
-  if (level < 6) return { gold: 150 * (level + 1), materials: { [mat]: refined ? 1 : 2 } };
-  return { gold: 300 * (level + 1), materials: { [mat]: refined ? 1 : 3 }, shards: 2 };
+  if (level < 6) {
+    const materials: Partial<Record<MaterialId, number>> = { [mat]: refined ? 1 : 2 };
+    if (dust > 0) materials.refining_dust = dust;
+    return { gold: 150 * (level + 1), materials };
+  }
+  return { gold: 300 * (level + 1), materials: { [mat]: refined ? 1 : 3, refining_dust: dust }, shards: 2 };
 }
 
 export function upgradeChance(level: number): number {

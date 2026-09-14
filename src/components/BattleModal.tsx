@@ -8,7 +8,7 @@ import { EnemyDef, getEnemyDef } from '../game/enemies';
 import { durabilityFactor, effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, MAX_DURABILITY, refineLevel } from '../game/gear';
 import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
-import { enemySpriteUrl, spriteForArmorTier } from '../game/sprites';
+import { enemySpriteUrl, playerSpriteUrl } from '../game/sprites';
 import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
 import { eliteBossDmg, eliteBossHp, isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
@@ -69,7 +69,6 @@ export default function BattleModal({
   const armor = build.armor;
   const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
   const aLvl = refineLevel(save.upgrades, save.equipped.armor);
-  const armorTier = armor?.tier ?? 0;
   const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
   const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
   const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
@@ -565,7 +564,7 @@ export default function BattleModal({
         <div className="battle-arena">
           <div className={`battle-side player${playerLunge ? ' lunge' : ''}${playerFlash ? ' flash' : ''}`}>
             <SpriteSheet
-              src={spriteForArmorTier(armorTier)}
+              src={playerSpriteUrl()}
               size="calc(var(--sprite-size, 132px) * 1.1)"
               row={ANIM_ROW[playerAnim]}
             />

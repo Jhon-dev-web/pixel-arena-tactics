@@ -49,11 +49,11 @@ export function eliteBossDmg(def: EnemyDef, stage: number): number {
 
 export function waveRewards(biome: DungeonBiomeDef, stage: number): WaveRewards {
   const baseGold = randInt(biome.goldMin, biome.goldMax);
-  let gold = Math.round(baseGold * (1 + T.battle.rewardGrowth * (stage - 1)));
+  let gold = Math.round(baseGold * (1 + T.battle.goldRewardGrowth * (stage - 1)));
   const drops: Partial<Record<MaterialId, number>> = {};
   for (const entry of biome.drops) {
     if (entry.chance < 1 && Math.random() >= entry.chance) continue;
-    const qty = Math.max(1, Math.round(entry.qty * (1 + T.battle.rewardGrowth * (stage - 1))));
+    const qty = Math.max(1, Math.round(entry.qty * (1 + T.battle.goldRewardGrowth * (stage - 1))));
     drops[entry.material] = (drops[entry.material] ?? 0) + qty;
   }
   let shards = 0;

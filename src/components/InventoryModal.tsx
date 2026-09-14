@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { t } from '../locales';
 import { SaveData } from '../game/engine';
-import { GEAR, GearItem, gearSellValue, getGear, refineLevel } from '../game/gear';
+import { GEAR, GearItem, getGear, refineLevel } from '../game/gear';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue, salvageBlockReason } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
@@ -29,7 +29,6 @@ export default function InventoryModal({
   save,
   onEquip,
   onUnequip,
-  onSell,
   onDiscard,
   onReforge,
   onSalvage,
@@ -39,7 +38,6 @@ export default function InventoryModal({
   save: SaveData;
   onEquip: (id: string) => void;
   onUnequip: (id: string) => void;
-  onSell: (kind: SelKind, id: string, qty: number) => void;
   onDiscard: (kind: SelKind, id: string) => void;
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
@@ -81,14 +79,6 @@ export default function InventoryModal({
         ? save.consumables?.[selectedConsumable.id] ?? 0
         : 0;
 
-  const unitValue = selectedGear
-    ? gearSellValue(selectedGear)
-    : selectedMaterial
-      ? selectedMaterial.sellValue
-      : selectedConsumable
-        ? selectedConsumable.sellValue
-        : 0;
-
   const isEquipped = !!selectedGear && save.equipped[selectedGear.slot] === selectedGear.id;
   const isEquippable = !!selectedGear && EQUIPPABLE_SLOTS.has(selectedGear.slot);
   const selectedRarity = selectedGear ? save.itemRarity?.[selectedGear.id] ?? 'common' : 'common';
@@ -118,9 +108,6 @@ export default function InventoryModal({
     setSelected(null);
     setConfirmDiscard(false);
   };
-
-  const sell1 = () => selected && onSell(selected.kind, selected.id, 1);
-  const sellAll = () => selected && onSell(selected.kind, selected.id, selQty);
 
   return (
     <div className="modal-backdrop">
@@ -301,22 +288,6 @@ export default function InventoryModal({
 
           {selected && !isEquipped && selQty > 0 && (
             <div className="inv-actions">
-              <div className="sell-actions">
-                {selQty > 1 ? (
-                  <>
-                    <button className="inv-sell" onClick={sell1} data-ui>
-                      {t('inventory.sellOne', { n: unitValue })}
-                    </button>
-                    <button className="inv-sell all" onClick={sellAll} data-ui>
-                      {t('inventory.sellAll', { n: selQty * unitValue })}
-                    </button>
-                  </>
-                ) : (
-                  <button className="inv-sell" onClick={sell1} data-ui>
-                    {t('inventory.sell', { n: unitValue })}
-                  </button>
-                )}
-              </div>
               <button className={`inv-discard${confirmDiscard ? ' confirm' : ''}`} onClick={handleDiscard} data-ui>
                 {confirmDiscard ? t('inventory.confirm') : t('inventory.discard')}
               </button>

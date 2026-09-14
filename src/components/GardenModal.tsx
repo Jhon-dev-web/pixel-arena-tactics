@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { t } from '../locales';
-import { computeGardenSlotStatus, GARDEN_SLOTS, playerLevel, SaveData } from '../game/engine';
+import { computeGardenSlotStatus, GARDEN_SLOTS, SaveData } from '../game/engine';
 import { getPlant, PLANTS } from '../game/garden';
 import { getMaterial } from '../game/materials';
+import { skillLevel } from '../game/skills';
 import MaterialIcon from './MaterialIcon';
+import SkillLevelBadge from './SkillLevelBadge';
 
 const gardenText = (k: string): string => t(`garden.${k}`);
 const matText = (k: string): string => t(`materials.mat_${k}`);
@@ -48,7 +50,7 @@ export default function GardenModal({
     };
   }, []);
 
-  const level = playerLevel(save.xp);
+  const gardeningLevel = skillLevel(save.skillXp.gardening);
   const slotStatuses = Array.from({ length: GARDEN_SLOTS }, (_, i) => computeGardenSlotStatus(save, now, i));
   const emptySlotCount = slotStatuses.filter((s) => !s.plantId).length;
 
@@ -68,6 +70,8 @@ export default function GardenModal({
     <div className="modal-backdrop">
       <div className="modal dungeon-modal">
         <h2 className="modal-title">{gardenText('title')}</h2>
+
+        <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" />
 
         <div className="forge-tabs garden-tabs">
           <button className={`tab${tab === 'slots' ? ' active' : ''}`} onClick={() => setTab('slots')} data-ui>
@@ -125,7 +129,7 @@ export default function GardenModal({
 
           {tab === 'plant' &&
             PLANTS.map((plant) => {
-              const unlocked = level >= plant.requiredLevel;
+              const unlocked = gardeningLevel >= plant.requiredLevel;
               const mat = getMaterial(plant.material);
               const picking = pickingPlant === plant.id;
               return (

@@ -14,8 +14,7 @@ import {
   recommendedCpForDepth,
 } from '../game/huntingZones';
 import { getMaterial } from '../game/materials';
-import { getEquipped } from '../game/gear';
-import { spriteForArmorTier } from '../game/sprites';
+import { playerSpriteUrl } from '../game/sprites';
 import { allocateToPouch } from '../game/huntPouch';
 import HuntBattleView from './HuntBattleView';
 import MaterialIcon from './MaterialIcon';
@@ -98,7 +97,7 @@ export default function HuntModal({
   }, []);
 
   const huntStatus = computeHuntingStatus(save, now);
-  const playerSpriteUrl = spriteForArmorTier(getEquipped(save.equipped).armor?.tier ?? 0);
+  const heroSpriteUrl = playerSpriteUrl();
   const playerCp = computeCP(save);
 
   return (
@@ -146,7 +145,7 @@ export default function HuntModal({
                     {isActive ? (
                       <>
                         <div className="hunt-depth-current">{t('hunting.currentDepth', { depth: huntText(HUNTING_DEPTHS.find((d) => d.id === depth)!.nameKey) })}</div>
-                        <HuntBattleView enemyId={zone.enemyId} playerSpriteUrl={playerSpriteUrl} />
+                        <HuntBattleView enemyId={zone.enemyId} playerSpriteUrl={heroSpriteUrl} />
                         <div className="camp-mine-bar">
                           <div
                             className={`camp-mine-fill${huntStatus.full ? ' full' : ''}`}

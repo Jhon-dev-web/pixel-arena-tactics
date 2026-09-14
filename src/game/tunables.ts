@@ -55,7 +55,9 @@ const T = DebugPanel.define({
     intermissionMs: { value: 1000, min: 300, max: 3000, step: 100, label: 'Wave interval (ms)' },
     hpGrowth: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Monster HP growth per stage' },
     dmgGrowth: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Monster damage growth per stage' },
-    rewardGrowth: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'Reward growth per stage' },
+    rewardGrowth: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'XP reward growth per stage (dungeon.ts stageVictoryXp only)' },
+    // Kept separate from rewardGrowth (XP) so gold economy tuning never silently reflows XP pacing.
+    goldRewardGrowth: { value: 0.012, min: 0, max: 1, step: 0.001, label: 'Gold/drop-qty growth per stage' },
     miniBossEvery: { value: 10, min: 3, max: 20, step: 1, label: 'Dungeon checkpoint every N floors' },
     miniBossHpMult: { value: 1.5, min: 1, max: 3, step: 0.1, label: 'Checkpoint HP multiplier' },
     miniBossDmgMult: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Checkpoint damage multiplier' },
@@ -103,6 +105,28 @@ const T = DebugPanel.define({
     // Economy design: Mining is an unattended, bot-friendly loop — it must stay an exclusive
     // raw-material faucet (ore/gems) with zero liquid currency, or it hyperinflates gold.
     goldRatePerPower: { value: 0, min: 0, max: 20, step: 0.5, label: 'Gold per hour per Mining Power point (kept at 0 — see economy note)' },
+  },
+  woodcutting: {
+    _label: 'Idle Woodcutting',
+    capHours: { value: 4, min: 1, max: 24, step: 1, label: 'Offline storage cap (hours)' },
+    woodRatePerPower: { value: 1, min: 0.1, max: 10, step: 0.1, label: 'Wood per hour per Woodcutting Power point' },
+    // Same economy rule as Mining — an idle, bot-friendly loop, raw material only, zero gold.
+    goldRatePerPower: { value: 0, min: 0, max: 20, step: 0.5, label: 'Gold per hour per Woodcutting Power point (kept at 0 — see economy note)' },
+  },
+  skills: {
+    _label: 'Gathering Skills (Mining/Woodcutting/Gardening)',
+    // Deliberately its own curve, separate from character xpGrowth (progression.xpGrowth) — that one
+    // is tuned for a months-long arc across hundreds of millions of XP; this one only needs to pace a
+    // single sub-system (~16 real days of steady mining to hit max level under default tunables).
+    xpBase: { value: 5, min: 1, max: 100, step: 1, label: 'Skill XP for level 1->2' },
+    xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Skill XP growth per level' },
+    maxLevel: { value: 75, min: 10, max: 200, step: 1, label: 'Max skill level (matches the old tier-4 character-level gate)' },
+    xpPerUnit: { value: 1, min: 0.1, max: 20, step: 0.1, label: 'Mining/Woodcutting skill XP per unit gathered' },
+    xpPerHarvest: { value: 10, min: 1, max: 100, step: 1, label: 'Gardening skill XP per harvest (any plant)' },
+    // Replaces the old per-tool power table (rusty=5 -> runic=60) now that there's only one tool per
+    // profession forever — 0.75/level lands right on the old tier checkpoints (level10 ~= old iron
+    // tier's 12 power, level25 ~= steel's 22, level50 ~= mithril's 38ish, level75 ~= runic's 60ish).
+    powerPerLevel: { value: 0.75, min: 0, max: 5, step: 0.05, label: 'Mining/Woodcutting power gained per skill level' },
   },
   hunting: {
     _label: 'Open Zone Hunting',

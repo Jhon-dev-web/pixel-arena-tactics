@@ -10,6 +10,7 @@ export interface PlantDef {
   material: MaterialId;
   qty: number;
   durationMs: number;
+  // Gardening SKILL level required (see skills.ts) — not character level.
   requiredLevel: number;
 }
 

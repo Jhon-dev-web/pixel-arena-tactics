@@ -21,7 +21,7 @@ import {
   tickPoison,
 } from './duelEngine';
 import { EnemyKind, getEnemyDef } from '../game/enemies';
-import { enemySpriteSize, enemySpriteUrl, spriteForArmorTier } from '../game/sprites';
+import { enemySpriteSize, enemySpriteUrl, playerSpriteUrl as getPlayerSpriteUrl } from '../game/sprites';
 import { getEquipped } from '../game/gear';
 import SpriteSheet from '../components/SpriteSheet';
 import { Burst, BurstState, FloatState, floatLabel } from './CombatFx';
@@ -347,8 +347,7 @@ export default function DuelArena({
   const atkCost = effectiveAttackStamina(save);
   const build = getEquipped(save.equipped);
   const weaponTier = build.weapon?.tier ?? 0;
-  const armorTier = build.armor?.tier ?? 0;
-  const playerSpriteUrl = spriteForArmorTier(armorTier);
+  const playerSpriteUrl = getPlayerSpriteUrl();
   const enemyDef = getEnemyDef(enemyKind);
   const enemyName = enemyDef.boss
     ? t('enemies.bossName', { n: enemyText(enemyDef.nameKey) })

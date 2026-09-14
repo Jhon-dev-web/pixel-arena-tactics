@@ -9,8 +9,10 @@ import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, effectiveDropChance, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
+import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
 import { getPlant, PlantId } from './garden';
+import { emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
 
 export type BuffType = 'strength';
 
@@ -71,6 +73,10 @@ export interface SaveData {
   activeOreId: string | null;
   lastMiningClaim: number;
   miningCapHours: number;
+  activeWoodId: string | null;
+  lastWoodcuttingClaim: number;
+  woodcuttingCapHours: number;
+  skillXp: Record<SkillId, number>;
   activeHuntingZone: string | null;
   activeHuntingDepth: HuntingDepth | null;
   huntingOfflineStart: number;
@@ -236,11 +242,40 @@ export function computeMiningStatus(save: SaveData, now: number): MiningStatus {
   const elapsedMs = Math.max(0, now - save.lastMiningClaim);
   const pendingMs = Math.min(elapsedMs, capMs);
   const hours = pendingMs / (3600 * 1000);
-  const power = getGear(tier.pickaxeId)?.miningPower ?? 0;
+  const power = gatherPower(getGear('rusty_pickaxe')?.miningPower ?? 0, save.skillXp.mining);
   const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
   const oreReady = Math.floor(hours * power * T.mining.oreRatePerPower * dropMult);
   const goldReady = Math.floor(hours * power * T.mining.goldRatePerPower);
   return { capMs, pendingMs, oreId: tier.id, oreReady, goldReady, full: pendingMs >= capMs };
+}
+
+export interface WoodcuttingStatus {
+  capMs: number;
+  pendingMs: number;
+  woodId: MaterialId | null;
+  woodReady: number;
+  goldReady: number;
+  full: boolean;
+}
+
+// Mirrors computeMiningStatus exactly — same continuous-accrual-capped-offline-window shape, same
+// zero-gold-by-design faucet (T.woodcutting.goldRatePerPower is 0, matching T.mining.goldRatePerPower).
+export function computeWoodcuttingStatus(save: SaveData, now: number): WoodcuttingStatus {
+  const passActive = isBattlePassActive(save, now);
+  const capHours = passActive ? Math.max(save.woodcuttingCapHours, T.battlePass.capHours) : save.woodcuttingCapHours;
+  const capMs = capHours * 3600 * 1000;
+  const tier = save.activeWoodId ? getWoodTier(save.activeWoodId) : undefined;
+  if (!tier) {
+    return { capMs, pendingMs: 0, woodId: null, woodReady: 0, goldReady: 0, full: false };
+  }
+  const elapsedMs = Math.max(0, now - save.lastWoodcuttingClaim);
+  const pendingMs = Math.min(elapsedMs, capMs);
+  const hours = pendingMs / (3600 * 1000);
+  const power = gatherPower(getGear('worn_axe')?.woodcuttingPower ?? 0, save.skillXp.woodcutting);
+  const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
+  const woodReady = Math.floor(hours * power * T.woodcutting.woodRatePerPower * dropMult);
+  const goldReady = Math.floor(hours * power * T.woodcutting.goldRatePerPower);
+  return { capMs, pendingMs, woodId: tier.id, woodReady, goldReady, full: pendingMs >= capMs };
 }
 
 export interface GardenStatus {
@@ -347,6 +382,10 @@ export function defaultSave(): SaveData {
     activeOreId: null,
     lastMiningClaim: Date.now(),
     miningCapHours: T.mining.capHours,
+    activeWoodId: null,
+    lastWoodcuttingClaim: Date.now(),
+    woodcuttingCapHours: T.woodcutting.capHours,
+    skillXp: emptySkillXp(),
     activeHuntingZone: null,
     activeHuntingDepth: null,
     huntingOfflineStart: Date.now(),
@@ -461,6 +500,59 @@ export function loadSave(): SaveData {
         typeof parsed.miningCapHours === 'number' && Number.isFinite(parsed.miningCapHours) && parsed.miningCapHours > 0
           ? parsed.miningCapHours
           : T.mining.capHours;
+      const woodTierIds = new Set(WOOD_TIERS.map((t) => t.id as string));
+      const activeWoodId = typeof parsed.activeWoodId === 'string' && woodTierIds.has(parsed.activeWoodId) ? parsed.activeWoodId : null;
+      const lastWoodcuttingClaim =
+        typeof parsed.lastWoodcuttingClaim === 'number' && Number.isFinite(parsed.lastWoodcuttingClaim) && parsed.lastWoodcuttingClaim > 0
+          ? parsed.lastWoodcuttingClaim
+          : Date.now();
+      const woodcuttingCapHours =
+        typeof parsed.woodcuttingCapHours === 'number' && Number.isFinite(parsed.woodcuttingCapHours) && parsed.woodcuttingCapHours > 0
+          ? parsed.woodcuttingCapHours
+          : T.woodcutting.capHours;
+      // Skill Level migration (one-time — only when parsed.skillXp is absent entirely, i.e. a save
+      // from before this system existed): pickaxe/axe tiers were removed in favor of Mining/Woodcutting
+      // Skill Level gates, so a save that already owned a higher-tier tool must not lose access to the
+      // ore/wood tier that tool unlocked. Checked against the RAW pre-sanitize `inventory` object above
+      // (sanitizeSaveInventory already strips the now-unknown tool ids from `gear.inventory`, since
+      // they're no longer in GEAR) — highest tool owned wins, and skill XP is set to exactly the amount
+      // needed to just reach that tier's unlock level (migrated players start at the bottom of that
+      // level's progress bar, not mid-level). Gardening never had its own tool, but was already gated by
+      // character level before Skill Levels existed, so the same non-regression rule is extended to it:
+      // a save whose character already passed the old 15/35 thresholds keeps its Garden access.
+      const rawInv = inventory as Record<string, number>;
+      const legacyTierLevel = (ids: [string, number][]): number => {
+        for (const [id, lvl] of ids) if ((rawInv[id] ?? 0) > 0) return lvl;
+        return 1;
+      };
+      const legacyMiningLevel = legacyTierLevel([
+        ['runic_pickaxe', 75],
+        ['mithril_pickaxe', 50],
+        ['steel_pickaxe', 25],
+        ['iron_pickaxe', 10],
+      ]);
+      const legacyWoodLevel = legacyTierLevel([
+        ['runic_axe', 75],
+        ['mithril_axe', 50],
+        ['steel_axe', 25],
+        ['iron_axe', 10],
+      ]);
+      const legacyGardenLevel = playerLevel(xp) >= 35 ? 35 : playerLevel(xp) >= 15 ? 15 : 1;
+      const rawSkillXp = (parsed.skillXp ?? {}) as Partial<Record<SkillId, number>>;
+      const skillXp: Record<SkillId, number> = {
+        mining:
+          typeof rawSkillXp.mining === 'number' && Number.isFinite(rawSkillXp.mining)
+            ? Math.max(0, rawSkillXp.mining)
+            : skillXpToReachLevel(legacyMiningLevel),
+        woodcutting:
+          typeof rawSkillXp.woodcutting === 'number' && Number.isFinite(rawSkillXp.woodcutting)
+            ? Math.max(0, rawSkillXp.woodcutting)
+            : skillXpToReachLevel(legacyWoodLevel),
+        gardening:
+          typeof rawSkillXp.gardening === 'number' && Number.isFinite(rawSkillXp.gardening)
+            ? Math.max(0, rawSkillXp.gardening)
+            : skillXpToReachLevel(legacyGardenLevel),
+      };
       const knownZoneIds = new Set(HUNTING_ZONES.map((z) => z.id));
       const unlockedHuntingZones = Array.isArray(parsed.unlockedHuntingZones)
         ? Array.from(new Set([DEFAULT_HUNTING_ZONE, ...parsed.unlockedHuntingZones.filter((id) => knownZoneIds.has(id))]))
@@ -562,6 +654,10 @@ export function loadSave(): SaveData {
         activeOreId,
         lastMiningClaim,
         miningCapHours,
+        activeWoodId,
+        lastWoodcuttingClaim,
+        woodcuttingCapHours,
+        skillXp,
         activeHuntingZone,
         activeHuntingDepth,
         huntingOfflineStart,

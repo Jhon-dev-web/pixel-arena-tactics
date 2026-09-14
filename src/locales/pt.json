@@ -1,4 +1,7 @@
 {
+  "skills": {
+    "level": "Nível {n}"
+  },
   "ui": {
     "victories": "🏆 Vitórias: {n}",
     "gold": "🪙 Ouro: {n}",
@@ -49,6 +52,7 @@
     "armor": "Armadura",
     "relic": "Relíquia",
     "pickaxe": "Ferramenta",
+    "axe": "Machado",
     "none": "Nenhum",
     "equip": "EQUIPAR",
     "equipped": "EQUIPADO",
@@ -101,14 +105,6 @@
     "berserker_crest_d": "Críticos causam 2,5x de dano",
     "rusty_pickaxe": "Picareta Enferrujada",
     "rusty_pickaxe_d": "+5 de Poder de Mineração",
-    "iron_pickaxe": "Picareta de Ferro",
-    "iron_pickaxe_d": "+12 de Poder de Mineração",
-    "steel_pickaxe": "Picareta de Aço",
-    "steel_pickaxe_d": "+22 de Poder de Mineração",
-    "mithril_pickaxe": "Picareta de Mithril",
-    "mithril_pickaxe_d": "+38 de Poder de Mineração",
-    "runic_pickaxe": "Picareta Rúnica",
-    "runic_pickaxe_d": "+60 de Poder de Mineração",
     "worn_axe": "Machado Gasto",
     "worn_axe_d": "+5 de Poder de Corte",
     "bamboo_rod": "Vara de Bambu",
@@ -158,7 +154,18 @@
     "mat_corrupted_crystal": "Cristal Corrompido",
     "mat_common_herb": "Erva Comum",
     "mat_uncommon_root": "Raiz Incomum",
-    "mat_rare_flower": "Flor Rara"
+    "mat_rare_flower": "Flor Rara",
+    "mat_refining_dust": "Pó de Refino",
+    "mat_common_wood": "Madeira Comum",
+    "mat_oak_wood": "Carvalho",
+    "mat_ebony_wood": "Ébano",
+    "mat_elven_wood": "Madeira Élfica",
+    "mat_ancient_wood": "Madeira Ancestral",
+    "mat_wood_handle_common": "Cabo de Madeira Comum",
+    "mat_wood_handle_oak": "Cabo de Carvalho",
+    "mat_wood_handle_ebony": "Cabo de Ébano",
+    "mat_wood_handle_elven": "Cabo de Madeira Élfica",
+    "mat_wood_handle_ancient": "Cabo de Madeira Ancestral"
   },
   "inventory": {
     "title": "Mochila",
@@ -277,6 +284,8 @@
     "furnaceSection": "🔥 Fornalha",
     "tannerySection": "🧵 Curtume",
     "alchemySection": "✨ Alquimia",
+    "dustSection": "🌫️ Pó de Refino",
+    "carpentrySection": "🪓 Carpintaria",
     "potionsSection": "✨ Poções",
     "refine": "CONVERTER",
     "upgradeTab": "Melhorar",
@@ -372,8 +381,8 @@
     "hunt4": "Abismo de Sangue Ancestral",
     "cp": "Rec: {n} CP",
     "drops": "Drops",
-    "sessionsLeft": "🎟️ Sessões grátis hoje: {n}/{m}",
-    "sessionsPaidNotice": "🎟️ Sessões grátis de hoje esgotadas — próxima entrada custa {n}◆ Fragmentos",
+    "sessionsLeft": "🎟️ Grátis hoje: {n}/{m}",
+    "sessionsPaidNotice": "🎟️ Grátis esgotado — {n}◆ por entrada",
     "sessionsExhausted": "Sem sessões grátis hoje e Fragmentos insuficientes (precisa de {n}◆)",
     "extraSessionPaid": "🎟️ Sessão extra: -{n}◆ Fragmentos",
     "battle": "⚔️ BATALHAR",
@@ -474,12 +483,12 @@
     "readyGold": "🪙 +{n}",
     "collect": "Coletar Recursos",
     "levelReq": "Nível {n}",
-    "pickaxeLabel": "Ferramenta",
+    "skillLabel": "⛏️ Mineração",
     "available": "Minerar Aqui",
     "locked": "🔒 Requer Nível {n}",
     "busyDungeon": "Seu herói está minerando. Cancele ou colete os recursos na Mina antes de entrar em combate.",
     "busyBattle": "Você não pode iniciar a mineração com uma masmorra em andamento. Recue da batalha primeiro.",
-    "needsPickaxe": "🔨 Forje a {item} na Forja"
+    "busyOther": "Seu herói está minerando. Pare antes de iniciar outra atividade."
   },
   "ore": {
     "ore_copper": "Cobre",
@@ -488,8 +497,31 @@
     "ore_gold": "Ouro",
     "ore_obsidian": "Obsidiana"
   },
+  "woodcutting": {
+    "title": "Lenhaçaria",
+    "start": "🪓 Iniciar Lenhaçaria",
+    "chopping": "🪓 Cortando lenha...",
+    "full": "📦 Armazém Cheio!",
+    "capProgress": "{cur}h / {cap}h",
+    "readyWood": "🪵 +{n}",
+    "collect": "Coletar Recursos",
+    "levelReq": "Nível {n}",
+    "skillLabel": "🪓 Lenhaçaria",
+    "available": "Cortar Aqui",
+    "locked": "🔒 Requer Nível {n}",
+    "busyOther": "Seu herói está na Lenhaçaria. Pare antes de iniciar outra atividade.",
+    "busyBattle": "Você não pode iniciar a lenhaçaria com uma masmorra em andamento. Recue da batalha primeiro."
+  },
+  "wood": {
+    "wood_common": "Madeira Comum",
+    "wood_oak": "Carvalho",
+    "wood_ebony": "Ébano",
+    "wood_elven": "Madeira Élfica",
+    "wood_ancient": "Madeira Ancestral"
+  },
   "garden": {
     "title": "🌱 Horta",
+    "skillLabel": "🌱 Jardinagem",
     "levelReq": "Nível {n}",
     "plant": "Plantar",
     "growing": "🌱 Crescendo...",

@@ -1,4 +1,7 @@
 {
+  "skills": {
+    "level": "Level {n}"
+  },
   "ui": {
     "victories": "🏆 Victories: {n}",
     "gold": "🪙 Gold: {n}",
@@ -49,6 +52,7 @@
     "armor": "Armor",
     "relic": "Relic",
     "pickaxe": "Tool",
+    "axe": "Axe",
     "none": "None",
     "equip": "EQUIP",
     "equipped": "EQUIPPED",
@@ -101,14 +105,6 @@
     "berserker_crest_d": "Crits deal 2.5x damage",
     "rusty_pickaxe": "Rusty Pickaxe",
     "rusty_pickaxe_d": "+5 Mining Power",
-    "iron_pickaxe": "Iron Pickaxe",
-    "iron_pickaxe_d": "+12 Mining Power",
-    "steel_pickaxe": "Steel Pickaxe",
-    "steel_pickaxe_d": "+22 Mining Power",
-    "mithril_pickaxe": "Mithril Pickaxe",
-    "mithril_pickaxe_d": "+38 Mining Power",
-    "runic_pickaxe": "Runic Pickaxe",
-    "runic_pickaxe_d": "+60 Mining Power",
     "worn_axe": "Worn Axe",
     "worn_axe_d": "+5 Woodcutting Power",
     "bamboo_rod": "Bamboo Rod",
@@ -158,7 +154,18 @@
     "mat_corrupted_crystal": "Corrupted Crystal",
     "mat_common_herb": "Common Herb",
     "mat_uncommon_root": "Uncommon Root",
-    "mat_rare_flower": "Rare Flower"
+    "mat_rare_flower": "Rare Flower",
+    "mat_refining_dust": "Refining Dust",
+    "mat_common_wood": "Common Wood",
+    "mat_oak_wood": "Oak Wood",
+    "mat_ebony_wood": "Ebony Wood",
+    "mat_elven_wood": "Elven Wood",
+    "mat_ancient_wood": "Ancient Wood",
+    "mat_wood_handle_common": "Common Wood Handle",
+    "mat_wood_handle_oak": "Oak Handle",
+    "mat_wood_handle_ebony": "Ebony Handle",
+    "mat_wood_handle_elven": "Elven Handle",
+    "mat_wood_handle_ancient": "Ancient Handle"
   },
   "inventory": {
     "title": "Bag",
@@ -277,6 +284,8 @@
     "furnaceSection": "🔥 Furnace",
     "tannerySection": "🧵 Tannery",
     "alchemySection": "✨ Alchemy",
+    "dustSection": "🌫️ Refining Dust",
+    "carpentrySection": "🪓 Carpentry",
     "potionsSection": "✨ Potions",
     "refine": "CONVERT",
     "upgradeTab": "Upgrade",
@@ -372,8 +381,8 @@
     "hunt4": "Ancestral Blood Abyss",
     "cp": "Rec: {n} CP",
     "drops": "Drops",
-    "sessionsLeft": "🎟️ Free sessions today: {n}/{m}",
-    "sessionsPaidNotice": "🎟️ Today's free sessions used up — next entry costs {n}◆ Shards",
+    "sessionsLeft": "🎟️ Free today: {n}/{m}",
+    "sessionsPaidNotice": "🎟️ Free used up — {n}◆ per entry",
     "sessionsExhausted": "No free sessions left today and not enough Shards (needs {n}◆)",
     "extraSessionPaid": "🎟️ Extra session: -{n}◆ Shards",
     "battle": "⚔️ BATTLE",
@@ -474,12 +483,12 @@
     "readyGold": "🪙 +{n}",
     "collect": "Collect Resources",
     "levelReq": "Level {n}",
-    "pickaxeLabel": "Tool",
+    "skillLabel": "⛏️ Mining",
     "available": "Mine Here",
     "locked": "🔒 Requires Level {n}",
     "busyDungeon": "Your hero is mining. Cancel or collect resources at the Mine before entering combat.",
     "busyBattle": "You can't start mining with an active dungeon run. Retreat from battle first.",
-    "needsPickaxe": "🔨 Forge the {item} at the Forge"
+    "busyOther": "Your hero is mining. Stop that before starting another activity."
   },
   "ore": {
     "ore_copper": "Copper",
@@ -488,8 +497,31 @@
     "ore_gold": "Gold",
     "ore_obsidian": "Obsidian"
   },
+  "woodcutting": {
+    "title": "Woodcutting",
+    "start": "🪓 Start Woodcutting",
+    "chopping": "🪓 Chopping wood...",
+    "full": "📦 Storage Full!",
+    "capProgress": "{cur}h / {cap}h",
+    "readyWood": "🪵 +{n}",
+    "collect": "Collect Resources",
+    "levelReq": "Level {n}",
+    "skillLabel": "🪓 Woodcutting",
+    "available": "Chop Here",
+    "locked": "🔒 Requires Level {n}",
+    "busyOther": "Your hero is woodcutting. Stop that before starting another activity.",
+    "busyBattle": "You can't start woodcutting with an active dungeon run. Retreat from battle first."
+  },
+  "wood": {
+    "wood_common": "Common Wood",
+    "wood_oak": "Oak",
+    "wood_ebony": "Ebony",
+    "wood_elven": "Elven Wood",
+    "wood_ancient": "Ancient Wood"
+  },
   "garden": {
     "title": "🌱 Garden",
+    "skillLabel": "🌱 Gardening",
     "levelReq": "Level {n}",
     "plant": "Plant",
     "growing": "🌱 Growing...",

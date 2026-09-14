@@ -295,6 +295,8 @@ export default function ForgeModal({
               ['furnace', t('forge.furnaceSection')],
               ['tannery', t('forge.tannerySection')],
               ['alchemy', t('forge.alchemySection')],
+              ['carpentry', t('forge.carpentrySection')],
+              ['dust', t('forge.dustSection')],
             ] as const).map(([station, sectionTitle]) => {
               const recipes = refiningRecipesForStation(station);
               if (recipes.length === 0) return null;

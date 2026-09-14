@@ -7,6 +7,7 @@ import {
   computeGardenStatuses,
   computeHuntingStatus,
   computeMiningStatus,
+  computeWoodcuttingStatus,
   defaultSave,
   effectivePouchSlots,
   effectiveRepairCost,
@@ -18,8 +19,8 @@ import {
   SaveData,
 } from './game/engine';
 import { getBattlePassLevelDef } from './game/battlepass';
-import { DURABILITY_LOSS_PER_STAGE, GEAR, gearSellValue, getEquipped, getGear, MAX_DURABILITY, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
-import { MATERIALS, MaterialId, hasMaterials } from './game/materials';
+import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, MAX_DURABILITY, MAX_REFINE, refineLevel, upgradeChance, upgradeCost } from './game/gear';
+import { MaterialId, hasMaterials } from './game/materials';
 import { getRefiningRecipe } from './game/refining';
 import { getPotionRecipe } from './game/potions';
 import { CONSUMABLE_STACK, ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from './game/consumables';
@@ -27,7 +28,7 @@ import { isBagFull, inventorySlotsUsed, MAX_SLOTS } from './game/inventory';
 import { GEMS, GemId, hasGems, socketsForTier } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { canSalvage, getSalvageReturn, SALVAGE_BONUS_CHANCE } from './game/salvage';
-import { spriteForArmorTier } from './game/sprites';
+import { playerSpriteUrl } from './game/sprites';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
 import ForgeModal from './components/ForgeModal';
@@ -38,6 +39,7 @@ import HuntModal from './components/HuntModal';
 import BattleModal from './components/BattleModal';
 import ExpeditionModal from './components/ExpeditionModal';
 import MiningModal from './components/MiningModal';
+import WoodcuttingModal from './components/WoodcuttingModal';
 import GardenModal from './components/GardenModal';
 import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
@@ -48,6 +50,8 @@ import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
 import { allocateToPouch, drainPouchToMaterials, nextHuntPouchTierDef } from './game/huntPouch';
 import { getOreTier, isOreTierUnlocked } from './game/ores';
+import { getWoodTier, isWoodTierUnlocked } from './game/woodcutting';
+import { skillLevel } from './game/skills';
 import { getPlant } from './game/garden';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
@@ -74,6 +78,7 @@ function App() {
   const [eliteFloor, setEliteFloor] = useState<number | null>(null);
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [mineOpen, setMineOpen] = useState(false);
+  const [woodOpen, setWoodOpen] = useState(false);
   const [gardenOpen, setGardenOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
   const [huntReward, setHuntReward] = useState<{ timeMs: number; pendingMs: number; gold: number; xp: number } | null>(null);
@@ -123,6 +128,8 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Admin panel is a dev-only tool — the listener must not even register in a production build.
+    if (!import.meta.env.DEV) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'F2') {
         e.preventDefault();
@@ -159,6 +166,10 @@ function App() {
       showToast(t('mining.busyDungeon'));
       return;
     }
+    if (s.activeWoodId) {
+      showToast(t('woodcutting.busyOther'));
+      return;
+    }
     if (s.activeHuntingZone) {
       showToast(t('hunting.busyOther'));
       return;
@@ -185,6 +196,10 @@ function App() {
     const s = saveRef.current;
     if (s.activeOreId) {
       showToast(t('mining.busyDungeon'));
+      return;
+    }
+    if (s.activeWoodId) {
+      showToast(t('woodcutting.busyOther'));
       return;
     }
     if (s.activeHuntingZone) {
@@ -521,9 +536,13 @@ function App() {
   const startMining = (oreId: string) => {
     const s = saveRef.current;
     const tier = getOreTier(oreId);
-    if (!tier || !isOreTierUnlocked(tier, playerLevel(s.xp), s.inventory) || s.activeOreId === oreId) return;
+    if (!tier || !isOreTierUnlocked(tier, skillLevel(s.skillXp.mining)) || s.activeOreId === oreId) return;
     if (battleFloor !== null || eliteFloor !== null) {
       showToast(t('mining.busyBattle'));
+      return;
+    }
+    if (s.activeWoodId) {
+      showToast(t('woodcutting.busyOther'));
       return;
     }
     if (s.activeHuntingZone) {
@@ -531,9 +550,7 @@ function App() {
       return;
     }
     playSfx('click');
-    const inventory = { ...s.inventory };
-    if (!inventory[tier.pickaxeId]) inventory[tier.pickaxeId] = 1;
-    setSaveBoth({ ...s, inventory, activeOreId: oreId, lastMiningClaim: Date.now() });
+    setSaveBoth({ ...s, activeOreId: oreId, lastMiningClaim: Date.now() });
   };
 
   const claimMining = () => {
@@ -548,6 +565,7 @@ function App() {
       ...s,
       gold: s.gold + status.goldReady,
       materials: { ...s.materials, [status.oreId]: (s.materials[status.oreId] ?? 0) + status.oreReady },
+      skillXp: { ...s.skillXp, mining: s.skillXp.mining + status.oreReady * T.skills.xpPerUnit },
       activeOreId: null,
       lastMiningClaim: Date.now(),
       battlePassLevel,
@@ -563,11 +581,56 @@ function App() {
     setSaveBoth({ ...s, activeOreId: null });
   };
 
+  // Mirrors startMining/claimMining/cancelMining exactly — see woodcutting.ts/computeWoodcuttingStatus.
+  const startWoodcutting = (woodId: string) => {
+    const s = saveRef.current;
+    const tier = getWoodTier(woodId);
+    if (!tier || !isWoodTierUnlocked(tier, skillLevel(s.skillXp.woodcutting)) || s.activeWoodId === woodId) return;
+    if (battleFloor !== null || eliteFloor !== null) {
+      showToast(t('woodcutting.busyBattle'));
+      return;
+    }
+    if (s.activeOreId) {
+      showToast(t('mining.busyOther'));
+      return;
+    }
+    if (s.activeHuntingZone) {
+      showToast(t('hunting.busyOther'));
+      return;
+    }
+    playSfx('click');
+    setSaveBoth({ ...s, activeWoodId: woodId, lastWoodcuttingClaim: Date.now() });
+  };
+
+  const claimWoodcutting = () => {
+    const s = saveRef.current;
+    if (!s.activeWoodId) return;
+    const status = computeWoodcuttingStatus(s, Date.now());
+    if (!status.woodId) return;
+    playSfx('victory');
+    setSaveBoth({
+      ...s,
+      gold: s.gold + status.goldReady,
+      materials: { ...s.materials, [status.woodId]: (s.materials[status.woodId] ?? 0) + status.woodReady },
+      skillXp: { ...s.skillXp, woodcutting: s.skillXp.woodcutting + status.woodReady * T.skills.xpPerUnit },
+      activeWoodId: null,
+      lastWoodcuttingClaim: Date.now(),
+    });
+    showToast(t('woodcutting.readyWood', { n: status.woodReady }));
+  };
+
+  const cancelWoodcutting = () => {
+    const s = saveRef.current;
+    if (!s.activeWoodId) return;
+    playSfx('click');
+    setSaveBoth({ ...s, activeWoodId: null });
+  };
+
   const startPlanting = (plantId: string, count: number) => {
     const s = saveRef.current;
     const def = getPlant(plantId);
     if (!def) return;
-    if (playerLevel(s.xp) < def.requiredLevel) return;
+    if (skillLevel(s.skillXp.gardening) < def.requiredLevel) return;
     const emptyIndices = s.gardenSlots.reduce<number[]>((acc, slot, i) => {
       if (!slot.plantId) acc.push(i);
       return acc;
@@ -598,6 +661,7 @@ function App() {
     setSaveBoth({
       ...s,
       materials: { ...s.materials, [def.material]: (s.materials[def.material] ?? 0) + def.qty },
+      skillXp: { ...s.skillXp, gardening: s.skillXp.gardening + T.skills.xpPerHarvest },
       gardenSlots,
     });
     showToast(`${t('garden.harvest')} +${def.qty} ${t(`materials.mat_${def.material}`)}`);
@@ -620,6 +684,10 @@ function App() {
     if (!isDepthUnlocked(zone, depth, computeCP(s))) return;
     if (s.activeOreId) {
       showToast(t('mining.busyDungeon'));
+      return;
+    }
+    if (s.activeWoodId) {
+      showToast(t('woodcutting.busyOther'));
       return;
     }
     playSfx('click');
@@ -799,30 +867,6 @@ function App() {
         daily: { ...s.quests.daily, purchases: (s.quests.daily.purchases ?? 0) + 1 },
       },
     });
-  };
-
-  const sellItem = (kind: 'gear' | 'material' | 'consumable', id: string, qty: number) => {
-    const s = saveRef.current;
-    if (kind === 'material') {
-      const m = MATERIALS.find((x) => x.id === id);
-      const have = s.materials[id as MaterialId] ?? 0;
-      const n = Math.max(1, Math.min(qty, have));
-      if (!m || have <= 0) return;
-      setSaveBoth({ ...s, gold: s.gold + n * m.sellValue, materials: { ...s.materials, [id as MaterialId]: have - n } });
-    } else if (kind === 'consumable') {
-      const c = getConsumable(id);
-      const have = s.consumables[id as ConsumableId] ?? 0;
-      const n = Math.max(1, Math.min(qty, have));
-      if (!c || have <= 0) return;
-      setSaveBoth({ ...s, gold: s.gold + n * c.sellValue, consumables: { ...s.consumables, [id as ConsumableId]: have - n } });
-    } else {
-      const g = getGear(id);
-      const have = s.inventory[id] ?? 0;
-      const n = Math.max(1, Math.min(qty, have));
-      if (!g || have <= 0) return;
-      setSaveBoth({ ...s, gold: s.gold + n * gearSellValue(g), inventory: { ...s.inventory, [id]: have - n } });
-    }
-    playSfx('click');
   };
 
   const discardItem = (kind: 'gear' | 'material' | 'consumable', id: string) => {
@@ -1090,9 +1134,7 @@ function App() {
     });
   };
 
-  const build = getEquipped(save.equipped);
-  const armorTier = build.armor?.tier ?? 0;
-  const playerSpriteUrl = spriteForArmorTier(armorTier);
+  const heroSpriteUrl = playerSpriteUrl();
 
   return (
     <div className="game-root">
@@ -1102,7 +1144,7 @@ function App() {
 
         <TopHud
           save={save}
-          spriteUrl={playerSpriteUrl}
+          spriteUrl={heroSpriteUrl}
           onOpenProfile={() => setHeroOpen(true)}
         />
 
@@ -1117,6 +1159,17 @@ function App() {
             data-ui
           >
             <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />
+          </button>
+          <button
+            className="side-btn"
+            onClick={() => {
+              playSfx('click');
+              setWoodOpen(true);
+            }}
+            data-ui
+          >
+            🪓
+            {computeWoodcuttingStatus(save, Date.now()).full && <span className="quests-badge">•</span>}
           </button>
           <button
             className="side-btn garden-btn"
@@ -1165,9 +1218,11 @@ function App() {
               </span>
             )}
           </button>
-          <button className="side-btn" onClick={() => setAdminOpen(true)} data-ui>
-            ⚙️
-          </button>
+          {import.meta.env.DEV && (
+            <button className="side-btn" onClick={() => setAdminOpen(true)} data-ui>
+              ⚙️
+            </button>
+          )}
           <button className="side-btn" onClick={toggleMute} data-ui>
             {muted ? '🔇' : '🔊'}
           </button>
@@ -1220,7 +1275,6 @@ function App() {
           save={save}
           onEquip={equipGear}
           onUnequip={unequipGear}
-          onSell={sellItem}
           onDiscard={discardItem}
           onReforge={reforgeItem}
           onSalvage={salvageItem}
@@ -1297,6 +1351,19 @@ function App() {
           onClose={() => {
             playSfx('click');
             setMineOpen(false);
+          }}
+        />
+      )}
+
+      {woodOpen && (
+        <WoodcuttingModal
+          save={save}
+          onStartWood={startWoodcutting}
+          onClaim={claimWoodcutting}
+          onCancel={cancelWoodcutting}
+          onClose={() => {
+            playSfx('click');
+            setWoodOpen(false);
           }}
         />
       )}
@@ -1383,7 +1450,7 @@ function App() {
 
       {toast && <div className="toast">{toast}</div>}
 
-      {adminOpen && (
+      {import.meta.env.DEV && adminOpen && (
         <AdminModal
           cheatMode={cheatMode}
           onGold={adminAddGold}

@@ -26,6 +26,11 @@ export const MAX_DUNGEON_FLOOR = 100;
 
 // The Dungeon never drops farm materials (leather/ore/etc — that's Open Hunting's job exclusively).
 // Its rewards are XP, gold, and the one-time milestone payouts below.
+// Economy design: goldMin/goldMax (+ goldRewardGrowth in tunables.ts) were cut hard from their original
+// values — Dungeon + Expedition together were pushing a median player past 10k-100k gold/day, which
+// leaves gold with no real scarcity (a problem if it's ever exchanged for ONE down the line). Checkpoint
+// (miniBossGoldMult 2.5x) and boss (bossGoldMult 5x) multipliers are untouched on purpose — a bigger
+// payout at a milestone is still meant to feel special, only the steady per-floor drip needed to shrink.
 export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
   {
     id: 'goblin_forest',
@@ -33,7 +38,7 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     enemyKind: 'goblin',
     startFloor: 1,
     endFloor: 25,
-    goldMin: 4,
+    goldMin: 5,
     goldMax: 8,
     cpStart: 50,
     cpEnd: 350,
@@ -45,8 +50,8 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     enemyKind: 'orc',
     startFloor: 26,
     endFloor: 50,
-    goldMin: 80,
-    goldMax: 120,
+    goldMin: 9,
+    goldMax: 14,
     cpStart: 400,
     cpEnd: 1200,
     drops: [],
@@ -57,8 +62,8 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     enemyKind: 'warlock',
     startFloor: 51,
     endFloor: 75,
-    goldMin: 150,
-    goldMax: 200,
+    goldMin: 13,
+    goldMax: 18,
     cpStart: 1300,
     cpEnd: 3000,
     drops: [],
@@ -69,8 +74,8 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     enemyKind: 'boss',
     startFloor: 76,
     endFloor: 100,
-    goldMin: 300,
-    goldMax: 450,
+    goldMin: 15,
+    goldMax: 21,
     cpStart: 3200,
     cpEnd: 6500,
     drops: [],
@@ -120,10 +125,12 @@ export function milestoneXpBonus(startFloor: number, stagesCleared: number): num
   return bonus;
 }
 
-// Per-kill XP now scales with floor difficulty (same rewardGrowth curve gold already uses) instead of a
-// flat rate — a floor-99 kill is worth far more than a floor-1 kill. This only matters now because normal
-// Dungeon runs are capped to a few sessions/day (see App.tsx enterDungeon), so it's safe for a deep run to
-// pay out a lot without becoming a farmable-forever XP faucet the way flat per-kill XP would have been.
+// Per-kill XP scales with floor difficulty (rewardGrowth) instead of a flat rate — a floor-99 kill is
+// worth far more than a floor-1 kill. This only matters now because normal Dungeon runs are capped to
+// a few sessions/day (see App.tsx enterDungeon), so it's safe for a deep run to pay out a lot without
+// becoming a farmable-forever XP faucet the way flat per-kill XP would have been. Kept on its own
+// tunable (rewardGrowth) separate from gold's (goldRewardGrowth, waves.ts) so tuning the gold economy
+// never silently reflows XP pacing, and vice versa.
 export function stageVictoryXp(floor: number): number {
   return Math.round(T.advanced.victoryXp * (1 + T.battle.rewardGrowth * (floor - 1)));
 }

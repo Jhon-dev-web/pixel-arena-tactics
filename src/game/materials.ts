@@ -21,7 +21,18 @@ export type MaterialId =
   | 'corrupted_crystal'
   | 'common_herb'
   | 'uncommon_root'
-  | 'rare_flower';
+  | 'rare_flower'
+  | 'refining_dust'
+  | 'common_wood'
+  | 'oak_wood'
+  | 'ebony_wood'
+  | 'elven_wood'
+  | 'ancient_wood'
+  | 'wood_handle_common'
+  | 'wood_handle_oak'
+  | 'wood_handle_ebony'
+  | 'wood_handle_elven'
+  | 'wood_handle_ancient';
 
 export type DropRarity = 'common' | 'uncommon' | 'rare';
 
@@ -62,6 +73,21 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'common_herb', nameKey: 'mat_common_herb', icon: '🌿', packSize: 5, packCost: 20, sellValue: 3 },
   { id: 'uncommon_root', nameKey: 'mat_uncommon_root', icon: '🥕', packSize: 3, packCost: 90, sellValue: 15 },
   { id: 'rare_flower', nameKey: 'mat_rare_flower', icon: '🌸', packSize: 1, packCost: 300, sellValue: 65 },
+  // Refining-only sink for surplus common materials (see refining.ts DUST_RECIPES) — never dropped/mined,
+  // and never sold, only ever produced and spent inside the Forge's Refino tab.
+  { id: 'refining_dust', nameKey: 'mat_refining_dust', icon: '🌫️', packSize: 1, packCost: 0, sellValue: 0 },
+  // Woodcutting — mirrors Mining exactly (tier-gated raw material, zero gold by design). Never sold.
+  { id: 'common_wood', nameKey: 'mat_common_wood', icon: '🪵', packSize: 5, packCost: 20, sellValue: 3 },
+  { id: 'oak_wood', nameKey: 'mat_oak_wood', icon: '🌳', packSize: 4, packCost: 60, sellValue: 8 },
+  { id: 'ebony_wood', nameKey: 'mat_ebony_wood', icon: '🪵', packSize: 3, packCost: 150, sellValue: 20 },
+  { id: 'elven_wood', nameKey: 'mat_elven_wood', icon: '🌲', packSize: 2, packCost: 350, sellValue: 45 },
+  { id: 'ancient_wood', nameKey: 'mat_ancient_wood', icon: '🌴', packSize: 1, packCost: 700, sellValue: 90 },
+  // Carpentry-refined — never chopped/dropped directly, only produced by converting the raw wood above.
+  { id: 'wood_handle_common', nameKey: 'mat_wood_handle_common', icon: '🥢', packSize: 1, packCost: 0, sellValue: 12 },
+  { id: 'wood_handle_oak', nameKey: 'mat_wood_handle_oak', icon: '🥢', packSize: 1, packCost: 0, sellValue: 32 },
+  { id: 'wood_handle_ebony', nameKey: 'mat_wood_handle_ebony', icon: '🥢', packSize: 1, packCost: 0, sellValue: 80 },
+  { id: 'wood_handle_elven', nameKey: 'mat_wood_handle_elven', icon: '🥢', packSize: 1, packCost: 0, sellValue: 180 },
+  { id: 'wood_handle_ancient', nameKey: 'mat_wood_handle_ancient', icon: '🥢', packSize: 1, packCost: 0, sellValue: 360 },
 ];
 
 export function getMaterial(id: MaterialId): MaterialDef | undefined {
@@ -95,6 +121,17 @@ export function emptyMaterials(): Materials {
     common_herb: 0,
     uncommon_root: 0,
     rare_flower: 0,
+    refining_dust: 0,
+    common_wood: 0,
+    oak_wood: 0,
+    ebony_wood: 0,
+    elven_wood: 0,
+    ancient_wood: 0,
+    wood_handle_common: 0,
+    wood_handle_oak: 0,
+    wood_handle_ebony: 0,
+    wood_handle_elven: 0,
+    wood_handle_ancient: 0,
   };
 }
 
