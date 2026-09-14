@@ -2,6 +2,13 @@
   "skills": {
     "level": "Nível {n}"
   },
+  "welcome": {
+    "title": "🏕️ Bem-vindo ao Acampamento!",
+    "idleTip": "Este é um jogo idle — seu herói continua progredindo mesmo com o jogo fechado.",
+    "startTip": "Toque em Mineração, Lenhaçaria ou Caça Aberta pra iniciar uma atividade, depois volte mais tarde pra coletar o resultado.",
+    "saveWarning": "⚠️ Seu progresso é salvo só neste navegador/aparelho. Não limpe os dados do site nem troque de aparelho, ou vai perder tudo.",
+    "cta": "Entendi, vamos lá!"
+  },
   "tooltips": {
     "mining": "Mineração",
     "woodcutting": "Lenhaçaria",

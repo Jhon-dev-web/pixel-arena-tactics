@@ -2,6 +2,13 @@
   "skills": {
     "level": "Level {n}"
   },
+  "welcome": {
+    "title": "🏕️ Welcome to Camp!",
+    "idleTip": "This is an idle game — your hero keeps progressing even with the game closed.",
+    "startTip": "Tap Mining, Woodcutting, or Open Hunt to start an activity, then come back later to collect the results.",
+    "saveWarning": "⚠️ Your progress is saved only on this browser/device. Don't clear the site's data or switch devices, or you'll lose everything.",
+    "cta": "Got it, let's go!"
+  },
   "tooltips": {
     "mining": "Mining",
     "woodcutting": "Woodcutting",

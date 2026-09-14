@@ -58,6 +58,7 @@ import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENT
 import { rollRarity, rollSubstats, totalSubstatTotals } from './game/rarity';
 import TopHud from './components/TopHud';
 import FirstViewTooltip from './components/FirstViewTooltip';
+import WelcomeModal from './components/WelcomeModal';
 import Campfire from './components/Campfire';
 import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
 import Assets from './assets.json';
@@ -98,6 +99,7 @@ function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [tooltipQueue, setTooltipQueue] = useState<string[]>(() => TOOLTIP_IDS.filter((id) => !save.seenTooltips.includes(id)));
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [welcomeOpen, setWelcomeOpen] = useState(() => !save.seenWelcome);
 
   const saveRef = useRef(save);
   const cheatModeRef = useRef(false);
@@ -123,12 +125,19 @@ function App() {
     }
   };
 
+  const closeWelcome = () => {
+    playSfx('click');
+    setSaveBoth({ ...saveRef.current, seenWelcome: true });
+    setWelcomeOpen(false);
+  };
+
   // First-view tooltip sequencing: shows one at a time from tooltipQueue (staggered, so a fresh save
   // with everything unlocked doesn't dump 9 bubbles at once), marks each seen the instant it's
   // displayed (so a reload mid-display never re-shows it — "seen" means shown, not "fully read"), and
-  // never blocks the icon underneath — the icon's own onClick still fires normally either way.
+  // never blocks the icon underneath — the icon's own onClick still fires normally either way. Held
+  // off entirely while the Welcome modal is up, so it never competes with it.
   useEffect(() => {
-    if (activeTooltip || tooltipQueue.length === 0) return;
+    if (welcomeOpen || activeTooltip || tooltipQueue.length === 0) return;
     const staggerId = window.setTimeout(() => {
       const [next, ...rest] = tooltipQueue;
       setTooltipQueue(rest);
@@ -139,7 +148,7 @@ function App() {
       }
     }, 700);
     return () => window.clearTimeout(staggerId);
-  }, [activeTooltip, tooltipQueue]);
+  }, [welcomeOpen, activeTooltip, tooltipQueue]);
 
   useEffect(() => {
     if (!activeTooltip) return;
@@ -1508,6 +1517,8 @@ function App() {
           onClose={() => setAdminOpen(false)}
         />
       )}
+
+      {welcomeOpen && <WelcomeModal onClose={closeWelcome} />}
     </div>
   );
 }
