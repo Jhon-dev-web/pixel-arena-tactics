@@ -96,6 +96,7 @@ export interface SaveData {
   activeBuff: ActiveBuff | null;
   dungeonSessionsDay: string;
   dungeonSessionsUsed: number;
+  seenTooltips: string[];
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
@@ -405,6 +406,7 @@ export function defaultSave(): SaveData {
     huntPouch: defaultHuntPouch(),
     dungeonSessionsDay: '',
     dungeonSessionsUsed: 0,
+    seenTooltips: [],
   };
 }
 
@@ -475,6 +477,7 @@ export function loadSave(): SaveData {
         dungeonSessionsDay = today;
         dungeonSessionsUsed = 0;
       }
+      const seenTooltips = Array.isArray(parsed.seenTooltips) ? parsed.seenTooltips.filter((id) => typeof id === 'string') : [];
       const itemRarity: Record<string, Rarity> = {};
       for (const [id, r] of Object.entries(parsed.itemRarity ?? {})) {
         if (getGear(id) && (r === 'common' || r === 'rare' || r === 'epic' || r === 'legendary')) itemRarity[id] = r as Rarity;
@@ -677,6 +680,7 @@ export function loadSave(): SaveData {
         activeBuff,
         dungeonSessionsDay,
         dungeonSessionsUsed,
+        seenTooltips,
       };
     }
   } catch {

@@ -57,6 +57,7 @@ import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expe
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
 import { rollRarity, rollSubstats, totalSubstatTotals } from './game/rarity';
 import TopHud from './components/TopHud';
+import FirstViewTooltip from './components/FirstViewTooltip';
 import Campfire from './components/Campfire';
 import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
 import Assets from './assets.json';
@@ -64,6 +65,12 @@ import { t } from './locales';
 import './App.css';
 
 const gearText = (key: string): string => t(`gear.${key}`);
+
+// First-view tooltips for the Camp side-rail icons — order matches the rail top-to-bottom. Admin (dev
+// only) is deliberately excluded: it doesn't exist in a production build, so there's nothing to
+// introduce to a real player. See FirstViewTooltip.tsx / SaveData.seenTooltips.
+const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'expedition', 'battlepass', 'bag', 'quests', 'mute'] as const;
+const tooltipText = (id: string): string => t(`tooltips.${id}`);
 
 function App() {
   const [save, setSave] = useState<SaveData>(() => loadSave());
@@ -89,6 +96,8 @@ function App() {
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
   const [cheatMode, setCheatMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [tooltipQueue, setTooltipQueue] = useState<string[]>(() => TOOLTIP_IDS.filter((id) => !save.seenTooltips.includes(id)));
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   const saveRef = useRef(save);
   const cheatModeRef = useRef(false);
@@ -113,6 +122,35 @@ function App() {
       showToast(t('ui.levelUp', { n: nextLevel }));
     }
   };
+
+  // First-view tooltip sequencing: shows one at a time from tooltipQueue (staggered, so a fresh save
+  // with everything unlocked doesn't dump 9 bubbles at once), marks each seen the instant it's
+  // displayed (so a reload mid-display never re-shows it — "seen" means shown, not "fully read"), and
+  // never blocks the icon underneath — the icon's own onClick still fires normally either way.
+  useEffect(() => {
+    if (activeTooltip || tooltipQueue.length === 0) return;
+    const staggerId = window.setTimeout(() => {
+      const [next, ...rest] = tooltipQueue;
+      setTooltipQueue(rest);
+      setActiveTooltip(next);
+      const s = saveRef.current;
+      if (!s.seenTooltips.includes(next)) {
+        setSaveBoth({ ...s, seenTooltips: [...s.seenTooltips, next] });
+      }
+    }, 700);
+    return () => window.clearTimeout(staggerId);
+  }, [activeTooltip, tooltipQueue]);
+
+  useEffect(() => {
+    if (!activeTooltip) return;
+    const dismissId = window.setTimeout(() => setActiveTooltip(null), 3000);
+    const onAnyClick = () => setActiveTooltip(null);
+    window.addEventListener('click', onAnyClick, true);
+    return () => {
+      window.clearTimeout(dismissId);
+      window.removeEventListener('click', onAnyClick, true);
+    };
+  }, [activeTooltip]);
 
   useEffect(() => {
     persistSave(save);
@@ -1159,6 +1197,7 @@ function App() {
             data-ui
           >
             <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />
+            <FirstViewTooltip show={activeTooltip === 'mining'} label={tooltipText('mining')} />
           </button>
           <button
             className="side-btn"
@@ -1170,6 +1209,7 @@ function App() {
           >
             🪓
             {computeWoodcuttingStatus(save, Date.now()).full && <span className="quests-badge">•</span>}
+            <FirstViewTooltip show={activeTooltip === 'woodcutting'} label={tooltipText('woodcutting')} />
           </button>
           <button
             className="side-btn garden-btn"
@@ -1181,14 +1221,17 @@ function App() {
           >
             🌱
             {computeGardenStatuses(save, Date.now()).some((s) => s.ready) && <span className="quests-badge">•</span>}
+            <FirstViewTooltip show={activeTooltip === 'garden'} label={tooltipText('garden')} />
           </button>
           <button className="side-btn hunt-btn" onClick={openHunt} data-ui>
             🏹
             {!!save.activeHuntingZone && <span className="quests-badge">•</span>}
+            <FirstViewTooltip show={activeTooltip === 'hunt'} label={tooltipText('hunt')} />
           </button>
           <button className="side-btn expedition-btn" onClick={openExpedition} data-ui>
             🏕️
             {save.expeditions.some((e) => Date.now() >= e.endsAt) && <span className="quests-badge">•</span>}
+            <FirstViewTooltip show={activeTooltip === 'expedition'} label={tooltipText('expedition')} />
           </button>
           <button
             className="side-btn"
@@ -1199,9 +1242,11 @@ function App() {
             data-ui
           >
             <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />
+            <FirstViewTooltip show={activeTooltip === 'battlepass'} label={tooltipText('battlepass')} />
           </button>
           <button className="side-btn" onClick={() => { playSfx('click'); setBagOpen(true); }} data-ui>
             <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />
+            <FirstViewTooltip show={activeTooltip === 'bag'} label={tooltipText('bag')} />
           </button>
           <button
             className="side-btn quests-btn"
@@ -1217,6 +1262,7 @@ function App() {
                 {claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) })}
               </span>
             )}
+            <FirstViewTooltip show={activeTooltip === 'quests'} label={tooltipText('quests')} />
           </button>
           {import.meta.env.DEV && (
             <button className="side-btn" onClick={() => setAdminOpen(true)} data-ui>
@@ -1225,6 +1271,7 @@ function App() {
           )}
           <button className="side-btn" onClick={toggleMute} data-ui>
             {muted ? '🔇' : '🔊'}
+            <FirstViewTooltip show={activeTooltip === 'mute'} label={tooltipText('mute')} />
           </button>
         </div>
         <div className="camp-actions">

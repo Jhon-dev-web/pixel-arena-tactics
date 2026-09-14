@@ -2,6 +2,17 @@
   "skills": {
     "level": "Level {n}"
   },
+  "tooltips": {
+    "mining": "Mining",
+    "woodcutting": "Woodcutting",
+    "garden": "Garden",
+    "hunt": "Open Hunt",
+    "expedition": "Expedition",
+    "battlepass": "Battle Pass",
+    "bag": "Backpack",
+    "quests": "Quests",
+    "mute": "Sound"
+  },
   "ui": {
     "victories": "🏆 Victories: {n}",
     "gold": "🪙 Gold: {n}",

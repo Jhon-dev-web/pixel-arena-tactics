@@ -1352,6 +1352,45 @@ body {
 .side-btn:active {
   transform: scale(0.94);
 }
+.first-tooltip {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  background: #2a1e10;
+  color: #ffe9a8;
+  border: 2px solid #ffd76a;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: calc(var(--font-size) - 2px);
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  z-index: 40;
+  pointer-events: none;
+  animation: firstTooltipIn 0.2s ease-out;
+}
+.first-tooltip-arrow {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 7px solid #ffd76a;
+}
+@keyframes firstTooltipIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
 /* ===== campfire flame animation ===== */
 .campfire {
   position: absolute;

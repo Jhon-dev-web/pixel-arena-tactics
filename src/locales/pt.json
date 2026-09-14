@@ -2,6 +2,17 @@
   "skills": {
     "level": "Nível {n}"
   },
+  "tooltips": {
+    "mining": "Mineração",
+    "woodcutting": "Lenhaçaria",
+    "garden": "Horta",
+    "hunt": "Caça Aberta",
+    "expedition": "Expedição",
+    "battlepass": "Passe de Aventureiro",
+    "bag": "Mochila",
+    "quests": "Missões",
+    "mute": "Som"
+  },
   "ui": {
     "victories": "🏆 Vitórias: {n}",
     "gold": "🪙 Ouro: {n}",
