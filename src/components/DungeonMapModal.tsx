@@ -20,11 +20,13 @@ export default function DungeonMapModal({
   save,
   onEnterDungeon,
   onEnterElite,
+  onUpdateAutoPotionSettings,
   onClose,
 }: {
   save: SaveData;
   onEnterDungeon: () => void;
   onEnterElite: (floor: number) => void;
+  onUpdateAutoPotionSettings: (threshold: number, priority: 'small_first' | 'large_first') => void;
   onClose: () => void;
 }) {
   const floor = save.highestDungeonFloor;
@@ -86,6 +88,42 @@ export default function DungeonMapModal({
             <button className="battle-btn" onClick={onEnterDungeon} disabled={huntingBusy} data-ui>
               {dungeonText('enterDungeon')}
             </button>
+          </div>
+
+          <div className="floor-card auto-potion-card">
+            <div className="floor-header">
+              <span className="floor-name">{dungeonText('autoPotionTitle')}</span>
+            </div>
+            <label className="auto-potion-threshold-label" htmlFor="auto-potion-threshold">
+              {t('dungeon.autoPotionThreshold', { n: Math.round(save.autoPotionThreshold * 100) })}
+            </label>
+            <input
+              id="auto-potion-threshold"
+              className="auto-potion-slider"
+              type="range"
+              min={10}
+              max={70}
+              step={5}
+              value={Math.round(save.autoPotionThreshold * 100)}
+              onChange={(e) => onUpdateAutoPotionSettings(Number(e.target.value) / 100, save.autoPotionPriority)}
+              data-ui
+            />
+            <div className="hunt-depth-row auto-potion-priority">
+              <button
+                className={`hunt-depth-btn${save.autoPotionPriority === 'small_first' ? ' active' : ''}`}
+                onClick={() => onUpdateAutoPotionSettings(save.autoPotionThreshold, 'small_first')}
+                data-ui
+              >
+                <span className="hunt-depth-name">{dungeonText('autoPotionPrioritySmall')}</span>
+              </button>
+              <button
+                className={`hunt-depth-btn${save.autoPotionPriority === 'large_first' ? ' active' : ''}`}
+                onClick={() => onUpdateAutoPotionSettings(save.autoPotionThreshold, 'large_first')}
+                data-ui
+              >
+                <span className="hunt-depth-name">{dungeonText('autoPotionPriorityLarge')}</span>
+              </button>
+            </div>
           </div>
 
           {eliteFloors.map((f) => {

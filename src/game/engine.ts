@@ -98,6 +98,8 @@ export interface SaveData {
   dungeonSessionsUsed: number;
   seenTooltips: string[];
   seenWelcome: boolean;
+  autoPotionThreshold: number;
+  autoPotionPriority: 'small_first' | 'large_first';
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
@@ -409,6 +411,10 @@ export function defaultSave(): SaveData {
     dungeonSessionsUsed: 0,
     seenTooltips: [],
     seenWelcome: false,
+    // Matches the old hardcoded auto-potion behavior (greater_elixir > large_hp > small_hp) so
+    // existing saves see no gameplay change until the player actually opens the settings.
+    autoPotionThreshold: 0.35,
+    autoPotionPriority: 'large_first',
   };
 }
 
@@ -685,6 +691,11 @@ export function loadSave(): SaveData {
         dungeonSessionsUsed,
         seenTooltips,
         seenWelcome,
+        autoPotionThreshold:
+          typeof parsed.autoPotionThreshold === 'number' && Number.isFinite(parsed.autoPotionThreshold)
+            ? Math.max(0.1, Math.min(0.7, parsed.autoPotionThreshold))
+            : base.autoPotionThreshold,
+        autoPotionPriority: parsed.autoPotionPriority === 'small_first' ? 'small_first' : base.autoPotionPriority,
       };
     }
   } catch {

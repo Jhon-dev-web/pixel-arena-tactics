@@ -442,6 +442,10 @@
     "eliteDefeated": "✅ Desafio Elite já vencido",
     "eliteEnter": "⚔️ Enfrentar Elite",
     "eliteWin": "🏆 DESAFIO ELITE VENCIDO!",
+    "autoPotionTitle": "🧪 Poção Automática",
+    "autoPotionThreshold": "Usar quando HP cair abaixo de {n}%",
+    "autoPotionPrioritySmall": "Pequena primeiro",
+    "autoPotionPriorityLarge": "Grande primeiro",
     "eliteLose": "💀 O Desafio Elite venceu desta vez"
   },
   "hunting": {

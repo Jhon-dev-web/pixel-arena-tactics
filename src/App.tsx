@@ -1103,6 +1103,10 @@ function App() {
   const upgradeItem = (id: string) => performUpgrade(id, false);
   const upgradeItemWithCatalyst = (id: string) => performUpgrade(id, true);
 
+  const updateAutoPotionSettings = (threshold: number, priority: 'small_first' | 'large_first') => {
+    setSaveBoth({ ...saveRef.current, autoPotionThreshold: threshold, autoPotionPriority: priority });
+  };
+
   const attrChange = (attr: 'str' | 'vit' | 'agi' | 'res', delta: number) => {
     const cur = saveRef.current[attr];
     const next = cur + delta;
@@ -1363,6 +1367,7 @@ function App() {
           save={save}
           onEnterDungeon={enterDungeon}
           onEnterElite={enterEliteDungeon}
+          onUpdateAutoPotionSettings={updateAutoPotionSettings}
           onClose={() => {
             playSfx('click');
             setDungeonOpen(false);

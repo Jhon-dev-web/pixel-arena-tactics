@@ -76,7 +76,7 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     endFloor: 100,
     goldMin: 15,
     goldMax: 21,
-    cpStart: 1364,
+    cpStart: 1097,
     cpEnd: 1401,
     drops: [],
   },

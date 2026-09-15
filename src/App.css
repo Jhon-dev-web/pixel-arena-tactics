@@ -2942,6 +2942,20 @@ body {
   font-size: calc(var(--font-size) - 5px);
   color: #6fe08a;
 }
+.auto-potion-threshold-label {
+  display: block;
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+  margin-bottom: 6px;
+}
+.auto-potion-slider {
+  width: 100%;
+  margin-bottom: 10px;
+  accent-color: #ffd76a;
+}
+.auto-potion-priority {
+  margin-bottom: 0;
+}
 .hunt-depth-current {
   margin-bottom: 6px;
   font-size: calc(var(--font-size) - 3px);

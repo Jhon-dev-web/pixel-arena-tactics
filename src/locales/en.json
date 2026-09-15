@@ -442,6 +442,10 @@
     "eliteDefeated": "✅ Elite Challenge already cleared",
     "eliteEnter": "⚔️ Face the Elite",
     "eliteWin": "🏆 ELITE CHALLENGE CLEARED!",
+    "autoPotionTitle": "🧪 Auto Potion",
+    "autoPotionThreshold": "Use when HP drops below {n}%",
+    "autoPotionPrioritySmall": "Small first",
+    "autoPotionPriorityLarge": "Large first",
     "eliteLose": "💀 The Elite Challenge won this time"
   },
   "hunting": {

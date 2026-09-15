@@ -293,14 +293,24 @@ export default function BattleModal({
 
     const tryAutoPotion = (now: number) => {
       if (now < potionCooldownUntilRef.current) return;
-      if (hp.current.p >= playerMax * T.battle.potionThreshold) return;
+      if (hp.current.p >= playerMax * save.autoPotionThreshold) return;
       const stock = potionStockRef.current;
-      // Best available potion first: Greater Elixir (% heal, Alchemy-tier) > large_hp > small_hp.
+      // Greater Elixir (Alchemy-tier, % heal) is always the best pick when available. Between the two
+      // flat-heal potions, which goes first is the player's own call (save.autoPotionPriority) — Strength
+      // Elixir stays out of this automation entirely, per design.
       let id: ConsumableId | null = null;
       let heal = 0;
       if (stock.greater_elixir > 0) {
         id = 'greater_elixir';
         heal = playerMax * T.battle.greaterElixirHealPct;
+      } else if (save.autoPotionPriority === 'small_first') {
+        if (stock.small_hp > 0) {
+          id = 'small_hp';
+          heal = T.battle.potionHeal;
+        } else if (stock.large_hp > 0) {
+          id = 'large_hp';
+          heal = T.battle.largePotionHeal;
+        }
       } else if (stock.large_hp > 0) {
         id = 'large_hp';
         heal = T.battle.largePotionHeal;
