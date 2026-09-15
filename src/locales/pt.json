@@ -330,7 +330,7 @@
     "noSockets": "Sem encaixes disponíveis (Requer Tier 1 Bronze ou superior)",
     "upgradeOk": "✓ {n} +{m}!",
     "upgradeFail": "✗ Falha na melhoria",
-    "reforge": "🎲 Reforjar Status (1 🔷)",
+    "reforge": "🎲 Reforjar Status (1 🔷 + {gold} Ouro)",
     "reforged": "🎲 Status reforjados!",
     "levelReq": "Nível {n}"
   },
@@ -446,7 +446,12 @@
     "autoPotionThreshold": "Usar quando HP cair abaixo de {n}%",
     "autoPotionPrioritySmall": "Pequena primeiro",
     "autoPotionPriorityLarge": "Grande primeiro",
-    "eliteLose": "💀 O Desafio Elite venceu desta vez"
+    "eliteLose": "💀 O Desafio Elite venceu desta vez",
+    "tensionTitle": "🏆 Marco do Andar {n} Conquistado!",
+    "tensionSubtitle": "Decida agora: sacar a recompensa com segurança, ou arriscar continuar.",
+    "tensionRetreat": "🏃 Recuar e Sacar",
+    "tensionAdvance": "⚔️ Avançar",
+    "tensionWarning": "⚠️ Se avançar e for derrotado antes do próximo recuo, você perde as recompensas de marco ainda não resgatadas."
   },
   "hunting": {
     "start": "Iniciar Farm",

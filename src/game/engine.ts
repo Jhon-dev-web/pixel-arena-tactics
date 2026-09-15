@@ -100,6 +100,7 @@ export interface SaveData {
   seenWelcome: boolean;
   autoPotionThreshold: number;
   autoPotionPriority: 'small_first' | 'large_first';
+  reforgeCount: Record<string, number>;
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
@@ -415,6 +416,7 @@ export function defaultSave(): SaveData {
     // existing saves see no gameplay change until the player actually opens the settings.
     autoPotionThreshold: 0.35,
     autoPotionPriority: 'large_first',
+    reforgeCount: {},
   };
 }
 
@@ -696,6 +698,7 @@ export function loadSave(): SaveData {
             ? Math.max(0.1, Math.min(0.7, parsed.autoPotionThreshold))
             : base.autoPotionThreshold,
         autoPotionPriority: parsed.autoPotionPriority === 'small_first' ? 'small_first' : base.autoPotionPriority,
+        reforgeCount: { ...base.reforgeCount, ...(parsed.reforgeCount ?? {}) },
       };
     }
   } catch {

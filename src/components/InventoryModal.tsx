@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { t } from '../locales';
 import { SaveData } from '../game/engine';
-import { GEAR, GearItem, getGear, refineLevel } from '../game/gear';
+import { GEAR, GearItem, getGear, refineLevel, reforgeGoldCost } from '../game/gear';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue, salvageBlockReason } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
@@ -216,11 +216,20 @@ export default function InventoryModal({
                     {t('inventory.equip')}
                   </button>
                 ))}
-              {selectedRarity !== 'common' && (
-                <button className="reforge-btn" onClick={() => onReforge(selectedGear.id)} disabled={save.shards < 1} data-ui>
-                  {t('forge.reforge')}
-                </button>
-              )}
+              {selectedRarity !== 'common' &&
+                (() => {
+                  const reforgeCost = reforgeGoldCost(save.reforgeCount[selectedGear.id] ?? 0);
+                  return (
+                    <button
+                      className="reforge-btn"
+                      onClick={() => onReforge(selectedGear.id)}
+                      disabled={save.shards < 1 || save.gold < reforgeCost}
+                      data-ui
+                    >
+                      {t('forge.reforge', { gold: reforgeCost })}
+                    </button>
+                  );
+                })()}
               {hasSalvageValue(selectedGear) &&
                 (salvageReason === 'equipped' ? (
                   <p className="salvage-hint">{t('inventory.unequipToSalvage')}</p>

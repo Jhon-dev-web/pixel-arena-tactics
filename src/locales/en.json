@@ -330,7 +330,7 @@
     "noSockets": "No sockets available (Requires Tier 1 Bronze or higher)",
     "upgradeOk": "✓ {n} +{m}!",
     "upgradeFail": "✗ Upgrade failed",
-    "reforge": "🎲 Reforge Stats (1 🔷)",
+    "reforge": "🎲 Reforge Stats (1 🔷 + {gold} Gold)",
     "reforged": "🎲 Stats reforged!",
     "levelReq": "Level {n}"
   },
@@ -446,7 +446,12 @@
     "autoPotionThreshold": "Use when HP drops below {n}%",
     "autoPotionPrioritySmall": "Small first",
     "autoPotionPriorityLarge": "Large first",
-    "eliteLose": "💀 The Elite Challenge won this time"
+    "eliteLose": "💀 The Elite Challenge won this time",
+    "tensionTitle": "🏆 Floor {n} Milestone Cleared!",
+    "tensionSubtitle": "Decide now: bank the reward safely, or push your luck.",
+    "tensionRetreat": "🏃 Retreat and Bank",
+    "tensionAdvance": "⚔️ Push Onward",
+    "tensionWarning": "⚠️ If you push onward and are defeated before your next retreat, you lose any unbanked milestone rewards."
   },
   "hunting": {
     "start": "Start Farming",

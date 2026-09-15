@@ -67,8 +67,14 @@ const T = DebugPanel.define({
     // at high stages that curve alone already tracks a level-appropriate build's power, so these stay low:
     // bossHpMult keeps HP moderately above a same-stage mob (fight length), bossDmgMult intentionally sits
     // under 1x so a boss's per-hit damage doesn't outscale what a same-tier build's defense can absorb.
-    bossHpMult: { value: 1.2, min: 0.5, max: 5, step: 0.05, label: 'Main boss HP multiplier' },
-    bossDmgMult: { value: 0.3, min: 0.1, max: 4, step: 0.05, label: 'Main boss damage multiplier' },
+    // Retuned from 1.2/0.3: at 0.3, per-hit boss damage was so far under HP scaling that a "recommended CP"
+    // build's win rate barely depended on defense at all (see project memory on the CP recalibration
+    // session) — 0.45/1.05 puts real risk back on a single exchange (~11% of max HP per hit at the
+    // recalibrated CP, confirmed via tick-loop simulation to stay far from one-shot territory) without
+    // reintroducing the pre-nerf one-shot problem that motivated dropping bossDmgMult from 1.8 in the
+    // first place. bossHpMult nudged down slightly (1.2->1.05) to keep fight length comparable.
+    bossHpMult: { value: 1.05, min: 0.5, max: 5, step: 0.05, label: 'Main boss HP multiplier' },
+    bossDmgMult: { value: 0.45, min: 0.1, max: 4, step: 0.05, label: 'Main boss damage multiplier' },
     bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
     // Optional Elite re-fight of an already-beaten gate boss (same stage curve, no floor-progress
     // stakes) — reuses the pre-rebalance boss multipliers as its intentionally-brutal baseline.

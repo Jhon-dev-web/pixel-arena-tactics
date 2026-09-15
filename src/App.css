@@ -3342,6 +3342,45 @@ body {
   color: #c77dff;
   font-weight: bold;
 }
+.tension-window {
+  z-index: 11;
+}
+.tension-panel {
+  border-color: #ffd76a;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 24px rgba(255, 215, 106, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.tension-subtitle {
+  font-size: calc(var(--font-size) - 2px);
+  color: #d8c9a0;
+  margin-top: -6px;
+}
+.tension-warning {
+  font-size: calc(var(--font-size) - 2px);
+  color: #ff6b5e;
+  background: rgba(255, 107, 94, 0.1);
+  border: 1px solid #ff6b5e;
+  border-radius: 8px;
+  padding: 8px 10px;
+  max-width: 320px;
+}
+.tension-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.tension-actions .result-btn {
+  margin-top: 0;
+}
+.tension-retreat-btn {
+  color: #1a1108;
+  background: linear-gradient(180deg, #ffe9a8, #ffd76a);
+  border-color: #ffd76a;
+}
+.tension-advance-btn {
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #5a2a2a, #3a1414);
+  border-color: #8a3a3a;
+}
 .miniboss-tag {
   display: inline-block;
   flex-shrink: 0;

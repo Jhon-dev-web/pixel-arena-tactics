@@ -116,6 +116,10 @@ export default function BattleModal({
     gems: Partial<Record<GemId, number>>;
   } | null>(null);
   const [dungeonComplete, setDungeonComplete] = useState(false);
+  // Milestone floors pause the auto-continue instead of silently rolling into the next wave — the
+  // player must explicitly choose to bank the run now or risk it, rather than the choice being an
+  // implicit "well I could've hit Recuar" the whole time.
+  const [tensionFloor, setTensionFloor] = useState<number | null>(null);
 
   const hp = useRef({ p: playerMax, e: enemyHpForStage(startFloor) });
   const phaseRef = useRef<Phase>('battle');
@@ -145,6 +149,7 @@ export default function BattleModal({
   const onUsePotionRef = useRef(onUsePotion);
   onUsePotionRef.current = onUsePotion;
   const dungeonCompleteRef = useRef(false);
+  const startNextWaveRef = useRef<() => void>(() => {});
 
   const addFloat = (side: 'p' | 'e', text: string, kind: 'damage' | 'crit' | 'heal') => {
     const id = idRef.current++;
@@ -162,6 +167,16 @@ export default function BattleModal({
     const acc = accumRef.current;
     const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold / 2);
     setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, stages: clearedRef.current });
+  };
+
+  const handleTensionRetreat = () => {
+    setTensionFloor(null);
+    endCombat('retreat');
+  };
+
+  const handleTensionAdvance = () => {
+    setTensionFloor(null);
+    startNextWaveRef.current();
   };
 
   useEffect(() => {
@@ -211,6 +226,7 @@ export default function BattleModal({
       phaseRef.current = 'battle';
       setPhase('battle');
     };
+    startNextWaveRef.current = startNextWave;
 
     const clearWave = () => {
       const st = stageRef.current;
@@ -236,7 +252,13 @@ export default function BattleModal({
       setPhase('intermission');
       setHeroProgress(0);
       setEnemyProgress(0);
-      window.setTimeout(startNextWave, T.battle.intermissionMs);
+      if (isDungeonBoss(st)) {
+        // Milestone floor: hold here for an explicit Recuar-and-bank vs Avançar-and-risk-it decision
+        // instead of auto-continuing — see tensionFloor state.
+        setTensionFloor(st);
+      } else {
+        window.setTimeout(startNextWave, T.battle.intermissionMs);
+      }
     };
 
     const heroAttack = () => {
@@ -494,6 +516,12 @@ export default function BattleModal({
     </div>
   );
 
+  // Preview for the tension window: the milestone's one-time gold/gems only apply if this save hasn't
+  // already banked that floor before (matches the exact gate crossedMilestoneFloors/onRetreat use).
+  const tensionMilestoneReward =
+    tensionFloor !== null && !save.dungeonCheckpoints.includes(tensionFloor) ? getMilestoneReward(tensionFloor) : null;
+  const tensionGoldPreview = accumGold + (tensionMilestoneReward?.gold ?? 0);
+
   return (
     <div className="modal-backdrop battle-backdrop">
       <div className="battle">
@@ -599,13 +627,53 @@ export default function BattleModal({
             ))}
           </div>
 
-          {waveClear && phase === 'intermission' && (
+          {waveClear && phase === 'intermission' && tensionFloor === null && (
             <div className="wave-banner">
               <div className="wave-title">{dungeonText('floorCleared').replace('{n}', String(waveClear.stage))}</div>
               <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards, waveClear.gems)}</div>
             </div>
           )}
         </div>
+
+        {tensionFloor !== null && (
+          <div className="battle-result tension-window">
+            <div className="battle-result-panel tension-panel">
+              <h2 className="result-title win">{t('dungeon.tensionTitle', { n: tensionFloor })}</h2>
+              <div className="tension-subtitle">{t('dungeon.tensionSubtitle')}</div>
+              <div className="result-rewards">
+                {tensionMilestoneReward ? (
+                  <>
+                    {renderLoot(tensionGoldPreview, {}, 0, tensionMilestoneReward.gems)}
+                    {!!tensionMilestoneReward.oneTokenBalance && (
+                      <span className="floor-drop">
+                        <span className="mat-icon">
+                          <img src="/assets/icons/one_token.png" alt="" />
+                        </span>
+                        <span>ONE +{tensionMilestoneReward.oneTokenBalance}</span>
+                      </span>
+                    )}
+                    {tensionMilestoneReward.titleId && (
+                      <div className="milestone-title-unlocked">
+                        🎖️ {t(`titles.${getTitleDef(tensionMilestoneReward.titleId)?.nameKey ?? ''}`)}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  renderLoot(tensionGoldPreview, {}, 0, {})
+                )}
+              </div>
+              <div className="tension-warning">{t('dungeon.tensionWarning')}</div>
+              <div className="tension-actions">
+                <button className="result-btn tension-retreat-btn" onClick={handleTensionRetreat} data-ui>
+                  {t('dungeon.tensionRetreat')}
+                </button>
+                <button className="result-btn tension-advance-btn" onClick={handleTensionAdvance} data-ui>
+                  {t('dungeon.tensionAdvance')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {elite && (phase === 'retreat' || phase === 'defeat') && (
           <div className="battle-result">
