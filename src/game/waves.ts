@@ -31,7 +31,12 @@ export function stageEnemyHp(def: EnemyDef, stage: number): number {
 
 export function stageEnemyDmg(def: EnemyDef, stage: number): number {
   const base = def.dmg * (1 + T.battle.dmgGrowth * (stage - 1));
-  const mult = isDungeonBoss(stage) ? T.battle.bossDmgMult : isDungeonCheckpoint(stage) ? T.battle.miniBossDmgMult : 1;
+  // A biome's regular enemyKind can itself be the shared 'boss' EnemyDef (minotaur_lair reuses it for
+  // floors 76-99, not just the Andar 100 milestone) — without the boss damage dampener, those floors'
+  // un-milestoned mobs out-damage the actual boss they lead up to. Route them through bossDmgMult too,
+  // ahead of the checkpoint multiplier, since stacking miniBossDmgMult on the already-huge boss base
+  // made floors 80/90 hit even harder than the boss.
+  const mult = isDungeonBoss(stage) || def.boss ? T.battle.bossDmgMult : isDungeonCheckpoint(stage) ? T.battle.miniBossDmgMult : 1;
   return Math.round(base * mult);
 }
 

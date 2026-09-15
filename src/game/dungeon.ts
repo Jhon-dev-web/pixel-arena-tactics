@@ -40,8 +40,8 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     endFloor: 25,
     goldMin: 5,
     goldMax: 8,
-    cpStart: 50,
-    cpEnd: 350,
+    cpStart: 44,
+    cpEnd: 562,
     drops: [],
   },
   {
@@ -52,8 +52,8 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     endFloor: 50,
     goldMin: 9,
     goldMax: 14,
-    cpStart: 400,
-    cpEnd: 1200,
+    cpStart: 435,
+    cpEnd: 885,
     drops: [],
   },
   {
@@ -64,8 +64,8 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     endFloor: 75,
     goldMin: 13,
     goldMax: 18,
-    cpStart: 1300,
-    cpEnd: 3000,
+    cpStart: 811,
+    cpEnd: 1126,
     drops: [],
   },
   {
@@ -76,8 +76,8 @@ export const DUNGEON_BIOMES: DungeonBiomeDef[] = [
     endFloor: 100,
     goldMin: 15,
     goldMax: 21,
-    cpStart: 3200,
-    cpEnd: 6500,
+    cpStart: 1364,
+    cpEnd: 1401,
     drops: [],
   },
 ];
