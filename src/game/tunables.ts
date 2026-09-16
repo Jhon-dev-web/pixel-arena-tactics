@@ -137,7 +137,14 @@ const T = DebugPanel.define({
   hunting: {
     _label: 'Open Zone Hunting',
     tickMs: { value: 2200, min: 800, max: 6000, step: 100, label: 'Visual attack pulse interval (ms)' },
-    encountersPerHour: { value: 12, min: 1, max: 60, step: 1, label: 'Kills per hour (drop-chance pacing)' },
+    subLevels: { value: 10, min: 3, max: 20, step: 1, label: 'Sub-levels per depth' },
+    // Gentler than the Dungeon's 100-floor curve (0.15/0.12) on purpose — only 10 sub-levels, and the
+    // combat engine's high hit-count-per-fight nature makes outcomes near-deterministic per level (see
+    // huntCombat.ts), so a shallow slope is what actually produces a spread-out ceiling across sessions
+    // instead of every level being a hard 0%-or-100% wall clustered at one point.
+    subLevelHpGrowth: { value: 0.08, min: 0, max: 0.5, step: 0.01, label: 'Enemy HP growth per sub-level' },
+    subLevelDmgGrowth: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Enemy damage growth per sub-level' },
+    enemyAtkMs: { value: 1800, min: 800, max: 4000, step: 100, label: 'Hunting enemy attack interval (ms)' },
   },
   dungeon: {
     _label: 'Dungeon Access',

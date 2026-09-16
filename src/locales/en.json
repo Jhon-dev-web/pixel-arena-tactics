@@ -478,7 +478,11 @@
     "depth_deep": "Deep",
     "depthLocked": "Requires {n} CP",
     "rateMultiplier": "{n}x items/h",
-    "currentDepth": "Depth: {depth}"
+    "currentDepth": "Depth: {depth}",
+    "subLevelProgress": "Level {n}/{m}",
+    "subLevelFarming": "Farming the ceiling level (+{n} wins)",
+    "subLevelWall": "⚠️ Stalled at Level {n} — come back with a stronger build or more potions to push further.",
+    "subLevelResume": "Resumes from Level {n}"
   },
   "expedition": {
     "title": "Expedition",

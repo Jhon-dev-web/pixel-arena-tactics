@@ -2942,6 +2942,34 @@ body {
   font-size: calc(var(--font-size) - 5px);
   color: #6fe08a;
 }
+.hunt-sublevel-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.hunt-sublevel-progress {
+  font-weight: bold;
+  color: #ffd76a;
+}
+.hunt-sublevel-farm {
+  font-size: calc(var(--font-size) - 3px);
+  color: #6fe08a;
+}
+.hunt-sublevel-wall {
+  font-size: calc(var(--font-size) - 3px);
+  color: #ff6b5e;
+  background: rgba(255, 107, 94, 0.1);
+  border: 1px solid #ff6b5e;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+.hunt-sublevel-resume {
+  font-size: calc(var(--font-size) - 3px);
+  color: #8a7aa8;
+  margin-bottom: 6px;
+}
 .auto-potion-threshold-label {
   display: block;
   font-size: calc(var(--font-size) - 3px);

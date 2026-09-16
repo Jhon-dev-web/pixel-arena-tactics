@@ -16,11 +16,19 @@ export default function HuntRewardModal({
   timeMs,
   gold,
   pouch,
+  ceilingSubLevel,
+  climbed,
+  resumeSubLevel,
+  subLevels,
   onClaim,
 }: {
   timeMs: number;
   gold: number;
   pouch: HuntPouchState;
+  ceilingSubLevel: number;
+  climbed: boolean;
+  resumeSubLevel: number;
+  subLevels: number;
   onClaim: () => void;
 }) {
   const hasItems = pouch.items.length > 0;
@@ -31,6 +39,10 @@ export default function HuntRewardModal({
       <div className="modal claim-modal">
         <h2 className="modal-title">{t('hunting.rewardsTitle')}</h2>
         <p className="claim-name">{t('hunting.timeHunted', { t: formatDuration(timeMs) })}</p>
+        <p className="claim-name">{t('hunting.subLevelProgress', { n: ceilingSubLevel, m: subLevels })}</p>
+        {!climbed && (
+          <div className="hunt-sublevel-wall">{t('hunting.subLevelWall', { n: resumeSubLevel })}</div>
+        )}
 
         <div className="result-rewards">
           {gold > 0 && (

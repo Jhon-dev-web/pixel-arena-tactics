@@ -7,7 +7,9 @@ import { GemId, emptyGems, getGem, totalGemBonuses } from './gems';
 import { QuestState, emptyQuestState } from './quests';
 import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
-import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, effectiveDropChance, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
+import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
+import { HuntCombatBuild, HuntPotionCfg, HuntPotionStock, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
+import { effectiveHp } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
@@ -80,6 +82,10 @@ export interface SaveData {
   activeHuntingZone: string | null;
   activeHuntingDepth: HuntingDepth | null;
   huntingOfflineStart: number;
+  // Resume sub-level per zone+depth (key `${zoneId}:${depth}`) — the next sub-level to attempt
+  // climbing past. Missing key means 1 (never attempted). Keyed per zone+depth so stalling out in
+  // one depth doesn't reset/leak into another the player tries meanwhile.
+  huntingSubLevels: Record<string, number>;
   unlockedHuntingZones: string[];
   hasBattlePass: boolean;
   battlePassExpiresAt: number | null;
@@ -161,6 +167,29 @@ export function playerMaxHp(save: SaveData): number {
   );
 }
 
+// CP scale constant. Chosen so the recalibrated milestone/zone CPs (see dungeon.ts, huntingZones.ts)
+// land in a similar order of magnitude to the pre-fix numbers, purely so the transition isn't a jarring
+// unit change — CP has no absolute physical meaning, it's only ever compared to a recommended threshold.
+const CP_SCALE = 2;
+
+// CP, Layer 2-derived: the old formula summed damage/hp/defense/crit contributions as independent
+// terms (`damage*2 + hp*0.4 + defensePct*1.5 + critRatePct*0.8 + critDamagePct*0.3 + lifestealPct`).
+// That additive shape was the root cause of the Andar 25 case where two builds ~8% apart in CP had a
+// 16%-vs-100% win rate — combat doesn't combine offense and survivability additively, it combines them
+// multiplicatively (a fight is decided by how many exchanges the player survives × how much each
+// exchange deals), and crit chance/crit multiplier only matter jointly, not as two separate flat
+// percentages. This version derives CP from the same Layer 2 numbers combat itself runs on:
+//   - dps: expected damage per second, folding in crit chance AND crit multiplier as the single joint
+//     multiplier they actually are in combat (1 + critChance*(critMult-1)), divided by the attack
+//     interval — so AGI's attack-speed contribution finally affects CP too (it silently didn't before).
+//   - effectiveHp: maxHp scaled by the same asymptotic resistance relationship applyDamageReduction
+//     uses (see derivedStats.ts) — this is what makes damage and survivability interact
+//     multiplicatively instead of as two independent additive terms.
+//   - core power = sqrt(dps * effectiveHp): a geometric-mean shape, so a lopsided glass-cannon-or-brick
+//     build doesn't get full CP credit for stacking only one axis, while a build that raises both
+//     roughly proportionally (like refine does, on both weapon and armor at once) gets the
+//     disproportionate credit that's now honest, not a formula quirk.
+// Lifesteal stays a small flat add-on (as before) — a minor stat, not worth modeling multiplicatively.
 export function computeCP(save: SaveData): number {
   const { weapon, armor } = getEquipped(save.equipped);
   const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
@@ -171,15 +200,20 @@ export function computeCP(save: SaveData): number {
   const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
   const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
   const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
+
   const damage = effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) * wRarity + save.str * T.advanced.strDmgPerPoint;
-  const hp = playerMaxHp(save);
-  const defensePct =
-    (effectiveResistance(armor, aLvl) * durabilityFactor(aDur) * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100) *
-    100;
-  const critRatePct = (effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) + subs.critRate / 100) * 100;
-  const critDamagePct = (gems.critDamageBonus + subs.critDamage / 100) * 100;
-  const lifestealPct = subs.lifesteal;
-  return Math.round(damage * 2 + hp * 0.4 + defensePct * 1.5 + critRatePct * 0.8 + critDamagePct * 0.3 + lifestealPct);
+  const critChance = effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) + subs.critRate / 100;
+  const critMult = T.combat.critMult + gems.critDamageBonus + subs.critDamage / 100;
+  const heroMs = T.battle.heroAttackMs * (1 - save.agi * T.battle.agiSpeedPerPoint);
+  const dps = (damage * (1 + critChance * (critMult - 1))) / (heroMs / 1000);
+
+  const maxHp = playerMaxHp(save);
+  const reductionSum =
+    effectiveResistance(armor, aLvl) * durabilityFactor(aDur) * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
+  const effHp = effectiveHp(maxHp, reductionSum);
+
+  const corePower = Math.sqrt(dps * effHp);
+  return Math.round(CP_SCALE * corePower + subs.lifesteal);
 }
 
 export function isBattlePassActive(save: SaveData, now: number): boolean {
@@ -328,32 +362,142 @@ export interface HuntingStatus {
   xpReady: number;
   drops: Partial<Record<MaterialId, number>>;
   full: boolean;
+  // Real-combat sub-level results (see huntCombat.ts) — the session climbs sub-level by sub-level
+  // from resumeSubLevel, stops climbing at the first loss (that becomes the safe ceiling to farm),
+  // and keeps re-clearing the ceiling for the rest of the idle window.
+  ceilingSubLevel: number;
+  resumeSubLevel: number;
+  climbed: boolean;
+  clearsAtCeiling: number;
+  potionsUsed: HuntPotionStock;
+}
+
+export function huntingSubLevelKey(zoneId: string, depth: HuntingDepth): string {
+  return `${zoneId}:${depth}`;
+}
+
+export function resumeHuntingSubLevel(save: SaveData, zoneId: string, depth: HuntingDepth): number {
+  return save.huntingSubLevels[huntingSubLevelKey(zoneId, depth)] ?? 1;
 }
 
 export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus {
   const zone = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
+  const emptyPotionsUsed: HuntPotionStock = { greater_elixir: 0, large_hp: 0, small_hp: 0 };
   if (!zone) {
-    return { capMs: 0, pendingMs: 0, goldReady: 0, xpReady: 0, drops: {}, full: false };
+    return {
+      capMs: 0,
+      pendingMs: 0,
+      goldReady: 0,
+      xpReady: 0,
+      drops: {},
+      full: false,
+      ceilingSubLevel: 0,
+      resumeSubLevel: 1,
+      climbed: false,
+      clearsAtCeiling: 0,
+      potionsUsed: emptyPotionsUsed,
+    };
   }
   const passActive = isBattlePassActive(save, now);
   const capHours = passActive ? Math.max(zone.offlineCapHours, T.battlePass.capHours) : zone.offlineCapHours;
   const capMs = capHours * 3600 * 1000;
   const elapsedMs = Math.max(0, now - save.huntingOfflineStart);
   const pendingMs = Math.min(elapsedMs, capMs);
-  const depthDef = getHuntingDepthDef(save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH);
-  const hours = pendingMs / (3600 * 1000);
-  // Depth never touches gold — Hunting stays a non-currency faucet by design at every depth.
-  const goldReady = Math.floor(hours * zone.goldPerHour);
-  const xpReady = Math.floor(hours * zone.xpPerHour * depthDef.xpMultiplier);
-  const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
-  const encounters = hours * T.hunting.encountersPerHour;
-  const drops: Partial<Record<MaterialId, number>> = {};
-  for (const entry of zone.drops) {
-    const chance = effectiveDropChance(entry, save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH);
-    const qty = Math.floor(encounters * chance * entry.qty * dropMult);
-    if (qty > 0) drops[entry.material] = (drops[entry.material] ?? 0) + qty;
-  }
-  return { capMs, pendingMs, goldReady, xpReady, drops, full: pendingMs >= capMs };
+  const depth = save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH;
+  const depthDef = getHuntingDepthDef(depth);
+
+  // Layer 2 stat assembly, duplicated by design (not accident) from BattleModal.tsx's setup block —
+  // see the comment there for why the two aren't unified yet. Change one, change both by hand.
+  const equipped = getEquipped(save.equipped);
+  const { weapon, armor } = equipped;
+  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
+  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
+  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
+  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
+  const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
+  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
+  const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
+  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
+  const wFactor = durabilityFactor(wDur);
+  const aFactor = durabilityFactor(aDur);
+  const critMult = T.combat.critMult + (equipped.relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100;
+  const blessedMult = save.blessed ? 1.05 : 1;
+  const strengthMult = isBuffActive(save, 'strength', now) ? 1 + T.battle.strengthElixirDmgPct : 1;
+  const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
+  const heroDmgBase =
+    (baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + save.str * T.advanced.strDmgPerPoint) * blessedMult * strengthMult;
+  const critChance = effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100;
+  const heroMs = T.battle.heroAttackMs * (1 - save.agi * T.battle.agiSpeedPerPoint);
+  const reduction =
+    effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
+
+  const build: HuntCombatBuild = {
+    playerMax: playerMaxHp(save),
+    heroDmgBase,
+    critChance,
+    critMult,
+    heroMs,
+    reduction,
+    lifestealPct: subs.lifesteal,
+  };
+
+  const zoneCfg: HuntZoneCombatCfg = {
+    baseEnemyHp: zone.baseEnemyHp,
+    baseEnemyDmg: zone.baseEnemyDmg,
+    enemyAtkMs: T.hunting.enemyAtkMs,
+    hpGrowth: T.hunting.subLevelHpGrowth,
+    dmgGrowth: T.hunting.subLevelDmgGrowth,
+    depthMult: depthDef.cpMultiplier,
+    // Depth never touches gold — Hunting stays a non-currency faucet by design at every depth.
+    goldPerHour: zone.goldPerHour,
+    xpPerHour: zone.xpPerHour * depthDef.xpMultiplier,
+    drops: zone.drops,
+    depth,
+    dropRateMult: passActive ? T.battlePass.dropRateMultiplier : 1,
+  };
+
+  const potionCfg: HuntPotionCfg = {
+    threshold: save.autoPotionThreshold,
+    priority: save.autoPotionPriority,
+    stock: {
+      greater_elixir: save.consumables.greater_elixir ?? 0,
+      large_hp: save.consumables.large_hp ?? 0,
+      small_hp: save.consumables.small_hp ?? 0,
+    },
+    greaterElixirHealPct: T.battle.greaterElixirHealPct,
+    potionHeal: T.battle.potionHeal,
+    largePotionHeal: T.battle.largePotionHeal,
+    cooldownMs: T.battle.potionCooldownMs,
+  };
+
+  const resumeSubLevel = resumeHuntingSubLevel(save, zone.id, depth);
+
+  // Deterministic seed keyed off this session's own start time: computeHuntingStatus gets polled
+  // every ~1s while the tab is open, and it must return the SAME outcome every time for the same
+  // (unclaimed) session instead of a fresh random result flickering in on every render.
+  const result = simulateHuntingSession(
+    build,
+    zoneCfg,
+    resumeSubLevel,
+    pendingMs,
+    potionCfg,
+    T.battle.waveHeal,
+    `${save.huntingOfflineStart}:${zone.id}:${depth}:${resumeSubLevel}`,
+  );
+
+  return {
+    capMs,
+    pendingMs,
+    goldReady: result.goldReady,
+    xpReady: result.xpReady,
+    drops: result.drops,
+    full: pendingMs >= capMs,
+    ceilingSubLevel: result.ceilingSubLevel,
+    resumeSubLevel,
+    climbed: result.climbed,
+    clearsAtCeiling: result.clearsAtCeiling,
+    potionsUsed: result.potionsUsed,
+  };
 }
 
 export function defaultSave(): SaveData {
@@ -394,6 +538,7 @@ export function defaultSave(): SaveData {
     activeHuntingZone: null,
     activeHuntingDepth: null,
     huntingOfflineStart: Date.now(),
+    huntingSubLevels: {},
     unlockedHuntingZones: [DEFAULT_HUNTING_ZONE],
     hasBattlePass: false,
     battlePassExpiresAt: null,
@@ -586,6 +731,13 @@ export function loadSave(): SaveData {
         typeof parsed.huntingOfflineStart === 'number' && Number.isFinite(parsed.huntingOfflineStart) && parsed.huntingOfflineStart > 0
           ? parsed.huntingOfflineStart
           : Date.now();
+      const huntingSubLevels: Record<string, number> = {};
+      if (parsed.huntingSubLevels && typeof parsed.huntingSubLevels === 'object') {
+        for (const [key, raw] of Object.entries(parsed.huntingSubLevels)) {
+          const n = Math.floor(Number(raw));
+          if (Number.isFinite(n) && n > 0) huntingSubLevels[key] = Math.min(T.hunting.subLevels, n);
+        }
+      }
       const hasBattlePass = !!parsed.hasBattlePass;
       const battlePassExpiresAt =
         typeof parsed.battlePassExpiresAt === 'number' && Number.isFinite(parsed.battlePassExpiresAt) && parsed.battlePassExpiresAt > 0
@@ -674,6 +826,7 @@ export function loadSave(): SaveData {
         skillXp,
         activeHuntingZone,
         activeHuntingDepth,
+        huntingSubLevels,
         huntingOfflineStart,
         unlockedHuntingZones,
         hasBattlePass,

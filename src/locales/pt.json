@@ -478,7 +478,11 @@
     "depth_deep": "Profundo",
     "depthLocked": "Requer {n} CP",
     "rateMultiplier": "{n}x itens/h",
-    "currentDepth": "Profundidade: {depth}"
+    "currentDepth": "Profundidade: {depth}",
+    "subLevelProgress": "Nível {n}/{m}",
+    "subLevelFarming": "Farmando o nível-teto (+{n} vitórias)",
+    "subLevelWall": "⚠️ Parou no Nível {n} — volte com uma build melhor ou mais poções pra tentar avançar.",
+    "subLevelResume": "Retoma do Nível {n}"
   },
   "expedition": {
     "title": "Expedição",

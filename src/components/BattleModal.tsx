@@ -6,6 +6,7 @@ import { buffRemainingMs, isBuffActive, SaveData, playerMaxHp } from '../game/en
 import { ConsumableId } from '../game/consumables';
 import { EnemyDef, getEnemyDef } from '../game/enemies';
 import { durabilityFactor, effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, MAX_DURABILITY, refineLevel } from '../game/gear';
+import { applyDamageReduction } from '../game/derivedStats';
 import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, playerSpriteUrl } from '../game/sprites';
@@ -64,6 +65,14 @@ export default function BattleModal({
   alreadyDefeatedElite?: boolean;
   onEliteWin?: () => void;
 }) {
+  // Layer 2 stat assembly (Primaries + gear -> Final Damage/Crit/Max HP/Damage Reduction) below is
+  // duplicated by design, not by accident: engine.ts's computeHuntingStatus assembles the equivalent
+  // numbers for Hunting's idle tick simulation (huntCombat.ts) independently, because unifying the two
+  // into one call site is a real architectural change deliberately deferred (see the note at
+  // huntCombat.ts's `attempt` function). Only the one piece of math both actually share — the
+  // resistance/damage-reduction formula — is centralized, in derivedStats.ts's applyDamageReduction.
+  // If you change how a Layer 2 number is derived here (str/vit/agi/res -> damage/HP/crit/etc.), the
+  // same change almost certainly needs to land in engine.ts's computeHuntingStatus too, by hand.
   const build = getEquipped(save.equipped);
   const weapon = build.weapon;
   const armor = build.armor;
@@ -293,9 +302,11 @@ export default function BattleModal({
 
     const monsterAttack = () => {
       const st = stageRef.current;
-      const reduction =
+      // Layer 2 (Damage Reduction) — asymptotic, see derivedStats.ts. This assembly step is mirrored
+      // in engine.ts's computeHuntingStatus for the idle Hunting simulation; keep both in sync.
+      const reductionSum =
         effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
-      const eFinal = Math.max(1, Math.round(enemyDmgForStage(st) * (1 - reduction)));
+      const eFinal = applyDamageReduction(enemyDmgForStage(st), reductionSum);
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);
       setEnemyAnim('attack');

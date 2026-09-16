@@ -28,6 +28,9 @@ export interface HuntingZoneDef {
   drops: HuntingDrop[];
   offlineCapHours: number;
   unlockFloor: number;
+  // Sub-level-1, Raso-depth enemy stats — real combat stats (see huntCombat.ts), not decorative.
+  baseEnemyHp: number;
+  baseEnemyDmg: number;
 }
 
 export const DEFAULT_HUNTING_ZONE = 'demon_glade';
@@ -115,7 +118,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     id: 'demon_glade',
     nameKey: 'hunt1',
     enemyId: 'demon',
-    cp: 20,
+    cp: 111,
     goldPerHour: 3,
     xpPerHour: 17500,
     drops: [
@@ -125,12 +128,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     ],
     offlineCapHours: 4,
     unlockFloor: 0,
+    baseEnemyHp: 150,
+    baseEnemyDmg: 9,
   },
   {
     id: 'blood_marsh',
     nameKey: 'hunt2',
     enemyId: 'blood_monster',
-    cp: 70,
+    cp: 462,
     goldPerHour: 5,
     xpPerHour: 29000,
     drops: [
@@ -140,12 +145,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     ],
     offlineCapHours: 5,
     unlockFloor: 26,
+    baseEnemyHp: 600,
+    baseEnemyDmg: 26,
   },
   {
     id: 'demon_rift',
     nameKey: 'hunt3',
     enemyId: 'demon',
-    cp: 140,
+    cp: 1036,
     goldPerHour: 8,
     xpPerHour: 46500,
     drops: [
@@ -155,12 +162,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     ],
     offlineCapHours: 6,
     unlockFloor: 51,
+    baseEnemyHp: 1600,
+    baseEnemyDmg: 58,
   },
   {
     id: 'blood_abyss',
     nameKey: 'hunt4',
     enemyId: 'blood_monster',
-    cp: 230,
+    cp: 1573,
     goldPerHour: 12,
     xpPerHour: 69500,
     drops: [
@@ -170,6 +179,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     ],
     offlineCapHours: 8,
     unlockFloor: 76,
+    baseEnemyHp: 2400,
+    baseEnemyDmg: 84,
   },
 ];
 
