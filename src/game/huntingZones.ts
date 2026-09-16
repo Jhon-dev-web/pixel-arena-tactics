@@ -125,6 +125,19 @@ export function effectiveDropChance(entry: HuntingDrop, depth: HuntingDepth): nu
 // equivalent, and later zones here stay floor-gated, so a player still has to climb to unlock them.
 // Common (25-35%): base Forge input. Uncommon (8-12%): mid-tier refine bottleneck.
 // Rare (1-3%): high-value trade good, scarce even with the Battle Pass's 24h cap.
+//
+// Materials now drop per kill (rollDropsForOneClear in huntCombat.ts), not per elapsed time, so a
+// stronger build farms visibly faster by winning more fights in the same idle window — but that only
+// shows up if a fight actually takes enough hits for "faster" to be perceptible. baseEnemyHp/Dmg here
+// are deliberately NOT a 1:1 read of "how dangerous this enemy is": HP was scaled up ~3x and Dmg scaled
+// down by the same ~3x from what a naive calibration would give, which leaves total damage received
+// over a fight — and therefore the win rate at the zone's recommended CP — unchanged (fight length and
+// per-hit danger are inverses of each other for a fixed total-damage budget), while tripling the hit
+// count so a build well above the recommended CP visibly kills in a fraction of the time. Each zone's
+// drop `qty` was tripled to match (kills/hour dropped ~3x from the longer fights, so material/hour at
+// the reference build stays where it was validated before this change). demon_glade's shallowEnemyHp/Dmg
+// override is deliberately NOT rescaled this way — it exists to be winnable by a literal fresh
+// character (see shallowCp), where the dynamic-range goal doesn't apply.
 export const HUNTING_ZONES: HuntingZoneDef[] = [
   {
     id: 'demon_glade',
@@ -137,14 +150,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     goldPerHour: 3,
     xpPerHour: 17500,
     drops: [
-      { material: 'leather_scrap', rarity: 'common', chance: 0.25, qty: 1 },
-      { material: 'demon_claw', rarity: 'uncommon', chance: 0.08, qty: 1 },
-      { material: 'demon_core', rarity: 'rare', chance: 0.01, qty: 1 },
+      { material: 'leather_scrap', rarity: 'common', chance: 0.25, qty: 3 },
+      { material: 'demon_claw', rarity: 'uncommon', chance: 0.08, qty: 3 },
+      { material: 'demon_core', rarity: 'rare', chance: 0.01, qty: 3 },
     ],
     offlineCapHours: 4,
     unlockFloor: 0,
-    baseEnemyHp: 150,
-    baseEnemyDmg: 9,
+    baseEnemyHp: 450,
+    baseEnemyDmg: 3,
   },
   {
     id: 'blood_marsh',
@@ -154,14 +167,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     goldPerHour: 5,
     xpPerHour: 29000,
     drops: [
-      { material: 'bone_fragment', rarity: 'common', chance: 0.28, qty: 1 },
-      { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.09, qty: 1 },
-      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.015, qty: 1 },
+      { material: 'bone_fragment', rarity: 'common', chance: 0.28, qty: 3 },
+      { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.09, qty: 3 },
+      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.015, qty: 3 },
     ],
     offlineCapHours: 5,
     unlockFloor: 26,
-    baseEnemyHp: 600,
-    baseEnemyDmg: 26,
+    baseEnemyHp: 1800,
+    baseEnemyDmg: 9,
   },
   {
     id: 'demon_rift',
@@ -171,14 +184,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     goldPerHour: 8,
     xpPerHour: 46500,
     drops: [
-      { material: 'leather_scrap', rarity: 'common', chance: 0.32, qty: 1 },
-      { material: 'demon_claw', rarity: 'uncommon', chance: 0.105, qty: 1 },
-      { material: 'demon_core', rarity: 'rare', chance: 0.025, qty: 1 },
+      { material: 'leather_scrap', rarity: 'common', chance: 0.32, qty: 3 },
+      { material: 'demon_claw', rarity: 'uncommon', chance: 0.105, qty: 3 },
+      { material: 'demon_core', rarity: 'rare', chance: 0.025, qty: 3 },
     ],
     offlineCapHours: 6,
     unlockFloor: 51,
-    baseEnemyHp: 1600,
-    baseEnemyDmg: 58,
+    baseEnemyHp: 4800,
+    baseEnemyDmg: 19,
   },
   {
     id: 'blood_abyss',
@@ -188,14 +201,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     goldPerHour: 12,
     xpPerHour: 69500,
     drops: [
-      { material: 'bone_fragment', rarity: 'common', chance: 0.35, qty: 1 },
-      { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.12, qty: 1 },
-      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.03, qty: 1 },
+      { material: 'bone_fragment', rarity: 'common', chance: 0.35, qty: 3 },
+      { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.12, qty: 3 },
+      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.03, qty: 3 },
     ],
     offlineCapHours: 8,
     unlockFloor: 76,
-    baseEnemyHp: 2400,
-    baseEnemyDmg: 84,
+    baseEnemyHp: 7200,
+    baseEnemyDmg: 28,
   },
 ];
 
