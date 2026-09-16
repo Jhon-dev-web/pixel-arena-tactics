@@ -201,7 +201,12 @@ export function computeCP(save: SaveData): number {
   const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
   const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
 
-  const damage = effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) * wRarity + save.str * T.advanced.strDmgPerPoint;
+  // Includes the same flat base hit (avg of attackMin/attackMax) real combat always adds on top of
+  // the weapon term (see BattleModal.tsx's heroAttack) — omitting it here used to make a brand-new
+  // character with a 0-damage starting weapon show exactly 0 CP, even though they can still land real
+  // (if small) hits in an actual fight. That 0 was structurally misleading, not just "very low."
+  const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
+  const damage = baseDmg + effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) * wRarity + save.str * T.advanced.strDmgPerPoint;
   const critChance = effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) + subs.critRate / 100;
   const critMult = T.combat.critMult + gems.critDamageBonus + subs.critDamage / 100;
   const heroMs = T.battle.heroAttackMs * (1 - save.agi * T.battle.agiSpeedPerPoint);
@@ -443,9 +448,13 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     lifestealPct: subs.lifesteal,
   };
 
+  // Raso-only override (see HuntingZoneDef.shallowCp/shallowEnemyHp/shallowEnemyDmg) — currently only
+  // demon_glade defines one. Denso/Profundo of every zone, and every depth of every other zone, are
+  // unaffected and keep using baseEnemyHp/Dmg exactly as before.
+  const useShallowOverride = depth === 'shallow' && zone.shallowEnemyHp !== undefined && zone.shallowEnemyDmg !== undefined;
   const zoneCfg: HuntZoneCombatCfg = {
-    baseEnemyHp: zone.baseEnemyHp,
-    baseEnemyDmg: zone.baseEnemyDmg,
+    baseEnemyHp: useShallowOverride ? zone.shallowEnemyHp! : zone.baseEnemyHp,
+    baseEnemyDmg: useShallowOverride ? zone.shallowEnemyDmg! : zone.baseEnemyDmg,
     enemyAtkMs: T.hunting.enemyAtkMs,
     hpGrowth: T.hunting.subLevelHpGrowth,
     dmgGrowth: T.hunting.subLevelDmgGrowth,

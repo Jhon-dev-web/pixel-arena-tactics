@@ -29,8 +29,19 @@ export interface HuntingZoneDef {
   offlineCapHours: number;
   unlockFloor: number;
   // Sub-level-1, Raso-depth enemy stats — real combat stats (see huntCombat.ts), not decorative.
+  // Used as-is for Denso/Profundo (scaled by the depth's cpMultiplier) and for Raso too, UNLESS the
+  // zone defines its own shallow* override below.
   baseEnemyHp: number;
   baseEnemyDmg: number;
+  // Raso-only override, for a zone whose Denso/Profundo difficulty must stay pinned to baseEnemyHp/Dmg
+  // (already calibrated, shouldn't shift) while Raso itself needs its own, independently-calibrated
+  // floor — currently only demon_glade, since it's the sole zone reachable before ANY other progression
+  // (Andar 0, no Dungeon/Forge attempted yet): a "reasonable equipped" reference build is the wrong
+  // calibration target there, it has to be winnable by a literal brand-new character (tier0 gear, 0
+  // stat points). Absent for every other zone, which fall back to baseEnemyHp/Dmg/cp like before.
+  shallowCp?: number;
+  shallowEnemyHp?: number;
+  shallowEnemyDmg?: number;
 }
 
 export const DEFAULT_HUNTING_ZONE = 'demon_glade';
@@ -85,6 +96,7 @@ export function getHuntingDepthDef(depth: HuntingDepth): HuntingDepthDef {
 }
 
 export function recommendedCpForDepth(zone: HuntingZoneDef, depth: HuntingDepth): number {
+  if (depth === 'shallow' && zone.shallowCp !== undefined) return zone.shallowCp;
   return Math.round(zone.cp * getHuntingDepthDef(depth).cpMultiplier);
 }
 
@@ -118,7 +130,10 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     id: 'demon_glade',
     nameKey: 'hunt1',
     enemyId: 'demon',
-    cp: 111,
+    cp: 144,
+    shallowCp: 50,
+    shallowEnemyHp: 60,
+    shallowEnemyDmg: 12,
     goldPerHour: 3,
     xpPerHour: 17500,
     drops: [
@@ -135,7 +150,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     id: 'blood_marsh',
     nameKey: 'hunt2',
     enemyId: 'blood_monster',
-    cp: 462,
+    cp: 492,
     goldPerHour: 5,
     xpPerHour: 29000,
     drops: [
@@ -152,7 +167,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     id: 'demon_rift',
     nameKey: 'hunt3',
     enemyId: 'demon',
-    cp: 1036,
+    cp: 1068,
     goldPerHour: 8,
     xpPerHour: 46500,
     drops: [
@@ -169,7 +184,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     id: 'blood_abyss',
     nameKey: 'hunt4',
     enemyId: 'blood_monster',
-    cp: 1573,
+    cp: 1607,
     goldPerHour: 12,
     xpPerHour: 69500,
     drops: [
