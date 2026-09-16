@@ -2965,6 +2965,9 @@ body {
   padding: 6px 8px;
   margin-bottom: 6px;
 }
+.hunt-hp-panel {
+  margin-top: 6px;
+}
 .hunt-sublevel-resume {
   font-size: calc(var(--font-size) - 3px);
   color: #8a7aa8;

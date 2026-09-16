@@ -482,7 +482,8 @@
     "subLevelProgress": "Nível {n}/{m}",
     "subLevelFarming": "Farmando o nível-teto (+{n} vitórias)",
     "subLevelWall": "⚠️ Parou no Nível {n} — volte com uma build melhor ou mais poções pra tentar avançar.",
-    "subLevelResume": "Retoma do Nível {n}"
+    "subLevelResume": "Retoma do Nível {n}",
+    "subLevelEnemyLabel": "Inimigo — Nível {n}"
   },
   "expedition": {
     "title": "Expedição",

@@ -75,6 +75,18 @@ export interface HuntPotionCfg {
   cooldownMs: number;
 }
 
+// A snapshot of whichever fight the deterministic replay was mid-way through (or just about to start)
+// at the moment the session's time budget ran out — this is "the current fight" for display purposes,
+// e.g. HuntModal's HP bars. Not persisted; recomputed fresh (and consistently, thanks to the seeded
+// RNG) every time the session is re-simulated for a live preview.
+export interface HuntLiveSnapshot {
+  subLevel: number;
+  heroHp: number;
+  heroMax: number;
+  enemyHp: number;
+  enemyMax: number;
+}
+
 export interface HuntSessionResult {
   ceilingSubLevel: number; // highest sub-level fully cleared this session (never below resumeSubLevel-1)
   clearsAtCeiling: number; // additional ceiling clears farmed after first reaching it
@@ -84,6 +96,7 @@ export interface HuntSessionResult {
   xpReady: number;
   goldReady: number;
   drops: Partial<Record<MaterialId, number>>;
+  liveSnapshot: HuntLiveSnapshot | null;
 }
 
 function enemyStatsAt(cfg: HuntZoneCombatCfg, subLevel: number) {
@@ -111,6 +124,7 @@ export function simulateHuntingSession(
   let potionCooldownUntil = 0;
   let ceilingSubLevel = Math.max(0, resumeSubLevel - 1);
   let clearsAtCeiling = 0;
+  let liveSnapshot: HuntLiveSnapshot | null = null;
 
   const rollDropsForOneClear = () => {
     for (const entry of zoneCfg.drops) {
@@ -161,6 +175,9 @@ export function simulateHuntingSession(
     let heroNext = build.heroMs;
     let enemyNext = enemy.atkMs;
     let t = 0;
+    // Snapshot at fight start too, so a brand-new attempt has something to show even before its
+    // first hit lands (e.g. the very first poll of a freshly-started session).
+    liveSnapshot = { subLevel, heroHp: hpRef.hp, heroMax: build.playerMax, enemyHp, enemyMax: enemy.hp };
     while (hpRef.hp > 0 && enemyHp > 0) {
       const nextEvent = Math.min(heroNext, enemyNext);
       if (nextEvent > timeLeft) return null;
@@ -178,6 +195,7 @@ export function simulateHuntingSession(
         enemyNext += enemy.atkMs;
       }
       tryAutoPotion(t, hpRef);
+      liveSnapshot = { subLevel, heroHp: Math.max(0, hpRef.hp), heroMax: build.playerMax, enemyHp: Math.max(0, enemyHp), enemyMax: enemy.hp };
       if (hpRef.hp <= 0) {
         timeLeft -= t;
         return { win: false, timeMs: t };
@@ -234,5 +252,6 @@ export function simulateHuntingSession(
     xpReady: Math.floor(hours * zoneCfg.xpPerHour),
     goldReady: Math.floor(hours * zoneCfg.goldPerHour),
     drops,
+    liveSnapshot,
   };
 }

@@ -34,6 +34,9 @@ function formatHours(ms: number): string {
   return h >= 10 ? h.toFixed(0) : h.toFixed(1);
 }
 
+// Same helper BattleModal.tsx uses for its HP bars (not exported there, so mirrored here).
+const hpPct = (cur: number, max: number): number => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
+
 function DepthPicker({
   zone,
   selected,
@@ -158,6 +161,44 @@ export default function HuntModal({
                           <div className="hunt-sublevel-wall">{t('hunting.subLevelWall', { n: huntStatus.resumeSubLevel })}</div>
                         )}
                         <HuntBattleView enemyId={zone.enemyId} playerSpriteUrl={heroSpriteUrl} />
+                        {huntStatus.liveSnapshot && (
+                          <div className="battle-top hunt-hp-panel">
+                            <div className="battle-hud hero">
+                              <span className="hp-label">
+                                <span className="hp-name-text">{dungeonText('heroLabel')}</span>
+                              </span>
+                              <div className="battle-hp-row">
+                                <div className="bar hp">
+                                  <div
+                                    className="bar-fill hp-fill"
+                                    style={{ width: `${hpPct(huntStatus.liveSnapshot.heroHp, huntStatus.liveSnapshot.heroMax)}%` }}
+                                  />
+                                </div>
+                                <span className="hp-num">
+                                  {Math.round(huntStatus.liveSnapshot.heroHp)} / {huntStatus.liveSnapshot.heroMax}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="battle-hud enemy">
+                              <span className="hp-label">
+                                <span className="hp-name-text">
+                                  {t('hunting.subLevelEnemyLabel', { n: huntStatus.liveSnapshot.subLevel })}
+                                </span>
+                              </span>
+                              <div className="battle-hp-row">
+                                <div className="bar hp enemy-hp">
+                                  <div
+                                    className="bar-fill enemy-hp-fill"
+                                    style={{ width: `${hpPct(huntStatus.liveSnapshot.enemyHp, huntStatus.liveSnapshot.enemyMax)}%` }}
+                                  />
+                                </div>
+                                <span className="hp-num">
+                                  {Math.round(huntStatus.liveSnapshot.enemyHp)} / {huntStatus.liveSnapshot.enemyMax}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         <div className="camp-mine-bar">
                           <div
                             className={`camp-mine-fill${huntStatus.full ? ' full' : ''}`}

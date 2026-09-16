@@ -8,7 +8,7 @@ import { QuestState, emptyQuestState } from './quests';
 import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
-import { HuntCombatBuild, HuntPotionCfg, HuntPotionStock, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
+import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
 import { effectiveHp } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
@@ -370,6 +370,7 @@ export interface HuntingStatus {
   climbed: boolean;
   clearsAtCeiling: number;
   potionsUsed: HuntPotionStock;
+  liveSnapshot: HuntLiveSnapshot | null;
 }
 
 export function huntingSubLevelKey(zoneId: string, depth: HuntingDepth): string {
@@ -396,6 +397,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
       climbed: false,
       clearsAtCeiling: 0,
       potionsUsed: emptyPotionsUsed,
+      liveSnapshot: null,
     };
   }
   const passActive = isBattlePassActive(save, now);
@@ -497,6 +499,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     climbed: result.climbed,
     clearsAtCeiling: result.clearsAtCeiling,
     potionsUsed: result.potionsUsed,
+    liveSnapshot: result.liveSnapshot,
   };
 }
 
