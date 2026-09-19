@@ -105,10 +105,15 @@ export function isDepthUnlocked(zone: HuntingZoneDef, depth: HuntingDepth, playe
   return playerCp >= recommendedCpForDepth(zone, depth);
 }
 
+// Shared sub-level sanitizer: non-finite -> 1, otherwise floored and clamped to 1..T.hunting.subLevels.
+export function sanitizeSubLevel(subLevel: number): number {
+  return Number.isFinite(subLevel) ? Math.min(T.hunting.subLevels, Math.max(1, Math.floor(subLevel))) : 1;
+}
+
 // Sub-level drop bonus: Common never changes; Uncommon and Rare grow linearly with the sub-level being
 // fought (1 at sub-level 1). Sub-level is sanitized to 1..T.hunting.subLevels.
 export function subLevelDropMultiplier(rarity: DropRarity, subLevel: number): number {
-  const level = Number.isFinite(subLevel) ? Math.min(T.hunting.subLevels, Math.max(1, Math.floor(subLevel))) : 1;
+  const level = sanitizeSubLevel(subLevel);
   const bonus: Record<DropRarity, number> = {
     common: T.hunting.subLevelDropBonusCommon,
     uncommon: T.hunting.subLevelDropBonusUncommon,

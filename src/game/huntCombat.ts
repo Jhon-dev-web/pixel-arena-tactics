@@ -1,6 +1,7 @@
 import { MaterialId } from './materials';
 import { HuntingDrop, HuntingDepth, effectiveDropChance } from './huntingZones';
 import { applyDamageReduction } from './derivedStats';
+import { economicRollFractionForFight } from './huntEconomy';
 
 // Open Hunting's idle session is now real combat instead of a smooth time-based EV formula, using the
 // exact same per-hit formulas as the Dungeon (BattleModal.tsx) — this module intentionally does NOT
@@ -140,10 +141,17 @@ export function simulateHuntingSession(
   let promotionLosses = 0;
   let liveSnapshot: HuntLiveSnapshot | null = null;
 
-  // `subLevel` is the sub-level of the fight that was just won (a promotion win counts at the new level).
-  const rollDropsForOneClear = (subLevel: number) => {
+  // `subLevel` is the sub-level of the enemy that was just defeated (a promotion win counts at the new level)
+  // and `fightMs` how long that fight lasted. Chance = base x depth x sub-level x Battle Pass (as before), then
+  // the economic normalization (huntEconomy.ts) scales it by the fraction of kills that count for that fight's
+  // pace. RNG: the SAME single draw per drop entry, in the same order, as before the economic model — the
+  // fraction only scales the threshold the draw is compared against. So the fight/crit sequence (and every
+  // kill, XP, Gold and promotion outcome) is bit-for-bit unchanged, and every drop that still happens is a drop
+  // that would also have happened without the model. Promotion wins go through the exact same gate.
+  const rollDropsForOneClear = (subLevel: number, fightMs: number) => {
+    const economicFraction = economicRollFractionForFight(fightMs, subLevel);
     for (const entry of zoneCfg.drops) {
-      const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * zoneCfg.dropRateMult;
+      const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * zoneCfg.dropRateMult * economicFraction;
       if (rng() < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
     }
   };
@@ -231,7 +239,7 @@ export function simulateHuntingSession(
       promotionWins = 0;
       if (r.win) {
         fightTimeUsedMs += r.timeMs;
-        rollDropsForOneClear(ceiling + 1);
+        rollDropsForOneClear(ceiling + 1, r.timeMs);
         ceiling++;
         promotions++;
       } else {
@@ -243,7 +251,7 @@ export function simulateHuntingSession(
     if (!r) break;
     if (r.win) {
       fightTimeUsedMs += r.timeMs;
-      rollDropsForOneClear(ceiling);
+      rollDropsForOneClear(ceiling, r.timeMs);
       if (ceiling < promotion.maxLevel) promotionWins++;
     }
     // A loss at the farm level just costs that attempt's time — it's already deducted from timeLeft

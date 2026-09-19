@@ -147,6 +147,11 @@ const T = DebugPanel.define({
     // huntCombat.ts), so a shallow slope is what actually produces a spread-out ceiling across sessions
     // instead of every level being a hard 0%-or-100% wall clustered at one point.
     subLevelHpGrowth: { value: 0.08, min: 0, max: 0.5, step: 0.01, label: 'Enemy HP growth per sub-level' },
+    // Economic normalization of material rolls (see huntEconomy.ts): kills stay fully real, but a build that
+    // kills faster than the reference pace only gets sqrt-growing, capped, material rolls.
+    // K_ref(subLevel) = economicReferenceKillsPerHour / (1 + subLevelHpGrowth x (subLevel - 1)).
+    economicReferenceKillsPerHour: { value: 220, min: 10, max: 2000, step: 10, label: 'Reference kills/h (sub-level 1) for economic material rolls' },
+    economicRollCap: { value: 1.75, min: 1, max: 5, step: 0.05, label: 'Max economic roll multiplier over the reference pace' },
     subLevelDmgGrowth: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Enemy damage growth per sub-level' },
     enemyAtkMs: { value: 1800, min: 800, max: 4000, step: 100, label: 'Hunting enemy attack interval (ms)' },
     // Sub-level mastery: wins banked at the CURRENT ceiling sub-level before the hunt automatically
