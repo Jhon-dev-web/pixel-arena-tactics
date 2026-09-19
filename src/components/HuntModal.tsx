@@ -5,7 +5,6 @@ import { computeCP, computeHuntingStatus, effectivePouchSlots, getHuntProgress, 
 import T from '../game/tunables';
 import {
   DEFAULT_HUNTING_DEPTH,
-  effectiveDropChance,
   HUNTING_DEPTHS,
   HUNTING_ZONES,
   HuntingDepth,
@@ -14,7 +13,7 @@ import {
   isZoneUnlocked,
   recommendedCpForDepth,
 } from '../game/huntingZones';
-import { getMaterial } from '../game/materials';
+import { DropRarity, getMaterial } from '../game/materials';
 import { playerSpriteUrl } from '../game/sprites';
 import { allocateToPouch } from '../game/huntPouch';
 import HuntBattleView from './HuntBattleView';
@@ -24,9 +23,44 @@ const dungeonText = (k: string): string => t(`dungeon.${k}`);
 const matText = (k: string): string => t(`materials.mat_${k}`);
 const huntText = (k: string): string => t(`hunting.${k}`);
 
-function formatChance(chance: number): string {
-  const pct = chance * 100;
-  return `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%`;
+// Purely presentational: the conceptual loot profile of each depth (pips out of LOOT_PIPS) and the star
+// rating of a sub-level. Neither is derived from — nor feeds — the real drop math (dropMultiplier,
+// subLevelDropMultiplier); the player never sees numbers, percentages or multipliers.
+const LOOT_PIPS = 4;
+const LOOT_STARS = 5;
+const LOOT_RARITIES: DropRarity[] = ['common', 'uncommon', 'rare'];
+const DEPTH_LOOT_PROFILE: Record<HuntingDepth, Record<DropRarity, number>> = {
+  shallow: { common: 3, uncommon: 1, rare: 1 },
+  dense: { common: 3, uncommon: 2, rare: 2 },
+  deep: { common: 2, uncommon: 3, rare: 4 },
+};
+const masteryStars = (subLevel: number): number => Math.min(LOOT_STARS, Math.max(1, Math.ceil(subLevel / 2)));
+
+function LootPips({ rarity, filled }: { rarity: DropRarity; filled: number }) {
+  return (
+    <span className={`hunt-pips pips-${rarity}`} aria-hidden="true">
+      {Array.from({ length: LOOT_PIPS }, (_, i) => (
+        <span key={i} className={`hunt-pip${i < filled ? ' on' : ''}`} />
+      ))}
+    </span>
+  );
+}
+
+// "Domínio": how far the hero has mastered this depth's sub-levels — a purely visual read of the sub-level,
+// never a statement about item quality/rarity.
+function Mastery({ subLevel }: { subLevel: number }) {
+  const stars = masteryStars(subLevel);
+  const maxed = subLevel >= T.hunting.subLevels;
+  return (
+    <span className="hunt-mastery">
+      <span className="hunt-mastery-label">{huntText(maxed ? 'masteryMax' : 'mastery')}</span>
+      <span className="hunt-stars" aria-hidden="true">
+        {Array.from({ length: LOOT_STARS }, (_, i) => (
+          <span key={i} className={`hunt-star${i < stars ? ' on' : ''}`}>★</span>
+        ))}
+      </span>
+    </span>
+  );
 }
 
 function formatHours(ms: number): string {
@@ -48,7 +82,9 @@ function DepthPicker({
   playerCp: number;
   onPick: (depth: HuntingDepth) => void;
 }) {
+  const selectedDef = HUNTING_DEPTHS.find((d) => d.id === selected) ?? HUNTING_DEPTHS[0];
   return (
+    <>
     <div className="hunt-depth-row">
       {HUNTING_DEPTHS.map((def) => {
         const recommendedCp = recommendedCpForDepth(zone, def.id);
@@ -66,11 +102,29 @@ function DepthPicker({
           >
             <span className="hunt-depth-name">{!unlocked && '🔒 '}{huntText(def.nameKey)}</span>
             <span className="hunt-depth-cp">{t('dungeon.cp', { n: recommendedCp })}</span>
-            <span className="hunt-depth-rate">{t('hunting.nobleMultiplier', { n: def.dropMultiplier.rare.toFixed(1) })}</span>
+            <span className="hunt-depth-mini" aria-hidden="true">
+              {LOOT_RARITIES.map((r) => (
+                <LootPips key={r} rarity={r} filled={DEPTH_LOOT_PROFILE[def.id][r]} />
+              ))}
+            </span>
           </button>
         );
       })}
     </div>
+    <div className="hunt-depth-detail">
+      <div className="hunt-depth-detail-head">
+        <span className="hunt-depth-detail-name">{huntText(selectedDef.nameKey)}</span>
+        <span className="hunt-depth-detail-sub">{huntText(`depthSub_${selectedDef.id}`)}</span>
+      </div>
+      {LOOT_RARITIES.map((r) => (
+        <div className="hunt-depth-profile-row" key={r}>
+          <span className={`hunt-depth-profile-label tier-${r}`}>{huntText(`tier_${r}`)}</span>
+          <LootPips rarity={r} filled={DEPTH_LOOT_PROFILE[selectedDef.id][r]} />
+        </div>
+      ))}
+      <div className="hunt-depth-desc">{huntText(`depthDesc_${selectedDef.id}`)}</div>
+    </div>
+    </>
   );
 }
 
@@ -141,30 +195,36 @@ export default function HuntModal({
                           </span>
                           <span className="hunt-drop-tier-label">{huntText(`tier_${d.rarity}`)}</span>
                           <span className="hunt-drop-name">{matText(d.material)}</span>
-                          <span className="hunt-drop-chance">{formatChance(effectiveDropChance(d, depth, getHuntProgress(save, zone.id, depth).ceiling))}</span>
                         </span>
                       ))}
                     </div>
 
                     {isActive ? (
                       <>
-                        <div className="hunt-depth-current">{t('hunting.currentDepth', { depth: huntText(HUNTING_DEPTHS.find((d) => d.id === depth)!.nameKey) })}</div>
-                        <div className="hunt-sublevel-row">
+                        <div className="hunt-run-depth">
+                          <div className="hunt-run-depth-line">
+                            <span className="hunt-run-depth-name">{huntText(HUNTING_DEPTHS.find((d) => d.id === depth)!.nameKey)}</span>
+                            <span className="hunt-run-depth-sub"> · {huntText(`depthSub_${depth}`)}</span>
+                          </div>
+                          <div className="hunt-run-focus">{huntText(`depthFocus_${depth}`)}</div>
+                        </div>
+                        <div className="hunt-run-level">
                           <span className="hunt-sublevel-progress">
                             {t('hunting.subLevelProgress', { n: huntStatus.ceilingSubLevel, m: T.hunting.subLevels })}
                           </span>
-                          {huntStatus.ceilingSubLevel >= T.hunting.subLevels ? (
-                            <span className="hunt-sublevel-farm">{t('hunting.subLevelMax')}</span>
-                          ) : (
-                            <span className="hunt-sublevel-farm">
-                              {t('hunting.subLevelPromotion', {
-                                next: huntStatus.ceilingSubLevel + 1,
+                          <Mastery subLevel={huntStatus.ceilingSubLevel} />
+                        </div>
+                        {huntStatus.ceilingSubLevel < T.hunting.subLevels && (
+                          <div className="hunt-run-promo">
+                            <span className="hunt-run-promo-label">{huntText('nextPromotion')}</span>
+                            <span className="hunt-run-promo-value">
+                              {t('hunting.promotionWins', {
                                 n: Math.min(huntStatus.promotionWins, huntStatus.promotionRequired),
                                 x: huntStatus.promotionRequired,
                               })}
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         <HuntBattleView enemyId={zone.enemyId} playerSpriteUrl={heroSpriteUrl} />
                         {huntStatus.liveSnapshot && (
                           <div className="battle-top hunt-hp-panel">
@@ -282,6 +342,9 @@ export default function HuntModal({
                             </div>
                           );
                         })()}
+                        <div className="hunt-run-level idle">
+                          <Mastery subLevel={getHuntProgress(save, zone.id, depth).ceiling} />
+                        </div>
                         <button className="battle-btn" onClick={() => onStartHunt(zone.id, depth)} disabled={!canStartAtDepth} data-ui>
                           {huntText('start')}
                         </button>
