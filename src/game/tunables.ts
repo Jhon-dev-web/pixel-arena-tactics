@@ -153,6 +153,11 @@ const T = DebugPanel.define({
     // attempts the next one (a single full-HP fight; winning is still required to be promoted, a loss
     // just restarts the counter). huntPromotionWinsN = wins needed at level N to try N -> N+1. Progress is
     // persisted per zone+depth and never touched by claiming. Levels past the table reuse the last entry.
+    // Extra drop chance per sub-level above 1 (chance x (1 + bonus x (subLevel - 1))). Common stays flat so
+    // going deeper in sub-levels improves QUALITY, not the volume of the surplus material.
+    subLevelDropBonusCommon: { value: 0, min: 0, max: 0.5, step: 0.01, label: 'Common drop chance bonus per sub-level' },
+    subLevelDropBonusUncommon: { value: 0.08, min: 0, max: 0.5, step: 0.01, label: 'Uncommon (Refined) drop chance bonus per sub-level' },
+    subLevelDropBonusRare: { value: 0.12, min: 0, max: 0.5, step: 0.01, label: 'Rare (Noble) drop chance bonus per sub-level' },
     huntPromotionWins1: { value: 4, min: 1, max: 1000, step: 1, label: 'Wins at level 1 before trying level 2' },
     huntPromotionWins2: { value: 8, min: 1, max: 1000, step: 1, label: 'Wins at level 2 before trying level 3' },
     huntPromotionWins3: { value: 13, min: 1, max: 1000, step: 1, label: 'Wins at level 3 before trying level 4' },

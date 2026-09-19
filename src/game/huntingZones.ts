@@ -1,4 +1,5 @@
 import { DropRarity, MaterialId } from './materials';
+import T from './tunables';
 
 export type HuntingEnemyId = 'demon' | 'blood_monster';
 
@@ -48,18 +49,21 @@ export const DEFAULT_HUNTING_ZONE = 'demon_glade';
 
 // Depth is a per-session choice layered on top of a zone, not a separate zone: same enemy, same
 // art, same materials — only pace and drop mix change. Raso is exactly today's numbers (1x
-// everywhere) so existing saves/behavior are unaffected by default. Denso/Profundo trade a lower
-// share of Common for a much richer Uncommon/Rare mix, gated behind a higher recommended CP so the
-// payoff scales with how strong the hero already is — not just AFK time.
+// everywhere) so existing saves/behavior are unaffected by default. Denso/Profundo keep Common flat
+// (Profundo slightly lower) and pay off in Uncommon/Rare quality, gated behind a higher recommended CP
+// so the payoff scales with how strong the hero already is — not just AFK time.
+//
+// dropMultiplier is the single central depth x rarity table: it multiplies each drop's base chance
+// (the zone's own number, unchanged). Raso is the easy starter place (little Uncommon/Rare), Profundo
+// is clearly the best place for Rare. A sub-level bonus stacks on top (see subLevelDropMultiplier).
 export type HuntingDepth = 'shallow' | 'dense' | 'deep';
 
 export interface HuntingDepthDef {
   id: HuntingDepth;
   nameKey: string;
   cpMultiplier: number;
-  itemsPerHourMultiplier: number;
   xpMultiplier: number;
-  rarityWeight: Record<DropRarity, number>;
+  dropMultiplier: Record<DropRarity, number>;
 }
 
 export const HUNTING_DEPTHS: HuntingDepthDef[] = [
@@ -67,25 +71,22 @@ export const HUNTING_DEPTHS: HuntingDepthDef[] = [
     id: 'shallow',
     nameKey: 'depth_shallow',
     cpMultiplier: 1,
-    itemsPerHourMultiplier: 1,
     xpMultiplier: 1,
-    rarityWeight: { common: 1, uncommon: 1, rare: 1 },
+    dropMultiplier: { common: 1, uncommon: 0.7, rare: 0.4 },
   },
   {
     id: 'dense',
     nameKey: 'depth_dense',
     cpMultiplier: 1.15,
-    itemsPerHourMultiplier: 1.3,
     xpMultiplier: 1.15,
-    rarityWeight: { common: 0.85, uncommon: 1.3, rare: 1.6 },
+    dropMultiplier: { common: 1, uncommon: 1.15, rare: 0.9 },
   },
   {
     id: 'deep',
     nameKey: 'depth_deep',
     cpMultiplier: 1.3,
-    itemsPerHourMultiplier: 1.6,
     xpMultiplier: 1.3,
-    rarityWeight: { common: 0.65, uncommon: 1.6, rare: 2.2 },
+    dropMultiplier: { common: 0.9, uncommon: 1.65, rare: 1.8 },
   },
 ];
 
@@ -104,12 +105,23 @@ export function isDepthUnlocked(zone: HuntingZoneDef, depth: HuntingDepth, playe
   return playerCp >= recommendedCpForDepth(zone, depth);
 }
 
-// Effective per-encounter chance for one of the zone's drop entries at a given depth: the overall
-// pace multiplier and the rarity-tier weight both apply, so a deeper run drops noticeably more
-// Uncommon/Rare per hour while Common stays close to its Raso rate instead of flooding the bag.
-export function effectiveDropChance(entry: HuntingDrop, depth: HuntingDepth): number {
-  const def = getHuntingDepthDef(depth);
-  return entry.chance * def.itemsPerHourMultiplier * def.rarityWeight[entry.rarity];
+// Sub-level drop bonus: Common never changes; Uncommon and Rare grow linearly with the sub-level being
+// fought (1 at sub-level 1). Sub-level is sanitized to 1..T.hunting.subLevels.
+export function subLevelDropMultiplier(rarity: DropRarity, subLevel: number): number {
+  const level = Number.isFinite(subLevel) ? Math.min(T.hunting.subLevels, Math.max(1, Math.floor(subLevel))) : 1;
+  const bonus: Record<DropRarity, number> = {
+    common: T.hunting.subLevelDropBonusCommon,
+    uncommon: T.hunting.subLevelDropBonusUncommon,
+    rare: T.hunting.subLevelDropBonusRare,
+  };
+  return 1 + bonus[rarity] * (level - 1);
+}
+
+// Effective per-encounter chance for one of the zone's drop entries: base chance x the depth's
+// multiplier for that rarity x the sub-level multiplier for that rarity. The Battle Pass multiplier is
+// applied by the caller on top (huntCombat.rollDropsForOneClear), not here.
+export function effectiveDropChance(entry: HuntingDrop, depth: HuntingDepth, subLevel = 1): number {
+  return entry.chance * getHuntingDepthDef(depth).dropMultiplier[entry.rarity] * subLevelDropMultiplier(entry.rarity, subLevel);
 }
 
 // Economy design (faucet/sink discipline — see Sunflower Land, Big Time, Pixels): Open Hunting is
@@ -136,8 +148,9 @@ export function effectiveDropChance(entry: HuntingDrop, depth: HuntingDepth): nu
 // count so a build well above the recommended CP visibly kills in a fraction of the time. Drop `qty`
 // was tripled to compensate at that time, and is now back to 1 per proc (a proc grants a single unit;
 // chances are unchanged, so material/hour is exactly 1/3 of the tripled value). demon_glade's shallowEnemyHp/Dmg
-// override is deliberately NOT rescaled this way — it exists to be winnable by a literal fresh
-// character (see shallowCp), where the dynamic-range goal doesn't apply.
+// override follows the same rule (HP x3, damage /3 from the original 60/12 -> 180/4, same total damage
+// budget, so it stays winnable by a literal fresh character — see shallowCp — while a build at the
+// recommended CP kills in ~17 s like every other zone instead of ~6 s).
 export const HUNTING_ZONES: HuntingZoneDef[] = [
   {
     id: 'demon_glade',
@@ -145,8 +158,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'demon',
     cp: 144,
     shallowCp: 50,
-    shallowEnemyHp: 60,
-    shallowEnemyDmg: 12,
+    shallowEnemyHp: 180,
+    shallowEnemyDmg: 4,
     goldPerHour: 3,
     xpPerHour: 17500,
     drops: [

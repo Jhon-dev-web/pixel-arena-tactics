@@ -140,9 +140,10 @@ export function simulateHuntingSession(
   let promotionLosses = 0;
   let liveSnapshot: HuntLiveSnapshot | null = null;
 
-  const rollDropsForOneClear = () => {
+  // `subLevel` is the sub-level of the fight that was just won (a promotion win counts at the new level).
+  const rollDropsForOneClear = (subLevel: number) => {
     for (const entry of zoneCfg.drops) {
-      const chance = effectiveDropChance(entry, zoneCfg.depth) * zoneCfg.dropRateMult;
+      const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * zoneCfg.dropRateMult;
       if (rng() < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
     }
   };
@@ -230,7 +231,7 @@ export function simulateHuntingSession(
       promotionWins = 0;
       if (r.win) {
         fightTimeUsedMs += r.timeMs;
-        rollDropsForOneClear();
+        rollDropsForOneClear(ceiling + 1);
         ceiling++;
         promotions++;
       } else {
@@ -242,7 +243,7 @@ export function simulateHuntingSession(
     if (!r) break;
     if (r.win) {
       fightTimeUsedMs += r.timeMs;
-      rollDropsForOneClear();
+      rollDropsForOneClear(ceiling);
       if (ceiling < promotion.maxLevel) promotionWins++;
     }
     // A loss at the farm level just costs that attempt's time — it's already deducted from timeLeft

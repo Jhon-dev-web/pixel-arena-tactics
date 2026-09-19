@@ -482,7 +482,7 @@
     "depth_dense": "Denso",
     "depth_deep": "Profundo",
     "depthLocked": "Requer {n} CP",
-    "rateMultiplier": "{n}x itens/h",
+    "nobleMultiplier": "Nobre {n}x",
     "currentDepth": "Profundidade: {depth}",
     "subLevelProgress": "Nível {n}/{m}",
     "subLevelPromotion": "Progresso para Nível {next}: {n} / {x} vitórias",

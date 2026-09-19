@@ -66,7 +66,7 @@ function DepthPicker({
           >
             <span className="hunt-depth-name">{!unlocked && '🔒 '}{huntText(def.nameKey)}</span>
             <span className="hunt-depth-cp">{t('dungeon.cp', { n: recommendedCp })}</span>
-            <span className="hunt-depth-rate">{t('hunting.rateMultiplier', { n: def.itemsPerHourMultiplier.toFixed(1) })}</span>
+            <span className="hunt-depth-rate">{t('hunting.nobleMultiplier', { n: def.dropMultiplier.rare.toFixed(1) })}</span>
           </button>
         );
       })}
@@ -141,7 +141,7 @@ export default function HuntModal({
                           </span>
                           <span className="hunt-drop-tier-label">{huntText(`tier_${d.rarity}`)}</span>
                           <span className="hunt-drop-name">{matText(d.material)}</span>
-                          <span className="hunt-drop-chance">{formatChance(effectiveDropChance(d, depth))}</span>
+                          <span className="hunt-drop-chance">{formatChance(effectiveDropChance(d, depth, getHuntProgress(save, zone.id, depth).ceiling))}</span>
                         </span>
                       ))}
                     </div>
