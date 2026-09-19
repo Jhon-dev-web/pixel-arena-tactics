@@ -13,8 +13,6 @@ import { applyDamageReduction } from './derivedStats';
 // for a given session — otherwise the previewed sub-level/rewards would flicker on every tick. A tiny
 // seeded PRNG (mulberry32) keyed off the session's own start time stands in for Math.random() here.
 
-export const HUNTING_SUBLEVELS = 10;
-
 function hashSeed(str: string): number {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
@@ -87,10 +85,24 @@ export interface HuntLiveSnapshot {
   enemyMax: number;
 }
 
+// Persistent per zone+depth mastery state: the highest sub-level the player has proven they can clear
+// (`ceiling`, the level being farmed) and how many wins at that level they've banked toward the next
+// promotion attempt. It only ever changes through simulateHuntingSession's result — never by claiming.
+export interface HuntProgress {
+  ceiling: number;
+  promotionWins: number;
+}
+
+export interface HuntPromotionCfg {
+  maxLevel: number;
+  requiredWins: (ceiling: number) => number; // wins needed AT `ceiling` before attempting ceiling + 1
+}
+
 export interface HuntSessionResult {
-  ceilingSubLevel: number; // highest sub-level fully cleared this session (never below resumeSubLevel-1)
-  clearsAtCeiling: number; // additional ceiling clears farmed after first reaching it
-  climbed: boolean; // true if ceilingSubLevel > resumeSubLevel - 1 (real progress happened)
+  ceilingSubLevel: number; // ceiling at the end of the session (start ceiling + promotions won)
+  promotionWins: number; // wins banked at that ceiling toward the next attempt (0 at max level)
+  promotions: number; // promotion attempts won this session
+  promotionLosses: number; // promotion attempts lost this session
   potionsUsed: HuntPotionStock;
   fightTimeUsedMs: number; // total ms across every COMPLETED (won) fight — the only time that earns reward
   xpReady: number;
@@ -108,11 +120,11 @@ function enemyStatsAt(cfg: HuntZoneCombatCfg, subLevel: number) {
 export function simulateHuntingSession(
   build: HuntCombatBuild,
   zoneCfg: HuntZoneCombatCfg,
-  resumeSubLevel: number,
+  start: HuntProgress,
   sessionMs: number,
   potionCfg: HuntPotionCfg,
-  waveHealPct: number,
   seedKey: string,
+  promotion: HuntPromotionCfg,
 ): HuntSessionResult {
   const rng = mulberry32(hashSeed(seedKey));
   const stock: HuntPotionStock = { ...potionCfg.stock };
@@ -122,8 +134,10 @@ export function simulateHuntingSession(
   let timeLeft = sessionMs;
   let fightTimeUsedMs = 0;
   let potionCooldownUntil = 0;
-  let ceilingSubLevel = Math.max(0, resumeSubLevel - 1);
-  let clearsAtCeiling = 0;
+  let ceiling = Math.min(promotion.maxLevel, Math.max(1, Math.floor(start.ceiling)));
+  let promotionWins = ceiling >= promotion.maxLevel ? 0 : Math.max(0, Math.floor(start.promotionWins));
+  let promotions = 0;
+  let promotionLosses = 0;
   let liveSnapshot: HuntLiveSnapshot | null = null;
 
   const rollDropsForOneClear = () => {
@@ -205,48 +219,42 @@ export function simulateHuntingSession(
     return { win: true, timeMs: t, hpAfter: hpRef.hp };
   };
 
-  // Climb: sequential single attempts starting from the sub-level the player hasn't yet proven they
-  // can clear. A win advances (with the same partial heal Dungeon waves use between floors); a loss
-  // stops the climb for good this session — the last level actually cleared becomes the safe ceiling.
-  let hp = build.playerMax;
-  let sub = resumeSubLevel;
-  let firstAttempt = true;
-  while (timeLeft > 0 && sub <= HUNTING_SUBLEVELS) {
-    const startHp = firstAttempt ? build.playerMax : Math.min(build.playerMax, hp + Math.round(build.playerMax * waveHealPct));
-    firstAttempt = false;
-    const r = attempt(sub, startHp);
-    if (!r) break;
-    if (r.win) {
-      fightTimeUsedMs += r.timeMs;
-      rollDropsForOneClear();
-      ceilingSubLevel = sub;
-      hp = r.hpAfter ?? build.playerMax;
-      sub++;
-    } else {
-      break;
-    }
-  }
-
-  // Farm: once there's a proven ceiling (or none was ever reached), keep re-attempting it — fresh HP
-  // each time, like re-entering the same encounter — for whatever idle time remains.
-  const farmLevel = ceilingSubLevel > 0 ? ceilingSubLevel : 1;
+  // The session starts directly at the saved ceiling — there is no climb and no free attempt at higher
+  // levels. Every win at the ceiling banks progress; once the current level's requirement is met, the
+  // next loop iteration is a single full-HP promotion attempt against ceiling + 1. It costs real session
+  // time like any fight, only pays out (and promotes) if won, and either way restarts the win counter.
   while (timeLeft > 0) {
-    const r = attempt(farmLevel, build.playerMax);
+    if (ceiling < promotion.maxLevel && promotionWins >= promotion.requiredWins(ceiling)) {
+      const r = attempt(ceiling + 1, build.playerMax);
+      if (!r) break;
+      promotionWins = 0;
+      if (r.win) {
+        fightTimeUsedMs += r.timeMs;
+        rollDropsForOneClear();
+        ceiling++;
+        promotions++;
+      } else {
+        promotionLosses++;
+      }
+      continue;
+    }
+    const r = attempt(ceiling, build.playerMax);
     if (!r) break;
     if (r.win) {
       fightTimeUsedMs += r.timeMs;
       rollDropsForOneClear();
-      clearsAtCeiling++;
+      if (ceiling < promotion.maxLevel) promotionWins++;
     }
     // A loss at the farm level just costs that attempt's time — it's already deducted from timeLeft
-    // inside attempt(); the loop simply retries the same proven-safe level next.
+    // inside attempt(); the loop simply retries the same level next.
   }
 
   const hours = fightTimeUsedMs / (3600 * 1000);
   return {
-    ceilingSubLevel,
-    clearsAtCeiling,
-    climbed: ceilingSubLevel > Math.max(0, resumeSubLevel - 1),
+    ceilingSubLevel: ceiling,
+    promotionWins,
+    promotions,
+    promotionLosses,
     potionsUsed,
     fightTimeUsedMs,
     xpReady: Math.floor(hours * zoneCfg.xpPerHour),

@@ -47,9 +47,11 @@ function addTo(list: HuntPouchItem[], itemId: MaterialId, count: number): void {
  * Allocates a batch of freshly-dropped materials into the pouch, respecting slot capacity.
  * A material already occupying a slot keeps stacking there; a brand-new material type only
  * claims a slot if one is still free — otherwise its whole batch is recorded as lost instead.
- * `order` (typically the zone's drop list, common → rare) breaks ties when several new types
- * compete for the last free slots in the same batch. `capacity` is the caller-computed
- * effective slot count (tier base + any active Battle Pass bonus).
+ * `order` is the zone's drop list (common → rare); it is walked in REVERSE here so that when several
+ * new types compete for the last free slots of the same batch, the rarest wins (rare → uncommon →
+ * common) and the commonest is the one recorded as lost. This only ranks the current batch: types
+ * already sitting in the pouch from an earlier session are never evicted. `capacity` is the
+ * caller-computed effective slot count (tier base + any active Battle Pass bonus).
  */
 export function allocateToPouch(
   pouch: HuntPouchState,
@@ -60,7 +62,7 @@ export function allocateToPouch(
   const items = pouch.items.map((i) => ({ ...i }));
   const lostItems = pouch.lostItems.map((i) => ({ ...i }));
 
-  for (const itemId of order) {
+  for (const itemId of [...order].reverse()) {
     const count = drops[itemId] ?? 0;
     if (count <= 0) continue;
     const hasSlot = items.some((i) => i.itemId === itemId);

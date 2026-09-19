@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { t } from '../locales';
-import { computeCP, computeHuntingStatus, effectivePouchSlots, resumeHuntingSubLevel, SaveData } from '../game/engine';
+import { computeCP, computeHuntingStatus, effectivePouchSlots, getHuntProgress, huntPromotionRequiredWins, SaveData } from '../game/engine';
 import T from '../game/tunables';
 import {
   DEFAULT_HUNTING_DEPTH,
@@ -153,13 +153,18 @@ export default function HuntModal({
                           <span className="hunt-sublevel-progress">
                             {t('hunting.subLevelProgress', { n: huntStatus.ceilingSubLevel, m: T.hunting.subLevels })}
                           </span>
-                          {huntStatus.clearsAtCeiling > 0 && (
-                            <span className="hunt-sublevel-farm">{t('hunting.subLevelFarming', { n: huntStatus.clearsAtCeiling })}</span>
+                          {huntStatus.ceilingSubLevel >= T.hunting.subLevels ? (
+                            <span className="hunt-sublevel-farm">{t('hunting.subLevelMax')}</span>
+                          ) : (
+                            <span className="hunt-sublevel-farm">
+                              {t('hunting.subLevelPromotion', {
+                                next: huntStatus.ceilingSubLevel + 1,
+                                n: Math.min(huntStatus.promotionWins, huntStatus.promotionRequired),
+                                x: huntStatus.promotionRequired,
+                              })}
+                            </span>
                           )}
                         </div>
-                        {!huntStatus.climbed && huntStatus.pendingMs > 60000 && (
-                          <div className="hunt-sublevel-wall">{t('hunting.subLevelWall', { n: huntStatus.resumeSubLevel })}</div>
-                        )}
                         <HuntBattleView enemyId={zone.enemyId} playerSpriteUrl={heroSpriteUrl} />
                         {huntStatus.liveSnapshot && (
                           <div className="battle-top hunt-hp-panel">
@@ -259,11 +264,24 @@ export default function HuntModal({
                           playerCp={playerCp}
                           onPick={(d) => setSelectedDepth((prev) => ({ ...prev, [zone.id]: d }))}
                         />
-                        {resumeHuntingSubLevel(save, zone.id, depth) > 1 && (
-                          <div className="hunt-sublevel-resume">
-                            {t('hunting.subLevelResume', { n: resumeHuntingSubLevel(save, zone.id, depth) })}
-                          </div>
-                        )}
+                        {(() => {
+                          const progress = getHuntProgress(save, zone.id, depth);
+                          return (
+                            <div className="hunt-sublevel-resume">
+                              {t('hunting.subLevelProgress', { n: progress.ceiling, m: T.hunting.subLevels })}
+                              {progress.ceiling < T.hunting.subLevels && (
+                                <>
+                                  {' · '}
+                                  {t('hunting.subLevelPromotion', {
+                                    next: progress.ceiling + 1,
+                                    n: Math.min(progress.promotionWins, huntPromotionRequiredWins(progress.ceiling)),
+                                    x: huntPromotionRequiredWins(progress.ceiling),
+                                  })}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                         <button className="battle-btn" onClick={() => onStartHunt(zone.id, depth)} disabled={!canStartAtDepth} data-ui>
                           {huntText('start')}
                         </button>

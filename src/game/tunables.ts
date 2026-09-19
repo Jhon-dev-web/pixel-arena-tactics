@@ -149,6 +149,19 @@ const T = DebugPanel.define({
     subLevelHpGrowth: { value: 0.08, min: 0, max: 0.5, step: 0.01, label: 'Enemy HP growth per sub-level' },
     subLevelDmgGrowth: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Enemy damage growth per sub-level' },
     enemyAtkMs: { value: 1800, min: 800, max: 4000, step: 100, label: 'Hunting enemy attack interval (ms)' },
+    // Sub-level mastery: wins banked at the CURRENT ceiling sub-level before the hunt automatically
+    // attempts the next one (a single full-HP fight; winning is still required to be promoted, a loss
+    // just restarts the counter). huntPromotionWinsN = wins needed at level N to try N -> N+1. Progress is
+    // persisted per zone+depth and never touched by claiming. Levels past the table reuse the last entry.
+    huntPromotionWins1: { value: 4, min: 1, max: 1000, step: 1, label: 'Wins at level 1 before trying level 2' },
+    huntPromotionWins2: { value: 8, min: 1, max: 1000, step: 1, label: 'Wins at level 2 before trying level 3' },
+    huntPromotionWins3: { value: 13, min: 1, max: 1000, step: 1, label: 'Wins at level 3 before trying level 4' },
+    huntPromotionWins4: { value: 22, min: 1, max: 1000, step: 1, label: 'Wins at level 4 before trying level 5' },
+    huntPromotionWins5: { value: 36, min: 1, max: 1000, step: 1, label: 'Wins at level 5 before trying level 6' },
+    huntPromotionWins6: { value: 56, min: 1, max: 1000, step: 1, label: 'Wins at level 6 before trying level 7' },
+    huntPromotionWins7: { value: 95, min: 1, max: 1000, step: 1, label: 'Wins at level 7 before trying level 8' },
+    huntPromotionWins8: { value: 145, min: 1, max: 1000, step: 1, label: 'Wins at level 8 before trying level 9' },
+    huntPromotionWins9: { value: 220, min: 1, max: 1000, step: 1, label: 'Wins at level 9 before trying level 10' },
   },
   dungeon: {
     _label: 'Dungeon Access',

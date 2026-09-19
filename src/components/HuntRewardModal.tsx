@@ -17,8 +17,9 @@ export default function HuntRewardModal({
   gold,
   pouch,
   ceilingSubLevel,
-  climbed,
-  resumeSubLevel,
+  startCeiling,
+  promotionWins,
+  promotionRequired,
   subLevels,
   onClaim,
 }: {
@@ -26,8 +27,9 @@ export default function HuntRewardModal({
   gold: number;
   pouch: HuntPouchState;
   ceilingSubLevel: number;
-  climbed: boolean;
-  resumeSubLevel: number;
+  startCeiling: number;
+  promotionWins: number;
+  promotionRequired: number;
   subLevels: number;
   onClaim: () => void;
 }) {
@@ -40,8 +42,15 @@ export default function HuntRewardModal({
         <h2 className="modal-title">{t('hunting.rewardsTitle')}</h2>
         <p className="claim-name">{t('hunting.timeHunted', { t: formatDuration(timeMs) })}</p>
         <p className="claim-name">{t('hunting.subLevelProgress', { n: ceilingSubLevel, m: subLevels })}</p>
-        {!climbed && (
-          <div className="hunt-sublevel-wall">{t('hunting.subLevelWall', { n: resumeSubLevel })}</div>
+        {ceilingSubLevel > startCeiling && (
+          <div className="hunt-sublevel-farm">{t('hunting.subLevelPromoted', { n: ceilingSubLevel })}</div>
+        )}
+        {ceilingSubLevel >= subLevels ? (
+          <div className="hunt-sublevel-farm">{t('hunting.subLevelMax')}</div>
+        ) : (
+          <div className="hunt-sublevel-farm">
+            {t('hunting.subLevelPromotion', { next: ceilingSubLevel + 1, n: Math.min(promotionWins, promotionRequired), x: promotionRequired })}
+          </div>
         )}
 
         <div className="result-rewards">

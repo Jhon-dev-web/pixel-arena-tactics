@@ -485,9 +485,9 @@
     "rateMultiplier": "{n}x itens/h",
     "currentDepth": "Profundidade: {depth}",
     "subLevelProgress": "Nível {n}/{m}",
-    "subLevelFarming": "Farmando o nível-teto (+{n} vitórias)",
-    "subLevelWall": "⚠️ Parou no Nível {n} — volte com uma build melhor ou mais poções pra tentar avançar.",
-    "subLevelResume": "Retoma do Nível {n}",
+    "subLevelPromotion": "Progresso para Nível {next}: {n} / {x} vitórias",
+    "subLevelPromoted": "Subiu para o Nível {n}!",
+    "subLevelMax": "Nível máximo",
     "subLevelEnemyLabel": "Inimigo — Nível {n}"
   },
   "expedition": {

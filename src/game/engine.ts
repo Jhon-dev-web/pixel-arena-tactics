@@ -8,7 +8,7 @@ import { QuestState, emptyQuestState } from './quests';
 import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
-import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
+import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
 import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
@@ -82,10 +82,11 @@ export interface SaveData {
   activeHuntingZone: string | null;
   activeHuntingDepth: HuntingDepth | null;
   huntingOfflineStart: number;
-  // Resume sub-level per zone+depth (key `${zoneId}:${depth}`) — the next sub-level to attempt
-  // climbing past. Missing key means 1 (never attempted). Keyed per zone+depth so stalling out in
-  // one depth doesn't reset/leak into another the player tries meanwhile.
-  huntingSubLevels: Record<string, number>;
+  // Persistent sub-level mastery per zone+depth (key `${zoneId}:${depth}`): the ceiling being farmed and
+  // the wins banked toward the next promotion attempt. Missing key = never played = ceiling 1, 0 wins.
+  // Written only when a hunt session ends (stop / zone switch) from that session's simulated result —
+  // claiming rewards never changes it. Replaces the legacy huntingSubLevels resume map (see loadSave).
+  huntProgress: Record<string, HuntProgress>;
   unlockedHuntingZones: string[];
   hasBattlePass: boolean;
   battlePassExpiresAt: number | null;
@@ -375,23 +376,53 @@ export interface HuntingStatus {
   xpReady: number;
   drops: Partial<Record<MaterialId, number>>;
   full: boolean;
-  // Real-combat sub-level results (see huntCombat.ts) — the session climbs sub-level by sub-level
-  // from resumeSubLevel, stops climbing at the first loss (that becomes the safe ceiling to farm),
-  // and keeps re-clearing the ceiling for the rest of the idle window.
+  // Real-combat sub-level mastery (see huntCombat.ts): the session replays from the SAVED progress
+  // (startCeiling / startPromotionWins) — no climb — and ends at ceilingSubLevel / promotionWins, which
+  // is what gets persisted when the hunt stops. promotionRequired is the win requirement AT the ending
+  // ceiling (0 once at the max level).
   ceilingSubLevel: number;
-  resumeSubLevel: number;
-  climbed: boolean;
-  clearsAtCeiling: number;
+  promotionWins: number;
+  promotionRequired: number;
+  startCeiling: number;
+  promotions: number;
+  promotionLosses: number;
   potionsUsed: HuntPotionStock;
   liveSnapshot: HuntLiveSnapshot | null;
 }
 
-export function huntingSubLevelKey(zoneId: string, depth: HuntingDepth): string {
+export function huntProgressKey(zoneId: string, depth: HuntingDepth): string {
   return `${zoneId}:${depth}`;
 }
 
-export function resumeHuntingSubLevel(save: SaveData, zoneId: string, depth: HuntingDepth): number {
-  return save.huntingSubLevels[huntingSubLevelKey(zoneId, depth)] ?? 1;
+export function getHuntProgress(save: SaveData, zoneId: string, depth: HuntingDepth): HuntProgress {
+  const p = save.huntProgress[huntProgressKey(zoneId, depth)];
+  return p ? { ceiling: p.ceiling, promotionWins: p.promotionWins } : { ceiling: 1, promotionWins: 0 };
+}
+
+// Wins needed AT `ceiling` before the hunt tries ceiling + 1 (table lives in tunables; levels past the
+// last entry reuse it).
+export function huntPromotionRequiredWins(ceiling: number): number {
+  const table = [
+    T.hunting.huntPromotionWins1,
+    T.hunting.huntPromotionWins2,
+    T.hunting.huntPromotionWins3,
+    T.hunting.huntPromotionWins4,
+    T.hunting.huntPromotionWins5,
+    T.hunting.huntPromotionWins6,
+    T.hunting.huntPromotionWins7,
+    T.hunting.huntPromotionWins8,
+    T.hunting.huntPromotionWins9,
+  ];
+  const idx = Math.min(table.length, Math.max(1, Math.floor(ceiling))) - 1;
+  return Math.max(1, Math.floor(table[idx]));
+}
+
+// The save's progress map after a session ends: that zone+depth takes the session's final state.
+export function withHuntProgress(save: SaveData, zoneId: string, depth: HuntingDepth, status: HuntingStatus): Record<string, HuntProgress> {
+  return {
+    ...save.huntProgress,
+    [huntProgressKey(zoneId, depth)]: { ceiling: status.ceilingSubLevel, promotionWins: status.promotionWins },
+  };
 }
 
 export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus {
@@ -405,10 +436,12 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
       xpReady: 0,
       drops: {},
       full: false,
-      ceilingSubLevel: 0,
-      resumeSubLevel: 1,
-      climbed: false,
-      clearsAtCeiling: 0,
+      ceilingSubLevel: 1,
+      promotionWins: 0,
+      promotionRequired: huntPromotionRequiredWins(1),
+      startCeiling: 1,
+      promotions: 0,
+      promotionLosses: 0,
       potionsUsed: emptyPotionsUsed,
       liveSnapshot: null,
     };
@@ -470,7 +503,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     cooldownMs: T.battle.potionCooldownMs,
   };
 
-  const resumeSubLevel = resumeHuntingSubLevel(save, zone.id, depth);
+  const startProgress = getHuntProgress(save, zone.id, depth);
 
   // Deterministic seed keyed off this session's own start time: computeHuntingStatus gets polled
   // every ~1s while the tab is open, and it must return the SAME outcome every time for the same
@@ -478,11 +511,11 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
   const result = simulateHuntingSession(
     build,
     zoneCfg,
-    resumeSubLevel,
+    startProgress,
     pendingMs,
     potionCfg,
-    T.battle.waveHeal,
-    `${save.huntingOfflineStart}:${zone.id}:${depth}:${resumeSubLevel}`,
+    `${save.huntingOfflineStart}:${zone.id}:${depth}`,
+    { maxLevel: T.hunting.subLevels, requiredWins: huntPromotionRequiredWins },
   );
 
   return {
@@ -493,9 +526,11 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     drops: result.drops,
     full: pendingMs >= capMs,
     ceilingSubLevel: result.ceilingSubLevel,
-    resumeSubLevel,
-    climbed: result.climbed,
-    clearsAtCeiling: result.clearsAtCeiling,
+    promotionWins: result.promotionWins,
+    promotionRequired: result.ceilingSubLevel >= T.hunting.subLevels ? 0 : huntPromotionRequiredWins(result.ceilingSubLevel),
+    startCeiling: Math.min(T.hunting.subLevels, Math.max(1, startProgress.ceiling)),
+    promotions: result.promotions,
+    promotionLosses: result.promotionLosses,
     potionsUsed: result.potionsUsed,
     liveSnapshot: result.liveSnapshot,
   };
@@ -539,7 +574,7 @@ export function defaultSave(): SaveData {
     activeHuntingZone: null,
     activeHuntingDepth: null,
     huntingOfflineStart: Date.now(),
-    huntingSubLevels: {},
+    huntProgress: {},
     unlockedHuntingZones: [DEFAULT_HUNTING_ZONE],
     hasBattlePass: false,
     battlePassExpiresAt: null,
@@ -732,11 +767,34 @@ export function loadSave(): SaveData {
         typeof parsed.huntingOfflineStart === 'number' && Number.isFinite(parsed.huntingOfflineStart) && parsed.huntingOfflineStart > 0
           ? parsed.huntingOfflineStart
           : Date.now();
-      const huntingSubLevels: Record<string, number> = {};
-      if (parsed.huntingSubLevels && typeof parsed.huntingSubLevels === 'object') {
-        for (const [key, raw] of Object.entries(parsed.huntingSubLevels)) {
-          const n = Math.floor(Number(raw));
-          if (Number.isFinite(n) && n > 0) huntingSubLevels[key] = Math.min(T.hunting.subLevels, n);
+      // Sub-level mastery. Legacy saves stored `huntingSubLevels[key] = resume` (= last cleared ceiling + 1,
+      // clamped to the max level — the next level the old climb tried for free). Converted to
+      // ceiling = resume - 1 (levels really cleared are kept), floor 1, with 0 banked wins: the "free
+      // attempt at resume" is intentionally not carried over. resume == max level is ambiguous (could
+      // mean ceiling 9 or 10) and resolves to the max so nobody is demoted. A present `huntProgress`
+      // entry always wins over the legacy one.
+      const maxSubLevel = T.hunting.subLevels;
+      const huntProgress: Record<string, HuntProgress> = {};
+      const legacyResume = (parsed as { huntingSubLevels?: unknown }).huntingSubLevels;
+      if (legacyResume && typeof legacyResume === 'object') {
+        for (const [key, raw] of Object.entries(legacyResume as Record<string, unknown>)) {
+          const resume = Math.min(maxSubLevel, Math.floor(Number(raw)));
+          if (Number.isFinite(resume) && resume > 0) {
+            huntProgress[key] = { ceiling: resume >= maxSubLevel ? maxSubLevel : Math.max(1, resume - 1), promotionWins: 0 };
+          }
+        }
+      }
+      if (parsed.huntProgress && typeof parsed.huntProgress === 'object') {
+        for (const [key, raw] of Object.entries(parsed.huntProgress as Record<string, unknown>)) {
+          if (!raw || typeof raw !== 'object') continue;
+          const ceiling = Math.floor(Number((raw as HuntProgress).ceiling));
+          const wins = Math.floor(Number((raw as HuntProgress).promotionWins));
+          if (Number.isFinite(ceiling) && ceiling > 0) {
+            huntProgress[key] = {
+              ceiling: Math.min(maxSubLevel, ceiling),
+              promotionWins: ceiling >= maxSubLevel ? 0 : Number.isFinite(wins) && wins > 0 ? Math.min(1_000_000, wins) : 0,
+            };
+          }
         }
       }
       const hasBattlePass = !!parsed.hasBattlePass;
@@ -827,7 +885,7 @@ export function loadSave(): SaveData {
         skillXp,
         activeHuntingZone,
         activeHuntingDepth,
-        huntingSubLevels,
+        huntProgress,
         huntingOfflineStart,
         unlockedHuntingZones,
         hasBattlePass,

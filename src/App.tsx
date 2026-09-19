@@ -16,7 +16,7 @@ import {
   maxExpeditionSlots,
   persistSave,
   playerLevel,
-  huntingSubLevelKey,
+  withHuntProgress,
   SaveData,
 } from './game/engine';
 import { getBattlePassLevelDef } from './game/battlepass';
@@ -107,9 +107,10 @@ function App() {
     xp: number;
     zoneId: string;
     depth: HuntingDepth;
-    resumeSubLevel: number;
+    startCeiling: number;
     ceilingSubLevel: number;
-    climbed: boolean;
+    promotionWins: number;
+    promotionRequired: number;
     potionsUsed: { greater_elixir: number; large_hp: number; small_hp: number };
   } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
@@ -764,7 +765,7 @@ function App() {
     let xp = s.xp;
     let huntPouch = s.huntPouch;
     let consumables = s.consumables;
-    let huntingSubLevels = s.huntingSubLevels;
+    let huntProgress = s.huntProgress;
     if (s.activeHuntingZone) {
       const priorZone = getHuntingZone(s.activeHuntingZone);
       const priorDepth = s.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH;
@@ -779,10 +780,7 @@ function App() {
           large_hp: (consumables.large_hp ?? 0) - prior.potionsUsed.large_hp,
           small_hp: (consumables.small_hp ?? 0) - prior.potionsUsed.small_hp,
         };
-        huntingSubLevels = {
-          ...huntingSubLevels,
-          [huntingSubLevelKey(priorZone.id, priorDepth)]: Math.min(T.hunting.subLevels, Math.max(1, prior.ceilingSubLevel + 1)),
-        };
+        huntProgress = withHuntProgress({ ...s, huntProgress }, priorZone.id, priorDepth, prior);
       }
     }
     setSaveBoth({
@@ -791,7 +789,7 @@ function App() {
       xp,
       huntPouch,
       consumables,
-      huntingSubLevels,
+      huntProgress,
       activeHuntingZone: zoneId,
       activeHuntingDepth: depth,
       huntingOfflineStart: Date.now(),
@@ -810,7 +808,10 @@ function App() {
       ? allocateToPouch(s.huntPouch, status.drops, zone.drops.map((d) => d.material), effectivePouchSlots(s, Date.now()))
       : s.huntPouch;
     playSfx('click');
-    setSaveBoth({ ...s, activeHuntingZone: null, activeHuntingDepth: null, huntPouch });
+    // Sub-level mastery is committed here, together with the pouch drops it was earned alongside —
+    // claiming the reward afterwards never touches it.
+    const huntProgress = zone ? withHuntProgress(s, zoneId, depth, status) : s.huntProgress;
+    setSaveBoth({ ...s, activeHuntingZone: null, activeHuntingDepth: null, huntPouch, huntProgress });
     setHuntReward({
       timeMs,
       pendingMs: status.pendingMs,
@@ -818,9 +819,10 @@ function App() {
       xp: status.xpReady,
       zoneId,
       depth,
-      resumeSubLevel: status.resumeSubLevel,
+      startCeiling: status.startCeiling,
       ceilingSubLevel: status.ceilingSubLevel,
-      climbed: status.climbed,
+      promotionWins: status.promotionWins,
+      promotionRequired: status.promotionRequired,
       potionsUsed: status.potionsUsed,
     });
   };
@@ -843,10 +845,6 @@ function App() {
         greater_elixir: (s.consumables.greater_elixir ?? 0) - reward.potionsUsed.greater_elixir,
         large_hp: (s.consumables.large_hp ?? 0) - reward.potionsUsed.large_hp,
         small_hp: (s.consumables.small_hp ?? 0) - reward.potionsUsed.small_hp,
-      },
-      huntingSubLevels: {
-        ...s.huntingSubLevels,
-        [huntingSubLevelKey(reward.zoneId, reward.depth)]: Math.min(T.hunting.subLevels, Math.max(1, reward.ceilingSubLevel + 1)),
       },
       xp: atCap ? s.xp : s.xp + reward.xp,
       materials,
@@ -1531,8 +1529,9 @@ function App() {
           gold={huntReward.gold}
           pouch={save.huntPouch}
           ceilingSubLevel={huntReward.ceilingSubLevel}
-          climbed={huntReward.climbed}
-          resumeSubLevel={huntReward.resumeSubLevel}
+          startCeiling={huntReward.startCeiling}
+          promotionWins={huntReward.promotionWins}
+          promotionRequired={huntReward.promotionRequired}
           subLevels={T.hunting.subLevels}
           onClaim={confirmHuntReward}
         />
