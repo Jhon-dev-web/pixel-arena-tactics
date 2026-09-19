@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { t } from '../locales';
 import { SaveData } from '../game/engine';
-import { GEAR, GearItem, getGear, refineLevel, reforgeGoldCost } from '../game/gear';
+import { GEAR, GearItem, getGear, refineLevel } from '../game/gear';
+import { canAffordReforge, getReforgeCost } from '../game/reforge';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue, salvageBlockReason } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
@@ -218,16 +219,28 @@ export default function InventoryModal({
                 ))}
               {selectedRarity !== 'common' &&
                 (() => {
-                  const reforgeCost = reforgeGoldCost(save.reforgeCount[selectedGear.id] ?? 0);
+                  const reforgeCost = getReforgeCost(save, selectedGear.id);
+                  if (!reforgeCost) return null;
                   return (
-                    <button
-                      className="reforge-btn"
-                      onClick={() => onReforge(selectedGear.id)}
-                      disabled={save.shards < 1 || save.gold < reforgeCost}
-                      data-ui
-                    >
-                      {t('forge.reforge', { gold: reforgeCost })}
-                    </button>
+                    <div>
+                      <p className="salvage-hint">{t('forge.reforgeExplanation')}</p>
+                      <div className="salvage-preview">
+                        {Object.entries(reforgeCost.materials).map(([mid, qty]) => (
+                          <span className="floor-drop" key={mid}>
+                            <MaterialIcon item={getMaterial(mid as MaterialId)!} />
+                            {matText(`mat_${mid}`)}: {save.materials[mid as MaterialId] ?? 0}/{qty}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        className="reforge-btn"
+                        onClick={() => onReforge(selectedGear.id)}
+                        disabled={!canAffordReforge(save, reforgeCost)}
+                        data-ui
+                      >
+                        {t('forge.reforge', { gold: reforgeCost.gold })}
+                      </button>
+                    </div>
                   );
                 })()}
               {hasSalvageValue(selectedGear) &&
@@ -240,6 +253,8 @@ export default function InventoryModal({
                     {confirmSalvage && salvagePreview && (
                       <div className="salvage-preview">
                         <span className="salvage-preview-label">{t('inventory.salvagePreview')}</span>
+                        <span>{t('inventory.salvageRounding')}</span>
+                        {Object.keys(salvagePreview.materials).length === 0 && <span>{t('inventory.salvageEmpty')}</span>}
                         {Object.entries(salvagePreview.materials).map(([mid, qty]) => (
                           <span className="floor-drop" key={mid}>
                             <span className="mat-icon">

@@ -207,6 +207,8 @@
     "confirmSalvage": "♻️ Confirmar Desmontagem",
     "use": "Usar",
     "salvagePreview": "Desmontar renderá:",
+    "salvageRounding": "Recuperação arredondada para baixo, sem mínimo por ingrediente. Bônus aleatório de raridade é separado e não garantido.",
+    "salvageEmpty": "Nenhum material garantido nesta receita.",
     "unequipToSalvage": "Desequipe o item antes de desmontar",
     "needAnotherTool": "Você precisa de outra ferramenta desse tipo antes de desmontar esta",
     "salvageDone": "♻️ Item desmontado!",
@@ -335,7 +337,8 @@
     "noSockets": "Sem encaixes disponíveis (Requer Tier 1 Bronze ou superior)",
     "upgradeOk": "✓ {n} +{m}!",
     "upgradeFail": "✗ Falha na melhoria",
-    "reforge": "🎲 Reforjar Status (1 🔷 + {gold} Ouro)",
+    "reforge": "🎲 Reforjar (materiais acima + 1 🔷 + {gold} Ouro)",
+    "reforgeExplanation": "Sorteia novamente todos os atributos extras: pode melhorar ou piorar. Consome os materiais indicados (estoque/custo), Ouro e 1 Fragmento a cada tentativa. Mantém a raridade e os limites atuais. Afeta todas as cópias deste tipo de equipamento. Não é necessário para refinar até +8.",
     "reforged": "🎲 Status reforjados!",
     "levelReq": "Nível {n}"
   },

@@ -27,7 +27,6 @@ import {
   MAX_DURABILITY,
   MAX_REFINE,
   refineLevel,
-  reforgeGoldCost,
   upgradeChance,
   upgradeCost,
 } from './game/gear';
@@ -39,6 +38,7 @@ import { isBagFull, inventorySlotsUsed, MAX_SLOTS } from './game/inventory';
 import { GEMS, GemId, hasGems, socketsForTier } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { canSalvage, getSalvageReturn, SALVAGE_BONUS_CHANCE } from './game/salvage';
+import { applyReforge } from './game/reforge';
 import { playerSpriteUrl } from './game/sprites';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
@@ -1111,21 +1111,9 @@ function App() {
   };
 
   const reforgeItem = (id: string) => {
-    const item = getGear(id);
-    if (!item) return;
-    const s = saveRef.current;
-    const count = s.reforgeCount[id] ?? 0;
-    const goldCost = reforgeGoldCost(count);
-    if (s.shards < 1 || s.gold < goldCost) return;
-    const rarity = s.itemRarity?.[id] ?? 'common';
-    const subs = rollSubstats(rarity, item.tier ?? 0);
-    setSaveBoth({
-      ...s,
-      shards: s.shards - 1,
-      gold: s.gold - goldCost,
-      itemSubstats: { ...(s.itemSubstats ?? {}), [id]: subs },
-      reforgeCount: { ...s.reforgeCount, [id]: count + 1 },
-    });
+    const next = applyReforge(saveRef.current, id);
+    if (!next) return;
+    setSaveBoth(next);
     playSfx('click');
     showToast(t('forge.reforged'));
   };

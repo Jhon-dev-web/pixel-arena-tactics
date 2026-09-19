@@ -197,6 +197,16 @@ const T = DebugPanel.define({
     pouchBonusSlots: { value: 2, min: 0, max: 6, step: 1, label: 'Extra Hunting Pouch slots while active' },
     repairDiscount: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Forge repair gold discount while active' },
   },
+  economySinks: {
+    _label: 'Material sinks',
+    reforgeAdvancedTier: { value: 3, min: 1, max: 6, step: 1, label: 'First gear tier with advanced reforge costs' },
+    reforgeBasicDust: { value: 2, min: 0, max: 100, step: 1, label: 'Basic reforge: dust' },
+    reforgeBasicRefined: { value: 6, min: 0, max: 200, step: 1, label: 'Basic reforge: claw/blood' },
+    reforgeAdvancedDust: { value: 6, min: 0, max: 100, step: 1, label: 'Advanced reforge: dust' },
+    reforgeAdvancedRefined: { value: 24, min: 0, max: 200, step: 1, label: 'Advanced reforge: claw/blood' },
+    reforgeAdvancedNoble: { value: 2, min: 0, max: 100, step: 1, label: 'Advanced reforge: core/crystal' },
+    salvageRecoveryRate: { value: 0.45, min: 0, max: 0.9, step: 0.05, label: 'Salvage material recovery (rounded down; no minimum)' },
+  },
   ui: {
     _label: 'UI Layout',
     spriteSize: { value: 132, min: 80, max: 240, step: 2, cssVar: '--sprite-size', unit: 'px', label: 'Combatant sprite size' },

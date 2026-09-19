@@ -207,6 +207,8 @@
     "confirmSalvage": "♻️ Confirm Salvage",
     "use": "Use",
     "salvagePreview": "Salvaging will yield:",
+    "salvageRounding": "Recovery rounds down, with no minimum per ingredient. The random rarity bonus is separate and not guaranteed.",
+    "salvageEmpty": "No guaranteed materials for this recipe.",
     "unequipToSalvage": "Unequip the item before salvaging",
     "needAnotherTool": "You need another tool of this type before salvaging this one",
     "salvageDone": "♻️ Item salvaged!",
@@ -335,7 +337,8 @@
     "noSockets": "No sockets available (Requires Tier 1 Bronze or higher)",
     "upgradeOk": "✓ {n} +{m}!",
     "upgradeFail": "✗ Upgrade failed",
-    "reforge": "🎲 Reforge Stats (1 🔷 + {gold} Gold)",
+    "reforge": "🎲 Reforge (materials above + 1 🔷 + {gold} Gold)",
+    "reforgeExplanation": "Rerolls all extra attributes: the result may improve or worsen. Each attempt consumes the shown materials (stock/cost), Gold and 1 Shard. Rarity and existing stat limits stay the same. Affects every copy of this equipment type. Not required to refine to +8.",
     "reforged": "🎲 Stats reforged!",
     "levelReq": "Level {n}"
   },
