@@ -47,7 +47,11 @@ const T = DebugPanel.define({
   battle: {
     _label: 'Auto-Battle',
     heroAttackMs: { value: 1200, min: 300, max: 3000, step: 50, label: 'Hero attack interval (ms)' },
-    agiSpeedPerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Attack speed per AGI point' },
+    // AGI -> attack interval (see derivedStats.ts heroAttackIntervalMs): hyperbolic approach from heroAttackMs
+    // (AGI 0) down to heroMinMs, halfway there at agiHalfPoint AGI. Replaces the old linear agiSpeedPerPoint.
+    heroMinMs: { value: 400, min: 100, max: 1200, step: 50, label: 'Hero attack interval floor (ms, AGI asymptote)' },
+    agiHalfPoint: { value: 100, min: 10, max: 1000, step: 10, label: 'AGI at which the interval is halfway to the floor' },
+    agiMax: { value: 300, min: 1, max: 1000, step: 1, label: 'AGI clamp used in combat (= max level 100 x 3 points)' },
     lungeMs: { value: 320, min: 80, max: 900, step: 20, cssVar: '--lunge-ms', unit: 'ms', label: 'Lunge animation (ms)' },
     flashMs: { value: 250, min: 50, max: 800, step: 25, cssVar: '--flash-ms', unit: 'ms', label: 'Hit flash (ms)' },
     lungeDist: { value: 18, min: 4, max: 60, step: 2, cssVar: '--lunge-dist', unit: 'px', label: 'Lunge distance' },
@@ -192,7 +196,15 @@ const T = DebugPanel.define({
     victoryXp: { value: 60, min: 10, max: 500, step: 5, label: 'XP per victory' },
     checkpointXpBonus: { value: 200, min: 0, max: 2000, step: 10, label: 'Bonus XP per checkpoint cleared' },
     bossXpBonus: { value: 500, min: 0, max: 5000, step: 25, label: 'Bonus XP per biome boss cleared' },
-    strDmgPerPoint: { value: 1, min: 0, max: 10, step: 0.5, label: 'Damage per STR point' },
+    // NO LONGER read by combat (Hunting/Dungeon/CP use strengthFlatDamage + strengthWeaponScalePerPoint below,
+    // see derivedStats.ts strengthAdjustedDamage). Still read by HeroModal's display-only damage figure and the
+    // inactive legacy arena, which keep the old flat-STR formula on purpose.
+    strDmgPerPoint: { value: 1, min: 0, max: 10, step: 0.5, label: 'Damage per STR point (HeroModal display / legacy only)' },
+    // STR -> damage, hybrid: dmgBase = (baseHit + W) * (1 + STR * scale) + STR * flat
+    strengthFlatDamage: { value: 0.5, min: 0, max: 5, step: 0.05, label: 'STR: flat damage per point' },
+    strengthWeaponScalePerPoint: { value: 0.003, min: 0, max: 0.02, step: 0.0005, label: 'STR: (base hit + weapon) damage scaling per point' },
+    // Overflow guard only (NOT a points rule): keeps a tampered/garbage STR from overflowing the damage math to Infinity.
+    strengthOverflowGuard: { value: 1000000, min: 1000, max: 1000000000, step: 1000, label: 'STR: safety ceiling used in the damage formula' },
     vitHpPerPoint: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP per VIT point' },
     agiDodgePerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Dodge chance per AGI point' },
     resResistPerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Damage resist per RES point' },

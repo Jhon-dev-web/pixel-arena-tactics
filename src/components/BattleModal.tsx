@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import T from '../game/tunables';
 import { t } from '../locales';
 import Assets from '../assets.json';
-import { buffRemainingMs, isBuffActive, SaveData, playerMaxHp } from '../game/engine';
+import { buffRemainingMs, buildCombatStats, combatModifiersFromSave, isBuffActive, SaveData } from '../game/engine';
 import { ConsumableId } from '../game/consumables';
 import { EnemyDef, getEnemyDef } from '../game/enemies';
-import { durabilityFactor, effectiveCrit, effectiveDamage, effectiveResistance, getEquipped, MAX_DURABILITY, refineLevel } from '../game/gear';
-import { applyDamageReduction } from '../game/derivedStats';
+import { applyDamageModifiers, applyDamageReduction } from '../game/derivedStats';
 import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, playerSpriteUrl } from '../game/sprites';
@@ -14,8 +13,7 @@ import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
 import { eliteBossDmg, eliteBossHp, isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 import { getEliteReward } from '../game/dungeon';
-import { getGem, GemId, totalGemBonuses } from '../game/gems';
-import { rarityStatMult, totalSubstatTotals } from '../game/rarity';
+import { getGem, GemId } from '../game/gems';
 import { getTitleDef } from '../game/titles';
 import GemIcon from './GemIcon';
 
@@ -65,31 +63,13 @@ export default function BattleModal({
   alreadyDefeatedElite?: boolean;
   onEliteWin?: () => void;
 }) {
-  // Layer 2 stat assembly (Primaries + gear -> Final Damage/Crit/Max HP/Damage Reduction) below is
-  // duplicated by design, not by accident: engine.ts's computeHuntingStatus assembles the equivalent
-  // numbers for Hunting's idle tick simulation (huntCombat.ts) independently, because unifying the two
-  // into one call site is a real architectural change deliberately deferred (see the note at
-  // huntCombat.ts's `attempt` function). Only the one piece of math both actually share — the
-  // resistance/damage-reduction formula — is centralized, in derivedStats.ts's applyDamageReduction.
-  // If you change how a Layer 2 number is derived here (str/vit/agi/res -> damage/HP/crit/etc.), the
-  // same change almost certainly needs to land in engine.ts's computeHuntingStatus too, by hand.
-  const build = getEquipped(save.equipped);
-  const weapon = build.weapon;
-  const armor = build.armor;
-  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
-  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
-  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
-  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
-  const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
-  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
-  const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
-  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
-  const wFactor = durabilityFactor(wDur);
-  const aFactor = durabilityFactor(aDur);
-  const critMult = T.combat.critMult + (build.relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100;
-  const blessedMult = save.blessed ? 1.05 : 1;
+  // Layer 2 stats come from the shared derivation (engine.ts buildCombatStats — the same one Hunting and
+  // computeCP use), computed once per mount like before. Temporary damage modifiers (blessed / Strength
+  // Elixir) are applied per hit in heroAttack below, with Date.now(): the Dungeon's existing behavior,
+  // intentionally different from Hunting's claim-time evaluation and NOT changed here.
+  const combat = buildCombatStats(save);
 
-  const playerMax = playerMaxHp(save);
+  const playerMax = combat.maxHp;
   const enemyHpForStage = (st: number) => (elite ? eliteBossHp(enemyDefForFloor(st), st) : stageEnemyHp(enemyDefForFloor(st), st));
   const enemyDmgForStage = (st: number) => (elite ? eliteBossDmg(enemyDefForFloor(st), st) : stageEnemyDmg(enemyDefForFloor(st), st));
 
@@ -271,20 +251,17 @@ export default function BattleModal({
     };
 
     const heroAttack = () => {
-      const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
-      const strengthMult = isBuffActive(save, 'strength', Date.now()) ? 1 + T.battle.strengthElixirDmgPct : 1;
-      const total =
-        (baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + save.str * T.advanced.strDmgPerPoint) * blessedMult * strengthMult;
-      const crit = Math.random() < effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100;
-      const dmg = Math.max(1, Math.round(total * (crit ? critMult : 1)));
+      const total = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, Date.now()));
+      const crit = Math.random() < combat.critChance;
+      const dmg = Math.max(1, Math.round(total * (crit ? combat.critMult : 1)));
       hp.current.e = Math.max(0, hp.current.e - dmg);
       setEnemyHp(hp.current.e);
       setPlayerAnim('attack');
       setPlayerLunge(true);
       setEnemyFlash(true);
       addFloat('e', crit ? `💥 CRIT! -${dmg}` : `-${dmg}`, crit ? 'crit' : 'damage');
-      if (subs.lifesteal > 0) {
-        const heal = Math.max(1, Math.round(dmg * (subs.lifesteal / 100)));
+      if (combat.lifesteal > 0) {
+        const heal = Math.max(1, Math.round(dmg * (combat.lifesteal / 100)));
         hp.current.p = Math.min(playerMax, hp.current.p + heal);
         setPlayerHp(hp.current.p);
         addFloat('p', `+${heal}`, 'heal');
@@ -302,11 +279,8 @@ export default function BattleModal({
 
     const monsterAttack = () => {
       const st = stageRef.current;
-      // Layer 2 (Damage Reduction) — asymptotic, see derivedStats.ts. This assembly step is mirrored
-      // in engine.ts's computeHuntingStatus for the idle Hunting simulation; keep both in sync.
-      const reductionSum =
-        effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
-      const eFinal = applyDamageReduction(enemyDmgForStage(st), reductionSum);
+      // Layer 2 (Damage Reduction) — asymptotic, see derivedStats.ts.
+      const eFinal = applyDamageReduction(enemyDmgForStage(st), combat.reduction);
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);
       setEnemyAnim('attack');
@@ -370,7 +344,7 @@ export default function BattleModal({
 
       tryAutoPotion(now);
 
-      const heroMs = T.battle.heroAttackMs * (1 - save.agi * T.battle.agiSpeedPerPoint);
+      const heroMs = combat.heroMs;
       const heroInterval = heroMs / spd;
       const heroElapsed = now - heroNextAtkRef.current;
       setHeroProgress(Math.min(1, heroElapsed / heroInterval));

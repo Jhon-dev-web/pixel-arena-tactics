@@ -9,7 +9,7 @@ import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
-import { effectiveHp } from './derivedStats';
+import { applyDamageModifiers, CombatModifiers, CombatStats, effectiveHp, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
@@ -167,6 +167,63 @@ export function playerMaxHp(save: SaveData): number {
   );
 }
 
+// Single source of truth for a hero's derived combat stats (Layer 2, see derivedStats.ts). Hunting
+// (computeHuntingStatus), the Dungeon (BattleModal.tsx) and computeCP all derive from this — do not
+// re-derive these numbers anywhere else. Pure function of the save: no clock, no buffs. Temporary
+// modifiers (blessed / Strength Elixir) are separate, see combatModifiersFromSave.
+//
+// `includeRelicCritMult` exists only to preserve today's behavior: real combat (Hunting + Dungeon) has
+// always included the relic's critMultBonus, while computeCP never did. Use buildCombatStats for combat
+// and buildBaseCombatStats for CP; do not add a third variant without a design decision.
+function deriveCombatStats(save: SaveData, includeRelicCritMult: boolean): CombatStats {
+  const { weapon, armor, relic } = getEquipped(save.equipped);
+  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
+  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
+  const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
+  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
+  const wFactor = durabilityFactor(wDur);
+  const aFactor = durabilityFactor(aDur);
+  const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
+  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
+  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
+  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
+
+  // Flat base hit (avg of attackMin/attackMax) plus the weapon term W (refine, durability, rarity); STR is applied on top
+  // of that sum by strengthAdjustedDamage (derivedStats.ts). blessed/Elixir/crit come later, at the call sites.
+  const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
+  return {
+    maxHp: playerMaxHp(save),
+    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity, save.str),
+    critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100,
+    critMult: T.combat.critMult + (includeRelicCritMult ? (relic?.critMultBonus ?? 0) : 0) + gems.critDamageBonus + subs.critDamage / 100,
+    // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
+    heroMs: heroAttackIntervalMs(save.agi),
+    reduction: effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100,
+    lifesteal: subs.lifesteal,
+  };
+}
+
+// Effective stats: what a hero actually fights with (Hunting and Dungeon).
+export function buildCombatStats(save: SaveData): CombatStats {
+  return deriveCombatStats(save, true);
+}
+
+// Base stats: the same derivation minus the relic's crit-multiplier bonus. Exists solely so computeCP's
+// output stays numerically identical to before the refactor.
+export function buildBaseCombatStats(save: SaveData): CombatStats {
+  return deriveCombatStats(save, false);
+}
+
+// Temporary damage modifiers, evaluated at a moment the CALLER chooses (`now` is explicit on purpose —
+// see derivedStats.ts). Hunting calls this once with the claim-time clock; the Dungeon calls it on every
+// hit with Date.now(). Those different timings are pre-existing behavior, not decided here.
+export function combatModifiersFromSave(save: SaveData, now: number): CombatModifiers {
+  return {
+    blessedMult: save.blessed ? 1.05 : 1,
+    strengthMult: isBuffActive(save, 'strength', now) ? 1 + T.battle.strengthElixirDmgPct : 1,
+  };
+}
+
 // CP scale constant. Chosen so the recalibrated milestone/zone CPs (see dungeon.ts, huntingZones.ts)
 // land in a similar order of magnitude to the pre-fix numbers, purely so the transition isn't a jarring
 // unit change — CP has no absolute physical meaning, it's only ever compared to a recommended threshold.
@@ -190,35 +247,19 @@ const CP_SCALE = 2;
 //     roughly proportionally (like refine does, on both weapon and armor at once) gets the
 //     disproportionate credit that's now honest, not a formula quirk.
 // Lifesteal stays a small flat add-on (as before) — a minor stat, not worth modeling multiplicatively.
+//
+// The stat inputs come from buildBaseCombatStats (the shared derivation, includes the flat base hit —
+// omitting it used to make a brand-new character with a 0-damage starting weapon show exactly 0 CP).
+// KNOWN, PRESERVED GAPS (audit findings, deliberately NOT changed by the centralization refactor — CP's
+// numeric output is identical to before): CP does not see the relic's critMultBonus (hence the "base"
+// stats, not the effective ones), nor blessed / Strength Elixir (CombatModifiers are never applied here).
 export function computeCP(save: SaveData): number {
-  const { weapon, armor } = getEquipped(save.equipped);
-  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
-  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
-  const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
-  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
-  const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
-  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
-  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
-  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
-
-  // Includes the same flat base hit (avg of attackMin/attackMax) real combat always adds on top of
-  // the weapon term (see BattleModal.tsx's heroAttack) — omitting it here used to make a brand-new
-  // character with a 0-damage starting weapon show exactly 0 CP, even though they can still land real
-  // (if small) hits in an actual fight. That 0 was structurally misleading, not just "very low."
-  const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
-  const damage = baseDmg + effectiveDamage(weapon, wLvl) * durabilityFactor(wDur) * wRarity + save.str * T.advanced.strDmgPerPoint;
-  const critChance = effectiveCrit(weapon, wLvl) * durabilityFactor(wDur) + subs.critRate / 100;
-  const critMult = T.combat.critMult + gems.critDamageBonus + subs.critDamage / 100;
-  const heroMs = T.battle.heroAttackMs * (1 - save.agi * T.battle.agiSpeedPerPoint);
-  const dps = (damage * (1 + critChance * (critMult - 1))) / (heroMs / 1000);
-
-  const maxHp = playerMaxHp(save);
-  const reductionSum =
-    effectiveResistance(armor, aLvl) * durabilityFactor(aDur) * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
-  const effHp = effectiveHp(maxHp, reductionSum);
+  const stats = buildBaseCombatStats(save);
+  const dps = (stats.dmgBase * (1 + stats.critChance * (stats.critMult - 1))) / (stats.heroMs / 1000);
+  const effHp = effectiveHp(stats.maxHp, stats.reduction);
 
   const corePower = Math.sqrt(dps * effHp);
-  return Math.round(CP_SCALE * corePower + subs.lifesteal);
+  return Math.round(CP_SCALE * corePower + stats.lifesteal);
 }
 
 export function isBattlePassActive(save: SaveData, now: number): boolean {
@@ -413,39 +454,20 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
   const depth = save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH;
   const depthDef = getHuntingDepthDef(depth);
 
-  // Layer 2 stat assembly, duplicated by design (not accident) from BattleModal.tsx's setup block —
-  // see the comment there for why the two aren't unified yet. Change one, change both by hand.
-  const equipped = getEquipped(save.equipped);
-  const { weapon, armor } = equipped;
-  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
-  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
-  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
-  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
-  const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
-  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
-  const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
-  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
-  const wFactor = durabilityFactor(wDur);
-  const aFactor = durabilityFactor(aDur);
-  const critMult = T.combat.critMult + (equipped.relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100;
-  const blessedMult = save.blessed ? 1.05 : 1;
-  const strengthMult = isBuffActive(save, 'strength', now) ? 1 + T.battle.strengthElixirDmgPct : 1;
-  const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
-  const heroDmgBase =
-    (baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + save.str * T.advanced.strDmgPerPoint) * blessedMult * strengthMult;
-  const critChance = effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100;
-  const heroMs = T.battle.heroAttackMs * (1 - save.agi * T.battle.agiSpeedPerPoint);
-  const reduction =
-    effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100;
+  // Permanent stats from the shared derivation (buildCombatStats), plus temporary modifiers evaluated
+  // HERE, once, at the claim-time `now` — the Hunting session's existing (retroactive) buff behavior,
+  // deliberately unchanged. BattleModal.tsx applies the same modifiers per hit instead.
+  const stats = buildCombatStats(save);
+  const mods = combatModifiersFromSave(save, now);
 
   const build: HuntCombatBuild = {
-    playerMax: playerMaxHp(save),
-    heroDmgBase,
-    critChance,
-    critMult,
-    heroMs,
-    reduction,
-    lifestealPct: subs.lifesteal,
+    playerMax: stats.maxHp,
+    heroDmgBase: applyDamageModifiers(stats.dmgBase, mods),
+    critChance: stats.critChance,
+    critMult: stats.critMult,
+    heroMs: stats.heroMs,
+    reduction: stats.reduction,
+    lifestealPct: stats.lifesteal,
   };
 
   // Raso-only override (see HuntingZoneDef.shallowCp/shallowEnemyHp/shallowEnemyDmg) — currently only

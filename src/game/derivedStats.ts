@@ -1,3 +1,5 @@
+import T from './tunables';
+
 // The 3-layer stat model, formalized:
 //
 // Layer 1 — Primaries: STR/VIT/AGI/RES. Points the player spends per level. Unchanged by this file.
@@ -46,4 +48,64 @@ export function applyDamageReduction(rawDamage: number, reductionSum: number): n
 // (see engine.ts computeCP) — without needing a specific enemy's damage number to express it.
 export function effectiveHp(maxHp: number, reductionSum: number): number {
   return maxHp * (1 + Math.max(0, reductionSum));
+}
+
+// --- Combat stats: the single source of truth for a hero's derived combat numbers -------------------
+//
+// `CombatStats` is the Layer-2 result (see the header above) for ONE hero: what the Hunting simulation,
+// the Dungeon's BattleModal and computeCP all read. It is built by engine.ts's buildCombatStats /
+// buildBaseCombatStats (kept there because it needs playerLevel/playerMaxHp, and engine.ts already
+// imports this file — putting the builder here would create an import cycle).
+//
+// It deliberately holds only PERMANENT derived numbers (primaries + gear: refine, rarity, durability,
+// gems, substats, relic crit multiplier). Temporary damage modifiers (blessed, Strength Elixir) are NOT
+// baked in: `dmgBase` is the pre-modifier hit, and each caller applies `CombatModifiers` explicitly via
+// applyDamageModifiers, at the moment ITS own rules dictate (Hunting: once, at claim time; Dungeon: on
+// every hit). Keeping that timing decision at the call site is intentional — it is a known difference
+// between the two systems that this module must not hide or change.
+export interface CombatStats {
+  maxHp: number;
+  dmgBase: number; // pre-crit, pre-modifier hit: strengthAdjustedDamage(12.5 + weapon*refine*durability*rarity, STR)
+  critChance: number; // 0..1
+  critMult: number;
+  heroMs: number; // hero attack interval in ms, from heroAttackIntervalMs (AGI, sanitized, floored)
+  reduction: number; // raw reductionSum, fed to applyDamageReduction (NOT a mitigation percentage)
+  lifesteal: number; // percent of damage dealt healed per hit
+}
+
+// STR -> pre-modifier hit damage. Hybrid: a flat part plus a part that scales with (base hit + weapon):
+//   dmgBase = (baseHit + W) * (1 + STR * strengthWeaponScalePerPoint) + STR * strengthFlatDamage
+// where W is the weapon term already including refine, rarity and durability (see engine.ts deriveCombatStats).
+// The flat part keeps STR valuable with weak gear (a fresh character), the scaling part keeps it from
+// evaporating against high-tier gear. The result is dmgBase: blessed / Strength Elixir / crit are applied
+// AFTER it, as before — never fold STR in after them.
+// STR is sanitized here (the single derivation point): non-finite -> 0, floored, minimum 0, and capped by
+// strengthOverflowGuard purely so the arithmetic can never overflow to Infinity. No points-budget rule.
+export function strengthAdjustedDamage(baseHitPlusWeapon: number, rawStr: number): number {
+  const str = Number.isFinite(rawStr) ? Math.min(T.advanced.strengthOverflowGuard, Math.max(0, Math.floor(rawStr))) : 0;
+  return baseHitPlusWeapon * (1 + str * T.advanced.strengthWeaponScalePerPoint) + str * T.advanced.strengthFlatDamage;
+}
+
+// AGI -> hero attack interval (ms). Hyperbolic with a hard floor:
+//   heroMs = floor + (base - floor) / (1 + AGI / halfPoint)      (defaults: 400 + 800 / (1 + AGI / 100))
+// AGI 0 = 1200 ms, 100 = 800 ms, 300 = 600 ms, asymptote 400 ms: strictly diminishing returns and never <= 0.
+// The input is sanitized HERE (the single derivation point) rather than trusted from the save: non-finite
+// -> 0, floored, clamped to [0, agiMax]. The result is also guarded: if it is somehow non-finite (e.g. a
+// bad tunable) it falls back to the base interval, and it is never below the floor.
+export function heroAttackIntervalMs(rawAgi: number): number {
+  const base = T.battle.heroAttackMs;
+  const floor = T.battle.heroMinMs;
+  const safeAgi = Number.isFinite(rawAgi) ? Math.min(T.battle.agiMax, Math.max(0, Math.floor(rawAgi))) : 0;
+  const ms = floor + (base - floor) / (1 + safeAgi / T.battle.agiHalfPoint);
+  return Number.isFinite(ms) ? Math.max(floor, ms) : base;
+}
+
+export interface CombatModifiers {
+  blessedMult: number;
+  strengthMult: number;
+}
+
+// Same operation order as the pre-refactor inline code: `(sum) * blessedMult * strengthMult`.
+export function applyDamageModifiers(dmgBase: number, mods: CombatModifiers): number {
+  return dmgBase * mods.blessedMult * mods.strengthMult;
 }

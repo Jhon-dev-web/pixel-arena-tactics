@@ -2,7 +2,7 @@ import { useState } from 'react';
 import T from '../game/tunables';
 import { t } from '../locales';
 import Assets from '../assets.json';
-import { effectivePouchSlots, isBattlePassActive, SaveData, computeCP, formatNumber, playerLevel, playerMaxHp } from '../game/engine';
+import { effectivePouchSlots, isBattlePassActive, SaveData, buildCombatStats, computeCP, formatNumber, playerLevel } from '../game/engine';
 import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, gearBySlot, MAX_DURABILITY, refineLevel } from '../game/gear';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import { getTitleDef, TITLES } from '../game/titles';
@@ -80,7 +80,13 @@ export default function HeroModal({
   const wSubs = save.itemSubstats?.[weapon.id] ?? [];
   const aSubs = save.itemSubstats?.[armor.id] ?? [];
 
-  const maxHp = playerMaxHp(save);
+  // Max HP comes from the shared combat-stats derivation (identical to what Hunting/Dungeon fight with).
+  // The three figures below (damage / defense / crit) are DELIBERATELY still the pre-existing
+  // display-only formulas, so this refactor changes no number shown: they omit rarity, durability,
+  // gems, substats, blessed and Strength Elixir (and "defense" is the raw reduction sum, not the real
+  // mitigation). Whether to show effective combat values instead is a UX decision about temporary
+  // buffs — see the audit notes; do not "fix" it silently.
+  const maxHp = buildCombatStats(save).maxHp;
   const totalDmg = Math.round(
     (T.combat.attackMin + T.combat.attackMax) / 2 + effectiveDamage(weapon, wLvl) + save.str * T.advanced.strDmgPerPoint,
   );
