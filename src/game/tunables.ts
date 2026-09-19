@@ -196,13 +196,17 @@ const T = DebugPanel.define({
     victoryXp: { value: 60, min: 10, max: 500, step: 5, label: 'XP per victory' },
     checkpointXpBonus: { value: 200, min: 0, max: 2000, step: 10, label: 'Bonus XP per checkpoint cleared' },
     bossXpBonus: { value: 500, min: 0, max: 5000, step: 25, label: 'Bonus XP per biome boss cleared' },
-    // NO LONGER read by combat (Hunting/Dungeon/CP use strengthFlatDamage + strengthWeaponScalePerPoint below,
-    // see derivedStats.ts strengthAdjustedDamage). Still read by HeroModal's display-only damage figure and the
-    // inactive legacy arena, which keep the old flat-STR formula on purpose.
-    strDmgPerPoint: { value: 1, min: 0, max: 10, step: 0.5, label: 'Damage per STR point (HeroModal display / legacy only)' },
+    // NO LONGER read by combat, CP or the HeroModal (they all use strengthFlatDamage + strengthWeaponScalePerPoint
+    // below via derivedStats.ts strengthAdjustedDamage). Only the inactive legacy arena still reads it.
+    strDmgPerPoint: { value: 1, min: 0, max: 10, step: 0.5, label: 'Damage per STR point (legacy arena only)' },
     // STR -> damage, hybrid: dmgBase = (baseHit + W) * (1 + STR * scale) + STR * flat
     strengthFlatDamage: { value: 0.5, min: 0, max: 5, step: 0.05, label: 'STR: flat damage per point' },
     strengthWeaponScalePerPoint: { value: 0.003, min: 0, max: 0.02, step: 0.0005, label: 'STR: (base hit + weapon) damage scaling per point' },
+    // CP (see derivedStats.ts combatPowerCore). Sustain: sigma = min(cap, lifesteal% * (1 + reduction)) is the share of
+    // incoming damage healed in a symmetric duel; the survival multiplier is 1/(1-sigma), so cap 0.5 => at most x2.
+    cpSustainSigmaCap: { value: 0.5, min: 0, max: 0.9, step: 0.05, label: 'CP: max sustain share (sigma cap)' },
+    // Math-safety ceiling for each CP input (NOT a gameplay limit): keeps tampered values from overflowing to Infinity.
+    cpInputCeiling: { value: 1000000000000, min: 1000000, max: 1000000000000000, step: 1000000, label: 'CP: per-input safety ceiling' },
     // Overflow guard only (NOT a points rule): keeps a tampered/garbage STR from overflowing the damage math to Infinity.
     strengthOverflowGuard: { value: 1000000, min: 1000, max: 1000000000, step: 1000, label: 'STR: safety ceiling used in the damage formula' },
     vitHpPerPoint: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP per VIT point' },

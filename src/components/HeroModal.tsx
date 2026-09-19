@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import T from '../game/tunables';
-import { t } from '../locales';
+import { activeLocale, t } from '../locales';
 import Assets from '../assets.json';
+import { mitigationFraction } from '../game/derivedStats';
 import { effectivePouchSlots, isBattlePassActive, SaveData, buildCombatStats, computeCP, formatNumber, playerLevel } from '../game/engine';
-import { effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, gearBySlot, MAX_DURABILITY, refineLevel } from '../game/gear';
+import { effectiveDamage, effectiveMaxHp, getEquipped, getGear, gearBySlot, MAX_DURABILITY, refineLevel } from '../game/gear';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import { getTitleDef, TITLES } from '../game/titles';
 import { getMaterial, hasMaterials, MaterialId } from '../game/materials';
@@ -80,18 +80,23 @@ export default function HeroModal({
   const wSubs = save.itemSubstats?.[weapon.id] ?? [];
   const aSubs = save.itemSubstats?.[armor.id] ?? [];
 
-  // Max HP comes from the shared combat-stats derivation (identical to what Hunting/Dungeon fight with).
-  // The three figures below (damage / defense / crit) are DELIBERATELY still the pre-existing
-  // display-only formulas, so this refactor changes no number shown: they omit rarity, durability,
-  // gems, substats, blessed and Strength Elixir (and "defense" is the raw reduction sum, not the real
-  // mitigation). Whether to show effective combat values instead is a UX decision about temporary
-  // buffs — see the audit notes; do not "fix" it silently.
-  const maxHp = buildCombatStats(save).maxHp;
-  const totalDmg = Math.round(
-    (T.combat.attackMin + T.combat.attackMax) / 2 + effectiveDamage(weapon, wLvl) + save.str * T.advanced.strDmgPerPoint,
-  );
-  const defensePct = Math.round((effectiveResistance(armor, aLvl) + save.res * T.advanced.resResistPerPoint) * 100);
-  const critPct = Math.round(effectiveCrit(weapon, wLvl) * 100);
+  // Every derived figure below comes straight from the shared combat-stats derivation (buildCombatStats) — the same
+  // PERMANENT stats Hunting, the Dungeon and computeCP use: gear, refine, rarity, durability, gems, substats and the
+  // relic's crit multiplier included. Temporary buffs (blessed / Strength Elixir / potions) are NOT part of them, so
+  // they are not shown here. The only math in this file is unit conversion for display (rounding, %, attacks/s).
+  const stats = buildCombatStats(save);
+  const cp = computeCP(save);
+  // trim = true drops trailing zeros (25.0 -> "25"); false keeps a fixed number of decimals (0.90 -> "0,90").
+  const fmtDec = (n: number, digits = 1, trim = true) => {
+    const s = trim ? String(Number(n.toFixed(digits))) : n.toFixed(digits);
+    return activeLocale === 'pt' ? s.replace('.', ',') : s;
+  };
+  const displayDamage = Math.round(stats.dmgBase);
+  const critPct = fmtDec(stats.critChance * 100);
+  const critDamagePct = Math.round(stats.critMult * 100);
+  const mitigationPct = fmtDec(mitigationFraction(stats.reduction) * 100);
+  const attackSpeed = fmtDec(1000 / stats.heroMs, 2, false);
+  const lifestealPct = fmtDec(stats.lifesteal);
 
   const totalPoints = level * 3;
   const spent = save.str + save.vit + save.agi + save.res;
@@ -325,35 +330,52 @@ export default function HeroModal({
           </div>
         ) : (
           <div className="hero-tab-scroll">
+            <div className="attrs-header">
+              <span>{t('profile.combatStats')}</span>
+            </div>
             <div className="hero-stats-grid">
               <div className="hero-stat-cell">
                 <span>❤️ {t('profile.maxHp')}</span>
-                <span className="num-abbr">{formatNumber(maxHp)}</span>
+                <span className="num-abbr">{formatNumber(stats.maxHp)}</span>
               </div>
               <div className="hero-stat-cell">
                 <span>⚔️ {t('profile.damage')}</span>
-                <span className="num-abbr">{formatNumber(totalDmg)}</span>
-              </div>
-              <div className="hero-stat-cell">
-                <span>🛡️ {t('profile.defense')}</span>
-                <span>{defensePct}%</span>
+                <span className="num-abbr">{formatNumber(displayDamage)}</span>
               </div>
               <div className="hero-stat-cell">
                 <span>💥 {t('profile.critRate')}</span>
                 <span>{critPct}%</span>
+              </div>
+              <div className="hero-stat-cell">
+                <span>🔥 {t('profile.critDamage')}</span>
+                <span>{critDamagePct}%</span>
+              </div>
+              <div className="hero-stat-cell">
+                <span>🛡️ {t('profile.defense')}</span>
+                <span>{mitigationPct}%</span>
+              </div>
+              <div className="hero-stat-cell">
+                <span>⚡ {t('profile.attackSpeed')}</span>
+                <span>
+                  {attackSpeed} {t('profile.attackSpeedUnit')}
+                </span>
+              </div>
+              <div className="hero-stat-cell">
+                <span>🩸 {t('profile.lifesteal')}</span>
+                <span>{lifestealPct}%</span>
               </div>
             </div>
 
             <div className="hero-cp-bar">
               <span className="hero-cp-icon">⚔️</span>
               <span>
-                {t('profile.cp')}: <span className="num-abbr">{formatNumber(computeCP(save))}</span>
+                {t('profile.cp')}: <span className="num-abbr">{formatNumber(cp)}</span>
               </span>
             </div>
 
             <div className="attrs-header">
               <span>{t('attributes.points', { n: remaining })}</span>
-              <span>{t('attributes.cp', { n: computeCP(save) })}</span>
+              <span>{t('attributes.cp', { n: cp })}</span>
             </div>
             <div className="attrs-list">
               {ATTRS.map((a) => (

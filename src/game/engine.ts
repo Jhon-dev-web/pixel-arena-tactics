@@ -9,7 +9,7 @@ import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
-import { applyDamageModifiers, CombatModifiers, CombatStats, effectiveHp, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
+import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
@@ -172,10 +172,9 @@ export function playerMaxHp(save: SaveData): number {
 // re-derive these numbers anywhere else. Pure function of the save: no clock, no buffs. Temporary
 // modifiers (blessed / Strength Elixir) are separate, see combatModifiersFromSave.
 //
-// `includeRelicCritMult` exists only to preserve today's behavior: real combat (Hunting + Dungeon) has
-// always included the relic's critMultBonus, while computeCP never did. Use buildCombatStats for combat
-// and buildBaseCombatStats for CP; do not add a third variant without a design decision.
-function deriveCombatStats(save: SaveData, includeRelicCritMult: boolean): CombatStats {
+// These are the PERMANENT effective stats (relic crit multiplier included); Hunting, the Dungeon and computeCP
+// all read them. Temporary modifiers are never part of this.
+export function buildCombatStats(save: SaveData): CombatStats {
   const { weapon, armor, relic } = getEquipped(save.equipped);
   const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
   const aLvl = refineLevel(save.upgrades, save.equipped.armor);
@@ -195,23 +194,12 @@ function deriveCombatStats(save: SaveData, includeRelicCritMult: boolean): Comba
     maxHp: playerMaxHp(save),
     dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity, save.str),
     critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100,
-    critMult: T.combat.critMult + (includeRelicCritMult ? (relic?.critMultBonus ?? 0) : 0) + gems.critDamageBonus + subs.critDamage / 100,
+    critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
     heroMs: heroAttackIntervalMs(save.agi),
     reduction: effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100,
     lifesteal: subs.lifesteal,
   };
-}
-
-// Effective stats: what a hero actually fights with (Hunting and Dungeon).
-export function buildCombatStats(save: SaveData): CombatStats {
-  return deriveCombatStats(save, true);
-}
-
-// Base stats: the same derivation minus the relic's crit-multiplier bonus. Exists solely so computeCP's
-// output stays numerically identical to before the refactor.
-export function buildBaseCombatStats(save: SaveData): CombatStats {
-  return deriveCombatStats(save, false);
 }
 
 // Temporary damage modifiers, evaluated at a moment the CALLER chooses (`now` is explicit on purpose —
@@ -229,37 +217,16 @@ export function combatModifiersFromSave(save: SaveData, now: number): CombatModi
 // unit change — CP has no absolute physical meaning, it's only ever compared to a recommended threshold.
 const CP_SCALE = 2;
 
-// CP, Layer 2-derived: the old formula summed damage/hp/defense/crit contributions as independent
-// terms (`damage*2 + hp*0.4 + defensePct*1.5 + critRatePct*0.8 + critDamagePct*0.3 + lifestealPct`).
-// That additive shape was the root cause of the Andar 25 case where two builds ~8% apart in CP had a
-// 16%-vs-100% win rate — combat doesn't combine offense and survivability additively, it combines them
-// multiplicatively (a fight is decided by how many exchanges the player survives × how much each
-// exchange deals), and crit chance/crit multiplier only matter jointly, not as two separate flat
-// percentages. This version derives CP from the same Layer 2 numbers combat itself runs on:
-//   - dps: expected damage per second, folding in crit chance AND crit multiplier as the single joint
-//     multiplier they actually are in combat (1 + critChance*(critMult-1)), divided by the attack
-//     interval — so AGI's attack-speed contribution finally affects CP too (it silently didn't before).
-//   - effectiveHp: maxHp scaled by the same asymptotic resistance relationship applyDamageReduction
-//     uses (see derivedStats.ts) — this is what makes damage and survivability interact
-//     multiplicatively instead of as two independent additive terms.
-//   - core power = sqrt(dps * effectiveHp): a geometric-mean shape, so a lopsided glass-cannon-or-brick
-//     build doesn't get full CP credit for stacking only one axis, while a build that raises both
-//     roughly proportionally (like refine does, on both weapon and armor at once) gets the
-//     disproportionate credit that's now honest, not a formula quirk.
-// Lifesteal stays a small flat add-on (as before) — a minor stat, not worth modeling multiplicatively.
-//
-// The stat inputs come from buildBaseCombatStats (the shared derivation, includes the flat base hit —
-// omitting it used to make a brand-new character with a 0-damage starting weapon show exactly 0 CP).
-// KNOWN, PRESERVED GAPS (audit findings, deliberately NOT changed by the centralization refactor — CP's
-// numeric output is identical to before): CP does not see the relic's critMultBonus (hence the "base"
-// stats, not the effective ones), nor blessed / Strength Elixir (CombatModifiers are never applied here).
+// CP = round(CP_SCALE * combatPowerCore(stats)): a universal, STATIC measure of general combat power (see
+// derivedStats.ts combatPowerCore for the formula). Geometric mean of expected DPS (attack speed, crit chance AND crit
+// multiplier folded together) and effective HP (maxHp scaled by the same asymptotic resistance applyDamageReduction
+// uses), times a sustain multiplier derived from lifesteal. The geometric mean matches how a duel is actually decided
+// (the side with the larger dps*ehp wins a symmetric fight) and keeps lopsided builds from being over-credited.
+// It reads buildCombatStats — permanent gear/attributes only (relic crit multiplier included). blessed, Strength
+// Elixir, potions and every other temporary/economic modifier are deliberately NOT part of CP. CP is a general
+// strength rating, not a matchup predictor: a lower-CP build can beat a higher-CP one.
 export function computeCP(save: SaveData): number {
-  const stats = buildBaseCombatStats(save);
-  const dps = (stats.dmgBase * (1 + stats.critChance * (stats.critMult - 1))) / (stats.heroMs / 1000);
-  const effHp = effectiveHp(stats.maxHp, stats.reduction);
-
-  const corePower = Math.sqrt(dps * effHp);
-  return Math.round(CP_SCALE * corePower + stats.lifesteal);
+  return Math.round(CP_SCALE * combatPowerCore(buildCombatStats(save)));
 }
 
 export function isBattlePassActive(save: SaveData, now: number): boolean {

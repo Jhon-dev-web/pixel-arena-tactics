@@ -41,6 +41,13 @@ export function applyDamageReduction(rawDamage: number, reductionSum: number): n
   return Math.max(1, Math.round(rawDamage / (1 + safeSum)));
 }
 
+// Real share of incoming damage negated by a reductionSum: damage / (1 + r) removes r / (1 + r) of it (e.g. r = 0.4337
+// -> ~30.25%, NOT 43.37%). Display helper only — combat keeps using applyDamageReduction on the raw sum.
+export function mitigationFraction(reductionSum: number): number {
+  const r = Number.isFinite(reductionSum) ? Math.max(0, reductionSum) : 0;
+  return r / (1 + r);
+}
+
 // Effective HP, Layer 2: how large a raw-damage-only HP pool would need to be to take the same total
 // punishment as `maxHp` behind `reductionSum` of resistance — i.e. maxHp scaled by the same asymptotic
 // relationship applyDamageReduction uses. This is what makes survivability and resistance interact
@@ -54,7 +61,7 @@ export function effectiveHp(maxHp: number, reductionSum: number): number {
 //
 // `CombatStats` is the Layer-2 result (see the header above) for ONE hero: what the Hunting simulation,
 // the Dungeon's BattleModal and computeCP all read. It is built by engine.ts's buildCombatStats /
-// buildBaseCombatStats (kept there because it needs playerLevel/playerMaxHp, and engine.ts already
+// buildCombatStats (kept there because it needs playerLevel/playerMaxHp, and engine.ts already
 // imports this file — putting the builder here would create an import cycle).
 //
 // It deliberately holds only PERMANENT derived numbers (primaries + gear: refine, rarity, durability,
@@ -98,6 +105,31 @@ export function heroAttackIntervalMs(rawAgi: number): number {
   const safeAgi = Number.isFinite(rawAgi) ? Math.min(T.battle.agiMax, Math.max(0, Math.floor(rawAgi))) : 0;
   const ms = floor + (base - floor) / (1 + safeAgi / T.battle.agiHalfPoint);
   return Number.isFinite(ms) ? Math.max(floor, ms) : base;
+}
+
+// Combat Power core (unscaled): geometric mean of expected DPS and effective HP, times a sustain multiplier.
+//   cc    = clamp(critChance, 0, 1)                         (CP-only protection; real combat is not touched)
+//   dps   = dmgBase * (1000 / heroMs) * (1 + cc * (critMult - 1))
+//   ehp   = maxHp * (1 + reduction)
+//   sigma = min(cap, lifesteal% * (1 + reduction))          heal / incoming damage in a symmetric duel
+//   core  = sqrt(dps * ehp / (1 - sigma))                   computeCP = round(CP_SCALE * core)
+// Input is the PERMANENT effective CombatStats (buildCombatStats: gear, refine, rarity, durability, gems, substats,
+// relic crit multiplier) — never blessed / Strength Elixir / potions. Every input is sanitized here (non-finite ->
+// 0, negatives -> 0, capped by cpInputCeiling) so a tampered save can never yield NaN, Infinity or a negative CP.
+function safeStat(x: number, max: number): number {
+  return Number.isFinite(x) ? Math.min(max, Math.max(0, x)) : 0;
+}
+
+export function combatPowerCore(stats: CombatStats): number {
+  const ceiling = T.advanced.cpInputCeiling;
+  const cc = safeStat(stats.critChance, 1);
+  const critMult = Math.max(1, safeStat(stats.critMult, ceiling));
+  const heroMs = Number.isFinite(stats.heroMs) && stats.heroMs > 0 ? stats.heroMs : T.battle.heroAttackMs;
+  const dps = safeStat(stats.dmgBase, ceiling) * (1000 / heroMs) * (1 + cc * (critMult - 1));
+  const reduction = safeStat(stats.reduction, ceiling);
+  const ehp = effectiveHp(safeStat(stats.maxHp, ceiling), reduction);
+  const sigma = Math.min(Math.min(0.95, T.advanced.cpSustainSigmaCap), (safeStat(stats.lifesteal, ceiling) / 100) * (1 + reduction));
+  return Math.sqrt((dps * ehp) / (1 - sigma));
 }
 
 export interface CombatModifiers {
