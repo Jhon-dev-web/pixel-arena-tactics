@@ -20,25 +20,33 @@ import {
   SaveData,
 } from './game/engine';
 import { getBattlePassLevelDef } from './game/battlepass';
+import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot, reforgeGoldCost } from './game/gear';
 import {
-  DURABILITY_LOSS_PER_STAGE,
-  GEAR,
-  getGear,
-  MAX_DURABILITY,
-  MAX_REFINE,
-  refineLevel,
-  reforgeGoldCost,
-  upgradeChance,
-  upgradeCost,
-} from './game/gear';
+  InstancedSlot,
+  applyDiscardInstance,
+  applyDurabilityLoss,
+  applyEquipInstance,
+  applyForge,
+  applyRepair,
+  applyReforgeInstance,
+  applySalvage,
+  applySocketGem,
+  applyUnequipSlot,
+  applyUnsocketGem,
+  applyUpgrade,
+  createGearInstance,
+  equippedSubstatTotals,
+  maxGearInstances,
+  questMaxRefine,
+  resolveGearInstance,
+} from './game/gearInstances';
 import { MaterialId, hasMaterials } from './game/materials';
 import { getRefiningRecipe } from './game/refining';
 import { getPotionRecipe } from './game/potions';
 import { CONSUMABLE_STACK, ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from './game/consumables';
 import { isBagFull, inventorySlotsUsed, MAX_SLOTS } from './game/inventory';
-import { GEMS, GemId, hasGems, socketsForTier } from './game/gems';
+import { GEMS, GemId } from './game/gems';
 import { getTitleDef } from './game/titles';
-import { canSalvage, getSalvageReturn, SALVAGE_BONUS_CHANCE } from './game/salvage';
 import { playerSpriteUrl } from './game/sprites';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
@@ -66,7 +74,6 @@ import { skillLevel } from './game/skills';
 import { getPlant } from './game/garden';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
-import { rollRarity, rollSubstats, totalSubstatTotals } from './game/rarity';
 import TopHud from './components/TopHud';
 import FirstViewTooltip from './components/FirstViewTooltip';
 import WelcomeModal from './components/WelcomeModal';
@@ -320,13 +327,8 @@ function App() {
     const stages = Math.max(0, rewards.stages);
     const success = outcome === 'retreat' && stages > 0;
     const atCap = playerLevel(s.xp) >= 100;
-    const dur = { ...(s.durability ?? {}) };
-    if (stages > 0) {
-      for (const slot of ['weapon', 'armor'] as const) {
-        const id = s.equipped[slot];
-        if (id) dur[id] = Math.max(0, (dur[id] ?? MAX_DURABILITY) - DURABILITY_LOSS_PER_STAGE * stages);
-      }
-    }
+    // Only the EQUIPPED weapon / armor instances wear down; every other copy is untouched.
+    const worn = stages > 0 ? applyDurabilityLoss(s, DURABILITY_LOSS_PER_STAGE * stages) : s;
     // Floor checkpoint: every stage actually defeated this run is banked permanently, win or lose the
     // run overall — dying deep in a run no longer discards floors you already cleared to get there.
     // Only the one-time milestone loot below (gold/gems/title at 25/50/75/100) stays retreat-gated.
@@ -341,7 +343,7 @@ function App() {
       quests.counters.maxFloorCleared = Math.max(quests.counters.maxFloorCleared ?? 0, clearedFloor);
       ({ battlePassLevel, battlePassXp } = addBattlePassXp(s, T.battlePass.xpPerFloor * stages));
     }
-    const subs = totalSubstatTotals(s.equipped, s.itemSubstats ?? {});
+    const subs = equippedSubstatTotals(s);
     const goldGain = Math.round(rewards.gold * (1 + subs.goldBonus / 100));
     const unlockedHuntingZones = Array.from(new Set([...s.unlockedHuntingZones, ...unlockedZoneIds(nextFloor)]));
 
@@ -387,7 +389,7 @@ function App() {
       victories: s.victories + (success ? 1 : 0),
       highestDungeonFloor: nextFloor,
       unlockedHuntingZones,
-      durability: dur,
+      gearInstances: worn.gearInstances,
       blessed: false,
       quests,
       battlePassLevel,
@@ -397,21 +399,15 @@ function App() {
     setBattleFloor(null);
   };
 
+  // `id` is a gear INSTANCE id.
   const repairItem = (id: string, blessed: boolean) => {
-    const item = getGear(id);
-    if (!item) return;
     const s = saveRef.current;
-    const cost = effectiveRepairCost(s, item.tier ?? 0, Date.now());
-    if (s.gold < cost) return;
-    if (blessed && s.shards < 1) return;
+    const hit = resolveGearInstance(s, id);
+    if (!hit) return;
+    const next = applyRepair(s, id, blessed, effectiveRepairCost(s, hit.item.tier ?? 0, Date.now()));
+    if (!next) return;
     playSfx('victory');
-    setSaveBoth({
-      ...s,
-      gold: s.gold - cost,
-      shards: blessed ? s.shards - 1 : s.shards,
-      durability: { ...(s.durability ?? {}), [id]: MAX_DURABILITY },
-      blessed: blessed ? true : s.blessed,
-    });
+    setSaveBoth(next);
   };
 
   const buyGem = (id: GemId) => {
@@ -423,38 +419,19 @@ function App() {
     setSaveBoth({ ...s, shards: s.shards - def.shardCost, gems: { ...s.gems, [id]: (s.gems[id] ?? 0) + 1 } });
   };
 
-  const socketGem = (itemId: string, gemId: GemId) => {
-    const s = saveRef.current;
-    const item = getGear(itemId);
-    if (!item) return;
-    if ((s.gems?.[gemId] ?? 0) <= 0) return;
-    const sockets = { ...(s.sockets ?? {}) };
-    const list = [...(sockets[itemId] ?? [])];
-    if (list.length >= socketsForTier(item.tier ?? 0)) return;
-    list.push(gemId);
-    sockets[itemId] = list;
+  // Sockets belong to one gear INSTANCE.
+  const socketGem = (instanceId: string, gemId: GemId) => {
+    const next = applySocketGem(saveRef.current, instanceId, gemId);
+    if (!next) return;
     playSfx('click');
-    setSaveBoth({
-      ...s,
-      gems: { ...s.gems, [gemId]: (s.gems[gemId] ?? 0) - 1 },
-      sockets,
-    });
+    setSaveBoth(next);
   };
 
-  const unsocketGem = (itemId: string, index: number) => {
-    const s = saveRef.current;
-    const sockets = { ...(s.sockets ?? {}) };
-    const list = [...(sockets[itemId] ?? [])];
-    const gemId = list[index];
-    if (!gemId) return;
-    list.splice(index, 1);
-    sockets[itemId] = list;
+  const unsocketGem = (instanceId: string, index: number) => {
+    const next = applyUnsocketGem(saveRef.current, instanceId, index);
+    if (!next) return;
     playSfx('click');
-    setSaveBoth({
-      ...s,
-      gems: { ...s.gems, [gemId]: (s.gems[gemId] ?? 0) + 1 },
-      sockets,
-    });
+    setSaveBoth(next);
   };
 
   const openExpedition = () => {
@@ -536,7 +513,7 @@ function App() {
     const s = saveRef.current;
     const def = [...QUESTS_DAILY, ...QUESTS_ACHIEVEMENTS].find((q) => q.id === id);
     if (!def || isClaimed(def, s.quests)) return;
-    const ctx: QuestContext = { cp: computeCP(s), maxRefine: Math.max(0, ...Object.values(s.upgrades ?? {})) };
+    const ctx: QuestContext = { cp: computeCP(s), maxRefine: questMaxRefine(s) };
     if (!isComplete(def, s.quests, ctx)) return;
     const quests = { ...s.quests };
     if (def.kind === 'daily') {
@@ -992,7 +969,12 @@ function App() {
       const cons = { ...s.consumables };
       cons[id as ConsumableId] = 0;
       setSaveBoth({ ...s, consumables: cons });
+    } else if (s.gearInstances[id]) {
+      // A weapon / armor INSTANCE: only that piece goes (never the equipped one); its gems return to the stock.
+      const next = applyDiscardInstance(s, id);
+      if (next) setSaveBoth(next);
     } else {
+      // Stackable gear (relic / tool).
       const inv = { ...s.inventory };
       delete inv[id];
       setSaveBoth({ ...s, inventory: inv });
@@ -1000,85 +982,29 @@ function App() {
     playSfx('click');
   };
 
+  // `id` is a weapon / armor INSTANCE id (or a relic template id). The equipped piece can never be salvaged,
+  // another copy of the same template can; socketed gems return to the stock.
   const salvageItem = (id: string) => {
-    const item = getGear(id);
-    if (!item) return;
-    const s = saveRef.current;
-    if (!canSalvage(item, s.equipped, s.inventory)) return;
-
-    const result = getSalvageReturn(item);
-    const materials = { ...s.materials };
-    for (const [mid, qty] of Object.entries(result.materials)) {
-      materials[mid as MaterialId] = (materials[mid as MaterialId] ?? 0) + (qty as number);
-    }
-
-    let gems = s.gems;
-    let bonusGranted = false;
-    const rarity = s.itemRarity?.[id] ?? 'common';
-    const bonusChance = SALVAGE_BONUS_CHANCE[rarity] ?? 0;
-    if (bonusChance > 0 && Math.random() < bonusChance) {
-      bonusGranted = true;
-      if (Math.random() < 0.5) {
-        materials.essence = (materials.essence ?? 0) + 1;
-      } else {
-        const gemIds: GemId[] = ['ruby', 'sapphire', 'emerald'];
-        const gid = gemIds[Math.floor(Math.random() * gemIds.length)];
-        gems = { ...s.gems, [gid]: (s.gems[gid] ?? 0) + 1 };
-      }
-    }
-
-    const inv = { ...s.inventory };
-    inv[id] = (inv[id] ?? 0) - 1;
-    if (inv[id] <= 0) delete inv[id];
-
+    const result = applySalvage(saveRef.current, id);
+    if (!result) return;
     playSfx('click');
-    setSaveBoth({ ...s, inventory: inv, materials, gems });
-    showToast(bonusGranted ? t('inventory.salvageBonus') : t('inventory.salvageDone'));
+    setSaveBoth(result.save);
+    showToast(result.bonusGranted ? t('inventory.salvageBonus') : t('inventory.salvageDone'));
   };
 
-  const forgeItem = (id: string) => {
+  // A weapon / armor craft creates ONE new independent instance (its own rarity roll). Recipe ingredients that
+  // are gear consume real instances: `consumedIds` is the selection the player confirmed in the Forge, otherwise
+  // the cheapest unequipped copies (see gearInstances.planForgeIngredients). Their gems go back to the stock.
+  const forgeItem = (id: string, consumedIds?: string[]) => {
     const item = getGear(id);
     if (!item) return;
     const s = saveRef.current;
-    const recipe = item.recipe ?? {};
-    if (s.gold < item.cost) return;
-    if (playerLevel(s.xp) < (recipe.requiredLevel ?? 0)) return;
-    if (!hasMaterials(s.materials, recipe.materials)) return;
-    if (!hasGems(s.gems, recipe.gems)) return;
-    for (const [itemId, need] of Object.entries(recipe.items ?? {})) {
-      if ((s.inventory[itemId] ?? 0) < (need as number)) return;
+    const result = applyForge(s, id, { level: playerLevel(s.xp), consumedIds });
+    if (!result.ok) {
+      if (result.reason === 'capacity') showToast(t('forge.gearFull', { n: maxGearInstances() }));
+      return;
     }
-    if ((recipe.shards ?? 0) > 0 && s.shards < (recipe.shards ?? 0)) return;
-
-    const mats = { ...s.materials };
-    for (const [mid, count] of Object.entries(recipe.materials ?? {})) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
-    }
-    const gems = { ...s.gems };
-    for (const [gid, count] of Object.entries(recipe.gems ?? {})) {
-      gems[gid as GemId] = (gems[gid as GemId] ?? 0) - (count as number);
-    }
-    const inv = { ...s.inventory };
-    for (const [itemId, need] of Object.entries(recipe.items ?? {})) {
-      inv[itemId] = (inv[itemId] ?? 0) - (need as number);
-    }
-    const isCombatGear = item.slot === 'weapon' || item.slot === 'armor';
-    const rarity = isCombatGear ? rollRarity() : undefined;
-    const subs = rarity ? rollSubstats(rarity, item.tier ?? 0) : undefined;
-    setSaveBoth({
-      ...s,
-      gold: s.gold - item.cost,
-      materials: mats,
-      gems,
-      inventory: { ...inv, [id]: (inv[id] ?? 0) + 1 },
-      shards: s.shards - (recipe.shards ?? 0),
-      quests: {
-        ...s.quests,
-        daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
-      },
-      itemRarity: rarity ? { ...(s.itemRarity ?? {}), [id]: rarity } : s.itemRarity,
-      itemSubstats: subs ? { ...(s.itemSubstats ?? {}), [id]: subs } : s.itemSubstats,
-    });
+    setSaveBoth(result.save);
     playSfx('victory');
     showToast(t('forge.toBag', { n: gearText(item.nameKey) }));
   };
@@ -1110,60 +1036,26 @@ function App() {
     showToast(t('forge.toBag', { n: t(`materials.mat_${recipe.output}`) }));
   };
 
+  // Same rules as before (1 shard + escalating Gold), but per INSTANCE: rerolls only that piece's substats.
   const reforgeItem = (id: string) => {
-    const item = getGear(id);
-    if (!item) return;
-    const s = saveRef.current;
-    const count = s.reforgeCount[id] ?? 0;
-    const goldCost = reforgeGoldCost(count);
-    if (s.shards < 1 || s.gold < goldCost) return;
-    const rarity = s.itemRarity?.[id] ?? 'common';
-    const subs = rollSubstats(rarity, item.tier ?? 0);
-    setSaveBoth({
-      ...s,
-      shards: s.shards - 1,
-      gold: s.gold - goldCost,
-      itemSubstats: { ...(s.itemSubstats ?? {}), [id]: subs },
-      reforgeCount: { ...s.reforgeCount, [id]: count + 1 },
-    });
+    const next = applyReforgeInstance(saveRef.current, id, reforgeGoldCost);
+    if (!next) return;
+    setSaveBoth(next);
     playSfx('click');
     showToast(t('forge.reforged'));
   };
 
+  // `id` is a gear INSTANCE id: only that piece changes level.
   const performUpgrade = (id: string, useCatalyst: boolean) => {
-    const item = getGear(id);
-    if (!item) return;
     const s = saveRef.current;
-    const lvl = refineLevel(s.upgrades, id);
-    if (lvl >= MAX_REFINE) return;
-    const cost = upgradeCost(item, lvl);
-    if (s.gold < cost.gold) return;
-    if (!hasMaterials(s.materials, cost.materials)) return;
-    if ((cost.shards ?? 0) > 0 && s.shards < (cost.shards ?? 0)) return;
-    if (useCatalyst && (s.consumables.refine_catalyst ?? 0) < 1) return;
-
-    const mats = { ...s.materials };
-    for (const [mid, count] of Object.entries(cost.materials ?? {})) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
-    }
-    const success = useCatalyst || Math.random() < upgradeChance(lvl);
-    setSaveBoth({
-      ...s,
-      gold: s.gold - cost.gold,
-      materials: mats,
-      shards: s.shards - (cost.shards ?? 0),
-      consumables: useCatalyst
-        ? { ...s.consumables, refine_catalyst: (s.consumables.refine_catalyst ?? 0) - 1 }
-        : s.consumables,
-      upgrades: success ? { ...s.upgrades, [id]: lvl + 1 } : s.upgrades,
-      quests: {
-        ...s.quests,
-        daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
-      },
-    });
-    if (success) {
+    const hit = resolveGearInstance(s, id);
+    if (!hit) return;
+    const result = applyUpgrade(s, id, useCatalyst);
+    if (!result) return;
+    setSaveBoth(result.save);
+    if (result.success) {
       playSfx('victory');
-      showToast(t('forge.upgradeOk', { n: gearText(item.nameKey), m: lvl + 1 }));
+      showToast(t('forge.upgradeOk', { n: gearText(hit.item.nameKey), m: result.level + 1 }));
     } else {
       playSfx('block');
       showToast(t('forge.upgradeFail'));
@@ -1211,10 +1103,20 @@ function App() {
 
   const adminUnlockAll = () => {
     playSfx('click');
-    const all = GEAR.filter((g) => g.slot !== 'relic').map((g) => g.id);
-    const inv = { ...saveRef.current.inventory };
-    for (const id of all) inv[id] = Math.max(inv[id] ?? 0, 1);
-    setSaveBoth({ ...saveRef.current, inventory: inv });
+    const s = saveRef.current;
+    const inv = { ...s.inventory };
+    const gearInstances = { ...s.gearInstances };
+    for (const g of GEAR.filter((x) => x.slot !== 'relic')) {
+      if (isInstancedSlot(g.slot)) {
+        if (!Object.values(gearInstances).some((i) => i.templateId === g.id)) {
+          const inst = createGearInstance(g.id, { origin: 'admin', createdAt: Date.now() });
+          gearInstances[inst.id] = inst;
+        }
+      } else {
+        inv[g.id] = Math.max(inv[g.id] ?? 0, 1);
+      }
+    }
+    setSaveBoth({ ...s, inventory: inv, gearInstances });
   };
 
   const adminToggleCheat = () => {
@@ -1234,25 +1136,36 @@ function App() {
     setShopOpen(false);
   };
 
+  // `id` is a weapon / armor INSTANCE id, or a template id for stackable gear (relic, tools).
   const equipGear = (id: string) => {
+    const s = saveRef.current;
+    if (s.gearInstances[id]) {
+      const next = applyEquipInstance(s, id);
+      if (!next) return;
+      playSfx('click');
+      setSaveBoth(next);
+      return;
+    }
     const item = getGear(id);
-    if (saveRef.current.equipped[item.slot] === id) return;
+    if (!item || isInstancedSlot(item.slot) || (s.inventory[id] ?? 0) <= 0) return;
+    if (s.equipped[item.slot] === id) return;
     playSfx('click');
-    setSaveBoth({
-      ...saveRef.current,
-      equipped: { ...saveRef.current.equipped, [item.slot]: id },
-    });
+    setSaveBoth({ ...s, equipped: { ...s.equipped, [item.slot]: id } });
   };
 
+  // Weapon / armor slot -> empty ("bare hands", zero-stat starter); the piece stays in the bag.
   const unequipGear = (id: string) => {
+    const s = saveRef.current;
+    const hit = resolveGearInstance(s, id);
+    if (hit) {
+      playSfx('click');
+      setSaveBoth(applyUnequipSlot(s, hit.item.slot as InstancedSlot));
+      return;
+    }
     const item = getGear(id);
-    if (!item) return;
+    if (!item || isInstancedSlot(item.slot)) return;
     playSfx('click');
-    const fallback = item.slot === 'weapon' ? 'wooden_club' : item.slot === 'armor' ? 'ragged_clothes' : null;
-    setSaveBoth({
-      ...saveRef.current,
-      equipped: { ...saveRef.current.equipped, [item.slot]: fallback },
-    });
+    setSaveBoth({ ...s, equipped: { ...s.equipped, [item.slot]: null } });
   };
 
   const heroSpriteUrl = playerSpriteUrl();
@@ -1340,9 +1253,9 @@ function App() {
             data-ui
           >
             <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />
-            {claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) }) > 0 && (
+            {claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) }) > 0 && (
               <span className="quests-badge">
-                {claimableCount(save.quests, { cp: computeCP(save), maxRefine: Math.max(0, ...Object.values(save.upgrades ?? {})) })}
+                {claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) })}
               </span>
             )}
             <FirstViewTooltip show={activeTooltip === 'quests'} label={tooltipText('quests')} />

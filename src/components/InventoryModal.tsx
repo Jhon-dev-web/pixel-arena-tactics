@@ -1,21 +1,22 @@
 import { useState } from 'react';
 import { t } from '../locales';
 import { SaveData } from '../game/engine';
-import { GEAR, GearItem, getGear, refineLevel, reforgeGoldCost } from '../game/gear';
+import { GEAR, GearItem, getGear, isInstancedSlot, reforgeGoldCost } from '../game/gear';
+import { clampRefine, gearInstanceCount, isInstanceEquipped, listGearInstances, maxGearInstances, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
-import { getSalvageReturn, hasSalvageValue, salvageBlockReason } from '../game/salvage';
+import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
 import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
+import { refineTag } from './gearLabel';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
 const conText = (k: string): string => t(`consumables.${k}`);
 
-const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
 const EQUIPPABLE_SLOTS = new Set(['weapon', 'armor', 'pickaxe', 'axe', 'rod']);
@@ -25,6 +26,8 @@ const MANUALLY_USABLE = new Set(['xp_potion', 'strength_elixir']);
 
 type SelKind = 'gear' | 'material' | 'consumable';
 
+// A selected gear entry is either a weapon / armor INSTANCE (id = instance id) or a stackable template
+// (relic / tool: id = template id).
 export default function InventoryModal({
   save,
   onEquip,
@@ -49,7 +52,8 @@ export default function InventoryModal({
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmSalvage, setConfirmSalvage] = useState(false);
 
-  const gearItems = GEAR.filter((g) => (save.inventory?.[g.id] ?? 0) > 0);
+  const gearInstances = listGearInstances(save);
+  const stackableGear = GEAR.filter((g) => !isInstancedSlot(g.slot) && (save.inventory?.[g.id] ?? 0) > 0);
   const materialItems = MATERIALS.map((m) => ({ ...m, qty: save.materials?.[m.id] ?? 0 })).filter((m) => m.qty > 0);
   const consumableItems = CONSUMABLES.map((c) => ({ ...c, qty: save.consumables?.[c.id] ?? 0 })).filter((c) => c.qty > 0);
 
@@ -65,35 +69,42 @@ export default function InventoryModal({
     setConfirmSalvage(false);
   };
 
-  const selectedGear = selected?.kind === 'gear' ? getGear(selected.id) : null;
+  const selectedInstance = selected?.kind === 'gear' ? resolveGearInstance(save, selected.id)?.instance ?? null : null;
+  const selectedGear: GearItem | null =
+    selected?.kind === 'gear' ? (selectedInstance ? getGear(selectedInstance.templateId) : getGear(selected.id) ?? null) : null;
   const selectedMaterial =
     selected?.kind === 'material' ? MATERIALS.find((m) => m.id === (selected.id as MaterialId)) : null;
   const selectedConsumable =
     selected?.kind === 'consumable' ? getConsumable(selected.id) : null;
 
-  const selQty = selectedGear
-    ? save.inventory?.[selectedGear.id] ?? 0
-    : selectedMaterial
-      ? save.materials?.[selectedMaterial.id] ?? 0
-      : selectedConsumable
-        ? save.consumables?.[selectedConsumable.id] ?? 0
-        : 0;
+  const selQty = selectedInstance
+    ? 1
+    : selectedGear
+      ? save.inventory?.[selectedGear.id] ?? 0
+      : selectedMaterial
+        ? save.materials?.[selectedMaterial.id] ?? 0
+        : selectedConsumable
+          ? save.consumables?.[selectedConsumable.id] ?? 0
+          : 0;
 
-  const isEquipped = !!selectedGear && save.equipped[selectedGear.slot] === selectedGear.id;
+  const isEquipped = selectedInstance
+    ? isInstanceEquipped(save, selectedInstance.id)
+    : !!selectedGear && save.equipped[selectedGear.slot as 'relic' | 'pickaxe' | 'axe' | 'rod'] === selectedGear.id;
   const isEquippable = !!selectedGear && EQUIPPABLE_SLOTS.has(selectedGear.slot);
-  const selectedRarity = selectedGear ? save.itemRarity?.[selectedGear.id] ?? 'common' : 'common';
-  const selectedSubs = selectedGear ? save.itemSubstats?.[selectedGear.id] ?? [] : [];
+  const selectedRarity: Rarity = selectedInstance?.rarity ?? 'common';
+  const selectedSubs = selectedInstance?.substats ?? [];
+  const selectedLevel = selectedInstance ? clampRefine(selectedInstance.upgrade) : 0;
 
-  const salvageReason = selectedGear ? salvageBlockReason(selectedGear, save.equipped, save.inventory) : null;
+  const salvageReason = selected?.kind === 'gear' ? salvageBlockReason(save, selected.id) : null;
   const salvagePreview = selectedGear ? getSalvageReturn(selectedGear) : null;
 
   const handleSalvage = () => {
-    if (!selectedGear) return;
+    if (!selected || !selectedGear) return;
     if (!confirmSalvage) {
       setConfirmSalvage(true);
       return;
     }
-    onSalvage(selectedGear.id);
+    onSalvage(selected.id);
     setSelected(null);
     setConfirmSalvage(false);
   };
@@ -109,6 +120,8 @@ export default function InventoryModal({
     setConfirmDiscard(false);
   };
 
+  const gearSlotsShown = gearInstances.length + stackableGear.length;
+
   return (
     <div className="modal-backdrop">
       <div className="modal inventory-modal">
@@ -116,6 +129,7 @@ export default function InventoryModal({
           <img className="inline-icon" src="/assets/icons/nav_bag.png" alt="" /> {t('inventory.title')}
         </h2>
         <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>
+        <p className="shop-space">{t('inventory.gearSpace', { n: gearInstanceCount(save), m: maxGearInstances() })}</p>
 
         <div className="inv-tabs">
           <button className={`tab${tab === 'all' ? ' active' : ''}`} onClick={() => setTab('all')} data-ui>
@@ -134,10 +148,31 @@ export default function InventoryModal({
 
         <div className="inv-grid">
           {showEquipment &&
-            gearItems.map((g) => (
+            gearInstances.map((inst) => {
+              const g = getGear(inst.templateId);
+              const equipped = isInstanceEquipped(save, inst.id);
+              return (
+                <button
+                  key={inst.id}
+                  className={`inv-slot ${rarityClass(g)} ${rarClass(inst.rarity)}${selected?.kind === 'gear' && selected.id === inst.id ? ' active' : ''}`}
+                  onClick={() => select('gear', inst.id)}
+                  data-ui
+                >
+                  <span className="inv-icon">
+                    <GearIcon item={g} />
+                  </span>
+                  <span className="inv-qty">
+                    {refineTag(clampRefine(inst.upgrade)).trim()}
+                    {equipped ? ' ✓' : ''}
+                  </span>
+                </button>
+              );
+            })}
+          {showEquipment &&
+            stackableGear.map((g) => (
               <button
                 key={g.id}
-                className={`inv-slot ${rarityClass(g)} ${rarClass(save.itemRarity?.[g.id])}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
+                className={`inv-slot ${rarityClass(g)} ${rarClass(undefined)}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
                 onClick={() => select('gear', g.id)}
                 data-ui
               >
@@ -175,7 +210,7 @@ export default function InventoryModal({
                 <span className="inv-qty">×{c.qty}</span>
               </button>
             ))}
-          {Array.from({ length: Math.max(0, 24 - (gearItems.length + materialItems.length + consumableItems.length)) }).map((_, i) => (
+          {Array.from({ length: Math.max(0, 24 - (gearSlotsShown + materialItems.length + consumableItems.length)) }).map((_, i) => (
             <span key={`empty-${i}`} className="inv-slot empty" />
           ))}
         </div>
@@ -189,9 +224,10 @@ export default function InventoryModal({
                 </span>
                 <span className="inv-detail-name-text">
                   {gearText(selectedGear.nameKey)}
-                  <span className="refine-tag">{refineTag(refineLevel(save.upgrades, selectedGear.id))}</span>
+                  <span className="refine-tag">{refineTag(selectedLevel)}</span>
                 </span>
-                <span className="inv-qty">×{save.inventory[selectedGear.id]}</span>
+                {!selectedInstance && <span className="inv-qty">×{save.inventory[selectedGear.id]}</span>}
+                {selectedInstance && isEquipped && <span className="inv-qty">{t('inventory.equipped')}</span>}
               </div>
               <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
               {selectedRarity !== 'common' && (
@@ -206,23 +242,32 @@ export default function InventoryModal({
                   ))}
                 </div>
               )}
+              {selectedInstance && (
+                <div className="substat-list">
+                  <span className="substat-line">{t('forge.durability', { n: selectedInstance.durability, m: 100 })}</span>
+                  {selectedInstance.sockets.length > 0 && (
+                    <span className="substat-line">{t('inventory.socketsCount', { n: selectedInstance.sockets.length })}</span>
+                  )}
+                </div>
+              )}
               {isEquippable &&
                 (isEquipped ? (
-                  <button className="craft-btn equipped" onClick={() => onUnequip(selectedGear.id)} data-ui>
+                  <button className="craft-btn equipped" onClick={() => onUnequip(selected!.id)} data-ui>
                     {t('inventory.unequip')}
                   </button>
                 ) : (
-                  <button className="craft-btn" onClick={() => onEquip(selectedGear.id)} data-ui>
+                  <button className="craft-btn" onClick={() => onEquip(selected!.id)} data-ui>
                     {t('inventory.equip')}
                   </button>
                 ))}
-              {selectedRarity !== 'common' &&
+              {selectedInstance &&
+                selectedRarity !== 'common' &&
                 (() => {
-                  const reforgeCost = reforgeGoldCost(save.reforgeCount[selectedGear.id] ?? 0);
+                  const reforgeCost = reforgeGoldCost(selectedInstance.reforgeCount);
                   return (
                     <button
                       className="reforge-btn"
-                      onClick={() => onReforge(selectedGear.id)}
+                      onClick={() => onReforge(selectedInstance.id)}
                       disabled={save.shards < 1 || save.gold < reforgeCost}
                       data-ui
                     >
@@ -233,8 +278,6 @@ export default function InventoryModal({
               {hasSalvageValue(selectedGear) &&
                 (salvageReason === 'equipped' ? (
                   <p className="salvage-hint">{t('inventory.unequipToSalvage')}</p>
-                ) : salvageReason === 'onlyTool' ? (
-                  <p className="salvage-hint">{t('inventory.needAnotherTool')}</p>
                 ) : (
                   <div className="salvage-block">
                     {confirmSalvage && salvagePreview && (
@@ -250,6 +293,9 @@ export default function InventoryModal({
                             </span>
                           </span>
                         ))}
+                        {selectedInstance && selectedInstance.sockets.length > 0 && (
+                          <span className="floor-drop">{t('inventory.gemsReturn', { n: selectedInstance.sockets.length })}</span>
+                        )}
                       </div>
                     )}
                     <button className={`salvage-btn${confirmSalvage ? ' confirm' : ''}`} onClick={handleSalvage} data-ui>
@@ -297,6 +343,9 @@ export default function InventoryModal({
 
           {selected && !isEquipped && selQty > 0 && (
             <div className="inv-actions">
+              {confirmDiscard && selectedInstance && selectedInstance.sockets.length > 0 && (
+                <span className="salvage-hint">{t('inventory.gemsReturn', { n: selectedInstance.sockets.length })}</span>
+              )}
               <button className={`inv-discard${confirmDiscard ? ' confirm' : ''}`} onClick={handleDiscard} data-ui>
                 {confirmDiscard ? t('inventory.confirm') : t('inventory.discard')}
               </button>

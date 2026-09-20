@@ -3,7 +3,8 @@ import { activeLocale, t } from '../locales';
 import Assets from '../assets.json';
 import { mitigationFraction } from '../game/derivedStats';
 import { effectivePouchSlots, isBattlePassActive, SaveData, buildCombatStats, computeCP, formatNumber, playerLevel } from '../game/engine';
-import { effectiveDamage, effectiveMaxHp, getEquipped, getGear, gearBySlot, MAX_DURABILITY, refineLevel } from '../game/gear';
+import { effectiveDamage, effectiveMaxHp, getGear, gearBySlot, MAX_DURABILITY } from '../game/gear';
+import { resolveEquipped, viewDurability, viewRarity, viewRefine } from '../game/gearInstances';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import { getTitleDef, TITLES } from '../game/titles';
 import { getMaterial, hasMaterials, MaterialId } from '../game/materials';
@@ -57,7 +58,9 @@ export default function HeroModal({
   const [tab, setTab] = useState<'equip' | 'attrs' | 'titles'>('equip');
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
-  const { weapon, armor } = getEquipped(save.equipped);
+  const { weapon: weaponView, armor: armorView } = resolveEquipped(save);
+  const weapon = weaponView.item;
+  const armor = armorView.item;
 
   const toggleTool = (slot: ToolSlot) => {
     const equippedId = save.equipped[slot];
@@ -69,16 +72,16 @@ export default function HeroModal({
     if (owned) onEquip(owned.id);
   };
   const level = playerLevel(save.xp);
-  const wLvl = refineLevel(save.upgrades, weapon.id);
-  const aLvl = refineLevel(save.upgrades, armor.id);
-  const wDur = save.durability?.[weapon.id] ?? MAX_DURABILITY;
-  const aDur = save.durability?.[armor.id] ?? MAX_DURABILITY;
+  const wLvl = viewRefine(weaponView);
+  const aLvl = viewRefine(armorView);
+  const wDur = viewDurability(weaponView);
+  const aDur = viewDurability(armorView);
   const durClass = (d: number) => (d <= 0 ? ' broken' : d < 30 ? ' worn' : '');
-  const wRar: Rarity = save.itemRarity?.[weapon.id] ?? 'common';
-  const aRar: Rarity = save.itemRarity?.[armor.id] ?? 'common';
+  const wRar: Rarity = viewRarity(weaponView);
+  const aRar: Rarity = viewRarity(armorView);
   const rarClass = (r: Rarity) => `r-${r}`;
-  const wSubs = save.itemSubstats?.[weapon.id] ?? [];
-  const aSubs = save.itemSubstats?.[armor.id] ?? [];
+  const wSubs = weaponView.instance?.substats ?? [];
+  const aSubs = armorView.instance?.substats ?? [];
 
   // Every derived figure below comes straight from the shared combat-stats derivation (buildCombatStats) — the same
   // PERMANENT stats Hunting, the Dungeon and computeCP use: gear, refine, rarity, durability, gems, substats and the
@@ -199,7 +202,7 @@ export default function HeroModal({
                 <div className="hero-equip-info">
                   <span className="hero-equip-name">
                     <span className="hero-equip-name-text">{gearText(weapon.nameKey)}</span>
-                    <span className="refine-tag">{refineTag(refineLevel(save.upgrades, weapon.id))}</span>
+                    <span className="refine-tag">{refineTag(wLvl)}</span>
                   </span>
                   {wRar !== 'common' && <span className={`rarity-line ${rarClass(wRar)}`}>{t(`rarity.${rarityDef(wRar).nameKey}`)}</span>}
                   <span className="hero-equip-stat damage">
@@ -220,7 +223,7 @@ export default function HeroModal({
                 <div className="hero-equip-info">
                   <span className="hero-equip-name">
                     <span className="hero-equip-name-text">{gearText(armor.nameKey)}</span>
-                    <span className="refine-tag">{refineTag(refineLevel(save.upgrades, armor.id))}</span>
+                    <span className="refine-tag">{refineTag(aLvl)}</span>
                   </span>
                   {aRar !== 'common' && <span className={`rarity-line ${rarClass(aRar)}`}>{t(`rarity.${rarityDef(aRar).nameKey}`)}</span>}
                   <span className="hero-equip-stat hp">

@@ -183,6 +183,17 @@ const T = DebugPanel.define({
     freeSessionsPerDay: { value: 3, min: 1, max: 10, step: 1, label: 'Free Dungeon sessions per day' },
     extraSessionShardCost: { value: 5, min: 1, max: 50, step: 1, label: 'Shard cost per Dungeon session beyond the free daily allowance' },
   },
+  gear: {
+    _label: 'Gear Instances',
+    // DEFAULT TÉCNICO / TECHNICAL DEFAULT (60) so crafting can be capped at all — NOT a balance decision and not
+    // the final number; it is to be tuned separately.
+    // Only ever blocks CREATING a new weapon/armor instance (net of ingredients consumed); loading or migrating a
+    // save never deletes or truncates equipment because of it. Materials/consumables keep the 20-slot bag.
+    maxInstances: { value: 60, min: 10, max: 500, step: 1, label: 'Max weapon/armor instances (technical default, unbalanced)' },
+    // Technical protection for the v1 -> v2 migration only: a forged inventory count must not create millions of
+    // objects. It is NOT a gameplay limit (no real save gets near it) and is unrelated to maxInstances.
+    migrationSafetyCeiling: { value: 10000, min: 100, max: 1000000, step: 100, label: 'Migration safety ceiling: max copies migrated per template' },
+  },
   battlePass: {
     _label: 'Battle Pass',
     xpBase: { value: 100, min: 20, max: 500, step: 10, label: 'Pass XP required for level 2' },

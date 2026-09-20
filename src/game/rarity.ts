@@ -1,5 +1,3 @@
-import { EquippedGear } from './gear';
-
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 
 export type SubstatType = 'critRate' | 'critDamage' | 'lifesteal' | 'defense' | 'maxHp' | 'goldBonus';
@@ -92,10 +90,10 @@ export interface SubstatTotals {
 
 const emptyTotals = (): SubstatTotals => ({ critRate: 0, critDamage: 0, lifesteal: 0, defense: 0, maxHp: 0, goldBonus: 0 });
 
-export function substatTotals(itemId: string, substats: Record<string, Substat[]>): SubstatTotals {
-  const list = substats?.[itemId] ?? [];
+// Totals of one substat list (one gear instance's substats).
+export function substatListTotals(list: Substat[] | undefined): SubstatTotals {
   const t = emptyTotals();
-  for (const s of list) {
+  for (const s of list ?? []) {
     if (s.type === 'critRate') t.critRate += s.value;
     else if (s.type === 'critDamage') t.critDamage += s.value;
     else if (s.type === 'lifesteal') t.lifesteal += s.value;
@@ -106,9 +104,7 @@ export function substatTotals(itemId: string, substats: Record<string, Substat[]
   return t;
 }
 
-export function totalSubstatTotals(equipped: EquippedGear, substats: Record<string, Substat[]>): SubstatTotals {
-  const w = substatTotals(equipped.weapon, substats);
-  const a = substatTotals(equipped.armor, substats);
+export function addSubstatTotals(w: SubstatTotals, a: SubstatTotals): SubstatTotals {
   return {
     critRate: w.critRate + a.critRate,
     critDamage: w.critDamage + a.critDamage,

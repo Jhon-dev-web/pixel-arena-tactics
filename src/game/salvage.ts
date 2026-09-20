@@ -1,4 +1,4 @@
-import { EquippedGear, GearItem, gearBySlot } from './gear';
+import { GearItem } from './gear';
 import { MaterialId } from './materials';
 import { Rarity } from './rarity';
 
@@ -11,8 +11,6 @@ export const SALVAGE_BONUS_CHANCE: Partial<Record<Rarity, number>> = {
   epic: 0.3,
   legendary: 0.5,
 };
-
-const TOOL_SLOTS = new Set(['pickaxe', 'axe', 'rod']);
 
 export interface SalvageReturn {
   materials: Partial<Record<MaterialId, number>>;
@@ -27,27 +25,6 @@ export function getSalvageReturn(item: GearItem): SalvageReturn {
   return { materials };
 }
 
-export function isGearEquipped(equipped: EquippedGear, itemId: string): boolean {
-  return Object.values(equipped).includes(itemId);
-}
-
-export type SalvageBlockReason = 'equipped' | 'onlyTool' | null;
-
-export function salvageBlockReason(item: GearItem, equipped: EquippedGear, inventory: Record<string, number>): SalvageBlockReason {
-  if (isGearEquipped(equipped, item.id)) return 'equipped';
-  if (TOOL_SLOTS.has(item.slot)) {
-    const totalOwned = gearBySlot(item.slot).reduce((sum, g) => sum + (inventory[g.id] ?? 0), 0);
-    if (totalOwned <= 1) return 'onlyTool';
-  }
-  return null;
-}
-
 export function hasSalvageValue(item: GearItem): boolean {
   return !!item.recipe && Object.keys(item.recipe.materials ?? {}).length > 0;
-}
-
-export function canSalvage(item: GearItem, equipped: EquippedGear, inventory: Record<string, number>): boolean {
-  if (!hasSalvageValue(item)) return false;
-  if ((inventory[item.id] ?? 0) <= 0) return false;
-  return salvageBlockReason(item, equipped, inventory) === null;
 }

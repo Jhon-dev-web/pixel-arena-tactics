@@ -1,5 +1,3 @@
-import { EquippedGear } from './gear';
-
 export type GemId = 'ruby' | 'sapphire' | 'emerald';
 
 export interface GemDef {
@@ -49,10 +47,10 @@ export interface GemBonuses {
   maxHp: number;
 }
 
-export function socketBonuses(itemId: string, sockets: Record<string, GemId[]>): GemBonuses {
-  const list = sockets?.[itemId] ?? [];
+// Bonuses of one socket list (one gear instance's sockets).
+export function gemListBonuses(list: GemId[] | undefined): GemBonuses {
   const b: GemBonuses = { critDamageBonus: 0, resistance: 0, maxHp: 0 };
-  for (const gid of list) {
+  for (const gid of list ?? []) {
     const g = getGem(gid);
     if (!g) continue;
     b.critDamageBonus += g.critDamageBonus ?? 0;
@@ -62,9 +60,7 @@ export function socketBonuses(itemId: string, sockets: Record<string, GemId[]>):
   return b;
 }
 
-export function totalGemBonuses(equipped: EquippedGear, sockets: Record<string, GemId[]>): GemBonuses {
-  const w = socketBonuses(equipped.weapon, sockets);
-  const a = socketBonuses(equipped.armor, sockets);
+export function addGemBonuses(w: GemBonuses, a: GemBonuses): GemBonuses {
   return {
     critDamageBonus: w.critDamageBonus + a.critDamageBonus,
     resistance: w.resistance + a.resistance,

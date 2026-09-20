@@ -210,7 +210,10 @@
     "unequipToSalvage": "Unequip the item before salvaging",
     "needAnotherTool": "You need another tool of this type before salvaging this one",
     "salvageDone": "♻️ Item salvaged!",
-    "salvageBonus": "♻️ Item salvaged! Rare material bonus received!"
+    "salvageBonus": "♻️ Item salvaged! Rare material bonus received!",
+    "gearSpace": "🗡️ Equipment: {n} / {m}",
+    "gemsReturn": "{n} socketed gem(s) go back to your stock",
+    "socketsCount": "Socketed gems: {n}"
   },
   "profile": {
     "title": "⚔️ HERO PROFILE",
@@ -337,7 +340,14 @@
     "upgradeFail": "✗ Upgrade failed",
     "reforge": "🎲 Reforge Stats (1 🔷 + {gold} Gold)",
     "reforged": "🎲 Stats reforged!",
-    "levelReq": "Level {n}"
+    "levelReq": "Level {n}",
+    "gearSpace": "🗡️ Equipment: {n} / {m}",
+    "gearFull": "Equipment limit reached ({n}). Discard or salvage a piece first.",
+    "noGear": "You don't own any equipment.",
+    "confirmIngredients": "These pieces will be consumed:",
+    "confirmForge": "CONFIRM",
+    "cancel": "Cancel",
+    "gemsBack": "Gems returned to your stock: {list}"
   },
   "rarity": {
     "rar_common": "Common",

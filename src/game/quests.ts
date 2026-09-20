@@ -25,7 +25,8 @@ export interface QuestState {
   dailyDay: string;
   daily: { kills: number; forge: number; purchases: number; expeditions: number };
   dailyClaimed: string[];
-  counters: { kills: number; maxFloorCleared: number };
+  // maxRefineEver: highest refine level ever reached — survives salvaging / consuming the piece.
+  counters: { kills: number; maxFloorCleared: number; maxRefineEver?: number };
   claimed: string[];
 }
 
@@ -55,7 +56,7 @@ export function emptyQuestState(): QuestState {
     dailyDay: '',
     daily: { kills: 0, forge: 0, purchases: 0, expeditions: 0 },
     dailyClaimed: [],
-    counters: { kills: 0, maxFloorCleared: 0 },
+    counters: { kills: 0, maxFloorCleared: 0, maxRefineEver: 0 },
     claimed: [],
   };
 }

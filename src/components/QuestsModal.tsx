@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData, computeCP } from '../game/engine';
+import { questMaxRefine } from '../game/gearInstances';
 import { QUESTS_DAILY, QUESTS_ACHIEVEMENTS, QuestDef, QuestContext, isClaimed, isComplete, questProgress } from '../game/quests';
 
 const questText = (k: string): string => t(`quests.${k}`);
@@ -16,7 +17,7 @@ export default function QuestsModal({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<'daily' | 'achievements'>('daily');
-  const maxRefine = Math.max(0, ...Object.values(save.upgrades ?? {}));
+  const maxRefine = questMaxRefine(save);
   const ctx: QuestContext = { cp: computeCP(save), maxRefine };
   const list = tab === 'daily' ? QUESTS_DAILY : QUESTS_ACHIEVEMENTS;
 
