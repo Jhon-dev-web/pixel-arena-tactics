@@ -1,18 +1,17 @@
 import { computeGardenSlotStatus, GARDEN_SLOTS, SaveData } from './engine';
-import { getPlant, PlantId } from './garden';
+import { getPlant, PlantId, plantHarvestXp } from './garden';
 import { MaterialId } from './materials';
 import { skillLevel } from './skills';
-import T from './tunables';
 
 // The Garden's player actions as pure transitions on the save: each returns the WHOLE next save (or null when nothing
 // would change), so a click that arrives twice can never apply twice — the second sees the plot already cleared/planted.
-// No numbers live here: durations, yields and level requirements come from garden.ts, the XP per harvest from tunables.
+// No numbers live here: durations, yields, level requirements and the XP per harvest come from garden.ts (XP: plantHarvestXp).
 
 const validNow = (now: number): boolean => typeof now === 'number' && Number.isFinite(now) && now > 0;
 
 export interface HarvestResult {
   save: SaveData;
-  harvested: { slot: number; plantId: PlantId; material: MaterialId; qty: number }[];
+  harvested: { slot: number; plantId: PlantId; material: MaterialId; qty: number; xp: number }[];
 }
 
 // Plant `plantId` in every listed plot that exists and is empty (the others are skipped). null = nothing planted
@@ -29,9 +28,9 @@ export function applyPlant(save: SaveData, plantId: string, slotIndices: number[
   return { ...save, gardenSlots };
 }
 
-// Harvest every listed plot that is READY. Each one gives its plant's fixed yield and one harvest's worth of Gardening
-// XP, exactly like harvesting them one by one, and is cleared (remembering the plant for "plant again"). null = none
-// was ready, so a repeated click / a second "harvest all" is a no-op.
+// Harvest every listed plot that is READY. Each one gives its plant's fixed yield and that plant's Gardening XP
+// (plantHarvestXp), exactly like harvesting them one by one, and is cleared (remembering the plant for "plant again").
+// null = none was ready, so a repeated click / a second "harvest all" is a no-op.
 export function applyHarvest(save: SaveData, slotIndices: number[], now: number): HarvestResult | null {
   if (!validNow(now)) return null;
   const materials = { ...save.materials };
@@ -44,11 +43,11 @@ export function applyHarvest(save: SaveData, slotIndices: number[], now: number)
     if (!status.ready || !def) continue;
     materials[def.material] = (materials[def.material] ?? 0) + def.qty;
     gardenSlots[i] = { plantId: null, startedAt: 0, lastPlantId: def.id };
-    harvested.push({ slot: i, plantId: def.id, material: def.material, qty: def.qty });
+    harvested.push({ slot: i, plantId: def.id, material: def.material, qty: def.qty, xp: plantHarvestXp(def) });
   }
   if (harvested.length === 0) return null;
   return {
-    save: { ...save, materials, gardenSlots, skillXp: { ...save.skillXp, gardening: save.skillXp.gardening + T.skills.xpPerHarvest * harvested.length } },
+    save: { ...save, materials, gardenSlots, skillXp: { ...save.skillXp, gardening: save.skillXp.gardening + harvested.reduce((sum, h) => sum + h.xp, 0) } },
     harvested,
   };
 }

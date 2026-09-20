@@ -4350,6 +4350,10 @@ body {
 .garden-modal {
   width: min(92vw, 600px);
 }
+/* Keep the modal tall enough for the 5-plant picker sheet even when the plots above are short (desktop) */
+.garden-modal.picking {
+  min-height: min(88vh, 540px);
+}
 .garden-plots {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4719,12 +4723,14 @@ body {
   color: #b9a37a;
   line-height: 1.25;
 }
-.garden-plant-lock {
-  flex: none;
-  max-width: 34%;
+.garden-plant-use {
   font-size: calc(var(--font-size) - 4px);
+  color: #8a7aa8;
+  line-height: 1.25;
+}
+.garden-plant-lock {
+  font-size: calc(var(--font-size) - 3px);
   color: #e0a96a;
-  text-align: right;
 }
 .garden-picker-all {
   display: flex;

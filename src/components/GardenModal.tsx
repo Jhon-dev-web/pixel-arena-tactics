@@ -221,7 +221,7 @@ export default function GardenModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal dungeon-modal garden-modal">
+      <div className={`modal dungeon-modal garden-modal${pickerFor !== null ? ' picking' : ''}`}>
         <h2 className="modal-title">{gardenText('title')}</h2>
 
         <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" />
@@ -290,10 +290,11 @@ export default function GardenModal({
                           <span className="garden-plant-rarity">{gardenText(`rarity_${plant.rarity}`)}</span>
                         </span>
                         <span className="garden-plant-meta">
-                          ⏱ {formatDuration(plant.durationMs)} · {gardenText('yield').replace('{qty}', String(plant.qty)).replace('{name}', matText(plant.material))}
+                          ⏱ {formatDuration(plant.durationMs)} · {gardenText('yieldShort').replace('{qty}', String(plant.qty))}
                         </span>
+                        <span className="garden-plant-use">{gardenText(plant.useKey)}</span>
+                        {!unlocked && <span className="garden-plant-lock">{gardenText('locked').replace('{n}', String(plant.requiredLevel))}</span>}
                       </span>
-                      {!unlocked && <span className="garden-plant-lock">{gardenText('locked').replace('{n}', String(plant.requiredLevel))}</span>}
                     </button>
                   );
                 })}

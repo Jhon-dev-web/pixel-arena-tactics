@@ -20,7 +20,9 @@ export type MaterialId =
   | 'concentrated_blood'
   | 'corrupted_crystal'
   | 'common_herb'
+  | 'energy_herb'
   | 'uncommon_root'
+  | 'crimson_mushroom'
   | 'rare_flower'
   | 'refining_dust'
   | 'common_wood'
@@ -71,7 +73,9 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'corrupted_crystal', nameKey: 'mat_corrupted_crystal', icon: '🔮', iconUrl: '/assets/icons/corrupted_crystal.png', packSize: 1, packCost: 800, sellValue: 180 },
   // Garden harvests — Alchemy ingredients (erva/raiz/flor), never dropped by Hunting/Mining/Dungeon.
   { id: 'common_herb', nameKey: 'mat_common_herb', icon: '🌿', packSize: 5, packCost: 20, sellValue: 3 },
+  { id: 'energy_herb', nameKey: 'mat_energy_herb', icon: '🍀', packSize: 5, packCost: 20, sellValue: 3 },
   { id: 'uncommon_root', nameKey: 'mat_uncommon_root', icon: '🥕', packSize: 3, packCost: 90, sellValue: 15 },
+  { id: 'crimson_mushroom', nameKey: 'mat_crimson_mushroom', icon: '🍄', packSize: 3, packCost: 90, sellValue: 15 },
   { id: 'rare_flower', nameKey: 'mat_rare_flower', icon: '🌸', packSize: 1, packCost: 300, sellValue: 65 },
   // Refining-only sink for surplus common materials (see refining.ts DUST_RECIPES) — never dropped/mined,
   // and never sold, only ever produced and spent inside the Forge's Refino tab.
@@ -119,7 +123,9 @@ export function emptyMaterials(): Materials {
     concentrated_blood: 0,
     corrupted_crystal: 0,
     common_herb: 0,
+    energy_herb: 0,
     uncommon_root: 0,
+    crimson_mushroom: 0,
     rare_flower: 0,
     refining_dust: 0,
     common_wood: 0,
