@@ -4380,3 +4380,22 @@ body {
   width: 100%;
   margin-top: 4px;
 }
+
+/* Inventory: economic reforge panel (stock / cost per line) */
+.reforge-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.reforge-costs .floor-drop {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+.reforge-cost-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

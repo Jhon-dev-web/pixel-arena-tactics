@@ -213,7 +213,12 @@
     "salvageBonus": "♻️ Item desmontado! Bônus de material raro recebido!",
     "gearSpace": "🗡️ Equipamentos: {n} / {m}",
     "gemsReturn": "{n} gema(s) encaixada(s) voltam ao estoque",
-    "socketsCount": "Gemas encaixadas: {n}"
+    "socketsCount": "Gemas encaixadas: {n}",
+    "salvageRounding": "Cada ingrediente da receita volta com {pct}% da quantidade, arredondado para baixo e sem mínimo: ingredientes de quantidade baixa podem não ser recuperados. O bônus aleatório de raridade é separado e não é garantido.",
+    "salvageEmpty": "Nenhum material garantido nesta receita.",
+    "reforgeCount": "Reforjas desta peça: {n}",
+    "reforgeGold": "Ouro",
+    "reforgeShard": "◆ Fragmento"
   },
   "profile": {
     "title": "⚔️ PERFIL DO HERÓI",
@@ -338,8 +343,9 @@
     "noSockets": "Sem encaixes disponíveis (Requer Tier 1 Bronze ou superior)",
     "upgradeOk": "✓ {n} +{m}!",
     "upgradeFail": "✗ Falha na melhoria",
-    "reforge": "🎲 Reforjar Status (1 🔷 + {gold} Ouro)",
+    "reforge": "🎲 Reforjar atributos",
     "reforged": "🎲 Status reforjados!",
+    "reforgeExplanation": "Sorteia novamente TODOS os atributos extras da peça selecionada: o resultado pode melhorar ou piorar. Raridade, melhoria (+N), encaixes e durabilidade não mudam, e as outras cópias não são afetadas. Cada tentativa consome tudo abaixo (estoque / custo).",
     "levelReq": "Nível {n}",
     "gearSpace": "🗡️ Equipamentos: {n} / {m}",
     "gearFull": "Limite de equipamentos atingido ({n}). Descarte ou desmonte alguma peça.",

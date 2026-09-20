@@ -233,7 +233,7 @@ export function repairCost(tier: number): number {
 }
 
 // Gold cost of a substat reforge, on top of its flat 1-shard cost — escalates per prior reforge on
-// THAT item (count = how many times this itemId has already been reforged), capped so chasing a good
+// THAT gear instance (count = how many times this very piece has already been reforged), capped so chasing a good
 // roll indefinitely never grows unbounded. Calibrated against a compound-spend check: even on a day
 // where the player is also paying Furnace/Carpentry/Alchemy conversions and a mid-tier refine attempt,
 // several reforges still fit inside the game's 2-5k Gold/day income target.

@@ -588,21 +588,7 @@ export function applyUpgrade(
   };
 }
 
-// --- reforge (current rules: 1 shard + escalating gold, per INSTANCE)
-
-export function applyReforgeInstance(save: SaveData, id: GearInstanceId, goldCostFor: (count: number) => number): SaveData | null {
-  const hit = resolveGearInstance(save, id);
-  if (!hit) return null;
-  const gold = goldCostFor(hit.instance.reforgeCount);
-  if (save.shards < 1 || save.gold < gold) return null;
-  const substats = rollSubstats(hit.instance.rarity, hit.item.tier ?? 0);
-  return {
-    ...save,
-    shards: save.shards - 1,
-    gold: save.gold - gold,
-    gearInstances: { ...save.gearInstances, [id]: { ...hit.instance, substats, reforgeCount: hit.instance.reforgeCount + 1 } },
-  };
-}
+// (Reforge lives in reforge.ts, per instance.)
 
 // --- repair / durability
 
