@@ -2,6 +2,7 @@ import { MaterialId } from './materials';
 import { HuntingDrop, HuntingDepth, effectiveDropChance } from './huntingZones';
 import { applyDamageReduction } from './derivedStats';
 import { economicRollFractionForFight } from './huntEconomy';
+import { inRelativeWindows } from './huntSession';
 
 // Open Hunting's idle session is now real combat instead of a smooth time-based EV formula, using the
 // exact same per-hit formulas as the Dungeon (BattleModal.tsx) — this module intentionally does NOT
@@ -56,6 +57,17 @@ export interface HuntZoneCombatCfg {
   drops: HuntingDrop[];
   depth: HuntingDepth;
   dropRateMult: number; // Battle Pass drop-rate multiplier, 1 if inactive
+}
+
+// Time-dependent modifiers of a session, as SESSION-RELATIVE windows in ms (Infinity = open-ended): while a Strength
+// Elixir window covers a hit the hero deals `heroDmgBaseBuffed` instead of `build.heroDmgBase`; while a Battle Pass window
+// covers a cleared fight the drop chance uses `passDropMult`. Outside every window the plain values apply, so a modifier
+// that was not active at that moment can never be applied retroactively. Omitted = constant (zoneCfg.dropRateMult).
+export interface HuntTimeline {
+  strengthWindows: [number, number][];
+  heroDmgBaseBuffed: number;
+  passWindows: [number, number][];
+  passDropMult: number;
 }
 
 export interface HuntPotionStock {
@@ -126,6 +138,7 @@ export function simulateHuntingSession(
   potionCfg: HuntPotionCfg,
   seedKey: string,
   promotion: HuntPromotionCfg,
+  timeline?: HuntTimeline,
 ): HuntSessionResult {
   const rng = mulberry32(hashSeed(seedKey));
   const stock: HuntPotionStock = { ...potionCfg.stock };
@@ -148,10 +161,12 @@ export function simulateHuntingSession(
   // fraction only scales the threshold the draw is compared against. So the fight/crit sequence (and every
   // kill, XP, Gold and promotion outcome) is bit-for-bit unchanged, and every drop that still happens is a drop
   // that would also have happened without the model. Promotion wins go through the exact same gate.
+  // `timeLeft` is already reduced by the fight when this runs, so sessionMs - timeLeft is the moment the fight ended.
   const rollDropsForOneClear = (subLevel: number, fightMs: number) => {
     const economicFraction = economicRollFractionForFight(fightMs, subLevel);
+    const dropMult = timeline ? (inRelativeWindows(timeline.passWindows, sessionMs - timeLeft) ? timeline.passDropMult : 1) : zoneCfg.dropRateMult;
     for (const entry of zoneCfg.drops) {
-      const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * zoneCfg.dropRateMult * economicFraction;
+      const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * dropMult * economicFraction;
       if (rng() < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
     }
   };
@@ -207,7 +222,8 @@ export function simulateHuntingSession(
       t = nextEvent;
       if (heroNext <= enemyNext) {
         const crit = rng() < build.critChance;
-        const dmg = Math.max(1, Math.round(build.heroDmgBase * (crit ? build.critMult : 1)));
+        const hitBase = timeline && inRelativeWindows(timeline.strengthWindows, sessionMs - timeLeft + t) ? timeline.heroDmgBaseBuffed : build.heroDmgBase;
+        const dmg = Math.max(1, Math.round(hitBase * (crit ? build.critMult : 1)));
         enemyHp -= dmg;
         if (build.lifestealPct > 0) {
           hpRef.hp = Math.min(build.playerMax, hpRef.hp + Math.max(1, Math.round(dmg * (build.lifestealPct / 100))));

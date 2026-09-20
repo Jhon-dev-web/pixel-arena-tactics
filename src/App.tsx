@@ -5,20 +5,19 @@ import {
   computeCP,
   computeGardenSlotStatus,
   computeGardenStatuses,
-  computeHuntingStatus,
   computeMiningStatus,
   computeWoodcuttingStatus,
   defaultSave,
-  effectivePouchSlots,
   effectiveRepairCost,
   isBattlePassActive,
   loadSave,
   maxExpeditionSlots,
   persistSave,
   playerLevel,
-  withHuntProgress,
   SaveData,
 } from './game/engine';
+import { applyHuntClaim, applyHuntStop, huntClaimBlocked, requestHuntStart } from './game/huntLifecycle';
+import { withSessionWindow } from './game/huntSession';
 import { getBattlePassLevelDef } from './game/battlepass';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import { applyReforge } from './game/reforge';
@@ -44,7 +43,7 @@ import { MaterialId, hasMaterials } from './game/materials';
 import { getRefiningRecipe } from './game/refining';
 import { getPotionRecipe } from './game/potions';
 import { CONSUMABLE_STACK, ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from './game/consumables';
-import { isBagFull, inventorySlotsUsed, MAX_SLOTS } from './game/inventory';
+import { isBagFull } from './game/inventory';
 import { GEMS, GemId } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { playerSpriteUrl } from './game/sprites';
@@ -67,7 +66,7 @@ import BattlePassModal from './components/BattlePassModal';
 import { crossedMilestoneFloors, dungeonRunXp, getEliteReward, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
-import { allocateToPouch, drainPouchToMaterials, nextHuntPouchTierDef } from './game/huntPouch';
+import { nextHuntPouchTierDef } from './game/huntPouch';
 import { getOreTier, isOreTierUnlocked } from './game/ores';
 import { getWoodTier, isWoodTierUnlocked } from './game/woodcutting';
 import { skillLevel } from './game/skills';
@@ -107,19 +106,6 @@ function App() {
   const [woodOpen, setWoodOpen] = useState(false);
   const [gardenOpen, setGardenOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
-  const [huntReward, setHuntReward] = useState<{
-    timeMs: number;
-    pendingMs: number;
-    gold: number;
-    xp: number;
-    zoneId: string;
-    depth: HuntingDepth;
-    startCeiling: number;
-    ceilingSubLevel: number;
-    promotionWins: number;
-    promotionRequired: number;
-    potionsUsed: { greater_elixir: number; large_hp: number; small_hp: number };
-  } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -496,10 +482,14 @@ function App() {
     const qty = s.consumables.strength_elixir ?? 0;
     if (qty <= 0) return;
     playSfx('victory');
+    const now = Date.now();
+    const expiresAt = now + T.battle.strengthElixirMinutes * 60 * 1000;
     setSaveBoth({
       ...s,
       consumables: { ...s.consumables, strength_elixir: qty - 1 },
-      activeBuff: { type: 'strength', expiresAt: Date.now() + T.battle.strengthElixirMinutes * 60 * 1000 },
+      activeBuff: { type: 'strength', expiresAt },
+      // A running Hunting session only gets the bonus from now on (never for the time already hunted).
+      huntSession: s.huntSession ? withSessionWindow(s.huntSession, 'strength', { from: now, to: expiresAt }) : s.huntSession,
     });
     showToast(t('consumables.strength_elixir_active'));
   };
@@ -723,12 +713,24 @@ function App() {
     setSaveBoth({ ...s, gardenSlots });
   };
 
+  // Hunting lifecycle (see huntLifecycle.ts): each step is ONE pure transition committed in one go and persisted right
+  // away (not only by the save effect), so a reload can never land between a step's parts. The reward a stop produces
+  // lives in the save (pendingHuntReward), not in React state.
+  const commitHuntSave = (next: SaveData) => {
+    setSaveBoth(next);
+    persistSave(next);
+  };
+
   const startHunt = (zoneId: string, depth: HuntingDepth = DEFAULT_HUNTING_DEPTH) => {
     const s = saveRef.current;
     const zone = getHuntingZone(zoneId);
     if (!zone || !isZoneUnlocked(zone, s.highestDungeonFloor)) return;
     if (s.activeHuntingZone === zoneId && s.activeHuntingDepth === depth) return;
     if (!isDepthUnlocked(zone, depth, computeCP(s))) return;
+    if (s.pendingHuntReward) {
+      showToast(t('hunting.claimFirst'));
+      return;
+    }
     if (s.activeOreId) {
       showToast(t('mining.busyDungeon'));
       return;
@@ -737,101 +739,30 @@ function App() {
       showToast(t('woodcutting.busyOther'));
       return;
     }
+    // While another session runs this only ENDS it and opens its reward (never a silent claim): the new zone is picked
+    // after collecting.
+    const next = requestHuntStart(s, zoneId, depth, Date.now());
+    if (!next) return;
     playSfx('click');
-    let gold = s.gold;
-    let xp = s.xp;
-    let huntPouch = s.huntPouch;
-    let consumables = s.consumables;
-    let huntProgress = s.huntProgress;
-    if (s.activeHuntingZone) {
-      const priorZone = getHuntingZone(s.activeHuntingZone);
-      const priorDepth = s.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH;
-      const prior = computeHuntingStatus(s, Date.now());
-      gold += prior.goldReady;
-      if (playerLevel(xp) < 100) xp += prior.xpReady;
-      if (priorZone) {
-        huntPouch = allocateToPouch(huntPouch, prior.drops, priorZone.drops.map((d) => d.material), effectivePouchSlots(s, Date.now()));
-        consumables = {
-          ...consumables,
-          greater_elixir: (consumables.greater_elixir ?? 0) - prior.potionsUsed.greater_elixir,
-          large_hp: (consumables.large_hp ?? 0) - prior.potionsUsed.large_hp,
-          small_hp: (consumables.small_hp ?? 0) - prior.potionsUsed.small_hp,
-        };
-        huntProgress = withHuntProgress({ ...s, huntProgress }, priorZone.id, priorDepth, prior);
-      }
-    }
-    setSaveBoth({
-      ...s,
-      gold,
-      xp,
-      huntPouch,
-      consumables,
-      huntProgress,
-      activeHuntingZone: zoneId,
-      activeHuntingDepth: depth,
-      huntingOfflineStart: Date.now(),
-    });
+    commitHuntSave(next);
+    if (s.activeHuntingZone && next.pendingHuntReward) showToast(t('hunting.switchClaimFirst'));
   };
 
   const stopHunt = () => {
-    const s = saveRef.current;
-    if (!s.activeHuntingZone) return;
-    const zoneId = s.activeHuntingZone;
-    const depth = s.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH;
-    const zone = getHuntingZone(zoneId);
-    const status = computeHuntingStatus(s, Date.now());
-    const timeMs = Date.now() - s.huntingOfflineStart;
-    const huntPouch = zone
-      ? allocateToPouch(s.huntPouch, status.drops, zone.drops.map((d) => d.material), effectivePouchSlots(s, Date.now()))
-      : s.huntPouch;
+    const next = applyHuntStop(saveRef.current, Date.now());
+    if (!next) return;
     playSfx('click');
-    // Sub-level mastery is committed here, together with the pouch drops it was earned alongside —
-    // claiming the reward afterwards never touches it.
-    const huntProgress = zone ? withHuntProgress(s, zoneId, depth, status) : s.huntProgress;
-    setSaveBoth({ ...s, activeHuntingZone: null, activeHuntingDepth: null, huntPouch, huntProgress });
-    setHuntReward({
-      timeMs,
-      pendingMs: status.pendingMs,
-      gold: status.goldReady,
-      xp: status.xpReady,
-      zoneId,
-      depth,
-      startCeiling: status.startCeiling,
-      ceilingSubLevel: status.ceilingSubLevel,
-      promotionWins: status.promotionWins,
-      promotionRequired: status.promotionRequired,
-      potionsUsed: status.potionsUsed,
-    });
+    commitHuntSave(next);
   };
 
   const confirmHuntReward = () => {
-    const reward = huntReward;
-    if (!reward) return;
-    const s = saveRef.current;
-    const hours = reward.pendingMs / (3600 * 1000);
-    const { battlePassLevel, battlePassXp } = addBattlePassXp(s, Math.floor(hours * T.battlePass.xpPerHuntHour));
-    const atCap = playerLevel(s.xp) >= 100;
-    const slotsUsed = inventorySlotsUsed(s);
-    const { materials, remaining, blocked } = drainPouchToMaterials(s.huntPouch.items, s.materials, slotsUsed, MAX_SLOTS);
+    const pending = saveRef.current.pendingHuntReward;
+    if (!pending) return;
+    const next = applyHuntClaim(saveRef.current, pending.id);
+    if (!next) return;
     playSfx('victory');
-    setSaveBoth({
-      ...s,
-      gold: s.gold + reward.gold,
-      consumables: {
-        ...s.consumables,
-        greater_elixir: (s.consumables.greater_elixir ?? 0) - reward.potionsUsed.greater_elixir,
-        large_hp: (s.consumables.large_hp ?? 0) - reward.potionsUsed.large_hp,
-        small_hp: (s.consumables.small_hp ?? 0) - reward.potionsUsed.small_hp,
-      },
-      xp: atCap ? s.xp : s.xp + reward.xp,
-      materials,
-      huntPouch: { ...s.huntPouch, items: remaining, lostItems: [] },
-      huntingOfflineStart: Date.now(),
-      battlePassLevel,
-      battlePassXp,
-    });
-    if (blocked) showToast(t('hunting.bagFullWarning'));
-    setHuntReward(null);
+    commitHuntSave(next);
+    if (huntClaimBlocked(next)) showToast(t('hunting.bagFullWarning'));
   };
 
   const upgradeHuntPouch = () => {
@@ -852,7 +783,14 @@ function App() {
     playSfx('click');
     const now = Date.now();
     const base = isBattlePassActive(s, now) && s.battlePassExpiresAt ? s.battlePassExpiresAt : now;
-    setSaveBoth({ ...s, hasBattlePass: true, battlePassExpiresAt: base + T.battlePass.durationDays * 24 * 3600 * 1000 });
+    const expiresAt = base + T.battlePass.durationDays * 24 * 3600 * 1000;
+    setSaveBoth({
+      ...s,
+      hasBattlePass: true,
+      battlePassExpiresAt: expiresAt,
+      // A running Hunting session only gets the pass bonus (drops, longer cap) from the activation on.
+      huntSession: s.huntSession ? withSessionWindow(s.huntSession, 'pass', { from: now, to: expiresAt }) : s.huntSession,
+    });
     showToast(t('battlePass.activated'));
   };
 
@@ -1436,15 +1374,10 @@ function App() {
         />
       )}
 
-      {huntReward && (
+      {save.pendingHuntReward && (
         <HuntRewardModal
-          timeMs={huntReward.timeMs}
-          gold={huntReward.gold}
+          reward={save.pendingHuntReward}
           pouch={save.huntPouch}
-          ceilingSubLevel={huntReward.ceilingSubLevel}
-          startCeiling={huntReward.startCeiling}
-          promotionWins={huntReward.promotionWins}
-          promotionRequired={huntReward.promotionRequired}
           subLevels={T.hunting.subLevels}
           onClaim={confirmHuntReward}
         />

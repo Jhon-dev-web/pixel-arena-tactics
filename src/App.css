@@ -4399,3 +4399,13 @@ body {
   align-items: center;
   gap: 4px;
 }
+
+/* Hunting: session lock hint and pouch capacity in the reward modal */
+.hunt-session-frozen,
+.pouch-capacity {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.75;
+  text-align: center;
+}
