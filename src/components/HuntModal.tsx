@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { t } from '../locales';
-import { computeCP, computeHuntingStatus, effectivePouchSlots, getHuntProgress, huntPromotionRequiredWins, SaveData } from '../game/engine';
+import { buildCombatStats, computeCP, computeHuntingStatus, effectivePouchSlots, getHuntProgress, huntPromotionRequiredWins, SaveData } from '../game/engine';
 import T from '../game/tunables';
 import {
   DEFAULT_HUNTING_DEPTH,
@@ -274,6 +274,9 @@ export default function HuntModal({
                           {huntStatus.full ? huntText('full') : huntText('hunting')} ·{' '}
                           {t('mining.capProgress', { cur: formatHours(huntStatus.pendingMs), cap: formatHours(huntStatus.capMs) })}
                         </span>
+                        {save.huntSession && JSON.stringify(save.huntSession.stats) !== JSON.stringify(buildCombatStats(save)) && (
+                          <div className="hunt-session-frozen">{huntText('sessionFrozen')}</div>
+                        )}
                         {(() => {
                           const capacity = effectivePouchSlots(save, now);
                           const preview = allocateToPouch(save.huntPouch, huntStatus.drops, zone.drops.map((d) => d.material), capacity);

@@ -2,6 +2,7 @@ import { t } from '../locales';
 import Assets from '../assets.json';
 import { materialIconUrl } from '../game/materials';
 import { HuntPouchState } from '../game/huntPouch';
+import { PendingHuntReward } from '../game/huntSession';
 
 const matText = (k: string): string => t(`materials.${k}`);
 
@@ -12,29 +13,22 @@ function formatDuration(ms: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// Shows the reward a stopped session left in the save (`reward`, frozen at stop). Nothing here is recomputed: the loot
+// listed is what the pouch holds and what did not fit is `reward.lost` (information only — it is not given back).
 export default function HuntRewardModal({
-  timeMs,
-  gold,
+  reward,
   pouch,
-  ceilingSubLevel,
-  startCeiling,
-  promotionWins,
-  promotionRequired,
   subLevels,
   onClaim,
 }: {
-  timeMs: number;
-  gold: number;
+  reward: PendingHuntReward;
   pouch: HuntPouchState;
-  ceilingSubLevel: number;
-  startCeiling: number;
-  promotionWins: number;
-  promotionRequired: number;
   subLevels: number;
   onClaim: () => void;
 }) {
+  const { timeMs, gold, ceilingSubLevel, startCeiling, promotionWins, promotionRequired, lost, pouchCapacity } = reward;
   const hasItems = pouch.items.length > 0;
-  const hasLost = pouch.lostItems.length > 0;
+  const hasLost = lost.length > 0;
 
   return (
     <div className="modal-backdrop">
@@ -79,11 +73,15 @@ export default function HuntRewardModal({
           )}
         </div>
 
+        {pouchCapacity > 0 && (
+          <p className="pouch-capacity">{t('hunting.pouchLabel', { n: pouch.items.length, m: pouchCapacity })}</p>
+        )}
+
         {hasLost && (
           <div className="pouch-lost-card">
             <p className="pouch-lost-text">{t('hunting.lostItemsWarning')}</p>
             <div className="result-rewards">
-              {pouch.lostItems.map((item) => (
+              {lost.map((item) => (
                 <span className="floor-drop lost" key={item.itemId}>
                   <span className="mat-icon">
                     <img src={materialIconUrl(item.itemId)} alt="" />

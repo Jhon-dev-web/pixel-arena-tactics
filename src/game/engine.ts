@@ -23,7 +23,8 @@ import { QuestState, emptyQuestState } from './quests';
 import { rarityStatMult } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
-import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
+import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
+import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers } from './huntSession';
 import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
@@ -102,6 +103,12 @@ export interface SaveData {
   // Written only when a hunt session ends (stop / zone switch) from that session's simulated result —
   // claiming rewards never changes it. Replaces the legacy huntingSubLevels resume map (see loadSave).
   huntProgress: Record<string, HuntProgress>;
+  // Frozen inputs of the ACTIVE session (huntSession.ts): permanent stats + blessed at start, and the real time spans
+  // in which the Strength Elixir / Battle Pass were active. null when not hunting.
+  huntSession: HuntSession | null;
+  // What the last stopped session earned, waiting to be claimed. Persistent: it survives reload/close, is applied
+  // exactly once by huntLifecycle.applyHuntClaim, and blocks starting another session until then.
+  pendingHuntReward: PendingHuntReward | null;
   unlockedHuntingZones: string[];
   hasBattlePass: boolean;
   battlePassExpiresAt: number | null;
@@ -221,8 +228,8 @@ export function buildCombatStats(save: SaveData): CombatStats {
 }
 
 // Temporary damage modifiers, evaluated at a moment the CALLER chooses (`now` is explicit on purpose —
-// see derivedStats.ts). Hunting calls this once with the claim-time clock; the Dungeon calls it on every
-// hit with Date.now(). Those different timings are pre-existing behavior, not decided here.
+// see derivedStats.ts). The Dungeon calls it on every hit with Date.now(). Hunting no longer reads it live: a session
+// freezes blessed at start and tracks the Elixir as time windows (see HuntSession / buildHuntSession).
 export function combatModifiersFromSave(save: SaveData, now: number): CombatModifiers {
   return {
     blessedMult: save.blessed ? 1.05 : 1,
@@ -442,6 +449,33 @@ export function withHuntProgress(save: SaveData, zoneId: string, depth: HuntingD
   };
 }
 
+// The frozen inputs of a session that starts at `startedAt`: permanent stats and blessed as of now, plus a window for
+// every timed modifier that is ALREADY running at that moment (later activations are recorded by the caller).
+export function buildHuntSession(save: SaveData, startedAt: number): HuntSession {
+  const buff = save.activeBuff;
+  return {
+    stats: buildCombatStats(save),
+    blessed: save.blessed,
+    strength: isBuffActive(save, 'strength', startedAt) && buff ? [{ from: startedAt, to: buff.expiresAt }] : [],
+    pass: isBattlePassActive(save, startedAt) ? [{ from: startedAt, to: save.battlePassExpiresAt }] : [],
+  };
+}
+
+// A session that was already running before sessions were snapshotted (old save) or whose snapshot is unusable. Its
+// real history is unknowable, so it is rebuilt conservatively from the save as it is NOW: stats as they are now, an
+// Elixir still running only counts from now on (a 30-minute buff is never worth crediting backwards), and a Battle
+// Pass that is active now is assumed to have covered the session (so its cap and drop bonus are not taken away).
+export function buildLegacyHuntSession(save: SaveData, now: number): HuntSession {
+  const buff = save.activeBuff;
+  const from = Math.min(now, Number.isFinite(save.huntingOfflineStart) ? save.huntingOfflineStart : now);
+  return {
+    stats: buildCombatStats(save),
+    blessed: save.blessed,
+    strength: isBuffActive(save, 'strength', now) && buff ? [{ from: now, to: buff.expiresAt }] : [],
+    pass: isBattlePassActive(save, now) ? [{ from, to: save.battlePassExpiresAt }] : [],
+  };
+}
+
 export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus {
   const zone = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
   const emptyPotionsUsed: HuntPotionStock = { greater_elixir: 0, large_hp: 0, small_hp: 0 };
@@ -463,19 +497,26 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
       liveSnapshot: null,
     };
   }
-  const passActive = isBattlePassActive(save, now);
-  const capHours = passActive ? Math.max(zone.offlineCapHours, T.battlePass.capHours) : zone.offlineCapHours;
-  const capMs = capHours * 3600 * 1000;
-  const elapsedMs = Math.max(0, now - save.huntingOfflineStart);
-  const pendingMs = Math.min(elapsedMs, capMs);
+  const startedAt = save.huntingOfflineStart;
+  const session = save.huntSession ?? buildLegacyHuntSession(save, now);
+  // Time: a non-finite / negative / future-start elapsed counts as 0. Up to the zone's base cap it always counts; beyond
+  // it (up to the pass cap) only while the Battle Pass really covered that stretch (huntValidMs).
+  const elapsedMs = Number.isFinite(now - startedAt) ? Math.max(0, now - startedAt) : 0;
+  const baseCapMs = zone.offlineCapHours * 3600 * 1000;
+  const passCapMs = Math.max(zone.offlineCapHours, T.battlePass.capHours) * 3600 * 1000;
+  const passWindows = relativeWindows(session.pass, startedAt);
+  const pendingMs = huntValidMs(elapsedMs, baseCapMs, passCapMs, passWindows);
+  const stalled = pendingMs < elapsedMs;
+  const capMs = stalled ? pendingMs : windowCovers(session.pass, now) ? Math.max(baseCapMs, passCapMs) : baseCapMs;
   const depth = save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH;
   const depthDef = getHuntingDepthDef(depth);
 
-  // Permanent stats from the shared derivation (buildCombatStats), plus temporary modifiers evaluated
-  // HERE, once, at the claim-time `now` — the Hunting session's existing (retroactive) buff behavior,
-  // deliberately unchanged. BattleModal.tsx applies the same modifiers per hit instead.
-  const stats = buildCombatStats(save);
-  const mods = combatModifiersFromSave(save, now);
+  // Stats and blessed are the session's frozen ones (not the live save): gear/attribute changes and a blessed repair made
+  // after the session started only count from the next session. The Elixir is applied per hit while its window covers
+  // that hit, the Battle Pass drop bonus per cleared fight while its window covers it (see HuntTimeline).
+  const stats = session.stats;
+  const mods = { blessedMult: session.blessed ? 1.05 : 1, strengthMult: 1 };
+  const buffed = { ...mods, strengthMult: 1 + T.battle.strengthElixirDmgPct };
 
   const build: HuntCombatBuild = {
     playerMax: stats.maxHp,
@@ -503,7 +544,13 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     xpPerHour: zone.xpPerHour * depthDef.xpMultiplier,
     drops: zone.drops,
     depth,
-    dropRateMult: passActive ? T.battlePass.dropRateMultiplier : 1,
+    dropRateMult: 1, // the pass bonus is time-dependent, see `timeline`
+  };
+  const timeline: HuntTimeline = {
+    strengthWindows: relativeWindows(session.strength, startedAt),
+    heroDmgBaseBuffed: applyDamageModifiers(stats.dmgBase, buffed),
+    passWindows,
+    passDropMult: T.battlePass.dropRateMultiplier,
   };
 
   const potionCfg: HuntPotionCfg = {
@@ -533,6 +580,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     potionCfg,
     `${save.huntingOfflineStart}:${zone.id}:${depth}`,
     { maxLevel: T.hunting.subLevels, requiredWins: huntPromotionRequiredWins },
+    timeline,
   );
 
   return {
@@ -541,7 +589,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     goldReady: result.goldReady,
     xpReady: result.xpReady,
     drops: result.drops,
-    full: pendingMs >= capMs,
+    full: stalled || pendingMs >= capMs,
     ceilingSubLevel: result.ceilingSubLevel,
     promotionWins: result.promotionWins,
     promotionRequired: result.ceilingSubLevel >= T.hunting.subLevels ? 0 : huntPromotionRequiredWins(result.ceilingSubLevel),
@@ -590,6 +638,8 @@ export function defaultSave(): SaveData {
     activeHuntingDepth: null,
     huntingOfflineStart: Date.now(),
     huntProgress: {},
+    huntSession: null,
+    pendingHuntReward: null,
     unlockedHuntingZones: [DEFAULT_HUNTING_ZONE],
     hasBattlePass: false,
     battlePassExpiresAt: null,
@@ -807,10 +857,12 @@ export function loadSave(): SaveData {
           : activeHuntingZone
             ? DEFAULT_HUNTING_DEPTH
             : null;
+      // A start in the future (clock moved back / tampered) is clamped to now: it would otherwise freeze the session.
+      const loadNow = Date.now();
       const huntingOfflineStart =
         typeof parsed.huntingOfflineStart === 'number' && Number.isFinite(parsed.huntingOfflineStart) && parsed.huntingOfflineStart > 0
-          ? parsed.huntingOfflineStart
-          : Date.now();
+          ? Math.min(parsed.huntingOfflineStart, loadNow)
+          : loadNow;
       // Sub-level mastery. Legacy saves stored `huntingSubLevels[key] = resume` (= last cleared ceiling + 1,
       // clamped to the max level — the next level the old climb tried for free). Converted to
       // ceiling = resume - 1 (levels really cleared are kept), floor 1, with 0 banked wins: the "free
@@ -952,6 +1004,10 @@ export function loadSave(): SaveData {
             : base.autoPotionThreshold,
         autoPotionPriority: parsed.autoPotionPriority === 'small_first' ? 'small_first' : base.autoPotionPriority,
       };
+      // Hunting session snapshot + pending reward (both new, optional fields: an older save simply lacks them). An active
+      // session without a usable snapshot (saved before snapshots existed, or corrupt) is rebuilt conservatively.
+      loaded.pendingHuntReward = sanitizePendingHuntReward(parsed.pendingHuntReward);
+      loaded.huntSession = activeHuntingZone ? sanitizeHuntSession(parsed.huntSession) ?? buildLegacyHuntSession(loaded, loadNow) : null;
       for (const key of LEGACY_GEAR_KEYS) delete (loaded as unknown as Record<string, unknown>)[key];
       return loaded;
     }
