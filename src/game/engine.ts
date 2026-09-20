@@ -44,10 +44,13 @@ export const GARDEN_SLOTS = 4;
 export interface GardenSlot {
   plantId: PlantId | null;
   startedAt: number;
+  // The plant this plot last held (planted / harvested / uprooted): only feeds the "plant again" shortcut. Optional so
+  // saves written before it existed load as-is.
+  lastPlantId?: PlantId | null;
 }
 
 function emptyGardenSlot(): GardenSlot {
-  return { plantId: null, startedAt: 0 };
+  return { plantId: null, startedAt: 0, lastPlantId: null };
 }
 
 function emptyGardenSlots(): GardenSlot[] {
@@ -57,8 +60,12 @@ function emptyGardenSlots(): GardenSlot[] {
 function sanitizeGardenSlot(raw: unknown): GardenSlot {
   const r = (raw ?? {}) as Partial<GardenSlot>;
   const plantId = typeof r.plantId === 'string' && getPlant(r.plantId) ? (r.plantId as PlantId) : null;
-  const startedAt = plantId && typeof r.startedAt === 'number' && Number.isFinite(r.startedAt) ? r.startedAt : 0;
-  return { plantId, startedAt };
+  const lastPlantId = typeof r.lastPlantId === 'string' && getPlant(r.lastPlantId) ? (r.lastPlantId as PlantId) : null;
+  // A plant needs a real start time: a missing / invalid one starts growing now (it must not count as long ready), and a
+  // start in the future (clock moved back / tampered) is clamped to now so the plot cannot be frozen.
+  const validStart = typeof r.startedAt === 'number' && Number.isFinite(r.startedAt) && r.startedAt > 0;
+  const startedAt = plantId ? (validStart ? Math.min(r.startedAt as number, Date.now()) : Date.now()) : 0;
+  return { plantId, startedAt, lastPlantId };
 }
 
 export interface SaveData {
@@ -373,7 +380,9 @@ export function computeGardenSlotStatus(save: SaveData, now: number, slotIndex: 
   if (!slot || !def) {
     return { plantId: null, durationMs: 0, elapsedMs: 0, remainingMs: 0, ready: false };
   }
-  const elapsedMs = Math.max(0, now - slot.startedAt);
+  // A non-finite clock / start counts as no time elapsed (never as "already ready").
+  const rawElapsed = now - slot.startedAt;
+  const elapsedMs = Number.isFinite(rawElapsed) ? Math.max(0, rawElapsed) : 0;
   const remainingMs = Math.max(0, def.durationMs - elapsedMs);
   return { plantId: def.id, durationMs: def.durationMs, elapsedMs, remainingMs, ready: elapsedMs >= def.durationMs };
 }
