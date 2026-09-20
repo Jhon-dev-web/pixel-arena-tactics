@@ -1,11 +1,26 @@
 import T from './tunables';
-import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getEquipped, getGear, MAX_DURABILITY, refineLevel, repairCost, sanitizeSaveInventory } from './gear';
+import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getGear, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
+import {
+  GEAR_SCHEMA_VERSION,
+  GearInstance,
+  GearInstanceId,
+  createStarterGear,
+  equippedGemBonuses,
+  equippedSubstatTotals,
+  migrateGearV1toV2,
+  resolveEquipped,
+  sanitizeEquippedInstance,
+  sanitizeGearInstances,
+  viewDurability,
+  viewRarity,
+  viewRefine,
+} from './gearInstances';
 import { Materials, MaterialId, emptyMaterials, getMaterial } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
 import { ConsumableId, emptyConsumables } from './consumables';
-import { GemId, emptyGems, getGem, totalGemBonuses } from './gems';
+import { GemId, emptyGems } from './gems';
 import { QuestState, emptyQuestState } from './quests';
-import { Rarity, Substat, rarityStatMult, totalSubstatTotals } from './rarity';
+import { rarityStatMult } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
@@ -52,9 +67,13 @@ export interface SaveData {
   xp: number;
   weaponLevel: number;
   armorLevel: number;
+  // Schema 2: every weapon / armor is its own GearInstance (rarity, substats, refine, sockets, durability,
+  // reforge count). `inventory` now only holds STACKABLE gear (relics, tools); `equipped.weapon/armor` are
+  // instance ids. See gearInstances.ts.
+  schemaVersion: number;
+  gearInstances: Record<GearInstanceId, GearInstance>;
   inventory: Record<string, number>;
   equipped: EquippedGear;
-  upgrades: Record<string, number>;
   highestDungeonFloor: number;
   heroName: string;
   str: number;
@@ -65,13 +84,9 @@ export interface SaveData {
   potions: { hp: number; stamina: number; elixir: number };
   consumables: Record<ConsumableId, number>;
   expeditions: ActiveExpedition[];
-  durability: Record<string, number>;
   gems: Record<GemId, number>;
-  sockets: Record<string, GemId[]>;
   blessed: boolean;
   quests: QuestState;
-  itemRarity: Record<string, Rarity>;
-  itemSubstats: Record<string, Substat[]>;
   activeOreId: string | null;
   lastMiningClaim: number;
   miningCapHours: number;
@@ -107,7 +122,6 @@ export interface SaveData {
   seenWelcome: boolean;
   autoPotionThreshold: number;
   autoPotionPriority: 'small_first' | 'large_first';
-  reforgeCount: Record<string, number>;
 }
 
 const SAVE_KEY = 'arena-rpg-save-v1';
@@ -151,12 +165,13 @@ function trimDec(v: number): string {
 }
 
 export function playerMaxHp(save: SaveData): number {
-  const { armor } = getEquipped(save.equipped);
-  const armorLvl = refineLevel(save.upgrades, save.equipped.armor);
-  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
-  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
-  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
-  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
+  const armorView = resolveEquipped(save).armor;
+  const armor = armorView.item;
+  const armorLvl = viewRefine(armorView);
+  const aDur = viewDurability(armorView);
+  const aRarity = rarityStatMult(viewRarity(armorView));
+  const gems = equippedGemBonuses(save);
+  const subs = equippedSubstatTotals(save);
   return Math.round(
     T.progression.playerBaseHp +
       (save.armorLevel - 1) * T.progression.armorHpPerLvl +
@@ -176,17 +191,19 @@ export function playerMaxHp(save: SaveData): number {
 // These are the PERMANENT effective stats (relic crit multiplier included); Hunting, the Dungeon and computeCP
 // all read them. Temporary modifiers are never part of this.
 export function buildCombatStats(save: SaveData): CombatStats {
-  const { weapon, armor, relic } = getEquipped(save.equipped);
-  const wLvl = refineLevel(save.upgrades, save.equipped.weapon);
-  const aLvl = refineLevel(save.upgrades, save.equipped.armor);
-  const wDur = save.durability?.[save.equipped.weapon] ?? MAX_DURABILITY;
-  const aDur = save.durability?.[save.equipped.armor] ?? MAX_DURABILITY;
+  const { weapon: weaponView, armor: armorView, relic } = resolveEquipped(save);
+  const weapon = weaponView.item;
+  const armor = armorView.item;
+  const wLvl = viewRefine(weaponView);
+  const aLvl = viewRefine(armorView);
+  const wDur = viewDurability(weaponView);
+  const aDur = viewDurability(armorView);
   const wFactor = durabilityFactor(wDur);
   const aFactor = durabilityFactor(aDur);
-  const wRarity = rarityStatMult(save.itemRarity?.[save.equipped.weapon]);
-  const aRarity = rarityStatMult(save.itemRarity?.[save.equipped.armor]);
-  const gems = totalGemBonuses(save.equipped, save.sockets ?? {});
-  const subs = totalSubstatTotals(save.equipped, save.itemSubstats ?? {});
+  const wRarity = rarityStatMult(viewRarity(weaponView));
+  const aRarity = rarityStatMult(viewRarity(armorView));
+  const gems = equippedGemBonuses(save);
+  const subs = equippedSubstatTotals(save);
 
   // Flat base hit (avg of attackMin/attackMax) plus the weapon term W (refine, durability, rarity); STR is applied on top
   // of that sum by strengthAdjustedDamage (derivedStats.ts). blessed/Elixir/crit come later, at the call sites.
@@ -537,6 +554,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
 }
 
 export function defaultSave(): SaveData {
+  const starter = createStarterGear();
   return {
     gold: 0,
     victories: 0,
@@ -544,9 +562,10 @@ export function defaultSave(): SaveData {
     xp: 0,
     weaponLevel: 1,
     armorLevel: 1,
+    schemaVersion: GEAR_SCHEMA_VERSION,
+    gearInstances: starter.instances,
     inventory: { ...DEFAULT_INVENTORY },
-    equipped: { ...DEFAULT_EQUIPPED },
-    upgrades: {},
+    equipped: { ...DEFAULT_EQUIPPED, weapon: starter.weaponId, armor: starter.armorId },
     highestDungeonFloor: 1,
     heroName: 'Hero',
     str: 0,
@@ -557,13 +576,9 @@ export function defaultSave(): SaveData {
     potions: { hp: 0, stamina: 0, elixir: 0 },
     consumables: emptyConsumables(),
     expeditions: [],
-    durability: {},
     gems: emptyGems(),
-    sockets: {},
     blessed: false,
     quests: emptyQuestState(),
-    itemRarity: {},
-    itemSubstats: {},
     activeOreId: null,
     lastMiningClaim: Date.now(),
     miningCapHours: T.mining.capHours,
@@ -597,9 +612,30 @@ export function defaultSave(): SaveData {
     // existing saves see no gameplay change until the player actually opens the settings.
     autoPotionThreshold: 0.35,
     autoPotionPriority: 'large_first',
-    reforgeCount: {},
   };
 }
+
+// Raw v1 save, kept once before the first v2 write so the migration can always be audited / rolled back by hand.
+const LEGACY_BACKUP_KEY = 'arena-rpg-save-v1.pre-instances';
+// Per-itemId gear maps that no longer exist in SaveData; stripped from the loaded object (they'd otherwise leak in
+// through `...parsed` and become a second source of truth).
+const LEGACY_GEAR_KEYS = ['upgrades', 'durability', 'sockets', 'itemRarity', 'itemSubstats', 'reforgeCount'] as const;
+
+// Returns true when a backup of the v1 save exists in storage afterwards (already there, or just written and read
+// back). An EXISTING backup is never overwritten.
+function ensureLegacyBackup(raw: string): boolean {
+  try {
+    if (localStorage.getItem(LEGACY_BACKUP_KEY) === null) localStorage.setItem(LEGACY_BACKUP_KEY, raw);
+    return localStorage.getItem(LEGACY_BACKUP_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+// Set when the v1 save was migrated in memory but its backup could not be written. While set, persistSave will
+// NOT overwrite the stored v1 save with the migrated v2 one (it retries the backup first). The stored save stays the
+// untouched original, and since the migration is deterministic the next load simply migrates it again.
+let unbackedLegacyRaw: string | null = null;
 
 export function loadSave(): SaveData {
   try {
@@ -610,15 +646,41 @@ export function loadSave(): SaveData {
       const legacyOwned = (parsed as { owned?: string[] }).owned;
       const inventory =
         parsed.inventory ??
-        (legacyOwned ? Object.fromEntries(legacyOwned.map((id) => [id, 1])) : base.inventory);
-      const gear = sanitizeSaveInventory(inventory, parsed.equipped ?? base.equipped);
+        (legacyOwned ? Object.fromEntries(legacyOwned.map((id) => [id, 1])) : {});
+      // v2 = weapons / armors are gear instances. A save that already HAS `gearInstances` is v2 and is never
+      // migrated again; only one without them is v1 (per-itemId maps) and goes through migrateGearV1toV2 (pure,
+      // deterministic ids), so load -> persist -> load -> load is stable.
+      const rawParsed = parsed as Record<string, unknown>;
+      const isV2 = !!parsed.gearInstances && typeof parsed.gearInstances === 'object' && !Array.isArray(parsed.gearInstances);
+      let gearInstances: Record<GearInstanceId, GearInstance>;
+      let weaponId: GearInstanceId | null;
+      let armorId: GearInstanceId | null;
+      let migratedMaxRefine = 0;
+      if (isV2) {
+        gearInstances = sanitizeGearInstances(parsed.gearInstances);
+        weaponId = sanitizeEquippedInstance(parsed.equipped?.weapon, 'weapon', gearInstances);
+        armorId = sanitizeEquippedInstance(parsed.equipped?.armor, 'armor', gearInstances);
+      } else {
+        unbackedLegacyRaw = ensureLegacyBackup(raw) ? null : raw;
+        const legacy = sanitizeLegacyInventory(inventory, parsed.equipped ?? {});
+        const mig = migrateGearV1toV2({
+          inventory: legacy.inventory,
+          equipped: legacy.equipped,
+          itemRarity: rawParsed.itemRarity,
+          itemSubstats: rawParsed.itemSubstats,
+          upgrades: rawParsed.upgrades,
+          durability: rawParsed.durability,
+          sockets: rawParsed.sockets,
+          reforgeCount: rawParsed.reforgeCount,
+        });
+        gearInstances = mig.gearInstances;
+        weaponId = mig.weaponId;
+        armorId = mig.armorId;
+        migratedMaxRefine = mig.maxRefineEver;
+      }
+      const gear = sanitizeStackableGear(inventory, parsed.equipped);
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
       if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
-      const upgrades: Record<string, number> = {};
-      for (const [id, lvl] of Object.entries(parsed.upgrades ?? {})) {
-        const n = Math.floor(Number(lvl));
-        if (getGear(id) && Number.isFinite(n) && n > 0) upgrades[id] = Math.min(8, n);
-      }
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
       const sanitizeExpedition = (exp: unknown): ActiveExpedition | null => {
         const e = exp as Partial<ActiveExpedition> | null | undefined;
@@ -632,21 +694,10 @@ export function loadSave(): SaveData {
         .map(sanitizeExpedition)
         .filter((e): e is ActiveExpedition => !!e)
         .slice(0, 4);
-      const durability: Record<string, number> = {};
-      for (const [id, d] of Object.entries(parsed.durability ?? {})) {
-        if (!getGear(id)) continue;
-        const n = Math.floor(Number(d));
-        if (Number.isFinite(n)) durability[id] = Math.max(0, Math.min(MAX_DURABILITY, n));
-      }
       const gems = { ...emptyGems() };
       for (const k of Object.keys(gems) as GemId[]) {
         const n = Math.floor(Number((parsed.gems ?? {})[k]));
         gems[k] = Number.isFinite(n) && n > 0 ? n : 0;
-      }
-      const sockets: Record<string, GemId[]> = {};
-      for (const [id, list] of Object.entries(parsed.sockets ?? {})) {
-        if (!getGear(id) || !Array.isArray(list)) continue;
-        sockets[id] = (list as string[]).filter((g) => getGem(g)).slice(0, 4) as GemId[];
       }
       const today = new Date().toDateString();
       const q: Partial<QuestState> = parsed.quests ?? {};
@@ -657,6 +708,8 @@ export function loadSave(): SaveData {
         counters: { ...emptyQuestState().counters, ...(q.counters ?? {}) },
         claimed: Array.isArray(q.claimed) ? q.claimed : [],
       };
+      // Highest refine ever reached survives destroying the piece (see gearInstances.questMaxRefine).
+      quests.counters.maxRefineEver = Math.max(Math.floor(Number(quests.counters.maxRefineEver ?? 0)) || 0, migratedMaxRefine);
       if (quests.dailyDay !== today) {
         quests.dailyDay = today;
         quests.daily = { kills: 0, forge: 0, purchases: 0, expeditions: 0 };
@@ -670,15 +723,6 @@ export function loadSave(): SaveData {
       }
       const seenTooltips = Array.isArray(parsed.seenTooltips) ? parsed.seenTooltips.filter((id) => typeof id === 'string') : [];
       const seenWelcome = parsed.seenWelcome === true;
-      const itemRarity: Record<string, Rarity> = {};
-      for (const [id, r] of Object.entries(parsed.itemRarity ?? {})) {
-        if (getGear(id) && (r === 'common' || r === 'rare' || r === 'epic' || r === 'legendary')) itemRarity[id] = r as Rarity;
-      }
-      const itemSubstats: Record<string, Substat[]> = {};
-      for (const [id, list] of Object.entries(parsed.itemSubstats ?? {})) {
-        if (!getGear(id) || !Array.isArray(list)) continue;
-        itemSubstats[id] = (list as Substat[]).filter((s) => s && typeof s.value === 'number').slice(0, 4);
-      }
       const oreTierIds = new Set(ORE_TIERS.map((t) => t.id as string));
       const legacyMiningActive = (parsed as { miningActive?: boolean }).miningActive === true;
       const activeOreId =
@@ -857,25 +901,22 @@ export function loadSave(): SaveData {
         items: sanitizePouchItems(rawPouch?.items),
         lostItems: sanitizePouchItems(rawPouch?.lostItems),
       };
-      return {
+      const loaded: SaveData = {
         ...base,
         ...parsed,
         xp,
+        schemaVersion: GEAR_SCHEMA_VERSION,
+        gearInstances,
         inventory: gear.inventory,
-        equipped: gear.equipped,
-        upgrades,
+        equipped: { ...gear.equipped, weapon: weaponId, armor: armorId },
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
         consumables: { ...emptyConsumables(), ...(parsed.consumables ?? {}) },
         expeditions,
-        durability,
         gems,
-        sockets,
         blessed: !!parsed.blessed,
         quests,
-        itemRarity,
-        itemSubstats,
         activeOreId,
         lastMiningClaim,
         miningCapHours,
@@ -910,8 +951,9 @@ export function loadSave(): SaveData {
             ? Math.max(0.1, Math.min(0.7, parsed.autoPotionThreshold))
             : base.autoPotionThreshold,
         autoPotionPriority: parsed.autoPotionPriority === 'small_first' ? 'small_first' : base.autoPotionPriority,
-        reforgeCount: { ...base.reforgeCount, ...(parsed.reforgeCount ?? {}) },
       };
+      for (const key of LEGACY_GEAR_KEYS) delete (loaded as unknown as Record<string, unknown>)[key];
+      return loaded;
     }
   } catch {
     /* ignore */
@@ -920,6 +962,10 @@ export function loadSave(): SaveData {
 }
 
 export function persistSave(data: SaveData): void {
+  if (unbackedLegacyRaw !== null) {
+    if (!ensureLegacyBackup(unbackedLegacyRaw)) return;
+    unbackedLegacyRaw = null;
+  }
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   } catch {

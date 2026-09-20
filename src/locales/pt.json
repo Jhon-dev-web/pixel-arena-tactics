@@ -210,7 +210,10 @@
     "unequipToSalvage": "Desequipe o item antes de desmontar",
     "needAnotherTool": "Você precisa de outra ferramenta desse tipo antes de desmontar esta",
     "salvageDone": "♻️ Item desmontado!",
-    "salvageBonus": "♻️ Item desmontado! Bônus de material raro recebido!"
+    "salvageBonus": "♻️ Item desmontado! Bônus de material raro recebido!",
+    "gearSpace": "🗡️ Equipamentos: {n} / {m}",
+    "gemsReturn": "{n} gema(s) encaixada(s) voltam ao estoque",
+    "socketsCount": "Gemas encaixadas: {n}"
   },
   "profile": {
     "title": "⚔️ PERFIL DO HERÓI",
@@ -337,7 +340,14 @@
     "upgradeFail": "✗ Falha na melhoria",
     "reforge": "🎲 Reforjar Status (1 🔷 + {gold} Ouro)",
     "reforged": "🎲 Status reforjados!",
-    "levelReq": "Nível {n}"
+    "levelReq": "Nível {n}",
+    "gearSpace": "🗡️ Equipamentos: {n} / {m}",
+    "gearFull": "Limite de equipamentos atingido ({n}). Descarte ou desmonte alguma peça.",
+    "noGear": "Você não possui equipamentos.",
+    "confirmIngredients": "Estas peças serão consumidas:",
+    "confirmForge": "CONFIRMAR",
+    "cancel": "Cancelar",
+    "gemsBack": "Gemas devolvidas ao estoque: {list}"
   },
   "rarity": {
     "rar_common": "Comum",

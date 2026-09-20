@@ -10,12 +10,24 @@ import {
   effectiveDamage,
   effectiveMaxHp,
   gearBySlot,
-  getEquipped,
   getGear,
-  refineLevel,
+  isInstancedSlot,
   upgradeChance,
   upgradeCost,
 } from '../game/gear';
+import {
+  GearInstance,
+  clampRefine,
+  countUsableInstances,
+  gearInstanceCount,
+  isInstanceEquipped,
+  isRelevantInstance,
+  listGearInstances,
+  maxGearInstances,
+  planForgeIngredients,
+} from '../game/gearInstances';
+import { rarityDef } from '../game/rarity';
+import { gearInstanceLabel, refineTag } from './gearLabel';
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
 import { getConsumable } from '../game/consumables';
@@ -30,8 +42,6 @@ const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
 const gemText = (k: string): string => t(`gems.${k}`);
 const conText = (k: string): string => t(`consumables.${k}`);
-
-const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
 function rarityIcon(key: string): string {
   switch (key) {
@@ -66,7 +76,8 @@ export default function ForgeModal({
   onClose,
 }: {
   save: SaveData;
-  onForge: (id: string) => void;
+  // consumedIds: the confirmed selection of gear instances a recipe consumes (omitted = the cheapest copies).
+  onForge: (id: string, consumedIds?: string[]) => void;
   onRefine: (recipeId: string) => void;
   onCraftPotion: (recipeId: string) => void;
   onUpgrade: (id: string) => void;
@@ -80,6 +91,7 @@ export default function ForgeModal({
   const [justForged, setJustForged] = useState<string | null>(null);
   const [justRefined, setJustRefined] = useState<string | null>(null);
   const [justCraftedPotion, setJustCraftedPotion] = useState<string | null>(null);
+  const [pendingForge, setPendingForge] = useState<{ id: string; ids: string[] } | null>(null);
   const catalystCount = save.consumables?.refine_catalyst ?? 0;
 
   const level = playerLevel(save.xp);
@@ -89,17 +101,29 @@ export default function ForgeModal({
     if (level < (item.recipe?.requiredLevel ?? 0)) return false;
     if (!hasMaterials(save.materials, item.recipe?.materials)) return false;
     if (!hasGems(save.gems, item.recipe?.gems)) return false;
-    for (const [itemId, need] of Object.entries(item.recipe?.items ?? {})) {
-      if ((save.inventory[itemId] ?? 0) < (need as number)) return false;
-    }
+    const plan = planForgeIngredients(save, item);
+    if (!plan) return false;
+    if (isInstancedSlot(item.slot) && gearInstanceCount(save) - plan.length + 1 > maxGearInstances()) return false;
     if ((item.recipe?.shards ?? 0) > 0 && save.shards < (item.recipe?.shards ?? 0)) return false;
     return true;
   };
 
-  const handleForge = (id: string) => {
-    onForge(id);
+  const doForge = (id: string, consumedIds?: string[]) => {
+    onForge(id, consumedIds);
     setJustForged(id);
     window.setTimeout(() => setJustForged(null), 1500);
+  };
+
+  // Crafting that would consume a piece worth keeping (refined, socketed, or above common) asks first, listing
+  // exactly which pieces go.
+  const handleForge = (id: string) => {
+    const item = getGear(id);
+    const plan = item ? planForgeIngredients(save, item) : null;
+    if (plan && plan.some(isRelevantInstance)) {
+      setPendingForge({ id, ids: plan.map((i) => i.id) });
+      return;
+    }
+    doForge(id);
   };
 
   const canRefine = (recipe: RefiningRecipe): boolean => {
@@ -126,11 +150,18 @@ export default function ForgeModal({
     window.setTimeout(() => setJustCraftedPotion(null), 1500);
   };
 
-  const { weapon, armor } = getEquipped(save.equipped);
-  const equipped = [weapon, armor];
+  // Every weapon / armor the player owns is its own piece; Upgrade / Repair / Gems act on the one chosen.
+  const gearList = listGearInstances(save);
+  const instanceTag = (inst: GearInstance) => (
+    <>
+      {inst.rarity !== 'common' && <span className={`rarity-line r-${inst.rarity}`}> {t(`rarity.${rarityDef(inst.rarity).nameKey}`)}</span>}
+      {isInstanceEquipped(save, inst.id) && <span className="socket-count"> ✓ {t('forge.equipped')}</span>}
+    </>
+  );
 
-  const canUpgrade = (item: GearItem): boolean => {
-    const lvl = refineLevel(save.upgrades, item.id);
+  const canUpgrade = (inst: GearInstance): boolean => {
+    const item = getGear(inst.templateId);
+    const lvl = clampRefine(inst.upgrade);
     if (lvl >= MAX_REFINE) return false;
     const cost = upgradeCost(item, lvl);
     return (
@@ -171,6 +202,40 @@ export default function ForgeModal({
 
         {tab === 'forge' && (
           <div className="forge-body">
+            <p className="shop-space">{t('forge.gearSpace', { n: gearInstanceCount(save), m: maxGearInstances() })}</p>
+            {pendingForge && (
+              <div className="salvage-preview forge-confirm">
+                <span className="salvage-preview-label">{t('forge.confirmIngredients')}</span>
+                {pendingForge.ids
+                  .filter((id) => save.gearInstances[id])
+                  .map((id) => (
+                    <span className="floor-drop forge-confirm-item" key={id}>
+                      <span className="forge-confirm-name">{gearInstanceLabel(save.gearInstances[id])}</span>
+                      {save.gearInstances[id].sockets.length > 0 && (
+                        <span className="forge-confirm-gems">
+                          {t('forge.gemsBack', {
+                            list: save.gearInstances[id].sockets.map((g) => gemText(getGem(g)?.nameKey ?? g)).join(', '),
+                          })}
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                <button
+                  className="craft-btn forge"
+                  onClick={() => {
+                    const p = pendingForge;
+                    setPendingForge(null);
+                    doForge(p.id, p.ids);
+                  }}
+                  data-ui
+                >
+                  {t('forge.confirmForge')}
+                </button>
+                <button className="craft-btn" onClick={() => setPendingForge(null)} data-ui>
+                  {t('forge.cancel')}
+                </button>
+              </div>
+            )}
             {GEAR_SLOTS.map((slot) => {
               const items = gearBySlot(slot).filter((g) => g.recipe);
               if (items.length === 0) return null;
@@ -216,7 +281,7 @@ export default function ForgeModal({
                             )}
                             {Object.entries(item.recipe?.items ?? {}).map(([itemId, count]) => {
                               const need = count as number;
-                              const have = save.inventory[itemId] ?? 0;
+                              const have = countUsableInstances(save, itemId);
                               const g = getGear(itemId);
                               return (
                                 <span className="req-item" key={`item-${itemId}`}>
@@ -434,14 +499,16 @@ export default function ForgeModal({
 
         {tab === 'upgrade' && (
           <div className="forge-body">
-            {equipped.map((item) => {
-              const lvl = refineLevel(save.upgrades, item.id);
+            {gearList.length === 0 && <span className="socket-none">{t('forge.noGear')}</span>}
+            {gearList.map((inst) => {
+              const item = getGear(inst.templateId);
+              const lvl = clampRefine(inst.upgrade);
               const isMax = lvl >= MAX_REFINE;
               const cost = upgradeCost(item, lvl);
               const chance = Math.round(upgradeChance(lvl) * 100);
               const stat = item.slot === 'weapon' ? effectiveDamage(item, lvl) : effectiveMaxHp(item, lvl);
               return (
-                <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
+                <div className={`craft-card ${rarityClass(item)}`} key={inst.id}>
                   <span className="craft-icon">
                     <GearIcon item={item} />
                   </span>
@@ -450,6 +517,7 @@ export default function ForgeModal({
                       <span className="craft-name">
                         {gearText(item.nameKey)}
                         <span className="refine-tag">{refineTag(lvl)}</span>
+                        {instanceTag(inst)}
                       </span>
                     </div>
                     <span className="craft-desc">
@@ -501,8 +569,8 @@ export default function ForgeModal({
                     <div className="repair-btns upgrade-btns">
                       <button
                         className="craft-btn forge repair-action-btn"
-                        onClick={() => onUpgrade(item.id)}
-                        disabled={!canUpgrade(item)}
+                        onClick={() => onUpgrade(inst.id)}
+                        disabled={!canUpgrade(inst)}
                         data-ui
                       >
                         {t('forge.upgrade')}
@@ -510,8 +578,8 @@ export default function ForgeModal({
                       {catalystCount > 0 && (
                         <button
                           className="craft-btn blessed repair-action-btn"
-                          onClick={() => onUpgradeWithCatalyst(item.id)}
-                          disabled={!canUpgrade(item)}
+                          onClick={() => onUpgradeWithCatalyst(inst.id)}
+                          disabled={!canUpgrade(inst)}
                           data-ui
                           title={t('forge.catalystHint')}
                         >
@@ -529,18 +597,24 @@ export default function ForgeModal({
 
         {tab === 'repair' && (
           <div className="forge-body">
-            {equipped.map((item) => {
-              const dur = save.durability?.[item.id] ?? MAX_DURABILITY;
+            {gearList.length === 0 && <span className="socket-none">{t('forge.noGear')}</span>}
+            {gearList.map((inst) => {
+              const item = getGear(inst.templateId);
+              const dur = inst.durability;
               const broken = dur <= 0;
               const cost = effectiveRepairCost(save, item.tier ?? 0, Date.now());
               const discounted = isBattlePassActive(save, Date.now());
               return (
-                <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
+                <div className={`craft-card ${rarityClass(item)}`} key={inst.id}>
                   <span className="craft-icon">
                     <GearIcon item={item} />
                   </span>
                   <div className="craft-info">
-                    <span className="craft-name">{gearText(item.nameKey)}</span>
+                    <span className="craft-name">
+                      {gearText(item.nameKey)}
+                      <span className="refine-tag">{refineTag(clampRefine(inst.upgrade))}</span>
+                      {instanceTag(inst)}
+                    </span>
                     <span className={`durability-text${broken ? ' broken' : dur < 30 ? ' worn' : ''}`}>
                       {broken ? t('forge.broken') : t('forge.durability', { n: dur, m: MAX_DURABILITY })}
                     </span>
@@ -550,7 +624,7 @@ export default function ForgeModal({
                     <div className="repair-btns">
                       <button
                         className="craft-btn forge repair-action-btn"
-                        onClick={() => onRepair(item.id, false)}
+                        onClick={() => onRepair(inst.id, false)}
                         disabled={save.gold < cost || dur >= MAX_DURABILITY}
                         data-ui
                       >
@@ -562,7 +636,7 @@ export default function ForgeModal({
                       </button>
                       <button
                         className="craft-btn blessed repair-action-btn"
-                        onClick={() => onRepair(item.id, true)}
+                        onClick={() => onRepair(inst.id, true)}
                         disabled={save.gold < cost || save.shards < 1 || dur >= MAX_DURABILITY}
                         data-ui
                       >
@@ -581,18 +655,22 @@ export default function ForgeModal({
 
         {tab === 'socket' && (
           <div className="forge-body">
-            {equipped.map((item) => {
+            {gearList.length === 0 && <span className="socket-none">{t('forge.noGear')}</span>}
+            {gearList.map((inst) => {
+              const item = getGear(inst.templateId);
               const maxSockets = socketsForTier(item.tier ?? 0);
-              const list = save.sockets?.[item.id] ?? [];
+              const list = inst.sockets;
               const ownedGems = GEMS.filter((g) => (save.gems?.[g.id] ?? 0) > 0);
               return (
-                <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
+                <div className={`craft-card ${rarityClass(item)}`} key={inst.id}>
                   <span className="craft-icon">
                     <GearIcon item={item} />
                   </span>
                   <div className="craft-info">
                     <span className="craft-name">
                       {gearText(item.nameKey)}
+                      <span className="refine-tag">{refineTag(clampRefine(inst.upgrade))}</span>
+                      {instanceTag(inst)}
                       <span className="socket-count">
                         {maxSockets > 0 ? ` ${list.length}/${maxSockets}` : ''}
                       </span>
@@ -603,7 +681,7 @@ export default function ForgeModal({
                           {Array.from({ length: maxSockets }).map((_, i) => {
                             const gem = getGem(list[i] ?? '');
                             return gem ? (
-                              <button className="socket filled" key={i} onClick={() => onUnsocket(item.id, i)} title={gemText(gem.nameKey)} data-ui>
+                              <button className="socket filled" key={i} onClick={() => onUnsocket(inst.id, i)} title={gemText(gem.nameKey)} data-ui>
                                 <GemIcon item={gem} className="inline-icon" />
                               </button>
                             ) : (
@@ -614,7 +692,7 @@ export default function ForgeModal({
                         {list.length < maxSockets && ownedGems.length > 0 && (
                           <div className="socket-gem-row">
                             {ownedGems.map((g) => (
-                              <button className="socket-gem-btn" key={g.id} onClick={() => onSocket(item.id, g.id)} data-ui>
+                              <button className="socket-gem-btn" key={g.id} onClick={() => onSocket(inst.id, g.id)} data-ui>
                                 <GemIcon item={g} className="inline-icon" /> ×{save.gems?.[g.id]}
                               </button>
                             ))}

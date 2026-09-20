@@ -38,9 +38,20 @@ export interface GearItem {
   fishingPower?: number;
 }
 
+// Weapon and armor are the only INSTANCED slots: each owned piece is its own object with its own rarity, substats,
+// refine level, sockets and durability (see gearInstances.ts). Everything else stays a stackable template id.
+export const INSTANCED_SLOTS = ['weapon', 'armor'] as const;
+export type InstancedSlot = (typeof INSTANCED_SLOTS)[number];
+
+export function isInstancedSlot(slot: string): slot is InstancedSlot {
+  return (INSTANCED_SLOTS as readonly string[]).includes(slot);
+}
+
 export interface EquippedGear {
-  weapon: string;
-  armor: string;
+  // GEAR INSTANCE ids (null = empty slot, which plays as the zero-stat starter template).
+  weapon: string | null;
+  armor: string | null;
+  // Template ids of stackable gear.
   relic: string | null;
   shield: string | null;
   helmet: string | null;
@@ -92,17 +103,17 @@ export const GEAR: GearItem[] = [
 
 const GEAR_BY_ID: Record<string, GearItem> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
 
+// Stackable gear every save always owns. The weapon / armor starters are instances now, created once
+// (gearInstances.createStarterGear) and never re-injected.
 export const DEFAULT_INVENTORY: Record<string, number> = {
-  wooden_club: 1,
-  ragged_clothes: 1,
   rusty_pickaxe: 1,
   worn_axe: 1,
   bamboo_rod: 1,
 };
 
 export const DEFAULT_EQUIPPED: EquippedGear = {
-  weapon: 'wooden_club',
-  armor: 'ragged_clothes',
+  weapon: null,
+  armor: null,
   relic: null,
   shield: null,
   helmet: null,
@@ -119,36 +130,27 @@ export function gearBySlot(slot: GearSlot): GearItem[] {
   return GEAR.filter((g) => g.slot === slot);
 }
 
-export function getEquipped(equipped: EquippedGear) {
-  return {
-    weapon: getGear(equipped.weapon),
-    armor: getGear(equipped.armor),
-    relic: equipped.relic ? getGear(equipped.relic) : null,
-    shield: equipped.shield ? getGear(equipped.shield) : null,
-    helmet: equipped.helmet ? getGear(equipped.helmet) : null,
-    pickaxe: equipped.pickaxe ? getGear(equipped.pickaxe) : null,
-    axe: equipped.axe ? getGear(equipped.axe) : null,
-    rod: equipped.rod ? getGear(equipped.rod) : null,
-  };
-}
+// v1 saves only (migration input): the old per-template inventory, weapon/armor included, with the default
+// starters guaranteed present. Never used on a v2 save.
+const LEGACY_DEFAULT_INVENTORY: Record<string, number> = { wooden_club: 1, ragged_clothes: 1, ...DEFAULT_INVENTORY };
 
-export function sanitizeSaveInventory(
+export function sanitizeLegacyInventory(
   inventory: Record<string, number> | undefined,
-  equipped: EquippedGear,
+  equipped: Partial<EquippedGear>,
 ): { inventory: Record<string, number>; equipped: EquippedGear } {
   const valid = new Set(GEAR.map((g) => g.id));
   const inv: Record<string, number> = {};
   for (const [id, qty] of Object.entries(inventory ?? {})) {
     if (valid.has(id) && qty > 0) inv[id] = Math.floor(qty);
   }
-  for (const [id, qty] of Object.entries(DEFAULT_INVENTORY)) {
+  for (const [id, qty] of Object.entries(LEGACY_DEFAULT_INVENTORY)) {
     if (!(id in inv)) inv[id] = qty;
   }
   return {
     inventory: inv,
     equipped: {
-      weapon: valid.has(equipped.weapon) ? equipped.weapon : DEFAULT_EQUIPPED.weapon,
-      armor: valid.has(equipped.armor) ? equipped.armor : DEFAULT_EQUIPPED.armor,
+      weapon: valid.has(equipped.weapon) ? equipped.weapon : 'wooden_club',
+      armor: valid.has(equipped.armor) ? equipped.armor : 'ragged_clothes',
       relic: equipped.relic && valid.has(equipped.relic) ? equipped.relic : null,
       shield: equipped.shield && valid.has(equipped.shield) ? equipped.shield : null,
       helmet: equipped.helmet && valid.has(equipped.helmet) ? equipped.helmet : null,
@@ -162,8 +164,31 @@ export function sanitizeSaveInventory(
 // --- Refinement (+0 .. +8) ---
 export const MAX_REFINE = 8;
 
-export function refineLevel(upgrades: Record<string, number> | undefined, itemId: string): number {
-  return Math.max(0, Math.min(MAX_REFINE, upgrades?.[itemId] ?? 0));
+// Stackable gear (relics + profession tools) for a v2 save. Weapons / armors live in save.gearInstances.
+export function sanitizeStackableGear(
+  inventory: Record<string, number> | undefined,
+  equipped: Partial<EquippedGear> | undefined,
+): { inventory: Record<string, number>; equipped: Omit<EquippedGear, 'weapon' | 'armor'> } {
+  const stackable = new Set(GEAR.filter((g) => !isInstancedSlot(g.slot)).map((g) => g.id));
+  const inv: Record<string, number> = {};
+  for (const [id, qty] of Object.entries(inventory ?? {})) {
+    if (stackable.has(id) && qty > 0) inv[id] = Math.floor(qty);
+  }
+  for (const [id, qty] of Object.entries(DEFAULT_INVENTORY)) {
+    if (!(id in inv)) inv[id] = qty;
+  }
+  const pick = (id: unknown): string | null => (typeof id === 'string' && stackable.has(id) ? id : null);
+  return {
+    inventory: inv,
+    equipped: {
+      relic: pick(equipped?.relic),
+      shield: pick(equipped?.shield),
+      helmet: pick(equipped?.helmet),
+      pickaxe: pick(equipped?.pickaxe),
+      axe: pick(equipped?.axe),
+      rod: pick(equipped?.rod),
+    },
+  };
 }
 
 export function effectiveDamage(item: GearItem, level: number): number {
