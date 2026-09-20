@@ -213,7 +213,12 @@
     "salvageBonus": "♻️ Item salvaged! Rare material bonus received!",
     "gearSpace": "🗡️ Equipment: {n} / {m}",
     "gemsReturn": "{n} socketed gem(s) go back to your stock",
-    "socketsCount": "Socketed gems: {n}"
+    "socketsCount": "Socketed gems: {n}",
+    "salvageRounding": "Each recipe ingredient returns {pct}% of its quantity, rounded down with no minimum: low-quantity ingredients may not be recovered. The random rarity bonus is separate and not guaranteed.",
+    "salvageEmpty": "No guaranteed materials for this recipe.",
+    "reforgeCount": "Reforges on this piece: {n}",
+    "reforgeGold": "Gold",
+    "reforgeShard": "◆ Shard"
   },
   "profile": {
     "title": "⚔️ HERO PROFILE",
@@ -338,8 +343,9 @@
     "noSockets": "No sockets available (Requires Tier 1 Bronze or higher)",
     "upgradeOk": "✓ {n} +{m}!",
     "upgradeFail": "✗ Upgrade failed",
-    "reforge": "🎲 Reforge Stats (1 🔷 + {gold} Gold)",
+    "reforge": "🎲 Reforge stats",
     "reforged": "🎲 Stats reforged!",
+    "reforgeExplanation": "Rerolls ALL extra stats of the selected piece: the result may improve or get worse. Rarity, refine level (+N), sockets and durability do not change, and other copies are not affected. Each attempt consumes everything below (stock / cost).",
     "levelReq": "Level {n}",
     "gearSpace": "🗡️ Equipment: {n} / {m}",
     "gearFull": "Equipment limit reached ({n}). Discard or salvage a piece first.",

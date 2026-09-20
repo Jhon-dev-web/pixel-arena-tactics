@@ -20,7 +20,8 @@ import {
   SaveData,
 } from './game/engine';
 import { getBattlePassLevelDef } from './game/battlepass';
-import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot, reforgeGoldCost } from './game/gear';
+import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
+import { applyReforge } from './game/reforge';
 import {
   InstancedSlot,
   applyDiscardInstance,
@@ -28,7 +29,6 @@ import {
   applyEquipInstance,
   applyForge,
   applyRepair,
-  applyReforgeInstance,
   applySalvage,
   applySocketGem,
   applyUnequipSlot,
@@ -1036,9 +1036,9 @@ function App() {
     showToast(t('forge.toBag', { n: t(`materials.mat_${recipe.output}`) }));
   };
 
-  // Same rules as before (1 shard + escalating Gold), but per INSTANCE: rerolls only that piece's substats.
+  // Economic reforge (reforge.ts), per INSTANCE: rerolls only that piece's substats; all-or-nothing charge.
   const reforgeItem = (id: string) => {
-    const next = applyReforgeInstance(saveRef.current, id, reforgeGoldCost);
+    const next = applyReforge(saveRef.current, id);
     if (!next) return;
     setSaveBoth(next);
     playSfx('click');

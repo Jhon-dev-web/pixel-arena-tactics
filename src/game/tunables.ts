@@ -194,6 +194,20 @@ const T = DebugPanel.define({
     // objects. It is NOT a gameplay limit (no real save gets near it) and is unrelated to maxInstances.
     migrationSafetyCeiling: { value: 10000, min: 100, max: 1000000, step: 100, label: 'Migration safety ceiling: max copies migrated per template' },
   },
+  economySinks: {
+    _label: 'Material sinks',
+    // Economic reforge (reforge.ts), per gear INSTANCE. Tiers below reforgeAdvancedTier pay the basic bundle
+    // (dust + refined), the rest pay the advanced one (dust + refined + noble). Gold is escalated by that instance's
+    // reforgeCount (gear.reforgeGoldCost) and every attempt also costs 1 shard.
+    reforgeAdvancedTier: { value: 3, min: 1, max: 6, step: 1, label: 'First gear tier with advanced reforge costs' },
+    reforgeBasicDust: { value: 2, min: 0, max: 100, step: 1, label: 'Basic reforge: dust' },
+    reforgeBasicRefined: { value: 6, min: 0, max: 200, step: 1, label: 'Basic reforge: claw/blood' },
+    reforgeAdvancedDust: { value: 6, min: 0, max: 100, step: 1, label: 'Advanced reforge: dust' },
+    reforgeAdvancedRefined: { value: 24, min: 0, max: 200, step: 1, label: 'Advanced reforge: claw/blood' },
+    reforgeAdvancedNoble: { value: 2, min: 0, max: 100, step: 1, label: 'Advanced reforge: core/crystal' },
+    // Salvage returns floor(recipeQuantity x rate) of each recipe material, with NO minimum of 1.
+    salvageRecoveryRate: { value: 0.45, min: 0, max: 0.9, step: 0.05, label: 'Salvage material recovery (rounded down; no minimum)' },
+  },
   battlePass: {
     _label: 'Battle Pass',
     xpBase: { value: 100, min: 20, max: 500, step: 10, label: 'Pass XP required for level 2' },
