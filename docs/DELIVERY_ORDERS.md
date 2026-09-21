@@ -39,15 +39,23 @@ Gold/h = 30 + 1,5 × (tier − 1) + extra da faixa (na prática 30 a 40). Duraç
 
 Pelo **maior andar da Dungeon** (o mesmo dado que libera as zonas de Caça): andares 1–25, 26–50, 51–75 e 76+. Os materiais que um pedido pode pedir são filtrados pelo que o jogador já pode ter: zonas de Caça desbloqueadas, nível de Jardinagem para cada planta, nível de Mineração/Lenhador para minério/madeira, e nível de personagem 25 para pedir processados.
 
-## Peso econômico (economicWeight)
+## Carga (baseGoldValue)
 
-Índice de **escassez de produção**, em "equivalentes de Farrapo". **Não é preço e não vale Gold.** Só serve para dimensionar quantidades (uma Flor não pode valer como um Farrapo) e impedir pedidos incoerentes. Nasce de unidades/dia numa jornada ativa dedicada, com prêmio de raridade (Nobres ×1,5, Flor ×2). Processados: insumos ×1,1 + taxa de conversão × `processedFeeWeight`.
+O peso econômico próprio (`economicWeight`) foi **aposentado**. A carga de um pedido é dimensionada pelo valor de referência central (`economy.ts`, ver `ECONOMIC_REFERENCE.md`):
 
-Cada pedido recebe um orçamento de peso = horas × peso por hora do tier; esse orçamento é repartido pelas partes do arquétipo e limitado por tetos por material (`capXxx`).
+```text
+Gold = horas x Gold/h(tier, distância)                 (tempo + tier definem o orçamento de recompensa)
+carga desejada = Gold / rewardRatio(distância)         Local 1,05 | Curta 1,10 | Regional 1,15 | Longa 1,20 | Especial 1,25
+quantidade de cada material = carga desejada x parte do arquétipo / baseGoldValue
+```
+
+A carga precisa ficar em ±15% do alvo (`T.deliveries.ratioTolerance`). Um material que bate no teto por pedido fica no teto e o valor que sobra é movido para os outros materiais do arquétipo. Distância maior paga um pouco mais por unidade de carga (a entrega prende o slot por mais tempo). `baseGoldValue` só dimensiona a carga: não paga nada e não existe venda para NPC.
+
+Pedidos de plantas: a produção da Horta é pequena (1 a 3 unidades/dia de Raiz, Cogumelo e Flor), então elas entram em quantidades pequenas (tetos 2/2/2, até 3 no Especial) e o resto do valor do pedido vem de Farrapo, Osso, Sangue e Cristal (o pedido é "ervas e ataduras", "reagentes"). Fluxos antigos com Raiz/Cogumelo/Flor em excesso deixaram de existir.
 
 ## Arquétipos
 
-Medicinal, Alquímico, Alquímico raro (só tier 4), Militar, Armadura, Encomenda rara (Nobres, 1 a 3), Forja, Comercial (processados). Nenhum pede Flor/Raiz/Cogumelo em quantidade de "custo artificial": no máximo 1 de cada por pedido. Pedidos com processados só saem de Regional para cima e a taxa de conversão nunca passa de 50% do Gold do pedido.
+Medicinal, Alquímico, Alquímico raro (só tier 4), Militar, Armadura, Encomenda rara (Nobres, 1 a 3), Forja, Comercial (processados). Cada um tem uma **assinatura** obrigatória (Militar = Garra, Medicinal = Erva, Alquímico raro = Flor, Armadura = Sangue, Encomenda rara = Núcleo + Cristal, Comercial = só processados, Forja = só minério e madeira). Pedidos com processados só saem de Regional para cima e a taxa de conversão nunca passa de 65% do Gold do pedido (o ratio ≥ 1 já garante Gold líquido positivo).
 
 ## Passe = conveniência
 
@@ -83,15 +91,17 @@ Expedições já ativas no save continuam pelo sistema antigo (mesmas recompensa
 
 ## Resultados da simulação (mix 50% MID / 30% LATE / 20% END; 50% casual / 35% ativo / 15% hardcore)
 
-| | Expedição (1 slot) | Pedidos |
+| | Expedição (1 slot) | Pedidos (alinhados à referência) |
 |---|---|---|
-| Gold/dia | 429 | 547 (+27%) |
-| XP/dia | 726k | 855k (+18%) |
-| Shards/dia | 4,1 | 1,6 (-60%) |
+| Gold/dia | 429 | 541 (+26%) |
+| XP/dia (sem o bônus do Passe) | 726k | 847k (+17%) |
+| Shards/dia | 4,1 | 1,66 (-60%) |
 | Entregas/dia | 1,4 | 1,4 |
-| Custo em materiais | nenhum | Comuns 19%, Refino 9% (Sangue 7%), Nobres 4%, Erva Medicinal 4%, Erva Energética 8%, Raiz 7%, Cogumelo 7%, Flor 5% da produção |
+| Custo em materiais | nenhum | Comuns 20%, Refino 10% (Sangue 10%), Nobres 5%, Erva Medicinal 3%, Erva Energética 6%, Raiz 9%, Cogumelo 9%, Flor 8% da produção |
 
-Por comportamento (Gold/XP/shards por dia): casual 400 / 640k / 1,3 (antes 260 / 440k / 2,5), ativo 680 / 1.070k / 2,1 (antes 520 / 880k / 5), hardcore 740 / 1.150k / 2,1 (antes 780 / 1.320k / 7,5).
+Por comportamento (Gold/XP/shards por dia): casual 387 / 606k / 1,2 (antes 260 / 440k / 2,5), ativo 681 / 1.065k / 2,1 (antes 520 / 880k / 5), hardcore 731 / 1.141k / 2,2 (antes 780 / 1.320k / 7,5). Jogador aleatório 494; **maximizador de ratio 736** (1,01× o hardcore: entender o sistema não multiplica o Gold, porque o Gold é tempo x tier e a carga tem ratio quase constante).
+
+Vantagem do Passe só por escolher entre 4 ofertas e rerolar (sem o bônus de XP): casual +2,4%, ativo +1,4%, hardcore +0,7%, maximizador +3,9% de Gold.
 
 Para quem tinha Passe, a Expedição dava 2 slots (Gold, XP e shards dobrados). Com 1 slot, o XP de Expedição desses jogadores cai (por exemplo, ativo com Passe: 1.760k → 1.100k/dia). Foi decisão aprovada: o Passe não dobra throughput passivo.
 

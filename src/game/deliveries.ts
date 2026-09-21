@@ -3,6 +3,7 @@ import { EXPEDITION_TICKET_SKIP_MS, ConsumableId } from './consumables';
 import { MAX_LEVEL, playerLevel, SaveData } from './engine';
 import { PLANTS } from './garden';
 import { hasMaterials, MaterialId } from './materials';
+import { baseGoldValue, cargoReferenceValue } from './economy';
 import { ORE_TIERS } from './ores';
 import { REFINING_RECIPES } from './refining';
 import { skillLevel } from './skills';
@@ -25,39 +26,14 @@ import T from './tunables';
 // Design rules (docs/DELIVERY_ORDERS.md has the numbers behind them):
 //  - Gold, XP and shards are a function of TIER x DISTANCE (i.e. time). They never depend on how valuable the delivered
 //    materials are, so nobody delivers expensive material just for XP. Materials are the price of admission.
-//  - What an order asks for is sized by an "economic weight" per material: a production-scarcity index in scrap
-//    equivalents, NOT a Gold price. It only keeps one Flor from being asked for as if it were one Farrapo.
+//  - What an order asks for is sized from the reward, in the ONE economic reference the game has (economy.ts baseGoldValue):
+//    reward Gold (tier x time) -> desired cargo reference value = Gold / rewardRatio(distance) -> quantities. The archetype
+//    says WHAT to ask for, baseGoldValue says HOW MUCH. baseGoldValue is only used to size cargo; it never pays anything.
 //  - Everything is decided when an offer is generated (the only place RNG is used) and then frozen. Accepting consumes
 //    the materials at once and snapshots the offer; claiming reads that snapshot, so it is deterministic and idempotent.
 //  - One active delivery for everybody. The Battle Pass only adds convenience (one more visible offer, one more reroll).
 
 export type Rng = () => number;
-
-// ---- economic weights (scrap equivalents). Derived from units/day of a dedicated active day, so a scarcer material weighs more.
-const BASE_WEIGHT: Partial<Record<MaterialId, number>> = {
-  leather_scrap: 1,
-  bone_fragment: 1.12,
-  demon_claw: 1.01,
-  concentrated_blood: 1.01,
-  demon_core: 5.3, // x1.5 rarity premium
-  corrupted_crystal: 4.97,
-  common_herb: 13.25,
-  energy_herb: 8.83,
-  uncommon_root: 26.5,
-  crimson_mushroom: 26.5,
-  rare_flower: 53, // x2 rarity premium (scarce, and gates the Strength Elixir)
-  copper: 0.66,
-  iron: 0.86,
-  silver: 1.06,
-  gold_ore: 1.26,
-  obsidian: 1.46,
-  common_wood: 0.66,
-  oak_wood: 0.86,
-  ebony_wood: 1.06,
-  elven_wood: 1.26,
-  ancient_wood: 1.46,
-};
-const PROCESSING_PREMIUM = 1.1;
 
 // Cost in Gold of one unit of a processed material (its cheapest real recipe), from the refining table.
 function recipeFor(m: MaterialId) {
@@ -67,33 +43,25 @@ export function processingFee(m: MaterialId): number {
   const r = recipeFor(m);
   return r ? r.cost / r.outputQty : 0;
 }
-export function materialWeight(m: MaterialId): number {
-  const base = BASE_WEIGHT[m];
-  if (base !== undefined) return base;
-  const r = recipeFor(m);
-  if (!r) return 1;
-  let w = 0;
-  for (const [k, q] of Object.entries(r.input) as [MaterialId, number][]) w += q * materialWeight(k);
-  return (w * PROCESSING_PREMIUM) / r.outputQty + processingFee(m) * T.deliveries.processedFeeWeight;
-}
 
 // ---- archetypes
 interface ArchetypeDef {
   classes: DeliveryClass[];
   tiers: number[];
   weight: number;
-  comp: Partial<Record<MaterialId, number>> | 'raw'; // share of the order's weight budget
+  comp: Partial<Record<MaterialId, number>> | 'raw'; // share of the order's CARGO REFERENCE VALUE (what it asks for)
+  signature?: MaterialId[]; // at least one unit of each of these (when the player can have it): what makes the order this archetype
   processed?: boolean;
 }
 const ARCHETYPES: Record<DeliveryArchetype, ArchetypeDef> = {
-  medicinal: { classes: ['simple', 'mid'], tiers: [0, 1, 2, 3], weight: 2.4, comp: { common_herb: 0.7, energy_herb: 0.3 } },
-  alquimico: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 0.7, comp: { energy_herb: 0.7, uncommon_root: 0.15, crimson_mushroom: 0.15 } },
-  alq_raro: { classes: ['hard'], tiers: [3], weight: 0.6, comp: { energy_herb: 0.55, rare_flower: 0.25, crimson_mushroom: 0.2 } },
-  militar: { classes: ['simple', 'mid', 'hard'], tiers: [0, 1, 2, 3], weight: 3, comp: { leather_scrap: 0.3, bone_fragment: 0.1, demon_claw: 0.6 } },
-  armadura: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 2.4, comp: { bone_fragment: 0.3, leather_scrap: 0.15, concentrated_blood: 0.45, corrupted_crystal: 0.15 } },
-  raro: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 3.6, comp: { leather_scrap: 0.2, bone_fragment: 0.1, demon_claw: 0.2, concentrated_blood: 0.1, demon_core: 0.2, corrupted_crystal: 0.2 } },
+  medicinal: { classes: ['simple', 'mid'], tiers: [0, 1, 2, 3], weight: 1.6, comp: { common_herb: 0.2, energy_herb: 0.2, leather_scrap: 0.3, bone_fragment: 0.3 }, signature: ['common_herb'] },
+  alquimico: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 0.9, comp: { energy_herb: 0.2, uncommon_root: 0.15, crimson_mushroom: 0.15, concentrated_blood: 0.3, bone_fragment: 0.2 }, signature: ['energy_herb'] },
+  alq_raro: { classes: ['hard'], tiers: [3], weight: 0.6, comp: { rare_flower: 0.3, energy_herb: 0.1, crimson_mushroom: 0.1, corrupted_crystal: 0.2, concentrated_blood: 0.2, bone_fragment: 0.1 }, signature: ['rare_flower'] },
+  militar: { classes: ['simple', 'mid', 'hard'], tiers: [0, 1, 2, 3], weight: 3.6, comp: { leather_scrap: 0.2, bone_fragment: 0.05, demon_claw: 0.75 }, signature: ['demon_claw'] },
+  armadura: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 3, comp: { bone_fragment: 0.2, leather_scrap: 0.05, concentrated_blood: 0.55, corrupted_crystal: 0.2 }, signature: ['concentrated_blood'] },
+  raro: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 7, comp: { leather_scrap: 0.1, bone_fragment: 0.05, demon_claw: 0.2, concentrated_blood: 0.1, demon_core: 0.275, corrupted_crystal: 0.275 }, signature: ['demon_core', 'corrupted_crystal'] },
   forja: { classes: ['simple', 'mid', 'hard'], tiers: [0, 1, 2, 3], weight: 1.5, comp: 'raw' },
-  comercial: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 1, comp: { leather: 0.45, steel: 0.3, silver_ingot: 0.25 }, processed: true },
+  comercial: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 1, comp: { leather: 0.4, steel: 0.3, silver_ingot: 0.3 }, processed: true },
 };
 
 const CLASS_DISTANCES: Record<DeliveryClass, { dists: DeliveryDistance[]; weights: number[] }> = {
@@ -123,11 +91,15 @@ function tierShards(d: DeliveryDistance, tier: number): number {
   if (d === 'especial') return [D.shardsEspecialT1, D.shardsEspecialT2, D.shardsEspecialT3, D.shardsEspecialT4][tier] ?? 0;
   return 0;
 }
-function weightPerHour(tier: number): number {
+// Reward ratio target: reward Gold / cargo reference value. A longer trip ties the slot up longer, so it pays slightly more per unit of cargo.
+export function rewardRatioTarget(d: DeliveryDistance): number {
   const D = T.deliveries;
-  return [D.weightPerHourT1, D.weightPerHourT2, D.weightPerHourT3, D.weightPerHourT4][tier] ?? D.weightPerHourT1;
+  return { local: D.ratioLocal, curta: D.ratioCurta, regional: D.ratioRegional, longa: D.ratioLonga, especial: D.ratioEspecial }[d];
 }
-function quantityCap(m: MaterialId): number {
+// Most units of a material one order may ask for. The fit below sizes quantities from reference value; this ceiling keeps it
+// coherent with what a player can actually produce (whatever a capped material cannot cover is moved to the archetype's
+// other materials, so the order stays worth what it should).
+function quantityCap(m: MaterialId, dist: DeliveryDistance): number {
   const D = T.deliveries;
   const caps: Partial<Record<MaterialId, number>> = {
     leather_scrap: D.capScrap,
@@ -142,7 +114,10 @@ function quantityCap(m: MaterialId): number {
     crimson_mushroom: D.capMushroom,
     rare_flower: D.capFlower,
   };
-  return caps[m] ?? (recipeFor(m) ? D.capProcessed : D.capRawMaterial);
+  const base = caps[m] ?? (recipeFor(m) ? D.capProcessed : D.capRawMaterial);
+  const agro = m === 'common_herb' || m === 'energy_herb' || m === 'uncommon_root' || m === 'crimson_mushroom' || m === 'rare_flower';
+  const factor = dist === 'especial' ? (isBulk(m) ? D.bulkSpecialFactor : agro ? D.agroSpecialFactor : 1) : dist === 'longa' ? 1 : D.shortCapFactor;
+  return Math.max(1, Math.round(base * factor));
 }
 const isBulk = (m: MaterialId) => m === 'leather_scrap' || m === 'bone_fragment' || m === 'demon_claw' || m === 'concentrated_blood' || !!ORE_TIERS.find((o) => o.id === m) || !!WOOD_TIERS.find((w) => w.id === m);
 
@@ -202,6 +177,53 @@ function composition(arch: DeliveryArchetype, ctx: Context): Partial<Record<Mate
 const HOUR = 3600 * 1000;
 const FIVE_MIN = 5 * 60 * 1000;
 
+// Sizes the cargo of an order: which quantities of the archetype's materials add up to (about) the wanted reference value.
+// Shares are of VALUE, so quantity = value share x target / baseGoldValue. A material that hits its ceiling is fixed there and
+// the rest of the value is spread over the others; then single units are added/removed until the total is as close to the target
+// as whole units allow. null = this archetype cannot make a worthwhile order of this size (the caller tries another).
+function fitCargo(comp: [MaterialId, number][], signature: MaterialId[], target: number, capOf: (m: MaterialId) => number): Partial<Record<MaterialId, number>> | null {
+  const items: Partial<Record<MaterialId, number>> = {};
+  let free = comp.slice();
+  let remaining = target;
+  for (;;) {
+    const totalW = free.reduce((sum, [, w]) => sum + w, 0);
+    const over = totalW > 0 ? free.find(([m, w]) => (Math.max(0, remaining) * w) / totalW / baseGoldValue(m) > capOf(m)) : undefined;
+    if (!over) break;
+    items[over[0]] = capOf(over[0]);
+    remaining -= capOf(over[0]) * baseGoldValue(over[0]);
+    free = free.filter((x) => x !== over);
+  }
+  const totalW = free.reduce((sum, [, w]) => sum + w, 0);
+  for (const [m, w] of free) {
+    const q = totalW > 0 ? Math.round((Math.max(0, remaining) * w) / totalW / baseGoldValue(m)) : 0;
+    const qty = q < 1 && signature.includes(m) ? 1 : q;
+    if (qty > 0) items[m] = Math.min(qty, capOf(m));
+  }
+  const materials = comp.map(([m]) => m);
+  const locked = new Set(signature);
+  for (let guard = 0; guard < 400; guard++) {
+    const gap = Math.abs(target - cargoReferenceValue(items));
+    let best: { m: MaterialId; q: number; gap: number } | null = null;
+    for (const m of materials) {
+      const cur = items[m] ?? 0;
+      for (const q of [cur + 1, cur - 1]) {
+        if (q < 0 || q > capOf(m) || (q === 0 && locked.has(m))) continue;
+        const next = { ...items, [m]: q };
+        const g = Math.abs(target - cargoReferenceValue(next));
+        if (g < gap - 1e-9 && (!best || g < best.gap)) best = { m, q, gap: g };
+      }
+    }
+    if (!best) break;
+    if (best.q === 0) delete items[best.m];
+    else items[best.m] = best.q;
+  }
+  for (const m of signature) if (materials.includes(m) && !items[m]) return null;
+  const cargo = cargoReferenceValue(items);
+  const tol = T.deliveries.ratioTolerance;
+  if (Object.keys(items).length === 0 || cargo < target * (1 - tol) || cargo > target * (1 + tol)) return null;
+  return items;
+}
+
 function buildOffer(ctx: Context, arch: DeliveryArchetype, cls: DeliveryClass, id: string, now: number, rng: Rng): DeliveryOffer | null {
   const comp = composition(arch, ctx);
   if (!comp) return null;
@@ -213,24 +235,17 @@ function buildOffer(ctx: Context, arch: DeliveryArchetype, cls: DeliveryClass, i
   const hoursRef = distHours(dist) * (1 + D.durationJitter * (2 * rng() - 1));
   const durationMs = Math.max(FIVE_MIN, Math.round((hoursRef * HOUR) / FIVE_MIN) * FIVE_MIN);
   const hours = durationMs / HOUR;
-  const budget = hours * weightPerHour(ctx.tier);
-  const items: Partial<Record<MaterialId, number>> = {};
-  for (const [m, share] of Object.entries(comp) as [MaterialId, number][]) {
-    const factor = dist === 'especial' ? (isBulk(m) ? D.bulkSpecialFactor : 1) : dist === 'longa' ? 1 : D.shortCapFactor;
-    const q = Math.round((budget * share) / materialWeight(m));
-    items[m] = Math.max(1, Math.min(Math.max(1, Math.round(quantityCap(m) * factor)), q));
-  }
+  // 1) the reward: a function of tier x time only.
   const goldPerHour = D.goldPerHourBase + D.goldPerHourTier * ctx.tier + distGoldBonus(dist);
   const gold = Math.round(hours * goldPerHour);
-  // Processing costs Gold: shave processed units until the fee is at most a fixed share of what the order pays.
-  const fee = () => (Object.entries(items) as [MaterialId, number][]).reduce((t, [m, q]) => t + q * processingFee(m), 0);
-  while (fee() > D.processedFeeMaxShare * gold) {
-    const worst = (Object.keys(items) as MaterialId[]).filter((m) => processingFee(m) > 0).sort((a, b) => items[b]! * processingFee(b) - items[a]! * processingFee(a))[0];
-    if (!worst) break;
-    items[worst] = items[worst]! - 1;
-    if (items[worst]! <= 0) delete items[worst];
-  }
-  if (Object.keys(items).length === 0) return null;
+  // 2) the cargo: sized so that its reference value is gold / rewardRatio(distance), whatever the archetype.
+  const target = gold / rewardRatioTarget(dist);
+  const signature = (def.signature ?? []).filter((m) => m in comp);
+  const items = fitCargo(Object.entries(comp) as [MaterialId, number][], signature, target, (m) => quantityCap(m, dist));
+  if (!items) return null;
+  // Processing costs Gold: an order that asks for processed units may never let that fee eat more than a set share of what it pays.
+  const fee = (Object.entries(items) as [MaterialId, number][]).reduce((t, [m, q]) => t + q * processingFee(m), 0);
+  if (fee > D.processedFeeMaxShare * gold) return null;
   return {
     id,
     arch,

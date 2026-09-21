@@ -232,11 +232,15 @@ const T = DebugPanel.define({
     tier3Floor: { value: 51, min: 1, max: 100, step: 1, label: 'Highest Dungeon floor for order tier 3' },
     tier4Floor: { value: 76, min: 1, max: 100, step: 1, label: 'Highest Dungeon floor for order tier 4' },
     processedMinLevel: { value: 25, min: 1, max: 100, step: 1, label: 'Character level to receive orders that ask for processed materials' },
-    // Material weight budget an order asks for, per hour of the delivery (scrap-equivalents; NOT a Gold price), by tier.
-    weightPerHourT1: { value: 9, min: 1, max: 60, step: 1, label: 'Requested material weight per hour, tier 1' },
-    weightPerHourT2: { value: 13, min: 1, max: 60, step: 1, label: 'Requested material weight per hour, tier 2' },
-    weightPerHourT3: { value: 17, min: 1, max: 60, step: 1, label: 'Requested material weight per hour, tier 3' },
-    weightPerHourT4: { value: 20, min: 1, max: 60, step: 1, label: 'Requested material weight per hour, tier 4' },
+    // Cargo sizing: an order asks for materials whose economic reference value (economy.ts baseGoldValue) is about
+    // reward Gold / rewardRatio(distance). Longer trips tie the slot up longer, so they pay slightly more per unit of cargo.
+    // The Gold itself never depends on the cargo (it is tier x time).
+    ratioLocal: { value: 1.05, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Local' },
+    ratioCurta: { value: 1.1, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Short' },
+    ratioRegional: { value: 1.15, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Regional' },
+    ratioLonga: { value: 1.2, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Long' },
+    ratioEspecial: { value: 1.25, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Special' },
+    ratioTolerance: { value: 0.15, min: 0.02, max: 0.5, step: 0.01, label: 'Allowed deviation of the cargo value from its target (+/-, whole units)' },
     // Gold per hour = base + perTier * (tier - 1) + distance bonus.
     goldPerHourBase: { value: 30, min: 5, max: 200, step: 1, label: 'Gold per hour (tier 1, Local)' },
     goldPerHourTier: { value: 1.5, min: 0, max: 20, step: 0.5, label: 'Extra Gold per hour per tier' },
@@ -267,21 +271,21 @@ const T = DebugPanel.define({
     // Per-order quantity ceilings (Long delivery; shorter ones use the short factor, Special uses the bulk factor for common/refined only).
     capScrap: { value: 60, min: 1, max: 500, step: 1, label: 'Max Farrapos per order' },
     capBone: { value: 50, min: 1, max: 500, step: 1, label: 'Max Ossos per order' },
-    capClaw: { value: 26, min: 1, max: 500, step: 1, label: 'Max Garras per order' },
-    capBlood: { value: 14, min: 1, max: 500, step: 1, label: 'Max Sangue per order' },
+    capClaw: { value: 30, min: 1, max: 500, step: 1, label: 'Max Garras per order' },
+    capBlood: { value: 24, min: 1, max: 500, step: 1, label: 'Max Sangue per order' },
     capNoble: { value: 3, min: 1, max: 50, step: 1, label: 'Max Nucleos / Cristais (each) per order' },
     capCommonHerb: { value: 5, min: 1, max: 100, step: 1, label: 'Max Erva Medicinal per order' },
     capEnergyHerb: { value: 3, min: 1, max: 100, step: 1, label: 'Max Erva Energetica per order' },
-    capRoot: { value: 1, min: 1, max: 50, step: 1, label: 'Max Raiz per order' },
-    capMushroom: { value: 1, min: 1, max: 50, step: 1, label: 'Max Cogumelo per order' },
-    capFlower: { value: 1, min: 1, max: 50, step: 1, label: 'Max Flor Carmesim per order' },
+    capRoot: { value: 2, min: 1, max: 50, step: 1, label: 'Max Raiz per order' },
+    capMushroom: { value: 2, min: 1, max: 50, step: 1, label: 'Max Cogumelo per order' },
+    capFlower: { value: 2, min: 1, max: 50, step: 1, label: 'Max Flor Carmesim per order' },
     capRawMaterial: { value: 60, min: 1, max: 1000, step: 1, label: 'Max ore / wood per order' },
     capProcessed: { value: 6, min: 1, max: 100, step: 1, label: 'Max processed units per order' },
     shortCapFactor: { value: 0.6, min: 0.1, max: 1, step: 0.05, label: 'Quantity ceiling factor for deliveries shorter than Long' },
     bulkSpecialFactor: { value: 1.5, min: 1, max: 3, step: 0.1, label: 'Quantity ceiling factor for common/refined on Special' },
+    agroSpecialFactor: { value: 1.5, min: 1, max: 3, step: 0.1, label: 'Quantity ceiling factor for Garden plants on Special' },
     // A processed unit costs Gold to make; an order that asks for it may never let that fee eat more than this share of its Gold.
-    processedFeeMaxShare: { value: 0.5, min: 0.1, max: 1, step: 0.05, label: 'Max share of the order Gold that processing fees may represent' },
-    processedFeeWeight: { value: 0.6, min: 0, max: 3, step: 0.1, label: 'Weight per Gold of processing fee (raises processed-material weight)' },
+    processedFeeMaxShare: { value: 0.65, min: 0.1, max: 1, step: 0.05, label: 'Max share of the order Gold that processing fees may represent' },
   },
   battlePass: {
     _label: 'Battle Pass',

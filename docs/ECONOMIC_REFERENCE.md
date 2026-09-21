@@ -41,7 +41,9 @@ Processados: `valor = (soma dos ingredientes + Gold cobrado pela receita) × 1,1
 | Escamas de dragão | 99 | 400 | 499 | 549 |
 | Pó de Refino | 20 | 0 | 20 | 22 |
 
-## Auditoria dos Pedidos (168.000 pedidos, implementação real)
+## Auditoria dos Pedidos ANTES do alinhamento (168.000 pedidos)
+
+> Esta seção descreve o gerador antigo, que usava pesos próprios. Foi o que motivou o alinhamento descrito depois dela.
 
 `rewardRatio = Gold do pedido ÷ valor de referência da carga`. Por distância (todos os tiers):
 
@@ -95,19 +97,92 @@ T4 (END)
    especial  n=3529 min 0.75  P10 0.88  P25 1.21  med 1.34  P75 1.96  P90 12.72  max 22.24
 ```
 
-### Anomalias (NÃO corrigidas nesta etapa)
+### Anomalias encontradas (corrigidas no alinhamento abaixo)
 
 - **Pagam demais frente à carga:** pedidos de plantas (Medicinal, Alquímico, Alquímico raro), pior caso 22× (Especial com 3 Ervas Energéticas + 1 Raiz + 1 Cogumelo, 912 Gold para 41 de referência). Causa dupla: (1) os pesos usados para gerar Pedidos (`materialWeight`, escassez de produção) tratam a Erva como 13 Farrapos e a Raiz como 26, enquanto a referência a coloca em 2 e 8 Farrapos; (2) os tetos por pedido (Raiz/Cogumelo ≤ 1, Energética ≤ 3) cortam a quantidade abaixo do orçamento em pedidos longos.
 - **Pagam pouco frente à carga:** Forja em tier 4 (mínimo 0,36: 6 Barras de ouro + 4 Madeiras élficas por 20 Gold). Os pesos dos minérios (0,66 a 1,46) ficam abaixo da referência (1,75 a 3).
 - Só 5,6% dos pedidos têm ratio < 0,5 e 47% ficam abaixo de 1, o que é esperado, porque Militar e Forja cobram um pouco menos que a carga de referência.
 
-Recomendação (proposta, não aplicada): usar `baseGoldValue` como fonte única dos pesos de Pedidos, e recalibrar tetos e Gold/h juntos. Isso mexe na fórmula e precisa de nova simulação.
+## Depois do alinhamento (`balance: align delivery orders with economic reference`)
+
+O gerador deixou de ter pesos próprios: `baseGoldValue` é a única fonte de "quanto vale". Fórmula:
+
+```text
+Gold da entrega      = horas x Gold/h(tier, distância)          (inalterado: 30 a 40 Gold/h)
+carga desejada (ref) = Gold / rewardRatio(distância)            Local 1,05 | Curta 1,10 | Regional 1,15 | Longa 1,20 | Especial 1,25
+quantidades          = carga desejada x parte do arquétipo / baseGoldValue do material
+```
+
+O arquétipo decide O QUÊ (partes do valor por material e uma assinatura obrigatória); o `baseGoldValue` decide QUANTO. Um material que bate no teto por pedido (`capXxx`, agora relativos à produção) fica no teto e o valor que faltou é movido para os outros materiais do arquétipo; depois unidades soltas são somadas ou tiradas até o valor da carga chegar o mais perto possível do alvo. A carga precisa ficar em ±15% do alvo, senão o arquétipo é descartado e outro é tentado. O Gold nunca depende da carga.
+
+Resultado (168.000 pedidos, implementação real):
+
+```text
+T1 (EARLY)
+   local     n=7340 min 0.93  P10 1.03  P25 1.07  med 1.07  P75 1.11  P90 1.11  max 1.11
+   curta     n=14161 min 1.06  P10 1.08  P25 1.08  med 1.11  P75 1.11  P90 1.12  max 1.14
+   regional  n=7746 min 1.13  P10 1.13  P25 1.14  med 1.15  P75 1.15  P90 1.16  max 1.16
+   longa     n=10761 min 1.19  P10 1.20  P25 1.20  med 1.21  P75 1.29  P90 1.37  max 1.41
+   especial  n=1992 min 1.25  P10 1.25  P25 1.25  med 1.25  P75 1.25  P90 1.26  max 1.28
+T2 (MID)
+   local     n=6589 min 0.97  P10 1.03  P25 1.03  med 1.06  P75 1.07  P90 1.07  max 1.18
+   curta     n=11304 min 0.99  P10 1.06  P25 1.08  med 1.11  P75 1.11  P90 1.11  max 1.14
+   regional  n=9850 min 1.07  P10 1.14  P25 1.14  med 1.15  P75 1.16  P90 1.16  max 1.26
+   longa     n=11157 min 1.15  P10 1.20  P25 1.20  med 1.20  P75 1.20  P90 1.21  max 1.37
+   especial  n=3100 min 1.22  P10 1.25  P25 1.25  med 1.25  P75 1.31  P90 1.40  max 1.47
+T3 (LATE)
+   local     n=6587 min 1.00  P10 1.00  P25 1.00  med 1.08  P75 1.10  P90 1.10  max 1.12
+   curta     n=11643 min 0.97  P10 1.08  P25 1.08  med 1.09  P75 1.11  P90 1.12  max 1.14
+   regional  n=9530 min 1.06  P10 1.14  P25 1.15  med 1.15  P75 1.16  P90 1.16  max 1.27
+   longa     n=11342 min 1.15  P10 1.20  P25 1.20  med 1.20  P75 1.20  P90 1.23  max 1.41
+   especial  n=2898 min 1.22  P10 1.25  P25 1.25  med 1.25  P75 1.32  P90 1.41  max 1.47
+T4 (END)
+   local     n=6507 min 1.00  P10 1.00  P25 1.03  med 1.05  P75 1.10  P90 1.10  max 1.21
+   curta     n=11705 min 1.01  P10 1.07  P25 1.09  med 1.10  P75 1.12  P90 1.13  max 1.14
+   regional  n=9542 min 1.06  P10 1.14  P25 1.14  med 1.15  P75 1.15  P90 1.16  max 1.27
+   longa     n=11531 min 1.15  P10 1.20  P25 1.20  med 1.20  P75 1.20  P90 1.21  max 1.41
+   especial  n=2715 min 1.23  P10 1.25  P25 1.25  med 1.25  P75 1.33  P90 1.42  max 1.47
+```
+
+Global: mín 0,93, P10 1,07, P25 1,10, mediana 1,14, P75 1,20, P90 1,24, máx 1,47 (antes 0,36 / 0,54 / 0,67 / 1,09 / 1,97 / 7,7 / 22,2). Por arquétipo (mediana): Medicinal 1,09, Militar 1,11, Forja 1,14, Encomenda rara 1,16, Armadura 1,20, Alquímico 1,20, Alquímico raro 1,20, Comercial 1,21. Menos de 1% dos pedidos ficam abaixo de 1,0 e nenhum passa de 1,5.
+
+10 menores ratios (todos pedidos minúsculos, em que a unidade inteira pesa):
+
+```text
+T1 (EARLY) local forja 0.4h gold 13 carga 14 ratio 0.93 :: 3 copper, 1 common_wood
+T3 (LATE) curta raro 1.4h gold 48 carga 50 ratio 0.97 :: 1 demon_core, 1 corrupted_crystal
+T2 (MID) local forja 0.6h gold 18 carga 19 ratio 0.97 :: 3 iron, 2 oak_wood
+T2 (MID) curta raro 1.5h gold 49 carga 50 ratio 0.99 :: 1 demon_core, 1 corrupted_crystal
+T1 (EARLY) local militar 0.4h gold 13 carga 13 ratio 1.00 :: 2 leather_scrap, 2 demon_claw
+T1 (EARLY) local medicinal 0.6h gold 18 carga 18 ratio 1.00 :: 2 common_herb, 5 leather_scrap
+T2 (MID) local militar 0.4h gold 13 carga 13 ratio 1.00 :: 2 leather_scrap, 2 demon_claw
+T3 (LATE) local medicinal 0.5h gold 17 carga 17 ratio 1.00 :: 1 common_herb, 1 energy_herb, 3 leather_scrap, 2 bone_fragment
+T3 (LATE) local medicinal 0.6h gold 19 carga 19 ratio 1.00 :: 1 common_herb, 1 energy_herb, 3 leather_scrap, 3 bone_fragment
+T4 (END) local medicinal 0.5h gold 17 carga 17 ratio 1.00 :: 1 common_herb, 1 energy_herb, 3 leather_scrap, 2 bone_fragment
+```
+
+10 maiores ratios (todos Especiais de material comum, em que o teto por pedido corta a carga; o Gold é o mesmo de qualquer outro Especial):
+
+```text
+T4 (END) especial militar 19.8h gold 783 carga 533 ratio 1.47 :: 45 demon_claw, 90 leather_scrap, 75 bone_fragment
+T3 (LATE) especial militar 20.6h gold 782 carga 533 ratio 1.47 :: 45 demon_claw, 90 leather_scrap, 75 bone_fragment
+T2 (MID) especial militar 21.4h gold 782 carga 533 ratio 1.47 :: 45 demon_claw, 90 leather_scrap, 75 bone_fragment
+T4 (END) especial armadura 21.0h gold 830 carga 566 ratio 1.47 :: 36 concentrated_blood, 75 bone_fragment, 3 corrupted_crystal, 90 leather_scrap
+T3 (LATE) especial armadura 21.8h gold 830 carga 566 ratio 1.47 :: 36 concentrated_blood, 75 bone_fragment, 3 corrupted_crystal, 90 leather_scrap
+T2 (MID) especial armadura 22.8h gold 830 carga 566 ratio 1.47 :: 36 concentrated_blood, 75 bone_fragment, 3 corrupted_crystal, 90 leather_scrap
+T4 (END) especial militar 19.8h gold 780 carga 533 ratio 1.46 :: 45 demon_claw, 90 leather_scrap, 75 bone_fragment
+T4 (END) especial alq_raro 21.3h gold 839 carga 573 ratio 1.46 :: 3 rare_flower, 5 energy_herb, 3 crimson_mushroom, 3 corrupted_crystal, 36 concentrated_blood, 75 bone_fragment
+T3 (LATE) especial militar 20.5h gold 779 carga 533 ratio 1.46 :: 45 demon_claw, 90 leather_scrap, 75 bone_fragment
+T2 (MID) especial militar 21.3h gold 779 carga 533 ratio 1.46 :: 45 demon_claw, 90 leather_scrap, 75 bone_fragment
+```
 
 ## Reforja
 
 Materiais de 1 tentativa, em valor de referência: T1/T2 = **71** (Pó 2 × 22 + Garra ou Sangue 6 × 4,5); T3+ arma = **290** (Pó 132 + Garras 108 + Núcleos 50); T3+ armadura = **289**. Taxa de Gold por tentativa: 10, 25, 50, 90, 150, 240, 360, 500 (e 500 dali em diante), mais 1 shard. Nas tentativas altas os materiais são 37% do custo total (T3+); nas primeiras eles são quase tudo.
 
-Um Pedido só de materiais de Caça paga, em mediana, 0,82 a 0,87 do valor de referência da carga (P90 1,4 a 1,6; máximo 2,1). Pela mesma carga de uma Reforja T3+: **mediana ≈ 240**, P90 ≈ 400 a 460, máximo ≈ 605. Ou seja, entregar em vez de reforjar rende em mediana menos do que os materiais valem, e só o extremo passa da taxa de 500. **A Reforja não vira escolha obviamente ruim.**
+Um Pedido só de materiais de Caça (gerador ANTIGO) pagava, em mediana, 0,82 a 0,87 do valor de referência da carga, com máximo 2,1: pela mesma carga de uma Reforja T3+ ≈ 240 (P90 ≈ 400 a 460, máximo ≈ 605).
+
+Com o gerador alinhado, um Pedido só de Caça paga em mediana **1,15** vezes a referência (P10 1,03 a 1,09, P90 1,20, máx 1,47): pela mesma carga de uma Reforja T3+ ≈ **334** (P90 349, máximo 426). O máximo agora fica abaixo da taxa de 500 da 8ª tentativa, mas a mediana subiu (≈ 30% para ≈ 42% do custo total da Reforja na tentativa 8+ como custo de oportunidade dos materiais). Só nas duas primeiras tentativas de uma peça (taxas de 10 e 25 Gold, custo total ≈ 300 a 315) o Pedido paga um pouco mais (≈ 334) do que a Reforja custa em Gold e materiais somados; da terceira em diante a Reforja custa mais que o Pedido paga. O motivo de reforjar não é Gold, é o resultado.
 
 ## Craft (receitas inalteradas)
 
