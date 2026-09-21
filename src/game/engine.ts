@@ -17,6 +17,7 @@ import {
 } from './gearInstances';
 import { Materials, MaterialId, emptyMaterials, getMaterial } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
+import { DeliveryState, emptyDeliveries, sanitizeDeliveries } from './deliveryState';
 import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems } from './gems';
 import { QuestState, emptyQuestState } from './quests';
@@ -91,7 +92,8 @@ export interface SaveData {
   materials: Materials;
   potions: { hp: number; stamina: number; elixir: number };
   consumables: Record<ConsumableId, number>;
-  expeditions: ActiveExpedition[];
+  expeditions: ActiveExpedition[]; // LEGACY: Expeditions started before delivery orders. They finish and are claimed the old way; nothing new starts.
+  deliveries: DeliveryState; // delivery orders (deliveries.ts): the offers on the board and the one active delivery
   gems: Record<GemId, number>;
   blessed: boolean;
   quests: QuestState;
@@ -267,14 +269,8 @@ export function isBattlePassActive(save: SaveData, now: number): boolean {
   return save.hasBattlePass && (save.battlePassExpiresAt === null || save.battlePassExpiresAt > now);
 }
 
-// Battle Pass convenience perks: extra parallel Expeditions, extra Hunting Pouch buffer,
-// and a repair discount — its role is player-facing convenience/retention, not a new faucet.
-export const BASE_EXPEDITION_SLOTS = 1;
-
-export function maxExpeditionSlots(save: SaveData, now: number): number {
-  return BASE_EXPEDITION_SLOTS + (isBattlePassActive(save, now) ? T.battlePass.expeditionBonusSlots : 0);
-}
-
+// Battle Pass convenience perks: one more visible delivery offer + one more free reroll (see T.deliveries), extra Hunting
+// Pouch buffer, and a repair discount — its role is player-facing convenience/retention, not a new faucet.
 export function effectivePouchSlots(save: SaveData, now: number): number {
   const base = getHuntPouchTierDef(save.huntPouch.tier)?.slots ?? 2;
   return base + (isBattlePassActive(save, now) ? T.battlePass.pouchBonusSlots : 0);
@@ -649,6 +645,7 @@ export function defaultSave(): SaveData {
     potions: { hp: 0, stamina: 0, elixir: 0 },
     consumables: emptyConsumables(),
     expeditions: [],
+    deliveries: emptyDeliveries(),
     gems: emptyGems(),
     blessed: false,
     quests: emptyQuestState(),
@@ -997,6 +994,7 @@ export function loadSave(): SaveData {
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
         consumables: { ...emptyConsumables(), ...(parsed.consumables ?? {}) },
         expeditions,
+        deliveries: sanitizeDeliveries(parsed.deliveries, Date.now()),
         gems,
         blessed: !!parsed.blessed,
         quests,

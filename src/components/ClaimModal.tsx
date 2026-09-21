@@ -2,22 +2,22 @@ import { t } from '../locales';
 import Assets from '../assets.json';
 import { ExpeditionRewards } from '../game/expedition';
 
-const expText = (k: string): string => t(`expedition.${k}`);
-
 export default function ClaimModal({
-  nameKey,
+  title,
+  name,
   rewards,
   onClose,
 }: {
-  nameKey: string;
+  title: string;
+  name: string;
   rewards: ExpeditionRewards;
   onClose: () => void;
 }) {
   return (
     <div className="modal-backdrop">
       <div className="modal claim-modal">
-        <h2 className="modal-title">{t('expedition.rewards')}</h2>
-        <p className="claim-name">{expText(nameKey)}</p>
+        <h2 className="modal-title">{title}</h2>
+        <p className="claim-name">{name}</p>
 
         <div className="result-rewards">
           <span className="floor-drop">

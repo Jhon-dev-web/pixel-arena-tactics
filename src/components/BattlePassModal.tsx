@@ -7,6 +7,7 @@ import { MATERIALS } from '../game/materials';
 import { getConsumable } from '../game/consumables';
 import { getGem } from '../game/gems';
 import { getTitleDef } from '../game/titles';
+import T from '../game/tunables';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
 import GemIcon from './GemIcon';
@@ -137,7 +138,7 @@ export default function BattlePassModal({
           <div className="bp-perks">
             <span className="bp-perk">{t('battlePass.perkStorage')}</span>
             <span className="bp-perk">{t('battlePass.perkLuck')}</span>
-            <span className="bp-perk">{t('battlePass.perkExpedition')}</span>
+            <span className="bp-perk">{t('battlePass.perkDeliveries', { n: Math.round(T.deliveries.passXpBonus * 100) })}</span>
             <span className="bp-perk">{t('battlePass.perkPouch')}</span>
             <span className="bp-perk">{t('battlePass.perkRepair')}</span>
           </div>

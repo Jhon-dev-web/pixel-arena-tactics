@@ -3631,6 +3631,93 @@ body {
   margin-bottom: 10px;
 }
 
+/* ===== delivery orders (reuses the expedition modal look) ===== */
+.delivery-label {
+  display: block;
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 6px 0 4px;
+}
+.delivery-meta {
+  font-size: calc(var(--font-size) - 3px);
+  color: #8a7aa8;
+  margin-bottom: 6px;
+}
+.delivery-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+.delivery-reroll {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #ffd9a0;
+  background: rgba(224, 106, 32, 0.15);
+  border: 1px solid #e06a20;
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.delivery-reroll:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.delivery-req {
+  margin-bottom: 4px;
+}
+.delivery-req-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #d8c9a0;
+  padding: 2px 0;
+}
+.delivery-req-row.short .delivery-req-qty {
+  color: #ff8a80;
+}
+.delivery-req-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.delivery-req-name .inline-icon,
+.delivery-req-name .mat-icon-emoji {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.delivery-req-qty {
+  flex-shrink: 0;
+  color: #9be59b;
+  white-space: nowrap;
+}
+.delivery-xp {
+  color: #9ad0ff;
+  font-size: calc(var(--font-size) - 2px);
+}
+.delivery-offer.rarity-uncommon {
+  border-color: #6fae6f;
+}
+.delivery-offer.rarity-rare {
+  border-color: #6a9ae0;
+}
+.delivery-offer.rarity-epic {
+  border-color: #b070e0;
+}
+.delivery-legacy {
+  margin-bottom: 8px;
+}
+
 /* ===== camp expedition ===== */
 .camp-expedition-btn {
   position: absolute;
