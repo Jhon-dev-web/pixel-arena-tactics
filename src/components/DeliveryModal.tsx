@@ -6,9 +6,8 @@ import { canAffordOffer, deliveryRarity, deliveryXp, offerCount, rerollsLeft } f
 import { DeliveryOffer } from '../game/deliveryState';
 import { getExpedition } from '../game/expedition';
 import { ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from '../game/consumables';
-import { getMaterial, MaterialId } from '../game/materials';
+import { getMaterial, MaterialDef, MaterialId } from '../game/materials';
 import ConsumableIcon from './ConsumableIcon';
-import MaterialIcon from './MaterialIcon';
 
 const TICKET_IDS = Object.keys(EXPEDITION_TICKET_SKIP_MS) as ConsumableId[];
 const dText = (k: string, v?: Record<string, string | number>): string => t(`deliveries.${k}`, v);
@@ -54,6 +53,19 @@ function Rewards({ gold, xp, shards }: { gold: number; xp: number; shards: numbe
   );
 }
 
+// Some material icons are large remote images that take seconds to arrive on a cold visit. Until the image is really there (and
+// if it never arrives) the catalog emoji fills the same 18px box, so a requirement row never shows an empty square.
+function RequirementIcon({ item }: { item: MaterialDef }) {
+  const [loaded, setLoaded] = useState(false);
+  const [broken, setBroken] = useState(false);
+  return (
+    <span className="delivery-req-icon">
+      {(!loaded || broken || !item.iconUrl) && <span className="mat-icon-emoji">{item.icon}</span>}
+      {item.iconUrl && !broken && <img className={loaded ? 'ready' : ''} src={item.iconUrl} alt="" draggable={false} onLoad={() => setLoaded(true)} onError={() => setBroken(true)} />}
+    </span>
+  );
+}
+
 function Requirements({ offer, save }: { offer: DeliveryOffer; save: SaveData }) {
   return (
     <div className="delivery-req">
@@ -64,7 +76,8 @@ function Requirements({ offer, save }: { offer: DeliveryOffer; save: SaveData })
         return (
           <div className={`delivery-req-row${have < need ? ' short' : ''}`} key={id}>
             <span className="delivery-req-name">
-              {def && <MaterialIcon item={def} className="inline-icon" />} {def ? t(`materials.${def.nameKey}`) : id}
+              {def && <RequirementIcon item={def} />}
+              <span>{def ? t(`materials.${def.nameKey}`) : id}</span>
             </span>
             <span className="delivery-req-qty">
               {Math.min(have, 99999)} / {need}

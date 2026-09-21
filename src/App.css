@@ -3632,11 +3632,11 @@ body {
 }
 
 /* ===== delivery orders (reuses the expedition modal look) ===== */
+/* No text-transform: the pixel font has no glyph for accented capitals (Í, É...), so these labels stay in their written case. */
 .delivery-label {
   display: block;
   font-size: calc(var(--font-size) - 3px);
   color: #b8a8d8;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 6px 0 4px;
 }
@@ -3689,12 +3689,30 @@ body {
   min-width: 0;
   overflow-wrap: break-word;
 }
-.delivery-req-name .inline-icon,
-.delivery-req-name .mat-icon-emoji {
+.delivery-req-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
   width: 18px;
   height: 18px;
+}
+.delivery-req-icon .mat-icon-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+/* The image sits over the emoji box but stays invisible until it has loaded */
+.delivery-req-icon img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  opacity: 0;
+}
+.delivery-req-icon img.ready {
+  opacity: 1;
 }
 .delivery-req-qty {
   flex-shrink: 0;
