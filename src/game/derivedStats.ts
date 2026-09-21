@@ -135,9 +135,11 @@ export function combatPowerCore(stats: CombatStats): number {
 export interface CombatModifiers {
   blessedMult: number;
   strengthMult: number;
+  attackMult: number; // Attack (Battle) Elixir: 1 when inactive
 }
 
-// Same operation order as the pre-refactor inline code: `(sum) * blessedMult * strengthMult`.
+// Same operation order as the pre-refactor inline code: `(sum) * blessedMult * strengthMult`, then the Attack Elixir
+// (x1 when inactive, which leaves the result bit-identical).
 export function applyDamageModifiers(dmgBase: number, mods: CombatModifiers): number {
-  return dmgBase * mods.blessedMult * mods.strengthMult;
+  return dmgBase * mods.blessedMult * mods.strengthMult * mods.attackMult;
 }

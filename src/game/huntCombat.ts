@@ -59,13 +59,17 @@ export interface HuntZoneCombatCfg {
   dropRateMult: number; // Battle Pass drop-rate multiplier, 1 if inactive
 }
 
-// Time-dependent modifiers of a session, as SESSION-RELATIVE windows in ms (Infinity = open-ended): while a Strength
-// Elixir window covers a hit the hero deals `heroDmgBaseBuffed` instead of `build.heroDmgBase`; while a Battle Pass window
+// Time-dependent modifiers of a session, as SESSION-RELATIVE windows in ms (Infinity = open-ended): while a Strength and/or
+// Attack Elixir window covers a hit the hero deals the matching pre-multiplied base (`dmgStrength` / `dmgAttack` /
+// `dmgBoth`) instead of `build.heroDmgBase` (no elixir); while a Battle Pass window
 // covers a cleared fight the drop chance uses `passDropMult`. Outside every window the plain values apply, so a modifier
 // that was not active at that moment can never be applied retroactively. Omitted = constant (zoneCfg.dropRateMult).
 export interface HuntTimeline {
   strengthWindows: [number, number][];
-  heroDmgBaseBuffed: number;
+  attackWindows: [number, number][];
+  dmgStrength: number;
+  dmgAttack: number;
+  dmgBoth: number;
   passWindows: [number, number][];
   passDropMult: number;
 }
@@ -222,7 +226,13 @@ export function simulateHuntingSession(
       t = nextEvent;
       if (heroNext <= enemyNext) {
         const crit = rng() < build.critChance;
-        const hitBase = timeline && inRelativeWindows(timeline.strengthWindows, sessionMs - timeLeft + t) ? timeline.heroDmgBaseBuffed : build.heroDmgBase;
+        let hitBase = build.heroDmgBase;
+        if (timeline) {
+          const at = sessionMs - timeLeft + t;
+          const str = inRelativeWindows(timeline.strengthWindows, at);
+          const atk = inRelativeWindows(timeline.attackWindows, at);
+          hitBase = str && atk ? timeline.dmgBoth : str ? timeline.dmgStrength : atk ? timeline.dmgAttack : build.heroDmgBase;
+        }
         const dmg = Math.max(1, Math.round(hitBase * (crit ? build.critMult : 1)));
         enemyHp -= dmg;
         if (build.lifestealPct > 0) {

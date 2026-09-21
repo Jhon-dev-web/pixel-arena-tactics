@@ -17,6 +17,7 @@ import {
 } from './game/engine';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, requestHuntStart } from './game/huntLifecycle';
 import { applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
+import { applyElixir, ElixirId } from './game/elixirs';
 import { withSessionWindow } from './game/huntSession';
 import { getBattlePassLevelDef } from './game/battlepass';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
@@ -472,30 +473,20 @@ function App() {
     showToast(`+${T.battle.xpPotionAmount} XP`);
   };
 
-  // Using another Strength Elixir while one is active refreshes the full duration from now rather
-  // than stacking magnitude or extending additively — simplest to reason about, matches how a
-  // single-slot buff usually reads ("you're topped up to 30min again"), and keeps the damage bonus
-  // itself constant so it can't be stacked into something the boss-fight balance wasn't tuned for.
-  const applyStrengthElixir = () => {
-    const s = saveRef.current;
-    const qty = s.consumables.strength_elixir ?? 0;
-    if (qty <= 0) return;
+  // Damage elixirs (elixirs.ts): using one again while it is active refreshes the full duration from now rather than
+  // stacking magnitude or extending additively, so the bonus itself stays constant. One pure transition, committed and
+  // persisted at once; nothing happens without a unit.
+  const drinkElixir = (id: ElixirId) => {
+    const next = applyElixir(saveRef.current, id, Date.now());
+    if (!next) return;
     playSfx('victory');
-    const now = Date.now();
-    const expiresAt = now + T.battle.strengthElixirMinutes * 60 * 1000;
-    setSaveBoth({
-      ...s,
-      consumables: { ...s.consumables, strength_elixir: qty - 1 },
-      activeBuff: { type: 'strength', expiresAt },
-      // A running Hunting session only gets the bonus from now on (never for the time already hunted).
-      huntSession: s.huntSession ? withSessionWindow(s.huntSession, 'strength', { from: now, to: expiresAt }) : s.huntSession,
-    });
-    showToast(t('consumables.strength_elixir_active'));
+    commitSave(next);
+    showToast(t(`consumables.${id}_active`));
   };
 
   const useConsumableManually = (id: string) => {
     if (id === 'xp_potion') applyXpPotion();
-    else if (id === 'strength_elixir') applyStrengthElixir();
+    else if (id === 'strength_elixir' || id === 'atk_elixir') drinkElixir(id);
   };
 
   const claimQuest = (id: string) => {

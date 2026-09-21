@@ -94,6 +94,10 @@ const T = DebugPanel.define({
     xpPotionAmount: { value: 150, min: 10, max: 5000, step: 10, label: 'XP Potion instant XP' },
     strengthElixirDmgPct: { value: 0.2, min: 0.05, max: 1, step: 0.05, label: 'Strength Elixir damage bonus (%)' },
     strengthElixirMinutes: { value: 30, min: 1, max: 180, step: 1, label: 'Strength Elixir duration (minutes)' },
+    // Attack (Battle) Elixir: a second, independent timed damage buff. It never stacks with itself (using it again only
+    // renews the duration); it multiplies with the Strength Elixir / Blessed like every other damage modifier.
+    attackElixirDmgPct: { value: 0.1, min: 0.05, max: 1, step: 0.05, label: 'Attack (Battle) Elixir damage bonus (%)' },
+    attackElixirMinutes: { value: 30, min: 1, max: 180, step: 1, label: 'Attack (Battle) Elixir duration (minutes)' },
   },
   progression: {
     _label: 'Progression',
