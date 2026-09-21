@@ -61,15 +61,17 @@ export interface TutorialState {
   initial: InitialTutorialStatus;
   initialStep: InitialTutorialStep;
   seen: ContextualTutorialId[];
+  // The explicit "Skip tutorial" preference. Completion and manual replay never change it.
+  automatic: boolean;
 }
 
 export function freshTutorialState(): TutorialState {
-  return { initial: 'pending', initialStep: 'intro', seen: [] };
+  return { initial: 'pending', initialStep: 'intro', seen: [], automatic: true };
 }
 
 function legacyTutorialState(): TutorialState {
   // Existing players keep their uninterrupted session and can choose "Review tutorial" themselves.
-  return { initial: 'completed', initialStep: 'final', seen: [...CONTEXTUAL_TUTORIAL_IDS] };
+  return { initial: 'completed', initialStep: 'final', seen: [...CONTEXTUAL_TUTORIAL_IDS], automatic: false };
 }
 
 function sanitizeTutorial(raw: unknown): TutorialState {
@@ -84,7 +86,10 @@ function sanitizeTutorial(raw: unknown): TutorialState {
   const seen = Array.isArray(value.seen)
     ? value.seen.filter((id): id is ContextualTutorialId => CONTEXTUAL_TUTORIAL_IDS.includes(id as ContextualTutorialId))
     : [];
-  return { initial, initialStep, seen: [...new Set(seen)] };
+  // Tutorials written by the first guided-tutorial release did not have this flag. Its persisted
+  // initial status still tells us whether the player used the explicit Skip button.
+  const automatic = typeof value.automatic === 'boolean' ? value.automatic : initial !== 'skipped';
+  return { initial, initialStep, seen: [...new Set(seen)], automatic };
 }
 
 function emptyGardenSlot(): GardenSlot {

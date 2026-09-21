@@ -24,11 +24,13 @@ export default function TutorialOverlay({
   step,
   onAdvance,
   onSkip,
+  onDismiss,
   requiresInteraction = false,
 }: {
   step: TutorialStep;
   onAdvance: () => void;
   onSkip: () => void;
+  onDismiss: () => void;
   requiresInteraction?: boolean;
 }) {
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -47,24 +49,27 @@ export default function TutorialOverlay({
     };
     update(true);
     const onViewportChange = () => update();
+    const observer = new MutationObserver(() => update());
+    observer.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', onViewportChange);
     window.addEventListener('scroll', onViewportChange, true);
     return () => {
       window.removeEventListener('resize', onViewportChange);
       window.removeEventListener('scroll', onViewportChange, true);
+      observer.disconnect();
     };
   }, [target, step]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onSkip();
+      if (event.key === 'Escape') onDismiss();
     };
     window.addEventListener('keydown', onKeyDown);
     const targetElement = target ? document.querySelector<HTMLElement>(`[data-tutorial-target="${target}"]`) : null;
     if (requiresInteraction && targetElement) targetElement.focus();
     else primaryRef.current?.focus();
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onSkip, requiresInteraction, step, target]);
+  }, [onDismiss, requiresInteraction, step, target]);
 
   const cardWidth = Math.min(320, Math.max(260, window.innerWidth - 24));
   const left = rect ? Math.max(12, Math.min(window.innerWidth - cardWidth - 12, rect.left + rect.width / 2 - cardWidth / 2)) : (window.innerWidth - cardWidth) / 2;

@@ -176,11 +176,15 @@ function App() {
 
   const skipInitialTutorial = () => {
     const s = saveRef.current;
-    setSaveBoth({ ...s, tutorial: { ...s.tutorial, initial: 'skipped', initialStep: 'final' }, seenWelcome: true, seenTooltips: [...new Set([...s.seenTooltips, ...TOOLTIP_IDS])] });
+    setSaveBoth({ ...s, tutorial: { ...s.tutorial, initial: 'skipped', initialStep: 'final', automatic: false }, seenWelcome: true, seenTooltips: [...new Set([...s.seenTooltips, ...TOOLTIP_IDS])] });
     setTooltipQueue([]);
     setActiveTooltip(null);
     setTutorialStep(null);
   };
+
+  // Escape only dismisses the current visual layer. The saved step remains intact and reload/replay
+  // can resume it; only the explicit Skip button changes the automatic-tutorial preference.
+  const dismissInitialTutorial = () => setTutorialStep(null);
 
   const replayTutorial = () => {
     setHeroOpen(false);
@@ -190,7 +194,7 @@ function App() {
 
   const openContextTutorial = (id: ContextualTutorialId) => {
     const tutorial = saveRef.current.tutorial;
-    if (tutorialStep || contextTutorial || (tutorial.initial !== 'completed' && tutorial.initial !== 'skipped') || tutorial.seen.includes(id)) return;
+    if (tutorialStep || contextTutorial || !tutorial.automatic || (tutorial.initial !== 'completed' && tutorial.initial !== 'skipped') || tutorial.seen.includes(id)) return;
     setContextTutorial(id);
   };
 
@@ -200,6 +204,16 @@ function App() {
     updateTutorial({ ...tutorial, seen: tutorial.seen.includes(contextTutorial) ? tutorial.seen : [...tutorial.seen, contextTutorial] });
     setContextTutorial(null);
   };
+
+  const skipAutomaticTutorials = () => {
+    const s = saveRef.current;
+    setSaveBoth({ ...s, tutorial: { ...s.tutorial, automatic: false }, seenWelcome: true, seenTooltips: [...new Set([...s.seenTooltips, ...TOOLTIP_IDS])] });
+    setTooltipQueue([]);
+    setActiveTooltip(null);
+    setContextTutorial(null);
+  };
+
+  const dismissContextTutorial = () => setContextTutorial(null);
 
   // First-view tooltip sequencing: shows one at a time from tooltipQueue (staggered, so a fresh save
   // with everything unlocked doesn't dump 9 bubbles at once), marks each seen the instant it's
@@ -1530,10 +1544,11 @@ function App() {
           step={tutorialStep}
           onAdvance={advanceInitialTutorial}
           onSkip={skipInitialTutorial}
+          onDismiss={dismissInitialTutorial}
           requiresInteraction={tutorialStep === 'hunt'}
         />
       )}
-      {contextTutorial && <TutorialOverlay step={contextTutorial} onAdvance={closeContextTutorial} onSkip={closeContextTutorial} />}
+      {contextTutorial && <TutorialOverlay step={contextTutorial} onAdvance={closeContextTutorial} onSkip={skipAutomaticTutorials} onDismiss={dismissContextTutorial} />}
     </div>
   );
 }
