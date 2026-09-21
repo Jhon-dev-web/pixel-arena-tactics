@@ -50,6 +50,48 @@ export interface GardenSlot {
   lastPlantId?: PlantId | null;
 }
 
+export const CONTEXTUAL_TUTORIAL_IDS = ['garden', 'mining', 'woodcutting', 'deliveries', 'reforge', 'sockets'] as const;
+export type ContextualTutorialId = (typeof CONTEXTUAL_TUTORIAL_IDS)[number];
+export type InitialTutorialStep = 'intro' | 'character' | 'hunt' | 'huntModal' | 'dungeon' | 'forge' | 'final';
+export type InitialTutorialStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
+
+// Presentation-only progress. It intentionally sits beside game progress so the tutorial can never
+// influence combat, rewards, unlocks or economy transitions.
+export interface TutorialState {
+  initial: InitialTutorialStatus;
+  initialStep: InitialTutorialStep;
+  seen: ContextualTutorialId[];
+  // The explicit "Skip tutorial" preference. Completion and manual replay never change it.
+  automatic: boolean;
+}
+
+export function freshTutorialState(): TutorialState {
+  return { initial: 'pending', initialStep: 'intro', seen: [], automatic: true };
+}
+
+function legacyTutorialState(): TutorialState {
+  // Existing players keep their uninterrupted session and can choose "Review tutorial" themselves.
+  return { initial: 'completed', initialStep: 'final', seen: [...CONTEXTUAL_TUTORIAL_IDS], automatic: false };
+}
+
+function sanitizeTutorial(raw: unknown): TutorialState {
+  if (!raw || typeof raw !== 'object') return legacyTutorialState();
+  const value = raw as Partial<TutorialState>;
+  const initial: InitialTutorialStatus = ['pending', 'in_progress', 'completed', 'skipped'].includes(value.initial ?? '')
+    ? (value.initial as InitialTutorialStatus)
+    : 'completed';
+  const initialStep: InitialTutorialStep = ['intro', 'character', 'hunt', 'huntModal', 'dungeon', 'forge', 'final'].includes(value.initialStep ?? '')
+    ? (value.initialStep as InitialTutorialStep)
+    : initial === 'pending' ? 'intro' : 'final';
+  const seen = Array.isArray(value.seen)
+    ? value.seen.filter((id): id is ContextualTutorialId => CONTEXTUAL_TUTORIAL_IDS.includes(id as ContextualTutorialId))
+    : [];
+  // Tutorials written by the first guided-tutorial release did not have this flag. Its persisted
+  // initial status still tells us whether the player used the explicit Skip button.
+  const automatic = typeof value.automatic === 'boolean' ? value.automatic : initial !== 'skipped';
+  return { initial, initialStep, seen: [...new Set(seen)], automatic };
+}
+
 function emptyGardenSlot(): GardenSlot {
   return { plantId: null, startedAt: 0, lastPlantId: null };
 }
@@ -137,6 +179,7 @@ export interface SaveData {
   dungeonSessionsUsed: number;
   seenTooltips: string[];
   seenWelcome: boolean;
+  tutorial: TutorialState;
   autoPotionThreshold: number;
   autoPotionPriority: 'small_first' | 'large_first';
 }
@@ -681,6 +724,7 @@ export function defaultSave(): SaveData {
     dungeonSessionsUsed: 0,
     seenTooltips: [],
     seenWelcome: false,
+    tutorial: freshTutorialState(),
     // Matches the old hardcoded auto-potion behavior (greater_elixir > large_hp > small_hp) so
     // existing saves see no gameplay change until the player actually opens the settings.
     autoPotionThreshold: 0.35,
@@ -1028,6 +1072,7 @@ export function loadSave(): SaveData {
         dungeonSessionsUsed,
         seenTooltips,
         seenWelcome,
+        tutorial: sanitizeTutorial(parsed.tutorial),
         autoPotionThreshold:
           typeof parsed.autoPotionThreshold === 'number' && Number.isFinite(parsed.autoPotionThreshold)
             ? Math.max(0.1, Math.min(0.7, parsed.autoPotionThreshold))

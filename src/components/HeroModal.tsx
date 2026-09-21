@@ -414,7 +414,6 @@ export default function HeroModal({
             {t('profile.confirmPoints')}
           </button>
         )}
-
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
           ✕
         </button>

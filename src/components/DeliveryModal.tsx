@@ -143,7 +143,7 @@ export default function DeliveryModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal expedition-modal delivery-modal">
+      <div className="modal expedition-modal delivery-modal" data-tutorial-target="deliveries-modal">
         <h2 className="modal-title">{dText('title')}</h2>
 
         {active && (

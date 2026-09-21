@@ -1352,6 +1352,9 @@ body {
 .side-btn:active {
   transform: scale(0.94);
 }
+.settings-btn {
+  font-size: calc(var(--font-size) + 3px);
+}
 .first-tooltip {
   position: absolute;
   right: calc(100% + 10px);
@@ -4449,6 +4452,162 @@ body {
   line-height: 1.35;
   opacity: 0.75;
   text-align: center;
+}
+
+/* ===== guided tutorial ===== */
+.tutorial-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+}
+.tutorial-dimmer {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 2, 8, 0.56);
+}
+.tutorial-spotlight {
+  position: fixed;
+  border: 2px solid #ffd76a;
+  border-radius: 8px;
+  box-shadow: 0 0 0 4px rgba(255, 215, 106, 0.16), 0 0 16px rgba(255, 215, 106, 0.85);
+  animation: tutorialPulse 1.4s ease-in-out infinite;
+}
+.tutorial-card {
+  position: fixed;
+  z-index: 1;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  padding: 14px;
+  border: 2px solid #a87c3a;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2b1d39, #17101f);
+  box-shadow: 0 5px 0 #120a08, 0 10px 24px rgba(0, 0, 0, 0.6);
+  color: #f5e9c8;
+  pointer-events: auto;
+  text-align: left;
+}
+.tutorial-card h2 {
+  margin: 0 0 8px;
+  color: #ffd76a;
+  font-size: calc(var(--font-size) + 1px);
+}
+.tutorial-card p {
+  margin: 0;
+  color: #e8d9a8;
+  font-size: calc(var(--font-size) - 3px);
+  line-height: 1.5;
+}
+.tutorial-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tutorial-actions .result-btn,
+.tutorial-skip {
+  pointer-events: auto;
+}
+.tutorial-skip {
+  border: 0;
+  background: transparent;
+  color: #b8a8d8;
+  font: inherit;
+  font-size: calc(var(--font-size) - 4px);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.tutorial-action-hint {
+  flex: 1;
+  color: #d8c9a0;
+  font-size: calc(var(--font-size) - 4px);
+}
+.settings-modal {
+  width: min(90vw, 380px);
+  text-align: left;
+}
+.settings-backdrop {
+  z-index: 80;
+}
+.settings-modal .modal-title {
+  text-align: center;
+}
+.settings-list {
+  display: grid;
+  gap: 10px;
+}
+.settings-section {
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #3a2a4a;
+  border-radius: 10px;
+}
+.settings-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.settings-label {
+  color: #ffe9a8;
+  font-size: calc(var(--font-size) - 1px);
+  font-weight: bold;
+}
+.settings-description {
+  color: #c9bcd8;
+  font-size: calc(var(--font-size) - 4px);
+  line-height: 1.35;
+}
+.settings-select,
+.settings-action {
+  min-height: 42px;
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  color: #ffe9a8;
+  background: #1c1327;
+  font: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  padding: 0 10px;
+}
+.settings-select {
+  width: 100%;
+}
+.settings-action {
+  cursor: pointer;
+  white-space: nowrap;
+}
+.settings-toggle {
+  width: 54px;
+  height: 30px;
+  padding: 3px;
+  border: 2px solid #6a4a2a;
+  border-radius: 999px;
+  background: #3a2a4a;
+  cursor: pointer;
+}
+.settings-toggle.active {
+  background: #3f8a55;
+  border-color: #81d681;
+}
+.settings-toggle-knob {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f5e9c8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease;
+}
+.settings-toggle.active .settings-toggle-knob {
+  transform: translateX(24px);
+}
+@keyframes tutorialPulse {
+  50% { box-shadow: 0 0 0 6px rgba(255, 215, 106, 0.08), 0 0 22px rgba(255, 215, 106, 0.95); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-spotlight { animation: none; }
 }
 
 /* ---- Garden plots: each plot is one production card (empty / growing / ready / locked) ---- */

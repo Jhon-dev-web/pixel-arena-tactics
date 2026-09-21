@@ -52,7 +52,7 @@ export default function WoodcuttingModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal dungeon-modal">
+      <div className="modal dungeon-modal" data-tutorial-target="woodcutting-modal">
         <h2 className="modal-title">
           <span className="inline-icon-emoji">🪓</span> {t('woodcutting.title')}
         </h2>

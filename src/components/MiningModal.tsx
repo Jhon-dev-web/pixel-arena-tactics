@@ -47,7 +47,7 @@ export default function MiningModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal dungeon-modal">
+      <div className="modal dungeon-modal" data-tutorial-target="mining-modal">
         <h2 className="modal-title">
           <img className="inline-icon" src="/assets/icons/nav_mining.png" alt="" /> {t('mining.title')}
         </h2>

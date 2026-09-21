@@ -12,6 +12,8 @@ import {
   loadSave,
   persistSave,
   playerLevel,
+  ContextualTutorialId,
+  InitialTutorialStep,
   SaveData,
 } from './game/engine';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, requestHuntStart } from './game/huntLifecycle';
@@ -76,11 +78,12 @@ import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeli
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
 import TopHud from './components/TopHud';
 import FirstViewTooltip from './components/FirstViewTooltip';
-import WelcomeModal from './components/WelcomeModal';
+import TutorialOverlay from './components/TutorialOverlay';
+import SettingsModal from './components/SettingsModal';
 import Campfire from './components/Campfire';
 import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
 import Assets from './assets.json';
-import { t } from './locales';
+import { Locale, setLocale, setLocaleListener, t } from './locales';
 import './App.css';
 
 const gearText = (key: string): string => t(`gear.${key}`);
@@ -88,7 +91,7 @@ const gearText = (key: string): string => t(`gear.${key}`);
 // First-view tooltips for the Camp side-rail icons — order matches the rail top-to-bottom. Admin (dev
 // only) is deliberately excluded: it doesn't exist in a production build, so there's nothing to
 // introduce to a real player. See FirstViewTooltip.tsx / SaveData.seenTooltips.
-const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'expedition', 'battlepass', 'bag', 'quests', 'mute'] as const;
+const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'expedition', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
 const tooltipText = (id: string): string => t(`tooltips.${id}`);
 
 function App() {
@@ -98,6 +101,7 @@ function App() {
   const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [heroOpen, setHeroOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [huntOpen, setHuntOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
@@ -111,12 +115,16 @@ function App() {
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const [, setLocaleVersion] = useState(0);
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
   const [cheatMode, setCheatMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [tooltipQueue, setTooltipQueue] = useState<string[]>(() => TOOLTIP_IDS.filter((id) => !save.seenTooltips.includes(id)));
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [welcomeOpen, setWelcomeOpen] = useState(() => !save.seenWelcome);
+  const [tutorialStep, setTutorialStep] = useState<InitialTutorialStep | null>(() =>
+    save.tutorial.initial === 'pending' || save.tutorial.initial === 'in_progress' ? save.tutorial.initialStep : null,
+  );
+  const [contextTutorial, setContextTutorial] = useState<ContextualTutorialId | null>(null);
 
   const saveRef = useRef(save);
   const cheatModeRef = useRef(false);
@@ -142,19 +150,81 @@ function App() {
     }
   };
 
-  const closeWelcome = () => {
-    playSfx('click');
-    setSaveBoth({ ...saveRef.current, seenWelcome: true });
-    setWelcomeOpen(false);
+  const updateTutorial = (next: SaveData['tutorial']) => setSaveBoth({ ...saveRef.current, tutorial: next, seenWelcome: true });
+
+  const advanceInitialTutorial = () => {
+    const step = tutorialStep;
+    if (!step) return;
+    const next: Partial<Record<InitialTutorialStep, InitialTutorialStep>> = {
+      intro: 'character',
+      character: 'hunt',
+      huntModal: 'dungeon',
+      dungeon: 'forge',
+      forge: 'final',
+    };
+    if (step === 'final') {
+      const s = saveRef.current;
+      setSaveBoth({ ...s, tutorial: { ...s.tutorial, initial: 'completed', initialStep: 'final' }, seenWelcome: true, seenTooltips: [...new Set([...s.seenTooltips, ...TOOLTIP_IDS])] });
+      setTooltipQueue([]);
+      setActiveTooltip(null);
+      setTutorialStep(null);
+      return;
+    }
+    const following = next[step];
+    if (!following) return;
+    if (step === 'huntModal') setHuntOpen(false);
+    updateTutorial({ ...saveRef.current.tutorial, initial: 'in_progress', initialStep: following });
+    setTutorialStep(following);
   };
+
+  const skipInitialTutorial = () => {
+    const s = saveRef.current;
+    setSaveBoth({ ...s, tutorial: { ...s.tutorial, initial: 'skipped', initialStep: 'final', automatic: false }, seenWelcome: true, seenTooltips: [...new Set([...s.seenTooltips, ...TOOLTIP_IDS])] });
+    setTooltipQueue([]);
+    setActiveTooltip(null);
+    setTutorialStep(null);
+  };
+
+  // Escape only dismisses the current visual layer. The saved step remains intact and reload/replay
+  // can resume it; only the explicit Skip button changes the automatic-tutorial preference.
+  const dismissInitialTutorial = () => setTutorialStep(null);
+
+  const replayTutorial = () => {
+    setHeroOpen(false);
+    updateTutorial({ ...saveRef.current.tutorial, initial: 'pending', initialStep: 'intro' });
+    setTutorialStep('intro');
+  };
+
+  const openContextTutorial = (id: ContextualTutorialId) => {
+    const tutorial = saveRef.current.tutorial;
+    if (tutorialStep || contextTutorial || !tutorial.automatic || (tutorial.initial !== 'completed' && tutorial.initial !== 'skipped') || tutorial.seen.includes(id)) return;
+    setContextTutorial(id);
+  };
+
+  const closeContextTutorial = () => {
+    if (!contextTutorial) return;
+    const tutorial = saveRef.current.tutorial;
+    updateTutorial({ ...tutorial, seen: tutorial.seen.includes(contextTutorial) ? tutorial.seen : [...tutorial.seen, contextTutorial] });
+    setContextTutorial(null);
+  };
+
+  const skipAutomaticTutorials = () => {
+    const s = saveRef.current;
+    setSaveBoth({ ...s, tutorial: { ...s.tutorial, automatic: false }, seenWelcome: true, seenTooltips: [...new Set([...s.seenTooltips, ...TOOLTIP_IDS])] });
+    setTooltipQueue([]);
+    setActiveTooltip(null);
+    setContextTutorial(null);
+  };
+
+  const dismissContextTutorial = () => setContextTutorial(null);
 
   // First-view tooltip sequencing: shows one at a time from tooltipQueue (staggered, so a fresh save
   // with everything unlocked doesn't dump 9 bubbles at once), marks each seen the instant it's
   // displayed (so a reload mid-display never re-shows it — "seen" means shown, not "fully read"), and
   // never blocks the icon underneath — the icon's own onClick still fires normally either way. Held
-  // off entirely while the Welcome modal is up, so it never competes with it.
+  // off entirely while a guided tutorial card is up, so the two introduction systems never compete.
   useEffect(() => {
-    if (welcomeOpen || activeTooltip || tooltipQueue.length === 0) return;
+    if (tutorialStep || contextTutorial || activeTooltip || tooltipQueue.length === 0) return;
     const staggerId = window.setTimeout(() => {
       const [next, ...rest] = tooltipQueue;
       setTooltipQueue(rest);
@@ -165,7 +235,7 @@ function App() {
       }
     }, 700);
     return () => window.clearTimeout(staggerId);
-  }, [welcomeOpen, activeTooltip, tooltipQueue]);
+  }, [tutorialStep, contextTutorial, activeTooltip, tooltipQueue]);
 
   useEffect(() => {
     if (!activeTooltip) return;
@@ -185,6 +255,11 @@ function App() {
   useEffect(() => {
     setTunableListener(() => setVersion((v) => v + 1));
     return () => setTunableListener(null);
+  }, []);
+
+  useEffect(() => {
+    setLocaleListener(() => setLocaleVersion((v) => v + 1));
+    return () => setLocaleListener(null);
   }, []);
 
   useEffect(() => {
@@ -219,6 +294,10 @@ function App() {
   const openHunt = () => {
     playSfx('click');
     setHuntOpen(true);
+    if (tutorialStep === 'hunt') {
+      updateTutorial({ ...saveRef.current.tutorial, initial: 'in_progress', initialStep: 'huntModal' });
+      setTutorialStep('huntModal');
+    }
   };
 
   // A "session" is one full Dungeon attempt (enter -> climb until death or voluntary retreat), not
@@ -429,6 +508,7 @@ function App() {
     const next = ensureDeliveryOffers(s, now, Math.random, isBattlePassActive(s, now));
     if (next !== s) setSaveBoth(next);
     setExpeditionOpen(true);
+    openContextTutorial('deliveries');
   };
 
   const useAutoPotion = (id: ConsumableId) => {
@@ -1127,6 +1207,7 @@ function App() {
             onClick={() => {
               playSfx('click');
               setMineOpen(true);
+              openContextTutorial('mining');
             }}
             data-ui
           >
@@ -1138,6 +1219,7 @@ function App() {
             onClick={() => {
               playSfx('click');
               setWoodOpen(true);
+              openContextTutorial('woodcutting');
             }}
             data-ui
           >
@@ -1150,6 +1232,7 @@ function App() {
             onClick={() => {
               playSfx('click');
               setGardenOpen(true);
+              openContextTutorial('garden');
             }}
             data-ui
           >
@@ -1157,7 +1240,7 @@ function App() {
             {computeGardenStatuses(save, Date.now()).some((s) => s.ready) && <span className="quests-badge">•</span>}
             <FirstViewTooltip show={activeTooltip === 'garden'} label={tooltipText('garden')} />
           </button>
-          <button className="side-btn hunt-btn" onClick={openHunt} data-ui>
+          <button className="side-btn hunt-btn" data-tutorial-target="hunt" onClick={openHunt} data-ui>
             🏹
             {!!save.activeHuntingZone && <span className="quests-badge">•</span>}
             <FirstViewTooltip show={activeTooltip === 'hunt'} label={tooltipText('hunt')} />
@@ -1178,7 +1261,15 @@ function App() {
             <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />
             <FirstViewTooltip show={activeTooltip === 'battlepass'} label={tooltipText('battlepass')} />
           </button>
-          <button className="side-btn" onClick={() => { playSfx('click'); setBagOpen(true); }} data-ui>
+          <button
+            className="side-btn"
+            onClick={() => {
+              playSfx('click');
+              setBagOpen(true);
+              openContextTutorial('reforge');
+            }}
+            data-ui
+          >
             <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />
             <FirstViewTooltip show={activeTooltip === 'bag'} label={tooltipText('bag')} />
           </button>
@@ -1207,12 +1298,33 @@ function App() {
             {muted ? '🔇' : '🔊'}
             <FirstViewTooltip show={activeTooltip === 'mute'} label={tooltipText('mute')} />
           </button>
+          <button
+            className="side-btn settings-btn"
+            onClick={() => {
+              playSfx('click');
+              setSettingsOpen(true);
+            }}
+            aria-label={t('settings.title')}
+            data-ui
+          >
+            ⚙️
+            <FirstViewTooltip show={activeTooltip === 'settings'} label={tooltipText('settings')} />
+          </button>
         </div>
         <div className="camp-actions">
-          <button className="camp-side-btn" onClick={() => { playSfx('click'); setForgeOpen(true); }} data-ui>
+          <button
+            className="camp-side-btn"
+            data-tutorial-target="forge"
+            onClick={() => {
+              playSfx('click');
+              setForgeOpen(true);
+              if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
+            }}
+            data-ui
+          >
             {t('ui.forge')}
           </button>
-          <button className="camp-main-btn" onClick={openDungeon} data-ui>
+          <button className="camp-main-btn" data-tutorial-target="dungeon" onClick={openDungeon} data-ui>
             {t('camp.enterArena')}
           </button>
           <button className="camp-side-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
@@ -1446,7 +1558,32 @@ function App() {
         />
       )}
 
-      {welcomeOpen && <WelcomeModal onClose={closeWelcome} />}
+      {tutorialStep && (
+        <TutorialOverlay
+          step={tutorialStep}
+          onAdvance={advanceInitialTutorial}
+          onSkip={skipInitialTutorial}
+          onDismiss={dismissInitialTutorial}
+          requiresInteraction={tutorialStep === 'hunt'}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsModal
+          muted={muted}
+          onChangeLocale={(locale: Locale) => setLocale(locale)}
+          onToggleSound={toggleMute}
+          onReplayTutorial={() => {
+            setSettingsOpen(false);
+            replayTutorial();
+          }}
+          onClose={() => {
+            playSfx('click');
+            setSettingsOpen(false);
+          }}
+        />
+      )}
+      {contextTutorial && <TutorialOverlay step={contextTutorial} onAdvance={closeContextTutorial} onSkip={skipAutomaticTutorials} onDismiss={dismissContextTutorial} />}
     </div>
   );
 }

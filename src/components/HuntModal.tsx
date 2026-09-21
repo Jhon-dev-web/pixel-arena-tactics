@@ -160,7 +160,7 @@ export default function HuntModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal dungeon-modal">
+      <div className="modal dungeon-modal" data-tutorial-target="hunt-modal">
         <h2 className="modal-title">{dungeonText('huntTab')}</h2>
 
         <div className="dungeon-body">

@@ -18,7 +18,81 @@
     "battlepass": "Passe de Aventureiro",
     "bag": "Mochila",
     "quests": "Missões",
-    "mute": "Som"
+    "mute": "Som",
+    "settings": "Configurações"
+  },
+  "settings": {
+    "title": "⚙️ CONFIGURAÇÕES",
+    "language": "Idioma",
+    "pt": "Português",
+    "en": "English",
+    "sound": "Som",
+    "on": "Ligado",
+    "off": "Desligado",
+    "email": "E-mail",
+    "emailUnavailable": "Conta online ainda não conectada.",
+    "tutorial": "Tutorial",
+    "replayTutorial": "Rever tutorial"
+  },
+  "tutorial": {
+    "start": "COMEÇAR",
+    "skip": "PULAR TUTORIAL",
+    "next": "CONTINUAR",
+    "finish": "ENTENDI",
+    "interact": "Use o botão destacado para continuar.",
+    "replay": "Rever tutorial",
+    "intro": {
+      "title": "Bem-vindo ao Arena Duel!",
+      "body": "Vamos conhecer as principais áreas."
+    },
+    "character": {
+      "title": "Personagem",
+      "body": "Veja seus atributos, equipamentos e seu Poder de Combate (CP)."
+    },
+    "hunt": {
+      "title": "Caça",
+      "body": "Derrote monstros para ganhar XP e encontrar materiais."
+    },
+    "huntModal": {
+      "title": "Caça",
+      "body": "Escolha onde deseja caçar. Áreas diferentes oferecem desafios e recursos diferentes."
+    },
+    "dungeon": {
+      "title": "Masmorra",
+      "body": "Enfrente andares cada vez mais difíceis e receba recompensas conforme avança."
+    },
+    "forge": {
+      "title": "Forja",
+      "body": "Use materiais para criar equipamentos, consumíveis e recursos processados."
+    },
+    "final": {
+      "title": "Agora é com você.",
+      "body": "Explore, teste combinações e encontre sua própria forma de evoluir."
+    },
+    "garden": {
+      "title": "Horta",
+      "body": "Plante recursos que continuam crescendo com o tempo. Volte depois para colher."
+    },
+    "mining": {
+      "title": "Mineração",
+      "body": "Extraia minérios usados em receitas e na produção de materiais."
+    },
+    "woodcutting": {
+      "title": "Lenhador",
+      "body": "Obtenha madeiras usadas em receitas e materiais processados."
+    },
+    "deliveries": {
+      "title": "Pedidos",
+      "body": "Entregue materiais em troca de Gold, XP e outras recompensas. Os materiais são consumidos quando você aceita o Pedido."
+    },
+    "reforge": {
+      "title": "Reforja",
+      "body": "Troque recursos para gerar novos atributos no equipamento."
+    },
+    "sockets": {
+      "title": "Soquetes e Gemas",
+      "body": "Soquetes permitem inserir gemas no equipamento para modificar seus atributos."
+    }
   },
   "ui": {
     "victories": "🏆 Vitórias: {n}",

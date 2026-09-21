@@ -173,7 +173,7 @@ export default function ForgeModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal forge-modal">
+      <div className="modal forge-modal" data-tutorial-target="forge-modal">
         <h2 className="modal-title">
           {/* A 15px inline sword sprite reads as a stray "!"/vertical dash at this size (confirmed
               live — it loads fine, it's just illegible that small), not worth the misread risk for
