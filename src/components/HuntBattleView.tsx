@@ -54,7 +54,8 @@ export default function HuntBattleView({ enemyId, playerSpriteUrl }: { enemyId: 
           </span>
         ) : (
           <>
-            <SpriteSheet src={enemySpriteSrc} size={72} row={ANIM_ROW[enemyAnim]} flip />
+            {/* The 4x4 monster sheet has generous transparent frame padding; scale the frame, not the sheet. */}
+            <SpriteSheet src={enemySpriteSrc} size="clamp(128px, 32vw, 220px)" row={ANIM_ROW[enemyAnim]} flip />
             <img src={enemySpriteSrc} alt="" style={{ display: 'none' }} onError={() => setEnemySpriteBroken(true)} />
           </>
         )}

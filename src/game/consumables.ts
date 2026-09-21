@@ -43,9 +43,11 @@ export const CONSUMABLES: ConsumableDef[] = [
   { id: 'expedition_ticket_4h', nameKey: 'expedition_ticket_4h', descKey: 'expedition_ticket_4h_d', icon: '⏱️', cost: 0, sellValue: 0, purchasable: false },
   // Alchemy-only (Forja > Refino > Alquimia) — never sold in the Shop, craft-tier consumables that
   // scale with player effort (Garden growing time) instead of flat gold like the Shop potions.
-  { id: 'xp_potion', nameKey: 'xp_potion', descKey: 'xp_potion_d', icon: '📘', iconUrl: '/assets/icons/potion_xp.png', cost: 0, sellValue: 15, purchasable: false },
-  { id: 'greater_elixir', nameKey: 'greater_elixir', descKey: 'greater_elixir_d', icon: '💚', iconUrl: '/assets/icons/potion_greater_elixir.png', cost: 0, sellValue: 60, purchasable: false },
-  { id: 'strength_elixir', nameKey: 'strength_elixir', descKey: 'strength_elixir_d', icon: '🔥', iconUrl: '/assets/icons/potion_strength_elixir.png', cost: 0, sellValue: 120, purchasable: false },
+  // No canonical PNG exists for these alchemy consumables. Omitting iconUrl deliberately uses the
+  // component's established emoji fallback rather than issuing a broken request for a nonexistent file.
+  { id: 'xp_potion', nameKey: 'xp_potion', descKey: 'xp_potion_d', icon: '📘', cost: 0, sellValue: 15, purchasable: false },
+  { id: 'greater_elixir', nameKey: 'greater_elixir', descKey: 'greater_elixir_d', icon: '💚', cost: 0, sellValue: 60, purchasable: false },
+  { id: 'strength_elixir', nameKey: 'strength_elixir', descKey: 'strength_elixir_d', icon: '🔥', cost: 0, sellValue: 120, purchasable: false },
 ];
 
 export function getConsumable(id: string): ConsumableDef | undefined {
