@@ -743,7 +743,7 @@
     "hours": "{n} hours",
     "perkStorage": "24h Storage",
     "perkLuck": "+25% Drop Luck",
-    "perkDeliveries": "+1 Order and +1 Swap per day",
+    "perkDeliveries": "+1 Order, +1 Swap per day and +{n}% Delivery XP",
     "perkPouch": "+2 Hunting Pouch Slots",
     "perkRepair": "-20% Repair Cost",
     "levelLabel": "Level {n} / {m}",

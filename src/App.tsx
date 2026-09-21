@@ -513,7 +513,8 @@ function App() {
 
   // Delivery orders (deliveries.ts): every handler is one pure transition on the latest save, committed at once.
   const acceptDelivery = (offerId: string) => {
-    const next = applyDeliveryAccept(saveRef.current, offerId, Date.now(), Math.random);
+    const now = Date.now();
+    const next = applyDeliveryAccept(saveRef.current, offerId, now, Math.random, isBattlePassActive(saveRef.current, now));
     if (!next) {
       showToast(t('deliveries.cannotAccept'));
       return;

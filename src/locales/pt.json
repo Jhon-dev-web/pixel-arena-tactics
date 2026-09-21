@@ -743,7 +743,7 @@
     "hours": "{n} horas",
     "perkStorage": "Armazém 24h",
     "perkLuck": "+25% Sorte em Drops",
-    "perkDeliveries": "+1 Pedido e +1 Troca por dia",
+    "perkDeliveries": "+1 Pedido, +1 Troca por dia e +{n}% de XP nas Entregas",
     "perkPouch": "+2 Slots na Bolsa de Caça",
     "perkRepair": "-20% Custo de Reparo",
     "levelLabel": "Nível {n} / {m}",

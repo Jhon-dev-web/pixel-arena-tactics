@@ -51,7 +51,23 @@ Medicinal, Alquímico, Alquímico raro (só tier 4), Militar, Armadura, Encomend
 
 ## Passe = conveniência
 
-Sem Passe: 3 ofertas e 1 reroll/dia. Com Passe: 4 ofertas e 2 rerolls/dia. **Não** dá Gold, XP, multiplicador nem slot. Efeito medido: +1 a 10% de Gold/XP por escolher melhor, com o mesmo número de entregas.
+Sem Passe: 3 ofertas e 1 reroll/dia. Com Passe: 4 ofertas, 2 rerolls/dia e **+10% de XP nas Entregas**. **Não** dá Gold, slot, multiplicador de material, tempo menor nem melhor rewardRatio. Por escolher melhor entre 4 ofertas, o Passe rende +1 a 8% de Gold (mesmas entregas por dia).
+
+### Bônus de XP do Passe (`T.deliveries.passXpBonus = 0,10`)
+
+Aplicado ao ACEITAR o pedido e congelado no snapshot (o Passe expirar depois não muda o XP daquela entrega). Só XP: Gold, shards, materiais, duração e o número de entregas não mudam. A oferta no tabuleiro já mostra o XP com o bônus.
+
+Motivo: a Expedição com Passe dava 2 slots. Com 1 slot para todos, o XP de Expedição de quem comprava Passe caía 23 a 56%. Simulação (mix MID/LATE/END, XP/dia só de Entregas):
+
+| | Exp. sem Passe | Exp. com Passe (2 slots) | Pedidos sem Passe | Passe +0% | +5% | +10% | +15% | +20% |
+|---|---|---|---|---|---|---|---|---|
+| Casual | 440k | 880k | 623k | 675k (−23%) | 708k (−20%) | 742k (−16%) | 776k (−12%) | 810k (−8%) |
+| Ativo | 880k | 1.760k | 1.060k | 1.081k (−39%) | 1.135k (−36%) | 1.189k (−32%) | 1.243k (−29%) | 1.297k (−26%) |
+| Hardcore | 1.320k | 2.640k | 1.144k | 1.162k (−56%) | 1.220k (−54%) | 1.278k (−52%) | 1.336k (−49%) | 1.394k (−47%) |
+
+XP total idle (Caça + Entregas) de quem tem Passe, contra o sistema antigo com Passe: ativo −33% (0%), −30%, **−27% (+10%)**, −25%, −22%; casual −20% a −7%; hardcore −47% a −40%. A vantagem de XP do Passe sobre quem não tem Passe: ativo +2% sem bônus, **+12% com +10%**, +22% com +20%.
+
+Escolha: **+10%**. Sem bônus o Passe quase não daria XP (+2% para o jogador ativo); com +20% viraria um produto de XP (+22%), o que contraria a decisão de ele ser conveniência. +10% corta a queda do ativo de −33% para −27% sem recuperar o que o segundo slot dava.
 
 ## Express Tickets
 

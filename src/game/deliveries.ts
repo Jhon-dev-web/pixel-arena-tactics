@@ -288,6 +288,10 @@ export function rerollsLeft(d: DeliveryState, now: number, passActive: boolean):
   const used = d.rerollDay === deliveryDayKey(now) ? d.rerollsUsed : 0;
   return Math.max(0, rerollCap(passActive) - used);
 }
+// XP an order pays when accepted by a player with (or without) the Battle Pass. Gold, shards, materials and time never change.
+export function deliveryXp(offer: Pick<DeliveryOffer, 'xp'>, passActive: boolean): number {
+  return passActive ? Math.round(offer.xp * (1 + T.deliveries.passXpBonus)) : offer.xp;
+}
 export const isOfferExpired = (o: DeliveryOffer, now: number): boolean => now - o.bornAt >= T.deliveries.offerTtlHours * HOUR;
 
 function nextSeq(d: DeliveryState): number {
@@ -323,7 +327,7 @@ export function ensureDeliveryOffers(save: SaveData, now: number, rng: Rng, pass
 
 // Accepting: everything or nothing. Needs the slot free, a live offer and every material in the bag; takes the materials at once,
 // snapshots the offer as the active delivery and puts a fresh offer of the same class in its place.
-export function applyDeliveryAccept(save: SaveData, offerId: string, now: number, rng: Rng): SaveData | null {
+export function applyDeliveryAccept(save: SaveData, offerId: string, now: number, rng: Rng, passActive = false): SaveData | null {
   if (typeof now !== 'number' || !Number.isFinite(now) || now <= 0) return null;
   const d = save.deliveries;
   if (d.active) return null;
@@ -333,7 +337,8 @@ export function applyDeliveryAccept(save: SaveData, offerId: string, now: number
   if (isOfferExpired(offer, now) || !hasMaterials(save.materials, offer.items)) return null;
   const materials = { ...save.materials };
   for (const [m, q] of Object.entries(offer.items) as [MaterialId, number][]) materials[m] = (materials[m] ?? 0) - q;
-  const active: ActiveDelivery = { offer, startedAt: now, endsAt: now + offer.durationMs };
+  // The Pass XP bonus is decided here and frozen in the snapshot: later Pass expiry or tunable changes do not touch it.
+  const active: ActiveDelivery = { offer: { ...offer, xp: deliveryXp(offer, passActive) }, startedAt: now, endsAt: now + offer.durationMs };
   const others = d.offers.filter((_, j) => j !== index).map((o) => o.arch);
   const seq = nextSeq(d);
   const fresh = generateOffer(buildContext(save), offer.cls, others, `d${seq + 1}`, now, rng);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData } from '../game/engine';
-import { canAffordOffer, deliveryRarity, offerCount, rerollsLeft } from '../game/deliveries';
+import { canAffordOffer, deliveryRarity, deliveryXp, offerCount, rerollsLeft } from '../game/deliveries';
 import { DeliveryOffer } from '../game/deliveryState';
 import { getExpedition } from '../game/expedition';
 import { ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from '../game/consumables';
@@ -210,7 +210,7 @@ export default function DeliveryModal({
                 </div>
                 <Requirements offer={offer} save={save} />
                 <span className="delivery-label">{dText('receives')}</span>
-                <Rewards gold={offer.gold} xp={offer.xp} shards={offer.shards} />
+                <Rewards gold={offer.gold} xp={deliveryXp(offer, passActive)} shards={offer.shards} />
                 <button className="battle-btn" onClick={() => onAccept(offer.id)} disabled={!!active || !affordable} data-ui>
                   {!active && !affordable ? dText('missing') : dText('accept')}
                 </button>

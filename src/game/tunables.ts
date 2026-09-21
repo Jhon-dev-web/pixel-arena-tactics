@@ -223,6 +223,9 @@ const T = DebugPanel.define({
     offersPass: { value: 4, min: 1, max: 8, step: 1, label: 'Visible offers with Battle Pass' },
     rerollsBase: { value: 1, min: 0, max: 5, step: 1, label: 'Free rerolls per day (base)' },
     rerollsPass: { value: 2, min: 0, max: 8, step: 1, label: 'Free rerolls per day with Battle Pass' },
+    // The Pass no longer doubles Expedition throughput, so it gets a small XP-only bonus on deliveries (never Gold, shards,
+    // materials or time). Applied when the order is ACCEPTED and frozen in the snapshot.
+    passXpBonus: { value: 0.1, min: 0, max: 0.5, step: 0.05, label: 'Extra delivery XP with Battle Pass (fraction)' },
     offerTtlHours: { value: 24, min: 1, max: 168, step: 1, label: 'Hours before an unaccepted offer is replaced' },
     durationJitter: { value: 0.1, min: 0, max: 0.4, step: 0.05, label: 'Duration variation around the distance reference (+/-)' },
     tier2Floor: { value: 26, min: 1, max: 100, step: 1, label: 'Highest Dungeon floor for order tier 2' },
