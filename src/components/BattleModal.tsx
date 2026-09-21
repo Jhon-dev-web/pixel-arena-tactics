@@ -543,6 +543,11 @@ export default function BattleModal({
               🔥 {formatBuffTime(buffRemainingMs(save, Date.now()))}
             </span>
           )}
+          {isBuffActive(save, 'attack', Date.now()) && (
+            <span className="loot-buff" title={t('consumables.atk_elixir')}>
+              ⚔️ {formatBuffTime(buffRemainingMs(save, Date.now(), 'attack'))}
+            </span>
+          )}
         </div>
 
         <div className="battle-top">

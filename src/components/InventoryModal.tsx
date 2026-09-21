@@ -25,7 +25,7 @@ const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
 const EQUIPPABLE_SLOTS = new Set(['weapon', 'armor', 'pickaxe', 'axe', 'rod']);
 // The rest of the consumables are consumed automatically in their own context (auto-potion during
 // combat, expedition ticket skip flow) — these two only make sense as a deliberate player action.
-const MANUALLY_USABLE = new Set(['xp_potion', 'strength_elixir']);
+const MANUALLY_USABLE = new Set(['xp_potion', 'strength_elixir', 'atk_elixir']);
 
 type SelKind = 'gear' | 'material' | 'consumable';
 

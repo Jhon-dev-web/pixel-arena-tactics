@@ -10,7 +10,7 @@ import T from './tunables';
 // Retroactivity rule: everything that could make a session stronger is fixed when the session STARTS, or only counts
 // from the moment it really began:
 //   - permanent combat stats (gear, attributes) and blessed  -> `stats` / `blessed`, frozen at start;
-//   - Strength Elixir and Battle Pass (both time-limited)     -> `strength` / `pass` windows: the real time spans in
+//   - Strength / Attack Elixir and Battle Pass (all time-limited) -> `strength` / `attack` / `pass` windows: the real time spans in
 //     which they were active. A buff already running at start opens a window at start; one activated mid-session
 //     opens a window at its activation (App.tsx records it); one bought AFTER the session is never retroactive.
 // Everything else the simulation reads (potion stock, auto-potion settings, saved sub-level progress) is unchanged.
@@ -25,6 +25,7 @@ export interface HuntSession {
   stats: CombatStats;
   blessed: boolean;
   strength: TimeWindow[];
+  attack: TimeWindow[];
   pass: TimeWindow[];
 }
 
@@ -57,7 +58,7 @@ export function mergeWindows(list: TimeWindow[]): TimeWindow[] {
 }
 
 // The session with one more active window (an elixir drunk / a pass activated while hunting).
-export function withSessionWindow(session: HuntSession, kind: 'strength' | 'pass', w: TimeWindow): HuntSession {
+export function withSessionWindow(session: HuntSession, kind: 'strength' | 'attack' | 'pass', w: TimeWindow): HuntSession {
   return { ...session, [kind]: mergeWindows([...session[kind], w]) };
 }
 
@@ -156,6 +157,7 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
     },
     blessed: r.blessed === true,
     strength: sanitizeWindows(r.strength),
+    attack: sanitizeWindows(r.attack),
     pass: sanitizeWindows(r.pass),
   };
 }

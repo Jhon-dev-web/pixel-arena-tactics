@@ -94,6 +94,10 @@ const T = DebugPanel.define({
     xpPotionAmount: { value: 150, min: 10, max: 5000, step: 10, label: 'XP Potion instant XP' },
     strengthElixirDmgPct: { value: 0.2, min: 0.05, max: 1, step: 0.05, label: 'Strength Elixir damage bonus (%)' },
     strengthElixirMinutes: { value: 30, min: 1, max: 180, step: 1, label: 'Strength Elixir duration (minutes)' },
+    // Attack (Battle) Elixir: a second, independent timed damage buff. It never stacks with itself (using it again only
+    // renews the duration); it multiplies with the Strength Elixir / Blessed like every other damage modifier.
+    attackElixirDmgPct: { value: 0.1, min: 0.05, max: 1, step: 0.05, label: 'Attack (Battle) Elixir damage bonus (%)' },
+    attackElixirMinutes: { value: 30, min: 1, max: 180, step: 1, label: 'Attack (Battle) Elixir duration (minutes)' },
   },
   progression: {
     _label: 'Progression',
@@ -132,7 +136,10 @@ const T = DebugPanel.define({
     xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Skill XP growth per level' },
     maxLevel: { value: 75, min: 10, max: 200, step: 1, label: 'Max skill level (matches the old tier-4 character-level gate)' },
     xpPerUnit: { value: 1, min: 0.1, max: 20, step: 0.1, label: 'Mining/Woodcutting skill XP per unit gathered' },
-    xpPerHarvest: { value: 10, min: 1, max: 100, step: 1, label: 'Gardening skill XP per harvest (any plant)' },
+    // Gardening XP per harvest = growth hours x this, the same XP per plot-hour for every plant (garden.ts plantHarvestXp): no
+    // plant is worth farming for XP over another, so the choice is about which material you need. 5 keeps the fastest plant
+    // (2 h herb = 10 XP) exactly where the old flat 10 XP per harvest put it; long plants are no longer under-paid.
+    gardenXpPerHour: { value: 5, min: 1, max: 50, step: 1, label: 'Gardening skill XP per growth hour (any plant)' },
     // Replaces the old per-tool power table (rusty=5 -> runic=60) now that there's only one tool per
     // profession forever — 0.75/level lands right on the old tier checkpoints (level10 ~= old iron
     // tier's 12 power, level25 ~= steel's 22, level50 ~= mithril's 38ish, level75 ~= runic's 60ish).

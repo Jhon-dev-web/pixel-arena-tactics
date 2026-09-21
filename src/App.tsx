@@ -3,7 +3,6 @@ import T, { setTunableListener } from './game/tunables';
 import {
   addBattlePassXp,
   computeCP,
-  computeGardenSlotStatus,
   computeGardenStatuses,
   computeMiningStatus,
   computeWoodcuttingStatus,
@@ -17,6 +16,8 @@ import {
   SaveData,
 } from './game/engine';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, requestHuntStart } from './game/huntLifecycle';
+import { applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
+import { applyElixir, ElixirId } from './game/elixirs';
 import { withSessionWindow } from './game/huntSession';
 import { getBattlePassLevelDef } from './game/battlepass';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
@@ -70,7 +71,6 @@ import { nextHuntPouchTierDef } from './game/huntPouch';
 import { getOreTier, isOreTierUnlocked } from './game/ores';
 import { getWoodTier, isWoodTierUnlocked } from './game/woodcutting';
 import { skillLevel } from './game/skills';
-import { getPlant } from './game/garden';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
 import TopHud from './components/TopHud';
@@ -473,30 +473,20 @@ function App() {
     showToast(`+${T.battle.xpPotionAmount} XP`);
   };
 
-  // Using another Strength Elixir while one is active refreshes the full duration from now rather
-  // than stacking magnitude or extending additively — simplest to reason about, matches how a
-  // single-slot buff usually reads ("you're topped up to 30min again"), and keeps the damage bonus
-  // itself constant so it can't be stacked into something the boss-fight balance wasn't tuned for.
-  const applyStrengthElixir = () => {
-    const s = saveRef.current;
-    const qty = s.consumables.strength_elixir ?? 0;
-    if (qty <= 0) return;
+  // Damage elixirs (elixirs.ts): using one again while it is active refreshes the full duration from now rather than
+  // stacking magnitude or extending additively, so the bonus itself stays constant. One pure transition, committed and
+  // persisted at once; nothing happens without a unit.
+  const drinkElixir = (id: ElixirId) => {
+    const next = applyElixir(saveRef.current, id, Date.now());
+    if (!next) return;
     playSfx('victory');
-    const now = Date.now();
-    const expiresAt = now + T.battle.strengthElixirMinutes * 60 * 1000;
-    setSaveBoth({
-      ...s,
-      consumables: { ...s.consumables, strength_elixir: qty - 1 },
-      activeBuff: { type: 'strength', expiresAt },
-      // A running Hunting session only gets the bonus from now on (never for the time already hunted).
-      huntSession: s.huntSession ? withSessionWindow(s.huntSession, 'strength', { from: now, to: expiresAt }) : s.huntSession,
-    });
-    showToast(t('consumables.strength_elixir_active'));
+    commitSave(next);
+    showToast(t(`consumables.${id}_active`));
   };
 
   const useConsumableManually = (id: string) => {
     if (id === 'xp_potion') applyXpPotion();
-    else if (id === 'strength_elixir') applyStrengthElixir();
+    else if (id === 'strength_elixir' || id === 'atk_elixir') drinkElixir(id);
   };
 
   const claimQuest = (id: string) => {
@@ -663,60 +653,42 @@ function App() {
     setSaveBoth({ ...s, activeWoodId: null });
   };
 
-  const startPlanting = (plantId: string, count: number) => {
-    const s = saveRef.current;
-    const def = getPlant(plantId);
-    if (!def) return;
-    if (skillLevel(s.skillXp.gardening) < def.requiredLevel) return;
-    const emptyIndices = s.gardenSlots.reduce<number[]>((acc, slot, i) => {
-      if (!slot.plantId) acc.push(i);
-      return acc;
-    }, []);
-    const n = Math.min(Math.max(1, Math.floor(count)), emptyIndices.length);
-    if (n <= 0) {
+  // Garden (see gardenActions.ts): every action is one pure transition, committed and persisted at once. A repeated
+  // click finds the plot already planted / harvested and does nothing.
+  const plantInPlots = (plantId: string, slotIndices: number[]) => {
+    const next = applyPlant(saveRef.current, plantId, slotIndices, Date.now());
+    if (!next) {
       showToast(t('garden.busy'));
       return;
     }
     playSfx('click');
-    const now = Date.now();
-    const gardenSlots = [...s.gardenSlots];
-    for (let k = 0; k < n; k++) {
-      gardenSlots[emptyIndices[k]] = { plantId: def.id, startedAt: now };
-    }
-    setSaveBoth({ ...s, gardenSlots });
+    commitSave(next);
   };
 
-  const harvestGardenSlot = (slotIndex: number) => {
-    const s = saveRef.current;
-    const status = computeGardenSlotStatus(s, Date.now(), slotIndex);
-    if (!status.ready || !status.plantId) return;
-    const def = getPlant(status.plantId);
-    if (!def) return;
+  const harvestPlots = (slotIndices: number[]) => {
+    const res = applyHarvest(saveRef.current, slotIndices, Date.now());
+    if (!res) return;
     playSfx('victory');
-    const gardenSlots = [...s.gardenSlots];
-    gardenSlots[slotIndex] = { plantId: null, startedAt: 0 };
-    setSaveBoth({
-      ...s,
-      materials: { ...s.materials, [def.material]: (s.materials[def.material] ?? 0) + def.qty },
-      skillXp: { ...s.skillXp, gardening: s.skillXp.gardening + T.skills.xpPerHarvest },
-      gardenSlots,
-    });
-    showToast(`${t('garden.harvest')} +${def.qty} ${t(`materials.mat_${def.material}`)}`);
+    commitSave(res.save);
+    const first = res.harvested[0];
+    showToast(
+      res.harvested.length === 1
+        ? `${t('garden.harvest')} +${first.qty} ${t(`materials.mat_${first.material}`)}`
+        : t('garden.harvestedMany', { n: res.harvested.length }),
+    );
   };
 
-  const cancelGardenSlot = (slotIndex: number) => {
-    const s = saveRef.current;
-    if (!s.gardenSlots[slotIndex]?.plantId) return;
+  const uprootPlot = (slotIndex: number) => {
+    const next = applyUproot(saveRef.current, slotIndex);
+    if (!next) return;
     playSfx('click');
-    const gardenSlots = [...s.gardenSlots];
-    gardenSlots[slotIndex] = { plantId: null, startedAt: 0 };
-    setSaveBoth({ ...s, gardenSlots });
+    commitSave(next);
   };
 
   // Hunting lifecycle (see huntLifecycle.ts): each step is ONE pure transition committed in one go and persisted right
   // away (not only by the save effect), so a reload can never land between a step's parts. The reward a stop produces
   // lives in the save (pendingHuntReward), not in React state.
-  const commitHuntSave = (next: SaveData) => {
+  const commitSave = (next: SaveData) => {
     setSaveBoth(next);
     persistSave(next);
   };
@@ -744,7 +716,7 @@ function App() {
     const next = requestHuntStart(s, zoneId, depth, Date.now());
     if (!next) return;
     playSfx('click');
-    commitHuntSave(next);
+    commitSave(next);
     if (s.activeHuntingZone && next.pendingHuntReward) showToast(t('hunting.switchClaimFirst'));
   };
 
@@ -752,7 +724,7 @@ function App() {
     const next = applyHuntStop(saveRef.current, Date.now());
     if (!next) return;
     playSfx('click');
-    commitHuntSave(next);
+    commitSave(next);
   };
 
   const confirmHuntReward = () => {
@@ -761,7 +733,7 @@ function App() {
     const next = applyHuntClaim(saveRef.current, pending.id);
     if (!next) return;
     playSfx('victory');
-    commitHuntSave(next);
+    commitSave(next);
     if (huntClaimBlocked(next)) showToast(t('hunting.bagFullWarning'));
   };
 
@@ -1353,9 +1325,9 @@ function App() {
       {gardenOpen && (
         <GardenModal
           save={save}
-          onPlant={startPlanting}
-          onHarvest={harvestGardenSlot}
-          onCancel={cancelGardenSlot}
+          onPlant={plantInPlots}
+          onHarvest={harvestPlots}
+          onUproot={uprootPlot}
           onClose={() => {
             playSfx('click');
             setGardenOpen(false);

@@ -32,7 +32,7 @@ import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } 
 import { getPlant, PlantId } from './garden';
 import { emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
 
-export type BuffType = 'strength';
+export type BuffType = 'strength' | 'attack';
 
 export interface ActiveBuff {
   type: BuffType;
@@ -44,10 +44,13 @@ export const GARDEN_SLOTS = 4;
 export interface GardenSlot {
   plantId: PlantId | null;
   startedAt: number;
+  // The plant this plot last held (planted / harvested / uprooted): only feeds the "plant again" shortcut. Optional so
+  // saves written before it existed load as-is.
+  lastPlantId?: PlantId | null;
 }
 
 function emptyGardenSlot(): GardenSlot {
-  return { plantId: null, startedAt: 0 };
+  return { plantId: null, startedAt: 0, lastPlantId: null };
 }
 
 function emptyGardenSlots(): GardenSlot[] {
@@ -57,8 +60,12 @@ function emptyGardenSlots(): GardenSlot[] {
 function sanitizeGardenSlot(raw: unknown): GardenSlot {
   const r = (raw ?? {}) as Partial<GardenSlot>;
   const plantId = typeof r.plantId === 'string' && getPlant(r.plantId) ? (r.plantId as PlantId) : null;
-  const startedAt = plantId && typeof r.startedAt === 'number' && Number.isFinite(r.startedAt) ? r.startedAt : 0;
-  return { plantId, startedAt };
+  const lastPlantId = typeof r.lastPlantId === 'string' && getPlant(r.lastPlantId) ? (r.lastPlantId as PlantId) : null;
+  // A plant needs a real start time: a missing / invalid one starts growing now (it must not count as long ready), and a
+  // start in the future (clock moved back / tampered) is clamped to now so the plot cannot be frozen.
+  const validStart = typeof r.startedAt === 'number' && Number.isFinite(r.startedAt) && r.startedAt > 0;
+  const startedAt = plantId ? (validStart ? Math.min(r.startedAt as number, Date.now()) : Date.now()) : 0;
+  return { plantId, startedAt, lastPlantId };
 }
 
 export interface SaveData {
@@ -122,7 +129,8 @@ export interface SaveData {
   dungeonEliteDefeated: number[];
   huntPouch: HuntPouchState;
   gardenSlots: GardenSlot[];
-  activeBuff: ActiveBuff | null;
+  activeBuff: ActiveBuff | null; // Strength Elixir (kept as-is for old saves)
+  attackBuff: ActiveBuff | null; // Attack (Battle) Elixir: an independent slot, same shape and rules
   dungeonSessionsDay: string;
   dungeonSessionsUsed: number;
   seenTooltips: string[];
@@ -234,6 +242,7 @@ export function combatModifiersFromSave(save: SaveData, now: number): CombatModi
   return {
     blessedMult: save.blessed ? 1.05 : 1,
     strengthMult: isBuffActive(save, 'strength', now) ? 1 + T.battle.strengthElixirDmgPct : 1,
+    attackMult: isBuffActive(save, 'attack', now) ? 1 + T.battle.attackElixirDmgPct : 1,
   };
 }
 
@@ -373,7 +382,9 @@ export function computeGardenSlotStatus(save: SaveData, now: number, slotIndex: 
   if (!slot || !def) {
     return { plantId: null, durationMs: 0, elapsedMs: 0, remainingMs: 0, ready: false };
   }
-  const elapsedMs = Math.max(0, now - slot.startedAt);
+  // A non-finite clock / start counts as no time elapsed (never as "already ready").
+  const rawElapsed = now - slot.startedAt;
+  const elapsedMs = Number.isFinite(rawElapsed) ? Math.max(0, rawElapsed) : 0;
   const remainingMs = Math.max(0, def.durationMs - elapsedMs);
   return { plantId: def.id, durationMs: def.durationMs, elapsedMs, remainingMs, ready: elapsedMs >= def.durationMs };
 }
@@ -384,13 +395,19 @@ export function computeGardenStatuses(save: SaveData, now: number): GardenStatus
 
 // Timestamp-based like Mining/Hunting/Garden — no ticking interval needed to know if it's still
 // valid, only checked at read time (e.g. right before a damage calc, or when rendering the HUD).
-export function isBuffActive(save: SaveData, type: BuffType, now: number): boolean {
-  return !!save.activeBuff && save.activeBuff.type === type && save.activeBuff.expiresAt > now;
+function buffSlot(save: SaveData, type: BuffType): ActiveBuff | null {
+  const b = type === 'attack' ? save.attackBuff : save.activeBuff;
+  return b && b.type === type ? b : null;
 }
 
-export function buffRemainingMs(save: SaveData, now: number): number {
-  if (!save.activeBuff) return 0;
-  return Math.max(0, save.activeBuff.expiresAt - now);
+export function isBuffActive(save: SaveData, type: BuffType, now: number): boolean {
+  const b = buffSlot(save, type);
+  return !!b && b.expiresAt > now;
+}
+
+export function buffRemainingMs(save: SaveData, now: number, type: BuffType = 'strength'): number {
+  const b = buffSlot(save, type);
+  return b ? Math.max(0, b.expiresAt - now) : 0;
 }
 
 export interface HuntingStatus {
@@ -453,10 +470,12 @@ export function withHuntProgress(save: SaveData, zoneId: string, depth: HuntingD
 // every timed modifier that is ALREADY running at that moment (later activations are recorded by the caller).
 export function buildHuntSession(save: SaveData, startedAt: number): HuntSession {
   const buff = save.activeBuff;
+  const atk = save.attackBuff;
   return {
     stats: buildCombatStats(save),
     blessed: save.blessed,
     strength: isBuffActive(save, 'strength', startedAt) && buff ? [{ from: startedAt, to: buff.expiresAt }] : [],
+    attack: isBuffActive(save, 'attack', startedAt) && atk ? [{ from: startedAt, to: atk.expiresAt }] : [],
     pass: isBattlePassActive(save, startedAt) ? [{ from: startedAt, to: save.battlePassExpiresAt }] : [],
   };
 }
@@ -467,11 +486,13 @@ export function buildHuntSession(save: SaveData, startedAt: number): HuntSession
 // Pass that is active now is assumed to have covered the session (so its cap and drop bonus are not taken away).
 export function buildLegacyHuntSession(save: SaveData, now: number): HuntSession {
   const buff = save.activeBuff;
+  const atk = save.attackBuff;
   const from = Math.min(now, Number.isFinite(save.huntingOfflineStart) ? save.huntingOfflineStart : now);
   return {
     stats: buildCombatStats(save),
     blessed: save.blessed,
     strength: isBuffActive(save, 'strength', now) && buff ? [{ from: now, to: buff.expiresAt }] : [],
+    attack: isBuffActive(save, 'attack', now) && atk ? [{ from: now, to: atk.expiresAt }] : [],
     pass: isBattlePassActive(save, now) ? [{ from, to: save.battlePassExpiresAt }] : [],
   };
 }
@@ -515,8 +536,9 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
   // after the session started only count from the next session. The Elixir is applied per hit while its window covers
   // that hit, the Battle Pass drop bonus per cleared fight while its window covers it (see HuntTimeline).
   const stats = session.stats;
-  const mods = { blessedMult: session.blessed ? 1.05 : 1, strengthMult: 1 };
-  const buffed = { ...mods, strengthMult: 1 + T.battle.strengthElixirDmgPct };
+  const mods = { blessedMult: session.blessed ? 1.05 : 1, strengthMult: 1, attackMult: 1 };
+  const strengthMods = { ...mods, strengthMult: 1 + T.battle.strengthElixirDmgPct };
+  const attackMods = { ...mods, attackMult: 1 + T.battle.attackElixirDmgPct };
 
   const build: HuntCombatBuild = {
     playerMax: stats.maxHp,
@@ -548,7 +570,10 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
   };
   const timeline: HuntTimeline = {
     strengthWindows: relativeWindows(session.strength, startedAt),
-    heroDmgBaseBuffed: applyDamageModifiers(stats.dmgBase, buffed),
+    attackWindows: relativeWindows(session.attack, startedAt),
+    dmgStrength: applyDamageModifiers(stats.dmgBase, strengthMods),
+    dmgAttack: applyDamageModifiers(stats.dmgBase, attackMods),
+    dmgBoth: applyDamageModifiers(stats.dmgBase, { ...strengthMods, attackMult: attackMods.attackMult }),
     passWindows,
     passDropMult: T.battlePass.dropRateMultiplier,
   };
@@ -653,6 +678,7 @@ export function defaultSave(): SaveData {
     dungeonEliteDefeated: [],
     gardenSlots: emptyGardenSlots(),
     activeBuff: null,
+    attackBuff: null,
     huntPouch: defaultHuntPouch(),
     dungeonSessionsDay: '',
     dungeonSessionsUsed: 0,
@@ -935,11 +961,16 @@ export function loadSave(): SaveData {
       } else {
         gardenSlots = emptyGardenSlots();
       }
-      const rawBuff = parsed.activeBuff as Partial<ActiveBuff> | undefined;
-      const activeBuff: ActiveBuff | null =
-        rawBuff && rawBuff.type === 'strength' && typeof rawBuff.expiresAt === 'number' && Number.isFinite(rawBuff.expiresAt)
-          ? { type: 'strength', expiresAt: rawBuff.expiresAt }
+      // A timed buff never outlives its duration: an expiry further ahead than one full duration from now (tampered / clock moved
+      // back) is clamped, so it cannot be made permanent by editing the save.
+      const sanitizeBuff = (raw: unknown, type: BuffType, minutes: number): ActiveBuff | null => {
+        const b = raw as Partial<ActiveBuff> | undefined;
+        return b && b.type === type && typeof b.expiresAt === 'number' && Number.isFinite(b.expiresAt)
+          ? { type, expiresAt: Math.min(b.expiresAt, Date.now() + minutes * 60 * 1000) }
           : null;
+      };
+      const activeBuff = sanitizeBuff(parsed.activeBuff, 'strength', T.battle.strengthElixirMinutes);
+      const attackBuff = sanitizeBuff(parsed.attackBuff, 'attack', T.battle.attackElixirMinutes);
       const sanitizePouchItems = (arr: unknown): HuntPouchItem[] =>
         Array.isArray(arr)
           ? (arr as HuntPouchItem[])
@@ -994,6 +1025,7 @@ export function loadSave(): SaveData {
         huntPouch,
         gardenSlots,
         activeBuff,
+        attackBuff,
         dungeonSessionsDay,
         dungeonSessionsUsed,
         seenTooltips,
