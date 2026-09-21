@@ -44,6 +44,7 @@ export default function HeroModal({
   onUnequip,
   onSelectTitle,
   onUpgradePouch,
+  onReplayTutorial,
   onClose,
 }: {
   save: SaveData;
@@ -53,6 +54,7 @@ export default function HeroModal({
   onUnequip: (id: string) => void;
   onSelectTitle: (id: string | null) => void;
   onUpgradePouch: () => void;
+  onReplayTutorial: () => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<'equip' | 'attrs' | 'titles'>('equip');
@@ -414,6 +416,9 @@ export default function HeroModal({
             {t('profile.confirmPoints')}
           </button>
         )}
+        <button className="tutorial-replay-btn" onClick={onReplayTutorial} data-ui>
+          {t('tutorial.replay')}
+        </button>
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
           ✕

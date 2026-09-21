@@ -20,6 +20,66 @@
     "quests": "Quests",
     "mute": "Sound"
   },
+  "tutorial": {
+    "start": "START",
+    "skip": "SKIP TUTORIAL",
+    "next": "CONTINUE",
+    "finish": "GOT IT",
+    "interact": "Use the highlighted button to continue.",
+    "replay": "Review tutorial",
+    "intro": {
+      "title": "Welcome to Arena Duel!",
+      "body": "Let's get to know the main areas."
+    },
+    "character": {
+      "title": "Character",
+      "body": "View your attributes, equipment and Combat Power (CP)."
+    },
+    "hunt": {
+      "title": "Hunting",
+      "body": "Defeat monsters to gain XP and find materials."
+    },
+    "huntModal": {
+      "title": "Hunting",
+      "body": "Choose where to hunt. Different areas offer different challenges and resources."
+    },
+    "dungeon": {
+      "title": "Dungeon",
+      "body": "Face increasingly difficult floors and receive rewards as you advance."
+    },
+    "forge": {
+      "title": "Forge",
+      "body": "Use materials to create equipment, consumables and processed resources."
+    },
+    "final": {
+      "title": "Now it's up to you.",
+      "body": "Explore, test combinations and find your own way to progress."
+    },
+    "garden": {
+      "title": "Garden",
+      "body": "Plant resources that keep growing over time. Come back later to harvest."
+    },
+    "mining": {
+      "title": "Mining",
+      "body": "Extract ores used in recipes and material production."
+    },
+    "woodcutting": {
+      "title": "Woodcutting",
+      "body": "Gather wood used in recipes and processed materials."
+    },
+    "deliveries": {
+      "title": "Orders",
+      "body": "Deliver materials in exchange for Gold, XP and other rewards. Materials are consumed when you accept an Order."
+    },
+    "reforge": {
+      "title": "Reforge",
+      "body": "Trade resources to generate new attributes on a piece of equipment."
+    },
+    "sockets": {
+      "title": "Sockets and Gems",
+      "body": "Sockets let you insert gems into equipment to modify its attributes."
+    }
+  },
   "ui": {
     "victories": "🏆 Victories: {n}",
     "gold": "🪙 Gold: {n}",

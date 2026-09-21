@@ -221,7 +221,7 @@ export default function GardenModal({
 
   return (
     <div className="modal-backdrop">
-      <div className={`modal dungeon-modal garden-modal${pickerFor !== null ? ' picking' : ''}`}>
+      <div className={`modal dungeon-modal garden-modal${pickerFor !== null ? ' picking' : ''}`} data-tutorial-target="garden-modal">
         <h2 className="modal-title">{gardenText('title')}</h2>
 
         <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" />
