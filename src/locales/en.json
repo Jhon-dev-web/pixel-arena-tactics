@@ -18,7 +18,21 @@
     "battlepass": "Battle Pass",
     "bag": "Backpack",
     "quests": "Quests",
-    "mute": "Sound"
+    "mute": "Sound",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "⚙️ SETTINGS",
+    "language": "Language",
+    "pt": "Portuguese",
+    "en": "English",
+    "sound": "Sound",
+    "on": "On",
+    "off": "Off",
+    "email": "Email",
+    "emailUnavailable": "Online account is not connected yet.",
+    "tutorial": "Tutorial",
+    "replayTutorial": "Replay tutorial"
   },
   "tutorial": {
     "start": "START",

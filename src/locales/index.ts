@@ -3,7 +3,7 @@ import pt from './pt.json';
 
 const DEFAULT_LOCALE = 'pt';
 const LOCALES = { en, pt } as const;
-type Locale = keyof typeof LOCALES;
+export type Locale = keyof typeof LOCALES;
 
 function resolve(): Locale {
   const saved = localStorage.getItem('locale');
@@ -12,7 +12,9 @@ function resolve(): Locale {
   return (want in LOCALES ? want : DEFAULT_LOCALE) as Locale;
 }
 
-const current = resolve();
+let current = resolve();
+export let activeLocale: Locale = current;
+let localeListener: (() => void) | null = null;
 
 function read(locale: Locale, path: string): unknown {
   return path.split('.').reduce<unknown>(
@@ -31,9 +33,17 @@ export function t(path: string, vars?: Record<string, string | number>): string 
 }
 
 export function setLocale(next: Locale): void {
+  if (next === current) return;
   localStorage.setItem('locale', next);
-  location.reload();
+  current = next;
+  activeLocale = next;
+  localeListener?.();
+}
+
+// The game has one React root. Keeping a tiny listener here lets the established locale module
+// update that root immediately while preserving the same localStorage preference mechanism.
+export function setLocaleListener(listener: (() => void) | null): void {
+  localeListener = listener;
 }
 
 export const locales = Object.keys(LOCALES) as Locale[];
-export const activeLocale = current;

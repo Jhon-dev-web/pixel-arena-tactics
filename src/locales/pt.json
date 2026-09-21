@@ -18,7 +18,21 @@
     "battlepass": "Passe de Aventureiro",
     "bag": "Mochila",
     "quests": "Missões",
-    "mute": "Som"
+    "mute": "Som",
+    "settings": "Configurações"
+  },
+  "settings": {
+    "title": "⚙️ CONFIGURAÇÕES",
+    "language": "Idioma",
+    "pt": "Português",
+    "en": "English",
+    "sound": "Som",
+    "on": "Ligado",
+    "off": "Desligado",
+    "email": "E-mail",
+    "emailUnavailable": "Conta online ainda não conectada.",
+    "tutorial": "Tutorial",
+    "replayTutorial": "Rever tutorial"
   },
   "tutorial": {
     "start": "COMEÇAR",

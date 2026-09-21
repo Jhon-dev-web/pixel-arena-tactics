@@ -1352,6 +1352,9 @@ body {
 .side-btn:active {
   transform: scale(0.94);
 }
+.settings-btn {
+  font-size: calc(var(--font-size) + 3px);
+}
 .first-tooltip {
   position: absolute;
   right: calc(100% + 10px);
@@ -4521,16 +4524,84 @@ body {
   color: #d8c9a0;
   font-size: calc(var(--font-size) - 4px);
 }
-.tutorial-replay-btn {
-  display: block;
-  margin: 8px auto 0;
-  border: 0;
-  background: transparent;
-  color: #b8a8d8;
-  font: inherit;
+.settings-modal {
+  width: min(90vw, 380px);
+  text-align: left;
+}
+.settings-backdrop {
+  z-index: 80;
+}
+.settings-modal .modal-title {
+  text-align: center;
+}
+.settings-list {
+  display: grid;
+  gap: 10px;
+}
+.settings-section {
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #3a2a4a;
+  border-radius: 10px;
+}
+.settings-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.settings-label {
+  color: #ffe9a8;
+  font-size: calc(var(--font-size) - 1px);
+  font-weight: bold;
+}
+.settings-description {
+  color: #c9bcd8;
   font-size: calc(var(--font-size) - 4px);
-  text-decoration: underline;
+  line-height: 1.35;
+}
+.settings-select,
+.settings-action {
+  min-height: 42px;
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  color: #ffe9a8;
+  background: #1c1327;
+  font: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  padding: 0 10px;
+}
+.settings-select {
+  width: 100%;
+}
+.settings-action {
   cursor: pointer;
+  white-space: nowrap;
+}
+.settings-toggle {
+  width: 54px;
+  height: 30px;
+  padding: 3px;
+  border: 2px solid #6a4a2a;
+  border-radius: 999px;
+  background: #3a2a4a;
+  cursor: pointer;
+}
+.settings-toggle.active {
+  background: #3f8a55;
+  border-color: #81d681;
+}
+.settings-toggle-knob {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f5e9c8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease;
+}
+.settings-toggle.active .settings-toggle-knob {
+  transform: translateX(24px);
 }
 @keyframes tutorialPulse {
   50% { box-shadow: 0 0 0 6px rgba(255, 215, 106, 0.08), 0 0 22px rgba(255, 215, 106, 0.95); }

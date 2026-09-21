@@ -79,10 +79,11 @@ import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENT
 import TopHud from './components/TopHud';
 import FirstViewTooltip from './components/FirstViewTooltip';
 import TutorialOverlay from './components/TutorialOverlay';
+import SettingsModal from './components/SettingsModal';
 import Campfire from './components/Campfire';
 import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
 import Assets from './assets.json';
-import { t } from './locales';
+import { Locale, setLocale, setLocaleListener, t } from './locales';
 import './App.css';
 
 const gearText = (key: string): string => t(`gear.${key}`);
@@ -90,7 +91,7 @@ const gearText = (key: string): string => t(`gear.${key}`);
 // First-view tooltips for the Camp side-rail icons — order matches the rail top-to-bottom. Admin (dev
 // only) is deliberately excluded: it doesn't exist in a production build, so there's nothing to
 // introduce to a real player. See FirstViewTooltip.tsx / SaveData.seenTooltips.
-const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'expedition', 'battlepass', 'bag', 'quests', 'mute'] as const;
+const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'expedition', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
 const tooltipText = (id: string): string => t(`tooltips.${id}`);
 
 function App() {
@@ -100,6 +101,7 @@ function App() {
   const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [heroOpen, setHeroOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [huntOpen, setHuntOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
@@ -113,6 +115,7 @@ function App() {
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const [, setLocaleVersion] = useState(0);
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
   const [cheatMode, setCheatMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -252,6 +255,11 @@ function App() {
   useEffect(() => {
     setTunableListener(() => setVersion((v) => v + 1));
     return () => setTunableListener(null);
+  }, []);
+
+  useEffect(() => {
+    setLocaleListener(() => setLocaleVersion((v) => v + 1));
+    return () => setLocaleListener(null);
   }, []);
 
   useEffect(() => {
@@ -1290,6 +1298,18 @@ function App() {
             {muted ? '🔇' : '🔊'}
             <FirstViewTooltip show={activeTooltip === 'mute'} label={tooltipText('mute')} />
           </button>
+          <button
+            className="side-btn settings-btn"
+            onClick={() => {
+              playSfx('click');
+              setSettingsOpen(true);
+            }}
+            aria-label={t('settings.title')}
+            data-ui
+          >
+            ⚙️
+            <FirstViewTooltip show={activeTooltip === 'settings'} label={tooltipText('settings')} />
+          </button>
         </div>
         <div className="camp-actions">
           <button
@@ -1368,7 +1388,6 @@ function App() {
           onUnequip={unequipGear}
           onSelectTitle={selectTitle}
           onUpgradePouch={upgradeHuntPouch}
-          onReplayTutorial={replayTutorial}
           onClose={() => {
             playSfx('click');
             setHeroOpen(false);
@@ -1546,6 +1565,22 @@ function App() {
           onSkip={skipInitialTutorial}
           onDismiss={dismissInitialTutorial}
           requiresInteraction={tutorialStep === 'hunt'}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsModal
+          muted={muted}
+          onChangeLocale={(locale: Locale) => setLocale(locale)}
+          onToggleSound={toggleMute}
+          onReplayTutorial={() => {
+            setSettingsOpen(false);
+            replayTutorial();
+          }}
+          onClose={() => {
+            playSfx('click');
+            setSettingsOpen(false);
+          }}
         />
       )}
       {contextTutorial && <TutorialOverlay step={contextTutorial} onAdvance={closeContextTutorial} onSkip={skipAutomaticTutorials} onDismiss={dismissContextTutorial} />}
