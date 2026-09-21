@@ -21,6 +21,8 @@ export interface ActiveExpedition {
   endsAt: number;
 }
 
+// LEGACY. New Expeditions can no longer be started: delivery orders (deliveries.ts) took over this job. These definitions stay
+// only so an Expedition that was already running when the update landed can finish and pay out exactly as before.
 // Offline dispatch missions — timed, no combat. Rewards are gold/XP/shards only,
 // deliberately excluding material drops so they never compete with Hunting's economy.
 // xp is deliberately huge and flat-per-hour (~55k/h at every duration tier) — see the matching

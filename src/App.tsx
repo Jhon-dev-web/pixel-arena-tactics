@@ -10,7 +10,6 @@ import {
   effectiveRepairCost,
   isBattlePassActive,
   loadSave,
-  maxExpeditionSlots,
   persistSave,
   playerLevel,
   SaveData,
@@ -56,7 +55,7 @@ import HeroModal from './components/HeroModal';
 import DungeonMapModal from './components/DungeonMapModal';
 import HuntModal from './components/HuntModal';
 import BattleModal from './components/BattleModal';
-import ExpeditionModal from './components/ExpeditionModal';
+import DeliveryModal from './components/DeliveryModal';
 import MiningModal from './components/MiningModal';
 import WoodcuttingModal from './components/WoodcuttingModal';
 import GardenModal from './components/GardenModal';
@@ -72,6 +71,8 @@ import { getOreTier, isOreTierUnlocked } from './game/ores';
 import { getWoodTier, isWoodTierUnlocked } from './game/woodcutting';
 import { skillLevel } from './game/skills';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
+import { isDeliveryReady } from './game/deliveries';
+import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
 import TopHud from './components/TopHud';
 import FirstViewTooltip from './components/FirstViewTooltip';
@@ -105,7 +106,7 @@ function App() {
   const [mineOpen, setMineOpen] = useState(false);
   const [woodOpen, setWoodOpen] = useState(false);
   const [gardenOpen, setGardenOpen] = useState(false);
-  const [claimResult, setClaimResult] = useState<{ nameKey: string; rewards: ExpeditionRewards } | null>(null);
+  const [claimResult, setClaimResult] = useState<{ title: string; name: string; rewards: ExpeditionRewards } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -128,7 +129,7 @@ function App() {
   };
 
   // Character XP is intentionally never shown as a number anywhere in the UI (see TopHud/HeroModal/
-  // HuntModal/ExpeditionModal/HuntRewardModal) — a level-up toast is the only XP-gain feedback left,
+  // HuntModal/HuntRewardModal; DeliveryModal is the one exception: an order card shows the XP it pays) — a level-up toast is the only XP-gain feedback left,
   // so it's centralized here rather than duplicated at every xp-granting call site.
   const setSaveBoth = (s: SaveData) => {
     const prevLevel = playerLevel(saveRef.current.xp);
@@ -420,8 +421,13 @@ function App() {
     setSaveBoth(next);
   };
 
+  // The board is filled/refreshed right before it is shown (offers are persisted, so a reload never reshuffles them).
   const openExpedition = () => {
     playSfx('click');
+    const s = saveRef.current;
+    const now = Date.now();
+    const next = ensureDeliveryOffers(s, now, Math.random, isBattlePassActive(s, now));
+    if (next !== s) setSaveBoth(next);
     setExpeditionOpen(true);
   };
 
@@ -505,30 +511,51 @@ function App() {
     playSfx('victory');
   };
 
-  const startExpedition = (id: string) => {
-    const def = getExpedition(id);
-    if (!def) return;
-    const s = saveRef.current;
-    if (s.expeditions.length >= maxExpeditionSlots(s, Date.now())) return;
-    if (s.activeHuntingZone) {
-      showToast(t('hunting.busyOther'));
+  // Delivery orders (deliveries.ts): every handler is one pure transition on the latest save, committed at once.
+  const acceptDelivery = (offerId: string) => {
+    const next = applyDeliveryAccept(saveRef.current, offerId, Date.now(), Math.random);
+    if (!next) {
+      showToast(t('deliveries.cannotAccept'));
       return;
     }
     playSfx('click');
-    setSaveBoth({ ...s, expeditions: [...s.expeditions, { id, endsAt: Date.now() + def.durationMs }] });
+    setSaveBoth(next);
   };
 
-  const cancelExpedition = (index: number) => {
+  const claimDelivery = () => {
+    const now = Date.now();
+    const claim = applyDeliveryClaim(saveRef.current, now);
+    if (!claim) return;
+    playSfx('victory');
+    setSaveBoth(ensureDeliveryOffers(claim.save, now, Math.random, isBattlePassActive(claim.save, now)));
+    setClaimResult({
+      title: t('deliveries.rewards'),
+      name: t(`deliveries.dest_${claim.offer.arch}_${claim.offer.dest}`),
+      rewards: { gold: claim.offer.gold, xp: claim.xpGained, shards: claim.offer.shards },
+    });
+  };
+
+  const rerollDeliveries = () => {
     const s = saveRef.current;
-    if (!s.expeditions[index]) return;
+    const now = Date.now();
+    const next = applyDeliveryReroll(s, now, Math.random, isBattlePassActive(s, now));
+    if (!next) return;
     playSfx('click');
-    setSaveBoth({ ...s, expeditions: s.expeditions.filter((_, i) => i !== index) });
+    setSaveBoth(next);
   };
 
+  const useDeliveryTicket = (ticketId: ConsumableId) => {
+    const next = applyDeliveryTicket(saveRef.current, ticketId, Date.now());
+    if (!next) return;
+    playSfx('click');
+    setSaveBoth(next);
+  };
+
+  // LEGACY: an Expedition started before delivery orders still finishes and pays the old way (nothing new can start).
   const claimExpedition = (index: number) => {
     const s = saveRef.current;
     const exp = s.expeditions[index];
-    if (!exp) return;
+    if (!exp || Date.now() < exp.endsAt) return;
     const def = getExpedition(exp.id);
     if (!def) return;
     const rewards = expeditionRewards(def);
@@ -545,7 +572,7 @@ function App() {
       },
     });
     playSfx('victory');
-    setClaimResult({ nameKey: def.nameKey, rewards });
+    setClaimResult({ title: t('expedition.rewards'), name: t(`expedition.${def.nameKey}`), rewards });
   };
 
   const useExpeditionTicket = (index: number, ticketId: ConsumableId) => {
@@ -1136,7 +1163,7 @@ function App() {
           </button>
           <button className="side-btn expedition-btn" onClick={openExpedition} data-ui>
             🏕️
-            {save.expeditions.some((e) => Date.now() >= e.endsAt) && <span className="quests-badge">•</span>}
+            {(isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt)) && <span className="quests-badge">•</span>}
             <FirstViewTooltip show={activeTooltip === 'expedition'} label={tooltipText('expedition')} />
           </button>
           <button
@@ -1281,14 +1308,15 @@ function App() {
       )}
 
       {expeditionOpen && (
-        <ExpeditionModal
+        <DeliveryModal
           save={save}
-          maxSlots={maxExpeditionSlots(save, Date.now())}
-          huntingActive={!!save.activeHuntingZone}
-          onStart={startExpedition}
-          onCancel={cancelExpedition}
-          onClaim={claimExpedition}
-          onUseTicket={useExpeditionTicket}
+          passActive={isBattlePassActive(save, Date.now())}
+          onAccept={acceptDelivery}
+          onClaim={claimDelivery}
+          onReroll={rerollDeliveries}
+          onUseTicket={useDeliveryTicket}
+          onClaimLegacy={claimExpedition}
+          onUseLegacyTicket={useExpeditionTicket}
           onClose={() => {
             playSfx('click');
             setExpeditionOpen(false);
@@ -1337,7 +1365,8 @@ function App() {
 
       {claimResult && (
         <ClaimModal
-          nameKey={claimResult.nameKey}
+          title={claimResult.title}
+          name={claimResult.name}
           rewards={claimResult.rewards}
           onClose={() => {
             playSfx('click');
