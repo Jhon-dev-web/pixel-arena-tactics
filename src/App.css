@@ -4359,14 +4359,6 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
-@media (min-width: 640px) {
-  .garden-modal {
-    width: min(94vw, 760px);
-  }
-  .garden-plots {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 .garden-plot-wrap {
   position: relative;
   min-width: 0;
@@ -4388,9 +4380,10 @@ body {
 }
 .garden-plot-head {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 3px 6px;
   min-width: 0;
 }
 .garden-plot-num {
@@ -4462,27 +4455,32 @@ body {
   color: #8a7aa8;
 }
 .garden-plot-plant {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  display: block;
   min-width: 0;
+  line-height: 1.25;
 }
+/* Phone: the longest names (Energética, Cogumelo) only fit next to the icon at 9px in a ~120px card */
 .garden-plot-icon {
-  font-size: 26px;
+  display: inline-block;
+  font-size: 20px;
   line-height: 1;
-  flex: none;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 .garden-plot-name {
-  font-size: calc(var(--font-size) - 1px);
+  font-size: calc(var(--font-size) - 3px);
   color: #fff;
-  min-width: 0;
-  overflow-wrap: break-word;
-  line-height: 1.15;
+  vertical-align: middle;
+  word-break: normal;
+  overflow-wrap: break-word; /* only if a single word is wider than the whole card */
+  hyphens: manual;
 }
 .garden-plot-yield {
   font-size: calc(var(--font-size) - 4px);
   color: #b9a37a;
   line-height: 1.2;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 .garden-plot-bar {
   height: 10px;
@@ -4748,6 +4746,34 @@ body {
 }
 .garden-picker-close {
   align-self: center;
+}
+/* Desktop: still 2 x 2, but with a wider modal (two comfortable cards per row) and more breathing room inside each card.
+   The phone layout above is untouched. */
+@media (min-width: 640px) {
+  .garden-modal {
+    width: min(94vw, 720px);
+  }
+  .garden-plots {
+    gap: 14px;
+  }
+  .garden-plot {
+    min-height: 196px;
+    padding: 14px;
+    gap: 8px;
+  }
+  .garden-plot-icon {
+    font-size: 26px;
+    margin-right: 8px;
+  }
+  .garden-plot-name {
+    font-size: var(--font-size);
+  }
+  .garden-plot-yield {
+    font-size: calc(var(--font-size) - 3px);
+  }
+  .garden-plot-bar {
+    height: 12px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .garden-plot.ready {
