@@ -133,8 +133,17 @@ interface Context {
   available: Set<MaterialId>;
   ore: MaterialId;
   wood: MaterialId;
+  // Every T3+ ore/wood tier the player has already unlocked (silver/gold_ore/obsidian,
+  // ebony_wood/elven_wood/ancient_wood) — not just the current one. Without this, a "forja" order
+  // could only ever ask for the single highest-unlocked tier, so silver stopped being requestable
+  // for good the moment gold_ore unlocked, even though the player still holds (and keeps mining)
+  // plenty of it. T1/T2 (copper/iron/common_wood/oak_wood) are deliberately NOT included here — they
+  // keep following `ore`/`wood` exactly as before.
+  oreTiersUnlocked: MaterialId[];
+  woodTiersUnlocked: MaterialId[];
   processed: boolean;
 }
+const HIGHER_TIER_MIN_LEVEL = 25; // matches ORE_TIERS/WOOD_TIERS' 3rd entry (silver/ebony_wood)
 function buildContext(save: SaveData): Context {
   const available = new Set<MaterialId>();
   for (const z of HUNTING_ZONES) if (isZoneUnlocked(z, save.highestDungeonFloor)) for (const d of z.drops) available.add(d.material);
@@ -144,11 +153,17 @@ function buildContext(save: SaveData): Context {
   const wood = skillLevel(save.skillXp.woodcutting, 'woodcutting');
   const ore = [...ORE_TIERS].reverse().find((o) => mining >= o.requiredLevel)?.id ?? ORE_TIERS[0].id;
   const tree = [...WOOD_TIERS].reverse().find((w) => wood >= w.requiredLevel)?.id ?? WOOD_TIERS[0].id;
+  const oreTiersUnlocked =
+    mining >= HIGHER_TIER_MIN_LEVEL ? ORE_TIERS.filter((o) => o.requiredLevel >= HIGHER_TIER_MIN_LEVEL && mining >= o.requiredLevel).map((o) => o.id) : [ore];
+  const woodTiersUnlocked =
+    wood >= HIGHER_TIER_MIN_LEVEL ? WOOD_TIERS.filter((w) => w.requiredLevel >= HIGHER_TIER_MIN_LEVEL && wood >= w.requiredLevel).map((w) => w.id) : [tree];
   available.add(ore);
   available.add(tree);
+  for (const id of oreTiersUnlocked) available.add(id);
+  for (const id of woodTiersUnlocked) available.add(id);
   const processed = playerLevel(save.xp) >= T.deliveries.processedMinLevel;
   if (processed) for (const m of ['leather', 'steel', 'silver_ingot'] as MaterialId[]) available.add(m);
-  return { tier: deliveryTier(save), available, ore, wood: tree, processed };
+  return { tier: deliveryTier(save), available, ore, wood: tree, oreTiersUnlocked, woodTiersUnlocked, processed };
 }
 
 function pickWeighted<X>(items: X[], weights: number[], rng: Rng): X {
@@ -161,10 +176,20 @@ function pickWeighted<X>(items: X[], weights: number[], rng: Rng): X {
   return items[items.length - 1];
 }
 
+// "raw" archetype composition: 60% ore share / 40% wood share, split evenly across every T3+ tier the
+// player has already unlocked (see Context.oreTiersUnlocked/woodTiersUnlocked) — same total share as
+// before, just no longer collapsed onto a single material once a later tier unlocks.
 function composition(arch: DeliveryArchetype, ctx: Context): Partial<Record<MaterialId, number>> | null {
   const def = ARCHETYPES[arch];
   if (def.processed && !ctx.processed) return null;
-  const comp: Partial<Record<MaterialId, number>> = def.comp === 'raw' ? { [ctx.ore]: 0.6, [ctx.wood]: 0.4 } : { ...def.comp };
+  let comp: Partial<Record<MaterialId, number>>;
+  if (def.comp === 'raw') {
+    comp = {};
+    for (const id of ctx.oreTiersUnlocked) comp[id] = 0.6 / ctx.oreTiersUnlocked.length;
+    for (const id of ctx.woodTiersUnlocked) comp[id] = 0.4 / ctx.woodTiersUnlocked.length;
+  } else {
+    comp = { ...def.comp };
+  }
   const kept = (Object.entries(comp) as [MaterialId, number][]).filter(([m]) => ctx.available.has(m));
   if (kept.length === 0) return null;
   // The archetype's signature material must be there (a "rare alchemy" order without the Flor is just an ordinary one).
