@@ -482,7 +482,31 @@
     "base": "Base / AFK",
     "forge": "Forja",
     "shop": "Loja",
-    "attributes": "Atributos"
+    "attributes": "Atributos",
+    "hero": "Personagem",
+    "hunt": "Caça",
+    "dungeon": "Masmorra",
+    "garden": "Horta",
+    "mining": "Mineração",
+    "woodcutting": "Lenhador",
+    "deliveries": "Pedidos",
+    "inventory": "Inventário",
+    "battlePass": "Battle Pass",
+    "settings": "Configurações"
+  },
+  "home": {
+    "activityTitle": "Atividade Atual",
+    "idle": "Seu herói está descansando no acampamento. Inicie uma atividade para progredir.",
+    "hunting": "Caçando",
+    "mining": "Minerando",
+    "woodcutting": "Cortando madeira",
+    "gardenStatus": "{n}/{m} canteiros prontos",
+    "delivery": "Pedido",
+    "deliveryReady": "Pronto para coletar",
+    "progressionTitle": "Progressão",
+    "hero": "Personagem",
+    "dungeon": "Masmorra",
+    "quickActionsTitle": "Ações Rápidas"
   },
   "dungeon": {
     "title": "⚔️ ANDARES DA MASMORRA",

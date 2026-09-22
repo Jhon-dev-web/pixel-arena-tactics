@@ -81,6 +81,10 @@ import FirstViewTooltip from './components/FirstViewTooltip';
 import TutorialOverlay from './components/TutorialOverlay';
 import SettingsModal from './components/SettingsModal';
 import Campfire from './components/Campfire';
+import DesktopSidebar, { DesktopNavItem } from './components/DesktopSidebar';
+import DesktopTopbar from './components/DesktopTopbar';
+import DesktopHome from './components/DesktopHome';
+import useIsDesktop from './hooks/useIsDesktop';
 import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
 import Assets from './assets.json';
 import { Locale, setLocale, setLocaleListener, t } from './locales';
@@ -1136,9 +1140,54 @@ function App() {
   };
 
   const heroSpriteUrl = playerSpriteUrl();
+  const isDesktop = useIsDesktop();
+
+  const desktopNavItems: DesktopNavItem[] = [
+    { key: 'hero', icon: '🧝', label: t('nav.hero'), active: heroOpen, onClick: () => { playSfx('click'); setHeroOpen(true); } },
+    { key: 'hunt', icon: '🏹', label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, onClick: openHunt },
+    { key: 'dungeon', icon: '⚔️', label: t('nav.dungeon'), active: dungeonOpen, onClick: openDungeon },
+    { key: 'forge', icon: '🔨', label: t('nav.forge'), active: forgeOpen, onClick: () => {
+        playSfx('click');
+        setForgeOpen(true);
+        if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
+      } },
+    { key: 'garden', icon: '🌱', label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
+    { key: 'mining', icon: '⛏️', label: t('nav.mining'), active: mineOpen, onClick: () => { playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
+    { key: 'woodcutting', icon: '🪓', label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
+    { key: 'deliveries', icon: '🏕️', label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: openExpedition },
+    { key: 'inventory', icon: '🎒', label: t('nav.inventory'), active: bagOpen, onClick: () => { playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
+    { key: 'battlePass', icon: '🎫', label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { playSfx('click'); setBattlePassOpen(true); } },
+    { key: 'settings', icon: '⚙️', label: t('nav.settings'), active: settingsOpen, onClick: () => { playSfx('click'); setSettingsOpen(true); } },
+  ];
 
   return (
     <div className="game-root">
+      {isDesktop ? (
+        <div className="desktop-shell">
+          <DesktopSidebar items={desktopNavItems} />
+          <div className="desktop-main">
+            <DesktopTopbar
+              save={save}
+              spriteUrl={heroSpriteUrl}
+              onOpenProfile={() => setHeroOpen(true)}
+              onOpenSettings={() => { playSfx('click'); setSettingsOpen(true); }}
+            />
+            <DesktopHome
+              save={save}
+              spriteUrl={heroSpriteUrl}
+              onOpenHero={() => setHeroOpen(true)}
+              onOpenHunt={openHunt}
+              onOpenDungeon={openDungeon}
+              onOpenForge={() => { playSfx('click'); setForgeOpen(true); }}
+              onOpenExpedition={openExpedition}
+              onOpenMining={() => { playSfx('click'); setMineOpen(true); }}
+              onOpenWoodcutting={() => { playSfx('click'); setWoodOpen(true); }}
+              onOpenGarden={() => { playSfx('click'); setGardenOpen(true); }}
+              onOpenInventory={() => { playSfx('click'); setBagOpen(true); }}
+            />
+          </div>
+        </div>
+      ) : (
       <div className="stage" data-tv={version}>
         <div className="bg" style={{ backgroundImage: `url(${Assets.background.camp.url})` }} />
         <div className="vignette" />
@@ -1281,6 +1330,7 @@ function App() {
           </button>
         </div>
       </div>
+      )}
 
       {shopOpen && (
         <ShopModal

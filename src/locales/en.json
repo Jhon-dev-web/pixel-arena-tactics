@@ -482,7 +482,31 @@
     "base": "Base / AFK",
     "forge": "Forge",
     "shop": "Shop",
-    "attributes": "Attributes"
+    "attributes": "Attributes",
+    "hero": "Character",
+    "hunt": "Hunting",
+    "dungeon": "Dungeon",
+    "garden": "Garden",
+    "mining": "Mining",
+    "woodcutting": "Woodcutting",
+    "deliveries": "Orders",
+    "inventory": "Inventory",
+    "battlePass": "Battle Pass",
+    "settings": "Settings"
+  },
+  "home": {
+    "activityTitle": "Current Activity",
+    "idle": "Your hero is resting at camp. Start an activity to make progress.",
+    "hunting": "Hunting",
+    "mining": "Mining",
+    "woodcutting": "Woodcutting",
+    "gardenStatus": "{n}/{m} plots ready",
+    "delivery": "Order",
+    "deliveryReady": "Ready to collect",
+    "progressionTitle": "Progression",
+    "hero": "Character",
+    "dungeon": "Dungeon",
+    "quickActionsTitle": "Quick Actions"
   },
   "dungeon": {
     "title": "⚔️ DUNGEON FLOORS",

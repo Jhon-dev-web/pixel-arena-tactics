@@ -5042,3 +5042,537 @@ body {
     animation: none;
   }
 }
+
+/* =====================================================================
+   DESKTOP LAYOUT (min-width 1024px) — sidebar + topbar + Home dashboard.
+   All rules below use new class name prefixes (desktop- and dh-) that
+   only exist in the DOM when useIsDesktop() is true (see App.tsx), so
+   none of this can affect the mobile ".stage" layout, which stays
+   byte-for-byte the same. Every color here is reused from the tokens
+   already established above (panel gradient #241a30/#140d1c, bronze
+   #8a6a3a, gold #ffd76a/#e0a83a, purple XP #9d8bff/#5a46c8, rarity
+   greens/purples/oranges) — no new palette.
+   ===================================================================== */
+@media (min-width: 1024px) {
+  .desktop-shell {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    background: #07050b;
+  }
+
+  /* --- sidebar --- */
+  .desktop-sidebar {
+    flex-shrink: 0;
+    width: 232px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, rgba(22, 15, 30, 0.98), rgba(10, 6, 16, 0.98));
+    border-right: 2px solid #3a2a4a;
+    overflow-y: auto;
+  }
+  .desktop-sidebar-brand {
+    font-size: 14px;
+    color: #ffd76a;
+    text-align: center;
+    padding: 22px 12px;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 0 #000, 0 0 12px rgba(255, 215, 106, 0.25);
+    border-bottom: 2px solid #3a2a4a;
+  }
+  .desktop-sidebar-items {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+  }
+  .desktop-nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: inherit;
+    font-size: 13px;
+    color: #a99ac8;
+    background: none;
+    border: none;
+    padding: 13px 22px;
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .desktop-nav-item:hover {
+    color: #d8c9a0;
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .desktop-nav-item.active {
+    color: #ffd76a;
+    background: rgba(255, 215, 106, 0.08);
+  }
+  .desktop-nav-indicator {
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 4px;
+    background: #ffd76a;
+    border-radius: 0 3px 3px 0;
+    box-shadow: 0 0 8px rgba(255, 215, 106, 0.6);
+  }
+  .desktop-nav-icon {
+    font-size: 20px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .desktop-nav-icon .pixel-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .desktop-nav-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .desktop-nav-badge {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff3b30;
+    box-shadow: 0 0 6px rgba(255, 59, 48, 0.8);
+    flex-shrink: 0;
+  }
+
+  /* --- main column --- */
+  .desktop-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* --- topbar --- */
+  .desktop-topbar {
+    flex-shrink: 0;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    background: linear-gradient(180deg, #241a30, #140d1c);
+    border-bottom: 2px solid #3a2a4a;
+  }
+  .desktop-topbar-profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 10px;
+  }
+  .desktop-topbar-profile:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .desktop-topbar-profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+  .desktop-topbar-name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .desktop-topbar-name {
+    font-size: 15px;
+    color: #f5e9c8;
+    text-shadow: 0 2px 0 #000;
+  }
+  .desktop-topbar-title {
+    font-size: 11px;
+    color: #b8a8d8;
+  }
+  .desktop-topbar-stats-row {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #d8c9a0;
+  }
+  .desktop-topbar-cp {
+    color: #ffd76a;
+  }
+  .desktop-topbar-resources {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+  }
+  .desktop-topbar-res {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    text-shadow: 0 2px 0 #000;
+  }
+  .desktop-topbar-res .inline-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .desktop-topbar-res.gold {
+    color: #ffd76a;
+  }
+  .desktop-topbar-res.shards {
+    color: #9d8bff;
+  }
+  .desktop-topbar-settings {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+    color: #ffe9a8;
+    background: linear-gradient(180deg, #4a3420, #2a1c10);
+    border: 2px solid #8a6a3a;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .desktop-topbar-settings:active {
+    transform: translateY(2px);
+  }
+
+  /* --- home dashboard grid --- */
+  .desktop-home {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 20px;
+    padding: 24px 28px;
+  }
+  .dh-hero {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .dh-activity {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .dh-progression {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .dh-quickactions {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .dh-card {
+    background: linear-gradient(180deg, #241a30, #140d1c);
+    border: 2px solid #3a2a4a;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  .dh-card-title {
+    margin: 0 0 16px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #ffd76a;
+    text-shadow: 0 2px 0 #000;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #3a2a4a;
+  }
+
+  /* Area A — hero */
+  .dh-hero {
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+  }
+  .dh-hero-portrait {
+    flex-shrink: 0;
+    width: 128px;
+    height: 128px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1108;
+    border: 2px solid #8a6a3a;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .dh-hero-portrait:hover {
+    border-color: #ffd76a;
+    box-shadow: 0 0 14px rgba(255, 215, 106, 0.35);
+  }
+  .dh-hero-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .dh-hero-headline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .dh-hero-name {
+    font-size: 20px;
+    color: #f5e9c8;
+    text-shadow: 0 2px 0 #000;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dh-hero-level {
+    font-size: 15px;
+    color: #ffd76a;
+    flex-shrink: 0;
+  }
+  .dh-hero-xpbar {
+    width: 100%;
+    height: 12px;
+  }
+  .dh-hero-substats {
+    font-size: 14px;
+    color: #ffd76a;
+  }
+  .dh-hero-equip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 4px;
+  }
+  .dh-equip-slot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid #3a2a4a;
+    border-radius: 10px;
+    padding: 8px 14px;
+  }
+  .dh-equip-icon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1108;
+    border: 2px solid #8a6a3a;
+    border-radius: 8px;
+  }
+  .dh-equip-icon .pixel-icon,
+  .dh-equip-icon .gear-icon-img {
+    width: 80%;
+    height: 80%;
+  }
+  .dh-equip-icon.r-rare {
+    border-color: #4ad67c;
+  }
+  .dh-equip-icon.r-epic {
+    border-color: #b06cff;
+  }
+  .dh-equip-icon.r-legendary {
+    border-color: #ffa940;
+  }
+  .dh-equip-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .dh-equip-label {
+    font-size: 10px;
+    color: #b8a8d8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .dh-equip-name {
+    font-size: 12px;
+    color: #f5e9c8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+  }
+  .dh-inventory-chip {
+    align-self: flex-start;
+    margin-top: 2px;
+    font-family: inherit;
+    font-size: 12px;
+    color: #ffe9a8;
+    background: linear-gradient(180deg, #4a3420, #2a1c10);
+    border: 2px solid #8a6a3a;
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  .dh-inventory-chip:active {
+    transform: translateY(2px);
+  }
+
+  /* Area B — atividade atual */
+  .dh-idle {
+    text-align: center;
+    color: #8a7aa8;
+    font-size: 13px;
+    padding: 28px 6px;
+  }
+  .dh-activity-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .dh-activity-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    font-family: inherit;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid #3a2a4a;
+    border-radius: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+  }
+  .dh-activity-item:hover {
+    border-color: #ffd76a;
+  }
+  .dh-activity-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    width: 30px;
+    text-align: center;
+  }
+  .dh-activity-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .dh-activity-name {
+    font-size: 13px;
+    color: #ffe9a8;
+  }
+  .dh-activity-detail {
+    font-size: 12px;
+    color: #b8a8d8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dh-activity-bar {
+    width: 100%;
+    height: 6px;
+    margin-top: 2px;
+  }
+
+  /* Area C — progressao */
+  .dh-skill-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .dh-skill-row:last-child {
+    margin-bottom: 0;
+  }
+  .dh-skill-icon {
+    font-size: 24px;
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .dh-skill-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .dh-skill-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+  .dh-skill-name {
+    font-size: 13px;
+    color: #f5e9c8;
+  }
+  .dh-skill-level {
+    font-size: 12px;
+    color: #ffd76a;
+    flex-shrink: 0;
+  }
+  .dh-skill-bar {
+    width: 100%;
+    height: 10px;
+  }
+  .dh-dungeon-detail {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    color: #b8a8d8;
+    margin-top: 4px;
+  }
+  .dh-dungeon-next {
+    color: #9d8bff;
+  }
+
+  /* Area D — acoes rapidas */
+  .dh-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .dh-quick-btn {
+    font-family: inherit;
+    font-size: 13px;
+    color: #ffe9a8;
+    background: linear-gradient(180deg, #4a3420, #2a1c10);
+    border: 2px solid #8a6a3a;
+    border-radius: 10px;
+    padding: 20px 12px;
+    cursor: pointer;
+    text-shadow: 0 1px 0 #000;
+    box-shadow: 0 3px 0 #1a1108, inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  .dh-quick-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #1a1108;
+  }
+  .dh-quick-btn.primary {
+    color: #1a1108;
+    background: linear-gradient(180deg, #ffd76a, #e0a83a);
+    border-color: #b8863a;
+    text-shadow: none;
+    box-shadow: 0 3px 0 #6a4a20, 0 0 14px rgba(255, 215, 106, 0.3);
+  }
+
+  /* below 1280px the 2-column grid gets tight (232px sidebar leaves ~790px at 1024) — stack to 1 column */
+  .desktop-home {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1280px) {
+  .desktop-home {
+    grid-template-columns: 1.15fr 1fr;
+  }
+}
