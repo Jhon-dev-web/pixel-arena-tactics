@@ -2660,6 +2660,10 @@ body {
      let a slightly-too-wide label spill a couple px rather than force a mid-word break. */
   overflow-wrap: normal;
 }
+.forge-category-tabs {
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 14px;
+}
 .refine-tag {
   color: #ffd76a;
   font-size: calc(var(--font-size) - 2px);

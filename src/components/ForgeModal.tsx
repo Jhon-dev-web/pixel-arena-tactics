@@ -3,7 +3,6 @@ import Assets from '../assets.json';
 import { t } from '../locales';
 import { effectiveRepairCost, isBattlePassActive, playerLevel, SaveData } from '../game/engine';
 import {
-  GEAR_SLOTS,
   GearItem,
   MAX_DURABILITY,
   MAX_REFINE,
@@ -63,6 +62,17 @@ const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('m
 export type ForgeTab = 'forge' | 'upgrade' | 'repair' | 'socket';
 const ALL_TABS: ForgeTab[] = ['forge', 'upgrade', 'repair', 'socket'];
 
+// The "Forjar" tab groups recipes by their real GearSlot — weapon/armor/relic are the only slots
+// that ever carry a recipe today (pickaxe/axe have none, see gear.ts), so this is a display grouping
+// of the existing GEAR_SLOTS data, not a new taxonomy.
+type ForgeCategory = 'weapon' | 'armor' | 'relic';
+const FORGE_CATEGORIES: ForgeCategory[] = ['weapon', 'armor', 'relic'];
+const CATEGORY_LABEL_KEY: Record<ForgeCategory, string> = {
+  weapon: 'weaponsSection',
+  armor: 'armorSection',
+  relic: 'relicsSection',
+};
+
 export default function ForgeModal({
   save,
   onForge,
@@ -90,6 +100,7 @@ export default function ForgeModal({
   icon?: string;
 }) {
   const [tab, setTab] = useState<ForgeTab>(allowedTabs[0] ?? 'forge');
+  const [forgeCategory, setForgeCategory] = useState<ForgeCategory>('weapon');
   const [justForged, setJustForged] = useState<string | null>(null);
   const [pendingForge, setPendingForge] = useState<{ id: string; ids: string[] } | null>(null);
   const catalystCount = save.consumables?.refine_catalyst ?? 0;
@@ -219,12 +230,28 @@ export default function ForgeModal({
                 </button>
               </div>
             )}
-            {GEAR_SLOTS.map((slot) => {
-              const items = gearBySlot(slot).filter((g) => g.recipe);
-              if (items.length === 0) return null;
+            <div className="forge-tabs forge-category-tabs">
+              {FORGE_CATEGORIES.map((cat) => {
+                const count = gearBySlot(cat).filter((g) => g.recipe).length;
+                return (
+                  <button
+                    key={cat}
+                    className={`tab${forgeCategory === cat ? ' active' : ''}`}
+                    onClick={() => setForgeCategory(cat)}
+                    data-ui
+                  >
+                    {t(`forge.${CATEGORY_LABEL_KEY[cat]}`)} ({count})
+                  </button>
+                );
+              })}
+            </div>
+            {(() => {
+              const items = gearBySlot(forgeCategory).filter((g) => g.recipe);
+              if (items.length === 0) {
+                return <span className="socket-none">{t('forge.noCategoryRecipes')}</span>;
+              }
               return (
-                <div className="gear-section" key={slot}>
-                  <div className="gear-section-title">{gearText(slot)}</div>
+                <div className="gear-section">
                   {items.map((item) => {
                     const ok = canForge(item);
                     const forged = justForged === item.id;
@@ -333,7 +360,7 @@ export default function ForgeModal({
                   })}
                 </div>
               );
-            })}
+            })()}
           </div>
         )}
 
