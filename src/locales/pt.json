@@ -492,7 +492,13 @@
     "deliveries": "Pedidos",
     "inventory": "Inventário",
     "battlePass": "Battle Pass",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "oficios": "Ofícios",
+    "groupProfessions": "PROFISSÕES",
+    "groupEquipment": "EQUIPAMENTO",
+    "groupEconomy": "ECONOMIA",
+    "quests": "Missões",
+    "openMenu": "Abrir menu"
   },
   "home": {
     "activityTitle": "Atividade Atual",

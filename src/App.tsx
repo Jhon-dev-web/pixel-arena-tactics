@@ -52,8 +52,9 @@ import { playerSpriteUrl } from './game/sprites';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
 import ForgeModal from './components/ForgeModal';
+import OficiosView from './components/OficiosView';
 import InventoryModal from './components/InventoryModal';
-import HeroModal from './components/HeroModal';
+import PersonagemView from './components/PersonagemView';
 import DungeonMapModal from './components/DungeonMapModal';
 import HuntModal from './components/HuntModal';
 import BattleModal from './components/BattleModal';
@@ -76,17 +77,14 @@ import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expe
 import { isDeliveryReady } from './game/deliveries';
 import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
 import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
-import TopHud from './components/TopHud';
-import FirstViewTooltip from './components/FirstViewTooltip';
 import TutorialOverlay from './components/TutorialOverlay';
 import SettingsModal from './components/SettingsModal';
-import Campfire from './components/Campfire';
-import DesktopSidebar, { DesktopNavItem } from './components/DesktopSidebar';
+import DesktopSidebar, { DesktopNavGroup } from './components/DesktopSidebar';
 import DesktopTopbar from './components/DesktopTopbar';
 import DesktopHome from './components/DesktopHome';
+import MobileDrawer from './components/MobileDrawer';
 import useIsDesktop from './hooks/useIsDesktop';
 import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
-import Assets from './assets.json';
 import { Locale, setLocale, setLocaleListener, t } from './locales';
 import './App.css';
 
@@ -96,7 +94,6 @@ const gearText = (key: string): string => t(`gear.${key}`);
 // only) is deliberately excluded: it doesn't exist in a production build, so there's nothing to
 // introduce to a real player. See FirstViewTooltip.tsx / SaveData.seenTooltips.
 const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'expedition', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
-const tooltipText = (id: string): string => t(`tooltips.${id}`);
 
 function App() {
   const [save, setSave] = useState<SaveData>(() => loadSave());
@@ -104,8 +101,11 @@ function App() {
   const [shopOpen, setShopOpen] = useState(false);
   const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
-  const [heroOpen, setHeroOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
+  // not modals — see PersonagemView.tsx / OficiosView.tsx.
+  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios'>('home');
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [huntOpen, setHuntOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
@@ -117,7 +117,8 @@ function App() {
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [version, setVersion] = useState(0);
+  // Forces a re-render when a dev-tunable changes (Admin panel) — nothing reads the value itself.
+  const [, setVersion] = useState(0);
   const [, setLocaleVersion] = useState(0);
   const [muted, setMutedState] = useState<boolean>(() => loadMuted());
   const [cheatMode, setCheatMode] = useState(false);
@@ -193,7 +194,7 @@ function App() {
   const dismissInitialTutorial = () => setTutorialStep(null);
 
   const replayTutorial = () => {
-    setHeroOpen(false);
+    setActiveView('home');
     updateTutorial({ ...saveRef.current.tutorial, initial: 'pending', initialStep: 'intro' });
     setTutorialStep('intro');
   };
@@ -1142,40 +1143,84 @@ function App() {
   const heroSpriteUrl = playerSpriteUrl();
   const isDesktop = useIsDesktop();
 
-  const desktopNavItems: DesktopNavItem[] = [
-    { key: 'hero', icon: '🧝', label: t('nav.hero'), active: heroOpen, onClick: () => { playSfx('click'); setHeroOpen(true); } },
-    { key: 'hunt', icon: '🏹', label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, onClick: openHunt },
-    { key: 'dungeon', icon: '⚔️', label: t('nav.dungeon'), active: dungeonOpen, onClick: openDungeon },
-    { key: 'forge', icon: '🔨', label: t('nav.forge'), active: forgeOpen, onClick: () => {
-        playSfx('click');
-        setForgeOpen(true);
-        if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
-      } },
-    { key: 'garden', icon: '🌱', label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
-    { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, label: t('nav.mining'), active: mineOpen, onClick: () => { playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
-    { key: 'woodcutting', icon: '🪓', label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
-    { key: 'deliveries', icon: '🏕️', label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: openExpedition },
-    { key: 'inventory', icon: <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />, label: t('nav.inventory'), active: bagOpen, onClick: () => { playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
-    { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { playSfx('click'); setBattlePassOpen(true); } },
-    { key: 'settings', icon: '⚙️', label: t('nav.settings'), active: settingsOpen, onClick: () => { playSfx('click'); setSettingsOpen(true); } },
+  const closeDrawer = () => setDrawerOpen(false);
+
+  const desktopNavGroups: DesktopNavGroup[] = [
+    {
+      key: 'main',
+      items: [
+        { key: 'hero', icon: '🧝', label: t('nav.hero'), active: activeView === 'personagem', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
+        { key: 'hunt', icon: '🏹', label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
+        { key: 'dungeon', icon: '⚔️', label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
+        { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) }) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
+      ],
+    },
+    {
+      key: 'professions',
+      header: t('nav.groupProfessions'),
+      items: [
+        { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, label: t('nav.mining'), active: mineOpen, onClick: () => { closeDrawer(); playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
+        { key: 'woodcutting', icon: '🪓', label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
+        { key: 'garden', icon: '🌱', label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { closeDrawer(); playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
+        { key: 'oficios', icon: '⚗️', label: t('nav.oficios'), active: activeView === 'oficios', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('oficios'); } },
+      ],
+    },
+    {
+      key: 'equipment',
+      header: t('nav.groupEquipment'),
+      items: [
+        { key: 'forge', icon: '🔨', label: t('nav.forge'), active: forgeOpen, tutorialTarget: 'forge', onClick: () => {
+            closeDrawer();
+            playSfx('click');
+            setForgeOpen(true);
+            if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
+          } },
+        { key: 'inventory', icon: <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />, label: t('nav.inventory'), active: bagOpen, onClick: () => { closeDrawer(); playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
+      ],
+    },
+    {
+      key: 'economy',
+      header: t('nav.groupEconomy'),
+      items: [
+        { key: 'deliveries', icon: '🏕️', label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
+        { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { closeDrawer(); playSfx('click'); setBattlePassOpen(true); } },
+        { key: 'shop', icon: '🛒', label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopOpen(true); } },
+      ],
+    },
+    {
+      key: 'settings',
+      items: [
+        { key: 'settings', icon: '⚙️', label: t('nav.settings'), active: settingsOpen, onClick: () => { closeDrawer(); playSfx('click'); setSettingsOpen(true); } },
+      ],
+    },
   ];
 
   return (
     <div className="game-root">
-      {isDesktop ? (
-        <div className="desktop-shell">
-          <DesktopSidebar items={desktopNavItems} />
-          <div className="desktop-main">
-            <DesktopTopbar
-              save={save}
-              spriteUrl={heroSpriteUrl}
-              onOpenProfile={() => setHeroOpen(true)}
-              onOpenSettings={() => { playSfx('click'); setSettingsOpen(true); }}
-            />
+      <div className="desktop-shell">
+        {isDesktop ? (
+          <DesktopSidebar groups={desktopNavGroups} onLogoClick={() => setActiveView('home')} />
+        ) : (
+          <MobileDrawer open={drawerOpen} onClose={closeDrawer}>
+            <DesktopSidebar groups={desktopNavGroups} onLogoClick={() => { closeDrawer(); setActiveView('home'); }} />
+          </MobileDrawer>
+        )}
+        <div className="desktop-main">
+          <DesktopTopbar
+            save={save}
+            spriteUrl={heroSpriteUrl}
+            onOpenProfile={() => setActiveView('personagem')}
+            onOpenSettings={() => { playSfx('click'); setSettingsOpen(true); }}
+            onOpenMenu={() => setDrawerOpen(true)}
+            showMenuButton={!isDesktop}
+            muted={muted}
+            onToggleMute={toggleMute}
+          />
+          {activeView === 'home' && (
             <DesktopHome
               save={save}
               spriteUrl={heroSpriteUrl}
-              onOpenHero={() => setHeroOpen(true)}
+              onOpenHero={() => setActiveView('personagem')}
               onOpenHunt={openHunt}
               onOpenDungeon={openDungeon}
               onOpenForge={() => { playSfx('click'); setForgeOpen(true); }}
@@ -1185,151 +1230,30 @@ function App() {
               onOpenGarden={() => { playSfx('click'); setGardenOpen(true); }}
               onOpenInventory={() => { playSfx('click'); setBagOpen(true); }}
             />
-          </div>
-        </div>
-      ) : (
-      <div className="stage" data-tv={version}>
-        <div className="bg" style={{ backgroundImage: `url(${Assets.background.camp.url})` }} />
-        <div className="vignette" />
-
-        <TopHud
-          save={save}
-          spriteUrl={heroSpriteUrl}
-          onOpenProfile={() => setHeroOpen(true)}
-        />
-
-        <Campfire />
-        <div className="side-actions">
-          <button
-            className="side-btn"
-            onClick={() => {
-              playSfx('click');
-              setMineOpen(true);
-              openContextTutorial('mining');
-            }}
-            data-ui
-          >
-            <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />
-            <FirstViewTooltip show={activeTooltip === 'mining'} label={tooltipText('mining')} />
-          </button>
-          <button
-            className="side-btn"
-            onClick={() => {
-              playSfx('click');
-              setWoodOpen(true);
-              openContextTutorial('woodcutting');
-            }}
-            data-ui
-          >
-            🪓
-            {computeWoodcuttingStatus(save, Date.now()).full && <span className="quests-badge">•</span>}
-            <FirstViewTooltip show={activeTooltip === 'woodcutting'} label={tooltipText('woodcutting')} />
-          </button>
-          <button
-            className="side-btn garden-btn"
-            onClick={() => {
-              playSfx('click');
-              setGardenOpen(true);
-              openContextTutorial('garden');
-            }}
-            data-ui
-          >
-            🌱
-            {computeGardenStatuses(save, Date.now()).some((s) => s.ready) && <span className="quests-badge">•</span>}
-            <FirstViewTooltip show={activeTooltip === 'garden'} label={tooltipText('garden')} />
-          </button>
-          <button className="side-btn hunt-btn" data-tutorial-target="hunt" onClick={openHunt} data-ui>
-            🏹
-            {!!save.activeHuntingZone && <span className="quests-badge">•</span>}
-            <FirstViewTooltip show={activeTooltip === 'hunt'} label={tooltipText('hunt')} />
-          </button>
-          <button className="side-btn expedition-btn" onClick={openExpedition} data-ui>
-            🏕️
-            {(isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt)) && <span className="quests-badge">•</span>}
-            <FirstViewTooltip show={activeTooltip === 'expedition'} label={tooltipText('expedition')} />
-          </button>
-          <button
-            className="side-btn"
-            onClick={() => {
-              playSfx('click');
-              setBattlePassOpen(true);
-            }}
-            data-ui
-          >
-            <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />
-            <FirstViewTooltip show={activeTooltip === 'battlepass'} label={tooltipText('battlepass')} />
-          </button>
-          <button
-            className="side-btn"
-            onClick={() => {
-              playSfx('click');
-              setBagOpen(true);
-              openContextTutorial('reforge');
-            }}
-            data-ui
-          >
-            <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />
-            <FirstViewTooltip show={activeTooltip === 'bag'} label={tooltipText('bag')} />
-          </button>
-          <button
-            className="side-btn quests-btn"
-            onClick={() => {
-              playSfx('click');
-              setQuestsOpen(true);
-            }}
-            data-ui
-          >
-            <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />
-            {claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) }) > 0 && (
-              <span className="quests-badge">
-                {claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) })}
-              </span>
-            )}
-            <FirstViewTooltip show={activeTooltip === 'quests'} label={tooltipText('quests')} />
-          </button>
-          {import.meta.env.DEV && (
-            <button className="side-btn" onClick={() => setAdminOpen(true)} data-ui>
-              ⚙️
-            </button>
           )}
-          <button className="side-btn" onClick={toggleMute} data-ui>
-            {muted ? '🔇' : '🔊'}
-            <FirstViewTooltip show={activeTooltip === 'mute'} label={tooltipText('mute')} />
-          </button>
-          <button
-            className="side-btn settings-btn"
-            onClick={() => {
-              playSfx('click');
-              setSettingsOpen(true);
-            }}
-            aria-label={t('settings.title')}
-            data-ui
-          >
-            ⚙️
-            <FirstViewTooltip show={activeTooltip === 'settings'} label={tooltipText('settings')} />
-          </button>
-        </div>
-        <div className="camp-actions">
-          <button
-            className="camp-side-btn"
-            data-tutorial-target="forge"
-            onClick={() => {
-              playSfx('click');
-              setForgeOpen(true);
-              if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
-            }}
-            data-ui
-          >
-            {t('ui.forge')}
-          </button>
-          <button className="camp-main-btn" data-tutorial-target="dungeon" onClick={openDungeon} data-ui>
-            {t('camp.enterArena')}
-          </button>
-          <button className="camp-side-btn" onClick={() => { playSfx('click'); setShopOpen(true); }} data-ui>
-            {t('ui.shop')}
-          </button>
+          {activeView === 'personagem' && (
+            <PersonagemView
+              save={save}
+              spriteUrl={heroSpriteUrl}
+              onAttrChange={attrChange}
+              onRename={renameHero}
+              onEquip={equipGear}
+              onUnequip={unequipGear}
+              onSelectTitle={selectTitle}
+              onUpgradePouch={upgradeHuntPouch}
+              onDiscard={discardItem}
+              onReforge={reforgeItem}
+              onSalvage={salvageItem}
+              onUseConsumable={useConsumableManually}
+            />
+          )}
+          {activeView === 'oficios' && <OficiosView save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} />}
         </div>
       </div>
+      {import.meta.env.DEV && !adminOpen && (
+        <button className="dev-admin-fab" onClick={() => setAdminOpen(true)} aria-label="Admin" data-ui>
+          ⚙️
+        </button>
       )}
 
       {shopOpen && (
@@ -1355,6 +1279,9 @@ function App() {
           onRepair={repairItem}
           onSocket={socketGem}
           onUnsocket={unsocketGem}
+          // Desktop has a separate "Ofícios" entry for processing (see below), so its Forja only
+          // covers equipment there. Mobile has no such entry, so it keeps every tab as always.
+          allowedTabs={isDesktop ? ['forge', 'upgrade', 'repair', 'socket'] : undefined}
           onClose={() => {
             playSfx('click');
             setForgeOpen(false);
@@ -1374,22 +1301,6 @@ function App() {
           onClose={() => {
             playSfx('click');
             setBagOpen(false);
-          }}
-        />
-      )}
-
-      {heroOpen && (
-        <HeroModal
-          save={save}
-          onAttrChange={attrChange}
-          onRename={renameHero}
-          onEquip={equipGear}
-          onUnequip={unequipGear}
-          onSelectTitle={selectTitle}
-          onUpgradePouch={upgradeHuntPouch}
-          onClose={() => {
-            playSfx('click');
-            setHeroOpen(false);
           }}
         />
       )}

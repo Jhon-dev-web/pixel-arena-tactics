@@ -4,20 +4,28 @@ import Assets from '../assets.json';
 import { SaveData, formatNumber, playerLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 
-// Desktop-only top bar (>=1024px). Same data as TopHud (mobile's topbar), just laid out wider —
-// no new resources, no new fields, nothing invented. CP is deliberately left out here: it already
-// has a prominent spot on the Hero card right below, so showing it twice on screen at once is
-// pure redundancy (see the Home polish pass).
+// Top bar shared by desktop (fixed sidebar alongside it) and mobile (hamburger + drawer instead) —
+// same data as the old mobile-only TopHud, just laid out wider on desktop. CP is deliberately left
+// out here: it already has a prominent spot on the Hero/Personagem card, so showing it twice at once
+// is pure redundancy (see the Home polish pass).
 export default function DesktopTopbar({
   save,
   spriteUrl,
   onOpenProfile,
   onOpenSettings,
+  onOpenMenu,
+  showMenuButton,
+  muted,
+  onToggleMute,
 }: {
   save: SaveData;
   spriteUrl: string;
   onOpenProfile: () => void;
   onOpenSettings: () => void;
+  onOpenMenu: () => void;
+  showMenuButton: boolean;
+  muted: boolean;
+  onToggleMute: () => void;
 }) {
   const level = playerLevel(save.xp);
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
@@ -25,7 +33,12 @@ export default function DesktopTopbar({
 
   return (
     <header className="desktop-topbar">
-      <button className="desktop-topbar-profile" onClick={onOpenProfile} data-ui>
+      {showMenuButton && (
+        <button className="desktop-topbar-menu" onClick={onOpenMenu} aria-label={t('nav.openMenu')} data-ui>
+          ☰
+        </button>
+      )}
+      <button className="desktop-topbar-profile" onClick={onOpenProfile} data-tutorial-target="hero" data-ui>
         <SpriteSheet src={spriteUrl} size="40px" row={0} />
         <div className="desktop-topbar-profile-info">
           <div className="desktop-topbar-name-row">
@@ -47,6 +60,9 @@ export default function DesktopTopbar({
           <img className="inline-icon" src="/assets/icons/shards.png" alt="" />
           {formatNumber(save.shards)}
         </span>
+        <button className="desktop-topbar-settings" onClick={onToggleMute} aria-label={t('tooltips.mute')} data-ui>
+          {muted ? '🔇' : '🔊'}
+        </button>
         <button className="desktop-topbar-settings" onClick={onOpenSettings} aria-label={t('settings.title')} data-ui>
           ⚙️
         </button>

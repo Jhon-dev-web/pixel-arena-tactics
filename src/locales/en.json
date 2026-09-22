@@ -492,7 +492,13 @@
     "deliveries": "Orders",
     "inventory": "Inventory",
     "battlePass": "Battle Pass",
-    "settings": "Settings"
+    "settings": "Settings",
+    "oficios": "Crafting",
+    "groupProfessions": "PROFESSIONS",
+    "groupEquipment": "EQUIPMENT",
+    "groupEconomy": "ECONOMY",
+    "quests": "Quests",
+    "openMenu": "Open menu"
   },
   "home": {
     "activityTitle": "Current Activity",

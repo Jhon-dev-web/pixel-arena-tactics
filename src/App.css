@@ -5044,16 +5044,15 @@ body {
 }
 
 /* =====================================================================
-   DESKTOP LAYOUT (min-width 1024px) — sidebar + topbar + Home dashboard.
-   All rules below use new class name prefixes (desktop- and dh-) that
-   only exist in the DOM when useIsDesktop() is true (see App.tsx), so
-   none of this can affect the mobile ".stage" layout, which stays
-   byte-for-byte the same. Every color here is reused from the tokens
-   already established above (panel gradient #241a30/#140d1c, bronze
-   #8a6a3a, gold #ffd76a/#e0a83a, purple XP #9d8bff/#5a46c8, rarity
-   greens/purples/oranges) — no new palette.
+   APP SHELL (mobile-first, unified with desktop) — sidebar/drawer +
+   topbar + Home dashboard. Same class name prefixes (desktop- and dh-)
+   render at every width now: a fixed sidebar >=1024px, a slide-in drawer
+   below it (see the mobile-drawer rules and mobile overrides further down).
+   Every color here is reused from the tokens already established above
+   (panel gradient #241a30/#140d1c, bronze #8a6a3a, gold #ffd76a/#e0a83a,
+   purple XP #9d8bff/#5a46c8, rarity greens/purples/oranges) — no new
+   palette.
    ===================================================================== */
-@media (min-width: 1024px) {
   .desktop-shell {
     display: flex;
     width: 100%;
@@ -5085,6 +5084,21 @@ body {
     display: flex;
     flex-direction: column;
     padding: 10px 0;
+  }
+  .desktop-sidebar-group {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .desktop-sidebar-group:last-child {
+    border-bottom: none;
+  }
+  .desktop-sidebar-group-title {
+    font-size: 10px;
+    color: #6a5a8a;
+    letter-spacing: 1px;
+    padding: 6px 18px 8px;
   }
   .desktop-nav-item {
     position: relative;
@@ -5633,7 +5647,6 @@ body {
     margin-top: auto;
     margin-bottom: auto;
   }
-}
 
 /* >=1280px: room for the 2-column layout (232px sidebar leaves only ~790px at 1024, too tight for it) */
 @media (min-width: 1280px) {
@@ -5656,5 +5669,356 @@ body {
   .dh-quickactions {
     grid-column: 2;
     grid-row: 2;
+  }
+}
+
+/* =====================================================================
+   MOBILE NAV (hamburger + drawer) — <1024px only. The drawer renders the
+   exact same <DesktopSidebar> used for the fixed desktop column, so the
+   items/order/icons/active state never diverge (see App.tsx).
+   ===================================================================== */
+.desktop-topbar-menu {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-right: 4px;
+}
+.desktop-topbar-menu:hover,
+.desktop-topbar-menu:focus-visible {
+  border-color: #ffd76a;
+}
+.desktop-topbar-menu:active {
+  transform: translateY(1px);
+}
+
+.desktop-sidebar-brand-btn {
+  width: 100%;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(22, 15, 30, 0.98), rgba(10, 6, 16, 0.98));
+}
+.desktop-sidebar-brand-btn:hover {
+  color: #fff0c0;
+}
+
+.mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 60;
+  animation: drawerFadeIn 0.18s ease;
+}
+@keyframes drawerFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.mobile-drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(82%, 320px);
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(22, 15, 30, 0.98), rgba(10, 6, 16, 0.98));
+  border-right: 2px solid #3a2a4a;
+  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.5);
+  animation: drawerSlideIn 0.2s ease;
+}
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.mobile-drawer .desktop-sidebar {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  border-right: none;
+}
+.mobile-drawer-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  color: #ffe9a8;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.mobile-drawer-close:hover {
+  border-color: #ffd76a;
+}
+
+.dev-admin-fab {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  color: #ffe9a8;
+  background: rgba(10, 6, 16, 0.85);
+  border: 2px solid #8a6a3a;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 40;
+}
+
+/* =====================================================================
+   MOBILE-FIRST ADJUSTMENTS (<1024px) — the shell above is unified with
+   desktop; these just tighten spacing/stacking for narrow viewports.
+   ===================================================================== */
+@media (max-width: 1023px) {
+  .desktop-topbar {
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .desktop-topbar-name {
+    font-size: 13px;
+  }
+  .desktop-topbar-res {
+    font-size: 13px;
+  }
+  .desktop-home {
+    padding: 16px;
+    gap: 16px;
+  }
+  .dh-card {
+    padding: 16px;
+  }
+  .dh-hero {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+  }
+  .dh-hero-portrait {
+    width: 140px;
+    height: 140px;
+  }
+  .dh-hero-headline {
+    justify-content: center;
+  }
+  .dh-hero-badges {
+    justify-content: center;
+  }
+  .dh-hero-equip {
+    justify-content: center;
+  }
+  .dh-equip-slot {
+    flex: 1 1 100%;
+  }
+}
+@media (max-width: 480px) {
+  .desktop-topbar {
+    padding: 0 8px;
+    gap: 6px;
+  }
+  .desktop-topbar-menu {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+    margin-right: 0;
+  }
+  .desktop-topbar-profile {
+    gap: 8px;
+    padding: 4px;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+  .desktop-topbar-name {
+    max-width: 78px;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .desktop-topbar-title {
+    display: none;
+  }
+  .desktop-topbar-stats-row {
+    font-size: 11px;
+  }
+  .desktop-topbar-resources {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .desktop-topbar-res {
+    font-size: 12px;
+    gap: 4px;
+  }
+  .desktop-topbar-res .inline-icon {
+    width: 18px;
+    height: 18px;
+  }
+  .desktop-topbar-settings {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+  }
+  .dh-quick-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================================
+   PERSONAGEM VIEW — same main-content area pattern as Home (a
+   .desktop-home grid of .dh-card sections), each card is a straight port
+   of what used to be HeroModal's/InventoryModal's content. See
+   PersonagemView.tsx / HeroPanels.tsx / InventoryPanel.tsx.
+   ===================================================================== */
+.personagem-view {
+  grid-template-columns: 1fr;
+  align-content: start;
+}
+.personagem-hero {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+}
+.personagem-hero .dh-hero-portrait {
+  cursor: default;
+}
+.personagem-hero .name-btn {
+  font-family: inherit;
+  font-size: 22px;
+  color: #f5e9c8;
+  text-shadow: 0 2px 0 #000;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  max-width: 100%;
+}
+.personagem-hero .name-btn .pencil {
+  font-size: 14px;
+  opacity: 0.7;
+}
+.personagem-hero .name-input {
+  font-family: inherit;
+  font-size: 20px;
+  color: #f5e9c8;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid #8a6a3a;
+  border-radius: 6px;
+  padding: 4px 8px;
+  width: 100%;
+  max-width: 240px;
+}
+.personagem-hero .hero-title-line {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #9d8bff;
+}
+@media (max-width: 1023px) {
+  .personagem-hero {
+    flex-direction: column;
+    text-align: center;
+  }
+  .personagem-hero .dh-hero-badges,
+  .personagem-hero .hero-title-line {
+    justify-content: center;
+    text-align: center;
+  }
+  .personagem-hero .name-btn {
+    text-align: center;
+  }
+}
+@media (min-width: 1280px) {
+  .personagem-view {
+    grid-template-columns: 1fr 1fr;
+  }
+  .personagem-hero {
+    grid-column: 1 / -1;
+  }
+}
+
+/* =====================================================================
+   OFÍCIOS VIEW — one big panel (category tabs + a responsive grid of
+   recipe cards) instead of a narrow floating modal. Same
+   RefiningRecipe/POTION_RECIPES data as ForgeModal's "Refino" tab
+   (mobile) — see OficiosView.tsx / refineCategories.ts.
+   ===================================================================== */
+.oficios-view {
+  grid-template-columns: 1fr;
+}
+.oficios-panel {
+  min-height: 0;
+}
+.oficios-tabs {
+  margin-bottom: 18px;
+}
+.oficios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.oficios-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3a2a4a;
+  border-radius: 12px;
+}
+.oficios-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.oficios-card-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1108;
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+}
+.oficios-card-icon .gear-icon-img,
+.oficios-card-icon .mat-icon-img {
+  width: 80%;
+  height: 80%;
+}
+.oficios-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.oficios-card .craft-req {
+  margin-top: 2px;
+}
+.oficios-produce {
+  margin-top: auto;
+  width: 100%;
+}
+@media (max-width: 1023px) {
+  .oficios-grid {
+    grid-template-columns: 1fr;
   }
 }
