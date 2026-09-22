@@ -40,18 +40,6 @@ export function stageEnemyDmg(def: EnemyDef, stage: number): number {
   return Math.round(base * mult);
 }
 
-// Elite re-fight: same base per-stage curve as stageEnemyHp/Dmg, but with the old (pre-rebalance)
-// boss multipliers — deliberately not meant to be winnable by a level-appropriate build.
-export function eliteBossHp(def: EnemyDef, stage: number): number {
-  const base = def.hp * (1 + T.battle.hpGrowth * (stage - 1));
-  return Math.round(base * T.battle.eliteHpMult);
-}
-
-export function eliteBossDmg(def: EnemyDef, stage: number): number {
-  const base = def.dmg * (1 + T.battle.dmgGrowth * (stage - 1));
-  return Math.round(base * T.battle.eliteDmgMult);
-}
-
 export function waveRewards(biome: DungeonBiomeDef, stage: number): WaveRewards {
   const baseGold = randInt(biome.goldMin, biome.goldMax);
   let gold = Math.round(baseGold * (1 + T.battle.goldRewardGrowth * (stage - 1)));

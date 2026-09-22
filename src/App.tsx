@@ -65,7 +65,7 @@ import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
 import BattlePassModal from './components/BattlePassModal';
-import { crossedMilestoneFloors, dungeonRunXp, getEliteReward, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
+import { crossedMilestoneFloors, dungeonRunXp, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
 import { nextHuntPouchTierDef } from './game/huntPouch';
@@ -105,7 +105,6 @@ function App() {
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [huntOpen, setHuntOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);
-  const [eliteFloor, setEliteFloor] = useState<number | null>(null);
   const [expeditionOpen, setExpeditionOpen] = useState(false);
   const [mineOpen, setMineOpen] = useState(false);
   const [woodOpen, setWoodOpen] = useState(false);
@@ -300,9 +299,8 @@ function App() {
     }
   };
 
-  // A "session" is one full Dungeon attempt (enter -> climb until death or voluntary retreat), not
-  // per-floor — only normal Dungeon runs are capped this way; Elite stays uncapped (finishEliteRun),
-  // since it's a same-floor re-fight with its own separate, already-throttled reward table.
+  // A "session" is one full Dungeon attempt (enter -> climb until death or voluntary retreat), capped
+  // per-day (see freeSessionsPerDay/extraSessionShardCost below).
   const enterDungeon = () => {
     const s = saveRef.current;
     if (s.activeOreId) {
@@ -333,55 +331,6 @@ function App() {
     playSfx('click');
     setDungeonOpen(false);
     setBattleFloor(s.highestDungeonFloor);
-  };
-
-  const enterEliteDungeon = (floor: number) => {
-    const s = saveRef.current;
-    if (s.activeOreId) {
-      showToast(t('mining.busyDungeon'));
-      return;
-    }
-    if (s.activeWoodId) {
-      showToast(t('woodcutting.busyOther'));
-      return;
-    }
-    if (s.activeHuntingZone) {
-      showToast(t('hunting.busyOther'));
-      return;
-    }
-    playSfx('click');
-    setDungeonOpen(false);
-    setEliteFloor(floor);
-  };
-
-  // Elite is a same-floor optional re-fight with zero effect on floor progress, milestones, or XP —
-  // it only ever grants its own exclusive loot on a win, and marks the floor as elite-cleared once.
-  const finishEliteRun = (floor: number, won: boolean) => {
-    const s = saveRef.current;
-    if (!won) {
-      setEliteFloor(null);
-      playSfx('hit');
-      return;
-    }
-    const alreadyDefeated = s.dungeonEliteDefeated.includes(floor);
-    const reward = getEliteReward(floor, alreadyDefeated);
-    if (!reward) {
-      setEliteFloor(null);
-      return;
-    }
-    const gems = { ...s.gems };
-    for (const [gid, qty] of Object.entries(reward.gems)) gems[gid as GemId] = (gems[gid as GemId] ?? 0) + (qty as number);
-    setSaveBoth({
-      ...s,
-      gold: s.gold + reward.gold,
-      gems,
-      shards: s.shards + reward.shards,
-      consumables: { ...s.consumables, refine_catalyst: (s.consumables.refine_catalyst ?? 0) + reward.catalysts },
-      oneTokenBalance: s.oneTokenBalance + (reward.oneTokenBalance ?? 0),
-      dungeonEliteDefeated: alreadyDefeated ? s.dungeonEliteDefeated : [...s.dungeonEliteDefeated, floor],
-    });
-    playSfx('victory');
-    setEliteFloor(null);
   };
 
   const finishRun = (startFloor: number, rewards: RunRewards, outcome: 'retreat' | 'defeat') => {
@@ -672,7 +621,7 @@ function App() {
     const s = saveRef.current;
     const tier = getOreTier(oreId);
     if (!tier || !isOreTierUnlocked(tier, skillLevel(s.skillXp.mining)) || s.activeOreId === oreId) return;
-    if (battleFloor !== null || eliteFloor !== null) {
+    if (battleFloor !== null) {
       showToast(t('mining.busyBattle'));
       return;
     }
@@ -721,7 +670,7 @@ function App() {
     const s = saveRef.current;
     const tier = getWoodTier(woodId);
     if (!tier || !isWoodTierUnlocked(tier, skillLevel(s.skillXp.woodcutting)) || s.activeWoodId === woodId) return;
-    if (battleFloor !== null || eliteFloor !== null) {
+    if (battleFloor !== null) {
       showToast(t('woodcutting.busyBattle'));
       return;
     }
@@ -1399,7 +1348,6 @@ function App() {
         <DungeonMapModal
           save={save}
           onEnterDungeon={enterDungeon}
-          onEnterElite={enterEliteDungeon}
           onUpdateAutoPotionSettings={updateAutoPotionSettings}
           onClose={() => {
             playSfx('click');
@@ -1527,19 +1475,6 @@ function App() {
           startFloor={battleFloor}
           onRetreat={(rewards) => finishRun(battleFloor, rewards, 'retreat')}
           onDefeat={(rewards) => finishRun(battleFloor, rewards, 'defeat')}
-          onUsePotion={useAutoPotion}
-        />
-      )}
-
-      {eliteFloor !== null && (
-        <BattleModal
-          save={save}
-          startFloor={eliteFloor}
-          elite
-          alreadyDefeatedElite={save.dungeonEliteDefeated.includes(eliteFloor)}
-          onEliteWin={() => finishEliteRun(eliteFloor, true)}
-          onRetreat={() => finishEliteRun(eliteFloor, false)}
-          onDefeat={() => finishEliteRun(eliteFloor, false)}
           onUsePotion={useAutoPotion}
         />
       )}

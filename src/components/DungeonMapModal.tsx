@@ -1,31 +1,18 @@
 import { t } from '../locales';
 import T from '../game/tunables';
 import { computeCP, SaveData } from '../game/engine';
-import {
-  getBiomeForFloor,
-  isDungeonBoss,
-  isDungeonCheckpoint,
-  isEliteUnlocked,
-  MAX_DUNGEON_FLOOR,
-  MILESTONE_FLOORS,
-  nextMilestone,
-  recommendedCpForFloor,
-} from '../game/dungeon';
-import { getEnemyDef } from '../game/enemies';
+import { getBiomeForFloor, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR, nextMilestone, recommendedCpForFloor } from '../game/dungeon';
 
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
-const enemyText = (k: string): string => t(`enemies.${k}`);
 
 export default function DungeonMapModal({
   save,
   onEnterDungeon,
-  onEnterElite,
   onUpdateAutoPotionSettings,
   onClose,
 }: {
   save: SaveData;
   onEnterDungeon: () => void;
-  onEnterElite: (floor: number) => void;
   onUpdateAutoPotionSettings: (threshold: number, priority: 'small_first' | 'large_first') => void;
   onClose: () => void;
 }) {
@@ -36,9 +23,6 @@ export default function DungeonMapModal({
   const playerCp = computeCP(save);
   const cpInsufficient = playerCp < recommendedCp;
   const huntingBusy = !!save.activeHuntingZone;
-  // "boss" enemy kind is shared by every gate floor (25/50/75/100) — see dungeonEnemyKindForFloor.
-  const bossName = enemyText(getEnemyDef('boss').nameKey);
-  const eliteFloors = MILESTONE_FLOORS.filter((f) => isEliteUnlocked(f, save.dungeonCheckpoints));
   const sessionsUsedToday = save.dungeonSessionsDay === new Date().toDateString() ? save.dungeonSessionsUsed : 0;
   const freeSessionsLeft = Math.max(0, T.dungeon.freeSessionsPerDay - sessionsUsedToday);
 
@@ -125,25 +109,6 @@ export default function DungeonMapModal({
               </button>
             </div>
           </div>
-
-          {eliteFloors.map((f) => {
-            const defeated = save.dungeonEliteDefeated.includes(f);
-            return (
-              <div className="floor-card elite-card" key={f}>
-                <div className="floor-header">
-                  <span className="floor-name">
-                    <span className="milestone-icon boss">⚔️</span>
-                    {t('dungeon.eliteChallenge', { name: bossName })}
-                  </span>
-                  <span className="floor-cp">{t('dungeon.floorProgress', { n: f, m: MAX_DUNGEON_FLOOR })}</span>
-                </div>
-                {defeated && <div className="cp-warning-banner elite-cleared-banner">{dungeonText('eliteDefeated')}</div>}
-                <button className="battle-btn" onClick={() => onEnterElite(f)} disabled={huntingBusy} data-ui>
-                  {dungeonText('eliteEnter')}
-                </button>
-              </div>
-            );
-          })}
         </div>
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>

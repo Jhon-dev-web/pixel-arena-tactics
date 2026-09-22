@@ -165,48 +165,6 @@ export function getMilestoneReward(floor: number): MilestoneReward | undefined {
   return MILESTONE_REWARDS.find((m) => m.floor === floor);
 }
 
-// --- Elite challenge: optional re-fight of an already-beaten gate boss, same floor, no floor-progress
-// stakes. Unlocked once the normal boss at that floor has been legitimately cleared (i.e. its milestone
-// was banked — see crossedMilestoneFloors/dungeonCheckpoints), never blocking normal progression.
-export function isEliteUnlocked(floor: number, dungeonCheckpoints: number[]): boolean {
-  return MILESTONE_FLOORS.includes(floor) && dungeonCheckpoints.includes(floor);
-}
-
-export interface EliteReward {
-  gold: number;
-  gems: Partial<Record<GemId, number>>;
-  shards: number;
-  catalysts: number;
-  oneTokenBalance?: number;
-}
-
-// First-clear-only, exclusive on top of the repeatable reward below — clearly better than both a
-// common wave and the normal gate boss, per floor. No new currency: gold/gems/shards/catalysts/ONE
-// all already exist elsewhere in the economy.
-export const ELITE_FIRST_CLEAR_REWARDS: Record<number, EliteReward> = {
-  25: { gold: 4000, gems: { ruby: 4, sapphire: 4, emerald: 4 }, shards: 8, catalysts: 2 },
-  50: { gold: 10000, gems: { ruby: 8, sapphire: 8, emerald: 8 }, shards: 14, catalysts: 4 },
-  75: { gold: 24000, gems: { ruby: 14, sapphire: 14, emerald: 14 }, shards: 20, catalysts: 6 },
-  100: { gold: 60000, gems: { ruby: 25, sapphire: 25, emerald: 25 }, shards: 30, catalysts: 10, oneTokenBalance: 100 },
-};
-
-// Repeatable reward for farming an already-cleared Elite fight again — still clearly above the normal
-// gate boss's own repeatable loot (see waveRewards' bossGoldMult/bossShards/gem), just not the one-time
-// jackpot. No gold and no ONE here on purpose: Elite is a single instant fight with no cooldown or
-// daily/weekly cap, unlike the normal Dungeon climb (which paces gold via wave-by-wave risk) or the
-// Expedition (which paces ONE via dispatch time) — a repeatable liquid payout here would bypass both
-// of those frictions. Stays gems/shards/catalysts only until a cap is designed and approved.
-export const ELITE_REPEAT_REWARDS: Record<number, EliteReward> = {
-  25: { gold: 0, gems: { ruby: 1 }, shards: 3, catalysts: 0 },
-  50: { gold: 0, gems: { sapphire: 1 }, shards: 5, catalysts: 1 },
-  75: { gold: 0, gems: { emerald: 1 }, shards: 7, catalysts: 1 },
-  100: { gold: 0, gems: { ruby: 1, sapphire: 1 }, shards: 10, catalysts: 2 },
-};
-
-export function getEliteReward(floor: number, alreadyDefeated: boolean): EliteReward | undefined {
-  return alreadyDefeated ? ELITE_REPEAT_REWARDS[floor] : ELITE_FIRST_CLEAR_REWARDS[floor];
-}
-
 // Milestone floors (25/50/75/100) actually defeated this run (floors startFloor..startFloor+stagesCleared-1)
 // that the player hasn't already been credited for. Callers must only invoke this for a successful
 // (retreat) outcome — a run that ends in defeat must never credit a milestone, even one "cleared"

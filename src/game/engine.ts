@@ -170,7 +170,6 @@ export interface SaveData {
   cosmetics: string[];
   activeTitle: string | null;
   dungeonCheckpoints: number[];
-  dungeonEliteDefeated: number[];
   huntPouch: HuntPouchState;
   gardenSlots: GardenSlot[];
   activeBuff: ActiveBuff | null; // Strength Elixir (kept as-is for old saves)
@@ -715,7 +714,6 @@ export function defaultSave(): SaveData {
     cosmetics: [],
     activeTitle: null,
     dungeonCheckpoints: [],
-    dungeonEliteDefeated: [],
     gardenSlots: emptyGardenSlots(),
     activeBuff: null,
     attackBuff: null,
@@ -985,9 +983,6 @@ export function loadSave(): SaveData {
       const dungeonCheckpoints = Array.isArray(parsed.dungeonCheckpoints)
         ? Array.from(new Set(parsed.dungeonCheckpoints.filter((f): f is number => typeof f === 'number' && MILESTONE_FLOORS.includes(f))))
         : [];
-      const dungeonEliteDefeated = Array.isArray(parsed.dungeonEliteDefeated)
-        ? Array.from(new Set(parsed.dungeonEliteDefeated.filter((f): f is number => typeof f === 'number' && MILESTONE_FLOORS.includes(f))))
-        : [];
       // v2: 4 independent slots. v1 saves only ever had one active plant (activePlant/plantStartedAt)
       // — migrate that into slot 0 so nobody's in-progress planting is lost, rest start empty.
       const legacyPlant = parsed as unknown as { activePlant?: unknown; plantStartedAt?: unknown };
@@ -1063,7 +1058,6 @@ export function loadSave(): SaveData {
         cosmetics,
         activeTitle,
         dungeonCheckpoints,
-        dungeonEliteDefeated,
         huntPouch,
         gardenSlots,
         activeBuff,

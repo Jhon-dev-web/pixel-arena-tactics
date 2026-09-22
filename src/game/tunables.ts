@@ -80,10 +80,6 @@ const T = DebugPanel.define({
     bossHpMult: { value: 1.05, min: 0.5, max: 5, step: 0.05, label: 'Main boss HP multiplier' },
     bossDmgMult: { value: 0.45, min: 0.1, max: 4, step: 0.05, label: 'Main boss damage multiplier' },
     bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
-    // Optional Elite re-fight of an already-beaten gate boss (same stage curve, no floor-progress
-    // stakes) — reuses the pre-rebalance boss multipliers as its intentionally-brutal baseline.
-    eliteHpMult: { value: 2.2, min: 1, max: 6, step: 0.1, label: 'Elite challenge HP multiplier' },
-    eliteDmgMult: { value: 1.8, min: 1, max: 5, step: 0.1, label: 'Elite challenge damage multiplier' },
     miniBossGoldMult: { value: 2.5, min: 1, max: 10, step: 0.5, label: 'Checkpoint wave gold multiplier' },
     bossGoldMult: { value: 5, min: 1, max: 15, step: 0.5, label: 'Main boss wave gold multiplier' },
     potionThreshold: { value: 0.35, min: 0.05, max: 0.9, step: 0.05, label: 'Auto-potion HP threshold (ratio)' },

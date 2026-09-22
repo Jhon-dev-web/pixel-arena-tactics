@@ -11,8 +11,7 @@ import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, playerSpriteUrl } from '../game/sprites';
 import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
-import { eliteBossDmg, eliteBossHp, isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
-import { getEliteReward } from '../game/dungeon';
+import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 import { getGem, GemId } from '../game/gems';
 import { getTitleDef } from '../game/titles';
 import GemIcon from './GemIcon';
@@ -48,20 +47,12 @@ export default function BattleModal({
   onRetreat,
   onDefeat,
   onUsePotion,
-  elite = false,
-  alreadyDefeatedElite = false,
-  onEliteWin,
 }: {
   save: SaveData;
   startFloor: number;
   onRetreat: (rewards: RunRewards) => void;
   onDefeat: (rewards: RunRewards) => void;
   onUsePotion: (id: ConsumableId) => void;
-  // Optional Elite re-fight of an already-beaten gate boss: single stage, own (harsher) HP/DMG
-  // curve, own exclusive loot, zero effect on floor progress/milestones/XP.
-  elite?: boolean;
-  alreadyDefeatedElite?: boolean;
-  onEliteWin?: () => void;
 }) {
   // Layer 2 stats come from the shared derivation (engine.ts buildCombatStats — the same one Hunting and
   // computeCP use), computed once per mount like before. Temporary damage modifiers (blessed / Strength
@@ -70,17 +61,16 @@ export default function BattleModal({
   const combat = buildCombatStats(save);
 
   const playerMax = combat.maxHp;
-  const enemyHpForStage = (st: number) => (elite ? eliteBossHp(enemyDefForFloor(st), st) : stageEnemyHp(enemyDefForFloor(st), st));
-  const enemyDmgForStage = (st: number) => (elite ? eliteBossDmg(enemyDefForFloor(st), st) : stageEnemyDmg(enemyDefForFloor(st), st));
+  const enemyHpForStage = (st: number) => stageEnemyHp(enemyDefForFloor(st), st);
+  const enemyDmgForStage = (st: number) => stageEnemyDmg(enemyDefForFloor(st), st);
 
   const [stage, setStage] = useState(startFloor);
   const [milestone, setMilestone] = useState<'checkpoint' | 'boss' | null>(
-    elite ? 'boss' : isDungeonBoss(startFloor) ? 'boss' : isDungeonCheckpoint(startFloor) ? 'checkpoint' : null,
+    isDungeonBoss(startFloor) ? 'boss' : isDungeonCheckpoint(startFloor) ? 'checkpoint' : null,
   );
   const [enemyMax, setEnemyMax] = useState(() => enemyHpForStage(startFloor));
   const [playerHp, setPlayerHp] = useState(playerMax);
   const [enemyHp, setEnemyHp] = useState(() => enemyHpForStage(startFloor));
-  const [eliteWon, setEliteWon] = useState(false);
   const [phase, setPhase] = useState<Phase>('battle');
   const [floats, setFloats] = useState<FloatItem[]>([]);
   const [playerAnim, setPlayerAnim] = useState<'idle' | 'attack' | 'hurt'>('idle');
@@ -219,17 +209,6 @@ export default function BattleModal({
 
     const clearWave = () => {
       const st = stageRef.current;
-      if (elite) {
-        // Single-encounter mode: no next wave, no floor-progress side effects — just the win screen.
-        phaseRef.current = 'retreat';
-        setPhase('retreat');
-        setDungeonComplete(false);
-        setFinalRewards({ gold: 0, drops: {}, shards: 0, gems: {}, stages: 0 });
-        setHeroProgress(0);
-        setEnemyProgress(0);
-        setEliteWon(true);
-        return;
-      }
       const r = waveRewards(getBiomeForFloor(st), st);
       applyLoot(r.gold, r.drops, r.shards, r.gems);
       clearedRef.current += 1;
@@ -430,29 +409,6 @@ export default function BattleModal({
     </>
   );
 
-  const eliteReward = getEliteReward(startFloor, alreadyDefeatedElite);
-
-  const renderEliteLoot = () => {
-    if (!eliteReward) return null;
-    return (
-      <>
-        {renderLoot(eliteReward.gold, {}, eliteReward.shards, eliteReward.gems)}
-        {eliteReward.catalysts > 0 && (
-          <span className="floor-drop">
-            <span className="mat-icon">⚗️</span>
-            <span>+{eliteReward.catalysts}× {t('consumables.refine_catalyst')}</span>
-          </span>
-        )}
-        {!!eliteReward.oneTokenBalance && (
-          <span className="floor-drop">
-            <span className="mat-icon">🪙</span>
-            <span>ONE +{eliteReward.oneTokenBalance}</span>
-          </span>
-        )}
-      </>
-    );
-  };
-
   // Milestones only ever bank on a successful retreat — a defeat must never show or grant them,
   // even if a boss earlier in this same run was genuinely killed.
   const crossedMilestones =
@@ -571,9 +527,8 @@ export default function BattleModal({
           <div className="battle-hud enemy">
             <span className="hp-label">
               <span className="hp-name-text">{enemyText(currentDef.nameKey)}</span>
-              {elite && <span className="miniboss-tag boss">⚔️ {t('dungeon.eliteTag')}</span>}
-              {!elite && milestone === 'boss' && <span className="miniboss-tag boss">👑 {t('dungeon.mainBoss')}</span>}
-              {!elite && milestone === 'checkpoint' && <span className="miniboss-tag">💀 {t('dungeon.miniBoss')}</span>}
+              {milestone === 'boss' && <span className="miniboss-tag boss">👑 {t('dungeon.mainBoss')}</span>}
+              {milestone === 'checkpoint' && <span className="miniboss-tag">💀 {t('dungeon.miniBoss')}</span>}
             </span>
             <div className="battle-hp-row">
               <div className="bar hp enemy-hp">
@@ -665,30 +620,7 @@ export default function BattleModal({
           </div>
         )}
 
-        {elite && (phase === 'retreat' || phase === 'defeat') && (
-          <div className="battle-result">
-            <div className="battle-result-panel">
-              {eliteWon ? (
-                <>
-                  <h2 className="result-title win">{t('dungeon.eliteWin')}</h2>
-                  <div className="result-rewards">{renderEliteLoot()}</div>
-                  <button className="result-btn" onClick={() => onEliteWin?.()} data-ui>
-                    {t('dungeon.collect')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <h2 className="result-title lose">{t('dungeon.eliteLose')}</h2>
-                  <button className="result-btn" onClick={() => (phase === 'retreat' ? onRetreat(finalRewards!) : onDefeat(finalRewards!))} data-ui>
-                    {t('dungeon.return')}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {!elite && (phase === 'retreat' || phase === 'defeat') && finalRewards && (
+        {(phase === 'retreat' || phase === 'defeat') && finalRewards && (
           <div className="battle-result">
             <div className="battle-result-panel">
               {phase === 'retreat' ? (

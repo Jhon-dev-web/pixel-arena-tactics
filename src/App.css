@@ -3133,14 +3133,6 @@ body {
   padding: 6px 10px;
   margin-bottom: 10px;
 }
-.cp-warning-banner.elite-cleared-banner {
-  color: #7ad68f;
-  background: rgba(122, 214, 143, 0.1);
-  border-color: #2f8a4a;
-}
-.floor-card.elite-card {
-  border-color: #a03020;
-}
 .pouch-lost-card {
   background: rgba(255, 138, 122, 0.1);
   border: 1px solid #a03020;
