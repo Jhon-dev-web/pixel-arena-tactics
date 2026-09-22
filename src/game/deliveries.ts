@@ -138,10 +138,10 @@ interface Context {
 function buildContext(save: SaveData): Context {
   const available = new Set<MaterialId>();
   for (const z of HUNTING_ZONES) if (isZoneUnlocked(z, save.highestDungeonFloor)) for (const d of z.drops) available.add(d.material);
-  const garden = skillLevel(save.skillXp.gardening);
+  const garden = skillLevel(save.skillXp.gardening, 'gardening');
   for (const p of PLANTS) if (garden >= p.requiredLevel) available.add(p.material);
-  const mining = skillLevel(save.skillXp.mining);
-  const wood = skillLevel(save.skillXp.woodcutting);
+  const mining = skillLevel(save.skillXp.mining, 'mining');
+  const wood = skillLevel(save.skillXp.woodcutting, 'woodcutting');
   const ore = [...ORE_TIERS].reverse().find((o) => mining >= o.requiredLevel)?.id ?? ORE_TIERS[0].id;
   const tree = [...WOOD_TIERS].reverse().find((w) => wood >= w.requiredLevel)?.id ?? WOOD_TIERS[0].id;
   available.add(ore);

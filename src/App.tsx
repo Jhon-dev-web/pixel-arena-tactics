@@ -620,7 +620,7 @@ function App() {
   const startMining = (oreId: string) => {
     const s = saveRef.current;
     const tier = getOreTier(oreId);
-    if (!tier || !isOreTierUnlocked(tier, skillLevel(s.skillXp.mining)) || s.activeOreId === oreId) return;
+    if (!tier || !isOreTierUnlocked(tier, skillLevel(s.skillXp.mining, 'mining')) || s.activeOreId === oreId) return;
     if (battleFloor !== null) {
       showToast(t('mining.busyBattle'));
       return;
@@ -669,7 +669,7 @@ function App() {
   const startWoodcutting = (woodId: string) => {
     const s = saveRef.current;
     const tier = getWoodTier(woodId);
-    if (!tier || !isWoodTierUnlocked(tier, skillLevel(s.skillXp.woodcutting)) || s.activeWoodId === woodId) return;
+    if (!tier || !isWoodTierUnlocked(tier, skillLevel(s.skillXp.woodcutting, 'woodcutting')) || s.activeWoodId === woodId) return;
     if (battleFloor !== null) {
       showToast(t('woodcutting.busyBattle'));
       return;

@@ -18,7 +18,7 @@ export interface HarvestResult {
 // (unknown plant, gardening level too low, bad clock, or no listed plot was empty).
 export function applyPlant(save: SaveData, plantId: string, slotIndices: number[], now: number): SaveData | null {
   const def = getPlant(plantId);
-  if (!def || !validNow(now) || skillLevel(save.skillXp.gardening) < def.requiredLevel) return null;
+  if (!def || !validNow(now) || skillLevel(save.skillXp.gardening, 'gardening') < def.requiredLevel) return null;
   const targets = Array.from(new Set(slotIndices)).filter(
     (i) => Number.isInteger(i) && i >= 0 && i < GARDEN_SLOTS && !!save.gardenSlots[i] && !save.gardenSlots[i].plantId,
   );

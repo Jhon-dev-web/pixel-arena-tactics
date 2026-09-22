@@ -188,8 +188,31 @@ const SAVE_KEY = 'arena-rpg-save-v1';
 export const MAX_LEVEL = 100;
 export const MAX_BATTLE_PASS_LEVEL = 30;
 
+// Modelo C hero curve (5 bands, see tunables.ts progression.heroBand*/heroGrowth* for the rationale).
+// Each band's `base` is the previous band's own need() evaluated at its last level, so the curve is
+// continuous at every boundary (no jump): xpForNextLevel(heroBand1To) and xpForNextLevel(heroBand1To+1)
+// are equal, then band 2's own growth takes over from there. Band 1 starts at T.progression.xpBase (100).
+function heroBandTable(): { from: number; base: number; growth: number }[] {
+  const p = T.progression;
+  const bounds = [1, p.heroBand1To + 1, p.heroBand2To + 1, p.heroBand3To + 1, p.heroBand4To + 1];
+  const growths = [p.heroGrowth1, p.heroGrowth2, p.heroGrowth3, p.heroGrowth4, p.heroGrowth5];
+  const bands: { from: number; base: number; growth: number }[] = [];
+  let base = p.xpBase;
+  for (let i = 0; i < bounds.length; i++) {
+    bands.push({ from: bounds[i], base, growth: growths[i] });
+    if (i + 1 < bounds.length) base *= Math.pow(growths[i], bounds[i + 1] - 1 - bounds[i]);
+  }
+  return bands;
+}
+
 export function xpForNextLevel(level: number): number {
-  return Math.round(T.progression.xpBase * Math.pow(T.progression.xpGrowth, level - 1));
+  const bands = heroBandTable();
+  let band = bands[0];
+  for (const b of bands) {
+    if (b.from > level) break;
+    band = b;
+  }
+  return Math.round(band.base * Math.pow(band.growth, level - band.from));
 }
 
 export function xpToReachLevel(level: number): number {
@@ -897,15 +920,15 @@ export function loadSave(): SaveData {
         mining:
           typeof rawSkillXp.mining === 'number' && Number.isFinite(rawSkillXp.mining)
             ? Math.max(0, rawSkillXp.mining)
-            : skillXpToReachLevel(legacyMiningLevel),
+            : skillXpToReachLevel(legacyMiningLevel, 'mining'),
         woodcutting:
           typeof rawSkillXp.woodcutting === 'number' && Number.isFinite(rawSkillXp.woodcutting)
             ? Math.max(0, rawSkillXp.woodcutting)
-            : skillXpToReachLevel(legacyWoodLevel),
+            : skillXpToReachLevel(legacyWoodLevel, 'woodcutting'),
         gardening:
           typeof rawSkillXp.gardening === 'number' && Number.isFinite(rawSkillXp.gardening)
             ? Math.max(0, rawSkillXp.gardening)
-            : skillXpToReachLevel(legacyGardenLevel),
+            : skillXpToReachLevel(legacyGardenLevel, 'gardening'),
       };
       const knownZoneIds = new Set(HUNTING_ZONES.map((z) => z.id));
       const unlockedHuntingZones = Array.isArray(parsed.unlockedHuntingZones)

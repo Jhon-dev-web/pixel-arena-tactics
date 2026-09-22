@@ -40,7 +40,7 @@ export default function MiningModal({
     };
   }, []);
 
-  const miningLevel = skillLevel(save.skillXp.mining);
+  const miningLevel = skillLevel(save.skillXp.mining, 'mining');
   const huntingBusy = !!save.activeHuntingZone;
   const status = computeMiningStatus(save, now);
   const progress = status.capMs <= 0 ? 0 : Math.max(0, Math.min(1, status.pendingMs / status.capMs));
@@ -52,7 +52,7 @@ export default function MiningModal({
           <img className="inline-icon" src="/assets/icons/nav_mining.png" alt="" /> {t('mining.title')}
         </h2>
 
-        <SkillLevelBadge xp={save.skillXp.mining} labelKey="mining.skillLabel" />
+        <SkillLevelBadge xp={save.skillXp.mining} labelKey="mining.skillLabel" skillId="mining" />
 
         <div className="dungeon-body">
           {ORE_TIERS.map((tier) => {

@@ -42,7 +42,7 @@ export default function WoodcuttingModal({
     };
   }, []);
 
-  const woodcuttingLevel = skillLevel(save.skillXp.woodcutting);
+  const woodcuttingLevel = skillLevel(save.skillXp.woodcutting, 'woodcutting');
   const huntingBusy = !!save.activeHuntingZone;
   const miningBusy = !!save.activeOreId;
   const busy = huntingBusy || miningBusy;
@@ -57,7 +57,7 @@ export default function WoodcuttingModal({
           <span className="inline-icon-emoji">🪓</span> {t('woodcutting.title')}
         </h2>
 
-        <SkillLevelBadge xp={save.skillXp.woodcutting} labelKey="woodcutting.skillLabel" />
+        <SkillLevelBadge xp={save.skillXp.woodcutting} labelKey="woodcutting.skillLabel" skillId="woodcutting" />
 
         <div className="dungeon-body">
           {WOOD_TIERS.map((tier) => {

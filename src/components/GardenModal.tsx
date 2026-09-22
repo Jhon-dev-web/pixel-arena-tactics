@@ -184,7 +184,7 @@ export default function GardenModal({
     return () => window.clearTimeout(id);
   }, [armedUproot]);
 
-  const gardeningLevel = skillLevel(save.skillXp.gardening);
+  const gardeningLevel = skillLevel(save.skillXp.gardening, 'gardening');
   const statuses = Array.from({ length: GARDEN_SLOTS }, (_, i) => computeGardenSlotStatus(save, now, i));
   const emptyIdx = statuses.flatMap((s, i) => (s.plantId ? [] : [i]));
   const readyIdx = readySlots(save, now);
@@ -224,7 +224,7 @@ export default function GardenModal({
       <div className={`modal dungeon-modal garden-modal${pickerFor !== null ? ' picking' : ''}`} data-tutorial-target="garden-modal">
         <h2 className="modal-title">{gardenText('title')}</h2>
 
-        <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" />
+        <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" skillId="gardening" />
 
         <div className="dungeon-body">
           {readyIdx.length >= 2 && (

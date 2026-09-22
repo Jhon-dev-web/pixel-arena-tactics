@@ -105,7 +105,22 @@ const T = DebugPanel.define({
     armorHpPerLvl: { value: 20, min: 5, max: 100, step: 1, label: 'Armor HP per level' },
     playerBaseHp: { value: 80, min: 40, max: 300, step: 5, label: 'Player base HP' },
     xpBase: { value: 100, min: 10, max: 1000, step: 10, label: 'Base XP (level 1)' },
-    xpGrowth: { value: 1.15, min: 1, max: 2, step: 0.01, label: 'XP growth per level' },
+    // Hero XP-per-level recalibration for the 45-day championship (Modelo C, approved in
+    // CHAMPIONSHIP_45_DAY_CURVE_OPTIONS.md / CHAMPIONSHIP_45_DAY_OPTIMAL_STRATEGIES.md): a single flat
+    // exponential let Lv50 arrive in under a day and then compressed every competitive strategy into a
+    // narrow Lv81-85 band by Day 45. Replaced by 5 bands, each with its own growth rate, so the curve
+    // stays fast at the very start (band 1, same shape as before) and decelerates hard exactly where a
+    // 45-day tournament actually plays out (bands 3-5). This changes ONLY how much career XP a level
+    // costs — XP granted by Hunting/Dungeon/Pedidos/quests/Battle Pass is untouched.
+    heroBand1To: { value: 15, min: 1, max: 98, step: 1, label: 'Hero curve band 1 end level' },
+    heroBand2To: { value: 35, min: 2, max: 99, step: 1, label: 'Hero curve band 2 end level' },
+    heroBand3To: { value: 60, min: 3, max: 99, step: 1, label: 'Hero curve band 3 end level' },
+    heroBand4To: { value: 80, min: 4, max: 99, step: 1, label: 'Hero curve band 4 end level' },
+    heroGrowth1: { value: 1.12, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 1 (levels 1-15)' },
+    heroGrowth2: { value: 1.14, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 2 (levels 16-35)' },
+    heroGrowth3: { value: 1.17, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 3 (levels 36-60)' },
+    heroGrowth4: { value: 1.21, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 4 (levels 61-80)' },
+    heroGrowth5: { value: 1.27, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 5 (levels 81-100)' },
     levelHpBonus: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP bonus per level' },
   },
   mining: {
@@ -125,11 +140,23 @@ const T = DebugPanel.define({
   },
   skills: {
     _label: 'Gathering Skills (Mining/Woodcutting/Gardening)',
-    // Deliberately its own curve, separate from character xpGrowth (progression.xpGrowth) — that one
-    // is tuned for a months-long arc across hundreds of millions of XP; this one only needs to pace a
-    // single sub-system (~16 real days of steady mining to hit max level under default tunables).
-    xpBase: { value: 5, min: 1, max: 100, step: 1, label: 'Skill XP for level 1->2' },
-    xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Skill XP growth per level' },
+    // Gardening-only curve now (see professionXpCoeff/professionXpExponent below for Mining/Woodcutting,
+    // recalibrated separately for the 45-day championship). Deliberately its own shape, separate from
+    // character xpGrowth — this one only needs to pace a single sub-system, not a months-long arc.
+    // Gardening was intentionally NOT touched by the Modelo C recalibration (separate design task).
+    xpBase: { value: 5, min: 1, max: 100, step: 1, label: 'Gardening XP for level 1->2' },
+    xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Gardening XP growth per level' },
+    // Mining/Woodcutting XP-per-level recalibration for the 45-day championship (Modelo C, approved in
+    // CHAMPIONSHIP_45_DAY_CURVE_OPTIONS.md / CHAMPIONSHIP_45_DAY_OPTIMAL_STRATEGIES.md): the old flat
+    // exponential (xpBase/xpGrowth above) let dedicated Mining/Woodcutting hit the Lv75 cap in ~13-17
+    // days, 4+ weeks before a 45-day tournament ends, guaranteeing a mass tie. Replaced by a cumulative
+    // power-law curve (XP needed to REACH level L = professionXpCoeff x (L-1)^professionXpExponent,
+    // same formula for Mining and Woodcutting) that pushes Lv75 out past the tournament window even
+    // under a near-total-commitment strategy (search-validated in CHAMPIONSHIP_45_DAY_OPTIMAL_STRATEGIES.md).
+    // This changes ONLY how much XP a level costs — gatherPower, XP-per-unit-gathered and drop rates
+    // are untouched.
+    professionXpCoeff: { value: 2.6, min: 0.1, max: 50, step: 0.1, label: 'Mining/Woodcutting XP-to-reach-level coefficient (C in C x level^p)' },
+    professionXpExponent: { value: 2.4, min: 1, max: 5, step: 0.05, label: 'Mining/Woodcutting XP-to-reach-level exponent (p in C x level^p)' },
     maxLevel: { value: 75, min: 10, max: 200, step: 1, label: 'Max skill level (matches the old tier-4 character-level gate)' },
     xpPerUnit: { value: 1, min: 0.1, max: 20, step: 0.1, label: 'Mining/Woodcutting skill XP per unit gathered' },
     // Gardening XP per harvest = growth hours x this, the same XP per plot-hour for every plant (garden.ts plantHarvestXp): no
