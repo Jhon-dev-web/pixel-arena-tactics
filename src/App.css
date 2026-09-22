@@ -5064,7 +5064,7 @@ body {
   /* --- sidebar --- */
   .desktop-sidebar {
     flex-shrink: 0;
-    width: 232px;
+    width: 250px;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -5090,16 +5090,17 @@ body {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     font-family: inherit;
-    font-size: 13px;
+    font-size: 12px;
     color: #a99ac8;
     background: none;
     border: none;
-    padding: 13px 22px;
+    padding: 14px 18px;
     cursor: pointer;
     text-align: left;
     white-space: nowrap;
+    transition: color 0.15s ease, background 0.15s ease;
   }
   .desktop-nav-item:hover {
     color: #d8c9a0;
@@ -5108,6 +5109,10 @@ body {
   .desktop-nav-item.active {
     color: #ffd76a;
     background: rgba(255, 215, 106, 0.08);
+  }
+  .desktop-nav-item:focus-visible {
+    outline: 2px solid #ffd76a;
+    outline-offset: -2px;
   }
   .desktop-nav-indicator {
     position: absolute;
@@ -5207,9 +5212,6 @@ body {
     font-size: 12px;
     color: #d8c9a0;
   }
-  .desktop-topbar-cp {
-    color: #ffd76a;
-  }
   .desktop-topbar-resources {
     display: flex;
     align-items: center;
@@ -5245,36 +5247,34 @@ body {
   .desktop-topbar-settings:active {
     transform: translateY(2px);
   }
+  .desktop-topbar-settings:hover {
+    border-color: #ffd76a;
+  }
+  .desktop-topbar-settings:focus-visible,
+  .desktop-topbar-profile:focus-visible,
+  .dh-hero-portrait:focus-visible,
+  .dh-inventory-chip:focus-visible,
+  .dh-activity-item:focus-visible,
+  .dh-quick-btn:focus-visible {
+    outline: 2px solid #ffd76a;
+    outline-offset: 2px;
+  }
 
   /* --- home dashboard grid --- */
+  /* 1024-1279px: single column, natural DOM order (Hero, Activity, Progression, Quick Actions) —
+     the 2-column placement below is added back in at >=1280px, where there's room for it. */
   .desktop-home {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     display: grid;
-    grid-template-columns: 1.15fr 1fr;
-    grid-template-rows: auto auto;
+    grid-template-columns: 1fr;
     gap: 20px;
     padding: 24px 28px;
   }
-  .dh-hero {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .dh-activity {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .dh-progression {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .dh-quickactions {
-    grid-column: 2;
-    grid-row: 2;
-  }
 
   .dh-card {
+    min-width: 0;
     background: linear-gradient(180deg, #241a30, #140d1c);
     border: 2px solid #3a2a4a;
     border-radius: 14px;
@@ -5295,31 +5295,32 @@ body {
   /* Area A — hero */
   .dh-hero {
     display: flex;
-    gap: 22px;
+    gap: 26px;
     align-items: flex-start;
   }
   .dh-hero-portrait {
     flex-shrink: 0;
-    width: 128px;
-    height: 128px;
+    width: 176px;
+    height: 176px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #1a1108;
+    background: radial-gradient(circle at 50% 38%, rgba(255, 215, 106, 0.1), transparent 65%), #1a1108;
     border: 2px solid #8a6a3a;
-    border-radius: 12px;
+    border-radius: 14px;
     cursor: pointer;
   }
   .dh-hero-portrait:hover {
     border-color: #ffd76a;
-    box-shadow: 0 0 14px rgba(255, 215, 106, 0.35);
+    box-shadow: 0 0 18px rgba(255, 215, 106, 0.4);
   }
   .dh-hero-body {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    padding-top: 4px;
   }
   .dh-hero-headline {
     display: flex;
@@ -5328,25 +5329,33 @@ body {
     gap: 10px;
   }
   .dh-hero-name {
-    font-size: 20px;
+    font-size: 22px;
     color: #f5e9c8;
     text-shadow: 0 2px 0 #000;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .dh-hero-level {
-    font-size: 15px;
+  .dh-hero-badges {
+    display: flex;
+    gap: 10px;
+  }
+  .dh-hero-badge {
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #3a2a4a;
+  }
+  .dh-hero-badge.level {
     color: #ffd76a;
-    flex-shrink: 0;
+  }
+  .dh-hero-badge.cp {
+    color: #f5e9c8;
   }
   .dh-hero-xpbar {
     width: 100%;
     height: 12px;
-  }
-  .dh-hero-substats {
-    font-size: 14px;
-    color: #ffd76a;
   }
   .dh-hero-equip {
     display: flex;
@@ -5358,10 +5367,11 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex: 1 1 200px;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid #3a2a4a;
     border-radius: 10px;
-    padding: 8px 14px;
+    padding: 10px 14px;
   }
   .dh-equip-icon {
     width: 38px;
@@ -5406,7 +5416,6 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 160px;
   }
   .dh-inventory-chip {
     align-self: flex-start;
@@ -5446,11 +5455,13 @@ body {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid #3a2a4a;
     border-radius: 10px;
-    padding: 12px 16px;
+    padding: 14px 16px;
     cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
   }
   .dh-activity-item:hover {
     border-color: #ffd76a;
+    background: rgba(255, 255, 255, 0.06);
   }
   .dh-activity-icon {
     font-size: 24px;
@@ -5487,6 +5498,32 @@ body {
     width: 100%;
     height: 6px;
     margin-top: 2px;
+  }
+  .dh-activity-time {
+    font-size: 11px;
+    color: #8a7aa8;
+    margin-top: 1px;
+  }
+  .dh-garden-dots {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .dh-garden-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #3a2a4a;
+  }
+  .dh-garden-dot.growing {
+    background: #5a46c8;
+    border-color: #9d8bff;
+  }
+  .dh-garden-dot.ready {
+    background: #2fbf4f;
+    border-color: #7ce88a;
+    box-shadow: 0 0 5px rgba(124, 232, 138, 0.6);
   }
 
   /* Area C — progressao */
@@ -5556,16 +5593,22 @@ body {
     gap: 14px;
   }
   .dh-quick-btn {
+    min-width: 0;
     font-family: inherit;
     font-size: 13px;
     color: #ffe9a8;
     background: linear-gradient(180deg, #4a3420, #2a1c10);
     border: 2px solid #8a6a3a;
     border-radius: 10px;
-    padding: 20px 12px;
+    padding: 18px 12px;
     cursor: pointer;
     text-shadow: 0 1px 0 #000;
     box-shadow: 0 3px 0 #1a1108, inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transition: border-color 0.15s ease, filter 0.15s ease;
+  }
+  .dh-quick-btn:hover {
+    border-color: #ffd76a;
+    filter: brightness(1.08);
   }
   .dh-quick-btn:active {
     transform: translateY(2px);
@@ -5578,15 +5621,40 @@ body {
     text-shadow: none;
     box-shadow: 0 3px 0 #6a4a20, 0 0 14px rgba(255, 215, 106, 0.3);
   }
-
-  /* below 1280px the 2-column grid gets tight (232px sidebar leaves ~790px at 1024) — stack to 1 column */
-  .desktop-home {
-    grid-template-columns: 1fr;
+  .dh-quick-btn.primary:hover {
+    border-color: #fff0c0;
+    filter: brightness(1.05);
+  }
+  .dh-quickactions {
+    display: flex;
+    flex-direction: column;
+  }
+  .dh-quickactions .dh-quick-grid {
+    margin-top: auto;
+    margin-bottom: auto;
   }
 }
 
+/* >=1280px: room for the 2-column layout (232px sidebar leaves only ~790px at 1024, too tight for it) */
 @media (min-width: 1280px) {
   .desktop-home {
     grid-template-columns: 1.15fr 1fr;
+    grid-template-rows: auto auto;
+  }
+  .dh-hero {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .dh-activity {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .dh-progression {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .dh-quickactions {
+    grid-column: 2;
+    grid-row: 2;
   }
 }

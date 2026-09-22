@@ -1,11 +1,13 @@
 import SpriteSheet from './SpriteSheet';
 import { t } from '../locales';
 import Assets from '../assets.json';
-import { SaveData, computeCP, formatNumber, playerLevel } from '../game/engine';
+import { SaveData, formatNumber, playerLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 
 // Desktop-only top bar (>=1024px). Same data as TopHud (mobile's topbar), just laid out wider —
-// no new resources, no new fields, nothing invented.
+// no new resources, no new fields, nothing invented. CP is deliberately left out here: it already
+// has a prominent spot on the Hero card right below, so showing it twice on screen at once is
+// pure redundancy (see the Home polish pass).
 export default function DesktopTopbar({
   save,
   spriteUrl,
@@ -32,7 +34,6 @@ export default function DesktopTopbar({
           </div>
           <div className="desktop-topbar-stats-row">
             <span>{t('camp.level', { n: level })}</span>
-            <span className="desktop-topbar-cp">⚔️ CP {formatNumber(computeCP(save))}</span>
           </div>
         </div>
       </button>

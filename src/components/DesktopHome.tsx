@@ -36,6 +36,16 @@ function formatRemaining(ms: number): string {
   return h > 0 ? `${h}h${pad(m)}` : `${m}min`;
 }
 
+// Same "Xh MMmin" shape as formatRemaining, but floored (elapsed time, not a countdown) — used to
+// show real elapsed/cap progress on an activity card ("2h30 / 4h") without inventing any new field.
+function formatElapsed(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}h${pad(m)}` : `${m}min`;
+}
+
 function SkillRow({ icon, name, level, cap, progress }: { icon: ReactNode; name: string; level: number; cap: number; progress: number }) {
   return (
     <div className="dh-skill-row">
@@ -101,28 +111,34 @@ export default function DesktopHome({
   const deliveryDone = !!activeDelivery && deliveryRemaining <= 0;
 
   const skillDefs: { key: SkillId; icon: ReactNode; name: string; xp: number }[] = [
-    { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, name: t('tooltips.mining'), xp: save.skillXp.mining },
-    { key: 'woodcutting', icon: '🪓', name: t('tooltips.woodcutting'), xp: save.skillXp.woodcutting },
-    { key: 'gardening', icon: '🌱', name: t('tooltips.garden'), xp: save.skillXp.gardening },
+    { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, name: t('nav.mining'), xp: save.skillXp.mining },
+    { key: 'woodcutting', icon: '🪓', name: t('nav.woodcutting'), xp: save.skillXp.woodcutting },
+    { key: 'gardening', icon: '🌱', name: t('nav.garden'), xp: save.skillXp.gardening },
   ];
+
+  const huntingElapsedMs = hunting ? Math.max(0, now - save.huntingOfflineStart) : 0;
+  const huntingCapMs = hunting ? hunting.offlineCapHours * 3600 * 1000 : 0;
+  const huntingProgress = huntingCapMs > 0 ? Math.min(1, huntingElapsedMs / huntingCapMs) : 0;
+
+  const dungeonProgress = save.highestDungeonFloor / MAX_DUNGEON_FLOOR;
 
   return (
     <div className="desktop-home">
       {/* Area A — Hero */}
       <section className="dh-card dh-hero">
         <button className="dh-hero-portrait" onClick={onOpenHero} data-ui>
-          <SpriteSheet src={spriteUrl} size="96px" row={0} />
+          <SpriteSheet src={spriteUrl} size="148px" row={0} />
         </button>
         <div className="dh-hero-body">
           <div className="dh-hero-headline">
             <span className="dh-hero-name">{save.heroName}</span>
-            <span className="dh-hero-level">{t('camp.level', { n: level })}</span>
+          </div>
+          <div className="dh-hero-badges">
+            <span className="dh-hero-badge level">{t('camp.level', { n: level })}</span>
+            <span className="dh-hero-badge cp">⚔️ {t('camp.cp', { n: formatNumber(cp) })}</span>
           </div>
           <div className="bar dh-hero-xpbar">
             <div className="bar-fill xp-fill" style={{ width: `${Math.round(heroProgress * 100)}%` }} />
-          </div>
-          <div className="dh-hero-substats">
-            <span className="dh-hero-cp">⚔️ {t('camp.cp', { n: formatNumber(cp) })}</span>
           </div>
           <div className="dh-hero-equip">
             <div className="dh-equip-slot">
@@ -161,6 +177,10 @@ export default function DesktopHome({
               <div className="dh-activity-info">
                 <span className="dh-activity-name">{t('home.hunting')}</span>
                 <span className="dh-activity-detail">{dText(hunting.nameKey)}</span>
+                <div className="bar dh-activity-bar">
+                  <div className="bar-fill xp-fill" style={{ width: `${Math.round(huntingProgress * 100)}%` }} />
+                </div>
+                <span className="dh-activity-time">{formatElapsed(huntingElapsedMs)} / {formatElapsed(huntingCapMs)}</span>
               </div>
             </button>
           )}
@@ -173,6 +193,7 @@ export default function DesktopHome({
                 <div className="bar dh-activity-bar">
                   <div className="bar-fill xp-fill" style={{ width: `${Math.round((mining.pendingMs / Math.max(1, mining.capMs)) * 100)}%` }} />
                 </div>
+                <span className="dh-activity-time">{formatElapsed(mining.pendingMs)} / {formatElapsed(mining.capMs)}</span>
               </div>
             </button>
           )}
@@ -185,6 +206,7 @@ export default function DesktopHome({
                 <div className="bar dh-activity-bar">
                   <div className="bar-fill xp-fill" style={{ width: `${Math.round((woodcutting.pendingMs / Math.max(1, woodcutting.capMs)) * 100)}%` }} />
                 </div>
+                <span className="dh-activity-time">{formatElapsed(woodcutting.pendingMs)} / {formatElapsed(woodcutting.capMs)}</span>
               </div>
             </button>
           )}
@@ -194,6 +216,11 @@ export default function DesktopHome({
               <div className="dh-activity-info">
                 <span className="dh-activity-name">{t('tooltips.garden')}</span>
                 <span className="dh-activity-detail">{t('home.gardenStatus', { n: gardenReady, m: gardenGrowing + gardenReady })}</span>
+                <div className="dh-garden-dots">
+                  {gardenStatuses.map((s, i) => (
+                    <span key={i} className={`dh-garden-dot${s.ready ? ' ready' : s.plantId ? ' growing' : ''}`} />
+                  ))}
+                </div>
               </div>
             </button>
           )}
@@ -229,6 +256,9 @@ export default function DesktopHome({
             <div className="dh-skill-head">
               <span className="dh-skill-name">{t('home.dungeon')}</span>
               <span className="dh-skill-level">{dText('floorLabel', { n: save.highestDungeonFloor })}</span>
+            </div>
+            <div className="bar dh-skill-bar">
+              <div className="bar-fill xp-fill" style={{ width: `${Math.round(dungeonProgress * 100)}%` }} />
             </div>
             <div className="dh-dungeon-detail">
               <span>{dText(biome.nameKey)}</span>
