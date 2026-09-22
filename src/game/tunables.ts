@@ -146,17 +146,24 @@ const T = DebugPanel.define({
     // Gardening was intentionally NOT touched by the Modelo C recalibration (separate design task).
     xpBase: { value: 5, min: 1, max: 100, step: 1, label: 'Gardening XP for level 1->2' },
     xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Gardening XP growth per level' },
-    // Mining/Woodcutting XP-per-level recalibration for the 45-day championship (Modelo C, approved in
-    // CHAMPIONSHIP_45_DAY_CURVE_OPTIONS.md / CHAMPIONSHIP_45_DAY_OPTIMAL_STRATEGIES.md): the old flat
-    // exponential (xpBase/xpGrowth above) let dedicated Mining/Woodcutting hit the Lv75 cap in ~13-17
-    // days, 4+ weeks before a 45-day tournament ends, guaranteeing a mass tie. Replaced by a cumulative
-    // power-law curve (XP needed to REACH level L = professionXpCoeff x (L-1)^professionXpExponent,
-    // same formula for Mining and Woodcutting) that pushes Lv75 out past the tournament window even
-    // under a near-total-commitment strategy (search-validated in CHAMPIONSHIP_45_DAY_OPTIMAL_STRATEGIES.md).
-    // This changes ONLY how much XP a level costs — gatherPower, XP-per-unit-gathered and drop rates
-    // are untouched.
-    professionXpCoeff: { value: 2.6, min: 0.1, max: 50, step: 0.1, label: 'Mining/Woodcutting XP-to-reach-level coefficient (C in C x level^p)' },
-    professionXpExponent: { value: 2.4, min: 1, max: 5, step: 0.05, label: 'Mining/Woodcutting XP-to-reach-level exponent (p in C x level^p)' },
+    // Mining/Woodcutting XP-per-level recalibration for the 45-day championship. First pass (Modelo C,
+    // a single cumulative power-law curve) pushed the Lv75 cap out past the tournament window, but also
+    // made the curve uniformly steep from Lv2 onward — the resulting slowdown in gatherPower (which
+    // scales with derived Level, not raw XP) throttled crafting/CP/Dungeon far more than intended. C2-B
+    // (approved in CHAMPIONSHIP_45_DAY_C2_MODELING.md / CHAMPIONSHIP_45_DAY_C2B_SEPARATION_VALIDATION.md)
+    // replaces it with 4 bands — fast Lv1-10, moderate Lv11-25, slow Lv26-50, very slow Lv51-75 — so
+    // early/mid-game gear tiers stay reachable while the Lv75 cap remains out of reach for the whole
+    // tournament. Same curve for Mining and Woodcutting (Gardening keeps its own xpBase/xpGrowth above,
+    // untouched). This changes ONLY how much XP a level costs — gatherPower, XP-per-unit-gathered and
+    // drop rates are untouched.
+    professionXpBase: { value: 5, min: 1, max: 100, step: 1, label: 'Mining/Woodcutting XP for level 1->2 (band 1)' },
+    professionBand1To: { value: 10, min: 1, max: 24, step: 1, label: 'Mining/Woodcutting curve band 1 end level' },
+    professionBand2To: { value: 25, min: 2, max: 49, step: 1, label: 'Mining/Woodcutting curve band 2 end level' },
+    professionBand3To: { value: 50, min: 3, max: 74, step: 1, label: 'Mining/Woodcutting curve band 3 end level' },
+    professionGrowth1: { value: 1.06, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 1 (levels 1-10)' },
+    professionGrowth2: { value: 1.1, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 2 (levels 11-25)' },
+    professionGrowth3: { value: 1.15, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 3 (levels 26-50)' },
+    professionGrowth4: { value: 1.2, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 4 (levels 51-75)' },
     maxLevel: { value: 75, min: 10, max: 200, step: 1, label: 'Max skill level (matches the old tier-4 character-level gate)' },
     xpPerUnit: { value: 1, min: 0.1, max: 20, step: 0.1, label: 'Mining/Woodcutting skill XP per unit gathered' },
     // Gardening XP per harvest = growth hours x this, the same XP per plot-hour for every plant (garden.ts plantHarvestXp): no
