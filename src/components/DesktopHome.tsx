@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import SpriteSheet from './SpriteSheet';
 import GearIcon from './GearIcon';
 import { gearInstanceLabel } from './gearLabel';
@@ -35,7 +36,7 @@ function formatRemaining(ms: number): string {
   return h > 0 ? `${h}h${pad(m)}` : `${m}min`;
 }
 
-function SkillRow({ icon, name, level, cap, progress }: { icon: string; name: string; level: number; cap: number; progress: number }) {
+function SkillRow({ icon, name, level, cap, progress }: { icon: ReactNode; name: string; level: number; cap: number; progress: number }) {
   return (
     <div className="dh-skill-row">
       <span className="dh-skill-icon">{icon}</span>
@@ -99,8 +100,8 @@ export default function DesktopHome({
   const deliveryRemaining = activeDelivery ? activeDelivery.endsAt - now : 0;
   const deliveryDone = !!activeDelivery && deliveryRemaining <= 0;
 
-  const skillDefs: { key: SkillId; icon: string; name: string; xp: number }[] = [
-    { key: 'mining', icon: '⛏️', name: t('tooltips.mining'), xp: save.skillXp.mining },
+  const skillDefs: { key: SkillId; icon: ReactNode; name: string; xp: number }[] = [
+    { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, name: t('tooltips.mining'), xp: save.skillXp.mining },
     { key: 'woodcutting', icon: '🪓', name: t('tooltips.woodcutting'), xp: save.skillXp.woodcutting },
     { key: 'gardening', icon: '🌱', name: t('tooltips.garden'), xp: save.skillXp.gardening },
   ];
@@ -165,7 +166,7 @@ export default function DesktopHome({
           )}
           {mining.oreId && (
             <button className="dh-activity-item" onClick={onOpenMining} data-ui>
-              <span className="dh-activity-icon">⛏️</span>
+              <span className="dh-activity-icon"><img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" /></span>
               <div className="dh-activity-info">
                 <span className="dh-activity-name">{t('home.mining')}</span>
                 <span className="dh-activity-detail">{oreText(getOreTier(mining.oreId)?.nameKey ?? '')}</span>

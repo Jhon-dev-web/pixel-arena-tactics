@@ -5457,6 +5457,13 @@ body {
     flex-shrink: 0;
     width: 30px;
     text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dh-activity-icon .pixel-icon {
+    width: 26px;
+    height: 26px;
   }
   .dh-activity-info {
     flex: 1;
@@ -5497,6 +5504,13 @@ body {
     width: 32px;
     text-align: center;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dh-skill-icon .pixel-icon {
+    width: 28px;
+    height: 28px;
   }
   .dh-skill-info {
     flex: 1;

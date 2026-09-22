@@ -1152,11 +1152,11 @@ function App() {
         if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
       } },
     { key: 'garden', icon: '🌱', label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
-    { key: 'mining', icon: '⛏️', label: t('nav.mining'), active: mineOpen, onClick: () => { playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
+    { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, label: t('nav.mining'), active: mineOpen, onClick: () => { playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
     { key: 'woodcutting', icon: '🪓', label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
     { key: 'deliveries', icon: '🏕️', label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: openExpedition },
-    { key: 'inventory', icon: '🎒', label: t('nav.inventory'), active: bagOpen, onClick: () => { playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
-    { key: 'battlePass', icon: '🎫', label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { playSfx('click'); setBattlePassOpen(true); } },
+    { key: 'inventory', icon: <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />, label: t('nav.inventory'), active: bagOpen, onClick: () => { playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
+    { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { playSfx('click'); setBattlePassOpen(true); } },
     { key: 'settings', icon: '⚙️', label: t('nav.settings'), active: settingsOpen, onClick: () => { playSfx('click'); setSettingsOpen(true); } },
   ];
 
