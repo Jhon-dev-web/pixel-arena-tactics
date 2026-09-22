@@ -31,13 +31,10 @@ import { gearInstanceLabel, refineTag } from './gearLabel';
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
 import { getConsumable } from '../game/consumables';
-import { RefiningStation } from '../game/refining';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
 import ConsumableIcon from './ConsumableIcon';
-import { RefineStationSection, PotionsSection } from './RefineSections';
-import { REFINE_CATEGORIES } from './refineCategories';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -63,14 +60,12 @@ function rarityIcon(key: string): string {
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 
-export type ForgeTab = 'forge' | 'refine' | 'upgrade' | 'repair' | 'socket';
-const ALL_TABS: ForgeTab[] = ['forge', 'refine', 'upgrade', 'repair', 'socket'];
+export type ForgeTab = 'forge' | 'upgrade' | 'repair' | 'socket';
+const ALL_TABS: ForgeTab[] = ['forge', 'upgrade', 'repair', 'socket'];
 
 export default function ForgeModal({
   save,
   onForge,
-  onRefine,
-  onCraftPotion,
   onUpgrade,
   onUpgradeWithCatalyst,
   onRepair,
@@ -84,16 +79,12 @@ export default function ForgeModal({
   save: SaveData;
   // consumedIds: the confirmed selection of gear instances a recipe consumes (omitted = the cheapest copies).
   onForge: (id: string, consumedIds?: string[]) => void;
-  onRefine: (recipeId: string) => void;
-  onCraftPotion: (recipeId: string) => void;
   onUpgrade: (id: string) => void;
   onUpgradeWithCatalyst: (id: string) => void;
   onRepair: (id: string, blessed: boolean) => void;
   onSocket: (itemId: string, gemId: GemId) => void;
   onUnsocket: (itemId: string, index: number) => void;
   onClose: () => void;
-  // Desktop splits this same modal into "Forja" (equipment) and "Ofícios" (processing) — see
-  // OficiosModal.tsx. Mobile never passes these, so it keeps showing every tab exactly as before.
   allowedTabs?: ForgeTab[];
   title?: string;
   icon?: string;
@@ -172,11 +163,6 @@ export default function ForgeModal({
           {allowedTabs.includes('forge') && (
             <button className={`tab${tab === 'forge' ? ' active' : ''}`} onClick={() => setTab('forge')} data-ui>
               {t('forge.forgeTab')}
-            </button>
-          )}
-          {allowedTabs.includes('refine') && (
-            <button className={`tab${tab === 'refine' ? ' active' : ''}`} onClick={() => setTab('refine')} data-ui>
-              {t('forge.refineTab')}
             </button>
           )}
           {allowedTabs.includes('upgrade') && (
@@ -348,22 +334,6 @@ export default function ForgeModal({
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {tab === 'refine' && (
-          <div className="forge-body">
-            {REFINE_CATEGORIES.filter((c) => c.id !== 'potions').map((c) => (
-              <RefineStationSection
-                key={c.id}
-                station={c.id as RefiningStation}
-                sectionTitle={t(`forge.${c.titleKey}`)}
-                save={save}
-                level={level}
-                onRefine={onRefine}
-              />
-            ))}
-            <PotionsSection sectionTitle={t('forge.potionsSection')} save={save} level={level} onCraftPotion={onCraftPotion} />
           </div>
         )}
 

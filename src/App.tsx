@@ -1272,16 +1272,11 @@ function App() {
         <ForgeModal
           save={save}
           onForge={forgeItem}
-          onRefine={refineMaterial}
-          onCraftPotion={craftPotion}
           onUpgrade={upgradeItem}
           onUpgradeWithCatalyst={upgradeItemWithCatalyst}
           onRepair={repairItem}
           onSocket={socketGem}
           onUnsocket={unsocketGem}
-          // Desktop has a separate "Ofícios" entry for processing (see below), so its Forja only
-          // covers equipment there. Mobile has no such entry, so it keeps every tab as always.
-          allowedTabs={isDesktop ? ['forge', 'upgrade', 'repair', 'socket'] : undefined}
           onClose={() => {
             playSfx('click');
             setForgeOpen(false);
