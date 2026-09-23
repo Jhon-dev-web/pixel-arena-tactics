@@ -7,6 +7,7 @@ export type MaterialId =
   | 'essence'
   | 'dragon_scales'
   | 'copper'
+  | 'copper_bar'
   | 'silver'
   | 'gold_ore'
   | 'obsidian'
@@ -51,7 +52,7 @@ export interface MaterialDef {
 }
 
 export const MATERIALS: MaterialDef[] = [
-  { id: 'iron', nameKey: 'mat_iron', icon: '🪨', iconUrl: Assets.icons.ore.url, packSize: 5, packCost: 50, sellValue: 5 },
+  { id: 'iron', nameKey: 'mat_iron', icon: '🪨', iconUrl: '/assets/icons/iron_ore.png', packSize: 5, packCost: 50, sellValue: 5 },
   { id: 'steel', nameKey: 'mat_steel', icon: '🔩', iconUrl: Assets.icons.steel.url, packSize: 3, packCost: 150, sellValue: 25 },
   { id: 'leather', nameKey: 'mat_leather', icon: '🟤', iconUrl: Assets.icons.leather.url, packSize: 3, packCost: 45, sellValue: 7 },
   { id: 'essence', nameKey: 'mat_essence', icon: '🔮', iconUrl: Assets.icons.essence.url, packSize: 2, packCost: 200, sellValue: 50 },
@@ -61,6 +62,7 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'gold_ore', nameKey: 'mat_gold_ore', icon: '🟡', iconUrl: '/assets/icons/ore_gold.png', packSize: 3, packCost: 400, sellValue: 45 },
   { id: 'obsidian', nameKey: 'mat_obsidian', icon: '🟣', iconUrl: '/assets/icons/ore_obsidian.png', packSize: 2, packCost: 900, sellValue: 110 },
   // Furnace-refined — never mined/dropped directly, only produced by converting the raw ore above
+  { id: 'copper_bar', nameKey: 'mat_copper_bar', icon: '🟧', iconUrl: '/assets/icons/copper_bar.png', packSize: 5, packCost: 0, sellValue: 0 },
   { id: 'silver_ingot', nameKey: 'mat_silver_ingot', icon: '🥈', iconUrl: '/assets/icons/silver_ingot.png', packSize: 3, packCost: 450, sellValue: 75 },
   { id: 'gold_bar', nameKey: 'mat_gold_bar', icon: '🥇', iconUrl: '/assets/icons/gold_bar.png', packSize: 2, packCost: 900, sellValue: 225 },
   { id: 'refined_obsidian', nameKey: 'mat_refined_obsidian', icon: '💠', iconUrl: '/assets/icons/refined_obsidian.png', packSize: 1, packCost: 1100, sellValue: 550 },
@@ -110,6 +112,7 @@ export function emptyMaterials(): Materials {
     essence: 0,
     dragon_scales: 0,
     copper: 0,
+    copper_bar: 0,
     silver: 0,
     gold_ore: 0,
     obsidian: 0,

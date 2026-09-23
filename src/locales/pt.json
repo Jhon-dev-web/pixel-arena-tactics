@@ -218,12 +218,13 @@
     "elixirActive": "Elixir ativo!"
   },
   "materials": {
-    "mat_iron": "Lingote de Ferro",
+    "mat_iron": "Minério de Ferro",
     "mat_steel": "Barra de Aço",
     "mat_leather": "Couro Curtido",
     "mat_essence": "Essência Arcana",
     "mat_dragon_scales": "Escamas de Dragão",
     "mat_copper": "Minério de Cobre",
+    "mat_copper_bar": "Barra de Cobre",
     "mat_silver": "Minério de Prata",
     "mat_gold_ore": "Minério de Ouro",
     "mat_obsidian": "Obsidiana Bruta",

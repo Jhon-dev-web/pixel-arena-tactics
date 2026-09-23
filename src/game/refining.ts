@@ -18,13 +18,14 @@ export interface RefiningRecipe {
 // Every input here is itself a renewable Mining/Hunting drop, so these stay repeatable indefinitely.
 //
 // Furnace gold costs are deliberately NOT scaled up per tier in proportion to raw-ore value. Mining
-// Power (and so ore volume/hour) grows ~5x from iron to obsidian pickaxes, while Expedition gold/hour
+// Power (and so ore volume/hour) grows ~5x from iron to obsidian mining levels, while Expedition gold/hour
 // stays flat for the whole game (no level gating on EXPEDITIONS) — so a rising per-conversion price
 // tracking raw-ore value would make higher tiers cost several hours of Expedition just to convert one
 // mining session's haul. These costs instead keep hourly Furnace spend to a roughly flat ~25-42% of
 // average Expedition income (see the App audit) — nominal cost per conversion falls as tier rises
 // because conversions/hour rises faster, but the gold *burden* still climbs mildly with tier.
 export const REFINING_RECIPES: RefiningRecipe[] = [
+  { id: 'smelt_copper', station: 'furnace', output: 'copper_bar', outputQty: 1, input: { copper: 5 }, cost: 35, requiredLevel: 1 },
   { id: 'smelt_steel', station: 'furnace', output: 'steel', outputQty: 1, input: { iron: 5 }, cost: 30, requiredLevel: 25 },
   { id: 'smelt_silver', station: 'furnace', output: 'silver_ingot', outputQty: 1, input: { silver: 5 }, cost: 25, requiredLevel: 25 },
   { id: 'smelt_gold', station: 'furnace', output: 'gold_bar', outputQty: 1, input: { gold_ore: 5 }, cost: 15, requiredLevel: 50 },

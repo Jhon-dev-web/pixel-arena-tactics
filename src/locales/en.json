@@ -218,12 +218,13 @@
     "elixirActive": "Elixir active!"
   },
   "materials": {
-    "mat_iron": "Iron Ingot",
+    "mat_iron": "Iron Ore",
     "mat_steel": "Steel Bar",
     "mat_leather": "Tanned Leather",
     "mat_essence": "Arcane Essence",
     "mat_dragon_scales": "Dragon Scales",
     "mat_copper": "Copper Ore",
+    "mat_copper_bar": "Copper Bar",
     "mat_silver": "Silver Ore",
     "mat_gold_ore": "Gold Ore",
     "mat_obsidian": "Raw Obsidian",
