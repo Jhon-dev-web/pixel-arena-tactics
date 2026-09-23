@@ -2429,6 +2429,13 @@ body {
   flex-direction: column;
   gap: 3px;
 }
+.title-icon {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 .title-name {
   overflow-wrap: break-word;
 }
@@ -4948,6 +4955,14 @@ body {
   font-size: 26px;
   line-height: 1;
   flex: none;
+}
+.garden-item-icon,
+.garden-inline-icon {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  image-rendering: pixelated;
+  vertical-align: -0.12em;
 }
 .garden-plant-info {
   flex: 1;

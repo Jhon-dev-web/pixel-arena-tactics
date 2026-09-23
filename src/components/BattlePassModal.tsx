@@ -11,6 +11,7 @@ import T from '../game/tunables';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
 import GemIcon from './GemIcon';
+import TitleIcon from './TitleIcon';
 
 function rewardIcon(reward: BattlePassReward): ReactNode {
   switch (reward.kind) {
@@ -32,8 +33,10 @@ function rewardIcon(reward: BattlePassReward): ReactNode {
     }
     case 'oneToken':
       return <img className="inline-icon" src="/assets/icons/one_token.png" alt="" />;
-    case 'cosmetic':
-      return '🎖️';
+    case 'cosmetic': {
+      const title = reward.id ? getTitleDef(reward.id) : undefined;
+      return title ? <TitleIcon src={title.iconUrl} fallback="🎖️" className="inline-icon" /> : '🎖️';
+    }
     default:
       return '❔';
   }

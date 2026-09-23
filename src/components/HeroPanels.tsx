@@ -10,6 +10,7 @@ import { getMaterial, hasMaterials, MaterialId } from '../game/materials';
 import { getHuntPouchTierDef, nextHuntPouchTierDef } from '../game/huntPouch';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
+import TitleIcon from './TitleIcon';
 
 // The three "Personagem" panels — extracted from what used to be HeroModal's three tabs, so the
 // Personagem view (desktop area + mobile stack, see PersonagemView.tsx) and any future modal reuse
@@ -325,6 +326,7 @@ export function TitlesPanel({ save, onSelectTitle }: { save: SaveData; onSelectT
             disabled={!unlocked}
             data-ui
           >
+            <TitleIcon src={def.iconUrl} fallback="🎖️" className="title-icon" />
             <div className="title-row-main">
               <span className="title-name">{t(`titles.${def.nameKey}`)}</span>
               {!unlocked && <span className="title-req">{t(`titles.${def.reqKey}`)}</span>}
