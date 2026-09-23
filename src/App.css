@@ -744,7 +744,11 @@ body {
   padding: 1px 5px;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.5);
-  white-space: nowrap;
+  /* Most material labels (Bronze/Ferro/Aço) are one short word and read fine as a single line, but
+     "Escamas de Dragão" is long enough to overflow its own flex box at narrow widths since it never
+     shrinks below its unbroken text width — let it wrap like every other badge in a .craft-header. */
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 .gear-material.wood {
   background: #6b4a2b;
@@ -3003,9 +3007,8 @@ body {
 }
 .hunt-depth-name {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  text-align: center;
   font-size: calc(var(--font-size) - 3px);
   font-weight: bold;
 }
@@ -3630,8 +3633,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   margin-top: 6px;
+}
+.delivery-board-head .delivery-label {
+  /* Flex items don't shrink below their content's natural width without min-width:0 — at narrow
+     widths "Pedidos disponíveis" alongside the reroll pill pushed the row past its container. Letting
+     the row wrap (rather than forcing the label to break mid-word beside the pill) drops the pill to
+     its own line instead of overlapping the label's second line. */
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  margin: 0;
+}
+.delivery-board-head .delivery-reroll {
+  flex-shrink: 0;
 }
 .delivery-reroll {
   font-family: inherit;
@@ -4302,6 +4319,11 @@ body {
 }
 .bp-activate-btn {
   margin-bottom: 8px;
+  /* .battle-btn (shared with short combat labels like "PRÓXIMO DUELO") sets white-space:nowrap —
+     "Ativar Passe de Aventureiro" is long enough to overflow the button at narrow widths with that
+     rule, spilling text past its own edge instead of wrapping. */
+  white-space: normal;
+  line-height: 1.3;
 }
 .bp-track {
   gap: 8px;
@@ -5967,7 +5989,16 @@ body {
   min-height: 0;
 }
 .oficios-tabs {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   margin-bottom: 18px;
+}
+.oficios-tabs .tab {
+  /* Ofícios category labels (e.g. "Carpintaria", "Pó de Refino") are longer than the main Forge tabs'
+     single short words this grid was originally sized for — .forge-tabs .tab sets overflow-wrap:normal
+     to keep "Melhorar" from breaking mid-word, but that same rule let longer Ofícios labels overflow
+     their own button and visually bleed into the next one at narrow widths. Restore normal wrapping
+     here, at any space the label has. */
+  overflow-wrap: break-word;
 }
 .oficios-grid {
   display: grid;
