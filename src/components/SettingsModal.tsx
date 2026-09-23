@@ -5,12 +5,18 @@ export default function SettingsModal({
   onChangeLocale,
   onToggleSound,
   onReplayTutorial,
+  accountConfigured,
+  accountEmail,
+  onSignOut,
   onClose,
 }: {
   muted: boolean;
   onChangeLocale: (locale: Locale) => void;
   onToggleSound: () => void;
   onReplayTutorial: () => void;
+  accountConfigured: boolean;
+  accountEmail: string | null;
+  onSignOut: () => void;
   onClose: () => void;
 }) {
   return (
@@ -52,9 +58,18 @@ export default function SettingsModal({
             </button>
           </section>
 
-          <section className="settings-section">
-            <span className="settings-label">{t('settings.email')}</span>
-            <span className="settings-description">{t('settings.emailUnavailable')}</span>
+          <section className="settings-section settings-row">
+            <div>
+              <span className="settings-label">{t('settings.email')}</span>
+              <span className="settings-description">
+                {accountConfigured && accountEmail ? `${accountEmail} · ${t('settings.accountConnected')}` : t('settings.emailUnavailable')}
+              </span>
+            </div>
+            {accountConfigured && accountEmail && (
+              <button className="settings-action" onClick={onSignOut} data-ui>
+                {t('settings.signOut')}
+              </button>
+            )}
           </section>
 
           <section className="settings-section settings-row">

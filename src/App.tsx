@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import T, { setTunableListener } from './game/tunables';
 import {
   addBattlePassXp,
@@ -9,13 +9,13 @@ import {
   defaultSave,
   effectiveRepairCost,
   isBattlePassActive,
-  loadSave,
-  persistSave,
   playerLevel,
   ContextualTutorialId,
   InitialTutorialStep,
   SaveData,
 } from './game/engine';
+import { SaveConflictError, SaveRepository } from './game/saveRepository';
+import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, requestHuntStart } from './game/huntLifecycle';
 import { applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
 import { applyElixir, ElixirId } from './game/elixirs';
@@ -95,8 +95,21 @@ const gearText = (key: string): string => t(`gear.${key}`);
 // introduce to a real player. See FirstViewTooltip.tsx / SaveData.seenTooltips.
 const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'expedition', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
 
-function App() {
-  const [save, setSave] = useState<SaveData>(() => loadSave());
+export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'offline';
+
+interface AppProps {
+  repository: SaveRepository;
+  initialSave: SaveData;
+  initialRevision: number;
+}
+
+function App({ repository, initialSave, initialRevision }: AppProps) {
+  const { user, signOut, configured } = useAuth();
+  const [save, setSave] = useState<SaveData>(() => initialSave);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const revisionRef = useRef(initialRevision);
+  const dirtyRef = useRef(false);
+  const flushTimeoutRef = useRef<number | null>(null);
 
   const [shopOpen, setShopOpen] = useState(false);
   const [forgeOpen, setForgeOpen] = useState(false);
@@ -252,9 +265,68 @@ function App() {
     };
   }, [activeTooltip]);
 
+  // Phase 1 persistence: debounced, conflict-aware save through whichever repository GameShell resolved
+  // (local or Supabase — see saveRepository.ts). This still sends the WHOLE SaveData object as-is on
+  // every flush, same as the old direct-localStorage write; only WHERE it's stored changed, not who's
+  // trusted to compute gold/gear/RNG/timers (that's a later phase, see docs/backend-phase1.md).
+  const flushSave = useCallback(async () => {
+    if (!dirtyRef.current) return;
+    dirtyRef.current = false;
+    setSaveStatus('saving');
+    try {
+      const result = await repository.save(saveRef.current, revisionRef.current);
+      revisionRef.current = result.revision;
+      setSaveStatus('saved');
+    } catch (err) {
+      if (err instanceof SaveConflictError) {
+        // Another tab/device saved first — the server always wins (§18/§21): reload its current state
+        // rather than retry-and-clobber it.
+        try {
+          const fresh = await repository.load();
+          if (fresh) {
+            saveRef.current = fresh.save;
+            revisionRef.current = fresh.revision;
+            setSave(fresh.save);
+          }
+        } catch {
+          /* keep local state; next flush attempt will surface the same conflict */
+        }
+        setSaveStatus('error');
+        showToast(t('sync.conflict'));
+      } else {
+        // Network/transient failure: leave it dirty so the next debounce tick (or the online-event
+        // handler below) retries instead of silently dropping the change.
+        dirtyRef.current = true;
+        setSaveStatus(navigator.onLine ? 'error' : 'offline');
+      }
+    }
+  }, [repository]);
+
   useEffect(() => {
-    persistSave(save);
-  }, [save]);
+    dirtyRef.current = true;
+    setSaveStatus((s) => (s === 'saving' ? s : 'dirty'));
+    if (flushTimeoutRef.current) window.clearTimeout(flushTimeoutRef.current);
+    // §19: debounce autosave instead of firing a request per React state tick.
+    flushTimeoutRef.current = window.setTimeout(() => {
+      void flushSave();
+    }, 800);
+    return () => {
+      if (flushTimeoutRef.current) window.clearTimeout(flushTimeoutRef.current);
+    };
+  }, [save, flushSave]);
+
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      if (dirtyRef.current) void flushSave();
+    };
+    const onOnline = () => void flushSave();
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('online', onOnline);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [flushSave]);
 
   useEffect(() => {
     setTunableListener(() => setVersion((v) => v + 1));
@@ -752,7 +824,22 @@ function App() {
   // lives in the save (pendingHuntReward), not in React state.
   const commitSave = (next: SaveData) => {
     setSaveBoth(next);
-    persistSave(next);
+    dirtyRef.current = true;
+    if (flushTimeoutRef.current) window.clearTimeout(flushTimeoutRef.current);
+    void flushSave();
+  };
+
+  // §22: try to flush whatever's pending before actually signing out, so a quick "sign out right after
+  // an action" can't lose that action. Best-effort — signOut still proceeds even if the flush fails.
+  const handleSignOut = async () => {
+    if (flushTimeoutRef.current) window.clearTimeout(flushTimeoutRef.current);
+    dirtyRef.current = true;
+    try {
+      await flushSave();
+    } catch {
+      /* proceed with sign-out regardless; nothing server-side is deleted either way */
+    }
+    await signOut();
   };
 
   const startHunt = (zoneId: string, depth: HuntingDepth = DEFAULT_HUNTING_DEPTH) => {
@@ -1215,6 +1302,7 @@ function App() {
             showMenuButton={!isDesktop}
             muted={muted}
             onToggleMute={toggleMute}
+            syncStatus={saveStatus}
           />
           {activeView === 'home' && (
             <DesktopHome
@@ -1467,6 +1555,12 @@ function App() {
           onReplayTutorial={() => {
             setSettingsOpen(false);
             replayTutorial();
+          }}
+          accountConfigured={configured}
+          accountEmail={user?.email ?? null}
+          onSignOut={() => {
+            setSettingsOpen(false);
+            void handleSignOut();
           }}
           onClose={() => {
             playSfx('click');

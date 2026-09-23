@@ -6,8 +6,38 @@
     "title": "🏕️ Welcome to Camp!",
     "idleTip": "This is an idle game — your hero keeps progressing even with the game closed.",
     "startTip": "Tap Mining, Woodcutting, or Open Hunt to start an activity, then come back later to collect the results.",
-    "saveWarning": "⚠️ Your progress is saved only on this browser/device. Don't clear the site's data or switch devices, or you'll lose everything.",
+    "saveWarning": "⚠️ Your progress is tied to your account. If you're not signed in, it stays only on this browser/device.",
     "cta": "Got it, let's go!"
+  },
+  "auth": {
+    "title": "ARENA DUEL",
+    "subtitle": "Sign in to continue your progress on any device.",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "switchToSignUp": "No account? Create one",
+    "switchToSignIn": "Already have an account? Sign in",
+    "submitting": "Please wait…",
+    "signUpSuccess": "Account created! Check your email to confirm, then sign in.",
+    "genericError": "Couldn't continue. Please try again.",
+    "notConfigured": "Sign-in isn't configured in this environment yet.",
+    "restoringSession": "Restoring session…"
+  },
+  "legacyImport": {
+    "title": "We found saved progress on this device",
+    "description": "This progress was saved only in this browser. You can import it into your account or start a new character.",
+    "warning": "This local progress was never validated by a server. It can be imported for testing/beta, but it won't be treated as official once the game involves real value.",
+    "importCta": "Import progress",
+    "newCta": "Start new character",
+    "importing": "Importing…"
+  },
+  "sync": {
+    "saving": "Saving…",
+    "saved": "Saved",
+    "offline": "Offline — changes pending",
+    "error": "Save failed — retrying",
+    "conflict": "Your progress was updated from another device/tab."
   },
   "tooltips": {
     "mining": "Mining",
@@ -31,6 +61,8 @@
     "off": "Off",
     "email": "Email",
     "emailUnavailable": "Online account is not connected yet.",
+    "accountConnected": "Connected",
+    "signOut": "Sign out",
     "tutorial": "Tutorial",
     "replayTutorial": "Replay tutorial"
   },

@@ -17,6 +17,7 @@ export default function DesktopTopbar({
   showMenuButton,
   muted,
   onToggleMute,
+  syncStatus,
 }: {
   save: SaveData;
   spriteUrl: string;
@@ -26,10 +27,23 @@ export default function DesktopTopbar({
   showMenuButton: boolean;
   muted: boolean;
   onToggleMute: () => void;
+  // Phase 1 backend migration: server-save sync state, purely informational (§20/§23) — never gates
+  // gameplay, just tells the player whether their last change made it to the server.
+  syncStatus?: 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'offline';
 }) {
   const level = playerLevel(save.xp);
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
   const titleLabel = titleDef ? t(`titles.${titleDef.nameKey}`) : null;
+  const syncLabel =
+    syncStatus === 'saving'
+      ? t('sync.saving')
+      : syncStatus === 'error'
+        ? t('sync.error')
+        : syncStatus === 'offline'
+          ? t('sync.offline')
+          : syncStatus === 'saved'
+            ? t('sync.saved')
+            : null;
 
   return (
     <header className="desktop-topbar">
@@ -52,6 +66,7 @@ export default function DesktopTopbar({
       </button>
 
       <div className="desktop-topbar-resources">
+        {syncLabel && <span className={`sync-status ${syncStatus}`}>{syncLabel}</span>}
         <span className="desktop-topbar-res gold">
           <img className="inline-icon" src={Assets.icons.gold.url} alt="" />
           {formatNumber(save.gold)}

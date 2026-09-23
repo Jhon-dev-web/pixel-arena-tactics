@@ -6,8 +6,38 @@
     "title": "🏕️ Bem-vindo ao Acampamento!",
     "idleTip": "Este é um jogo idle — seu herói continua progredindo mesmo com o jogo fechado.",
     "startTip": "Toque em Mineração, Lenhaçaria ou Caça Aberta pra iniciar uma atividade, depois volte mais tarde pra coletar o resultado.",
-    "saveWarning": "⚠️ Seu progresso é salvo só neste navegador/aparelho. Não limpe os dados do site nem troque de aparelho, ou vai perder tudo.",
+    "saveWarning": "⚠️ Seu progresso fica vinculado à sua conta. Se você não estiver logado, ele fica só neste navegador/aparelho.",
     "cta": "Entendi, vamos lá!"
+  },
+  "auth": {
+    "title": "ARENA DUEL",
+    "subtitle": "Entre para continuar seu progresso em qualquer aparelho.",
+    "emailLabel": "E-mail",
+    "passwordLabel": "Senha",
+    "signIn": "Entrar",
+    "signUp": "Criar conta",
+    "switchToSignUp": "Não tem conta? Criar conta",
+    "switchToSignIn": "Já tem conta? Entrar",
+    "submitting": "Aguarde…",
+    "signUpSuccess": "Conta criada! Verifique seu e-mail para confirmar, depois entre.",
+    "genericError": "Não foi possível continuar. Tente novamente.",
+    "notConfigured": "Login ainda não está configurado neste ambiente.",
+    "restoringSession": "Restaurando sessão…"
+  },
+  "legacyImport": {
+    "title": "Encontramos um progresso salvo neste dispositivo",
+    "description": "Esse progresso foi salvo apenas neste navegador. Você pode importá-lo para sua conta ou começar um personagem novo.",
+    "warning": "Este progresso local nunca foi validado por um servidor. Ele pode ser importado para uso/beta, mas não será tratado como oficial quando o jogo envolver valor real.",
+    "importCta": "Importar progresso",
+    "newCta": "Começar novo personagem",
+    "importing": "Importando…"
+  },
+  "sync": {
+    "saving": "Salvando…",
+    "saved": "Salvo",
+    "offline": "Offline — alterações pendentes",
+    "error": "Falha ao salvar — tentando novamente",
+    "conflict": "Seu progresso foi atualizado a partir de outro dispositivo/aba."
   },
   "tooltips": {
     "mining": "Mineração",
@@ -31,6 +61,8 @@
     "off": "Desligado",
     "email": "E-mail",
     "emailUnavailable": "Conta online ainda não conectada.",
+    "accountConnected": "Conectado",
+    "signOut": "Sair",
     "tutorial": "Tutorial",
     "replayTutorial": "Rever tutorial"
   },

@@ -775,11 +775,15 @@ function ensureLegacyBackup(raw: string): boolean {
 // untouched original, and since the migration is deterministic the next load simply migrates it again.
 let unbackedLegacyRaw: string | null = null;
 
-export function loadSave(): SaveData {
+// Normalizes/sanitizes an arbitrary save payload — a raw localStorage JSON string, or an already-parsed
+// object such as a Supabase jsonb column — into a trusted SaveData, running every migration/clamp exactly
+// once so local saves and server-loaded saves can never drift onto two different code paths (Phase 1
+// backend migration: see saveRepository.ts).
+export function normalizeSave(rawInput: unknown): SaveData {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = typeof rawInput === 'string' ? rawInput : rawInput ? JSON.stringify(rawInput) : null;
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<SaveData>;
+      const parsed = (typeof rawInput === 'string' ? JSON.parse(raw) : rawInput) as Partial<SaveData>;
       const base = defaultSave();
       const legacyOwned = (parsed as { owned?: string[] }).owned;
       const inventory =
@@ -1107,6 +1111,10 @@ export function loadSave(): SaveData {
     /* ignore */
   }
   return defaultSave();
+}
+
+export function loadSave(): SaveData {
+  return normalizeSave(localStorage.getItem(SAVE_KEY));
 }
 
 export function persistSave(data: SaveData): void {

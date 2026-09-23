@@ -1,13 +1,16 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import App from "./App.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
+import { AuthProvider } from "./auth/AuthContext";
+import GameShell from "./shell/GameShell";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <AuthProvider>
+        <GameShell />
+      </AuthProvider>
     </ErrorBoundary>
   </StrictMode>
 );
