@@ -61,9 +61,9 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'gold_ore', nameKey: 'mat_gold_ore', icon: '🟡', iconUrl: '/assets/icons/ore_gold.png', packSize: 3, packCost: 400, sellValue: 45 },
   { id: 'obsidian', nameKey: 'mat_obsidian', icon: '🟣', iconUrl: '/assets/icons/ore_obsidian.png', packSize: 2, packCost: 900, sellValue: 110 },
   // Furnace-refined — never mined/dropped directly, only produced by converting the raw ore above
-  { id: 'silver_ingot', nameKey: 'mat_silver_ingot', icon: '🥈', packSize: 3, packCost: 450, sellValue: 75 },
-  { id: 'gold_bar', nameKey: 'mat_gold_bar', icon: '🥇', packSize: 2, packCost: 900, sellValue: 225 },
-  { id: 'refined_obsidian', nameKey: 'mat_refined_obsidian', icon: '💠', packSize: 1, packCost: 1100, sellValue: 550 },
+  { id: 'silver_ingot', nameKey: 'mat_silver_ingot', icon: '🥈', iconUrl: '/assets/icons/silver_ingot.png', packSize: 3, packCost: 450, sellValue: 75 },
+  { id: 'gold_bar', nameKey: 'mat_gold_bar', icon: '🥇', iconUrl: '/assets/icons/gold_bar.png', packSize: 2, packCost: 900, sellValue: 225 },
+  { id: 'refined_obsidian', nameKey: 'mat_refined_obsidian', icon: '💠', iconUrl: '/assets/icons/refined_obsidian.png', packSize: 1, packCost: 1100, sellValue: 550 },
   // Open Hunting drops — never sold via the Shop, exclusive to monster drops
   { id: 'leather_scrap', nameKey: 'mat_leather_scrap', icon: '🟫', iconUrl: '/assets/icons/leather_scrap.png', packSize: 5, packCost: 30, sellValue: 4 },
   { id: 'demon_claw', nameKey: 'mat_demon_claw', icon: '🐾', iconUrl: '/assets/icons/demon_claw.png', packSize: 3, packCost: 120, sellValue: 22 },
@@ -72,26 +72,26 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'concentrated_blood', nameKey: 'mat_concentrated_blood', icon: '🩸', iconUrl: '/assets/icons/concentrated_blood.png', packSize: 3, packCost: 120, sellValue: 22 },
   { id: 'corrupted_crystal', nameKey: 'mat_corrupted_crystal', icon: '🔮', iconUrl: '/assets/icons/corrupted_crystal.png', packSize: 1, packCost: 800, sellValue: 180 },
   // Garden harvests — Alchemy ingredients (erva/raiz/flor), never dropped by Hunting/Mining/Dungeon.
-  { id: 'common_herb', nameKey: 'mat_common_herb', icon: '🌿', packSize: 5, packCost: 20, sellValue: 3 },
-  { id: 'energy_herb', nameKey: 'mat_energy_herb', icon: '🍀', packSize: 5, packCost: 20, sellValue: 3 },
-  { id: 'uncommon_root', nameKey: 'mat_uncommon_root', icon: '🥕', packSize: 3, packCost: 90, sellValue: 15 },
-  { id: 'crimson_mushroom', nameKey: 'mat_crimson_mushroom', icon: '🍄', packSize: 3, packCost: 90, sellValue: 15 },
-  { id: 'rare_flower', nameKey: 'mat_rare_flower', icon: '🌸', packSize: 1, packCost: 300, sellValue: 65 },
+  { id: 'common_herb', nameKey: 'mat_common_herb', icon: '🌿', iconUrl: '/assets/icons/common_herb.png', packSize: 5, packCost: 20, sellValue: 3 },
+  { id: 'energy_herb', nameKey: 'mat_energy_herb', icon: '🍀', iconUrl: '/assets/icons/energy_herb.png', packSize: 5, packCost: 20, sellValue: 3 },
+  { id: 'uncommon_root', nameKey: 'mat_uncommon_root', icon: '🥕', iconUrl: '/assets/icons/uncommon_root.png', packSize: 3, packCost: 90, sellValue: 15 },
+  { id: 'crimson_mushroom', nameKey: 'mat_crimson_mushroom', icon: '🍄', iconUrl: '/assets/icons/crimson_mushroom.png', packSize: 3, packCost: 90, sellValue: 15 },
+  { id: 'rare_flower', nameKey: 'mat_rare_flower', icon: '🌸', iconUrl: '/assets/icons/rare_flower.png', packSize: 1, packCost: 300, sellValue: 65 },
   // Refining-only sink for surplus common materials (see refining.ts DUST_RECIPES) — never dropped/mined,
   // and never sold, only ever produced and spent inside the Forge's Refino tab.
-  { id: 'refining_dust', nameKey: 'mat_refining_dust', icon: '🌫️', packSize: 1, packCost: 0, sellValue: 0 },
+  { id: 'refining_dust', nameKey: 'mat_refining_dust', icon: '🌫️', iconUrl: '/assets/icons/refining_dust.png', packSize: 1, packCost: 0, sellValue: 0 },
   // Woodcutting — mirrors Mining exactly (tier-gated raw material, zero gold by design). Never sold.
-  { id: 'common_wood', nameKey: 'mat_common_wood', icon: '🪵', packSize: 5, packCost: 20, sellValue: 3 },
-  { id: 'oak_wood', nameKey: 'mat_oak_wood', icon: '🌳', packSize: 4, packCost: 60, sellValue: 8 },
-  { id: 'ebony_wood', nameKey: 'mat_ebony_wood', icon: '🪵', packSize: 3, packCost: 150, sellValue: 20 },
-  { id: 'elven_wood', nameKey: 'mat_elven_wood', icon: '🌲', packSize: 2, packCost: 350, sellValue: 45 },
-  { id: 'ancient_wood', nameKey: 'mat_ancient_wood', icon: '🌴', packSize: 1, packCost: 700, sellValue: 90 },
+  { id: 'common_wood', nameKey: 'mat_common_wood', icon: '🪵', iconUrl: '/assets/icons/common_wood.png', packSize: 5, packCost: 20, sellValue: 3 },
+  { id: 'oak_wood', nameKey: 'mat_oak_wood', icon: '🌳', iconUrl: '/assets/icons/oak_wood.png', packSize: 4, packCost: 60, sellValue: 8 },
+  { id: 'ebony_wood', nameKey: 'mat_ebony_wood', icon: '🪵', iconUrl: '/assets/icons/ebony_wood.png', packSize: 3, packCost: 150, sellValue: 20 },
+  { id: 'elven_wood', nameKey: 'mat_elven_wood', icon: '🌲', iconUrl: '/assets/icons/elven_wood.png', packSize: 2, packCost: 350, sellValue: 45 },
+  { id: 'ancient_wood', nameKey: 'mat_ancient_wood', icon: '🌴', iconUrl: '/assets/icons/ancient_wood.png', packSize: 1, packCost: 700, sellValue: 90 },
   // Carpentry-refined — never chopped/dropped directly, only produced by converting the raw wood above.
-  { id: 'wood_handle_common', nameKey: 'mat_wood_handle_common', icon: '🥢', packSize: 1, packCost: 0, sellValue: 12 },
-  { id: 'wood_handle_oak', nameKey: 'mat_wood_handle_oak', icon: '🥢', packSize: 1, packCost: 0, sellValue: 32 },
-  { id: 'wood_handle_ebony', nameKey: 'mat_wood_handle_ebony', icon: '🥢', packSize: 1, packCost: 0, sellValue: 80 },
-  { id: 'wood_handle_elven', nameKey: 'mat_wood_handle_elven', icon: '🥢', packSize: 1, packCost: 0, sellValue: 180 },
-  { id: 'wood_handle_ancient', nameKey: 'mat_wood_handle_ancient', icon: '🥢', packSize: 1, packCost: 0, sellValue: 360 },
+  { id: 'wood_handle_common', nameKey: 'mat_wood_handle_common', icon: '🥢', iconUrl: '/assets/icons/wood_handle_common.png', packSize: 1, packCost: 0, sellValue: 12 },
+  { id: 'wood_handle_oak', nameKey: 'mat_wood_handle_oak', icon: '🥢', iconUrl: '/assets/icons/wood_handle_oak.png', packSize: 1, packCost: 0, sellValue: 32 },
+  { id: 'wood_handle_ebony', nameKey: 'mat_wood_handle_ebony', icon: '🥢', iconUrl: '/assets/icons/wood_handle_ebony.png', packSize: 1, packCost: 0, sellValue: 80 },
+  { id: 'wood_handle_elven', nameKey: 'mat_wood_handle_elven', icon: '🥢', iconUrl: '/assets/icons/wood_handle_elven.png', packSize: 1, packCost: 0, sellValue: 180 },
+  { id: 'wood_handle_ancient', nameKey: 'mat_wood_handle_ancient', icon: '🥢', iconUrl: '/assets/icons/wood_handle_ancient.png', packSize: 1, packCost: 0, sellValue: 360 },
 ];
 
 export function getMaterial(id: MaterialId): MaterialDef | undefined {
