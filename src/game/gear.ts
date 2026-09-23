@@ -59,10 +59,22 @@ export interface EquippedGear {
 // convention the existing ore materials already use (steel_greatsword/tier3 needs silver_ingot = ore
 // tier 2, not tier 3's own gold_ore). Tier 6 clamps to the same top handle (wood_handle_ancient) tier 5
 // uses, mirroring how tier 5-6 already share refined_obsidian. See woodcutting.ts/refining.ts.
+//
+// Raw-vs-refined ore audit: tier 1 (bronze_dagger/bronze_leather) now consumes copper_bar (Fornalha
+// output) instead of raw copper — copper_bar's own smelt recipe (refining.ts smelt_copper) is
+// unlocked from level 1, same as these tier-1 recipes, so this closes the gap with zero level-gate
+// impact. 3 raw copper doesn't map onto the 5:1 smelt ratio, so this rounds up to the minimum
+// meaningful amount (1 bar = 5 copper), matching how every other tier already asks for a small whole
+// count of its refined material (silver_ingot: 1, gold_bar: 1) rather than a raw-ore-equivalent
+// fraction; Gold cost (item.cost) is intentionally left unchanged, matching every other tier where the
+// refining station's own Gold cost is a separate, additional layer never rebated from the forge price.
+// Tier 2 (iron_short_sword/iron_chainmail) intentionally keeps raw iron: its refined counterpart
+// (steel) only unlocks at level 25 in refining.ts, while these recipes are level 10 — swapping would
+// lock players out of tier-2 gear for 15 levels. Not changed here; would need its own balance pass.
 export const GEAR: GearItem[] = [
   // Weapons (Tier 0-4) — hierarchical crafting
   { id: 'wooden_club', slot: 'weapon', nameKey: 'wooden_club', descKey: 'wooden_club_d', materialKey: 'material_wood', iconUrl: Assets.weapons.club.url, cost: 0, tier: 0, damage: 0 },
-  { id: 'bronze_dagger', slot: 'weapon', nameKey: 'bronze_dagger', descKey: 'bronze_dagger_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.dagger.url, cost: 40, tier: 1, damage: 12, critChance: 0.03, recipe: { materials: { copper: 3, leather: 1, wood_handle_common: 1 } } },
+  { id: 'bronze_dagger', slot: 'weapon', nameKey: 'bronze_dagger', descKey: 'bronze_dagger_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.dagger.url, cost: 40, tier: 1, damage: 12, critChance: 0.03, recipe: { materials: { copper_bar: 1, leather: 1, wood_handle_common: 1 } } },
   { id: 'iron_short_sword', slot: 'weapon', nameKey: 'iron_short_sword', descKey: 'iron_short_sword_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.sword_iron.url, cost: 120, tier: 2, damage: 30, critChance: 0.06, recipe: { items: { bronze_dagger: 2 }, materials: { iron: 3, leather_scrap: 2, wood_handle_oak: 1 }, requiredLevel: 10 } },
   { id: 'steel_greatsword', slot: 'weapon', nameKey: 'steel_greatsword', descKey: 'steel_greatsword_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.sword_steel.url, cost: 300, tier: 3, damage: 65, critChance: 0.1, recipe: { items: { iron_short_sword: 2 }, materials: { silver_ingot: 1, essence: 2, bone_fragment: 3, demon_claw: 1, wood_handle_ebony: 1 }, gems: { ruby: 1 }, requiredLevel: 25 } },
   { id: 'gilded_warblade', slot: 'weapon', nameKey: 'gilded_warblade', descKey: 'gilded_warblade_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_warblade.png', cost: 600, tier: 4, damage: 90, critChance: 0.14, recipe: { items: { steel_greatsword: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, demon_core: 1, wood_handle_elven: 2 }, requiredLevel: 50 } },
@@ -72,7 +84,7 @@ export const GEAR: GearItem[] = [
   { id: 'abyssal_greatblade', slot: 'weapon', nameKey: 'abyssal_greatblade', descKey: 'abyssal_greatblade_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/abyssal_greatblade.png', cost: 3200, tier: 6, damage: 220, critChance: 0.24, burn: true, recipe: { items: { voidsteel_blade: 1 }, materials: { refined_obsidian: 2, corrupted_crystal: 5, wood_handle_ancient: 3 }, shards: 6, requiredLevel: 90 } },
   // Armors (Tier 0-4) — hierarchical crafting
   { id: 'ragged_clothes', slot: 'armor', nameKey: 'ragged_clothes', descKey: 'ragged_clothes_d', materialKey: 'material_cloth', iconUrl: '/assets/icons/ragged_clothes.png', cost: 0, tier: 0, maxHp: 0 },
-  { id: 'bronze_leather', slot: 'armor', nameKey: 'bronze_leather', descKey: 'bronze_leather_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.armor_leather.url, cost: 50, tier: 1, maxHp: 40, resistance: 0.03, recipe: { materials: { copper: 3, leather: 3 } } },
+  { id: 'bronze_leather', slot: 'armor', nameKey: 'bronze_leather', descKey: 'bronze_leather_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.armor_leather.url, cost: 50, tier: 1, maxHp: 40, resistance: 0.03, recipe: { materials: { copper_bar: 1, leather: 3 } } },
   { id: 'iron_chainmail', slot: 'armor', nameKey: 'iron_chainmail', descKey: 'iron_chainmail_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.armor_iron.url, cost: 130, tier: 2, maxHp: 90, resistance: 0.06, recipe: { items: { bronze_leather: 2 }, materials: { iron: 3, leather_scrap: 2 }, requiredLevel: 10 } },
   { id: 'steel_plate', slot: 'armor', nameKey: 'steel_plate', descKey: 'steel_plate_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.armor_steel.url, cost: 350, tier: 3, maxHp: 160, resistance: 0.1, reflect: 0.2, recipe: { items: { iron_chainmail: 2 }, materials: { silver_ingot: 1, essence: 2, bone_fragment: 3, demon_claw: 1 }, gems: { sapphire: 1 }, requiredLevel: 25 } },
   { id: 'gilded_aegis', slot: 'armor', nameKey: 'gilded_aegis', descKey: 'gilded_aegis_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_aegis.png', cost: 650, tier: 4, maxHp: 220, resistance: 0.13, recipe: { items: { steel_plate: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, corrupted_crystal: 1 }, requiredLevel: 50 } },
