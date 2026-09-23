@@ -78,10 +78,14 @@ export function skillLevelProgress(xp: number, skillId: SkillId): number {
   return Math.max(0, Math.min(1, (xp - base) / need));
 }
 
-// Mining/Woodcutting no longer have tiered tools — the single starting tool's power is boosted by
-// skill level instead, so gathering throughput still scales with progression (see tunables.ts
-// powerPerLevel comment for why this replaces the old per-tool power table). Mining and Woodcutting
-// share the exact same C2-B XP curve, so 'mining' here is just a representative profession id.
+// Profession tools were removed entirely — Mining/Woodcutting never depended on which tool was
+// equipped (there was always exactly one, forever), so this is the same flat starting power the old
+// tier-0 pickaxe/axe carried, now just a constant. Gathering throughput still scales with progression
+// through skill level alone (see tunables.ts powerPerLevel).
+export const BASE_GATHER_POWER = 5;
+
+// Mining and Woodcutting share the exact same C2-B XP curve, so 'mining' here is just a
+// representative profession id.
 export function gatherPower(basePower: number, xp: number): number {
   return basePower + skillLevel(xp, 'mining') * T.skills.powerPerLevel;
 }

@@ -220,9 +220,6 @@ export function resolveEquipped(save: GearState) {
     relic: stack(eq.relic),
     shield: stack(eq.shield),
     helmet: stack(eq.helmet),
-    pickaxe: stack(eq.pickaxe),
-    axe: stack(eq.axe),
-    rod: stack(eq.rod),
   };
 }
 

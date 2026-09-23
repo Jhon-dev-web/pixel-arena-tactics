@@ -27,7 +27,7 @@ const fmtNum = (n: number): string => n.toLocaleString(activeLocale === 'pt' ? '
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
-const EQUIPPABLE_SLOTS = new Set(['weapon', 'armor', 'pickaxe', 'axe', 'rod']);
+const EQUIPPABLE_SLOTS = new Set(['weapon', 'armor']);
 const MANUALLY_USABLE = new Set(['xp_potion', 'strength_elixir', 'atk_elixir']);
 
 type SelKind = 'gear' | 'material' | 'consumable';
@@ -91,7 +91,7 @@ export default function InventoryPanel({
 
   const isEquipped = selectedInstance
     ? isInstanceEquipped(save, selectedInstance.id)
-    : !!selectedGear && save.equipped[selectedGear.slot as 'relic' | 'pickaxe' | 'axe' | 'rod'] === selectedGear.id;
+    : !!selectedGear && save.equipped[selectedGear.slot as 'relic'] === selectedGear.id;
   const isEquippable = !!selectedGear && EQUIPPABLE_SLOTS.has(selectedGear.slot);
   const selectedRarity: Rarity = selectedInstance?.rarity ?? 'common';
   const selectedSubs = selectedInstance?.substats ?? [];

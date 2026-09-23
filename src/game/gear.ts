@@ -2,7 +2,7 @@ import { MaterialId } from './materials';
 import { GemId } from './gems';
 import Assets from '../assets.json';
 
-export type GearSlot = 'weapon' | 'shield' | 'armor' | 'helmet' | 'pickaxe' | 'axe' | 'rod' | 'relic';
+export type GearSlot = 'weapon' | 'shield' | 'armor' | 'helmet' | 'relic';
 
 export interface Recipe {
   materials?: Partial<Record<MaterialId, number>>;
@@ -33,9 +33,6 @@ export interface GearItem {
   focusHpBonus?: number;
   attackStaminaReduction?: number;
   critMultBonus?: number;
-  miningPower?: number;
-  woodcuttingPower?: number;
-  fishingPower?: number;
 }
 
 // Weapon and armor are the only INSTANCED slots: each owned piece is its own object with its own rarity, substats,
@@ -55,15 +52,9 @@ export interface EquippedGear {
   relic: string | null;
   shield: string | null;
   helmet: string | null;
-  pickaxe: string | null;
-  axe: string | null;
-  rod: string | null;
 }
 
-export const GEAR_SLOTS: GearSlot[] = ['weapon', 'armor', 'relic', 'pickaxe', 'axe'];
-
-// wood_handle_* retrofit (weapons only now — pickaxe/axe tiers were removed in favor of Skill Level
-// gating, see the "Profession tools" comment below; never armor/relics, they don't have a haft): every
+// wood_handle_* retrofit (weapons only — never armor/relics, they don't have a haft): every
 // tier-N weapon recipe here takes the wood-handle tier at index (N-1), matching the exact same
 // convention the existing ore materials already use (steel_greatsword/tier3 needs silver_ingot = ore
 // tier 2, not tier 3's own gold_ore). Tier 6 clamps to the same top handle (wood_handle_ancient) tier 5
@@ -92,24 +83,13 @@ export const GEAR: GearItem[] = [
   { id: 'ring_vitality', slot: 'relic', nameKey: 'ring_vitality', descKey: 'ring_vitality_d', icon: '/assets/icons/ring_vitality.png', cost: 200, focusHpBonus: 15, recipe: { materials: { essence: 3 } } },
   { id: 'amulet_swiftness', slot: 'relic', nameKey: 'amulet_swiftness', descKey: 'amulet_swiftness_d', icon: '/assets/icons/amulet_swiftness.png', cost: 250, attackStaminaReduction: 5, recipe: { materials: { essence: 3 } } },
   { id: 'berserker_crest', slot: 'relic', nameKey: 'berserker_crest', descKey: 'berserker_crest_d', icon: '/assets/icons/berserker_crest.png', cost: 350, critMultBonus: 0.5, recipe: { materials: { essence: 5 } } },
-  // Profession tools — exactly one per profession, forever. Mining/Woodcutting tier gates are Skill
-  // Level now (see skills.ts/ores.ts/woodcutting.ts), not character level or a better tool — the old
-  // iron/steel/mithril/runic pickaxe and axe tiers are gone, along with the gold/material sink they
-  // used to represent (see gatherPower in skills.ts for how power now scales without them).
-  { id: 'rusty_pickaxe', slot: 'pickaxe', nameKey: 'rusty_pickaxe', descKey: 'rusty_pickaxe_d', icon: '/assets/icons/pickaxe_rusty.png', cost: 0, tier: 0, miningPower: 5 },
-  { id: 'worn_axe', slot: 'axe', nameKey: 'worn_axe', descKey: 'worn_axe_d', icon: '/assets/icons/axe.png', cost: 0, tier: 0, woodcuttingPower: 5 },
-  { id: 'bamboo_rod', slot: 'rod', nameKey: 'bamboo_rod', descKey: 'bamboo_rod_d', icon: '/assets/icons/rod.png', cost: 0, tier: 0, fishingPower: 5 },
 ];
 
 const GEAR_BY_ID: Record<string, GearItem> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
 
 // Stackable gear every save always owns. The weapon / armor starters are instances now, created once
 // (gearInstances.createStarterGear) and never re-injected.
-export const DEFAULT_INVENTORY: Record<string, number> = {
-  rusty_pickaxe: 1,
-  worn_axe: 1,
-  bamboo_rod: 1,
-};
+export const DEFAULT_INVENTORY: Record<string, number> = {};
 
 export const DEFAULT_EQUIPPED: EquippedGear = {
   weapon: null,
@@ -117,9 +97,6 @@ export const DEFAULT_EQUIPPED: EquippedGear = {
   relic: null,
   shield: null,
   helmet: null,
-  pickaxe: 'rusty_pickaxe',
-  axe: 'worn_axe',
-  rod: 'bamboo_rod',
 };
 
 export function getGear(id: string): GearItem {
@@ -154,9 +131,6 @@ export function sanitizeLegacyInventory(
       relic: equipped.relic && valid.has(equipped.relic) ? equipped.relic : null,
       shield: equipped.shield && valid.has(equipped.shield) ? equipped.shield : null,
       helmet: equipped.helmet && valid.has(equipped.helmet) ? equipped.helmet : null,
-      pickaxe: equipped.pickaxe && valid.has(equipped.pickaxe) ? equipped.pickaxe : null,
-      axe: equipped.axe && valid.has(equipped.axe) ? equipped.axe : null,
-      rod: equipped.rod && valid.has(equipped.rod) ? equipped.rod : null,
     },
   };
 }
@@ -164,7 +138,7 @@ export function sanitizeLegacyInventory(
 // --- Refinement (+0 .. +8) ---
 export const MAX_REFINE = 8;
 
-// Stackable gear (relics + profession tools) for a v2 save. Weapons / armors live in save.gearInstances.
+// Stackable gear (relics) for a v2 save. Weapons / armors live in save.gearInstances.
 export function sanitizeStackableGear(
   inventory: Record<string, number> | undefined,
   equipped: Partial<EquippedGear> | undefined,
@@ -184,9 +158,6 @@ export function sanitizeStackableGear(
       relic: pick(equipped?.relic),
       shield: pick(equipped?.shield),
       helmet: pick(equipped?.helmet),
-      pickaxe: pick(equipped?.pickaxe),
-      axe: pick(equipped?.axe),
-      rod: pick(equipped?.rod),
     },
   };
 }

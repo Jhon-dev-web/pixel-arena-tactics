@@ -96,7 +96,7 @@ export default function PersonagemView({
 
       <section className="dh-card personagem-equip">
         <h3 className="dh-card-title">{t('profile.equipTab')}</h3>
-        <EquipmentPanel save={save} onEquip={onEquip} onUnequip={onUnequip} onUpgradePouch={onUpgradePouch} />
+        <EquipmentPanel save={save} onUpgradePouch={onUpgradePouch} />
       </section>
 
       <section className="dh-card personagem-attrs">

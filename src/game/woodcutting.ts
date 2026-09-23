@@ -3,8 +3,8 @@ import { MaterialId } from './materials';
 export interface WoodTierDef {
   id: MaterialId;
   nameKey: string;
-  // Woodcutting SKILL level required (see skills.ts) — not character level, and no tool check
-  // anymore: there is exactly one axe, worn_axe, owned from the very start, forever.
+  // Woodcutting SKILL level required (see skills.ts) — not character level. Profession tools don't
+  // exist as a mechanic; gathering power scales purely with this skill level.
   requiredLevel: number;
 }
 

@@ -1,5 +1,5 @@
 import T from './tunables';
-import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, getGear, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
+import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
 import {
   GEAR_SCHEMA_VERSION,
   GearInstance,
@@ -31,7 +31,7 @@ import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
 import { getPlant, PlantId } from './garden';
-import { emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
+import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
 
 export type BuffType = 'strength' | 'attack';
 
@@ -389,7 +389,7 @@ export function computeMiningStatus(save: SaveData, now: number): MiningStatus {
   const elapsedMs = Math.max(0, now - save.lastMiningClaim);
   const pendingMs = Math.min(elapsedMs, capMs);
   const hours = pendingMs / (3600 * 1000);
-  const power = gatherPower(getGear('rusty_pickaxe')?.miningPower ?? 0, save.skillXp.mining);
+  const power = gatherPower(BASE_GATHER_POWER, save.skillXp.mining);
   const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
   const oreReady = Math.floor(hours * power * T.mining.oreRatePerPower * dropMult);
   const goldReady = Math.floor(hours * power * T.mining.goldRatePerPower);
@@ -418,7 +418,7 @@ export function computeWoodcuttingStatus(save: SaveData, now: number): Woodcutti
   const elapsedMs = Math.max(0, now - save.lastWoodcuttingClaim);
   const pendingMs = Math.min(elapsedMs, capMs);
   const hours = pendingMs / (3600 * 1000);
-  const power = gatherPower(getGear('worn_axe')?.woodcuttingPower ?? 0, save.skillXp.woodcutting);
+  const power = gatherPower(BASE_GATHER_POWER, save.skillXp.woodcutting);
   const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
   const woodReady = Math.floor(hours * power * T.woodcutting.woodRatePerPower * dropMult);
   const goldReady = Math.floor(hours * power * T.woodcutting.goldRatePerPower);

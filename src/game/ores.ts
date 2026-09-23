@@ -3,8 +3,8 @@ import { MaterialId } from './materials';
 export interface OreTierDef {
   id: MaterialId;
   nameKey: string;
-  // Mining SKILL level required (see skills.ts) — not character level, and no tool check anymore:
-  // there is exactly one pickaxe, rusty_pickaxe, owned from the very start, forever.
+  // Mining SKILL level required (see skills.ts) — not character level. Profession tools don't exist
+  // as a mechanic; gathering power scales purely with this skill level.
   requiredLevel: number;
 }
 

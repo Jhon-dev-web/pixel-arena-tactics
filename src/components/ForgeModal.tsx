@@ -63,8 +63,8 @@ export type ForgeTab = 'forge' | 'upgrade' | 'repair' | 'socket';
 const ALL_TABS: ForgeTab[] = ['forge', 'upgrade', 'repair', 'socket'];
 
 // The "Forjar" tab groups recipes by their real GearSlot — weapon/armor/relic are the only slots
-// that ever carry a recipe today (pickaxe/axe have none, see gear.ts), so this is a display grouping
-// of the existing GEAR_SLOTS data, not a new taxonomy.
+// that exist today (see gear.ts), so this is a display grouping of the existing gear data, not a new
+// taxonomy.
 type ForgeCategory = 'weapon' | 'armor' | 'relic';
 const FORGE_CATEGORIES: ForgeCategory[] = ['weapon', 'armor', 'relic'];
 const CATEGORY_LABEL_KEY: Record<ForgeCategory, string> = {

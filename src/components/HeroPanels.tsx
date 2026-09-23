@@ -2,7 +2,7 @@ import { activeLocale, t } from '../locales';
 import Assets from '../assets.json';
 import { mitigationFraction } from '../game/derivedStats';
 import { effectivePouchSlots, isBattlePassActive, SaveData, buildCombatStats, computeCP, formatNumber, playerLevel } from '../game/engine';
-import { effectiveDamage, effectiveMaxHp, getGear, gearBySlot, MAX_DURABILITY } from '../game/gear';
+import { effectiveDamage, effectiveMaxHp, MAX_DURABILITY } from '../game/gear';
 import { resolveEquipped, viewDurability, viewRarity, viewRefine } from '../game/gearInstances';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import { TITLES } from '../game/titles';
@@ -20,7 +20,6 @@ import TitleIcon from './TitleIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const attrsText = (k: string): string => t(`attributes.${k}`);
-const profileText = (k: string): string => t(`profile.${k}`);
 const pouchText = (k: string): string => t(`huntPouch.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
@@ -34,23 +33,11 @@ const ATTRS: { key: AttrKey; nameKey: string; descKey: string }[] = [
   { key: 'res', nameKey: 'res', descKey: 'resDesc' },
 ];
 
-type ToolSlot = 'pickaxe' | 'axe' | 'rod';
-
-const TOOL_SLOTS: { slot: ToolSlot; labelKey: string; powerKey: 'miningPower' | 'woodcuttingPower' | 'fishingPower'; powerLabelKey: string }[] = [
-  { slot: 'pickaxe', labelKey: 'pickaxe', powerKey: 'miningPower', powerLabelKey: 'miningPower' },
-  { slot: 'axe', labelKey: 'axe', powerKey: 'woodcuttingPower', powerLabelKey: 'woodcuttingPower' },
-  { slot: 'rod', labelKey: 'rod', powerKey: 'fishingPower', powerLabelKey: 'fishingPower' },
-];
-
 export function EquipmentPanel({
   save,
-  onEquip,
-  onUnequip,
   onUpgradePouch,
 }: {
   save: SaveData;
-  onEquip: (id: string) => void;
-  onUnequip: (id: string) => void;
   onUpgradePouch: () => void;
 }) {
   const { weapon: weaponView, armor: armorView } = resolveEquipped(save);
@@ -66,16 +53,6 @@ export function EquipmentPanel({
   const rarClass = (r: Rarity) => `r-${r}`;
   const wSubs = weaponView.instance?.substats ?? [];
   const aSubs = armorView.instance?.substats ?? [];
-
-  const toggleTool = (slot: ToolSlot) => {
-    const equippedId = save.equipped[slot];
-    if (equippedId) {
-      onUnequip(equippedId);
-      return;
-    }
-    const owned = gearBySlot(slot).find((g) => (save.inventory[g.id] ?? 0) > 0);
-    if (owned) onEquip(owned.id);
-  };
 
   return (
     <>
@@ -122,38 +99,6 @@ export function EquipmentPanel({
             <span className={`hero-durability${durClass(aDur)}`}>{t('forge.durability', { n: aDur, m: MAX_DURABILITY })}</span>
           </div>
         </div>
-      </div>
-
-      <div className="gear-section-title">{profileText('toolsTitle')}</div>
-      <div className="hero-tools-grid">
-        {TOOL_SLOTS.map(({ slot, labelKey, powerKey, powerLabelKey }) => {
-          const equippedId = save.equipped[slot];
-          const item = equippedId ? getGear(equippedId) : null;
-          const owned = !item && gearBySlot(slot).some((g) => (save.inventory[g.id] ?? 0) > 0);
-          return (
-            <button
-              key={slot}
-              type="button"
-              className={`hero-tool-card${item ? ' equipped' : ''}`}
-              onClick={() => toggleTool(slot)}
-              disabled={!item && !owned}
-              data-ui
-            >
-              <span className="hero-equip-icon">
-                {item ? <GearIcon item={item} /> : <span className="gear-icon-emoji">➕</span>}
-              </span>
-              <div className="hero-equip-info">
-                <span className="hero-equip-name">{profileText(labelKey)}</span>
-                <span className="hero-equip-stat">{item ? gearText(item.nameKey) : profileText('emptySlot')}</span>
-                {item && (
-                  <span className="hero-equip-stat">
-                    +{item[powerKey] ?? 0} {profileText(powerLabelKey)}
-                  </span>
-                )}
-              </div>
-            </button>
-          );
-        })}
       </div>
 
       {(() => {

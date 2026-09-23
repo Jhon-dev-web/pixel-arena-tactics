@@ -2536,28 +2536,6 @@ body {
   font-size: calc(var(--font-size) - 3px);
   color: #6fe08a;
 }
-.hero-tools-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.hero-tool-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #3a2a4a;
-  border-radius: 10px;
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
-  width: 100%;
-}
-.hero-tool-card.equipped {
-  border-color: #ffd76a;
-}
 .pouch-card {
   flex-direction: column;
   align-items: stretch;
@@ -2604,10 +2582,6 @@ body {
   align-self: center;
   margin-top: 0;
   flex-shrink: 0;
-}
-.hero-tool-card:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 .hero-stats-grid {
   display: grid;

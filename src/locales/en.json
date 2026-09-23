@@ -143,8 +143,6 @@
     "weapon": "Weapon",
     "armor": "Armor",
     "relic": "Relic",
-    "pickaxe": "Tool",
-    "axe": "Axe",
     "none": "None",
     "equip": "EQUIP",
     "equipped": "EQUIPPED",
@@ -194,13 +192,7 @@
     "amulet_swiftness": "Amulet of Swiftness",
     "amulet_swiftness_d": "Attack costs 10 stamina",
     "berserker_crest": "Berserker Crest",
-    "berserker_crest_d": "Crits deal 2.5x damage",
-    "rusty_pickaxe": "Rusty Pickaxe",
-    "rusty_pickaxe_d": "+5 Mining Power",
-    "worn_axe": "Worn Axe",
-    "worn_axe_d": "+5 Woodcutting Power",
-    "bamboo_rod": "Bamboo Rod",
-    "bamboo_rod_d": "+5 Fishing Power"
+    "berserker_crest_d": "Crits deal 2.5x damage"
   },
   "enemies": {
     "goblinRogue": "Goblin Rogue",
@@ -316,15 +308,7 @@
     "lifesteal": "Lifesteal",
     "combatStats": "Combat stats (permanent)",
     "cp": "CP",
-    "distribute": "⚡ DISTRIBUTE ATTRIBUTES",
-    "toolsTitle": "🔨 Profession Tools",
-    "pickaxe": "Pickaxe",
-    "axe": "Axe",
-    "rod": "Rod",
-    "miningPower": "Mining",
-    "woodcuttingPower": "Woodcutting",
-    "fishingPower": "Fishing",
-    "emptySlot": "Empty"
+    "distribute": "⚡ DISTRIBUTE ATTRIBUTES"
   },
   "huntPouch": {
     "title": "Hunting Pouch",

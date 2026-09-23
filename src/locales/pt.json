@@ -143,8 +143,6 @@
     "weapon": "Arma",
     "armor": "Armadura",
     "relic": "Relíquia",
-    "pickaxe": "Ferramenta",
-    "axe": "Machado",
     "none": "Nenhum",
     "equip": "EQUIPAR",
     "equipped": "EQUIPADO",
@@ -194,13 +192,7 @@
     "amulet_swiftness": "Amuleto da Agilidade",
     "amulet_swiftness_d": "Ataque custa 10 de energia",
     "berserker_crest": "Brasão do Berserker",
-    "berserker_crest_d": "Críticos causam 2,5x de dano",
-    "rusty_pickaxe": "Picareta Enferrujada",
-    "rusty_pickaxe_d": "+5 de Poder de Mineração",
-    "worn_axe": "Machado Gasto",
-    "worn_axe_d": "+5 de Poder de Corte",
-    "bamboo_rod": "Vara de Bambu",
-    "bamboo_rod_d": "+5 de Poder de Pesca"
+    "berserker_crest_d": "Críticos causam 2,5x de dano"
   },
   "enemies": {
     "goblinRogue": "Goblin Ladino",
@@ -316,15 +308,7 @@
     "lifesteal": "Roubo de Vida",
     "combatStats": "Status de combate (permanentes)",
     "cp": "CP",
-    "distribute": "⚡ DISTRIBUIR ATRIBUTOS",
-    "toolsTitle": "🔨 Ferramentas de Profissão",
-    "pickaxe": "Picareta",
-    "axe": "Machado",
-    "rod": "Vara",
-    "miningPower": "Mineração",
-    "woodcuttingPower": "Corte",
-    "fishingPower": "Pesca",
-    "emptySlot": "Vazio"
+    "distribute": "⚡ DISTRIBUIR ATRIBUTOS"
   },
   "huntPouch": {
     "title": "Bolsa de Caça",
