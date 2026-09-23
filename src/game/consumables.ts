@@ -37,17 +37,15 @@ export const CONSUMABLES: ConsumableDef[] = [
   { id: 'small_hp', nameKey: 'small_hp', descKey: 'small_hp_d', icon: '🧪', iconUrl: '/assets/icons/potion_small_hp.png', cost: 30, sellValue: 12, purchasable: true },
   { id: 'large_hp', nameKey: 'large_hp', descKey: 'large_hp_d', icon: '🧪', iconUrl: '/assets/icons/potion_large_hp.png', cost: 80, sellValue: 32, purchasable: true },
   { id: 'atk_elixir', nameKey: 'atk_elixir', descKey: 'atk_elixir_d', icon: '⚔️', iconUrl: '/assets/icons/potion_atk_elixir.png', cost: 120, sellValue: 48, purchasable: true },
-  { id: 'refine_catalyst', nameKey: 'refine_catalyst', descKey: 'refine_catalyst_d', icon: '⚗️', cost: 0, sellValue: 0, purchasable: false },
-  { id: 'expedition_ticket_1h', nameKey: 'expedition_ticket_1h', descKey: 'expedition_ticket_1h_d', icon: '⏱️', cost: 0, sellValue: 0, purchasable: false },
-  { id: 'expedition_ticket_2h', nameKey: 'expedition_ticket_2h', descKey: 'expedition_ticket_2h_d', icon: '⏱️', cost: 0, sellValue: 0, purchasable: false },
-  { id: 'expedition_ticket_4h', nameKey: 'expedition_ticket_4h', descKey: 'expedition_ticket_4h_d', icon: '⏱️', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'refine_catalyst', nameKey: 'refine_catalyst', descKey: 'refine_catalyst_d', icon: '⚗️', iconUrl: '/assets/icons/refine_catalyst.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'expedition_ticket_1h', nameKey: 'expedition_ticket_1h', descKey: 'expedition_ticket_1h_d', icon: '⏱️', iconUrl: '/assets/icons/expedition_ticket_1h.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'expedition_ticket_2h', nameKey: 'expedition_ticket_2h', descKey: 'expedition_ticket_2h_d', icon: '⏱️', iconUrl: '/assets/icons/expedition_ticket_2h.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'expedition_ticket_4h', nameKey: 'expedition_ticket_4h', descKey: 'expedition_ticket_4h_d', icon: '⏱️', iconUrl: '/assets/icons/expedition_ticket_4h.png', cost: 0, sellValue: 0, purchasable: false },
   // Alchemy-only (Forja > Refino > Alquimia) — never sold in the Shop, craft-tier consumables that
   // scale with player effort (Garden growing time) instead of flat gold like the Shop potions.
-  // No canonical PNG exists for these alchemy consumables. Omitting iconUrl deliberately uses the
-  // component's established emoji fallback rather than issuing a broken request for a nonexistent file.
-  { id: 'xp_potion', nameKey: 'xp_potion', descKey: 'xp_potion_d', icon: '📘', cost: 0, sellValue: 15, purchasable: false },
-  { id: 'greater_elixir', nameKey: 'greater_elixir', descKey: 'greater_elixir_d', icon: '💚', cost: 0, sellValue: 60, purchasable: false },
-  { id: 'strength_elixir', nameKey: 'strength_elixir', descKey: 'strength_elixir_d', icon: '🔥', cost: 0, sellValue: 120, purchasable: false },
+  { id: 'xp_potion', nameKey: 'xp_potion', descKey: 'xp_potion_d', icon: '📘', iconUrl: '/assets/icons/xp_potion.png', cost: 0, sellValue: 15, purchasable: false },
+  { id: 'greater_elixir', nameKey: 'greater_elixir', descKey: 'greater_elixir_d', icon: '💚', iconUrl: '/assets/icons/greater_elixir.png', cost: 0, sellValue: 60, purchasable: false },
+  { id: 'strength_elixir', nameKey: 'strength_elixir', descKey: 'strength_elixir_d', icon: '🔥', iconUrl: '/assets/icons/strength_elixir.png', cost: 0, sellValue: 120, purchasable: false },
 ];
 
 export function getConsumable(id: string): ConsumableDef | undefined {

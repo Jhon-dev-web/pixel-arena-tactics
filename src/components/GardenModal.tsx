@@ -5,6 +5,7 @@ import { getPlant, PLANTS, PlantDef } from '../game/garden';
 import { readySlots } from '../game/gardenActions';
 import { skillLevel } from '../game/skills';
 import SkillLevelBadge from './SkillLevelBadge';
+import TitleIcon from './TitleIcon';
 
 const gardenText = (k: string): string => t(`garden.${k}`);
 const matText = (k: string): string => t(`materials.mat_${k}`);
@@ -88,7 +89,7 @@ function Plot({
           <button className="garden-plot-again" onClick={() => onPlantAgain(lastPlant.id)} aria-label={gardenText('plantAgain')} data-ui>
             <span className="garden-plot-again-label">↻ {gardenText('plantAgain')}</span>
             <span>
-              {lastPlant.icon} {gardenText(lastPlant.nameKey)}
+              <TitleIcon src={lastPlant.iconUrl} fallback={lastPlant.icon} className="garden-inline-icon" /> {gardenText(lastPlant.nameKey)}
             </span>
           </button>
         )}
@@ -106,7 +107,7 @@ function Plot({
       </div>
       <div className="garden-plot-plant">
         <span className="garden-plot-icon" aria-hidden="true">
-          {def.icon}
+          <TitleIcon src={def.iconUrl} fallback={def.icon} className="garden-item-icon" />
         </span>
         <span className="garden-plot-name">{gardenText(def.nameKey)}</span>
       </div>
@@ -282,7 +283,7 @@ export default function GardenModal({
                       data-ui
                     >
                       <span className="garden-plant-icon" aria-hidden="true">
-                        {plant.icon}
+                        <TitleIcon src={plant.iconUrl} fallback={plant.icon} className="garden-item-icon" />
                       </span>
                       <span className="garden-plant-info">
                         <span className="garden-plant-name">
