@@ -3539,7 +3539,11 @@ body {
 .expedition-note {
   font-size: calc(var(--font-size) - 2px);
   color: #8a7aa8;
-  margin: -6px 0 12px;
+  /* Was a negative top margin to sit snug under .delivery-board-head — but that head wraps onto two
+     lines at narrow widths (see the comment on .delivery-board-head .delivery-label below), and the
+     fixed negative offset then pulled this note up into the wrapped second line instead of just under
+     it. A small positive margin keeps clearance whether the head wraps or not. */
+  margin: 6px 0 12px;
 }
 .expedition-tickets {
   display: flex;
@@ -5926,6 +5930,102 @@ body {
   .dh-equip-slot {
     flex: 1 1 100%;
   }
+
+  /* The rules above only resized the portrait and stacked the hero row — everything below it (name,
+     badges, equip rows, activity cards, skill rows, quick actions) was still using the same font
+     sizes/padding/gaps tuned for >=1024px, so a phone got a tablet-dense card at 2x the intended
+     type scale. This fills in exactly the properties the block above left untouched. */
+  .dh-card-title {
+    margin-bottom: 10px;
+  }
+  .dh-hero-name {
+    font-size: 18px;
+  }
+  .dh-hero-badge {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+  .dh-hero-xpbar {
+    height: 8px;
+  }
+  .dh-hero-equip {
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .dh-equip-slot {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .dh-equip-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .dh-equip-label {
+    font-size: 9px;
+  }
+  .dh-equip-name {
+    font-size: 11px;
+  }
+  .dh-inventory-chip {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+  .dh-idle {
+    padding: 18px 6px;
+    font-size: 12px;
+  }
+  .dh-activity-item {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .dh-activity-icon {
+    font-size: 20px;
+    width: 26px;
+  }
+  .dh-activity-icon .pixel-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .dh-activity-name {
+    font-size: 12px;
+  }
+  .dh-activity-detail {
+    font-size: 11px;
+  }
+  .dh-activity-time {
+    font-size: 10px;
+  }
+  .dh-skill-row {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .dh-skill-icon {
+    font-size: 20px;
+    width: 26px;
+  }
+  .dh-skill-icon .pixel-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .dh-skill-name {
+    font-size: 12px;
+  }
+  .dh-skill-level {
+    font-size: 11px;
+  }
+  .dh-quick-grid {
+    gap: 10px;
+  }
+  .dh-quick-btn {
+    padding: 14px 10px;
+    font-size: 12px;
+  }
+  .personagem-hero .name-btn {
+    font-size: 18px;
+  }
+  .personagem-hero .name-input {
+    font-size: 16px;
+  }
 }
 @media (max-width: 480px) {
   .desktop-topbar {
@@ -5976,6 +6076,72 @@ body {
   }
   .dh-quick-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Real phones (360-430px, the whole test matrix this fixes): shrink further than the >=481px
+     tablet tier above. */
+  .desktop-home {
+    padding: 12px;
+    gap: 12px;
+  }
+  .dh-card {
+    padding: 12px;
+  }
+  .dh-hero-portrait {
+    width: 96px;
+    height: 96px;
+  }
+  /* SpriteSheet sets width/height as an inline style (see SpriteSheet.tsx) driven by a fixed "148px"
+     prop, which always wins over a plain class rule — only overriding it here, scoped to the small
+     portrait container, actually shrinks the art instead of letting it overflow/clip against a
+     smaller box. The animation loop reads the element's live clientWidth every frame, so it re-syncs
+     to whatever size wins here with no code change needed. */
+  .dh-hero-portrait .spritesheet {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .dh-hero-name {
+    font-size: 16px;
+  }
+  .dh-hero-badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  .dh-equip-slot {
+    padding: 6px 8px;
+  }
+  .dh-equip-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .personagem-hero .name-btn {
+    font-size: 16px;
+  }
+
+  /* Shared modal chrome (Pedidos, Inventário, and every other .modal): the base padding/title size
+     were the same fixed value at every width. Phones get a tighter frame instead. */
+  .modal {
+    padding: 16px 14px;
+  }
+
+  /* Pedidos (DeliveryModal): denser cards so more fits per scroll and nothing feels oversized next to
+     the rest of the (already phone-sized) UI. */
+  .expedition-list {
+    gap: 8px;
+  }
+  .expedition-option {
+    padding: 10px;
+  }
+  .expedition-option .battle-btn {
+    padding: 9px 12px;
+  }
+
+  /* Inventário (InventoryPanel): the item-detail card had no height cap, so a richly-rolled item
+     (substats + reforge/salvage panels) forced the WHOLE modal — tabs and grid included — into one
+     long scroll instead of just the detail card scrolling on its own. */
+  .inv-detail {
+    max-height: 34vh;
+    overflow-y: auto;
   }
 }
 
