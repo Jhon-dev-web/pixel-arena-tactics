@@ -2001,6 +2001,15 @@ body {
   font-size: calc(var(--font-size) - 3px);
   color: #b8a8d8;
 }
+.inventory-summary {
+  display: contents;
+}
+.inventory-summary-chip {
+  display: block;
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+  margin: -8px 0 12px;
+}
 .inv-detail-empty {
   font-size: calc(var(--font-size) - 2px);
   color: #8a7aa8;
@@ -5885,267 +5894,6 @@ body {
 }
 
 /* =====================================================================
-   MOBILE-FIRST ADJUSTMENTS (<1024px) — the shell above is unified with
-   desktop; these just tighten spacing/stacking for narrow viewports.
-   ===================================================================== */
-@media (max-width: 1023px) {
-  .desktop-topbar {
-    height: auto;
-    min-height: 76px;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px 12px;
-    gap: 10px;
-  }
-  .desktop-topbar-name {
-    font-size: 13px;
-  }
-  .desktop-topbar-res {
-    font-size: 13px;
-  }
-  .desktop-home {
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
-    gap: 16px;
-  }
-  .dh-card {
-    padding: 16px;
-  }
-  .dh-hero {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 14px;
-  }
-  .dh-hero-portrait {
-    width: 140px;
-    height: 140px;
-  }
-  .dh-hero-headline {
-    justify-content: center;
-  }
-  .dh-hero-badges {
-    justify-content: center;
-  }
-  .dh-hero-equip {
-    justify-content: center;
-  }
-  .dh-equip-slot {
-    flex: 1 1 100%;
-  }
-
-  /* The rules above only resized the portrait and stacked the hero row — everything below it (name,
-     badges, equip rows, activity cards, skill rows, quick actions) was still using the same font
-     sizes/padding/gaps tuned for >=1024px, so a phone got a tablet-dense card at 2x the intended
-     type scale. This fills in exactly the properties the block above left untouched. */
-  .dh-card-title {
-    margin-bottom: 10px;
-  }
-  .dh-hero-name {
-    font-size: 18px;
-  }
-  .dh-hero-badge {
-    font-size: 12px;
-    padding: 5px 10px;
-  }
-  .dh-hero-xpbar {
-    height: 8px;
-  }
-  .dh-hero-equip {
-    gap: 8px;
-    margin-top: 2px;
-  }
-  .dh-equip-slot {
-    padding: 8px 10px;
-    gap: 8px;
-  }
-  .dh-equip-icon {
-    width: 30px;
-    height: 30px;
-  }
-  .dh-equip-label {
-    font-size: 9px;
-  }
-  .dh-equip-name {
-    font-size: 11px;
-  }
-  .dh-inventory-chip {
-    font-size: 11px;
-    padding: 6px 12px;
-  }
-  .dh-idle {
-    padding: 18px 6px;
-    font-size: 12px;
-  }
-  .dh-activity-item {
-    padding: 10px 12px;
-    gap: 10px;
-  }
-  .dh-activity-icon {
-    font-size: 20px;
-    width: 26px;
-  }
-  .dh-activity-icon .pixel-icon {
-    width: 22px;
-    height: 22px;
-  }
-  .dh-activity-name {
-    font-size: 12px;
-  }
-  .dh-activity-detail {
-    font-size: 11px;
-  }
-  .dh-activity-time {
-    font-size: 10px;
-  }
-  .dh-skill-row {
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-  .dh-skill-icon {
-    font-size: 20px;
-    width: 26px;
-  }
-  .dh-skill-icon .pixel-icon {
-    width: 24px;
-    height: 24px;
-  }
-  .dh-skill-name {
-    font-size: 12px;
-  }
-  .dh-skill-level {
-    font-size: 11px;
-  }
-  .dh-quick-grid {
-    gap: 10px;
-  }
-  .dh-quick-btn {
-    padding: 14px 10px;
-    font-size: 12px;
-  }
-  .personagem-hero .name-btn {
-    font-size: 18px;
-  }
-  .personagem-hero .name-input {
-    font-size: 16px;
-  }
-}
-@media (max-width: 480px) {
-  .desktop-topbar {
-    padding: 0 8px;
-    gap: 6px;
-  }
-  .desktop-topbar-menu {
-    width: 34px;
-    height: 34px;
-    font-size: 16px;
-    margin-right: 0;
-  }
-  .desktop-topbar-profile {
-    gap: 8px;
-    padding: 4px;
-    min-width: 0;
-    flex-shrink: 1;
-  }
-  .desktop-topbar-name {
-    max-width: 78px;
-    font-size: 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .desktop-topbar-title {
-    display: none;
-  }
-  .desktop-topbar-stats-row {
-    font-size: 11px;
-  }
-  .desktop-topbar-resources {
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .desktop-topbar-res {
-    font-size: 12px;
-    gap: 4px;
-  }
-  .desktop-topbar-res .inline-icon {
-    width: 18px;
-    height: 18px;
-  }
-  .desktop-topbar-settings {
-    width: 32px;
-    height: 32px;
-    font-size: 15px;
-  }
-  .dh-quick-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Real phones (360-430px, the whole test matrix this fixes): shrink further than the >=481px
-     tablet tier above. */
-  .desktop-home {
-    padding: 12px;
-    gap: 12px;
-  }
-  .dh-card {
-    padding: 12px;
-  }
-  .dh-hero-portrait {
-    width: 96px;
-    height: 96px;
-  }
-  /* SpriteSheet sets width/height as an inline style (see SpriteSheet.tsx) driven by a fixed "148px"
-     prop, which always wins over a plain class rule — only overriding it here, scoped to the small
-     portrait container, actually shrinks the art instead of letting it overflow/clip against a
-     smaller box. The animation loop reads the element's live clientWidth every frame, so it re-syncs
-     to whatever size wins here with no code change needed. */
-  .dh-hero-portrait .spritesheet {
-    width: 100% !important;
-    height: 100% !important;
-  }
-  .dh-hero-name {
-    font-size: 16px;
-  }
-  .dh-hero-badge {
-    font-size: 11px;
-    padding: 4px 8px;
-  }
-  .dh-equip-slot {
-    padding: 6px 8px;
-  }
-  .dh-equip-icon {
-    width: 26px;
-    height: 26px;
-  }
-  .personagem-hero .name-btn {
-    font-size: 16px;
-  }
-
-  /* Shared modal chrome (Pedidos, Inventário, and every other .modal): the base padding/title size
-     were the same fixed value at every width. Phones get a tighter frame instead. */
-  .modal {
-    padding: 16px 14px;
-  }
-
-  /* Pedidos (DeliveryModal): denser cards so more fits per scroll and nothing feels oversized next to
-     the rest of the (already phone-sized) UI. */
-  .expedition-list {
-    gap: 8px;
-  }
-  .expedition-option {
-    padding: 10px;
-  }
-  .expedition-option .battle-btn {
-    padding: 9px 12px;
-  }
-
-  /* Inventário (InventoryPanel): the item-detail card had no height cap, so a richly-rolled item
-     (substats + reforge/salvage panels) forced the WHOLE modal — tabs and grid included — into one
-     long scroll instead of just the detail card scrolling on its own. */
-  .inv-detail {
-    max-height: 34vh;
-    overflow-y: auto;
-  }
-}
-
-/* =====================================================================
    PERSONAGEM VIEW — same main-content area pattern as Home (a
    .desktop-home grid of .dh-card sections), each card is a straight port
    of what used to be HeroModal's/InventoryModal's content. See
@@ -6181,6 +5929,9 @@ body {
 .personagem-hero .name-btn .pencil {
   font-size: 14px;
   opacity: 0.7;
+}
+.personagem-hero .dh-hero-badge.cp {
+  display: none;
 }
 .personagem-hero .name-input {
   font-family: inherit;
@@ -6218,6 +5969,670 @@ body {
   }
   .personagem-hero {
     grid-column: 1 / -1;
+  }
+}
+
+/* =====================================================================
+   MOBILE LAYOUT SYSTEM — shared rhythm for tablet and phone. Desktop
+   keeps its original dashboard and modal proportions.
+   ===================================================================== */
+@media (max-width: 1023px) {
+  .desktop-topbar {
+    height: auto;
+    min-height: 76px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+    gap: 10px;
+  }
+  .desktop-topbar-name,
+  .desktop-topbar-res {
+    font-size: 13px;
+  }
+  .desktop-home {
+    padding: 16px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    gap: 14px;
+  }
+  .dh-card {
+    padding: 16px;
+  }
+  .dh-card-title {
+    margin-bottom: 10px;
+  }
+  .dh-hero-name,
+  .personagem-hero .name-btn {
+    font-size: 18px;
+  }
+  .personagem-hero .name-input {
+    font-size: 16px;
+  }
+  .dh-hero-badge {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+  .dh-hero-xpbar {
+    height: 8px;
+  }
+  .dh-hero-equip {
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .dh-equip-slot {
+    flex: 1 1 100%;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .dh-equip-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .dh-equip-label {
+    font-size: 9px;
+  }
+  .dh-equip-name {
+    font-size: 11px;
+  }
+  .dh-inventory-chip {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+  .dh-idle {
+    padding: 12px 6px;
+    font-size: 12px;
+  }
+  .dh-activity-item {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .dh-activity-icon {
+    font-size: 20px;
+    width: 26px;
+  }
+  .dh-activity-icon .pixel-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .dh-activity-name,
+  .dh-skill-name {
+    font-size: 12px;
+  }
+  .dh-activity-detail {
+    font-size: 11px;
+  }
+  .dh-activity-time,
+  .dh-skill-level {
+    font-size: 10px;
+  }
+  .dh-skill-row {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .dh-skill-icon {
+    font-size: 20px;
+    width: 26px;
+  }
+  .dh-skill-icon .pixel-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .dh-quick-grid {
+    gap: 10px;
+  }
+  .dh-quick-btn {
+    padding: 12px 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --mobile-page-pad: 10px;
+    --mobile-card-pad: 12px;
+    --mobile-gap: 10px;
+    --mobile-title-size: 12px;
+    --mobile-body-size: 13px;
+    --mobile-muted-size: 11px;
+    --mobile-control-height: 38px;
+  }
+  .desktop-topbar {
+    min-height: 62px;
+    padding: env(safe-area-inset-top, 0px) var(--mobile-page-pad) 6px;
+    gap: 6px;
+  }
+  .desktop-topbar-menu {
+    width: 34px;
+    height: 34px;
+    margin-right: 0;
+    font-size: 16px;
+  }
+  .desktop-topbar-profile {
+    gap: 7px;
+    padding: 4px;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+  .desktop-topbar-name {
+    max-width: 74px;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .desktop-topbar-title {
+    display: none;
+  }
+  .desktop-topbar-stats-row {
+    font-size: 10px;
+  }
+  .desktop-topbar-resources {
+    gap: 7px;
+    flex-shrink: 0;
+  }
+  .desktop-topbar-res {
+    gap: 3px;
+    font-size: 11px;
+  }
+  .desktop-topbar-res .inline-icon {
+    width: 17px;
+    height: 17px;
+  }
+  .desktop-topbar-settings {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+  }
+
+  /* Phone dashboard: the hero summary is a two-column card, its gear strip spans below it. */
+  .desktop-home {
+    padding: var(--mobile-page-pad) var(--mobile-page-pad) calc(18px + env(safe-area-inset-bottom, 0px));
+    gap: var(--mobile-gap);
+  }
+  .dh-card {
+    padding: var(--mobile-card-pad);
+    border-radius: 11px;
+  }
+  .dh-card-title {
+    font-size: var(--mobile-title-size);
+    padding-bottom: 7px;
+    margin-bottom: 9px;
+  }
+  .dh-hero {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px 10px;
+    text-align: left;
+  }
+  .dh-hero-portrait {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 64px;
+    height: 64px;
+    padding: 0;
+    border-radius: 10px;
+  }
+  .dh-hero-body {
+    display: contents;
+  }
+  .dh-hero-headline {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+  .dh-hero-name,
+  .personagem-hero .name-btn {
+    max-width: 100%;
+    font-size: 16px;
+  }
+  .dh-hero-badges {
+    grid-column: 2;
+    grid-row: 2;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 5px;
+  }
+  .dh-hero-badge {
+    padding: 3px 7px;
+    font-size: 10px;
+    border-radius: 6px;
+  }
+  .dh-hero-xpbar {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    height: 7px;
+  }
+  .dh-hero-equip {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0;
+  }
+  .dh-equip-slot {
+    min-width: 0;
+    padding: 6px;
+    gap: 6px;
+    flex-basis: auto;
+    border-radius: 8px;
+  }
+  .dh-equip-icon {
+    width: 26px;
+    height: 26px;
+    border-width: 1px;
+  }
+  .dh-equip-label {
+    font-size: 8px;
+  }
+  .dh-equip-name {
+    font-size: 10px;
+  }
+  .dh-inventory-chip {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    align-self: start;
+    margin: 0;
+    padding: 5px 9px;
+    font-size: 10px;
+    border-width: 1px;
+  }
+  .dh-activity-grid {
+    gap: 6px;
+  }
+  .dh-activity-item {
+    min-height: var(--mobile-control-height);
+    padding: 7px 9px;
+    gap: 8px;
+    border-radius: 8px;
+  }
+  .dh-activity-icon {
+    width: 22px;
+    font-size: 18px;
+  }
+  .dh-activity-icon .pixel-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .dh-activity-info {
+    gap: 2px;
+  }
+  .dh-activity-name {
+    font-size: 11px;
+  }
+  .dh-activity-detail,
+  .dh-activity-time {
+    font-size: 10px;
+  }
+  .dh-activity-bar {
+    height: 4px;
+    margin-top: 1px;
+  }
+  .dh-idle {
+    padding: 5px 2px;
+    font-size: var(--mobile-muted-size);
+    line-height: 1.35;
+  }
+  .dh-skill-row {
+    gap: 7px;
+    margin-bottom: 9px;
+  }
+  .dh-skill-icon {
+    width: 22px;
+    font-size: 17px;
+  }
+  .dh-skill-icon .pixel-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .dh-skill-head {
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .dh-skill-name {
+    font-size: 11px;
+  }
+  .dh-skill-level {
+    font-size: 10px;
+  }
+  .dh-skill-bar {
+    height: 7px;
+  }
+  .dh-dungeon-detail {
+    gap: 4px;
+    font-size: 10px;
+  }
+  .dh-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .dh-quick-btn {
+    min-height: var(--mobile-control-height);
+    padding: 8px 6px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
+
+  /* Character panel follows the same compact identity row, then keeps each RPG section distinct. */
+  .personagem-view {
+    gap: var(--mobile-gap);
+  }
+  .personagem-hero {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px 10px;
+    text-align: left;
+  }
+  .personagem-hero .dh-hero-portrait {
+    width: 64px;
+    height: 64px;
+    grid-row: 1 / span 2;
+  }
+  .personagem-hero .dh-hero-body {
+    display: flex;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-width: 0;
+    gap: 6px;
+    padding: 0;
+  }
+  .personagem-hero .dh-hero-headline,
+  .personagem-hero .dh-hero-badges {
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .personagem-hero .hero-title-line {
+    font-size: 10px;
+    text-align: left;
+  }
+  .personagem-hero .name-btn {
+    text-align: left;
+  }
+  .personagem-hero .dh-hero-badge.cp {
+    display: inline-flex;
+  }
+  .personagem-attrs .hero-cp-bar,
+  .personagem-attrs .attrs-header > span:nth-child(2) {
+    display: none;
+  }
+  .personagem-equip .hero-equip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+  .personagem-equip .hero-equip-card {
+    min-width: 0;
+    padding: 8px;
+    gap: 7px;
+  }
+  .personagem-equip .hero-equip-icon {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+  }
+  .personagem-equip .hero-equip-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .personagem-equip .hero-equip-name-text {
+    overflow-wrap: normal;
+  }
+  .personagem-attrs .hero-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .personagem-attrs .attrs-list {
+    gap: 6px;
+  }
+  .personagem-attrs .attr-row {
+    min-width: 0;
+    padding: 7px 8px;
+  }
+
+  /* Inventory: compact counters and grid remain visible behind a bottom-sheet item detail. */
+  .inventory-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 8px;
+  }
+  .inventory-summary-chip {
+    padding: 4px 7px;
+    color: #d8c9a0;
+    font-size: 10px;
+    line-height: 1.3;
+    background: rgba(0, 0, 0, 0.24);
+    border: 1px solid #3a2a4a;
+    border-radius: 999px;
+  }
+  .inv-tabs {
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .inv-tabs .tab {
+    min-width: 0;
+    min-height: 34px;
+    padding: 6px 3px;
+    font-size: 10px;
+    overflow-wrap: anywhere;
+  }
+  .inv-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+    flex: none;
+    max-height: 42dvh;
+    padding: 1px;
+  }
+  .inv-slot {
+    border-radius: 5px;
+  }
+  .inv-icon {
+    font-size: 17px;
+  }
+  .inv-qty {
+    font-size: 9px;
+  }
+  .inv-detail-backdrop {
+    display: contents;
+  }
+  .inv-detail-backdrop.open {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 12px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(5, 3, 10, 0.68);
+  }
+  .inv-detail {
+    display: none;
+  }
+  .inv-detail-backdrop.open .inv-detail {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 560px);
+    max-height: min(72dvh, 620px);
+    overflow-y: auto;
+    margin: 0;
+    padding: 18px 14px 14px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    text-align: left;
+    background: linear-gradient(180deg, #241a30, #140d1c);
+    border: 2px solid #8a6a3a;
+    border-radius: 16px 16px 12px 12px;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
+  }
+  .inv-detail-close {
+    position: sticky;
+    top: -10px;
+    align-self: flex-end;
+    z-index: 1;
+    width: 32px;
+    height: 32px;
+    margin: -9px -5px 2px 0;
+    color: #ffe9a8;
+    background: #1a1220;
+    border: 1px solid #6a4a2a;
+    border-radius: 50%;
+  }
+  .inv-detail .inv-detail-name {
+    padding-right: 24px;
+  }
+
+  /* Orders become a near-full-height work surface with compact, scan-friendly requirements. */
+  .modal-backdrop:has(.delivery-modal) {
+    align-items: stretch;
+    padding: 6px;
+  }
+  .modal-backdrop:has(.inventory-modal) {
+    align-items: center;
+    padding: 12px 6px;
+  }
+  .delivery-modal,
+  .inventory-modal {
+    width: 100%;
+    max-width: none;
+    height: calc(100dvh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: none;
+    padding: 14px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-radius: 13px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .inventory-modal {
+    display: flex;
+    flex-direction: column;
+    height: min(68dvh, 600px);
+    min-height: min(420px, calc(100dvh - 24px));
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+  }
+  .inventory-modal .inv-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    flex: none;
+    min-height: 0;
+    max-height: 56dvh;
+  }
+  .delivery-modal .modal-title,
+  .inventory-modal .modal-title {
+    margin: 0 0 8px;
+    padding-right: 32px;
+    font-size: 17px;
+  }
+  .delivery-active {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 8px;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .delivery-active .delivery-label,
+  .delivery-active .camp-expedition-name,
+  .delivery-active .delivery-meta,
+  .delivery-active .expedition-option-rewards,
+  .delivery-active .camp-expedition-bar,
+  .delivery-active .camp-expedition-time,
+  .delivery-active .expedition-tickets {
+    grid-column: 1 / -1;
+  }
+  .delivery-active .delivery-label {
+    margin: 0;
+  }
+  .delivery-active .camp-expedition-name {
+    margin: 0;
+    font-size: 13px;
+  }
+  .delivery-active .delivery-meta {
+    margin: 0;
+  }
+  .delivery-active .expedition-option-rewards {
+    margin: 0;
+  }
+  .delivery-active .camp-expedition-bar {
+    height: 5px;
+  }
+  .delivery-active .camp-expedition-time {
+    font-size: 10px;
+  }
+  .delivery-board-head {
+    margin-top: 9px;
+  }
+  .delivery-board-head .delivery-label {
+    font-size: 12px;
+  }
+  .delivery-reroll {
+    padding: 5px 9px;
+    font-size: 10px;
+  }
+  .delivery-modal > .expedition-note {
+    display: none;
+  }
+  .expedition-list {
+    max-height: none;
+    gap: 7px;
+    padding: 1px 1px 10px;
+  }
+  .expedition-option {
+    padding: 9px;
+    border-width: 1px;
+    border-radius: 9px;
+  }
+  .expedition-option-head {
+    margin-bottom: 2px;
+  }
+  .expedition-option-name {
+    min-width: 0;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .expedition-option-dur {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  .delivery-meta {
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+  .delivery-label {
+    margin: 4px 0 2px;
+    font-size: 10px;
+  }
+  .delivery-req {
+    margin-bottom: 3px;
+  }
+  .delivery-req-row {
+    gap: 6px;
+    padding: 2px 0;
+    font-size: 11px;
+  }
+  .delivery-req-name {
+    flex: 1;
+    min-width: 0;
+  }
+  .delivery-req-name > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .delivery-req-qty {
+    font-size: 11px;
+  }
+  .expedition-option-rewards {
+    gap: 4px 8px;
+    margin-bottom: 5px;
+    font-size: 11px;
+  }
+  .expedition-option .battle-btn {
+    width: auto;
+    min-width: 116px;
+    min-height: 34px;
+    padding: 6px 14px;
+    font-size: 11px;
+  }
+  .modal-x {
+    top: 9px;
+    right: 9px;
+    z-index: 3;
   }
 }
 

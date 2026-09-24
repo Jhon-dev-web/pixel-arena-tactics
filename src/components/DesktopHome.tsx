@@ -127,7 +127,7 @@ export default function DesktopHome({
       {/* Area A — Hero */}
       <section className="dh-card dh-hero">
         <button className="dh-hero-portrait" onClick={onOpenHero} data-ui>
-          <SpriteSheet src={spriteUrl} size="148px" row={0} />
+          <SpriteSheet src={spriteUrl} size="min(148px, 100%)" row={0} />
         </button>
         <div className="dh-hero-body">
           <div className="dh-hero-headline">

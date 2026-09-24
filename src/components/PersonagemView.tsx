@@ -3,7 +3,7 @@ import { t } from '../locales';
 import SpriteSheet from './SpriteSheet';
 import { EquipmentPanel, AttributesPanel, TitlesPanel, AttrKey } from './HeroPanels';
 import InventoryPanel from './InventoryPanel';
-import { SaveData, playerLevel, xpForNextLevel, xpToReachLevel } from '../game/engine';
+import { SaveData, computeCP, formatNumber, playerLevel, xpForNextLevel, xpToReachLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 
 // "Personagem" as its own main-content area (desktop: alongside the fixed sidebar; mobile: same
@@ -49,7 +49,7 @@ export default function PersonagemView({
     <div className="desktop-home personagem-view">
       <section className="dh-card personagem-hero">
         <div className="dh-hero-portrait" aria-hidden>
-          <SpriteSheet src={spriteUrl} size="148px" row={0} />
+          <SpriteSheet src={spriteUrl} size="min(148px, 100%)" row={0} />
         </div>
         <div className="dh-hero-body">
           <div className="dh-hero-headline">
@@ -87,6 +87,7 @@ export default function PersonagemView({
           {titleLabel && <p className="hero-title-line">• {titleLabel}</p>}
           <div className="dh-hero-badges">
             <span className="dh-hero-badge level">{t('camp.level', { n: level })}</span>
+            <span className="dh-hero-badge cp">⚔️ {t('profile.cp')}: {formatNumber(computeCP(save))}</span>
           </div>
           <div className="bar dh-hero-xpbar">
             <div className="bar-fill xp-fill" style={{ width: `${Math.round(progress * 100)}%` }} />

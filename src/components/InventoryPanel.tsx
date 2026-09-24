@@ -126,8 +126,10 @@ export default function InventoryPanel({
 
   return (
     <>
-      <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>
-      <p className="shop-space">{t('inventory.gearSpace', { n: gearInstanceCount(save), m: maxGearInstances() })}</p>
+      <div className="inventory-summary">
+        <span className="inventory-summary-chip">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</span>
+        <span className="inventory-summary-chip">{t('inventory.gearSpace', { n: gearInstanceCount(save), m: maxGearInstances() })}</span>
+      </div>
 
       <div className="inv-tabs">
         <button className={`tab${tab === 'all' ? ' active' : ''}`} onClick={() => setTab('all')} data-ui>
@@ -213,7 +215,9 @@ export default function InventoryPanel({
         ))}
       </div>
 
-      <div className="inv-detail">
+      <div className={`inv-detail-backdrop${selected ? ' open' : ''}`} onClick={() => setSelected(null)}>
+      <div className="inv-detail" onClick={(event) => event.stopPropagation()}>
+        {selected && <button className="inv-detail-close" onClick={() => setSelected(null)} aria-label={t('ui.close')} data-ui>✕</button>}
         {selectedGear ? (
           <>
             <div className="inv-detail-name">
@@ -384,6 +388,7 @@ export default function InventoryPanel({
             </button>
           </div>
         )}
+      </div>
       </div>
     </>
   );
