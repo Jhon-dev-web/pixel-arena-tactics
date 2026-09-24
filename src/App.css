@@ -4626,7 +4626,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #07050b;
+  background:
+    linear-gradient(180deg, rgba(7, 5, 11, 0.55), rgba(7, 5, 11, 0.75)),
+    url('/assets/backgrounds/login_castle.webp') center center / cover no-repeat,
+    #07050b;
   padding: 16px;
 }
 .auth-modal {
