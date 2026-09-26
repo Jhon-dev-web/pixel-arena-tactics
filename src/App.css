@@ -4752,6 +4752,91 @@ body {
   font-size: calc(var(--font-size) - 2px);
   text-align: center;
 }
+.username-input-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  background: #1c1327;
+  color: #ffe9a8;
+}
+.username-input-wrap:focus-within {
+  border-color: #ffd76a;
+  box-shadow: 0 0 0 2px rgba(255, 215, 106, 0.18);
+}
+.username-prefix {
+  flex: 0 0 auto;
+  font-size: var(--font-size);
+  color: #ffd76a;
+}
+.username-input-wrap .settings-select {
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 0 0 5px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #f5e9c8;
+}
+.username-hint,
+.username-permanent-note {
+  margin: 0;
+  color: #c9bcd8;
+  font-size: calc(var(--font-size) - 3px);
+  line-height: 1.45;
+}
+.username-status {
+  min-height: 1.4em;
+  margin: 0;
+  color: #c9bcd8;
+  font-size: calc(var(--font-size) - 3px);
+  line-height: 1.4;
+}
+.username-status.available {
+  color: #8fe08a;
+}
+.username-status.taken,
+.username-status.reserved {
+  color: #ff8a7a;
+}
+.username-confirmation .auth-subtitle {
+  margin-bottom: 10px;
+}
+.username-confirmation .username-permanent-note {
+  text-align: center;
+}
+.username-confirm-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.username-confirm-actions .result-btn {
+  min-height: 44px;
+  margin-top: 0;
+  padding: 8px 10px;
+  font-size: var(--font-size);
+}
+.username-back {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 2px solid #6a4a2a;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c9bcd8;
+  font: inherit;
+  font-size: var(--font-size);
+  line-height: 1.3;
+  cursor: pointer;
+}
+.username-back:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
 
 .sync-status {
   font-size: calc(var(--font-size) - 6px);
@@ -6521,6 +6606,24 @@ body {
     border: 1px solid #3a2a4a;
     border-radius: 999px;
   }
+  .inventory-expand-btn {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0 7px;
+    font-size: 11px;
+  }
+  .expand-modal {
+    width: min(90vw, 300px);
+    padding: 16px 14px;
+  }
+  .expand-row {
+    font-size: 10px;
+  }
+  .expand-actions .craft-btn,
+  .expand-cancel-btn {
+    min-height: 40px;
+    font-size: 10px;
+  }
   .inv-tabs {
     gap: 4px;
     margin-bottom: 8px;
@@ -6605,24 +6708,6 @@ body {
   .modal-backdrop:has(.inventory-modal) {
     align-items: center;
     padding: 12px 6px;
-  }
-  .inventory-expand-btn {
-    min-width: 24px;
-    min-height: 24px;
-    padding: 0 7px;
-    font-size: 11px;
-  }
-  .expand-modal {
-    width: min(90vw, 300px);
-    padding: 16px 14px;
-  }
-  .expand-row {
-    font-size: 10px;
-  }
-  .expand-actions .craft-btn,
-  .expand-cancel-btn {
-    min-height: 40px;
-    font-size: 10px;
   }
   .delivery-modal,
   .inventory-modal {

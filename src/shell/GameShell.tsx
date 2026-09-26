@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import AuthScreen from '../components/AuthScreen';
 import LegacyImportPrompt from '../components/LegacyImportPrompt';
+import UsernameOnboarding from '../components/UsernameOnboarding';
 import App from '../App';
 import { defaultSave } from '../game/engine';
+import { getMyUsername } from '../game/usernameRepository';
 import {
   backupLegacyLocalSaveOnce,
   hasLegacyLocalSave,
@@ -17,6 +19,8 @@ import { t } from '../locales';
 
 type Resolution =
   | { kind: 'loading' }
+  | { kind: 'needsUsername' }
+  | { kind: 'profileError' }
   | { kind: 'needsLegacyDecision' }
   | { kind: 'ready'; initial: LoadResult; repository: SaveRepository };
 
@@ -29,6 +33,8 @@ export default function GameShell() {
   const { status, user, configured } = useAuth();
   const [resolution, setResolution] = useState<Resolution>({ kind: 'loading' });
   const [importing, setImporting] = useState(false);
+  const [usernameReadyFor, setUsernameReadyFor] = useState<string | null>(null);
+  const [profileRetry, setProfileRetry] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +56,22 @@ export default function GameShell() {
 
     const repo = new SupabaseSaveRepository(user.id);
     (async () => {
+      if (usernameReadyFor !== user.id) {
+        let username: string | null;
+        try {
+          username = await getMyUsername();
+        } catch (err) {
+          console.error('[GameShell] failed to load account profile', err);
+          if (!cancelled) setResolution({ kind: 'profileError' });
+          return;
+        }
+        if (cancelled) return;
+        if (!username) {
+          setResolution({ kind: 'needsUsername' });
+          return;
+        }
+      }
+
       const existing = await repo.load();
       if (cancelled) return;
       if (existing) {
@@ -71,7 +93,7 @@ export default function GameShell() {
     return () => {
       cancelled = true;
     };
-  }, [configured, status, user]);
+  }, [configured, profileRetry, status, user, usernameReadyFor]);
 
   if (configured && status === 'loading') {
     return (
@@ -123,6 +145,41 @@ export default function GameShell() {
           }
         }}
       />
+    );
+  }
+
+  if (resolution.kind === 'needsUsername') {
+    if (!user) {
+      return (
+        <div className="auth-screen">
+          <p className="auth-loading">{t('auth.restoringSession')}</p>
+        </div>
+      );
+    }
+    return (
+      <UsernameOnboarding
+        onComplete={() => {
+          setUsernameReadyFor(user.id);
+          setResolution({ kind: 'loading' });
+        }}
+      />
+    );
+  }
+
+  if (resolution.kind === 'profileError') {
+    return (
+      <div className="auth-screen">
+        <section className="modal auth-modal" aria-labelledby="profile-load-error-title">
+          <h1 className="modal-title" id="profile-load-error-title">{t('usernameOnboarding.profileTitle')}</h1>
+          <p className="auth-subtitle">{t('usernameOnboarding.loadError')}</p>
+          <button className="result-btn" type="button" onClick={() => {
+            setResolution({ kind: 'loading' });
+            setProfileRetry((attempt) => attempt + 1);
+          }}>
+            {t('usernameOnboarding.retry')}
+          </button>
+        </section>
+      </div>
     );
   }
 
