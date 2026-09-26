@@ -11,7 +11,7 @@ import {
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked } from './huntingZones';
 import { allocateToPouch, drainPouchToMaterials, HuntPouchItem } from './huntPouch';
 import { PendingHuntReward } from './huntSession';
-import { inventorySlotsUsed, MAX_SLOTS } from './inventory';
+import { inventoryCapacity, inventorySlotsUsed } from './inventory';
 import T from './tunables';
 
 // The lifecycle of a Hunting session as three pure, atomic transitions on the save: start -> stop -> claim.
@@ -93,7 +93,7 @@ export function applyHuntClaim(save: SaveData, id: string): SaveData | null {
   if (!p || p.id !== id) return null;
   const { battlePassLevel, battlePassXp } = addBattlePassXp(save, p.bpXp);
   const atCap = playerLevel(save.xp) >= 100;
-  const { materials, remaining } = drainPouchToMaterials(save.huntPouch.items, save.materials, inventorySlotsUsed(save), MAX_SLOTS);
+  const { materials, remaining } = drainPouchToMaterials(save.huntPouch.items, save.materials, inventorySlotsUsed(save), inventoryCapacity(save));
   return {
     ...save,
     gold: save.gold + p.gold,

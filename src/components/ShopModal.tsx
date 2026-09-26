@@ -3,7 +3,7 @@ import Assets from '../assets.json';
 import { SaveData } from '../game/engine';
 import { CONSUMABLES, CONSUMABLE_STACK, ConsumableId } from '../game/consumables';
 import { GEMS, GemId } from '../game/gems';
-import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
+import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import ConsumableIcon from './ConsumableIcon';
 import GemIcon from './GemIcon';
 import TitleIcon from './TitleIcon';
@@ -24,6 +24,7 @@ export default function ShopModal({
   onClose: () => void;
 }) {
   const slots = inventorySlotsUsed(save);
+  const capacity = inventoryCapacity(save);
 
   return (
     <div className="modal-backdrop">
@@ -32,12 +33,12 @@ export default function ShopModal({
           <TitleIcon src={Assets.icons.gold.url} fallback="🛒" /> {t('shop.title')}
         </h2>
         <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
-        <p className="shop-space">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</p>
+        <p className="shop-space">{t('inventory.space', { n: slots, m: capacity })}</p>
 
         <div className="shop-body">
           {CONSUMABLES.filter((c) => c.purchasable).map((c) => {
             const qty = save.consumables?.[c.id] ?? 0;
-            const bagFull = qty === 0 && slots >= MAX_SLOTS;
+            const bagFull = qty === 0 && slots >= capacity;
             const disabled = save.gold < c.cost || qty >= CONSUMABLE_STACK || bagFull;
             return (
               <div className="gear-row" key={c.id}>

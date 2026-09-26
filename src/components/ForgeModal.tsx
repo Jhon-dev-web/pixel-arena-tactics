@@ -25,6 +25,7 @@ import {
   maxGearInstances,
   planForgeIngredients,
 } from '../game/gearInstances';
+import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import { rarityDef } from '../game/rarity';
 import { gearInstanceLabel, refineTag } from './gearLabel';
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
@@ -114,7 +115,10 @@ export default function ForgeModal({
     if (!hasGems(save.gems, item.recipe?.gems)) return false;
     const plan = planForgeIngredients(save, item);
     if (!plan) return false;
-    if (isInstancedSlot(item.slot) && gearInstanceCount(save) - plan.length + 1 > maxGearInstances()) return false;
+    if (isInstancedSlot(item.slot)) {
+      if (gearInstanceCount(save) - plan.length + 1 > maxGearInstances()) return false;
+      if (inventorySlotsUsed(save) - plan.length + 1 > inventoryCapacity(save)) return false;
+    }
     if ((item.recipe?.shards ?? 0) > 0 && save.shards < (item.recipe?.shards ?? 0)) return false;
     return true;
   };
@@ -196,7 +200,7 @@ export default function ForgeModal({
 
         {tab === 'forge' && (
           <div className="forge-body">
-            <p className="shop-space">{t('forge.gearSpace', { n: gearInstanceCount(save), m: maxGearInstances() })}</p>
+            <p className="shop-space">{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</p>
             {pendingForge && (
               <div className="salvage-preview forge-confirm">
                 <span className="salvage-preview-label">{t('forge.confirmIngredients')}</span>

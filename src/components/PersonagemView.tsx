@@ -23,6 +23,7 @@ export default function PersonagemView({
   onReforge,
   onSalvage,
   onUseConsumable,
+  onExpandInventory,
 }: {
   save: SaveData;
   spriteUrl: string;
@@ -36,6 +37,7 @@ export default function PersonagemView({
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
+  onExpandInventory: () => void;
 }) {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -120,6 +122,7 @@ export default function PersonagemView({
           onReforge={onReforge}
           onSalvage={onSalvage}
           onUseConsumable={onUseConsumable}
+          onExpand={onExpandInventory}
         />
       </section>
     </div>

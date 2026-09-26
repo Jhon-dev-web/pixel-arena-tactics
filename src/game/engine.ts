@@ -32,6 +32,7 @@ import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
 import { getPlant, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
+import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 
 export type BuffType = 'strength' | 'attack';
 
@@ -125,6 +126,10 @@ export interface SaveData {
   gearInstances: Record<GearInstanceId, GearInstance>;
   inventory: Record<string, number>;
   equipped: EquippedGear;
+  // Single shared "Mochila" capacity (materials/consumables/stackable gear stacks + stored, unequipped
+  // GearInstances all draw from this one pool). Never decreases across a load — see
+  // normalizeInventoryCapacity in inventory.ts.
+  inventoryCapacity: number;
   highestDungeonFloor: number;
   heroName: string;
   str: number;
@@ -700,6 +705,7 @@ export function defaultSave(): SaveData {
     gearInstances: starter.instances,
     inventory: { ...DEFAULT_INVENTORY },
     equipped: { ...DEFAULT_EQUIPPED, weapon: starter.weaponId, armor: starter.armorId },
+    inventoryCapacity: DEFAULT_INVENTORY_CAPACITY,
     highestDungeonFloor: 1,
     heroName: 'Hero',
     str: 0,
@@ -1055,6 +1061,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         gearInstances,
         inventory: gear.inventory,
         equipped: { ...gear.equipped, weapon: weaponId, armor: armorId },
+        inventoryCapacity: normalizeInventoryCapacity(parsed.inventoryCapacity),
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },

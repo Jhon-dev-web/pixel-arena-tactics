@@ -37,7 +37,6 @@ import {
   applyUpgrade,
   createGearInstance,
   equippedSubstatTotals,
-  maxGearInstances,
   questMaxRefine,
   resolveGearInstance,
 } from './game/gearInstances';
@@ -45,7 +44,7 @@ import { MaterialId, hasMaterials } from './game/materials';
 import { getRefiningRecipe } from './game/refining';
 import { getPotionRecipe } from './game/potions';
 import { CONSUMABLE_STACK, ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from './game/consumables';
-import { isBagFull } from './game/inventory';
+import { expandInventory, inventoryCapacity, inventorySlotsUsed, isBagFull } from './game/inventory';
 import { GEMS, GemId } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { playerSpriteUrl } from './game/sprites';
@@ -1060,7 +1059,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const s = saveRef.current;
     const result = applyForge(s, id, { level: playerLevel(s.xp), consumedIds });
     if (!result.ok) {
-      if (result.reason === 'capacity') showToast(t('forge.gearFull', { n: maxGearInstances() }));
+      if (result.reason === 'capacity') showToast(t('forge.gearFull', { n: inventoryCapacity(s) }));
       return;
     }
     setSaveBoth(result.save);
@@ -1212,11 +1211,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth({ ...s, equipped: { ...s.equipped, [item.slot]: id } });
   };
 
-  // Weapon / armor slot -> empty ("bare hands", zero-stat starter); the piece stays in the bag.
+  // Weapon / armor slot -> empty ("bare hands", zero-stat starter); the piece goes back into the bag —
+  // which means it now needs a free slot: an equipped instance is free, a stored one is not.
   const unequipGear = (id: string) => {
     const s = saveRef.current;
     const hit = resolveGearInstance(s, id);
     if (hit) {
+      if (inventorySlotsUsed(s) + 1 > inventoryCapacity(s)) {
+        showToast(t('inventory.bagFullUnequip'));
+        return;
+      }
       playSfx('click');
       setSaveBoth(applyUnequipSlot(s, hit.item.slot as InstancedSlot));
       return;
@@ -1225,6 +1229,18 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!item || isInstancedSlot(item.slot)) return;
     playSfx('click');
     setSaveBoth({ ...s, equipped: { ...s.equipped, [item.slot]: null } });
+  };
+
+  const expandInventoryBag = () => {
+    const s = saveRef.current;
+    const next = expandInventory(s);
+    if (!next) {
+      showToast(t('inventory.expandFailed'));
+      return;
+    }
+    playSfx('click');
+    setSaveBoth(next);
+    showToast(t('inventory.expanded', { n: next.inventoryCapacity }));
   };
 
   const heroSpriteUrl = playerSpriteUrl();
@@ -1333,6 +1349,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onReforge={reforgeItem}
               onSalvage={salvageItem}
               onUseConsumable={useConsumableManually}
+              onExpandInventory={expandInventoryBag}
             />
           )}
           {activeView === 'oficios' && <OficiosView save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} />}
@@ -1381,6 +1398,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onReforge={reforgeItem}
           onSalvage={salvageItem}
           onUseConsumable={useConsumableManually}
+          onExpand={expandInventoryBag}
           onClose={() => {
             playSfx('click');
             setBagOpen(false);

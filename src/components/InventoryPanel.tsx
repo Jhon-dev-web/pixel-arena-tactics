@@ -4,11 +4,11 @@ import { SaveData } from '../game/engine';
 import { GEAR, GearItem, getGear, isInstancedSlot } from '../game/gear';
 import { canAffordReforge, getReforgeCost } from '../game/reforge';
 import T from '../game/tunables';
-import { clampRefine, gearInstanceCount, isInstanceEquipped, listGearInstances, maxGearInstances, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
+import { clampRefine, isInstanceEquipped, listGearInstances, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
-import { MAX_SLOTS, inventorySlotsUsed } from '../game/inventory';
+import { inventoryCapacity, inventorySlotsUsed, nextExpansion } from '../game/inventory';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
@@ -40,6 +40,7 @@ export default function InventoryPanel({
   onReforge,
   onSalvage,
   onUseConsumable,
+  onExpand,
 }: {
   save: SaveData;
   onEquip: (id: string) => void;
@@ -48,11 +49,13 @@ export default function InventoryPanel({
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
+  onExpand: () => void;
 }) {
   const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables'>('all');
   const [selected, setSelected] = useState<{ kind: SelKind; id: string } | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmSalvage, setConfirmSalvage] = useState(false);
+  const [expandOpen, setExpandOpen] = useState(false);
 
   const gearInstances = listGearInstances(save);
   const stackableGear = GEAR.filter((g) => !isInstancedSlot(g.slot) && (save.inventory?.[g.id] ?? 0) > 0);
@@ -64,6 +67,9 @@ export default function InventoryPanel({
   const showConsumables = tab === 'all' || tab === 'consumables';
 
   const slots = inventorySlotsUsed(save);
+  const capacity = inventoryCapacity(save);
+  const expansion = nextExpansion(save);
+  const canAffordExpansion = !!expansion && save.gold >= expansion.goldCost;
 
   const select = (kind: SelKind, id: string) => {
     setSelected({ kind, id });
@@ -127,9 +133,63 @@ export default function InventoryPanel({
   return (
     <>
       <div className="inventory-summary">
-        <span className="inventory-summary-chip">{t('inventory.space', { n: slots, m: MAX_SLOTS })}</span>
-        <span className="inventory-summary-chip">{t('inventory.gearSpace', { n: gearInstanceCount(save), m: maxGearInstances() })}</span>
+        <span className="inventory-summary-chip">{t('inventory.space', { n: slots, m: capacity })}</span>
+        <button
+          className="inventory-expand-btn"
+          onClick={() => setExpandOpen(true)}
+          aria-label={t('inventory.expandTitle')}
+          data-ui
+        >
+          +
+        </button>
       </div>
+
+      {expandOpen && (
+        <div className="modal-backdrop" onClick={() => setExpandOpen(false)}>
+          <div className="modal expand-modal" onClick={(event) => event.stopPropagation()}>
+            <h2 className="modal-title">{t('inventory.expandTitle')}</h2>
+            <div className="expand-rows">
+              <div className="expand-row">
+                <span>{t('inventory.currentCapacity')}</span>
+                <span>{capacity}</span>
+              </div>
+              {expansion ? (
+                <>
+                  <div className="expand-row">
+                    <span>{t('inventory.newCapacity')}</span>
+                    <span>{expansion.nextCapacity}</span>
+                  </div>
+                  <div className="expand-row">
+                    <span>{t('inventory.expandCost')}</span>
+                    <span className={canAffordExpansion ? '' : 'missing'}>{fmtNum(expansion.goldCost)} {t('inventory.reforgeGold')}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="salvage-hint">{t('inventory.maxCapacityReached')}</p>
+              )}
+            </div>
+            <div className="expand-actions">
+              <button className="expand-cancel-btn" type="button" onClick={() => setExpandOpen(false)} data-ui>
+                {t('inventory.cancel')}
+              </button>
+              {expansion && (
+                <button
+                  className="craft-btn"
+                  type="button"
+                  disabled={!canAffordExpansion}
+                  onClick={() => {
+                    onExpand();
+                    setExpandOpen(false);
+                  }}
+                  data-ui
+                >
+                  {t('inventory.confirmExpand')}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="inv-tabs">
         <button className={`tab${tab === 'all' ? ' active' : ''}`} onClick={() => setTab('all')} data-ui>

@@ -4,6 +4,7 @@ import { GEMS, GemBonuses, GemId, addGemBonuses, gemListBonuses, getGem, hasGems
 import { MaterialId, hasMaterials } from './materials';
 import { RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rollRarity, rollSubstats, substatListTotals } from './rarity';
 import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salvage';
+import { inventoryCapacity, inventorySlotsUsed } from './inventory';
 import type { SaveData } from './engine';
 
 // Gear instances: every weapon / armor is its OWN object (rarity, substats, refine level, sockets, durability,
@@ -281,8 +282,10 @@ export function gearInstanceCount(save: Pick<SaveData, 'gearInstances'>): number
   return Object.keys(save.gearInstances ?? {}).length;
 }
 
-// TECHNICAL default, not a balance decision (tunables.gear.maxInstances). Only ever blocks CREATING a new
-// instance; loading / migrating a save never truncates.
+// TECHNICAL safety ceiling only (tunables.gear.maxInstances) — NOT the player-facing inventory capacity
+// (that's the shared "Mochila" pool, inventory.ts). Never surfaced in UI as a limit; only ever blocks
+// CREATING a new instance as a last-resort guard against unbounded growth. Loading / migrating a save
+// never truncates against it.
 export function maxGearInstances(): number {
   return Math.max(1, Math.floor(T.gear.maxInstances));
 }
@@ -512,7 +515,12 @@ export function applyForge(
   if (!consumed) return { ok: false, reason: 'ingredients' };
   if ((recipe.shards ?? 0) > 0 && save.shards < (recipe.shards ?? 0)) return { ok: false, reason: 'shards' };
   const instanced = isInstancedItem(item);
-  if (instanced && gearInstanceCount(save) - consumed.length + 1 > maxGearInstances()) return { ok: false, reason: 'capacity' };
+  if (instanced) {
+    // Technical safety ceiling first (never player-facing), then the real, player-facing check: the shared
+    // Mochila capacity. Crafting nets +1 stored instance minus however many ingredient instances it consumes.
+    if (gearInstanceCount(save) - consumed.length + 1 > maxGearInstances()) return { ok: false, reason: 'capacity' };
+    if (inventorySlotsUsed(save) - consumed.length + 1 > inventoryCapacity(save)) return { ok: false, reason: 'capacity' };
+  }
 
   const materials = { ...save.materials };
   for (const [mid, count] of Object.entries(recipe.materials ?? {})) {

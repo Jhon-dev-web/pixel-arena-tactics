@@ -21,7 +21,7 @@ import { getOreTier } from '../game/ores';
 import { getWoodTier } from '../game/woodcutting';
 import { getHuntingZone } from '../game/huntingZones';
 import { getBiomeForFloor, nextMilestone, MAX_DUNGEON_FLOOR } from '../game/dungeon';
-import { inventorySlotsUsed, MAX_SLOTS } from '../game/inventory';
+import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 
 const dText = (k: string, v?: Record<string, string | number>): string => t(`dungeon.${k}`, v);
 const oreText = (k: string): string => t(`ore.${k}`);
@@ -161,7 +161,7 @@ export default function DesktopHome({
             </div>
           </div>
           <button className="dh-inventory-chip" onClick={onOpenInventory} data-ui>
-            <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: MAX_SLOTS })}</span>
+            <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
           </button>
         </div>
       </section>

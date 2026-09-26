@@ -12,6 +12,7 @@ export default function InventoryModal({
   onReforge,
   onSalvage,
   onUseConsumable,
+  onExpand,
   onClose,
 }: {
   save: SaveData;
@@ -21,6 +22,7 @@ export default function InventoryModal({
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
+  onExpand: () => void;
   onClose: () => void;
 }) {
   return (
@@ -37,6 +39,7 @@ export default function InventoryModal({
           onReforge={onReforge}
           onSalvage={onSalvage}
           onUseConsumable={onUseConsumable}
+          onExpand={onExpand}
         />
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
           ✕
