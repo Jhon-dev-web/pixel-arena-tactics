@@ -22,6 +22,7 @@ import { getWoodTier } from '../game/woodcutting';
 import { getHuntingZone } from '../game/huntingZones';
 import { getBiomeForFloor, nextMilestone, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
+import { useDisplayName } from '../game/usernameContext';
 
 const dText = (k: string, v?: Record<string, string | number>): string => t(`dungeon.${k}`, v);
 const oreText = (k: string): string => t(`ore.${k}`);
@@ -89,6 +90,7 @@ export default function DesktopHome({
   onOpenInventory: () => void;
 }) {
   const now = Date.now();
+  const displayName = useDisplayName(save.heroName);
   const level = playerLevel(save.xp);
   const heroProgress = Math.max(0, Math.min(1, (save.xp - xpToReachLevel(level)) / Math.max(1, xpForNextLevel(level))));
   const cp = computeCP(save);
@@ -131,7 +133,7 @@ export default function DesktopHome({
         </button>
         <div className="dh-hero-body">
           <div className="dh-hero-headline">
-            <span className="dh-hero-name">{save.heroName}</span>
+            <span className="dh-hero-name">{displayName}</span>
           </div>
           <div className="dh-hero-badges">
             <span className="dh-hero-badge level">{t('camp.level', { n: level })}</span>

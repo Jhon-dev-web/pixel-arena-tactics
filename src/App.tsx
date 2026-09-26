@@ -1138,10 +1138,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth({ ...saveRef.current, [attr]: next });
   };
 
-  const renameHero = (name: string) => {
-    setSaveBoth({ ...saveRef.current, heroName: name });
-  };
-
   const selectTitle = (id: string | null) => {
     const s = saveRef.current;
     if (id !== null && (!getTitleDef(id) || !s.cosmetics.includes(id))) return;
@@ -1340,7 +1336,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               save={save}
               spriteUrl={heroSpriteUrl}
               onAttrChange={attrChange}
-              onRename={renameHero}
               onEquip={equipGear}
               onUnequip={unequipGear}
               onSelectTitle={selectTitle}

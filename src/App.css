@@ -6071,7 +6071,7 @@ body {
   text-shadow: 0 2px 0 #000;
   background: none;
   border: none;
-  cursor: pointer;
+  cursor: default;
   padding: 0;
   text-align: left;
   overflow: visible;

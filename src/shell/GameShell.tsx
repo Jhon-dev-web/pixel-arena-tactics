@@ -6,6 +6,7 @@ import UsernameOnboarding from '../components/UsernameOnboarding';
 import App from '../App';
 import { defaultSave } from '../game/engine';
 import { getMyUsername } from '../game/usernameRepository';
+import { UsernameContext } from '../game/usernameContext';
 import {
   backupLegacyLocalSaveOnce,
   hasLegacyLocalSave,
@@ -34,6 +35,7 @@ export default function GameShell() {
   const [resolution, setResolution] = useState<Resolution>({ kind: 'loading' });
   const [importing, setImporting] = useState(false);
   const [usernameReadyFor, setUsernameReadyFor] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [profileRetry, setProfileRetry] = useState(0);
 
   useEffect(() => {
@@ -56,21 +58,20 @@ export default function GameShell() {
 
     const repo = new SupabaseSaveRepository(user.id);
     (async () => {
-      if (usernameReadyFor !== user.id) {
-        let username: string | null;
-        try {
-          username = await getMyUsername();
-        } catch (err) {
-          console.error('[GameShell] failed to load account profile', err);
-          if (!cancelled) setResolution({ kind: 'profileError' });
-          return;
-        }
-        if (cancelled) return;
-        if (!username) {
-          setResolution({ kind: 'needsUsername' });
-          return;
-        }
+      let username: string | null;
+      try {
+        username = await getMyUsername();
+      } catch (err) {
+        console.error('[GameShell] failed to load account profile', err);
+        if (!cancelled) setResolution({ kind: 'profileError' });
+        return;
       }
+      if (cancelled) return;
+      if (!username) {
+        setResolution({ kind: 'needsUsername' });
+        return;
+      }
+      setUsername(username);
 
       const existing = await repo.load();
       if (cancelled) return;
@@ -183,5 +184,9 @@ export default function GameShell() {
     );
   }
 
-  return <App repository={resolution.repository} initialSave={resolution.initial.save} initialRevision={resolution.initial.revision} />;
+  return (
+    <UsernameContext.Provider value={username}>
+      <App repository={resolution.repository} initialSave={resolution.initial.save} initialRevision={resolution.initial.revision} />
+    </UsernameContext.Provider>
+  );
 }

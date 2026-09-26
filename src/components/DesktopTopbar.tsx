@@ -3,6 +3,7 @@ import { t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData, formatNumber, playerLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
+import { useDisplayName } from '../game/usernameContext';
 
 // Top bar shared by desktop (fixed sidebar alongside it) and mobile (hamburger + drawer instead) —
 // same data as the old mobile-only TopHud, just laid out wider on desktop. CP is deliberately left
@@ -31,6 +32,7 @@ export default function DesktopTopbar({
   // gameplay, just tells the player whether their last change made it to the server.
   syncStatus?: 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'offline';
 }) {
+  const displayName = useDisplayName(save.heroName);
   const level = playerLevel(save.xp);
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
   const titleLabel = titleDef ? t(`titles.${titleDef.nameKey}`) : null;
@@ -56,7 +58,7 @@ export default function DesktopTopbar({
         <SpriteSheet src={spriteUrl} size="40px" row={0} />
         <div className="desktop-topbar-profile-info">
           <div className="desktop-topbar-name-row">
-            <span className="desktop-topbar-name">{save.heroName}</span>
+            <span className="desktop-topbar-name">{displayName}</span>
             {titleLabel && <span className="desktop-topbar-title">• {titleLabel}</span>}
           </div>
           <div className="desktop-topbar-stats-row">

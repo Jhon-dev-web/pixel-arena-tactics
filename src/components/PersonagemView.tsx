@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { t } from '../locales';
+import { useDisplayName } from '../game/usernameContext';
 import SpriteSheet from './SpriteSheet';
 import { EquipmentPanel, AttributesPanel, TitlesPanel, AttrKey } from './HeroPanels';
 import InventoryPanel from './InventoryPanel';
@@ -14,7 +14,6 @@ export default function PersonagemView({
   save,
   spriteUrl,
   onAttrChange,
-  onRename,
   onEquip,
   onUnequip,
   onSelectTitle,
@@ -28,7 +27,6 @@ export default function PersonagemView({
   save: SaveData;
   spriteUrl: string;
   onAttrChange: (attr: AttrKey, delta: number) => void;
-  onRename: (name: string) => void;
   onEquip: (id: string) => void;
   onUnequip: (id: string) => void;
   onSelectTitle: (id: string | null) => void;
@@ -39,9 +37,7 @@ export default function PersonagemView({
   onUseConsumable: (id: string) => void;
   onExpandInventory: () => void;
 }) {
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState('');
-
+  const displayName = useDisplayName(save.heroName);
   const level = playerLevel(save.xp);
   const progress = Math.max(0, Math.min(1, (save.xp - xpToReachLevel(level)) / Math.max(1, xpForNextLevel(level))));
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
@@ -55,36 +51,7 @@ export default function PersonagemView({
         </div>
         <div className="dh-hero-body">
           <div className="dh-hero-headline">
-            {editingName ? (
-              <input
-                className="name-input"
-                autoFocus
-                value={nameDraft}
-                maxLength={16}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={() => {
-                  onRename((nameDraft.trim() || save.heroName).slice(0, 16));
-                  setEditingName(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    onRename((nameDraft.trim() || save.heroName).slice(0, 16));
-                    setEditingName(false);
-                  }
-                }}
-              />
-            ) : (
-              <button
-                className="name-btn"
-                onClick={() => {
-                  setNameDraft(save.heroName);
-                  setEditingName(true);
-                }}
-                data-ui
-              >
-                {save.heroName} <span className="pencil">✏️</span>
-              </button>
-            )}
+            <span className="name-btn">{displayName}</span>
           </div>
           {titleLabel && <p className="hero-title-line">• {titleLabel}</p>}
           <div className="dh-hero-badges">
