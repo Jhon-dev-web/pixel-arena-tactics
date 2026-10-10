@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
 import { effectiveRepairCost, isBattlePassActive, playerLevel, SaveData } from '../game/engine';
@@ -22,6 +22,7 @@ import {
   listGearInstances,
   maxGearInstances,
   planForgeIngredients,
+  applyForge,
 } from '../game/gearInstances';
 import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import { rarityDef } from '../game/rarity';
@@ -34,6 +35,7 @@ import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
 import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
+import StashHint from './StashHint';
 import ConsumableIcon from './ConsumableIcon';
 
 const gearText = (k: string): string => t(`gear.${k}`);
@@ -90,6 +92,8 @@ export default function ForgeModal({
   allowedTabs = ALL_TABS,
   title,
   icon = '⚒️',
+  initialTab,
+  focusItemId,
 }: {
   save: SaveData;
   // consumedIds: the confirmed selection of gear instances a recipe consumes (omitted = the cheapest copies).
@@ -103,9 +107,17 @@ export default function ForgeModal({
   allowedTabs?: ForgeTab[];
   title?: string;
   icon?: string;
+  // Opened from an item's "Usar em...": the tab to start on and the recipe to bring into view (its category opens and the card is highlighted).
+  initialTab?: ForgeTab;
+  focusItemId?: string;
 }) {
-  const [tab, setTab] = useState<ForgeTab>(allowedTabs[0] ?? 'forge');
-  const [forgeCategory, setForgeCategory] = useState<ForgeCategory>('weapon');
+  const focusItem = focusItemId ? getGear(focusItemId) : undefined;
+  const [tab, setTab] = useState<ForgeTab>(initialTab && allowedTabs.includes(initialTab) ? initialTab : allowedTabs[0] ?? 'forge');
+  const [forgeCategory, setForgeCategory] = useState<ForgeCategory>(() => (focusItem && FORGE_CATEGORIES.includes(focusItem.slot as ForgeCategory) ? (focusItem.slot as ForgeCategory) : 'weapon'));
+  useEffect(() => {
+    if (!focusItemId) return;
+    document.querySelector(`[data-recipe-id="${focusItemId}"]`)?.scrollIntoView({ block: 'center' });
+  }, [focusItemId]);
   const [justForged, setJustForged] = useState<string | null>(null);
   const [pendingForge, setPendingForge] = useState<{ id: string; ids: string[] } | null>(null);
   const catalystCount = save.consumables?.refine_catalyst ?? 0;
@@ -119,13 +131,15 @@ export default function ForgeModal({
     if (!hasGems(save.gems, item.recipe?.gems)) return false;
     const plan = planForgeIngredients(save, item);
     if (!plan) return false;
-    if (isInstancedSlot(item.slot)) {
-      if (gearInstanceCount(save) - plan.length + 1 > maxGearInstances()) return false;
-      if (inventorySlotsUsed(save) - plan.length + 1 > inventoryCapacity(save)) return false;
-    }
+    if (isInstancedSlot(item.slot) && gearInstanceCount(save) - plan.length + 1 > maxGearInstances()) return false;
+    // the result must fit the inventory (the forge itself decides: it counts the stacks the materials come out of)
+    if (applyForge(save, item.id, { level }).reason === 'capacity') return false;
     if ((item.recipe?.shards ?? 0) > 0 && save.shards < (item.recipe?.shards ?? 0)) return false;
     return true;
   };
+
+  // Only the shared inventory stands in the way (everything else is in order): the card says so instead of just greying out.
+  const blockedByBag = (item: GearItem): boolean => save.gold >= item.cost && applyForge(save, item.id, { level }).reason === 'capacity';
 
   const doForge = (id: string, consumedIds?: string[]) => {
     onForge(id, consumedIds);
@@ -268,7 +282,7 @@ export default function ForgeModal({
                     const ok = canForge(item);
                     const forged = justForged === item.id;
                     return (
-                      <div className={`craft-card ${rarityClass(item)}`} key={item.id}>
+                      <div className={`craft-card ${rarityClass(item)}${item.id === focusItemId ? ' focus' : ''}`} key={item.id} data-recipe-id={item.id}>
                         <span className="craft-icon">
                           <GearIcon item={item} />
                         </span>
@@ -286,6 +300,7 @@ export default function ForgeModal({
                           </div>
                           <span className="craft-desc">{gearText(item.descKey)}</span>
                           <span className="craft-stats">{gearStatLines(item).map((l) => l.text).join(' · ')}</span>
+                          {blockedByBag(item) && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
                           <div className="craft-req">
                             <span className="req-item">
                               <span className="mat-icon">
@@ -330,6 +345,7 @@ export default function ForgeModal({
                                   <span className={`req-amount${have < need ? ' missing' : ''}`}>
                                     {need}× {matText(`mat_${mid}`)}
                                   </span>
+                                  <StashHint kind="material" id={mid} need={need} />
                                 </span>
                               );
                             })}
@@ -422,6 +438,7 @@ export default function ForgeModal({
                               <span className={`req-amount${have < need ? ' missing' : ''}`}>
                                 {need}× {matText(`mat_${mid}`)}
                               </span>
+                              <StashHint kind="material" id={mid} need={need} />
                             </span>
                           );
                         })}

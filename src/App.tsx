@@ -28,7 +28,6 @@ import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './gam
 import { applyReforge } from './game/reforge';
 import {
   InstancedSlot,
-  applyDiscardInstance,
   applyDurabilityLoss,
   applyEquipInstance,
   applyForge,
@@ -45,15 +44,20 @@ import {
   resolveGearInstance,
 } from './game/gearInstances';
 import { getRefiningRecipe } from './game/refining';
-import { MaterialId } from './game/materials';
 import { ConsumableId, EXPEDITION_TICKET_SKIP_MS } from './game/consumables';
 import { addForced, canAddInstances, expandInventory, inventoryCapacity } from './game/inventory';
+import { StackKind, applyStashMove, applyStashUpgrade, applyStoreAll, bagCount, stashCount } from './game/stash';
+import { applyMerchantSell, SellKind } from './game/merchant';
+import { applyDiscard } from './game/bagActions';
+import { ItemUse } from './game/itemUses';
+import { RefiningStation, getRefiningRecipe as refiningRecipeById } from './game/refining';
+import { BagContext } from './components/bagContext';
 import { GEMS, GemId } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { playerSpriteUrl } from './game/sprites';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
-import ForgeModal from './components/ForgeModal';
+import ForgeModal, { ForgeTab } from './components/ForgeModal';
 import OficiosView from './components/OficiosView';
 import InventoryModal from './components/InventoryModal';
 import PersonagemView from './components/PersonagemView';
@@ -1008,27 +1012,84 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth(res.save);
   };
 
-  const discardItem = (kind: 'gear' | 'material' | 'consumable', id: string) => {
+  // Descartar (bagActions.ts): part or all of a stack, or one stored gear instance; the screen has already asked for the confirmation.
+  const discardItem = (kind: 'gear' | 'material' | 'consumable', id: string, qty: number | 'all' = 'all') => {
     const s = saveRef.current;
-    if (kind === 'material') {
-      const mats = { ...s.materials };
-      delete mats[id as MaterialId];
-      setSaveBoth({ ...s, materials: mats });
-    } else if (kind === 'consumable') {
-      const cons = { ...s.consumables };
-      cons[id as ConsumableId] = 0;
-      setSaveBoth({ ...s, consumables: cons });
-    } else if (s.gearInstances[id]) {
-      // A weapon / armor INSTANCE: only that piece goes (never the equipped one); its gems return to the stock.
-      const next = applyDiscardInstance(s, id);
-      if (next) setSaveBoth(next);
-    } else {
-      // Stackable gear (relic / tool).
-      const inv = { ...s.inventory };
-      delete inv[id];
-      setSaveBoth({ ...s, inventory: inv });
+    const next = s.gearInstances[id] ? applyDiscard(s, 'instance', id) : applyDiscard(s, kind, id, qty);
+    if (!next) return;
+    setSaveBoth(next);
+    playSfx('click');
+  };
+
+  // Baú (stash.ts): moving is partial by nature (what the destination has room for); say so when part stayed behind.
+  const moveStash = (dir: 'store' | 'take', kind: StackKind, id: string, qty: number | 'all') => {
+    const s = saveRef.current;
+    const r = applyStashMove(s, dir, kind, id, qty);
+    if (r.moved <= 0) {
+      showToast(t(dir === 'store' ? 'stash.fullToast' : 'stash.bagFullToast'));
+      return;
     }
     playSfx('click');
+    setSaveBoth(r.save);
+    const before = dir === 'store' ? bagCount(s, kind, id) : stashCount(s, kind, id);
+    if (r.moved < (qty === 'all' ? before : Math.min(qty, before))) showToast(t(dir === 'store' ? 'stash.partialStore' : 'stash.partialTake', { n: fmtNum(r.moved) }));
+  };
+
+  const storeAllMaterials = () => {
+    const r = applyStoreAll(saveRef.current, 'material');
+    if (r.moved <= 0) {
+      showToast(t('stash.fullToast'));
+      return;
+    }
+    playSfx('click');
+    setSaveBoth(r.save);
+    showToast(t('stash.stored', { n: fmtNum(r.moved) }));
+  };
+
+  const upgradeStash = () => {
+    const next = applyStashUpgrade(saveRef.current);
+    if (!next) {
+      showToast(t('stash.upgradeMissing'));
+      return;
+    }
+    playSfx('victory');
+    setSaveBoth(next);
+    showToast(t('stash.upgraded', { n: next.stash.level }));
+  };
+
+  // Vender ao mercador (merchant.ts): a low price and a daily budget; the toast says what it paid, or that the budget is spent.
+  const sellItem = (kind: SellKind, id: string, qty: number | 'all') => {
+    const r = applyMerchantSell(saveRef.current, kind, id, qty, Date.now());
+    if (!r.ok || !r.save) {
+      showToast(t(r.reason === 'budget' ? 'merchant.budgetSpent' : 'merchant.cannotSell'));
+      return;
+    }
+    playSfx('victory');
+    setSaveBoth(r.save);
+    showToast(r.capped ? t('merchant.soldCapped', { n: fmtNum(r.units ?? 0), g: fmtNum(r.gold ?? 0) }) : t('merchant.sold', { n: fmtNum(r.units ?? 0), g: fmtNum(r.gold ?? 0) }));
+  };
+
+  // "Usar em..." from an item: open the screen that consumes it, focused on the first recipe that does.
+  const [forgeFocus, setForgeFocus] = useState<{ tab: ForgeTab; itemId?: string } | null>(null);
+  const [oficiosFocus, setOficiosFocus] = useState<{ category: RefiningStation | 'potions'; recipeId: string } | null>(null);
+  const openUse = (use: ItemUse) => {
+    playSfx('click');
+    const first = use.refs[0];
+    if (use.kind === 'forge' || use.kind === 'upgrade') {
+      setBagOpen(false);
+      setForgeFocus({ tab: use.kind === 'forge' ? 'forge' : 'upgrade', itemId: use.kind === 'forge' ? first : undefined });
+      setForgeOpen(true);
+    } else if (use.kind === 'refine' || use.kind === 'alchemy') {
+      setBagOpen(false);
+      setOficiosFocus({ category: use.kind === 'alchemy' ? 'potions' : refiningRecipeById(first)?.station ?? 'furnace', recipeId: first });
+      setActiveView('oficios');
+    } else if (use.kind === 'delivery') {
+      setBagOpen(false);
+      openExpedition();
+    } else if (use.kind === 'garden') {
+      setBagOpen(false);
+      setGardenOpen(true);
+    }
   };
 
   // `id` is a weapon / armor INSTANCE id (or a relic template id). The equipped piece can never be salvaged,
@@ -1274,6 +1335,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   ];
 
   return (
+    <BagContext.Provider value={{ save, move: moveStash, storeAllMaterials, sell: sellItem, openUse, upgradeStash }}>
     <div className="game-root">
       <div className="desktop-shell">
         {isDesktop ? (
@@ -1325,7 +1387,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onExpandInventory={expandInventoryBag}
             />
           )}
-          {activeView === 'oficios' && <OficiosView save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} />}
+          {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} focus={oficiosFocus} />}
         </div>
       </div>
       {import.meta.env.DEV && !adminOpen && (
@@ -1339,6 +1401,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           save={save}
           onBuyConsumable={buyConsumable}
           onBuyGem={buyGem}
+          onSell={sellItem}
           onClose={() => {
             playSfx('click');
             setShopOpen(false);
@@ -1355,9 +1418,12 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onRepair={repairItem}
           onSocket={socketGem}
           onUnsocket={unsocketGem}
+          initialTab={forgeFocus?.tab}
+          focusItemId={forgeFocus?.itemId}
           onClose={() => {
             playSfx('click');
             setForgeOpen(false);
+            setForgeFocus(null);
           }}
         />
       )}
@@ -1567,6 +1633,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       )}
       {contextTutorial && <TutorialOverlay step={contextTutorial} onAdvance={closeContextTutorial} onSkip={skipAutomaticTutorials} onDismiss={dismissContextTutorial} />}
     </div>
+    </BagContext.Provider>
   );
 }
 

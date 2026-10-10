@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtNum, t } from '../locales';
 import { computeGardenSlotStatus, GARDEN_SLOTS, GardenStatus, SaveData } from '../game/engine';
 import { getPlant, plantHarvestXp, PLANTS, PlantDef, plotUnlockLevel, unlockedGardenPlots } from '../game/garden';
-import { readySlots } from '../game/gardenActions';
+import { applyHarvest, readySlots } from '../game/gardenActions';
 import { skillLevel } from '../game/skills';
 import SkillLevelBadge from './SkillLevelBadge';
 import TitleIcon from './TitleIcon';
@@ -223,11 +223,14 @@ export default function GardenModal({
   const nextPlotLevel = openPlots < GARDEN_SLOTS ? plotUnlockLevel(openPlots) : 0;
   const fertilizerQty = save.consumables.fertilizer ?? 0;
   const readyIdx = readySlots(save, now);
+  // ready plots whose yield has no room in the inventory (a harvest is refused for them; the crop stays ready)
+  const bagBlocked = applyHarvest(save, readyIdx, now)?.blocked ?? [];
 
   const harvest = (indices: number[]) => {
+    const harvestable = new Set(applyHarvest(save, indices, now)?.harvested.map((h) => h.slot) ?? []);
     const fresh = indices
-      // one float per plot even if the tap arrives twice before the card re-renders as empty
-      .filter((i) => statuses[i]?.ready && statuses[i].plantId && !floats.some((f) => f.slot === i))
+      // one float per plot even if the tap arrives twice before the card re-renders as empty; none for a plot the full inventory refuses
+      .filter((i) => harvestable.has(i) && statuses[i]?.ready && statuses[i].plantId && !floats.some((f) => f.slot === i))
       .map((i) => {
         const plant = getPlant(statuses[i].plantId as string)!;
         return { id: ++floatSeq.current, slot: i, text: `+${plant.qty} ${matText(plant.material)}` };
@@ -272,6 +275,7 @@ export default function GardenModal({
         </SkillLevelBadge>
 
         <div className="dungeon-body">
+          {bagBlocked.length > 0 && <p className="craft-bag-full">{t('garden.bagFull')}</p>}
           {readyIdx.length >= 2 && (
             <button className="garden-harvest-all" onClick={() => harvest(readyIdx)} data-ui>
               {gardenText('harvestAll').replace('{n}', String(readyIdx.length))}

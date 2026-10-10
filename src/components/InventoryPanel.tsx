@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { fmtNum, t } from '../locales';
 import { BUFF_ITEM, buffRemainingMs, isBuffActive } from '../game/buffs';
 import type { ConsumableId } from '../game/consumables';
@@ -11,6 +11,10 @@ import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
 import { inventoryCapacity, inventorySlotsUsed, nextExpansion, STACK_LIMIT, slotsForQty } from '../game/inventory';
+import { stashCapacity, stashCount, stashSlotsUsed } from '../game/stash';
+import StackActions, { StashTake } from './StackActions';
+import StashPane from './StashPane';
+import { BagContext } from './bagContext';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
@@ -18,6 +22,7 @@ import ConsumableIcon from './ConsumableIcon';
 import { refineTag } from './gearLabel';
 import { gearStatLines } from './gearStats';
 import UniqueTag from './UniqueTag';
+import StashHint from './StashHint';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
 // the Personagem view (embedded, no modal chrome) and the still-existing quick-access "Inventário"
@@ -56,14 +61,19 @@ export default function InventoryPanel({
   save: SaveData;
   onEquip: (id: string) => void;
   onUnequip: (id: string) => void;
-  onDiscard: (kind: SelKind, id: string) => void;
+  // kind 'gear' with an instance id discards that piece; qty only matters for stacks
+  onDiscard: (kind: SelKind, id: string, qty?: number | 'all') => void;
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
   onExpand: () => void;
 }) {
+  // stash / merchant / "Usar em..." actions come from App through the context (see bagContext.ts)
+  const bag = useContext(BagContext);
   const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables'>('all');
-  const [selected, setSelected] = useState<{ kind: SelKind; id: string } | null>(null);
+  // src: where the picked stack lives (the inventory or the Baú). Phones show one pane at a time.
+  const [selected, setSelected] = useState<{ src: 'bag' | 'stash'; kind: SelKind; id: string } | null>(null);
+  const [pane, setPane] = useState<'bag' | 'stash'>('bag');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmSalvage, setConfirmSalvage] = useState(false);
   const [expandOpen, setExpandOpen] = useState(false);
@@ -95,13 +105,14 @@ export default function InventoryPanel({
   const expansion = nextExpansion(save);
   const canAffordExpansion = !!expansion && save.gold >= expansion.goldCost;
 
-  const select = (kind: SelKind, id: string) => {
-    setSelected({ kind, id });
+  const select = (kind: SelKind, id: string, src: 'bag' | 'stash' = 'bag') => {
+    setSelected({ src, kind, id });
     setConfirmDiscard(false);
     setConfirmSalvage(false);
   };
 
-  const selectedInstance = selected?.kind === 'gear' ? resolveGearInstance(save, selected.id)?.instance ?? null : null;
+  const fromStash = selected?.src === 'stash';
+  const selectedInstance = selected?.kind === 'gear' && !fromStash ? resolveGearInstance(save, selected.id)?.instance ?? null : null;
   const selectedGear: GearItem | null =
     selected?.kind === 'gear' ? (selectedInstance ? getGear(selectedInstance.templateId) : getGear(selected.id) ?? null) : null;
   const selectedMaterial =
@@ -111,24 +122,31 @@ export default function InventoryPanel({
 
   const selQty = selectedInstance
     ? 1
-    : selectedGear
-      ? save.inventory?.[selectedGear.id] ?? 0
-      : selectedMaterial
-        ? save.materials?.[selectedMaterial.id] ?? 0
-        : selectedConsumable
-          ? save.consumables?.[selectedConsumable.id] ?? 0
-          : 0;
+    : fromStash && selected
+      ? stashCount(save, selected.kind, selected.id)
+      : selectedGear
+        ? save.inventory?.[selectedGear.id] ?? 0
+        : selectedMaterial
+          ? save.materials?.[selectedMaterial.id] ?? 0
+          : selectedConsumable
+            ? save.consumables?.[selectedConsumable.id] ?? 0
+            : 0;
 
   const isEquipped = selectedInstance
     ? isInstanceEquipped(save, selectedInstance.id)
-    : !!selectedGear && save.equipped[selectedGear.slot as 'relic'] === selectedGear.id;
+    : !fromStash && !!selectedGear && save.equipped[selectedGear.slot as 'relic'] === selectedGear.id;
   // Every instanced slot (weapon, armor, helmet, gloves, boots, ring) equips straight from the bag.
   const isEquippable = !!selectedGear && isInstancedSlot(selectedGear.slot);
   const selectedRarity: Rarity = selectedInstance?.rarity ?? 'common';
   const selectedSubs = selectedInstance?.substats ?? [];
   const selectedLevel = selectedInstance ? clampRefine(selectedInstance.upgrade) : 0;
 
-  const salvageReason = selected?.kind === 'gear' ? salvageBlockReason(save, selected.id) : null;
+  // what was picked is gone (moved, sold, discarded): nothing left to show a detail for
+  useEffect(() => {
+    if (selected && selQty <= 0) setSelected(null);
+  }, [selected, selQty]);
+
+  const salvageReason = selected?.kind === 'gear' && !fromStash ? salvageBlockReason(save, selected.id) : null;
   const salvagePreview = selectedGear ? getSalvageReturn(selectedGear) : null;
 
   const handleSalvage = () => {
@@ -148,7 +166,7 @@ export default function InventoryPanel({
       setConfirmDiscard(true);
       return;
     }
-    onDiscard(selected.kind, selected.id);
+    onDiscard(selected.kind, selected.id, 'all');
     setSelected(null);
     setConfirmDiscard(false);
   };
@@ -156,7 +174,18 @@ export default function InventoryPanel({
   const cellsShown = gearInstances.length + [...stackableGear.map((g) => save.inventory[g.id]), ...materialItems.map((m) => m.qty), ...consumableItems.map((c) => c.qty)].reduce((sum, q) => sum + slotsForQty(q), 0);
 
   return (
-    <>
+    <div className="inv-root">
+      <div className="inv-pane-tabs" role="tablist">
+        <button className={`tab${pane === 'bag' ? ' active' : ''}`} onClick={() => setPane('bag')} role="tab" aria-selected={pane === 'bag'} data-ui>
+          {t('inventory.bagTitle')} {slots}/{capacity}
+        </button>
+        <button className={`tab${pane === 'stash' ? ' active' : ''}`} onClick={() => setPane('stash')} role="tab" aria-selected={pane === 'stash'} data-ui>
+          {t('stash.title')} {stashSlotsUsed(save)}/{stashCapacity(save)}
+        </button>
+      </div>
+      <div className="inv-panes">
+      <section className={`inv-pane inv-pane-bag${pane === 'bag' ? ' active' : ''}`}>
+      <h4 className="inv-pane-title">{t('inventory.bagTitle')}</h4>
       <div className="inventory-summary">
         <span className={`inventory-summary-chip${slots > capacity ? ' over' : ''}`} title={slots > capacity ? t('inventory.overCapacity') : undefined}>
           {t('inventory.space', { n: slots, m: capacity })}
@@ -169,6 +198,9 @@ export default function InventoryPanel({
           data-ui
         >
           +
+        </button>
+        <button className="inv-storeall" onClick={() => bag?.storeAllMaterials()} disabled={!materialItems.length} data-ui>
+          {t('stash.storeAllMaterials')}
         </button>
       </div>
 
@@ -308,6 +340,13 @@ export default function InventoryPanel({
           <span key={`empty-${i}`} className="inv-slot empty" />
         ))}
       </div>
+      </section>
+
+      <section className={`inv-pane inv-pane-stash${pane === 'stash' ? ' active' : ''}`}>
+        <h4 className="inv-pane-title">{t('stash.title')}</h4>
+        <StashPane save={save} selected={fromStash && selected ? { kind: selected.kind, id: selected.id } : null} onSelect={(sel) => select(sel.kind, sel.id, 'stash')} onUpgrade={() => bag?.upgradeStash()} />
+      </section>
+      </div>
 
       <div className={`inv-detail-backdrop${selected ? ' open' : ''}`} onClick={() => setSelected(null)}>
       <div className="inv-detail" onClick={(event) => event.stopPropagation()}>
@@ -323,7 +362,7 @@ export default function InventoryPanel({
                 <span className="refine-tag">{refineTag(selectedLevel)}</span>
                 <UniqueTag templateId={selectedGear.id} />
               </span>
-              {!selectedInstance && <span className="inv-qty">×{fmtNum(save.inventory[selectedGear.id])}</span>}
+              {!selectedInstance && <span className="inv-qty">×{fmtNum(selQty)}</span>}
               {selectedInstance && isEquipped && <span className="inv-qty">{t('inventory.equipped')}</span>}
             </div>
             <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
@@ -398,6 +437,7 @@ export default function InventoryPanel({
                           <span className={`req-amount${r.have < r.need ? ' missing' : ''}`}>
                             {fmtNum(r.have)} / {fmtNum(r.need)}
                           </span>
+                          {r.mat && <StashHint kind="material" id={r.mat} need={r.need} />}
                         </span>
                       ))}
                     </div>
@@ -449,7 +489,7 @@ export default function InventoryPanel({
             <div className="inv-detail-name">
               <MaterialIcon item={selectedMaterial} className="mat-icon-img" />
               <span className="inv-detail-name-text">{matText(selectedMaterial.nameKey)}</span>
-              <span className="inv-qty">×{fmtNum(save.materials[selectedMaterial.id])}</span>
+              <span className="inv-qty">×{fmtNum(selQty)}</span>
             </div>
             <div className="inv-detail-desc">{t('inventory.materialDesc')}</div>
           </>
@@ -458,7 +498,7 @@ export default function InventoryPanel({
             <div className="inv-detail-name">
               <ConsumableIcon item={selectedConsumable} className="mat-icon-img" />
               <span className="inv-detail-name-text">{conText(selectedConsumable.nameKey)}</span>
-              <span className="inv-qty">×{fmtNum(save.consumables?.[selectedConsumable.id] ?? 0)}</span>
+              <span className="inv-qty">×{fmtNum(selQty)}</span>
             </div>
             <div className="inv-detail-desc">{conText(selectedConsumable.descKey)}</div>
           </>
@@ -487,7 +527,21 @@ export default function InventoryPanel({
           </div>
         )}
 
-        {selected && !isEquipped && selQty > 0 && (
+        {selected && fromStash && selQty > 0 && <StashTake save={save} kind={selected.kind} id={selected.id} onTake={(qty) => bag?.move('take', selected.kind, selected.id, qty)} />}
+
+        {selected && !fromStash && !selectedInstance && selQty > 0 && (
+          <StackActions
+            save={save}
+            kind={selected.kind}
+            id={selected.id}
+            onStash={(qty) => bag?.move('store', selected.kind, selected.id, qty)}
+            onSell={(qty) => selected.kind !== 'gear' && bag?.sell(selected.kind, selected.id, qty)}
+            onDiscard={(qty) => onDiscard(selected.kind, selected.id, qty)}
+            onOpenUse={(use) => bag?.openUse(use)}
+          />
+        )}
+
+        {selected && selectedInstance && !isEquipped && selQty > 0 && (
           <div className="inv-actions">
             {confirmDiscard && selectedInstance && selectedInstance.sockets.length > 0 && (
               <span className="salvage-hint">{t('inventory.gemsReturn', { n: selectedInstance.sockets.length })}</span>
@@ -499,6 +553,6 @@ export default function InventoryPanel({
         )}
       </div>
       </div>
-    </>
+    </div>
   );
 }

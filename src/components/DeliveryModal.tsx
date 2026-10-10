@@ -8,6 +8,7 @@ import { getExpedition } from '../game/expedition';
 import { ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from '../game/consumables';
 import { getMaterial, MaterialDef, MaterialId } from '../game/materials';
 import ConsumableIcon from './ConsumableIcon';
+import StashHint from './StashHint';
 
 const TICKET_IDS = Object.keys(EXPEDITION_TICKET_SKIP_MS) as ConsumableId[];
 const dText = (k: string, v?: Record<string, string | number>): string => t(`deliveries.${k}`, v);
@@ -81,6 +82,7 @@ function Requirements({ offer, save }: { offer: DeliveryOffer; save: SaveData })
             </span>
             <span className="delivery-req-qty">
               {fmtNum(Math.min(have, 99999))} / {fmtNum(need)}
+              <StashHint kind="material" id={id} need={need} />
             </span>
           </div>
         );

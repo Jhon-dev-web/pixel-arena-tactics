@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
 import { SaveData, playerLevel } from '../game/engine';
@@ -9,6 +9,8 @@ import { getConsumable } from '../game/consumables';
 import { REFINE_CATEGORIES } from './refineCategories';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
+import StashHint from './StashHint';
+import { applyCraftPotion, applyRefine } from '../game/craftActions';
 
 const matText = (k: string): string => t(`materials.${k}`);
 const conText = (k: string): string => t(`consumables.${k}`);
@@ -21,12 +23,18 @@ export default function OficiosView({
   save,
   onRefine,
   onCraftPotion,
+  focus,
 }: {
   save: SaveData;
   onRefine: (recipeId: string) => void;
   onCraftPotion: (recipeId: string) => void;
+  // Opened from an item's "Usar em...": the station (or 'potions') to open and the recipe to bring into view.
+  focus?: { category: RefiningStation | 'potions'; recipeId: string } | null;
 }) {
-  const [category, setCategory] = useState<RefiningStation | 'potions'>(REFINE_CATEGORIES[0].id);
+  const [category, setCategory] = useState<RefiningStation | 'potions'>(focus?.category ?? REFINE_CATEGORIES[0].id);
+  useEffect(() => {
+    if (focus) document.querySelector(`[data-recipe-id="${focus.recipeId}"]`)?.scrollIntoView({ block: 'center' });
+  }, [focus]);
   const [justMade, setJustMade] = useState<string | null>(null);
   const level = playerLevel(save.xp);
 
@@ -60,11 +68,12 @@ export default function OficiosView({
           {category === 'potions'
             ? POTION_RECIPES.map((recipe) => {
                 const consumable = getConsumable(recipe.id)!;
-                const ok = save.gold >= recipe.cost && level >= recipe.requiredLevel && hasMaterials(save.materials, recipe.input);
+                const bagFull = applyCraftPotion(save, recipe.id).reason === 'bag';
+                const ok = save.gold >= recipe.cost && level >= recipe.requiredLevel && hasMaterials(save.materials, recipe.input) && !bagFull;
                 const made = justMade === recipe.id;
                 const owned = save.consumables?.[recipe.id] ?? 0;
                 return (
-                  <div className="oficios-card" key={recipe.id}>
+                  <div className={`oficios-card${focus?.recipeId === recipe.id ? ' focus' : ''}`} key={recipe.id} data-recipe-id={recipe.id}>
                     <div className="oficios-card-head">
                       <span className="oficios-card-icon">
                         <ConsumableIcon item={consumable} />
@@ -103,10 +112,12 @@ export default function OficiosView({
                             <span className={`req-amount${have < need ? ' missing' : ''}`}>
                               {fmtNum(have)}/{fmtNum(need)} {matText(`mat_${mid}`)}
                             </span>
+                            <StashHint kind="material" id={mid} need={need} />
                           </span>
                         );
                       })}
                     </div>
+                    {bagFull && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
                     <button
                       className={`craft-btn forge oficios-produce${made ? ' forged' : ''}`}
                       onClick={() => produce(recipe.id, true)}
@@ -119,12 +130,13 @@ export default function OficiosView({
                 );
               })
             : stationRecipes.map((recipe) => {
-                const ok = save.gold >= recipe.cost && level >= recipe.requiredLevel && hasMaterials(save.materials, recipe.input);
+                const bagFull = applyRefine(save, recipe.id).reason === 'bag';
+                const ok = save.gold >= recipe.cost && level >= recipe.requiredLevel && hasMaterials(save.materials, recipe.input) && !bagFull;
                 const made = justMade === recipe.id;
                 const outputMat = getMaterial(recipe.output)!;
                 const owned = save.materials[recipe.output] ?? 0;
                 return (
-                  <div className="oficios-card" key={recipe.id}>
+                  <div className={`oficios-card${focus?.recipeId === recipe.id ? ' focus' : ''}`} key={recipe.id} data-recipe-id={recipe.id}>
                     <div className="oficios-card-head">
                       <span className="oficios-card-icon">
                         <MaterialIcon item={outputMat} />
@@ -166,10 +178,12 @@ export default function OficiosView({
                             <span className={`req-amount${have < need ? ' missing' : ''}`}>
                               {fmtNum(have)}/{fmtNum(need)} {matText(`mat_${mid}`)}
                             </span>
+                            <StashHint kind="material" id={mid} need={need} />
                           </span>
                         );
                       })}
                     </div>
+                    {bagFull && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
                     <button
                       className={`craft-btn forge oficios-produce${made ? ' forged' : ''}`}
                       onClick={() => produce(recipe.id, false)}

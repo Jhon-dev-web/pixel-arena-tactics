@@ -34,6 +34,8 @@ import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { migrateLegacyPouch } from './legacyPouch';
+import { emptyStash, sanitizeStash, StashState } from './stash';
+import { emptyMerchant, MerchantState, sanitizeMerchant } from './merchant';
 import { UniqueDrop } from './uniques';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
@@ -141,6 +143,10 @@ export interface SaveData {
   // Permanent extra slots granted ONCE for the tiers of the old Hunting Pouch the player had bought (legacyPouch.ts); `pouchMigrated` records it.
   inventoryBonusSlots?: number;
   pouchMigrated?: boolean;
+  // Baú do acampamento (stash.ts): a second container, storage only. Old saves load with the empty level-0 stash.
+  stash: StashState;
+  // What the merchant has paid today (merchant.ts); a new local day starts at zero.
+  merchant: MerchantState;
   highestDungeonFloor: number;
   heroName: string;
   str: number;
@@ -821,6 +827,8 @@ export function defaultSave(): SaveData {
     inventoryCapacity: DEFAULT_INVENTORY_CAPACITY,
     inventoryBonusSlots: 0,
     pouchMigrated: false,
+    stash: emptyStash(),
+    merchant: emptyMerchant(),
     highestDungeonFloor: 1,
     heroName: 'Hero',
     str: 0,
@@ -1184,6 +1192,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         inventoryCapacity: normalizeInventoryCapacity(parsed.inventoryCapacity),
         inventoryBonusSlots: Math.max(0, Math.min(1000, Math.floor(Number(parsed.inventoryBonusSlots)) || 0)),
         pouchMigrated: parsed.pouchMigrated === true,
+        stash: sanitizeStash(parsed.stash),
+        merchant: sanitizeMerchant(parsed.merchant, Date.now()),
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },

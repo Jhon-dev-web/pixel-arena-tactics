@@ -7795,45 +7795,41 @@ body {
     margin-bottom: 0;
   }
 
-  /* --- Inventário: slot grid on the left, item detail panel on the right --- */
+  /* --- Inventário: the bag and the Baú side by side, the item detail panel on the right --- */
   .inventory-modal {
-    width: min(980px, 92vw);
+    width: min(1240px, 96vw);
     height: min(86vh, 780px);
     max-height: none;
     padding: 26px 28px 24px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    grid-template-rows: auto auto auto minmax(0, 1fr);
-    column-gap: 24px;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
   .inventory-modal > .modal-title {
-    grid-column: 1 / -1;
-    grid-row: 1;
+    flex: none;
   }
-  .inventory-modal > .inventory-summary {
-    grid-column: 1;
-    grid-row: 2;
+  .inventory-modal .inv-root {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    column-gap: 24px;
+    min-height: 0;
+    flex: 1;
   }
-  .inventory-modal > .inv-tabs {
+  .inventory-modal .inv-panes {
     grid-column: 1;
-    grid-row: 3;
+    min-height: 0;
   }
-  .inventory-modal > .inv-grid {
-    grid-column: 1;
-    grid-row: 4;
-    grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  .inventory-modal .inv-grid {
     gap: 8px;
     padding: 2px 8px 2px 2px;
   }
-  .inventory-modal > .inv-detail-backdrop {
+  .inventory-modal .inv-detail-backdrop {
     grid-column: 2;
-    grid-row: 2 / span 3;
     min-height: 0;
     display: flex;
     flex-direction: column;
   }
-  /* the detail panel is always visible beside the grid here; the mobile bottom-sheet close button is not needed */
+  /* the detail panel is always visible beside the panes here; the mobile bottom-sheet close button is not needed */
   .inventory-modal .inv-detail-close {
     display: none;
   }
@@ -8581,4 +8577,256 @@ button[data-ui]:focus-visible {
 }
 .salvage-hint.bad {
   color: #ff8a7a;
+}
+
+/* ===== inventory + stash panes, stack actions, merchant ===== */
+.inv-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.inv-pane-tabs {
+  display: none;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.inv-pane-tabs .tab {
+  flex: 1;
+}
+.inv-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+  flex: 1;
+}
+.inv-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.inv-pane-title {
+  margin: 0 0 6px;
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffe9a8;
+  text-align: left;
+}
+.inv-pane .inv-grid {
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+}
+.stash-note {
+  margin: 0 0 8px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #8a7aa8;
+  text-align: left;
+  line-height: 1.4;
+}
+.inv-storeall {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #ffe9a8;
+  background: #2a1c10;
+  border: 1px solid #8a6a3a;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.inv-storeall:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.stack-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.item-uses-title {
+  display: block;
+  margin-bottom: 4px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.item-uses-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.item-use {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #cfe8ff;
+  background: rgba(124, 196, 255, 0.1);
+  border: 1px solid #3a6a9a;
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.item-use.note {
+  color: #9a8bb8;
+  background: transparent;
+  border-color: #3a2a4a;
+  cursor: default;
+}
+.qty-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.qty-btn {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #3a2a4a;
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.qty-btn.active {
+  color: #1a1108;
+  background: #ffd76a;
+  border-color: #8a6a3a;
+}
+.qty-units {
+  margin-left: auto;
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.inv-actions-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.inv-actions-row > button {
+  flex: 1 1 auto;
+}
+.inv-store {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.inv-store:disabled,
+.inv-sell:disabled,
+.inv-discard:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.inv-sell.confirm {
+  background: #ff9a3c;
+}
+.merchant-line {
+  font-size: calc(var(--font-size) - 3px);
+  color: #9a8bb8;
+  line-height: 1.4;
+}
+.stash-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #7cc4ff;
+}
+.stash-hint-btn {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #cfe8ff;
+  background: rgba(124, 196, 255, 0.12);
+  border: 1px solid #3a6a9a;
+  border-radius: 6px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.stash-hint-full {
+  color: #ff8a7a;
+}
+.stash-cost-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.craft-bag-full {
+  display: block;
+  margin-top: 4px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #ff8a7a;
+}
+.craft-card.focus,
+.oficios-card.focus {
+  border-color: #7cc4ff;
+  box-shadow: 0 0 10px rgba(124, 196, 255, 0.45);
+}
+.shop-tabs {
+  margin-bottom: 10px;
+}
+.merchant-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  text-align: left;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffe9a8;
+}
+.merchant-budget-bar {
+  height: 8px;
+}
+.sell-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.sell-buttons .gear-action {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 6px 8px;
+}
+.sell-buttons .gear-action.confirm {
+  background: #ff9a3c;
+  color: #1a1108;
+}
+
+/* two panes side by side from tablet width up; a tab switch on phones */
+@media (max-width: 599px) {
+  .inv-pane-tabs {
+    display: flex;
+  }
+  .inv-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inv-pane:not(.active) {
+    display: none;
+  }
+  .inv-pane-title {
+    display: none;
+  }
+}
+
+/* tablet: the modal is wide enough for both panes; the item detail sits under them */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .inventory-modal {
+    width: min(96vw, 760px);
+  }
+  .inventory-modal .inv-grid {
+    max-height: 34vh;
+  }
+}
+/* the same two panes inside the Hero view: the detail sits under them */
+.personagem-inventory .inv-grid {
+  max-height: 320px;
+}
+.shop-sell .merchant-budget {
+  grid-column: 1 / -1;
 }

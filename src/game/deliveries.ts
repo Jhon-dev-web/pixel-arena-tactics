@@ -64,6 +64,18 @@ const ARCHETYPES: Record<DeliveryArchetype, ArchetypeDef> = {
   comercial: { classes: ['mid', 'hard'], tiers: [1, 2, 3], weight: 1, comp: { leather: 0.4, steel: 0.3, silver_ingot: 0.3 }, processed: true },
 };
 
+// Every material some delivery archetype can ask for (the "raw" archetype asks for any ore and wood tier): where a stack could be delivered at all.
+export function deliverableMaterials(): Set<MaterialId> {
+  const out = new Set<MaterialId>();
+  for (const def of Object.values(ARCHETYPES)) {
+    if (def.comp === 'raw') {
+      for (const o of ORE_TIERS) out.add(o.id);
+      for (const w of WOOD_TIERS) out.add(w.id);
+    } else for (const m of Object.keys(def.comp) as MaterialId[]) out.add(m);
+  }
+  return out;
+}
+
 const CLASS_DISTANCES: Record<DeliveryClass, { dists: DeliveryDistance[]; weights: number[] }> = {
   simple: { dists: ['local', 'curta'], weights: [0.45, 0.55] },
   mid: { dists: ['curta', 'regional'], weights: [0.3, 0.7] },

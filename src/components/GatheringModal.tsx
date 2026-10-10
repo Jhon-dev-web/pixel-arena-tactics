@@ -3,6 +3,7 @@ import { fmtNum, t } from '../locales';
 import { buffRemainingMs, isBuffActive } from '../game/buffs';
 import { computeMiningStatus, computeWoodcuttingStatus, isBattlePassActive, SaveData } from '../game/engine';
 import { MaterialId, materialIconUrl } from '../game/materials';
+import { addWithOverflow } from '../game/inventory';
 import { ORE_TIERS } from '../game/ores';
 import { BASE_GATHER_POWER, gatherPower, skillLevel, skillXpForNextLevel, skillXpToReachLevel } from '../game/skills';
 import T from '../game/tunables';
@@ -83,6 +84,8 @@ export default function GatheringModal({
   const otherBusy = mining ? !!save.activeWoodId : !!save.activeOreId;
   const blocked = hunting || otherBusy;
   const blockedMsg = hunting ? t('hunting.busyOther') : t(mining ? 'woodcutting.busyOther' : 'mining.busyOther');
+  // what the inventory would have no room for if the session were collected now (gathering leaves the excess behind)
+  const leftNow = activeId ? (addWithOverflow(save, { materials: { [activeId]: units } }).leftover.materials[activeId as MaterialId] ?? 0) : 0;
   const brew = isBuffActive(save, 'gatherer', now);
   const capHours = status.capMs / MS_H;
 
@@ -117,6 +120,7 @@ export default function GatheringModal({
               <span className="gather-session-ready">
                 <img className="inline-icon" src={materialIconUrl(activeId as MaterialId)} alt="" /> +{fmtNum(units)} · +{fmtNum(units * T.skills.xpPerUnit)} XP
               </span>
+              {leftNow > 0 && <span className="craft-bag-full">{t('inventory.leftBehindPreview', { n: fmtNum(leftNow) })}</span>}
               <button className={`camp-mine-claim${units > 0 ? ' blink' : ''}`} onClick={onClaim} disabled={units <= 0} data-ui>
                 {t(`${ns}.collect`)}
               </button>
