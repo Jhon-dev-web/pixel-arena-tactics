@@ -47,3 +47,6 @@ export function setLocaleListener(listener: (() => void) | null): void {
 }
 
 export const locales = Object.keys(LOCALES) as Locale[];
+
+// Number with thousands separators in the active language (pt-BR "1.234", en-US "1,234"): the one formatter every screen uses for counts, gold and XP.
+export const fmtNum = (n: number): string => (Number.isFinite(n) ? n.toLocaleString(activeLocale === 'pt' ? 'pt-BR' : 'en-US') : '-');

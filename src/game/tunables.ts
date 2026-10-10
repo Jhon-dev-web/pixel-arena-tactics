@@ -204,6 +204,22 @@ const T = DebugPanel.define({
     // tier's 12 power, level25 ~= steel's 22, level50 ~= mithril's 38ish, level75 ~= runic's 60ish).
     powerPerLevel: { value: 0.75, min: 0, max: 5, step: 0.05, label: 'Mining/Woodcutting power gained per skill level' },
   },
+  // Garden 3.0 consumables (docs/GARDEN_2_0.md, "Horta 3.0"). Timed tonics share the elixir machinery (buffs.ts); none of them is sold in the Shop.
+  tonics: {
+    _label: 'Garden tonics (timed buffs, whetstone oil, fertilizer)',
+    stoneskinMinutes: { value: 30, min: 5, max: 240, step: 5, label: 'Stoneskin Tonic duration (min)' },
+    stoneskinReduction: { value: 0.1, min: 0, max: 1, step: 0.01, label: 'Stoneskin Tonic: added to the Layer-2 reduction sum' },
+    fortuneMinutes: { value: 60, min: 5, max: 240, step: 5, label: 'Fortune Tonic duration (min)' },
+    fortuneGoldPct: { value: 0.2, min: 0, max: 1, step: 0.01, label: 'Fortune Tonic: extra Hunting / Dungeon gold (outside the 25% gear cap, additive with it)' },
+    hasteMinutes: { value: 30, min: 5, max: 240, step: 5, label: 'Haste Tonic duration (min)' },
+    hasteAttackSpeed: { value: 0.09, min: 0, max: 1, step: 0.01, label: 'Haste Tonic: attack speed bonus (through heroAttackIntervalMs and its floor)' },
+    gathererMinutes: { value: 120, min: 5, max: 480, step: 5, label: 'Gatherer Brew duration (min)' },
+    gathererYieldPct: { value: 0.25, min: 0, max: 1, step: 0.01, label: 'Gatherer Brew: extra Mining / Woodcutting units (and so XP) while it covers the session' },
+    precisionMinutes: { value: 30, min: 5, max: 240, step: 5, label: 'Precision Elixir duration (min)' },
+    precisionCritPoints: { value: 0.08, min: 0, max: 0.5, step: 0.01, label: 'Precision Elixir: absolute crit chance points' },
+    whetstoneDurability: { value: 30, min: 1, max: 100, step: 1, label: 'Whetstone Oil: durability points restored to the equipped weapon AND armor' },
+    fertilizerSkipPct: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Fertilizer: share of the REMAINING growth time removed (once per planting)' },
+  },
   hunting: {
     _label: 'Open Zone Hunting',
     tickMs: { value: 2200, min: 800, max: 6000, step: 100, label: 'Visual attack pulse interval (ms)' },

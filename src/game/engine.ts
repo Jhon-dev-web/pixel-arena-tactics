@@ -31,19 +31,24 @@ import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, he
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { defaultHuntPouch, defaultPouchSlots, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
-import { getPlant, PlantId } from './garden';
+import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { UniqueDrop } from './uniques';
+import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
-export type BuffType = 'strength' | 'attack';
+export { buffRemainingMs, isBuffActive };
+
+// Every timed effect (the two damage elixirs and the Garden 3.0 tonics) is described in buffs.ts; this is the shape of the two legacy save slots.
+export type BuffType = BuffKind;
 
 export interface ActiveBuff {
   type: BuffType;
   expiresAt: number;
 }
 
-export const GARDEN_SLOTS = 4;
+// Slots the save carries (see garden.ts: only the first unlockedGardenPlots(level) of them can be planted).
+export const GARDEN_SLOTS = MAX_GARDEN_PLOTS;
 
 export interface GardenSlot {
   plantId: PlantId | null;
@@ -51,6 +56,8 @@ export interface GardenSlot {
   // The plant this plot last held (planted / harvested / uprooted): only feeds the "plant again" shortcut. Optional so
   // saves written before it existed load as-is.
   lastPlantId?: PlantId | null;
+  // True once Fertilizer was used on THIS planting (one per planting per plot); cleared when the plot is planted, harvested or uprooted.
+  fertilized?: boolean;
 }
 
 export const CONTEXTUAL_TUTORIAL_IDS = ['garden', 'mining', 'woodcutting', 'deliveries', 'reforge', 'sockets'] as const;
@@ -111,7 +118,7 @@ function sanitizeGardenSlot(raw: unknown): GardenSlot {
   // start in the future (clock moved back / tampered) is clamped to now so the plot cannot be frozen.
   const validStart = typeof r.startedAt === 'number' && Number.isFinite(r.startedAt) && r.startedAt > 0;
   const startedAt = plantId ? (validStart ? Math.min(r.startedAt as number, Date.now()) : Date.now()) : 0;
-  return { plantId, startedAt, lastPlantId };
+  return { plantId, startedAt, lastPlantId, ...(plantId && r.fertilized === true ? { fertilized: true } : {}) };
 }
 
 export interface SaveData {
@@ -180,6 +187,8 @@ export interface SaveData {
   gardenSlots: GardenSlot[];
   activeBuff: ActiveBuff | null; // Strength Elixir (kept as-is for old saves)
   attackBuff: ActiveBuff | null; // Attack (Battle) Elixir: an independent slot, same shape and rules
+  // Garden 3.0 tonics (buffs.ts): one entry per running kind, each with the span it covers. Missing = none (old saves).
+  buffs: Partial<Record<TimedBuffKind, TimedBuff>>;
   dungeonSessionsDay: string;
   dungeonSessionsUsed: number;
   seenTooltips: string[];
@@ -308,6 +317,8 @@ export function buildCombatStats(save: SaveData): CombatStats {
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
     // The relic's attackSpeedBonus enters the same derivation, so the 400 ms floor still caps it.
     heroMs: heroAttackIntervalMs(save.agi, relic?.attackSpeedBonus ?? 0),
+    agi: save.agi,
+    speedBonus: relic?.attackSpeedBonus ?? 0,
     reduction: effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100 + extra.resistance,
     lifesteal: subs.lifesteal,
     burn: !!weapon.burn,
@@ -406,7 +417,7 @@ export function computeMiningStatus(save: SaveData, now: number): MiningStatus {
   const hours = pendingMs / (3600 * 1000);
   const power = gatherPower(BASE_GATHER_POWER, save.skillXp.mining);
   const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
-  const oreReady = Math.floor(hours * power * T.mining.oreRatePerPower * dropMult);
+  const oreReady = Math.floor((hours + gathererBonusHours(save, save.lastMiningClaim, pendingMs)) * power * T.mining.oreRatePerPower * dropMult);
   const goldReady = Math.floor(hours * power * T.mining.goldRatePerPower);
   return { capMs, pendingMs, oreId: tier.id, oreReady, goldReady, full: pendingMs >= capMs };
 }
@@ -435,7 +446,7 @@ export function computeWoodcuttingStatus(save: SaveData, now: number): Woodcutti
   const hours = pendingMs / (3600 * 1000);
   const power = gatherPower(BASE_GATHER_POWER, save.skillXp.woodcutting);
   const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
-  const woodReady = Math.floor(hours * power * T.woodcutting.woodRatePerPower * dropMult);
+  const woodReady = Math.floor((hours + gathererBonusHours(save, save.lastWoodcuttingClaim, pendingMs)) * power * T.woodcutting.woodRatePerPower * dropMult);
   const goldReady = Math.floor(hours * power * T.woodcutting.goldRatePerPower);
   return { capMs, pendingMs, woodId: tier.id, woodReady, goldReady, full: pendingMs >= capMs };
 }
@@ -469,21 +480,22 @@ export function computeGardenStatuses(save: SaveData, now: number): GardenStatus
   return save.gardenSlots.map((_, i) => computeGardenSlotStatus(save, now, i));
 }
 
-// Timestamp-based like Mining/Hunting/Garden — no ticking interval needed to know if it's still
-// valid, only checked at read time (e.g. right before a damage calc, or when rendering the HUD).
-function buffSlot(save: SaveData, type: BuffType): ActiveBuff | null {
-  const b = type === 'attack' ? save.attackBuff : save.activeBuff;
-  return b && b.type === type ? b : null;
-}
+// Timestamp-based like Mining/Hunting/Garden — no ticking interval needed to know if a buff is still valid, only checked at read time (e.g. right
+// before a damage calc, or when rendering the HUD). isBuffActive / buffRemainingMs live in buffs.ts and are re-exported above.
 
-export function isBuffActive(save: SaveData, type: BuffType, now: number): boolean {
-  const b = buffSlot(save, type);
-  return !!b && b.expiresAt > now;
-}
-
-export function buffRemainingMs(save: SaveData, now: number, type: BuffType = 'strength'): number {
-  const b = buffSlot(save, type);
-  return b ? Math.max(0, b.expiresAt - now) : 0;
+// A tonic never outlives its duration: expiry further ahead than one full duration from now (tampered / clock moved back) is clamped.
+function sanitizeBuffs(raw: unknown): Partial<Record<TimedBuffKind, TimedBuff>> {
+  const out: Partial<Record<TimedBuffKind, TimedBuff>> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  const now = Date.now();
+  for (const kind of TIMED_BUFF_KINDS) {
+    const b = (raw as Record<string, Partial<TimedBuff> | undefined>)[kind];
+    if (!b || typeof b.expiresAt !== 'number' || !Number.isFinite(b.expiresAt)) continue;
+    const expiresAt = Math.min(b.expiresAt, now + buffMinutes(kind) * 60 * 1000);
+    const from = typeof b.from === 'number' && Number.isFinite(b.from) && b.from > 0 ? Math.min(b.from, expiresAt) : expiresAt - buffMinutes(kind) * 60 * 1000;
+    out[kind] = { from, expiresAt };
+  }
+  return out;
 }
 
 export interface HuntingStatus {
@@ -554,7 +566,18 @@ export function buildHuntSession(save: SaveData, startedAt: number): HuntSession
     strength: isBuffActive(save, 'strength', startedAt) && buff ? [{ from: startedAt, to: buff.expiresAt }] : [],
     attack: isBuffActive(save, 'attack', startedAt) && atk ? [{ from: startedAt, to: atk.expiresAt }] : [],
     pass: isBattlePassActive(save, startedAt) ? [{ from: startedAt, to: save.battlePassExpiresAt }] : [],
+    tonics: runningTonicWindows(save, startedAt, startedAt),
   };
+}
+
+// One window [from, expiry) for every hunt-relevant tonic that is running at `now`.
+function runningTonicWindows(save: SaveData, now: number, from: number): TonicWindows {
+  const out: TonicWindows = {};
+  for (const kind of HUNT_BUFF_KINDS) {
+    const expiresAt = buffExpiry(save, kind);
+    if (expiresAt !== null && expiresAt > now) out[kind] = [{ from, to: expiresAt }];
+  }
+  return out;
 }
 
 // A session that was already running before sessions were snapshotted (old save) or whose snapshot is unusable. Its
@@ -571,6 +594,7 @@ export function buildLegacyHuntSession(save: SaveData, now: number): HuntSession
     strength: isBuffActive(save, 'strength', now) && buff ? [{ from: now, to: buff.expiresAt }] : [],
     attack: isBuffActive(save, 'attack', now) && atk ? [{ from: now, to: atk.expiresAt }] : [],
     pass: isBattlePassActive(save, now) ? [{ from, to: save.battlePassExpiresAt }] : [],
+    tonics: runningTonicWindows(save, now, now),
   };
 }
 
@@ -658,6 +682,14 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     dmgBoth: applyDamageModifiers(stats.dmgBase, { ...strengthMods, attackMult: attackMods.attackMult }),
     passWindows,
     passDropMult: T.battlePass.dropRateMultiplier,
+    stoneWindows: relativeWindows(session.tonics?.stoneskin ?? [], startedAt),
+    hasteWindows: relativeWindows(session.tonics?.haste ?? [], startedAt),
+    precisionWindows: relativeWindows(session.tonics?.precision ?? [], startedAt),
+    fortuneWindows: relativeWindows(session.tonics?.fortune ?? [], startedAt),
+    reductionStone: stoneskinReduction(stats),
+    heroMsHaste: hasteIntervalMs(stats),
+    critPrecision: precisionCrit(stats),
+    fortuneGoldPct: T.tonics.fortuneGoldPct,
   };
 
   const potionCfg: HuntPotionCfg = {
@@ -762,6 +794,7 @@ export function defaultSave(): SaveData {
     gardenSlots: emptyGardenSlots(),
     activeBuff: null,
     attackBuff: null,
+    buffs: {},
     huntPouch: defaultHuntPouch(),
     dungeonSessionsDay: '',
     dungeonSessionsUsed: 0,
@@ -1067,6 +1100,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
       };
       const activeBuff = sanitizeBuff(parsed.activeBuff, 'strength', T.battle.strengthElixirMinutes);
       const attackBuff = sanitizeBuff(parsed.attackBuff, 'attack', T.battle.attackElixirMinutes);
+      const buffs = sanitizeBuffs(parsed.buffs);
       const sanitizePouchItems = (arr: unknown): HuntPouchItem[] =>
         Array.isArray(arr)
           ? (arr as HuntPouchItem[])
@@ -1127,6 +1161,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         gardenSlots,
         activeBuff,
         attackBuff,
+        buffs,
         dungeonSessionsDay,
         dungeonSessionsUsed,
         seenTooltips,

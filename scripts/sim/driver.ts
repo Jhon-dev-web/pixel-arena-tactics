@@ -37,12 +37,14 @@ import { isDungeonBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } f
 import { UniqueDrop, addUniqueInstance } from '../../src/game/uniques';
 import { applyClaimGathering, applyStartGathering } from '../../src/game/gathering';
 import { getRefiningRecipe } from '../../src/game/refining';
+import { getPotionRecipe } from '../../src/game/potions';
 import { getConsumable, CONSUMABLE_STACK, ConsumableId } from '../../src/game/consumables';
 import { isBagFull } from '../../src/game/inventory';
 import { hasMaterials } from '../../src/game/materials';
 import { isClaimed, isComplete, QUESTS_ACHIEVEMENTS, QUESTS_DAILY, QuestContext } from '../../src/game/quests';
 import { questMaxRefine } from '../../src/game/gearInstances';
 import { nextHuntPouchTierDef } from '../../src/game/huntPouch';
+import { activeTonicStats, goldMultiplier, isBuffActive } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
 
 // ---- seeded RNG ---------------------------------------------------------------------------------------------------
@@ -96,7 +98,8 @@ export interface DungeonRun {
 // floors stop for the retreat / advance choice. Auto-potion rules are tryAutoPotion's.
 // `maxStages` (diagnostics only): stop with a retreat after that many cleared floors, so a probe of one floor does not keep climbing.
 export function runDungeon(save: SaveData, now: number, maxStages = Infinity): DungeonRun {
-  const combat = buildCombatStats(save);
+  // Tonics running when the run starts (Stoneskin / Haste / Precision) cover the whole climb: a run is minutes, a tonic lasts 30.
+  const combat = activeTonicStats(buildCombatStats(save), save, now);
   const playerMax = combat.maxHp;
   const heroBase = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, now));
   const regen = regenAmount(playerMax, combat.hpRegenPct);
@@ -236,7 +239,7 @@ export interface RunApplied {
 }
 
 // Mirrors App.tsx finishRun (412-488).
-export function applyDungeonRun(s: SaveData, run: DungeonRun): RunApplied {
+export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()): RunApplied {
   const rewards = run.rewards;
   const outcome = run.outcome;
   const startFloor = run.startFloor;
@@ -258,7 +261,7 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun): RunApplied {
     ({ battlePassLevel, battlePassXp } = addBattlePassXp(s, T.battlePass.xpPerFloor * stages));
   }
   const subs = equippedSubstatTotals(s);
-  const goldGain = Math.round(rewards.gold * (1 + subs.goldBonus / 100));
+  const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', now)));
   const unlockedHuntingZones = Array.from(new Set([...s.unlockedHuntingZones, ...unlockedZoneIds(nextFloor)]));
   const crossed = success ? crossedMilestoneFloors(startFloor, stages, s.dungeonCheckpoints) : [];
   let gold = s.gold + goldGain;
@@ -354,6 +357,15 @@ export function refineMaterial(s: SaveData, recipeId: string): SaveData | null {
     materials: mats,
     quests: { ...s.quests, daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 } },
   };
+}
+
+// App.tsx craftPotion: one Alchemy craft (gold + plants / drops -> one consumable).
+export function craftPotion(s: SaveData, recipeId: ConsumableId): SaveData | null {
+  const recipe = getPotionRecipe(recipeId);
+  if (!recipe || s.gold < recipe.cost || playerLevel(s.xp) < recipe.requiredLevel || !hasMaterials(s.materials, recipe.input)) return null;
+  const mats = { ...s.materials };
+  for (const [mid, count] of Object.entries(recipe.input)) mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
+  return { ...s, gold: s.gold - recipe.cost, materials: mats, consumables: { ...s.consumables, [recipe.id]: (s.consumables[recipe.id] ?? 0) + 1 }, quests: { ...s.quests, daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 } } };
 }
 
 // App.tsx buyConsumable (986-1010)

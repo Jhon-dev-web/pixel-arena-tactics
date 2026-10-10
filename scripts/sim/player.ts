@@ -19,6 +19,10 @@ import { MaterialId } from '../../src/game/materials';
 import { REFINING_RECIPES } from '../../src/game/refining';
 import { PLANTS } from '../../src/game/garden';
 import { applyHarvest, applyPlant, readySlots } from '../../src/game/gardenActions';
+import { applyElixir, ElixirId } from '../../src/game/elixirs';
+import { isBuffActive } from '../../src/game/buffs';
+import { MILESTONE_FLOORS } from '../../src/game/dungeon';
+import { POTION_RECIPES } from '../../src/game/potions';
 import { ORE_TIERS } from '../../src/game/ores';
 import { WOOD_TIERS } from '../../src/game/woodcutting';
 import { skillLevel, skillXpToReachLevel, gatherPower, BASE_GATHER_POWER } from '../../src/game/skills';
@@ -37,6 +41,7 @@ import {
   applyDungeonRun,
   buyConsumable,
   claimGathering,
+  craftPotion,
   claimQuests,
   DungeonRun,
   enterDungeon,
@@ -101,6 +106,8 @@ export interface DaySnapshot {
   gold: number;
   // Profession levels at the end of the day (Gardening is 1 for a player who never plants).
   skills: { mining: number; woodcutting: number; gardening: number };
+  // Best tier owned in each of the six slots at the end of the day (what the gear timeline is made of).
+  tiers: Record<string, number>;
   ledger: DayLedger;
   sessions: SessionRecord[];
 }
@@ -281,12 +288,19 @@ export interface PlayerOptions {
   // Diagnostic only (not a scenario of the report): never accept a delivery order, to isolate how much of the XP / gold comes from Hunting
   // and the Dungeon alone.
   noOrders?: boolean;
+  // false = the policy never crafts or drinks the Garden 3.0 tonics (the control run of the tonic budget check).
+  tonics?: boolean;
   // Profession scenarios (not part of the balance targets): `garden` plants / harvests the plots at every visit (what the next craft
   // needs first, otherwise the longest plant that fits the 12 h between visits); `balanced` is a player who spends the second visit of
   // the day gathering (mining on even days, woodcutting on odd ones, the best unlocked tier) instead of hunting.
   garden?: boolean;
   balanced?: boolean;
 }
+
+// Garden 3.0 tonics the policy crafts (one of each in stock) and drinks on a boss attempt; gatherer_brew is drunk before a Mining / Woodcutting session.
+const COMBAT_TONICS = ['stoneskin_tonic', 'precision_elixir', 'haste_tonic', 'fortune_tonic'] as const;
+const TONIC_STOCK = 1;
+const BOSS_APPROACH_FLOORS = 6; // a session that starts within this many floors of an unclaimed boss is a boss attempt
 
 export const SHORT_HUNT_MAX_MIN = 15;
 
@@ -374,6 +388,7 @@ export class Player {
       armorTier: equippedTier(this.S, 'armor'),
       gold: this.S.gold,
       skills: { mining: skillLevel(this.S.skillXp.mining, 'mining'), woodcutting: skillLevel(this.S.skillXp.woodcutting, 'woodcutting'), gardening: skillLevel(this.S.skillXp.gardening, 'gardening') },
+      tiers: Object.fromEntries(CRAFT_PRIORITY.map((slot) => [slot, bestTier(this.S, slot)])),
       ledger: this.ledger,
       sessions: this.sessions,
     });
@@ -470,7 +485,7 @@ export class Player {
 
   // Garden upkeep of a visit: harvest what is ready, then fill every empty plot.
   private tendGarden() {
-    if (!this.opts.garden) return;
+    if (this.opts.garden === false) return;
     const ready = readySlots(this.S, this.now);
     if (ready.length > 0) {
       const res = applyHarvest(this.S, ready, this.now);
@@ -481,7 +496,16 @@ export class Player {
     }
     const lvl = skillLevel(this.S.skillXp.gardening, 'gardening');
     const unlocked = PLANTS.filter((p) => p.requiredLevel <= lvl);
-    const deficit = chooseTarget(this.S)?.deficit ?? {};
+    const deficit: Mats = { ...(chooseTarget(this.S)?.deficit ?? {}) };
+    // plants the tonic recipes need (the policy keeps TONIC_STOCK of each in the bag), asked for after the gear
+    for (const id of [...COMBAT_TONICS, 'gatherer_brew'] as const) {
+      const rec = POTION_RECIPES.find((r) => r.id === id)!;
+      if ((this.S.consumables[id] ?? 0) >= TONIC_STOCK || playerLevel(this.S.xp) < rec.requiredLevel) continue;
+      for (const [m, q] of Object.entries(rec.input) as [MaterialId, number][]) {
+        const short = q - (this.S.materials[m] ?? 0);
+        if (short > 0 && PLANTS.some((p) => p.material === m)) deficit[m] = Math.max(deficit[m] ?? 0, short);
+      }
+    }
     const wanted = unlocked.filter((p) => (deficit[p.material] ?? 0) > 0).sort((a, b) => (deficit[b.material] ?? 0) - (deficit[a.material] ?? 0))[0];
     const longest = [...unlocked].filter((p) => p.durationMs <= 10 * HOUR).sort((a, b) => b.durationMs - a.durationMs)[0];
     const pick = wanted ?? longest;
@@ -537,8 +561,36 @@ export class Player {
       const next = expandInventory(this.S);
       if (next && next.gold >= reserve) this.set(next, 'mochila');
     }
+    this.craftTonics(reserve);
     this.claimQuestsNow();
     this.checkMarks();
+  }
+
+  // Alchemy: keep one of each combat tonic (and the gathering brew) in the bag, only with gold beyond what the next gear craft needs.
+  private craftTonics(reserve: number) {
+    if (this.opts.tonics === false) return;
+    for (const id of [...COMBAT_TONICS, 'gatherer_brew'] as const) {
+      if ((this.S.consumables[id] ?? 0) >= TONIC_STOCK) continue;
+      const rec = POTION_RECIPES.find((r) => r.id === id)!;
+      if (this.S.gold - rec.cost < reserve) continue;
+      // plants the next craft is waiting for are not spent on a tonic
+      const t = chooseTarget(this.S);
+      if (t && Object.entries(rec.input).some(([m, q]) => (t.deficit[m as MaterialId] ?? 0) > 0 && (this.S.materials[m as MaterialId] ?? 0) - (q as number) < (t.deficit[m as MaterialId] ?? 0))) continue;
+      const next = craftPotion(this.S, id);
+      if (next) this.set(next, 'alquimia');
+    }
+  }
+
+  // A session that starts close to an unclaimed boss floor: drink every combat tonic in the bag first.
+  private drinkForBoss() {
+    if (this.opts.tonics === false) return;
+    const boss = MILESTONE_FLOORS.find((f) => f >= this.S.highestDungeonFloor && !this.S.dungeonCheckpoints.includes(f));
+    if (boss === undefined || boss - this.S.highestDungeonFloor > BOSS_APPROACH_FLOORS) return;
+    for (const id of COMBAT_TONICS) {
+      if (isBuffActive(this.S, id === 'stoneskin_tonic' ? 'stoneskin' : id === 'precision_elixir' ? 'precision' : id === 'haste_tonic' ? 'haste' : 'fortune', this.now)) continue;
+      const next = applyElixir(this.S, id as ElixirId, this.now);
+      if (next) this.S = next;
+    }
   }
 
   // Gold that is not up for grabs (potions, refining, bag): the price of the next craft, saved up from the start (not while
@@ -700,9 +752,10 @@ export class Player {
     const entered = enterDungeon(this.S, this.dayKey);
     if (!entered) return;
     this.S = entered;
+    this.drinkForBoss();
     const cpAtStart = computeCP(this.S);
     const run: DungeonRun = runDungeon(this.S, this.now);
-    const applied = applyDungeonRun(this.S, run);
+    const applied = applyDungeonRun(this.S, run, this.now);
     this.ledger.goldIn['masmorra'] = (this.ledger.goldIn['masmorra'] ?? 0) + applied.goldFromRun;
     this.ledger.goldIn['marcos'] = (this.ledger.goldIn['marcos'] ?? 0) + applied.goldFromMilestones;
     // consumables the auto-potion drank during the run
@@ -827,7 +880,7 @@ export class Player {
       const id = mine.pick ?? (unlocked[unlocked.length - 1]?.id as MaterialId);
       const next = startGathering(this.S, 'mine', id, this.now);
       if (next) {
-        this.S = next;
+        this.S = this.drinkBrew(next);
         return;
       }
     } else if (choice === 'wood') {
@@ -835,12 +888,18 @@ export class Player {
       const id = wood.pick ?? (unlocked[unlocked.length - 1]?.id as MaterialId);
       const next = startGathering(this.S, 'wood', id, this.now);
       if (next) {
-        this.S = next;
+        this.S = this.drinkBrew(next);
         return;
       }
     }
     const started = this.startHunt();
     if (started && this.opts.shortHunt && this.visit === 'first' && this.wantsCommons()) this.shortVisitDue = true;
+  }
+
+  // The Gatherer Brew covers the first 2 h of a gathering session when drunk at its start.
+  private drinkBrew(s: SaveData): SaveData {
+    if (this.opts.tonics === false) return s;
+    return applyElixir(s, 'gatherer_brew', this.now) ?? s;
   }
 
   private wantsCommons(): boolean {

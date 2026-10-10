@@ -44,6 +44,11 @@ export const RAW_REFERENCE_GOLD: Partial<Record<MaterialId, number>> = {
   uncommon_root: 16,
   crimson_mushroom: 16,
   rare_flower: 41.5,
+  // Garden 3.0: same yield-per-plot-hour logic as the five above (thistle 0.67/h, swift grass 0.5/h, blossom 0.2/h, lily 0.1/h)
+  iron_thistle: 6,
+  swift_grass: 8,
+  gold_blossom: 20,
+  moon_lily: 45,
   // Mining
   copper: 3.5,
   iron: 3.5,

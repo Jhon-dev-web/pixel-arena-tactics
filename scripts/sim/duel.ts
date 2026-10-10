@@ -6,6 +6,7 @@ import { Rarity, Substat } from '../../src/game/rarity';
 import { dungeonEnemyKindForFloor, isDungeonBoss, isDungeonCheckpoint } from '../../src/game/dungeon';
 import { getEnemyDef } from '../../src/game/enemies';
 import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
+import type { CombatStats } from '../../src/game/derivedStats';
 import T from '../../src/game/tunables';
 import { spendAttributePoints } from './driver';
 
@@ -58,8 +59,8 @@ export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveDat
 // and the gear effects: burn (one tick of burnPctPerSec x the hit per second once lit, the first tick one second late, so a fight of T seconds
 // pays about T - 0.5 ticks), reflect (a share of the damage the hero takes comes off the enemy) and regeneration (hpRegenPct of max HP per second).
 // Continuous: the in-game integer rounding of the enemy hit is left out so a stat's value is not hidden by +-1 steps.
-export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number) {
-  const c = buildCombatStats(s);
+export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number, stats?: CombatStats) {
+  const c = stats ?? buildCombatStats(s);
   const cc = Math.max(0, Math.min(1, c.critChance));
   const direct = ((c.dmgBase * (1 + cc * (c.critMult - 1))) * 1000) / c.heroMs;
   const inc = ((enemyDmg / (1 + Math.max(0, c.reduction))) * 1000) / enemyMs;
@@ -73,9 +74,9 @@ export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: 
   const ttd = net <= 0 ? Infinity : c.maxHp / net;
   return { ttk, ttd, P: ttd / ttk, dps, hp: c.maxHp, direct, burnShare: burnPerSec > 0 ? (dps - direct - reflectDps) / dps : 0, reflectShare: reflectDps / dps };
 }
-export function duel(s: SaveData, floor: number) {
+export function duel(s: SaveData, floor: number, stats?: CombatStats) {
   const def = getEnemyDef(dungeonEnemyKindForFloor(floor));
-  return duelVs(s, stageEnemyHp(def, floor), stageEnemyDmg(def, floor), def.atkSpeedMs);
+  return duelVs(s, stageEnemyHp(def, floor), stageEnemyDmg(def, floor), def.atkSpeedMs, stats);
 }
 // Representative floor of a hero: the plain floor (not a checkpoint / boss) whose duel margin is closest to 1.5 (on a log scale), i.e. a fight the hero
 // wins but not by a mile. Closest-to-1.5 instead of "highest floor with P >= 1.25" so the choice survives the cliff between two biomes.

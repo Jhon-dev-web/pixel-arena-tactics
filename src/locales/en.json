@@ -1,6 +1,8 @@
 {
   "skills": {
-    "level": "Level {n}"
+    "level": "Level {n}",
+    "xpProgress": "{cur} / {need} XP · {left} to go",
+    "maxLevel": "Max level"
   },
   "welcome": {
     "title": "🏕️ Welcome to Camp!",
@@ -386,7 +388,11 @@
     "mat_wood_handle_oak": "Oak Handle",
     "mat_wood_handle_ebony": "Ebony Handle",
     "mat_wood_handle_elven": "Elven Handle",
-    "mat_wood_handle_ancient": "Ancient Handle"
+    "mat_wood_handle_ancient": "Ancient Handle",
+    "mat_iron_thistle": "Iron Thistle",
+    "mat_gold_blossom": "Gold Blossom",
+    "mat_swift_grass": "Swift Grass",
+    "mat_moon_lily": "Moon Lily"
   },
   "inventory": {
     "title": "Bag",
@@ -430,7 +436,8 @@
     "confirmExpand": "Expand",
     "maxCapacityReached": "Maximum capacity reached for this version.",
     "expandFailed": "Not enough Gold to expand the bag.",
-    "expanded": "🎒 Bag expanded to {n} slots!"
+    "expanded": "🎒 Bag expanded to {n} slots!",
+    "useOnPlot": "Use on a Garden plot"
   },
   "profile": {
     "title": "⚔️ HERO PROFILE",
@@ -515,7 +522,28 @@
     "greater_elixir_d": "Heals 50% of max HP in the Dungeon — scales with your character",
     "strength_elixir": "Elixir of Strength",
     "strength_elixir_d": "+20% combat damage for 30 real-time minutes",
-    "strength_elixir_active": "🔥 Elixir of Strength active for 30 minutes!"
+    "strength_elixir_active": "🔥 Elixir of Strength active for 30 minutes!",
+    "stoneskin_tonic": "Stoneskin Tonic",
+    "stoneskin_tonic_d": "+10% damage reduction in combat for 30 real-time minutes",
+    "stoneskin_tonic_active": "Stoneskin Tonic active for 30 minutes!",
+    "fortune_tonic": "Fortune Tonic",
+    "fortune_tonic_d": "+20% gold from Hunting and the Dungeon for 60 real-time minutes",
+    "fortune_tonic_active": "Fortune Tonic active for 60 minutes!",
+    "haste_tonic": "Haste Tonic",
+    "haste_tonic_d": "+9% attack speed for 30 real-time minutes",
+    "haste_tonic_active": "Haste Tonic active for 30 minutes!",
+    "gatherer_brew": "Gatherer Brew",
+    "gatherer_brew_d": "+25% ore and wood (and profession XP) for 2 real-time hours",
+    "gatherer_brew_active": "Gatherer Brew active for 2 hours!",
+    "precision_elixir": "Precision Elixir",
+    "precision_elixir_d": "+8% critical chance for 30 real-time minutes",
+    "precision_elixir_active": "Precision Elixir active for 30 minutes!",
+    "whetstone_oil": "Whetstone Oil",
+    "whetstone_oil_d": "Restores 30% durability to the equipped weapon and armor",
+    "whetstone_oil_active": "Weapon and armor restored by 30% durability!",
+    "whetstone_oil_full": "Weapon and armor are already at full durability.",
+    "fertilizer": "Fertilizer",
+    "fertilizer_d": "Use on a growing plot: removes 50% of the remaining time (once per planting)"
   },
   "forge": {
     "title": "Forge",
@@ -927,19 +955,41 @@
     "back": "Back",
     "plant_common_herb": "Medicinal Herb",
     "plant_common_herb_d": "Quick harvest: basic healing and Refining Dust",
-    "plant_common_herb_use": "Used for: Small Health Potion, Refining Dust",
+    "plant_common_herb_use": "Used for: Small Health Potion, Fertilizer, Tonics, Copper Ring, Leather Gloves and Boots, Refining Dust",
     "plant_energy_herb": "Energy Herb",
     "plant_energy_herb_d": "Quick, plentiful harvest, an XP ingredient",
-    "plant_energy_herb_use": "Used for: Potion of Knowledge",
+    "plant_energy_herb_use": "Used for: Potion of Knowledge, Haste Tonic",
     "plant_uncommon_root": "Bitter Root",
     "plant_uncommon_root_d": "Takes longer, yields a better ingredient",
     "plant_uncommon_root_use": "Used for: Greater Elixir of Life",
     "plant_crimson_mushroom": "Crimson Mushroom",
     "plant_crimson_mushroom_d": "Medium growth, strong healing",
-    "plant_crimson_mushroom_use": "Used for: Large Health Potion",
+    "plant_crimson_mushroom_use": "Used for: Large Health Potion, Ruby Ring",
     "plant_rare_flower": "Crimson Flower",
     "plant_rare_flower_d": "Long harvest, the Garden's most valuable plant",
-    "plant_rare_flower_use": "Used for: Elixir of Strength"
+    "plant_rare_flower_use": "Used for: Elixir of Strength",
+    "plant_iron_thistle": "Iron Thistle",
+    "plant_iron_thistle_d": "Quick harvest of a hardy thistle",
+    "plant_iron_thistle_use": "Used for: Stoneskin Tonic, Whetstone Oil, Silver Ring",
+    "plant_gold_blossom": "Gold Blossom",
+    "plant_gold_blossom_d": "Medium harvest, scarce and valuable",
+    "plant_gold_blossom_use": "Used for: Fortune Tonic, Gold Ring, Ruby Ring",
+    "plant_swift_grass": "Swift Grass",
+    "plant_swift_grass_d": "Light grass that grows fast",
+    "plant_swift_grass_use": "Used for: Haste Tonic, Gatherer Brew",
+    "plant_moon_lily": "Moon Lily",
+    "plant_moon_lily_d": "Long to grow, the rarest plant in the Garden",
+    "plant_moon_lily_use": "Used for: Precision Elixir, Obsidian Ring, Abyssal Ring",
+    "plotLockedLevel": "Gardening Lv {n}",
+    "plotLockedBody": "Locked plot",
+    "fertilize": "Fertilize",
+    "fertilized": "Fertilized",
+    "fertilizeHint": "Removes 50% of the remaining time · you have {n}",
+    "fertilizeToast": "Plot fertilized: half the remaining time removed.",
+    "nextUnlock": "Next unlock: {name} (Lv {n})",
+    "nextPlot": "Next plot: Lv {n}",
+    "allUnlocked": "Everything unlocked",
+    "plotsOpen": "{n} of {max} plots open"
   },
   "quests": {
     "title": "Quests",

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { t } from '../locales';
+import { fmtNum, t } from '../locales';
 import { computeGardenSlotStatus, GARDEN_SLOTS, GardenStatus, SaveData } from '../game/engine';
-import { getPlant, PLANTS, PlantDef } from '../game/garden';
+import { getPlant, plantHarvestXp, PLANTS, PlantDef, plotUnlockLevel, unlockedGardenPlots } from '../game/garden';
 import { readySlots } from '../game/gardenActions';
 import { skillLevel } from '../game/skills';
 import SkillLevelBadge from './SkillLevelBadge';
@@ -29,9 +29,8 @@ function formatDuration(ms: number): string {
   return `${m}m`;
 }
 
-// There is no plot-unlock system yet (every plot is open), so nothing is ever locked today. The locked state is here
-// so the card is ready the day one exists: pass `locked` and it renders the padlock card instead.
-type PlotLock = { locked: true } | { locked?: false };
+// Plots 5 and 6 unlock with the Gardening level (garden.ts GARDEN_PLOT_UNLOCK_LEVELS): a locked plot renders the padlock card with the level it needs.
+type PlotLock = { locked: true; level: number } | { locked?: false };
 
 function Plot({
   index,
@@ -39,22 +38,28 @@ function Plot({
   lastPlant,
   gardeningLevel,
   armedUproot,
+  fertilized,
+  fertilizerQty,
   lock = {},
   onPick,
   onPlantAgain,
   onHarvest,
   onUproot,
+  onFertilize,
 }: {
   index: number;
   status: GardenStatus;
   lastPlant: PlantDef | undefined;
   gardeningLevel: number;
   armedUproot: boolean;
+  fertilized: boolean;
+  fertilizerQty: number;
   lock?: PlotLock;
   onPick: () => void;
   onPlantAgain: (plantId: string) => void;
   onHarvest: () => void;
   onUproot: () => void;
+  onFertilize: () => void;
 }) {
   const def = status.plantId ? getPlant(status.plantId) : undefined;
   const title = gardenText('plotName').replace('{n}', String(index + 1));
@@ -65,8 +70,9 @@ function Plot({
         <div className="garden-plot-head">
           <span className="garden-plot-num">{title}</span>
         </div>
-        <span className="garden-plot-lock">🔒</span>
-        <span className="garden-plot-hint">{gardenText('plotLocked')}</span>
+        <img className="garden-plot-lock" src="/assets/icons/garden_plot_locked.png" alt="" />
+        <span className="garden-plot-hint">{gardenText('plotLockedBody')}</span>
+        <span className="garden-plot-chip lock-level">{gardenText('plotLockedLevel').replace('{n}', String(lock.level))}</span>
       </div>
     );
   }
@@ -137,6 +143,15 @@ function Plot({
             <span className="garden-plot-remaining">{formatRemaining(status.remainingMs)}</span>
             <span className="garden-plot-pct">{pct}%</span>
           </span>
+          {fertilized ? (
+            <span className="garden-plot-fertilized">{gardenText('fertilized')}</span>
+          ) : (
+            fertilizerQty > 0 && (
+              <button className="garden-plot-fertilize" onClick={onFertilize} title={gardenText('fertilizeHint').replace('{n}', String(fertilizerQty))} data-ui>
+                <img className="garden-inline-icon" src="/assets/icons/fertilizer.png" alt="" /> {gardenText('fertilize')} ({fertilizerQty})
+              </button>
+            )
+          )}
           <button className={`garden-plot-uproot${armedUproot ? ' armed' : ''}`} onClick={onUproot} data-ui>
             {armedUproot ? gardenText('uprootConfirm') : gardenText('cancel')}
           </button>
@@ -151,12 +166,14 @@ export default function GardenModal({
   onPlant,
   onHarvest,
   onUproot,
+  onFertilize,
   onClose,
 }: {
   save: SaveData;
   onPlant: (plantId: string, slotIndices: number[]) => void;
   onHarvest: (slotIndices: number[]) => void;
   onUproot: (slotIndex: number) => void;
+  onFertilize: (slotIndex: number) => void;
   onClose: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
@@ -200,7 +217,11 @@ export default function GardenModal({
 
   const gardeningLevel = skillLevel(save.skillXp.gardening, 'gardening');
   const statuses = Array.from({ length: GARDEN_SLOTS }, (_, i) => computeGardenSlotStatus(save, now, i));
-  const emptyIdx = statuses.flatMap((s, i) => (s.plantId ? [] : [i]));
+  const openPlots = unlockedGardenPlots(gardeningLevel);
+  const emptyIdx = statuses.flatMap((s, i) => (s.plantId || i >= openPlots ? [] : [i]));
+  const nextPlant = PLANTS.filter((p) => p.requiredLevel > gardeningLevel).sort((a, b) => a.requiredLevel - b.requiredLevel)[0];
+  const nextPlotLevel = openPlots < GARDEN_SLOTS ? plotUnlockLevel(openPlots) : 0;
+  const fertilizerQty = save.consumables.fertilizer ?? 0;
   const readyIdx = readySlots(save, now);
 
   const harvest = (indices: number[]) => {
@@ -209,7 +230,7 @@ export default function GardenModal({
       .filter((i) => statuses[i]?.ready && statuses[i].plantId && !floats.some((f) => f.slot === i))
       .map((i) => {
         const plant = getPlant(statuses[i].plantId as string)!;
-        return { id: ++floatSeq.current, slot: i, text: `+${plant.qty} ${plant.icon} ${matText(plant.material)}` };
+        return { id: ++floatSeq.current, slot: i, text: `+${plant.qty} ${matText(plant.material)}` };
       });
     onHarvest(indices);
     if (fresh.length === 0) return;
@@ -238,7 +259,17 @@ export default function GardenModal({
       <div className={`modal dungeon-modal garden-modal${pickerFor !== null ? ' picking' : ''}`} data-tutorial-target="garden-modal">
         <h2 className="modal-title">{gardenText('title')}</h2>
 
-        <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" skillId="gardening" />
+        <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" skillId="gardening">
+          <span className="skill-level-meta">
+            {gardenText('plotsOpen').replace('{n}', String(openPlots)).replace('{max}', String(GARDEN_SLOTS))}
+            {nextPlotLevel > 0 && ` · ${gardenText('nextPlot').replace('{n}', String(nextPlotLevel))}`}
+          </span>
+          <span className="skill-level-meta">
+            {nextPlant
+              ? gardenText('nextUnlock').replace('{name}', gardenText(nextPlant.nameKey)).replace('{n}', String(nextPlant.requiredLevel))
+              : gardenText('allUnlocked')}
+          </span>
+        </SkillLevelBadge>
 
         <div className="dungeon-body">
           {readyIdx.length >= 2 && (
@@ -255,6 +286,10 @@ export default function GardenModal({
                   lastPlant={save.gardenSlots[i]?.lastPlantId ? getPlant(save.gardenSlots[i].lastPlantId as string) : undefined}
                   gardeningLevel={gardeningLevel}
                   armedUproot={armedUproot === i}
+                  fertilized={!!save.gardenSlots[i]?.fertilized}
+                  fertilizerQty={fertilizerQty}
+                  lock={i >= openPlots ? { locked: true, level: plotUnlockLevel(i) } : {}}
+                  onFertilize={() => onFertilize(i)}
                   onPick={() => {
                     setPlantAll(false);
                     setPickerFor(i);
@@ -304,7 +339,7 @@ export default function GardenModal({
                           <span className="garden-plant-rarity">{gardenText(`rarity_${plant.rarity}`)}</span>
                         </span>
                         <span className="garden-plant-meta">
-                          ⏱ {formatDuration(plant.durationMs)} · {gardenText('yieldShort').replace('{qty}', String(plant.qty))}
+                          {formatDuration(plant.durationMs)} · {gardenText('yieldShort').replace('{qty}', String(plant.qty))} · {fmtNum(plantHarvestXp(plant))} XP
                         </span>
                         <span className="garden-plant-use">{gardenText(plant.useKey)}</span>
                         {!unlocked && <span className="garden-plant-lock">{gardenText('locked').replace('{n}', String(plant.requiredLevel))}</span>}

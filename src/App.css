@@ -7490,3 +7490,78 @@ body {
   padding: 0 3px;
   font-size: 8px;
 }
+
+/* ---- Profession header (SkillLevelBadge): level row, bar, XP numbers and screen-specific meta lines ---- */
+.skill-level-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.skill-level-row .skill-level-label {
+  margin-bottom: 0;
+}
+.skill-level-num {
+  font-size: calc(var(--font-size) - 1px);
+  color: #fff3c4;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.skill-level-xp {
+  display: block;
+  margin-top: 4px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #b9a8d8;
+}
+.skill-level-meta {
+  display: block;
+  margin-top: 3px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+}
+
+/* ---- Garden 3.0: fertilizer, locked plots with their level, 3-column plot grid on desktop ---- */
+.garden-plot-fertilize {
+  min-height: 34px;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #e8dcc0;
+  background: #2d3a1c;
+  border: 1px solid #6f8f3a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.garden-plot-fertilize:hover {
+  background: #3a4a24;
+  border-color: #a4c95a;
+}
+.garden-plot-fertilize:active {
+  transform: translateY(1px);
+}
+.garden-plot-fertilized {
+  align-self: flex-start;
+  padding: 1px 6px;
+  font-size: calc(var(--font-size) - 4px);
+  color: #a4c95a;
+  border: 1px solid #6f8f3a;
+  border-radius: 999px;
+}
+.garden-plot-lock {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.garden-plot-chip.lock-level {
+  color: #ffd76a;
+}
+@media (min-width: 1024px) {
+  .garden-modal {
+    width: min(92vw, 880px);
+  }
+  .garden-plots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

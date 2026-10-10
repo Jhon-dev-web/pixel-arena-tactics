@@ -1,6 +1,8 @@
 {
   "skills": {
-    "level": "Nível {n}"
+    "level": "Nível {n}",
+    "xpProgress": "{cur} / {need} XP · faltam {left}",
+    "maxLevel": "Nível máximo"
   },
   "welcome": {
     "title": "🏕️ Bem-vindo ao Acampamento!",
@@ -386,7 +388,11 @@
     "mat_wood_handle_oak": "Cabo de Carvalho",
     "mat_wood_handle_ebony": "Cabo de Ébano",
     "mat_wood_handle_elven": "Cabo de Madeira Élfica",
-    "mat_wood_handle_ancient": "Cabo de Madeira Ancestral"
+    "mat_wood_handle_ancient": "Cabo de Madeira Ancestral",
+    "mat_iron_thistle": "Cardo de Ferro",
+    "mat_gold_blossom": "Flor Dourada",
+    "mat_swift_grass": "Capim Veloz",
+    "mat_moon_lily": "Lírio Lunar"
   },
   "inventory": {
     "title": "Mochila",
@@ -430,7 +436,8 @@
     "confirmExpand": "Expandir",
     "maxCapacityReached": "Capacidade máxima atingida nesta versão.",
     "expandFailed": "Ouro insuficiente para expandir a mochila.",
-    "expanded": "🎒 Mochila expandida para {n} espaços!"
+    "expanded": "🎒 Mochila expandida para {n} espaços!",
+    "useOnPlot": "Use no canteiro da Horta"
   },
   "profile": {
     "title": "⚔️ PERFIL DO HERÓI",
@@ -515,7 +522,28 @@
     "greater_elixir_d": "Cura 50% do PV máximo na Masmorra — escala com seu personagem",
     "strength_elixir": "Elixir de Força",
     "strength_elixir_d": "+20% de dano em combate por 30 minutos reais",
-    "strength_elixir_active": "🔥 Elixir de Força ativo por 30 minutos!"
+    "strength_elixir_active": "🔥 Elixir de Força ativo por 30 minutos!",
+    "stoneskin_tonic": "Tônico de Pele de Pedra",
+    "stoneskin_tonic_d": "+10% de redução de dano em combate por 30 minutos reais",
+    "stoneskin_tonic_active": "Tônico de Pele de Pedra ativo por 30 minutos!",
+    "fortune_tonic": "Tônico da Fortuna",
+    "fortune_tonic_d": "+20% de ouro na Caça e na Masmorra por 60 minutos reais",
+    "fortune_tonic_active": "Tônico da Fortuna ativo por 60 minutos!",
+    "haste_tonic": "Tônico de Pressa",
+    "haste_tonic_d": "+9% de velocidade de ataque por 30 minutos reais",
+    "haste_tonic_active": "Tônico de Pressa ativo por 30 minutos!",
+    "gatherer_brew": "Poção do Coletor",
+    "gatherer_brew_d": "+25% de minério e madeira (e de XP de profissão) por 2 horas reais",
+    "gatherer_brew_active": "Poção do Coletor ativa por 2 horas!",
+    "precision_elixir": "Elixir de Precisão",
+    "precision_elixir_d": "+8% de chance de crítico por 30 minutos reais",
+    "precision_elixir_active": "Elixir de Precisão ativo por 30 minutos!",
+    "whetstone_oil": "Óleo de Amolar",
+    "whetstone_oil_d": "Restaura 30% da durabilidade da arma e da armadura equipadas",
+    "whetstone_oil_active": "Arma e armadura restauradas em 30% de durabilidade!",
+    "whetstone_oil_full": "Arma e armadura já estão com a durabilidade cheia.",
+    "fertilizer": "Adubo",
+    "fertilizer_d": "Use em um canteiro em crescimento: remove 50% do tempo restante (uma vez por plantio)"
   },
   "forge": {
     "title": "Forja",
@@ -927,19 +955,41 @@
     "back": "Voltar",
     "plant_common_herb": "Erva Medicinal",
     "plant_common_herb_d": "Colheita rápida: cura básica e Pó de Refino",
-    "plant_common_herb_use": "Usos: Poção de Vida Pequena, Pó de Refino",
+    "plant_common_herb_use": "Usos: Poção de Vida Pequena, Adubo, Tônicos, Anel de Cobre, Luvas e Botas de Couro, Pó de Refino",
     "plant_energy_herb": "Erva Energética",
     "plant_energy_herb_d": "Colheita rápida e farta, ingrediente de XP",
-    "plant_energy_herb_use": "Usos: Poção do Conhecimento",
+    "plant_energy_herb_use": "Usos: Poção do Conhecimento, Tônico de Pressa",
     "plant_uncommon_root": "Raiz Amarga",
     "plant_uncommon_root_d": "Leva mais tempo, resulta num ingrediente melhor",
     "plant_uncommon_root_use": "Usos: Elixir de Vida Maior",
     "plant_crimson_mushroom": "Cogumelo Rubro",
     "plant_crimson_mushroom_d": "Crescimento médio, cura forte",
-    "plant_crimson_mushroom_use": "Usos: Poção de Vida Grande",
+    "plant_crimson_mushroom_use": "Usos: Poção de Vida Grande, Anel de Rubi",
     "plant_rare_flower": "Flor Carmesim",
     "plant_rare_flower_d": "Colheita longa, a planta mais valiosa da Horta",
-    "plant_rare_flower_use": "Usos: Elixir de Força"
+    "plant_rare_flower_use": "Usos: Elixir de Força",
+    "plant_iron_thistle": "Cardo de Ferro",
+    "plant_iron_thistle_d": "Colheita rápida de um cardo resistente",
+    "plant_iron_thistle_use": "Usos: Tônico de Pele de Pedra, Óleo de Amolar, Anel de Prata",
+    "plant_gold_blossom": "Flor Dourada",
+    "plant_gold_blossom_d": "Flor de colheita média, escassa e valiosa",
+    "plant_gold_blossom_use": "Usos: Tônico da Fortuna, Anel de Ouro, Anel de Rubi",
+    "plant_swift_grass": "Capim Veloz",
+    "plant_swift_grass_d": "Capim leve que cresce depressa",
+    "plant_swift_grass_use": "Usos: Tônico de Pressa, Poção do Coletor",
+    "plant_moon_lily": "Lírio Lunar",
+    "plant_moon_lily_d": "Cultivo longo, a planta mais rara da Horta",
+    "plant_moon_lily_use": "Usos: Elixir de Precisão, Anel de Obsidiana, Anel Abissal",
+    "plotLockedLevel": "Jardinagem Nv {n}",
+    "plotLockedBody": "Canteiro bloqueado",
+    "fertilize": "Adubar",
+    "fertilized": "Adubado",
+    "fertilizeHint": "Remove 50% do tempo restante · você tem {n}",
+    "fertilizeToast": "Canteiro adubado: metade do tempo restante removida.",
+    "nextUnlock": "Próximo desbloqueio: {name} (Nv {n})",
+    "nextPlot": "Próximo canteiro: Nv {n}",
+    "allUnlocked": "Tudo desbloqueado",
+    "plotsOpen": "{n} de {max} canteiros abertos"
   },
   "quests": {
     "title": "Missões",

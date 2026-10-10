@@ -76,6 +76,10 @@ export interface CombatStats {
   critChance: number; // 0..1
   critMult: number;
   heroMs: number; // hero attack interval in ms, from heroAttackIntervalMs (AGI, sanitized, floored)
+  // The inputs of heroMs, kept so a timed Haste Tonic can be derived through the same function and floor (buffs.ts hasteIntervalMs). Optional: sessions
+  // saved before they existed fall back to dividing heroMs.
+  agi?: number;
+  speedBonus?: number;
   reduction: number; // raw reductionSum, fed to applyDamageReduction (NOT a mitigation percentage)
   lifesteal: number; // percent of damage dealt healed per hit
   // Gear effects (gear.ts burn / reflect / hpRegenPct): every combat loop reads them through the helpers below, never the items.

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { activeLocale, t } from '../locales';
+import { fmtNum, t } from '../locales';
+import { BUFF_ITEM } from '../game/buffs';
 import { SaveData } from '../game/engine';
 import { GEAR, GearItem, getGear, isInstancedSlot } from '../game/gear';
 import { canAffordReforge, getReforgeCost } from '../game/reforge';
@@ -25,11 +26,11 @@ import UniqueTag from './UniqueTag';
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
 const conText = (k: string): string => t(`consumables.${k}`);
-const fmtNum = (n: number): string => n.toLocaleString(activeLocale === 'pt' ? 'pt-BR' : 'en-US');
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
-const MANUALLY_USABLE = new Set(['xp_potion', 'strength_elixir', 'atk_elixir']);
+// Everything the bag can use by itself: the XP potion, every timed elixir / tonic (buffs.ts BUFF_ITEM) and the Whetstone Oil. Fertilizer is used on a Garden plot.
+const MANUALLY_USABLE = new Set<string>(['xp_potion', 'whetstone_oil', ...Object.keys(BUFF_ITEM)]);
 
 type SelKind = 'gear' | 'material' | 'consumable';
 
@@ -445,6 +446,8 @@ export default function InventoryPanel({
         ) : (
           <div className="inv-detail-empty">{t('inventory.hint')}</div>
         )}
+
+        {selected?.kind === 'consumable' && selected.id === 'fertilizer' && <div className="inv-detail-desc">{t('inventory.useOnPlot')}</div>}
 
         {selected?.kind === 'consumable' && MANUALLY_USABLE.has(selected.id) && selQty > 0 && (
           <div className="inv-actions">

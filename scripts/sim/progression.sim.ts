@@ -23,7 +23,10 @@
 //            only when the next gear craft (or the next refine) is missing ore / wood. Activities that still have
 //            something to cover take turns (the one done longest ago goes first). A locked ore tier is reached by mining
 //            the best unlocked one.
-//   Garden   not used: no gear recipe needs a garden plant.
+//   Garden   plants and harvests at every visit (what the next craft needs first, then the plants the tonic recipes need, then the longest plant that fits
+//            the 12 h between visits). Rings, leather gloves and boots need Garden plants (Garden 3.0).
+//   Tonics   keeps one of each combat tonic (Stoneskin, Precision, Haste, Fortune) and the Gatherer Brew in the bag, crafted only with gold beyond the next
+//            craft, drinks the combat ones before a Dungeon session that starts within 6 floors of an unclaimed boss, and the brew before a gathering session.
 //   Gear     the next craft is the lowest-tier piece still missing in any of the six slots, ties broken weapon > armor > gloves >
 //            helmet > boots > ring (player.ts CRAFT_PRIORITY); missing intermediate materials go through the Furnace / Tannery /
 //            Carpentry / Alchemy recipes; crafting consumes lower-tier pieces exactly as the forge does; a craft blocked on gems buys
@@ -34,7 +37,7 @@
 //   Orders   one delivery at a time: the best-paying affordable offer that fits in 12 h and does not take materials the
 //            next craft needs. No rerolls, no tickets.
 //   Quests   every completed daily / achievement quest is claimed.
-//   Not driven: Battle Pass (the free-track claim lives inside App.tsx), Garden, potion crafting, elixirs, reforge,
+//   Not driven: Battle Pass (the free-track claim lives inside App.tsx), Fertilizer, Whetstone Oil, the other potions and elixirs, reforge,
 //            extra Dungeon sessions with shards, the legacy Expedition, salvage of old gear, the shop beyond HP potions.
 //
 // Two scenarios run on the same seeds: A (the policy above, as asked) and B (A plus one short visit of up to 15 min after
@@ -371,6 +374,46 @@ function professionReport(runs: Run[]): string[] {
   return out;
 }
 
+// Day (median over seeds) on which each slot first holds a piece of tier 1, 2 and 3: the gear timeline the Garden recipes must not slip.
+function slotTimeline(runs: Run[]): string[] {
+  const rows = ['weapon', 'armor', 'gloves', 'boots', 'ring', 'helmet'].map((slot) => [
+    slot,
+    ...[1, 2, 3].map((tier) => dayCell(runs.map((r) => firstDayAt(r, (d) => d.tiers[slot] ?? 0, tier)))),
+  ]);
+  return table(['Slot', 'Tier 1', 'Tier 2', 'Tier 3'], rows);
+}
+
+// Garden 3.0 tonic budget: the same 20 seeds with and without the policy crafting / drinking tonics. Day of the first floor-25 boss kill and of the first arrival
+// on floor 50, per seed (sorted), plus the player levels and CP at day 14.
+function tonicBudget(withT: Run[], without: Run[]): string[] {
+  const days = (runs: Run[], ev: FirstEvent) => sorted(runs.map((r) => r.first[ev] ?? Infinity)).map((d) => (Number.isFinite(d) ? String(d) : '-')).join(' ');
+  return [
+    ...table(
+      ['', 'Chefe 25 vencido (dia por seed)', 'Andar 50 alcançado (dia por seed)', 'CP no dia 14 (mediana)', 'Nível no dia 14'],
+      [
+        ['Com tônicos (A)', days(withT, 'floor25'), days(withT, 'floor50'), num(median(withT.map((r) => r.days[Math.min(13, DAYS - 1)].cp))), num(median(withT.map((r) => r.days[Math.min(13, DAYS - 1)].level)))],
+        ['Sem tônicos', days(without, 'floor25'), days(without, 'floor50'), num(median(without.map((r) => r.days[Math.min(13, DAYS - 1)].cp))), num(median(without.map((r) => r.days[Math.min(13, DAYS - 1)].level)))],
+      ],
+    ),
+    '',
+    ...table(
+      ['Dia em que a porta abre (mediana)', 'Com tônicos (A)', 'Sem tônicos'],
+      [
+        ['iron (Mineração 10)', 'mining', 10],
+        ['silver (Mineração 25)', 'mining', 25],
+        ['gold_ore (Mineração 50)', 'mining', 50],
+        ['oak_wood (Lenhador 10)', 'woodcutting', 10],
+        ['ebony_wood (Lenhador 25)', 'woodcutting', 25],
+        ['elven_wood (Lenhador 50)', 'woodcutting', 50],
+      ].map(([label, skill, lvl]) => [
+        String(label),
+        ...[withT, without].map((runs) => dayCell(runs.map((r) => firstDayAt(r, (d) => d.skills[skill as 'mining' | 'woodcutting'], lvl as number)))),
+      ]),
+    ),
+    '',
+  ];
+}
+
 // ---- hunting pouch diagnostic -------------------------------------------------------------------------------------
 
 interface PouchStats {
@@ -653,10 +696,12 @@ describe('progression simulation', () => {
     const a: Run[] = [];
     const b: Run[] = [];
     const c: Run[] = [];
+    const ctl: Run[] = []; // scenario A without the Garden 3.0 tonics: the control of the tonic budget
     for (let seed = 1; seed <= SEEDS; seed++) {
       a.push(playOne(seed, {}));
       b.push(playOne(seed, { shortHunt: true }));
       c.push(playOne(seed, { garden: true, balanced: true }));
+      ctl.push(playOne(seed, { tonics: false }));
     }
     const all: Section[] = ['progress', 'xp', 'dungeon', 'gold', 'materials', 'firsts', 'day1'];
     const pouch = pouchDiagnostic();
@@ -677,6 +722,13 @@ describe('progression simulation', () => {
       '### Profissões, cenário C (jogador que também planta e usa a segunda visita do dia para minerar ou cortar)',
       '',
       ...professionReport(c),
+      '### Linha do tempo por slot: dia em que a primeira peça de cada tier aparece (cenário A, mediana)',
+      '',
+      ...slotTimeline(a),
+      '',
+      '### Controle dos tônicos: cenário A sem tônicos contra cenário A (a mesma seed)',
+      '',
+      ...tonicBudget(a, ctl),
       '### Diagnóstico da bolsa de caça',
       '',
       ...pouch.lines,

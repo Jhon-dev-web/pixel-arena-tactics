@@ -4,6 +4,7 @@ import type { HuntPouchItem } from './huntPouch';
 import { UniqueDrop, sanitizeUniqueDrops } from './uniques';
 import { HUNTING_DEPTHS, HuntingDepth } from './huntingZones';
 import T from './tunables';
+import { HUNT_BUFF_KINDS, type TimedBuffKind } from './buffs';
 
 // Persistent state of ONE Hunting session and of the reward it leaves behind. Pure data + helpers, no engine import
 // (engine.ts imports this file, so it must stay a leaf).
@@ -28,6 +29,8 @@ export interface HuntSession {
   strength: TimeWindow[];
   attack: TimeWindow[];
   pass: TimeWindow[];
+  // Garden 3.0 tonics that matter to a hunt (stoneskin, fortune, haste, precision), same rule as the elixirs above. Missing = none (older sessions).
+  tonics?: Partial<Record<TimedBuffKind, TimeWindow[]>>;
 }
 
 const MAX_WINDOWS = 16;
@@ -59,8 +62,9 @@ export function mergeWindows(list: TimeWindow[]): TimeWindow[] {
 }
 
 // The session with one more active window (an elixir drunk / a pass activated while hunting).
-export function withSessionWindow(session: HuntSession, kind: 'strength' | 'attack' | 'pass', w: TimeWindow): HuntSession {
-  return { ...session, [kind]: mergeWindows([...session[kind], w]) };
+export function withSessionWindow(session: HuntSession, kind: 'strength' | 'attack' | 'pass' | TimedBuffKind, w: TimeWindow): HuntSession {
+  if (kind === 'strength' || kind === 'attack' || kind === 'pass') return { ...session, [kind]: mergeWindows([...session[kind], w]) };
+  return { ...session, tonics: { ...(session.tonics ?? {}), [kind]: mergeWindows([...(session.tonics?.[kind] ?? []), w]) } };
 }
 
 // Windows as session-relative [from, to) offsets in ms (Infinity = open-ended), negative starts clamped to 0.
@@ -134,6 +138,16 @@ export function sanitizeWindows(raw: unknown): TimeWindow[] {
   return mergeWindows(list);
 }
 
+function sanitizeTonicWindows(raw: unknown): Partial<Record<TimedBuffKind, TimeWindow[]>> {
+  const out: Partial<Record<TimedBuffKind, TimeWindow[]>> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const kind of HUNT_BUFF_KINDS) {
+    const w = sanitizeWindows((raw as Record<string, unknown>)[kind]);
+    if (w.length > 0) out[kind] = w;
+  }
+  return out;
+}
+
 // null = missing or unusable (the caller then rebuilds it conservatively from the live save).
 export function sanitizeHuntSession(raw: unknown): HuntSession | null {
   const r = raw as Partial<HuntSession> | null | undefined;
@@ -162,11 +176,14 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
       burn: s.burn === true,
       reflect: n(s.reflect, 0, 1) ?? 0,
       hpRegenPct: n(s.hpRegenPct, 0, 1) ?? 0,
+      // AGI and the speed bonus feed the Haste Tonic's interval; a session saved before they existed falls back to dividing heroMs.
+      ...(n(s.agi, 0, ceil) !== null ? { agi: n(s.agi, 0, ceil)!, speedBonus: n(s.speedBonus, 0, 10) ?? 0 } : {}),
     },
     blessed: r.blessed === true,
     strength: sanitizeWindows(r.strength),
     attack: sanitizeWindows(r.attack),
     pass: sanitizeWindows(r.pass),
+    tonics: sanitizeTonicWindows(r.tonics),
   };
 }
 

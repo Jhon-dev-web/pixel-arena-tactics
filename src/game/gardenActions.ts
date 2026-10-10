@@ -1,5 +1,6 @@
 import { computeGardenSlotStatus, GARDEN_SLOTS, SaveData } from './engine';
-import { getPlant, PlantId, plantHarvestXp } from './garden';
+import { getPlant, PlantId, plantHarvestXp, unlockedGardenPlots } from './garden';
+import T from './tunables';
 import { MaterialId } from './materials';
 import { skillLevel } from './skills';
 
@@ -19,12 +20,13 @@ export interface HarvestResult {
 export function applyPlant(save: SaveData, plantId: string, slotIndices: number[], now: number): SaveData | null {
   const def = getPlant(plantId);
   if (!def || !validNow(now) || skillLevel(save.skillXp.gardening, 'gardening') < def.requiredLevel) return null;
+  const open = Math.min(GARDEN_SLOTS, unlockedGardenPlots(skillLevel(save.skillXp.gardening, 'gardening')));
   const targets = Array.from(new Set(slotIndices)).filter(
-    (i) => Number.isInteger(i) && i >= 0 && i < GARDEN_SLOTS && !!save.gardenSlots[i] && !save.gardenSlots[i].plantId,
+    (i) => Number.isInteger(i) && i >= 0 && i < open && !!save.gardenSlots[i] && !save.gardenSlots[i].plantId,
   );
   if (targets.length === 0) return null;
   const gardenSlots = [...save.gardenSlots];
-  for (const i of targets) gardenSlots[i] = { plantId: def.id, startedAt: now, lastPlantId: def.id };
+  for (const i of targets) gardenSlots[i] = { plantId: def.id, startedAt: now, lastPlantId: def.id, fertilized: false };
   return { ...save, gardenSlots };
 }
 
@@ -42,7 +44,7 @@ export function applyHarvest(save: SaveData, slotIndices: number[], now: number)
     const def = status.plantId ? getPlant(status.plantId) : undefined;
     if (!status.ready || !def) continue;
     materials[def.material] = (materials[def.material] ?? 0) + def.qty;
-    gardenSlots[i] = { plantId: null, startedAt: 0, lastPlantId: def.id };
+    gardenSlots[i] = { plantId: null, startedAt: 0, lastPlantId: def.id, fertilized: false };
     harvested.push({ slot: i, plantId: def.id, material: def.material, qty: def.qty, xp: plantHarvestXp(def) });
   }
   if (harvested.length === 0) return null;
@@ -63,6 +65,19 @@ export function applyUproot(save: SaveData, slotIndex: number): SaveData | null 
   const slot = save.gardenSlots[slotIndex];
   if (!slot?.plantId) return null;
   const gardenSlots = [...save.gardenSlots];
-  gardenSlots[slotIndex] = { plantId: null, startedAt: 0, lastPlantId: slot.plantId };
+  gardenSlots[slotIndex] = { plantId: null, startedAt: 0, lastPlantId: slot.plantId, fertilized: false };
   return { ...save, gardenSlots };
+}
+
+// Use one Fertilizer on a plot that is growing and not ready yet: removes T.tonics.fertilizerSkipPct of the REMAINING growth time. One per planting per plot
+// (the plot remembers it until it is harvested / uprooted / planted again). null = nothing happens and nothing is spent: no unit, empty or ready plot,
+// already fertilized, bad clock.
+export function applyFertilizer(save: SaveData, slotIndex: number, now: number): SaveData | null {
+  if (!validNow(now) || !Number.isInteger(slotIndex) || (save.consumables.fertilizer ?? 0) < 1) return null;
+  const slot = save.gardenSlots[slotIndex];
+  const status = computeGardenSlotStatus(save, now, slotIndex);
+  if (!slot || !status.plantId || status.ready || slot.fertilized) return null;
+  const gardenSlots = [...save.gardenSlots];
+  gardenSlots[slotIndex] = { ...slot, startedAt: slot.startedAt - status.remainingMs * T.tonics.fertilizerSkipPct, fertilized: true };
+  return { ...save, gardenSlots, consumables: { ...save.consumables, fertilizer: (save.consumables.fertilizer ?? 0) - 1 } };
 }

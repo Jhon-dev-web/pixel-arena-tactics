@@ -22,6 +22,14 @@ export const POTION_RECIPES: PotionRecipe[] = [
   { id: 'greater_elixir', input: { uncommon_root: 2 }, cost: 100, requiredLevel: 15 },
   { id: 'large_hp', input: { crimson_mushroom: 2 }, cost: 48, requiredLevel: 25 },
   { id: 'strength_elixir', input: { rare_flower: 1, demon_claw: 2 }, cost: 250, requiredLevel: 35 },
+  // Garden 3.0 (buffs.ts / elixirs.ts / gardenActions.ts): every new plant has a tonic or a gear recipe; none of these is in the Shop.
+  { id: 'fertilizer', input: { bone_fragment: 3, common_herb: 2 }, cost: 25, requiredLevel: 5 },
+  { id: 'stoneskin_tonic', input: { iron_thistle: 3, bone_fragment: 2 }, cost: 60, requiredLevel: 10 },
+  { id: 'whetstone_oil', input: { iron_thistle: 2, leather_scrap: 2 }, cost: 40, requiredLevel: 10 },
+  { id: 'gatherer_brew', input: { swift_grass: 2, common_herb: 3 }, cost: 50, requiredLevel: 15 },
+  { id: 'fortune_tonic', input: { gold_blossom: 2, common_herb: 2 }, cost: 80, requiredLevel: 20 },
+  { id: 'haste_tonic', input: { swift_grass: 3, energy_herb: 2 }, cost: 90, requiredLevel: 30 },
+  { id: 'precision_elixir', input: { moon_lily: 1, corrupted_crystal: 1 }, cost: 220, requiredLevel: 45 },
 ];
 
 export function getPotionRecipe(id: string): PotionRecipe | undefined {

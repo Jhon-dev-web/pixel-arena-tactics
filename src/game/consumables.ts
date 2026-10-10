@@ -8,7 +8,14 @@ export type ConsumableId =
   | 'expedition_ticket_4h'
   | 'xp_potion'
   | 'greater_elixir'
-  | 'strength_elixir';
+  | 'strength_elixir'
+  | 'stoneskin_tonic'
+  | 'fortune_tonic'
+  | 'haste_tonic'
+  | 'gatherer_brew'
+  | 'precision_elixir'
+  | 'whetstone_oil'
+  | 'fertilizer';
 
 export interface ConsumableDef {
   id: ConsumableId;
@@ -46,6 +53,14 @@ export const CONSUMABLES: ConsumableDef[] = [
   { id: 'xp_potion', nameKey: 'xp_potion', descKey: 'xp_potion_d', icon: '📘', iconUrl: '/assets/icons/xp_potion.png', cost: 0, sellValue: 15, purchasable: false },
   { id: 'greater_elixir', nameKey: 'greater_elixir', descKey: 'greater_elixir_d', icon: '💚', iconUrl: '/assets/icons/greater_elixir.png', cost: 0, sellValue: 60, purchasable: false },
   { id: 'strength_elixir', nameKey: 'strength_elixir', descKey: 'strength_elixir_d', icon: '🔥', iconUrl: '/assets/icons/strength_elixir.png', cost: 0, sellValue: 120, purchasable: false },
+  // Garden 3.0 (potions.ts recipes, buffs.ts effects): Alchemy-only like the ones above, never in the Shop.
+  { id: 'stoneskin_tonic', nameKey: 'stoneskin_tonic', descKey: 'stoneskin_tonic_d', icon: '🪨', iconUrl: '/assets/icons/stoneskin_tonic.png', cost: 0, sellValue: 25, purchasable: false },
+  { id: 'fortune_tonic', nameKey: 'fortune_tonic', descKey: 'fortune_tonic_d', icon: '💰', iconUrl: '/assets/icons/fortune_tonic.png', cost: 0, sellValue: 30, purchasable: false },
+  { id: 'haste_tonic', nameKey: 'haste_tonic', descKey: 'haste_tonic_d', icon: '💨', iconUrl: '/assets/icons/haste_tonic.png', cost: 0, sellValue: 35, purchasable: false },
+  { id: 'gatherer_brew', nameKey: 'gatherer_brew', descKey: 'gatherer_brew_d', icon: '🍵', iconUrl: '/assets/icons/gatherer_brew.png', cost: 0, sellValue: 20, purchasable: false },
+  { id: 'precision_elixir', nameKey: 'precision_elixir', descKey: 'precision_elixir_d', icon: '🎯', iconUrl: '/assets/icons/precision_elixir.png', cost: 0, sellValue: 80, purchasable: false },
+  { id: 'whetstone_oil', nameKey: 'whetstone_oil', descKey: 'whetstone_oil_d', icon: '🛢️', iconUrl: '/assets/icons/whetstone_oil.png', cost: 0, sellValue: 15, purchasable: false },
+  { id: 'fertilizer', nameKey: 'fertilizer', descKey: 'fertilizer_d', icon: '🌱', iconUrl: '/assets/icons/fertilizer.png', cost: 0, sellValue: 8, purchasable: false },
 ];
 
 export function getConsumable(id: string): ConsumableDef | undefined {
@@ -64,5 +79,12 @@ export function emptyConsumables(): Record<ConsumableId, number> {
     xp_potion: 0,
     greater_elixir: 0,
     strength_elixir: 0,
+    stoneskin_tonic: 0,
+    fortune_tonic: 0,
+    haste_tonic: 0,
+    gatherer_brew: 0,
+    precision_elixir: 0,
+    whetstone_oil: 0,
+    fertilizer: 0,
   };
 }

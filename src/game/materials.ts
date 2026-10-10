@@ -25,6 +25,10 @@ export type MaterialId =
   | 'uncommon_root'
   | 'crimson_mushroom'
   | 'rare_flower'
+  | 'iron_thistle'
+  | 'gold_blossom'
+  | 'swift_grass'
+  | 'moon_lily'
   | 'refining_dust'
   | 'common_wood'
   | 'oak_wood'
@@ -79,6 +83,11 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'uncommon_root', nameKey: 'mat_uncommon_root', icon: '🥕', iconUrl: '/assets/icons/uncommon_root.png', packSize: 3, packCost: 90, sellValue: 15 },
   { id: 'crimson_mushroom', nameKey: 'mat_crimson_mushroom', icon: '🍄', iconUrl: '/assets/icons/crimson_mushroom.png', packSize: 3, packCost: 90, sellValue: 15 },
   { id: 'rare_flower', nameKey: 'mat_rare_flower', icon: '🌸', iconUrl: '/assets/icons/rare_flower.png', packSize: 1, packCost: 300, sellValue: 65 },
+  // Garden 3.0 plants: gear (rings) and tonic ingredients, never dropped by Hunting/Mining/Dungeon.
+  { id: 'iron_thistle', nameKey: 'mat_iron_thistle', icon: '🌾', iconUrl: '/assets/icons/iron_thistle.png', packSize: 5, packCost: 30, sellValue: 5 },
+  { id: 'gold_blossom', nameKey: 'mat_gold_blossom', icon: '🌼', iconUrl: '/assets/icons/gold_blossom.png', packSize: 2, packCost: 140, sellValue: 20 },
+  { id: 'swift_grass', nameKey: 'mat_swift_grass', icon: '🌿', iconUrl: '/assets/icons/swift_grass.png', packSize: 5, packCost: 50, sellValue: 8 },
+  { id: 'moon_lily', nameKey: 'mat_moon_lily', icon: '🌙', iconUrl: '/assets/icons/moon_lily.png', packSize: 1, packCost: 320, sellValue: 70 },
   // Refining-only sink for surplus common materials (see refining.ts DUST_RECIPES) — never dropped/mined,
   // and never sold, only ever produced and spent inside the Forge's Refino tab.
   { id: 'refining_dust', nameKey: 'mat_refining_dust', icon: '🌫️', iconUrl: '/assets/icons/refining_dust.png', packSize: 1, packCost: 0, sellValue: 0 },
@@ -130,6 +139,10 @@ export function emptyMaterials(): Materials {
     uncommon_root: 0,
     crimson_mushroom: 0,
     rare_flower: 0,
+    iron_thistle: 0,
+    gold_blossom: 0,
+    swift_grass: 0,
+    moon_lily: 0,
     refining_dust: 0,
     common_wood: 0,
     oak_wood: 0,

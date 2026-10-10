@@ -3,6 +3,8 @@ import T from '../game/tunables';
 import { t } from '../locales';
 import Assets from '../assets.json';
 import { buffRemainingMs, buildCombatStats, combatModifiersFromSave, isBuffActive, SaveData } from '../game/engine';
+import { activeTonicStats, BUFF_ITEM, BuffKind } from '../game/buffs';
+import { getConsumable } from '../game/consumables';
 import { ConsumableId } from '../game/consumables';
 import { EnemyDef, getEnemyDef } from '../game/enemies';
 import { BurnState, applyDamageModifiers, applyDamageReduction, igniteBurn, reflectedDamage, regenAmount, tickBurn } from '../game/derivedStats';
@@ -24,6 +26,11 @@ const biomeText = (k: string): string => t(`dungeon.${k}`);
 const materialName = (mid: string): string => t(`materials.mat_${mid}`);
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
 const enemyDefForFloor = (floor: number): EnemyDef => getEnemyDef(dungeonEnemyKindForFloor(floor));
+
+// Every timed effect that matters in a Dungeon fight, with the item that starts it (gatherer_brew is a Mining / Woodcutting tonic, not shown here).
+const BATTLE_BUFFS = (Object.entries(BUFF_ITEM) as [ConsumableId, BuffKind][])
+  .filter(([, kind]) => kind !== 'gatherer')
+  .map(([itemId, kind]) => [kind, itemId] as [BuffKind, ConsumableId]);
 
 function formatBuffTime(ms: number): string {
   const totalSec = Math.max(0, Math.ceil(ms / 1000));
@@ -250,7 +257,7 @@ export default function BattleModal({
 
     const heroAttack = () => {
       const total = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, Date.now()));
-      const crit = Math.random() < combat.critChance;
+      const crit = Math.random() < activeTonicStats(combat, save, Date.now()).critChance;
       const dmg = Math.max(1, Math.round(total * (crit ? combat.critMult : 1)));
       hp.current.e = Math.max(0, hp.current.e - dmg);
       setEnemyHp(hp.current.e);
@@ -283,7 +290,7 @@ export default function BattleModal({
     const monsterAttack = () => {
       const st = stageRef.current;
       // Layer 2 (Damage Reduction) — asymptotic, see derivedStats.ts.
-      const eFinal = applyDamageReduction(enemyDmgForStage(st), combat.reduction);
+      const eFinal = applyDamageReduction(enemyDmgForStage(st), activeTonicStats(combat, save, Date.now()).reduction);
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setPlayerHp(hp.current.p);
       setEnemyAnim('attack');
@@ -389,7 +396,7 @@ export default function BattleModal({
       tryAutoPotion(now);
       if (!runEffects()) return;
 
-      const heroMs = combat.heroMs;
+      const heroMs = activeTonicStats(combat, save, Date.now()).heroMs;
       const heroInterval = heroMs / spd;
       const heroElapsed = now - heroNextAtkRef.current;
       setHeroProgress(Math.min(1, heroElapsed / heroInterval));
@@ -554,15 +561,12 @@ export default function BattleModal({
           <span className="loot-drops">
             <img className="inline-icon" src="/assets/icons/nav_bag.png" alt="" /> {dungeonText('accumDrops').replace('{n}', String(accumCount))}
           </span>
-          {isBuffActive(save, 'strength', Date.now()) && (
-            <span className="loot-buff" title={t('consumables.strength_elixir')}>
-              🔥 {formatBuffTime(buffRemainingMs(save, Date.now()))}
-            </span>
-          )}
-          {isBuffActive(save, 'attack', Date.now()) && (
-            <span className="loot-buff" title={t('consumables.atk_elixir')}>
-              ⚔️ {formatBuffTime(buffRemainingMs(save, Date.now(), 'attack'))}
-            </span>
+          {BATTLE_BUFFS.map(([kind, itemId]) =>
+            isBuffActive(save, kind, Date.now()) ? (
+              <span className="loot-buff" key={kind} title={t(`consumables.${itemId}`)}>
+                <img className="inline-icon" src={getConsumable(itemId)?.iconUrl} alt="" /> {formatBuffTime(buffRemainingMs(save, Date.now(), kind))}
+              </span>
+            ) : null,
           )}
         </div>
 

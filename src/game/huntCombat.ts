@@ -78,6 +78,16 @@ export interface HuntTimeline {
   dmgBoth: number;
   passWindows: [number, number][];
   passDropMult: number;
+  // Garden 3.0 tonics (buffs.ts): while a window covers an action, that action uses the matching value instead of the build's (reduction for an enemy hit,
+  // attack interval and crit chance for a hero hit); Fortune adds `fortuneGoldPct` to the gold of the fight time it covers. All optional = no tonics.
+  stoneWindows?: [number, number][];
+  hasteWindows?: [number, number][];
+  precisionWindows?: [number, number][];
+  fortuneWindows?: [number, number][];
+  reductionStone?: number;
+  heroMsHaste?: number;
+  critPrecision?: number;
+  fortuneGoldPct?: number;
 }
 
 export interface HuntPotionStock {
@@ -161,6 +171,7 @@ export function simulateHuntingSession(
 
   let timeLeft = sessionMs;
   let fightTimeUsedMs = 0;
+  let fortuneFightMs = 0; // fight time that ended inside a Fortune Tonic window (extra gold)
   let potionCooldownUntil = 0;
   let ceiling = Math.min(promotion.maxLevel, Math.max(1, Math.floor(start.ceiling)));
   let promotionWins = ceiling >= promotion.maxLevel ? 0 : Math.max(0, Math.floor(start.promotionWins));
@@ -227,8 +238,7 @@ export function simulateHuntingSession(
     const enemy = enemyStatsAt(zoneCfg, subLevel);
     // Layer 2 (Damage Reduction) — asymptotic, see derivedStats.ts. This assembly step is mirrored
     // inline in BattleModal.tsx's monsterAttack; keep both in sync.
-    const dmgTaken = applyDamageReduction(enemy.dmg, build.reduction);
-    const reflected = reflectedDamage(dmgTaken, build.reflect);
+    const dmgTakenBase = applyDamageReduction(enemy.dmg, build.reduction);
     const regen = regenAmount(build.playerMax, build.hpRegenPct);
     const hpRef = { hp: startHp };
     let enemyHp = enemy.hp;
@@ -246,10 +256,12 @@ export function simulateHuntingSession(
       if (nextEvent > timeLeft) return null;
       t = nextEvent;
       if (heroNext === nextEvent) {
-        const crit = rng() < build.critChance;
+        const atHit = sessionMs - timeLeft + t;
+        const precise = !!timeline?.precisionWindows && inRelativeWindows(timeline.precisionWindows, atHit);
+        const crit = rng() < (precise ? (timeline!.critPrecision ?? build.critChance) : build.critChance);
         let hitBase = build.heroDmgBase;
         if (timeline) {
-          const at = sessionMs - timeLeft + t;
+          const at = atHit;
           const str = inRelativeWindows(timeline.strengthWindows, at);
           const atk = inRelativeWindows(timeline.attackWindows, at);
           hitBase = str && atk ? timeline.dmgBoth : str ? timeline.dmgStrength : atk ? timeline.dmgAttack : build.heroDmgBase;
@@ -260,10 +272,13 @@ export function simulateHuntingSession(
         if (build.lifestealPct > 0) {
           hpRef.hp = Math.min(build.playerMax, hpRef.hp + Math.max(1, Math.round(dmg * (build.lifestealPct / 100))));
         }
-        heroNext += build.heroMs;
+        const hasted = !!timeline?.hasteWindows && inRelativeWindows(timeline.hasteWindows, atHit);
+        heroNext += hasted ? (timeline!.heroMsHaste ?? build.heroMs) : build.heroMs;
       } else if (enemyNext === nextEvent) {
+        const stoned = !!timeline?.stoneWindows && inRelativeWindows(timeline.stoneWindows, sessionMs - timeLeft + t);
+        const dmgTaken = stoned ? applyDamageReduction(enemy.dmg, timeline!.reductionStone ?? build.reduction) : dmgTakenBase;
         hpRef.hp -= dmgTaken;
-        if (hpRef.hp > 0) enemyHp -= reflected;
+        if (hpRef.hp > 0) enemyHp -= reflectedDamage(dmgTaken, build.reflect);
         enemyNext += enemy.atkMs;
       } else if (burnNext === nextEvent) {
         const tick = tickBurn(burn!);
@@ -295,6 +310,7 @@ export function simulateHuntingSession(
       promotionWins = 0;
       if (r.win) {
         fightTimeUsedMs += r.timeMs;
+        if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, sessionMs - timeLeft)) fortuneFightMs += r.timeMs;
         rollDropsForOneClear(ceiling + 1, r.timeMs);
         ceiling++;
         promotions++;
@@ -307,6 +323,7 @@ export function simulateHuntingSession(
     if (!r) break;
     if (r.win) {
       fightTimeUsedMs += r.timeMs;
+      if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, sessionMs - timeLeft)) fortuneFightMs += r.timeMs;
       rollDropsForOneClear(ceiling, r.timeMs);
       if (ceiling < promotion.maxLevel) promotionWins++;
     }
@@ -323,7 +340,7 @@ export function simulateHuntingSession(
     potionsUsed,
     fightTimeUsedMs,
     xpReady: Math.floor(hours * zoneCfg.xpPerHour),
-    goldReady: Math.floor(hours * zoneCfg.goldPerHour),
+    goldReady: Math.floor((hours + (fortuneFightMs / (3600 * 1000)) * (timeline?.fortuneGoldPct ?? 0)) * zoneCfg.goldPerHour),
     drops,
     uniques,
     liveSnapshot,

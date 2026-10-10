@@ -6,7 +6,7 @@
 // expected crits and lifesteal: P > 1 means the hero wins that fight on average. It is the exact quantity that decides every fight in
 // the Dungeon and in Hunting, so a change of ln P is the "real combat value" of a stat (computeCP is only an approximation of it).
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
-import { computeCP, computeHuntingStatus, buildHuntSession, defaultSave, playerLevel, SaveData, xpToReachLevel } from '../../src/game/engine';
+import { buildCombatStats, computeCP, computeHuntingStatus, buildHuntSession, defaultSave, playerLevel, SaveData, xpToReachLevel } from '../../src/game/engine';
 import { applyForge, applyDiscardInstance, createGearInstance } from '../../src/game/gearInstances';
 import { GEAR, GearItem, getGear, reforgeGoldCost, upgradeChance, upgradeCost } from '../../src/game/gear';
 import { RARITIES, SUBSTATS, SubstatType, medianSubstatValue, rollRarity, rollSubstats } from '../../src/game/rarity';
@@ -18,6 +18,7 @@ import { HUNTING_ZONES, getHuntingZone } from '../../src/game/huntingZones';
 import { clearRate } from './ladder';
 import { duel, duelVs, hero, MAIN_TIERS, PAIRS, repFloor, tierNum } from './duel';
 import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
+import { TonicFlags, withTonicStats } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
 
 const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
@@ -407,6 +408,26 @@ describe('item balance audit', () => {
     });
     const pairCost = (k: string) => Math.round(goldEq(chainCost(PAIRS[k][0]), true, PAIRS[k][0]) + goldEq(chainCost(PAIRS[k][1]), true, PAIRS[k][1]));
     P(`Linha dragão contra a dourada no tier 4 (par comum +0, sem relíquia): ${dragonVsGilded.join(' · ')}. Custo do par (receita do tier, Ouro de referência): dourado ${pairCost('4g')}, dragão ${pairCost('4d')}.`, '');
+
+    // ===== H. Garden 3.0 tonics ================================================================================================
+    P('## H. Tônicos da Horta 3.0', '');
+    P('Valor de combate de cada tônico na mesma medida da margem do duelo: Δ = P com o tônico / P sem ele - 1, no andar representativo do herói (par comum +4, atributos 35/30/20/15). Meta: 5% a 9%, nenhum tônico mais de 1,5x outro.', '');
+    const tonicRows: string[] = [];
+    const tonicAvg: Record<string, number[]> = { stoneskin: [], haste: [], precision: [] };
+    for (const [key, refine] of [['2', 4], ['3', 4], ['4g', 4], ['5', 4]] as [string, number][]) {
+      const h = hero(key, refine);
+      const fl = repFloor(h);
+      const base = duel(h, fl).P;
+      const stats = buildCombatStats(h);
+      const gain = (flags: TonicFlags) => duel(h, fl, withTonicStats(stats, flags)).P / base - 1;
+      const g = { stoneskin: gain({ stoneskin: true }), haste: gain({ haste: true }), precision: gain({ precision: true }) };
+      for (const k of Object.keys(g) as (keyof typeof g)[]) tonicAvg[k].push(g[k]);
+      tonicRows.push(`| T${key} +${refine} | ${fl} | ${pct(stats.reduction, 0)} | ${pct(stats.critChance, 0)} | ${Math.round(stats.heroMs)} ms | ${pct(g.stoneskin)} | ${pct(g.haste)} | ${pct(g.precision)} |`);
+    }
+    P('| Herói | Andar ref. | Redução (soma) | Crítico | Intervalo | Pele de Pedra | Pressa | Precisão |', '| --- | --: | --: | --: | --: | --: | --: | --: |', ...tonicRows);
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const means = Object.entries(tonicAvg).map(([k, v]) => [k, mean(v)] as [string, number]);
+    P('', `Média: ${means.map(([k, v]) => `${k} ${pct(v)}`).join(' · ')}; maior / menor = ${f2(Math.max(...means.map((m) => m[1])) / Math.min(...means.map((m) => m[1])))}x.`, '');
 
     console.log('\n' + out.join('\n') + '\n');
     void GEAR;

@@ -4,6 +4,7 @@ import {
   addBattlePassXp,
   computeCP,
   computeGardenStatuses,
+  isBuffActive,
   computeWoodcuttingStatus,
   defaultSave,
   effectiveRepairCost,
@@ -17,8 +18,9 @@ import { SaveConflictError, SaveRepository } from './game/saveRepository';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, requestHuntStart } from './game/huntLifecycle';
 import { addUniqueInstance } from './game/uniques';
-import { applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
-import { applyElixir, ElixirId } from './game/elixirs';
+import { applyFertilizer, applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
+import { applyElixir, applyWhetstoneOil, ElixirId, isBuffItem } from './game/elixirs';
+import { goldMultiplier } from './game/buffs';
 import { withSessionWindow } from './game/huntSession';
 import { getBattlePassLevelDef } from './game/battlepass';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
@@ -490,7 +492,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       ({ battlePassLevel, battlePassXp } = addBattlePassXp(s, T.battlePass.xpPerFloor * stages));
     }
     const subs = equippedSubstatTotals(s);
-    const goldGain = Math.round(rewards.gold * (1 + subs.goldBonus / 100));
+    // Gear goldBonus (capped inside equippedSubstatTotals) and the Fortune Tonic add up, see buffs.ts goldMultiplier.
+    const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', Date.now())));
     const unlockedHuntingZones = Array.from(new Set([...s.unlockedHuntingZones, ...unlockedZoneIds(nextFloor)]));
 
     // Milestone (first-clear) rewards only ever apply to a successful retreat — dying still banks the
@@ -647,9 +650,22 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     showToast(t(`consumables.${id}_active`));
   };
 
+  // Whetstone Oil (elixirs.ts): +30 durability on the equipped weapon and armor, one unit, nothing spent when both are already at full durability.
+  const oilGear = () => {
+    const next = applyWhetstoneOil(saveRef.current);
+    if (!next) {
+      showToast(t('consumables.whetstone_oil_full'));
+      return;
+    }
+    playSfx('victory');
+    commitSave(next);
+    showToast(t('consumables.whetstone_oil_active'));
+  };
+
   const useConsumableManually = (id: string) => {
     if (id === 'xp_potion') applyXpPotion();
-    else if (id === 'strength_elixir' || id === 'atk_elixir') drinkElixir(id);
+    else if (isBuffItem(id)) drinkElixir(id);
+    else if (id === 'whetstone_oil') oilGear();
   };
 
   const claimQuest = (id: string) => {
@@ -842,6 +858,14 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         ? `${t('garden.harvest')} +${first.qty} ${t(`materials.mat_${first.material}`)}`
         : t('garden.harvestedMany', { n: res.harvested.length }),
     );
+  };
+
+  const fertilizePlot = (slotIndex: number) => {
+    const next = applyFertilizer(saveRef.current, slotIndex, Date.now());
+    if (!next) return;
+    playSfx('click');
+    commitSave(next);
+    showToast(t('garden.fertilizeToast'));
   };
 
   const uprootPlot = (slotIndex: number) => {
@@ -1504,6 +1528,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onPlant={plantInPlots}
           onHarvest={harvestPlots}
           onUproot={uprootPlot}
+          onFertilize={fertilizePlot}
           onClose={() => {
             playSfx('click');
             setGardenOpen(false);
