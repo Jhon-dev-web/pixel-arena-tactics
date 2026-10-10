@@ -279,3 +279,46 @@ Razão maior / menor do Δln P: nível 20: 1.65 · nível 30: 1.07 · nível 60:
 | abyssal_bulwark | 28% | 90 | 74 | 7.4% | 7.67% | 4.6% | +0.00 |
 
 Linha dragão contra a dourada no tier 4 (par comum +0, sem relíquia): nível 50: dourado 821, dragão 985 (20.0%) · nível 60: dourado 914, dragão 1091 (19.4%). Custo do par (receita do tier, Ouro de referência): dourado 1489, dragão 5382.
+
+# Adendo da rodada 6: escudos, machados e relíquias de chefe
+
+Gerado por `npm run sim:items` (as seções A-H acima continuam valendo; a H antiga, dos tônicos, segue com a mesma letra). A seção G passou a medir só as três relíquias forjáveis; as de chefe estão na K. A seção A passou a forjar com uma mochila nova a cada forja (o script quebrava com o limite de pilha do inventário da R5).
+
+## I. Machados contra espadas (Rodada 6)
+
+Mesma régua (margem P do duelo no andar de referência do herói com a espada, par do tier +4, atributos 35/30/20/15). Machado = a mesma receita e custo da espada do tier, mais dano, metade do crítico, sem queimadura. Três montagens: **pouco crítico** (arma + armadura), **intermediária** (+ elmo, luvas, botas e anel do tier) e **crítico alto** (anel do tier + rubis em todos os soquetes da arma). Δ = P do machado / P da espada - 1; meta nos níveis 30, 60 e 90: dentro de ±5%, machado na frente com pouco crítico e espada na frente com crítico alto.
+
+| Tier | Nível | Espada: dano / crítico | Machado: dano / crítico | ΔCP (arma + armadura) | Δ pouco crítico | Δ intermediária | Δ crítico alto |
+| --- | --: | --- | --- | --: | --: | --: | --: |
+| T1 | 1 | 12 / 3.0% | 13 (+8.33%) / 1.5% | 0.8% | +1.86% | +1.29% | +1.44% |
+| T2 | 10 | 30 / 6.0% | 32 (+6.67%) / 3.0% | 1.1% | +2.10% | +1.27% | +0.61% |
+| T3 | 30 | 65 / 10.0% | 70 (+7.69%) / 5.0% | 0.5% | +1.09% | +0.18% | -0.93% |
+| T4g | 60 | 90 / 14.0% | 100 (+11.11%) / 7.0% | 0.9% | +1.79% | +0.32% | -2.00% |
+| T5 | 75 | 160 / 20.0% + queima | 187 (+16.87%) / 10.0% | 0.3% | +0.47% | -1.03% | -3.21% |
+| T6 | 90 | 220 / 24.0% + queima | 264 (+20.00%) / 12.0% | 1.2% | +1.96% | -0.18% | -3.44% |
+
+Os machados dos tiers 1-2 ficam à frente em todas as montagens (a espada ainda quase não tem crítico para perder); a inversão só aparece a partir do tier 3, que é onde a medida pede. Os tiers 5-6 compensam a queimadura da espada com mais dano. O custo da receita (Ouro + materiais) é igual ao da espada do tier em todos os tiers.
+
+## J. Escudos (Rodada 6)
+
+Efeito de acrescentar o escudo do tier ao conjunto completo de seis peças do tier (comum +0) e a arma + armadura; reflexo medido em arma + armadura +4 + escudo no andar de referência.
+
+| Escudo | Tier | Stats | ΔCP (conjunto de 6) | ΔCP (arma + armadura) | Δln P (conjunto de 6) | Reflexo do dano total (só armadura → com escudo) | Custo da receita: escudo / armadura |
+| --- | --- | --- | --: | --: | --: | --: | --: |
+| bronze_buckler | T1 | 20 PV · 4.0% res | 8.0% | 9.4% | 15.56% | 0.0% → 0.0% | 106 / 195 |
+| iron_shield | T2 | 36 PV · 6.0% res | 8.2% | 9.3% | 15.59% | 0.0% → 0.0% | 77 / 145 |
+| steel_kite_shield | T3 | 52 PV · 7.6% res · 3.0% reflexo | 7.7% | 8.9% | 15.27% | 11.2% → 11.8% | 383 / 853 |
+| gilded_shield | T4g | 76 PV · 9.5% res · 6.0% reflexo | 8.3% | 9.5% | 16.23% | 8.3% → 9.8% | 415 / 735 |
+| voidsteel_shield | T5 | 96 PV · 10.4% res · 7.0% reflexo | 7.9% | 9.2% | 15.46% | 8.4% → 9.7% | 1085 / 2060 |
+| abyssal_shield | T6 | 113 PV · 11.3% res · 8.0% reflexo | 7.9% | 9.0% | 14.69% | 7.4% → 8.6% | 1827 / 3484 |
+
+## K. Relíquias de chefe (Rodada 6)
+
+Quatro relíquias empilháveis, só por queda (4% por vitória sobre o chefe do bioma, independente da peça única), que disputam o slot único com as três forjáveis. Medidas no nível em que caem, herói arma + armadura +4 do tier. Meta: +4 a +7% de CP (a faixa das forjáveis, 3,5 a 7,5% no teste) e valor real dentro de 1,5x das forjáveis; a moeda não tem valor de combate (só ouro).
+
+| Relíquia | Nível | Herói | ΔCP | Δln P (real) | Forjáveis (vitalidade / velocidade / berserker) |
+| --- | --: | --- | --: | --: | --: |
+| goblin_lucky_coin | 25 | T3+4 | 0.0% | 0.00% | 6.25 / 6.86 / 6.89% |
+| warchief_totem | 50 | T4g+4 | 4.1% | 7.56% | 9.16 / 7.13 / 9.13% |
+| lich_phylactery | 75 | T5+4 | 3.6% | 15.87% | 8.15 / 6.83 / 11.29% |
+| overlord_sigil | 100 | T6+4 | 3.7% | 6.84% | 8.38 / 6.90 / 12.94% |

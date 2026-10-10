@@ -438,3 +438,93 @@ contra 1-2 cabos e 1-3 barras por peça): o Baú vira o destino de longo prazo d
   `2 x nível`, a fração do mercador encolhe sozinha; se não, o orçamento pode ficar generoso.
 - Peças de equipamento (instâncias) não vão para o Baú (só empilháveis): peças únicas e sobras ocupam espaço do inventário. É a única decisão que dá para abrir depois.
 - O jogador atento perde parte dos Pedidos (ouro) por manter menos estoque; se isso for um problema de design, o remédio é capacidade, não o mercador.
+
+## 27. Rodada 6 — escudos, machados, relíquias de chefe e materiais das zonas 3 e 4
+
+Pacote de conteúdo 2: o sétimo slot instanciado (escudo), uma segunda linha de armas (machados), quatro relíquias que só caem de chefe e dois materiais novos em cada uma das duas zonas de caça tardias. Medições com `npm run sim:items` (seções I, J e K de `ITEM_BALANCE_AUDIT.md`) e `npm run sim`.
+
+### Escudos (slot `shield`, sétimo `INSTANCED_SLOTS`)
+
+Identidade: resistência + reflexo (a partir do tier 3, como a armadura) + um pouco de PV máximo. Mesmos níveis da armadura do tier (1 / 10 / 25 / 50 / 70 / 90), 1 escudo do tier anterior a partir do tier 2, barras/lingotes + cabo de madeira do tier + materiais de caça. O reflexo do escudo soma ao da armadura (`buildCombatStats`: `armor.reflect x durabilidade + extra.reflect`); a armadura não mudou.
+
+| Escudo | Tier | Nível | PV | Resistência | Reflexo | Custo (Ouro) | Receita / armadura do tier | ΔCP no conjunto de 6 | ΔCP em arma + armadura |
+| --- | --: | --: | --: | --: | --: | --: | --: | --: | --: |
+| bronze_buckler | 1 | - | 20 | 4,0% | - | 15 | 54% | +8,0% | +9,4% |
+| iron_shield | 2 | 10 | 36 | 6,0% | - | 35 | 53% | +8,2% | +9,3% |
+| steel_kite_shield | 3 | 25 | 52 | 7,6% | 3% | 240 | 45% | +7,7% | +8,9% |
+| gilded_shield | 4 | 50 | 76 | 9,5% | 6% | 325 | 56% | +8,3% | +9,5% |
+| voidsteel_shield | 5 | 70 | 96 | 10,4% | 7% | 950 | 53% | +7,9% | +9,2% |
+| abyssal_shield | 6 | 90 | 113 | 11,3% | 8% | 1 650 | 52% | +7,9% | +9,0% |
+
+Únicos (mesmas regras dos outros 12: +10% no atributo principal, uma substat extra, nunca forjados, desmontam como o gêmeo): `bone_ward` (Pântano de Sangue, tier 3, gêmeo `steel_kite_shield`, mesma chance de 0,0125% por vitória dos outros dois do pântano) e `warden_bulwark` (chefe do andar 50, tier 4, gêmeo `gilded_shield`). `UNIQUE_BOSS_DROPS` passou a ser uma lista por chefe: cada único rola sozinho a 8% por vitória (teste: 8% cada, 0,64% os dois juntos).
+
+**Reflexo total (armadura + escudo)**: parte do dano causado, herói arma + armadura +4 + escudo no andar de referência: 11,8% (tier 3, nível 25), 9,8% (4g), 9,7% (5), 8,6% (6). O escudo do tier 3 ficou com 3% de reflexo (e não 5%) para ficar abaixo de 12%.
+
+### Machados (linha `line: 'axe'`)
+
+Mesmo nível, receita e custo da espada do tier (teste: custo de referência idêntico), a receita pede o MACHADO do tier anterior (as linhas não se misturam; no tier 5 o insumo é o machado dourado, que não tem versão dragão: é um pouco mais barato que subir pela espada dragão). Sem queimadura (as espadas dragão / vazio / abismo continuam com ela). O sprite da mão do herói não muda.
+
+| Tier | Espada: dano / crítico | Machado: dano / crítico | Δ pouco crítico | Δ intermediária | Δ crítico alto |
+| --- | --- | --- | --: | --: | --: |
+| 1 (nv 1) | 12 / 3% | 13 (+8%) / 1,5% | +1,9% | +1,3% | +1,4% |
+| 2 (nv 10) | 30 / 6% | 32 (+7%) / 3% | +2,1% | +1,3% | +0,6% |
+| 3 (nv 30) | 65 / 10% | 70 (+8%) / 5% | +1,1% | +0,2% | -0,9% |
+| 4 (nv 60) | 90 / 14% | 100 (+11%) / 7% | +1,8% | +0,3% | -2,0% |
+| 5 (nv 75) | 160 / 20% + queima | 187 (+17%) / 10% | +0,5% | -1,0% | -3,2% |
+| 6 (nv 90) | 220 / 24% + queima | 264 (+20%) / 12% | +2,0% | -0,2% | -3,4% |
+
+Margem real do duelo (P do machado / P da espada - 1). **O "cerca de +18% de dano" não cabe nos tiers baixos**: com a espada quase sem crítico, +18% deixaria o machado 8-12% à frente em todas as montagens e a meta de ±5% (e a inversão com crítico alto) não fecha. O bônus de dano sobe com o tier (+8% no 3, +11% no 4, +17% no 5, +20% no 6), na proporção do crítico que a espada tem a perder. Níveis 30 / 60 / 90: todos dentro de ±5%, machado à frente com pouco crítico (+1,1 / +1,8 / +2,0), espada à frente com anel + rubis (-0,9 / -2,0 / -3,4). Nos tiers 1-2 não há inversão (a espada ainda não tem crítico para perder).
+
+### Relíquias de chefe (empilháveis, só por queda, 4% por vitória sobre o chefe do bioma, independentes da peça única, não forjam, não vendem, descartam)
+
+| Relíquia | Chefe | Efeito | ΔCP no nível em que cai | Δln P real | Forjáveis no mesmo ponto (vitalidade / velocidade / berserker) |
+| --- | --- | --- | --: | --: | --- |
+| goblin_lucky_coin | 25 | +10% de Ouro (Masmorra e Caça), dentro do teto de 25% | 0 | 0 | - |
+| warchief_totem | 50 | +8,5% de dano final | +4,1% | 7,6% | 9,2 / 7,1 / 9,1% |
+| lich_phylactery | 75 | 5% de roubo de vida | +3,6% | 15,9% | 8,2 / 6,8 / 11,3% |
+| overlord_sigil | 100 | +4% de crítico, +20% de dano crítico | +3,7% | 6,8% | 8,4 / 6,9 / 12,9% |
+
+**Mudei dois números do pedido.** Totem de +6% para +8,5% e filactério de 3% para 5%: com +6% de dano final o CP sobe só 3,0% (a raiz quadrada do `combatPowerCore`) e com 3% de roubo de vida 2,0-2,6%, abaixo da faixa das forjáveis (3,5-7,5% no teste). Com 8,5% e 5% os dois entram na faixa e o valor real fica a até 1,41x da maior forjável (filactério: 15,9 contra 11,3). O sigilo (+4% / +20%) ficou como pedido (+3,7% de CP em arma + armadura, +4,3% no conjunto de 6; o amuleto de velocidade forjável também marca 3,8%).
+
+Campos novos em `GearItem` (todos em `LIVE_STAT_FIELDS`, com o teste de dado morto): `damagePct` (multiplica `dmgBase` depois da FOR), `lifestealPct` (soma ao roubo de vida das substats), `goldBonusPct` (soma ao `goldBonus` das substats, antes do teto de 25%). O crítico do sigilo usa `critChance` (que o `buildCombatStats` não lia numa relíquia) e `critMultBonus`. `CombatStats.goldBonus` (opcional, sem efeito no CP) leva o bônus à Caça: o ouro de uma sessão é `horas x (1 + bônus) x ouro/h`, congelado com a sessão como o resto. Isso faz as substats de ouro valerem na Caça também (eram só da Masmorra).
+
+**Achado**: as relíquias, craftáveis ou não, não tinham botão de equipar no inventário (`EQUIPPABLE_SLOTS` só tinha arma e armadura; só a simulação equipava). Agora o inventário equipa / remove relíquia (os manipuladores do `App` já existiam) e o painel do herói e o cartão da Home mostram uma oitava linha com ela.
+
+### Materiais das zonas 3 e 4
+
+| Material | Zona | Raridade | Chance base | Valor de referência | Preço do mercador | Usado em |
+| --- | --- | --- | --: | --: | --: | --- |
+| rift_shard (Estilhaço da Fenda) | Fenda Demoníaca | refino | 10% | 6,5 | 1 | tier 5: espada, machado, armadura (2 cada), elmo, botas, escudo (1) |
+| fiend_horn (Chifre do Demônio) | Fenda Demoníaca | nobre | 2% | 34 | 5 | tier 5: espada, machado, armadura, luvas, anel, escudo (1 cada) |
+| abyssal_marrow (Tutano Abissal) | Abismo de Sangue | refino | 11% | 7 | 1 | tier 6: espada, machado, armadura (2 cada), elmo, botas, escudo (1) |
+| blood_heart (Coração de Sangue) | Abismo de Sangue | nobre | 2,5% | 36 | 5 | tier 6: espada, machado, armadura, luvas, anel, escudo (1 cada) |
+
+As chances passam pelos mesmos multiplicadores de profundidade, sub-nível e fração econômica das três antigas, que ficam intocadas. Os dois novos de cada zona rolam num segundo fluxo seeded (`HuntingDrop.ownStream`): lutas, críticos, XP, ouro e as três drops antigas de uma sessão ficam idênticos bit a bit (teste de igualdade exata). Nenhuma receita de refino ou alquimia usa os quatro (não havia encaixe natural; `usesOf` mostra forja em todos). Pedidos de entrega não mudaram.
+
+### Retune de inimigos (única mudança de balanceamento)
+
+O escudo é +8% de CP no conjunto de 6. Medido só com ele, a meta "ninguém chega ao andar 50 antes do dia 10" falha (primeira seed no dia 8; o chefe 50 cai na primeira seed no dia 10 e em 9/20 seeds em 21 dias, contra 2/20 antes). O remédio mínimo do lado do inimigo foram os orcs (andares 26-49; os chefes 25 / 50 não ajudam a chegada): `hp` 250 -> 268 e `dmg` 37 -> 40 (+16% de poder). As tentativas: 262/39 e 272/39 (primeira seed no dia 8), 280/38 e 290/37 (dia 9), 275/41 (dia 10, mas mediana 16), 268/40 (dia 10, mediana 14). O dano pesa mais que a vida para a cauda rápida. A tabela de CP recomendada foi regerada (`npm run sim:cp`: 10 linhas mudaram) e a meta do reflexo de armadura sozinha passou de 11% para 11,5% no teste (o orc bate 8% mais forte: o tier 3 marca 11,2% no andar 26).
+
+### Metas de progressão (cenário A, mediana de 20 seeds)
+
+| Meta | Antes (R5) | Só o escudo | Depois do retune |
+| --- | --- | --- | --- |
+| Primeira sessão termina no andar >= 8 | 8 | 8 | 8 |
+| Primeira peça forjada <= dia 2 | 2 | 2 | 2 |
+| Nível dia 1 / 3 / 14 (10-16 / 20-29 / 45-60) | 13 / 29 / 49 | 13 / 27 / 48 | 13 / 27 / 48 |
+| Chefe 25 vencido no dia 4-6 | 5 | 5 | 5 |
+| Primeira chegada ao andar 50 >= dia 10 | 10 | **8** | 10 (mediana 14) |
+| Chefe 50 (primeira seed / seeds em 21 dias) | 14 / 2 | 10 / 9 | 12 / 13 |
+| Queda de dificuldade depois de chefe (menor razão) | 1,77 | 1,77 | 1,53 |
+
+### Ritmo do inventário (metas da R5, com os 4 materiais novos)
+
+Primeira vez cheio, quem ignora o inventário: dia 6 (5-7), 20/20 seeds (R5: 6). Jogador atento: mediana 0% de perda por transbordo (pior seed 11,6%: um dia ruim de uma seed com as zonas 3 e 4 novas; meta de mediana < 5% cumprida). Quem ignora o inventário perde 69% dos materiais (mediana; R5: 60%). Mercador: +0% / +20,7% / +25,7% nos dias 3 / 7 / 14. O teste de "zona dropa no máximo 3 materiais" virou "3 nas duas primeiras zonas, 5 nas duas tardias".
+
+### Pontos para o diretor decidir
+
+- Machado: o "+18% de dano" virou +8% a +20% conforme o tier (seção acima). Se preferir +18% fixo, a meta de ±5% sai em todos os tiers abaixo do 5.
+- Totem 8,5% e filactério 5% em vez de 6% e 3% (faixa de CP).
+- O ouro extra das substats agora vale na Caça (sem isso a moeda não valeria lá), um efeito pequeno (a Caça paga 3-12 Ouro por hora).
+- Relíquias ganharam botão de equipar e uma linha no painel do herói (eram inequipáveis).
+- A pior seed do atento (11,6%) merece uma olhada se a meta passar a ser "pior seed".

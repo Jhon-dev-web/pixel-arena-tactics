@@ -37,8 +37,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     nameKey: 'orcBerserker',
     // Round 2 of the balance pass: was 110 / 18. The orc biome (floors 26-49) used to be easier than the floor-25 boss and the hero crossed it
     // in a day; with these stats it asks for a real gear climb between boss 25 and boss 50.
-    hp: 250,
-    dmg: 37,
+    hp: 268,
+    dmg: 40,
     atkSpeedMs: 1700,
     hpMult: 1,
     atkMult: 1,

@@ -483,11 +483,12 @@ describe('balance of the effects (docs/ITEM_BALANCE_AUDIT.md section G)', () => 
     for (const lv of [50, 60]) expect(computeCP(hero('4d', 0, { level: lv })) / computeCP(hero('4g', 0, { level: lv }))).toBeGreaterThan(1.1);
   });
 
+  // ~10% when this was written; the orc retune of Rodada 6 (docs/BALANCE_CHANGES.md) put the tier 3 armor at 11.2 % on its floor (the orcs hit 8 % harder).
   it('reflect is at most ~10% of the damage dealt for a same-tier build on a same-tier floor', () => {
     for (const [lv, tk] of [[25, '3'], [50, '4g'], [50, '4d'], [70, '5'], [90, '6']] as [number, string][]) {
       const base = hero(tk, 4, { level: lv });
       const d = duel(base, repFloor(base));
-      expect(d.reflectShare, `tier ${tk}`).toBeLessThanOrEqual(0.11);
+      expect(d.reflectShare, `tier ${tk}`).toBeLessThanOrEqual(0.115);
       expect(d.reflectShare, `tier ${tk}`).toBeGreaterThan(0.03);
     }
   });
