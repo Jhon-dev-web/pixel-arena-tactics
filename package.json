@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "sim": "vitest run --config vitest.sim.config.ts --silent=false --reporter=default"
+    "sim": "vitest run --config vitest.sim.config.ts progression --silent=false --reporter=default",
+    "sim:cp": "vitest run --config vitest.sim.config.ts cpTable --silent=false --reporter=default"
   },
   "dependencies": {
     "@agent8/gameserver": "^1.10.2",

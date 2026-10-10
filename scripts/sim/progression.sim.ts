@@ -10,15 +10,15 @@
 //   Visits   2 per day (~09:00 and ~21:00, each jittered by up to +-90 min per seed). Each visit "reloads" the game
 //            (normalizeSave, which also resets the daily quests and Dungeon sessions), collects whatever was running,
 //            claims quests, spends, plays Dungeon sessions, takes a delivery order and starts one background activity.
-//   Dungeon  uses ALL free sessions every day: 2 at the first visit, 1 at the second. Each session starts from
+//   Dungeon  uses ALL free sessions every day (T.dungeon.freeSessionsPerDay, half at each visit). Each session starts from
 //            highestDungeonFloor, fights until death, and only retreats (a) at an unclaimed biome-boss floor (25/50/75/100)
 //            to bank the milestone, (b) when HP is <= 20% after a floor (a player sees the bar), (c) at floor 100. Extra
 //            sessions (shards) are never bought. Worn gear (durability < 40) is repaired before a session.
-//            Auto-potion works as in the game; the player keeps up to 5 small potions (30 gold each) when gold allows, but
-//            not while the last two sessions died without clearing a floor.
+//            Auto-potion works as in the game; the player keeps up to 5 small potions (30 gold each) bought ONLY with gold beyond
+//            what the next gear craft needs, and not while the last two sessions died without clearing a floor.
 //   Hunting  the default background activity: the highest-XP zone unlocked by Dungeon floor, at the deepest depth the
-//            hero's CP allows (the UI's recommended-CP rule). Capped by the zone's offline cap (4-8 h), the 2-slot pouch
-//            and the bag, all exactly as coded.
+//            hero's CP allows (the UI's recommended-CP rule). Capped by the zone's offline cap (4-8 h), the Hunting Pouch
+//            (3 slots at tier 1, 4 at tier 2 ...) and the bag, all exactly as coded.
 //   Mining / Woodcutting
 //            only when the next gear craft (or the next refine) is missing ore / wood. Activities that still have
 //            something to cover take turns (the one done longest ago goes first). A locked ore tier is reached by mining
@@ -38,12 +38,19 @@
 //
 // Two scenarios run on the same seeds: A (the policy above, as asked) and B (A plus one short visit of up to 15 min after
 // the first visit of the day, only while the next craft / the pouch upgrade still needs common Hunting drops - see
-// player.ts PlayerOptions). B exists because A is stuck from day 2: see the pouch diagnostic at the end of the report.
+// player.ts PlayerOptions). B is the sensitivity check for a player who learned the short-hunt trick; after the 3-slot pouch it
+// should not be meaningfully faster than A (the report prints the A-B gap on every milestone). The balance targets T1-T8 of
+// docs/BALANCE_CHANGES.md are measured on A and printed in the 'Metas' sections.
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
-import { computeCP, defaultSave, SaveData, xpToReachLevel } from '../../src/game/engine';
-import { createGearInstance } from '../../src/game/gearInstances';
+import { computeCP, defaultSave } from '../../src/game/engine';
 import { applyHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
-import { mulberry32, runDungeon, spendAttributePoints, withSeededRandom } from './driver';
+import { HUNT_POUCH_TIERS } from '../../src/game/huntPouch';
+import { dungeonEnemyKindForFloor, MAX_DUNGEON_FLOOR, recommendedCpForFloor } from '../../src/game/dungeon';
+import { getEnemyDef } from '../../src/game/enemies';
+import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
+import T from '../../src/game/tunables';
+import { mulberry32, runDungeon, withSeededRandom } from './driver';
+import { buildHero } from './ladder';
 import { DaySnapshot, FirstEvent, Player, PlayerOptions } from './player';
 
 const SEEDS = 20;
@@ -53,6 +60,8 @@ const START = new Date(2026, 5, 1, 0, 0, 0).getTime();
 interface Run {
   days: DaySnapshot[];
   first: Partial<Record<FirstEvent, number>>;
+  atFloor25: Player['atFloor25'];
+  atBoss25: Player['atBoss25'];
 }
 
 function playOne(seed: number, opts: PlayerOptions): Run {
@@ -60,7 +69,7 @@ function playOne(seed: number, opts: PlayerOptions): Run {
     const jitter = mulberry32(seed * 104729 + 7);
     const player = new Player((t) => vi.setSystemTime(t), START, opts);
     for (let d = 0; d < DAYS; d++) player.playDay(d, jitter);
-    return { days: player.snapshots, first: player.first };
+    return { days: player.snapshots, first: player.first, atFloor25: player.atFloor25, atBoss25: player.atBoss25 };
   });
 }
 
@@ -90,9 +99,15 @@ function table(header: string[], rows: string[][]): string[] {
   return [`| ${header.join(' | ')} |`, `| ${header.map((_, i) => (i === 0 ? '--:' : '---')).join(' | ')} |`, ...rows.map((r) => `| ${r.join(' | ')} |`)];
 }
 
+// Median over ALL seeds, a seed that never got there counting as "later than the horizon".
+function medianDay(runs: Run[], ev: FirstEvent): string {
+  const m = median(runs.map((r) => r.first[ev] ?? Infinity));
+  return Number.isFinite(m) ? num(m, 1) : `depois do dia ${DAYS}`;
+}
+
 // ---- report -------------------------------------------------------------------------------------------------------
 
-type Section = 'progress' | 'dungeon' | 'gold' | 'materials' | 'firsts' | 'day1';
+type Section = 'progress' | 'xp' | 'dungeon' | 'gold' | 'materials' | 'firsts' | 'day1';
 
 function report(runs: Run[], sections: Section[]): string[] {
   const out: string[] = [];
@@ -117,6 +132,21 @@ function report(runs: Run[], sections: Section[]): string[] {
           cell(at(d).map((x) => x.weaponTier)),
           cell(at(d).map((x) => x.armorTier)),
         ]),
+      ),
+    );
+    out.push('');
+  }
+
+  if (has('xp')) {
+    out.push('#### XP do personagem por dia e por fonte (mediana entre seeds)');
+    out.push('');
+    out.push(
+      ...table(
+        ['Dia', 'XP total', 'Masmorra', 'Caça', 'Pedidos'],
+        dayIdx.map((d) => {
+          const x = (keys?: string[]) => at(d).map((v) => sum(v.ledger.xpIn, keys));
+          return [String(d + 1), cell(x()), cell(x(['masmorra'])), cell(x(['caça'])), cell(x(['pedido']))];
+        }),
       ),
     );
     out.push('');
@@ -206,15 +236,17 @@ function report(runs: Run[], sections: Section[]): string[] {
       ['firstCraft', 'Primeira peça forjada'],
       ['firstRefine', 'Primeiro refino bem-sucedido'],
       ['floor10', 'Checkpoint do andar 10 vencido'],
-      ['floor25', 'Marco do andar 25 recebido (chefe do bioma 1)'],
+      ['floor25', 'Marco do andar 25 recebido (chefe do bioma 1 vencido)'],
       ['zone2', 'Segunda zona de caça liberada'],
+      ['floor50', 'Chegou ao andar 50 (a próxima sessão começa nele)'],
+      ['boss50', 'Marco do andar 50 recebido (chefe do bioma 2 vencido)'],
     ];
     out.push(
       ...table(
-        ['Evento', 'Dia (mediana)', 'Mín–máx', 'Seeds que chegam lá em 14 dias'],
+        ['Evento', 'Dia (mediana de todas as seeds)', 'Mín–máx (só quem chegou)', 'Seeds que chegam lá em 14 dias'],
         labels.map(([ev, label]) => {
           const days = runs.map((r) => r.first[ev]).filter((x): x is number => x !== undefined);
-          return [label, days.length ? num(median(days), 1) : 'nunca', days.length ? `${Math.min(...days)}–${Math.max(...days)}` : '-', `${days.length}/${runs.length}`];
+          return [label, medianDay(runs, ev), days.length ? `${Math.min(...days)}–${Math.max(...days)}` : '-', `${days.length}/${runs.length}`];
         }),
       ),
     );
@@ -250,86 +282,265 @@ function report(runs: Run[], sections: Section[]): string[] {
 
 // ---- hunting pouch diagnostic -------------------------------------------------------------------------------------
 
-// A fresh hero (no policy involved) hunts demon_glade / shallow for different lengths of time. The first Hunting Pouch has 2
-// slots and a zone drops 3 materials; when all 3 drop, the rarest two win the slots and the common one is lost.
-function pouchDiagnostic(): string[] {
+interface PouchStats {
+  sessions: number;
+  noTypeLost: number; // sessions in which no dropped material type was lost to the pouch
+  allThree: number; // sessions in which all three material types dropped
+  lostUnits: number; // units lost to the pouch, summed over the sessions
+}
+
+// A fresh hero (no policy involved) hunts demon_glade / shallow for different lengths of time with the starter pouch (tier 1).
+// A zone drops 3 material types; every type that drops must fit a slot.
+function pouchDiagnostic(): { lines: string[]; t1: PouchStats } {
+  const slots = HUNT_POUCH_TIERS[0].slots;
   const rows: string[][] = [];
+  let t1: PouchStats = { sessions: 0, noTypeLost: 0, allThree: 0, lostUnits: 0 };
   for (const mins of [15, 30, 60, 120, 240]) {
     let drop = 0;
     let claw = 0;
     let core = 0;
-    let keptScrap = 0;
-    let survived = 0;
-    const n = 20;
-    for (let i = 0; i < n; i++) {
+    const stats: PouchStats = { sessions: 20, noTypeLost: 0, allThree: 0, lostUnits: 0 };
+    for (let i = 0; i < stats.sessions; i++) {
       const start = new Date(2026, 5, 1, 9, i * 7, 0).getTime();
       vi.setSystemTime(start);
       const base = { ...defaultSave(), huntingOfflineStart: start };
       const stopped = applyHuntStop(applyHuntStart(base, 'demon_glade', 'shallow', start)!, start + mins * 60000)!;
       const p = stopped.pendingHuntReward!;
-      const lost = p.lost.find((l) => l.itemId === 'leather_scrap')?.count ?? 0;
       drop += p.drops.leather_scrap ?? 0;
       claw += p.drops.demon_claw ?? 0;
       core += p.drops.demon_core ?? 0;
-      keptScrap += (p.drops.leather_scrap ?? 0) - lost;
-      if ((p.drops.leather_scrap ?? 0) - lost > 0) survived++;
+      const lostUnits = p.lost.reduce((a, l) => a + l.count, 0);
+      stats.lostUnits += lostUnits;
+      if (p.lost.length === 0) stats.noTypeLost++;
+      if (['leather_scrap', 'demon_claw', 'demon_core'].every((m) => (p.drops[m as keyof typeof p.drops] ?? 0) > 0)) stats.allThree++;
     }
-    rows.push([`${mins} min${mins >= 60 ? ` (${mins / 60} h)` : ''}`, num(drop / n, 1), num(claw / n, 1), num(core / n, 1), num(keptScrap / n, 1), `${survived}/${n}`]);
+    if (mins === 240) t1 = stats;
+    const n = stats.sessions;
+    rows.push([
+      `${mins} min${mins >= 60 ? ` (${mins / 60} h)` : ''}`,
+      num(drop / n, 1),
+      num(claw / n, 1),
+      num(core / n, 1),
+      num(stats.lostUnits / n, 1),
+      `${stats.noTypeLost}/${n}`,
+      `${stats.allThree}/${n}`,
+    ]);
+  }
+  return {
+    t1,
+    lines: [
+      `#### Diagnóstico: Bolsa de Caça do tier 1 (${slots} espaços) numa caça em demon_glade raso (herói novo, 20 horários de início)`,
+      '',
+      ...table(
+        ['Duração da caça', 'Farrapos sorteados', 'Garras sorteadas', 'Núcleos sorteados', 'Unidades perdidas por falta de espaço', 'Sessões sem nenhum tipo perdido', 'Sessões em que os 3 tipos caem'],
+        rows,
+      ),
+      '',
+    ],
+  };
+}
+
+// ---- floor 25 boss diagnostics ------------------------------------------------------------------------------------
+
+const BOSS_NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
+
+// What the sim players did: the save the first time the hero was about to face the floor-25 boss is replayed against it.
+function bossFirstContact(label: string, runs: Run[]): string[] {
+  const rows: string[][] = [];
+  const replay = runs.map((r) => {
+    if (!r.atFloor25) return NaN;
+    let w = 0;
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+      vi.setSystemTime(r.atFloor25.now);
+      if (withSeededRandom(500 + i, () => runDungeon(r.atFloor25!.save, r.atFloor25!.now, 1)).stages >= 1) w++;
+    }
+    return (w / n) * 100;
+  });
+  const arrived = runs.filter((r) => r.atFloor25);
+  const beaten = runs.filter((r) => r.atBoss25);
+  rows.push([
+    'Acaba de limpar o andar 24 (primeira chance contra o chefe)',
+    cell(arrived.map((r) => r.atFloor25!.day)),
+    cell(arrived.map((r) => computeCP(r.atFloor25!.save))),
+    '-',
+    `${num(median(replay.filter(Number.isFinite)))}% de vitória`,
+  ]);
+  rows.push([
+    'Vence o chefe pela primeira vez',
+    cell(beaten.map((r) => r.atBoss25!.day)),
+    cell(beaten.map((r) => r.atBoss25!.cp)),
+    beaten.length ? `arma T${num(median(beaten.map((r) => r.atBoss25!.weaponTier)))} / armadura T${num(median(beaten.map((r) => r.atBoss25!.armorTier)))}, nível ${cell(beaten.map((r) => r.atBoss25!.level))}` : '-',
+    `${beaten.length}/${runs.length} seeds`,
+  ]);
+  return [`#### Chefe do andar 25 visto pelos jogadores simulados (${label})`, '', ...table(['Momento', 'Dia', 'CP', 'Equipamento', 'Resultado'], rows), ''];
+}
+
+// Hand-built heroes (attributes spread by the policy weights, common gear at a fixed refine level, no potions, full HP).
+function bossDiagnostic(): string[] {
+  const rows: string[][] = [];
+  const builds: [string, number, number, number][] = [
+    ['Roupa de trapos + Clava', 30, 0, 0],
+    ['Roupa de trapos + Clava', 60, 0, 0],
+    ['Roupa de trapos + Clava', 100, 0, 0],
+    ['Tier 1 (adaga + couro) +0', 40, 1, 0],
+    ['Tier 1 +8', 40, 1, 8],
+    ['Tier 1 +8', 60, 1, 8],
+    ['Tier 2 (espada + cota) +0', 40, 2, 0],
+    ['Tier 2 +4', 40, 2, 4],
+    ['Tier 2 +8', 40, 2, 8],
+    ['Tier 2 +8', 60, 2, 8],
+    ['Tier 3 (montante + placas) +0', 40, 3, 0],
+    ['Tier 3 +8', 40, 3, 8],
+    ['Tier 3 +8', 60, 3, 8],
+    ['Tier 4 (lâmina dourada + égide) +8', 100, 4, 8],
+  ];
+  const wins = (hero: ReturnType<typeof buildHero>, floor: number, maxStages: number, need: number) => {
+    let w = 0;
+    const n = 20;
+    for (let i = 0; i < n; i++) {
+      vi.setSystemTime(BOSS_NOW);
+      if (withSeededRandom(1000 + i, () => runDungeon({ ...hero, highestDungeonFloor: floor }, BOSS_NOW, maxStages)).stages >= need) w++;
+    }
+    return `${w}/${n}`;
+  };
+  for (const [label, level, tier, refine] of builds) {
+    const hero = buildHero(level, tier, refine);
+    rows.push([label, String(level), num(computeCP(hero)), wins(hero, 1, 24, 24), wins(hero, 24, 1, 1), wins(hero, 25, 1, 1)]);
   }
   return [
-    '#### Diagnóstico: o que a bolsa de caça de 2 espaços deixa passar (herói novo, demon_glade raso, 20 horários de início)',
+    `#### Diagnóstico: chefe do andar 25 (CP recomendado pelo jogo: ${recommendedCpForFloor(25)}; andar 24: ${recommendedCpForFloor(24)}) contra heróis montados à mão, sem poções, de HP cheio`,
     '',
-    ...table(['Duração da caça', 'Farrapos sorteados', 'Garras sorteadas', 'Núcleos sorteados', 'Farrapos que entram na bolsa', 'Sessões em que algum farrapo sobrevive'], rows),
+    ...table(['Equipamento', 'Nível', 'CP', 'Sobe do andar 1 ao 24 de uma vez', 'Limpa o andar 24', 'Vence o chefe do 25'], rows),
     '',
   ];
 }
 
-// ---- floor 25 boss diagnostic -------------------------------------------------------------------------------------
+// ---- enemy curve (T7) ---------------------------------------------------------------------------------------------
 
-// Hand-built heroes (attributes spread by the policy weights, common gear at a fixed refine level, no potions) start a Dungeon
-// session directly on floor 25 at full HP; "clears" = the session beats the floor-25 boss before dying.
-function bossDiagnostic(): string[] {
-  const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
+const stagePower = (floor: number) => {
+  const def = getEnemyDef(dungeonEnemyKindForFloor(floor));
+  return { hp: stageEnemyHp(def, floor), dmg: stageEnemyDmg(def, floor) };
+};
+
+function enemyCurve(): { lines: string[]; worst: number } {
   const rows: string[][] = [];
-  const builds: [string, number, string | null, string | null, number][] = [
-    ['Roupa de trapos + Clava', 30, null, null, 0],
-    ['Roupa de trapos + Clava', 60, null, null, 0],
-    ['Roupa de trapos + Clava', 100, null, null, 0],
-    ['Tier 1 (adaga + couro) +0', 60, 'bronze_dagger', 'bronze_leather', 0],
-    ['Tier 1 +8', 60, 'bronze_dagger', 'bronze_leather', 8],
-    ['Tier 2 (espada + cota) +0', 60, 'iron_short_sword', 'iron_chainmail', 0],
-    ['Tier 2 +8', 60, 'iron_short_sword', 'iron_chainmail', 8],
-    ['Tier 2 +8', 100, 'iron_short_sword', 'iron_chainmail', 8],
-    ['Tier 3 (montante + placas) +0', 60, 'steel_greatsword', 'steel_plate', 0],
-    ['Tier 3 +8', 60, 'steel_greatsword', 'steel_plate', 8],
-    ['Tier 3 +8', 100, 'steel_greatsword', 'steel_plate', 8],
-    ['Tier 4 (lâmina dourada + égide) +8', 100, 'gilded_warblade', 'gilded_aegis', 8],
-  ];
-  for (const [label, level, weapon, armor, refine] of builds) {
-    vi.setSystemTime(NOW);
-    let hero: SaveData = { ...defaultSave(), xp: xpToReachLevel(level), highestDungeonFloor: 25 };
-    const instances = { ...hero.gearInstances };
-    const equipped = { ...hero.equipped };
-    if (weapon && armor) {
-      for (const [slot, tpl] of [['weapon', weapon], ['armor', armor]] as const) {
-        const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity: 'common', substats: [], upgrade: refine });
-        instances[inst.id] = inst;
-        equipped[slot] = inst.id;
+  let worst = Infinity;
+  for (const boss of [25, 50, 75, 100]) {
+    const prev = stagePower(boss - 1);
+    const cur = stagePower(boss);
+    const next = boss < MAX_DUNGEON_FLOOR ? stagePower(boss + 1) : null;
+    const f = (p: { hp: number; dmg: number } | null) => (p ? `${num(p.hp)} × ${num(p.dmg)} = ${num(p.hp * p.dmg)}` : '-');
+    const ratio = next ? (next.hp * next.dmg) / (prev.hp * prev.dmg) : NaN;
+    if (next) worst = Math.min(worst, ratio);
+    rows.push([String(boss), f(prev), f(cur), f(next), next ? num(ratio, 2) : '-', num((cur.hp * cur.dmg) / (prev.hp * prev.dmg), 1)]);
+  }
+  return {
+    worst,
+    lines: [
+      '#### Curva de inimigos em volta dos chefes: HP × dano por golpe',
+      '',
+      ...table(['Chefe (andar)', 'Andar anterior (N−1)', 'Chefe (N)', 'Andar seguinte (N+1)', '(N+1) / (N−1)', 'Chefe / (N−1)'], rows),
+      '',
+    ],
+  };
+}
+
+// ---- targets ------------------------------------------------------------------------------------------------------
+
+const ok = (b: boolean) => (b ? 'ok' : 'FORA DA META');
+
+function metas(a: Run[], b: Run[], pouch: PouchStats, curveWorst: number): string[] {
+  const lvl = (runs: Run[], d: number) => runs.map((r) => r.days[d].level);
+  const inBand = (xs: number[], lo: number, hi: number) => median(xs) >= lo && median(xs) <= hi;
+  const dayMed = (runs: Run[], ev: FirstEvent) => median(runs.map((r) => r.first[ev] ?? Infinity));
+  const firstEnd = (runs: Run[]) => runs.map((r) => r.days[0].sessions[0]?.endFloor ?? 0);
+  const arrivalWins = (runs: Run[]): string => {
+    const xs = runs.filter((r) => r.atFloor25).map((r) => {
+      let w = 0;
+      for (let i = 0; i < 8; i++) {
+        vi.setSystemTime(r.atFloor25!.now);
+        if (withSeededRandom(500 + i, () => runDungeon(r.atFloor25!.save, r.atFloor25!.now, 1)).stages >= 1) w++;
       }
-    }
-    hero = spendAttributePoints({ ...hero, gearInstances: instances, equipped });
-    let wins = 0;
-    const n = 30;
-    for (let i = 0; i < n; i++) {
-      const run = withSeededRandom(1000 + i, () => runDungeon(hero, NOW));
-      if (run.stages >= 1) wins++;
-    }
-    rows.push([label, String(level), num(computeCP(hero)), `${wins}/${n}`]);
+      return (w / 8) * 100;
+    });
+    return `${num(median(xs))}%`;
+  };
+  const rows: string[][] = [];
+  const t4 = (runs: Run[]) => `${cell(lvl(runs, 0))} / ${cell(lvl(runs, 2))} / ${cell(lvl(runs, 13))}`;
+  const t4ok = (runs: Run[]) => [inBand(lvl(runs, 0), 10, 16), inBand(lvl(runs, 2), 20, 28), inBand(lvl(runs, 13), 45, 60)];
+  rows.push([
+    'T1',
+    'Caça de 4 h com a Bolsa do tier 1 não perde nenhum tipo de material',
+    `${pouch.noTypeLost}/${pouch.sessions} sessões sem perda (${pouch.allThree}/${pouch.sessions} com os 3 tipos), ${pouch.lostUnits} unidades perdidas`,
+    '(mesma Bolsa)',
+    ok(pouch.noTypeLost === pouch.sessions && pouch.lostUnits === 0),
+  ]);
+  rows.push([
+    'T2',
+    'Primeira sessão da conta nova termina no andar ≥ 8; checkpoint do andar 10 no dia 1',
+    `andar ${cell(firstEnd(a))}; checkpoint 10 no dia ${medianDay(a, 'floor10')}`,
+    `andar ${cell(firstEnd(b))}; dia ${medianDay(b, 'floor10')}`,
+    ok(median(firstEnd(a)) >= 8 && dayMed(a, 'floor10') <= 1),
+  ]);
+  rows.push(['T3', 'Primeira peça forjada no dia 1 ou 2', `dia ${medianDay(a, 'firstCraft')}`, `dia ${medianDay(b, 'firstCraft')}`, ok(dayMed(a, 'firstCraft') <= 2)]);
+  const t4a = t4ok(a);
+  rows.push([
+    'T4',
+    'Nível no fim do dia 1 / 3 / 14 (alvos 10–16 / 20–28 / 45–60)',
+    t4(a),
+    t4(b),
+    t4a.every(Boolean) ? 'ok' : `dia 1 ${ok(t4a[0])}; dia 3 ${ok(t4a[1])}; dia 14 ${ok(t4a[2])}`,
+  ]);
+  rows.push([
+    'T5',
+    'Chefe do andar 25 vencido pela primeira vez no dia 4–6; quem acaba de limpar o 24 perde',
+    `dia ${medianDay(a, 'floor25')}; vitória ao chegar: ${arrivalWins(a)}`,
+    `dia ${medianDay(b, 'floor25')}; vitória ao chegar: ${arrivalWins(b)}`,
+    ok(dayMed(a, 'floor25') >= 4 && dayMed(a, 'floor25') <= 6),
+  ]);
+  rows.push([
+    'T6',
+    'Andar 50 não antes do dia 12 (chefe 50 vencido; a chegada ao andar 50 vem depois)',
+    `chefe: dia ${medianDay(a, 'boss50')} (primeira seed: dia ${Math.min(...a.map((x) => x.first.boss50 ?? Infinity))}; ${a.filter((x) => x.first.boss50).length}/${a.length} chegam); chegada: dia ${medianDay(a, 'floor50')}`,
+    `chefe: dia ${medianDay(b, 'boss50')} (primeira seed: dia ${Math.min(...b.map((x) => x.first.boss50 ?? Infinity))}; ${b.filter((x) => x.first.boss50).length}/${b.length} chegam); chegada: dia ${medianDay(b, 'floor50')}`,
+    `chefe ${ok(dayMed(a, 'boss50') >= 12 && dayMed(b, 'boss50') >= 12)}; chegada ${ok(dayMed(a, 'floor50') >= 12 && dayMed(b, 'floor50') >= 12)}`,
+  ]);
+  rows.push([
+    'T7',
+    'Andar depois de um chefe (HP × dano) ≥ andar antes dele, nos chefes 25, 50 e 75',
+    `menor razão (N+1)/(N−1): ${num(curveWorst, 2)}`,
+    '-',
+    ok(curveWorst >= 1),
+  ]);
+  rows.push(['T8', 'Derrota mantém 75% do ouro da sessão', `${num(T.battle.defeatGoldKept * 100)}%`, '-', ok(T.battle.defeatGoldKept === 0.75)]);
+
+  // B must not be meaningfully faster than A on any milestone (~1.5 days)
+  const gap: string[][] = [];
+  const evs: [FirstEvent, string][] = [
+    ['firstCraft', 'Primeira peça forjada'],
+    ['firstRefine', 'Primeiro refino'],
+    ['floor10', 'Checkpoint do andar 10'],
+    ['floor25', 'Chefe do andar 25'],
+    ['zone2', 'Zona de caça 2'],
+    ['boss50', 'Chefe do andar 50'],
+  ];
+  // Median over the seeds that got there (a milestone only part of the seeds reach would otherwise flip on a coin toss).
+  const reached = (runs: Run[], ev: FirstEvent) => runs.map((r) => r.first[ev]).filter((x): x is number => x !== undefined);
+  for (const [ev, label] of evs) {
+    const ra = reached(a, ev);
+    const rb = reached(b, ev);
+    const d = median(ra) - median(rb);
+    gap.push([label, `${num(median(ra), 1)} (${ra.length}/${a.length})`, `${num(median(rb), 1)} (${rb.length}/${b.length})`, Number.isNaN(d) ? '-' : num(d, 1), ok(!(d > 1.5))]);
   }
   return [
-    '#### Diagnóstico: chefe do andar 25 (recomendado pelo jogo: CP 916) contra heróis montados à mão, sem poções, de HP cheio',
+    '| Meta | Critério | Cenário A (pedido) | Cenário B (sensibilidade) | Resultado |',
+    '| --- | --- | --- | --- | --- |',
+    ...rows.map((r) => `| ${r.join(' | ')} |`),
     '',
-    ...table(['Equipamento', 'Nível', 'CP', 'Vitórias contra o chefe (30 sorteios)'], rows),
+    '#### B contra A: o Cenário B não pode ser mais de ~1,5 dia mais rápido que o A em nenhum marco',
+    '',
+    ...table(['Marco', 'Dia no A (mediana de quem chegou; seeds que chegaram)', 'Dia no B', 'A − B (dias)', 'Resultado'], gap),
     '',
   ];
 }
@@ -350,8 +561,13 @@ describe('progression simulation', () => {
       a.push(playOne(seed, {}));
       b.push(playOne(seed, { shortHunt: true }));
     }
-    const all: Section[] = ['progress', 'dungeon', 'gold', 'materials', 'firsts', 'day1'];
+    const all: Section[] = ['progress', 'xp', 'dungeon', 'gold', 'materials', 'firsts', 'day1'];
+    const pouch = pouchDiagnostic();
+    const curve = enemyCurve();
     const text = [
+      '### Metas de balanceamento (T1 a T8)',
+      '',
+      ...metas(a, b, pouch.t1, curve.worst),
       '### Cenário A (pedido): 2 visitas por dia',
       '',
       ...report(a, all),
@@ -360,10 +576,15 @@ describe('progression simulation', () => {
       ...report(b, all),
       '### Diagnóstico da bolsa de caça',
       '',
-      ...pouchDiagnostic(),
+      ...pouch.lines,
       '### Diagnóstico do chefe do andar 25',
       '',
+      ...bossFirstContact('Cenário A', a),
+      ...bossFirstContact('Cenário B', b),
       ...bossDiagnostic(),
+      '### Diagnóstico da curva de inimigos',
+      '',
+      ...curve.lines,
     ];
     console.log('\n' + text.join('\n') + '\n');
     console.log(`(simulação levou ${((performance.now() - started) / 1000).toFixed(1)}s)`);

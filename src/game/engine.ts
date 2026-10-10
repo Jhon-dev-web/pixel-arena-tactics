@@ -29,7 +29,7 @@ import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeH
 import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
-import { defaultHuntPouch, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
+import { defaultHuntPouch, defaultPouchSlots, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
 import { getPlant, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
@@ -341,7 +341,7 @@ export function isBattlePassActive(save: SaveData, now: number): boolean {
 // Battle Pass convenience perks: one more visible delivery offer + one more free reroll (see T.deliveries), extra Hunting
 // Pouch buffer, and a repair discount — its role is player-facing convenience/retention, not a new faucet.
 export function effectivePouchSlots(save: SaveData, now: number): number {
-  const base = getHuntPouchTierDef(save.huntPouch.tier)?.slots ?? 2;
+  const base = getHuntPouchTierDef(save.huntPouch.tier)?.slots ?? defaultPouchSlots();
   return base + (isBattlePassActive(save, now) ? T.battlePass.pouchBonusSlots : 0);
 }
 
@@ -828,6 +828,16 @@ export function normalizeSave(rawInput: unknown): SaveData {
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
       if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
+      // Counters and attribute points: only a real, finite number inside the legal range survives (strings, NaN, negatives and
+      // tampered giants fall back to the default). Whole numbers: the game only ever adds whole units to these.
+      const cleanInt = (raw: unknown, min: number, max: number, fallback: number): number =>
+        typeof raw === 'number' && Number.isFinite(raw) && raw >= min ? Math.min(max, Math.floor(raw)) : fallback;
+      const maxAttrPoints = MAX_LEVEL * 3; // 3 points per level, level cap 100
+      const gold = cleanInt(parsed.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+      const shards = cleanInt(parsed.shards, 0, Number.MAX_SAFE_INTEGER, 0);
+      const victories = cleanInt(parsed.victories, 0, Number.MAX_SAFE_INTEGER, 0);
+      const vit = cleanInt(parsed.vit, 0, maxAttrPoints, 0);
+      const armorLevel = cleanInt(parsed.armorLevel, 1, Number.MAX_SAFE_INTEGER, 1);
       const sanitizeExpedition = (exp: unknown): ActiveExpedition | null => {
         const e = exp as Partial<ActiveExpedition> | null | undefined;
         return e && typeof e.id === 'string' && getExpedition(e.id) && typeof e.endsAt === 'number' && Number.isFinite(e.endsAt)
@@ -1051,6 +1061,11 @@ export function normalizeSave(rawInput: unknown): SaveData {
         ...base,
         ...parsed,
         xp,
+        gold,
+        shards,
+        victories,
+        vit,
+        armorLevel,
         schemaVersion: GEAR_SCHEMA_VERSION,
         gearInstances,
         inventory: gear.inventory,

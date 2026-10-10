@@ -602,7 +602,7 @@
     "floorCleared": "⚡ Floor {n} Cleared!",
     "miniBoss": "CHECKPOINT",
     "mainBoss": "BOSS",
-    "goldPenalty": "Gold retained: -50%",
+    "goldPenalty": "Gold retained: -{n}%",
     "expedition": "🏕️ Orders",
     "dungeonTab": "🏰 Dungeon",
     "huntTab": "🏹 Open Hunt",

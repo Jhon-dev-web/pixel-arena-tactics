@@ -89,14 +89,15 @@ export interface DungeonRun {
   outcome: 'retreat' | 'defeat';
   complete: boolean; // cleared floor 100
   seconds: number; // wall clock at 1x speed (the UI has a 2x toggle)
-  rewards: RunRewards; // gold already halved on defeat, exactly like BattleModal.endCombat
+  rewards: RunRewards; // gold already reduced on defeat (T.battle.defeatGoldKept), exactly like BattleModal.endCombat
   potionsUsed: number;
 }
 
 // Mirrors BattleModal.tsx: both sides start their attack timers when a wave starts, the hero swings every heroMs and the
 // enemy every atkSpeedMs; a cleared wave pays waveRewards, heals playerMax * waveHeal, then waits intermissionMs; boss
 // floors stop for the retreat / advance choice. Auto-potion rules are tryAutoPotion's.
-export function runDungeon(save: SaveData, now: number): DungeonRun {
+// `maxStages` (diagnostics only): stop with a retreat after that many cleared floors, so a probe of one floor does not keep climbing.
+export function runDungeon(save: SaveData, now: number, maxStages = Infinity): DungeonRun {
   const combat = buildCombatStats(save);
   const playerMax = combat.maxHp;
   const heroBase = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, now));
@@ -181,6 +182,7 @@ export function runDungeon(save: SaveData, now: number): DungeonRun {
     for (const [g, q] of Object.entries(r.gems)) acc.gems[g as GemId] = (acc.gems[g as GemId] ?? 0) + (q as number);
     stages += 1;
     hp = Math.min(playerMax, Math.round(hp + playerMax * T.battle.waveHeal));
+    if (stages >= maxStages) break;
 
     if (isDungeonBoss(stage)) {
       // Tension window: bank the run when this milestone has not been claimed yet (a defeat would forfeit it), otherwise push on.
@@ -200,7 +202,7 @@ export function runDungeon(save: SaveData, now: number): DungeonRun {
     stage += 1;
   }
 
-  const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold / 2);
+  const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * T.battle.defeatGoldKept);
   return {
     startFloor,
     stages,

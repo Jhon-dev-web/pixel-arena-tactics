@@ -78,6 +78,7 @@ export interface SessionRecord {
 }
 
 export interface DayLedger {
+  xpIn: Record<string, number>; // character XP by source (masmorra / caça / pedido / missões)
   goldIn: Record<string, number>;
   goldOut: Record<string, number>;
   mats: { common: number; uncommon: number; rare: number };
@@ -85,7 +86,7 @@ export interface DayLedger {
   hours: { hunt: number; mine: number; wood: number };
 }
 
-const newLedger = (): DayLedger => ({ goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, lost: 0, hours: { hunt: 0, mine: 0, wood: 0 } });
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, lost: 0, hours: { hunt: 0, mine: 0, wood: 0 } });
 
 export interface DaySnapshot {
   day: number;
@@ -99,7 +100,7 @@ export interface DaySnapshot {
   sessions: SessionRecord[];
 }
 
-export type FirstEvent = 'firstCraft' | 'firstRefine' | 'floor10' | 'floor25' | 'zone2';
+export type FirstEvent = 'firstCraft' | 'firstRefine' | 'floor10' | 'floor24' | 'floor25' | 'floor50' | 'boss50' | 'zone2';
 
 // ---- planner ------------------------------------------------------------------------------------------------------
 
@@ -241,6 +242,9 @@ export interface PlayerOptions {
   // in the hunt screen for up to 15 minutes and stops it at the minute where the pouch preview (HuntModal shows exactly
   // this: allocateToPouch over the live drops) still keeps the most common drops - one extra visit. Off in the baseline.
   shortHunt?: boolean;
+  // Diagnostic only (not a scenario of the report): never accept a delivery order, to isolate how much of the XP / gold comes from Hunting
+  // and the Dungeon alone.
+  noOrders?: boolean;
 }
 
 export const SHORT_HUNT_MAX_MIN = 15;
@@ -266,6 +270,10 @@ export class Player {
   private shortVisitDue = false;
   private opts: PlayerOptions;
   trace: string[] = []; // one line per decision, for debugging a policy
+  // The save the first time the hero is about to face the floor-25 boss (floors 1-24 cleared): the boss diagnostic replays it.
+  atFloor25: { save: SaveData; day: number; now: number } | null = null;
+  // The hero the moment the floor-25 boss is first beaten (milestone claimed).
+  atBoss25: { day: number; cp: number; level: number; weaponTier: number; armorTier: number } | null = null;
 
   constructor(setClock: (t: number) => void, startAt: number, opts: PlayerOptions = {}) {
     this.opts = opts;
@@ -278,6 +286,8 @@ export class Player {
 
   // ---- bookkeeping
   private set(next: SaveData, tag: string) {
+    const dx = next.xp - this.S.xp;
+    if (dx > 0) this.ledger.xpIn[tag] = (this.ledger.xpIn[tag] ?? 0) + dx;
     const d = next.gold - this.S.gold;
     if (d > 0) this.ledger.goldIn[tag] = (this.ledger.goldIn[tag] ?? 0) + d;
     else if (d < 0) this.ledger.goldOut[tag] = (this.ledger.goldOut[tag] ?? 0) - d;
@@ -288,6 +298,13 @@ export class Player {
   }
   private checkMarks() {
     if (this.S.highestDungeonFloor >= 11) this.mark('floor10');
+    if (this.S.highestDungeonFloor >= 24) this.mark('floor24');
+    if (this.S.highestDungeonFloor >= 50) this.mark('floor50');
+    if (this.S.dungeonCheckpoints.includes(50)) this.mark('boss50');
+    if (this.S.dungeonCheckpoints.includes(25) && !this.atBoss25) {
+      this.atBoss25 = { day: this.day + 1, cp: computeCP(this.S), level: playerLevel(this.S.xp), weaponTier: equippedTier(this.S, 'weapon'), armorTier: equippedTier(this.S, 'armor') };
+    }
+    if (this.S.highestDungeonFloor >= 25 && !this.atFloor25) this.atFloor25 = { save: this.S, day: this.day + 1, now: this.now };
     if (this.S.dungeonCheckpoints.includes(25)) this.mark('floor25');
     if (this.S.unlockedHuntingZones.length >= 2) this.mark('zone2');
   }
@@ -590,7 +607,7 @@ export class Player {
     const recent = this.recentStages.slice(-2);
     if (recent.length === 2 && recent.every((n) => n === 0)) return;
     for (let i = 0; i < POTION_STOCK; i++) {
-      if (this.S.gold - 30 < reserve / 2) return; // potions may use up to half of what is earmarked for the next craft
+      if (this.S.gold - 30 < reserve) return; // potions never touch the gold earmarked for the next craft
       if ((this.S.consumables.small_hp ?? 0) + (this.S.consumables.large_hp ?? 0) >= POTION_STOCK) return;
       const next = buyConsumable(this.S, 'small_hp');
       if (!next) return;
@@ -617,6 +634,8 @@ export class Player {
       if (take > 0) cons = { ...cons, [id]: (cons[id] ?? 0) - take };
       used -= take;
     }
+    const dxp = applied.save.xp - this.S.xp;
+    if (dxp > 0) this.ledger.xpIn['masmorra'] = (this.ledger.xpIn['masmorra'] ?? 0) + dxp;
     this.S = { ...applied.save, consumables: cons };
     this.sessionsToday += 1;
     this.recentStages.push(run.stages);
@@ -639,6 +658,7 @@ export class Player {
 
   // ---- 5. deliveries: one order at a time, never one that eats the materials the next craft needs
   private acceptDelivery() {
+    if (this.opts.noOrders) return;
     this.S = ensureDeliveryOffers(this.S, this.now, Math.random, false);
     if (this.S.deliveries.active) return;
     const target = chooseTarget(this.S);

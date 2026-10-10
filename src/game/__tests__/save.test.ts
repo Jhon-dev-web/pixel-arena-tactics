@@ -160,31 +160,45 @@ describe('corrupt input', () => {
     expect(normalizeSave({ ...wire(defaultSave()), inventoryCapacity: 55 }).inventoryCapacity).toBe(55);
   });
 
-  // ---- REAL BUGS (documented, not fixed in this task) -------------------------------------------------
-  // normalizeSave builds its result with `...base, ...parsed` (engine.ts, the `loaded` object) and then
-  // re-validates only a chosen list of fields. gold, shards, victories, vit and armorLevel (and str / agi / res /
-  // weaponLevel, which combat happens to sanitize on its own) are NOT validated, so a corrupt or tampered save
-  // keeps them as they are. The tests below state the intended behaviour; `it.fails` turns into a failure the day
-  // the bug is fixed, which is the cue to make them plain `it`.
-  it.fails('BUG: non-numeric or negative gold falls back to a clean number', () => {
+  // gold, shards, victories, vit and armorLevel used to be copied from the payload unchecked (a string or a negative
+  // survived the load); normalizeSave now validates them like every other numeric field.
+  it('non-numeric or negative gold falls back to a clean number', () => {
     for (const bad of ['abc', -5, Number.NaN, null, {}]) {
       const loaded = normalizeSave({ ...wire(defaultSave()), gold: bad });
       expect(isCleanNumber(loaded.gold)).toBe(true);
     }
   });
 
-  it.fails('BUG: non-numeric or negative shards fall back to a clean number', () => {
+  it('non-numeric or negative shards fall back to a clean number', () => {
     for (const bad of ['abc', -5, null]) {
       const loaded = normalizeSave({ ...wire(defaultSave()), shards: bad });
       expect(isCleanNumber(loaded.shards)).toBe(true);
     }
   });
 
-  it.fails('BUG: a corrupt vit / armorLevel can no longer turn max HP and CP into NaN', () => {
+  it('a corrupt vit / armorLevel can no longer turn max HP and CP into NaN', () => {
     for (const field of ['vit', 'armorLevel'] as const) {
       const loaded = normalizeSave({ ...wire(defaultSave()), [field]: 'abc' });
       expect(Number.isFinite(playerMaxHp(loaded))).toBe(true);
       expect(computeCP(loaded)).toBeGreaterThan(0);
     }
+  });
+
+  it('victories, vit and armorLevel keep legal values and replace illegal ones', () => {
+    const ok = normalizeSave({ ...wire(defaultSave()), victories: 12, vit: 40, armorLevel: 3, gold: 1500, shards: 9 });
+    expect([ok.victories, ok.vit, ok.armorLevel, ok.gold, ok.shards]).toEqual([12, 40, 3, 1500, 9]);
+    for (const bad of ['7', -1, Number.NaN, Number.POSITIVE_INFINITY, null, {}, [], true]) {
+      const loaded = normalizeSave({ ...wire(defaultSave()), victories: bad, vit: bad, armorLevel: bad, gold: bad, shards: bad });
+      expect(loaded.victories).toBe(0);
+      expect(loaded.vit).toBe(0);
+      expect(loaded.armorLevel).toBe(1);
+      expect(loaded.gold).toBe(0);
+      expect(loaded.shards).toBe(0);
+    }
+    // whole numbers only, vit capped at 3 points per level of the level-100 cap, armorLevel never below 1
+    const odd = normalizeSave({ ...wire(defaultSave()), gold: 10.9, vit: 99999, armorLevel: 0.5 });
+    expect(odd.gold).toBe(10);
+    expect(odd.vit).toBe(300);
+    expect(odd.armorLevel).toBe(1);
   });
 });

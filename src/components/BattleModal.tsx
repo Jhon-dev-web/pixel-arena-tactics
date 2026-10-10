@@ -144,7 +144,7 @@ export default function BattleModal({
     setEnemyProgress(0);
     setDungeonComplete(dungeonCompleteRef.current);
     const acc = accumRef.current;
-    const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold / 2);
+    const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * T.battle.defeatGoldKept);
     setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, stages: clearedRef.current });
   };
 
@@ -619,7 +619,7 @@ export default function BattleModal({
               ) : (
                 <>
                   <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
-                  <div className="gold-penalty">{t('dungeon.goldPenalty')}</div>
+                  <div className="gold-penalty">{t('dungeon.goldPenalty', { n: Math.round((1 - T.battle.defeatGoldKept) * 100) })}</div>
                   <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems)}</div>
                   <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
                     {t('dungeon.return')}

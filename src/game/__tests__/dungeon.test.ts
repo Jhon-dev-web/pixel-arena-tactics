@@ -14,6 +14,7 @@ import {
   stageVictoryXp,
 } from '../dungeon';
 import { TITLES } from '../titles';
+import { computeCP, defaultSave } from '../engine';
 
 describe('dungeon milestone rewards', () => {
   it('are exactly the biome-boss floors 25/50/75/100, each with real gold and gems', () => {
@@ -103,7 +104,7 @@ describe('dungeon xp and pacing helpers', () => {
       expect(getBiomeForFloor(f)).toBeDefined();
       expect(Number.isFinite(recommendedCpForFloor(f))).toBe(true);
     }
-    expect(recommendedCpForFloor(1)).toBe(63); // what a fresh character is shown on floor 1
+    expect(recommendedCpForFloor(1)).toBeLessThanOrEqual(computeCP(defaultSave())); // a fresh character never sees the warning on floor 1
   });
 
   it('nextMilestone points at the next checkpoint / boss and ends after the last floor', () => {

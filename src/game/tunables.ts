@@ -55,7 +55,9 @@ const T = DebugPanel.define({
     lungeMs: { value: 320, min: 80, max: 900, step: 20, cssVar: '--lunge-ms', unit: 'ms', label: 'Lunge animation (ms)' },
     flashMs: { value: 250, min: 50, max: 800, step: 25, cssVar: '--flash-ms', unit: 'ms', label: 'Hit flash (ms)' },
     lungeDist: { value: 18, min: 4, max: 60, step: 2, cssVar: '--lunge-dist', unit: 'px', label: 'Lunge distance' },
-    waveHeal: { value: 0.1, min: 0, max: 1, step: 0.01, label: 'HP healed after wave (ratio)' },
+    waveHeal: { value: 0.3, min: 0, max: 1, step: 0.01, label: 'HP healed after wave (ratio)' },
+    // Share of a Dungeon run's gold the hero keeps when the run ends in defeat (a retreat keeps 100%). BattleModal.endCombat.
+    defeatGoldKept: { value: 0.75, min: 0, max: 1, step: 0.05, label: 'Gold kept on Dungeon defeat (ratio)' },
     intermissionMs: { value: 1000, min: 300, max: 3000, step: 100, label: 'Wave interval (ms)' },
     hpGrowth: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Monster HP growth per stage' },
     dmgGrowth: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Monster damage growth per stage' },
@@ -71,14 +73,18 @@ const T = DebugPanel.define({
     // at high stages that curve alone already tracks a level-appropriate build's power, so these stay low:
     // bossHpMult keeps HP moderately above a same-stage mob (fight length), bossDmgMult intentionally sits
     // under 1x so a boss's per-hit damage doesn't outscale what a same-tier build's defense can absorb.
-    // Retuned from 1.2/0.3: at 0.3, per-hit boss damage was so far under HP scaling that a "recommended CP"
+    // Balance pass (docs/BALANCE_CHANGES.md): the floor-25 boss was 13x the HP and 6x the hit of floor 24 and no seed beat it in 14 days. The
+    // HP half of the fix is the boss base HP in enemies.ts (550 -> 260), NOT bossHpMult: a multiplier below 1 would make the floor-100 boss
+    // softer than floor 99 (the boss EnemyDef also serves as the regular mob of floors 76-99). bossDmgMult went 0.45 -> 0.5. It must stay
+    // >= ~0.25 so floor 76 never drops below floor 74 (balance.test.ts).
+    // Earlier history, retuned from 1.2/0.3: at 0.3, per-hit boss damage was so far under HP scaling that a "recommended CP"
     // build's win rate barely depended on defense at all (see project memory on the CP recalibration
     // session) — 0.45/1.05 puts real risk back on a single exchange (~11% of max HP per hit at the
     // recalibrated CP, confirmed via tick-loop simulation to stay far from one-shot territory) without
     // reintroducing the pre-nerf one-shot problem that motivated dropping bossDmgMult from 1.8 in the
     // first place. bossHpMult nudged down slightly (1.2->1.05) to keep fight length comparable.
     bossHpMult: { value: 1.05, min: 0.5, max: 5, step: 0.05, label: 'Main boss HP multiplier' },
-    bossDmgMult: { value: 0.45, min: 0.1, max: 4, step: 0.05, label: 'Main boss damage multiplier' },
+    bossDmgMult: { value: 0.5, min: 0.1, max: 4, step: 0.05, label: 'Main boss damage multiplier' },
     bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
     miniBossGoldMult: { value: 2.5, min: 1, max: 10, step: 0.5, label: 'Checkpoint wave gold multiplier' },
     bossGoldMult: { value: 5, min: 1, max: 15, step: 0.5, label: 'Main boss wave gold multiplier' },
@@ -217,7 +223,8 @@ const T = DebugPanel.define({
     // player farm it endlessly if entries weren't capped. Extra sessions cost Shards (not Gold/ONE):
     // Shards are the one resource Dungeon already earns and already spends on gear refinement, so
     // this stays a closed loop inside Dungeon's own economy instead of touching the gold/ONE faucets.
-    freeSessionsPerDay: { value: 3, min: 1, max: 10, step: 1, label: 'Free Dungeon sessions per day' },
+    // Was 3: with a 10-33 s session that ends in defeat, three a day were over in under two minutes (docs/BALANCE_BASELINE_2026-10-10_pre.md).
+    freeSessionsPerDay: { value: 10, min: 1, max: 10, step: 1, label: 'Free Dungeon sessions per day' },
     extraSessionShardCost: { value: 5, min: 1, max: 50, step: 1, label: 'Shard cost per Dungeon session beyond the free daily allowance' },
   },
   gear: {

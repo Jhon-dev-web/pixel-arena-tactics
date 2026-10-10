@@ -19,7 +19,7 @@ export interface HuntPouchTierDef {
 }
 
 export const HUNT_POUCH_TIERS: HuntPouchTierDef[] = [
-  { tier: 1, nameKey: 'pouch_t1', slots: 2, cost: null },
+  { tier: 1, nameKey: 'pouch_t1', slots: 3, cost: null },
   { tier: 2, nameKey: 'pouch_t2', slots: 4, cost: { gold: 300, materials: { leather_scrap: 20 } } },
   { tier: 3, nameKey: 'pouch_t3', slots: 6, cost: { gold: 1000, materials: { leather: 15, iron: 10 } } },
   { tier: 4, nameKey: 'pouch_t4', slots: 8, cost: { gold: 3000, materials: { demon_core: 5 } } },
@@ -31,6 +31,10 @@ export function getHuntPouchTierDef(tier: number): HuntPouchTierDef | undefined 
 
 export function nextHuntPouchTierDef(tier: number): HuntPouchTierDef | undefined {
   return getHuntPouchTierDef(tier + 1);
+}
+
+export function defaultPouchSlots(): number {
+  return HUNT_POUCH_TIERS[0].slots;
 }
 
 export function defaultHuntPouch(): HuntPouchState {

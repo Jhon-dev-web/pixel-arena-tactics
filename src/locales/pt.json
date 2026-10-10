@@ -602,7 +602,7 @@
     "floorCleared": "⚡ Andar {n} Concluído!",
     "miniBoss": "CHECKPOINT",
     "mainBoss": "CHEFE",
-    "goldPenalty": "Ouro retido: -50%",
+    "goldPenalty": "Ouro retido: -{n}%",
     "expedition": "🏕️ Pedidos",
     "dungeonTab": "🏰 Masmorra",
     "huntTab": "🏹 Caça Aberta",

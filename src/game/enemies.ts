@@ -59,7 +59,9 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   boss: {
     id: 'boss',
     nameKey: 'minotaurWarlord',
-    hp: 550,
+    // hp was 550: halved (x ~0.48) in the balance pass so the floor-25 boss stops being a cliff (docs/BALANCE_CHANGES.md). It also scales
+    // floors 76-99 (this def is their regular mob) and the bosses of 50/75/100 by the same factor, so every boss stays above the floor before it.
+    hp: 260,
     dmg: 75,
     atkSpeedMs: 2000,
     hpMult: 2,
