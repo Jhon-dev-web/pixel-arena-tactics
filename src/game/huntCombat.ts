@@ -136,6 +136,8 @@ export interface HuntSessionResult {
   promotionWins: number; // wins banked at that ceiling toward the next attempt (0 at max level)
   promotions: number; // promotion attempts won this session
   promotionLosses: number; // promotion attempts lost this session
+  kills: number; // fights won this session (promotion wins included) - display only, nothing else reads it
+  defeats: number; // fights lost this session (promotion losses included) - display only
   potionsUsed: HuntPotionStock;
   fightTimeUsedMs: number; // total ms across every COMPLETED (won) fight — the only time that earns reward
   xpReady: number;
@@ -177,6 +179,8 @@ export function simulateHuntingSession(
   let promotionWins = ceiling >= promotion.maxLevel ? 0 : Math.max(0, Math.floor(start.promotionWins));
   let promotions = 0;
   let promotionLosses = 0;
+  let kills = 0;
+  let defeats = 0;
   let liveSnapshot: HuntLiveSnapshot | null = null;
 
   // `subLevel` is the sub-level of the enemy that was just defeated (a promotion win counts at the new level)
@@ -309,6 +313,7 @@ export function simulateHuntingSession(
       if (!r) break;
       promotionWins = 0;
       if (r.win) {
+        kills++;
         fightTimeUsedMs += r.timeMs;
         if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, sessionMs - timeLeft)) fortuneFightMs += r.timeMs;
         rollDropsForOneClear(ceiling + 1, r.timeMs);
@@ -316,16 +321,20 @@ export function simulateHuntingSession(
         promotions++;
       } else {
         promotionLosses++;
+        defeats++;
       }
       continue;
     }
     const r = attempt(ceiling, build.playerMax);
     if (!r) break;
     if (r.win) {
+      kills++;
       fightTimeUsedMs += r.timeMs;
       if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, sessionMs - timeLeft)) fortuneFightMs += r.timeMs;
       rollDropsForOneClear(ceiling, r.timeMs);
       if (ceiling < promotion.maxLevel) promotionWins++;
+    } else {
+      defeats++;
     }
     // A loss at the farm level just costs that attempt's time — it's already deducted from timeLeft
     // inside attempt(); the loop simply retries the same level next.
@@ -337,6 +346,8 @@ export function simulateHuntingSession(
     promotionWins,
     promotions,
     promotionLosses,
+    kills,
+    defeats,
     potionsUsed,
     fightTimeUsedMs,
     xpReady: Math.floor(hours * zoneCfg.xpPerHour),

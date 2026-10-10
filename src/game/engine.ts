@@ -24,7 +24,7 @@ import { GemId, emptyGems } from './gems';
 import { QuestState, emptyQuestState } from './quests';
 import { rarityStatMult } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
-import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth } from './huntingZones';
+import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
 import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers } from './huntSession';
 import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
@@ -562,6 +562,9 @@ export interface HuntingStatus {
   startCeiling: number;
   promotions: number;
   promotionLosses: number;
+  // Fights won / lost so far (display only, see HuntSessionResult): a win is a kill, a promotion fight counts like any other.
+  kills: number;
+  defeats: number;
   potionsUsed: HuntPotionStock;
   liveSnapshot: HuntLiveSnapshot | null;
 }
@@ -644,42 +647,17 @@ export function buildLegacyHuntSession(save: SaveData, now: number): HuntSession
   };
 }
 
-export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus {
-  const zone = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
-  const emptyPotionsUsed: HuntPotionStock = { greater_elixir: 0, large_hp: 0, small_hp: 0 };
-  if (!zone) {
-    return {
-      capMs: 0,
-      pendingMs: 0,
-      goldReady: 0,
-      xpReady: 0,
-      drops: {},
-      uniques: [],
-      full: false,
-      ceilingSubLevel: 1,
-      promotionWins: 0,
-      promotionRequired: huntPromotionRequiredWins(1),
-      startCeiling: 1,
-      promotions: 0,
-      promotionLosses: 0,
-      potionsUsed: emptyPotionsUsed,
-      liveSnapshot: null,
-    };
-  }
-  const startedAt = save.huntingOfflineStart;
-  const session = save.huntSession ?? buildLegacyHuntSession(save, now);
-  // Time: a non-finite / negative / future-start elapsed counts as 0. Up to the zone's base cap it always counts; beyond
-  // it (up to the pass cap) only while the Battle Pass really covered that stretch (huntValidMs).
-  const elapsedMs = Number.isFinite(now - startedAt) ? Math.max(0, now - startedAt) : 0;
-  const baseCapMs = zone.offlineCapHours * 3600 * 1000;
-  const passCapMs = Math.max(zone.offlineCapHours, T.battlePass.capHours) * 3600 * 1000;
-  const passWindows = relativeWindows(session.pass, startedAt);
-  const pendingMs = huntValidMs(elapsedMs, baseCapMs, passCapMs, passWindows);
-  const stalled = pendingMs < elapsedMs;
-  const capMs = stalled ? pendingMs : windowCovers(session.pass, now) ? Math.max(baseCapMs, passCapMs) : baseCapMs;
-  const depth = save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH;
+// What simulateHuntingSession needs for one session of `zone` at `depth`, derived from the session's frozen inputs (computeHuntingStatus) or from a
+// hypothetical one built from the live hero (huntEstimate.ts). Pure: reads the save, rolls nothing. `startedAt` anchors the window offsets.
+export function buildHuntSimSetup(
+  save: SaveData,
+  zone: HuntingZoneDef,
+  depth: HuntingDepth,
+  session: HuntSession,
+  startedAt: number,
+  passWindows: [number, number][],
+): { build: HuntCombatBuild; zoneCfg: HuntZoneCombatCfg; timeline: HuntTimeline; potionCfg: HuntPotionCfg } {
   const depthDef = getHuntingDepthDef(depth);
-
   // Stats and blessed are the session's frozen ones (not the live save): gear/attribute changes and a blessed repair made
   // after the session started only count from the next session. The Elixir is applied per hit while its window covers
   // that hit, the Battle Pass drop bonus per cleared fight while its window covers it (see HuntTimeline).
@@ -751,6 +729,47 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     largePotionHeal: T.battle.largePotionHeal,
     cooldownMs: T.battle.potionCooldownMs,
   };
+  return { build, zoneCfg, timeline, potionCfg };
+}
+
+export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus {
+  const zone = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
+  const emptyPotionsUsed: HuntPotionStock = { greater_elixir: 0, large_hp: 0, small_hp: 0 };
+  if (!zone) {
+    return {
+      capMs: 0,
+      pendingMs: 0,
+      goldReady: 0,
+      xpReady: 0,
+      drops: {},
+      uniques: [],
+      full: false,
+      ceilingSubLevel: 1,
+      promotionWins: 0,
+      promotionRequired: huntPromotionRequiredWins(1),
+      startCeiling: 1,
+      promotions: 0,
+      promotionLosses: 0,
+      kills: 0,
+      defeats: 0,
+      potionsUsed: emptyPotionsUsed,
+      liveSnapshot: null,
+    };
+  }
+  const startedAt = save.huntingOfflineStart;
+  const session = save.huntSession ?? buildLegacyHuntSession(save, now);
+  // Time: a non-finite / negative / future-start elapsed counts as 0. Up to the zone's base cap it always counts; beyond
+  // it (up to the pass cap) only while the Battle Pass really covered that stretch (huntValidMs).
+  const elapsedMs = Number.isFinite(now - startedAt) ? Math.max(0, now - startedAt) : 0;
+  const baseCapMs = zone.offlineCapHours * 3600 * 1000;
+  const passCapMs = Math.max(zone.offlineCapHours, T.battlePass.capHours) * 3600 * 1000;
+  const passWindows = relativeWindows(session.pass, startedAt);
+  const pendingMs = huntValidMs(elapsedMs, baseCapMs, passCapMs, passWindows);
+  const stalled = pendingMs < elapsedMs;
+  const capMs = stalled ? pendingMs : windowCovers(session.pass, now) ? Math.max(baseCapMs, passCapMs) : baseCapMs;
+  const depth = save.activeHuntingDepth ?? DEFAULT_HUNTING_DEPTH;
+
+  const { build, zoneCfg, timeline, potionCfg } = buildHuntSimSetup(save, zone, depth, session, startedAt, passWindows);
 
   const startProgress = getHuntProgress(save, zone.id, depth);
 
@@ -782,6 +801,8 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     startCeiling: Math.min(T.hunting.subLevels, Math.max(1, startProgress.ceiling)),
     promotions: result.promotions,
     promotionLosses: result.promotionLosses,
+    kills: result.kills,
+    defeats: result.defeats,
     potionsUsed: result.potionsUsed,
     liveSnapshot: result.liveSnapshot,
   };

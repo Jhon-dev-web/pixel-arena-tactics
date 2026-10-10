@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import SpriteSheet from './SpriteSheet';
+import { MonsterPortrait } from './HuntParts';
 import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import { INSTANCED_SLOTS } from '../game/gear';
@@ -8,6 +9,7 @@ import { t } from '../locales';
 import {
   SaveData,
   computeCP,
+  computeHuntingStatus,
   computeMiningStatus,
   computeWoodcuttingStatus,
   computeGardenStatuses,
@@ -120,8 +122,13 @@ export default function DesktopHome({
     { key: 'gardening', icon: '🌱', name: t('nav.garden'), xp: save.skillXp.gardening },
   ];
 
-  const huntingElapsedMs = hunting ? Math.max(0, now - save.huntingOfflineStart) : 0;
-  const huntingCapMs = hunting ? hunting.offlineCapHours * 3600 * 1000 : 0;
+  // Counted time and cap of the running hunt come from the engine's own status (the Battle Pass can lengthen the cap); it replays the session, so it
+  // is recomputed every 10 s rather than on every render.
+  const huntBucket = Math.floor(now / 10000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const huntStatus = useMemo(() => (hunting ? computeHuntingStatus(save, now) : null), [hunting, save, huntBucket]);
+  const huntingElapsedMs = huntStatus?.pendingMs ?? 0;
+  const huntingCapMs = huntStatus?.capMs ?? 0;
   const huntingProgress = huntingCapMs > 0 ? Math.min(1, huntingElapsedMs / huntingCapMs) : 0;
 
   const dungeonProgress = save.highestDungeonFloor / MAX_DUNGEON_FLOOR;
@@ -179,14 +186,18 @@ export default function DesktopHome({
         <div className="dh-activity-grid">
           {hunting && (
             <button className="dh-activity-item" onClick={onOpenHunt} data-ui>
-              <span className="dh-activity-icon">🏹</span>
+              <span className="dh-activity-icon portrait">
+                <MonsterPortrait enemyId={hunting.enemyId} box="44px" />
+              </span>
               <div className="dh-activity-info">
                 <span className="dh-activity-name">{t('home.hunting')}</span>
                 <span className="dh-activity-detail">{dText(hunting.nameKey)}</span>
                 <div className="bar dh-activity-bar">
-                  <div className="bar-fill xp-fill" style={{ width: `${Math.round(huntingProgress * 100)}%` }} />
+                  <div className={`bar-fill xp-fill${huntStatus?.full ? ' full' : ''}`} style={{ width: `${Math.round(huntingProgress * 100)}%` }} />
                 </div>
-                <span className="dh-activity-time">{formatElapsed(huntingElapsedMs)} / {formatElapsed(huntingCapMs)}</span>
+                <span className="dh-activity-time">
+                  {huntStatus?.full ? t('hunting.capFull') : `${formatElapsed(huntingElapsedMs)} / ${formatElapsed(huntingCapMs)}`}
+                </span>
               </div>
             </button>
           )}

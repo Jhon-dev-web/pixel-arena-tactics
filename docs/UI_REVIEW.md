@@ -185,3 +185,50 @@ Regressão: `src/game/__tests__/fonts.test.ts` lê o cmap do arquivo da fonte, e
 | Missões | "Entrega" nas missões contra "Pedidos" no menu | `locales q_explorer_d` | deixado: uma entrega é o pedido já aceito e despachado, a diferença é intencional |
 
 Contagem desta passada: 8 encontrados, 6 corrigidos, 2 deixados (+ a queda do chefe não verificável).
+
+# Caça (tela dedicada, números reais)
+
+## O que mudou
+
+A Caça é o laço ocioso principal e era a tela mais fraca: quatro cartões densos, profundidade explicada só por losangos coloridos, a caçada em andamento espremida dentro do cartão da zona, sem nenhum número do que o herói ganha. Agora são dois estados.
+
+- **Seleção (nada rodando)**: lista de 4 zonas à esquerda (retrato do monstro, nome, CP recomendado, estado Pronta / CP baixo / Bloqueada, "N de 3 profundidades"), detalhe da zona à direita (monstro com nome, materiais com chip Comum/Refino/Nobre, peças únicas como "raro" sem porcentagem, três opções de profundidade com os números do herói atual, barra do nível da zona, limite de armazenamento, tipos de material da Bolsa, e um único botão "Iniciar Caça" com o motivo escrito nele quando está desabilitado). Celular: lista, depois detalhe com botão Voltar e botão fixo embaixo. Tablet: lista 2x2 em cima, detalhe embaixo.
+- **Em andamento**: arena larga no estilo da batalha da Masmorra (fundos `camp` e `arena` já existentes, com um filtro/tom de CSS diferente por zona; sem arte nova), placas de nome (herói; monstro + Nível), pulso de ataque mantido, tônicos ativos sobre a arena; ao lado (ou embaixo) o painel ao vivo: tempo caçado, tempo até encher e barra do limite (estado "Cheio — resgate para continuar"), abates, abates/h, vitórias / derrotas, XP e ouro ganhos, cada material coletado com taxa por hora e perdas por Bolsa cheia em vermelho, peças únicas, barra do nível da zona e promoções desta caçada. "Resgatar" fica fixo no rodapé. Fechar a tela (X ou Esc) não interrompe a caçada.
+- **Recompensa**: cabeçalho com zona e monstro, duração (e tempo contado quando o limite foi atingido), XP, ouro, materiais, perdidos, peça única retida (comportamento e textos de antes), promoções de nível.
+- **Home e menu lateral**: o cartão "Atividade atual" e um mini cartão sob "Caça" (também no menu do celular) mostram retrato, zona, tempo contado / limite e barra; clicar abre a caçada. O limite agora vem do cálculo do motor (antes era o limite base da zona, errado com o Passe ou quando a caçada já tinha parado de contar).
+
+## Estimativas: de onde vêm os números
+
+`estimateHuntYield` (`src/game/huntEstimate.ts`) roda a própria simulação da Caça (`simulateHuntingSession`, montada pelo mesmo `buildHuntSimSetup` que `computeHuntingStatus` usa) por 4 h com semente fixa, para os atributos atuais do herói, no nível da zona que a save já tem para aquela profundidade (sem promoção durante a projeção), sem poções, tônicos nem Passe. Não escreve na save e não usa `Math.random`. Resultado memoizado por (atributos, bênção, zona, profundidade, nível). Medido contra sessões reais de 1 h (testes): abates/h dentro de 1% (um caso marginal 38 contra 47), XP/h dentro de 1% quando não há derrotas, material comum dentro do ruído de Poisson (33 a 47 reais contra 39 estimados no pior caso). O teste exige 10% em abates e XP e 30% no material mais comum; raros são poucas unidades por hora e não entram na tolerância.
+
+## O que o motor não expõe
+
+- **Abates e derrotas** não eram registrados. Foram adicionados contadores `kills` e `defeats` ao resultado da simulação (só contam; nenhuma decisão, sorteio ou número de recompensa muda, conferido comparando `computeHuntingStatus` antes e depois em 16 casos).
+- **Abates na tela de recompensa** não aparecem: `PendingHuntReward` não guarda a contagem e guardá-la mudaria o formato da save. A recompensa mostra duração, tempo contado, XP e ouro.
+- **"Trocar de zona"** não existe como ação separada: escolher outra zona durante a caçada só encerra a atual e abre a recompensa (`requestHuntStart`), o mesmo que "Resgatar". Por isso só há "Resgatar".
+
+## O que foi visto (imagem), por tamanho
+
+| Estado | 1280x800 | 768x1024 | 390x800 |
+|---|---|---|---|
+| Seleção: zona fácil e liberada | visto | visto | visto (lista e detalhe) |
+| Seleção: CP baixo para uma profundidade (Profundo travado) | visto | visto | visto |
+| Seleção: todas as profundidades travadas por CP | visto | - | visto (lista) |
+| Seleção: zona bloqueada por andar | visto | - | - |
+| Em andamento: recém-iniciada | - | - | visto |
+| Em andamento: meio da sessão com tônicos (Pele de Pedra, Fortuna) | visto | - | visto |
+| Em andamento: Bolsa cheia com perdas | visto | - | visto |
+| Em andamento: no limite de armazenamento | visto | visto | - |
+| Recompensa com espaço | visto | - | - |
+| Recompensa com mochila cheia, peça única retida, perdas e promoção | visto | visto | visto |
+| Home: cartão "Atividade atual" e mini cartão do menu | visto | - | visto (cartão e menu) |
+
+Escape fecha a tela de seleção; com a caçada rodando só fecha a tela e a caçada continua (visto: o mini cartão do menu segue lá).
+
+## Defeitos desta passada
+
+| Tela | Defeito | Situação |
+|---|---|---|
+| Home | Cartão da caçada usava o limite base da zona e o tempo bruto, errados com o Passe ativo ou depois do limite | corrigido: usa `computeHuntingStatus` |
+| Caça | A lista de Bolsa mostrava `+N` somando o que já estava na Bolsa de sessões anteriores como se fosse ganho da sessão | corrigido: mostra os drops da sessão e as perdas dela |
+| Caça | "Iniciar Farm" habilitado em zona sem nenhuma profundidade liberada, nome do monstro ausente, "Domínio ★★★★★" sem informação além do nível | corrigido: botão desabilitado com o motivo, nomes dos monstros, barra de nível (as estrelas eram só o nível dividido por 2) |

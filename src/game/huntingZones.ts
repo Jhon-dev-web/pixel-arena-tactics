@@ -14,6 +14,39 @@ export function huntingEnemySpriteUrl(id: HuntingEnemyId): string {
   return HUNTING_ENEMY_SPRITES[id];
 }
 
+// Name of each hunting monster (locale key under `enemies.`).
+const HUNTING_ENEMY_NAME_KEYS: Record<HuntingEnemyId, string> = {
+  demon: 'huntDemon',
+  blood_monster: 'huntBloodMonster',
+  rift_fiend: 'huntRiftFiend',
+  blood_abomination: 'huntBloodAbomination',
+};
+
+export function huntingEnemyNameKey(id: HuntingEnemyId): string {
+  return HUNTING_ENEMY_NAME_KEYS[id];
+}
+
+export interface HuntingEnemyArt {
+  cx: number;
+  cy: number;
+  size: number;
+  fill: number; // how much of the arena box the monster should fill (the imps are drawn small on purpose next to the hero)
+}
+
+// Where the drawn monster sits inside one frame of its 4x4 sheet (fractions of a frame, measured on frame 0 of the idle row): the centre of the
+// art and its larger side. The sheets pad their art very differently (the imp is a fifth of its frame, the abomination three quarters), so
+// portraits and the arena crop to this box instead of showing the raw frame. Presentation only.
+const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
+  demon: { cx: 0.525, cy: 0.49, size: 0.22, fill: 0.6 },
+  blood_monster: { cx: 0.515, cy: 0.505, size: 0.2, fill: 0.55 },
+  rift_fiend: { cx: 0.505, cy: 0.533, size: 0.88, fill: 0.92 },
+  blood_abomination: { cx: 0.484, cy: 0.576, size: 0.79, fill: 0.92 },
+};
+
+export function huntingEnemyArt(id: HuntingEnemyId): HuntingEnemyArt {
+  return HUNTING_ENEMY_ART[id];
+}
+
 export interface HuntingDrop {
   material: MaterialId;
   rarity: DropRarity;

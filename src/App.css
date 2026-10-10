@@ -2892,291 +2892,6 @@ body {
   color: #d8c9a0;
   white-space: nowrap;
 }
-.hunt-drop-tiers {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-.hunt-drop-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: calc(var(--font-size) - 3px);
-  color: #d8c9a0;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid #4a3a55;
-  border-left-width: 3px;
-  border-radius: 6px;
-  padding: 4px 8px;
-}
-.hunt-drop-tag.tier-common {
-  border-left-color: #6fe08a;
-}
-.hunt-drop-tag.tier-uncommon {
-  border-left-color: #4a9dff;
-}
-.hunt-drop-tag.tier-rare {
-  border-left-color: #c77dff;
-}
-.hunt-drop-tier-label {
-  flex-shrink: 0;
-  font-weight: bold;
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-size: calc(var(--font-size) - 4px);
-}
-.tier-common .hunt-drop-tier-label {
-  color: #6fe08a;
-  background: rgba(111, 224, 138, 0.14);
-}
-.tier-uncommon .hunt-drop-tier-label {
-  color: #4a9dff;
-  background: rgba(74, 157, 255, 0.14);
-}
-.tier-rare .hunt-drop-tier-label {
-  color: #c77dff;
-  background: rgba(199, 125, 255, 0.14);
-}
-.hunt-drop-name {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-.hunt-pips {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-.hunt-pip {
-  width: 7px;
-  height: 7px;
-  transform: rotate(45deg);
-  border: 1px solid #4a3a55;
-  background: rgba(0, 0, 0, 0.35);
-  flex-shrink: 0;
-}
-.pips-common .hunt-pip.on {
-  background: #6fe08a;
-  border-color: #6fe08a;
-}
-.pips-uncommon .hunt-pip.on {
-  background: #4a9dff;
-  border-color: #4a9dff;
-}
-.pips-rare .hunt-pip.on {
-  background: #c77dff;
-  border-color: #c77dff;
-  box-shadow: 0 0 4px rgba(199, 125, 255, 0.7);
-}
-.hunt-depth-mini {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  margin-top: 3px;
-}
-.hunt-depth-detail {
-  margin-bottom: 8px;
-  padding: 6px 8px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid #4a3a55;
-  border-radius: 8px;
-}
-.hunt-depth-detail-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 8px;
-  margin-bottom: 4px;
-}
-.hunt-depth-detail-name {
-  font-weight: bold;
-  color: #ffd76a;
-  font-size: calc(var(--font-size) - 2px);
-}
-.hunt-depth-detail-sub {
-  color: #8a7aa8;
-  font-size: calc(var(--font-size) - 4px);
-}
-.hunt-depth-profile-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 1px 0;
-}
-.hunt-depth-profile-label {
-  font-size: calc(var(--font-size) - 4px);
-  font-weight: bold;
-}
-.hunt-depth-profile-label.tier-common {
-  color: #6fe08a;
-}
-.hunt-depth-profile-label.tier-uncommon {
-  color: #4a9dff;
-}
-.hunt-depth-profile-label.tier-rare {
-  color: #c77dff;
-}
-.hunt-depth-desc {
-  margin-top: 4px;
-  color: #d8c9a0;
-  font-size: calc(var(--font-size) - 4px);
-  line-height: 1.3;
-  overflow-wrap: break-word;
-}
-.hunt-mastery {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: calc(var(--font-size) - 3px);
-  color: #d8c9a0;
-}
-.hunt-run-depth {
-  margin-bottom: 6px;
-}
-.hunt-run-depth-line {
-  font-size: calc(var(--font-size) - 3px);
-  overflow-wrap: break-word;
-}
-.hunt-run-depth-name {
-  font-weight: bold;
-  color: #ffd76a;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.hunt-run-depth-sub {
-  color: #d8c9a0;
-}
-.hunt-run-focus {
-  margin-top: 1px;
-  color: #8a7aa8;
-  font-size: calc(var(--font-size) - 4px);
-}
-.hunt-run-level {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2px 10px;
-  margin-bottom: 4px;
-}
-.hunt-run-level .hunt-sublevel-progress {
-  font-size: calc(var(--font-size) - 1px);
-}
-.hunt-run-level.idle {
-  justify-content: flex-start;
-  margin: 0 0 6px;
-}
-.hunt-run-promo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0 10px;
-  margin-bottom: 6px;
-  padding: 3px 8px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid #4a3a55;
-  border-radius: 6px;
-  font-size: calc(var(--font-size) - 3px);
-}
-.hunt-run-promo-label {
-  color: #8a7aa8;
-}
-.hunt-run-promo-value {
-  color: #6fe08a;
-  font-weight: bold;
-}
-.hunt-stars {
-  display: inline-flex;
-  gap: 1px;
-  letter-spacing: 0;
-}
-.hunt-star {
-  color: #4a3a55;
-  font-size: calc(var(--font-size) + 1px);
-  line-height: 1;
-}
-.hunt-star.on {
-  color: #ffd76a;
-  text-shadow: 0 0 3px rgba(255, 215, 106, 0.6);
-}
-.hunt-depth-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.hunt-depth-btn {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  font-family: inherit;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid #4a3a55;
-  border-radius: 8px;
-  padding: 6px 4px;
-  cursor: pointer;
-  color: #d8c9a0;
-}
-.hunt-depth-btn.active {
-  border-color: #ffd76a;
-  background: rgba(255, 215, 106, 0.12);
-}
-.hunt-depth-btn.locked {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.hunt-depth-name {
-  max-width: 100%;
-  overflow-wrap: break-word;
-  text-align: center;
-  font-size: calc(var(--font-size) - 3px);
-  font-weight: bold;
-}
-.hunt-depth-btn.active .hunt-depth-name {
-  color: #ffd76a;
-}
-.hunt-depth-cp {
-  white-space: nowrap;
-  font-size: calc(var(--font-size) - 5px);
-  color: #8a7aa8;
-}
-.hunt-sublevel-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.hunt-sublevel-progress {
-  font-weight: bold;
-  color: #ffd76a;
-}
-.hunt-sublevel-farm {
-  font-size: calc(var(--font-size) - 3px);
-  color: #6fe08a;
-}
-.hunt-sublevel-wall {
-  font-size: calc(var(--font-size) - 3px);
-  color: #ff6b5e;
-  background: rgba(255, 107, 94, 0.1);
-  border: 1px solid #ff6b5e;
-  border-radius: 8px;
-  padding: 6px 8px;
-  margin-bottom: 6px;
-}
-.hunt-hp-panel {
-  margin-top: 6px;
-}
-.hunt-sublevel-resume {
-  font-size: calc(var(--font-size) - 3px);
-  color: #8a7aa8;
-  margin-bottom: 6px;
-}
 .auto-potion-threshold-label {
   display: block;
   font-size: calc(var(--font-size) - 3px);
@@ -4066,13 +3781,579 @@ body {
   animation: claimBlink 1s ease-in-out infinite;
 }
 
-/* ===== hunt battle view (decorative, inside the Open Hunt tab) ===== */
-.hunt-battle-view {
+/* ===== Hunt screen: zone selection, the hunt in progress, reward ===== */
+.hunt-modal {
+  text-align: left;
+}
+.hunt-modal .modal-title {
+  justify-content: flex-start;
+  margin: 0 40px 8px 0;
+  font-size: calc(var(--font-size) + 4px);
+}
+.hunt-section-title {
+  margin: 0 0 8px;
+  font-size: calc(var(--font-size) - 1px);
+  font-weight: normal;
+  letter-spacing: 0.5px;
+  color: #ffd76a;
+}
+.hunt-section-title.sub {
+  margin-top: 12px;
+}
+.hunt-hint {
+  margin: 8px 0 0;
+  font-size: calc(var(--font-size) - 2px);
+  line-height: 1.5;
+  color: #9a8bb8;
+}
+.hunt-hint.est {
+  color: #8a7aa8;
+}
+.hunt-block {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: #1c1322;
+  border: 1px solid #3a2a4a;
+  border-radius: 10px;
+}
+.hunt-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hunt-block-head .hunt-section-title {
+  margin-bottom: 8px;
+}
+
+/* the portrait: one still frame of a monster sheet, cropped to the drawn art */
+.hunt-portrait {
+  display: block;
+  flex-shrink: 0;
+  width: var(--box);
+  height: var(--box);
+  background-color: #120c18;
+  background-repeat: no-repeat;
+  border: 2px solid #3a2a4a;
+  border-radius: 8px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-sizing: border-box;
+}
+.hunt-portrait.big {
+  border-color: #6a4a2a;
+}
+
+/* rarity chip: Comum / Refino / Nobre (and the unique "raro") */
+.hunt-rarity {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: calc(var(--font-size) - 3px);
+  white-space: nowrap;
+}
+.hunt-rarity.tier-common {
+  color: #6fe08a;
+  background: rgba(111, 224, 138, 0.14);
+}
+.hunt-rarity.tier-uncommon {
+  color: #4a9dff;
+  background: rgba(74, 157, 255, 0.14);
+}
+.hunt-rarity.tier-rare {
+  color: #c77dff;
+  background: rgba(199, 125, 255, 0.14);
+}
+.hunt-rarity.unique {
+  color: #ffd76a;
+  background: rgba(255, 215, 106, 0.14);
+}
+
+/* progress bars */
+.hunt-meter {
+  height: 10px;
+  background: #1a1220;
+  border: 1px solid #000;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.hunt-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b8874a, #8a6a2a);
+  border-radius: 4px;
+  transition: width 1s linear;
+}
+.hunt-meter-fill.xp {
+  background: linear-gradient(90deg, #7ce88a, #2fbf4f);
+}
+.hunt-meter-fill.full {
+  background: linear-gradient(90deg, #ff8a4a, #d95f1f);
+}
+.hunt-meter-text {
+  margin-top: 6px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+}
+.hunt-promoted {
+  margin-top: 6px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #6fe08a;
+}
+
+/* --- selection: zone list + detail --- */
+.hunt-sel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #6a4a2a transparent;
+}
+.hunt-zonelist {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-content: start;
+}
+.hunt-zonelist-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.hunt-zonelist-head .hunt-section-title {
+  margin: 0;
+}
+.hunt-yourcp {
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+}
+.hunt-zone-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  font-family: inherit;
+  text-align: left;
+  color: #f5e9c8;
+  background: #1c1322;
+  border: 2px solid #4a3a55;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.hunt-zone-row:hover {
+  border-color: #a87c3a;
+}
+.hunt-zone-row.selected {
+  border-color: #ffd76a;
+  background: #251a30;
+  box-shadow: 0 0 10px rgba(255, 215, 106, 0.25);
+}
+.hunt-zone-row.state-locked .hunt-portrait {
+  filter: grayscale(1) brightness(0.55);
+}
+.hunt-zone-row.state-locked .hunt-zone-name {
+  color: #9a8bb8;
+}
+.hunt-zone-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.hunt-zone-name {
+  font-size: calc(var(--font-size) - 1px);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.hunt-zone-sub {
+  font-size: calc(var(--font-size) - 3px);
+  line-height: 1.4;
+  color: #b8a8d8;
+}
+.hunt-zone-info .hunt-state-chip {
+  align-self: flex-start;
+}
+.hunt-state-chip {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: calc(var(--font-size) - 3px);
+  white-space: nowrap;
+}
+.hunt-state-chip.ok {
+  color: #6fe08a;
+  background: rgba(111, 224, 138, 0.14);
+  border: 1px solid #3f8f55;
+}
+.hunt-state-chip.hard {
+  color: #ffb15a;
+  background: rgba(255, 177, 90, 0.12);
+  border: 1px solid #a8702a;
+}
+.hunt-state-chip.locked {
+  color: #ff8a7a;
+  background: rgba(255, 138, 122, 0.1);
+  border: 1px solid #a03020;
+}
+
+.hunt-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hunt-back {
+  display: none;
+  align-self: flex-start;
+  margin-bottom: 10px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffe9a8;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.hunt-detail-head {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 14px;
-  padding: 6px 0;
+  margin-bottom: 12px;
+}
+.hunt-detail-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.hunt-monster-name {
+  font-size: calc(var(--font-size) + 4px);
+  color: #ffd76a;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.hunt-zone-title {
+  font-size: calc(var(--font-size) - 1px);
+  color: #d8c9a0;
+  line-height: 1.3;
+}
+.hunt-detail-cp {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+}
+
+.hunt-mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hunt-mat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #d8c9a0;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid #4a3a55;
+  border-radius: 8px;
+}
+.hunt-uniques {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hunt-unique {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #f5e9c8;
+  background: rgba(255, 200, 80, 0.07);
+  border: 1px solid #8a6a3a;
+  border-radius: 8px;
+}
+.hunt-unique-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+}
+.hunt-unique-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* depth options with the real numbers for this hero */
+.hunt-depths {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.hunt-depth-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+  font-family: inherit;
+  text-align: left;
+  color: #f5e9c8;
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid #4a3a55;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.hunt-depth-opt:hover {
+  border-color: #a87c3a;
+}
+.hunt-depth-opt.active {
+  border-color: #ffd76a;
+  background: rgba(255, 215, 106, 0.07);
+  box-shadow: 0 0 10px rgba(255, 215, 106, 0.2);
+}
+.hunt-depth-opt.locked {
+  opacity: 0.65;
+}
+.hunt-depth-opt-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+.hunt-depth-opt-name {
+  font-size: var(--font-size);
+  color: #ffd76a;
+}
+.hunt-depth-opt-cp {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.hunt-depth-opt-lock {
+  font-size: calc(var(--font-size) - 2px);
+  color: #ff8a7a;
+}
+.hunt-outlook-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.hunt-outlook-level {
+  font-size: calc(var(--font-size) - 3px);
+  color: #8a7aa8;
+}
+.hunt-outlook {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: calc(var(--font-size) - 3px);
+}
+.hunt-outlook.always {
+  color: #6fe08a;
+  background: rgba(111, 224, 138, 0.14);
+}
+.hunt-outlook.risky {
+  color: #ffb15a;
+  background: rgba(255, 177, 90, 0.14);
+}
+.hunt-outlook.cannot {
+  color: #ff8a7a;
+  background: rgba(255, 138, 122, 0.12);
+}
+.hunt-depth-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+}
+.hunt-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: calc(var(--font-size) - 2px);
+  min-width: 0;
+}
+.hunt-stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #b8a8d8;
+  min-width: 0;
+}
+.hunt-stat-value {
+  color: #f5e9c8;
+  white-space: nowrap;
+}
+
+.hunt-block.facts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hunt-fact {
+  font-size: calc(var(--font-size) - 1px);
+  color: #d8c9a0;
+}
+.hunt-detail-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
+  padding: 10px 0 2px;
+  background: linear-gradient(180deg, rgba(20, 13, 28, 0), #140d1c 30%);
+}
+.hunt-start {
+  width: 100%;
+  white-space: normal;
+  line-height: 1.3;
+}
+.hunt-start:disabled {
+  color: #c9b99a;
+}
+
+/* --- running --- */
+.hunt-run {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #6a4a2a transparent;
+}
+.hunt-run-stage {
+  min-width: 0;
+}
+.hunt-run-stats {
+  min-width: 0;
+}
+.hunt-depth-line {
+  margin-top: 8px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+  text-align: center;
+}
+.hunt-run-foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #3a2a4a;
+}
+.hunt-claim {
+  width: auto;
+  min-width: 220px;
+  flex-shrink: 0;
+}
+.hunt-foot-hint {
+  font-size: calc(var(--font-size) - 2px);
+  line-height: 1.4;
+  color: #9a8bb8;
+}
+
+/* the arena: laid out like the Dungeon battle, tinted per zone */
+.hunt-stage {
+  --hm: clamp(120px, 34vw, 200px);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  padding: 10px 12px 10px;
+  overflow: hidden;
+  border: 2px solid #3a2a4a;
+  border-radius: 10px;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55);
+}
+.hunt-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--bg) center var(--bgy, 62%) / cover no-repeat;
+  filter: var(--bgfilter, none);
+  image-rendering: pixelated;
+}
+.hunt-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(10, 6, 16, 0.55) 0%, rgba(10, 6, 16, 0.12) 38%, rgba(10, 6, 16, 0.4) 100%),
+    var(--tint, transparent);
+}
+.hunt-stage.zone-demon_glade {
+  --bg: url('/assets/backgrounds/camp.png');
+  --bgy: 74%;
+  --tint: rgba(40, 90, 50, 0.1);
+}
+.hunt-stage.zone-blood_marsh {
+  --bg: url('/assets/backgrounds/camp.png');
+  --bgy: 74%;
+  --bgfilter: hue-rotate(-75deg) saturate(1.25) brightness(0.9);
+  --tint: rgba(150, 25, 25, 0.22);
+}
+.hunt-stage.zone-demon_rift {
+  --bg: url('/assets/backgrounds/arena.png');
+  --bgfilter: hue-rotate(235deg) saturate(1.8) brightness(1.05);
+  --tint: rgba(110, 40, 180, 0.26);
+}
+.hunt-stage.zone-blood_abyss {
+  --bg: url('/assets/backgrounds/arena.png');
+  --bgfilter: saturate(1.5) brightness(0.7) contrast(1.1);
+  --tint: rgba(170, 10, 10, 0.34);
+}
+.hunt-stage-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.hunt-stage .battle-hud {
+  padding: 6px 10px 8px;
+  background: rgba(10, 6, 16, 0.72);
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+}
+.hunt-stage .battle-hp-row .bar {
+  height: 16px;
+}
+.hunt-stage .hp-label {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.hunt-plate-level {
+  flex-shrink: 0;
+  color: #ffd76a;
+  font-size: calc(var(--font-size) - 3px);
+}
+.hunt-stage-arena {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  justify-items: center;
+  padding-bottom: 4px;
 }
 .hunt-side {
   display: flex;
@@ -4081,22 +4362,412 @@ body {
   transition: transform 0.15s ease-out, filter 0.15s ease-out;
 }
 .hunt-side.player.lunge {
-  transform: translateX(6px);
+  transform: translateX(10px);
 }
 .hunt-side.flash {
   filter: brightness(2.2) saturate(0);
 }
 .hunt-vs {
+  align-self: center;
+  font-size: calc(var(--font-size) + 6px);
+  color: #ffd76a;
+  text-shadow: 0 2px 0 #000, 0 0 12px rgba(0, 0, 0, 0.8);
+}
+.hunt-frame {
+  position: relative;
+  display: block;
+  width: var(--fb);
+  height: var(--fb);
+}
+.hunt-frame.flip {
+  transform: scaleX(-1);
+}
+.hunt-frame-sheet {
+  position: absolute;
+  left: calc(var(--fb) * var(--ox));
+  top: calc(var(--fb) * var(--oy));
+}
+.hunt-stage-buffs .active-buffs {
+  margin: 0;
+  justify-content: flex-start;
+}
+.hunt-stage-buffs .active-buffs {
+  gap: 4px 6px;
+}
+.hunt-stage-buffs .active-buffs .loot-buff {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
   font-size: calc(var(--font-size) - 3px);
+  background: rgba(10, 6, 16, 0.78);
+}
+.hunt-modal .loot-buff .inline-icon {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+/* live numbers */
+.hunt-block.time.full {
+  border-color: #a8502a;
+  background: #2a1a1c;
+}
+.hunt-time-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+  font-size: calc(var(--font-size) - 1px);
+}
+.hunt-time-now {
+  color: #f5e9c8;
+}
+.hunt-time-left {
+  color: #b8a8d8;
+  font-size: calc(var(--font-size) - 2px);
+}
+.hunt-full-banner {
+  margin-top: 8px;
+  padding: 6px 8px;
+  text-align: center;
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffb15a;
+  background: rgba(255, 138, 74, 0.12);
+  border: 1px solid #a8502a;
+  border-radius: 8px;
+}
+.hunt-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.hunt-tiles.reward {
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  margin: 0 0 12px;
+}
+.hunt-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 6px;
+  text-align: center;
+  background: #1c1322;
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+  min-width: 0;
+}
+.hunt-tile.wide {
+  grid-column: span 2;
+}
+.hunt-tile-value {
+  font-size: calc(var(--font-size) + 1px);
+  color: #f5e9c8;
+  overflow-wrap: anywhere;
+}
+.hunt-tile-label {
+  font-size: calc(var(--font-size) - 3px);
+  color: #8a7aa8;
+}
+.hunt-tile.win .hunt-tile-value {
+  color: #6fe08a;
+}
+.hunt-tile.lose .hunt-tile-value {
+  color: #ff8a7a;
+}
+.hunt-tile.xp .hunt-tile-value {
+  color: #7cc4ff;
+}
+.hunt-tile.gold .hunt-tile-value {
+  color: #ffd76a;
+}
+.hunt-pouch-count {
+  font-size: calc(var(--font-size) - 2px);
   color: #b8a8d8;
 }
-.hunt-sprite-fallback {
-  width: 72px;
-  height: 72px;
+.hunt-collected {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hunt-collected-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.hunt-collected-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  font-size: calc(var(--font-size) - 2px);
+  color: #d8c9a0;
+}
+.hunt-collected-num {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: calc(var(--font-size) - 2px);
+}
+.hunt-collected-count {
+  color: #f5e9c8;
+}
+.hunt-collected-rate {
+  color: #8a7aa8;
+  font-size: calc(var(--font-size) - 3px);
+}
+.hunt-collected-lost {
+  grid-column: 2 / -1;
+  margin-top: -4px;
+  padding: 3px 8px;
+  color: #ff8a7a;
+  font-size: calc(var(--font-size) - 3px);
+  background: rgba(255, 138, 122, 0.1);
+  border: 1px solid #a03020;
+  border-radius: 6px;
+}
+.hunt-run-stats .hunt-session-frozen {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  font-size: calc(var(--font-size) - 3px);
+  line-height: 1.5;
+  text-align: left;
+  opacity: 1;
+  color: #9a8bb8;
+  border: 1px dashed #4a3a55;
+  border-radius: 8px;
+}
+
+/* reward */
+.claim-modal.hunt-reward-modal {
+  width: min(94vw, 520px);
+  max-height: 92vh;
+  overflow-y: auto;
+  text-align: left;
+}
+.hunt-reward-modal .modal-title {
+  justify-content: center;
+}
+.hunt-reward-modal .result-rewards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px 12px;
+}
+.hunt-reward-modal .floor-drop {
+  white-space: normal;
+}
+.hunt-reward-modal .pouch-capacity {
+  text-align: left;
+}
+/* the claim button stays in reach when the list is taller than the screen */
+.hunt-reward-modal .result-btn {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -14px 12px -4px #140d1c;
+}
+.hunt-reward-zone {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 40px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.hunt-reward-zone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.hunt-reward-level {
+  margin: 12px 0;
+  padding: 8px 10px;
+  background: #1c1322;
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+}
+.hunt-reward-level .hunt-section-title {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* the running hunt under the sidebar entry */
+.hunt-nav-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 24px);
+  margin: 0 12px 8px;
+  padding: 8px;
+  font-family: inherit;
+  text-align: left;
+  color: #d8c9a0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.hunt-nav-mini:hover {
+  border-color: #ffd76a;
+}
+.hunt-nav-mini.full {
+  border-color: #a8502a;
+}
+.hunt-nav-mini-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.hunt-nav-mini-zone {
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hunt-nav-mini .hunt-meter {
+  height: 6px;
+}
+.hunt-nav-mini-time {
+  font-size: 9px;
+  color: #8a7aa8;
+}
+.dh-activity-icon.portrait {
+  width: 44px;
+}
+
+/* ----- desktop: two panes ----- */
+@media (min-width: 1024px) {
+  .hunt-modal {
+    height: min(90vh, 780px);
+  }
+  .hunt-sel {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 20px;
+    overflow: hidden;
+  }
+  .hunt-zonelist,
+  .hunt-detail {
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: #6a4a2a transparent;
+  }
+  .hunt-run {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'stage stats'
+      'extra stats';
+    gap: 0 20px;
+    align-content: start;
+  }
+  .hunt-run-stage {
+    grid-area: stage;
+  }
+  .hunt-run-stats {
+    grid-area: stats;
+  }
+  .hunt-run-extra {
+    grid-area: extra;
+    margin-top: 12px;
+  }
+  .hunt-stage {
+    --hm: clamp(150px, 15vw, 200px);
+    min-height: 300px;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* ----- tablet: stacked, the zones as a 2x2 grid above the detail ----- */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .hunt-zonelist {
+    grid-template-columns: 1fr 1fr;
+  }
+  .hunt-zonelist-head {
+    grid-column: 1 / -1;
+  }
+  .hunt-stage {
+    --hm: clamp(140px, 22vw, 190px);
+    min-height: 340px;
+  }
+}
+
+/* ----- phone: one pane at a time, numbers in two columns, the main button always in reach ----- */
+@media (max-width: 599px) {
+  .hunt-modal {
+    width: min(96vw, 560px);
+    padding: 14px 10px 10px;
+  }
+  .hunt-modal .modal-title {
+    margin-right: 38px;
+    font-size: calc(var(--font-size) + 1px);
+    line-height: 1.3;
+  }
+  .hunt-screen.step-list .hunt-detail {
+    display: none;
+  }
+  .hunt-screen.step-detail .hunt-zonelist {
+    display: none;
+  }
+  .hunt-back {
+    display: inline-block;
+  }
+  .hunt-depths {
+    grid-template-columns: 1fr;
+  }
+  .hunt-depth-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+  }
+  .hunt-detail-head {
+    gap: 10px;
+  }
+  .hunt-stage {
+    --hm: clamp(112px, 36vw, 150px);
+    min-height: 280px;
+    padding: 8px 8px 8px;
+  }
+  .hunt-stage-top {
+    gap: 6px;
+  }
+  .hunt-stage .battle-hud {
+    padding: 5px 6px 6px;
+  }
+  .hunt-stage .hp-num {
+    font-size: 9px;
+  }
+  .hunt-stage .hp-label {
+    flex-wrap: wrap;
+    gap: 0 8px;
+  }
+  .hunt-stage .hp-name-text {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
+  .hunt-run-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .hunt-claim {
+    width: 100%;
+  }
+  .hunt-foot-hint {
+    text-align: center;
+  }
+  .hunt-tiles {
+    gap: 6px;
+  }
 }
 
 /* ===== claim modal ===== */
@@ -7056,13 +7727,6 @@ body {
   }
   .dungeon-entry-modal .dungeon-body {
     align-items: stretch;
-  }
-  .hunt-modal .dungeon-body {
-    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
-    align-items: start;
-  }
-  .hunt-modal .hunt-battle-view {
-    padding: 10px 0;
   }
   .garden-modal .dungeon-body > * {
     grid-column: 1 / -1;

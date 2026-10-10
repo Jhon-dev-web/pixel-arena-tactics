@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 
 export interface DesktopNavItem {
   key: string;
@@ -6,6 +6,8 @@ export interface DesktopNavItem {
   label: string;
   active: boolean;
   badge?: boolean;
+  // Rendered right under the entry (the running hunt's mini card).
+  extra?: ReactNode;
   onClick: () => void;
   tutorialTarget?: string;
 }
@@ -37,18 +39,20 @@ export default function DesktopSidebar({ groups, onLogoClick }: { groups: Deskto
           <div className="desktop-sidebar-group" key={group.key}>
             {group.header && <div className="desktop-sidebar-group-title">{group.header}</div>}
             {group.items.map((item) => (
-              <button
-                key={item.key}
-                className={`desktop-nav-item${item.active ? ' active' : ''}`}
-                onClick={item.onClick}
-                data-tutorial-target={item.tutorialTarget}
-                data-ui
-              >
-                {item.active && <span className="desktop-nav-indicator" />}
-                <span className="desktop-nav-icon">{item.icon}</span>
-                <span className="desktop-nav-label">{item.label}</span>
-                {item.badge && <span className="desktop-nav-badge" />}
-              </button>
+              <Fragment key={item.key}>
+                <button
+                  className={`desktop-nav-item${item.active ? ' active' : ''}`}
+                  onClick={item.onClick}
+                  data-tutorial-target={item.tutorialTarget}
+                  data-ui
+                >
+                  {item.active && <span className="desktop-nav-indicator" />}
+                  <span className="desktop-nav-icon">{item.icon}</span>
+                  <span className="desktop-nav-label">{item.label}</span>
+                  {item.badge && <span className="desktop-nav-badge" />}
+                </button>
+                {item.extra}
+              </Fragment>
             ))}
           </div>
         ))}

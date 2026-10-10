@@ -58,6 +58,7 @@ import InventoryModal from './components/InventoryModal';
 import PersonagemView from './components/PersonagemView';
 import DungeonMapModal from './components/DungeonMapModal';
 import HuntModal from './components/HuntModal';
+import HuntNavMini from './components/HuntNavMini';
 import BattleModal from './components/BattleModal';
 import DeliveryModal from './components/DeliveryModal';
 import MiningModal from './components/MiningModal';
@@ -1303,7 +1304,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       key: 'main',
       items: [
         { key: 'hero', icon: '🧝', label: t('nav.hero'), active: activeView === 'personagem', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
-        { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
+        { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
         { key: 'dungeon', icon: <img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
         { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) }) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
       ],
