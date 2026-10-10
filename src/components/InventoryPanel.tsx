@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fmtNum, t } from '../locales';
-import { BUFF_ITEM } from '../game/buffs';
+import { BUFF_ITEM, buffRemainingMs, isBuffActive } from '../game/buffs';
+import type { ConsumableId } from '../game/consumables';
 import { SaveData } from '../game/engine';
 import { GEAR, GearItem, getGear, isInstancedSlot } from '../game/gear';
 import { canAffordReforge, getReforgeCost } from '../game/reforge';
@@ -31,6 +32,11 @@ const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('m
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
 // Everything the bag can use by itself: the XP potion, every timed elixir / tonic (buffs.ts BUFF_ITEM) and the Whetstone Oil. Fertilizer is used on a Garden plot.
 const MANUALLY_USABLE = new Set<string>(['xp_potion', 'whetstone_oil', ...Object.keys(BUFF_ITEM)]);
+
+function formatBuffLeft(ms: number): string {
+  const m = Math.ceil(ms / 60000);
+  return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
+}
 
 type SelKind = 'gear' | 'material' | 'consumable';
 
@@ -149,7 +155,10 @@ export default function InventoryPanel({
   return (
     <>
       <div className="inventory-summary">
-        <span className="inventory-summary-chip">{t('inventory.space', { n: slots, m: capacity })}</span>
+        <span className={`inventory-summary-chip${slots > capacity ? ' over' : ''}`} title={slots > capacity ? t('inventory.overCapacity') : undefined}>
+          {t('inventory.space', { n: slots, m: capacity })}
+          {slots > capacity && ` · ${t('inventory.overCapacity')}`}
+        </span>
         <button
           className="inventory-expand-btn"
           onClick={() => setExpandOpen(true)}
@@ -445,6 +454,10 @@ export default function InventoryPanel({
           </>
         ) : (
           <div className="inv-detail-empty">{t('inventory.hint')}</div>
+        )}
+
+        {selected?.kind === 'consumable' && BUFF_ITEM[selected.id as ConsumableId] && isBuffActive(save, BUFF_ITEM[selected.id as ConsumableId]!, Date.now()) && (
+          <div className="inv-buff-active">{t('inventory.buffActive', { t: formatBuffLeft(buffRemainingMs(save, Date.now(), BUFF_ITEM[selected.id as ConsumableId]!)) })}</div>
         )}
 
         {selected?.kind === 'consumable' && selected.id === 'fertilizer' && <div className="inv-detail-desc">{t('inventory.useOnPlot')}</div>}

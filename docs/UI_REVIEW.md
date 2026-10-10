@@ -55,7 +55,7 @@ Legenda: **corrigido** / **deixado** (com o motivo).
 |---|---|---|
 | Menu diz "Inventário" e a tela dizia "Mochila" | `locales inventory.title` | corrigido: "Inventário" (pt) / "Inventory" (en); "Mochila" continua só como o nome do recipiente em mensagens de espaço |
 | Quantidades sem separador de milhar ("×1234") | `InventoryPanel.tsx` | corrigido |
-| Consumíveis novos sem botão de uso | `InventoryPanel MANUALLY_USABLE` | corrigido: todos os tônicos e o Óleo de Amolar são usáveis; Adubo mostra "Use no canteiro da Horta" |
+| Consumíveis novos sem botão de uso | `InventoryPanel MANUALLY_USABLE` | corrigido: todos os tônicos e o Azeite de Amolar são usáveis; Adubo mostra "Use no canteiro da Horta" |
 | Emoji nos botões ("🗑️ Descartar", "♻️ Desmontar", "💰 Vender", "🎒 Espaço") | `locales inventory.*` | corrigido (emoji removido; os botões já têm texto) |
 
 ### Home / Personagem / Menu lateral
@@ -90,3 +90,53 @@ Legenda: **corrigido** / **deixado** (com o motivo).
 | Home / Personagem / menu | 5 | 5 | 0 |
 | Todas as telas | 6 | 4 | 2 |
 | **Total** | **33** | **30** | **3** |
+
+---
+
+# Segunda passada (telas que ainda não tinham sido vistas)
+
+Mesmo método (perfil de desenvolvimento, estados montados pelo localStorage; desta vez com as funções reais do jogo importadas pelo navegador para criar equipamento nos 6 slots, peça única, tônicos ativos, sessão de caça parada com recompensa pendente, etc.). Captura de tela de verdade = "visto". Texto lido pelo DOM sem imagem está marcado como "texto".
+
+## O que foi visto, por tamanho
+
+| Tela / estado | 1280x800 | 390x800 |
+|---|---|---|
+| Caça com sessão rodando e tônicos ativos | visto | auditoria + texto |
+| Recompensa da Caça com mochila cheia e 2 peças únicas pendentes | visto | visto (1 única) |
+| Recompensa da Caça com espaço na mochila | não visto | não visto |
+| Masmorra: entrada, batalha com flutuantes (queimadura / reflexo / regeneração) e selos de tônico, janela de tensão + marco, retrocesso com recompensa de marco, derrota | visto | batalha com selos visto; o resto só no desktop |
+| Masmorra: peça única de chefe | não visto (sorteio de 1 chance baixa; a lógica tem teste) | não visto |
+| Forja: Forjar, Melhorar, Reparo, Gemas (6 slots equipados) | visto (Gemas e Reparo em captura; Melhorar por texto + clique que aplicou a melhoria) | Forjar visto; as outras abas por texto |
+| Forja: diálogos de confirmação | a Forja não tem nenhum: "Catalisar" e "Melhorar" aplicam direto (decisão de projeto, deixado) | idem |
+| Ofícios: Fornalha, Poções (12 receitas) | visto | texto |
+| Ofícios: Curtume, Alquimia, Carpintaria, Pó de Refino | texto (abas sem corte) | texto |
+| Inventário: grade, arma, peça única ("Único"), relíquia, tônico, Adubo, Óleo, Poção do Conhecimento | grade visto, detalhes por texto | grade visto (antes) |
+| Inventário: diálogo de expansão da mochila, estado acima do limite | visto | não visto |
+| Pedidos | visto | visto de relance (atrás da recompensa) |
+| Battle Pass (itens liberados, resgatáveis, bloqueados Premium) | visto | visto |
+| Loja | texto | visto |
+| Missões | texto | auditoria |
+| Configurações e troca pt ⇄ en | texto + auditoria nas duas línguas (sem chave crua) | auditoria |
+| Lenhador com sessão ativa | visto | auditoria (mesma tela da Mineração, vista) |
+| Menu lateral no celular | - | visto (em pt) |
+
+Auditoria em inglês nas duas larguras, em 14 telas e 3 abas da Forja: nenhuma chave crua, nenhum texto em português, nenhuma rolagem horizontal; botão de fechar sempre dentro da janela.
+
+## Defeitos desta passada
+
+| Tela | Defeito | Onde | Situação |
+|---|---|---|---|
+| Masmorra (desktop) | Com 4-5 tônicos ativos a faixa de loot ficava larga e espremia o nome do bioma numa coluna de uma letra ("C-a-v-e-r-n-a-s...") | `.battle` grade em `App.css` | corrigido: a faixa de loot ganhou uma linha própria |
+| Masmorra | Números flutuantes de dano, reflexo e regeneração se imprimiam um por cima do outro | `.float-reflect`, `.float-heal` | corrigido: colunas separadas |
+| Caça / Masmorra | Tônico ativo não aparecia na Caça (só na Masmorra) | `HuntModal.tsx` | corrigido: componente `ActiveBuffs` (ícone, nome, tempo restante) |
+| Inventário | Detalhe de um tônico não dizia se estava ativo nem quanto falta | `InventoryPanel.tsx` | corrigido: "Ativo: faltam 24m" |
+| Inventário / Loja | Mochila acima do limite (64 / 30) parecia normal | `.inventory-summary-chip` | corrigido: chip vermelho "acima do limite" no Inventário; a Loja segue mostrando "Mochila cheia!" por item |
+| Ofícios | "Óleo de Amolar" aparecia como "óleo..." (a fonte pixel não tem "Ó" maiúsculo) | `locales pt` | corrigido: renomeado para "Azeite de Amolar". Mesma limitação em "Ébano" e "Madeira Élfica" (aparecem minúsculos): deixado, são nomes antigos |
+| Forja (inglês) | Botão "CATALYZE" cortado | `.craft-btn.repair-action-btn` | corrigido |
+| Battle Pass | Sem rótulo de qual coluna é Grátis e qual é Premium (celular) | `BattlePassModal.tsx` | corrigido: cabeçalho "Grátis / Premium" no celular (no desktop o cadeado já distingue) |
+| Battle Pass (celular) | Nomes de recompensa cortados ("Small Health…", "Refine Cataly…") | `.bp-reward-label` | corrigido: 3 linhas e fonte menor |
+| Ofícios (Pó de Refino) | 4 cartões com o mesmo título "1x Pó de Refino" (só a linha de entrada os diferencia) | `OficiosView.tsx` | deixado: a entrada está visível; mudar o título exige decisão de texto |
+| Recompensa da Caça | O botão diz "Resgatar e Sair" mesmo quando a peça única fica retida por mochila cheia | `HuntRewardModal` | deixado: o texto vermelho acima já explica; decidir se vira "Resgatar" |
+| Pedidos / Missões / Configurações | Nenhum defeito achado nas telas vistas | - | - |
+
+Contagem desta passada: 12 encontrados, 9 corrigidos, 3 deixados.

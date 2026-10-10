@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ActiveBuffs from './ActiveBuffs';
 import Assets from '../assets.json';
 import UniqueDrops from './UniqueDrops';
 import { t } from '../locales';
@@ -163,6 +164,7 @@ export default function HuntModal({
     <div className="modal-backdrop">
       <div className="modal dungeon-modal hunt-modal" data-tutorial-target="hunt-modal">
         <h2 className="modal-title">{dungeonText('huntTab')}</h2>
+        <ActiveBuffs save={save} skip={['gatherer']} />
 
         <div className="dungeon-body">
           {HUNTING_ZONES.map((zone) => {

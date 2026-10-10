@@ -437,7 +437,10 @@
     "maxCapacityReached": "Maximum capacity reached for this version.",
     "expandFailed": "Not enough Gold to expand the bag.",
     "expanded": "Bag expanded to {n} slots!",
-    "useOnPlot": "Use on a Garden plot"
+    "useOnPlot": "Use on a Garden plot",
+    "overCapacity": "over capacity",
+    "buffActive": "Active: {t} left",
+    "buffsRunning": "Active effects"
   },
   "profile": {
     "title": "⚔️ HERO PROFILE",
@@ -1039,7 +1042,9 @@
     "activate": "Activate Adventurer's Pass",
     "activated": "🎉 Adventurer's Pass Activated!",
     "claimAll": "Claim All",
-    "cosmeticReward": "Exclusive Season Cosmetic"
+    "cosmeticReward": "Exclusive Season Cosmetic",
+    "colFree": "Free",
+    "colPremium": "Premium"
   },
   "titles": {
     "none": "None",

@@ -162,6 +162,11 @@ export default function BattlePassModal({
           </button>
         </div>
 
+        <div className="bp-columns" aria-hidden="true">
+          <span />
+          <span>{t('battlePass.colFree')}</span>
+          <span>{t('battlePass.colPremium')}</span>
+        </div>
         <div className="dungeon-body bp-track">
           {BATTLE_PASS_TRACK.map((lvl) => {
             const reached = save.battlePassLevel >= lvl.level;

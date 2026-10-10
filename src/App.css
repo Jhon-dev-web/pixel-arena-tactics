@@ -259,6 +259,7 @@ body {
 }
 .float-heal {
   color: #6fe08a;
+  left: 72%; /* lifesteal / regeneration next to the damage the hero takes */
 }
 .float-stamina {
   color: #6fb7ff;
@@ -587,6 +588,8 @@ body {
 
 .float-reflect {
   color: #7ce8d0;
+  /* reflected damage lands on the enemy at the same moment as the hero's hit: its own column so the two numbers do not print on top of each other */
+  left: 28%;
 }
 .float-burn {
   color: #ff9a3a;
@@ -7204,8 +7207,8 @@ body {
     max-height: 94vh;
     padding: 14px 16px 16px;
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
-    grid-template-rows: auto auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
     align-items: center;
     column-gap: 12px;
     row-gap: 12px;
@@ -7231,12 +7234,14 @@ body {
     text-align: center;
     font-size: calc(var(--font-size) - 1px);
   }
+  /* its own row: with several tonics running the strip is wide and used to squeeze the biome name into a one-letter column */
   .battle .battle-loot-hud {
-    grid-column: 4;
-    grid-row: 1;
+    grid-column: 1 / -1;
+    grid-row: 2;
     margin: 0;
-    flex-wrap: nowrap;
-    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 14px;
   }
   /* the global img{display:block} reset stacks the coin/potion icon above its number; keep them on one line */
   .battle .battle-loot-hud > span {
@@ -7245,7 +7250,7 @@ body {
     gap: 5px;
   }
   .battle .battle-run {
-    grid-column: 5;
+    grid-column: 4;
     grid-row: 1;
   }
   .battle .battle-speed,
@@ -7255,7 +7260,7 @@ body {
   }
   .battle-stage {
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -7664,4 +7669,83 @@ button[data-ui]:focus-visible {
   white-space: nowrap;
   overflow-wrap: normal;
   padding-inline: 12px;
+}
+
+/* Inventory: over-capacity chip and the running-tonic line of the detail panel */
+.inventory-summary-chip.over {
+  color: #ffb4a2;
+  border-color: #e0553a;
+}
+.inv-buff-active {
+  align-self: flex-start;
+  padding: 2px 8px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #a4c95a;
+  border: 1px solid #6f8f3a;
+  border-radius: 999px;
+}
+
+.active-buffs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: -6px 0 10px;
+}
+.active-buffs .loot-buff {
+  padding: 2px 8px;
+  border: 1px solid #6f8f3a;
+  border-radius: 999px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #cfe6a0;
+}
+
+/* Battle Pass: which tile column is the free track and which is the premium one (the header repeats per grid column on desktop) */
+.bp-columns {
+  display: grid;
+  grid-template-columns: 26px 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0 4px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #b9a8d8;
+  text-align: center;
+}
+.bp-columns span:nth-child(3) {
+  color: #ffd76a;
+}
+/* on desktop the track is a 2-column grid of rows, the lock icon already tells premium apart: header only on the single-column layout */
+@media (min-width: 1024px) {
+  .bp-columns {
+    display: none;
+  }
+}
+
+/* Forge action buttons with an icon (catalyst / blessed): the English labels ("CATALYZE") are longer than the Portuguese ones, so they may shrink and wrap */
+.repair-action-btn {
+  gap: 4px;
+  padding-inline: 6px;
+}
+.repair-action-btn span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-size: calc(var(--font-size) - 3px);
+}
+.craft-btn.repair-action-btn {
+  padding-inline: 3px;
+  gap: 2px;
+}
+.craft-btn.repair-action-btn span {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  font-size: calc(var(--font-size) - 4px);
+}
+
+/* Battle Pass tiles on a phone: three lines and a smaller label so "Small Health Potion x2" / "Refine Catalyst x1" are not cut */
+@media (max-width: 520px) {
+  .bp-reward-label {
+    -webkit-line-clamp: 3;
+    font-size: calc(var(--font-size) - 4px);
+  }
 }

@@ -128,7 +128,7 @@ As cinco plantas da 2.0 ficam exatamente como estavam (ids, tempos, colheitas, n
 
 | Planta (id) | Nível de Jardinagem | Tempo | Colheita | XP/colheita | Unid./canteiro-h | Consumidores |
 |---|---|---|---|---|---|---|
-| Cardo de Ferro (`iron_thistle`) | 10 | 3 h | +2 | 15 | 0,67 | Tônico de Pele de Pedra, Óleo de Amolar, Anel de Prata |
+| Cardo de Ferro (`iron_thistle`) | 10 | 3 h | +2 | 15 | 0,67 | Tônico de Pele de Pedra, Azeite de Amolar, Anel de Prata |
 | Flor Dourada (`gold_blossom`) | 20 | 5 h | +1 | 25 | 0,20 | Tônico da Fortuna, Anel de Ouro, Anel de Rubi |
 | Capim Veloz (`swift_grass`) | 30 | 4 h | +2 | 20 | 0,50 | Tônico de Pressa, Poção do Coletor |
 | Lírio Lunar (`moon_lily`) | 45 | 10 h | +1 | 50 | 0,10 | Elixir de Precisão, Anel de Obsidiana, Anel Abissal |
@@ -152,10 +152,10 @@ Todos usam a mesma maquinaria de buffs (`buffs.ts` + `elixirs.ts`): um prazo de 
 | Tônico de Pressa | 3 Capim Veloz + 2 Erva Energética (90, Nv30) | +9% de velocidade de ataque via `heroAttackIntervalMs` (piso de 400 ms) | 30 min |
 | Poção do Coletor | 2 Capim Veloz + 3 Erva Medicinal (50, Nv15) | +25% de minério/madeira (e portanto de XP) na parte da sessão coberta | 2 h |
 | Elixir de Precisão | 1 Lírio Lunar + 1 Cristal Corrompido (220, Nv45) | +8 pontos absolutos de crítico, teto 100% | 30 min |
-| Óleo de Amolar | 2 Cardo de Ferro + 2 Farrapo de Couro (40, Nv10) | restaura 30 de 100 de durabilidade da arma E da armadura equipadas, na hora | instantâneo |
+| Azeite de Amolar | 2 Cardo de Ferro + 2 Farrapo de Couro (40, Nv10) | restaura 30 de 100 de durabilidade da arma E da armadura equipadas, na hora | instantâneo |
 | Adubo | 3 Fragmento de Osso + 2 Erva Medicinal (25, Nv5) | num canteiro em crescimento, remove 50% do tempo RESTANTE, uma vez por plantio por canteiro | instantâneo |
 
-O Óleo de Amolar custa 40 de ouro; o reparo da Forja custa `20 + 25 x tier` por peça, ou seja 90 (T1) a 340 (T6) para as duas. Mesmo restaurando só 30%, fica abaixo de 75% do reparo cheio em qualquer tier (teste).
+O Azeite de Amolar custa 40 de ouro; o reparo da Forja custa `20 + 25 x tier` por peça, ou seja 90 (T1) a 340 (T6) para as duas. Mesmo restaurando só 30%, fica abaixo de 75% do reparo cheio em qualquer tier (teste).
 O Adubo é usado no cartão do canteiro (botão "Adubar", só aparece com Adubo no inventário); o canteiro lembra que foi adubado até colher/arrancar/plantar de novo.
 
 ## 4. Equipamento que consome a Horta
