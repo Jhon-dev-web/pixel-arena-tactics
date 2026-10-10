@@ -1,11 +1,13 @@
 import { DropRarity, MaterialId } from './materials';
 import T from './tunables';
 
-export type HuntingEnemyId = 'demon' | 'blood_monster';
+export type HuntingEnemyId = 'demon' | 'blood_monster' | 'rift_fiend' | 'blood_abomination';
 
 const HUNTING_ENEMY_SPRITES: Record<HuntingEnemyId, string> = {
   demon: '/assets/monsters/demon.png',
   blood_monster: '/assets/monsters/blood_monster.png',
+  rift_fiend: '/assets/monsters/rift_fiend.png',
+  blood_abomination: '/assets/monsters/blood_abomination.png',
 };
 
 export function huntingEnemySpriteUrl(id: HuntingEnemyId): string {
@@ -215,7 +217,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
   {
     id: 'demon_rift',
     nameKey: 'hunt3',
-    enemyId: 'demon',
+    enemyId: 'rift_fiend',
     cp: 1068,
     goldPerHour: 8,
     xpPerHour: 4650,
@@ -236,7 +238,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
   {
     id: 'blood_abyss',
     nameKey: 'hunt4',
-    enemyId: 'blood_monster',
+    enemyId: 'blood_abomination',
     cp: 1607,
     goldPerHour: 12,
     xpPerHour: 6950,
