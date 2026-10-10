@@ -38,3 +38,18 @@ describe('locales', () => {
     expect(mismatched).toEqual([]);
   });
 });
+
+describe('gear descriptions', () => {
+  // Stats are generated from the data (gearStats.ts); a number typed into a description goes stale (it did, before this test existed).
+  it('no gear description contains a digit, in either language', async () => {
+    const { GEAR } = await import('../gear');
+    for (const [name, table] of [['en', en], ['pt', pt]] as const) {
+      const gear = (table as unknown as { gear: Record<string, string> }).gear;
+      for (const item of GEAR) {
+        const text = gear[item.descKey];
+        expect(typeof text, `${name} ${item.descKey}`).toBe('string');
+        expect(text, `${name} ${item.descKey}`).not.toMatch(/\d/);
+      }
+    }
+  });
+});
