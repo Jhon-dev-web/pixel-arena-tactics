@@ -8,7 +8,7 @@ import { RECOMMENDED_CP_BY_FLOOR } from '../recommendedCp';
 import { getEnemyDef } from '../enemies';
 import { isDungeonBoss, stageEnemyDmg, stageEnemyHp } from '../waves';
 import T from '../tunables';
-import { ladder, recommendedTable } from '../../../scripts/sim/ladder';
+import { isSpikeFloor, ladder, recommendedTable } from '../../../scripts/sim/ladder';
 
 const HOUR = 3600 * 1000;
 const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
@@ -76,18 +76,39 @@ describe('Dungeon enemy curve (stage HP / damage helpers)', () => {
     for (const b of bossFloors) expect(power(b + 1)).toBeGreaterThanOrEqual(power(b - 1));
   });
 
-  it('a boss floor is still harder than the floor before it (the wall is still a wall)', () => {
-    for (const b of [25, 50, 75, 100]) expect(power(b)).toBeGreaterThan(power(b - 1));
+  it('every biome boss is at least 1.5x the HP x damage of the floor before it', () => {
+    for (const b of [25, 50, 75, 100]) expect(power(b) / power(b - 1)).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it('floors 76-99 (the boss EnemyDef as a regular mob) are exactly what they were before the balance pass', () => {
+    for (let f = 76; f <= 99; f++) {
+      const def = getEnemyDef(dungeonEnemyKindForFloor(f));
+      const hp = Math.round(550 * (1 + 0.15 * (f - 1)) * (f % 10 === 0 ? 1.5 : 1));
+      const dmg = Math.round(75 * (1 + 0.12 * (f - 1)) * 0.45);
+      expect([f, stageEnemyHp(def, f), stageEnemyDmg(def, f)]).toEqual([f, hp, dmg]);
+    }
+  });
+
+  it('the orc biome is a real climb: floor 49 is at least 1.5x floor 26 in HP x damage', () => {
+    expect(power(49) / power(26)).toBeGreaterThanOrEqual(1.5);
   });
 });
 
 describe('recommended CP per floor (generated table)', () => {
-  it('has one finite, positive, whole number per floor and never decreases', () => {
+  it('has one finite, positive, whole number per floor and never decreases (a mini-boss checkpoint is a one-floor spike)', () => {
     expect(RECOMMENDED_CP_BY_FLOOR).toHaveLength(MAX_DUNGEON_FLOOR);
+    let lastNormal = 0; // the value of the last floor that is not a checkpoint spike
     for (let f = 1; f <= MAX_DUNGEON_FLOOR; f++) {
       const v = recommendedCpForFloor(f);
       expect(Number.isInteger(v) && v > 0).toBe(true);
-      if (f > 1) expect(v).toBeGreaterThanOrEqual(recommendedCpForFloor(f - 1));
+      expect(v).toBeGreaterThanOrEqual(lastNormal);
+      if (!isSpikeFloor(f)) lastNormal = v;
+    }
+  });
+
+  it('a checkpoint spike never raises more than the one floor it sits on', () => {
+    for (let f = 2; f <= MAX_DUNGEON_FLOOR - 1; f++) {
+      if (isSpikeFloor(f)) expect(recommendedCpForFloor(f + 1)).toBeLessThanOrEqual(recommendedCpForFloor(f));
     }
   });
 

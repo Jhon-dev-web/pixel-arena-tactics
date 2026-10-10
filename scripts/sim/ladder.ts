@@ -5,6 +5,9 @@
 import { computeCP, defaultSave, SaveData, xpToReachLevel } from '../../src/game/engine';
 import { createGearInstance } from '../../src/game/gearInstances';
 import { getGear } from '../../src/game/gear';
+import { dungeonEnemyKindForFloor, isDungeonBoss, isDungeonCheckpoint } from '../../src/game/dungeon';
+import { getEnemyDef } from '../../src/game/enemies';
+import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
 import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
 
 export const TIER_GEAR: Record<number, [string, string]> = {
@@ -98,7 +101,12 @@ export function probeFloor(builds: LadderBuild[], floor: number, now: number): n
   return Infinity;
 }
 
-// All 100 floors: raw values, then made monotonically non-decreasing (running maximum) and rounded up to a whole number. A floor that
+// A checkpoint (floor 10, 20, 30 ...) is a mini-boss with +50% HP and +25% damage: its measured CP sits ~25% above both neighbours. Letting it
+// raise the running maximum would overstate the next ~10 floors by up to 37%, so a checkpoint is a one-floor spike: it is never below the
+// floors before it, but the floors after it continue from the previous non-checkpoint value. Boss floors (25/50/75/100) carry on normally.
+export const isSpikeFloor = (floor: number): boolean => isDungeonCheckpoint(floor) && !isDungeonBoss(floor);
+
+// All 100 floors: raw values, then a running maximum over the non-spike floors (see above), rounded up to a whole number. A floor that
 // no build of the ladder clears gets the CP of the strongest build (the ladder is capped).
 export function recommendedTable(builds: LadderBuild[], now: number): { raw: number[]; table: number[] } {
   const raw: number[] = [];
@@ -106,9 +114,61 @@ export function recommendedTable(builds: LadderBuild[], now: number): { raw: num
   const top = builds[builds.length - 1].cp;
   const table: number[] = [];
   let run = 0;
-  for (const v of raw) {
-    run = Math.max(run, Number.isFinite(v) ? v : top);
-    table.push(Math.ceil(run));
-  }
+  raw.forEach((rv, i) => {
+    const v = Number.isFinite(rv) ? rv : top;
+    if (isSpikeFloor(i + 1)) {
+      table.push(Math.ceil(Math.max(run, v)));
+    } else {
+      run = Math.max(run, v);
+      table.push(Math.ceil(run));
+    }
+  });
   return { raw, table };
+}
+
+// ---- floors no (or only the very top) ladder build clears: best build + extrapolated CP ---------------------------------------------------------------------------
+
+export interface UnclearedFloor {
+  floor: number;
+  power: number; // enemy HP x damage per hit
+  bestBuild: string;
+  bestCp: number;
+  bestWinRate: number; // share of 10 seeded runs the best build wins, in %
+  neededCp: number; // CP extrapolated from the measured floors (power law fitted on the floors 26..100 the ladder does clear)
+}
+
+const stagePower = (floor: number): number => {
+  const def = getEnemyDef(dungeonEnemyKindForFloor(floor));
+  return stageEnemyHp(def, floor) * stageEnemyDmg(def, floor);
+};
+
+export function uncleared(builds: LadderBuild[], raw: number[], now: number): { floors: UnclearedFloor[]; fit: { a: number; b: number } } {
+  // log(raw CP) = a + b * log(power), least squares over the measured floors from 26 up
+  const pts: [number, number][] = [];
+  raw.forEach((v, i) => {
+    if (i + 1 >= 26 && Number.isFinite(v)) pts.push([Math.log(stagePower(i + 1)), Math.log(v)]);
+  });
+  const n = pts.length;
+  const mx = pts.reduce((s, p) => s + p[0], 0) / n;
+  const my = pts.reduce((s, p) => s + p[1], 0) / n;
+  const b = pts.reduce((s, p) => s + (p[0] - mx) * (p[1] - my), 0) / pts.reduce((s, p) => s + (p[0] - mx) ** 2, 0);
+  const a = my - b * mx;
+  const floors: UnclearedFloor[] = [];
+  const top = builds[builds.length - 1].cp;
+  raw.forEach((v, i) => {
+    // listed: floors the ladder never clears, plus floors only its strongest build(s) clear (raw value = the top of the ladder)
+    if (Number.isFinite(v) && v < top * 0.99) return;
+    const floor = i + 1;
+    let best = builds[0];
+    let bestRate = -1;
+    for (const bd of builds) {
+      const r = clearRate(bd.hero, floor, now, 10);
+      if (r > bestRate || (r === bestRate && bd.cp > best.cp)) {
+        best = bd;
+        bestRate = r;
+      }
+    }
+    floors.push({ floor, power: stagePower(floor), bestBuild: best.label, bestCp: best.cp, bestWinRate: Math.round(bestRate * 100), neededCp: Math.round(Math.exp(a + b * Math.log(stagePower(floor)))) });
+  });
+  return { floors, fit: { a, b } };
 }

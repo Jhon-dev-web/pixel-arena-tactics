@@ -74,9 +74,10 @@ const T = DebugPanel.define({
     // bossHpMult keeps HP moderately above a same-stage mob (fight length), bossDmgMult intentionally sits
     // under 1x so a boss's per-hit damage doesn't outscale what a same-tier build's defense can absorb.
     // Balance pass (docs/BALANCE_CHANGES.md): the floor-25 boss was 13x the HP and 6x the hit of floor 24 and no seed beat it in 14 days. The
-    // HP half of the fix is the boss base HP in enemies.ts (550 -> 260), NOT bossHpMult: a multiplier below 1 would make the floor-100 boss
-    // softer than floor 99 (the boss EnemyDef also serves as the regular mob of floors 76-99). bossDmgMult went 0.45 -> 0.5. It must stay
-    // >= ~0.25 so floor 76 never drops below floor 74 (balance.test.ts).
+    // fix is NOT here and NOT in the boss EnemyDef base stats (that def is also the regular mob of floors 76-99, which must stay as they
+    // were): bossHpMult / bossDmgMult below apply to every boss floor and to floors 76-99, so each of the four biome bosses has its own
+    // multiplier on top (bossNNHpMult / bossNNDmgMult, waves.ts bossFloorMult). bossDmgMult must stay >= ~0.25 so floor 76 never drops
+    // below floor 74 (balance.test.ts).
     // Earlier history, retuned from 1.2/0.3: at 0.3, per-hit boss damage was so far under HP scaling that a "recommended CP"
     // build's win rate barely depended on defense at all (see project memory on the CP recalibration
     // session) — 0.45/1.05 puts real risk back on a single exchange (~11% of max HP per hit at the
@@ -84,7 +85,18 @@ const T = DebugPanel.define({
     // reintroducing the pre-nerf one-shot problem that motivated dropping bossDmgMult from 1.8 in the
     // first place. bossHpMult nudged down slightly (1.2->1.05) to keep fight length comparable.
     bossHpMult: { value: 1.05, min: 0.5, max: 5, step: 0.05, label: 'Main boss HP multiplier' },
-    bossDmgMult: { value: 0.5, min: 0.1, max: 4, step: 0.05, label: 'Main boss damage multiplier' },
+    bossDmgMult: { value: 0.45, min: 0.1, max: 4, step: 0.05, label: 'Main boss damage multiplier' },
+    // Per-boss-floor multipliers, applied ONLY on the four biome-boss floors (isDungeonBoss) on top of bossHpMult / bossDmgMult.
+    // 25: the wall (was 13x the HP of floor 24 with 1x); 50: sized so the first kills land around day 12-16; 75: untouched; 100: 1.44x power so the
+    // last boss is >= 1.5x floor 99 (the regular boss-mob floors 76-99 are exactly as they were before the balance pass).
+    boss25HpMult: { value: 0.22, min: 0.1, max: 5, step: 0.01, label: 'Floor-25 boss: extra HP multiplier' },
+    boss25DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-25 boss: extra damage multiplier' },
+    boss50HpMult: { value: 0.64, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra HP multiplier' },
+    boss50DmgMult: { value: 0.64, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra damage multiplier' },
+    boss75HpMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra HP multiplier' },
+    boss75DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra damage multiplier' },
+    boss100HpMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra HP multiplier' },
+    boss100DmgMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra damage multiplier' },
     bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
     miniBossGoldMult: { value: 2.5, min: 1, max: 10, step: 0.5, label: 'Checkpoint wave gold multiplier' },
     bossGoldMult: { value: 5, min: 1, max: 15, step: 0.5, label: 'Main boss wave gold multiplier' },
@@ -291,11 +303,13 @@ const T = DebugPanel.define({
     goldBonusRegional: { value: 2, min: 0, max: 30, step: 0.5, label: 'Extra Gold per hour, Regional' },
     goldBonusLonga: { value: 3.5, min: 0, max: 30, step: 0.5, label: 'Extra Gold per hour, Long' },
     goldBonusEspecial: { value: 5, min: 0, max: 30, step: 0.5, label: 'Extra Gold per hour, Special' },
-    xpPerHourLocal: { value: 39000, min: 0, max: 400000, step: 1000, label: 'XP per hour, Local' },
-    xpPerHourCurta: { value: 45000, min: 0, max: 400000, step: 1000, label: 'XP per hour, Short' },
-    xpPerHourRegional: { value: 51000, min: 0, max: 400000, step: 1000, label: 'XP per hour, Regional' },
-    xpPerHourLonga: { value: 56000, min: 0, max: 400000, step: 1000, label: 'XP per hour, Long' },
-    xpPerHourEspecial: { value: 60000, min: 0, max: 400000, step: 1000, label: 'XP per hour, Special' },
+    // Balance pass, round 2: x0.02 on all five (was 39000 / 45000 / 51000 / 56000 / 60000). Orders were >90% of the XP a player earned from day 3
+    // (300-750k/day), which left character level, the recipe level gates and the CP curve meaningless. Gold, timers and requirements untouched.
+    xpPerHourLocal: { value: 780, min: 0, max: 400000, step: 10, label: 'XP per hour, Local' },
+    xpPerHourCurta: { value: 900, min: 0, max: 400000, step: 10, label: 'XP per hour, Short' },
+    xpPerHourRegional: { value: 1020, min: 0, max: 400000, step: 10, label: 'XP per hour, Regional' },
+    xpPerHourLonga: { value: 1120, min: 0, max: 400000, step: 10, label: 'XP per hour, Long' },
+    xpPerHourEspecial: { value: 1200, min: 0, max: 400000, step: 10, label: 'XP per hour, Special' },
     // Shards: fixed when the offer is generated, only on Long / Special, by tier.
     shardsLongaT1: { value: 0, min: 0, max: 10, step: 1, label: 'Shards, Long, tier 1' },
     shardsLongaT2: { value: 1, min: 0, max: 10, step: 1, label: 'Shards, Long, tier 2' },

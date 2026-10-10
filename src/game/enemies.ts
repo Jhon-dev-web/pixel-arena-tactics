@@ -35,8 +35,10 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   orc: {
     id: 'orc',
     nameKey: 'orcBerserker',
-    hp: 110,
-    dmg: 18,
+    // Round 2 of the balance pass: was 110 / 18. The orc biome (floors 26-49) used to be easier than the floor-25 boss and the hero crossed it
+    // in a day; with these stats it asks for a real gear climb between boss 25 and boss 50.
+    hp: 150,
+    dmg: 22,
     atkSpeedMs: 1700,
     hpMult: 1,
     atkMult: 1,
@@ -59,9 +61,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   boss: {
     id: 'boss',
     nameKey: 'minotaurWarlord',
-    // hp was 550: halved (x ~0.48) in the balance pass so the floor-25 boss stops being a cliff (docs/BALANCE_CHANGES.md). It also scales
-    // floors 76-99 (this def is their regular mob) and the bosses of 50/75/100 by the same factor, so every boss stays above the floor before it.
-    hp: 260,
+    // This def is also the regular mob of floors 76-99: do not retune it for the floor-25 boss (see T.battle.boss25HpMult and friends).
+    hp: 550,
     dmg: 75,
     atkSpeedMs: 2000,
     hpMult: 2,

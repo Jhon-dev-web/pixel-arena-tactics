@@ -54,7 +54,7 @@ import { buildHero } from './ladder';
 import { DaySnapshot, FirstEvent, Player, PlayerOptions } from './player';
 
 const SEEDS = 20;
-const DAYS = 14;
+const DAYS = 21;
 const START = new Date(2026, 5, 1, 0, 0, 0).getTime();
 
 interface Run {
@@ -200,7 +200,7 @@ function report(runs: Run[], sections: Section[]): string[] {
     out.push('');
     const sinkKeys = Array.from(new Set(runs.flatMap((r) => r.days.flatMap((x) => Object.keys(x.ledger.goldOut)))));
     const total = (k: string) => median(runs.map((r) => r.days.reduce((a, x) => a + (x.ledger.goldOut[k] ?? 0), 0)));
-    out.push('Ouro gasto nos 14 dias, por destino (mediana entre seeds): ' + (sinkKeys.map((k) => `${k} ${num(total(k))}`).join(' · ') || 'nada'));
+    out.push(`Ouro gasto nos ${DAYS} dias, por destino (mediana entre seeds): ` + (sinkKeys.map((k) => `${k} ${num(total(k))}`).join(' · ') || 'nada'));
     out.push('');
   }
 
@@ -243,7 +243,7 @@ function report(runs: Run[], sections: Section[]): string[] {
     ];
     out.push(
       ...table(
-        ['Evento', 'Dia (mediana de todas as seeds)', 'Mín–máx (só quem chegou)', 'Seeds que chegam lá em 14 dias'],
+        ['Evento', 'Dia (mediana de todas as seeds)', 'Mín–máx (só quem chegou)', `Seeds que chegam lá em ${DAYS} dias`],
         labels.map(([ev, label]) => {
           const days = runs.map((r) => r.first[ev]).filter((x): x is number => x !== undefined);
           return [label, medianDay(runs, ev), days.length ? `${Math.min(...days)}–${Math.max(...days)}` : '-', `${days.length}/${runs.length}`];
@@ -466,6 +466,10 @@ function metas(a: Run[], b: Run[], pouch: PouchStats, curveWorst: number): strin
     });
     return `${num(median(xs))}%`;
   };
+  const firstDay = (runs: Run[], ev: FirstEvent) => Math.min(...runs.map((r) => r.first[ev] ?? Infinity));
+  const nReach = (runs: Run[], ev: FirstEvent) => runs.filter((r) => r.first[ev] !== undefined).length;
+  const t6 = (runs: Run[]) =>
+    `chegada: primeira seed no dia ${firstDay(runs, 'floor50')}, mediana ${medianDay(runs, 'floor50')}; chefe 50: primeira seed no dia ${firstDay(runs, 'boss50')}, mediana ${medianDay(runs, 'boss50')}, ${nReach(runs, 'boss50')}/${runs.length} em ${DAYS} dias`;
   const rows: string[][] = [];
   const t4 = (runs: Run[]) => `${cell(lvl(runs, 0))} / ${cell(lvl(runs, 2))} / ${cell(lvl(runs, 13))}`;
   const t4ok = (runs: Run[]) => [inBand(lvl(runs, 0), 10, 16), inBand(lvl(runs, 2), 20, 28), inBand(lvl(runs, 13), 45, 60)];
@@ -501,10 +505,10 @@ function metas(a: Run[], b: Run[], pouch: PouchStats, curveWorst: number): strin
   ]);
   rows.push([
     'T6',
-    'Andar 50 não antes do dia 12 (chefe 50 vencido; a chegada ao andar 50 vem depois)',
-    `chefe: dia ${medianDay(a, 'boss50')} (primeira seed: dia ${Math.min(...a.map((x) => x.first.boss50 ?? Infinity))}; ${a.filter((x) => x.first.boss50).length}/${a.length} chegam); chegada: dia ${medianDay(a, 'floor50')}`,
-    `chefe: dia ${medianDay(b, 'boss50')} (primeira seed: dia ${Math.min(...b.map((x) => x.first.boss50 ?? Infinity))}; ${b.filter((x) => x.first.boss50).length}/${b.length} chegam); chegada: dia ${medianDay(b, 'floor50')}`,
-    `chefe ${ok(dayMed(a, 'boss50') >= 12 && dayMed(b, 'boss50') >= 12)}; chegada ${ok(dayMed(a, 'floor50') >= 12 && dayMed(b, 'floor50') >= 12)}`,
+    'Chegada ao andar 50: nenhuma seed antes do dia 10; o chefe 50 cai pela 1ª vez por volta dos dias 12–16',
+    t6(a),
+    t6(b),
+    `chegada ${ok(firstDay(a, 'floor50') >= 10 && firstDay(b, 'floor50') >= 10)}; chefe ${ok(firstDay(a, 'boss50') >= 12 && firstDay(a, 'boss50') <= 16 && firstDay(b, 'boss50') >= 12 && firstDay(b, 'boss50') <= 16)}`,
   ]);
   rows.push([
     'T7',

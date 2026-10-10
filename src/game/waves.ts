@@ -23,9 +23,23 @@ const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - 
 
 export { isDungeonBoss, isDungeonCheckpoint };
 
+// The four biome bosses (25/50/75/100) each carry their own extra multipliers, so tuning one boss never moves the regular floors that share
+// the boss EnemyDef (76-99) or the other bosses.
+export function bossFloorMult(stage: number): { hp: number; dmg: number } {
+  const B = T.battle;
+  const table = [
+    { hp: B.boss25HpMult, dmg: B.boss25DmgMult },
+    { hp: B.boss50HpMult, dmg: B.boss50DmgMult },
+    { hp: B.boss75HpMult, dmg: B.boss75DmgMult },
+    { hp: B.boss100HpMult, dmg: B.boss100DmgMult },
+  ];
+  const i = Math.min(table.length, Math.max(1, Math.round(stage / B.bossEvery))) - 1;
+  return table[i];
+}
+
 export function stageEnemyHp(def: EnemyDef, stage: number): number {
   const base = def.hp * (1 + T.battle.hpGrowth * (stage - 1));
-  const mult = isDungeonBoss(stage) ? T.battle.bossHpMult : isDungeonCheckpoint(stage) ? T.battle.miniBossHpMult : 1;
+  const mult = isDungeonBoss(stage) ? T.battle.bossHpMult * bossFloorMult(stage).hp : isDungeonCheckpoint(stage) ? T.battle.miniBossHpMult : 1;
   return Math.round(base * mult);
 }
 
@@ -36,7 +50,11 @@ export function stageEnemyDmg(def: EnemyDef, stage: number): number {
   // un-milestoned mobs out-damage the actual boss they lead up to. Route them through bossDmgMult too,
   // ahead of the checkpoint multiplier, since stacking miniBossDmgMult on the already-huge boss base
   // made floors 80/90 hit even harder than the boss.
-  const mult = isDungeonBoss(stage) || def.boss ? T.battle.bossDmgMult : isDungeonCheckpoint(stage) ? T.battle.miniBossDmgMult : 1;
+  const mult = isDungeonBoss(stage)
+    ? T.battle.bossDmgMult * bossFloorMult(stage).dmg
+    : def.boss
+      ? T.battle.bossDmgMult
+      : isDungeonCheckpoint(stage) ? T.battle.miniBossDmgMult : 1;
   return Math.round(base * mult);
 }
 
