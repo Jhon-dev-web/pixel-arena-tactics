@@ -72,7 +72,9 @@ export default function GatheringModal({
   const startedAt = mining ? save.lastMiningClaim : save.lastWoodcuttingClaim;
   const status = mining ? computeMiningStatus(save, now) : computeWoodcuttingStatus(save, now);
   const units = mining ? (status as ReturnType<typeof computeMiningStatus>).oreReady : (status as ReturnType<typeof computeWoodcuttingStatus>).woodReady;
-  const passActive = isBattlePassActive(save, now);
+  const passNow = isBattlePassActive(save, now);
+  // A running session keeps the Pass it started with (cap and yield); the Pass bought mid-session only applies from the next one.
+  const passActive = activeId ? status.passCoversSession : passNow;
   const ratePerHour = gatherPower(BASE_GATHER_POWER, xp) * (mining ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower) * (passActive ? T.battlePass.dropRateMultiplier : 1);
   const xpPerHour = ratePerHour * T.skills.xpPerUnit;
   const hoursToNext = xpPerHour > 0 ? (skillXpForNextLevel(level, kind) - (xp - skillXpToReachLevel(level, kind))) / xpPerHour : Infinity;
@@ -95,6 +97,7 @@ export default function GatheringModal({
           <span className="skill-level-meta">{t('gathering.rate', { n: fmtNum(Math.round(ratePerHour * 10) / 10), xp: fmtNum(Math.round(xpPerHour * 10) / 10) })}</span>
           {Number.isFinite(hoursToNext) && level < T.skills.maxLevel && <span className="skill-level-meta">{t('gathering.nextLevelIn', { t: formatDuration(hoursToNext * MS_H) })}</span>}
           <span className="skill-level-meta">{t('gathering.storage', { n: fmtHours(capHours) })}{passActive ? ` · ${t('gathering.passBonus')}` : ''}</span>
+          {activeId && passNow && !status.passCoversSession && <span className="skill-level-meta">{t('gathering.passNextSession')}</span>}
           {brew && <span className="skill-level-meta gather-brew">{t('gathering.brew', { t: formatDuration(buffRemainingMs(save, now, 'gatherer')) })}</span>}
         </SkillLevelBadge>
 

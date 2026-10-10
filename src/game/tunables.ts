@@ -374,7 +374,7 @@ const T = DebugPanel.define({
     dropRateMultiplier: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Drop rate multiplier with pass' },
     xpPerFloor: { value: 15, min: 1, max: 100, step: 1, label: 'Pass XP per dungeon floor cleared' },
     xpPerHuntHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Hunting claimed' },
-    xpPerMiningHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Mining claimed' },
+    xpPerMiningHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Mining AND Woodcutting claimed (one rule for both, gathering.ts)' },
     pouchBonusSlots: { value: 2, min: 0, max: 6, step: 1, label: 'Extra Hunting Pouch slots while active' },
     repairDiscount: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Forge repair gold discount while active' },
   },

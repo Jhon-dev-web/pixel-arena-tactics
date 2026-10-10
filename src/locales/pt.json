@@ -1072,6 +1072,7 @@
     "activeTier": "Em andamento neste tier",
     "switch": "Trocar para este tier",
     "levelsToGo": "faltam {n} níveis",
-    "switchHint": "Trocar de tier coleta o que já foi acumulado antes de começar o novo."
+    "switchHint": "Trocar de tier coleta o que já foi acumulado antes de começar o novo.",
+    "passNextSession": "O limite maior do Passe vale a partir da próxima sessão."
   }
 }

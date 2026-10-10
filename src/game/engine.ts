@@ -177,6 +177,9 @@ export interface SaveData {
   unlockedHuntingZones: string[];
   hasBattlePass: boolean;
   battlePassExpiresAt: number | null;
+  // The Pass as it was when the running Mining / Woodcutting session started (see snapshotGatherPass). Optional: old saves get it computed at load.
+  miningPass?: GatherPass | null;
+  woodcuttingPass?: GatherPass | null;
   battlePassLevel: number;
   battlePassXp: number;
   claimedPassRewards: { free: number[]; premium: number[] };
@@ -404,22 +407,80 @@ export interface MiningStatus {
   full: boolean;
 }
 
-export function computeMiningStatus(save: SaveData, now: number): MiningStatus {
-  const passActive = isBattlePassActive(save, now);
-  const capHours = passActive ? Math.max(save.miningCapHours, T.battlePass.capHours) : save.miningCapHours;
+// What the Battle Pass was doing when a gathering session STARTED: the storage cap and the yield bonus of that session come from it, so a Pass that
+// expires mid-session cannot retroactively cut the cap (24 h -> 4 h) and one bought mid-session does not stretch the running session (it applies from the next).
+// `until` is the Pass expiry (null = no expiry): the x1.25 yield stops at that instant (pro-rated), the cap stays.
+export interface GatherPass {
+  active: boolean;
+  until: number | null;
+}
+
+export function snapshotGatherPass(save: SaveData, now: number): GatherPass {
+  const active = isBattlePassActive(save, now);
+  return { active, until: active ? save.battlePassExpiresAt : null };
+}
+
+export type GatherKind = 'mining' | 'woodcutting';
+
+// A saved snapshot as is; a running session without one (an old save) gets the Pass as it is at load, which is never more than the player had.
+function sanitizeGatherPass(raw: unknown, running: boolean, hasPass: boolean, expiresAt: number | null): GatherPass | null {
+  const r = raw as Partial<GatherPass> | null | undefined;
+  if (running && r && typeof r.active === 'boolean' && (r.until === null || (typeof r.until === 'number' && Number.isFinite(r.until)))) return { active: r.active, until: r.until ?? null };
+  if (!running) return null;
+  const active = hasPass && (expiresAt === null || expiresAt > Date.now());
+  return { active, until: active ? expiresAt : null };
+}
+
+interface GatherAccrual {
+  capMs: number;
+  pendingMs: number;
+  tierId: MaterialId | null;
+  units: number;
+  gold: number;
+  full: boolean;
+  // false when this session started without the Pass (so the longer cap only applies from the next one)
+  passCoversSession: boolean;
+}
+
+// ONE accrual for Mining and Woodcutting (they cannot diverge): units = floor(effective hours x power x rate), effective hours = real hours, plus the Gatherer
+// Brew's share, with the Pass's drop multiplier on the part of the session it covered (from the start to its expiry).
+function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAccrual {
+  const mining = kind === 'mining';
+  const tier = mining ? (save.activeOreId ? getOreTier(save.activeOreId) : undefined) : save.activeWoodId ? getWoodTier(save.activeWoodId) : undefined;
+  const baseCap = mining ? save.miningCapHours : save.woodcuttingCapHours;
+  const startedAt = mining ? save.lastMiningClaim : save.lastWoodcuttingClaim;
+  // Old saves (no snapshot) and plain states fall back to the Pass as it is now.
+  const snap = (mining ? save.miningPass : save.woodcuttingPass) ?? snapshotGatherPass(save, now);
+  const capHours = snap.active ? Math.max(baseCap, T.battlePass.capHours) : baseCap;
   const capMs = capHours * 3600 * 1000;
-  const tier = save.activeOreId ? getOreTier(save.activeOreId) : undefined;
-  if (!tier) {
-    return { capMs, pendingMs: 0, oreId: null, oreReady: 0, goldReady: 0, full: false };
-  }
-  const elapsedMs = Math.max(0, now - save.lastMiningClaim);
+  if (!tier) return { capMs, pendingMs: 0, tierId: null, units: 0, gold: 0, full: false, passCoversSession: snap.active };
+  const elapsedMs = Math.max(0, now - startedAt);
   const pendingMs = Math.min(elapsedMs, capMs);
   const hours = pendingMs / (3600 * 1000);
-  const power = gatherPower(BASE_GATHER_POWER, save.skillXp.mining);
-  const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
-  const oreReady = Math.floor((hours + gathererBonusHours(save, save.lastMiningClaim, pendingMs)) * power * T.mining.oreRatePerPower * dropMult);
-  const goldReady = Math.floor(hours * power * T.mining.goldRatePerPower);
-  return { capMs, pendingMs, oreId: tier.id, oreReady, goldReady, full: pendingMs >= capMs };
+  const power = gatherPower(BASE_GATHER_POWER, save.skillXp[kind]);
+  const effective = hours + gathererBonusHours(save, startedAt, pendingMs);
+  let passShare = 0;
+  if (snap.active && pendingMs > 0) {
+    const end = snap.until === null ? startedAt + pendingMs : Math.min(startedAt + pendingMs, snap.until);
+    passShare = Math.max(0, Math.min(1, (end - startedAt) / pendingMs));
+  }
+  const dropMult = 1 + (T.battlePass.dropRateMultiplier - 1) * passShare;
+  const rate = mining ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower;
+  const goldRate = mining ? T.mining.goldRatePerPower : T.woodcutting.goldRatePerPower;
+  return {
+    capMs,
+    pendingMs,
+    tierId: tier.id,
+    units: Math.floor(effective * power * rate * dropMult),
+    gold: Math.floor(hours * power * goldRate),
+    full: pendingMs >= capMs,
+    passCoversSession: snap.active,
+  };
+}
+
+export function computeMiningStatus(save: SaveData, now: number): MiningStatus & { passCoversSession: boolean } {
+  const g = gatherAccrual(save, 'mining', now);
+  return { capMs: g.capMs, pendingMs: g.pendingMs, oreId: g.tierId, oreReady: g.units, goldReady: g.gold, full: g.full, passCoversSession: g.passCoversSession };
 }
 
 export interface WoodcuttingStatus {
@@ -431,24 +492,9 @@ export interface WoodcuttingStatus {
   full: boolean;
 }
 
-// Mirrors computeMiningStatus exactly — same continuous-accrual-capped-offline-window shape, same
-// zero-gold-by-design faucet (T.woodcutting.goldRatePerPower is 0, matching T.mining.goldRatePerPower).
-export function computeWoodcuttingStatus(save: SaveData, now: number): WoodcuttingStatus {
-  const passActive = isBattlePassActive(save, now);
-  const capHours = passActive ? Math.max(save.woodcuttingCapHours, T.battlePass.capHours) : save.woodcuttingCapHours;
-  const capMs = capHours * 3600 * 1000;
-  const tier = save.activeWoodId ? getWoodTier(save.activeWoodId) : undefined;
-  if (!tier) {
-    return { capMs, pendingMs: 0, woodId: null, woodReady: 0, goldReady: 0, full: false };
-  }
-  const elapsedMs = Math.max(0, now - save.lastWoodcuttingClaim);
-  const pendingMs = Math.min(elapsedMs, capMs);
-  const hours = pendingMs / (3600 * 1000);
-  const power = gatherPower(BASE_GATHER_POWER, save.skillXp.woodcutting);
-  const dropMult = passActive ? T.battlePass.dropRateMultiplier : 1;
-  const woodReady = Math.floor((hours + gathererBonusHours(save, save.lastWoodcuttingClaim, pendingMs)) * power * T.woodcutting.woodRatePerPower * dropMult);
-  const goldReady = Math.floor(hours * power * T.woodcutting.goldRatePerPower);
-  return { capMs, pendingMs, woodId: tier.id, woodReady, goldReady, full: pendingMs >= capMs };
+export function computeWoodcuttingStatus(save: SaveData, now: number): WoodcuttingStatus & { passCoversSession: boolean } {
+  const g = gatherAccrual(save, 'woodcutting', now);
+  return { capMs: g.capMs, pendingMs: g.pendingMs, woodId: g.tierId, woodReady: g.units, goldReady: g.gold, full: g.full, passCoversSession: g.passCoversSession };
 }
 
 export interface GardenStatus {
@@ -785,6 +831,8 @@ export function defaultSave(): SaveData {
     unlockedHuntingZones: [DEFAULT_HUNTING_ZONE],
     hasBattlePass: false,
     battlePassExpiresAt: null,
+    miningPass: null,
+    woodcuttingPass: null,
     battlePassLevel: 1,
     battlePassXp: 0,
     claimedPassRewards: { free: [], premium: [] },
@@ -1151,6 +1199,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         unlockedHuntingZones,
         hasBattlePass,
         battlePassExpiresAt,
+        miningPass: sanitizeGatherPass(parsed.miningPass, activeOreId !== null, hasBattlePass, battlePassExpiresAt),
+        woodcuttingPass: sanitizeGatherPass(parsed.woodcuttingPass, activeWoodId !== null, hasBattlePass, battlePassExpiresAt),
         battlePassLevel,
         battlePassXp,
         claimedPassRewards,

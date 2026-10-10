@@ -1072,6 +1072,7 @@
     "activeTier": "Running on this tier",
     "switch": "Switch to this tier",
     "levelsToGo": "{n} levels to go",
-    "switchHint": "Switching tier collects what has piled up before starting the new one."
+    "switchHint": "Switching tier collects what has piled up before starting the new one.",
+    "passNextSession": "The Pass's longer storage applies from the next session."
   }
 }

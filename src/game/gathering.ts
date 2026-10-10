@@ -1,4 +1,4 @@
-import { addBattlePassXp, computeMiningStatus, computeWoodcuttingStatus, SaveData } from './engine';
+import { addBattlePassXp, computeMiningStatus, computeWoodcuttingStatus, SaveData, snapshotGatherPass } from './engine';
 import { MaterialId } from './materials';
 import { getOreTier, isOreTierUnlocked } from './ores';
 import { skillLevel } from './skills';
@@ -21,8 +21,8 @@ export interface GatherClaim {
 
 const validNow = (now: number): boolean => typeof now === 'number' && Number.isFinite(now) && now > 0;
 
-// Collect the running session of `kind`: the accrued units go to the bag, the skill gets units x xpPerUnit, the session ends.
-// null = no session running (or a bad clock). Mining also pays Battle Pass XP per hour collected, exactly as before.
+// Collect the running session of `kind`: the accrued units go to the bag, the skill gets units x xpPerUnit, the session ends. Both skills pay the same Battle Pass XP
+// per hour collected (T.battlePass.xpPerMiningHour, one rule for the two so they cannot diverge). null = no session running (or a bad clock).
 export function applyClaimGathering(save: SaveData, kind: GatherKind, now: number): GatherClaim | null {
   if (!validNow(now)) return null;
   if (kind === 'mining') {
@@ -37,6 +37,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
       materials: { ...save.materials, [status.oreId]: (save.materials[status.oreId] ?? 0) + status.oreReady },
       skillXp: { ...save.skillXp, mining: save.skillXp.mining + status.oreReady * T.skills.xpPerUnit },
       activeOreId: null,
+      miningPass: null,
       lastMiningClaim: now,
       battlePassLevel,
       battlePassXp,
@@ -46,15 +47,20 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
   if (!save.activeWoodId) return null;
   const status = computeWoodcuttingStatus(save, now);
   if (!status.woodId) return null;
+  const hours = status.pendingMs / 3600000;
+  const { battlePassLevel, battlePassXp } = addBattlePassXp(save, Math.floor(hours * T.battlePass.xpPerMiningHour));
   const next: SaveData = {
     ...save,
     gold: save.gold + status.goldReady,
     materials: { ...save.materials, [status.woodId]: (save.materials[status.woodId] ?? 0) + status.woodReady },
     skillXp: { ...save.skillXp, woodcutting: save.skillXp.woodcutting + status.woodReady * T.skills.xpPerUnit },
     activeWoodId: null,
+    woodcuttingPass: null,
     lastWoodcuttingClaim: now,
+    battlePassLevel,
+    battlePassXp,
   };
-  return { save: next, kind, material: status.woodId, units: status.woodReady, gold: status.goldReady, hours: status.pendingMs / 3600000 };
+  return { save: next, kind, material: status.woodId, units: status.woodReady, gold: status.goldReady, hours };
 }
 
 export interface GatherStart {
@@ -72,11 +78,11 @@ export function applyStartGathering(save: SaveData, kind: GatherKind, tierId: st
     if (!tier || save.activeWoodId || save.activeOreId === tier.id || !isOreTierUnlocked(tier, skillLevel(save.skillXp.mining, 'mining'))) return null;
     const claimed = save.activeOreId ? applyClaimGathering(save, kind, now) : null;
     const base = claimed ? claimed.save : save;
-    return { save: { ...base, activeOreId: tier.id, lastMiningClaim: now }, claimed };
+    return { save: { ...base, activeOreId: tier.id, lastMiningClaim: now, miningPass: snapshotGatherPass(base, now) }, claimed };
   }
   const tier = getWoodTier(tierId);
   if (!tier || save.activeOreId || save.activeWoodId === tier.id || !isWoodTierUnlocked(tier, skillLevel(save.skillXp.woodcutting, 'woodcutting'))) return null;
   const claimed = save.activeWoodId ? applyClaimGathering(save, kind, now) : null;
   const base = claimed ? claimed.save : save;
-  return { save: { ...base, activeWoodId: tier.id, lastWoodcuttingClaim: now }, claimed };
+  return { save: { ...base, activeWoodId: tier.id, lastWoodcuttingClaim: now, woodcuttingPass: snapshotGatherPass(base, now) }, claimed };
 }

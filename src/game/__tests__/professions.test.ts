@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseGoldValue } from '../economy';
-import { computeMiningStatus, computeWoodcuttingStatus, defaultSave, SaveData } from '../engine';
+import { computeMiningStatus, computeWoodcuttingStatus, defaultSave, normalizeSave, SaveData } from '../engine';
 import { applyClaimGathering, applyStartGathering } from '../gathering';
 import { MaterialId } from '../materials';
 import { ORE_TIERS } from '../ores';
@@ -161,5 +161,65 @@ describe('profession gates and refining', () => {
       const out = r.outputQty * baseGoldValue(r.output);
       expect(out / (inputs + r.cost), r.id).toBeGreaterThanOrEqual(0.6);
     }
+  });
+});
+
+describe('Battle Pass and gathering sessions', () => {
+  const withPass = (s: SaveData, until: number | null): SaveData => ({ ...s, hasBattlePass: true, battlePassExpiresAt: until });
+  const lvl = (s: SaveData): SaveData => ({ ...s, skillXp: { mining: skillXpToReachLevel(30, 'mining'), woodcutting: skillXpToReachLevel(30, 'woodcutting'), gardening: 0 } });
+
+  it('Woodcutting pays the same Battle Pass XP as Mining for the same hours (one shared rule)', () => {
+    const base = lvl(fresh());
+    const m = applyClaimGathering(applyStartGathering(base, 'mining', 'copper', T0)!.save, 'mining', T0 + 4 * HOUR)!;
+    const w = applyClaimGathering(applyStartGathering(base, 'woodcutting', 'common_wood', T0)!.save, 'woodcutting', T0 + 4 * HOUR)!;
+    expect(m.save.battlePassXp).toBeGreaterThan(0);
+    expect(w.save.battlePassXp).toBe(m.save.battlePassXp);
+    expect(w.units).toBe(m.units); // same power, same rate, same cap
+  });
+
+  it('a session started with the Pass keeps its 24 h cap after the Pass expires; the x1.25 stops at the expiry instant (pro-rated)', () => {
+    const until = T0 + 10 * HOUR;
+    const s = applyStartGathering(withPass(lvl(fresh()), until), 'mining', 'copper', T0)!.save;
+    expect(s.miningPass).toEqual({ active: true, until });
+    const later = T0 + 30 * HOUR; // the Pass is long gone
+    const st = computeMiningStatus(s, later);
+    expect(st.capMs).toBe(T.battlePass.capHours * HOUR);
+    expect(st.pendingMs).toBe(T.battlePass.capHours * HOUR);
+    const power = gatherPower(BASE_GATHER_POWER, s.skillXp.mining);
+    const share = 10 / T.battlePass.capHours;
+    expect(st.oreReady).toBe(Math.floor(T.battlePass.capHours * power * (1 + (T.battlePass.dropRateMultiplier - 1) * share)));
+    // without the expiry the bonus covers the whole session
+    const open = applyStartGathering(withPass(lvl(fresh()), null), 'mining', 'copper', T0)!.save;
+    expect(computeMiningStatus(open, later).oreReady).toBe(Math.floor(T.battlePass.capHours * power * T.battlePass.dropRateMultiplier));
+  });
+
+  it('old saves without the snapshot: the running session gets the Pass as it is at load, never a bigger cap than the player had', () => {
+    const running = { ...lvl(fresh()), activeOreId: 'copper', lastMiningClaim: T0 };
+    const wire = (s: SaveData) => JSON.parse(JSON.stringify(s));
+    const noPass = normalizeSave({ ...wire(running), miningPass: undefined });
+    expect(noPass.miningPass).toEqual({ active: false, until: null });
+    expect(computeMiningStatus(noPass, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
+    const future = Date.now() + 5 * HOUR;
+    const pass = normalizeSave({ ...wire(withPass(running, future)), miningPass: undefined });
+    expect(pass.miningPass).toEqual({ active: true, until: future });
+    // a save that never had a snapshot field at all, computed without loading, falls back to the current Pass
+    const raw = { ...running } as SaveData;
+    delete raw.miningPass;
+    expect(computeMiningStatus(raw, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
+    expect(computeMiningStatus(withPass(raw, null), T0 + 30 * HOUR).capMs).toBe(T.battlePass.capHours * HOUR);
+    // nothing running: no snapshot is kept
+    expect(normalizeSave(wire(fresh())).miningPass).toBeNull();
+  });
+
+  it('a Pass bought mid-session does not stretch that session: the 4 h cap stays and the longer one starts with the next session', () => {
+    const s = applyStartGathering(lvl(fresh()), 'woodcutting', 'common_wood', T0)!.save;
+    const bought = withPass(s, null);
+    const st = computeWoodcuttingStatus(bought, T0 + 20 * HOUR);
+    expect(st.capMs).toBe(4 * HOUR);
+    expect(st.passCoversSession).toBe(false);
+    const plain = computeWoodcuttingStatus(s, T0 + 20 * HOUR);
+    expect(st.woodReady).toBe(plain.woodReady); // no bonus for that session either
+    const next = applyStartGathering(applyClaimGathering(bought, 'woodcutting', T0 + 20 * HOUR)!.save, 'woodcutting', 'common_wood', T0 + 20 * HOUR)!.save;
+    expect(computeWoodcuttingStatus(next, T0 + 40 * HOUR).capMs).toBe(T.battlePass.capHours * HOUR);
   });
 });
