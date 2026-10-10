@@ -334,6 +334,80 @@ describe('item balance audit', () => {
     P('| Peça | Gema | ΔCP por gema | Custo | Soquetes do tier |', '| --- | --- | --: | --: | --: |', ...gRows);
     P('');
 
+    // ===== G. gear effects (Rodada 4) ==========================================================================================
+    P('## G. Efeitos de equipamento: queimadura, reflexo, regeneração, velocidade de ataque', '');
+    P('Mesma régua da seção C: `Δln P` é a variação do log da margem do duelo (valor real de combate, forma fechada com os efeitos em `duel.ts`) no andar de referência do herói (par do tier +4, atributos 35/30/20/15), `ΔCP` a variação de `computeCP`, `Δandares` a média de andares limpos a partir do andar de referência (60 sorteios, sem poções). Um efeito "desligado" é o MESMO item com o campo zerado.', '');
+    const relicOf = (s: SaveData, id: string | null): SaveData => ({ ...s, equipped: { ...s.equipped, relic: id } });
+    const signed = (x: number) => `${x >= 0 ? '+' : ''}${f2(x)}`;
+    const gRows1: string[] = [];
+    const relicLn: Record<string, number[]> = {};
+    withSeededRandom(8, () => {
+      for (const [lv, tk] of [[20, '2'], [30, '3'], [60, '4g'], [90, '6']] as [number, string][]) {
+        const base = hero(tk, 4, { level: lv });
+        const fl = repFloor(base);
+        const cp0 = computeCP(base);
+        const b = duel(base, fl);
+        const bSt = meanStages(base, fl, 60);
+        for (const r of GEAR.filter((g) => g.slot === 'relic')) {
+          const s = relicOf(base, r.id);
+          const d = duel(s, fl);
+          const ln = Math.log(d.P / b.P);
+          (relicLn[lv] ??= []).push(ln);
+          gRows1.push(`| ${lv} | T${tk}+4 | ${r.id} | ${pct(computeCP(s) / cp0 - 1)} | ${f2(ln * 100)}% | ${signed(meanStages(s, fl, 60) - bSt)} |`);
+        }
+      }
+    });
+    P('**Relíquias** (as três disputam o mesmo slot). Meta: maior / menor `Δln P` <= 1,5 nos níveis 30 e 60; cerca de +4 a +7% de CP no ponto em que ficam forjáveis.', '', '| Nível | Equip. | Relíquia | ΔCP | Δln P (real) | Δandares |', '| --: | --- | --- | --: | --: | --: |', ...gRows1);
+    P('', 'Razão maior / menor do Δln P: ' + Object.entries(relicLn).map(([lv, v]) => `nível ${lv}: ${f2(Math.max(...v) / Math.min(...v))}`).join(' · '), '');
+
+    const gRows2: string[] = [];
+    withSeededRandom(9, () => {
+      for (const [lv, tk, w] of [[50, '4d', 'dragon_flameblade'], [70, '5', 'voidsteel_blade'], [90, '6', 'abyssal_greatblade']] as [number, string, string][]) {
+        const base = hero(tk, 4, { level: lv });
+        const fl = repFloor(base);
+        const item = getGear(w);
+        const on = duel(base, fl);
+        const cpOn = computeCP(base);
+        const stOn = meanStages(base, fl, 60);
+        item.burn = false;
+        const off = duel(base, fl);
+        const cpOff = computeCP(base);
+        const stOff = meanStages(base, fl, 60);
+        item.burn = true;
+        gRows2.push(`| ${w} | ${lv} | ${fl} | ${pct(on.burnShare)} | ${f2(Math.log(on.P / off.P) * 100)}% | ${pct(cpOn / cpOff - 1)} | ${signed(stOn - stOff)} |`);
+      }
+    });
+    P(`**Queimadura** (${pct(T.battle.burnPctPerSec, 0)} do golpe, antes do crítico, a cada ${T.battle.effectTickMs / 1000} s durante ${T.battle.burnDurationMs / 1000} s, renovada a cada golpe, sem acumular). Meta: arma com queimadura <= ~12% mais forte que a mesma sem.`, '', '| Arma | Nível | Andar ref. | Parte do dano total | Δln P | ΔCP | Δandares |', '| --- | --: | --: | --: | --: | --: | --: |', ...gRows2);
+    P('');
+
+    const gRows3: string[] = [];
+    withSeededRandom(10, () => {
+      for (const [lv, tk, a] of [[25, '3', 'steel_plate'], [50, '4g', 'gilded_aegis'], [50, '4d', 'dragon_scale_armor'], [70, '5', 'voidsteel_plate'], [90, '6', 'abyssal_bulwark']] as [number, string, string][]) {
+        const base = hero(tk, 4, { level: lv });
+        const fl = repFloor(base);
+        const item = getGear(a);
+        const on = duel(base, fl);
+        const cpOn = computeCP(base);
+        const stOn = meanStages(base, fl, 60);
+        const prev = item.reflect;
+        item.reflect = 0;
+        const off = duel(base, fl);
+        const cpOff = computeCP(base);
+        const stOff = meanStages(base, fl, 60);
+        item.reflect = prev;
+        gRows3.push(`| ${a} | ${pct(prev ?? 0, 0)} | ${lv} | ${fl} | ${pct(on.reflectShare)} | ${f2(Math.log(on.P / off.P) * 100)}% | ${pct(cpOn / cpOff - 1)} | ${signed(stOn - stOff)} |`);
+      }
+    });
+    P('**Reflexo** (parte do dano que o herói realmente levou, já com a resistência). Meta: <= ~10% do dano total causado num andar do mesmo tier.', '', '| Armadura | Reflexo | Nível | Andar ref. | Parte do dano total | Δln P | ΔCP | Δandares |', '| --- | --: | --: | --: | --: | --: | --: | --: |', ...gRows3);
+    P('');
+    const dragonVsGilded = [50, 60].map((lv) => {
+      const g = computeCP(hero('4g', 0, { level: lv }));
+      const d = computeCP(hero('4d', 0, { level: lv }));
+      return `nível ${lv}: dourado ${g}, dragão ${d} (${pct(d / g - 1)})`;
+    });
+    const pairCost = (k: string) => Math.round(goldEq(chainCost(PAIRS[k][0]), true, PAIRS[k][0]) + goldEq(chainCost(PAIRS[k][1]), true, PAIRS[k][1]));
+    P(`Linha dragão contra a dourada no tier 4 (par comum +0, sem relíquia): ${dragonVsGilded.join(' · ')}. Custo do par (receita do tier, Ouro de referência): dourado ${pairCost('4g')}, dragão ${pairCost('4d')}.`, '');
+
     console.log('\n' + out.join('\n') + '\n');
     void GEAR;
     void (null as unknown as GearItem);

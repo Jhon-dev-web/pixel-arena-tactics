@@ -56,6 +56,11 @@ const T = DebugPanel.define({
     flashMs: { value: 250, min: 50, max: 800, step: 25, cssVar: '--flash-ms', unit: 'ms', label: 'Hit flash (ms)' },
     lungeDist: { value: 18, min: 4, max: 60, step: 2, cssVar: '--lunge-dist', unit: 'px', label: 'Lunge distance' },
     waveHeal: { value: 0.3, min: 0, max: 1, step: 0.01, label: 'HP healed after wave (ratio)' },
+    // Gear effects over time (derivedStats.ts igniteBurn / regenAmount). Burn: a weapon with `burn` sets or refreshes it on every hit, it lasts burnDurationMs
+    // and deals burnPctPerSec of that hit's final damage (before crit) once per effectTickMs, never stacking. Regen (relic hpRegenPct) uses the same tick.
+    burnPctPerSec: { value: 0.06, min: 0.01, max: 0.5, step: 0.01, label: 'Burn damage per second (share of the hit)' },
+    burnDurationMs: { value: 3000, min: 1000, max: 10000, step: 500, label: 'Burn duration (ms)' },
+    effectTickMs: { value: 1000, min: 250, max: 3000, step: 250, label: 'Burn / regeneration tick (ms)' },
     // Share of a Dungeon run's gold the hero keeps when the run ends in defeat (a retreat keeps 100%). BattleModal.endCombat.
     defeatGoldKept: { value: 0.75, min: 0, max: 1, step: 0.05, label: 'Gold kept on Dungeon defeat (ratio)' },
     intermissionMs: { value: 1000, min: 300, max: 3000, step: 100, label: 'Wave interval (ms)' },
@@ -91,8 +96,8 @@ const T = DebugPanel.define({
     // last boss is >= 1.5x floor 99 (the regular boss-mob floors 76-99 are exactly as they were before the balance pass).
     boss25HpMult: { value: 0.22, min: 0.1, max: 5, step: 0.01, label: 'Floor-25 boss: extra HP multiplier' },
     boss25DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-25 boss: extra damage multiplier' },
-    boss50HpMult: { value: 0.82, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra HP multiplier' },
-    boss50DmgMult: { value: 0.82, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra damage multiplier' },
+    boss50HpMult: { value: 0.84, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra HP multiplier' },
+    boss50DmgMult: { value: 0.84, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra damage multiplier' },
     boss75HpMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra HP multiplier' },
     boss75DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra damage multiplier' },
     boss100HpMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra HP multiplier' },
@@ -384,6 +389,13 @@ const T = DebugPanel.define({
     // CP (see derivedStats.ts combatPowerCore). Sustain: sigma = min(cap, lifesteal% * (1 + reduction)) is the share of
     // incoming damage healed in a symmetric duel; the survival multiplier is 1/(1-sigma), so cap 0.5 => at most x2.
     cpSustainSigmaCap: { value: 0.5, min: 0, max: 0.9, step: 0.05, label: 'CP: max sustain share (sigma cap)' },
+    // CP value of the gear effects, each the fraction of its closed-form combat value (scripts/sim/effects audit, docs/ITEM_BALANCE_AUDIT.md Rodada 4)
+    // that CP credits: burn counts as dmgBase x burnPctPerSec damage per tick time (x weight for the first tick and overkill lost), reflect as a share
+    // of the damage dealt equal to weight x reflect / (1 + reduction), regeneration as sustain: weight x regen per second x (ehp / dps), the
+    // seconds a symmetric duel lasts. All three go through the same sqrt(dps x ehp / (1 - sigma)) as every other stat.
+    cpBurnWeight: { value: 0.95, min: 0, max: 2, step: 0.05, label: 'CP: burn weight' },
+    cpReflectWeight: { value: 0.5, min: 0, max: 2, step: 0.05, label: 'CP: reflect weight' },
+    cpRegenWeight: { value: 1.8, min: 0, max: 4, step: 0.05, label: 'CP: regeneration weight' },
     // Math-safety ceiling for each CP input (NOT a gameplay limit): keeps tampered values from overflowing to Infinity.
     cpInputCeiling: { value: 1000000000000, min: 1000000, max: 1000000000000000, step: 1000000, label: 'CP: per-input safety ceiling' },
     // Overflow guard only (NOT a points rule): keeps a tampered/garbage STR from overflowing the damage math to Infinity.

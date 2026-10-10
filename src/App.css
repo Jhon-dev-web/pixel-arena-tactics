@@ -584,6 +584,26 @@ body {
 }
 .float-burn {
   color: #ff9a3a;
+  left: 64%;
+}
+/* Flame over an enemy that is burning (gear.ts burn; BattleModal.tsx). */
+.burn-flame {
+  position: absolute;
+  top: -6px;
+  right: 4px;
+  z-index: 19;
+  font-size: calc(var(--font-size) + 6px);
+  filter: drop-shadow(0 0 6px rgba(255, 140, 40, 0.9));
+  animation: burnFlame 0.5s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes burnFlame {
+  from {
+    transform: translateY(0) scale(0.92);
+  }
+  to {
+    transform: translateY(-3px) scale(1.1);
+  }
 }
 .float-dodge {
   color: #d8c9a0;

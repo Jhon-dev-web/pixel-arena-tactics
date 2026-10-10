@@ -78,6 +78,10 @@ export interface CombatStats {
   heroMs: number; // hero attack interval in ms, from heroAttackIntervalMs (AGI, sanitized, floored)
   reduction: number; // raw reductionSum, fed to applyDamageReduction (NOT a mitigation percentage)
   lifesteal: number; // percent of damage dealt healed per hit
+  // Gear effects (gear.ts burn / reflect / hpRegenPct): every combat loop reads them through the helpers below, never the items.
+  burn: boolean; // each hero hit sets / refreshes a burn on the enemy (igniteBurn)
+  reflect: number; // share of the damage the hero actually took that the attacker takes back (reflectedDamage)
+  hpRegenPct: number; // max-HP share regenerated per T.battle.effectTickMs of combat (regenAmount)
 }
 
 // STR -> pre-modifier hit damage. Hybrid: a flat part plus a part that scales with (base hit + weapon):
@@ -99,19 +103,65 @@ export function strengthAdjustedDamage(baseHitPlusWeapon: number, rawStr: number
 // The input is sanitized HERE (the single derivation point) rather than trusted from the save: non-finite
 // -> 0, floored, clamped to [0, agiMax]. The result is also guarded: if it is somehow non-finite (e.g. a
 // bad tunable) it falls back to the base interval, and it is never below the floor.
-export function heroAttackIntervalMs(rawAgi: number): number {
+//
+// `speedBonus` (a relic's attackSpeedBonus, 0.08 = +8% attacks per second) divides the AGI interval and then goes through the SAME floor, so no
+// combination of AGI and bonus can attack faster than heroMinMs. A non-finite / negative bonus counts as 0.
+export function heroAttackIntervalMs(rawAgi: number, speedBonus = 0): number {
   const base = T.battle.heroAttackMs;
   const floor = T.battle.heroMinMs;
   const safeAgi = Number.isFinite(rawAgi) ? Math.min(T.battle.agiMax, Math.max(0, Math.floor(rawAgi))) : 0;
-  const ms = floor + (base - floor) / (1 + safeAgi / T.battle.agiHalfPoint);
+  const safeBonus = Number.isFinite(speedBonus) ? Math.max(0, speedBonus) : 0;
+  const ms = (floor + (base - floor) / (1 + safeAgi / T.battle.agiHalfPoint)) / (1 + safeBonus);
   return Number.isFinite(ms) ? Math.max(floor, ms) : base;
+}
+
+// --- Gear effects over time: burn, reflect, regeneration --------------------------------------------------
+// Pure helpers shared by the three combat loops (BattleModal.tsx's frame loop, huntCombat.ts's event loop and scripts/sim/driver.ts's mirror of the
+// first), so a number can only be changed here. All times are in the caller's combat clock (ms). Enemies have no mitigation of their own: a burn tick
+// is applied to their HP as it is.
+
+// Damage the attacker takes back for a hit the hero actually took (post-mitigation, the number that came off the hero's HP).
+export function reflectedDamage(damageTaken: number, reflect: number): number {
+  if (!(reflect > 0) || !(damageTaken > 0)) return 0;
+  return Math.max(1, Math.round(damageTaken * reflect));
+}
+
+// HP the hero regenerates per effect tick (0 without the effect). The caller still caps the result at max HP.
+export function regenAmount(maxHp: number, hpRegenPct: number): number {
+  if (!(hpRegenPct > 0) || !(maxHp > 0)) return 0;
+  return Math.max(1, Math.round(maxHp * hpRegenPct));
+}
+
+// One burn on one enemy. It never stacks: a new hit while it burns only pushes `endsAt` out to now + burnDurationMs and takes the newest tick damage; the
+// tick grid (`nextTickAt`) keeps its phase, so refreshing on every hit does not delay the damage. null = not burning.
+export interface BurnState {
+  endsAt: number;
+  nextTickAt: number;
+  tickDamage: number;
+}
+
+// `hitDamage` is the hero's final per-hit damage BEFORE crit (blessed / elixir included): the burn deals burnPctPerSec of it per tick.
+export function igniteBurn(prev: BurnState | null, now: number, hitDamage: number): BurnState {
+  const tickDamage = Math.max(1, Math.round(hitDamage * T.battle.burnPctPerSec));
+  return { endsAt: now + T.battle.burnDurationMs, nextTickAt: prev ? prev.nextTickAt : now + T.battle.effectTickMs, tickDamage };
+}
+
+export function nextBurnTickAt(burn: BurnState | null): number {
+  return burn ? burn.nextTickAt : Infinity;
+}
+
+// The tick due at `burn.nextTickAt`: its damage and the state after it (null once the burn has run out; the last tick may land exactly at endsAt).
+export function tickBurn(burn: BurnState): { damage: number; burn: BurnState | null } {
+  const next = burn.nextTickAt + T.battle.effectTickMs;
+  return { damage: burn.tickDamage, burn: next > burn.endsAt ? null : { ...burn, nextTickAt: next } };
 }
 
 // Combat Power core (unscaled): geometric mean of expected DPS and effective HP, times a sustain multiplier.
 //   cc    = clamp(critChance, 0, 1)                         (CP-only protection; real combat is not touched)
-//   dps   = dmgBase * (1000 / heroMs) * (1 + cc * (critMult - 1))
+//   hits  = dmgBase * (1000 / heroMs) * (1 + cc * (critMult - 1))
+//   dps   = hits * (1 + reflectW * reflect / (1 + reduction)) + burnW * dmgBase * burnPct * (1000 / tick)     (reflect and burn only when the gear has them)
 //   ehp   = maxHp * (1 + reduction)
-//   sigma = min(cap, lifesteal% * (1 + reduction))          heal / incoming damage in a symmetric duel
+//   sigma = min(cap, lifesteal% * (1 + reduction) + regenW * regen * (1000 / tick) * ehp / hits)     heal / incoming damage in a symmetric duel
 //   core  = sqrt(dps * ehp / (1 - sigma))                   computeCP = round(CP_SCALE * core)
 // Input is the PERMANENT effective CombatStats (buildCombatStats: gear, refine, rarity, durability, gems, substats,
 // relic crit multiplier) — never blessed / Strength Elixir / potions. Every input is sanitized here (non-finite ->
@@ -125,10 +175,16 @@ export function combatPowerCore(stats: CombatStats): number {
   const cc = safeStat(stats.critChance, 1);
   const critMult = Math.max(1, safeStat(stats.critMult, ceiling));
   const heroMs = Number.isFinite(stats.heroMs) && stats.heroMs > 0 ? stats.heroMs : T.battle.heroAttackMs;
-  const dps = safeStat(stats.dmgBase, ceiling) * (1000 / heroMs) * (1 + cc * (critMult - 1));
+  const dmgBase = safeStat(stats.dmgBase, ceiling);
+  const hits = dmgBase * (1000 / heroMs) * (1 + cc * (critMult - 1));
   const reduction = safeStat(stats.reduction, ceiling);
+  const reflect = safeStat(stats.reflect, 1);
+  const burnDps = stats.burn === true ? T.advanced.cpBurnWeight * dmgBase * T.battle.burnPctPerSec * (1000 / T.battle.effectTickMs) : 0;
+  const dps = hits * (1 + (T.advanced.cpReflectWeight * reflect) / (1 + reduction)) + burnDps;
   const ehp = effectiveHp(safeStat(stats.maxHp, ceiling), reduction);
-  const sigma = Math.min(Math.min(0.95, T.advanced.cpSustainSigmaCap), (safeStat(stats.lifesteal, ceiling) / 100) * (1 + reduction));
+  const regen = safeStat(stats.hpRegenPct, 1) * (1000 / T.battle.effectTickMs);
+  const regenSigma = hits > 0 ? (T.advanced.cpRegenWeight * regen * ehp) / hits : 0;
+  const sigma = Math.min(Math.min(0.95, T.advanced.cpSustainSigmaCap), (safeStat(stats.lifesteal, ceiling) / 100) * (1 + reduction) + regenSigma);
   return Math.sqrt((dps * ehp) / (1 - sigma));
 }
 

@@ -1,10 +1,11 @@
 import { activeLocale, t } from '../locales';
+import T from '../game/tunables';
 import { GearItem, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance } from '../game/gear';
 
 // The one place a gear piece is turned into its display stat lines (forge cards, inventory detail, equipment panel). Which lines show is
 // decided by which fields the template defines, so every slot reads right without per-slot ternaries. Values are the base + refine numbers
 // the item cards always showed (rarity, durability and substats are listed separately).
-export type GearStatKind = 'damage' | 'maxHp' | 'critChance' | 'critMult' | 'resistance';
+export type GearStatKind = 'damage' | 'maxHp' | 'critChance' | 'critMult' | 'resistance' | 'burn' | 'reflect' | 'regen' | 'attackSpeed';
 
 export interface GearStatLine {
   kind: GearStatKind;
@@ -26,5 +27,11 @@ export function gearStatLines(item: GearItem, level = 0): GearStatLine[] {
   if (item.critChance) push('critChance', t('profile.critRate'), `+${pct(effectiveCrit(item, level))}%`);
   if (item.critMultBonus) push('critMult', t('profile.critDamage'), `+${pct(item.critMultBonus)}%`);
   if (item.resistance) push('resistance', t('profile.defense'), `+${pct(effectiveResistance(item, level))}%`);
+  // Effects (gear.ts): one sentence each, built from the same numbers combat reads (tunables / item fields), so they cannot drift from the data.
+  const sentence = (kind: GearStatKind, text: string) => out.push({ kind, label: text, value: '', text });
+  if (item.burn) sentence('burn', t('profile.burnStat', { pct: pct(T.battle.burnPctPerSec), s: T.battle.burnDurationMs / 1000 }));
+  if (item.reflect) sentence('reflect', t('profile.reflectStat', { pct: pct(item.reflect) }));
+  if (item.hpRegenPct) sentence('regen', t('profile.regenStat', { pct: pct(item.hpRegenPct) }));
+  if (item.attackSpeedBonus) sentence('attackSpeed', t('profile.attackSpeedStat', { pct: pct(item.attackSpeedBonus) }));
   return out;
 }

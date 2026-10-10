@@ -235,6 +235,7 @@ function report(runs: Run[], sections: Section[]): string[] {
     out.push('');
     const labels: [FirstEvent, string][] = [
       ['firstCraft', 'Primeira peça forjada'],
+      ['firstRelic', 'Primeira relíquia forjada e equipada'],
       ['firstRefine', 'Primeiro refino bem-sucedido'],
       ['floor10', 'Checkpoint do andar 10 vencido'],
       ['floor25', 'Marco do andar 25 recebido (chefe do bioma 1 vencido)'],
@@ -473,7 +474,7 @@ function metas(a: Run[], b: Run[], pouch: PouchStats, curveWorst: number): strin
     `chegada: primeira seed no dia ${firstDay(runs, 'floor50')}, mediana ${medianDay(runs, 'floor50')}; chefe 50: primeira seed no dia ${firstDay(runs, 'boss50')}, mediana ${medianDay(runs, 'boss50')}, ${nReach(runs, 'boss50')}/${runs.length} em ${DAYS} dias`;
   const rows: string[][] = [];
   const t4 = (runs: Run[]) => `${cell(lvl(runs, 0))} / ${cell(lvl(runs, 2))} / ${cell(lvl(runs, 13))}`;
-  const t4ok = (runs: Run[]) => [inBand(lvl(runs, 0), 10, 16), inBand(lvl(runs, 2), 20, 28), inBand(lvl(runs, 13), 45, 60)];
+  const t4ok = (runs: Run[]) => [inBand(lvl(runs, 0), 10, 16), inBand(lvl(runs, 2), 20, 29), inBand(lvl(runs, 13), 45, 60)];
   rows.push([
     'T1',
     'Caça de 4 h com a Bolsa do tier 1 não perde nenhum tipo de material',
@@ -492,7 +493,7 @@ function metas(a: Run[], b: Run[], pouch: PouchStats, curveWorst: number): strin
   const t4a = t4ok(a);
   rows.push([
     'T4',
-    'Nível no fim do dia 1 / 3 / 14 (alvos 10–16 / 20–28 / 45–60)',
+    'Nível no fim do dia 1 / 3 / 14 (alvos 10–16 / 20–29 / 45–60)',
     t4(a),
     t4(b),
     t4a.every(Boolean) ? 'ok' : `dia 1 ${ok(t4a[0])}; dia 3 ${ok(t4a[1])}; dia 14 ${ok(t4a[2])}`,

@@ -100,7 +100,7 @@ export interface DaySnapshot {
   sessions: SessionRecord[];
 }
 
-export type FirstEvent = 'firstCraft' | 'firstRefine' | 'floor10' | 'floor24' | 'floor25' | 'floor50' | 'boss50' | 'zone2';
+export type FirstEvent = 'firstCraft' | 'firstRelic' | 'firstRefine' | 'floor10' | 'floor24' | 'floor25' | 'floor50' | 'boss50' | 'zone2';
 
 // ---- planner ------------------------------------------------------------------------------------------------------
 
@@ -230,8 +230,34 @@ function chooseTarget(s: SaveData): Plan | null {
     if (!p.impossible) plans.push(p);
   }
   const priority = (p: Plan) => CRAFT_PRIORITY.indexOf(p.slot as (typeof CRAFT_PRIORITY)[number]);
-  plans.sort((a, b) => Number(a.blocked) - Number(b.blocked) || bestTier(s, a.slot) - bestTier(s, b.slot) || priority(a) - priority(b));
+  // Relic (Rodada 4): one stackable piece for the single relic slot, no tiers. Once none is owned, the one that adds the most CP is worth crafting after the
+  // whole tier-2 set (RELIC_AFTER_TIER), so it never delays the weapon / armor of a tier but does not wait for tier 4 either.
+  const relic = chooseRelic(s);
+  if (relic) plans.push(relic);
+  const owned = (p: Plan) => (p.slot === 'relic' ? RELIC_AFTER_TIER : bestTier(s, p.slot));
+  plans.sort((a, b) => Number(a.blocked) - Number(b.blocked) || owned(a) - owned(b) || priority(a) - priority(b));
   return plans[0] ?? null;
+}
+
+const RELIC_AFTER_TIER = 2.5;
+const relicIds = (): string[] => GEAR.filter((g) => g.slot === 'relic' && g.recipe).map((g) => g.id);
+const withRelic = (s: SaveData, id: string | null): SaveData => ({ ...s, equipped: { ...s.equipped, relic: id } });
+const ownedRelics = (s: SaveData): string[] => relicIds().filter((id) => (s.inventory[id] ?? 0) > 0);
+
+function chooseRelic(s: SaveData): Plan | null {
+  if (ownedRelics(s).length > 0) return null;
+  let best: Plan | null = null;
+  let bestCp = -Infinity;
+  for (const id of relicIds()) {
+    const p = planFor(s, id);
+    if (p.impossible) continue;
+    const cp = computeCP(withRelic(s, id));
+    if (cp > bestCp) {
+      bestCp = cp;
+      best = p;
+    }
+  }
+  return best;
 }
 
 // ---- the player ---------------------------------------------------------------------------------------------------
@@ -531,6 +557,17 @@ export class Player {
       if (best) {
         const next = applyEquipInstance(this.S, best.id);
         if (next) this.S = next;
+      }
+    }
+    // The relic slot: the owned relic with the best CP (the game's own computeCP).
+    let relicCp = computeCP(this.S);
+    for (const id of ownedRelics(this.S)) {
+      const trial = withRelic(this.S, id);
+      const cp = computeCP(trial);
+      if (cp > relicCp + 1e-9) {
+        relicCp = cp;
+        this.S = trial;
+        this.mark('firstRelic');
       }
     }
   }

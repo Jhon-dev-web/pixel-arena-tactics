@@ -231,5 +231,51 @@ Custo esperado de cada passo = (Ouro + materiais a valor de referência + fragme
 | T6+4 | sapphire (+0,08 resist.) | 65 (2.8%) | 2 fragmentos (= ~4 Ouro ref.) | 4 soquetes |
 | T6+4 | emerald (+60 HP) | 45 (1.9%) | 2 fragmentos (= ~4 Ouro ref.) | 4 soquetes |
 
+---
 
+# Adendo da rodada 4: os efeitos que eram dado morto
 
+Esta auditoria (A a F) foi escrita antes da rodada 3 e continua valendo para raridade, substats, atributos, curva de tiers e refino; os números de CP das seções B a F foram medidos sem os efeitos abaixo e sobem de 2 a 5 % nas peças que os têm (`npm run sim:items` regera tudo). A seção G é nova: mede com a mesma régua da C o valor real de combate de `burn`, `reflect`, `hpRegenPct` e `attackSpeedBonus` (ver `BALANCE_CHANGES.md` seções 17 a 20 para as regras e para os três números que mudaram: regeneração 1,5 -> 0,9 %/s, Crista de Berserker 0,5 -> 0,75, `boss50*` 0,82 -> 0,84).
+
+## G. Efeitos de equipamento: queimadura, reflexo, regeneração, velocidade de ataque
+
+Mesma régua da seção C: `Δln P` é a variação do log da margem do duelo (valor real de combate, forma fechada com os efeitos em `duel.ts`) no andar de referência do herói (par do tier +4, atributos 35/30/20/15), `ΔCP` a variação de `computeCP`, `Δandares` a média de andares limpos a partir do andar de referência (60 sorteios, sem poções). Um efeito "desligado" é o MESMO item com o campo zerado.
+
+**Relíquias** (as três disputam o mesmo slot). Meta: maior / menor `Δln P` <= 1,5 nos níveis 30 e 60; cerca de +4 a +7% de CP no ponto em que ficam forjáveis.
+
+| Nível | Equip. | Relíquia | ΔCP | Δln P (real) | Δandares |
+| --: | --- | --- | --: | --: | --: |
+| 20 | T2+4 | ring_vitality | 5.8% | 4.65% | +0.00 |
+| 20 | T2+4 | amulet_swiftness | 3.8% | 7.70% | +0.00 |
+| 20 | T2+4 | berserker_crest | 2.6% | 5.41% | +0.00 |
+| 30 | T3+4 | ring_vitality | 4.4% | 7.46% | +0.00 |
+| 30 | T3+4 | amulet_swiftness | 3.8% | 6.96% | +0.45 |
+| 30 | T3+4 | berserker_crest | 3.9% | 6.99% | +0.40 |
+| 60 | T4g+4 | ring_vitality | 4.5% | 9.54% | +0.00 |
+| 60 | T4g+4 | amulet_swiftness | 3.9% | 7.13% | +0.00 |
+| 60 | T4g+4 | berserker_crest | 5.0% | 9.13% | +0.00 |
+| 90 | T6+4 | ring_vitality | 3.0% | 7.73% | +0.00 |
+| 90 | T6+4 | amulet_swiftness | 3.8% | 6.86% | +0.02 |
+| 90 | T6+4 | berserker_crest | 7.2% | 12.87% | +0.02 |
+
+Razão maior / menor do Δln P: nível 20: 1.65 · nível 30: 1.07 · nível 60: 1.34 · nível 90: 1.88
+
+**Queimadura** (6% do golpe, antes do crítico, a cada 1 s durante 3 s, renovada a cada golpe, sem acumular). Meta: arma com queimadura <= ~12% mais forte que a mesma sem.
+
+| Arma | Nível | Andar ref. | Parte do dano total | Δln P | ΔCP | Δandares |
+| --- | --: | --: | --: | --: | --: | --: |
+| dragon_flameblade | 50 | 44 | 4.1% | 4.20% | 2.2% | -0.07 |
+| voidsteel_blade | 70 | 51 | 3.8% | 3.90% | 2.0% | +0.00 |
+| abyssal_greatblade | 90 | 74 | 3.5% | 3.59% | 1.9% | +0.00 |
+
+**Reflexo** (parte do dano que o herói realmente levou, já com a resistência). Meta: <= ~10% do dano total causado num andar do mesmo tier.
+
+| Armadura | Reflexo | Nível | Andar ref. | Parte do dano total | Δln P | ΔCP | Δandares |
+| --- | --: | --: | --: | --: | --: | --: | --: |
+| steel_plate | 20% | 25 | 26 | 10.4% | 11.01% | 4.2% | +0.12 |
+| gilded_aegis | 20% | 50 | 35 | 7.6% | 7.90% | 4.0% | +0.37 |
+| dragon_scale_armor | 22% | 50 | 44 | 7.3% | 7.58% | 4.0% | -0.07 |
+| voidsteel_plate | 25% | 70 | 51 | 7.6% | 7.87% | 4.3% | +0.05 |
+| abyssal_bulwark | 28% | 90 | 74 | 7.4% | 7.67% | 4.6% | +0.00 |
+
+Linha dragão contra a dourada no tier 4 (par comum +0, sem relíquia): nível 50: dourado 821, dragão 985 (20.0%) · nível 60: dourado 914, dragão 1091 (19.4%). Custo do par (receita do tier, Ouro de referência): dourado 1489, dragão 5382.

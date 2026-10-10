@@ -30,19 +30,29 @@ export interface GearItem {
   tier?: number;
   damage?: number;
   critChance?: number;
+  // Weapon: every hit of the hero sets / refreshes a burn on the enemy (derivedStats.ts igniteBurn, numbers in T.battle.burn*).
   burn?: boolean;
   maxHp?: number;
   resistance?: number;
+  // Armor: share of the damage the hero actually took (after mitigation) that the attacker takes back (derivedStats.ts reflectedDamage).
   reflect?: number;
-  focusHpBonus?: number;
-  attackStaminaReduction?: number;
   critMultBonus?: number;
+  // Relics: HP regenerated per second of combat as a share of max HP, and a bonus to attack speed folded into the attack interval.
+  hpRegenPct?: number;
+  attackSpeedBonus?: number;
   // Unique pieces (uniques.ts): drop-only (no recipe, never forged), one extra guaranteed substat slot. `salvageLike` is the forged piece
   // whose recipe sets what salvaging one returns.
   unique?: boolean;
   source?: GearSource;
   salvageLike?: string;
 }
+
+// Every key a GEAR entry may carry. LIVE_STAT_FIELDS are the numeric / boolean fields that feed combat (engine.ts buildCombatStats, directly or via
+// gearInstances.equippedExtraStats); META_FIELDS are identity, cost and display data. gearEffects.test.ts checks every entry against both lists
+// and that equipping each live field really changes the combat stats, so a field nothing reads (burn, reflect, focusHpBonus and
+// attackStaminaReduction were dead data for a long time) cannot come back silently.
+export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus'] as const;
+export const META_FIELDS = ['id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike'] as const;
 
 // Weapon, armor, helmet, gloves, boots and ring are the INSTANCED slots: each owned piece is its own object with its own rarity, substats,
 // refine level, sockets and durability (see gearInstances.ts). Everything else (relics) stays a stackable template id.
@@ -100,10 +110,10 @@ export const GEAR: GearItem[] = [
   { id: 'bronze_leather', slot: 'armor', nameKey: 'bronze_leather', descKey: 'bronze_leather_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.armor_leather.url, cost: 50, tier: 1, maxHp: 40, resistance: 0.03, recipe: { materials: { copper_bar: 1, leather: 3 } } },
   { id: 'iron_chainmail', slot: 'armor', nameKey: 'iron_chainmail', descKey: 'iron_chainmail_d', materialKey: 'material_iron', iconUrl: Assets.gear_icons.armor_iron.url, cost: 130, tier: 2, maxHp: 90, resistance: 0.06, recipe: { items: { bronze_leather: 2 }, materials: { iron: 3, leather_scrap: 2 }, requiredLevel: 10 } },
   { id: 'steel_plate', slot: 'armor', nameKey: 'steel_plate', descKey: 'steel_plate_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.armor_steel.url, cost: 350, tier: 3, maxHp: 160, resistance: 0.1, reflect: 0.2, recipe: { items: { iron_chainmail: 2 }, materials: { silver_ingot: 1, essence: 2, bone_fragment: 3, demon_claw: 1 }, gems: { sapphire: 1 }, requiredLevel: 25 } },
-  { id: 'gilded_aegis', slot: 'armor', nameKey: 'gilded_aegis', descKey: 'gilded_aegis_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_aegis.png', cost: 650, tier: 4, maxHp: 220, resistance: 0.13, recipe: { items: { steel_plate: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, corrupted_crystal: 1 }, requiredLevel: 50 } },
-  { id: 'dragon_scale_armor', slot: 'armor', nameKey: 'dragon_scale_armor', descKey: 'dragon_scale_armor_d', materialKey: 'material_dragon', iconUrl: '/assets/icons/dragon_scale_armor.png', cost: 1000, tier: 4, maxHp: 260, resistance: 0.15, recipe: { items: { steel_plate: 1 }, materials: { dragon_scales: 3 }, shards: 5 } },
-  { id: 'voidsteel_plate', slot: 'armor', nameKey: 'voidsteel_plate', descKey: 'voidsteel_plate_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/voidsteel_plate.png', cost: 1900, tier: 5, maxHp: 340, resistance: 0.17, recipe: { items: { dragon_scale_armor: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, demon_core: 2 }, requiredLevel: 70 } },
-  { id: 'abyssal_bulwark', slot: 'armor', nameKey: 'abyssal_bulwark', descKey: 'abyssal_bulwark_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/abyssal_bulwark.png', cost: 3300, tier: 6, maxHp: 440, resistance: 0.2, recipe: { items: { voidsteel_plate: 1 }, materials: { refined_obsidian: 2, concentrated_blood: 5 }, shards: 6, requiredLevel: 90 } },
+  { id: 'gilded_aegis', slot: 'armor', nameKey: 'gilded_aegis', descKey: 'gilded_aegis_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_aegis.png', cost: 650, tier: 4, maxHp: 220, resistance: 0.13, reflect: 0.2, recipe: { items: { steel_plate: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, corrupted_crystal: 1 }, requiredLevel: 50 } },
+  { id: 'dragon_scale_armor', slot: 'armor', nameKey: 'dragon_scale_armor', descKey: 'dragon_scale_armor_d', materialKey: 'material_dragon', iconUrl: '/assets/icons/dragon_scale_armor.png', cost: 1000, tier: 4, maxHp: 260, resistance: 0.15, reflect: 0.22, recipe: { items: { steel_plate: 1 }, materials: { dragon_scales: 3 }, shards: 5 } },
+  { id: 'voidsteel_plate', slot: 'armor', nameKey: 'voidsteel_plate', descKey: 'voidsteel_plate_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/voidsteel_plate.png', cost: 1900, tier: 5, maxHp: 340, resistance: 0.17, reflect: 0.25, recipe: { items: { dragon_scale_armor: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, demon_core: 2 }, requiredLevel: 70 } },
+  { id: 'abyssal_bulwark', slot: 'armor', nameKey: 'abyssal_bulwark', descKey: 'abyssal_bulwark_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/abyssal_bulwark.png', cost: 3300, tier: 6, maxHp: 440, resistance: 0.2, reflect: 0.28, recipe: { items: { voidsteel_plate: 1 }, materials: { refined_obsidian: 2, concentrated_blood: 5 }, shards: 6, requiredLevel: 90 } },
   // Helmet / gloves / boots / ring (content pack 1): one line of six tiers each, same level gates as the weapon / armor of the tier, the same material
   // families, and 1 piece of the previous tier of the SAME slot from tier 2 up (no "2 of" chain). Their numbers are sized so the four together add about
   // +30-40 % CP over the weapon + armor of the tier (itemBalance.test.ts, docs/BALANCE_CHANGES.md Rodada 3): helmet ~35 % of the armor's HP, gloves ~20 %
@@ -137,9 +147,9 @@ export const GEAR: GearItem[] = [
   { id: 'obsidian_ring', slot: 'ring', nameKey: 'obsidian_ring', descKey: 'obsidian_ring_d', materialKey: 'material_obsidian', icon: '/assets/icons/obsidian_ring.png', cost: 900, tier: 5, critChance: 0.09, critMultBonus: 0.35, recipe: { items: { ruby_ring: 1 }, materials: { refined_obsidian: 1, demon_core: 1, corrupted_crystal: 1 }, gems: { ruby: 1 }, requiredLevel: 70 } },
   { id: 'abyssal_ring', slot: 'ring', nameKey: 'abyssal_ring', descKey: 'abyssal_ring_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_ring.png', cost: 1550, tier: 6, critChance: 0.1, critMultBonus: 0.4, recipe: { items: { obsidian_ring: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 2, concentrated_blood: 2 }, gems: { sapphire: 1 }, requiredLevel: 90 } },
   // Relics
-  { id: 'ring_vitality', slot: 'relic', nameKey: 'ring_vitality', descKey: 'ring_vitality_d', icon: '/assets/icons/ring_vitality.png', cost: 200, focusHpBonus: 15, recipe: { materials: { essence: 3 } } },
-  { id: 'amulet_swiftness', slot: 'relic', nameKey: 'amulet_swiftness', descKey: 'amulet_swiftness_d', icon: '/assets/icons/amulet_swiftness.png', cost: 250, attackStaminaReduction: 5, recipe: { materials: { essence: 3 } } },
-  { id: 'berserker_crest', slot: 'relic', nameKey: 'berserker_crest', descKey: 'berserker_crest_d', icon: '/assets/icons/berserker_crest.png', cost: 350, critMultBonus: 0.5, recipe: { materials: { essence: 5 } } },
+  { id: 'ring_vitality', slot: 'relic', nameKey: 'ring_vitality', descKey: 'ring_vitality_d', icon: '/assets/icons/ring_vitality.png', cost: 200, hpRegenPct: 0.009, recipe: { materials: { essence: 3 } } },
+  { id: 'amulet_swiftness', slot: 'relic', nameKey: 'amulet_swiftness', descKey: 'amulet_swiftness_d', icon: '/assets/icons/amulet_swiftness.png', cost: 250, attackSpeedBonus: 0.08, recipe: { materials: { essence: 3 } } },
+  { id: 'berserker_crest', slot: 'relic', nameKey: 'berserker_crest', descKey: 'berserker_crest_d', icon: '/assets/icons/berserker_crest.png', cost: 350, critMultBonus: 0.75, recipe: { materials: { essence: 5 } } },
 ];
 
 // Unique pieces: drop-only (a Hunting zone or a Dungeon biome boss rolls them, uniques.ts), never forged (no recipe), instanced like every other piece.
@@ -185,6 +195,9 @@ for (const u of UNIQUE_DEFS) {
     maxHp: base.maxHp,
     resistance: base.resistance,
     critMultBonus: base.critMultBonus,
+    // The twin's effects carry over: a unique weapon of a burning line still burns, a unique plate still reflects.
+    burn: base.burn,
+    reflect: base.reflect,
     [main]: main === 'damage' || main === 'maxHp' ? Math.round(boosted) : boosted,
     unique: true,
     source: u.source,

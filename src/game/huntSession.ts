@@ -158,6 +158,10 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
       heroMs: heroMs!,
       reduction: reduction!,
       lifesteal: lifesteal!,
+      // Gear effects: a session saved before they existed simply has none (frozen at start like everything else).
+      burn: s.burn === true,
+      reflect: n(s.reflect, 0, 1) ?? 0,
+      hpRegenPct: n(s.hpRegenPct, 0, 1) ?? 0,
     },
     blessed: r.blessed === true,
     strength: sanitizeWindows(r.strength),

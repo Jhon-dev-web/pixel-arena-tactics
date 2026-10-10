@@ -250,9 +250,9 @@
     "material_obsidian": "Obsidian",
     "material_cloth": "Cloth",
     "ring_vitality": "Ring of Vitality",
-    "ring_vitality_d": "A ring that makes focus heal a little more.",
+    "ring_vitality_d": "A ring of warm light: wounds close a little at a time while the fight goes on.",
     "amulet_swiftness": "Amulet of Swiftness",
-    "amulet_swiftness_d": "A light amulet that makes every attack cost less stamina.",
+    "amulet_swiftness_d": "A light amulet that quickens every swing of the arm.",
     "berserker_crest": "Berserker Crest",
     "berserker_crest_d": "A crest of fury: critical hits become far more violent.",
     "bronze_helm": "Bronze Helm",
@@ -452,7 +452,12 @@
     "lifesteal": "Lifesteal",
     "combatStats": "Combat stats (permanent)",
     "cp": "CP",
-    "distribute": "⚡ DISTRIBUTE ATTRIBUTES"
+    "distribute": "⚡ DISTRIBUTE ATTRIBUTES",
+    "burnStat": "Burn: {pct}% of damage/s for {s}s",
+    "reflectStat": "Reflects {pct}% of damage taken",
+    "regenStat": "Regenerates {pct}% of max HP/s",
+    "attackSpeedStat": "+{pct}% attack speed",
+    "burnTitle": "Burning"
   },
   "huntPouch": {
     "title": "Hunting Pouch",

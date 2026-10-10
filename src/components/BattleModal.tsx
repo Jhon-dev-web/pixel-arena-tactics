@@ -5,7 +5,7 @@ import Assets from '../assets.json';
 import { buffRemainingMs, buildCombatStats, combatModifiersFromSave, isBuffActive, SaveData } from '../game/engine';
 import { ConsumableId } from '../game/consumables';
 import { EnemyDef, getEnemyDef } from '../game/enemies';
-import { applyDamageModifiers, applyDamageReduction } from '../game/derivedStats';
+import { BurnState, applyDamageModifiers, applyDamageReduction, igniteBurn, reflectedDamage, regenAmount, tickBurn } from '../game/derivedStats';
 import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { enemySpriteUrl, playerSpriteUrl } from '../game/sprites';
@@ -36,7 +36,7 @@ interface FloatItem {
   id: number;
   side: 'p' | 'e';
   text: string;
-  kind: 'damage' | 'crit' | 'heal';
+  kind: 'damage' | 'crit' | 'heal' | 'burn' | 'reflect';
 }
 
 type Phase = 'battle' | 'intermission' | 'retreat' | 'defeat';
@@ -81,6 +81,7 @@ export default function BattleModal({
   const [enemyLunge, setEnemyLunge] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
   const [enemyFlash, setEnemyFlash] = useState(false);
+  const [enemyBurning, setEnemyBurning] = useState(false);
   const [speed, setSpeed] = useState<1 | 2>(1);
   const [heroProgress, setHeroProgress] = useState(0);
   const [enemyProgress, setEnemyProgress] = useState(0);
@@ -116,6 +117,11 @@ export default function BattleModal({
     uniques: [],
     count: 0,
   });
+  // Combat clock (ms, advances with the speed toggle) that burn and regeneration tick on, plus the current burn and the next regeneration tick.
+  const clockRef = useRef(0);
+  const lastFrameRef = useRef(0);
+  const burnRef = useRef<BurnState | null>(null);
+  const regenNextRef = useRef(0);
   const heroNextAtkRef = useRef(0);
   const enemyNextAtkRef = useRef(0);
   const potionCooldownUntilRef = useRef(0);
@@ -134,7 +140,7 @@ export default function BattleModal({
   const dungeonCompleteRef = useRef(false);
   const startNextWaveRef = useRef<() => void>(() => {});
 
-  const addFloat = (side: 'p' | 'e', text: string, kind: 'damage' | 'crit' | 'heal') => {
+  const addFloat = (side: 'p' | 'e', text: string, kind: FloatItem['kind']) => {
     const id = idRef.current++;
     setFloats((f) => [...f, { id, side, text, kind }]);
     window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), T.advanced.textFloatMs);
@@ -168,6 +174,8 @@ export default function BattleModal({
     heroNextAtkRef.current = now0;
     enemyNextAtkRef.current = now0;
     potionCooldownUntilRef.current = 0;
+    lastFrameRef.current = now0;
+    regenNextRef.current = T.battle.effectTickMs;
 
     const applyLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number, gemDrops: Partial<Record<GemId, number>>, uniqueDrops: UniqueDrop[]) => {
       const acc = accumRef.current;
@@ -206,6 +214,11 @@ export default function BattleModal({
       const now = performance.now();
       heroNextAtkRef.current = now;
       enemyNextAtkRef.current = now;
+      // A new enemy: no burn carried over, regeneration restarts its tick.
+      burnRef.current = null;
+      setEnemyBurning(false);
+      lastFrameRef.current = now;
+      regenNextRef.current = clockRef.current + T.battle.effectTickMs;
       phaseRef.current = 'battle';
       setPhase('battle');
     };
@@ -216,6 +229,8 @@ export default function BattleModal({
       const r = waveRewards(getBiomeForFloor(st), st);
       applyLoot(r.gold, r.drops, r.shards, r.gems, r.uniques);
       clearedRef.current += 1;
+      burnRef.current = null;
+      setEnemyBurning(false);
       const healed = Math.min(playerMax, Math.round(hp.current.p + playerMax * T.battle.waveHeal));
       hp.current.p = healed;
       setPlayerHp(healed);
@@ -239,6 +254,11 @@ export default function BattleModal({
       const dmg = Math.max(1, Math.round(total * (crit ? combat.critMult : 1)));
       hp.current.e = Math.max(0, hp.current.e - dmg);
       setEnemyHp(hp.current.e);
+      if (combat.burn) {
+        // Every hit sets / refreshes the burn (never stacks) from the pre-crit damage, see derivedStats.ts igniteBurn.
+        burnRef.current = igniteBurn(burnRef.current, clockRef.current, total);
+        setEnemyBurning(true);
+      }
       setPlayerAnim('attack');
       setPlayerLunge(true);
       setEnemyFlash(true);
@@ -270,6 +290,12 @@ export default function BattleModal({
       setEnemyLunge(true);
       setPlayerFlash(true);
       addFloat('p', `-${eFinal}`, 'damage');
+      const back = hp.current.p > 0 ? reflectedDamage(eFinal, combat.reflect) : 0;
+      if (back > 0) {
+        hp.current.e = Math.max(0, hp.current.e - back);
+        setEnemyHp(hp.current.e);
+        addFloat('e', `↩ -${back}`, 'reflect');
+      }
       window.setTimeout(() => {
         setEnemyLunge(false);
         setEnemyAnim('idle');
@@ -278,7 +304,39 @@ export default function BattleModal({
 
       if (hp.current.p <= 0) {
         endCombat('defeat');
+      } else if (hp.current.e <= 0) {
+        clearWave();
       }
+    };
+
+    // Burn ticks and regeneration on the combat clock (derivedStats.ts). Returns false when a burn tick killed the enemy.
+    const runEffects = (): boolean => {
+      const clock = clockRef.current;
+      const regen = regenAmount(playerMax, combat.hpRegenPct);
+      while (regen > 0 && clock >= regenNextRef.current) {
+        regenNextRef.current += T.battle.effectTickMs;
+        if (hp.current.p < playerMax) {
+          const healed = Math.min(playerMax, hp.current.p + regen);
+          addFloat('p', `+${Math.round(healed - hp.current.p)}`, 'heal');
+          hp.current.p = healed;
+          setPlayerHp(healed);
+        }
+      }
+      while (burnRef.current && burnRef.current.nextTickAt <= clock) {
+        const tick = tickBurn(burnRef.current);
+        burnRef.current = tick.burn;
+        hp.current.e = Math.max(0, hp.current.e - tick.damage);
+        setEnemyHp(hp.current.e);
+        addFloat('e', `🔥 -${tick.damage}`, 'burn');
+        if (hp.current.e <= 0) {
+          burnRef.current = null;
+          setEnemyBurning(false);
+          clearWave();
+          return false;
+        }
+      }
+      if (!burnRef.current) setEnemyBurning(false);
+      return true;
     };
 
     const tryAutoPotion = (now: number) => {
@@ -324,8 +382,12 @@ export default function BattleModal({
       raf = requestAnimationFrame(step);
       if (phaseRef.current !== 'battle') return;
       const spd = speedRef.current;
+      // dt is capped so a backgrounded tab does not dump seconds of burn and regeneration into one frame.
+      clockRef.current += Math.min(250, Math.max(0, now - lastFrameRef.current)) * spd;
+      lastFrameRef.current = now;
 
       tryAutoPotion(now);
+      if (!runEffects()) return;
 
       const heroMs = combat.heroMs;
       const heroInterval = heroMs / spd;
@@ -564,6 +626,11 @@ export default function BattleModal({
               row={ANIM_ROW[enemyAnim]}
               flip
             />
+            {enemyBurning && (
+              <span className="burn-flame" title={t('profile.burnTitle')} aria-hidden="true">
+                🔥
+              </span>
+            )}
             {floats.filter((f) => f.side === 'e').map((f) => (
               <span key={f.id} className={`float float-${f.kind}`}>
                 {f.text}

@@ -288,3 +288,63 @@ O nível do dia 3 depende de quanta Caça a política faz; ver o ajuste da recei
 - **Dourado (T4) é beco sem saída:** o T5 só aceita o dragão como ingrediente. Os capacetes/luvas/botas/anéis do T4 existem em uma linha só (dourada) e o T5 deles aceita a peça dourada.
 - **Refino na política da simulação:** só arma e armadura são refinadas pela simulação; as peças novas ficam +0. Um jogador que refine os 6 slots passa dos números acima.
 - Peças que o jogador já tinha mantêm as substats antigas (ver seção 11).
+
+---
+
+# Rodada 4: queimadura, reflexo e relíquias passam a funcionar no combate
+
+## 17. O problema e o que passou a valer
+
+Quatro efeitos anunciados no equipamento eram dado morto (nenhum código de combate ou de tela lia): `burn` nas armas do dragão para cima, `reflect` na placa de aço, `focusHpBonus` no Anel de Vitalidade e `attackStaminaReduction` no Amuleto da Rapidez (vinham da arena antiga de foco/energia). Agora os três laços de combate (o laço de frames do `BattleModal.tsx`, a simulação de Caça de `huntCombat.ts` e o espelho `scripts/sim/driver.ts`) leem os mesmos auxiliares puros de `derivedStats.ts` (`igniteBurn`/`tickBurn`, `reflectedDamage`, `regenAmount`, `heroAttackIntervalMs(agi, bônus)`) e `buildCombatStats` entrega `burn`, `reflect` e `hpRegenPct` em `CombatStats` (a Caça congela os três junto das outras estatísticas da sessão; sessões antigas sem o campo contam como sem efeito).
+
+| Efeito | Regra | Números |
+| --- | --- | --- |
+| Queimadura (armas `burn`) | todo golpe do herói acende ou renova uma queimadura de 3 s no inimigo; ela causa por segundo 6 % do dano final do golpe **antes do crítico** (bênção e elixires incluídos); não acumula (renova a duração e leva o dano do golpe mais novo, o relógio dos ticks mantém a fase); inimigos não têm mitigação | `T.battle.burnPctPerSec` 0,06 · `burnDurationMs` 3000 · `effectTickMs` 1000 |
+| Reflexo (armaduras `reflect`) | quando o herói leva um golpe, o atacante leva `reflect` x o dano que **realmente saiu** da vida do herói (depois da resistência); não reflete no golpe que mata o herói; escala com a durabilidade da armadura, não com a raridade | aço 20 %, dourada 20 %, dragão 22 %, voidsteel 25 %, abissal 28 %; tiers 1-2 nada |
+| Regeneração (relíquia `hpRegenPct`) | a cada tick de 1 s **em combate** (não na pausa entre andares) cura essa fração da vida máxima, sempre limitada à vida máxima | **0,9 %** da vida/s (decisão do diretor: 1,5 %, ver a seção 18) |
+| Velocidade de ataque (relíquia `attackSpeedBonus`) | divide o intervalo vindo da AGI e passa pelo mesmo piso de 400 ms | +8 % |
+
+Ordem de eventos no mesmo instante, igual nos dois laços de eventos: golpe do herói, golpe do inimigo, tick da queimadura, tick da regeneração. Os únicos (`unique`) agora herdam `burn` e `reflect` da gêmea (antes copiavam só dano, PV, resistência, crítico e dano crítico): `bonecrusher_maul` e `overlord_greataxe` queimam, `bloodvein_plate` reflete 20 %. Os campos mortos `focusHpBonus` e `attackStaminaReduction` saíram do tipo e dos dados; os saves antigos guardam a relíquia só pelo id do molde, então **não há migração** (teste: um save com a relíquia equipada carrega igual). `LIVE_STAT_FIELDS` / `META_FIELDS` em `gear.ts` e o teste `gearEffects.test.ts` impedem que um campo numérico/booleano sem leitura no combate volte em silêncio. `src/legacy-arena` (fora do type-check, protótipo histórico) ainda cita os dois campos antigos e não foi tocado.
+
+Visual: chama sobre o inimigo enquanto ele queima e números laranja a cada tick no `BattleModal`; o reflexo aparece como `↩ -N` no inimigo; a regeneração como `+N` verde no herói. As linhas de estatística da Forja, do Inventário e do Equipamento saem do dado (pt e en), p.ex. "Queimadura: 6% do dano/s por 3s", "Reflete 20% do dano sofrido", "Regenera 0,9% da vida/s", "+8% velocidade de ataque". Só as descrições do Anel de Vitalidade e do Amuleto da Rapidez mudaram (falavam de foco e de energia).
+
+## 18. Números que mudei em relação ao que o diretor fixou, e por quê
+
+Medido com `npm run sim:items` (seção G do `ITEM_BALANCE_AUDIT.md`): razão maior / menor do valor real de combate (Δln P da margem do duelo) entre as três relíquias, que disputam um slot e devem ficar dentro de 1,5x nos níveis 30 e 60.
+
+| Valor | Decisão | Medido com ela | Final |
+| --- | --- | --- | --- |
+| `ring_vitality.hpRegenPct` | 1,5 %/s | Δln P 12,8 % (nível 30) e 16,4 % (nível 60) contra 7,0 % / 7,1 % do amuleto: razão **2,7** nos dois níveis | **0,9 %/s**: 7,5 % e 9,5 %, razão 1,07 (nível 30) e 1,34 (nível 60) |
+| `berserker_crest.critMultBonus` | (não estava na lista; 0,5) | só +2,6 % de CP no nível 30 e +3,4 % no 60, Δln P 4,7 % / 6,2 %: abaixo da faixa de +4-7 % de CP e a mais de 1,5x da regeneração | **0,75**: +3,9 % / +5,0 % de CP, Δln P 7,0 % / 9,1 % |
+| `amulet_swiftness.attackSpeedBonus` | +8 % | +3,8 % de CP, Δln P 7,0 % / 7,1 % | mantido |
+| reflexo da placa de aço | 20 % | 10,4 % do dano total causado no nível 25 (um pouco acima do "~10 %"); os tiers 4-6 ficam em 7,3-7,6 % | mantido em 20 % (o limite do teste é 11 %) |
+
+Relíquias no ponto em que ficam forjáveis (nível 30, equipamento T3+4): Anel +4,4 % de CP, Amuleto +3,8 %, Crista +3,9 % (nível 60: +4,5 / +3,9 / +5,0 %), o que é "cerca de +4-7 %"; no nível 20, quando só dá para sintetizar essência com equipamento T2, a Crista rende +2,6 % porque a chance de crítico ainda é baixa. No nível 90 a Crista (+12,9 % de Δln P) passa de 1,5x do amuleto: o enunciado só pede os níveis 30 e 60.
+
+Queimadura: soma 3,5-4,1 % ao dano total (Δln P +3,6 a +4,2 %, CP +1,9 a +2,2 %), muito abaixo do teto de 12 %. A linha do dragão no tier 4 fica **20 % acima** da dourada em CP (nível 50: 985 contra 821) por um par que custa 5 382 contra 1 489 de Ouro de referência; a queimadura vale ~2 pontos desses 20, o reflexo de 22 % contra 20 % o resto de um décimo. Reflexo: 7,3-7,6 % do dano total nos tiers 4-6.
+
+Pesos de CP (`T.advanced`): `cpBurnWeight` 0,95, `cpReflectWeight` 0,5, `cpRegenWeight` 1,8 (a velocidade de ataque já entra no dps pelo `heroMs`). Calibrados para o ΔCP ficar perto de metade do Δln P medido: queimadura +2,2 / +2,0 / +1,9 % de CP contra Δln P/2 de 2,1 / 1,95 / 1,8 %; reflexo +4,0-4,6 % contra 3,8-4,0 % (o aço fica em 4,2 contra 5,5 %); regeneração +4,4 / +4,5 / +3,0 % (níveis 30 / 60 / 90) contra 3,7 / 4,8 / 3,9 %. A fórmula: a queimadura soma `peso x dmgBase x 6 % x (1000/tick)` ao dps; o reflexo multiplica os golpes por `1 + peso x reflect / (1 + resistência)`; a regeneração entra na sustentação (sigma) como `peso x regen/s x ehp / golpes/s`, somada à do roubo de vida e sob o mesmo teto de 0,5.
+
+## 19. Metas da R5 depois da rodada 4 (cenário A, mediana)
+
+A simulação agora forja e equipa a relíquia (a de maior CP, uma só) depois do conjunto completo do tier 3; a mediana é o dia 10.
+
+| Meta | Antes (rodada 3) | Depois |
+| --- | --- | --- |
+| Primeira sessão termina no andar >= 8 | 8 | 8 |
+| Primeira peça forjada (alvo <= dia 2) | dia 2 | dia 2 |
+| Nível dia 1 / 3 / 14 (alvos 10-16 / 20-29 / 45-60) | 13 / 29 (27-34) / 48 (46-51) | 13 / 29 (27-34) / 49 (46-51) |
+| Chefe 25 vencido pela 1ª vez (alvo dia 4-6) | dia 5; B: 4,5 | dia 5; B: 4,5 |
+| Chegada ao andar 50 (nenhuma seed antes do dia 10) | 1ª seed dia 10, mediana 13 | 1ª seed dia 10, mediana 14 (B: 10 / 13) |
+| Queda de dificuldade depois de chefe ((N+1)/(N-1) >= 1) | 1,77 | 1,77 |
+| Chefe 50 | 1ª seed dia 16, 4/20 em 21 dias (B: dia 10, 3/20) | 1ª seed dia 14, 2/20 (B: dia 10, 7/20) |
+| CP mediana no dia 14 | 1 103 | 1 196 |
+
+**Retoque nos inimigos (um só):** `boss50HpMult` e `boss50DmgMult` 0,82 -> **0,84**. Só com os efeitos novos (0,82) a primeira seed passava a derrubar o chefe 50 no dia 11 (era 16) e a faixa 12-16 do cenário A se perdia; 0,83 deu dia 12 com 2/20, 0,85 dia 14 com 2/20 e 0,88 deixa 1/20 em 21 dias. Todas as outras metas do enunciado ficaram dentro da faixa sem mexer em orcs, feiticeiros, minotauros nem na curva (a tabela de CP recomendada foi regerada com `npm run sim:cp`: andar 25 igual a 546, andar 50 de 1 794 para 1 849, andar 100 de 4 478 para 4 721). O cenário B tem agora 7/20 seeds com o chefe 50 em 21 dias (antes 3/20): as seeds fortes do B fazem a relíquia mais cedo; é cenário de sensibilidade, não meta. O critério do dia 3 do código passou de 20-28 para 20-29 (o valor 29 já era o resultado da rodada 3, que o documento marcava "FORA DA META").
+
+## 20. Pontos abertos
+
+- **A regeneração é a mais sensível ao nível:** Δln P de 4,7 % (nível 20), 7,5 % (30), 9,5 % (60) e 7,7 % (90), porque rende na duração da luta; o valor em CP (4,4 % / 4,5 % / 3,0 % nos níveis 30 / 60 / 90) só acompanha aproximadamente.
+- **A Crista de Berserker passa de 12 % de Δln P no nível 90** (cresce com a chance de crítico): se quiser a razão de 1,5x também lá, ela precisaria de um valor que cresça menos com o tier.
+- **A Crista vale +0,75 de dano crítico agora**, número que não estava na lista de decisões: com 0,5 o ΔCP dela cai para +2,6 % (nível 30) e a razão com a regeneração de 0,9 % passa de 1,5x.
+- A `legacy-arena` ainda lê `focusHpBonus`, `attackStaminaReduction` e `burnTurns` (fora do build); pode ser apagada se a arena antiga não vai voltar.

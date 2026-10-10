@@ -20,7 +20,7 @@ import {
   playerLevel,
   SaveData,
 } from '../../src/game/engine';
-import { applyDamageModifiers, applyDamageReduction } from '../../src/game/derivedStats';
+import { BurnState, applyDamageModifiers, applyDamageReduction, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, tickBurn } from '../../src/game/derivedStats';
 import {
   crossedMilestoneFloors,
   dungeonEnemyKindForFloor,
@@ -102,6 +102,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
   const combat = buildCombatStats(save);
   const playerMax = combat.maxHp;
   const heroBase = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, now));
+  const regen = regenAmount(playerMax, combat.hpRegenPct);
   const startFloor = save.highestDungeonFloor;
   const stock = {
     greater_elixir: save.consumables?.greater_elixir ?? 0,
@@ -151,27 +152,41 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
     const def = getEnemyDef(dungeonEnemyKindForFloor(stage));
     let enemyHp = stageEnemyHp(def, stage);
     const hitTaken = applyDamageReduction(stageEnemyDmg(def, stage), combat.reduction);
+    const reflected = reflectedDamage(hitTaken, combat.reflect);
     let heroNext = clock + combat.heroMs;
     let enemyNext = clock + def.atkSpeedMs;
+    let regenNext = regen > 0 ? clock + T.battle.effectTickMs : Infinity;
+    let burn: BurnState | null = null;
+    // Event order at equal times: hero hit, enemy hit, burn tick, regeneration tick (huntCombat.ts attempt uses the same).
     for (;;) {
       if (++guard > 5_000_000) throw new Error('dungeon loop did not terminate');
-      if (heroNext <= enemyNext) {
-        clock = heroNext;
+      const burnNext = nextBurnTickAt(burn);
+      const next = Math.min(heroNext, enemyNext, burnNext, regenNext);
+      clock = next;
+      if (heroNext === next) {
         const crit = Math.random() < combat.critChance;
         const dmg = Math.max(1, Math.round(heroBase * (crit ? combat.critMult : 1)));
         enemyHp = Math.max(0, enemyHp - dmg);
+        if (combat.burn) burn = igniteBurn(burn, clock, heroBase);
         if (combat.lifesteal > 0) hp = Math.min(playerMax, hp + Math.max(1, Math.round(dmg * (combat.lifesteal / 100))));
         heroNext += combat.heroMs;
-        if (enemyHp <= 0) break;
-      } else {
-        clock = enemyNext;
+      } else if (enemyNext === next) {
         hp = Math.max(0, hp - hitTaken);
         enemyNext += def.atkSpeedMs;
         if (hp <= 0) {
           outcome = 'defeat';
           break waves;
         }
+        enemyHp = Math.max(0, enemyHp - reflected);
+      } else if (burnNext === next) {
+        const tick = tickBurn(burn!);
+        enemyHp = Math.max(0, enemyHp - tick.damage);
+        burn = tick.burn;
+      } else {
+        hp = Math.min(playerMax, hp + regen);
+        regenNext += T.battle.effectTickMs;
       }
+      if (enemyHp <= 0) break;
       tryAutoPotion(clock);
     }
 

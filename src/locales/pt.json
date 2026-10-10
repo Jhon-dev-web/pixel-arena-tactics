@@ -250,9 +250,9 @@
     "material_obsidian": "Obsidiana",
     "material_cloth": "Tecido",
     "ring_vitality": "Anel de Vitalidade",
-    "ring_vitality_d": "Um anel que faz o foco curar um pouco mais.",
+    "ring_vitality_d": "Um anel de luz morna: as feridas fecham aos poucos enquanto a luta continua.",
     "amulet_swiftness": "Amuleto da Agilidade",
-    "amulet_swiftness_d": "Um amuleto leve que deixa cada ataque custar menos energia.",
+    "amulet_swiftness_d": "Um amuleto leve que deixa cada golpe do braço mais rápido.",
     "berserker_crest": "Brasão do Berserker",
     "berserker_crest_d": "Um brasão de fúria: os golpes críticos ficam muito mais violentos.",
     "bronze_helm": "Elmo de Bronze",
@@ -452,7 +452,12 @@
     "lifesteal": "Roubo de Vida",
     "combatStats": "Status de combate (permanentes)",
     "cp": "CP",
-    "distribute": "⚡ DISTRIBUIR ATRIBUTOS"
+    "distribute": "⚡ DISTRIBUIR ATRIBUTOS",
+    "burnStat": "Queimadura: {pct}% do dano/s por {s}s",
+    "reflectStat": "Reflete {pct}% do dano sofrido",
+    "regenStat": "Regenera {pct}% da vida/s",
+    "attackSpeedStat": "+{pct}% velocidade de ataque",
+    "burnTitle": "Queimando"
   },
   "huntPouch": {
     "title": "Bolsa de Caça",

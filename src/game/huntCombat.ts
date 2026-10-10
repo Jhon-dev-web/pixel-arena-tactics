@@ -1,7 +1,8 @@
 import { MaterialId } from './materials';
 import { UniqueDrop, rollUniqueDrop } from './uniques';
 import { HuntingDrop, HuntingDepth, HuntingUnique, effectiveDropChance } from './huntingZones';
-import { applyDamageReduction } from './derivedStats';
+import { BurnState, applyDamageReduction, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, tickBurn } from './derivedStats';
+import T from './tunables';
 import { economicRollFractionForFight } from './huntEconomy';
 import { inRelativeWindows } from './huntSession';
 
@@ -44,6 +45,9 @@ export interface HuntCombatBuild {
   heroMs: number; // hero attack interval
   reduction: number; // fraction of incoming enemy damage negated
   lifestealPct: number; // 0..100, matches subs.lifesteal
+  burn: boolean; // gear effects, see derivedStats.ts (igniteBurn / reflectedDamage / regenAmount)
+  reflect: number;
+  hpRegenPct: number;
 }
 
 export interface HuntZoneCombatCfg {
@@ -218,24 +222,30 @@ export function simulateHuntingSession(
 
   // One full, fresh-HP attempt at `subLevel`. Returns null if the session's remaining idle time ran
   // out mid-fight (that attempt doesn't count either way — nothing to persist from an unfinished fight).
+  // Event order at equal times: hero hit, enemy hit, burn tick, regeneration tick (scripts/sim/driver.ts runDungeon uses the same).
   const attempt = (subLevel: number, startHp: number) => {
     const enemy = enemyStatsAt(zoneCfg, subLevel);
     // Layer 2 (Damage Reduction) — asymptotic, see derivedStats.ts. This assembly step is mirrored
     // inline in BattleModal.tsx's monsterAttack; keep both in sync.
     const dmgTaken = applyDamageReduction(enemy.dmg, build.reduction);
+    const reflected = reflectedDamage(dmgTaken, build.reflect);
+    const regen = regenAmount(build.playerMax, build.hpRegenPct);
     const hpRef = { hp: startHp };
     let enemyHp = enemy.hp;
     let heroNext = build.heroMs;
     let enemyNext = enemy.atkMs;
+    let regenNext = regen > 0 ? T.battle.effectTickMs : Infinity;
+    let burn: BurnState | null = null;
     let t = 0;
     // Snapshot at fight start too, so a brand-new attempt has something to show even before its
     // first hit lands (e.g. the very first poll of a freshly-started session).
     liveSnapshot = { subLevel, heroHp: hpRef.hp, heroMax: build.playerMax, enemyHp, enemyMax: enemy.hp };
     while (hpRef.hp > 0 && enemyHp > 0) {
-      const nextEvent = Math.min(heroNext, enemyNext);
+      const burnNext = nextBurnTickAt(burn);
+      const nextEvent = Math.min(heroNext, enemyNext, burnNext, regenNext);
       if (nextEvent > timeLeft) return null;
       t = nextEvent;
-      if (heroNext <= enemyNext) {
+      if (heroNext === nextEvent) {
         const crit = rng() < build.critChance;
         let hitBase = build.heroDmgBase;
         if (timeline) {
@@ -246,13 +256,22 @@ export function simulateHuntingSession(
         }
         const dmg = Math.max(1, Math.round(hitBase * (crit ? build.critMult : 1)));
         enemyHp -= dmg;
+        if (build.burn) burn = igniteBurn(burn, t, hitBase);
         if (build.lifestealPct > 0) {
           hpRef.hp = Math.min(build.playerMax, hpRef.hp + Math.max(1, Math.round(dmg * (build.lifestealPct / 100))));
         }
         heroNext += build.heroMs;
-      } else {
+      } else if (enemyNext === nextEvent) {
         hpRef.hp -= dmgTaken;
+        if (hpRef.hp > 0) enemyHp -= reflected;
         enemyNext += enemy.atkMs;
+      } else if (burnNext === nextEvent) {
+        const tick = tickBurn(burn!);
+        enemyHp -= tick.damage;
+        burn = tick.burn;
+      } else {
+        hpRef.hp = Math.min(build.playerMax, hpRef.hp + regen);
+        regenNext += T.battle.effectTickMs;
       }
       tryAutoPotion(t, hpRef);
       liveSnapshot = { subLevel, heroHp: Math.max(0, hpRef.hp), heroMax: build.playerMax, enemyHp: Math.max(0, enemyHp), enemyMax: enemy.hp };

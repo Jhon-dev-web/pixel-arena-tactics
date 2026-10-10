@@ -54,17 +54,24 @@ export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveDat
   return o.attrs ? { ...h, ...o.attrs } : h;
 }
 
-// Duel margin P = (time the hero survives) / (time the hero needs to kill one enemy), closed form: expected crits, lifesteal, resistance
-// (continuous: the in-game integer rounding of the enemy hit is left out so a stat's value is not hidden by +-1 steps).
+// Duel margin P = (time the hero survives) / (time the hero needs to kill one enemy), closed form: expected crits, lifesteal, resistance,
+// and the gear effects: burn (one tick of burnPctPerSec x the hit per second once lit, the first tick one second late, so a fight of T seconds
+// pays about T - 0.5 ticks), reflect (a share of the damage the hero takes comes off the enemy) and regeneration (hpRegenPct of max HP per second).
+// Continuous: the in-game integer rounding of the enemy hit is left out so a stat's value is not hidden by +-1 steps.
 export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number) {
   const c = buildCombatStats(s);
   const cc = Math.max(0, Math.min(1, c.critChance));
-  const dps = ((c.dmgBase * (1 + cc * (c.critMult - 1))) * 1000) / c.heroMs;
+  const direct = ((c.dmgBase * (1 + cc * (c.critMult - 1))) * 1000) / c.heroMs;
   const inc = ((enemyDmg / (1 + Math.max(0, c.reduction))) * 1000) / enemyMs;
-  const net = inc - (dps * c.lifesteal) / 100;
-  const ttk = enemyHp / dps;
+  const reflectDps = inc * c.reflect;
+  const burnPerSec = c.burn ? (c.dmgBase * T.battle.burnPctPerSec * 1000) / T.battle.effectTickMs : 0;
+  let ttk = enemyHp / (direct + reflectDps);
+  for (let i = 0; i < 4 && burnPerSec > 0; i++) ttk = enemyHp / (direct + reflectDps + burnPerSec * Math.max(0, 1 - 0.5 / ttk));
+  const dps = enemyHp / ttk; // average damage per second including the effects
+  const regenPerSec = (c.maxHp * c.hpRegenPct * 1000) / T.battle.effectTickMs;
+  const net = inc - (direct * c.lifesteal) / 100 - regenPerSec;
   const ttd = net <= 0 ? Infinity : c.maxHp / net;
-  return { ttk, ttd, P: ttd / ttk, dps, hp: c.maxHp };
+  return { ttk, ttd, P: ttd / ttk, dps, hp: c.maxHp, direct, burnShare: burnPerSec > 0 ? (dps - direct - reflectDps) / dps : 0, reflectShare: reflectDps / dps };
 }
 export function duel(s: SaveData, floor: number) {
   const def = getEnemyDef(dungeonEnemyKindForFloor(floor));

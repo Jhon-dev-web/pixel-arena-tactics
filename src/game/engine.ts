@@ -306,9 +306,14 @@ export function buildCombatStats(save: SaveData): CombatStats {
     critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance,
     critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
-    heroMs: heroAttackIntervalMs(save.agi),
+    // The relic's attackSpeedBonus enters the same derivation, so the 400 ms floor still caps it.
+    heroMs: heroAttackIntervalMs(save.agi, relic?.attackSpeedBonus ?? 0),
     reduction: effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100 + extra.resistance,
     lifesteal: subs.lifesteal,
+    burn: !!weapon.burn,
+    // Reflect scales with the armor's durability like its resistance does (a broken armor reflects less), not with rarity.
+    reflect: (armor.reflect ?? 0) * aFactor,
+    hpRegenPct: relic?.hpRegenPct ?? 0,
   };
 }
 
@@ -621,6 +626,9 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     heroMs: stats.heroMs,
     reduction: stats.reduction,
     lifestealPct: stats.lifesteal,
+    burn: stats.burn === true,
+    reflect: stats.reflect ?? 0,
+    hpRegenPct: stats.hpRegenPct ?? 0,
   };
 
   // Raso-only override (see HuntingZoneDef.shallowCp/shallowEnemyHp/shallowEnemyDmg) — currently only
