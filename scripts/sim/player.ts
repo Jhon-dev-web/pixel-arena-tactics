@@ -17,6 +17,8 @@ import { GEAR, getGear, INSTANCED_SLOTS, MAX_REFINE, upgradeCost } from '../../s
 import { GEMS, GemId, socketsForTier } from '../../src/game/gems';
 import { MaterialId } from '../../src/game/materials';
 import { REFINING_RECIPES } from '../../src/game/refining';
+import { PLANTS } from '../../src/game/garden';
+import { applyHarvest, applyPlant, readySlots } from '../../src/game/gardenActions';
 import { ORE_TIERS } from '../../src/game/ores';
 import { WOOD_TIERS } from '../../src/game/woodcutting';
 import { skillLevel, skillXpToReachLevel, gatherPower, BASE_GATHER_POWER } from '../../src/game/skills';
@@ -84,9 +86,10 @@ export interface DayLedger {
   mats: { common: number; uncommon: number; rare: number };
   lost: number; // units that did not fit the hunt pouch
   hours: { hunt: number; mine: number; wood: number };
+  units: Record<string, number>; // ore / wood / garden units that entered the bag today, by material id
 }
 
-const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, lost: 0, hours: { hunt: 0, mine: 0, wood: 0 } });
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, lost: 0, hours: { hunt: 0, mine: 0, wood: 0 }, units: {} });
 
 export interface DaySnapshot {
   day: number;
@@ -96,6 +99,8 @@ export interface DaySnapshot {
   weaponTier: number;
   armorTier: number;
   gold: number;
+  // Profession levels at the end of the day (Gardening is 1 for a player who never plants).
+  skills: { mining: number; woodcutting: number; gardening: number };
   ledger: DayLedger;
   sessions: SessionRecord[];
 }
@@ -276,6 +281,11 @@ export interface PlayerOptions {
   // Diagnostic only (not a scenario of the report): never accept a delivery order, to isolate how much of the XP / gold comes from Hunting
   // and the Dungeon alone.
   noOrders?: boolean;
+  // Profession scenarios (not part of the balance targets): `garden` plants / harvests the plots at every visit (what the next craft
+  // needs first, otherwise the longest plant that fits the 12 h between visits); `balanced` is a player who spends the second visit of
+  // the day gathering (mining on even days, woodcutting on odd ones, the best unlocked tier) instead of hunting.
+  garden?: boolean;
+  balanced?: boolean;
 }
 
 export const SHORT_HUNT_MAX_MIN = 15;
@@ -363,6 +373,7 @@ export class Player {
       weaponTier: equippedTier(this.S, 'weapon'),
       armorTier: equippedTier(this.S, 'armor'),
       gold: this.S.gold,
+      skills: { mining: skillLevel(this.S.skillXp.mining, 'mining'), woodcutting: skillLevel(this.S.skillXp.woodcutting, 'woodcutting'), gardening: skillLevel(this.S.skillXp.gardening, 'gardening') },
       ledger: this.ledger,
       sessions: this.sessions,
     });
@@ -410,6 +421,7 @@ export class Player {
       this.freeSessionsToday = T.dungeon.freeSessionsPerDay;
     }
     this.collect();
+    this.tendGarden();
     this.claimQuestsNow();
     this.maintain();
     this.spend();
@@ -446,6 +458,7 @@ export class Player {
       const c = claimGathering(s, this.now);
       if (c) {
         this.ledger.mats[rarityOf(c.material)] += c.units;
+        this.ledger.units[c.material] = (this.ledger.units[c.material] ?? 0) + c.units;
         this.ledger.hours[mine ? 'mine' : 'wood'] += c.hours;
         this.set(c.save, 'coleta');
       }
@@ -453,6 +466,29 @@ export class Player {
     const done = applyDeliveryClaim(this.S, this.now);
     if (done) this.set(done.save, 'pedido');
     this.checkMarks();
+  }
+
+  // Garden upkeep of a visit: harvest what is ready, then fill every empty plot.
+  private tendGarden() {
+    if (!this.opts.garden) return;
+    const ready = readySlots(this.S, this.now);
+    if (ready.length > 0) {
+      const res = applyHarvest(this.S, ready, this.now);
+      if (res) {
+        for (const h of res.harvested) this.ledger.units[h.material] = (this.ledger.units[h.material] ?? 0) + h.qty;
+        this.S = res.save;
+      }
+    }
+    const lvl = skillLevel(this.S.skillXp.gardening, 'gardening');
+    const unlocked = PLANTS.filter((p) => p.requiredLevel <= lvl);
+    const deficit = chooseTarget(this.S)?.deficit ?? {};
+    const wanted = unlocked.filter((p) => (deficit[p.material] ?? 0) > 0).sort((a, b) => (deficit[b.material] ?? 0) - (deficit[a.material] ?? 0))[0];
+    const longest = [...unlocked].filter((p) => p.durationMs <= 10 * HOUR).sort((a, b) => b.durationMs - a.durationMs)[0];
+    const pick = wanted ?? longest;
+    if (!pick) return;
+    const empty = this.S.gardenSlots.map((sl, i) => (sl.plantId ? -1 : i)).filter((i) => i >= 0);
+    const next = applyPlant(this.S, pick.id, empty, this.now);
+    if (next) this.S = next;
   }
 
   private claimQuestsNow() {
@@ -783,6 +819,7 @@ export class Player {
       needed.sort((a, b) => this.lastDone[a[0]] - this.lastDone[b[0]] || b[1] - a[1]);
       choice = needed[0][0];
     }
+    if (this.opts.balanced && this.visit === 'second') choice = this.day % 2 === 0 ? 'mine' : 'wood';
     this.lastDone[choice] = this.visits;
     if (choice === 'mine') {
       const unlocked = [...ORE_TIERS].filter((o) => skillLevel(this.S.skillXp.mining, 'mining') >= o.requiredLevel);

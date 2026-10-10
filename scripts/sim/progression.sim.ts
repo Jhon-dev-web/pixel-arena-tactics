@@ -53,9 +53,13 @@ import T from '../../src/game/tunables';
 import { mulberry32, runDungeon, withSeededRandom } from './driver';
 import { buildHero } from './ladder';
 import { DaySnapshot, FirstEvent, Player, PlayerOptions } from './player';
+import { allGearGates } from './professions';
+import { ORE_TIERS } from '../../src/game/ores';
+import { WOOD_TIERS } from '../../src/game/woodcutting';
+import { PLANTS } from '../../src/game/garden';
 
-const SEEDS = 20;
-const DAYS = 21;
+const SEEDS = Number(process.env.SIM_SEEDS ?? 20);
+const DAYS = Number(process.env.SIM_DAYS ?? 21);
 const START = new Date(2026, 5, 1, 0, 0, 0).getTime();
 
 interface Run {
@@ -279,6 +283,89 @@ function report(runs: Run[], sections: Section[]): string[] {
     out.push('"Andar final" = highestDungeonFloor depois da sessão (o andar onde morreu, ou o seguinte ao último limpo numa retirada).');
     out.push('');
   }
+  return out;
+}
+
+// ---- professions (docs/PROFESSIONS_AUDIT.md) ------------------------------------------------------------------------
+
+// First day (1-based) a per-day series reaches `level`; Infinity when it never does inside the horizon.
+const firstDayAt = (run: Run, pick: (d: DaySnapshot) => number, level: number): number => {
+  const i = run.days.findIndex((d) => pick(d) >= level);
+  return i < 0 ? Infinity : i + 1;
+};
+const dayCell = (xs: number[]): string => {
+  const reached = xs.filter(Number.isFinite);
+  if (reached.length < xs.length / 2) return `> dia ${DAYS} (${reached.length}/${xs.length})`;
+  return reached.length === xs.length ? num(median(reached), 1) : `${num(median(reached), 1)} (${reached.length}/${xs.length})`;
+};
+
+function professionReport(runs: Run[]): string[] {
+  const out: string[] = [];
+  const dayIdx = Array.from({ length: DAYS }, (_, i) => i);
+  const at = (d: number) => runs.map((r) => r.days[d]);
+  out.push('#### Nível das profissões por dia (mediana entre seeds, mín–máx)');
+  out.push('');
+  out.push(
+    ...table(
+      ['Dia', 'Mineração', 'Lenhador', 'Jardinagem', 'Horas min.', 'Horas cort.'],
+      dayIdx.map((d) => [
+        String(d + 1),
+        cell(at(d).map((x) => x.skills.mining)),
+        cell(at(d).map((x) => x.skills.woodcutting)),
+        cell(at(d).map((x) => x.skills.gardening)),
+        cell(at(d).map((x) => x.ledger.hours.mine), 1),
+        cell(at(d).map((x) => x.ledger.hours.wood), 1),
+      ]),
+    ),
+  );
+  out.push('');
+  out.push('#### Unidades coletadas por dia, por tier (mediana entre seeds)');
+  out.push('');
+  const ids = [...ORE_TIERS.map((o) => o.id), ...WOOD_TIERS.map((o) => o.id), ...PLANTS.map((p) => p.material)];
+  const used = ids.filter((id) => runs.some((r) => r.days.some((x) => (x.ledger.units[id] ?? 0) > 0)));
+  out.push(...table(['Dia', ...used], dayIdx.map((d) => [String(d + 1), ...used.map((id) => cell(at(d).map((x) => x.ledger.units[id] ?? 0)))])));
+  out.push('');
+  out.push('#### Dia em que cada tier / planta é liberado (nível da profissão atingido no fim do dia; mediana entre seeds)');
+  out.push('');
+  const unlockRows: string[][] = [];
+  for (const o of ORE_TIERS) unlockRows.push(['Mineração', o.id, String(o.requiredLevel), dayCell(runs.map((r) => firstDayAt(r, (x) => x.skills.mining, o.requiredLevel)))]);
+  for (const w of WOOD_TIERS) unlockRows.push(['Lenhador', w.id, String(w.requiredLevel), dayCell(runs.map((r) => firstDayAt(r, (x) => x.skills.woodcutting, w.requiredLevel)))]);
+  for (const pl of PLANTS) unlockRows.push(['Jardinagem', pl.id, String(pl.requiredLevel), dayCell(runs.map((r) => firstDayAt(r, (x) => x.skills.gardening, pl.requiredLevel)))]);
+  out.push(...table(['Profissão', 'Tier / planta', 'Nível exigido', 'Dia'], unlockRows));
+  out.push('');
+  out.push('#### Porta de profissão contra porta de nível do personagem, por receita de equipamento (a cadeia inteira: peças de tier menor, Fornalha, Carpintaria, Horta)');
+  out.push('');
+  const gateRows: string[][] = [];
+  const flags: string[] = [];
+  for (const g of allGearGates().sort((a, b) => a.charLevel - b.charLevel || a.tier - b.tier || a.slot.localeCompare(b.slot))) {
+    const charDay = runs.map((r) => firstDayAt(r, (x) => x.level, g.charLevel));
+    const profDay = runs.map((r) =>
+      Math.max(firstDayAt(r, (x) => x.skills.mining, g.mining), firstDayAt(r, (x) => x.skills.woodcutting, g.woodcutting), firstDayAt(r, (x) => x.skills.gardening, g.gardening)),
+    );
+    const cd = median(charDay);
+    const pd = median(profDay);
+    let flag = 'ok';
+    if (g.mining <= 1 && g.woodcutting <= 1 && g.gardening <= 1) flag = '-';
+    else if (Number.isFinite(pd) && Number.isFinite(cd) && pd - cd > 1) flag = `BLOQUEIO (+${num(pd - cd, 1)} d)`;
+    else if (!Number.isFinite(pd) && Number.isFinite(cd)) flag = 'BLOQUEIO (nunca em ' + DAYS + ' d)';
+    else if (Number.isFinite(pd) && Number.isFinite(cd) && cd - pd > 7) flag = `SEM SENTIDO (${num(cd - pd, 1)} d antes)`;
+    if (flag.startsWith('BLOQ') || flag.startsWith('SEM')) flags.push(g.id);
+    gateRows.push([
+      g.id,
+      `T${g.tier} ${g.slot}`,
+      String(g.charLevel),
+      `${g.mineTier ?? '-'} (${g.mining})`,
+      `${g.woodTier ?? '-'} (${g.woodcutting})`,
+      String(g.gardening || '-'),
+      dayCell(charDay),
+      dayCell(profDay),
+      flag,
+    ]);
+  }
+  out.push(...table(['Receita', 'Tier / slot', 'Nível do personagem', 'Minério (nv)', 'Madeira (nv)', 'Jardinagem', 'Dia: nível do personagem', 'Dia: profissões', 'Veredito'], gateRows));
+  out.push('');
+  out.push(`Receitas marcadas: ${flags.length === 0 ? 'nenhuma' : flags.join(', ')}.`);
+  out.push('');
   return out;
 }
 
@@ -563,9 +650,11 @@ describe('progression simulation', () => {
     const started = performance.now();
     const a: Run[] = [];
     const b: Run[] = [];
+    const c: Run[] = [];
     for (let seed = 1; seed <= SEEDS; seed++) {
       a.push(playOne(seed, {}));
       b.push(playOne(seed, { shortHunt: true }));
+      c.push(playOne(seed, { garden: true, balanced: true }));
     }
     const all: Section[] = ['progress', 'xp', 'dungeon', 'gold', 'materials', 'firsts', 'day1'];
     const pouch = pouchDiagnostic();
@@ -580,6 +669,12 @@ describe('progression simulation', () => {
       '### Cenário B (sensibilidade): igual ao A, mais uma visita curta (até 15 min, parando a caça quando a prévia da bolsa ainda guarda os farrapos) logo depois da primeira, enquanto faltarem itens comuns de caça',
       '',
       ...report(b, all),
+      '### Profissões, cenário A (pedido)',
+      '',
+      ...professionReport(a),
+      '### Profissões, cenário C (jogador que também planta e usa a segunda visita do dia para minerar ou cortar)',
+      '',
+      ...professionReport(c),
       '### Diagnóstico da bolsa de caça',
       '',
       ...pouch.lines,
