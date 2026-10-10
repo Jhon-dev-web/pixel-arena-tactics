@@ -788,7 +788,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!claim) return;
     playSfx('victory');
     setSaveBoth(claim.save);
-    showToast(t('mining.readyOre', { n: claim.units }) + ' · ' + t('mining.readyGold', { n: claim.gold }));
+    showToast(t('mining.readyOre', { n: claim.units }) + (claim.gold > 0 ? ' · ' + t('mining.readyGold', { n: claim.gold }) : ''));
   };
 
   const cancelMining = () => {
@@ -1303,8 +1303,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       key: 'main',
       items: [
         { key: 'hero', icon: '🧝', label: t('nav.hero'), active: activeView === 'personagem', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
-        { key: 'hunt', icon: '🏹', label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
-        { key: 'dungeon', icon: '⚔️', label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
+        { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
+        { key: 'dungeon', icon: <img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
         { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) }) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
       ],
     },
@@ -1313,16 +1313,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       header: t('nav.groupProfessions'),
       items: [
         { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, label: t('nav.mining'), active: mineOpen, onClick: () => { closeDrawer(); playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
-        { key: 'woodcutting', icon: '🪓', label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
-        { key: 'garden', icon: '🌱', label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { closeDrawer(); playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
-        { key: 'oficios', icon: '⚗️', label: t('nav.oficios'), active: activeView === 'oficios', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('oficios'); } },
+        { key: 'woodcutting', icon: <img className="pixel-icon" src="/assets/icons/oak_wood.png" alt="" />, label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
+        { key: 'garden', icon: <img className="pixel-icon" src="/assets/icons/common_herb.png" alt="" />, label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { closeDrawer(); playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
+        { key: 'oficios', icon: <img className="pixel-icon" src="/assets/icons/refine_catalyst.png" alt="" />, label: t('nav.oficios'), active: activeView === 'oficios', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('oficios'); } },
       ],
     },
     {
       key: 'equipment',
       header: t('nav.groupEquipment'),
       items: [
-        { key: 'forge', icon: '🔨', label: t('nav.forge'), active: forgeOpen, tutorialTarget: 'forge', onClick: () => {
+        { key: 'forge', icon: <img className="pixel-icon" src="/assets/icons/steel.png" alt="" />, label: t('nav.forge'), active: forgeOpen, tutorialTarget: 'forge', onClick: () => {
             closeDrawer();
             playSfx('click');
             setForgeOpen(true);
@@ -1335,9 +1335,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       key: 'economy',
       header: t('nav.groupEconomy'),
       items: [
-        { key: 'deliveries', icon: '🏕️', label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
+        { key: 'deliveries', icon: <img className="pixel-icon" src="/assets/icons/expedition_ticket_2h.png" alt="" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
         { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { closeDrawer(); playSfx('click'); setBattlePassOpen(true); } },
-        { key: 'shop', icon: '🛒', label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopOpen(true); } },
+        { key: 'shop', icon: <img className="pixel-icon" src="/assets/icons/gold.png" alt="" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopOpen(true); } },
       ],
     },
     {

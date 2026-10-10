@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { t } from '../locales';
+import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData, computeCP } from '../game/engine';
 import { questMaxRefine } from '../game/gearInstances';
@@ -49,7 +49,7 @@ export default function QuestsModal({
                   <span className="quest-name">{questText(q.nameKey)}</span>
                   <span className="quest-reward">
                     <span className="quest-reward-item">
-                    <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {q.gold}
+                    <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {fmtNum(q.gold)}
                   </span>
                     {q.shards > 0 && (
                       <span className="quest-reward-item quest-shards">

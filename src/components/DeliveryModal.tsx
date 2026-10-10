@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { t } from '../locales';
+import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData } from '../game/engine';
 import { canAffordOffer, deliveryRarity, deliveryXp, offerCount, rerollsLeft } from '../game/deliveries';
@@ -38,7 +38,7 @@ function Rewards({ gold, xp, shards }: { gold: number; xp: number; shards: numbe
         <span className="mat-icon">
           <img src={Assets.icons.gold.url} alt="" />
         </span>
-        <span>{t('ui.goldReward', { n: gold })}</span>
+        <span>{t('ui.goldReward', { n: fmtNum(gold) })}</span>
       </span>
       <span className="floor-drop delivery-xp">{dText('xp', { n: compact(xp) })}</span>
       {shards > 0 && (
@@ -80,7 +80,7 @@ function Requirements({ offer, save }: { offer: DeliveryOffer; save: SaveData })
               <span>{def ? t(`materials.${def.nameKey}`) : id}</span>
             </span>
             <span className="delivery-req-qty">
-              {Math.min(have, 99999)} / {need}
+              {fmtNum(Math.min(have, 99999))} / {fmtNum(need)}
             </span>
           </div>
         );

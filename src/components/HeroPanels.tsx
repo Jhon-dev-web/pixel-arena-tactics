@@ -1,4 +1,4 @@
-import { activeLocale, t } from '../locales';
+import { activeLocale, fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { mitigationFraction } from '../game/derivedStats';
 import { effectivePouchSlots, isBattlePassActive, SaveData, buildCombatStats, computeCP, formatNumber, playerLevel } from '../game/engine';
@@ -154,7 +154,7 @@ export function EquipmentPanel({
                         <MaterialIcon item={getMaterial(mid as MaterialId)!} />
                       </span>
                       <span className={`req-amount${have < needN ? ' missing' : ''}`}>
-                        {have}/{needN} {matText(`mat_${mid}`)}
+                        {fmtNum(have)}/{fmtNum(needN)} {matText(`mat_${mid}`)}
                       </span>
                     </span>
                   );

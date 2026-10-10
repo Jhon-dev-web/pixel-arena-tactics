@@ -291,6 +291,12 @@ body {
 .modal-title {
   font-size: calc(var(--font-size) + 6px);
   margin: 0 0 14px;
+  /* an icon in front of the title sits next to it (it used to float to the far left of a centered title) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .modal-title.win {
   color: #ffd76a;
@@ -7558,10 +7564,104 @@ body {
   color: #ffd76a;
 }
 @media (min-width: 1024px) {
-  .garden-modal {
-    width: min(92vw, 880px);
-  }
   .garden-plots {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+/* ---- Mining / Woodcutting screen (GatheringModal): running session card, tier grid ---- */
+.gather-modal {
+  width: min(94vw, 640px);
+}
+.gather-session {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 10px;
+  background: #1f1628;
+  border: 2px solid #a87c3a;
+  border-radius: 10px;
+}
+.gather-session-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffd76a;
+}
+.gather-session-ready {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size);
+  color: #fff3c4;
+}
+.gather-tier-state {
+  font-size: calc(var(--font-size) - 2px);
+  color: #a4c95a;
+}
+.gather-switch-hint,
+.gather-brew {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b9a8d8;
+}
+.gather-brew {
+  color: #a4c95a;
+}
+.gather-switch-hint {
+  display: block;
+  grid-column: 1 / -1;
+}
+.camp-expedition-cancel.armed {
+  border-color: #e0553a;
+  color: #ffb4a2;
+}
+@media (min-width: 1024px) {
+  .gather-modal {
+    width: min(92vw, 760px);
+  }
+  .gather-tiers {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+
+/* ---- Interface review: names wrap instead of being cut, one hover / pressed / disabled language for every button ---- */
+.dh-equip-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.25;
+}
+button[data-ui]:not(:disabled):hover {
+  filter: brightness(1.12);
+}
+button[data-ui]:not(:disabled):active {
+  filter: brightness(0.92);
+  transform: translateY(1px);
+}
+button[data-ui]:disabled {
+  cursor: not-allowed;
+}
+button[data-ui]:focus-visible {
+  outline: 2px solid #ffd76a;
+  outline-offset: 2px;
+}
+
+/* Ofícios category tabs: one row that wraps as whole labels (a tab never breaks "Fornalha" or "Alquimia" in the middle of a word) */
+.oficios-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.oficios-tabs .tab {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  padding-inline: 12px;
 }

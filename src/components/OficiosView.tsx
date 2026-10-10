@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Assets from '../assets.json';
-import { t } from '../locales';
+import { fmtNum, t } from '../locales';
 import { SaveData, playerLevel } from '../game/engine';
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { RefiningRecipe, RefiningStation, refiningRecipesForStation } from '../game/refining';
@@ -101,7 +101,7 @@ export default function OficiosView({
                               <MaterialIcon item={getMaterial(mid as MaterialId)!} />
                             </span>
                             <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                              {have}/{need} {matText(`mat_${mid}`)}
+                              {fmtNum(have)}/{fmtNum(need)} {matText(`mat_${mid}`)}
                             </span>
                           </span>
                         );
@@ -162,7 +162,7 @@ export default function OficiosView({
                               <MaterialIcon item={getMaterial(mid as MaterialId)!} />
                             </span>
                             <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                              {have}/{need} {matText(`mat_${mid}`)}
+                              {fmtNum(have)}/{fmtNum(need)} {matText(`mat_${mid}`)}
                             </span>
                           </span>
                         );

@@ -139,7 +139,7 @@ export default function DesktopHome({
           </div>
           <div className="dh-hero-badges">
             <span className="dh-hero-badge level">{t('camp.level', { n: level })}</span>
-            <span className="dh-hero-badge cp">⚔️ {t('camp.cp', { n: formatNumber(cp) })}</span>
+            <span className="dh-hero-badge cp">{t('camp.cp', { n: formatNumber(cp) })}</span>
           </div>
           <div className="bar dh-hero-xpbar">
             <div className="bar-fill xp-fill" style={{ width: `${Math.round(heroProgress * 100)}%` }} />

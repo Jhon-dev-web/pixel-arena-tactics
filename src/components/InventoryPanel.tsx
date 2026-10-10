@@ -255,7 +255,7 @@ export default function InventoryPanel({
               <span className="inv-icon">
                 <GearIcon item={g} />
               </span>
-              <span className="inv-qty">×{save.inventory[g.id]}</span>
+              <span className="inv-qty">×{fmtNum(save.inventory[g.id])}</span>
             </button>
           ))}
         {showMaterials &&
@@ -269,7 +269,7 @@ export default function InventoryPanel({
               <span className="inv-icon">
                 <MaterialIcon item={m} />
               </span>
-              <span className="inv-qty">×{m.qty}</span>
+              <span className="inv-qty">×{fmtNum(m.qty)}</span>
             </button>
           ))}
         {showConsumables &&
@@ -283,7 +283,7 @@ export default function InventoryPanel({
               <span className="inv-icon">
                 <ConsumableIcon item={c} />
               </span>
-              <span className="inv-qty">×{c.qty}</span>
+              <span className="inv-qty">×{fmtNum(c.qty)}</span>
             </button>
           ))}
         {Array.from({ length: Math.max(0, 24 - (gearSlotsShown + materialItems.length + consumableItems.length)) }).map((_, i) => (
@@ -305,7 +305,7 @@ export default function InventoryPanel({
                 <span className="refine-tag">{refineTag(selectedLevel)}</span>
                 <UniqueTag templateId={selectedGear.id} />
               </span>
-              {!selectedInstance && <span className="inv-qty">×{save.inventory[selectedGear.id]}</span>}
+              {!selectedInstance && <span className="inv-qty">×{fmtNum(save.inventory[selectedGear.id])}</span>}
               {selectedInstance && isEquipped && <span className="inv-qty">{t('inventory.equipped')}</span>}
             </div>
             <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
@@ -430,7 +430,7 @@ export default function InventoryPanel({
             <div className="inv-detail-name">
               <MaterialIcon item={selectedMaterial} className="mat-icon-img" />
               <span className="inv-detail-name-text">{matText(selectedMaterial.nameKey)}</span>
-              <span className="inv-qty">×{save.materials[selectedMaterial.id]}</span>
+              <span className="inv-qty">×{fmtNum(save.materials[selectedMaterial.id])}</span>
             </div>
             <div className="inv-detail-desc">{t('inventory.materialDesc')}</div>
           </>
@@ -439,7 +439,7 @@ export default function InventoryPanel({
             <div className="inv-detail-name">
               <ConsumableIcon item={selectedConsumable} className="mat-icon-img" />
               <span className="inv-detail-name-text">{conText(selectedConsumable.nameKey)}</span>
-              <span className="inv-qty">×{save.consumables?.[selectedConsumable.id] ?? 0}</span>
+              <span className="inv-qty">×{fmtNum(save.consumables?.[selectedConsumable.id] ?? 0)}</span>
             </div>
             <div className="inv-detail-desc">{conText(selectedConsumable.descKey)}</div>
           </>

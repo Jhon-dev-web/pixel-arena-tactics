@@ -56,7 +56,7 @@ export default function PersonagemView({
           {titleLabel && <p className="hero-title-line">• {titleLabel}</p>}
           <div className="dh-hero-badges">
             <span className="dh-hero-badge level">{t('camp.level', { n: level })}</span>
-            <span className="dh-hero-badge cp">⚔️ {t('profile.cp')}: {formatNumber(computeCP(save))}</span>
+            <span className="dh-hero-badge cp">{t('profile.cp')}: {formatNumber(computeCP(save))}</span>
           </div>
           <div className="bar dh-hero-xpbar">
             <div className="bar-fill xp-fill" style={{ width: `${Math.round(progress * 100)}%` }} />

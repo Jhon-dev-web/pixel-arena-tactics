@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Assets from '../assets.json';
-import { t } from '../locales';
+import { fmtNum, t } from '../locales';
 import { effectiveRepairCost, isBattlePassActive, playerLevel, SaveData } from '../game/engine';
 import {
   GearItem,
@@ -176,7 +176,7 @@ export default function ForgeModal({
               a purely decorative title icon. Reuse the hammer emoji already used for Forge elsewhere. */}
           <span className="inline-icon-emoji">{icon}</span> {title ?? t('forge.title')}
         </h2>
-        <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
+        <p className="shop-gold">{t('ui.owned', { n: fmtNum(save.gold) })}</p>
 
         {allowedTabs.length > 1 && (
         <div className="forge-tabs">
@@ -291,7 +291,7 @@ export default function ForgeModal({
                               <span className="mat-icon">
                                 <img src={Assets.icons.gold.url} alt="" />
                               </span>
-                              <span className={`req-amount${save.gold < item.cost ? ' missing' : ''}`}>{item.cost}</span>
+                              <span className={`req-amount${save.gold < item.cost ? ' missing' : ''}`}>{fmtNum(item.cost)}</span>
                             </span>
                             {(item.recipe?.requiredLevel ?? 0) > 0 && (
                               <span className="req-item">
@@ -313,7 +313,7 @@ export default function ForgeModal({
                                     <GearIcon item={g} />
                                   </span>
                                   <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                                    {gearText(g.nameKey)}: {have}/{need}
+                                    {gearText(g.nameKey)}: {fmtNum(have)}/{fmtNum(need)}
                                   </span>
                                 </span>
                               );
@@ -408,7 +408,7 @@ export default function ForgeModal({
                           <span className="mat-icon">
                             <img src={Assets.icons.gold.url} alt="" />
                           </span>
-                          <span className={`req-amount${save.gold < cost.gold ? ' missing' : ''}`}>{cost.gold}</span>
+                          <span className={`req-amount${save.gold < cost.gold ? ' missing' : ''}`}>{fmtNum(cost.gold)}</span>
                         </span>
                         {Object.entries(cost.materials ?? {}).map(([mid, count]) => {
                           const need = count as number;
@@ -509,7 +509,7 @@ export default function ForgeModal({
                       >
                         <span>{t('forge.repair')}</span>
                         <span className="repair-cost">
-                          (<img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {cost}
+                          (<img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {fmtNum(cost)}
                           {discounted && <span className="repair-discount-tag"> -20%</span>})
                         </span>
                       </button>

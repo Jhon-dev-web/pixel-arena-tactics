@@ -1,4 +1,4 @@
-import { t } from '../locales';
+import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData } from '../game/engine';
 import { CONSUMABLES, CONSUMABLE_STACK, ConsumableId } from '../game/consumables';
@@ -32,7 +32,7 @@ export default function ShopModal({
         <h2 className="modal-title">
           <TitleIcon src={Assets.icons.gold.url} fallback="🛒" /> {t('shop.title')}
         </h2>
-        <p className="shop-gold">{t('ui.owned', { n: save.gold })}</p>
+        <p className="shop-gold">{t('ui.owned', { n: fmtNum(save.gold) })}</p>
         <p className="shop-space">{t('inventory.space', { n: slots, m: capacity })}</p>
 
         <div className="shop-body">
