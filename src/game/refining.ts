@@ -51,7 +51,7 @@ export const REFINING_RECIPES: RefiningRecipe[] = [
   },
   // Refining Dust: an outlet for the low-value common materials that pile up with nowhere to go now
   // that selling for Gold is gone (Discard is the only other option, and it returns nothing). Each
-  // recipe converts ONE surplus material type at a flat 10:1 — accepting several different inputs for
+  // recipe converts ONE surplus material type at 10:1 (8:1 for the herb, which is worth more per unit than the dust it makes at 10:1: ratio 0.55 in the profession audit) — accepting several different inputs for
   // the same output means whichever material a player happens to be drowning in works, instead of
   // forcing them to farm a specific one. Deliberately excludes refined materials (silver_ingot, steel,
   // etc.) and mid/high-tier drops (demon_claw, concentrated_blood, corrupted_crystal, demon_core) —
@@ -63,7 +63,7 @@ export const REFINING_RECIPES: RefiningRecipe[] = [
   { id: 'dust_from_copper', station: 'dust', output: 'refining_dust', outputQty: 1, input: { copper: 10 }, cost: 0, requiredLevel: 1 },
   { id: 'dust_from_leather_scrap', station: 'dust', output: 'refining_dust', outputQty: 1, input: { leather_scrap: 10 }, cost: 0, requiredLevel: 1 },
   { id: 'dust_from_bone_fragment', station: 'dust', output: 'refining_dust', outputQty: 1, input: { bone_fragment: 10 }, cost: 0, requiredLevel: 1 },
-  { id: 'dust_from_common_herb', station: 'dust', output: 'refining_dust', outputQty: 1, input: { common_herb: 10 }, cost: 0, requiredLevel: 1 },
+  { id: 'dust_from_common_herb', station: 'dust', output: 'refining_dust', outputQty: 1, input: { common_herb: 8 }, cost: 0, requiredLevel: 1 },
   // Carpentry: Woodcutting's Furnace equivalent — same 5:1 raw-to-refined ratio, same declining-per-tier
   // gold cost logic (higher tiers convert faster per hour of chopping, so the nominal per-conversion
   // price falls even as the real gold *burden* per hour stays proportional). Costs are pinned low in

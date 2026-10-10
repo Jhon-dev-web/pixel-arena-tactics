@@ -4,7 +4,7 @@
 // mirrored here line-for-line and say which lines they mirror:
 //   - BattleModal.tsx `step` loop   -> runDungeon     (the requestAnimationFrame loop, made event-driven)
 //   - App.tsx finishRun (412-488)   -> applyDungeonRun
-//   - App.tsx enterDungeon (380-410), startMining/claimMining (693-732), startWoodcutting/claimWoodcutting (742-777),
+//   - App.tsx enterDungeon (380-410), (gathering is src/game/gathering.ts now),
 //     refineMaterial (1062-1087), buyConsumable (986-1010), attrChange (1122-1131), claimQuest (600-614),
 //     upgradeHuntPouch (885-896)
 // No combat or reward MATH is re-implemented: every number comes out of src/game.
@@ -14,8 +14,6 @@ import {
   buildCombatStats,
   combatModifiersFromSave,
   computeCP,
-  computeMiningStatus,
-  computeWoodcuttingStatus,
   normalizeSave,
   playerLevel,
   SaveData,
@@ -37,8 +35,7 @@ import { MaterialId } from '../../src/game/materials';
 import { unlockedZoneIds } from '../../src/game/huntingZones';
 import { isDungeonBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
 import { UniqueDrop, addUniqueInstance } from '../../src/game/uniques';
-import { getOreTier } from '../../src/game/ores';
-import { getWoodTier } from '../../src/game/woodcutting';
+import { applyClaimGathering, applyStartGathering } from '../../src/game/gathering';
 import { getRefiningRecipe } from '../../src/game/refining';
 import { getConsumable, CONSUMABLE_STACK, ConsumableId } from '../../src/game/consumables';
 import { isBagFull } from '../../src/game/inventory';
@@ -321,12 +318,10 @@ export function enterDungeon(s: SaveData, dayKey: string): SaveData | null {
   return { ...s, dungeonSessionsDay: dayKey, dungeonSessionsUsed: used + 1 };
 }
 
-// ---- Mining / Woodcutting (App.tsx 693-777) -----------------------------------------------------------------------
+// ---- Mining / Woodcutting (src/game/gathering.ts: the very functions App.tsx calls) ---------------------------------------------
 
 export function startGathering(s: SaveData, kind: 'mine' | 'wood', id: string, now: number): SaveData | null {
-  if (s.activeHuntingZone || s.activeOreId || s.activeWoodId) return null;
-  if (kind === 'mine') return getOreTier(id) ? { ...s, activeOreId: id, lastMiningClaim: now } : null;
-  return getWoodTier(id) ? { ...s, activeWoodId: id, lastWoodcuttingClaim: now } : null;
+  return applyStartGathering(s, kind === 'mine' ? 'mining' : 'woodcutting', id, now)?.save ?? null;
 }
 
 export interface GatherClaim {
@@ -337,37 +332,8 @@ export interface GatherClaim {
 }
 
 export function claimGathering(s: SaveData, now: number): GatherClaim | null {
-  if (s.activeOreId) {
-    const status = computeMiningStatus(s, now);
-    if (!status.oreId) return null;
-    const hours = status.pendingMs / 3600000;
-    const { battlePassLevel, battlePassXp } = addBattlePassXp(s, Math.floor(hours * T.battlePass.xpPerMiningHour));
-    const save: SaveData = {
-      ...s,
-      gold: s.gold + status.goldReady,
-      materials: { ...s.materials, [status.oreId]: (s.materials[status.oreId] ?? 0) + status.oreReady },
-      skillXp: { ...s.skillXp, mining: s.skillXp.mining + status.oreReady * T.skills.xpPerUnit },
-      activeOreId: null,
-      lastMiningClaim: now,
-      battlePassLevel,
-      battlePassXp,
-    };
-    return { save, material: status.oreId, units: status.oreReady, hours };
-  }
-  if (s.activeWoodId) {
-    const status = computeWoodcuttingStatus(s, now);
-    if (!status.woodId) return null;
-    const save: SaveData = {
-      ...s,
-      gold: s.gold + status.goldReady,
-      materials: { ...s.materials, [status.woodId]: (s.materials[status.woodId] ?? 0) + status.woodReady },
-      skillXp: { ...s.skillXp, woodcutting: s.skillXp.woodcutting + status.woodReady * T.skills.xpPerUnit },
-      activeWoodId: null,
-      lastWoodcuttingClaim: now,
-    };
-    return { save, material: status.woodId, units: status.woodReady, hours: status.pendingMs / 3600000 };
-  }
-  return null;
+  const claim = applyClaimGathering(s, s.activeOreId ? 'mining' : 'woodcutting', now);
+  return claim ? { save: claim.save, material: claim.material, units: claim.units, hours: claim.hours } : null;
 }
 
 // ---- small shop / station actions ---------------------------------------------------------------------------------

@@ -122,4 +122,41 @@ Verificados e sem defeito: acúmulo com a aba fechada (timestamp, teto respeitad
 
 ## 7. Correções e estado depois
 
-Veja a seção "Depois" no fim deste arquivo, preenchida pelo commit `balance: profession pacing and refining fixes`.
+### 7.1 O que mudou (commit `balance: profession pacing and refining fixes`)
+
+| Mudança | De | Para | Motivo |
+|---|---|---|---|
+| `skills.professionGrowth3` (Nv26-50) | 1,15 | 1,06 | Nv50 de 181 h para 69 h de coleta |
+| `skills.professionGrowth4` (Nv51-75) | 1,20 | 1,10 | Nv60 de 609 h para 109 h; maior subida de 1 nível até o Nv60 de 80 h para 5,6 h (meta < 24 h); antes do Nv30 continua em 1,4 h (meta < 6 h) |
+| Obsidiana e Madeira Ancestral | Nv55 | Nv70 | Estavam 5 níveis (~16 h) depois do ouro / madeira élfica (Nv50) enquanto as peças T5 pedem personagem Nv70-75; Nv70 custa ~200 h de coleta |
+| `refining dust_from_common_herb` | 10 ervas | 8 ervas | razão saída/entradas de 0,55 para 0,69 (todo refino agora >= 0,6; teste) |
+| Trocar de tier no meio da sessão | apagava o acumulado | coleta primeiro (`gathering.ts applyStartGathering`) | defeito 1 |
+| `skillLevel(NaN)` | nível máximo | nível 1 | defeito 2 |
+| Início/coleta de sessões | dentro do `App.tsx`, espelhado à mão no simulador | `src/game/gathering.ts` (App e simulador chamam a mesma função) | defeito 5 |
+
+Bugs 3 e 4 (XP do Passe no Lenhador; Passe que expira no meio da sessão) ficaram como estão e vão para o diretor decidir.
+
+### 7.2 Conflito entre P1 e P4 (medido)
+
+Não existe ajuste de XP que cumpra os dois ao mesmo tempo, porque a porta de profissão era o freio que segurava as peças T3 (e, por tabela, o andar 50). Perfis testados (cenário A, 20 seeds, 21 dias):
+
+| Perfil | Portas de profissão <= dia do personagem + 1 (P1) | 1a seed no andar 50 (meta >= dia 10) | Mediana andar 50 | Nível d1 / d3 / d14 | Chefe 25 |
+|---|---|---|---|---|---|
+| Antes | T2 +2/+3 d, T3 +4,5/+9 d, T4 nunca | dia 10 | 14 | 13 / 29 / 49 | dia 5 |
+| **Adotado** (XP/unid 1, crescimento 1,06/1,10) | T2 +2/+3 d, T3 +4,5/+9 d, T4 nunca (3/20 seeds de Mineração 50 em 21 d) | dia 10 | 14 | 13 / 29 / 49 | dia 5 |
+| Rápido (XP/unid 4, crescimento 1,12/1,15) | **todas ok** (ferro dia 1, prata dia 3, ebano dia 4, ouro dia 14-15 contra personagem dia 16) | **dia 6** (6 8 9 9 10...) | 11 | 13 / 29 / 49 | dia 5 |
+| XP/unid 2 (crescimento antigo) | T2 +2/+3 d, T3 +3/+6 d | dia 8 | 12 | 13 / 29 / 49 | dia 5 |
+| Rápido + peças T3 com personagem Nv50 | ok | dia 9 | 11 | 13 / 29 / 51 | dia 5 |
+| Rápido + T2 Nv15 + T3 Nv35 | ok | dia 8 | 11 | 13 / 29 / 49 | dia 5 |
+| `hpGrowth` 0,17 (freio na Masmorra) | - | dia 8 | 13 | dia 1 cai para 11 (FORA) | dia 5 |
+
+Leitura: o freio real do andar 50 é a velocidade de coleta do T2/T3 e a hora que ela libera para a Caça; mexer em nível de personagem das peças (T3 Nv35/Nv50) ou na Masmorra não recupera o dia 10 sem quebrar T2/T4.
+A ordem de prioridade do pedido (P4 antes dos limites da Parte B) decide: ficou o perfil que mantém TODAS as metas de progressão. Para trocar, são três valores em `tunables.ts`:
+`skills.xpPerUnit` 4, `professionGrowth3` 1,12, `professionGrowth4` 1,15 (perfil rápido). **Decisão do diretor**: quer as portas de profissão alinhadas ao nível do personagem (perfil rápido, ~4 dias mais cedo nas peças T3 e primeiro andar 50 no dia 6) ou a progressão calibrada de antes?
+
+### 7.3 Estado depois (perfil adotado)
+
+Curva (horas de coleta contínua): Nv10 6,7 h, Nv25 19,9 h, Nv50 68,6 h, Nv55 85 h, Nv70 200 h, Nv75 282 h (antes: 6,7 / 19,9 / 181 / 314 / 2 871 / 6 556).
+O único sinal de 3x que sobra é Nv25 -> Nv50 (3,4x), que é a diferença de dificuldade entre prata e ouro, de propósito.
+Nível das profissões no dia 14 / 21 (cenário A): Mineração 34 / 47, Lenhador 29 / 44 (antes 32 / 39 e 28 / 38). Cenário C no dia 14 / 21: Mineração 36 / 42, Lenhador 34 / 42, Jardinagem 51 / 57.
+Dia de liberação em A: ferro 3, prata 7, ouro 3/20 seeds em 21 d; madeira carvalho 4, ébano 12, élfica 0/20.

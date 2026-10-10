@@ -4,7 +4,6 @@ import {
   addBattlePassXp,
   computeCP,
   computeGardenStatuses,
-  computeMiningStatus,
   computeWoodcuttingStatus,
   defaultSave,
   effectiveRepairCost,
@@ -62,6 +61,7 @@ import DeliveryModal from './components/DeliveryModal';
 import MiningModal from './components/MiningModal';
 import WoodcuttingModal from './components/WoodcuttingModal';
 import GardenModal from './components/GardenModal';
+import { applyClaimGathering, applyStartGathering } from './game/gathering';
 import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
@@ -70,9 +70,6 @@ import { crossedMilestoneFloors, dungeonRunXp, getMilestoneReward, MAX_DUNGEON_F
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
 import { nextHuntPouchTierDef } from './game/huntPouch';
-import { getOreTier, isOreTierUnlocked } from './game/ores';
-import { getWoodTier, isWoodTierUnlocked } from './game/woodcutting';
-import { skillLevel } from './game/skills';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { isDeliveryReady } from './game/deliveries';
 import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
@@ -750,8 +747,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const startMining = (oreId: string) => {
     const s = saveRef.current;
-    const tier = getOreTier(oreId);
-    if (!tier || !isOreTierUnlocked(tier, skillLevel(s.skillXp.mining, 'mining')) || s.activeOreId === oreId) return;
     if (battleFloor !== null) {
       showToast(t('mining.busyBattle'));
       return;
@@ -764,29 +759,20 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       showToast(t('hunting.busyOther'));
       return;
     }
+    // Switching tiers collects the running session first (gathering.ts), so nothing mined is thrown away.
+    const started = applyStartGathering(s, 'mining', oreId, Date.now());
+    if (!started) return;
     playSfx('click');
-    setSaveBoth({ ...s, activeOreId: oreId, lastMiningClaim: Date.now() });
+    setSaveBoth(started.save);
+    if (started.claimed) showToast(t('mining.readyOre', { n: started.claimed.units }));
   };
 
   const claimMining = () => {
-    const s = saveRef.current;
-    if (!s.activeOreId) return;
-    const status = computeMiningStatus(s, Date.now());
-    if (!status.oreId) return;
+    const claim = applyClaimGathering(saveRef.current, 'mining', Date.now());
+    if (!claim) return;
     playSfx('victory');
-    const hours = status.pendingMs / (3600 * 1000);
-    const { battlePassLevel, battlePassXp } = addBattlePassXp(s, Math.floor(hours * T.battlePass.xpPerMiningHour));
-    setSaveBoth({
-      ...s,
-      gold: s.gold + status.goldReady,
-      materials: { ...s.materials, [status.oreId]: (s.materials[status.oreId] ?? 0) + status.oreReady },
-      skillXp: { ...s.skillXp, mining: s.skillXp.mining + status.oreReady * T.skills.xpPerUnit },
-      activeOreId: null,
-      lastMiningClaim: Date.now(),
-      battlePassLevel,
-      battlePassXp,
-    });
-    showToast(t('mining.readyOre', { n: status.oreReady }) + ' · ' + t('mining.readyGold', { n: status.goldReady }));
+    setSaveBoth(claim.save);
+    showToast(t('mining.readyOre', { n: claim.units }) + ' · ' + t('mining.readyGold', { n: claim.gold }));
   };
 
   const cancelMining = () => {
@@ -796,11 +782,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth({ ...s, activeOreId: null });
   };
 
-  // Mirrors startMining/claimMining/cancelMining exactly — see woodcutting.ts/computeWoodcuttingStatus.
+  // Mirrors startMining/claimMining/cancelMining exactly — see gathering.ts and woodcutting.ts/computeWoodcuttingStatus.
   const startWoodcutting = (woodId: string) => {
     const s = saveRef.current;
-    const tier = getWoodTier(woodId);
-    if (!tier || !isWoodTierUnlocked(tier, skillLevel(s.skillXp.woodcutting, 'woodcutting')) || s.activeWoodId === woodId) return;
     if (battleFloor !== null) {
       showToast(t('woodcutting.busyBattle'));
       return;
@@ -813,25 +797,19 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       showToast(t('hunting.busyOther'));
       return;
     }
+    const started = applyStartGathering(s, 'woodcutting', woodId, Date.now());
+    if (!started) return;
     playSfx('click');
-    setSaveBoth({ ...s, activeWoodId: woodId, lastWoodcuttingClaim: Date.now() });
+    setSaveBoth(started.save);
+    if (started.claimed) showToast(t('woodcutting.readyWood', { n: started.claimed.units }));
   };
 
   const claimWoodcutting = () => {
-    const s = saveRef.current;
-    if (!s.activeWoodId) return;
-    const status = computeWoodcuttingStatus(s, Date.now());
-    if (!status.woodId) return;
+    const claim = applyClaimGathering(saveRef.current, 'woodcutting', Date.now());
+    if (!claim) return;
     playSfx('victory');
-    setSaveBoth({
-      ...s,
-      gold: s.gold + status.goldReady,
-      materials: { ...s.materials, [status.woodId]: (s.materials[status.woodId] ?? 0) + status.woodReady },
-      skillXp: { ...s.skillXp, woodcutting: s.skillXp.woodcutting + status.woodReady * T.skills.xpPerUnit },
-      activeWoodId: null,
-      lastWoodcuttingClaim: Date.now(),
-    });
-    showToast(t('woodcutting.readyWood', { n: status.woodReady }));
+    setSaveBoth(claim.save);
+    showToast(t('woodcutting.readyWood', { n: claim.units }));
   };
 
   const cancelWoodcutting = () => {

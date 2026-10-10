@@ -664,9 +664,10 @@ export class Player {
 
   private makeDust(units: number) {
     for (let i = 0; i < units; i++) {
-      const src = REFINE_DUST_SOURCES.find((m) => (this.S.materials[m] ?? 0) >= 10 + this.reservedUnits(m));
+      const recipeOf = (m: MaterialId) => REFINING_RECIPES.find((r) => r.station === 'dust' && r.input[m]);
+      const src = REFINE_DUST_SOURCES.find((m) => (this.S.materials[m] ?? 0) >= (recipeOf(m)?.input[m] ?? 10) + this.reservedUnits(m));
       if (!src) return;
-      const rec = REFINING_RECIPES.find((r) => r.station === 'dust' && r.input[src]);
+      const rec = recipeOf(src);
       if (!rec) return;
       const next = refineMaterial(this.S, rec.id);
       if (!next) return;

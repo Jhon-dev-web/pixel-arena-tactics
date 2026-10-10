@@ -187,8 +187,12 @@ const T = DebugPanel.define({
     professionBand3To: { value: 50, min: 3, max: 74, step: 1, label: 'Mining/Woodcutting curve band 3 end level' },
     professionGrowth1: { value: 1.06, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 1 (levels 1-10)' },
     professionGrowth2: { value: 1.1, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 2 (levels 11-25)' },
-    professionGrowth3: { value: 1.15, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 3 (levels 26-50)' },
-    professionGrowth4: { value: 1.2, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 4 (levels 51-75)' },
+    // Profession pacing pass (docs/PROFESSIONS_AUDIT.md). Bands 3-4 were the problem: with 1.15 / 1.2 growth Nv50 cost 181 h of coleta and Nv59->60 alone 80 h
+    // (target: under 24 h per level up to Nv60). 1.06 / 1.10 give Nv50 / Nv60 / Nv70 in ~69 / 109 / 200 h and no level-up over ~6 h up to Nv60. Levels 1-25 (bands 1-2) and the
+    // XP per unit are deliberately UNCHANGED: a "fast profile" (xpPerUnit 4, growth 1.12 / 1.15) opens every profession gate within a day of its character-level gate
+    // but moves the first Tier 3 pieces ~4 days earlier, and the first simulated seed reaches floor 50 on day 6 instead of day 10 (progression target T6), see the audit.
+    professionGrowth3: { value: 1.06, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 3 (levels 26-50)' },
+    professionGrowth4: { value: 1.10, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 4 (levels 51-75)' },
     maxLevel: { value: 75, min: 10, max: 200, step: 1, label: 'Max skill level (matches the old tier-4 character-level gate)' },
     xpPerUnit: { value: 1, min: 0.1, max: 20, step: 0.1, label: 'Mining/Woodcutting skill XP per unit gathered' },
     // Gardening XP per harvest = growth hours x this, the same XP per plot-hour for every plant (garden.ts plantHarvestXp): no

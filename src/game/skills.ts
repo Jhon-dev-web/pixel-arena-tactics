@@ -49,6 +49,8 @@ export function skillXpForNextLevel(level: number, skillId: SkillId): number {
 }
 
 export function skillLevel(xp: number, skillId: SkillId): number {
+  // A corrupted XP (NaN) is level 1, never the cap: NaN fails every `xp < total` test and would run the loop to maxLevel.
+  if (Number.isNaN(xp)) return 1;
   let level = 1;
   let total = 0;
   while (level < T.skills.maxLevel) {

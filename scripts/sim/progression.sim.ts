@@ -257,6 +257,8 @@ function report(runs: Run[], sections: Section[]): string[] {
       ),
     );
     out.push('');
+    out.push('Dia em que cada seed chegou ao andar 50 (ordenado): ' + sorted(runs.map((r) => r.first.floor50 ?? Infinity)).map((d) => (Number.isFinite(d) ? String(d) : '-')).join(' '));
+    out.push('');
   }
 
   if (has('day1')) {
