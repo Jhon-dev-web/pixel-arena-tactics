@@ -1547,6 +1547,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onOpenInventory={() => {
             playSfx('click');
             setRewardHidden(true);
+            setHuntOpen(false);
             setBagOpen(true);
           }}
         />

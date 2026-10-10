@@ -17,8 +17,8 @@
 //            Auto-potion works as in the game; the player keeps up to 5 small potions (30 gold each) bought ONLY with gold beyond
 //            what the next gear craft needs, and not while the last two sessions died without clearing a floor.
 //   Hunting  the default background activity: the highest-XP zone unlocked by Dungeon floor, at the deepest depth the
-//            hero's CP allows (the UI's recommended-CP rule). Capped by the zone's offline cap (4-8 h), the Hunting Pouch
-//            (3 slots at tier 1, 4 at tier 2 ...) and the bag, all exactly as coded.
+//            hero's CP allows (the UI's recommended-CP rule). Capped by the zone's offline cap (4-8 h); its loot goes into
+//            the one inventory at claim time (what does not fit is left behind), exactly as coded.
 //   Mining / Woodcutting
 //            only when the next gear craft (or the next refine) is missing ore / wood. Activities that still have
 //            something to cover take turns (the one done longest ago goes first). A locked ore tier is reached by mining
@@ -31,8 +31,11 @@
 //            helmet > boots > ring (player.ts CRAFT_PRIORITY); missing intermediate materials go through the Furnace / Tannery /
 //            Carpentry / Alchemy recipes; crafting consumes lower-tier pieces exactly as the forge does; a craft blocked on gems buys
 //            them with shards. It equips whatever has the best computeCP in each slot, refines the equipped WEAPON and ARMOR with gold
-//            that is not earmarked for the next craft (the four extra slots stay +0), and sockets spare gems into those two. The Hunting
-//            Pouch upgrade (300 gold + 20 scrap) is bought as soon as it is affordable, before anything else.
+//            that is not earmarked for the next craft (the four extra slots stay +0), and sockets spare gems into those two. 
+//   Bag      (Rodada 5, player.ts 'inventory policy') before a claim or a session that would overflow it makes room: stashes the valuable surplus, sells what the
+//            merchant buys (bulkiest first, within the daily budget), discards the cheap junk, never touching what the next craft or the stash upgrade needs; brings
+//            from the Baú what a craft or an order needs; buys the first two Baú upgrades with gold that is NOT earmarked for the next craft; buys a bag expansion when
+//            3 slots or fewer are free.
 //   Points   3 per level, spread 35% STR / 30% VIT / 20% AGI / 15% RES.
 //   Orders   one delivery at a time: the best-paying affordable offer that fits in 12 h and does not take materials the
 //            next craft needs. No rerolls, no tickets.
@@ -40,11 +43,9 @@
 //   Not driven: Battle Pass (the free-track claim lives inside App.tsx), Fertilizer, Whetstone Oil, the other potions and elixirs, reforge,
 //            extra Dungeon sessions with shards, the legacy Expedition, salvage of old gear, the shop beyond HP potions.
 //
-// Two scenarios run on the same seeds: A (the policy above, as asked) and B (A plus one short visit of up to 15 min after
-// the first visit of the day, only while the next craft / the pouch upgrade still needs common Hunting drops - see
-// player.ts PlayerOptions). B is the sensitivity check for a player who learned the short-hunt trick; after the 3-slot pouch it
-// should not be meaningfully faster than A (the report prints the A-B gap on every milestone). The balance targets T1-T8 of
-// docs/BALANCE_CHANGES.md are measured on A and printed in the 'Metas' sections.
+// Scenarios on the same seeds: A (the policy above, as asked), N (A that never touches the inventory: no stash, merchant, discard, expansion - the player who
+// ignores it), C (profession-heavy player) and a no-tonics control. The balance targets T2-T8 and the inventory targets I1-I4 of docs/BALANCE_CHANGES.md are
+// measured on A (I1 and I3 on N) and printed in the 'Metas' section.
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
 import { computeCP } from '../../src/game/engine';
 import { dungeonEnemyKindForFloor, MAX_DUNGEON_FLOOR, recommendedCpForFloor } from '../../src/game/dungeon';
@@ -113,7 +114,7 @@ function medianDay(runs: Run[], ev: FirstEvent): string {
 
 // ---- report -------------------------------------------------------------------------------------------------------
 
-type Section = 'progress' | 'xp' | 'dungeon' | 'gold' | 'materials' | 'firsts' | 'day1';
+type Section = 'progress' | 'xp' | 'dungeon' | 'gold' | 'materials' | 'inventory' | 'firsts' | 'day1';
 
 function report(runs: Run[], sections: Section[]): string[] {
   const out: string[] = [];
@@ -210,12 +211,42 @@ function report(runs: Run[], sections: Section[]): string[] {
     out.push('');
   }
 
-  if (has('materials')) {
-    out.push('#### Materiais recebidos por dia (unidades que entraram na bolsa) e horas de cada atividade');
+  if (has('inventory')) {
+    out.push('#### Inventário por dia: espaços ocupados, o que ficou para trás e o que a política fez (mediana entre seeds, mín–máx)');
     out.push('');
     out.push(
       ...table(
-        ['Dia', 'Comum', 'Incomum', 'Raro', 'Perdido na bolsa de caça', 'Horas caçando', 'Horas minerando', 'Horas cortando'],
+        ['Dia', 'Capacidade', 'Espaços no fim do dia', 'Pico do dia', 'Ficou para trás (caça + coleta)', '% do dia perdido', 'Guardado no Baú', 'Vendido', 'Descartado', 'Ouro do mercador', 'Ouro das outras fontes', 'Baú: nível / espaços'],
+        dayIdx.map((d) => {
+          const lost = (x: DaySnapshot) => x.ledger.lost + x.ledger.inv.lostGather;
+          const kept = (x: DaySnapshot) => x.ledger.mats.common + x.ledger.mats.uncommon + x.ledger.mats.rare;
+          const pct = at(d).map((x) => (lost(x) + kept(x) > 0 ? (lost(x) / (lost(x) + kept(x))) * 100 : 0));
+          return [
+            String(d + 1),
+            cell(at(d).map((x) => x.ledger.inv.capacity)),
+            cell(at(d).map((x) => x.ledger.inv.slotsEnd)),
+            cell(at(d).map((x) => x.ledger.inv.slotsMax)),
+            cell(at(d).map(lost)),
+            `${num(median(pct), 1)}%`,
+            cell(at(d).map((x) => x.ledger.inv.stashed)),
+            cell(at(d).map((x) => x.ledger.inv.sold)),
+            cell(at(d).map((x) => x.ledger.inv.discarded)),
+            cell(at(d).map((x) => x.ledger.goldIn['mercador'] ?? 0)),
+            cell(at(d).map((x) => sum(x.ledger.goldIn) - (x.ledger.goldIn['mercador'] ?? 0))),
+            `${cell(at(d).map((x) => x.stashLevel))} / ${cell(at(d).map((x) => x.stashSlots))}`,
+          ];
+        }),
+      ),
+    );
+    out.push('');
+  }
+
+  if (has('materials')) {
+    out.push('#### Materiais recebidos por dia (unidades que entraram no inventário) e horas de cada atividade');
+    out.push('');
+    out.push(
+      ...table(
+        ['Dia', 'Comum', 'Incomum', 'Raro', 'Ficou para trás na caça', 'Horas caçando', 'Horas minerando', 'Horas cortando'],
         dayIdx.map((d) => [
           String(d + 1),
           cell(at(d).map((x) => x.ledger.mats.common)),
@@ -230,7 +261,7 @@ function report(runs: Run[], sections: Section[]): string[] {
     );
     out.push('');
     out.push(
-      'Comum / Incomum / Raro: Caça usa a raridade do próprio drop; minério e madeira usam o tier (T1-T2 comum, T3-T4 incomum, T5 raro). "Perdido" = unidades sorteadas que não couberam nos espaços da bolsa de caça.',
+      'Comum / Incomum / Raro: Caça usa a raridade do próprio drop; minério e madeira usam o tier (T1-T2 comum, T3-T4 incomum, T5 raro). "Ficou para trás" = unidades sorteadas que não couberam no inventário no resgate.',
     );
     out.push('');
   }
@@ -247,6 +278,10 @@ function report(runs: Run[], sections: Section[]): string[] {
       ['zone2', 'Segunda zona de caça liberada'],
       ['floor50', 'Chegou ao andar 50 (a próxima sessão começa nele)'],
       ['boss50', 'Marco do andar 50 recebido (chefe do bioma 2 vencido)'],
+      ['bagFull', 'Inventário cheio pela primeira vez (antes de qualquer arrumação)'],
+      ['stash1', 'Primeira melhoria do Baú'],
+      ['stash2', 'Segunda melhoria do Baú'],
+      ['stash3', 'Terceira melhoria do Baú'],
     ];
     out.push(
       ...table(
@@ -522,7 +557,7 @@ function enemyCurve(): { lines: string[]; worst: number } {
 
 const ok = (b: boolean) => (b ? 'ok' : 'FORA DA META');
 
-function metas(a: Run[], curveWorst: number): string[] {
+function metas(a: Run[], n: Run[], curveWorst: number): string[] {
   const lvl = (runs: Run[], d: number) => runs.map((r) => r.days[d].level);
   const inBand = (xs: number[], lo: number, hi: number) => median(xs) >= lo && median(xs) <= hi;
   const dayMed = (runs: Run[], ev: FirstEvent) => median(runs.map((r) => r.first[ev] ?? Infinity));
@@ -584,6 +619,23 @@ function metas(a: Run[], curveWorst: number): string[] {
   ]);
   rows.push(['T8', 'Derrota mantém 75% do ouro da sessão', `${num(T.battle.defeatGoldKept * 100)}%`, '-', ok(T.battle.defeatGoldKept === 0.75)]);
 
+  // inventory (Rodada 5): pacing, overflow losses of the careful and the careless player, and the merchant's share of the gold
+  const lossPct = (runs: Run[]) =>
+    runs.map((r) => {
+      const lost = r.days.reduce((sum, d) => sum + d.ledger.lost + d.ledger.inv.lostGather, 0);
+      const kept = r.days.reduce((sum, d) => sum + d.ledger.mats.common + d.ledger.mats.uncommon + d.ledger.mats.rare, 0);
+      return lost + kept > 0 ? (lost / (lost + kept)) * 100 : 0;
+    });
+  // The reference is the daily Gold of a player BEFORE the merchant existed (the pre-inventory simulation, medians of 20 seeds at days 3 / 7 / 14), not today's
+  // other income: a player who stashes, sells and discards also trades away some of his delivery orders, and the cap must not move with that.
+  const BASELINE_DAILY_GOLD: Record<number, number> = { 2: 424, 6: 521, 13: 483 };
+  const merchantShare = (d: number) => median(a.map((r) => ((r.days[Math.min(d, r.days.length - 1)].ledger.goldIn['mercador'] ?? 0) / BASELINE_DAILY_GOLD[d]) * 100));
+  const fullDay = dayMed(n, 'bagFull'); // the pace at which the bag fills when nobody tidies it (the careful player tidies before it ever does)
+  rows.push(['I1', 'Com 2 visitas por dia, o inventário enche pela primeira vez entre os dias 3 e 6 (não no dia 1, não nunca), no ritmo de quem não arruma', `dia ${medianDay(n, 'bagFull')} (mín–máx ${Math.min(...n.map((r) => r.first.bagFull ?? Infinity))}–${Math.max(...n.map((r) => r.first.bagFull ?? 0))}; ${n.filter((r) => r.first.bagFull !== undefined).length}/${n.length} seeds); jogador atento: ${a.filter((r) => r.first.bagFull !== undefined).length}/${a.length} seeds chegam a encher antes de arrumar`, '-', ok(fullDay >= 3 && fullDay <= 6)]);
+  rows.push(['I2', 'Jogador atento perde menos de 5% dos materiais por transbordo', `mediana ${num(median(lossPct(a)), 2)}% · pior seed ${num(Math.max(...lossPct(a)), 2)}%`, '-', ok(median(lossPct(a)) < 5)]);
+  rows.push(['I3', 'Jogador que ignora o inventário sente: perde pelo menos 10% dos materiais', `mediana ${num(median(lossPct(n)), 1)}% · pior seed ${num(Math.max(...lossPct(n)), 1)}% · melhor seed ${num(Math.min(...lossPct(n)), 1)}%`, '-', ok(median(lossPct(n)) >= 10)]);
+  rows.push(['I4', 'Ouro do mercador (vendendo todo o excesso do dia) no máximo ~35% do ouro diário de antes do mercador (424 / 521 / 483), nos dias 3, 7 e 14', `dia 3: +${num(merchantShare(2), 1)}% · dia 7: +${num(merchantShare(6), 1)}% · dia 14: +${num(merchantShare(13), 1)}%`, '-', ok(merchantShare(2) <= 35 && merchantShare(6) <= 35 && merchantShare(13) <= 35)]);
+
   return ['| Meta | Critério | Cenário A (pedido) | Resultado |', '| --- | --- | --- | --- |', ...rows.map((r) => `| ${r.slice(0, 3).join(' | ')} | ${r[4]} |`), ''];
 }
 
@@ -599,21 +651,26 @@ describe('progression simulation', () => {
     const started = performance.now();
     const a: Run[] = [];
     const c: Run[] = [];
+    const n: Run[] = []; // the careless player: never touches the inventory
     const ctl: Run[] = []; // scenario A without the Garden 3.0 tonics: the control of the tonic budget
     for (let seed = 1; seed <= SEEDS; seed++) {
       a.push(playOne(seed, {}));
       c.push(playOne(seed, { garden: true, balanced: true }));
+      n.push(playOne(seed, { careless: true }));
       ctl.push(playOne(seed, { tonics: false }));
     }
-    const all: Section[] = ['progress', 'xp', 'dungeon', 'gold', 'materials', 'firsts', 'day1'];
+    const all: Section[] = ['progress', 'xp', 'dungeon', 'gold', 'materials', 'inventory', 'firsts', 'day1'];
     const curve = enemyCurve();
     const text = [
-      '### Metas de balanceamento (T1 a T8)',
+      '### Metas de balanceamento (T2 a T8) e do inventário (I1 a I4)',
       '',
-      ...metas(a, curve.worst),
+      ...metas(a, n, curve.worst),
       '### Cenário A (pedido): 2 visitas por dia',
       '',
       ...report(a, all),
+      '### Cenário N (descuidado): o mesmo jogador que nunca guarda, vende, descarta nem expande o inventário',
+      '',
+      ...report(n, ['progress', 'materials', 'inventory', 'firsts']),
       '### Profissões, cenário A (pedido)',
       '',
       ...professionReport(a),

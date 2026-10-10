@@ -348,3 +348,93 @@ A simulação agora forja e equipa a relíquia (a de maior CP, uma só) depois d
 - **A Crista de Berserker passa de 12 % de Δln P no nível 90** (cresce com a chance de crítico): se quiser a razão de 1,5x também lá, ela precisaria de um valor que cresça menos com o tier.
 - **A Crista vale +0,75 de dano crítico agora**, número que não estava na lista de decisões: com 0,5 o ΔCP dela cai para +2,6 % (nível 30) e a razão com a regeneração de 0,9 % passa de 1,5x.
 - A `legacy-arena` ainda lê `focusHpBonus`, `attackStaminaReduction` e `burnTurns` (fora do build); pode ser apagada se a arena antiga não vai voltar.
+
+
+# Rodada 5 — inventário único
+
+Regras e números em `docs/INVENTORY.md`. Esta seção só traz o que a simulação (`npm run sim`, 20 seeds, 21 dias) mediu e o que foi ajustado por causa dela.
+
+## 21. O que mudou no encanamento da economia
+
+- A Bolsa de Caça deixou de existir; a caça entrega no inventário único no resgate. Todo empilhável guarda 99 por espaço; o Baú (20 -> 100 espaços) e o mercador
+  (com orçamento diário) são os novos escoadouros. Nenhuma taxa de drop, ouro por hora ou XP mudou.
+- A simulação perdeu o cenário B (visita curta para fugir da bolsa de 2-3 espaços: sem a bolsa o truque não existe) e a meta T1 (bolsa do tier 1). O jogador
+  simulado ganhou uma política de inventário (guarda no Baú o excesso valioso, vende o que o mercador compra, descarta o lixo barato, nunca toca no que a próxima
+  peça ou a melhoria do Baú precisa, traz do Baú o que uma receita ou pedido pede) e há um cenário **N** (o mesmo jogador, mas que ignora o inventário).
+
+## 22. Metas de progressão (cenário A, mediana)
+
+| Meta | Antes | Depois |
+| --- | --- | --- |
+| Primeira sessão termina no andar >= 8; checkpoint 10 no dia 1 | 8; dia 1 | 8; dia 1 |
+| Primeira peça forjada (alvo <= dia 2) | dia 2 | dia 2 |
+| Nível dia 1 / 3 / 14 (alvos 10-16 / 20-29 / 45-60) | 13 / 29 (27-34) / 50 (46-51) | 13 / 27 (25-33) / 48 (46-49) |
+| Chefe 25 vencido pela 1ª vez (alvo dia 4-6) | dia 5 | dia 5 |
+| Chegada ao andar 50 (nenhuma seed antes do dia 10) | 1ª seed dia 10, mediana 15 | 1ª seed dia 11, mediana 15,5 |
+| Chefe 50 (1ª seed por volta dos dias 12-16) | 1ª seed dia 13, 6/20 em 21 dias | 1ª seed dia 12, 11/20 em 21 dias |
+| Queda de dificuldade depois de chefe ((N+1)/(N-1) >= 1) | 1,77 | 1,77 |
+| Primeiro refino bem-sucedido | dia 3 | dia 2 |
+| Primeira relíquia | dia 16 | dia 13 |
+
+Nenhuma meta quebrou. O nível cai um pouco (-2 no dia 3 e no dia 14): o jogador atento gasta tempo e ouro arrumando o inventário e comprando melhorias do Baú (mediana
+de ouro gasto nos 21 dias: Baú 785, mochila 750), e perde parte dos Pedidos quando troca estoque por espaço. Continua dentro de todas as faixas.
+
+## 23. Ritmo do inventário
+
+Capacidade e pacing (cenário N = jogador que ignora o inventário, cenário A = jogador atento):
+
+| Dia | Espaços no fim do dia (A, mediana) | Pico (A) | Capacidade (A) | N: espaços | N: % do dia perdido |
+| --: | --- | --- | --- | --- | --- |
+| 3 | 11 | 11 | 26 | 11 | 0 % |
+| 5 | 22 | 22 | 26 | 22 | 0 % |
+| 6 | 24 | 25 | 30 | 26 (cheio) | 12 % |
+| 7 | 24 | 25 | 30 | 26 | 83 % |
+| 10 | 22 | 24 | 30 | 26 | 100 % |
+| 14 | 24 | 24 | 30 | 26 | 50 % |
+| 21 | 30 | 30 | 35 | 26 | 50 % |
+
+- **Primeira vez cheio**: dia **6** (5-7) para quem não arruma; o jogador atento arruma antes de encher (4/20 seeds chegam a encher antes do primeiro resgate).
+- **Perda por transbordo do jogador atento**: mediana **0 %**, pior seed 10,5 % (pior dia de uma seed). Meta < 5 % de mediana: cumprida.
+- **Jogador descuidado**: perde **60 % dos materiais** (mediana; 21-83 % entre seeds), de 80-100 % por dia entre os dias 7 e 10; no dia 14 está no nível 43 (contra 48),
+  parado no andar 30 e sem a segunda peça de tier 3: sente.
+
+### Ajuste feito: capacidade base 30 -> 26 (e um degrau novo de 30 por 250 Ouro)
+
+Com a base em 30 o jogador que ignora o inventário só enchia no **dia 7** (6-9), fora da faixa 3-6 pedida. Medido: o inventário passa de 14 espaços no dia 4 para 22 no
+dia 5 (a segunda zona de caça libera três materiais novos) e 26 no dia 6; com 26 enche no dia 6 (5-7). O ajuste é mínimo (4 espaços) e **só vale para contas novas**:
+o piso do carregamento nunca desce, então quem já tem 30 mantém 30. Entra um degrau de 30 espaços a 250 Ouro (os demais degraus não mudaram). Se o diretor preferir manter 30,
+a única meta que sai da faixa é essa, por um dia.
+
+## 24. Mercador: orçamento diário
+
+Fórmula: `orçamento = 30 + 2 x nível`. O jogador atento vende o máximo todos os dias; ouro do mercador por dia contra o ouro diário **de antes do mercador** (424 / 521 / 483
+nos dias 3 / 7 / 14, medianas da simulação anterior):
+
+| Dia | Nível (mediana) | Orçamento | Ouro vendido (A) | Contra o ouro de antes |
+| --: | --: | --: | --: | --: |
+| 3 | 27 | 84 | 0 (ainda não precisa vender) | +0 % |
+| 7 | ~40 | 110 | 108 | +20,7 % |
+| 14 | 48 | 126 | 126 | +26,1 % |
+| 21 | ~52 | 134 | 134 | - |
+
+Meta: no máximo ~35 % acima do ouro do dia; o pico medido é 26 %. Usei o ouro de antes do mercador como referência fixa, e não a renda atual do jogador atento, porque esse
+jogador também troca estoque de Pedidos por espaço (a renda de "outras fontes" dele cai nos dias 12-21) e o teto não deve se mexer com isso.
+
+Preço: 15 % do valor de referência (mínimo 1; 1 Ouro por Farrapo/Osso, 3 por Núcleo...). Varredura de arbitragem: **0 violações** em todas as receitas de refino, alquimia e na volta
+forjar-desmontar-vender, sem baixar nenhum preço de consumível.
+
+## 25. Baú: custos
+
+As duas primeiras melhorias (100 Ouro + 4 cabos + 3 barras de cobre; 250 Ouro + 8 cabos + 6 barras) saem **no dia 9 (mediana; 18/20 seeds)** e **no dia 13 (15/20)**; a terceira
+só no fim do horizonte (1/20 até o dia 21). Elas usam o ouro que não é da próxima peça (as duas primeiras ignoram a reserva da peça, as seguintes a respeitam) e a coleta de
+Mineração / Lenhador para os cabos e barras entra como demanda mesmo antes de a peça estar coberta (só nas duas primeiras). Efeito nas peças: primeira peça forjada dia 2, chefe 25 no dia 5, linha
+do tempo dos tiers inalterada: a peça não é esfomeada. Os cabos e barras do Baú são da mesma ordem de grandeza da receita de equipamento do mesmo tier (4-8 cabos e 3-8 barras
+contra 1-2 cabos e 1-3 barras por peça): o Baú vira o destino de longo prazo de Lenhador e Mineração.
+
+## 26. Pontos para o diretor decidir
+
+- Capacidade base 26 em vez de 30 (seção 23). Reverter é trocar `DEFAULT_INVENTORY_CAPACITY` e tirar o degrau de 30.
+- O orçamento do mercador cresce com o nível, mas o ouro diário de quem está nos andares altos (acima do dia 21) não foi medido: se a renda dele crescer mais que
+  `2 x nível`, a fração do mercador encolhe sozinha; se não, o orçamento pode ficar generoso.
+- Peças de equipamento (instâncias) não vão para o Baú (só empilháveis): peças únicas e sobras ocupam espaço do inventário. É a única decisão que dá para abrir depois.
+- O jogador atento perde parte dos Pedidos (ouro) por manter menos estoque; se isso for um problema de design, o remédio é capacidade, não o mercador.

@@ -34,7 +34,13 @@ import {
 } from '../../src/game/huntingZones';
 import { applyHuntClaim, planHuntClaim, requestHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
 import { applyDeliveryAccept, applyDeliveryClaim, canAffordOffer, ensureDeliveryOffers } from '../../src/game/deliveries';
-import { expandInventory, inventoryCapacity, inventorySlotsUsed } from '../../src/game/inventory';
+import { bagFreeSlots, expandInventory, inventoryCapacity, inventorySlotsUsed, slotsForQty } from '../../src/game/inventory';
+import { applyStashMove, applyStashUpgrade, nextStashUpgrade, stashSlotsUsed } from '../../src/game/stash';
+import { applyMerchantSell } from '../../src/game/merchant';
+import { applyDiscard } from '../../src/game/bagActions';
+import { baseGoldValue } from '../../src/game/economy';
+import { huntInventoryStatus } from '../../src/game/huntInventory';
+import { computeMiningStatus, computeWoodcuttingStatus } from '../../src/game/engine';
 import T from '../../src/game/tunables';
 import {
   applyDungeonRun,
@@ -88,11 +94,14 @@ export interface DayLedger {
   goldOut: Record<string, number>;
   mats: { common: number; uncommon: number; rare: number };
   lost: number; // units a hunt claim left behind because the inventory had no room
+  // Inventory bookkeeping of the day (units unless said otherwise): slots at the day's highest point and at its end, what gathering left behind, and what the
+  // inventory policy did (stashed / sold / discarded).
+  inv: { slotsMax: number; slotsEnd: number; capacity: number; lostGather: number; stashed: number; sold: number; discarded: number };
   hours: { hunt: number; mine: number; wood: number };
   units: Record<string, number>; // ore / wood / garden units that entered the bag today, by material id
 }
 
-const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, lost: 0, hours: { hunt: 0, mine: 0, wood: 0 }, units: {} });
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {} });
 
 export interface DaySnapshot {
   day: number;
@@ -106,11 +115,13 @@ export interface DaySnapshot {
   skills: { mining: number; woodcutting: number; gardening: number };
   // Best tier owned in each of the six slots at the end of the day (what the gear timeline is made of).
   tiers: Record<string, number>;
+  stashLevel: number;
+  stashSlots: number;
   ledger: DayLedger;
   sessions: SessionRecord[];
 }
 
-export type FirstEvent = 'firstCraft' | 'firstRelic' | 'firstRefine' | 'floor10' | 'floor24' | 'floor25' | 'floor50' | 'boss50' | 'zone2';
+export type FirstEvent = 'firstCraft' | 'firstRelic' | 'firstRefine' | 'floor10' | 'floor24' | 'floor25' | 'floor50' | 'boss50' | 'zone2' | 'bagFull' | 'stash1' | 'stash2' | 'stash3';
 
 // ---- planner ------------------------------------------------------------------------------------------------------
 
@@ -123,7 +134,8 @@ interface Plan {
   gems: Partial<Record<GemId, number>>;
   minLevel: number;
   batches: { recipeId: string; times: number }[];
-  deficit: Mats; // raw units still missing after refining and what the bag already holds
+  deficit: Mats; // raw units still missing after refining and what the bag (and the stash, for a stash-aware plan) already holds
+  needs: Mats; // every unit the plan consumes, intermediate materials included (what must stay in the bag until the craft)
   blocked: boolean; // needs something no activity can fetch right now (level, gems, shards)
   impossible: boolean;
 }
@@ -136,7 +148,10 @@ function unequippedCounts(s: SaveData): Record<string, number> {
   return out;
 }
 
-export function planFor(s: SaveData, tpl: string): Plan {
+// `bagOnly`: count only what the inventory holds (recipes consume nothing else); otherwise the stash counts as available (it can be brought over).
+const owned = (s: SaveData, m: MaterialId, bagOnly: boolean): number => (s.materials[m] ?? 0) + (bagOnly ? 0 : s.stash?.materials[m] ?? 0);
+
+export function planFor(s: SaveData, tpl: string, bagOnly = false): Plan {
   const item = getGear(tpl);
   const plan: Plan = {
     tpl,
@@ -148,6 +163,7 @@ export function planFor(s: SaveData, tpl: string): Plan {
     minLevel: 0,
     batches: [],
     deficit: {},
+    needs: {},
     blocked: false,
     impossible: false,
   };
@@ -183,7 +199,7 @@ export function planFor(s: SaveData, tpl: string): Plan {
   for (let pass = 0; pass < 12; pass++) {
     let changed = false;
     for (const m of Object.keys(need) as MaterialId[]) {
-      const short = (need[m] ?? 0) - (s.materials[m] ?? 0) - (made[m] ?? 0);
+      const short = (need[m] ?? 0) - owned(s, m, bagOnly) - (made[m] ?? 0);
       const rec = recipeFor(m);
       if (short > 0 && rec) {
         const b = Math.ceil(short / rec.outputQty);
@@ -200,9 +216,10 @@ export function planFor(s: SaveData, tpl: string): Plan {
   plan.batches = Object.entries(batches).map(([recipeId, times]) => ({ recipeId, times }));
   for (const m of Object.keys(need) as MaterialId[]) {
     if (recipeFor(m)) continue;
-    const short = (need[m] ?? 0) - (s.materials[m] ?? 0);
+    const short = (need[m] ?? 0) - owned(s, m, bagOnly);
     if (short > 0) plan.deficit[m] = short;
   }
+  plan.needs = need;
   const lvl = playerLevel(s.xp);
   const gemsMissing = Object.entries(plan.gems).some(([g, n]) => (s.gems[g as GemId] ?? 0) < (n as number));
   plan.blocked = lvl < plan.minLevel || gemsMissing || s.shards < plan.shards;
@@ -228,7 +245,7 @@ export const CRAFT_PRIORITY = ['weapon', 'armor', 'gloves', 'helmet', 'boots', '
 
 // The next thing worth crafting: the lowest tier first (slot priority on a tie), skipping a slot that is blocked on something
 // no activity can fetch when another one is not.
-function chooseTarget(s: SaveData): Plan | null {
+function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
   const plans: Plan[] = [];
   for (const slot of CRAFT_PRIORITY) {
     const owned = bestTier(s, slot);
@@ -236,13 +253,13 @@ function chooseTarget(s: SaveData): Plan | null {
     if (cands.length === 0) continue;
     const minTier = Math.min(...cands.map((g) => g.tier ?? 0));
     const pick = cands.filter((g) => (g.tier ?? 0) === minTier).sort((a, b) => a.cost - b.cost)[0];
-    const p = planFor(s, pick.id);
+    const p = planFor(s, pick.id, bagOnly);
     if (!p.impossible) plans.push(p);
   }
   const priority = (p: Plan) => CRAFT_PRIORITY.indexOf(p.slot as (typeof CRAFT_PRIORITY)[number]);
   // Relic (Rodada 4): one stackable piece for the single relic slot, no tiers. Once none is owned, the one that adds the most CP is worth crafting after the
   // whole tier-2 set (RELIC_AFTER_TIER), so it never delays the weapon / armor of a tier but does not wait for tier 4 either.
-  const relic = chooseRelic(s);
+  const relic = chooseRelic(s, bagOnly);
   if (relic) plans.push(relic);
   const owned = (p: Plan) => (p.slot === 'relic' ? RELIC_AFTER_TIER : bestTier(s, p.slot));
   plans.sort((a, b) => Number(a.blocked) - Number(b.blocked) || owned(a) - owned(b) || priority(a) - priority(b));
@@ -254,12 +271,12 @@ const relicIds = (): string[] => GEAR.filter((g) => g.slot === 'relic' && g.reci
 const withRelic = (s: SaveData, id: string | null): SaveData => ({ ...s, equipped: { ...s.equipped, relic: id } });
 const ownedRelics = (s: SaveData): string[] => relicIds().filter((id) => (s.inventory[id] ?? 0) > 0);
 
-function chooseRelic(s: SaveData): Plan | null {
+function chooseRelic(s: SaveData, bagOnly = false): Plan | null {
   if (ownedRelics(s).length > 0) return null;
   let best: Plan | null = null;
   let bestCp = -Infinity;
   for (const id of relicIds()) {
-    const p = planFor(s, id);
+    const p = planFor(s, id, bagOnly);
     if (p.impossible) continue;
     const cp = computeCP(withRelic(s, id));
     if (cp > bestCp) {
@@ -288,6 +305,8 @@ export interface PlayerOptions {
   // the day gathering (mining on even days, woodcutting on odd ones, the best unlocked tier) instead of hunting.
   garden?: boolean;
   balanced?: boolean;
+  // A player who ignores the inventory entirely: never stashes, sells, discards, expands or brings anything over (everything else as the baseline).
+  careless?: boolean;
 }
 
 // Garden 3.0 tonics the policy crafts (one of each in stock) and drinks on a boss attempt; gatherer_brew is drunk before a Mining / Woodcutting session.
@@ -364,6 +383,8 @@ export class Player {
       this.now = Math.max(this.now, at);
       this.checkIn(i === 0 ? 'first' : 'second');
     });
+    this.sample();
+    this.ledger.inv.slotsEnd = inventorySlotsUsed(this.S);
     this.snapshots.push({
       day: day + 1,
       level: playerLevel(this.S.xp),
@@ -374,6 +395,8 @@ export class Player {
       gold: this.S.gold,
       skills: { mining: skillLevel(this.S.skillXp.mining, 'mining'), woodcutting: skillLevel(this.S.skillXp.woodcutting, 'woodcutting'), gardening: skillLevel(this.S.skillXp.gardening, 'gardening') },
       tiers: Object.fromEntries(CRAFT_PRIORITY.map((slot) => [slot, bestTier(this.S, slot)])),
+      stashLevel: this.S.stash.level,
+      stashSlots: stashSlotsUsed(this.S),
       ledger: this.ledger,
       sessions: this.sessions,
     });
@@ -411,19 +434,33 @@ export class Player {
         this.ledger.hours.hunt += hours;
         this.huntHours += hours;
         for (const [m, q] of Object.entries(p.drops) as [MaterialId, number][]) this.huntUnits[m] = (this.huntUnits[m] ?? 0) + q;
-        // what the claim will place in the inventory and what it will leave behind (the very function the claim uses)
-        const plan = planHuntClaim(stopped, p);
+        // The reward screen shows what the claim would leave behind (the very function the claim uses): a careful player makes room first.
+        this.S = stopped;
+        this.sample();
+        let plan = planHuntClaim(this.S, p);
+        if (plan.leftBehind.length > 0 && !this.opts.careless) {
+          this.makeRoom(bagFreeSlots(this.S, this.now) + huntInventoryStatus(this.S, p.zoneId, p.drops, p.uniques).missingSlots);
+          plan = planHuntClaim(this.S, p);
+        }
         for (const [m, q] of Object.entries(plan.added) as [MaterialId, number][]) this.ledger.mats[rarityOf(m)] += q;
         for (const l of plan.leftBehind) this.ledger.lost += l.count;
-        const claimed = applyHuntClaim(stopped, p.id);
+        const claimed = applyHuntClaim(this.S, p.id);
         if (claimed) this.set(claimed, 'caça');
+        else this.S = s;
       }
     } else if (s.activeOreId || s.activeWoodId) {
       const mine = !!s.activeOreId;
-      const c = claimGathering(s, this.now);
+      // gathering leaves the excess behind: a careful player makes room for the session's units first
+      const st = mine ? computeMiningStatus(s, this.now) : computeWoodcuttingStatus(s, this.now);
+      const gathered = mine ? (st as ReturnType<typeof computeMiningStatus>).oreReady : (st as ReturnType<typeof computeWoodcuttingStatus>).woodReady;
+      const id = mine ? (st as ReturnType<typeof computeMiningStatus>).oreId : (st as ReturnType<typeof computeWoodcuttingStatus>).woodId;
+      this.sample();
+      if (id && !this.opts.careless) this.makeRoom(slotsForQty((s.materials[id] ?? 0) + gathered) - slotsForQty(s.materials[id] ?? 0));
+      const c = claimGathering(this.S, this.now);
       if (c) {
-        this.ledger.mats[rarityOf(c.material)] += c.units;
-        this.ledger.units[c.material] = (this.ledger.units[c.material] ?? 0) + c.units;
+        this.ledger.mats[rarityOf(c.material)] += c.units - c.leftBehind;
+        this.ledger.inv.lostGather += c.leftBehind;
+        this.ledger.units[c.material] = (this.ledger.units[c.material] ?? 0) + c.units - c.leftBehind;
         this.ledger.hours[mine ? 'mine' : 'wood'] += c.hours;
         this.set(c.save, 'coleta');
       }
@@ -433,11 +470,167 @@ export class Player {
     this.checkMarks();
   }
 
+  // ---- inventory policy ---------------------------------------------------------------------------------------------------------------------------
+  // The policy of a player who looks at the bag: records how full it is, keeps what the next craft (and the stash upgrade) needs, and makes room when a session is
+  // about to bring more than fits: stash the valuable surplus, sell the surplus the merchant buys (bulkiest first), discard the junk that is left. A careless
+  // player (opts.careless) does none of it.
+  private sample() {
+    const used = inventorySlotsUsed(this.S);
+    const cap = inventoryCapacity(this.S, this.now);
+    this.ledger.inv.slotsMax = Math.max(this.ledger.inv.slotsMax, used);
+    this.ledger.inv.capacity = cap;
+    if (used >= cap) this.mark('bagFull');
+  }
+
+  // Everything the next craft consumes (recipe + refining chain) and what the stash upgrade needs: never sold, stashed or discarded.
+  private reservedMats(): Mats {
+    const out: Mats = {};
+    const add = (m: Mats) => {
+      for (const [k, v] of Object.entries(m) as [MaterialId, number][]) out[k] = (out[k] ?? 0) + v;
+    };
+    const t = chooseTarget(this.S);
+    if (t) add(t.needs);
+    const sp = this.stashPlan();
+    if (sp) add(sp.needs);
+    return out;
+  }
+
+  private makeRoom(want: number) {
+    if (this.opts.careless) return;
+    const free = () => bagFreeSlots(this.S, this.now);
+    if (free() >= want) return;
+    const reserved = this.reservedMats();
+    const bag = () => (Object.keys(this.S.materials) as MaterialId[]).filter((m) => (this.S.materials[m] ?? 0) > 0);
+    const junk = (m: MaterialId) => baseGoldValue(m) <= 4;
+    const bulkiest = () => [...bag()].sort((a, b) => (this.S.materials[b] ?? 0) - (this.S.materials[a] ?? 0));
+    // Each round is stricter about the working stock it keeps in the bag (what the next craft needs is never touched).
+    // (orders ask for up to ~60 units of a cheap material at a time, so the first rounds keep that much of each)
+    for (const [keepJunk, keepOther] of [[100, 40], [60, 20], [30, 10], [0, 0]]) {
+      const surplus = (m: MaterialId) => Math.max(0, (this.S.materials[m] ?? 0) - (reserved[m] ?? 0) - (junk(m) ? keepJunk : keepOther));
+      // 1) the valuable surplus goes to the stash (the junk is not worth a stash slot - until nothing else frees a slot)
+      for (const m of [...bag()].sort((a, b) => baseGoldValue(b) - baseGoldValue(a))) {
+        if (free() >= want) return;
+        if ((junk(m) && keepJunk > 0) || surplus(m) <= 0) continue;
+        const r = applyStashMove(this.S, 'store', 'material', m, surplus(m));
+        if (r.moved > 0) {
+          this.S = r.save;
+          this.ledger.inv.stashed += r.moved;
+        }
+      }
+      // 2) the merchant buys what he can today, the bulkiest stacks first
+      for (const m of bulkiest()) {
+        if (free() >= want) return;
+        const n = surplus(m);
+        if (n <= 0 || (keepJunk === 0 && !junk(m))) continue;
+        const r = applyMerchantSell(this.S, 'material', m, n, this.now);
+        if (r.ok && r.save) {
+          this.set(r.save, 'mercador');
+          this.ledger.inv.sold += r.units ?? 0;
+        }
+      }
+      // 3) what is left of the cheap surplus is thrown away (never in the last round: that one only stashes and sells)
+      for (const m of bulkiest()) {
+        if (free() >= want) return;
+        const n = surplus(m);
+        if (n <= 0 || baseGoldValue(m) > 5 || keepJunk === 0) continue;
+        const next = applyDiscard(this.S, 'material', m, n);
+        if (next) {
+          this.ledger.inv.discarded += n;
+          this.S = next;
+        }
+      }
+    }
+  }
+
+  // Slots a session of about `units` per material would need on top of what the bag holds.
+  private slotsForecast(units: Mats): number {
+    let extra = 0;
+    for (const [m, n] of Object.entries(units) as [MaterialId, number][]) extra += slotsForQty((this.S.materials[m] ?? 0) + n) - slotsForQty(this.S.materials[m] ?? 0);
+    return extra;
+  }
+
+  // Take from the stash whatever of `needs` the bag lacks (recipes consume only from the bag).
+  private bring(needs: Mats) {
+    if (this.opts.careless) return;
+    for (const [m, n] of Object.entries(needs) as [MaterialId, number][]) {
+      const short = n - (this.S.materials[m] ?? 0);
+      if (short <= 0 || (this.S.stash.materials[m] ?? 0) <= 0) continue;
+      if (bagFreeSlots(this.S, this.now) < slotsForQty(short)) this.makeRoom(slotsForQty(short));
+      this.S = applyStashMove(this.S, 'take', 'material', m, short).save;
+    }
+  }
+
+  // What the next stash upgrade needs, expanded through the refining stations like a gear plan (null: none left, or a careless player).
+  private stashPlan(): { gold: number; minLevel: number; batches: { recipeId: string; times: number }[]; needs: Mats; deficit: Mats; blocked: boolean } | null {
+    if (this.opts.careless) return null;
+    const q = nextStashUpgrade(this.S);
+    if (!q) return null;
+    const need: Mats = { ...q.materials };
+    const batches: Record<string, number> = {};
+    const made: Mats = {};
+    let gold = q.gold;
+    let minLevel = 0;
+    for (let pass = 0; pass < 12; pass++) {
+      let changed = false;
+      for (const m of Object.keys(need) as MaterialId[]) {
+        const short = (need[m] ?? 0) - owned(this.S, m, false) - (made[m] ?? 0);
+        const rec = recipeFor(m);
+        if (short > 0 && rec) {
+          const b = Math.ceil(short / rec.outputQty);
+          batches[rec.id] = (batches[rec.id] ?? 0) + b;
+          made[m] = (made[m] ?? 0) + b * rec.outputQty;
+          gold += b * rec.cost;
+          minLevel = Math.max(minLevel, rec.requiredLevel);
+          for (const [im, iq] of Object.entries(rec.input)) need[im as MaterialId] = (need[im as MaterialId] ?? 0) + (iq as number) * b;
+          changed = true;
+        }
+      }
+      if (!changed) break;
+    }
+    const deficit: Mats = {};
+    for (const m of Object.keys(need) as MaterialId[]) {
+      if (recipeFor(m)) continue;
+      const short = (need[m] ?? 0) - owned(this.S, m, false);
+      if (short > 0) deficit[m] = short;
+    }
+    return { gold, minLevel, batches: Object.entries(batches).map(([recipeId, times]) => ({ recipeId, times })), needs: need, deficit, blocked: playerLevel(this.S.xp) < minLevel };
+  }
+
+  // Buy the next stash upgrade when its materials are on hand (or in the stash), the gold is beyond what the next craft needs, and the craft keeps its own materials.
+  private tryStashUpgrade() {
+    const q = nextStashUpgrade(this.S);
+    const sp = this.stashPlan();
+    if (!q || !sp || sp.blocked || Object.keys(sp.deficit).length > 0) return;
+    // the first two upgrades are cheap and ignore the gold set aside for the next craft; later ones respect it
+    if (this.S.gold - sp.gold < (this.S.stash.level < 2 ? 0 : this.goldReserve())) return;
+    const t = chooseTarget(this.S);
+    // the craft keeps what it needs: the upgrade only takes units beyond that
+    for (const [m, n] of Object.entries(sp.needs) as [MaterialId, number][]) if ((t?.needs[m] ?? 0) > 0 && owned(this.S, m, false) - n < (t?.needs[m] ?? 0)) return;
+    this.makeRoom(2);
+    this.bring(sp.needs);
+    let s = this.S;
+    for (const b of sp.batches) {
+      for (let i = 0; i < b.times; i++) {
+        const next = refineMaterial(s, b.recipeId);
+        if (!next) return;
+        this.ledger.goldOut['estações'] = (this.ledger.goldOut['estações'] ?? 0) + (s.gold - next.gold);
+        s = next;
+      }
+    }
+    const up = applyStashUpgrade(s);
+    if (!up) return;
+    this.set(up, 'baú');
+    if (up.stash.level >= 1) this.mark('stash1');
+    if (up.stash.level >= 2) this.mark('stash2');
+    if (up.stash.level >= 3) this.mark('stash3');
+  }
+
   // Garden upkeep of a visit: harvest what is ready, then fill every empty plot.
   private tendGarden() {
     if (this.opts.garden === false) return;
     const ready = readySlots(this.S, this.now);
     if (ready.length > 0) {
+      this.makeRoom(ready.length); // each ready plot needs room for its yield
       const res = applyHarvest(this.S, ready, this.now);
       if (res) {
         for (const h of res.harvested) this.ledger.units[h.material] = (this.ledger.units[h.material] ?? 0) + h.qty;
@@ -500,11 +693,12 @@ export class Player {
     const reserve = this.goldReserve();
     this.refineGear(reserve);
     this.buyPotions(reserve);
-    const slotsFree = inventoryCapacity(this.S) - inventorySlotsUsed(this.S);
-    if (slotsFree <= 3) {
+    const slotsFree = inventoryCapacity(this.S, this.now) - inventorySlotsUsed(this.S);
+    if (slotsFree <= 3 && !this.opts.careless) {
       const next = expandInventory(this.S);
       if (next && next.gold >= reserve) this.set(next, 'mochila');
     }
+    this.tryStashUpgrade();
     this.craftTonics(reserve);
     this.claimQuestsNow();
     this.checkMarks();
@@ -545,7 +739,10 @@ export class Player {
   }
 
   private tryCraft(): boolean {
-    const target = chooseTarget(this.S);
+    // the stash is storage: what the craft needs comes over to the bag first, and only the bag counts from here on
+    const wanted = chooseTarget(this.S);
+    if (wanted && !wanted.blocked && this.S.gold >= wanted.gold) this.bring(wanted.needs);
+    const target = chooseTarget(this.S, true);
     if (!target || target.blocked || Object.keys(target.deficit).length > 0 || this.S.gold < target.gold) return false;
     // refining stations first, then the crafts in tier order
     let s = this.S;
@@ -751,10 +948,13 @@ export class Player {
       }
     }
     const offers = this.S.deliveries.offers
-      .filter((o) => canAffordOffer(this.S, o) && o.durationMs <= 12 * HOUR)
-      .filter((o) => (Object.entries(o.items) as [MaterialId, number][]).every(([m, q]) => (this.S.materials[m] ?? 0) - q >= (reserved[m] ?? 0)))
+      // orders consume from the bag only, but a careful player counts the stash too and brings the cargo over
+      .filter((o) => (Object.entries(o.items) as [MaterialId, number][]).every(([m, q]) => owned(this.S, m, !!this.opts.careless) >= q) && o.durationMs <= 12 * HOUR)
+      .filter((o) => (Object.entries(o.items) as [MaterialId, number][]).every(([m, q]) => owned(this.S, m, !!this.opts.careless) - q >= (reserved[m] ?? 0)))
       .sort((a, b) => b.gold - a.gold || b.xp - a.xp);
     for (const o of offers) {
+      this.bring(o.items);
+      if (!canAffordOffer(this.S, o)) continue;
       const next = applyDeliveryAccept(this.S, o.id, this.now, Math.random, false);
       if (next) {
         this.S = next;
@@ -775,10 +975,19 @@ export class Player {
         const mats = upgradeCost(v.item, v.instance.upgrade).materials ?? {};
         for (const [m, q] of Object.entries(mats) as [MaterialId, number][]) {
           if (m === 'refining_dust') continue;
-          const short = q - (this.S.materials[m] ?? 0);
+          const short = q - owned(this.S, m, false);
           if (short > 0) deficit[m] = Math.max(deficit[m] ?? 0, short);
         }
       }
+    }
+    // the stash upgrade is the last thing worth fetching materials for: only once the craft and the refining are covered
+    if (Object.keys(deficit).length === 0) {
+      const sp = this.stashPlan();
+      if (sp && !sp.blocked) for (const [m, q] of Object.entries(sp.deficit) as [MaterialId, number][]) deficit[m] = q;
+    } else if (this.S.stash.level < 2) {
+      // the first two upgrades are small (a few handles and bars): they are worth fetching even while a craft is still short of something
+      const sp = this.stashPlan();
+      if (sp && !sp.blocked) for (const [m, q] of Object.entries(sp.deficit) as [MaterialId, number][]) deficit[m] = Math.max(deficit[m] ?? 0, q);
     }
     const power = (skill: 'mining' | 'woodcutting') => gatherPower(BASE_GATHER_POWER, this.S.skillXp[skill]) * (skill === 'mining' ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower);
     const hoursFor = (kind: 'mining' | 'woodcutting', ids: MaterialId[], tiers: { id: string; requiredLevel: number }[]): { hours: number; pick: MaterialId | null } => {
@@ -836,6 +1045,10 @@ export class Player {
         return;
       }
     }
+    // a hunt that is about to start must not overflow if a check-in can prevent it: make room for what it usually brings back
+    const perHour: Mats = {};
+    for (const m of HUNT_MATS) perHour[m] = Math.floor(((this.huntUnits[m] ?? 0) / this.huntHours) * 6);
+    this.makeRoom(this.slotsForecast(perHour));
     this.startHunt();
   }
 

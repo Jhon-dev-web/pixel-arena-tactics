@@ -8830,3 +8830,26 @@ button[data-ui]:focus-visible {
 .shop-sell .merchant-budget {
   grid-column: 1 / -1;
 }
+/* the reward screen names what goes in under each slot, so its cells are wider than the running view's */
+.hunt-loot.reward .hunt-loot-cell {
+  width: 88px;
+}
+.hunt-loot.reward .hunt-loot-rate {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+/* the Baú hint goes on its own line under the requirement it belongs to, so a narrow recipe card never squeezes the name */
+.craft-req .req-item:has(.stash-hint) {
+  flex-wrap: wrap;
+}
+.craft-req .req-item .stash-hint,
+.delivery-req-qty .stash-hint {
+  flex: 0 0 100%;
+  margin: 2px 0 0 0;
+  flex-wrap: wrap;
+}
+.delivery-req-qty {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

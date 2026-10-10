@@ -381,8 +381,8 @@ const T = DebugPanel.define({
   merchant: {
     _label: 'Merchant (selling surplus)',
     priceRate: { value: 0.15, min: 0.02, max: 0.5, step: 0.01, label: 'Material sell price as a share of the economic reference value (economy.ts baseGoldValue), rounded down, min 1' },
-    baseBudget: { value: 90, min: 0, max: 2000, step: 5, label: 'Gold the merchant pays per local day, base' },
-    budgetPerLevel: { value: 1.7, min: 0, max: 20, step: 0.1, label: 'Extra daily merchant Gold per character level' },
+    baseBudget: { value: 30, min: 0, max: 2000, step: 5, label: 'Gold the merchant pays per local day, base' },
+    budgetPerLevel: { value: 2, min: 0, max: 20, step: 0.1, label: 'Extra daily merchant Gold per character level' },
   },
   ui: {
     _label: 'UI Layout',

@@ -14,12 +14,13 @@ export const STACK_LIMIT = 99;
 
 // Base capacity for every new character, and the floor an existing save's capacity is normalized up to
 // (never down - see normalizeInventoryCapacity). Replaces the old fixed MAX_SLOTS=20.
-export const DEFAULT_INVENTORY_CAPACITY = 30;
+export const DEFAULT_INVENTORY_CAPACITY = 26;
 
 // Centralized expansion pricing (never spread across components - see expandInventory below). Each entry is the capacity a purchase reaches FROM the
 // previous tier (+5 slots) and its Gold cost. The curve keeps the growth of the first six steps (x2 early, easing off) up to 100 slots; nothing
 // else adds permanent slots except the one-time conversion of the old Hunting Pouch tiers (inventoryBonusSlots) and the Pass perk (temporary).
 export const INVENTORY_EXPANSION_STEPS: ReadonlyArray<{ capacity: number; goldCost: number }> = [
+  { capacity: 30, goldCost: 250 },
   { capacity: 35, goldCost: 500 },
   { capacity: 40, goldCost: 1_000 },
   { capacity: 45, goldCost: 2_000 },
