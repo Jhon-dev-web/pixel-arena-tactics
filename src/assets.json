@@ -260,6 +260,122 @@
         }
       },
       "metadata": {}
+    },
+    "goblin_king": {
+      "url": "/assets/spritesheets/goblin_king.png",
+      "description": "Goblin King boss, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
+    "orc_warchief": {
+      "url": "/assets/spritesheets/orc_warchief.png",
+      "description": "Orc Warchief boss, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
+    "lich": {
+      "url": "/assets/spritesheets/lich.png",
+      "description": "Soul Lich boss, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
+    "death_knight": {
+      "url": "/assets/spritesheets/death_knight.png",
+      "description": "Death Knight, facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
     }
   },
   "background": {

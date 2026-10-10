@@ -335,6 +335,10 @@
     "orcBerserker": "Orc Berserker",
     "skeletonWarlock": "Skeleton Warlock",
     "minotaurWarlord": "Minotaur Warlord",
+    "goblinKing": "Goblin King",
+    "orcWarchief": "Orc Warchief",
+    "soulLich": "Soul Lich",
+    "deathKnight": "Death Knight",
     "bossName": "⚠️ BOSS: {n}"
   },
   "camp": {

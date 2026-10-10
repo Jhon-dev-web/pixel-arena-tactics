@@ -335,6 +335,10 @@
     "orcBerserker": "Orc Berserker",
     "skeletonWarlock": "Esqueleto Bruxo",
     "minotaurWarlord": "Senhor da Guerra Minotauro",
+    "goblinKing": "Rei Goblin",
+    "orcWarchief": "Chefe de Guerra Orc",
+    "soulLich": "Lich das Almas",
+    "deathKnight": "Cavaleiro da Morte",
     "bossName": "⚠️ CHEFE: {n}"
   },
   "camp": {

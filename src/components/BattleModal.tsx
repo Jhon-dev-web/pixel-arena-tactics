@@ -10,7 +10,7 @@ import { EnemyDef, getEnemyDef } from '../game/enemies';
 import { BurnState, applyDamageModifiers, applyDamageReduction, igniteBurn, reflectedDamage, regenAmount, tickBurn } from '../game/derivedStats';
 import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
-import { enemySpriteUrl, playerSpriteUrl } from '../game/sprites';
+import { dungeonEnemyVisualForFloor, playerSpriteUrl } from '../game/sprites';
 import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
 import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
@@ -428,8 +428,7 @@ export default function BattleModal({
 
   const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
 
-  const currentEnemyKind = dungeonEnemyKindForFloor(stage);
-  const currentDef = getEnemyDef(currentEnemyKind);
+  const currentVisual = dungeonEnemyVisualForFloor(stage);
   const currentBiome = getBiomeForFloor(stage);
 
   const renderLoot = (
@@ -591,7 +590,7 @@ export default function BattleModal({
 
           <div className="battle-hud enemy">
             <span className="hp-label">
-              <span className="hp-name-text">{enemyText(currentDef.nameKey)}</span>
+              <span className="hp-name-text">{enemyText(currentVisual.nameKey)}</span>
               {milestone === 'boss' && <span className="miniboss-tag boss">👑 {t('dungeon.mainBoss')}</span>}
               {milestone === 'checkpoint' && <span className="miniboss-tag">💀 {t('dungeon.miniBoss')}</span>}
             </span>
@@ -625,8 +624,8 @@ export default function BattleModal({
           <div className="battle-vs">VS</div>
           <div className={`battle-side enemy${enemyLunge ? ' lunge' : ''}${enemyFlash ? ' flash' : ''}`}>
             <SpriteSheet
-              src={enemySpriteUrl(currentEnemyKind)}
-              size="calc(var(--sprite-size, 132px) * 1.1)"
+              src={currentVisual.spriteUrl}
+              size={currentVisual.size}
               row={ANIM_ROW[enemyAnim]}
               flip
             />
