@@ -388,6 +388,26 @@
       "url": "/assets/backgrounds/camp.png",
       "description": "Pixel art adventurer campsite background (campfire, tent, training dummy) for the AFK base",
       "metadata": {}
+    },
+    "hunt_demon_glade": {
+      "url": "/assets/backgrounds/hunt_demon_glade.png",
+      "description": "Pixel art sunlit forest glade with a dirt path, 400x144 side-view strip; walkable ground is the dark band at the bottom (Demon Glade hunt scene)",
+      "metadata": {}
+    },
+    "hunt_blood_marsh": {
+      "url": "/assets/backgrounds/hunt_blood_marsh.png",
+      "description": "Pixel art crimson marsh with bare trees and still water, 400x144 side-view strip; walkable ground is the dark band at the bottom (Blood Marsh hunt scene)",
+      "metadata": {}
+    },
+    "hunt_demon_rift": {
+      "url": "/assets/backgrounds/hunt_demon_rift.png",
+      "description": "Pixel art purple mountain rift under a moon with glowing embers, 400x144 side-view strip; walkable ground is the dark band at the bottom (Demon Rift hunt scene)",
+      "metadata": {}
+    },
+    "hunt_blood_abyss": {
+      "url": "/assets/backgrounds/hunt_blood_abyss.png",
+      "description": "Pixel art crimson abyss with bone spikes, 400x144 side-view strip; walkable ground is the dark band at the bottom (Blood Abyss hunt scene)",
+      "metadata": {}
     }
   },
   "sfx": {

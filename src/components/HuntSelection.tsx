@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { CSSProperties, useMemo, useState } from 'react';
 import ActiveBuffs from './ActiveBuffs';
-import { MatIcon, Meter, MonsterPortrait, RarityChip, ZoneUniques } from './HuntParts';
+import { FramedSprite, MatIcon, Meter, MonsterPortrait, RarityChip, ZoneUniques } from './HuntParts';
 import { fmtNum, t } from '../locales';
 import { computeCP, effectivePouchSlots, getHuntProgress, huntPromotionRequiredWins, isBattlePassActive, SaveData } from '../game/engine';
 import T from '../game/tunables';
@@ -10,7 +10,10 @@ import {
   HUNTING_ZONES,
   HuntingDepth,
   HuntingZoneDef,
+  huntingEnemyArt,
   huntingEnemyNameKey,
+  huntingEnemySpriteUrl,
+  huntingZoneBackgroundUrl,
   isDepthUnlocked,
   isZoneUnlocked,
   recommendedCpForDepth,
@@ -110,6 +113,9 @@ export default function HuntSelection({
   const depth = depthByZone[zone.id] ?? DEFAULT_HUNTING_DEPTH;
   const state = zoneState(zone, save, playerCp);
   const zoneOpen = isZoneUnlocked(zone, save.highestDungeonFloor);
+  // where you are going: the zone's own map strip behind the monster
+  const headStyle: CSSProperties & Record<'--bg', string> = { '--bg': `url(${huntingZoneBackgroundUrl(zone.id)})` };
+  const enemyArt = huntingEnemyArt(zone.enemyId);
 
   // Real-engine projection per depth (huntEstimate.ts), memoised there on the hero's stats, the zone and its saved sub-level.
   const estimates = useMemo(() => (zoneOpen ? HUNTING_DEPTHS.map((d) => estimateHuntYield(save, zone.id, d.id)) : []), [save, zone.id, zoneOpen]);
@@ -171,8 +177,10 @@ export default function HuntSelection({
               &lt; {t('hunting.back')}
             </button>
 
-            <div className="hunt-detail-head">
-              <MonsterPortrait enemyId={zone.enemyId} box="96px" className="big" />
+            <div className={`hunt-detail-head${zoneOpen ? '' : ' locked'}`} style={headStyle}>
+              <div className="hunt-detail-monster">
+                <FramedSprite src={huntingEnemySpriteUrl(zone.enemyId)} art={enemyArt} box="120px" height={0.9 * enemyArt.height} row={0} still />
+              </div>
               <div className="hunt-detail-title">
                 <span className="hunt-monster-name">{monsterName(zone)}</span>
                 <span className="hunt-zone-title">{zoneName(zone)}</span>

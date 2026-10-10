@@ -26,25 +26,49 @@ export function huntingEnemyNameKey(id: HuntingEnemyId): string {
   return HUNTING_ENEMY_NAME_KEYS[id];
 }
 
-export interface HuntingEnemyArt {
-  cx: number;
-  cy: number;
-  size: number;
-  fill: number; // how much of the arena box the monster should fill (the imps are drawn small on purpose next to the hero)
+// Where the drawn creature sits inside the frames of a 4x4 sheet. Measured once per sheet on frame 0 of the idle row; everything the Hunt screens draw
+// from a sheet (portrait, scene sprite, foot on the ground line) is derived from these numbers, so replacing a sheet with a new one of another cell
+// size needs only the new PNG and a new row here.
+//   cell    side of one frame in the sheet, in sheet pixels (the sheet is 4 x 4 cells)
+//   box     bounding box [x0, y0, x1, y1] of the drawn creature inside frame 0 (inclusive sheet pixels); its bottom edge is where the feet are
+//   lie     bottom edge (sheet pixel row inside the frame) of the creature in the LAST frame of the death row; the death pose is lowered by the difference to the
+//           feet so a fallen creature lies on the ground instead of floating (omit for the hero)
+//   height  how tall the creature should look in the scene, relative to the hero (1 = hero-sized)
+export interface SheetArt {
+  cell: number;
+  box: [number, number, number, number];
+  lie?: number;
 }
 
-// Where the drawn monster sits inside one frame of its 4x4 sheet (fractions of a frame, measured on frame 0 of the idle row): the centre of the
-// art and its larger side. The sheets pad their art very differently (the imp is a fifth of its frame, the abomination three quarters), so
-// portraits and the arena crop to this box instead of showing the raw frame. Presentation only.
+export interface HuntingEnemyArt extends SheetArt {
+  height: number;
+}
+
 const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
-  demon: { cx: 0.525, cy: 0.49, size: 0.22, fill: 0.6 },
-  blood_monster: { cx: 0.515, cy: 0.505, size: 0.2, fill: 0.55 },
-  rift_fiend: { cx: 0.505, cy: 0.533, size: 0.88, fill: 0.92 },
-  blood_abomination: { cx: 0.484, cy: 0.576, size: 0.79, fill: 0.92 },
+  demon: { cell: 100, box: [43, 39, 62, 59], lie: 59, height: 0.75 },
+  blood_monster: { cell: 100, box: [42, 42, 61, 59], lie: 59, height: 0.75 },
+  rift_fiend: { cell: 92, box: [39, 9, 54, 89], lie: 58, height: 1 },
+  blood_abomination: { cell: 92, box: [35, 17, 54, 89], lie: 57, height: 1 },
 };
+
+// The hero's knight sheet, same measurement.
+export const HERO_ART: SheetArt = { cell: 256, box: [71, 12, 204, 251] };
 
 export function huntingEnemyArt(id: HuntingEnemyId): HuntingEnemyArt {
   return HUNTING_ENEMY_ART[id];
+}
+
+// The art box as fractions of one frame: centre, size and the foot line. `size` is the larger side (portraits), `h` the height (scene scale).
+export function artGeometry(art: SheetArt): { cx: number; cy: number; size: number; h: number; foot: number } {
+  const [x0, y0, x1, y1] = art.box;
+  const w = x1 - x0 + 1;
+  const h = y1 - y0 + 1;
+  return { cx: (x0 + x1 + 1) / 2 / art.cell, cy: (y0 + y1 + 1) / 2 / art.cell, size: Math.max(w, h) / art.cell, h: h / art.cell, foot: (y1 + 1) / art.cell };
+}
+
+// Map background of a zone's hunt scene (assets.json `background.hunt_<zone id>`, 400x144; the walkable ground is its dark bottom band).
+export function huntingZoneBackgroundUrl(zoneId: string): string {
+  return `/assets/backgrounds/hunt_${zoneId}.png`;
 }
 
 export interface HuntingDrop {

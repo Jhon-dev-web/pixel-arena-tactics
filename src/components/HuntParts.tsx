@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { t } from '../locales';
 import { getGear } from '../game/gear';
 import { DropRarity, getMaterial, MaterialId } from '../game/materials';
-import { HuntingEnemyId, huntingEnemyArt, huntingEnemySpriteUrl } from '../game/huntingZones';
+import { artGeometry, HuntingEnemyId, huntingEnemyArt, huntingEnemySpriteUrl, SheetArt } from '../game/huntingZones';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import SpriteSheet from './SpriteSheet';
@@ -12,41 +12,54 @@ import SpriteSheet from './SpriteSheet';
 // One still frame of a monster sheet (idle row, first frame), cropped to the drawn art: the sheets pad their art very differently, so the
 // raw frame would show a speck for the imps. `box` is the square's side in CSS units.
 export function MonsterPortrait({ enemyId, box = '56px', fill = 0.9, className }: { enemyId: HuntingEnemyId; box?: string; fill?: number; className?: string }) {
-  const art = huntingEnemyArt(enemyId);
-  const k = fill / art.size;
+  const g = artGeometry(huntingEnemyArt(enemyId));
+  const k = fill / g.size;
   const style: CSSProperties & Record<'--box', string> = {
     '--box': box,
     backgroundImage: `url(${huntingEnemySpriteUrl(enemyId)})`,
     backgroundSize: `${400 * k}% ${400 * k}%`,
-    backgroundPosition: `calc(var(--box) * ${0.5 - art.cx * k}) calc(var(--box) * ${0.5 - art.cy * k})`,
+    backgroundPosition: `calc(var(--box) * ${0.5 - g.cx * k}) calc(var(--box) * ${0.5 - g.cy * k})`,
   };
   return <span className={`hunt-portrait${className ? ` ${className}` : ''}`} style={style} role="img" aria-hidden="true" />;
 }
 
-// An animated sheet row cropped and centred the same way, inside a square of side `box` (a CSS length, set as --fb). Flipping mirrors the whole
-// square around its centre, so the art stays centred.
+// An animated sheet row standing on the ground line of a square of side `box` (a CSS length, set as --fb): the creature's feet sit on the bottom edge,
+// centred horizontally, and its visible height is `height` of the box. Flipping mirrors the whole square around its centre, so the feet stay put.
+// `restart` changes the element's key, so a new animation row always starts at its first frame (death plays once and holds its last frame).
 export function FramedSprite({
   src,
   art,
   box,
+  height,
   row,
+  restart,
   flip = false,
+  still = false,
+  fallen = false,
+  once = false,
 }: {
   src: string;
-  art: { cx: number; cy: number; size: number; fill: number };
+  art: SheetArt;
   box: string;
+  height: number;
   row: number;
+  restart?: number;
   flip?: boolean;
+  still?: boolean; // reduced motion: the first frame of the row, no looping
+  once?: boolean;
+  fallen?: boolean; // the death pose: lowered to lie on the ground (see SheetArt.lie)
 }) {
-  const k = art.fill / art.size;
-  const style: CSSProperties & Record<'--fb' | '--ox' | '--oy', string> = {
+  const g = artGeometry(art);
+  const f = height / g.h; // frame side in box units
+  const style: CSSProperties & Record<'--fb' | '--ox' | '--oy' | '--dy', string> = {
     '--fb': box,
-    '--ox': String(0.5 - art.cx * k),
-    '--oy': String(0.5 - art.cy * k),
+    '--dy': String(art.lie === undefined ? 0 : ((art.box[3] + 1 - (art.lie + 1)) / art.cell) * f),
+    '--ox': String(0.5 - g.cx * f),
+    '--oy': String(1 - g.foot * f),
   };
   return (
-    <span className={`hunt-frame${flip ? ' flip' : ''}`} style={style}>
-      <SpriteSheet src={src} size={`calc(var(--fb) * ${k})`} row={row} className="hunt-frame-sheet" />
+    <span className={`hunt-frame${flip ? ' flip' : ''}${fallen ? ' fallen' : ''}`} style={style}>
+      <SpriteSheet key={restart} src={src} size={`calc(var(--fb) * ${f})`} row={row} frames={still ? 1 : 4} playOnce={once} className="hunt-frame-sheet" />
     </span>
   );
 }
