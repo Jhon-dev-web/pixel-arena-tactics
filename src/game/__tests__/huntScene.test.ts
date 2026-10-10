@@ -1,9 +1,14 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import Assets from '../../assets.json';
 import { artGeometry, HERO_ART, HUNTING_ZONES, huntingEnemyArt, huntingEnemySpriteUrl, huntingZoneBackgroundUrl } from '../huntingZones';
 
+// PNG width/height from the IHDR chunk (no image library needed)
+const pngSize = (url: string): [number, number] => {
+  const b = readFileSync(join(process.cwd(), 'public', url));
+  return [b.readUInt32BE(16), b.readUInt32BE(20)];
+};
 const onDisk = (url: string): boolean => existsSync(join(process.cwd(), 'public', url));
 
 describe('Hunt scenes', () => {
@@ -15,6 +20,15 @@ describe('Hunt scenes', () => {
       expect(entry.url).toBe(huntingZoneBackgroundUrl(z.id));
       expect(onDisk(entry.url), entry.url).toBe(true);
     }
+  });
+
+  it('the table cell of every monster matches its sheet: a 4 x 4 grid of square cells', () => {
+    for (const z of HUNTING_ZONES) {
+      const [w, h] = pngSize(huntingEnemySpriteUrl(z.enemyId));
+      expect(w, z.enemyId).toBe(h);
+      expect(huntingEnemyArt(z.enemyId).cell * 4, z.enemyId).toBe(w);
+    }
+    expect(pngSize('/assets/spritesheets/knight.png')[0]).toBe(HERO_ART.cell * 4);
   });
 
   it('every hunting monster has its sheet on disk and an art row that lies inside its frame', () => {

@@ -45,10 +45,10 @@ export interface HuntingEnemyArt extends SheetArt {
 }
 
 const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
-  demon: { cell: 100, box: [43, 39, 62, 59], lie: 59, height: 0.75 },
-  blood_monster: { cell: 100, box: [42, 42, 61, 59], lie: 59, height: 0.75 },
-  rift_fiend: { cell: 92, box: [39, 9, 54, 89], lie: 58, height: 1 },
-  blood_abomination: { cell: 92, box: [35, 17, 54, 89], lie: 57, height: 1 },
+  demon: { cell: 176, box: [25, 30, 114, 149], lie: 152, height: 0.85 },
+  blood_monster: { cell: 172, box: [57, 28, 112, 146], lie: 146, height: 0.95 },
+  rift_fiend: { cell: 176, box: [57, 26, 106, 149], lie: 147, height: 1.1 },
+  blood_abomination: { cell: 172, box: [58, 25, 111, 146], lie: 146, height: 1.15 },
 };
 
 // The hero's knight sheet, same measurement.
