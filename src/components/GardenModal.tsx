@@ -185,6 +185,19 @@ export default function GardenModal({
     return () => window.clearTimeout(id);
   }, [armedUproot]);
 
+  // Escape closes the plant picker first (stopPropagation keeps App's Escape-closes-modal handler from also
+  // closing the whole garden behind it).
+  useEffect(() => {
+    if (pickerFor === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setPickerFor(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [pickerFor]);
+
   const gardeningLevel = skillLevel(save.skillXp.gardening, 'gardening');
   const statuses = Array.from({ length: GARDEN_SLOTS }, (_, i) => computeGardenSlotStatus(save, now, i));
   const emptyIdx = statuses.flatMap((s, i) => (s.plantId ? [] : [i]));

@@ -28,7 +28,7 @@ export default function DungeonMapModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal dungeon-modal">
+      <div className="modal dungeon-modal dungeon-entry-modal">
         <h2 className="modal-title">{t('dungeon.title')}</h2>
 
         <div className="dungeon-body">

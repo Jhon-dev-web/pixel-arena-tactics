@@ -149,7 +149,7 @@ export default function DesktopHome({
               </span>
               <div className="dh-equip-text">
                 <span className="dh-equip-label">{gearText('weapon')}</span>
-                <span className="dh-equip-name">{equipped.weapon.instance ? gearInstanceLabel(equipped.weapon.instance) : t(`gear.${equipped.weapon.item.nameKey}`)}</span>
+                <span className="dh-equip-name" title={equipped.weapon.instance ? gearInstanceLabel(equipped.weapon.instance) : t(`gear.${equipped.weapon.item.nameKey}`)}>{equipped.weapon.instance ? gearInstanceLabel(equipped.weapon.instance) : t(`gear.${equipped.weapon.item.nameKey}`)}</span>
               </div>
             </div>
             <div className="dh-equip-slot">
@@ -158,7 +158,7 @@ export default function DesktopHome({
               </span>
               <div className="dh-equip-text">
                 <span className="dh-equip-label">{gearText('armor')}</span>
-                <span className="dh-equip-name">{equipped.armor.instance ? gearInstanceLabel(equipped.armor.instance) : t(`gear.${equipped.armor.item.nameKey}`)}</span>
+                <span className="dh-equip-name" title={equipped.armor.instance ? gearInstanceLabel(equipped.armor.instance) : t(`gear.${equipped.armor.item.nameKey}`)}>{equipped.armor.instance ? gearInstanceLabel(equipped.armor.instance) : t(`gear.${equipped.armor.item.nameKey}`)}</span>
               </div>
             </div>
           </div>

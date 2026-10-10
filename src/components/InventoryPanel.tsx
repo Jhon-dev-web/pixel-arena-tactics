@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { activeLocale, t } from '../locales';
 import { SaveData } from '../game/engine';
 import { GEAR, GearItem, getGear, isInstancedSlot } from '../game/gear';
@@ -56,6 +56,19 @@ export default function InventoryPanel({
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmSalvage, setConfirmSalvage] = useState(false);
   const [expandOpen, setExpandOpen] = useState(false);
+
+  // Escape closes the bag-expansion dialog first (stopPropagation keeps App's Escape handler from also
+  // closing the inventory modal behind it).
+  useEffect(() => {
+    if (!expandOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setExpandOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [expandOpen]);
 
   const gearInstances = listGearInstances(save);
   const stackableGear = GEAR.filter((g) => !isInstancedSlot(g.slot) && (save.inventory?.[g.id] ?? 0) > 0);

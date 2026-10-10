@@ -498,6 +498,7 @@ export default function BattleModal({
           )}
         </div>
 
+        <div className="battle-stage">
         <div className="battle-top">
           <div className="battle-hud hero">
             <span className="hp-label">
@@ -570,6 +571,7 @@ export default function BattleModal({
               <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards, waveClear.gems)}</div>
             </div>
           )}
+        </div>
         </div>
 
         {tensionFloor !== null && (

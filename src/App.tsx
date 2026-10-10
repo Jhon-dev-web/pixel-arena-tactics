@@ -354,6 +354,59 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Escape closes the top-most open modal (reverse of render order below). Deliberately inert while a
+  // dungeon run is on screen (a stray key must never retreat/abandon it), while the mandatory hunt-reward
+  // claim is up, and while a tutorial overlay is visible (it handles Escape itself). Nested layers inside
+  // a modal (garden picker, bag-expansion dialog) consume the key first via their own document listeners.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (tutorialStep || contextTutorial || battleFloor !== null || save.pendingHuntReward) return;
+      const layers: Array<[boolean, () => void]> = [
+        [settingsOpen, () => setSettingsOpen(false)],
+        [import.meta.env.DEV && adminOpen, () => setAdminOpen(false)],
+        [battlePassOpen, () => setBattlePassOpen(false)],
+        [questsOpen, () => setQuestsOpen(false)],
+        [claimResult !== null, () => setClaimResult(null)],
+        [gardenOpen, () => setGardenOpen(false)],
+        [woodOpen, () => setWoodOpen(false)],
+        [mineOpen, () => setMineOpen(false)],
+        [expeditionOpen, () => setExpeditionOpen(false)],
+        [huntOpen, () => setHuntOpen(false)],
+        [dungeonOpen, () => setDungeonOpen(false)],
+        [bagOpen, () => setBagOpen(false)],
+        [forgeOpen, () => setForgeOpen(false)],
+        [shopOpen, () => setShopOpen(false)],
+      ];
+      const top = layers.find(([open]) => open);
+      if (!top) return;
+      e.preventDefault();
+      playSfx('click');
+      top[1]();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [
+    tutorialStep,
+    contextTutorial,
+    battleFloor,
+    save.pendingHuntReward,
+    settingsOpen,
+    adminOpen,
+    battlePassOpen,
+    questsOpen,
+    claimResult,
+    gardenOpen,
+    woodOpen,
+    mineOpen,
+    expeditionOpen,
+    huntOpen,
+    dungeonOpen,
+    bagOpen,
+    forgeOpen,
+    shopOpen,
+  ]);
+
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);

@@ -6934,3 +6934,367 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* =====================================================================
+   DESKTOP SCREENS (>=1024px) — dungeon, battle, hunt, forge, inventory,
+   deliveries, garden, quests, battle pass and shop stop being phone-width
+   modals and use a shared size scale instead: "wide" (1100px) for dense
+   lists, "medium" (780px) for short ones. Card lists become auto-fill grids.
+   Everything below 1024px keeps the rules above untouched; the only rule
+   outside the media query is .battle-stage, which is display:contents so
+   its children lay out exactly as before the wrapper existed.
+   ===================================================================== */
+.battle-stage {
+  display: contents;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --modal-w-wide: min(1100px, 92vw);
+    --modal-w-medium: min(780px, 92vw);
+    --modal-max-h: min(90vh, 900px);
+  }
+
+  /* --- size scale --- */
+  .dungeon-modal,
+  .shop-modal,
+  .quests-modal {
+    width: var(--modal-w-medium);
+    max-height: var(--modal-max-h);
+    padding: 26px 28px 24px;
+  }
+  .hunt-modal,
+  .bp-modal,
+  .forge-modal,
+  .delivery-modal {
+    width: var(--modal-w-wide);
+    max-height: var(--modal-max-h);
+    padding: 26px 28px 24px;
+  }
+  .garden-modal {
+    width: min(1000px, 92vw);
+  }
+  .garden-modal.picking {
+    min-height: min(90vh, 640px);
+  }
+  .modal-x {
+    top: 12px;
+    right: 12px;
+    width: 34px;
+    height: 34px;
+  }
+  .modal-x:hover {
+    border-color: #ffd76a;
+  }
+  /* the global img{display:block} reset would drop a title icon onto its own line above the text */
+  .modal-title .inline-icon,
+  .shop-modal .inline-icon,
+  .forge-modal .inline-icon,
+  .inventory-modal .inline-icon {
+    display: inline-block;
+  }
+
+  /* --- Masmorra entry (two cards side by side), Hunt zones, Mineração/Lenhador tiers --- */
+  .dungeon-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    align-content: start;
+    padding: 4px 8px 4px 2px;
+  }
+  .dungeon-entry-modal .dungeon-body {
+    align-items: stretch;
+  }
+  .hunt-modal .dungeon-body {
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    align-items: start;
+  }
+  .hunt-modal .hunt-battle-view {
+    padding: 10px 0;
+  }
+  .garden-modal .dungeon-body > * {
+    grid-column: 1 / -1;
+  }
+  .garden-plots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .garden-picker-panel {
+    padding: 18px 22px 16px;
+  }
+  .garden-picker-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+
+  /* --- Battle Pass: status card on top, the 30 levels as a 2-column track (free + premium tile per row) --- */
+  .bp-modal .bp-track {
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    gap: 8px 18px;
+  }
+
+  /* --- Forja --- */
+  .forge-tabs .tab {
+    font-size: calc(var(--font-size) - 1px);
+    padding: 10px 6px;
+  }
+  .forge-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 12px;
+    align-content: start;
+    padding: 2px 8px 4px 2px;
+  }
+  .forge-body > :not(.craft-card) {
+    grid-column: 1 / -1;
+  }
+  .forge-body .gear-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 12px;
+    margin-bottom: 0;
+  }
+  .forge-body > .shop-space {
+    margin: 0;
+  }
+  .forge-body .craft-card,
+  .forge-body .gear-section .craft-card {
+    margin-bottom: 0;
+  }
+  .forge-body .gem-library {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px 12px;
+    margin-top: 0;
+  }
+  .forge-body .gem-library .gear-section-title {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+  .forge-body .gem-library-row {
+    margin-bottom: 0;
+  }
+
+  /* --- Inventário: slot grid on the left, item detail panel on the right --- */
+  .inventory-modal {
+    width: min(980px, 92vw);
+    height: min(86vh, 780px);
+    max-height: none;
+    padding: 26px 28px 24px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    column-gap: 24px;
+    overflow: hidden;
+  }
+  .inventory-modal > .modal-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .inventory-modal > .inventory-summary {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .inventory-modal > .inv-tabs {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .inventory-modal > .inv-grid {
+    grid-column: 1;
+    grid-row: 4;
+    grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+    gap: 8px;
+    padding: 2px 8px 2px 2px;
+  }
+  .inventory-modal > .inv-detail-backdrop {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  /* the detail panel is always visible beside the grid here; the mobile bottom-sheet close button is not needed */
+  .inventory-modal .inv-detail-close {
+    display: none;
+  }
+  .inventory-modal .inv-detail {
+    margin-top: 0;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px;
+    scrollbar-width: thin;
+    scrollbar-color: #6a4a2a transparent;
+  }
+
+  /* --- Pedidos --- */
+  .delivery-modal .expedition-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+    max-height: none;
+    overflow: visible;
+    padding: 2px;
+  }
+  .delivery-modal .expedition-option {
+    display: flex;
+    flex-direction: column;
+  }
+  .delivery-modal .expedition-option > .battle-btn {
+    margin-top: auto;
+  }
+
+  /* --- Missões --- */
+  .quests-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 10px 14px;
+    align-content: start;
+    padding: 2px 8px 2px 2px;
+  }
+
+  /* --- Loja --- */
+  .shop-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 10px 14px;
+    align-content: start;
+    padding-right: 8px;
+  }
+  .shop-body > .shop-section-title {
+    grid-column: 1 / -1;
+    margin: 8px 0 0;
+  }
+  .shop-body .gear-row {
+    margin-bottom: 0;
+  }
+
+  /* --- Batalha: wide panel, header strip + arena stage with the arena background --- */
+  .battle {
+    --sprite-size: 250px;
+    width: min(96vw, 1000px);
+    height: auto;
+    max-height: 94vh;
+    padding: 14px 16px 16px;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 12px;
+  }
+  .battle-controls,
+  .battle-left {
+    display: contents;
+  }
+  .battle .stage-indicator {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: calc(var(--font-size) + 2px);
+  }
+  .battle .battle-speed {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .battle .battle-biome {
+    grid-column: 3;
+    grid-row: 1;
+    margin: 0;
+    width: auto;
+    text-align: center;
+    font-size: calc(var(--font-size) - 1px);
+  }
+  .battle .battle-loot-hud {
+    grid-column: 4;
+    grid-row: 1;
+    margin: 0;
+    flex-wrap: nowrap;
+    gap: 14px;
+  }
+  /* the global img{display:block} reset stacks the coin/potion icon above its number; keep them on one line */
+  .battle .battle-loot-hud > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .battle .battle-run {
+    grid-column: 5;
+    grid-row: 1;
+  }
+  .battle .battle-speed,
+  .battle .battle-run {
+    font-size: var(--font-size);
+    padding: 8px 14px;
+  }
+  .battle-stage {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    aspect-ratio: 16 / 9;
+    min-height: 0;
+    max-height: calc(94vh - 120px);
+    padding: 14px 18px 18px;
+    overflow: hidden;
+    border: 2px solid #3a2a4a;
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(10, 6, 16, 0.55) 0%, rgba(10, 6, 16, 0.15) 38%, rgba(10, 6, 16, 0.35) 100%),
+      url('/assets/backgrounds/arena.png') center 62% / cover no-repeat;
+    image-rendering: pixelated;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55);
+  }
+  .battle-stage .battle-top {
+    gap: 24px;
+    margin-bottom: 0;
+  }
+  .battle-stage .battle-hud {
+    width: 100%;
+    max-width: 380px;
+    padding: 8px 12px 10px;
+    background: rgba(10, 6, 16, 0.72);
+    border: 1px solid #3a2a4a;
+    border-radius: 8px;
+  }
+  .battle-stage .battle-hud.hero {
+    justify-self: start;
+  }
+  .battle-stage .battle-hud.enemy {
+    justify-self: end;
+  }
+  .battle-stage .battle-hp-row .bar {
+    height: 18px;
+  }
+  .battle-stage .hp-label,
+  .battle-stage .hp-num {
+    font-size: calc(var(--font-size) - 1px);
+  }
+  .battle-stage .battle-arena {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: end;
+    justify-items: center;
+    padding-bottom: 4px;
+  }
+  .battle-stage .battle-vs {
+    align-self: center;
+    font-size: calc(var(--font-size) + 8px);
+    text-shadow: 0 2px 0 #000, 0 0 12px rgba(0, 0, 0, 0.8);
+  }
+  .battle-stage .float {
+    font-size: calc(var(--font-size) + 4px);
+  }
+  .battle-stage .float-crit {
+    font-size: calc(var(--font-size) + 14px);
+  }
+  .battle-result-panel {
+    max-width: 520px;
+  }
+
+  /* --- Home hero card: long gear names ellipsise inside their slot instead of pushing it past the card --- */
+  .dh-equip-slot {
+    min-width: 0;
+  }
+}
