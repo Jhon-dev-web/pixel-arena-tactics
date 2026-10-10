@@ -23,7 +23,7 @@
     "noFallthroughCasesInSwitch": false,
     "noUncheckedSideEffectImports": false
   },
-  "include": ["src"],
+  "include": ["src", "scripts/sim"],
   // legacy-arena is intentionally preserved as a historical/reference prototype and is not part of the active
   // application runtime. It keeps speaking the original prototype's save model, so it is excluded from the type
   // check of the current game rather than being forced to follow it.
