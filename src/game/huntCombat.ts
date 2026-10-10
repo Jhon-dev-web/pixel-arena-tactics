@@ -170,6 +170,8 @@ export function simulateHuntingSession(
   const drops: Partial<Record<MaterialId, number>> = {};
   // Uniques roll on a SEPARATE seeded stream so adding them changed no fight, crit, material or promotion outcome of the main one.
   const uniqueRng = mulberry32(hashSeed(seedKey + ':unique'));
+  // Drop entries flagged `ownStream` (a zone's later additions) draw from their own stream too, for the same reason.
+  const ownRng = mulberry32(hashSeed(seedKey + ':zone'));
   const uniques: UniqueDrop[] = [];
 
   let timeLeft = sessionMs;
@@ -197,7 +199,7 @@ export function simulateHuntingSession(
     const dropMult = timeline ? (inRelativeWindows(timeline.passWindows, sessionMs - timeLeft) ? timeline.passDropMult : 1) : zoneCfg.dropRateMult;
     for (const entry of zoneCfg.drops) {
       const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * dropMult * economicFraction;
-      if (rng() < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
+      if ((entry.ownStream ? ownRng() : rng()) < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
     }
     // Unique pieces: base chance x the same economic fraction as the materials (no depth / sub-level / Battle Pass multiplier). They never touch
     // the material stacks (they are not materials); the claim delivers them as gear instances.

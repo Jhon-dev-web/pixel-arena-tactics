@@ -20,8 +20,9 @@ describe('balance decisions (docs/BALANCE_CHANGES.md)', () => {
     expect(T.battle.defeatGoldKept).toBe(0.75);
   });
 
-  it('a hunting zone drops three material types at most (a short hunt must not need more than a few slots)', () => {
-    for (const z of HUNTING_ZONES) expect(z.drops.length).toBeLessThanOrEqual(3);
+  it('the first two zones drop three material types, the two late ones five (their own uncommon + rare on top of the old three)', () => {
+    const count = Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, z.drops.length]));
+    expect(count).toEqual({ demon_glade: 3, blood_marsh: 3, demon_rift: 5, blood_abyss: 5 });
   });
 });
 

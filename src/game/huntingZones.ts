@@ -76,6 +76,8 @@ export interface HuntingDrop {
   rarity: DropRarity;
   chance: number; // probability per encounter (0..1)
   qty: number; // amount granted per successful proc
+  // Rolled on its own seeded stream (huntCombat.ts), so adding an entry to a zone moves no fight, crit or older drop of its session.
+  ownStream?: boolean;
 }
 
 export interface HuntingZoneDef {
@@ -283,6 +285,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'leather_scrap', rarity: 'common', chance: 0.32, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.105, qty: 1 },
       { material: 'demon_core', rarity: 'rare', chance: 0.025, qty: 1 },
+      { material: 'rift_shard', rarity: 'uncommon', chance: 0.1, qty: 1, ownStream: true },
+      { material: 'fiend_horn', rarity: 'rare', chance: 0.02, qty: 1, ownStream: true },
     ],
     uniques: [
       { itemId: 'riftwalker_boots', chance: 0.0002 },
@@ -304,6 +308,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'bone_fragment', rarity: 'common', chance: 0.35, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.12, qty: 1 },
       { material: 'corrupted_crystal', rarity: 'rare', chance: 0.03, qty: 1 },
+      { material: 'abyssal_marrow', rarity: 'uncommon', chance: 0.11, qty: 1, ownStream: true },
+      { material: 'blood_heart', rarity: 'rare', chance: 0.025, qty: 1, ownStream: true },
     ],
     uniques: [
       { itemId: 'abyss_heart_ring', chance: 0.00015 },
