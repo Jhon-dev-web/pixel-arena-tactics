@@ -6,19 +6,17 @@
 // expected crits and lifesteal: P > 1 means the hero wins that fight on average. It is the exact quantity that decides every fight in
 // the Dungeon and in Hunting, so a change of ln P is the "real combat value" of a stat (computeCP is only an approximation of it).
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
-import { buildCombatStats, computeCP, computeHuntingStatus, buildHuntSession, defaultSave, playerLevel, SaveData, xpToReachLevel } from '../../src/game/engine';
+import { computeCP, computeHuntingStatus, buildHuntSession, defaultSave, playerLevel, SaveData, xpToReachLevel } from '../../src/game/engine';
 import { applyForge, applyDiscardInstance, createGearInstance } from '../../src/game/gearInstances';
 import { GEAR, GearItem, getGear, reforgeGoldCost, upgradeChance, upgradeCost } from '../../src/game/gear';
-import { RARITIES, Rarity, SUBSTATS, Substat, SubstatType, rollRarity, rollSubstats } from '../../src/game/rarity';
-import { applyDamageReduction } from '../../src/game/derivedStats';
-import { dungeonEnemyKindForFloor, isDungeonBoss, isDungeonCheckpoint } from '../../src/game/dungeon';
-import { getEnemyDef } from '../../src/game/enemies';
-import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
+import { RARITIES, SUBSTATS, SubstatType, medianSubstatValue, rollRarity, rollSubstats } from '../../src/game/rarity';
+import { isDungeonCheckpoint } from '../../src/game/dungeon';
 import { cargoReferenceValue } from '../../src/game/economy';
 import { MaterialId, emptyMaterials } from '../../src/game/materials';
 import { GEMS, GemId, emptyGems, socketsForTier } from '../../src/game/gems';
 import { HUNTING_ZONES, getHuntingZone } from '../../src/game/huntingZones';
 import { clearRate } from './ladder';
+import { duel, duelVs, hero, MAIN_TIERS, PAIRS, repFloor, tierNum } from './duel';
 import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
 import T from '../../src/game/tunables';
 
@@ -26,73 +24,10 @@ const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
 const HOUR = 3600 * 1000;
 const RARITY_IDS = RARITIES.map((r) => r.id);
 
-// Weapon + armor of each tier. Tier 4 has two pairs.
-export const PAIRS: Record<string, [string, string, number]> = {
-  '1': ['bronze_dagger', 'bronze_leather', 1],
-  '2': ['iron_short_sword', 'iron_chainmail', 10],
-  '3': ['steel_greatsword', 'steel_plate', 25],
-  '4g': ['gilded_warblade', 'gilded_aegis', 50],
-  '4d': ['dragon_flameblade', 'dragon_scale_armor', 50],
-  '5': ['voidsteel_blade', 'voidsteel_plate', 70],
-  '6': ['abyssal_greatblade', 'abyssal_bulwark', 90],
-};
-const MAIN_TIERS = ['1', '2', '3', '4g', '5', '6'];
-const tierNum = (k: string) => Number(k[0]);
-
-interface HeroOpts {
-  rarity?: Rarity;
-  wSubs?: Substat[];
-  aSubs?: Substat[];
-  attrs?: { str: number; vit: number; agi: number; res: number };
-  level?: number;
-}
-
-function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveData {
-  const [w, a, lvl] = PAIRS[pairKey];
-  const level = o.level ?? lvl;
-  let h: SaveData = { ...defaultSave(), xp: xpToReachLevel(level), highestDungeonFloor: 1 };
-  const instances = { ...h.gearInstances };
-  const equipped = { ...h.equipped };
-  for (const [slot, tpl, subs] of [['weapon', w, o.wSubs], ['armor', a, o.aSubs]] as const) {
-    const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity: o.rarity ?? 'common', substats: subs ?? [], upgrade: refine });
-    instances[inst.id] = inst;
-    equipped[slot] = inst.id;
-  }
-  h = { ...h, gearInstances: instances, equipped };
-  h = spendAttributePoints(h);
-  return o.attrs ? { ...h, ...o.attrs } : h;
-}
-
-const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const pct = (x: number, d = 1) => `${(x * 100).toFixed(d)}%`;
 const f1 = (x: number) => x.toFixed(1);
 const f2 = (x: number) => x.toFixed(2);
 
-// ---- closed-form duel -------------------------------------------------------------------------------------------------
-function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number) {
-  const c = buildCombatStats(s);
-  const cc = Math.max(0, Math.min(1, c.critChance));
-  const dps = ((c.dmgBase * (1 + cc * (c.critMult - 1))) * 1000) / c.heroMs;
-  const inc = (applyDamageReduction(enemyDmg, c.reduction) * 1000) / enemyMs;
-  const net = inc - (dps * c.lifesteal) / 100;
-  const ttk = enemyHp / dps;
-  const ttd = net <= 0 ? Infinity : c.maxHp / net;
-  return { ttk, ttd, P: ttd / ttk, dps, hp: c.maxHp };
-}
-function duel(s: SaveData, floor: number) {
-  const def = getEnemyDef(dungeonEnemyKindForFloor(floor));
-  return duelVs(s, stageEnemyHp(def, floor), stageEnemyDmg(def, floor), def.atkSpeedMs);
-}
-// Representative floor of a hero: the highest plain floor (not a checkpoint / boss) where the duel margin is still >= 1.25.
-function repFloor(s: SaveData): number {
-  let best = 1;
-  for (let f = 1; f <= 100; f++) {
-    if (isDungeonCheckpoint(f) || isDungeonBoss(f)) continue;
-    if (duel(s, f).P >= 1.25) best = f;
-    else if (f > best + 6) break;
-  }
-  return best;
-}
 // Deepest floor cleared from full HP in >= 80% of seeded 1-floor runs (stops after 5 failed floors in a row).
 function depth(s: SaveData): number {
   let best = 0;
@@ -249,9 +184,9 @@ describe('item balance audit', () => {
     const cRows: string[] = [];
     const cSummary: Record<string, number[]> = {};
     withSeededRandom(77, () => {
-      for (const tk of ['1', '3', '6']) {
+      for (const tk of MAIN_TIERS) {
         const t = tierNum(tk);
-        const zone = t === 1 ? 'demon_glade' : t === 3 ? 'blood_marsh' : 'blood_abyss';
+        const zone = t === 1 ? 'demon_glade' : t <= 3 ? 'blood_marsh' : t === 4 ? 'demon_rift' : 'blood_abyss';
         const base = hero(tk, 4);
         const fl = repFloor(base);
         const baseCp = computeCP(base);
@@ -259,7 +194,7 @@ describe('item balance audit', () => {
         const baseH = huntDuel(base, zone);
         const baseStages = meanStages(base, fl, 60);
         for (const def of SUBSTATS) {
-          const value = Math.round((def.min + def.max) / 2 + def.perTier * t);
+          const value = Math.round(medianSubstatValue(def, t) * 10) / 10;
           const s = hero(tk, 4, { aSubs: [{ type: def.type, value }] });
           const d = duel(s, fl);
           const hd = huntDuel(s, zone);
@@ -282,7 +217,7 @@ describe('item balance audit', () => {
     const dRows: string[] = [];
     const levelsTier: [number, string, string][] = [[10, '2', 'demon_glade'], [30, '3', 'blood_marsh'], [60, '4g', 'demon_rift'], [100, '6', 'blood_abyss']];
     withSeededRandom(5, () => {
-      for (const [lv, tk, zone] of levelsTier) {
+      for (const [lv, tk] of levelsTier) {
         const b = hero(tk, 4, { level: lv });
         const cp = computeCP(b);
         const fl = repFloor(b);

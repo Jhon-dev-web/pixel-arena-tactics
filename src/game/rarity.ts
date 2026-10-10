@@ -17,9 +17,9 @@ export interface RarityDef {
 
 export const RARITIES: RarityDef[] = [
   { id: 'common', nameKey: 'rar_common', statMult: 1, substatCount: 0, chance: 0.6 },
-  { id: 'rare', nameKey: 'rar_rare', statMult: 1, substatCount: 1, chance: 0.25 },
-  { id: 'epic', nameKey: 'rar_epic', statMult: 1.05, substatCount: 2, chance: 0.12 },
-  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.15, substatCount: 3, chance: 0.03 },
+  { id: 'rare', nameKey: 'rar_rare', statMult: 1.02, substatCount: 1, chance: 0.25 },
+  { id: 'epic', nameKey: 'rar_epic', statMult: 1.06, substatCount: 2, chance: 0.12 },
+  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.18, substatCount: 3, chance: 0.03 },
 ];
 
 interface SubstatDef {
@@ -29,16 +29,26 @@ interface SubstatDef {
   max: number;
   perTier: number;
   isPercent: boolean;
+  // Optional explicit [min, max] for tier 1..6 (index tier - 1); replaces min/max/perTier. Used where the flat formula cannot keep the
+  // substat worth about the same in combat at every tier (see docs/ITEM_BALANCE_AUDIT.md: maxHp is a flat number, lifesteal grows with
+  // enemy HP, critDamage only pays once crit chance is high).
+  ranges?: [number, number][];
+  decimals?: number;
 }
 
+// Design rule (balance.test.ts R2): the median roll of every combat substat is worth about the same in real combat (ln of the duel margin
+// at a representative floor, about +4.5 %) at every tier, so no stat is a trap and none is a must-have. goldBonus is the non-combat one.
 export const SUBSTATS: SubstatDef[] = [
   { type: 'critRate', nameKey: 'sub_critRate', min: 2, max: 5, perTier: 0.5, isPercent: true },
-  { type: 'critDamage', nameKey: 'sub_critDmg', min: 5, max: 12, perTier: 1, isPercent: true },
-  { type: 'lifesteal', nameKey: 'sub_lifesteal', min: 1, max: 4, perTier: 0.3, isPercent: true },
+  { type: 'critDamage', nameKey: 'sub_critDmg', min: 5, max: 12, perTier: 1, isPercent: true, ranges: [[60, 90], [45, 75], [30, 50], [25, 40], [20, 32], [16, 26]] },
+  { type: 'lifesteal', nameKey: 'sub_lifesteal', min: 1, max: 4, perTier: 0.3, isPercent: true, decimals: 1, ranges: [[1.5, 2.5], [1, 1.4], [1.5, 2.3], [1, 1.8], [1, 2], [0.8, 1.2]] },
   { type: 'defense', nameKey: 'sub_defense', min: 2, max: 6, perTier: 0.5, isPercent: true },
-  { type: 'maxHp', nameKey: 'sub_maxHp', min: 15, max: 40, perTier: 5, isPercent: false },
-  { type: 'goldBonus', nameKey: 'sub_gold', min: 3, max: 8, perTier: 0.5, isPercent: true },
+  { type: 'maxHp', nameKey: 'sub_maxHp', min: 15, max: 40, perTier: 5, isPercent: false, ranges: [[5, 8], [10, 18], [20, 30], [30, 50], [45, 70], [55, 90]] },
+  { type: 'goldBonus', nameKey: 'sub_gold', min: 2, max: 5, perTier: 0.25, isPercent: true },
 ];
+
+// Total goldBonus of everything equipped can never pass this (percent): it only raises the Dungeon's gold.
+export const GOLD_BONUS_CAP = 25;
 
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -56,11 +66,27 @@ export function rollRarity(): Rarity {
   return 'common';
 }
 
+const tierRange = (def: SubstatDef, tier: number): [number, number] | undefined =>
+  def.ranges?.[Math.min(def.ranges.length, Math.max(1, Math.floor(tier) || 1)) - 1];
+
+// One roll of a substat for a piece of the given tier.
+export function rollSubstatValue(def: SubstatDef, tier: number): number {
+  const range = tierRange(def, tier);
+  if (!range) return def.min + randInt(0, def.max - def.min) + Math.round(def.perTier * tier);
+  const scale = Math.pow(10, def.decimals ?? 0);
+  return (Math.round(range[0] * scale) + randInt(0, Math.round((range[1] - range[0]) * scale))) / scale;
+}
+
+// The middle of the range a piece of that tier rolls in.
+export function medianSubstatValue(def: SubstatDef, tier: number): number {
+  const range = tierRange(def, tier);
+  return range ? (range[0] + range[1]) / 2 : (def.min + def.max) / 2 + def.perTier * tier;
+}
+
 export function rollSubstat(tier: number, exclude: SubstatType[] = []): Substat {
   const pool = SUBSTATS.filter((s) => !exclude.includes(s.type));
   const def = pool[randInt(0, pool.length - 1)];
-  const value = def.min + randInt(0, def.max - def.min) + Math.round(def.perTier * tier);
-  return { type: def.type, value };
+  return { type: def.type, value: rollSubstatValue(def, tier) };
 }
 
 export function rollSubstats(rarity: Rarity, tier: number): Substat[] {

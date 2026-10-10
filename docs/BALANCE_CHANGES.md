@@ -168,3 +168,27 @@ Os andares 81–89 e 91–94 também só são limpos pelos builds do topo (valor
 - **Sensibilidade do chefe 50:** 0,6 → 13/20 seeds em 21 dias, 0,64 → 6/20, 0,7 → 1/20 (aproximado, ver seção 7). Qualquer mudança futura de CP (gear, refino, pontos) move isso bastante.
 - **Dia 21, nível 48:** o nível praticamente estaciona (46 no dia 14, 48 no dia 21), porque agora só Caça e Pedidos pagam XP e a curva de nível cresce 12 a 17% por nível. Se isso for baixo demais para as travas de receita dos níveis 50+ (tier 4 pede 50), é preciso olhar a Caça nas zonas 2 e 3.
 - O ajuste de extrapolação usa um expoente de 0,51 sobre HP x dano; é uma aproximação e superestima ~5% onde dá para conferir.
+
+---
+
+# Rodada 3: raridade, substats e atributos (parte A) e o pacote de conteúdo 1 (parte B)
+
+Fonte dos números: `docs/ITEM_BALANCE_AUDIT.md` (estado antes) e `npm run sim:items`. Testes das regras: `src/game/__tests__/itemBalance.test.ts`.
+
+## 11. Parte A: o que mudou em raridade, substats e gemas
+
+| Regra | Antes | Depois |
+| --- | --- | --- |
+| R4 chances de raridade | 60 / 25 / 12 / 3, realizadas 59,9 / 25,0 / 12,1 / 3,0 (300 mil sorteios) | **não mudou** (sem bug; só `applyForge` sorteia) |
+| R1 `statMult` | comum 1, rara 1, épica 1,05, lendária 1,15 | comum 1, **rara 1,02, épica 1,06, lendária 1,18** |
+| R1 CP mediana (arma + armadura da raridade, substats medianas, tiers 1 a 6, +0 e +8) | rara +2,7 a +4,3 %, épica +10,5 a +13,0 %, lendária +20,8 a +26,0 % | rara +3,8 a +5,3 %, épica +8,5 a +12,2 %, lendária +18 a +26 % (teste pega a mediana de 301 sorteios por célula) |
+| R2 substats | `maxHp` 15-40 +5/tier (21 % do duelo no T1, 3,7 % no T6), `lifesteal` 1-4 % +0,3/tier (19 % no T6), `critDamage` 5-12 % +1/tier (0,5 % no T1). Razão máx/mín entre as 5 substats de combate: 44x (T1), 6x (T3), 6x (T6) | `critDamage`, `lifesteal` e `maxHp` ganharam faixas por tier (`SUBSTATS[].ranges`): mediana de cada uma vale 3,5 a 5,1 % de margem de duelo em todos os tiers (razão <= 1,5x) |
+| R2 `goldBonus` | 3-8 % +0,5/tier por peça (66 % possíveis com 6 peças) | 2-5 % +0,25/tier por peça e **teto de 25 % no total equipado** (`GOLD_BONUS_CAP`, em `equippedSubstatTotals`) |
+| R3 atributos | nenhuma build "tudo em um" passa de +25 % nos dois eixos (melhor: STR no nível 60, -2 % de profundidade) | **sem mudança** |
+| Gema | rubi +15 % de dano crítico (estritamente pior que safira e esmeralda) | rubi **+30 %** |
+
+Peças que o jogador já tem mantêm as substats antigas (o valor sorteado fica gravado na peça); a reforja já usa a tabela nova.
+
+## 12. Parte A: metas da R5 depois dessas mudanças (cenário A, mediana)
+
+Dia 1 nível 13; dia 3 nível 29; dia 14 nível 46; primeira peça no dia 2; chefe do 25 no dia 5; chegada ao 50: primeira seed no dia 10, mediana 12; chefe do 50 primeira seed no dia 11. Tudo igual ao estado antes (a única diferença é o chefe 50, 1 dia mais cedo para a primeira seed, 4/20 em 21 dias contra 6/20). Não foi preciso mexer em inimigos.

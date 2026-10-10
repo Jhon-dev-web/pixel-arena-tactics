@@ -2,7 +2,7 @@ import T from './tunables';
 import { GEAR, GearItem, INSTANCED_SLOTS, InstancedSlot, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, getGear, upgradeChance, upgradeCost } from './gear';
 import { GEMS, GemBonuses, GemId, addGemBonuses, gemListBonuses, getGem, hasGems, socketsForTier } from './gems';
 import { MaterialId, hasMaterials } from './materials';
-import { RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rollRarity, rollSubstats, substatListTotals } from './rarity';
+import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rollRarity, rollSubstats, substatListTotals } from './rarity';
 import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salvage';
 import { inventoryCapacity, inventorySlotsUsed } from './inventory';
 import type { SaveData } from './engine';
@@ -235,7 +235,8 @@ export function equippedGemBonuses(save: GearState): GemBonuses {
 
 export function equippedSubstatTotals(save: GearState): SubstatTotals {
   const { weapon, armor } = resolveEquipped(save);
-  return addSubstatTotals(substatListTotals(weapon.instance?.substats), substatListTotals(armor.instance?.substats));
+  const total = addSubstatTotals(substatListTotals(weapon.instance?.substats), substatListTotals(armor.instance?.substats));
+  return { ...total, goldBonus: Math.min(GOLD_BONUS_CAP, total.goldBonus) };
 }
 
 export function isInstanceEquipped(save: Pick<SaveData, 'equipped'>, id: GearInstanceId): boolean {
