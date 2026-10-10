@@ -3,7 +3,7 @@ import { MaterialId } from './materials';
 import { ConsumableId } from './consumables';
 import { MAX_BATTLE_PASS_LEVEL } from './engine';
 
-export type BattlePassRewardKind = 'gold' | 'material' | 'consumable' | 'gem' | 'shards' | 'oneToken' | 'cosmetic';
+export type BattlePassRewardKind = 'gold' | 'material' | 'consumable' | 'gem' | 'shards' | 'cosmetic';
 
 export interface BattlePassReward {
   kind: BattlePassRewardKind;
@@ -27,7 +27,7 @@ const cosmetic = (id: string): BattlePassReward => ({ kind: 'cosmetic', id, amou
 // Reward design (economy discipline): the Free track is a steady drip of moderate gold, healing
 // consumables, basic Shop-tier materials and the odd Expedition ticket — never enough to matter
 // as a wealth source, matching Hunting/Mining's role as material faucets, not gold faucets. The
-// Premium track is where the Pass earns its keep: Shards/tokens at real milestones (5/15/25),
+// Premium track is where the Pass earns its keep: Shards at real milestones (5/15/25),
 // Expedition time-skip tickets, refine catalysts and lapidated gems, closing on an exclusive,
 // non-farmable Season cosmetic at 30 — the deflationary status reward the whole track builds to.
 // Every level is hand-authored on purpose: a modulo pattern reads as "the same three prizes on

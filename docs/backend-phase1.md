@@ -1,5 +1,7 @@
 # Backend Phase 1 — conta + persistência
 
+> Nota (2026-10-10): o token ONE foi removido do jogo (lançamento na Steam, sem Web3); as menções a ONE abaixo são históricas.
+
 ## Escopo desta fase
 
 **Fase 1 = identidade + persistência.** O servidor (Supabase) agora ARMAZENA o `SaveData` do jogador,

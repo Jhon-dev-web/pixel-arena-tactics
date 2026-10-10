@@ -171,7 +171,6 @@ export interface SaveData {
   battlePassLevel: number;
   battlePassXp: number;
   claimedPassRewards: { free: number[]; premium: number[] };
-  oneTokenBalance: number;
   cosmetics: string[];
   activeTitle: string | null;
   dungeonCheckpoints: number[];
@@ -739,7 +738,6 @@ export function defaultSave(): SaveData {
     battlePassLevel: 1,
     battlePassXp: 0,
     claimedPassRewards: { free: [], premium: [] },
-    oneTokenBalance: 0,
     cosmetics: [],
     activeTitle: null,
     dungeonCheckpoints: [],
@@ -1007,10 +1005,6 @@ export function normalizeSave(rawInput: unknown): SaveData {
           ? Array.from(new Set(arr.filter((n): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= MAX_BATTLE_PASS_LEVEL)))
           : [];
       const claimedPassRewards = { free: sanitizeLevels(rawClaimed?.free), premium: sanitizeLevels(rawClaimed?.premium) };
-      const oneTokenBalance =
-        typeof parsed.oneTokenBalance === 'number' && Number.isFinite(parsed.oneTokenBalance) && parsed.oneTokenBalance >= 0
-          ? parsed.oneTokenBalance
-          : 0;
       const cosmetics = Array.isArray(parsed.cosmetics) ? parsed.cosmetics.filter((c): c is string => typeof c === 'string') : [];
       const activeTitle = typeof parsed.activeTitle === 'string' && cosmetics.includes(parsed.activeTitle) ? parsed.activeTitle : null;
       const dungeonCheckpoints = Array.isArray(parsed.dungeonCheckpoints)
@@ -1088,7 +1082,6 @@ export function normalizeSave(rawInput: unknown): SaveData {
         battlePassLevel,
         battlePassXp,
         claimedPassRewards,
-        oneTokenBalance,
         cosmetics,
         activeTitle,
         dungeonCheckpoints,

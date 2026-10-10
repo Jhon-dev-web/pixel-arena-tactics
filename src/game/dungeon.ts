@@ -149,14 +149,13 @@ export interface MilestoneReward {
   gold: number;
   gems: Partial<Record<GemId, number>>;
   titleId?: string;
-  oneTokenBalance?: number;
 }
 
 export const MILESTONE_REWARDS: MilestoneReward[] = [
   { floor: 25, gold: 2000, gems: { ruby: 2, sapphire: 2, emerald: 2 } },
   { floor: 50, gold: 5000, gems: { ruby: 4, sapphire: 4, emerald: 4 }, titleId: 'title_shadow_pathfinder' },
   { floor: 75, gold: 12000, gems: { ruby: 8, sapphire: 8, emerald: 8 }, titleId: 'title_abyss_conqueror' },
-  { floor: 100, gold: 30000, gems: { ruby: 15, sapphire: 15, emerald: 15 }, titleId: 'title_100_floors_legend', oneTokenBalance: 50 },
+  { floor: 100, gold: 30000, gems: { ruby: 15, sapphire: 15, emerald: 15 }, titleId: 'title_100_floors_legend' },
 ];
 
 export const MILESTONE_FLOORS = MILESTONE_REWARDS.map((m) => m.floor);

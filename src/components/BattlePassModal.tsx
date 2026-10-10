@@ -31,8 +31,6 @@ function rewardIcon(reward: BattlePassReward): ReactNode {
       const def = getGem(reward.id ?? '');
       return def ? <GemIcon item={def} className="inline-icon" /> : '💎';
     }
-    case 'oneToken':
-      return <img className="inline-icon" src="/assets/icons/one_token.png" alt="" />;
     case 'cosmetic': {
       const title = reward.id ? getTitleDef(reward.id) : undefined;
       return title ? <TitleIcon src={title.iconUrl} fallback="🎖️" className="inline-icon" /> : '🎖️';
@@ -60,8 +58,6 @@ function rewardLabel(reward: BattlePassReward): string {
       const def = getGem(reward.id ?? '');
       return `${def ? t(`gems.${def.nameKey}`) : reward.id} x${reward.amount}`;
     }
-    case 'oneToken':
-      return `ONE +${reward.amount}`;
     case 'cosmetic': {
       const title = reward.id ? getTitleDef(reward.id) : undefined;
       return title ? t(`titles.${title.nameKey}`) : t('battlePass.cosmeticReward');

@@ -441,14 +441,6 @@ export default function BattleModal({
                   </span>
                 );
               })}
-              {!!reward.oneTokenBalance && (
-                <span className="floor-drop">
-                  <span className="mat-icon">
-                    <img src="/assets/icons/one_token.png" alt="" />
-                  </span>
-                  <span>ONE +{reward.oneTokenBalance}</span>
-                </span>
-              )}
             </div>
             {titleDef && <div className="milestone-title-unlocked">🎖️ {t(`titles.${titleDef.nameKey}`)}</div>}
           </div>
@@ -589,14 +581,6 @@ export default function BattleModal({
                 {tensionMilestoneReward ? (
                   <>
                     {renderLoot(tensionGoldPreview, {}, 0, tensionMilestoneReward.gems)}
-                    {!!tensionMilestoneReward.oneTokenBalance && (
-                      <span className="floor-drop">
-                        <span className="mat-icon">
-                          <img src="/assets/icons/one_token.png" alt="" />
-                        </span>
-                        <span>ONE +{tensionMilestoneReward.oneTokenBalance}</span>
-                      </span>
-                    )}
                     {tensionMilestoneReward.titleId && (
                       <div className="milestone-title-unlocked">
                         🎖️ {t(`titles.${getTitleDef(tensionMilestoneReward.titleId)?.nameKey ?? ''}`)}

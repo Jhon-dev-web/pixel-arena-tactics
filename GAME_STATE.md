@@ -1,5 +1,7 @@
 # Arena Duel — mapa completo de estado
 
+> Nota (2026-10-10): o token ONE foi removido do jogo (lançamento na Steam, sem Web3); as menções a ONE abaixo são históricas.
+
 Data da análise: 16/09/2026. Este documento descreve o estado do jogo que existe no repositório hoje, sem propor nem aplicar alterações de código.
 
 ## Resumo de persistência e autoridade

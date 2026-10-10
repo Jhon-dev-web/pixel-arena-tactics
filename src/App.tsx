@@ -450,7 +450,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       gems = g;
     }
     let cosmetics = s.cosmetics;
-    let oneTokenBalance = s.oneTokenBalance;
     let dungeonCheckpoints = s.dungeonCheckpoints;
     if (crossed.length > 0) {
       dungeonCheckpoints = [...s.dungeonCheckpoints, ...crossed];
@@ -462,7 +461,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         for (const [gid, qty] of Object.entries(reward.gems)) g[gid as GemId] = (g[gid as GemId] ?? 0) + (qty as number);
         gems = g;
         if (reward.titleId && !cosmetics.includes(reward.titleId)) cosmetics = [...cosmetics, reward.titleId];
-        if (reward.oneTokenBalance) oneTokenBalance += reward.oneTokenBalance;
       }
     }
     const xpGain = dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages);
@@ -472,7 +470,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       gold,
       gems,
       cosmetics,
-      oneTokenBalance,
       dungeonCheckpoints,
       materials: mats,
       shards: s.shards + rewards.shards,
@@ -927,7 +924,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const cosmetics = [...s.cosmetics];
     let gold = s.gold;
     let shards = s.shards;
-    let oneTokenBalance = s.oneTokenBalance;
     switch (reward.kind) {
       case 'gold':
         gold += reward.amount;
@@ -944,9 +940,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       case 'gem':
         if (reward.id) gems[reward.id as GemId] = (gems[reward.id as GemId] ?? 0) + reward.amount;
         break;
-      case 'oneToken':
-        oneTokenBalance += reward.amount;
-        break;
       case 'cosmetic':
         if (reward.id && !cosmetics.includes(reward.id)) cosmetics.push(reward.id);
         break;
@@ -959,7 +952,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       consumables,
       gems,
       cosmetics,
-      oneTokenBalance,
       claimedPassRewards: { ...s.claimedPassRewards, [track]: [...s.claimedPassRewards[track], level] },
     };
   };
