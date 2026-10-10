@@ -873,8 +873,6 @@
     "subLevelNext": "{n} de {x} vitórias para o próximo nível",
     "subLevelExplain": "Vencer seguidas vezes libera o próximo nível da zona, com mais chance de refinados e nobres.",
     "capLine": "Acumula até {n} h",
-    "capLinePass": "Acumula até {n} h (com o Passe: {p} h)",
-    "capLineActive": "Acumula até {n} h (Passe ativo)",
     "startLocked": "Destrava no Andar {n}",
     "startNeedCp": "Requer {n} CP",
     "startBusy": "Herói ocupado em outra atividade",
@@ -1155,7 +1153,7 @@
     "title": "Passe de Aventureiro",
     "statusFree": "Gratuito",
     "statusActive": "Aventureiro",
-    "perkStorage": "Armazém de {n} h",
+    "perkStash": "+{n} espaços no Baú",
     "perkLuck": "+{n}% de materiais",
     "perkDeliveries": "+1 pedido e +1 troca por dia",
     "perkRepair": "-{n}% no custo de reparo",
@@ -1181,7 +1179,7 @@
     "perksTitle": "Vantagens do Passe",
     "perkOn": "ativo",
     "perkOff": "bloqueado",
-    "perkStorageSub": "Caça, Mineração e Lenhador",
+    "perkStashSub": "Baú do acampamento",
     "perkLuckSub": "Caça, Mineração e Lenhador",
     "perkDeliveriesSub": "+{n}% de XP nas entregas",
     "perkBagSub": "Inventário",
@@ -1207,7 +1205,7 @@
     "claimAllDone": "{n} recompensas resgatadas.",
     "claimAllBlocked": "{c} resgatadas. {n} com item não couberam no inventário e continuam esperando: abra espaço e tente de novo.",
     "ownedNote": "Passe de Aventureiro ativo. Obrigado por jogar!",
-    "buyBlurb": "Compra única, sem validade: trilha premium com itens exclusivos, armazém de {h} h, mais materiais, pedidos extras, espaços e reparo mais barato.",
+    "buyBlurb": "Compra única, sem validade: trilha premium com itens exclusivos, mais materiais, pedidos extras, espaços no inventário e no Baú e reparo mais barato.",
     "close": "Fechar",
     "rewardGold": "Ouro",
     "rewardShards": "Fragmentos"
@@ -1237,7 +1235,7 @@
     "rate": "Rendimento: {n} unidades/h · {xp} XP/h",
     "nextLevelIn": "Próximo nível em ~{t} de coleta",
     "storage": "Armazenamento: {n} h",
-    "passBonus": "Passe de Batalha ativo",
+    "passBonus": "Passe: +{n}% de materiais",
     "brew": "Poção do Coletor ativa: +25% por mais {t}",
     "running": "Em andamento",
     "since": "Iniciada há {t}",
@@ -1247,7 +1245,7 @@
     "switch": "Trocar para este tier",
     "levelsToGo": "faltam {n} níveis",
     "switchHint": "Trocar de tier coleta o que já foi acumulado antes de começar o novo.",
-    "passNextSession": "O limite maior do Passe vale a partir da próxima sessão."
+    "passNextSession": "O bônus de materiais do Passe vale a partir da próxima sessão."
   },
   "stash": {
     "title": "Baú",

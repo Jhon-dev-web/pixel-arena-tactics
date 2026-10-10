@@ -373,12 +373,12 @@ const T = DebugPanel.define({
     xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Pass XP growth per level' },
     // The Pass is a one-time unlock (entitlements.ts); only the 30-level TRACK runs in seasons. Season 1 starts at seasons.ts SEASON_EPOCH_MS.
     seasonDays: { value: 60, min: 7, max: 180, step: 1, label: 'Season length (days)' },
-    // Convenience, not power (players trade gear on the Steam market): a longer offline window and a small yield bump. Uniques and relics never use the multiplier.
-    capHours: { value: 12, min: 4, max: 48, step: 1, label: 'Offline storage cap with pass (hours): Hunting, Mining and Woodcutting' },
+    // Convenience, not power (players trade gear on the Steam market): a small yield bump; storage is NOT extended (the cap is the same for everyone). Uniques and relics never use the multiplier.
     dropRateMultiplier: { value: 1.1, min: 1, max: 3, step: 0.05, label: 'Material yield multiplier with pass (Hunting, Mining, Woodcutting)' },
     xpPerFloor: { value: 15, min: 1, max: 100, step: 1, label: 'Pass XP per dungeon floor cleared' },
     xpPerHuntHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Hunting claimed' },
     xpPerMiningHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Mining AND Woodcutting claimed (one rule for both, gathering.ts)' },
+    stashBonusSlots: { value: 10, min: 0, max: 40, step: 5, label: 'Extra camp stash slots for the Pass owner' },
     bagBonusSlots: { value: 5, min: 0, max: 20, step: 1, label: 'Extra inventory slots while active' },
     repairDiscount: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Forge repair gold discount while active' },
   },

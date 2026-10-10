@@ -6,6 +6,7 @@ import { SEASON_EPOCH_MS, seasonLengthMs, seasonNumber, seasonRemainingMs, seaso
 import { withPermanentPassWindow } from '../huntSession';
 import { deliveryXp, offerCount, rerollCap } from '../deliveries';
 import { HUNTING_ZONES } from '../huntingZones';
+import { stashCapacity, STASH_BASE_SLOTS } from '../stash';
 import { bagFreeSlots, inventoryCapacity, inventorySlotsUsed, DEFAULT_INVENTORY_CAPACITY } from '../inventory';
 import { repairCost } from '../gear';
 import T from '../tunables';
@@ -178,8 +179,9 @@ describe('season settlement (battlepass.ts settleSeason)', () => {
 describe('perks of the Pass: convenience, not power', () => {
   const owner = (s: SaveData = defaultSave()): SaveData => ({ ...s, hasBattlePass: true });
 
-  it('the final numbers: 12 h storage, +10 % materials, +5 slots, -20 % repair, +1 offer, +1 reroll, +10 % delivery XP', () => {
-    expect(T.battlePass.capHours).toBe(12);
+  it('the final numbers: +10 % materials, +5 bag slots, +10 stash slots, -20 % repair, +1 offer, +1 reroll, +10 % delivery XP; no storage perk', () => {
+    expect('capHours' in T.battlePass).toBe(false);
+    expect(T.battlePass.stashBonusSlots).toBe(10);
     expect(T.battlePass.dropRateMultiplier).toBeCloseTo(1.1, 9);
     expect(T.battlePass.bagBonusSlots).toBe(5);
     expect(T.battlePass.repairDiscount).toBeCloseTo(0.2, 9);
@@ -192,12 +194,14 @@ describe('perks of the Pass: convenience, not power', () => {
     const o = owner();
     expect(inventoryCapacity(o)).toBe(DEFAULT_INVENTORY_CAPACITY + 5);
     expect(inventoryCapacity(defaultSave())).toBe(DEFAULT_INVENTORY_CAPACITY);
+    expect(stashCapacity(o)).toBe(stashCapacity(defaultSave()) + 10);
+    expect(stashCapacity({ ...o, stashBonusSlots: 5 })).toBe(STASH_BASE_SLOTS + 10 + 5); // stacks with deeds
     expect(effectiveRepairCost(o, 3)).toBe(Math.ceil(repairCost(3) * 0.8));
     expect(effectiveRepairCost(defaultSave(), 3)).toBe(repairCost(3));
   });
 
-  it('Hunting: an owner stores 12 h where the zone caps at less, a non-owner the zone cap; the window never expires', () => {
-    const zone = HUNTING_ZONES.find((z) => z.offlineCapHours < T.battlePass.capHours)!;
+  it('Hunting: an owner and a non-owner have the same storage cap (the zone cap); the window never expires', () => {
+    const zone = HUNTING_ZONES[0];
     const start = 5_000_000_000;
     const mk = (own: boolean) => {
       const s: SaveData = { ...defaultSave(), hasBattlePass: own, activeHuntingZone: zone.id, activeHuntingDepth: 'shallow', huntingOfflineStart: start };
@@ -205,7 +209,8 @@ describe('perks of the Pass: convenience, not power', () => {
     };
     const far = start + 40 * HOUR;
     expect(computeHuntingStatus(mk(false), far).capMs).toBe(zone.offlineCapHours * HOUR);
-    expect(computeHuntingStatus(mk(true), far).capMs).toBe(T.battlePass.capHours * HOUR);
+    expect(computeHuntingStatus(mk(true), far).capMs).toBe(zone.offlineCapHours * HOUR);
+    expect(computeHuntingStatus(mk(true), far).pendingMs).toBe(zone.offlineCapHours * HOUR);
     expect(buildHuntSession(mk(true), start).pass).toEqual([{ from: start, to: null }]);
     expect(buildHuntSession(mk(false), start).pass).toEqual([]);
   });
@@ -223,6 +228,29 @@ describe('perks of the Pass: convenience, not power', () => {
       compared += computeHuntingStatus(plain, at).uniques.length;
     }
     expect(compared).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('in-flight Hunting sessions started under the longer Pass cap', () => {
+  it('a running session saved by the old model keeps its longer cap; a new one and a snapshot-less one use the zone cap', () => {
+    const zone = HUNTING_ZONES[0];
+    const start = Date.now() - 40 * HOUR;
+    const base: SaveData = { ...defaultSave(), hasBattlePass: true, activeHuntingZone: zone.id, activeHuntingDepth: 'shallow', huntingOfflineStart: start };
+    const fresh = buildHuntSession(base, start);
+    expect(fresh.storageFlat).toBe(true);
+    expect(fresh.legacyPassCapHours).toBeUndefined();
+    // what the old model wrote: a Pass window, no storageFlat marker
+    const oldRaw = wire({ ...base, huntSession: { ...fresh, storageFlat: undefined, pass: [{ from: start, to: null }] } });
+    const loaded = normalizeSave(oldRaw);
+    expect(loaded.huntSession!.legacyPassCapHours).toBe(24);
+    expect(computeHuntingStatus(loaded, Date.now()).capMs).toBe(24 * HOUR);
+    // saved again, it is still that session (the marker survives)
+    expect(normalizeSave(wire(loaded)).huntSession!.legacyPassCapHours).toBe(24);
+    // a session of the current model is the zone cap
+    expect(computeHuntingStatus(normalizeSave(wire({ ...base, huntSession: fresh })), Date.now()).capMs).toBe(zone.offlineCapHours * HOUR);
+    // no snapshot at all: rebuilt on the base cap
+    const none = normalizeSave(wire({ ...base, huntSession: null }));
+    expect(computeHuntingStatus(none, Date.now()).capMs).toBe(zone.offlineCapHours * HOUR);
   });
 });
 

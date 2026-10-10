@@ -3,7 +3,6 @@ import ActiveBuffs from './ActiveBuffs';
 import { FramedSprite, MatIcon, Meter, MonsterPortrait, RarityChip, ZoneUniques } from './HuntParts';
 import { fmtNum, t } from '../locales';
 import { computeCP, getHuntProgress, huntPromotionRequiredWins, SaveData } from '../game/engine';
-import { ownsAdventurerPass } from '../game/entitlements';
 import T from '../game/tunables';
 import {
   DEFAULT_HUNTING_DEPTH,
@@ -127,11 +126,9 @@ export default function HuntSelection({
   const required = huntPromotionRequiredWins(progress.ceiling);
   const maxed = progress.ceiling >= T.hunting.subLevels;
   const blocked = startBlockedReason(save, zone, depth, playerCp);
-  const passActive = ownsAdventurerPass(save);
-  const passCapHours = Math.max(zone.offlineCapHours, T.battlePass.capHours);
   // The inventory the hunt would meet: its free space now, and whether this hero's estimated yield would overflow it before the storage cap (an estimate).
   const depthEstimate = estimates[HUNTING_DEPTHS.findIndex((d) => d.id === depth)] ?? null;
-  const capHours = passActive ? passCapHours : zone.offlineCapHours;
+  const capHours = zone.offlineCapHours;
   const inv = huntInventoryStatus(save, zone.id, {});
   const perHour: Partial<Record<MaterialId, number>> = {};
   for (const m of depthEstimate?.materialsPerHour ?? []) perHour[m.material] = m.perHour;
@@ -251,11 +248,7 @@ export default function HuntSelection({
 
                 <section className="hunt-block facts">
                   <div className="hunt-fact">
-                    {passActive
-                      ? t('hunting.capLineActive', { n: passCapHours })
-                      : zone.offlineCapHours < passCapHours
-                        ? t('hunting.capLinePass', { n: zone.offlineCapHours, p: passCapHours })
-                        : t('hunting.capLine', { n: zone.offlineCapHours })}
+                    {t('hunting.capLine', { n: zone.offlineCapHours })}
                   </div>
                   <div className={`hunt-fact${inv.used >= inv.capacity ? ' bad' : inv.used >= inv.capacity * 0.85 ? ' warn' : ''}`}>{t('hunting.invFree', { n: inv.used, m: inv.capacity, f: inv.free })}</div>
                   {overflowIn !== null && (

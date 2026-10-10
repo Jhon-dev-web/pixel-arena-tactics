@@ -304,10 +304,10 @@ export default function BattlePassModal({
   };
 
   const perks: { key: string; icon: string; label: string; sub: string }[] = [
-    { key: 'storage', icon: '/assets/icons/expedition_ticket_4h.png', label: t('battlePass.perkStorage', { n: T.battlePass.capHours }), sub: t('battlePass.perkStorageSub') },
     { key: 'luck', icon: '/assets/icons/ore_gold.png', label: t('battlePass.perkLuck', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) }), sub: t('battlePass.perkLuckSub') },
     { key: 'orders', icon: '/assets/icons/nav_quests.png', label: t('battlePass.perkDeliveries'), sub: t('battlePass.perkDeliveriesSub', { n: Math.round(T.deliveries.passXpBonus * 100) }) },
     { key: 'bag', icon: '/assets/icons/nav_bag.png', label: t('battlePass.perkBag', { n: T.battlePass.bagBonusSlots }), sub: t('battlePass.perkBagSub') },
+    { key: 'stash', icon: '/assets/icons/camp_stash.png', label: t('battlePass.perkStash', { n: T.battlePass.stashBonusSlots }), sub: t('battlePass.perkStashSub') },
     { key: 'repair', icon: '/assets/icons/whetstone_oil.png', label: t('battlePass.perkRepair', { n: Math.round(T.battlePass.repairDiscount * 100) }), sub: t('battlePass.perkRepairSub') },
   ];
 
@@ -447,7 +447,7 @@ export default function BattlePassModal({
               <button className="battle-btn ap-buy-btn" onClick={onActivate} disabled={!ADVENTURER_PASS_TESTABLE} data-ui>
                 {ADVENTURER_PASS_TESTABLE ? t('battlePass.activateTest') : t('battlePass.comingSoon')}
               </button>
-              <span className="ap-buy-blurb">{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
+              <span className="ap-buy-blurb">{t('battlePass.buyBlurb')}</span>
             </div>
           )}
         </footer>

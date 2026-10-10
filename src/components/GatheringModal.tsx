@@ -100,7 +100,7 @@ export default function GatheringModal({
         <SkillLevelBadge xp={xp} labelKey={`${ns}.skillLabel`} skillId={kind}>
           <span className="skill-level-meta">{t('gathering.rate', { n: fmtNum(Math.round(ratePerHour * 10) / 10), xp: fmtNum(Math.round(xpPerHour * 10) / 10) })}</span>
           {Number.isFinite(hoursToNext) && level < T.skills.maxLevel && <span className="skill-level-meta">{t('gathering.nextLevelIn', { t: formatDuration(hoursToNext * MS_H) })}</span>}
-          <span className="skill-level-meta">{t('gathering.storage', { n: fmtHours(capHours) })}{passActive ? ` · ${t('gathering.passBonus')}` : ''}</span>
+          <span className="skill-level-meta">{t('gathering.storage', { n: fmtHours(capHours) })}{passActive ? ` · ${t('gathering.passBonus', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) })}` : ''}</span>
           {activeId && passNow && !status.passCoversSession && <span className="skill-level-meta">{t('gathering.passNextSession')}</span>}
           {brew && <span className="skill-level-meta gather-brew">{t('gathering.brew', { t: formatDuration(buffRemainingMs(save, now, 'gatherer')) })}</span>}
         </SkillLevelBadge>

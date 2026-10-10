@@ -329,6 +329,8 @@ export interface PlayerOptions {
   // The same player who OWNS the Adventurer Pass from day 1 (perks only: longer storage, material yield, bag slots, repair discount, extra order and XP).
   // The track's rewards are not claimed (App.tsx drives them); the Pass track is measured separately by the premium-track value check.
   pass?: boolean;
+  // Diagnostic: only the delivery perk of the Pass (extra offer + reroll + XP bonus), nothing else.
+  deliveriesOnly?: boolean;
   // A player who ignores the inventory entirely: never stashes, sells, discards, expands or brings anything over (everything else as the baseline).
   careless?: boolean;
 }
@@ -960,7 +962,7 @@ export class Player {
   // ---- 5. deliveries: one order at a time, never one that eats the materials the next craft needs
   private acceptDelivery() {
     if (this.opts.noOrders) return;
-    this.S = ensureDeliveryOffers(this.S, this.now, Math.random, !!this.opts.pass);
+    this.S = ensureDeliveryOffers(this.S, this.now, Math.random, !!(this.opts.pass || this.opts.deliveriesOnly));
     if (this.S.deliveries.active) return;
     const target = chooseTarget(this.S);
     const reserved: Mats = {};
@@ -983,7 +985,7 @@ export class Player {
     for (const o of offers) {
       this.bring(o.items);
       if (!canAffordOffer(this.S, o)) continue;
-      const next = applyDeliveryAccept(this.S, o.id, this.now, Math.random, !!this.opts.pass);
+      const next = applyDeliveryAccept(this.S, o.id, this.now, Math.random, !!(this.opts.pass || this.opts.deliveriesOnly));
       if (next) {
         this.S = next;
         return;

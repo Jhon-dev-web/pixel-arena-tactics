@@ -29,7 +29,7 @@ import { rarityStatMult } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
-import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers, withPermanentPassWindow } from './huntSession';
+import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers, withPermanentPassWindow, LEGACY_PASS_CAP_HOURS } from './huntSession';
 import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
@@ -427,19 +427,24 @@ export interface MiningStatus {
 // (Snapshots saved under the 30-day model also carried the expiry instant; it is dropped on load, see sanitizeGatherPass.)
 export interface GatherPass {
   active: boolean;
+  // The storage cap the session started with. Always the base cap now (the Pass no longer extends storage); a session saved under the old Pass keeps the
+  // longer cap it started with (LEGACY_PASS_CAP_HOURS) and is never shortened retroactively.
+  capHours?: number;
 }
 
-export function snapshotGatherPass(save: SaveData): GatherPass {
-  return { active: ownsAdventurerPass(save) };
+export function snapshotGatherPass(save: SaveData, capHours: number): GatherPass {
+  return { active: ownsAdventurerPass(save), capHours };
 }
 
 export type GatherKind = 'mining' | 'woodcutting';
 
 // A saved snapshot as is (an owner is an owner for good: the old expiry is ignored); a running session without one (an old save) gets the Pass as it is at load.
-function sanitizeGatherPass(raw: unknown, running: boolean, hasPass: boolean): GatherPass | null {
+function sanitizeGatherPass(raw: unknown, running: boolean, hasPass: boolean, baseCap: number): GatherPass | null {
   const r = raw as Partial<GatherPass> | null | undefined;
   if (!running) return null;
-  return { active: r && typeof r.active === 'boolean' ? r.active : hasPass };
+  if (!r || typeof r.active !== 'boolean') return { active: hasPass, capHours: baseCap };
+  const cap = typeof r.capHours === 'number' && Number.isFinite(r.capHours) && r.capHours > 0 ? r.capHours : r.active ? Math.max(baseCap, LEGACY_PASS_CAP_HOURS) : baseCap;
+  return { active: r.active, capHours: cap };
 }
 
 interface GatherAccrual {
@@ -461,8 +466,8 @@ function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAcc
   const baseCap = mining ? save.miningCapHours : save.woodcuttingCapHours;
   const startedAt = mining ? save.lastMiningClaim : save.lastWoodcuttingClaim;
   // Old saves (no snapshot) and plain states fall back to the Pass as it is now.
-  const snap = (mining ? save.miningPass : save.woodcuttingPass) ?? snapshotGatherPass(save);
-  const capHours = snap.active ? Math.max(baseCap, T.battlePass.capHours) : baseCap;
+  const snap = (mining ? save.miningPass : save.woodcuttingPass) ?? snapshotGatherPass(save, baseCap);
+  const capHours = Math.max(baseCap, snap.capHours ?? 0);
   const capMs = capHours * 3600 * 1000;
   if (!tier) return { capMs, pendingMs: 0, tierId: null, units: 0, gold: 0, full: false, passCoversSession: snap.active };
   const elapsedMs = Math.max(0, now - startedAt);
@@ -621,6 +626,7 @@ export function buildHuntSession(save: SaveData, startedAt: number): HuntSession
     strength: isBuffActive(save, 'strength', startedAt) && buff ? [{ from: startedAt, to: buff.expiresAt }] : [],
     attack: isBuffActive(save, 'attack', startedAt) && atk ? [{ from: startedAt, to: atk.expiresAt }] : [],
     pass: ownsAdventurerPass(save) ? [{ from: startedAt, to: null }] : [],
+    storageFlat: true,
     tonics: runningTonicWindows(save, startedAt, startedAt),
   };
 }
@@ -649,6 +655,7 @@ export function buildLegacyHuntSession(save: SaveData, now: number): HuntSession
     strength: isBuffActive(save, 'strength', now) && buff ? [{ from: now, to: buff.expiresAt }] : [],
     attack: isBuffActive(save, 'attack', now) && atk ? [{ from: now, to: atk.expiresAt }] : [],
     pass: ownsAdventurerPass(save) ? [{ from, to: null }] : [],
+    storageFlat: true,
     tonics: runningTonicWindows(save, now, now),
   };
 }
@@ -770,7 +777,8 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
   // it (up to the pass cap) only while the Battle Pass really covered that stretch (huntValidMs).
   const elapsedMs = Number.isFinite(now - startedAt) ? Math.max(0, now - startedAt) : 0;
   const baseCapMs = zone.offlineCapHours * 3600 * 1000;
-  const passCapMs = Math.max(zone.offlineCapHours, T.battlePass.capHours) * 3600 * 1000;
+  // Only a session started under the old Pass keeps its longer cap; the Pass no longer extends storage.
+  const passCapMs = Math.max(zone.offlineCapHours, session.legacyPassCapHours ?? 0) * 3600 * 1000;
   const passWindows = relativeWindows(session.pass, startedAt);
   const pendingMs = huntValidMs(elapsedMs, baseCapMs, passCapMs, passWindows);
   const stalled = pendingMs < elapsedMs;
@@ -1225,8 +1233,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         huntingOfflineStart,
         unlockedHuntingZones,
         hasBattlePass,
-        miningPass: sanitizeGatherPass(parsed.miningPass, activeOreId !== null, hasBattlePass),
-        woodcuttingPass: sanitizeGatherPass(parsed.woodcuttingPass, activeWoodId !== null, hasBattlePass),
+        miningPass: sanitizeGatherPass(parsed.miningPass, activeOreId !== null, hasBattlePass, miningCapHours),
+        woodcuttingPass: sanitizeGatherPass(parsed.woodcuttingPass, activeWoodId !== null, hasBattlePass, woodcuttingCapHours),
         battlePassLevel,
         battlePassXp,
         claimedPassRewards,

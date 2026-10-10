@@ -111,7 +111,7 @@ describe('professions audit', () => {
     out.push('');
     out.push(
       `Taxa = (${BASE_GATHER_POWER} + ${T.skills.powerPerLevel} x nível) x ${T.mining.oreRatePerPower} unidades/h (a taxa NÃO depende do tier: só o nível da profissão); XP = ${T.skills.xpPerUnit} por unidade; ` +
-        `armazenamento sem passe ${T.mining.capHours} h (Passe: ${T.battlePass.capHours} h e x${T.battlePass.dropRateMultiplier} de unidades); XP só entra ao coletar.`,
+        `armazenamento ${T.mining.capHours} h (igual com Passe; o Passe dá x${T.battlePass.dropRateMultiplier} de unidades); XP só entra ao coletar.`,
     );
     out.push('');
     out.push(

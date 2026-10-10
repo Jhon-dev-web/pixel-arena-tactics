@@ -30,7 +30,13 @@ export interface HuntSession {
   pass: TimeWindow[];
   // Garden 3.0 tonics that matter to a hunt (stoneskin, fortune, haste, precision), same rule as the elixirs above. Missing = none (older sessions).
   tonics?: Partial<Record<TimedBuffKind, TimeWindow[]>>;
+  // A session started under the old Pass kept its longer offline cap (LEGACY_PASS_CAP_HOURS) while the Pass window covered it. The Pass no longer extends
+  // storage: sessions started now never carry this, and a running old one keeps what it started with (never shortened retroactively).
+  legacyPassCapHours?: number;
+  storageFlat?: true; // written by the current model: a session without it (and with a Pass window) came from the old one
 }
+
+export const LEGACY_PASS_CAP_HOURS = 24;
 
 const MAX_WINDOWS = 16;
 const MAX_MS = 1e14;
@@ -200,6 +206,9 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
     attack: sanitizeWindows(r.attack),
     pass: sanitizeWindows(r.pass),
     tonics: sanitizeTonicWindows(r.tonics),
+    // saved by the old Pass model: no marker and a Pass window = it started with the longer cap
+    ...(finiteNum(r.legacyPassCapHours) ? { legacyPassCapHours: r.legacyPassCapHours } : !r.storageFlat && sanitizeWindows(r.pass).length > 0 ? { legacyPassCapHours: LEGACY_PASS_CAP_HOURS } : {}),
+    storageFlat: true,
   };
 }
 

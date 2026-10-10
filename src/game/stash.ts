@@ -1,4 +1,6 @@
 import type { SaveData } from './engine';
+import { ownsAdventurerPass } from './entitlements';
+import T from './tunables';
 import { getGear, isInstancedSlot } from './gear';
 import { addWithOverflow, emptyStock, placeUnits, Stock, stockSlots } from './inventory';
 import { ConsumableId, getConsumable } from './consumables';
@@ -66,9 +68,12 @@ export function sanitizeStash(raw: unknown): StashState {
 
 const stashOf = (save: Pick<SaveData, 'stash'>): StashState => save.stash ?? emptyStash();
 
-// The upgrade ladder plus the slots from Stash Deeds (seasonItems.ts, the Adventurer Pass track).
-export const stashCapacity = (save: Pick<SaveData, 'stash'> & Partial<Pick<SaveData, 'stashBonusSlots'>>): number =>
-  STASH_BASE_SLOTS + STASH_STEP_SLOTS * stashOf(save).level + Math.max(0, Math.floor(Number(save.stashBonusSlots ?? 0)) || 0);
+// The upgrade ladder, the slots from Stash Deeds (seasonItems.ts) and the Adventurer Pass perk (+T.battlePass.stashBonusSlots for its owner, for good).
+export const stashCapacity = (save: Pick<SaveData, 'stash'> & Partial<Pick<SaveData, 'stashBonusSlots' | 'hasBattlePass'>>): number =>
+  STASH_BASE_SLOTS +
+  STASH_STEP_SLOTS * stashOf(save).level +
+  Math.max(0, Math.floor(Number(save.stashBonusSlots ?? 0)) || 0) +
+  (ownsAdventurerPass({ hasBattlePass: !!save.hasBattlePass }) ? T.battlePass.stashBonusSlots : 0);
 export const stashSlotsUsed = (save: Pick<SaveData, 'stash'>): number => stockSlots(stashOf(save));
 export const stashFreeSlots = (save: Pick<SaveData, 'stash'>): number => Math.max(0, stashCapacity(save) - stashSlotsUsed(save));
 
