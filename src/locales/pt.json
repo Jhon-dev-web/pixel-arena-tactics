@@ -176,7 +176,8 @@
     "xpReward": "+{n}",
     "shardsReward": "+{n} Fragmentos",
     "shardsX": "{n}× Fragmentos",
-    "levelUp": "🎉 Subiu de Nível! Nv {n}"
+    "levelUp": "🎉 Subiu de Nível! Nv {n}",
+    "relicDrops": "Relíquia"
   },
   "combat": {
     "critical": "CRÍTICO!",
@@ -328,7 +329,44 @@
     "lich_soul_ring": "Anel da Alma do Lich",
     "lich_soul_ring_d": "Guarda uma alma que não quer ir embora.",
     "overlord_greataxe": "Machado Grande do Senhor Supremo",
-    "overlord_greataxe_d": "Dizem que o último rei da masmorra o usava com uma mão."
+    "overlord_greataxe_d": "Dizem que o último rei da masmorra o usava com uma mão.",
+    "shield": "Escudo",
+    "bronze_hatchet": "Machadinha de Bronze",
+    "bronze_hatchet_d": "Um machado de lenhador afiado às pressas: bate mais forte, mas erra o ponto fraco.",
+    "iron_battleaxe": "Machado de Batalha de Ferro",
+    "iron_battleaxe_d": "Pesado demais para fintas, certeiro demais para falhar.",
+    "steel_greataxe": "Machado Grande de Aço",
+    "steel_greataxe_d": "Duas mãos, um só golpe, e a conversa acaba.",
+    "gilded_waraxe": "Machado de Guerra Dourado",
+    "gilded_waraxe_d": "Lâmina larga com friso dourado: feito para rachar, não para furar.",
+    "voidsteel_cleaver": "Cutelo de Aço do Vazio",
+    "voidsteel_cleaver_d": "O fio do vazio corta sem brilho e sem queimar.",
+    "abyssal_reaver": "Ceifador Abissal",
+    "abyssal_reaver_d": "Um machado de abismo: cada golpe pesa como uma sentença.",
+    "bronze_buckler": "Broquel de Bronze",
+    "bronze_buckler_d": "Pequeno e redondo, protege o que dá para proteger.",
+    "iron_shield": "Escudo de Ferro",
+    "iron_shield_d": "Um escudo honesto, amassado nas bordas.",
+    "steel_kite_shield": "Escudo Pavês de Aço",
+    "steel_kite_shield_d": "Cada golpe que bate nele volta com juros.",
+    "gilded_shield": "Escudo Dourado",
+    "gilded_shield_d": "Reflete a luz, e quem ataca, na mesma proporção.",
+    "voidsteel_shield": "Escudo de Aço do Vazio",
+    "voidsteel_shield_d": "Engole a força dos golpes sem fazer barulho.",
+    "abyssal_shield": "Escudo Abissal",
+    "abyssal_shield_d": "Uma muralha escura que devolve o que recebe.",
+    "bone_ward": "Égide de Ossos",
+    "bone_ward_d": "Costelas amarradas com tendão: improvisada, mas teimosa.",
+    "warden_bulwark": "Baluarte do Carcereiro",
+    "warden_bulwark_d": "Pesado, frio e sempre voltado para quem tenta fugir.",
+    "goblin_lucky_coin": "Moeda da Sorte Goblin",
+    "goblin_lucky_coin_d": "Uma moeda riscada e polida de tanto ser esfregada: o ouro parece vir atrás dela.",
+    "warchief_totem": "Totem do Chefe de Guerra",
+    "warchief_totem_d": "Entalhado com os nomes dos que caíram: cada golpe ecoa um grito de guerra.",
+    "lich_phylactery": "Filactério do Lich",
+    "lich_phylactery_d": "Um frasco de alma presa: a vida que escapa dos inimigos pinga de volta em você.",
+    "overlord_sigil": "Sigilo do Senhor Supremo",
+    "overlord_sigil_d": "Um selo de comando: os golpes certeiros ficam mais certeiros e mais cruéis."
   },
   "enemies": {
     "goblinRogue": "Goblin Ladino",
@@ -400,7 +438,11 @@
     "mat_iron_thistle": "Cardo de Ferro",
     "mat_gold_blossom": "Flor Dourada",
     "mat_swift_grass": "Capim Veloz",
-    "mat_moon_lily": "Lírio Lunar"
+    "mat_moon_lily": "Lírio Lunar",
+    "mat_rift_shard": "Estilhaço da Fenda",
+    "mat_fiend_horn": "Chifre do Demônio",
+    "mat_abyssal_marrow": "Tutano Abissal",
+    "mat_blood_heart": "Coração de Sangue"
   },
   "inventory": {
     "title": "Inventário",
@@ -498,7 +540,9 @@
     "reflectStat": "Reflete {pct}% do dano sofrido",
     "regenStat": "Regenera {pct}% da vida/s",
     "attackSpeedStat": "+{pct}% velocidade de ataque",
-    "burnTitle": "Queimando"
+    "burnTitle": "Queimando",
+    "finalDamage": "Dano final",
+    "goldBonus": "Ouro extra"
   },
   "shop": {
     "title": "Loja",
@@ -623,7 +667,9 @@
     "confirmIngredients": "Estas peças serão consumidas:",
     "confirmForge": "CONFIRMAR",
     "cancel": "Cancelar",
-    "gemsBack": "Gemas devolvidas ao estoque: {list}"
+    "gemsBack": "Gemas devolvidas ao estoque: {list}",
+    "shieldsSection": "Escudos",
+    "axesSection": "Machados"
   },
   "rarity": {
     "rar_common": "Comum",

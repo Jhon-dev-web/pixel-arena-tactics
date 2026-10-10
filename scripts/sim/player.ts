@@ -11,6 +11,7 @@ import {
   listGearInstances,
   resolveEquipped,
   GearInstance,
+  createGearInstance,
 } from '../../src/game/gearInstances';
 import { computeCP, effectiveRepairCost, playerLevel, SaveData, defaultSave } from '../../src/game/engine';
 import { GEAR, getGear, INSTANCED_SLOTS, MAX_REFINE, upgradeCost } from '../../src/game/gear';
@@ -60,7 +61,7 @@ import {
 type Mats = Partial<Record<MaterialId, number>>;
 export const HOUR = 3600 * 1000;
 
-export const HUNT_MATS: MaterialId[] = ['leather_scrap', 'bone_fragment', 'demon_claw', 'concentrated_blood', 'demon_core', 'corrupted_crystal'];
+export const HUNT_MATS: MaterialId[] = ['leather_scrap', 'bone_fragment', 'demon_claw', 'concentrated_blood', 'demon_core', 'corrupted_crystal', 'rift_shard', 'fiend_horn', 'abyssal_marrow', 'blood_heart'];
 const ORE_IDS = ORE_TIERS.map((o) => o.id as MaterialId);
 const WOOD_IDS = WOOD_TIERS.map((w) => w.id as MaterialId);
 
@@ -239,9 +240,9 @@ export function equippedTier(s: SaveData, slot: 'weapon' | 'armor'): number {
   return resolveEquipped(s)[slot].item.tier ?? 0;
 }
 
-// Crafting priority inside one tier: weapon > armor > gloves > helmet > boots > ring (Rodada 3). The extra slots only have one piece per tier and
-// the "1 of the previous tier" chain, so a slot is simply the next tier above the best piece owned.
-export const CRAFT_PRIORITY = ['weapon', 'armor', 'gloves', 'helmet', 'boots', 'ring'] as const;
+// Crafting priority inside one tier: weapon > armor > gloves > helmet > shield > boots > ring (Rodada 3, shield added in Rodada 6). The extra slots only have
+// one piece per tier and the "1 of the previous tier" chain, so a slot is simply the next tier above the best piece owned.
+export const CRAFT_PRIORITY = ['weapon', 'armor', 'gloves', 'helmet', 'shield', 'boots', 'ring'] as const;
 
 // The next thing worth crafting: the lowest tier first (slot priority on a tie), skipping a slot that is blocked on something
 // no activity can fetch when another one is not.
@@ -252,8 +253,12 @@ function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
     const cands = GEAR.filter((g) => g.slot === slot && g.recipe && (g.tier ?? 0) > owned);
     if (cands.length === 0) continue;
     const minTier = Math.min(...cands.map((g) => g.tier ?? 0));
-    const pick = cands.filter((g) => (g.tier ?? 0) === minTier).sort((a, b) => a.cost - b.cost)[0];
-    const p = planFor(s, pick.id, bagOnly);
+    const atTier = cands.filter((g) => (g.tier ?? 0) === minTier);
+    // The cheapest piece of the tier; the sword and the axe of a tier cost the same (Rodada 6), so the weapon slot has two of them: the line already being
+    // climbed first (its plan crafts fewer pieces), then the one that gives the better CP.
+    const cheapest = Math.min(...atTier.map((g) => g.cost));
+    const ties = atTier.filter((g) => g.cost === cheapest);
+    const p = ties.length === 1 ? planFor(s, ties[0].id, bagOnly) : bestWeaponPlan(s, ties, bagOnly);
     if (!p.impossible) plans.push(p);
   }
   const priority = (p: Plan) => CRAFT_PRIORITY.indexOf(p.slot as (typeof CRAFT_PRIORITY)[number]);
@@ -266,13 +271,28 @@ function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
   return plans[0] ?? null;
 }
 
+// A weapon of one template worn in place of the current one, to compare lines by the game's own computeCP (refine +0, common).
+function cpWith(s: SaveData, tpl: string): number {
+  const inst = createGearInstance(tpl, { id: 'probe', origin: 'admin', rarity: 'common', substats: [] });
+  const trial = applyEquipInstance({ ...s, gearInstances: { ...s.gearInstances, probe: inst } }, 'probe');
+  return trial ? computeCP(trial) : 0;
+}
+
+function bestWeaponPlan(s: SaveData, items: { id: string }[], bagOnly: boolean): Plan {
+  const scored = items.map((g) => ({ plan: planFor(s, g.id, bagOnly), cp: cpWith(s, g.id) }));
+  scored.sort((a, b) => Number(a.plan.impossible) - Number(b.plan.impossible) || a.plan.crafts.length - b.plan.crafts.length || b.cp - a.cp);
+  return scored[0].plan;
+}
+
 const RELIC_AFTER_TIER = 2.5;
+// Craftable relics (the player forges one) and every relic that can be worn (the boss relics are drops: the policy wears whichever owned relic gives the best CP).
 const relicIds = (): string[] => GEAR.filter((g) => g.slot === 'relic' && g.recipe).map((g) => g.id);
 const withRelic = (s: SaveData, id: string | null): SaveData => ({ ...s, equipped: { ...s.equipped, relic: id } });
-const ownedRelics = (s: SaveData): string[] => relicIds().filter((id) => (s.inventory[id] ?? 0) > 0);
+const ownedCraftedRelics = (s: SaveData): string[] => relicIds().filter((id) => (s.inventory[id] ?? 0) > 0);
+const ownedRelics = (s: SaveData): string[] => GEAR.filter((g) => g.slot === 'relic' && (s.inventory[g.id] ?? 0) > 0).map((g) => g.id);
 
 function chooseRelic(s: SaveData, bagOnly = false): Plan | null {
-  if (ownedRelics(s).length > 0) return null;
+  if (ownedCraftedRelics(s).length > 0) return null;
   let best: Plan | null = null;
   let bestCp = -Infinity;
   for (const id of relicIds()) {
@@ -327,7 +347,7 @@ export class Player {
   private lastDone: Record<'hunt' | 'mine' | 'wood', number> = { hunt: -1, mine: -1, wood: -1 };
   private visits = 0;
   private huntHours = 2;
-  private huntUnits: Mats = { leather_scrap: 50, bone_fragment: 50, demon_claw: 16, concentrated_blood: 16, demon_core: 3, corrupted_crystal: 3 };
+  private huntUnits: Mats = { leather_scrap: 50, bone_fragment: 50, demon_claw: 16, concentrated_blood: 16, demon_core: 3, corrupted_crystal: 3, rift_shard: 12, fiend_horn: 2, abyssal_marrow: 12, blood_heart: 2 };
   private sessionsToday = 0;
   private freeSessionsToday = 0;
   private fake: (t: number) => void;

@@ -176,7 +176,8 @@
     "xpReward": "+{n}",
     "shardsReward": "+{n} Shards",
     "shardsX": "{n}× Shards",
-    "levelUp": "🎉 Level Up! Lv {n}"
+    "levelUp": "🎉 Level Up! Lv {n}",
+    "relicDrops": "Relic"
   },
   "combat": {
     "critical": "CRITICAL!",
@@ -328,7 +329,44 @@
     "lich_soul_ring": "Lich Soul Ring",
     "lich_soul_ring_d": "It holds a soul that does not want to leave.",
     "overlord_greataxe": "Overlord Greataxe",
-    "overlord_greataxe_d": "They say the last king of the dungeon swung it one-handed."
+    "overlord_greataxe_d": "They say the last king of the dungeon swung it one-handed.",
+    "shield": "Shield",
+    "bronze_hatchet": "Bronze Hatchet",
+    "bronze_hatchet_d": "A woodcutter's axe sharpened in a hurry: hits harder, misses the weak spot.",
+    "iron_battleaxe": "Iron Battleaxe",
+    "iron_battleaxe_d": "Too heavy for feints, too sure to miss.",
+    "steel_greataxe": "Steel Greataxe",
+    "steel_greataxe_d": "Two hands, one swing, and the conversation is over.",
+    "gilded_waraxe": "Gilded Waraxe",
+    "gilded_waraxe_d": "A broad blade with a gilded edge: made to split, not to pierce.",
+    "voidsteel_cleaver": "Voidsteel Cleaver",
+    "voidsteel_cleaver_d": "The void edge cuts without a gleam and without a flame.",
+    "abyssal_reaver": "Abyssal Reaver",
+    "abyssal_reaver_d": "An axe from the abyss: every blow weighs like a sentence.",
+    "bronze_buckler": "Bronze Buckler",
+    "bronze_buckler_d": "Small and round, it protects what it can.",
+    "iron_shield": "Iron Shield",
+    "iron_shield_d": "An honest shield, dented at the rim.",
+    "steel_kite_shield": "Steel Kite Shield",
+    "steel_kite_shield_d": "Every blow that lands on it comes back with interest.",
+    "gilded_shield": "Gilded Shield",
+    "gilded_shield_d": "It reflects the light, and whoever strikes it, in equal measure.",
+    "voidsteel_shield": "Voidsteel Shield",
+    "voidsteel_shield_d": "It swallows the force of a blow without a sound.",
+    "abyssal_shield": "Abyssal Shield",
+    "abyssal_shield_d": "A dark wall that gives back what it takes.",
+    "bone_ward": "Bone Ward",
+    "bone_ward_d": "Ribs lashed with sinew: improvised, but stubborn.",
+    "warden_bulwark": "Warden Bulwark",
+    "warden_bulwark_d": "Heavy, cold, and always facing whoever tries to flee.",
+    "goblin_lucky_coin": "Goblin Lucky Coin",
+    "goblin_lucky_coin_d": "A scratched coin polished by endless rubbing: gold seems to follow it home.",
+    "warchief_totem": "Warchief Totem",
+    "warchief_totem_d": "Carved with the names of the fallen: every blow echoes a war cry.",
+    "lich_phylactery": "Lich Phylactery",
+    "lich_phylactery_d": "A vial of trapped soul: the life that leaks from your enemies drips back into you.",
+    "overlord_sigil": "Overlord Sigil",
+    "overlord_sigil_d": "A seal of command: precise blows grow more precise, and crueller."
   },
   "enemies": {
     "goblinRogue": "Goblin Rogue",
@@ -400,7 +438,11 @@
     "mat_iron_thistle": "Iron Thistle",
     "mat_gold_blossom": "Gold Blossom",
     "mat_swift_grass": "Swift Grass",
-    "mat_moon_lily": "Moon Lily"
+    "mat_moon_lily": "Moon Lily",
+    "mat_rift_shard": "Rift Shard",
+    "mat_fiend_horn": "Fiend Horn",
+    "mat_abyssal_marrow": "Abyssal Marrow",
+    "mat_blood_heart": "Blood Heart"
   },
   "inventory": {
     "title": "Inventory",
@@ -498,7 +540,9 @@
     "reflectStat": "Reflects {pct}% of damage taken",
     "regenStat": "Regenerates {pct}% of max HP/s",
     "attackSpeedStat": "+{pct}% attack speed",
-    "burnTitle": "Burning"
+    "burnTitle": "Burning",
+    "finalDamage": "Final damage",
+    "goldBonus": "Bonus gold"
   },
   "shop": {
     "title": "🛒 Shop",
@@ -623,7 +667,9 @@
     "confirmIngredients": "These pieces will be consumed:",
     "confirmForge": "CONFIRM",
     "cancel": "Cancel",
-    "gemsBack": "Gems returned to your stock: {list}"
+    "gemsBack": "Gems returned to your stock: {list}",
+    "shieldsSection": "Shields",
+    "axesSection": "Axes"
   },
   "rarity": {
     "rar_common": "Common",

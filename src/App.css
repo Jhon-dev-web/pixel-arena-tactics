@@ -2727,8 +2727,8 @@ body {
   overflow-wrap: normal;
 }
 .forge-category-tabs {
-  /* 7 categories: 4 + 3 on two rows keeps every label readable on a phone */
-  grid-template-columns: repeat(4, 1fr);
+  /* 9 categories (swords, axes, armors, shields, helmets, gloves, boots, rings, relics): 5 + 4 on two rows on desktop, 3 x 3 on a phone */
+  grid-template-columns: repeat(5, 1fr);
   margin-bottom: 14px;
 }
 .refine-tag {
@@ -8450,6 +8450,9 @@ button[data-ui]:focus-visible {
   .forge-tabs {
     grid-template-columns: repeat(2, 1fr);
   }
+  .forge-tabs.forge-category-tabs {
+    grid-template-columns: repeat(3, 1fr);
+  }
   .forge-tabs .tab {
     font-size: calc(var(--font-size) - 2px);
     padding: 9px 4px;
@@ -8852,4 +8855,65 @@ button[data-ui]:focus-visible {
 .delivery-req-qty {
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+/* ===== 8 equipment cards on the Home hero card (seven gear slots + the relic): always a compact 2-column grid ===== */
+.dh-hero-equip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.dh-equip-slot {
+  min-width: 0;
+  flex-basis: auto;
+}
+.dh-equip-slot {
+  padding: 6px 8px;
+  gap: 6px;
+}
+.dh-equip-icon {
+  width: 28px;
+  height: 28px;
+}
+.dh-equip-name-row {
+  min-width: 0;
+}
+.dh-equip-name {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.25;
+}
+.dh-equip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* the slot label is redundant next to the icon on this card (the Personagem view keeps it) and its row is what made the names ellipsise at three letters */
+.dh-hero-equip .dh-equip-label {
+  display: none;
+}
+.dh-hero-equip .dh-equip-name {
+  font-size: 11px;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+/* Wide screens: the hero card sits beside the activity card with the portrait next to the list, so two columns would leave names ~70 px: one compact column there */
+@media (min-width: 1000px) {
+  .dh-hero-equip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+  .dh-hero-equip .dh-equip-label {
+    display: block;
+  }
+  .dh-hero-equip .dh-equip-slot {
+    padding: 4px 8px;
+  }
+  .dh-hero-equip .dh-equip-name {
+    -webkit-line-clamp: 1;
+    font-size: 12px;
+  }
 }

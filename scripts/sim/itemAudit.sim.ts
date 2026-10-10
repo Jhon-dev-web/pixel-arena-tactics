@@ -7,13 +7,14 @@
 // the Dungeon and in Hunting, so a change of ln P is the "real combat value" of a stat (computeCP is only an approximation of it).
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
 import { buildCombatStats, computeCP, computeHuntingStatus, buildHuntSession, defaultSave, playerLevel, SaveData, xpToReachLevel } from '../../src/game/engine';
-import { applyForge, applyDiscardInstance, createGearInstance } from '../../src/game/gearInstances';
+import { applyForge, createGearInstance } from '../../src/game/gearInstances';
 import { GEAR, GearItem, getGear, reforgeGoldCost, upgradeChance, upgradeCost } from '../../src/game/gear';
 import { RARITIES, SUBSTATS, SubstatType, medianSubstatValue, rollRarity, rollSubstats } from '../../src/game/rarity';
 import { isDungeonCheckpoint } from '../../src/game/dungeon';
 import { cargoReferenceValue } from '../../src/game/economy';
 import { MaterialId, emptyMaterials } from '../../src/game/materials';
 import { GEMS, GemId, emptyGems, socketsForTier } from '../../src/game/gems';
+import { TIER_EXTRAS } from './ladder';
 import { HUNTING_ZONES, getHuntingZone } from '../../src/game/huntingZones';
 import { clearRate } from './ladder';
 import { duel, duelVs, hero, MAIN_TIERS, PAIRS, repFloor, tierNum } from './duel';
@@ -122,12 +123,12 @@ describe('item balance audit', () => {
     const viaForge: Record<string, number> = {};
     const FN = 20_000;
     withSeededRandom(7, () => {
-      let s: SaveData = { ...defaultSave(), gold: 1e9, materials: { ...emptyMaterials(), copper_bar: 1e6, leather: 1e6, wood_handle_common: 1e6 } as SaveData['materials'] };
+      // the inventory has a stack limit now (Rodada 5): every forge starts from a bag holding exactly its ingredients
+      const fresh = (): SaveData => ({ ...defaultSave(), gold: 1e9, materials: { ...emptyMaterials(), copper_bar: 1, leather: 1, wood_handle_common: 1 } as SaveData['materials'] });
       for (let i = 0; i < FN; i++) {
-        const res = applyForge(s, 'bronze_dagger', { level: 1, now: NOW });
+        const res = applyForge(fresh(), 'bronze_dagger', { level: 1, now: NOW });
         if (!res.ok || !res.instance) throw new Error('forge failed ' + res.reason);
         viaForge[res.instance.rarity] = (viaForge[res.instance.rarity] ?? 0) + 1;
-        s = applyDiscardInstance(res.save!, res.instance.id)!;
       }
     });
     P('Único ponto que sorteia raridade: `createGearInstance` (chamado só por `applyForge`) -> `rollRarity()`. Reforja (`applyReforge`) só re-sorteia as substats, nunca a raridade; não há modificador de nível, Passe de Batalha ou item. Starters e migração usam raridade fixa.', '');
@@ -349,7 +350,7 @@ describe('item balance audit', () => {
         const cp0 = computeCP(base);
         const b = duel(base, fl);
         const bSt = meanStages(base, fl, 60);
-        for (const r of GEAR.filter((g) => g.slot === 'relic')) {
+        for (const r of GEAR.filter((g) => g.slot === 'relic' && g.recipe)) {
           const s = relicOf(base, r.id);
           const d = duel(s, fl);
           const ln = Math.log(d.P / b.P);
@@ -358,7 +359,7 @@ describe('item balance audit', () => {
         }
       }
     });
-    P('**Relíquias** (as três disputam o mesmo slot). Meta: maior / menor `Δln P` <= 1,5 nos níveis 30 e 60; cerca de +4 a +7% de CP no ponto em que ficam forjáveis.', '', '| Nível | Equip. | Relíquia | ΔCP | Δln P (real) | Δandares |', '| --: | --- | --- | --: | --: | --: |', ...gRows1);
+    P('**Relíquias forjáveis** (as três disputam o mesmo slot; as de chefe estão na seção K). Meta: maior / menor `Δln P` <= 1,5 nos níveis 30 e 60; cerca de +4 a +7% de CP no ponto em que ficam forjáveis.', '', '| Nível | Equip. | Relíquia | ΔCP | Δln P (real) | Δandares |', '| --: | --- | --- | --: | --: | --: |', ...gRows1);
     P('', 'Razão maior / menor do Δln P: ' + Object.entries(relicLn).map(([lv, v]) => `nível ${lv}: ${f2(Math.max(...v) / Math.min(...v))}`).join(' · '), '');
 
     const gRows2: string[] = [];
@@ -428,6 +429,73 @@ describe('item balance audit', () => {
     const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     const means = Object.entries(tonicAvg).map(([k, v]) => [k, mean(v)] as [string, number]);
     P('', `Média: ${means.map(([k, v]) => `${k} ${pct(v)}`).join(' · ')}; maior / menor = ${f2(Math.max(...means.map((m) => m[1])) / Math.min(...means.map((m) => m[1])))}x.`, '');
+
+    // ===== I. axes against swords (Rodada 6) ===================================================================================
+    P('## I. Machados contra espadas (Rodada 6)', '');
+    P('Mesma régua (margem P do duelo no andar de referência do herói com a espada, par do tier +4, atributos 35/30/20/15). Machado = a mesma receita e custo da espada do tier, mais dano, metade do crítico, sem queimadura. Três montagens: **pouco crítico** (arma + armadura), **intermediária** (+ elmo, luvas, botas e anel do tier) e **crítico alto** (anel do tier + rubis em todos os soquetes da arma). Δ = P do machado / P da espada - 1; meta nos níveis 30, 60 e 90: dentro de ±5%, machado na frente com pouco crítico e espada na frente com crítico alto.', '');
+    const swordOf: Record<string, string> = { '1': 'bronze_dagger', '2': 'iron_short_sword', '3': 'steel_greatsword', '4g': 'gilded_warblade', '5': 'voidsteel_blade', '6': 'abyssal_greatblade' };
+    const axeOf: Record<string, string> = { '1': 'bronze_hatchet', '2': 'iron_battleaxe', '3': 'steel_greataxe', '4g': 'gilded_waraxe', '5': 'voidsteel_cleaver', '6': 'abyssal_reaver' };
+    const iRows: string[] = [];
+    for (const [k, lv] of [['1', 1], ['2', 10], ['3', 30], ['4g', 60], ['5', 75], ['6', 90]] as [string, number][]) {
+      const n = socketsForTier(tierNum(k));
+      const sets = TIER_EXTRAS[tierNum(k)];
+      const ex = (skip: string[]) => sets.filter(([s]) => !skip.includes(s)).map(([s, id]) => [s, id, 'common', []] as [string, string, 'common', never[]]);
+      const builds: [string, (w: string) => SaveData][] = [
+        ['pouco crítico', (w) => hero(k, 4, { level: lv, weapon: w })],
+        ['intermediária', (w) => hero(k, 4, { level: lv, weapon: w, extra: ex(['shield']) })],
+        ['crítico alto', (w) => hero(k, 4, { level: lv, weapon: w, extra: ex(['helmet', 'gloves', 'boots', 'shield']), wSockets: Array(n).fill('ruby') as GemId[] })],
+      ];
+      const cells = builds.map(([, mk]) => {
+        const sw = mk(swordOf[k]);
+        const ax = mk(axeOf[k]);
+        const fl = repFloor(sw);
+        return signed(100 * (duel(ax, fl).P / duel(sw, fl).P - 1)) + '%';
+      });
+      const sw = getGear(swordOf[k]);
+      const ax = getGear(axeOf[k]);
+      const wa = hero(k, 4, { level: lv, weapon: axeOf[k] });
+      const ws = hero(k, 4, { level: lv, weapon: swordOf[k] });
+      iRows.push(`| T${k} | ${lv} | ${sw.damage} / ${pct(sw.critChance ?? 0, 1)}${sw.burn ? ' + queima' : ''} | ${ax.damage} (${signed(100 * ((ax.damage as number) / (sw.damage as number) - 1))}%) / ${pct(ax.critChance ?? 0, 1)} | ${pct(computeCP(wa) / computeCP(ws) - 1)} | ${cells.join(' | ')} |`);
+    }
+    P('| Tier | Nível | Espada: dano / crítico | Machado: dano / crítico | ΔCP (arma + armadura) | Δ pouco crítico | Δ intermediária | Δ crítico alto |', '| --- | --: | --- | --- | --: | --: | --: | --: |', ...iRows);
+    P('');
+    P('Os machados dos tiers 1-2 ficam à frente em todas as montagens (a espada ainda quase não tem crítico para perder); a inversão só aparece a partir do tier 3, que é onde a medida pede. Os tiers 5-6 compensam a queimadura da espada com mais dano. O custo da receita (Ouro + materiais) é igual ao da espada do tier em todos os tiers.', '');
+
+    // ===== J. shields (Rodada 6) ===============================================================================================
+    P('## J. Escudos (Rodada 6)', '');
+    P('Efeito de acrescentar o escudo do tier ao conjunto completo de seis peças do tier (comum +0) e a arma + armadura; reflexo medido em arma + armadura +4 + escudo no andar de referência.', '');
+    const jRows: string[] = [];
+    const shieldOf: Record<string, string> = { '1': 'bronze_buckler', '2': 'iron_shield', '3': 'steel_kite_shield', '4g': 'gilded_shield', '5': 'voidsteel_shield', '6': 'abyssal_shield' };
+    for (const k of Object.keys(shieldOf).sort()) {
+      const sh = getGear(shieldOf[k]);
+      const ex = TIER_EXTRAS[tierNum(k)].filter(([s]) => s !== 'shield').map(([s, id]) => [s, id, 'common', []] as [string, string, 'common', never[]]);
+      const shE: [string, string, 'common', never[]] = ['shield', shieldOf[k], 'common', []];
+      const full = hero(k, 0, { extra: ex });
+      const fullS = hero(k, 0, { extra: [...ex, shE] });
+      const wa = hero(k, 0);
+      const waS = hero(k, 0, { extra: [shE] });
+      const rb = hero(k, 4, { extra: [shE] });
+      const rbN = hero(k, 4);
+      const fl = repFloor(rb);
+      const arm = getGear(PAIRS[k][1]);
+      jRows.push(`| ${shieldOf[k]} | T${k} | ${sh.maxHp} PV · ${pct(sh.resistance ?? 0, 1)} res${sh.reflect ? ' · ' + pct(sh.reflect, 1) + ' reflexo' : ''} | ${pct(computeCP(fullS) / computeCP(full) - 1)} | ${pct(computeCP(waS) / computeCP(wa) - 1)} | ${f2(Math.log(duel(fullS, repFloor(fullS)).P / duel(full, repFloor(fullS)).P) * 100)}% | ${pct(duel(rbN, fl).reflectShare)} → ${pct(duel(rb, fl).reflectShare)} | ${Math.round(goldEq(chainCost(shieldOf[k]), true, shieldOf[k]))} / ${Math.round(goldEq(chainCost(arm.id), true, arm.id))} |`);
+    }
+    P('| Escudo | Tier | Stats | ΔCP (conjunto de 6) | ΔCP (arma + armadura) | Δln P (conjunto de 6) | Reflexo do dano total (só armadura → com escudo) | Custo da receita: escudo / armadura |', '| --- | --- | --- | --: | --: | --: | --: | --: |', ...jRows);
+    P('');
+
+    // ===== K. boss relics (Rodada 6) ===========================================================================================
+    P('## K. Relíquias de chefe (Rodada 6)', '');
+    P('Quatro relíquias empilháveis, só por queda (' + pct(T.battle.relicBossChance, 0) + ' por vitória sobre o chefe do bioma, independente da peça única), que disputam o slot único com as três forjáveis. Medidas no nível em que caem, herói arma + armadura +4 do tier. Meta: +4 a +7% de CP (a faixa das forjáveis, 3,5 a 7,5% no teste) e valor real dentro de 1,5x das forjáveis; a moeda não tem valor de combate (só ouro).', '');
+    const kRows: string[] = [];
+    for (const [id, tk, lv] of [['goblin_lucky_coin', '3', 25], ['warchief_totem', '4g', 50], ['lich_phylactery', '5', 75], ['overlord_sigil', '6', 100]] as [string, string, number][]) {
+      const base = hero(tk, 4, { level: lv });
+      const fl = repFloor(base);
+      const lnP = (s: SaveData) => Math.log(duel(s, fl).P / duel(base, fl).P) * 100;
+      const crafted = ['ring_vitality', 'amulet_swiftness', 'berserker_crest'].map((c) => lnP(relicOf(base, c)));
+      kRows.push(`| ${id} | ${lv} | T${tk}+4 | ${pct(computeCP(relicOf(base, id)) / computeCP(base) - 1)} | ${f2(lnP(relicOf(base, id)))}% | ${crafted.map((x) => f2(x)).join(' / ')}% |`);
+    }
+    P('| Relíquia | Nível | Herói | ΔCP | Δln P (real) | Forjáveis (vitalidade / velocidade / berserker) |', '| --- | --: | --- | --: | --: | --: |', ...kRows);
+    P('');
 
     console.log('\n' + out.join('\n') + '\n');
     void GEAR;

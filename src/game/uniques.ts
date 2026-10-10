@@ -16,12 +16,20 @@ export interface UniqueDrop {
   substats: Substat[];
 }
 
-// Biome-boss floor -> the unique that boss can drop (gear.ts UNIQUE_DEFS `source.bossFloor`).
-export const UNIQUE_BOSS_DROPS: Record<number, string> = {
-  25: 'goblin_king_crown',
-  50: 'warchief_gauntlets',
-  75: 'lich_soul_ring',
-  100: 'overlord_greataxe',
+// Biome-boss floor -> the unique pieces that boss can drop (gear.ts UNIQUE_DEFS `source.bossFloor`). Each is rolled on its own, T.battle.uniqueBossChance per victory.
+export const UNIQUE_BOSS_DROPS: Record<number, string[]> = {
+  25: ['goblin_king_crown'],
+  50: ['warchief_gauntlets', 'warden_bulwark'],
+  75: ['lich_soul_ring'],
+  100: ['overlord_greataxe'],
+};
+
+// Biome-boss floor -> the stackable relic that boss can drop (gear.ts boss relics, `source.bossFloor`).
+export const BOSS_RELIC_DROPS: Record<number, string> = {
+  25: 'goblin_lucky_coin',
+  50: 'warchief_totem',
+  75: 'lich_phylactery',
+  100: 'overlord_sigil',
 };
 
 // One drop of a unique: rarity from the normal table, substats for that rarity and tier plus the guaranteed extra slot.
@@ -31,10 +39,33 @@ export function rollUniqueDrop(templateId: string, rng: Rng = Math.random): Uniq
   return { templateId, rarity, substats: rollSubstats(rarity, item?.tier ?? 0, 1, rng) };
 }
 
-// The unique(s) a cleared Dungeon stage can drop: only the biome-boss floors, T.battle.uniqueBossChance each time.
+// The unique(s) a cleared Dungeon stage can drop: only the biome-boss floors, T.battle.uniqueBossChance each time for each unique of that boss.
 export function rollBossUniques(stage: number, rng: Rng = Math.random): UniqueDrop[] {
-  const id = UNIQUE_BOSS_DROPS[stage];
-  return id && rng() < T.battle.uniqueBossChance ? [rollUniqueDrop(id, rng)] : [];
+  const out: UniqueDrop[] = [];
+  for (const id of UNIQUE_BOSS_DROPS[stage] ?? []) if (rng() < T.battle.uniqueBossChance) out.push(rollUniqueDrop(id, rng));
+  return out;
+}
+
+// The relic(s) (template ids) a cleared Dungeon stage can drop: only the biome-boss floors, T.battle.relicBossChance each time, independent of the uniques.
+// Relics are stackable: a second copy simply adds to the stack (inventory.ts addForced), and a defeat keeps them like the boss gem.
+export function rollBossRelics(stage: number, rng: Rng = Math.random): string[] {
+  const id = BOSS_RELIC_DROPS[stage];
+  return id && rng() < T.battle.relicBossChance ? [id] : [];
+}
+
+// Boss relics from a saved / tampered list (never trusted): only known boss relic ids survive.
+export function sanitizeRelicDrops(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const known = new Set(Object.values(BOSS_RELIC_DROPS));
+  return (raw as unknown[]).filter((id): id is string => typeof id === 'string' && known.has(id)).slice(0, 50);
+}
+
+// Delivers boss relics into the stackable gear stock (the Dungeon never refuses its loot, see App.finishRun).
+export function addRelics(save: SaveData, relics: string[]): SaveData {
+  if (relics.length === 0) return save;
+  const inventory = { ...save.inventory };
+  for (const id of relics) inventory[id] = (inventory[id] ?? 0) + 1;
+  return { ...save, inventory };
 }
 
 // A delivered unique drop as a stored (unequipped) gear instance. The id is derived from `seed` and the first free counter, so it is stable for a given

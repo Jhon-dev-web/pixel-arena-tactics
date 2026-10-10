@@ -182,6 +182,7 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
       burn: s.burn === true,
       reflect: n(s.reflect, 0, 1) ?? 0,
       hpRegenPct: n(s.hpRegenPct, 0, 1) ?? 0,
+      goldBonus: n(s.goldBonus, 0, 100) ?? 0,
       // AGI and the speed bonus feed the Haste Tonic's interval; a session saved before they existed falls back to dividing heroMs.
       ...(n(s.agi, 0, ceil) !== null ? { agi: n(s.agi, 0, ceil)!, speedBonus: n(s.speedBonus, 0, 10) ?? 0 } : {}),
     },

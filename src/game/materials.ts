@@ -20,6 +20,10 @@ export type MaterialId =
   | 'bone_fragment'
   | 'concentrated_blood'
   | 'corrupted_crystal'
+  | 'rift_shard'
+  | 'fiend_horn'
+  | 'abyssal_marrow'
+  | 'blood_heart'
   | 'common_herb'
   | 'energy_herb'
   | 'uncommon_root'
@@ -77,6 +81,11 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'bone_fragment', nameKey: 'mat_bone_fragment', icon: '🦴', iconUrl: '/assets/icons/bone_fragment.png', packSize: 5, packCost: 30, sellValue: 4 },
   { id: 'concentrated_blood', nameKey: 'mat_concentrated_blood', icon: '🩸', iconUrl: '/assets/icons/concentrated_blood.png', packSize: 3, packCost: 120, sellValue: 22 },
   { id: 'corrupted_crystal', nameKey: 'mat_corrupted_crystal', icon: '🔮', iconUrl: '/assets/icons/corrupted_crystal.png', packSize: 1, packCost: 800, sellValue: 180 },
+  // Own drops of the two late zones (Demon Rift: uncommon + rare, Blood Abyss: uncommon + rare) - consumed by the tier 5 / tier 6 gear recipes.
+  { id: 'rift_shard', nameKey: 'mat_rift_shard', icon: '💎', iconUrl: '/assets/icons/rift_shard.png', packSize: 3, packCost: 240, sellValue: 30 },
+  { id: 'fiend_horn', nameKey: 'mat_fiend_horn', icon: '🦄', iconUrl: '/assets/icons/fiend_horn.png', packSize: 1, packCost: 1000, sellValue: 220 },
+  { id: 'abyssal_marrow', nameKey: 'mat_abyssal_marrow', icon: '🦴', iconUrl: '/assets/icons/abyssal_marrow.png', packSize: 3, packCost: 260, sellValue: 32 },
+  { id: 'blood_heart', nameKey: 'mat_blood_heart', icon: '❤️', iconUrl: '/assets/icons/blood_heart.png', packSize: 1, packCost: 1100, sellValue: 240 },
   // Garden harvests — Alchemy ingredients (erva/raiz/flor), never dropped by Hunting/Mining/Dungeon.
   { id: 'common_herb', nameKey: 'mat_common_herb', icon: '🌿', iconUrl: '/assets/icons/common_herb.png', packSize: 5, packCost: 20, sellValue: 3 },
   { id: 'energy_herb', nameKey: 'mat_energy_herb', icon: '🍀', iconUrl: '/assets/icons/energy_herb.png', packSize: 5, packCost: 20, sellValue: 3 },
@@ -134,6 +143,10 @@ export function emptyMaterials(): Materials {
     bone_fragment: 0,
     concentrated_blood: 0,
     corrupted_crystal: 0,
+    rift_shard: 0,
+    fiend_horn: 0,
+    abyssal_marrow: 0,
+    blood_heart: 0,
     common_herb: 0,
     energy_herb: 0,
     uncommon_root: 0,

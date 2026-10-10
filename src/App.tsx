@@ -17,7 +17,7 @@ import {
 import { SaveConflictError, SaveRepository } from './game/saveRepository';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
-import { addUniqueInstance } from './game/uniques';
+import { addRelics, addUniqueInstance } from './game/uniques';
 import { applyFertilizer, applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
 import { applyElixir, applyWhetstoneOil, ElixirId, isBuffItem } from './game/elixirs';
 import { goldMultiplier } from './game/buffs';
@@ -484,6 +484,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     // Mochila may briefly show over capacity until the player frees a slot).
     let delivered = worn;
     for (const drop of rewards.uniques ?? []) delivered = addUniqueInstance(delivered, drop, `dg${startFloor}_${Date.now()}`, Date.now());
+    // Boss relics are stackable gear: a copy goes into the stock (a second one just stacks), also over capacity and also after a defeat.
+    delivered = addRelics(delivered, rewards.relics ?? []);
     // Floor checkpoint: every stage actually defeated this run is banked permanently, win or lose the
     // run overall — dying deep in a run no longer discards floors you already cleared to get there.
     // Only the one-time milestone loot below (gold/gems/title at 25/50/75/100) stays retreat-gated.
@@ -543,6 +545,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       highestDungeonFloor: nextFloor,
       unlockedHuntingZones,
       gearInstances: delivered.gearInstances,
+      inventory: delivered.inventory,
       blessed: false,
       quests,
       battlePassLevel,

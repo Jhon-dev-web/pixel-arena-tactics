@@ -1,6 +1,6 @@
 // A ladder of "reasonable builds" used to measure how much CP a Dungeon floor really asks for (the recommended-CP table is
 // generated from it, see cpTable.gen.ts) and to probe the floor-25 boss. A build is a hero of a given level with the
-// attribute points spread like the sim player does (driver.ts ATTR_WEIGHTS), wearing the full set of one tier (weapon, armor, helmet, gloves, boots, ring) of common-rarity
+// attribute points spread like the sim player does (driver.ts ATTR_WEIGHTS), wearing the full set of one tier (weapon, armor, helmet, gloves, boots, ring, shield) of common-rarity
 // weapon + armor of one tier refined to a given level, no gems, no substats, no potions, full HP.
 import { computeCP, defaultSave, SaveData, xpToReachLevel } from '../../src/game/engine';
 import { createGearInstance } from '../../src/game/gearInstances';
@@ -19,15 +19,15 @@ export const TIER_GEAR: Record<number, [string, string]> = {
   6: ['abyssal_greatblade', 'abyssal_bulwark'],
 };
 
-// The helmet / gloves / boots / ring of each tier (common, same refine as the weapon): the ladder describes a hero that has filled every slot of
-// the tier, which is the player the Dungeon curve is balanced around (docs/BALANCE_CHANGES.md Rodada 3).
+// The helmet / gloves / boots / ring / shield of each tier (common, same refine as the weapon): the ladder describes a hero that has filled every slot of
+// the tier, which is the player the Dungeon curve is balanced around (docs/BALANCE_CHANGES.md Rodada 3; the shield joined in Rodada 6).
 export const TIER_EXTRAS: Record<number, [string, string][]> = {
-  1: [['helmet', 'bronze_helm'], ['gloves', 'leather_gloves'], ['boots', 'leather_boots'], ['ring', 'copper_ring']],
-  2: [['helmet', 'iron_helm'], ['gloves', 'iron_gauntlets'], ['boots', 'iron_greaves'], ['ring', 'silver_ring']],
-  3: [['helmet', 'steel_helm'], ['gloves', 'steel_gauntlets'], ['boots', 'steel_greaves'], ['ring', 'gold_ring']],
-  4: [['helmet', 'gilded_helm'], ['gloves', 'gilded_gauntlets'], ['boots', 'gilded_greaves'], ['ring', 'ruby_ring']],
-  5: [['helmet', 'voidsteel_helm'], ['gloves', 'voidsteel_gauntlets'], ['boots', 'voidsteel_greaves'], ['ring', 'obsidian_ring']],
-  6: [['helmet', 'abyssal_helm'], ['gloves', 'abyssal_gauntlets'], ['boots', 'abyssal_greaves'], ['ring', 'abyssal_ring']],
+  1: [['helmet', 'bronze_helm'], ['gloves', 'leather_gloves'], ['boots', 'leather_boots'], ['ring', 'copper_ring'], ['shield', 'bronze_buckler']],
+  2: [['helmet', 'iron_helm'], ['gloves', 'iron_gauntlets'], ['boots', 'iron_greaves'], ['ring', 'silver_ring'], ['shield', 'iron_shield']],
+  3: [['helmet', 'steel_helm'], ['gloves', 'steel_gauntlets'], ['boots', 'steel_greaves'], ['ring', 'gold_ring'], ['shield', 'steel_kite_shield']],
+  4: [['helmet', 'gilded_helm'], ['gloves', 'gilded_gauntlets'], ['boots', 'gilded_greaves'], ['ring', 'ruby_ring'], ['shield', 'gilded_shield']],
+  5: [['helmet', 'voidsteel_helm'], ['gloves', 'voidsteel_gauntlets'], ['boots', 'voidsteel_greaves'], ['ring', 'obsidian_ring'], ['shield', 'voidsteel_shield']],
+  6: [['helmet', 'abyssal_helm'], ['gloves', 'abyssal_gauntlets'], ['boots', 'abyssal_greaves'], ['ring', 'abyssal_ring'], ['shield', 'abyssal_shield']],
 };
 
 export interface LadderBuild {

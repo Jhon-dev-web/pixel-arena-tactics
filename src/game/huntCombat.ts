@@ -48,6 +48,7 @@ export interface HuntCombatBuild {
   burn: boolean; // gear effects, see derivedStats.ts (igniteBurn / reflectedDamage / regenAmount)
   reflect: number;
   hpRegenPct: number;
+  goldBonusPct?: number; // gear gold bonus (CombatStats.goldBonus): raises the Gold of the fight time, not the XP or the drops
 }
 
 export interface HuntZoneCombatCfg {
@@ -351,7 +352,7 @@ export function simulateHuntingSession(
     potionsUsed,
     fightTimeUsedMs,
     xpReady: Math.floor(hours * zoneCfg.xpPerHour),
-    goldReady: Math.floor((hours + (fortuneFightMs / (3600 * 1000)) * (timeline?.fortuneGoldPct ?? 0)) * zoneCfg.goldPerHour),
+    goldReady: Math.floor((hours * (1 + (build.goldBonusPct ?? 0) / 100) + (fortuneFightMs / (3600 * 1000)) * (timeline?.fortuneGoldPct ?? 0)) * zoneCfg.goldPerHour),
     drops,
     uniques,
     liveSnapshot,

@@ -135,8 +135,8 @@ export default function InventoryPanel({
   const isEquipped = selectedInstance
     ? isInstanceEquipped(save, selectedInstance.id)
     : !fromStash && !!selectedGear && save.equipped[selectedGear.slot as 'relic'] === selectedGear.id;
-  // Every instanced slot (weapon, armor, helmet, gloves, boots, ring) equips straight from the bag.
-  const isEquippable = !!selectedGear && isInstancedSlot(selectedGear.slot);
+  // Every instanced slot (weapon, armor, helmet, gloves, boots, ring, shield) and the relic slot equip straight from the bag.
+  const isEquippable = !!selectedGear && (isInstancedSlot(selectedGear.slot) || selectedGear.slot === 'relic');
   const selectedRarity: Rarity = selectedInstance?.rarity ?? 'common';
   const selectedSubs = selectedInstance?.substats ?? [];
   const selectedLevel = selectedInstance ? clampRefine(selectedInstance.upgrade) : 0;
@@ -180,7 +180,7 @@ export default function InventoryPanel({
           {t('inventory.bagTitle')} {slots}/{capacity}
         </button>
         <button className={`tab${pane === 'stash' ? ' active' : ''}`} onClick={() => setPane('stash')} role="tab" aria-selected={pane === 'stash'} data-ui>
-          {t('stash.title')} {stashSlotsUsed(save)}/{stashCapacity(save)}
+          <img className="inline-icon" src="/assets/icons/camp_stash.png" alt="" /> {t('stash.title')} {stashSlotsUsed(save)}/{stashCapacity(save)}
         </button>
       </div>
       <div className="inv-panes">
@@ -343,7 +343,9 @@ export default function InventoryPanel({
       </section>
 
       <section className={`inv-pane inv-pane-stash${pane === 'stash' ? ' active' : ''}`}>
-        <h4 className="inv-pane-title">{t('stash.title')}</h4>
+        <h4 className="inv-pane-title">
+          <img className="inline-icon" src="/assets/icons/camp_stash.png" alt="" /> {t('stash.title')}
+        </h4>
         <StashPane save={save} selected={fromStash && selected ? { kind: selected.kind, id: selected.id } : null} onSelect={(sel) => select(sel.kind, sel.id, 'stash')} onUpgrade={() => bag?.upgradeStash()} />
       </section>
       </div>
@@ -363,7 +365,7 @@ export default function InventoryPanel({
                 <UniqueTag templateId={selectedGear.id} />
               </span>
               {!selectedInstance && <span className="inv-qty">×{fmtNum(selQty)}</span>}
-              {selectedInstance && isEquipped && <span className="inv-qty">{t('inventory.equipped')}</span>}
+              {isEquipped && <span className="inv-qty">{t('inventory.equipped')}</span>}
             </div>
             <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
             <div className="gear-stat-list">

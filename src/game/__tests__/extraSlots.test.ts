@@ -38,6 +38,8 @@ import { withSeededRandom } from '../../../scripts/sim/driver';
 import { hero } from '../../../scripts/sim/duel';
 
 const EXTRA = ['helmet', 'gloves', 'boots', 'ring'] as const;
+// Content pack 2 adds the shield as a fifth extra slot (its own tests are in contentPack2.test.ts).
+const EXTRA5 = [...EXTRA, 'shield'] as const;
 const HOUR = 3600 * 1000;
 const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
 const wire = (s: unknown) => JSON.parse(JSON.stringify(s)) as Record<string, unknown>;
@@ -52,11 +54,10 @@ function withPieces(ids: string[], rarity: 'common' | 'epic' = 'common'): SaveDa
 const equipAll = (s: SaveData, ids: string[]): SaveData => ids.reduce((acc, id) => applyEquipInstance(acc, `t_${id}`) as SaveData, s);
 
 describe('the four extra slots (helmet, gloves, boots, ring)', () => {
-  it('INSTANCED_SLOTS has six slots and every one is instanced; relics and shields are not', () => {
-    expect([...INSTANCED_SLOTS]).toEqual(['weapon', 'armor', 'helmet', 'gloves', 'boots', 'ring']);
+  it('INSTANCED_SLOTS has seven slots and every one is instanced; relics are not', () => {
+    expect([...INSTANCED_SLOTS]).toEqual(['weapon', 'armor', 'helmet', 'gloves', 'boots', 'ring', 'shield']);
     for (const slot of INSTANCED_SLOTS) expect(isInstancedSlot(slot)).toBe(true);
     expect(isInstancedSlot('relic')).toBe(false);
-    expect(isInstancedSlot('shield')).toBe(false);
   });
 
   it('a new save has empty extra slots and no extra instances (no starter items)', () => {
@@ -196,13 +197,13 @@ describe('old saves load', () => {
 });
 
 describe('content pack 1: catalog', () => {
-  const forged = GEAR.filter((g) => EXTRA.includes(g.slot as (typeof EXTRA)[number]) && !g.unique);
+  const forged = GEAR.filter((g) => EXTRA5.includes(g.slot as (typeof EXTRA5)[number]) && !g.unique);
   const uniques = GEAR.filter((g) => g.unique);
 
-  it('24 forged pieces: six tiers per slot, the same level gate as the weapon / armor of the tier, previous tier of the same slot from tier 2', () => {
-    expect(forged).toHaveLength(24);
+  it('30 forged pieces: six tiers per slot, the same level gate as the weapon / armor of the tier, previous tier of the same slot from tier 2', () => {
+    expect(forged).toHaveLength(30);
     const levelOf: Record<number, number> = { 1: 0, 2: 10, 3: 25, 4: 50, 5: 70, 6: 90 };
-    for (const slot of EXTRA) {
+    for (const slot of EXTRA5) {
       const line = forged.filter((g) => g.slot === slot).sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0));
       expect(line.map((g) => g.tier)).toEqual([1, 2, 3, 4, 5, 6]);
       line.forEach((g, i) => {
@@ -213,9 +214,9 @@ describe('content pack 1: catalog', () => {
     }
   });
 
-  it('12 uniques: drop-only, no recipe, flagged, with a source, stats = forged twin +10 % on the main stat', () => {
-    expect(uniques).toHaveLength(12);
-    const main: Record<string, 'damage' | 'maxHp' | 'resistance' | 'critChance'> = { weapon: 'damage', armor: 'maxHp', helmet: 'maxHp', gloves: 'damage', boots: 'resistance', ring: 'critChance' };
+  it('14 uniques: drop-only, no recipe, flagged, with a source, stats = forged twin +10 % on the main stat', () => {
+    expect(uniques).toHaveLength(14);
+    const main: Record<string, 'damage' | 'maxHp' | 'resistance' | 'critChance'> = { weapon: 'damage', armor: 'maxHp', helmet: 'maxHp', gloves: 'damage', boots: 'resistance', ring: 'critChance', shield: 'resistance' };
     for (const u of uniques) {
       expect(u.recipe).toBeUndefined();
       expect(u.source).toBeDefined();
@@ -229,15 +230,15 @@ describe('content pack 1: catalog', () => {
       for (const k of ['damage', 'maxHp', 'resistance', 'critChance', 'critMultBonus'] as const) if (k !== m) expect(u[k]).toBe(twin[k]);
     }
     const byTier = Object.fromEntries(uniques.map((u) => [u.id, u.tier]));
-    expect(byTier).toMatchObject({ demon_fang_dagger: 2, demonhide_vest: 2, bloodbound_cleaver: 3, bloodvein_plate: 3, riftwalker_boots: 4, shadow_hood: 4, abyss_heart_ring: 5, bonecrusher_maul: 5, goblin_king_crown: 2, warchief_gauntlets: 3, lich_soul_ring: 5, overlord_greataxe: 6 });
+    expect(byTier).toMatchObject({ demon_fang_dagger: 2, demonhide_vest: 2, bloodbound_cleaver: 3, bloodvein_plate: 3, riftwalker_boots: 4, shadow_hood: 4, abyss_heart_ring: 5, bonecrusher_maul: 5, goblin_king_crown: 2, warchief_gauntlets: 3, lich_soul_ring: 5, overlord_greataxe: 6, bone_ward: 3, warden_bulwark: 4 });
   });
 
   it('every unique is referenced by exactly one source (a zone or a boss)', () => {
     const fromZones = HUNTING_ZONES.flatMap((z) => (z.uniques ?? []).map((u) => u.itemId));
-    const fromBosses = Object.values(UNIQUE_BOSS_DROPS);
+    const fromBosses = Object.values(UNIQUE_BOSS_DROPS).flat();
     expect([...fromZones, ...fromBosses].sort()).toEqual(uniques.map((u) => u.id).sort());
     for (const z of HUNTING_ZONES) for (const u of z.uniques ?? []) expect(getGear(u.itemId).source).toEqual({ zone: z.id });
-    for (const [floor, id] of Object.entries(UNIQUE_BOSS_DROPS)) expect(getGear(id).source).toEqual({ bossFloor: Number(floor) });
+    for (const [floor, ids] of Object.entries(UNIQUE_BOSS_DROPS)) for (const id of ids) expect(getGear(id).source).toEqual({ bossFloor: Number(floor) });
   });
 
   it('power budget: the four extra pieces of a tier add about +28-40 % CP over weapon + armor of that tier', () => {
@@ -313,15 +314,16 @@ describe('unique pieces', () => {
     expect(applyDiscardInstance(s, 'u2')!.gearInstances.u2).toBeUndefined();
   });
 
-  it('boss uniques: 8 % per victory on the four biome-boss floors only, over many seeded rolls', () => {
+  it('boss uniques: 8 % per victory for each unique of the four biome-boss floors only, over many seeded rolls', () => {
     expect(T.battle.uniqueBossChance).toBe(0.08);
     const N = 40_000;
     const rates = withSeededRandom(5150, () => {
       const out: Record<string, number> = {};
       for (const floor of [10, 24, 25, 50, 75, 99, 100]) {
-        let hits = 0;
-        for (let i = 0; i < N; i++) hits += rollBossUniques(floor).length;
-        out[floor] = hits / N;
+        // hits per unique template: the floor-50 boss carries two, each rolled on its own
+        const hits: Record<string, number> = {};
+        for (let i = 0; i < N; i++) for (const d of rollBossUniques(floor)) hits[d.templateId] = (hits[d.templateId] ?? 0) + 1;
+        out[floor] = Object.values(hits).reduce((a, b) => a + b, 0) / N / Math.max(1, (UNIQUE_BOSS_DROPS[floor] ?? []).length);
       }
       return out;
     });

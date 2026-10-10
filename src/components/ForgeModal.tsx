@@ -67,10 +67,13 @@ const ALL_TABS: ForgeTab[] = ['forge', 'upgrade', 'repair', 'socket'];
 
 // The "Forjar" tab groups recipes by their real GearSlot (see gear.ts), so this is a display grouping of the
 // existing gear data, not a new taxonomy. Unique (drop-only) pieces have no recipe and never show here.
-type ForgeCategory = 'weapon' | 'armor' | 'helmet' | 'gloves' | 'boots' | 'ring' | 'relic';
-const FORGE_CATEGORIES: ForgeCategory[] = ['weapon', 'armor', 'helmet', 'gloves', 'boots', 'ring', 'relic'];
+// 'axe' is the second weapon line (gear.ts `line: 'axe'`), shown as its own tab next to the swords.
+type ForgeCategory = 'weapon' | 'axe' | 'armor' | 'shield' | 'helmet' | 'gloves' | 'boots' | 'ring' | 'relic';
+const FORGE_CATEGORIES: ForgeCategory[] = ['weapon', 'axe', 'armor', 'shield', 'helmet', 'gloves', 'boots', 'ring', 'relic'];
 const CATEGORY_LABEL_KEY: Record<ForgeCategory, string> = {
   weapon: 'weaponsSection',
+  axe: 'axesSection',
+  shield: 'shieldsSection',
   armor: 'armorSection',
   helmet: 'helmetsSection',
   gloves: 'glovesSection',
@@ -78,7 +81,8 @@ const CATEGORY_LABEL_KEY: Record<ForgeCategory, string> = {
   ring: 'ringsSection',
   relic: 'relicsSection',
 };
-const forgeRecipes = (cat: ForgeCategory): GearItem[] => gearBySlot(cat).filter((g) => g.recipe && !g.unique);
+const categoryOf = (g: GearItem): ForgeCategory => (g.line === 'axe' ? 'axe' : (g.slot as ForgeCategory));
+const forgeRecipes = (cat: ForgeCategory): GearItem[] => gearBySlot(cat === 'axe' ? 'weapon' : cat).filter((g) => g.recipe && !g.unique && categoryOf(g) === cat);
 
 export default function ForgeModal({
   save,
@@ -113,7 +117,7 @@ export default function ForgeModal({
 }) {
   const focusItem = focusItemId ? getGear(focusItemId) : undefined;
   const [tab, setTab] = useState<ForgeTab>(initialTab && allowedTabs.includes(initialTab) ? initialTab : allowedTabs[0] ?? 'forge');
-  const [forgeCategory, setForgeCategory] = useState<ForgeCategory>(() => (focusItem && FORGE_CATEGORIES.includes(focusItem.slot as ForgeCategory) ? (focusItem.slot as ForgeCategory) : 'weapon'));
+  const [forgeCategory, setForgeCategory] = useState<ForgeCategory>(() => (focusItem && FORGE_CATEGORIES.includes(categoryOf(focusItem)) ? categoryOf(focusItem) : 'weapon'));
   useEffect(() => {
     if (!focusItemId) return;
     document.querySelector(`[data-recipe-id="${focusItemId}"]`)?.scrollIntoView({ block: 'center' });

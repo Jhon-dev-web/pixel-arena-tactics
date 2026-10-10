@@ -65,7 +65,9 @@ export default function StashPane({
   return (
     <>
       <div className="inventory-summary">
-        <span className={`inventory-summary-chip${used > capacity ? ' over' : ''}`}>{t('stash.space', { n: used, m: capacity })}</span>
+        <span className={`inventory-summary-chip${used > capacity ? ' over' : ''}`}>
+          <img className="inline-icon" src="/assets/icons/camp_stash.png" alt="" /> {t('stash.space', { n: used, m: capacity })}
+        </span>
         <button className="inventory-expand-btn" onClick={() => setUpgradeOpen(true)} aria-label={t('stash.upgradeTitle')} data-ui>
           +
         </button>
@@ -87,7 +89,9 @@ export default function StashPane({
       {upgradeOpen && (
         <div className="modal-backdrop" onClick={() => setUpgradeOpen(false)}>
           <div className="modal expand-modal" onClick={(event) => event.stopPropagation()}>
-            <h2 className="modal-title">{t('stash.upgradeTitle')}</h2>
+            <h2 className="modal-title">
+              <img className="inline-icon" src="/assets/icons/camp_stash.png" alt="" /> {t('stash.upgradeTitle')}
+            </h2>
             <div className="expand-rows">
               <div className="expand-row">
                 <span>{t('inventory.currentCapacity')}</span>

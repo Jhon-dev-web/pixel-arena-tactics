@@ -156,8 +156,8 @@ export default function DesktopHome({
             <div className="bar-fill xp-fill" style={{ width: `${Math.round(heroProgress * 100)}%` }} />
           </div>
           <div className="dh-hero-equip">
-            {INSTANCED_SLOTS.map((slot) => {
-              const view = equipped[slot];
+            {[...INSTANCED_SLOTS, 'relic' as const].map((slot) => {
+              const view = slot === 'relic' ? (equipped.relic ? { item: equipped.relic, instance: null } : null) : equipped[slot];
               const name = view ? (view.instance ? gearInstanceLabel(view.instance) : t(`gear.${view.item.nameKey}`)) : '—';
               return (
                 <div className={`dh-equip-slot${view ? '' : ' empty'}`} key={slot}>

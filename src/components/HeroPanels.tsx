@@ -1,7 +1,7 @@
 import { activeLocale, t } from '../locales';
 import { mitigationFraction } from '../game/derivedStats';
 import { SaveData, buildCombatStats, computeCP, formatNumber, playerLevel } from '../game/engine';
-import { INSTANCED_SLOTS, InstancedSlot, MAX_DURABILITY } from '../game/gear';
+import { GearSlot, INSTANCED_SLOTS, MAX_DURABILITY } from '../game/gear';
 import { EquippedView, resolveEquipped, viewDurability, viewRarity, viewRefine } from '../game/gearInstances';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import { TITLES } from '../game/titles';
@@ -29,9 +29,10 @@ const ATTRS: { key: AttrKey; nameKey: string; descKey: string }[] = [
   { key: 'res', nameKey: 'res', descKey: 'resDesc' },
 ];
 
-// One equipment card per instanced slot. `view` is null when the slot is empty (helmet / gloves / boots / ring); an empty weapon / armor
-// resolves to the zero-stat starter, which is shown like any other piece.
-function EquipSlotCard({ slot, view }: { slot: InstancedSlot; view: EquippedView | null }) {
+// One equipment card per slot (the seven instanced ones, then the relic). `view` is null when the slot is empty (helmet / gloves / boots / ring / shield /
+// relic); an empty weapon / armor resolves to the zero-stat starter, which is shown like any other piece. The relic is a stackable template: no instance, so
+// no rarity, refine or durability lines.
+function EquipSlotCard({ slot, view }: { slot: GearSlot; view: EquippedView | null }) {
   const rarClass = (r: Rarity) => `r-${r}`;
   const durClass = (d: number) => (d <= 0 ? ' broken' : d < 30 ? ' worn' : '');
   if (!view) {
@@ -76,7 +77,7 @@ function EquipSlotCard({ slot, view }: { slot: InstancedSlot; view: EquippedView
             +{substatLabel(s)} {t(`rarity.${substatNameKey(s.type)}`)}
           </span>
         ))}
-        <span className={`hero-durability${durClass(dur)}`}>{t('forge.durability', { n: dur, m: MAX_DURABILITY })}</span>
+        {view.instance && <span className={`hero-durability${durClass(dur)}`}>{t('forge.durability', { n: dur, m: MAX_DURABILITY })}</span>}
       </div>
     </div>
   );
@@ -91,6 +92,7 @@ export function EquipmentPanel({ save }: { save: SaveData }) {
         {INSTANCED_SLOTS.map((slot) => (
           <EquipSlotCard key={slot} slot={slot} view={equipped[slot]} />
         ))}
+        <EquipSlotCard slot="relic" view={equipped.relic ? { item: equipped.relic, instance: null } : null} />
       </div>
 
     </>

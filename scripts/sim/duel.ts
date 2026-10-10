@@ -3,6 +3,7 @@
 import { buildCombatStats, defaultSave, SaveData, xpToReachLevel } from '../../src/game/engine';
 import { createGearInstance } from '../../src/game/gearInstances';
 import { Rarity, Substat } from '../../src/game/rarity';
+import type { GemId } from '../../src/game/gems';
 import { dungeonEnemyKindForFloor, isDungeonBoss, isDungeonCheckpoint } from '../../src/game/dungeon';
 import { getEnemyDef } from '../../src/game/enemies';
 import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
@@ -31,17 +32,21 @@ export interface HeroOpts {
   level?: number;
   // extra equipped instances (new slots): [slot, templateId, rarity, substats]
   extra?: [string, string, Rarity, Substat[]][];
+  // the weapon worn instead of the tier's sword (the axe line), and the gems socketed into it
+  weapon?: string;
+  wSockets?: GemId[];
 }
 
 // A level-appropriate hero wearing the weapon + armor pair of a tier at a refine level, attribute points spread 35/30/20/15.
 export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveData {
-  const [w, a, lvl] = PAIRS[pairKey];
+  const [swordId, a, lvl] = PAIRS[pairKey];
+  const w = o.weapon ?? swordId;
   const level = o.level ?? lvl;
   let h: SaveData = { ...defaultSave(), xp: xpToReachLevel(level), highestDungeonFloor: 1 };
   const instances = { ...h.gearInstances };
   const equipped = { ...h.equipped };
   for (const [slot, tpl, subs] of [['weapon', w, o.wSubs], ['armor', a, o.aSubs]] as const) {
-    const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity: o.rarity ?? 'common', substats: subs ?? [], upgrade: refine });
+    const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity: o.rarity ?? 'common', substats: subs ?? [], upgrade: refine, sockets: slot === 'weapon' ? o.wSockets : undefined });
     instances[inst.id] = inst;
     equipped[slot] = inst.id;
   }

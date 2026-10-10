@@ -38,6 +38,11 @@ export const RAW_REFERENCE_GOLD: Partial<Record<MaterialId, number>> = {
   concentrated_blood: 4.5,
   demon_core: 25,
   corrupted_crystal: 24.5,
+  // The late zones' own drops: same scarcity logic as the glade / marsh uncommon + rare pair, a little dearer (later zone, fewer rolls per hour, tier 5-6 inputs)
+  rift_shard: 6.5,
+  fiend_horn: 34,
+  abyssal_marrow: 7,
+  blood_heart: 36,
   // Garden
   common_herb: 4,
   energy_herb: 3,

@@ -27,8 +27,8 @@
 //            the 12 h between visits). Rings, leather gloves and boots need Garden plants (Garden 3.0).
 //   Tonics   keeps one of each combat tonic (Stoneskin, Precision, Haste, Fortune) and the Gatherer Brew in the bag, crafted only with gold beyond the next
 //            craft, drinks the combat ones before a Dungeon session that starts within 6 floors of an unclaimed boss, and the brew before a gathering session.
-//   Gear     the next craft is the lowest-tier piece still missing in any of the six slots, ties broken weapon > armor > gloves >
-//            helmet > boots > ring (player.ts CRAFT_PRIORITY); missing intermediate materials go through the Furnace / Tannery /
+//   Gear     the next craft is the lowest-tier piece still missing in any of the seven slots, ties broken weapon > armor > gloves >
+//            helmet > shield > boots > ring (player.ts CRAFT_PRIORITY; the weapon is the sword or the axe, whichever the policy's own computeCP prefers); missing intermediate materials go through the Furnace / Tannery /
 //            Carpentry / Alchemy recipes; crafting consumes lower-tier pieces exactly as the forge does; a craft blocked on gems buys
 //            them with shards. It equips whatever has the best computeCP in each slot, refines the equipped WEAPON and ARMOR with gold
 //            that is not earmarked for the next craft (the four extra slots stay +0), and sockets spare gems into those two. 
@@ -409,7 +409,7 @@ function professionReport(runs: Run[]): string[] {
 
 // Day (median over seeds) on which each slot first holds a piece of tier 1, 2 and 3: the gear timeline the Garden recipes must not slip.
 function slotTimeline(runs: Run[]): string[] {
-  const rows = ['weapon', 'armor', 'gloves', 'boots', 'ring', 'helmet'].map((slot) => [
+  const rows = ['weapon', 'armor', 'gloves', 'boots', 'ring', 'helmet', 'shield'].map((slot) => [
     slot,
     ...[1, 2, 3].map((tier) => dayCell(runs.map((r) => firstDayAt(r, (d) => d.tiers[slot] ?? 0, tier)))),
   ]);

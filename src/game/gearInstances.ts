@@ -7,7 +7,7 @@ import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salva
 import { addWithOverflow, fitsBag, stockIsEmpty } from './inventory';
 import type { SaveData } from './engine';
 
-// Gear instances: every weapon / armor / helmet / gloves / boots / ring is its OWN object (rarity, substats, refine level, sockets, durability,
+// Gear instances: every weapon / armor / helmet / gloves / boots / ring / shield is its OWN object (rarity, substats, refine level, sockets, durability,
 // reforge count). Materials, consumables, gems, relics and tools stay stackable counters keyed by id.
 //
 // Every mutation below is a pure reducer `(save, ...) -> save | null` (null = rejected, nothing charged, no RNG
@@ -21,7 +21,7 @@ export const GEAR_SCHEMA_VERSION = 2;
 export { INSTANCED_SLOTS, isInstancedSlot };
 export type { InstancedSlot };
 
-// What an empty weapon / armor slot resolves to ("bare hands"): the zero-stat starter templates. Helmet, gloves, boots and ring have no starter:
+// What an empty weapon / armor slot resolves to ("bare hands"): the zero-stat starter templates. Helmet, gloves, boots, ring and shield have no starter:
 // an empty one is simply empty and adds nothing.
 export const STARTER_TEMPLATES: Partial<Record<InstancedSlot, string>> = { weapon: 'wooden_club', armor: 'ragged_clothes' };
 
@@ -216,13 +216,13 @@ function slotView(save: GearState, slot: 'weapon' | 'armor'): EquippedView {
   return { item: getGear(STARTER_TEMPLATES[slot] as string), instance: null };
 }
 
-// An extra slot (helmet / gloves / boots / ring): the equipped piece, or null when the slot is empty.
+// An extra slot (helmet / gloves / boots / ring / shield): the equipped piece, or null when the slot is empty.
 function extraView(save: GearState, slot: InstancedSlot): EquippedView | null {
   const hit = resolveGearInstance(save, save.equipped[slot]);
   return hit && hit.item.slot === slot ? { item: hit.item, instance: hit.instance } : null;
 }
 
-export const EXTRA_SLOTS = ['helmet', 'gloves', 'boots', 'ring'] as const;
+export const EXTRA_SLOTS = ['helmet', 'gloves', 'boots', 'ring', 'shield'] as const;
 export type ExtraSlot = (typeof EXTRA_SLOTS)[number];
 
 export function resolveEquipped(save: GearState) {
@@ -235,8 +235,8 @@ export function resolveEquipped(save: GearState) {
     gloves: extraView(save, 'gloves'),
     boots: extraView(save, 'boots'),
     ring: extraView(save, 'ring'),
+    shield: extraView(save, 'shield'),
     relic: stack(eq.relic),
-    shield: stack(eq.shield),
   };
 }
 
@@ -258,7 +258,7 @@ export function equippedGemBonuses(save: GearState): GemBonuses {
   return equippedInstances(save).reduce((acc, inst) => addGemBonuses(acc, gemListBonuses(inst.sockets)), gemListBonuses([]));
 }
 
-// What the extra slots (helmet, gloves, boots, ring) add to the hero, with the same refine / durability / rarity factors as weapon and armor.
+// What the extra slots (helmet, gloves, boots, ring, shield) add to the hero, with the same refine / durability / rarity factors as weapon and armor.
 // Only fields the slot's item defines count (a helmet without a crit chance gets no refine crit bonus). The one place these pieces are
 // summed: engine.ts buildCombatStats / playerMaxHp read it, so the Dungeon, Hunting and CP all agree.
 export interface ExtraSlotStats {
@@ -267,10 +267,11 @@ export interface ExtraSlotStats {
   critChance: number;
   critMult: number;
   resistance: number;
+  reflect: number; // shield: adds to the armor's reflect, scaled by durability only (like the armor's)
 }
 
 export function equippedExtraStats(save: GearState): ExtraSlotStats {
-  const t: ExtraSlotStats = { maxHp: 0, damage: 0, critChance: 0, critMult: 0, resistance: 0 };
+  const t: ExtraSlotStats = { maxHp: 0, damage: 0, critChance: 0, critMult: 0, resistance: 0, reflect: 0 };
   const views = resolveEquipped(save);
   for (const slot of EXTRA_SLOTS) {
     const v = views[slot];
@@ -284,13 +285,16 @@ export function equippedExtraStats(save: GearState): ExtraSlotStats {
     if (item.critChance) t.critChance += effectiveCrit(item, lvl) * f;
     if (item.resistance) t.resistance += effectiveResistance(item, lvl) * f * r;
     t.critMult += (item.critMultBonus ?? 0) * f * r;
+    t.reflect += (item.reflect ?? 0) * f;
   }
   return t;
 }
 
 export function equippedSubstatTotals(save: GearState): SubstatTotals {
   const total = equippedInstances(save).reduce((acc, inst) => addSubstatTotals(acc, substatListTotals(inst.substats)), substatListTotals([]));
-  return { ...total, goldBonus: Math.min(GOLD_BONUS_CAP, total.goldBonus) };
+  // The Goblin Lucky Coin (a relic) goes into the same sum, so it counts inside the same cap.
+  const relicGold = save.equipped.relic ? getGear(save.equipped.relic)?.goldBonusPct ?? 0 : 0;
+  return { ...total, goldBonus: Math.min(GOLD_BONUS_CAP, total.goldBonus + relicGold) };
 }
 
 export function isInstanceEquipped(save: Pick<SaveData, 'equipped'>, id: GearInstanceId): boolean {

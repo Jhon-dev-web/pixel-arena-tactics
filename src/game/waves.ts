@@ -3,14 +3,15 @@ import { EnemyDef } from './enemies';
 import { MaterialId } from './materials';
 import { GEMS, GemId } from './gems';
 import { DungeonBiomeDef, isDungeonBoss, isDungeonCheckpoint } from './dungeon';
-import { UniqueDrop, rollBossUniques } from './uniques';
+import { UniqueDrop, rollBossRelics, rollBossUniques } from './uniques';
 
 export interface WaveRewards {
   gold: number;
   drops: Partial<Record<MaterialId, number>>;
   shards: number;
   gems: Partial<Record<GemId, number>>;
-  uniques: UniqueDrop[]; // biome-boss floors only: T.battle.uniqueBossChance of that boss's unique piece, on every victory
+  uniques: UniqueDrop[]; // biome-boss floors only: T.battle.uniqueBossChance of each unique piece of that boss, on every victory
+  relics: string[]; // biome-boss floors only: T.battle.relicBossChance of that boss's relic (template ids), independent of the uniques
 }
 
 export interface RunRewards {
@@ -19,6 +20,7 @@ export interface RunRewards {
   shards: number;
   gems: Partial<Record<GemId, number>>;
   uniques: UniqueDrop[];
+  relics: string[];
   stages: number;
 }
 
@@ -73,8 +75,10 @@ export function waveRewards(biome: DungeonBiomeDef, stage: number): WaveRewards 
   let shards = 0;
   let gems: Partial<Record<GemId, number>> = {};
   let uniques: UniqueDrop[] = [];
+  let relics: string[] = [];
   if (isDungeonBoss(stage)) {
     uniques = rollBossUniques(stage);
+    relics = rollBossRelics(stage);
     shards = T.battle.bossShards;
     gold = Math.round(gold * T.battle.bossGoldMult);
     // Gate-boss-exclusive: a guaranteed gem every clear, on top of the gold/shard boost — a common
@@ -85,5 +89,5 @@ export function waveRewards(biome: DungeonBiomeDef, stage: number): WaveRewards 
     shards = T.battle.miniBossShards;
     gold = Math.round(gold * T.battle.miniBossGoldMult);
   }
-  return { gold, drops, shards, gems, uniques };
+  return { gold, drops, shards, gems, uniques, relics };
 }

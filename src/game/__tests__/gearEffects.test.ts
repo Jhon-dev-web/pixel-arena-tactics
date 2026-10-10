@@ -329,7 +329,6 @@ describe('CP values the effects and never punishes them', () => {
     const h = { ...defaultSave(), xp: xpToReachLevel(60) };
     const base = computeCP(h);
     for (const item of GEAR) {
-      if (item.slot === 'shield') continue;
       let s: SaveData;
       if (item.slot === 'relic') s = withRelic(h, item.id);
       else {
@@ -354,6 +353,9 @@ const FIELD_TO_STAT: Record<(typeof LIVE_STAT_FIELDS)[number], keyof CombatStats
   critMultBonus: 'critMult',
   hpRegenPct: 'hpRegenPct',
   attackSpeedBonus: 'heroMs',
+  damagePct: 'dmgBase',
+  lifestealPct: 'lifesteal',
+  goldBonusPct: 'goldBonus',
 };
 
 describe('no dead gear fields', () => {
@@ -371,7 +373,6 @@ describe('no dead gear fields', () => {
     const baseStats = buildCombatStats(base);
     for (const item of GEAR) {
       let s: SaveData;
-      if (item.slot === 'shield') continue;
       if (item.slot === 'relic') s = withRelic(base, item.id);
       else {
         const inst = createGearInstance(item.id, { id: 'x_' + item.id, origin: 'craft', rarity: 'common', substats: [] });
@@ -449,7 +450,7 @@ describe('balance of the effects (docs/ITEM_BALANCE_AUDIT.md section G)', () => 
       const base = hero(tk, 4, { level: lv });
       const fl = repFloor(base);
       const cp0 = computeCP(base);
-      const relics = GEAR.filter((g) => g.slot === 'relic').map((r) => r.id);
+      const relics = GEAR.filter((g) => g.slot === 'relic' && g.recipe).map((r) => r.id); // the craftable ones; the boss relics are in contentPack2.test.ts
       const values = relics.map((id) => lnP(withRelic(base, id), fl, base));
       expect(Math.min(...values)).toBeGreaterThan(0);
       expect(Math.max(...values) / Math.min(...values)).toBeLessThanOrEqual(1.5);

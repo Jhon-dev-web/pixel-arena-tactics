@@ -313,7 +313,7 @@ export function buildCombatStats(save: SaveData): CombatStats {
   const aRarity = rarityStatMult(viewRarity(armorView));
   const gems = equippedGemBonuses(save);
   const subs = equippedSubstatTotals(save);
-  // Helmet / gloves / boots / ring (gearInstances.equippedExtraStats): gloves damage joins the weapon term, so STR scales it too.
+  // Helmet / gloves / boots / ring / shield (gearInstances.equippedExtraStats): gloves damage joins the weapon term, so STR scales it too.
   const extra = equippedExtraStats(save);
 
   // Flat base hit (avg of attackMin/attackMax) plus the weapon term W (refine, durability, rarity); STR is applied on top
@@ -321,8 +321,9 @@ export function buildCombatStats(save: SaveData): CombatStats {
   const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
   return {
     maxHp: playerMaxHp(save),
-    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + extra.damage, save.str),
-    critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance,
+    // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs.
+    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)),
+    critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0),
     critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
     // The relic's attackSpeedBonus enters the same derivation, so the 400 ms floor still caps it.
@@ -330,11 +331,14 @@ export function buildCombatStats(save: SaveData): CombatStats {
     agi: save.agi,
     speedBonus: relic?.attackSpeedBonus ?? 0,
     reduction: effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100 + extra.resistance,
-    lifesteal: subs.lifesteal,
+    // The Lich Phylactery's lifestealPct enters the same derivation as the lifesteal substats.
+    lifesteal: subs.lifesteal + (relic?.lifestealPct ?? 0),
     burn: !!weapon.burn,
-    // Reflect scales with the armor's durability like its resistance does (a broken armor reflects less), not with rarity.
-    reflect: (armor.reflect ?? 0) * aFactor,
+    // Reflect scales with the armor's durability like its resistance does (a broken armor reflects less), not with rarity; the shield's adds to it.
+    reflect: (armor.reflect ?? 0) * aFactor + extra.reflect,
     hpRegenPct: relic?.hpRegenPct ?? 0,
+    // Gold bonus (substats + Goblin Lucky Coin, capped): the Dungeon pays it through buffs.goldMultiplier, Hunting through the session's frozen stats.
+    goldBonus: subs.goldBonus,
   };
 }
 
@@ -680,6 +684,7 @@ export function buildHuntSimSetup(
     burn: stats.burn === true,
     reflect: stats.reflect ?? 0,
     hpRegenPct: stats.hpRegenPct ?? 0,
+    goldBonusPct: stats.goldBonus ?? 0,
   };
 
   // Raso-only override (see HuntingZoneDef.shallowCp/shallowEnemyHp/shallowEnemyDmg) — currently only
@@ -951,11 +956,11 @@ export function normalizeSave(rawInput: unknown): SaveData {
         migratedMaxRefine = mig.maxRefineEver;
       }
       const gear = sanitizeStackableGear(inventory, parsed.equipped);
-      // helmet / gloves / boots / ring: an instance id that exists and belongs to that slot, else empty. A v1 save, or the old stackable `helmet`
-      // value (always null in practice), simply yields empty slots.
+      // helmet / gloves / boots / ring / shield: an instance id that exists and belongs to that slot, else empty. A v1 save, the old stackable `helmet`
+      // value (always null in practice) or a save from before shields simply yields empty slots.
       const extraSlotIds = Object.fromEntries(
         INSTANCED_SLOTS.filter((slot) => slot !== 'weapon' && slot !== 'armor').map((slot) => [slot, isV2 ? sanitizeEquippedInstance((parsed.equipped as unknown as Record<string, unknown> | undefined)?.[slot], slot, gearInstances) : null]),
-      ) as Pick<EquippedGear, 'helmet' | 'gloves' | 'boots' | 'ring'>;
+      ) as Pick<EquippedGear, 'helmet' | 'gloves' | 'boots' | 'ring' | 'shield'>;
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
       if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));

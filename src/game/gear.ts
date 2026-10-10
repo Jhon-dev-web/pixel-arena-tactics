@@ -40,6 +40,13 @@ export interface GearItem {
   // Relics: HP regenerated per second of combat as a share of max HP, and a bonus to attack speed folded into the attack interval.
   hpRegenPct?: number;
   attackSpeedBonus?: number;
+  // Boss relics (content pack 2): a share of the final hit (multiplies dmgBase after STR), percent of the damage dealt healed per hit (adds to the
+  // lifesteal substats, same derivation) and percent extra Gold from the Dungeon and Hunting (adds to the goldBonus substats, inside the same 25 % cap).
+  damagePct?: number;
+  lifestealPct?: number;
+  goldBonusPct?: number;
+  // Weapon family: 'axe' is the second weapon line (more damage, less crit, no burn). Forge grouping only.
+  line?: 'axe';
   // Unique pieces (uniques.ts): drop-only (no recipe, never forged), one extra guaranteed substat slot. `salvageLike` is the forged piece
   // whose recipe sets what salvaging one returns.
   unique?: boolean;
@@ -51,12 +58,12 @@ export interface GearItem {
 // gearInstances.equippedExtraStats); META_FIELDS are identity, cost and display data. gearEffects.test.ts checks every entry against both lists
 // and that equipping each live field really changes the combat stats, so a field nothing reads (burn, reflect, focusHpBonus and
 // attackStaminaReduction were dead data for a long time) cannot come back silently.
-export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus'] as const;
-export const META_FIELDS = ['id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike'] as const;
+export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct'] as const;
+export const META_FIELDS = ['id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line'] as const;
 
-// Weapon, armor, helmet, gloves, boots and ring are the INSTANCED slots: each owned piece is its own object with its own rarity, substats,
+// Weapon, armor, helmet, gloves, boots, ring and shield are the INSTANCED slots: each owned piece is its own object with its own rarity, substats,
 // refine level, sockets and durability (see gearInstances.ts). Everything else (relics) stays a stackable template id.
-export const INSTANCED_SLOTS = ['weapon', 'armor', 'helmet', 'gloves', 'boots', 'ring'] as const;
+export const INSTANCED_SLOTS = ['weapon', 'armor', 'helmet', 'gloves', 'boots', 'ring', 'shield'] as const;
 export type InstancedSlot = (typeof INSTANCED_SLOTS)[number];
 
 export function isInstancedSlot(slot: string): slot is InstancedSlot {
@@ -65,16 +72,16 @@ export function isInstancedSlot(slot: string): slot is InstancedSlot {
 
 export interface EquippedGear {
   // GEAR INSTANCE ids (null = empty slot). An empty weapon / armor plays as the zero-stat starter template; an empty helmet / gloves /
-  // boots / ring simply adds nothing.
+  // boots / ring / shield simply adds nothing.
   weapon: string | null;
   armor: string | null;
   helmet: string | null;
   gloves: string | null;
   boots: string | null;
   ring: string | null;
-  // Template ids of stackable gear.
-  relic: string | null;
   shield: string | null;
+  // Template id of stackable gear.
+  relic: string | null;
 }
 
 // wood_handle_* retrofit (weapons only — never armor/relics, they don't have a haft): every
@@ -103,8 +110,17 @@ export const GEAR: GearItem[] = [
   { id: 'gilded_warblade', slot: 'weapon', nameKey: 'gilded_warblade', descKey: 'gilded_warblade_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_warblade.png', cost: 600, tier: 4, damage: 90, critChance: 0.14, recipe: { items: { steel_greatsword: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, demon_core: 1, wood_handle_elven: 2 }, requiredLevel: 50 } },
   { id: 'dragon_flameblade', slot: 'weapon', nameKey: 'dragon_flameblade', descKey: 'dragon_flameblade_d', materialKey: 'material_dragon', iconUrl: '/assets/icons/dragon_flameblade.png', cost: 1000, tier: 4, damage: 120, critChance: 0.18, burn: true, recipe: { items: { steel_greatsword: 1 }, materials: { dragon_scales: 3, wood_handle_elven: 2 }, shards: 5 } },
   // Tier 5-6 — post-tier-4 continuation so gear keeps pace with floors 51-100, not just tier-4 refine.
-  { id: 'voidsteel_blade', slot: 'weapon', nameKey: 'voidsteel_blade', descKey: 'voidsteel_blade_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/voidsteel_blade.png', cost: 1800, tier: 5, damage: 160, critChance: 0.2, burn: true, recipe: { items: { dragon_flameblade: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 3, demon_core: 2, wood_handle_ancient: 2 }, requiredLevel: 70 } },
-  { id: 'abyssal_greatblade', slot: 'weapon', nameKey: 'abyssal_greatblade', descKey: 'abyssal_greatblade_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/abyssal_greatblade.png', cost: 3200, tier: 6, damage: 220, critChance: 0.24, burn: true, recipe: { items: { voidsteel_blade: 1 }, materials: { refined_obsidian: 2, corrupted_crystal: 5, wood_handle_ancient: 3 }, shards: 6, requiredLevel: 90 } },
+  { id: 'voidsteel_blade', slot: 'weapon', nameKey: 'voidsteel_blade', descKey: 'voidsteel_blade_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/voidsteel_blade.png', cost: 1800, tier: 5, damage: 160, critChance: 0.2, burn: true, recipe: { items: { dragon_flameblade: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 3, demon_core: 2, wood_handle_ancient: 2, rift_shard: 2, fiend_horn: 1 }, requiredLevel: 70 } },
+  { id: 'abyssal_greatblade', slot: 'weapon', nameKey: 'abyssal_greatblade', descKey: 'abyssal_greatblade_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/abyssal_greatblade.png', cost: 3200, tier: 6, damage: 220, critChance: 0.24, burn: true, recipe: { items: { voidsteel_blade: 1 }, materials: { refined_obsidian: 2, corrupted_crystal: 5, wood_handle_ancient: 3, abyssal_marrow: 2, blood_heart: 1 }, shards: 6, requiredLevel: 90 } },
+  // Axes (content pack 2): the second weapon line. Same level gates, recipe structure and cost as the sword of the tier (the previous AXE is the upgrade
+  // input from tier 2 up, the lines never mix); more damage and about half the crit chance, no burn - the dragon / voidsteel / abyssal swords keep it as their
+  // identity. Numbers tuned in scripts/sim/itemAudit.sim.ts (section H: axe against sword at levels 30 / 60 / 90).
+  { id: 'bronze_hatchet', slot: 'weapon', line: 'axe', nameKey: 'bronze_hatchet', descKey: 'bronze_hatchet_d', materialKey: 'material_bronze', icon: '/assets/icons/bronze_hatchet.png', cost: 40, tier: 1, damage: 13, critChance: 0.015, recipe: { materials: { copper_bar: 1, leather: 1, wood_handle_common: 1 } } },
+  { id: 'iron_battleaxe', slot: 'weapon', line: 'axe', nameKey: 'iron_battleaxe', descKey: 'iron_battleaxe_d', materialKey: 'material_iron', icon: '/assets/icons/iron_battleaxe.png', cost: 120, tier: 2, damage: 32, critChance: 0.03, recipe: { items: { bronze_hatchet: 2 }, materials: { iron: 3, leather_scrap: 2, wood_handle_oak: 1 }, requiredLevel: 10 } },
+  { id: 'steel_greataxe', slot: 'weapon', line: 'axe', nameKey: 'steel_greataxe', descKey: 'steel_greataxe_d', materialKey: 'material_steel', icon: '/assets/icons/steel_greataxe.png', cost: 300, tier: 3, damage: 70, critChance: 0.05, recipe: { items: { iron_battleaxe: 2 }, materials: { silver_ingot: 1, essence: 2, bone_fragment: 3, demon_claw: 1, wood_handle_ebony: 1 }, gems: { ruby: 1 }, requiredLevel: 25 } },
+  { id: 'gilded_waraxe', slot: 'weapon', line: 'axe', nameKey: 'gilded_waraxe', descKey: 'gilded_waraxe_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_waraxe.png', cost: 600, tier: 4, damage: 100, critChance: 0.07, recipe: { items: { steel_greataxe: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, demon_core: 1, wood_handle_elven: 2 }, requiredLevel: 50 } },
+  { id: 'voidsteel_cleaver', slot: 'weapon', line: 'axe', nameKey: 'voidsteel_cleaver', descKey: 'voidsteel_cleaver_d', materialKey: 'material_obsidian', icon: '/assets/icons/voidsteel_cleaver.png', cost: 1800, tier: 5, damage: 187, critChance: 0.1, recipe: { items: { gilded_waraxe: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 3, demon_core: 2, wood_handle_ancient: 2, rift_shard: 2, fiend_horn: 1 }, requiredLevel: 70 } },
+  { id: 'abyssal_reaver', slot: 'weapon', line: 'axe', nameKey: 'abyssal_reaver', descKey: 'abyssal_reaver_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_reaver.png', cost: 3200, tier: 6, damage: 264, critChance: 0.12, recipe: { items: { voidsteel_cleaver: 1 }, materials: { refined_obsidian: 2, corrupted_crystal: 5, wood_handle_ancient: 3, abyssal_marrow: 2, blood_heart: 1 }, shards: 6, requiredLevel: 90 } },
   // Armors (Tier 0-4) — hierarchical crafting
   { id: 'ragged_clothes', slot: 'armor', nameKey: 'ragged_clothes', descKey: 'ragged_clothes_d', materialKey: 'material_cloth', iconUrl: '/assets/icons/ragged_clothes.png', cost: 0, tier: 0, maxHp: 0 },
   { id: 'bronze_leather', slot: 'armor', nameKey: 'bronze_leather', descKey: 'bronze_leather_d', materialKey: 'material_bronze', iconUrl: Assets.gear_icons.armor_leather.url, cost: 50, tier: 1, maxHp: 40, resistance: 0.03, recipe: { materials: { copper_bar: 1, leather: 3 } } },
@@ -112,8 +128,8 @@ export const GEAR: GearItem[] = [
   { id: 'steel_plate', slot: 'armor', nameKey: 'steel_plate', descKey: 'steel_plate_d', materialKey: 'material_steel', iconUrl: Assets.gear_icons.armor_steel.url, cost: 350, tier: 3, maxHp: 160, resistance: 0.1, reflect: 0.2, recipe: { items: { iron_chainmail: 2 }, materials: { silver_ingot: 1, essence: 2, bone_fragment: 3, demon_claw: 1 }, gems: { sapphire: 1 }, requiredLevel: 25 } },
   { id: 'gilded_aegis', slot: 'armor', nameKey: 'gilded_aegis', descKey: 'gilded_aegis_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_aegis.png', cost: 650, tier: 4, maxHp: 220, resistance: 0.13, reflect: 0.2, recipe: { items: { steel_plate: 1 }, materials: { gold_bar: 1, concentrated_blood: 3, corrupted_crystal: 1 }, requiredLevel: 50 } },
   { id: 'dragon_scale_armor', slot: 'armor', nameKey: 'dragon_scale_armor', descKey: 'dragon_scale_armor_d', materialKey: 'material_dragon', iconUrl: '/assets/icons/dragon_scale_armor.png', cost: 1000, tier: 4, maxHp: 260, resistance: 0.15, reflect: 0.22, recipe: { items: { steel_plate: 1 }, materials: { dragon_scales: 3 }, shards: 5 } },
-  { id: 'voidsteel_plate', slot: 'armor', nameKey: 'voidsteel_plate', descKey: 'voidsteel_plate_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/voidsteel_plate.png', cost: 1900, tier: 5, maxHp: 340, resistance: 0.17, reflect: 0.25, recipe: { items: { dragon_scale_armor: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, demon_core: 2 }, requiredLevel: 70 } },
-  { id: 'abyssal_bulwark', slot: 'armor', nameKey: 'abyssal_bulwark', descKey: 'abyssal_bulwark_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/abyssal_bulwark.png', cost: 3300, tier: 6, maxHp: 440, resistance: 0.2, reflect: 0.28, recipe: { items: { voidsteel_plate: 1 }, materials: { refined_obsidian: 2, concentrated_blood: 5 }, shards: 6, requiredLevel: 90 } },
+  { id: 'voidsteel_plate', slot: 'armor', nameKey: 'voidsteel_plate', descKey: 'voidsteel_plate_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/voidsteel_plate.png', cost: 1900, tier: 5, maxHp: 340, resistance: 0.17, reflect: 0.25, recipe: { items: { dragon_scale_armor: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, demon_core: 2, rift_shard: 2, fiend_horn: 1 }, requiredLevel: 70 } },
+  { id: 'abyssal_bulwark', slot: 'armor', nameKey: 'abyssal_bulwark', descKey: 'abyssal_bulwark_d', materialKey: 'material_obsidian', iconUrl: '/assets/icons/abyssal_bulwark.png', cost: 3300, tier: 6, maxHp: 440, resistance: 0.2, reflect: 0.28, recipe: { items: { voidsteel_plate: 1 }, materials: { refined_obsidian: 2, concentrated_blood: 5, abyssal_marrow: 2, blood_heart: 1 }, shards: 6, requiredLevel: 90 } },
   // Helmet / gloves / boots / ring (content pack 1): one line of six tiers each, same level gates as the weapon / armor of the tier, the same material
   // families, and 1 piece of the previous tier of the SAME slot from tier 2 up (no "2 of" chain). Their numbers are sized so the four together add about
   // +30-40 % CP over the weapon + armor of the tier (itemBalance.test.ts, docs/BALANCE_CHANGES.md Rodada 3): helmet ~35 % of the armor's HP, gloves ~20 %
@@ -123,33 +139,48 @@ export const GEAR: GearItem[] = [
   { id: 'iron_helm', slot: 'helmet', nameKey: 'iron_helm', descKey: 'iron_helm_d', materialKey: 'material_iron', icon: '/assets/icons/iron_helm.png', cost: 60, tier: 2, maxHp: 40, resistance: 0.013, recipe: { items: { bronze_helm: 1 }, materials: { iron: 2, leather_scrap: 1 }, requiredLevel: 10 } },
   { id: 'steel_helm', slot: 'helmet', nameKey: 'steel_helm', descKey: 'steel_helm_d', materialKey: 'material_steel', icon: '/assets/icons/steel_helm.png', cost: 160, tier: 3, maxHp: 70, resistance: 0.019, recipe: { items: { iron_helm: 1 }, materials: { steel: 2, silver_ingot: 1, bone_fragment: 3, demon_claw: 2, demon_core: 1 }, requiredLevel: 25 } },
   { id: 'gilded_helm', slot: 'helmet', nameKey: 'gilded_helm', descKey: 'gilded_helm_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_helm.png', cost: 300, tier: 4, maxHp: 109, resistance: 0.026, recipe: { items: { steel_helm: 1 }, materials: { gold_bar: 1, concentrated_blood: 2 }, requiredLevel: 50 } },
-  { id: 'voidsteel_helm', slot: 'helmet', nameKey: 'voidsteel_helm', descKey: 'voidsteel_helm_d', materialKey: 'material_obsidian', icon: '/assets/icons/voidsteel_helm.png', cost: 850, tier: 5, maxHp: 149, resistance: 0.031, recipe: { items: { gilded_helm: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 2, demon_core: 1 }, requiredLevel: 70 } },
-  { id: 'abyssal_helm', slot: 'helmet', nameKey: 'abyssal_helm', descKey: 'abyssal_helm_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_helm.png', cost: 1500, tier: 6, maxHp: 185, resistance: 0.036, recipe: { items: { voidsteel_helm: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, corrupted_crystal: 1 }, requiredLevel: 90 } },
+  { id: 'voidsteel_helm', slot: 'helmet', nameKey: 'voidsteel_helm', descKey: 'voidsteel_helm_d', materialKey: 'material_obsidian', icon: '/assets/icons/voidsteel_helm.png', cost: 850, tier: 5, maxHp: 149, resistance: 0.031, recipe: { items: { gilded_helm: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 2, demon_core: 1, rift_shard: 1 }, requiredLevel: 70 } },
+  { id: 'abyssal_helm', slot: 'helmet', nameKey: 'abyssal_helm', descKey: 'abyssal_helm_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_helm.png', cost: 1500, tier: 6, maxHp: 185, resistance: 0.036, recipe: { items: { voidsteel_helm: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, corrupted_crystal: 1, abyssal_marrow: 1 }, requiredLevel: 90 } },
   // Glovess (tier 1-6)
   { id: 'leather_gloves', slot: 'gloves', nameKey: 'leather_gloves', descKey: 'leather_gloves_d', materialKey: 'material_bronze', icon: '/assets/icons/leather_gloves.png', cost: 25, tier: 1, damage: 4, critChance: 0.02, recipe: { materials: { copper_bar: 1, leather_scrap: 2, common_herb: 1 } } },
   { id: 'iron_gauntlets', slot: 'gloves', nameKey: 'iron_gauntlets', descKey: 'iron_gauntlets_d', materialKey: 'material_iron', icon: '/assets/icons/iron_gauntlets.png', cost: 60, tier: 2, damage: 7, critChance: 0.02, recipe: { items: { leather_gloves: 1 }, materials: { iron: 2, leather_scrap: 1 }, requiredLevel: 10 } },
   { id: 'steel_gauntlets', slot: 'gloves', nameKey: 'steel_gauntlets', descKey: 'steel_gauntlets_d', materialKey: 'material_steel', icon: '/assets/icons/steel_gauntlets.png', cost: 160, tier: 3, damage: 13, critChance: 0.02, recipe: { items: { iron_gauntlets: 1 }, materials: { steel: 1, silver_ingot: 2, bone_fragment: 2, demon_claw: 2, demon_core: 1 }, requiredLevel: 25 } },
   { id: 'gilded_gauntlets', slot: 'gloves', nameKey: 'gilded_gauntlets', descKey: 'gilded_gauntlets_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_gauntlets.png', cost: 300, tier: 4, damage: 18, critChance: 0.02, recipe: { items: { steel_gauntlets: 1 }, materials: { gold_bar: 1, concentrated_blood: 2, demon_core: 1 }, requiredLevel: 50 } },
-  { id: 'voidsteel_gauntlets', slot: 'gloves', nameKey: 'voidsteel_gauntlets', descKey: 'voidsteel_gauntlets_d', materialKey: 'material_obsidian', icon: '/assets/icons/voidsteel_gauntlets.png', cost: 900, tier: 5, damage: 28, critChance: 0.027, recipe: { items: { gilded_gauntlets: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 2, demon_core: 1 }, requiredLevel: 70 } },
-  { id: 'abyssal_gauntlets', slot: 'gloves', nameKey: 'abyssal_gauntlets', descKey: 'abyssal_gauntlets_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_gauntlets.png', cost: 1500, tier: 6, damage: 37, critChance: 0.03, recipe: { items: { voidsteel_gauntlets: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 3 }, requiredLevel: 90 } },
+  { id: 'voidsteel_gauntlets', slot: 'gloves', nameKey: 'voidsteel_gauntlets', descKey: 'voidsteel_gauntlets_d', materialKey: 'material_obsidian', icon: '/assets/icons/voidsteel_gauntlets.png', cost: 900, tier: 5, damage: 28, critChance: 0.027, recipe: { items: { gilded_gauntlets: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 2, demon_core: 1, fiend_horn: 1 }, requiredLevel: 70 } },
+  { id: 'abyssal_gauntlets', slot: 'gloves', nameKey: 'abyssal_gauntlets', descKey: 'abyssal_gauntlets_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_gauntlets.png', cost: 1500, tier: 6, damage: 37, critChance: 0.03, recipe: { items: { voidsteel_gauntlets: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 3, blood_heart: 1 }, requiredLevel: 90 } },
   // Bootss (tier 1-6)
   { id: 'leather_boots', slot: 'boots', nameKey: 'leather_boots', descKey: 'leather_boots_d', materialKey: 'material_bronze', icon: '/assets/icons/leather_boots.png', cost: 25, tier: 1, resistance: 0.065, maxHp: 12, recipe: { materials: { copper_bar: 1, leather_scrap: 2, common_herb: 1 } } },
   { id: 'iron_greaves', slot: 'boots', nameKey: 'iron_greaves', descKey: 'iron_greaves_d', materialKey: 'material_iron', icon: '/assets/icons/iron_greaves.png', cost: 55, tier: 2, resistance: 0.08, maxHp: 22, recipe: { items: { leather_boots: 1 }, materials: { iron: 2, leather_scrap: 2 }, requiredLevel: 10 } },
   { id: 'steel_greaves', slot: 'boots', nameKey: 'steel_greaves', descKey: 'steel_greaves_d', materialKey: 'material_steel', icon: '/assets/icons/steel_greaves.png', cost: 160, tier: 3, resistance: 0.1, maxHp: 35, recipe: { items: { iron_greaves: 1 }, materials: { steel: 2, silver_ingot: 1, bone_fragment: 3, demon_claw: 2, demon_core: 1 }, requiredLevel: 25 } },
   { id: 'gilded_greaves', slot: 'boots', nameKey: 'gilded_greaves', descKey: 'gilded_greaves_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_greaves.png', cost: 300, tier: 4, resistance: 0.12, maxHp: 50, recipe: { items: { steel_greaves: 1 }, materials: { gold_bar: 1, concentrated_blood: 2 }, requiredLevel: 50 } },
-  { id: 'voidsteel_greaves', slot: 'boots', nameKey: 'voidsteel_greaves', descKey: 'voidsteel_greaves_d', materialKey: 'material_obsidian', icon: '/assets/icons/voidsteel_greaves.png', cost: 850, tier: 5, resistance: 0.135, maxHp: 62, recipe: { items: { gilded_greaves: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3 }, requiredLevel: 70 } },
-  { id: 'abyssal_greaves', slot: 'boots', nameKey: 'abyssal_greaves', descKey: 'abyssal_greaves_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_greaves.png', cost: 1500, tier: 6, resistance: 0.145, maxHp: 76, recipe: { items: { voidsteel_greaves: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, corrupted_crystal: 1 }, requiredLevel: 90 } },
+  { id: 'voidsteel_greaves', slot: 'boots', nameKey: 'voidsteel_greaves', descKey: 'voidsteel_greaves_d', materialKey: 'material_obsidian', icon: '/assets/icons/voidsteel_greaves.png', cost: 850, tier: 5, resistance: 0.135, maxHp: 62, recipe: { items: { gilded_greaves: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, rift_shard: 1 }, requiredLevel: 70 } },
+  { id: 'abyssal_greaves', slot: 'boots', nameKey: 'abyssal_greaves', descKey: 'abyssal_greaves_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_greaves.png', cost: 1500, tier: 6, resistance: 0.145, maxHp: 76, recipe: { items: { voidsteel_greaves: 1 }, materials: { refined_obsidian: 1, concentrated_blood: 3, corrupted_crystal: 1, abyssal_marrow: 1 }, requiredLevel: 90 } },
   // Rings (tier 1-6)
   { id: 'copper_ring', slot: 'ring', nameKey: 'copper_ring', descKey: 'copper_ring_d', materialKey: 'material_bronze', icon: '/assets/icons/copper_ring.png', cost: 30, tier: 1, critChance: 0.06, critMultBonus: 0.15, recipe: { materials: { copper_bar: 1, leather_scrap: 2, common_herb: 2 } } },
   { id: 'silver_ring', slot: 'ring', nameKey: 'silver_ring', descKey: 'silver_ring_d', materialKey: 'material_iron', icon: '/assets/icons/silver_ring.png', cost: 65, tier: 2, critChance: 0.06, critMultBonus: 0.2, recipe: { items: { copper_ring: 1 }, materials: { iron: 2, leather_scrap: 2, iron_thistle: 2 }, requiredLevel: 10 } },
   { id: 'gold_ring', slot: 'ring', nameKey: 'gold_ring', descKey: 'gold_ring_d', materialKey: 'material_steel', icon: '/assets/icons/gold_ring.png', cost: 170, tier: 3, critChance: 0.08, critMultBonus: 0.25, recipe: { items: { silver_ring: 1 }, materials: { steel: 1, silver_ingot: 2, bone_fragment: 2, demon_claw: 2, demon_core: 1, gold_blossom: 1 }, gems: { emerald: 1 }, requiredLevel: 25 } },
   { id: 'ruby_ring', slot: 'ring', nameKey: 'ruby_ring', descKey: 'ruby_ring_d', materialKey: 'material_gold', icon: '/assets/icons/ruby_ring.png', cost: 320, tier: 4, critChance: 0.08, critMultBonus: 0.3, recipe: { items: { gold_ring: 1 }, materials: { gold_bar: 1, concentrated_blood: 2, gold_blossom: 1, crimson_mushroom: 1 }, gems: { ruby: 1 }, requiredLevel: 50 } },
-  { id: 'obsidian_ring', slot: 'ring', nameKey: 'obsidian_ring', descKey: 'obsidian_ring_d', materialKey: 'material_obsidian', icon: '/assets/icons/obsidian_ring.png', cost: 900, tier: 5, critChance: 0.09, critMultBonus: 0.35, recipe: { items: { ruby_ring: 1 }, materials: { refined_obsidian: 1, demon_core: 1, corrupted_crystal: 1, moon_lily: 1 }, gems: { ruby: 1 }, requiredLevel: 70 } },
-  { id: 'abyssal_ring', slot: 'ring', nameKey: 'abyssal_ring', descKey: 'abyssal_ring_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_ring.png', cost: 1550, tier: 6, critChance: 0.1, critMultBonus: 0.4, recipe: { items: { obsidian_ring: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 2, concentrated_blood: 2, moon_lily: 2 }, gems: { sapphire: 1 }, requiredLevel: 90 } },
+  { id: 'obsidian_ring', slot: 'ring', nameKey: 'obsidian_ring', descKey: 'obsidian_ring_d', materialKey: 'material_obsidian', icon: '/assets/icons/obsidian_ring.png', cost: 900, tier: 5, critChance: 0.09, critMultBonus: 0.35, recipe: { items: { ruby_ring: 1 }, materials: { refined_obsidian: 1, demon_core: 1, corrupted_crystal: 1, moon_lily: 1, fiend_horn: 1 }, gems: { ruby: 1 }, requiredLevel: 70 } },
+  { id: 'abyssal_ring', slot: 'ring', nameKey: 'abyssal_ring', descKey: 'abyssal_ring_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_ring.png', cost: 1550, tier: 6, critChance: 0.1, critMultBonus: 0.4, recipe: { items: { obsidian_ring: 1 }, materials: { refined_obsidian: 1, corrupted_crystal: 2, concentrated_blood: 2, moon_lily: 2, blood_heart: 1 }, gems: { sapphire: 1 }, requiredLevel: 90 } },
+  // Shields (content pack 2): the seventh instanced slot. Resistance + reflect (from tier 3, like the armor) and a little max HP; one line of six tiers with the
+  // level gates of the armor of the tier, 1 shield of the previous tier from tier 2 up, bars / ingots + a wood handle of the tier + hunt materials, about half
+  // the armor's cost. Shield reflect adds to the armor's (derivedStats.reflectedDamage), so it is kept low: armor + shield stay under ~12 % of the damage dealt.
+  { id: 'bronze_buckler', slot: 'shield', nameKey: 'bronze_buckler', descKey: 'bronze_buckler_d', materialKey: 'material_bronze', icon: '/assets/icons/bronze_buckler.png', cost: 15, tier: 1, maxHp: 20, resistance: 0.04, recipe: { materials: { copper_bar: 1, wood_handle_common: 1, leather_scrap: 1 } } },
+  { id: 'iron_shield', slot: 'shield', nameKey: 'iron_shield', descKey: 'iron_shield_d', materialKey: 'material_iron', icon: '/assets/icons/iron_shield.png', cost: 35, tier: 2, maxHp: 36, resistance: 0.06, recipe: { items: { bronze_buckler: 1 }, materials: { iron: 2, wood_handle_oak: 1, leather_scrap: 2 }, requiredLevel: 10 } },
+  { id: 'steel_kite_shield', slot: 'shield', nameKey: 'steel_kite_shield', descKey: 'steel_kite_shield_d', materialKey: 'material_steel', icon: '/assets/icons/steel_kite_shield.png', cost: 240, tier: 3, maxHp: 52, resistance: 0.076, reflect: 0.03, recipe: { items: { iron_shield: 1 }, materials: { steel: 1, silver_ingot: 1, wood_handle_ebony: 1, bone_fragment: 3, demon_claw: 1 }, requiredLevel: 25 } },
+  { id: 'gilded_shield', slot: 'shield', nameKey: 'gilded_shield', descKey: 'gilded_shield_d', materialKey: 'material_gold', icon: '/assets/icons/gilded_shield.png', cost: 325, tier: 4, maxHp: 76, resistance: 0.095, reflect: 0.06, recipe: { items: { steel_kite_shield: 1 }, materials: { gold_bar: 1, wood_handle_elven: 1, concentrated_blood: 2 }, requiredLevel: 50 } },
+  { id: 'voidsteel_shield', slot: 'shield', nameKey: 'voidsteel_shield', descKey: 'voidsteel_shield_d', materialKey: 'material_obsidian', icon: '/assets/icons/voidsteel_shield.png', cost: 950, tier: 5, maxHp: 96, resistance: 0.104, reflect: 0.07, recipe: { items: { gilded_shield: 1 }, materials: { refined_obsidian: 1, wood_handle_ancient: 1, concentrated_blood: 2, rift_shard: 1, fiend_horn: 1 }, requiredLevel: 70 } },
+  { id: 'abyssal_shield', slot: 'shield', nameKey: 'abyssal_shield', descKey: 'abyssal_shield_d', materialKey: 'material_obsidian', icon: '/assets/icons/abyssal_shield.png', cost: 1650, tier: 6, maxHp: 113, resistance: 0.113, reflect: 0.08, recipe: { items: { voidsteel_shield: 1 }, materials: { refined_obsidian: 1, wood_handle_ancient: 2, concentrated_blood: 3, abyssal_marrow: 1, blood_heart: 1 }, requiredLevel: 90 } },
   // Relics
   { id: 'ring_vitality', slot: 'relic', nameKey: 'ring_vitality', descKey: 'ring_vitality_d', icon: '/assets/icons/ring_vitality.png', cost: 200, hpRegenPct: 0.009, recipe: { materials: { essence: 3 } } },
   { id: 'amulet_swiftness', slot: 'relic', nameKey: 'amulet_swiftness', descKey: 'amulet_swiftness_d', icon: '/assets/icons/amulet_swiftness.png', cost: 250, attackSpeedBonus: 0.08, recipe: { materials: { essence: 3 } } },
   { id: 'berserker_crest', slot: 'relic', nameKey: 'berserker_crest', descKey: 'berserker_crest_d', icon: '/assets/icons/berserker_crest.png', cost: 350, critMultBonus: 0.75, recipe: { materials: { essence: 5 } } },
+  // Boss relics (content pack 2): drop-only (no recipe, uniques.ts rollBossRelics, T.battle.relicBossChance per victory over a biome boss), stackable templates
+  // like the three above, so they compete for the one relic slot. A second copy only stacks; they cannot be sold or salvaged, only discarded.
+  { id: 'goblin_lucky_coin', slot: 'relic', nameKey: 'goblin_lucky_coin', descKey: 'goblin_lucky_coin_d', icon: '/assets/icons/goblin_lucky_coin.png', cost: 0, goldBonusPct: 10, source: { bossFloor: 25 } },
+  { id: 'warchief_totem', slot: 'relic', nameKey: 'warchief_totem', descKey: 'warchief_totem_d', icon: '/assets/icons/warchief_totem.png', cost: 0, damagePct: 0.085, source: { bossFloor: 50 } },
+  { id: 'lich_phylactery', slot: 'relic', nameKey: 'lich_phylactery', descKey: 'lich_phylactery_d', icon: '/assets/icons/lich_phylactery.png', cost: 0, lifestealPct: 5, source: { bossFloor: 75 } },
+  { id: 'overlord_sigil', slot: 'relic', nameKey: 'overlord_sigil', descKey: 'overlord_sigil_d', icon: '/assets/icons/overlord_sigil.png', cost: 0, critChance: 0.04, critMultBonus: 0.2, source: { bossFloor: 100 } },
 ];
 
 // Unique pieces: drop-only (a Hunting zone or a Dungeon biome boss rolls them, uniques.ts), never forged (no recipe), instanced like every other piece.
@@ -162,18 +193,21 @@ const UNIQUE_MAIN_STAT: Record<string, 'damage' | 'maxHp' | 'resistance' | 'crit
   gloves: 'damage',
   boots: 'resistance',
   ring: 'critChance',
+  shield: 'resistance',
 };
 const UNIQUE_DEFS: { id: string; like: string; source: GearSource }[] = [
   { id: 'demon_fang_dagger', like: 'iron_short_sword', source: { zone: 'demon_glade' } },
   { id: 'demonhide_vest', like: 'iron_chainmail', source: { zone: 'demon_glade' } },
   { id: 'bloodbound_cleaver', like: 'steel_greatsword', source: { zone: 'blood_marsh' } },
   { id: 'bloodvein_plate', like: 'steel_plate', source: { zone: 'blood_marsh' } },
+  { id: 'bone_ward', like: 'steel_kite_shield', source: { zone: 'blood_marsh' } },
   { id: 'riftwalker_boots', like: 'gilded_greaves', source: { zone: 'demon_rift' } },
   { id: 'shadow_hood', like: 'gilded_helm', source: { zone: 'demon_rift' } },
   { id: 'abyss_heart_ring', like: 'obsidian_ring', source: { zone: 'blood_abyss' } },
   { id: 'bonecrusher_maul', like: 'voidsteel_blade', source: { zone: 'blood_abyss' } },
   { id: 'goblin_king_crown', like: 'iron_helm', source: { bossFloor: 25 } },
   { id: 'warchief_gauntlets', like: 'steel_gauntlets', source: { bossFloor: 50 } },
+  { id: 'warden_bulwark', like: 'gilded_shield', source: { bossFloor: 50 } },
   { id: 'lich_soul_ring', like: 'obsidian_ring', source: { bossFloor: 75 } },
   { id: 'overlord_greataxe', like: 'abyssal_greatblade', source: { bossFloor: 100 } },
 ];
@@ -252,12 +286,12 @@ export function sanitizeLegacyInventory(
       weapon: valid.has(equipped.weapon) ? equipped.weapon : 'wooden_club',
       armor: valid.has(equipped.armor) ? equipped.armor : 'ragged_clothes',
       relic: equipped.relic && valid.has(equipped.relic) ? equipped.relic : null,
-      shield: equipped.shield && valid.has(equipped.shield) ? equipped.shield : null,
-      // v1 saves never had instanced helmets / gloves / boots / rings (the old `helmet` was an unused stackable slot, always null).
+      // v1 saves never had instanced helmets / gloves / boots / rings / shields (the old `helmet` was an unused stackable slot, always null).
       helmet: null,
       gloves: null,
       boots: null,
       ring: null,
+      shield: null,
     },
   };
 }
@@ -269,7 +303,7 @@ export const MAX_REFINE = 8;
 export function sanitizeStackableGear(
   inventory: Record<string, number> | undefined,
   equipped: Partial<EquippedGear> | undefined,
-): { inventory: Record<string, number>; equipped: Pick<EquippedGear, 'relic' | 'shield'> } {
+): { inventory: Record<string, number>; equipped: Pick<EquippedGear, 'relic'> } {
   const stackable = new Set(GEAR.filter((g) => !isInstancedSlot(g.slot)).map((g) => g.id));
   const inv: Record<string, number> = {};
   for (const [id, qty] of Object.entries(inventory ?? {})) {
@@ -283,7 +317,6 @@ export function sanitizeStackableGear(
     inventory: inv,
     equipped: {
       relic: pick(equipped?.relic),
-      shield: pick(equipped?.shield),
     },
   };
 }

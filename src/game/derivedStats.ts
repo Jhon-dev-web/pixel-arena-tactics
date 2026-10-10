@@ -86,6 +86,8 @@ export interface CombatStats {
   burn: boolean; // each hero hit sets / refreshes a burn on the enemy (igniteBurn)
   reflect: number; // share of the damage the hero actually took that the attacker takes back (reflectedDamage)
   hpRegenPct: number; // max-HP share regenerated per T.battle.effectTickMs of combat (regenAmount)
+  // Percent extra Gold from the Dungeon and Hunting (gear goldBonus substats + the Goblin Lucky Coin, already capped at GOLD_BONUS_CAP). No combat effect, no CP.
+  goldBonus?: number;
 }
 
 // STR -> pre-modifier hit damage. Hybrid: a flat part plus a part that scales with (base hit + weapon):

@@ -265,6 +265,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     uniques: [
       { itemId: 'bloodbound_cleaver', chance: 0.000125 },
       { itemId: 'bloodvein_plate', chance: 0.000125 },
+      { itemId: 'bone_ward', chance: 0.000125 },
     ],
     offlineCapHours: 5,
     unlockFloor: 26,
