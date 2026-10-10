@@ -73,7 +73,7 @@ import { applyClaimGathering, applyStartGathering } from './game/gathering';
 import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
-import BattlePassModal from './components/BattlePassModal';
+import BattlePassModal, { SeasonSummaryModal } from './components/BattlePassModal';
 import { crossedMilestoneFloors, dungeonRunXp, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
@@ -1010,25 +1010,28 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth(res.save);
   };
 
-  const claimAllBattlePassRewards = () => {
+  // Claims everything claimable; an item reward the bag has no room for is skipped (it stays claimable) and counted so the screen can say so.
+  const claimAllBattlePassRewards = (): { claimed: number; blocked: number } => {
     let s = saveRef.current;
-    let claimedAny = false;
-    let blocked = false;
+    let claimed = 0;
+    let blocked = 0;
     const now = Date.now();
     for (let level = 1; level <= s.battlePassLevel; level++) {
       for (const track of ['free', 'premium'] as const) {
         const res = applyBattlePassClaim(s, level, track, now);
-        if (res.blocked) blocked = true;
+        if (res.blocked) blocked++;
         if (res.save) {
           s = res.save;
-          claimedAny = true;
+          claimed++;
         }
       }
     }
-    if (blocked) showToast(t('inventory.bagFullAction'));
-    if (!claimedAny) return;
-    playSfx('victory');
-    setSaveBoth(s);
+    if (blocked > 0) showToast(t('inventory.bagFullAction'));
+    if (claimed > 0) {
+      playSfx('victory');
+      setSaveBoth(s);
+    }
+    return { claimed, blocked };
   };
 
   const buyConsumable = (id: ConsumableId) => {
@@ -1595,11 +1598,12 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         />
       )}
 
+      {save.pendingSeasonSummary && <SeasonSummaryModal save={save} onDismiss={dismissSeasonSummary} />}
+
       {battlePassOpen && (
         <BattlePassModal
           save={save}
           onActivate={purchaseBattlePass}
-          onDismissSummary={dismissSeasonSummary}
           onClaim={claimBattlePassLevel}
           onClaimAll={claimAllBattlePassRewards}
           onClose={() => {

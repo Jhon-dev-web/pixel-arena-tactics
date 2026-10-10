@@ -1,207 +1,486 @@
-import { ReactNode } from 'react';
-import { t } from '../locales';
+import { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { battlePassXpForLevel, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/engine';
-import { ADVENTURER_PASS_TESTABLE, ownsAdventurerPass } from '../game/entitlements';
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
+import { ADVENTURER_PASS_TESTABLE, ownsAdventurerPass } from '../game/entitlements';
+import { seasonNumber, seasonRemainingMs } from '../game/seasons';
+import { FRAMES, getFrameDef, STASH_BONUS_CAP, STASH_DEED_SLOTS } from '../game/seasonItems';
 import { MATERIALS } from '../game/materials';
 import { getConsumable } from '../game/consumables';
 import { getGem } from '../game/gems';
-import { getTitleDef } from '../game/titles';
 import { getGear } from '../game/gear';
-import { getFrameDef } from '../game/seasonItems';
+import { getTitleDef } from '../game/titles';
+import { FORGE_SEAL_MIN_RARITY, RARITIES } from '../game/rarity';
 import T from '../game/tunables';
-import MaterialIcon from './MaterialIcon';
-import ConsumableIcon from './ConsumableIcon';
-import GemIcon from './GemIcon';
-import TitleIcon from './TitleIcon';
+import { gearStatLines } from './gearStats';
 
-function rewardIcon(reward: BattlePassReward): ReactNode {
-  switch (reward.kind) {
-    case 'gold':
-      return <img className="inline-icon" src={Assets.icons.gold.url} alt="" />;
-    case 'shards':
-      return <img className="inline-icon" src="/assets/icons/shards.png" alt="" />;
-    case 'material': {
-      const def = MATERIALS.find((m) => m.id === reward.id);
-      return def ? <MaterialIcon item={def} className="inline-icon" /> : '📦';
-    }
-    case 'consumable': {
-      const def = getConsumable(reward.id ?? '');
-      return def ? <ConsumableIcon item={def} className="inline-icon" /> : '🧪';
-    }
-    case 'gem': {
-      const def = getGem(reward.id ?? '');
-      return def ? <GemIcon item={def} className="inline-icon" /> : '💎';
-    }
-    case 'cosmetic': {
-      const title = reward.id ? getTitleDef(reward.id) : undefined;
-      return title ? <TitleIcon src={title.iconUrl} fallback="🎖️" className="inline-icon" /> : '🎖️';
-    }
-    case 'relic': {
-      const gear = getGear(reward.id ?? '');
-      return gear?.icon ? <img className="inline-icon" src={gear.icon} alt="" /> : '❔';
-    }
-    default:
-      return '❔';
-  }
+// The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; a vertical list on a phone),
+// the season's exclusives generated from the track data, and the footer with "claim all" and (for non-owners) the purchase button.
+
+// Levels whose rewards are the season's headline items: bigger cards, art at 64 px.
+const FEATURED_LEVELS = new Set([8, 10, 15, 18, 20, 27, 30]);
+
+const PHONE_QUERY = '(max-width: 640px)';
+const COLUMN_STEP = 140; // px one arrow key press moves the horizontal track
+
+interface RewardView {
+  name: string;
+  amountText: string; // "x3" / "+500" / ""
+  src?: string; // pixel art
+  frame?: boolean; // the gold portrait frame has no art: it is drawn
+  fallback: ReactNode;
 }
 
-function rewardLabel(reward: BattlePassReward): string {
+function rewardView(reward: BattlePassReward): RewardView {
   switch (reward.kind) {
     case 'gold':
-      return `+${reward.amount}`;
+      return { name: t('battlePass.rewardGold'), amountText: `+${fmtNum(reward.amount)}`, src: Assets.icons.gold.url, fallback: '' };
     case 'shards':
-      return `+${reward.amount}`;
+      return { name: t('battlePass.rewardShards'), amountText: `+${fmtNum(reward.amount)}`, src: '/assets/icons/shards.png', fallback: '' };
     case 'material': {
       const def = MATERIALS.find((m) => m.id === reward.id);
-      return `${def ? t(`materials.${def.nameKey}`) : reward.id} x${reward.amount}`;
+      return { name: def ? t(`materials.${def.nameKey}`) : String(reward.id), amountText: `x${reward.amount}`, src: def?.iconUrl, fallback: def?.icon ?? '' };
     }
     case 'consumable': {
       const def = getConsumable(reward.id ?? '');
-      return `${def ? t(`consumables.${def.nameKey}`) : reward.id} x${reward.amount}`;
+      return { name: def ? t(`consumables.${def.nameKey}`) : String(reward.id), amountText: `x${reward.amount}`, src: def?.iconUrl, fallback: def?.icon ?? '' };
     }
     case 'gem': {
       const def = getGem(reward.id ?? '');
-      return `${def ? t(`gems.${def.nameKey}`) : reward.id} x${reward.amount}`;
+      return { name: def ? t(`gems.${def.nameKey}`) : String(reward.id), amountText: `x${reward.amount}`, src: def?.iconUrl, fallback: def?.icon ?? '' };
+    }
+    case 'relic': {
+      const def = getGear(reward.id ?? '');
+      return { name: def ? t(`gear.${def.nameKey}`) : String(reward.id), amountText: '', src: def?.icon, fallback: '' };
     }
     case 'cosmetic': {
       const title = reward.id ? getTitleDef(reward.id) : undefined;
       const frame = reward.id ? getFrameDef(reward.id) : undefined;
-      return title ? t(`titles.${title.nameKey}`) : frame ? t(`titles.${frame.nameKey}`) : t('battlePass.cosmeticReward');
+      if (frame) return { name: t(`titles.${frame.nameKey}`), amountText: '', frame: true, fallback: '' };
+      return { name: title ? t(`titles.${title.nameKey}`) : t('battlePass.cosmeticReward'), amountText: '', src: title?.iconUrl, fallback: '' };
     }
-    case 'relic':
-      return t(`gear.${getGear(reward.id ?? '')?.nameKey ?? ''}`);
-    default:
-      return '';
   }
 }
 
-function RewardTile({
+function RewardArt({ view, big }: { view: RewardView; big?: boolean }) {
+  if (view.frame) return <span className={`ap-frame-preview portrait-frame frame-season-gold${big ? ' big' : ''}`} aria-hidden />;
+  if (view.src) return <img className={`ap-art${big ? ' big' : ''}`} src={view.src} alt="" draggable={false} />;
+  return <span className="ap-art-fallback">{view.fallback}</span>;
+}
+
+// "42 d 6 h" / "5 h" / "< 1 h": what is left of the season.
+function remainingText(ms: number): string {
+  const hours = Math.max(0, Math.floor(ms / 3600000));
+  if (hours >= 24) return t('battlePass.remainingDays', { d: Math.floor(hours / 24), h: hours % 24 });
+  if (hours >= 1) return t('battlePass.remainingHours', { h: hours });
+  return t('battlePass.remainingLess');
+}
+
+type CardState = 'claimed' | 'claimable' | 'premiumLocked' | 'future';
+
+function RewardCard({
   reward,
-  reached,
-  claimed,
-  locked,
+  state,
+  featured,
+  track,
   onClaim,
 }: {
   reward: BattlePassReward;
-  reached: boolean;
-  claimed: boolean;
-  locked: boolean;
+  state: CardState;
+  featured: boolean;
+  track: 'free' | 'premium';
   onClaim: () => void;
 }) {
-  const canClaim = reached && !claimed && !locked;
+  const view = rewardView(reward);
+  const extras = (reward.also ?? []).map(rewardView);
+  const claimable = state === 'claimable';
+  const title = [view.name, ...extras.map((e) => e.name)].join(' + ');
   return (
     <button
-      className={`bp-reward${claimed ? ' claimed' : ''}${locked ? ' locked' : ''}${canClaim ? ' ready' : ''}`}
-      onClick={canClaim ? onClaim : undefined}
-      disabled={!canClaim}
+      className={`ap-card ${track} ${state}${featured ? ' featured' : ''}`}
+      onClick={claimable ? onClaim : undefined}
+      aria-disabled={!claimable}
+      tabIndex={claimable ? 0 : -1}
+      title={title}
       data-ui
     >
-      <span className="bp-reward-icon">{rewardIcon(reward)}</span>
-      <span className="bp-reward-label">{rewardLabel(reward)}</span>
-      {claimed && <span className="bp-reward-tag">✓</span>}
-      {locked && <span className="bp-reward-tag">🔒</span>}
+      <span className="ap-card-art">
+        <RewardArt view={view} big={featured} />
+      </span>
+      <span className="ap-card-text">
+        <span className="ap-card-name">{view.name}</span>
+        {view.amountText && <span className="ap-card-amount">{view.amountText}</span>}
+        {extras.map((e) => (
+          <span className="ap-card-extra" key={e.name}>
+            + {e.name}
+          </span>
+        ))}
+      </span>
+      {state === 'claimed' && <span className="ap-card-tag ok">{t('battlePass.claimed')}</span>}
+      {state === 'premiumLocked' && (
+        <span className="ap-card-tag lock" aria-label={t('battlePass.premiumLocked')}>
+          <img src="/assets/icons/garden_plot_locked.png" alt="" draggable={false} />
+        </span>
+      )}
+      {claimable && <span className="ap-card-tag go">{t('battlePass.claim')}</span>}
     </button>
   );
 }
 
+// What each exclusive of the premium track is, generated from the track and the item data (never typed twice).
+interface Highlight {
+  id: string;
+  name: string;
+  levels: number[];
+  line: string;
+  view: RewardView;
+}
+
+function seasonHighlights(): Highlight[] {
+  const found = new Map<string, Highlight>();
+  const add = (reward: BattlePassReward, level: number) => {
+    const key = `${reward.kind}:${reward.id}`;
+    const existing = found.get(key);
+    if (existing) {
+      existing.levels.push(level);
+      return;
+    }
+    const view = rewardView(reward);
+    let line = '';
+    if (reward.kind === 'relic') {
+      const g = getGear(reward.id ?? '');
+      line = t('battlePass.hlRelic', { stats: g ? gearStatLines(g).map((s) => s.text).join(' · ') : '' });
+    } else if (reward.kind === 'consumable' && reward.id === 'forge_seal') {
+      const floor = RARITIES.findIndex((r) => r.id === FORGE_SEAL_MIN_RARITY);
+      const pool = RARITIES.slice(floor);
+      const total = pool.reduce((a, r) => a + r.chance, 0);
+      const top = pool[pool.length - 1];
+      line = t('battlePass.hlSeal', { rarity: t(`rarity.${RARITIES[floor].nameKey}`), pct: Math.round((top.chance / total) * 100), top: t(`rarity.${top.nameKey}`) });
+    } else if (reward.kind === 'consumable' && reward.id === 'stash_deed') {
+      line = t('battlePass.hlDeed', { n: STASH_DEED_SLOTS, cap: STASH_BONUS_CAP });
+    } else if (reward.kind === 'cosmetic' && getFrameDef(reward.id ?? '')) {
+      line = t('battlePass.hlFrame');
+    } else if (reward.kind === 'cosmetic') {
+      line = t('battlePass.hlTitle');
+    }
+    found.set(key, { id: key, name: view.name, levels: [level], line, view });
+  };
+  for (const lvl of BATTLE_PASS_TRACK) {
+    const r = lvl.premium;
+    const exclusive = r.kind === 'relic' || (r.kind === 'consumable' && (r.id === 'forge_seal' || r.id === 'stash_deed')) || (r.kind === 'cosmetic' && FRAMES.some((f) => f.id === r.id));
+    if (!exclusive) continue;
+    add(r, lvl.level);
+    for (const extra of r.also ?? []) add(extra, lvl.level);
+  }
+  return [...found.values()];
+}
+
+// ---- the screen ------------------------------------------------------------------------------------------------------------------
+
 export default function BattlePassModal({
   save,
   onActivate,
-  onDismissSummary,
   onClaim,
   onClaimAll,
   onClose,
 }: {
   save: SaveData;
   onActivate: () => void;
-  onDismissSummary: () => void;
   onClaim: (level: number, track: 'free' | 'premium') => void;
-  onClaimAll: () => void;
+  onClaimAll: () => { claimed: number; blocked: number };
   onClose: () => void;
 }) {
-  const active = ownsAdventurerPass(save);
-  const xpNeed = battlePassXpForLevel(save.battlePassLevel);
-  const pct = save.battlePassLevel >= MAX_BATTLE_PASS_LEVEL ? 100 : Math.min(100, (save.battlePassXp / xpNeed) * 100);
+  const owner = ownsAdventurerPass(save);
+  const now = Date.now();
+  // The season shown is never behind the one the save settled (a clock set back keeps the stored one).
+  const season = Math.max(save.passSeason, seasonNumber(now));
+  const level = save.battlePassLevel;
+  const maxed = level >= MAX_BATTLE_PASS_LEVEL;
+  const need = battlePassXpForLevel(level);
+  const pct = maxed ? 100 : Math.min(100, (save.battlePassXp / need) * 100);
+
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; left: number; moved: boolean; id: number } | null>(null);
+  const suppressClick = useRef(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const claimableCount = BATTLE_PASS_TRACK.reduce(
+    (n, l) => n + (l.level <= level ? (save.claimedPassRewards.free.includes(l.level) ? 0 : 1) + (owner && !save.claimedPassRewards.premium.includes(l.level) ? 1 : 0) : 0),
+    0,
+  );
+
+  // The track opens centred on the player's current level (horizontal scroller) or scrolls the row into view (phone list).
+  const goToMyLevel = useCallback((smooth: boolean) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const col = scroller.querySelector<HTMLElement>(`[data-level="${level}"]`);
+    if (!col) return;
+    const horizontal = scroller.scrollWidth > scroller.clientWidth + 1 && !window.matchMedia(PHONE_QUERY).matches;
+    if (horizontal) {
+      const left = col.offsetLeft - (scroller.clientWidth - col.clientWidth) / 2;
+      scroller.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
+    } else if (smooth) {
+      col.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [level]);
+
+  useEffect(() => {
+    goToMyLevel(false);
+    // only when the screen opens: the player's own scrolling must not be undone by every claim
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mouse wheel: a vertical wheel over the track scrolls it sideways, until it hits an end (then the page scrolls as usual).
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (window.matchMedia(PHONE_QUERY).matches || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      if ((e.deltaY > 0 && el.scrollLeft >= max - 1) || (e.deltaY < 0 && el.scrollLeft <= 0)) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Drag with the mouse (touch keeps its native panning).
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || window.matchMedia(PHONE_QUERY).matches) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    drag.current = { x: e.clientX, left: el.scrollLeft, moved: false, id: e.pointerId };
+  };
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    const el = scrollerRef.current;
+    if (!d || !el) return;
+    const dx = e.clientX - d.x;
+    if (!d.moved && Math.abs(dx) > 5) {
+      d.moved = true;
+      el.setPointerCapture(d.id);
+      el.classList.add('dragging');
+    }
+    if (d.moved) el.scrollLeft = d.left - dx;
+  };
+  const endDrag = () => {
+    const d = drag.current;
+    drag.current = null;
+    const el = scrollerRef.current;
+    if (!d || !el) return;
+    el.classList.remove('dragging');
+    if (d.moved) {
+      suppressClick.current = true;
+      window.setTimeout(() => (suppressClick.current = false), 0);
+    }
+  };
+
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const el = scrollerRef.current;
+    if (!el || window.matchMedia(PHONE_QUERY).matches) return;
+    if (e.key === 'ArrowRight') el.scrollBy({ left: COLUMN_STEP, behavior: 'smooth' });
+    else if (e.key === 'ArrowLeft') el.scrollBy({ left: -COLUMN_STEP, behavior: 'smooth' });
+    else if (e.key === 'Home') el.scrollTo({ left: 0, behavior: 'smooth' });
+    else if (e.key === 'End') el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+    else return;
+    e.preventDefault();
+  };
+
+  const claimAll = () => {
+    const r = onClaimAll();
+    if (r.blocked > 0) setNote(t('battlePass.claimAllBlocked', { n: r.blocked, c: r.claimed }));
+    else if (r.claimed > 0) setNote(t('battlePass.claimAllDone', { n: r.claimed }));
+    else setNote(t('battlePass.claimNothing'));
+  };
+
+  const cardState = (lvl: number, track: 'free' | 'premium'): CardState => {
+    if (save.claimedPassRewards[track].includes(lvl)) return 'claimed';
+    if (lvl > level) return 'future';
+    if (track === 'premium' && !owner) return 'premiumLocked';
+    return 'claimable';
+  };
+
+  const perks: { key: string; icon: string; label: string; sub: string }[] = [
+    { key: 'storage', icon: '/assets/icons/expedition_ticket_4h.png', label: t('battlePass.perkStorage', { n: T.battlePass.capHours }), sub: t('battlePass.perkStorageSub') },
+    { key: 'luck', icon: '/assets/icons/ore_gold.png', label: t('battlePass.perkLuck', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) }), sub: t('battlePass.perkLuckSub') },
+    { key: 'orders', icon: '/assets/icons/nav_quests.png', label: t('battlePass.perkDeliveries'), sub: t('battlePass.perkDeliveriesSub', { n: Math.round(T.deliveries.passXpBonus * 100) }) },
+    { key: 'bag', icon: '/assets/icons/nav_bag.png', label: t('battlePass.perkBag', { n: T.battlePass.bagBonusSlots }), sub: t('battlePass.perkBagSub') },
+    { key: 'repair', icon: '/assets/icons/whetstone_oil.png', label: t('battlePass.perkRepair', { n: Math.round(T.battlePass.repairDiscount * 100) }), sub: t('battlePass.perkRepairSub') },
+  ];
+
+  const highlights = seasonHighlights();
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal dungeon-modal bp-modal">
-        <h2 className="modal-title">
-          <img className="inline-icon" src="/assets/icons/nav_battlepass.png" alt="" /> {t('battlePass.title')}
-        </h2>
+    <div className="modal-backdrop ap-backdrop">
+      <div className="modal ap-modal" role="dialog" aria-label={t('battlePass.title')}>
+        <button className="modal-x" onClick={onClose} aria-label={t('battlePass.close')} data-ui>
+          ✕
+        </button>
 
-        {save.pendingSeasonSummary && (
-          <div className="bp-status-card" role="status">
-            <span className="bp-status-label active">{t('battlePass.seasonDelivered', { n: save.pendingSeasonSummary.season })}</span>
-            <span className="bp-xp-text">{t('battlePass.seasonDeliveredHint')}</span>
-            <button className="quest-btn claim" onClick={onDismissSummary} data-ui>
-              {t('battlePass.seasonOk')}
+        <div className="ap-body">
+          <header className="ap-hero">
+            <img className="ap-hero-art" src="/assets/backgrounds/battlepass_season.png" alt="" draggable={false} />
+            <div className="ap-hero-shade" aria-hidden />
+            <div className="ap-hero-content">
+              <h2 className="ap-title">{t('battlePass.title')}</h2>
+              <div className="ap-hero-meta">
+                <span className="ap-chip season">{t('battlePass.season', { n: season })}</span>
+                <span className="ap-hero-time">{remainingText(seasonRemainingMs(season, now))}</span>
+                <span className={`ap-chip state${owner ? ' owner' : ''}`}>{owner ? t('battlePass.statusActive') : t('battlePass.statusFree')}</span>
+              </div>
+              <div className="ap-level">
+                <span className="ap-level-text">{maxed ? t('battlePass.levelDone', { n: level }) : t('battlePass.levelBar', { n: level, cur: fmtNum(save.battlePassXp), need: fmtNum(need) })}</span>
+                <div className="ap-xpbar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+                  <div className="ap-xpfill" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <section className="ap-perks" aria-label={t('battlePass.perksTitle')}>
+            {perks.map((p) => (
+              <div className={`ap-perk${owner ? ' on' : ' off'}`} key={p.key}>
+                <span className="ap-perk-top">
+                  <img className="ap-perk-icon" src={p.icon} alt="" draggable={false} />
+                  <span className="ap-perk-state">{owner ? t('battlePass.perkOn') : t('battlePass.perkOff')}</span>
+                </span>
+                <span className="ap-perk-label">{p.label}</span>
+                <span className="ap-perk-sub">{p.sub}</span>
+              </div>
+            ))}
+          </section>
+
+          <section className="ap-track-section">
+            <div className="ap-track-head">
+              <h3 className="ap-h3">{t('battlePass.trackTitle')}</h3>
+              <div className="ap-track-legend">
+                <span className="ap-legend free">{t('battlePass.colFree')}</span>
+                <span className="ap-legend premium">{t('battlePass.colPremium')}</span>
+              </div>
+              <button className="ap-goto" onClick={() => goToMyLevel(true)} data-ui>
+                {t('battlePass.goMyLevel')}
+              </button>
+            </div>
+            <div
+              className="ap-track"
+              ref={scrollerRef}
+              tabIndex={0}
+              role="region"
+              aria-label={t('battlePass.trackTitle')}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onClickCapture={(e) => {
+                if (suppressClick.current) {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }
+              }}
+              onKeyDown={onKeyDown}
+            >
+              {BATTLE_PASS_TRACK.map((lvl) => {
+                const featured = FEATURED_LEVELS.has(lvl.level);
+                const reached = lvl.level <= level;
+                return (
+                  <div
+                    className={`ap-col${reached ? ' reached' : ''}${lvl.level === level ? ' current' : ''}${featured ? ' featured' : ''}`}
+                    data-level={lvl.level}
+                    key={lvl.level}
+                    style={{ '--ap-i': lvl.level } as CSSProperties}
+                  >
+                    <div className="ap-lvl">
+                      <span className="ap-lvl-num">{lvl.level}</span>
+                    </div>
+                    <RewardCard reward={lvl.free} state={cardState(lvl.level, 'free')} featured={featured} track="free" onClaim={() => onClaim(lvl.level, 'free')} />
+                    <RewardCard reward={lvl.premium} state={cardState(lvl.level, 'premium')} featured={featured} track="premium" onClaim={() => onClaim(lvl.level, 'premium')} />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="ap-highlights">
+            <h3 className="ap-h3">{t('battlePass.highlightsTitle')}</h3>
+            <ul className="ap-hl-list">
+              {highlights.map((h) => (
+                <li className="ap-hl" key={h.id}>
+                  <span className="ap-hl-art">
+                    <RewardArt view={h.view} big />
+                  </span>
+                  <span className="ap-hl-text">
+                    <span className="ap-hl-name">
+                      {h.name}
+                      <span className="ap-hl-levels">{h.levels.length > 1 ? t('battlePass.atLevels', { l: h.levels.join(', ') }) : t('battlePass.atLevel', { l: h.levels[0] })}</span>
+                    </span>
+                    <span className="ap-hl-line">{h.line}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <p className="ap-howxp">
+            <strong>{t('battlePass.howXp')}</strong> {t('battlePass.xpFloor', { n: T.battlePass.xpPerFloor })} · {t('battlePass.xpHunt', { n: T.battlePass.xpPerHuntHour })} · {t('battlePass.xpGather', { n: T.battlePass.xpPerMiningHour })}
+          </p>
+        </div>
+
+        <footer className="ap-footer">
+          <div className="ap-footer-main">
+            <button className="quest-btn claim ap-claimall" onClick={claimAll} disabled={claimableCount === 0} data-ui>
+              {t('battlePass.claimAll')}
+              {claimableCount > 0 && <span className="ap-claimall-count">{claimableCount}</span>}
             </button>
-          </div>
-        )}
-
-        <div className="bp-status-card">
-          <span className={`bp-status-label${active ? ' active' : ''}`}>
-            {active ? t('battlePass.statusActive') : t('battlePass.statusFree')}
-          </span>
-          <div className="bp-perks">
-            <span className="bp-perk">{t('battlePass.perkStorage', { n: T.battlePass.capHours })}</span>
-            <span className="bp-perk">{t('battlePass.perkLuck', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) })}</span>
-            <span className="bp-perk">{t('battlePass.perkDeliveries', { n: Math.round(T.deliveries.passXpBonus * 100) })}</span>
-            <span className="bp-perk">{t('battlePass.perkBag', { n: T.battlePass.bagBonusSlots })}</span>
-            <span className="bp-perk">{t('battlePass.perkRepair', { n: Math.round(T.battlePass.repairDiscount * 100) })}</span>
-          </div>
-          <div className="bp-level-header">
-            <span>{t('battlePass.levelLabel', { n: save.battlePassLevel, m: MAX_BATTLE_PASS_LEVEL })}</span>
-            {save.battlePassLevel < MAX_BATTLE_PASS_LEVEL && (
-              <span className="bp-xp-text">{t('battlePass.xpProgress', { cur: save.battlePassXp, need: xpNeed })}</span>
+            {note && (
+              <span className="ap-note" role="status">
+                {note}
+              </span>
             )}
           </div>
-          {save.battlePassLevel < MAX_BATTLE_PASS_LEVEL && (
-            <div className="bp-xp-bar">
-              <div className="bp-xp-fill" style={{ width: `${pct}%` }} />
+          {owner ? (
+            <span className="ap-owned">{t('battlePass.ownedNote')}</span>
+          ) : (
+            <div className="ap-buy">
+              <button className="battle-btn ap-buy-btn" onClick={onActivate} disabled={!ADVENTURER_PASS_TESTABLE} data-ui>
+                {ADVENTURER_PASS_TESTABLE ? t('battlePass.activateTest') : t('battlePass.comingSoon')}
+              </button>
+              <span className="ap-buy-blurb">{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
             </div>
           )}
-          {!active && (
-            <button className="battle-btn bp-activate-btn" onClick={onActivate} disabled={!ADVENTURER_PASS_TESTABLE} data-ui>
-              {ADVENTURER_PASS_TESTABLE ? t('battlePass.activateTest') : t('battlePass.comingSoon')}
-            </button>
-          )}
-          <button className="quest-btn claim bp-claimall-btn" onClick={onClaimAll} data-ui>
-            {t('battlePass.claimAll')}
-          </button>
-        </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
 
-        <div className="bp-columns" aria-hidden="true">
-          <span />
-          <span>{t('battlePass.colFree')}</span>
-          <span>{t('battlePass.colPremium')}</span>
-        </div>
-        <div className="dungeon-body bp-track">
-          {BATTLE_PASS_TRACK.map((lvl) => {
-            const reached = save.battlePassLevel >= lvl.level;
-            const freeClaimed = save.claimedPassRewards.free.includes(lvl.level);
-            const premiumClaimed = save.claimedPassRewards.premium.includes(lvl.level);
+// The one-time card the player sees after a season ended: what was delivered for them. Shown by App whenever the save holds one.
+export function SeasonSummaryModal({ save, onDismiss }: { save: SaveData; onDismiss: () => void }) {
+  const summary = save.pendingSeasonSummary;
+  if (!summary) return null;
+  return (
+    <div className="modal-backdrop ap-summary-backdrop">
+      <div className="modal ap-summary" role="dialog" aria-label={t('battlePass.seasonDelivered', { n: summary.season })}>
+        <h2 className="modal-title win">{t('battlePass.seasonDelivered', { n: summary.season })}</h2>
+        <p className="ap-summary-hint">{t('battlePass.seasonDeliveredHint')}</p>
+        <ul className="ap-summary-list">
+          {summary.rewards.map((r) => {
+            const view = rewardView({ kind: r.kind, id: r.id, amount: r.amount });
             return (
-              <div className="bp-level-row" key={lvl.level}>
-                <span className="bp-level-num">{lvl.level}</span>
-                <RewardTile reward={lvl.free} reached={reached} claimed={freeClaimed} locked={false} onClaim={() => onClaim(lvl.level, 'free')} />
-                <RewardTile
-                  reward={lvl.premium}
-                  reached={reached}
-                  claimed={premiumClaimed}
-                  locked={!active}
-                  onClaim={() => onClaim(lvl.level, 'premium')}
-                />
-              </div>
+              <li className="ap-summary-row" key={`${r.kind}:${r.id ?? ''}`}>
+                <span className="ap-summary-art">
+                  <RewardArt view={view} />
+                </span>
+                <span className="ap-summary-name">{view.name}</span>
+                <span className="ap-summary-amount">{view.amountText || '+1'}</span>
+              </li>
             );
           })}
-        </div>
-
-        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
-          ✕
+        </ul>
+        <button className="quest-btn claim" onClick={onDismiss} data-ui>
+          {t('battlePass.seasonOk')}
         </button>
       </div>
     </div>

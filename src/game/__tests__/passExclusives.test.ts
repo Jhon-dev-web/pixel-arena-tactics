@@ -330,3 +330,18 @@ describe('bag with the new items', () => {
     expect(inventorySlotsUsed(s)).toBe(2);
   });
 });
+
+describe('art and strings of the Adventurer Pass screen', () => {
+  it('the season art and both 64 px icons ship, and every consumable / gear icon the track uses exists', () => {
+    const files = new Set([...Object.keys(import.meta.glob('/public/assets/icons/*.png')), ...Object.keys(import.meta.glob('/public/assets/backgrounds/*.png'))]);
+    for (const f of ['/public/assets/backgrounds/battlepass_season.png', '/public/assets/icons/season_emblem.png', '/public/assets/icons/forge_seal.png', '/public/assets/icons/camp_stash.png', '/public/assets/icons/garden_plot_locked.png']) expect(files.has(f), f).toBe(true);
+    for (const l of BATTLE_PASS_TRACK) {
+      for (const r of [l.free, l.premium]) {
+        for (const one of [r, ...(r.also ?? [])]) {
+          if (one.kind === 'consumable') expect(files.has(`/public${getConsumable(one.id!)!.iconUrl}`), `${l.level} ${one.id}`).toBe(true);
+          if (one.kind === 'relic') expect(files.has(`/public${getGear(one.id!).icon}`), `${l.level} ${one.id}`).toBe(true);
+        }
+      }
+    }
+  });
+});
