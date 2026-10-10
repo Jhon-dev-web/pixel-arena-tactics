@@ -94,6 +94,7 @@ export interface DayLedger {
   goldIn: Record<string, number>;
   goldOut: Record<string, number>;
   mats: { common: number; uncommon: number; rare: number };
+  matsValue: number; // the same units at the economic reference value (economy.ts baseGoldValue)
   lost: number; // units a hunt claim left behind because the inventory had no room
   // Inventory bookkeeping of the day (units unless said otherwise): slots at the day's highest point and at its end, what gathering left behind, and what the
   // inventory policy did (stashed / sold / discarded).
@@ -102,7 +103,7 @@ export interface DayLedger {
   units: Record<string, number>; // ore / wood / garden units that entered the bag today, by material id
 }
 
-const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {} });
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {} });
 
 export interface DaySnapshot {
   day: number;
@@ -465,7 +466,10 @@ export class Player {
           this.makeRoom(bagFreeSlots(this.S, this.now) + huntInventoryStatus(this.S, p.zoneId, p.drops, p.uniques).missingSlots);
           plan = planHuntClaim(this.S, p);
         }
-        for (const [m, q] of Object.entries(plan.added) as [MaterialId, number][]) this.ledger.mats[rarityOf(m)] += q;
+        for (const [m, q] of Object.entries(plan.added) as [MaterialId, number][]) {
+          this.ledger.mats[rarityOf(m)] += q;
+          this.ledger.matsValue += q * baseGoldValue(m);
+        }
         for (const l of plan.leftBehind) this.ledger.lost += l.count;
         const claimed = applyHuntClaim(this.S, p.id);
         if (claimed) this.set(claimed, 'caça');
@@ -482,6 +486,7 @@ export class Player {
       const c = claimGathering(this.S, this.now);
       if (c) {
         this.ledger.mats[rarityOf(c.material)] += c.units - c.leftBehind;
+        this.ledger.matsValue += (c.units - c.leftBehind) * baseGoldValue(c.material);
         this.ledger.inv.lostGather += c.leftBehind;
         this.ledger.units[c.material] = (this.ledger.units[c.material] ?? 0) + c.units - c.leftBehind;
         this.ledger.hours[mine ? 'mine' : 'wood'] += c.hours;

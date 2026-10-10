@@ -4,6 +4,7 @@ import Assets from '../assets.json';
 import { SaveData, computeCP, formatNumber, playerLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 import { useDisplayName } from '../game/usernameContext';
+import { portraitFrameClass } from '../game/seasonItems';
 
 export default function TopHud({
   save,
@@ -22,7 +23,7 @@ export default function TopHud({
   return (
     <header className="topbar">
       <div className="profile">
-        <button className="avatar" onClick={onOpenProfile} aria-label="Profile" data-tutorial-target="hero" data-ui>
+        <button className={`avatar${portraitFrameClass(save)}`} onClick={onOpenProfile} aria-label="Profile" data-tutorial-target="hero" data-ui>
           <SpriteSheet src={spriteUrl} size="28px" row={0} />
         </button>
         <div className="profile-info">

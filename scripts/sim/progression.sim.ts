@@ -658,7 +658,10 @@ function passAdvantage(a: Run[], p: Run[]): string[] {
     };
     cells('materiais recebidos por dia (média dos dias 1 até aqui)', mats, true);
     cells('materiais recebidos naquele dia', mats, false);
+    cells('valor de referência dos materiais por dia (ouro)', (x) => x.ledger.matsValue, true);
+    cells('valor de referência dos materiais naquele dia (ouro)', (x) => x.ledger.matsValue, false);
     cells('ouro ganho por dia (média dos dias 1 até aqui)', gold, true);
+    cells('ouro ganho naquele dia', gold, false);
     cells('nível', (x) => x.level, false);
     cells('CP', (x) => x.cp, false);
     cells('andar mais alto (highestDungeonFloor)', (x) => x.floor, false);

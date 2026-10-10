@@ -49,6 +49,7 @@ export interface HuntCombatBuild {
   reflect: number;
   hpRegenPct: number;
   goldBonusPct?: number; // gear gold bonus (CombatStats.goldBonus): raises the Gold of the fight time, not the XP or the drops
+  xpBonusPct?: number; // the Season Relic (CombatStats.xpBonus): raises the character XP of the fight time, not the Gold or the drops
 }
 
 export interface HuntZoneCombatCfg {
@@ -353,7 +354,7 @@ export function simulateHuntingSession(
     defeats,
     potionsUsed,
     fightTimeUsedMs,
-    xpReady: Math.floor(hours * zoneCfg.xpPerHour),
+    xpReady: Math.floor(hours * zoneCfg.xpPerHour * (1 + (build.xpBonusPct ?? 0) / 100)),
     goldReady: Math.floor((hours * (1 + (build.goldBonusPct ?? 0) / 100) + (fortuneFightMs / (3600 * 1000)) * (timeline?.fortuneGoldPct ?? 0)) * zoneCfg.goldPerHour),
     drops,
     uniques,

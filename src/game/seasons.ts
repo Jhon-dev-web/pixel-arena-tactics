@@ -25,7 +25,7 @@ export function seasonRemainingMs(season: number, now: number): number {
 // What the last season settlement delivered (battlepass.ts settleSeason): kept in the save until the player dismisses the "Recompensas da Temporada N entregues" card.
 // Rewards are stored as plain {kind, id, amount}, merged per item, so the card does not depend on the track staying the same.
 export interface SummaryReward {
-  kind: 'gold' | 'material' | 'consumable' | 'gem' | 'shards' | 'cosmetic';
+  kind: 'gold' | 'material' | 'consumable' | 'gem' | 'shards' | 'cosmetic' | 'relic';
   id?: string;
   amount: number;
 }
@@ -35,7 +35,7 @@ export interface SeasonSummary {
   rewards: SummaryReward[];
 }
 
-const SUMMARY_KINDS: readonly string[] = ['gold', 'material', 'consumable', 'gem', 'shards', 'cosmetic'];
+const SUMMARY_KINDS: readonly string[] = ['gold', 'material', 'consumable', 'gem', 'shards', 'cosmetic', 'relic'];
 
 export function sanitizeSeasonSummary(raw: unknown): SeasonSummary | null {
   const r = raw as Partial<SeasonSummary> | null | undefined;

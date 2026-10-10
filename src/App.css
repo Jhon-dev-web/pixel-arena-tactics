@@ -8917,3 +8917,102 @@ button[data-ui]:focus-visible {
     font-size: 12px;
   }
 }
+
+/* --- Portrait frame (Adventurer Pass, seasonItems.ts FRAMES): gold border + corner brackets drawn with CSS only, no art --- */
+.portrait-frame {
+  position: relative;
+  --frame-c: #ffe39a;
+  --frame-s: 16px;
+  --frame-w: 3px;
+  --frame-out: -7px;
+  border-color: #ffd76a !important;
+  box-shadow: 0 0 0 2px #4a3210, 0 0 0 4px #ffd76a, 0 0 16px rgba(255, 215, 106, 0.4) !important;
+}
+.portrait-frame::after {
+  content: '';
+  position: absolute;
+  inset: var(--frame-out);
+  pointer-events: none;
+  background:
+    linear-gradient(var(--frame-c), var(--frame-c)) top left / var(--frame-s) var(--frame-w) no-repeat,
+    linear-gradient(var(--frame-c), var(--frame-c)) top left / var(--frame-w) var(--frame-s) no-repeat,
+    linear-gradient(var(--frame-c), var(--frame-c)) top right / var(--frame-s) var(--frame-w) no-repeat,
+    linear-gradient(var(--frame-c), var(--frame-c)) top right / var(--frame-w) var(--frame-s) no-repeat,
+    linear-gradient(var(--frame-c), var(--frame-c)) bottom left / var(--frame-s) var(--frame-w) no-repeat,
+    linear-gradient(var(--frame-c), var(--frame-c)) bottom left / var(--frame-w) var(--frame-s) no-repeat,
+    linear-gradient(var(--frame-c), var(--frame-c)) bottom right / var(--frame-s) var(--frame-w) no-repeat,
+    linear-gradient(var(--frame-c), var(--frame-c)) bottom right / var(--frame-w) var(--frame-s) no-repeat;
+  filter: drop-shadow(0 0 3px rgba(255, 215, 106, 0.7));
+}
+.portrait-frame.avatar,
+.desktop-topbar-avatar.portrait-frame {
+  --frame-s: 7px;
+  --frame-w: 2px;
+  --frame-out: -3px;
+  box-shadow: 0 0 0 1px #4a3210, 0 0 0 2px #ffd76a !important;
+}
+.desktop-topbar-avatar {
+  display: inline-flex;
+  flex: none;
+  border-radius: 8px;
+}
+.frame-row-preview {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 2px solid #8a6a3a;
+  border-radius: 6px;
+  background: #1a1108;
+  --frame-s: 8px;
+  --frame-w: 2px;
+  --frame-out: -4px;
+}
+.forge-seal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  font-family: inherit;
+  color: #d8c9a0;
+  background: #1c1322;
+  border: 2px solid #6b5230;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+.forge-seal-toggle.on {
+  border-color: #ffd76a;
+  box-shadow: 0 0 12px rgba(255, 215, 106, 0.35);
+  color: #ffd76a;
+}
+.forge-seal-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  image-rendering: pixelated;
+}
+.forge-seal-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.forge-seal-name {
+  font-size: calc(var(--font-size) - 1px);
+}
+.forge-seal-hint {
+  font-size: calc(var(--font-size) - 3px);
+  color: #8a7aa8;
+}
+.forge-seal-state {
+  flex: none;
+  font-size: calc(var(--font-size) - 2px);
+}
+.frame-heading {
+  margin: 14px 0 6px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #b9a46c;
+}

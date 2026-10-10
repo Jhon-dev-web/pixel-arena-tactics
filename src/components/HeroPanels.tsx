@@ -9,6 +9,7 @@ import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
 import TitleIcon from './TitleIcon';
+import { FRAMES } from '../game/seasonItems';
 
 // The three "Personagem" panels — extracted from what used to be HeroModal's three tabs, so the
 // Personagem view (desktop area + mobile stack, see PersonagemView.tsx) and any future modal reuse
@@ -188,7 +189,8 @@ export function AttributesPanel({ save, onAttrChange }: { save: SaveData; onAttr
   );
 }
 
-export function TitlesPanel({ save, onSelectTitle }: { save: SaveData; onSelectTitle: (id: string | null) => void }) {
+export function TitlesPanel({ save, onSelectTitle, onSelectFrame }: { save: SaveData; onSelectTitle: (id: string | null) => void; onSelectFrame?: (id: string | null) => void }) {
+  const ownedFrames = FRAMES.filter((f) => save.cosmetics.includes(f.id));
   return (
     <div className="titles-body">
       <button className={`title-row${!save.activeTitle ? ' active' : ''}`} onClick={() => onSelectTitle(null)} data-ui>
@@ -217,6 +219,24 @@ export function TitlesPanel({ save, onSelectTitle }: { save: SaveData; onSelectT
           </button>
         );
       })}
+      {onSelectFrame && ownedFrames.length > 0 && (
+        <>
+          <div className="frame-heading">{t('titles.frames')}</div>
+          {ownedFrames.map((f) => {
+            const on = save.activeFrame === f.id;
+            return (
+              <button key={f.id} className={`title-row${on ? ' active' : ''}`} onClick={() => onSelectFrame(on ? null : f.id)} aria-pressed={on} data-ui>
+                <span className={`frame-row-preview portrait-frame ${f.id.replace(/_/g, '-')}`} aria-hidden />
+                <div className="title-row-main">
+                  <span className="title-name">{t(`titles.${f.nameKey}`)}</span>
+                  <span className="title-req">{t(`titles.${f.descKey}`)}</span>
+                </div>
+                <span className={`title-tag${on ? '' : ' equip'}`}>{on ? t('titles.active') : t('titles.equip')}</span>
+              </button>
+            );
+          })}
+        </>
+      )}
     </div>
   );
 }

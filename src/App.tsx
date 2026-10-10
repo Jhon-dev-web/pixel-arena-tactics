@@ -21,9 +21,10 @@ import { applyFertilizer, applyHarvest, applyPlant, applyUproot } from './game/g
 import { applyElixir, applyWhetstoneOil, ElixirId, isBuffItem } from './game/elixirs';
 import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
+import { applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
 import { ownsAdventurerPass, purchaseAdventurerPass } from './game/entitlements';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
-import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
+import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot, relicXpBonusPct } from './game/gear';
 import { applyReforge } from './game/reforge';
 import {
   InstancedSlot,
@@ -540,7 +541,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         if (reward.titleId && !cosmetics.includes(reward.titleId)) cosmetics = [...cosmetics, reward.titleId];
       }
     }
-    const xpGain = dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages);
+    // The Season Relic adds its character XP bonus to what the run pays (Hunting and Delivery orders apply it where they compute theirs).
+    const xpGain = Math.round((dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages)) * (1 + relicXpBonusPct(s.equipped.relic) / 100));
 
     setSaveBoth({
       ...s,
@@ -676,6 +678,26 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (id === 'xp_potion') applyXpPotion();
     else if (isBuffItem(id)) drinkElixir(id);
     else if (id === 'whetstone_oil') oilGear();
+    else if (id === 'stash_deed') redeemStashDeed();
+  };
+
+  // Stash Deed (seasonItems.ts): +5 stash slots for good; at the +20 cap it is refused and kept.
+  const redeemStashDeed = () => {
+    const next = applyUseStashDeed(saveRef.current);
+    if (!next) {
+      showToast(t('stash.deedCap', { n: STASH_BONUS_CAP }));
+      return;
+    }
+    playSfx('victory');
+    setSaveBoth(next);
+    showToast(t('stash.deedUsed', { n: STASH_DEED_SLOTS }));
+  };
+
+  const selectFrame = (id: string | null) => {
+    const next = applySelectFrame(saveRef.current, id);
+    if (!next) return;
+    playSfx('click');
+    setSaveBoth(next);
   };
 
   const claimQuest = (id: string) => {
@@ -1116,18 +1138,18 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // A weapon / armor craft creates ONE new independent instance (its own rarity roll). Recipe ingredients that
   // are gear consume real instances: `consumedIds` is the selection the player confirmed in the Forge, otherwise
   // the cheapest unequipped copies (see gearInstances.planForgeIngredients). Their gems go back to the stock.
-  const forgeItem = (id: string, consumedIds?: string[]) => {
+  const forgeItem = (id: string, consumedIds?: string[], useSeal?: boolean) => {
     const item = getGear(id);
     if (!item) return;
     const s = saveRef.current;
-    const result = applyForge(s, id, { level: playerLevel(s.xp), consumedIds });
+    const result = applyForge(s, id, { level: playerLevel(s.xp), consumedIds, seal: useSeal });
     if (!result.ok) {
       if (result.reason === 'capacity') showToast(t('forge.gearFull', { n: inventoryCapacity(s) }));
       return;
     }
     setSaveBoth(result.save);
     playSfx('victory');
-    showToast(t('forge.toBag', { n: gearText(item.nameKey) }));
+    showToast(t(result.sealUsed ? 'forge.toBagSeal' : 'forge.toBag', { n: gearText(item.nameKey) }));
   };
 
   const refineMaterial = (recipeId: string) => {
@@ -1388,6 +1410,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onEquip={equipGear}
               onUnequip={unequipGear}
               onSelectTitle={selectTitle}
+              onSelectFrame={selectFrame}
               onDiscard={discardItem}
               onReforge={reforgeItem}
               onSalvage={salvageItem}

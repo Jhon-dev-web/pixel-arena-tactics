@@ -45,6 +45,8 @@ export interface GearItem {
   damagePct?: number;
   lifestealPct?: number;
   goldBonusPct?: number;
+  // Season Relic (Adventurer Pass): percent extra CHARACTER XP from the Dungeon, Hunting and delivery orders (3 = 3 %); no combat effect.
+  xpBonusPct?: number;
   // Weapon family: 'axe' is the second weapon line (more damage, less crit, no burn). Forge grouping only.
   line?: 'axe';
   // Unique pieces (uniques.ts): drop-only (no recipe, never forged), one extra guaranteed substat slot. `salvageLike` is the forged piece
@@ -58,7 +60,7 @@ export interface GearItem {
 // gearInstances.equippedExtraStats); META_FIELDS are identity, cost and display data. gearEffects.test.ts checks every entry against both lists
 // and that equipping each live field really changes the combat stats, so a field nothing reads (burn, reflect, focusHpBonus and
 // attackStaminaReduction were dead data for a long time) cannot come back silently.
-export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct'] as const;
+export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct', 'xpBonusPct'] as const;
 export const META_FIELDS = ['id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line'] as const;
 
 // Weapon, armor, helmet, gloves, boots, ring and shield are the INSTANCED slots: each owned piece is its own object with its own rarity, substats,
@@ -181,6 +183,9 @@ export const GEAR: GearItem[] = [
   { id: 'warchief_totem', slot: 'relic', nameKey: 'warchief_totem', descKey: 'warchief_totem_d', icon: '/assets/icons/warchief_totem.png', cost: 0, damagePct: 0.085, source: { bossFloor: 50 } },
   { id: 'lich_phylactery', slot: 'relic', nameKey: 'lich_phylactery', descKey: 'lich_phylactery_d', icon: '/assets/icons/lich_phylactery.png', cost: 0, lifestealPct: 5, source: { bossFloor: 75 } },
   { id: 'overlord_sigil', slot: 'relic', nameKey: 'overlord_sigil', descKey: 'overlord_sigil_d', icon: '/assets/icons/overlord_sigil.png', cost: 0, critChance: 0.04, critMultBonus: 0.2, source: { bossFloor: 100 } },
+  // Season Relic (the Adventurer Pass track, level 30): drop-only from that track (no recipe, no boss source), stackable, a second season's copy only stacks. It is the
+  // "progress faster" choice, not the "hit harder" one: +5 % character XP, +5 % gold (inside the 25 % cap) and +2 % final damage, worth less in combat than any other relic.
+  { id: 'season_emblem', slot: 'relic', nameKey: 'season_emblem', descKey: 'season_emblem_d', icon: '/assets/icons/season_emblem.png', cost: 0, damagePct: 0.02, goldBonusPct: 5, xpBonusPct: 5 },
 ];
 
 // Unique pieces: drop-only (a Hunting zone or a Dungeon biome boss rolls them, uniques.ts), never forged (no recipe), instanced like every other piece.
@@ -259,6 +264,9 @@ export const DEFAULT_EQUIPPED: EquippedGear = {
 export function getGear(id: string): GearItem {
   return GEAR_BY_ID[id];
 }
+
+// Percent extra character XP of the worn relic (the Season Relic); 0 for none.
+export const relicXpBonusPct = (relicId: string | null | undefined): number => (relicId ? getGear(relicId)?.xpBonusPct ?? 0 : 0);
 
 export function gearBySlot(slot: GearSlot): GearItem[] {
   return GEAR.filter((g) => g.slot === slot);

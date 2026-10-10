@@ -8,6 +8,8 @@ import { MATERIALS } from '../game/materials';
 import { getConsumable } from '../game/consumables';
 import { getGem } from '../game/gems';
 import { getTitleDef } from '../game/titles';
+import { getGear } from '../game/gear';
+import { getFrameDef } from '../game/seasonItems';
 import T from '../game/tunables';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
@@ -36,6 +38,10 @@ function rewardIcon(reward: BattlePassReward): ReactNode {
       const title = reward.id ? getTitleDef(reward.id) : undefined;
       return title ? <TitleIcon src={title.iconUrl} fallback="🎖️" className="inline-icon" /> : '🎖️';
     }
+    case 'relic': {
+      const gear = getGear(reward.id ?? '');
+      return gear?.icon ? <img className="inline-icon" src={gear.icon} alt="" /> : '❔';
+    }
     default:
       return '❔';
   }
@@ -61,8 +67,11 @@ function rewardLabel(reward: BattlePassReward): string {
     }
     case 'cosmetic': {
       const title = reward.id ? getTitleDef(reward.id) : undefined;
-      return title ? t(`titles.${title.nameKey}`) : t('battlePass.cosmeticReward');
+      const frame = reward.id ? getFrameDef(reward.id) : undefined;
+      return title ? t(`titles.${title.nameKey}`) : frame ? t(`titles.${frame.nameKey}`) : t('battlePass.cosmeticReward');
     }
+    case 'relic':
+      return t(`gear.${getGear(reward.id ?? '')?.nameKey ?? ''}`);
     default:
       return '';
   }

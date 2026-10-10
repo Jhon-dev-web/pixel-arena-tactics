@@ -102,7 +102,7 @@ export default function ForgeModal({
 }: {
   save: SaveData;
   // consumedIds: the confirmed selection of gear instances a recipe consumes (omitted = the cheapest copies).
-  onForge: (id: string, consumedIds?: string[]) => void;
+  onForge: (id: string, consumedIds?: string[], useSeal?: boolean) => void;
   onUpgrade: (id: string) => void;
   onUpgradeWithCatalyst: (id: string) => void;
   onRepair: (id: string, blessed: boolean) => void;
@@ -125,6 +125,9 @@ export default function ForgeModal({
   }, [focusItemId]);
   const [justForged, setJustForged] = useState<string | null>(null);
   const [pendingForge, setPendingForge] = useState<{ id: string; ids: string[] } | null>(null);
+  // Blacksmith's Seal (season reward): the toggle is on offer only while one is held; the forge spends it only when the forge really happens (gearInstances.applyForge).
+  const sealCount = save.consumables?.forge_seal ?? 0;
+  const [sealOn, setSealOn] = useState(false);
   const catalystCount = save.consumables?.refine_catalyst ?? 0;
 
   const level = playerLevel(save.xp);
@@ -147,7 +150,8 @@ export default function ForgeModal({
   const blockedByBag = (item: GearItem): boolean => save.gold >= item.cost && applyForge(save, item.id, { level }).reason === 'capacity';
 
   const doForge = (id: string, consumedIds?: string[]) => {
-    onForge(id, consumedIds);
+    const item = getGear(id);
+    onForge(id, consumedIds, sealOn && sealCount > 0 && !!item && isInstancedSlot(item.slot));
     setJustForged(id);
     window.setTimeout(() => setJustForged(null), 1500);
   };
@@ -276,6 +280,16 @@ export default function ForgeModal({
                 );
               })}
             </div>
+            {sealCount > 0 && forgeCategory !== 'relic' && (
+              <button className={`forge-seal-toggle${sealOn ? ' on' : ''}`} onClick={() => setSealOn(!sealOn)} aria-pressed={sealOn} data-ui>
+                <img className="forge-seal-icon" src="/assets/icons/forge_seal.png" alt="" />
+                <span className="forge-seal-text">
+                  <span className="forge-seal-name">{t('forge.useSeal')}</span>
+                  <span className="forge-seal-hint">{t('forge.sealHint', { n: sealCount })}</span>
+                </span>
+                <span className="forge-seal-state">{sealOn ? t('forge.sealOn') : t('forge.sealOff')}</span>
+              </button>
+            )}
             {(() => {
               const items = forgeRecipes(forgeCategory);
               if (items.length === 0) {

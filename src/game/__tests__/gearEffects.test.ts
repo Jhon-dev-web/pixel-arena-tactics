@@ -356,6 +356,7 @@ const FIELD_TO_STAT: Record<(typeof LIVE_STAT_FIELDS)[number], keyof CombatStats
   damagePct: 'dmgBase',
   lifestealPct: 'lifesteal',
   goldBonusPct: 'goldBonus',
+  xpBonusPct: 'xpBonus',
 };
 
 describe('no dead gear fields', () => {

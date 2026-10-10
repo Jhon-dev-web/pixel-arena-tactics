@@ -366,7 +366,9 @@
     "lich_phylactery": "Filactério do Lich",
     "lich_phylactery_d": "Um frasco de alma presa: a vida que escapa dos inimigos pinga de volta em você.",
     "overlord_sigil": "Sigilo do Senhor Supremo",
-    "overlord_sigil_d": "Um selo de comando: os golpes certeiros ficam mais certeiros e mais cruéis."
+    "overlord_sigil_d": "Um selo de comando: os golpes certeiros ficam mais certeiros e mais cruéis.",
+    "season_emblem": "Emblema do Aventureiro",
+    "season_emblem_d": "O brasão de quem terminou a temporada: mais experiência, um pouco mais de ouro e um golpe só um pouco mais forte."
   },
   "enemies": {
     "goblinRogue": "Goblin Ladino",
@@ -542,7 +544,8 @@
     "attackSpeedStat": "+{pct}% velocidade de ataque",
     "burnTitle": "Queimando",
     "finalDamage": "Dano final",
-    "goldBonus": "Ouro extra"
+    "goldBonus": "Ouro extra",
+    "xpBonus": "XP do personagem"
   },
   "shop": {
     "title": "Loja",
@@ -613,7 +616,11 @@
     "whetstone_oil_active": "Arma e armadura restauradas em 30% de durabilidade!",
     "whetstone_oil_full": "Arma e armadura já estão com a durabilidade cheia.",
     "fertilizer": "Adubo",
-    "fertilizer_d": "Use em um canteiro em crescimento: remove 50% do tempo restante (uma vez por plantio)"
+    "fertilizer_d": "Use em um canteiro em crescimento: remove 50% do tempo restante (uma vez por plantio)",
+    "forge_seal": "Selo do Ferreiro",
+    "forge_seal_d": "Ative na Forja: a próxima peça forjada nasce Épica ou melhor. Só é gasto se a forja acontecer.",
+    "stash_deed": "Escritura do Baú",
+    "stash_deed_d": "Use para ampliar o Baú em 5 espaços, para sempre. O limite total é de 20 espaços extras."
   },
   "forge": {
     "title": "Forja",
@@ -641,6 +648,11 @@
     "chance": "Chance: {n}%",
     "forged": "Forjado!",
     "toBag": "+1 {n} enviado para a Mochila!",
+    "toBagSeal": "+1 {n} forjado com o Selo do Ferreiro!",
+    "useSeal": "Usar Selo do Ferreiro",
+    "sealHint": "A próxima peça sai Épica ou melhor ({n} no inventário)",
+    "sealOn": "Ligado",
+    "sealOff": "Desligado",
     "equip": "EQUIPAR",
     "equipped": "EQUIPADO",
     "cost": "Custo",
@@ -1177,7 +1189,10 @@
     "req_season_lv30": "Alcance o Nível 30 do Passe de Aventureiro (Premium)",
     "req_shadow_pathfinder": "Derrote o chefão do Andar 50 da Masmorra",
     "req_abyss_conqueror": "Derrote o chefão do Andar 75 da Masmorra",
-    "req_100_floors_legend": "Derrote o chefão do Andar 100 da Masmorra"
+    "req_100_floors_legend": "Derrote o chefão do Andar 100 da Masmorra",
+    "frames": "Molduras do retrato",
+    "frame_season_gold": "Moldura Dourada da Temporada",
+    "frame_season_gold_d": "Uma moldura de ouro em volta do retrato do herói. Só enfeite."
   },
   "gathering": {
     "rate": "Rendimento: {n} unidades/h · {xp} XP/h",
@@ -1200,6 +1215,8 @@
     "space": "Baú: {n} / {m}",
     "note": "Guarda itens sem ocupar o inventário. Receitas, pedidos e melhorias só usam o que está no inventário.",
     "upgradeTitle": "MELHORAR BAÚ",
+    "deedUsed": "Escritura usada: +{n} espaços no Baú.",
+    "deedCap": "O Baú já tem o máximo de {n} espaços extras. A escritura foi guardada.",
     "upgradeFromBag": "Ouro e materiais saem do inventário, não do Baú.",
     "maxLevel": "O Baú já está no tamanho máximo.",
     "hintHave": "você tem {n} no Baú",

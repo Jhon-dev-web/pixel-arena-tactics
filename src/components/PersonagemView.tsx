@@ -5,6 +5,7 @@ import { EquipmentPanel, AttributesPanel, TitlesPanel, AttrKey } from './HeroPan
 import InventoryPanel from './InventoryPanel';
 import { SaveData, computeCP, formatNumber, playerLevel, xpForNextLevel, xpToReachLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
+import { portraitFrameClass } from '../game/seasonItems';
 
 // "Personagem" as its own main-content area (desktop: alongside the fixed sidebar; mobile: same
 // cards, stacked) instead of the old small floating modal. Every card below is a straight port of
@@ -17,6 +18,7 @@ export default function PersonagemView({
   onEquip,
   onUnequip,
   onSelectTitle,
+  onSelectFrame,
   onDiscard,
   onReforge,
   onSalvage,
@@ -29,6 +31,7 @@ export default function PersonagemView({
   onEquip: (id: string) => void;
   onUnequip: (id: string) => void;
   onSelectTitle: (id: string | null) => void;
+  onSelectFrame: (id: string | null) => void;
   onDiscard: (kind: 'gear' | 'material' | 'consumable', id: string) => void;
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
@@ -44,7 +47,7 @@ export default function PersonagemView({
   return (
     <div className="desktop-home personagem-view">
       <section className="dh-card personagem-hero">
-        <div className="dh-hero-portrait" aria-hidden>
+        <div className={`dh-hero-portrait${portraitFrameClass(save)}`} aria-hidden>
           <SpriteSheet src={spriteUrl} size="min(148px, 100%)" row={0} />
         </div>
         <div className="dh-hero-body">
@@ -74,7 +77,7 @@ export default function PersonagemView({
 
       <section className="dh-card personagem-titles">
         <h3 className="dh-card-title">{t('profile.titlesTab')}</h3>
-        <TitlesPanel save={save} onSelectTitle={onSelectTitle} />
+        <TitlesPanel save={save} onSelectTitle={onSelectTitle} onSelectFrame={onSelectFrame} />
       </section>
 
       <section className="dh-card personagem-inventory">

@@ -549,3 +549,24 @@ Primeira vez cheio, quem ignora o inventário: dia 6 (5-7), 20/20 seeds (R5: 6).
 Marcos (dia, mediana): segunda zona e chefe 25: 5 → 3; chegada ao andar 50: 14 → 8; chefe 50: 17,5 → 11,5.
 
 **O limite do diretor (até ~15% em materiais/dia e ~1 dia por marco) NÃO é cumprido, e baixar o multiplicador não resolve.** A diferença vem quase toda do armazém: o jogador simulado volta a cada 12 h e, sem o Passe, só 4 h (Mineração/Lenhador) ou 4 a 8 h (Caça) de cada 12 h viram material. Decomposição medida (8 seeds, materiais/dia até o dia 7): armazém de 12 h sozinho (multiplicador 1,00, sem bolsa): +260%; armazém de 4 h com multiplicador 1,10: +7%; só a bolsa de +5 espaços: +1%. Armazém de 8 h com 1,10: +163%; armazém de 6 h com 1,05: +59%. Ou seja, qualquer armazém maior que o da zona entrega um multiplicador de tempo a quem entra a cada 12 h, e o 1,10 vale só ~7% dos 285%. Os números ficaram como o diretor especificou (12 h e 1,10) e a decisão é dele: (a) aceitar (o Passe vende "não precisar voltar de 4 em 4 h"), (b) armazém de 6 h (+59% de materiais, ainda acima do limite) ou (c) respeitar os 15% só com armazém ≈ o da zona, isto é, sem o perk de armazém. `SIM_PASS_ONLY=1 SIM_PASS_CAP=... SIM_PASS_MULT=... SIM_PASS_BAG=... npm run sim` reproduz qualquer combinação.
+
+## 29. Trilha premium do Passe: exclusivos (10/10/2026)
+
+A trilha premium foi reescrita, os 30 níveis à mão, sem material de Caça e sem peça de equipamento (a trilha grátis ficou exatamente como era):
+
+| Nível | Recompensa | Nível | Recompensa | Nível | Recompensa |
+| --: | --- | --: | --- | --: | --- |
+| 1 | 3 lingotes de prata | 11 | 6 Fragmentos | 21 | 10 Fragmentos |
+| 2 | 2 Tônicos da Fortuna | 12 | 2 Tônicos Pele de Pedra | 22 | 2 Tônicos da Pressa |
+| 3 | 5 Adubos | 13 | 3 barras de ouro | 23 | 2 esmeraldas |
+| 4 | 1 500 de ouro | 14 | 1 safira | 24 | 2 obsidianas refinadas |
+| 5 | 5 Fragmentos | 15 | **Moldura Dourada da Temporada** | 25 | 12 Fragmentos |
+| 6 | Ticket Expresso 2 h | 16 | 8 Fragmentos | 26 | 2 Tickets Expressos 4 h |
+| 7 | 1 rubi | 17 | 2 Elixires de Precisão | 27 | **Selo do Ferreiro** |
+| 8 | **Escritura do Baú** | 18 | **Escritura do Baú** | 28 | 5 000 de ouro |
+| 9 | 3 Óleos de Amolar | 19 | 3 catalisadores de refino | 29 | 15 Fragmentos |
+| 10 | **Selo do Ferreiro** | 20 | **Selo do Ferreiro** | 30 | **Emblema do Aventureiro + título** |
+
+Fragmentos: 56 no total, como antes. Exclusivos: Emblema do Aventureiro (relíquia empilhável, +5% de XP do personagem em Masmorra, Caça e Pedidos, +5% de ouro dentro do teto de 25% e +2% de dano final; não se forja, o mercador não compra, descarta-se; fica em 28 a 32% do valor de combate da relíquia de combate mais fraca, ver `ITEM_BALANCE_AUDIT.md` L); Selo do Ferreiro (3 por temporada, forja Épica ou melhor, 0,6 lendárias esperadas por temporada); Escritura do Baú (+5 espaços no Baú cada, até +20 no total, campo próprio `stashBonusSlots`); Moldura Dourada (cosmético de CSS, liga e desliga onde se escolhe o título). O Emblema não é afetado pelo Passe e o Passe não vende poder de combate. Valores de referência da trilha: `ITEM_BALANCE_AUDIT.md` L.
+
+O Emblema não multiplica a Poção de XP (item fixo) nem o XP do Passe; só o XP do personagem das três fontes de idle/progressão pedidas.

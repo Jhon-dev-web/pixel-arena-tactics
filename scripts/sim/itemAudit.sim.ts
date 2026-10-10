@@ -11,7 +11,7 @@ import { applyForge, createGearInstance } from '../../src/game/gearInstances';
 import { GEAR, GearItem, getGear, reforgeGoldCost, upgradeChance, upgradeCost } from '../../src/game/gear';
 import { RARITIES, SUBSTATS, SubstatType, medianSubstatValue, rollRarity, rollSubstats } from '../../src/game/rarity';
 import { isDungeonCheckpoint } from '../../src/game/dungeon';
-import { cargoReferenceValue } from '../../src/game/economy';
+import { baseGoldValue, cargoReferenceValue } from '../../src/game/economy';
 import { MaterialId, emptyMaterials } from '../../src/game/materials';
 import { GEMS, GemId, emptyGems, socketsForTier } from '../../src/game/gems';
 import { TIER_EXTRAS } from './ladder';
@@ -21,6 +21,10 @@ import { duel, duelVs, hero, MAIN_TIERS, PAIRS, repFloor, tierNum } from './duel
 import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
 import { TonicFlags, withTonicStats } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
+import { BATTLE_PASS_TRACK, BattlePassReward } from '../../src/game/battlepass';
+import { getConsumable } from '../../src/game/consumables';
+import { POTION_RECIPES } from '../../src/game/potions';
+import { STASH_UPGRADES } from '../../src/game/stash';
 
 const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
 const HOUR = 3600 * 1000;
@@ -495,6 +499,47 @@ describe('item balance audit', () => {
       kRows.push(`| ${id} | ${lv} | T${tk}+4 | ${pct(computeCP(relicOf(base, id)) / computeCP(base) - 1)} | ${f2(lnP(relicOf(base, id)))}% | ${crafted.map((x) => f2(x)).join(' / ')}% |`);
     }
     P('| Relíquia | Nível | Herói | ΔCP | Δln P (real) | Forjáveis (vitalidade / velocidade / berserker) |', '| --- | --: | --- | --: | --: | --: |', ...kRows);
+    P('');
+
+    // ===== L. Season Relic (Adventurer Pass) ===================================================================================
+    const emblem = getGear('season_emblem');
+    P('## L. Relíquia da Temporada (Passe de Aventureiro)', '');
+    P(`Emblema do Aventureiro: +${emblem.xpBonusPct}% de XP do personagem, +${emblem.goldBonusPct}% de ouro e +${pct(emblem.damagePct ?? 0, 0)} de dano final. Tem de ficar bem ABAIXO da relíquia de combate mais fraca no valor real de combate (Δln P do duelo no andar de referência), nos níveis 30 / 60 / 90: é a escolha de "progredir mais rápido", não a de "bater mais forte".`, '');
+    const lRows: string[] = [];
+    for (const [tk, lv] of [['3', 30], ['4g', 60], ['5', 90]] as [string, number][]) {
+      const base = hero(tk, 4, { level: lv });
+      const fl = repFloor(base);
+      const lnP = (id: string) => Math.log(duel(relicOf(base, id), fl).P / duel(base, fl).P) * 100;
+      const combat = ['ring_vitality', 'amulet_swiftness', 'berserker_crest', 'warchief_totem', 'lich_phylactery', 'overlord_sigil'];
+      const vals = combat.map((c) => [c, lnP(c)] as [string, number]);
+      const weakest = vals.reduce((a, b) => (b[1] < a[1] ? b : a));
+      const em = lnP('season_emblem');
+      lRows.push(`| ${lv} | T${tk}+4 | ${pct(computeCP(relicOf(base, 'season_emblem')) / computeCP(base) - 1)} | ${f2(em)}% | ${weakest[0]} ${f2(weakest[1])}% | ${f1((em / weakest[1]) * 100)}% | ${vals.map(([c, v]) => `${c} ${f2(v)}%`).join(' · ')} |`);
+    }
+    P('| Nível | Herói | ΔCP do emblema | Δln P do emblema | Relíquia de combate mais fraca | Emblema / mais fraca | Todas as relíquias de combate |', '| --: | --- | --: | --: | --- | --: | --- |', ...lRows);
+    P('');
+
+    // ===== M. Adventurer Pass track value ======================================================================================
+    P('## M. Valor de referência das trilhas do Passe', '');
+    P('Ouro de referência: materiais por `economy.ts baseGoldValue`; Fragmento = 2 (a convenção desta auditoria), gema = 2 Fragmentos; poções do Jardim = insumos + ouro da receita; consumíveis da Loja = o preço; Fertilizante / Óleo de Amolar pelo valor de venda; ticket expresso = 100 por hora adiantada; catalisador = 400; Selo do Ferreiro = 1 500 (um item Épico+ em vez do sorteio normal); Escritura do Baú = metade do primeiro degrau do Baú. O emblema, a moldura e o título ficam de fora (exclusivos, sem preço).', '');
+    const statedValue: Record<string, number> = { refine_catalyst: 400, expedition_ticket_1h: 100, expedition_ticket_2h: 200, expedition_ticket_4h: 400, forge_seal: 1500, fertilizer: 8, whetstone_oil: 15, stash_deed: Math.round((STASH_UPGRADES[0].gold + cargoReferenceValue(STASH_UPGRADES[0].materials)) / 2) };
+    const consumableValue = (id: string): number => {
+      if (statedValue[id] !== undefined) return statedValue[id];
+      const def = getConsumable(id)!;
+      if (def.purchasable) return def.cost;
+      const rec = POTION_RECIPES.find((r) => r.id === id);
+      return rec ? Math.round(cargoReferenceValue(rec.input) + rec.cost) : def.sellValue;
+    };
+    const rewardValue = (r: BattlePassReward): number => {
+      const one = (x: BattlePassReward) =>
+        x.kind === 'gold' ? x.amount : x.kind === 'shards' ? x.amount * 2 : x.kind === 'gem' ? x.amount * 4 : x.kind === 'material' ? x.amount * baseGoldValue(x.id as MaterialId) : x.kind === 'consumable' ? x.amount * consumableValue(x.id as string) : 0;
+      return one(r) + (r.also ?? []).reduce((a, e) => a + one(e), 0);
+    };
+    const exclusive = (r: BattlePassReward) => r.kind === 'relic' || r.kind === 'cosmetic' || (r.kind === 'consumable' && (r.id === 'forge_seal' || r.id === 'stash_deed'));
+    const totFree = BATTLE_PASS_TRACK.reduce((a, l) => a + rewardValue(l.free), 0);
+    const totPrem = BATTLE_PASS_TRACK.reduce((a, l) => a + rewardValue(l.premium), 0);
+    const premExclusive = BATTLE_PASS_TRACK.reduce((a, l) => a + (exclusive(l.premium) ? rewardValue(l.premium) : 0), 0);
+    P('| Trilha | Valor de referência | Do qual exclusivo (selos + escrituras) |', '| --- | --: | --: |', `| Grátis | ${Math.round(totFree)} | 0 |`, `| Premium | ${Math.round(totPrem)} | ${Math.round(premExclusive)} |`, `| Premium sem os exclusivos | ${Math.round(totPrem - premExclusive)} | - |`);
     P('');
 
     console.log('\n' + out.join('\n') + '\n');

@@ -6,12 +6,14 @@ import { addForced, addWithOverflow, stockIsEmpty } from './inventory';
 import { ownsAdventurerPass } from './entitlements';
 import { seasonNumber, SummaryReward } from './seasons';
 
-export type BattlePassRewardKind = 'gold' | 'material' | 'consumable' | 'gem' | 'shards' | 'cosmetic';
+export type BattlePassRewardKind = 'gold' | 'material' | 'consumable' | 'gem' | 'shards' | 'cosmetic' | 'relic';
 
 export interface BattlePassReward {
   kind: BattlePassRewardKind;
   id?: MaterialId | ConsumableId | GemId | string;
   amount: number;
+  // Granted together with this reward, the same way (the level-30 Season Relic comes with its exclusive title).
+  also?: BattlePassReward[];
 }
 
 export interface BattlePassLevelDef {
@@ -28,13 +30,10 @@ const shards = (amount: number): BattlePassReward => ({ kind: 'shards', amount }
 const cosmetic = (id: string): BattlePassReward => ({ kind: 'cosmetic', id, amount: 1 });
 
 // Reward design (economy discipline): the Free track is a steady drip of moderate gold, healing
-// consumables, basic Shop-tier materials and the odd Expedition ticket — never enough to matter
-// as a wealth source, matching Hunting/Mining's role as material faucets, not gold faucets. The
-// Premium track is where the Pass earns its keep: Shards at real milestones (5/15/25),
-// Expedition time-skip tickets, refine catalysts and lapidated gems, closing on an exclusive,
-// non-farmable Season cosmetic at 30 — the deflationary status reward the whole track builds to.
+// consumables, basic Shop-tier materials and the odd express ticket — never enough to matter
+// as a wealth source, matching Hunting/Mining's role as material faucets, not gold faucets.
 // Every level is hand-authored on purpose: a modulo pattern reads as "the same three prizes on
-// repeat" by level 20, which is exactly the monotony this track exists to avoid.
+// repeat" by level 20, which is exactly the monotony the tracks exist to avoid.
 const FREE_TRACK: BattlePassReward[] = [
   gold(100),
   material('copper', 5),
@@ -68,37 +67,42 @@ const FREE_TRACK: BattlePassReward[] = [
   gold(3000), // Baú do Aventureiro
 ];
 
+// The Premium track is where the Pass earns its keep, and it is built around things that exist ONLY here (the owner of the Pass is not paying for power, the
+// market sells power): the Season Relic at 30 (a "progress faster" sidegrade, gear.ts season_emblem) with the exclusive title, the Blacksmith's Seal at 10 / 20 / 27
+// (a forge roll conditioned on Epic or better), the Stash Deed at 8 / 18 (+5 stash slots each, for good) and the gold portrait frame at 15. The levels in between
+// are a generous, varied mix of what already exists - Shards (56 in all, as before), lapidated gems, refine catalysts, express tickets, Garden tonics, fertilizer,
+// whetstone oil, T3-T5 ingots and gold - and NEVER hunting materials (they would bypass the emission audit) or gear instances. Every level is hand-authored.
 const PREMIUM_TRACK: BattlePassReward[] = [
-  material('silver', 3),
-  gem('ruby', 1),
-  consumable('refine_catalyst', 1),
-  material('gold_ore', 3),
+  material('silver_ingot', 3),
+  consumable('fortune_tonic', 2),
+  consumable('fertilizer', 5),
+  gold(1500),
   shards(5),
-  gem('sapphire', 1),
   consumable('expedition_ticket_2h', 1),
-  material('obsidian', 2),
-  gem('emerald', 1),
-  consumable('refine_catalyst', 1),
+  gem('ruby', 1),
+  consumable('stash_deed', 1), // 8
+  consumable('whetstone_oil', 3),
+  consumable('forge_seal', 1), // 10
   shards(6),
-  material('dragon_scales', 2),
-  consumable('expedition_ticket_2h', 1),
-  gem('ruby', 2),
+  consumable('stoneskin_tonic', 2),
+  material('gold_bar', 3),
+  gem('sapphire', 1),
+  cosmetic('frame_season_gold'), // 15
   shards(8),
-  consumable('refine_catalyst', 2),
-  material('obsidian', 3),
-  gem('sapphire', 2),
-  consumable('expedition_ticket_4h', 1),
-  gem('emerald', 2),
+  consumable('precision_elixir', 2),
+  consumable('stash_deed', 1), // 18
+  consumable('refine_catalyst', 3),
+  consumable('forge_seal', 1), // 20
   shards(10),
-  consumable('refine_catalyst', 2),
-  material('dragon_scales', 3),
-  gem('ruby', 3),
+  consumable('haste_tonic', 2),
+  gem('emerald', 2),
+  material('refined_obsidian', 2),
   shards(12),
   consumable('expedition_ticket_4h', 2),
-  gem('sapphire', 3),
-  consumable('refine_catalyst', 3),
+  consumable('forge_seal', 1), // 27
+  gold(5000),
   shards(15),
-  cosmetic('title_season_lv30'), // exclusive Season cosmetic — deflationary, reward-only
+  { kind: 'relic', id: 'season_emblem', amount: 1, also: [cosmetic('title_season_lv30')] }, // 30: the Season Relic and the exclusive title
 ];
 
 export const BATTLE_PASS_TRACK: BattlePassLevelDef[] = Array.from({ length: MAX_BATTLE_PASS_LEVEL }, (_, i) => ({
@@ -137,7 +141,26 @@ function payReward(s: SaveData, reward: BattlePassReward, forced: boolean, now: 
       return { save: reward.id ? { ...s, gems: { ...s.gems, [reward.id]: (s.gems[reward.id as GemId] ?? 0) + reward.amount } } : s };
     case 'cosmetic':
       return { save: reward.id && !s.cosmetics.includes(reward.id) ? { ...s, cosmetics: [...s.cosmetics, reward.id] } : s };
+    case 'relic': {
+      // A relic is stackable gear in the bag (a second season's copy only stacks).
+      if (!reward.id) return { save: s };
+      const add = { gear: { [reward.id]: reward.amount } };
+      if (forced) return { save: addForced(s, add) };
+      const placed = addWithOverflow(s, add, { now });
+      return stockIsEmpty(placed.leftover) ? { save: placed.save } : { save: s, blocked: true };
+    }
   }
+}
+
+// A reward and everything granted with it. Blocked if any part of it is.
+function payWithExtras(s: SaveData, reward: BattlePassReward, forced: boolean, now: number): { save: SaveData; blocked?: boolean } {
+  let paid = payReward(s, reward, forced, now);
+  if (paid.blocked) return paid;
+  for (const extra of reward.also ?? []) {
+    paid = payReward(paid.save, extra, forced, now);
+    if (paid.blocked) return { save: s, blocked: true };
+  }
+  return paid;
 }
 
 // Claim one level of one track (a deliberate action: an item reward that does not fit the bag is refused and stays claimable).
@@ -147,7 +170,7 @@ export function applyBattlePassClaim(s: SaveData, level: number, track: 'free' |
   if (s.claimedPassRewards[track].includes(level)) return { save: null };
   const def = getBattlePassLevelDef(level);
   if (!def) return { save: null };
-  const paid = payReward(s, def[track], false, now);
+  const paid = payWithExtras(s, def[track], false, now);
   if (paid.blocked) return { save: null, blocked: true };
   return { save: { ...paid.save, claimedPassRewards: { ...paid.save.claimedPassRewards, [track]: [...paid.save.claimedPassRewards[track], level] } } };
 }
@@ -170,10 +193,12 @@ export function settleSeason(s: SaveData, now: number): SaveData {
       if (track === 'premium' && !owner) continue;
       if (s.claimedPassRewards[track].includes(level)) continue;
       const reward = def[track];
-      next = payReward(next, reward, true, now).save;
-      const same = summary.find((w) => w.kind === reward.kind && w.id === reward.id);
-      if (same) same.amount += reward.amount;
-      else summary.push({ kind: reward.kind, ...(reward.id ? { id: reward.id } : {}), amount: reward.amount });
+      next = payWithExtras(next, reward, true, now).save;
+      for (const r of [reward, ...(reward.also ?? [])]) {
+        const same = summary.find((w) => w.kind === r.kind && w.id === r.id);
+        if (same) same.amount += r.amount;
+        else summary.push({ kind: r.kind, ...(r.id ? { id: r.id } : {}), amount: r.amount });
+      }
     }
   }
   return {

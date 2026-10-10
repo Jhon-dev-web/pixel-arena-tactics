@@ -15,7 +15,9 @@ export type ConsumableId =
   | 'gatherer_brew'
   | 'precision_elixir'
   | 'whetstone_oil'
-  | 'fertilizer';
+  | 'fertilizer'
+  | 'forge_seal'
+  | 'stash_deed';
 
 export interface ConsumableDef {
   id: ConsumableId;
@@ -61,6 +63,9 @@ export const CONSUMABLES: ConsumableDef[] = [
   { id: 'precision_elixir', nameKey: 'precision_elixir', descKey: 'precision_elixir_d', icon: '🎯', iconUrl: '/assets/icons/precision_elixir.png', cost: 0, sellValue: 80, purchasable: false },
   { id: 'whetstone_oil', nameKey: 'whetstone_oil', descKey: 'whetstone_oil_d', icon: '🛢️', iconUrl: '/assets/icons/whetstone_oil.png', cost: 0, sellValue: 15, purchasable: false },
   { id: 'fertilizer', nameKey: 'fertilizer', descKey: 'fertilizer_d', icon: '🌱', iconUrl: '/assets/icons/fertilizer.png', cost: 0, sellValue: 8, purchasable: false },
+  // Adventurer Pass track rewards (seasonItems.ts): reward-only, never bought and never sold (sellValue 0 keeps the merchant out).
+  { id: 'forge_seal', nameKey: 'forge_seal', descKey: 'forge_seal_d', icon: '🔨', iconUrl: '/assets/icons/forge_seal.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'stash_deed', nameKey: 'stash_deed', descKey: 'stash_deed_d', icon: '📜', iconUrl: '/assets/icons/camp_stash.png', cost: 0, sellValue: 0, purchasable: false },
 ];
 
 export function getConsumable(id: string): ConsumableDef | undefined {
@@ -86,5 +91,7 @@ export function emptyConsumables(): Record<ConsumableId, number> {
     precision_elixir: 0,
     whetstone_oil: 0,
     fertilizer: 0,
+    forge_seal: 0,
+    stash_deed: 0,
   };
 }

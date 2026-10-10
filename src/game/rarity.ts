@@ -68,6 +68,23 @@ export function rollRarity(rng: Rng = Math.random): Rarity {
   return 'common';
 }
 
+// The Blacksmith's Seal (season reward): a forge roll CONDITIONED on this rarity or better. The odds are the normal table's own weights restricted to the
+// rarities from here up (epic 12 : legendary 3 = 80 % : 20 %), derived from RARITIES, never hard-coded.
+export const FORGE_SEAL_MIN_RARITY: Rarity = 'epic';
+
+export function rollRarityAtLeast(min: Rarity, rng: Rng = Math.random): Rarity {
+  const from = Math.max(0, RARITIES.findIndex((r) => r.id === min));
+  const pool = RARITIES.slice(from);
+  const total = pool.reduce((sum, r) => sum + r.chance, 0);
+  const r = rng() * total;
+  let acc = 0;
+  for (const def of pool) {
+    acc += def.chance;
+    if (r < acc) return def.id;
+  }
+  return pool[pool.length - 1].id;
+}
+
 const tierRange = (def: SubstatDef, tier: number): [number, number] | undefined =>
   def.ranges?.[Math.min(def.ranges.length, Math.max(1, Math.floor(tier) || 1)) - 1];
 

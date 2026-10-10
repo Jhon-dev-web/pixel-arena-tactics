@@ -2,6 +2,7 @@ import { HUNTING_ZONES, isZoneUnlocked } from './huntingZones';
 import { EXPEDITION_TICKET_SKIP_MS, ConsumableId } from './consumables';
 import { MAX_LEVEL, playerLevel, SaveData } from './engine';
 import { PLANTS } from './garden';
+import { relicXpBonusPct } from './gear';
 import { hasMaterials, MaterialId } from './materials';
 import { baseGoldValue, cargoReferenceValue } from './economy';
 import { ORE_TIERS } from './ores';
@@ -341,8 +342,10 @@ export function rerollsLeft(d: DeliveryState, now: number, passActive: boolean):
   return Math.max(0, rerollCap(passActive) - used);
 }
 // XP an order pays when accepted by a player with (or without) the Battle Pass. Gold, shards, materials and time never change.
-export function deliveryXp(offer: Pick<DeliveryOffer, 'xp'>, passActive: boolean): number {
-  return passActive ? Math.round(offer.xp * (1 + T.deliveries.passXpBonus)) : offer.xp;
+// `xpBonusPct`: the worn Season Relic (gear.ts relicXpBonusPct); like the Pass bonus it is decided at accept and frozen in the snapshot.
+export function deliveryXp(offer: Pick<DeliveryOffer, 'xp'>, passActive: boolean, xpBonusPct = 0): number {
+  const withPass = passActive ? Math.round(offer.xp * (1 + T.deliveries.passXpBonus)) : offer.xp;
+  return xpBonusPct > 0 ? Math.round(withPass * (1 + xpBonusPct / 100)) : withPass;
 }
 export const isOfferExpired = (o: DeliveryOffer, now: number): boolean => now - o.bornAt >= T.deliveries.offerTtlHours * HOUR;
 
@@ -390,7 +393,7 @@ export function applyDeliveryAccept(save: SaveData, offerId: string, now: number
   const materials = { ...save.materials };
   for (const [m, q] of Object.entries(offer.items) as [MaterialId, number][]) materials[m] = (materials[m] ?? 0) - q;
   // The Pass XP bonus is decided here and frozen in the snapshot: later Pass expiry or tunable changes do not touch it.
-  const active: ActiveDelivery = { offer: { ...offer, xp: deliveryXp(offer, passActive) }, startedAt: now, endsAt: now + offer.durationMs };
+  const active: ActiveDelivery = { offer: { ...offer, xp: deliveryXp(offer, passActive, relicXpBonusPct(save.equipped.relic)) }, startedAt: now, endsAt: now + offer.durationMs };
   const others = d.offers.filter((_, j) => j !== index).map((o) => o.arch);
   const seq = nextSeq(d);
   const fresh = generateOffer(buildContext(save), offer.cls, others, `d${seq + 1}`, now, rng);

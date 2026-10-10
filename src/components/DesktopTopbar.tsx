@@ -4,6 +4,7 @@ import Assets from '../assets.json';
 import { SaveData, formatNumber, playerLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 import { useDisplayName } from '../game/usernameContext';
+import { portraitFrameClass } from '../game/seasonItems';
 
 // Top bar shared by desktop (fixed sidebar alongside it) and mobile (hamburger + drawer instead) —
 // same data as the old mobile-only TopHud, just laid out wider on desktop. CP is deliberately left
@@ -55,7 +56,9 @@ export default function DesktopTopbar({
         </button>
       )}
       <button className="desktop-topbar-profile" onClick={onOpenProfile} data-tutorial-target="hero" data-ui>
-        <SpriteSheet src={spriteUrl} size="40px" row={0} />
+        <span className={`desktop-topbar-avatar${portraitFrameClass(save)}`}>
+          <SpriteSheet src={spriteUrl} size="40px" row={0} />
+        </span>
         <div className="desktop-topbar-profile-info">
           <div className="desktop-topbar-name-row">
             <span className="desktop-topbar-name">{displayName}</span>

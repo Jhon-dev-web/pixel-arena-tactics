@@ -2,7 +2,7 @@ import T from './tunables';
 import { GEAR, GearItem, INSTANCED_SLOTS, InstancedSlot, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, getGear, upgradeChance, upgradeCost } from './gear';
 import { GEMS, GemBonuses, GemId, addGemBonuses, gemListBonuses, getGem, hasGems, socketsForTier } from './gems';
 import { MaterialId, hasMaterials } from './materials';
-import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollSubstats, substatListTotals } from './rarity';
+import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollRarityAtLeast, FORGE_SEAL_MIN_RARITY, rollSubstats, substatListTotals } from './rarity';
 import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salvage';
 import { addWithOverflow, fitsBag, stockIsEmpty } from './inventory';
 import type { SaveData } from './engine';
@@ -557,12 +557,13 @@ export interface ForgeResult {
   save?: SaveData;
   instance?: GearInstance | null;
   consumed?: GearInstance[];
+  sealUsed?: boolean; // a Blacksmith's Seal was spent on this forge
 }
 
 export function applyForge(
   save: SaveData,
   templateId: string,
-  opts: { level: number; consumedIds?: GearInstanceId[]; idFactory?: () => string; now?: number },
+  opts: { level: number; consumedIds?: GearInstanceId[]; idFactory?: () => string; now?: number; seal?: boolean; rng?: () => number },
 ): ForgeResult {
   const item = getGear(templateId);
   if (!item || !item.recipe) return { ok: false, reason: 'unknown' };
@@ -596,11 +597,15 @@ export function applyForge(
   next = removeInstances(next, consumed.map((i) => i.id));
 
   let instance: GearInstance | null = null;
+  // Blacksmith's Seal: only a gear piece (never a relic), only when one is held, and only now that every check above passed - a refused forge keeps the seal.
+  const sealUsed = !!opts.seal && instanced && (save.consumables.forge_seal ?? 0) > 0;
+  if (sealUsed) next = { ...next, consumables: { ...next.consumables, forge_seal: (next.consumables.forge_seal ?? 0) - 1 } };
   if (instanced) {
     instance = createGearInstance(templateId, {
       id: uniqueId(next.gearInstances, opts.idFactory ?? newGearInstanceId),
       origin: 'craft',
       createdAt: opts.now ?? Date.now(),
+      ...(sealUsed ? { rarity: rollRarityAtLeast(FORGE_SEAL_MIN_RARITY, opts.rng) } : {}),
     });
     next = { ...next, gearInstances: { ...next.gearInstances, [instance.id]: instance } };
   } else {
@@ -609,7 +614,7 @@ export function applyForge(
   // The craft nets +1 piece minus the ingredients it eats (instances, and the stacks the materials come out of): it must not take more slots than the
   // inventory has (a bag that is already over the limit may still craft, as long as the bag does not grow).
   if (!fitsBag(save, next)) return { ok: false, reason: 'capacity' };
-  return { ok: true, save: next, instance, consumed };
+  return { ok: true, save: next, instance, consumed, sealUsed };
 }
 
 // --- upgrade

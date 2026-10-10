@@ -366,7 +366,9 @@
     "lich_phylactery": "Lich Phylactery",
     "lich_phylactery_d": "A vial of trapped soul: the life that leaks from your enemies drips back into you.",
     "overlord_sigil": "Overlord Sigil",
-    "overlord_sigil_d": "A seal of command: precise blows grow more precise, and crueller."
+    "overlord_sigil_d": "A seal of command: precise blows grow more precise, and crueller.",
+    "season_emblem": "Adventurer's Emblem",
+    "season_emblem_d": "The crest of one who finished the season: more experience, a little more gold and a slightly stronger blow."
   },
   "enemies": {
     "goblinRogue": "Goblin Rogue",
@@ -542,7 +544,8 @@
     "attackSpeedStat": "+{pct}% attack speed",
     "burnTitle": "Burning",
     "finalDamage": "Final damage",
-    "goldBonus": "Bonus gold"
+    "goldBonus": "Bonus gold",
+    "xpBonus": "Character XP"
   },
   "shop": {
     "title": "🛒 Shop",
@@ -613,7 +616,11 @@
     "whetstone_oil_active": "Weapon and armor restored by 30% durability!",
     "whetstone_oil_full": "Weapon and armor are already at full durability.",
     "fertilizer": "Fertilizer",
-    "fertilizer_d": "Use on a growing plot: removes 50% of the remaining time (once per planting)"
+    "fertilizer_d": "Use on a growing plot: removes 50% of the remaining time (once per planting)",
+    "forge_seal": "Blacksmith's Seal",
+    "forge_seal_d": "Toggle it in the Forge: the next piece forged comes out Epic or better. It is only spent if the forge happens.",
+    "stash_deed": "Stash Deed",
+    "stash_deed_d": "Use it to enlarge the stash by 5 slots, for good. The total limit is 20 extra slots."
   },
   "forge": {
     "title": "Forge",
@@ -643,6 +650,11 @@
     "chance": "Chance: {n}%",
     "forged": "Forged!",
     "toBag": "+1 {n} sent to Bag!",
+    "toBagSeal": "+1 {n} forged with the Blacksmith's Seal!",
+    "useSeal": "Use Blacksmith's Seal",
+    "sealHint": "The next piece comes out Epic or better ({n} held)",
+    "sealOn": "On",
+    "sealOff": "Off",
     "equip": "EQUIP",
     "equipped": "EQUIPPED",
     "cost": "Cost",
@@ -1177,7 +1189,10 @@
     "req_season_lv30": "Reach Level 30 of the Adventurer's Pass (Premium)",
     "req_shadow_pathfinder": "Defeat the Dungeon's Floor 50 boss",
     "req_abyss_conqueror": "Defeat the Dungeon's Floor 75 boss",
-    "req_100_floors_legend": "Defeat the Dungeon's Floor 100 boss"
+    "req_100_floors_legend": "Defeat the Dungeon's Floor 100 boss",
+    "frames": "Portrait frames",
+    "frame_season_gold": "Season Gold Frame",
+    "frame_season_gold_d": "A gold frame around the hero portrait. Purely cosmetic."
   },
   "gathering": {
     "rate": "Yield: {n} units/h · {xp} XP/h",
@@ -1200,6 +1215,8 @@
     "space": "Stash: {n} / {m}",
     "note": "Keeps items without using inventory slots. Recipes, orders and upgrades only use what is in the inventory.",
     "upgradeTitle": "UPGRADE STASH",
+    "deedUsed": "Deed used: +{n} stash slots.",
+    "deedCap": "The stash already has the maximum of {n} extra slots. The deed was kept.",
     "upgradeFromBag": "Gold and materials come from the inventory, not the stash.",
     "maxLevel": "The stash is at its maximum size.",
     "hintHave": "you have {n} in the Stash",

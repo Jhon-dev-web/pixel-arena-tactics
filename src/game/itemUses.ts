@@ -2,7 +2,7 @@ import type { SaveData } from './engine';
 import { BUFF_ITEM } from './buffs';
 import { deliverableMaterials } from './deliveries';
 import { EXPEDITION_TICKET_SKIP_MS, ConsumableId } from './consumables';
-import { GEAR, MAX_REFINE, upgradeCost } from './gear';
+import { GEAR, MAX_REFINE, isInstancedSlot, upgradeCost } from './gear';
 import { MATERIALS, MaterialId } from './materials';
 import { POTION_RECIPES } from './potions';
 import { REFINING_RECIPES } from './refining';
@@ -81,6 +81,8 @@ export function usesOf(kind: 'material' | 'consumable', id: string, save?: Pick<
   if (c === 'refine_catalyst') push(out, 'upgrade', ['refine']);
   if (EXPEDITION_TICKET_SKIP_MS[c]) push(out, 'delivery', ['board']);
   if (c === 'fertilizer') push(out, 'garden', ['garden']);
+  if (c === 'forge_seal') push(out, 'forge', GEAR.filter((g) => g.recipe && !g.unique && isInstancedSlot(g.slot)).map((g) => g.id));
+  if (c === 'stash_deed') push(out, 'use', [c]);
   if (c === 'xp_potion' || c === 'whetstone_oil' || c === 'atk_elixir' || BUFF_ITEM[c]) push(out, 'use', [c]);
   return out;
 }

@@ -1,5 +1,6 @@
 import T from './tunables';
 import { ownsAdventurerPass } from './entitlements';
+import { sanitizeActiveFrame, sanitizeStashBonus } from './seasonItems';
 import { sanitizeSeasonSummary, seasonNumber, type SeasonSummary } from './seasons';
 import { EquippedGear, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
 import {
@@ -198,6 +199,10 @@ export interface SaveData {
   pendingSeasonSummary: SeasonSummary | null;
   cosmetics: string[];
   activeTitle: string | null;
+  // Portrait frame (seasonItems.ts FRAMES) the hero wears, one of the owned cosmetics; null = none.
+  activeFrame: string | null;
+  // Stash slots from Stash Deeds, beyond the upgrade ladder (seasonItems.ts, capped at +20 over all seasons).
+  stashBonusSlots: number;
   dungeonCheckpoints: number[];
   gardenSlots: GardenSlot[];
   activeBuff: ActiveBuff | null; // Strength Elixir (kept as-is for old saves)
@@ -344,6 +349,7 @@ export function buildCombatStats(save: SaveData): CombatStats {
     hpRegenPct: relic?.hpRegenPct ?? 0,
     // Gold bonus (substats + Goblin Lucky Coin, capped): the Dungeon pays it through buffs.goldMultiplier, Hunting through the session's frozen stats.
     goldBonus: subs.goldBonus,
+    xpBonus: relic?.xpBonusPct ?? 0,
   };
 }
 
@@ -678,6 +684,7 @@ export function buildHuntSimSetup(
     reflect: stats.reflect ?? 0,
     hpRegenPct: stats.hpRegenPct ?? 0,
     goldBonusPct: stats.goldBonus ?? 0,
+    xpBonusPct: stats.xpBonus ?? 0,
   };
 
   // Raso-only override (see HuntingZoneDef.shallowCp/shallowEnemyHp/shallowEnemyDmg) — currently only
@@ -865,6 +872,8 @@ export function defaultSave(): SaveData {
     pendingSeasonSummary: null,
     cosmetics: [],
     activeTitle: null,
+    activeFrame: null,
+    stashBonusSlots: 0,
     dungeonCheckpoints: [],
     gardenSlots: emptyGardenSlots(),
     activeBuff: null,
@@ -1225,6 +1234,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         pendingSeasonSummary: sanitizeSeasonSummary(parsed.pendingSeasonSummary),
         cosmetics,
         activeTitle,
+        activeFrame: sanitizeActiveFrame(parsed.activeFrame, cosmetics),
+        stashBonusSlots: sanitizeStashBonus(parsed.stashBonusSlots),
         dungeonCheckpoints,
         gardenSlots,
         activeBuff,

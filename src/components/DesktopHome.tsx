@@ -27,6 +27,7 @@ import { getHuntingZone } from '../game/huntingZones';
 import { getBiomeForFloor, nextMilestone, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import { useDisplayName } from '../game/usernameContext';
+import { portraitFrameClass } from '../game/seasonItems';
 
 // Inventory pressure: amber from 85% of the slots, red when there is no free slot (the same thresholds as the hunt screen).
 const invTone = (used: number, cap: number): string => (used >= cap ? ' full' : used >= cap * 0.85 ? ' warn' : '');
@@ -141,7 +142,7 @@ export default function DesktopHome({
     <div className="desktop-home">
       {/* Area A — Hero */}
       <section className="dh-card dh-hero">
-        <button className="dh-hero-portrait" onClick={onOpenHero} data-ui>
+        <button className={`dh-hero-portrait${portraitFrameClass(save)}`} onClick={onOpenHero} data-ui>
           <SpriteSheet src={spriteUrl} size="min(148px, 100%)" row={0} />
         </button>
         <div className="dh-hero-body">

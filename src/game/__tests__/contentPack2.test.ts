@@ -526,7 +526,7 @@ describe('catalog: names, descriptions, icons of the content pack', () => {
   const pack: GearItem[] = GEAR.filter((g) => g.slot === 'shield' || g.line === 'axe' || (g.slot === 'relic' && !g.recipe));
   it('every new piece has pt and en names and digit-free descriptions, and an icon file', () => {
     const files = new Set(Object.keys(import.meta.glob('/public/assets/icons/*.png')));
-    expect(pack).toHaveLength(6 + 2 + 6 + 4);
+    expect(pack).toHaveLength(6 + 2 + 6 + 4 + 1); // + the Season Relic (Adventurer Pass)
     for (const g of pack) {
       for (const table of [en, pt] as unknown as { gear: Record<string, string> }[]) {
         expect(typeof table.gear[g.nameKey], g.id).toBe('string');
