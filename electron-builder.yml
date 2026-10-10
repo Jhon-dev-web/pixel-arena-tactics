@@ -1,0 +1,21 @@
+# Packaging config for the Windows desktop (Steam) build. Run through `npm run desktop:build`.
+# Output: release/win-unpacked/ (unpacked app folder, the shape a Steam depot wants; no installer).
+appId: com.arenaduel.game
+productName: Arena Duel
+directories:
+  output: release
+# Only the shell and the already-built web bundle go into the app. Source, tests, docs, .env* and the
+# production node_modules (everything is bundled by Vite already) stay out.
+files:
+  - package.json
+  - desktop/**
+  - dist-desktop/**
+  - "!**/*.map"
+  - "!node_modules/**"
+asar: true
+npmRebuild: false
+win:
+  target:
+    - target: dir
+      arch: x64
+  icon: desktop/icon.png

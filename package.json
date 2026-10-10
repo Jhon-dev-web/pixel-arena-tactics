@@ -1,8 +1,10 @@
 {
-  "name": "basic-vite-react",
+  "name": "arena-duel",
+  "productName": "Arena Duel",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "main": "desktop/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,7 +12,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sim": "vitest run --config vitest.sim.config.ts progression --silent=false --reporter=default",
-    "sim:cp": "vitest run --config vitest.sim.config.ts cpTable --silent=false --reporter=default"
+    "sim:cp": "vitest run --config vitest.sim.config.ts cpTable --silent=false --reporter=default",
+    "desktop:dev": "node scripts/desktop-dev.mjs",
+    "desktop:build": "node scripts/desktop-build.mjs",
+    "desktop:start": "electron ."
   },
   "dependencies": {
     "@agent8/gameserver": "^1.10.2",
@@ -25,6 +30,8 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.5.4",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",

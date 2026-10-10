@@ -1,21 +1,70 @@
-import { defineConfig } from "vite";
+import fs from "node:fs";
+import path from "node:path";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
+// Desktop (Electron/Steam) build only: `vite build --mode desktop` (see scripts/desktop-build.mjs).
+// Turns index.html into a page that satisfies the packaged app's strict CSP and needs no network:
+//  - drops the Google Fonts <link>s (a Steam build must not depend on a CDN; the game falls back to its
+//    monospace stack until Press Start 2P is vendored locally),
+//  - moves the inline <style>/<script> blocks into same-origin files (the CSP forbids inline code),
+//  - drops the iframe size-reporting script (only meaningful when embedded in the web platform).
+// The web build never loads this plugin, so its output is unchanged.
+function desktopHtml(outDir: string): Plugin {
+  return {
+    name: "arena-desktop-html",
+    apply: "build",
+    closeBundle() {
+      const file = path.resolve(outDir, "index.html");
+      let html = fs.readFileSync(file, "utf8");
+      html = html.replace(/[ \t]*<link[^>]*fonts\.(?:googleapis|gstatic)\.com[^>]*>\r?\n?/g, "");
+      let n = 0;
+      html = html.replace(/<style>([\s\S]*?)<\/style>/g, (_m, css: string) => {
+        const name = `desktop-inline-${n++}.css`;
+        fs.writeFileSync(path.resolve(outDir, name), css.trim() + "\n");
+        return `<link rel="stylesheet" href="./${name}" />`;
+      });
+      html = html.replace(/<script>([\s\S]*?)<\/script>/g, (_m, js: string) => {
+        if (js.includes("GAME_SIZE_RESPONSE")) return "";
+        const name = `desktop-inline-${n++}.js`;
+        fs.writeFileSync(path.resolve(outDir, name), js.trim() + "\n");
+        return `<script src="./${name}"></script>`;
+      });
+      fs.writeFileSync(file, html);
+    },
+  };
+}
+
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  optimizeDeps: {
-    exclude: ["lucide-react"],
-  },
-  base: "./",
-  build: {
-    outDir: "dist",
-    // Skip gzip-size reporting: our users don't optimize by bundle size,
-    // and it only slows the build. Output is byte-identical.
-    reportCompressedSize: false,
-    // Game bundles (three/phaser) legitimately ship 1-3MB single chunks, so
-    // the default 500 kB advisory fires on every build as noise. Keep the
-    // warning only for genuinely pathological (5MB+) chunks.
-    chunkSizeWarningLimit: 5000,
-  },
+export default defineConfig(({ mode }) => {
+  const desktop = mode === "desktop";
+  const desktopOutDir = "dist-desktop";
+  return {
+    plugins: [react(), ...(desktop ? [desktopHtml(desktopOutDir)] : [])],
+    optimizeDeps: {
+      exclude: ["lucide-react"],
+    },
+    base: "./",
+    // Desktop build: never read .env* files (a developer's .env.local must not leak into a shipped
+    // bundle) and force the backend variables empty so the packaged game runs fully local.
+    ...(desktop
+      ? {
+          envDir: false as const,
+          define: {
+            "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(""),
+            "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(""),
+          },
+        }
+      : {}),
+    build: {
+      outDir: desktop ? desktopOutDir : "dist",
+      // Skip gzip-size reporting: our users don't optimize by bundle size,
+      // and it only slows the build. Output is byte-identical.
+      reportCompressedSize: false,
+      // Game bundles (three/phaser) legitimately ship 1-3MB single chunks, so
+      // the default 500 kB advisory fires on every build as noise. Keep the
+      // warning only for genuinely pathological (5MB+) chunks.
+      chunkSizeWarningLimit: 5000,
+    },
+  };
 });
