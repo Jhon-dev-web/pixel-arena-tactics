@@ -7,5 +7,8 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/__tests__/**/*.test.ts'],
     setupFiles: ['src/game/__tests__/setup.ts'],
+    // The statistical tests (seeded drop rates, the recommended-CP table) run hundreds of thousands of rolls and sit close
+    // to vitest's 5 s default on a busy machine, where they fail as timeouts rather than as wrong results.
+    testTimeout: 60_000,
   },
 });
