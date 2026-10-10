@@ -1,7 +1,8 @@
 import T from './tunables';
-import { EquippedGear, DEFAULT_EQUIPPED, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
+import { EquippedGear, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
 import {
   GEAR_SCHEMA_VERSION,
+  equippedExtraStats,
   GearInstance,
   GearInstanceId,
   createStarterGear,
@@ -33,6 +34,7 @@ import { defaultHuntPouch, defaultPouchSlots, getHuntPouchTierDef, HuntPouchItem
 import { getPlant, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
+import { UniqueDrop } from './uniques';
 
 export type BuffType = 'strength' | 'attack';
 
@@ -258,6 +260,7 @@ export function playerMaxHp(save: SaveData): number {
   const aRarity = rarityStatMult(viewRarity(armorView));
   const gems = equippedGemBonuses(save);
   const subs = equippedSubstatTotals(save);
+  const extra = equippedExtraStats(save);
   return Math.round(
     T.progression.playerBaseHp +
       (save.armorLevel - 1) * T.progression.armorHpPerLvl +
@@ -265,7 +268,8 @@ export function playerMaxHp(save: SaveData): number {
       (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
       save.vit * T.advanced.vitHpPerPoint +
       gems.maxHp +
-      subs.maxHp,
+      subs.maxHp +
+      extra.maxHp,
   );
 }
 
@@ -290,18 +294,20 @@ export function buildCombatStats(save: SaveData): CombatStats {
   const aRarity = rarityStatMult(viewRarity(armorView));
   const gems = equippedGemBonuses(save);
   const subs = equippedSubstatTotals(save);
+  // Helmet / gloves / boots / ring (gearInstances.equippedExtraStats): gloves damage joins the weapon term, so STR scales it too.
+  const extra = equippedExtraStats(save);
 
   // Flat base hit (avg of attackMin/attackMax) plus the weapon term W (refine, durability, rarity); STR is applied on top
   // of that sum by strengthAdjustedDamage (derivedStats.ts). blessed/Elixir/crit come later, at the call sites.
   const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
   return {
     maxHp: playerMaxHp(save),
-    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity, save.str),
-    critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100,
-    critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100,
+    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + extra.damage, save.str),
+    critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance,
+    critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
     heroMs: heroAttackIntervalMs(save.agi),
-    reduction: effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100,
+    reduction: effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100 + extra.resistance,
     lifesteal: subs.lifesteal,
   };
 }
@@ -481,6 +487,7 @@ export interface HuntingStatus {
   goldReady: number;
   xpReady: number;
   drops: Partial<Record<MaterialId, number>>;
+  uniques: UniqueDrop[]; // unique pieces this session rolled (not materials: they never use the pouch)
   full: boolean;
   // Real-combat sub-level mastery (see huntCombat.ts): the session replays from the SAVED progress
   // (startCeiling / startPromotionWins) — no climb — and ends at ceilingSubLevel / promotionWins, which
@@ -572,6 +579,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
       goldReady: 0,
       xpReady: 0,
       drops: {},
+      uniques: [],
       full: false,
       ceilingSubLevel: 1,
       promotionWins: 0,
@@ -630,6 +638,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     goldPerHour: zone.goldPerHour,
     xpPerHour: zone.xpPerHour * depthDef.xpMultiplier,
     drops: zone.drops,
+    uniques: zone.uniques,
     depth,
     dropRateMult: 1, // the pass bonus is time-dependent, see `timeline`
   };
@@ -679,6 +688,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     goldReady: result.goldReady,
     xpReady: result.xpReady,
     drops: result.drops,
+    uniques: result.uniques,
     full: stalled || pendingMs >= capMs,
     ceilingSubLevel: result.ceilingSubLevel,
     promotionWins: result.promotionWins,
@@ -825,6 +835,11 @@ export function normalizeSave(rawInput: unknown): SaveData {
         migratedMaxRefine = mig.maxRefineEver;
       }
       const gear = sanitizeStackableGear(inventory, parsed.equipped);
+      // helmet / gloves / boots / ring: an instance id that exists and belongs to that slot, else empty. A v1 save, or the old stackable `helmet`
+      // value (always null in practice), simply yields empty slots.
+      const extraSlotIds = Object.fromEntries(
+        INSTANCED_SLOTS.filter((slot) => slot !== 'weapon' && slot !== 'armor').map((slot) => [slot, isV2 ? sanitizeEquippedInstance((parsed.equipped as unknown as Record<string, unknown> | undefined)?.[slot], slot, gearInstances) : null]),
+      ) as Pick<EquippedGear, 'helmet' | 'gloves' | 'boots' | 'ring'>;
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
       if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
@@ -1069,7 +1084,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         schemaVersion: GEAR_SCHEMA_VERSION,
         gearInstances,
         inventory: gear.inventory,
-        equipped: { ...gear.equipped, weapon: weaponId, armor: armorId },
+        equipped: { ...gear.equipped, ...extraSlotIds, weapon: weaponId, armor: armorId },
         inventoryCapacity: normalizeInventoryCapacity(parsed.inventoryCapacity),
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },

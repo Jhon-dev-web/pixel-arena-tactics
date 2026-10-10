@@ -91,13 +91,15 @@ const T = DebugPanel.define({
     // last boss is >= 1.5x floor 99 (the regular boss-mob floors 76-99 are exactly as they were before the balance pass).
     boss25HpMult: { value: 0.22, min: 0.1, max: 5, step: 0.01, label: 'Floor-25 boss: extra HP multiplier' },
     boss25DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-25 boss: extra damage multiplier' },
-    boss50HpMult: { value: 0.64, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra HP multiplier' },
-    boss50DmgMult: { value: 0.64, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra damage multiplier' },
+    boss50HpMult: { value: 0.82, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra HP multiplier' },
+    boss50DmgMult: { value: 0.82, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra damage multiplier' },
     boss75HpMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra HP multiplier' },
     boss75DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra damage multiplier' },
     boss100HpMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra HP multiplier' },
     boss100DmgMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra damage multiplier' },
     bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
+    // Chance that clearing a biome boss (floors 25 / 50 / 75 / 100) also drops that boss's unique piece (uniques.ts). Rolled on every victory, repeatable.
+    uniqueBossChance: { value: 0.08, min: 0, max: 1, step: 0.01, label: 'Biome boss unique drop chance (per victory)' },
     miniBossGoldMult: { value: 2.5, min: 1, max: 10, step: 0.5, label: 'Checkpoint wave gold multiplier' },
     bossGoldMult: { value: 5, min: 1, max: 15, step: 0.5, label: 'Main boss wave gold multiplier' },
     potionThreshold: { value: 0.35, min: 0.05, max: 0.9, step: 0.05, label: 'Auto-potion HP threshold (ratio)' },

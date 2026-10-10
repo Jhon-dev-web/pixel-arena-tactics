@@ -192,3 +192,99 @@ Peças que o jogador já tem mantêm as substats antigas (o valor sorteado fica 
 ## 12. Parte A: metas da R5 depois dessas mudanças (cenário A, mediana)
 
 Dia 1 nível 13; dia 3 nível 29; dia 14 nível 46; primeira peça no dia 2; chefe do 25 no dia 5; chegada ao 50: primeira seed no dia 10, mediana 12; chefe do 50 primeira seed no dia 11. Tudo igual ao estado antes (a única diferença é o chefe 50, 1 dia mais cedo para a primeira seed, 4/20 em 21 dias contra 6/20). Não foi preciso mexer em inimigos.
+
+## 13. Parte B: os quatro slots novos e as 36 peças
+
+Capacete, luvas, botas e anel passam a ser slots **instanciados** (raridade, substats, refino, durabilidade, soquetes e reforja, como arma e armadura; `INSTANCED_SLOTS` tem 6 slots). Slot vazio não dá nada (sem item inicial). Os atributos entram em `buildCombatStats` / `playerMaxHp` por `equippedExtraStats` (gearInstances.ts), então a Masmorra, a Caça e a CP leem os mesmos números (o `BattleModal` e o `computeHuntingStatus` já usavam o `buildCombatStats`; não havia segunda montagem para espelhar). Identidade: capacete = PV + um pouco de resistência; luvas = dano (entra no termo da arma, então a FOR também o multiplica) + um pouco de crítico; botas = resistência + um pouco de PV; anel = chance de crítico + dano crítico (`critMultBonus` é lido em Masmorra e Caça). Saves antigos: sem mudança de chave; os slots novos nascem vazios e o antigo `equipped.helmet` (sempre `null`) é descartado. Testes em `src/game/__tests__/extraSlots.test.ts`.
+
+**Orçamento de poder** (par arma + armadura comum +0 do tier, mais as 4 peças comuns +0 do mesmo tier): +30,2 % (T1), +30,1 % (T2), +32,5 % (T3), +33,3 % (T4), +35,0 % (T5), +36,8 % (T6) de CP. Cada peça vale ~8 % de CP sozinha; o anel só chega lá no T5-T6 (3 % no T1 a 9 % no T6) porque crítico só rende quando a chance de crítico já é alta. Capacete ~40 % do HP da armadura do tier, luvas ~20-30 % do dano da arma (as diretrizes eram 35 % e 20 %; o orçamento total de +30-40 % mandou).
+
+**Receitas:** mesmo nível mínimo da arma/armadura do tier (T1 sem nível, 10, 25, 50, 70, 90), famílias de material que o tier já usa, **1 peça do tier anterior do mesmo slot** a partir do tier 2 (sem a cadeia de "2 de"), sem fragmentos. Custo só da receita (Ouro + materiais a valor de referência, gema = 4): 41 a 55 % da armadura do tier (testado entre 38 e 62 %). Anéis de T3 em diante pedem uma gema (esmeralda, rubi, rubi, safira). O T1 usa barra de cobre + 2 retalhos de couro (a primeira versão usava 17 retalhos de couro a mais e empurrava o nível do dia 3 para 32, fora da meta).
+
+### Peças forjadas e únicas
+
+| Peça | Slot | Tier | Atributos | Receita | Custo da receita (Ouro ref.) |
+| --- | --- | --: | --- | --- | --: |
+| bronze_helm | helmet | 1 | PV 20, resist. 0.7% | 20 Ouro + 1 copper_bar, 2 leather_scrap | 82 |
+| iron_helm | helmet | 2 | PV 40, resist. 1.3% | 60 Ouro + 1x bronze_helm + 2 iron, 1 leather_scrap + nível 10 | 69 |
+| steel_helm | helmet | 3 | PV 70, resist. 1.9% | 160 Ouro + 1x iron_helm + 2 steel, 1 silver_ingot, 3 bone_fragment, 2 demon_claw, 1 demon_core + nível 25 | 355 |
+| gilded_helm | helmet | 4 | PV 109, resist. 2.6% | 300 Ouro + 1x steel_helm + 1 gold_bar, 2 concentrated_blood + nível 50 | 356 |
+| voidsteel_helm | helmet | 5 | PV 149, resist. 3.1% | 850 Ouro + 1x gilded_helm + 1 refined_obsidian, 2 concentrated_blood, 1 demon_core + nível 70 | 934 |
+| abyssal_helm | helmet | 6 | PV 185, resist. 3.6% | 1500 Ouro + 1x voidsteel_helm + 1 refined_obsidian, 3 concentrated_blood, 1 corrupted_crystal + nível 90 | 1588 |
+| leather_gloves | gloves | 1 | dano 4, crít. 2% | 25 Ouro + 1 copper_bar, 2 leather_scrap | 87 |
+| iron_gauntlets | gloves | 2 | dano 7, crít. 2% | 60 Ouro + 1x leather_gloves + 2 iron, 1 leather_scrap + nível 10 | 69 |
+| steel_gauntlets | gloves | 3 | dano 13, crít. 2% | 160 Ouro + 1x iron_gauntlets + 1 steel, 2 silver_ingot, 2 bone_fragment, 2 demon_claw, 1 demon_core + nível 25 | 350 |
+| gilded_gauntlets | gloves | 4 | dano 18, crít. 2% | 300 Ouro + 1x steel_gauntlets + 1 gold_bar, 2 concentrated_blood, 1 demon_core + nível 50 | 381 |
+| voidsteel_gauntlets | gloves | 5 | dano 28, crít. 2.7% | 900 Ouro + 1x gilded_gauntlets + 1 refined_obsidian, 2 corrupted_crystal, 1 demon_core + nível 70 | 1024 |
+| abyssal_gauntlets | gloves | 6 | dano 37, crít. 3% | 1500 Ouro + 1x voidsteel_gauntlets + 1 refined_obsidian, 3 corrupted_crystal + nível 90 | 1623 |
+| leather_boots | boots | 1 | PV 12, resist. 6.5% | 25 Ouro + 1 copper_bar, 2 leather_scrap | 87 |
+| iron_greaves | boots | 2 | PV 22, resist. 8% | 55 Ouro + 1x leather_boots + 2 iron, 2 leather_scrap + nível 10 | 66 |
+| steel_greaves | boots | 3 | PV 35, resist. 10% | 160 Ouro + 1x iron_greaves + 2 steel, 1 silver_ingot, 3 bone_fragment, 2 demon_claw, 1 demon_core + nível 25 | 355 |
+| gilded_greaves | boots | 4 | PV 50, resist. 12% | 300 Ouro + 1x steel_greaves + 1 gold_bar, 2 concentrated_blood + nível 50 | 356 |
+| voidsteel_greaves | boots | 5 | PV 62, resist. 13.5% | 850 Ouro + 1x gilded_greaves + 1 refined_obsidian, 3 concentrated_blood + nível 70 | 913 |
+| abyssal_greaves | boots | 6 | PV 76, resist. 14.5% | 1500 Ouro + 1x voidsteel_greaves + 1 refined_obsidian, 3 concentrated_blood, 1 corrupted_crystal + nível 90 | 1588 |
+| copper_ring | ring | 1 | crít. 6%, dano crít. +15% | 30 Ouro + 1 copper_bar, 2 leather_scrap | 92 |
+| silver_ring | ring | 2 | crít. 6%, dano crít. +20% | 65 Ouro + 1x copper_ring + 2 iron, 2 leather_scrap + nível 10 | 76 |
+| gold_ring | ring | 3 | crít. 8%, dano crít. +25% | 170 Ouro + 1x silver_ring + 1 steel, 2 silver_ingot, 2 bone_fragment, 2 demon_claw, 1 demon_core + 1 emerald + nível 25 | 364 |
+| ruby_ring | ring | 4 | crít. 8%, dano crít. +30% | 320 Ouro + 1x gold_ring + 1 gold_bar, 2 concentrated_blood + 1 ruby + nível 50 | 380 |
+| obsidian_ring | ring | 5 | crít. 9%, dano crít. +35% | 900 Ouro + 1x ruby_ring + 1 refined_obsidian, 1 demon_core, 1 corrupted_crystal + 1 ruby + nível 70 | 1003 |
+| abyssal_ring | ring | 6 | crít. 10%, dano crít. +40% | 1550 Ouro + 1x obsidian_ring + 1 refined_obsidian, 2 corrupted_crystal, 2 concentrated_blood + 1 sapphire + nível 90 | 1662 |
+| Único | Slot | Tier | Atributos (gêmea +10% no principal) | Fonte | Chance |
+| --- | --- | --: | --- | --- | --- |
+| demon_fang_dagger | weapon | 2 | dano 33, crít. 6% | caça demon_glade | 0.01% por vitória (x f) |
+| demonhide_vest | armor | 2 | PV 99, resist. 6% | caça demon_glade | 0.01% por vitória (x f) |
+| bloodbound_cleaver | weapon | 3 | dano 72, crít. 10% | caça blood_marsh | 0.0125% por vitória (x f) |
+| bloodvein_plate | armor | 3 | PV 176, resist. 10% | caça blood_marsh | 0.0125% por vitória (x f) |
+| riftwalker_boots | boots | 4 | PV 50, resist. 13.2% | caça demon_rift | 0.02% por vitória (x f) |
+| shadow_hood | helmet | 4 | PV 120, resist. 2.6% | caça demon_rift | 0.02% por vitória (x f) |
+| abyss_heart_ring | ring | 5 | crít. 9.9%, dano crít. +35% | caça blood_abyss | 0.015% por vitória (x f) |
+| bonecrusher_maul | weapon | 5 | dano 176, crít. 20% | caça blood_abyss | 0.015% por vitória (x f) |
+| goblin_king_crown | helmet | 2 | PV 44, resist. 1.3% | chefe do andar 25 | 8% por vitória |
+| warchief_gauntlets | gloves | 3 | dano 14, crít. 2% | chefe do andar 50 | 8% por vitória |
+| lich_soul_ring | ring | 5 | crít. 9.9%, dano crít. +35% | chefe do andar 75 | 8% por vitória |
+| overlord_greataxe | weapon | 6 | dano 242, crít. 24% | chefe do andar 100 | 8% por vitória |
+
+Únicos: instanciados, a raridade é sorteada na hora do drop com a tabela normal 60/25/12/3, **um slot extra de substat** garantido (lendário = 4), nunca forjados (sem receita), podem ser desmontados (devolvem o material da gêmea forjada, `salvageLike`), refinados, reforjados, descartados. Atributos = a peça forjada do tier normal de onde cai, +10 % no atributo principal (dano nas armas e luvas, PV na armadura e capacete, resistência nas botas, chance de crítico no anel).
+
+- **Caça** (4 zonas, 2 únicos cada): sorteados em cada vitória dentro do modelo econômico, com a mesma fração `f` dos materiais (um build mais rápido não multiplica), em um fluxo aleatório separado (a Caça fica idêntica bit a bit). Sem multiplicador de profundidade, sub-nível ou Passe. Calibrado com `computeHuntingStatus` (rolls econômicos/h ~200 / 167 / 107 / 135): dois únicos por zona dão **1 único a cada ~4 dias de 6 h/dia** de caça na zona (teste: 0,6 a 1,7 por 24 h). Não ocupam espaço da Bolsa de Caça. Ficam congelados na recompensa pendente; no claim viram peças guardadas, e as que **não cabem na Mochila continuam na recompensa pendente** (ouro/XP/materiais já pagos e zerados) até o jogador abrir espaço. Isso bloqueia iniciar nova caça enquanto houver único pendente, como qualquer recompensa pendente.
+- **Chefes** (25 / 50 / 75 / 100): 8 % por vitória (`T.battle.uniqueBossChance`), repetível, mesmo em derrota depois de limpar o chefe. A peça é entregue mesmo com a Mochila cheia (a Mochila pode mostrar acima da capacidade até o jogador abrir espaço), para nunca perder o drop.
+
+## 14. Parte B: o que mudou nos inimigos para equilibrar em volta de um herói com 6 slots
+
+Com a política da simulação craftando os 6 slots (arma > armadura > luvas > capacete > botas > anel, tier mais baixo primeiro), o herói do mesmo dia fica ~30-35 % mais forte em CP. Sem mexer nos inimigos o chefe 25 caía no dia 3,5 e o andar 50 aparecia no dia 5. Mudanças (tunables/enemies):
+
+| Valor | Antes | Depois |
+| --- | --- | --- |
+| Orc (andares 26-49): HP / dano base | 150 / 22 | **250 / 37** |
+| Feiticeiro (51-75): HP / dano base | 240 / 38 | **312 / 49** (x1,3) |
+| Minotauro (76-99 e chefes): HP / dano base | 550 / 75 | **715 / 98** (x1,3) |
+| `boss50HpMult` / `boss50DmgMult` | 0,64 / 0,64 | **0,82 / 0,82** |
+| `boss25*`, `boss75*`, `boss100*`, `hpGrowth`, `dmgGrowth` | 0,22 / 1; 1 / 1; 1,2 / 1,2; 0,15; 0,12 | sem mudança (goblins e andares 1-25 intactos: a primeira sessão e o dia 1 não mudam) |
+| Tabela de CP recomendada (`npm run sim:cp`) | andar 25: 387, 50: ~1 056, 100: 4 244 (builds só com arma + armadura) | andar 25: **546**, 50: **1 794**; o andar 100 não é limpo por nenhum build da escada (a escada agora veste os 6 slots do tier) |
+| `ladder.ts` | par arma + armadura | os 6 slots do tier, comuns, mesmo refino |
+
+O chefe 50 é extremamente sensível (HP e dano multiplicados juntos): 0,80 -> 3/20 seeds até o dia 21, 0,84 -> primeira seed no dia 19. Em nenhum valor testado as duas condições "primeira seed entre os dias 12-16 no A **e** no B" valem juntas: a seed mais forte do cenário B chega ao andar 50 no dia 10 e já derruba o chefe até 0,83. Fiquei em 0,82 (A: primeira seed dia 16, 4/20 em 21 dias; B: primeira seed dia 10, 3/20), perto do baseline anterior (6/20).
+
+## 15. Metas da R5, antes e depois de toda a rodada 3 (cenário A, mediana)
+
+| Meta | Antes (baseline) | Depois |
+| --- | --- | --- |
+| Primeira sessão termina no andar >= 8; checkpoint 10 no dia 1 | 8; dia 1 | 8; dia 1 |
+| Primeira peça forjada | dia 2 | dia 2 |
+| Nível dia 1 / 3 / 14 (alvos 10-16 / 20-29 / 45-60) | 13 / 29 (27-34) / 46 (44-48) | 13 / 29 (27-34) / 48 (46-51) |
+| Chefe 25 vencido pela 1ª vez (alvo dia 4-6) | dia 5 (4-6) | dia 5 (4-6); cenário B: 4,5 |
+| Chegada ao andar 50 (nenhuma seed antes do dia 10) | 1ª seed dia 10, mediana 12 | 1ª seed dia 10, mediana 13 (B: 10 / 13,5) |
+| Chefe 50 | 1ª seed dia 12, 6/20 em 21 dias | 1ª seed dia 16, 4/20 (B: dia 10, 3/20) |
+| Queda de dificuldade depois de chefe (razão (N+1)/(N-1) em HP x dano >= 1) | 2,14 | 1,77 |
+| CP mediana no dia 14 | 795 | 1 103 |
+
+O nível do dia 3 depende de quanta Caça a política faz; ver o ajuste da receita do T1 acima.
+
+## 16. Pontos abertos para o diretor decidir
+
+- **Chefe 50:** a meta antiga "primeira seed nos dias 12-16 no A e no B" não é alcançável com o mesmo número nos dois cenários (uma seed do B é um outlier forte). Ficou 0,82.
+- **Mediana de chegada ao andar 50 subiu de 12 para 13** (o orc ficou 1,7x mais forte contra +30 % de CP dos novos slots): se quiser a mediana em 12 sem perder o piso do dia 10, é preciso reduzir a variância de CP entre seeds, não só o inimigo.
+- **Refino do +4 em diante** custa 17x a 200x mais Ouro por ponto de CP do que forjar o tier seguinte (auditoria F1) e **o salto de custo por CP do T2 para o T3 é 3,1x** (auditoria E1): não alterei receitas de armas/armaduras.
+- **Dourado (T4) é beco sem saída:** o T5 só aceita o dragão como ingrediente. Os capacetes/luvas/botas/anéis do T4 existem em uma linha só (dourada) e o T5 deles aceita a peça dourada.
+- **Refino na política da simulação:** só arma e armadura são refinadas pela simulação; as peças novas ficam +0. Um jogador que refine os 6 slots passa dos números acima.
+- Peças que o jogador já tinha mantêm as substats antigas (ver seção 11).

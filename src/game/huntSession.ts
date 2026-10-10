@@ -1,6 +1,7 @@
 import type { CombatStats } from './derivedStats';
 import { getMaterial, MaterialId } from './materials';
 import type { HuntPouchItem } from './huntPouch';
+import { UniqueDrop, sanitizeUniqueDrops } from './uniques';
 import { HUNTING_DEPTHS, HuntingDepth } from './huntingZones';
 import T from './tunables';
 
@@ -116,6 +117,9 @@ export interface PendingHuntReward {
   bpXp: number;
   drops: Partial<Record<MaterialId, number>>; // everything the session rolled
   lost: HuntPouchItem[]; // the part that did not fit the pouch
+  // Unique pieces the session rolled. They never use the pouch: the claim delivers them to the bag, and any the bag has no room for stay HERE (the
+  // reward stays pending, with everything else already paid) until there is space.
+  uniques: UniqueDrop[];
   pouchCapacity: number; // pouch slots at stop time (tier + Battle Pass)
 }
 
@@ -207,6 +211,7 @@ export function sanitizePendingHuntReward(raw: unknown): PendingHuntReward | nul
     bpXp: nonNegInt(r.bpXp, MAX_REWARD),
     drops: sanitizeMaterialRecord(r.drops),
     lost,
+    uniques: sanitizeUniqueDrops(r.uniques),
     pouchCapacity: nonNegInt(r.pouchCapacity, 1000),
   };
 }

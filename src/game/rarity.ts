@@ -50,14 +50,16 @@ export const SUBSTATS: SubstatDef[] = [
 // Total goldBonus of everything equipped can never pass this (percent): it only raises the Dungeon's gold.
 export const GOLD_BONUS_CAP = 25;
 
-const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+// Every roll takes an optional RNG (default Math.random) so the Hunting simulation can roll a unique's rarity / substats from its own seeded stream.
+export type Rng = () => number;
+const randInt = (min: number, max: number, rng: Rng = Math.random) => Math.floor(rng() * (max - min + 1)) + min;
 
 export function rarityDef(rarity: Rarity): RarityDef {
   return RARITIES.find((r) => r.id === rarity) ?? RARITIES[0];
 }
 
-export function rollRarity(): Rarity {
-  const r = Math.random();
+export function rollRarity(rng: Rng = Math.random): Rarity {
+  const r = rng();
   let acc = 0;
   for (const def of RARITIES) {
     acc += def.chance;
@@ -70,11 +72,11 @@ const tierRange = (def: SubstatDef, tier: number): [number, number] | undefined 
   def.ranges?.[Math.min(def.ranges.length, Math.max(1, Math.floor(tier) || 1)) - 1];
 
 // One roll of a substat for a piece of the given tier.
-export function rollSubstatValue(def: SubstatDef, tier: number): number {
+export function rollSubstatValue(def: SubstatDef, tier: number, rng: Rng = Math.random): number {
   const range = tierRange(def, tier);
-  if (!range) return def.min + randInt(0, def.max - def.min) + Math.round(def.perTier * tier);
+  if (!range) return def.min + randInt(0, def.max - def.min, rng) + Math.round(def.perTier * tier);
   const scale = Math.pow(10, def.decimals ?? 0);
-  return (Math.round(range[0] * scale) + randInt(0, Math.round((range[1] - range[0]) * scale))) / scale;
+  return (Math.round(range[0] * scale) + randInt(0, Math.round((range[1] - range[0]) * scale), rng)) / scale;
 }
 
 // The middle of the range a piece of that tier rolls in.
@@ -83,18 +85,19 @@ export function medianSubstatValue(def: SubstatDef, tier: number): number {
   return range ? (range[0] + range[1]) / 2 : (def.min + def.max) / 2 + def.perTier * tier;
 }
 
-export function rollSubstat(tier: number, exclude: SubstatType[] = []): Substat {
+export function rollSubstat(tier: number, exclude: SubstatType[] = [], rng: Rng = Math.random): Substat {
   const pool = SUBSTATS.filter((s) => !exclude.includes(s.type));
-  const def = pool[randInt(0, pool.length - 1)];
-  return { type: def.type, value: rollSubstatValue(def, tier) };
+  const def = pool[randInt(0, pool.length - 1, rng)];
+  return { type: def.type, value: rollSubstatValue(def, tier, rng) };
 }
 
-export function rollSubstats(rarity: Rarity, tier: number): Substat[] {
-  const count = rarityDef(rarity).substatCount;
+// `extra` = additional guaranteed substat slots (a unique piece rolls one more than its rarity's count).
+export function rollSubstats(rarity: Rarity, tier: number, extra = 0, rng: Rng = Math.random): Substat[] {
+  const count = rarityDef(rarity).substatCount + extra;
   const subs: Substat[] = [];
   const used: SubstatType[] = [];
   for (let i = 0; i < count; i++) {
-    const s = rollSubstat(tier, used);
+    const s = rollSubstat(tier, used, rng);
     used.push(s.type);
     subs.push(s);
   }

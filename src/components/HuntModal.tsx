@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Assets from '../assets.json';
+import UniqueDrops from './UniqueDrops';
 import { t } from '../locales';
 import { buildCombatStats, computeCP, computeHuntingStatus, effectivePouchSlots, getHuntProgress, huntPromotionRequiredWins, SaveData } from '../game/engine';
 import T from '../game/tunables';
@@ -297,6 +298,7 @@ export default function HuntModal({
                                   ))}
                                 </div>
                               )}
+                              <UniqueDrops drops={huntStatus.uniques} />
                               {preview.lostItems.length > 0 && (
                                 <div className="floor-drops">
                                   <span className="drops-label pouch-full-label">{t('hunting.pouchFull')}:</span>

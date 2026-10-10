@@ -13,8 +13,10 @@ import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
 import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 import { getGem, GemId } from '../game/gems';
+import { UniqueDrop } from '../game/uniques';
 import { getTitleDef } from '../game/titles';
 import GemIcon from './GemIcon';
+import UniqueDrops from './UniqueDrops';
 
 const enemyText = (k: string): string => t(`enemies.${k}`);
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
@@ -93,6 +95,7 @@ export default function BattleModal({
     drops: Partial<Record<MaterialId, number>>;
     shards: number;
     gems: Partial<Record<GemId, number>>;
+    uniques: UniqueDrop[];
   } | null>(null);
   const [dungeonComplete, setDungeonComplete] = useState(false);
   // Milestone floors pause the auto-continue instead of silently rolling into the next wave — the
@@ -105,11 +108,12 @@ export default function BattleModal({
   const speedRef = useRef<1 | 2>(1);
   const stageRef = useRef(startFloor);
   const clearedRef = useRef(0);
-  const accumRef = useRef<{ gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; gems: Partial<Record<GemId, number>>; count: number }>({
+  const accumRef = useRef<{ gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; gems: Partial<Record<GemId, number>>; uniques: UniqueDrop[]; count: number }>({
     gold: 0,
     drops: {},
     shards: 0,
     gems: {},
+    uniques: [],
     count: 0,
   });
   const heroNextAtkRef = useRef(0);
@@ -145,7 +149,7 @@ export default function BattleModal({
     setDungeonComplete(dungeonCompleteRef.current);
     const acc = accumRef.current;
     const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * T.battle.defeatGoldKept);
-    setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, stages: clearedRef.current });
+    setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, uniques: acc.uniques, stages: clearedRef.current });
   };
 
   const handleTensionRetreat = () => {
@@ -165,7 +169,7 @@ export default function BattleModal({
     enemyNextAtkRef.current = now0;
     potionCooldownUntilRef.current = 0;
 
-    const applyLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number, gemDrops: Partial<Record<GemId, number>>) => {
+    const applyLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number, gemDrops: Partial<Record<GemId, number>>, uniqueDrops: UniqueDrop[]) => {
       const acc = accumRef.current;
       const merged = { ...acc.drops };
       for (const [mid, qty] of Object.entries(drops)) {
@@ -176,7 +180,7 @@ export default function BattleModal({
         mergedGems[gid as GemId] = (mergedGems[gid as GemId] ?? 0) + (qty as number);
       }
       const count = Object.values(merged).reduce((a, b) => a + (b as number), 0);
-      accumRef.current = { gold: acc.gold + gold, drops: merged, shards: acc.shards + shards, gems: mergedGems, count };
+      accumRef.current = { gold: acc.gold + gold, drops: merged, shards: acc.shards + shards, gems: mergedGems, uniques: [...acc.uniques, ...uniqueDrops], count };
       setAccumGold(accumRef.current.gold);
       setAccumCount(count);
     };
@@ -210,12 +214,12 @@ export default function BattleModal({
     const clearWave = () => {
       const st = stageRef.current;
       const r = waveRewards(getBiomeForFloor(st), st);
-      applyLoot(r.gold, r.drops, r.shards, r.gems);
+      applyLoot(r.gold, r.drops, r.shards, r.gems, r.uniques);
       clearedRef.current += 1;
       const healed = Math.min(playerMax, Math.round(hp.current.p + playerMax * T.battle.waveHeal));
       hp.current.p = healed;
       setPlayerHp(healed);
-      setWaveClear({ stage: st, gold: r.gold, drops: r.drops, shards: r.shards, gems: r.gems });
+      setWaveClear({ stage: st, gold: r.gold, drops: r.drops, shards: r.shards, gems: r.gems, uniques: r.uniques });
       phaseRef.current = 'intermission';
       setPhase('intermission');
       setHeroProgress(0);
@@ -364,6 +368,7 @@ export default function BattleModal({
     drops: Partial<Record<MaterialId, number>>,
     shards: number,
     gemsReward?: Partial<Record<GemId, number>>,
+    uniques?: UniqueDrop[],
   ) => (
     <>
       {gold > 0 && (
@@ -406,6 +411,7 @@ export default function BattleModal({
           </span>
         );
       })}
+      <UniqueDrops drops={uniques ?? []} />
     </>
   );
 
@@ -568,7 +574,7 @@ export default function BattleModal({
           {waveClear && phase === 'intermission' && tensionFloor === null && (
             <div className="wave-banner">
               <div className="wave-title">{dungeonText('floorCleared').replace('{n}', String(waveClear.stage))}</div>
-              <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards, waveClear.gems)}</div>
+              <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards, waveClear.gems, waveClear.uniques)}</div>
             </div>
           )}
         </div>
@@ -613,7 +619,7 @@ export default function BattleModal({
                 <>
                   <h2 className="result-title win">{dungeonComplete ? t('dungeon.dungeonComplete') : t('dungeon.retreatTitle')}</h2>
                   {crossedMilestones.length > 0 && renderMilestoneBanner()}
-                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems)}</div>
+                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems, finalRewards.uniques)}</div>
                   <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
                     {t('dungeon.collect')}
                   </button>
@@ -622,7 +628,7 @@ export default function BattleModal({
                 <>
                   <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
                   <div className="gold-penalty">{t('dungeon.goldPenalty', { n: Math.round((1 - T.battle.defeatGoldKept) * 100) })}</div>
-                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems)}</div>
+                  <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems, finalRewards.uniques)}</div>
                   <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
                     {t('dungeon.return')}
                   </button>

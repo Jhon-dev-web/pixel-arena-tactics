@@ -13,7 +13,7 @@ import {
   GearInstance,
 } from '../../src/game/gearInstances';
 import { computeCP, effectiveRepairCost, playerLevel, SaveData, defaultSave } from '../../src/game/engine';
-import { GEAR, getGear, MAX_REFINE, upgradeCost } from '../../src/game/gear';
+import { GEAR, getGear, INSTANCED_SLOTS, MAX_REFINE, upgradeCost } from '../../src/game/gear';
 import { GEMS, GemId, socketsForTier } from '../../src/game/gems';
 import { MaterialId } from '../../src/game/materials';
 import { REFINING_RECIPES } from '../../src/game/refining';
@@ -106,7 +106,7 @@ export type FirstEvent = 'firstCraft' | 'firstRefine' | 'floor10' | 'floor24' | 
 
 interface Plan {
   tpl: string;
-  slot: 'weapon' | 'armor';
+  slot: string;
   crafts: string[];
   gold: number; // craft prices + refining-station fees
   shards: number;
@@ -130,7 +130,7 @@ export function planFor(s: SaveData, tpl: string): Plan {
   const item = getGear(tpl);
   const plan: Plan = {
     tpl,
-    slot: item.slot as 'weapon' | 'armor',
+    slot: item.slot,
     crafts: [],
     gold: 0,
     shards: 0,
@@ -199,7 +199,7 @@ export function planFor(s: SaveData, tpl: string): Plan {
   return plan;
 }
 
-function bestTier(s: SaveData, slot: 'weapon' | 'armor'): number {
+function bestTier(s: SaveData, slot: string): number {
   let best = 0;
   for (const i of Object.values(s.gearInstances)) {
     const it = getGear(i.templateId);
@@ -212,11 +212,15 @@ export function equippedTier(s: SaveData, slot: 'weapon' | 'armor'): number {
   return resolveEquipped(s)[slot].item.tier ?? 0;
 }
 
-// The next thing worth crafting: the lower-tier slot first (weapon on a tie), skipping a slot that is blocked on something
-// no activity can fetch when the other one is not.
+// Crafting priority inside one tier: weapon > armor > gloves > helmet > boots > ring (Rodada 3). The extra slots only have one piece per tier and
+// the "1 of the previous tier" chain, so a slot is simply the next tier above the best piece owned.
+export const CRAFT_PRIORITY = ['weapon', 'armor', 'gloves', 'helmet', 'boots', 'ring'] as const;
+
+// The next thing worth crafting: the lowest tier first (slot priority on a tie), skipping a slot that is blocked on something
+// no activity can fetch when another one is not.
 function chooseTarget(s: SaveData): Plan | null {
   const plans: Plan[] = [];
-  for (const slot of ['weapon', 'armor'] as const) {
+  for (const slot of CRAFT_PRIORITY) {
     const owned = bestTier(s, slot);
     const cands = GEAR.filter((g) => g.slot === slot && g.recipe && (g.tier ?? 0) > owned);
     if (cands.length === 0) continue;
@@ -225,7 +229,8 @@ function chooseTarget(s: SaveData): Plan | null {
     const p = planFor(s, pick.id);
     if (!p.impossible) plans.push(p);
   }
-  plans.sort((a, b) => Number(a.blocked) - Number(b.blocked) || bestTier(s, a.slot) - bestTier(s, b.slot) || (a.slot === 'weapon' ? -1 : 1));
+  const priority = (p: Plan) => CRAFT_PRIORITY.indexOf(p.slot as (typeof CRAFT_PRIORITY)[number]);
+  plans.sort((a, b) => Number(a.blocked) - Number(b.blocked) || bestTier(s, a.slot) - bestTier(s, b.slot) || priority(a) - priority(b));
   return plans[0] ?? null;
 }
 
@@ -431,9 +436,9 @@ export class Player {
 
   // ---- 2. upkeep: repair worn gear, throw the starter junk away
   private maintain() {
-    for (const slot of ['weapon', 'armor'] as const) {
+    for (const slot of INSTANCED_SLOTS) {
       const eq = resolveEquipped(this.S)[slot];
-      if (!eq.instance || (eq.item.tier ?? 0) < 1) continue;
+      if (!eq || !eq.instance || (eq.item.tier ?? 0) < 1) continue;
       if (eq.instance.durability >= 40) continue;
       const cost = effectiveRepairCost(this.S, eq.item.tier ?? 0, this.now);
       const next = applyRepair(this.S, eq.instance.id, false, cost);
@@ -510,7 +515,7 @@ export class Player {
 
   // Wear whatever gives the best CP (the game's own computeCP) in each slot.
   private equipBest() {
-    for (const slot of ['weapon', 'armor'] as const) {
+    for (const slot of INSTANCED_SLOTS) {
       let best: GearInstance | null = null;
       let bestCp = computeCP(this.S);
       for (const i of listGearInstances(this.S)) {

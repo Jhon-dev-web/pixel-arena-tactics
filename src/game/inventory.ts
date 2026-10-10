@@ -1,5 +1,5 @@
 import { SaveData } from './engine';
-import { GEAR, isInstancedSlot } from './gear';
+import { GEAR, INSTANCED_SLOTS, isInstancedSlot } from './gear';
 import { MATERIALS } from './materials';
 import { CONSUMABLES } from './consumables';
 
@@ -38,15 +38,17 @@ export function inventoryCapacity(save: Pick<SaveData, 'inventoryCapacity'>): nu
 
 // The single shared "Mochila" capacity every system reads (Caça, Craft, Dungeon, Pedidos, Battle Pass,
 // Drops, Rewards, Salvage, Garden, Profissões, ...): one slot per non-empty stack (gear stack / material /
-// consumable TYPE, any quantity) plus one slot per stored, UNEQUIPPED GearInstance. An equipped weapon or
-// armor instance never counts here — see the equipped-id exclusion below.
+// consumable TYPE, any quantity) plus one slot per stored, UNEQUIPPED GearInstance. An equipped instance (any instanced slot)
+// never counts here — see the equipped-id exclusion below.
 export function inventorySlotsUsed(save: Pick<SaveData, 'inventory' | 'materials' | 'consumables' | 'gearInstances' | 'equipped'>): number {
   const gear = GEAR.filter((g) => !isInstancedSlot(g.slot) && (save.inventory?.[g.id] ?? 0) > 0).length;
   const mats = MATERIALS.filter((m) => (save.materials?.[m.id] ?? 0) > 0).length;
   const cons = CONSUMABLES.filter((c) => (save.consumables?.[c.id] ?? 0) > 0).length;
   const equippedIds = new Set<string>();
-  if (save.equipped?.weapon) equippedIds.add(save.equipped.weapon);
-  if (save.equipped?.armor) equippedIds.add(save.equipped.armor);
+  for (const slot of INSTANCED_SLOTS) {
+    const id = save.equipped?.[slot];
+    if (id) equippedIds.add(id);
+  }
   const storedInstances = Object.keys(save.gearInstances ?? {}).filter((id) => !equippedIds.has(id)).length;
   return gear + mats + cons + storedInstances;
 }

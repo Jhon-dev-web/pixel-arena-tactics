@@ -37,8 +37,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     nameKey: 'orcBerserker',
     // Round 2 of the balance pass: was 110 / 18. The orc biome (floors 26-49) used to be easier than the floor-25 boss and the hero crossed it
     // in a day; with these stats it asks for a real gear climb between boss 25 and boss 50.
-    hp: 150,
-    dmg: 22,
+    hp: 250,
+    dmg: 37,
     atkSpeedMs: 1700,
     hpMult: 1,
     atkMult: 1,
@@ -49,8 +49,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   warlock: {
     id: 'warlock',
     nameKey: 'skeletonWarlock',
-    hp: 240,
-    dmg: 38,
+    hp: 312,
+    dmg: 49,
     atkSpeedMs: 1800,
     hpMult: 1.1,
     atkMult: 0.9,
@@ -62,8 +62,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     id: 'boss',
     nameKey: 'minotaurWarlord',
     // This def is also the regular mob of floors 76-99: do not retune it for the floor-25 boss (see T.battle.boss25HpMult and friends).
-    hp: 550,
-    dmg: 75,
+    hp: 715,
+    dmg: 98,
     atkSpeedMs: 2000,
     hpMult: 2,
     atkMult: 1.15,

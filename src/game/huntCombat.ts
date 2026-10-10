@@ -1,5 +1,6 @@
 import { MaterialId } from './materials';
-import { HuntingDrop, HuntingDepth, effectiveDropChance } from './huntingZones';
+import { UniqueDrop, rollUniqueDrop } from './uniques';
+import { HuntingDrop, HuntingDepth, HuntingUnique, effectiveDropChance } from './huntingZones';
 import { applyDamageReduction } from './derivedStats';
 import { economicRollFractionForFight } from './huntEconomy';
 import { inRelativeWindows } from './huntSession';
@@ -55,6 +56,7 @@ export interface HuntZoneCombatCfg {
   goldPerHour: number;
   xpPerHour: number; // already includes the depth's xpMultiplier
   drops: HuntingDrop[];
+  uniques?: HuntingUnique[];
   depth: HuntingDepth;
   dropRateMult: number; // Battle Pass drop-rate multiplier, 1 if inactive
 }
@@ -125,6 +127,7 @@ export interface HuntSessionResult {
   xpReady: number;
   goldReady: number;
   drops: Partial<Record<MaterialId, number>>;
+  uniques: UniqueDrop[]; // unique pieces rolled this session (their own seeded stream, see rollDropsForOneClear)
   liveSnapshot: HuntLiveSnapshot | null;
 }
 
@@ -148,6 +151,9 @@ export function simulateHuntingSession(
   const stock: HuntPotionStock = { ...potionCfg.stock };
   const potionsUsed: HuntPotionStock = { greater_elixir: 0, large_hp: 0, small_hp: 0 };
   const drops: Partial<Record<MaterialId, number>> = {};
+  // Uniques roll on a SEPARATE seeded stream so adding them changed no fight, crit, material or promotion outcome of the main one.
+  const uniqueRng = mulberry32(hashSeed(seedKey + ':unique'));
+  const uniques: UniqueDrop[] = [];
 
   let timeLeft = sessionMs;
   let fightTimeUsedMs = 0;
@@ -172,6 +178,11 @@ export function simulateHuntingSession(
     for (const entry of zoneCfg.drops) {
       const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * dropMult * economicFraction;
       if (rng() < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
+    }
+    // Unique pieces: base chance x the same economic fraction as the materials (no depth / sub-level / Battle Pass multiplier). They never touch
+    // the pouch (they are not materials); the claim delivers them as gear instances.
+    for (const u of zoneCfg.uniques ?? []) {
+      if (uniqueRng() < u.chance * economicFraction) uniques.push(rollUniqueDrop(u.itemId, uniqueRng));
     }
   };
 
@@ -295,6 +306,7 @@ export function simulateHuntingSession(
     xpReady: Math.floor(hours * zoneCfg.xpPerHour),
     goldReady: Math.floor(hours * zoneCfg.goldPerHour),
     drops,
+    uniques,
     liveSnapshot,
   };
 }

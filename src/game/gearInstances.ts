@@ -1,13 +1,13 @@
 import T from './tunables';
-import { GEAR, GearItem, INSTANCED_SLOTS, InstancedSlot, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, getGear, upgradeChance, upgradeCost } from './gear';
+import { GEAR, GearItem, INSTANCED_SLOTS, InstancedSlot, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, getGear, upgradeChance, upgradeCost } from './gear';
 import { GEMS, GemBonuses, GemId, addGemBonuses, gemListBonuses, getGem, hasGems, socketsForTier } from './gems';
 import { MaterialId, hasMaterials } from './materials';
-import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rollRarity, rollSubstats, substatListTotals } from './rarity';
+import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollSubstats, substatListTotals } from './rarity';
 import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salvage';
 import { inventoryCapacity, inventorySlotsUsed } from './inventory';
 import type { SaveData } from './engine';
 
-// Gear instances: every weapon / armor is its OWN object (rarity, substats, refine level, sockets, durability,
+// Gear instances: every weapon / armor / helmet / gloves / boots / ring is its OWN object (rarity, substats, refine level, sockets, durability,
 // reforge count). Materials, consumables, gems, relics and tools stay stackable counters keyed by id.
 //
 // Every mutation below is a pure reducer `(save, ...) -> save | null` (null = rejected, nothing charged, no RNG
@@ -21,10 +21,14 @@ export const GEAR_SCHEMA_VERSION = 2;
 export { INSTANCED_SLOTS, isInstancedSlot };
 export type { InstancedSlot };
 
-// What an empty weapon / armor slot resolves to ("bare hands"): the zero-stat starter templates.
-export const STARTER_TEMPLATES: Record<InstancedSlot, string> = { weapon: 'wooden_club', armor: 'ragged_clothes' };
+// What an empty weapon / armor slot resolves to ("bare hands"): the zero-stat starter templates. Helmet, gloves, boots and ring have no starter:
+// an empty one is simply empty and adds nothing.
+export const STARTER_TEMPLATES: Partial<Record<InstancedSlot, string>> = { weapon: 'wooden_club', armor: 'ragged_clothes' };
 
-export type GearOrigin = 'craft' | 'starter' | 'migration' | 'recovery' | 'admin';
+// The slots that exist for a v1 save (before the extra slots): the only ones a legacy migration can fill.
+const LEGACY_SLOTS = ['weapon', 'armor'] as const;
+
+export type GearOrigin = 'craft' | 'starter' | 'migration' | 'recovery' | 'admin' | 'drop';
 
 export interface GearInstance {
   id: GearInstanceId;
@@ -118,7 +122,7 @@ export function createGearInstance(templateId: string, opts: CreateGearInstanceO
     id: opts.id ?? newGearInstanceId(),
     templateId,
     rarity,
-    substats: opts.substats ?? rollSubstats(rarity, item.tier ?? 0),
+    substats: opts.substats ?? rollSubstats(rarity, item.tier ?? 0, item.unique ? 1 : 0),
     upgrade: clampInt(opts.upgrade ?? 0, 0, MAX_REFINE, 0),
     sockets: sanitizeSockets(opts.sockets ?? []),
     durability: clampInt(opts.durability ?? MAX_DURABILITY, 0, MAX_DURABILITY, MAX_DURABILITY),
@@ -128,7 +132,7 @@ export function createGearInstance(templateId: string, opts: CreateGearInstanceO
   };
 }
 
-const ORIGINS: GearOrigin[] = ['craft', 'starter', 'migration', 'recovery', 'admin'];
+const ORIGINS: GearOrigin[] = ['craft', 'starter', 'migration', 'recovery', 'admin', 'drop'];
 
 export function sanitizeGearInstance(raw: unknown, key: string): GearInstance | null {
   const r = raw as Partial<GearInstance> | null | undefined;
@@ -160,7 +164,7 @@ export function sanitizeGearInstances(raw: unknown): Record<GearInstanceId, Gear
   return out;
 }
 
-// An equipped weapon / armor pointer is only valid if that instance exists and belongs to that slot.
+// An equipped instance pointer is only valid if that instance exists and belongs to that slot.
 export function sanitizeEquippedInstance(
   id: unknown,
   slot: InstancedSlot,
@@ -177,7 +181,7 @@ export function sanitizeEquippedInstance(
 export function createStarterGear(): { instances: Record<GearInstanceId, GearInstance>; weaponId: GearInstanceId; armorId: GearInstanceId } {
   const instances: Record<GearInstanceId, GearInstance> = {};
   const mk = (slot: InstancedSlot): GearInstanceId => {
-    const templateId = STARTER_TEMPLATES[slot];
+    const templateId = STARTER_TEMPLATES[slot] as string;
     const id = `st_${templateId}`;
     instances[id] = createGearInstance(templateId, { id, origin: 'starter', rarity: 'common', substats: [] });
     return id;
@@ -206,11 +210,20 @@ export function resolveGearInstance(
   return item ? { instance, item } : null;
 }
 
-function slotView(save: GearState, slot: InstancedSlot): EquippedView {
+function slotView(save: GearState, slot: 'weapon' | 'armor'): EquippedView {
   const hit = resolveGearInstance(save, save.equipped[slot]);
   if (hit && hit.item.slot === slot) return { item: hit.item, instance: hit.instance };
-  return { item: getGear(STARTER_TEMPLATES[slot]), instance: null };
+  return { item: getGear(STARTER_TEMPLATES[slot] as string), instance: null };
 }
+
+// An extra slot (helmet / gloves / boots / ring): the equipped piece, or null when the slot is empty.
+function extraView(save: GearState, slot: InstancedSlot): EquippedView | null {
+  const hit = resolveGearInstance(save, save.equipped[slot]);
+  return hit && hit.item.slot === slot ? { item: hit.item, instance: hit.instance } : null;
+}
+
+export const EXTRA_SLOTS = ['helmet', 'gloves', 'boots', 'ring'] as const;
+export type ExtraSlot = (typeof EXTRA_SLOTS)[number];
 
 export function resolveEquipped(save: GearState) {
   const eq = save.equipped;
@@ -218,9 +231,12 @@ export function resolveEquipped(save: GearState) {
   return {
     weapon: slotView(save, 'weapon'),
     armor: slotView(save, 'armor'),
+    helmet: extraView(save, 'helmet'),
+    gloves: extraView(save, 'gloves'),
+    boots: extraView(save, 'boots'),
+    ring: extraView(save, 'ring'),
     relic: stack(eq.relic),
     shield: stack(eq.shield),
-    helmet: stack(eq.helmet),
   };
 }
 
@@ -228,19 +244,57 @@ export const viewRefine = (v: EquippedView): number => clampRefine(v.instance?.u
 export const viewDurability = (v: EquippedView): number => (v.instance ? v.instance.durability : MAX_DURABILITY);
 export const viewRarity = (v: EquippedView): Rarity => v.instance?.rarity ?? 'common';
 
+// Every EQUIPPED instance of every instanced slot (weapon, armor and the extra slots).
+function equippedInstances(save: GearState): GearInstance[] {
+  const out: GearInstance[] = [];
+  for (const slot of INSTANCED_SLOTS) {
+    const hit = resolveGearInstance(save, save.equipped[slot]);
+    if (hit && hit.item.slot === slot) out.push(hit.instance);
+  }
+  return out;
+}
+
 export function equippedGemBonuses(save: GearState): GemBonuses {
-  const { weapon, armor } = resolveEquipped(save);
-  return addGemBonuses(gemListBonuses(weapon.instance?.sockets), gemListBonuses(armor.instance?.sockets));
+  return equippedInstances(save).reduce((acc, inst) => addGemBonuses(acc, gemListBonuses(inst.sockets)), gemListBonuses([]));
+}
+
+// What the extra slots (helmet, gloves, boots, ring) add to the hero, with the same refine / durability / rarity factors as weapon and armor.
+// Only fields the slot's item defines count (a helmet without a crit chance gets no refine crit bonus). The one place these pieces are
+// summed: engine.ts buildCombatStats / playerMaxHp read it, so the Dungeon, Hunting and CP all agree.
+export interface ExtraSlotStats {
+  maxHp: number;
+  damage: number;
+  critChance: number;
+  critMult: number;
+  resistance: number;
+}
+
+export function equippedExtraStats(save: GearState): ExtraSlotStats {
+  const t: ExtraSlotStats = { maxHp: 0, damage: 0, critChance: 0, critMult: 0, resistance: 0 };
+  const views = resolveEquipped(save);
+  for (const slot of EXTRA_SLOTS) {
+    const v = views[slot];
+    if (!v?.instance) continue;
+    const { item, instance } = v;
+    const lvl = viewRefine(v);
+    const f = durabilityFactor(instance.durability);
+    const r = rarityStatMult(instance.rarity);
+    if (item.maxHp) t.maxHp += effectiveMaxHp(item, lvl) * f * r;
+    if (item.damage) t.damage += effectiveDamage(item, lvl) * f * r;
+    if (item.critChance) t.critChance += effectiveCrit(item, lvl) * f;
+    if (item.resistance) t.resistance += effectiveResistance(item, lvl) * f * r;
+    t.critMult += (item.critMultBonus ?? 0) * f * r;
+  }
+  return t;
 }
 
 export function equippedSubstatTotals(save: GearState): SubstatTotals {
-  const { weapon, armor } = resolveEquipped(save);
-  const total = addSubstatTotals(substatListTotals(weapon.instance?.substats), substatListTotals(armor.instance?.substats));
+  const total = equippedInstances(save).reduce((acc, inst) => addSubstatTotals(acc, substatListTotals(inst.substats)), substatListTotals([]));
   return { ...total, goldBonus: Math.min(GOLD_BONUS_CAP, total.goldBonus) };
 }
 
 export function isInstanceEquipped(save: Pick<SaveData, 'equipped'>, id: GearInstanceId): boolean {
-  return save.equipped.weapon === id || save.equipped.armor === id;
+  return INSTANCED_SLOTS.some((slot) => save.equipped[slot] === id);
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -339,8 +393,8 @@ export function migrateGearV1toV2(legacy: LegacyGearInput): GearMigrationResult 
   const reforgeMap = asRecord(legacy.reforgeCount);
   const ceiling = Math.max(1, Math.floor(T.gear.migrationSafetyCeiling));
 
-  const equippedTemplate: Record<InstancedSlot, string> = { weapon: STARTER_TEMPLATES.weapon, armor: STARTER_TEMPLATES.armor };
-  for (const slot of INSTANCED_SLOTS) {
+  const equippedTemplate: Record<'weapon' | 'armor', string> = { weapon: STARTER_TEMPLATES.weapon as string, armor: STARTER_TEMPLATES.armor as string };
+  for (const slot of LEGACY_SLOTS) {
     const id = legacy.equipped?.[slot];
     if (typeof id === 'string' && getGear(id)?.slot === slot) equippedTemplate[slot] = id;
   }
@@ -351,13 +405,14 @@ export function migrateGearV1toV2(legacy: LegacyGearInput): GearMigrationResult 
   };
 
   const instances: Record<GearInstanceId, GearInstance> = {};
-  const equippedIds: Record<InstancedSlot, GearInstanceId | null> = { weapon: null, armor: null };
+  const equippedIds: Record<'weapon' | 'armor', GearInstanceId | null> = { weapon: null, armor: null };
 
   for (const item of GEAR) {
     if (!isInstancedItem(item)) continue;
     const rawCount = Math.floor(Number(legacy.inventory?.[item.id]));
     let count = Number.isFinite(rawCount) && rawCount > 0 ? Math.min(rawCount, ceiling) : 0;
-    const slot = item.slot as InstancedSlot;
+    const slot = item.slot as 'weapon' | 'armor';
+    if (!(slot in equippedTemplate)) continue; // a v1 save has no helmet / gloves / boots / ring
     const isEquippedTemplate = equippedTemplate[slot] === item.id;
     const recovery = count === 0 && isEquippedTemplate;
     if (recovery) count = 1;
@@ -430,7 +485,7 @@ export function applyEquipInstance(save: SaveData, id: GearInstanceId): SaveData
   return { ...save, equipped: { ...save.equipped, [hit.item.slot]: id } };
 }
 
-// Weapon / armor slot -> null ("bare hands", the zero-stat starter template).
+// Slot -> null (weapon / armor: "bare hands", the zero-stat starter template; the extra slots: simply empty).
 export function applyUnequipSlot(save: SaveData, slot: InstancedSlot): SaveData {
   return { ...save, equipped: { ...save.equipped, [slot]: null } };
 }
@@ -655,7 +710,7 @@ export function applyUnsocketGem(save: SaveData, id: GearInstanceId, index: numb
 
 export type SalvageBlock = 'equipped' | 'missing' | 'noValue' | null;
 
-// `target` is an instance id (weapon / armor) or a stackable gear template id (relic).
+// `target` is an instance id (any instanced slot) or a stackable gear template id (relic).
 export function salvageBlockReason(save: SaveData, target: string): SalvageBlock {
   const hit = resolveGearInstance(save, target);
   if (hit) {

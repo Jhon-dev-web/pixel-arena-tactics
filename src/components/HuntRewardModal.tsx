@@ -3,6 +3,7 @@ import Assets from '../assets.json';
 import { materialIconUrl } from '../game/materials';
 import { HuntPouchState } from '../game/huntPouch';
 import { PendingHuntReward } from '../game/huntSession';
+import UniqueDrops from './UniqueDrops';
 
 const matText = (k: string): string => t(`materials.${k}`);
 
@@ -19,16 +20,20 @@ export default function HuntRewardModal({
   reward,
   pouch,
   subLevels,
+  bagFull = false,
   onClaim,
 }: {
   reward: PendingHuntReward;
   pouch: HuntPouchState;
   subLevels: number;
+  // The bag has no free slot for the unique pieces: they stay pending (held) until one is freed.
+  bagFull?: boolean;
   onClaim: () => void;
 }) {
   const { timeMs, gold, ceilingSubLevel, startCeiling, promotionWins, promotionRequired, lost, pouchCapacity } = reward;
   const hasItems = pouch.items.length > 0;
   const hasLost = lost.length > 0;
+  const uniques = reward.uniques ?? [];
 
   return (
     <div className="modal-backdrop">
@@ -66,12 +71,14 @@ export default function HuntRewardModal({
               </span>
             </span>
           ))}
-          {!hasItems && gold <= 0 && (
+          {!hasItems && gold <= 0 && uniques.length === 0 && (
             <span className="floor-drop">
               <span>{t('hunting.noneReady')}</span>
             </span>
           )}
         </div>
+
+        <UniqueDrops drops={uniques} held={bagFull} />
 
         {pouchCapacity > 0 && (
           <p className="pouch-capacity">{t('hunting.pouchLabel', { n: pouch.items.length, m: pouchCapacity })}</p>

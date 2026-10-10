@@ -4,9 +4,12 @@ import { GearItem } from '../game/gear';
 const SLOT_EMOJI: Record<string, string> = {
   weapon: '⚔️',
   armor: '🛡️',
-  relic: '💍',
+  relic: '🔮',
   shield: '🛡️',
   helmet: '⛑️',
+  gloves: '🧤',
+  boots: '🥾',
+  ring: '💍',
   pickaxe: '⛏️',
   axe: '🪓',
   rod: '🎣',

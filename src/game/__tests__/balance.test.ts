@@ -80,11 +80,12 @@ describe('Dungeon enemy curve (stage HP / damage helpers)', () => {
     for (const b of [25, 50, 75, 100]) expect(power(b) / power(b - 1)).toBeGreaterThanOrEqual(1.5);
   });
 
-  it('floors 76-99 (the boss EnemyDef as a regular mob) are exactly what they were before the balance pass', () => {
+  // Rodada 3: the boss EnemyDef went from 550 / 75 to 715 / 98 (x1.3, like the warlock and the orc) because heroes now fill six gear slots.
+  it('floors 76-99 (the boss EnemyDef as a regular mob) follow the boss EnemyDef curve', () => {
     for (let f = 76; f <= 99; f++) {
       const def = getEnemyDef(dungeonEnemyKindForFloor(f));
-      const hp = Math.round(550 * (1 + 0.15 * (f - 1)) * (f % 10 === 0 ? 1.5 : 1));
-      const dmg = Math.round(75 * (1 + 0.12 * (f - 1)) * 0.45);
+      const hp = Math.round(715 * (1 + 0.15 * (f - 1)) * (f % 10 === 0 ? 1.5 : 1));
+      const dmg = Math.round(98 * (1 + 0.12 * (f - 1)) * 0.45);
       expect([f, stageEnemyHp(def, f), stageEnemyDmg(def, f)]).toEqual([f, hp, dmg]);
     }
   });

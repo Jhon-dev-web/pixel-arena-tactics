@@ -17,6 +17,7 @@ import {
 import { SaveConflictError, SaveRepository } from './game/saveRepository';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, requestHuntStart } from './game/huntLifecycle';
+import { addUniqueInstance } from './game/uniques';
 import { applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
 import { applyElixir, ElixirId } from './game/elixirs';
 import { withSessionWindow } from './game/huntSession';
@@ -473,6 +474,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const atCap = playerLevel(s.xp) >= 100;
     // Only the EQUIPPED weapon / armor instances wear down; every other copy is untouched.
     const worn = stages > 0 ? applyDurabilityLoss(s, DURABILITY_LOSS_PER_STAGE * stages) : s;
+    // Biome-boss unique pieces (uniques.ts) become stored gear instances. A defeat keeps them like the boss gem; a full bag never costs the drop (the
+    // Mochila may briefly show over capacity until the player frees a slot).
+    let delivered = worn;
+    for (const drop of rewards.uniques ?? []) delivered = addUniqueInstance(delivered, drop, `dg${startFloor}_${Date.now()}`, Date.now());
     // Floor checkpoint: every stage actually defeated this run is banked permanently, win or lose the
     // run overall — dying deep in a run no longer discards floors you already cleared to get there.
     // Only the one-time milestone loot below (gold/gems/title at 25/50/75/100) stays retreat-gated.
@@ -530,7 +535,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       victories: s.victories + (success ? 1 : 0),
       highestDungeonFloor: nextFloor,
       unlockedHuntingZones,
-      gearInstances: worn.gearInstances,
+      gearInstances: delivered.gearInstances,
       blessed: false,
       quests,
       battlePassLevel,
@@ -932,7 +937,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!next) return;
     playSfx('victory');
     commitSave(next);
-    if (huntClaimBlocked(next)) showToast(t('hunting.bagFullWarning'));
+    // Uniques the bag had no room for stay pending (held); a full pouch is the older, separate case.
+    if ((next.pendingHuntReward?.uniques.length ?? 0) > 0) showToast(t('hunting.uniquesHeldToast'));
+    else if (huntClaimBlocked(next)) showToast(t('hunting.bagFullWarning'));
   };
 
   const upgradeHuntPouch = () => {
@@ -1543,6 +1550,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           reward={save.pendingHuntReward}
           pouch={save.huntPouch}
           subLevels={T.hunting.subLevels}
+          bagFull={
+            save.pendingHuntReward.uniques.length > 0 &&
+            inventorySlotsUsed(save) + save.pendingHuntReward.uniques.length > inventoryCapacity(save)
+          }
           onClaim={confirmHuntReward}
         />
       )}

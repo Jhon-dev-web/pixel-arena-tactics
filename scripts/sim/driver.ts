@@ -36,6 +36,7 @@ import { GemId } from '../../src/game/gems';
 import { MaterialId } from '../../src/game/materials';
 import { unlockedZoneIds } from '../../src/game/huntingZones';
 import { isDungeonBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
+import { UniqueDrop, addUniqueInstance } from '../../src/game/uniques';
 import { getOreTier } from '../../src/game/ores';
 import { getWoodTier } from '../../src/game/woodcutting';
 import { getRefiningRecipe } from '../../src/game/refining';
@@ -115,7 +116,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
   let stages = 0;
   let complete = false;
   let outcome: 'retreat' | 'defeat' = 'retreat';
-  const acc: { gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; gems: Partial<Record<GemId, number>> } = { gold: 0, drops: {}, shards: 0, gems: {} };
+  const acc: { gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; gems: Partial<Record<GemId, number>>; uniques: UniqueDrop[] } = { gold: 0, drops: {}, shards: 0, gems: {}, uniques: [] };
 
   const tryAutoPotion = (t: number) => {
     if (t < potionCooldownUntil || hp >= playerMax * save.autoPotionThreshold) return;
@@ -180,6 +181,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
     acc.shards += r.shards;
     for (const [m, q] of Object.entries(r.drops)) acc.drops[m as MaterialId] = (acc.drops[m as MaterialId] ?? 0) + (q as number);
     for (const [g, q] of Object.entries(r.gems)) acc.gems[g as GemId] = (acc.gems[g as GemId] ?? 0) + (q as number);
+    acc.uniques.push(...r.uniques);
     stages += 1;
     hp = Math.min(playerMax, Math.round(hp + playerMax * T.battle.waveHeal));
     if (stages >= maxStages) break;
@@ -209,7 +211,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
     outcome,
     complete,
     seconds: clock / 1000,
-    rewards: { gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, stages },
+    rewards: { gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, uniques: acc.uniques, stages },
     potionsUsed: startPotions - (stock.greater_elixir + stock.large_hp + stock.small_hp),
   };
 }
@@ -271,6 +273,9 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun): RunApplied {
     }
   }
   const xpGain = dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages);
+  // Boss uniques (App.finishRun): delivered as stored gear instances even when the bag is over capacity - never lost.
+  let delivered = worn;
+  for (const drop of rewards.uniques ?? []) delivered = addUniqueInstance(delivered, drop, `dg${startFloor}`, 0);
   const save: SaveData = {
     ...s,
     gold,
@@ -283,7 +288,7 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun): RunApplied {
     victories: s.victories + (success ? 1 : 0),
     highestDungeonFloor: nextFloor,
     unlockedHuntingZones,
-    gearInstances: worn.gearInstances,
+    gearInstances: delivered.gearInstances,
     blessed: false,
     quests,
     battlePassLevel,

@@ -24,10 +24,11 @@
 //            something to cover take turns (the one done longest ago goes first). A locked ore tier is reached by mining
 //            the best unlocked one.
 //   Garden   not used: no gear recipe needs a garden plant.
-//   Gear     the next craft is the lowest-tier weapon / armor slot (weapon on a tie); missing intermediate materials go
-//            through the Furnace / Tannery / Carpentry / Alchemy recipes; crafting consumes lower-tier pieces exactly as the
-//            forge does; a craft blocked on gems buys them with shards. It equips whatever has the best computeCP, refines
-//            the equipped pieces with gold that is not earmarked for the next craft, and sockets spare gems. The Hunting
+//   Gear     the next craft is the lowest-tier piece still missing in any of the six slots, ties broken weapon > armor > gloves >
+//            helmet > boots > ring (player.ts CRAFT_PRIORITY); missing intermediate materials go through the Furnace / Tannery /
+//            Carpentry / Alchemy recipes; crafting consumes lower-tier pieces exactly as the forge does; a craft blocked on gems buys
+//            them with shards. It equips whatever has the best computeCP in each slot, refines the equipped WEAPON and ARMOR with gold
+//            that is not earmarked for the next craft (the four extra slots stay +0), and sockets spare gems into those two. The Hunting
 //            Pouch upgrade (300 gold + 20 scrap) is bought as soon as it is affordable, before anything else.
 //   Points   3 per level, spread 35% STR / 30% VIT / 20% AGI / 15% RES.
 //   Orders   one delivery at a time: the best-paying affordable offer that fits in 12 h and does not take materials the

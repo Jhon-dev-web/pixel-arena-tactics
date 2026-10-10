@@ -6,8 +6,6 @@ import {
   GearItem,
   MAX_DURABILITY,
   MAX_REFINE,
-  effectiveDamage,
-  effectiveMaxHp,
   gearBySlot,
   getGear,
   isInstancedSlot,
@@ -32,6 +30,8 @@ import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
 import { getConsumable } from '../game/consumables';
 import GearIcon from './GearIcon';
+import UniqueTag from './UniqueTag';
+import { gearStatLines } from './gearStats';
 import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
 import ConsumableIcon from './ConsumableIcon';
@@ -63,16 +63,20 @@ const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('m
 export type ForgeTab = 'forge' | 'upgrade' | 'repair' | 'socket';
 const ALL_TABS: ForgeTab[] = ['forge', 'upgrade', 'repair', 'socket'];
 
-// The "Forjar" tab groups recipes by their real GearSlot — weapon/armor/relic are the only slots
-// that exist today (see gear.ts), so this is a display grouping of the existing gear data, not a new
-// taxonomy.
-type ForgeCategory = 'weapon' | 'armor' | 'relic';
-const FORGE_CATEGORIES: ForgeCategory[] = ['weapon', 'armor', 'relic'];
+// The "Forjar" tab groups recipes by their real GearSlot (see gear.ts), so this is a display grouping of the
+// existing gear data, not a new taxonomy. Unique (drop-only) pieces have no recipe and never show here.
+type ForgeCategory = 'weapon' | 'armor' | 'helmet' | 'gloves' | 'boots' | 'ring' | 'relic';
+const FORGE_CATEGORIES: ForgeCategory[] = ['weapon', 'armor', 'helmet', 'gloves', 'boots', 'ring', 'relic'];
 const CATEGORY_LABEL_KEY: Record<ForgeCategory, string> = {
   weapon: 'weaponsSection',
   armor: 'armorSection',
+  helmet: 'helmetsSection',
+  gloves: 'glovesSection',
+  boots: 'bootsSection',
+  ring: 'ringsSection',
   relic: 'relicsSection',
 };
+const forgeRecipes = (cat: ForgeCategory): GearItem[] => gearBySlot(cat).filter((g) => g.recipe && !g.unique);
 
 export default function ForgeModal({
   save,
@@ -145,6 +149,7 @@ export default function ForgeModal({
   const gearList = listGearInstances(save);
   const instanceTag = (inst: GearInstance) => (
     <>
+      <UniqueTag templateId={inst.templateId} />
       {inst.rarity !== 'common' && <span className={`rarity-line r-${inst.rarity}`}> {t(`rarity.${rarityDef(inst.rarity).nameKey}`)}</span>}
       {isInstanceEquipped(save, inst.id) && <span className="socket-count"> ✓ {t('forge.equipped')}</span>}
     </>
@@ -208,7 +213,10 @@ export default function ForgeModal({
                   .filter((id) => save.gearInstances[id])
                   .map((id) => (
                     <span className="floor-drop forge-confirm-item" key={id}>
-                      <span className="forge-confirm-name">{gearInstanceLabel(save.gearInstances[id])}</span>
+                      <span className="forge-confirm-name">
+                        {gearInstanceLabel(save.gearInstances[id])}
+                        <UniqueTag templateId={save.gearInstances[id].templateId} />
+                      </span>
                       {save.gearInstances[id].sockets.length > 0 && (
                         <span className="forge-confirm-gems">
                           {t('forge.gemsBack', {
@@ -236,7 +244,7 @@ export default function ForgeModal({
             )}
             <div className="forge-tabs forge-category-tabs">
               {FORGE_CATEGORIES.map((cat) => {
-                const count = gearBySlot(cat).filter((g) => g.recipe).length;
+                const count = forgeRecipes(cat).length;
                 return (
                   <button
                     key={cat}
@@ -250,7 +258,7 @@ export default function ForgeModal({
               })}
             </div>
             {(() => {
-              const items = gearBySlot(forgeCategory).filter((g) => g.recipe);
+              const items = forgeRecipes(forgeCategory);
               if (items.length === 0) {
                 return <span className="socket-none">{t('forge.noCategoryRecipes')}</span>;
               }
@@ -277,6 +285,7 @@ export default function ForgeModal({
                             )}
                           </div>
                           <span className="craft-desc">{gearText(item.descKey)}</span>
+                          <span className="craft-stats">{gearStatLines(item).map((l) => l.text).join(' · ')}</span>
                           <div className="craft-req">
                             <span className="req-item">
                               <span className="mat-icon">
@@ -377,7 +386,6 @@ export default function ForgeModal({
               const isMax = lvl >= MAX_REFINE;
               const cost = upgradeCost(item, lvl);
               const chance = Math.round(upgradeChance(lvl) * 100);
-              const stat = item.slot === 'weapon' ? effectiveDamage(item, lvl) : effectiveMaxHp(item, lvl);
               return (
                 <div className={`craft-card ${rarityClass(item)}`} key={inst.id}>
                   <span className="craft-icon">
@@ -392,7 +400,7 @@ export default function ForgeModal({
                       </span>
                     </div>
                     <span className="craft-desc">
-                      {item.slot === 'weapon' ? `+${stat} ${t('profile.damage')}` : `+${stat} ${t('profile.hp')}`}
+                      {gearStatLines(item, lvl).map((l) => l.text).join(' · ')}
                     </span>
                     {!isMax && (
                       <div className="craft-req">

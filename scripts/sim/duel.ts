@@ -70,13 +70,18 @@ export function duel(s: SaveData, floor: number) {
   const def = getEnemyDef(dungeonEnemyKindForFloor(floor));
   return duelVs(s, stageEnemyHp(def, floor), stageEnemyDmg(def, floor), def.atkSpeedMs);
 }
-// Representative floor of a hero: the highest plain floor (not a checkpoint / boss) where the duel margin is still >= 1.25.
+// Representative floor of a hero: the plain floor (not a checkpoint / boss) whose duel margin is closest to 1.5 (on a log scale), i.e. a fight the hero
+// wins but not by a mile. Closest-to-1.5 instead of "highest floor with P >= 1.25" so the choice survives the cliff between two biomes.
 export function repFloor(s: SaveData): number {
   let best = 1;
+  let bestGap = Infinity;
   for (let f = 1; f <= 100; f++) {
     if (isDungeonCheckpoint(f) || isDungeonBoss(f)) continue;
-    if (duel(s, f).P >= 1.25) best = f;
-    else if (f > best + 6) break;
+    const gap = Math.abs(Math.log(duel(s, f).P / 1.5));
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = f;
+    }
   }
   return best;
 }

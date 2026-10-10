@@ -1,6 +1,8 @@
 import { ReactNode } from 'react';
 import SpriteSheet from './SpriteSheet';
 import GearIcon from './GearIcon';
+import UniqueTag from './UniqueTag';
+import { INSTANCED_SLOTS } from '../game/gear';
 import { gearInstanceLabel } from './gearLabel';
 import { t } from '../locales';
 import {
@@ -143,24 +145,26 @@ export default function DesktopHome({
             <div className="bar-fill xp-fill" style={{ width: `${Math.round(heroProgress * 100)}%` }} />
           </div>
           <div className="dh-hero-equip">
-            <div className="dh-equip-slot">
-              <span className={`dh-equip-icon r-${viewRarity(equipped.weapon)}`}>
-                <GearIcon item={equipped.weapon.item} />
-              </span>
-              <div className="dh-equip-text">
-                <span className="dh-equip-label">{gearText('weapon')}</span>
-                <span className="dh-equip-name" title={equipped.weapon.instance ? gearInstanceLabel(equipped.weapon.instance) : t(`gear.${equipped.weapon.item.nameKey}`)}>{equipped.weapon.instance ? gearInstanceLabel(equipped.weapon.instance) : t(`gear.${equipped.weapon.item.nameKey}`)}</span>
-              </div>
-            </div>
-            <div className="dh-equip-slot">
-              <span className={`dh-equip-icon r-${viewRarity(equipped.armor)}`}>
-                <GearIcon item={equipped.armor.item} />
-              </span>
-              <div className="dh-equip-text">
-                <span className="dh-equip-label">{gearText('armor')}</span>
-                <span className="dh-equip-name" title={equipped.armor.instance ? gearInstanceLabel(equipped.armor.instance) : t(`gear.${equipped.armor.item.nameKey}`)}>{equipped.armor.instance ? gearInstanceLabel(equipped.armor.instance) : t(`gear.${equipped.armor.item.nameKey}`)}</span>
-              </div>
-            </div>
+            {INSTANCED_SLOTS.map((slot) => {
+              const view = equipped[slot];
+              const name = view ? (view.instance ? gearInstanceLabel(view.instance) : t(`gear.${view.item.nameKey}`)) : '—';
+              return (
+                <div className={`dh-equip-slot${view ? '' : ' empty'}`} key={slot}>
+                  <span className={`dh-equip-icon r-${view ? viewRarity(view) : 'common'}`}>
+                    {view ? <GearIcon item={view.item} /> : <span className="dh-equip-empty-mark">·</span>}
+                  </span>
+                  <div className="dh-equip-text">
+                    <span className="dh-equip-label">{gearText(slot)}</span>
+                    <span className="dh-equip-name-row">
+                      <span className="dh-equip-name" title={name}>
+                        {name}
+                      </span>
+                      {view && <UniqueTag templateId={view.item.id} />}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <button className="dh-inventory-chip" onClick={onOpenInventory} data-ui>
             <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>

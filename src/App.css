@@ -2720,7 +2720,8 @@ body {
   overflow-wrap: normal;
 }
 .forge-category-tabs {
-  grid-template-columns: repeat(3, 1fr);
+  /* 7 categories: 4 + 3 on two rows keeps every label readable on a phone */
+  grid-template-columns: repeat(4, 1fr);
   margin-bottom: 14px;
 }
 .refine-tag {
@@ -7297,4 +7298,175 @@ body {
   .dh-equip-slot {
     min-width: 0;
   }
+}
+
+/* ===== 6 gear slots + unique (drop-only) pieces ===== */
+.unique-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: calc(var(--font-size) - 5px);
+  font-weight: bold;
+  line-height: 1.3;
+  letter-spacing: 0.5px;
+  color: #2a1a00;
+  background: linear-gradient(180deg, #ffe08a, #e0a030);
+  border: 1px solid #fff0b0;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px #6a4300, 0 0 6px rgba(255, 200, 80, 0.45);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.craft-stats {
+  font-size: calc(var(--font-size) - 3px);
+  color: #6fe08a;
+}
+.gear-stat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+.gear-stat {
+  font-size: calc(var(--font-size) - 3px);
+  color: #6fe08a;
+}
+.gear-stat-damage {
+  color: #ff9a7a;
+}
+.gear-stat-critChance,
+.gear-stat-critMult {
+  color: #ffd76a;
+}
+.gear-stat-resistance {
+  color: #8ecbff;
+}
+.inv-slot.unique {
+  box-shadow: inset 0 0 0 1px #ffd76a, 0 0 6px rgba(255, 200, 80, 0.4);
+}
+.hero-equip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+.hero-equip-card.unique {
+  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.55), 0 0 8px rgba(255, 200, 80, 0.25);
+}
+.hero-equip-card.empty {
+  background: transparent;
+  border: 1px dashed #3a2a4a;
+  opacity: 0.7;
+}
+.hero-equip-icon.empty {
+  background: transparent;
+  border-style: dashed;
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+.hero-equip-slot-name {
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.hero-equip-empty {
+  font-size: calc(var(--font-size) - 3px);
+  color: #6a5a82;
+}
+.hero-equip-stat.maxHp {
+  color: #6fe08a;
+}
+.hero-equip-stat.critChance,
+.hero-equip-stat.critMult {
+  color: #ffd76a;
+}
+.hero-equip-stat.resistance {
+  color: #8ecbff;
+}
+.unique-drops {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  text-align: left;
+  background: rgba(255, 200, 80, 0.07);
+  border: 1px solid #8a6a3a;
+  border-radius: 8px;
+}
+.unique-drops .drops-label {
+  color: #ffd76a;
+  letter-spacing: 0.5px;
+}
+.unique-drop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid #3a2a4a;
+  border-radius: 8px;
+}
+.unique-drop.r-rare {
+  border-color: #4ad67c;
+}
+.unique-drop.r-epic {
+  border-color: #b06cff;
+}
+.unique-drop.r-legendary {
+  border-color: #ffa940;
+}
+.unique-drop-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #14101c;
+  border: 1px solid #3a2a4a;
+  border-radius: 6px;
+}
+.unique-drop-icon .pixel-icon,
+.unique-drop-icon .gear-icon-img {
+  width: 80%;
+  height: 80%;
+}
+.unique-drop-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.unique-drop-name {
+  font-size: calc(var(--font-size) - 2px);
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+.unique-held-note {
+  margin: 2px 0 0;
+  font-size: calc(var(--font-size) - 3px);
+  color: #ff8a7a;
+}
+.dh-equip-slot.empty {
+  border-style: dashed;
+  opacity: 0.6;
+}
+.dh-equip-empty-mark {
+  color: #6a5a82;
+}
+.dh-equip-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.dh-equip-name-row .dh-equip-name {
+  min-width: 0;
+}
+.dh-equip-name-row .unique-tag {
+  flex-shrink: 0;
+  margin-left: 0;
+  padding: 0 3px;
+  font-size: 8px;
 }

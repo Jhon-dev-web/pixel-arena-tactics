@@ -14,6 +14,8 @@ import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
 import { refineTag } from './gearLabel';
+import { gearStatLines } from './gearStats';
+import UniqueTag from './UniqueTag';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
 // the Personagem view (embedded, no modal chrome) and the still-existing quick-access "Inventário"
@@ -27,7 +29,6 @@ const fmtNum = (n: number): string => n.toLocaleString(activeLocale === 'pt' ? '
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
-const EQUIPPABLE_SLOTS = new Set(['weapon', 'armor']);
 const MANUALLY_USABLE = new Set(['xp_potion', 'strength_elixir', 'atk_elixir']);
 
 type SelKind = 'gear' | 'material' | 'consumable';
@@ -111,7 +112,8 @@ export default function InventoryPanel({
   const isEquipped = selectedInstance
     ? isInstanceEquipped(save, selectedInstance.id)
     : !!selectedGear && save.equipped[selectedGear.slot as 'relic'] === selectedGear.id;
-  const isEquippable = !!selectedGear && EQUIPPABLE_SLOTS.has(selectedGear.slot);
+  // Every instanced slot (weapon, armor, helmet, gloves, boots, ring) equips straight from the bag.
+  const isEquippable = !!selectedGear && isInstancedSlot(selectedGear.slot);
   const selectedRarity: Rarity = selectedInstance?.rarity ?? 'common';
   const selectedSubs = selectedInstance?.substats ?? [];
   const selectedLevel = selectedInstance ? clampRefine(selectedInstance.upgrade) : 0;
@@ -227,7 +229,7 @@ export default function InventoryPanel({
             return (
               <button
                 key={inst.id}
-                className={`inv-slot ${rarityClass(g)} ${rarClass(inst.rarity)}${selected?.kind === 'gear' && selected.id === inst.id ? ' active' : ''}`}
+                className={`inv-slot ${rarityClass(g)} ${rarClass(inst.rarity)}${g.unique ? ' unique' : ''}${selected?.kind === 'gear' && selected.id === inst.id ? ' active' : ''}`}
                 onClick={() => select('gear', inst.id)}
                 data-ui
               >
@@ -300,11 +302,19 @@ export default function InventoryPanel({
               <span className="inv-detail-name-text">
                 {gearText(selectedGear.nameKey)}
                 <span className="refine-tag">{refineTag(selectedLevel)}</span>
+                <UniqueTag templateId={selectedGear.id} />
               </span>
               {!selectedInstance && <span className="inv-qty">×{save.inventory[selectedGear.id]}</span>}
               {selectedInstance && isEquipped && <span className="inv-qty">{t('inventory.equipped')}</span>}
             </div>
             <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
+            <div className="gear-stat-list">
+              {gearStatLines(selectedGear, selectedLevel).map((l) => (
+                <span className={`gear-stat gear-stat-${l.kind}`} key={l.kind}>
+                  {l.text}
+                </span>
+              ))}
+            </div>
             {selectedRarity !== 'common' && (
               <div className={`rarity-line ${rarClass(selectedRarity)}`}>{t(`rarity.${rarityDef(selectedRarity).nameKey}`)}</div>
             )}

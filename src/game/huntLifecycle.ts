@@ -11,7 +11,9 @@ import {
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked } from './huntingZones';
 import { allocateToPouch, drainPouchToMaterials, HuntPouchItem } from './huntPouch';
 import { PendingHuntReward } from './huntSession';
+import { UniqueDrop, addUniqueInstance } from './uniques';
 import { inventoryCapacity, inventorySlotsUsed } from './inventory';
+import { gearInstanceCount, maxGearInstances } from './gearInstances';
 import T from './tunables';
 
 // The lifecycle of a Hunting session as three pure, atomic transitions on the save: start -> stop -> claim.
@@ -72,6 +74,7 @@ export function applyHuntStop(save: SaveData, now: number): SaveData | null {
     bpXp: Math.floor((status.pendingMs / MS_PER_HOUR) * T.battlePass.xpPerHuntHour),
     drops: { ...status.drops },
     lost,
+    uniques: status.uniques.map((u) => ({ ...u, substats: u.substats.map((s) => ({ ...s })) })),
     pouchCapacity: capacity,
   };
   return {
@@ -94,7 +97,7 @@ export function applyHuntClaim(save: SaveData, id: string): SaveData | null {
   const { battlePassLevel, battlePassXp } = addBattlePassXp(save, p.bpXp);
   const atCap = playerLevel(save.xp) >= 100;
   const { materials, remaining } = drainPouchToMaterials(save.huntPouch.items, save.materials, inventorySlotsUsed(save), inventoryCapacity(save));
-  return {
+  const paid: SaveData = {
     ...save,
     gold: save.gold + p.gold,
     xp: atCap ? save.xp : save.xp + p.xp,
@@ -105,11 +108,27 @@ export function applyHuntClaim(save: SaveData, id: string): SaveData | null {
     battlePassXp,
     pendingHuntReward: null,
   };
+  // Unique pieces become gear instances now, one bag slot each. Whatever the bag (or the technical instance ceiling) has no room for is NOT
+  // destroyed: the reward stays pending with only those uniques left (gold / XP / materials are already paid and zeroed, so claiming again is
+  // harmless) and the player frees a slot and claims again.
+  let next = paid;
+  const left: UniqueDrop[] = [];
+  for (const drop of p.uniques ?? []) {
+    const room = inventorySlotsUsed(next) < inventoryCapacity(next) && gearInstanceCount(next) < maxGearInstances();
+    if (!room) {
+      left.push(drop);
+      continue;
+    }
+    next = addUniqueInstance(next, drop, p.id, p.endedAt);
+  }
+  if (left.length === 0) return next;
+  return { ...next, pendingHuntReward: { ...p, gold: 0, xp: 0, bpXp: 0, drops: {}, lost: [], uniques: left } };
 }
+
 
 // True when claiming left something in the pouch because the bag had no free slot for it.
 export function huntClaimBlocked(claimed: SaveData): boolean {
-  return claimed.huntPouch.items.length > 0;
+  return claimed.huntPouch.items.length > 0 || (claimed.pendingHuntReward?.uniques.length ?? 0) > 0;
 }
 
 // Can a session for `zoneId` at `depth` be requested now? (known + unlocked zone, unlocked depth, hero not busy mining /

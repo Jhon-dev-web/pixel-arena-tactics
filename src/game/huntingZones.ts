@@ -43,6 +43,15 @@ export interface HuntingZoneDef {
   shallowCp?: number;
   shallowEnemyHp?: number;
   shallowEnemyDmg?: number;
+  // Unique (drop-only) pieces this zone can drop. `chance` is the base chance per victory BEFORE the economic roll fraction f (huntEconomy.ts), the same
+  // f the materials use, so a faster build cannot multiply them; it is independent of depth, sub-level and the Battle Pass (a unique is never boosted by
+  // the pass). See uniques.ts.
+  uniques?: HuntingUnique[];
+}
+
+export interface HuntingUnique {
+  itemId: string;
+  chance: number;
 }
 
 export const DEFAULT_HUNTING_ZONE = 'demon_glade';
@@ -171,6 +180,12 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.08, qty: 1 },
       { material: 'demon_core', rarity: 'rare', chance: 0.01, qty: 1 },
     ],
+    // Unique drops (chance per victory before the economic fraction f). Calibrated with scripts/sim: a zone's economic rolls/h are ~200 / 167 / 107 / 135 (glade /
+    // marsh / rift / abyss), so two entries at these chances give one unique per ~4 days of 6 h/day hunting in that zone (24 h) - 3 to 5 days across builds.
+    uniques: [
+      { itemId: 'demon_fang_dagger', chance: 0.0001 },
+      { itemId: 'demonhide_vest', chance: 0.0001 },
+    ],
     offlineCapHours: 4,
     unlockFloor: 0,
     baseEnemyHp: 450,
@@ -187,6 +202,10 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'bone_fragment', rarity: 'common', chance: 0.28, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.09, qty: 1 },
       { material: 'corrupted_crystal', rarity: 'rare', chance: 0.015, qty: 1 },
+    ],
+    uniques: [
+      { itemId: 'bloodbound_cleaver', chance: 0.000125 },
+      { itemId: 'bloodvein_plate', chance: 0.000125 },
     ],
     offlineCapHours: 5,
     unlockFloor: 26,
@@ -205,6 +224,10 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.105, qty: 1 },
       { material: 'demon_core', rarity: 'rare', chance: 0.025, qty: 1 },
     ],
+    uniques: [
+      { itemId: 'riftwalker_boots', chance: 0.0002 },
+      { itemId: 'shadow_hood', chance: 0.0002 },
+    ],
     offlineCapHours: 6,
     unlockFloor: 51,
     baseEnemyHp: 4800,
@@ -221,6 +244,10 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'bone_fragment', rarity: 'common', chance: 0.35, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.12, qty: 1 },
       { material: 'corrupted_crystal', rarity: 'rare', chance: 0.03, qty: 1 },
+    ],
+    uniques: [
+      { itemId: 'abyss_heart_ring', chance: 0.00015 },
+      { itemId: 'bonecrusher_maul', chance: 0.00015 },
     ],
     offlineCapHours: 8,
     unlockFloor: 76,
