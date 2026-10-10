@@ -3,16 +3,16 @@ import {
   buildHuntSession,
   computeCP,
   computeHuntingStatus,
-  effectivePouchSlots,
   playerLevel,
   SaveData,
   withHuntProgress,
 } from './engine';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked } from './huntingZones';
-import { allocateToPouch, drainPouchToMaterials, HuntPouchItem } from './huntPouch';
-import { PendingHuntReward } from './huntSession';
+import { HuntItem, PendingHuntReward } from './huntSession';
 import { UniqueDrop, addUniqueInstance } from './uniques';
-import { inventoryCapacity, inventorySlotsUsed } from './inventory';
+import { addWithOverflow, canAddInstances, inventoryCapacity, inventorySlotsUsed } from './inventory';
+import { baseGoldValue } from './economy';
+import { MaterialId } from './materials';
 import { gearInstanceCount, maxGearInstances } from './gearInstances';
 import T from './tunables';
 
@@ -24,14 +24,15 @@ import T from './tunables';
 // RNG: only the session simulation (inside computeHuntingStatus, seeded by the session itself) rolls anything, and it
 // runs at STOP. The reward it produces is frozen into `pendingHuntReward`; claim just applies it — no clock, no RNG.
 //
-// A full pouch is intentional design (see huntPouch.ts): what does not fit is recorded in `pendingHuntReward.lost` for
-// the player to see and is never given back, queued, or converted.
+// The loot goes into the one inventory at CLAIM time (planHuntClaim): the free space of that moment, rarest first, existing partial stacks first.
+// What does not fit is left behind for good (shown on the reward screen, never given back, queued or converted) - except unique pieces and units the
+// player owned before this rule (`owed`), which stay in the pending reward until there is room. Gold and XP are never lost.
 
 const MS_PER_HOUR = 3600 * 1000;
 const isFiniteNow = (now: number): boolean => typeof now === 'number' && Number.isFinite(now) && now > 0;
 
-// Stop the active session: simulates it, allocates its drops into the pouch (capacity = tier + Battle Pass at this
-// moment), pays the potions it used, commits the sub-level progress, and leaves a pending reward (gold / XP / pass XP).
+// Stop the active session: simulates it, pays the potions it used, commits the sub-level progress, and leaves a pending reward (gold / XP / pass XP /
+// the drops it rolled, which are placed in the inventory when the reward is claimed).
 export function applyHuntStop(save: SaveData, now: number): SaveData | null {
   if (!save.activeHuntingZone || save.pendingHuntReward || !isFiniteNow(now)) return null;
   const zoneId = save.activeHuntingZone;
@@ -40,14 +41,6 @@ export function applyHuntStop(save: SaveData, now: number): SaveData | null {
   const status = computeHuntingStatus(save, now);
   const startedAt = save.huntingOfflineStart;
   const timeMs = Number.isFinite(now - startedAt) ? Math.max(0, now - startedAt) : 0;
-  const capacity = effectivePouchSlots(save, now);
-
-  const huntPouch = zone ? allocateToPouch(save.huntPouch, status.drops, zone.drops.map((d) => d.material), capacity) : save.huntPouch;
-  const lost: HuntPouchItem[] = [];
-  for (const item of huntPouch.lostItems) {
-    const before = save.huntPouch.lostItems.find((i) => i.itemId === item.itemId)?.count ?? 0;
-    if (item.count > before) lost.push({ itemId: item.itemId, count: item.count - before });
-  }
   const stock = (n: number | undefined): number => n ?? 0;
   const consumables = {
     ...save.consumables,
@@ -73,19 +66,71 @@ export function applyHuntStop(save: SaveData, now: number): SaveData | null {
     xp: status.xpReady,
     bpXp: Math.floor((status.pendingMs / MS_PER_HOUR) * T.battlePass.xpPerHuntHour),
     drops: { ...status.drops },
-    lost,
+    lost: [],
     uniques: status.uniques.map((u) => ({ ...u, substats: u.substats.map((s) => ({ ...s })) })),
-    pouchCapacity: capacity,
   };
   return {
     ...save,
     activeHuntingZone: null,
     activeHuntingDepth: null,
     huntSession: null,
-    huntPouch,
     huntProgress: zone ? withHuntProgress(save, zoneId, depth, status) : save.huntProgress,
     consumables,
     pendingHuntReward,
+  };
+}
+
+// Materials in the order a claim fills the inventory: the zone's drop list walked rarest first (rare -> uncommon -> common), anything the zone does not
+// list (a reward of an old save) after it, dearest first.
+export function claimOrder(zoneId: string, ids: MaterialId[]): MaterialId[] {
+  const zoneOrder = (getHuntingZone(zoneId)?.drops.map((d) => d.material) ?? []).reverse();
+  const known = zoneOrder.filter((id) => ids.includes(id));
+  const rest = ids.filter((id) => !zoneOrder.includes(id)).sort((x, y) => baseGoldValue(y) - baseGoldValue(x));
+  return [...known, ...rest];
+}
+
+const ordered = (zoneId: string, rec: Partial<Record<MaterialId, number>> | undefined): Partial<Record<MaterialId, number>> => {
+  const ids = (Object.keys(rec ?? {}) as MaterialId[]).filter((id) => (rec?.[id] ?? 0) > 0);
+  return Object.fromEntries(claimOrder(zoneId, ids).map((id) => [id, rec![id]])) as Partial<Record<MaterialId, number>>;
+};
+
+export interface HuntClaimPlan {
+  save: SaveData; // the save with the uniques and the materials that fit already placed (no gold / XP)
+  added: Partial<Record<MaterialId, number>>; // materials that go into the inventory
+  leftBehind: HuntItem[]; // rolled this session and without room: gone for good
+  owedHeld: Partial<Record<MaterialId, number>>; // owed units that stay in the pending reward
+  uniquesLeft: UniqueDrop[]; // uniques that stay in the pending reward
+  slotsBefore: number;
+  slotsAfter: number;
+  capacity: number;
+}
+
+// What claiming `reward` does to the inventory of `save`, without paying anything: ONE pure rule shared by the claim, the reward screen and the live
+// preview of the running hunt. Order: the unique pieces first (one slot each, so a pile of Farrapos can never take the slot of a unique), then the
+// units the player already owned (`owed`), then this session's drops rarest first - each into the existing partial stacks first, then the free slots.
+export function planHuntClaim(save: SaveData, reward: Pick<PendingHuntReward, 'id' | 'zoneId' | 'endedAt' | 'drops' | 'uniques' | 'owed'>): HuntClaimPlan {
+  const slotsBefore = inventorySlotsUsed(save);
+  let next = save;
+  const uniquesLeft: UniqueDrop[] = [];
+  for (const drop of reward.uniques ?? []) {
+    if (canAddInstances(next, 1) && gearInstanceCount(next) < maxGearInstances()) next = addUniqueInstance(next, drop, reward.id, reward.endedAt);
+    else uniquesLeft.push(drop);
+  }
+  const owed = addWithOverflow(next, { materials: ordered(reward.zoneId, reward.owed) });
+  const dropped = addWithOverflow(owed.save, { materials: ordered(reward.zoneId, reward.drops) });
+  const added: Partial<Record<MaterialId, number>> = {};
+  for (const part of [owed.added.materials, dropped.added.materials]) {
+    for (const [id, n] of Object.entries(part) as [MaterialId, number][]) added[id] = (added[id] ?? 0) + n;
+  }
+  return {
+    save: dropped.save,
+    added,
+    leftBehind: (Object.entries(dropped.leftover.materials) as [MaterialId, number][]).map(([itemId, count]) => ({ itemId, count })),
+    owedHeld: owed.leftover.materials,
+    uniquesLeft,
+    slotsBefore,
+    slotsAfter: inventorySlotsUsed(dropped.save),
+    capacity: inventoryCapacity(save),
   };
 }
 
@@ -96,39 +141,26 @@ export function applyHuntClaim(save: SaveData, id: string): SaveData | null {
   if (!p || p.id !== id) return null;
   const { battlePassLevel, battlePassXp } = addBattlePassXp(save, p.bpXp);
   const atCap = playerLevel(save.xp) >= 100;
-  const { materials, remaining } = drainPouchToMaterials(save.huntPouch.items, save.materials, inventorySlotsUsed(save), inventoryCapacity(save));
+  const plan = planHuntClaim(save, p);
   const paid: SaveData = {
-    ...save,
+    ...plan.save,
     gold: save.gold + p.gold,
     xp: atCap ? save.xp : save.xp + p.xp,
-    materials,
-    // What the bag had no room for stays in the pouch (the existing "bag full" rule); only the pouch overflow is gone.
-    huntPouch: { ...save.huntPouch, items: remaining, lostItems: [] },
     battlePassLevel,
     battlePassXp,
     pendingHuntReward: null,
   };
-  // Unique pieces become gear instances now, one bag slot each. Whatever the bag (or the technical instance ceiling) has no room for is NOT
-  // destroyed: the reward stays pending with only those uniques left (gold / XP / materials are already paid and zeroed, so claiming again is
-  // harmless) and the player frees a slot and claims again.
-  let next = paid;
-  const left: UniqueDrop[] = [];
-  for (const drop of p.uniques ?? []) {
-    const room = inventorySlotsUsed(next) < inventoryCapacity(next) && gearInstanceCount(next) < maxGearInstances();
-    if (!room) {
-      left.push(drop);
-      continue;
-    }
-    next = addUniqueInstance(next, drop, p.id, p.endedAt);
-  }
-  if (left.length === 0) return next;
-  return { ...next, pendingHuntReward: { ...p, gold: 0, xp: 0, bpXp: 0, drops: {}, lost: [], uniques: left } };
+  // Whatever the bag has no room for among the unique pieces (and the units owed from before the inventory rule) is NOT destroyed: the reward stays
+  // pending with only those left (gold / XP / drops are already paid and zeroed, so claiming again is harmless) and the player frees space and claims again.
+  if (plan.uniquesLeft.length === 0 && Object.keys(plan.owedHeld).length === 0) return paid;
+  const owed = Object.keys(plan.owedHeld).length > 0 ? { owed: plan.owedHeld } : {};
+  return { ...paid, pendingHuntReward: { ...p, gold: 0, xp: 0, bpXp: 0, drops: {}, lost: [], owed: undefined, ...owed, uniques: plan.uniquesLeft } };
 }
 
-
-// True when claiming left something in the pouch because the bag had no free slot for it.
+// True when claiming left something in the pending reward because the bag had no free slot for it.
 export function huntClaimBlocked(claimed: SaveData): boolean {
-  return claimed.huntPouch.items.length > 0 || (claimed.pendingHuntReward?.uniques.length ?? 0) > 0;
+  const p = claimed.pendingHuntReward;
+  return !!p && (p.uniques.length > 0 || Object.keys(p.owed ?? {}).length > 0);
 }
 
 // Can a session for `zoneId` at `depth` be requested now? (known + unlocked zone, unlocked depth, hero not busy mining /
@@ -157,7 +189,7 @@ export function applyHuntStart(save: SaveData, zoneId: string, depth: HuntingDep
 
 // What choosing a zone in the UI does. Idle: starts it. While ANOTHER session is running: never a silent stop+claim —
 // it only ends that session (applyHuntStop), which leaves its pending reward on screen (gold, promotion, materials and
-// anything the pouch could not hold); the player claims it and then picks the new zone normally. A pending reward blocks
+// what the inventory will take); the player claims it and then picks the new zone normally. A pending reward blocks
 // everything (null). Returns the next save; `.pendingHuntReward` set means "the running session was just ended".
 export function requestHuntStart(save: SaveData, zoneId: string, depth: HuntingDepth, now: number): SaveData | null {
   if (!isFiniteNow(now) || save.pendingHuntReward) return null;

@@ -4,7 +4,7 @@ import { GEMS, GemBonuses, GemId, addGemBonuses, gemListBonuses, getGem, hasGems
 import { MaterialId, hasMaterials } from './materials';
 import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollSubstats, substatListTotals } from './rarity';
 import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salvage';
-import { inventoryCapacity, inventorySlotsUsed } from './inventory';
+import { addWithOverflow, fitsBag, stockIsEmpty } from './inventory';
 import type { SaveData } from './engine';
 
 // Gear instances: every weapon / armor / helmet / gloves / boots / ring is its OWN object (rarity, substats, refine level, sockets, durability,
@@ -571,12 +571,8 @@ export function applyForge(
   if (!consumed) return { ok: false, reason: 'ingredients' };
   if ((recipe.shards ?? 0) > 0 && save.shards < (recipe.shards ?? 0)) return { ok: false, reason: 'shards' };
   const instanced = isInstancedItem(item);
-  if (instanced) {
-    // Technical safety ceiling first (never player-facing), then the real, player-facing check: the shared
-    // Mochila capacity. Crafting nets +1 stored instance minus however many ingredient instances it consumes.
-    if (gearInstanceCount(save) - consumed.length + 1 > maxGearInstances()) return { ok: false, reason: 'capacity' };
-    if (inventorySlotsUsed(save) - consumed.length + 1 > inventoryCapacity(save)) return { ok: false, reason: 'capacity' };
-  }
+  // Technical safety ceiling first (never player-facing); the real, player-facing check (the shared inventory) runs on the result below.
+  if (instanced && gearInstanceCount(save) - consumed.length + 1 > maxGearInstances()) return { ok: false, reason: 'capacity' };
 
   const materials = { ...save.materials };
   for (const [mid, count] of Object.entries(recipe.materials ?? {})) {
@@ -606,6 +602,9 @@ export function applyForge(
   } else {
     next = { ...next, inventory: { ...next.inventory, [templateId]: (next.inventory[templateId] ?? 0) + 1 } };
   }
+  // The craft nets +1 piece minus the ingredients it eats (instances, and the stacks the materials come out of): it must not take more slots than the
+  // inventory has (a bag that is already over the limit may still craft, as long as the bag does not grow).
+  if (!fitsBag(save, next)) return { ok: false, reason: 'capacity' };
   return { ok: true, save: next, instance, consumed };
 }
 
@@ -708,19 +707,41 @@ export function applyUnsocketGem(save: SaveData, id: GearInstanceId, index: numb
 
 // --- salvage / discard
 
-export type SalvageBlock = 'equipped' | 'missing' | 'noValue' | null;
+export type SalvageBlock = 'equipped' | 'missing' | 'noValue' | 'bag' | null;
 
 // `target` is an instance id (any instanced slot) or a stackable gear template id (relic).
 export function salvageBlockReason(save: SaveData, target: string): SalvageBlock {
   const hit = resolveGearInstance(save, target);
   if (hit) {
     if (isInstanceEquipped(save, target)) return 'equipped';
-    return hasSalvageValue(hit.item) ? null : 'noValue';
+    if (!hasSalvageValue(hit.item)) return 'noValue';
+    return salvageFits(save, target) ? null : 'bag';
   }
   const item = getGear(target);
   if (!item || isInstancedItem(item) || (save.inventory[target] ?? 0) <= 0) return 'missing';
   if (Object.values(save.equipped).includes(target)) return 'equipped';
-  return hasSalvageValue(item) ? null : 'noValue';
+  if (!hasSalvageValue(item)) return 'noValue';
+  return salvageFits(save, target) ? null : 'bag';
+}
+
+// The refund is a deliberate action's result: it must fit the inventory once the salvaged piece is gone (worst case: the chance of the bonus Essence is
+// counted as if it had rolled). Otherwise the salvage is blocked and nothing happens.
+function salvageFits(save: SaveData, target: string): boolean {
+  const hit = resolveGearInstance(save, target);
+  const item = hit ? hit.item : getGear(target);
+  if (!item) return false;
+  const rarity: Rarity = hit ? hit.instance.rarity : 'common';
+  const refund: Partial<Record<MaterialId, number>> = { ...getSalvageReturn(item).materials };
+  if ((SALVAGE_BONUS_CHANCE[rarity] ?? 0) > 0) refund.essence = (refund.essence ?? 0) + 1;
+  const placed = addWithOverflow(withoutPiece(save, target, !!hit), { materials: refund });
+  return stockIsEmpty(placed.leftover);
+}
+
+function withoutPiece(save: SaveData, target: string, instance: boolean): SaveData {
+  if (instance) return removeInstances(save, [target]);
+  const inv = { ...save.inventory, [target]: (save.inventory[target] ?? 0) - 1 };
+  if (inv[target] <= 0) delete inv[target];
+  return { ...save, inventory: inv };
 }
 
 export function applySalvage(
@@ -733,31 +754,22 @@ export function applySalvage(
   const item = hit ? hit.item : getGear(target);
   const rarity: Rarity = hit ? hit.instance.rarity : 'common';
 
-  let next: SaveData = save;
-  if (hit) next = removeInstances(next, [target]);
-  else {
-    const inv = { ...next.inventory, [target]: (next.inventory[target] ?? 0) - 1 };
-    if (inv[target] <= 0) delete inv[target];
-    next = { ...next, inventory: inv };
-  }
-
-  const materials = { ...next.materials };
-  for (const [mid, qty] of Object.entries(getSalvageReturn(item).materials)) {
-    materials[mid as MaterialId] = (materials[mid as MaterialId] ?? 0) + (qty as number);
-  }
+  // salvageBlockReason already checked that the refund (bonus included) fits the inventory once the piece is gone.
+  let next: SaveData = withoutPiece(save, target, !!hit);
+  next = addWithOverflow(next, { materials: getSalvageReturn(item).materials }).save;
   let gems = next.gems;
   let bonusGranted = false;
   const bonusChance = SALVAGE_BONUS_CHANCE[rarity] ?? 0;
   if (bonusChance > 0 && rng() < bonusChance) {
     bonusGranted = true;
     if (rng() < 0.5) {
-      materials.essence = (materials.essence ?? 0) + 1;
+      next = addWithOverflow(next, { materials: { essence: 1 } }).save;
     } else {
       const gid = GEMS[Math.floor(rng() * GEMS.length)].id;
       gems = { ...next.gems, [gid]: (next.gems[gid] ?? 0) + 1 };
     }
   }
-  return { save: { ...next, materials, gems }, bonusGranted };
+  return { save: { ...next, gems }, bonusGranted };
 }
 
 export function applyDiscardInstance(save: SaveData, id: GearInstanceId): SaveData | null {

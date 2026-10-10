@@ -1,6 +1,5 @@
 import type { CombatStats } from './derivedStats';
 import { getMaterial, MaterialId } from './materials';
-import type { HuntPouchItem } from './huntPouch';
 import { UniqueDrop, sanitizeUniqueDrops } from './uniques';
 import { HUNTING_DEPTHS, HuntingDepth } from './huntingZones';
 import T from './tunables';
@@ -99,9 +98,14 @@ export function huntValidMs(elapsedMs: number, baseCapMs: number, passCapMs: num
 
 // --- Pending reward ------------------------------------------------------------------------------------------------
 
-// What a stopped session earned, frozen at stop. Claiming applies exactly this and never rolls or recomputes anything.
-// The pouch allocation (what fit / what did not) was decided at stop too: the fitting drops are already in
-// `save.huntPouch`, `lost` is what did not fit and is gone for good (information only, never given back).
+// A stack of one material in a reward (what was rolled, what was left behind).
+export interface HuntItem {
+  itemId: MaterialId;
+  count: number;
+}
+
+// What a stopped session earned, frozen at stop. Claiming applies exactly this and never rolls anything. The loot goes into the inventory AT CLAIM
+// TIME (huntLifecycle.planHuntClaim): into the free space of that moment, rarest first; what does not fit is left behind for good (shown, never given back).
 export interface PendingHuntReward {
   id: string;
   zoneId: string;
@@ -119,12 +123,14 @@ export interface PendingHuntReward {
   gold: number;
   xp: number;
   bpXp: number;
-  drops: Partial<Record<MaterialId, number>>; // everything the session rolled
-  lost: HuntPouchItem[]; // the part that did not fit the pouch
-  // Unique pieces the session rolled. They never use the pouch: the claim delivers them to the bag, and any the bag has no room for stay HERE (the
-  // reward stays pending, with everything else already paid) until there is space.
+  drops: Partial<Record<MaterialId, number>>; // everything the session rolled; what does not fit the inventory at claim is left behind
+  lost: HuntItem[]; // already lost before this claim (only a reward written under the old Hunting Pouch rule has any); information only
+  // Units the player owned before the inventory rule (items an old Hunting Pouch held that the inventory had no room for at load). They are NEVER left
+  // behind: the claim moves what fits and the rest stays here (the reward stays pending, like a held unique) until there is space.
+  owed?: Partial<Record<MaterialId, number>>;
+  // Unique pieces the session rolled. The claim delivers them to the bag (a slot is reserved for them before any material), and any the bag has no
+  // room for stay HERE (the reward stays pending, with everything else already paid) until there is space.
   uniques: UniqueDrop[];
-  pouchCapacity: number; // pouch slots at stop time (tier + Battle Pass)
 }
 
 export function sanitizeWindows(raw: unknown): TimeWindow[] {
@@ -208,8 +214,8 @@ export function sanitizePendingHuntReward(raw: unknown): PendingHuntReward | nul
   const maxSub = T.hunting.subLevels;
   const ceilingSubLevel = Math.min(maxSub, Math.max(1, nonNegInt(r.ceilingSubLevel, maxSub)));
   const depth = HUNTING_DEPTHS.some((d) => d.id === r.depth) ? (r.depth as HuntingDepth) : 'shallow';
-  const lost: HuntPouchItem[] = Array.isArray(r.lost)
-    ? (r.lost as HuntPouchItem[])
+  const lost: HuntItem[] = Array.isArray(r.lost)
+    ? (r.lost as HuntItem[])
         .filter((i) => i && typeof i.itemId === 'string' && !!getMaterial(i.itemId) && nonNegInt(i.count, 1e9) > 0)
         .map((i) => ({ itemId: i.itemId, count: nonNegInt(i.count, 1e9) }))
     : [];
@@ -232,7 +238,7 @@ export function sanitizePendingHuntReward(raw: unknown): PendingHuntReward | nul
     bpXp: nonNegInt(r.bpXp, MAX_REWARD),
     drops: sanitizeMaterialRecord(r.drops),
     lost,
+    ...(Object.keys(sanitizeMaterialRecord(r.owed)).length > 0 ? { owed: sanitizeMaterialRecord(r.owed) } : {}),
     uniques: sanitizeUniqueDrops(r.uniques),
-    pouchCapacity: nonNegInt(r.pouchCapacity, 1000),
   };
 }

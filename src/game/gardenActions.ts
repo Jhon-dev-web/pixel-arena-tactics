@@ -3,6 +3,7 @@ import { getPlant, PlantId, plantHarvestXp, unlockedGardenPlots } from './garden
 import T from './tunables';
 import { MaterialId } from './materials';
 import { skillLevel } from './skills';
+import { addWithOverflow, stockIsEmpty } from './inventory';
 
 // The Garden's player actions as pure transitions on the save: each returns the WHOLE next save (or null when nothing
 // would change), so a click that arrives twice can never apply twice — the second sees the plot already cleared/planted.
@@ -13,6 +14,8 @@ const validNow = (now: number): boolean => typeof now === 'number' && Number.isF
 export interface HarvestResult {
   save: SaveData;
   harvested: { slot: number; plantId: PlantId; material: MaterialId; qty: number; xp: number }[];
+  // Ready plots whose yield did not fit the inventory: harvesting is a deliberate action, so they are NOT touched (the crop stays ready) and nothing is lost.
+  blocked: number[];
 }
 
 // Plant `plantId` in every listed plot that exists and is empty (the others are skipped). null = nothing planted
@@ -30,27 +33,35 @@ export function applyPlant(save: SaveData, plantId: string, slotIndices: number[
   return { ...save, gardenSlots };
 }
 
-// Harvest every listed plot that is READY. Each one gives its plant's fixed yield and that plant's Gardening XP
-// (plantHarvestXp), exactly like harvesting them one by one, and is cleared (remembering the plant for "plant again").
+// Harvest every listed plot that is READY and whose yield fits the inventory. Each one gives its plant's fixed yield and that plant's Gardening XP
+// (plantHarvestXp), exactly like harvesting them one by one, and is cleared (remembering the plant for "plant again"). A plot whose yield has no room
+// stays ready and is reported in `blocked`.
 // null = none was ready, so a repeated click / a second "harvest all" is a no-op.
 export function applyHarvest(save: SaveData, slotIndices: number[], now: number): HarvestResult | null {
   if (!validNow(now)) return null;
-  const materials = { ...save.materials };
+  let bag = save;
   const gardenSlots = [...save.gardenSlots];
   const harvested: HarvestResult['harvested'] = [];
+  const blocked: number[] = [];
   for (const i of new Set(slotIndices)) {
     if (!Number.isInteger(i) || i < 0 || i >= gardenSlots.length) continue;
     const status = computeGardenSlotStatus(save, now, i);
     const def = status.plantId ? getPlant(status.plantId) : undefined;
     if (!status.ready || !def) continue;
-    materials[def.material] = (materials[def.material] ?? 0) + def.qty;
+    const placed = addWithOverflow(bag, { materials: { [def.material]: def.qty } });
+    if (!stockIsEmpty(placed.leftover)) {
+      blocked.push(i);
+      continue;
+    }
+    bag = placed.save;
     gardenSlots[i] = { plantId: null, startedAt: 0, lastPlantId: def.id, fertilized: false };
     harvested.push({ slot: i, plantId: def.id, material: def.material, qty: def.qty, xp: plantHarvestXp(def) });
   }
-  if (harvested.length === 0) return null;
+  if (harvested.length === 0 && blocked.length === 0) return null;
   return {
-    save: { ...save, materials, gardenSlots, skillXp: { ...save.skillXp, gardening: save.skillXp.gardening + harvested.reduce((sum, h) => sum + h.xp, 0) } },
+    save: { ...bag, gardenSlots, skillXp: { ...save.skillXp, gardening: save.skillXp.gardening + harvested.reduce((sum, h) => sum + h.xp, 0) } },
     harvested,
+    blocked,
   };
 }
 

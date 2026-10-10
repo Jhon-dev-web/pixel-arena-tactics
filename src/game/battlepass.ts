@@ -1,7 +1,8 @@
 import { GemId } from './gems';
 import { MaterialId } from './materials';
 import { ConsumableId } from './consumables';
-import { MAX_BATTLE_PASS_LEVEL } from './engine';
+import { MAX_BATTLE_PASS_LEVEL, isBattlePassActive, SaveData } from './engine';
+import { addWithOverflow, stockIsEmpty } from './inventory';
 
 export type BattlePassRewardKind = 'gold' | 'material' | 'consumable' | 'gem' | 'shards' | 'cosmetic';
 
@@ -106,4 +107,44 @@ export const BATTLE_PASS_TRACK: BattlePassLevelDef[] = Array.from({ length: MAX_
 
 export function getBattlePassLevelDef(level: number): BattlePassLevelDef | undefined {
   return BATTLE_PASS_TRACK.find((l) => l.level === level);
+}
+
+export interface BattlePassClaimResult {
+  save: SaveData | null; // null = nothing to claim (locked, already claimed, no Pass for the premium track, unknown level)
+  blocked?: boolean; // the item reward did not fit the inventory: the reward stays claimable, nothing was paid
+}
+
+// Claim one level of one track. Gold / shards / gems / cosmetics always go in; a material or consumable goes into the inventory as a deliberate action: if it
+// would take more slots than the bag has it is refused (blocked) and stays claimable.
+export function applyBattlePassClaim(s: SaveData, level: number, track: 'free' | 'premium', now: number): BattlePassClaimResult {
+  if (level > s.battlePassLevel) return { save: null };
+  if (track === 'premium' && !isBattlePassActive(s, now)) return { save: null };
+  if (s.claimedPassRewards[track].includes(level)) return { save: null };
+  const def = getBattlePassLevelDef(level);
+  if (!def) return { save: null };
+  const reward = def[track];
+  let next: SaveData = { ...s, claimedPassRewards: { ...s.claimedPassRewards, [track]: [...s.claimedPassRewards[track], level] } };
+  switch (reward.kind) {
+    case 'gold':
+      next = { ...next, gold: s.gold + reward.amount };
+      break;
+    case 'shards':
+      next = { ...next, shards: s.shards + reward.amount };
+      break;
+    case 'material':
+    case 'consumable': {
+      if (!reward.id) break;
+      const placed = addWithOverflow(next, reward.kind === 'material' ? { materials: { [reward.id]: reward.amount } } : { consumables: { [reward.id]: reward.amount } }, { now });
+      if (!stockIsEmpty(placed.leftover)) return { save: null, blocked: true };
+      next = placed.save;
+      break;
+    }
+    case 'gem':
+      if (reward.id) next = { ...next, gems: { ...s.gems, [reward.id]: (s.gems[reward.id as GemId] ?? 0) + reward.amount } };
+      break;
+    case 'cosmetic':
+      if (reward.id && !s.cosmetics.includes(reward.id)) next = { ...next, cosmetics: [...s.cosmetics, reward.id] };
+      break;
+  }
+  return { save: next };
 }

@@ -448,7 +448,10 @@
     "useOnPlot": "Use no canteiro da Horta",
     "overCapacity": "acima do limite",
     "buffActive": "Ativo: faltam {t}",
-    "buffsRunning": "Efeitos ativos"
+    "buffsRunning": "Efeitos ativos",
+    "bagFullAction": "Inventário cheio! Libere espaço antes.",
+    "leftBehind": "{n} ficaram para trás (inventário cheio)",
+    "salvageBagFull": "Sem espaço para o que a desmontagem devolve. Libere espaço antes."
   },
   "profile": {
     "title": "⚔️ PERFIL DO HERÓI",
@@ -476,16 +479,6 @@
     "regenStat": "Regenera {pct}% da vida/s",
     "attackSpeedStat": "+{pct}% velocidade de ataque",
     "burnTitle": "Queimando"
-  },
-  "huntPouch": {
-    "title": "Bolsa de Caça",
-    "slots": "{n} Slots",
-    "passBonus": "Passe",
-    "upgrade": "Melhorar",
-    "pouch_t1": "Bolsos Básicos",
-    "pouch_t2": "Bolsa de Couro",
-    "pouch_t3": "Mochila Reforçada",
-    "pouch_t4": "Alforge Dimensional"
   },
   "shop": {
     "title": "Loja",
@@ -764,14 +757,11 @@
     "tier_common": "Comum",
     "tier_uncommon": "Refino",
     "tier_rare": "Nobre",
-    "lostItemsWarning": "Bolsa cheia — alguns itens ficaram para trás: não havia espaço para carregá-los. Melhore sua Bolsa no Perfil do Herói; o Passe de Batalha também aumenta a capacidade.",
     "claimFirst": "Resgate a recompensa da Caça antes de iniciar outra.",
     "switchClaimFirst": "Caça encerrada. Resgate a recompensa e depois escolha a nova zona.",
     "sessionFrozen": "Equipamento, atributos e bônus travados no início desta Caça. Mudanças valem a partir da próxima sessão (buffs e Passe ativados agora valem daqui para frente).",
-    "bagFullWarning": "Mochila cheia! Libere espaço no inventário para descarregar o restante.",
-    "uniquesHeld": "Mochila cheia — as peças únicas ficam guardadas aqui até você liberar espaço. Elas não ocupam a Bolsa de Caça.",
-    "uniquesHeldToast": "Mochila cheia! Libere espaço para receber a peça única — ela continua guardada.",
-    "pouchLabel": "Bolsa ({n}/{m})",
+    "uniquesHeld": "Inventário cheio — as peças únicas ficam guardadas aqui até você liberar espaço.",
+    "uniquesHeldToast": "Inventário cheio! Libere espaço para receber o que sobrou — continua guardado.",
     "depth_shallow": "Raso",
     "depth_dense": "Denso",
     "depth_deep": "Profundo",
@@ -805,8 +795,6 @@
     "capLine": "Acumula até {n} h",
     "capLinePass": "Acumula até {n} h (com o Passe: {p} h)",
     "capLineActive": "Acumula até {n} h (Passe ativo)",
-    "pouchTypes": "Bolsa: {n} tipos de material por caçada",
-    "pouchExplain": "Tipos de material diferentes que cabem por caçada.",
     "startLocked": "Destrava no Andar {n}",
     "startNeedCp": "Requer {n} CP",
     "startBusy": "Herói ocupado em outra atividade",
@@ -822,8 +810,6 @@
     "xpEarned": "XP ganho",
     "goldEarned": "Ouro ganho",
     "collected": "Coletado",
-    "pouchSlots": "Bolsa {n}/{m}",
-    "lostCount": "{n} perdidos — bolsa cheia",
     "uniquesFound": "Peças únicas encontradas",
     "noUniques": "Nenhuma ainda",
     "promotedRange": "Nível da zona subiu de {a} para {b}",
@@ -833,7 +819,23 @@
     "rewardCounted": "Contado",
     "rewardXp": "XP",
     "rewardGold": "Ouro",
-    "rewardPromotions": "Promoções de nível"
+    "rewardPromotions": "Promoções de nível",
+    "leftBehindToast": "{n} itens ficaram para trás: o inventário estava cheio.",
+    "invUsed": "Inventário: {n}/{m}",
+    "collectedGoesTo": "Isto entra no inventário quando você resgata.",
+    "invFits": "Inventário: {n}/{m} — cabe tudo",
+    "invMissing": "Faltam {n} espaços — ficariam para trás:",
+    "invLeftOf": "{n} de {name}",
+    "invFullIn": "Inventário cheio em ~{t} (estimativa pelo ritmo atual)",
+    "goesToInventory": "Vai para o inventário",
+    "invAfterClaim": "Inventário: {n}/{m}, depois de resgatar: {a}/{m}",
+    "owedHeld": "Itens que você já tinha da antiga Bolsa de Caça ainda não couberam: ficam guardados aqui até haver espaço.",
+    "leftBehindWarning": "Inventário cheio — {n} itens ficam para trás ao resgatar. Abra o inventário antes para liberar espaço.",
+    "openInventory": "Abrir inventário",
+    "invFree": "Inventário: {n}/{m} — {f} espaços livres",
+    "overflowWarning": "No ritmo estimado, o inventário enche em ~{t}, antes do limite de {h} h da coleta: o resto ficaria para trás.",
+    "invExplain": "O que a caça rende entra direto no inventário ao resgatar. Sem espaço, o excesso fica para trás.",
+    "rewardWaiting": "Recompensa esperando para ser resgatada"
   },
   "deliveries": {
     "title": "Pedidos",
@@ -1035,7 +1037,8 @@
     "nextUnlock": "Próximo desbloqueio: {name} (Nv {n})",
     "nextPlot": "Próximo canteiro: Nv {n}",
     "allUnlocked": "Tudo desbloqueado",
-    "plotsOpen": "{n} de {max} canteiros abertos"
+    "plotsOpen": "{n} de {max} canteiros abertos",
+    "bagFull": "Inventário cheio! A colheita espera pronta."
   },
   "quests": {
     "title": "Missões",
@@ -1078,7 +1081,6 @@
     "perkStorage": "Armazém 24h",
     "perkLuck": "+25% Sorte em Drops",
     "perkDeliveries": "+1 Pedido, +1 Troca por dia e +{n}% de XP nas Entregas",
-    "perkPouch": "+2 Slots na Bolsa de Caça",
     "perkRepair": "-20% Custo de Reparo",
     "levelLabel": "Nível {n} / {m}",
     "xpProgress": "{cur} / {need} XP",
@@ -1087,7 +1089,8 @@
     "claimAll": "Resgatar Todos",
     "cosmeticReward": "Cosmético Exclusivo da Temporada",
     "colFree": "Grátis",
-    "colPremium": "Premium"
+    "colPremium": "Premium",
+    "perkBag": "+{n} espaços no inventário"
   },
   "titles": {
     "none": "Nenhum",

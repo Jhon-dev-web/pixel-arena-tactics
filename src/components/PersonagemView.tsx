@@ -17,7 +17,6 @@ export default function PersonagemView({
   onEquip,
   onUnequip,
   onSelectTitle,
-  onUpgradePouch,
   onDiscard,
   onReforge,
   onSalvage,
@@ -30,7 +29,6 @@ export default function PersonagemView({
   onEquip: (id: string) => void;
   onUnequip: (id: string) => void;
   onSelectTitle: (id: string | null) => void;
-  onUpgradePouch: () => void;
   onDiscard: (kind: 'gear' | 'material' | 'consumable', id: string) => void;
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
@@ -66,7 +64,7 @@ export default function PersonagemView({
 
       <section className="dh-card personagem-equip">
         <h3 className="dh-card-title">{t('profile.equipTab')}</h3>
-        <EquipmentPanel save={save} onUpgradePouch={onUpgradePouch} />
+        <EquipmentPanel save={save} />
       </section>
 
       <section className="dh-card personagem-attrs">

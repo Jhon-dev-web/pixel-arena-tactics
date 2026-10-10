@@ -5,8 +5,8 @@
 //   - BattleModal.tsx `step` loop   -> runDungeon     (the requestAnimationFrame loop, made event-driven)
 //   - App.tsx finishRun (412-488)   -> applyDungeonRun
 //   - App.tsx enterDungeon (380-410), (gathering is src/game/gathering.ts now),
-//     refineMaterial (1062-1087), buyConsumable (986-1010), attrChange (1122-1131), claimQuest (600-614),
-//     upgradeHuntPouch (885-896)
+//     attrChange (1122-1131), claimQuest (600-614)
+//   (refining, Alchemy and the Shop are src/game/craftActions.ts now: the very functions App.tsx calls)
 // No combat or reward MATH is re-implemented: every number comes out of src/game.
 import { DURABILITY_LOSS_PER_STAGE } from '../../src/game/gear';
 import {
@@ -36,14 +36,11 @@ import { unlockedZoneIds } from '../../src/game/huntingZones';
 import { isDungeonBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
 import { UniqueDrop, addUniqueInstance } from '../../src/game/uniques';
 import { applyClaimGathering, applyStartGathering } from '../../src/game/gathering';
-import { getRefiningRecipe } from '../../src/game/refining';
-import { getPotionRecipe } from '../../src/game/potions';
-import { getConsumable, CONSUMABLE_STACK, ConsumableId } from '../../src/game/consumables';
-import { isBagFull } from '../../src/game/inventory';
-import { hasMaterials } from '../../src/game/materials';
+import { applyBuyConsumable, applyCraftPotion, applyRefine } from '../../src/game/craftActions';
+import { ConsumableId } from '../../src/game/consumables';
+import { addForced } from '../../src/game/inventory';
 import { isClaimed, isComplete, QUESTS_ACHIEVEMENTS, QUESTS_DAILY, QuestContext } from '../../src/game/quests';
 import { questMaxRefine } from '../../src/game/gearInstances';
-import { nextHuntPouchTierDef } from '../../src/game/huntPouch';
 import { activeTonicStats, goldMultiplier, isBuffActive } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
 
@@ -243,8 +240,7 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
   const rewards = run.rewards;
   const outcome = run.outcome;
   const startFloor = run.startFloor;
-  const mats = { ...s.materials };
-  for (const [mid, qty] of Object.entries(rewards.drops ?? {})) mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
+  const looted = addForced(s, { materials: rewards.drops ?? {} });
   const stages = Math.max(0, rewards.stages);
   const success = outcome === 'retreat' && stages > 0;
   const atCap = playerLevel(s.xp) >= 100;
@@ -297,7 +293,7 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
     gems,
     cosmetics,
     dungeonCheckpoints,
-    materials: mats,
+    materials: looted.materials,
     shards: s.shards + rewards.shards,
     xp: atCap ? s.xp : s.xp + xpGain,
     victories: s.victories + (success ? 1 : 0),
@@ -331,70 +327,31 @@ export interface GatherClaim {
   save: SaveData;
   material: MaterialId;
   units: number;
+  leftBehind: number;
   hours: number;
 }
 
 export function claimGathering(s: SaveData, now: number): GatherClaim | null {
   const claim = applyClaimGathering(s, s.activeOreId ? 'mining' : 'woodcutting', now);
-  return claim ? { save: claim.save, material: claim.material, units: claim.units, hours: claim.hours } : null;
+  return claim ? { save: claim.save, material: claim.material, units: claim.units, leftBehind: claim.leftBehind, hours: claim.hours } : null;
 }
 
 // ---- small shop / station actions ---------------------------------------------------------------------------------
 
-// App.tsx refineMaterial (1062-1087)
+// Refining stations, Alchemy and the Shop (craftActions.ts): null = refused (not enough gold / level / materials, or the result does not fit the inventory).
 export function refineMaterial(s: SaveData, recipeId: string): SaveData | null {
-  const recipe = getRefiningRecipe(recipeId);
-  if (!recipe) return null;
-  if (s.gold < recipe.cost) return null;
-  if (playerLevel(s.xp) < recipe.requiredLevel) return null;
-  if (!hasMaterials(s.materials, recipe.input)) return null;
-  const mats = { ...s.materials };
-  for (const [mid, count] of Object.entries(recipe.input)) mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
-  mats[recipe.output] = (mats[recipe.output] ?? 0) + recipe.outputQty;
-  return {
-    ...s,
-    gold: s.gold - recipe.cost,
-    materials: mats,
-    quests: { ...s.quests, daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 } },
-  };
+  return applyRefine(s, recipeId).save ?? null;
 }
 
-// App.tsx craftPotion: one Alchemy craft (gold + plants / drops -> one consumable).
 export function craftPotion(s: SaveData, recipeId: ConsumableId): SaveData | null {
-  const recipe = getPotionRecipe(recipeId);
-  if (!recipe || s.gold < recipe.cost || playerLevel(s.xp) < recipe.requiredLevel || !hasMaterials(s.materials, recipe.input)) return null;
-  const mats = { ...s.materials };
-  for (const [mid, count] of Object.entries(recipe.input)) mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
-  return { ...s, gold: s.gold - recipe.cost, materials: mats, consumables: { ...s.consumables, [recipe.id]: (s.consumables[recipe.id] ?? 0) + 1 }, quests: { ...s.quests, daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 } } };
+  return applyCraftPotion(s, recipeId).save ?? null;
 }
 
-// App.tsx buyConsumable (986-1010)
 export function buyConsumable(s: SaveData, id: ConsumableId): SaveData | null {
-  const def = getConsumable(id);
-  if (!def || !def.purchasable) return null;
-  if (s.gold < def.cost) return null;
-  const qty = s.consumables[id] ?? 0;
-  if (qty >= CONSUMABLE_STACK) return null;
-  if (qty === 0 && isBagFull(s)) return null;
-  return {
-    ...s,
-    gold: s.gold - def.cost,
-    consumables: { ...s.consumables, [id]: qty + 1 },
-    quests: { ...s.quests, daily: { ...s.quests.daily, purchases: (s.quests.daily.purchases ?? 0) + 1 } },
-  };
+  return applyBuyConsumable(s, id).save ?? null;
 }
 
-// App.tsx upgradeHuntPouch (885-896)
-export function upgradeHuntPouch(s: SaveData): SaveData | null {
-  const next = nextHuntPouchTierDef(s.huntPouch.tier);
-  if (!next || !next.cost) return null;
-  if (s.gold < next.cost.gold || !hasMaterials(s.materials, next.cost.materials)) return null;
-  const materials = { ...s.materials };
-  for (const [mid, need] of Object.entries(next.cost.materials)) materials[mid as MaterialId] = (materials[mid as MaterialId] ?? 0) - (need as number);
-  return { ...s, gold: s.gold - next.cost.gold, materials, huntPouch: { ...s.huntPouch, tier: next.tier } };
-}
-
-// App.tsx claimQuest (600-614), for every quest that is complete and not claimed yet.
+// App.tsx claimQuest, for every quest that is complete and not claimed yet.
 export function claimQuests(s: SaveData): { save: SaveData; gold: number } {
   let cur = s;
   let gold = 0;

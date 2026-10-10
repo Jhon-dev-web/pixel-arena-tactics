@@ -1,4 +1,5 @@
 import { addBattlePassXp, computeMiningStatus, computeWoodcuttingStatus, SaveData, snapshotGatherPass } from './engine';
+import { addWithOverflow } from './inventory';
 import { MaterialId } from './materials';
 import { getOreTier, isOreTierUnlocked } from './ores';
 import { skillLevel } from './skills';
@@ -14,14 +15,16 @@ export interface GatherClaim {
   save: SaveData;
   kind: GatherKind;
   material: MaterialId;
-  units: number;
+  units: number; // what the session produced
+  leftBehind: number; // the part of it the inventory had no room for (gone for good, shown to the player)
   gold: number;
   hours: number;
 }
 
 const validNow = (now: number): boolean => typeof now === 'number' && Number.isFinite(now) && now > 0;
 
-// Collect the running session of `kind`: the accrued units go to the bag, the skill gets units x xpPerUnit, the session ends. Both skills pay the same Battle Pass XP
+// Collect the running session of `kind`: the accrued units go to the inventory (as many as fit - a gathering session is passive, so what has no room is
+// left behind and reported), the skill gets units x xpPerUnit, the session ends. Both skills pay the same Battle Pass XP
 // per hour collected (T.battlePass.xpPerMiningHour, one rule for the two so they cannot diverge). null = no session running (or a bad clock).
 export function applyClaimGathering(save: SaveData, kind: GatherKind, now: number): GatherClaim | null {
   if (!validNow(now)) return null;
@@ -31,10 +34,10 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
     if (!status.oreId) return null;
     const hours = status.pendingMs / 3600000;
     const { battlePassLevel, battlePassXp } = addBattlePassXp(save, Math.floor(hours * T.battlePass.xpPerMiningHour));
+    const placed = addWithOverflow(save, { materials: { [status.oreId]: status.oreReady } });
     const next: SaveData = {
-      ...save,
+      ...placed.save,
       gold: save.gold + status.goldReady,
-      materials: { ...save.materials, [status.oreId]: (save.materials[status.oreId] ?? 0) + status.oreReady },
       skillXp: { ...save.skillXp, mining: save.skillXp.mining + status.oreReady * T.skills.xpPerUnit },
       activeOreId: null,
       miningPass: null,
@@ -42,17 +45,17 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
       battlePassLevel,
       battlePassXp,
     };
-    return { save: next, kind, material: status.oreId, units: status.oreReady, gold: status.goldReady, hours };
+    return { save: next, kind, material: status.oreId, units: status.oreReady, leftBehind: placed.leftover.materials[status.oreId] ?? 0, gold: status.goldReady, hours };
   }
   if (!save.activeWoodId) return null;
   const status = computeWoodcuttingStatus(save, now);
   if (!status.woodId) return null;
   const hours = status.pendingMs / 3600000;
   const { battlePassLevel, battlePassXp } = addBattlePassXp(save, Math.floor(hours * T.battlePass.xpPerMiningHour));
+  const placed = addWithOverflow(save, { materials: { [status.woodId]: status.woodReady } });
   const next: SaveData = {
-    ...save,
+    ...placed.save,
     gold: save.gold + status.goldReady,
-    materials: { ...save.materials, [status.woodId]: (save.materials[status.woodId] ?? 0) + status.woodReady },
     skillXp: { ...save.skillXp, woodcutting: save.skillXp.woodcutting + status.woodReady * T.skills.xpPerUnit },
     activeWoodId: null,
     woodcuttingPass: null,
@@ -60,7 +63,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
     battlePassLevel,
     battlePassXp,
   };
-  return { save: next, kind, material: status.woodId, units: status.woodReady, gold: status.goldReady, hours };
+  return { save: next, kind, material: status.woodId, units: status.woodReady, leftBehind: placed.leftover.materials[status.woodId] ?? 0, gold: status.goldReady, hours };
 }
 
 export interface GatherStart {

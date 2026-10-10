@@ -2,7 +2,7 @@ import { CSSProperties, useMemo, useState } from 'react';
 import ActiveBuffs from './ActiveBuffs';
 import { FramedSprite, MatIcon, Meter, MonsterPortrait, RarityChip, ZoneUniques } from './HuntParts';
 import { fmtNum, t } from '../locales';
-import { computeCP, effectivePouchSlots, getHuntProgress, huntPromotionRequiredWins, isBattlePassActive, SaveData } from '../game/engine';
+import { computeCP, getHuntProgress, huntPromotionRequiredWins, isBattlePassActive, SaveData } from '../game/engine';
 import T from '../game/tunables';
 import {
   DEFAULT_HUNTING_DEPTH,
@@ -19,7 +19,9 @@ import {
   recommendedCpForDepth,
 } from '../game/huntingZones';
 import { estimateHuntYield, HuntYieldEstimate } from '../game/huntEstimate';
-import { defaultZone, depthsOpen, fmtRate, matName, startBlockedReason, zoneState, ZoneState } from '../game/huntView';
+import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
+import { MaterialId } from '../game/materials';
+import { defaultZone, depthsOpen, fmtRate, fmtSpan, matName, startBlockedReason, zoneState, ZoneState } from '../game/huntView';
 
 const zoneName = (zone: HuntingZoneDef): string => t(`dungeon.${zone.nameKey}`);
 const monsterName = (zone: HuntingZoneDef): string => t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`);
@@ -127,6 +129,13 @@ export default function HuntSelection({
   const [now] = useState(() => Date.now());
   const passActive = isBattlePassActive(save, now);
   const passCapHours = Math.max(zone.offlineCapHours, T.battlePass.capHours);
+  // The inventory the hunt would meet: its free space now, and whether this hero's estimated yield would overflow it before the storage cap (an estimate).
+  const depthEstimate = estimates[HUNTING_DEPTHS.findIndex((d) => d.id === depth)] ?? null;
+  const capHours = passActive ? passCapHours : zone.offlineCapHours;
+  const inv = huntInventoryStatus(save, zone.id, {});
+  const perHour: Partial<Record<MaterialId, number>> = {};
+  for (const m of depthEstimate?.materialsPerHour ?? []) perHour[m.material] = m.perHour;
+  const overflowIn = zoneOpen && depthEstimate && depthEstimate.outlook !== 'cannot' ? hoursUntilInventoryFull(save, zone.id, {}, perHour, capHours) : null;
 
   return (
     <div className="modal-backdrop">
@@ -248,8 +257,11 @@ export default function HuntSelection({
                         ? t('hunting.capLinePass', { n: zone.offlineCapHours, p: passCapHours })
                         : t('hunting.capLine', { n: zone.offlineCapHours })}
                   </div>
-                  <div className="hunt-fact">{t('hunting.pouchTypes', { n: effectivePouchSlots(save, now) })}</div>
-                  <p className="hunt-hint">{t('hunting.pouchExplain')}</p>
+                  <div className={`hunt-fact${inv.used >= inv.capacity ? ' bad' : inv.used >= inv.capacity * 0.85 ? ' warn' : ''}`}>{t('hunting.invFree', { n: inv.used, m: inv.capacity, f: inv.free })}</div>
+                  {overflowIn !== null && (
+                    <p className="hunt-hint bad">{t('hunting.overflowWarning', { t: fmtSpan(Math.max(overflowIn, 1 / 60) * 3600 * 1000), h: capHours })}</p>
+                  )}
+                  <p className="hunt-hint">{t('hunting.invExplain')}</p>
                 </section>
               </>
             )}

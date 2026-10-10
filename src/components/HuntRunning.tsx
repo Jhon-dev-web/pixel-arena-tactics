@@ -5,11 +5,12 @@ import MaterialIcon from './MaterialIcon';
 import { MatIcon, Meter } from './HuntParts';
 import UniqueDrops from './UniqueDrops';
 import { fmtNum, t } from '../locales';
-import { buildCombatStats, computeHuntingStatus, effectivePouchSlots, huntPromotionRequiredWins, SaveData } from '../game/engine';
+import { buildCombatStats, computeHuntingStatus, huntPromotionRequiredWins, SaveData } from '../game/engine';
 import T from '../game/tunables';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, huntingEnemyNameKey } from '../game/huntingZones';
-import { allocateToPouch } from '../game/huntPouch';
-import { getMaterial } from '../game/materials';
+import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
+import { estimateHuntYield } from '../game/huntEstimate';
+import { getMaterial, MaterialId } from '../game/materials';
 import { playerSpriteUrl } from '../game/sprites';
 import { fmtRate, fmtSpan, matName } from '../game/huntView';
 import { useDisplayName } from '../game/usernameContext';
@@ -54,14 +55,17 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
   const ratesReady = status.pendingMs >= RATE_MIN_MS;
   const rate = (n: number): string => (ratesReady ? t('hunting.perHour', { n: fmtRate(n / hours) }) : '—');
 
-  // What the pouch would hold if the hunt stopped now: the session's drops go in the order the engine uses at stop; what does not fit is lost.
-  const capacity = effectivePouchSlots(save, now);
-  const order = zone.drops.map((d) => d.material);
-  const preview = allocateToPouch(save.huntPouch, status.drops, order, capacity);
-  // shown common -> rare like the zone lists them (the pouch allocates rare first); anything already in the pouch from before goes last
-  const rank = (id: string): number => (order.indexOf(id as (typeof order)[number]) + order.length + 1) % (order.length + 1);
-  const slotItems = [...preview.items].sort((x, y) => rank(x.itemId) - rank(y.itemId));
-  const lostNow = (id: string): number => (preview.lostItems.find((i) => i.itemId === id)?.count ?? 0) - (save.huntPouch.lostItems.find((i) => i.itemId === id)?.count ?? 0);
+  // What claiming would do to the inventory if the hunt stopped now: the very rule of the claim (planHuntClaim), so this line can never disagree with it.
+  const inv = huntInventoryStatus(save, zone.id, status.drops, status.uniques);
+  // "Full in ~": the drops so far extrapolated at their current rate (the zone's estimate until the first minute is in); an estimate, and labelled as one.
+  const estimate = ratesReady ? null : estimateHuntYield(save, zone.id, depth);
+  const perHour: Partial<Record<MaterialId, number>> = {};
+  for (const d of zone.drops) perHour[d.material] = ratesReady ? (status.drops[d.material] ?? 0) / hours : (estimate?.materialsPerHour.find((m) => m.material === d.material)?.perHour ?? 0);
+  const hoursLeft = Math.max(0, status.capMs - status.pendingMs) / MS_PER_HOUR;
+  const fullIn = inv.fits && !status.full ? hoursUntilInventoryFull(save, zone.id, status.drops, perHour, hoursLeft, status.uniques) : null;
+  // shown common -> rare like the zone lists them
+  const slotItems = zone.drops.map((d) => ({ itemId: d.material, count: status.drops[d.material] ?? 0 }));
+  const usedClass = inv.used >= inv.capacity ? ' full' : inv.used >= inv.capacity * 0.85 ? ' warn' : '';
 
   const required = huntPromotionRequiredWins(status.ceilingSubLevel);
   const maxed = status.ceilingSubLevel >= T.hunting.subLevels;
@@ -111,17 +115,16 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
             <section className="hunt-block">
               <div className="hunt-block-head">
                 <h4 className="hunt-section-title">{t('hunting.collected')}</h4>
-                <span className="hunt-pouch-count">{t('hunting.pouchSlots', { n: preview.items.length, m: capacity })}</span>
+                <span className={`hunt-loot-count${usedClass}`}>{t('hunting.invUsed', { n: inv.used, m: inv.capacity })}</span>
               </div>
-              <div className="hunt-pouch">
-                {Array.from({ length: capacity }, (_, i) => {
-                  const item = slotItems[i];
-                  const entry = item ? zone.drops.find((d) => d.material === item.itemId) : undefined;
-                  const def = item ? getMaterial(item.itemId) : undefined;
+              <div className="hunt-loot">
+                {slotItems.map((item) => {
+                  const entry = zone.drops.find((d) => d.material === item.itemId);
+                  const def = getMaterial(item.itemId);
                   return (
-                    <div className="hunt-pouch-cell" key={i}>
-                      <span className={`inv-slot hunt-pouch-slot${item ? '' : ' empty'}${entry ? ` mat-${entry.rarity}` : ''}`} title={item ? matName(item.itemId) : undefined}>
-                        {item && def && (
+                    <div className="hunt-loot-cell" key={item.itemId}>
+                      <span className={`inv-slot hunt-loot-slot${item.count > 0 ? '' : ' empty'}${entry ? ` mat-${entry.rarity}` : ''}`} title={matName(item.itemId)}>
+                        {def && (
                           <>
                             <span className="inv-icon">
                               <MaterialIcon item={def} />
@@ -130,24 +133,26 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
                           </>
                         )}
                       </span>
-                      <span className="hunt-pouch-rate">{entry ? rate(status.drops[entry.material] ?? 0) : ''}</span>
+                      <span className="hunt-loot-rate">{entry ? rate(status.drops[entry.material] ?? 0) : ''}</span>
                     </div>
                   );
                 })}
               </div>
-              {zone.drops.map((d) => {
-                const lost = lostNow(d.material);
-                return (
-                  lost > 0 && (
-                    <div className="hunt-collected-lost" key={d.material}>
-                      <MatIcon id={d.material} />
-                      <span>
-                        {matName(d.material)}: {t('hunting.lostCount', { n: fmtNum(lost) })}
-                      </span>
-                    </div>
-                  )
-                );
-              })}
+              <p className="hunt-inv-note">{t('hunting.collectedGoesTo')}</p>
+              {inv.fits ? (
+                <div className="hunt-inv-line ok">{t('hunting.invFits', { n: inv.used, m: inv.capacity })}</div>
+              ) : (
+                <div className="hunt-inv-line bad">
+                  {t('hunting.invMissing', { n: inv.missingSlots })}
+                  {inv.leftBehind.map((i) => (
+                    <span className="hunt-collected-lost" key={i.itemId}>
+                      <MatIcon id={i.itemId} />
+                      <span>{t('hunting.invLeftOf', { n: fmtNum(i.count), name: matName(i.itemId) })}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {fullIn !== null && <div className="hunt-inv-line eta">{t('hunting.invFullIn', { t: fmtSpan(Math.max(fullIn, 1 / 60) * MS_PER_HOUR) })}</div>}
               {!ratesReady && <p className="hunt-hint">{t('hunting.warmingUp')}</p>}
             </section>
 

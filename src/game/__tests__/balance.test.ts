@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { computeCP, defaultSave, effectivePouchSlots, normalizeSave, SaveData } from '../engine';
-import { applyHuntStart, applyHuntStop } from '../huntLifecycle';
-import { HUNT_POUCH_TIERS, allocateToPouch } from '../huntPouch';
+import { computeCP, defaultSave, normalizeSave } from '../engine';
+import { applyHuntClaim, applyHuntStart, applyHuntStop, planHuntClaim } from '../huntLifecycle';
+import { DEFAULT_INVENTORY_CAPACITY, inventoryCapacity, inventorySlotsUsed } from '../inventory';
 import { HUNTING_ZONES } from '../huntingZones';
 import { dungeonEnemyKindForFloor, MAX_DUNGEON_FLOOR, recommendedCpForFloor } from '../dungeon';
 import { RECOMMENDED_CP_BY_FLOOR } from '../recommendedCp';
@@ -20,37 +20,13 @@ describe('balance decisions (docs/BALANCE_CHANGES.md)', () => {
     expect(T.battle.defeatGoldKept).toBe(0.75);
   });
 
-  it('every hunting zone drops at most as many material types as the first Hunting Pouch has slots', () => {
-    expect(HUNT_POUCH_TIERS.map((t) => t.slots)).toEqual([3, 4, 6, 8]);
-    for (const z of HUNTING_ZONES) expect(z.drops.length).toBeLessThanOrEqual(HUNT_POUCH_TIERS[0].slots);
+  it('a hunting zone drops three material types at most (a short hunt must not need more than a few slots)', () => {
+    for (const z of HUNTING_ZONES) expect(z.drops.length).toBeLessThanOrEqual(3);
   });
 });
 
-describe('Hunting Pouch capacity comes from the tier, never from the save', () => {
-  it('a tier-1 pouch holds 3 types for new saves and for saves written when it held 2', () => {
-    expect(effectivePouchSlots(defaultSave(), NOW)).toBe(3);
-    const oldSave = { ...wire(defaultSave()), huntPouch: { tier: 1, items: [{ itemId: 'leather_scrap', count: 7 }], lostItems: [{ itemId: 'demon_claw', count: 2 }], slots: 2, capacity: 2 } };
-    const loaded = normalizeSave(oldSave);
-    expect(loaded.huntPouch.tier).toBe(1);
-    expect(effectivePouchSlots(loaded, NOW)).toBe(3);
-    // existing contents survive the load untouched
-    expect(loaded.huntPouch.items).toEqual([{ itemId: 'leather_scrap', count: 7 }]);
-  });
-
-  it('higher tiers and the Battle Pass bonus are unchanged', () => {
-    const at = (tier: number, pass: boolean): SaveData => ({ ...defaultSave(), huntPouch: { tier, items: [], lostItems: [] }, hasBattlePass: pass, battlePassExpiresAt: null });
-    expect([1, 2, 3, 4].map((t) => effectivePouchSlots(at(t, false), NOW))).toEqual([3, 4, 6, 8]);
-    expect(effectivePouchSlots(at(1, true), NOW)).toBe(3 + T.battlePass.pouchBonusSlots);
-  });
-
-  it('allocateToPouch keeps all three types of a zone when the pouch has 3 slots', () => {
-    const order = HUNTING_ZONES[0].drops.map((d) => d.material);
-    const out = allocateToPouch({ tier: 1, items: [], lostItems: [] }, { leather_scrap: 147, demon_claw: 48, demon_core: 4 }, order, 3);
-    expect(out.lostItems).toEqual([]);
-    expect(out.items.map((i) => i.itemId).sort()).toEqual([...order].sort());
-  });
-
-  it('a 4 h hunt in the first zone with the starter pouch loses nothing, for 12 different start times', () => {
+describe('Hunt loot goes into the inventory (no separate container)', () => {
+  it('a 4 h hunt in the first zone into an empty bag loses nothing, for 12 different start times, and fits in a handful of slots', () => {
     let allThree = 0;
     for (let i = 0; i < 12; i++) {
       const start = new Date(2026, 5, 1, 9, i * 11, 0).getTime();
@@ -58,9 +34,21 @@ describe('Hunting Pouch capacity comes from the tier, never from the save', () =
       const stopped = applyHuntStop(applyHuntStart(base, 'demon_glade', 'shallow', start)!, start + 4 * HOUR)!;
       const reward = stopped.pendingHuntReward!;
       expect(reward.lost).toEqual([]);
+      expect(planHuntClaim(stopped, reward).leftBehind).toEqual([]);
+      const claimed = applyHuntClaim(stopped, reward.id)!;
+      expect(inventorySlotsUsed(claimed)).toBeLessThanOrEqual(DEFAULT_INVENTORY_CAPACITY);
       if (Object.values(reward.drops).filter((n) => (n ?? 0) > 0).length === 3) allThree++;
     }
     expect(allThree).toBeGreaterThan(0); // the 4 h session really did produce the three types at least once
+  });
+
+  it('the Battle Pass perk adds inventory slots only while it lasts', () => {
+    const base = defaultSave();
+    const pass = { ...base, hasBattlePass: true, battlePassExpiresAt: NOW + HOUR };
+    expect(inventoryCapacity(base, NOW)).toBe(DEFAULT_INVENTORY_CAPACITY);
+    expect(inventoryCapacity(pass, NOW)).toBe(DEFAULT_INVENTORY_CAPACITY + T.battlePass.bagBonusSlots);
+    expect(inventoryCapacity(pass, NOW + 2 * HOUR)).toBe(DEFAULT_INVENTORY_CAPACITY);
+    expect(normalizeSave(wire(pass)).inventoryBonusSlots).toBe(0);
   });
 });
 

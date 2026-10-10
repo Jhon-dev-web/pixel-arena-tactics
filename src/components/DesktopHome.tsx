@@ -28,6 +28,9 @@ import { getBiomeForFloor, nextMilestone, MAX_DUNGEON_FLOOR } from '../game/dung
 import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import { useDisplayName } from '../game/usernameContext';
 
+// Inventory pressure: amber from 85% of the slots, red when there is no free slot (the same thresholds as the hunt screen).
+const invTone = (used: number, cap: number): string => (used >= cap ? ' full' : used >= cap * 0.85 ? ' warn' : '');
+
 const dText = (k: string, v?: Record<string, string | number>): string => t(`dungeon.${k}`, v);
 const oreText = (k: string): string => t(`ore.${k}`);
 const woodText = (k: string): string => t(`wood.${k}`);
@@ -107,7 +110,8 @@ export default function DesktopHome({
   const gardenReady = gardenStatuses.filter((s) => s.ready).length;
   const hunting = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
 
-  const anyActivity = !!hunting || !!mining.oreId || !!woodcutting.woodId;
+  const rewardWaiting = !!save.pendingHuntReward && !hunting;
+  const anyActivity = !!hunting || rewardWaiting || !!mining.oreId || !!woodcutting.woodId;
 
   const biome = getBiomeForFloor(save.highestDungeonFloor);
   const milestone = nextMilestone(save.highestDungeonFloor);
@@ -173,7 +177,7 @@ export default function DesktopHome({
               );
             })}
           </div>
-          <button className="dh-inventory-chip" onClick={onOpenInventory} data-ui>
+          <button className={`dh-inventory-chip${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`} onClick={onOpenInventory} data-ui>
             <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
           </button>
         </div>
@@ -198,6 +202,17 @@ export default function DesktopHome({
                 <span className="dh-activity-time">
                   {huntStatus?.full ? t('hunting.capFull') : `${formatElapsed(huntingElapsedMs)} / ${formatElapsed(huntingCapMs)}`}
                 </span>
+                <span className={`dh-activity-inv${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`}>{t('hunting.invUsed', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
+              </div>
+            </button>
+          )}
+          {rewardWaiting && (
+            <button className="dh-activity-item" onClick={onOpenHunt} data-ui>
+              <span className="dh-activity-icon"><img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" /></span>
+              <div className="dh-activity-info">
+                <span className="dh-activity-name">{t('home.hunting')}</span>
+                <span className="dh-activity-detail">{t('hunting.rewardWaiting')}</span>
+                <span className={`dh-activity-inv${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`}>{t('hunting.invUsed', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
               </div>
             </button>
           )}

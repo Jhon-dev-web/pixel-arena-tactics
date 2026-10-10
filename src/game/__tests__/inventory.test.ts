@@ -12,7 +12,6 @@ import {
   normalizeInventoryCapacity,
 } from '../inventory';
 import { applyForge, createGearInstance } from '../gearInstances';
-import { allocateToPouch, defaultHuntPouch, drainPouchToMaterials } from '../huntPouch';
 import { emptyMaterials, MATERIALS } from '../materials';
 import { CONSUMABLES } from '../consumables';
 
@@ -38,9 +37,9 @@ describe('inventory capacity', () => {
     expect(isBagFull(s)).toBe(false);
   });
 
-  it('counts one slot per material / consumable type (not per unit) and per stored, unequipped gear instance', () => {
+  it('counts one slot per stack of up to STACK_LIMIT units of a material / consumable type and one per stored, unequipped gear instance', () => {
     let s = defaultSave();
-    s = { ...s, materials: { ...s.materials, leather_scrap: 500, iron: 1 }, consumables: { ...s.consumables, small_hp: 20 } };
+    s = { ...s, materials: { ...s.materials, leather_scrap: 99, iron: 1 }, consumables: { ...s.consumables, small_hp: 20 } };
     expect(inventorySlotsUsed(s)).toBe(3);
     const spare = createGearInstance('bronze_dagger', { id: 'gi_spare', origin: 'craft', rarity: 'common', substats: [] });
     s = { ...s, gearInstances: { ...s.gearInstances, gi_spare: spare } };
@@ -96,7 +95,7 @@ describe('capacity is respected by the add / overflow helpers', () => {
   it('forge refuses to create an instance in a full bag, charging nothing', () => {
     const base = defaultSave();
     const full: SaveData = withSlotsUsed(
-      { ...base, gold: 10_000, materials: { ...emptyMaterials(), copper_bar: 1, leather: 1, wood_handle_common: 1 } },
+      { ...base, gold: 10_000, materials: { ...emptyMaterials(), copper_bar: 5, leather: 5, wood_handle_common: 5 } },
       DEFAULT_INVENTORY_CAPACITY,
     );
     expect(isBagFull(full)).toBe(true);
@@ -104,40 +103,9 @@ describe('capacity is respected by the add / overflow helpers', () => {
     expect(res.ok).toBe(false);
     expect(res.reason).toBe('capacity');
     // one slot free -> it works, and the bag ends exactly full
-    const roomy = withSlotsUsed({ ...full, materials: { ...emptyMaterials(), copper_bar: 1, leather: 1, wood_handle_common: 1 } }, DEFAULT_INVENTORY_CAPACITY - 1);
+    const roomy = withSlotsUsed({ ...full, materials: { ...emptyMaterials(), copper_bar: 5, leather: 5, wood_handle_common: 5 } }, DEFAULT_INVENTORY_CAPACITY - 1);
     const ok = applyForge(roomy, 'bronze_dagger', { level: 1 });
     expect(ok.ok).toBe(true);
     expect(inventorySlotsUsed(ok.save!)).toBeLessThanOrEqual(inventoryCapacity(ok.save!));
-  });
-
-  it('drainPouchToMaterials lets stacks already in the bag through but blocks brand-new types once full', () => {
-    const materials = { ...emptyMaterials(), leather_scrap: 5 };
-    const items = [
-      { itemId: 'leather_scrap' as const, count: 3 },
-      { itemId: 'demon_claw' as const, count: 2 },
-    ];
-    // bag exactly full: the existing stack still grows, the new type stays in the pouch
-    const full = drainPouchToMaterials(items, materials, 30, 30);
-    expect(full.materials.leather_scrap).toBe(8);
-    expect(full.materials.demon_claw).toBe(0);
-    expect(full.remaining).toEqual([{ itemId: 'demon_claw', count: 2 }]);
-    expect(full.blocked).toBe(true);
-    // one free slot: the new type fits, and the slot count never goes above capacity
-    const roomy = drainPouchToMaterials(items, materials, 29, 30);
-    expect(roomy.materials.demon_claw).toBe(2);
-    expect(roomy.remaining).toEqual([]);
-    expect(roomy.blocked).toBe(false);
-  });
-
-  it('the hunt pouch holds at most `capacity` material types; the overflow is recorded as lost', () => {
-    const order = ['leather_scrap', 'demon_claw', 'demon_core'] as const;
-    const out = allocateToPouch(defaultHuntPouch(), { leather_scrap: 40, demon_claw: 6, demon_core: 1 }, [...order], 2);
-    expect(out.items).toHaveLength(2);
-    expect(out.items.map((i) => i.itemId).sort()).toEqual(['demon_claw', 'demon_core']);
-    expect(out.lostItems).toEqual([{ itemId: 'leather_scrap', count: 40 }]);
-    // a type already in the pouch keeps stacking even when the pouch is full
-    const stacked = allocateToPouch(out, { demon_claw: 4 }, [...order], 2);
-    expect(stacked.items.find((i) => i.itemId === 'demon_claw')!.count).toBe(10);
-    expect(stacked.items).toHaveLength(2);
   });
 });

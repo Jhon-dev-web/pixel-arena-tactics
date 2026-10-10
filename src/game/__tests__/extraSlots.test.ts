@@ -393,7 +393,6 @@ describe('unique pieces', () => {
       drops: {},
       lost: [],
       uniques,
-      pouchCapacity: 3,
     });
     const fullBag = (s: SaveData): SaveData => {
       const gearInstances: Record<string, GearInstance> = { ...s.gearInstances };
@@ -437,10 +436,14 @@ describe('unique pieces', () => {
       expect(Object.values(done.gearInstances).filter((i) => i.templateId === 'demon_fang_dagger')).toHaveLength(1);
     });
 
-    it('uniques never touch the Hunting Pouch', () => {
-      const s = { ...defaultSave(), pendingHuntReward: reward([drop('demon_fang_dagger')]) };
+    it('a unique takes its slot before any material of the same reward (a pile of scraps can never crowd it out)', () => {
+      const room = { ...fullBag(defaultSave()) };
+      const free = applyDiscardInstance(room, 'junk0')!; // exactly one free slot
+      const s: SaveData = { ...free, pendingHuntReward: { ...reward([drop('demon_fang_dagger')]), drops: { leather_scrap: 500 } } };
       const claimed = applyHuntClaim(s, 'r1')!;
-      expect(claimed.huntPouch).toEqual(s.huntPouch);
+      expect(claimed.pendingHuntReward).toBeNull();
+      expect(Object.values(claimed.gearInstances).filter((i) => i.templateId === 'demon_fang_dagger')).toHaveLength(1);
+      expect(claimed.materials.leather_scrap).toBe(0); // the only free slot went to the unique; the scraps are left behind
     });
 
     it('a saved pending reward without `uniques` (old save) loads with none, and tampered ones are cleaned', () => {

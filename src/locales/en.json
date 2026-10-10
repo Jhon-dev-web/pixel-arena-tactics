@@ -448,7 +448,10 @@
     "useOnPlot": "Use on a Garden plot",
     "overCapacity": "over capacity",
     "buffActive": "Active: {t} left",
-    "buffsRunning": "Active effects"
+    "buffsRunning": "Active effects",
+    "bagFullAction": "Inventory full! Make room first.",
+    "leftBehind": "{n} left behind (inventory full)",
+    "salvageBagFull": "No room for what salvaging returns. Make room first."
   },
   "profile": {
     "title": "⚔️ HERO PROFILE",
@@ -476,16 +479,6 @@
     "regenStat": "Regenerates {pct}% of max HP/s",
     "attackSpeedStat": "+{pct}% attack speed",
     "burnTitle": "Burning"
-  },
-  "huntPouch": {
-    "title": "Hunting Pouch",
-    "slots": "{n} Slots",
-    "passBonus": "Pass",
-    "upgrade": "Upgrade",
-    "pouch_t1": "Basic Pockets",
-    "pouch_t2": "Leather Pouch",
-    "pouch_t3": "Reinforced Backpack",
-    "pouch_t4": "Dimensional Satchel"
   },
   "shop": {
     "title": "🛒 Shop",
@@ -764,14 +757,11 @@
     "tier_common": "Common",
     "tier_uncommon": "Refined",
     "tier_rare": "Noble",
-    "lostItemsWarning": "Pouch full — some items were left behind: there was no room to carry them. Upgrade your Pouch in the Hero Profile; the Battle Pass also increases its capacity.",
     "claimFirst": "Claim your Hunting reward before starting another.",
     "switchClaimFirst": "Hunt ended. Claim the reward, then pick the new zone.",
     "sessionFrozen": "Gear, attributes and bonuses were locked when this Hunt started. Changes apply from the next session (buffs and the Pass activated now count from now on).",
-    "bagFullWarning": "Bag full! Free up inventory space to unload the rest.",
-    "uniquesHeld": "Bag full - unique pieces are held here until you free a slot. They do not use the Hunting Pouch.",
-    "uniquesHeldToast": "Bag full! Free a slot to receive the unique piece - it stays held.",
-    "pouchLabel": "Pouch ({n}/{m})",
+    "uniquesHeld": "Inventory full - unique pieces are held here until you free a slot.",
+    "uniquesHeldToast": "Inventory full! Make room to receive the rest - it stays held.",
     "depth_shallow": "Shallow",
     "depth_dense": "Dense",
     "depth_deep": "Deep",
@@ -805,8 +795,6 @@
     "capLine": "Stores up to {n} h",
     "capLinePass": "Stores up to {n} h (with the Pass: {p} h)",
     "capLineActive": "Stores up to {n} h (Pass active)",
-    "pouchTypes": "Pouch: {n} material types per hunt",
-    "pouchExplain": "Different material types that fit in one hunt.",
     "startLocked": "Unlocks at Floor {n}",
     "startNeedCp": "Requires {n} CP",
     "startBusy": "Hero busy with another activity",
@@ -822,8 +810,6 @@
     "xpEarned": "XP earned",
     "goldEarned": "Gold earned",
     "collected": "Collected",
-    "pouchSlots": "Pouch {n}/{m}",
-    "lostCount": "{n} lost — pouch full",
     "uniquesFound": "Unique pieces found",
     "noUniques": "None yet",
     "promotedRange": "Zone level went from {a} to {b}",
@@ -833,7 +819,23 @@
     "rewardCounted": "Counted",
     "rewardXp": "XP",
     "rewardGold": "Gold",
-    "rewardPromotions": "Level promotions"
+    "rewardPromotions": "Level promotions",
+    "leftBehindToast": "{n} items were left behind: the inventory was full.",
+    "invUsed": "Inventory: {n}/{m}",
+    "collectedGoesTo": "This goes into your inventory when you claim.",
+    "invFits": "Inventory: {n}/{m} - everything fits",
+    "invMissing": "{n} slots short - these would be left behind:",
+    "invLeftOf": "{n} of {name}",
+    "invFullIn": "Inventory full in ~{t} (estimate at the current rate)",
+    "goesToInventory": "Goes into the inventory",
+    "invAfterClaim": "Inventory: {n}/{m}, after claiming: {a}/{m}",
+    "owedHeld": "Items you already owned from the old Hunting Pouch did not fit yet: they stay held here until there is room.",
+    "leftBehindWarning": "Inventory full - {n} items are left behind when you claim. Open the inventory first to make room.",
+    "openInventory": "Open inventory",
+    "invFree": "Inventory: {n}/{m} - {f} free slots",
+    "overflowWarning": "At the estimated rate the inventory fills in ~{t}, before the {h} h storage limit: the rest would be left behind.",
+    "invExplain": "Hunt loot goes straight into your inventory when you claim. Without room, the excess is left behind.",
+    "rewardWaiting": "Reward waiting to be claimed"
   },
   "deliveries": {
     "title": "Orders",
@@ -1035,7 +1037,8 @@
     "nextUnlock": "Next unlock: {name} (Lv {n})",
     "nextPlot": "Next plot: Lv {n}",
     "allUnlocked": "Everything unlocked",
-    "plotsOpen": "{n} of {max} plots open"
+    "plotsOpen": "{n} of {max} plots open",
+    "bagFull": "Inventory full! The harvest stays ready."
   },
   "quests": {
     "title": "Quests",
@@ -1078,7 +1081,6 @@
     "perkStorage": "24h Storage",
     "perkLuck": "+25% Drop Luck",
     "perkDeliveries": "+1 Order, +1 Swap per day and +{n}% Delivery XP",
-    "perkPouch": "+2 Hunting Pouch Slots",
     "perkRepair": "-20% Repair Cost",
     "levelLabel": "Level {n} / {m}",
     "xpProgress": "{cur} / {need} XP",
@@ -1087,7 +1089,8 @@
     "claimAll": "Claim All",
     "cosmeticReward": "Exclusive Season Cosmetic",
     "colFree": "Free",
-    "colPremium": "Premium"
+    "colPremium": "Premium",
+    "perkBag": "+{n} inventory slots"
   },
   "titles": {
     "none": "None",

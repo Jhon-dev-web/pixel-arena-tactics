@@ -2665,52 +2665,8 @@ body {
   font-size: calc(var(--font-size) - 3px);
   color: #6fe08a;
 }
-.pouch-card {
-  flex-direction: column;
-  align-items: stretch;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-.pouch-card-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.pouch-card .craft-info {
-  flex: 1;
-  min-width: 0;
-  gap: 4px;
-}
-.pouch-slots-tag {
-  font-size: calc(var(--font-size) - 3px);
-  color: #b8a8d8;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.pouch-bonus-tag {
-  color: #6fe08a;
-}
 .repair-discount-tag {
   color: #6fe08a;
-}
-.pouch-req {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  margin-top: 8px;
-}
-.pouch-req .req-item {
-  width: 100%;
-}
-.pouch-req .req-amount {
-  white-space: nowrap;
-  overflow-wrap: normal;
-  font-size: calc(var(--font-size) - 2px);
-}
-.pouch-card .craft-btn {
-  align-self: center;
-  margin-top: 0;
-  flex-shrink: 0;
 }
 .hero-stats-grid {
   display: grid;
@@ -2881,9 +2837,6 @@ body {
   color: #8a7aa8;
   margin-right: 2px;
 }
-.drops-label.pouch-full-label {
-  color: #ff8a7a;
-}
 .floor-drop {
   display: inline-flex;
   align-items: center;
@@ -2963,14 +2916,14 @@ body {
   padding: 6px 10px;
   margin-bottom: 10px;
 }
-.pouch-lost-card {
+.hunt-left-card {
   background: rgba(255, 138, 122, 0.1);
   border: 1px solid #a03020;
   border-radius: 8px;
   padding: 8px 10px;
   margin: 10px 0;
 }
-.pouch-lost-text {
+.hunt-left-text {
   font-size: calc(var(--font-size) - 3px);
   color: #ff8a7a;
   margin: 0 0 8px;
@@ -4535,28 +4488,28 @@ body {
 .hunt-tile.gold .hunt-tile-value {
   color: #ffd76a;
 }
-.hunt-pouch-count {
+.hunt-loot-count {
   font-size: calc(var(--font-size) - 2px);
   color: #b8a8d8;
 }
-/* the pouch as inventory slots: icon, count badge, rarity border, empty slots visible; the rate sits under each slot */
-.hunt-pouch {
+/* the session loot as inventory slots: icon, count badge, rarity border, empty slots visible; the rate sits under each slot */
+.hunt-loot {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 8px;
 }
-.hunt-pouch-cell {
+.hunt-loot-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   width: 56px;
 }
-.hunt-pouch-slot {
+.hunt-loot-slot {
   width: 56px;
   cursor: default;
 }
-.hunt-pouch-slot .inv-qty {
+.hunt-loot-slot .inv-qty {
   font-size: calc(var(--font-size) - 2px);
 }
 .inv-slot.mat-common {
@@ -4568,7 +4521,7 @@ body {
 .inv-slot.mat-rare {
   border-color: #c77dff;
 }
-.hunt-pouch-rate {
+.hunt-loot-rate {
   min-height: 12px;
   font-size: calc(var(--font-size) - 3px);
   color: #8a7aa8;
@@ -4615,9 +4568,6 @@ body {
 }
 .hunt-reward-modal .floor-drop {
   white-space: normal;
-}
-.hunt-reward-modal .pouch-capacity {
-  text-align: left;
 }
 /* the claim button stays in reach when the list is taller than the screen */
 .hunt-reward-modal .result-btn {
@@ -5300,9 +5250,8 @@ body {
   gap: 4px;
 }
 
-/* Hunting: session lock hint and pouch capacity in the reward modal */
-.hunt-session-frozen,
-.pouch-capacity {
+/* Hunting: session lock hint in the hunt screen */
+.hunt-session-frozen {
   margin: 6px 0 0;
   font-size: 11px;
   line-height: 1.35;
@@ -8564,4 +8513,72 @@ button[data-ui]:focus-visible {
     width: auto;
     height: auto;
   }
+}
+
+/* ===== inventory pressure (hunt screens, Home) ===== */
+.hunt-loot-count.warn,
+.hunt-fact.warn,
+.dh-activity-inv.warn,
+.dh-inventory-chip.warn,
+.hunt-inv-line.warn {
+  color: #ffc857;
+}
+.hunt-loot-count.full,
+.hunt-fact.bad,
+.hunt-hint.bad,
+.dh-activity-inv.full,
+.dh-inventory-chip.full,
+.hunt-inv-line.full,
+.hunt-inv-line.bad {
+  color: #ff8a7a;
+}
+.dh-inventory-chip.warn {
+  border-color: #b8892a;
+}
+.dh-inventory-chip.full {
+  border-color: #a03020;
+}
+.dh-activity-inv {
+  font-size: 11px;
+  color: #b8a8d8;
+  margin-top: 1px;
+}
+.hunt-loot.reward {
+  margin-bottom: 8px;
+}
+.hunt-inv-note {
+  margin: 8px 0 0;
+  font-size: calc(var(--font-size) - 3px);
+  color: #8a7aa8;
+}
+.hunt-inv-line {
+  margin: 8px 0 0;
+  font-size: calc(var(--font-size) - 2px);
+  line-height: 1.45;
+  color: #b8a8d8;
+}
+.hunt-inv-line.ok {
+  color: #6fe08a;
+}
+.hunt-inv-line.eta {
+  color: #ffc857;
+}
+.hunt-inv-line .hunt-collected-lost {
+  margin-top: 4px;
+}
+.hunt-left-btn {
+  display: block;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.salvage-hint.bad {
+  color: #ff8a7a;
 }

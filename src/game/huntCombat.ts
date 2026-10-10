@@ -199,7 +199,7 @@ export function simulateHuntingSession(
       if (rng() < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
     }
     // Unique pieces: base chance x the same economic fraction as the materials (no depth / sub-level / Battle Pass multiplier). They never touch
-    // the pouch (they are not materials); the claim delivers them as gear instances.
+    // the material stacks (they are not materials); the claim delivers them as gear instances.
     for (const u of zoneCfg.uniques ?? []) {
       if (uniqueRng() < u.chance * economicFraction) uniques.push(rollUniqueDrop(u.itemId, uniqueRng));
     }

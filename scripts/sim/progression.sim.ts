@@ -46,9 +46,7 @@
 // should not be meaningfully faster than A (the report prints the A-B gap on every milestone). The balance targets T1-T8 of
 // docs/BALANCE_CHANGES.md are measured on A and printed in the 'Metas' sections.
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
-import { computeCP, defaultSave } from '../../src/game/engine';
-import { applyHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
-import { HUNT_POUCH_TIERS } from '../../src/game/huntPouch';
+import { computeCP } from '../../src/game/engine';
 import { dungeonEnemyKindForFloor, MAX_DUNGEON_FLOOR, recommendedCpForFloor } from '../../src/game/dungeon';
 import { getEnemyDef } from '../../src/game/enemies';
 import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
@@ -414,66 +412,6 @@ function tonicBudget(withT: Run[], without: Run[]): string[] {
   ];
 }
 
-// ---- hunting pouch diagnostic -------------------------------------------------------------------------------------
-
-interface PouchStats {
-  sessions: number;
-  noTypeLost: number; // sessions in which no dropped material type was lost to the pouch
-  allThree: number; // sessions in which all three material types dropped
-  lostUnits: number; // units lost to the pouch, summed over the sessions
-}
-
-// A fresh hero (no policy involved) hunts demon_glade / shallow for different lengths of time with the starter pouch (tier 1).
-// A zone drops 3 material types; every type that drops must fit a slot.
-function pouchDiagnostic(): { lines: string[]; t1: PouchStats } {
-  const slots = HUNT_POUCH_TIERS[0].slots;
-  const rows: string[][] = [];
-  let t1: PouchStats = { sessions: 0, noTypeLost: 0, allThree: 0, lostUnits: 0 };
-  for (const mins of [15, 30, 60, 120, 240]) {
-    let drop = 0;
-    let claw = 0;
-    let core = 0;
-    const stats: PouchStats = { sessions: 20, noTypeLost: 0, allThree: 0, lostUnits: 0 };
-    for (let i = 0; i < stats.sessions; i++) {
-      const start = new Date(2026, 5, 1, 9, i * 7, 0).getTime();
-      vi.setSystemTime(start);
-      const base = { ...defaultSave(), huntingOfflineStart: start };
-      const stopped = applyHuntStop(applyHuntStart(base, 'demon_glade', 'shallow', start)!, start + mins * 60000)!;
-      const p = stopped.pendingHuntReward!;
-      drop += p.drops.leather_scrap ?? 0;
-      claw += p.drops.demon_claw ?? 0;
-      core += p.drops.demon_core ?? 0;
-      const lostUnits = p.lost.reduce((a, l) => a + l.count, 0);
-      stats.lostUnits += lostUnits;
-      if (p.lost.length === 0) stats.noTypeLost++;
-      if (['leather_scrap', 'demon_claw', 'demon_core'].every((m) => (p.drops[m as keyof typeof p.drops] ?? 0) > 0)) stats.allThree++;
-    }
-    if (mins === 240) t1 = stats;
-    const n = stats.sessions;
-    rows.push([
-      `${mins} min${mins >= 60 ? ` (${mins / 60} h)` : ''}`,
-      num(drop / n, 1),
-      num(claw / n, 1),
-      num(core / n, 1),
-      num(stats.lostUnits / n, 1),
-      `${stats.noTypeLost}/${n}`,
-      `${stats.allThree}/${n}`,
-    ]);
-  }
-  return {
-    t1,
-    lines: [
-      `#### Diagnóstico: Bolsa de Caça do tier 1 (${slots} espaços) numa caça em demon_glade raso (herói novo, 20 horários de início)`,
-      '',
-      ...table(
-        ['Duração da caça', 'Farrapos sorteados', 'Garras sorteadas', 'Núcleos sorteados', 'Unidades perdidas por falta de espaço', 'Sessões sem nenhum tipo perdido', 'Sessões em que os 3 tipos caem'],
-        rows,
-      ),
-      '',
-    ],
-  };
-}
-
 // ---- floor 25 boss diagnostics ------------------------------------------------------------------------------------
 
 const BOSS_NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
@@ -584,7 +522,7 @@ function enemyCurve(): { lines: string[]; worst: number } {
 
 const ok = (b: boolean) => (b ? 'ok' : 'FORA DA META');
 
-function metas(a: Run[], b: Run[], pouch: PouchStats, curveWorst: number): string[] {
+function metas(a: Run[], curveWorst: number): string[] {
   const lvl = (runs: Run[], d: number) => runs.map((r) => r.days[d].level);
   const inBand = (xs: number[], lo: number, hi: number) => median(xs) >= lo && median(xs) <= hi;
   const dayMed = (runs: Run[], ev: FirstEvent) => median(runs.map((r) => r.first[ev] ?? Infinity));
@@ -608,41 +546,34 @@ function metas(a: Run[], b: Run[], pouch: PouchStats, curveWorst: number): strin
   const t4 = (runs: Run[]) => `${cell(lvl(runs, 0))} / ${cell(lvl(runs, 2))} / ${cell(lvl(runs, 13))}`;
   const t4ok = (runs: Run[]) => [inBand(lvl(runs, 0), 10, 16), inBand(lvl(runs, 2), 20, 29), inBand(lvl(runs, 13), 45, 60)];
   rows.push([
-    'T1',
-    'Caça de 4 h com a Bolsa do tier 1 não perde nenhum tipo de material',
-    `${pouch.noTypeLost}/${pouch.sessions} sessões sem perda (${pouch.allThree}/${pouch.sessions} com os 3 tipos), ${pouch.lostUnits} unidades perdidas`,
-    '(mesma Bolsa)',
-    ok(pouch.noTypeLost === pouch.sessions && pouch.lostUnits === 0),
-  ]);
-  rows.push([
     'T2',
     'Primeira sessão da conta nova termina no andar ≥ 8; checkpoint do andar 10 no dia 1',
     `andar ${cell(firstEnd(a))}; checkpoint 10 no dia ${medianDay(a, 'floor10')}`,
-    `andar ${cell(firstEnd(b))}; dia ${medianDay(b, 'floor10')}`,
+    '-',
     ok(median(firstEnd(a)) >= 8 && dayMed(a, 'floor10') <= 1),
   ]);
-  rows.push(['T3', 'Primeira peça forjada no dia 1 ou 2', `dia ${medianDay(a, 'firstCraft')}`, `dia ${medianDay(b, 'firstCraft')}`, ok(dayMed(a, 'firstCraft') <= 2)]);
+  rows.push(['T3', 'Primeira peça forjada no dia 1 ou 2', `dia ${medianDay(a, 'firstCraft')}`, '-', ok(dayMed(a, 'firstCraft') <= 2)]);
   const t4a = t4ok(a);
   rows.push([
     'T4',
     'Nível no fim do dia 1 / 3 / 14 (alvos 10–16 / 20–29 / 45–60)',
     t4(a),
-    t4(b),
+    '-',
     t4a.every(Boolean) ? 'ok' : `dia 1 ${ok(t4a[0])}; dia 3 ${ok(t4a[1])}; dia 14 ${ok(t4a[2])}`,
   ]);
   rows.push([
     'T5',
     'Chefe do andar 25 vencido pela primeira vez no dia 4–6; quem acaba de limpar o 24 perde',
     `dia ${medianDay(a, 'floor25')}; vitória ao chegar: ${arrivalWins(a)}`,
-    `dia ${medianDay(b, 'floor25')}; vitória ao chegar: ${arrivalWins(b)}`,
+    '-',
     ok(dayMed(a, 'floor25') >= 4 && dayMed(a, 'floor25') <= 6),
   ]);
   rows.push([
     'T6',
     'Chegada ao andar 50: nenhuma seed antes do dia 10; o chefe 50 cai pela 1ª vez por volta dos dias 12–16',
     t6(a),
-    t6(b),
-    `chegada ${ok(firstDay(a, 'floor50') >= 10 && firstDay(b, 'floor50') >= 10)}; chefe ${ok(firstDay(a, 'boss50') >= 12 && firstDay(a, 'boss50') <= 16 && firstDay(b, 'boss50') >= 12 && firstDay(b, 'boss50') <= 16)}`,
+    '-',
+    `chegada ${ok(firstDay(a, 'floor50') >= 10)}; chefe ${ok(firstDay(a, 'boss50') >= 12 && firstDay(a, 'boss50') <= 16)}`,
   ]);
   rows.push([
     'T7',
@@ -653,34 +584,7 @@ function metas(a: Run[], b: Run[], pouch: PouchStats, curveWorst: number): strin
   ]);
   rows.push(['T8', 'Derrota mantém 75% do ouro da sessão', `${num(T.battle.defeatGoldKept * 100)}%`, '-', ok(T.battle.defeatGoldKept === 0.75)]);
 
-  // B must not be meaningfully faster than A on any milestone (~1.5 days)
-  const gap: string[][] = [];
-  const evs: [FirstEvent, string][] = [
-    ['firstCraft', 'Primeira peça forjada'],
-    ['firstRefine', 'Primeiro refino'],
-    ['floor10', 'Checkpoint do andar 10'],
-    ['floor25', 'Chefe do andar 25'],
-    ['zone2', 'Zona de caça 2'],
-    ['boss50', 'Chefe do andar 50'],
-  ];
-  // Median over the seeds that got there (a milestone only part of the seeds reach would otherwise flip on a coin toss).
-  const reached = (runs: Run[], ev: FirstEvent) => runs.map((r) => r.first[ev]).filter((x): x is number => x !== undefined);
-  for (const [ev, label] of evs) {
-    const ra = reached(a, ev);
-    const rb = reached(b, ev);
-    const d = median(ra) - median(rb);
-    gap.push([label, `${num(median(ra), 1)} (${ra.length}/${a.length})`, `${num(median(rb), 1)} (${rb.length}/${b.length})`, Number.isNaN(d) ? '-' : num(d, 1), ok(!(d > 1.5))]);
-  }
-  return [
-    '| Meta | Critério | Cenário A (pedido) | Cenário B (sensibilidade) | Resultado |',
-    '| --- | --- | --- | --- | --- |',
-    ...rows.map((r) => `| ${r.join(' | ')} |`),
-    '',
-    '#### B contra A: o Cenário B não pode ser mais de ~1,5 dia mais rápido que o A em nenhum marco',
-    '',
-    ...table(['Marco', 'Dia no A (mediana de quem chegou; seeds que chegaram)', 'Dia no B', 'A − B (dias)', 'Resultado'], gap),
-    '',
-  ];
+  return ['| Meta | Critério | Cenário A (pedido) | Resultado |', '| --- | --- | --- | --- |', ...rows.map((r) => `| ${r.slice(0, 3).join(' | ')} | ${r[4]} |`), ''];
 }
 
 describe('progression simulation', () => {
@@ -691,31 +595,25 @@ describe('progression simulation', () => {
     vi.useRealTimers();
   });
 
-  it(`plays ${DAYS} days x ${SEEDS} seeds, in two scenarios, and prints the report`, () => {
+  it(`plays ${DAYS} days x ${SEEDS} seeds, in several scenarios, and prints the report`, () => {
     const started = performance.now();
     const a: Run[] = [];
-    const b: Run[] = [];
     const c: Run[] = [];
     const ctl: Run[] = []; // scenario A without the Garden 3.0 tonics: the control of the tonic budget
     for (let seed = 1; seed <= SEEDS; seed++) {
       a.push(playOne(seed, {}));
-      b.push(playOne(seed, { shortHunt: true }));
       c.push(playOne(seed, { garden: true, balanced: true }));
       ctl.push(playOne(seed, { tonics: false }));
     }
     const all: Section[] = ['progress', 'xp', 'dungeon', 'gold', 'materials', 'firsts', 'day1'];
-    const pouch = pouchDiagnostic();
     const curve = enemyCurve();
     const text = [
       '### Metas de balanceamento (T1 a T8)',
       '',
-      ...metas(a, b, pouch.t1, curve.worst),
+      ...metas(a, curve.worst),
       '### Cenário A (pedido): 2 visitas por dia',
       '',
       ...report(a, all),
-      '### Cenário B (sensibilidade): igual ao A, mais uma visita curta (até 15 min, parando a caça quando a prévia da bolsa ainda guarda os farrapos) logo depois da primeira, enquanto faltarem itens comuns de caça',
-      '',
-      ...report(b, all),
       '### Profissões, cenário A (pedido)',
       '',
       ...professionReport(a),
@@ -729,13 +627,9 @@ describe('progression simulation', () => {
       '### Controle dos tônicos: cenário A sem tônicos contra cenário A (a mesma seed)',
       '',
       ...tonicBudget(a, ctl),
-      '### Diagnóstico da bolsa de caça',
-      '',
-      ...pouch.lines,
       '### Diagnóstico do chefe do andar 25',
       '',
       ...bossFirstContact('Cenário A', a),
-      ...bossFirstContact('Cenário B', b),
       ...bossDiagnostic(),
       '### Diagnóstico da curva de inimigos',
       '',

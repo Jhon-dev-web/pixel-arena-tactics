@@ -375,7 +375,7 @@ const T = DebugPanel.define({
     xpPerFloor: { value: 15, min: 1, max: 100, step: 1, label: 'Pass XP per dungeon floor cleared' },
     xpPerHuntHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Hunting claimed' },
     xpPerMiningHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Mining AND Woodcutting claimed (one rule for both, gathering.ts)' },
-    pouchBonusSlots: { value: 2, min: 0, max: 6, step: 1, label: 'Extra Hunting Pouch slots while active' },
+    bagBonusSlots: { value: 5, min: 0, max: 20, step: 1, label: 'Extra inventory slots while active' },
     repairDiscount: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Forge repair gold discount while active' },
   },
   ui: {

@@ -138,7 +138,7 @@ export default function BattlePassModal({
             <span className="bp-perk">{t('battlePass.perkStorage')}</span>
             <span className="bp-perk">{t('battlePass.perkLuck')}</span>
             <span className="bp-perk">{t('battlePass.perkDeliveries', { n: Math.round(T.deliveries.passXpBonus * 100) })}</span>
-            <span className="bp-perk">{t('battlePass.perkPouch')}</span>
+            <span className="bp-perk">{t('battlePass.perkBag', { n: T.battlePass.bagBonusSlots })}</span>
             <span className="bp-perk">{t('battlePass.perkRepair')}</span>
           </div>
           <div className="bp-level-header">

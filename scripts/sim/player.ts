@@ -32,10 +32,9 @@ import {
   isDepthUnlocked,
   isZoneUnlocked,
 } from '../../src/game/huntingZones';
-import { applyHuntClaim, requestHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
+import { applyHuntClaim, planHuntClaim, requestHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
 import { applyDeliveryAccept, applyDeliveryClaim, canAffordOffer, ensureDeliveryOffers } from '../../src/game/deliveries';
 import { expandInventory, inventoryCapacity, inventorySlotsUsed } from '../../src/game/inventory';
-import { nextHuntPouchTierDef } from '../../src/game/huntPouch';
 import T from '../../src/game/tunables';
 import {
   applyDungeonRun,
@@ -50,7 +49,6 @@ import {
   runDungeon,
   spendAttributePoints,
   startGathering,
-  upgradeHuntPouch,
 } from './driver';
 
 type Mats = Partial<Record<MaterialId, number>>;
@@ -89,7 +87,7 @@ export interface DayLedger {
   goldIn: Record<string, number>;
   goldOut: Record<string, number>;
   mats: { common: number; uncommon: number; rare: number };
-  lost: number; // units that did not fit the hunt pouch
+  lost: number; // units a hunt claim left behind because the inventory had no room
   hours: { hunt: number; mine: number; wood: number };
   units: Record<string, number>; // ore / wood / garden units that entered the bag today, by material id
 }
@@ -280,11 +278,6 @@ const CHECKIN_HOURS = [9, 21]; // two visits a day, 12 hours apart
 const JITTER_MS = 90 * 60 * 1000;
 
 export interface PlayerOptions {
-  // Sensitivity scenario: a player who learned that long hunts lose every common drop to the 2-slot pouch. While the next
-  // craft (or the pouch upgrade) still needs common hunt drops, the first visit of the day starts a hunt and stays
-  // in the hunt screen for up to 15 minutes and stops it at the minute where the pouch preview (HuntModal shows exactly
-  // this: allocateToPouch over the live drops) still keeps the most common drops - one extra visit. Off in the baseline.
-  shortHunt?: boolean;
   // Diagnostic only (not a scenario of the report): never accept a delivery order, to isolate how much of the XP / gold comes from Hunting
   // and the Dungeon alone.
   noOrders?: boolean;
@@ -301,8 +294,6 @@ export interface PlayerOptions {
 const COMBAT_TONICS = ['stoneskin_tonic', 'precision_elixir', 'haste_tonic', 'fortune_tonic'] as const;
 const TONIC_STOCK = 1;
 const BOSS_APPROACH_FLOORS = 6; // a session that starts within this many floors of an unclaimed boss is a boss attempt
-
-export const SHORT_HUNT_MAX_MIN = 15;
 
 export class Player {
   S: SaveData;
@@ -321,8 +312,7 @@ export class Player {
   private sessionsToday = 0;
   private freeSessionsToday = 0;
   private fake: (t: number) => void;
-  private visit: 'first' | 'second' | 'short' = 'first';
-  private shortVisitDue = false;
+  private visit: 'first' | 'second' = 'first';
   private opts: PlayerOptions;
   trace: string[] = []; // one line per decision, for debugging a policy
   // The save the first time the hero is about to face the floor-25 boss (floors 1-24 cleared): the boss diagnostic replays it.
@@ -373,11 +363,6 @@ export class Player {
       const at = new Date(2026, 5, 1 + day, h, 0, 0).getTime() + Math.round((jitter() * 2 - 1) * JITTER_MS);
       this.now = Math.max(this.now, at);
       this.checkIn(i === 0 ? 'first' : 'second');
-      if (this.shortVisitDue) {
-        this.shortVisitDue = false;
-        this.now += this.bestShortHuntMs();
-        this.miniVisit();
-      }
     });
     this.snapshots.push({
       day: day + 1,
@@ -392,38 +377,6 @@ export class Player {
       ledger: this.ledger,
       sessions: this.sessions,
     });
-  }
-
-  // Minute (1..15) at which stopping the running hunt keeps the most leather scrap / bone in the pouch.
-  private bestShortHuntMs(): number {
-    const started = this.S.huntingOfflineStart;
-    let bestMin = SHORT_HUNT_MAX_MIN;
-    let bestKept = -1;
-    for (let m = 1; m <= SHORT_HUNT_MAX_MIN; m++) {
-      const stopped = applyHuntStop(this.S, started + m * 60_000);
-      const p = stopped?.pendingHuntReward;
-      if (!p) return SHORT_HUNT_MAX_MIN * 60_000;
-      const lost: Mats = {};
-      for (const l of p.lost) lost[l.itemId] = l.count;
-      const kept = (['leather_scrap', 'bone_fragment'] as MaterialId[]).reduce((a, k) => a + ((p.drops[k] ?? 0) - (lost[k] ?? 0)), 0);
-      if (kept >= bestKept) {
-        bestKept = kept;
-        bestMin = m;
-      }
-    }
-    return Math.max(60_000, started + bestMin * 60_000 - this.now);
-  }
-
-  // The extra short visit: collect, spend, and start the normal long activity.
-  private miniVisit() {
-    this.visit = 'short';
-    this.fake(this.now);
-    this.collect();
-    this.claimQuestsNow();
-    this.maintain();
-    this.spend();
-    this.acceptDelivery();
-    this.startActivity();
   }
 
   private checkIn(kind: 'first' | 'second') {
@@ -458,13 +411,10 @@ export class Player {
         this.ledger.hours.hunt += hours;
         this.huntHours += hours;
         for (const [m, q] of Object.entries(p.drops) as [MaterialId, number][]) this.huntUnits[m] = (this.huntUnits[m] ?? 0) + q;
-        const lost: Mats = {};
-        for (const l of p.lost) lost[l.itemId] = l.count;
-        for (const [m, q] of Object.entries(p.drops) as [MaterialId, number][]) {
-          const kept = q - (lost[m] ?? 0);
-          this.ledger.mats[rarityOf(m)] += kept;
-          this.ledger.lost += lost[m] ?? 0;
-        }
+        // what the claim will place in the inventory and what it will leave behind (the very function the claim uses)
+        const plan = planHuntClaim(stopped, p);
+        for (const [m, q] of Object.entries(plan.added) as [MaterialId, number][]) this.ledger.mats[rarityOf(m)] += q;
+        for (const l of plan.leftBehind) this.ledger.lost += l.count;
         const claimed = applyHuntClaim(stopped, p.id);
         if (claimed) this.set(claimed, 'caça');
       }
@@ -538,14 +488,8 @@ export class Player {
     }
   }
 
-  // ---- 3. spend: craft -> equip -> attributes -> pouch -> refine -> potions -> bag
+  // ---- 3. spend: craft -> equip -> attributes -> refine -> potions -> bag
   private spend() {
-    // The bigger pouch comes first: until it is bought, long hunts lose every common drop.
-    const pouch = nextHuntPouchTierDef(this.S.huntPouch.tier);
-    if (pouch?.cost && this.S.gold >= pouch.cost.gold) {
-      const next = upgradeHuntPouch(this.S);
-      if (next) this.set(next, 'bolsa de caça');
-    }
     for (let guard = 0; guard < 8; guard++) {
       if (!this.tryCraft()) break;
     }
@@ -892,22 +836,13 @@ export class Player {
         return;
       }
     }
-    const started = this.startHunt();
-    if (started && this.opts.shortHunt && this.visit === 'first' && this.wantsCommons()) this.shortVisitDue = true;
+    this.startHunt();
   }
 
   // The Gatherer Brew covers the first 2 h of a gathering session when drunk at its start.
   private drinkBrew(s: SaveData): SaveData {
     if (this.opts.tonics === false) return s;
     return applyElixir(s, 'gatherer_brew', this.now) ?? s;
-  }
-
-  private wantsCommons(): boolean {
-    const t = chooseTarget(this.S);
-    const deficit = t?.deficit ?? {};
-    if ((deficit.leather_scrap ?? 0) > 0 || (deficit.bone_fragment ?? 0) > 0) return true;
-    const pouch = nextHuntPouchTierDef(this.S.huntPouch.tier);
-    return !!pouch?.cost && (this.S.materials.leather_scrap ?? 0) < (pouch.cost.materials.leather_scrap ?? 0);
   }
 
   private startHunt(): boolean {

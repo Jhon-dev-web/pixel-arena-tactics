@@ -10,7 +10,6 @@ import { GEAR, getGear, isInstancedSlot, MAX_REFINE, upgradeCost } from '../gear
 import { createGearInstance } from '../gearInstances';
 import { GEMS } from '../gems';
 import { HUNTING_ZONES } from '../huntingZones';
-import { HUNT_POUCH_TIERS } from '../huntPouch';
 import { MATERIALS } from '../materials';
 import { ORE_TIERS } from '../ores';
 import { PLANTS } from '../garden';
@@ -96,10 +95,9 @@ describe('catalog cross-references', () => {
     expect(unknown(POTION_RECIPES.map((r) => r.id), consumableIds)).toEqual([]);
   });
 
-  it('hunting zones, dungeon biomes, pouch upgrades, ores, woods and plants only point at known materials', () => {
+  it('hunting zones, dungeon biomes, ores, woods and plants only point at known materials', () => {
     expect(unknown(HUNTING_ZONES.flatMap((z) => z.drops.map((d) => d.material)), materialIds)).toEqual([]);
     expect(unknown(DUNGEON_BIOMES.flatMap((b) => b.drops.map((d) => d.material)), materialIds)).toEqual([]);
-    expect(unknown(HUNT_POUCH_TIERS.flatMap((t) => Object.keys(t.cost?.materials ?? {})), materialIds)).toEqual([]);
     expect(unknown(ORE_TIERS.map((o) => o.id), materialIds)).toEqual([]);
     expect(unknown(WOOD_TIERS.map((w) => w.id), materialIds)).toEqual([]);
     expect(unknown(PLANTS.map((p) => p.material), materialIds)).toEqual([]);

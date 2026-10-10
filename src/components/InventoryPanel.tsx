@@ -10,7 +10,7 @@ import { clampRefine, isInstanceEquipped, listGearInstances, resolveGearInstance
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
-import { inventoryCapacity, inventorySlotsUsed, nextExpansion } from '../game/inventory';
+import { inventoryCapacity, inventorySlotsUsed, nextExpansion, STACK_LIMIT, slotsForQty } from '../game/inventory';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
@@ -39,6 +39,9 @@ function formatBuffLeft(ms: number): string {
 }
 
 type SelKind = 'gear' | 'material' | 'consumable';
+
+// A type holding more than one stack of STACK_LIMIT occupies several slots: the unit count shown in each of them.
+const stackCells = (qty: number): number[] => Array.from({ length: slotsForQty(qty) }, (_, i) => Math.min(STACK_LIMIT, qty - i * STACK_LIMIT));
 
 export default function InventoryPanel({
   save,
@@ -150,7 +153,7 @@ export default function InventoryPanel({
     setConfirmDiscard(false);
   };
 
-  const gearSlotsShown = gearInstances.length + stackableGear.length;
+  const cellsShown = gearInstances.length + [...stackableGear.map((g) => save.inventory[g.id]), ...materialItems.map((m) => m.qty), ...consumableItems.map((c) => c.qty)].reduce((sum, q) => sum + slotsForQty(q), 0);
 
   return (
     <>
@@ -254,48 +257,54 @@ export default function InventoryPanel({
             );
           })}
         {showEquipment &&
-          stackableGear.map((g) => (
-            <button
-              key={g.id}
-              className={`inv-slot ${rarityClass(g)} ${rarClass(undefined)}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
-              onClick={() => select('gear', g.id)}
-              data-ui
-            >
-              <span className="inv-icon">
-                <GearIcon item={g} />
-              </span>
-              <span className="inv-qty">×{fmtNum(save.inventory[g.id])}</span>
-            </button>
-          ))}
+          stackableGear.flatMap((g) =>
+            stackCells(save.inventory[g.id]).map((n, i) => (
+              <button
+                key={`${g.id}:${i}`}
+                className={`inv-slot ${rarityClass(g)} ${rarClass(undefined)}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
+                onClick={() => select('gear', g.id)}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <GearIcon item={g} />
+                </span>
+                <span className="inv-qty">×{fmtNum(n)}</span>
+              </button>
+            )),
+          )}
         {showMaterials &&
-          materialItems.map((m) => (
-            <button
-              key={m.id}
-              className={`inv-slot${selected?.kind === 'material' && selected.id === m.id ? ' active' : ''}`}
-              onClick={() => select('material', m.id)}
-              data-ui
-            >
-              <span className="inv-icon">
-                <MaterialIcon item={m} />
-              </span>
-              <span className="inv-qty">×{fmtNum(m.qty)}</span>
-            </button>
-          ))}
+          materialItems.flatMap((m) =>
+            stackCells(m.qty).map((n, i) => (
+              <button
+                key={`${m.id}:${i}`}
+                className={`inv-slot${selected?.kind === 'material' && selected.id === m.id ? ' active' : ''}`}
+                onClick={() => select('material', m.id)}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <MaterialIcon item={m} />
+                </span>
+                <span className="inv-qty">×{fmtNum(n)}</span>
+              </button>
+            )),
+          )}
         {showConsumables &&
-          consumableItems.map((c) => (
-            <button
-              key={c.id}
-              className={`inv-slot${selected?.kind === 'consumable' && selected.id === c.id ? ' active' : ''}`}
-              onClick={() => select('consumable', c.id)}
-              data-ui
-            >
-              <span className="inv-icon">
-                <ConsumableIcon item={c} />
-              </span>
-              <span className="inv-qty">×{fmtNum(c.qty)}</span>
-            </button>
-          ))}
-        {Array.from({ length: Math.max(0, 24 - (gearSlotsShown + materialItems.length + consumableItems.length)) }).map((_, i) => (
+          consumableItems.flatMap((c) =>
+            stackCells(c.qty).map((n, i) => (
+              <button
+                key={`${c.id}:${i}`}
+                className={`inv-slot${selected?.kind === 'consumable' && selected.id === c.id ? ' active' : ''}`}
+                onClick={() => select('consumable', c.id)}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <ConsumableIcon item={c} />
+                </span>
+                <span className="inv-qty">×{fmtNum(n)}</span>
+              </button>
+            )),
+          )}
+        {Array.from({ length: Math.max(0, 24 - cellsShown) }).map((_, i) => (
           <span key={`empty-${i}`} className="inv-slot empty" />
         ))}
       </div>
@@ -428,7 +437,8 @@ export default function InventoryPanel({
                       )}
                     </div>
                   )}
-                  <button className={`salvage-btn${confirmSalvage ? ' confirm' : ''}`} onClick={handleSalvage} data-ui>
+                  {salvageReason === 'bag' && <p className="salvage-hint bad">{t('inventory.salvageBagFull')}</p>}
+                  <button className={`salvage-btn${confirmSalvage ? ' confirm' : ''}`} onClick={handleSalvage} disabled={salvageReason === 'bag'} data-ui>
                     {confirmSalvage ? t('inventory.confirmSalvage') : t('inventory.salvage')}
                   </button>
                 </div>

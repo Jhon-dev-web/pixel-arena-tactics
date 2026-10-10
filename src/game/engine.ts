@@ -16,7 +16,7 @@ import {
   viewRarity,
   viewRefine,
 } from './gearInstances';
-import { Materials, MaterialId, emptyMaterials, getMaterial } from './materials';
+import { Materials, MaterialId, emptyMaterials } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
 import { DeliveryState, emptyDeliveries, sanitizeDeliveries } from './deliveryState';
 import { ConsumableId, emptyConsumables } from './consumables';
@@ -30,10 +30,10 @@ import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeH
 import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
-import { defaultHuntPouch, defaultPouchSlots, getHuntPouchTierDef, HuntPouchItem, HuntPouchState } from './huntPouch';
 import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
+import { migrateLegacyPouch } from './legacyPouch';
 import { UniqueDrop } from './uniques';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
@@ -135,10 +135,12 @@ export interface SaveData {
   gearInstances: Record<GearInstanceId, GearInstance>;
   inventory: Record<string, number>;
   equipped: EquippedGear;
-  // Single shared "Mochila" capacity (materials/consumables/stackable gear stacks + stored, unequipped
-  // GearInstances all draw from this one pool). Never decreases across a load — see
-  // normalizeInventoryCapacity in inventory.ts.
+  // Single shared inventory capacity (materials/consumables/stackable gear stacks of STACK_LIMIT units + stored, unequipped
+  // GearInstances all draw from this one pool). Never decreases across a load — see normalizeInventoryCapacity in inventory.ts.
   inventoryCapacity: number;
+  // Permanent extra slots granted ONCE for the tiers of the old Hunting Pouch the player had bought (legacyPouch.ts); `pouchMigrated` records it.
+  inventoryBonusSlots?: number;
+  pouchMigrated?: boolean;
   highestDungeonFloor: number;
   heroName: string;
   str: number;
@@ -186,7 +188,6 @@ export interface SaveData {
   cosmetics: string[];
   activeTitle: string | null;
   dungeonCheckpoints: number[];
-  huntPouch: HuntPouchState;
   gardenSlots: GardenSlot[];
   activeBuff: ActiveBuff | null; // Strength Elixir (kept as-is for old saves)
   attackBuff: ActiveBuff | null; // Attack (Battle) Elixir: an independent slot, same shape and rules
@@ -363,12 +364,8 @@ export function isBattlePassActive(save: SaveData, now: number): boolean {
   return save.hasBattlePass && (save.battlePassExpiresAt === null || save.battlePassExpiresAt > now);
 }
 
-// Battle Pass convenience perks: one more visible delivery offer + one more free reroll (see T.deliveries), extra Hunting
-// Pouch buffer, and a repair discount — its role is player-facing convenience/retention, not a new faucet.
-export function effectivePouchSlots(save: SaveData, now: number): number {
-  const base = getHuntPouchTierDef(save.huntPouch.tier)?.slots ?? defaultPouchSlots();
-  return base + (isBattlePassActive(save, now) ? T.battlePass.pouchBonusSlots : 0);
-}
+// Battle Pass convenience perks: one more visible delivery offer + one more free reroll (see T.deliveries), extra inventory slots
+// while it lasts (inventory.ts inventoryCapacity), and a repair discount — its role is player-facing convenience/retention, not a new faucet.
 
 export function effectiveRepairCost(save: SaveData, tier: number, now: number): number {
   const base = repairCost(tier);
@@ -550,7 +547,7 @@ export interface HuntingStatus {
   goldReady: number;
   xpReady: number;
   drops: Partial<Record<MaterialId, number>>;
-  uniques: UniqueDrop[]; // unique pieces this session rolled (not materials: they never use the pouch)
+  uniques: UniqueDrop[]; // unique pieces this session rolled (not materials: whole gear pieces, one slot each)
   full: boolean;
   // Real-combat sub-level mastery (see huntCombat.ts): the session replays from the SAVED progress
   // (startCeiling / startPromotionWins) — no climb — and ends at ceilingSubLevel / promotionWins, which
@@ -822,6 +819,8 @@ export function defaultSave(): SaveData {
     inventory: { ...DEFAULT_INVENTORY },
     equipped: { ...DEFAULT_EQUIPPED, weapon: starter.weaponId, armor: starter.armorId },
     inventoryCapacity: DEFAULT_INVENTORY_CAPACITY,
+    inventoryBonusSlots: 0,
+    pouchMigrated: false,
     highestDungeonFloor: 1,
     heroName: 'Hero',
     str: 0,
@@ -864,7 +863,6 @@ export function defaultSave(): SaveData {
     activeBuff: null,
     attackBuff: null,
     buffs: {},
-    huntPouch: defaultHuntPouch(),
     dungeonSessionsDay: '',
     dungeonSessionsUsed: 0,
     seenTooltips: [],
@@ -1170,19 +1168,6 @@ export function normalizeSave(rawInput: unknown): SaveData {
       const activeBuff = sanitizeBuff(parsed.activeBuff, 'strength', T.battle.strengthElixirMinutes);
       const attackBuff = sanitizeBuff(parsed.attackBuff, 'attack', T.battle.attackElixirMinutes);
       const buffs = sanitizeBuffs(parsed.buffs);
-      const sanitizePouchItems = (arr: unknown): HuntPouchItem[] =>
-        Array.isArray(arr)
-          ? (arr as HuntPouchItem[])
-              .filter((i) => i && typeof i.itemId === 'string' && !!getMaterial(i.itemId) && Number.isFinite(i.count) && i.count > 0)
-              .map((i) => ({ itemId: i.itemId, count: Math.floor(i.count) }))
-          : [];
-      const rawPouch = parsed.huntPouch as Partial<HuntPouchState> | undefined;
-      const pouchTierRaw = Math.floor(Number(rawPouch?.tier));
-      const huntPouch: HuntPouchState = {
-        tier: getHuntPouchTierDef(pouchTierRaw) ? pouchTierRaw : 1,
-        items: sanitizePouchItems(rawPouch?.items),
-        lostItems: sanitizePouchItems(rawPouch?.lostItems),
-      };
       const loaded: SaveData = {
         ...base,
         ...parsed,
@@ -1197,6 +1182,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         inventory: gear.inventory,
         equipped: { ...gear.equipped, ...extraSlotIds, weapon: weaponId, armor: armorId },
         inventoryCapacity: normalizeInventoryCapacity(parsed.inventoryCapacity),
+        inventoryBonusSlots: Math.max(0, Math.min(1000, Math.floor(Number(parsed.inventoryBonusSlots)) || 0)),
+        pouchMigrated: parsed.pouchMigrated === true,
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
@@ -1228,7 +1215,6 @@ export function normalizeSave(rawInput: unknown): SaveData {
         cosmetics,
         activeTitle,
         dungeonCheckpoints,
-        huntPouch,
         gardenSlots,
         activeBuff,
         attackBuff,
@@ -1249,7 +1235,12 @@ export function normalizeSave(rawInput: unknown): SaveData {
       loaded.pendingHuntReward = sanitizePendingHuntReward(parsed.pendingHuntReward);
       loaded.huntSession = activeHuntingZone ? sanitizeHuntSession(parsed.huntSession) ?? buildLegacyHuntSession(loaded, loadNow) : null;
       for (const key of LEGACY_GEAR_KEYS) delete (loaded as unknown as Record<string, unknown>)[key];
-      return loaded;
+      // The old Hunting Pouch: its paid tiers become permanent slots, its items move into the inventory (or stay owed in the pending reward), and the
+      // fields are gone (legacyPouch.ts). A pending reward written under that rule recorded the pouch capacity.
+      const rawPending = parsed.pendingHuntReward as { pouchCapacity?: unknown } | null | undefined;
+      const migrated = migrateLegacyPouch(loaded, (parsed as { huntPouch?: unknown }).huntPouch, Number(rawPending?.pouchCapacity) > 0);
+      delete (migrated as unknown as Record<string, unknown>).huntPouch;
+      return migrated;
     }
   } catch {
     /* ignore */

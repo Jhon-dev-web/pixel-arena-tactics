@@ -16,13 +16,14 @@ import {
 } from './game/engine';
 import { SaveConflictError, SaveRepository } from './game/saveRepository';
 import { useAuth } from './auth/AuthContext';
-import { applyHuntClaim, applyHuntStop, huntClaimBlocked, requestHuntStart } from './game/huntLifecycle';
+import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { addUniqueInstance } from './game/uniques';
 import { applyFertilizer, applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
 import { applyElixir, applyWhetstoneOil, ElixirId, isBuffItem } from './game/elixirs';
 import { goldMultiplier } from './game/buffs';
 import { withSessionWindow } from './game/huntSession';
-import { getBattlePassLevelDef } from './game/battlepass';
+import { applyBattlePassClaim } from './game/battlepass';
+import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import { applyReforge } from './game/reforge';
 import {
@@ -33,6 +34,7 @@ import {
   applyForge,
   applyRepair,
   applySalvage,
+  salvageBlockReason,
   applySocketGem,
   applyUnequipSlot,
   applyUnsocketGem,
@@ -42,11 +44,10 @@ import {
   questMaxRefine,
   resolveGearInstance,
 } from './game/gearInstances';
-import { MaterialId, hasMaterials } from './game/materials';
 import { getRefiningRecipe } from './game/refining';
-import { getPotionRecipe } from './game/potions';
-import { CONSUMABLE_STACK, ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from './game/consumables';
-import { expandInventory, inventoryCapacity, inventorySlotsUsed, isBagFull } from './game/inventory';
+import { MaterialId } from './game/materials';
+import { ConsumableId, EXPEDITION_TICKET_SKIP_MS } from './game/consumables';
+import { addForced, canAddInstances, expandInventory, inventoryCapacity } from './game/inventory';
 import { GEMS, GemId } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { playerSpriteUrl } from './game/sprites';
@@ -72,7 +73,6 @@ import BattlePassModal from './components/BattlePassModal';
 import { crossedMilestoneFloors, dungeonRunXp, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
-import { nextHuntPouchTierDef } from './game/huntPouch';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { isDeliveryReady } from './game/deliveries';
 import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
@@ -85,7 +85,7 @@ import DesktopHome from './components/DesktopHome';
 import MobileDrawer from './components/MobileDrawer';
 import useIsDesktop from './hooks/useIsDesktop';
 import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
-import { Locale, setLocale, setLocaleListener, t } from './locales';
+import { fmtNum, Locale, setLocale, setLocaleListener, t } from './locales';
 import './App.css';
 
 const gearText = (key: string): string => t(`gear.${key}`);
@@ -129,6 +129,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [claimResult, setClaimResult] = useState<{ title: string; name: string; rewards: ExpeditionRewards } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
+  // The pending hunt reward screen can be set aside to make room in the inventory first (shortcut from the screen itself); the hunt screen brings it back.
+  const [rewardHidden, setRewardHidden] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   // Forces a re-render when a dev-tunable changes (Admin panel) — nothing reads the value itself.
   const [, setVersion] = useState(0);
@@ -362,7 +364,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
-      if (tutorialStep || contextTutorial || battleFloor !== null || save.pendingHuntReward) return;
+      if (tutorialStep || contextTutorial || battleFloor !== null || (save.pendingHuntReward && !rewardHidden)) return;
       const layers: Array<[boolean, () => void]> = [
         [settingsOpen, () => setSettingsOpen(false)],
         [import.meta.env.DEV && adminOpen, () => setAdminOpen(false)],
@@ -392,6 +394,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     contextTutorial,
     battleFloor,
     save.pendingHuntReward,
+    rewardHidden,
     settingsOpen,
     adminOpen,
     battlePassOpen,
@@ -423,6 +426,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const openHunt = () => {
     playSfx('click');
     setHuntOpen(true);
+    setRewardHidden(false);
     if (tutorialStep === 'hunt') {
       updateTutorial({ ...saveRef.current.tutorial, initial: 'in_progress', initialStep: 'huntModal' });
       setTutorialStep('huntModal');
@@ -465,10 +469,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const finishRun = (startFloor: number, rewards: RunRewards, outcome: 'retreat' | 'defeat') => {
     const s = saveRef.current;
-    const mats = { ...s.materials };
-    for (const [mid, qty] of Object.entries(rewards.drops ?? {})) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) + (qty as number);
-    }
+    // A finished run never refuses its loot: the drops go in even over the limit (the bag supports being over capacity until the player makes room).
+    const looted = addForced(s, { materials: rewards.drops ?? {} });
     const stages = Math.max(0, rewards.stages);
     const success = outcome === 'retreat' && stages > 0;
     const atCap = playerLevel(s.xp) >= 100;
@@ -530,7 +532,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       gems,
       cosmetics,
       dungeonCheckpoints,
-      materials: mats,
+      materials: looted.materials,
       shards: s.shards + rewards.shards,
       xp: atCap ? s.xp : s.xp + xpGain,
       victories: s.victories + (success ? 1 : 0),
@@ -599,31 +601,21 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth({ ...s, consumables: { ...s.consumables, [id]: qty - 1 } });
   };
 
+  // A craft / purchase that does not fit the inventory is refused with a message and charges nothing (craftActions.ts).
+  const craftBlockedToast = (reason: CraftFailure | undefined) => {
+    if (reason === 'bag') showToast(t('inventory.bagFullAction'));
+    else if (reason === 'stack') showToast(t('shop.stackFull'));
+  };
+
   const craftPotion = (recipeId: string) => {
-    const recipe = getPotionRecipe(recipeId);
-    if (!recipe) return;
-    const s = saveRef.current;
-    if (s.gold < recipe.cost) return;
-    if (playerLevel(s.xp) < recipe.requiredLevel) return;
-    if (!hasMaterials(s.materials, recipe.input)) return;
-
-    const mats = { ...s.materials };
-    for (const [mid, count] of Object.entries(recipe.input)) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
+    const res = applyCraftPotion(saveRef.current, recipeId);
+    if (!res.ok || !res.save) {
+      craftBlockedToast(res.reason);
+      return;
     }
-
     playSfx('click');
-    setSaveBoth({
-      ...s,
-      gold: s.gold - recipe.cost,
-      materials: mats,
-      consumables: { ...s.consumables, [recipe.id]: (s.consumables[recipe.id] ?? 0) + 1 },
-      quests: {
-        ...s.quests,
-        daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
-      },
-    });
-    showToast(t('forge.toBag', { n: t(`consumables.${recipe.id}`) }));
+    setSaveBoth(res.save);
+    showToast(t('forge.toBag', { n: t(`consumables.${recipeId}`) }));
   };
 
   const applyXpPotion = () => {
@@ -781,15 +773,21 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!started) return;
     playSfx('click');
     setSaveBoth(started.save);
-    if (started.claimed) showToast(t('mining.readyOre', { n: started.claimed.units }));
+    if (started.claimed) showToast(gatherToast(started.claimed.units, started.claimed.leftBehind, 'mining.readyOre'));
   };
+
+  // What a collect says: the units that came in and, spelled out, the ones the inventory had no room for (gathering.ts leaves them behind).
+  const gatherToast = (units: number, leftBehind: number, key: string, gold = 0): string =>
+    t(key, { n: units - leftBehind }) +
+    (gold > 0 ? ' · ' + t('mining.readyGold', { n: gold }) : '') +
+    (leftBehind > 0 ? ' · ' + t('inventory.leftBehind', { n: fmtNum(leftBehind) }) : '');
 
   const claimMining = () => {
     const claim = applyClaimGathering(saveRef.current, 'mining', Date.now());
     if (!claim) return;
     playSfx('victory');
     setSaveBoth(claim.save);
-    showToast(t('mining.readyOre', { n: claim.units }) + (claim.gold > 0 ? ' · ' + t('mining.readyGold', { n: claim.gold }) : ''));
+    showToast(gatherToast(claim.units, claim.leftBehind, 'mining.readyOre', claim.gold));
   };
 
   const cancelMining = () => {
@@ -818,7 +816,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!started) return;
     playSfx('click');
     setSaveBoth(started.save);
-    if (started.claimed) showToast(t('woodcutting.readyWood', { n: started.claimed.units }));
+    if (started.claimed) showToast(gatherToast(started.claimed.units, started.claimed.leftBehind, 'woodcutting.readyWood'));
   };
 
   const claimWoodcutting = () => {
@@ -826,7 +824,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!claim) return;
     playSfx('victory');
     setSaveBoth(claim.save);
-    showToast(t('woodcutting.readyWood', { n: claim.units }));
+    showToast(gatherToast(claim.units, claim.leftBehind, 'woodcutting.readyWood'));
   };
 
   const cancelWoodcutting = () => {
@@ -851,14 +849,18 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const harvestPlots = (slotIndices: number[]) => {
     const res = applyHarvest(saveRef.current, slotIndices, Date.now());
     if (!res) return;
+    if (res.harvested.length === 0) {
+      showToast(t('garden.bagFull'));
+      return;
+    }
     playSfx('victory');
     commitSave(res.save);
     const first = res.harvested[0];
-    showToast(
+    const done =
       res.harvested.length === 1
         ? `${t('garden.harvest')} +${first.qty} ${t(`materials.mat_${first.material}`)}`
-        : t('garden.harvestedMany', { n: res.harvested.length }),
-    );
+        : t('garden.harvestedMany', { n: res.harvested.length });
+    showToast(res.blocked.length > 0 ? `${done} · ${t('garden.bagFull')}` : done);
   };
 
   const fertilizePlot = (slotIndex: number) => {
@@ -906,6 +908,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (s.activeHuntingZone === zoneId && s.activeHuntingDepth === depth) return;
     if (!isDepthUnlocked(zone, depth, computeCP(s))) return;
     if (s.pendingHuntReward) {
+      setRewardHidden(false);
       showToast(t('hunting.claimFirst'));
       return;
     }
@@ -936,26 +939,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const confirmHuntReward = () => {
     const pending = saveRef.current.pendingHuntReward;
     if (!pending) return;
+    const plan = planHuntClaim(saveRef.current, pending);
     const next = applyHuntClaim(saveRef.current, pending.id);
     if (!next) return;
     playSfx('victory');
     commitSave(next);
-    // Uniques the bag had no room for stay pending (held); a full pouch is the older, separate case.
-    if ((next.pendingHuntReward?.uniques.length ?? 0) > 0) showToast(t('hunting.uniquesHeldToast'));
-    else if (huntClaimBlocked(next)) showToast(t('hunting.bagFullWarning'));
-  };
-
-  const upgradeHuntPouch = () => {
-    const s = saveRef.current;
-    const next = nextHuntPouchTierDef(s.huntPouch.tier);
-    if (!next || !next.cost) return;
-    if (s.gold < next.cost.gold || !hasMaterials(s.materials, next.cost.materials)) return;
-    playSfx('click');
-    const materials = { ...s.materials };
-    for (const [mid, need] of Object.entries(next.cost.materials)) {
-      materials[mid as MaterialId] = (materials[mid as MaterialId] ?? 0) - (need as number);
-    }
-    setSaveBoth({ ...s, gold: s.gold - next.cost.gold, materials, huntPouch: { ...s.huntPouch, tier: next.tier } });
+    setRewardHidden(false);
+    // Uniques (and units owed from before the inventory rule) the bag had no room for stay pending (held); drops without room are gone and said so.
+    const lostUnits = plan.leftBehind.reduce((sum, i) => sum + i.count, 0);
+    if (huntClaimBlocked(next)) showToast(t('hunting.uniquesHeldToast'));
+    else if (lostUnits > 0) showToast(t('hunting.leftBehindToast', { n: fmtNum(lostUnits) }));
   };
 
   const activateBattlePass = () => {
@@ -974,102 +967,45 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     showToast(t('battlePass.activated'));
   };
 
-  const applyBattlePassClaim = (s: SaveData, level: number, track: 'free' | 'premium'): SaveData | null => {
-    if (level > s.battlePassLevel) return null;
-    if (track === 'premium' && !isBattlePassActive(s, Date.now())) return null;
-    if (s.claimedPassRewards[track].includes(level)) return null;
-    const def = getBattlePassLevelDef(level);
-    if (!def) return null;
-    const reward = def[track];
-    const materials = { ...s.materials };
-    const consumables = { ...s.consumables };
-    const gems = { ...s.gems };
-    const cosmetics = [...s.cosmetics];
-    let gold = s.gold;
-    let shards = s.shards;
-    switch (reward.kind) {
-      case 'gold':
-        gold += reward.amount;
-        break;
-      case 'shards':
-        shards += reward.amount;
-        break;
-      case 'material':
-        if (reward.id) materials[reward.id as MaterialId] = (materials[reward.id as MaterialId] ?? 0) + reward.amount;
-        break;
-      case 'consumable':
-        if (reward.id) consumables[reward.id as ConsumableId] = (consumables[reward.id as ConsumableId] ?? 0) + reward.amount;
-        break;
-      case 'gem':
-        if (reward.id) gems[reward.id as GemId] = (gems[reward.id as GemId] ?? 0) + reward.amount;
-        break;
-      case 'cosmetic':
-        if (reward.id && !cosmetics.includes(reward.id)) cosmetics.push(reward.id);
-        break;
-    }
-    return {
-      ...s,
-      gold,
-      shards,
-      materials,
-      consumables,
-      gems,
-      cosmetics,
-      claimedPassRewards: { ...s.claimedPassRewards, [track]: [...s.claimedPassRewards[track], level] },
-    };
-  };
-
+  // A Pass reward that is an item must fit the inventory; if it does not it stays claimable (battlepass.ts) and the player is told.
   const claimBattlePassLevel = (level: number, track: 'free' | 'premium') => {
-    const next = applyBattlePassClaim(saveRef.current, level, track);
-    if (!next) return;
+    const res = applyBattlePassClaim(saveRef.current, level, track, Date.now());
+    if (res.blocked) showToast(t('inventory.bagFullAction'));
+    if (!res.save) return;
     playSfx('victory');
-    setSaveBoth(next);
+    setSaveBoth(res.save);
   };
 
   const claimAllBattlePassRewards = () => {
     let s = saveRef.current;
     let claimedAny = false;
+    let blocked = false;
+    const now = Date.now();
     for (let level = 1; level <= s.battlePassLevel; level++) {
-      const freeNext = applyBattlePassClaim(s, level, 'free');
-      if (freeNext) {
-        s = freeNext;
-        claimedAny = true;
-      }
-      const premiumNext = applyBattlePassClaim(s, level, 'premium');
-      if (premiumNext) {
-        s = premiumNext;
-        claimedAny = true;
+      for (const track of ['free', 'premium'] as const) {
+        const res = applyBattlePassClaim(s, level, track, now);
+        if (res.blocked) blocked = true;
+        if (res.save) {
+          s = res.save;
+          claimedAny = true;
+        }
       }
     }
+    if (blocked) showToast(t('inventory.bagFullAction'));
     if (!claimedAny) return;
     playSfx('victory');
     setSaveBoth(s);
   };
 
   const buyConsumable = (id: ConsumableId) => {
-    const def = getConsumable(id);
-    if (!def) return;
-    const s = saveRef.current;
-    if (s.gold < def.cost) return;
-    const qty = s.consumables[id] ?? 0;
-    if (qty >= CONSUMABLE_STACK) {
-      showToast(t('shop.stackFull'));
-      return;
-    }
-    if (qty === 0 && isBagFull(s)) {
-      showToast(t('shop.bagFull'));
+    const res = applyBuyConsumable(saveRef.current, id);
+    if (!res.ok || !res.save) {
+      if (res.reason === 'bag') showToast(t('shop.bagFull'));
+      else craftBlockedToast(res.reason);
       return;
     }
     playSfx('click');
-    setSaveBoth({
-      ...s,
-      gold: s.gold - def.cost,
-      consumables: { ...s.consumables, [id]: qty + 1 },
-      quests: {
-        ...s.quests,
-        daily: { ...s.quests.daily, purchases: (s.quests.daily.purchases ?? 0) + 1 },
-      },
-    });
+    setSaveBoth(res.save);
   };
 
   const discardItem = (kind: 'gear' | 'material' | 'consumable', id: string) => {
@@ -1099,7 +1035,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // another copy of the same template can; socketed gems return to the stock.
   const salvageItem = (id: string) => {
     const result = applySalvage(saveRef.current, id);
-    if (!result) return;
+    if (!result) {
+      if (salvageBlockReason(saveRef.current, id) === 'bag') showToast(t('inventory.salvageBagFull'));
+      return;
+    }
     playSfx('click');
     setSaveBoth(result.save);
     showToast(result.bonusGranted ? t('inventory.salvageBonus') : t('inventory.salvageDone'));
@@ -1123,30 +1062,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   const refineMaterial = (recipeId: string) => {
-    const recipe = getRefiningRecipe(recipeId);
-    if (!recipe) return;
-    const s = saveRef.current;
-    if (s.gold < recipe.cost) return;
-    if (playerLevel(s.xp) < recipe.requiredLevel) return;
-    if (!hasMaterials(s.materials, recipe.input)) return;
-
-    const mats = { ...s.materials };
-    for (const [mid, count] of Object.entries(recipe.input)) {
-      mats[mid as MaterialId] = (mats[mid as MaterialId] ?? 0) - (count as number);
+    const res = applyRefine(saveRef.current, recipeId);
+    if (!res.ok || !res.save) {
+      craftBlockedToast(res.reason);
+      return;
     }
-    mats[recipe.output] = (mats[recipe.output] ?? 0) + recipe.outputQty;
-
     playSfx('click');
-    setSaveBoth({
-      ...s,
-      gold: s.gold - recipe.cost,
-      materials: mats,
-      quests: {
-        ...s.quests,
-        daily: { ...s.quests.daily, forge: (s.quests.daily.forge ?? 0) + 1 },
-      },
-    });
-    showToast(t('forge.toBag', { n: t(`materials.mat_${recipe.output}`) }));
+    setSaveBoth(res.save);
+    const output = getRefiningRecipe(recipeId)?.output;
+    if (output) showToast(t('forge.toBag', { n: t(`materials.mat_${output}`) }));
   };
 
   // Economic reforge (reforge.ts), per INSTANCE: rerolls only that piece's substats; all-or-nothing charge.
@@ -1268,7 +1192,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const s = saveRef.current;
     const hit = resolveGearInstance(s, id);
     if (hit) {
-      if (inventorySlotsUsed(s) + 1 > inventoryCapacity(s)) {
+      if (!canAddInstances(s, 1)) {
         showToast(t('inventory.bagFullUnequip'));
         return;
       }
@@ -1394,7 +1318,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onEquip={equipGear}
               onUnequip={unequipGear}
               onSelectTitle={selectTitle}
-              onUpgradePouch={upgradeHuntPouch}
               onDiscard={discardItem}
               onReforge={reforgeItem}
               onSalvage={salvageItem}
@@ -1549,16 +1472,17 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         />
       )}
 
-      {save.pendingHuntReward && (
+      {save.pendingHuntReward && !rewardHidden && (
         <HuntRewardModal
+          save={save}
           reward={save.pendingHuntReward}
-          pouch={save.huntPouch}
           subLevels={T.hunting.subLevels}
-          bagFull={
-            save.pendingHuntReward.uniques.length > 0 &&
-            inventorySlotsUsed(save) + save.pendingHuntReward.uniques.length > inventoryCapacity(save)
-          }
           onClaim={confirmHuntReward}
+          onOpenInventory={() => {
+            playSfx('click');
+            setRewardHidden(true);
+            setBagOpen(true);
+          }}
         />
       )}
 
