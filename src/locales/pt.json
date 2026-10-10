@@ -541,7 +541,7 @@
     "precision_elixir": "Elixir de Precisão",
     "precision_elixir_d": "+8% de chance de crítico por 30 minutos reais",
     "precision_elixir_active": "Elixir de Precisão ativo por 30 minutos!",
-    "whetstone_oil": "Azeite de Amolar",
+    "whetstone_oil": "Óleo de Amolar",
     "whetstone_oil_d": "Restaura 30% da durabilidade da arma e da armadura equipadas",
     "whetstone_oil_active": "Arma e armadura restauradas em 30% de durabilidade!",
     "whetstone_oil_full": "Arma e armadura já estão com a durabilidade cheia.",
@@ -790,7 +790,8 @@
     "subLevelPromotion": "Progresso para Nível {next}: {n} / {x} vitórias",
     "subLevelPromoted": "Subiu para o Nível {n}!",
     "subLevelMax": "Nível máximo",
-    "subLevelEnemyLabel": "Inimigo — Nível {n}"
+    "subLevelEnemyLabel": "Inimigo — Nível {n}",
+    "claimHeld": "Resgatar"
   },
   "deliveries": {
     "title": "Pedidos",
@@ -973,7 +974,7 @@
     "plant_rare_flower_use": "Usos: Elixir de Força",
     "plant_iron_thistle": "Cardo de Ferro",
     "plant_iron_thistle_d": "Colheita rápida de um cardo resistente",
-    "plant_iron_thistle_use": "Usos: Tônico de Pele de Pedra, Azeite de Amolar, Anel de Prata",
+    "plant_iron_thistle_use": "Usos: Tônico de Pele de Pedra, Óleo de Amolar, Anel de Prata",
     "plant_gold_blossom": "Flor Dourada",
     "plant_gold_blossom_d": "Flor de colheita média, escassa e valiosa",
     "plant_gold_blossom_use": "Usos: Tônico da Fortuna, Anel de Ouro, Anel de Rubi",

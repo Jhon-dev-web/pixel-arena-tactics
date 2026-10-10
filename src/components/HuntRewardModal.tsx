@@ -103,7 +103,7 @@ export default function HuntRewardModal({
         )}
 
         <button className="result-btn" onClick={onClaim} data-ui>
-          {t('hunting.claimAndExit')}
+          {t(bagFull ? 'hunting.claimHeld' : 'hunting.claimAndExit')}
         </button>
       </div>
     </div>

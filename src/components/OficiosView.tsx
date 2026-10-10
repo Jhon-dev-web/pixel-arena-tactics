@@ -132,6 +132,8 @@ export default function OficiosView({
                       <div className="oficios-card-title">
                         <span className="craft-name">
                           {recipe.outputQty}× {matText(`mat_${recipe.output}`)}
+                          {/* the four dust recipes make the same item: the title names what each one eats */}
+                          {recipe.station === 'dust' && ` (${matText(`mat_${Object.keys(recipe.input)[0]}`)})`}
                         </span>
                         <span className="gear-count">{t('shop.youHave', { n: owned })}</span>
                       </div>

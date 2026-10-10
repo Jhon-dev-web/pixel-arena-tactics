@@ -21,6 +21,27 @@
     local('Courier');
 }
 
+/* Press Start 2P draws its accented CAPITALS (Á É Í Ó Ú Â Ê Ô Ã Õ ...) squeezed into 7 rows, so "Ébano" reads as "ébano" and "ÓLEO" as "óLEO"
+   (the glyphs are in the bundled latin subset, they are just not capital-looking; scripts/fontCoverage.mjs). Those characters only come from a monospace
+   bold fallback, per character, which keeps the capital height and the accent. Same trick (and same size-adjust reasoning) as the digit range above. */
+@font-face {
+  font-family: 'Press Start 2P';
+  unicode-range: U+00C0-00D6, U+00D8-00DE;
+  size-adjust: 165%;
+  font-weight: 400;
+  src:
+    local('Consolas Bold'),
+    local('Consolas-Bold'),
+    local('Menlo Bold'),
+    local('Menlo-Bold'),
+    local('Roboto Mono Bold'),
+    local('Courier New Bold'),
+    local('CourierNewPS-BoldMT'),
+    local('Consolas'),
+    local('Menlo'),
+    local('Courier New');
+}
+
 :root {
   --font-size: 12px;
   --sprite-size: 132px;
@@ -52,6 +73,7 @@ body,
 }
 
 body {
+  font-variant-ligatures: none; /* the font's fi / fl ligatures print "Élfica" as "élfıca" */
   background: #07050b;
   font-family: 'Press Start 2P', 'Courier New', monospace;
   overflow: hidden;
@@ -7747,5 +7769,80 @@ button[data-ui]:focus-visible {
   .bp-reward-label {
     -webkit-line-clamp: 3;
     font-size: calc(var(--font-size) - 4px);
+  }
+}
+
+/* Ofícios tabs on a phone: two per row at a readable size instead of six crammed into one row at 7 px */
+@media (max-width: 520px) {
+  .oficios-tabs .tab {
+    flex: 1 1 40%;
+    font-size: calc(var(--font-size) - 2px);
+    padding-block: 8px;
+  }
+}
+
+/* Forge on a phone: tabs at a readable size (2 x 2) and the Melhorar / Reparo rows stack their buttons under the piece instead of squeezing its name */
+@media (max-width: 520px) {
+  .forge-tabs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .forge-tabs .tab {
+    font-size: calc(var(--font-size) - 2px);
+    padding: 9px 4px;
+  }
+  .forge-body .craft-card:has(.upgrade-btns) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .forge-modal .craft-card .upgrade-btns {
+    flex-direction: row;
+    flex: none;
+    width: 100%;
+    max-width: none;
+  }
+  .forge-modal .craft-card .upgrade-btns .craft-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 40px;
+    width: auto;
+    height: auto;
+  }
+}
+
+/* Tablet (600-1023 px): the phone-sized modals (420 px) left most of the screen empty and broke names mid-word; give them the width a tablet has */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .dungeon-modal,
+  .shop-modal,
+  .quests-modal,
+  .gather-modal,
+  .inventory-modal,
+  .garden-modal {
+    width: min(92vw, 640px);
+  }
+  .hunt-modal,
+  .bp-modal,
+  .forge-modal,
+  .delivery-modal {
+    width: min(94vw, 720px);
+  }
+  .battle {
+    width: min(94vw, 680px);
+  }
+  .forge-body .craft-card:has(.upgrade-btns) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .forge-modal .craft-card .upgrade-btns {
+    flex-direction: row;
+    flex: none;
+    width: 100%;
+    max-width: none;
+  }
+  .forge-modal .craft-card .upgrade-btns .craft-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 40px;
+    width: auto;
+    height: auto;
   }
 }

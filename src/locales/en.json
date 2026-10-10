@@ -790,7 +790,8 @@
     "subLevelPromotion": "Progress to Level {next}: {n} / {x} wins",
     "subLevelPromoted": "Promoted to Level {n}!",
     "subLevelMax": "Max level",
-    "subLevelEnemyLabel": "Enemy — Level {n}"
+    "subLevelEnemyLabel": "Enemy — Level {n}",
+    "claimHeld": "Claim"
   },
   "deliveries": {
     "title": "Orders",

@@ -55,7 +55,7 @@ Legenda: **corrigido** / **deixado** (com o motivo).
 |---|---|---|
 | Menu diz "Inventário" e a tela dizia "Mochila" | `locales inventory.title` | corrigido: "Inventário" (pt) / "Inventory" (en); "Mochila" continua só como o nome do recipiente em mensagens de espaço |
 | Quantidades sem separador de milhar ("×1234") | `InventoryPanel.tsx` | corrigido |
-| Consumíveis novos sem botão de uso | `InventoryPanel MANUALLY_USABLE` | corrigido: todos os tônicos e o Azeite de Amolar são usáveis; Adubo mostra "Use no canteiro da Horta" |
+| Consumíveis novos sem botão de uso | `InventoryPanel MANUALLY_USABLE` | corrigido: todos os tônicos e o Óleo de Amolar são usáveis; Adubo mostra "Use no canteiro da Horta" |
 | Emoji nos botões ("🗑️ Descartar", "♻️ Desmontar", "💰 Vender", "🎒 Espaço") | `locales inventory.*` | corrigido (emoji removido; os botões já têm texto) |
 
 ### Home / Personagem / Menu lateral
@@ -131,7 +131,7 @@ Auditoria em inglês nas duas larguras, em 14 telas e 3 abas da Forja: nenhuma c
 | Caça / Masmorra | Tônico ativo não aparecia na Caça (só na Masmorra) | `HuntModal.tsx` | corrigido: componente `ActiveBuffs` (ícone, nome, tempo restante) |
 | Inventário | Detalhe de um tônico não dizia se estava ativo nem quanto falta | `InventoryPanel.tsx` | corrigido: "Ativo: faltam 24m" |
 | Inventário / Loja | Mochila acima do limite (64 / 30) parecia normal | `.inventory-summary-chip` | corrigido: chip vermelho "acima do limite" no Inventário; a Loja segue mostrando "Mochila cheia!" por item |
-| Ofícios | "Óleo de Amolar" aparecia como "óleo..." (a fonte pixel não tem "Ó" maiúsculo) | `locales pt` | corrigido: renomeado para "Azeite de Amolar". Mesma limitação em "Ébano" e "Madeira Élfica" (aparecem minúsculos): deixado, são nomes antigos |
+| Ofícios | "Óleo de Amolar" aparecia como "óleo..." | fonte (veja a terceira passada) | corrigido na terceira passada pela causa, sem renomear nada |
 | Forja (inglês) | Botão "CATALYZE" cortado | `.craft-btn.repair-action-btn` | corrigido |
 | Battle Pass | Sem rótulo de qual coluna é Grátis e qual é Premium (celular) | `BattlePassModal.tsx` | corrigido: cabeçalho "Grátis / Premium" no celular (no desktop o cadeado já distingue) |
 | Battle Pass (celular) | Nomes de recompensa cortados ("Small Health…", "Refine Cataly…") | `.bp-reward-label` | corrigido: 3 linhas e fonte menor |
@@ -140,3 +140,48 @@ Auditoria em inglês nas duas larguras, em 14 telas e 3 abas da Forja: nenhuma c
 | Pedidos / Missões / Configurações | Nenhum defeito achado nas telas vistas | - | - |
 
 Contagem desta passada: 12 encontrados, 9 corrigidos, 3 deixados.
+
+---
+
+# Terceira passada (letras maiúsculas acentuadas, telas restantes, tablet)
+
+## Causa raiz das maiúsculas acentuadas
+
+O subset `latin` da Press Start 2P que o jogo já carrega TEM Á À Â Ã É Ê Í Ó Õ Ú Ç (conferido na tabela cmap do arquivo, `node scripts/fontCoverage.mjs`; o subset `latin-ext` não tem nenhum deles, então empacotá-lo não ajudaria). O problema é o desenho: a fonte encaixa a capital acentuada em 7 linhas, e "Ébano" fica igual a "ébano", "ÓLEO" a "óLEO" (teste a 32 px no navegador). Não é text-transform nem a troca dos dígitos do topo do App.css. A fonte ainda tinha a ligadura "fi" ("Élfica" saía "élfıca").
+Correção única em CSS: uma segunda `@font-face` 'Press Start 2P' com `unicode-range: U+00C0-00D6, U+00D8-00DE` apontando para uma monoespaçada em negrito do sistema (Consolas / Menlo / Roboto Mono / Courier New) com `size-adjust: 165%`, o mesmo truque dos dígitos: só essas capitais caem para a fallback, por caractere, com altura de capital e acento. `font-variant-ligatures: none` no body. Verificado nos dois tamanhos: "Ébano", "Madeira Élfica", "Óleo de Amolar", "COMEÇAR", "MINERAÇÃO", "ÁREA", "ÍNDICE" e as 11 capitais acentuadas saem com a capital certa. "Azeite de Amolar" voltou a "Óleo de Amolar" (pt.json e docs).
+Regressão: `src/game/__tests__/fonts.test.ts` lê o cmap do arquivo da fonte, exige que todo caractere de pt.json e en.json esteja coberto (fora a lista conhecida de 17 símbolos/emoji que caem para a fonte do sistema: um emoji novo faz o teste falhar) e que a regra de fallback continue no App.css.
+
+## O que foi visto (imagem), por tamanho
+
+| Tela / estado | 1280x800 | 390x800 | 768x1024 |
+|---|---|---|---|
+| Missões | visto | visto | - |
+| Configurações | visto | visto | - |
+| Loja | visto | visto (antes) | - |
+| Ofícios: Fornalha, Alquimia, Carpintaria, Pó de Refino, Poções | visto (antes: Fornalha, Poções) | visto os 5 (Curtume só por texto: 1 cartão) | - |
+| Forja: Melhorar | visto | visto | visto |
+| Forja: Reparo, Gemas | visto (antes) | visto | - |
+| Inventário: peça única, tônico ativo ("Ativo: faltam 20m"), Adubo, relíquia | visto (Adubo, relíquia) | visto (única, tônico) | visto (tônico) |
+| Lenhador com sessão ativa e Poção do Coletor ativa | visto (antes) | visto | - |
+| Recompensa da Caça com espaço na mochila | visto (peça única listada, botão "Resgatar e Sair", fecha) | - | - |
+| Recompensa da Caça com mochila cheia | visto (antes) | visto | - |
+| Masmorra: retrocesso com recompensa de marco | visto (antes) | visto | - |
+| Masmorra: batalha e derrota | visto (antes) | visto (batalha) | visto (batalha, derrota) |
+| Home | visto | visto | visto |
+| Horta (cheia, canteiro bloqueado) | visto (antes) | visto (antes) | visto |
+| Queda de peça única de chefe | **impossível sem editar código**: a chance (8%) é lida de `T.battle` no momento do sorteio e o módulo que o navegador importa não é o mesmo objeto que o jogo usa (a URL do módulo muda com o HMR), então mudar a chance pela página não surte efeito; a tela que a mostra é a mesma lista de "Peças únicas" já vista na recompensa da Caça (nos dois tamanhos) | | |
+
+## Defeitos desta passada
+
+| Tela | Defeito | Onde | Situação |
+|---|---|---|---|
+| Todas | Capitais acentuadas e ligadura "fi" | `App.css` (causa acima) | corrigido |
+| Caça | Botão "Resgatar e Sair" quando a peça única fica retida | `HuntRewardModal.tsx` | corrigido: "Resgatar" / "Claim" quando a mochila está cheia; a tela continua aberta com a peça retida |
+| Ofícios | 4 cartões "1x Pó de Refino" | `OficiosView.tsx` | corrigido: "Pó de Refino (Minério de Cobre / Farrapo de Couro / Fragmento de Osso / Erva Medicinal)", pt e en, pelo nome do insumo |
+| Ofícios (390) | Seis abas em uma linha a 7 px | `.oficios-tabs .tab` | corrigido: duas por linha, fonte legível |
+| Forja (390) | Abas a 7 px; nome da peça quebrado no meio ("Flamejan/te") e botões Melhorar / Catalisar espremidos em coluna de 1 letra | `.forge-tabs`, `.craft-card` | corrigido: abas 2x2, botões lado a lado abaixo da peça |
+| Forja / Inventário / Horta / Batalha / Loja / Missões (tablet 768) | Janelas com largura de celular (≤ 420 px) no meio de 768 px, nomes quebrados | `App.css` | corrigido: faixa de 600 a 1023 px com larguras de 640 a 720 px; Horta, Forja, Inventário e batalha vistos depois |
+| Loja (1280) | Cartões com alturas diferentes, grade irregular | `.shop-body` | deixado: não atrapalha a leitura |
+| Missões | "Entrega" nas missões contra "Pedidos" no menu | `locales q_explorer_d` | deixado: uma entrega é o pedido já aceito e despachado, a diferença é intencional |
+
+Contagem desta passada: 8 encontrados, 6 corrigidos, 2 deixados (+ a queda do chefe não verificável).
