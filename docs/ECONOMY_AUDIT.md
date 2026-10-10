@@ -1,5 +1,7 @@
 # Auditoria econômica e sinks — Arena Duel
 
+> **Nota de 10/10/2026 — o Passe mudou.** Onde este documento (e os que o citam) supõe o Passe de Batalha com **+25% de drops, armazém de 24 h em vez de 4 h e validade de 30 dias**, valem agora os números do Passe de Aventureiro: compra única que **não expira** (trilha em temporadas de 60 dias), armazém de **12 h**, **+10%** de materiais (Caça, Mineração e Lenhador), mais as mesmas conveniências de antes (+1 pedido, +1 troca, +10% de XP nas Entregas, +5 espaços, −20% no reparo). Únicos e relíquias de chefe nunca usaram o multiplicador. O motivo e as medições estão em `BALANCE_CHANGES.md` (seção 28). O restante deste documento não foi reescrito.
+
 Data: 19/09/2026; **atualizado em 20/09/2026 após a integração de Gear Instances** (ver seção 21). Análise do código real e execução do motor atual. Resultado: **Pacote A implementado como primeira etapa (agora portado para o modelo de instâncias individuais); sustentabilidade P2P ainda não demonstrada**. Sem deploy ou blockchain.
 
 > **Como ler este documento depois de Gear Instances.** Os números de emissão, demanda de carreira e simulação supply − sink (seções 3 a 7, 10 e 13 a 17) foram calculados **antes** de Gear Instances, mas continuam matematicamente aplicáveis: dependem do motor da Caça, das receitas e do custo por operação, não da forma como o estado do equipamento é guardado. O que muda com instâncias está na seção 21. Onde o texto original descreve estado compartilhado por tipo de item (`itemId`), ele foi corrigido ou marcado como histórico.

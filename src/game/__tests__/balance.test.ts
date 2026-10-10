@@ -43,12 +43,12 @@ describe('Hunt loot goes into the inventory (no separate container)', () => {
     expect(allThree).toBeGreaterThan(0); // the 4 h session really did produce the three types at least once
   });
 
-  it('the Battle Pass perk adds inventory slots only while it lasts', () => {
+  it('the Adventurer Pass perk adds inventory slots for its owner, for good (it never expires)', () => {
     const base = defaultSave();
-    const pass = { ...base, hasBattlePass: true, battlePassExpiresAt: NOW + HOUR };
+    const pass = { ...base, hasBattlePass: true };
     expect(inventoryCapacity(base, NOW)).toBe(DEFAULT_INVENTORY_CAPACITY);
     expect(inventoryCapacity(pass, NOW)).toBe(DEFAULT_INVENTORY_CAPACITY + T.battlePass.bagBonusSlots);
-    expect(inventoryCapacity(pass, NOW + 2 * HOUR)).toBe(DEFAULT_INVENTORY_CAPACITY);
+    expect(inventoryCapacity(pass, NOW + 400 * 24 * HOUR)).toBe(DEFAULT_INVENTORY_CAPACITY + T.battlePass.bagBonusSlots);
     expect(normalizeSave(wire(pass)).inventoryBonusSlots).toBe(0);
   });
 });

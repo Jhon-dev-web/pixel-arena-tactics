@@ -2,7 +2,8 @@ import { CSSProperties, useMemo, useState } from 'react';
 import ActiveBuffs from './ActiveBuffs';
 import { FramedSprite, MatIcon, Meter, MonsterPortrait, RarityChip, ZoneUniques } from './HuntParts';
 import { fmtNum, t } from '../locales';
-import { computeCP, getHuntProgress, huntPromotionRequiredWins, isBattlePassActive, SaveData } from '../game/engine';
+import { computeCP, getHuntProgress, huntPromotionRequiredWins, SaveData } from '../game/engine';
+import { ownsAdventurerPass } from '../game/entitlements';
 import T from '../game/tunables';
 import {
   DEFAULT_HUNTING_DEPTH,
@@ -126,8 +127,7 @@ export default function HuntSelection({
   const required = huntPromotionRequiredWins(progress.ceiling);
   const maxed = progress.ceiling >= T.hunting.subLevels;
   const blocked = startBlockedReason(save, zone, depth, playerCp);
-  const [now] = useState(() => Date.now());
-  const passActive = isBattlePassActive(save, now);
+  const passActive = ownsAdventurerPass(save);
   const passCapHours = Math.max(zone.offlineCapHours, T.battlePass.capHours);
   // The inventory the hunt would meet: its free space now, and whether this hero's estimated yield would overflow it before the storage cap (an estimate).
   const depthEstimate = estimates[HUNTING_DEPTHS.findIndex((d) => d.id === depth)] ?? null;

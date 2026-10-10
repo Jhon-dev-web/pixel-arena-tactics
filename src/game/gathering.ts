@@ -81,11 +81,11 @@ export function applyStartGathering(save: SaveData, kind: GatherKind, tierId: st
     if (!tier || save.activeWoodId || save.activeOreId === tier.id || !isOreTierUnlocked(tier, skillLevel(save.skillXp.mining, 'mining'))) return null;
     const claimed = save.activeOreId ? applyClaimGathering(save, kind, now) : null;
     const base = claimed ? claimed.save : save;
-    return { save: { ...base, activeOreId: tier.id, lastMiningClaim: now, miningPass: snapshotGatherPass(base, now) }, claimed };
+    return { save: { ...base, activeOreId: tier.id, lastMiningClaim: now, miningPass: snapshotGatherPass(base) }, claimed };
   }
   const tier = getWoodTier(tierId);
   if (!tier || save.activeOreId || save.activeWoodId === tier.id || !isWoodTierUnlocked(tier, skillLevel(save.skillXp.woodcutting, 'woodcutting'))) return null;
   const claimed = save.activeWoodId ? applyClaimGathering(save, kind, now) : null;
   const base = claimed ? claimed.save : save;
-  return { save: { ...base, activeWoodId: tier.id, lastWoodcuttingClaim: now, woodcuttingPass: snapshotGatherPass(base, now) }, claimed };
+  return { save: { ...base, activeWoodId: tier.id, lastWoodcuttingClaim: now, woodcuttingPass: snapshotGatherPass(base) }, claimed };
 }

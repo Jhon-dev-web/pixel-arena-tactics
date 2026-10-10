@@ -134,10 +134,10 @@ describe('the shared placement rule', () => {
     expect(fitsBag(grown, { ...grown, materials: { ...grown.materials, obsidian: 0 } })).toBe(true);
   });
 
-  it('a Pass that lapses with the bag over the limit deletes nothing', () => {
+  it('a bag over the limit (filled while the Pass perk was on, now not an owner) deletes nothing on load', () => {
     const base = defaultSave();
-    const pass = { ...base, hasBattlePass: true, battlePassExpiresAt: NOW + HOUR };
-    const bigger = withSlotsUsed(pass, inventoryCapacity(pass, NOW));
+    const pass = { ...base, hasBattlePass: true };
+    const bigger = { ...withSlotsUsed(pass, inventoryCapacity(pass, NOW)), hasBattlePass: false };
     expect(inventorySlotsUsed(bigger)).toBeGreaterThan(DEFAULT_INVENTORY_CAPACITY);
     const later = NOW + 2 * HOUR;
     vi.setSystemTime(later);
@@ -335,7 +335,7 @@ describe('every other source follows its own full-bag rule', () => {
   });
 
   it('Battle Pass item rewards (deliberate): refused when they do not fit and stay claimable; gold always goes in', () => {
-    const base: SaveData = { ...defaultSave(), battlePassLevel: 30, hasBattlePass: true, battlePassExpiresAt: null };
+    const base: SaveData = { ...defaultSave(), battlePassLevel: 30, hasBattlePass: true };
     // level 2 free = copper x5 (a new type); level 1 free = gold
     const bag = full({ ...base, materials: { ...base.materials, copper: 0 } });
     const blocked = applyBattlePassClaim(bag, 2, 'free', NOW);

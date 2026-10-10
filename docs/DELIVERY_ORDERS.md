@@ -63,7 +63,7 @@ Sem Passe: 3 ofertas e 1 reroll/dia. Com Passe: 4 ofertas, 2 rerolls/dia e **+10
 
 ### Bônus de XP do Passe (`T.deliveries.passXpBonus = 0,10`)
 
-Aplicado ao ACEITAR o pedido e congelado no snapshot (o Passe expirar depois não muda o XP daquela entrega). Só XP: Gold, shards, materiais, duração e o número de entregas não mudam. A oferta no tabuleiro já mostra o XP com o bônus.
+Aplicado ao ACEITAR o pedido e congelado no snapshot (o Passe não expira mais; o XP do pedido aceito continua o do momento do aceite). Só XP: Gold, shards, materiais, duração e o número de entregas não mudam. A oferta no tabuleiro já mostra o XP com o bônus.
 
 Motivo: a Expedição com Passe dava 2 slots. Com 1 slot para todos, o XP de Expedição de quem comprava Passe caía 23 a 56%. Simulação (mix MID/LATE/END, XP/dia só de Entregas):
 

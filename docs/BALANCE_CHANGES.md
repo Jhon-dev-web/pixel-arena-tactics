@@ -528,3 +528,24 @@ Primeira vez cheio, quem ignora o inventário: dia 6 (5-7), 20/20 seeds (R5: 6).
 - O ouro extra das substats agora vale na Caça (sem isso a moeda não valeria lá), um efeito pequeno (a Caça paga 3-12 Ouro por hora).
 - Relíquias ganharam botão de equipar e uma linha no painel do herói (eram inequipáveis).
 - A pior seed do atento (11,6%) merece uma olhada se a meta passar a ser "pior seed".
+
+## 28. Passe de Aventureiro: compra única, temporadas e vantagens leves (10/10/2026)
+
+**O que mudou.** O Passe deixa de ser uma assinatura de 30 dias e vira um desbloqueio permanente (`entitlements.ts`, o único lugar que decide se a conta é dona). Quem já o ativou alguma vez (`hasBattlePass` verdadeiro, vencido ou não) vira dono para sempre; quem nunca o teve continua sem. O botão "Ativar" não dá mais o Passe de graça: em produção ele é um botão desabilitado, só uma build DEV (`import.meta.env.DEV`) concede o Passe para teste. A trilha de 30 níveis passa a correr em **temporadas de 60 dias** alinhadas a uma época fixa (Temporada 1 = 01/10/2026 UTC, `seasons.ts`): na virada, o que foi ganho e não resgatado é entregue sozinho (trilha grátis sempre, premium só para o dono, pelo caminho forçado: a bolsa pode passar da capacidade), o nível, o XP e os resgates recomeçam, e o jogador vê um resumo uma vez. A temporada já resolvida fica gravada no save (idempotente; relógio para trás nunca refaz uma temporada).
+
+**Vantagens (conveniência, não poder).** Armazém 24 h → **12 h** (Caça, Mineração e Lenhador, um tunável: `battlePass.capHours`). Multiplicador de materiais 1,25 → **1,10**. Mantidos: +1 oferta e +1 troca de Pedidos por dia, +10% de XP nas Entregas, +5 espaços, −20% no reparo. Únicos e relíquias de chefe não usam o multiplicador (teste: a mesma sessão sorteia os mesmos únicos com e sem Passe).
+
+**Medição** (`npm run sim`, cenário P contra A, 20 seeds, mediana; o dono tem só as vantagens, a trilha não é resgatada):
+
+| Quando | Medida | Sem Passe | Com Passe | Dono |
+| --: | --- | --- | --- | --- |
+| dia 7 | materiais por dia (média dos dias 1-7) | 226 | 868 | +285% |
+| dia 7 | ouro por dia (média 1-7) | 874 | 1 104 | +26% |
+| dia 7 | nível / CP / andar | 39 / 736 / 30 | 48 / 1 139 / 40 | +9 níveis / +55% / +10 andares |
+| dia 14 | materiais por dia (média dos dias 1-14) | 378 | 1 071 | +183% |
+| dia 14 | ouro por dia (média 1-14) | 623 | 1 193 | +91% |
+| dia 14 | nível / CP / andar | 48 / 1 189 / 50 | 54 / 1 476 / 60 | +6 níveis / +24% / +10 andares |
+
+Marcos (dia, mediana): segunda zona e chefe 25: 5 → 3; chegada ao andar 50: 14 → 8; chefe 50: 17,5 → 11,5.
+
+**O limite do diretor (até ~15% em materiais/dia e ~1 dia por marco) NÃO é cumprido, e baixar o multiplicador não resolve.** A diferença vem quase toda do armazém: o jogador simulado volta a cada 12 h e, sem o Passe, só 4 h (Mineração/Lenhador) ou 4 a 8 h (Caça) de cada 12 h viram material. Decomposição medida (8 seeds, materiais/dia até o dia 7): armazém de 12 h sozinho (multiplicador 1,00, sem bolsa): +260%; armazém de 4 h com multiplicador 1,10: +7%; só a bolsa de +5 espaços: +1%. Armazém de 8 h com 1,10: +163%; armazém de 6 h com 1,05: +59%. Ou seja, qualquer armazém maior que o da zona entrega um multiplicador de tempo a quem entra a cada 12 h, e o 1,10 vale só ~7% dos 285%. Os números ficaram como o diretor especificou (12 h e 1,10) e a decisão é dele: (a) aceitar (o Passe vende "não precisar voltar de 4 em 4 h"), (b) armazém de 6 h (+59% de materiais, ainda acima do limite) ou (c) respeitar os 15% só com armazém ≈ o da zona, isto é, sem o perk de armazém. `SIM_PASS_ONLY=1 SIM_PASS_CAP=... SIM_PASS_MULT=... SIM_PASS_BAG=... npm run sim` reproduz qualquer combinação.

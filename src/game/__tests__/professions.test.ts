@@ -165,7 +165,7 @@ describe('profession gates and refining', () => {
 });
 
 describe('Battle Pass and gathering sessions', () => {
-  const withPass = (s: SaveData, until: number | null): SaveData => ({ ...s, hasBattlePass: true, battlePassExpiresAt: until });
+  const withPass = (s: SaveData): SaveData => ({ ...s, hasBattlePass: true });
   const lvl = (s: SaveData): SaveData => ({ ...s, skillXp: { mining: skillXpToReachLevel(30, 'mining'), woodcutting: skillXpToReachLevel(30, 'woodcutting'), gardening: 0 } });
 
   it('Woodcutting pays the same Battle Pass XP as Mining for the same hours (one shared rule)', () => {
@@ -177,43 +177,55 @@ describe('Battle Pass and gathering sessions', () => {
     expect(w.units).toBe(m.units); // same power, same rate, same cap
   });
 
-  it('a session started with the Pass keeps its 24 h cap after the Pass expires; the x1.25 stops at the expiry instant (pro-rated)', () => {
-    const until = T0 + 10 * HOUR;
-    const s = applyStartGathering(withPass(lvl(fresh()), until), 'mining', 'copper', T0)!.save;
-    expect(s.miningPass).toEqual({ active: true, until });
-    const later = T0 + 30 * HOUR; // the Pass is long gone
+  it('a session started with the Pass keeps the longer cap and the yield bonus for the whole session (the Pass never expires)', () => {
+    const s = applyStartGathering(withPass(lvl(fresh())), 'mining', 'copper', T0)!.save;
+    expect(s.miningPass).toEqual({ active: true });
+    const later = T0 + 30 * HOUR;
     const st = computeMiningStatus(s, later);
     expect(st.capMs).toBe(T.battlePass.capHours * HOUR);
     expect(st.pendingMs).toBe(T.battlePass.capHours * HOUR);
     const power = gatherPower(BASE_GATHER_POWER, s.skillXp.mining);
-    const share = 10 / T.battlePass.capHours;
-    expect(st.oreReady).toBe(Math.floor(T.battlePass.capHours * power * (1 + (T.battlePass.dropRateMultiplier - 1) * share)));
-    // without the expiry the bonus covers the whole session
-    const open = applyStartGathering(withPass(lvl(fresh()), null), 'mining', 'copper', T0)!.save;
-    expect(computeMiningStatus(open, later).oreReady).toBe(Math.floor(T.battlePass.capHours * power * T.battlePass.dropRateMultiplier));
+    expect(st.oreReady).toBe(Math.floor(T.battlePass.capHours * power * T.battlePass.dropRateMultiplier));
+    // the perk numbers: 12 h and +10 %
+    expect(T.battlePass.capHours).toBe(12);
+    expect(T.battlePass.dropRateMultiplier).toBeCloseTo(1.1, 9);
+  });
+
+  it('an in-flight session saved under the 30-day model (snapshot with an expiry) loads as an owner session and pays the full multiplier', () => {
+    const wire = (x: SaveData) => JSON.parse(JSON.stringify(x));
+    const running = { ...withPass(lvl(fresh())), activeOreId: 'copper', lastMiningClaim: T0 };
+    // expiry long gone, and the Pass flag still true: an owner now
+    const old = normalizeSave({ ...wire(running), battlePassExpiresAt: T0 + HOUR, miningPass: { active: true, until: T0 + 2 * HOUR } });
+    expect(old.miningPass).toEqual({ active: true });
+    expect('battlePassExpiresAt' in old).toBe(false);
+    const power = gatherPower(BASE_GATHER_POWER, old.skillXp.mining);
+    expect(computeMiningStatus(old, T0 + 30 * HOUR).oreReady).toBe(Math.floor(T.battlePass.capHours * power * T.battlePass.dropRateMultiplier));
+    // a snapshot that said "no Pass" stays that way for the session
+    const none = normalizeSave({ ...wire(running), miningPass: { active: false, until: null } });
+    expect(none.miningPass).toEqual({ active: false });
+    expect(computeMiningStatus(none, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
   });
 
   it('old saves without the snapshot: the running session gets the Pass as it is at load, never a bigger cap than the player had', () => {
     const running = { ...lvl(fresh()), activeOreId: 'copper', lastMiningClaim: T0 };
     const wire = (s: SaveData) => JSON.parse(JSON.stringify(s));
     const noPass = normalizeSave({ ...wire(running), miningPass: undefined });
-    expect(noPass.miningPass).toEqual({ active: false, until: null });
+    expect(noPass.miningPass).toEqual({ active: false });
     expect(computeMiningStatus(noPass, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
-    const future = Date.now() + 5 * HOUR;
-    const pass = normalizeSave({ ...wire(withPass(running, future)), miningPass: undefined });
-    expect(pass.miningPass).toEqual({ active: true, until: future });
+    const pass = normalizeSave({ ...wire(withPass(running)), miningPass: undefined });
+    expect(pass.miningPass).toEqual({ active: true });
     // a save that never had a snapshot field at all, computed without loading, falls back to the current Pass
     const raw = { ...running } as SaveData;
     delete raw.miningPass;
     expect(computeMiningStatus(raw, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
-    expect(computeMiningStatus(withPass(raw, null), T0 + 30 * HOUR).capMs).toBe(T.battlePass.capHours * HOUR);
+    expect(computeMiningStatus(withPass(raw), T0 + 30 * HOUR).capMs).toBe(T.battlePass.capHours * HOUR);
     // nothing running: no snapshot is kept
     expect(normalizeSave(wire(fresh())).miningPass).toBeNull();
   });
 
   it('a Pass bought mid-session does not stretch that session: the 4 h cap stays and the longer one starts with the next session', () => {
     const s = applyStartGathering(lvl(fresh()), 'woodcutting', 'common_wood', T0)!.save;
-    const bought = withPass(s, null);
+    const bought = withPass(s);
     const st = computeWoodcuttingStatus(bought, T0 + 20 * HOUR);
     expect(st.capMs).toBe(4 * HOUR);
     expect(st.passCoversSession).toBe(false);

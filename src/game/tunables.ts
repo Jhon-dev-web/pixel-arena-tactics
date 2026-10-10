@@ -368,12 +368,14 @@ const T = DebugPanel.define({
     processedFeeMaxShare: { value: 0.65, min: 0.1, max: 1, step: 0.05, label: 'Max share of the order Gold that processing fees may represent' },
   },
   battlePass: {
-    _label: 'Battle Pass',
+    _label: 'Adventurer Pass',
     xpBase: { value: 100, min: 20, max: 500, step: 10, label: 'Pass XP required for level 2' },
     xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Pass XP growth per level' },
-    durationDays: { value: 30, min: 1, max: 90, step: 1, label: 'Pass duration on activation (days)' },
-    capHours: { value: 24, min: 4, max: 48, step: 1, label: 'Offline storage cap with pass (hours)' },
-    dropRateMultiplier: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Drop rate multiplier with pass' },
+    // The Pass is a one-time unlock (entitlements.ts); only the 30-level TRACK runs in seasons. Season 1 starts at seasons.ts SEASON_EPOCH_MS.
+    seasonDays: { value: 60, min: 7, max: 180, step: 1, label: 'Season length (days)' },
+    // Convenience, not power (players trade gear on the Steam market): a longer offline window and a small yield bump. Uniques and relics never use the multiplier.
+    capHours: { value: 12, min: 4, max: 48, step: 1, label: 'Offline storage cap with pass (hours): Hunting, Mining and Woodcutting' },
+    dropRateMultiplier: { value: 1.1, min: 1, max: 3, step: 0.05, label: 'Material yield multiplier with pass (Hunting, Mining, Woodcutting)' },
     xpPerFloor: { value: 15, min: 1, max: 100, step: 1, label: 'Pass XP per dungeon floor cleared' },
     xpPerHuntHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Hunting claimed' },
     xpPerMiningHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Mining AND Woodcutting claimed (one rule for both, gathering.ts)' },

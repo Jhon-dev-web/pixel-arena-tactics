@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
-import { effectiveRepairCost, isBattlePassActive, playerLevel, SaveData } from '../game/engine';
+import { effectiveRepairCost, playerLevel, SaveData } from '../game/engine';
+import { ownsAdventurerPass } from '../game/entitlements';
 import {
   GearItem,
   MAX_DURABILITY,
@@ -502,8 +503,8 @@ export default function ForgeModal({
               const item = getGear(inst.templateId);
               const dur = inst.durability;
               const broken = dur <= 0;
-              const cost = effectiveRepairCost(save, item.tier ?? 0, Date.now());
-              const discounted = isBattlePassActive(save, Date.now());
+              const cost = effectiveRepairCost(save, item.tier ?? 0);
+              const discounted = ownsAdventurerPass(save);
               return (
                 <div className={`craft-card ${rarityClass(item)}`} key={inst.id}>
                   <span className="craft-icon">

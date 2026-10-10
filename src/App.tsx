@@ -8,7 +8,6 @@ import {
   computeWoodcuttingStatus,
   defaultSave,
   effectiveRepairCost,
-  isBattlePassActive,
   playerLevel,
   ContextualTutorialId,
   InitialTutorialStep,
@@ -21,8 +20,8 @@ import { addRelics, addUniqueInstance } from './game/uniques';
 import { applyFertilizer, applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
 import { applyElixir, applyWhetstoneOil, ElixirId, isBuffItem } from './game/elixirs';
 import { goldMultiplier } from './game/buffs';
-import { withSessionWindow } from './game/huntSession';
-import { applyBattlePassClaim } from './game/battlepass';
+import { applyBattlePassClaim, settleSeason } from './game/battlepass';
+import { ownsAdventurerPass, purchaseAdventurerPass } from './game/entitlements';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import { applyReforge } from './game/reforge';
@@ -109,7 +108,8 @@ interface AppProps {
 
 function App({ repository, initialSave, initialRevision }: AppProps) {
   const { user, signOut, configured } = useAuth();
-  const [save, setSave] = useState<SaveData>(() => initialSave);
+  // A season that ended while the game was closed is settled before the first frame (battlepass.ts settleSeason).
+  const [save, setSave] = useState<SaveData>(() => settleSeason(initialSave, Date.now()));
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const revisionRef = useRef(initialRevision);
   const dirtyRef = useRef(false);
@@ -333,6 +333,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       window.removeEventListener('online', onOnline);
     };
   }, [flushSave]);
+
+  // ...and one that ends while playing is settled within a minute. settleSeason returns the same object when there is nothing to do.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const settled = settleSeason(saveRef.current, Date.now());
+      if (settled !== saveRef.current) setSaveBoth(settled);
+    }, 60_000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setTunableListener(() => setVersion((v) => v + 1));
@@ -560,7 +570,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const s = saveRef.current;
     const hit = resolveGearInstance(s, id);
     if (!hit) return;
-    const next = applyRepair(s, id, blessed, effectiveRepairCost(s, hit.item.tier ?? 0, Date.now()));
+    const next = applyRepair(s, id, blessed, effectiveRepairCost(s, hit.item.tier ?? 0));
     if (!next) return;
     playSfx('victory');
     setSaveBoth(next);
@@ -595,7 +605,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     playSfx('click');
     const s = saveRef.current;
     const now = Date.now();
-    const next = ensureDeliveryOffers(s, now, Math.random, isBattlePassActive(s, now));
+    const next = ensureDeliveryOffers(s, now, Math.random, ownsAdventurerPass(s));
     if (next !== s) setSaveBoth(next);
     setExpeditionOpen(true);
     openContextTutorial('deliveries');
@@ -687,7 +697,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Delivery orders (deliveries.ts): every handler is one pure transition on the latest save, committed at once.
   const acceptDelivery = (offerId: string) => {
     const now = Date.now();
-    const next = applyDeliveryAccept(saveRef.current, offerId, now, Math.random, isBattlePassActive(saveRef.current, now));
+    const next = applyDeliveryAccept(saveRef.current, offerId, now, Math.random, ownsAdventurerPass(saveRef.current));
     if (!next) {
       showToast(t('deliveries.cannotAccept'));
       return;
@@ -701,7 +711,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const claim = applyDeliveryClaim(saveRef.current, now);
     if (!claim) return;
     playSfx('victory');
-    setSaveBoth(ensureDeliveryOffers(claim.save, now, Math.random, isBattlePassActive(claim.save, now)));
+    setSaveBoth(ensureDeliveryOffers(claim.save, now, Math.random, ownsAdventurerPass(claim.save)));
     setClaimResult({
       title: t('deliveries.rewards'),
       name: t(`deliveries.dest_${claim.offer.arch}_${claim.offer.dest}`),
@@ -712,7 +722,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const rerollDeliveries = () => {
     const s = saveRef.current;
     const now = Date.now();
-    const next = applyDeliveryReroll(s, now, Math.random, isBattlePassActive(s, now));
+    const next = applyDeliveryReroll(s, now, Math.random, ownsAdventurerPass(s));
     if (!next) return;
     playSfx('click');
     setSaveBoth(next);
@@ -958,21 +968,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     else if (lostUnits > 0) showToast(t('hunting.leftBehindToast', { n: fmtNum(lostUnits) }));
   };
 
-  const activateBattlePass = () => {
-    const s = saveRef.current;
+  // The only way in is entitlements.ts: a DEV build grants the Pass for testing, a production build has no purchase yet (the screen shows a disabled button).
+  const purchaseBattlePass = () => {
     playSfx('click');
-    const now = Date.now();
-    const base = isBattlePassActive(s, now) && s.battlePassExpiresAt ? s.battlePassExpiresAt : now;
-    const expiresAt = base + T.battlePass.durationDays * 24 * 3600 * 1000;
-    setSaveBoth({
-      ...s,
-      hasBattlePass: true,
-      battlePassExpiresAt: expiresAt,
-      // A running Hunting session only gets the pass bonus (drops, longer cap) from the activation on.
-      huntSession: s.huntSession ? withSessionWindow(s.huntSession, 'pass', { from: now, to: expiresAt }) : s.huntSession,
-    });
+    const res = purchaseAdventurerPass(saveRef.current, Date.now());
+    if (!res.ok) return;
+    setSaveBoth(res.save);
     showToast(t('battlePass.activated'));
   };
+
+  const dismissSeasonSummary = () => setSaveBoth({ ...saveRef.current, pendingSeasonSummary: null });
 
   // A Pass reward that is an item must fit the inventory; if it does not it stays claimable (battlepass.ts) and the player is told.
   const claimBattlePassLevel = (level: number, track: 'free' | 'premium') => {
@@ -1475,7 +1480,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       {expeditionOpen && (
         <DeliveryModal
           save={save}
-          passActive={isBattlePassActive(save, Date.now())}
+          passActive={ownsAdventurerPass(save)}
           onAccept={acceptDelivery}
           onClaim={claimDelivery}
           onReroll={rerollDeliveries}
@@ -1570,7 +1575,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       {battlePassOpen && (
         <BattlePassModal
           save={save}
-          onActivate={activateBattlePass}
+          onActivate={purchaseBattlePass}
+          onDismissSummary={dismissSeasonSummary}
           onClaim={claimBattlePassLevel}
           onClaimAll={claimAllBattlePassRewards}
           onClose={() => {

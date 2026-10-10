@@ -3,6 +3,7 @@ import { INSTANCED_SLOTS, getGear, isInstancedSlot } from './gear';
 import { MaterialId, getMaterial } from './materials';
 import { ConsumableId, getConsumable } from './consumables';
 import T from './tunables';
+import { ownsAdventurerPass } from './entitlements';
 
 // THE bag. One shared pool of slots for everything the hero carries: stackable things (materials, consumables, stackable gear such as relics) fill
 // slots of STACK_LIMIT units each, every stored (unequipped) gear instance takes one slot, an equipped piece takes none. Storage stays as plain
@@ -48,12 +49,13 @@ export function normalizeInventoryCapacity(raw: unknown): number {
   return Math.max(DEFAULT_INVENTORY_CAPACITY, n);
 }
 
-type CapacityFields = Pick<SaveData, 'inventoryCapacity'> & Partial<Pick<SaveData, 'inventoryBonusSlots' | 'hasBattlePass' | 'battlePassExpiresAt'>>;
+type CapacityFields = Pick<SaveData, 'inventoryCapacity'> & Partial<Pick<SaveData, 'inventoryBonusSlots' | 'hasBattlePass'>>;
 
-// Slots the hero has right now: the bought base, the permanent slots the old Hunting Pouch tiers were converted into, and the Battle Pass perk while the
-// Pass is active. A Pass that lapses with the bag over the limit deletes nothing: the bag is simply over capacity until the player makes room.
-export function inventoryCapacity(save: CapacityFields, now: number = Date.now()): number {
-  const passActive = !!save.hasBattlePass && (save.battlePassExpiresAt == null || save.battlePassExpiresAt > now);
+// Slots the hero has right now: the bought base, the permanent slots the old Hunting Pouch tiers were converted into, and the Adventurer Pass perk for
+// its owner. `now` is kept for the callers that pass it (the capacity no longer depends on the clock).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function inventoryCapacity(save: CapacityFields, _now?: number): number {
+  const passActive = ownsAdventurerPass({ hasBattlePass: !!save.hasBattlePass });
   const bonus = Math.max(0, Math.floor(Number(save.inventoryBonusSlots ?? 0)) || 0);
   return normalizeInventoryCapacity(save.inventoryCapacity) + bonus + (passActive ? T.battlePass.bagBonusSlots : 0);
 }

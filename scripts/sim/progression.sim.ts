@@ -639,6 +639,47 @@ function metas(a: Run[], n: Run[], curveWorst: number): string[] {
   return ['| Meta | Critério | Cenário A (pedido) | Resultado |', '| --- | --- | --- | --- |', ...rows.map((r) => `| ${r.slice(0, 3).join(' | ')} | ${r[4]} |`), ''];
 }
 
+// ---- Adventurer Pass (perks only) -----------------------------------------------------------------------------------
+
+// The same policy and seeds with the Pass owned from day 1 (scenario P) against the one without (scenario A). Director's bound: an owner ahead by no more than
+// ~15% in materials/day and ~1 day in any progression milestone.
+function passAdvantage(a: Run[], p: Run[]): string[] {
+  const out: string[] = [];
+  const mats = (x: DaySnapshot) => x.ledger.mats.common + x.ledger.mats.uncommon + x.ledger.mats.rare;
+  const gold = (x: DaySnapshot) => sum(x.ledger.goldIn);
+  const upTo = (runs: Run[], d: number, f: (x: DaySnapshot) => number) => runs.map((r) => mean(r.days.slice(0, d + 1).map(f)));
+  const pct = (po: number, an: number) => (an > 0 ? `${po >= an ? '+' : ''}${num(((po - an) / an) * 100, 1)}%` : '-');
+  const rows: string[][] = [];
+  for (const d of [6, 13]) {
+    const cells = (label: string, f: (x: DaySnapshot) => number, avg: boolean, digits = 0) => {
+      const an = avg ? median(upTo(a, d, f)) : median(a.map((r) => f(r.days[d])));
+      const po = avg ? median(upTo(p, d, f)) : median(p.map((r) => f(r.days[d])));
+      rows.push([`dia ${d + 1}`, label, num(an, digits), num(po, digits), pct(po, an)]);
+    };
+    cells('materiais recebidos por dia (média dos dias 1 até aqui)', mats, true);
+    cells('materiais recebidos naquele dia', mats, false);
+    cells('ouro ganho por dia (média dos dias 1 até aqui)', gold, true);
+    cells('nível', (x) => x.level, false);
+    cells('CP', (x) => x.cp, false);
+    cells('andar mais alto (highestDungeonFloor)', (x) => x.floor, false);
+  }
+  out.push(...table(['Quando', 'Medida (mediana entre seeds)', 'Sem Passe (A)', 'Com Passe (P)', 'Diferença do dono'], rows));
+  out.push('');
+  const evs: [FirstEvent, string][] = [['firstCraft', 'primeira peça forjada'], ['floor10', 'checkpoint 10'], ['zone2', 'segunda zona de caça'], ['floor25', 'chefe 25 vencido'], ['floor50', 'chegada ao andar 50'], ['boss50', 'chefe 50 vencido']];
+  out.push(
+    ...table(
+      ['Marco', 'Dia sem Passe (mediana)', 'Dia com Passe (mediana)', 'Dono adiantado em (dias)'],
+      evs.map(([ev, label]) => {
+        const an = median(a.map((r) => r.first[ev] ?? Infinity));
+        const po = median(p.map((r) => r.first[ev] ?? Infinity));
+        return [label, Number.isFinite(an) ? num(an, 1) : '-', Number.isFinite(po) ? num(po, 1) : '-', Number.isFinite(an) && Number.isFinite(po) ? num(an - po, 1) : '-'];
+      }),
+    ),
+  );
+  out.push('');
+  return out;
+}
+
 describe('progression simulation', () => {
   beforeAll(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -647,17 +688,35 @@ describe('progression simulation', () => {
     vi.useRealTimers();
   });
 
-  it(`plays ${DAYS} days x ${SEEDS} seeds, in several scenarios, and prints the report`, () => {
+  // Diagnostic for tuning the Pass perks: SIM_PASS_ONLY=1 plays only A and P and prints their comparison; SIM_PASS_CAP / SIM_PASS_MULT / SIM_PASS_BAG override
+  // the tunables for that run (e.g. SIM_PASS_ONLY=1 SIM_PASS_MULT=1 SIM_SEEDS=10 npm run sim).
+  it.runIf(process.env.SIM_PASS_ONLY === '1')('prints only the Adventurer Pass owner-vs-non-owner comparison', () => {
+    const tun = T.battlePass as unknown as Record<string, number>;
+    if (process.env.SIM_PASS_CAP) tun.capHours = Number(process.env.SIM_PASS_CAP);
+    if (process.env.SIM_PASS_MULT) tun.dropRateMultiplier = Number(process.env.SIM_PASS_MULT);
+    if (process.env.SIM_PASS_BAG) tun.bagBonusSlots = Number(process.env.SIM_PASS_BAG);
+    const a: Run[] = [];
+    const p: Run[] = [];
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      a.push(playOne(seed, {}));
+      p.push(playOne(seed, { pass: true }));
+    }
+    console.log(`\nPasse: armazém ${tun.capHours} h · multiplicador ${tun.dropRateMultiplier} · bolsa +${tun.bagBonusSlots}\n\n` + passAdvantage(a, p).join('\n') + '\n');
+  });
+
+  it.skipIf(process.env.SIM_PASS_ONLY === '1')(`plays ${DAYS} days x ${SEEDS} seeds, in several scenarios, and prints the report`, () => {
     const started = performance.now();
     const a: Run[] = [];
     const c: Run[] = [];
     const n: Run[] = []; // the careless player: never touches the inventory
     const ctl: Run[] = []; // scenario A without the Garden 3.0 tonics: the control of the tonic budget
+    const pass: Run[] = []; // scenario A, owning the Adventurer Pass from day 1 (perks only)
     for (let seed = 1; seed <= SEEDS; seed++) {
       a.push(playOne(seed, {}));
       c.push(playOne(seed, { garden: true, balanced: true }));
       n.push(playOne(seed, { careless: true }));
       ctl.push(playOne(seed, { tonics: false }));
+      pass.push(playOne(seed, { pass: true }));
     }
     const all: Section[] = ['progress', 'xp', 'dungeon', 'gold', 'materials', 'inventory', 'firsts', 'day1'];
     const curve = enemyCurve();
@@ -684,6 +743,9 @@ describe('progression simulation', () => {
       '### Controle dos tônicos: cenário A sem tônicos contra cenário A (a mesma seed)',
       '',
       ...tonicBudget(a, ctl),
+      '### Passe de Aventureiro: dono (P) contra não-dono (A), mesma política e mesmas seeds (só as vantagens do Passe; a trilha não é resgatada)',
+      '',
+      ...passAdvantage(a, pass),
       '### Diagnóstico do chefe do andar 25',
       '',
       ...bossFirstContact('Cenário A', a),

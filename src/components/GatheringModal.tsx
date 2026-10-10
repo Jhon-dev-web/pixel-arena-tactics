@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { fmtNum, t } from '../locales';
 import { buffRemainingMs, isBuffActive } from '../game/buffs';
-import { computeMiningStatus, computeWoodcuttingStatus, isBattlePassActive, SaveData } from '../game/engine';
+import { computeMiningStatus, computeWoodcuttingStatus, SaveData } from '../game/engine';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { addWithOverflow } from '../game/inventory';
 import { ORE_TIERS } from '../game/ores';
 import { BASE_GATHER_POWER, gatherPower, skillLevel, skillXpForNextLevel, skillXpToReachLevel } from '../game/skills';
+import { ownsAdventurerPass } from '../game/entitlements';
 import T from '../game/tunables';
 import { WOOD_TIERS } from '../game/woodcutting';
 import SkillLevelBadge from './SkillLevelBadge';
@@ -73,7 +74,7 @@ export default function GatheringModal({
   const startedAt = mining ? save.lastMiningClaim : save.lastWoodcuttingClaim;
   const status = mining ? computeMiningStatus(save, now) : computeWoodcuttingStatus(save, now);
   const units = mining ? (status as ReturnType<typeof computeMiningStatus>).oreReady : (status as ReturnType<typeof computeWoodcuttingStatus>).woodReady;
-  const passNow = isBattlePassActive(save, now);
+  const passNow = ownsAdventurerPass(save);
   // A running session keeps the Pass it started with (cap and yield); the Pass bought mid-session only applies from the next one.
   const passActive = activeId ? status.passCoversSession : passNow;
   const ratePerHour = gatherPower(BASE_GATHER_POWER, xp) * (mining ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower) * (passActive ? T.battlePass.dropRateMultiplier : 1);

@@ -66,6 +66,14 @@ export function withSessionWindow(session: HuntSession, kind: 'strength' | 'atta
   return { ...session, tonics: { ...(session.tonics ?? {}), [kind]: mergeWindows([...(session.tonics?.[kind] ?? []), w]) } };
 }
 
+// A save from the 30-day Pass model: its session's Pass windows end at the old expiry. The Pass is permanent now, so an owner's windows that were still
+// running at `now` stay open, and one that has lapsed starts again from `now` (no retroactive bonus for the time in between).
+export function withPermanentPassWindow(session: HuntSession, now: number): HuntSession {
+  const open = session.pass.map((w) => (w.to !== null && w.to > now ? { from: w.from, to: null } : w));
+  if (!open.some((w) => w.from <= now && (w.to === null || w.to > now))) open.push({ from: now, to: null });
+  return { ...session, pass: mergeWindows(open) };
+}
+
 // Windows as session-relative [from, to) offsets in ms (Infinity = open-ended), negative starts clamped to 0.
 export function relativeWindows(windows: TimeWindow[], startedAt: number): [number, number][] {
   return windows

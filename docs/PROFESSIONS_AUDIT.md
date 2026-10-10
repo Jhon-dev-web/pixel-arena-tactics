@@ -15,11 +15,11 @@ Cenários do simulador (scripts/sim):
 | Taxa | `(5 + 0,75 x nível) x 1` unidades/h. NÃO depende do tier do minério/madeira: só do nível da profissão. Nv1 = 5,75/h, Nv10 = 12,5/h, Nv25 = 23,8/h, Nv50 = 42,5/h, Nv75 = 61/h | `skills.ts gatherPower`, `tunables.ts mining/woodcutting/skills` |
 | Sessão | Escolher um tier liberado grava `activeOreId` e `lastMiningClaim = agora`. Uma atividade de fundo por vez (Mineração, Lenhador e Caça se excluem; Masmorra também) | `App.tsx startMining` |
 | Acúmulo | `unidades = floor(horas pendentes x potência x taxa x multiplicador do Passe)`; horas pendentes = `min(agora - lastClaim, teto)`. É por relógio (timestamp): fechar a aba/jogo não pausa nada | `engine.ts computeMiningStatus` |
-| Teto | 4 h sem Passe (`capHours`), 24 h com Passe (`battlePass.capHours`). Passar do teto perde o excedente | idem |
+| Teto | 4 h sem Passe (`capHours`), 12 h com Passe (`battlePass.capHours`; eram 24 h até 10/10/2026). Passar do teto perde o excedente | idem |
 | Offline | Igual ao online: só o timestamp importa, limitado pelo teto. Com 2 visitas por dia (12 h entre elas) só 4 h de cada 12 h viram material: **máximo de 8 h de coleta por dia** sem Passe | idem |
 | Nível usado | O nível que vale para a taxa é o do momento da coleta, que é o do começo da sessão (o XP só entra ao coletar) | `claimMining` |
 | XP por unidade | 1 XP por unidade coletada (`skills.xpPerUnit`). Coletar = XP imediato e a sessão termina | `claimMining` |
-| Passe de Batalha | Mineração: x1,25 de unidades, teto de 24 h, e `xpPerMiningHour` = 10 de XP do Passe por hora coletada. Lenhador: x1,25 e 24 h, mas **sem XP do Passe** | `computeWoodcuttingStatus`, `claimWoodcutting` |
+| Passe de Batalha | Mineração: x1,10 de unidades (era x1,25), teto de 12 h (era 24 h), e `xpPerMiningHour` = 10 de XP do Passe por hora coletada. Lenhador: x1,10 e 12 h, mas **sem XP do Passe** | `computeWoodcuttingStatus`, `claimWoodcutting` |
 | Ouro | `goldRatePerPower = 0`: nenhuma coleta paga ouro (de propósito) | tunables |
 | Curva (Mineração = Lenhador) | 4 faixas contínuas: XP do nível 1 -> 2 = 5; crescimento 1,06 (Nv1-10), 1,10 (11-25), 1,15 (26-50), 1,20 (51-75); teto Nv75 | `skills.ts professionBandTable` |
 | Jardinagem | Curva própria `5 x 1,08^(n-1)`; XP por colheita = horas de crescimento x 5; 4 canteiros, colheita fixa | `garden.ts`, `skills.ts` |
@@ -134,7 +134,7 @@ Verificados e sem defeito: acúmulo com a aba fechada (timestamp, teto respeitad
 | `skillLevel(NaN)` | nível máximo | nível 1 | defeito 2 |
 | Início/coleta de sessões | dentro do `App.tsx`, espelhado à mão no simulador | `src/game/gathering.ts` (App e simulador chamam a mesma função) | defeito 5 |
 
-Bugs 3 e 4 (XP do Passe no Lenhador; Passe que expira no meio da sessão) ficaram como estão e vão para o diretor decidir.
+Bugs 3 e 4 (XP do Passe no Lenhador; Passe que expira no meio da sessão) ficaram como estão e vão para o diretor decidir. **Atualização de 10/10/2026:** o bug 4 deixou de existir, o Passe não expira mais (o `until` do snapshot foi removido).
 
 ### 7.2 Conflito entre P1 e P4 (medido)
 

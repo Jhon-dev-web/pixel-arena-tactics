@@ -1,8 +1,10 @@
 import { GemId } from './gems';
 import { MaterialId } from './materials';
 import { ConsumableId } from './consumables';
-import { MAX_BATTLE_PASS_LEVEL, isBattlePassActive, SaveData } from './engine';
-import { addWithOverflow, stockIsEmpty } from './inventory';
+import { MAX_BATTLE_PASS_LEVEL, SaveData } from './engine';
+import { addForced, addWithOverflow, stockIsEmpty } from './inventory';
+import { ownsAdventurerPass } from './entitlements';
+import { seasonNumber, SummaryReward } from './seasons';
 
 export type BattlePassRewardKind = 'gold' | 'material' | 'consumable' | 'gem' | 'shards' | 'cosmetic';
 
@@ -114,37 +116,72 @@ export interface BattlePassClaimResult {
   blocked?: boolean; // the item reward did not fit the inventory: the reward stays claimable, nothing was paid
 }
 
-// Claim one level of one track. Gold / shards / gems / cosmetics always go in; a material or consumable goes into the inventory as a deliberate action: if it
-// would take more slots than the bag has it is refused (blocked) and stays claimable.
+// Pay one reward. Gold / shards / gems / cosmetics always go in; a material or consumable goes into the inventory. `forced` (season settlement) puts it in
+// even when the bag is full (the bag may go over its capacity, which the game supports); otherwise it is a deliberate action that is refused when the
+// item would take more slots than the bag has (blocked = true, nothing changed).
+function payReward(s: SaveData, reward: BattlePassReward, forced: boolean, now: number): { save: SaveData; blocked?: boolean } {
+  switch (reward.kind) {
+    case 'gold':
+      return { save: { ...s, gold: s.gold + reward.amount } };
+    case 'shards':
+      return { save: { ...s, shards: s.shards + reward.amount } };
+    case 'material':
+    case 'consumable': {
+      if (!reward.id) return { save: s };
+      const add = reward.kind === 'material' ? { materials: { [reward.id]: reward.amount } } : { consumables: { [reward.id]: reward.amount } };
+      if (forced) return { save: addForced(s, add) };
+      const placed = addWithOverflow(s, add, { now });
+      return stockIsEmpty(placed.leftover) ? { save: placed.save } : { save: s, blocked: true };
+    }
+    case 'gem':
+      return { save: reward.id ? { ...s, gems: { ...s.gems, [reward.id]: (s.gems[reward.id as GemId] ?? 0) + reward.amount } } : s };
+    case 'cosmetic':
+      return { save: reward.id && !s.cosmetics.includes(reward.id) ? { ...s, cosmetics: [...s.cosmetics, reward.id] } : s };
+  }
+}
+
+// Claim one level of one track (a deliberate action: an item reward that does not fit the bag is refused and stays claimable).
 export function applyBattlePassClaim(s: SaveData, level: number, track: 'free' | 'premium', now: number): BattlePassClaimResult {
   if (level > s.battlePassLevel) return { save: null };
-  if (track === 'premium' && !isBattlePassActive(s, now)) return { save: null };
+  if (track === 'premium' && !ownsAdventurerPass(s)) return { save: null };
   if (s.claimedPassRewards[track].includes(level)) return { save: null };
   const def = getBattlePassLevelDef(level);
   if (!def) return { save: null };
-  const reward = def[track];
-  let next: SaveData = { ...s, claimedPassRewards: { ...s.claimedPassRewards, [track]: [...s.claimedPassRewards[track], level] } };
-  switch (reward.kind) {
-    case 'gold':
-      next = { ...next, gold: s.gold + reward.amount };
-      break;
-    case 'shards':
-      next = { ...next, shards: s.shards + reward.amount };
-      break;
-    case 'material':
-    case 'consumable': {
-      if (!reward.id) break;
-      const placed = addWithOverflow(next, reward.kind === 'material' ? { materials: { [reward.id]: reward.amount } } : { consumables: { [reward.id]: reward.amount } }, { now });
-      if (!stockIsEmpty(placed.leftover)) return { save: null, blocked: true };
-      next = placed.save;
-      break;
+  const paid = payReward(s, def[track], false, now);
+  if (paid.blocked) return { save: null, blocked: true };
+  return { save: { ...paid.save, claimedPassRewards: { ...paid.save.claimedPassRewards, [track]: [...paid.save.claimedPassRewards[track], level] } } };
+}
+
+// Season rollover. The track runs in seasons shared by every player (seasons.ts); when the clock passes into a later season than the one the save has
+// SETTLED (save.passSeason), every reward the hero had earned and not claimed is paid now (free track always, premium track only for an owner, items through
+// the forced path so a full bag loses nothing), then level, XP and the claimed lists start over and the summary is kept for the player to read once.
+// Idempotent (the settled season is stored) and clock-safe: a clock set back never un-settles or re-runs a season, it simply does nothing. Pure, returns the
+// same object when there is nothing to settle.
+export function settleSeason(s: SaveData, now: number): SaveData {
+  const current = seasonNumber(now);
+  if (current <= s.passSeason) return s;
+  const owner = ownsAdventurerPass(s);
+  let next = s;
+  const summary: SummaryReward[] = [];
+  for (let level = 1; level <= s.battlePassLevel; level++) {
+    const def = getBattlePassLevelDef(level);
+    if (!def) continue;
+    for (const track of ['free', 'premium'] as const) {
+      if (track === 'premium' && !owner) continue;
+      if (s.claimedPassRewards[track].includes(level)) continue;
+      const reward = def[track];
+      next = payReward(next, reward, true, now).save;
+      const same = summary.find((w) => w.kind === reward.kind && w.id === reward.id);
+      if (same) same.amount += reward.amount;
+      else summary.push({ kind: reward.kind, ...(reward.id ? { id: reward.id } : {}), amount: reward.amount });
     }
-    case 'gem':
-      if (reward.id) next = { ...next, gems: { ...s.gems, [reward.id]: (s.gems[reward.id as GemId] ?? 0) + reward.amount } };
-      break;
-    case 'cosmetic':
-      if (reward.id && !s.cosmetics.includes(reward.id)) next = { ...next, cosmetics: [...s.cosmetics, reward.id] };
-      break;
   }
-  return { save: next };
+  return {
+    ...next,
+    battlePassLevel: 1,
+    battlePassXp: 0,
+    claimedPassRewards: { free: [], premium: [] },
+    passSeason: current,
+    pendingSeasonSummary: summary.length > 0 ? { season: s.passSeason, rewards: summary } : s.pendingSeasonSummary,
+  };
 }

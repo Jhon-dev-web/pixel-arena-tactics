@@ -1,4 +1,6 @@
 import T from './tunables';
+import { ownsAdventurerPass } from './entitlements';
+import { sanitizeSeasonSummary, seasonNumber, type SeasonSummary } from './seasons';
 import { EquippedGear, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
 import {
   GEAR_SCHEMA_VERSION,
@@ -26,7 +28,7 @@ import { rarityStatMult } from './rarity';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
-import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers } from './huntSession';
+import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers, withPermanentPassWindow } from './huntSession';
 import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
@@ -183,14 +185,17 @@ export interface SaveData {
   // exactly once by huntLifecycle.applyHuntClaim, and blocks starting another session until then.
   pendingHuntReward: PendingHuntReward | null;
   unlockedHuntingZones: string[];
+  // Owns the Adventurer Pass (permanent). Decided ONLY by entitlements.ts ownsAdventurerPass; never read this flag elsewhere.
   hasBattlePass: boolean;
-  battlePassExpiresAt: number | null;
   // The Pass as it was when the running Mining / Woodcutting session started (see snapshotGatherPass). Optional: old saves get it computed at load.
   miningPass?: GatherPass | null;
   woodcuttingPass?: GatherPass | null;
   battlePassLevel: number;
   battlePassXp: number;
   claimedPassRewards: { free: number[]; premium: number[] };
+  // The season the level / XP / claimed lists above belong to (the last one SETTLED, see battlepass.ts settleSeason) and, until the player dismisses it, what the last settlement delivered.
+  passSeason: number;
+  pendingSeasonSummary: SeasonSummary | null;
   cosmetics: string[];
   activeTitle: string | null;
   dungeonCheckpoints: number[];
@@ -370,16 +375,13 @@ export function computeCP(save: SaveData): number {
   return Math.round(CP_SCALE * combatPowerCore(buildCombatStats(save)));
 }
 
-export function isBattlePassActive(save: SaveData, now: number): boolean {
-  return save.hasBattlePass && (save.battlePassExpiresAt === null || save.battlePassExpiresAt > now);
-}
+// Adventurer Pass convenience perks (owners only, see entitlements.ts): a longer offline window and a small material yield bump (Hunting / Mining /
+// Woodcutting), one more visible delivery offer + one more free reroll and a delivery XP bonus (T.deliveries), extra inventory slots (inventory.ts
+// inventoryCapacity) and a repair discount. Convenience and retention, never power: uniques and relics never see the multiplier.
 
-// Battle Pass convenience perks: one more visible delivery offer + one more free reroll (see T.deliveries), extra inventory slots
-// while it lasts (inventory.ts inventoryCapacity), and a repair discount — its role is player-facing convenience/retention, not a new faucet.
-
-export function effectiveRepairCost(save: SaveData, tier: number, now: number): number {
+export function effectiveRepairCost(save: SaveData, tier: number): number {
   const base = repairCost(tier);
-  return isBattlePassActive(save, now) ? Math.ceil(base * (1 - T.battlePass.repairDiscount)) : base;
+  return ownsAdventurerPass(save) ? Math.ceil(base * (1 - T.battlePass.repairDiscount)) : base;
 }
 
 export function battlePassXpForLevel(level: number): number {
@@ -414,28 +416,24 @@ export interface MiningStatus {
   full: boolean;
 }
 
-// What the Battle Pass was doing when a gathering session STARTED: the storage cap and the yield bonus of that session come from it, so a Pass that
-// expires mid-session cannot retroactively cut the cap (24 h -> 4 h) and one bought mid-session does not stretch the running session (it applies from the next).
-// `until` is the Pass expiry (null = no expiry): the x1.25 yield stops at that instant (pro-rated), the cap stays.
+// What the Adventurer Pass was doing when a gathering session STARTED: the storage cap and the yield bonus of that session come from it, so a Pass
+// bought mid-session does not stretch the running session (it applies from the next one). The Pass never expires, so owning it at the start is all there is.
+// (Snapshots saved under the 30-day model also carried the expiry instant; it is dropped on load, see sanitizeGatherPass.)
 export interface GatherPass {
   active: boolean;
-  until: number | null;
 }
 
-export function snapshotGatherPass(save: SaveData, now: number): GatherPass {
-  const active = isBattlePassActive(save, now);
-  return { active, until: active ? save.battlePassExpiresAt : null };
+export function snapshotGatherPass(save: SaveData): GatherPass {
+  return { active: ownsAdventurerPass(save) };
 }
 
 export type GatherKind = 'mining' | 'woodcutting';
 
-// A saved snapshot as is; a running session without one (an old save) gets the Pass as it is at load, which is never more than the player had.
-function sanitizeGatherPass(raw: unknown, running: boolean, hasPass: boolean, expiresAt: number | null): GatherPass | null {
+// A saved snapshot as is (an owner is an owner for good: the old expiry is ignored); a running session without one (an old save) gets the Pass as it is at load.
+function sanitizeGatherPass(raw: unknown, running: boolean, hasPass: boolean): GatherPass | null {
   const r = raw as Partial<GatherPass> | null | undefined;
-  if (running && r && typeof r.active === 'boolean' && (r.until === null || (typeof r.until === 'number' && Number.isFinite(r.until)))) return { active: r.active, until: r.until ?? null };
   if (!running) return null;
-  const active = hasPass && (expiresAt === null || expiresAt > Date.now());
-  return { active, until: active ? expiresAt : null };
+  return { active: r && typeof r.active === 'boolean' ? r.active : hasPass };
 }
 
 interface GatherAccrual {
@@ -450,14 +448,14 @@ interface GatherAccrual {
 }
 
 // ONE accrual for Mining and Woodcutting (they cannot diverge): units = floor(effective hours x power x rate), effective hours = real hours, plus the Gatherer
-// Brew's share, with the Pass's drop multiplier on the part of the session it covered (from the start to its expiry).
+// Brew's share, with the Pass's drop multiplier when the session started with the Pass.
 function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAccrual {
   const mining = kind === 'mining';
   const tier = mining ? (save.activeOreId ? getOreTier(save.activeOreId) : undefined) : save.activeWoodId ? getWoodTier(save.activeWoodId) : undefined;
   const baseCap = mining ? save.miningCapHours : save.woodcuttingCapHours;
   const startedAt = mining ? save.lastMiningClaim : save.lastWoodcuttingClaim;
   // Old saves (no snapshot) and plain states fall back to the Pass as it is now.
-  const snap = (mining ? save.miningPass : save.woodcuttingPass) ?? snapshotGatherPass(save, now);
+  const snap = (mining ? save.miningPass : save.woodcuttingPass) ?? snapshotGatherPass(save);
   const capHours = snap.active ? Math.max(baseCap, T.battlePass.capHours) : baseCap;
   const capMs = capHours * 3600 * 1000;
   if (!tier) return { capMs, pendingMs: 0, tierId: null, units: 0, gold: 0, full: false, passCoversSession: snap.active };
@@ -466,12 +464,7 @@ function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAcc
   const hours = pendingMs / (3600 * 1000);
   const power = gatherPower(BASE_GATHER_POWER, save.skillXp[kind]);
   const effective = hours + gathererBonusHours(save, startedAt, pendingMs);
-  let passShare = 0;
-  if (snap.active && pendingMs > 0) {
-    const end = snap.until === null ? startedAt + pendingMs : Math.min(startedAt + pendingMs, snap.until);
-    passShare = Math.max(0, Math.min(1, (end - startedAt) / pendingMs));
-  }
-  const dropMult = 1 + (T.battlePass.dropRateMultiplier - 1) * passShare;
+  const dropMult = snap.active ? T.battlePass.dropRateMultiplier : 1;
   const rate = mining ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower;
   const goldRate = mining ? T.mining.goldRatePerPower : T.woodcutting.goldRatePerPower;
   return {
@@ -621,7 +614,7 @@ export function buildHuntSession(save: SaveData, startedAt: number): HuntSession
     blessed: save.blessed,
     strength: isBuffActive(save, 'strength', startedAt) && buff ? [{ from: startedAt, to: buff.expiresAt }] : [],
     attack: isBuffActive(save, 'attack', startedAt) && atk ? [{ from: startedAt, to: atk.expiresAt }] : [],
-    pass: isBattlePassActive(save, startedAt) ? [{ from: startedAt, to: save.battlePassExpiresAt }] : [],
+    pass: ownsAdventurerPass(save) ? [{ from: startedAt, to: null }] : [],
     tonics: runningTonicWindows(save, startedAt, startedAt),
   };
 }
@@ -649,7 +642,7 @@ export function buildLegacyHuntSession(save: SaveData, now: number): HuntSession
     blessed: save.blessed,
     strength: isBuffActive(save, 'strength', now) && buff ? [{ from: now, to: buff.expiresAt }] : [],
     attack: isBuffActive(save, 'attack', now) && atk ? [{ from: now, to: atk.expiresAt }] : [],
-    pass: isBattlePassActive(save, now) ? [{ from, to: save.battlePassExpiresAt }] : [],
+    pass: ownsAdventurerPass(save) ? [{ from, to: null }] : [],
     tonics: runningTonicWindows(save, now, now),
   };
 }
@@ -863,12 +856,13 @@ export function defaultSave(): SaveData {
     pendingHuntReward: null,
     unlockedHuntingZones: [DEFAULT_HUNTING_ZONE],
     hasBattlePass: false,
-    battlePassExpiresAt: null,
     miningPass: null,
     woodcuttingPass: null,
     battlePassLevel: 1,
     battlePassXp: 0,
     claimedPassRewards: { free: [], premium: [] },
+    passSeason: seasonNumber(Date.now()),
+    pendingSeasonSummary: null,
     cosmetics: [],
     activeTitle: null,
     dungeonCheckpoints: [],
@@ -1135,11 +1129,12 @@ export function normalizeSave(rawInput: unknown): SaveData {
           }
         }
       }
+      // Migration (no save-key bump): the Pass used to expire 30 days after activation. Any save that EVER activated it (hasBattlePass true, expired or
+      // not) is now a permanent owner; one that never had it stays without. The old battlePassExpiresAt is not read: it is gone from the data on the next save.
       const hasBattlePass = !!parsed.hasBattlePass;
-      const battlePassExpiresAt =
-        typeof parsed.battlePassExpiresAt === 'number' && Number.isFinite(parsed.battlePassExpiresAt) && parsed.battlePassExpiresAt > 0
-          ? parsed.battlePassExpiresAt
-          : null;
+      const passSeasonRaw = Math.floor(Number(parsed.passSeason));
+      // A save from before seasons adopts the season it is loaded in (its level / claims carry over); a stored season is never lowered (clock set back).
+      const passSeason = Number.isFinite(passSeasonRaw) && passSeasonRaw >= 1 ? passSeasonRaw : seasonNumber(Date.now());
       const battlePassLevelRaw = Math.floor(Number(parsed.battlePassLevel));
       const battlePassLevel =
         Number.isFinite(battlePassLevelRaw) && battlePassLevelRaw > 0 ? Math.min(MAX_BATTLE_PASS_LEVEL, battlePassLevelRaw) : 1;
@@ -1221,12 +1216,13 @@ export function normalizeSave(rawInput: unknown): SaveData {
         huntingOfflineStart,
         unlockedHuntingZones,
         hasBattlePass,
-        battlePassExpiresAt,
-        miningPass: sanitizeGatherPass(parsed.miningPass, activeOreId !== null, hasBattlePass, battlePassExpiresAt),
-        woodcuttingPass: sanitizeGatherPass(parsed.woodcuttingPass, activeWoodId !== null, hasBattlePass, battlePassExpiresAt),
+        miningPass: sanitizeGatherPass(parsed.miningPass, activeOreId !== null, hasBattlePass),
+        woodcuttingPass: sanitizeGatherPass(parsed.woodcuttingPass, activeWoodId !== null, hasBattlePass),
         battlePassLevel,
         battlePassXp,
         claimedPassRewards,
+        passSeason,
+        pendingSeasonSummary: sanitizeSeasonSummary(parsed.pendingSeasonSummary),
         cosmetics,
         activeTitle,
         dungeonCheckpoints,
@@ -1248,8 +1244,10 @@ export function normalizeSave(rawInput: unknown): SaveData {
       // Hunting session snapshot + pending reward (both new, optional fields: an older save simply lacks them). An active
       // session without a usable snapshot (saved before snapshots existed, or corrupt) is rebuilt conservatively.
       loaded.pendingHuntReward = sanitizePendingHuntReward(parsed.pendingHuntReward);
-      loaded.huntSession = activeHuntingZone ? sanitizeHuntSession(parsed.huntSession) ?? buildLegacyHuntSession(loaded, loadNow) : null;
+      const hunt = activeHuntingZone ? sanitizeHuntSession(parsed.huntSession) ?? buildLegacyHuntSession(loaded, loadNow) : null;
+      loaded.huntSession = hunt && hasBattlePass ? withPermanentPassWindow(hunt, loadNow) : hunt;
       for (const key of LEGACY_GEAR_KEYS) delete (loaded as unknown as Record<string, unknown>)[key];
+      delete (loaded as unknown as Record<string, unknown>).battlePassExpiresAt; // the 30-day model's expiry: ownership is permanent now
       // The old Hunting Pouch: its paid tiers become permanent slots, its items move into the inventory (or stay owed in the pending reward), and the
       // fields are gone (legacyPouch.ts). A pending reward written under that rule recorded the pouch capacity.
       const rawPending = parsed.pendingHuntReward as { pouchCapacity?: unknown } | null | undefined;

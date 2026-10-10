@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
 import { t } from '../locales';
 import Assets from '../assets.json';
-import { battlePassXpForLevel, isBattlePassActive, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/engine';
+import { battlePassXpForLevel, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/engine';
+import { ADVENTURER_PASS_TESTABLE, ownsAdventurerPass } from '../game/entitlements';
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
 import { MATERIALS } from '../game/materials';
 import { getConsumable } from '../game/consumables';
@@ -67,12 +68,6 @@ function rewardLabel(reward: BattlePassReward): string {
   }
 }
 
-function formatRemaining(ms: number): string {
-  const totalHours = Math.max(0, Math.ceil(ms / (3600 * 1000)));
-  if (totalHours >= 24) return t('battlePass.days', { n: Math.ceil(totalHours / 24) });
-  return t('battlePass.hours', { n: totalHours });
-}
-
 function RewardTile({
   reward,
   reached,
@@ -105,18 +100,19 @@ function RewardTile({
 export default function BattlePassModal({
   save,
   onActivate,
+  onDismissSummary,
   onClaim,
   onClaimAll,
   onClose,
 }: {
   save: SaveData;
   onActivate: () => void;
+  onDismissSummary: () => void;
   onClaim: (level: number, track: 'free' | 'premium') => void;
   onClaimAll: () => void;
   onClose: () => void;
 }) {
-  const now = Date.now();
-  const active = isBattlePassActive(save, now);
+  const active = ownsAdventurerPass(save);
   const xpNeed = battlePassXpForLevel(save.battlePassLevel);
   const pct = save.battlePassLevel >= MAX_BATTLE_PASS_LEVEL ? 100 : Math.min(100, (save.battlePassXp / xpNeed) * 100);
 
@@ -127,19 +123,26 @@ export default function BattlePassModal({
           <img className="inline-icon" src="/assets/icons/nav_battlepass.png" alt="" /> {t('battlePass.title')}
         </h2>
 
+        {save.pendingSeasonSummary && (
+          <div className="bp-status-card" role="status">
+            <span className="bp-status-label active">{t('battlePass.seasonDelivered', { n: save.pendingSeasonSummary.season })}</span>
+            <span className="bp-xp-text">{t('battlePass.seasonDeliveredHint')}</span>
+            <button className="quest-btn claim" onClick={onDismissSummary} data-ui>
+              {t('battlePass.seasonOk')}
+            </button>
+          </div>
+        )}
+
         <div className="bp-status-card">
           <span className={`bp-status-label${active ? ' active' : ''}`}>
             {active ? t('battlePass.statusActive') : t('battlePass.statusFree')}
           </span>
-          {active && save.battlePassExpiresAt && (
-            <span className="bp-expires">{t('battlePass.expiresIn', { n: formatRemaining(save.battlePassExpiresAt - now) })}</span>
-          )}
           <div className="bp-perks">
-            <span className="bp-perk">{t('battlePass.perkStorage')}</span>
-            <span className="bp-perk">{t('battlePass.perkLuck')}</span>
+            <span className="bp-perk">{t('battlePass.perkStorage', { n: T.battlePass.capHours })}</span>
+            <span className="bp-perk">{t('battlePass.perkLuck', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) })}</span>
             <span className="bp-perk">{t('battlePass.perkDeliveries', { n: Math.round(T.deliveries.passXpBonus * 100) })}</span>
             <span className="bp-perk">{t('battlePass.perkBag', { n: T.battlePass.bagBonusSlots })}</span>
-            <span className="bp-perk">{t('battlePass.perkRepair')}</span>
+            <span className="bp-perk">{t('battlePass.perkRepair', { n: Math.round(T.battlePass.repairDiscount * 100) })}</span>
           </div>
           <div className="bp-level-header">
             <span>{t('battlePass.levelLabel', { n: save.battlePassLevel, m: MAX_BATTLE_PASS_LEVEL })}</span>
@@ -153,8 +156,8 @@ export default function BattlePassModal({
             </div>
           )}
           {!active && (
-            <button className="battle-btn bp-activate-btn" onClick={onActivate} data-ui>
-              {t('battlePass.activate')}
+            <button className="battle-btn bp-activate-btn" onClick={onActivate} disabled={!ADVENTURER_PASS_TESTABLE} data-ui>
+              {ADVENTURER_PASS_TESTABLE ? t('battlePass.activateTest') : t('battlePass.comingSoon')}
             </button>
           )}
           <button className="quest-btn claim bp-claimall-btn" onClick={onClaimAll} data-ui>

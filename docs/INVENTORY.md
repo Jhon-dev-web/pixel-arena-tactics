@@ -23,7 +23,7 @@ Regras e números do inventário (Rodada 5). Substitui a antiga Bolsa de Caça. 
 | --- | --- |
 | Base de uma conta nova | **26** |
 | Degraus pagos | 30 (250 Ouro) · 35 (500) · 40 (1 000) · 45 (2 000) · 50 (4 000) · 55 (7 500) · 60 (12 500) · 65 (20 000) · 70 (30 000) · 75 (45 000) · 80 (65 000) · 85 (90 000) · 90 (120 000) · 95 (160 000) · **100 (210 000)** |
-| Passe de Batalha ativo | +5 (`T.battlePass.bagBonusSlots`), só enquanto durar |
+| Passe de Aventureiro (dono) | +5 (`T.battlePass.bagBonusSlots`), para sempre: o Passe não expira mais |
 | Antigos tiers da Bolsa de Caça | +2 por tier acima do 1, **uma vez**, permanente (`inventoryBonusSlots`) |
 
 Saves antigos mantêm a capacidade que já tinham (o piso só sobe, nunca desce): quem tem 30 continua com 30. Os degraus continuam a curva dos seis primeiros

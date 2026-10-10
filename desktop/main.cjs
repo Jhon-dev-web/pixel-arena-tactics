@@ -62,6 +62,8 @@ protocol.registerSchemesAsPrivileged([
 // Steam hook: once there is an App ID, add desktop/steam.cjs (init the Steamworks client, achievements,
 // overlay) and call its init() here, before the first window is created. Keep it optional so the game
 // still runs outside Steam.
+// Adventurer Pass entitlement: the same steam.cjs will expose "does this account own the Passe de Aventureiro DLC" (SteamApps.isDlcInstalled)
+// and "open the DLC store page" over IPC; src/game/entitlements.ts is the single place in the game that consumes them.
 
 // ---- single instance -------------------------------------------------------------------------------------
 
