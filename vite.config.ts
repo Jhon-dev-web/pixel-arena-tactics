@@ -5,8 +5,6 @@ import react from "@vitejs/plugin-react";
 
 // Desktop (Electron/Steam) build only: `vite build --mode desktop` (see scripts/desktop-build.mjs).
 // Turns index.html into a page that satisfies the packaged app's strict CSP and needs no network:
-//  - drops the Google Fonts <link>s (a Steam build must not depend on a CDN; the game falls back to its
-//    monospace stack until Press Start 2P is vendored locally),
 //  - moves the inline <style>/<script> blocks into same-origin files (the CSP forbids inline code),
 //  - drops the iframe size-reporting script (only meaningful when embedded in the web platform).
 // The web build never loads this plugin, so its output is unchanged.
@@ -17,7 +15,6 @@ function desktopHtml(outDir: string): Plugin {
     closeBundle() {
       const file = path.resolve(outDir, "index.html");
       let html = fs.readFileSync(file, "utf8");
-      html = html.replace(/[ \t]*<link[^>]*fonts\.(?:googleapis|gstatic)\.com[^>]*>\r?\n?/g, "");
       let n = 0;
       html = html.replace(/<style>([\s\S]*?)<\/style>/g, (_m, css: string) => {
         const name = `desktop-inline-${n++}.css`;

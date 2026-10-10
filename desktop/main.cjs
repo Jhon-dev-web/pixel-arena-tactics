@@ -385,6 +385,8 @@ function runSmokeTest(win) {
           localStorageKeys: Object.keys(localStorage).length,
           markerBefore,
           markerNow: localStorage.getItem('__smoke_marker__'),
+          fontCheck: (await document.fonts.load('12px "Press Start 2P"', 'Aãçéõ'), document.fonts.check('12px "Press Start 2P"')),
+          fontFacesLoaded: [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family + ' ' + f.unicodeRange.slice(0, 24)),
           audioContext: typeof (window.AudioContext || window.webkitAudioContext),
           rangeRequest: rangeStatus,
           userAgentHasElectron: navigator.userAgent.includes('Electron'),
@@ -410,7 +412,8 @@ function runSmokeTest(win) {
       smoke.externalRequests.length > 0 ||
       smoke.consoleErrors.length > 0 ||
       smoke.pageEvents.length > 0 ||
-      result.imagesBroken > 0;
+      result.imagesBroken > 0 ||
+      result.fontCheck !== true;
     finish(bad ? 1 : 0);
   });
 }

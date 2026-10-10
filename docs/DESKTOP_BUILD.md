@@ -25,7 +25,6 @@ Pré-requisito: `npm install` (Electron baixa o binário do GitHub Releases na p
 `vite build --mode desktop` (veja `vite.config.ts`). O build web (`npm run build`) **não muda** (saída idêntica byte a byte).
 
 - Não lê nenhum `.env*` (`envDir: false`) e força `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` vazias, tanto no script quanto via `define`. O app empacotado roda 100% local, sem Supabase, independente do `.env.local` de quem compila. Confirmado: o bundle não contém nenhuma URL `supabase.co`.
-- Remove os `<link>` do Google Fonts do `index.html` (build de Steam não pode depender de CDN).
 - Move o `<style>` e os `<script>` inline do `index.html` para arquivos (`desktop-inline-*.css/js`) porque a CSP proíbe código inline. O script de `postMessage` para o iframe pai (só faz sentido na plataforma web) é descartado; o shim do `window.DebugPanel` é mantido.
 - Saída em `dist-desktop/` (não sobrescreve `dist/`).
 
@@ -69,7 +68,6 @@ Espera o jogo renderizar, confere que `#root` tem filhos e que não há erro de 
 - **Auto-update.** A Steam atualiza o jogo; não há `electron-updater`.
 - **Assinatura de código.** O `.exe` não é assinado. **Importante:** em Windows 11 com o *Smart App Control* ligado, executáveis não assinados e sem reputação são bloqueados (Política de Controle de Aplicativo). Foi o que aconteceu na máquina de desenvolvimento: o `Arena Duel.exe` recém-gerado é bloqueado. Para distribuir, assine com um certificado de code signing (EV/OV ou Azure Trusted Signing) via `win.certificateSubjectName`/`CSC_LINK` no electron-builder. Enquanto isso, dá para validar o app rodando o `app.asar` com o `electron.exe` do `node_modules`: `node_modules\electron\dist\electron.exe release\win-unpacked\resources\app.asar --smoke-test ...`.
 - **macOS / Linux.** Só `win x64`.
-- **Fonte Press Start 2P.** Vinha do Google Fonts e **não está empacotada**: não há arquivo de fonte nem licença no repositório. No desktop o jogo cai no fallback (`Courier New`, monospace). A fonte é OFL (uso e redistribuição permitidos, incluir o texto da licença); para o visual original, vendorize o `.woff2` + licença em `public/` e adicione um `@font-face` no CSS. Nenhum arquivo de fonte foi adicionado.
 - Nenhum `.env*` entra no pacote: só `package.json`, `desktop/**` e `dist-desktop/**` vão para o `app.asar` (sem `node_modules`, sem fontes `.map`).
 
 ## Subir para a Steam com SteamCMD (documentação; nada disso foi executado)
@@ -115,3 +113,8 @@ Espera o jogo renderizar, confere que `#root` tem filhos e que não há erro de 
 6. **Enviar:** `steamcmd +login <conta_de_build> +run_app_build "C:\caminho\app_build_<APPID>.vdf" +quit` (a primeira vez pede o código do Steam Guard).
 7. **Conferir:** no painel do Steamworks, em *SteamPipe > Builds*, confira o build, ponha na branch (ex.: `beta`), instale pelo cliente Steam e abra o jogo.
 8. Antes do lançamento: integrar o Steamworks (conquistas, Cloud), assinar o `.exe`, vendorizar a fonte e revisar a CSP para o que for adicionado.
+
+## Licenças de terceiros
+
+- **Press Start 2P** (fonte do jogo): SIL Open Font License 1.1, copyright 2012 The Press Start 2P Project Authors. Vem do pacote npm `@fontsource/press-start-2p` (só o subset latin, peso 400, que cobre ã, ç, é, õ), empacotada pelo Vite como asset local; nada é carregado do Google Fonts. O texto da licença fica em `public/licenses/press-start-2p-OFL.txt` e é copiado para o build web e para o app.
+- **Electron / Chromium**: o build empacotado inclui `LICENSE.electron.txt` e `LICENSES.chromium.html` ao lado do `.exe`; mantenha-os na pasta enviada para a Steam.
