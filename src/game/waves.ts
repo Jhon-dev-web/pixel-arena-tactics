@@ -63,7 +63,8 @@ export function stageEnemyDmg(def: EnemyDef, stage: number): number {
   return Math.round(base * mult);
 }
 
-export function waveRewards(biome: DungeonBiomeDef, stage: number): WaveRewards {
+// `bossLootMult`: Sorte Grande's multiplier on the boss unique / relic chances (CombatStats.bossLootMult); 1 for every other hero.
+export function waveRewards(biome: DungeonBiomeDef, stage: number, bossLootMult = 1): WaveRewards {
   const baseGold = randInt(biome.goldMin, biome.goldMax);
   let gold = Math.round(baseGold * (1 + T.battle.goldRewardGrowth * (stage - 1)));
   const drops: Partial<Record<MaterialId, number>> = {};
@@ -77,8 +78,8 @@ export function waveRewards(biome: DungeonBiomeDef, stage: number): WaveRewards 
   let uniques: UniqueDrop[] = [];
   let relics: string[] = [];
   if (isDungeonBoss(stage)) {
-    uniques = rollBossUniques(stage);
-    relics = rollBossRelics(stage);
+    uniques = rollBossUniques(stage, Math.random, bossLootMult);
+    relics = rollBossRelics(stage, Math.random, bossLootMult);
     shards = T.battle.bossShards;
     gold = Math.round(gold * T.battle.bossGoldMult);
     // Gate-boss-exclusive: a guaranteed gem every clear, on top of the gold/shard boost — a common

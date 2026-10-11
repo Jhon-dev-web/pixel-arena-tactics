@@ -199,6 +199,16 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
       hpRegenPct: n(s.hpRegenPct, 0, 1) ?? 0,
       goldBonus: n(s.goldBonus, 0, 100) ?? 0,
       xpBonus: n(s.xpBonus, 0, 100) ?? 0,
+      // Hero skills (heroSkills.ts): frozen with the rest of the stats at the start of the session; a session saved before they existed has none.
+      ...(n(s.bleed, 0, 1) ? { bleed: n(s.bleed, 0, 1)! } : {}),
+      ...(n(s.strikeEvery, 2, 1000) ? { strikeEvery: Math.floor(n(s.strikeEvery, 2, 1000)!) } : {}),
+      ...(n(s.block, 0, 0.9) ? { block: n(s.block, 0, 0.9)! } : {}),
+      ...(s.bastion === true ? { bastion: true } : {}),
+      ...(n(s.bossReduction, 0, 0.9) ? { bossReduction: n(s.bossReduction, 0, 0.9)! } : {}),
+      ...(n(s.skillGold, 0, 100) ? { skillGold: n(s.skillGold, 0, 100)! } : {}),
+      ...(n(s.matMult, 1, 10) && n(s.matMult, 1, 10) !== 1 ? { matMult: n(s.matMult, 1, 10)! } : {}),
+      ...(n(s.uniqueMult, 1, 10) && n(s.uniqueMult, 1, 10) !== 1 ? { uniqueMult: n(s.uniqueMult, 1, 10)! } : {}),
+      ...(n(s.bossLootMult, 1, 10) && n(s.bossLootMult, 1, 10) !== 1 ? { bossLootMult: n(s.bossLootMult, 1, 10)! } : {}),
       // AGI and the speed bonus feed the Haste Tonic's interval; a session saved before they existed falls back to dividing heroMs.
       ...(n(s.agi, 0, ceil) !== null ? { agi: n(s.agi, 0, ceil)!, speedBonus: n(s.speedBonus, 0, 10) ?? 0 } : {}),
     },

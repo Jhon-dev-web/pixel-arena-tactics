@@ -7,7 +7,7 @@ import { activeTonicStats, BUFF_ITEM, BuffKind } from '../game/buffs';
 import { getConsumable } from '../game/consumables';
 import { ConsumableId } from '../game/consumables';
 import { EnemyDef, getEnemyDef } from '../game/enemies';
-import { BurnState, applyDamageModifiers, applyDamageReduction, igniteBurn, reflectedDamage, regenAmount, tickBurn } from '../game/derivedStats';
+import { BurnState, applyDamageModifiers, applyDamageReduction, bastionHp, bleedSpec, bossDamage, igniteBurn, reflectedDamage, regenAmount, strikeMultiplier, tickBurn } from '../game/derivedStats';
 import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { dungeonEnemyVisualForFloor, playerSpriteUrl } from '../game/sprites';
@@ -44,7 +44,7 @@ interface FloatItem {
   id: number;
   side: 'p' | 'e';
   text: string;
-  kind: 'damage' | 'crit' | 'heal' | 'burn' | 'reflect';
+  kind: 'damage' | 'crit' | 'heal' | 'burn' | 'reflect' | 'bleed' | 'strike' | 'block' | 'bastion';
 }
 
 type Phase = 'battle' | 'intermission' | 'retreat' | 'defeat';
@@ -131,6 +131,10 @@ export default function BattleModal({
   const clockRef = useRef(0);
   const lastFrameRef = useRef(0);
   const burnRef = useRef<BurnState | null>(null);
+  // Hero skills (heroSkills.ts): Sangria is a second effect beside burn; the hit counter of Golpe Devastador and the once-per-run Ultimo Bastiao live for the whole run.
+  const bleedRef = useRef<BurnState | null>(null);
+  const heroHitsRef = useRef(0);
+  const bastionUsedRef = useRef(false);
   const regenNextRef = useRef(0);
   const heroNextAtkRef = useRef(0);
   const enemyNextAtkRef = useRef(0);
@@ -224,8 +228,9 @@ export default function BattleModal({
       const now = performance.now();
       heroNextAtkRef.current = now;
       enemyNextAtkRef.current = now;
-      // A new enemy: no burn carried over, regeneration restarts its tick.
+      // A new enemy: no burn or bleed carried over, regeneration restarts its tick.
       burnRef.current = null;
+      bleedRef.current = null;
       setEnemyBurning(false);
       lastFrameRef.current = now;
       regenNextRef.current = clockRef.current + T.battle.effectTickMs;
@@ -236,10 +241,11 @@ export default function BattleModal({
 
     const clearWave = () => {
       const st = stageRef.current;
-      const r = waveRewards(getBiomeForFloor(st), st);
+      const r = waveRewards(getBiomeForFloor(st), st, combat.bossLootMult ?? 1);
       applyLoot(r.gold, r.drops, r.shards, r.gems, r.uniques, r.relics);
       clearedRef.current += 1;
       burnRef.current = null;
+      bleedRef.current = null;
       setEnemyBurning(false);
       const healed = Math.min(playerMax, Math.round(hp.current.p + playerMax * T.battle.waveHeal));
       hp.current.p = healed;
@@ -261,7 +267,9 @@ export default function BattleModal({
     const heroAttack = () => {
       const total = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, Date.now()));
       const crit = Math.random() < activeTonicStats(combat, save, Date.now()).critChance;
-      const dmg = Math.max(1, Math.round(total * (crit ? combat.critMult : 1)));
+      heroHitsRef.current += 1;
+      const strike = strikeMultiplier(heroHitsRef.current, combat.strikeEvery);
+      const dmg = Math.max(1, Math.round(total * (crit ? combat.critMult : 1) * strike));
       hp.current.e = Math.max(0, hp.current.e - dmg);
       setEnemyHp(hp.current.e);
       if (combat.burn) {
@@ -269,10 +277,11 @@ export default function BattleModal({
         burnRef.current = igniteBurn(burnRef.current, clockRef.current, total);
         setEnemyBurning(true);
       }
+      if (combat.bleed) bleedRef.current = igniteBurn(bleedRef.current, clockRef.current, total, bleedSpec(combat.bleed));
       setPlayerAnim('attack');
       setPlayerLunge(true);
       setEnemyFlash(true);
-      addFloat('e', crit ? `💥 CRIT! -${dmg}` : `-${dmg}`, crit ? 'crit' : 'damage');
+      addFloat('e', strike > 1 ? `${dungeonText('devastating')} -${dmg}` : crit ? `💥 CRIT! -${dmg}` : `-${dmg}`, strike > 1 ? 'strike' : crit ? 'crit' : 'damage');
       if (combat.lifesteal > 0) {
         const heal = Math.max(1, Math.round(dmg * (combat.lifesteal / 100)));
         hp.current.p = Math.min(playerMax, hp.current.p + heal);
@@ -293,13 +302,23 @@ export default function BattleModal({
     const monsterAttack = () => {
       const st = stageRef.current;
       // Layer 2 (Damage Reduction) — asymptotic, see derivedStats.ts.
-      const eFinal = applyDamageReduction(enemyDmgForStage(st), activeTonicStats(combat, save, Date.now()).reduction);
+      const reduced = applyDamageReduction(enemyDmgForStage(st), activeTonicStats(combat, save, Date.now()).reduction);
+      // Postura Firme only counts on boss and checkpoint floors; Bloqueio negates the whole hit (the loop's normal RNG).
+      const reducedBoss = isDungeonBoss(st) || isDungeonCheckpoint(st) ? bossDamage(reduced, combat.bossReduction) : reduced;
+      const blocked = !!combat.block && Math.random() < combat.block;
+      const eFinal = blocked ? 0 : reducedBoss;
       hp.current.p = Math.max(0, hp.current.p - eFinal);
-      setPlayerHp(hp.current.p);
       setEnemyAnim('attack');
       setEnemyLunge(true);
       setPlayerFlash(true);
-      addFloat('p', `-${eFinal}`, 'damage');
+      addFloat('p', blocked ? dungeonText('blocked') : `-${eFinal}`, blocked ? 'block' : 'damage');
+      // Ultimo Bastiao: the first lethal hit of the run leaves the hero at 1 HP plus a heal.
+      if (hp.current.p <= 0 && combat.bastion && !bastionUsedRef.current) {
+        bastionUsedRef.current = true;
+        hp.current.p = bastionHp(playerMax);
+        addFloat('p', dungeonText('lastBastion'), 'bastion');
+      }
+      setPlayerHp(hp.current.p);
       const back = hp.current.p > 0 ? reflectedDamage(eFinal, combat.reflect) : 0;
       if (back > 0) {
         hp.current.e = Math.max(0, hp.current.e - back);
@@ -340,6 +359,20 @@ export default function BattleModal({
         addFloat('e', `🔥 -${tick.damage}`, 'burn');
         if (hp.current.e <= 0) {
           burnRef.current = null;
+          setEnemyBurning(false);
+          clearWave();
+          return false;
+        }
+      }
+      while (bleedRef.current && bleedRef.current.nextTickAt <= clock) {
+        const tick = tickBurn(bleedRef.current);
+        bleedRef.current = tick.burn;
+        hp.current.e = Math.max(0, hp.current.e - tick.damage);
+        setEnemyHp(hp.current.e);
+        addFloat('e', `-${tick.damage}`, 'bleed');
+        if (hp.current.e <= 0) {
+          burnRef.current = null;
+          bleedRef.current = null;
           setEnemyBurning(false);
           clearWave();
           return false;

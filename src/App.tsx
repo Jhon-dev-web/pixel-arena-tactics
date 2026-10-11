@@ -24,7 +24,8 @@ import { applyBattlePassClaim, settleSeason } from './game/battlepass';
 import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
 import { ownsAdventurerPass, purchaseAdventurerPass } from './game/entitlements';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
-import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot, relicXpBonusPct } from './game/gear';
+import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
+import { characterXpBonusPct, saveSkillEffects } from './game/heroSkills';
 import { applyReforge } from './game/reforge';
 import {
   InstancedSlot,
@@ -516,7 +517,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     }
     const subs = equippedSubstatTotals(s);
     // Gear goldBonus (capped inside equippedSubstatTotals) and the Fortune Tonic add up, see buffs.ts goldMultiplier.
-    const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', Date.now()), ownsAdventurerPass(s) ? T.battlePass.goldBonus : 0));
+    const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', Date.now()), ownsAdventurerPass(s) ? T.battlePass.goldBonus : 0, saveSkillEffects(s).goldPct));
     const unlockedHuntingZones = Array.from(new Set([...s.unlockedHuntingZones, ...unlockedZoneIds(nextFloor)]));
 
     // Milestone (first-clear) rewards only ever apply to a successful retreat — dying still banks the
@@ -545,7 +546,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       }
     }
     // The Season Relic adds its character XP bonus to what the run pays (Hunting and Delivery orders apply it where they compute theirs).
-    const xpGain = Math.round((dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages)) * (1 + relicXpBonusPct(s.equipped.relic) / 100));
+    const xpGain = Math.round((dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages)) * (1 + characterXpBonusPct(s) / 100));
 
     setSaveBoth({
       ...s,

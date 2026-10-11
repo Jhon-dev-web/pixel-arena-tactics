@@ -617,6 +617,27 @@ body {
   color: #ff9a3a;
   left: 64%;
 }
+/* Hero skills (heroSkills.ts): Sangria ticks in their own column, the Devastating Strike is a loud crit-like number, a blocked hit and the one-time Ultimo Bastiao print on the hero. */
+.float-bleed {
+  color: #e8566b;
+  left: 40%;
+}
+.float-strike {
+  color: #ffb347;
+  font-size: calc(var(--font-size) + 10px);
+  text-shadow: 0 0 12px rgba(255, 140, 40, 0.95), 0 2px 0 #000;
+  animation: floatCrit 0.9s ease-out forwards;
+}
+.float-block {
+  color: #a9c4ff;
+}
+.float-bastion {
+  color: #ffd54a;
+  font-size: calc(var(--font-size) + 4px);
+  left: 30%;
+  text-shadow: 0 0 10px rgba(255, 213, 74, 0.9), 0 2px 0 #000;
+  animation: floatCrit 0.9s ease-out forwards;
+}
 /* Flame over an enemy that is burning (gear.ts burn; BattleModal.tsx). */
 .burn-flame {
   position: absolute;
@@ -7839,7 +7860,8 @@ body {
   .battle-stage .float {
     font-size: calc(var(--font-size) + 4px);
   }
-  .battle-stage .float-crit {
+  .battle-stage .float-crit,
+  .battle-stage .float-strike {
     font-size: calc(var(--font-size) + 14px);
   }
   .battle-result-panel {

@@ -90,6 +90,16 @@ export interface CombatStats {
   goldBonus?: number;
   // Percent extra character XP from the Dungeon, Hunting and delivery orders (the Season Relic). No combat effect, no CP.
   xpBonus?: number;
+  // Hero skills (heroSkills.ts). Each is present only when the hero has the skill, so a hero without skills has exactly the stats it always had.
+  bleed?: number; // share of the (pre-crit) hit the enemy bleeds per second (Sangria); a second effect beside burn
+  strikeEvery?: number; // every Nth hit of the hero is a Devastating Strike (T.heroSkills.strikeMult x damage)
+  block?: number; // chance that an enemy hit is blocked completely (Bloqueio)
+  bastion?: boolean; // Ultimo Bastiao: a lethal hit leaves the hero at 1 HP and heals (bastionHp)
+  bossReduction?: number; // share of the damage taken on boss / checkpoint floors negated (Postura Firme, Dungeon only)
+  skillGold?: number; // percent extra Gold from Ganancia, outside the gear cap (like the tonic and the Pass)
+  matMult?: number; // Hunting material yield multiplier (Faro); uniques and relics never see it
+  uniqueMult?: number; // Hunting unique drop chance multiplier (Sorte Grande)
+  bossLootMult?: number; // Dungeon boss unique / relic chance multiplier (Sorte Grande)
 }
 
 // STR -> pre-modifier hit damage. Hybrid: a flat part plus a part that scales with (base hit + weapon):
@@ -149,9 +159,15 @@ export interface BurnState {
 }
 
 // `hitDamage` is the hero's final per-hit damage BEFORE crit (blessed / elixir included): the burn deals burnPctPerSec of it per tick.
-export function igniteBurn(prev: BurnState | null, now: number, hitDamage: number): BurnState {
-  const tickDamage = Math.max(1, Math.round(hitDamage * T.battle.burnPctPerSec));
-  return { endsAt: now + T.battle.burnDurationMs, nextTickAt: prev ? prev.nextTickAt : now + T.battle.effectTickMs, tickDamage };
+// Sangria (the skill) is a SECOND effect of the same shape, kept in its own state: the same helpers with its own share and duration (bleedSpec).
+export interface DotSpec {
+  pctPerSec: number;
+  durationMs: number;
+}
+export const bleedSpec = (pctPerSec: number): DotSpec => ({ pctPerSec, durationMs: T.heroSkills.bleedDurationMs });
+export function igniteBurn(prev: BurnState | null, now: number, hitDamage: number, spec?: DotSpec): BurnState {
+  const tickDamage = Math.max(1, Math.round(hitDamage * (spec ? spec.pctPerSec : T.battle.burnPctPerSec)));
+  return { endsAt: now + (spec ? spec.durationMs : T.battle.burnDurationMs), nextTickAt: prev ? prev.nextTickAt : now + T.battle.effectTickMs, tickDamage };
 }
 
 export function nextBurnTickAt(burn: BurnState | null): number {
@@ -162,6 +178,23 @@ export function nextBurnTickAt(burn: BurnState | null): number {
 export function tickBurn(burn: BurnState): { damage: number; burn: BurnState | null } {
   const next = burn.nextTickAt + T.battle.effectTickMs;
   return { damage: burn.tickDamage, burn: next > burn.endsAt ? null : { ...burn, nextTickAt: next } };
+}
+
+// --- Hero skills in combat (heroSkills.ts): small pure helpers, shared by the three combat loops like the effects above ---------------------------------------
+
+// Hit number `hitNumber` (1-based, counted over the whole Dungeon run / Hunting session) of a hero with Golpe Devastador: every Nth is tripled. Deterministic, no roll.
+export function strikeMultiplier(hitNumber: number, every: number | undefined): number {
+  return every && every > 0 && hitNumber % every === 0 ? T.heroSkills.strikeMult : 1;
+}
+
+// HP the hero is left with when Ultimo Bastiao saves it: 1 HP plus the heal.
+export function bastionHp(maxHp: number): number {
+  return Math.min(maxHp, 1 + Math.round(maxHp * T.heroSkills.bastionHealPct));
+}
+
+// Damage taken on a boss / checkpoint floor with Postura Firme (never below 1).
+export function bossDamage(damage: number, bossReduction: number | undefined): number {
+  return bossReduction && bossReduction > 0 ? Math.max(1, Math.round(damage * (1 - Math.min(0.9, bossReduction)))) : damage;
 }
 
 // Combat Power core (unscaled): geometric mean of expected DPS and effective HP, times a sustain multiplier.
@@ -187,11 +220,19 @@ export function combatPowerCore(stats: CombatStats): number {
   const hits = dmgBase * (1000 / heroMs) * (1 + cc * (critMult - 1));
   const reduction = safeStat(stats.reduction, ceiling);
   const reflect = safeStat(stats.reflect, 1);
+  // Devastating Strike: one hit in N deals strikeMult times, so the average hit is worth 1 + (mult - 1) / N of a plain one.
+  const strikeN = Math.floor(safeStat(stats.strikeEvery ?? 0, 1000));
+  const hitsDps = strikeN >= 2 ? hits * (1 + (T.advanced.cpStrikeWeight * (T.heroSkills.strikeMult - 1)) / strikeN) : hits;
   const burnDps = stats.burn === true ? T.advanced.cpBurnWeight * dmgBase * T.battle.burnPctPerSec * (1000 / T.battle.effectTickMs) : 0;
-  const dps = hits * (1 + (T.advanced.cpReflectWeight * reflect) / (1 + reduction)) + burnDps;
-  const ehp = effectiveHp(safeStat(stats.maxHp, ceiling), reduction);
+  const bleedDps = T.advanced.cpBleedWeight * dmgBase * safeStat(stats.bleed ?? 0, 1) * (1000 / T.battle.effectTickMs);
+  const dps = hitsDps * (1 + (T.advanced.cpReflectWeight * reflect) / (1 + reduction)) + burnDps + bleedDps;
+  // Block removes a share of the hits, Firm Stance a share of the damage of the fights against bosses, Last Bastion heals once in a share of the fights.
+  const block = Math.min(0.9, safeStat(stats.block ?? 0, 1)) * T.advanced.cpBlockWeight;
+  const bossCut = Math.min(0.9, safeStat(stats.bossReduction ?? 0, 1)) * T.advanced.cpBossShare;
+  const bastion = stats.bastion === true ? T.advanced.cpBastionWeight * T.heroSkills.bastionHealPct : 0;
+  const ehp = (effectiveHp(safeStat(stats.maxHp, ceiling), reduction) * (1 + bastion)) / ((1 - block) * (1 - bossCut));
   const regen = safeStat(stats.hpRegenPct, 1) * (1000 / T.battle.effectTickMs);
-  const regenSigma = hits > 0 ? (T.advanced.cpRegenWeight * regen * ehp) / hits : 0;
+  const regenSigma = hitsDps > 0 ? (T.advanced.cpRegenWeight * regen * ehp) / hitsDps : 0;
   const sigma = Math.min(Math.min(0.95, T.advanced.cpSustainSigmaCap), (safeStat(stats.lifesteal, ceiling) / 100) * (1 + reduction) + regenSigma);
   return Math.sqrt((dps * ehp) / (1 - sigma));
 }

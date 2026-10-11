@@ -60,6 +60,11 @@ import { ORE_TIERS } from '../../src/game/ores';
 import { WOOD_TIERS } from '../../src/game/woodcutting';
 import { PLANTS } from '../../src/game/garden';
 
+// Diagnostic overrides while tuning, as JSON: SIM_T='{"battle":{"boss50HpMult":0.8},"heroSkills":{"greedGold":0.04}}' npm run sim
+if (process.env.SIM_T) {
+  for (const [group, vals] of Object.entries(JSON.parse(process.env.SIM_T) as Record<string, Record<string, number>>)) Object.assign((T as unknown as Record<string, Record<string, number>>)[group], vals);
+}
+
 const SEEDS = Number(process.env.SIM_SEEDS ?? 20);
 const DAYS = Number(process.env.SIM_DAYS ?? 21);
 const START = new Date(2026, 5, 1, 0, 0, 0).getTime();
@@ -683,6 +688,47 @@ function passAdvantage(a: Run[], p: Run[]): string[] {
   return out;
 }
 
+// ---- Hero skills (heroSkills.ts) --------------------------------------------------------------------------------------------------------
+
+// The same policy and seeds with the skill points spent down each path (Guerreiro is scenario A), against a hero without any skill (Z): what each path does to the
+// pace, and what the Cacador adds to the economy (budget: +10-14% materials/day, +12-18% gold/day, and no path more than ~2 days faster than another to boss 50).
+function skillComparison(runs: { label: string; runs: Run[] }[], control: Run[]): string[] {
+  const out: string[] = [];
+  const mats = (x: DaySnapshot) => x.ledger.mats.common + x.ledger.mats.uncommon + x.ledger.mats.rare;
+  const gold = (x: DaySnapshot) => sum(x.ledger.goldIn);
+  const upTo = (rs: Run[], d: number, f: (x: DaySnapshot) => number) => rs.map((r) => mean(r.days.slice(0, d + 1).map(f)));
+  const pct = (v: number, base: number) => (base > 0 ? `${v >= base ? '+' : ''}${num(((v - base) / base) * 100, 1)}%` : '-');
+  const all = [{ label: 'sem habilidades (Z)', runs: control }, ...runs];
+  const rows: string[][] = [];
+  for (const d of [6, 13]) {
+    const line = (label: string, f: (x: DaySnapshot) => number, avg: boolean) => {
+      const base = median(avg ? upTo(control, d, f) : control.map((r) => f(r.days[d])));
+      rows.push([`dia ${d + 1}`, label, ...all.map(({ runs: rs }) => {
+        const v = median(avg ? upTo(rs, d, f) : rs.map((r) => f(r.days[d])));
+        return rs === control ? num(v, 0) : `${num(v, 0)} (${pct(v, base)})`;
+      })]);
+    };
+    line('materiais recebidos por dia (média dos dias 1 até aqui)', mats, true);
+    line('valor de referência dos materiais por dia (ouro)', (x) => x.ledger.matsValue, true);
+    line('ouro ganho por dia (média dos dias 1 até aqui)', gold, true);
+    line('ouro de Masmorra + Caça por dia (as fontes que a Ganância toca)', (x) => sum(x.ledger.goldIn, ['masmorra', 'caça']), true);
+    line('nível', (x) => x.level, false);
+    line('CP', (x) => x.cp, false);
+    line('andar mais alto', (x) => x.floor, false);
+  }
+  out.push(...table(['Quando', 'Medida (mediana entre seeds)', ...all.map((a) => a.label)], rows));
+  out.push('');
+  const evs: [FirstEvent, string][] = [['firstCraft', 'primeira peça forjada'], ['floor10', 'checkpoint 10'], ['zone2', 'segunda zona de caça'], ['floor25', 'chefe 25 vencido'], ['floor50', 'chegada ao andar 50'], ['boss50', 'chefe 50 vencido']];
+  out.push(
+    ...table(
+      ['Marco (dia, mediana)', ...all.map((a) => a.label)],
+      evs.map(([ev, label]) => [label, ...all.map(({ runs: rs }) => medianDay(rs, ev))]),
+    ),
+  );
+  out.push('');
+  return out;
+}
+
 describe('progression simulation', () => {
   beforeAll(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -718,12 +764,18 @@ describe('progression simulation', () => {
     const n: Run[] = []; // the careless player: never touches the inventory
     const ctl: Run[] = []; // scenario A without the Garden 3.0 tonics: the control of the tonic budget
     const pass: Run[] = []; // scenario A, owning the Adventurer Pass from day 1 (perks only)
+    const guardian: Run[] = []; // scenario A with the skill points in Guardiao (A is Guerreiro)
+    const hunter: Run[] = []; // ... and in Cacador
+    const bare: Run[] = []; // ... and without any skill: the control of the skill budgets
     for (let seed = 1; seed <= SEEDS; seed++) {
       a.push(playOne(seed, {}));
       c.push(playOne(seed, { garden: true, balanced: true }));
       n.push(playOne(seed, { careless: true }));
       ctl.push(playOne(seed, { tonics: false }));
       pass.push(playOne(seed, { pass: true }));
+      guardian.push(playOne(seed, { skills: 'guardian' }));
+      hunter.push(playOne(seed, { skills: 'hunter' }));
+      bare.push(playOne(seed, { skills: 'none' }));
     }
     const all: Section[] = ['progress', 'xp', 'dungeon', 'gold', 'materials', 'inventory', 'firsts', 'day1'];
     const curve = enemyCurve();
@@ -753,6 +805,9 @@ describe('progression simulation', () => {
       '### Passe de Aventureiro: dono (P) contra não-dono (A), mesma política e mesmas seeds (só as vantagens do Passe; a trilha não é resgatada)',
       '',
       ...passAdvantage(a, pass),
+      '### Habilidades: os três caminhos (Guerreiro = cenário A, Guardião, Caçador) contra o mesmo jogador sem habilidades (Z), mesma política e mesmas seeds',
+      '',
+      ...skillComparison([{ label: 'Guerreiro (A)', runs: a }, { label: 'Guardião', runs: guardian }, { label: 'Caçador', runs: hunter }], bare),
       '### Diagnóstico do chefe do andar 25',
       '',
       ...bossFirstContact('Cenário A', a),

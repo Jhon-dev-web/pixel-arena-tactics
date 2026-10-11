@@ -40,17 +40,18 @@ export function rollUniqueDrop(templateId: string, rng: Rng = Math.random): Uniq
 }
 
 // The unique(s) a cleared Dungeon stage can drop: only the biome-boss floors, T.battle.uniqueBossChance each time for each unique of that boss.
-export function rollBossUniques(stage: number, rng: Rng = Math.random): UniqueDrop[] {
+// `luck` (>= 1) is Sorte Grande's multiplier on the chance (the one thing allowed to touch unique chances); the draw itself is unchanged.
+export function rollBossUniques(stage: number, rng: Rng = Math.random, luck = 1): UniqueDrop[] {
   const out: UniqueDrop[] = [];
-  for (const id of UNIQUE_BOSS_DROPS[stage] ?? []) if (rng() < T.battle.uniqueBossChance) out.push(rollUniqueDrop(id, rng));
+  for (const id of UNIQUE_BOSS_DROPS[stage] ?? []) if (rng() < T.battle.uniqueBossChance * luck) out.push(rollUniqueDrop(id, rng));
   return out;
 }
 
 // The relic(s) (template ids) a cleared Dungeon stage can drop: only the biome-boss floors, T.battle.relicBossChance each time, independent of the uniques.
 // Relics are stackable: a second copy simply adds to the stack (inventory.ts addForced), and a defeat keeps them like the boss gem.
-export function rollBossRelics(stage: number, rng: Rng = Math.random): string[] {
+export function rollBossRelics(stage: number, rng: Rng = Math.random, luck = 1): string[] {
   const id = BOSS_RELIC_DROPS[stage];
-  return id && rng() < T.battle.relicBossChance ? [id] : [];
+  return id && rng() < T.battle.relicBossChance * luck ? [id] : [];
 }
 
 // Boss relics from a saved / tampered list (never trusted): only known boss relic ids survive.

@@ -18,7 +18,7 @@ import {
   playerLevel,
   SaveData,
 } from '../../src/game/engine';
-import { BurnState, applyDamageModifiers, applyDamageReduction, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, tickBurn } from '../../src/game/derivedStats';
+import { BurnState, applyDamageModifiers, applyDamageReduction, bastionHp, bleedSpec, bossDamage, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, strikeMultiplier, tickBurn } from '../../src/game/derivedStats';
 import {
   crossedMilestoneFloors,
   dungeonEnemyKindForFloor,
@@ -33,7 +33,7 @@ import { applyDurabilityLoss, equippedSubstatTotals } from '../../src/game/gearI
 import { GemId } from '../../src/game/gems';
 import { MaterialId } from '../../src/game/materials';
 import { unlockedZoneIds } from '../../src/game/huntingZones';
-import { isDungeonBoss, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
+import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
 import { UniqueDrop, addRelics, addUniqueInstance } from '../../src/game/uniques';
 import { applyClaimGathering, applyStartGathering } from '../../src/game/gathering';
 import { applyBuyConsumable, applyCraftPotion, applyRefine } from '../../src/game/craftActions';
@@ -44,6 +44,7 @@ import { questMaxRefine } from '../../src/game/gearInstances';
 import { activeTonicStats, goldMultiplier, isBuffActive } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
 import { ownsAdventurerPass } from '../../src/game/entitlements';
+import { HeroSkillId, activeSkillRanks, addRank, addRankBlock, characterXpBonusPct, pointsSpent, rankOf, saveSkillEffects, skillPointsEarned } from '../../src/game/heroSkills';
 
 // ---- seeded RNG ---------------------------------------------------------------------------------------------------
 
@@ -110,6 +111,8 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
   const startPotions = stock.greater_elixir + stock.large_hp + stock.small_hp;
   let potionCooldownUntil = 0;
   let hp = playerMax;
+  let heroHits = 0; // Golpe Devastador counts the hero's hits over the whole run
+  let bastionUsed = false; // Ultimo Bastiao: once per run
   let clock = 0;
   let stage = startFloor;
   let stages = 0;
@@ -149,37 +152,54 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
   waves: for (;;) {
     const def = getEnemyDef(dungeonEnemyKindForFloor(stage));
     let enemyHp = stageEnemyHp(def, stage);
-    const hitTaken = applyDamageReduction(stageEnemyDmg(def, stage), combat.reduction);
+    // Postura Firme: boss and checkpoint floors only (BattleModal.monsterAttack does the same two steps).
+    const reduced = applyDamageReduction(stageEnemyDmg(def, stage), combat.reduction);
+    const hitTaken = isDungeonBoss(stage) || isDungeonCheckpoint(stage) ? bossDamage(reduced, combat.bossReduction) : reduced;
     const reflected = reflectedDamage(hitTaken, combat.reflect);
     let heroNext = clock + combat.heroMs;
     let enemyNext = clock + def.atkSpeedMs;
     let regenNext = regen > 0 ? clock + T.battle.effectTickMs : Infinity;
     let burn: BurnState | null = null;
-    // Event order at equal times: hero hit, enemy hit, burn tick, regeneration tick (huntCombat.ts attempt uses the same).
+    let bleed: BurnState | null = null;
+    const bleedDot = combat.bleed ? bleedSpec(combat.bleed) : undefined;
+    // Event order at equal times: hero hit, enemy hit, burn tick, bleed tick, regeneration tick (huntCombat.ts attempt uses the same).
     for (;;) {
       if (++guard > 5_000_000) throw new Error('dungeon loop did not terminate');
       const burnNext = nextBurnTickAt(burn);
-      const next = Math.min(heroNext, enemyNext, burnNext, regenNext);
+      const bleedNext = nextBurnTickAt(bleed);
+      const next = Math.min(heroNext, enemyNext, burnNext, bleedNext, regenNext);
       clock = next;
       if (heroNext === next) {
         const crit = Math.random() < combat.critChance;
-        const dmg = Math.max(1, Math.round(heroBase * (crit ? combat.critMult : 1)));
+        heroHits++;
+        const dmg = Math.max(1, Math.round(heroBase * (crit ? combat.critMult : 1) * strikeMultiplier(heroHits, combat.strikeEvery)));
         enemyHp = Math.max(0, enemyHp - dmg);
         if (combat.burn) burn = igniteBurn(burn, clock, heroBase);
+        if (bleedDot) bleed = igniteBurn(bleed, clock, heroBase, bleedDot);
         if (combat.lifesteal > 0) hp = Math.min(playerMax, hp + Math.max(1, Math.round(dmg * (combat.lifesteal / 100))));
         heroNext += combat.heroMs;
       } else if (enemyNext === next) {
-        hp = Math.max(0, hp - hitTaken);
+        const blocked = !!combat.block && Math.random() < combat.block; // Bloqueio: the loop's normal RNG
+        hp = Math.max(0, hp - (blocked ? 0 : hitTaken));
         enemyNext += def.atkSpeedMs;
         if (hp <= 0) {
-          outcome = 'defeat';
-          break waves;
+          if (combat.bastion && !bastionUsed) {
+            bastionUsed = true;
+            hp = bastionHp(playerMax);
+          } else {
+            outcome = 'defeat';
+            break waves;
+          }
         }
-        enemyHp = Math.max(0, enemyHp - reflected);
+        enemyHp = Math.max(0, enemyHp - (blocked ? 0 : reflected));
       } else if (burnNext === next) {
         const tick = tickBurn(burn!);
         enemyHp = Math.max(0, enemyHp - tick.damage);
         burn = tick.burn;
+      } else if (bleedNext === next) {
+        const tick = tickBurn(bleed!);
+        enemyHp = Math.max(0, enemyHp - tick.damage);
+        bleed = tick.burn;
       } else {
         hp = Math.min(playerMax, hp + regen);
         regenNext += T.battle.effectTickMs;
@@ -189,7 +209,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
     }
 
     // wave cleared
-    const r = waveRewards(getBiomeForFloor(stage), stage);
+    const r = waveRewards(getBiomeForFloor(stage), stage, combat.bossLootMult ?? 1);
     acc.gold += r.gold;
     acc.shards += r.shards;
     for (const [m, q] of Object.entries(r.drops)) acc.drops[m as MaterialId] = (acc.drops[m as MaterialId] ?? 0) + (q as number);
@@ -259,7 +279,7 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
     ({ battlePassLevel, battlePassXp } = addBattlePassXp(s, T.battlePass.xpPerFloor * stages));
   }
   const subs = equippedSubstatTotals(s);
-  const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', now), ownsAdventurerPass(s) ? T.battlePass.goldBonus : 0));
+  const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', now), ownsAdventurerPass(s) ? T.battlePass.goldBonus : 0, saveSkillEffects(s).goldPct));
   const unlockedHuntingZones = Array.from(new Set([...s.unlockedHuntingZones, ...unlockedZoneIds(nextFloor)]));
   const crossed = success ? crossedMilestoneFloors(startFloor, stages, s.dungeonCheckpoints) : [];
   let gold = s.gold + goldGain;
@@ -285,7 +305,7 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
       if (reward.titleId && !cosmetics.includes(reward.titleId)) cosmetics = [...cosmetics, reward.titleId];
     }
   }
-  const xpGain = dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages);
+  const xpGain = Math.round((dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages)) * (1 + characterXpBonusPct(s) / 100));
   // Boss uniques (App.finishRun): delivered as stored gear instances even when the bag is over capacity - never lost.
   let delivered = worn;
   for (const drop of rewards.uniques ?? []) delivered = addUniqueInstance(delivered, drop, `dg${startFloor}`, 0);
@@ -370,6 +390,42 @@ export function claimQuests(s: SaveData): { save: SaveData; gold: number } {
     gold += def.gold;
   }
   return { save: cur, gold };
+}
+
+// ---- hero skills (heroSkills.ts): a player who spends the points as earned, down a fixed buy order ---------------------------------------------------------------
+
+export type SkillBuild = 'warrior' | 'guardian' | 'hunter' | 'none';
+
+// The order each path is bought in, one entry per point (19 points = a full path). Ties to nothing in the game: it is the policy of the simulated player.
+export const SKILL_BUILDS: Record<Exclude<SkillBuild, 'none'>, HeroSkillId[]> = {
+  warrior: [
+    'w_heavy_blow', 'w_heavy_blow', 'w_fury', 'w_fury', 'w_heavy_blow', 'w_fury', 'w_keen_eye', 'w_keen_eye', 'w_keen_eye',
+    'w_execution', 'w_execution', 'w_execution', 'w_weapon_master', 'w_weapon_master', 'w_weapon_master', 'w_bleed', 'w_bleed', 'w_bleed', 'w_devastating_strike',
+  ],
+  guardian: [
+    'g_thick_skin', 'g_thick_skin', 'g_bulwark', 'g_bulwark', 'g_thick_skin', 'g_bulwark', 'g_second_wind', 'g_second_wind', 'g_second_wind',
+    'g_thorns', 'g_thorns', 'g_thorns', 'g_block', 'g_block', 'g_block', 'g_firm_stance', 'g_firm_stance', 'g_firm_stance', 'g_last_bastion',
+  ],
+  hunter: [
+    'h_greed', 'h_light_step', 'h_greed', 'h_light_step', 'h_greed', 'h_light_step', 'h_scent', 'h_scent', 'h_scent',
+    'h_quick_learner', 'h_quick_learner', 'h_quick_learner', 'h_packer', 'h_packer', 'h_packer', 'h_gatherer', 'h_gatherer', 'h_gatherer', 'h_great_luck',
+  ],
+};
+
+// Buys every point the level has earned and not spent yet (what the Habilidades screen does with the "+" and "Aplicar").
+export function spendSkillPoints(s: SaveData, build: SkillBuild): SaveData {
+  if (build === 'none') return s;
+  const seq = SKILL_BUILDS[build];
+  const level = playerLevel(s.xp);
+  let ranks = activeSkillRanks(s);
+  while (skillPointsEarned(level) - pointsSpent(ranks) > 0) {
+    const want = (id: HeroSkillId) => seq.filter((x) => x === id).length;
+    const pick = seq.find((id) => rankOf(ranks, id) < want(id) && addRankBlock(ranks, id, 1) === null);
+    if (!pick) break;
+    ranks = addRank(ranks, pick);
+  }
+  const sets: SaveData['skillTree']['sets'] = s.skillTree.active === 0 ? [ranks, s.skillTree.sets[1]] : [s.skillTree.sets[0], ranks];
+  return { ...s, skillTree: { ...s.skillTree, sets } };
 }
 
 // App.tsx attrChange (1122-1131) applied in bulk: 3 points per level, spread by fixed weights.

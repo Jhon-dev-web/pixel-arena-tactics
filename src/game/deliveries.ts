@@ -2,7 +2,7 @@ import { HUNTING_ZONES, isZoneUnlocked } from './huntingZones';
 import { EXPEDITION_TICKET_SKIP_MS, ConsumableId } from './consumables';
 import { MAX_LEVEL, playerLevel, SaveData } from './engine';
 import { PLANTS } from './garden';
-import { relicXpBonusPct } from './gear';
+import { characterXpBonusPct } from './heroSkills';
 import { hasMaterials, MaterialId } from './materials';
 import { baseGoldValue, cargoReferenceValue } from './economy';
 import { ORE_TIERS } from './ores';
@@ -398,7 +398,7 @@ export function applyDeliveryAccept(save: SaveData, offerId: string, now: number
   const materials = { ...save.materials };
   for (const [m, q] of Object.entries(offer.items) as [MaterialId, number][]) materials[m] = (materials[m] ?? 0) - q;
   // The Pass XP bonus is decided here and frozen in the snapshot: later Pass expiry or tunable changes do not touch it.
-  const active: ActiveDelivery = { offer: { ...offer, xp: deliveryXp(offer, passActive, relicXpBonusPct(save.equipped.relic)), gold: deliveryGold(offer, passActive) }, startedAt: now, endsAt: now + offer.durationMs };
+  const active: ActiveDelivery = { offer: { ...offer, xp: deliveryXp(offer, passActive, characterXpBonusPct(save)), gold: deliveryGold(offer, passActive) }, startedAt: now, endsAt: now + offer.durationMs };
   const others = d.offers.filter((_, j) => j !== index).map((o) => o.arch);
   const seq = nextSeq(d);
   const fresh = generateOffer(buildContext(save), offer.cls, others, `d${seq + 1}`, now, rng);

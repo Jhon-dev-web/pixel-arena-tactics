@@ -139,9 +139,10 @@ export function activeTonicStats(stats: CombatStats, save: SaveData, now: number
 // Gold multiplier of a Dungeon / Hunting reward: gear goldBonus (already capped at GOLD_BONUS_CAP by equippedSubstatTotals) and the Fortune Tonic ADD,
 // they do not multiply, and the tonic is outside the gear cap.
 // The Adventurer Pass's gold bonus (a fraction, T.battlePass.goldBonus) adds the same way.
-export function goldMultiplier(gearGoldBonusPct: number, fortuneActive: boolean, passGold = 0): number {
+// Ganancia (heroSkills.ts, `skillGold`, a fraction) adds the same way, outside the gear cap.
+export function goldMultiplier(gearGoldBonusPct: number, fortuneActive: boolean, passGold = 0, skillGold = 0): number {
   const gear = Number.isFinite(gearGoldBonusPct) ? Math.max(0, gearGoldBonusPct) : 0;
-  return 1 + gear / 100 + (fortuneActive ? T.tonics.fortuneGoldPct : 0) + Math.max(0, passGold);
+  return 1 + gear / 100 + (fortuneActive ? T.tonics.fortuneGoldPct : 0) + Math.max(0, passGold) + Math.max(0, skillGold);
 }
 
 export type TonicWindows = Partial<Record<TimedBuffKind, TimeWindow[]>>;

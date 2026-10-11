@@ -387,6 +387,46 @@ const T = DebugPanel.define({
     goldBonus: { value: 0.1, min: 0, max: 0.5, step: 0.05, label: 'Extra Gold for the Pass owner: Dungeon, Hunting, deliveries (fraction)' },
     repairDiscount: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Forge repair gold discount while active' },
   },
+  // Hero skills (heroSkills.ts): three paths of passive skills, 1 point every pointEveryLevels character levels. Every number below is PER RANK; the screen
+  // and the descriptions are generated from them. Tuned by scripts/sim (docs/BALANCE_CHANGES.md Rodada 7).
+  heroSkills: {
+    _label: 'Hero skills',
+    pointEveryLevels: { value: 5, min: 1, max: 20, step: 1, label: 'Character levels per skill point' },
+    tier2Req: { value: 2, min: 0, max: 20, step: 1, label: 'Points in the path needed for tier 2' },
+    tier3Req: { value: 5, min: 0, max: 20, step: 1, label: 'Points in the path needed for tier 3' },
+    capstoneReq: { value: 10, min: 0, max: 20, step: 1, label: 'Points in the path needed for the capstone' },
+    // Guerreiro
+    heavyBlowPct: { value: 0.01, min: 0, max: 0.3, step: 0.005, label: 'Golpe Pesado: final damage per rank' },
+    keenEyeCrit: { value: 0.01, min: 0, max: 0.2, step: 0.005, label: 'Olho Clinico: crit chance per rank (absolute)' },
+    executionCritMult: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Execucao: crit multiplier per rank (absolute)' },
+    furyAttackSpeed: { value: 0.01, min: 0, max: 0.2, step: 0.005, label: 'Furia: attack speed per rank' },
+    bleedPct: { value: 0.02, min: 0, max: 0.3, step: 0.005, label: 'Sangria: share of the hit dealt per second, per rank' },
+    bleedDurationMs: { value: 3000, min: 1000, max: 10000, step: 500, label: 'Sangria: duration after the last hit (ms)' },
+    weaponMasterPct: { value: 0.02, min: 0, max: 0.3, step: 0.005, label: 'Mestre de Armas: weapon base damage per rank' },
+    strikeEvery: { value: 6, min: 2, max: 20, step: 1, label: 'Golpe Devastador: every Nth hit of the hero' },
+    strikeMult: { value: 1.3, min: 1, max: 6, step: 0.25, label: 'Golpe Devastador: damage multiplier of that hit' },
+    // Guardiao
+    thickSkinHp: { value: 0.01, min: 0, max: 0.3, step: 0.005, label: 'Pele Dura: max HP per rank' },
+    bulwarkRes: { value: 0.025, min: 0, max: 0.3, step: 0.005, label: 'Muralha: resistance sum per rank (multiplier)' },
+    thornsReflect: { value: 0.04, min: 0, max: 0.2, step: 0.005, label: 'Espinhos: reflect per rank (absolute)' },
+    secondWindRegen: { value: 0.0009, min: 0, max: 0.05, step: 0.0005, label: 'Segundo Folego: max HP regenerated per second, per rank' },
+    firmStanceReduction: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Postura Firme: damage taken from boss and checkpoint floors, per rank' },
+    blockChance: { value: 0.012, min: 0, max: 0.3, step: 0.005, label: 'Bloqueio: chance to block a hit per rank' },
+    bastionHealPct: { value: 0.25, min: 0, max: 1, step: 0.05, label: 'Ultimo Bastiao: max HP healed after the save' },
+    bastionCooldownMs: { value: 60000, min: 5000, max: 600000, step: 5000, label: 'Ultimo Bastiao: Hunting cooldown (ms of combat time)' },
+    // Cacador
+    lightStepAttackSpeed: { value: 0.01, min: 0, max: 0.2, step: 0.005, label: 'Passo Leve: attack speed per rank' },
+    greedGold: { value: 0.05, min: 0, max: 0.3, step: 0.005, label: 'Ganancia: extra Gold per rank (outside the gear cap)' },
+    scentMaterials: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Faro: Hunting material yield per rank' },
+    quickLearnerXp: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Aprendiz Veloz: character XP per rank' },
+    packerSlots: { value: 2, min: 0, max: 10, step: 1, label: 'Mochileiro: inventory slots per rank' },
+    gathererYield: { value: 0.06, min: 0, max: 0.3, step: 0.005, label: 'Coletor: Mining and Woodcutting yield per rank' },
+    luckHuntUnique: { value: 1.5, min: 1, max: 3, step: 0.05, label: 'Sorte Grande: Hunting unique drop chance multiplier' },
+    luckBossDrop: { value: 1.25, min: 1, max: 3, step: 0.05, label: 'Sorte Grande: Dungeon boss unique / relic chance multiplier' },
+    // Respec: free once, then respecGoldPerPoint x points spent x character level / respecLevelDivisor (rounded).
+    respecGoldPerPoint: { value: 50, min: 0, max: 1000, step: 5, label: 'Respec: Gold per skill point spent (at the level divisor)' },
+    respecLevelDivisor: { value: 10, min: 1, max: 100, step: 1, label: 'Respec: character level divisor' },
+  },
   merchant: {
     _label: 'Merchant (selling surplus)',
     priceRate: { value: 0.15, min: 0.02, max: 0.5, step: 0.01, label: 'Material sell price as a share of the economic reference value (economy.ts baseGoldValue), rounded down, min 1' },
@@ -431,6 +471,14 @@ const T = DebugPanel.define({
     cpBurnWeight: { value: 0.95, min: 0, max: 2, step: 0.05, label: 'CP: burn weight' },
     cpReflectWeight: { value: 0.5, min: 0, max: 2, step: 0.05, label: 'CP: reflect weight' },
     cpRegenWeight: { value: 1.8, min: 0, max: 4, step: 0.05, label: 'CP: regeneration weight' },
+    // Hero skills in CP (derivedStats.ts combatPowerCore), weights measured with scripts/sim/itemAudit.sim.ts section I. Bleed counts like burn; the Devastating Strike as the
+    // extra damage of its hit share; Block as the share of hits that never land; Firm Stance as the share of fights that are boss / checkpoint floors; Last Bastion as the
+    // heal it gives, available in a share of the fights.
+    cpBleedWeight: { value: 0.95, min: 0, max: 2, step: 0.05, label: 'CP: bleed weight' },
+    cpStrikeWeight: { value: 1, min: 0, max: 2, step: 0.05, label: 'CP: Devastating Strike weight' },
+    cpBlockWeight: { value: 1, min: 0, max: 2, step: 0.05, label: 'CP: Block weight' },
+    cpBossShare: { value: 0.3, min: 0, max: 1, step: 0.05, label: 'CP: weight of Firm Stance (share of fights against bosses)' },
+    cpBastionWeight: { value: 0.2, min: 0, max: 2, step: 0.05, label: 'CP: Last Bastion weight' },
     // Math-safety ceiling for each CP input (NOT a gameplay limit): keeps tampered values from overflowing to Infinity.
     cpInputCeiling: { value: 1000000000000, min: 1000000, max: 1000000000000000, step: 1000000, label: 'CP: per-input safety ceiling' },
     // Overflow guard only (NOT a points rule): keeps a tampered/garbage STR from overflowing the damage math to Infinity.

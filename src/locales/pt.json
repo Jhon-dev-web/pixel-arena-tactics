@@ -729,6 +729,36 @@
     "on": "LIGADO",
     "off": "DESLIGADO"
   },
+  "heroSkills": {
+    "paths": {
+      "warrior": { "name": "Guerreiro", "identity": "Dano: golpes mais fortes, críticos e sangramento." },
+      "guardian": { "name": "Guardião", "identity": "Sobrevivência: aguenta, bloqueia e devolve o golpe." },
+      "hunter": { "name": "Caçador", "identity": "Ritmo e economia: caça mais depressa e rende mais." }
+    },
+    "skills": {
+      "w_heavy_blow": { "name": "Golpe Pesado", "desc": "+{n}% de dano final." },
+      "w_keen_eye": { "name": "Olho Clínico", "desc": "+{n}% de chance de crítico." },
+      "w_execution": { "name": "Execução", "desc": "+{n}% de dano crítico." },
+      "w_fury": { "name": "Fúria", "desc": "+{n}% de velocidade de ataque." },
+      "w_bleed": { "name": "Sangria", "desc": "Seus golpes fazem o inimigo sangrar: {n}% do golpe por segundo, até {s} s depois do último golpe. Soma com a queima da arma." },
+      "w_weapon_master": { "name": "Mestre de Armas", "desc": "+{n}% do dano base da arma equipada." },
+      "w_devastating_strike": { "name": "Golpe Devastador", "desc": "A cada {every}º golpe seu, o dano é multiplicado por {mult}." },
+      "g_thick_skin": { "name": "Pele Dura", "desc": "+{n}% de vida máxima." },
+      "g_bulwark": { "name": "Muralha", "desc": "+{n}% sobre o total de resistência." },
+      "g_thorns": { "name": "Espinhos", "desc": "+{n}% de reflexo de dano, somado ao da armadura e do escudo." },
+      "g_second_wind": { "name": "Segundo Fôlego", "desc": "Recupera {n}% da vida máxima por segundo em combate." },
+      "g_firm_stance": { "name": "Postura Firme", "desc": "-{n}% de dano recebido nos andares de chefe e mini-chefe (só na Masmorra)." },
+      "g_block": { "name": "Bloqueio", "desc": "{n}% de chance de bloquear um golpe por completo." },
+      "g_last_bastion": { "name": "Último Bastião", "desc": "Um golpe fatal deixa você com {hp} de vida e cura {heal}% da vida máxima. Uma vez por incursão na Masmorra; na Caça, a cada {s} s de combate." },
+      "h_light_step": { "name": "Passo Leve", "desc": "+{n}% de velocidade de ataque." },
+      "h_greed": { "name": "Ganância", "desc": "+{n}% de ouro da Masmorra e da Caça, fora do limite do equipamento." },
+      "h_scent": { "name": "Faro", "desc": "+{n}% de materiais na Caça. Peças únicas e relíquias não mudam." },
+      "h_quick_learner": { "name": "Aprendiz Veloz", "desc": "+{n}% de XP do personagem." },
+      "h_packer": { "name": "Mochileiro", "desc": "+{n} espaços na mochila." },
+      "h_gatherer": { "name": "Coletor", "desc": "+{n}% de materiais na Mineração e no Lenhador." },
+      "h_great_luck": { "name": "Sorte Grande", "desc": "+{hunt}% de chance de peça única na Caça e +{boss}% de chance de peça única e relíquia dos chefes da Masmorra." }
+    }
+  },
   "nav": {
     "base": "Base / AFK",
     "forge": "Forja",
@@ -792,6 +822,9 @@
     "heroLabel": "Herói",
     "speed": "{n}x",
     "retreat": "Recuar",
+    "devastating": "Devastador!",
+    "blocked": "Bloqueado!",
+    "lastBastion": "Último Bastião!",
     "stageLabel": "Estágio {f}-{s}",
     "accumGold": "{n}",
     "accumDrops": "{n} itens",

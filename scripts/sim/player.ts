@@ -55,6 +55,8 @@ import {
   reload,
   runDungeon,
   spendAttributePoints,
+  spendSkillPoints,
+  SkillBuild,
   startGathering,
 } from './driver';
 
@@ -331,6 +333,8 @@ export interface PlayerOptions {
   pass?: boolean;
   // Diagnostic: only the delivery perk of the Pass (extra offer + reroll + XP bonus), nothing else.
   deliveriesOnly?: boolean;
+  // The hero skill path the policy buys down as the points are earned (heroSkills.ts); scenario A is 'warrior', 'none' is the control without any skill.
+  skills?: SkillBuild;
   // A player who ignores the inventory entirely: never stashes, sells, discards, expands or brings anything over (everything else as the baseline).
   careless?: boolean;
 }
@@ -719,6 +723,7 @@ export class Player {
     this.equipBest();
     this.buyGemsForTarget();
     this.S = spendAttributePoints(this.S);
+    this.S = spendSkillPoints(this.S, this.opts.skills ?? 'warrior');
     this.socketSpareGems();
     const reserve = this.goldReserve();
     this.refineGear(reserve);

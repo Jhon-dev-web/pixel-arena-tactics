@@ -1,7 +1,7 @@
 import { MaterialId } from './materials';
 import { UniqueDrop, rollUniqueDrop } from './uniques';
 import { HuntingDrop, HuntingDepth, HuntingUnique, effectiveDropChance } from './huntingZones';
-import { BurnState, applyDamageReduction, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, tickBurn } from './derivedStats';
+import { BurnState, applyDamageReduction, bastionHp, bleedSpec, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, strikeMultiplier, tickBurn } from './derivedStats';
 import T from './tunables';
 import { economicRollFractionForFight } from './huntEconomy';
 import { inRelativeWindows } from './huntSession';
@@ -50,6 +50,15 @@ export interface HuntCombatBuild {
   hpRegenPct: number;
   goldBonusPct?: number; // gear gold bonus (CombatStats.goldBonus): raises the Gold of the fight time, not the XP or the drops
   xpBonusPct?: number; // the Season Relic (CombatStats.xpBonus): raises the character XP of the fight time, not the Gold or the drops
+  // Hero skills (heroSkills.ts), all optional = the hero has none: Sangria (a second damage-over-time beside burn), Golpe Devastador (every Nth hit), Bloqueio
+  // (rolled on its OWN seeded stream, so the fight, crit, drop and promotion outcomes of a hero without it are bit-for-bit unchanged), Ultimo Bastiao, Faro (material
+  // yield) and Sorte Grande (unique chance; only the threshold the unique draw is compared against changes, never the stream).
+  bleed?: number;
+  strikeEvery?: number;
+  block?: number;
+  bastion?: boolean;
+  matMult?: number;
+  uniqueMult?: number;
 }
 
 export interface HuntZoneCombatCfg {
@@ -173,7 +182,11 @@ export function simulateHuntingSession(
   const uniqueRng = mulberry32(hashSeed(seedKey + ':unique'));
   // Drop entries flagged `ownStream` (a zone's later additions) draw from their own stream too, for the same reason.
   const ownRng = mulberry32(hashSeed(seedKey + ':zone'));
+  // Block rolls (Bloqueio) have their own stream for the same reason; it is only drawn from when the hero has the skill.
+  const blockRng = mulberry32(hashSeed(seedKey + ':block'));
   const uniques: UniqueDrop[] = [];
+  let heroHits = 0; // the hero's hits over the whole session, for Golpe Devastador
+  let bastionReadyAt = 0; // session clock (ms) from which Ultimo Bastiao can save the hero again
 
   let timeLeft = sessionMs;
   let fightTimeUsedMs = 0;
@@ -197,7 +210,7 @@ export function simulateHuntingSession(
   // `timeLeft` is already reduced by the fight when this runs, so sessionMs - timeLeft is the moment the fight ended.
   const rollDropsForOneClear = (subLevel: number, fightMs: number) => {
     const economicFraction = economicRollFractionForFight(fightMs, subLevel);
-    const dropMult = timeline ? (inRelativeWindows(timeline.passWindows, sessionMs - timeLeft) ? timeline.passDropMult : 1) : zoneCfg.dropRateMult;
+    const dropMult = (timeline ? (inRelativeWindows(timeline.passWindows, sessionMs - timeLeft) ? timeline.passDropMult : 1) : zoneCfg.dropRateMult) * (build.matMult ?? 1);
     for (const entry of zoneCfg.drops) {
       const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * dropMult * economicFraction;
       if ((entry.ownStream ? ownRng() : rng()) < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
@@ -205,7 +218,7 @@ export function simulateHuntingSession(
     // Unique pieces: base chance x the same economic fraction as the materials (no depth / sub-level / Battle Pass multiplier). They never touch
     // the material stacks (they are not materials); the claim delivers them as gear instances.
     for (const u of zoneCfg.uniques ?? []) {
-      if (uniqueRng() < u.chance * economicFraction) uniques.push(rollUniqueDrop(u.itemId, uniqueRng));
+      if (uniqueRng() < u.chance * economicFraction * (build.uniqueMult ?? 1)) uniques.push(rollUniqueDrop(u.itemId, uniqueRng));
     }
   };
 
@@ -254,13 +267,16 @@ export function simulateHuntingSession(
     let enemyNext = enemy.atkMs;
     let regenNext = regen > 0 ? T.battle.effectTickMs : Infinity;
     let burn: BurnState | null = null;
+    let bleed: BurnState | null = null;
+    const bleedDot = build.bleed ? bleedSpec(build.bleed) : undefined;
     let t = 0;
     // Snapshot at fight start too, so a brand-new attempt has something to show even before its
     // first hit lands (e.g. the very first poll of a freshly-started session).
     liveSnapshot = { subLevel, heroHp: hpRef.hp, heroMax: build.playerMax, enemyHp, enemyMax: enemy.hp };
     while (hpRef.hp > 0 && enemyHp > 0) {
       const burnNext = nextBurnTickAt(burn);
-      const nextEvent = Math.min(heroNext, enemyNext, burnNext, regenNext);
+      const bleedNext = nextBurnTickAt(bleed);
+      const nextEvent = Math.min(heroNext, enemyNext, burnNext, bleedNext, regenNext);
       if (nextEvent > timeLeft) return null;
       t = nextEvent;
       if (heroNext === nextEvent) {
@@ -274,9 +290,11 @@ export function simulateHuntingSession(
           const atk = inRelativeWindows(timeline.attackWindows, at);
           hitBase = str && atk ? timeline.dmgBoth : str ? timeline.dmgStrength : atk ? timeline.dmgAttack : build.heroDmgBase;
         }
-        const dmg = Math.max(1, Math.round(hitBase * (crit ? build.critMult : 1)));
+        heroHits++;
+        const dmg = Math.max(1, Math.round(hitBase * (crit ? build.critMult : 1) * strikeMultiplier(heroHits, build.strikeEvery)));
         enemyHp -= dmg;
         if (build.burn) burn = igniteBurn(burn, t, hitBase);
+        if (bleedDot) bleed = igniteBurn(bleed, t, hitBase, bleedDot);
         if (build.lifestealPct > 0) {
           hpRef.hp = Math.min(build.playerMax, hpRef.hp + Math.max(1, Math.round(dmg * (build.lifestealPct / 100))));
         }
@@ -284,14 +302,25 @@ export function simulateHuntingSession(
         heroNext += hasted ? (timeline!.heroMsHaste ?? build.heroMs) : build.heroMs;
       } else if (enemyNext === nextEvent) {
         const stoned = !!timeline?.stoneWindows && inRelativeWindows(timeline.stoneWindows, sessionMs - timeLeft + t);
-        const dmgTaken = stoned ? applyDamageReduction(enemy.dmg, timeline!.reductionStone ?? build.reduction) : dmgTakenBase;
+        const blocked = !!build.block && blockRng() < build.block;
+        const dmgTaken = blocked ? 0 : stoned ? applyDamageReduction(enemy.dmg, timeline!.reductionStone ?? build.reduction) : dmgTakenBase;
         hpRef.hp -= dmgTaken;
+        // Ultimo Bastiao: a lethal hit leaves 1 HP plus a heal, once per bastionCooldownMs of combat time.
+        const clock = sessionMs - timeLeft + t;
+        if (hpRef.hp <= 0 && build.bastion && clock >= bastionReadyAt) {
+          hpRef.hp = bastionHp(build.playerMax);
+          bastionReadyAt = clock + T.heroSkills.bastionCooldownMs;
+        }
         if (hpRef.hp > 0) enemyHp -= reflectedDamage(dmgTaken, build.reflect);
         enemyNext += enemy.atkMs;
       } else if (burnNext === nextEvent) {
         const tick = tickBurn(burn!);
         enemyHp -= tick.damage;
         burn = tick.burn;
+      } else if (bleedNext === nextEvent) {
+        const tick = tickBurn(bleed!);
+        enemyHp -= tick.damage;
+        bleed = tick.burn;
       } else {
         hpRef.hp = Math.min(build.playerMax, hpRef.hp + regen);
         regenNext += T.battle.effectTickMs;

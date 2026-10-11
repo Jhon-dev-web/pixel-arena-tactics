@@ -40,6 +40,7 @@ import { migrateLegacyPouch } from './legacyPouch';
 import { emptyStash, sanitizeStash, StashState } from './stash';
 import { emptyMerchant, MerchantState, sanitizeMerchant } from './merchant';
 import { UniqueDrop } from './uniques';
+import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
 export { buffRemainingMs, isBuffActive };
@@ -65,7 +66,7 @@ export interface GardenSlot {
   fertilized?: boolean;
 }
 
-export const CONTEXTUAL_TUTORIAL_IDS = ['garden', 'mining', 'woodcutting', 'deliveries', 'reforge', 'sockets'] as const;
+export const CONTEXTUAL_TUTORIAL_IDS = ['garden', 'mining', 'woodcutting', 'deliveries', 'reforge', 'sockets', 'skills'] as const;
 export type ContextualTutorialId = (typeof CONTEXTUAL_TUTORIAL_IDS)[number];
 export type InitialTutorialStep = 'intro' | 'character' | 'hunt' | 'huntModal' | 'dungeon' | 'forge' | 'final';
 export type InitialTutorialStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
@@ -156,6 +157,8 @@ export interface SaveData {
   vit: number;
   agi: number;
   res: number;
+  // Hero skills (heroSkills.ts): the allocation(s) of the skill points earned every few levels and the free-respec flag. Old saves load with nothing spent.
+  skillTree: SkillTreeState;
   materials: Materials;
   potions: { hp: number; stamina: number; elixir: number };
   consumables: Record<ConsumableId, number>;
@@ -292,16 +295,17 @@ export function playerMaxHp(save: SaveData): number {
   const gems = equippedGemBonuses(save);
   const subs = equippedSubstatTotals(save);
   const extra = equippedExtraStats(save);
-  return Math.round(
+  const raw =
     T.progression.playerBaseHp +
-      (save.armorLevel - 1) * T.progression.armorHpPerLvl +
-      effectiveMaxHp(armor, armorLvl) * durabilityFactor(aDur) * aRarity +
-      (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
-      save.vit * T.advanced.vitHpPerPoint +
-      gems.maxHp +
-      subs.maxHp +
-      extra.maxHp,
-  );
+    (save.armorLevel - 1) * T.progression.armorHpPerLvl +
+    effectiveMaxHp(armor, armorLvl) * durabilityFactor(aDur) * aRarity +
+    (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
+    save.vit * T.advanced.vitHpPerPoint +
+    gems.maxHp +
+    subs.maxHp +
+    extra.maxHp;
+  // Thick Skin (heroSkills.ts): a share of the whole pool, rounded once at the end.
+  return Math.round(raw * (1 + saveSkillEffects(save).maxHpPct));
 }
 
 // Single source of truth for a hero's derived combat stats (Layer 2, see derivedStats.ts). Hunting
@@ -331,28 +335,44 @@ export function buildCombatStats(save: SaveData): CombatStats {
   // Flat base hit (avg of attackMin/attackMax) plus the weapon term W (refine, durability, rarity); STR is applied on top
   // of that sum by strengthAdjustedDamage (derivedStats.ts). blessed/Elixir/crit come later, at the call sites.
   const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
-  return {
+  // Hero skills (heroSkills.ts): every effect enters the Layer-2 numbers here and nowhere else.
+  const fx = saveSkillEffects(save);
+  const speedBonus = (relic?.attackSpeedBonus ?? 0) + fx.attackSpeed;
+  const stats: CombatStats = {
     maxHp: playerMaxHp(save),
-    // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs.
-    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)),
-    critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0),
-    critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult,
+    // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
+    // grows the weapon term W before STR scales it.
+    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + fx.damagePct),
+    critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance,
+    critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
-    // The relic's attackSpeedBonus enters the same derivation, so the 400 ms floor still caps it.
-    heroMs: heroAttackIntervalMs(save.agi, relic?.attackSpeedBonus ?? 0),
+    // The relic's attackSpeedBonus (and the skills') enter the same derivation, so the 400 ms floor still caps them.
+    heroMs: heroAttackIntervalMs(save.agi, speedBonus),
     agi: save.agi,
-    speedBonus: relic?.attackSpeedBonus ?? 0,
-    reduction: effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100 + extra.resistance,
+    speedBonus,
+    // Muralha scales the whole resistance sum, which applyDamageReduction then keeps asymptotic.
+    reduction: (effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100 + extra.resistance) * (1 + fx.resistancePct),
     // The Lich Phylactery's lifestealPct enters the same derivation as the lifesteal substats.
     lifesteal: subs.lifesteal + (relic?.lifestealPct ?? 0),
     burn: !!weapon.burn,
-    // Reflect scales with the armor's durability like its resistance does (a broken armor reflects less), not with rarity; the shield's adds to it.
-    reflect: (armor.reflect ?? 0) * aFactor + extra.reflect,
-    hpRegenPct: relic?.hpRegenPct ?? 0,
+    // Reflect scales with the armor's durability like its resistance does (a broken armor reflects less), not with rarity; the shield's and Espinhos' add to it.
+    reflect: (armor.reflect ?? 0) * aFactor + extra.reflect + fx.reflect,
+    hpRegenPct: (relic?.hpRegenPct ?? 0) + fx.hpRegenPct,
     // Gold bonus (substats + Goblin Lucky Coin, capped): the Dungeon pays it through buffs.goldMultiplier, Hunting through the session's frozen stats.
     goldBonus: subs.goldBonus,
-    xpBonus: relic?.xpBonusPct ?? 0,
+    xpBonus: (relic?.xpBonusPct ?? 0) + Math.round(fx.xpPct * 10000) / 100,
   };
+  // The skill effects that have no gear twin are only present when the hero has them, so a hero without skills has exactly the stats it always had.
+  if (fx.bleed > 0) stats.bleed = fx.bleed;
+  if (fx.strikeEvery > 0) stats.strikeEvery = fx.strikeEvery;
+  if (fx.blockChance > 0) stats.block = fx.blockChance;
+  if (fx.lastBastion) stats.bastion = true;
+  if (fx.bossReduction > 0) stats.bossReduction = fx.bossReduction;
+  if (fx.goldPct > 0) stats.skillGold = Math.round(fx.goldPct * 10000) / 100;
+  if (fx.materialsMult !== 1) stats.matMult = fx.materialsMult;
+  if (fx.huntUniqueMult !== 1) stats.uniqueMult = fx.huntUniqueMult;
+  if (fx.bossLootMult !== 1) stats.bossLootMult = fx.bossLootMult;
+  return stats;
 }
 
 // Temporary damage modifiers, evaluated at a moment the CALLER chooses (`now` is explicit on purpose —
@@ -432,11 +452,14 @@ export interface GatherPass {
   // The storage cap the session started with. Always the base cap now (the Pass no longer extends storage); a session saved under the old Pass keeps the
   // longer cap it started with (LEGACY_PASS_CAP_HOURS) and is never shortened retroactively.
   capHours?: number;
+  // Coletor (heroSkills.ts) as it was when the session started: a share of extra yield, frozen like the Pass. Missing = none (older snapshots).
+  gatherPct?: number;
 }
 
 export function snapshotGatherPass(save: SaveData, baseCap: number): GatherPass {
   const owner = ownsAdventurerPass(save);
-  return { active: owner, capHours: owner ? Math.max(baseCap, T.battlePass.capHours) : baseCap };
+  const gatherPct = saveSkillEffects(save).gatherPct;
+  return { active: owner, capHours: owner ? Math.max(baseCap, T.battlePass.capHours) : baseCap, ...(gatherPct > 0 ? { gatherPct } : {}) };
 }
 
 export type GatherKind = 'mining' | 'woodcutting';
@@ -447,7 +470,8 @@ function sanitizeGatherPass(raw: unknown, running: boolean, hasPass: boolean, ba
   if (!running) return null;
   if (!r || typeof r.active !== 'boolean') return { active: hasPass, capHours: baseCap };
   const cap = typeof r.capHours === 'number' && Number.isFinite(r.capHours) && r.capHours > 0 ? r.capHours : r.active ? Math.max(baseCap, LEGACY_PASS_CAP_HOURS) : baseCap;
-  return { active: r.active, capHours: cap };
+  const gatherPct = typeof r.gatherPct === 'number' && Number.isFinite(r.gatherPct) && r.gatherPct > 0 ? Math.min(1, r.gatherPct) : 0;
+  return { active: r.active, capHours: cap, ...(gatherPct > 0 ? { gatherPct } : {}) };
 }
 
 interface GatherAccrual {
@@ -477,7 +501,8 @@ function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAcc
   const pendingMs = Math.min(elapsedMs, capMs);
   const hours = pendingMs / (3600 * 1000);
   const power = gatherPower(BASE_GATHER_POWER, save.skillXp[kind]);
-  const effective = hours + gathererBonusHours(save, startedAt, pendingMs);
+  // Coletor's share (frozen in the snapshot) works like the Gatherer Brew: extra effective hours, for the units only (the Gold of the session is unchanged).
+  const effective = hours * (1 + (snap.gatherPct ?? 0)) + gathererBonusHours(save, startedAt, pendingMs);
   const dropMult = snap.active ? T.battlePass.dropRateMultiplier : 1;
   const rate = mining ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower;
   const goldRate = mining ? T.mining.goldRatePerPower : T.woodcutting.goldRatePerPower;
@@ -694,8 +719,14 @@ export function buildHuntSimSetup(
     burn: stats.burn === true,
     reflect: stats.reflect ?? 0,
     hpRegenPct: stats.hpRegenPct ?? 0,
-    goldBonusPct: (stats.goldBonus ?? 0) + (session.passGold ?? 0),
+    goldBonusPct: (stats.goldBonus ?? 0) + (session.passGold ?? 0) + (stats.skillGold ?? 0),
     xpBonusPct: stats.xpBonus ?? 0,
+    ...(stats.bleed ? { bleed: stats.bleed } : {}),
+    ...(stats.strikeEvery ? { strikeEvery: stats.strikeEvery } : {}),
+    ...(stats.block ? { block: stats.block } : {}),
+    ...(stats.bastion ? { bastion: true } : {}),
+    ...(stats.matMult ? { matMult: stats.matMult } : {}),
+    ...(stats.uniqueMult ? { uniqueMult: stats.uniqueMult } : {}),
   };
 
   // Raso-only override (see HuntingZoneDef.shallowCp/shallowEnemyHp/shallowEnemyDmg) — currently only
@@ -852,6 +883,7 @@ export function defaultSave(): SaveData {
     vit: 0,
     agi: 0,
     res: 0,
+    skillTree: emptySkillTree(),
     materials: emptyMaterials(),
     potions: { hp: 0, stamina: 0, elixir: 0 },
     consumables: emptyConsumables(),
@@ -1251,6 +1283,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         activeSkin: sanitizeActiveSkin(parsed.activeSkin, cosmetics, hasBattlePass),
         stashBonusSlots: sanitizeStashBonus(parsed.stashBonusSlots),
         dungeonCheckpoints,
+        skillTree: sanitizeSkillTree(parsed.skillTree, playerLevel(xp), hasBattlePass),
         gardenSlots,
         activeBuff,
         attackBuff,

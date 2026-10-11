@@ -4,6 +4,7 @@ import { MaterialId, getMaterial } from './materials';
 import { ConsumableId, getConsumable } from './consumables';
 import T from './tunables';
 import { ownsAdventurerPass } from './entitlements';
+import { saveSkillEffects } from './heroSkills';
 
 // THE bag. One shared pool of slots for everything the hero carries: stackable things (materials, consumables, stackable gear such as relics) fill
 // slots of STACK_LIMIT units each, every stored (unequipped) gear instance takes one slot, an equipped piece takes none. Storage stays as plain
@@ -55,7 +56,12 @@ export function passBagBonus(capacityWithoutPass: number): number {
   return Math.max(T.battlePass.bagBonusSlots, Math.ceil(capacityWithoutPass * T.battlePass.bagBonusPct));
 }
 
-type CapacityFields = Pick<SaveData, 'inventoryCapacity'> & Partial<Pick<SaveData, 'inventoryBonusSlots' | 'hasBattlePass'>>;
+type CapacityFields = Pick<SaveData, 'inventoryCapacity'> & Partial<Pick<SaveData, 'inventoryBonusSlots' | 'hasBattlePass' | 'skillTree'>>;
+
+// Mochileiro (heroSkills.ts): flat slots per rank, added on top of everything else (the Pass share is not computed over them).
+export function skillBagBonus(save: Partial<Pick<SaveData, 'skillTree'>>): number {
+  return save.skillTree ? saveSkillEffects({ skillTree: save.skillTree }).bagSlots : 0;
+}
 
 // Slots the hero has right now: the bought base, the permanent slots the old Hunting Pouch tiers were converted into, and the Adventurer Pass perk for
 // its owner. `now` is kept for the callers that pass it (the capacity no longer depends on the clock).
@@ -64,7 +70,7 @@ export function inventoryCapacity(save: CapacityFields, _now?: number): number {
   const passActive = ownsAdventurerPass({ hasBattlePass: !!save.hasBattlePass });
   const bonus = Math.max(0, Math.floor(Number(save.inventoryBonusSlots ?? 0)) || 0);
   const own = normalizeInventoryCapacity(save.inventoryCapacity) + bonus;
-  return own + (passActive ? passBagBonus(own) : 0);
+  return own + (passActive ? passBagBonus(own) : 0) + skillBagBonus(save);
 }
 
 // ---- stacks and slots ----------------------------------------------------------------------------------------------

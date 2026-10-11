@@ -729,6 +729,36 @@
     "on": "ON",
     "off": "OFF"
   },
+  "heroSkills": {
+    "paths": {
+      "warrior": { "name": "Warrior", "identity": "Damage: heavier hits, crits and bleeding." },
+      "guardian": { "name": "Guardian", "identity": "Survival: endure, block and hit back." },
+      "hunter": { "name": "Hunter", "identity": "Pace and economy: hunt faster and earn more." }
+    },
+    "skills": {
+      "w_heavy_blow": { "name": "Heavy Blow", "desc": "+{n}% final damage." },
+      "w_keen_eye": { "name": "Keen Eye", "desc": "+{n}% crit chance." },
+      "w_execution": { "name": "Execution", "desc": "+{n}% crit damage." },
+      "w_fury": { "name": "Fury", "desc": "+{n}% attack speed." },
+      "w_bleed": { "name": "Bleed", "desc": "Your hits make the enemy bleed: {n}% of the hit per second, up to {s} s after your last hit. Adds to the weapon's burn." },
+      "w_weapon_master": { "name": "Weapon Master", "desc": "+{n}% of the equipped weapon's base damage." },
+      "w_devastating_strike": { "name": "Devastating Strike", "desc": "Every {every}th hit of yours deals its damage multiplied by {mult}." },
+      "g_thick_skin": { "name": "Thick Skin", "desc": "+{n}% max HP." },
+      "g_bulwark": { "name": "Bulwark", "desc": "+{n}% on your total resistance." },
+      "g_thorns": { "name": "Thorns", "desc": "+{n}% damage reflect, added to the armor's and the shield's." },
+      "g_second_wind": { "name": "Second Wind", "desc": "Regenerates {n}% of max HP per second in combat." },
+      "g_firm_stance": { "name": "Firm Stance", "desc": "-{n}% damage taken on boss and mini-boss floors (Dungeon only)." },
+      "g_block": { "name": "Block", "desc": "{n}% chance to block a hit completely." },
+      "g_last_bastion": { "name": "Last Bastion", "desc": "A lethal hit leaves you at {hp} HP and heals {heal}% of max HP. Once per Dungeon run; in Hunting, once every {s} s of combat." },
+      "h_light_step": { "name": "Light Step", "desc": "+{n}% attack speed." },
+      "h_greed": { "name": "Greed", "desc": "+{n}% Gold from the Dungeon and Hunting, outside the gear cap." },
+      "h_scent": { "name": "Scent", "desc": "+{n}% materials from Hunting. Unique pieces and relics are unchanged." },
+      "h_quick_learner": { "name": "Quick Learner", "desc": "+{n}% character XP." },
+      "h_packer": { "name": "Packer", "desc": "+{n} inventory slots." },
+      "h_gatherer": { "name": "Gatherer", "desc": "+{n}% materials from Mining and Woodcutting." },
+      "h_great_luck": { "name": "Great Luck", "desc": "+{hunt}% unique piece chance in Hunting and +{boss}% unique piece and relic chance from Dungeon bosses." }
+    }
+  },
   "nav": {
     "base": "Base / AFK",
     "forge": "Forge",
@@ -792,6 +822,9 @@
     "heroLabel": "Hero",
     "speed": "{n}x",
     "retreat": "Retreat",
+    "devastating": "Devastating!",
+    "blocked": "Blocked!",
+    "lastBastion": "Last Bastion!",
     "stageLabel": "Stage {f}-{s}",
     "accumGold": "{n}",
     "accumDrops": "{n} items",

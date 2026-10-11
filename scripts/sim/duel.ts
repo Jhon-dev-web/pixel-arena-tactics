@@ -64,24 +64,30 @@ export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveDat
 // and the gear effects: burn (one tick of burnPctPerSec x the hit per second once lit, the first tick one second late, so a fight of T seconds
 // pays about T - 0.5 ticks), reflect (a share of the damage the hero takes comes off the enemy) and regeneration (hpRegenPct of max HP per second).
 // Continuous: the in-game integer rounding of the enemy hit is left out so a stat's value is not hidden by +-1 steps.
-export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number, stats?: CombatStats) {
+// Hero skills (heroSkills.ts): bleed is a second burn, the Devastating Strike raises the average hit, Block removes a share of the enemy hits, Firm Stance cuts the
+// hit on a boss / checkpoint floor (`boss`), and Last Bastion adds the heal to the pool in the share of fights T.advanced.cpBastionWeight says it is ready for.
+export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number, stats?: CombatStats, boss = false) {
   const c = stats ?? buildCombatStats(s);
   const cc = Math.max(0, Math.min(1, c.critChance));
-  const direct = ((c.dmgBase * (1 + cc * (c.critMult - 1))) * 1000) / c.heroMs;
-  const inc = ((enemyDmg / (1 + Math.max(0, c.reduction))) * 1000) / enemyMs;
+  const strikeGain = c.strikeEvery ? 1 + (T.heroSkills.strikeMult - 1) / c.strikeEvery : 1;
+  const direct = ((c.dmgBase * (1 + cc * (c.critMult - 1)) * strikeGain) * 1000) / c.heroMs;
+  const taken = (enemyDmg / (1 + Math.max(0, c.reduction))) * (boss ? 1 - (c.bossReduction ?? 0) : 1) * (1 - (c.block ?? 0));
+  const inc = (taken * 1000) / enemyMs;
   const reflectDps = inc * c.reflect;
   const burnPerSec = c.burn ? (c.dmgBase * T.battle.burnPctPerSec * 1000) / T.battle.effectTickMs : 0;
+  const dotPerSec = burnPerSec + (c.bleed ? (c.dmgBase * c.bleed * 1000) / T.battle.effectTickMs : 0);
   let ttk = enemyHp / (direct + reflectDps);
-  for (let i = 0; i < 4 && burnPerSec > 0; i++) ttk = enemyHp / (direct + reflectDps + burnPerSec * Math.max(0, 1 - 0.5 / ttk));
+  for (let i = 0; i < 4 && dotPerSec > 0; i++) ttk = enemyHp / (direct + reflectDps + dotPerSec * Math.max(0, 1 - 0.5 / ttk));
   const dps = enemyHp / ttk; // average damage per second including the effects
   const regenPerSec = (c.maxHp * c.hpRegenPct * 1000) / T.battle.effectTickMs;
   const net = inc - (direct * c.lifesteal) / 100 - regenPerSec;
-  const ttd = net <= 0 ? Infinity : c.maxHp / net;
-  return { ttk, ttd, P: ttd / ttk, dps, hp: c.maxHp, direct, burnShare: burnPerSec > 0 ? (dps - direct - reflectDps) / dps : 0, reflectShare: reflectDps / dps };
+  const pool = c.maxHp * (1 + (c.bastion ? T.advanced.cpBastionWeight * T.heroSkills.bastionHealPct : 0));
+  const ttd = net <= 0 ? Infinity : pool / net;
+  return { ttk, ttd, P: ttd / ttk, dps, hp: c.maxHp, direct, burnShare: dotPerSec > 0 ? (dps - direct - reflectDps) / dps : 0, reflectShare: reflectDps / dps };
 }
 export function duel(s: SaveData, floor: number, stats?: CombatStats) {
   const def = getEnemyDef(dungeonEnemyKindForFloor(floor));
-  return duelVs(s, stageEnemyHp(def, floor), stageEnemyDmg(def, floor), def.atkSpeedMs, stats);
+  return duelVs(s, stageEnemyHp(def, floor), stageEnemyDmg(def, floor), def.atkSpeedMs, stats, isDungeonBoss(floor) || isDungeonCheckpoint(floor));
 }
 // Representative floor of a hero: the plain floor (not a checkpoint / boss) whose duel margin is closest to 1.5 (on a log scale), i.e. a fight the hero
 // wins but not by a mile. Closest-to-1.5 instead of "highest floor with P >= 1.25" so the choice survives the cliff between two biomes.
