@@ -54,6 +54,8 @@ export interface GearItem {
   unique?: boolean;
   source?: GearSource;
   salvageLike?: string;
+  // Armor only: the hero sheet (heroLook order below) the hero is drawn with while wearing it. Set from ARMOR_LOOKS; a unique inherits its twin's.
+  look?: HeroBaseLook;
 }
 
 // Every key a GEAR entry may carry. LIVE_STAT_FIELDS are the numeric / boolean fields that feed combat (engine.ts buildCombatStats, directly or via
@@ -61,7 +63,7 @@ export interface GearItem {
 // and that equipping each live field really changes the combat stats, so a field nothing reads (burn, reflect, focusHpBonus and
 // attackStaminaReduction were dead data for a long time) cannot come back silently.
 export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct', 'xpBonusPct'] as const;
-export const META_FIELDS = ['id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line'] as const;
+export const META_FIELDS = ['look', 'id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line'] as const;
 
 // Weapon, armor, helmet, gloves, boots, ring and shield are the INSTANCED slots: each owned piece is its own object with its own rarity, substats,
 // refine level, sockets and durability (see gearInstances.ts). Everything else (relics) stays a stackable template id.
@@ -188,6 +190,23 @@ export const GEAR: GearItem[] = [
   { id: 'season_emblem', slot: 'relic', nameKey: 'season_emblem', descKey: 'season_emblem_d', icon: '/assets/icons/season_emblem.png', cost: 0, damagePct: 0.02, goldBonusPct: 5, xpBonusPct: 5 },
 ];
 
+// The hero's look per ARMOR template: the armor in the armor slot decides which sheet the hero is drawn with (heroLook in sprites.ts). The order of HERO_LOOKS is the
+// progression order (used to tell which looks a hero has already outgrown). Every armor template must be keyed here (gear.test / heroLook.test check it), so a new armor
+// cannot ship without a look; uniques take their twin's (UNIQUE_DEFS.like). Weapon, helmet, shield and the other slots never change the sprite.
+export const HERO_LOOKS = ['peasant', 'bronze', 'iron', 'knight', 'hero_gilded', 'dragon', 'hero_voidsteel', 'hero_abyssal'] as const;
+export type HeroBaseLook = (typeof HERO_LOOKS)[number];
+export const ARMOR_LOOKS: Record<string, HeroBaseLook> = {
+  ragged_clothes: 'peasant',
+  bronze_leather: 'bronze',
+  iron_chainmail: 'iron',
+  steel_plate: 'knight',
+  gilded_aegis: 'hero_gilded',
+  dragon_scale_armor: 'dragon',
+  voidsteel_plate: 'hero_voidsteel',
+  abyssal_bulwark: 'hero_abyssal',
+};
+for (const g of GEAR) if (g.slot === 'armor') g.look = ARMOR_LOOKS[g.id];
+
 // Unique pieces: drop-only (a Hunting zone or a Dungeon biome boss rolls them, uniques.ts), never forged (no recipe), instanced like every other piece.
 // Stats = the forged piece of the tier that is normal for where it drops, +10 % on its main stat; every unique also rolls ONE extra substat slot
 // (rarity.ts rollSubstats), so a legendary one carries four. Salvaging one returns what its forged twin's recipe does (salvageLike).
@@ -234,6 +253,7 @@ for (const u of UNIQUE_DEFS) {
     maxHp: base.maxHp,
     resistance: base.resistance,
     critMultBonus: base.critMultBonus,
+    look: base.look,
     // The twin's effects carry over: a unique weapon of a burning line still burns, a unique plate still reflects.
     burn: base.burn,
     reflect: base.reflect,

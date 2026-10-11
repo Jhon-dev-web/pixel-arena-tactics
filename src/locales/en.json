@@ -182,6 +182,7 @@
     "shardsX": "{n}× Runes",
     "levelUp": "🎉 Level Up! Lv {n}",
     "heroKnighted": "⚔️ You are now a Knight!",
+    "heroNewLook": "⚔️ New look: {name}",
     "relicDrops": "Relic"
   },
   "combat": {
@@ -452,6 +453,8 @@
     "mat_blood_heart": "Blood Heart"
   },
   "inventory": {
+    "appearance": "Appearance:",
+    "appearanceHint": "this armor changes the hero's look.",
     "title": "Inventory",
     "all": "All",
     "equipment": "Gear",

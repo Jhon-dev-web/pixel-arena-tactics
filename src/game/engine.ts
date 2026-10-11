@@ -2,7 +2,7 @@ import T from './tunables';
 import { ownsAdventurerPass } from './entitlements';
 import { sanitizeActiveFrame, sanitizeActiveSkin, sanitizeStashBonus } from './seasonItems';
 import { sanitizeSeasonSummary, seasonNumber, type SeasonSummary } from './seasons';
-import { EquippedGear, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
+import { EquippedGear, HERO_LOOKS, HeroBaseLook, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
 import {
   GEAR_SCHEMA_VERSION,
   equippedExtraStats,
@@ -18,8 +18,8 @@ import {
   viewDurability,
   viewRarity,
   viewRefine,
-  wearsRealArmor,
 } from './gearInstances';
+import { heroBaseLook, looksUpTo } from './sprites';
 import { Materials, MaterialId, emptyMaterials } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
 import { DeliveryState, emptyDeliveries, sanitizeDeliveries } from './deliveryState';
@@ -207,9 +207,9 @@ export interface SaveData {
   activeFrame: string | null;
   // Hero skin (seasonItems.ts SKINS) the hero wears, one of the owned cosmetics; null = the default knight.
   activeSkin: string | null;
-  // Set once the hero has had the "you are now a Knight" moment (his first real armor, see sprites.ts heroBaseLook / App.tsx). A save that already wears armor when it
-  // loads has it set, so only a hero who really started as the peasant ever sees the celebration, and only once.
-  heroKnighted?: boolean;
+  // The hero looks (gear.ts HERO_LOOKS, never the peasant) he has already worn: the first time each one is worn there is a one-off toast and portrait flash (sprites.ts
+  // withLookMoment). Loads as every look up to the armor he wears now, so only a look he really reaches later ever celebrates. Replaces the old heroKnighted flag.
+  seenLooks?: HeroBaseLook[];
   // Stash slots from Stash Deeds, beyond the upgrade ladder (seasonItems.ts, capped at +20 over all seasons).
   stashBonusSlots: number;
   dungeonCheckpoints: number[];
@@ -933,7 +933,7 @@ export function defaultSave(): SaveData {
     activeTitle: null,
     activeFrame: null,
     activeSkin: null,
-    heroKnighted: false,
+    seenLooks: [],
     stashBonusSlots: 0,
     dungeonCheckpoints: [],
     gardenSlots: emptyGardenSlots(),
@@ -978,6 +978,15 @@ let unbackedLegacyRaw: string | null = null;
 // object such as a Supabase jsonb column — into a trusted SaveData, running every migration/clamp exactly
 // once so local saves and server-loaded saves can never drift onto two different code paths (Phase 1
 // backend migration: see saveRepository.ts).
+// seenLooks: the stored list (known looks only) plus, for a hero whose old save carried the heroKnighted flag, every look up to the knight, plus every look up to the
+// armor he wears right now (he has plainly worn those), so an old save is never spammed with celebrations for gear it already owns.
+function sanitizeSeenLooks(raw: unknown, legacyKnighted: boolean, current: HeroBaseLook): HeroBaseLook[] {
+  const seen = new Set<HeroBaseLook>(Array.isArray(raw) ? raw.filter((l): l is HeroBaseLook => typeof l === 'string' && (HERO_LOOKS as readonly string[]).includes(l) && l !== 'peasant') : []);
+  if (legacyKnighted) for (const l of looksUpTo('knight')) seen.add(l);
+  for (const l of looksUpTo(current)) seen.add(l);
+  return HERO_LOOKS.filter((l) => seen.has(l));
+}
+
 export function normalizeSave(rawInput: unknown): SaveData {
   try {
     const raw = typeof rawInput === 'string' ? rawInput : rawInput ? JSON.stringify(rawInput) : null;
@@ -1297,7 +1306,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         activeTitle,
         activeFrame: sanitizeActiveFrame(parsed.activeFrame, cosmetics),
         activeSkin: sanitizeActiveSkin(parsed.activeSkin, cosmetics, hasBattlePass),
-        heroKnighted: parsed.heroKnighted === true || wearsRealArmor({ gearInstances, equipped: { armor: armorId } as EquippedGear }),
+        seenLooks: sanitizeSeenLooks(rawParsed.seenLooks, rawParsed.heroKnighted === true, heroBaseLook({ gearInstances, equipped: { armor: armorId } as EquippedGear })),
         stashBonusSlots: sanitizeStashBonus(parsed.stashBonusSlots),
         dungeonCheckpoints,
         skillTree: sanitizeSkillTree(parsed.skillTree, playerLevel(xp), hasBattlePass),

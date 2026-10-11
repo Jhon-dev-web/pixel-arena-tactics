@@ -182,6 +182,7 @@
     "shardsX": "{n}× Runas",
     "levelUp": "🎉 Subiu de Nível! Nv {n}",
     "heroKnighted": "⚔️ Você agora é um Cavaleiro!",
+    "heroNewLook": "⚔️ Novo visual: {name}",
     "relicDrops": "Relíquia"
   },
   "combat": {
@@ -452,6 +453,8 @@
     "mat_blood_heart": "Coração de Sangue"
   },
   "inventory": {
+    "appearance": "Aparência:",
+    "appearanceHint": "esta armadura muda o visual do herói.",
     "title": "Inventário",
     "all": "Todos",
     "equipment": "Equip",

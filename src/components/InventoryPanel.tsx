@@ -22,6 +22,7 @@ import ConsumableIcon from './ConsumableIcon';
 import { refineTag } from './gearLabel';
 import { gearStatLines } from './gearStats';
 import UniqueTag from './UniqueTag';
+import { AppearanceLine } from './HeroThumb';
 import StashHint from './StashHint';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
@@ -368,6 +369,7 @@ export default function InventoryPanel({
               {isEquipped && <span className="inv-qty">{t('inventory.equipped')}</span>}
             </div>
             <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
+            <AppearanceLine item={selectedGear} />
             <div className="gear-stat-list">
               {gearStatLines(selectedGear, selectedLevel).map((l) => (
                 <span className={`gear-stat gear-stat-${l.kind}`} key={l.kind}>

@@ -10470,3 +10470,22 @@ button[data-ui]:focus-visible {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* --- armor "Aparência" line: the look the armor gives the hero --- */
+.appearance-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  font-size: calc(var(--font-size) - 2px);
+  color: #c9b98a;
+}
+.appearance-line .ap-skin-art {
+  border: 1px solid #5a4630;
+  border-radius: 6px;
+  background-color: #120c18;
+}
+.appearance-line b {
+  color: #ffd76a;
+  font-weight: normal;
+}

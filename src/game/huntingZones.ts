@@ -52,13 +52,20 @@ const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
   blood_abomination: { cell: 172, box: [58, 25, 111, 146], lie: 146, height: 1.15 },
 };
 
-// The hero's sheets, same measurement (frame 0 of the idle row), one entry per HeroSheet (sprites.ts). The knight stands on y = 251, the peasant on y = 253: the
-// two feet are within 2 sheet pixels of each other (about 1 px on screen), and the peasant keeps his own natural proportions (234 px tall against the knight's 240).
-// The golden knight is a recolor of the knight sheet, so it shares his box.
+// The hero's sheets, same measurement (frame 0 of the idle row), one entry per HeroSheet (sprites.ts). Every sheet stands on y = 251..253 (feet within 2 sheet pixels of each
+// other, about 1 px on screen) and keeps its own natural proportions: the peasant is the smallest, the dragon family (dragon, voidsteel, abyssal) the widest and tallest.
+// The recolors share their source sheet's box: golden knight and gilded = knight; voidsteel and abyssal = dragon.
 const KNIGHT_ART: SheetArt = { cell: 256, box: [71, 12, 204, 251] };
+const DRAGON_ART: SheetArt = { cell: 256, box: [49, 6, 217, 253] };
 export const HERO_ART: Record<HeroSheet, SheetArt> = {
   peasant: { cell: 256, box: [66, 20, 189, 253] },
+  bronze: { cell: 256, box: [65, 25, 216, 253] },
+  iron: { cell: 256, box: [56, 25, 203, 253] },
   knight: KNIGHT_ART,
+  hero_gilded: KNIGHT_ART,
+  dragon: DRAGON_ART,
+  hero_voidsteel: DRAGON_ART,
+  hero_abyssal: DRAGON_ART,
   knight_golden: KNIGHT_ART,
 };
 

@@ -55,7 +55,7 @@ import { RefiningStation, getRefiningRecipe as refiningRecipeById } from './game
 import { BagContext } from './components/bagContext';
 import { GEMS, GemId } from './game/gems';
 import { getTitleDef } from './game/titles';
-import { playerSpriteUrl, withKnightingMoment } from './game/sprites';
+import { playerSpriteUrl, withLookMoment } from './game/sprites';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
 import ForgeModal, { ForgeTab } from './components/ForgeModal';
@@ -168,9 +168,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Character XP is intentionally never shown as a number anywhere in the UI (see TopHud/HeroModal/
   // HuntModal/HuntRewardModal; DeliveryModal is the one exception: an order card shows the XP it pays) — a level-up toast is the only XP-gain feedback left,
   // so it's centralized here rather than duplicated at every xp-granting call site.
-  const celebrateKnighting = () => {
+  const celebrateLook = (look: string, armorNameKey: string) => {
     playSfx('victory');
-    showToast(t('ui.heroKnighted'));
+    showToast(look === 'knight' ? t('ui.heroKnighted') : t('ui.heroNewLook', { name: t(`gear.${armorNameKey}`) }));
     // The level-up style flash on every portrait: one class on <html>, styled in App.css (.hero-knighted-flash).
     const root = document.documentElement;
     root.classList.remove('hero-knighted-flash');
@@ -181,12 +181,12 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const setSaveBoth = (s: SaveData) => {
     const prevLevel = playerLevel(saveRef.current.xp);
     const nextLevel = playerLevel(s.xp);
-    // The one-time "you are now a Knight" moment: the first time his armor slot goes from the rags to a real piece (sprites.ts heroBaseLook). The flag rides along
-    // in the same save, so it never fires twice; a save that already wore armor when loaded has the flag set by normalizeSave.
-    const knighted = withKnightingMoment(saveRef.current, s);
-    if (knighted) {
-      s = knighted;
-      celebrateKnighting();
+    // The first time each look is worn (sprites.ts withLookMoment): a one-off toast + portrait flash, recorded in save.seenLooks so it never repeats; normalizeSave marks the
+    // looks an old save already reached as seen.
+    const moment = withLookMoment(s);
+    if (moment) {
+      s = moment.save;
+      celebrateLook(moment.look, moment.armorNameKey);
     }
     saveRef.current = s;
     setSave(s);
