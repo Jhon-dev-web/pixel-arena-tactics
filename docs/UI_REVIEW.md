@@ -1,3 +1,5 @@
+> **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+
 # Revisão das interfaces (1280x800 e 390x800)
 
 Método: perfil de desenvolvimento no navegador (localStorage editado, nenhum código de jogo tocado para montar os estados), com uma auditoria por script em cada tela (texto cru de chave de tradução, rolagem horizontal, texto cortado, botão de fechar fora da tela) e captura de tela das telas listadas em "O que foi realmente visto". Nada de screenshot foi gravado no repositório.

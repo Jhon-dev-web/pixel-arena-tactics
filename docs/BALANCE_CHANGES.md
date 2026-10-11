@@ -1,3 +1,5 @@
+> **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+
 # Mudanças de balanceamento: deadlocks do começo e a parede do andar 25
 
 - **Data:** 2026-10-10

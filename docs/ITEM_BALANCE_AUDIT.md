@@ -1,3 +1,5 @@
+> **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+
 # Auditoria de balanceamento dos itens (antes da rodada 3)
 
 Medido em 2026-10-10 com `npm run sim:items` (`scripts/sim/itemAudit.sim.ts`), chamando as funções reais do jogo (`rollRarity`, `applyForge`, `buildCombatStats`, `computeCP`, `runDungeon`, `simulateHuntingSession`). Este arquivo registra o estado ANTES das correções; os números depois delas estão em `docs/BALANCE_CHANGES.md` (Rodada 3).

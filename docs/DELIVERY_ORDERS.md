@@ -1,3 +1,5 @@
+> **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+
 # Pedidos / Entregas (substituem a Expedição)
 
 Resumo do design e dos números que o sustentam. Código: `src/game/deliveries.ts` (geração e reducers), `src/game/deliveryState.ts` (estado salvo e sanitização), `src/components/DeliveryModal.tsx` (UI), tunables em `T.deliveries`.

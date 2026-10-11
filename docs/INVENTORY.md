@@ -1,3 +1,5 @@
+> **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+
 # Inventário único
 
 Regras e números do inventário (Rodada 5). Substitui a antiga Bolsa de Caça. O código mora em `src/game/inventory.ts` (espaços, colocação, capacidade),

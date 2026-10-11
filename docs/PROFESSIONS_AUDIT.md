@@ -1,3 +1,5 @@
+> **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+
 # Auditoria das profissões (Mineração, Lenhador, Jardinagem, Refino)
 
 Medido com `npm run sim` (21 dias x 20 seeds, cenário A) e `npx vitest run --config vitest.sim.config.ts professions --silent=false`.

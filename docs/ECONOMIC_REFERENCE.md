@@ -1,3 +1,5 @@
+> **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+
 # Valor econômico de referência (baseGoldValue)
 
 Código: `src/game/economy.ts`. **É só referência**: nada vende, compra, converte ou paga com ele. Não existe venda para NPC, o módulo é funções puras que nunca recebem nem devolvem um save, e nenhum outro arquivo do jogo o importa (um teste garante isso). No futuro P2P o preço é livre e pode ficar acima ou abaixo. Os campos legados `sellValue`/`packCost` do catálogo continuam sem uso; foram lidos aqui só como razão de raridade.

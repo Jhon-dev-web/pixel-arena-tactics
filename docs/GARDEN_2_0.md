@@ -1,3 +1,5 @@
+> **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+
 # Horta 2.0 — catálogo, progressão e utilidade econômica
 
 Estado: implementado (catálogo, níveis, tempos, quantidades, XP, receitas). Propostas ao final NÃO estão implementadas.
