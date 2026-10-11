@@ -6,18 +6,18 @@
 // expected crits and lifesteal: P > 1 means the hero wins that fight on average. It is the exact quantity that decides every fight in
 // the Dungeon and in Hunting, so a change of ln P is the "real combat value" of a stat (computeCP is only an approximation of it).
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
-import { buildCombatStats, computeCP, computeHuntingStatus, buildHuntSession, defaultSave, playerLevel, SaveData, xpToReachLevel } from '../../src/game/engine';
+import { buildCombatStats, computeCP, defaultSave, playerLevel, SaveData, xpToReachLevel } from '../../src/game/engine';
 import { applyForge, createGearInstance } from '../../src/game/gearInstances';
 import { GEAR, GearItem, getGear, reforgeGoldCost, upgradeChance, upgradeCost } from '../../src/game/gear';
 import { RARITIES, SUBSTATS, SubstatType, medianSubstatValue, rollRarity, rollSubstats } from '../../src/game/rarity';
-import { isDungeonCheckpoint } from '../../src/game/dungeon';
 import { baseGoldValue, cargoReferenceValue } from '../../src/game/economy';
 import { MaterialId, emptyMaterials } from '../../src/game/materials';
 import { GEMS, GemId, emptyGems, socketsForTier } from '../../src/game/gems';
 import { TIER_EXTRAS } from './ladder';
 import { HUNTING_ZONES, getHuntingZone } from '../../src/game/huntingZones';
-import { clearRate } from './ladder';
 import { duel, duelVs, hero, MAIN_TIERS, PAIRS, repFloor, tierNum } from './duel';
+import { ALLOCS, ALLOC_LABEL, ATTRS, AUDIT_SPECS, Alloc, STACK_POINTS, VALUE_STEP, auditHero, buildTable, marginalValue, pointValue, specOf, spread } from './attrAudit';
+import { heroAttackIntervalMs } from '../../src/game/derivedStats';
 import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
 import { TonicFlags, withTonicStats } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
@@ -26,26 +26,16 @@ import { getConsumable } from '../../src/game/consumables';
 import { POTION_RECIPES } from '../../src/game/potions';
 import { STASH_UPGRADES } from '../../src/game/stash';
 
+if (process.env.ATTR_T) Object.assign(T.advanced, JSON.parse(process.env.ATTR_T));
+if (process.env.ATTR_B) Object.assign(T.battle, JSON.parse(process.env.ATTR_B));
+
 const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
-const HOUR = 3600 * 1000;
 const RARITY_IDS = RARITIES.map((r) => r.id);
 
 const pct = (x: number, d = 1) => `${(x * 100).toFixed(d)}%`;
 const f1 = (x: number) => x.toFixed(1);
 const f2 = (x: number) => x.toFixed(2);
 
-// Deepest floor cleared from full HP in >= 80% of seeded 1-floor runs (stops after 5 failed floors in a row).
-function depth(s: SaveData): number {
-  let best = 0;
-  let miss = 0;
-  for (let f = 1; f <= 100; f++) {
-    if (clearRate(s, f, NOW, 5) >= 0.8) {
-      best = f;
-      miss = 0;
-    } else if (!isDungeonCheckpoint(f) && ++miss >= 5) break;
-  }
-  return best;
-}
 function meanStages(s: SaveData, floor: number, n: number): number {
   let tot = 0;
   const start = { ...s, highestDungeonFloor: floor, consumables: { ...s.consumables, small_hp: 0, large_hp: 0, greater_elixir: 0 } };
@@ -53,14 +43,7 @@ function meanStages(s: SaveData, floor: number, n: number): number {
   return tot / n;
 }
 
-// ---- hunting ------------------------------------------------------------------------------------------------------------
-function huntRun(s: SaveData, zoneId: string, hours = 4) {
-  const z = getHuntingZone(zoneId)!;
-  const save: SaveData = { ...s, activeHuntingZone: z.id, activeHuntingDepth: 'shallow', huntingOfflineStart: NOW, huntSession: buildHuntSession(s, NOW) };
-  const st = computeHuntingStatus(save, NOW + hours * HOUR);
-  const drops = cargoReferenceValue(st.drops as Partial<Record<MaterialId, number>>);
-  return { xp: st.xpReady, dropsValue: drops, ceiling: st.ceilingSubLevel, fightMs: st.pendingMs };
-}
+// ---- hunting ----------------------------------------------------------------------------------------------------------------
 function huntDuel(s: SaveData, zoneId: string, sub = 1) {
   const z = getHuntingZone(zoneId)!;
   const hp = (z.shallowEnemyHp ?? z.baseEnemyHp) * (1 + T.hunting.subLevelHpGrowth * (sub - 1));
@@ -218,61 +201,65 @@ describe('item balance audit', () => {
     P('Soma do `goldBonus` possível: 2 peças x (8 + 0,5 x 6) = 22% no máximo hoje (só o Ouro da Masmorra, App.tsx finishRun); com 6 peças instanciadas chegaria a 66%.', '');
 
     // ===== D. primary attributes ===============================================================================================
+    // Measured by scripts/sim/attrAudit.ts (shared with src/game/__tests__/attributes.test.ts). ATTR_T='{"resResistPerPoint":0.008}' overrides T.advanced (ATTR_B T.battle) for a run.
     P('## D. Atributos primários', '');
-    P('Valores do jogo: STR = +0,5 de dano plano e +0,3% de (golpe base + arma) por ponto; VIT = ' + T.advanced.vitHpPerPoint + ' HP/ponto; AGI = intervalo 400 + 800/(1+AGI/100) ms (teto de 300 pontos); RES = ' + T.advanced.resResistPerPoint + ' de resistência/ponto.', '');
-    const dRows: string[] = [];
-    const levelsTier: [number, string, string][] = [[10, '2', 'demon_glade'], [30, '3', 'blood_marsh'], [60, '4g', 'demon_rift'], [100, '6', 'blood_abyss']];
+    P(`Valores do jogo: STR = +${T.advanced.strengthFlatDamage} de dano plano e +${pct(T.advanced.strengthWeaponScalePerPoint)} de (golpe base + arma) por ponto; VIT = ${T.advanced.vitHpPerPoint} HP/ponto; AGI = intervalo ${T.battle.heroMinMs} + ${T.battle.heroAttackMs - T.battle.heroMinMs}/(1+AGI/${T.battle.agiHalfPoint}) ms (teto de ${T.battle.agiMax} pontos); RES = ${T.advanced.resResistPerPoint} de resistência/ponto.`, '');
+    P('Herói de cada nível: o conjunto completo do tier (arma, armadura, elmo, luvas, botas, anel, escudo; comum, sem gemas) no refino típico; pontos de atributo 35/30/20/15 (política do jogador simulado); habilidades compradas na ordem do caminho até onde o nível permite (1 ponto a cada 5 níveis).', '');
+    P('### D.1 Valor real e valor no CP de um ponto', '', 'Média por ponto dos PRÓXIMOS ' + VALUE_STEP + ' pontos de cada atributo (o PV máx é arredondado e um ponto de VIT vale só 5 PV, então um ponto isolado se perde no arredondamento). "Real" = 100 x ln da razão da margem do duelo P contra um inimigo do andar de referência do herói; "CP" = 100 x 2 x ln do CP bruto (o CP é a raiz de dano x PV efetivo, então o fator 2 coloca os dois na mesma escala). `máx/mín` = melhor atributo / pior.', '');
+    const regionBand = (lv: number) => (lv <= 10 ? 2.5 : 1.6);
     withSeededRandom(5, () => {
-      for (const [lv, tk] of levelsTier) {
-        const b = hero(tk, 4, { level: lv });
-        const cp = computeCP(b);
-        const fl = repFloor(b);
-        const baseP = duel(b, fl).P;
-        const cells: string[] = [];
-        for (const a of ['str', 'vit', 'agi', 'res'] as const) {
-          const s = { ...b, [a]: b[a] + 1 };
-          cells.push(`${a.toUpperCase()}: ${pct(computeCP(s) / cp - 1, 2)} CP / ${f2(Math.log(duel(s, fl).P / baseP) * 100)}% P`);
+      for (const alloc of ALLOCS) {
+        P(`#### ${ALLOC_LABEL[alloc]}`, '', '| Nível | Equip. | Andar ref. | PV | STR real / CP | VIT real / CP | AGI real / CP | RES real / CP | máx/mín real | limite | CP/real (mín–máx) |', '| --: | --- | --: | --: | --- | --- | --- | --- | --: | --: | --- |');
+        for (const spec of AUDIT_SPECS) {
+          const h = auditHero(spec, alloc);
+          const v = pointValue(h);
+          const ratios = ATTRS.map((a) => v.cp[a] / v.real[a]);
+          P(`| ${spec.level} | T${spec.tier}+${spec.refine} | ${v.floor} | ${Math.round(buildCombatStats(h).maxHp)} | ${ATTRS.map((a) => `${f2(v.real[a])} / ${f2(v.cp[a])}`).join(' | ')} | ${f2(spread(v.real))} | ${regionBand(spec.level)} | ${f2(Math.min(...ratios))}–${f2(Math.max(...ratios))} |`);
         }
-        dRows.push(`| ${lv} | T${tk}+4 | ${cp} | ${fl} | ${cells.join(' | ')} |`);
+        P('');
       }
     });
-    P('Valor de +1 ponto num herói balanceado (35/30/20/15):', '', '| Nível | Equip. | CP | Andar ref. | +1 STR | +1 VIT | +1 AGI | +1 RES |', '| --: | --- | --: | --: | --- | --- | --- | --- |', ...dRows);
-    P('');
-    const eRows: string[] = [];
-    let dumpFlags = 0;
+
+    P('### D.2 Retornos: valor do PRÓXIMO ponto conforme os pontos já postos nesse atributo', '', 'Os outros três ficam como a política 35/30/20/15 do nível os deixou; † = acima dos pontos que o nível dá (herói hipotético, só para ver a forma da curva).', '');
+    withSeededRandom(5, () => {
+      for (const lv of [30, 60]) {
+        P(`#### Nível ${lv} (${lv * 3} pontos)`, '', `| Habilidades | Atributo | ${STACK_POINTS.map((n) => `${n}${n > lv * 3 ? '†' : ''}`).join(' | ')} |`, `| --- | --- | ${STACK_POINTS.map(() => '--:').join(' | ')} |`);
+        for (const alloc of ALLOCS) for (const a of ATTRS) P(`| ${ALLOC_LABEL[alloc]} | ${a.toUpperCase()} | ${STACK_POINTS.map((n) => f2(marginalValue(specOf(lv), alloc, a, n))).join(' | ')} |`);
+        P('');
+      }
+    });
+
+    P('### D.3 Builds: todos os pontos num atributo e metades 50/50', '', 'Mesmo equipamento do herói do nível, sem habilidades. Profundidade = andar mais fundo limpo em >= 80% das tentativas de 1 andar com HP cheio; caça = o melhor lugar que o build pode caçar (zonas liberadas pelo andar que ele limpa, profundidades liberadas pelo CP; a que dá mais materiais), por hora em caça de 4 h; chefe = tempo para matar o chefe do andar 25 / 50 em segundos (margem P), "-" se P < 1.', '');
     withSeededRandom(6, () => {
-      for (const [lv, tk, zone] of levelsTier.filter(([l]) => l === 30 || l === 60)) {
-        const pts = lv * 3;
-        const builds: [string, { str: number; vit: number; agi: number; res: number } | undefined][] = [
-          ['balanceado 35/30/20/15', undefined],
-          ['tudo STR', { str: pts, vit: 0, agi: 0, res: 0 }],
-          ['tudo VIT', { str: 0, vit: pts, agi: 0, res: 0 }],
-          ['tudo AGI', { str: 0, vit: 0, agi: Math.min(pts, 300), res: 0 }],
-          ['tudo RES', { str: 0, vit: 0, agi: 0, res: pts }],
-          ['STR+VIT 50/50', { str: pts / 2, vit: pts / 2, agi: 0, res: 0 }],
-        ];
-        let baseDepth = 0;
-        let baseHunt = { xp: 1, dropsValue: 1 };
-        for (const [label, attrs] of builds) {
-          const s = hero(tk, 4, { level: lv, attrs });
-          const dp = depth(s);
-          const hr = huntRun(s, zone);
-          if (!attrs) {
-            baseDepth = dp;
-            baseHunt = hr;
+      for (const lv of [30, 60, 100]) {
+        for (const alloc of lv === 100 ? (['none'] as Alloc[]) : (['none', 'warrior', 'guardian'] as Alloc[])) {
+          const rows = buildTable(specOf(lv), alloc);
+          const bal = rows[0];
+          P(`#### Nível ${lv}, ${ALLOC_LABEL[alloc]}`, '', '| Build | STR/VIT/AGI/RES | CP | Profundidade | Zona (prof.) | Materiais/h (Ouro ref.) | XP/h | Chefe 25 | Chefe 50 |', '| --- | --- | --: | --: | --- | --: | --: | --: | --: |');
+          for (const r of rows) {
+            const rd = r.depth / Math.max(1, bal.depth) - 1;
+            const rm = r.mats / Math.max(1, bal.mats) - 1;
+            const rx = r.xp / Math.max(1, bal.xp) - 1;
+            const bossCell = (b: { ttk: number; P: number }) => (b.P >= 1 ? `${f1(b.ttk)} s (${f2(b.P)})` : '-');
+            const rel = r === bal ? '' : ` (${pct(rd, 0)})`;
+            P(`| ${r.label} | ${ATTRS.map((a) => Math.round(r.attrs[a])).join('/')} | ${r.cp} | ${r.depth}${rel} | ${r.zone} (${r.hunt}) | ${Math.round(r.mats)}${r === bal ? '' : ` (${pct(rm, 0)})`} | ${Math.round(r.xp)}${r === bal ? '' : ` (${pct(rx, 0)})`} | ${bossCell(r.boss25)} | ${bossCell(r.boss50)} |`);
           }
-          const rd = dp / Math.max(1, baseDepth);
-          const rx = hr.xp / Math.max(1, baseHunt.xp);
-          const rv = hr.dropsValue / Math.max(1, baseHunt.dropsValue);
-          const flag = attrs && rd > 1.25 && rx > 1.25 ? ' **>25% nos dois**' : '';
-          if (flag) dumpFlags++;
-          eRows.push(`| ${lv} | ${label} | ${computeCP(s)} | ${dp} (${pct(rd - 1, 0)}) | ${hr.xp} (${pct(rx - 1, 0)}) | ${Math.round(hr.dropsValue)} (${pct(rv - 1, 0)}) | ${hr.ceiling}${flag} |`);
+          P('');
         }
       }
     });
-    P('Builds "tudo em um atributo" contra o balanceado (equip. T3+4 no nível 30, T4+4 no 60). Profundidade = andar mais fundo limpo em >= 80% das tentativas com HP cheio; renda de caça = XP e valor de referência dos materiais numa caça de 4 h (profundidade rasa, zona do nível).', '', '| Nível | Build | CP | Profundidade (vs bal.) | XP caça 4 h | Materiais 4 h (Ouro ref.) | Sub-nível |', '| --: | --- | --: | --: | --: | --: | --: |', ...eRows);
-    P('', `Builds acima de +25% nos dois eixos ao mesmo tempo: ${dumpFlags}.`, '');
-    P('Limites: chance de crítico vira 100% só com +100 pontos percentuais (a arma T6 dá 24% + 0,5%/refino + substats), CP trava em 1 (`combatPowerCore`); intervalo de ataque tem piso de 400 ms e AGI é limitado a 300 pontos (600 ms), nunca chega ao piso; resistência é assintótica (`rawDamage/(1+r)`), nunca zera o dano.', '');
+
+    // ----- D.4 caps and what the player is told ------------------------------------------------------------------------------------
+    {
+      const agiSpec = specOf(100);
+      const h100 = auditHero(agiSpec, 'none', { str: 0, vit: 0, agi: 300, res: 0 });
+      P('### D.4 Tetos e o que o jogador vê', '');
+      P(`- Pontos: ${3} por nível, ${3 * 100} no nível 100 (o herói novo começa com ${3} sem gastar). Não há distribuição automática nem recomendada; os botões − e + da tela Personagem desfazem e refazem pontos sem custo, sem limite e sem bloquear em batalha (é um respec livre de atributos).`);
+      P(`- AGI: o teto de combate é ${T.battle.agiMax} pontos (${f1(heroAttackIntervalMs(T.battle.agiMax))} ms, ${f2(1000 / heroAttackIntervalMs(T.battle.agiMax))} atq/s). Com 3 pontos por nível o nível 100 tem exatamente ${3 * 100}: o teto só é atingido por quem põe TODOS os pontos em AGI, nunca é ultrapassado e não há ponto desperdiçado. O piso de ${T.battle.heroMinMs} ms só é alcançável com bônus de relíquia/habilidade somados. A tela não menciona o teto.`);
+      P(`- RES: assintótica (dano / (1 + r)); STR: sem teto prático (guarda de ${T.advanced.strengthOverflowGuard}); VIT: linear, sem teto.`);
+      P(`- Texto atual da tela: "+ Dano Físico", "+ PV Máx", "+ Esquiva / Velocidade de ataque", "+ Redução de dano". Nenhum número; AGI promete esquiva, que o combate não tem.`);
+      P(`- Prova do teto (herói nv 100, tudo AGI = ${h100.agi}): ${f1(buildCombatStats(h100).heroMs)} ms por golpe.`, '');
+    }
 
     // ===== E. tier curve =======================================================================================================
     P('## E. Curva de tiers', '');

@@ -145,37 +145,218 @@ Soma do `goldBonus` possível: 2 peças x (8 + 0,5 x 6) = 22% no máximo hoje (s
 
 ## D. Atributos primários
 
-Valores do jogo: STR = +0,5 de dano plano e +0,3% de (golpe base + arma) por ponto; VIT = 5 HP/ponto; AGI = intervalo 400 + 800/(1+AGI/100) ms (teto de 300 pontos); RES = 0.005 de resistência/ponto.
+**Rodada 8 (11/10/2026), estado ANTES de qualquer mudança.** Gerado por `npm run sim:items` (`scripts/sim/attrAudit.ts`, seção D de `itemAudit.sim.ts`). Os números depois da correção estão abaixo, na seção "Depois" (Rodada 8 em `docs/BALANCE_CHANGES.md`).
 
-Valor de +1 ponto num herói balanceado (35/30/20/15):
+Perguntas da rodada: os quatro atributos básicos (STR, VIT, AGI, RES) valem parecido por ponto, com e sem habilidades? Os retornos diminuem? Um build "tudo em um atributo" é uma escolha real ou uma armadilha? A CP empurra o jogador para o atributo certo? Limites combinados: no máximo 1,6x entre o melhor e o pior atributo do nível 20 em diante (2,5x nos níveis 5 a 10); nenhum build especializado bate o balanceado nos dois eixos (profundidade e caça) nem fica mais de 35% abaixo em algum; retornos nunca crescem; CP dentro de +-30% do valor real.
 
-| Nível | Equip. | CP | Andar ref. | +1 STR | +1 VIT | +1 AGI | +1 RES |
-| --: | --- | --: | --: | --- | --- | --- | --- |
-| 10 | T2+4 | 274 | 24 | STR: 0.73% CP / 1.07% P | VIT: 1.09% CP / 1.68% P | AGI: 0.36% CP / 0.61% P | RES: 0.36% CP / 0.00% P |
-| 30 | T3+4 | 610 | 39 | STR: 0.16% CP / 0.63% P | VIT: 0.33% CP / 0.85% P | AGI: 0.16% CP / 0.53% P | RES: 0.16% CP / 0.98% P |
-| 60 | T4g+4 | 1062 | 49 | STR: 0.28% CP / 0.47% P | VIT: 0.28% CP / 0.52% P | AGI: 0.19% CP / 0.44% P | RES: 0.19% CP / 0.00% P |
-| 100 | T6+4 | 2509 | 79 | STR: 0.16% CP / 0.31% P | VIT: 0.16% CP / 0.30% P | AGI: 0.16% CP / 0.35% P | RES: 0.16% CP / 0.41% P |
+Valores do jogo: STR = +0.5 de dano plano e +0.3% de (golpe base + arma) por ponto; VIT = 5 HP/ponto; AGI = intervalo 400 + 800/(1+AGI/100) ms (teto de 300 pontos); RES = 0.005 de resistência/ponto.
 
-Builds "tudo em um atributo" contra o balanceado (equip. T3+4 no nível 30, T4+4 no 60). Profundidade = andar mais fundo limpo em >= 80% das tentativas com HP cheio; renda de caça = XP e valor de referência dos materiais numa caça de 4 h (profundidade rasa, zona do nível).
+Herói de cada nível: o conjunto completo do tier (arma, armadura, elmo, luvas, botas, anel, escudo; comum, sem gemas) no refino típico; pontos de atributo 35/30/20/15 (política do jogador simulado); habilidades compradas na ordem do caminho até onde o nível permite (1 ponto a cada 5 níveis).
 
-| Nível | Build | CP | Profundidade (vs bal.) | XP caça 4 h | Materiais 4 h (Ouro ref.) | Sub-nível |
-| --: | --- | --: | --: | --: | --: | --: |
-| 30 | balanceado 35/30/20/15 | 610 | 45 (0%) | 11583 (0%) | 770 (0%) | 10 |
-| 30 | tudo STR | 576 | 39 (-13%) | 11595 (0%) | 737 (-4%) | 10 |
-| 30 | tudo VIT | 624 | 45 (0%) | 11583 (0%) | 632 (-18%) | 9 |
-| 30 | tudo AGI | 533 | 39 (-13%) | 11589 (0%) | 860 (12%) | 10 |
-| 30 | tudo RES | 522 | 35 (-22%) | 11583 (0%) | 632 (-18%) | 9 |
-| 30 | STR+VIT 50/50 | 628 | 44 (-2%) | 11586 (0%) | 745 (-3%) | 10 |
-| 60 | balanceado 35/30/20/15 | 1062 | 50 (0%) | 18568 (0%) | 734 (0%) | 9 |
-| 60 | tudo STR | 960 | 49 (-2%) | 18570 (0%) | 856 (17%) | 9 |
-| 60 | tudo VIT | 987 | 49 (-2%) | 18542 (-0%) | 534 (-27%) | 8 |
-| 60 | tudo AGI | 858 | 49 (-2%) | 18593 (0%) | 780 (6%) | 9 |
-| 60 | tudo RES | 866 | 49 (-2%) | 18542 (-0%) | 534 (-27%) | 8 |
-| 60 | STR+VIT 50/50 | 1055 | 50 (0%) | 18590 (0%) | 589 (-20%) | 9 |
+### D.1 Valor real e valor no CP de um ponto
 
-Builds acima de +25% nos dois eixos ao mesmo tempo: 0.
+Média por ponto dos PRÓXIMOS 10 pontos de cada atributo (o PV máx é arredondado e um ponto de VIT vale só 5 PV, então um ponto isolado se perde no arredondamento). "Real" = 100 x ln da razão da margem do duelo P contra um inimigo do andar de referência do herói; "CP" = 100 x 2 x ln do CP bruto (o CP é a raiz de dano x PV efetivo, então o fator 2 coloca os dois na mesma escala). `máx/mín` = melhor atributo / pior.
 
-Limites: chance de crítico vira 100% só com +100 pontos percentuais (a arma T6 dá 24% + 0,5%/refino + substats), CP trava em 1 (`combatPowerCore`); intervalo de ataque tem piso de 400 ms e AGI é limitado a 300 pontos (600 ms), nunca chega ao piso; resistência é assintótica (`rawDamage/(1+r)`), nunca zera o dano.
+#### sem habilidades
+
+| Nível | Equip. | Andar ref. | PV | STR real / CP | VIT real / CP | AGI real / CP | RES real / CP | máx/mín real | limite | CP/real (mín–máx) |
+| --: | --- | --: | --: | --- | --- | --- | --- | --: | --: | --- |
+| 5 | T1+2 | 24 | 235 | 1.59 / 1.59 | 1.93 / 1.93 | 0.60 / 0.60 | 0.41 / 0.41 | 4.69 | 2.5 | 1.00–1.00 |
+| 10 | T2+2 | 26 | 395 | 1.00 / 1.00 | 1.19 / 1.19 | 0.58 / 0.58 | 0.39 / 0.39 | 3.09 | 2.5 | 1.00–1.00 |
+| 20 | T2+6 | 26 | 566 | 0.79 / 0.79 | 0.85 / 0.85 | 0.54 / 0.54 | 0.36 / 0.36 | 2.38 | 1.6 | 1.00–1.00 |
+| 30 | T3+4 | 26 | 804 | 0.52 / 0.57 | 0.60 / 0.60 | 0.46 / 0.50 | 0.31 / 0.32 | 1.94 | 1.6 | 1.00–1.09 |
+| 45 | T3+8 | 39 | 1076 | 0.44 / 0.47 | 0.45 / 0.45 | 0.42 / 0.46 | 0.29 / 0.30 | 1.55 | 1.6 | 1.00–1.08 |
+| 60 | T4+6 | 56 | 1373 | 0.38 / 0.41 | 0.36 / 0.36 | 0.38 / 0.42 | 0.28 / 0.28 | 1.37 | 1.6 | 1.00–1.09 |
+| 80 | T5+6 | 76 | 1870 | 0.31 / 0.33 | 0.26 / 0.26 | 0.34 / 0.36 | 0.27 / 0.26 | 1.29 | 1.6 | 0.97–1.06 |
+| 100 | T6+8 | 99 | 2490 | 0.27 / 0.28 | 0.20 / 0.20 | 0.31 / 0.32 | 0.25 / 0.24 | 1.56 | 1.6 | 0.95–1.04 |
+
+#### Guerreiro
+
+| Nível | Equip. | Andar ref. | PV | STR real / CP | VIT real / CP | AGI real / CP | RES real / CP | máx/mín real | limite | CP/real (mín–máx) |
+| --: | --- | --: | --: | --- | --- | --- | --- | --: | --: | --- |
+| 5 | T1+2 | 24 | 235 | 1.59 / 1.59 | 1.93 / 1.93 | 0.60 / 0.60 | 0.41 / 0.41 | 4.69 | 2.5 | 1.00–1.00 |
+| 10 | T2+2 | 26 | 395 | 1.00 / 1.00 | 1.19 / 1.19 | 0.58 / 0.58 | 0.39 / 0.39 | 3.09 | 2.5 | 1.00–1.00 |
+| 20 | T2+6 | 26 | 566 | 0.79 / 0.79 | 0.85 / 0.85 | 0.50 / 0.50 | 0.36 / 0.36 | 2.38 | 1.6 | 1.00–1.00 |
+| 30 | T3+4 | 31 | 804 | 0.53 / 0.57 | 0.60 / 0.60 | 0.41 / 0.45 | 0.32 / 0.32 | 1.91 | 1.6 | 1.00–1.08 |
+| 45 | T3+8 | 49 | 1076 | 0.44 / 0.47 | 0.45 / 0.45 | 0.38 / 0.41 | 0.30 / 0.30 | 1.53 | 1.6 | 1.00–1.07 |
+| 60 | T4+6 | 71 | 1373 | 0.38 / 0.41 | 0.36 / 0.36 | 0.35 / 0.38 | 0.28 / 0.28 | 1.36 | 1.6 | 1.00–1.08 |
+| 80 | T5+6 | 93 | 1870 | 0.31 / 0.32 | 0.26 / 0.26 | 0.32 / 0.33 | 0.27 / 0.26 | 1.20 | 1.6 | 0.96–1.05 |
+| 100 | T6+8 | 99 | 2490 | 0.27 / 0.28 | 0.20 / 0.20 | 0.29 / 0.30 | 0.26 / 0.24 | 1.45 | 1.6 | 0.94–1.04 |
+
+#### Guardião
+
+| Nível | Equip. | Andar ref. | PV | STR real / CP | VIT real / CP | AGI real / CP | RES real / CP | máx/mín real | limite | CP/real (mín–máx) |
+| --: | --- | --: | --: | --- | --- | --- | --- | --: | --: | --- |
+| 5 | T1+2 | 24 | 241 | 1.59 / 1.59 | 1.92 / 1.92 | 0.60 / 0.60 | 0.41 / 0.41 | 4.67 | 2.5 | 1.00–1.00 |
+| 10 | T2+2 | 26 | 415 | 1.00 / 1.00 | 1.18 / 1.18 | 0.58 / 0.58 | 0.39 / 0.39 | 3.06 | 2.5 | 1.00–1.00 |
+| 20 | T2+6 | 26 | 608 | 0.79 / 0.79 | 0.85 / 0.85 | 0.54 / 0.54 | 0.37 / 0.37 | 2.28 | 1.6 | 1.00–1.00 |
+| 30 | T3+4 | 28 | 864 | 0.52 / 0.57 | 0.61 / 0.61 | 0.46 / 0.50 | 0.35 / 0.36 | 1.72 | 1.6 | 1.00–1.09 |
+| 45 | T3+8 | 44 | 1157 | 0.44 / 0.45 | 0.47 / 0.47 | 0.42 / 0.44 | 0.34 / 0.35 | 1.36 | 1.6 | 1.00–1.04 |
+| 60 | T4+6 | 65 | 1476 | 0.35 / 0.39 | 0.37 / 0.38 | 0.35 / 0.40 | 0.30 / 0.31 | 1.25 | 1.6 | 1.01–1.13 |
+| 80 | T5+6 | 88 | 2010 | 0.30 / 0.32 | 0.28 / 0.27 | 0.31 / 0.35 | 0.31 / 0.29 | 1.11 | 1.6 | 0.93–1.11 |
+| 100 | T6+8 | 99 | 2677 | 0.27 / 0.27 | 0.22 / 0.21 | 0.29 / 0.31 | 0.30 / 0.26 | 1.38 | 1.6 | 0.88–1.08 |
+
+### D.2 Retornos: valor do PRÓXIMO ponto conforme os pontos já postos nesse atributo
+
+Os outros três ficam como a política 35/30/20/15 do nível os deixou; † = acima dos pontos que o nível dá (herói hipotético, só para ver a forma da curva).
+
+#### Nível 30 (90 pontos)
+
+| Habilidades | Atributo | 0 | 25 | 50 | 100† | 150† |
+| --- | --- | --: | --: | --: | --: | --: |
+| sem habilidades | STR | 0.62 | 0.54 | 0.47 | 0.38 | 0.32 |
+| sem habilidades | VIT | 0.72 | 0.61 | 0.53 | 0.42 | 0.35 |
+| sem habilidades | AGI | 0.57 | 0.43 | 0.34 | 0.23 | 0.16 |
+| sem habilidades | RES | 0.33 | 0.30 | 0.28 | 0.25 | 0.22 |
+| Guerreiro | STR | 0.63 | 0.54 | 0.48 | 0.39 | 0.32 |
+| Guerreiro | VIT | 0.72 | 0.61 | 0.53 | 0.42 | 0.35 |
+| Guerreiro | AGI | 0.50 | 0.39 | 0.31 | 0.21 | 0.15 |
+| Guerreiro | RES | 0.33 | 0.31 | 0.28 | 0.25 | 0.22 |
+| Guardião | STR | 0.62 | 0.54 | 0.47 | 0.38 | 0.32 |
+| Guardião | VIT | 0.72 | 0.60 | 0.53 | 0.41 | 0.35 |
+| Guardião | AGI | 0.57 | 0.43 | 0.34 | 0.23 | 0.16 |
+| Guardião | RES | 0.37 | 0.34 | 0.31 | 0.27 | 0.24 |
+
+#### Nível 60 (180 pontos)
+
+| Habilidades | Atributo | 0 | 25 | 50 | 100 | 150 |
+| --- | --- | --: | --: | --: | --: | --: |
+| sem habilidades | STR | 0.49 | 0.44 | 0.40 | 0.33 | 0.28 |
+| sem habilidades | VIT | 0.44 | 0.40 | 0.36 | 0.31 | 0.27 |
+| sem habilidades | AGI | 0.56 | 0.43 | 0.34 | 0.22 | 0.16 |
+| sem habilidades | RES | 0.30 | 0.28 | 0.26 | 0.23 | 0.21 |
+| Guerreiro | STR | 0.51 | 0.45 | 0.40 | 0.34 | 0.29 |
+| Guerreiro | VIT | 0.44 | 0.40 | 0.36 | 0.31 | 0.27 |
+| Guerreiro | AGI | 0.52 | 0.39 | 0.31 | 0.21 | 0.15 |
+| Guerreiro | RES | 0.31 | 0.28 | 0.27 | 0.23 | 0.21 |
+| Guardião | STR | 0.45 | 0.40 | 0.36 | 0.31 | 0.27 |
+| Guardião | VIT | 0.45 | 0.41 | 0.38 | 0.32 | 0.28 |
+| Guardião | AGI | 0.51 | 0.39 | 0.31 | 0.21 | 0.15 |
+| Guardião | RES | 0.32 | 0.30 | 0.28 | 0.25 | 0.23 |
+
+### D.3 Builds: todos os pontos num atributo e metades 50/50
+
+Mesmo equipamento do herói do nível, sem habilidades. Profundidade = andar mais fundo limpo em >= 80% das tentativas de 1 andar com HP cheio; caça = o melhor lugar que o build pode caçar (zonas liberadas pelo andar que ele limpa, profundidades liberadas pelo CP; a que dá mais materiais), por hora em caça de 4 h; chefe = tempo para matar o chefe do andar 25 / 50 em segundos (margem P), "-" se P < 1.
+
+#### Nível 30, sem habilidades
+
+| Build | STR/VIT/AGI/RES | CP | Profundidade | Zona (prof.) | Materiais/h (Ouro ref.) | XP/h | Chefe 25 | Chefe 50 |
+| --- | --- | --: | --: | --- | --: | --: | --: | --: |
+| balanceado 35/30/20/15 | 31/27/18/14 | 956 | 27 | demon_glade (deep) | 540 | 2274 | 5.3 s (2.57) | - |
+| tudo STR | 90/0/0/0 | 937 | 27 (0%) | demon_glade (deep) | 548 (1%) | 2274 (0%) | 4.4 s (2.43) | - |
+| tudo VIT | 0/90/0/0 | 946 | 28 (4%) | demon_glade (deep) | 595 (10%) | 2274 (-0%) | 7.0 s (2.58) | - |
+| tudo AGI | 0/0/90/0 | 884 | 25 (-7%) | demon_glade (deep) | 560 (4%) | 2275 (0%) | 4.9 s (2.18) | - |
+| tudo RES | 0/0/0/90 | 835 | 25 (-7%) | demon_glade (deep) | 595 (10%) | 2274 (-0%) | 7.1 s (2.00) | - |
+| STR+VIT 50/50 | 45/45/0/0 | 971 | 29 (7%) | demon_glade (deep) | 516 (-5%) | 2275 (0%) | 5.4 s (2.66) | - |
+| STR+AGI 50/50 | 45/0/45/0 | 944 | 25 (-7%) | demon_glade (deep) | 525 (-3%) | 2274 (0%) | 4.4 s (2.47) | - |
+| STR+RES 50/50 | 45/0/0/45 | 902 | 25 (-7%) | demon_glade (deep) | 516 (-5%) | 2275 (0%) | 5.5 s (2.29) | - |
+| VIT+AGI 50/50 | 0/45/45/0 | 949 | 29 (7%) | demon_glade (deep) | 570 (5%) | 2275 (0%) | 5.6 s (2.55) | - |
+| VIT+RES 50/50 | 0/45/0/45 | 907 | 27 (0%) | demon_glade (deep) | 595 (10%) | 2274 (-0%) | 7.1 s (2.36) | - |
+| AGI+RES 50/50 | 0/0/45/45 | 881 | 25 (-7%) | demon_glade (deep) | 570 (5%) | 2275 (0%) | 5.7 s (2.19) | - |
+
+#### Nível 30, Guerreiro
+
+| Build | STR/VIT/AGI/RES | CP | Profundidade | Zona (prof.) | Materiais/h (Ouro ref.) | XP/h | Chefe 25 | Chefe 50 |
+| --- | --- | --: | --: | --- | --: | --: | --: | --: |
+| balanceado 35/30/20/15 | 31/27/18/14 | 1130 | 34 | demon_glade (deep) | 558 | 2275 | 3.8 s (3.54) | - |
+| tudo STR | 90/0/0/0 | 1113 | 34 (0%) | blood_marsh (deep) | 650 (16%) | 3768 (66%) | 3.2 s (3.41) | - |
+| tudo VIT | 0/90/0/0 | 1124 | 32 (-6%) | demon_glade (deep) | 563 (1%) | 2274 (-0%) | 5.0 s (3.57) | - |
+| tudo AGI | 0/0/90/0 | 1030 | 34 (0%) | blood_marsh (deep) | 544 (-3%) | 3769 (66%) | 3.7 s (2.93) | - |
+| tudo RES | 0/0/0/90 | 993 | 28 (-18%) | demon_glade (deep) | 563 (1%) | 2274 (-0%) | 5.1 s (2.79) | - |
+| STR+VIT 50/50 | 45/45/0/0 | 1154 | 35 (3%) | blood_marsh (deep) | 534 (-4%) | 3769 (66%) | 3.9 s (3.71) | - |
+| STR+AGI 50/50 | 45/0/45/0 | 1107 | 34 (0%) | blood_marsh (deep) | 635 (14%) | 3767 (66%) | 3.2 s (3.37) | - |
+| STR+RES 50/50 | 45/0/0/45 | 1072 | 31 (-9%) | demon_glade (deep) | 520 (-7%) | 2275 (0%) | 3.9 s (3.20) | - |
+| VIT+AGI 50/50 | 0/45/45/0 | 1114 | 35 (3%) | demon_glade (deep) | 545 (-2%) | 2275 (0%) | 4.2 s (3.46) | - |
+| VIT+RES 50/50 | 0/45/0/45 | 1079 | 29 (-15%) | demon_glade (deep) | 563 (1%) | 2274 (-0%) | 5.1 s (3.29) | - |
+| AGI+RES 50/50 | 0/0/45/45 | 1034 | 31 (-9%) | demon_glade (deep) | 545 (-2%) | 2275 (0%) | 4.2 s (2.99) | - |
+
+#### Nível 30, Guardião
+
+| Build | STR/VIT/AGI/RES | CP | Profundidade | Zona (prof.) | Materiais/h (Ouro ref.) | XP/h | Chefe 25 | Chefe 50 |
+| --- | --- | --: | --: | --- | --: | --: | --: | --: |
+| balanceado 35/30/20/15 | 31/27/18/14 | 1021 | 32 | demon_glade (deep) | 540 | 2274 | 5.3 s (2.93) | - |
+| tudo STR | 90/0/0/0 | 996 | 29 (-9%) | demon_glade (deep) | 548 (1%) | 2274 (0%) | 4.4 s (2.76) | - |
+| tudo VIT | 0/90/0/0 | 1006 | 32 (0%) | demon_glade (deep) | 595 (10%) | 2274 (-0%) | 7.0 s (2.92) | - |
+| tudo AGI | 0/0/90/0 | 941 | 29 (-9%) | demon_glade (deep) | 560 (4%) | 2275 (0%) | 4.9 s (2.47) | - |
+| tudo RES | 0/0/0/90 | 903 | 26 (-19%) | demon_glade (deep) | 595 (10%) | 2274 (-0%) | 7.2 s (2.34) | - |
+| STR+VIT 50/50 | 45/45/0/0 | 1033 | 29 (-9%) | demon_glade (deep) | 516 (-5%) | 2275 (0%) | 5.4 s (3.01) | - |
+| STR+AGI 50/50 | 45/0/45/0 | 1004 | 29 (-9%) | demon_glade (deep) | 525 (-3%) | 2274 (0%) | 4.4 s (2.79) | - |
+| STR+RES 50/50 | 45/0/0/45 | 968 | 28 (-13%) | demon_glade (deep) | 516 (-5%) | 2275 (0%) | 5.5 s (2.64) | - |
+| VIT+AGI 50/50 | 0/45/45/0 | 1010 | 33 (3%) | demon_glade (deep) | 570 (5%) | 2275 (0%) | 5.7 s (2.88) | - |
+| VIT+RES 50/50 | 0/45/0/45 | 974 | 29 (-9%) | demon_glade (deep) | 595 (10%) | 2274 (-0%) | 7.1 s (2.73) | - |
+| AGI+RES 50/50 | 0/0/45/45 | 946 | 29 (-9%) | demon_glade (deep) | 570 (5%) | 2275 (0%) | 5.7 s (2.53) | - |
+
+#### Nível 60, sem habilidades
+
+| Build | STR/VIT/AGI/RES | CP | Profundidade | Zona (prof.) | Materiais/h (Ouro ref.) | XP/h | Chefe 25 | Chefe 50 |
+| --- | --- | --: | --: | --- | --: | --: | --: | --: |
+| balanceado 35/30/20/15 | 63/54/36/27 | 1875 | 55 | demon_rift (deep) | 1124 | 6042 | 2.7 s (9.53) | 14.3 s (1.17) |
+| tudo STR | 180/0/0/0 | 1789 | 56 (2%) | demon_rift (deep) | 1221 (9%) | 6043 (0%) | 2.2 s (8.58) | 11.7 s (1.05) |
+| tudo VIT | 0/180/0/0 | 1694 | 57 (4%) | demon_rift (deep) | 674 (-40%) | 6042 (-0%) | 4.4 s (7.95) | - |
+| tudo AGI | 0/0/180/0 | 1663 | 56 (2%) | demon_rift (deep) | 1100 (-2%) | 6038 (-0%) | 2.6 s (7.45) | - |
+| tudo RES | 0/0/0/180 | 1567 | 52 (-5%) | demon_rift (deep) | 683 (-39%) | 6035 (-0%) | 4.5 s (6.85) | - |
+| STR+VIT 50/50 | 90/90/0/0 | 1834 | 58 (5%) | demon_rift (deep) | 948 (-16%) | 6033 (-0%) | 3.0 s (9.12) | 15.4 s (1.12) |
+| STR+AGI 50/50 | 90/0/90/0 | 1869 | 59 (7%) | demon_rift (deep) | 1251 (11%) | 6042 (-0%) | 2.1 s (9.34) | 10.8 s (1.14) |
+| STR+RES 50/50 | 90/0/0/90 | 1747 | 53 (-4%) | demon_rift (deep) | 952 (-15%) | 6037 (-0%) | 3.0 s (8.35) | 15.7 s (1.02) |
+| VIT+AGI 50/50 | 0/90/90/0 | 1803 | 58 (5%) | demon_rift (deep) | 957 (-15%) | 6038 (-0%) | 3.1 s (8.83) | 15.9 s (1.09) |
+| VIT+RES 50/50 | 0/90/0/90 | 1686 | 56 (2%) | demon_rift (deep) | 687 (-39%) | 6042 (0%) | 4.5 s (7.91) | - |
+| AGI+RES 50/50 | 0/0/90/90 | 1718 | 56 (2%) | demon_rift (deep) | 936 (-17%) | 6043 (0%) | 3.1 s (8.08) | - |
+
+#### Nível 60, Guerreiro
+
+| Build | STR/VIT/AGI/RES | CP | Profundidade | Zona (prof.) | Materiais/h (Ouro ref.) | XP/h | Chefe 25 | Chefe 50 |
+| --- | --- | --: | --: | --- | --: | --: | --: | --: |
+| balanceado 35/30/20/15 | 63/54/36/27 | 2348 | 73 | demon_rift (deep) | 1288 | 6038 | 1.8 s (14.85) | 9.2 s (1.81) |
+| tudo STR | 180/0/0/0 | 2259 | 69 (-5%) | demon_rift (deep) | 1430 (11%) | 6039 (0%) | 1.4 s (13.65) | 7.4 s (1.66) |
+| tudo VIT | 0/180/0/0 | 2140 | 73 (0%) | demon_rift (deep) | 1129 (-12%) | 6037 (-0%) | 2.8 s (12.49) | 14.6 s (1.54) |
+| tudo AGI | 0/0/180/0 | 2055 | 62 (-15%) | demon_rift (deep) | 1288 (-0%) | 6041 (0%) | 1.7 s (11.30) | 8.9 s (1.38) |
+| tudo RES | 0/0/0/180 | 1983 | 67 (-8%) | demon_rift (deep) | 1060 (-18%) | 6034 (-0%) | 2.8 s (10.86) | 14.9 s (1.33) |
+| STR+VIT 50/50 | 90/90/0/0 | 2317 | 71 (-3%) | demon_rift (deep) | 1311 (2%) | 6037 (-0%) | 1.9 s (14.45) | 9.8 s (1.76) |
+| STR+AGI 50/50 | 90/0/90/0 | 2323 | 64 (-12%) | demon_rift (deep) | 1529 (19%) | 6042 (0%) | 1.3 s (14.37) | 7.0 s (1.75) |
+| STR+RES 50/50 | 90/0/0/90 | 2209 | 68 (-7%) | demon_rift (deep) | 1298 (1%) | 6037 (-0%) | 1.9 s (13.28) | 9.9 s (1.62) |
+| VIT+AGI 50/50 | 0/90/90/0 | 2241 | 71 (-3%) | demon_rift (deep) | 1217 (-6%) | 6036 (-0%) | 2.0 s (13.51) | 10.5 s (1.65) |
+| VIT+RES 50/50 | 0/90/0/90 | 2131 | 71 (-3%) | demon_rift (deep) | 1066 (-17%) | 6034 (-0%) | 2.8 s (12.49) | 14.8 s (1.53) |
+| AGI+RES 50/50 | 0/0/90/90 | 2137 | 68 (-7%) | demon_rift (deep) | 1234 (-4%) | 6043 (0%) | 2.0 s (12.41) | 10.6 s (1.51) |
+
+#### Nível 60, Guardião
+
+| Build | STR/VIT/AGI/RES | CP | Profundidade | Zona (prof.) | Materiais/h (Ouro ref.) | XP/h | Chefe 25 | Chefe 50 |
+| --- | --- | --: | --: | --- | --: | --: | --: | --: |
+| balanceado 35/30/20/15 | 63/54/36/27 | 2124 | 68 | demon_rift (deep) | 1119 | 6038 | 2.7 s (12.65) | 13.7 s (1.51) |
+| tudo STR | 180/0/0/0 | 2004 | 61 (-10%) | demon_rift (deep) | 1201 (7%) | 6041 (0%) | 2.2 s (10.92) | 11.3 s (1.32) |
+| tudo VIT | 0/180/0/0 | 1966 | 68 (0%) | demon_rift (deep) | 653 (-42%) | 6030 (-0%) | 4.2 s (11.06) | 21.0 s (1.34) |
+| tudo AGI | 0/0/180/0 | 1866 | 62 (-9%) | demon_rift (deep) | 1154 (3%) | 6035 (-0%) | 2.5 s (9.52) | 12.9 s (1.15) |
+| tudo RES | 0/0/0/180 | 1833 | 63 (-7%) | demon_rift (deep) | 697 (-38%) | 6042 (0%) | 4.4 s (9.70) | 22.4 s (1.15) |
+| STR+VIT 50/50 | 90/90/0/0 | 2078 | 69 (1%) | demon_rift (deep) | 1031 (-8%) | 6042 (0%) | 2.9 s (12.08) | 14.7 s (1.45) |
+| STR+AGI 50/50 | 90/0/90/0 | 2091 | 65 (-4%) | demon_rift (deep) | 1254 (12%) | 6035 (-0%) | 2.0 s (11.86) | 10.4 s (1.43) |
+| STR+RES 50/50 | 90/0/0/90 | 1991 | 66 (-3%) | demon_rift (deep) | 952 (-15%) | 6032 (-0%) | 2.9 s (11.24) | 15.1 s (1.34) |
+| VIT+AGI 50/50 | 0/90/90/0 | 2044 | 69 (1%) | demon_rift (deep) | 1029 (-8%) | 6035 (-0%) | 3.0 s (11.70) | 15.1 s (1.41) |
+| VIT+RES 50/50 | 0/90/0/90 | 1974 | 69 (1%) | demon_rift (deep) | 688 (-39%) | 6032 (-0%) | 4.3 s (11.26) | 21.9 s (1.34) |
+| AGI+RES 50/50 | 0/0/90/90 | 1959 | 66 (-3%) | demon_rift (deep) | 977 (-13%) | 6037 (-0%) | 3.0 s (10.88) | 15.6 s (1.30) |
+
+#### Nível 100, sem habilidades
+
+| Build | STR/VIT/AGI/RES | CP | Profundidade | Zona (prof.) | Materiais/h (Ouro ref.) | XP/h | Chefe 25 | Chefe 50 |
+| --- | --- | --: | --: | --- | --: | --: | --: | --: |
+| balanceado 35/30/20/15 | 105/90/60/45 | 5173 | 100 | blood_abyss (deep) | 2033 | 9031 | 0.8 s (68.73) | 4.1 s (8.46) |
+| tudo STR | 300/0/0/0 | 4792 | 99 (-1%) | blood_abyss (deep) | 2141 (5%) | 9027 (-0%) | 0.7 s (57.74) | 3.5 s (7.16) |
+| tudo VIT | 0/300/0/0 | 4241 | 99 (-1%) | blood_abyss (deep) | 1520 (-25%) | 9034 (0%) | 1.5 s (46.63) | 7.6 s (5.75) |
+| tudo AGI | 0/0/300/0 | 4512 | 99 (-1%) | blood_abyss (deep) | 2108 (4%) | 9035 (0%) | 0.8 s (51.98) | 4.0 s (6.37) |
+| tudo RES | 0/0/0/300 | 4344 | 99 (-1%) | blood_abyss (deep) | 1480 (-27%) | 9033 (0%) | 1.5 s (50.61) | 7.8 s (6.20) |
+| STR+VIT 50/50 | 150/150/0/0 | 4774 | 99 (-1%) | blood_abyss (deep) | 1796 (-12%) | 9033 (0%) | 0.9 s (58.03) | 4.8 s (7.17) |
+| STR+AGI 50/50 | 150/0/150/0 | 5232 | 100 (0%) | blood_abyss (deep) | 2221 (9%) | 9033 (0%) | 0.6 s (69.12) | 3.0 s (8.51) |
+| STR+RES 50/50 | 150/0/0/150 | 4848 | 100 (0%) | blood_abyss (deep) | 1793 (-12%) | 9033 (0%) | 0.9 s (61.36) | 4.9 s (7.56) |
+| VIT+AGI 50/50 | 0/150/150/0 | 4826 | 100 (0%) | blood_abyss (deep) | 1910 (-6%) | 9032 (0%) | 0.9 s (59.64) | 4.7 s (7.32) |
+| VIT+RES 50/50 | 0/150/0/150 | 4471 | 99 (-1%) | blood_abyss (deep) | 1480 (-27%) | 9028 (-0%) | 1.5 s (52.99) | 7.7 s (6.51) |
+| AGI+RES 50/50 | 0/0/150/150 | 4900 | 100 (0%) | blood_abyss (deep) | 1910 (-6%) | 9028 (-0%) | 0.9 s (63.07) | 4.8 s (7.72) |
+
+### D.4 Tetos e o que o jogador vê
+
+- Pontos: 3 por nível, 300 no nível 100 (o herói novo começa com 3 sem gastar). Não há distribuição automática nem recomendada; os botões − e + da tela Personagem desfazem e refazem pontos sem custo, sem limite e sem bloquear em batalha (é um respec livre de atributos).
+- AGI: o teto de combate é 300 pontos (600.0 ms, 1.67 atq/s). Com 3 pontos por nível o nível 100 tem exatamente 300: o teto só é atingido por quem põe TODOS os pontos em AGI, nunca é ultrapassado e não há ponto desperdiçado. O piso de 400 ms só é alcançável com bônus de relíquia/habilidade somados. A tela não menciona o teto.
+- RES: assintótica (dano / (1 + r)); STR: sem teto prático (guarda de 1000000); VIT: linear, sem teto.
+- Texto atual da tela: "+ Dano Físico", "+ PV Máx", "+ Esquiva / Velocidade de ataque", "+ Redução de dano". Nenhum número; AGI promete esquiva, que o combate não tem.
+- Prova do teto (herói nv 100, tudo AGI = 300): 600.0 ms por golpe.
 
 ## E. Curva de tiers
 
