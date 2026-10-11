@@ -18,7 +18,7 @@ import { RARITIES } from '../rarity';
 import { REFINING_RECIPES } from '../refining';
 import { getReforgeCost } from '../reforge';
 import { TITLES } from '../titles';
-import { FRAMES } from '../seasonItems';
+import { FRAMES, SKINS } from '../seasonItems';
 import { WOOD_TIERS } from '../woodcutting';
 import { skillXpToReachLevel } from '../skills';
 
@@ -117,7 +117,7 @@ describe('catalog cross-references', () => {
 
   it('Battle Pass rewards: every id exists in the catalog that matches its kind', () => {
     const relicIds = new Set(GEAR.filter((g) => g.slot === 'relic').map((g) => g.id));
-    const cosmeticIds = new Set([...titleIds, ...FRAMES.map((f) => f.id)]);
+    const cosmeticIds = new Set([...titleIds, ...FRAMES.map((f) => f.id), ...SKINS.map((s) => s.id)]);
     const byKind: Record<string, Set<string>> = { material: materialIds, consumable: consumableIds, gem: gemIds, cosmetic: cosmeticIds, relic: relicIds };
     const bad: string[] = [];
     for (const lvl of BATTLE_PASS_TRACK) {

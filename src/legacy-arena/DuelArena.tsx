@@ -347,7 +347,7 @@ export default function DuelArena({
   const atkCost = effectiveAttackStamina(save);
   const build = getEquipped(save.equipped);
   const weaponTier = build.weapon?.tier ?? 0;
-  const playerSpriteUrl = getPlayerSpriteUrl();
+  const playerSpriteUrl = getPlayerSpriteUrl(saveRef.current.activeSkin);
   const enemyDef = getEnemyDef(enemyKind);
   const enemyName = enemyDef.boss
     ? t('enemies.bossName', { n: enemyText(enemyDef.nameKey) })

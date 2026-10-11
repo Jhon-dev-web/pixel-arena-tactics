@@ -19,6 +19,7 @@ export default function PersonagemView({
   onUnequip,
   onSelectTitle,
   onSelectFrame,
+  onSelectSkin,
   onDiscard,
   onReforge,
   onSalvage,
@@ -32,6 +33,7 @@ export default function PersonagemView({
   onUnequip: (id: string) => void;
   onSelectTitle: (id: string | null) => void;
   onSelectFrame: (id: string | null) => void;
+  onSelectSkin: (id: string | null) => void;
   onDiscard: (kind: 'gear' | 'material' | 'consumable', id: string) => void;
   onReforge: (id: string) => void;
   onSalvage: (id: string) => void;
@@ -77,7 +79,7 @@ export default function PersonagemView({
 
       <section className="dh-card personagem-titles">
         <h3 className="dh-card-title">{t('profile.titlesTab')}</h3>
-        <TitlesPanel save={save} onSelectTitle={onSelectTitle} onSelectFrame={onSelectFrame} />
+        <TitlesPanel save={save} onSelectTitle={onSelectTitle} onSelectFrame={onSelectFrame} onSelectSkin={onSelectSkin} />
       </section>
 
       <section className="dh-card personagem-inventory">

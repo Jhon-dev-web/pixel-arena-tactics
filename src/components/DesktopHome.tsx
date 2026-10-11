@@ -28,6 +28,8 @@ import { getBiomeForFloor, nextMilestone, MAX_DUNGEON_FLOOR } from '../game/dung
 import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import { useDisplayName } from '../game/usernameContext';
 import { portraitFrameClass } from '../game/seasonItems';
+import { ownsAdventurerPass } from '../game/entitlements';
+import { readyActivities } from '../game/claimAll';
 
 // Inventory pressure: amber from 85% of the slots, red when there is no free slot (the same thresholds as the hunt screen).
 const invTone = (used: number, cap: number): string => (used >= cap ? ' full' : used >= cap * 0.85 ? ' warn' : '');
@@ -84,6 +86,8 @@ export default function DesktopHome({
   onOpenWoodcutting,
   onOpenGarden,
   onOpenInventory,
+  onClaimAll,
+  onOpenPass,
 }: {
   save: SaveData;
   spriteUrl: string;
@@ -96,8 +100,12 @@ export default function DesktopHome({
   onOpenWoodcutting: () => void;
   onOpenGarden: () => void;
   onOpenInventory: () => void;
+  onClaimAll: () => void;
+  onOpenPass: () => void;
 }) {
   const now = Date.now();
+  const owner = ownsAdventurerPass(save);
+  const ready = readyActivities(save, now);
   const displayName = useDisplayName(save.heroName);
   const level = playerLevel(save.xp);
   const heroProgress = Math.max(0, Math.min(1, (save.xp - xpToReachLevel(level)) / Math.max(1, xpForNextLevel(level))));
@@ -186,7 +194,21 @@ export default function DesktopHome({
 
       {/* Area B — Atividade atual */}
       <section className="dh-card dh-activity">
-        <h3 className="dh-card-title">{t('home.activityTitle')}</h3>
+        <div className="dh-activity-head">
+          <h3 className="dh-card-title">{t('home.activityTitle')}</h3>
+          {owner ? (
+            <button className="dh-claimall" onClick={onClaimAll} disabled={ready.count === 0} title={t('claimAll.hint')} data-ui>
+              {t('claimAll.button')}
+              {ready.count > 0 && <span className="dh-claimall-count">{ready.count}</span>}
+            </button>
+          ) : (
+            <button className="dh-claimall locked" onClick={onOpenPass} title={t('claimAll.lockedHint')} data-ui>
+              <img className="dh-claimall-lock" src="/assets/icons/garden_plot_locked.png" alt="" />
+              {t('claimAll.button')}
+              <span className="dh-claimall-badge">{t('claimAll.passBadge')}</span>
+            </button>
+          )}
+        </div>
         {!anyActivity && <div className="dh-idle">{t('home.idle')}</div>}
         <div className="dh-activity-grid">
           {hunting && (

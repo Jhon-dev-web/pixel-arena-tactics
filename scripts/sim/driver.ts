@@ -43,6 +43,7 @@ import { isClaimed, isComplete, QUESTS_ACHIEVEMENTS, QUESTS_DAILY, QuestContext 
 import { questMaxRefine } from '../../src/game/gearInstances';
 import { activeTonicStats, goldMultiplier, isBuffActive } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
+import { ownsAdventurerPass } from '../../src/game/entitlements';
 
 // ---- seeded RNG ---------------------------------------------------------------------------------------------------
 
@@ -258,7 +259,7 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
     ({ battlePassLevel, battlePassXp } = addBattlePassXp(s, T.battlePass.xpPerFloor * stages));
   }
   const subs = equippedSubstatTotals(s);
-  const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', now)));
+  const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', now), ownsAdventurerPass(s) ? T.battlePass.goldBonus : 0));
   const unlockedHuntingZones = Array.from(new Set([...s.unlockedHuntingZones, ...unlockedZoneIds(nextFloor)]));
   const crossed = success ? crossedMilestoneFloors(startFloor, stages, s.dungeonCheckpoints) : [];
   let gold = s.gold + goldGain;

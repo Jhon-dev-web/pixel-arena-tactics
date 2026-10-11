@@ -49,6 +49,12 @@ export function normalizeInventoryCapacity(raw: unknown): number {
   return Math.max(DEFAULT_INVENTORY_CAPACITY, n);
 }
 
+// The Adventurer Pass bag perk: a share of the capacity the hero has without it (the bought base plus converted Pouch slots), rounded up, never fewer than
+// T.battlePass.bagBonusSlots. THE one place that computes it (inventoryCapacity and every screen go through it).
+export function passBagBonus(capacityWithoutPass: number): number {
+  return Math.max(T.battlePass.bagBonusSlots, Math.ceil(capacityWithoutPass * T.battlePass.bagBonusPct));
+}
+
 type CapacityFields = Pick<SaveData, 'inventoryCapacity'> & Partial<Pick<SaveData, 'inventoryBonusSlots' | 'hasBattlePass'>>;
 
 // Slots the hero has right now: the bought base, the permanent slots the old Hunting Pouch tiers were converted into, and the Adventurer Pass perk for
@@ -57,7 +63,8 @@ type CapacityFields = Pick<SaveData, 'inventoryCapacity'> & Partial<Pick<SaveDat
 export function inventoryCapacity(save: CapacityFields, _now?: number): number {
   const passActive = ownsAdventurerPass({ hasBattlePass: !!save.hasBattlePass });
   const bonus = Math.max(0, Math.floor(Number(save.inventoryBonusSlots ?? 0)) || 0);
-  return normalizeInventoryCapacity(save.inventoryCapacity) + bonus + (passActive ? T.battlePass.bagBonusSlots : 0);
+  const own = normalizeInventoryCapacity(save.inventoryCapacity) + bonus;
+  return own + (passActive ? passBagBonus(own) : 0);
 }
 
 // ---- stacks and slots ----------------------------------------------------------------------------------------------

@@ -342,6 +342,11 @@ export function rerollsLeft(d: DeliveryState, now: number, passActive: boolean):
   return Math.max(0, rerollCap(passActive) - used);
 }
 // XP an order pays when accepted by a player with (or without) the Battle Pass. Gold, shards, materials and time never change.
+// Gold of an order for the Pass owner (decided at accept, like the XP): T.battlePass.goldBonus on top.
+export function deliveryGold(offer: Pick<DeliveryOffer, 'gold'>, passActive: boolean): number {
+  return passActive ? Math.round(offer.gold * (1 + T.battlePass.goldBonus)) : offer.gold;
+}
+
 // `xpBonusPct`: the worn Season Relic (gear.ts relicXpBonusPct); like the Pass bonus it is decided at accept and frozen in the snapshot.
 export function deliveryXp(offer: Pick<DeliveryOffer, 'xp'>, passActive: boolean, xpBonusPct = 0): number {
   const withPass = passActive ? Math.round(offer.xp * (1 + T.deliveries.passXpBonus)) : offer.xp;
@@ -393,7 +398,7 @@ export function applyDeliveryAccept(save: SaveData, offerId: string, now: number
   const materials = { ...save.materials };
   for (const [m, q] of Object.entries(offer.items) as [MaterialId, number][]) materials[m] = (materials[m] ?? 0) - q;
   // The Pass XP bonus is decided here and frozen in the snapshot: later Pass expiry or tunable changes do not touch it.
-  const active: ActiveDelivery = { offer: { ...offer, xp: deliveryXp(offer, passActive, relicXpBonusPct(save.equipped.relic)) }, startedAt: now, endsAt: now + offer.durationMs };
+  const active: ActiveDelivery = { offer: { ...offer, xp: deliveryXp(offer, passActive, relicXpBonusPct(save.equipped.relic)), gold: deliveryGold(offer, passActive) }, startedAt: now, endsAt: now + offer.durationMs };
   const others = d.offers.filter((_, j) => j !== index).map((o) => o.arch);
   const seq = nextSeq(d);
   const fresh = generateOffer(buildContext(save), offer.cls, others, `d${seq + 1}`, now, rng);

@@ -10,7 +10,8 @@ import { HUNTING_ZONES } from '../huntingZones';
 import { emptyMaterials, MATERIALS, MaterialId } from '../materials';
 import { merchantBuys, merchantPrice } from '../merchant';
 import { FORGE_SEAL_MIN_RARITY, RARITIES, rollRarityAtLeast, Rarity } from '../rarity';
-import { applySelectFrame, applyUseStashDeed, FRAMES, STASH_BONUS_CAP, STASH_DEED_SLOTS, stashDeedBlockReason } from '../seasonItems';
+import { playerSpriteUrl } from '../sprites';
+import { applySelectSkin, applySelectFrame, applyUseStashDeed, FRAMES, STASH_BONUS_CAP, STASH_DEED_SLOTS, stashDeedBlockReason } from '../seasonItems';
 import { stashCapacity, STASH_BASE_SLOTS } from '../stash';
 import { usesOf } from '../itemUses';
 import { EXPEDITION_TICKET_SKIP_MS, getConsumable } from '../consumables';
@@ -56,7 +57,10 @@ describe('premium track integrity', () => {
     for (const l of [10, 20, 27]) expect(premium(l)).toEqual({ kind: 'consumable', id: 'forge_seal', amount: 1 });
     expect(premium(15)).toEqual({ kind: 'cosmetic', id: 'frame_season_gold', amount: 1 });
     expect(premium(30).id).toBe('season_emblem');
-    expect(premium(30).also).toEqual([{ kind: 'cosmetic', id: 'title_season_lv30', amount: 1 }]);
+    expect(premium(30).also).toEqual([
+      { kind: 'cosmetic', id: 'title_season_lv30', amount: 1 },
+      { kind: 'cosmetic', id: 'skin_golden_knight', amount: 1 },
+    ]);
     expect(free(1)).toEqual({ kind: 'gold', amount: 100 });
     expect(free(30)).toEqual({ kind: 'gold', amount: 3000 });
     expect(free(10)).toEqual({ kind: 'consumable', id: 'expedition_ticket_1h', amount: 1 });
@@ -299,6 +303,41 @@ describe('Stash Deed (stash_deed)', () => {
     expect(def.sellValue).toBe(0);
     expect(merchantBuys('consumable', 'stash_deed')).toBe(false);
     expect(usesOf('consumable', 'stash_deed').some((u) => u.kind === 'use')).toBe(true);
+  });
+});
+
+describe('hero skin (skin_golden_knight)', () => {
+  it('level 30 of the premium track grants it with the emblem and the title (three things); it is selectable on and off and persists', () => {
+    const s = applyBattlePassClaim(owner(), 30, 'premium', Date.now()).save!;
+    expect(s.cosmetics).toEqual(expect.arrayContaining(['title_season_lv30', 'skin_golden_knight']));
+    expect(s.inventory.season_emblem).toBe(1);
+    expect(s.activeSkin).toBeNull();
+    const on = applySelectSkin(s, 'skin_golden_knight')!;
+    expect(on.activeSkin).toBe('skin_golden_knight');
+    expect(normalizeSave(wire(on)).activeSkin).toBe('skin_golden_knight');
+    expect(applySelectSkin(on, null)!.activeSkin).toBeNull();
+    expect(normalizeSave(wire(applySelectSkin(on, null)!)).activeSkin).toBeNull();
+  });
+
+  it('falls back to the default knight for an unknown, un-owned or non-owner skin; a non-owner can never select it; old saves load with the default', () => {
+    const owned = { ...owner(), cosmetics: ['skin_golden_knight'] };
+    expect(normalizeSave(wire({ ...owned, activeSkin: 'skin_golden_knight' })).activeSkin).toBe('skin_golden_knight');
+    expect(normalizeSave(wire({ ...owned, activeSkin: 'skin_nope' })).activeSkin).toBeNull();
+    expect(normalizeSave(wire({ ...owner(), activeSkin: 'skin_golden_knight' })).activeSkin).toBeNull(); // not owned
+    expect(normalizeSave(wire({ ...owned, hasBattlePass: false, activeSkin: 'skin_golden_knight' })).activeSkin).toBeNull(); // no Pass
+    expect(applySelectSkin({ ...owned, hasBattlePass: false }, 'skin_golden_knight')).toBeNull();
+    expect(applySelectSkin(owner(), 'skin_golden_knight')).toBeNull();
+    expect(applySelectSkin(owned, 'skin_nope')).toBeNull();
+    const old = wire(defaultSave());
+    delete (old as unknown as Record<string, unknown>).activeSkin;
+    expect(normalizeSave(old).activeSkin).toBeNull();
+  });
+
+  it('the sprite follows the selected skin and nothing else; the default and any unknown id draw the knight; the golden sheet is registered', () => {
+    expect(playerSpriteUrl()).toBe('/assets/spritesheets/knight.png');
+    expect(playerSpriteUrl(null)).toBe('/assets/spritesheets/knight.png');
+    expect(playerSpriteUrl('skin_nope')).toBe('/assets/spritesheets/knight.png');
+    expect(playerSpriteUrl('skin_golden_knight')).toBe('/assets/spritesheets/knight_golden.png');
   });
 });
 

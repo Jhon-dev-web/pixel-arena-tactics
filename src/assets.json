@@ -58,6 +58,35 @@
       },
       "metadata": {}
     },
+    "knight_golden": {
+      "url": "/assets/spritesheets/knight_golden.png",
+      "description": "Golden-armour knight with a crimson plume (the Adventurer Pass skin), facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
     "bronze": {
       "url": "/assets/spritesheets/bronze.png",
       "description": "Tier-1 bronze-studded leather armor, facing right, 4 animation rows (idle/attack/hurt/death) — local copy with the magenta chroma-key matte spill cleaned out (see scripts/fix-bronze-sprite.mjs)",

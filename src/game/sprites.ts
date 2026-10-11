@@ -11,9 +11,10 @@ const WEAPON_SPRITES: Record<number, string> = {
 };
 
 // Design decision: equipping armor only affects stats (HP, resistance, etc.), never the
-// character's visual — the player sprite is always the knight, regardless of armor tier.
-export function playerSpriteUrl(): string {
-  return Assets.spritesheets.knight.url;
+// character's visual — the player sprite is the knight, regardless of armor tier. The one exception is a hero SKIN
+// (seasonItems.ts), a deliberate cosmetic choice the player makes (save.activeSkin), not something gear decides.
+export function playerSpriteUrl(skinId?: string | null): string {
+  return skinId === 'skin_golden_knight' ? Assets.spritesheets.knight_golden.url : Assets.spritesheets.knight.url;
 }
 
 export function spriteForWeaponTier(tier: number): string {

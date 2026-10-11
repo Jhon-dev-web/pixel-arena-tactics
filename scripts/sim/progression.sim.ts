@@ -691,12 +691,13 @@ describe('progression simulation', () => {
     vi.useRealTimers();
   });
 
-  // Diagnostic for tuning the Pass perks: SIM_PASS_ONLY=1 plays only A and P and prints their comparison; SIM_PASS_MULT / SIM_PASS_BAG / SIM_PASS_DELIV (delivery XP bonus) override
+  // Diagnostic for tuning the Pass perks: SIM_PASS_ONLY=1 plays only A and P and prints their comparison; SIM_PASS_CAP (storage hours) / SIM_PASS_MULT / SIM_PASS_BAG / SIM_PASS_DELIV (delivery XP bonus) override; SIM_NO_DELIV=1 skips the delivery-only scenario
   // the tunables for that run (e.g. SIM_PASS_ONLY=1 SIM_PASS_MULT=1 SIM_SEEDS=10 npm run sim).
   it.runIf(process.env.SIM_PASS_ONLY === '1')('prints only the Adventurer Pass owner-vs-non-owner comparison', () => {
     const tun = T.battlePass as unknown as Record<string, number>;
+    if (process.env.SIM_PASS_CAP) tun.capHours = Number(process.env.SIM_PASS_CAP);
     if (process.env.SIM_PASS_MULT) tun.dropRateMultiplier = Number(process.env.SIM_PASS_MULT);
-    if (process.env.SIM_PASS_BAG) tun.bagBonusSlots = Number(process.env.SIM_PASS_BAG);
+    if (process.env.SIM_PASS_BAG) tun.bagBonusPct = Number(process.env.SIM_PASS_BAG);
     if (process.env.SIM_PASS_DELIV) (T.deliveries as unknown as Record<string, number>).passXpBonus = Number(process.env.SIM_PASS_DELIV);
     const a: Run[] = [];
     const p: Run[] = [];
@@ -704,10 +705,10 @@ describe('progression simulation', () => {
     for (let seed = 1; seed <= SEEDS; seed++) {
       a.push(playOne(seed, {}));
       p.push(playOne(seed, { pass: true }));
-      d.push(playOne(seed, { deliveriesOnly: true }));
+      if (!process.env.SIM_NO_DELIV) d.push(playOne(seed, { deliveriesOnly: true }));
     }
-    console.log('\n## Só o perk de Pedidos (oferta + troca + XP) contra sem Passe\n\n' + passAdvantage(a, d).join('\n'));
-    console.log(`\nPasse: multiplicador ${tun.dropRateMultiplier} · bolsa +${tun.bagBonusSlots}\n\n` + passAdvantage(a, p).join('\n') + '\n');
+    if (!process.env.SIM_NO_DELIV) console.log('\n## Só o perk de Pedidos (oferta + troca + XP) contra sem Passe\n\n' + passAdvantage(a, d).join('\n'));
+    console.log(`\nPasse: armazém ${tun.capHours} h · multiplicador ${tun.dropRateMultiplier} · bolsa +${Math.round(tun.bagBonusPct * 100)}%\n\n` + passAdvantage(a, p).join('\n') + '\n');
   });
 
   it.skipIf(process.env.SIM_PASS_ONLY === '1')(`plays ${DAYS} days x ${SEEDS} seeds, in several scenarios, and prints the report`, () => {

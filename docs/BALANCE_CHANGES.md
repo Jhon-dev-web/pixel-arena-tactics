@@ -533,22 +533,35 @@ Primeira vez cheio, quem ignora o inventário: dia 6 (5-7), 20/20 seeds (R5: 6).
 
 **O que mudou.** O Passe deixa de ser uma assinatura de 30 dias e vira um desbloqueio permanente (`entitlements.ts`, o único lugar que decide se a conta é dona). Quem já o ativou alguma vez (`hasBattlePass` verdadeiro, vencido ou não) vira dono para sempre; quem nunca o teve continua sem. O botão "Ativar" não dá mais o Passe de graça: em produção ele é um botão desabilitado, só uma build DEV (`import.meta.env.DEV`) concede o Passe para teste. A trilha de 30 níveis passa a correr em **temporadas de 60 dias** alinhadas a uma época fixa (Temporada 1 = 01/10/2026 UTC, `seasons.ts`): na virada, o que foi ganho e não resgatado é entregue sozinho (trilha grátis sempre, premium só para o dono, pelo caminho forçado: a bolsa pode passar da capacidade), o nível, o XP e os resgates recomeçam, e o jogador vê um resumo uma vez. A temporada já resolvida fica gravada no save (idempotente; relógio para trás nunca refaz uma temporada).
 
-**Vantagens (conveniência, não poder).** O Passe **não amplia mais o armazém**: o teto offline é o mesmo para todos (4 h na Mineração e no Lenhador, o da zona na Caça); o perk de 12 h testado primeiro foi retirado depois de medido. Multiplicador de materiais 1,25 → **1,10**. Mantidos: +1 oferta e +1 troca de Pedidos por dia, +10% de XP nas Entregas, +5 espaços no inventário, −20% no reparo. Novo: **+10 espaços no Baú** (`T.battlePass.stashBonusSlots`, para sempre, soma com os degraus e as Escrituras). Únicos e relíquias de chefe não usam o multiplicador (teste: a mesma sessão sorteia os mesmos únicos com e sem Passe). Uma sessão de Caça, Mineração ou Lenhador que já estava rodando com o teto longo do Passe antigo mantém esse teto até acabar (nunca se encurta no meio); toda sessão iniciada depois usa o teto base, e uma sessão sem snapshot também.
+**Vantagens (versão final).** O dono do Passe fica **claramente à frente, sem a explosão do armazém de 12 h**: armazém de **6 h** em vez de 4 h (`T.battlePass.capHours`, a mesma regra de snapshot para Caça, Mineração e Lenhador: a sessão usa o teto em vigor quando começou; uma sessão que já corria sob o Passe antigo mantém o dela, nunca se encurta no meio; sessão sem snapshot usa o teto base), multiplicador de materiais **×1,10**, **+10% de ouro** (`T.battlePass.goldBonus`: Masmorra, Caça e Pedidos; **soma** ao bônus de ouro do equipamento, ao teto dele e ao Tônico da Fortuna, nunca multiplica; o mercador não entra), +1 oferta e +1 troca de Pedidos por dia com +10% de XP nas Entregas, **+20% de espaço no inventário** (arredondado para cima, mínimo 5: 26 → +6, 60 → +12, 100 → +20), +10 espaços no Baú e −20% no reparo. Únicos e relíquias de chefe não usam o multiplicador nem o bônus de ouro (teste: a mesma sessão sorteia os mesmos únicos com e sem Passe). Conveniência extra do dono: **"Resgatar tudo" na Home** (`claimAll.ts`), que recolhe de uma vez a Caça que encheu (ou a recompensa que espera), a Mineração e o Lenhador no teto, os canteiros prontos e o pedido concluído, pelas mesmas transições dos botões de cada tela (as regras de bolsa cheia continuam). Os não donos veem o botão bloqueado com a insígnia "Passe". Skin exclusiva `skin_golden_knight` no nível 30 da trilha.
 
-**Medição** (`npm run sim`, cenário P contra A, 20 seeds, mediana; o dono tem só as vantagens, a trilha não é resgatada):
+**Medição final** (`npm run sim` com `SIM_PASS_ONLY=1 SIM_PASS_CAP=6 SIM_PASS_MULT=1.10`, cenário P contra A, 20 seeds, 22 dias, mediana; o dono tem só as vantagens, a trilha não é resgatada):
 
 | Quando | Medida | Sem Passe | Com Passe | Dono |
 | --: | --- | --- | --- | --- |
-| dia 7 | materiais por dia (média dos dias 1-7) | 226 | 230 | +1,7% |
-| dia 7 | ouro por dia (média 1-7) | 874 | 922 | +5,5% |
-| dia 7 | nível / CP / andar | 39 / 736 / 30 | 40 / 783 / 30 | +1 nível / +6,4% / 0 |
-| dia 14 | materiais por dia (média dos dias 1-14) | 378 | 424 | +12,1% |
-| dia 14 | ouro por dia (média 1-14) | 623 | 698 | +12% |
-| dia 14 | nível / CP / andar | 48 / 1 189 / 50 | 49 / 1 209 / 50 | +1 nível / +1,7% / 0 |
+| dia 7 | materiais por dia (média dos dias 1-7) | 226 | 338 | +49,8% |
+| dia 7 | ouro por dia (média 1-7) | 874 | 1 033 | +18,3% |
+| dia 7 | nível / CP / andar | 39 / 736 / 30 | 42 / 847 / 30 | +3 níveis / +15% / 0 |
+| dia 14 | materiais por dia (média dos dias 1-14) | 378 | 622 | +64,4% |
+| dia 14 | ouro por dia (média 1-14) | 623 | 973 | +56,1% |
+| dia 14 | nível / CP / andar | 48 / 1 189 / 50 | 50 / 1 340 / 53 | +2 níveis / +12,7% / +3 andares |
 
-Marcos (dia, mediana): primeira peça, checkpoint 10, segunda zona, chefe 25 e chegada ao andar 50 (14): **0 dia de vantagem** em todos. O limite do diretor (até ~15% em materiais/dia e ~1 dia por marco) fica cumprido com ×1,10, então o multiplicador não precisou baixar. **O perk de Pedidos sozinho** (oferta + troca + 10% de XP, cenário D do `SIM_PASS_ONLY`): materiais/dia −3% a −8% (ruído), ouro/dia +3%, nível +0 a +1, nenhum marco adiantado (a chegada ao andar 50 não veio antes do dia 14), então o bônus de XP dos Pedidos continua em 10%. `SIM_PASS_ONLY=1 SIM_PASS_MULT=... SIM_PASS_BAG=... SIM_PASS_DELIV=... npm run sim` reproduz qualquer combinação.
+Marcos (dia, mediana, sem → com Passe): segunda zona 5 → 4, chefe 25 5 → 4, chegada ao andar 50 14 → 12, chefe 50 17,5 → 14. Metas do dono do jogo: materiais +40% a +60% (dia 7 cumpre; dia 14 passa um pouco), marcos 2 a 3 dias antes (a chegada ao 50 e o chefe 50 cumprem; segunda zona e chefe 25 só 1 dia, a resolução da mediana é de meio dia), nível +3 a +5 no dia 14 (+2, um pouco abaixo). Nenhum marco passa de 4 dias. Os números são ruidosos entre configurações vizinhas (a mediana de 20 seeds); a faixa acima é para comparar ordens de grandeza, não para ser asserção (por isso não há teste).
 
-Histórico: com o armazém de 12 h o dono ficava +285% (dia 7) e +183% (dia 14) em materiais por dia e 6 dias adiantado na chegada ao andar 50; o armazém explicava quase tudo (12 h sozinho: +260%; só o multiplicador de 1,10: +7%), por isso o perk saiu.
+**Grade medida** (armazém × multiplicador, ainda sem o bônus de ouro e com a bolsa de +5 fixa; materiais/dia na média dos dias 1-N, ouro/dia idem, marcos adiantados em dias):
+
+| Armazém / mult. | Materiais d7 | Materiais d14 | Ouro d7 / d14 | Nível d7 / d14 | 2ª zona | Chefe 25 | Andar 50 | Chefe 50 |
+| --- | --: | --: | --- | --- | --: | --: | --: | --: |
+| 5 h / 1,10 | +27% | +32% | +12% / +20% | +3 / +1 | 1 | 1 | 1,5 | 2,5 |
+| 5 h / 1,15 | +30% | +40% | +12% / +14% | +2 / +2 | 0 | 0 | 1 | −3,5 |
+| **6 h / 1,10** | **+53%** | **+69%** | +15% / +21% | +3 / +3 | 1 | 1 | 1 | 0,5 |
+| 6 h / 1,15 | +63% | +76% | +17% / +29% | +4 / +3 | 1 | 1 | 1,5 | 1,5 |
+| 7 h / 1,10 | +82% | +80% | +23% / +88% | +4 / +3 | 0,5 | 0,5 | 3 | 4,5 |
+| 7 h / 1,15 | +93% | +92% | +19% / +84% | +4 / +3 | 1 | 1 | 2,5 | 4,5 |
+
+Escolha: **6 h / ×1,10**, a mais perto do centro das metas em materiais e nível sem passar dos 4 dias (7 h já estoura os materiais e o chefe 50 em 4,5 dias). Com o bônus de ouro e a bolsa proporcional somados, a linha de 6 h / 1,10 acima é a medição final.
+
+**Histórico das tentativas.** (1) Armazém de **12 h** e ×1,10: dono +285% (dia 7) e +183% (dia 14) em materiais/dia e 6 dias na frente na chegada ao andar 50; o armazém explicava quase tudo (12 h sozinho +260%, só o multiplicador +7%), por isso saiu. (2) **Sem perk de armazém** (4 h para todos, ×1,10, +5 espaços, +10 no Baú): dono +1,7% / +12,1% em materiais, 0 dia em todos os marcos, nível +1 — o dono do jogo achou que "quase não há vantagem" no dia 14 e pediu uma vantagem clara. (3) A versão final acima. `SIM_PASS_ONLY=1 SIM_PASS_CAP=... SIM_PASS_MULT=... SIM_PASS_BAG=... SIM_PASS_DELIV=... SIM_NO_DELIV=1 npm run sim` reproduz qualquer combinação.
 
 ## 29. Trilha premium do Passe: exclusivos (10/10/2026)
 
@@ -570,3 +583,5 @@ A trilha premium foi reescrita, os 30 níveis à mão, sem material de Caça e s
 Fragmentos: 56 no total, como antes. Exclusivos: Emblema do Aventureiro (relíquia empilhável, +5% de XP do personagem em Masmorra, Caça e Pedidos, +5% de ouro dentro do teto de 25% e +2% de dano final; não se forja, o mercador não compra, descarta-se; fica em 28 a 32% do valor de combate da relíquia de combate mais fraca, ver `ITEM_BALANCE_AUDIT.md` L); Selo do Ferreiro (3 por temporada, forja Épica ou melhor, 0,6 lendárias esperadas por temporada); Escritura do Baú (+5 espaços no Baú cada, até +20 no total, campo próprio `stashBonusSlots`); Moldura Dourada (cosmético de CSS, liga e desliga onde se escolhe o título). O Emblema não é afetado pelo Passe e o Passe não vende poder de combate. Valores de referência da trilha: `ITEM_BALANCE_AUDIT.md` L.
 
 O Emblema não multiplica a Poção de XP (item fixo) nem o XP do Passe; só o XP do personagem das três fontes de idle/progressão pedidas.
+
+O nível 30 agora dá três coisas: o Emblema, o título e a skin **Cavaleiro Dourado** (`skin_golden_knight`, a ficha `knight_golden.png`, mesmo layout 1024x1024 e mesmas linhas de animação do cavaleiro, então vale a mesma `HERO_ART`). A skin é uma escolha cosmética, não do equipamento (a regra "armadura não muda o sprite" continua): só quem tem o Passe e a skin escolhe, em Personagem; um save com skin desconhecida, não possuída ou sem Passe carrega com o cavaleiro padrão. Desenhada na Masmorra, na cena da Caça, no card do herói da Home, no avatar da barra e no retrato de Personagem.

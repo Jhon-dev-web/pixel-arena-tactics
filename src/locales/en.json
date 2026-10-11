@@ -873,6 +873,8 @@
     "subLevelNext": "{n} of {x} wins to the next level",
     "subLevelExplain": "Winning over and over unlocks the zone's next level, with a better chance of refined and noble materials.",
     "capLine": "Stores up to {n} h",
+    "capLinePass": "Stores up to {n} h (with the Pass: {p} h)",
+    "capLineActive": "Stores up to {n} h (Pass active)",
     "startLocked": "Unlocks at Floor {n}",
     "startNeedCp": "Requires {n} CP",
     "startBusy": "Hero busy with another activity",
@@ -1157,7 +1159,7 @@
     "perkLuck": "+{n}% materials",
     "perkDeliveries": "+1 order and +1 swap per day",
     "perkRepair": "-{n}% repair cost",
-    "perkBag": "+{n} inventory slots",
+    "perkBag": "+{n}% inventory space",
     "levelLabel": "Level {n} / {m}",
     "xpProgress": "{cur} / {need} XP",
     "activateTest": "Activate (test)",
@@ -1180,9 +1182,14 @@
     "perkOn": "active",
     "perkOff": "locked",
     "perkStashSub": "Camp stash",
+    "perkGold": "+{n}% gold",
+    "perkGoldSub": "Dungeon, Hunting and Orders",
+    "hlSkin": "An exclusive hero look: golden armour and a crimson plume. Purely cosmetic; pick it under Character.",
+    "perkStorage": "{n} h storage",
+    "perkStorageSub": "Your hero keeps gathering for longer while you are away",
     "perkLuckSub": "Hunting, Mining and Woodcutting",
     "perkDeliveriesSub": "+{n}% delivery XP",
-    "perkBagSub": "Inventory",
+    "perkBagSub": "At least {n} slots",
     "perkRepairSub": "Forge",
     "trackTitle": "Season track",
     "goMyLevel": "Go to my level",
@@ -1205,7 +1212,7 @@
     "claimAllDone": "{n} rewards claimed.",
     "claimAllBlocked": "{c} claimed. {n} item rewards did not fit the inventory and are still waiting: make room and try again.",
     "ownedNote": "Adventurer's Pass active. Thanks for playing!",
-    "buyBlurb": "One-time purchase, never expires: a premium track with exclusive items, more materials, extra orders, inventory and stash slots and cheaper repairs.",
+    "buyBlurb": "One-time purchase, never expires: a premium track with exclusive items, {h} h storage, more materials, more gold, extra orders, more inventory and stash space and cheaper repairs.",
     "close": "Close",
     "rewardGold": "Gold",
     "rewardShards": "Shards"
@@ -1229,7 +1236,11 @@
     "req_100_floors_legend": "Defeat the Dungeon's Floor 100 boss",
     "frames": "Portrait frames",
     "frame_season_gold": "Season Gold Frame",
-    "frame_season_gold_d": "A gold frame around the hero portrait. Purely cosmetic."
+    "frame_season_gold_d": "A gold frame around the hero portrait. Purely cosmetic.",
+    "skins": "Hero look",
+    "skin_default": "Knight (default)",
+    "skin_golden_knight": "Golden Knight",
+    "skin_golden_knight_d": "Golden armour and a crimson plume. Purely cosmetic."
   },
   "gathering": {
     "rate": "Yield: {n} units/h · {xp} XP/h",
@@ -1245,7 +1256,7 @@
     "switch": "Switch to this tier",
     "levelsToGo": "{n} levels to go",
     "switchHint": "Switching tier collects what has piled up before starting the new one.",
-    "passNextSession": "The Pass's materials bonus applies from the next session."
+    "passNextSession": "The Pass's longer storage and bonus apply from the next session."
   },
   "stash": {
     "title": "Stash",
@@ -1289,5 +1300,25 @@
     "explain": "Prices are low on purpose: this is for making room, not for earning gold. The budget renews at midnight.",
     "nothing": "Nothing in the inventory the merchant buys.",
     "confirmShort": "Sell all?"
+  },
+  "claimAll": {
+    "title": "Everything claimed",
+    "button": "Claim all",
+    "hint": "Claims everything that has finished at once: hunting, mining, woodcutting, ready garden plots and the delivery order",
+    "lockedHint": "Adventurer Pass perk: claims everything that has finished with one tap",
+    "passBadge": "Pass",
+    "nothing": "Nothing has finished to claim right now.",
+    "ok": "Nice",
+    "delivery": "Delivery order",
+    "deliveryDetail": "{g} gold · {x} XP · {s} shards",
+    "hunt": "Hunting",
+    "huntDetail": "{g} gold · {x} XP · {n} materials",
+    "leftBehind": "{n} left behind (no room)",
+    "held": "unique pieces are waiting for room",
+    "mining": "Mining",
+    "woodcutting": "Woodcutting",
+    "garden": "Garden",
+    "gardenDetail": "{n} plots harvested",
+    "gardenBlocked": "{n} waiting for room"
   }
 }

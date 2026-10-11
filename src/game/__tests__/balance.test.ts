@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { computeCP, defaultSave, normalizeSave } from '../engine';
 import { applyHuntClaim, applyHuntStart, applyHuntStop, planHuntClaim } from '../huntLifecycle';
-import { DEFAULT_INVENTORY_CAPACITY, inventoryCapacity, inventorySlotsUsed } from '../inventory';
+import { DEFAULT_INVENTORY_CAPACITY, inventoryCapacity, inventorySlotsUsed, passBagBonus } from '../inventory';
 import { HUNTING_ZONES } from '../huntingZones';
 import { dungeonEnemyKindForFloor, MAX_DUNGEON_FLOOR, recommendedCpForFloor } from '../dungeon';
 import { RECOMMENDED_CP_BY_FLOOR } from '../recommendedCp';
@@ -47,8 +47,8 @@ describe('Hunt loot goes into the inventory (no separate container)', () => {
     const base = defaultSave();
     const pass = { ...base, hasBattlePass: true };
     expect(inventoryCapacity(base, NOW)).toBe(DEFAULT_INVENTORY_CAPACITY);
-    expect(inventoryCapacity(pass, NOW)).toBe(DEFAULT_INVENTORY_CAPACITY + T.battlePass.bagBonusSlots);
-    expect(inventoryCapacity(pass, NOW + 400 * 24 * HOUR)).toBe(DEFAULT_INVENTORY_CAPACITY + T.battlePass.bagBonusSlots);
+    expect(inventoryCapacity(pass, NOW)).toBe(DEFAULT_INVENTORY_CAPACITY + passBagBonus(DEFAULT_INVENTORY_CAPACITY));
+    expect(inventoryCapacity(pass, NOW + 400 * 24 * HOUR)).toBe(DEFAULT_INVENTORY_CAPACITY + passBagBonus(DEFAULT_INVENTORY_CAPACITY));
     expect(normalizeSave(wire(pass)).inventoryBonusSlots).toBe(0);
   });
 });

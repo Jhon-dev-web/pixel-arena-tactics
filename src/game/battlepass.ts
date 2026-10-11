@@ -102,7 +102,7 @@ const PREMIUM_TRACK: BattlePassReward[] = [
   consumable('forge_seal', 1), // 27
   gold(5000),
   shards(15),
-  { kind: 'relic', id: 'season_emblem', amount: 1, also: [cosmetic('title_season_lv30')] }, // 30: the Season Relic and the exclusive title
+  { kind: 'relic', id: 'season_emblem', amount: 1, also: [cosmetic('title_season_lv30'), cosmetic('skin_golden_knight')] }, // 30: the Season Relic, the exclusive title and the Golden Knight skin
 ];
 
 export const BATTLE_PASS_TRACK: BattlePassLevelDef[] = Array.from({ length: MAX_BATTLE_PASS_LEVEL }, (_, i) => ({

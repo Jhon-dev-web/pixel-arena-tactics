@@ -873,6 +873,8 @@
     "subLevelNext": "{n} de {x} vitórias para o próximo nível",
     "subLevelExplain": "Vencer seguidas vezes libera o próximo nível da zona, com mais chance de refinados e nobres.",
     "capLine": "Acumula até {n} h",
+    "capLinePass": "Acumula até {n} h (com o Passe: {p} h)",
+    "capLineActive": "Acumula até {n} h (Passe ativo)",
     "startLocked": "Destrava no Andar {n}",
     "startNeedCp": "Requer {n} CP",
     "startBusy": "Herói ocupado em outra atividade",
@@ -1157,7 +1159,7 @@
     "perkLuck": "+{n}% de materiais",
     "perkDeliveries": "+1 pedido e +1 troca por dia",
     "perkRepair": "-{n}% no custo de reparo",
-    "perkBag": "+{n} espaços no inventário",
+    "perkBag": "+{n}% de espaço no inventário",
     "levelLabel": "Nível {n} / {m}",
     "xpProgress": "{cur} / {need} XP",
     "activateTest": "Ativar (teste)",
@@ -1180,9 +1182,14 @@
     "perkOn": "ativo",
     "perkOff": "bloqueado",
     "perkStashSub": "Baú do acampamento",
+    "perkGold": "+{n}% de ouro",
+    "perkGoldSub": "Masmorra, Caça e Pedidos",
+    "hlSkin": "Aparência exclusiva do herói: armadura dourada e pluma carmesim. Só enfeite; escolha em Personagem.",
+    "perkStorage": "Armazém de {n} h",
+    "perkStorageSub": "Seu herói acumula por mais tempo enquanto você está fora",
     "perkLuckSub": "Caça, Mineração e Lenhador",
     "perkDeliveriesSub": "+{n}% de XP nas entregas",
-    "perkBagSub": "Inventário",
+    "perkBagSub": "No mínimo {n} espaços",
     "perkRepairSub": "Forja",
     "trackTitle": "Trilha da temporada",
     "goMyLevel": "Ir para o meu nível",
@@ -1205,7 +1212,7 @@
     "claimAllDone": "{n} recompensas resgatadas.",
     "claimAllBlocked": "{c} resgatadas. {n} com item não couberam no inventário e continuam esperando: abra espaço e tente de novo.",
     "ownedNote": "Passe de Aventureiro ativo. Obrigado por jogar!",
-    "buyBlurb": "Compra única, sem validade: trilha premium com itens exclusivos, mais materiais, pedidos extras, espaços no inventário e no Baú e reparo mais barato.",
+    "buyBlurb": "Compra única, sem validade: trilha premium com itens exclusivos, armazém de {h} h, mais materiais, mais ouro, pedidos extras, mais espaço no inventário e no Baú e reparo mais barato.",
     "close": "Fechar",
     "rewardGold": "Ouro",
     "rewardShards": "Fragmentos"
@@ -1229,7 +1236,11 @@
     "req_100_floors_legend": "Derrote o chefão do Andar 100 da Masmorra",
     "frames": "Molduras do retrato",
     "frame_season_gold": "Moldura Dourada da Temporada",
-    "frame_season_gold_d": "Uma moldura de ouro em volta do retrato do herói. Só enfeite."
+    "frame_season_gold_d": "Uma moldura de ouro em volta do retrato do herói. Só enfeite.",
+    "skins": "Aparência do herói",
+    "skin_default": "Cavaleiro (padrão)",
+    "skin_golden_knight": "Cavaleiro Dourado",
+    "skin_golden_knight_d": "Armadura dourada e pluma carmesim. Só enfeite."
   },
   "gathering": {
     "rate": "Rendimento: {n} unidades/h · {xp} XP/h",
@@ -1245,7 +1256,7 @@
     "switch": "Trocar para este tier",
     "levelsToGo": "faltam {n} níveis",
     "switchHint": "Trocar de tier coleta o que já foi acumulado antes de começar o novo.",
-    "passNextSession": "O bônus de materiais do Passe vale a partir da próxima sessão."
+    "passNextSession": "O armazém maior e o bônus do Passe valem a partir da próxima sessão."
   },
   "stash": {
     "title": "Baú",
@@ -1289,5 +1300,25 @@
     "explain": "Preços baixos de propósito: é para abrir espaço, não para ganhar ouro. O orçamento renova à meia-noite.",
     "nothing": "Nada no inventário que o mercador compre.",
     "confirmShort": "Vender tudo?"
+  },
+  "claimAll": {
+    "title": "Tudo resgatado",
+    "button": "Resgatar tudo",
+    "hint": "Resgata de uma vez tudo o que já terminou: caça, mineração, lenhador, canteiros prontos e o pedido",
+    "lockedHint": "Exclusivo do Passe de Aventureiro: resgata tudo o que terminou com um toque",
+    "passBadge": "Passe",
+    "nothing": "Nada terminado para resgatar agora.",
+    "ok": "Beleza",
+    "delivery": "Pedido entregue",
+    "deliveryDetail": "{g} de ouro · {x} de XP · {s} fragmentos",
+    "hunt": "Caça",
+    "huntDetail": "{g} de ouro · {x} de XP · {n} materiais",
+    "leftBehind": "{n} sem espaço ficaram para trás",
+    "held": "peças únicas aguardam espaço",
+    "mining": "Mineração",
+    "woodcutting": "Lenhador",
+    "garden": "Horta",
+    "gardenDetail": "{n} canteiros colhidos",
+    "gardenBlocked": "{n} aguardam espaço"
   }
 }

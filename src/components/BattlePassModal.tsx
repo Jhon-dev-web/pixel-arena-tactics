@@ -5,7 +5,9 @@ import { battlePassXpForLevel, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/e
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
 import { ADVENTURER_PASS_TESTABLE, ownsAdventurerPass } from '../game/entitlements';
 import { seasonNumber, seasonRemainingMs } from '../game/seasons';
-import { FRAMES, getFrameDef, STASH_BONUS_CAP, STASH_DEED_SLOTS } from '../game/seasonItems';
+import { artGeometry, HERO_ART } from '../game/huntingZones';
+import { playerSpriteUrl } from '../game/sprites';
+import { FRAMES, getSkinDef, getFrameDef, STASH_BONUS_CAP, STASH_DEED_SLOTS } from '../game/seasonItems';
 import { MATERIALS } from '../game/materials';
 import { getConsumable } from '../game/consumables';
 import { getGem } from '../game/gems';
@@ -29,6 +31,7 @@ interface RewardView {
   amountText: string; // "x3" / "+500" / ""
   src?: string; // pixel art
   frame?: boolean; // the gold portrait frame has no art: it is drawn
+  skin?: string; // a hero skin is shown as the idle frame of its sheet
   fallback: ReactNode;
 }
 
@@ -57,13 +60,33 @@ function rewardView(reward: BattlePassReward): RewardView {
     case 'cosmetic': {
       const title = reward.id ? getTitleDef(reward.id) : undefined;
       const frame = reward.id ? getFrameDef(reward.id) : undefined;
+      const skin = reward.id ? getSkinDef(reward.id) : undefined;
+      if (skin) return { name: t(`titles.${skin.nameKey}`), amountText: '', skin: playerSpriteUrl(skin.id), fallback: '' };
       if (frame) return { name: t(`titles.${frame.nameKey}`), amountText: '', frame: true, fallback: '' };
       return { name: title ? t(`titles.${title.nameKey}`) : t('battlePass.cosmeticReward'), amountText: '', src: title?.iconUrl, fallback: '' };
     }
   }
 }
 
-function RewardArt({ view, big }: { view: RewardView; big?: boolean }) {
+// The first idle frame of a hero sheet, cropped to the drawn art (HERO_ART) so the figure fills a square of `size` px.
+function SkinPortrait({ src, size }: { src: string; size: number }) {
+  const g = artGeometry(HERO_ART);
+  const k = 0.95 / g.size;
+  const style: CSSProperties = {
+    width: size,
+    height: size,
+    backgroundImage: `url(${src})`,
+    backgroundSize: `${400 * k}% ${400 * k}%`,
+    backgroundPosition: `${size * (0.5 - g.cx * k)}px ${size * (0.5 - g.cy * k)}px`,
+    backgroundRepeat: 'no-repeat',
+    imageRendering: 'pixelated',
+    display: 'inline-block',
+  };
+  return <span className="ap-skin-art" style={style} role="img" aria-hidden="true" />;
+}
+
+function RewardArt({ view, big, size }: { view: RewardView; big?: boolean; size?: number }) {
+  if (view.skin) return <SkinPortrait src={view.skin} size={size ?? (big ? 64 : 32)} />;
   if (view.frame) return <span className={`ap-frame-preview portrait-frame frame-season-gold${big ? ' big' : ''}`} aria-hidden />;
   if (view.src) return <img className={`ap-art${big ? ' big' : ''}`} src={view.src} alt="" draggable={false} />;
   return <span className="ap-art-fallback">{view.fallback}</span>;
@@ -83,12 +106,14 @@ function RewardCard({
   reward,
   state,
   featured,
+  supreme,
   track,
   onClaim,
 }: {
   reward: BattlePassReward;
   state: CardState;
   featured: boolean;
+  supreme?: boolean; // the level-30 premium card: three rewards, the biggest card of the track
   track: 'free' | 'premium';
   onClaim: () => void;
 }) {
@@ -98,7 +123,7 @@ function RewardCard({
   const title = [view.name, ...extras.map((e) => e.name)].join(' + ');
   return (
     <button
-      className={`ap-card ${track} ${state}${featured ? ' featured' : ''}`}
+      className={`ap-card ${track} ${state}${featured ? ' featured' : ''}${supreme ? ' supreme' : ''}`}
       onClick={claimable ? onClaim : undefined}
       aria-disabled={!claimable}
       tabIndex={claimable ? 0 : -1}
@@ -106,7 +131,8 @@ function RewardCard({
       data-ui
     >
       <span className="ap-card-art">
-        <RewardArt view={view} big={featured} />
+        <RewardArt view={view} big={featured} size={supreme ? 52 : undefined} />
+        {supreme && extras.filter((e) => e.skin).map((e) => <RewardArt key={e.name} view={e} big size={80} />)}
       </span>
       <span className="ap-card-text">
         <span className="ap-card-name">{view.name}</span>
@@ -159,6 +185,8 @@ function seasonHighlights(): Highlight[] {
       line = t('battlePass.hlSeal', { rarity: t(`rarity.${RARITIES[floor].nameKey}`), pct: Math.round((top.chance / total) * 100), top: t(`rarity.${top.nameKey}`) });
     } else if (reward.kind === 'consumable' && reward.id === 'stash_deed') {
       line = t('battlePass.hlDeed', { n: STASH_DEED_SLOTS, cap: STASH_BONUS_CAP });
+    } else if (reward.kind === 'cosmetic' && getSkinDef(reward.id ?? '')) {
+      line = t('battlePass.hlSkin');
     } else if (reward.kind === 'cosmetic' && getFrameDef(reward.id ?? '')) {
       line = t('battlePass.hlFrame');
     } else if (reward.kind === 'cosmetic') {
@@ -304,9 +332,11 @@ export default function BattlePassModal({
   };
 
   const perks: { key: string; icon: string; label: string; sub: string }[] = [
+    { key: 'storage', icon: '/assets/icons/expedition_ticket_4h.png', label: t('battlePass.perkStorage', { n: T.battlePass.capHours }), sub: t('battlePass.perkStorageSub') },
+    { key: 'gold', icon: '/assets/icons/gold.png', label: t('battlePass.perkGold', { n: Math.round(T.battlePass.goldBonus * 100) }), sub: t('battlePass.perkGoldSub') },
     { key: 'luck', icon: '/assets/icons/ore_gold.png', label: t('battlePass.perkLuck', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) }), sub: t('battlePass.perkLuckSub') },
     { key: 'orders', icon: '/assets/icons/nav_quests.png', label: t('battlePass.perkDeliveries'), sub: t('battlePass.perkDeliveriesSub', { n: Math.round(T.deliveries.passXpBonus * 100) }) },
-    { key: 'bag', icon: '/assets/icons/nav_bag.png', label: t('battlePass.perkBag', { n: T.battlePass.bagBonusSlots }), sub: t('battlePass.perkBagSub') },
+    { key: 'bag', icon: '/assets/icons/nav_bag.png', label: t('battlePass.perkBag', { n: Math.round(T.battlePass.bagBonusPct * 100) }), sub: t('battlePass.perkBagSub', { n: T.battlePass.bagBonusSlots }) },
     { key: 'stash', icon: '/assets/icons/camp_stash.png', label: t('battlePass.perkStash', { n: T.battlePass.stashBonusSlots }), sub: t('battlePass.perkStashSub') },
     { key: 'repair', icon: '/assets/icons/whetstone_oil.png', label: t('battlePass.perkRepair', { n: Math.round(T.battlePass.repairDiscount * 100) }), sub: t('battlePass.perkRepairSub') },
   ];
@@ -387,7 +417,7 @@ export default function BattlePassModal({
                 const reached = lvl.level <= level;
                 return (
                   <div
-                    className={`ap-col${reached ? ' reached' : ''}${lvl.level === level ? ' current' : ''}${featured ? ' featured' : ''}`}
+                    className={`ap-col${reached ? ' reached' : ''}${lvl.level === level ? ' current' : ''}${featured ? ' featured' : ''}${lvl.level === MAX_BATTLE_PASS_LEVEL ? ' supreme' : ''}`}
                     data-level={lvl.level}
                     key={lvl.level}
                     style={{ '--ap-i': lvl.level } as CSSProperties}
@@ -396,7 +426,7 @@ export default function BattlePassModal({
                       <span className="ap-lvl-num">{lvl.level}</span>
                     </div>
                     <RewardCard reward={lvl.free} state={cardState(lvl.level, 'free')} featured={featured} track="free" onClaim={() => onClaim(lvl.level, 'free')} />
-                    <RewardCard reward={lvl.premium} state={cardState(lvl.level, 'premium')} featured={featured} track="premium" onClaim={() => onClaim(lvl.level, 'premium')} />
+                    <RewardCard reward={lvl.premium} state={cardState(lvl.level, 'premium')} featured={featured} supreme={lvl.level === MAX_BATTLE_PASS_LEVEL} track="premium" onClaim={() => onClaim(lvl.level, 'premium')} />
                   </div>
                 );
               })}
@@ -447,7 +477,7 @@ export default function BattlePassModal({
               <button className="battle-btn ap-buy-btn" onClick={onActivate} disabled={!ADVENTURER_PASS_TESTABLE} data-ui>
                 {ADVENTURER_PASS_TESTABLE ? t('battlePass.activateTest') : t('battlePass.comingSoon')}
               </button>
-              <span className="ap-buy-blurb">{t('battlePass.buyBlurb')}</span>
+              <span className="ap-buy-blurb">{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
             </div>
           )}
         </footer>

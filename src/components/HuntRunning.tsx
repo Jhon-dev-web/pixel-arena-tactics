@@ -80,7 +80,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
           <div className="hunt-run-stage">
             <HuntBattleView
               zone={zone}
-              playerSpriteUrl={playerSpriteUrl()}
+              playerSpriteUrl={playerSpriteUrl(save.activeSkin)}
               heroName={heroName}
               monsterName={t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)}
               monsterLevel={status.ceilingSubLevel}

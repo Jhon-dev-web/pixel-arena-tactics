@@ -7,6 +7,11 @@ import { withPermanentPassWindow } from '../huntSession';
 import { deliveryXp, offerCount, rerollCap } from '../deliveries';
 import { HUNTING_ZONES } from '../huntingZones';
 import { stashCapacity, STASH_BASE_SLOTS } from '../stash';
+import { passBagBonus } from '../inventory';
+import { goldMultiplier } from '../buffs';
+import { deliveryGold } from '../deliveries';
+import { merchantPrice } from '../merchant';
+import { GOLD_BONUS_CAP } from '../rarity';
 import { bagFreeSlots, inventoryCapacity, inventorySlotsUsed, DEFAULT_INVENTORY_CAPACITY } from '../inventory';
 import { repairCost } from '../gear';
 import T from '../tunables';
@@ -179,11 +184,16 @@ describe('season settlement (battlepass.ts settleSeason)', () => {
 describe('perks of the Pass: convenience, not power', () => {
   const owner = (s: SaveData = defaultSave()): SaveData => ({ ...s, hasBattlePass: true });
 
-  it('the final numbers: +10 % materials, +5 bag slots, +10 stash slots, -20 % repair, +1 offer, +1 reroll, +10 % delivery XP; no storage perk', () => {
-    expect('capHours' in T.battlePass).toBe(false);
+  it('the final numbers: a longer storage cap (base stays 4 h), +10 stash slots, +5 bag slots, -20 % repair, +1 offer, +1 reroll, +10 % delivery XP', () => {
+    // Measured advantage of an owner (npm run sim, SIM_PASS_ONLY; see docs/BALANCE_CHANGES.md section 28): about +40-60 % materials per day at days 7 / 14
+    // and 2-3 days earlier on the milestones. A comment, not an assertion: the sim is not part of the test suite.
+    expect(T.battlePass.capHours).toBeGreaterThan(4);
+    expect(T.battlePass.capHours).toBeLessThanOrEqual(8);
     expect(T.battlePass.stashBonusSlots).toBe(10);
     expect(T.battlePass.dropRateMultiplier).toBeCloseTo(1.1, 9);
-    expect(T.battlePass.bagBonusSlots).toBe(5);
+    expect(T.battlePass.bagBonusSlots).toBe(5); // the floor of the bag perk
+    expect(T.battlePass.bagBonusPct).toBeCloseTo(0.2, 9);
+    expect(T.battlePass.goldBonus).toBeCloseTo(0.1, 9);
     expect(T.battlePass.repairDiscount).toBeCloseTo(0.2, 9);
     expect(offerCount(true) - offerCount(false)).toBe(1);
     expect(rerollCap(true) - rerollCap(false)).toBe(1);
@@ -192,7 +202,7 @@ describe('perks of the Pass: convenience, not power', () => {
 
   it('every consumer reads ownership: bag, repair, deliveries', () => {
     const o = owner();
-    expect(inventoryCapacity(o)).toBe(DEFAULT_INVENTORY_CAPACITY + 5);
+    expect(inventoryCapacity(o)).toBe(DEFAULT_INVENTORY_CAPACITY + 6); // 20% of 26, rounded up
     expect(inventoryCapacity(defaultSave())).toBe(DEFAULT_INVENTORY_CAPACITY);
     expect(stashCapacity(o)).toBe(stashCapacity(defaultSave()) + 10);
     expect(stashCapacity({ ...o, stashBonusSlots: 5 })).toBe(STASH_BASE_SLOTS + 10 + 5); // stacks with deeds
@@ -200,8 +210,9 @@ describe('perks of the Pass: convenience, not power', () => {
     expect(effectiveRepairCost(defaultSave(), 3)).toBe(repairCost(3));
   });
 
-  it('Hunting: an owner and a non-owner have the same storage cap (the zone cap); the window never expires', () => {
-    const zone = HUNTING_ZONES[0];
+  it('Hunting: an owner stores up to the Pass cap where the zone caps lower, a non-owner the zone cap; the window never expires', () => {
+    const zone = HUNTING_ZONES.find((z) => z.offlineCapHours < T.battlePass.capHours) ?? HUNTING_ZONES[0];
+    const ownerCap = Math.max(zone.offlineCapHours, T.battlePass.capHours);
     const start = 5_000_000_000;
     const mk = (own: boolean) => {
       const s: SaveData = { ...defaultSave(), hasBattlePass: own, activeHuntingZone: zone.id, activeHuntingDepth: 'shallow', huntingOfflineStart: start };
@@ -209,8 +220,13 @@ describe('perks of the Pass: convenience, not power', () => {
     };
     const far = start + 40 * HOUR;
     expect(computeHuntingStatus(mk(false), far).capMs).toBe(zone.offlineCapHours * HOUR);
-    expect(computeHuntingStatus(mk(true), far).capMs).toBe(zone.offlineCapHours * HOUR);
-    expect(computeHuntingStatus(mk(true), far).pendingMs).toBe(zone.offlineCapHours * HOUR);
+    expect(computeHuntingStatus(mk(true), far).capMs).toBe(ownerCap * HOUR);
+    expect(computeHuntingStatus(mk(true), far).pendingMs).toBe(ownerCap * HOUR);
+    // a session started without the Pass keeps the zone cap even if the Pass is bought mid-session
+    const s0: SaveData = { ...defaultSave(), activeHuntingZone: zone.id, activeHuntingDepth: 'shallow', huntingOfflineStart: start };
+    const without = { ...s0, huntSession: buildHuntSession(s0, start) };
+    const bought = purchaseAdventurerPass(without, start + HOUR).save;
+    expect(computeHuntingStatus(bought, far).capMs).toBe(zone.offlineCapHours * HOUR);
     expect(buildHuntSession(mk(true), start).pass).toEqual([{ from: start, to: null }]);
     expect(buildHuntSession(mk(false), start).pass).toEqual([]);
   });
@@ -231,23 +247,77 @@ describe('perks of the Pass: convenience, not power', () => {
   });
 });
 
+describe('Pass bag perk: +20 % of the capacity, rounded up, never fewer than 5', () => {
+  it('26 -> +6, 60 -> +12, 100 -> +20, and a tiny bag still gets the 5-slot floor', () => {
+    expect(passBagBonus(26)).toBe(6);
+    expect(passBagBonus(60)).toBe(12);
+    expect(passBagBonus(100)).toBe(20);
+    expect(passBagBonus(10)).toBe(5);
+    for (const cap of [26, 30, 60, 100]) {
+      const s: SaveData = { ...defaultSave(), inventoryCapacity: cap, hasBattlePass: true };
+      expect(inventoryCapacity(s)).toBe(cap + passBagBonus(cap));
+      expect(inventoryCapacity({ ...s, hasBattlePass: false })).toBe(cap);
+      expect(passBagBonus(cap)).toBeGreaterThanOrEqual(5); // an owner never has fewer slots than the flat +5 of before
+    }
+    // converted Pouch slots count as capacity
+    expect(inventoryCapacity({ ...defaultSave(), inventoryBonusSlots: 4, hasBattlePass: true })).toBe(30 + passBagBonus(30));
+  });
+});
+
+describe('Pass gold bonus: +10 % in the Dungeon, Hunting and delivery orders, added (never multiplied)', () => {
+  it('goldMultiplier adds the Pass share to the gear bonus (inside its own cap) and the Fortune tonic', () => {
+    const g = T.battlePass.goldBonus;
+    expect(goldMultiplier(0, false, g)).toBeCloseTo(1.1, 9);
+    expect(goldMultiplier(GOLD_BONUS_CAP, false, g)).toBeCloseTo(1 + GOLD_BONUS_CAP / 100 + g, 9);
+    expect(goldMultiplier(GOLD_BONUS_CAP, true, g)).toBeCloseTo(1 + GOLD_BONUS_CAP / 100 + T.tonics.fortuneGoldPct + g, 9);
+    expect(goldMultiplier(10, false)).toBeCloseTo(1.1, 9); // a non-owner passes nothing
+  });
+
+  it('Hunting freezes it into the session at the start and pays it on top of the gear bonus; a non-owner session has none', () => {
+    const zone = HUNTING_ZONES[0];
+    const start = 5_000_000_000;
+    const mk = (own: boolean) => {
+      const s: SaveData = { ...defaultSave(), hasBattlePass: own, activeHuntingZone: zone.id, activeHuntingDepth: 'shallow', huntingOfflineStart: start };
+      return { ...s, huntSession: buildHuntSession(s, start) };
+    };
+    expect(mk(true).huntSession!.passGold).toBeCloseTo(10, 9);
+    expect(mk(false).huntSession!.passGold).toBeUndefined();
+    const at = start + 3 * HOUR;
+    const plain = computeHuntingStatus(mk(false), at);
+    const pass = computeHuntingStatus(mk(true), at);
+    expect(plain.goldReady).toBeGreaterThan(0);
+    // the same fights (gold does not change them): about +10 % of the plain Gold
+    expect(pass.goldReady / plain.goldReady).toBeGreaterThan(1.07);
+    expect(pass.goldReady / plain.goldReady).toBeLessThan(1.13);
+    expect(pass.xpReady).toBe(plain.xpReady);
+    // survives a save / load
+    expect(normalizeSave(wire(mk(true))).huntSession!.passGold).toBeCloseTo(10, 9);
+  });
+
+  it('delivery orders: the owner is paid +10 % gold, decided at accept and frozen; the merchant is not included', () => {
+    expect(deliveryGold({ gold: 1000 }, true)).toBe(1100);
+    expect(deliveryGold({ gold: 1000 }, false)).toBe(1000);
+    expect(merchantPrice('material', 'iron')).toBe(merchantPrice('material', 'iron')); // selling stays as it is (no Pass term in merchant.ts)
+  });
+});
+
 describe('in-flight Hunting sessions started under the longer Pass cap', () => {
-  it('a running session saved by the old model keeps its longer cap; a new one and a snapshot-less one use the zone cap', () => {
+  it('a running session saved by the first Pass model keeps its 24 h cap; a new owner session has the Pass cap; a snapshot-less one the zone cap', () => {
     const zone = HUNTING_ZONES[0];
     const start = Date.now() - 40 * HOUR;
     const base: SaveData = { ...defaultSave(), hasBattlePass: true, activeHuntingZone: zone.id, activeHuntingDepth: 'shallow', huntingOfflineStart: start };
     const fresh = buildHuntSession(base, start);
     expect(fresh.storageFlat).toBe(true);
-    expect(fresh.legacyPassCapHours).toBeUndefined();
+    expect(fresh.passCapHours).toBe(T.battlePass.capHours); // frozen at the start
     // what the old model wrote: a Pass window, no storageFlat marker
-    const oldRaw = wire({ ...base, huntSession: { ...fresh, storageFlat: undefined, pass: [{ from: start, to: null }] } });
+    const oldRaw = wire({ ...base, huntSession: { ...fresh, storageFlat: undefined, passCapHours: undefined, pass: [{ from: start, to: null }] } });
     const loaded = normalizeSave(oldRaw);
-    expect(loaded.huntSession!.legacyPassCapHours).toBe(24);
+    expect(loaded.huntSession!.passCapHours).toBe(24);
     expect(computeHuntingStatus(loaded, Date.now()).capMs).toBe(24 * HOUR);
     // saved again, it is still that session (the marker survives)
-    expect(normalizeSave(wire(loaded)).huntSession!.legacyPassCapHours).toBe(24);
+    expect(normalizeSave(wire(loaded)).huntSession!.passCapHours).toBe(24);
     // a session of the current model is the zone cap
-    expect(computeHuntingStatus(normalizeSave(wire({ ...base, huntSession: fresh })), Date.now()).capMs).toBe(zone.offlineCapHours * HOUR);
+    expect(computeHuntingStatus(normalizeSave(wire({ ...base, huntSession: fresh })), Date.now()).capMs).toBe(Math.max(zone.offlineCapHours, T.battlePass.capHours) * HOUR);
     // no snapshot at all: rebuilt on the base cap
     const none = normalizeSave(wire({ ...base, huntSession: null }));
     expect(computeHuntingStatus(none, Date.now()).capMs).toBe(zone.offlineCapHours * HOUR);

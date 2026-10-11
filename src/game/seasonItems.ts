@@ -1,4 +1,5 @@
 import type { SaveData } from './engine';
+import { ownsAdventurerPass } from './entitlements';
 
 // What only the Adventurer Pass track gives (battlepass.ts): the Stash Deed, the portrait frame. (The Season Relic is gear.ts season_emblem and the
 // Blacksmith's Seal is consumed by gearInstances.applyForge.) Everything here is a pure SaveData transition.
@@ -49,6 +50,29 @@ export function sanitizeActiveFrame(raw: unknown, cosmetics: string[]): string |
 export function applySelectFrame(save: SaveData, id: string | null): SaveData | null {
   if (id !== null && (!getFrameDef(id) || !save.cosmetics.includes(id))) return null;
   return { ...save, activeFrame: id };
+}
+
+// ---- Hero skins: a recolor of the hero sheet (same 1024x1024 layout and animation rows as the knight, so it is a drop-in). A deliberate cosmetic choice, never
+// gear-driven (armour does not change the sprite, see sprites.ts). Earned on the premium track, owner-only to select, persisted in the save.
+export interface SkinDef {
+  id: string;
+  nameKey: string;
+  descKey: string;
+}
+
+export const SKINS: SkinDef[] = [{ id: 'skin_golden_knight', nameKey: 'skin_golden_knight', descKey: 'skin_golden_knight_d' }];
+
+export const getSkinDef = (id: string): SkinDef | undefined => SKINS.find((s) => s.id === id);
+
+// Only a skin the hero owns can be active; anything else (unknown, not owned, no Pass) loads as the default knight.
+export function sanitizeActiveSkin(raw: unknown, cosmetics: string[], owner: boolean): string | null {
+  return owner && typeof raw === 'string' && getSkinDef(raw) && cosmetics.includes(raw) ? raw : null;
+}
+
+// null = the default knight, always available. A skin needs ownership of the cosmetic AND the Pass.
+export function applySelectSkin(save: SaveData, id: string | null): SaveData | null {
+  if (id !== null && (!ownsAdventurerPass(save) || !getSkinDef(id) || !save.cosmetics.includes(id))) return null;
+  return { ...save, activeSkin: id };
 }
 
 // The CSS class the portrait carries for the active frame ('' = none). One place so every portrait (Home, Personagem, the top bars) frames the same way.

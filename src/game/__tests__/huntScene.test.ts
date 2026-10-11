@@ -29,6 +29,8 @@ describe('Hunt scenes', () => {
       expect(huntingEnemyArt(z.enemyId).cell * 4, z.enemyId).toBe(w);
     }
     expect(pngSize('/assets/spritesheets/knight.png')[0]).toBe(HERO_ART.cell * 4);
+    // the Golden Knight skin is a drop-in of the same sheet
+    expect(pngSize('/assets/spritesheets/knight_golden.png')).toEqual(pngSize('/assets/spritesheets/knight.png'));
   });
 
   it('every hunting monster has its sheet on disk and an art row that lies inside its frame', () => {

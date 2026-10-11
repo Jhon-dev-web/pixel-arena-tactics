@@ -9,7 +9,7 @@ import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
 import TitleIcon from './TitleIcon';
-import { FRAMES } from '../game/seasonItems';
+import { FRAMES, SKINS } from '../game/seasonItems';
 
 // The three "Personagem" panels — extracted from what used to be HeroModal's three tabs, so the
 // Personagem view (desktop area + mobile stack, see PersonagemView.tsx) and any future modal reuse
@@ -189,8 +189,19 @@ export function AttributesPanel({ save, onAttrChange }: { save: SaveData; onAttr
   );
 }
 
-export function TitlesPanel({ save, onSelectTitle, onSelectFrame }: { save: SaveData; onSelectTitle: (id: string | null) => void; onSelectFrame?: (id: string | null) => void }) {
+export function TitlesPanel({
+  save,
+  onSelectTitle,
+  onSelectFrame,
+  onSelectSkin,
+}: {
+  save: SaveData;
+  onSelectTitle: (id: string | null) => void;
+  onSelectFrame?: (id: string | null) => void;
+  onSelectSkin?: (id: string | null) => void;
+}) {
   const ownedFrames = FRAMES.filter((f) => save.cosmetics.includes(f.id));
+  const ownedSkins = SKINS.filter((s) => save.cosmetics.includes(s.id));
   return (
     <div className="titles-body">
       <button className={`title-row${!save.activeTitle ? ' active' : ''}`} onClick={() => onSelectTitle(null)} data-ui>
@@ -219,6 +230,29 @@ export function TitlesPanel({ save, onSelectTitle, onSelectFrame }: { save: Save
           </button>
         );
       })}
+      {onSelectSkin && ownedSkins.length > 0 && (
+        <>
+          <div className="frame-heading">{t('titles.skins')}</div>
+          <button className={`title-row${!save.activeSkin ? ' active' : ''}`} onClick={() => onSelectSkin(null)} aria-pressed={!save.activeSkin} data-ui>
+            <div className="title-row-main">
+              <span className="title-name">{t('titles.skin_default')}</span>
+            </div>
+            {!save.activeSkin && <span className="title-tag">{t('titles.active')}</span>}
+          </button>
+          {ownedSkins.map((s) => {
+            const on = save.activeSkin === s.id;
+            return (
+              <button key={s.id} className={`title-row${on ? ' active' : ''}`} onClick={() => onSelectSkin(s.id)} aria-pressed={on} data-ui>
+                <div className="title-row-main">
+                  <span className="title-name">{t(`titles.${s.nameKey}`)}</span>
+                  <span className="title-req">{t(`titles.${s.descKey}`)}</span>
+                </div>
+                <span className={`title-tag${on ? '' : ' equip'}`}>{on ? t('titles.active') : t('titles.equip')}</span>
+              </button>
+            );
+          })}
+        </>
+      )}
       {onSelectFrame && ownedFrames.length > 0 && (
         <>
           <div className="frame-heading">{t('titles.frames')}</div>

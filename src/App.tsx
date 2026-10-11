@@ -21,7 +21,7 @@ import { applyFertilizer, applyHarvest, applyPlant, applyUproot } from './game/g
 import { applyElixir, applyWhetstoneOil, ElixirId, isBuffItem } from './game/elixirs';
 import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
-import { applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
+import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
 import { ownsAdventurerPass, purchaseAdventurerPass } from './game/entitlements';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot, relicXpBonusPct } from './game/gear';
@@ -74,6 +74,8 @@ import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
 import BattlePassModal, { SeasonSummaryModal } from './components/BattlePassModal';
+import ClaimAllModal from './components/ClaimAllModal';
+import { applyClaimAll, ClaimAllLine } from './game/claimAll';
 import { crossedMilestoneFloors, dungeonRunXp, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
@@ -134,6 +136,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [claimResult, setClaimResult] = useState<{ title: string; name: string; rewards: ExpeditionRewards } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
+  const [claimAllLines, setClaimAllLines] = useState<ClaimAllLine[] | null>(null);
   // The pending hunt reward screen can be set aside to make room in the inventory first (shortcut from the screen itself); the hunt screen brings it back.
   const [rewardHidden, setRewardHidden] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -513,7 +516,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     }
     const subs = equippedSubstatTotals(s);
     // Gear goldBonus (capped inside equippedSubstatTotals) and the Fortune Tonic add up, see buffs.ts goldMultiplier.
-    const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', Date.now())));
+    const goldGain = Math.round(rewards.gold * goldMultiplier(subs.goldBonus, isBuffActive(s, 'fortune', Date.now()), ownsAdventurerPass(s) ? T.battlePass.goldBonus : 0));
     const unlockedHuntingZones = Array.from(new Set([...s.unlockedHuntingZones, ...unlockedZoneIds(nextFloor)]));
 
     // Milestone (first-clear) rewards only ever apply to a successful retreat — dying still banks the
@@ -693,6 +696,13 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     showToast(t('stash.deedUsed', { n: STASH_DEED_SLOTS }));
   };
 
+  const selectSkin = (id: string | null) => {
+    const next = applySelectSkin(saveRef.current, id);
+    if (!next) return;
+    playSfx('click');
+    setSaveBoth(next);
+  };
+
   const selectFrame = (id: string | null) => {
     const next = applySelectFrame(saveRef.current, id);
     if (!next) return;
@@ -820,6 +830,19 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     t(key, { n: units - leftBehind }) +
     (gold > 0 ? ' · ' + t('mining.readyGold', { n: gold }) : '') +
     (leftBehind > 0 ? ' · ' + t('inventory.leftBehind', { n: fmtNum(leftBehind) }) : '');
+
+  // Home "Resgatar tudo" (claimAll.ts, Adventurer Pass owners): every finished activity through its own transition, one combined summary.
+  const claimEverything = () => {
+    const res = applyClaimAll(saveRef.current, Date.now());
+    if (res.lines.length === 0) {
+      showToast(t('claimAll.nothing'));
+      return;
+    }
+    playSfx('victory');
+    commitSave(res.save);
+    setRewardHidden(false);
+    setClaimAllLines(res.lines);
+  };
 
   const claimMining = () => {
     const claim = applyClaimGathering(saveRef.current, 'mining', Date.now());
@@ -1312,7 +1335,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     showToast(t('inventory.expanded', { n: next.inventoryCapacity }));
   };
 
-  const heroSpriteUrl = playerSpriteUrl();
+  const heroSpriteUrl = playerSpriteUrl(save.activeSkin);
   const isDesktop = useIsDesktop();
 
   const closeDrawer = () => setDrawerOpen(false);
@@ -1403,6 +1426,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onOpenWoodcutting={() => { playSfx('click'); setWoodOpen(true); }}
               onOpenGarden={() => { playSfx('click'); setGardenOpen(true); }}
               onOpenInventory={() => { playSfx('click'); setBagOpen(true); }}
+              onClaimAll={claimEverything}
+              onOpenPass={() => { playSfx('click'); setBattlePassOpen(true); }}
             />
           )}
           {activeView === 'personagem' && (
@@ -1414,6 +1439,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onUnequip={unequipGear}
               onSelectTitle={selectTitle}
               onSelectFrame={selectFrame}
+              onSelectSkin={selectSkin}
               onDiscard={discardItem}
               onReforge={reforgeItem}
               onSalvage={salvageItem}
@@ -1597,6 +1623,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           }}
         />
       )}
+
+      {claimAllLines && <ClaimAllModal lines={claimAllLines} onClose={() => setClaimAllLines(null)} />}
 
       {save.pendingSeasonSummary && <SeasonSummaryModal save={save} onDismiss={dismissSeasonSummary} />}
 

@@ -1,6 +1,6 @@
 import T from './tunables';
 import { ownsAdventurerPass } from './entitlements';
-import { sanitizeActiveFrame, sanitizeStashBonus } from './seasonItems';
+import { sanitizeActiveFrame, sanitizeActiveSkin, sanitizeStashBonus } from './seasonItems';
 import { sanitizeSeasonSummary, seasonNumber, type SeasonSummary } from './seasons';
 import { EquippedGear, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
 import {
@@ -201,6 +201,8 @@ export interface SaveData {
   activeTitle: string | null;
   // Portrait frame (seasonItems.ts FRAMES) the hero wears, one of the owned cosmetics; null = none.
   activeFrame: string | null;
+  // Hero skin (seasonItems.ts SKINS) the hero wears, one of the owned cosmetics; null = the default knight.
+  activeSkin: string | null;
   // Stash slots from Stash Deeds, beyond the upgrade ladder (seasonItems.ts, capped at +20 over all seasons).
   stashBonusSlots: number;
   dungeonCheckpoints: number[];
@@ -432,8 +434,9 @@ export interface GatherPass {
   capHours?: number;
 }
 
-export function snapshotGatherPass(save: SaveData, capHours: number): GatherPass {
-  return { active: ownsAdventurerPass(save), capHours };
+export function snapshotGatherPass(save: SaveData, baseCap: number): GatherPass {
+  const owner = ownsAdventurerPass(save);
+  return { active: owner, capHours: owner ? Math.max(baseCap, T.battlePass.capHours) : baseCap };
 }
 
 export type GatherKind = 'mining' | 'woodcutting';
@@ -466,7 +469,7 @@ function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAcc
   const baseCap = mining ? save.miningCapHours : save.woodcuttingCapHours;
   const startedAt = mining ? save.lastMiningClaim : save.lastWoodcuttingClaim;
   // Old saves (no snapshot) and plain states fall back to the Pass as it is now.
-  const snap = (mining ? save.miningPass : save.woodcuttingPass) ?? snapshotGatherPass(save, baseCap);
+  const snap = (mining ? save.miningPass : save.woodcuttingPass) ?? { active: ownsAdventurerPass(save), capHours: baseCap }; // no snapshot (old save / plain state): never a longer cap than the player had
   const capHours = Math.max(baseCap, snap.capHours ?? 0);
   const capMs = capHours * 3600 * 1000;
   if (!tier) return { capMs, pendingMs: 0, tierId: null, units: 0, gold: 0, full: false, passCoversSession: snap.active };
@@ -626,6 +629,7 @@ export function buildHuntSession(save: SaveData, startedAt: number): HuntSession
     strength: isBuffActive(save, 'strength', startedAt) && buff ? [{ from: startedAt, to: buff.expiresAt }] : [],
     attack: isBuffActive(save, 'attack', startedAt) && atk ? [{ from: startedAt, to: atk.expiresAt }] : [],
     pass: ownsAdventurerPass(save) ? [{ from: startedAt, to: null }] : [],
+    ...(ownsAdventurerPass(save) ? { passCapHours: T.battlePass.capHours, passGold: T.battlePass.goldBonus * 100 } : {}),
     storageFlat: true,
     tonics: runningTonicWindows(save, startedAt, startedAt),
   };
@@ -690,7 +694,7 @@ export function buildHuntSimSetup(
     burn: stats.burn === true,
     reflect: stats.reflect ?? 0,
     hpRegenPct: stats.hpRegenPct ?? 0,
-    goldBonusPct: stats.goldBonus ?? 0,
+    goldBonusPct: (stats.goldBonus ?? 0) + (session.passGold ?? 0),
     xpBonusPct: stats.xpBonus ?? 0,
   };
 
@@ -777,8 +781,8 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
   // it (up to the pass cap) only while the Battle Pass really covered that stretch (huntValidMs).
   const elapsedMs = Number.isFinite(now - startedAt) ? Math.max(0, now - startedAt) : 0;
   const baseCapMs = zone.offlineCapHours * 3600 * 1000;
-  // Only a session started under the old Pass keeps its longer cap; the Pass no longer extends storage.
-  const passCapMs = Math.max(zone.offlineCapHours, session.legacyPassCapHours ?? 0) * 3600 * 1000;
+  // The Pass's longer cap is frozen into the session when it starts (buildHuntSession); a session started without it, or rebuilt without a snapshot, has the zone cap.
+  const passCapMs = Math.max(zone.offlineCapHours, session.passCapHours ?? 0) * 3600 * 1000;
   const passWindows = relativeWindows(session.pass, startedAt);
   const pendingMs = huntValidMs(elapsedMs, baseCapMs, passCapMs, passWindows);
   const stalled = pendingMs < elapsedMs;
@@ -881,6 +885,7 @@ export function defaultSave(): SaveData {
     cosmetics: [],
     activeTitle: null,
     activeFrame: null,
+    activeSkin: null,
     stashBonusSlots: 0,
     dungeonCheckpoints: [],
     gardenSlots: emptyGardenSlots(),
@@ -1243,6 +1248,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         cosmetics,
         activeTitle,
         activeFrame: sanitizeActiveFrame(parsed.activeFrame, cosmetics),
+        activeSkin: sanitizeActiveSkin(parsed.activeSkin, cosmetics, hasBattlePass),
         stashBonusSlots: sanitizeStashBonus(parsed.stashBonusSlots),
         dungeonCheckpoints,
         gardenSlots,

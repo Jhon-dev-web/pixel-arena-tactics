@@ -30,9 +30,10 @@ export interface HuntSession {
   pass: TimeWindow[];
   // Garden 3.0 tonics that matter to a hunt (stoneskin, fortune, haste, precision), same rule as the elixirs above. Missing = none (older sessions).
   tonics?: Partial<Record<TimedBuffKind, TimeWindow[]>>;
-  // A session started under the old Pass kept its longer offline cap (LEGACY_PASS_CAP_HOURS) while the Pass window covered it. The Pass no longer extends
-  // storage: sessions started now never carry this, and a running old one keeps what it started with (never shortened retroactively).
-  legacyPassCapHours?: number;
+  // The offline cap the Pass gave this session when it STARTED (T.battlePass.capHours for an owner; a session saved by the first Pass model carries
+  // LEGACY_PASS_CAP_HOURS). It only counts while a Pass window covers the time, and is never changed after the start.
+  passCapHours?: number;
+  passGold?: number; // percent extra Gold the Pass gave this session when it started (T.battlePass.goldBonus x 100); adds to the gear bonus
   storageFlat?: true; // written by the current model: a session without it (and with a Pass window) came from the old one
 }
 
@@ -207,8 +208,9 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
     pass: sanitizeWindows(r.pass),
     tonics: sanitizeTonicWindows(r.tonics),
     // saved by the old Pass model: no marker and a Pass window = it started with the longer cap
-    ...(finiteNum(r.legacyPassCapHours) ? { legacyPassCapHours: r.legacyPassCapHours } : !r.storageFlat && sanitizeWindows(r.pass).length > 0 ? { legacyPassCapHours: LEGACY_PASS_CAP_HOURS } : {}),
+    ...(finiteNum(r.passCapHours) ? { passCapHours: r.passCapHours } : !r.storageFlat && sanitizeWindows(r.pass).length > 0 ? { passCapHours: LEGACY_PASS_CAP_HOURS } : {}),
     storageFlat: true,
+    ...(finiteNum(r.passGold) && r.passGold > 0 && r.passGold <= 100 ? { passGold: r.passGold } : {}),
   };
 }
 
