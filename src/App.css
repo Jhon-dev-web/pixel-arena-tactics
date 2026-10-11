@@ -10435,3 +10435,10 @@ button[data-ui]:focus-visible {
 .hunt-side {
   position: relative;
 }
+
+/* eight perks: two even rows of four on a wide screen */
+@media (min-width: 900px) {
+  .ap-perks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
