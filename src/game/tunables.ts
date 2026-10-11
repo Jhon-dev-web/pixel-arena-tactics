@@ -96,8 +96,8 @@ const T = DebugPanel.define({
     // last boss is >= 1.5x floor 99 (the regular boss-mob floors 76-99 are exactly as they were before the balance pass).
     boss25HpMult: { value: 0.22, min: 0.1, max: 5, step: 0.01, label: 'Floor-25 boss: extra HP multiplier' },
     boss25DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-25 boss: extra damage multiplier' },
-    boss50HpMult: { value: 0.84, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra HP multiplier' },
-    boss50DmgMult: { value: 0.84, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra damage multiplier' },
+    boss50HpMult: { value: 0.88, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra HP multiplier' },
+    boss50DmgMult: { value: 0.88, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra damage multiplier' },
     boss75HpMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra HP multiplier' },
     boss75DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra damage multiplier' },
     boss100HpMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra HP multiplier' },
@@ -428,8 +428,8 @@ const T = DebugPanel.define({
     bastionHealPct: { value: 0.25, min: 0, max: 1, step: 0.05, label: 'Ultimo Bastiao: max HP healed after the save' },
     bastionCooldownMs: { value: 60000, min: 5000, max: 600000, step: 5000, label: 'Ultimo Bastiao: Hunting cooldown (ms of combat time)' },
     // Cacador
-    greedGold: { value: 0.05, min: 0, max: 0.3, step: 0.005, label: 'Ganancia: extra Gold per rank (outside the gear cap)' },
-    scentMaterials: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Faro: Hunting material yield per rank' },
+    greedGold: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Ganancia: extra Gold per rank (outside the gear cap)' },
+    scentMaterials: { value: 0.07, min: 0, max: 0.3, step: 0.005, label: 'Faro: Hunting material yield per rank' },
     quickLearnerXp: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Aprendiz Veloz: character XP per rank' },
     packerSlots: { value: 2, min: 0, max: 10, step: 1, label: 'Mochileiro: inventory slots per rank' },
     gathererYield: { value: 0.06, min: 0, max: 0.3, step: 0.005, label: 'Coletor: Mining and Woodcutting yield per rank' },

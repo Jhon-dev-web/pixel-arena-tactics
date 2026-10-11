@@ -1288,6 +1288,8 @@
     "perkDeliveriesSub": "+{n}% de XP nas entregas",
     "perkBagSub": "No mínimo {n} espaços",
     "perkRepairSub": "Forja",
+    "perkLoadout": "Segundo conjunto de habilidades",
+    "perkLoadoutSub": "Duas distribuições de pontos, troca grátis",
     "trackTitle": "Trilha da temporada",
     "goMyLevel": "Ir para o meu nível",
     "claimed": "Resgatado",

@@ -1288,6 +1288,8 @@
     "perkDeliveriesSub": "+{n}% delivery XP",
     "perkBagSub": "At least {n} slots",
     "perkRepairSub": "Forge",
+    "perkLoadout": "Second skill set",
+    "perkLoadoutSub": "Two point allocations, free switching",
     "trackTitle": "Season track",
     "goMyLevel": "Go to my level",
     "claimed": "Claimed",

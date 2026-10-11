@@ -209,7 +209,7 @@ describe('shield slot', () => {
     for (const [lv, tk, sk] of [[25, '3', '3'], [50, '4g', '4g'], [50, '4d', '4g'], [70, '5', '5'], [90, '6', '6']] as [number, string, string][]) {
       const base = hero(tk, 4, { level: lv, extra: [shieldOf(sk)] });
       const d = duel(base, repFloor(base));
-      expect(d.reflectShare, `tier ${tk}`).toBeLessThanOrEqual(0.12);
+      expect(d.reflectShare, `tier ${tk}`).toBeLessThanOrEqual(0.125); // 0.12 before the Rodada 7 orc retune moved the tier-3 reference floor
       expect(d.reflectShare, `tier ${tk}`).toBeGreaterThan(0.03);
     }
   });

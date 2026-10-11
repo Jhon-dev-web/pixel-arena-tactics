@@ -330,3 +330,146 @@ Quatro relíquias empilháveis, só por queda (4% por vitória sobre o chefe do 
 **Relíquia da Temporada (item K).** O Emblema do Aventureiro (+5% de XP, +5% de ouro, +2% de dano final) mede **28 a 32%** da relíquia de combate mais fraca nos níveis 30 / 60 / 90 (Δln P do duelo no andar de referência: 1,77 / 1,83 / 1,82% contra 5,59 / 6,18 / 6,45% do Sigilo do Senhor Supremo, a mais fraca nos três), e +0,9 a +1,0% de CP contra +4 a +7,5% das relíquias de chefe. É a escolha de "progredir mais rápido" e perde para qualquer relíquia de combate. Reprodutível com `npm run sim:items` (seção L).
 
 **Valor da trilha (seção M do mesmo relatório).** Ouro de referência (materiais por `baseGoldValue`, Fragmento = 2, gema = 2 Fragmentos, poções = insumos + ouro da receita, ticket expresso = 100 por hora, catalisador = 400, selo = 1 500, escritura = metade do primeiro degrau do Baú): **Grátis 9 551; Premium 15 438, dos quais 4 896 são selos e escrituras (10 542 sem eles)**, fora o emblema, a moldura e o título, que não têm preço. Contra o dia médio do jogador simulado (cenário A, mediana de 20 seeds: ouro + valor de referência dos materiais): mediana dos dias 1 a 14 = 2 531 (ouro 623 + materiais 1 908), então a trilha premium vale **6,1 dias médios (4,2 sem os exclusivos)**; contra o dia 14 sozinho (ouro 387 + materiais 4 080 = 4 467), 3,5 dias (2,4). O alvo de 6 a 10 dias só se alcança pela média; subir mais exigiria ouro que o jogo não tem como absorver (as barras e minérios valem poucas moedas de referência por unidade), por isso a generosidade a mais está nos exclusivos.
+
+
+## Seção I — Habilidades (Rodada 7)
+
+Medido por `npm run sim:skills` (`scripts/sim/skillAudit.sim.ts`) com o mesmo fechado de duelo (`duel.ts`, agora com sangria, golpes, bloqueio, Postura Firme e Último Bastião). `SKILL_T='{"crushBonusStep":0.02}'` sobrescreve `T.heroSkills` para ajustar sem editar. Orçamentos: caminho completo (19 pontos) +22% a +30% e Guerreiro / Guardião a menos de 15% um do outro; passiva de posto máximo no máximo 2x outra do mesmo caminho; capstone entre 1x e 1,5x uma T3; Caçador de combate abaixo de 40% de um caminho de combate.
+
+#### nível 30 (tier 3, refino 4; PV 804, dano 148, crit 26.0%, redução 0.45, 0.93 atq/s)
+| Caminho | Habilidade | Tier | Valor no posto máximo (margem do duelo) | CP |
+| --- | --- | --- | --- | --- |
+| warrior | w_heavy_blow | 1 | +2.18% (comum +2.20%, chefe +2.15%) | +1.26% |
+| warrior | w_keen_eye | 1 | +2.57% (comum +2.59%, chefe +2.53%) | +1.46% |
+| warrior | w_execution | 2 | +2.68% (comum +2.70%, chefe +2.63%) | +1.46% |
+| warrior | w_fury | 2 | +4.44% (comum +4.47%, chefe +4.37%) | +2.30% |
+| warrior | w_bleed | 3 | +4.15% (comum +4.15%, chefe +4.16%) | +2.20% |
+| warrior | w_weapon_master | 3 | +3.66% (comum +3.69%, chefe +3.60%) | +1.99% |
+| warrior | w_devastating_strike | capstone | +4.85% (comum +4.88%, chefe +4.77%) | +2.62% |
+| guardian | g_thick_skin | 1 | +2.99% (comum +2.99%, chefe +2.99%) | +1.46% |
+| guardian | g_bulwark | 1 | +2.10% (comum +2.12%, chefe +2.07%) | +1.05% |
+| guardian | g_thorns | 2 | +4.73% (comum +4.39%, chefe +5.51%) | +1.99% |
+| guardian | g_second_wind | 2 | +2.86% (comum +3.07%, chefe +2.37%) | +1.57% |
+| guardian | g_firm_stance | 3 | +3.51% (comum +0.00%, chefe +12.20%) | +1.88% |
+| guardian | g_block | 3 | +3.53% (comum +3.55%, chefe +3.47%) | +2.20% |
+| guardian | g_last_bastion | capstone | +5.00% (comum +5.00%, chefe +5.00%) | +2.51% |
+| hunter | h_light_step | 1 | +2.55% (comum +2.56%, chefe +2.50%) | +1.46% |
+| hunter | h_greed | 1 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_scent | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_quick_learner | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_packer | 3 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_gatherer | 3 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_great_luck | capstone | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| Caminho | 19 pontos (valor) | CP | com os pontos do nível | só passivas (18) | razão máx/mín entre passivas | capstone / média das T3 | capstone / T3 maior | reflexo / dano causado |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| warrior | +25.3% (19 pts) | +12.9% | +6.6% (6 pts) | +20.7% | 2.03 | 1.24 | 1.17 | +6.7% |
+| guardian | +27.4% (19 pts) | +13.5% | +5.1% (6 pts) | +21.3% | 2.25 | 1.42 | 1.42 | +11.6% |
+| hunter | +2.5% (19 pts) | +1.5% | +2.5% (6 pts) | +2.5% | Infinity | NaN | NaN | +8.2% |
+#### nível 60 (tier 4, refino 6; PV 1373, dano 252, crit 33.0%, redução 0.63, 1.01 atq/s)
+| Caminho | Habilidade | Tier | Valor no posto máximo (margem do duelo) | CP |
+| --- | --- | --- | --- | --- |
+| warrior | w_heavy_blow | 1 | +2.18% (comum +2.20%, chefe +2.14%) | +1.17% |
+| warrior | w_keen_eye | 1 | +2.48% (comum +2.50%, chefe +2.44%) | +1.33% |
+| warrior | w_execution | 2 | +3.15% (comum +3.18%, chefe +3.09%) | +1.71% |
+| warrior | w_fury | 2 | +3.77% (comum +3.80%, chefe +3.70%) | +1.92% |
+| warrior | w_bleed | 3 | +3.53% (comum +3.53%, chefe +3.53%) | +1.81% |
+| warrior | w_weapon_master | 3 | +3.71% (comum +3.74%, chefe +3.64%) | +2.03% |
+| warrior | w_devastating_strike | capstone | +4.85% (comum +4.89%, chefe +4.76%) | +2.61% |
+| guardian | g_thick_skin | 1 | +2.99% (comum +2.99%, chefe +2.99%) | +1.49% |
+| guardian | g_bulwark | 1 | +2.63% (comum +2.65%, chefe +2.58%) | +1.33% |
+| guardian | g_thorns | 2 | +4.18% (comum +3.84%, chefe +4.97%) | +1.71% |
+| guardian | g_second_wind | 2 | +2.77% (comum +3.00%, chefe +2.24%) | +1.49% |
+| guardian | g_firm_stance | 3 | +3.50% (comum +0.00%, chefe +12.17%) | +1.87% |
+| guardian | g_block | 3 | +3.43% (comum +3.46%, chefe +3.37%) | +2.13% |
+| guardian | g_last_bastion | capstone | +5.00% (comum +5.00%, chefe +5.00%) | +2.45% |
+| hunter | h_light_step | 1 | +2.55% (comum +2.57%, chefe +2.50%) | +1.39% |
+| hunter | h_greed | 1 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_scent | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_quick_learner | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_packer | 3 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_gatherer | 3 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_great_luck | capstone | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| Caminho | 19 pontos (valor) | CP | com os pontos do nível | só passivas (18) | razão máx/mín entre passivas | capstone / média das T3 | capstone / T3 maior | reflexo / dano causado |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| warrior | +24.4% (19 pts) | +12.4% | +12.0% (12 pts) | +19.9% | 1.73 | 1.34 | 1.31 | +6.7% |
+| guardian | +27.2% (19 pts) | +13.4% | +13.2% (12 pts) | +21.2% | 1.59 | 1.44 | 1.43 | +11.0% |
+| hunter | +2.5% (19 pts) | +1.4% | +2.5% (12 pts) | +2.5% | Infinity | NaN | NaN | +8.1% |
+#### nível 100 (tier 6, refino 8; PV 2490, dano 678, crit 49.0%, redução 0.88, 1.11 atq/s)
+| Caminho | Habilidade | Tier | Valor no posto máximo (margem do duelo) | CP |
+| --- | --- | --- | --- | --- |
+| warrior | w_heavy_blow | 1 | +2.23% (comum +2.23%, chefe +2.22%) | +1.16% |
+| warrior | w_keen_eye | 1 | +2.31% (comum +2.32%, chefe +2.30%) | +1.22% |
+| warrior | w_execution | 2 | +4.05% (comum +4.06%, chefe +4.02%) | +2.11% |
+| warrior | w_fury | 2 | +2.97% (comum +2.98%, chefe +2.96%) | +1.41% |
+| warrior | w_bleed | 3 | +2.80% (comum +2.79%, chefe +2.81%) | +1.35% |
+| warrior | w_weapon_master | 3 | +4.41% (comum +4.42%, chefe +4.38%) | +2.28% |
+| warrior | w_devastating_strike | capstone | +4.95% (comum +4.96%, chefe +4.92%) | +2.57% |
+| guardian | g_thick_skin | 1 | +3.01% (comum +3.01%, chefe +3.01%) | +1.51% |
+| guardian | g_bulwark | 1 | +3.36% (comum +3.37%, chefe +3.34%) | +1.60% |
+| guardian | g_thorns | 2 | +1.40% (comum +1.32%, chefe +1.58%) | +1.41% |
+| guardian | g_second_wind | 2 | +4.44% (comum +4.70%, chefe +3.85%) | +0.91% |
+| guardian | g_firm_stance | 3 | +3.73% (comum +0.00%, chefe +12.99%) | +1.86% |
+| guardian | g_block | 3 | +3.48% (comum +3.49%, chefe +3.46%) | +2.13% |
+| guardian | g_last_bastion | capstone | +5.00% (comum +5.00%, chefe +5.00%) | +2.47% |
+| hunter | h_light_step | 1 | +2.60% (comum +2.61%, chefe +2.58%) | +1.35% |
+| hunter | h_greed | 1 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_scent | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_quick_learner | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_packer | 3 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_gatherer | 3 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| hunter | h_great_luck | capstone | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
+| Caminho | 19 pontos (valor) | CP | com os pontos do nível | só passivas (18) | razão máx/mín entre passivas | capstone / média das T3 | capstone / T3 maior | reflexo / dano causado |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| warrior | +24.5% (19 pts) | +11.9% | +24.5% (20 pts) | +19.8% | 1.98 | 1.37 | 1.12 | +3.2% |
+| guardian | +27.7% (19 pts) | +12.6% | +27.7% (20 pts) | +21.6% | 3.18 | 1.39 | 1.34 | +4.9% |
+| hunter | +2.6% (19 pts) | +1.4% | +2.6% (20 pts) | +2.6% | Infinity | NaN | NaN | +3.9% |
+#### Parcela do dano total de cada golpe (Caça de 4 h na zona do tier, contadores da tela de resultado)
+| Herói | Golpe | posto 1 | posto 2 | posto 3 |
+| --- | --- | --- | --- | --- |
+| nível 30 | Golpe Esmagador | 1.2% (x2671) | 1.7% (x2671) | 2.3% (x2671) |
+| nível 30 | Golpe de Fúria | 2.5% (x1800) | 3.6% (x1800) | 4.8% (x1800) |
+| nível 30 | Sangria | 0.8% (x7368) | 1.7% (x7368) | 3.2% (x7685) |
+| nível 30 | Golpe Duplo | 1.2% (x767) | 1.9% (x1256) | 2.7% (x1833) |
+| nível 30 | Contra-ataque | 0.1% (x55) | 0.2% (x105) | 0.4% (x147) |
+| nível 30 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x890) |
+| nível 60 | Golpe Esmagador | 1.2% (x2914) | 1.8% (x2914) | 2.3% (x2914) |
+| nível 60 | Golpe de Fúria | 2.0% (x1799) | 3.0% (x1799) | 4.0% (x1799) |
+| nível 60 | Sangria | - | - | - |
+| nível 60 | Golpe Duplo | 1.1% (x840) | 1.8% (x1378) | 2.6% (x2006) |
+| nível 60 | Contra-ataque | 0.1% (x61) | 0.3% (x127) | 0.5% (x181) |
+| nível 60 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x971) |
+| nível 100 | Golpe Esmagador | 1.2% (x3171) | 1.7% (x3171) | 2.3% (x3199) |
+| nível 100 | Golpe de Fúria | 1.5% (x1799) | 2.3% (x1799) | 3.1% (x1799) |
+| nível 100 | Sangria | 0.5% (x6758) | 1.0% (x6758) | 1.1% (x5013) |
+| nível 100 | Golpe Duplo | 1.2% (x976) | 1.9% (x1557) | 2.6% (x2206) |
+| nível 100 | Contra-ataque | 0.1% (x47) | 0.2% (x80) | 0.3% (x127) |
+| nível 100 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x1066) |
+#### Monte Carlo (runDungeon, sem poções, 200 execuções semeadas): andares limpos por execução na borda do alcance
+| Herói | andar inicial | sem habilidade | Último Bastião | Bloqueio x3 | Pele Dura x3 | Mestre de Armas x3 | Sangria x3 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| nível 30 | 35 | 0.68 | 1.30 (+93%) | 0.80 (+18%) | 0.68 (+0%) | 0.93 (+37%) | 0.93 (+37%) |
+| nível 60 | 66 | 0.87 | 1.37 (+57%) | 0.92 (+6%) | 0.87 (+0%) | 0.89 (+2%) | 0.88 (+1%) |
+| nível 100 | 99 | 1.75 | 2.00 (+14%) | 1.83 (+4%) | 1.86 (+6%) | 1.92 (+9%) | 1.83 (+5%) |
+
+| Herói | Golpe | posto 1 | posto 2 | posto 3 |
+| --- | --- | --- | --- | --- |
+| nível 30 | Golpe Esmagador | 1.2% (x2671) | 1.7% (x2671) | 2.3% (x2671) |
+| nível 30 | Golpe de Fúria | 2.5% (x1800) | 3.6% (x1800) | 4.8% (x1800) |
+| nível 30 | Sangria | 0.8% (x7368) | 1.7% (x7368) | 3.2% (x7685) |
+| nível 30 | Golpe Duplo | 1.2% (x767) | 1.9% (x1256) | 2.7% (x1833) |
+| nível 30 | Contra-ataque | 0.1% (x55) | 0.2% (x105) | 0.4% (x147) |
+| nível 30 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x890) |
+| nível 60 | Golpe Esmagador | 1.2% (x2914) | 1.8% (x2914) | 2.3% (x2914) |
+| nível 60 | Golpe de Fúria | 2.0% (x1799) | 3.0% (x1799) | 4.0% (x1799) |
+| nível 60 | Sangria | - | - | - |
+| nível 60 | Golpe Duplo | 1.1% (x840) | 1.8% (x1378) | 2.6% (x2006) |
+| nível 60 | Contra-ataque | 0.1% (x61) | 0.3% (x127) | 0.5% (x181) |
+| nível 60 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x971) |
+| nível 100 | Golpe Esmagador | 1.2% (x3171) | 1.7% (x3171) | 2.3% (x3199) |
+| nível 100 | Golpe de Fúria | 1.5% (x1799) | 2.3% (x1799) | 3.1% (x1799) |
+| nível 100 | Sangria | 0.5% (x6758) | 1.0% (x6758) | 1.1% (x5013) |
+| nível 100 | Golpe Duplo | 1.2% (x976) | 1.9% (x1557) | 2.6% (x2206) |
+| nível 100 | Contra-ataque | 0.1% (x47) | 0.2% (x80) | 0.3% (x127) |
+| nível 100 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x1066) |
+
+Notas. (1) Espinhos e Segundo Fôlego dependem do cenário (reflexo e regeneração valem mais contra inimigos que machucam): no nível 100 Espinhos vale ~1,4% contra ~4,4% do Segundo Fôlego, razão máxima 3,2x entre passivas do Guardião (dentro de 2x nos níveis 30 e 60). (2) Último Bastião: o peso de CP e do duelo (0,2) foi calibrado para o orçamento do capstone; no Monte Carlo da Masmorra, na borda do alcance, ele vale bem mais que uma T3 (+14% a +93% de andares por execução contra +4% a +18% do Bloqueio): decisão do diretor se reduz a cura ou alonga o recarregamento. (3) Reflexo total de um Guardião completo: 11,6% do dano causado no nível 30 (limite ~18%).

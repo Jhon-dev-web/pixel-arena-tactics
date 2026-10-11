@@ -339,6 +339,7 @@ export default function BattlePassModal({
     { key: 'bag', icon: '/assets/icons/nav_bag.png', label: t('battlePass.perkBag', { n: Math.round(T.battlePass.bagBonusPct * 100) }), sub: t('battlePass.perkBagSub', { n: T.battlePass.bagBonusSlots }) },
     { key: 'stash', icon: '/assets/icons/camp_stash.png', label: t('battlePass.perkStash', { n: T.battlePass.stashBonusSlots }), sub: t('battlePass.perkStashSub') },
     { key: 'repair', icon: '/assets/icons/whetstone_oil.png', label: t('battlePass.perkRepair', { n: Math.round(T.battlePass.repairDiscount * 100) }), sub: t('battlePass.perkRepairSub') },
+    { key: 'loadout', icon: '/assets/icons/skill_path_warrior.png', label: t('battlePass.perkLoadout'), sub: t('battlePass.perkLoadoutSub') },
   ];
 
   const highlights = seasonHighlights();
