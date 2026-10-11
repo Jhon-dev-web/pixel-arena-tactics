@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import Assets from '../../assets.json';
+import { heroSheetUrl } from '../sprites';
 import { artGeometry, HERO_ART, HUNTING_ZONES, huntingEnemyArt, huntingEnemySpriteUrl, huntingZoneBackgroundUrl } from '../huntingZones';
 
 // PNG width/height from the IHDR chunk (no image library needed)
@@ -28,7 +29,12 @@ describe('Hunt scenes', () => {
       expect(w, z.enemyId).toBe(h);
       expect(huntingEnemyArt(z.enemyId).cell * 4, z.enemyId).toBe(w);
     }
-    expect(pngSize('/assets/spritesheets/knight.png')[0]).toBe(HERO_ART.cell * 4);
+    for (const sheet of ['peasant', 'knight', 'knight_golden'] as const) {
+      const [w, h] = pngSize(`/assets/spritesheets/${sheet}.png`);
+      expect(w, sheet).toBe(h);
+      expect(w, sheet).toBe(HERO_ART[sheet].cell * 4);
+      expect(heroSheetUrl(sheet)).toBe(`/assets/spritesheets/${sheet}.png`);
+    }
     // the Golden Knight skin is a drop-in of the same sheet
     expect(pngSize('/assets/spritesheets/knight_golden.png')).toEqual(pngSize('/assets/spritesheets/knight.png'));
   });
@@ -36,7 +42,7 @@ describe('Hunt scenes', () => {
   it('every hunting monster has its sheet on disk and an art row that lies inside its frame', () => {
     for (const z of HUNTING_ZONES) {
       expect(onDisk(huntingEnemySpriteUrl(z.enemyId)), z.enemyId).toBe(true);
-      for (const art of [huntingEnemyArt(z.enemyId), HERO_ART]) {
+      for (const art of [huntingEnemyArt(z.enemyId), ...Object.values(HERO_ART)]) {
         const [x0, y0, x1, y1] = art.box;
         expect(x0).toBeGreaterThanOrEqual(0);
         expect(y0).toBeGreaterThanOrEqual(0);

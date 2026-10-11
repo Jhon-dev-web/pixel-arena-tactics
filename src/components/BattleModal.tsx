@@ -775,7 +775,7 @@ export default function BattleModal({
         <div className="battle-arena">
           <div className={`battle-side player${playerLunge ? ' lunge' : ''}${playerFlash ? ' flash' : ''}`}>
             <SpriteSheet
-              src={playerSpriteUrl(save.activeSkin)}
+              src={playerSpriteUrl(save)}
               size="calc(var(--sprite-size, 132px) * 1.1)"
               row={ANIM_ROW[playerAnim]}
             />

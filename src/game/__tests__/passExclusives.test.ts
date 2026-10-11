@@ -333,11 +333,11 @@ describe('hero skin (skin_golden_knight)', () => {
     expect(normalizeSave(old).activeSkin).toBeNull();
   });
 
-  it('the sprite follows the selected skin and nothing else; the default and any unknown id draw the knight; the golden sheet is registered', () => {
-    expect(playerSpriteUrl()).toBe('/assets/spritesheets/knight.png');
-    expect(playerSpriteUrl(null)).toBe('/assets/spritesheets/knight.png');
-    expect(playerSpriteUrl('skin_nope')).toBe('/assets/spritesheets/knight.png');
-    expect(playerSpriteUrl('skin_golden_knight')).toBe('/assets/spritesheets/knight_golden.png');
+  it('the sprite follows the selected skin and nothing else; the default and any unknown id draw the gear-driven look; the golden sheet is registered', () => {
+    const o = owner({ cosmetics: ['skin_golden_knight'] });
+    expect(playerSpriteUrl(o)).toBe('/assets/spritesheets/peasant.png'); // no armor yet: the peasant (heroLook.test.ts covers the armor branches)
+    expect(playerSpriteUrl({ ...o, activeSkin: 'skin_nope' })).toBe('/assets/spritesheets/peasant.png');
+    expect(playerSpriteUrl({ ...o, activeSkin: 'skin_golden_knight' })).toBe('/assets/spritesheets/knight_golden.png');
   });
 });
 

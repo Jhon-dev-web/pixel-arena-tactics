@@ -210,6 +210,12 @@ export function resolveGearInstance(
   return item ? { instance, item } : null;
 }
 
+// True when the armor slot holds a real piece (forged, dropped or unique, any tier >= 1) rather than the starter rags or nothing.
+export function wearsRealArmor(save: Pick<SaveData, 'gearInstances' | 'equipped'>): boolean {
+  const hit = resolveGearInstance(save, save.equipped?.armor);
+  return !!hit && hit.item.slot === 'armor' && hit.instance.templateId !== STARTER_TEMPLATES.armor;
+}
+
 function slotView(save: GearState, slot: 'weapon' | 'armor'): EquippedView {
   const hit = resolveGearInstance(save, save.equipped[slot]);
   if (hit && hit.item.slot === slot) return { item: hit.item, instance: hit.instance };

@@ -5,8 +5,8 @@ import { battlePassXpForLevel, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/e
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
 import { ADVENTURER_PASS_TESTABLE, ownsAdventurerPass } from '../game/entitlements';
 import { seasonNumber, seasonRemainingMs } from '../game/seasons';
-import { artGeometry, HERO_ART } from '../game/huntingZones';
-import { playerSpriteUrl } from '../game/sprites';
+import type { HeroSheet } from '../game/sprites';
+import HeroThumb from './HeroThumb';
 import { FRAMES, getSkinDef, getFrameDef, STASH_BONUS_CAP, STASH_DEED_SLOTS } from '../game/seasonItems';
 import { MATERIALS } from '../game/materials';
 import { getConsumable } from '../game/consumables';
@@ -31,7 +31,7 @@ interface RewardView {
   amountText: string; // "x3" / "+500" / ""
   src?: string; // pixel art
   frame?: boolean; // the gold portrait frame has no art: it is drawn
-  skin?: string; // a hero skin is shown as the idle frame of its sheet
+  skin?: HeroSheet; // a hero skin is shown as the idle frame of its sheet
   fallback: ReactNode;
 }
 
@@ -61,32 +61,15 @@ function rewardView(reward: BattlePassReward): RewardView {
       const title = reward.id ? getTitleDef(reward.id) : undefined;
       const frame = reward.id ? getFrameDef(reward.id) : undefined;
       const skin = reward.id ? getSkinDef(reward.id) : undefined;
-      if (skin) return { name: t(`titles.${skin.nameKey}`), amountText: '', skin: playerSpriteUrl(skin.id), fallback: '' };
+      if (skin) return { name: t(`titles.${skin.nameKey}`), amountText: '', skin: 'knight_golden', fallback: '' };
       if (frame) return { name: t(`titles.${frame.nameKey}`), amountText: '', frame: true, fallback: '' };
       return { name: title ? t(`titles.${title.nameKey}`) : t('battlePass.cosmeticReward'), amountText: '', src: title?.iconUrl, fallback: '' };
     }
   }
 }
 
-// The first idle frame of a hero sheet, cropped to the drawn art (HERO_ART) so the figure fills a square of `size` px.
-function SkinPortrait({ src, size }: { src: string; size: number }) {
-  const g = artGeometry(HERO_ART);
-  const k = 0.95 / g.size;
-  const style: CSSProperties = {
-    width: size,
-    height: size,
-    backgroundImage: `url(${src})`,
-    backgroundSize: `${400 * k}% ${400 * k}%`,
-    backgroundPosition: `${size * (0.5 - g.cx * k)}px ${size * (0.5 - g.cy * k)}px`,
-    backgroundRepeat: 'no-repeat',
-    imageRendering: 'pixelated',
-    display: 'inline-block',
-  };
-  return <span className="ap-skin-art" style={style} role="img" aria-hidden="true" />;
-}
-
 function RewardArt({ view, big, size }: { view: RewardView; big?: boolean; size?: number }) {
-  if (view.skin) return <SkinPortrait src={view.skin} size={size ?? (big ? 64 : 32)} />;
+  if (view.skin) return <HeroThumb sheet={view.skin} size={size ?? (big ? 64 : 32)} />;
   if (view.frame) return <span className={`ap-frame-preview portrait-frame frame-season-gold${big ? ' big' : ''}`} aria-hidden />;
   if (view.src) return <img className={`ap-art${big ? ' big' : ''}`} src={view.src} alt="" draggable={false} />;
   return <span className="ap-art-fallback">{view.fallback}</span>;

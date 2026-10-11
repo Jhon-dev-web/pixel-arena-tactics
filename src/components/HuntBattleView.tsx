@@ -1,8 +1,9 @@
 import { CSSProperties, ReactNode, useEffect, useRef, useState } from 'react';
 import { t } from '../locales';
 import T from '../game/tunables';
+import { HeroSheet, heroSheetUrl } from '../game/sprites';
 import { HuntLiveSnapshot } from '../game/huntCombat';
-import { HERO_ART, huntingEnemyArt, huntingEnemySpriteUrl, huntingZoneBackgroundUrl, HuntingZoneDef } from '../game/huntingZones';
+import { artGeometry, HERO_ART, huntingEnemyArt, huntingEnemySpriteUrl, huntingZoneBackgroundUrl, HuntingZoneDef } from '../game/huntingZones';
 import { FramedSprite } from './HuntParts';
 import { StrikeStats } from '../game/derivedStats';
 import { FX_PATH_COLOR, SKILL_FX, SkillFxId } from '../game/skillFx';
@@ -48,7 +49,7 @@ function usePrefersReducedMotion(): boolean {
    the fight in progress. With prefers-reduced-motion the two stand still. */
 export default function HuntBattleView({
   zone,
-  playerSpriteUrl,
+  heroSheet,
   heroName,
   monsterName,
   monsterLevel,
@@ -57,7 +58,7 @@ export default function HuntBattleView({
   children,
 }: {
   zone: HuntingZoneDef;
-  playerSpriteUrl: string;
+  heroSheet: HeroSheet;
   heroName: string;
   monsterName: string;
   monsterLevel: number;
@@ -65,6 +66,8 @@ export default function HuntBattleView({
   decor?: StrikeDecor;
   children?: ReactNode; // tonic badges under the plates
 }) {
+  // Each sheet is drawn at the same pixel scale as the knight's, so the peasant keeps his natural (slightly shorter) proportions instead of being stretched.
+  const heroHeight = (HERO_HEIGHT * artGeometry(HERO_ART[heroSheet]).h) / artGeometry(HERO_ART.knight).h;
   const reduced = usePrefersReducedMotion();
   const fx = useFxStage();
   const fxScale = useFxScale();
@@ -173,7 +176,7 @@ export default function HuntBattleView({
 
       <div className="hunt-stage-arena">
         <div className={`hunt-side player${active && (kind === 'hero' || kind === 'kill') ? ' lunge' : ''}${active && kind === 'monster' ? ' flinch' : ''}`}>
-          <FramedSprite src={playerSpriteUrl} art={HERO_ART} box="var(--hm)" height={HERO_HEIGHT} row={heroRow} restart={n * 2 + (active ? 1 : 0)} still={reduced} />
+          <FramedSprite src={heroSheetUrl(heroSheet)} art={HERO_ART[heroSheet]} box="var(--hm)" height={heroHeight} row={heroRow} restart={n * 2 + (active ? 1 : 0)} still={reduced} />
           <FxLayer side="p" items={fx.items} done={fx.done} scale={fxScale} />
           {calls.filter((c) => SKILL_FX[c.fx].side === 'p').map((c) => (
             <span key={c.id} className="float float-skill" style={{ left: `${SKILL_FX[c.fx].left}%`, top: SKILL_FX[c.fx].top, ['--fx-color' as string]: FX_PATH_COLOR[SKILL_FX[c.fx].path] } as CSSProperties}>

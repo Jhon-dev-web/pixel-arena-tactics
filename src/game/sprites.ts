@@ -1,6 +1,10 @@
 import Assets from '../assets.json';
 import { dungeonEnemyKindForFloor } from './dungeon';
 import { EnemyKind, getEnemyDef } from './enemies';
+import { ownsAdventurerPass } from './entitlements';
+import { wearsRealArmor } from './gearInstances';
+import { sanitizeActiveSkin } from './seasonItems';
+import type { SaveData } from './engine';
 
 const WEAPON_SPRITES: Record<number, string> = {
   0: Assets.weapons.club.url,
@@ -10,12 +14,45 @@ const WEAPON_SPRITES: Record<number, string> = {
   4: Assets.weapons.dragon.url,
 };
 
-// Design decision: equipping armor only affects stats (HP, resistance, etc.), never the
-// character's visual — the player sprite is the knight, regardless of armor tier. The one exception is a hero SKIN
-// (seasonItems.ts), a deliberate cosmetic choice the player makes (save.activeSkin), not something gear decides.
-export function playerSpriteUrl(skinId?: string | null): string {
-  return skinId === 'skin_golden_knight' ? Assets.spritesheets.knight_golden.url : Assets.spritesheets.knight.url;
+// Which sheet draws the hero. Equipping armor only affects stats (HP, resistance, etc.), never the character's visual, with ONE deliberate exception: the
+// peasant -> knight step. A new hero starts in rags with a wooden club and is drawn as the peasant; the moment any real armor (forged, dropped or unique, any
+// tier >= 1) sits in the armor slot he is the knight, and every later armor keeps the knight (tier never changes the look). Taking the armor off back to the
+// rags (or an empty slot) shows the peasant again: it is what he is wearing. The weapon never matters (a peasant holding a forged sword still shows the
+// peasant sheet, accepted). A hero SKIN (seasonItems.ts) is a deliberate cosmetic choice (save.activeSkin) that overrides all of this, but only while valid:
+// owned, the Pass, a known id (sanitizeActiveSkin); anything else falls back to the gear-driven look.
+export type HeroSheet = 'peasant' | 'knight' | 'knight_golden';
+export type HeroBaseLook = 'peasant' | 'knight';
+
+type LookSave = Pick<SaveData, 'activeSkin' | 'cosmetics' | 'gearInstances' | 'equipped' | 'hasBattlePass'>;
+
+const SHEET_URLS: Record<HeroSheet, string> = {
+  peasant: Assets.spritesheets.peasant.url,
+  knight: Assets.spritesheets.knight.url,
+  knight_golden: Assets.spritesheets.knight_golden.url,
+};
+
+// What the armor slot makes of the hero, ignoring skins: a real armor instance (anything but the starter rags) = knight.
+export function heroBaseLook(save: Pick<SaveData, 'gearInstances' | 'equipped'>): HeroBaseLook {
+  return wearsRealArmor(save) ? 'knight' : 'peasant';
 }
+
+// THE one function that decides the hero's look from a save; every place that draws the hero goes through it.
+export function heroSheet(save: LookSave): HeroSheet {
+  if (sanitizeActiveSkin(save.activeSkin, save.cosmetics ?? [], ownsAdventurerPass(save)) === 'skin_golden_knight') return 'knight_golden';
+  return heroBaseLook(save);
+}
+
+// The one-time peasant -> knight moment. Given the save before and after a change, returns the new save with the `heroKnighted` flag set when this very change put
+// the first real armor on a hero who has not had the moment yet, else null. Unequipping back to the rags and re-equipping never repeats it (the flag stays), and a
+// save that loaded already wearing armor has the flag set by normalizeSave, so old heroes never see it.
+export function withKnightingMoment(prev: Pick<SaveData, 'gearInstances' | 'equipped'>, next: SaveData): SaveData | null {
+  if (next.heroKnighted) return null;
+  return heroBaseLook(prev) === 'peasant' && heroBaseLook(next) === 'knight' ? { ...next, heroKnighted: true } : null;
+}
+
+export const heroSheetUrl = (sheet: HeroSheet): string => SHEET_URLS[sheet];
+
+export const playerSpriteUrl = (save: LookSave): string => heroSheetUrl(heroSheet(save));
 
 export function spriteForWeaponTier(tier: number): string {
   return WEAPON_SPRITES[tier] ?? Assets.weapons.club.url;

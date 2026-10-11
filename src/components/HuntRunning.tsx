@@ -11,7 +11,7 @@ import { DEFAULT_HUNTING_DEPTH, getHuntingZone, huntingEnemyNameKey } from '../g
 import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
 import { estimateHuntYield } from '../game/huntEstimate';
 import { getMaterial, MaterialId } from '../game/materials';
-import { playerSpriteUrl } from '../game/sprites';
+import { heroSheet } from '../game/sprites';
 import { fmtRate, fmtSpan, matName } from '../game/huntView';
 import { useDisplayName } from '../game/usernameContext';
 
@@ -80,7 +80,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
           <div className="hunt-run-stage">
             <HuntBattleView
               zone={zone}
-              playerSpriteUrl={playerSpriteUrl(save.activeSkin)}
+              heroSheet={heroSheet(save)}
               heroName={heroName}
               monsterName={t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)}
               monsterLevel={status.ceilingSubLevel}

@@ -18,6 +18,7 @@ import {
   viewDurability,
   viewRarity,
   viewRefine,
+  wearsRealArmor,
 } from './gearInstances';
 import { Materials, MaterialId, emptyMaterials } from './materials';
 import { ActiveExpedition, getExpedition } from './expedition';
@@ -206,6 +207,9 @@ export interface SaveData {
   activeFrame: string | null;
   // Hero skin (seasonItems.ts SKINS) the hero wears, one of the owned cosmetics; null = the default knight.
   activeSkin: string | null;
+  // Set once the hero has had the "you are now a Knight" moment (his first real armor, see sprites.ts heroBaseLook / App.tsx). A save that already wears armor when it
+  // loads has it set, so only a hero who really started as the peasant ever sees the celebration, and only once.
+  heroKnighted?: boolean;
   // Stash slots from Stash Deeds, beyond the upgrade ladder (seasonItems.ts, capped at +20 over all seasons).
   stashBonusSlots: number;
   dungeonCheckpoints: number[];
@@ -929,6 +933,7 @@ export function defaultSave(): SaveData {
     activeTitle: null,
     activeFrame: null,
     activeSkin: null,
+    heroKnighted: false,
     stashBonusSlots: 0,
     dungeonCheckpoints: [],
     gardenSlots: emptyGardenSlots(),
@@ -1292,6 +1297,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         activeTitle,
         activeFrame: sanitizeActiveFrame(parsed.activeFrame, cosmetics),
         activeSkin: sanitizeActiveSkin(parsed.activeSkin, cosmetics, hasBattlePass),
+        heroKnighted: parsed.heroKnighted === true || wearsRealArmor({ gearInstances, equipped: { armor: armorId } as EquippedGear }),
         stashBonusSlots: sanitizeStashBonus(parsed.stashBonusSlots),
         dungeonCheckpoints,
         skillTree: sanitizeSkillTree(parsed.skillTree, playerLevel(xp), hasBattlePass),

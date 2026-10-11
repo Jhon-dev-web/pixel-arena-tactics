@@ -181,6 +181,7 @@
     "shardsReward": "+{n} Runas",
     "shardsX": "{n}× Runas",
     "levelUp": "🎉 Subiu de Nível! Nv {n}",
+    "heroKnighted": "⚔️ Você agora é um Cavaleiro!",
     "relicDrops": "Relíquia"
   },
   "combat": {
@@ -1338,7 +1339,7 @@
     "frame_season_gold": "Moldura Dourada da Temporada",
     "frame_season_gold_d": "Uma moldura de ouro em volta do retrato do herói. Só enfeite.",
     "skins": "Aparência do herói",
-    "skin_default": "Cavaleiro (padrão)",
+    "skin_default": "Padrão",
     "skin_golden_knight": "Cavaleiro Dourado",
     "skin_golden_knight_d": "Armadura dourada e pluma carmesim. Só enfeite."
   },

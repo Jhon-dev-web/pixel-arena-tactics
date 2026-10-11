@@ -12,6 +12,8 @@ import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
 import TitleIcon from './TitleIcon';
 import { FRAMES, SKINS } from '../game/seasonItems';
+import { heroBaseLook } from '../game/sprites';
+import HeroThumb from './HeroThumb';
 
 // The three "Personagem" panels — extracted from what used to be HeroModal's three tabs, so the
 // Personagem view (desktop area + mobile stack, see PersonagemView.tsx) and any future modal reuse
@@ -236,6 +238,7 @@ export function TitlesPanel({
         <>
           <div className="frame-heading">{t('titles.skins')}</div>
           <button className={`title-row${!save.activeSkin ? ' active' : ''}`} onClick={() => onSelectSkin(null)} aria-pressed={!save.activeSkin} data-ui>
+            <HeroThumb sheet={heroBaseLook(save)} size={32} />
             <div className="title-row-main">
               <span className="title-name">{t('titles.skin_default')}</span>
             </div>
@@ -245,6 +248,7 @@ export function TitlesPanel({
             const on = save.activeSkin === s.id;
             return (
               <button key={s.id} className={`title-row${on ? ' active' : ''}`} onClick={() => onSelectSkin(s.id)} aria-pressed={on} data-ui>
+                <HeroThumb sheet="knight_golden" size={32} />
                 <div className="title-row-main">
                   <span className="title-name">{t(`titles.${s.nameKey}`)}</span>
                   <span className="title-req">{t(`titles.${s.descKey}`)}</span>

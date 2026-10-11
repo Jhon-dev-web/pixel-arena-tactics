@@ -1,5 +1,6 @@
 import { DropRarity, MaterialId } from './materials';
 import T from './tunables';
+import type { HeroSheet } from './sprites';
 
 export type HuntingEnemyId = 'demon' | 'blood_monster' | 'rift_fiend' | 'blood_abomination';
 
@@ -51,8 +52,15 @@ const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
   blood_abomination: { cell: 172, box: [58, 25, 111, 146], lie: 146, height: 1.15 },
 };
 
-// The hero's knight sheet, same measurement.
-export const HERO_ART: SheetArt = { cell: 256, box: [71, 12, 204, 251] };
+// The hero's sheets, same measurement (frame 0 of the idle row), one entry per HeroSheet (sprites.ts). The knight stands on y = 251, the peasant on y = 253: the
+// two feet are within 2 sheet pixels of each other (about 1 px on screen), and the peasant keeps his own natural proportions (234 px tall against the knight's 240).
+// The golden knight is a recolor of the knight sheet, so it shares his box.
+const KNIGHT_ART: SheetArt = { cell: 256, box: [71, 12, 204, 251] };
+export const HERO_ART: Record<HeroSheet, SheetArt> = {
+  peasant: { cell: 256, box: [66, 20, 189, 253] },
+  knight: KNIGHT_ART,
+  knight_golden: KNIGHT_ART,
+};
 
 export function huntingEnemyArt(id: HuntingEnemyId): HuntingEnemyArt {
   return HUNTING_ENEMY_ART[id];

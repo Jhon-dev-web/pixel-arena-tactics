@@ -181,6 +181,7 @@
     "shardsReward": "+{n} Runes",
     "shardsX": "{n}× Runes",
     "levelUp": "🎉 Level Up! Lv {n}",
+    "heroKnighted": "⚔️ You are now a Knight!",
     "relicDrops": "Relic"
   },
   "combat": {
@@ -1338,7 +1339,7 @@
     "frame_season_gold": "Season Gold Frame",
     "frame_season_gold_d": "A gold frame around the hero portrait. Purely cosmetic.",
     "skins": "Hero look",
-    "skin_default": "Knight (default)",
+    "skin_default": "Default",
     "skin_golden_knight": "Golden Knight",
     "skin_golden_knight_d": "Golden armour and a crimson plume. Purely cosmetic."
   },
