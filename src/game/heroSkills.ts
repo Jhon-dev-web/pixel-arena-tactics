@@ -180,6 +180,8 @@ const r6 = (x: number): number => Math.round(x * 1e6) / 1e6;
 export const crushBonusAt = (rank: number): number => r6(T.heroSkills.crushBonusBase + rank * T.heroSkills.crushBonusStep);
 export const furyPctAt = (rank: number): number => r6(T.heroSkills.furyDmgBase + rank * T.heroSkills.furyDmgStep);
 export const doubleChanceAt = (rank: number): number => r6(T.heroSkills.doubleBase + rank * T.heroSkills.doubleStep);
+export const bleedAt = (rank: number): number => r6(T.heroSkills.bleedBase + rank * T.heroSkills.bleedStep);
+export const blockAt = (rank: number): number => r6(T.heroSkills.blockBase + rank * T.heroSkills.blockStep);
 export const counterBonusAt = (rank: number): number => r6(T.heroSkills.counterBase + rank * T.heroSkills.counterStep);
 
 function strikeStats(ranks: SkillRanks): StrikeStats | null {
@@ -208,7 +210,7 @@ export function skillEffects(ranks: SkillRanks): SkillEffects {
   return {
     critChance: r6(k('w_keen_eye') * H.keenEyeCrit),
     critMultBonus: r6(k('w_execution') * H.executionCritMult),
-    bleed: r6(k('w_bleed') * H.bleedPct),
+    bleed: k('w_bleed') > 0 ? bleedAt(k('w_bleed')) : 0,
     weaponPct: r6(k('w_weapon_master') * H.weaponMasterPct),
     strikes: strikeStats(ranks),
     maxHpPct: r6(k('g_thick_skin') * H.thickSkinHp),
@@ -216,7 +218,7 @@ export function skillEffects(ranks: SkillRanks): SkillEffects {
     reflect: r6(k('g_thorns') * H.thornsReflect),
     hpRegenPct: r6(k('g_second_wind') * H.secondWindRegen),
     bossReduction: r6(k('g_firm_stance') * H.firmStanceReduction),
-    blockChance: r6(k('g_block') * H.blockChance),
+    blockChance: k('g_block') > 0 ? blockAt(k('g_block')) : 0,
     lastBastion: k('g_last_bastion') > 0,
     goldPct: r6(k('h_greed') * H.greedGold),
     materialsMult: r6(1 + k('h_scent') * H.scentMaterials),
@@ -245,7 +247,7 @@ export function skillParams(id: HeroSkillId, rank: number): Record<string, numbe
     case 'w_keen_eye': return { n: pct(H.keenEyeCrit) };
     case 'w_execution': return { n: pct(H.executionCritMult) };
     case 'w_fury': return { s: H.furyEveryMs / 1000, hits: H.furyHits, n: Math.round(furyPctAt(rank) * 1000) / 10, ...pr(furyPctAt) };
-    case 'w_bleed': return { n: pct(H.bleedPct), s: H.bleedDurationMs / 1000 };
+    case 'w_bleed': return { n: Math.round(bleedAt(rank) * 1000) / 10, s: H.bleedDurationMs / 1000, ...pr(bleedAt) };
     case 'w_weapon_master': return { n: pct(H.weaponMasterPct) };
     case 'w_devastating_strike': return { k: Math.round(H.devastatingEvery), mult: H.devastatingMult };
     case 'g_thick_skin': return { n: pct(H.thickSkinHp) };
@@ -253,7 +255,7 @@ export function skillParams(id: HeroSkillId, rank: number): Record<string, numbe
     case 'g_thorns': return { n: pct(H.thornsReflect) };
     case 'g_second_wind': return { n: pct(H.secondWindRegen) };
     case 'g_firm_stance': return { n: pct(H.firmStanceReduction) };
-    case 'g_block': return { n: pct(H.blockChance), c: Math.round(counterBonusAt(rank) * 1000) / 10, ...pr(counterBonusAt) };
+    case 'g_block': return { n: Math.round(blockAt(rank) * 1000) / 10, b1: Math.round(blockAt(1) * 1000) / 10, b2: Math.round(blockAt(2) * 1000) / 10, b3: Math.round(blockAt(3) * 1000) / 10, c: Math.round(counterBonusAt(rank) * 1000) / 10, ...pr(counterBonusAt) };
     case 'g_last_bastion': return { hp: 1, heal: Math.round(H.bastionHealPct * 100), s: Math.round(H.bastionCooldownMs / 1000) };
     case 'h_light_step': return { n: Math.round(doubleChanceAt(rank) * 1000) / 10, e: Math.round(H.doubleDmgPct * 100), ...pr(doubleChanceAt) };
     case 'h_greed': return { n: pct(H.greedGold) };

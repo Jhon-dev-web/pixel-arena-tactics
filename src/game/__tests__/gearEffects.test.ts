@@ -489,7 +489,7 @@ describe('balance of the effects (docs/ITEM_BALANCE_AUDIT.md section G)', () => 
     for (const [lv, tk] of [[25, '3'], [50, '4g'], [50, '4d'], [70, '5'], [90, '6']] as [number, string][]) {
       const base = hero(tk, 4, { level: lv });
       const d = duel(base, repFloor(base));
-      expect(d.reflectShare, `tier ${tk}`).toBeLessThanOrEqual(0.115);
+      expect(d.reflectShare, `tier ${tk}`).toBeLessThanOrEqual(0.13); // 0.115 before the Rodada 7 orc retune moved the tier-3 reference floor
       expect(d.reflectShare, `tier ${tk}`).toBeGreaterThan(0.03);
     }
   });

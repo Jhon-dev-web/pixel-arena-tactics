@@ -53,6 +53,8 @@ import { getEnemyDef } from '../enemies';
 import { rollBossRelics, rollBossUniques } from '../uniques';
 import { stageEnemyDmg, stageEnemyHp } from '../waves';
 import T from '../tunables';
+import { fmtSkillNumber, skillText } from '../../components/skillText';
+import { locales, setLocale } from '../../locales';
 import { hero, repFloor } from '../../../scripts/sim/duel';
 import { SKILL_BUILDS, runDungeon, spendSkillPoints } from '../../../scripts/sim/driver';
 
@@ -129,13 +131,14 @@ describe('the tree', () => {
     expect(skillParams('h_packer', 3).n).toBe(3 * T.heroSkills.packerSlots);
     expect(skillParams('w_devastating_strike', 1)).toEqual({ k: T.heroSkills.devastatingEvery, mult: T.heroSkills.devastatingMult });
     const saved = T.heroSkills.crushBonusStep;
+    const savedBase = T.heroSkills.crushBonusBase;
     try {
       (T.heroSkills as unknown as Record<string, number>).crushBonusStep = 0.07;
       (T.heroSkills as unknown as Record<string, number>).crushBonusBase = 0;
       expect(skillParams('w_heavy_blow', 1).n).toBe(7);
     } finally {
       (T.heroSkills as unknown as Record<string, number>).crushBonusStep = saved;
-      (T.heroSkills as unknown as Record<string, number>).crushBonusBase = 0.03;
+      (T.heroSkills as unknown as Record<string, number>).crushBonusBase = savedBase;
     }
   });
 });
@@ -310,13 +313,14 @@ describe('each skill changes the combat numbers it promises', () => {
 
   it('Warrior: strikes, crit chance, crit damage, weapon damage, bleed', () => {
     expect(c(fullOf('w_heavy_blow')).dmgBase).toBe(bare.dmgBase); // a strike, not a flat bonus
-    expect(c(fullOf('w_heavy_blow')).strikes).toEqual({ crushEvery: T.heroSkills.crushEvery, crushBonus: T.heroSkills.crushBonusBase + 3 * T.heroSkills.crushBonusStep });
+    expect(c(fullOf('w_heavy_blow')).strikes).toMatchObject({ crushEvery: T.heroSkills.crushEvery });
+    expect(c(fullOf('w_heavy_blow')).strikes!.crushBonus).toBeCloseTo(T.heroSkills.crushBonusBase + 3 * T.heroSkills.crushBonusStep, 9);
     expect(c(fullOf('w_keen_eye')).critChance - bare.critChance).toBeCloseTo(3 * T.heroSkills.keenEyeCrit, 9);
     expect(c(fullOf('w_execution')).critMult - bare.critMult).toBeCloseTo(3 * T.heroSkills.executionCritMult, 9);
     expect(c(fullOf('w_fury')).heroMs).toBe(bare.heroMs);
     expect(c(fullOf('w_fury')).strikes!.furyPct).toBeCloseTo(T.heroSkills.furyDmgBase + 3 * T.heroSkills.furyDmgStep, 9);
     expect(c(fullOf('w_weapon_master')).dmgBase).toBeGreaterThan(bare.dmgBase);
-    expect(c(fullOf('w_bleed')).bleed).toBeCloseTo(3 * T.heroSkills.bleedPct, 9);
+    expect(c(fullOf('w_bleed')).bleed).toBeCloseTo(T.heroSkills.bleedBase + 3 * T.heroSkills.bleedStep, 9);
     expect(bare.bleed).toBeUndefined();
     expect(c(fullOf('w_devastating_strike')).strikes).toMatchObject({ crushEvery: T.heroSkills.crushEvery, crushBonus: 0, devastating: true });
     expect(bare.strikes).toBeUndefined();
@@ -329,7 +333,7 @@ describe('each skill changes the combat numbers it promises', () => {
     expect(c(fullOf('g_thorns')).reflect - bare.reflect).toBeCloseTo(3 * T.heroSkills.thornsReflect, 9);
     expect(c(fullOf('g_second_wind')).hpRegenPct - bare.hpRegenPct).toBeCloseTo(3 * T.heroSkills.secondWindRegen, 9);
     expect(c(fullOf('g_firm_stance')).bossReduction).toBeCloseTo(3 * T.heroSkills.firmStanceReduction, 9);
-    expect(c(fullOf('g_block')).block).toBeCloseTo(3 * T.heroSkills.blockChance, 9);
+    expect(c(fullOf('g_block')).block).toBeCloseTo(T.heroSkills.blockBase + 3 * T.heroSkills.blockStep, 9);
     expect(c(fullOf('g_block')).strikes!.counter).toBeCloseTo(T.heroSkills.counterBase + 3 * T.heroSkills.counterStep, 9);
     expect(c(fullOf('g_last_bastion')).bastion).toBe(true);
   });
@@ -888,5 +892,67 @@ describe('the simulator player spends points as they are earned', () => {
     expect(pointsSpent(spendSkillPoints(atLevel(100), 'hunter').skillTree.sets[0])).toBe(19);
     expect(spendSkillPoints(atLevel(100), 'none').skillTree.sets[0]).toEqual({});
     expect(spendSkillPoints(spendSkillPoints(atLevel(30), 'guardian'), 'guardian').skillTree.sets[0]).toEqual(spendSkillPoints(atLevel(30), 'guardian').skillTree.sets[0]);
+  });
+});
+
+describe('skill descriptions show the numbers the engine really uses', () => {
+  // Every description is rendered for every rank in both languages and must contain the numbers of the effect the engine builds for that rank (trigger interval,
+  // percentage, multiplier), so a text can never drift from the mechanic again (the Golpe Devastador once read "every 6th hit x1.3").
+  const expected = (id: HeroSkillId, rank: number): number[] => {
+    const fx = skillEffects({ [id]: rank });
+    const H = T.heroSkills;
+    const p = (x: number) => Math.round(x * 1000) / 10;
+    switch (id) {
+      case 'w_heavy_blow': return [fx.strikes!.crushEvery!, p(fx.strikes!.crushBonus!)];
+      case 'w_fury': return [H.furyEveryMs / 1000, H.furyHits, p(fx.strikes!.furyPct!)];
+      case 'w_devastating_strike': return [H.devastatingEvery, H.devastatingMult];
+      case 'g_block': return [p(fx.blockChance), p(fx.strikes!.counter!)];
+      case 'h_light_step': return [p(fx.strikes!.doubleChance!), Math.round(H.doubleDmgPct * 100)];
+      case 'w_bleed': return [p(fx.bleed), H.bleedDurationMs / 1000];
+      case 'g_last_bastion': return [Math.round(H.bastionHealPct * 100), H.bastionCooldownMs / 1000];
+      case 'w_keen_eye': return [p(fx.critChance)];
+      case 'w_execution': return [p(fx.critMultBonus)];
+      case 'w_weapon_master': return [p(fx.weaponPct)];
+      case 'g_thick_skin': return [p(fx.maxHpPct)];
+      case 'g_bulwark': return [p(fx.resistancePct)];
+      case 'g_thorns': return [p(fx.reflect)];
+      case 'g_second_wind': return [p(fx.hpRegenPct)];
+      case 'g_firm_stance': return [p(fx.bossReduction)];
+      case 'h_greed': return [p(fx.goldPct)];
+      case 'h_scent': return [p(fx.materialsMult - 1)];
+      case 'h_quick_learner': return [p(fx.xpPct)];
+      case 'h_packer': return [fx.bagSlots];
+      case 'h_gatherer': return [p(fx.gatherPct)];
+      case 'h_great_luck': return [p(fx.huntUniqueMult - 1), p(fx.bossLootMult - 1)];
+    }
+  };
+  it('every rank of every skill, in both languages, prints the engine numbers', () => {
+    const before = locales[0];
+    try {
+      for (const lang of locales) {
+        setLocale(lang);
+        for (const def of HERO_SKILLS) {
+          for (let rank = 1; rank <= def.maxRank; rank++) {
+            const text = skillText(def.id, rank);
+            for (const n of expected(def.id, rank)) expect(text, `${lang} ${def.id} rank ${rank}`).toContain(fmtSkillNumber(n));
+          }
+        }
+      }
+    } finally {
+      setLocale(before);
+    }
+  });
+  it('the strikes are the numbers of the design: 60/90/120 every 5th hit, x3 every third crush, 35/45/55 every 8 s', () => {
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ w_heavy_blow: r }).strikes!.crushBonus! * 100))).toEqual([60, 90, 120]);
+    expect(T.heroSkills.crushEvery).toBe(5);
+    expect(T.heroSkills.devastatingEvery).toBe(3);
+    expect(T.heroSkills.devastatingMult).toBe(3);
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ w_fury: r }).strikes!.furyPct! * 100))).toEqual([35, 45, 55]);
+    expect(T.heroSkills.furyEveryMs).toBe(8000);
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ w_bleed: r }).bleed * 100))).toEqual([4, 7, 10]);
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ g_block: r }).blockChance * 100))).toEqual([4, 7, 10]);
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ g_block: r }).strikes!.counter! * 100))).toEqual([60, 90, 120]);
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ h_light_step: r }).strikes!.doubleChance! * 100))).toEqual([8, 12, 16]);
+    expect(T.heroSkills.doubleDmgPct).toBe(0.6);
   });
 });

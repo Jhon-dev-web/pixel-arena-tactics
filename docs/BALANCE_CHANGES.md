@@ -589,60 +589,62 @@ O Emblema não multiplica a Poção de XP (item fixo) nem o XP do Passe; só o X
 O nível 30 agora dá três coisas: o Emblema, o título e a skin **Cavaleiro Dourado** (`skin_golden_knight`, a ficha `knight_golden.png`, mesmo layout 1024x1024 e mesmas linhas de animação do cavaleiro, então vale a mesma `HERO_ART`). A skin é uma escolha cosmética, não do equipamento (a regra "armadura não muda o sprite" continua): só quem tem o Passe e a skin escolhe, em Personagem; um save com skin desconhecida, não possuída ou sem Passe carrega com o cavaleiro padrão. Desenhada na Masmorra, na cena da Caça, no card do herói da Home, no avatar da barra e no retrato de Personagem.
 
 
-## Rodada 7 — habilidades (2026-10-11)
+## Rodada 7 — habilidades (2026-10-11, números finais)
 
-Três caminhos de habilidades passivas / golpes automáticos (Guerreiro, Guardião, Caçador), 1 ponto a cada 5 níveis (20 no total), 6 habilidades de até 3 postos e 1 capstone por caminho (`src/game/heroSkills.ts`, números em `T.heroSkills`). Todos os efeitos entram por `buildCombatStats`, então Masmorra, Caça e simulador concordam; CP valoriza as habilidades de combate (`combatPowerCore`); as de economia não têm CP.
+Três caminhos (Guerreiro, Guardião, Caçador), 1 ponto a cada 5 níveis (20 no total), 6 habilidades de até 3 postos e 1 capstone por caminho (`src/game/heroSkills.ts`, números em `T.heroSkills`). Tudo entra por `buildCombatStats`; CP valoriza as habilidades de combate; as de economia não têm CP. Portas: tier 2 pede 2 pontos no caminho, tier 3 pede 5, capstone 10. Redistribuir: grátis a primeira vez, depois 50 de ouro x pontos x nível / 10 (9.500 a 100 com 19 pontos). Conjunto 2 = perk do Passe.
 
-**Tabela final (por posto; tier; custo = 1 ponto por posto).**
+**Histórico (primeira tentativa, orçamento antigo).** A primeira versão da rodada limitou um caminho completo a +22% a +30% na margem do duelo. Isso obrigou os golpes a "+6% a cada 5 golpes" e a 1 a 2% do dano: um rótulo com partícula. Resultado daquela tentativa: orcs hp 276 / dmg 41, chefe 50 em 0,88, e a seed mais rápida chegava ao andar 50 no dia 9. O orçamento estava errado; esta seção o substitui.
 
-| Habilidade | Tier | Efeito (postos 1 / 2 / 3) |
+**Orçamento novo.** Caminho de combate completo (19 pontos) vale +55% a +75% na margem real do duelo nos níveis 60 e 100, Guerreiro e Guardião a menos de 15% um do outro; os golpes carregam mais da metade do valor do caminho; Caçador no máximo ~2 dias atrás nos marcos, materiais/dia +10 a +16% e valor de combate <= 45% de um caminho de combate. Os inimigos foram retunados em torno disso.
+
+**Tabela final (postos 1 / 2 / 3).**
+
+| Habilidade | Tier | Efeito |
 | --- | --- | --- |
-| Golpe Esmagador (Guerreiro) | 1 | a cada 5 golpes, +6% / +9% / +12% de dano naquele golpe |
-| Olho Clínico | 1 | +1% / +2% / +3% de chance de crítico |
-| Execução | 2 | +5% / +10% / +15% de dano crítico |
-| Golpe de Fúria | 2 | a cada 8 s de combate, 3 golpes extras de 8% / 12% / 16% do dano |
-| Sangria | 3 | 2% / 4% / 6% do golpe por segundo, 3 s depois do último golpe (efeito à parte da queima) |
-| Mestre de Armas | 3 | +2% / +4% / +6% do dano base da arma |
-| Golpe Devastador (capstone) | 4 | todo 3º Golpe Esmagador vira Devastador: dano x1,8 no lugar do bônus (requer 10 pontos no caminho) |
-| Pele Dura (Guardião) | 1 | +1% / +2% / +3% de vida máxima |
-| Muralha | 1 | +2,5% / +5% / +7,5% sobre o total de resistência |
-| Espinhos | 2 | +4% / +8% / +12% de reflexo |
-| Segundo Fôlego | 2 | +0,09% / +0,18% / +0,27% da vida por segundo |
-| Postura Firme | 3 | -4% / -8% / -12% de dano nos andares de chefe e mini-chefe (só Masmorra) |
-| Bloqueio | 3 | 1% / 2% / 3% de bloquear; Contra-ataque: próximo golpe +20% / +30% / +40% |
+| Golpe Esmagador | 1 | a cada 5 golpes, +60% / +90% / +120% de dano naquele golpe |
+| Olho Clínico | 1 | +2,4 / 4,8 / 7,2% de chance de crítico |
+| Golpe de Fúria | 2 | a cada 8 s de combate, 3 golpes extras de 35% / 45% / 55% do dano |
+| Execução | 2 | +11 / 22 / 33% de dano crítico |
+| Sangria | 3 | 4% / 7% / 10% do golpe por segundo, 3 s depois do último golpe |
+| Mestre de Armas | 3 | +3,5 / 7 / 10,5% do dano base da arma |
+| Golpe Devastador (capstone) | 4 | todo 3º Golpe Esmagador causa dano x3 no lugar do bônus (10 pontos no caminho) |
+| Pele Dura (Guardião) | 1 | +2,5 / 5 / 7,5% de vida máxima |
+| Muralha | 1 | +7 / 14 / 21% sobre o total de resistência |
+| Espinhos | 2 | +8 / 16 / 24% de reflexo |
+| Segundo Fôlego | 2 | +0,11 / 0,22 / 0,33% da vida por segundo |
+| Postura Firme | 3 | -6 / 12 / 18% de dano nos andares de chefe e mini-chefe (só Masmorra) |
+| Bloqueio | 3 | 4% / 7% / 10% de bloquear; Contra-ataque: próximo golpe +60% / +90% / +120% |
 | Último Bastião (capstone) | 4 | golpe fatal deixa 1 de vida e cura 25%: uma vez por incursão; na Caça a cada 60 s de combate |
-| Golpe Duplo (Caçador) | 1 | 6% / 10% / 14% de chance de atacar duas vezes (o eco causa 20% do golpe) |
-| Ganância | 1 | +4% / +8% / +12% de ouro da Masmorra e da Caça, fora do limite do equipamento |
-| Faro | 2 | +7% / +14% / +21% de materiais na Caça (únicos e relíquias não mudam) |
-| Aprendiz Veloz | 2 | +4% / +8% / +12% de XP do personagem |
-| Mochileiro | 3 | +2 / +4 / +6 espaços na mochila |
-| Coletor | 3 | +6% / +12% / +18% de materiais da Mineração e do Lenhador |
-| Sorte Grande (capstone) | 4 | chance de única na Caça x1,5; únicas e relíquias de chefe da Masmorra x1,25 |
+| Golpe Duplo (Caçador) | 1 | 8% / 12% / 16% de chance de atacar duas vezes, o eco causa 60% |
+| Ganância | 1 | +4 / 8 / 12% de ouro da Masmorra e da Caça (fora do limite do equipamento) |
+| Faro | 2 | +7 / 14 / 21% de materiais na Caça |
+| Aprendiz Veloz | 2 | +4 / 8 / 12% de XP |
+| Mochileiro | 3 | +2 / 4 / 6 espaços |
+| Coletor | 3 | +6 / 12 / 18% de Mineração e Lenhador |
+| Sorte Grande (capstone) | 4 | única na Caça x1,5; únicas e relíquias de chefe da Masmorra x1,25 |
 
-Portas: tier 2 pede 2 pontos no caminho, tier 3 pede 5, capstone 10. Redistribuir: grátis a primeira vez, depois 50 de ouro x pontos gastos x nível / 10 (a 100: 9.500 de ouro com 19 pontos). Conjunto 2 = perk do Passe (oitavo cartão da tela do Passe).
+Último Bastião: cura 25% e recarga de 60 s mantidas; no Monte Carlo da Masmorra (andares limpos por execução na borda do alcance) vale +93% / +57% / +14% nos níveis 30 / 60 / 100 contra +70% / +39% / +11% de um Bloqueio completo: de 1,27x a 1,46x (limite 1,5x). Peso de CP e do duelo 0,3.
 
-**O que mudou dos números iniciais do diretor, e por quê.** O orçamento (cada caminho de combate completo entre +22% e +30% na margem real do duelo) obriga a ficar bem abaixo: com os números iniciais um Guerreiro completo valia +97% a +105%. Por posto: Golpe Pesado +4% de dano final virou o **Golpe Esmagador** (golpe automático, +6/9/12% a cada 5 golpes); Fúria +3% de velocidade virou o **Golpe de Fúria** (rajada de 3 golpes a cada 8 s, 8/12/16%); Passo Leve +3% de velocidade virou o **Golpe Duplo** (6/10/14%, eco de 20%); Bloqueio ganhou Contra-ataque; o Golpe Devastador deixou de ser "todo 6º golpe x3" (valia +30%) e passou a melhorar o Esmagador (x1,8 a cada 3 esmagadores = o valor de ~1,3x uma T3). Execução 10 -> 5% por posto, Mestre de Armas 5 -> 2%, Sangria 2%/s fica, Pele Dura 5 -> 1%, Muralha 4 -> 2,5%, Espinhos 3 -> 4%, Segundo Fôlego 0,3 -> 0,09%/s, Postura Firme 6 -> 4%, Bloqueio 4 -> 1%, Ganância 5 -> 4%, Faro 4 -> 7%. Último Bastião mantém 25%; o peso de CP (0,2) foi calibrado para o orçamento.
-
-**Valor medido (`npm run sim:skills`, margem P do duelo fechado, heróis completos de um tier; o jogador real tem 12 pontos no nível 60).**
+**Valor medido (`npm run sim:skills`; heróis completos de um tier; um herói real de nível 60 tem 12 pontos).**
 
 #### nível 30 (tier 3, refino 4; PV 804, dano 148, crit 26.0%, redução 0.45, 0.93 atq/s)
 | Caminho | Habilidade | Tier | Valor no posto máximo (margem do duelo) | CP |
 | --- | --- | --- | --- | --- |
-| warrior | w_heavy_blow | 1 | +2.18% (comum +2.20%, chefe +2.15%) | +1.26% |
-| warrior | w_keen_eye | 1 | +2.57% (comum +2.59%, chefe +2.53%) | +1.46% |
-| warrior | w_execution | 2 | +2.68% (comum +2.70%, chefe +2.63%) | +1.46% |
-| warrior | w_fury | 2 | +4.44% (comum +4.47%, chefe +4.37%) | +2.30% |
-| warrior | w_bleed | 3 | +4.15% (comum +4.15%, chefe +4.16%) | +2.20% |
-| warrior | w_weapon_master | 3 | +3.66% (comum +3.69%, chefe +3.60%) | +1.99% |
-| warrior | w_devastating_strike | capstone | +4.85% (comum +4.88%, chefe +4.77%) | +2.62% |
-| guardian | g_thick_skin | 1 | +2.99% (comum +2.99%, chefe +2.99%) | +1.46% |
-| guardian | g_bulwark | 1 | +2.10% (comum +2.12%, chefe +2.07%) | +1.05% |
-| guardian | g_thorns | 2 | +4.73% (comum +4.39%, chefe +5.51%) | +1.99% |
-| guardian | g_second_wind | 2 | +2.86% (comum +3.07%, chefe +2.37%) | +1.57% |
-| guardian | g_firm_stance | 3 | +3.51% (comum +0.00%, chefe +12.20%) | +1.88% |
-| guardian | g_block | 3 | +3.53% (comum +3.55%, chefe +3.47%) | +2.20% |
-| guardian | g_last_bastion | capstone | +5.00% (comum +5.00%, chefe +5.00%) | +2.51% |
-| hunter | h_light_step | 1 | +2.55% (comum +2.56%, chefe +2.50%) | +1.46% |
+| warrior | w_heavy_blow | 1 | +21.71% (comum +21.93%, chefe +21.19%) | +11.40% |
+| warrior | w_keen_eye | 1 | +6.14% (comum +6.21%, chefe +6.00%) | +3.35% |
+| warrior | w_execution | 2 | +5.86% (comum +5.92%, chefe +5.72%) | +3.24% |
+| warrior | w_fury | 2 | +15.18% (comum +15.33%, chefe +14.82%) | +7.53% |
+| warrior | w_bleed | 3 | +6.89% (comum +6.89%, chefe +6.87%) | +3.56% |
+| warrior | w_weapon_master | 3 | +6.37% (comum +6.43%, chefe +6.22%) | +3.45% |
+| warrior | w_devastating_strike | capstone | +12.06% (comum +12.18%, chefe +11.77%) | +6.49% |
+| guardian | g_thick_skin | 1 | +7.46% (comum +7.46%, chefe +7.46%) | +3.66% |
+| guardian | g_bulwark | 1 | +5.85% (comum +5.91%, chefe +5.71%) | +3.03% |
+| guardian | g_thorns | 2 | +9.96% (comum +9.01%, chefe +12.21%) | +3.77% |
+| guardian | g_second_wind | 2 | +3.35% (comum +3.67%, chefe +2.59%) | +1.99% |
+| guardian | g_firm_stance | 3 | +5.46% (comum +0.00%, chefe +19.38%) | +2.82% |
+| guardian | g_block | 3 | +17.70% (comum +17.88%, chefe +17.28%) | +11.61% |
+| guardian | g_last_bastion | capstone | +7.50% (comum +7.50%, chefe +7.50%) | +3.77% |
+| hunter | h_light_step | 1 | +8.68% (comum +8.77%, chefe +8.48%) | +4.71% |
 | hunter | h_greed | 1 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | hunter | h_scent | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | hunter | h_quick_learner | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
@@ -651,27 +653,27 @@ Portas: tier 2 pede 2 pontos no caminho, tier 3 pede 5, capstone 10. Redistribui
 | hunter | h_great_luck | capstone | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | Caminho | 19 pontos (valor) | CP | com os pontos do nível | só passivas (18) | razão máx/mín entre passivas | capstone / média das T3 | capstone / T3 maior | reflexo / dano causado |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| warrior | +25.3% (19 pts) | +12.9% | +6.6% (6 pts) | +20.7% | 2.03 | 1.24 | 1.17 | +6.7% |
-| guardian | +27.4% (19 pts) | +13.5% | +5.1% (6 pts) | +21.3% | 2.25 | 1.42 | 1.42 | +11.6% |
-| hunter | +2.5% (19 pts) | +1.5% | +2.5% (6 pts) | +2.5% | Infinity | NaN | NaN | +8.2% |
+| warrior | +76.9% (19 pts) | +35.6% | +36.9% (6 pts) | +71.0% | 3.71 | 1.82 | 1.75 | +4.9% |
+| guardian | +70.9% (19 pts) | +34.8% | +13.7% (6 pts) | +59.0% | 5.29 | 0.65 | 0.42 | +13.2% |
+| hunter | +8.7% (19 pts) | +4.7% | +8.7% (6 pts) | +8.7% | Infinity | NaN | NaN | +7.9% |
 #### nível 60 (tier 4, refino 6; PV 1373, dano 252, crit 33.0%, redução 0.63, 1.01 atq/s)
 | Caminho | Habilidade | Tier | Valor no posto máximo (margem do duelo) | CP |
 | --- | --- | --- | --- | --- |
-| warrior | w_heavy_blow | 1 | +2.18% (comum +2.20%, chefe +2.14%) | +1.17% |
-| warrior | w_keen_eye | 1 | +2.48% (comum +2.50%, chefe +2.44%) | +1.33% |
-| warrior | w_execution | 2 | +3.15% (comum +3.18%, chefe +3.09%) | +1.71% |
-| warrior | w_fury | 2 | +3.77% (comum +3.80%, chefe +3.70%) | +1.92% |
-| warrior | w_bleed | 3 | +3.53% (comum +3.53%, chefe +3.53%) | +1.81% |
-| warrior | w_weapon_master | 3 | +3.71% (comum +3.74%, chefe +3.64%) | +2.03% |
-| warrior | w_devastating_strike | capstone | +4.85% (comum +4.89%, chefe +4.76%) | +2.61% |
-| guardian | g_thick_skin | 1 | +2.99% (comum +2.99%, chefe +2.99%) | +1.49% |
-| guardian | g_bulwark | 1 | +2.63% (comum +2.65%, chefe +2.58%) | +1.33% |
-| guardian | g_thorns | 2 | +4.18% (comum +3.84%, chefe +4.97%) | +1.71% |
-| guardian | g_second_wind | 2 | +2.77% (comum +3.00%, chefe +2.24%) | +1.49% |
-| guardian | g_firm_stance | 3 | +3.50% (comum +0.00%, chefe +12.17%) | +1.87% |
-| guardian | g_block | 3 | +3.43% (comum +3.46%, chefe +3.37%) | +2.13% |
-| guardian | g_last_bastion | capstone | +5.00% (comum +5.00%, chefe +5.00%) | +2.45% |
-| hunter | h_light_step | 1 | +2.55% (comum +2.57%, chefe +2.50%) | +1.39% |
+| warrior | w_heavy_blow | 1 | +21.83% (comum +22.00%, chefe +21.42%) | +11.36% |
+| warrior | w_keen_eye | 1 | +5.96% (comum +6.01%, chefe +5.84%) | +3.20% |
+| warrior | w_execution | 2 | +6.93% (comum +6.99%, chefe +6.80%) | +3.73% |
+| warrior | w_fury | 2 | +12.97% (comum +13.08%, chefe +12.73%) | +6.40% |
+| warrior | w_bleed | 3 | +5.88% (comum +5.88%, chefe +5.88%) | +2.99% |
+| warrior | w_weapon_master | 3 | +6.49% (comum +6.54%, chefe +6.36%) | +3.52% |
+| warrior | w_devastating_strike | capstone | +12.13% (comum +12.22%, chefe +11.90%) | +6.45% |
+| guardian | g_thick_skin | 1 | +7.50% (comum +7.50%, chefe +7.50%) | +3.68% |
+| guardian | g_bulwark | 1 | +7.35% (comum +7.41%, chefe +7.21%) | +3.68% |
+| guardian | g_thorns | 2 | +8.35% (comum +7.67%, chefe +9.94%) | +3.36% |
+| guardian | g_second_wind | 2 | +3.41% (comum +3.70%, chefe +2.75%) | +1.87% |
+| guardian | g_firm_stance | 3 | +5.51% (comum +0.00%, chefe +19.59%) | +2.83% |
+| guardian | g_block | 3 | +16.76% (comum +16.90%, chefe +16.45%) | +11.52% |
+| guardian | g_last_bastion | capstone | +7.50% (comum +7.50%, chefe +7.50%) | +3.68% |
+| hunter | h_light_step | 1 | +8.73% (comum +8.80%, chefe +8.57%) | +4.69% |
 | hunter | h_greed | 1 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | hunter | h_scent | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | hunter | h_quick_learner | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
@@ -680,27 +682,27 @@ Portas: tier 2 pede 2 pontos no caminho, tier 3 pede 5, capstone 10. Redistribui
 | hunter | h_great_luck | capstone | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | Caminho | 19 pontos (valor) | CP | com os pontos do nível | só passivas (18) | razão máx/mín entre passivas | capstone / média das T3 | capstone / T3 maior | reflexo / dano causado |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| warrior | +24.4% (19 pts) | +12.4% | +12.0% (12 pts) | +19.9% | 1.73 | 1.34 | 1.31 | +6.7% |
-| guardian | +27.2% (19 pts) | +13.4% | +13.2% (12 pts) | +21.2% | 1.59 | 1.44 | 1.43 | +11.0% |
-| hunter | +2.5% (19 pts) | +1.4% | +2.5% (12 pts) | +2.5% | Infinity | NaN | NaN | +8.1% |
+| warrior | +74.9% (19 pts) | +34.6% | +52.7% (12 pts) | +68.9% | 3.71 | 1.96 | 1.87 | +4.7% |
+| guardian | +70.4% (19 pts) | +35.1% | +29.3% (12 pts) | +58.5% | 4.91 | 0.67 | 0.45 | +12.0% |
+| hunter | +8.7% (19 pts) | +4.7% | +8.7% (12 pts) | +8.7% | Infinity | NaN | NaN | +7.6% |
 #### nível 100 (tier 6, refino 8; PV 2490, dano 678, crit 49.0%, redução 0.88, 1.11 atq/s)
 | Caminho | Habilidade | Tier | Valor no posto máximo (margem do duelo) | CP |
 | --- | --- | --- | --- | --- |
-| warrior | w_heavy_blow | 1 | +2.23% (comum +2.23%, chefe +2.22%) | +1.16% |
-| warrior | w_keen_eye | 1 | +2.31% (comum +2.32%, chefe +2.30%) | +1.22% |
-| warrior | w_execution | 2 | +4.05% (comum +4.06%, chefe +4.02%) | +2.11% |
-| warrior | w_fury | 2 | +2.97% (comum +2.98%, chefe +2.96%) | +1.41% |
-| warrior | w_bleed | 3 | +2.80% (comum +2.79%, chefe +2.81%) | +1.35% |
-| warrior | w_weapon_master | 3 | +4.41% (comum +4.42%, chefe +4.38%) | +2.28% |
-| warrior | w_devastating_strike | capstone | +4.95% (comum +4.96%, chefe +4.92%) | +2.57% |
-| guardian | g_thick_skin | 1 | +3.01% (comum +3.01%, chefe +3.01%) | +1.51% |
-| guardian | g_bulwark | 1 | +3.36% (comum +3.37%, chefe +3.34%) | +1.60% |
-| guardian | g_thorns | 2 | +1.40% (comum +1.32%, chefe +1.58%) | +1.41% |
-| guardian | g_second_wind | 2 | +4.44% (comum +4.70%, chefe +3.85%) | +0.91% |
-| guardian | g_firm_stance | 3 | +3.73% (comum +0.00%, chefe +12.99%) | +1.86% |
-| guardian | g_block | 3 | +3.48% (comum +3.49%, chefe +3.46%) | +2.13% |
-| guardian | g_last_bastion | capstone | +5.00% (comum +5.00%, chefe +5.00%) | +2.47% |
-| hunter | h_light_step | 1 | +2.60% (comum +2.61%, chefe +2.58%) | +1.35% |
+| warrior | w_heavy_blow | 1 | +22.28% (comum +22.34%, chefe +22.15%) | +11.08% |
+| warrior | w_keen_eye | 1 | +5.55% (comum +5.56%, chefe +5.52%) | +2.88% |
+| warrior | w_execution | 2 | +8.90% (comum +8.93%, chefe +8.85%) | +4.56% |
+| warrior | w_fury | 2 | +10.22% (comum +10.25%, chefe +10.16%) | +4.77% |
+| warrior | w_bleed | 3 | +4.66% (comum +4.65%, chefe +4.68%) | +2.22% |
+| warrior | w_weapon_master | 3 | +7.71% (comum +7.73%, chefe +7.67%) | +3.96% |
+| warrior | w_devastating_strike | capstone | +12.38% (comum +12.41%, chefe +12.31%) | +6.30% |
+| guardian | g_thick_skin | 1 | +7.51% (comum +7.51%, chefe +7.51%) | +3.69% |
+| guardian | g_bulwark | 1 | +9.41% (comum +9.44%, chefe +9.36%) | +4.41% |
+| guardian | g_thorns | 2 | +2.79% (comum +2.64%, chefe +3.17%) | +2.80% |
+| guardian | g_second_wind | 2 | +5.48% (comum +5.80%, chefe +4.74%) | +1.12% |
+| guardian | g_firm_stance | 3 | +5.86% (comum +0.00%, chefe +20.91%) | +2.82% |
+| guardian | g_block | 3 | +16.22% (comum +16.26%, chefe +16.12%) | +11.41% |
+| guardian | g_last_bastion | capstone | +7.50% (comum +7.50%, chefe +7.50%) | +3.69% |
+| hunter | h_light_step | 1 | +8.91% (comum +8.93%, chefe +8.86%) | +4.56% |
 | hunter | h_greed | 1 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | hunter | h_scent | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | hunter | h_quick_learner | 2 | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
@@ -709,88 +711,93 @@ Portas: tier 2 pede 2 pontos no caminho, tier 3 pede 5, capstone 10. Redistribui
 | hunter | h_great_luck | capstone | +0.00% (comum +0.00%, chefe +0.00%) | +0.00% |
 | Caminho | 19 pontos (valor) | CP | com os pontos do nível | só passivas (18) | razão máx/mín entre passivas | capstone / média das T3 | capstone / T3 maior | reflexo / dano causado |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| warrior | +24.5% (19 pts) | +11.9% | +24.5% (20 pts) | +19.8% | 1.98 | 1.37 | 1.12 | +3.2% |
-| guardian | +27.7% (19 pts) | +12.6% | +27.7% (20 pts) | +21.6% | 3.18 | 1.39 | 1.34 | +4.9% |
-| hunter | +2.6% (19 pts) | +1.4% | +2.6% (20 pts) | +2.6% | Infinity | NaN | NaN | +3.9% |
+| warrior | +75.0% (19 pts) | +33.2% | +75.0% (20 pts) | +68.8% | 4.78 | 2.00 | 1.60 | +2.3% |
+| guardian | +71.3% (19 pts) | +33.8% | +71.3% (20 pts) | +59.4% | 5.80 | 0.68 | 0.46 | +5.1% |
+| hunter | +8.9% (19 pts) | +4.6% | +8.9% (20 pts) | +8.9% | Infinity | NaN | NaN | +3.6% |
 #### Parcela do dano total de cada golpe (Caça de 4 h na zona do tier, contadores da tela de resultado)
 | Herói | Golpe | posto 1 | posto 2 | posto 3 |
 | --- | --- | --- | --- | --- |
-| nível 30 | Golpe Esmagador | 1.2% (x2671) | 1.7% (x2671) | 2.3% (x2671) |
-| nível 30 | Golpe de Fúria | 2.5% (x1800) | 3.6% (x1800) | 4.8% (x1800) |
-| nível 30 | Sangria | 0.8% (x7368) | 1.7% (x7368) | 3.2% (x7685) |
-| nível 30 | Golpe Duplo | 1.2% (x767) | 1.9% (x1256) | 2.7% (x1833) |
-| nível 30 | Contra-ataque | 0.1% (x55) | 0.2% (x105) | 0.4% (x147) |
-| nível 30 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x890) |
-| nível 60 | Golpe Esmagador | 1.2% (x2914) | 1.8% (x2914) | 2.3% (x2914) |
-| nível 60 | Golpe de Fúria | 2.0% (x1799) | 3.0% (x1799) | 4.0% (x1799) |
+| nível 30 | Golpe Esmagador | 10.6% (x2671) | 15.2% (x2671) | 19.3% (x2671) |
+| nível 30 | Golpe de Fúria | 9.8% (x1800) | 12.5% (x1800) | 14.9% (x1800) |
+| nível 30 | Sangria | 1.7% (x7368) | 3.5% (x7685) | 3.2% (x5711) |
+| nível 30 | Golpe Duplo | 4.4% (x1012) | 6.4% (x1535) | 8.6% (x2079) |
+| nível 30 | Contra-ataque | 0.8% (x185) | 2.2% (x322) | 3.8% (x448) |
+| nível 30 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 10.4% (x890) |
+| nível 60 | Golpe Esmagador | 10.7% (x2914) | 15.2% (x2914) | 19.3% (x2914) |
+| nível 60 | Golpe de Fúria | 8.4% (x1799) | 10.5% (x1799) | 12.6% (x1799) |
 | nível 60 | Sangria | - | - | - |
-| nível 60 | Golpe Duplo | 1.1% (x840) | 1.8% (x1378) | 2.6% (x2006) |
-| nível 60 | Contra-ataque | 0.1% (x61) | 0.3% (x127) | 0.5% (x181) |
-| nível 60 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x971) |
-| nível 100 | Golpe Esmagador | 1.2% (x3171) | 1.7% (x3171) | 2.3% (x3199) |
-| nível 100 | Golpe de Fúria | 1.5% (x1799) | 2.3% (x1799) | 3.1% (x1799) |
-| nível 100 | Sangria | 0.5% (x6758) | 1.0% (x6758) | 1.1% (x5013) |
-| nível 100 | Golpe Duplo | 1.2% (x976) | 1.9% (x1557) | 2.6% (x2206) |
-| nível 100 | Contra-ataque | 0.1% (x47) | 0.2% (x80) | 0.3% (x127) |
-| nível 100 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x1066) |
+| nível 60 | Golpe Duplo | 4.2% (x1100) | 6.4% (x1679) | 8.6% (x2277) |
+| nível 60 | Contra-ataque | 0.9% (x229) | 2.5% (x420) | 4.4% (x578) |
+| nível 60 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 10.3% (x971) |
+| nível 100 | Golpe Esmagador | 10.7% (x3199) | 15.2% (x3199) | 19.3% (x3199) |
+| nível 100 | Golpe de Fúria | 6.5% (x1799) | 8.3% (x1799) | 9.9% (x1799) |
+| nível 100 | Sangria | 1.0% (x6758) | 1.3% (x5013) | 1.8% (x5004) |
+| nível 100 | Golpe Duplo | 4.4% (x1257) | 6.4% (x1874) | 8.4% (x2530) |
+| nível 100 | Contra-ataque | 0.6% (x163) | 1.6% (x290) | 3.1% (x411) |
+| nível 100 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 10.3% (x1066) |
 #### Monte Carlo (runDungeon, sem poções, 200 execuções semeadas): andares limpos por execução na borda do alcance
 | Herói | andar inicial | sem habilidade | Último Bastião | Bloqueio x3 | Pele Dura x3 | Mestre de Armas x3 | Sangria x3 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| nível 30 | 35 | 0.68 | 1.30 (+93%) | 0.80 (+18%) | 0.68 (+0%) | 0.93 (+37%) | 0.93 (+37%) |
-| nível 60 | 66 | 0.87 | 1.37 (+57%) | 0.92 (+6%) | 0.87 (+0%) | 0.89 (+2%) | 0.88 (+1%) |
-| nível 100 | 99 | 1.75 | 2.00 (+14%) | 1.83 (+4%) | 1.86 (+6%) | 1.92 (+9%) | 1.83 (+5%) |
+| nível 30 | 31 | 0.67 | 1.23 (+84%) | 1.06 (+60%) | 0.67 (+0%) | 0.93 (+39%) | 0.93 (+39%) |
+| nível 60 | 66 | 0.87 | 1.37 (+57%) | 1.21 (+39%) | 0.92 (+6%) | 1.00 (+15%) | 1.00 (+15%) |
+| nível 100 | 99 | 1.75 | 2.00 (+14%) | 1.95 (+11%) | 1.99 (+13%) | 1.92 (+9%) | 1.92 (+9%) |
 
-**Parcela do dano total de cada golpe numa Caça de 4 h.**
+**Parcela do dano total de cada golpe (Caça de 4 h).**
 
 | Herói | Golpe | posto 1 | posto 2 | posto 3 |
 | --- | --- | --- | --- | --- |
-| nível 30 | Golpe Esmagador | 1.2% (x2671) | 1.7% (x2671) | 2.3% (x2671) |
-| nível 30 | Golpe de Fúria | 2.5% (x1800) | 3.6% (x1800) | 4.8% (x1800) |
-| nível 30 | Sangria | 0.8% (x7368) | 1.7% (x7368) | 3.2% (x7685) |
-| nível 30 | Golpe Duplo | 1.2% (x767) | 1.9% (x1256) | 2.7% (x1833) |
-| nível 30 | Contra-ataque | 0.1% (x55) | 0.2% (x105) | 0.4% (x147) |
-| nível 30 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x890) |
-| nível 60 | Golpe Esmagador | 1.2% (x2914) | 1.8% (x2914) | 2.3% (x2914) |
-| nível 60 | Golpe de Fúria | 2.0% (x1799) | 3.0% (x1799) | 4.0% (x1799) |
+| nível 30 | Golpe Esmagador | 10.6% (x2671) | 15.2% (x2671) | 19.3% (x2671) |
+| nível 30 | Golpe de Fúria | 9.8% (x1800) | 12.5% (x1800) | 14.9% (x1800) |
+| nível 30 | Sangria | 1.7% (x7368) | 3.5% (x7685) | 3.2% (x5711) |
+| nível 30 | Golpe Duplo | 4.4% (x1012) | 6.4% (x1535) | 8.6% (x2079) |
+| nível 30 | Contra-ataque | 0.8% (x185) | 2.2% (x322) | 3.8% (x448) |
+| nível 30 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 10.4% (x890) |
+| nível 60 | Golpe Esmagador | 10.7% (x2914) | 15.2% (x2914) | 19.3% (x2914) |
+| nível 60 | Golpe de Fúria | 8.4% (x1799) | 10.5% (x1799) | 12.6% (x1799) |
 | nível 60 | Sangria | - | - | - |
-| nível 60 | Golpe Duplo | 1.1% (x840) | 1.8% (x1378) | 2.6% (x2006) |
-| nível 60 | Contra-ataque | 0.1% (x61) | 0.3% (x127) | 0.5% (x181) |
-| nível 60 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x971) |
-| nível 100 | Golpe Esmagador | 1.2% (x3171) | 1.7% (x3171) | 2.3% (x3199) |
-| nível 100 | Golpe de Fúria | 1.5% (x1799) | 2.3% (x1799) | 3.1% (x1799) |
-| nível 100 | Sangria | 0.5% (x6758) | 1.0% (x6758) | 1.1% (x5013) |
-| nível 100 | Golpe Duplo | 1.2% (x976) | 1.9% (x1557) | 2.6% (x2206) |
-| nível 100 | Contra-ataque | 0.1% (x47) | 0.2% (x80) | 0.3% (x127) |
-| nível 100 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 4.9% (x1066) |
+| nível 60 | Golpe Duplo | 4.2% (x1100) | 6.4% (x1679) | 8.6% (x2277) |
+| nível 60 | Contra-ataque | 0.9% (x229) | 2.5% (x420) | 4.4% (x578) |
+| nível 60 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 10.3% (x971) |
+| nível 100 | Golpe Esmagador | 10.7% (x3199) | 15.2% (x3199) | 19.3% (x3199) |
+| nível 100 | Golpe de Fúria | 6.5% (x1799) | 8.3% (x1799) | 9.9% (x1799) |
+| nível 100 | Sangria | 1.0% (x6758) | 1.3% (x5013) | 1.8% (x5004) |
+| nível 100 | Golpe Duplo | 4.4% (x1257) | 6.4% (x1874) | 8.4% (x2530) |
+| nível 100 | Contra-ataque | 0.6% (x163) | 1.6% (x290) | 3.1% (x411) |
+| nível 100 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 10.3% (x1066) |
+| Herói | andar inicial | sem habilidade | Último Bastião | Bloqueio x3 | Pele Dura x3 | Mestre de Armas x3 | Sangria x3 |
 
-**Orçamentos de Caçador e comparação dos três caminhos (`npm run sim`, 20 seeds x 21 dias, mesma política).**
+Notas. (1) Regra "nenhuma habilidade de posto máximo vale mais que 2,5x outra do caminho": **não é atingível com os números do diretor**: o Esmagador completo vale ~22% e a Sangria completa 4,7% a 6,9%, razão 3,7x a 4,8x no Guerreiro (4,9x a 5,8x no Guardião, onde o Bloqueio vale 16 a 18% e Espinhos 2,8% a 100). Os golpes foram mantidos como pedido. (2) Sangria fica em 1% a 3,5% do dano (a meta era 5%): as lutas da Caça duram 3 a 5 s e o sangramento começa um segundo depois do primeiro golpe. Fúria 6,5 a 15%, Esmagador 10,6 a 19%, Devastador 10,3% (metas >= 6 / 8 / 8). (3) Reflexo total de um Guardião completo: 13,2% do dano causado no nível 30 (limite ~18%).
+
+**Retune dos inimigos.** Com o jogador gastando pontos como ganha (cenário A = Guerreiro) o andar 50 chegava ao dia 7 a 8. Movido: orcs (andares 26-49) `hp` 268 -> 310 e `dmg` 40 -> 46 (+16% / +15%); chefe do andar 25 `boss25HpMult` 0,22 -> 0,30; chefe do andar 50 `boss50HpMult` / `boss50DmgMult` 0,84 -> 0,88; tabela de CP recomendada regerada (`npm run sim:cp`). Andares 1-25 (biomas 1 e o chefe 25 à parte) ficam como estavam. Resultado do cenário A (Guerreiro): T2 a T5, T7, T8 e I1 a I4 ok; nível 13 / 29 / 49; chefe 25 no dia 4; chegada ao andar 50 mediana 14 (primeira seed dia 9: falha de 1 dia, aceita); chefe 50 mediana 16,5; sem queda de dificuldade depois de um chefe (menor razão 1,15). Sem habilidades (Z): chega ao andar 50 no dia 17 (chefe 50 depois do dia 21): mais lento, sem parede.
+
+**Os três caminhos e Z lado a lado (`npm run sim`, 20 seeds x 21 dias, mesma política).**
 
 ### Habilidades: os três caminhos (Guerreiro = cenário A, Guardião, Caçador) contra o mesmo jogador sem habilidades (Z), mesma política e mesmas seeds
 
 | Quando | Medida (mediana entre seeds) | sem habilidades (Z) | Guerreiro (A) | Guardião | Caçador |
 | --: | --- | --- | --- | --- | --- |
-| dia 7 | materiais recebidos por dia (média dos dias 1 até aqui) | 227 | 223 (-1.9%) | 211 (-7.1%) | 208 (-8.5%) |
-| dia 7 | valor de referência dos materiais por dia (ouro) | 953 | 926 (-2.8%) | 898 (-5.8%) | 862 (-9.5%) |
-| dia 7 | ouro ganho por dia (média dos dias 1 até aqui) | 884 | 866 (-2%) | 886 (+0.3%) | 868 (-1.8%) |
-| dia 7 | ouro de Masmorra + Caça por dia (as fontes que a Ganância toca) | 42 | 43 (+2.9%) | 46 (+8%) | 43 (+1.4%) |
-| dia 7 | nível | 40 | 40 (+1.3%) | 39 (-1.3%) | 38 (-3.8%) |
-| dia 7 | CP | 740 | 811 (+9.6%) | 848 (+14.6%) | 767 (+3.7%) |
-| dia 7 | andar mais alto | 30 | 30 (+0%) | 30 (+0%) | 30 (+0%) |
-| dia 14 | materiais recebidos por dia (média dos dias 1 até aqui) | 378 | 435 (+15.1%) | 393 (+3.9%) | 421 (+11.3%) |
-| dia 14 | valor de referência dos materiais por dia (ouro) | 1 828 | 2 245 (+22.8%) | 1 956 (+7%) | 2 072 (+13.3%) |
-| dia 14 | ouro ganho por dia (média dos dias 1 até aqui) | 606 | 629 (+3.9%) | 643 (+6.2%) | 617 (+1.9%) |
-| dia 14 | ouro de Masmorra + Caça por dia (as fontes que a Ganância toca) | 52 | 60 (+16.9%) | 64 (+23.4%) | 57 (+11.3%) |
-| dia 14 | nível | 48 | 49 (+1%) | 48 (+0%) | 48 (+0%) |
-| dia 14 | CP | 1 146 | 1 284 (+12.1%) | 1 256 (+9.6%) | 1 178 (+2.8%) |
-| dia 14 | andar mais alto | 40 | 50 (+25%) | 50 (+25%) | 40 (+0%) |
+| dia 7 | materiais recebidos por dia (média dos dias 1 até aqui) | 241 | 273 (+13.2%) | 236 (-1.8%) | 235 (-2.3%) |
+| dia 7 | valor de referência dos materiais por dia (ouro) | 1 045 | 1 229 (+17.6%) | 1 035 (-1%) | 998 (-4.5%) |
+| dia 7 | ouro ganho por dia (média dos dias 1 até aqui) | 885 | 872 (-1.4%) | 878 (-0.7%) | 872 (-1.5%) |
+| dia 7 | ouro de Masmorra + Caça por dia (as fontes que a Ganância toca) | 41 | 47 (+16.6%) | 42 (+4.1%) | 43 (+6.2%) |
+| dia 7 | nível | 39 | 41 (+5.1%) | 39 (+0%) | 39 (+0%) |
+| dia 7 | CP | 742 | 942 (+26.9%) | 805 (+8.4%) | 782 (+5.4%) |
+| dia 7 | andar mais alto | 29 | 30 (+3.4%) | 30 (+3.4%) | 30 (+3.4%) |
+| dia 14 | materiais recebidos por dia (média dos dias 1 até aqui) | 395 | 501 (+26.8%) | 391 (-1%) | 458 (+16%) |
+| dia 14 | valor de referência dos materiais por dia (ouro) | 1 913 | 2 655 (+38.8%) | 1 898 (-0.8%) | 2 306 (+20.6%) |
+| dia 14 | ouro ganho por dia (média dos dias 1 até aqui) | 619 | 613 (-1%) | 626 (+1.2%) | 625 (+1%) |
+| dia 14 | ouro de Masmorra + Caça por dia (as fontes que a Ganância toca) | 46 | 61 (+33.3%) | 51 (+9.9%) | 53 (+15%) |
+| dia 14 | nível | 48 | 49 (+2.1%) | 48 (+0%) | 48 (+0%) |
+| dia 14 | CP | 1 207 | 1 377 (+14%) | 1 297 (+7.4%) | 1 260 (+4.3%) |
+| dia 14 | andar mais alto | 40 | 50 (+25%) | 40 (+0%) | 40 (+0%) |
 
 | Marco (dia, mediana) | sem habilidades (Z) | Guerreiro (A) | Guardião | Caçador |
 | --: | --- | --- | --- | --- |
 | primeira peça forjada | 2 | 2 | 2 | 2 |
 | checkpoint 10 | 1 | 1 | 1 | 1 |
-| segunda zona de caça | 5 | 5 | 5 | 5 |
-| chefe 25 vencido | 5 | 5 | 5 | 5 |
-| chegada ao andar 50 | 15.5 | 13 | 13.5 | 15 |
-| chefe 50 vencido | depois do dia 21 | 18.5 | 17.5 | depois do dia 21 |
+| segunda zona de caça | 6 | 4 | 5 | 5 |
+| chefe 25 vencido | 6 | 4 | 5 | 5 |
+| chegada ao andar 50 | 17 | 14 | 16 | 16 |
+| chefe 50 vencido | depois do dia 21 | 16.5 | 17.5 | 20.5 |
 
-**Retune dos inimigos (os alvos com habilidades).** Com o jogador gastando pontos como ganha (cenário A = Guerreiro) o andar 50 chegava ao dia 8 e o chefe 50 caía no dia 10. Retune mínimo, só do lado inimigo: orcs (andares 26-49) `hp` 268 -> 276 e `dmg` 40 -> 41; chefe do andar 50 `boss50HpMult` / `boss50DmgMult` 0,84 -> 0,88; tabela de CP recomendada regerada (`npm run sim:cp`). Resultado do cenário A: T2 a T5, T7, T8 e I1 a I4 ok; nível 13 / 28 / 49; chefe 25 no dia 5; chegada ao andar 50 mediana 13 (primeira seed dia 9, meta >= 10) e chefe 50 mediana 18,5 (primeira seed dia 10, meta 12-16). **T6 fica 1 a 2 dias fora na seed mais rápida**: para empurrá-la seria preciso atrasar toda a mediana (a mesma conta sem habilidades chega ao 50 no dia 15,5): o jogo agora é balanceado em torno de quem usa habilidades. Guerreiro e Guardião chegam ao chefe 50 com 1 dia de diferença; o Caçador, de combate fraco por desenho, fica mais de 2 dias atrás (depois do dia 21).
+O Caçador (combate 8,7% contra ~75% dos outros) chega ao chefe 50 no dia 20,5 contra 16,5 (Guerreiro) e 17,5 (Guardião): 3 a 4 dias, acima dos ~2 pedidos; materiais/dia +16% no dia 14 (meta 10-16%).
