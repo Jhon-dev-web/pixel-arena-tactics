@@ -92,7 +92,7 @@ export interface CombatStats {
   xpBonus?: number;
   // Hero skills (heroSkills.ts). Each is present only when the hero has the skill, so a hero without skills has exactly the stats it always had.
   bleed?: number; // share of the (pre-crit) hit the enemy bleeds per second (Sangria); a second effect beside burn
-  strikeEvery?: number; // every Nth hit of the hero is a Devastating Strike (T.heroSkills.strikeMult x damage)
+  strikes?: StrikeStats; // the auto-triggered strikes (Golpe Esmagador / Furia / Duplo / Contra-ataque / Devastador), see resolveHeroHit
   block?: number; // chance that an enemy hit is blocked completely (Bloqueio)
   bastion?: boolean; // Ultimo Bastiao: a lethal hit leaves the hero at 1 HP and heals (bastionHp)
   bossReduction?: number; // share of the damage taken on boss / checkpoint floors negated (Postura Firme, Dungeon only)
@@ -182,9 +182,73 @@ export function tickBurn(burn: BurnState): { damage: number; burn: BurnState | n
 
 // --- Hero skills in combat (heroSkills.ts): small pure helpers, shared by the three combat loops like the effects above ---------------------------------------
 
-// Hit number `hitNumber` (1-based, counted over the whole Dungeon run / Hunting session) of a hero with Golpe Devastador: every Nth is tripled. Deterministic, no roll.
-export function strikeMultiplier(hitNumber: number, every: number | undefined): number {
-  return every && every > 0 && hitNumber % every === 0 ? T.heroSkills.strikeMult : 1;
+// The hero auto-triggered strikes (heroSkills.ts). Present only when the hero has at least one. Counted over the whole Dungeon run / Hunting session by a StrikeState.
+export interface StrikeStats {
+  crushEvery?: number; // Golpe Esmagador: every Nth hit is a crushing blow
+  crushBonus?: number; // ... dealing 1 + this damage
+  devastating?: boolean; // Golpe Devastador: every devastatingEvery-th crush deals devastatingMult x instead of its bonus
+  furyPct?: number; // Golpe de Furia: every furyEveryMs of combat, furyHits extra hits of this share of the hit
+  counter?: number; // Contra-ataque: the next hit after a block deals 1 + this damage
+  doubleChance?: number; // Golpe Duplo: chance of an echo strike (doubleDmgPct of the hit)
+}
+export interface StrikeState {
+  hits: number;
+  crushes: number;
+  counterReady: boolean;
+}
+export const newStrikeState = (): StrikeState => ({ hits: 0, crushes: 0, counterReady: false });
+
+export interface HitResolution {
+  mult: number; // multiplies the hit (before the crit multiplier): crushMult x counterMult
+  crushMult: number;
+  counterMult: number;
+  crush: boolean;
+  devastating: boolean;
+  counter: boolean;
+  double: boolean; // an echo strike of doubleDmgPct of the hit follows
+}
+
+// One hero hit: advances the hit counter (the Esmagador counter; the Furia flurry never calls this) and says which strikes it carries. roll draws the Golpe Duplo chance only when
+// the hero has it (the Dungeon passes Math.random, Hunting its own seeded stream), so a hero without it never consumes a number.
+export function resolveHeroHit(state: StrikeState, s: StrikeStats | undefined, roll: () => number): HitResolution {
+  state.hits++;
+  const out: HitResolution = { mult: 1, crushMult: 1, counterMult: 1, crush: false, devastating: false, counter: false, double: false };
+  if (!s) return out;
+  if (s.crushEvery && state.hits % s.crushEvery === 0) {
+    out.crush = true;
+    state.crushes++;
+    if (s.devastating && state.crushes % T.heroSkills.devastatingEvery === 0) {
+      out.devastating = true;
+      out.crushMult = T.heroSkills.devastatingMult;
+    } else out.crushMult = 1 + (s.crushBonus ?? 0);
+  }
+  if (state.counterReady) {
+    state.counterReady = false;
+    out.counter = true;
+    out.counterMult = 1 + (s.counter ?? 0);
+  }
+  out.mult = out.crushMult * out.counterMult;
+  if (s.doubleChance && roll() < s.doubleChance) out.double = true;
+  return out;
+}
+
+// A hit on the hero was blocked: with Contra-ataque the next hit of the hero is the counter.
+export function registerBlock(state: StrikeState, s: StrikeStats | undefined): void {
+  if (s?.counter) state.counterReady = true;
+}
+
+// Damage of one hit of the Furia flurry from the hit it follows (pre-crit, modifiers included).
+export const furyHitDamage = (hitBase: number, s: StrikeStats | undefined): number => (s?.furyPct ? Math.max(1, Math.round(hitBase * s.furyPct)) : 0);
+// The echo of a Golpe Duplo.
+export const echoDamage = (dmg: number): number => Math.max(1, Math.round(dmg * T.heroSkills.doubleDmgPct));
+
+// Display-only counters of what each strike did (the result screens): times it triggered and damage it dealt.
+export type StrikeTallyId = 'w_heavy_blow' | 'w_fury' | 'w_devastating_strike' | 'g_block' | 'h_light_step' | 'w_bleed';
+export type StrikeTally = Partial<Record<StrikeTallyId, { n: number; dmg: number }>>;
+export function tally(t: StrikeTally, id: StrikeTallyId, dmg: number): void {
+  const e = (t[id] ??= { n: 0, dmg: 0 });
+  e.n++;
+  e.dmg += dmg;
 }
 
 // HP the hero is left with when Ultimo Bastiao saves it: 1 HP plus the heal.
@@ -220,12 +284,26 @@ export function combatPowerCore(stats: CombatStats): number {
   const hits = dmgBase * (1000 / heroMs) * (1 + cc * (critMult - 1));
   const reduction = safeStat(stats.reduction, ceiling);
   const reflect = safeStat(stats.reflect, 1);
-  // Devastating Strike: one hit in N deals strikeMult times, so the average hit is worth 1 + (mult - 1) / N of a plain one.
-  const strikeN = Math.floor(safeStat(stats.strikeEvery ?? 0, 1000));
-  const hitsDps = strikeN >= 2 ? hits * (1 + (T.advanced.cpStrikeWeight * (T.heroSkills.strikeMult - 1)) / strikeN) : hits;
+  // Strikes: Esmagador adds its bonus on one hit in N (every devastatingEvery-th crush is a Devastador), Duplo an echo on a share of the hits, Contra-ataque a bonus on the hit
+  // after a block, Furia a flurry every furyEveryMs; weighted by cpStrikeWeight like every closed-form effect.
+  const st = stats.strikes;
+  let gain = 0;
+  let flurryDps = 0;
+  if (st) {
+    const n = Math.floor(safeStat(st.crushEvery ?? 0, 1000));
+    if (n >= 2) {
+      const b = safeStat(st.crushBonus ?? 0, 10);
+      const d = Math.max(1, Math.round(T.heroSkills.devastatingEvery));
+      const crush = st.devastating ? ((d - 1) * b + (T.heroSkills.devastatingMult - 1)) / d : b;
+      gain += crush / n;
+    }
+    gain += safeStat(st.doubleChance ?? 0, 1) * T.heroSkills.doubleDmgPct + Math.min(0.9, safeStat(stats.block ?? 0, 1)) * safeStat(st.counter ?? 0, 10);
+    flurryDps = (dmgBase * safeStat(st.furyPct ?? 0, 10) * T.heroSkills.furyHits * 1000) / T.heroSkills.furyEveryMs;
+  }
+  const hitsDps = hits * (1 + T.advanced.cpStrikeWeight * gain);
   const burnDps = stats.burn === true ? T.advanced.cpBurnWeight * dmgBase * T.battle.burnPctPerSec * (1000 / T.battle.effectTickMs) : 0;
   const bleedDps = T.advanced.cpBleedWeight * dmgBase * safeStat(stats.bleed ?? 0, 1) * (1000 / T.battle.effectTickMs);
-  const dps = hitsDps * (1 + (T.advanced.cpReflectWeight * reflect) / (1 + reduction)) + burnDps + bleedDps;
+  const dps = hitsDps * (1 + (T.advanced.cpReflectWeight * reflect) / (1 + reduction)) + burnDps + bleedDps + T.advanced.cpStrikeWeight * flurryDps;
   // Block removes a share of the hits, Firm Stance a share of the damage of the fights against bosses, Last Bastion heals once in a share of the fights.
   const block = Math.min(0.9, safeStat(stats.block ?? 0, 1)) * T.advanced.cpBlockWeight;
   const bossCut = Math.min(0.9, safeStat(stats.bossReduction ?? 0, 1)) * T.advanced.cpBossShare;

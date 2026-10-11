@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "arena-duel-golpe-de-furia 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-de-furia 1.png",
+   "frame": {
+    "x": 70,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-de-furia 2.png",
+   "frame": {
+    "x": 140,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-de-furia 3.png",
+   "frame": {
+    "x": 0,
+    "y": 47,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-de-furia 4.png",
+   "frame": {
+    "x": 70,
+    "y": 47,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-de-furia 5.png",
+   "frame": {
+    "x": 140,
+    "y": 47,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-de-furia 6.png",
+   "frame": {
+    "x": 0,
+    "y": 94,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-de-furia 7.png",
+   "frame": {
+    "x": 70,
+    "y": 94,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-de-furia 8.png",
+   "frame": {
+    "x": 140,
+    "y": 94,
+    "w": 70,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4857142857142857,
+    "y": 0.46808510638297873
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "arena-duel-golpe-de-furia.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 210,
+   "h": 141
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 34,
+   "y": 22
+  },
+  "frameTags": [
+   {
+    "name": "arena-duel-golpe-de-furia",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

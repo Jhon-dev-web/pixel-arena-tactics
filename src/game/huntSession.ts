@@ -1,4 +1,4 @@
-import type { CombatStats } from './derivedStats';
+import type { CombatStats, StrikeStats, StrikeTally } from './derivedStats';
 import { getMaterial, MaterialId } from './materials';
 import { UniqueDrop, sanitizeUniqueDrops } from './uniques';
 import { HUNTING_DEPTHS, HuntingDepth } from './huntingZones';
@@ -146,6 +146,9 @@ export interface PendingHuntReward {
   // Unique pieces the session rolled. The claim delivers them to the bag (a slot is reserved for them before any material), and any the bag has no
   // room for stay HERE (the reward stays pending, with everything else already paid) until there is space.
   uniques: UniqueDrop[];
+  // Display only: what the hero skill strikes did in the session (times and damage) and the total damage dealt, for the "N times, x% of the damage" lines.
+  skillTally?: StrikeTally;
+  totalDamage?: number;
 }
 
 export function sanitizeWindows(raw: unknown): TimeWindow[] {
@@ -201,7 +204,7 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
       xpBonus: n(s.xpBonus, 0, 100) ?? 0,
       // Hero skills (heroSkills.ts): frozen with the rest of the stats at the start of the session; a session saved before they existed has none.
       ...(n(s.bleed, 0, 1) ? { bleed: n(s.bleed, 0, 1)! } : {}),
-      ...(n(s.strikeEvery, 2, 1000) ? { strikeEvery: Math.floor(n(s.strikeEvery, 2, 1000)!) } : {}),
+      ...(sanitizeStrikes(s.strikes) ? { strikes: sanitizeStrikes(s.strikes)! } : {}),
       ...(n(s.block, 0, 0.9) ? { block: n(s.block, 0, 0.9)! } : {}),
       ...(s.bastion === true ? { bastion: true } : {}),
       ...(n(s.bossReduction, 0, 0.9) ? { bossReduction: n(s.bossReduction, 0, 0.9)! } : {}),
@@ -225,6 +228,38 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
 }
 
 const MAX_REWARD = 1e12;
+
+const TALLY_IDS = ['w_heavy_blow', 'w_fury', 'w_devastating_strike', 'g_block', 'h_light_step', 'w_bleed'] as const;
+function sanitizeTally(raw: unknown): StrikeTally {
+  const out: StrikeTally = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const id of TALLY_IDS) {
+    const e = (raw as Record<string, { n?: unknown; dmg?: unknown } | undefined>)[id];
+    if (e && nonNegInt(e.n, 1e12) > 0) out[id] = { n: nonNegInt(e.n, 1e12), dmg: nonNegInt(e.dmg, 1e15) };
+  }
+  return out;
+}
+
+// The frozen strikes of a session: numbers clamped, an empty or unusable object means none.
+function sanitizeStrikes(raw: unknown): StrikeStats | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const num = (v: unknown, max: number): number | null => (finiteNum(v) && v > 0 && v <= max ? v : null);
+  const out: StrikeStats = {};
+  const every = num(r.crushEvery, 1000);
+  if (every && every >= 2) {
+    out.crushEvery = Math.floor(every);
+    out.crushBonus = finiteNum(r.crushBonus) && r.crushBonus >= 0 && r.crushBonus <= 10 ? r.crushBonus : 0;
+    if (r.devastating === true) out.devastating = true;
+  }
+  const fury = num(r.furyPct, 10);
+  if (fury) out.furyPct = fury;
+  const counter = num(r.counter, 10);
+  if (counter) out.counter = counter;
+  const dbl = num(r.doubleChance, 1);
+  if (dbl) out.doubleChance = dbl;
+  return Object.keys(out).length > 0 ? out : null;
+}
 
 function sanitizeMaterialRecord(raw: unknown): Partial<Record<MaterialId, number>> {
   const out: Partial<Record<MaterialId, number>> = {};
@@ -271,5 +306,7 @@ export function sanitizePendingHuntReward(raw: unknown): PendingHuntReward | nul
     lost,
     ...(Object.keys(sanitizeMaterialRecord(r.owed)).length > 0 ? { owed: sanitizeMaterialRecord(r.owed) } : {}),
     uniques: sanitizeUniqueDrops(r.uniques),
+    ...(r.skillTally && typeof r.skillTally === 'object' ? { skillTally: sanitizeTally(r.skillTally) } : {}),
+    ...(nonNegInt(r.totalDamage, 1e15) > 0 ? { totalDamage: nonNegInt(r.totalDamage, 1e15) } : {}),
   };
 }

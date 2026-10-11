@@ -3,6 +3,7 @@ import { useDisplayName } from '../game/usernameContext';
 import SpriteSheet from './SpriteSheet';
 import { EquipmentPanel, AttributesPanel, TitlesPanel, AttrKey } from './HeroPanels';
 import InventoryPanel from './InventoryPanel';
+import { SkillsSummary } from './SkillsView';
 import { SaveData, computeCP, formatNumber, playerLevel, xpForNextLevel, xpToReachLevel } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 import { portraitFrameClass } from '../game/seasonItems';
@@ -25,6 +26,7 @@ export default function PersonagemView({
   onSalvage,
   onUseConsumable,
   onExpandInventory,
+  onOpenSkills,
 }: {
   save: SaveData;
   spriteUrl: string;
@@ -39,6 +41,7 @@ export default function PersonagemView({
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
   onExpandInventory: () => void;
+  onOpenSkills: () => void;
 }) {
   const displayName = useDisplayName(save.heroName);
   const level = playerLevel(save.xp);
@@ -75,6 +78,11 @@ export default function PersonagemView({
       <section className="dh-card personagem-attrs">
         <h3 className="dh-card-title">{t('profile.attrsTab')}</h3>
         <AttributesPanel save={save} onAttrChange={onAttrChange} />
+      </section>
+
+      <section className="dh-card personagem-skills">
+        <h3 className="dh-card-title">{t('heroSkills.ui.title')}</h3>
+        <SkillsSummary save={save} onOpen={onOpenSkills} />
       </section>
 
       <section className="dh-card personagem-titles">

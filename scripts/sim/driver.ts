@@ -18,7 +18,7 @@ import {
   playerLevel,
   SaveData,
 } from '../../src/game/engine';
-import { BurnState, applyDamageModifiers, applyDamageReduction, bastionHp, bleedSpec, bossDamage, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, strikeMultiplier, tickBurn } from '../../src/game/derivedStats';
+import { BurnState, applyDamageModifiers, applyDamageReduction, StrikeTally, bastionHp, bleedSpec, bossDamage, echoDamage, furyHitDamage, igniteBurn, nextBurnTickAt, newStrikeState, reflectedDamage, regenAmount, registerBlock, resolveHeroHit, tally, tickBurn } from '../../src/game/derivedStats';
 import {
   crossedMilestoneFloors,
   dungeonEnemyKindForFloor,
@@ -90,6 +90,8 @@ export interface DungeonRun {
   seconds: number; // wall clock at 1x speed (the UI has a 2x toggle)
   rewards: RunRewards; // gold already reduced on defeat (T.battle.defeatGoldKept), exactly like BattleModal.endCombat
   potionsUsed: number;
+  skillTally: StrikeTally; // display only: what each strike did (BattleModal counts the same for its result screen)
+  totalDamage: number;
 }
 
 // Mirrors BattleModal.tsx: both sides start their attack timers when a wave starts, the hero swings every heroMs and the
@@ -111,7 +113,10 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
   const startPotions = stock.greater_elixir + stock.large_hp + stock.small_hp;
   let potionCooldownUntil = 0;
   let hp = playerMax;
-  let heroHits = 0; // Golpe Devastador counts the hero's hits over the whole run
+  const strikeState = newStrikeState(); // the Golpe Esmagador counter runs over the whole run
+  const skillTally: StrikeTally = {};
+  let totalDamage = 0;
+  let furyLeft = T.heroSkills.furyEveryMs;
   let bastionUsed = false; // Ultimo Bastiao: once per run
   let clock = 0;
   let stage = startFloor;
@@ -162,17 +167,29 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
     let burn: BurnState | null = null;
     let bleed: BurnState | null = null;
     const bleedDot = combat.bleed ? bleedSpec(combat.bleed) : undefined;
+    let furyNext = combat.strikes?.furyPct ? clock + furyLeft : Infinity; // Golpe de Furia: every furyEveryMs of combat time, carried between fights
     // Event order at equal times: hero hit, enemy hit, burn tick, bleed tick, regeneration tick (huntCombat.ts attempt uses the same).
     for (;;) {
       if (++guard > 5_000_000) throw new Error('dungeon loop did not terminate');
       const burnNext = nextBurnTickAt(burn);
       const bleedNext = nextBurnTickAt(bleed);
-      const next = Math.min(heroNext, enemyNext, burnNext, bleedNext, regenNext);
+      const next = Math.min(heroNext, enemyNext, burnNext, bleedNext, furyNext, regenNext);
       clock = next;
       if (heroNext === next) {
         const crit = Math.random() < combat.critChance;
-        heroHits++;
-        const dmg = Math.max(1, Math.round(heroBase * (crit ? combat.critMult : 1) * strikeMultiplier(heroHits, combat.strikeEvery)));
+        const res = resolveHeroHit(strikeState, combat.strikes, Math.random);
+        const plain = Math.max(1, Math.round(heroBase * (crit ? combat.critMult : 1)));
+        const afterCrush = Math.round(plain * res.crushMult);
+        const base = Math.max(1, Math.round(plain * res.mult));
+        if (res.crush) tally(skillTally, res.devastating ? 'w_devastating_strike' : 'w_heavy_blow', afterCrush - plain);
+        if (res.counter) tally(skillTally, 'g_block', base - afterCrush);
+        let dmg = base;
+        if (res.double) {
+          const echo = echoDamage(base);
+          dmg += echo;
+          tally(skillTally, 'h_light_step', echo);
+        }
+        totalDamage += dmg;
         enemyHp = Math.max(0, enemyHp - dmg);
         if (combat.burn) burn = igniteBurn(burn, clock, heroBase);
         if (bleedDot) bleed = igniteBurn(bleed, clock, heroBase, bleedDot);
@@ -180,6 +197,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
         heroNext += combat.heroMs;
       } else if (enemyNext === next) {
         const blocked = !!combat.block && Math.random() < combat.block; // Bloqueio: the loop's normal RNG
+        if (blocked) registerBlock(strikeState, combat.strikes);
         hp = Math.max(0, hp - (blocked ? 0 : hitTaken));
         enemyNext += def.atkSpeedMs;
         if (hp <= 0) {
@@ -192,14 +210,30 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
           }
         }
         enemyHp = Math.max(0, enemyHp - (blocked ? 0 : reflected));
+        if (!blocked) totalDamage += reflected;
       } else if (burnNext === next) {
         const tick = tickBurn(burn!);
         enemyHp = Math.max(0, enemyHp - tick.damage);
+        totalDamage += tick.damage;
         burn = tick.burn;
       } else if (bleedNext === next) {
         const tick = tickBurn(bleed!);
         enemyHp = Math.max(0, enemyHp - tick.damage);
+        totalDamage += tick.damage;
+        tally(skillTally, 'w_bleed', tick.damage);
         bleed = tick.burn;
+      } else if (furyNext === next) {
+        const per = furyHitDamage(heroBase, combat.strikes);
+        let sum = 0;
+        for (let i = 0; i < T.heroSkills.furyHits; i++) {
+          sum += per;
+          if (combat.burn) burn = igniteBurn(burn, clock, per);
+          if (bleedDot) bleed = igniteBurn(bleed, clock, per, bleedDot);
+        }
+        enemyHp = Math.max(0, enemyHp - sum);
+        totalDamage += sum;
+        tally(skillTally, 'w_fury', sum);
+        furyNext += T.heroSkills.furyEveryMs;
       } else {
         hp = Math.min(playerMax, hp + regen);
         regenNext += T.battle.effectTickMs;
@@ -209,6 +243,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
     }
 
     // wave cleared
+    if (furyNext !== Infinity) furyLeft = Math.max(1, furyNext - clock);
     const r = waveRewards(getBiomeForFloor(stage), stage, combat.bossLootMult ?? 1);
     acc.gold += r.gold;
     acc.shards += r.shards;
@@ -247,6 +282,8 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
     seconds: clock / 1000,
     rewards: { gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, uniques: acc.uniques, relics: acc.relics, stages },
     potionsUsed: startPotions - (stock.greater_elixir + stock.large_hp + stock.small_hp),
+    skillTally,
+    totalDamage,
   };
 }
 

@@ -1,0 +1,391 @@
+{
+ "frames": [
+  {
+   "filename": "arena-duel-ultimo-bastiao 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 1.png",
+   "frame": {
+    "x": 116,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 2.png",
+   "frame": {
+    "x": 232,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 3.png",
+   "frame": {
+    "x": 348,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 4.png",
+   "frame": {
+    "x": 0,
+    "y": 131,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 5.png",
+   "frame": {
+    "x": 116,
+    "y": 131,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 6.png",
+   "frame": {
+    "x": 232,
+    "y": 131,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 7.png",
+   "frame": {
+    "x": 348,
+    "y": 131,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 8.png",
+   "frame": {
+    "x": 0,
+    "y": 262,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 9.png",
+   "frame": {
+    "x": 116,
+    "y": 262,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 10.png",
+   "frame": {
+    "x": 232,
+    "y": 262,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 11.png",
+   "frame": {
+    "x": 348,
+    "y": 262,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 12.png",
+   "frame": {
+    "x": 0,
+    "y": 393,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  },
+  {
+   "filename": "arena-duel-ultimo-bastiao 13.png",
+   "frame": {
+    "x": 116,
+    "y": 393,
+    "w": 116,
+    "h": 131
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 131
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 131
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8091603053435115
+   },
+   "duration": 71
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "arena-duel-ultimo-bastiao.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 464,
+   "h": 524
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 58,
+   "y": 106
+  },
+  "frameTags": [
+   {
+    "name": "arena-duel-ultimo-bastiao",
+    "from": 0,
+    "to": 13,
+    "direction": "forward"
+   }
+  ]
+ }
+}

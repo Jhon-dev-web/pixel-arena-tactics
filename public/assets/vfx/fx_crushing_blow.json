@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "arena-duel-golpe-esmagador 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-esmagador 1.png",
+   "frame": {
+    "x": 116,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-esmagador 2.png",
+   "frame": {
+    "x": 232,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-esmagador 3.png",
+   "frame": {
+    "x": 0,
+    "y": 68,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-esmagador 4.png",
+   "frame": {
+    "x": 116,
+    "y": 68,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-esmagador 5.png",
+   "frame": {
+    "x": 232,
+    "y": 68,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-esmagador 6.png",
+   "frame": {
+    "x": 0,
+    "y": 136,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-esmagador 7.png",
+   "frame": {
+    "x": 116,
+    "y": 136,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-esmagador 8.png",
+   "frame": {
+    "x": 232,
+    "y": 136,
+    "w": 116,
+    "h": 68
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 116,
+    "h": 68
+   },
+   "sourceSize": {
+    "w": 116,
+    "h": 68
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.38235294117647056
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "arena-duel-golpe-esmagador.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 348,
+   "h": 204
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 58,
+   "y": 26
+  },
+  "frameTags": [
+   {
+    "name": "arena-duel-golpe-esmagador",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

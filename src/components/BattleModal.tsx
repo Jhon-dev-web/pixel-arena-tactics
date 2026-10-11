@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { CSSProperties, useEffect, useRef, useState } from 'react';
 import T from '../game/tunables';
 import { t } from '../locales';
 import Assets from '../assets.json';
@@ -7,7 +7,11 @@ import { activeTonicStats, BUFF_ITEM, BuffKind } from '../game/buffs';
 import { getConsumable } from '../game/consumables';
 import { ConsumableId } from '../game/consumables';
 import { EnemyDef, getEnemyDef } from '../game/enemies';
-import { BurnState, applyDamageModifiers, applyDamageReduction, bastionHp, bleedSpec, bossDamage, igniteBurn, reflectedDamage, regenAmount, strikeMultiplier, tickBurn } from '../game/derivedStats';
+import { BurnState, applyDamageModifiers, applyDamageReduction, StrikeTally, bastionHp, bleedSpec, bossDamage, echoDamage, furyHitDamage, igniteBurn, newStrikeState, reflectedDamage, regenAmount, registerBlock, resolveHeroHit, tally, tickBurn } from '../game/derivedStats';
+import { SKILL_FX, FX_PATH_COLOR, SkillFxId } from '../game/skillFx';
+import { FxLayer } from './SkillFx';
+import { useFxScale, useFxStage } from '../hooks/useSkillFx';
+import StrikeLines from './StrikeLines';
 import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { dungeonEnemyVisualForFloor, playerSpriteUrl } from '../game/sprites';
@@ -44,7 +48,8 @@ interface FloatItem {
   id: number;
   side: 'p' | 'e';
   text: string;
-  kind: 'damage' | 'crit' | 'heal' | 'burn' | 'reflect' | 'bleed' | 'strike' | 'block' | 'bastion';
+  kind: 'damage' | 'crit' | 'heal' | 'burn' | 'reflect' | 'bleed' | 'strike' | 'block' | 'bastion' | 'skill';
+  style?: CSSProperties; // a strike callout: its own column, offset and path colour (game/skillFx.ts)
 }
 
 type Phase = 'battle' | 'intermission' | 'retreat' | 'defeat';
@@ -133,7 +138,16 @@ export default function BattleModal({
   const burnRef = useRef<BurnState | null>(null);
   // Hero skills (heroSkills.ts): Sangria is a second effect beside burn; the hit counter of Golpe Devastador and the once-per-run Ultimo Bastiao live for the whole run.
   const bleedRef = useRef<BurnState | null>(null);
-  const heroHitsRef = useRef(0);
+  const strikeRef = useRef(newStrikeState());
+  const tallyRef = useRef<StrikeTally>({});
+  const totalDmgRef = useRef(0);
+  const furyNextRef = useRef(0);
+  const [skillLines, setSkillLines] = useState<{ tally: StrikeTally; total: number } | null>(null);
+  const [hud, setHud] = useState({ crush: 0, fury: 0, bastion: false });
+  const fxStage = useFxStage();
+  const fxScale = useFxScale();
+  const playFxRef = useRef(fxStage.play);
+  playFxRef.current = fxStage.play;
   const bastionUsedRef = useRef(false);
   const regenNextRef = useRef(0);
   const heroNextAtkRef = useRef(0);
@@ -154,14 +168,22 @@ export default function BattleModal({
   const dungeonCompleteRef = useRef(false);
   const startNextWaveRef = useRef<() => void>(() => {});
 
-  const addFloat = (side: 'p' | 'e', text: string, kind: FloatItem['kind']) => {
+  const addFloat = (side: 'p' | 'e', text: string, kind: FloatItem['kind'], style?: CSSProperties) => {
     const id = idRef.current++;
-    setFloats((f) => [...f, { id, side, text, kind }]);
+    setFloats((f) => [...f, { id, side, text, kind, style }]);
     window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), T.advanced.textFloatMs);
+  };
+
+  // A strike triggered by the REAL combat loop: its sprite effect on the stage and its name callout in its own column (game/skillFx.ts).
+  const playStrike = (id: SkillFxId) => {
+    const def = SKILL_FX[id];
+    playFxRef.current(id);
+    if (def.callout) addFloat(def.side, t(`heroSkills.fx.${id}`), 'skill', { left: `${def.left}%`, top: def.top, ['--fx-color' as string]: FX_PATH_COLOR[def.path] } as CSSProperties);
   };
 
   const endCombat = (outcome: 'retreat' | 'defeat') => {
     if (phaseRef.current !== 'battle' && phaseRef.current !== 'intermission') return;
+    setSkillLines({ tally: { ...tallyRef.current }, total: totalDmgRef.current });
     phaseRef.current = outcome;
     setPhase(outcome);
     setHeroProgress(0);
@@ -190,6 +212,7 @@ export default function BattleModal({
     potionCooldownUntilRef.current = 0;
     lastFrameRef.current = now0;
     regenNextRef.current = T.battle.effectTickMs;
+    furyNextRef.current = T.heroSkills.furyEveryMs;
 
     const applyLoot = (gold: number, drops: Partial<Record<MaterialId, number>>, shards: number, gemDrops: Partial<Record<GemId, number>>, uniqueDrops: UniqueDrop[], relicDrops: string[]) => {
       const acc = accumRef.current;
@@ -234,7 +257,7 @@ export default function BattleModal({
       setEnemyBurning(false);
       lastFrameRef.current = now;
       regenNextRef.current = clockRef.current + T.battle.effectTickMs;
-      phaseRef.current = 'battle';
+      phaseRef.current = 'battle'; // the Furia timer keeps running across waves (the combat clock only advances in battle)
       setPhase('battle');
     };
     startNextWaveRef.current = startNextWave;
@@ -267,9 +290,20 @@ export default function BattleModal({
     const heroAttack = () => {
       const total = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, Date.now()));
       const crit = Math.random() < activeTonicStats(combat, save, Date.now()).critChance;
-      heroHitsRef.current += 1;
-      const strike = strikeMultiplier(heroHitsRef.current, combat.strikeEvery);
-      const dmg = Math.max(1, Math.round(total * (crit ? combat.critMult : 1) * strike));
+      // The hero strikes (heroSkills.ts): the same resolution the Dungeon driver and the hunting simulation use (derivedStats.ts resolveHeroHit).
+      const res = resolveHeroHit(strikeRef.current, combat.strikes, Math.random);
+      const plain = Math.max(1, Math.round(total * (crit ? combat.critMult : 1)));
+      const afterCrush = Math.round(plain * res.crushMult);
+      const base = Math.max(1, Math.round(plain * res.mult));
+      if (res.crush) tally(tallyRef.current, res.devastating ? 'w_devastating_strike' : 'w_heavy_blow', afterCrush - plain);
+      if (res.counter) tally(tallyRef.current, 'g_block', base - afterCrush);
+      let dmg = base;
+      if (res.double) {
+        const echo = echoDamage(base);
+        dmg += echo;
+        tally(tallyRef.current, 'h_light_step', echo);
+      }
+      totalDmgRef.current += dmg;
       hp.current.e = Math.max(0, hp.current.e - dmg);
       setEnemyHp(hp.current.e);
       if (combat.burn) {
@@ -281,7 +315,11 @@ export default function BattleModal({
       setPlayerAnim('attack');
       setPlayerLunge(true);
       setEnemyFlash(true);
-      addFloat('e', strike > 1 ? `${dungeonText('devastating')} -${dmg}` : crit ? `💥 CRIT! -${dmg}` : `-${dmg}`, strike > 1 ? 'strike' : crit ? 'crit' : 'damage');
+      addFloat('e', crit ? `💥 CRIT! -${dmg}` : `-${dmg}`, crit ? 'crit' : 'damage');
+      if (res.devastating) playStrike('devastating');
+      else if (res.crush) playStrike('crush');
+      if (res.counter) playStrike('counter');
+      if (res.double) playStrike('double');
       if (combat.lifesteal > 0) {
         const heal = Math.max(1, Math.round(dmg * (combat.lifesteal / 100)));
         hp.current.p = Math.min(playerMax, hp.current.p + heal);
@@ -306,22 +344,26 @@ export default function BattleModal({
       // Postura Firme only counts on boss and checkpoint floors; Bloqueio negates the whole hit (the loop's normal RNG).
       const reducedBoss = isDungeonBoss(st) || isDungeonCheckpoint(st) ? bossDamage(reduced, combat.bossReduction) : reduced;
       const blocked = !!combat.block && Math.random() < combat.block;
+      if (blocked) registerBlock(strikeRef.current, combat.strikes);
       const eFinal = blocked ? 0 : reducedBoss;
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setEnemyAnim('attack');
       setEnemyLunge(true);
       setPlayerFlash(true);
-      addFloat('p', blocked ? dungeonText('blocked') : `-${eFinal}`, blocked ? 'block' : 'damage');
+      if (blocked) playStrike('block');
+      else addFloat('p', `-${eFinal}`, 'damage');
       // Ultimo Bastiao: the first lethal hit of the run leaves the hero at 1 HP plus a heal.
       if (hp.current.p <= 0 && combat.bastion && !bastionUsedRef.current) {
         bastionUsedRef.current = true;
         hp.current.p = bastionHp(playerMax);
-        addFloat('p', dungeonText('lastBastion'), 'bastion');
+        playStrike('bastion');
+        setHud((h) => ({ ...h, bastion: true }));
       }
       setPlayerHp(hp.current.p);
       const back = hp.current.p > 0 ? reflectedDamage(eFinal, combat.reflect) : 0;
       if (back > 0) {
         hp.current.e = Math.max(0, hp.current.e - back);
+        totalDmgRef.current += back;
         setEnemyHp(hp.current.e);
         addFloat('e', `↩ -${back}`, 'reflect');
       }
@@ -355,6 +397,7 @@ export default function BattleModal({
         const tick = tickBurn(burnRef.current);
         burnRef.current = tick.burn;
         hp.current.e = Math.max(0, hp.current.e - tick.damage);
+        totalDmgRef.current += tick.damage;
         setEnemyHp(hp.current.e);
         addFloat('e', `🔥 -${tick.damage}`, 'burn');
         if (hp.current.e <= 0) {
@@ -364,11 +407,41 @@ export default function BattleModal({
           return false;
         }
       }
+      // Golpe de Furia: a flurry every furyEveryMs of this fight (the combat clock, so the speed toggle scales it).
+      while (combat.strikes?.furyPct && clock >= furyNextRef.current) {
+        furyNextRef.current += T.heroSkills.furyEveryMs;
+        const total = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, Date.now()));
+        const per = furyHitDamage(total, combat.strikes);
+        let sum = 0;
+        for (let i = 0; i < T.heroSkills.furyHits; i++) {
+          sum += per;
+          if (combat.burn) burnRef.current = igniteBurn(burnRef.current, clock, per);
+          if (combat.bleed) bleedRef.current = igniteBurn(bleedRef.current, clock, per, bleedSpec(combat.bleed));
+        }
+        hp.current.e = Math.max(0, hp.current.e - sum);
+        totalDmgRef.current += sum;
+        tally(tallyRef.current, 'w_fury', sum);
+        setEnemyHp(hp.current.e);
+        setPlayerAnim('attack');
+        window.setTimeout(() => setPlayerAnim('idle'), T.battle.lungeMs);
+        playStrike('fury');
+        addFloat('e', `-${sum}`, 'damage', { left: '62%', top: -6 });
+        if (hp.current.e <= 0) {
+          burnRef.current = null;
+          bleedRef.current = null;
+          setEnemyBurning(false);
+          clearWave();
+          return false;
+        }
+      }
       while (bleedRef.current && bleedRef.current.nextTickAt <= clock) {
         const tick = tickBurn(bleedRef.current);
         bleedRef.current = tick.burn;
         hp.current.e = Math.max(0, hp.current.e - tick.damage);
+        totalDmgRef.current += tick.damage;
+        tally(tallyRef.current, 'w_bleed', tick.damage);
         setEnemyHp(hp.current.e);
+        playStrike('bleed');
         addFloat('e', `-${tick.damage}`, 'bleed');
         if (hp.current.e <= 0) {
           burnRef.current = null;
@@ -431,6 +504,12 @@ export default function BattleModal({
 
       tryAutoPotion(now);
       if (!runEffects()) return;
+      if (combat.strikes) {
+        const st = combat.strikes;
+        const crush = st.crushEvery ? strikeRef.current.hits % st.crushEvery : 0;
+        const fury = st.furyPct ? Math.max(0, Math.min(1, 1 - (furyNextRef.current - clockRef.current) / T.heroSkills.furyEveryMs)) : 0;
+        setHud((h) => (h.crush === crush && Math.abs(h.fury - fury) < 0.02 ? h : { ...h, crush, fury }));
+      }
 
       const heroMs = activeTonicStats(combat, save, Date.now()).heroMs;
       const heroInterval = heroMs / spd;
@@ -607,7 +686,54 @@ export default function BattleModal({
           )}
         </div>
 
-        <div className="battle-stage">
+        {combat.strikes || combat.bleed || combat.bastion ? (
+          <div className="sk-hud" aria-label={t('heroSkills.ui.title')}>
+            {combat.strikes?.crushEvery && (
+              <span className="sk-hud-item" title={t('heroSkills.skills.w_heavy_blow.name')}>
+                <img src="/assets/icons/skill_w_heavy_blow.png" alt="" />
+                <span className="sk-hud-pips">
+                  {Array.from({ length: combat.strikes.crushEvery }, (_, i) => (
+                    <i key={i} className={`sk-hud-pip${i < hud.crush ? ' on' : ''}`} />
+                  ))}
+                </span>
+              </span>
+            )}
+            {combat.strikes?.furyPct && (
+              <span className="sk-hud-item" title={t('heroSkills.skills.w_fury.name')}>
+                <img src="/assets/icons/skill_w_fury.png" alt="" />
+                <span className="sk-hud-bar">
+                  <i style={{ width: `${hud.fury * 100}%` }} />
+                </span>
+              </span>
+            )}
+            {combat.strikes?.devastating && (
+              <span className="sk-hud-item" title={t('heroSkills.skills.w_devastating_strike.name')}>
+                <img src="/assets/icons/skill_w_devastating_strike.png" alt="" />
+              </span>
+            )}
+            {combat.bleed && (
+              <span className="sk-hud-item" title={t('heroSkills.skills.w_bleed.name')}>
+                <img src="/assets/icons/skill_w_bleed.png" alt="" />
+              </span>
+            )}
+            {combat.block && (
+              <span className="sk-hud-item" title={t('heroSkills.skills.g_block.name')}>
+                <img src="/assets/icons/skill_g_block.png" alt="" />
+              </span>
+            )}
+            {combat.strikes?.doubleChance && (
+              <span className="sk-hud-item" title={t('heroSkills.skills.h_light_step.name')}>
+                <img src="/assets/icons/skill_h_light_step.png" alt="" />
+              </span>
+            )}
+            {combat.bastion && (
+              <span className="sk-hud-item" title={t('heroSkills.skills.g_last_bastion.name')} style={{ opacity: hud.bastion ? 0.35 : 1 }}>
+                <img src="/assets/icons/skill_g_last_bastion.png" alt="" />
+              </span>
+            )}
+          </div>
+        ) : null}
+        <div className={`battle-stage${fxStage.shaking ? ' shake' : ''}`}>
         <div className="battle-top">
           <div className="battle-hud hero">
             <span className="hp-label">
@@ -653,8 +779,9 @@ export default function BattleModal({
               size="calc(var(--sprite-size, 132px) * 1.1)"
               row={ANIM_ROW[playerAnim]}
             />
+            <FxLayer side="p" items={fxStage.items} done={fxStage.done} scale={fxScale} />
             {floats.filter((f) => f.side === 'p').map((f) => (
-              <span key={f.id} className={`float float-${f.kind}`}>
+              <span key={f.id} className={`float float-${f.kind}`} style={f.style}>
                 {f.text}
               </span>
             ))}
@@ -672,8 +799,9 @@ export default function BattleModal({
                 🔥
               </span>
             )}
+            <FxLayer side="e" items={fxStage.items} done={fxStage.done} scale={fxScale} />
             {floats.filter((f) => f.side === 'e').map((f) => (
-              <span key={f.id} className={`float float-${f.kind}`}>
+              <span key={f.id} className={`float float-${f.kind}`} style={f.style}>
                 {f.text}
               </span>
             ))}
@@ -728,6 +856,7 @@ export default function BattleModal({
                   <h2 className="result-title win">{dungeonComplete ? t('dungeon.dungeonComplete') : t('dungeon.retreatTitle')}</h2>
                   {crossedMilestones.length > 0 && renderMilestoneBanner()}
                   <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems, finalRewards.uniques, finalRewards.relics)}</div>
+                  {skillLines && <StrikeLines tally={skillLines.tally} total={skillLines.total} />}
                   <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
                     {t('dungeon.collect')}
                   </button>
@@ -737,6 +866,7 @@ export default function BattleModal({
                   <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
                   <div className="gold-penalty">{t('dungeon.goldPenalty', { n: Math.round((1 - T.battle.defeatGoldKept) * 100) })}</div>
                   <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems, finalRewards.uniques, finalRewards.relics)}</div>
+                  {skillLines && <StrikeLines tally={skillLines.tally} total={skillLines.total} />}
                   <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
                     {t('dungeon.return')}
                   </button>

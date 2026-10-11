@@ -1,7 +1,7 @@
 import { MaterialId } from './materials';
 import { UniqueDrop, rollUniqueDrop } from './uniques';
 import { HuntingDrop, HuntingDepth, HuntingUnique, effectiveDropChance } from './huntingZones';
-import { BurnState, applyDamageReduction, bastionHp, bleedSpec, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, strikeMultiplier, tickBurn } from './derivedStats';
+import { BurnState, StrikeStats, StrikeTally, applyDamageReduction, bastionHp, bleedSpec, echoDamage, furyHitDamage, igniteBurn, nextBurnTickAt, newStrikeState, reflectedDamage, regenAmount, registerBlock, resolveHeroHit, tally, tickBurn } from './derivedStats';
 import T from './tunables';
 import { economicRollFractionForFight } from './huntEconomy';
 import { inRelativeWindows } from './huntSession';
@@ -54,7 +54,7 @@ export interface HuntCombatBuild {
   // (rolled on its OWN seeded stream, so the fight, crit, drop and promotion outcomes of a hero without it are bit-for-bit unchanged), Ultimo Bastiao, Faro (material
   // yield) and Sorte Grande (unique chance; only the threshold the unique draw is compared against changes, never the stream).
   bleed?: number;
-  strikeEvery?: number;
+  strikes?: StrikeStats;
   block?: number;
   bastion?: boolean;
   matMult?: number;
@@ -156,6 +156,9 @@ export interface HuntSessionResult {
   drops: Partial<Record<MaterialId, number>>;
   uniques: UniqueDrop[]; // unique pieces rolled this session (their own seeded stream, see rollDropsForOneClear)
   liveSnapshot: HuntLiveSnapshot | null;
+  // Display only (nothing reads them to decide anything): what each skill strike did, and the total damage the hero side dealt.
+  skillTally: StrikeTally;
+  totalDamage: number;
 }
 
 function enemyStatsAt(cfg: HuntZoneCombatCfg, subLevel: number) {
@@ -185,7 +188,12 @@ export function simulateHuntingSession(
   // Block rolls (Bloqueio) have their own stream for the same reason; it is only drawn from when the hero has the skill.
   const blockRng = mulberry32(hashSeed(seedKey + ':block'));
   const uniques: UniqueDrop[] = [];
-  let heroHits = 0; // the hero's hits over the whole session, for Golpe Devastador
+  // Strikes (heroSkills.ts): the hit counters run over the whole session; Golpe Duplo rolls on its own seeded stream like Bloqueio.
+  const strikeState = newStrikeState();
+  const doubleRng = mulberry32(hashSeed(seedKey + ':double'));
+  const skillTally: StrikeTally = {};
+  let totalDamage = 0;
+  let furyLeft = T.heroSkills.furyEveryMs; // combat time until the next flurry; carried from fight to fight so short fights still reach it
   let bastionReadyAt = 0; // session clock (ms) from which Ultimo Bastiao can save the hero again
 
   let timeLeft = sessionMs;
@@ -269,6 +277,8 @@ export function simulateHuntingSession(
     let burn: BurnState | null = null;
     let bleed: BurnState | null = null;
     const bleedDot = build.bleed ? bleedSpec(build.bleed) : undefined;
+    // Golpe de Furia: a flurry every furyEveryMs of combat time (the timer carries over between fights).
+    let furyNext = build.strikes?.furyPct ? furyLeft : Infinity;
     let t = 0;
     // Snapshot at fight start too, so a brand-new attempt has something to show even before its
     // first hit lands (e.g. the very first poll of a freshly-started session).
@@ -276,7 +286,7 @@ export function simulateHuntingSession(
     while (hpRef.hp > 0 && enemyHp > 0) {
       const burnNext = nextBurnTickAt(burn);
       const bleedNext = nextBurnTickAt(bleed);
-      const nextEvent = Math.min(heroNext, enemyNext, burnNext, bleedNext, regenNext);
+      const nextEvent = Math.min(heroNext, enemyNext, burnNext, bleedNext, furyNext, regenNext);
       if (nextEvent > timeLeft) return null;
       t = nextEvent;
       if (heroNext === nextEvent) {
@@ -290,9 +300,20 @@ export function simulateHuntingSession(
           const atk = inRelativeWindows(timeline.attackWindows, at);
           hitBase = str && atk ? timeline.dmgBoth : str ? timeline.dmgStrength : atk ? timeline.dmgAttack : build.heroDmgBase;
         }
-        heroHits++;
-        const dmg = Math.max(1, Math.round(hitBase * (crit ? build.critMult : 1) * strikeMultiplier(heroHits, build.strikeEvery)));
+        const res = resolveHeroHit(strikeState, build.strikes, doubleRng);
+        const plain = Math.max(1, Math.round(hitBase * (crit ? build.critMult : 1)));
+        const afterCrush = Math.round(plain * res.crushMult);
+        const base = Math.max(1, Math.round(plain * res.mult));
+        if (res.crush) tally(skillTally, res.devastating ? 'w_devastating_strike' : 'w_heavy_blow', afterCrush - plain);
+        if (res.counter) tally(skillTally, 'g_block', base - afterCrush);
+        let dmg = base;
+        if (res.double) {
+          const echo = echoDamage(base);
+          dmg += echo;
+          tally(skillTally, 'h_light_step', echo);
+        }
         enemyHp -= dmg;
+        totalDamage += dmg;
         if (build.burn) burn = igniteBurn(burn, t, hitBase);
         if (bleedDot) bleed = igniteBurn(bleed, t, hitBase, bleedDot);
         if (build.lifestealPct > 0) {
@@ -303,6 +324,7 @@ export function simulateHuntingSession(
       } else if (enemyNext === nextEvent) {
         const stoned = !!timeline?.stoneWindows && inRelativeWindows(timeline.stoneWindows, sessionMs - timeLeft + t);
         const blocked = !!build.block && blockRng() < build.block;
+        if (blocked) registerBlock(strikeState, build.strikes);
         const dmgTaken = blocked ? 0 : stoned ? applyDamageReduction(enemy.dmg, timeline!.reductionStone ?? build.reduction) : dmgTakenBase;
         hpRef.hp -= dmgTaken;
         // Ultimo Bastiao: a lethal hit leaves 1 HP plus a heal, once per bastionCooldownMs of combat time.
@@ -311,16 +333,42 @@ export function simulateHuntingSession(
           hpRef.hp = bastionHp(build.playerMax);
           bastionReadyAt = clock + T.heroSkills.bastionCooldownMs;
         }
-        if (hpRef.hp > 0) enemyHp -= reflectedDamage(dmgTaken, build.reflect);
+        if (hpRef.hp > 0) {
+          const back = reflectedDamage(dmgTaken, build.reflect);
+          enemyHp -= back;
+          totalDamage += back;
+        }
         enemyNext += enemy.atkMs;
       } else if (burnNext === nextEvent) {
         const tick = tickBurn(burn!);
         enemyHp -= tick.damage;
+        totalDamage += tick.damage;
         burn = tick.burn;
       } else if (bleedNext === nextEvent) {
         const tick = tickBurn(bleed!);
         enemyHp -= tick.damage;
+        totalDamage += tick.damage;
+        tally(skillTally, 'w_bleed', tick.damage);
         bleed = tick.burn;
+      } else if (furyNext === nextEvent) {
+        // The flurry: furyHits extra hits of a share of the current hit. They carry the on-hit effects at their own reduced damage and never advance the Esmagador counter.
+        let hitBase = build.heroDmgBase;
+        if (timeline) {
+          const str = inRelativeWindows(timeline.strengthWindows, sessionMs - timeLeft + t);
+          const atk = inRelativeWindows(timeline.attackWindows, sessionMs - timeLeft + t);
+          hitBase = str && atk ? timeline.dmgBoth : str ? timeline.dmgStrength : atk ? timeline.dmgAttack : build.heroDmgBase;
+        }
+        const per = furyHitDamage(hitBase, build.strikes);
+        let sum = 0;
+        for (let i = 0; i < T.heroSkills.furyHits; i++) {
+          sum += per;
+          if (build.burn) burn = igniteBurn(burn, t, per);
+          if (bleedDot) bleed = igniteBurn(bleed, t, per, bleedDot);
+        }
+        enemyHp -= sum;
+        totalDamage += sum;
+        tally(skillTally, 'w_fury', sum);
+        furyNext += T.heroSkills.furyEveryMs;
       } else {
         hpRef.hp = Math.min(build.playerMax, hpRef.hp + regen);
         regenNext += T.battle.effectTickMs;
@@ -329,10 +377,12 @@ export function simulateHuntingSession(
       liveSnapshot = { subLevel, heroHp: Math.max(0, hpRef.hp), heroMax: build.playerMax, enemyHp: Math.max(0, enemyHp), enemyMax: enemy.hp };
       if (hpRef.hp <= 0) {
         timeLeft -= t;
+        if (furyNext !== Infinity) furyLeft = Math.max(1, furyNext - t);
         return { win: false, timeMs: t };
       }
     }
     timeLeft -= t;
+    if (furyNext !== Infinity) furyLeft = Math.max(1, furyNext - t);
     return { win: true, timeMs: t, hpAfter: hpRef.hp };
   };
 
@@ -388,5 +438,7 @@ export function simulateHuntingSession(
     drops,
     uniques,
     liveSnapshot,
+    skillTally,
+    totalDamage,
   };
 }

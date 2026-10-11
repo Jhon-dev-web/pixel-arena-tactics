@@ -9703,3 +9703,735 @@ button[data-ui]:focus-visible {
   color: #ffd76a;
   overflow-wrap: anywhere;
 }
+
+/* =====================================================================
+   HABILIDADES (SkillsView.tsx) — the skill tree on one screen: three path
+   columns (tabs on a phone), 32px pixel icons shown at 2x, rank pips, a
+   detail panel and the pending-allocation actions. 1280x800 fits without a
+   page scroll; below 600px the paths become tabs.
+   ===================================================================== */
+.desktop-home.skills-view {
+  display: flex;
+  flex-direction: column;
+  align-content: initial;
+  gap: 12px;
+  padding: 16px 20px;
+}
+.skills-view .dh-card {
+  padding: 10px 14px;
+}
+.sk-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.sk-title {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffd76a;
+  text-shadow: 0 2px 0 #000;
+}
+.sk-head-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sk-chip {
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #1a1108;
+  border: 1px solid #5a4a2a;
+  color: #d8c9a0;
+  white-space: nowrap;
+}
+.sk-chip.points.has {
+  color: #1a1108;
+  background: #ffd76a;
+  border-color: #ffe9a8;
+  box-shadow: 0 0 10px rgba(255, 215, 106, 0.45);
+}
+.sk-next {
+  margin: 0;
+  flex: 1;
+  min-width: 180px;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #a99ac8;
+}
+.sk-tabs {
+  display: none;
+}
+.sk-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  flex: 1 0 auto;
+}
+.sk-col {
+  --sk-accent: #ffd76a;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  background: linear-gradient(180deg, #241a30, #140d1c);
+  border: 2px solid #3a2a4a;
+  border-top: 3px solid var(--sk-accent);
+  border-radius: 14px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.sk-col-warrior {
+  --sk-accent: #e0645a;
+}
+.sk-col-guardian {
+  --sk-accent: #5a8fe0;
+}
+.sk-col-hunter {
+  --sk-accent: #62c070;
+}
+.sk-col-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #3a2a4a;
+}
+.sk-path-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.sk-col-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sk-col-name {
+  font-size: 13px;
+  color: var(--sk-accent);
+  text-shadow: 0 2px 0 #000;
+}
+.sk-col-identity {
+  font-size: 8px;
+  line-height: 1.35;
+  color: #a99ac8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sk-col-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sk-col-points {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #f5e9c8;
+}
+.sk-tiers {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 6px;
+}
+.sk-row {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+.sk-tile-wrap {
+  position: relative;
+}
+.sk-tile {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-family: inherit;
+  background: #1a1108;
+  border: 2px solid #5a4a2a;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 3px 0 #0d0804;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.sk-tile:hover,
+.sk-tile.selected {
+  border-color: #ffd76a;
+}
+.sk-tile.selected {
+  box-shadow: 0 3px 0 #0d0804, 0 0 12px rgba(255, 215, 106, 0.4);
+}
+.sk-tile:focus-visible {
+  outline: 2px solid #ffd76a;
+  outline-offset: 2px;
+}
+.sk-tile.maxed {
+  background: linear-gradient(180deg, #3a2c12, #1a1108);
+  border-color: #b08a3a;
+}
+.sk-tile.pending {
+  border-color: #7fe08a;
+}
+.sk-tile.locked .sk-icon {
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.75;
+}
+.sk-tile.locked {
+  border-style: dashed;
+  border-color: #3a2a4a;
+}
+.sk-icon {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.sk-pips {
+  display: flex;
+  gap: 4px;
+  height: 10px;
+}
+.sk-pip {
+  width: 10px;
+  height: 10px;
+  background: #2a2036;
+  border: 1px solid #6a5a8a;
+}
+.sk-pip.on {
+  background: #ffd76a;
+  border-color: #ffe9a8;
+}
+.sk-pip.pending {
+  background: #7fe08a;
+  border-color: #c4ffcb;
+}
+.sk-lock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  font-size: 9px;
+  text-align: center;
+  color: #ff9a8a;
+}
+.sk-tile.locked .sk-pips {
+  display: none;
+}
+.sk-plus {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 1;
+  color: #1a1108;
+  background: linear-gradient(180deg, #ffe9a8, #d8a63a);
+  border: 2px solid #8a6a3a;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 2px 0 #1a1108;
+}
+.sk-plus:hover {
+  filter: brightness(1.12);
+}
+.sk-plus:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.sk-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 12px;
+}
+.sk-detail {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 108px;
+}
+.sk-detail-icon {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #1a1108;
+  border: 2px solid #5a4a2a;
+  border-radius: 8px;
+}
+.sk-detail-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.sk-detail-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.sk-detail-name {
+  font-size: 13px;
+  color: #ffd76a;
+  text-shadow: 0 2px 0 #000;
+}
+.sk-detail-rank,
+.sk-detail-tier {
+  font-size: 10px;
+  color: #a99ac8;
+}
+.sk-detail-line {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #f5e9c8;
+}
+.sk-detail-line b {
+  color: #a99ac8;
+  font-weight: normal;
+}
+.sk-detail-line.next {
+  color: #cfe9d2;
+}
+.sk-detail-lock {
+  margin: 0;
+  font-size: 11px;
+  color: #ff9a8a;
+}
+.sk-detail-add {
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 11px;
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a1108;
+  white-space: nowrap;
+}
+.sk-detail-add:disabled {
+  filter: grayscale(0.9) brightness(0.5);
+  cursor: not-allowed;
+}
+.sk-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+.sk-apply-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 6px;
+}
+.sk-btn {
+  font-family: inherit;
+  font-size: 11px;
+  color: #ffe9a8;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 8px 8px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1a1108;
+  line-height: 1.3;
+}
+.sk-btn.primary {
+  color: #1a1108;
+  background: linear-gradient(180deg, #ffe9a8, #d8a63a);
+}
+.sk-btn:disabled {
+  filter: grayscale(0.9) brightness(0.5);
+  cursor: not-allowed;
+}
+.sk-btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a1108;
+}
+.sk-btn:focus-visible,
+.sk-set:focus-visible,
+.sk-tab:focus-visible,
+.sk-plus:focus-visible,
+.sk-detail-add:focus-visible {
+  outline: 2px solid #ffd76a;
+  outline-offset: 2px;
+}
+.sk-loadouts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.sk-set {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: 10px;
+  color: #a99ac8;
+  background: #1a1108;
+  border: 2px solid #3a2a4a;
+  border-radius: 8px;
+  padding: 8px 6px;
+  cursor: pointer;
+}
+.sk-set.on {
+  color: #ffd76a;
+  border-color: #ffd76a;
+  background: rgba(255, 215, 106, 0.08);
+}
+.sk-set:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.sk-set.locked {
+  color: #8a7aa8;
+  border-style: dashed;
+}
+.sk-set.locked img {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+  filter: grayscale(0.5);
+}
+.sk-set.locked i {
+  font-style: normal;
+  font-size: 8px;
+  color: #1a1108;
+  background: #ffd76a;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+.sk-note {
+  margin: 0;
+  font-size: 10px;
+  color: #ff9a8a;
+  line-height: 1.35;
+}
+.sk-confirm-backdrop {
+  z-index: 60;
+}
+.sk-confirm {
+  width: calc(100% - 32px);
+  max-width: 420px;
+  padding: 20px;
+  background: linear-gradient(180deg, #241a30, #140d1c);
+  border: 2px solid #8a6a3a;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+}
+.sk-confirm h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #ffd76a;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.sk-confirm p {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #f5e9c8;
+}
+.sk-confirm p.cost {
+  color: #ffd76a;
+}
+.sk-confirm p.note {
+  color: #a99ac8;
+}
+.sk-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.sk-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.sk-summary p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #f5e9c8;
+}
+
+@media (max-width: 599px) {
+  .desktop-home.skills-view {
+    padding: 12px 12px calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  .sk-next {
+    text-align: left;
+  }
+  .sk-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .sk-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-family: inherit;
+    font-size: 10px;
+    color: #a99ac8;
+    background: #1a1108;
+    border: 2px solid #3a2a4a;
+    border-radius: 10px;
+    padding: 8px 4px;
+    cursor: pointer;
+  }
+  .sk-tab img {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+  }
+  .sk-tab b {
+    font-weight: normal;
+    color: #f5e9c8;
+  }
+  .sk-tab.active {
+    color: #ffd76a;
+    border-color: #ffd76a;
+    background: rgba(255, 215, 106, 0.08);
+  }
+  .sk-cols {
+    grid-template-columns: 1fr;
+  }
+  .sk-col:not(.current) {
+    display: none;
+  }
+  .sk-tiers {
+    gap: 14px;
+  }
+  .sk-bottom {
+    grid-template-columns: 1fr;
+  }
+  .sk-detail {
+    flex-wrap: wrap;
+  }
+  .sk-detail-add {
+    width: 100%;
+  }
+}
+@media (min-width: 600px) and (max-width: 1023px) {
+  .sk-col-identity {
+    display: none;
+  }
+}
+@media (min-width: 600px) and (max-width: 840px) {
+  .sk-row {
+    gap: 8px;
+  }
+}
+
+/* =====================================================================
+   SKILL EFFECTS (SkillFx.tsx, game/skillFx.ts): sprite effects from grid sheets, drawn with hard pixels above the combatants and below the
+   name plates and floats; the strike callouts and the stage shake. Nothing plays under prefers-reduced-motion.
+   ===================================================================== */
+.skfx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+.skfx {
+  position: absolute;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+.skfx-css-counter {
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border: 4px solid #ffd54a;
+  box-shadow: inset 0 0 0 4px #ff8a3a;
+  animation: skfxCounter 0.36s steps(4) forwards;
+}
+@keyframes skfxCounter {
+  from {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+.battle-stage.shake,
+.hunt-stage.shake {
+  animation: skShake 0.15s steps(3) 1;
+}
+@keyframes skShake {
+  0% {
+    transform: translate(3px, -2px);
+  }
+  34% {
+    transform: translate(-3px, 2px);
+  }
+  67% {
+    transform: translate(2px, 1px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.float-skill {
+  font-size: calc(var(--font-size) + 2px);
+  color: var(--fx-color, #ffd54a);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9), 0 2px 0 #000;
+}
+/* a callout is a name, not a number: it must not run over the HP plates above the stage */
+.battle-side .float-skill,
+.hunt-side .float-skill {
+  z-index: 25;
+}
+.sk-hud {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.sk-hud-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid #5a4a2a;
+  border-radius: 6px;
+}
+.sk-hud-item img {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+.sk-hud-pips {
+  display: flex;
+  gap: 2px;
+}
+.sk-hud-pip {
+  width: 6px;
+  height: 6px;
+  background: #2a2036;
+  border: 1px solid #6a5a8a;
+}
+.sk-hud-pip.on {
+  background: #ffd76a;
+  border-color: #ffe9a8;
+}
+.sk-hud-bar {
+  width: 34px;
+  height: 6px;
+  background: #2a2036;
+  border: 1px solid #6a5a8a;
+}
+.sk-hud-bar i {
+  display: block;
+  height: 100%;
+  background: #ff8a7a;
+}
+.sk-strike-lines {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sk-strike-lines li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(var(--font-size) - 1px);
+  color: #f5e9c8;
+}
+.sk-strike-lines img {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+.skfx-preview {
+  position: relative;
+  flex-shrink: 0;
+  width: 128px;
+  height: 108px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1a1030, #0d0816);
+  border: 2px solid #5a4a2a;
+  border-radius: 8px;
+}
+.skfx-preview-dummy {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 40px;
+  margin: -20px 0 0 -11px;
+  background: #3a2a4a;
+  border: 2px solid #5a4a7a;
+}
+.skfx-preview .skfx {
+  z-index: 2;
+}
+.sk-trigger {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #ffd76a;
+}
+@media (prefers-reduced-motion: reduce) {
+  .battle-stage.shake,
+  .hunt-stage.shake {
+    animation: none;
+  }
+  .skfx:not(.skfx-preview .skfx) {
+    display: none;
+  }
+}
+@media (max-width: 389px) {
+  .sk-hud {
+    display: none;
+  }
+}
+
+.hunt-side {
+  position: relative;
+}

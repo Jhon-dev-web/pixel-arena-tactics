@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "arena-duel-golpe-duplo 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.0975609756097561,
+    "y": 0.42857142857142855
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-duplo 1.png",
+   "frame": {
+    "x": 41,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.0975609756097561,
+    "y": 0.42857142857142855
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-duplo 2.png",
+   "frame": {
+    "x": 82,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.0975609756097561,
+    "y": 0.42857142857142855
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-duplo 3.png",
+   "frame": {
+    "x": 0,
+    "y": 63,
+    "w": 41,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.0975609756097561,
+    "y": 0.42857142857142855
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-duplo 4.png",
+   "frame": {
+    "x": 41,
+    "y": 63,
+    "w": 41,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.0975609756097561,
+    "y": 0.42857142857142855
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-duplo 5.png",
+   "frame": {
+    "x": 82,
+    "y": 63,
+    "w": 41,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.0975609756097561,
+    "y": 0.42857142857142855
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-duplo 6.png",
+   "frame": {
+    "x": 0,
+    "y": 126,
+    "w": 41,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.0975609756097561,
+    "y": 0.42857142857142855
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-duplo 7.png",
+   "frame": {
+    "x": 41,
+    "y": 126,
+    "w": 41,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.0975609756097561,
+    "y": 0.42857142857142855
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "arena-duel-golpe-duplo.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 123,
+   "h": 189
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 4,
+   "y": 27
+  },
+  "frameTags": [
+   {
+    "name": "arena-duel-golpe-duplo",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

@@ -25,7 +25,7 @@ import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, 
 import { ownsAdventurerPass, purchaseAdventurerPass } from './game/entitlements';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
-import { characterXpBonusPct, saveSkillEffects } from './game/heroSkills';
+import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, characterXpBonusPct, saveSkillEffects, skillPointsAvailable, skillPointsEarned } from './game/heroSkills';
 import { applyReforge } from './game/reforge';
 import {
   InstancedSlot,
@@ -62,6 +62,7 @@ import ForgeModal, { ForgeTab } from './components/ForgeModal';
 import OficiosView from './components/OficiosView';
 import InventoryModal from './components/InventoryModal';
 import PersonagemView from './components/PersonagemView';
+import SkillsView from './components/SkillsView';
 import DungeonMapModal from './components/DungeonMapModal';
 import HuntModal from './components/HuntModal';
 import HuntNavMini from './components/HuntNavMini';
@@ -125,7 +126,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
-  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills'>('home');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [huntOpen, setHuntOpen] = useState(false);
@@ -174,7 +175,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSave(s);
     if (nextLevel > prevLevel) {
       playSfx('victory');
-      showToast(t('ui.levelUp', { n: nextLevel }));
+      // A level that grants a skill point says so in the same line.
+      showToast(skillPointsEarned(nextLevel) > skillPointsEarned(prevLevel) ? t('heroSkills.ui.levelUpPoint', { n: nextLevel }) : t('ui.levelUp', { n: nextLevel }));
     }
   };
 
@@ -228,6 +230,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (tutorialStep || contextTutorial || !tutorial.automatic || (tutorial.initial !== 'completed' && tutorial.initial !== 'skipped') || tutorial.seen.includes(id)) return;
     setContextTutorial(id);
   };
+
+  // The first skill point (level 5): the Habilidades step of the contextual tutorials, shown once the player is back on a quiet screen (not in a fight, not behind a
+  // reward) and never to a player who skipped the automatic tutorials.
+  const level = playerLevel(save.xp);
+  useEffect(() => {
+    if (level < 5 || battleFloor !== null || (save.pendingHuntReward && !rewardHidden)) return;
+    const id = window.setTimeout(() => openContextTutorial('skills'), 1500);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level >= 5, battleFloor === null, tutorialStep, contextTutorial]);
 
   const closeContextTutorial = () => {
     if (!contextTutorial) return;
@@ -1235,6 +1247,39 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth({ ...saveRef.current, [attr]: next });
   };
 
+  // Hero skills (heroSkills.ts): the pending allocation lives in the screen; these commit it, take everything back (gold after the first time) or switch the loadout.
+  // Respec and switching are refused in a Dungeon battle; a Hunting / Mining / Woodcutting session keeps the stats it froze at the start.
+  const applySkills = (draft: SkillRanks) => {
+    const s = saveRef.current;
+    const r = applySkillAllocation(s, playerLevel(s.xp), draft);
+    if (!r.ok) return;
+    playSfx('click');
+    setSaveBoth(r.save);
+    showToast(t('heroSkills.ui.toastApplied'));
+  };
+  const respecSkills = () => {
+    const s = saveRef.current;
+    const r = applyRespec(s, playerLevel(s.xp), battleFloor !== null);
+    if (!r.ok) {
+      showToast(t(r.reason === 'gold' ? 'heroSkills.ui.respecNoGold' : r.reason === 'battle' ? 'heroSkills.ui.respecBattle' : 'heroSkills.ui.maxed'));
+      return;
+    }
+    playSfx('click');
+    setSaveBoth(r.save);
+    showToast(r.cost ? t('heroSkills.ui.toastRespecPaid', { n: fmtNum(r.cost) }) : t('heroSkills.ui.toastRespec'));
+  };
+  const switchLoadout = (index: 0 | 1) => {
+    const r = applyLoadoutSwitch(saveRef.current, index, battleFloor !== null);
+    if (!r.ok) {
+      if (r.reason === 'pass') setBattlePassOpen(true);
+      else if (r.reason === 'battle') showToast(t('heroSkills.ui.respecBattle'));
+      return;
+    }
+    playSfx('click');
+    setSaveBoth(r.save);
+    showToast(t('heroSkills.ui.toastSwitched', { n: index + 1 }));
+  };
+
   const selectTitle = (id: string | null) => {
     const s = saveRef.current;
     if (id !== null && (!getTitleDef(id) || !s.cosmetics.includes(id))) return;
@@ -1346,6 +1391,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       key: 'main',
       items: [
         { key: 'hero', icon: '🧝', label: t('nav.hero'), active: activeView === 'personagem', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
+        { key: 'skills', icon: <img className="pixel-icon" src="/assets/icons/skill_path_warrior.png" alt="" />, label: t('nav.skills'), active: activeView === 'skills', badge: skillPointsAvailable(save, level) > 0, tutorialTarget: 'skills', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('skills'); } },
         { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
         { key: 'dungeon', icon: <img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
         { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) }) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
@@ -1446,7 +1492,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onSalvage={salvageItem}
               onUseConsumable={useConsumableManually}
               onExpandInventory={expandInventoryBag}
+              onOpenSkills={() => { playSfx('click'); setActiveView('skills'); }}
             />
+          )}
+          {activeView === 'skills' && (
+            <SkillsView save={save} battleActive={battleFloor !== null} onApply={applySkills} onRespec={respecSkills} onSwitchLoadout={switchLoadout} onOpenPass={() => { playSfx('click'); setBattlePassOpen(true); }} />
           )}
           {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} focus={oficiosFocus} />}
         </div>

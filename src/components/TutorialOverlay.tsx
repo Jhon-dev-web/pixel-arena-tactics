@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ContextualTutorialId, InitialTutorialStep } from '../game/engine';
 import { t } from '../locales';
+import T from '../game/tunables';
 
 type TutorialStep = InitialTutorialStep | ContextualTutorialId;
 
@@ -16,9 +17,11 @@ const targets: Partial<Record<TutorialStep, string>> = {
   deliveries: 'deliveries-modal',
   reforge: 'inventory-modal',
   sockets: 'forge-modal',
+  skills: 'skills',
 };
 
-const textKey = (step: TutorialStep, key: string) => t(`tutorial.${step}.${key}`);
+// {n}: the levels per skill point (the Habilidades step), from the data like every other number.
+const textKey = (step: TutorialStep, key: string) => t(`tutorial.${step}.${key}`, { n: T.heroSkills.pointEveryLevels });
 
 export default function TutorialOverlay({
   step,

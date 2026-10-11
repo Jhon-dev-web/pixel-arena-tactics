@@ -42,7 +42,7 @@ import {
   snapshotGatherPass,
   xpToReachLevel,
 } from '../engine';
-import { applyDamageModifiers, bastionHp, bleedSpec, bossDamage, combatPowerCore, igniteBurn, strikeMultiplier, tickBurn } from '../derivedStats';
+import { applyDamageModifiers, bastionHp, bleedSpec, bossDamage, combatPowerCore, igniteBurn, newStrikeState, registerBlock, resolveHeroHit, tickBurn } from '../derivedStats';
 import { HuntCombatBuild, HuntPotionCfg, HuntZoneCombatCfg, simulateHuntingSession } from '../huntCombat';
 import { sanitizeHuntSession } from '../huntSession';
 import { getHuntingZone } from '../huntingZones';
@@ -123,16 +123,19 @@ describe('the tree', () => {
   });
 
   it('the numbers shown come from the data: they scale with the rank and follow the tunables', () => {
-    expect(skillParams('w_heavy_blow', 2).n).toBeCloseTo(2 * T.heroSkills.heavyBlowPct * 100, 6);
+    expect(skillParams('w_heavy_blow', 2).n).toBeCloseTo((T.heroSkills.crushBonusBase + 2 * T.heroSkills.crushBonusStep) * 100, 6);
     expect(skillParams('w_heavy_blow', 3).n).toBeGreaterThan(skillParams('w_heavy_blow', 2).n);
+    expect(skillParams('w_heavy_blow', 1).every).toBe(T.heroSkills.crushEvery);
     expect(skillParams('h_packer', 3).n).toBe(3 * T.heroSkills.packerSlots);
-    expect(skillParams('w_devastating_strike', 1)).toEqual({ every: T.heroSkills.strikeEvery, mult: T.heroSkills.strikeMult });
-    const saved = T.heroSkills.heavyBlowPct;
+    expect(skillParams('w_devastating_strike', 1)).toEqual({ k: T.heroSkills.devastatingEvery, mult: T.heroSkills.devastatingMult });
+    const saved = T.heroSkills.crushBonusStep;
     try {
-      (T.heroSkills as unknown as Record<string, number>).heavyBlowPct = 0.07;
+      (T.heroSkills as unknown as Record<string, number>).crushBonusStep = 0.07;
+      (T.heroSkills as unknown as Record<string, number>).crushBonusBase = 0;
       expect(skillParams('w_heavy_blow', 1).n).toBe(7);
     } finally {
-      (T.heroSkills as unknown as Record<string, number>).heavyBlowPct = saved;
+      (T.heroSkills as unknown as Record<string, number>).crushBonusStep = saved;
+      (T.heroSkills as unknown as Record<string, number>).crushBonusBase = 0.03;
     }
   });
 });
@@ -288,7 +291,8 @@ describe('applying points, respec and loadouts', () => {
     expect(guard.skillTree.sets[1]).toEqual({ g_thick_skin: 3, g_bulwark: 3 });
     expect(buildCombatStats(guard).maxHp).toBeGreaterThan(buildCombatStats(atLevel(30)).maxHp);
     const back = applyLoadoutSwitch(guard, 0, false).save;
-    expect(buildCombatStats(back).dmgBase).toBeGreaterThan(buildCombatStats(guard).dmgBase);
+    expect(buildCombatStats(back).strikes).toBeDefined();
+    expect(buildCombatStats(guard).strikes).toBeUndefined();
     expect(applyLoadoutSwitch(back, 0, false)).toMatchObject({ ok: false, reason: 'nothing' });
     // a respec empties only the ACTIVE set
     const afterRespec = applyRespec(guard, 30, false).save;
@@ -304,16 +308,18 @@ describe('each skill changes the combat numbers it promises', () => {
   const bare = buildCombatStats(h);
   const c = (ranks: SkillRanks) => buildCombatStats(withSkills(h, ranks));
 
-  it('Warrior: damage, crit chance, crit damage, attack speed, weapon damage', () => {
-    expect(c(fullOf('w_heavy_blow')).dmgBase / bare.dmgBase).toBeCloseTo(1 + 3 * T.heroSkills.heavyBlowPct, 9);
+  it('Warrior: strikes, crit chance, crit damage, weapon damage, bleed', () => {
+    expect(c(fullOf('w_heavy_blow')).dmgBase).toBe(bare.dmgBase); // a strike, not a flat bonus
+    expect(c(fullOf('w_heavy_blow')).strikes).toEqual({ crushEvery: T.heroSkills.crushEvery, crushBonus: T.heroSkills.crushBonusBase + 3 * T.heroSkills.crushBonusStep });
     expect(c(fullOf('w_keen_eye')).critChance - bare.critChance).toBeCloseTo(3 * T.heroSkills.keenEyeCrit, 9);
     expect(c(fullOf('w_execution')).critMult - bare.critMult).toBeCloseTo(3 * T.heroSkills.executionCritMult, 9);
-    expect(c(fullOf('w_fury')).heroMs).toBeLessThan(bare.heroMs);
-    expect(c(fullOf('w_fury')).heroMs).toBeCloseTo(bare.heroMs / (1 + 3 * T.heroSkills.furyAttackSpeed), 6);
+    expect(c(fullOf('w_fury')).heroMs).toBe(bare.heroMs);
+    expect(c(fullOf('w_fury')).strikes!.furyPct).toBeCloseTo(T.heroSkills.furyDmgBase + 3 * T.heroSkills.furyDmgStep, 9);
     expect(c(fullOf('w_weapon_master')).dmgBase).toBeGreaterThan(bare.dmgBase);
     expect(c(fullOf('w_bleed')).bleed).toBeCloseTo(3 * T.heroSkills.bleedPct, 9);
     expect(bare.bleed).toBeUndefined();
-    expect(c(fullOf('w_devastating_strike')).strikeEvery).toBe(T.heroSkills.strikeEvery);
+    expect(c(fullOf('w_devastating_strike')).strikes).toMatchObject({ crushEvery: T.heroSkills.crushEvery, crushBonus: 0, devastating: true });
+    expect(bare.strikes).toBeUndefined();
   });
 
   it('Guardian: HP, resistance sum, reflect, regeneration, boss damage, block, bastion', () => {
@@ -324,11 +330,12 @@ describe('each skill changes the combat numbers it promises', () => {
     expect(c(fullOf('g_second_wind')).hpRegenPct - bare.hpRegenPct).toBeCloseTo(3 * T.heroSkills.secondWindRegen, 9);
     expect(c(fullOf('g_firm_stance')).bossReduction).toBeCloseTo(3 * T.heroSkills.firmStanceReduction, 9);
     expect(c(fullOf('g_block')).block).toBeCloseTo(3 * T.heroSkills.blockChance, 9);
+    expect(c(fullOf('g_block')).strikes!.counter).toBeCloseTo(T.heroSkills.counterBase + 3 * T.heroSkills.counterStep, 9);
     expect(c(fullOf('g_last_bastion')).bastion).toBe(true);
   });
 
   it('Hunter: attack speed, Gold, materials, XP, bag slots, gathering, unique luck', () => {
-    expect(c(fullOf('h_light_step')).heroMs).toBeCloseTo(bare.heroMs / (1 + 3 * T.heroSkills.lightStepAttackSpeed), 6);
+    expect(c(fullOf('h_light_step')).strikes!.doubleChance).toBeCloseTo(T.heroSkills.doubleBase + 3 * T.heroSkills.doubleStep, 9);
     expect(c(fullOf('h_greed')).skillGold).toBeCloseTo(3 * T.heroSkills.greedGold * 100, 6);
     expect(c(fullOf('h_scent')).matMult).toBeCloseTo(1 + 3 * T.heroSkills.scentMaterials, 9);
     expect(c(fullOf('h_quick_learner')).xpBonus! - bare.xpBonus!).toBeCloseTo(3 * T.heroSkills.quickLearnerXp * 100, 6);
@@ -340,11 +347,11 @@ describe('each skill changes the combat numbers it promises', () => {
 
   it('a hero without skills has exactly the stats it always had (no key added)', () => {
     expect(Object.keys(bare).sort()).toEqual(Object.keys(buildCombatStats({ ...h, skillTree: emptySkillTree() })).sort());
-    for (const k of ['bleed', 'strikeEvery', 'block', 'bastion', 'bossReduction', 'skillGold', 'matMult', 'uniqueMult', 'bossLootMult']) expect(bare, k).not.toHaveProperty(k);
+    for (const k of ['bleed', 'strikes', 'block', 'bastion', 'bossReduction', 'skillGold', 'matMult', 'uniqueMult', 'bossLootMult']) expect(bare, k).not.toHaveProperty(k);
   });
 
   it('only the ACTIVE set counts', () => {
-    const two = owner(withSkills(withSkills(h, { w_heavy_blow: 3 }), { g_thick_skin: 3 }, 1));
+    const two = owner(withSkills(withSkills(h, { w_weapon_master: 3 }), { g_thick_skin: 3 }, 1));
     const set1 = buildCombatStats({ ...two, skillTree: { ...two.skillTree, active: 0 } });
     const set2 = buildCombatStats(two);
     expect(set1.dmgBase).toBeGreaterThan(bare.dmgBase);
@@ -405,22 +412,79 @@ const huntFight = (build: HuntCombatBuild, zone: HuntZoneCombatCfg, sessionMs: n
   simulateHuntingSession(build, zone, { ceiling: 1, promotionWins: 0 }, sessionMs, noPotions, seed, one);
 
 describe('hunting simulation applies the skills', () => {
-  it('Devastating Strike: every Nth hit of the whole session multiplies its damage', () => {
-    // 1000 HP, 100 per hit: plain = 10 hits (10 s). With every 6th hit x1.3: 5 x 100 + 130 = 630 after 6 hits, 4 more hits = 10 hits total... use a bigger multiplier to see it
-    const strong = { ...baseBuild, strikeEvery: 5 };
-    const saved = T.heroSkills.strikeMult;
+  it('Golpe Esmagador: every Nth hit of the whole session deals its bonus; the capstone turns every 3rd crush into a Devastador', () => {
+    // 1000 HP, 100 per hit: plain = 10 hits. Crush every 5th hit at +100 % (x2): hits 1-4 = 400, hit 5 = 200 (600), 6 7 8 (900), hit 9 (1000) -> 9 hits
+    const crush = { ...baseBuild, strikes: { crushEvery: 5, crushBonus: 1 } };
+    expect(huntFight(crush, baseZone, 9_001).fightTimeUsedMs).toBe(9_000);
+    expect(huntFight(crush, baseZone, 8_999).fightTimeUsedMs).toBe(0);
+    expect(huntFight(baseBuild, baseZone, 9_999).fightTimeUsedMs).toBe(0);
+    // the counter runs across fights (the session counter never resets): 400 HP per fight, 4 hits plain; the 5th hit of the session is the first hit of fight 2
+    const r = simulateHuntingSession(crush, { ...baseZone, baseEnemyHp: 400 }, { ceiling: 1, promotionWins: 0 }, 20_000, noPotions, 'seed', one);
+    expect(r.skillTally.w_heavy_blow!.n).toBeGreaterThan(2);
+    expect(r.skillTally.w_heavy_blow!.dmg).toBe(r.skillTally.w_heavy_blow!.n * 100);
+    // Devastador (x3 here) replaces the bonus on every 3rd crush: crush 3 is hit 15
+    const saved = T.heroSkills.devastatingMult;
     try {
-      (T.heroSkills as unknown as Record<string, number>).strikeMult = 3;
-      // hits 1-4: 100 each = 400, hit 5 = 300 (700), hit 6 = 100 (800), 7 (900), 8 (1000) -> 8 hits
-      expect(huntFight(strong, baseZone, 8_001).fightTimeUsedMs).toBe(8_000);
-      expect(huntFight(strong, baseZone, 7_999).fightTimeUsedMs).toBe(0);
-      expect(huntFight(baseBuild, baseZone, 9_999).fightTimeUsedMs).toBe(0); // the plain hero needs 10 hits
-      // the counter runs across fights: the second fight (hits 9..) has its 10th hit tripled
-      const r = huntFight(strong, { ...baseZone, baseEnemyHp: 400 }, 20_001);
-      expect(r.kills).toBeGreaterThan(2);
+      (T.heroSkills as unknown as Record<string, number>).devastatingMult = 3;
+      const dev = simulateHuntingSession({ ...baseBuild, strikes: { crushEvery: 5, crushBonus: 1, devastating: true } }, { ...baseZone, baseEnemyHp: 1e9 }, { ceiling: 1, promotionWins: 0 }, 15_000, noPotions, 'seed', one);
+      expect(dev.skillTally.w_devastating_strike).toEqual({ n: 1, dmg: 200 });
+      expect(dev.skillTally.w_heavy_blow).toEqual({ n: 2, dmg: 200 });
     } finally {
-      (T.heroSkills as unknown as Record<string, number>).strikeMult = saved;
+      (T.heroSkills as unknown as Record<string, number>).devastatingMult = saved;
     }
+  });
+
+  it('Golpe de Furia: a flurry every 8 s of combat time, with its own damage, never advancing the Esmagador counter', () => {
+    // 100 per hit every second + 3 hits of 50 % every 8 s: 1700 HP dies at... hits 1-8 = 800 + flurry at 8 s (150) = 950, hit 9 = 1050 -> not enough for 1000? it is: 9 s ends it
+    const fury = { ...baseBuild, strikes: { furyPct: 0.5 } };
+    const zone = { ...baseZone, baseEnemyHp: 1000 };
+    expect(huntFight(fury, zone, 9_001).fightTimeUsedMs).toBe(9_000);
+    expect(huntFight(fury, zone, 8_999).fightTimeUsedMs).toBe(0);
+    expect(huntFight(baseBuild, zone, 9_999).fightTimeUsedMs).toBe(0);
+    const r = huntFight(fury, { ...zone, baseEnemyHp: 1e9 }, 17_000);
+    expect(r.skillTally.w_fury).toEqual({ n: 2, dmg: 2 * 150 });
+    // both: the flurry hits do not count as hits of the hero, so the crush lands on hit 5 regardless of the flurries
+    const both = simulateHuntingSession({ ...baseBuild, strikes: { furyPct: 0.5, crushEvery: 10, crushBonus: 1 } }, { ...zone, baseEnemyHp: 1e9 }, { ceiling: 1, promotionWins: 0 }, 20_000, noPotions, 's', one);
+    expect(both.skillTally.w_heavy_blow!.n).toBe(2); // hits 10 and 20 of 20 hits in 20 s
+  });
+
+  it('Contra-ataque: the hit after a block deals the bonus (and only that hit); Golpe Duplo adds an echo', () => {
+    const s = { crushEvery: undefined, counter: 0.5 };
+    const st = newStrikeState();
+    expect(resolveHeroHit(st, s, () => 1).mult).toBe(1);
+    registerBlock(st, s);
+    expect(resolveHeroHit(st, s, () => 1)).toMatchObject({ counter: true, mult: 1.5 });
+    expect(resolveHeroHit(st, s, () => 1).counter).toBe(false);
+    registerBlock(newStrikeState(), undefined); // a hero without the skill: nothing
+    const d = resolveHeroHit(newStrikeState(), { doubleChance: 0.1 }, () => 0.05);
+    expect(d.double).toBe(true);
+    expect(resolveHeroHit(newStrikeState(), { doubleChance: 0.1 }, () => 0.5).double).toBe(false);
+    // hunting: every enemy hit blocked -> every hero hit after the first block is a counter
+    const r = simulateHuntingSession({ ...baseBuild, block: 0.9999, strikes: { counter: 1 } }, { ...baseZone, baseEnemyHp: 1e9, baseEnemyDmg: 50 }, { ceiling: 1, promotionWins: 0 }, 10_000, noPotions, 'cc', one);
+    expect(r.skillTally.g_block!.n).toBeGreaterThan(5);
+    expect(r.skillTally.g_block!.dmg).toBe(r.skillTally.g_block!.n * 100);
+  });
+
+  it('Golpe Duplo and Bloqueio are deterministic for a seed and draw from their own streams: the session is bit-for-bit what it was', () => {
+    const zone = getHuntingZone('demon_glade')!;
+    const h = hero('5', 4, { level: 75 });
+    const run = (extra: Partial<HuntCombatBuild>, dmg0 = true) => {
+      const { build, zoneCfg, potionCfg, timeline } = buildHuntSimSetup(h, zone, 'dense', buildHuntSession(h, NOW), NOW, []);
+      return simulateHuntingSession({ ...build, ...extra }, dmg0 ? { ...zoneCfg, baseEnemyDmg: 0 } : zoneCfg, { ceiling: 3, promotionWins: 0 }, 5 * HOUR, potionCfg, 'glade:seed', { maxLevel: 12, requiredWins: () => 5 }, timeline);
+    };
+    const plain = run({});
+    // the echo adds damage, so fights can end earlier; with the echo worth 1 HP the fights are the same and only the streams could move the drops
+    const savedEcho = T.heroSkills.doubleDmgPct;
+    (T.heroSkills as unknown as Record<string, number>).doubleDmgPct = 0;
+    const dbl = run({ strikes: { doubleChance: 0.5 } });
+    (T.heroSkills as unknown as Record<string, number>).doubleDmgPct = savedEcho;
+    expect(dbl.skillTally.h_light_step!.n).toBeGreaterThan(100);
+    expect(dbl.kills).toBe(plain.kills);
+    expect(dbl.drops).toEqual(plain.drops);
+    expect(dbl.uniques).toEqual(plain.uniques);
+    expect(run({ strikes: { doubleChance: 0.5 } })).toEqual(run({ strikes: { doubleChance: 0.5 } }));
+    const real = (b: Partial<HuntCombatBuild>) => run(b, false);
+    expect(real({ strikes: { doubleChance: 0.3 }, block: 0.2 })).toEqual(real({ strikes: { doubleChance: 0.3 }, block: 0.2 }));
   });
 
   it('Bleed: a second damage over time that coexists with burn and never stacks', () => {
@@ -476,7 +540,8 @@ describe('hunting simulation applies the skills', () => {
     };
     const plain = run({});
     const blocking = run({ block: 0.4 });
-    expect(blocking).toEqual(plain);
+    // (the 1 HP an enemy hit never goes below is blocked too, which only moves the reflected damage tally)
+    expect({ ...blocking, totalDamage: 0 }).toEqual({ ...plain, totalDamage: 0 });
     expect(run({ block: 0.4 })).toEqual(blocking);
     // with real damage the same seed gives the same outcome every time, and the block really reduces what lands
     const real = (b: number) => {
@@ -556,7 +621,7 @@ describe('the Dungeon driver (mirror of BattleModal) and the hunting simulation 
     reflect: st.reflect,
     hpRegenPct: st.hpRegenPct,
     ...(st.bleed ? { bleed: st.bleed } : {}),
-    ...(st.strikeEvery ? { strikeEvery: st.strikeEvery } : {}),
+    ...(st.strikes ? { strikes: st.strikes } : {}),
     ...(st.bastion ? { bastion: true } : {}),
   });
   const cases: [string, SkillRanks][] = [
@@ -659,11 +724,18 @@ describe('the Dungeon driver (mirror of BattleModal) and the hunting simulation 
   });
 });
 
-describe('Devastating Strike and the hit counter', () => {
-  it('multiplies exactly every Nth hit, never any other', () => {
-    expect([1, 2, 5, 6, 7, 12].map((n) => strikeMultiplier(n, 6))).toEqual([1, 1, 1, T.heroSkills.strikeMult, 1, T.heroSkills.strikeMult]);
-    expect(strikeMultiplier(6, undefined)).toBe(1);
-    expect(strikeMultiplier(6, 0)).toBe(1);
+describe('the strike counters', () => {
+  it('the Esmagador lands on exactly every Nth hit, the Devastador on every 3rd of those, and a hero without strikes never rolls', () => {
+    const st = newStrikeState();
+    const s = { crushEvery: 3, crushBonus: 0.5, devastating: true };
+    const seq = Array.from({ length: 18 }, () => resolveHeroHit(st, s, () => 1));
+    expect(seq.map((r) => (r.devastating ? 'D' : r.crush ? 'C' : '.')).join('')).toBe('..C..C..D..C..C..D');
+    expect(seq[2].mult).toBeCloseTo(1.5, 9);
+    expect(seq[8].mult).toBe(T.heroSkills.devastatingMult);
+    let rolled = 0;
+    resolveHeroHit(newStrikeState(), undefined, () => (rolled++, 0));
+    resolveHeroHit(newStrikeState(), { crushEvery: 5, crushBonus: 1 }, () => (rolled++, 0));
+    expect(rolled).toBe(0);
   });
 });
 
@@ -743,10 +815,13 @@ describe('economy skills', () => {
     expect(back.stats).toEqual(session.stats);
     expect(back.stats.bleed).toBeGreaterThan(0);
     expect(back.stats.bastion).toBe(true);
-    const hostile = sanitizeHuntSession({ ...JSON.parse(JSON.stringify(session)), stats: { ...session.stats, block: 5, matMult: 99, strikeEvery: -4 } })!.stats;
+    const hostile = sanitizeHuntSession({ ...JSON.parse(JSON.stringify(session)), stats: { ...session.stats, block: 5, matMult: 99, strikes: { crushEvery: -4, furyPct: 99 } } })!.stats;
     expect(hostile.block).toBeUndefined();
     expect(hostile.matMult).toBeUndefined();
-    expect(hostile.strikeEvery).toBeUndefined();
+    expect(hostile.strikes).toBeUndefined();
+    const withStrikes = withSkills(hero('4g', 4, { level: 60 }), { w_heavy_blow: 3, w_devastating_strike: 1, w_fury: 2, g_block: 1, h_light_step: 3 });
+    const frozen = sanitizeHuntSession(JSON.parse(JSON.stringify(buildHuntSession(withStrikes, NOW))))!;
+    expect(frozen.stats.strikes).toEqual(buildCombatStats(withStrikes).strikes);
   });
 });
 
@@ -796,7 +871,7 @@ describe('CP values the combat skills and never punishes a rank', () => {
     const st = buildCombatStats(heroes[2]);
     expect(Number.isFinite(combatPowerCore(st))).toBe(true);
     for (const bad of [Number.NaN, -5, Infinity, 1e30]) {
-      const v = combatPowerCore({ ...st, bleed: bad, strikeEvery: bad, block: bad, bossReduction: bad });
+      const v = combatPowerCore({ ...st, bleed: bad, strikes: { crushEvery: bad, crushBonus: bad, furyPct: bad, counter: bad, doubleChance: bad }, block: bad, bossReduction: bad });
       expect(Number.isFinite(v), String(bad)).toBe(true);
       expect(v).toBeGreaterThan(0);
     }

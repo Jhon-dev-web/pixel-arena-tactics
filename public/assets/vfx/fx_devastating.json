@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "arena-duel-golpe-devastador 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 1.png",
+   "frame": {
+    "x": 95,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 2.png",
+   "frame": {
+    "x": 190,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 3.png",
+   "frame": {
+    "x": 285,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 4.png",
+   "frame": {
+    "x": 0,
+    "y": 82,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 5.png",
+   "frame": {
+    "x": 95,
+    "y": 82,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 6.png",
+   "frame": {
+    "x": 190,
+    "y": 82,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 7.png",
+   "frame": {
+    "x": 285,
+    "y": 82,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 8.png",
+   "frame": {
+    "x": 0,
+    "y": 164,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  },
+  {
+   "filename": "arena-duel-golpe-devastador 9.png",
+   "frame": {
+    "x": 95,
+    "y": 164,
+    "w": 95,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.47368421052631576,
+    "y": 0.5853658536585366
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "arena-duel-golpe-devastador.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 380,
+   "h": 246
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 45,
+   "y": 48
+  },
+  "frameTags": [
+   {
+    "name": "arena-duel-golpe-devastador",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

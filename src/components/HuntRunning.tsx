@@ -85,6 +85,10 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
               monsterName={t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)}
               monsterLevel={status.ceilingSubLevel}
               snapshot={status.liveSnapshot}
+              decor={(() => {
+                const st = save.huntSession?.stats ?? buildCombatStats(save);
+                return { strikes: st.strikes, bleed: st.bleed, block: st.block };
+              })()}
             >
               <ActiveBuffs save={save} skip={['gatherer']} />
             </HuntBattleView>

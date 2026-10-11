@@ -62,6 +62,8 @@ export function applyHuntStop(save: SaveData, now: number): SaveData | null {
     promotionLosses: status.promotionLosses,
     promotionWins: status.promotionWins,
     promotionRequired: status.promotionRequired,
+    skillTally: status.skillTally,
+    totalDamage: Math.round(status.totalDamage),
     gold: status.goldReady,
     xp: status.xpReady,
     bpXp: Math.floor((status.pendingMs / MS_PER_HOUR) * T.battlePass.xpPerHuntHour),

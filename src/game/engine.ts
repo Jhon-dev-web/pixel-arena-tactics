@@ -30,7 +30,7 @@ import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
 import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers, withPermanentPassWindow, LEGACY_PASS_CAP_HOURS } from './huntSession';
-import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage } from './derivedStats';
+import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage, StrikeTally } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
@@ -337,12 +337,12 @@ export function buildCombatStats(save: SaveData): CombatStats {
   const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
   // Hero skills (heroSkills.ts): every effect enters the Layer-2 numbers here and nowhere else.
   const fx = saveSkillEffects(save);
-  const speedBonus = (relic?.attackSpeedBonus ?? 0) + fx.attackSpeed;
+  const speedBonus = relic?.attackSpeedBonus ?? 0;
   const stats: CombatStats = {
     maxHp: playerMaxHp(save),
     // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
     // grows the weapon term W before STR scales it.
-    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + fx.damagePct),
+    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)),
     critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance,
     critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
@@ -364,7 +364,7 @@ export function buildCombatStats(save: SaveData): CombatStats {
   };
   // The skill effects that have no gear twin are only present when the hero has them, so a hero without skills has exactly the stats it always had.
   if (fx.bleed > 0) stats.bleed = fx.bleed;
-  if (fx.strikeEvery > 0) stats.strikeEvery = fx.strikeEvery;
+  if (fx.strikes) stats.strikes = fx.strikes;
   if (fx.blockChance > 0) stats.block = fx.blockChance;
   if (fx.lastBastion) stats.bastion = true;
   if (fx.bossReduction > 0) stats.bossReduction = fx.bossReduction;
@@ -606,6 +606,9 @@ export interface HuntingStatus {
   defeats: number;
   potionsUsed: HuntPotionStock;
   liveSnapshot: HuntLiveSnapshot | null;
+  // Display only: what each skill strike did in the session (times and damage) and the total damage dealt, for the result line.
+  skillTally: StrikeTally;
+  totalDamage: number;
 }
 
 export function huntProgressKey(zoneId: string, depth: HuntingDepth): string {
@@ -722,7 +725,7 @@ export function buildHuntSimSetup(
     goldBonusPct: (stats.goldBonus ?? 0) + (session.passGold ?? 0) + (stats.skillGold ?? 0),
     xpBonusPct: stats.xpBonus ?? 0,
     ...(stats.bleed ? { bleed: stats.bleed } : {}),
-    ...(stats.strikeEvery ? { strikeEvery: stats.strikeEvery } : {}),
+    ...(stats.strikes ? { strikes: stats.strikes } : {}),
     ...(stats.block ? { block: stats.block } : {}),
     ...(stats.bastion ? { bastion: true } : {}),
     ...(stats.matMult ? { matMult: stats.matMult } : {}),
@@ -804,6 +807,8 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
       defeats: 0,
       potionsUsed: emptyPotionsUsed,
       liveSnapshot: null,
+      skillTally: {},
+      totalDamage: 0,
     };
   }
   const startedAt = save.huntingOfflineStart;
@@ -856,6 +861,8 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     defeats: result.defeats,
     potionsUsed: result.potionsUsed,
     liveSnapshot: result.liveSnapshot,
+    skillTally: result.skillTally,
+    totalDamage: result.totalDamage,
   };
 }
 

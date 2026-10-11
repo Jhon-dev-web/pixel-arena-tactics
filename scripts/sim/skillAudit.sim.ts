@@ -4,7 +4,8 @@
 // driver (runDungeon, the mirror of BattleModal) for the Monte-Carlo check of Last Bastion.
 // SKILL_T='{"heavyBlowPct":0.015}' overrides T.heroSkills for the run (and SKILL_ADV='{"cpBastionWeight":0.2}' T.advanced), to tune without editing the file.
 import { describe, it } from 'vitest';
-import { computeCP, SaveData } from '../../src/game/engine';
+import { computeCP, computeHuntingStatus, buildHuntSession, SaveData } from '../../src/game/engine';
+import { getHuntingZone } from '../../src/game/huntingZones';
 import { HERO_SKILLS, HeroSkillId, SKILL_PATH_IDS, SkillPathId, SkillRanks, getSkillDef, pointsSpent, rankOf, skillPointsEarned, skillsOfPath } from '../../src/game/heroSkills';
 import { isDungeonBoss, isDungeonCheckpoint } from '../../src/game/dungeon';
 import T from '../../src/game/tunables';
@@ -85,6 +86,27 @@ describe('hero skill audit', () => {
       }
       P('');
     }
+
+    // Share of the total damage each strike dealt in a same-tier fight (the counters the result screens show): hunting at a representative level, 4 h, a plain floor, ranks 1 / 2 / 3.
+    P('#### Parcela do dano total de cada golpe (Caça de 4 h na zona do tier, contadores da tela de resultado)', '');
+    P('| Herói | Golpe | posto 1 | posto 2 | posto 3 |', '| --- | --- | --- | --- | --- |');
+    for (const spec of HEROES) {
+      const h0 = buildHero(spec.level, spec.tier, spec.refine);
+      const zone = getHuntingZone(spec.tier >= 6 ? 'blood_marsh' : 'demon_glade')!;
+      const share = (ranks: SkillRanks, id: string): string => {
+        const s = withRanks(h0, ranks);
+        const save: SaveData = { ...s, activeHuntingZone: zone.id, activeHuntingDepth: 'shallow', huntingOfflineStart: NOW, huntSession: buildHuntSession(s, NOW) };
+        const st = computeHuntingStatus(save, NOW + 4 * 3600 * 1000);
+        const e = (st.skillTally as Record<string, { n: number; dmg: number }>)[id];
+        return e && st.totalDamage > 0 ? `${((e.dmg / st.totalDamage) * 100).toFixed(1)}% (x${e.n})` : '-';
+      };
+      for (const [id, label] of [['w_heavy_blow', 'Golpe Esmagador'], ['w_fury', 'Golpe de Fúria'], ['w_bleed', 'Sangria'], ['h_light_step', 'Golpe Duplo'], ['g_block', 'Contra-ataque']] as const) {
+        const rk = (r: number): SkillRanks => (id === 'g_block' ? { g_block: r } : { [id]: r });
+        P(`| ${spec.label} | ${label} | ${share(rk(1), id)} | ${share(rk(2), id)} | ${share(rk(3), id)} |`);
+      }
+      P(`| ${spec.label} | Golpe Devastador (capstone, com Esmagador x3) | - | - | ${share({ w_heavy_blow: 3, w_devastating_strike: 1 }, 'w_devastating_strike')} |`);
+    }
+    P('');
 
     // Monte Carlo of the Dungeon: a hero pushed to the edge of its reach (the highest plain floor it wins with a margin of 1.1), the mean floors cleared per run with
     // and without Last Bastion, next to one full T3 skill of each path for scale (the closed form cannot say how often the once-per-run save is the one that matters).

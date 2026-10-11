@@ -8,6 +8,7 @@ import { fmtSpan, matName } from '../game/huntView';
 import { MatIcon, Meter, MonsterPortrait } from './HuntParts';
 import MaterialIcon from './MaterialIcon';
 import UniqueDrops from './UniqueDrops';
+import StrikeLines from './StrikeLines';
 
 // Shows the reward a stopped session left in the save (`reward`, frozen at stop) and what claiming it will do to the inventory RIGHT NOW: the same
 // function as the claim (planHuntClaim) decides it, so what is listed here is exactly what happens. Loot goes into the free space, rarest first; what
@@ -108,6 +109,7 @@ export default function HuntRewardModal({
         )}
 
         <UniqueDrops drops={uniques} held={plan.uniquesLeft.length > 0} />
+        {reward.skillTally && <StrikeLines tally={reward.skillTally} total={reward.totalDamage ?? 0} />}
 
         <p className={`hunt-inv-line ${slotCls}`}>{t('hunting.invAfterClaim', { n: plan.slotsBefore, m: plan.capacity, a: plan.slotsAfter })}</p>
 

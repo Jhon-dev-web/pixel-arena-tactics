@@ -2,6 +2,7 @@ import T from './tunables';
 import type { SaveData } from './engine';
 import { ownsAdventurerPass } from './entitlements';
 import { relicXpBonusPct } from './gear';
+import type { StrikeStats } from './derivedStats';
 
 // Hero skills: three paths (Guerreiro, Guardiao, Cacador) of passive skills the hero buys with skill points. 1 point every T.heroSkills.pointEveryLevels character
 // levels (level 5, 10, ... 100 = 20 points), separate from the STR / VIT / AGI / RES points. Everything here is PASSIVE and automatic: the effects reach combat only
@@ -152,13 +153,11 @@ export function skillPointsAvailable(save: Pick<SaveData, 'skillTree'>, level: n
 
 // Everything the active allocation does, as the numbers the systems consume. Fractions are 0.04 = 4 %.
 export interface SkillEffects {
-  damagePct: number; // final damage
   critChance: number; // absolute
   critMultBonus: number; // absolute, added to the crit multiplier
-  attackSpeed: number; // joins the relic's attack speed bonus in heroAttackIntervalMs
   bleed: number; // share of the (pre-crit) hit dealt per second while bleeding; 0 = none
   weaponPct: number; // share of the equipped weapon's base damage
-  strikeEvery: number; // every Nth hit of the hero is a Devastating Strike; 0 = none
+  strikes: StrikeStats | null; // Golpe Esmagador / Furia / Duplo, Contra-ataque and Devastador; null = none
   maxHpPct: number;
   resistancePct: number; // multiplies the Layer-2 resistance sum
   reflect: number;
@@ -177,18 +176,41 @@ export interface SkillEffects {
 
 const r6 = (x: number): number => Math.round(x * 1e6) / 1e6;
 
+// Per-rank numbers of the strikes: base + rank x step, from T.heroSkills.
+export const crushBonusAt = (rank: number): number => r6(T.heroSkills.crushBonusBase + rank * T.heroSkills.crushBonusStep);
+export const furyPctAt = (rank: number): number => r6(T.heroSkills.furyDmgBase + rank * T.heroSkills.furyDmgStep);
+export const doubleChanceAt = (rank: number): number => r6(T.heroSkills.doubleBase + rank * T.heroSkills.doubleStep);
+export const counterBonusAt = (rank: number): number => r6(T.heroSkills.counterBase + rank * T.heroSkills.counterStep);
+
+function strikeStats(ranks: SkillRanks): StrikeStats | null {
+  const k = (id: HeroSkillId): number => rankOf(ranks, id);
+  const out: StrikeStats = {};
+  const capstone = k('w_devastating_strike') > 0;
+  // The capstone upgrades the Golpe Esmagador: without a rank in it the counter still runs, with no bonus of its own.
+  if (k('w_heavy_blow') > 0 || capstone) {
+    out.crushEvery = Math.max(2, Math.round(T.heroSkills.crushEvery));
+    out.crushBonus = k('w_heavy_blow') > 0 ? crushBonusAt(k('w_heavy_blow')) : 0;
+    if (capstone) out.devastating = true;
+  }
+  if (k('w_fury') > 0) out.furyPct = furyPctAt(k('w_fury'));
+  if (k('g_block') > 0) out.counter = counterBonusAt(k('g_block'));
+  if (k('h_light_step') > 0) out.doubleChance = doubleChanceAt(k('h_light_step'));
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+// Skills that are visible auto-triggered effects (they get an effect, a trigger line and a result-screen line).
+export const STRIKE_SKILL_IDS: HeroSkillId[] = ['w_heavy_blow', 'w_fury', 'w_devastating_strike', 'g_block', 'h_light_step', 'w_bleed', 'g_last_bastion'];
+
 export function skillEffects(ranks: SkillRanks): SkillEffects {
   const H = T.heroSkills;
   const k = (id: HeroSkillId): number => rankOf(ranks, id);
   const luck = k('h_great_luck') > 0;
   return {
-    damagePct: r6(k('w_heavy_blow') * H.heavyBlowPct),
     critChance: r6(k('w_keen_eye') * H.keenEyeCrit),
     critMultBonus: r6(k('w_execution') * H.executionCritMult),
-    attackSpeed: r6(k('w_fury') * H.furyAttackSpeed + k('h_light_step') * H.lightStepAttackSpeed),
     bleed: r6(k('w_bleed') * H.bleedPct),
     weaponPct: r6(k('w_weapon_master') * H.weaponMasterPct),
-    strikeEvery: k('w_devastating_strike') > 0 ? Math.max(2, Math.round(H.strikeEvery)) : 0,
+    strikes: strikeStats(ranks),
     maxHpPct: r6(k('g_thick_skin') * H.thickSkinHp),
     resistancePct: r6(k('g_bulwark') * H.bulwarkRes),
     reflect: r6(k('g_thorns') * H.thornsReflect),
@@ -215,24 +237,25 @@ export function characterXpBonusPct(save: Pick<SaveData, 'skillTree' | 'equipped
 
 // The numbers a skill's description shows at `rank`, by placeholder name (percentages as 4 = 4 %). Generated from T.heroSkills, never typed into a locale file.
 export function skillParams(id: HeroSkillId, rank: number): Record<string, number> {
+  const pr = (f: (r: number) => number): Record<string, number> => ({ r1: Math.round(f(1) * 1000) / 10, r2: Math.round(f(2) * 1000) / 10, r3: Math.round(f(3) * 1000) / 10 });
   const H = T.heroSkills;
   const pct = (x: number): number => Math.round(x * rank * 1000) / 10;
   switch (id) {
-    case 'w_heavy_blow': return { n: pct(H.heavyBlowPct) };
+    case 'w_heavy_blow': return { every: Math.round(H.crushEvery), n: Math.round(crushBonusAt(rank) * 1000) / 10, ...pr(crushBonusAt) };
     case 'w_keen_eye': return { n: pct(H.keenEyeCrit) };
     case 'w_execution': return { n: pct(H.executionCritMult) };
-    case 'w_fury': return { n: pct(H.furyAttackSpeed) };
+    case 'w_fury': return { s: H.furyEveryMs / 1000, hits: H.furyHits, n: Math.round(furyPctAt(rank) * 1000) / 10, ...pr(furyPctAt) };
     case 'w_bleed': return { n: pct(H.bleedPct), s: H.bleedDurationMs / 1000 };
     case 'w_weapon_master': return { n: pct(H.weaponMasterPct) };
-    case 'w_devastating_strike': return { every: Math.round(H.strikeEvery), mult: H.strikeMult };
+    case 'w_devastating_strike': return { k: Math.round(H.devastatingEvery), mult: H.devastatingMult };
     case 'g_thick_skin': return { n: pct(H.thickSkinHp) };
     case 'g_bulwark': return { n: pct(H.bulwarkRes) };
     case 'g_thorns': return { n: pct(H.thornsReflect) };
     case 'g_second_wind': return { n: pct(H.secondWindRegen) };
     case 'g_firm_stance': return { n: pct(H.firmStanceReduction) };
-    case 'g_block': return { n: pct(H.blockChance) };
+    case 'g_block': return { n: pct(H.blockChance), c: Math.round(counterBonusAt(rank) * 1000) / 10, ...pr(counterBonusAt) };
     case 'g_last_bastion': return { hp: 1, heal: Math.round(H.bastionHealPct * 100), s: Math.round(H.bastionCooldownMs / 1000) };
-    case 'h_light_step': return { n: pct(H.lightStepAttackSpeed) };
+    case 'h_light_step': return { n: Math.round(doubleChanceAt(rank) * 1000) / 10, e: Math.round(H.doubleDmgPct * 100), ...pr(doubleChanceAt) };
     case 'h_greed': return { n: pct(H.greedGold) };
     case 'h_scent': return { n: pct(H.scentMaterials) };
     case 'h_quick_learner': return { n: pct(H.quickLearnerXp) };

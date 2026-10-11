@@ -4,6 +4,18 @@ import T from '../game/tunables';
 import { HuntLiveSnapshot } from '../game/huntCombat';
 import { HERO_ART, huntingEnemyArt, huntingEnemySpriteUrl, huntingZoneBackgroundUrl, HuntingZoneDef } from '../game/huntingZones';
 import { FramedSprite } from './HuntParts';
+import { StrikeStats } from '../game/derivedStats';
+import { FX_PATH_COLOR, SKILL_FX, SkillFxId } from '../game/skillFx';
+import { FxLayer } from './SkillFx';
+import { useFxScale, useFxStage } from '../hooks/useSkillFx';
+
+// What the hero has learned that shows in the scene (CombatStats of the running session). The scene is decorative: it never drives the simulation, so these strikes play on its own
+// beat at a believable cadence derived from the same parameters (every Nth decorative hit is an Esmagador, ...), never implying a specific result. Passive-only builds look as before.
+export interface StrikeDecor {
+  strikes?: StrikeStats;
+  bleed?: number;
+  block?: number;
+}
 
 // Sheet rows: idle, attack, hurt, death.
 const ROW = { idle: 0, attack: 1, hurt: 2, death: 3 };
@@ -41,6 +53,7 @@ export default function HuntBattleView({
   monsterName,
   monsterLevel,
   snapshot,
+  decor,
   children,
 }: {
   zone: HuntingZoneDef;
@@ -49,9 +62,48 @@ export default function HuntBattleView({
   monsterName: string;
   monsterLevel: number;
   snapshot: HuntLiveSnapshot | null;
+  decor?: StrikeDecor;
   children?: ReactNode; // tonic badges under the plates
 }) {
   const reduced = usePrefersReducedMotion();
+  const fx = useFxStage();
+  const fxScale = useFxScale();
+  const playRef = useRef(fx.play);
+  playRef.current = fx.play;
+  const decorRef = useRef(decor);
+  decorRef.current = decor;
+  const dec = useRef({ hits: 0, crushes: 0, mon: 0, lastFury: Date.now() });
+  const [calls, setCalls] = useState<{ id: number; fx: SkillFxId }[]>([]);
+  const callRef = useRef(0);
+  const strike = (id: SkillFxId) => {
+    playRef.current(id);
+    if (!SKILL_FX[id].callout) return;
+    const key = callRef.current++;
+    setCalls((c) => [...c.slice(-4), { id: key, fx: id }]);
+    window.setTimeout(() => setCalls((c) => c.filter((x) => x.id !== key)), T.advanced.textFloatMs);
+  };
+  // One decorative beat of the hero (a hit) or of the monster (a hit on the hero): the learned strikes at their own cadence.
+  const decorate = (kind: Beat) => {
+    const d = decorRef.current;
+    const s = dec.current;
+    if (!d) return;
+    if (kind === 'hero') {
+      s.hits++;
+      const st = d.strikes;
+      if (st?.crushEvery && s.hits % st.crushEvery === 0) {
+        s.crushes++;
+        strike(st.devastating && s.crushes % T.heroSkills.devastatingEvery === 0 ? 'devastating' : 'crush');
+      } else if (st?.doubleChance && s.hits % Math.max(2, Math.round(1 / st.doubleChance)) === 0) strike('double');
+      else if (d.bleed && s.hits % 2 === 0) strike('bleed');
+      if (st?.furyPct && Date.now() - s.lastFury >= T.heroSkills.furyEveryMs) {
+        s.lastFury = Date.now();
+        strike('fury');
+      }
+    } else if (kind === 'monster' && d.block) {
+      s.mon++;
+      if (s.mon % Math.max(2, Math.round(1 / (d.block * 3))) === 0) strike('block');
+    }
+  };
   const [beat, setBeat] = useState<{ kind: Beat; n: number; active: boolean }>({ kind: 'arrive', n: 0, active: false });
   const stepRef = useRef(0);
   const resetRef = useRef<number | null>(null);
@@ -63,6 +115,7 @@ export default function HuntBattleView({
       stepRef.current += 1;
       const n = stepRef.current;
       setBeat({ kind, n, active: true });
+      decorate(kind);
       // a kill holds the fallen pose until the next monster arrives
       if (kind !== 'kill') resetRef.current = window.setTimeout(() => setBeat((b) => (b.n === n ? { ...b, active: false } : b)), ACTION_MS);
     }, T.hunting.tickMs);
@@ -70,6 +123,7 @@ export default function HuntBattleView({
       window.clearInterval(iv);
       if (resetRef.current) window.clearTimeout(resetRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
 
   const { kind, active, n } = reduced ? { kind: 'arrive' as Beat, active: false, n: 0 } : beat;
@@ -80,7 +134,7 @@ export default function HuntBattleView({
   const stageStyle: CSSProperties & Record<'--bg', string> = { '--bg': `url(${huntingZoneBackgroundUrl(zone.id)})` };
 
   return (
-    <div className={`hunt-stage zone-${zone.id}`} style={stageStyle}>
+    <div className={`hunt-stage zone-${zone.id}${fx.shaking ? ' shake' : ''}`} style={stageStyle}>
       <div className="hunt-stage-top">
         <div className="battle-hud hero">
           <span className="hp-label">
@@ -120,6 +174,12 @@ export default function HuntBattleView({
       <div className="hunt-stage-arena">
         <div className={`hunt-side player${active && (kind === 'hero' || kind === 'kill') ? ' lunge' : ''}${active && kind === 'monster' ? ' flinch' : ''}`}>
           <FramedSprite src={playerSpriteUrl} art={HERO_ART} box="var(--hm)" height={HERO_HEIGHT} row={heroRow} restart={n * 2 + (active ? 1 : 0)} still={reduced} />
+          <FxLayer side="p" items={fx.items} done={fx.done} scale={fxScale} />
+          {calls.filter((c) => SKILL_FX[c.fx].side === 'p').map((c) => (
+            <span key={c.id} className="float float-skill" style={{ left: `${SKILL_FX[c.fx].left}%`, top: SKILL_FX[c.fx].top, ['--fx-color' as string]: FX_PATH_COLOR[SKILL_FX[c.fx].path] } as CSSProperties}>
+              {t(`heroSkills.fx.${c.fx}`)}
+            </span>
+          ))}
         </div>
         <div
           className={`hunt-side enemy${active && kind === 'monster' ? ' lunge' : ''}${active && kind === 'hero' ? ' flash' : ''}${kind === 'arrive' && !reduced ? ' arriving' : ''}`}
@@ -137,6 +197,12 @@ export default function HuntBattleView({
             once={kind === 'kill'}
             fallen={kind === 'kill'}
           />
+          <FxLayer side="e" items={fx.items} done={fx.done} scale={fxScale} />
+          {calls.filter((c) => SKILL_FX[c.fx].side === 'e').map((c) => (
+            <span key={c.id} className="float float-skill" style={{ left: `${SKILL_FX[c.fx].left}%`, top: SKILL_FX[c.fx].top, ['--fx-color' as string]: FX_PATH_COLOR[SKILL_FX[c.fx].path] } as CSSProperties}>
+              {t(`heroSkills.fx.${c.fx}`)}
+            </span>
+          ))}
         </div>
       </div>
     </div>

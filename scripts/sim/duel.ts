@@ -69,8 +69,21 @@ export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveDat
 export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number, stats?: CombatStats, boss = false) {
   const c = stats ?? buildCombatStats(s);
   const cc = Math.max(0, Math.min(1, c.critChance));
-  const strikeGain = c.strikeEvery ? 1 + (T.heroSkills.strikeMult - 1) / c.strikeEvery : 1;
-  const direct = ((c.dmgBase * (1 + cc * (c.critMult - 1)) * strikeGain) * 1000) / c.heroMs;
+  // Strikes: the average hit carries the Esmagador bonus (every devastatingEvery-th is a Devastador), the Duplo echo and the Contra-ataque after a block; the Furia flurry is a
+  // flat extra damage per second.
+  const st = c.strikes;
+  let gain = 0;
+  if (st?.crushEvery) {
+    const d = T.heroSkills.devastatingEvery;
+    const b = st.crushBonus ?? 0;
+    gain += (st.devastating ? ((d - 1) * b + (T.heroSkills.devastatingMult - 1)) / d : b) / st.crushEvery;
+  }
+  gain += (st?.doubleChance ?? 0) * T.heroSkills.doubleDmgPct;
+  const baseHit = c.dmgBase * (1 + cc * (c.critMult - 1));
+  const blocksPerSec = ((c.block ?? 0) * 1000) / enemyMs;
+  const counterPerSec = Math.min(blocksPerSec, 1000 / c.heroMs) * (st?.counter ?? 0) * baseHit;
+  const flurry = ((c.dmgBase * (st?.furyPct ?? 0) * T.heroSkills.furyHits * 1000) / T.heroSkills.furyEveryMs) + counterPerSec;
+  const direct = (baseHit * (1 + gain) * 1000) / c.heroMs + flurry;
   const taken = (enemyDmg / (1 + Math.max(0, c.reduction))) * (boss ? 1 - (c.bossReduction ?? 0) : 1) * (1 - (c.block ?? 0));
   const inc = (taken * 1000) / enemyMs;
   const reflectDps = inc * c.reflect;
