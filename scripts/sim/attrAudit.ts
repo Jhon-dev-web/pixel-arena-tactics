@@ -42,6 +42,11 @@ export const AUDIT_SPECS: AuditSpec[] = [
   { level: 80, tier: 5, refine: 6 },
   { level: 100, tier: 6, refine: 8 },
 ];
+// Sensitivity only (not asserted): the first day, before anything is forged - the starting club and rags.
+export const STARTER_SPECS: AuditSpec[] = [
+  { level: 5, tier: 0, refine: 0 },
+  { level: 10, tier: 0, refine: 0 },
+];
 export const specOf = (level: number): AuditSpec => AUDIT_SPECS.find((s) => s.level === level)!;
 
 // A hero of the spec: attribute points spread by the sim player's policy (driver.ts ATTR_WEIGHTS, 35/30/20/15) unless `attrs` says otherwise, skill points
@@ -144,20 +149,23 @@ export interface BuildResult {
   hunt: HuntingDepth;
   mats: number;
   xp: number;
+  matsAtBase: number; // materials per hour in the place the BALANCED build farms (same enemies for everyone: the pure combat effect, without the floor that unlocks a zone)
+  xpAtBase: number;
   boss25: { ttk: number; P: number };
   boss50: { ttk: number; P: number };
 }
-export function evalBuild(spec: AuditSpec, alloc: Alloc, label: string, attrs?: Attrs): BuildResult {
+export function evalBuild(spec: AuditSpec, alloc: Alloc, label: string, attrs?: Attrs, base?: BuildResult): BuildResult {
   const s = auditHero(spec, alloc, attrs);
   const d = depth(s);
   const h = huntBest(s, d);
+  const at = base ? huntRun({ ...s, highestDungeonFloor: Math.max(1, d) }, base.zone, base.hunt) : { mats: h.mats, xp: h.xp };
   const b25 = duel(s, 25);
   const b50 = duel(s, 50);
-  return { label, attrs: { str: s.str, vit: s.vit, agi: s.agi, res: s.res }, cp: computeCP(s), depth: d, zone: h.zone, hunt: h.depth, mats: h.mats, xp: h.xp, boss25: { ttk: b25.ttk, P: b25.P }, boss50: { ttk: b50.ttk, P: b50.P } };
+  return { label, attrs: { str: s.str, vit: s.vit, agi: s.agi, res: s.res }, cp: computeCP(s), depth: d, zone: h.zone, hunt: h.depth, mats: h.mats, xp: h.xp, matsAtBase: at.mats, xpAtBase: at.xp, boss25: { ttk: b25.ttk, P: b25.P }, boss50: { ttk: b50.ttk, P: b50.P } };
 }
 export function buildTable(spec: AuditSpec, alloc: Alloc): BuildResult[] {
   const pts = spec.level * 3;
   const out = [evalBuild(spec, alloc, 'balanceado 35/30/20/15')];
-  for (const [label, attrs] of attrBuilds(pts)) out.push(evalBuild(spec, alloc, label, attrs));
+  for (const [label, attrs] of attrBuilds(pts)) out.push(evalBuild(spec, alloc, label, attrs, out[0]));
   return out;
 }

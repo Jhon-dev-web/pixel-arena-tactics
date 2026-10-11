@@ -801,3 +801,74 @@ Notas. (1) Regra "nenhuma habilidade de posto máximo vale mais que 2,5x outra d
 | chefe 50 vencido | depois do dia 21 | 16.5 | 17.5 | 20.5 |
 
 O Caçador (combate 8,7% contra ~75% dos outros) chega ao chefe 50 no dia 20,5 contra 16,5 (Guerreiro) e 17,5 (Guardião): 3 a 4 dias, acima dos ~2 pedidos; materiais/dia +16% no dia 14 (meta 10-16%).
+
+
+## Rodada 8 — atributos básicos (2026-10-11)
+
+Pergunta do dono: "os pontos de status básicos estão equilibrados?" Os quatro atributos (STR, VIT, AGI, RES, 3 pontos por nível, 300 no nível 100). Medição completa, tabelas antes e depois e os limites B1 a B4 do diretor em `docs/ITEM_BALANCE_AUDIT.md` seção D (`npm run sim:items`); os limites viraram testes em `src/game/__tests__/attributes.test.ts`.
+
+**Achado.** Sem habilidades, nos primeiros 30 níveis VIT era de longe o melhor ponto (1,93% de margem do duelo por ponto no nível 5 contra 0,41% da RES, razão 4,7x; 2,4x no nível 20) e RES e AGI eram escolhas fracas; do nível 45 em diante os quatro valiam parecido, mas no 100 o AGI valia 1,6x o VIT. Com habilidades quase nada muda (o Esmagador cresce com o dano, a Fúria é por tempo e não cresce com AGI: AGI vale 7 a 11% menos no Guerreiro). A CP já avaliava o ponto como o combate (0,88 a 1,13 do valor real: o "STR = VIT = 0,31%" da medição anterior era arredondamento da CP para inteiro num único ponto).
+
+**O que mudou (só números).**
+
+| Constante | Antes | Depois |
+| --- | --: | --: |
+| `T.advanced.vitHpPerPoint` | 5 | 4,5 |
+| `T.advanced.vitHpPerLevel` (novo) | - | 0,03 (PV por ponto de VIT = 4,5 + 0,03 x nível: 4,6 / 5,1 / 6,3 / 7,5 nos níveis 5 / 20 / 60 / 100) |
+| `T.advanced.resHpPerPoint` (novo) | - | 2 (RES dá 2 PV por ponto, além da resistência) |
+| `T.battle.agiHalfPoint` | 100 | 80 (intervalo 400 + 800/(1+AGI/80) ms; o teto de 300 pontos passa de 600 para 568 ms) |
+| orcs, andares 26-49, `hp` / `dmg` | 310 / 46 | 325 / 48 |
+
+Não mexi em STR (0,5 plano + 0,3% por ponto), na resistência por ponto da RES (0,005), nos pesos da CP, em equipamento, habilidades ou drops. `buildCombatStats` / `playerMaxHp` leem as constantes; CP, Masmorra e Caça acompanham sozinhos. Tabela de CP recomendada regerada (`npm run sim:cp`: o chefe do andar 25 passa de 651 para 643).
+
+**Resultado contra os limites do diretor.**
+
+| Limite | Antes | Depois |
+| --- | --- | --- |
+| B1: melhor/pior por ponto, níveis 20-100 (<= 1,6x), 5-10 (<= 2,5x), sem habilidades / Guerreiro / Guardião | 5: 4,7 · 10: 3,1 · 20: 2,4 · 30: 1,9 · 45: 1,5 · 60: 1,4 · 80: 1,3 · 100: 1,6 (Guardião 5 a 100: 4,7 a 1,4) | 5: 2,46 · 10: 1,61 · 20: 1,30 · 30: 1,20 · 45: 1,13 · 60: 1,15 · 80: 1,22 · 100: 1,28; Guerreiro <= 1,41, Guardião <= 1,43 do nível 20 em diante |
+| B2: nenhum "tudo em um" bate o balanceado em profundidade E caça | ok | ok (nenhum passa de +5% nos dois) |
+| B2: nenhum fica mais de 35% abaixo | **falha**: nível 60 VIT -40%, RES -39% de materiais (Guardião -42 / -38%) | **falha, igual**: nível 60 VIT -41%, RES -41% (Guardião -41 / -37%); nível 100 -26 / -28%; Guerreiro -19 / -24%; profundidade no pior caso -18% (tudo STR, Guardião) |
+| B3: retornos | decrescentes | decrescentes (AGI 0,69 -> 0,16 com 150 pontos; RES 0,44 -> 0,32); nenhum aumenta, nenhum cai abaixo de 20% |
+| B4: CP / valor real em +-30% | 0,88 a 1,13 | 0,89 a 1,13 (sem mexer nos pesos) |
+
+**B2 não atingido, por quê.** A Caça paga só velocidade de morte (a luta começa com HP cheio), e abaixo do ritmo de referência (220 mortes/h) os materiais crescem linearmente com as mortes; justamente nos níveis 50 a 70 o herói está nessa faixa. Um build 100% defensivo tem o mesmo valor por ponto na margem do duelo (e igual ou mais profundidade) e perde 37 a 41% dos materiais por não ter o dano dos pontos de STR/AGI. Cortar o valor de STR e AGI até fechar a diferença estragava B1 nos níveis 5 e 20 e só chegava a -33%. É uma propriedade da economia da Caça, não do valor dos atributos (decisão 1 abaixo).
+
+**Tentativas descartadas (todas medidas com `npm run sim`).** (1) Cortar o dano plano de STR 0,5 -> 0,35 + PV de VIT 2,5 + 0,05 x nível + RES 1,25: B1 ok, mas a primeira sessão da conta nova terminava no andar 7 (meta >= 8) e o jogador sem habilidades chegava ao andar 50 no dia 21 (17 antes); CP -2% do nível 10 ao 30. (2) STR intacto + `agiHalfPoint` 80 + VIT 2,5 + 0,05 x nível: B1 ok, ainda andar 7 na primeira sessão (o PV do nível 5 e 10 caía 3 a 4%). (3) VIT 3,5 + 0,04 x nível: ainda andar 7. VIT 4,5 + 0,03 x nível devolve o andar 8 e mantém B1 (o nível 5 fica em 2,46, justo no limite de 2,5).
+
+**Metas de progressão (cenário A, `npm run sim`, mediana de 20 seeds, antes -> depois).**
+
+| Meta | Antes | Depois |
+| --- | --- | --- |
+| T2 primeira sessão termina no andar >= 8 | 8 | 8 |
+| T3 primeira peça forjada até o dia 2 | dia 2 | dia 2 |
+| T4 nível no fim do dia 1 / 3 / 14 (10-16 / 20-29 / 45-60) | 13 / 29 (25-33) / 49 (47-52) | 13 / 29 (25-33) / 49 (46-52) |
+| T5 chefe 25 pela primeira vez (dia 4-6), vitória ao chegar | dia 4, 0% | dia 4, 0% |
+| T6 chegada ao andar 50 | primeira seed dia 9, mediana 14 | primeira seed dia 8, mediana 13 |
+| T6 chefe 50 | primeira seed dia 9, mediana 16,5, 13/20 em 21 dias | primeira seed dia 9, mediana 14,5, 20/20 |
+| T7 menor razão (N+1)/(N-1) em volta dos chefes | 1,15 | 1,05 (sem queda de dificuldade depois de chefe) |
+
+| Chegada ao andar 50 / chefe 50 (dia, mediana) | sem habilidades (Z) | Guerreiro (A) | Guardião | Caçador |
+| --- | --- | --- | --- | --- |
+| antes | 17 / depois do dia 21 | 14 / 16,5 | 16 / 17,5 | 16 / 20,5 |
+| depois | 17 / 18 | 13 / 14,5 | 16 / 17 | 16 / 18 |
+
+O jogador sem habilidades continua chegando ao andar 50 por volta do dia 17 (alvo 18-20). A primeira seed chega ao andar 50 no dia 8 (a meta aceita o dia 9); o rótulo "FORA DA META" do T6 vem do critério da própria simulação (nenhuma seed antes do dia 10, que o baseline anterior também não cumpria).
+
+**Retune dos inimigos.** Só os orcs (325 / 48): sem isso a mediana do cenário A chegava ao andar 50 no dia 11 e a primeira seed no dia 7 (os valores novos de VIT e AGI deixam o herói do nível 30 ao 60 uns 3 a 6% mais forte em CP; a tabela de CP recomendada foi regerada e o baseline de `BALANCE_BASELINE.md` também).
+
+**Política de atributos do jogador simulado (explícita).** `ATTR_WEIGHTS` em `scripts/sim/driver.ts`: 35% STR / 30% VIT / 20% AGI / 15% RES, aplicada a cada nível; é o "balanceado" de todas as auditorias (generalista levemente ofensivo, o que alguém que segue as descrições da tela faria; a tela não tem divisão recomendada). Sensibilidade: `ATTR_POLICY='{...}' npm run sim` troca a política. Chegada ao andar 50 (mediana, dia), sem habilidades / Guerreiro / Guardião / Caçador: política padrão 17 / 13 / 16 / 16; STR+VIT (45/40/5/10) 18 / 14 / 16,5 / 14; igual para todos (25/25/25/25) depois do dia 21 / 13 / 16 / 17. O cenário A (Guerreiro) se mexe no máximo 1 dia com qualquer uma das duas; o jogador **sem habilidades** com a divisão igual não chega ao andar 50 em 21 dias (mais de 4 dias de diferença), porque sem golpes o dano vem só de STR/AGI.
+
+**Saves existentes.** Nenhum ponto é movido nem devolvido; o PV e o dano são recalculados dos pontos, então todo herói passa a valer o novo ponto. PV de um herói balanceado antes -> depois: nível 5: 235 -> 237, 20: 566 -> 586, 30: 804 -> 843, 60: 1373 -> 1497, 100: 2490 -> 2805 (+12,7%); CP do mesmo herói no nível 30 956 -> 991, no 60 1875 -> 1995, no 100 5173 -> 5623. Quem pôs todos os 300 pontos em VIT no nível 100 ganha 750 PV (1500 -> 2250 vindos de VIT), quem pôs em RES ganha 2 PV por ponto. O teste "existing saves" garante que os pontos carregam iguais.
+
+**Tela Personagem.** A descrição de cada atributo agora mostra o efeito real do PRÓXIMO ponto, gerado dos números do motor (`src/game/attributes.ts`, `src/components/attrText.ts`; antes era "+ Dano Físico", "+ PV Máx", "+ Esquiva / Vel. de Ataque", "+ Redução de Dano": sem número, e AGI prometia esquiva que o combate não tem): "+0,5 de dano e +0,3% do dano da arma por ponto"; "+6,3 PV Máx por ponto (+0,03 a cada nível)"; "Ataca 4,7 ms mais rápido por ponto (até 300 pontos)"; "-0,19% de dano sofrido por ponto e +2 PV Máx". No teto de AGI o texto vira "No máximo: 300 pontos de Agilidade". Teste novo `attributes.test.ts` renderiza cada descrição em pt e en e confere os números contra as constantes. Visto em 1280x800 e 390x800: duas a três linhas por atributo, sem rolagem horizontal.
+
+**Tetos.** AGI: teto de combate 300 pontos = o orçamento inteiro do nível 100, então só chega nele quem põe tudo em AGI; não há ponto desperdiçado e o piso de 400 ms nunca é atingido só com pontos (568 ms no teto). STR, VIT: sem teto. RES: assintótica. Nenhum teto é inalcançável.
+
+**Pontos e redistribuição (só relatório).** 3 pontos por nível. Não há distribuição automática nem sugerida. **Existe respec de atributos**, e é grátis, sem limite e sem bloqueio em batalha: o botão "−" de cada linha da tela Personagem devolve o ponto na hora (`attrChange` em `App.tsx`).
+
+**Decisões para o diretor.**
+
+1. **B2 (VIT/RES todos os pontos, nível 60, -37 a -41% de materiais).** Opções: (a) aceitar, é o preço de um build defensivo puro (profundidade igual ou maior); (b) dar à Caça um pequeno crédito de sobrevivência (por exemplo, bônus de material por sub-nível mais alto que o herói aguenta, ou perder menos tempo com lutas perdidas), que é mexer em `huntCombat.ts` / `huntEconomy.ts`, fora do escopo desta rodada; (c) subir o piso do material para builds lentos. Recomendo (a) ou (b); não mexi.
+2. **Primeiro dia (clava e trapos).** Com o equipamento inicial STR vale 3,0 e VIT 3,2 por ponto no nível 5 contra 0,73 do AGI (razão 4,3; 3,7 no nível 10): o limite de 2,5 só vale para o herói com tier 1 em diante. Para fechar seria preciso cortar o dano plano de STR, o que custa CP e atrasa o jogo todo.
+3. **Respec grátis de atributos.** Hoje é livre e ilimitado; se a ideia é que a escolha pese, cobrar como o respec de habilidades (grátis uma vez, Ouro depois) é uma mudança de `attrChange`, sem tocar em dados. Não adicionei nada.
+4. **Divisão recomendada.** Um botão "distribuição sugerida" (35/30/20/15 por nível, a política da simulação) ajudaria o jogador novo; custo pequeno (uma função pura e um botão), não adicionei.

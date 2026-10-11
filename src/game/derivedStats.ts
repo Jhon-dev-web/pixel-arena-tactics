@@ -116,8 +116,8 @@ export function strengthAdjustedDamage(baseHitPlusWeapon: number, rawStr: number
 }
 
 // AGI -> hero attack interval (ms). Hyperbolic with a hard floor:
-//   heroMs = floor + (base - floor) / (1 + AGI / halfPoint)      (defaults: 400 + 800 / (1 + AGI / 100))
-// AGI 0 = 1200 ms, 100 = 800 ms, 300 = 600 ms, asymptote 400 ms: strictly diminishing returns and never <= 0.
+//   heroMs = floor + (base - floor) / (1 + AGI / halfPoint)      (defaults: 400 + 800 / (1 + AGI / 80))
+// AGI 0 = 1200 ms, 80 = 800 ms, 300 = 568 ms, asymptote 400 ms: strictly diminishing returns and never <= 0.
 // The input is sanitized HERE (the single derivation point) rather than trusted from the save: non-finite
 // -> 0, floored, clamped to [0, agiMax]. The result is also guarded: if it is somehow non-finite (e.g. a
 // bad tunable) it falls back to the base interval, and it is never below the floor.

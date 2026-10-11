@@ -16,8 +16,10 @@ import { GEMS, GemId, emptyGems, socketsForTier } from '../../src/game/gems';
 import { TIER_EXTRAS } from './ladder';
 import { HUNTING_ZONES, getHuntingZone } from '../../src/game/huntingZones';
 import { duel, duelVs, hero, MAIN_TIERS, PAIRS, repFloor, tierNum } from './duel';
-import { ALLOCS, ALLOC_LABEL, ATTRS, AUDIT_SPECS, Alloc, STACK_POINTS, VALUE_STEP, auditHero, buildTable, marginalValue, pointValue, specOf, spread } from './attrAudit';
+import { STARTER_SPECS, ALLOCS, ALLOC_LABEL, ATTRS, AUDIT_SPECS, Alloc, STACK_POINTS, VALUE_STEP, auditHero, buildTable, marginalValue, pointValue, specOf, spread } from './attrAudit';
 import { heroAttackIntervalMs } from '../../src/game/derivedStats';
+import { attrText } from '../../src/components/attrText';
+import { setLocale } from '../../src/locales';
 import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
 import { TonicFlags, withTonicStats } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
@@ -205,7 +207,7 @@ describe('item balance audit', () => {
     P('## D. Atributos primários', '');
     P(`Valores do jogo: STR = +${T.advanced.strengthFlatDamage} de dano plano e +${pct(T.advanced.strengthWeaponScalePerPoint)} de (golpe base + arma) por ponto; VIT = ${T.advanced.vitHpPerPoint} HP/ponto; AGI = intervalo ${T.battle.heroMinMs} + ${T.battle.heroAttackMs - T.battle.heroMinMs}/(1+AGI/${T.battle.agiHalfPoint}) ms (teto de ${T.battle.agiMax} pontos); RES = ${T.advanced.resResistPerPoint} de resistência/ponto.`, '');
     P('Herói de cada nível: o conjunto completo do tier (arma, armadura, elmo, luvas, botas, anel, escudo; comum, sem gemas) no refino típico; pontos de atributo 35/30/20/15 (política do jogador simulado); habilidades compradas na ordem do caminho até onde o nível permite (1 ponto a cada 5 níveis).', '');
-    P('### D.1 Valor real e valor no CP de um ponto', '', 'Média por ponto dos PRÓXIMOS ' + VALUE_STEP + ' pontos de cada atributo (o PV máx é arredondado e um ponto de VIT vale só 5 PV, então um ponto isolado se perde no arredondamento). "Real" = 100 x ln da razão da margem do duelo P contra um inimigo do andar de referência do herói; "CP" = 100 x 2 x ln do CP bruto (o CP é a raiz de dano x PV efetivo, então o fator 2 coloca os dois na mesma escala). `máx/mín` = melhor atributo / pior.', '');
+    P('### D.1 Valor real e valor no CP de um ponto', '', 'Média por ponto dos PRÓXIMOS ' + VALUE_STEP + ' pontos de cada atributo (o PV máx é arredondado e um ponto de VIT vale poucos PV, então um ponto isolado se perde no arredondamento). "Real" = 100 x ln da razão da margem do duelo P contra um inimigo do andar de referência do herói; "CP" = 100 x 2 x ln do CP bruto (o CP é a raiz de dano x PV efetivo, então o fator 2 coloca os dois na mesma escala). `máx/mín` = melhor atributo / pior.', '');
     const regionBand = (lv: number) => (lv <= 10 ? 2.5 : 1.6);
     withSeededRandom(5, () => {
       for (const alloc of ALLOCS) {
@@ -219,6 +221,16 @@ describe('item balance audit', () => {
         P('');
       }
     });
+
+    P('Sensibilidade, primeiro dia (clava e trapos iniciais, nada forjado; não entra nos limites):', '', '| Nível | PV | STR | VIT | AGI | RES | máx/mín real |', '| --: | --: | --: | --: | --: | --: | --: |');
+    withSeededRandom(5, () => {
+      for (const spec of STARTER_SPECS) {
+        const h = auditHero(spec);
+        const v = pointValue(h);
+        P(`| ${spec.level} | ${Math.round(buildCombatStats(h).maxHp)} | ${ATTRS.map((a) => f2(v.real[a])).join(' | ')} | ${f2(spread(v.real))} |`);
+      }
+    });
+    P('');
 
     P('### D.2 Retornos: valor do PRÓXIMO ponto conforme os pontos já postos nesse atributo', '', 'Os outros três ficam como a política 35/30/20/15 do nível os deixou; † = acima dos pontos que o nível dá (herói hipotético, só para ver a forma da curva).', '');
     withSeededRandom(5, () => {
@@ -255,9 +267,11 @@ describe('item balance audit', () => {
       const h100 = auditHero(agiSpec, 'none', { str: 0, vit: 0, agi: 300, res: 0 });
       P('### D.4 Tetos e o que o jogador vê', '');
       P(`- Pontos: ${3} por nível, ${3 * 100} no nível 100 (o herói novo começa com ${3} sem gastar). Não há distribuição automática nem recomendada; os botões − e + da tela Personagem desfazem e refazem pontos sem custo, sem limite e sem bloquear em batalha (é um respec livre de atributos).`);
-      P(`- AGI: o teto de combate é ${T.battle.agiMax} pontos (${f1(heroAttackIntervalMs(T.battle.agiMax))} ms, ${f2(1000 / heroAttackIntervalMs(T.battle.agiMax))} atq/s). Com 3 pontos por nível o nível 100 tem exatamente ${3 * 100}: o teto só é atingido por quem põe TODOS os pontos em AGI, nunca é ultrapassado e não há ponto desperdiçado. O piso de ${T.battle.heroMinMs} ms só é alcançável com bônus de relíquia/habilidade somados. A tela não menciona o teto.`);
+      P(`- AGI: o teto de combate é ${T.battle.agiMax} pontos (${f1(heroAttackIntervalMs(T.battle.agiMax))} ms, ${f2(1000 / heroAttackIntervalMs(T.battle.agiMax))} atq/s). Com 3 pontos por nível o nível 100 tem exatamente ${3 * 100}: o teto só é atingido por quem põe TODOS os pontos em AGI, nunca é ultrapassado e não há ponto desperdiçado. O piso de ${T.battle.heroMinMs} ms só é alcançável com bônus de relíquia/habilidade somados. A tela diz o teto na descrição de AGI e, no teto, troca o texto por "No máximo".`);
       P(`- RES: assintótica (dano / (1 + r)); STR: sem teto prático (guarda de ${T.advanced.strengthOverflowGuard}); VIT: linear, sem teto.`);
-      P(`- Texto atual da tela: "+ Dano Físico", "+ PV Máx", "+ Esquiva / Velocidade de ataque", "+ Redução de dano". Nenhum número; AGI promete esquiva, que o combate não tem.`);
+      const h60 = auditHero(specOf(60));
+      setLocale('pt');
+      P(`- Textos da tela (nível 60, gerados dos números do motor, src/game/attributes.ts): ${ATTRS.map((a) => `"${attrText(a, h60)}"`).join('; ')}.`);
       P(`- Prova do teto (herói nv 100, tudo AGI = ${h100.agi}): ${f1(buildCombatStats(h100).heroMs)} ms por golpe.`, '');
     }
 

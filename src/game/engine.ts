@@ -286,6 +286,9 @@ function trimDec(v: number): string {
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }
 
+// Max HP one VIT point is worth at a character level.
+export const vitHpPerPoint = (level: number): number => T.advanced.vitHpPerPoint + T.advanced.vitHpPerLevel * level;
+
 export function playerMaxHp(save: SaveData): number {
   const armorView = resolveEquipped(save).armor;
   const armor = armorView.item;
@@ -300,7 +303,8 @@ export function playerMaxHp(save: SaveData): number {
     (save.armorLevel - 1) * T.progression.armorHpPerLvl +
     effectiveMaxHp(armor, armorLvl) * durabilityFactor(aDur) * aRarity +
     (playerLevel(save.xp) - 1) * T.progression.levelHpBonus +
-    save.vit * T.advanced.vitHpPerPoint +
+    save.vit * vitHpPerPoint(playerLevel(save.xp)) +
+    save.res * T.advanced.resHpPerPoint +
     gems.maxHp +
     subs.maxHp +
     extra.maxHp;

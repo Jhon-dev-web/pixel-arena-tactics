@@ -5,6 +5,8 @@ import { GearSlot, INSTANCED_SLOTS, MAX_DURABILITY } from '../game/gear';
 import { EquippedView, resolveEquipped, viewDurability, viewRarity, viewRefine } from '../game/gearInstances';
 import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
 import { TITLES } from '../game/titles';
+import type { AttrKey } from '../game/attributes';
+import { attrText } from './attrText';
 import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
@@ -21,13 +23,13 @@ const gearText = (k: string): string => t(`gear.${k}`);
 const attrsText = (k: string): string => t(`attributes.${k}`);
 const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
-export type AttrKey = 'str' | 'vit' | 'agi' | 'res';
+export type { AttrKey };
 
-const ATTRS: { key: AttrKey; nameKey: string; descKey: string }[] = [
-  { key: 'str', nameKey: 'str', descKey: 'strDesc' },
-  { key: 'vit', nameKey: 'vit', descKey: 'vitDesc' },
-  { key: 'agi', nameKey: 'agi', descKey: 'agiDesc' },
-  { key: 'res', nameKey: 'res', descKey: 'resDesc' },
+const ATTRS: { key: AttrKey; nameKey: string }[] = [
+  { key: 'str', nameKey: 'str' },
+  { key: 'vit', nameKey: 'vit' },
+  { key: 'agi', nameKey: 'agi' },
+  { key: 'res', nameKey: 'res' },
 ];
 
 // One equipment card per slot (the seven instanced ones, then the relic). `view` is null when the slot is empty (helmet / gloves / boots / ring / shield /
@@ -173,7 +175,7 @@ export function AttributesPanel({ save, onAttrChange }: { save: SaveData; onAttr
           <div className="attr-row" key={a.key}>
             <div className="attr-info">
               <span className="attr-name">{attrsText(a.nameKey)}</span>
-              <span className="attr-desc">{attrsText(a.descKey)}</span>
+              <span className="attr-desc">{attrText(a.key, save)}</span>
             </div>
             <button className="attr-btn" onClick={() => onAttrChange(a.key, -1)} disabled={save[a.key] <= 0} data-ui>
               −

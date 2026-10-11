@@ -711,13 +711,14 @@
   "attributes": {
     "title": "Attributes",
     "str": "Strength",
-    "strDesc": "+ Physical Damage",
+    "strDesc": "+{flat} damage and +{pct}% of weapon damage per point",
     "vit": "Vitality",
-    "vitDesc": "+ Max HP",
+    "vitDesc": "+{hp} Max HP per point (+{perLevel} per level)",
     "agi": "Agility",
-    "agiDesc": "+ Dodge / Attack Speed",
+    "agiDesc": "Attacks {ms} ms faster per point (up to {max} points)",
+    "agiDescMax": "At the maximum: {max} Agility points",
     "res": "Resistance",
-    "resDesc": "+ Damage Reduction",
+    "resDesc": "-{red}% damage taken per point and +{hp} Max HP",
     "points": "Available Points: {n}",
     "cp": "CP: {n}"
   },

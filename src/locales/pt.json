@@ -711,13 +711,14 @@
   "attributes": {
     "title": "Atributos",
     "str": "Força",
-    "strDesc": "+ Dano Físico",
+    "strDesc": "+{flat} de dano e +{pct}% do dano da arma por ponto",
     "vit": "Vitalidade",
-    "vitDesc": "+ PV Máx",
+    "vitDesc": "+{hp} PV Máx por ponto (+{perLevel} a cada nível)",
     "agi": "Agilidade",
-    "agiDesc": "+ Esquiva / Vel. de Ataque",
+    "agiDesc": "Ataca {ms} ms mais rápido por ponto (até {max} pontos)",
+    "agiDescMax": "No máximo: {max} pontos de Agilidade",
     "res": "Resistência",
-    "resDesc": "+ Redução de Dano",
+    "resDesc": "-{red}% de dano sofrido por ponto e +{hp} PV Máx",
     "points": "Pontos Disponíveis: {n}",
     "cp": "CP: {n}"
   },

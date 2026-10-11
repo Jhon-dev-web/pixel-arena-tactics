@@ -465,8 +465,14 @@ export function spendSkillPoints(s: SaveData, build: SkillBuild): SaveData {
   return { ...s, skillTree: { ...s.skillTree, sets } };
 }
 
-// App.tsx attrChange (1122-1131) applied in bulk: 3 points per level, spread by fixed weights.
-export const ATTR_WEIGHTS = { str: 0.35, vit: 0.3, agi: 0.2, res: 0.15 } as const;
+// The attribute POLICY of the simulated player (and of every audit / ladder hero built with spendAttributePoints): the 3 points of each level go to whichever
+// attribute is furthest below its share of the points spent so far, so at any level the points are spread 35 % STR / 30 % VIT / 20 % AGI / 15 % RES. It is the
+// "balanced" split of the audits: a mildly offensive generalist that keeps some of everything, what a player who follows the descriptions on the screen
+// would plausibly do (the screen has no recommended split). ATTR_POLICY='{"str":0.45,"vit":0.4,"agi":0.05,"res":0.1}' overrides it for a progression run
+// (docs/BALANCE_CHANGES.md Rodada 8 reports how much the milestones move with other reasonable policies).
+export const ATTR_WEIGHTS: { str: number; vit: number; agi: number; res: number } = { str: 0.35, vit: 0.3, agi: 0.2, res: 0.15 };
+if (process.env.ATTR_POLICY) Object.assign(ATTR_WEIGHTS, JSON.parse(process.env.ATTR_POLICY));
+// App.tsx attrChange applied in bulk: 3 points per level, spread by ATTR_WEIGHTS.
 export function spendAttributePoints(s: SaveData): SaveData {
   const total = playerLevel(s.xp) * 3;
   const next = { str: s.str, vit: s.vit, agi: s.agi, res: s.res };

@@ -201,7 +201,7 @@ describe('shield slot', () => {
       expect(gain, `tier ${k} full set: +${(gain * 100).toFixed(1)} %`).toBeLessThanOrEqual(0.09);
       const wa = computeCP(hero(k, 0, { extra: [shieldOf(k)] })) / computeCP(hero(k, 0)) - 1;
       expect(wa, `tier ${k} weapon + armor: +${(wa * 100).toFixed(1)} %`).toBeGreaterThanOrEqual(0.08);
-      expect(wa, `tier ${k} weapon + armor: +${(wa * 100).toFixed(1)} %`).toBeLessThanOrEqual(0.105);
+      expect(wa, `tier ${k} weapon + armor: +${(wa * 100).toFixed(1)} %`).toBeLessThanOrEqual(0.11); // 0.105 before Rodada 8: with less attribute HP at low levels a flat shield is worth a little more
     }
   });
 

@@ -22,7 +22,7 @@ const realHour = (s: SaveData, zoneId: string, depth: HuntingDepth) => {
 };
 
 const BUILDS: [string, () => SaveData, string, HuntingDepth][] = [
-  ['tier 1 hero in the Demon Glade', () => withMaxLevels({ ...hero('1', 4, { level: 15 }), highestDungeonFloor: 90 }), 'demon_glade', 'shallow'],
+  ['tier 1 hero in the Demon Glade', () => withMaxLevels({ ...hero('1', 4, { level: 14 }), highestDungeonFloor: 90 }), 'demon_glade', 'shallow'],
   ['tier 3 hero in the Blood Marsh', () => withMaxLevels({ ...hero('3', 6, { level: 35 }), highestDungeonFloor: 90 }), 'blood_marsh', 'dense'],
   ['tier 5 hero in the Blood Abyss', () => withMaxLevels({ ...hero('5', 10, { level: 75 }), highestDungeonFloor: 90 }), 'blood_abyss', 'deep'],
 ];

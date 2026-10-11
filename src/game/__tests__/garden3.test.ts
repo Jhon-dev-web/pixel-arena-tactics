@@ -303,8 +303,9 @@ describe('tonic effects on the combat stats (Dungeon and Hunting share them)', (
 
 describe('Hunting uses the same tonics (session windows, including one drunk mid-session)', () => {
   const START = NOW;
-  // A marginal hunt (T3 +4 hero in the Demon Rift, dense): without help it loses 6 promotion fights in 4 h.
-  const base = (): SaveData => ({ ...hero('3', 4, { level: 30 }), highestDungeonFloor: 30, huntingOfflineStart: START });
+  // A marginal hunt (T3 +2 hero of level 35 in the Demon Rift, dense): without help it loses promotion fights in 4 h (Rodada 8 moved it from T3 +4 at level 30, which the new attribute
+  // values no longer leave marginal).
+  const base = (): SaveData => ({ ...hero('3', 2, { level: 35 }), highestDungeonFloor: 30, huntingOfflineStart: START });
   const hunt = (s: SaveData): SaveData => ({ ...s, activeHuntingZone: 'demon_rift', activeHuntingDepth: 'dense', huntingOfflineStart: START, huntSession: buildHuntSession(s, START) });
   const status = (s: SaveData, hours = 4) => computeHuntingStatus(s, START + hours * HOUR);
   // lower is better: promotion fights the hero lost in the session

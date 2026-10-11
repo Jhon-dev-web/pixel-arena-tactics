@@ -37,8 +37,9 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     nameKey: 'orcBerserker',
     // Round 2 of the balance pass: was 110 / 18. The orc biome (floors 26-49) used to be easier than the floor-25 boss and the hero crossed it
     // in a day; with these stats it asks for a real gear climb between boss 25 and boss 50.
-    hp: 310,
-    dmg: 46,
+    // Rodada 8 (primary attributes): 310 / 46 -> 325 / 48, because the new VIT / AGI values make a hero of floors 26-49 about 3 % stronger.
+    hp: 325,
+    dmg: 48,
     atkSpeedMs: 1700,
     hpMult: 1,
     atkMult: 1,

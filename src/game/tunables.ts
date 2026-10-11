@@ -50,7 +50,7 @@ const T = DebugPanel.define({
     // AGI -> attack interval (see derivedStats.ts heroAttackIntervalMs): hyperbolic approach from heroAttackMs
     // (AGI 0) down to heroMinMs, halfway there at agiHalfPoint AGI. Replaces the old linear agiSpeedPerPoint.
     heroMinMs: { value: 400, min: 100, max: 1200, step: 50, label: 'Hero attack interval floor (ms, AGI asymptote)' },
-    agiHalfPoint: { value: 100, min: 10, max: 1000, step: 10, label: 'AGI at which the interval is halfway to the floor' },
+    agiHalfPoint: { value: 80, min: 10, max: 1000, step: 10, label: 'AGI at which the interval is halfway to the floor' },
     agiMax: { value: 300, min: 1, max: 1000, step: 1, label: 'AGI clamp used in combat (= max level 100 x 3 points)' },
     lungeMs: { value: 320, min: 80, max: 900, step: 20, cssVar: '--lunge-ms', unit: 'ms', label: 'Lunge animation (ms)' },
     flashMs: { value: 250, min: 50, max: 800, step: 25, cssVar: '--flash-ms', unit: 'ms', label: 'Hit flash (ms)' },
@@ -497,9 +497,13 @@ const T = DebugPanel.define({
     cpInputCeiling: { value: 1000000000000, min: 1000000, max: 1000000000000000, step: 1000000, label: 'CP: per-input safety ceiling' },
     // Overflow guard only (NOT a points rule): keeps a tampered/garbage STR from overflowing the damage math to Infinity.
     strengthOverflowGuard: { value: 1000000, min: 1000, max: 1000000000, step: 1000, label: 'STR: safety ceiling used in the damage formula' },
-    vitHpPerPoint: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP per VIT point' },
+    // VIT -> max HP: vitHpPerPoint + vitHpPerLevel x character level per point (4.5 at level 0, 7.5 at level 100). Rodada 8: a flat 5 made a point worth 2% of an early
+    // hero's HP and 0.2% of a level-100 hero's; growing with the level keeps it worth about the same share (docs/BALANCE_CHANGES.md).
+    vitHpPerPoint: { value: 4.5, min: 0, max: 50, step: 0.5, label: 'Max HP per VIT point (before the level part)' },
     agiDodgePerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Dodge chance per AGI point' },
     resResistPerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Damage resist per RES point' },
+    resHpPerPoint: { value: 2, min: 0, max: 20, step: 0.25, label: 'Max HP per RES point (the secondary benefit of RES)' },
+    vitHpPerLevel: { value: 0.03, min: 0, max: 1, step: 0.005, label: 'Extra max HP per VIT point for each character level' },
     elixirDamageBonus: { value: 0.2, min: 0, max: 2, step: 0.05, label: 'Strength Elixir damage bonus' },
     playerMaxStamina: { value: 100, min: 40, max: 200, step: 5, label: 'Player max stamina' },
     shakeMs: { value: 350, min: 0, max: 1000, step: 25, label: 'Screen shake duration (ms)' },
