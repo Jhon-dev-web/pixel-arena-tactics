@@ -17,6 +17,8 @@
     "desktop:build": "node scripts/desktop-build.mjs",
     "desktop:start": "electron .",
     "sim:items": "vitest run --config vitest.sim.config.ts itemAudit --silent=false --reporter=default",
+    "sim:flow": "vitest run --config vitest.sim.config.ts materialFlow --silent=false --reporter=default",
+    "sim:recipes": "vitest run --config vitest.sim.config.ts recipeTune --silent=false --reporter=default",
     "sim:skills": "vitest run --config vitest.sim.config.ts skillAudit --silent=false --reporter=default"
   },
   "dependencies": {

@@ -16,7 +16,7 @@ import {
 import { computeCP, effectiveRepairCost, playerLevel, SaveData, defaultSave } from '../../src/game/engine';
 import { GEAR, getGear, INSTANCED_SLOTS, MAX_REFINE, upgradeCost } from '../../src/game/gear';
 import { GEMS, GemId, socketsForTier } from '../../src/game/gems';
-import { MaterialId } from '../../src/game/materials';
+import { MaterialId, MATERIALS } from '../../src/game/materials';
 import { REFINING_RECIPES } from '../../src/game/refining';
 import { PLANTS } from '../../src/game/garden';
 import { applyHarvest, applyPlant, readySlots } from '../../src/game/gardenActions';
@@ -103,9 +103,30 @@ export interface DayLedger {
   inv: { slotsMax: number; slotsEnd: number; capacity: number; lostGather: number; stashed: number; sold: number; discarded: number };
   hours: { hunt: number; mine: number; wood: number };
   units: Record<string, number>; // ore / wood / garden units that entered the bag today, by material id
+  // Per-material flow of every Hunting material of the day (Rodada 9, docs/MATERIAL_FLOW.md): what the claims accepted, what they left behind for lack of room,
+  // what each sink consumed (bag + stash together, so moving stock between them is not a sink) and the stock (bag + stash) at the end of the day.
+  flow: Record<string, MatFlow>;
+  // Runas (the `shards` currency) and gems earned / spent today, by source or use.
+  // Hunting by place: hours and accepted units per material for each zone:depth the player hunted today.
+  hunt: Record<string, { hours: number; units: Record<string, number> }>;
+  currency: { shardsIn: Record<string, number>; shardsOut: Record<string, number>; gemsIn: Record<string, number>; gemsOut: Record<string, number> };
 }
 
-const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {} });
+export type FlowSink = 'forge' | 'upgrade' | 'alchemy' | 'stash' | 'delivery' | 'workshop' | 'dust' | 'merchant' | 'discard' | 'other';
+export const REAL_USE_SINKS: FlowSink[] = ['forge', 'upgrade', 'alchemy', 'stash', 'delivery', 'workshop'];
+export const DISPOSAL_SINKS: FlowSink[] = ['dust', 'merchant', 'discard', 'other'];
+export interface MatFlow {
+  produced: number; // raw sources: hunting, mining, woodcutting, garden (what entered the inventory)
+  refined: number; // made by a station (bars, ingots, leather, handles, essence, scales, dust)
+  left: number; // raw units a claim left behind for lack of room
+  residual: number; // stock change the ledger could not explain (should be 0)
+  consumed: Record<FlowSink, number>;
+  stockEnd: number;
+}
+const newFlow = (): Record<string, MatFlow> =>
+  Object.fromEntries(MATERIALS.map((d) => [d.id, { produced: 0, refined: 0, left: 0, residual: 0, consumed: { forge: 0, upgrade: 0, alchemy: 0, stash: 0, delivery: 0, workshop: 0, dust: 0, merchant: 0, discard: 0, other: 0 }, stockEnd: 0 }]));
+
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} } });
 
 export interface DaySnapshot {
   day: number;
@@ -378,6 +399,49 @@ export class Player {
     this.S = { ...this.S, lastMiningClaim: startAt, lastWoodcuttingClaim: startAt, huntingOfflineStart: startAt, hasBattlePass: !!opts.pass };
   }
 
+  // ---- material flow ledger (hunting materials only; bag + stash)
+  private flowMark(s: SaveData = this.S): Mats {
+    const out: Mats = {};
+    for (const d of MATERIALS) out[d.id] = (s.materials[d.id] ?? 0) + (s.stash?.materials[d.id] ?? 0);
+    return out;
+  }
+  private flowCount(sink: FlowSink, before: Mats) {
+    const now = this.flowMark();
+    for (const d of MATERIALS) {
+      const x = (before[d.id] ?? 0) - (now[d.id] ?? 0);
+      if (x > 0) this.ledger.flow[d.id].consumed[sink] += x;
+    }
+  }
+  // One station conversion with its inputs charged to `sink` (the chain a craft / stash upgrade / dust need) and its output counted as refined.
+  // The ledger entries wait in `pend` until the caller adopts the resulting save (commitPend); a chain that is abandoned half-way never reaches the ledger.
+  private pend: (() => void)[] = [];
+  private commitPend() {
+    for (const f of this.pend) f();
+    this.pend = [];
+  }
+  private refineT(s: SaveData, recipeId: string, sink: FlowSink): SaveData | null {
+    const next = refineMaterial(s, recipeId);
+    if (!next) return null;
+    for (const d of MATERIALS) {
+      const x = (s.materials[d.id] ?? 0) - (next.materials[d.id] ?? 0);
+      if (x > 0) this.pend.push(() => (this.ledger.flow[d.id].consumed[sink] += x));
+      else if (x < 0) this.pend.push(() => (this.ledger.flow[d.id].refined -= x));
+    }
+    return next;
+  }
+  // Runas and gems that moved between two states of the save.
+  private acct(prev: SaveData, next: SaveData, tag: string) {
+    const c = this.ledger.currency;
+    const ds = next.shards - prev.shards;
+    if (ds > 0) c.shardsIn[tag] = (c.shardsIn[tag] ?? 0) + ds;
+    else if (ds < 0) c.shardsOut[tag] = (c.shardsOut[tag] ?? 0) - ds;
+    for (const g of GEMS) {
+      const dg = (next.gems[g.id] ?? 0) - (prev.gems[g.id] ?? 0);
+      if (dg > 0) c.gemsIn[g.id + ':' + tag] = (c.gemsIn[g.id + ':' + tag] ?? 0) + dg;
+      else if (dg < 0) c.gemsOut[g.id + ':' + tag] = (c.gemsOut[g.id + ':' + tag] ?? 0) - dg;
+    }
+  }
+
   // ---- bookkeeping
   private set(next: SaveData, tag: string) {
     const dx = next.xp - this.S.xp;
@@ -385,6 +449,7 @@ export class Player {
     const d = next.gold - this.S.gold;
     if (d > 0) this.ledger.goldIn[tag] = (this.ledger.goldIn[tag] ?? 0) + d;
     else if (d < 0) this.ledger.goldOut[tag] = (this.ledger.goldOut[tag] ?? 0) - d;
+    this.acct(this.S, next, tag);
     this.S = next;
   }
   private mark(ev: FirstEvent) {
@@ -407,6 +472,7 @@ export class Player {
   playDay(day: number, jitter: () => number) {
     this.day = day;
     this.ledger = newLedger();
+    const startStock = this.flowMark();
     this.sessions = [];
     CHECKIN_HOURS.forEach((h, i) => {
       const at = new Date(2026, 5, 1 + day, h, 0, 0).getTime() + Math.round((jitter() * 2 - 1) * JITTER_MS);
@@ -415,6 +481,13 @@ export class Player {
     });
     this.sample();
     this.ledger.inv.slotsEnd = inventorySlotsUsed(this.S);
+    const endStock = this.flowMark();
+    for (const d of MATERIALS) {
+      const f = this.ledger.flow[d.id];
+      const consumed = Object.values(f.consumed).reduce((a, b) => a + b, 0);
+      f.stockEnd = endStock[d.id] ?? 0;
+      f.residual = f.stockEnd - ((startStock[d.id] ?? 0) + f.produced + f.refined - consumed);
+    }
     this.snapshots.push({
       day: day + 1,
       level: playerLevel(this.S.xp),
@@ -457,11 +530,14 @@ export class Player {
   private collect() {
     const s = this.S;
     if (s.activeHuntingZone) {
+      const huntKey = s.activeHuntingZone + ':' + s.activeHuntingDepth;
       const stopped = applyHuntStop(s, this.now);
       if (stopped && stopped.pendingHuntReward) {
         const p = stopped.pendingHuntReward;
         const hours = p.pendingMs / HOUR;
         this.ledger.hours.hunt += hours;
+        const hz = (this.ledger.hunt[huntKey] ??= { hours: 0, units: {} });
+        hz.hours += hours;
         this.huntHours += hours;
         for (const [m, q] of Object.entries(p.drops) as [MaterialId, number][]) this.huntUnits[m] = (this.huntUnits[m] ?? 0) + q;
         // The reward screen shows what the claim would leave behind (the very function the claim uses): a careful player makes room first.
@@ -473,10 +549,15 @@ export class Player {
           plan = planHuntClaim(this.S, p);
         }
         for (const [m, q] of Object.entries(plan.added) as [MaterialId, number][]) {
+          if (this.ledger.flow[m]) this.ledger.flow[m].produced += q;
+          hz.units[m] = (hz.units[m] ?? 0) + q;
           this.ledger.mats[rarityOf(m)] += q;
           this.ledger.matsValue += q * baseGoldValue(m);
         }
-        for (const l of plan.leftBehind) this.ledger.lost += l.count;
+        for (const l of plan.leftBehind) {
+          this.ledger.lost += l.count;
+          if (this.ledger.flow[l.itemId]) this.ledger.flow[l.itemId].left += l.count;
+        }
         const claimed = applyHuntClaim(this.S, p.id);
         if (claimed) this.set(claimed, 'caça');
         else this.S = s;
@@ -495,6 +576,8 @@ export class Player {
         this.ledger.matsValue += (c.units - c.leftBehind) * baseGoldValue(c.material);
         this.ledger.inv.lostGather += c.leftBehind;
         this.ledger.units[c.material] = (this.ledger.units[c.material] ?? 0) + c.units - c.leftBehind;
+        this.ledger.flow[c.material].produced += c.units - c.leftBehind;
+        this.ledger.flow[c.material].left += c.leftBehind;
         this.ledger.hours[mine ? 'mine' : 'wood'] += c.hours;
         this.set(c.save, 'coleta');
       }
@@ -560,6 +643,7 @@ export class Player {
         if (r.ok && r.save) {
           this.set(r.save, 'mercador');
           this.ledger.inv.sold += r.units ?? 0;
+          if (this.ledger.flow[m]) this.ledger.flow[m].consumed.merchant += r.units ?? 0;
         }
       }
       // 3) what is left of the cheap surplus is thrown away (never in the last round: that one only stashes and sells)
@@ -570,6 +654,7 @@ export class Player {
         const next = applyDiscard(this.S, 'material', m, n);
         if (next) {
           this.ledger.inv.discarded += n;
+          if (this.ledger.flow[m]) this.ledger.flow[m].consumed.discard += n;
           this.S = next;
         }
       }
@@ -643,17 +728,24 @@ export class Player {
     this.makeRoom(2);
     this.bring(sp.needs);
     let s = this.S;
+    this.pend = [];
     for (const b of sp.batches) {
       for (let i = 0; i < b.times; i++) {
-        const next = refineMaterial(s, b.recipeId);
+        const next = this.refineT(s, b.recipeId, 'stash');
         if (!next) return;
         this.ledger.goldOut['estações'] = (this.ledger.goldOut['estações'] ?? 0) + (s.gold - next.gold);
         s = next;
       }
     }
     const up = applyStashUpgrade(s);
-    if (!up) return;
+    const flowBefore = this.flowMark(s);
+    if (!up) {
+      this.pend = [];
+      return;
+    }
+    this.commitPend();
     this.set(up, 'baú');
+    this.flowCount('stash', flowBefore);
     if (up.stash.level >= 1) this.mark('stash1');
     if (up.stash.level >= 2) this.mark('stash2');
     if (up.stash.level >= 3) this.mark('stash3');
@@ -667,7 +759,10 @@ export class Player {
       this.makeRoom(ready.length); // each ready plot needs room for its yield
       const res = applyHarvest(this.S, ready, this.now);
       if (res) {
-        for (const h of res.harvested) this.ledger.units[h.material] = (this.ledger.units[h.material] ?? 0) + h.qty;
+        for (const h of res.harvested) {
+          this.ledger.units[h.material] = (this.ledger.units[h.material] ?? 0) + h.qty;
+          this.ledger.flow[h.material].produced += h.qty;
+        }
         this.S = res.save;
       }
     }
@@ -749,8 +844,12 @@ export class Player {
       // plants the next craft is waiting for are not spent on a tonic
       const t = chooseTarget(this.S);
       if (t && Object.entries(rec.input).some(([m, q]) => (t.deficit[m as MaterialId] ?? 0) > 0 && (this.S.materials[m as MaterialId] ?? 0) - (q as number) < (t.deficit[m as MaterialId] ?? 0))) continue;
+      const flowBefore = this.flowMark();
       const next = craftPotion(this.S, id);
-      if (next) this.set(next, 'alquimia');
+      if (next) {
+        this.set(next, 'alquimia');
+        this.flowCount('alchemy', flowBefore);
+      }
     }
   }
 
@@ -781,9 +880,10 @@ export class Player {
     if (!target || target.blocked || Object.keys(target.deficit).length > 0 || this.S.gold < target.gold) return false;
     // refining stations first, then the crafts in tier order
     let s = this.S;
+    this.pend = [];
     for (const b of target.batches) {
       for (let i = 0; i < b.times; i++) {
-        const next = refineMaterial(s, b.recipeId);
+        const next = this.refineT(s, b.recipeId, 'forge');
         if (!next) return false;
         const fee = s.gold - next.gold;
         this.ledger.goldOut['estações'] = (this.ledger.goldOut['estações'] ?? 0) + fee;
@@ -791,11 +891,14 @@ export class Player {
       }
     }
     this.S = s;
+    this.commitPend();
     let crafted = false;
     for (const tpl of target.crafts) {
       const res = applyForge(this.S, tpl, { level: playerLevel(this.S.xp), now: this.now });
       if (!res.ok || !res.save) break;
+      const flowBefore = this.flowMark();
       this.set(res.save, 'forja');
+      this.flowCount('forge', flowBefore);
       crafted = true;
       this.mark('firstCraft');
     }
@@ -843,7 +946,9 @@ export class Player {
     for (const [g, need] of Object.entries(target.gems) as [GemId, number][]) {
       const def = GEMS.find((x) => x.id === g)!;
       while ((this.S.gems[g] ?? 0) < need && this.S.shards >= def.shardCost + (target.shards ?? 0)) {
-        this.S = { ...this.S, shards: this.S.shards - def.shardCost, gems: { ...this.S.gems, [g]: (this.S.gems[g] ?? 0) + 1 } };
+        const bought = { ...this.S, shards: this.S.shards - def.shardCost, gems: { ...this.S.gems, [g]: (this.S.gems[g] ?? 0) + 1 } };
+        this.acct(this.S, bought, 'compra');
+        this.S = bought;
       }
     }
   }
@@ -858,6 +963,7 @@ export class Player {
         while ((this.S.gems[g] ?? 0) - (keep[g] ?? 0) > 0 && eq.instance.sockets.length < socketsForTier(eq.item.tier ?? 0)) {
           const next = applySocketGem(this.S, eq.instance.id, g);
           if (!next) break;
+          this.acct(this.S, next, 'engaste');
           this.S = next;
           return this.socketSpareGems();
         }
@@ -883,9 +989,11 @@ export class Player {
         }
       }
       if ((cost.shards ?? 0) > this.S.shards) return;
+      const flowBefore = this.flowMark();
       const res = applyUpgrade(this.S, v.instance!.id, false);
       if (!res) return;
       this.set(res.save, 'refino');
+      this.flowCount('upgrade', flowBefore);
       if (res.success) this.mark('firstRefine');
     }
   }
@@ -897,9 +1005,11 @@ export class Player {
       if (!src) return;
       const rec = recipeOf(src);
       if (!rec) return;
-      const next = refineMaterial(this.S, rec.id);
+      this.pend = [];
+      const next = this.refineT(this.S, rec.id, 'dust');
       if (!next) return;
       this.S = next;
+      this.commitPend();
     }
   }
 
@@ -944,6 +1054,7 @@ export class Player {
     }
     const dxp = applied.save.xp - this.S.xp;
     if (dxp > 0) this.ledger.xpIn['masmorra'] = (this.ledger.xpIn['masmorra'] ?? 0) + dxp;
+    this.acct(this.S, applied.save, 'masmorra');
     this.S = { ...applied.save, consumables: cons };
     this.sessionsToday += 1;
     this.recentStages.push(run.stages);
@@ -990,9 +1101,11 @@ export class Player {
     for (const o of offers) {
       this.bring(o.items);
       if (!canAffordOffer(this.S, o)) continue;
+      const flowBefore = this.flowMark();
       const next = applyDeliveryAccept(this.S, o.id, this.now, Math.random, !!(this.opts.pass || this.opts.deliveriesOnly));
       if (next) {
         this.S = next;
+        this.flowCount('delivery', flowBefore);
         return;
       }
     }
@@ -1084,7 +1197,7 @@ export class Player {
     const perHour: Mats = {};
     for (const m of HUNT_MATS) perHour[m] = Math.floor(((this.huntUnits[m] ?? 0) / this.huntHours) * 6);
     this.makeRoom(this.slotsForecast(perHour));
-    this.startHunt();
+    this.startHunt(deficit);
   }
 
   // The Gatherer Brew covers the first 2 h of a gathering session when drunk at its start.
@@ -1093,9 +1206,26 @@ export class Player {
     return applyElixir(s, 'gatherer_brew', this.now) ?? s;
   }
 
-  private startHunt(): boolean {
+  // Where to hunt: the zone that drops the Hunting material the next craft / refine / stash upgrade is longest short of (a player hunts where the thing he
+  // needs drops); with nothing missing, the highest-XP zone unlocked by the Dungeon floor.
+  private startHunt(deficit: Mats = {}): boolean {
     const cp = computeCP(this.S);
     const zones = HUNTING_ZONES.filter((z) => isZoneUnlocked(z, this.S.highestDungeonFloor)).sort((a, b) => b.xpPerHour - a.xpPerHour);
+    let wantedMat: MaterialId | null = null;
+    let wantedHours = 0;
+    for (const m of HUNT_MATS) {
+      const short = deficit[m] ?? 0;
+      if (short <= 0 || !zones.some((z) => z.drops.some((d) => d.material === m))) continue;
+      const h = short / ((this.huntUnits[m] ?? 1) / this.huntHours);
+      if (h > wantedHours) {
+        wantedHours = h;
+        wantedMat = m;
+      }
+    }
+    if (wantedMat) {
+      const chanceOf = (z: (typeof zones)[number]) => z.drops.find((d) => d.material === wantedMat)?.chance ?? 0;
+      zones.sort((a, b) => chanceOf(b) - chanceOf(a) || b.xpPerHour - a.xpPerHour);
+    }
     for (const z of zones) {
       for (const depth of ['deep', 'dense', 'shallow'] as HuntingDepth[]) {
         if (!isDepthUnlocked(z, depth, cp)) continue;
