@@ -248,8 +248,9 @@ export function planFor(s: SaveData, tpl: string, bagOnly = false): Plan {
   }
   plan.needs = need;
   const lvl = playerLevel(s.xp);
-  const gemsMissing = Object.entries(plan.gems).some(([g, n]) => (s.gems[g as GemId] ?? 0) < (n as number));
-  plan.blocked = lvl < plan.minLevel || gemsMissing || s.shards < plan.shards;
+  // A missing gem is bought with Runas (buyGemsForTarget), so it only blocks the plan when the Runas that the recipe and the missing gems need are not there.
+  const gemShards = Object.entries(plan.gems).reduce((sum, [g, n]) => sum + Math.max(0, (n as number) - (s.gems[g as GemId] ?? 0)) * (GEMS.find((x) => x.id === g)?.shardCost ?? 0), 0);
+  plan.blocked = lvl < plan.minLevel || s.shards < plan.shards + gemShards;
   return plan;
 }
 

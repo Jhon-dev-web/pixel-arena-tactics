@@ -114,7 +114,7 @@ describe('item balance audit', () => {
     const FN = 20_000;
     withSeededRandom(7, () => {
       // the inventory has a stack limit now (Rodada 5): every forge starts from a bag holding exactly its ingredients
-      const fresh = (): SaveData => ({ ...defaultSave(), gold: 1e9, materials: { ...emptyMaterials(), copper_bar: 1, leather: 1, wood_handle_common: 1 } as SaveData['materials'] });
+      const fresh = (): SaveData => ({ ...defaultSave(), gold: 1e9, materials: { ...emptyMaterials(), copper_bar: 1, leather: 7, wood_handle_common: 1 } as SaveData['materials'] });
       for (let i = 0; i < FN; i++) {
         const res = applyForge(fresh(), 'bronze_dagger', { level: 1, now: NOW });
         if (!res.ok || !res.instance) throw new Error('forge failed ' + res.reason);

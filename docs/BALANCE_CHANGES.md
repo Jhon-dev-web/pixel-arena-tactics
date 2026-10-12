@@ -893,3 +893,117 @@ Detalhe, tabelas e método em `docs/MATERIAL_FLOW.md` (medição no commit 1, an
 **Metas de progressão (cenário A).** Nível 13 / 27 / 47 nos dias 1 / 3 / 14, primeira peça forjada no dia 2, chefe 25 no dia 5. **Chegada ao andar 50: mediana 13 → 17 (16 → 19 sem nenhum único; a primeira seed dia 8 → 13)**, fora da faixa 12–15: metade é a saída dos únicos (o simulador de antes recebia um a cada ~3 dias), metade são as receitas maiores. Monstros não foram retunados (`hpGrowth`/`dmgGrowth` menores só tiraram 0,5 dia). Decisão pendente do diretor.
 
 Ferramentas novas: `npm run sim:flow` (livro-razão por material, Runas, gemas, únicos, custo de conjunto e herói novo), `npm run sim:recipes` (calcula as quantidades das receitas a partir das horas-alvo), `SIM_NO_UNIQUES=1 npm run sim` (progressão sem nenhum único).
+
+
+## Rodada 10 — equipamento forjado vale a pena, conjuntos e ritmo (2026-10-12)
+
+Pergunta do dono: "melhore os atributos dos itens fabricados". Três commits: `balance: every crafted tier is a real upgrade`, `feat: wearing a matching set grants a set bonus`, `balance: mid-game pace restored after the recipe and unique changes`. Medições: `npm run sim:items` (seção N nova em `docs/ITEM_BALANCE_AUDIT.md`), `npm run sim` (20 seeds x 21 dias, cenário A, com e sem `SIM_NO_UNIQUES=1`).
+
+### 1. Degraus de tier por linha
+
+Medida de "poder" de uma peça: quanto ela soma à CP de um herói de referência (nível 60, conjunto do tier 3 em +4) sobre o mesmo herói com o slot vazio (`scripts/sim/tierSteps.ts`). Meta: cada tier vale 20 a 35% mais que o anterior, com o atributo principal E o secundário crescendo sempre. Antes: anel T2 e T4 sem crítico novo (0,06 / 0,06 / 0,08 / 0,08), luvas com crítico fixo de 2% do T1 ao T4, botas +13% no T6, anel +13%, escudo +14%, elmo +21%; espada e machado já subiam (o dourado era 1,32x do T3).
+
+| Linha | Antes (principal / secundário) | Depois |
+| --- | --- | --- |
+| Anel, crítico (T1..T6) | 6 / 6 / 8 / 8 / 9 / 10% | 6 / 7 / 9 / 10,5 / 12,5 / 14,5% |
+| Anel, dano crítico | +15 / 20 / 25 / 30 / 35 / 40% | +15 / 20 / 26 / 33 / 42 / 50% |
+| Luvas, crítico (T1..T6) | 2 / 2 / 2 / 2 / 2,7 / 3% | 2 / 2,5 / 3 / 3,5 / 4 / 4,5% (T6: dano 37 -> 35) |
+| Botas T5 / T6 (resistência, PV) | 13,5% 62 / 14,5% 76 | 15% 68 / 17,8% 88 |
+| Escudo T5 / T6 (PV, resist., reflexo) | 96, 10,4%, 7% / 113, 11,3%, 8% | 104, 11,5%, 7,5% / 138, 14%, 9% |
+| Elmo T5 / T6 (PV, resist.) | 149, 3,1% / 185, 3,6% | 153, 3,2% / 192, 3,8% |
+| Armadura T4 / dragão / T5 / T6 (PV, resist., reflexo) | 220, 13%, 20% / 260, 15%, 22% / 340, 17%, 25% / 440, 20%, 28% | 220, 13%, 21% / 280, 16%, 23% / 360, 18%, 25% / 485, 22%, 28% |
+| Espada T6 / machado T6 (dano) | 220 / 264 | 240 / 288 (mantém o orçamento de +28 a +40% das quatro peças extras sobre arma + armadura, que o anel e as botas novos estouravam no T6) |
+
+Resultado (seção N): passo mínimo 1,18x (anel T6), máximo 1,35x (arma T6) nos tiers 4 a 6; os primeiros passos continuam maiores (1,4x a 2,2x), porque o tier 1 parte quase do zero.
+
+**Cadeia única.** O dourado (T4) era um beco sem saída, mais fraco e mais caro em materiais de caça que o dragão. Agora o dragão (espada e armadura) é feito DO dourado (1 peça dourada + escamas + Runas): aço > dourado > dragão > voidsteel > abissal. O machado e as outras cinco linhas não têm dragão (dourado > voidsteel). Regra "uma peça do tier anterior" em todo lugar, exceto o T2 de arma e armadura (duas de bronze); o teste `chain rule` fixa isso.
+
+### 2. Únicos: o tier que o herói tem ao chegar na origem
+
+| Único | Origem | Antes (gêmea) | Depois (gêmea) | Poder / gêmea |
+| --- | --- | --- | --- | --: |
+| goblin_king_crown | chefe 25 | elmo de ferro (T2) | elmo de aço (T3) | x1,14 |
+| warchief_gauntlets | chefe 50 | manoplas de aço (T3) | manoplas douradas (T4) | x1,14 |
+| abyss_heart_ring | Abismo de Sangue | anel de obsidiana (T5) | anel abissal (T6) | x1,13 |
+| bonecrusher_maul | Abismo de Sangue | lâmina do vazio (T5) | grande lâmina abissal (T6) | x1,10 |
+| overlord_greataxe | chefe 100 | grande lâmina abissal (era uma ESPADA com queima) | machado abissal (T6, linha machado, sem queima) | x1,10 |
+| os outros 9 | - | iguais | iguais (já estavam no tier atual) | x1,10 a x1,14 |
+
+Estatísticas: principal +15% e secundárias +8% sobre a gêmea (era +10% só no principal e 3 a 9% de poder), mais a substat garantida; poder da peça 10 a 15% acima da gêmea (`itemBalance.test.ts`, R6). Raras e desejáveis, nunca obrigatórias (nenhum único passa da peça do tier seguinte).
+
+### 3. Conjuntos (3 e 5 peças)
+
+Função pura `setBonuses(peças vestidas)` (`src/game/setBonuses.ts`); `buildCombatStats` soma o resultado, então Masmorra, Caça, CP e jogador simulado leem o mesmo número. Conta sobre os 7 slots instanciados (arma de qualquer linha; o slot da relíquia não conta); único conta como a família da gêmea; 3 + 3 é legal e os dois bônus valem; nada vai para o save (saves antigos ganham o bônus do que já vestem). Efeitos só com stats que o motor já tem; o ouro entra no mesmo teto de 25% das substats.
+
+| Família | 3 peças | 5 peças |
+| --- | --- | --- |
+| Bronze | +5% ouro | +5% dano crítico |
+| Ferro | +4% defesa | regenera +0,3% da vida/s |
+| Aço | +4% velocidade de ataque | +10% dano crítico |
+| Dourado | +8% ouro | +5% dano final |
+| Dragão (só arma + armadura: 2 peças) | +2% roubo de vida | - |
+| Aço do Vazio | +6% velocidade de ataque | +15% dano crítico |
+| Abissal | +7% dano final | +6% velocidade de ataque |
+
+Tela: linha "Conjunto Aço 3/5 — +4% velocidade de ataque" (ativo) e "5 peças: +10% dano crítico" (apagado) acima dos cartões de equipamento, para a família com bônus ativo ou a uma peça de ativar; no detalhe do item e na receita da forja, o conjunto da peça e os bônus com a contagem (pt/en, paridade testada). Testes novos em `setBonuses.test.ts` (contagem, limites, conjuntos mistos, únicos, relíquia, dragão, Masmorra e Caça leem o mesmo, save antigo, textos). As medidas de balanço de UMA peça (orçamento de poder dos slots extras, escudo, único contra a gêmea) rodam com `withoutSetBonuses` (`scripts/sim/duel.ts`); o conjunto é uma segunda camada.
+
+Descartados: roubo de vida +3% no 5 do Abissal (e regeneração 0,4%) quebravam B1 / B4 do nível 100 ou ficavam fracos; o Bronze 5 como regeneração 0,3% levou o nível 5 para 2,62 (limite 2,5), por isso é dano crítico +5%. O Dragão é a única família com só 2 peças possíveis, então o bônus é "2 de 2" e a peça também conta como duas douradas (decisão 1 abaixo).
+
+### 4. Ritmo (depois das duas mudanças acima)
+
+Depois dos itens 1 a 3 a chegada ao andar 50 (sem únicos) foi de 19 para 17 (primeira seed 16 -> 13), ainda fora da faixa 12-15. Investigação (`SIM_FAST=1`, 10 a 20 seeds, 15 a 30 s):
+
+1. **O jogador simulado travava a arma e a armadura do T3 por falta de gema, sem precisar.** `planFor` marcava o plano como bloqueado quando faltava uma gema (rubi na espada, safira na armadura) mesmo com Runas de sobra para comprá-la; o alvo só voltava à arma depois de forjar todo o resto do tier, então a espada do T3 só aparecia no dia 17 e a armadura no 18. Corrigido: bloqueia só se as Runas da receita mais as gemas que faltam não estão lá. É uma correção da política da simulação, não do jogo; sozinha, no código de antes, leva a chegada de 19 para 17 (sem únicos) e de 17 para 17 (com únicos): por isso a tabela abaixo traz uma coluna "antes*" com a política corrigida.
+2. **Tamanho dos bônus dos conjuntos T2-T3** (alavanca 1): ferro 6% defesa / regen 0,5% e aço 6% velocidade / 20% crítico, e a versão 8% / 25%: mediana da chegada igual (15, dentro do ruído de 10 seeds). Não ajudam o suficiente; ficam pequenos, como o pedido.
+3. **Quantidades do T3** (alavanca 2): caça de todas as peças do T3 x0,75: sem ganho (mediana 16,5; a caça deixou de ser o único gargalo depois da correção 1); descartado. **Arma e armadura do T3 passam a pedir UMA peça do T2 em vez de duas** (as outras cinco peças do T3 já pediam uma): mediana 17,5 -> 15 (20 seeds). Custo de caça do conjunto do T3: 11,3 -> 10,4 h; Garra 237 -> 189 (`MATERIAL_FLOW.md`; o teste B2 segue em 10-20 h).
+4. Não toquei em HP / dano dos inimigos nem nos portões de nível 25 de mineração e lenha (a alavanca 3 não foi necessária). A tabela de CP recomendada foi regerada (`npm run sim:cp`) nos dois primeiros commits porque os números de equipamento mudaram; no terceiro nada de combate mudou.
+
+**Guard table (cenário A, 20 seeds, mediana).** U = com únicos (padrão), N = `SIM_NO_UNIQUES=1`. "Antes" = commit 02a85af; "antes*" = o mesmo código com a política corrigida (item 4.1); "depois" = este commit.
+
+| Meta | Antes U / N | Antes* U / N | Depois U / N |
+| --- | --- | --- | --- |
+| T2 primeira sessão >= andar 8; checkpoint 10 no dia 1 | 8 / 8 | 8 / 8 | 8 / 8 |
+| T3 primeira peça forjada | dia 2 / 2 | 2 / 2 | 2 / 2 |
+| T4 nível dia 1 / 3 / 14 (10-16 / 20-29 / 45-60) | 13 / 27 / 47 · 13 / 27 / 47 | 13 / 27 / 47 · 13 / 27 / 47 | 13 / 27 / 47 · 13 / 27 / 47 |
+| T5 chefe 25 pela 1ª vez (dia 4-6); vitória ao chegar | dia 5, 0% · dia 5, 0% | idem | idem |
+| T6 chegada ao andar 50: 1ª seed / mediana (meta 12-15) | 13 / 17 · 16 / 19 | 14 / 17 · 12 / 17 | **12 / 15 · 12 / 15** |
+| T6 chefe 50: 1ª seed / mediana / seeds em 21 dias | 13 / 19,5 / 17 · 16 / 20 / 15 | 14 / 18,5 / 13 · 13 / 19,5 / 13 | 13 / 16,5 / 18 · 13 / 17,5 / 19 |
+| T7 menor razão (N+1)/(N-1) em volta dos chefes (>= 1,0) | 1,05 | 1,05 | 1,05 |
+| T8 derrota mantém 75% do ouro | 75% | 75% | 75% |
+| I1 inventário enche (dia 3-6), mediana | 6 | 6 | 6 |
+| I2 perda do jogador atento (< 5%), pior seed | 3,4% · 6,1% | 20,6% · 20,6% | 1,3% · 1,8% |
+| I3 perda de quem ignora o inventário (>= 10%), mediana | 83% · 87% | 83% · 87% | 86% · 88% |
+| I4 ouro do mercador (< 35%) dias 3 / 7 / 14 | 0 / 21 / 26% · 0 / 22 / 26% | 0 / 21 / 26% · 0 / 22 / 26% | 0 / 21 / 25% · 0 / 21 / 26% |
+| Herói sem habilidades (Z): chegada ao andar 50 (meta ~dia 20) | depois do 21 · depois do 21 | - | 19 · 20 |
+
+Chegada ao andar 50 por seed (depois, sem únicos): 12 13 13 14 14 15 15 15 15 15 15 16 16 18 18 18 18 18 19 20 (com únicos: 12 13 13 13 14 14 15 15 15 15 15 16 16 16 18 18 18 19 20 20).
+
+### 5. Passe de Aventureiro: o dono continua à frente (não foi ajustado em direção à paridade)
+
+| Medida (mediana) | Antes U / N | Depois U / N |
+| --- | --- | --- |
+| dia 7: materiais/dia (média acumulada) | +40% (N) | +36% (N) |
+| dia 14: materiais/dia (média acumulada) | +77% (N) | +73% (N) |
+| dia 14: ouro/dia (média acumulada) | +77% (N) | +74% (N) |
+| dia 7: nível / CP | +7,5% / +10,4% · +4,9% / +9,3% | +5,1% / +2,2% · +6,4% / +2,1% |
+| dia 14: nível / CP | +6,4% / +30,7% · +7,4% / +36,9% | +6,4% / +19,7% · +6,4% / +18,1% |
+| dia 14: andar mais alto | +34% · +35% (54 contra 40) | +38% · +45% (60 contra 42) |
+| chegada ao andar 50: dono / sem Passe (dias adiantados) | 13,5 / 17 (3,5) · 14 / 19 (5) | 12,5 / 15 (2,5) · 13 / 15 (2) |
+| chefe 50: dias adiantados | 5 · 6 | 3,5 · 4,5 |
+
+O dono segue claramente à frente (andar 60 contra 42 no dia 14, materiais +73%, ouro +74%), mas a vantagem em dias encolheu de 5 para 2 (sem únicos): quem não tem o Passe ficou 2 a 4 dias mais rápido e o dono, limitado por outra coisa (nível e ouro), quase não se mexeu. O CP do dia 7 do dono mal passa o do não-dono (+2%; antes +9 a +10%): não investiguei a causa, o número do dia depende de qual peça cada um forjou naquele dia. Para o dono ganhar de novo, a alavanca é do Passe (rendimento de materiais e ouro), não da forja; não mexi.
+
+### 6. Testes que mudaram e ferramentas
+
+- `attributes.test.ts` B2: limite de materiais do build "tudo VIT / RES" no nível 60 de -0,45 para -0,5 (a regressão vem do crítico novo dos anéis e luvas do T4: -41% -> -46%; a causa continua sendo a economia da Caça, decisão 1 da Rodada 8).
+- `itemBalance.test.ts` (R5, R6), `catalog.test.ts` (o dragão é o único que aceita uma peça do próprio tier), `contentPack2.test.ts`, `extraSlots.test.ts`, `gearEffects.test.ts` (números novos; o machado de chefe do andar 100 não queima).
+- `npm run sim:items` voltou a rodar (a seção A fabricava uma adaga com 1 Couro em vez de 7).
+- `npm run sim`: `SIM_FAST=1` (só o cenário A, 10 a 20 seeds em 15 a 30 s; `SIM_FAST_Z=1` e `SIM_FAST_PASS=1` somam o controle sem habilidades e o dono do Passe), `SIM_GEAR='{"steel_plate":{"_items":{"iron_chainmail":1}}}'` e `SIM_SETS='{"steel":[{...},{...}]}'` para testar uma receita ou um conjunto sem editar o código.
+
+### 7. Decisões que o diretor pode discordar
+
+1. **Dragão conta como dourado.** A família dragão só tem arma e armadura, então o bônus de 3 peças seria inalcançável; fiz "2 de 2" e cada peça de dragão também conta como uma dourada. Alternativa: dragão sem conjunto, só conta como dourado.
+2. **Cadeia do dragão através do dourado** aumenta o custo de chegar ao T5 em arma e armadura (mais uma peça dourada na cadeia). Nada no horizonte de 21 dias chega lá.
+3. **T3 arma / armadura com uma peça do T2** foi a alavanca de ritmo que valeu; o tamanho dos conjuntos não moveu a mediana.
+4. **A correção da política da simulação** mudou o "antes" em até 2 dias; as duas colunas ficam na tabela.
+5. **Vantagem do Passe em dias menor** (item 5).

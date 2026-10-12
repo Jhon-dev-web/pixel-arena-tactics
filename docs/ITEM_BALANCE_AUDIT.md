@@ -1,3 +1,5 @@
+> **2026-10-12 (Rodada 10):** os degraus de tier de cada linha de equipamento foram refeitos (anéis e luvas ganham crítico a cada tier, botas / escudos / elmo / anel dos tiers 5-6 e a armadura e a arma do tier 6 sobem), o dragão passou a ser feito do dourado (uma cadeia por linha) e os únicos mudaram de tier. Seção **N** (nova) e tabelas **E** e **G** regeradas; o resto do arquivo descreve o estado de antes. Ver `docs/BALANCE_CHANGES.md`, Rodada 10.
+>
 > **2026-10-12 (Rodada 9):** a tabela de raridade da forja passou de 60 / 25 / 12 / 3 para **63 / 25 / 10 / 2** (as peças raras agora serão vendidas), e o Selo do Ferreiro para 83,3% épica / 16,7% lendária. Custo esperado do MESMO item: épico ou melhor 1 / 0,12 = 8,3 forjas (era 6,7); lendário 1 / 0,02 = **50** forjas (era 33,3, uma em 50); épico e lendário 51,7 (era 35,0). Multiplique por 1,5 a coluna "custo esperado de 1 lendário" abaixo; as demais seções (poder por raridade, variância das substats) não dependem das chances e continuam valendo. Selos: 3 por temporada x 2/12 = 0,5 lendária esperada.
 
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
@@ -23,7 +25,7 @@ Métrica de "valor real de combate": a **margem do duelo** P = (tempo que o her�
 | D2 | Build "tudo em um atributo" contra o balanceado (níveis 30 e 60) | melhor concorrente: tudo STR no 60 com profundidade -2 % e materiais +17 %; nenhuma passa de +25 % nos dois eixos | R3 já vale. Sem mudança. |
 | D3 | Limites e estouro | crítico: `Math.min(1, ...)` só na CP, o combate real nunca chega a 100 % (arma T6 24 % + substats); intervalo de ataque 600 ms com AGI 300 (o piso de 400 ms nunca é atingido); resistência assintótica | Sem estouro alcançável. Sem mudança. |
 | E1 | Curva de tiers | Ouro ref. por ponto de CP ganho: T1 3,5; T2 2,3; **T3 7,2 (3,1x o T2)**; T4 dourado 8,5; T4 dragão 15,0; T5 17,3; T6 20,2 | T2 -> T3 passa de 2,5x (primeiro tier que pede gema, essência, caçada e punho de ébano). Não alterei receitas (mexe nos dias de progressão da R5); fica como pendência para o diretor. |
-| E2 | Dourado x dragão (tier 4) | dourado: CP +176 por 1 489 Ouro ref.; dragão: +360 por 5 382. O T5 só aceita o dragão como ingrediente | Os dois são jogáveis (o dourado é a opção barata, nível 50), mas o dourado é um beco sem saída: não alimenta o T5. Informativo; sem mudança. |
+| E2 | Dourado x dragão (tier 4) | dourado: CP +176 por 1 489 Ouro ref.; dragão: +360 por 5 382. O T5 só aceita o dragão como ingrediente | Os dois são jogáveis (o dourado é a opção barata, nível 50), mas o dourado é um beco sem saída: não alimenta o T5. **Corrigido na Rodada 10:** o dragão é feito do dourado (uma cadeia: aço > dourado > dragão > voidsteel > abissal); o dourado deixa de ser beco sem saída e nenhuma peça é pior que outra mais barata. |
 | F1 | Refino | +1..+3 custam 50-150 Ouro; +4 já custa ~760-880 ref. por par; +8 ~8,6-9,1 mil ref. por par, sempre +12 a +28 CP por passo (~4-6 %) | Do +4 em diante o refino custa 17x a 200x mais Ouro por CP do que forjar o tier seguinte (7 Ouro ref. por CP no T3). Está dominado enquanto o tier seguinte estiver disponível; funciona como sumidouro de fim de tier. Fica como pendência. |
 | F2 | Gemas | T3+4: rubi +0,9 % CP, safira +3,3 %, esmeralda +5,5 % (mesmo custo de 2 fragmentos); T6+4: rubi +1,5 %, safira +2,8 %, esmeralda +1,9 % | O rubi (+15 % de dano crítico) é estritamente dominado nos dois pontos. Proposta: +30 %. |
 
@@ -424,15 +426,15 @@ CP de um herói de nível 100 (balanceado, +0) com cada par comum; `ΔCP` é o g
 
 | Tier | Arma (dano / crítico) | Armadura (HP / resist.) | CP (nv 100) | ΔCP vs anterior | Custo da receita (Ouro ref.) | Cadeia | Ouro ref. por ponto de CP ganho |
 | --- | --- | --- | --: | --: | --: | --: | --: |
-| T1 | 12 / 3% | 40 / 3% | 720 | +100 (16.1%) | 353 | 353 | 3.52 |
-| T2 | 30 / 6% | 90 / 6% | 855 | +135 (18.8%) | 310 | 1015 | 2.30 |
-| T3 | 65 / 10% | 160 / 10% | 1089 | +234 (27.4%) | 1687 | 3717 | 7.21 |
-| T4g | 90 / 14% | 220 / 13% | 1265 | +176 (16.2%) | 1489 | 5205 | 8.46 |
-| T4d | 120 / 18% +queima | 260 / 15% | 1449 | +360 (33.1%) | 5382 | 9099 | 14.95 |
-| T5 | 160 / 20% +queima | 340 / 17% | 1684 | +235 (16.2%) | 4057 | 13156 | 17.26 |
-| T6 | 220 / 24% +queima | 440 / 20% | 2030 | +346 (20.5%) | 6974 | 20129 | 20.15 |
+| T1 | 12 / 3% | 40 / 3% | 840 | +113 (15.5%) | 454 | 454 | 4.01 |
+| T2 | 30 / 6% | 90 / 6% | 993 | +153 (18.2%) | 673 | 1580 | 4.40 |
+| T3 | 65 / 10% | 160 / 10% | 1302 | +309 (31.1%) | 3036 | 4616 | 9.82 |
+| T4g | 90 / 14% | 220 / 13% | 1506 | +204 (15.7%) | 3798 | 8414 | 18.62 |
+| T4d | 120 / 18% +queima | 280 / 16% | 1800 | +498 (38.2%) | 5382 | 13796 | 10.81 |
+| T5 | 160 / 20% +queima | 360 / 18% | 2054 | +254 (14.1%) | 15669 | 29465 | 61.69 |
+| T6 | 240 / 24% +queima | 485 / 22% | 2582 | +528 (25.7%) | 11468 | 40932 | 21.72 |
 
-(T4 dragão é comparado ao T3; T5 ao T4 dragão, que é o ingrediente da receita do T5.)
+(T4 dragão é comparado ao T3; T5 ao T4 dragão, que é o ingrediente da receita do T5. Tabela regerada na Rodada 10: a arma e a armadura do tier 6 subiram para 240 / 485 e o dragão passou a ser feito do dourado.)
 
 ## F. Refino (+1..+8) e gemas
 
@@ -521,7 +523,7 @@ Razão maior / menor do Δln P: nível 20: 1.65 · nível 30: 1.07 · nível 60:
 | voidsteel_plate | 25% | 70 | 51 | 7.6% | 7.87% | 4.3% | +0.05 |
 | abyssal_bulwark | 28% | 90 | 74 | 7.4% | 7.67% | 4.6% | +0.00 |
 
-Linha dragão contra a dourada no tier 4 (par comum +0, sem relíquia): nível 50: dourado 821, dragão 985 (20.0%) · nível 60: dourado 914, dragão 1091 (19.4%). Custo do par (receita do tier, Ouro de referência): dourado 1489, dragão 5382.
+Linha dragão contra a dourada no tier 4 (par comum +0, sem relíquia): nível 50: dourado 883, dragão 1086 (23.0%) · nível 60: dourado 998, dragão 1218 (22.0%). Custo do par (receita do tier, Ouro de referência): dourado 3798, dragão 5382. Desde a Rodada 10 o dragão é feito DO dourado (receita: 1 peça dourada + escamas + Runas), então o custo real do par dragão inclui o par dourado.
 
 # Adendo da rodada 6: escudos, machados e relíquias de chefe
 
@@ -574,6 +576,84 @@ Quatro relíquias empilháveis, só por queda (4% por vitória sobre o chefe do 
 
 **Valor da trilha (seção M do mesmo relatório).** Ouro de referência (materiais por `baseGoldValue`, Fragmento = 2, gema = 2 Fragmentos, poções = insumos + ouro da receita, ticket expresso = 100 por hora, catalisador = 400, selo = 1 500, escritura = metade do primeiro degrau do Baú): **Grátis 9 551; Premium 15 438, dos quais 4 896 são selos e escrituras (10 542 sem eles)**, fora o emblema, a moldura e o título, que não têm preço. Contra o dia médio do jogador simulado (cenário A, mediana de 20 seeds: ouro + valor de referência dos materiais): mediana dos dias 1 a 14 = 2 531 (ouro 623 + materiais 1 908), então a trilha premium vale **6,1 dias médios (4,2 sem os exclusivos)**; contra o dia 14 sozinho (ouro 387 + materiais 4 080 = 4 467), 3,5 dias (2,4). O alvo de 6 a 10 dias só se alcança pela média; subir mais exigiria ouro que o jogo não tem como absorver (as barras e minérios valem poucas moedas de referência por unidade), por isso a generosidade a mais está nos exclusivos.
 
+
+## N. Passos de tier por linha (Rodada 10)
+
+`Poder` = quanto a peça (comum +4) soma à CP de um herói de referência (nível 60, conjunto do tier 3 em +4) sobre o mesmo herói com o slot vazio (o inicial, em arma e armadura); `passo` = poder da peça / poder da peça anterior da MESMA linha. Meta: cada tier vale 20 a 35% mais que o anterior (os primeiros passos são maiores porque o tier 1 parte quase do zero).
+
+| Linha | Peça | Tier | Atributos | Poder | Passo |
+| --- | --- | --: | --- | --: | --: |
+| sword | bronze_dagger | T1 | 12 dano · 3.0% crít. | 16.9% | - |
+| sword | iron_short_sword | T2 | 30 dano · 6.0% crít. | 37.3% | x2.20 |
+| sword | steel_greatsword | T3 | 65 dano · 10.0% crít. | 71.0% | x1.91 |
+| sword | gilded_warblade | T4 | 90 dano · 14.0% crít. | 93.7% | x1.32 |
+| sword | dragon_flameblade | T4 | 120 dano · 18.0% crít. · queima | 122.4% | x1.31 |
+| sword | voidsteel_blade | T5 | 160 dano · 20.0% crít. · queima | 150.5% | x1.23 |
+| sword | abyssal_greatblade | T6 | 240 dano · 24.0% crít. · queima | 201.2% | x1.34 |
+| axe | bronze_hatchet | T1 | 13 dano · 1.5% crít. | 16.8% | - |
+| axe | iron_battleaxe | T2 | 32 dano · 3.0% crít. | 37.3% | x2.22 |
+| axe | steel_greataxe | T3 | 70 dano · 5.0% crít. | 70.9% | x1.90 |
+| axe | gilded_waraxe | T4 | 100 dano · 7.0% crít. | 94.5% | x1.33 |
+| axe | voidsteel_cleaver | T5 | 187 dano · 10.0% crít. | 151.2% | x1.60 |
+| axe | abyssal_reaver | T6 | 288 dano · 12.0% crít. | 204.4% | x1.35 |
+| armor | bronze_leather | T1 | 40 PV · 3.0% resist. | 4.6% | - |
+| armor | iron_chainmail | T2 | 90 PV · 6.0% resist. | 9.2% | x2.00 |
+| armor | steel_plate | T3 | 160 PV · 10.0% resist. · 20% reflexo | 19.1% | x2.08 |
+| armor | gilded_aegis | T4 | 220 PV · 13.0% resist. · 21% reflexo | 24.5% | x1.28 |
+| armor | dragon_scale_armor | T4 | 280 PV · 16.0% resist. · 23% reflexo | 30.0% | x1.22 |
+| armor | voidsteel_plate | T5 | 360 PV · 18.0% resist. · 25% reflexo | 36.4% | x1.21 |
+| armor | abyssal_bulwark | T6 | 485 PV · 22.0% resist. · 28% reflexo | 46.4% | x1.28 |
+| helmet | bronze_helm | T1 | 20 PV · 0.7% resist. | 2.1% | - |
+| helmet | iron_helm | T2 | 40 PV · 1.3% resist. | 3.5% | x1.68 |
+| helmet | steel_helm | T3 | 70 PV · 1.9% resist. | 5.6% | x1.57 |
+| helmet | gilded_helm | T4 | 109 PV · 2.6% resist. | 8.2% | x1.47 |
+| helmet | voidsteel_helm | T5 | 153 PV · 3.2% resist. | 11.0% | x1.34 |
+| helmet | abyssal_helm | T6 | 192 PV · 3.8% resist. | 13.5% | x1.23 |
+| gloves | leather_gloves | T1 | 4 dano · 2.0% crít. | 4.3% | - |
+| gloves | iron_gauntlets | T2 | 7 dano · 2.5% crít. | 6.1% | x1.42 |
+| gloves | steel_gauntlets | T3 | 13 dano · 3.0% crít. | 9.3% | x1.53 |
+| gloves | gilded_gauntlets | T4 | 18 dano · 3.5% crít. | 12.1% | x1.30 |
+| gloves | voidsteel_gauntlets | T5 | 28 dano · 4.0% crít. | 17.4% | x1.44 |
+| gloves | abyssal_gauntlets | T6 | 35 dano · 4.5% crít. | 21.0% | x1.21 |
+| boots | leather_boots | T1 | 12 PV · 6.5% resist. | 3.5% | - |
+| boots | iron_greaves | T2 | 22 PV · 8.0% resist. | 4.6% | x1.30 |
+| boots | steel_greaves | T3 | 35 PV · 10.0% resist. | 6.0% | x1.31 |
+| boots | gilded_greaves | T4 | 50 PV · 12.0% resist. | 7.6% | x1.26 |
+| boots | voidsteel_greaves | T5 | 68 PV · 15.0% resist. | 9.7% | x1.28 |
+| boots | abyssal_greaves | T6 | 88 PV · 17.8% resist. | 11.9% | x1.22 |
+| ring | copper_ring | T1 | 6.0% crít. · +15% dano crít. | 4.9% | - |
+| ring | silver_ring | T2 | 7.0% crít. · +20% dano crít. | 5.9% | x1.20 |
+| ring | gold_ring | T3 | 9.0% crít. · +26% dano crít. | 7.5% | x1.27 |
+| ring | ruby_ring | T4 | 10.5% crít. · +33% dano crít. | 9.1% | x1.21 |
+| ring | obsidian_ring | T5 | 12.5% crít. · +42% dano crít. | 11.3% | x1.24 |
+| ring | abyssal_ring | T6 | 14.5% crít. · +50% dano crít. | 13.3% | x1.18 |
+| shield | bronze_buckler | T1 | 20 PV · 4.0% resist. | 3.2% | - |
+| shield | iron_shield | T2 | 36 PV · 6.0% resist. | 4.9% | x1.52 |
+| shield | steel_kite_shield | T3 | 52 PV · 7.6% resist. · 3% reflexo | 6.8% | x1.41 |
+| shield | gilded_shield | T4 | 76 PV · 9.5% resist. · 6% reflexo | 9.4% | x1.38 |
+| shield | voidsteel_shield | T5 | 104 PV · 11.5% resist. · 8% reflexo | 12.1% | x1.28 |
+| shield | abyssal_shield | T6 | 138 PV · 14.0% resist. · 9% reflexo | 15.2% | x1.26 |
+
+### Únicos contra a gêmea forjada do tier atual na origem
+
+Poder da peça única (comum, sem a substat garantida) / poder da gêmea. Meta: 10 a 15%.
+
+| Único | Origem | Tier (gêmea) | Atributos | Poder / gêmea |
+| --- | --- | --- | --- | --: |
+| demon_fang_dagger | zone:demon_glade | T2 (iron_short_sword) | 35 dano · 6.5% crít. | x1.14 |
+| demonhide_vest | zone:demon_glade | T2 (iron_chainmail) | 103 PV · 6.5% resist. | x1.12 |
+| bloodbound_cleaver | zone:blood_marsh | T3 (steel_greatsword) | 75 dano · 10.8% crít. | x1.12 |
+| bloodvein_plate | zone:blood_marsh | T3 (steel_plate) | 184 PV · 10.8% resist. · 22% reflexo | x1.12 |
+| bone_ward | zone:blood_marsh | T3 (steel_kite_shield) | 56 PV · 8.7% resist. · 3% reflexo | x1.10 |
+| riftwalker_boots | zone:demon_rift | T4 (gilded_greaves) | 54 PV · 13.8% resist. | x1.11 |
+| shadow_hood | zone:demon_rift | T4 (gilded_helm) | 125 PV · 2.8% resist. | x1.12 |
+| abyss_heart_ring | zone:blood_abyss | T6 (abyssal_ring) | 16.7% crít. · +54% dano crít. | x1.13 |
+| bonecrusher_maul | zone:blood_abyss | T6 (abyssal_greatblade) | 276 dano · 25.9% crít. · queima | x1.10 |
+| goblin_king_crown | bossFloor:25 | T3 (steel_helm) | 81 PV · 2.1% resist. | x1.14 |
+| warchief_gauntlets | bossFloor:50 | T4 (gilded_gauntlets) | 21 dano · 3.8% crít. | x1.14 |
+| warden_bulwark | bossFloor:50 | T4 (gilded_shield) | 82 PV · 10.9% resist. · 6% reflexo | x1.10 |
+| lich_soul_ring | bossFloor:75 | T5 (obsidian_ring) | 14.4% crít. · +45% dano crít. | x1.12 |
+| overlord_greataxe | bossFloor:100 | T6 (abyssal_reaver) | 331 dano · 13.0% crít. | x1.10 |
 
 ## Seção I — Habilidades (Rodada 7, números finais)
 

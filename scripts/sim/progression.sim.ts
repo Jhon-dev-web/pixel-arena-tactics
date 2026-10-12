@@ -58,12 +58,32 @@ import { buildHero } from './ladder';
 import { DaySnapshot, FirstEvent, Player, PlayerOptions } from './player';
 import { allGearGates } from './professions';
 import { ORE_TIERS } from '../../src/game/ores';
+import { getGear } from '../../src/game/gear';
+import { SET_DEFS } from '../../src/game/setBonuses';
 import { WOOD_TIERS } from '../../src/game/woodcutting';
 import { PLANTS } from '../../src/game/garden';
 
 // Diagnostic overrides while tuning, as JSON: SIM_T='{"battle":{"boss50HpMult":0.8},"heroSkills":{"greedGold":0.04}}' npm run sim
 if (process.env.SIM_T) {
   for (const [group, vals] of Object.entries(JSON.parse(process.env.SIM_T) as Record<string, Record<string, number>>)) Object.assign((T as unknown as Record<string, Record<string, number>>)[group], vals);
+}
+
+// SIM_GEAR='{"steel_greatsword":{"bone_fragment":30,"_items":{"iron_short_sword":1},"_cost":250,"_level":25}}': replaces quantities of the recipe materials (and, with _items / _cost / _level, the
+// piece ingredients, the Gold price and the level gate) of those pieces for the run (tuning a recipe without editing it).
+// SIM_SETS='{"steel":[{"attackSpeedBonus":0.05},{"critMultBonus":0.2}]}': replaces the effects of a set family (setBonuses.ts SET_DEFS) for the run.
+if (process.env.SIM_GEAR) {
+  for (const [id, over] of Object.entries(JSON.parse(process.env.SIM_GEAR) as Record<string, Record<string, unknown>>)) {
+    const { _items, _cost, _level, ...mats } = over as { _items?: Record<string, number>; _cost?: number; _level?: number } & Record<string, number>;
+    const g = getGear(id);
+    const r = g.recipe!;
+    r.materials = { ...r.materials, ...mats } as typeof r.materials;
+    if (_items) r.items = _items;
+    if (_cost !== undefined) g.cost = _cost;
+    if (_level !== undefined) r.requiredLevel = _level;
+  }
+}
+if (process.env.SIM_SETS) {
+  for (const [f, effects] of Object.entries(JSON.parse(process.env.SIM_SETS) as Record<string, (typeof SET_DEFS)['steel']['effects']>)) (SET_DEFS as Record<string, { effects: unknown }>)[f].effects = effects;
 }
 
 // SIM_NO_UNIQUES=1: no unique drop at all (Hunting zones and boss uniques), the control of 'the sim must not rely on uniques' (Rodada 9)
@@ -764,7 +784,24 @@ describe('progression simulation', () => {
     console.log(`\nPasse: armazém ${tun.capHours} h · multiplicador ${tun.dropRateMultiplier} · bolsa +${Math.round(tun.bagBonusPct * 100)}%\n\n` + passAdvantage(a, p).join('\n') + '\n');
   });
 
-  it.skipIf(process.env.SIM_PASS_ONLY === '1')(`plays ${DAYS} days x ${SEEDS} seeds, in several scenarios, and prints the report`, () => {
+  // Diagnostic: SIM_FAST=1 plays only scenario A (and the Pass owner with SIM_FAST_PASS=1, the no-skills control with SIM_FAST_Z=1) and prints the goals, the progression, the firsts and the slot timeline.
+  it.runIf(process.env.SIM_FAST === '1')('fast: scenario A only', () => {
+    const a: Run[] = [];
+    const pass: Run[] = [];
+    const bare: Run[] = [];
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      a.push(playOne(seed, {}));
+      if (process.env.SIM_FAST_PASS === '1') pass.push(playOne(seed, { pass: true }));
+      if (process.env.SIM_FAST_Z === '1') bare.push(playOne(seed, { skills: 'none' }));
+    }
+    const curve = enemyCurve();
+    const text = ['### Metas', '', ...metas(a, a, curve.worst), '### Cenário A', '', ...report(a, ['progress', 'firsts']), '### Linha do tempo por slot', '', ...slotTimeline(a)];
+    if (pass.length) text.push('### Passe', '', ...passAdvantage(a, pass));
+    if (bare.length) text.push('### Habilidades', '', ...skillComparison([{ label: 'Guerreiro (A)', runs: a }], bare));
+    console.log('\n' + text.join('\n') + '\n');
+  });
+
+  it.skipIf(process.env.SIM_PASS_ONLY === '1' || process.env.SIM_FAST === '1')(`plays ${DAYS} days x ${SEEDS} seeds, in several scenarios, and prints the report`, () => {
     const started = performance.now();
     const a: Run[] = [];
     const c: Run[] = [];

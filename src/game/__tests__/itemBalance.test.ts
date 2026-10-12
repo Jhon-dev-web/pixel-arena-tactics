@@ -141,6 +141,14 @@ describe('R5: every crafted tier is a real upgrade', () => {
     });
   }
 
+  it('chain rule: one piece of the previous tier, except the tier-2 weapon / armor (two bronze ones)', () => {
+    for (const g of GEAR.filter((x) => x.recipe?.items && !x.unique)) {
+      const n = Object.values(g.recipe!.items!)[0];
+      const twoOf = g.tier === 2 && (g.slot === 'weapon' || g.slot === 'armor');
+      expect(n, g.id).toBe(twoOf ? 2 : 1);
+    }
+  });
+
   it('no piece is strictly worse than another piece of its slot that costs the same or less to make', () => {
     // the old gilded sword / armor were weaker than the dragon ones and cost more hunting materials; the dragon pieces now need the gilded one
     const dragon = ['dragon_flameblade', 'dragon_scale_armor'];
