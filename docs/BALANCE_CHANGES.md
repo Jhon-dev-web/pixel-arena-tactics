@@ -246,7 +246,7 @@ Capacete, luvas, botas e anel passam a ser slots **instanciados** (raridade, sub
 | lich_soul_ring | ring | 5 | crít. 9.9%, dano crít. +35% | chefe do andar 75 | 8% por vitória |
 | overlord_greataxe | weapon | 6 | dano 242, crít. 24% | chefe do andar 100 | 8% por vitória |
 
-Únicos: instanciados, a raridade é sorteada na hora do drop com a tabela normal 60/25/12/3, **um slot extra de substat** garantido (lendário = 4), nunca forjados (sem receita), podem ser desmontados (devolvem o material da gêmea forjada, `salvageLike`), refinados, reforjados, descartados. Atributos = a peça forjada do tier normal de onde cai, +10 % no atributo principal (dano nas armas e luvas, PV na armadura e capacete, resistência nas botas, chance de crítico no anel).
+Únicos (Rodada 9: tabela agora 63/25/10/2, 1 único a cada ~25 dias por zona, chefes 3%; os números históricos abaixo são os de antes): instanciados, a raridade é sorteada na hora do drop com a tabela normal 60/25/12/3, **um slot extra de substat** garantido (lendário = 4), nunca forjados (sem receita), podem ser desmontados (devolvem o material da gêmea forjada, `salvageLike`), refinados, reforjados, descartados. Atributos = a peça forjada do tier normal de onde cai, +10 % no atributo principal (dano nas armas e luvas, PV na armadura e capacete, resistência nas botas, chance de crítico no anel).
 
 - **Caça** (4 zonas, 2 únicos cada): sorteados em cada vitória dentro do modelo econômico, com a mesma fração `f` dos materiais (um build mais rápido não multiplica), em um fluxo aleatório separado (a Caça fica idêntica bit a bit). Sem multiplicador de profundidade, sub-nível ou Passe. Calibrado com `computeHuntingStatus` (rolls econômicos/h ~200 / 167 / 107 / 135): dois únicos por zona dão **1 único a cada ~4 dias de 6 h/dia** de caça na zona (teste: 0,6 a 1,7 por 24 h). Não ocupam espaço da Bolsa de Caça. Ficam congelados na recompensa pendente; no claim viram peças guardadas, e as que **não cabem na Mochila continuam na recompensa pendente** (ouro/XP/materiais já pagos e zerados) até o jogador abrir espaço. Isso bloqueia iniciar nova caça enquanto houver único pendente, como qualquer recompensa pendente.
 - **Chefes** (25 / 50 / 75 / 100): 8 % por vitória (`T.battle.uniqueBossChance`), repetível, mesmo em derrota depois de limpar o chefe. A peça é entregue mesmo com a Mochila cheia (a Mochila pode mostrar acima da capacidade até o jogador abrir espaço), para nunca perder o drop.
@@ -872,3 +872,24 @@ O jogador sem habilidades continua chegando ao andar 50 por volta do dia 17 (alv
 2. **Primeiro dia (clava e trapos).** Com o equipamento inicial STR vale 3,0 e VIT 3,2 por ponto no nível 5 contra 0,73 do AGI (razão 4,3; 3,7 no nível 10): o limite de 2,5 só vale para o herói com tier 1 em diante. Para fechar seria preciso cortar o dano plano de STR, o que custa CP e atrasa o jogo todo.
 3. **Respec grátis de atributos.** Hoje é livre e ilimitado; se a ideia é que a escolha pese, cobrar como o respec de habilidades (grátis uma vez, Ouro depois) é uma mudança de `attrChange`, sem tocar em dados. Não adicionei nada.
 4. **Divisão recomendada.** Um botão "distribuição sugerida" (35/30/20/15 por nível, a política da simulação) ajudaria o jogador novo; custo pequeno (uma função pura e um botão), não adicionei.
+
+
+## Rodada 9 — fluxo de materiais
+
+Detalhe, tabelas e método em `docs/MATERIAL_FLOW.md` (medição no commit 1, antes/depois na seção 6). Resumo do que mudou:
+
+**Materiais de caça (receitas e sumidouros).**
+- Cada receita de equipamento dos tiers 1 a 6 passou a pedir os materiais de caça da zona do tier, em quantidade calculada para um conjunto completo de 7 peças (cadeia inteira) custar **2,4 / 4,2 / 11,3 / 22,2 / 33 / 42,3 horas de caça** nos tiers 1 a 6 (antes 0,5 / 0,9 / 1,9 / 2,4 / 3,5 / 4,3). Conjunto de tier 1: 21 → 91 Farrapos; tier 3: 73 / 11 / 8 / 19 / 0 / 4 → 311 / 237 / 31 / 180 / 200 / 33 (Farrapo, Garra, Núcleo, Osso, Sangue, Cristal).
+- Curtume 20 → 8 de Ouro por Couro. Melhorias 3 a 8 do Baú pedem Couro, Osso, Garra e Sangue. Refino +4 a +8 gasta os materiais de caça do tier da peça (`refineHuntMaterials`).
+- Chance dos raros −30% (Núcleo 1,0 → 0,7% e 2,5 → 1,75%; Cristal 1,5 → 1,05% e 3,0 → 2,1%; Chifre 2,0 → 1,4%; Coração 2,5 → 1,75%); as receitas foram recalculadas junto.
+- Não feito: Oficina de campo (sem desenho que mude o veredito sem interface nova, decisão pedida ao diretor), corte de comuns, mineração/lenha dos tiers 5 e 6.
+
+**Raridades e únicos mais difíceis (vão ser vendidos).**
+- Tabela da forja 60 / 25 / 12 / 3 → **63 / 25 / 10 / 2**. Selo do Ferreiro: 80 / 20 → **83,3% épica / 16,7% lendária**, 0,6 → **0,5 lendária esperada por temporada**. Custo esperado de um lendário na forja: 33,3 → **50** forjas do mesmo item (épico + lendário 35,0 → 51,7).
+- Únicos de caça: chance base de cada entrada ~7× menor, dimensionada para **um único de qualquer tipo a cada ~25 dias de 6 h/dia** na zona do estágio (antes ~4 dias); específico ~50 dias, específico Épico ~500, específico Lendário ~2 500. Únicos de chefe 8% → 3% por vitória; relíquias de chefe 4% → 3%.
+
+**Vínculo ao equipar.** Toda instância de equipamento tem o campo opcional `bound`: ligado para sempre na primeira vez em que a peça é equipada (desequipar não desliga; forjar, desmontar, refinar, reforjar e reparar não mexem). Saves antigos: o que está equipado carrega vinculado, o que está na mochila não. `isTradeable(instância)` (`gearInstances.ts`) é a única regra do futuro mercado: não vinculada **e** (épica ou lendária **ou** o molde é único). Relíquias empilháveis, materiais e consumíveis nunca são negociáveis. Interface: marca discreta nos itens (◆ negociável, cadeado vinculado) e linha "Negociável / Vinculado / Não negociável" no detalhe; equipar pela primeira vez uma peça negociável pede confirmação uma vez. Ver `docs/INVENTORY.md`.
+
+**Metas de progressão (cenário A).** Nível 13 / 27 / 47 nos dias 1 / 3 / 14, primeira peça forjada no dia 2, chefe 25 no dia 5. **Chegada ao andar 50: mediana 13 → 17 (16 → 19 sem nenhum único; a primeira seed dia 8 → 13)**, fora da faixa 12–15: metade é a saída dos únicos (o simulador de antes recebia um a cada ~3 dias), metade são as receitas maiores. Monstros não foram retunados (`hpGrowth`/`dmgGrowth` menores só tiraram 0,5 dia). Decisão pendente do diretor.
+
+Ferramentas novas: `npm run sim:flow` (livro-razão por material, Runas, gemas, únicos, custo de conjunto e herói novo), `npm run sim:recipes` (calcula as quantidades das receitas a partir das horas-alvo), `SIM_NO_UNIQUES=1 npm run sim` (progressão sem nenhum único).

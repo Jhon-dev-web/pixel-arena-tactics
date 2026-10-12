@@ -30,7 +30,7 @@ export const REFINING_RECIPES: RefiningRecipe[] = [
   { id: 'smelt_silver', station: 'furnace', output: 'silver_ingot', outputQty: 1, input: { silver: 5 }, cost: 25, requiredLevel: 25 },
   { id: 'smelt_gold', station: 'furnace', output: 'gold_bar', outputQty: 1, input: { gold_ore: 5 }, cost: 15, requiredLevel: 50 },
   { id: 'smelt_obsidian', station: 'furnace', output: 'refined_obsidian', outputQty: 1, input: { obsidian: 5 }, cost: 10, requiredLevel: 75 },
-  { id: 'tan_leather', station: 'tannery', output: 'leather', outputQty: 1, input: { leather_scrap: 3 }, cost: 20, requiredLevel: 1 },
+  { id: 'tan_leather', station: 'tannery', output: 'leather', outputQty: 1, input: { leather_scrap: 3 }, cost: 8, requiredLevel: 1 },
   {
     id: 'synth_essence',
     station: 'alchemy',

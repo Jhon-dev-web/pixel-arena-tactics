@@ -109,6 +109,8 @@ export interface DayLedger {
   // Runas (the `shards` currency) and gems earned / spent today, by source or use.
   // Hunting by place: hours and accepted units per material for each zone:depth the player hunted today.
   hunt: Record<string, { hours: number; units: Record<string, number> }>;
+  // Unique pieces the hunts delivered today, by `zone:templateId:rarity`.
+  uniques: Record<string, number>;
   currency: { shardsIn: Record<string, number>; shardsOut: Record<string, number>; gemsIn: Record<string, number>; gemsOut: Record<string, number> };
 }
 
@@ -126,7 +128,7 @@ export interface MatFlow {
 const newFlow = (): Record<string, MatFlow> =>
   Object.fromEntries(MATERIALS.map((d) => [d.id, { produced: 0, refined: 0, left: 0, residual: 0, consumed: { forge: 0, upgrade: 0, alchemy: 0, stash: 0, delivery: 0, workshop: 0, dust: 0, merchant: 0, discard: 0, other: 0 }, stockEnd: 0 }]));
 
-const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} } });
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, uniques: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} } });
 
 export interface DaySnapshot {
   day: number;
@@ -553,6 +555,10 @@ export class Player {
           hz.units[m] = (hz.units[m] ?? 0) + q;
           this.ledger.mats[rarityOf(m)] += q;
           this.ledger.matsValue += q * baseGoldValue(m);
+        }
+        for (const u of p.uniques) {
+          const k = `${p.zoneId}:${u.templateId}:${u.rarity}`;
+          this.ledger.uniques[k] = (this.ledger.uniques[k] ?? 0) + 1;
         }
         for (const l of plan.leftBehind) {
           this.ledger.lost += l.count;

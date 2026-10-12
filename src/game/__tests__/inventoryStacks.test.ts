@@ -19,7 +19,7 @@ import { applyHuntClaim, applyHuntStart, applyHuntStop, huntClaimBlocked, planHu
 import { PendingHuntReward } from '../huntSession';
 import { emptyMaterials, MATERIALS, MaterialId } from '../materials';
 import { CONSUMABLES } from '../consumables';
-import { GEAR, isInstancedSlot } from '../gear';
+import { GEAR, getGear, isInstancedSlot } from '../gear';
 import { createGearInstance } from '../gearInstances';
 import { applyClaimGathering, applyStartGathering } from '../gathering';
 import { applyHarvest } from '../gardenActions';
@@ -365,15 +365,15 @@ describe('every other source follows its own full-bag rule', () => {
 
   it('salvage (deliberate): the salvaged piece frees its own slot; a refund that still would not fit (counting the chance of a bonus Essence) is blocked with a reason', () => {
     const base = defaultSave();
-    const piece = (rarity: 'common' | 'rare') => createGearInstance('iron_short_sword', { id: 'gi_s', origin: 'craft', rarity, substats: [] }); // refunds 1 iron
+    const piece = (rarity: 'common' | 'rare') => createGearInstance('bronze_helm', { id: 'gi_s', origin: 'craft', rarity, substats: [] }); // refunds one kind of material (the scrap)
     const bagWith = (rarity: 'common' | 'rare'): SaveData => withSlotsUsed({ ...base, gearInstances: { ...base.gearInstances, gi_s: piece(rarity) } }, DEFAULT_INVENTORY_CAPACITY);
     const common = bagWith('common');
     expect(inventorySlotsUsed(common)).toBe(DEFAULT_INVENTORY_CAPACITY);
-    expect(salvageBlockReason(common, 'gi_s')).toBeNull(); // 1 slot freed, 1 iron needs 1
+    expect(salvageBlockReason(common, 'gi_s')).toBeNull(); // 1 slot freed, the scrap needs 1
     const done = applySalvage(common, 'gi_s')!;
-    expect(done.save.materials.iron).toBe(1);
+    expect(done.save.materials.leather_scrap).toBe(Math.floor((getGear('bronze_helm').recipe!.materials!.leather_scrap as number) * 0.45));
     expect(inventorySlotsUsed(done.save)).toBe(DEFAULT_INVENTORY_CAPACITY);
-    // a rare piece could also return Essence: iron + essence = 2 new types, 1 slot freed
+    // a rare piece could also return Essence: scrap + essence = 2 new types, 1 slot freed
     const rare = bagWith('rare');
     expect(salvageBlockReason(rare, 'gi_s')).toBe('bag');
     expect(applySalvage(rare, 'gi_s')).toBeNull();

@@ -4,6 +4,7 @@ import { applyHuntClaim, applyHuntStart, applyHuntStop, requestHuntStart } from 
 import { applyEquipInstance, applyForge, applyUpgrade, createGearInstance } from '../gearInstances';
 import { emptyMaterials } from '../materials';
 import { getGear, MAX_REFINE, upgradeCost } from '../gear';
+import { recipeStock } from './recipeStock';
 
 const START = new Date('2026-10-10T09:00:00Z').getTime();
 const HOUR = 3600 * 1000;
@@ -73,7 +74,7 @@ describe('forge / refine reducers', () => {
   const stocked = (): SaveData => ({
     ...fresh(),
     gold: 500,
-    materials: { ...emptyMaterials(), copper_bar: 1, leather: 3, wood_handle_common: 1 },
+    materials: { ...emptyMaterials(), copper_bar: 1, leather: 10, wood_handle_common: 1 },
   });
 
   it('crafting charges exactly the recipe + gold and creates one instance; the input save is untouched', () => {
@@ -84,13 +85,13 @@ describe('forge / refine reducers', () => {
     expect(JSON.stringify(s)).toBe(before);
     expect(res.save!.gold).toBe(500 - 40);
     expect(res.save!.materials.copper_bar).toBe(0);
-    expect(res.save!.materials.leather).toBe(2);
+    expect(res.save!.materials.leather).toBe(10 - (getGear('bronze_dagger').recipe!.materials!.leather as number));
     expect(res.save!.materials.wood_handle_common).toBe(0);
     expect(res.instance!.templateId).toBe('bronze_dagger');
     expect(Object.keys(res.save!.gearInstances)).toHaveLength(Object.keys(s.gearInstances).length + 1);
   });
 
-  const tier2Mats = { ...emptyMaterials(), iron: 9, leather_scrap: 9, wood_handle_oak: 9 };
+  const tier2Mats = { ...emptyMaterials(), ...recipeStock('iron_short_sword', 3) } as ReturnType<typeof emptyMaterials>;
   it.each<[string, string, number, (s: SaveData) => SaveData, string]>([
     ['not enough gold', 'bronze_dagger', 1, (s) => ({ ...s, gold: 39 }), 'gold'],
     ['a missing material', 'bronze_dagger', 1, (s) => ({ ...s, materials: { ...s.materials, copper_bar: 0 } }), 'materials'],
@@ -104,7 +105,7 @@ describe('forge / refine reducers', () => {
   });
 
   it('a tier-2 craft consumes exactly two unequipped lower-tier pieces, never the equipped one', () => {
-    let s: SaveData = { ...stocked(), gold: 9999, materials: { ...emptyMaterials(), iron: 3, leather_scrap: 2, wood_handle_oak: 1 } };
+    let s: SaveData = { ...stocked(), gold: 9999, materials: { ...emptyMaterials(), ...recipeStock('iron_short_sword') } as ReturnType<typeof emptyMaterials> };
     const daggers = [1, 2, 3].map((n) => createGearInstance('bronze_dagger', { id: `gi_d${n}`, origin: 'craft', rarity: 'common', substats: [] }));
     s = { ...s, gearInstances: { ...s.gearInstances, ...Object.fromEntries(daggers.map((d) => [d.id, d])) } };
     s = applyEquipInstance(s, 'gi_d1')!;
@@ -116,7 +117,7 @@ describe('forge / refine reducers', () => {
   });
 
   it('upgrades are guaranteed through +3, then roll; a failure still charges but never loses the piece', () => {
-    let s: SaveData = { ...fresh(), gold: 100_000, materials: { ...emptyMaterials(), iron: 99, refining_dust: 99 }, shards: 9 };
+    let s: SaveData = { ...fresh(), gold: 100_000, materials: { ...emptyMaterials(), iron: 99, refining_dust: 99, leather_scrap: 99, demon_claw: 99, demon_core: 99 }, shards: 9 };
     const dagger = createGearInstance('bronze_dagger', { id: 'gi_up', origin: 'craft', rarity: 'common', substats: [] });
     s = { ...s, gearInstances: { ...s.gearInstances, gi_up: dagger } };
     for (let lvl = 0; lvl < 3; lvl++) {

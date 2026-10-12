@@ -24,12 +24,12 @@ export interface StashUpgradeDef {
 export const STASH_UPGRADES: StashUpgradeDef[] = [
   { gold: 100, materials: { wood_handle_common: 4, copper_bar: 3 } },
   { gold: 250, materials: { wood_handle_common: 8, copper_bar: 6 } },
-  { gold: 600, materials: { wood_handle_oak: 5, copper_bar: 8 } },
-  { gold: 1_200, materials: { wood_handle_oak: 8, steel: 3 } },
-  { gold: 2_500, materials: { wood_handle_ebony: 5, steel: 5 } },
-  { gold: 4_500, materials: { wood_handle_ebony: 8, silver_ingot: 4 } },
-  { gold: 8_000, materials: { wood_handle_elven: 5, gold_bar: 3 } },
-  { gold: 14_000, materials: { wood_handle_ancient: 4, refined_obsidian: 2 } },
+  { gold: 600, materials: { wood_handle_oak: 5, copper_bar: 8, leather: 6 } },
+  { gold: 1_200, materials: { wood_handle_oak: 8, steel: 3, leather: 8, bone_fragment: 24 } },
+  { gold: 2_500, materials: { wood_handle_ebony: 5, steel: 5, leather: 12, bone_fragment: 40, demon_claw: 24 } },
+  { gold: 4_500, materials: { wood_handle_ebony: 8, silver_ingot: 4, leather: 16, bone_fragment: 60, demon_claw: 40, concentrated_blood: 30 } },
+  { gold: 8_000, materials: { wood_handle_elven: 5, gold_bar: 3, leather: 20, bone_fragment: 80, demon_claw: 60, concentrated_blood: 50 } },
+  { gold: 14_000, materials: { wood_handle_ancient: 4, refined_obsidian: 2, leather: 24, bone_fragment: 100, demon_claw: 80, concentrated_blood: 70 } },
 ];
 
 export const MAX_STASH_LEVEL = STASH_UPGRADES.length;

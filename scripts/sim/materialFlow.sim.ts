@@ -15,6 +15,7 @@ import { slotsForQty } from '../../src/game/inventory';
 import { GEAR } from '../../src/game/gear';
 import { GEMS } from '../../src/game/gems';
 import { HUNTING_ZONES, HUNTING_DEPTHS } from '../../src/game/huntingZones';
+import { RARITIES } from '../../src/game/rarity';
 import { MATERIALS, MaterialId } from '../../src/game/materials';
 import { REFINING_RECIPES } from '../../src/game/refining';
 import { ORE_TIERS } from '../../src/game/ores';
@@ -146,6 +147,36 @@ function zoneTable(runs: Run[]): string[] {
     rows.push([k, `${hours.length}/${runs.length}`, num(median(hours), 1), mats.map((m) => `${m} ${num(per(m), 1)}/h`).join(' · ')]);
   }
   return table(['zona:profundidade', 'seeds que caçaram', 'horas (mediana, 21 dias)', 'unidades por hora (mediana)'], rows);
+}
+
+// Uniques delivered by the hunts, per zone: per 100 simulated days, per hunting hour and the expected days of a normal 6 h a day for ANY unique of the zone, for one specific
+// unique, and for a specific unique at Epic and at Legendary rarity (rarity is rolled with the forge table, rarity.ts).
+function uniqueTable(runs: Run[]): string[] {
+  const rows: string[][] = [];
+  const days = runs[0].length;
+  for (const z of HUNTING_ZONES) {
+    const entries = z.uniques ?? [];
+    const hours = runs.reduce((a, r) => a + r.reduce((x, d) => x + Object.entries(d.ledger.hunt).filter(([k]) => k.startsWith(z.id + ':')).reduce((y, [, v]) => y + v.hours, 0), 0), 0);
+    const found = runs.reduce((a, r) => a + r.reduce((x, d) => x + Object.entries(d.ledger.uniques).filter(([k]) => k.startsWith(z.id + ':')).reduce((y, [, v]) => y + v, 0), 0), 0);
+    if (hours <= 0 || entries.length === 0) continue;
+    const perHour = found / hours;
+    const sum = entries.reduce((a, e) => a + e.chance, 0);
+    const rollsPerHour = perHour / sum; // implied economic rolls per hour (chance x rolls = uniques)
+    const expectedAny = perHour > 0 ? 1 / (perHour * 6) : Infinity; // days of 6 h of hunting for ANY unique of the zone, from the measured rate
+    const rarityShare = (r: string) => RARITIES.find((x) => x.id === r)!.chance;
+    rows.push([
+      z.id,
+      num(hours / runs.length, 0),
+      String(found),
+      num((found / (runs.length * days)) * 100, 1),
+      num(rollsPerHour, 0),
+      Number.isFinite(expectedAny) ? num(expectedAny, 0) : '-',
+      Number.isFinite(expectedAny) ? num(expectedAny * entries.length, 0) : '-',
+      Number.isFinite(expectedAny) ? num((expectedAny * entries.length) / rarityShare('epic'), 0) : '-',
+      Number.isFinite(expectedAny) ? num((expectedAny * entries.length) / rarityShare('legendary'), 0) : '-',
+    ]);
+  }
+  return table(['zona', 'horas de caça por jogador', 'únicos achados (todas as seeds)', 'únicos por 100 dias de jogo', 'rolagens/h implícitas', 'dias (6 h/dia) para QUALQUER único', 'dias para um único ESPECÍFICO', '... específico Épico', '... específico Lendário'], rows);
 }
 
 function currencyTable(runs: Run[]): string[] {
@@ -294,6 +325,7 @@ describe('material flow', () => {
     out.push('## Caça por lugar, dono do Passe', '', ...zoneTable(p));
     out.push('## Mineração, lenha, horta e estações, cenário A: fluxo por material', '', ...detailTable(a, others(a), true));
     out.push('## Mineração, lenha, horta e estações, dono do Passe: fluxo por material', '', ...detailTable(p, others(p), true));
+    out.push('## Únicos por zona (cenário A, horas de caça reais do jogador simulado)', '', ...uniqueTable(a));
     out.push('## Runas e gemas, cenário A', '', ...currencyTable(a));
     out.push('## Runas e gemas, dono do Passe', '', ...currencyTable(p));
     out.push('## Custo de um conjunto completo (7 peças, cadeia inteira), por tier', '', ...setTables());

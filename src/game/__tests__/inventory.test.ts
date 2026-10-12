@@ -95,7 +95,7 @@ describe('capacity is respected by the add / overflow helpers', () => {
   it('forge refuses to create an instance in a full bag, charging nothing', () => {
     const base = defaultSave();
     const full: SaveData = withSlotsUsed(
-      { ...base, gold: 10_000, materials: { ...emptyMaterials(), copper_bar: 5, leather: 5, wood_handle_common: 5 } },
+      { ...base, gold: 10_000, materials: { ...emptyMaterials(), copper_bar: 5, leather: 20, wood_handle_common: 5 } },
       DEFAULT_INVENTORY_CAPACITY,
     );
     expect(isBagFull(full)).toBe(true);
@@ -103,7 +103,7 @@ describe('capacity is respected by the add / overflow helpers', () => {
     expect(res.ok).toBe(false);
     expect(res.reason).toBe('capacity');
     // one slot free -> it works, and the bag ends exactly full
-    const roomy = withSlotsUsed({ ...full, materials: { ...emptyMaterials(), copper_bar: 5, leather: 5, wood_handle_common: 5 } }, DEFAULT_INVENTORY_CAPACITY - 1);
+    const roomy = withSlotsUsed({ ...full, materials: { ...emptyMaterials(), copper_bar: 5, leather: 20, wood_handle_common: 5 } }, DEFAULT_INVENTORY_CAPACITY - 1);
     const ok = applyForge(roomy, 'bronze_dagger', { level: 1 });
     expect(ok.ok).toBe(true);
     expect(inventorySlotsUsed(ok.save!)).toBeLessThanOrEqual(inventoryCapacity(ok.save!));

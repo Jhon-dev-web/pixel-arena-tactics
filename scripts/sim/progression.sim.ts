@@ -52,6 +52,7 @@ import { dungeonEnemyKindForFloor, MAX_DUNGEON_FLOOR, recommendedCpForFloor } fr
 import { getEnemyDef } from '../../src/game/enemies';
 import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
 import T from '../../src/game/tunables';
+import { HUNTING_ZONES } from '../../src/game/huntingZones';
 import { mulberry32, runDungeon, withSeededRandom } from './driver';
 import { buildHero } from './ladder';
 import { DaySnapshot, FirstEvent, Player, PlayerOptions } from './player';
@@ -63,6 +64,12 @@ import { PLANTS } from '../../src/game/garden';
 // Diagnostic overrides while tuning, as JSON: SIM_T='{"battle":{"boss50HpMult":0.8},"heroSkills":{"greedGold":0.04}}' npm run sim
 if (process.env.SIM_T) {
   for (const [group, vals] of Object.entries(JSON.parse(process.env.SIM_T) as Record<string, Record<string, number>>)) Object.assign((T as unknown as Record<string, Record<string, number>>)[group], vals);
+}
+
+// SIM_NO_UNIQUES=1: no unique drop at all (Hunting zones and boss uniques), the control of 'the sim must not rely on uniques' (Rodada 9)
+if (process.env.SIM_NO_UNIQUES === '1') {
+  for (const z of HUNTING_ZONES) z.uniques = [];
+  (T.battle as unknown as Record<string, number>).uniqueBossChance = 0;
 }
 
 const SEEDS = Number(process.env.SIM_SEEDS ?? 20);
