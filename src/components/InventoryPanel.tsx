@@ -6,7 +6,7 @@ import { SaveData } from '../game/engine';
 import { GEAR, GearItem, getGear, isInstancedSlot } from '../game/gear';
 import { canAffordReforge, getReforgeCost } from '../game/reforge';
 import T from '../game/tunables';
-import { clampRefine, isInstanceEquipped, listGearInstances, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
+import { type GearInstance, clampRefine, isInstanceEquipped, isTradeable, listGearInstances, needsBindConfirm, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
@@ -33,6 +33,13 @@ import StashHint from './StashHint';
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
 const conText = (k: string): string => t(`consumables.${k}`);
+
+// The quiet tag on a tile: only where it tells the player something - a piece that could be sold (not bound yet), or an Epic / Legendary / unique piece that is
+// already bound. Common and rare forged pieces are never tradeable anyway and carry no tag on the tile.
+const tradeTag = (inst: GearInstance): 'tradeable' | 'bound' | null => {
+  if (isTradeable(inst)) return 'tradeable';
+  return inst.bound && (inst.rarity === 'epic' || inst.rarity === 'legendary' || !!getGear(inst.templateId)?.unique) ? 'bound' : null;
+};
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
@@ -77,6 +84,8 @@ export default function InventoryPanel({
   const [pane, setPane] = useState<'bag' | 'stash'>('bag');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmSalvage, setConfirmSalvage] = useState(false);
+  // Bind on equip: wearing a TRADEABLE piece for the first time binds it for good, so that one case asks first (the panel's own inline confirm, like discard).
+  const [confirmEquip, setConfirmEquip] = useState(false);
   const [expandOpen, setExpandOpen] = useState(false);
 
   // Escape closes the bag-expansion dialog first (stopPropagation keeps App's Escape handler from also
@@ -110,6 +119,7 @@ export default function InventoryPanel({
     setSelected({ src, kind, id });
     setConfirmDiscard(false);
     setConfirmSalvage(false);
+    setConfirmEquip(false);
   };
 
   const fromStash = selected?.src === 'stash';
@@ -149,6 +159,16 @@ export default function InventoryPanel({
 
   const salvageReason = selected?.kind === 'gear' && !fromStash ? salvageBlockReason(save, selected.id) : null;
   const salvagePreview = selectedGear ? getSalvageReturn(selectedGear) : null;
+
+  const handleEquip = () => {
+    if (!selected) return;
+    if (selected.kind === 'gear' && needsBindConfirm(save, selected.id) && !confirmEquip) {
+      setConfirmEquip(true);
+      return;
+    }
+    setConfirmEquip(false);
+    onEquip(selected.id);
+  };
 
   const handleSalvage = () => {
     if (!selected || !selectedGear) return;
@@ -286,6 +306,11 @@ export default function InventoryPanel({
                   {refineTag(clampRefine(inst.upgrade)).trim()}
                   {equipped ? ' ✓' : ''}
                 </span>
+                {tradeTag(inst) && (
+                  <span className={`inv-trade-tag ${tradeTag(inst)}`} title={t(`inventory.${tradeTag(inst) === 'tradeable' ? 'tradeable' : 'bound'}`)} aria-label={t(`inventory.${tradeTag(inst) === 'tradeable' ? 'tradeable' : 'bound'}`)}>
+                    {tradeTag(inst) === 'tradeable' ? '◆' : '🔒'}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -380,6 +405,11 @@ export default function InventoryPanel({
             {selectedRarity !== 'common' && (
               <div className={`rarity-line ${rarClass(selectedRarity)}`}>{t(`rarity.${rarityDef(selectedRarity).nameKey}`)}</div>
             )}
+            {selectedInstance && (
+              <div className={`trade-line ${selectedInstance.bound ? 'bound' : isTradeable(selectedInstance) ? 'tradeable' : 'untradeable'}`}>
+                {t(`inventory.${selectedInstance.bound ? 'bound' : isTradeable(selectedInstance) ? 'tradeable' : 'untradeable'}`)}
+              </div>
+            )}
             {selectedSubs.length > 0 && (
               <div className="substat-list">
                 {selectedSubs.map((s, i) => (
@@ -403,10 +433,23 @@ export default function InventoryPanel({
                   {t('inventory.unequip')}
                 </button>
               ) : (
-                <button className="craft-btn" onClick={() => onEquip(selected!.id)} data-ui>
+                <button className="craft-btn" onClick={handleEquip} data-ui>
                   {t('inventory.equip')}
                 </button>
               ))}
+            {confirmEquip && (
+              <div className="bind-confirm" role="alertdialog" aria-label={t('inventory.bindTitle')}>
+                <div className="bind-confirm-text">{t('inventory.bindConfirm')}</div>
+                <div className="bind-confirm-actions">
+                  <button className="craft-btn" onClick={handleEquip} data-ui>
+                    {t('inventory.equip')}
+                  </button>
+                  <button className="inv-discard" onClick={() => setConfirmEquip(false)} data-ui>
+                    {t('inventory.bindCancel')}
+                  </button>
+                </div>
+              </div>
+            )}
             {selectedInstance &&
               selectedRarity !== 'common' &&
               (() => {

@@ -14,6 +14,7 @@ import {
   migrateGearV1toV2,
   resolveEquipped,
   sanitizeEquippedInstance,
+  bindEquipped,
   sanitizeGearInstances,
   viewDurability,
   viewRarity,
@@ -1034,6 +1035,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
       const extraSlotIds = Object.fromEntries(
         INSTANCED_SLOTS.filter((slot) => slot !== 'weapon' && slot !== 'armor').map((slot) => [slot, isV2 ? sanitizeEquippedInstance((parsed.equipped as unknown as Record<string, unknown> | undefined)?.[slot], slot, gearInstances) : null]),
       ) as Pick<EquippedGear, 'helmet' | 'gloves' | 'boots' | 'ring' | 'shield'>;
+      // Bind on equip: whatever is worn when the save loads counts as bound (a save from before the rule, or any save).
+      gearInstances = bindEquipped(gearInstances, [weaponId, armorId, ...Object.values(extraSlotIds)]);
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
       if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));

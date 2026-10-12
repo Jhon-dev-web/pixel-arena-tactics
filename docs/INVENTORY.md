@@ -120,3 +120,22 @@ Rodam no carregamento (`legacyPouch.ts`), em um save que ainda tem `huntPouch`:
 
 `inventoryStacks.test.ts` (matemática de pilhas, regra de colocação, resgate com espaço parcial, migração da bolsa, comportamento de cada fonte),
 `stashMerchant.test.ts` (Baú, melhorias, preços, varredura de arbitragem, orçamento e virada do dia, descartar, `usesOf`), além dos testes antigos adaptados.
+
+## 8. Itens negociáveis e vínculo
+
+Preparação para o mercado de jogadores (integração com a Steam, ainda não existe). As decisões do dono: só equipamento forjado de raridade alta e drops raros/únicos são vendáveis; material comum nunca.
+
+- Toda **instância** de equipamento tem o campo opcional `bound`. Equipar a peça pela primeira vez liga o campo **para sempre**; desequipar não o desliga. Forjar não vincula; desmontar, refinar, reforjar e reparar funcionam igual numa peça vinculada ou não.
+- Saves antigos: toda instância que está equipada quando o save carrega passa a vinculada; o que está na mochila continua sem vínculo. Os itens iniciais (clava e trapos) já nascem vinculados.
+- **`isTradeable(instância)`** (`src/game/gearInstances.ts`) é a regra única, e o mercado vai chamar só ela: **não vinculada E (raridade Épica ou Lendária OU o molde é um único)**. Tudo o mais não é negociável: equipamento comum ou raro, peças vinculadas, relíquias empilháveis, materiais e consumíveis.
+
+| raridade | molde forjado, sem vínculo | molde forjado, vinculado | único, sem vínculo | único, vinculado |
+| --- | --- | --- | --- | --- |
+| comum | não | não | **sim** | não |
+| rara | não | não | **sim** | não |
+| épica | **sim** | não | **sim** | não |
+| lendária | **sim** | não | **sim** | não |
+
+- Interface (`InventoryPanel`): no detalhe da peça, uma linha discreta ("Negociável" em verde, "Vinculado" ou "Não negociável" em cinza); no ladrilho, só onde informa: um losango verde nas peças negociáveis ainda sem vínculo e um cadeado nas épicas, lendárias e únicas já vinculadas. Peças comuns e raras forjadas não ganham marca no ladrilho.
+- **Confirmação**: equipar pela primeira vez uma peça negociável pergunta uma vez ("Equipar vincula este item a você. Ele não poderá mais ser vendido no mercado. Equipar mesmo assim?", Equipar / Cancelar). Peças que não são negociáveis equipam direto. Não existe "equipar o melhor" automático na interface; só o simulador equipa sozinho (e ele não tem mercado).
+- Testes: `bindOnEquip.test.ts` (a marca na primeira vez, sobrevive a desequipar e a salvar/carregar, regra dos saves antigos, tabela verdade por raridade x único x vínculo, confirmação só para peça negociável, desmontar/refinar/reforjar/reparar iguais, relíquias nunca negociáveis).

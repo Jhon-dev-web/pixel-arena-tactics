@@ -41,6 +41,9 @@ export interface GearInstance {
   reforgeCount: number;
   createdAt: number;
   origin: GearOrigin;
+  // Bind on equip: set for good the first time the piece is worn (applyEquipInstance); unequipping never clears it. Forging, salvaging, refining, reforging and
+  // repairing neither set nor need it. A bound piece can never be listed on the player market (isTradeable). Absent = not bound.
+  bound?: boolean;
 }
 
 export function isInstancedItem(item: GearItem | undefined | null): boolean {
@@ -151,6 +154,7 @@ export function sanitizeGearInstance(raw: unknown, key: string): GearInstance | 
     reforgeCount: clampInt(r.reforgeCount, 0, Number.MAX_SAFE_INTEGER, 0),
     createdAt: Number.isFinite(Number(r.createdAt)) ? Number(r.createdAt) : 0,
     origin: ORIGINS.includes(r.origin as GearOrigin) ? (r.origin as GearOrigin) : 'migration',
+    ...(r.bound === true ? { bound: true } : {}),
   };
 }
 
@@ -162,6 +166,28 @@ export function sanitizeGearInstances(raw: unknown): Record<GearInstanceId, Gear
     if (inst) out[key] = inst;
   }
   return out;
+}
+
+// Old saves (and any save): every instance that is currently worn counts as bound; what sits in the bag stays as it was.
+export function bindEquipped(
+  instances: Record<GearInstanceId, GearInstance>,
+  equippedIds: (GearInstanceId | null | undefined)[],
+): Record<GearInstanceId, GearInstance> {
+  let out = instances;
+  for (const id of equippedIds) {
+    const inst = id ? out[id] : undefined;
+    if (inst && !inst.bound) out = { ...out, [id as string]: { ...inst, bound: true } };
+  }
+  return out;
+}
+
+// ONE rule decides what can be sold on the player market (the Steam market integration will call this and nothing else): a gear instance is tradeable when it is
+// NOT bound AND (it is Epic or Legendary OR its template is a unique drop). Everything else is not tradeable: common and rare forged gear, bound pieces, and
+// everything that is not a gear instance (stackable relics, materials, consumables). Standing decision of the owner: only forged gear of high rarity and rare /
+// unique drops are sellable, common materials never.
+export function isTradeable(instance: GearInstance): boolean {
+  if (instance.bound) return false;
+  return instance.rarity === 'epic' || instance.rarity === 'legendary' || !!getGear(instance.templateId)?.unique;
 }
 
 // An equipped instance pointer is only valid if that instance exists and belongs to that slot.
@@ -183,7 +209,8 @@ export function createStarterGear(): { instances: Record<GearInstanceId, GearIns
   const mk = (slot: InstancedSlot): GearInstanceId => {
     const templateId = STARTER_TEMPLATES[slot] as string;
     const id = `st_${templateId}`;
-    instances[id] = createGearInstance(templateId, { id, origin: 'starter', rarity: 'common', substats: [] });
+    // the starters are worn from the first second, so they load as bound like every worn piece
+    instances[id] = { ...createGearInstance(templateId, { id, origin: 'starter', rarity: 'common', substats: [] }), bound: true };
     return id;
   };
   return { instances, weaponId: mk('weapon'), armorId: mk('armor') };
@@ -486,7 +513,15 @@ export function applyEquipInstance(save: SaveData, id: GearInstanceId): SaveData
   const hit = resolveGearInstance(save, id);
   if (!hit || !isInstancedSlot(hit.item.slot)) return null;
   if (save.equipped[hit.item.slot] === id) return null;
-  return { ...save, equipped: { ...save.equipped, [hit.item.slot]: id } };
+  // Wearing a piece binds it for good (the UI asks first when the piece is tradeable, see needsBindConfirm).
+  const gearInstances = hit.instance.bound ? save.gearInstances : { ...save.gearInstances, [id]: { ...hit.instance, bound: true } };
+  return { ...save, gearInstances, equipped: { ...save.equipped, [hit.item.slot]: id } };
+}
+
+// True when equipping this instance would bind a piece that could otherwise be sold: the one case the UI must confirm.
+export function needsBindConfirm(save: SaveData, id: GearInstanceId): boolean {
+  const inst = save.gearInstances[id];
+  return !!inst && isTradeable(inst);
 }
 
 // Slot -> null (weapon / armor: "bare hands", the zero-stat starter template; the extra slots: simply empty).
