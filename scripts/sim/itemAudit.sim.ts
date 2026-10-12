@@ -16,6 +16,7 @@ import { GEMS, GemId, emptyGems, socketsForTier } from '../../src/game/gems';
 import { TIER_EXTRAS } from './ladder';
 import { HUNTING_ZONES, getHuntingZone } from '../../src/game/huntingZones';
 import { duel, duelVs, hero, MAIN_TIERS, PAIRS, repFloor, tierNum } from './duel';
+import { LINES, pieceGain } from './tierSteps';
 import { STARTER_SPECS, ALLOCS, ALLOC_LABEL, ATTRS, AUDIT_SPECS, Alloc, STACK_POINTS, VALUE_STEP, auditHero, buildTable, marginalValue, pointValue, specOf, spread } from './attrAudit';
 import { heroAttackIntervalMs } from '../../src/game/derivedStats';
 import { attrText } from '../../src/components/attrText';
@@ -541,6 +542,35 @@ describe('item balance audit', () => {
     const totPrem = BATTLE_PASS_TRACK.reduce((a, l) => a + rewardValue(l.premium), 0);
     const premExclusive = BATTLE_PASS_TRACK.reduce((a, l) => a + (exclusive(l.premium) ? rewardValue(l.premium) : 0), 0);
     P('| Trilha | Valor de referência | Do qual exclusivo (selos + escrituras) |', '| --- | --: | --: |', `| Grátis | ${Math.round(totFree)} | 0 |`, `| Premium | ${Math.round(totPrem)} | ${Math.round(premExclusive)} |`, `| Premium sem os exclusivos | ${Math.round(totPrem - premExclusive)} | - |`);
+    P('');
+
+    // ===== N. tier steps per line (Rodada 10) ==================================================================================
+    P('## N. Passos de tier por linha (Rodada 10)', '');
+    P('`Poder` = quanto a peça (comum +4) soma à CP de um herói de referência (nível 60, conjunto do tier 3 em +4) sobre o mesmo herói com o slot vazio (o inicial, em arma e armadura); `passo` = poder da peça / poder da peça anterior da MESMA linha. Meta: cada tier vale 20 a 35% mais que o anterior (os primeiros passos são maiores porque o tier 1 parte quase do zero).', '');
+    const statText = (g: GearItem): string => {
+      const parts: string[] = [];
+      if (g.damage) parts.push(`${g.damage} dano`);
+      if (g.maxHp) parts.push(`${g.maxHp} PV`);
+      if (g.critChance) parts.push(`${pct(g.critChance)} crít.`);
+      if (g.critMultBonus) parts.push(`+${pct(g.critMultBonus, 0)} dano crít.`);
+      if (g.resistance) parts.push(`${pct(g.resistance)} resist.`);
+      if (g.reflect) parts.push(`${pct(g.reflect, 0)} reflexo`);
+      if (g.burn) parts.push('queima');
+      return parts.join(' · ');
+    };
+    const nRows: string[] = [];
+    for (const [name, line] of Object.entries(LINES)) {
+      const gains = line.chain.map(pieceGain);
+      line.chain.forEach((id, i) => nRows.push(`| ${name} | ${id} | T${getGear(id).tier} | ${statText(getGear(id))} | ${pct(gains[i])} | ${i ? 'x' + f2(gains[i] / gains[i - 1]) : '-'} |`));
+    }
+    P('| Linha | Peça | Tier | Atributos | Poder | Passo |', '| --- | --- | --: | --- | --: | --: |', ...nRows);
+    P('');
+    P('### Únicos contra a gêmea forjada do tier atual na origem', '', 'Poder da peça única (comum, sem a substat garantida) / poder da gêmea. Meta: 10 a 15%.', '');
+    const uRows = GEAR.filter((g) => g.unique).map((u) => {
+      const twin = getGear(u.salvageLike as string);
+      return `| ${u.id} | ${JSON.stringify(u.source).replace(/[{}"]/g, '')} | T${u.tier} (${twin.id}) | ${statText(u)} | x${f2(pieceGain(u.id) / pieceGain(twin.id))} |`;
+    });
+    P('| Único | Origem | Tier (gêmea) | Atributos | Poder / gêmea |', '| --- | --- | --- | --- | --: |', ...uRows);
     P('');
 
     console.log('\n' + out.join('\n') + '\n');

@@ -56,7 +56,9 @@ describe('catalog cross-references', () => {
     for (const g of GEAR) {
       for (const sub of Object.keys(g.recipe?.items ?? {})) {
         expect(getGear(sub).slot).toBe(g.slot);
-        expect(getGear(sub).tier ?? 0).toBeLessThan(g.tier ?? 0);
+        // the dragon weapon / armor (tier 4) is made from the gilded piece of the same tier; every other step goes up one tier
+        if (g.materialKey === 'material_dragon') expect(getGear(sub).tier ?? 0).toBeLessThanOrEqual(g.tier ?? 0);
+        else expect(getGear(sub).tier ?? 0).toBeLessThan(g.tier ?? 0);
       }
     }
   });

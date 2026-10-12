@@ -9,7 +9,7 @@ import {
   playerMaxHp,
   SaveData,
 } from '../engine';
-import { GEAR, INSTANCED_SLOTS, getGear, isInstancedSlot } from '../gear';
+import { GEAR, INSTANCED_SLOTS, UNIQUE_MAIN_BOOST, UNIQUE_OTHER_BOOST, getGear, isInstancedSlot } from '../gear';
 import {
   applyDiscardInstance,
   applyDurabilityLoss,
@@ -97,11 +97,11 @@ describe('the four extra slots (helmet, gloves, boots, ring)', () => {
     expect(stat('iron_helm').maxHp).toBe(b0.maxHp + 40);
     expect(stat('iron_helm').reduction).toBeCloseTo(b0.reduction + 0.013, 9);
     expect(stat('iron_gauntlets').dmgBase).toBeGreaterThan(b0.dmgBase);
-    expect(stat('iron_gauntlets').critChance).toBeCloseTo(b0.critChance + 0.02, 9);
+    expect(stat('iron_gauntlets').critChance).toBeCloseTo(b0.critChance + (getGear('iron_gauntlets').critChance as number), 9);
     expect(stat('iron_greaves').reduction).toBeCloseTo(b0.reduction + 0.08, 9);
     expect(stat('iron_greaves').maxHp).toBe(b0.maxHp + 22);
-    expect(stat('silver_ring').critChance).toBeCloseTo(b0.critChance + 0.06, 9);
-    expect(stat('silver_ring').critMult).toBeCloseTo(b0.critMult + 0.2, 9);
+    expect(stat('silver_ring').critChance).toBeCloseTo(b0.critChance + (getGear('silver_ring').critChance as number), 9);
+    expect(stat('silver_ring').critMult).toBeCloseTo(b0.critMult + (getGear('silver_ring').critMultBonus as number), 9);
     expect(playerMaxHp(equipAll(base, ['iron_helm']))).toBe(b0.maxHp + 40);
   });
 
@@ -216,7 +216,7 @@ describe('content pack 1: catalog', () => {
     }
   });
 
-  it('14 uniques: drop-only, no recipe, flagged, with a source, stats = forged twin +10 % on the main stat', () => {
+  it('14 uniques: drop-only, no recipe, flagged, with a source, stats = forged twin +15 % on the main stat and +8 % on the others', () => {
     expect(uniques).toHaveLength(14);
     const main: Record<string, 'damage' | 'maxHp' | 'resistance' | 'critChance'> = { weapon: 'damage', armor: 'maxHp', helmet: 'maxHp', gloves: 'damage', boots: 'resistance', ring: 'critChance', shield: 'resistance' };
     for (const u of uniques) {
@@ -227,12 +227,18 @@ describe('content pack 1: catalog', () => {
       expect(twin.slot).toBe(u.slot);
       expect(u.tier).toBe(twin.tier);
       const m = main[u.slot];
-      const want = (twin[m] as number) * 1.1;
-      expect(Math.abs((u[m] as number) - want)).toBeLessThanOrEqual(m === 'damage' || m === 'maxHp' ? 0.5 : 0.0001);
-      for (const k of ['damage', 'maxHp', 'resistance', 'critChance', 'critMultBonus'] as const) if (k !== m) expect(u[k]).toBe(twin[k]);
+      for (const k of ['damage', 'maxHp', 'resistance', 'critChance', 'critMultBonus', 'reflect'] as const) {
+        const base = twin[k] as number | undefined;
+        if (!base) {
+          expect(u[k]).toBeUndefined();
+          continue;
+        }
+        const want = base * (k === m ? UNIQUE_MAIN_BOOST : UNIQUE_OTHER_BOOST);
+        expect(Math.abs((u[k] as number) - want), k + ' of ' + u.id).toBeLessThanOrEqual(k === 'damage' || k === 'maxHp' ? 0.5 : 0.0001);
+      }
     }
     const byTier = Object.fromEntries(uniques.map((u) => [u.id, u.tier]));
-    expect(byTier).toMatchObject({ demon_fang_dagger: 2, demonhide_vest: 2, bloodbound_cleaver: 3, bloodvein_plate: 3, riftwalker_boots: 4, shadow_hood: 4, abyss_heart_ring: 5, bonecrusher_maul: 5, goblin_king_crown: 2, warchief_gauntlets: 3, lich_soul_ring: 5, overlord_greataxe: 6, bone_ward: 3, warden_bulwark: 4 });
+    expect(byTier).toMatchObject({ demon_fang_dagger: 2, demonhide_vest: 2, bloodbound_cleaver: 3, bloodvein_plate: 3, riftwalker_boots: 4, shadow_hood: 4, abyss_heart_ring: 6, bonecrusher_maul: 6, goblin_king_crown: 3, warchief_gauntlets: 4, lich_soul_ring: 5, overlord_greataxe: 6, bone_ward: 3, warden_bulwark: 4 });
   });
 
   it('every unique is referenced by exactly one source (a zone or a boss)', () => {

@@ -400,16 +400,18 @@ describe('no dead gear fields', () => {
 // --- data, saves, display -------------------------------------------------------------------------------------------------------
 
 describe('the effects as data', () => {
-  it('armor reflect: steel plate 20%, gilded 20%, dragon 22%, voidsteel 25%, abyssal 28%; tiers 1-2 none', () => {
+  it('armor reflect: steel plate 20%, gilded 21%, dragon 23%, voidsteel 25%, abyssal 28%; tiers 1-2 none', () => {
     const r = (id: string) => getGear(id).reflect;
-    expect([r('steel_plate'), r('gilded_aegis'), r('dragon_scale_armor'), r('voidsteel_plate'), r('abyssal_bulwark')]).toEqual([0.2, 0.2, 0.22, 0.25, 0.28]);
+    expect([r('steel_plate'), r('gilded_aegis'), r('dragon_scale_armor'), r('voidsteel_plate'), r('abyssal_bulwark')]).toEqual([0.2, 0.21, 0.23, 0.25, 0.28]);
     for (const id of ['ragged_clothes', 'bronze_leather', 'iron_chainmail']) expect(r(id)).toBeUndefined();
   });
 
   it('uniques inherit burn and reflect from their forged twin', () => {
     expect(getGear('bonecrusher_maul').burn).toBe(true);
-    expect(getGear('overlord_greataxe').burn).toBe(true);
-    expect(getGear('bloodvein_plate').reflect).toBe(0.2);
+    // the greataxe is an AXE: it takes its twin's line (and no burn), not the sword's
+    expect(getGear('overlord_greataxe').burn).toBeUndefined();
+    expect(getGear('overlord_greataxe').line).toBe('axe');
+    expect(getGear('bloodvein_plate').reflect).toBeGreaterThanOrEqual(0.2);
     expect(getGear('demon_fang_dagger').burn).toBeUndefined();
   });
 
@@ -430,7 +432,7 @@ describe('the effects as data', () => {
     const text = (id: string) => gearStatLines(getGear(id)).map((l) => l.text).join(' | ');
     expect(text('dragon_flameblade')).toMatch(/6.*3/);
     expect(text('steel_plate')).toMatch(/20/);
-    expect(text('dragon_scale_armor')).toMatch(/22/);
+    expect(text('dragon_scale_armor')).toMatch(/23/);
     expect(text('ring_vitality')).toMatch(/0[.,]9/);
     expect(text('amulet_swiftness')).toMatch(/8/);
     expect(text('gilded_warblade')).not.toMatch(/\{/);

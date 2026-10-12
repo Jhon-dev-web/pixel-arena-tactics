@@ -11,7 +11,7 @@ import {
   SaveData,
   xpToReachLevel,
 } from '../engine';
-import { GEAR, GearItem, INSTANCED_SLOTS, MAX_DURABILITY, getGear, isInstancedSlot } from '../gear';
+import { GEAR, GearItem, INSTANCED_SLOTS, MAX_DURABILITY, UNIQUE_MAIN_BOOST, UNIQUE_OTHER_BOOST, getGear, isInstancedSlot } from '../gear';
 import {
   applyDurabilityLoss,
   applyEquipInstance,
@@ -218,7 +218,7 @@ describe('shield slot', () => {
 });
 
 describe('shield uniques', () => {
-  it('bone_ward drops in the Blood Marsh, warden_bulwark from the floor-50 boss next to warchief_gauntlets; +10 % resistance, one extra substat slot, never forged', () => {
+  it('bone_ward drops in the Blood Marsh, warden_bulwark from the floor-50 boss next to warchief_gauntlets; +15 % resistance, one extra substat slot, never forged', () => {
     expect(getHuntingZone('blood_marsh')!.uniques!.map((u) => u.itemId)).toContain('bone_ward');
     expect(UNIQUE_BOSS_DROPS[50]).toEqual(['warchief_gauntlets', 'warden_bulwark']);
     for (const [id, twin] of [['bone_ward', 'steel_kite_shield'], ['warden_bulwark', 'gilded_shield']] as const) {
@@ -227,9 +227,9 @@ describe('shield uniques', () => {
       expect(u.slot).toBe('shield');
       expect(u.recipe).toBeUndefined();
       expect(u.salvageLike).toBe(twin);
-      expect(u.resistance).toBeCloseTo((getGear(twin).resistance as number) * 1.1, 4);
-      expect(u.maxHp).toBe(getGear(twin).maxHp);
-      expect(u.reflect).toBe(getGear(twin).reflect);
+      expect(u.resistance).toBeCloseTo((getGear(twin).resistance as number) * UNIQUE_MAIN_BOOST, 4);
+      expect(u.maxHp).toBe(Math.round((getGear(twin).maxHp as number) * UNIQUE_OTHER_BOOST));
+      expect(u.reflect).toBeCloseTo((getGear(twin).reflect as number) * UNIQUE_OTHER_BOOST, 4);
       expect(applyForge({ ...defaultSave(), gold: 1e9 }, id, { level: 100 }).reason).toBe('unknown');
       expect(createGearInstance(id, { origin: 'drop', rarity: 'common' }).substats).toHaveLength(1);
       expect(createGearInstance(id, { origin: 'drop', rarity: 'legendary' }).substats).toHaveLength(4);
@@ -255,7 +255,7 @@ describe('shield uniques', () => {
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 describe('axes: the second weapon line', () => {
-  const axes = GEAR.filter((g) => g.line === 'axe');
+  const axes = GEAR.filter((g) => g.line === 'axe' && !g.unique);
   it('six forged axes, tiers 1-6, the level gate, recipe and cost of the sword of the tier; the previous-tier AXE is the upgrade input', () => {
     expect(axes.map((a) => a.id)).toEqual(IN_TIER_ORDER.map((k) => AXES[k]));
     for (const k of Object.keys(AXES)) {
@@ -525,7 +525,7 @@ describe('boss relics', () => {
 // ---------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------------------------
 describe('catalog: names, descriptions, icons of the content pack', () => {
-  const pack: GearItem[] = GEAR.filter((g) => g.slot === 'shield' || g.line === 'axe' || (g.slot === 'relic' && !g.recipe));
+  const pack: GearItem[] = GEAR.filter((g) => g.slot === 'shield' || (g.line === 'axe' && !g.unique) || (g.slot === 'relic' && !g.recipe));
   it('every new piece has pt and en names and digit-free descriptions, and an icon file', () => {
     const files = new Set(Object.keys(import.meta.glob('/public/assets/icons/*.png')));
     expect(pack).toHaveLength(6 + 2 + 6 + 4 + 1); // + the Season Relic (Adventurer Pass)
