@@ -10,6 +10,8 @@ import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
 import type { CombatStats } from '../../src/game/derivedStats';
 import T from '../../src/game/tunables';
 import { spendAttributePoints } from './driver';
+import { SET_DEFS } from '../../src/game/setBonuses';
+import { SET_FAMILIES } from '../../src/game/gear';
 
 // Weapon + armor of each tier and the character level that can craft them. Tier 4 has two pairs (gilded / dragon).
 export const PAIRS: Record<string, [string, string, number]> = {
@@ -21,6 +23,17 @@ export const PAIRS: Record<string, [string, string, number]> = {
   '5': ['voidsteel_blade', 'voidsteel_plate', 70],
   '6': ['abyssal_greatblade', 'abyssal_bulwark', 90],
 };
+// Runs fn with every set bonus switched off (no threshold is reachable). The piece-balance measures (what ONE piece is worth, the power budget of the extra slots,
+// the unique against its twin) are about the pieces; the set bonuses are a second layer on top of them and are measured on their own (setBonuses.test.ts).
+export function withoutSetBonuses<T>(fn: () => T): T {
+  const saved = SET_FAMILIES.map((f) => SET_DEFS[f].thresholds);
+  for (const f of SET_FAMILIES) SET_DEFS[f].thresholds = [];
+  try {
+    return fn();
+  } finally {
+    SET_FAMILIES.forEach((f, i) => (SET_DEFS[f].thresholds = saved[i]));
+  }
+}
 export const MAIN_TIERS = ['1', '2', '3', '4g', '5', '6'];
 export const tierNum = (k: string): number => Number(k[0]);
 

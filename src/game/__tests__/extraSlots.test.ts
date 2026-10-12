@@ -36,7 +36,7 @@ import { GearInstance } from '../gearInstances';
 import { UNIQUE_BOSS_DROPS, UniqueDrop, addUniqueInstance, rollBossUniques, rollUniqueDrop } from '../uniques';
 import T from '../tunables';
 import { withSeededRandom } from '../../../scripts/sim/driver';
-import { hero } from '../../../scripts/sim/duel';
+import { hero, withoutSetBonuses } from '../../../scripts/sim/duel';
 
 const EXTRA = ['helmet', 'gloves', 'boots', 'ring'] as const;
 // Content pack 2 adds the shield as a fifth extra slot (its own tests are in contentPack2.test.ts).
@@ -249,7 +249,8 @@ describe('content pack 1: catalog', () => {
     for (const [floor, ids] of Object.entries(UNIQUE_BOSS_DROPS)) for (const id of ids) expect(getGear(id).source).toEqual({ bossFloor: Number(floor) });
   });
 
-  it('power budget: the four extra pieces of a tier add about +28-40 % CP over weapon + armor of that tier', () => {
+  it('power budget: the four extra pieces of a tier add about +28-40 % CP over weapon + armor of that tier', () =>
+    withoutSetBonuses(() => {
     const SETS: Record<string, string[]> = {
       '1': ['bronze_helm', 'leather_gloves', 'leather_boots', 'copper_ring'],
       '2': ['iron_helm', 'iron_gauntlets', 'iron_greaves', 'silver_ring'],
@@ -265,7 +266,7 @@ describe('content pack 1: catalog', () => {
       expect(gain, `tier ${k}: +${(gain * 100).toFixed(1)} %`).toBeGreaterThanOrEqual(0.28);
       expect(gain, `tier ${k}: +${(gain * 100).toFixed(1)} %`).toBeLessThanOrEqual(0.4);
     }
-  });
+    }));
 
   it('cost: each new piece (recipe only, Gold + materials) is about 40-60 % of the same-tier armor', () => {
     const own = (id: string) => {

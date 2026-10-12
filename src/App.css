@@ -10533,3 +10533,67 @@ button[data-ui]:focus-visible {
   color: #ffd76a;
   font-weight: normal;
 }
+
+/* Set bonuses (components/SetBonus.tsx): quiet lines above the equipment cards, and a small note under an item / forge recipe. */
+.set-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.set-line {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border-left: 3px solid #4a3a5a;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0 8px 8px 0;
+  font-size: calc(var(--font-size) - 3px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.set-line.active {
+  border-left-color: #ffd76a;
+}
+.set-line-head {
+  color: #cdbfe6;
+}
+.set-line-title {
+  color: #8a7aa8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: calc(var(--font-size) - 5px);
+}
+.set-line.active .set-line-head {
+  color: #ffd76a;
+}
+.set-line-now {
+  color: #6fe08a;
+}
+.set-line-next {
+  color: #8a7aa8;
+}
+.set-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+  font-size: calc(var(--font-size) - 3px);
+  line-height: 1.35;
+}
+.set-note-family {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.set-note-title {
+  color: #ffd76a;
+}
+.set-note-step {
+  color: #8a7aa8;
+  padding-left: 8px;
+}
+.set-note-step.on {
+  color: #6fe08a;
+}

@@ -561,6 +561,29 @@
     "goldBonus": "Ouro extra",
     "xpBonus": "XP do personagem"
   },
+  "set": {
+    "title": "Conjunto",
+    "nextStep": "{n} peças",
+    "dragonCounts": "a peça de dragão conta aqui também",
+    "family": {
+      "bronze": "Bronze",
+      "iron": "Ferro",
+      "steel": "Aço",
+      "gilded": "Dourado",
+      "dragon": "Dragão",
+      "voidsteel": "Aço do Vazio",
+      "abyssal": "Abissal"
+    },
+    "effect": {
+      "attackSpeedBonus": "+{v}% velocidade de ataque",
+      "critMultBonus": "+{v}% dano crítico",
+      "resistance": "+{v}% defesa",
+      "hpRegenPct": "Regenera +{v}% da vida/s",
+      "damagePct": "+{v}% dano final",
+      "lifestealPct": "+{v}% roubo de vida",
+      "goldBonusPct": "+{v}% ouro"
+    }
+  },
   "shop": {
     "title": "Loja",
     "potionHp": "Poção de Vida Menor",

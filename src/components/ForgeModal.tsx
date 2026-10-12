@@ -35,6 +35,7 @@ import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
 import { AppearanceLine } from './HeroThumb';
+import { SetNote } from './SetBonus';
 import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
 import StashHint from './StashHint';
@@ -321,6 +322,7 @@ export default function ForgeModal({
                           <span className="craft-desc">{gearText(item.descKey)}</span>
                           <span className="craft-stats">{gearStatLines(item).map((l) => l.text).join(' · ')}</span>
                           <AppearanceLine item={item} />
+                          <SetNote item={item} save={save} />
                           {blockedByBag(item) && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
                           <div className="craft-req">
                             <span className="req-item">

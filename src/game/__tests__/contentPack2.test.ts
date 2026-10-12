@@ -43,7 +43,7 @@ import { socketsForTier } from '../gems';
 import T from '../tunables';
 import en from '../../locales/en.json';
 import pt from '../../locales/pt.json';
-import { duel, hero, repFloor } from '../../../scripts/sim/duel';
+import { duel, hero, repFloor, withoutSetBonuses } from '../../../scripts/sim/duel';
 import { TIER_EXTRAS } from '../../../scripts/sim/ladder';
 import { runDungeon, withSeededRandom } from '../../../scripts/sim/driver';
 
@@ -195,7 +195,8 @@ describe('shield slot', () => {
     expect(applyRepair(broken as SaveData, 't_abyssal_shield', false, 50)!.gearInstances.t_abyssal_shield.durability).toBe(MAX_DURABILITY);
   });
 
-  it('power budget: the shield adds about +7-9 % CP to the full six-slot set of its tier (and about +9-10 % to weapon + armor)', () => {
+  it('power budget: the shield adds about +7-9 % CP to the full six-slot set of its tier (and about +9-10 % to weapon + armor)', () =>
+    withoutSetBonuses(() => {
     for (const k of Object.keys(SHIELDS)) {
       const full = hero(k, 0, { extra: set6(k) });
       const gain = computeCP(hero(k, 0, { extra: [...set6(k), shieldOf(k)] })) / computeCP(full) - 1;
@@ -205,7 +206,7 @@ describe('shield slot', () => {
       expect(wa, `tier ${k} weapon + armor: +${(wa * 100).toFixed(1)} %`).toBeGreaterThanOrEqual(0.08);
       expect(wa, `tier ${k} weapon + armor: +${(wa * 100).toFixed(1)} %`).toBeLessThanOrEqual(0.11); // 0.105 before Rodada 8: with less attribute HP at low levels a flat shield is worth a little more
     }
-  });
+    }));
 
   it('reflect of armor + shield stays at most ~12 % of the damage dealt for a same-tier build on a same-tier floor', () => {
     for (const [lv, tk, sk] of [[25, '3', '3'], [50, '4g', '4g'], [50, '4d', '4g'], [70, '5', '5'], [90, '6', '6']] as [number, string, string][]) {
@@ -404,7 +405,8 @@ describe('boss relics', () => {
     }
   });
 
-  it('the Goblin Lucky Coin: +10 % gold from the Dungeon (the gold multiplier) and from Hunting, counted inside the 25 % gear cap', () => {
+  it('the Goblin Lucky Coin: +10 % gold from the Dungeon (the gold multiplier) and from Hunting, counted inside the 25 % gear cap', () =>
+    withoutSetBonuses(() => {
     const none = equippedSubstatTotals(h50).goldBonus;
     const coin = equippedSubstatTotals(withRelic(h50, 'goblin_lucky_coin')).goldBonus;
     expect(coin - none).toBe(10);
@@ -431,7 +433,7 @@ describe('boss relics', () => {
     expect(b.goldReady / a.goldReady).toBeLessThan(1.11);
     // the coin has no combat value, so it adds no CP
     expect(computeCP(withRelic(h50, 'goblin_lucky_coin'))).toBe(computeCP(h50));
-  });
+    }));
 
   it('drop roll: 3 % per victory over each of the four biome bosses only, independent of the unique roll', () => {
     expect(T.battle.relicBossChance).toBe(0.03);

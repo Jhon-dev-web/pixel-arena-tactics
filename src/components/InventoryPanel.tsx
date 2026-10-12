@@ -23,6 +23,7 @@ import { refineTag } from './gearLabel';
 import { gearStatLines } from './gearStats';
 import UniqueTag from './UniqueTag';
 import { AppearanceLine } from './HeroThumb';
+import { SetNote } from './SetBonus';
 import StashHint from './StashHint';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
@@ -402,6 +403,7 @@ export default function InventoryPanel({
                 </span>
               ))}
             </div>
+            <SetNote item={selectedGear} save={save} />
             {selectedRarity !== 'common' && (
               <div className={`rarity-line ${rarClass(selectedRarity)}`}>{t(`rarity.${rarityDef(selectedRarity).nameKey}`)}</div>
             )}

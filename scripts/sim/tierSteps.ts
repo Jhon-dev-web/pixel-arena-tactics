@@ -4,6 +4,7 @@ import { computeCP, defaultSave, SaveData, xpToReachLevel } from '../../src/game
 import { createGearInstance } from '../../src/game/gearInstances';
 import { getGear } from '../../src/game/gear';
 import { spendAttributePoints } from './driver';
+import { withoutSetBonuses } from './duel';
 import { TIER_EXTRAS, TIER_GEAR } from './ladder';
 
 // One chain per line, tier 1 .. 6 (the gilded / dragon fork of tier 4 is one chain, see gear.ts).
@@ -35,6 +36,10 @@ export function referenceHero(): SaveData {
 
 // CP gain of wearing `tpl` (common +4) in its slot over the empty slot, on the reference hero.
 export function pieceGain(tpl: string): number {
+  return withoutSetBonuses(() => pieceGainWithSets(tpl));
+}
+
+function pieceGainWithSets(tpl: string): number {
   const base = referenceHero();
   const slot = getGear(tpl).slot;
   const emptyEq = { ...base.equipped } as unknown as Record<string, string | null>;

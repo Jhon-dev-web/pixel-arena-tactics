@@ -56,14 +56,22 @@ export interface GearItem {
   salvageLike?: string;
   // Armor only: the hero sheet (heroLook order below) the hero is drawn with while wearing it. Set from ARMOR_LOOKS; a unique inherits its twin's.
   look?: HeroBaseLook;
+  // The crafted tier family this piece belongs to (set bonuses, setBonuses.ts). Set below for every instanced piece of tier 1 and up; a unique takes its twin's.
+  setFamily?: SetFamily;
 }
+
+// The seven crafted families: one per tier, plus the dragon pieces (the tier-4 weapon and armor made from the gilded ones). Names follow the pieces (gilded_*,
+// voidsteel_*, abyssal_*), not the materials.
+export const SET_FAMILIES = ['bronze', 'iron', 'steel', 'gilded', 'dragon', 'voidsteel', 'abyssal'] as const;
+export type SetFamily = (typeof SET_FAMILIES)[number];
+const FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'bronze', 2: 'iron', 3: 'steel', 4: 'gilded', 5: 'voidsteel', 6: 'abyssal' };
 
 // Every key a GEAR entry may carry. LIVE_STAT_FIELDS are the numeric / boolean fields that feed combat (engine.ts buildCombatStats, directly or via
 // gearInstances.equippedExtraStats); META_FIELDS are identity, cost and display data. gearEffects.test.ts checks every entry against both lists
 // and that equipping each live field really changes the combat stats, so a field nothing reads (burn, reflect, focusHpBonus and
 // attackStaminaReduction were dead data for a long time) cannot come back silently.
 export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct', 'xpBonusPct'] as const;
-export const META_FIELDS = ['look', 'id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line'] as const;
+export const META_FIELDS = ['setFamily', 'look', 'id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line'] as const;
 
 // Weapon, armor, helmet, gloves, boots, ring and shield are the INSTANCED slots: each owned piece is its own object with its own rarity, substats,
 // refine level, sockets and durability (see gearInstances.ts). Everything else (relics) stays a stackable template id.
@@ -274,6 +282,20 @@ for (const u of UNIQUE_DEFS) {
 }
 
 const GEAR_BY_ID: Record<string, GearItem> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
+
+// Set family of every instanced piece of tier 1 and up (relics and the tier-0 starters belong to none); a unique counts as its twin.
+for (const g of GEAR) {
+  if (g.slot === 'relic' || !(g.tier && g.tier >= 1)) continue;
+  const base = g.salvageLike ? GEAR_BY_ID[g.salvageLike] : g;
+  g.setFamily = base.materialKey === 'material_dragon' ? 'dragon' : FAMILY_BY_TIER[base.tier as number];
+}
+
+// The families a piece counts for: its own, and a dragon piece also counts as a gilded one (it is the gilded weapon / armor made better, and the family only has
+// a weapon and an armor, so it could never reach a three-piece bonus alone).
+export function setFamiliesOf(item: GearItem | null | undefined): SetFamily[] {
+  if (!item?.setFamily) return [];
+  return item.setFamily === 'dragon' ? ['dragon', 'gilded'] : [item.setFamily];
+}
 
 // Stackable gear every save always owns. The weapon / armor starters are instances now, created once
 // (gearInstances.createStarterGear) and never re-injected.

@@ -5,6 +5,7 @@ import { MaterialId, hasMaterials } from './materials';
 import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollRarityAtLeast, FORGE_SEAL_MIN_RARITY, rollSubstats, substatListTotals } from './rarity';
 import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salvage';
 import { addWithOverflow, fitsBag, stockIsEmpty } from './inventory';
+import { setBonuses } from './setBonuses';
 import type { SaveData } from './engine';
 
 // Gear instances: every weapon / armor / helmet / gloves / boots / ring / shield is its OWN object (rarity, substats, refine level, sockets, durability,
@@ -281,6 +282,16 @@ function equippedInstances(save: GearState): GearInstance[] {
   return out;
 }
 
+// The worn templates of the seven instanced slots (the relic is a stackable template, not one of them): the input of setBonuses (setBonuses.ts).
+export function equippedSetItems(save: GearState): GearItem[] {
+  const out: GearItem[] = [];
+  for (const slot of INSTANCED_SLOTS) {
+    const hit = resolveGearInstance(save, save.equipped[slot]);
+    if (hit && hit.item.slot === slot) out.push(hit.item);
+  }
+  return out;
+}
+
 export function equippedGemBonuses(save: GearState): GemBonuses {
   return equippedInstances(save).reduce((acc, inst) => addGemBonuses(acc, gemListBonuses(inst.sockets)), gemListBonuses([]));
 }
@@ -319,9 +330,10 @@ export function equippedExtraStats(save: GearState): ExtraSlotStats {
 
 export function equippedSubstatTotals(save: GearState): SubstatTotals {
   const total = equippedInstances(save).reduce((acc, inst) => addSubstatTotals(acc, substatListTotals(inst.substats)), substatListTotals([]));
-  // The Goblin Lucky Coin (a relic) goes into the same sum, so it counts inside the same cap.
+  // The Goblin Lucky Coin (a relic) and the gold bonus of a set go into the same sum, so they count inside the same cap.
   const relicGold = save.equipped.relic ? getGear(save.equipped.relic)?.goldBonusPct ?? 0 : 0;
-  return { ...total, goldBonus: Math.min(GOLD_BONUS_CAP, total.goldBonus + relicGold) };
+  const setGold = setBonuses(equippedSetItems(save)).totals.goldBonusPct;
+  return { ...total, goldBonus: Math.min(GOLD_BONUS_CAP, total.goldBonus + relicGold + setGold) };
 }
 
 export function isInstanceEquipped(save: Pick<SaveData, 'equipped'>, id: GearInstanceId): boolean {

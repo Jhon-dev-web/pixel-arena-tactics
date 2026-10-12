@@ -11,6 +11,7 @@ import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
 import TitleIcon from './TitleIcon';
+import { SetLines } from './SetBonus';
 import { FRAMES, SKINS } from '../game/seasonItems';
 import { heroBaseLook } from '../game/sprites';
 import HeroThumb from './HeroThumb';
@@ -93,6 +94,7 @@ export function EquipmentPanel({ save }: { save: SaveData }) {
 
   return (
     <>
+      <SetLines save={save} />
       <div className="hero-equip">
         {INSTANCED_SLOTS.map((slot) => (
           <EquipSlotCard key={slot} slot={slot} view={equipped[slot]} />

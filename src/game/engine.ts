@@ -10,6 +10,7 @@ import {
   GearInstanceId,
   createStarterGear,
   equippedGemBonuses,
+  equippedSetItems,
   equippedSubstatTotals,
   migrateGearV1toV2,
   resolveEquipped,
@@ -28,6 +29,7 @@ import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems } from './gems';
 import { QuestState, emptyQuestState } from './quests';
 import { rarityStatMult } from './rarity';
+import { setBonuses } from './setBonuses';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
@@ -340,33 +342,35 @@ export function buildCombatStats(save: SaveData): CombatStats {
   const subs = equippedSubstatTotals(save);
   // Helmet / gloves / boots / ring / shield (gearInstances.equippedExtraStats): gloves damage joins the weapon term, so STR scales it too.
   const extra = equippedExtraStats(save);
+  // Set bonuses (setBonuses.ts): the crafted tier families worn, added to the same numbers the relic and the gear feed.
+  const set = setBonuses(equippedSetItems(save)).totals;
 
   // Flat base hit (avg of attackMin/attackMax) plus the weapon term W (refine, durability, rarity); STR is applied on top
   // of that sum by strengthAdjustedDamage (derivedStats.ts). blessed/Elixir/crit come later, at the call sites.
   const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
   // Hero skills (heroSkills.ts): every effect enters the Layer-2 numbers here and nowhere else.
   const fx = saveSkillEffects(save);
-  const speedBonus = relic?.attackSpeedBonus ?? 0;
+  const speedBonus = (relic?.attackSpeedBonus ?? 0) + set.attackSpeedBonus;
   const stats: CombatStats = {
     maxHp: playerMaxHp(save),
     // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
     // grows the weapon term W before STR scales it.
-    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)),
+    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + set.damagePct),
     critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance,
-    critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus,
+    critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus + set.critMultBonus,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
     // The relic's attackSpeedBonus (and the skills') enter the same derivation, so the 400 ms floor still caps them.
     heroMs: heroAttackIntervalMs(save.agi, speedBonus),
     agi: save.agi,
     speedBonus,
     // Muralha scales the whole resistance sum, which applyDamageReduction then keeps asymptotic.
-    reduction: (effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100 + extra.resistance) * (1 + fx.resistancePct),
+    reduction: (effectiveResistance(armor, aLvl) * aFactor * aRarity + save.res * T.advanced.resResistPerPoint + gems.resistance + subs.defense / 100 + extra.resistance + set.resistance) * (1 + fx.resistancePct),
     // The Lich Phylactery's lifestealPct enters the same derivation as the lifesteal substats.
-    lifesteal: subs.lifesteal + (relic?.lifestealPct ?? 0),
+    lifesteal: subs.lifesteal + (relic?.lifestealPct ?? 0) + set.lifestealPct,
     burn: !!weapon.burn,
     // Reflect scales with the armor's durability like its resistance does (a broken armor reflects less), not with rarity; the shield's and Espinhos' add to it.
     reflect: (armor.reflect ?? 0) * aFactor + extra.reflect + fx.reflect,
-    hpRegenPct: (relic?.hpRegenPct ?? 0) + fx.hpRegenPct,
+    hpRegenPct: (relic?.hpRegenPct ?? 0) + fx.hpRegenPct + set.hpRegenPct,
     // Gold bonus (substats + Goblin Lucky Coin, capped): the Dungeon pays it through buffs.goldMultiplier, Hunting through the session's frozen stats.
     goldBonus: subs.goldBonus,
     xpBonus: (relic?.xpBonusPct ?? 0) + Math.round(fx.xpPct * 10000) / 100,
