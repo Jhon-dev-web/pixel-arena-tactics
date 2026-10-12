@@ -254,13 +254,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     drops: [
       { material: 'leather_scrap', rarity: 'common', chance: 0.25, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.08, qty: 1 },
-      { material: 'demon_core', rarity: 'rare', chance: 0.01, qty: 1 },
+      { material: 'demon_core', rarity: 'rare', chance: 0.007, qty: 1 },
     ],
-    // Unique drops (chance per victory before the economic fraction f). Calibrated with scripts/sim: a zone's economic rolls/h are ~200 / 167 / 107 / 135 (glade /
-    // marsh / rift / abyss), so two entries at these chances give one unique per ~4 days of 6 h/day hunting in that zone (24 h) - 3 to 5 days across builds.
+    // Unique drops (chance per victory before the economic fraction f). Rodada 9 (docs/BALANCE_CHANGES.md): uniques are tradeable goods, so they are rare PER PLAYER - a
+    // normal player (2 check-ins a day, ~6 h of hunting a day) finds ONE unique of any kind per ~20-30 days in the zone that fits his stage (it was ~4). The zone's
+    // economic rolls/h are ~224 / 165 / 140 / 140 (glade / marsh / rift / abyss) for a hero past the zone's recommended CP, which is what the chances below are sized for.
     uniques: [
-      { itemId: 'demon_fang_dagger', chance: 0.0001 },
-      { itemId: 'demonhide_vest', chance: 0.0001 },
+      { itemId: 'demon_fang_dagger', chance: 0.000015 },
+      { itemId: 'demonhide_vest', chance: 0.000015 },
     ],
     offlineCapHours: 4,
     unlockFloor: 0,
@@ -277,12 +278,12 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.28, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.09, qty: 1 },
-      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.015, qty: 1 },
+      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.0105, qty: 1 },
     ],
     uniques: [
-      { itemId: 'bloodbound_cleaver', chance: 0.000125 },
-      { itemId: 'bloodvein_plate', chance: 0.000125 },
-      { itemId: 'bone_ward', chance: 0.000125 },
+      { itemId: 'bloodbound_cleaver', chance: 0.000014 },
+      { itemId: 'bloodvein_plate', chance: 0.000014 },
+      { itemId: 'bone_ward', chance: 0.000014 },
     ],
     offlineCapHours: 5,
     unlockFloor: 26,
@@ -299,13 +300,13 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     drops: [
       { material: 'leather_scrap', rarity: 'common', chance: 0.32, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.105, qty: 1 },
-      { material: 'demon_core', rarity: 'rare', chance: 0.025, qty: 1 },
+      { material: 'demon_core', rarity: 'rare', chance: 0.0175, qty: 1 },
       { material: 'rift_shard', rarity: 'uncommon', chance: 0.1, qty: 1, ownStream: true },
-      { material: 'fiend_horn', rarity: 'rare', chance: 0.02, qty: 1, ownStream: true },
+      { material: 'fiend_horn', rarity: 'rare', chance: 0.014, qty: 1, ownStream: true },
     ],
     uniques: [
-      { itemId: 'riftwalker_boots', chance: 0.0002 },
-      { itemId: 'shadow_hood', chance: 0.0002 },
+      { itemId: 'riftwalker_boots', chance: 0.000024 },
+      { itemId: 'shadow_hood', chance: 0.000024 },
     ],
     offlineCapHours: 6,
     unlockFloor: 51,
@@ -322,13 +323,13 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.35, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.12, qty: 1 },
-      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.03, qty: 1 },
+      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.021, qty: 1 },
       { material: 'abyssal_marrow', rarity: 'uncommon', chance: 0.11, qty: 1, ownStream: true },
-      { material: 'blood_heart', rarity: 'rare', chance: 0.025, qty: 1, ownStream: true },
+      { material: 'blood_heart', rarity: 'rare', chance: 0.0175, qty: 1, ownStream: true },
     ],
     uniques: [
-      { itemId: 'abyss_heart_ring', chance: 0.00015 },
-      { itemId: 'bonecrusher_maul', chance: 0.00015 },
+      { itemId: 'abyss_heart_ring', chance: 0.000024 },
+      { itemId: 'bonecrusher_maul', chance: 0.000024 },
     ],
     offlineCapHours: 8,
     unlockFloor: 76,

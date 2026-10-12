@@ -1,3 +1,5 @@
+> **2026-10-12 (Rodada 9):** a tabela de raridade da forja passou de 60 / 25 / 12 / 3 para **63 / 25 / 10 / 2** (as peças raras agora serão vendidas), e o Selo do Ferreiro para 83,3% épica / 16,7% lendária. Custo esperado do MESMO item: épico ou melhor 1 / 0,12 = 8,3 forjas (era 6,7); lendário 1 / 0,02 = **50** forjas (era 33,3, uma em 50); épico e lendário 51,7 (era 35,0). Multiplique por 1,5 a coluna "custo esperado de 1 lendário" abaixo; as demais seções (poder por raridade, variância das substats) não dependem das chances e continuam valendo. Selos: 3 por temporada x 2/12 = 0,5 lendária esperada.
+
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
 
 # Auditoria de balanceamento dos itens (antes da rodada 3)

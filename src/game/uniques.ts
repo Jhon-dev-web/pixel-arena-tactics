@@ -6,7 +6,7 @@ import T from './tunables';
 
 // Unique pieces (gear.ts `unique: true`) are drop-only: a Hunting zone rolls them per victory (huntingZones.ts `uniques`, huntCombat.ts) and a Dungeon
 // biome boss rolls one on each victory over it (rollBossUniques below, called by waves.ts waveRewards). A drop is decided WHEN it happens: the rarity (the
-// normal 60 / 25 / 12 / 3 table) and the substats (one extra slot) are rolled right there and stored with the drop, so a Hunting preview is stable and
+// normal 63 / 25 / 10 / 2 table) and the substats (one extra slot) are rolled right there and stored with the drop, so a Hunting preview is stable and
 // the reward that is claimed later is exactly what was shown. The piece itself only becomes a GearInstance when it is delivered (gearInstances.ts /
 // huntLifecycle.applyHuntClaim / App.finishRun).
 

@@ -104,9 +104,9 @@ const T = DebugPanel.define({
     boss100DmgMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra damage multiplier' },
     bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
     // Chance that clearing a biome boss (floors 25 / 50 / 75 / 100) also drops that boss's unique piece (uniques.ts). Rolled on every victory, repeatable.
-    uniqueBossChance: { value: 0.08, min: 0, max: 1, step: 0.01, label: 'Biome boss unique drop chance (per victory)' },
+    uniqueBossChance: { value: 0.03, min: 0, max: 1, step: 0.01, label: 'Biome boss unique drop chance (per victory)' },
     // Chance that the same victory also drops that boss's relic (uniques.ts BOSS_RELIC_DROPS), rolled on its own, independent of the unique piece.
-    relicBossChance: { value: 0.04, min: 0, max: 1, step: 0.01, label: 'Biome boss relic drop chance (per victory)' },
+    relicBossChance: { value: 0.03, min: 0, max: 1, step: 0.01, label: 'Biome boss relic drop chance (per victory)' },
     miniBossGoldMult: { value: 2.5, min: 1, max: 10, step: 0.5, label: 'Checkpoint wave gold multiplier' },
     bossGoldMult: { value: 5, min: 1, max: 15, step: 0.5, label: 'Main boss wave gold multiplier' },
     potionThreshold: { value: 0.35, min: 0.05, max: 0.9, step: 0.05, label: 'Auto-potion HP threshold (ratio)' },

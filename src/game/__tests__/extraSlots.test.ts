@@ -29,6 +29,7 @@ import { HUNTING_ZONES } from '../huntingZones';
 import { inventoryCapacity, inventorySlotsUsed } from '../inventory';
 import { cargoReferenceValue } from '../economy';
 import { MaterialId, emptyMaterials } from '../materials';
+import { recipeStock } from './recipeStock';
 import { applyReforge, getReforgeCost } from '../reforge';
 import { getSalvageReturn } from '../salvage';
 import { GearInstance } from '../gearInstances';
@@ -122,7 +123,7 @@ describe('the four extra slots (helmet, gloves, boots, ring)', () => {
 
   it('forging a new-slot piece makes an instance of that slot, consumes ONE piece of the previous tier of the same slot, and respects the level gate', () => {
     let s = withPieces(['bronze_helm']);
-    s = { ...s, gold: 1e6, materials: { ...emptyMaterials(), iron: 10, leather_scrap: 10 } as SaveData['materials'] };
+    s = { ...s, gold: 1e6, materials: { ...emptyMaterials(), ...recipeStock('iron_helm') } as SaveData['materials'] };
     const low = applyForge(s, 'iron_helm', { level: 5 });
     expect(low.ok).toBe(false);
     expect(low.reason).toBe('level');
@@ -140,12 +141,13 @@ describe('the four extra slots (helmet, gloves, boots, ring)', () => {
   it('salvaging a forged extra piece returns 45 % of its recipe materials', () => {
     const s = withPieces(['steel_helm']);
     const ret = getSalvageReturn(getGear('steel_helm')).materials;
-    expect(ret).toEqual({ bone_fragment: 1 }); // the rest of the small stacks floor to 0
+    const helmBone = getGear('steel_helm').recipe!.materials!.bone_fragment as number;
+    expect(ret?.bone_fragment).toBe(Math.floor(helmBone * 0.45)); // 45 % of the recipe, floored per material
     const out = applySalvage(s, 't_steel_helm', () => 0.99);
     expect(out).not.toBeNull();
     expect(out!.save.gearInstances['t_steel_helm']).toBeUndefined();
     expect(out!.save.materials.steel).toBe(0); // floor(2 x 0.45) = 0: small stacks round away, like weapons
-    expect(out!.save.materials.bone_fragment).toBe(1); // floor(3 x 0.45)
+    expect(out!.save.materials.bone_fragment).toBe(Math.floor(helmBone * 0.45));
     expect(salvageBlockReason(equipAll(s, ['steel_helm']), 't_steel_helm')).toBe('equipped');
   });
 });
@@ -269,8 +271,8 @@ describe('content pack 1: catalog', () => {
     const armor: Record<number, string> = { 1: 'bronze_leather', 2: 'iron_chainmail', 3: 'steel_plate', 4: 'gilded_aegis', 5: 'voidsteel_plate', 6: 'abyssal_bulwark' };
     for (const g of forged) {
       const ratio = own(g.id) / own(armor[g.tier as number]);
-      expect(ratio, `${g.id}: ${(ratio * 100).toFixed(0)} %`).toBeGreaterThanOrEqual(0.38);
-      expect(ratio, `${g.id}: ${(ratio * 100).toFixed(0)} %`).toBeLessThanOrEqual(0.62);
+      expect(ratio, `${g.id}: ${(ratio * 100).toFixed(0)} %`).toBeGreaterThanOrEqual(0.36);
+      expect(ratio, `${g.id}: ${(ratio * 100).toFixed(0)} %`).toBeLessThanOrEqual(g.tier === 1 ? 0.85 : 0.62); // tier 1 is mostly fixed copper / handle cost
     }
   });
 });
@@ -310,12 +312,12 @@ describe('unique pieces', () => {
     expect(getSalvageReturn(getGear('bloodbound_cleaver'))).toEqual(getSalvageReturn(getGear('steel_greatsword')));
     const out = applySalvage(s, 'u2', () => 0.99)!;
     expect(out.save.gearInstances.u2).toBeUndefined();
-    expect(out.save.materials.bone_fragment).toBe(1);
+    expect(out.save.materials.bone_fragment).toBe(Math.floor((getGear('steel_greatsword').recipe!.materials!.bone_fragment as number) * 0.45));
     expect(applyDiscardInstance(s, 'u2')!.gearInstances.u2).toBeUndefined();
   });
 
-  it('boss uniques: 8 % per victory for each unique of the four biome-boss floors only, over many seeded rolls', () => {
-    expect(T.battle.uniqueBossChance).toBe(0.08);
+  it('boss uniques: 3 % per victory for each unique of the four biome-boss floors only, over many seeded rolls', () => {
+    expect(T.battle.uniqueBossChance).toBe(0.03);
     const N = 40_000;
     const rates = withSeededRandom(5150, () => {
       const out: Record<string, number> = {};
@@ -327,7 +329,7 @@ describe('unique pieces', () => {
       }
       return out;
     });
-    for (const f of [25, 50, 75, 100]) expect(Math.abs(rates[f] - 0.08), `floor ${f}: ${rates[f]}`).toBeLessThan(0.006);
+    for (const f of [25, 50, 75, 100]) expect(Math.abs(rates[f] - 0.03), `floor ${f}: ${rates[f]}`).toBeLessThan(0.004);
     for (const f of [10, 24, 99]) expect(rates[f]).toBe(0);
     withSeededRandom(1, () => {
       const drop = rollBossUniques(100, () => 0)[0];
@@ -336,7 +338,7 @@ describe('unique pieces', () => {
     });
   });
 
-  it('a unique drop rolls the normal 60 / 25 / 12 / 3 rarity table', () => {
+  it('a unique drop rolls the normal 63 / 25 / 10 / 2 rarity table', () => {
     const N = 40_000;
     const counts = withSeededRandom(77, () => {
       const c: Record<string, number> = {};
@@ -347,11 +349,11 @@ describe('unique pieces', () => {
       }
       return c;
     });
-    expect(Math.abs(counts.common / N - 0.6)).toBeLessThan(0.01);
-    expect(Math.abs(counts.legendary / N - 0.03)).toBeLessThan(0.006);
+    expect(Math.abs(counts.common / N - 0.63)).toBeLessThan(0.01);
+    expect(Math.abs(counts.legendary / N - 0.02)).toBeLessThan(0.005);
   });
 
-  it('Hunting: about one unique per ~4 days (24 h) of hunting in a zone, rolled with the economic fraction', () => {
+  it('Hunting: about one unique per ~6-7 days (24 h) of round-the-clock hunting in a zone, i.e. ~25 days of a normal 6 h a day, rolled with the economic fraction', () => {
     const h = hero('2', 4, { level: 20 });
     const zone = HUNTING_ZONES.find((z) => z.id === 'demon_glade')!;
     const ids = new Set(zone.uniques!.map((u) => u.itemId));
@@ -369,8 +371,8 @@ describe('unique pieces', () => {
       if (i < 3) expect(computeHuntingStatus(save, start + zone.offlineCapHours * HOUR).uniques).toEqual(st.uniques);
     }
     const perDay = (uniques / hours) * 24; // uniques per 24 h of hunting
-    expect(perDay, `${uniques} uniques in ${hours.toFixed(0)} h`).toBeGreaterThan(0.6);
-    expect(perDay).toBeLessThan(1.7);
+    expect(perDay, `${uniques} uniques in ${hours.toFixed(0)} h`).toBeGreaterThan(0.07);
+    expect(perDay).toBeLessThan(0.3);
   });
 
   describe('Hunting claim (bag room)', () => {

@@ -192,7 +192,7 @@ describe("Blacksmith's Seal (forge_seal)", () => {
     return { ...defaultSave(), gold: item.cost * 3 + 100, materials, consumables: { ...defaultSave().consumables, forge_seal: seals }, shards: 99, gems: { ruby: 9, sapphire: 9, emerald: 9 } };
   };
 
-  it('the conditional rarity is the normal table restricted to Epic and better: 80 % / 20 %, derived from the weights, over many seeded rolls', () => {
+  it('the conditional rarity is the normal table restricted to Epic and better: 83.3 % / 16.7 %, derived from the weights, over many seeded rolls', () => {
     expect(FORGE_SEAL_MIN_RARITY).toBe('epic');
     const rng = mulberry32(20261010);
     const N = 200_000;
@@ -203,14 +203,14 @@ describe("Blacksmith's Seal (forge_seal)", () => {
     expect(counts.common + counts.rare).toBe(0);
     expect(Math.abs(counts.epic / N - epic / (epic + legendary))).toBeLessThan(0.004);
     expect(Math.abs(counts.legendary / N - legendary / (epic + legendary))).toBeLessThan(0.004);
-    expect(counts.epic / N).toBeCloseTo(0.8, 1);
+    expect(counts.epic / N).toBeCloseTo(10 / 12, 1);
     // expected legendaries from the three seals of a season
-    expect((3 * legendary) / (epic + legendary)).toBeCloseTo(0.6, 9);
+    expect((3 * legendary) / (epic + legendary)).toBeCloseTo(0.5, 9); // 3 x 2/12: half a Legendary per season from the seals
     // an unconditioned call is the plain table
     const plain: Record<Rarity, number> = { common: 0, rare: 0, epic: 0, legendary: 0 };
     const r2 = mulberry32(7);
     for (let i = 0; i < 50_000; i++) plain[rollRarityAtLeast('common', r2)]++;
-    expect(Math.abs(plain.common / 50_000 - 0.6)).toBeLessThan(0.01);
+    expect(Math.abs(plain.common / 50_000 - 0.63)).toBeLessThan(0.01);
   });
 
   it('a forge with the seal spends exactly one seal and the piece is Epic or better; without the toggle the seal stays', () => {

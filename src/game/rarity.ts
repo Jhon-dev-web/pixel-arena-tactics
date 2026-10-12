@@ -16,10 +16,10 @@ export interface RarityDef {
 }
 
 export const RARITIES: RarityDef[] = [
-  { id: 'common', nameKey: 'rar_common', statMult: 1, substatCount: 0, chance: 0.6 },
+  { id: 'common', nameKey: 'rar_common', statMult: 1, substatCount: 0, chance: 0.63 },
   { id: 'rare', nameKey: 'rar_rare', statMult: 1.02, substatCount: 1, chance: 0.25 },
-  { id: 'epic', nameKey: 'rar_epic', statMult: 1.06, substatCount: 2, chance: 0.12 },
-  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.18, substatCount: 3, chance: 0.03 },
+  { id: 'epic', nameKey: 'rar_epic', statMult: 1.06, substatCount: 2, chance: 0.1 },
+  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.18, substatCount: 3, chance: 0.02 },
 ];
 
 interface SubstatDef {
@@ -69,7 +69,7 @@ export function rollRarity(rng: Rng = Math.random): Rarity {
 }
 
 // The Blacksmith's Seal (season reward): a forge roll CONDITIONED on this rarity or better. The odds are the normal table's own weights restricted to the
-// rarities from here up (epic 12 : legendary 3 = 80 % : 20 %), derived from RARITIES, never hard-coded.
+// rarities from here up (epic 10 : legendary 2 = 83.3 % : 16.7 %), derived from RARITIES, never hard-coded.
 export const FORGE_SEAL_MIN_RARITY: Rarity = 'epic';
 
 export function rollRarityAtLeast(min: Rarity, rng: Rng = Math.random): Rarity {

@@ -28,6 +28,7 @@ import { GOLD_BONUS_CAP, Rarity } from '../rarity';
 import { simulateHuntingSession } from '../huntCombat';
 import { getHuntingZone } from '../huntingZones';
 import { emptyMaterials, MATERIALS, MaterialId } from '../materials';
+import { recipeStock } from './recipeStock';
 import { cargoReferenceValue } from '../economy';
 import { merchantPrice } from '../merchant';
 import { applyDiscard } from '../bagActions';
@@ -164,7 +165,7 @@ describe('shield slot', () => {
 
   it('forging: consumes ONE shield of the previous tier, respects the gate, and the result is a shield instance', () => {
     let s = withPieces(['bronze_buckler']);
-    s = { ...s, gold: 1e6, materials: { ...emptyMaterials(), iron: 10, wood_handle_oak: 5, leather_scrap: 10 } as SaveData['materials'] };
+    s = { ...s, gold: 1e6, materials: { ...emptyMaterials(), ...recipeStock('iron_shield') } as SaveData['materials'] };
     expect(applyForge(s, 'iron_shield', { level: 5 }).reason).toBe('level');
     const res = applyForge(s, 'iron_shield', { level: 10, now: NOW });
     expect(res.ok).toBe(true);
@@ -177,10 +178,11 @@ describe('shield slot', () => {
 
   it('salvage returns 45 % of the recipe, reforge uses the armor family, repair restores durability, the equipped one cannot be salvaged', () => {
     const s = withPieces(['abyssal_shield']);
-    expect(getSalvageReturn(getGear('abyssal_shield')).materials).toEqual({ concentrated_blood: 1 }); // the small stacks floor to 0 at 45 %
+    const shieldRecipe = getGear('abyssal_shield').recipe!.materials as Record<string, number>;
+    expect(getSalvageReturn(getGear('abyssal_shield')).materials?.concentrated_blood).toBe(Math.floor(shieldRecipe.concentrated_blood * 0.45)); // 45 % of the recipe, floored per material
     const out = applySalvage(s, 't_abyssal_shield', () => 0.99)!;
     expect(out.save.gearInstances.t_abyssal_shield).toBeUndefined();
-    expect(out.save.materials.concentrated_blood).toBe(1); // floor(3 x 0.45)
+    expect(out.save.materials.concentrated_blood).toBe(Math.floor(shieldRecipe.concentrated_blood * 0.45));
     expect(salvageBlockReason(applyEquipInstance(s, 't_abyssal_shield')!, 't_abyssal_shield')).toBe('equipped');
     // reforge: a rare shield rerolls with Concentrated Blood (armor family), never Demon Claw
     const rare = createGearInstance('gilded_shield', { id: 'r1', origin: 'craft', rarity: 'rare' });
@@ -234,7 +236,7 @@ describe('shield uniques', () => {
     }
   });
 
-  it('the floor-50 boss rolls its two uniques independently at 8 % each', () => {
+  it('the floor-50 boss rolls its two uniques independently at 3 % each', () => {
     const N = 40_000;
     const counts: Record<string, number> = {};
     let both = 0;
@@ -245,9 +247,9 @@ describe('shield uniques', () => {
         if (r.length === 2) both++;
       }
     });
-    expect(Math.abs(counts.warchief_gauntlets / N - 0.08)).toBeLessThan(0.006);
-    expect(Math.abs(counts.warden_bulwark / N - 0.08)).toBeLessThan(0.006);
-    expect(Math.abs(both / N - 0.0064)).toBeLessThan(0.003); // independent: 0.08 x 0.08
+    expect(Math.abs(counts.warchief_gauntlets / N - 0.03)).toBeLessThan(0.004);
+    expect(Math.abs(counts.warden_bulwark / N - 0.03)).toBeLessThan(0.004);
+    expect(Math.abs(both / N - 0.0009)).toBeLessThan(0.0015); // independent: 0.03 x 0.03
   });
 });
 
@@ -315,7 +317,7 @@ describe('axes: the second weapon line', () => {
 
   it('the axe line is craftable on its own and an axe works in a build like any weapon', () => {
     let s = withPieces(['bronze_hatchet']);
-    s = { ...s, gold: 1e6, materials: { ...emptyMaterials(), iron: 20, leather_scrap: 20, wood_handle_oak: 5 } as SaveData['materials'] };
+    s = { ...s, gold: 1e6, materials: { ...emptyMaterials(), ...recipeStock('iron_battleaxe') } as SaveData['materials'] };
     // the sword of the previous tier cannot stand in for the axe
     expect(applyForge({ ...s, gearInstances: { ...s.gearInstances, ...withPieces(['bronze_dagger', 'bronze_dagger']).gearInstances } }, 'iron_battleaxe', { level: 10 }).reason).toBe('ingredients');
     const two = { ...s, gearInstances: { ...s.gearInstances, t2: createGearInstance('bronze_hatchet', { id: 't2', origin: 'craft' }) } };
@@ -431,8 +433,8 @@ describe('boss relics', () => {
     expect(computeCP(withRelic(h50, 'goblin_lucky_coin'))).toBe(computeCP(h50));
   });
 
-  it('drop roll: 4 % per victory over each of the four biome bosses only, independent of the unique roll', () => {
-    expect(T.battle.relicBossChance).toBe(0.04);
+  it('drop roll: 3 % per victory over each of the four biome bosses only, independent of the unique roll', () => {
+    expect(T.battle.relicBossChance).toBe(0.03);
     const N = 50_000;
     const out = withSeededRandom(4040, () => {
       const rates: Record<number, number> = {};
@@ -453,11 +455,11 @@ describe('boss relics', () => {
       }
       return { rates, relicAndUnique, relics, uniques };
     });
-    for (const f of [25, 50, 75, 100]) expect(Math.abs(out.rates[f] - 0.04), `floor ${f}: ${out.rates[f]}`).toBeLessThan(0.004);
+    for (const f of [25, 50, 75, 100]) expect(Math.abs(out.rates[f] - 0.03), `floor ${f}: ${out.rates[f]}`).toBeLessThan(0.004);
     for (const f of [10, 24, 26, 99]) expect(out.rates[f]).toBe(0);
-    expect(Math.abs(out.relics / N - 0.04)).toBeLessThan(0.004);
-    expect(Math.abs(out.uniques / N - 0.08)).toBeLessThan(0.006);
-    expect(Math.abs(out.relicAndUnique / N - 0.0032)).toBeLessThan(0.0015);
+    expect(Math.abs(out.relics / N - 0.03)).toBeLessThan(0.004);
+    expect(Math.abs(out.uniques / N - 0.03)).toBeLessThan(0.004);
+    expect(Math.abs(out.relicAndUnique / N - 0.0009)).toBeLessThan(0.0015);
     expect(rollBossRelics(50, () => 0)).toEqual(['warchief_totem']);
     expect(rollBossRelics(50, () => 0.5)).toEqual([]);
   });

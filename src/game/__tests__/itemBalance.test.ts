@@ -8,13 +8,13 @@ import { withSeededRandom } from '../../../scripts/sim/driver';
 // Rules of the item balance round (docs/ITEM_BALANCE_AUDIT.md, docs/BALANCE_CHANGES.md "Rodada 3"):
 //   R1  at equal tier and refine, median rolls: rare +3-6 % CP over common, epic +8-14 %, legendary +18-28 %;
 //   R2  no combat substat worth more than 2x another at its median roll (goldBonus exempt, capped at +25 % in total);
-//   R4  forge chances stay 60 / 25 / 12 / 3.
+//   R4  forge chances are 63 / 25 / 10 / 2 (Rodada 9: higher rarities are sold on the market, so they are a bit harder).
 
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
 describe('R4: forge rarity chances', () => {
-  it('table is 60 / 25 / 12 / 3', () => {
-    expect(RARITIES.map((r) => r.chance)).toEqual([0.6, 0.25, 0.12, 0.03]);
+  it('table is 63 / 25 / 10 / 2', () => {
+    expect(RARITIES.map((r) => r.chance)).toEqual([0.63, 0.25, 0.1, 0.02]);
   });
 
   it('realised rates of createGearInstance over 120k seeded rolls are within 0.5 points of the table', () => {

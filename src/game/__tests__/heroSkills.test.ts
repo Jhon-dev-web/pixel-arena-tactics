@@ -582,7 +582,7 @@ describe('hunting simulation applies the skills', () => {
     expect(scent.xpReady).toBe(plain.xpReady);
     expect(scent.goldReady).toBe(plain.goldReady);
     expect(scent.uniques).toEqual(plain.uniques); // uniques are not materials
-    const luck = run({ uniqueMult: 1.5 });
+    const luck = run({ uniqueMult: 40 }); // uniques are rare per player now (Rodada 9): a big multiplier makes the threshold move visible in 40 h
     expect(luck.drops).toEqual(plain.drops);
     expect(luck.kills).toBe(plain.kills);
     expect(luck.uniques.length).toBeGreaterThanOrEqual(plain.uniques.length);
