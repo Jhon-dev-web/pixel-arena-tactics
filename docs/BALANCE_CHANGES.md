@@ -1301,7 +1301,7 @@ O nível parava em 75: o jogador ganhava uns 145 mil XP por dia (a última zona,
 | Profundezas, crescimento por profundeza, PV / dano | 3,5% / 3% | **2,8% / 2,2%** |
 | Profundezas, chefe, PV / dano | x1,1 / x1,05 | **x1 / x1** |
 
-Tabela de recomendação de CP por andar regerada (`npm run sim:cp`): os andares 87 a 100 que nenhum herói da escada (nível 100, tier 6 +8) limpa agora recebem o CP que a lei de potência dos andares medidos pede (andar 99: 9 660, andar 100: 12 394), e não "o CP do herói mais forte" (6 728) repetido em todos. O jogador simulado limpa o andar 100 com ~8 000 de CP porque bebe tônicos e poções; o herói de referência da escada não.
+Tabela de recomendação de CP por andar regerada (`npm run sim:cp`): os andares 87 a 100 que nenhum herói da escada (nível 100, tier 6 +8) limpa agora recebem o CP que a lei de potência dos andares medidos pede (andar 99: 9 875, andar 100: 12 394), e não "o CP do herói mais forte" (6 728) repetido em todos. O jogador simulado limpa o andar 100 com ~8 000 de CP porque bebe tônicos e poções; o herói de referência da escada não.
 
 ### 3. XP por nível, antes e depois
 
