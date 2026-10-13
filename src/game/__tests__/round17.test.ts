@@ -7,6 +7,10 @@ import T from '../tunables';
 import { STASH_UPGRADES } from '../stash';
 import { cargoUnitValue } from '../deliveries';
 import { deepToTwelve, lapidarHours, refineToEight, setHoursOwn, zoneValue } from '../../../scripts/sim/farmHours';
+import { computeCP } from '../engine';
+import { recommendedCpForFloor } from '../dungeon';
+import { clearRate } from '../../../scripts/sim/ladder';
+import { gearHero } from '../../../scripts/sim/depthHero';
 
 // Round 17 (docs/BALANCE_CHANGES.md): the Rift and the Abyss drop less, and everything that is paid in those drops was re-solved so the HOURS of hunting it takes did not move.
 // The "round 16" numbers below are what scripts/sim/farmHours.ts measured before the change (same model, same unit); the tolerance is the +-10% the round promised.
@@ -97,5 +101,24 @@ describe('Round 17: the late zones drop what the late game can use', () => {
     expect(T.deliveries.abyssCargoBone).toBeGreaterThanOrEqual(cut('bone_fragment'));
     expect(T.deliveries.abyssCargoBlood).toBeGreaterThanOrEqual(cut('concentrated_blood'));
     expect(T.deliveries.abyssCargoCrystal).toBeGreaterThanOrEqual(cut('corrupted_crystal'));
+  });
+
+  // The recommended CP of the floors past what the ladder measures (87-100) is a power law; this keeps it honest: heroes with the CP the table lists clear the floor, and heroes well below it do not.
+  // The heroes are level 100 in a full tier 6 set (common to legendary, +8 to +12, warrior skills, paragon 0 to 50), no tonic, no potion, full HP at the start of the floor.
+  it('the recommended CP of floors 87-100 is what a hero without tonics needs', () => {
+    const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
+    const wins = (hero: ReturnType<typeof gearHero>, floor: number) => clearRate(hero, floor, NOW, 3) >= 2 / 3;
+    const common = gearHero('common', 0, 8); // CP ~8.9k
+    const epic = gearHero('epic', 50, 12); // CP ~15.7k
+    const legendary = gearHero('legendary', 30, 12); // CP ~18k
+    for (const f of [87, 88]) if (computeCP(common) >= recommendedCpForFloor(f)) expect(wins(common, f), `common +8 floor ${f}`).toBe(true);
+    expect(computeCP(common)).toBeLessThan(recommendedCpForFloor(94) * 0.95);
+    expect(wins(common, 94)).toBe(false);
+    expect(computeCP(epic)).toBeGreaterThanOrEqual(recommendedCpForFloor(98));
+    expect(wins(epic, 98)).toBe(true);
+    expect(computeCP(epic)).toBeLessThan(recommendedCpForFloor(100) * 0.95);
+    expect(wins(epic, 100)).toBe(false);
+    expect(computeCP(legendary)).toBeGreaterThanOrEqual(recommendedCpForFloor(100));
+    expect(wins(legendary, 100)).toBe(true);
   });
 });

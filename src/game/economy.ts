@@ -42,7 +42,7 @@ export const RAW_REFERENCE_GOLD: Partial<Record<MaterialId, number>> = {
   rift_shard: 30,
   fiend_horn: 256.5,
   abyssal_marrow: 110,
-  blood_heart: 490,
+  blood_heart: 451,
   // Garden
   common_herb: 4,
   energy_herb: 3,

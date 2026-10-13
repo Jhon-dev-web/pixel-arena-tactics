@@ -68,10 +68,12 @@ const T = DebugPanel.define({
     dmgGrowth: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Monster damage growth per stage' },
     // Round 15: floors 51+ get one more factor on top of the base curve, piecewise linear and continuous: 1 + late * (stages past 50, at most 25) + late2 * (stages past 75), so the
     // second half of the Dungeon (and the Profundezas, which scale the floor-99 monster) can be paced on its own without touching floors 1-50.
+    // Round 17: floors 76-100 were retuned (0.07 / 0.041 -> 0.125 / 0.078, the floor-100 boss 1.2 -> 1.17) once the sim player refined properly (the late-game sinks of round 16): arrival at floor 100
+    // moved from day 75 to day 123 and the boss from day 95 to day 143 (owner: 86 and 102); the floor-100 boss stays 1.5x the floor before it (balance.test.ts). Floors 1-75 are untouched.
     lateHpGrowth: { value: 0.012, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 51-75' },
-    lateHpGrowth2: { value: 0.07, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 76-100' },
+    lateHpGrowth2: { value: 0.125, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 76-100' },
     lateDmgGrowth: { value: 0.009, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 51-75' },
-    lateDmgGrowth2: { value: 0.041, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 76-100' },
+    lateDmgGrowth2: { value: 0.078, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 76-100' },
     rewardGrowth: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'XP reward growth per stage (dungeon.ts stageVictoryXp only)' },
     // Kept separate from rewardGrowth (XP) so gold economy tuning never silently reflows XP pacing.
     goldRewardGrowth: { value: 0.012, min: 0, max: 1, step: 0.001, label: 'Gold/drop-qty growth per stage' },
@@ -106,8 +108,8 @@ const T = DebugPanel.define({
     boss50DmgMult: { value: 0.88, min: 0.1, max: 5, step: 0.01, label: 'Floor-50 boss: extra damage multiplier' },
     boss75HpMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra HP multiplier' },
     boss75DmgMult: { value: 1, min: 0.1, max: 5, step: 0.01, label: 'Floor-75 boss: extra damage multiplier' },
-    boss100HpMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra HP multiplier' },
-    boss100DmgMult: { value: 1.2, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra damage multiplier' },
+    boss100HpMult: { value: 1.17, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra HP multiplier' },
+    boss100DmgMult: { value: 1.17, min: 0.1, max: 5, step: 0.01, label: 'Floor-100 boss: extra damage multiplier' },
     bossShards: { value: 5, min: 1, max: 20, step: 1, label: 'Main boss shard drop' },
     // Chance that clearing a biome boss (floors 25 / 50 / 75 / 100) also drops that boss's unique piece (uniques.ts). Rolled on every victory, repeatable.
     uniqueBossChance: { value: 0.03, min: 0, max: 1, step: 0.01, label: 'Biome boss unique drop chance (per victory)' },
@@ -252,10 +254,12 @@ const T = DebugPanel.define({
   depths: {
     _label: 'Depths (Profundezas, after floor 100)',
     // Round 15: depth 0 is the floor-99 monster times these (the floors 76-100 got a late factor, battle.lateHpGrowth2, that the depths would otherwise inherit whole).
-    baseHpMult: { value: 0.51, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy HP as a multiple of the floor-99 monster' },
-    baseDmgMult: { value: 0.51, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy damage as a multiple of the floor-99 monster' },
-    hpGrowth: { value: 0.028, min: 0, max: 0.5, step: 0.005, label: 'Enemy HP growth per depth (compounding)' },
-    dmgGrowth: { value: 0.022, min: 0, max: 0.5, step: 0.001, label: 'Enemy damage growth per depth (compounding)' },
+    // Round 17: the floor-99 monster became 1.5x stronger, so depth 0 went from 0.51 to 0.31 / 0.32 of it (the same absolute enemy), and the growth per depth from 2.8% / 2.2% to 3.3% / 2.6%:
+    // with the refinement past +8 (up to +12) the top end of the old curve was within reach of a legendary hero at paragon 30, now depth 50 asks near-max paragon and +10..+12 (docs/BALANCE_CHANGES.md).
+    baseHpMult: { value: 0.31, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy HP as a multiple of the floor-99 monster' },
+    baseDmgMult: { value: 0.32, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy damage as a multiple of the floor-99 monster' },
+    hpGrowth: { value: 0.033, min: 0, max: 0.5, step: 0.005, label: 'Enemy HP growth per depth (compounding)' },
+    dmgGrowth: { value: 0.026, min: 0, max: 0.5, step: 0.001, label: 'Enemy damage growth per depth (compounding)' },
     bossEvery: { value: 10, min: 2, max: 50, step: 1, label: 'Depth boss every N depths' },
     bossHpMult: { value: 1, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: HP multiplier over a regular depth' },
     bossDmgMult: { value: 1, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: damage multiplier over a regular depth' },

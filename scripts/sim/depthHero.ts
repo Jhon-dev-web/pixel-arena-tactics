@@ -12,15 +12,16 @@ const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
 
 // Every piece of tier 6 at +8 with the given rarity and its median substats (the first n of a fixed useful order: crit, life, defense).
 const ORDER = ['critRate', 'maxHp', 'defense', 'critDamage', 'lifesteal'] as const;
-export function gearHero(rarity: Rarity, paragon: number): SaveData {
-  let hero = buildHero(100, 6, 8, 100);
+// `refine` is the level of every piece (8 = the reference of rounds 14-16; the refinement past +8 of round 16 allows up to +12 on tier 5 and 6).
+export function gearHero(rarity: Rarity, paragon: number, refine = 8): SaveData {
+  let hero = buildHero(100, 6, refine, 100);
   const instances = { ...hero.gearInstances };
   const equipped = { ...hero.equipped } as unknown as Record<string, string>;
   const pieces: [string, string][] = [['weapon', TIER_GEAR[6][0]], ['armor', TIER_GEAR[6][1]], ...TIER_EXTRAS[6]];
   for (const [slot, tpl] of pieces) {
     const tier = getGear(tpl)?.tier ?? 6;
     const subs: Substat[] = ORDER.slice(0, rarityDef(rarity).substatCount).map((type) => ({ type, value: medianSubstatValue(SUBSTATS.find((s) => s.type === type)!, tier) }));
-    const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity, substats: subs, upgrade: 8 });
+    const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity, substats: subs, upgrade: refine });
     instances[inst.id] = inst;
     equipped[slot] = inst.id;
   }

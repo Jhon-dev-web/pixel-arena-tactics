@@ -178,21 +178,26 @@ describe('Round 14: how deep end-game heroes get in the Profundezas', () => {
     expect(r).toBeLessThanOrEqual(25);
   });
 
-  it('each 10 paragon levels buy about 3 to 5 more depths (to level 20, before the next wall)', () => {
+  it('each 10 paragon levels buy about 2 to 5 more depths (to level 20, before the next wall)', () => {
+    // round 17: the steeper depths (growth 3.3% / 2.6%) trade one depth of the first block (+3 became +2) for a top end that needs the deep refine
     const p0 = reach('common', 0);
     const p10 = reach('common', 10);
     const p20 = reach('common', 20);
-    expect(p10 - p0).toBeGreaterThanOrEqual(3);
+    expect(p10 - p0).toBeGreaterThanOrEqual(2);
     expect(p10 - p0).toBeLessThanOrEqual(5);
-    expect(p20 - p10).toBeGreaterThanOrEqual(3);
+    expect(p20 - p10).toBeGreaterThanOrEqual(2);
     expect(p20 - p10).toBeLessThanOrEqual(5);
+    expect(p20 - p0).toBeGreaterThanOrEqual(5);
   });
 
-  it('depth 50 needs both Legendary-heavy gear and near-max paragon', () => {
+  it('depth 50 needs near-max paragon and Legendary-heavy gear including the refinement past +8 (+9 to +12, round 17)', () => {
+    const deep = (rarity: 'common' | 'epic' | 'legendary', paragon: number, refine: number) => depthReach(gearHero(rarity, paragon, refine));
     expect(reach('common', 50)).toBeLessThan(50);
     expect(reach('epic', 50)).toBeLessThan(50);
-    expect(reach('legendary', 0)).toBeLessThan(50);
-    expect(reach('legendary', 30)).toBeLessThan(50);
-    expect(reach('legendary', 50)).toBeGreaterThanOrEqual(50);
+    expect(reach('legendary', 50)).toBeLessThan(50); // at +8 even a legendary hero at paragon 50 stops short
+    expect(deep('legendary', 0, 12)).toBeLessThan(50);
+    expect(deep('legendary', 30, 12)).toBeLessThan(50);
+    expect(deep('common', 50, 12)).toBeLessThan(50);
+    expect(deep('legendary', 50, 12)).toBeGreaterThanOrEqual(50);
   });
 });

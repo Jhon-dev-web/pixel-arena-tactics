@@ -57,6 +57,9 @@ export function buildHero(level: number, tier: number, refine: number, floor = 1
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 23, 26, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100];
 const REFINES = [0, 4, 8];
+// Round 17: the refinement past +8 (tier 5 and 6 pieces, from hero level 60) is part of what a player of floors 87-100 wears, so the ladder has those builds too: without them the
+// floors 87-100 were all "no build clears this" and took the extrapolated value.
+const DEEP_REFINES = [10, 12];
 
 export function ladder(): LadderBuild[] {
   // The brand-new hero, with its first three attribute points still unspent (CP 58): this is the CP a new player sees on floor 1.
@@ -68,6 +71,7 @@ export function ladder(): LadderBuild[] {
       // a build only exists once the level lets the player craft that tier (the weapon's recipe level)
       if (level < (getGear(TIER_GEAR[tier][0]).recipe?.requiredLevel ?? 0)) continue;
       for (const r of REFINES) out.push(mk(level, tier, r));
+      if (tier >= 5 && level >= 60) for (const r of DEEP_REFINES) out.push(mk(level, tier, r));
     }
   }
   return out.sort((a, b) => a.cp - b.cp);

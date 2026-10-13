@@ -21,14 +21,18 @@ if (process.env.DEPTH_BASE_DMG) (T.depths as { baseDmgMult: number }).baseDmgMul
 if (process.env.DEPTH_DMG) (T.depths as { dmgGrowth: number }).dmgGrowth = Number(process.env.DEPTH_DMG);
 
 it('prints the depth reach of end-game heroes', () => {
-  const cases: [string, Rarity, number][] = [
-    ...[0, 10, 20, 30, 40, 50].map((p): [string, Rarity, number] => [`common T6+8, paragon ${p}`, 'common', p]),
-    ...[0, 20, 50].map((p): [string, Rarity, number] => [`epic T6+8, paragon ${p}`, 'epic', p]),
-    ...[0, 10, 20, 30, 40, 50].map((p): [string, Rarity, number] => [`legendary T6+8, paragon ${p}`, 'legendary', p]),
+  const cases: [string, Rarity, number, number][] = [
+    ...[0, 10, 20, 30, 40, 50].map((p): [string, Rarity, number, number] => [`common T6+8, paragon ${p}`, 'common', p, 8]),
+    ...[0, 20, 50].map((p): [string, Rarity, number, number] => [`epic T6+8, paragon ${p}`, 'epic', p, 8]),
+    ...[0, 10, 20, 30, 40, 50].map((p): [string, Rarity, number, number] => [`legendary T6+8, paragon ${p}`, 'legendary', p, 8]),
+    // Round 17: the refinement past +8 (6% of the base stat a level): what +10 and +12 are worth in depths
+    ...[0, 10, 30, 50].map((p): [string, Rarity, number, number] => [`common T6+12, paragon ${p}`, 'common', p, 12]),
+    ...[0, 10, 30, 50].map((p): [string, Rarity, number, number] => [`legendary T6+10, paragon ${p}`, 'legendary', p, 10]),
+    ...[0, 10, 30, 40, 50].map((p): [string, Rarity, number, number] => [`legendary T6+12, paragon ${p}`, 'legendary', p, 12]),
   ];
   const lines = [`T.depths hp ${T.depths.hpGrowth} dmg ${T.depths.dmgGrowth} boss x${T.depths.bossHpMult}/x${T.depths.bossDmgMult}; paragon ${T.paragon.damagePerLevel}/level cap ${T.paragon.maxBonus}`, 'hero | CP | deepest depth cleared | recommended CP at that depth + 1'];
-  for (const [label, rarity, paragon] of cases) {
-    const hero = gearHero(rarity, paragon);
+  for (const [label, rarity, paragon, refine] of cases) {
+    const hero = gearHero(rarity, paragon, refine);
     const reach = depthReach(hero);
     lines.push(`${label} | ${computeCP(hero)} | ${reach} | ${recommendedCpForDepth(reach + 1)}`);
   }
