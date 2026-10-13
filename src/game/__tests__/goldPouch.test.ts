@@ -306,7 +306,7 @@ describe('Gold Pouch: the text states the rules from the same tunables', () => {
     const raw = key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], tree) as string;
     return raw.replace(/\{(\w+)\}/g, (whole, k) => String(params[k] ?? whole));
   };
-  const digits = (s: string): number[] => (s.replace(/(\d)[ ., ](?=\d{3}\b)/g, '$1').match(/\d+/g) ?? []).map(Number);
+  const digits = (s: string): number[] => (s.replace(/(\d)[ ., ](?=\d{3}\b)/g, '$1').match(/\d+/g) ?? []).map(Number);
 
   it('pt and en say the minimum, the fee and the daily limit that the code enforces, and no placeholder is left over', () => {
     const p = pouchRuleParams();
