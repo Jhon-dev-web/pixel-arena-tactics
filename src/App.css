@@ -10856,3 +10856,154 @@ button[data-ui]:focus-visible {
   flex-wrap: wrap;
   overflow-wrap: anywhere;
 }
+
+/* Hero panel: the stat cells are buttons that open the breakdown by source (CombatStats.tsx), and show the total with the elixirs in it. */
+.combat-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hero-stat-cell.stat-cell {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  min-width: 0;
+}
+.hero-stat-cell.stat-cell:hover,
+.hero-stat-cell.stat-cell.open,
+.hero-stat-cell.stat-cell:focus-visible {
+  border-color: #ffd76a;
+  outline: none;
+}
+.hero-stat-cell.stat-cell > span:nth-child(2) {
+  font-size: calc(var(--font-size) - 1px);
+  color: #ffd76a;
+  align-self: flex-end;
+}
+.hero-stat-cell.stat-cell > span.num-abbr:nth-child(2) {
+  font-size: calc((var(--font-size) - 1px) * 1.6);
+}
+.hero-stat-cell.stat-cell.buffed {
+  border-color: #3f8a55;
+  background: rgba(111, 224, 138, 0.08);
+}
+.hero-stat-cell.stat-cell.buffed > span:nth-child(2) {
+  color: #6fe08a;
+}
+.hero-stat-cell.stat-cell .stat-buff {
+  font-size: calc(var(--font-size) - 4px);
+  color: #6fe08a;
+  align-self: flex-end;
+  text-align: right;
+  line-height: 1.4;
+}
+.hero-stat-cell.stat-cell .stat-buff .stat-base {
+  font-size: inherit;
+  color: #9a8fb0;
+}
+.stat-breakdown {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #ffd76a;
+  border-radius: 8px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+}
+.stat-breakdown[hidden] {
+  display: none;
+}
+.stat-breakdown-title {
+  margin: 0 0 6px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffd76a;
+}
+.stat-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.stat-lines .stat-src {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.stat-lines .stat-val {
+  flex: 0 0 auto;
+  color: #ffd76a;
+  white-space: nowrap;
+}
+.stat-lines.temp .stat-val {
+  color: #6fe08a;
+}
+.stat-lines-head {
+  margin: 8px 0 4px;
+  color: #6fe08a;
+}
+.stat-left {
+  display: block;
+  font-size: calc(var(--font-size) - 5px);
+  color: #9a8fb0;
+}
+.stat-note {
+  margin: 6px 0 0;
+  color: #9a8fb0;
+}
+.stat-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #3a2a4a;
+}
+.stat-totals b {
+  color: #ffd76a;
+  font-weight: normal;
+}
+.stat-breakdown-close {
+  margin-top: 8px;
+  font: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+  background: transparent;
+  border: 1px solid #3a2a4a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.cp-now {
+  font-size: 0.85em;
+}
+.item-compare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px dashed #3a2a4a;
+  border-radius: 6px;
+  font-size: calc(var(--font-size) - 3px);
+  color: #d8c9a0;
+}
+.item-compare-lead {
+  color: #9a8fb0;
+}
+.item-compare-chg.up {
+  color: #6fe08a;
+}
+.item-compare-chg.down {
+  color: #ff8a7a;
+}
+.item-compare-set {
+  color: #9a8fb0;
+}

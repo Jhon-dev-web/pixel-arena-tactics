@@ -229,7 +229,7 @@ describe('"with this item": the same breakdown on the hero wearing it instead', 
   it('an upgrade raises the stats it improves, by exactly the difference of the two heroes', () => {
     const s = hero('2', 2, { level: 40 });
     const inst = owned('steel_greatsword', { upgrade: 4 });
-    const cmp = compareItem(s, { slot: 'weapon', templateId: inst.templateId, instance: inst }, NOW)!;
+    const cmp = compareItem(s, { slot: 'weapon', templateId: inst.templateId, instance: inst })!;
     const dmg = cmp.changes.find((c) => c.id === 'damage')!;
     expect(dmg.before).toBe(buildCombatStats(s).dmgBase);
     expect(dmg.after).toBe(buildCombatStats(withItemEquipped(s, { slot: 'weapon', templateId: inst.templateId, instance: inst })).dmgBase);
@@ -239,8 +239,8 @@ describe('"with this item": the same breakdown on the hero wearing it instead', 
   it('the piece that is already worn compares to nothing; an empty slot compares against nothing worn', () => {
     const s = hero('2', 2, { level: 40 });
     const worn = s.gearInstances[s.equipped.weapon!];
-    expect(compareItem(s, { slot: 'weapon', templateId: worn.templateId, instance: worn }, NOW)).toBeNull();
-    const ring = compareItem(s, { slot: 'ring', templateId: 'gold_ring' }, NOW)!; // a fresh copy (the Forge preview)
+    expect(compareItem(s, { slot: 'weapon', templateId: worn.templateId, instance: worn })).toBeNull();
+    const ring = compareItem(s, { slot: 'ring', templateId: 'gold_ring' })!; // a fresh copy (the Forge preview)
     expect(ring.changes.map((c) => c.id)).toEqual(expect.arrayContaining(['critChance', 'critMult']));
     for (const c of ring.changes) expect(c.before).toBeLessThan(c.after);
   });
@@ -250,7 +250,7 @@ describe('"with this item": the same breakdown on the hero wearing it instead', 
     // weapon + armor are bronze; the first bronze bonus (gold) needs 3 pieces, so the helmet is the third
     const without: SaveData = { ...base, equipped: { ...base.equipped, helmet: null, boots: null } };
     const helm = createGearInstance('bronze_helm', { id: 'cand_helm', origin: 'craft', rarity: 'common', substats: [] });
-    const cmp = compareItem(without, { slot: 'helmet', templateId: 'bronze_helm', instance: helm }, NOW)!;
+    const cmp = compareItem(without, { slot: 'helmet', templateId: 'bronze_helm', instance: helm })!;
     expect(cmp.changes.filter((c) => c.setDelta !== 0).map((c) => c.id)).toEqual(['gold']); // 3 bronze pieces: weapon + armor + helmet = the first bronze bonus
     const gold = cmp.changes.find((c) => c.id === 'gold');
     expect(gold?.setDelta).toBeCloseTo(5, 9);
@@ -259,9 +259,9 @@ describe('"with this item": the same breakdown on the hero wearing it instead', 
 
   it('works for the relic slot too', () => {
     const s = hero('2', 2, { level: 40 });
-    const cmp = compareItem(s, { slot: 'relic' as GearSlot, templateId: 'warchief_totem' }, NOW)!;
+    const cmp = compareItem(s, { slot: 'relic' as GearSlot, templateId: 'warchief_totem' })!;
     expect(cmp.changes.map((c) => c.id)).toContain('damage');
-    expect(compareItem({ ...s, equipped: { ...s.equipped, relic: 'warchief_totem' } }, { slot: 'relic', templateId: 'warchief_totem' }, NOW)).toBeNull();
+    expect(compareItem({ ...s, equipped: { ...s.equipped, relic: 'warchief_totem' } }, { slot: 'relic', templateId: 'warchief_totem' })).toBeNull();
   });
 });
 

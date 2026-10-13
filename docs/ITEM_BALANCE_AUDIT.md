@@ -795,3 +795,46 @@ Medido por `npm run sim:skills` (`scripts/sim/skillAudit.sim.ts`) com o duelo fe
 | nível 100 | Contra-ataque | 0.6% (x163) | 1.6% (x290) | 3.1% (x411) |
 | nível 100 | Golpe Devastador (capstone, com Esmagador x3) | - | - | 10.3% (x1066) |
 | Herói | andar inicial | sem habilidade | Último Bastião | Bloqueio x3 | Pele Dura x3 | Mestre de Armas x3 | Sangria x3 |
+
+# Como os status somam (Rodada 19)
+
+O painel do herói ("Status de combate") mostra o total **de agora**, com os elixires dentro, e de onde vem cada número. Nada ali é fórmula própria: `src/game/statBreakdown.ts` chama as mesmas funções que a luta chama (`buildCombatStats` para o permanente; `combatModifiersFromSave`, `activeTonicStats` e `goldMultiplier` para o temporário, no instante `agora`) e explica o total como uma escada: o herói sem nada, depois uma fonte de cada vez. As linhas somam o total por construção, e `statBreakdown.test.ts` compara, para 80 heróis aleatórios com elixires aleatórios, cada total com o que a Masmorra e a Caça usam.
+
+## Ordem das operações
+
+1. **Personagem**: base + nível + nível da armadura + atributos. FOR escala todo dano plano que entra **antes** dela (arma, luvas); PV e Defesa de VIT / RES entram aqui.
+2. **Equipamento**, na ordem arma, armadura, elmo, luvas, botas, anel, escudo: valor base x refino x durabilidade x raridade, mais os substatus. Luvas somam ao dano da arma (FOR escala); todas as peças somam à taxa e ao dano crítico, à Defesa (soma bruta) e aos PV.
+3. **Gemas** engastadas nessas peças.
+4. **Conjunto**: os bônus das famílias vestidas (3 / 5 peças). O dano final do conjunto **multiplica**.
+5. **Relíquia**: o dano final da relíquia **multiplica** depois da FOR; o resto soma.
+6. **Habilidades**: soma, exceto Pele Dura (x PV), Muralha (x Defesa) e Mestre de Armas (x o termo da arma, antes da FOR).
+7. **Paragon**: multiplica o dano.
+8. **Passe**: soma ao Ouro extra (+15%).
+9. **Temporários**, na ordem: Abençoado, depois os elixires e tônicos. O dano **multiplica** (x1,05 x1,20 x1,10 x1,04); o resto soma na sua própria conta.
+
+**Defesa.** Itens, tônicos e RES somam numa **soma bruta** (é o "Defesa +11%" das peças). O que a soma remove do dano é `soma / (1 + soma)`: 43% brutos removem 30,1%. O painel mostra o segundo número e a lista mostra o primeiro. Pele de Pedra e Polimento de Armadura somam na mesma soma (+0,10 e +0,05).
+
+**Ouro.** 1 + equipamento (soma dos substatus, da relíquia e do conjunto, **com teto de 25%**) + Passe (+15%) + Ganância + Tônico da Fortuna (+20%), tudo somado; só o primeiro tem teto. A Caça paga o Tônico só no tempo de luta que ele cobriu.
+
+**Masmorra x Caça.** A Masmorra lê os temporários a cada golpe, com o relógio (os elixires valem pelo tempo que restar). A Caça congela os status permanentes e o Abençoado no começo da sessão; elixires e tônicos entram como janelas de tempo (o que foi usado antes ou durante a Caça vale dali em diante, nunca para trás). Equipamento ou atributos trocados no meio da Caça só valem em outra Caça (a tela diz isso quando os números diferem). A CP de comparação com as recomendações continua a permanente (`computeCP`); "CP agora" é só informativa.
+
+## Efeitos temporários
+
+Gerada de `temporaryEffects()` (`buffs.ts`); `temporaryEffects.test.ts` confere cada linha com o código e cada efeito com a luta.
+
+| Efeito | Item | Valor | Duração | Onde vale | Como soma |
+| --- | --- | --- | --- | --- | --- |
+| blessed | Reparo abençoado (Forja) | +5% dano | até a próxima corrida da Masmorra | Masmorra, Caça | multiplica o golpe |
+| strength | strength_elixir | +20% dano | 30 min | Masmorra, Caça | multiplica o golpe |
+| attack | atk_elixir | +10% dano | 30 min | Masmorra, Caça | multiplica o golpe |
+| sharpened | sharpening_stone | +4% dano | 30 min | Masmorra, Caça | multiplica o golpe (limite dos itens novos: 10%) |
+| stoneskin | stoneskin_tonic | +10% defesa | 30 min | Masmorra, Caça | soma na soma bruta de Defesa |
+| polished | armor_polish | +5% defesa | 30 min | Masmorra, Caça | soma na soma bruta de Defesa (com a Pele de Pedra) |
+| haste | haste_tonic | +9% velocidade de ataque | 30 min | Masmorra, Caça | soma ao bônus de velocidade da relíquia; o piso de 400 ms vale |
+| precision | precision_elixir | +8% chance de crítico | 30 min | Masmorra, Caça | pontos absolutos, até 100% |
+| fortune | fortune_tonic | +20% ouro | 60 min | Masmorra, Caça | soma ao Ouro (fora do teto de 25%) |
+| bait | hunter_lure | +10% chance (incomuns e raros) | 60 min | só Caça, só na zona em que foi usada | multiplica a chance de queda (limite dos itens novos: 10%) |
+| gatherer | gatherer_brew | +25% minério e madeira | 120 min | só Mineração e Lenhador | soma horas efetivas |
+| prospect | prospector_tonic | +10% minério e madeira | 120 min | só Mineração e Lenhador | soma horas efetivas (com a Poção do Coletor; limite 10%) |
+
+Permanentes que parecem temporários: o Passe (+15% Ouro, x1,1 material na Caça, na Mineração e no Lenhador) e Ganância / Faro (habilidades). O XP do personagem não tem efeito temporário (a Poção de XP é instantânea).

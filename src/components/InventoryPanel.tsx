@@ -25,6 +25,7 @@ import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
 import { gearInstanceLabel, refineTag } from './gearLabel';
 import { gearStatLines } from './gearStats';
+import ItemCompare from './ItemCompare';
 import UniqueTag from './UniqueTag';
 import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
@@ -430,6 +431,9 @@ export default function InventoryPanel({
               ))}
             </div>
             <SetNote item={selectedGear} save={save} />
+            {!isEquipped && selQty > 0 && (selectedInstance || selectedGear.slot === 'relic') && !fromStash && (
+              <ItemCompare save={save} slot={selectedGear.slot} templateId={selectedGear.id} instance={selectedInstance} />
+            )}
             {selectedRarity !== 'common' && (
               <div className={`rarity-line ${rarClass(selectedRarity)}`}>{t(`rarity.${rarityDef(selectedRarity).nameKey}`)}</div>
             )}

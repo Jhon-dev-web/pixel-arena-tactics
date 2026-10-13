@@ -5,7 +5,8 @@ import SpriteSheet from './SpriteSheet';
 import { EquipmentPanel, AttributesPanel, TitlesPanel, AttrKey } from './HeroPanels';
 import InventoryPanel from './InventoryPanel';
 import { SkillsSummary } from './SkillsView';
-import { SaveData, computeCP, formatNumber } from '../game/engine';
+import { SaveData } from '../game/engine';
+import { CpLine } from './CombatStats';
 import { getTitleDef } from '../game/titles';
 import { portraitFrameClass } from '../game/seasonItems';
 
@@ -64,7 +65,9 @@ export default function PersonagemView({
           {titleLabel && <p className="hero-title-line">• {titleLabel}</p>}
           <div className="dh-hero-badges">
             <span className="dh-hero-badge level">{levelLabel(save)}</span>
-            <span className="dh-hero-badge cp">{t('profile.cp')}: {formatNumber(computeCP(save))}</span>
+            <span className="dh-hero-badge cp">
+              <CpLine save={save} />
+            </span>
           </div>
           <div className="bar dh-hero-xpbar">
             <div className="bar-fill xp-fill" style={{ width: `${Math.round(progress * 100)}%` }} />

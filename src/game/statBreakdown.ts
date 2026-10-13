@@ -248,20 +248,26 @@ export function withItemEquipped(save: SaveData, candidate: ItemCandidate): Save
   return { ...save, gearInstances: { ...save.gearInstances, [inst.id]: inst }, equipped: { ...save.equipped, [candidate.slot]: inst.id } };
 }
 
-// Permanent totals before / after the swap, from the same breakdown the panel shows. null when the candidate is what the slot already holds.
-export function compareItem(save: SaveData, candidate: ItemCandidate, now: number): ItemComparison | null {
+// The permanent column of the breakdown without the staircase: the totals the panel shows in its permanent value.
+export function permanentTotals(save: SaveData, parts?: StatParts): StatVector {
+  return permanentVector({ save, parts, pass: ownsAdventurerPass(save) });
+}
+
+// Permanent totals before / after the swap, the same numbers as the panel's permanent column (the staircase is only needed to explain them). null when the candidate is what the
+// slot already holds. `setDelta` is the part of the change the set bonuses make (the swap can complete or break a set).
+export function compareItem(save: SaveData, candidate: ItemCandidate): ItemComparison | null {
   const slot = candidate.slot;
   if (slot !== 'relic' && candidate.instance && save.equipped[slot] === candidate.instance.id) return null;
   if (slot === 'relic' && save.equipped.relic === candidate.templateId) return null;
-  const a = statBreakdown(save, now);
-  const b = statBreakdown(withItemEquipped(save, candidate), now);
-  const setOf = (r: StatRow) => r.lines.find((l) => l.source === 'set')?.delta ?? 0;
+  const swapped = withItemEquipped(save, candidate);
+  const a = permanentTotals(save);
+  const b = permanentTotals(swapped);
+  const aNoSet = permanentTotals(save, { sets: false });
+  const bNoSet = permanentTotals(swapped, { sets: false });
   const changes: StatChange[] = [];
   for (const id of STAT_IDS) {
-    const before = a.rows[id].permanent;
-    const after = b.rows[id].permanent;
-    if (Math.abs(after - before) <= 1e-9) continue;
-    changes.push({ id, before, after, setDelta: setOf(b.rows[id]) - setOf(a.rows[id]) });
+    if (Math.abs(b[id] - a[id]) <= 1e-9) continue;
+    changes.push({ id, before: a[id], after: b[id], setDelta: b[id] - bNoSet[id] - (a[id] - aNoSet[id]) });
   }
   return { slot, changes };
 }

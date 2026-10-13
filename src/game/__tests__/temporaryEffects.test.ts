@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { applyDungeonRun, runDungeon, withSeededRandom } from '../../../scripts/sim/driver';
 import { hero } from '../../../scripts/sim/duel';
-import { BUFF_ITEM, TIMED_BUFF_KINDS, activeTonicStats, buffMinutes, goldMultiplier, hasteIntervalMs, BuffKind } from '../buffs';
+import { BUFF_ITEM, TIMED_BUFF_KINDS, activeTonicStats, buffMinutes, goldMultiplier, hasteIntervalMs, temporaryEffects, BuffKind } from '../buffs';
 import { applyElixir, ElixirId } from '../elixirs';
 import {
   buildCombatStats,
@@ -16,7 +16,7 @@ import {
   SaveData,
   xpToReachLevel,
 } from '../engine';
-import { applyDamageModifiers, applyDamageReduction, heroAttackIntervalMs } from '../derivedStats';
+import { applyDamageModifiers, applyDamageReduction, BLESSED_DAMAGE_PCT, heroAttackIntervalMs } from '../derivedStats';
 import { applyEquipInstance, createGearInstance, equippedSubstatTotals, GearInstance } from '../gearInstances';
 import { applyHuntStart } from '../huntLifecycle';
 import { sessionStatsDiffer } from '../huntSession';
@@ -452,5 +452,41 @@ describe('the frozen-session notice of the running hunt', () => {
     expect(JSON.stringify(back.huntSession!.stats)).not.toBe(JSON.stringify(buildCombatStats(back))); // the old check: same numbers, different key order
     expect(sessionStatsDiffer(back.huntSession!.stats, buildCombatStats(back))).toBe(false);
     expect(sessionStatsDiffer(back.huntSession!.stats, buildCombatStats({ ...back, str: back.str + 1 }))).toBe(true);
+  });
+});
+
+describe('docs/ITEM_BALANCE_AUDIT.md "Como os status somam" says what the code does', () => {
+  const doc = readFileSync('docs/ITEM_BALANCE_AUDIT.md', 'utf8');
+  const table = doc.slice(doc.indexOf('## Efeitos temporários'));
+  const pct = (v: number) => `+${Math.round(v * 100)}%`;
+
+  it('every temporary effect has its row with the value, the duration and where it applies', () => {
+    for (const e of temporaryEffects()) {
+      const row = table.split(/\r?\n/).find((l) => l.startsWith(`| ${e.kind} |`));
+      expect(row, e.kind).toBeTruthy();
+      if (e.item) expect(row, e.kind).toContain(` ${e.item} `);
+      expect(row, e.kind).toContain(pct(e.value));
+      if (e.minutes !== null) expect(row, e.kind).toContain(`${e.minutes} min`);
+      expect(/Masmorra/.test(row!), `${e.kind} dungeon`).toBe(e.dungeon);
+      expect(/Caça/.test(row!), `${e.kind} hunt`).toBe(e.hunt);
+      expect(/Mineração/.test(row!), `${e.kind} gather`).toBe(e.gather);
+    }
+    expect(table.split(/\r?\n/).filter((l) => /^\| [a-z]+ \|/.test(l))).toHaveLength(temporaryEffects().length);
+  });
+
+  it('the table is the engine: each effect changes the stat it names by its value', () => {
+    const base = bare();
+    const stats = buildCombatStats(base);
+    for (const e of temporaryEffects()) {
+      if (!e.item || e.kind === 'bait') continue;
+      const s = drink(base, e.item as ElixirId);
+      const now = activeTonicStats(stats, s, NOW);
+      if (e.stat === 'damage') expect(hitOf(s) / stats.dmgBase, e.kind).toBeCloseTo(1 + e.value, 12);
+      if (e.stat === 'defense') expect(now.reduction - stats.reduction, e.kind).toBeCloseTo(e.value, 12);
+      if (e.stat === 'critChance') expect(now.critChance - stats.critChance, e.kind).toBeCloseTo(e.value, 12);
+      if (e.stat === 'attackSpeed') expect(now.heroMs, e.kind).toBe(heroAttackIntervalMs(stats.agi!, (stats.speedBonus ?? 0) + e.value));
+      if (e.stat === 'gold') expect(goldMultiplier(0, true) - 1, e.kind).toBeCloseTo(e.value, 12);
+    }
+    expect(hitOf({ ...base, blessed: true }) / stats.dmgBase).toBeCloseTo(1 + BLESSED_DAMAGE_PCT, 12);
   });
 });

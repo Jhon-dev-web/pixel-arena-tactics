@@ -1,6 +1,5 @@
-import { activeLocale, t } from '../locales';
-import { mitigationFraction } from '../game/derivedStats';
-import { SaveData, buildCombatStats, computeCP, formatNumber, playerLevel } from '../game/engine';
+import { t } from '../locales';
+import { SaveData, computeCP, playerLevel } from '../game/engine';
 import { GearSlot, INSTANCED_SLOTS, MAX_DURABILITY } from '../game/gear';
 import { EquippedView, resolveEquipped, viewDurability, viewRarity, viewRefine } from '../game/gearInstances';
 import { Rarity, rarityDef, substatNameKey } from '../game/rarity';
@@ -16,6 +15,7 @@ import { SetLines } from './SetBonus';
 import { FRAMES, SKINS } from '../game/seasonItems';
 import { heroBaseLook } from '../game/sprites';
 import HeroThumb from './HeroThumb';
+import { CombatStatsGrid, CpLine } from './CombatStats';
 
 // The three "Personagem" panels — extracted from what used to be HeroModal's three tabs, so the
 // Personagem view (desktop area + mobile stack, see PersonagemView.tsx) and any future modal reuse
@@ -109,18 +109,7 @@ export function EquipmentPanel({ save }: { save: SaveData }) {
 
 export function AttributesPanel({ save, onAttrChange }: { save: SaveData; onAttrChange: (attr: AttrKey, delta: number) => void }) {
   const level = playerLevel(save.xp);
-  const stats = buildCombatStats(save);
   const cp = computeCP(save);
-  const fmtDec = (n: number, digits = 1, trim = true) => {
-    const s = trim ? String(Number(n.toFixed(digits))) : n.toFixed(digits);
-    return activeLocale === 'pt' ? s.replace('.', ',') : s;
-  };
-  const displayDamage = Math.round(stats.dmgBase);
-  const critPct = fmtDec(stats.critChance * 100);
-  const critDamagePct = Math.round(stats.critMult * 100);
-  const mitigationPct = fmtDec(mitigationFraction(stats.reduction) * 100);
-  const attackSpeed = fmtDec(1000 / stats.heroMs, 2, false);
-  const lifestealPct = fmtDec(stats.lifesteal);
 
   const totalPoints = level * 3;
   const spent = save.str + save.vit + save.agi + save.res;
@@ -131,43 +120,12 @@ export function AttributesPanel({ save, onAttrChange }: { save: SaveData; onAttr
       <div className="attrs-header">
         <span>{t('profile.combatStats')}</span>
       </div>
-      <div className="hero-stats-grid">
-        <div className="hero-stat-cell">
-          <span>❤️ {t('profile.maxHp')}</span>
-          <span className="num-abbr">{formatNumber(stats.maxHp)}</span>
-        </div>
-        <div className="hero-stat-cell">
-          <span>⚔️ {t('profile.damage')}</span>
-          <span className="num-abbr">{formatNumber(displayDamage)}</span>
-        </div>
-        <div className="hero-stat-cell">
-          <span>💥 {t('profile.critRate')}</span>
-          <span>{critPct}%</span>
-        </div>
-        <div className="hero-stat-cell">
-          <span>🔥 {t('profile.critDamage')}</span>
-          <span>{critDamagePct}%</span>
-        </div>
-        <div className="hero-stat-cell">
-          <span>🛡️ {t('profile.defense')}</span>
-          <span>{mitigationPct}%</span>
-        </div>
-        <div className="hero-stat-cell">
-          <span>⚡ {t('profile.attackSpeed')}</span>
-          <span>
-            {attackSpeed} {t('profile.attackSpeedUnit')}
-          </span>
-        </div>
-        <div className="hero-stat-cell">
-          <span>🩸 {t('profile.lifesteal')}</span>
-          <span>{lifestealPct}%</span>
-        </div>
-      </div>
+      <CombatStatsGrid save={save} />
 
       <div className="hero-cp-bar">
         <span className="hero-cp-icon">⚔️</span>
         <span>
-          {t('profile.cp')}: <span className="num-abbr">{formatNumber(cp)}</span>
+          <CpLine save={save} />
         </span>
       </div>
 

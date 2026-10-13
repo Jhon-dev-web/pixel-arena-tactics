@@ -36,6 +36,7 @@ import { getConsumable } from '../game/consumables';
 import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
+import ItemCompare from './ItemCompare';
 import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
 import MaterialIcon from './MaterialIcon';
@@ -339,6 +340,7 @@ export default function ForgeModal({
                           <span className="craft-stats">{gearStatLines(item).map((l) => l.text).join(' · ')}</span>
                           <AppearanceLine item={item} />
                           <SetNote item={item} save={save} />
+                          <ItemCompare save={save} slot={item.slot} templateId={item.id} />
                           {blockedByBag(item) && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
                           <div className="craft-req">
                             <span className="req-item">
@@ -457,6 +459,7 @@ export default function ForgeModal({
                     <span className="craft-desc">
                       {gearStatLines(item, lvl).map((l) => l.text).join(' · ')}
                     </span>
+                    <ItemCompare save={save} slot={item.slot} templateId={item.id} instance={inst} />
                     {!isMax && (
                       <div className="craft-req">
                         <span className="req-item">
