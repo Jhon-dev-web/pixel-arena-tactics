@@ -22,6 +22,7 @@ import { BurnState, applyDamageModifiers, applyDamageReduction, StrikeTally, bas
 import {
   crossedMilestoneFloors,
   dungeonEnemyKindForFloor,
+  isDepthStage,
   dungeonRunXp,
   getBiomeForFloor,
   getMilestoneReward,
@@ -35,6 +36,7 @@ import { MaterialId } from '../../src/game/materials';
 import { unlockedZoneIds } from '../../src/game/huntingZones';
 import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
 import { UniqueDrop, addRelics, addUniqueInstance } from '../../src/game/uniques';
+import { recordDungeonRun } from '../../src/game/statsTracking';
 import { applyClaimGathering, applyStartGathering } from '../../src/game/gathering';
 import { applyBuyConsumable, applyCraftPotion, applyRefine } from '../../src/game/craftActions';
 import { ConsumableId } from '../../src/game/consumables';
@@ -98,13 +100,16 @@ export interface DungeonRun {
 // enemy every atkSpeedMs; a cleared wave pays waveRewards, heals playerMax * waveHeal, then waits intermissionMs; boss
 // floors stop for the retreat / advance choice. Auto-potion rules are tryAutoPotion's.
 // `maxStages` (diagnostics only): stop with a retreat after that many cleared floors, so a probe of one floor does not keep climbing.
-export function runDungeon(save: SaveData, now: number, maxStages = Infinity): DungeonRun {
+// `startStage` (long-horizon sim): the stage the run starts on when it is not the hero's own floor, i.e. a Profundezas run (nextDepthStage). A depth run has no last floor and no
+// milestone to bank (BattleModal.startNextWave / the tension window only apply to floors), so it goes on until death or the low-HP retreat.
+export function runDungeon(save: SaveData, now: number, maxStages = Infinity, startStage?: number): DungeonRun {
   // Tonics running when the run starts (Stoneskin / Haste / Precision) cover the whole climb: a run is minutes, a tonic lasts 30.
   const combat = activeTonicStats(buildCombatStats(save), save, now);
   const playerMax = combat.maxHp;
   const heroBase = applyDamageModifiers(combat.dmgBase, combatModifiersFromSave(save, now));
   const regen = regenAmount(playerMax, combat.hpRegenPct);
-  const startFloor = save.highestDungeonFloor;
+  const startFloor = startStage ?? save.highestDungeonFloor;
+  const depthRun = isDepthStage(startFloor);
   const stock = {
     greater_elixir: save.consumables?.greater_elixir ?? 0,
     large_hp: save.consumables?.large_hp ?? 0,
@@ -255,7 +260,10 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity): D
     hp = Math.min(playerMax, Math.round(hp + playerMax * T.battle.waveHeal));
     if (stages >= maxStages) break;
 
-    if (isDungeonBoss(stage)) {
+    if (depthRun) {
+      if (hp / playerMax <= LOW_HP_RETREAT) break; // voluntary retreat
+      clock += T.battle.intermissionMs;
+    } else if (isDungeonBoss(stage)) {
       // Tension window: bank the run when this milestone has not been claimed yet (a defeat would forfeit it), otherwise push on.
       const unclaimed = !save.dungeonCheckpoints.includes(stage);
       if (unclaimed || stage >= MAX_DUNGEON_FLOOR) {
@@ -346,8 +354,12 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
   let delivered = worn;
   for (const drop of rewards.uniques ?? []) delivered = addUniqueInstance(delivered, drop, `dg${startFloor}`, 0);
   delivered = addRelics(delivered, rewards.relics ?? []);
+  // Only a Profundezas run feeds the lifetime stats here (deepestDepth): the 21-day sim never reached floor 100, and the quests / weekly goals that read the other
+  // counters must keep paying exactly what they paid.
+  const stats = isDepthStage(startFloor) ? recordDungeonRun(s, startFloor, stages, (rewards.uniques ?? []).length).stats : s.stats;
   const save: SaveData = {
     ...s,
+    stats,
     gold,
     gems,
     cosmetics,

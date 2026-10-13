@@ -23,6 +23,8 @@ import { applyHarvest, applyPlant, readySlots } from '../../src/game/gardenActio
 import { applyElixir, applyRepairKit, ElixirId } from '../../src/game/elixirs';
 import { isBuffActive } from '../../src/game/buffs';
 import { MILESTONE_FLOORS } from '../../src/game/dungeon';
+import { deepestDepth, depthsUnlocked, nextDepthStage } from '../../src/game/depths';
+import { paragonLevel } from '../../src/game/paragon';
 import { POTION_RECIPES } from '../../src/game/potions';
 import { ORE_TIERS } from '../../src/game/ores';
 import { WOOD_TIERS } from '../../src/game/woodcutting';
@@ -33,7 +35,7 @@ import {
   isDepthUnlocked,
   isZoneUnlocked,
 } from '../../src/game/huntingZones';
-import { applyHuntClaim, planHuntClaim, requestHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
+import { applyHuntClaim, huntClaimBlocked, planHuntClaim, requestHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
 import { applyDeliveryAccept, applyDeliveryClaim, canAffordOffer, ensureDeliveryOffers } from '../../src/game/deliveries';
 import { bagFreeSlots, expandInventory, inventoryCapacity, inventorySlotsUsed, slotsForQty } from '../../src/game/inventory';
 import { applyStashMove, applyStashUpgrade, nextStashUpgrade, stashSlotsUsed } from '../../src/game/stash';
@@ -146,6 +148,11 @@ export interface DaySnapshot {
   stashSlots: number;
   ledger: DayLedger;
   sessions: SessionRecord[];
+  // Long-horizon sim (longHaul.sim.ts): Profundezas depth reached, paragon level, the tier worn in each of the seven slots, and what stands between the hero and the next step.
+  depth: number;
+  paragon: number;
+  wornTiers: number[];
+  blockers: { gear: string; dungeon: string };
 }
 
 export type FirstEvent = 'firstCraft' | 'firstRelic' | 'firstRefine' | 'floor10' | 'floor24' | 'floor25' | 'floor50' | 'boss50' | 'zone2' | 'bagFull' | 'stash1' | 'stash2' | 'stash3';
@@ -364,6 +371,8 @@ export interface PlayerOptions {
   sinks?: boolean;
   // A player who ignores the inventory entirely: never stashes, sells, discards, expands or brings anything over (everything else as the baseline).
   careless?: boolean;
+  // Long-horizon sim: once the floor-100 boss is down the Dungeon sessions go to the Profundezas (nextDepthStage), and the snapshots carry the depth, the paragon level and the blockers.
+  long?: boolean;
 }
 
 // Garden 3.0 tonics the policy crafts (one of each in stock) and drinks on a boss attempt; gatherer_brew is drunk before a Mining / Woodcutting session.
@@ -389,6 +398,7 @@ export class Player {
   private huntUnits: Mats = { leather_scrap: 50, bone_fragment: 50, demon_claw: 16, concentrated_blood: 16, demon_core: 3, corrupted_crystal: 3, rift_shard: 12, fiend_horn: 2, abyssal_marrow: 12, blood_heart: 2 };
   private sessionsToday = 0;
   private freeSessionsToday = 0;
+  private dungeonPerDay = 0; // sessions played today (the last N entries of recentStages)
   private fake: (t: number) => void;
   private visit: 'first' | 'second' = 'first';
   private opts: PlayerOptions;
@@ -476,6 +486,31 @@ export class Player {
     if (this.S.unlockedHuntingZones.length >= 2) this.mark('zone2');
   }
 
+  // The tier worn in each of the seven slots (what "gear tier worn" means in the long-horizon report).
+  wornTiers(): number[] {
+    const w = resolveEquipped(this.S);
+    return CRAFT_PRIORITY.map((slot) => w[slot]?.item?.tier ?? 0);
+  }
+
+  // What stands between the hero and his next step, in words: the gear craft (level gate, Runas / gems, materials, Gold, or ready) and the Dungeon (the CP wall).
+  private blockers(): { gear: string; dungeon: string } {
+    const t = chooseTarget(this.S);
+    let gear = 'tudo forjado';
+    if (t) {
+      const lvl = playerLevel(this.S.xp);
+      const missing = Object.keys(t.deficit).length;
+      if (lvl < t.minLevel) gear = `nível (${t.tpl} pede ${t.minLevel})`;
+      else if (t.blocked) gear = 'runas/gemas';
+      else if (missing > 0) gear = `materiais (${t.tpl})`;
+      else if (this.S.gold < t.gold) gear = `ouro (${t.tpl})`;
+      else gear = `pronto (${t.tpl})`;
+    }
+    const recent = this.recentStages.slice(-this.dungeonPerDay);
+    const wall = recent.length > 0 && recent.every((n) => n <= 2);
+    const where = this.opts.long && depthsUnlocked(this.S) ? `profundeza ${deepestDepth(this.S) + 1}` : `andar ${this.S.highestDungeonFloor}`;
+    return { gear, dungeon: wall ? `CP (${where})` : `avança (${where})` };
+  }
+
   // ---- a day = two visits
   playDay(day: number, jitter: () => number) {
     this.day = day;
@@ -510,6 +545,10 @@ export class Player {
       stashSlots: stashSlotsUsed(this.S),
       ledger: this.ledger,
       sessions: this.sessions,
+      depth: deepestDepth(this.S),
+      paragon: paragonLevel(this.S.xp),
+      wornTiers: this.wornTiers(),
+      blockers: this.opts.long ? this.blockers() : { gear: '', dungeon: '' },
     });
   }
 
@@ -573,6 +612,12 @@ export class Player {
         const claimed = applyHuntClaim(this.S, p.id);
         if (claimed) this.set(claimed, 'caça');
         else this.S = s;
+        // A unique piece (or owed units) the bag had no room for stays pending and blocks the next hunt: the player at a full bag frees a slot and claims again (long horizon).
+        for (let tries = 0; tries < 3 && this.opts.long && huntClaimBlocked(this.S); tries++) {
+          this.makeRoom(bagFreeSlots(this.S, this.now) + 2 + (this.S.pendingHuntReward?.uniques.length ?? 0));
+          const again = applyHuntClaim(this.S, this.S.pendingHuntReward!.id);
+          if (again) this.S = again;
+        }
       }
     } else if (s.activeOreId || s.activeWoodId) {
       const mine = !!s.activeOreId;
@@ -663,6 +708,38 @@ export class Player {
         if (free() >= want) return;
         const n = surplus(m);
         if (n <= 0 || baseGoldValue(m) > 5 || keepJunk === 0) continue;
+        const next = applyDiscard(this.S, 'material', m, n);
+        if (next) {
+          this.ledger.inv.discarded += n;
+          if (this.ledger.flow[m]) this.ledger.flow[m].consumed.discard += n;
+          this.S = next;
+        }
+      }
+    }
+    if (this.opts.long) this.clearJunk(want, reserved);
+  }
+
+  // Long horizon only: the bag is still full after the stash / merchant rounds (the merchant buys a limited amount a day and the stash is 50 slots). A player at a full bag
+  // throws away what he has no use for: first the stored pieces the next craft chain does not use, then the biggest stacks of materials beyond the working stock.
+  private clearJunk(want: number, reserved: Mats) {
+    const free = () => bagFreeSlots(this.S, this.now);
+    if (free() >= want) return;
+    const chain = new Set<string>();
+    const t = chooseTarget(this.S);
+    if (t) {
+      for (const tpl of t.crafts) for (const sub of Object.keys(getGear(tpl).recipe?.items ?? {})) chain.add(sub);
+    }
+    for (const i of listGearInstances(this.S)) {
+      if (free() >= want) return;
+      if (isInstanceEquipped(this.S, i.id) || chain.has(i.templateId)) continue;
+      const next = applyDiscardInstance(this.S, i.id);
+      if (next) this.S = next;
+    }
+    for (const keep of [297, 198, 99, 0]) {
+      for (const m of (Object.keys(this.S.materials) as MaterialId[]).sort((a, b) => (this.S.materials[b] ?? 0) - (this.S.materials[a] ?? 0))) {
+        if (free() >= want) return;
+        const n = (this.S.materials[m] ?? 0) - (reserved[m] ?? 0) - keep;
+        if (n <= 0) continue;
         const next = applyDiscard(this.S, 'material', m, n);
         if (next) {
           this.ledger.inv.discarded += n;
@@ -1060,7 +1137,9 @@ export class Player {
     this.S = entered;
     this.drinkForBoss();
     const cpAtStart = computeCP(this.S);
-    const run: DungeonRun = runDungeon(this.S, this.now);
+    // Long-horizon: once the floor-100 boss is down the sessions go to the Profundezas, one below the deepest depth cleared (App.tsx startSession(depths)).
+    const depths = !!this.opts.long && depthsUnlocked(this.S);
+    const run: DungeonRun = runDungeon(this.S, this.now, Infinity, depths ? nextDepthStage(this.S) : undefined);
     const applied = applyDungeonRun(this.S, run, this.now);
     this.ledger.goldIn['masmorra'] = (this.ledger.goldIn['masmorra'] ?? 0) + applied.goldFromRun;
     this.ledger.goldIn['marcos'] = (this.ledger.goldIn['marcos'] ?? 0) + applied.goldFromMilestones;
@@ -1077,12 +1156,13 @@ export class Player {
     this.acct(this.S, applied.save, 'masmorra');
     this.S = { ...applied.save, consumables: cons };
     this.sessionsToday += 1;
+    this.dungeonPerDay = this.sessionsToday;
     this.recentStages.push(run.stages);
     this.sessions.push({
       day: this.day + 1,
       index: this.sessionsToday,
       startFloor: run.startFloor,
-      endFloor: this.S.highestDungeonFloor,
+      endFloor: depths ? 100 + deepestDepth(this.S) : this.S.highestDungeonFloor,
       stages: run.stages,
       seconds: run.seconds,
       outcome: run.outcome,
@@ -1196,6 +1276,7 @@ export class Player {
     }
     if (this.opts.balanced && this.visit === 'second') choice = this.day % 2 === 0 ? 'mine' : 'wood';
     this.lastDone[choice] = this.visits;
+    this.trace.push(`   -> ${choice} (needed ${needed.map(([k, h]) => k + ':' + h.toFixed(1)).join(',')})`);
     if (choice === 'mine') {
       const unlocked = [...ORE_TIERS].filter((o) => skillLevel(this.S.skillXp.mining, 'mining') >= o.requiredLevel);
       const id = mine.pick ?? (unlocked[unlocked.length - 1]?.id as MaterialId);
@@ -1253,6 +1334,7 @@ export class Player {
         const next = requestHuntStart(this.S, z.id, depth, this.now);
         if (next) {
           this.S = next;
+          this.trace.push(`   hunt ${z.id}:${depth}`);
           if (this.opts.sinks) this.S = applyElixir(this.S, 'hunter_lure', this.now) ?? this.S;
           return true;
         }
