@@ -7,7 +7,7 @@
 // behave exactly like on the web, and localStorage lives under a stable origin.
 // Development: set ARENA_DEV_URL (scripts/desktop-dev.mjs does it) to load the Vite dev server instead.
 
-const { app, BrowserWindow, Menu, net, protocol, screen, session, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, net, protocol, screen, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -431,8 +431,13 @@ app.whenReady().then(() => {
   if (app.isPackaged) Menu.setApplicationMenu(null);
   registerAppProtocol();
   hardenSession();
+  // Fullscreen from the Settings button: the same toggle as F11 / Alt+Enter, acting only on the game window.
+  ipcMain.handle('window:toggle-fullscreen', () => {
+    if (mainWindow) toggleFullscreen(mainWindow);
+    return mainWindow ? mainWindow.isFullScreen() : false;
+  });
+  ipcMain.handle('window:is-fullscreen', () => (mainWindow ? mainWindow.isFullScreen() : false));
   if (SMOKE) {
-    const { ipcMain } = require('electron');
     ipcMain.on('smoke:page-event', (_e, text) => smoke.pageEvents.push(String(text)));
   }
   const win = createWindow();

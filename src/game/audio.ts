@@ -2,13 +2,69 @@ import Assets from '../assets.json';
 
 export type SfxKey = keyof typeof Assets.sfx;
 
-const MUTE_KEY = 'arena-rpg-muted';
+// Two channels, each with its own volume (0 to 100) and its own mute: the ambient music and the effects. They are device preferences (localStorage), not part of
+// the save. The mute button in the top bar still toggles both at once; the Settings screen has one slider and one mute button per channel.
+const LEGACY_MUTE_KEY = 'arena-rpg-muted';
+const PREFS_KEY = 'arena-rpg-audio';
+
+export interface AudioPrefs {
+  music: number;
+  sfx: number;
+  musicMuted: boolean;
+  sfxMuted: boolean;
+}
+
+export const DEFAULT_AUDIO_PREFS: AudioPrefs = { music: 100, sfx: 100, musicMuted: false, sfxMuted: false };
+
+export function clampVolume(v: unknown): number {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 100;
+}
+
+// A stored value (absent, partial, corrupt) -> trusted prefs. The old single mute flag ('1') becomes both channels muted, once.
+export function parseAudioPrefs(raw: string | null, legacyMuted: string | null = null): AudioPrefs {
+  const out: AudioPrefs = { ...DEFAULT_AUDIO_PREFS };
+  if (raw) {
+    try {
+      const p = JSON.parse(raw) as Partial<Record<keyof AudioPrefs, unknown>>;
+      if (p && typeof p === 'object') {
+        if ('music' in p) out.music = clampVolume(p.music);
+        if ('sfx' in p) out.sfx = clampVolume(p.sfx);
+        out.musicMuted = p.musicMuted === true;
+        out.sfxMuted = p.sfxMuted === true;
+        return out;
+      }
+    } catch {
+      /* corrupt: fall through to the defaults / legacy flag */
+    }
+  }
+  if (legacyMuted === '1') {
+    out.musicMuted = true;
+    out.sfxMuted = true;
+  }
+  return out;
+}
+
+// Volume curve: the slider is perceptual, so the gain follows its square (50 % on the slider is a quarter of the amplitude).
+export const MUSIC_BASE_GAIN = 0.32;
+export const SFX_BASE_GAIN = 0.9;
+const curve = (v: number): number => (clampVolume(v) / 100) ** 2;
+export const musicGain = (p: AudioPrefs): number => (p.musicMuted ? 0 : MUSIC_BASE_GAIN * curve(p.music));
+export const sfxGain = (p: AudioPrefs): number => (p.sfxMuted ? 0 : SFX_BASE_GAIN * curve(p.sfx));
+
+function readStored(): AudioPrefs {
+  try {
+    return parseAudioPrefs(localStorage.getItem(PREFS_KEY), localStorage.getItem(LEGACY_MUTE_KEY));
+  } catch {
+    return { ...DEFAULT_AUDIO_PREFS };
+  }
+}
 
 let ctx: AudioContext | null = null;
 const buffers: Record<string, AudioBuffer> = {};
 let ambientSource: AudioBufferSourceNode | null = null;
 let ambientGain: GainNode | null = null;
-let muted = false;
+let prefs: AudioPrefs = readStored();
 let ambientStarted = false;
 
 // Web Audio is notoriously inconsistent across mobile browsers (iOS Safari especially — internal
@@ -43,20 +99,31 @@ async function loadBuffer(url: string): Promise<AudioBuffer> {
   return ctx!.decodeAudioData(arr);
 }
 
-export function loadMuted(): boolean {
+function persist(): void {
   try {
-    return localStorage.getItem(MUTE_KEY) === '1';
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    localStorage.setItem(LEGACY_MUTE_KEY, prefs.musicMuted && prefs.sfxMuted ? '1' : '0');
   } catch {
-    return false;
+    /* ignore */
   }
 }
 
+export function getAudioPrefs(): AudioPrefs {
+  return { ...prefs };
+}
+
+// Both channels muted (what the top bar's mute button shows).
+export function loadMuted(): boolean {
+  const p = readStored();
+  return p.musicMuted && p.sfxMuted;
+}
+
 export function isMuted(): boolean {
-  return muted;
+  return prefs.musicMuted && prefs.sfxMuted;
 }
 
 export async function initAudio(): Promise<void> {
-  muted = loadMuted();
+  prefs = readStored();
   try {
     ensureCtx();
     const sfxEntries = Object.entries(Assets.sfx) as [string, { url: string }][];
@@ -68,7 +135,7 @@ export async function initAudio(): Promise<void> {
 }
 
 function startAmbient(): void {
-  if (muted || ambientStarted) return;
+  if (prefs.musicMuted || ambientStarted) return;
   try {
     const c = ensureCtx();
     if (!c) return;
@@ -79,7 +146,7 @@ function startAmbient(): void {
     ambientSource.buffer = buf;
     ambientSource.loop = true;
     ambientGain = c.createGain();
-    ambientGain.gain.value = 0.32;
+    ambientGain.gain.value = musicGain(prefs);
     ambientSource.connect(ambientGain);
     ambientGain.connect(c.destination);
     ambientSource.start(0);
@@ -110,21 +177,50 @@ export function unlockAudio(): void {
   startAmbient();
 }
 
-export function setMuted(next: boolean): void {
-  muted = next;
-  try {
-    localStorage.setItem(MUTE_KEY, next ? '1' : '0');
-  } catch {
-    /* ignore */
+// Applies the music prefs to what is playing: a muted channel stops the loop, an audible one starts it (when the browser allows) and follows the slider live.
+function applyMusic(): void {
+  if (prefs.musicMuted) {
+    stopAmbient();
+    return;
   }
-  if (muted) stopAmbient();
-  else startAmbient();
+  startAmbient();
+  if (ambientGain) ambientGain.gain.value = musicGain(prefs);
+}
+
+export function setMusicVolume(volume: number): void {
+  prefs = { ...prefs, music: clampVolume(volume) };
+  persist();
+  applyMusic();
+}
+
+export function setSfxVolume(volume: number): void {
+  prefs = { ...prefs, sfx: clampVolume(volume) };
+  persist();
+}
+
+export function setMusicMuted(next: boolean): void {
+  prefs = { ...prefs, musicMuted: next };
+  persist();
+  applyMusic();
+}
+
+export function setSfxMuted(next: boolean): void {
+  prefs = { ...prefs, sfxMuted: next };
+  persist();
+}
+
+// The top bar's single mute button: both channels together.
+export function setMuted(next: boolean): void {
+  prefs = { ...prefs, musicMuted: next, sfxMuted: next };
+  persist();
+  applyMusic();
 }
 
 // Never throws — every caller (Garden harvest/cancel, combat hits, Forge clicks, etc.) relies on
 // this to fire-and-forget; a sound failing to play must never block the action that triggered it.
 export function playSfx(key: SfxKey, pitchVariance = 0): void {
-  if (muted) return;
+  const gain = sfxGain(prefs);
+  if (gain <= 0) return;
   try {
     const c = ensureCtx();
     if (!c) return;
@@ -138,7 +234,7 @@ export function playSfx(key: SfxKey, pitchVariance = 0): void {
       src.playbackRate.value = 1 + (Math.random() * 2 - 1) * pitchVariance;
     }
     const g = c.createGain();
-    g.gain.value = 0.9;
+    g.gain.value = gain;
     src.connect(g);
     g.connect(c.destination);
     src.start(0);

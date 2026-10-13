@@ -100,7 +100,8 @@ import DesktopTopbar from './components/DesktopTopbar';
 import DesktopHome from './components/DesktopHome';
 import MobileDrawer from './components/MobileDrawer';
 import useIsDesktop from './hooks/useIsDesktop';
-import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
+import { AudioPrefs, getAudioPrefs, initAudio, playSfx, setMuted, setMusicMuted, setMusicVolume, setSfxMuted, setSfxVolume } from './game/audio';
+import { buildSaveExport, resetSave, writeBackup } from './game/saveTransfer';
 import { fmtNum, Locale, setLocale, setLocaleListener, t } from './locales';
 import './App.css';
 import './round11.css';
@@ -165,7 +166,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Forces a re-render when a dev-tunable changes (Admin panel) — nothing reads the value itself.
   const [, setVersion] = useState(0);
   const [, setLocaleVersion] = useState(0);
-  const [muted, setMutedState] = useState<boolean>(() => loadMuted());
+  // Music and effects each have a volume and a mute (audio.ts, a device preference); the top bar's mute button toggles both.
+  const [audio, setAudio] = useState<AudioPrefs>(() => getAudioPrefs());
+  const muted = audio.musicMuted && audio.sfxMuted;
   const [cheatMode, setCheatMode] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [tooltipQueue, setTooltipQueue] = useState<string[]>(() => TOOLTIP_IDS.filter((id) => !save.seenTooltips.includes(id)));
@@ -491,9 +494,54 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);
-    setMutedState(next);
+    setAudio(getAudioPrefs());
     if (!next) playSfx('click');
   };
+
+  // Settings: a change of either channel is applied at once and mirrored into the screen.
+  const changeAudio = (apply: () => void) => {
+    apply();
+    setAudio(getAudioPrefs());
+  };
+
+  // Export: the hero as a JSON file (saveTransfer.ts: nothing but the save goes in).
+  const exportSaveFile = () => {
+    const { text, filename } = buildSaveExport(saveRef.current, Date.now());
+    try {
+      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      showToast(t('settings.exported'));
+    } catch {
+      showToast(t('settings.exportFailed'));
+    }
+  };
+
+  // Import and reset replace the hero: the current one is kept as a backup first (and nothing is replaced when the device refuses the backup). The screens that
+  // were built from the old save (tutorial, first-view tooltips, the welcome-back summary) are rebuilt from the new one.
+  const replaceHero = (next: SaveData, toastKey: string) => {
+    if (!writeBackup(saveRef.current, Date.now())) {
+      showToast(t('settings.backupFailed'));
+      return;
+    }
+    commitSave(next);
+    setWelcome(null);
+    setRewardHidden(false);
+    setActiveView('home');
+    setTutorialStep(next.tutorial.initial === 'pending' || next.tutorial.initial === 'in_progress' ? next.tutorial.initialStep : null);
+    setContextTutorial(null);
+    setActiveTooltip(null);
+    setTooltipQueue(TOOLTIP_IDS.filter((id) => !next.seenTooltips.includes(id)));
+    setSettingsOpen(false);
+    showToast(t(toastKey));
+  };
+  const importSaveFile = (imported: SaveData) => replaceHero(imported, 'settings.imported');
+  const resetHero = () => replaceHero(resetSave(saveRef.current), 'settings.resetDone');
 
   const openDungeon = () => {
     playSfx('click');
@@ -1906,9 +1954,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
       {settingsOpen && (
         <SettingsModal
-          muted={muted}
+          save={save}
+          audio={audio}
+          onMusicVolume={(v) => changeAudio(() => setMusicVolume(v))}
+          onSfxVolume={(v) => changeAudio(() => setSfxVolume(v))}
+          onToggleMusicMute={() => changeAudio(() => setMusicMuted(!audio.musicMuted))}
+          onToggleSfxMute={() => changeAudio(() => setSfxMuted(!audio.sfxMuted))}
           onChangeLocale={(locale: Locale) => setLocale(locale)}
-          onToggleSound={toggleMute}
+          onExportSave={exportSaveFile}
+          onImportSave={importSaveFile}
+          onResetSave={resetHero}
           onReplayTutorial={() => {
             setSettingsOpen(false);
             replayTutorial();

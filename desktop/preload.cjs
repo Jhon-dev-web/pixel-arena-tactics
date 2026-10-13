@@ -5,7 +5,16 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('arenaDesktop', Object.freeze({ isDesktop: true, platform: process.platform }));
+contextBridge.exposeInMainWorld(
+  'arenaDesktop',
+  Object.freeze({
+    isDesktop: true,
+    platform: process.platform,
+    // Window fullscreen (Settings): the main process owns the window, the page only asks.
+    toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
+    isFullscreen: () => ipcRenderer.invoke('window:is-fullscreen'),
+  }),
+);
 
 // Smoke test only (--smoke-test): forward resource load errors and CSP violations to the main process.
 if (process.argv.includes('--smoke-test')) {
