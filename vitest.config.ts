@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['src/**/__tests__/**/*.test.ts'],
+    include: ['src/**/__tests__/**/*.test.ts', 'supabase/functions/**/__tests__/**/*.test.ts'],
     // The public portal (portal/) is a separate, self-contained static site with its own scripts.
     exclude: ['portal/**', '**/node_modules/**'],
     setupFiles: ['src/game/__tests__/setup.ts'],
