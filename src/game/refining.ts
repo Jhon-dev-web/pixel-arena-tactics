@@ -29,7 +29,7 @@ export const REFINING_RECIPES: RefiningRecipe[] = [
   { id: 'smelt_steel', station: 'furnace', output: 'steel', outputQty: 1, input: { iron: 5 }, cost: 30, requiredLevel: 25 },
   { id: 'smelt_silver', station: 'furnace', output: 'silver_ingot', outputQty: 1, input: { silver: 5 }, cost: 25, requiredLevel: 25 },
   { id: 'smelt_gold', station: 'furnace', output: 'gold_bar', outputQty: 1, input: { gold_ore: 5 }, cost: 15, requiredLevel: 50 },
-  { id: 'smelt_obsidian', station: 'furnace', output: 'refined_obsidian', outputQty: 1, input: { obsidian: 5 }, cost: 10, requiredLevel: 75 },
+  { id: 'smelt_obsidian', station: 'furnace', output: 'refined_obsidian', outputQty: 1, input: { obsidian: 5 }, cost: 10, requiredLevel: 70 },
   { id: 'tan_leather', station: 'tannery', output: 'leather', outputQty: 1, input: { leather_scrap: 3 }, cost: 8, requiredLevel: 1 },
   {
     id: 'synth_essence',
@@ -80,7 +80,7 @@ export const REFINING_RECIPES: RefiningRecipe[] = [
   { id: 'craft_handle_oak', station: 'carpentry', output: 'wood_handle_oak', outputQty: 1, input: { oak_wood: 5 }, cost: 8, requiredLevel: 10 },
   { id: 'craft_handle_ebony', station: 'carpentry', output: 'wood_handle_ebony', outputQty: 1, input: { ebony_wood: 5 }, cost: 5, requiredLevel: 25 },
   { id: 'craft_handle_elven', station: 'carpentry', output: 'wood_handle_elven', outputQty: 1, input: { elven_wood: 5 }, cost: 3, requiredLevel: 50 },
-  { id: 'craft_handle_ancient', station: 'carpentry', output: 'wood_handle_ancient', outputQty: 1, input: { ancient_wood: 5 }, cost: 2, requiredLevel: 75 },
+  { id: 'craft_handle_ancient', station: 'carpentry', output: 'wood_handle_ancient', outputQty: 1, input: { ancient_wood: 5 }, cost: 2, requiredLevel: 70 },
 ];
 
 export function getRefiningRecipe(id: string): RefiningRecipe | undefined {

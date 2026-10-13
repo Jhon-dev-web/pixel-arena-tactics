@@ -73,8 +73,10 @@ describe('Dungeon enemy curve (stage HP / damage helpers)', () => {
   it('floors 76-99 (the boss EnemyDef as a regular mob) follow the boss EnemyDef curve', () => {
     for (let f = 76; f <= 99; f++) {
       const def = getEnemyDef(dungeonEnemyKindForFloor(f));
-      const hp = Math.round(715 * (1 + 0.15 * (f - 1)) * (f % 10 === 0 ? 1.5 : 1));
-      const dmg = Math.round(98 * (1 + 0.12 * (f - 1)) * 0.45);
+      // Round 15: times the late factor of floors 51+ (piecewise linear, T.battle.late*)
+      const B = T.battle;
+      const hp = Math.round(715 * (1 + 0.15 * (f - 1)) * (1 + B.lateHpGrowth * 25 + B.lateHpGrowth2 * (f - 75)) * (f % 10 === 0 ? 1.5 : 1));
+      const dmg = Math.round(98 * (1 + 0.12 * (f - 1)) * (1 + B.lateDmgGrowth * 25 + B.lateDmgGrowth2 * (f - 75)) * 0.45);
       expect([f, stageEnemyHp(def, f), stageEnemyDmg(def, f)]).toEqual([f, hp, dmg]);
     }
   });

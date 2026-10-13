@@ -66,6 +66,12 @@ const T = DebugPanel.define({
     intermissionMs: { value: 1000, min: 300, max: 3000, step: 100, label: 'Wave interval (ms)' },
     hpGrowth: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Monster HP growth per stage' },
     dmgGrowth: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Monster damage growth per stage' },
+    // Round 15: floors 51+ get one more factor on top of the base curve, piecewise linear and continuous: 1 + late * (stages past 50, at most 25) + late2 * (stages past 75), so the
+    // second half of the Dungeon (and the Profundezas, which scale the floor-99 monster) can be paced on its own without touching floors 1-50.
+    lateHpGrowth: { value: 0.009, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 51-75' },
+    lateHpGrowth2: { value: 0.07, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 76-100' },
+    lateDmgGrowth: { value: 0.0065, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 51-75' },
+    lateDmgGrowth2: { value: 0.041, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 76-100' },
     rewardGrowth: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'XP reward growth per stage (dungeon.ts stageVictoryXp only)' },
     // Kept separate from rewardGrowth (XP) so gold economy tuning never silently reflows XP pacing.
     goldRewardGrowth: { value: 0.012, min: 0, max: 1, step: 0.001, label: 'Gold/drop-qty growth per stage' },
@@ -146,8 +152,10 @@ const T = DebugPanel.define({
     heroGrowth1: { value: 1.12, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 1 (levels 1-15)' },
     heroGrowth2: { value: 1.14, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 2 (levels 16-35)' },
     heroGrowth3: { value: 1.17, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 3 (levels 36-60)' },
-    heroGrowth4: { value: 1.21, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 4 (levels 61-80)' },
-    heroGrowth5: { value: 1.27, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 5 (levels 81-100)' },
+    // Round 15 (docs/BALANCE_CHANGES.md): bands 4 and 5 were 1.21 and 1.27, which made level 100 cost 3.3 billion XP against ~200 thousand XP a day. Both are 1.03 now, so the
+    // XP a level asks climbs 3% a level from the 255 thousand of level 60 (levels 1-60 are exactly what they were; xpCurve.ts maps an older save onto the new curve).
+    heroGrowth4: { value: 1.03, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 4 (levels 61-80)' },
+    heroGrowth5: { value: 1.03, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 5 (levels 81-100)' },
     levelHpBonus: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP bonus per level' },
   },
   mining: {
@@ -243,11 +251,14 @@ const T = DebugPanel.define({
   // cleared), so its rewards, including the boss unique / relic roll, are paid once per depth: the long-run unique rate cannot exceed the pace at which depths are cleared.
   depths: {
     _label: 'Depths (Profundezas, after floor 100)',
-    hpGrowth: { value: 0.035, min: 0, max: 0.5, step: 0.005, label: 'Enemy HP growth per depth (compounding)' },
-    dmgGrowth: { value: 0.03, min: 0, max: 0.5, step: 0.005, label: 'Enemy damage growth per depth (compounding)' },
+    // Round 15: depth 0 is the floor-99 monster times these (the floors 76-100 got a late factor, battle.lateHpGrowth2, that the depths would otherwise inherit whole).
+    baseHpMult: { value: 0.52, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy HP as a multiple of the floor-99 monster' },
+    baseDmgMult: { value: 0.52, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy damage as a multiple of the floor-99 monster' },
+    hpGrowth: { value: 0.028, min: 0, max: 0.5, step: 0.005, label: 'Enemy HP growth per depth (compounding)' },
+    dmgGrowth: { value: 0.022, min: 0, max: 0.5, step: 0.001, label: 'Enemy damage growth per depth (compounding)' },
     bossEvery: { value: 10, min: 2, max: 50, step: 1, label: 'Depth boss every N depths' },
-    bossHpMult: { value: 1.1, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: HP multiplier over a regular depth' },
-    bossDmgMult: { value: 1.05, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: damage multiplier over a regular depth' },
+    bossHpMult: { value: 1, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: HP multiplier over a regular depth' },
+    bossDmgMult: { value: 1, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: damage multiplier over a regular depth' },
     bossShards: { value: 4, min: 0, max: 20, step: 1, label: 'Runes for a depth boss' },
     uniqueChanceBase: { value: 0.02, min: 0, max: 1, step: 0.005, label: 'Depth boss unique / relic chance at depth 0 (per boss cleared)' },
     uniqueChancePerDepth: { value: 0.001, min: 0, max: 0.05, step: 0.0005, label: 'Depth boss unique / relic chance gained per depth' },
@@ -256,10 +267,10 @@ const T = DebugPanel.define({
   // Paragon (paragon.ts): after level 100 the XP keeps counting into paragon levels, each a tiny permanent damage bonus, capped.
   paragon: {
     _label: 'Paragon levels (after hero level 100)',
-    xpShare: { value: 0.05, min: 0.001, max: 5, step: 0.005, label: 'XP of paragon level 1 as a share of the XP of hero level 99 -> 100' },
-    xpGrowth: { value: 1.015, min: 1, max: 1.5, step: 0.005, label: 'XP growth per paragon level' },
-    damagePerLevel: { value: 0.03, min: 0, max: 0.1, step: 0.0005, label: 'Damage bonus per paragon level (fraction)' },
-    maxBonus: { value: 1.5, min: 0, max: 3, step: 0.01, label: 'Cap on the total paragon damage bonus (fraction)' },
+    xpShare: { value: 0.6, min: 0.001, max: 5, step: 0.005, label: 'XP of paragon level 1 as a share of the XP of hero level 99 -> 100' },
+    xpGrowth: { value: 1.01, min: 1, max: 1.5, step: 0.005, label: 'XP growth per paragon level' },
+    damagePerLevel: { value: 0.01, min: 0, max: 0.1, step: 0.0005, label: 'Damage bonus per paragon level (fraction)' },
+    maxBonus: { value: 0.5, min: 0, max: 3, step: 0.01, label: 'Cap on the total paragon damage bonus (fraction)' },
   },
   // Profession mastery (mastery.ts): perks at fixed profession levels, all deterministic (no rolls), so a claim is reproducible and the simulator stays byte-identical.
   mastery: {
@@ -364,6 +375,9 @@ const T = DebugPanel.define({
     levelScale50: { value: 3.2, min: 1, max: 20, step: 0.1, label: 'Order reward factor at character level 50' },
     levelScale75: { value: 5.5, min: 1, max: 20, step: 0.1, label: 'Order reward factor at character level 75' },
     levelScale100: { value: 7.7, min: 1, max: 30, step: 0.1, label: 'Order reward factor at character level 100' },
+    // Round 15: the XP of an order stops scaling at this factor (level 50's). A level now costs 255 thousand to 830 thousand XP, not millions, so the 61 / 86 thousand XP of a
+    // 10 h order at level 75 / 100 would have been a fifth to a third of a day of hunting for a cargo of materials; the Gold keeps its anchors.
+    xpFactorMax: { value: 3.2, min: 1, max: 30, step: 0.1, label: 'Highest level factor on the XP of an order' },
     passXpBonus: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Extra delivery XP with Battle Pass (fraction)' },
     offerTtlHours: { value: 24, min: 1, max: 168, step: 1, label: 'Hours before an unaccepted offer is replaced' },
     durationJitter: { value: 0.1, min: 0, max: 0.4, step: 0.05, label: 'Duration variation around the distance reference (+/-)' },

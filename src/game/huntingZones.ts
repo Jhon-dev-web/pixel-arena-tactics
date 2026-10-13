@@ -296,7 +296,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'rift_fiend',
     cp: 1068,
     goldPerHour: 8,
-    xpPerHour: 4650,
+    xpPerHour: 6000,
     drops: [
       { material: 'leather_scrap', rarity: 'common', chance: 0.32, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.105, qty: 1 },
@@ -319,7 +319,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'blood_abomination',
     cp: 1607,
     goldPerHour: 12,
-    xpPerHour: 6950,
+    xpPerHour: 13000,
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.35, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.12, qty: 1 },
@@ -331,7 +331,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { itemId: 'abyss_heart_ring', chance: 0.000024 },
       { itemId: 'bonecrusher_maul', chance: 0.000024 },
     ],
-    offlineCapHours: 8,
+    offlineCapHours: 6,
     unlockFloor: 76,
     baseEnemyHp: 7200,
     baseEnemyDmg: 28,

@@ -106,7 +106,7 @@ export const depthBossPool = (depth: number): number => DEPTH_BOSS_POOLS[(Math.m
 export function depthScale(stage: number): { hp: number; dmg: number; boss: boolean } {
   const d = depthOfStage(stage);
   const boss = d > 0 && isDungeonBoss(stage);
-  return { hp: Math.pow(1 + T.depths.hpGrowth, d) * (boss ? T.depths.bossHpMult : 1), dmg: Math.pow(1 + T.depths.dmgGrowth, d) * (boss ? T.depths.bossDmgMult : 1), boss };
+  return { hp: T.depths.baseHpMult * Math.pow(1 + T.depths.hpGrowth, d) * (boss ? T.depths.bossHpMult : 1), dmg: T.depths.baseDmgMult * Math.pow(1 + T.depths.dmgGrowth, d) * (boss ? T.depths.bossDmgMult : 1), boss };
 }
 
 export function dungeonEnemyKindForFloor(floor: number): EnemyKind {

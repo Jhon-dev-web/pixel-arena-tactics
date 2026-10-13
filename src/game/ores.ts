@@ -20,7 +20,8 @@ export const ORE_TIERS: OreTierDef[] = [
   // 55 keeps Obsidian a late, deliberate unlock without requiring the profession cap to get there.
   // Moved 55 -> 70 with the profession pacing pass: gold_ore (50) and obsidian (55) sat five levels (~1 day) apart while the gear they feed is gated at
   // character Lv50 and Lv70-75, so the Tier 5 door opened weeks before the pieces it belongs to. 70 keeps it a late deliberate unlock.
-  { id: 'obsidian', nameKey: 'ore_obsidian', requiredLevel: 70 },
+  // Round 15: 70 -> 60. With the hero reaching level 70 around day 55-60 the Mining that opens obsidian (about level 70 on day 95) was the wall of the whole tier-5 set.
+  { id: 'obsidian', nameKey: 'ore_obsidian', requiredLevel: 60 },
 ];
 
 export const DEFAULT_ORE_TIER = ORE_TIERS[0].id;

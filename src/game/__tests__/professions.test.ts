@@ -145,8 +145,9 @@ describe('profession gates and refining', () => {
   it('gold ore / elven wood (50) and obsidian / ancient wood are not nonsensically close', () => {
     const ore = (id: string) => ORE_TIERS.find((o) => o.id === id)!.requiredLevel;
     const wood = (id: string) => WOOD_TIERS.find((o) => o.id === id)!.requiredLevel;
-    expect(ore('obsidian') - ore('gold_ore')).toBeGreaterThanOrEqual(15);
-    expect(wood('ancient_wood') - wood('elven_wood')).toBeGreaterThanOrEqual(15);
+    // Round 15: obsidian / ancient wood moved from 70 to 60 (ten levels, about a week of Mining, after gold ore / elven wood)
+    expect(ore('obsidian') - ore('gold_ore')).toBeGreaterThanOrEqual(10);
+    expect(wood('ancient_wood') - wood('elven_wood')).toBeGreaterThanOrEqual(10);
     expect(ore('obsidian')).toBe(wood('ancient_wood'));
     expect(ore('obsidian')).toBeLessThan(T.skills.maxLevel);
   });

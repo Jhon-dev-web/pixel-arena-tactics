@@ -15,7 +15,8 @@ export const WOOD_TIERS: WoodTierDef[] = [
   { id: 'ebony_wood', nameKey: 'wood_ebony', requiredLevel: 25 },
   { id: 'elven_wood', nameKey: 'wood_elven', requiredLevel: 50 },
   // See ores.ts's obsidian comment — same reasoning, kept in sync (was 75, the profession cap itself).
-  { id: 'ancient_wood', nameKey: 'wood_ancient', requiredLevel: 70 },
+  // Round 15: 70 -> 60, same reason as obsidian (ores.ts).
+  { id: 'ancient_wood', nameKey: 'wood_ancient', requiredLevel: 60 },
 ];
 
 export const DEFAULT_WOOD_TIER = WOOD_TIERS[0].id;

@@ -113,6 +113,19 @@ export function probeFloor(builds: LadderBuild[], floor: number, now: number): n
   return Infinity;
 }
 
+// log(CP) = a + b * log(HP x damage) over the floors from 26 up that the ladder really measures (clearly below its top).
+function powerFit(raw: number[], top: number): { a: number; b: number } {
+  const pts: [number, number][] = [];
+  raw.forEach((v, i) => {
+    if (i + 1 >= 26 && Number.isFinite(v) && v < top * 0.9) pts.push([Math.log(stagePower(i + 1)), Math.log(v)]);
+  });
+  const n = pts.length;
+  const mx = pts.reduce((s, p) => s + p[0], 0) / n;
+  const my = pts.reduce((s, p) => s + p[1], 0) / n;
+  const b = pts.reduce((s, p) => s + (p[0] - mx) * (p[1] - my), 0) / pts.reduce((s, p) => s + (p[0] - mx) ** 2, 0);
+  return { a: my - b * mx, b };
+}
+
 // A checkpoint (floor 10, 20, 30 ...) is a mini-boss with +50% HP and +25% damage: its measured CP sits ~25% above both neighbours. Letting it
 // raise the running maximum would overstate the next ~10 floors by up to 37%, so a checkpoint is a one-floor spike: it is never below the
 // floors before it, but the floors after it continue from the previous non-checkpoint value. Boss floors (25/50/75/100) carry on normally.
@@ -124,10 +137,14 @@ export function recommendedTable(builds: LadderBuild[], now: number): { raw: num
   const raw: number[] = [];
   for (let f = 1; f <= MAX_FLOOR; f++) raw.push(probeFloor(builds, f, now));
   const top = builds[builds.length - 1].cp;
+  // Round 15: past floor ~86 no build of the ladder (it stops at level 100, tier 6 +8) clears the floor, and a table that says "the strongest build" for all of them would tell the
+  // player that floor 100 asks what floor 87 asks. A floor the ladder cannot measure (or only measures at its very top) takes the CP a power law over the measured floors 26+ asks of it.
+  const fit = powerFit(raw, top);
   const table: number[] = [];
   let run = 0;
   raw.forEach((rv, i) => {
-    const v = Number.isFinite(rv) ? rv : top;
+    const measured = Number.isFinite(rv) && rv < top * 0.9;
+    const v = measured ? rv : Math.max(Number.isFinite(rv) ? rv : top, Math.round(Math.exp(fit.a + fit.b * Math.log(stagePower(i + 1)))));
     if (isSpikeFloor(i + 1)) {
       table.push(Math.ceil(Math.max(run, v)));
     } else {

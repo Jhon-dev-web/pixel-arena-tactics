@@ -205,11 +205,14 @@ describe('content pack 1: catalog', () => {
   it('30 forged pieces: six tiers per slot, the same level gate as the weapon / armor of the tier, previous tier of the same slot from tier 2', () => {
     expect(forged).toHaveLength(30);
     const levelOf: Record<number, number> = { 1: 0, 2: 10, 3: 25, 4: 50, 5: 70, 6: 90 };
+    // Round 15: inside tiers 5 and 6 the five extra slots open one level pair apart (the weapon and armor of the tier open the tier)
+    const stagger: Record<string, [number, number]> = { helmet: [72, 92], gloves: [74, 94], boots: [76, 96], shield: [78, 98], ring: [80, 100] };
     for (const slot of EXTRA5) {
       const line = forged.filter((g) => g.slot === slot).sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0));
       expect(line.map((g) => g.tier)).toEqual([1, 2, 3, 4, 5, 6]);
       line.forEach((g, i) => {
-        expect(g.recipe?.requiredLevel ?? 0).toBe(levelOf[g.tier as number]);
+        const gate = (g.tier ?? 0) >= 5 ? stagger[slot][(g.tier as number) - 5] : levelOf[g.tier as number];
+        expect(g.recipe?.requiredLevel ?? 0).toBe(gate);
         expect(g.recipe?.items ?? {}).toEqual(i === 0 ? {} : { [line[i - 1].id]: 1 });
         expect(g.recipe?.shards ?? 0).toBe(0);
       });

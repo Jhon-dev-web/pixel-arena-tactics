@@ -42,17 +42,20 @@ export function bossFloorMult(stage: number): { hp: number; dmg: number } {
   return table[i];
 }
 
+// Floors past 50 (Round 15): the extra piecewise-linear factor of T.battle.lateHpGrowth(2) / lateDmgGrowth(2), 1 up to floor 50 so floors 1-50 are exactly what they were.
+const lateFactor = (stage: number, growth: number, growth2: number): number => 1 + growth * Math.min(25, Math.max(0, stage - 50)) + growth2 * Math.max(0, stage - 75);
+
 export function stageEnemyHp(def: EnemyDef, stage: number): number {
   // Profundezas: the floor-99 monster scaled by the fixed percentage per depth (dungeon.ts depthScale); stages 1-100 never get here.
   if (isDepthStage(stage)) return Math.round(stageEnemyHp(def, MAX_DUNGEON_FLOOR - 1) * depthScale(stage).hp);
-  const base = def.hp * (1 + T.battle.hpGrowth * (stage - 1));
+  const base = def.hp * (1 + T.battle.hpGrowth * (stage - 1)) * lateFactor(stage, T.battle.lateHpGrowth, T.battle.lateHpGrowth2);
   const mult = isDungeonBoss(stage) ? T.battle.bossHpMult * bossFloorMult(stage).hp : isDungeonCheckpoint(stage) ? T.battle.miniBossHpMult : 1;
   return Math.round(base * mult);
 }
 
 export function stageEnemyDmg(def: EnemyDef, stage: number): number {
   if (isDepthStage(stage)) return Math.round(stageEnemyDmg(def, MAX_DUNGEON_FLOOR - 1) * depthScale(stage).dmg);
-  const base = def.dmg * (1 + T.battle.dmgGrowth * (stage - 1));
+  const base = def.dmg * (1 + T.battle.dmgGrowth * (stage - 1)) * lateFactor(stage, T.battle.lateDmgGrowth, T.battle.lateDmgGrowth2);
   // A biome's regular enemyKind can itself be the shared 'boss' EnemyDef (minotaur_lair reuses it for
   // floors 76-99, not just the Andar 100 milestone) — without the boss damage dampener, those floors'
   // un-milestoned mobs out-damage the actual boss they lead up to. Route them through bossDmgMult too,

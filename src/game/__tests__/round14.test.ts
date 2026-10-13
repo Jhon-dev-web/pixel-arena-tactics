@@ -68,7 +68,8 @@ describe('Round 14: delivery orders scale with the hero', () => {
     for (let seed = 1; seed <= 6; seed++) {
       for (const o of offersFor(top, seed)) {
         expect(o.gold / unscaledGold(o)).toBeCloseTo(T.deliveries.levelScale100, 1);
-        expect(o.xp / unscaledXp(o)).toBeCloseTo(T.deliveries.levelScale100, 1);
+        // Round 15: the XP of an order stops scaling at xpFactorMax, the Gold keeps scaling to the level-100 anchor
+        expect(o.xp / unscaledXp(o)).toBeCloseTo(T.deliveries.xpFactorMax, 1);
       }
     }
     // the same seed on the same tier asks for the same materials whatever the level: only the pay moves

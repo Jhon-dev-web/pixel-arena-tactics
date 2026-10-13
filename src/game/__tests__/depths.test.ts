@@ -17,6 +17,8 @@ import en from '../../locales/en.json';
 import pt from '../../locales/pt.json';
 
 // The pre-Profundezas formulas, written out again here: floors 1-100 must keep giving exactly these numbers.
+// Round 15: past floor 50 the enemies carry one more piecewise-linear factor (T.battle.lateHpGrowth / lateDmgGrowth, 1 up to floor 50): the Round 14 formulas below times that factor.
+const lateFactor = (stage: number, g1: number, g2: number): number => 1 + g1 * Math.min(25, Math.max(0, stage - 50)) + g2 * Math.max(0, stage - 75);
 const oldHp = (kind: ReturnType<typeof dungeonEnemyKindForFloor>, stage: number): number => {
   const def = ENEMIES[kind];
   const B = T.battle;
@@ -27,7 +29,7 @@ const oldHp = (kind: ReturnType<typeof dungeonEnemyKindForFloor>, stage: number)
     { hp: B.boss100HpMult, dmg: B.boss100DmgMult },
   ];
   const bossMult = bossTable[Math.min(4, Math.max(1, Math.round(stage / B.bossEvery))) - 1];
-  const base = def.hp * (1 + B.hpGrowth * (stage - 1));
+  const base = def.hp * (1 + B.hpGrowth * (stage - 1)) * lateFactor(stage, B.lateHpGrowth, B.lateHpGrowth2);
   const mult = stage % B.bossEvery === 0 ? B.bossHpMult * bossMult.hp : stage % B.miniBossEvery === 0 ? B.miniBossHpMult : 1;
   return Math.round(base * mult);
 };
@@ -41,7 +43,7 @@ const oldDmg = (kind: ReturnType<typeof dungeonEnemyKindForFloor>, stage: number
     { hp: B.boss100HpMult, dmg: B.boss100DmgMult },
   ];
   const bossMult = bossTable[Math.min(4, Math.max(1, Math.round(stage / B.bossEvery))) - 1];
-  const base = def.dmg * (1 + B.dmgGrowth * (stage - 1));
+  const base = def.dmg * (1 + B.dmgGrowth * (stage - 1)) * lateFactor(stage, B.lateDmgGrowth, B.lateDmgGrowth2);
   const mult = stage % B.bossEvery === 0 ? B.bossDmgMult * bossMult.dmg : def.boss ? B.bossDmgMult : stage % B.miniBossEvery === 0 ? B.miniBossDmgMult : 1;
   return Math.round(base * mult);
 };
@@ -58,7 +60,10 @@ describe('Profundezas: floors 1-100 behave exactly as before', () => {
       expect(isDepthStage(floor)).toBe(false);
       expect(stageVictoryXp(floor)).toBe(Math.round(T.advanced.victoryXp * (1 + T.battle.rewardGrowth * (floor - 1))));
     }
-    expect(recommendedCpForFloor(100)).toBe(4884);
+    // floors 1-50 are exactly the Round 14 numbers (the late factor is 1 there)
+    for (let floor = 1; floor <= 50; floor++) expect(lateFactor(floor, T.battle.lateHpGrowth, T.battle.lateHpGrowth2) + lateFactor(floor, T.battle.lateDmgGrowth, T.battle.lateDmgGrowth2), `floor ${floor}`).toBe(2);
+    expect(recommendedCpForFloor(50)).toBe(1848);
+    expect(recommendedCpForFloor(75)).toBe(3698);
     expect(dungeonRunXp(90, 11)).toBe(Array.from({ length: 11 }, (_, i) => stageVictoryXp(90 + i)).reduce((a, b) => a + b, 0));
   });
 
@@ -108,20 +113,22 @@ describe('Profundezas: the scaling rule', () => {
 
   it('depth 1 continues floor 99 smoothly (no cliff right after the last floor)', () => {
     const f99 = stageEnemyHp(def, 99);
-    expect(hp(1) / f99).toBeCloseTo(1 + T.depths.hpGrowth, 3);
-    expect(dmg(1) / stageEnemyDmg(def, 99)).toBeCloseTo(1 + T.depths.dmgGrowth, 3);
+    // Round 15: depth 0 is the floor-99 monster times baseHpMult / baseDmgMult (the late factor of floors 76-100 would otherwise be inherited whole), then one step of growth
+    expect(hp(1) / f99).toBeCloseTo(T.depths.baseHpMult * (1 + T.depths.hpGrowth), 3);
+    expect(dmg(1) / stageEnemyDmg(def, 99)).toBeCloseTo(T.depths.baseDmgMult * (1 + T.depths.dmgGrowth), 3);
   });
 
   it('the recommended CP follows the same curve by formula and never decreases between regular depths', () => {
-    let prev = recommendedCpForDepth(0);
-    expect(prev).toBe(recommendedCpForFloor(99));
-    for (let d = 1; d <= 200; d++) {
+    // depth 0 is the floor-99 line itself; depth 1 starts at the base multiple of it and the formula climbs from there
+    expect(recommendedCpForDepth(0)).toBe(recommendedCpForFloor(99));
+    let prev = recommendedCpForDepth(1);
+    for (let d = 2; d <= 200; d++) {
       const cp = recommendedCpForDepth(d);
       if (!isDungeonBoss(stageOfDepth(d)) && !isDungeonBoss(stageOfDepth(d - 1))) expect(cp, `depth ${d}`).toBeGreaterThanOrEqual(prev);
       expect(Number.isFinite(cp)).toBe(true);
       prev = cp;
     }
-    expect(recommendedCpForDepth(100)).toBeGreaterThan(recommendedCpForDepth(50) * 4);
+    expect(recommendedCpForDepth(100)).toBeGreaterThan(recommendedCpForDepth(50) * 3); // Round 15: 2.5% a depth in CP terms, so 50 more depths are about x3.4
   });
 
   it('boss depths borrow the four biome boss sheets in turn, tinted and renamed; regular depths keep the death knight', () => {
@@ -289,10 +296,10 @@ describe('Paragon', () => {
     expect([p.level, p.into]).toEqual([3, 10]);
   });
 
-  it('the damage bonus is +3% per level (Rodada 14) and capped at +150%, reached at paragon level 50', () => {
+  it('the damage bonus is +1% per level (Rodada 15) and capped at +50%, reached at paragon level 50', () => {
     expect(paragonDamageBonus(0)).toBe(0);
-    expect(paragonDamageBonus(10)).toBeCloseTo(0.3);
-    expect(paragonDamageBonus(50)).toBeCloseTo(1.5);
+    expect(paragonDamageBonus(10)).toBeCloseTo(0.1);
+    expect(paragonDamageBonus(50)).toBeCloseTo(0.5);
     expect(paragonDamageBonus(5000)).toBe(T.paragon.maxBonus);
     expect(T.paragon.maxBonus / T.paragon.damagePerLevel).toBeCloseTo(50, 6);
   });

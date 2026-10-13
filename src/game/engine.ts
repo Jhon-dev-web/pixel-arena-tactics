@@ -44,6 +44,7 @@ import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillLevel, skillXpToReachLevel } from './skills';
 import { gatherMasteryMult, plantGrowthMs } from './mastery';
 import { maxSaneXp, paragonDamageBonus, paragonLevel } from './paragon';
+import { XP_CURVE_VERSION, migrateLegacyXp } from './xpCurve';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { migrateLegacyPouch } from './legacyPouch';
 import { emptyStash, sanitizeStash, StashState } from './stash';
@@ -147,6 +148,8 @@ export interface SaveData {
   // reforge count). `inventory` now only holds STACKABLE gear (relics, tools); `equipped.weapon/armor` are
   // instance ids. See gearInstances.ts.
   schemaVersion: number;
+  // Which hero XP curve `xp` is on (xpCurve.ts): 2 since Round 15. A save without it is on the old curve and is mapped onto the new one when it loads, keeping its level.
+  xpCurve?: number;
   gearInstances: Record<GearInstanceId, GearInstance>;
   inventory: Record<string, number>;
   equipped: EquippedGear;
@@ -250,10 +253,11 @@ export const MAX_BATTLE_PASS_LEVEL = 30;
 // Each band's `base` is the previous band's own need() evaluated at its last level, so the curve is
 // continuous at every boundary (no jump): xpForNextLevel(heroBand1To) and xpForNextLevel(heroBand1To+1)
 // are equal, then band 2's own growth takes over from there. Band 1 starts at T.progression.xpBase (100).
-function heroBandTable(): { from: number; base: number; growth: number }[] {
+// `override` (xpCurve.ts) replaces the growth of bands 4 and 5 to rebuild the curve saves had before Round 15.
+function heroBandTable(override: { growth4?: number; growth5?: number } = {}): { from: number; base: number; growth: number }[] {
   const p = T.progression;
   const bounds = [1, p.heroBand1To + 1, p.heroBand2To + 1, p.heroBand3To + 1, p.heroBand4To + 1];
-  const growths = [p.heroGrowth1, p.heroGrowth2, p.heroGrowth3, p.heroGrowth4, p.heroGrowth5];
+  const growths = [p.heroGrowth1, p.heroGrowth2, p.heroGrowth3, override.growth4 ?? p.heroGrowth4, override.growth5 ?? p.heroGrowth5];
   const bands: { from: number; base: number; growth: number }[] = [];
   let base = p.xpBase;
   for (let i = 0; i < bounds.length; i++) {
@@ -263,14 +267,18 @@ function heroBandTable(): { from: number; base: number; growth: number }[] {
   return bands;
 }
 
-export function xpForNextLevel(level: number): number {
-  const bands = heroBandTable();
+export function xpForNextLevelWith(level: number, override: { growth4?: number; growth5?: number }): number {
+  const bands = heroBandTable(override);
   let band = bands[0];
   for (const b of bands) {
     if (b.from > level) break;
     band = b;
   }
   return Math.round(band.base * Math.pow(band.growth, level - band.from));
+}
+
+export function xpForNextLevel(level: number): number {
+  return xpForNextLevelWith(level, {});
 }
 
 export function xpToReachLevel(level: number): number {
@@ -911,6 +919,7 @@ export function defaultSave(): SaveData {
     weaponLevel: 1,
     armorLevel: 1,
     schemaVersion: GEAR_SCHEMA_VERSION,
+    xpCurve: XP_CURVE_VERSION,
     gearInstances: starter.instances,
     inventory: { ...DEFAULT_INVENTORY },
     equipped: { ...DEFAULT_EQUIPPED, weapon: starter.weaponId, armor: starter.armorId },
@@ -1079,6 +1088,9 @@ export function normalizeSave(rawInput: unknown): SaveData {
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
       // Past level 100 the XP keeps counting into paragon levels (paragon.ts); only an absurd value (tampered) is thrown away.
       if (xp > maxSaneXp()) xp = 0;
+      // A real save from before the new curve (it has the gear schema stamp but not the curve stamp) keeps its level: its XP is mapped onto the new curve. A raw object with neither stamp
+      // (a test, a hand-made import) is taken as it is: the new curve only ever makes a level cheaper, so nobody can lose one.
+      if (typeof parsed.xpCurve !== 'number' && typeof (parsed as { schemaVersion?: unknown }).schemaVersion === 'number') xp = migrateLegacyXp(xp);
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
       // Counters and attribute points: only a real, finite number inside the legal range survives (strings, NaN, negatives and
       // tampered giants fall back to the default). Whole numbers: the game only ever adds whole units to these.
@@ -1313,6 +1325,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         vit,
         armorLevel,
         schemaVersion: GEAR_SCHEMA_VERSION,
+        xpCurve: XP_CURVE_VERSION,
         gearInstances,
         inventory: gear.inventory,
         equipped: { ...gear.equipped, ...extraSlotIds, weapon: weaponId, armor: armorId },

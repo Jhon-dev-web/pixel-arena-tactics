@@ -312,7 +312,7 @@ function buildOffer(ctx: Context, arch: DeliveryArchetype, cls: DeliveryClass, i
     tier: ctx.tier,
     items,
     gold,
-    xp: Math.round(hours * distXpPerHour(dist) * factor),
+    xp: Math.round(hours * distXpPerHour(dist) * Math.min(factor, D.xpFactorMax)),
     shards: tierShards(dist, ctx.tier),
     durationMs,
     bornAt: now,

@@ -154,7 +154,8 @@ describe('shield slot', () => {
     const line = GEAR.filter((g) => g.slot === 'shield' && !g.unique).sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0));
     expect(line.map((g) => g.id)).toEqual(IN_TIER_ORDER.map((k) => SHIELDS[k]));
     line.forEach((g, i) => {
-      expect(g.recipe?.requiredLevel ?? 0).toBe(LEVEL_GATE[g.tier as number]);
+      // Round 15: the shield of tiers 5 and 6 opens 8 levels after the weapon / armor of the tier (78 and 98)
+      expect(g.recipe?.requiredLevel ?? 0).toBe((g.tier ?? 0) >= 5 ? LEVEL_GATE[g.tier as number] + 8 : LEVEL_GATE[g.tier as number]);
       expect(g.recipe?.items ?? {}).toEqual(i === 0 ? {} : { [line[i - 1].id]: 1 });
       expect(Object.keys(g.recipe?.materials ?? {}).some((m) => m.startsWith('wood_handle_')), g.id).toBe(true);
       expect(g.maxHp).toBeGreaterThan(0);

@@ -225,7 +225,9 @@ export function planFor(s: SaveData, tpl: string, bagOnly = false): Plan {
     }
   };
   walk(tpl, 1);
-  plan.crafts.sort((a, b) => (getGear(a).tier ?? 0) - (getGear(b).tier ?? 0));
+  // Lowest tier first. The recipe walk lists a piece before its ingredients, so on a tie in tier (the tier-4 dragon pieces are made from a tier-4 gilded one) the later entry,
+  // the ingredient, goes first. The 21-day sim never reaches a tie.
+  plan.crafts = plan.crafts.map((id, i) => ({ id, i })).sort((a, b) => (getGear(a.id).tier ?? 0) - (getGear(b.id).tier ?? 0) || b.i - a.i).map((x) => x.id);
 
   // Expand what the bag cannot cover through the refining stations (copper -> bar, scrap -> leather, ...), to a fixpoint.
   const made: Mats = {};
@@ -280,7 +282,7 @@ export const CRAFT_PRIORITY = ['weapon', 'armor', 'gloves', 'helmet', 'shield', 
 
 // The next thing worth crafting: the lowest tier first (slot priority on a tie), skipping a slot that is blocked on something
 // no activity can fetch when another one is not.
-function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
+export function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
   const plans: Plan[] = [];
   for (const slot of CRAFT_PRIORITY) {
     const owned = bestTier(s, slot);
@@ -1008,12 +1010,18 @@ export class Player {
     for (const slot of INSTANCED_SLOTS) {
       let best: GearInstance | null = null;
       let bestCp = computeCP(this.S);
+      // Long horizon: a piece of a higher tier is worn even when it is still +0 and the old one was refined to +8 (the fresh piece has less CP until it is refined, and the policy
+      // only refines what is worn: with the plain best-CP rule the player keeps the old piece for ever, never refines the new one and crafts it again and again).
+      const tierOf = (id: string) => getGear(id)?.tier ?? 0;
+      let bestTier = this.opts.long ? tierOf(resolveEquipped(this.S)[slot]?.item?.id ?? '') : 0;
       for (const i of listGearInstances(this.S)) {
         if (getGear(i.templateId)?.slot !== slot || isInstanceEquipped(this.S, i.id)) continue;
         const trial = applyEquipInstance(this.S, i.id);
         if (!trial) continue;
         const cp = computeCP(trial);
-        if (cp > bestCp + 1e-9) {
+        const t = this.opts.long ? tierOf(i.templateId) : 0;
+        if (t > bestTier || (t === bestTier && cp > bestCp + 1e-9)) {
+          bestTier = t;
           bestCp = cp;
           best = i;
         }

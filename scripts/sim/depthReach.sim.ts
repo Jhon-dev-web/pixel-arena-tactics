@@ -16,6 +16,8 @@ if (process.env.DEPTH_BOSS_HP) (T.depths as { bossHpMult: number }).bossHpMult =
 if (process.env.DEPTH_BOSS_DMG) (T.depths as { bossDmgMult: number }).bossDmgMult = Number(process.env.DEPTH_BOSS_DMG);
 if (process.env.PARAGON_DMG) (T.paragon as { damagePerLevel: number }).damagePerLevel = Number(process.env.PARAGON_DMG);
 if (process.env.PARAGON_MAX) (T.paragon as { maxBonus: number }).maxBonus = Number(process.env.PARAGON_MAX);
+if (process.env.DEPTH_BASE_HP) (T.depths as { baseHpMult: number }).baseHpMult = Number(process.env.DEPTH_BASE_HP);
+if (process.env.DEPTH_BASE_DMG) (T.depths as { baseDmgMult: number }).baseDmgMult = Number(process.env.DEPTH_BASE_DMG);
 if (process.env.DEPTH_DMG) (T.depths as { dmgGrowth: number }).dmgGrowth = Number(process.env.DEPTH_DMG);
 
 it('prints the depth reach of end-game heroes', () => {

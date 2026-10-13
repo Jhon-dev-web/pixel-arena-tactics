@@ -23,6 +23,9 @@ import { SET_DEFS } from '../../src/game/setBonuses';
 import { mulberry32, withSeededRandom } from './driver';
 import { DaySnapshot, Player } from './player';
 import { HUNTING_ZONES } from '../../src/game/huntingZones';
+import { ORE_TIERS } from '../../src/game/ores';
+import { WOOD_TIERS } from '../../src/game/woodcutting';
+import { REFINING_RECIPES } from '../../src/game/refining';
 
 if (process.env.SIM_T) {
   for (const [group, vals] of Object.entries(JSON.parse(process.env.SIM_T) as Record<string, Record<string, number>>)) Object.assign((T as unknown as Record<string, Record<string, number>>)[group], vals);
@@ -38,8 +41,28 @@ if (process.env.SIM_GEAR) {
     if (_level !== undefined) r.requiredLevel = _level;
   }
 }
+// SIM_ZONES='{"blood_abyss":{"xpPerHour":13000}}': replaces fields of a Hunting zone for the run. SIM_GATES='{"ore":{"obsidian":60},"wood":{"ancient_wood":60},"refine":{"smelt_obsidian":70}}': replaces
+// the profession level that opens an ore / wood tier, or the hero level of a refining recipe.
+if (process.env.SIM_ZONES) {
+  for (const [id, over] of Object.entries(JSON.parse(process.env.SIM_ZONES) as Record<string, Record<string, number>>)) Object.assign(HUNTING_ZONES.find((z) => z.id === id)!, over);
+}
+if (process.env.SIM_GATES) {
+  const g = JSON.parse(process.env.SIM_GATES) as { ore?: Record<string, number>; wood?: Record<string, number>; refine?: Record<string, number> };
+  for (const [id, lvl] of Object.entries(g.ore ?? {})) ORE_TIERS.find((o) => o.id === id)!.requiredLevel = lvl;
+  for (const [id, lvl] of Object.entries(g.wood ?? {})) WOOD_TIERS.find((o) => o.id === id)!.requiredLevel = lvl;
+  for (const [id, lvl] of Object.entries(g.refine ?? {})) REFINING_RECIPES.find((o) => o.id === id)!.requiredLevel = lvl;
+}
 if (process.env.SIM_SETS) {
   for (const [f, effects] of Object.entries(JSON.parse(process.env.SIM_SETS) as Record<string, (typeof SET_DEFS)['steel']['effects']>)) (SET_DEFS as Record<string, { effects: unknown }>)[f].effects = effects;
+}
+
+// SIM_NO_UNIQUES=1: no unique drop at all (Hunting zones and boss uniques). A unique weapon or ring is worth +30-60% CP at floor 100 and drops at random, so the pace of the
+// Dungeon in a 6-seed median is much steadier without them; both variants are reported.
+if (process.env.SIM_NO_UNIQUES === '1') {
+  for (const z of HUNTING_ZONES) z.uniques = [];
+  (T.battle as unknown as Record<string, number>).uniqueBossChance = 0;
+  (T.depths as unknown as Record<string, number>).uniqueChanceBase = 0;
+  (T.depths as unknown as Record<string, number>).uniqueChancePerDepth = 0;
 }
 
 const SEEDS = Number(process.env.LONG_SEEDS ?? 6);

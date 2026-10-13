@@ -22,6 +22,7 @@ export const nextDepthStage = (save: Pick<SaveData, 'stats'>): number => stageOf
 export function recommendedCpForDepth(depth: number): number {
   const d = Math.max(0, Math.floor(depth) || 0);
   const base = recommendedCpForFloor(MAX_DUNGEON_FLOOR - 1);
+  if (d === 0) return base; // the floor-99 line itself (depthScale at depth 0 carries the Round 15 base multiple)
   const s = depthScale(stageOfDepth(d));
   return Math.round(base * Math.sqrt(s.hp * s.dmg));
 }
