@@ -3,6 +3,7 @@ import { getGear } from './gear';
 import { createGearInstance } from './gearInstances';
 import { RARITIES, Rarity, Rng, SUBSTATS, Substat, rollRarity, rollSubstats } from './rarity';
 import T from './tunables';
+import { depthBossPool } from './dungeon';
 
 // Unique pieces (gear.ts `unique: true`) are drop-only: a Hunting zone rolls them per victory (huntingZones.ts `uniques`, huntCombat.ts) and a Dungeon
 // biome boss rolls one on each victory over it (rollBossUniques below, called by waves.ts waveRewards). A drop is decided WHEN it happens: the rarity (the
@@ -52,6 +53,22 @@ export function rollBossUniques(stage: number, rng: Rng = Math.random, luck = 1)
 export function rollBossRelics(stage: number, rng: Rng = Math.random, luck = 1): string[] {
   const id = BOSS_RELIC_DROPS[stage];
   return id && rng() < T.battle.relicBossChance * luck ? [id] : [];
+}
+
+// ---- Profundezas (depths.ts) --------------------------------------------------------------------------------------------------------------------------
+// The boss of depth 10 k rolls the pieces of the biome boss [25, 50, 75, 100][(k - 1) % 4], so every unique and relic of the dungeon stays obtainable and nothing new is added.
+// The chance per boss cleared rises slowly with the depth and is capped; a depth is cleared (and rolled) once, because the next run starts below the deepest one banked.
+export const depthUniqueChance = (depth: number): number => Math.min(T.depths.uniqueChanceCap, T.depths.uniqueChanceBase + T.depths.uniqueChancePerDepth * Math.max(0, depth));
+
+export function rollDepthBossUniques(depth: number, rng: Rng = Math.random, luck = 1): UniqueDrop[] {
+  const out: UniqueDrop[] = [];
+  for (const id of UNIQUE_BOSS_DROPS[depthBossPool(depth)] ?? []) if (rng() < depthUniqueChance(depth) * luck) out.push(rollUniqueDrop(id, rng));
+  return out;
+}
+
+export function rollDepthBossRelics(depth: number, rng: Rng = Math.random, luck = 1): string[] {
+  const id = BOSS_RELIC_DROPS[depthBossPool(depth)];
+  return id && rng() < depthUniqueChance(depth) * luck ? [id] : [];
 }
 
 // Boss relics from a saved / tampered list (never trusted): only known boss relic ids survive.

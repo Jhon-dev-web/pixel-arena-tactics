@@ -3,7 +3,6 @@ import {
   buildHuntSession,
   computeCP,
   computeHuntingStatus,
-  playerLevel,
   SaveData,
   withHuntProgress,
 } from './engine';
@@ -146,12 +145,11 @@ export function applyHuntClaim(save: SaveData, id: string): SaveData | null {
   const p = save.pendingHuntReward;
   if (!p || p.id !== id) return null;
   const { battlePassLevel, battlePassXp } = addBattlePassXp(save, p.bpXp);
-  const atCap = playerLevel(save.xp) >= 100;
   const plan = planHuntClaim(save, p);
   const paid: SaveData = {
     ...plan.save,
     gold: save.gold + p.gold,
-    xp: atCap ? save.xp : save.xp + p.xp,
+    xp: save.xp + p.xp, // past level 100 the XP counts into paragon levels (paragon.ts)
     battlePassLevel,
     battlePassXp,
     pendingHuntReward: null,

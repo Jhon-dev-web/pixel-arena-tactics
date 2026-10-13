@@ -30,6 +30,7 @@ export interface LifetimeStats {
   bossesKilled: number;
   secondsPlayed: number;
   completedSets: SetFamily[]; // families the hero has ever worn the full set of
+  deepestDepth: number; // the deepest Profundezas depth ever cleared (0 = none, see depths.ts)
 }
 
 export const emptyRarityCounts = (): Record<Rarity, number> => ({ common: 0, rare: 0, epic: 0, legendary: 0 });
@@ -53,6 +54,7 @@ export const emptyStats = (): LifetimeStats => ({
   bossesKilled: 0,
   secondsPlayed: 0,
   completedSets: [],
+  deepestDepth: 0,
 });
 
 export const COUNT_CAP = 1e12;
@@ -72,7 +74,7 @@ export interface StatsBackfill {
 export function normalizeStats(raw: unknown, backfill: StatsBackfill = {}): LifetimeStats {
   const r = raw && typeof raw === 'object' ? (raw as Partial<Record<keyof LifetimeStats, unknown>>) : {};
   const out = emptyStats();
-  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed'] as const) {
+  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth'] as const) {
     out[key] = count(r[key]);
   }
   out.kills = Math.max(count(r.kills), count(backfill.kills));

@@ -86,6 +86,7 @@ import { awayLongEnough, buildWelcomeBack, readLastSeen, WelcomeBackSummary, wri
 import { NextStepTarget } from './game/nextStep';
 import { crossedMilestoneFloors, dungeonRunXp, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
+import { depthsUnlocked, nextDepthStage } from './game/depths';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { isDeliveryReady } from './game/deliveries';
@@ -560,8 +561,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   // A "session" is one full Dungeon attempt (enter -> climb until death or voluntary retreat), capped
   // per-day (see freeSessionsPerDay/extraSessionShardCost below).
-  const enterDungeon = () => {
+  const startSession = (depths: boolean) => {
     const s = saveRef.current;
+    if (depths && !depthsUnlocked(s)) return;
     if (s.activeOreId) {
       showToast(t('mining.busyDungeon'));
       return;
@@ -589,8 +591,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     }
     playSfx('click');
     setDungeonOpen(false);
-    setBattleFloor(s.highestDungeonFloor);
+    // Profundezas (depths.ts) start one below the deepest depth cleared, the floors where the hero stands.
+    setBattleFloor(depths ? nextDepthStage(s) : s.highestDungeonFloor);
   };
+  const enterDungeon = () => startSession(false);
+  const enterDepths = () => startSession(true);
 
   const finishRun = (startFloor: number, rewards: RunRewards, outcome: 'retreat' | 'defeat') => {
     const s = saveRef.current;
@@ -598,7 +603,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const looted = addForced(s, { materials: rewards.drops ?? {} });
     const stages = Math.max(0, rewards.stages);
     const success = outcome === 'retreat' && stages > 0;
-    const atCap = playerLevel(s.xp) >= 100;
+    // Past level 100 the XP keeps counting into paragon levels (paragon.ts), so there is no cap to check here.
     // Only the EQUIPPED weapon / armor instances wear down; every other copy is untouched.
     const worn = stages > 0 ? applyDurabilityLoss(s, DURABILITY_LOSS_PER_STAGE * stages) : s;
     // Biome-boss unique pieces (uniques.ts) become stored gear instances. A defeat keeps them like the boss gem; a full bag never costs the drop (the
@@ -663,7 +668,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       dungeonCheckpoints,
       materials: looted.materials,
       shards: s.shards + rewards.shards,
-      xp: atCap ? s.xp : s.xp + xpGain,
+      xp: s.xp + xpGain,
       victories: s.victories + (success ? 1 : 0),
       highestDungeonFloor: nextFloor,
       unlockedHuntingZones,
@@ -752,12 +757,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const s = saveRef.current;
     const qty = s.consumables.xp_potion ?? 0;
     if (qty <= 0) return;
-    const atCap = playerLevel(s.xp) >= 100;
     playSfx('victory');
     setSaveBoth({
       ...s,
       consumables: { ...s.consumables, xp_potion: qty - 1 },
-      xp: atCap ? s.xp : s.xp + T.battle.xpPotionAmount,
+      xp: s.xp + T.battle.xpPotionAmount,
     });
     showToast(`+${T.battle.xpPotionAmount} XP`);
   };
@@ -1781,6 +1785,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         <DungeonMapModal
           save={save}
           onEnterDungeon={enterDungeon}
+          onEnterDepths={enterDepths}
           onUpdateAutoPotionSettings={updateAutoPotionSettings}
           onClose={() => {
             playSfx('click');

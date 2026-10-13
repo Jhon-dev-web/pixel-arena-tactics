@@ -23,6 +23,11 @@ export interface DungeonBiomeDef {
 
 export const MAX_DUNGEON_FLOOR = 100;
 
+// Profundezas (depths.ts): a stage past the last floor is a depth. Stage 101 is depth 1. Everything below stage 101 behaves exactly as it always did.
+export const isDepthStage = (stage: number): boolean => stage > MAX_DUNGEON_FLOOR;
+export const depthOfStage = (stage: number): number => Math.max(0, Math.floor(stage) - MAX_DUNGEON_FLOOR);
+export const stageOfDepth = (depth: number): number => MAX_DUNGEON_FLOOR + Math.max(0, Math.floor(depth));
+
 // The Dungeon never drops farm materials (leather/ore/etc — that's Open Hunting's job exclusively).
 // Its rewards are XP, gold, and the one-time milestone payouts below.
 // Economy design: goldMin/goldMax (+ goldRewardGrowth in tunables.ts) were cut hard from their original
@@ -86,11 +91,22 @@ export function recommendedCpForFloor(floor: number): number {
 }
 
 export function isDungeonCheckpoint(floor: number): boolean {
-  return floor % T.battle.miniBossEvery === 0;
+  return !isDepthStage(floor) && floor % T.battle.miniBossEvery === 0;
 }
 
 export function isDungeonBoss(floor: number): boolean {
-  return floor % T.battle.bossEvery === 0;
+  return isDepthStage(floor) ? depthOfStage(floor) % T.depths.bossEvery === 0 : floor % T.battle.bossEvery === 0;
+}
+
+// The biome boss (25 / 50 / 75 / 100) whose sheet, pieces and relic the boss of depth 10 k borrows: [25, 50, 75, 100][(k - 1) % 4].
+export const DEPTH_BOSS_POOLS = [25, 50, 75, 100] as const;
+export const depthBossPool = (depth: number): number => DEPTH_BOSS_POOLS[(Math.max(1, Math.round(depth / T.depths.bossEvery)) - 1) % DEPTH_BOSS_POOLS.length];
+
+// The multipliers of a depth over the floor-99 monster (compounding per depth), and whether it is a boss depth.
+export function depthScale(stage: number): { hp: number; dmg: number; boss: boolean } {
+  const d = depthOfStage(stage);
+  const boss = d > 0 && isDungeonBoss(stage);
+  return { hp: Math.pow(1 + T.depths.hpGrowth, d) * (boss ? T.depths.bossHpMult : 1), dmg: Math.pow(1 + T.depths.dmgGrowth, d) * (boss ? T.depths.bossDmgMult : 1), boss };
 }
 
 export function dungeonEnemyKindForFloor(floor: number): EnemyKind {
@@ -129,7 +145,7 @@ export function stageVictoryXp(floor: number): number {
 export function dungeonRunXp(startFloor: number, stagesCleared: number): number {
   let total = 0;
   for (let f = startFloor; f <= startFloor + stagesCleared - 1; f++) {
-    total += stageVictoryXp(Math.min(MAX_DUNGEON_FLOOR, f));
+    total += stageVictoryXp(f);
   }
   return total;
 }

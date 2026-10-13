@@ -35,7 +35,7 @@ function MaterialArt({ id }: { id: MaterialId }) {
 
 function MonsterArt({ m }: { m: CodexMonster }) {
   if (m.huntEnemy) return <MonsterPortrait enemyId={m.huntEnemy} box="52px" />;
-  return <SpriteSheet src={m.spriteUrl ?? ''} size="56px" row={0} frames={1} />;
+  return <SpriteSheet src={m.spriteUrl ?? ''} size="56px" row={0} frames={1} className={m.tintClass} />;
 }
 
 function sourceLine(item: GearItem): string {
@@ -145,7 +145,7 @@ function MonsterDetail({ m, found, save }: { m: CodexMonster; found: boolean; sa
         <div className="codex-detail-title">
           <span className="codex-detail-name">{found ? t(`enemies.${m.nameKey}`) : t('codex.unknown')}</span>
           <span className="codex-detail-sub">
-            {m.zone ? t('codex.zone', { zone: zoneName(m.zone.id) }) : m.floors ? (m.floors[0] === m.floors[1] ? t('codex.floor', { n: m.floors[0] }) : t('codex.floors', { a: m.floors[0], b: m.floors[1] })) : ''}
+            {m.zone ? t('codex.zone', { zone: zoneName(m.zone.id) }) : m.depth ? t('dungeon.depthLabel', { n: m.depth }) : m.floors ? (m.floors[0] === m.floors[1] ? t('codex.floor', { n: m.floors[0] }) : t('codex.floors', { a: m.floors[0], b: m.floors[1] })) : ''}
           </span>
         </div>
       </div>

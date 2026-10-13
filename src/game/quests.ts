@@ -30,7 +30,8 @@ export type QuestMetric =
   | 'deliveries'
   | 'potions'
   | 'played_hours'
-  | 'codex_pct';
+  | 'codex_pct'
+  | 'max_depth';
 
 export type AchievementCategory = 'combat' | 'dungeon' | 'hunting' | 'forging' | 'sets' | 'professions' | 'economy' | 'collection';
 export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = ['combat', 'dungeon', 'hunting', 'forging', 'sets', 'professions', 'economy', 'collection'];
@@ -117,6 +118,12 @@ export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   ach('ACH_CRYPT', 'dungeon', 'max_floor', 51, 500, 4),
   ach('ACH_FLOOR_75', 'dungeon', 'max_floor', 75, 0, 0),
   ach('ACH_MINOTAUR', 'dungeon', 'max_floor', 100, 2000, 15),
+  // Profundezas (depths.ts): they read the lifetime statistics, which the progression simulator does not pass, and the simulator never gets past floor 100 anyway, so they can pay.
+  ach('ACH_DEPTH_1', 'dungeon', 'max_depth', 1, 300, 1),
+  ach('ACH_DEPTH_10', 'dungeon', 'max_depth', 10, 800, 3),
+  ach('ACH_DEPTH_25', 'dungeon', 'max_depth', 25, 1500, 5),
+  ach('ACH_DEPTH_50', 'dungeon', 'max_depth', 50, 2500, 8, { titleId: 'title_depths_walker' }),
+  ach('ACH_DEPTH_100', 'dungeon', 'max_depth', 100, 3000, 10),
   ach('ACH_RUNS_10', 'dungeon', 'dungeon_runs', 10, 150, 0),
   ach('ACH_RUNS_100', 'dungeon', 'dungeon_runs', 100, 800, 0),
   // hunting zones
@@ -239,6 +246,8 @@ export function questProgress(def: QuestDef, quests: QuestState, ctx: QuestConte
       return st ? Math.floor(st.secondsPlayed / 3600) : 0;
     case 'codex_pct':
       return ctx.codexPct ?? 0;
+    case 'max_depth':
+      return st?.deepestDepth ?? 0;
     default:
       return 0;
   }

@@ -34,7 +34,7 @@ describe('codex catalog', () => {
   it('has the four hunting monsters and the dungeon ones in floor order, with their floor ranges', () => {
     const hunt = CODEX_MONSTERS.filter((m) => m.kind === 'hunt');
     expect(hunt).toHaveLength(HUNTING_ZONES.length);
-    const dungeon = CODEX_MONSTERS.filter((m) => m.kind === 'dungeon');
+    const dungeon = CODEX_MONSTERS.filter((m) => m.kind === 'dungeon' && !m.depthPool);
     expect(dungeon.length).toBeGreaterThanOrEqual(4);
     expect(dungeon[0].floors?.[0]).toBe(1);
     expect(dungeon[dungeon.length - 1].floors?.[1]).toBe(100);

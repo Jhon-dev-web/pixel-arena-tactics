@@ -2,7 +2,7 @@ import type { SaveData } from './engine';
 import { SET_DEFS, setCounts } from './setBonuses';
 import { SET_FAMILIES, SetFamily } from './gear';
 import { resolveEquipped } from './gearInstances';
-import { isDungeonBoss } from './dungeon';
+import { isDungeonBoss, MAX_DUNGEON_FLOOR } from './dungeon';
 import { COUNT_CAP, count, statsOf, withStats } from './stats';
 import { dungeonEnemyVisualForFloor } from './sprites';
 import { updateCodex } from './codex';
@@ -24,7 +24,11 @@ export function recordDungeonRun(save: SaveData, startFloor: number, stages: num
     const key = dungeonEnemyVisualForFloor(f).nameKey;
     byMonster[key] = (byMonster[key] ?? 0) + 1;
   }
+  // Profundezas: the last stage this run defeated, if it is past floor 100, is the new deepest depth when it beats the record.
+  const lastStage = startFloor + st - 1;
+  const depth = st > 0 && lastStage > MAX_DUNGEON_FLOOR ? lastStage - MAX_DUNGEON_FLOOR : 0;
   return withStats(save, (s) => ({
+    deepestDepth: Math.max(s.deepestDepth ?? 0, depth),
     dungeonRuns: s.dungeonRuns + 1,
     dungeonKills: byMonster,
     kills: s.kills + st,

@@ -1,5 +1,5 @@
 import Assets from '../assets.json';
-import { dungeonEnemyKindForFloor } from './dungeon';
+import { depthBossPool, dungeonEnemyKindForFloor, isDungeonBoss, MAX_DUNGEON_FLOOR } from './dungeon';
 import { EnemyKind, getEnemyDef } from './enemies';
 import { ownsAdventurerPass } from './entitlements';
 import { getGear, HERO_LOOKS, type HeroBaseLook } from './gear';
@@ -99,6 +99,8 @@ export function enemySpriteSize(kind: EnemyKind): string {
 // stats, drops and the sim keep coming from dungeonEnemyKindForFloor -> getEnemyDef. Floor 100 keeps the shared minotaur boss.
 export interface DungeonEnemyVisual {
   spriteUrl: string;
+  // A CSS class that tints the borrowed sheet (Profundezas bosses reuse the four biome boss sheets; round11.css .depth-tint-*).
+  tintClass?: string;
   // Key under `enemies.` in the locales.
   nameKey: string;
   // Battle display size; the arena's usual enemy size unless a sheet needs a presentation tweak.
@@ -114,6 +116,12 @@ const BOSS_VISUALS: Record<number, { spriteUrl: string; nameKey: string }> = {
 };
 
 export function dungeonEnemyVisualForFloor(floor: number): DungeonEnemyVisual {
+  // Profundezas (stage > 100): the regular enemy keeps the death knight; every boss depth borrows one of the four biome boss sheets, tinted and renamed.
+  if (floor > MAX_DUNGEON_FLOOR) {
+    if (!isDungeonBoss(floor)) return { spriteUrl: Assets.spritesheets.death_knight.url, nameKey: 'deathKnight', size: BATTLE_ENEMY_SIZE };
+    const pool = depthBossPool(floor - MAX_DUNGEON_FLOOR);
+    return { spriteUrl: BOSS_VISUALS[pool]?.spriteUrl ?? enemySpriteUrl('boss'), nameKey: `depthBoss${pool}`, tintClass: `depth-tint-${pool}`, size: BATTLE_ENEMY_SIZE };
+  }
   const boss = BOSS_VISUALS[floor];
   if (boss) return { ...boss, size: BATTLE_ENEMY_SIZE };
   if (floor >= 76 && floor <= 99) return { spriteUrl: Assets.spritesheets.death_knight.url, nameKey: 'deathKnight', size: BATTLE_ENEMY_SIZE };

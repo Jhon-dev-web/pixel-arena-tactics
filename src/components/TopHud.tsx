@@ -1,7 +1,8 @@
 import SpriteSheet from './SpriteSheet';
 import { t } from '../locales';
+import { levelLabel } from './levelLabel';
 import Assets from '../assets.json';
-import { SaveData, computeCP, formatNumber, playerLevel } from '../game/engine';
+import { SaveData, computeCP, formatNumber } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 import { useDisplayName } from '../game/usernameContext';
 import { portraitFrameClass } from '../game/seasonItems';
@@ -16,7 +17,6 @@ export default function TopHud({
   onOpenProfile: () => void;
 }) {
   const displayName = useDisplayName(save.heroName);
-  const level = playerLevel(save.xp);
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
   const titleLabel = titleDef ? t(`titles.${titleDef.nameKey}`) : null;
 
@@ -32,7 +32,7 @@ export default function TopHud({
             {titleLabel && <span className="hero-title-tag">• {titleLabel}</span>}
           </div>
           <div className="profile-stats">
-            <span className="level">{t('camp.level', { n: level })}</span>
+            <span className="level">{levelLabel(save)}</span>
             <span className="cp-inline">
               ⚔️ CP <span className="num-abbr">{formatNumber(computeCP(save))}</span>
             </span>

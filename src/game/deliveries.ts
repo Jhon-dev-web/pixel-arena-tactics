@@ -1,6 +1,6 @@
 import { HUNTING_ZONES, isZoneUnlocked } from './huntingZones';
 import { EXPEDITION_TICKET_SKIP_MS, ConsumableId } from './consumables';
-import { MAX_LEVEL, playerLevel, SaveData } from './engine';
+import { playerLevel, SaveData } from './engine';
 import { PLANTS } from './garden';
 import { characterXpBonusPct } from './heroSkills';
 import { hasMaterials, MaterialId } from './materials';
@@ -419,8 +419,7 @@ export interface DeliveryClaim {
 export function applyDeliveryClaim(save: SaveData, now: number): DeliveryClaim | null {
   const a = save.deliveries.active;
   if (!a || typeof now !== 'number' || !Number.isFinite(now) || now < a.endsAt) return null;
-  const atCap = playerLevel(save.xp) >= MAX_LEVEL;
-  const xpGained = atCap ? 0 : a.offer.xp;
+  const xpGained = a.offer.xp; // past level 100 it counts into paragon levels (paragon.ts)
   return {
     offer: a.offer,
     xpGained,

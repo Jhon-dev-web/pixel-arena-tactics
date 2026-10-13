@@ -12,7 +12,7 @@ import { SKILL_FX, FX_PATH_COLOR, SkillFxId } from '../game/skillFx';
 import { FxLayer } from './SkillFx';
 import { useFxScale, useFxStage } from '../hooks/useSkillFx';
 import StrikeLines from './StrikeLines';
-import { crossedMilestoneFloors, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, MAX_DUNGEON_FLOOR } from '../game/dungeon';
+import { crossedMilestoneFloors, depthOfStage, dungeonEnemyKindForFloor, getBiomeForFloor, getMilestoneReward, isDepthStage, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { dungeonEnemyVisualForFloor, playerSpriteUrl } from '../game/sprites';
 import { playSfx } from '../game/audio';
@@ -233,7 +233,8 @@ export default function BattleModal({
     const startNextWave = () => {
       if (phaseRef.current !== 'intermission') return;
       const next = stageRef.current + 1;
-      if (next > MAX_DUNGEON_FLOOR) {
+      // The floors end at 100 (that run is complete); a Profundezas run (it started past floor 100) has no end: only death or the retreat button stop it.
+      if (next > MAX_DUNGEON_FLOOR && !isDepthStage(startFloor)) {
         dungeonCompleteRef.current = true;
         endCombat('retreat');
         return;
@@ -651,7 +652,7 @@ export default function BattleModal({
       <div className="battle">
         <div className="battle-controls">
           <div className="battle-left">
-            <span className="stage-indicator">{t('dungeon.floorProgress', { n: stage, m: MAX_DUNGEON_FLOOR })}</span>
+            <span className="stage-indicator">{isDepthStage(stage) ? t('dungeon.depthLabel', { n: depthOfStage(stage) }) : t('dungeon.floorProgress', { n: stage, m: MAX_DUNGEON_FLOOR })}</span>
             <button className="battle-speed" onClick={toggleSpeed} data-ui>
               {dungeonText('speed').replace('{n}', String(speed))}
             </button>
@@ -665,7 +666,7 @@ export default function BattleModal({
             {t('dungeon.retreat')}
           </button>
         </div>
-        <span className="battle-biome">{biomeText(currentBiome.nameKey)}</span>
+        <span className="battle-biome">{isDepthStage(stage) ? dungeonText('depthBiome') : biomeText(currentBiome.nameKey)}</span>
 
         <div className="battle-loot-hud">
           <span className="loot-gold">
@@ -793,6 +794,7 @@ export default function BattleModal({
               size={currentVisual.size}
               row={ANIM_ROW[enemyAnim]}
               flip
+              className={currentVisual.tintClass}
             />
             {enemyBurning && (
               <span className="burn-flame" title={t('profile.burnTitle')} aria-hidden="true">
@@ -809,7 +811,7 @@ export default function BattleModal({
 
           {waveClear && phase === 'intermission' && tensionFloor === null && (
             <div className="wave-banner">
-              <div className="wave-title">{dungeonText('floorCleared').replace('{n}', String(waveClear.stage))}</div>
+              <div className="wave-title">{isDepthStage(waveClear.stage) ? dungeonText('depthCleared').replace('{n}', String(depthOfStage(waveClear.stage))) : dungeonText('floorCleared').replace('{n}', String(waveClear.stage))}</div>
               <div className="wave-loot">{renderLoot(waveClear.gold, waveClear.drops, waveClear.shards, waveClear.gems, waveClear.uniques, waveClear.relics)}</div>
             </div>
           )}
@@ -819,7 +821,7 @@ export default function BattleModal({
         {tensionFloor !== null && (
           <div className="battle-result tension-window">
             <div className="battle-result-panel tension-panel">
-              <h2 className="result-title win">{t('dungeon.tensionTitle', { n: tensionFloor })}</h2>
+              <h2 className="result-title win">{isDepthStage(tensionFloor) ? t('dungeon.depthTensionTitle', { n: depthOfStage(tensionFloor) }) : t('dungeon.tensionTitle', { n: tensionFloor })}</h2>
               <div className="tension-subtitle">{t('dungeon.tensionSubtitle')}</div>
               <div className="result-rewards">
                 {tensionMilestoneReward ? (

@@ -2,7 +2,8 @@ import type { SaveData } from './engine';
 import { GEAR, GearItem, SET_FAMILIES, getGear } from './gear';
 import { DropRarity, MATERIALS, MaterialId } from './materials';
 import { HUNTING_ZONES, HuntingEnemyId, HuntingZoneDef, huntingEnemyNameKey } from './huntingZones';
-import { MAX_DUNGEON_FLOOR } from './dungeon';
+import { DEPTH_BOSS_POOLS, MAX_DUNGEON_FLOOR, stageOfDepth } from './dungeon';
+import T from './tunables';
 import { BOSS_RELIC_DROPS, UNIQUE_BOSS_DROPS } from './uniques';
 import { dungeonEnemyVisualForFloor } from './sprites';
 import { ORE_TIERS } from './ores';
@@ -64,6 +65,10 @@ export interface CodexMonster {
   zone?: HuntingZoneDef;
   spriteUrl?: string; // dungeon monsters: the sheet
   floors?: [number, number]; // dungeon monsters: first and last floor they appear on
+  // Profundezas bosses: the biome boss (25 / 50 / 75 / 100) whose sheet, pieces and relic they borrow, the first depth they appear at and the tint of the borrowed sheet.
+  depthPool?: number;
+  depth?: number;
+  tintClass?: string;
 }
 
 // Hunting monsters (one per zone) first, then the dungeon's, in the order the player meets them.
@@ -81,6 +86,12 @@ export const CODEX_MONSTERS: CodexMonster[] = (() => {
       out.push(m);
     }
   }
+  // The four bosses of the Profundezas (depths.ts): one per borrowed biome boss sheet, found by defeating a depth boss.
+  DEPTH_BOSS_POOLS.forEach((pool, i) => {
+    const depth = T.depths.bossEvery * (i + 1);
+    const v = dungeonEnemyVisualForFloor(stageOfDepth(depth));
+    out.push({ id: v.nameKey, kind: 'dungeon', nameKey: v.nameKey, spriteUrl: v.spriteUrl, depthPool: pool, depth, tintClass: v.tintClass });
+  });
   return out;
 })();
 
@@ -103,6 +114,10 @@ export function monsterDrops(m: CodexMonster): MonsterDrop[] {
   if (m.zone) {
     for (const d of m.zone.drops) out.push({ kind: 'material', id: d.material, wording: d.rarity });
     for (const u of m.zone.uniques ?? []) out.push({ kind: 'item', id: u.itemId, wording: 'unique' });
+  } else if (m.depthPool) {
+    for (const id of UNIQUE_BOSS_DROPS[m.depthPool] ?? []) out.push({ kind: 'item', id, wording: 'unique' });
+    const relic = BOSS_RELIC_DROPS[m.depthPool];
+    if (relic) out.push({ kind: 'item', id: relic, wording: 'unique' });
   } else if (m.floors) {
     for (let f = m.floors[0]; f <= m.floors[1]; f++) {
       for (const id of UNIQUE_BOSS_DROPS[f] ?? []) out.push({ kind: 'item', id, wording: 'unique' });

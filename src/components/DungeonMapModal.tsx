@@ -2,17 +2,21 @@ import { t } from '../locales';
 import T from '../game/tunables';
 import { computeCP, SaveData } from '../game/engine';
 import { getBiomeForFloor, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR, nextMilestone, recommendedCpForFloor } from '../game/dungeon';
+import { deepestDepth, depthRewardInfo, depthsUnlocked, nextBossDepth, recommendedCpForDepth } from '../game/depths';
+import { paragonLevel } from '../game/paragon';
 
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
 
 export default function DungeonMapModal({
   save,
   onEnterDungeon,
+  onEnterDepths,
   onUpdateAutoPotionSettings,
   onClose,
 }: {
   save: SaveData;
   onEnterDungeon: () => void;
+  onEnterDepths: () => void;
   onUpdateAutoPotionSettings: (threshold: number, priority: 'small_first' | 'large_first') => void;
   onClose: () => void;
 }) {
@@ -25,6 +29,14 @@ export default function DungeonMapModal({
   const huntingBusy = !!save.activeHuntingZone;
   const sessionsUsedToday = save.dungeonSessionsDay === new Date().toDateString() ? save.dungeonSessionsUsed : 0;
   const freeSessionsLeft = Math.max(0, T.dungeon.freeSessionsPerDay - sessionsUsedToday);
+  // Profundezas (depths.ts): open once the floor-100 boss has fallen; a run starts one below the deepest depth cleared.
+  const depthsOpen = depthsUnlocked(save);
+  const deepest = deepestDepth(save);
+  const nextDepth = deepest + 1;
+  const depthCp = recommendedCpForDepth(nextDepth);
+  const depthCpLow = playerCp < depthCp;
+  const bossInfo = depthRewardInfo(nextBossDepth(nextDepth));
+  const growthPct = Math.round((Math.sqrt((1 + T.depths.hpGrowth) * (1 + T.depths.dmgGrowth)) - 1) * 100 * 10) / 10;
 
   return (
     <div className="modal-backdrop">
@@ -72,6 +84,49 @@ export default function DungeonMapModal({
             <button className="battle-btn" onClick={onEnterDungeon} disabled={huntingBusy} data-ui>
               {dungeonText('enterDungeon')}
             </button>
+          </div>
+
+          <div className={`floor-card depths-card${depthsOpen ? '' : ' locked'}`} data-testid="depths-card">
+            <div className="floor-header">
+              <span className="floor-name">
+                🕳️ {dungeonText('depthsTitle')}
+                {paragonLevel(save.xp) > 0 && <span className="depths-paragon">{t('paragon.short', { n: paragonLevel(save.xp) })}</span>}
+              </span>
+              <span className="floor-cp">{deepest > 0 ? dungeonText('depthsDeepest').replace('{n}', String(deepest)) : dungeonText('depthsNone')}</span>
+            </div>
+            {depthsOpen ? (
+              <>
+                <div className="floor-drops">
+                  <span className="drops-label">{dungeonText('depthsNext').replace('{n}', String(nextDepth))}</span>
+                </div>
+                <div className="floor-drops">
+                  <span className="drops-label">{dungeonText('recommendedCp')}:</span>
+                  <span className={`floor-drop${depthCpLow ? ' cp-insufficient' : ''}`}>
+                    <span>{depthCp}</span>
+                  </span>
+                  <span className="floor-drop">
+                    <span>{t('dungeon.yourCp', { n: playerCp })}</span>
+                  </span>
+                </div>
+                <div className="floor-drops">
+                  <span className="drops-label depths-note">{dungeonText('depthCpHint').replace('{n}', String(growthPct))}</span>
+                </div>
+                <div className="floor-drops">
+                  <span className="drops-label depths-note">
+                    👑 {dungeonText('depthsBossEvery').replace('{n}', String(T.depths.bossEvery)).replace('{r}', String(bossInfo.shards)).replace('{p}', String(Math.round(bossInfo.uniqueChance * 1000) / 10))}
+                  </span>
+                </div>
+                {depthCpLow && <div className="cp-warning-banner">{t('dungeon.cpWarning', { n: depthCp })}</div>}
+                <button className="battle-btn" onClick={onEnterDepths} disabled={huntingBusy} data-ui>
+                  {dungeonText('depthsEnter')}
+                </button>
+              </>
+            ) : (
+              <div className="floor-drops">
+                <span className="drops-label depths-note">{dungeonText('depthsIntro')}</span>
+                <span className="floor-locked">{dungeonText('depthsLocked')}</span>
+              </div>
+            )}
           </div>
 
           <div className="floor-card auto-potion-card">

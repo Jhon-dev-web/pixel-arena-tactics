@@ -302,7 +302,6 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
   const looted = addForced(s, { materials: rewards.drops ?? {} });
   const stages = Math.max(0, rewards.stages);
   const success = outcome === 'retreat' && stages > 0;
-  const atCap = playerLevel(s.xp) >= 100;
   const worn = stages > 0 ? applyDurabilityLoss(s, DURABILITY_LOSS_PER_STAGE * stages) : s;
   const clearedFloor = stages > 0 ? Math.min(MAX_DUNGEON_FLOOR, startFloor + stages) : s.highestDungeonFloor;
   const nextFloor = Math.max(s.highestDungeonFloor, clearedFloor);
@@ -355,7 +354,7 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
     dungeonCheckpoints,
     materials: looted.materials,
     shards: s.shards + rewards.shards,
-    xp: atCap ? s.xp : s.xp + xpGain,
+    xp: s.xp + xpGain,
     victories: s.victories + (success ? 1 : 0),
     highestDungeonFloor: nextFloor,
     unlockedHuntingZones,

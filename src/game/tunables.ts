@@ -238,6 +238,29 @@ const T = DebugPanel.define({
     prospectMinutes: { value: 120, min: 5, max: 480, step: 5, label: "Prospector's Tonic duration (min)" },
     prospectYieldPct: { value: 0.1, min: 0, max: 0.5, step: 0.01, label: "Prospector's Tonic: extra Mining / Woodcutting units while it covers the session (adds to the Gatherer Brew)" },
   },
+  // Profundezas (depths.ts): the endless floors after floor 100. Depth d is stage 100 + d; its enemy is the floor-99 monster scaled by a FIXED percentage per depth, so the curve is
+  // a plain geometric one with no table. A boss every bossEvery depths (the four biome boss sheets in turn, tinted). A depth is banked once (the next run starts one below the deepest
+  // cleared), so its rewards, including the boss unique / relic roll, are paid once per depth: the long-run unique rate cannot exceed the pace at which depths are cleared.
+  depths: {
+    _label: 'Depths (Profundezas, after floor 100)',
+    hpGrowth: { value: 0.04, min: 0, max: 0.5, step: 0.005, label: 'Enemy HP growth per depth (compounding)' },
+    dmgGrowth: { value: 0.03, min: 0, max: 0.5, step: 0.005, label: 'Enemy damage growth per depth (compounding)' },
+    bossEvery: { value: 10, min: 2, max: 50, step: 1, label: 'Depth boss every N depths' },
+    bossHpMult: { value: 1.6, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: HP multiplier over a regular depth' },
+    bossDmgMult: { value: 1.25, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: damage multiplier over a regular depth' },
+    bossShards: { value: 4, min: 0, max: 20, step: 1, label: 'Runes for a depth boss' },
+    uniqueChanceBase: { value: 0.02, min: 0, max: 1, step: 0.005, label: 'Depth boss unique / relic chance at depth 0 (per boss cleared)' },
+    uniqueChancePerDepth: { value: 0.001, min: 0, max: 0.05, step: 0.0005, label: 'Depth boss unique / relic chance gained per depth' },
+    uniqueChanceCap: { value: 0.05, min: 0, max: 1, step: 0.005, label: 'Depth boss unique / relic chance cap' },
+  },
+  // Paragon (paragon.ts): after level 100 the XP keeps counting into paragon levels, each a tiny permanent damage bonus, capped.
+  paragon: {
+    _label: 'Paragon levels (after hero level 100)',
+    xpShare: { value: 0.05, min: 0.001, max: 5, step: 0.005, label: 'XP of paragon level 1 as a share of the XP of hero level 99 -> 100' },
+    xpGrowth: { value: 1.015, min: 1, max: 1.5, step: 0.005, label: 'XP growth per paragon level' },
+    damagePerLevel: { value: 0.002, min: 0, max: 0.05, step: 0.0005, label: 'Damage bonus per paragon level (fraction)' },
+    maxBonus: { value: 0.1, min: 0, max: 1, step: 0.01, label: 'Cap on the total paragon damage bonus (fraction)' },
+  },
   // Profession mastery (mastery.ts): perks at fixed profession levels, all deterministic (no rolls), so a claim is reproducible and the simulator stays byte-identical.
   mastery: {
     _label: 'Profession mastery (Mining / Woodcutting / Gardening perks at 50 / 60 / 70 / 75)',

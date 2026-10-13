@@ -1,10 +1,11 @@
 import { t } from '../locales';
+import { levelLabel, levelBarProgress } from './levelLabel';
 import { useDisplayName } from '../game/usernameContext';
 import SpriteSheet from './SpriteSheet';
 import { EquipmentPanel, AttributesPanel, TitlesPanel, AttrKey } from './HeroPanels';
 import InventoryPanel from './InventoryPanel';
 import { SkillsSummary } from './SkillsView';
-import { SaveData, computeCP, formatNumber, playerLevel, xpForNextLevel, xpToReachLevel } from '../game/engine';
+import { SaveData, computeCP, formatNumber } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 import { portraitFrameClass } from '../game/seasonItems';
 
@@ -44,8 +45,7 @@ export default function PersonagemView({
   onOpenSkills: () => void;
 }) {
   const displayName = useDisplayName(save.heroName);
-  const level = playerLevel(save.xp);
-  const progress = Math.max(0, Math.min(1, (save.xp - xpToReachLevel(level)) / Math.max(1, xpForNextLevel(level))));
+  const progress = levelBarProgress(save);
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
   const titleLabel = titleDef ? t(`titles.${titleDef.nameKey}`) : null;
 
@@ -61,7 +61,7 @@ export default function PersonagemView({
           </div>
           {titleLabel && <p className="hero-title-line">• {titleLabel}</p>}
           <div className="dh-hero-badges">
-            <span className="dh-hero-badge level">{t('camp.level', { n: level })}</span>
+            <span className="dh-hero-badge level">{levelLabel(save)}</span>
             <span className="dh-hero-badge cp">{t('profile.cp')}: {formatNumber(computeCP(save))}</span>
           </div>
           <div className="bar dh-hero-xpbar">

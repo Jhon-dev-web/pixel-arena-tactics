@@ -1,7 +1,8 @@
 import SpriteSheet from './SpriteSheet';
 import { t } from '../locales';
+import { levelLabel } from './levelLabel';
 import Assets from '../assets.json';
-import { SaveData, formatNumber, playerLevel } from '../game/engine';
+import { SaveData, formatNumber } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 import { useDisplayName } from '../game/usernameContext';
 import { portraitFrameClass } from '../game/seasonItems';
@@ -34,7 +35,6 @@ export default function DesktopTopbar({
   syncStatus?: 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'offline';
 }) {
   const displayName = useDisplayName(save.heroName);
-  const level = playerLevel(save.xp);
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
   const titleLabel = titleDef ? t(`titles.${titleDef.nameKey}`) : null;
   const syncLabel =
@@ -65,7 +65,7 @@ export default function DesktopTopbar({
             {titleLabel && <span className="desktop-topbar-title">• {titleLabel}</span>}
           </div>
           <div className="desktop-topbar-stats-row">
-            <span>{t('camp.level', { n: level })}</span>
+            <span>{levelLabel(save)}</span>
           </div>
         </div>
       </button>

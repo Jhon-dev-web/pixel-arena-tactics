@@ -2,8 +2,8 @@ import T from './tunables';
 import { EnemyDef } from './enemies';
 import { MaterialId } from './materials';
 import { GEMS, GemId } from './gems';
-import { DungeonBiomeDef, isDungeonBoss, isDungeonCheckpoint } from './dungeon';
-import { UniqueDrop, rollBossRelics, rollBossUniques } from './uniques';
+import { DungeonBiomeDef, depthOfStage, depthScale, isDepthStage, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR } from './dungeon';
+import { UniqueDrop, rollBossRelics, rollBossUniques, rollDepthBossRelics, rollDepthBossUniques } from './uniques';
 
 export interface WaveRewards {
   gold: number;
@@ -43,12 +43,15 @@ export function bossFloorMult(stage: number): { hp: number; dmg: number } {
 }
 
 export function stageEnemyHp(def: EnemyDef, stage: number): number {
+  // Profundezas: the floor-99 monster scaled by the fixed percentage per depth (dungeon.ts depthScale); stages 1-100 never get here.
+  if (isDepthStage(stage)) return Math.round(stageEnemyHp(def, MAX_DUNGEON_FLOOR - 1) * depthScale(stage).hp);
   const base = def.hp * (1 + T.battle.hpGrowth * (stage - 1));
   const mult = isDungeonBoss(stage) ? T.battle.bossHpMult * bossFloorMult(stage).hp : isDungeonCheckpoint(stage) ? T.battle.miniBossHpMult : 1;
   return Math.round(base * mult);
 }
 
 export function stageEnemyDmg(def: EnemyDef, stage: number): number {
+  if (isDepthStage(stage)) return Math.round(stageEnemyDmg(def, MAX_DUNGEON_FLOOR - 1) * depthScale(stage).dmg);
   const base = def.dmg * (1 + T.battle.dmgGrowth * (stage - 1));
   // A biome's regular enemyKind can itself be the shared 'boss' EnemyDef (minotaur_lair reuses it for
   // floors 76-99, not just the Andar 100 milestone) — without the boss damage dampener, those floors'
@@ -78,9 +81,10 @@ export function waveRewards(biome: DungeonBiomeDef, stage: number, bossLootMult 
   let uniques: UniqueDrop[] = [];
   let relics: string[] = [];
   if (isDungeonBoss(stage)) {
-    uniques = rollBossUniques(stage, Math.random, bossLootMult);
-    relics = rollBossRelics(stage, Math.random, bossLootMult);
-    shards = T.battle.bossShards;
+    // A depth boss rolls the pieces of one of the four biome bosses (in turn), with a chance that rises slowly with the depth and is capped (uniques.ts); its Runes are its own.
+    uniques = isDepthStage(stage) ? rollDepthBossUniques(depthOfStage(stage), Math.random, bossLootMult) : rollBossUniques(stage, Math.random, bossLootMult);
+    relics = isDepthStage(stage) ? rollDepthBossRelics(depthOfStage(stage), Math.random, bossLootMult) : rollBossRelics(stage, Math.random, bossLootMult);
+    shards = isDepthStage(stage) ? T.depths.bossShards : T.battle.bossShards;
     gold = Math.round(gold * T.battle.bossGoldMult);
     // Gate-boss-exclusive: a guaranteed gem every clear, on top of the gold/shard boost — a common
     // wave never grants gems, so this is a clear, repeatable "boss loot is visibly better" signal.

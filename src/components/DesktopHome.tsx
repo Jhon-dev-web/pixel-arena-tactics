@@ -6,6 +6,7 @@ import UniqueTag from './UniqueTag';
 import { INSTANCED_SLOTS } from '../game/gear';
 import { gearInstanceLabel } from './gearLabel';
 import { t } from '../locales';
+import { levelLabel, levelBarProgress } from './levelLabel';
 import {
   SaveData,
   computeCP,
@@ -15,8 +16,6 @@ import {
   computeGardenStatuses,
   formatNumber,
   playerLevel,
-  xpForNextLevel,
-  xpToReachLevel,
   MAX_LEVEL,
 } from '../game/engine';
 import { resolveEquipped, viewRarity } from '../game/gearInstances';
@@ -112,7 +111,7 @@ export default function DesktopHome({
   const ready = readyActivities(save, now);
   const displayName = useDisplayName(save.heroName);
   const level = playerLevel(save.xp);
-  const heroProgress = Math.max(0, Math.min(1, (save.xp - xpToReachLevel(level)) / Math.max(1, xpForNextLevel(level))));
+  const heroProgress = levelBarProgress(save);
   const cp = computeCP(save);
   const equipped = resolveEquipped(save);
 
@@ -164,7 +163,7 @@ export default function DesktopHome({
             <span className="dh-hero-name">{displayName}</span>
           </div>
           <div className="dh-hero-badges">
-            <span className="dh-hero-badge level">{t('camp.level', { n: level })}</span>
+            <span className="dh-hero-badge level">{levelLabel(save)}</span>
             <span className="dh-hero-badge cp">{t('camp.cp', { n: formatNumber(cp) })}</span>
           </div>
           <div className="bar dh-hero-xpbar">

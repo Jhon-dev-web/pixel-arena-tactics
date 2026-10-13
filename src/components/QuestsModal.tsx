@@ -7,6 +7,7 @@ import { getTitleDef } from '../game/titles';
 import { statsOf } from '../game/stats';
 import { SET_FAMILIES } from '../game/gear';
 import { getHuntingZone } from '../game/huntingZones';
+import { paragonLevel } from '../game/paragon';
 import { achievementSummary, ACHIEVEMENT_CATEGORIES, QUESTS_DAILY, QUESTS_ACHIEVEMENTS, QuestDef, isClaimed, isComplete, questProgress } from '../game/quests';
 
 const questText = (k: string): string => t(`quests.${k}`);
@@ -77,6 +78,7 @@ export default function QuestsModal({
 
   const summary = achievementSummary(save.quests);
   const stats = statsOf(save);
+  const paragonLvl = paragonLevel(save.xp);
   const statRows: { group: string; rows: [string, string][] }[] = [
     {
       group: 'combat',
@@ -87,6 +89,8 @@ export default function QuestsModal({
           .map(([id, n]): [string, string] => [t('stats.killsZone', { zone: t(`dungeon.${getHuntingZone(id)?.nameKey ?? ''}`) }), fmtNum(n)]),
         [t('stats.dungeonRuns'), fmtNum(stats.dungeonRuns)],
         [t('stats.bosses'), fmtNum(stats.bossesKilled)],
+        [t('stats.deepestDepth'), fmtNum(stats.deepestDepth ?? 0)],
+        ...(paragonLvl > 0 ? [[t('stats.paragon'), fmtNum(paragonLvl)] as [string, string]] : []),
       ],
     },
     {

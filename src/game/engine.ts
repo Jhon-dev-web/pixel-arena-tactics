@@ -42,6 +42,7 @@ import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillLevel, skillXpToReachLevel } from './skills';
 import { gatherMasteryMult, plantGrowthMs } from './mastery';
+import { maxSaneXp, paragonDamageBonus, paragonLevel } from './paragon';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { migrateLegacyPouch } from './legacyPouch';
 import { emptyStash, sanitizeStash, StashState } from './stash';
@@ -362,7 +363,7 @@ export function buildCombatStats(save: SaveData): CombatStats {
     maxHp: playerMaxHp(save),
     // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
     // grows the weapon term W before STR scales it.
-    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + set.damagePct),
+    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + set.damagePct) * (1 + paragonDamageBonus(paragonLevel(save.xp))),
     critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance,
     critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus + set.critMultBonus,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
@@ -1073,7 +1074,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
       // Bind on equip: whatever is worn when the save loads counts as bound (a save from before the rule, or any save).
       gearInstances = bindEquipped(gearInstances, [weaponId, armorId, ...Object.values(extraSlotIds)]);
       let xp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) && parsed.xp >= 0 ? parsed.xp : 0;
-      if (xp >= xpToReachLevel(MAX_LEVEL + 1)) xp = 0;
+      // Past level 100 the XP keeps counting into paragon levels (paragon.ts); only an absurd value (tampered) is thrown away.
+      if (xp > maxSaneXp()) xp = 0;
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
       // Counters and attribute points: only a real, finite number inside the legal range survives (strings, NaN, negatives and
       // tampered giants fall back to the default). Whole numbers: the game only ever adds whole units to these.
