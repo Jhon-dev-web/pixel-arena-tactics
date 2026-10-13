@@ -628,7 +628,7 @@ const T = DebugPanel.define({
   // to floorRate of the NORMAL merchant price. Selling is always manual. docs/BALANCE_CHANGES.md Rodada 18 has the income math.
   wholesale: {
     _label: 'Wholesale merchant (surplus, manual only)',
-    unlockFloor: { value: 50, min: 1, max: 100, step: 1, label: 'Dungeon boss floor that opens the wholesale merchant (25, 50, 75 or 100)' },
+    unlockFloor: { value: 75, min: 1, max: 100, step: 1, label: 'Dungeon boss floor that opens the wholesale merchant (25, 50, 75 or 100)' },
     priceRate: { value: 0.25, min: 0.02, max: 1, step: 0.01, label: 'Wholesale unit price as a share of the normal merchant unit price' },
     freeUnits: { value: 100, min: 0, max: 5000, step: 10, label: 'Units of one material per local day paid at the full wholesale price' },
     blockUnits: { value: 50, min: 1, max: 2000, step: 5, label: 'Units per block after the free units (each block pays blockDrop less)' },

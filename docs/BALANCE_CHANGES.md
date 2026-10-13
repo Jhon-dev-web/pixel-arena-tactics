@@ -1779,7 +1779,7 @@ Dois pedidos do dono: (1) um mercador que, a partir de certo ponto do jogo, comp
 
 ### 1. Mercador Atacadista (`src/game/wholesale.ts`, `T.wholesale`)
 
-Fica na loja (terceira aba, entre Vender e Bolsas), mostrada trancada com o requisito até vencer o **chefe do andar 50**. Compra **só material, só da mochila** (nunca do Baú, nunca equipamento), **sem orçamento diário de Ouro**. O preço é **25% do preço unitário do mercador comum** e cai com cada unidade do **mesmo material** vendida no mesmo dia local:
+Fica na loja (terceira aba, entre Vender e Bolsas), mostrada trancada com o requisito até vencer o **chefe do andar 75**. Compra **só material, só da mochila** (nunca do Baú, nunca equipamento), **sem orçamento diário de Ouro**. O preço é **25% do preço unitário do mercador comum** e cai com cada unidade do **mesmo material** vendida no mesmo dia local:
 
 | unidade número (no dia) | 1-100 | 101-150 | 151-200 | 201-250 | 251 em diante |
 | --- | --- | --- | --- | --- | --- |
@@ -1826,7 +1826,7 @@ No fim de jogo (dias 60-180) o comum ganha no máximo **19,1%** a mais em uma ja
 | P, antes | 146 287 | 64 635 | 44,2% | 17,3% | - |
 | **P, depois** | 146 626 | 72 | **0%** | **0%** | 56 117 |
 
-"Perdido" deixou de existir **no livro-razão** porque o jogador simulado manda ao atacadista tudo o que ia jogar fora; **o valor recuperado não é o valor de referência**: pelas 45 615 unidades (674 mil de valor de referência) o atacadista pagou ~14,4 mil de Ouro (2,1% do valor de referência), então a perda **em valor real** continua alta, só que agora paga uns trocados e libera espaço. Nos dias 1-20 (antes do chefe do 50) o livro-razão é o de antes: 8,3% e 15,8% do valor perdido (A) e 17,1% e 22,5% (P).
+"Perdido" deixou de existir **no livro-razão** porque o jogador simulado manda ao atacadista tudo o que ia jogar fora; **o valor recuperado não é o valor de referência**: pelas 45 615 unidades (674 mil de valor de referência) o atacadista pagou ~14,4 mil de Ouro (2,1% do valor de referência), então a perda **em valor real** continua alta, só que agora paga uns trocados e libera espaço. Nos dias 1-20 (antes de o atacadista abrir) o livro-razão é o de antes: 8,3% e 15,8% do valor perdido (A) e 17,1% e 22,5% (P).
 
 **Ouro em caixa no dia 180:** A 35 116 (31 mil na rodada 16), P 78 795; o atacadista não inflou o Ouro (7% de tudo o que entrou).
 
@@ -1851,7 +1851,7 @@ Criar e abrir é sempre **perda líquida igual à taxa** (testado para os três 
 
 ### 6. Tabela de guarda dos dias 1 a 21 (cenário A, 20 seeds, mediana), antes -> depois
 
-**Idêntica** (a saída de `npm run sim` é a mesma linha por linha, exceto o tempo de execução): T2 8 / checkpoint 10 no dia 1; T3 dia 2; T4 13 / 27 / 47; T5 dia 5, 0%; T6 chegada 12 / 15, chefe 50 mediana 15 (20/20 em 21 dias); T7 1,08; T8 75%; todos os I1 a I4 iguais. O chefe do andar 50 cai **dentro** dos 21 dias, então o atacadista estaria aberto: o jogador simulado só o usa a partir do dia 22 (`wholesaleFirst` em `player.ts`); sem isso o dia 21 mudaria.
+**Idêntica** (a saída de `npm run sim` é a mesma linha por linha, exceto o tempo de execução): T2 8 / checkpoint 10 no dia 1; T3 dia 2; T4 13 / 27 / 47; T5 dia 5, 0%; T6 chegada 12 / 15, chefe 50 mediana 15 (20/20 em 21 dias); T7 1,08; T8 75%; todos os I1 a I4 iguais. O atacadista abre no chefe do andar 75 (decisão do dono, depois da Rodada 18 ter nascido no 50): fora dos 21 dias do guarda, mas o jogador simulado só o usa a partir do dia 22 de qualquer forma (`wholesaleFirst` em `player.ts`); sem isso o dia 21 mudaria.
 
 ### 7. Decisões que o diretor pode discordar
 

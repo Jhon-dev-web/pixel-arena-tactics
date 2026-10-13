@@ -16,7 +16,7 @@ import T from './tunables';
 //     A material nobody has sold today starts at the top again at local midnight (the same day boundary as the merchant, the dungeon sessions and the pouch limit).
 //   - It is always MANUAL. Nothing in the game calls applyWholesaleSell on its own: the player presses sell (one stack, or a list he ticked and confirmed). Selling a rare
 //     material asks a second time, because other players will pay more for it once the market opens.
-//   - It opens with the boss of floor T.wholesale.unlockFloor (50): the dungeonCheckpoints the save already keeps.
+//   - It opens with the boss of floor T.wholesale.unlockFloor (75, the third biome boss): the dungeonCheckpoints the save already keeps.
 //
 // The unit price is fractional on purpose (a common material is worth 1 Gold to the normal merchant, so 25% of it is a quarter of a Gold): the payout of a sale is the SUM of
 // the unit prices, rounded down once. A sale that pays less than 1 Gold in total is refused (it would only destroy the units).

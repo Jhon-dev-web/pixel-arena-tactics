@@ -183,7 +183,7 @@ export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   ach('ACH_DELIVERY_10', 'economy', 'deliveries', 10, 200, 0),
   ach('ACH_DELIVERY_50', 'economy', 'deliveries', 50, 800, 2),
   ach('ACH_POTIONS_25', 'economy', 'potions', 25, 150, 0),
-  // Round 18 (wholesale.ts): they read the lifetime statistics (the progression simulator does not pass them, and the merchant opens at floor 50, after day 21), so they can pay.
+  // Round 18 (wholesale.ts): they read the lifetime statistics (the progression simulator does not pass them, and the merchant opens at floor 75, after day 21), so they can pay.
   ach('ACH_WHOLESALE_1K', 'economy', 'wholesale_units', 1000, 150, 0),
   ach('ACH_WHOLESALE_25K', 'economy', 'wholesale_gold', 25000, 600, 1),
   ach('ACH_PLAYED_10H', 'economy', 'played_hours', 10, 100, 0),

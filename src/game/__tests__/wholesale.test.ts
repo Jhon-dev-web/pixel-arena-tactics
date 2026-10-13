@@ -31,18 +31,19 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
-const open = (mats: Partial<Record<MaterialId, number>> = {}, floor = 50): SaveData => {
+const open = (mats: Partial<Record<MaterialId, number>> = {}, floor = 75): SaveData => {
   const s = defaultSave();
-  return { ...s, dungeonCheckpoints: [25, 50].filter((f) => f <= floor), materials: { ...s.materials, ...mats } };
+  return { ...s, dungeonCheckpoints: [25, 50, 75].filter((f) => f <= floor), materials: { ...s.materials, ...mats } };
 };
 const wire = (s: unknown) => JSON.parse(JSON.stringify(s)) as Record<string, unknown>;
 const priciest = MATERIALS.map((m) => m.id).sort((a, b) => merchantPrice('material', b) - merchantPrice('material', a))[0];
 
 describe('wholesale: unlock', () => {
-  it('is closed until the boss of floor 50 is down, and refuses to sell while closed', () => {
-    expect(T.wholesale.unlockFloor).toBe(50);
+  it('is closed until the boss of floor 75 is down, and refuses to sell while closed', () => {
+    expect(T.wholesale.unlockFloor).toBe(75);
     expect(wholesaleUnlocked(open({}, 25))).toBe(false);
-    expect(wholesaleUnlocked(open({}, 50))).toBe(true);
+    expect(wholesaleUnlocked(open({}, 50))).toBe(false);
+    expect(wholesaleUnlocked(open({}, 75))).toBe(true);
     const s = open({ bone_fragment: 500 }, 25);
     const r = applyWholesaleSell(s, 'bone_fragment', 100, NOW);
     expect(r.ok).toBe(false);

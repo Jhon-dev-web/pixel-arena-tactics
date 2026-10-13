@@ -663,7 +663,7 @@ Fontes de Ouro que **entram**: caça, pedidos, masmorra, mercador comum (orçame
 
 | | Fonte ou sumidouro | Regra | Teto |
 | --- | --- | --- | --- |
-| Atacadista | fonte | 25% do preço unitário do mercador comum, sem orçamento por dia, cai a cada unidade do mesmo material vendida no dia (100 unidades ao preço cheio, depois -20% a cada 50, piso de 8% do preço do mercador); só a partir do chefe do andar 50; só o que o jogador marcar e confirmar | ver a tabela de renda na Rodada 18 |
+| Atacadista | fonte | 25% do preço unitário do mercador comum, sem orçamento por dia, cai a cada unidade do mesmo material vendida no dia (100 unidades ao preço cheio, depois -20% a cada 50, piso de 8% do preço do mercador); só a partir do chefe do andar 75; só o que o jogador marcar e confirmar | ver a tabela de renda na Rodada 18 |
 | Bolsa de Ouro, criar | **sumidouro** | 5% do valor de face, arredondado para cima, mínimo 1 Gold por Bolsa, só dono do Passe, 3 por dia | no máximo 3 x 5 000 = 15 000 Ouro por dia (3 Bolsas grandes) |
 | Bolsa de Ouro, abrir | neutro | devolve exatamente o valor de face; não conta em "Ouro ganho" | - |
 
