@@ -38,8 +38,8 @@ import {
 import { applyHuntClaim, huntClaimBlocked, planHuntClaim, requestHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
 import { applyDeliveryAccept, applyDeliveryClaim, canAffordOffer, ensureDeliveryOffers } from '../../src/game/deliveries';
 import { bagFreeSlots, expandInventory, inventoryCapacity, inventorySlotsUsed, slotsForQty } from '../../src/game/inventory';
-import { applyStashMove, applyStashUpgrade, nextStashUpgrade, stashSlotsUsed } from '../../src/game/stash';
-import { applyMerchantSell } from '../../src/game/merchant';
+import { applyStashMove, applyStashUpgrade, nextStashUpgrade, stashFreeSlots, stashSlotsUsed } from '../../src/game/stash';
+import { applyMerchantSell, merchantPrice, merchantRemaining } from '../../src/game/merchant';
 import { applyDiscard } from '../../src/game/bagActions';
 import { baseGoldValue } from '../../src/game/economy';
 import { huntInventoryStatus } from '../../src/game/huntInventory';
@@ -114,7 +114,14 @@ export interface DayLedger {
   // Unique pieces the hunts delivered today, by `zone:templateId:rarity`.
   uniques: Record<string, number>;
   currency: { shardsIn: Record<string, number>; shardsOut: Record<string, number>; gemsIn: Record<string, number>; gemsOut: Record<string, number> };
+  // Materials the player threw away today, by material and by why nothing better was possible at that moment (see DiscardReason). Units a claim left behind for lack of
+  // room (`flow[m].left`) are the fourth reason, 'bag', and are read from the flow.
+  discards: Record<string, Record<DiscardReason, number>>;
 }
+
+// Why a unit was thrown away: the stash had no free slot ('stash'), the merchant's budget of the day was spent ('merchant'), or both had room and the policy still threw
+// the cheap surplus ('policy'). 'bag' (not in this record) = the claim itself left it behind because the bag was full.
+export type DiscardReason = 'stash' | 'merchant' | 'policy';
 
 export type FlowSink = 'forge' | 'upgrade' | 'alchemy' | 'stash' | 'delivery' | 'workshop' | 'dust' | 'merchant' | 'discard' | 'other';
 export const REAL_USE_SINKS: FlowSink[] = ['forge', 'upgrade', 'alchemy', 'stash', 'delivery', 'workshop'];
@@ -130,7 +137,7 @@ export interface MatFlow {
 const newFlow = (): Record<string, MatFlow> =>
   Object.fromEntries(MATERIALS.map((d) => [d.id, { produced: 0, refined: 0, left: 0, residual: 0, consumed: { forge: 0, upgrade: 0, alchemy: 0, stash: 0, delivery: 0, workshop: 0, dust: 0, merchant: 0, discard: 0, other: 0 }, stockEnd: 0 }]));
 
-const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, uniques: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} } });
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, uniques: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} }, discards: {} });
 
 export interface DaySnapshot {
   day: number;
@@ -140,6 +147,7 @@ export interface DaySnapshot {
   weaponTier: number;
   armorTier: number;
   gold: number;
+  shards: number; // Runas in hand at the end of the day
   // Profession levels at the end of the day (Gardening is 1 for a player who never plants).
   skills: { mining: number; woodcutting: number; gardening: number };
   // Best tier owned in each of the six slots at the end of the day (what the gear timeline is made of).
@@ -541,6 +549,7 @@ export class Player {
       weaponTier: equippedTier(this.S, 'weapon'),
       armorTier: equippedTier(this.S, 'armor'),
       gold: this.S.gold,
+      shards: this.S.shards,
       skills: { mining: skillLevel(this.S.skillXp.mining, 'mining'), woodcutting: skillLevel(this.S.skillXp.woodcutting, 'woodcutting'), gardening: skillLevel(this.S.skillXp.gardening, 'gardening') },
       tiers: Object.fromEntries(CRAFT_PRIORITY.map((slot) => [slot, bestTier(this.S, slot)])),
       stashLevel: this.S.stash.level,
@@ -671,6 +680,14 @@ export class Player {
     return out;
   }
 
+  // One material thrown away: records the amount in the ledger under why nothing better was possible right then.
+  private noteDiscard(m: MaterialId, n: number) {
+    if (n <= 0) return;
+    const reason: DiscardReason = stashFreeSlots(this.S) <= 0 ? 'stash' : merchantRemaining(this.S, this.now) < merchantPrice('material', m) ? 'merchant' : 'policy';
+    const row = (this.ledger.discards[m] ??= { stash: 0, merchant: 0, policy: 0 });
+    row[reason] += n;
+  }
+
   private makeRoom(want: number) {
     if (this.opts.careless) return;
     const free = () => bagFreeSlots(this.S, this.now);
@@ -712,6 +729,7 @@ export class Player {
         if (n <= 0 || baseGoldValue(m) > 5 || keepJunk === 0) continue;
         const next = applyDiscard(this.S, 'material', m, n);
         if (next) {
+          this.noteDiscard(m, n);
           this.ledger.inv.discarded += n;
           if (this.ledger.flow[m]) this.ledger.flow[m].consumed.discard += n;
           this.S = next;
@@ -744,6 +762,7 @@ export class Player {
         if (n <= 0) continue;
         const next = applyDiscard(this.S, 'material', m, n);
         if (next) {
+          this.noteDiscard(m, n);
           this.ledger.inv.discarded += n;
           if (this.ledger.flow[m]) this.ledger.flow[m].consumed.discard += n;
           this.S = next;

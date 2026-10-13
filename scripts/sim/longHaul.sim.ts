@@ -11,6 +11,9 @@
 // WHAT IT DOES NOT: weekly goals and the login streak (their Gold and Runas are not simulated here, same as the 21-day sim), the Battle Pass track, extra Dungeon sessions bought with
 // Runas, rerolled orders, selling or buying with other players, salvage of old gear, reforge, and the Season Relic.
 //
+// THE LEDGER (round 16): for every 10 days the report also prints the Gold and Runas that came in, went out and were left in hand, and what the player threw away: by material and by
+// the reason nothing better was possible (the claim left it behind because the bag was full; the stash had no free slot; the merchant's budget of the day was spent; or the policy
+// threw cheap surplus with room elsewhere), next to what was gathered and what the merchant bought, in units, at the economic reference value and for the non-junk materials.
 // Env: LONG_SEEDS (6) seeds per scenario, LONG_DAYS (180), LONG_SCEN ("A,P"), LONG_JOBS ("A:1,P:1,..." overrides the list), LONG_OUT (dir of the per-seed JSON),
 //      LONG_PRINT=0 (play only), LONG_REPORT_ONLY=1 (print from the JSON already there), SIM_T / SIM_GEAR / SIM_SETS (same overrides as progression.sim.ts).
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
@@ -23,6 +26,8 @@ import { SET_DEFS } from '../../src/game/setBonuses';
 import { mulberry32, withSeededRandom } from './driver';
 import { DaySnapshot, Player } from './player';
 import { HUNTING_ZONES } from '../../src/game/huntingZones';
+import { baseGoldValue } from '../../src/game/economy';
+import { MaterialId } from '../../src/game/materials';
 import { ORE_TIERS } from '../../src/game/ores';
 import { WOOD_TIERS } from '../../src/game/woodcutting';
 import { REFINING_RECIPES } from '../../src/game/refining';
@@ -87,6 +92,15 @@ export interface LongDay {
   huntDepth: Record<string, number>; // hours hunted today by `zone:depth`
   xp: { dungeon: number; hunt: number; order: number; other: number };
   gold: number;
+  shards: number; // Runas in hand
+  // Gold and Runas that came in and went out today (all sources / uses).
+  goldIn: number;
+  goldOut: number;
+  shardsIn: number;
+  shardsOut: number;
+  // The material ledger of the day, only the materials that moved: [accepted into the bag, left behind by the claim (bag full), sold to the merchant, thrown away with the
+  // stash full, thrown away with the merchant's budget spent, thrown away by policy with room elsewhere].
+  mat: Record<string, number[]>;
   skills: { mining: number; woodcutting: number; gardening: number };
   gearBlock: string;
   dungeonBlock: string;
@@ -95,6 +109,16 @@ export interface LongRun {
   scenario: 'A' | 'P';
   seed: number;
   days: LongDay[];
+}
+
+function matRows(d: DaySnapshot): Record<string, number[]> {
+  const out: Record<string, number[]> = {};
+  for (const [m, f] of Object.entries(d.ledger.flow)) {
+    const x = d.ledger.discards[m];
+    const row = [f.produced, f.left, f.consumed.merchant, x?.stash ?? 0, x?.merchant ?? 0, x?.policy ?? 0];
+    if (row.some((n) => n > 0)) out[m] = row;
+  }
+  return out;
 }
 
 function compact(d: DaySnapshot, checkpoints: number[], zones: number): LongDay {
@@ -125,6 +149,12 @@ function compact(d: DaySnapshot, checkpoints: number[], zones: number): LongDay 
     huntDepth,
     xp,
     gold: d.gold,
+    shards: d.shards,
+    goldIn: Object.values(d.ledger.goldIn).reduce((a, b) => a + b, 0),
+    goldOut: Object.values(d.ledger.goldOut).reduce((a, b) => a + b, 0),
+    shardsIn: Object.values(d.ledger.currency.shardsIn).reduce((a, b) => a + b, 0),
+    shardsOut: Object.values(d.ledger.currency.shardsOut).reduce((a, b) => a + b, 0),
+    mat: matRows(d),
     skills: d.skills,
     gearBlock: d.blockers.gear,
     dungeonBlock: d.blockers.dungeon,
@@ -301,6 +331,11 @@ export function reportScenario(label: string, runs: LongRun[]): string[] {
   out.push('');
   out.push(...table(['Dia', 'XP total', 'Masmorra', 'Caça', 'Pedidos', 'Missões e outros', 'Ouro em caixa'], xpRows));
   out.push('');
+  out.push('##### Ouro e Runas a cada 10 dias (mediana entre seeds)');
+  out.push('');
+  out.push(...currencyTable(runs));
+  out.push('');
+  out.push(...discardLedger(label, runs));
   const dry = runs.map((r) => longestDry(r, 21, false));
   const dryP = runs.map((r) => longestDry(r, 21, true));
   const worst = dry.reduce((a, b) => (b.len > a.len ? b : a));
@@ -310,6 +345,114 @@ export function reportScenario(label: string, runs: LongRun[]): string[] {
   );
   out.push('');
   return out;
+}
+
+// ---- the discard ledger ---------------------------------------------------------------------------------------------------------------------------
+
+const lost = (r: number[]) => r[1] + r[3] + r[4] + r[5]; // left behind + thrown away
+
+function windowSum(run: LongRun, from: number, to: number, f: (mat: Record<string, number[]>) => number): number {
+  return run.days.slice(from - 1, to).reduce((a, d) => a + f(d.mat), 0);
+}
+
+type LedgerKind = 'units' | 'value' | 'scarce';
+type LedgerWhat = 'gathered' | 'lost' | 'bag' | 'stash' | 'merchant' | 'policy' | 'sold';
+
+// What the player gathered and what he threw away between two days: units of raw materials, the same at the economic reference value (economy.ts), and the units of the
+// materials that are not junk (reference value above 4). Medians across seeds.
+export function discardWindow(runs: LongRun[], from: number, to: number) {
+  const rawSet = new Set<string>();
+  for (const r of runs) for (const d of r.days) for (const [m, row] of Object.entries(d.mat)) if (row[0] + row[1] > 0) rawSet.add(m);
+  const pick = (kind: LedgerKind, what: LedgerWhat) => (run: LongRun) =>
+    windowSum(run, from, to, (mat) => {
+      let t = 0;
+      for (const [m, r] of Object.entries(mat)) {
+        if (!rawSet.has(m)) continue;
+        const w = kind === 'value' ? baseGoldValue(m as MaterialId) : kind === 'scarce' ? (baseGoldValue(m as MaterialId) > 4 ? 1 : 0) : 1;
+        const n = what === 'gathered' ? r[0] + r[1] : what === 'lost' ? lost(r) : what === 'bag' ? r[1] : what === 'sold' ? r[2] : what === 'stash' ? r[3] : what === 'merchant' ? r[4] : r[5];
+        t += n * w;
+      }
+      return t;
+    });
+  const med = (f: (r: LongRun) => number) => median(runs.map(f));
+  const share = (kind: LedgerKind) => {
+    const g = med(pick(kind, 'gathered'));
+    return g > 0 ? med(pick(kind, 'lost')) / g : 0;
+  };
+  return {
+    gathered: med(pick('units', 'gathered')),
+    bag: med(pick('units', 'bag')),
+    stash: med(pick('units', 'stash')),
+    merchant: med(pick('units', 'merchant')),
+    policy: med(pick('units', 'policy')),
+    sold: med(pick('units', 'sold')),
+    lost: med(pick('units', 'lost')),
+    shareUnits: share('units'),
+    shareValue: share('value'),
+    shareScarce: share('scarce'),
+  };
+}
+
+export function discardLedger(label: string, runs: LongRun[]): string[] {
+  const out: string[] = [];
+  const pct = (x: number) => `${num(x * 100, 1)}%`;
+  out.push(`##### ${label}: o que sobrou e foi jogado fora (mediana entre ${runs.length} seeds; unidades de material cru: caça, mina, lenha, horta)`);
+  out.push('');
+  out.push('"Perdido" = deixado para trás na coleta (mochila cheia, motivo **mochila**) + jogado fora com o baú cheio (**baú**) + jogado fora com o orçamento do mercador esgotado (**mercador**) + jogado fora com espaço em outro lugar, pela política do jogador (**política**). "Escassos" = materiais com valor de referência acima de 4 (os que não são lixo). Porcentagens = perdido / coletado.');
+  out.push('');
+  const windows: [number, number][] = [];
+  for (let d = 10; d <= DAYS; d += 10) windows.push([d - 9, d]);
+  const rows = windows.map(([a, b]) => {
+    const w = discardWindow(runs, a, b);
+    return [`${a}-${b}`, num(w.gathered), num(w.sold), num(w.bag), num(w.stash), num(w.merchant), num(w.policy), pct(w.shareUnits), pct(w.shareValue), pct(w.shareScarce)];
+  });
+  out.push(...table(['Dias', 'Coletado', 'Vendido ao mercador', 'Perdido: mochila', 'baú', 'mercador', 'política', '% das unidades', '% do valor', '% dos escassos'], rows));
+  out.push('');
+  const lateFrom = 60;
+  const late = discardWindow(runs, lateFrom, DAYS);
+  out.push(`**Dias ${lateFrom}-${DAYS}:** coletado ${num(late.gathered)}, perdido ${num(late.lost)} (${pct(late.shareUnits)} das unidades, ${pct(late.shareValue)} do valor de referência, ${pct(late.shareScarce)} dos materiais escassos); vendido ao mercador ${num(late.sold)}.`);
+  out.push('');
+  const mats = new Set<string>();
+  for (const r of runs) for (const d of r.days) for (const m of Object.keys(d.mat)) mats.add(m);
+  const perMat = [...mats]
+    .map((m) => {
+      const col = (i: number) => median(runs.map((r) => windowSum(r, lateFrom, DAYS, (mat) => mat[m]?.[i] ?? 0)));
+      const g = col(0) + col(1);
+      const l = col(1) + col(3) + col(4) + col(5);
+      return { m, g, sold: col(2), bag: col(1), stash: col(3), merchant: col(4), policy: col(5), l };
+    })
+    .filter((x) => x.l > 0)
+    .sort((a, b) => b.l * baseGoldValue(b.m as MaterialId) - a.l * baseGoldValue(a.m as MaterialId))
+    .slice(0, 16);
+  out.push(`###### Os materiais mais jogados fora, dias ${lateFrom}-${DAYS} (ordenado por valor de referência perdido; mediana por seed)`);
+  out.push('');
+  out.push(
+    ...table(
+      ['Material', 'Valor ref.', 'Coletado', 'Vendido', 'Perdido: mochila', 'baú', 'mercador', 'política', '% perdido'],
+      perMat.map((x) => [x.m, num(baseGoldValue(x.m as MaterialId), 1), num(x.g), num(x.sold), num(x.bag), num(x.stash), num(x.merchant), num(x.policy), x.g > 0 ? pct(x.l / x.g) : '-']),
+    ),
+  );
+  out.push('');
+  return out;
+}
+
+// Gold and Runas over time: what came in and went out in each 10 days and what was in hand at the end.
+export function currencyTable(runs: LongRun[]): string[] {
+  const rows: string[][] = [];
+  for (let day = 10; day <= DAYS; day += 10) {
+    const win = runs.map((r) => r.days.slice(day - 10, day));
+    const sum = (f: (d: LongDay) => number) => median(win.map((w) => w.reduce((a, d) => a + f(d), 0)));
+    rows.push([
+      `${day - 9}-${day}`,
+      num(sum((d) => d.goldIn)),
+      num(sum((d) => d.goldOut)),
+      num(median(runs.map((r) => r.days[day - 1].gold))),
+      num(sum((d) => d.shardsIn)),
+      num(sum((d) => d.shardsOut)),
+      num(median(runs.map((r) => r.days[day - 1].shards))),
+    ]);
+  }
+  return table(['Dias', 'Ouro: entrou', 'saiu', 'em caixa no fim', 'Runas: entraram', 'saíram', 'em caixa no fim'], rows);
 }
 
 export function comparisonTable(a: LongRun[], p: LongRun[]): string[] {
