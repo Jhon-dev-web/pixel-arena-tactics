@@ -97,6 +97,11 @@
     "fullscreen": "Tela cheia",
     "fullscreenEnter": "Entrar",
     "fullscreenExit": "Sair",
+    "notifications": "Notificações",
+    "notificationsHint": "Avisa quando uma caçada, mineração, lenha, plantação ou pedido termina com a janela fora de foco.",
+    "notificationsEnable": "Ativar",
+    "notificationsDisable": "Desativar",
+    "notificationsDenied": "O navegador bloqueou as notificações. Libere nas configurações do site e tente de novo.",
     "dataTitle": "Dados do jogo",
     "dataHint": "O arquivo guarda só o seu herói, sem e-mail nem senha.",
     "export": "Exportar save",
@@ -1114,6 +1119,15 @@
     "overflowWarning": "No ritmo estimado, o inventário enche em ~{t}, antes do limite de {h} h da coleta: o resto ficaria para trás.",
     "invExplain": "O que a caça rende entra direto no inventário ao resgatar. Sem espaço, o excesso fica para trás.",
     "rewardWaiting": "Recompensa esperando para ser resgatada"
+  },
+  "notify": {
+    "title": "Arena Duel",
+    "hunt": "Sua caçada terminou: o armazenamento está cheio.",
+    "mining": "A mineração encheu o armazenamento.",
+    "woodcutting": "O corte de lenha encheu o armazenamento.",
+    "garden": "Um canteiro da horta está pronto.",
+    "gardenMany": "{n} canteiros da horta estão prontos.",
+    "order": "Seu pedido foi entregue."
   },
   "deliveries": {
     "title": "Pedidos",

@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld(
     // Window fullscreen (Settings): the main process owns the window, the page only asks.
     toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
     isFullscreen: () => ipcRenderer.invoke('window:is-fullscreen'),
+    // Activity-finished notice (Settings > Notifications): the page only sends two short strings; the main process validates them, shows ONE native notification
+    // when the window is not focused and flashes the taskbar button.
+    notify: (payload) => ipcRenderer.invoke('notify:show', payload && { title: payload.title, body: payload.body }),
   }),
 );
 

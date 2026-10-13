@@ -7,7 +7,7 @@
 // behave exactly like on the web, and localStorage lives under a stable origin.
 // Development: set ARENA_DEV_URL (scripts/desktop-dev.mjs does it) to load the Vite dev server instead.
 
-const { app, BrowserWindow, ipcMain, Menu, net, protocol, screen, session, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, net, Notification, protocol, screen, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -279,6 +279,8 @@ function createWindow() {
   });
   // The page controls document.title; keep ours stable.
   win.on('page-title-updated', (e) => e.preventDefault());
+  // A taskbar flash raised by an activity notification ends when the player comes back.
+  win.on('focus', () => win.flashFrame(false));
 
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
@@ -437,6 +439,26 @@ app.whenReady().then(() => {
     return mainWindow ? mainWindow.isFullScreen() : false;
   });
   ipcMain.handle('window:is-fullscreen', () => (mainWindow ? mainWindow.isFullScreen() : false));
+  // Activity-finished notification (src/game/notify.ts): {title, body} from the game window only; shown only while that window is NOT focused; one native
+  // notification (clicking it brings the window back) and a taskbar flash. Anything malformed is ignored and nothing else is exposed.
+  ipcMain.handle('notify:show', (event, payload) => {
+    const win = mainWindow;
+    if (!win || win.isDestroyed() || event.sender !== win.webContents) return false;
+    const clean = (v, max) => (typeof v === 'string' ? Array.from(v, (ch) => (ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127 ? ' ' : ch)).join('').trim().slice(0, max) : '');
+    const title = clean(payload && payload.title, 80);
+    const body = clean(payload && payload.body, 200);
+    if (!title || !body || win.isFocused() || !Notification.isSupported()) return false;
+    const notice = new Notification({ title, body, icon: path.join(__dirname, 'icon.png') });
+    notice.on('click', () => {
+      if (win.isDestroyed()) return;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    });
+    notice.show();
+    win.flashFrame(true);
+    return true;
+  });
   if (SMOKE) {
     ipcMain.on('smoke:page-event', (_e, text) => smoke.pageEvents.push(String(text)));
   }

@@ -4,6 +4,7 @@ import { SaveData, playerLevel } from '../game/engine';
 import { AudioPrefs } from '../game/audio';
 import { ImportFailure, parseSaveImport, resetWordMatches } from '../game/saveTransfer';
 import useFullscreen from '../hooks/useFullscreen';
+import { enableNotifications, notificationsActive, notifyPermission, saveNotifyPref } from '../game/notify';
 
 // Settings: language, the two audio channels (a slider and a mute button each), fullscreen, the account, the tutorial and the game data (export, import and reset
 // of the save). Importing and resetting replace the hero, so both ask first (what is about to be loaded / a typed word), and App keeps a backup of the current
@@ -48,6 +49,23 @@ export default function SettingsModal({
   const [resetting, setResetting] = useState(false);
   const [typed, setTyped] = useState('');
   const resetWord = t('settings.resetWord');
+  const [notifyOn, setNotifyOn] = useState(notificationsActive);
+  const [notifyDenied, setNotifyDenied] = useState(false);
+  const toggleNotify = async () => {
+    if (notifyOn) {
+      saveNotifyPref(false);
+      setNotifyOn(false);
+      return;
+    }
+    // In a browser the permission is asked here, from the click; the desktop app needs none.
+    if (await enableNotifications()) {
+      saveNotifyPref(true);
+      setNotifyOn(true);
+      setNotifyDenied(false);
+    } else {
+      setNotifyDenied(true);
+    }
+  };
 
   const pickFile = async (file: File | undefined) => {
     setImportError(null);
@@ -125,6 +143,19 @@ export default function SettingsModal({
               </div>
               <button className="settings-action" onClick={fullscreen.toggle} data-ui>
                 {fullscreen.active ? t('settings.fullscreenExit') : t('settings.fullscreenEnter')}
+              </button>
+            </section>
+          )}
+
+          {notifyPermission() !== 'unsupported' && (
+            <section className="settings-section settings-row" data-settings="notifications">
+              <div>
+                <span className="settings-label">{t('settings.notifications')}</span>
+                <span className="settings-description">{`${notifyOn ? t('settings.on') : t('settings.off')} · ${t('settings.notificationsHint')}`}</span>
+                {notifyDenied && <span className="settings-warning">{t('settings.notificationsDenied')}</span>}
+              </div>
+              <button className="settings-action" onClick={() => void toggleNotify()} aria-pressed={notifyOn} data-ui>
+                {notifyOn ? t('settings.notificationsDisable') : t('settings.notificationsEnable')}
               </button>
             </section>
           )}

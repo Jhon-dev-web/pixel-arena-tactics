@@ -97,6 +97,11 @@
     "fullscreen": "Fullscreen",
     "fullscreenEnter": "Enter",
     "fullscreenExit": "Exit",
+    "notifications": "Notifications",
+    "notificationsHint": "Tells you when a hunt, mining, woodcutting, garden plot or order finishes while the window is not in focus.",
+    "notificationsEnable": "Enable",
+    "notificationsDisable": "Disable",
+    "notificationsDenied": "The browser blocked notifications. Allow them in the site settings and try again.",
     "dataTitle": "Game data",
     "dataHint": "The file holds only your hero, no e-mail or password.",
     "export": "Export save",
@@ -1114,6 +1119,15 @@
     "overflowWarning": "At the estimated rate the inventory fills in ~{t}, before the {h} h storage limit: the rest would be left behind.",
     "invExplain": "Hunt loot goes straight into your inventory when you claim. Without room, the excess is left behind.",
     "rewardWaiting": "Reward waiting to be claimed"
+  },
+  "notify": {
+    "title": "Arena Duel",
+    "hunt": "Your hunt is done: the storage is full.",
+    "mining": "Mining filled its storage.",
+    "woodcutting": "Woodcutting filled its storage.",
+    "garden": "A garden plot is ready.",
+    "gardenMany": "{n} garden plots are ready.",
+    "order": "Your delivery order arrived."
   },
   "deliveries": {
     "title": "Orders",

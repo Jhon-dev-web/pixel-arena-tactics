@@ -92,6 +92,7 @@ import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expe
 import { isDeliveryReady } from './game/deliveries';
 import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
 import { claimableCount, isClaimed, isComplete, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
+import { loadNotifyPref, notificationsActive, planNotifications, readyEvents, showNotification } from './game/notify';
 import { claimStreak, claimWeeklyBonus, claimWeeklyGoal, periodClaimable, rollSaveWeekly, utcDay, WeeklyGoalId } from './game/weekly';
 import { questContext } from './game/questContext';
 import { recordDungeonRun, trackSave } from './game/statsTracking';
@@ -410,6 +411,27 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     }, 60_000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Desktop / browser notification when an activity finishes while the window is not in focus (notify.ts; the toggle is in Settings). The first look only remembers what
+  // is already finished; each finished fill is announced once, and never while the window has focus.
+  const seenFillsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const tick = () => {
+      if (!notificationsActive()) {
+        seenFillsRef.current = null;
+        return;
+      }
+      const plan = planNotifications(readyEvents(saveRef.current, Date.now()), seenFillsRef.current, document.hasFocus(), loadNotifyPref());
+      seenFillsRef.current = plan.seen;
+      for (const a of plan.announce) {
+        const body = a.kind === 'garden' && a.count > 1 ? t('notify.gardenMany', { n: a.count }) : t(`notify.${a.kind}`);
+        showNotification(t('notify.title'), body, a.kind);
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 15_000);
+    return () => window.clearInterval(id);
   }, []);
 
   useEffect(() => {
