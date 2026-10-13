@@ -16,7 +16,7 @@ export default function UniqueDrops({ drops, held = false }: { drops: UniqueDrop
         const item = getGear(d.templateId);
         if (!item) return null;
         return (
-          <div className={`unique-drop r-${d.rarity}`} key={`${d.templateId}-${i}`}>
+          <div className={`unique-drop r-${d.rarity} reveal rv-unique`} key={`${d.templateId}-${i}`}>
             <span className="unique-drop-icon">
               <GearIcon item={item} />
             </span>

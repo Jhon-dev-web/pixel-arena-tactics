@@ -87,6 +87,13 @@ const CATEGORY_LABEL_KEY: Record<ForgeCategory, string> = {
 const categoryOf = (g: GearItem): ForgeCategory => (g.line === 'axe' ? 'axe' : (g.slot as ForgeCategory));
 const forgeRecipes = (cat: ForgeCategory): GearItem[] => gearBySlot(cat === 'axe' ? 'weapon' : cat).filter((g) => g.recipe && !g.unique && categoryOf(g) === cat);
 
+// The brief result line of a forge / refine, glowing in the colour of its rarity (round11.css .reveal); `id` restarts the animation for every new result.
+export interface ForgeReveal {
+  id: number;
+  text: string;
+  tone: 'common' | 'rare' | 'epic' | 'legendary' | 'ok' | 'fail';
+}
+
 export default function ForgeModal({
   save,
   onForge,
@@ -96,6 +103,7 @@ export default function ForgeModal({
   onSocket,
   onUnsocket,
   onClose,
+  reveal = null,
   allowedTabs = ALL_TABS,
   title,
   icon = '⚒️',
@@ -111,6 +119,7 @@ export default function ForgeModal({
   onSocket: (itemId: string, gemId: GemId) => void;
   onUnsocket: (itemId: string, index: number) => void;
   onClose: () => void;
+  reveal?: ForgeReveal | null;
   allowedTabs?: ForgeTab[];
   title?: string;
   icon?: string;
@@ -202,6 +211,11 @@ export default function ForgeModal({
           <span className="inline-icon-emoji">{icon}</span> {title ?? t('forge.title')}
         </h2>
         <p className="shop-gold">{t('ui.owned', { n: fmtNum(save.gold) })}</p>
+        {reveal && (
+          <div key={reveal.id} className={`forge-reveal reveal rv-${reveal.tone}`} role="status">
+            {reveal.text}
+          </div>
+        )}
 
         {allowedTabs.length > 1 && (
         <div className="forge-tabs">

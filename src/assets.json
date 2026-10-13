@@ -569,6 +569,48 @@
         "duration": 3
       }
     },
+    "level_up": {
+      "url": "/assets/sfx/level_up.wav",
+      "description": "Short rising four-note chime (level up). Synthesised by scripts/gen-sfx.mjs",
+      "metadata": {
+        "duration": 1
+      }
+    },
+    "forge_success": {
+      "url": "/assets/sfx/forge_success.wav",
+      "description": "Anvil strike with a small chime (forged / refined). Synthesised by scripts/gen-sfx.mjs",
+      "metadata": {
+        "duration": 1
+      }
+    },
+    "forge_rare": {
+      "url": "/assets/sfx/forge_rare.wav",
+      "description": "Anvil strike and a rising arpeggio (Epic / Legendary result). Synthesised by scripts/gen-sfx.mjs",
+      "metadata": {
+        "duration": 1
+      }
+    },
+    "refine_fail": {
+      "url": "/assets/sfx/refine_fail.wav",
+      "description": "Dull downward slide and thump (refine failed). Synthesised by scripts/gen-sfx.mjs",
+      "metadata": {
+        "duration": 1
+      }
+    },
+    "drop_rare": {
+      "url": "/assets/sfx/drop_rare.wav",
+      "description": "Two soft bells (rare drop). Synthesised by scripts/gen-sfx.mjs",
+      "metadata": {
+        "duration": 1
+      }
+    },
+    "drop_unique": {
+      "url": "/assets/sfx/drop_unique.wav",
+      "description": "Four climbing bells and a sparkle (unique drop). Synthesised by scripts/gen-sfx.mjs",
+      "metadata": {
+        "duration": 1
+      }
+    },
     "click": {
       "url": "/assets/sfx/click.ogg",
       "description": "Subtle UI click blip (shop open/close/buy)",

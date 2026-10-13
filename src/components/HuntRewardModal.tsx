@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { fmtNum, t } from '../locales';
+import { playSfx } from '../game/audio';
 import { SaveData } from '../game/engine';
 import { PendingHuntReward } from '../game/huntSession';
 import { planHuntClaim } from '../game/huntLifecycle';
@@ -41,6 +43,14 @@ export default function HuntRewardModal({
   const rarityOf = (id: MaterialId): string => zone?.drops.find((d) => d.material === id)?.rarity ?? 'common';
   const slotCls = plan.slotsAfter >= plan.capacity ? 'full' : plan.slotsAfter >= plan.capacity * 0.85 ? 'warn' : '';
   const unitsLeft = leftBehind.reduce((sum, i) => sum + i.count, 0);
+  const hasRare = added.some(([id]) => rarityOf(id) === 'rare');
+
+  // A unique piece or a rare material in the haul gets its own short sound, once per reward (it respects mute like every sound).
+  useEffect(() => {
+    if (uniques.length > 0) playSfx('drop_unique');
+    else if (hasRare) playSfx('drop_rare');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reward.id]);
 
   return (
     <div className="modal-backdrop">
@@ -88,7 +98,7 @@ export default function HuntRewardModal({
             <div className="hunt-loot reward">
               {added.map(([id, n]) => (
                 <div className="hunt-loot-cell" key={id}>
-                  <span className={`inv-slot hunt-loot-slot mat-${rarityOf(id)}`} title={matName(id)}>
+                  <span className={`inv-slot hunt-loot-slot mat-${rarityOf(id)}${rarityOf(id) === 'rare' ? ' reveal rv-rare' : ''}`} title={matName(id)}>
                     <span className="inv-icon">
                       <MaterialIcon item={getMaterial(id)!} />
                     </span>

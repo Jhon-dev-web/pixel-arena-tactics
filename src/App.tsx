@@ -45,6 +45,7 @@ import {
   resolveGearInstance,
 } from './game/gearInstances';
 import { getRefiningRecipe } from './game/refining';
+import { rarityDef } from './game/rarity';
 import { ConsumableId, EXPEDITION_TICKET_SKIP_MS } from './game/consumables';
 import { addForced, canAddInstances, expandInventory, inventoryCapacity } from './game/inventory';
 import { StackKind, applyStashMove, applyStashUpgrade, applyStoreAll, bagCount, stashCount } from './game/stash';
@@ -58,7 +59,7 @@ import { getTitleDef } from './game/titles';
 import { playerSpriteUrl, withLookMoment } from './game/sprites';
 import AdminModal from './components/AdminModal';
 import ShopModal from './components/ShopModal';
-import ForgeModal, { ForgeTab } from './components/ForgeModal';
+import ForgeModal, { ForgeReveal, ForgeTab } from './components/ForgeModal';
 import OficiosView from './components/OficiosView';
 import InventoryModal from './components/InventoryModal';
 import PersonagemView from './components/PersonagemView';
@@ -153,6 +154,14 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // The pending hunt reward screen can be set aside to make room in the inventory first (shortcut from the screen itself); the hunt screen brings it back.
   const [rewardHidden, setRewardHidden] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // The brief rarity-coloured line on the forge result (ForgeModal `reveal`): what was just forged / refined, glowing in the colour of its rarity.
+  const [forgeReveal, setForgeReveal] = useState<ForgeReveal | null>(null);
+  const revealTimeout = useRef<number | null>(null);
+  const revealForge = (text: string, tone: ForgeReveal['tone']) => {
+    setForgeReveal({ id: Date.now(), text, tone });
+    if (revealTimeout.current) window.clearTimeout(revealTimeout.current);
+    revealTimeout.current = window.setTimeout(() => setForgeReveal(null), 3200);
+  };
   // Forces a re-render when a dev-tunable changes (Admin panel) — nothing reads the value itself.
   const [, setVersion] = useState(0);
   const [, setLocaleVersion] = useState(0);
@@ -207,7 +216,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     saveRef.current = s;
     setSave(s);
     if (nextLevel > prevLevel) {
-      playSfx('victory');
+      playSfx('level_up');
       // A level that grants a skill point says so in the same line.
       showToast(skillPointsEarned(nextLevel) > skillPointsEarned(prevLevel) ? t('heroSkills.ui.levelUpPoint', { n: nextLevel }) : t('ui.levelUp', { n: nextLevel }));
     }
@@ -1325,7 +1334,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       return;
     }
     setSaveBoth(result.save);
-    playSfx('victory');
+    // Epic / Legendary results get their own fanfare and a glowing line; every forge gets the anvil.
+    const rarity = result.instance?.rarity ?? 'common';
+    playSfx(rarity === 'epic' || rarity === 'legendary' ? 'forge_rare' : 'forge_success');
+    revealForge(rarity === 'common' ? gearText(item.nameKey) : `${gearText(item.nameKey)} · ${t(`rarity.${rarityDef(rarity).nameKey}`)}`, rarity);
     showToast(t(result.sealUsed ? 'forge.toBagSeal' : 'forge.toBag', { n: gearText(item.nameKey) }));
   };
 
@@ -1359,10 +1371,12 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!result) return;
     setSaveBoth(result.save);
     if (result.success) {
-      playSfx('victory');
+      playSfx('forge_success');
+      revealForge(t('forge.upgradeOk', { n: gearText(hit.item.nameKey), m: result.level + 1 }), 'ok');
       showToast(t('forge.upgradeOk', { n: gearText(hit.item.nameKey), m: result.level + 1 }));
     } else {
-      playSfx('block');
+      playSfx('refine_fail');
+      revealForge(t('forge.upgradeFail'), 'fail');
       showToast(t('forge.upgradeFail'));
     }
   };
@@ -1669,6 +1683,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onRepair={repairItem}
           onSocket={socketGem}
           onUnsocket={unsocketGem}
+          reveal={forgeReveal}
           initialTab={forgeFocus?.tab}
           focusItemId={forgeFocus?.itemId}
           onClose={() => {

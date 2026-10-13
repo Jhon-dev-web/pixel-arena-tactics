@@ -25,6 +25,7 @@ export interface WelcomeRowText {
   button: string;
   action: WelcomeBackAction;
   rare: boolean; // a unique piece was found: the row glows
+  glow: 'unique' | 'rare' | null; // the rarity colour of that glow (a unique piece, or a rare material among the top ones)
 }
 
 export function welcomeRowText(row: WelcomeBackRow): WelcomeRowText {
@@ -39,6 +40,7 @@ export function welcomeRowText(row: WelcomeBackRow): WelcomeRowText {
         button: t('welcomeBack.open'),
         action: 'hunt',
         rare: row.uniques > 0,
+        glow: row.uniques > 0 ? 'unique' : row.top.some((m) => zone?.drops.find((d) => d.material === m.id)?.rarity === 'rare') ? 'rare' : null,
       };
     }
     case 'mining':
@@ -50,10 +52,11 @@ export function welcomeRowText(row: WelcomeBackRow): WelcomeRowText {
         button: t('welcomeBack.collect'),
         action: row.kind,
         rare: false,
+        glow: null,
       };
     case 'garden':
-      return { title: t('claimAll.garden'), detail: t('home.gardenStatus', { n: row.ready, m: row.ready }), note: '', button: t('welcomeBack.collect'), action: 'garden', rare: false };
+      return { title: t('claimAll.garden'), detail: t('home.gardenStatus', { n: row.ready, m: row.ready }), note: '', button: t('welcomeBack.collect'), action: 'garden', rare: false, glow: null };
     case 'delivery':
-      return { title: t('home.delivery'), detail: t('home.deliveryReady'), note: '', button: t('welcomeBack.collect'), action: 'delivery', rare: false };
+      return { title: t('home.delivery'), detail: t('home.deliveryReady'), note: '', button: t('welcomeBack.collect'), action: 'delivery', rare: false, glow: null };
   }
 }
