@@ -1,6 +1,6 @@
 # Arena Duel — portal público
 
-Projeto existente refinado para explicar as escolhas, as atividades e a progressão conectada do Arena Duel. Esta versão é local, sem deploy, sem integração com o código ou repositório do jogo.
+Site estático público do Arena Duel. Vive em `portal/` dentro do repositório do jogo, mas é independente: tem o próprio package.json e scripts e não depende do build do jogo.
 
 ## Executar e verificar
 
@@ -25,24 +25,24 @@ A prévia abre em http://127.0.0.1:4173/pt/ e http://127.0.0.1:4173/en/. Execute
 - `scripts/check.mjs`: títulos, idioma, links, âncoras e arquivos locais.
 - `scripts/editorial-check.mjs`: verificações do formato editorial com registros de teste que não são publicados.
 - `public/app.js`: menu móvel, menus de navegação e fechamento por teclado.
-- `public/hero.png`, `public/favicon.svg`: arte conceitual e ícone provisórios.
+- `public/img/*.webp`: capturas reais do jogo atual (build offline, save de meio de jogo, 1440x900). `public/fonts/`: Press Start 2P (a fonte do jogo, licença OFL incluída). `public/favicon.svg`: ícone provisório.
 
 As 24 páginas PT/EN que já existiam continuam geradas. As áreas editoriais sem publicações permanecem acessíveis pelo endereço, mas não recebem links no menu nem destaque na Home. O menu público oferece apenas Notícias enquanto não houver artigos aprovados. A Home oculta Comunidade até existirem canais configurados.
 
 ## Conteúdo e comunicação
 
-O glossário em `src/content.mjs` define Herói/Hero, Equipamento/Gear, Masmorra/Dungeon, JxJ/PvP, Passe/Pass, Mineração/Mining, Lenhador/Woodcutting, Jardinagem/Gardening e Caça/Hunting. Os estados do roadmap são `available`, `development`, `planned` e `future`; suas definições ficam junto dos rótulos. “Disponível” indica existência na versão em desenvolvimento e não anuncia lançamento público.
+O glossário em `src/content.mjs` segue os nomes do próprio jogo (Herói, Habilidades, Equipamento, Masmorra, Profundezas, Paragon, Passe de Aventureiro, Mineração, Lenhador, Horta, Ofícios, Caça, Forja, Pedidos, Códice...). O jogo não tem combate entre jogadores e o portal não o menciona como recurso. Os estados do roadmap são `available`, `development`, `planned` e `future`; suas definições ficam junto dos rótulos. “Disponível” indica existência na versão em desenvolvimento e não anuncia lançamento público.
 
-O ciclo da Home é uma explicação conceitual da progressão, sem fórmulas ou números internos. JxJ comunica somente a filosofia de estratégia, preparação e escolhas de build. As categorias do Campeonato estão marcadas “Em estudo”. Nenhuma regra de participação ou recompensa foi confirmada.
+O ciclo da Home é uma explicação conceitual da progressão, sem fórmulas ou números internos. Mercado de jogadores, campeonato de temporada e Steam estão só no roadmap como Planejado, sem datas, regras ou valores. Páginas de Política de Privacidade, Termos de Uso e Regras da Temporada (`/pt/privacy/`, `/pt/terms/`, `/pt/season-rules/` e as equivalentes em `/en/`) existem apenas como espaço reservado e não têm link no menu nem no rodapé: o texto legal é do responsável pelo jogo.
 
 Para editar publicações, consulte [EDITORIAL.md](EDITORIAL.md). Artigos só entram no site com `published: true`. O build rejeita campos essenciais ausentes, links inseguros, slugs duplicados e estados inválidos. O projeto não contém notícias fictícias.
 
 `config.playUrl` fica `null` até o endereço HTTPS oficial ser aprovado. Enquanto isso, o CTA leva ao roadmap. Quando o endereço for fornecido, configure-o ali: o CTA passa a dizer Jogar/Play. `config.community` também permanece vazio; canais oficiais podem ser configurados futuramente.
 
-Rankings, temporadas, conta, perfil e marketplace estão apenas registrados como possíveis rotas futuras. Não há página pública, conta, backend ou economia integrada nesta rodada.
+Há um rascunho não publicado (`published: false`) em `articles`: "O que mudou no Arena Duel", para revisão do dono. Ele não aparece no site até ser marcado como publicado.
 
 ## Estado de revisão
 
-O HTML segue com `noindex,nofollow`. Identidade final, SEO de produção, domínio, endereço Jogar e redes oficiais não foram definidos. A arte do hero é um conceito gerado por IA; não representa captura nem asset do jogo.
+O HTML segue com `noindex,nofollow`. Identidade final, SEO de produção, domínio, endereço Jogar e redes oficiais não foram definidos. As imagens são capturas do jogo; o favicon e o logotipo final ainda são provisórios.
 
 Após a rodada de refinamento: geração de 24 páginas PT/EN, 26 documentos HTML com entrada e 404, links e âncoras válidos, teste editorial, navegação móvel, idioma e verificação de 320, 375, 768, 1024, 1440 e 1920 px. Não houve deploy.

@@ -6,7 +6,7 @@ const l = (pt, en) => ({ pt, en });
 const article = (slug, date) => ({
   slug, date, type: 'patch', published: true, title: l('Título', 'Title'), subtitle: l('Subtítulo', 'Subtitle'),
   summary: l('Resumo', 'Summary'), version: '0.1', categories: [l('Mudanças', 'Changes')],
-  image: { src: '/hero.png', width: 1536, height: 1024, alt: l('Arte conceitual', 'Concept art') },
+  image: { src: '/img/hero-panel.webp', width: 1440, height: 900, alt: l('Captura do jogo', 'Game screenshot') },
   body: {
     pt: [{ type: 'heading', level: 2, text: 'Mudanças' }, { type: 'paragraph', content: [{ type: 'text', text: '<texto>' }, { type: 'link', text: 'Detalhes', href: '/pt/roadmap/' }] }, { type: 'list', items: [[{ type: 'text', text: 'Item' }]] }],
     en: [{ type: 'heading', level: 2, text: 'Changes' }, { type: 'paragraph', content: [{ type: 'text', text: 'Text' }] }],
