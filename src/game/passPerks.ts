@@ -1,7 +1,7 @@
 import T from './tunables';
 
 // What the Adventurer Pass gives an owner, as the screen lists it: every number is read from the same tunables the engine reads (storage, gold, yield, orders,
-// bag, stash, repair, the daily Repair Kit), so the text cannot promise anything the code does not do. passPerks.test.ts checks each line against the real behaviour.
+// bag, stash, repair, the daily Repair Kit, the weekly streak saver), so the text cannot promise anything the code does not do. passPerks.test.ts checks each line against the real behaviour.
 export interface PassPerkLine {
   key: string;
   icon: string;
@@ -26,6 +26,7 @@ export function passPerkLines(): PassPerkLine[] {
     { key: 'stash', icon: '/assets/icons/camp_stash.png', label: { key: 'battlePass.perkStash', params: { n: T.battlePass.stashBonusSlots } }, sub: { key: 'battlePass.perkStashSub' } },
     { key: 'repair', icon: '/assets/icons/whetstone_oil.png', label: { key: 'battlePass.perkRepair', params: { n: pct(T.battlePass.repairDiscount) } }, sub: { key: 'battlePass.perkRepairSub' } },
     { key: 'kit', icon: '/assets/icons/whetstone_oil.png', label: { key: 'battlePass.perkKit', params: { n: T.battlePass.dailyRepairKits } }, sub: { key: 'battlePass.perkKitSub', params: { m: T.consumables.repairKitDurability } } },
+    { key: 'streak', icon: '/assets/icons/nav_quests.png', label: { key: 'battlePass.perkStreak', params: { n: T.battlePass.streakSavers } }, sub: { key: 'battlePass.perkStreakSub' } },
     { key: 'loadout', icon: '/assets/icons/skill_path_warrior.png', label: { key: 'battlePass.perkLoadout' }, sub: { key: 'battlePass.perkLoadoutSub' } },
   ];
 }

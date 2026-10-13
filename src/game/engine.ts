@@ -29,6 +29,7 @@ import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems } from './gems';
 import { QuestState, emptyQuestState, migrateAchievementId } from './quests';
 import { LifetimeStats, emptyStats, normalizeStats, StatsBackfill } from './stats';
+import { rollWeekly, sanitizeStreak, sanitizeWeekly } from './weekly';
 import { CodexState, emptyCodex, normalizeCodex } from './codex';
 import { Rarity, rarityStatMult } from './rarity';
 import { setBonuses } from './setBonuses';
@@ -1114,6 +1115,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         dailyClaimed: Array.isArray(q.dailyClaimed) ? q.dailyClaimed : [],
         counters: { ...emptyQuestState().counters, ...(q.counters ?? {}) },
         claimed: Array.isArray(q.claimed) ? [...new Set((q.claimed as unknown[]).filter((id): id is string => typeof id === 'string').map(migrateAchievementId))] : [],
+        weekly: emptyQuestState().weekly,
+        streak: emptyQuestState().streak,
       };
       // The daily counter once called `expeditions` (the Expedition the delivery orders replaced) is `deliveries` now.
       const rawDaily = (q.daily ?? {}) as Record<string, unknown>;
@@ -1373,6 +1376,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         codex: emptyCodex(),
       };
       loaded.codex = normalizeCodex(parsed.codex, loaded);
+      // Weekly goals and the login streak (weekly.ts): an old save has neither and starts its first week now; a new UTC week snapshots the counters again.
+      loaded.quests = { ...loaded.quests, weekly: rollWeekly(sanitizeWeekly(q.weekly, loaded.stats, loadNow), loaded.stats, loadNow), streak: sanitizeStreak(q.streak) };
       // Hunting session snapshot + pending reward (both new, optional fields: an older save simply lacks them). An active
       // session without a usable snapshot (saved before snapshots existed, or corrupt) is rebuilt conservatively.
       loaded.pendingHuntReward = sanitizePendingHuntReward(parsed.pendingHuntReward);

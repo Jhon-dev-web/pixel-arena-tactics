@@ -656,3 +656,75 @@
   white-space: nowrap;
   overflow-wrap: normal;
 }
+
+/* Round 13: weekly goals + login streak inside the quests screen (QuestsModal.tsx) */
+.quests-modal .inv-tabs .tab {
+  position: relative;
+}
+.tab-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 5px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 5px rgba(255, 59, 48, 0.8);
+}
+.streak-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin: 6px 0;
+}
+.streak-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 1px;
+  min-width: 0;
+  background: #1a1220;
+  border: 1px solid #4a3a55;
+  border-radius: 8px;
+  font-size: calc(var(--font-size) - 4px);
+  color: #b8a8d8;
+}
+.streak-day.today {
+  border-color: #ffd76a;
+  box-shadow: 0 0 8px rgba(255, 215, 106, 0.35);
+  color: #ffd76a;
+}
+.streak-day.done {
+  opacity: 0.55;
+  color: #6fe08a;
+}
+.streak-day-n {
+  font-size: calc(var(--font-size) - 3px);
+}
+.streak-day-r {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.streak-day .inline-icon {
+  width: 14px;
+  height: 14px;
+}
+.streak-note {
+  margin-top: 4px;
+  color: #b8a8d8;
+}
+.streak-note.warn {
+  color: #ff9a8a;
+}
+.streak-note.good {
+  color: #6fe08a;
+}
+.weekly-reset {
+  color: #8ecbff;
+}
+.quests-body .streak-card {
+  grid-column: 1 / -1;
+}

@@ -13,7 +13,7 @@ import { addWithOverflow, canAddInstances, inventoryCapacity, inventorySlotsUsed
 import { baseGoldValue } from './economy';
 import { MaterialId } from './materials';
 import { gearInstanceCount, maxGearInstances } from './gearInstances';
-import { recordKills } from './stats';
+import { recordHuntTime, recordKills } from './stats';
 import T from './tunables';
 
 // The lifecycle of a Hunting session as three pure, atomic transitions on the save: start -> stop -> claim.
@@ -73,7 +73,7 @@ export function applyHuntStop(save: SaveData, now: number): SaveData | null {
     uniques: status.uniques.map((u) => ({ ...u, substats: u.substats.map((s) => ({ ...s })) })),
   };
   // Lifetime statistics (stats.ts): the session's wins and the unique pieces it rolled are counted once, here, when the session ends.
-  const counted = recordKills(save, zoneId, status.kills, status.uniques.length);
+  const counted = recordHuntTime(recordKills(save, zoneId, status.kills, status.uniques.length), status.pendingMs);
   return {
     ...counted,
     activeHuntingZone: null,

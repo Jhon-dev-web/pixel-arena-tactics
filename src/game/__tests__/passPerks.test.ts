@@ -7,6 +7,7 @@ import { inventoryCapacity } from '../inventory';
 import { passPerkLines } from '../passPerks';
 import { skillXpToReachLevel } from '../skills';
 import { stashCapacity } from '../stash';
+import { claimStreak, DAY_MS, streakStatus } from '../weekly';
 import { buildHuntSession } from '../engine';
 import T from '../tunables';
 import en from '../../locales/en.json';
@@ -103,6 +104,20 @@ describe('Adventurer Pass perks: the text says what the code does', () => {
     const full = { ...day1, consumables: { ...day1.consumables, repair_kit: T.battlePass.dailyRepairKitStock } };
     expect(grantDailyPassKit(full, 'Sun Jun 21 2026').consumables.repair_kit).toBe(T.battlePass.dailyRepairKitStock);
     expect(grantDailyPassKit(defaultSave(), 'Sat Jun 20 2026').consumables.repair_kit).toBe(0);
+  });
+
+  it('streak saver: the printed number is how many missed days a week the owner is forgiven, a free player never is', () => {
+    const n = perk('streak').label.params!.n;
+    for (const tree of [pt, en]) expect(numbersIn(render(tree, perk('streak').label))).toEqual([n]);
+    expect(n).toBe(T.battlePass.streakSavers);
+    const mon = Date.UTC(2026, 5, 22, 12); // a Monday (UTC)
+    const claimed = claimStreak(defaultSave(), mon, true)!.save;
+    // one missed day (Wednesday): the owner's streak goes on, a free player's starts over
+    expect(streakStatus(claimed.quests.streak, mon + 2 * DAY_MS, true)).toMatchObject({ day: 2, saver: true });
+    expect(streakStatus(claimed.quests.streak, mon + 2 * DAY_MS, false)).toMatchObject({ day: 1, saver: false });
+    // and only n times in the same UTC week
+    const saved = claimStreak(claimed, mon + 2 * DAY_MS, true)!.save;
+    expect(streakStatus(saved.quests.streak, mon + 4 * DAY_MS, true)).toMatchObject({ day: 1, saver: false });
   });
 
   it('daily kit through the loader: owners get it when the save loads on a new day, a reload the same day gives nothing more', () => {

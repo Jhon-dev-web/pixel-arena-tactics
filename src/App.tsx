@@ -92,6 +92,7 @@ import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expe
 import { isDeliveryReady } from './game/deliveries';
 import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
 import { claimableCount, isClaimed, isComplete, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
+import { claimStreak, claimWeeklyBonus, claimWeeklyGoal, periodClaimable, rollSaveWeekly, utcDay, WeeklyGoalId } from './game/weekly';
 import { questContext } from './game/questContext';
 import { recordDungeonRun, trackSave } from './game/statsTracking';
 import TutorialOverlay from './components/TutorialOverlay';
@@ -166,6 +167,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
   // Forces a re-render when a dev-tunable changes (Admin panel) — nothing reads the value itself.
   const [, setVersion] = useState(0);
+  // The UTC day the clock was last read on: a new one re-renders the sidebar so the streak dot appears while the game is open across midnight (weekly.ts).
+  const [, setUtcToday] = useState(() => utcDay(Date.now()));
   const [, setLocaleVersion] = useState(0);
   // Music and effects each have a volume and a mute (audio.ts, a device preference); the top bar's mute button toggles both.
   const [audio, setAudio] = useState<AudioPrefs>(() => getAudioPrefs());
@@ -401,8 +404,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   useEffect(() => {
     const id = window.setInterval(() => {
       const now = Date.now();
-      const settled = grantDailyPassKit(settleSeason(saveRef.current, now), new Date(now).toDateString());
+      const settled = rollSaveWeekly(grantDailyPassKit(settleSeason(saveRef.current, now), new Date(now).toDateString()), now);
       if (settled !== saveRef.current) setSaveBoth(settled);
+      setUtcToday(utcDay(now));
     }, 60_000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -854,6 +858,31 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth({ ...s, gold: s.gold + def.gold, shards: s.shards + def.shards, cosmetics, quests });
     playSfx('victory');
     if (def.titleId && cosmetics !== s.cosmetics) showToast(t('quests.titleToast', { name: t(`titles.${getTitleDef(def.titleId)?.nameKey ?? ''}`) }));
+  };
+
+  // Weekly goals and the login streak (weekly.ts): each claim is one pure transition on the latest save, rolled to the current UTC week first.
+  const claimWeekly = (id: WeeklyGoalId) => {
+    const now = Date.now();
+    const claim = claimWeeklyGoal(rollSaveWeekly(saveRef.current, now), id, now);
+    if (!claim) return;
+    setSaveBoth(claim.save);
+    playSfx('victory');
+  };
+  const claimWeeklyAll = () => {
+    const now = Date.now();
+    const claim = claimWeeklyBonus(rollSaveWeekly(saveRef.current, now), now);
+    if (!claim) return;
+    setSaveBoth(claim.save);
+    playSfx('victory');
+    showToast(t('quests.weeklyBonusToast', { g: fmtNum(claim.gold), s: claim.shards }));
+  };
+  const claimStreakReward = () => {
+    const s = saveRef.current;
+    const claim = claimStreak(s, Date.now(), ownsAdventurerPass(s));
+    if (!claim) return;
+    setSaveBoth(claim.save);
+    playSfx('victory');
+    if (claim.usedSaver) showToast(t('quests.streakSaved'));
   };
 
   // Delivery orders (deliveries.ts): every handler is one pure transition on the latest save, committed at once.
@@ -1617,7 +1646,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         { key: 'skills', icon: <img className="pixel-icon" src="/assets/icons/skill_path_warrior.png" alt="" />, label: t('nav.skills'), active: activeView === 'skills', badge: skillPointsAvailable(save, level) > 0, tutorialTarget: 'skills', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('skills'); } },
         { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
         { key: 'dungeon', icon: <img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
-        { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
+        { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) + periodClaimable(save, Date.now(), ownsAdventurerPass(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
         { key: 'codex', icon: '📖', label: t('codex.nav'), active: codexOpen, onClick: () => { closeDrawer(); playSfx('click'); setCodexOpen(true); } },
       ],
     },
@@ -1895,6 +1924,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         <QuestsModal
           save={save}
           onClaim={claimQuest}
+          ownsPass={ownsAdventurerPass(save)}
+          onClaimWeekly={claimWeekly}
+          onClaimWeeklyBonus={claimWeeklyAll}
+          onClaimStreak={claimStreakReward}
           onClose={() => {
             playSfx('click');
             setQuestsOpen(false);

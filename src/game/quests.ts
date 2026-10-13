@@ -2,6 +2,8 @@ import type { LifetimeStats } from './stats';
 import type { Rarity } from './rarity';
 import type { SetFamily } from './gear';
 import type { SkillId } from './skills';
+import { emptyStreak, freshWeekly } from './weekly';
+import type { StreakState, WeeklyState } from './weekly';
 
 export type QuestKind = 'daily' | 'achievement';
 
@@ -58,6 +60,9 @@ export interface QuestState {
   // maxRefineEver: highest refine level ever reached — survives salvaging / consuming the piece.
   counters: { kills: number; maxFloorCleared: number; maxRefineEver?: number };
   claimed: string[];
+  // Round 13 (weekly.ts): this week's goals (a snapshot of the lifetime counters + what was claimed) and the 7-day login streak.
+  weekly: WeeklyState;
+  streak: StreakState;
 }
 
 // Everything an achievement can read besides the quest state. The statistics, the profession levels and the codex completion are optional so a caller that
@@ -183,13 +188,15 @@ export function migrateAchievementId(id: string): string {
   return /^ach_[a-z0-9_]+$/.test(id) ? id.toUpperCase() : id;
 }
 
-export function emptyQuestState(): QuestState {
+export function emptyQuestState(now: number = Date.now()): QuestState {
   return {
     dailyDay: '',
     daily: { kills: 0, forge: 0, purchases: 0, deliveries: 0 },
     dailyClaimed: [],
     counters: { kills: 0, maxFloorCleared: 0, maxRefineEver: 0 },
     claimed: [],
+    weekly: freshWeekly(undefined, now),
+    streak: emptyStreak(),
   };
 }
 

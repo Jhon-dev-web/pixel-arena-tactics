@@ -31,6 +31,8 @@ export interface LifetimeStats {
   secondsPlayed: number;
   completedSets: SetFamily[]; // families the hero has ever worn the full set of
   deepestDepth: number; // the deepest Profundezas depth ever cleared (0 = none, see depths.ts)
+  huntSeconds: number; // seconds of Hunting that counted for a reward, added when a hunt ends (the weekly goal reads it)
+  dungeonFloors: number; // dungeon floors (Profundezas included) cleared across every run (the weekly goal reads it)
 }
 
 export const emptyRarityCounts = (): Record<Rarity, number> => ({ common: 0, rare: 0, epic: 0, legendary: 0 });
@@ -55,6 +57,8 @@ export const emptyStats = (): LifetimeStats => ({
   secondsPlayed: 0,
   completedSets: [],
   deepestDepth: 0,
+  huntSeconds: 0,
+  dungeonFloors: 0,
 });
 
 export const COUNT_CAP = 1e12;
@@ -74,7 +78,7 @@ export interface StatsBackfill {
 export function normalizeStats(raw: unknown, backfill: StatsBackfill = {}): LifetimeStats {
   const r = raw && typeof raw === 'object' ? (raw as Partial<Record<keyof LifetimeStats, unknown>>) : {};
   const out = emptyStats();
-  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth'] as const) {
+  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth', 'huntSeconds', 'dungeonFloors'] as const) {
     out[key] = count(r[key]);
   }
   out.kills = Math.max(count(r.kills), count(backfill.kills));
@@ -106,6 +110,11 @@ export function recordKills(save: SaveData, zoneId: string, kills: number, uniqu
     killsByZone: k > 0 ? { ...s.killsByZone, [zoneId]: (s.killsByZone[zoneId] ?? 0) + k } : s.killsByZone,
     uniquesFound: s.uniquesFound + count(uniques),
   }));
+}
+
+export function recordHuntTime(save: SaveData, ms: number): SaveData {
+  const seconds = Number.isFinite(ms) ? count(Math.floor(ms / 1000)) : 0;
+  return seconds > 0 ? withStats(save, (s) => ({ huntSeconds: Math.min(COUNT_CAP, (s.huntSeconds ?? 0) + seconds) })) : save;
 }
 
 export function recordForge(save: SaveData, rarity: Rarity | null): SaveData {

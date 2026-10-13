@@ -443,6 +443,29 @@ const T = DebugPanel.define({
     // Round 12: a Repair Kit (consumables.repairKitDurability) delivered once per local day to the owner, when the game loads on a new day or is open across midnight (entitlements.ts grantDailyPassKit).
     dailyRepairKits: { value: 1, min: 0, max: 5, step: 1, label: 'Repair Kits the Pass owner receives each new day' },
     dailyRepairKitStock: { value: 5, min: 1, max: 20, step: 1, label: 'The daily kit stops while the owner already holds this many unused Repair Kits' },
+    // Round 13: the streak saver keeps a login streak alive through ONE missed day, once per UTC week (weekly.ts streakStatus).
+    streakSavers: { value: 1, min: 0, max: 3, step: 1, label: 'Streak savers the Pass owner gets each week (a missed login day does not reset the streak)' },
+  },
+  // Round 13 (weekly.ts): four weekly goals (drawn from five activities) and a 7-day login streak. Claimed by the player; the progression simulator never claims them.
+  weekly: {
+    _label: 'Weekly goals',
+    huntHours: { value: 6, min: 1, max: 40, step: 1, label: 'Goal: hours spent hunting (counted when a hunt ends)' },
+    deliveries: { value: 3, min: 1, max: 20, step: 1, label: 'Goal: delivery orders completed' },
+    gathered: { value: 150, min: 10, max: 2000, step: 10, label: 'Goal: units gathered (ore + wood + plants)' },
+    forged: { value: 4, min: 1, max: 50, step: 1, label: 'Goal: pieces forged' },
+    floors: { value: 25, min: 5, max: 200, step: 5, label: 'Goal: dungeon floors cleared (Profundezas included)' },
+    goldPerGoal: { value: 150, min: 0, max: 2000, step: 10, label: 'Gold for each goal' },
+    bonusGold: { value: 400, min: 0, max: 5000, step: 50, label: 'Gold for finishing all four' },
+    bonusShards: { value: 3, min: 0, max: 20, step: 1, label: 'Runas for finishing all four' },
+  },
+  streak: {
+    _label: 'Login streak',
+    gold1: { value: 80, min: 0, max: 2000, step: 10, label: 'Day 1: Gold' },
+    gold2: { value: 120, min: 0, max: 2000, step: 10, label: 'Day 2: Gold (day 3 is a Hunter Lure)' },
+    gold4: { value: 160, min: 0, max: 2000, step: 10, label: 'Day 4: Gold (day 5 is a Repair Kit)' },
+    gold6: { value: 240, min: 0, max: 2000, step: 10, label: 'Day 6: Gold' },
+    gold7: { value: 300, min: 0, max: 5000, step: 10, label: 'Day 7: Gold (with an Armor Polish)' },
+    shards7: { value: 3, min: 0, max: 20, step: 1, label: 'Day 7: Runas' },
   },
   // Hero skills (heroSkills.ts): three paths of passive skills, 1 point every pointEveryLevels character levels. Every number below is PER RANK; the screen
   // and the descriptions are generated from them. Tuned by scripts/sim (docs/BALANCE_CHANGES.md Rodada 7).

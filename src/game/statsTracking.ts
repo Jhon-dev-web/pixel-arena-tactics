@@ -30,6 +30,7 @@ export function recordDungeonRun(save: SaveData, startFloor: number, stages: num
   return withStats(save, (s) => ({
     deepestDepth: Math.max(s.deepestDepth ?? 0, depth),
     dungeonRuns: s.dungeonRuns + 1,
+    dungeonFloors: (s.dungeonFloors ?? 0) + st,
     dungeonKills: byMonster,
     kills: s.kills + st,
     bossesKilled: s.bossesKilled + bossesInRun(startFloor, st),
