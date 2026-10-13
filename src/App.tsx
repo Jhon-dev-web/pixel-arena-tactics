@@ -111,7 +111,7 @@ const gearText = (key: string): string => t(`gear.${key}`);
 // First-view tooltips for the Camp side-rail icons — order matches the rail top-to-bottom. Admin (dev
 // only) is deliberately excluded: it doesn't exist in a production build, so there's nothing to
 // introduce to a real player. See FirstViewTooltip.tsx / SaveData.seenTooltips.
-const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'expedition', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
+const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'offline';
 

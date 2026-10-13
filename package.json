@@ -22,7 +22,6 @@
     "sim:skills": "vitest run --config vitest.sim.config.ts skillAudit --silent=false --reporter=default"
   },
   "dependencies": {
-    "@agent8/gameserver": "^1.10.2",
     "@fontsource/press-start-2p": "^5.3.0",
     "@supabase/supabase-js": "^2.117.1",
     "lucide-react": "^0.344.0",

@@ -361,7 +361,7 @@ export default function DesktopHome({
             {t('ui.forge')}
           </button>
           <button className="dh-quick-btn" onClick={onOpenExpedition} data-ui>
-            🏕️ {t('tooltips.expedition')}
+            🏕️ {t('nav.deliveries')}
           </button>
         </div>
       </section>
