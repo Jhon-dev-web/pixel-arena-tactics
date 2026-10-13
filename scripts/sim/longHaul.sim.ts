@@ -11,6 +11,9 @@
 // WHAT IT DOES NOT: weekly goals and the login streak (their Gold and Runas are not simulated here, same as the 21-day sim), the Battle Pass track, extra Dungeon sessions bought with
 // Runas, rerolled orders, selling or buying with other players, salvage of old gear, reforge, and the Season Relic.
 //
+// LATE GAME (round 16): from hero level T.lateSinks.minLevel the player also refines all seven worn tier 5 / 6 pieces (up to +8 with the tier material made at its station, then past
+// +8 with the surplus: the deep refine) and lapidates the Epic / Legendary ones (player.ts lateGame, deepRefine, lapidarAll). Nothing of this runs before day ~38, so days 1-21 are untouched.
+// A control run with the chase switched off but the refining kept: SIM_T='{"lateSinks":{"deepMinTier":7,"lapidarMinTier":7}}'.
 // THE LEDGER (round 16): for every 10 days the report also prints the Gold and Runas that came in, went out and were left in hand, and what the player threw away: by material and by
 // the reason nothing better was possible (the claim left it behind because the bag was full; the stash had no free slot; the merchant's budget of the day was spent; or the policy
 // threw cheap surplus with room elsewhere), next to what was gathered and what the merchant bought, in units, at the economic reference value and for the non-junk materials.
@@ -101,6 +104,10 @@ export interface LongDay {
   // The material ledger of the day, only the materials that moved: [accepted into the bag, left behind by the claim (bag full), sold to the merchant, thrown away with the
   // stash full, thrown away with the merchant's budget spent, thrown away by policy with room elsewhere].
   mat: Record<string, number[]>;
+  // Round 16: refine levels past +8 on the worn pieces added up, the highest refine level owned, and what the late-game sinks did today (absent in runs played before).
+  deepLevels?: number;
+  maxRefine?: number;
+  sinks?: { deepTry: number; deepOk: number; deepDrop: number; lapidar: number };
   skills: { mining: number; woodcutting: number; gardening: number };
   gearBlock: string;
   dungeonBlock: string;
@@ -155,6 +162,9 @@ function compact(d: DaySnapshot, checkpoints: number[], zones: number): LongDay 
     shardsIn: Object.values(d.ledger.currency.shardsIn).reduce((a, b) => a + b, 0),
     shardsOut: Object.values(d.ledger.currency.shardsOut).reduce((a, b) => a + b, 0),
     mat: matRows(d),
+    deepLevels: d.deepLevels,
+    maxRefine: d.maxRefine,
+    sinks: d.ledger.sinks,
     skills: d.skills,
     gearBlock: d.blockers.gear,
     dungeonBlock: d.blockers.dungeon,
@@ -238,6 +248,10 @@ const MILESTONES: [string, (d: LongDay) => number, number][] = [
   ['profundeza 30', (d) => d.depth, 30],
   ['profundeza 40', (d) => d.depth, 40],
   ['profundeza 50', (d) => d.depth, 50],
+  ['peça refinada a +9', (d) => d.maxRefine ?? 0, 9],
+  ['peça refinada a +10', (d) => d.maxRefine ?? 0, 10],
+  ['peça refinada a +11', (d) => d.maxRefine ?? 0, 11],
+  ['peça refinada a +12', (d) => d.maxRefine ?? 0, 12],
   ['Paragon 1', (d) => d.paragon, 1],
   ['Paragon 10', (d) => d.paragon, 10],
   ['Paragon 25', (d) => d.paragon, 25],
@@ -256,8 +270,9 @@ export function milestoneTable(runs: LongRun[]): string[] {
 
 // An unlock for the dry-stretch check: a piece of a new tier worn in a slot, a hunting zone, a boss floor (25 / 50 / 75 / 100), a depth that is a multiple of 5, a skill point
 // (a hero level that is a multiple of 5), or a profession reaching a mastery level. Paragon levels are counted apart.
-function unlockDays(run: LongRun, withParagon: boolean): number[] {
+function unlockDays(run: LongRun, withParagon: boolean, withRefine = true): number[] {
   const out: number[] = [];
+  let deepBest = 0;
   const mastery = [T.mastery.levelA, T.mastery.levelB, T.mastery.levelC, T.mastery.levelD];
   for (let i = 0; i < run.days.length; i++) {
     const cur = run.days[i];
@@ -270,14 +285,17 @@ function unlockDays(run: LongRun, withParagon: boolean): number[] {
     if (Math.floor(cur.level / 5) > Math.floor(prev.level / 5)) hit = true;
     for (const sk of ['mining', 'woodcutting', 'gardening'] as const) if (mastery.some((m) => cur.skills[sk] >= m && prev.skills[sk] < m)) hit = true;
     if (withParagon && cur.paragon > prev.paragon) hit = true;
+    // a refine level past +8 that no earlier day had reached on the worn pieces (a fall back to +8 and the climb again are not new)
+    if (withRefine && (cur.deepLevels ?? 0) > deepBest) hit = true;
+    deepBest = Math.max(deepBest, cur.deepLevels ?? 0);
     if (hit) out.push(i + 1);
   }
   return out;
 }
 
 // Longest run of days without an unlock, between `from` and the horizon (days are 1-based, the stretch is [last unlock + 1, next unlock - 1]).
-function longestDry(run: LongRun, from: number, withParagon: boolean): { len: number; start: number; end: number } {
-  const days = unlockDays(run, withParagon).filter((d) => d >= from - 1);
+function longestDry(run: LongRun, from: number, withParagon: boolean, withRefine = true): { len: number; start: number; end: number } {
+  const days = unlockDays(run, withParagon, withRefine).filter((d) => d >= from - 1);
   let best = { len: 0, start: from, end: from };
   let last = Math.max(from - 1, days.find((d) => d <= from) ?? from - 1);
   for (const d of [...days.filter((x) => x >= from), DAYS + 1]) {
@@ -335,13 +353,33 @@ export function reportScenario(label: string, runs: LongRun[]): string[] {
   out.push('');
   out.push(...currencyTable(runs));
   out.push('');
+  if (runs.some((r) => r.days.some((d) => (d.sinks?.deepTry ?? 0) + (d.sinks?.lapidar ?? 0) > 0))) {
+    out.push('##### Sumidouros do fim de jogo (rodada 16), a cada 10 dias (mediana entre seeds)', '', ...sinkTable(runs), '');
+  }
   out.push(...discardLedger(label, runs));
-  const dry = runs.map((r) => longestDry(r, 21, false));
-  const dryP = runs.map((r) => longestDry(r, 21, true));
+  const dry = runs.map((r) => longestDry(r, 21, false, false));
+  const dryP = runs.map((r) => longestDry(r, 21, true, false));
+  const dryR = runs.map((r) => longestDry(r, 21, false, true));
+  const dryRP = runs.map((r) => longestDry(r, 21, true, true));
   const worst = dry.reduce((a, b) => (b.len > a.len ? b : a));
   const worstP = dryP.reduce((a, b) => (b.len > a.len ? b : a));
+  const worstR = dryR.reduce((a, b) => (b.len > a.len ? b : a));
+  const worstRP = dryRP.reduce((a, b) => (b.len > a.len ? b : a));
+  // Longest dry stretch AFTER level 100 and the tier 6 set (day of the later of the two, per seed): where the game used to have nothing new but the Paragon.
+  const after100 = runs.map((r) => {
+    const d = Math.max(firstDay(r, (x) => x.level, 100), firstDay(r, minWorn, 6));
+    return Number.isFinite(d) ? longestDry(r, d + 1, false, true).len : NaN;
+  });
+  const after100P = runs.map((r) => {
+    const d = Math.max(firstDay(r, (x) => x.level, 100), firstDay(r, minWorn, 6));
+    return Number.isFinite(d) ? longestDry(r, d + 1, true, true).len : NaN;
+  });
   out.push(
     `Maior trecho sem nenhum desbloqueio (peça de tier novo vestida, zona, chefe 25/50/75/100, profundeza múltipla de 5, ponto de habilidade, perk de maestria) entre o dia 21 e o ${DAYS}: mediana entre seeds ${num(median(dry.map((d) => d.len)))} dias, pior seed ${worst.len} dias (dias ${worst.start}-${worst.end}). Contando também cada nível de Paragon: mediana ${num(median(dryP.map((d) => d.len)))}, pior ${worstP.len} (dias ${worstP.start}-${worstP.end}).`,
+    '',
+    `Contando também cada nível de refino além do +8 (rodada 16): sem Paragon mediana ${num(median(dryR.map((d) => d.len)))}, pior ${worstR.len} (dias ${worstR.start}-${worstR.end}); com Paragon mediana ${num(median(dryRP.map((d) => d.len)))}, pior ${worstRP.len}.`,
+    '',
+    `Depois do nível 100 e do conjunto T6 (por seed, a partir do dia em que o último dos dois acontece), contando o refino além do +8: maior trecho sem nada novo, sem Paragon, mediana ${num(median(after100.filter(Number.isFinite)))}, pior ${num(Math.max(...after100.filter(Number.isFinite)))} dias (${after100.filter(Number.isFinite).length}/${runs.length} seeds chegam lá); com Paragon, mediana ${num(median(after100P.filter(Number.isFinite)))}, pior ${num(Math.max(...after100P.filter(Number.isFinite)))}.`,
   );
   out.push('');
   return out;
@@ -453,6 +491,25 @@ export function currencyTable(runs: LongRun[]): string[] {
     ]);
   }
   return table(['Dias', 'Ouro: entrou', 'saiu', 'em caixa no fim', 'Runas: entraram', 'saíram', 'em caixa no fim'], rows);
+}
+
+// The late-game sinks (round 16) at work: what the player did with them in each 10 days (median across seeds of the sum of the window).
+export function sinkTable(runs: LongRun[]): string[] {
+  const rows: string[][] = [];
+  for (let day = 10; day <= DAYS; day += 10) {
+    const win = runs.map((r) => r.days.slice(day - 10, day));
+    const sum = (f: (d: LongDay) => number) => median(win.map((w) => w.reduce((a, d) => a + f(d), 0)));
+    rows.push([
+      `${day - 9}-${day}`,
+      num(sum((d) => d.sinks?.deepTry ?? 0)),
+      num(sum((d) => d.sinks?.deepOk ?? 0)),
+      num(sum((d) => d.sinks?.deepDrop ?? 0)),
+      num(sum((d) => d.sinks?.lapidar ?? 0)),
+      num(median(runs.map((r) => r.days[day - 1].deepLevels ?? 0))),
+      num(median(runs.map((r) => r.days[day - 1].maxRefine ?? 0))),
+    ]);
+  }
+  return table(['Dias', 'Tentativas de refino além do +8', 'sucessos', 'quedas de nível', 'Lapidações', 'Níveis além do +8 nas 7 peças vestidas (no fim)', 'Maior refino de qualquer peça'], rows);
 }
 
 export function comparisonTable(a: LongRun[], p: LongRun[]): string[] {

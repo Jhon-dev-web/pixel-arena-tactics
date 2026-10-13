@@ -1,6 +1,7 @@
 import { MaterialId } from './materials';
 import { GemId } from './gems';
 import Assets from '../assets.json';
+import T from './tunables';
 
 export type GearSlot = 'weapon' | 'shield' | 'armor' | 'helmet' | 'gloves' | 'boots' | 'ring' | 'relic';
 
@@ -361,8 +362,23 @@ export function sanitizeLegacyInventory(
   };
 }
 
-// --- Refinement (+0 .. +8) ---
-export const MAX_REFINE = 8;
+// --- Refinement (+0 .. +8, and +9 .. +12 for tier 5 and 6 pieces: round 16, T.lateSinks) ---
+export const BASE_MAX_REFINE = 8;
+export const MAX_REFINE = 12; // the highest level any piece can have; a piece's own ceiling is maxRefineFor(item)
+
+// Tier 5 and 6 pieces go on to +12; everything below stops at +8 like before.
+export const maxRefineFor = (item: { tier?: number } | undefined | null): number => ((item?.tier ?? 0) >= T.lateSinks.deepMinTier ? MAX_REFINE : BASE_MAX_REFINE);
+
+// The share of the base stat that refine level `level` adds: 10% a level up to +8, deepBonus (6%) a level after that.
+export const refineBonus = (level: number): number => {
+  const l = Math.max(0, level);
+  return 0.1 * Math.min(l, BASE_MAX_REFINE) + T.lateSinks.deepBonus * Math.max(0, l - BASE_MAX_REFINE);
+};
+// The same two speeds for the flat crit / resistance a refine level adds (0.5 points a level, deepBonus / 0.1 of that past +8).
+const refineFlat = (level: number): number => {
+  const l = Math.max(0, level);
+  return 0.005 * Math.min(l, BASE_MAX_REFINE) + 0.005 * (T.lateSinks.deepBonus / 0.1) * Math.max(0, l - BASE_MAX_REFINE);
+};
 
 // Stackable gear (relics) for a v2 save. Weapons / armors live in save.gearInstances.
 export function sanitizeStackableGear(
@@ -387,19 +403,19 @@ export function sanitizeStackableGear(
 }
 
 export function effectiveDamage(item: GearItem, level: number): number {
-  return Math.round((item.damage ?? 0) * (1 + 0.1 * level));
+  return Math.round((item.damage ?? 0) * (1 + refineBonus(level)));
 }
 
 export function effectiveMaxHp(item: GearItem, level: number): number {
-  return Math.round((item.maxHp ?? 0) * (1 + 0.1 * level));
+  return Math.round((item.maxHp ?? 0) * (1 + refineBonus(level)));
 }
 
 export function effectiveCrit(item: GearItem, level: number): number {
-  return (item.critChance ?? 0) + 0.005 * level;
+  return (item.critChance ?? 0) + refineFlat(level);
 }
 
 export function effectiveResistance(item: GearItem, level: number): number {
-  return (item.resistance ?? 0) + 0.005 * level;
+  return (item.resistance ?? 0) + refineFlat(level);
 }
 
 export function tierMaterial(tier: number): MaterialId {
@@ -463,7 +479,36 @@ export interface UpgradeCost {
   shards?: number;
 }
 
+// One farm hour of the last zone, in units of each drop (T.lateSinks.hour*; docs/BALANCE_CHANGES.md, Rodada 16). The cost of every late-game sink is written in farm hours.
+export function farmHours(hours: number): Partial<Record<MaterialId, number>> {
+  const L = T.lateSinks;
+  const to5 = (n: number) => Math.max(5, Math.round(n / 5) * 5);
+  const to1 = (n: number) => Math.max(1, Math.round(n));
+  return {
+    concentrated_blood: to5(hours * L.hourBlood),
+    abyssal_marrow: to5(hours * L.hourMarrow),
+    corrupted_crystal: to1(hours * L.hourCrystal),
+    blood_heart: to1(hours * L.hourHeart),
+  };
+}
+
+// Index = the level the attempt starts from, minus 8 (+8 -> +9 is index 0).
+const deepAt = (level: number): number => Math.min(3, Math.max(0, level - BASE_MAX_REFINE));
+function deepCost(item: GearItem, level: number): UpgradeCost {
+  const L = T.lateSinks;
+  const i = deepAt(level);
+  const hours = [L.deepHours9, L.deepHours10, L.deepHours11, L.deepHours12][i] * ((item.tier ?? 1) >= 6 ? 1 : L.deepTier5Share);
+  return { gold: [L.deepGold9, L.deepGold10, L.deepGold11, L.deepGold12][i], materials: farmHours(hours), shards: i >= 2 ? L.deepShards : 0 };
+}
+
 export function upgradeCost(item: GearItem, level: number): UpgradeCost {
+  if (level >= BASE_MAX_REFINE) return deepCost(item, level);
+  const cost = baseUpgradeCost(item, level);
+  if ((item.tier ?? 0) < T.lateSinks.lateRefineMinTier) return cost;
+  return { ...cost, gold: Math.round(cost.gold * T.lateSinks.lateRefineGoldShare), ...((cost.shards ?? 0) > 0 ? { shards: T.lateSinks.lateRefineShards } : {}) };
+}
+
+function baseUpgradeCost(item: GearItem, level: number): UpgradeCost {
   const mat = tierMaterial(item.tier ?? 1);
   // refined_obsidian is Furnace output (5 raw obsidian -> 1), ~5x denser than the raw ores the other
   // tiers' refine materials are consumed at directly — keep the same qty here and refining tier 5-6
@@ -487,5 +532,15 @@ export function upgradeChance(level: number): number {
   if (level === 4) return 0.7;
   if (level === 5) return 0.6;
   if (level === 6) return 0.45;
-  return 0.3;
+  if (level === 7) return 0.3;
+  if (level >= MAX_REFINE) return 0;
+  const L = T.lateSinks;
+  return [L.deepChance9, L.deepChance10, L.deepChance11, L.deepChance12][deepAt(level)];
+}
+
+// A failed attempt never destroys the piece. Past +8 it may cost the level it was on: the chance that a failed attempt FROM `level` drops it one level (never below +8).
+export function upgradeFailDrop(level: number): number {
+  const L = T.lateSinks;
+  if (level <= BASE_MAX_REFINE || level >= MAX_REFINE) return 0;
+  return [0, L.deepDrop10, L.deepDrop11, L.deepDrop12][deepAt(level)];
 }

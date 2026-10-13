@@ -10,6 +10,7 @@ export default function InventoryModal({
   onUnequip,
   onDiscard,
   onReforge,
+  onLapidar,
   onSalvage,
   onUseConsumable,
   onExpand,
@@ -20,6 +21,7 @@ export default function InventoryModal({
   onUnequip: (id: string) => void;
   onDiscard: (kind: 'gear' | 'material' | 'consumable', id: string) => void;
   onReforge: (id: string) => void;
+  onLapidar: (id: string, lockIndex: number) => void;
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
   onExpand: () => void;
@@ -37,6 +39,7 @@ export default function InventoryModal({
           onUnequip={onUnequip}
           onDiscard={onDiscard}
           onReforge={onReforge}
+          onLapidar={onLapidar}
           onSalvage={onSalvage}
           onUseConsumable={onUseConsumable}
           onExpand={onExpand}

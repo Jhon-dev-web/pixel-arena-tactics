@@ -21,6 +21,7 @@ export type QuestMetric =
   | 'max_refine'
   | 'max_floor'
   | 'refine_success'
+  | 'lapidations'
   | 'forged_total'
   | 'forged_rarity'
   | 'uniques'
@@ -145,6 +146,12 @@ export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   ach('ACH_BLACKSMITH', 'forging', 'max_refine', 8, 800, 5),
   ach('ACH_REFINE_25', 'forging', 'refine_success', 25, 300, 0),
   ach('ACH_REFINE_100', 'forging', 'refine_success', 100, 1000, 3),
+  // Round 16 (docs/BALANCE_CHANGES.md): the refinement past +8 reads max_refine, which the progression simulator sees, so these three pay nothing; Lapidar reads the lifetime statistics.
+  ach('ACH_REFINE_9', 'forging', 'max_refine', 9, 0, 0),
+  ach('ACH_REFINE_10', 'forging', 'max_refine', 10, 0, 0),
+  ach('ACH_REFINE_12', 'forging', 'max_refine', 12, 0, 0),
+  ach('ACH_LAPIDAR_1', 'forging', 'lapidations', 1, 300, 1),
+  ach('ACH_LAPIDAR_25', 'forging', 'lapidations', 25, 1500, 4),
   ach('ACH_UNIQUE_1', 'forging', 'uniques', 1, 500, 3),
   ach('ACH_UNIQUE_10', 'forging', 'uniques', 10, 3000, 10, { titleId: 'title_treasure_seeker' }),
   // full sets worn (setBonuses.ts families)
@@ -227,6 +234,8 @@ export function questProgress(def: QuestDef, quests: QuestState, ctx: QuestConte
       return quests.counters.maxFloorCleared ?? 0;
     case 'refine_success':
       return st?.refineSuccess ?? 0;
+    case 'lapidations':
+      return st?.lapidations ?? 0;
     case 'forged_total':
       return st?.itemsForged ?? 0;
     case 'forged_rarity':

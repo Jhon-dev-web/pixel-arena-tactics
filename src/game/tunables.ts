@@ -343,6 +343,51 @@ const T = DebugPanel.define({
     // objects. It is NOT a gameplay limit (no real save gets near it) and is unrelated to maxInstances.
     migrationSafetyCeiling: { value: 10000, min: 100, max: 1000000, step: 100, label: 'Migration safety ceiling: max copies migrated per template' },
   },
+  // Round 16: late-game sinks (deep refine +9..+12, Lapidar). Sized from the discard ledger of `npm run sim:long` (docs/BALANCE_CHANGES.md, Rodada 16): from day 60 the last zone
+  // brings about 3 000 units a day, 20 to 50 times what any recipe asks for, and 90% of it was thrown away. A "farm hour" is what one hour of the last zone (Abismo de Sangue)
+  // gives, measured in that ledger; every cost below is written in farm hours and turned into units by the four `hour*` numbers (Bone Fragments are left out: they are junk that dust already absorbs, and a sink that asks for 400 of them stalls whenever the bag has just been cleared), so retuning the zone retunes the sinks.
+  lateSinks: {
+    _label: 'Late-game sinks (round 16)',
+    minLevel: { value: 60, min: 1, max: 100, step: 1, label: 'Hero level that opens Lapidar and the refinement past +8' },
+    hourBlood: { value: 65, min: 1, max: 500, step: 1, label: 'Farm hour: Concentrated Blood' },
+    hourMarrow: { value: 60, min: 1, max: 500, step: 1, label: 'Farm hour: Abyssal Marrow' },
+    hourCrystal: { value: 15, min: 1, max: 100, step: 1, label: 'Farm hour: Corrupted Crystal' },
+    hourHeart: { value: 12, min: 1, max: 100, step: 1, label: 'Farm hour: Blood Heart' },
+    // Refinement past +8 (tier 5 and 6 pieces only): the attempt from +8 to +9, +9 to +10, +10 to +11 and +11 to +12. Each level is worth deepBonus of the base stat (the first eight are worth 10%).
+    // Refining a tier 5 or 6 piece from +3 to +8 asks this share of the Gold the same step costs on a lower tier piece: from day 60 the player is Gold-bound (1.5 thousand a day against 25 thousand
+    // a piece), not material-bound, and the chase past +8 has to be paid with the surplus, not with the Gold that builds the next tier.
+    lateRefineMinTier: { value: 5, min: 1, max: 7, step: 1, label: 'Lowest gear tier whose +4..+8 refine steps get the late-game Gold share and Runas below' },
+    lateRefineShards: { value: 0, min: 0, max: 5, step: 1, label: 'Runas of the +7 and +8 refine steps for those pieces (a lower tier piece pays 2)' },
+    lateRefineGoldShare: { value: 0.15, min: 0.05, max: 1, step: 0.05, label: 'Gold share of the +4..+8 refine steps of tier 5 and 6 pieces' },
+    deepMinTier: { value: 5, min: 1, max: 6, step: 1, label: 'Lowest gear tier that can be refined past +8' },
+    deepBonus: { value: 0.06, min: 0, max: 0.1, step: 0.01, label: 'Base stat per refine level past +8 (fraction)' },
+    deepChance9: { value: 0.4, min: 0.01, max: 1, step: 0.01, label: 'Refine +8 -> +9: chance' },
+    deepChance10: { value: 0.3, min: 0.01, max: 1, step: 0.01, label: 'Refine +9 -> +10: chance' },
+    deepChance11: { value: 0.22, min: 0.01, max: 1, step: 0.01, label: 'Refine +10 -> +11: chance' },
+    deepChance12: { value: 0.15, min: 0.01, max: 1, step: 0.01, label: 'Refine +11 -> +12: chance' },
+    deepDrop10: { value: 0.2, min: 0, max: 1, step: 0.05, label: 'Failed +9 -> +10 attempt: chance of dropping back to +8' },
+    deepDrop11: { value: 0.3, min: 0, max: 1, step: 0.05, label: 'Failed +10 -> +11 attempt: chance of dropping one level' },
+    deepDrop12: { value: 0.4, min: 0, max: 1, step: 0.05, label: 'Failed +11 -> +12 attempt: chance of dropping one level' },
+    deepHours9: { value: 1.5, min: 0, max: 100, step: 0.5, label: 'Refine +9: farm hours per attempt (tier 6; tier 5 pays deepTier5Share of it)' },
+    deepHours10: { value: 3, min: 0, max: 100, step: 0.5, label: 'Refine +10: farm hours per attempt' },
+    deepHours11: { value: 4.5, min: 0, max: 100, step: 0.5, label: 'Refine +11: farm hours per attempt' },
+    deepHours12: { value: 7.5, min: 0, max: 100, step: 0.5, label: 'Refine +12: farm hours per attempt' },
+    deepTier5Share: { value: 0.6, min: 0.1, max: 1, step: 0.05, label: 'Tier 5 pieces pay this share of the tier 6 hours' },
+    deepGold9: { value: 150, min: 0, max: 20000, step: 50, label: 'Refine +9: Gold per attempt' },
+    deepGold10: { value: 200, min: 0, max: 20000, step: 50, label: 'Refine +10: Gold per attempt' },
+    deepGold11: { value: 250, min: 0, max: 20000, step: 50, label: 'Refine +11: Gold per attempt' },
+    deepGold12: { value: 300, min: 0, max: 20000, step: 50, label: 'Refine +12: Gold per attempt' },
+    deepShards: { value: 0, min: 0, max: 10, step: 1, label: 'Refine +11 and +12: Runas per attempt' },
+    // Lapidar: lock one substat of an Epic or Legendary piece (tier 4 and up) and reroll the others. Every earlier lapidation on the same piece makes the next one lapidarGrowth dearer.
+    lapidarMinTier: { value: 4, min: 1, max: 6, step: 1, label: 'Lowest gear tier that can be lapidated' },
+    lapidarHours4: { value: 1, min: 0, max: 100, step: 0.5, label: 'Lapidar: farm hours, tier 4 piece, first lapidation' },
+    lapidarHours5: { value: 2, min: 0, max: 100, step: 0.5, label: 'Lapidar: farm hours, tier 5 piece, first lapidation' },
+    lapidarHours6: { value: 3, min: 0, max: 100, step: 0.5, label: 'Lapidar: farm hours, tier 6 piece, first lapidation' },
+    lapidarGrowth: { value: 0.25, min: 0, max: 2, step: 0.05, label: 'Lapidar: extra cost per earlier lapidation on the same piece (fraction of the first)' },
+    lapidarMaxGrowth: { value: 12, min: 1, max: 100, step: 1, label: 'Lapidar: lapidations after which the cost stops rising' },
+    lapidarGoldPerTier: { value: 50, min: 0, max: 5000, step: 10, label: 'Lapidar: Gold per piece tier' },
+    lapidarShards: { value: 1, min: 0, max: 10, step: 1, label: 'Lapidar: Runas per lapidation' },
+  },
   economySinks: {
     _label: 'Material sinks',
     // Economic reforge (reforge.ts), per gear INSTANCE. Tiers below reforgeAdvancedTier pay the basic bundle

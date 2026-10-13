@@ -235,6 +235,7 @@ export default function QuestsModal({
         [t('stats.uniques'), fmtNum(stats.uniquesFound)],
         [t('stats.refineOk'), fmtNum(stats.refineSuccess)],
         [t('stats.refineFail'), fmtNum(stats.refineFail)],
+        [t('stats.lapidations'), fmtNum(stats.lapidations ?? 0)],
         [t('stats.sets'), `${stats.completedSets.length} / ${SET_FAMILIES.length}`],
       ],
     },

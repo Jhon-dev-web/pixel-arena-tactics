@@ -14,7 +14,8 @@ import {
   createGearInstance,
 } from '../../src/game/gearInstances';
 import { computeCP, effectiveRepairCost, playerLevel, SaveData, defaultSave } from '../../src/game/engine';
-import { GEAR, getGear, INSTANCED_SLOTS, MAX_REFINE, upgradeCost } from '../../src/game/gear';
+import { BASE_MAX_REFINE, GEAR, getGear, INSTANCED_SLOTS, maxRefineFor, upgradeCost } from '../../src/game/gear';
+import { applyLapidar, canAffordLapidar, getLapidarCost, lapidarBlock } from '../../src/game/lapidar';
 import { GEMS, GemId, socketsForTier } from '../../src/game/gems';
 import { MaterialId, MATERIALS } from '../../src/game/materials';
 import { REFINING_RECIPES } from '../../src/game/refining';
@@ -117,6 +118,8 @@ export interface DayLedger {
   // Materials the player threw away today, by material and by why nothing better was possible at that moment (see DiscardReason). Units a claim left behind for lack of
   // room (`flow[m].left`) are the fourth reason, 'bag', and are read from the flow.
   discards: Record<string, Record<DiscardReason, number>>;
+  // The late-game sinks (round 16) used today: deep refine attempts / successes / falls, and lapidations.
+  sinks: { deepTry: number; deepOk: number; deepDrop: number; lapidar: number };
 }
 
 // Why a unit was thrown away: the stash had no free slot ('stash'), the merchant's budget of the day was spent ('merchant'), or both had room and the policy still threw
@@ -137,7 +140,7 @@ export interface MatFlow {
 const newFlow = (): Record<string, MatFlow> =>
   Object.fromEntries(MATERIALS.map((d) => [d.id, { produced: 0, refined: 0, left: 0, residual: 0, consumed: { forge: 0, upgrade: 0, alchemy: 0, stash: 0, delivery: 0, workshop: 0, dust: 0, merchant: 0, discard: 0, other: 0 }, stockEnd: 0 }]));
 
-const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, uniques: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} }, discards: {} });
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, uniques: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} }, discards: {}, sinks: { deepTry: 0, deepOk: 0, deepDrop: 0, lapidar: 0 } });
 
 export interface DaySnapshot {
   day: number;
@@ -160,6 +163,9 @@ export interface DaySnapshot {
   depth: number;
   paragon: number;
   wornTiers: number[];
+  // Refine levels past +8 summed over the seven worn pieces (0 until a tier 5 piece goes past +8) and the highest refine level any piece owned has.
+  deepLevels: number;
+  maxRefine: number;
   blockers: { gear: string; dungeon: string };
 }
 
@@ -355,6 +361,10 @@ function chooseRelic(s: SaveData, bagOnly = false): Plan | null {
 
 const REFINE_DUST_SOURCES: MaterialId[] = ['bone_fragment', 'leather_scrap', 'copper', 'common_herb'];
 const POTION_STOCK = 5;
+// The late-game player refines the pieces of tier 5 and 6 (all seven slots) up to +8 whatever the game rule for the chase past +8 is, so a control run with the chase switched off
+// (SIM_T lateSinks.deepMinTier = 7) still has a player who refines like a human would: what it isolates is the sinks, not the refining.
+const LATE_REFINE_TIER = 5;
+const OBSIDIAN_BLOCK_EVERY_DAYS = 15;
 const CHECKIN_HOURS = [9, 21]; // two visits a day, 12 hours apart
 const JITTER_MS = 90 * 60 * 1000;
 
@@ -404,6 +414,7 @@ export class Player {
   private recentStages: number[] = []; // floors cleared by each Dungeon session so far
   private lastDone: Record<'hunt' | 'mine' | 'wood', number> = { hunt: -1, mine: -1, wood: -1 };
   private visits = 0;
+  private lastObsidianBlock = -999;
   private huntHours = 2;
   private huntUnits: Mats = { leather_scrap: 50, bone_fragment: 50, demon_claw: 16, concentrated_blood: 16, demon_core: 3, corrupted_crystal: 3, rift_shard: 12, fiend_horn: 2, abyssal_marrow: 12, blood_heart: 2 };
   private sessionsToday = 0;
@@ -496,6 +507,12 @@ export class Player {
     if (this.S.unlockedHuntingZones.length >= 2) this.mark('zone2');
   }
 
+  // Refine levels past +8 on the worn pieces, added up.
+  private deepLevels(): number {
+    const w = resolveEquipped(this.S);
+    return CRAFT_PRIORITY.reduce((sum, slot) => sum + Math.max(0, (w[slot]?.instance?.upgrade ?? 0) - BASE_MAX_REFINE), 0);
+  }
+
   // The tier worn in each of the seven slots (what "gear tier worn" means in the long-horizon report).
   wornTiers(): number[] {
     const w = resolveEquipped(this.S);
@@ -559,6 +576,8 @@ export class Player {
       depth: deepestDepth(this.S),
       paragon: paragonLevel(this.S.xp),
       wornTiers: this.wornTiers(),
+      deepLevels: this.deepLevels(),
+      maxRefine: Math.max(0, ...Object.values(this.S.gearInstances).map((i) => i.upgrade)),
       blockers: this.opts.long ? this.blockers() : { gear: '', dungeon: '' },
     });
   }
@@ -940,6 +959,9 @@ export class Player {
     this.socketSpareGems();
     const reserve = this.goldReserve();
     this.refineGear(reserve);
+    // the Gold of the chase past +8 is small next to a craft (hundreds against thousands): it does not wait for the craft's reserve
+    this.deepRefine(0);
+    this.lapidarAll(0);
     this.buyPotions(reserve);
     const slotsFree = inventoryCapacity(this.S, this.now) - inventorySlotsUsed(this.S);
     if (slotsFree <= 3 && !this.opts.careless) {
@@ -1096,17 +1118,34 @@ export class Player {
   }
 
   // Refine the equipped weapon / armor (tier >= 1; the starters have no stats to multiply) while it is affordable.
+  // Long horizon, hero level T.lateSinks.minLevel and up (round 16): the player refines all seven worn pieces, and goes past +8 on the tier 5 and 6 ones (deepRefine).
+  private lateGame(): boolean {
+    return !!this.opts.long && playerLevel(this.S.xp) >= T.lateSinks.minLevel;
+  }
+
   private refineGear(reserve: number) {
-    for (let guard = 0; guard < 12; guard++) {
-      const pieces = (['weapon', 'armor'] as const)
+    const late = this.lateGame();
+    const isLate = (v: { item: { tier?: number } }) => late && (v.item.tier ?? 0) >= LATE_REFINE_TIER;
+    const slots = late ? CRAFT_PRIORITY : (['weapon', 'armor'] as const);
+    for (let guard = 0; guard < (late ? 12 * slots.length : 12); guard++) {
+      // Pieces of tier 5 and 6 (late game): all seven slots, weapon and armor first. Everything below is what the player always did: weapon and armor, lowest first.
+      const pieces = slots
         .map((slot) => resolveEquipped(this.S)[slot])
-        .filter((v) => v.instance && (v.item.tier ?? 0) >= 1 && v.instance.upgrade < MAX_REFINE)
-        .sort((a, b) => a.instance!.upgrade - b.instance!.upgrade);
+        .filter((v) => v?.instance && (v.item.tier ?? 0) >= 1 && v.instance.upgrade < BASE_MAX_REFINE && (isLate(v) || v.item.slot === 'weapon' || v.item.slot === 'armor'))
+        .sort((a, b) => (isLate(a) && isLate(b) ? 0 : a.instance!.upgrade - b.instance!.upgrade));
       if (pieces.length === 0) return;
       const v = pieces[0];
+      const lateV = isLate(v);
       const cost = upgradeCost(v.item, v.instance!.upgrade);
       if (this.S.gold < cost.gold + reserve) return;
+      const reserved = lateV ? this.reservedMats() : {};
       for (const [m, q] of Object.entries(cost.materials ?? {}) as [MaterialId, number][]) {
+        // late game: what the bag lacks comes from the stash (never what the next craft needs), and the tier material is made at its station
+        if (lateV && (this.S.materials[m] ?? 0) < q && m !== 'refining_dust') {
+          if (!recipeFor(m) && owned(this.S, m, false) - (reserved[m] ?? 0) < q) return;
+          if (recipeFor(m) && owned(this.S, m, false) < q) this.makeTierMaterial(m, q - owned(this.S, m, false), reserved);
+          this.bring({ [m]: q });
+        }
         if ((this.S.materials[m] ?? 0) < q) {
           if (m === 'refining_dust') this.makeDust(q - (this.S.materials[m] ?? 0));
           if ((this.S.materials[m] ?? 0) < q) return;
@@ -1119,6 +1158,88 @@ export class Player {
       this.set(res.save, 'refino');
       this.flowCount('upgrade', flowBefore);
       if (res.success) this.mark('firstRefine');
+    }
+  }
+
+  // Refinement past +8 (tier 5 and 6 pieces): the lowest piece first, with the surplus only (never what the next craft needs), taking from the stash what the bag lacks.
+  private deepRefine(reserve: number) {
+    if (!this.lateGame()) return;
+    const reserved = this.reservedMats();
+    for (let guard = 0; guard < 400; guard++) {
+      const pieces = CRAFT_PRIORITY.map((slot) => resolveEquipped(this.S)[slot])
+        .filter((v) => v?.instance && (v.item.tier ?? 0) >= T.lateSinks.deepMinTier && v.instance.upgrade >= BASE_MAX_REFINE && v.instance.upgrade < maxRefineFor(v.item))
+        .sort((a, b) => a.instance!.upgrade - b.instance!.upgrade);
+      const v = pieces.find((p) => {
+        const c = upgradeCost(p.item, p.instance!.upgrade);
+        return (
+          this.S.gold >= c.gold + reserve &&
+          this.S.shards >= (c.shards ?? 0) &&
+          (Object.entries(c.materials ?? {}) as [MaterialId, number][]).every(([m, q]) => owned(this.S, m, false) - (reserved[m] ?? 0) >= q)
+        );
+      });
+      if (!v) return;
+      const cost = upgradeCost(v.item, v.instance!.upgrade);
+      this.bring(cost.materials as Mats);
+      const before = this.flowMark();
+      const res = applyUpgrade(this.S, v.instance!.id, false);
+      if (!res) return;
+      this.set(res.save, 'refino');
+      this.flowCount('upgrade', before);
+      this.ledger.sinks.deepTry++;
+      if (res.success) this.ledger.sinks.deepOk++;
+      else if (res.dropped) this.ledger.sinks.deepDrop++;
+    }
+  }
+
+  // Lapidar: every worn Epic / Legendary piece keeps its best extra stat (by the CP it adds on its own) and rolls the others again, with the surplus only.
+  private lapidarAll(reserve: number) {
+    if (!this.lateGame()) return;
+    const reserved = this.reservedMats();
+    for (let guard = 0; guard < 120; guard++) {
+      let done = false;
+      for (const slot of CRAFT_PRIORITY) {
+        const inst = resolveEquipped(this.S)[slot]?.instance;
+        if (!inst || lapidarBlock(this.S, inst.id) !== null) continue;
+        const cost = getLapidarCost(this.S, inst.id)!;
+        if (this.S.gold < cost.gold + reserve) continue;
+        if (!(Object.entries(cost.materials) as [MaterialId, number][]).every(([m, q]) => owned(this.S, m, false) - (reserved[m] ?? 0) >= q)) continue;
+        this.bring(cost.materials as Mats);
+        if (!canAffordLapidar(this.S, cost)) continue;
+        let best = 0;
+        let bestCp = -Infinity;
+        inst.substats.forEach((s, i) => {
+          const only = { ...inst, substats: [s] };
+          const cp = computeCP({ ...this.S, gearInstances: { ...this.S.gearInstances, [inst.id]: only } });
+          if (cp > bestCp) {
+            bestCp = cp;
+            best = i;
+          }
+        });
+        const next = applyLapidar(this.S, inst.id, best);
+        if (!next) continue;
+        this.set(next, 'lapidar');
+        this.ledger.sinks.lapidar++;
+        done = true;
+        break;
+      }
+      if (!done) return;
+    }
+  }
+
+  // The material a refine asks for besides the hunting drops (steel, dragon scales, refined obsidian) is made at its station from what the bag holds, as the crafts do.
+  private makeTierMaterial(m: MaterialId, units: number, reserved: Mats) {
+    const rec = recipeFor(m);
+    if (!rec) return;
+    for (let i = 0; i < Math.ceil(units / rec.outputQty); i++) {
+      const spare = Object.entries(rec.input).every(([im, q]) => owned(this.S, im as MaterialId, false) - (reserved[im as MaterialId] ?? 0) >= (q as number));
+      if (!spare) return;
+      this.bring(rec.input as Mats);
+      this.pend = [];
+      const next = this.refineT(this.S, rec.id, 'upgrade');
+      if (!next) return;
+      this.ledger.goldOut['estações'] = (this.ledger.goldOut['estações'] ?? 0) + (this.S.gold - next.gold);
+      this.S = next;
+      this.commitPend();
     }
   }
 
@@ -1246,12 +1367,24 @@ export class Player {
     if (!target || Object.keys(deficit).length === 0) {
       for (const slot of ['weapon', 'armor'] as const) {
         const v = resolveEquipped(this.S)[slot];
-        if (!v.instance || (v.item.tier ?? 0) < 1 || v.instance.upgrade >= MAX_REFINE) continue;
+        if (!v.instance || (v.item.tier ?? 0) < 1 || v.instance.upgrade >= BASE_MAX_REFINE) continue;
         const mats = upgradeCost(v.item, v.instance.upgrade).materials ?? {};
         for (const [m, q] of Object.entries(mats) as [MaterialId, number][]) {
           if (m === 'refining_dust') continue;
           const short = q - owned(this.S, m, false);
           if (short > 0) deficit[m] = Math.max(deficit[m] ?? 0, short);
+        }
+      }
+      // Late game (round 16): the refined obsidian the tier 5 and 6 refinement asks for is worth ONE block of mining now and then (a block of mining brings far more obsidian
+      // than the attempts of weeks need), never a change of where to hunt: that would move the pace of the whole game, which is not what is being measured.
+      if (this.lateGame() && this.day - this.lastObsidianBlock >= OBSIDIAN_BLOCK_EVERY_DAYS) {
+        const wants = CRAFT_PRIORITY.some((slot) => {
+          const v = resolveEquipped(this.S)[slot];
+          return !!v?.instance && (v.item.tier ?? 0) >= LATE_REFINE_TIER && v.instance.upgrade < BASE_MAX_REFINE;
+        });
+        if (wants && owned(this.S, 'refined_obsidian', false) + Math.floor(owned(this.S, 'obsidian', false) / 5) < 40) {
+          deficit.obsidian = Math.max(deficit.obsidian ?? 0, 200);
+          this.lastObsidianBlock = this.day;
         }
       }
     }

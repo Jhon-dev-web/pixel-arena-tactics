@@ -21,6 +21,7 @@ export interface LifetimeStats {
   uniquesFound: number; // unique pieces dropped (hunting and dungeon bosses)
   refineSuccess: number; // gear refine attempts that succeeded
   refineFail: number;
+  lapidations: number; // Lapidar rerolls done (lapidar.ts)
   deliveries: number; // delivery orders completed
   oreGathered: number; // units of ore / wood / plants that reached the bag
   woodGathered: number;
@@ -47,6 +48,7 @@ export const emptyStats = (): LifetimeStats => ({
   uniquesFound: 0,
   refineSuccess: 0,
   refineFail: 0,
+  lapidations: 0,
   deliveries: 0,
   oreGathered: 0,
   woodGathered: 0,
@@ -78,7 +80,7 @@ export interface StatsBackfill {
 export function normalizeStats(raw: unknown, backfill: StatsBackfill = {}): LifetimeStats {
   const r = raw && typeof raw === 'object' ? (raw as Partial<Record<keyof LifetimeStats, unknown>>) : {};
   const out = emptyStats();
-  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth', 'huntSeconds', 'dungeonFloors'] as const) {
+  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'lapidations', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth', 'huntSeconds', 'dungeonFloors'] as const) {
     out[key] = count(r[key]);
   }
   out.kills = Math.max(count(r.kills), count(backfill.kills));
@@ -126,6 +128,10 @@ export function recordForge(save: SaveData, rarity: Rarity | null): SaveData {
 
 export function recordRefine(save: SaveData, success: boolean): SaveData {
   return withStats(save, (s) => (success ? { refineSuccess: s.refineSuccess + 1 } : { refineFail: s.refineFail + 1 }));
+}
+
+export function recordLapidar(save: SaveData): SaveData {
+  return withStats(save, (s) => ({ lapidations: (s.lapidations ?? 0) + 1 }));
 }
 
 export function recordDelivery(save: SaveData): SaveData {

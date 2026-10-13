@@ -24,6 +24,7 @@ export default function PersonagemView({
   onSelectSkin,
   onDiscard,
   onReforge,
+  onLapidar,
   onSalvage,
   onUseConsumable,
   onExpandInventory,
@@ -39,6 +40,7 @@ export default function PersonagemView({
   onSelectSkin: (id: string | null) => void;
   onDiscard: (kind: 'gear' | 'material' | 'consumable', id: string) => void;
   onReforge: (id: string) => void;
+  onLapidar: (id: string, lockIndex: number) => void;
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
   onExpandInventory: () => void;
@@ -98,6 +100,7 @@ export default function PersonagemView({
           onUnequip={onUnequip}
           onDiscard={onDiscard}
           onReforge={onReforge}
+          onLapidar={onLapidar}
           onSalvage={onSalvage}
           onUseConsumable={onUseConsumable}
           onExpand={onExpandInventory}

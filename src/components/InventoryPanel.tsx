@@ -27,6 +27,7 @@ import UniqueTag from './UniqueTag';
 import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
 import StashHint from './StashHint';
+import LapidarPanel from './LapidarPanel';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
 // the Personagem view (embedded, no modal chrome) and the still-existing quick-access "Inventário"
@@ -65,6 +66,7 @@ export default function InventoryPanel({
   onUnequip,
   onDiscard,
   onReforge,
+  onLapidar,
   onSalvage,
   onUseConsumable,
   onExpand,
@@ -75,6 +77,7 @@ export default function InventoryPanel({
   // kind 'gear' with an instance id discards that piece; qty only matters for stacks
   onDiscard: (kind: SelKind, id: string, qty?: number | 'all') => void;
   onReforge: (id: string) => void;
+  onLapidar: (id: string, lockIndex: number) => void;
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
   onExpand: () => void;
@@ -522,6 +525,7 @@ export default function InventoryPanel({
                   </div>
                 );
               })()}
+            {selectedInstance && selectedInstance.substats.length >= 2 && <LapidarPanel key={selectedInstance.id} save={save} instanceId={selectedInstance.id} onLapidar={onLapidar} />}
             {hasSalvageValue(selectedGear) &&
               (salvageReason === 'equipped' ? (
                 <p className="salvage-hint">{t('inventory.unequipToSalvage')}</p>

@@ -3,10 +3,12 @@ import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
 import { effectiveRepairCost, playerLevel, SaveData } from '../game/engine';
 import { ownsAdventurerPass } from '../game/entitlements';
+import { deepRefineText } from '../game/lateSinks';
 import {
   GearItem,
   MAX_DURABILITY,
-  MAX_REFINE,
+  BASE_MAX_REFINE,
+  maxRefineFor,
   gearBySlot,
   getGear,
   isInstancedSlot,
@@ -192,7 +194,7 @@ export default function ForgeModal({
   const canUpgrade = (inst: GearInstance): boolean => {
     const item = getGear(inst.templateId);
     const lvl = clampRefine(inst.upgrade);
-    if (lvl >= MAX_REFINE) return false;
+    if (lvl >= maxRefineFor(item)) return false;
     const cost = upgradeCost(item, lvl);
     return (
       save.gold >= cost.gold &&
@@ -436,7 +438,7 @@ export default function ForgeModal({
             {gearList.map((inst) => {
               const item = getGear(inst.templateId);
               const lvl = clampRefine(inst.upgrade);
-              const isMax = lvl >= MAX_REFINE;
+              const isMax = lvl >= maxRefineFor(item);
               const cost = upgradeCost(item, lvl);
               const chance = Math.round(upgradeChance(lvl) * 100);
               return (
@@ -493,6 +495,7 @@ export default function ForgeModal({
                       </div>
                     )}
                     {!isMax && <span className="upgrade-chance">{t('forge.chance', { n: chance })}</span>}
+                    {!isMax && lvl >= BASE_MAX_REFINE && <span className="upgrade-chance deep-note">{t(deepRefineText().key, deepRefineText().params)}</span>}
                   </div>
                   {isMax ? (
                     <button className="craft-btn equipped" disabled data-ui>
@@ -508,7 +511,7 @@ export default function ForgeModal({
                       >
                         {t('forge.upgrade')}
                       </button>
-                      {catalystCount > 0 && (
+                      {catalystCount > 0 && lvl < BASE_MAX_REFINE && (
                         <button
                           className="craft-btn blessed repair-action-btn"
                           onClick={() => onUpgradeWithCatalyst(inst.id)}

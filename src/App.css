@@ -2481,6 +2481,35 @@ body {
   filter: grayscale(0.9) brightness(0.5);
   cursor: not-allowed;
 }
+/* Round 16: Lapidar (pick the stat that stays) and the note under a piece that stands at +8 or more */
+.lapidar-picks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lapidar-pick {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #8ecbff;
+  background: rgba(20, 16, 36, 0.7);
+  border: 2px solid #3a3258;
+  border-radius: 6px;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+}
+.lapidar-pick.active {
+  color: #fff3c4;
+  border-color: #c79bff;
+  background: rgba(106, 58, 168, 0.45);
+}
+.upgrade-chance.deep-note {
+  display: block;
+  margin-top: 4px;
+  font-style: italic;
+  color: #8a7aa8;
+  white-space: normal;
+}
 .salvage-hint {
   margin: 6px 0 0;
   font-size: calc(var(--font-size) - 3px);

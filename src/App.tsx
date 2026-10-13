@@ -28,6 +28,7 @@ import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from 
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, characterXpBonusPct, saveSkillEffects, skillPointsAvailable, skillPointsEarned } from './game/heroSkills';
 import { applyReforge } from './game/reforge';
+import { applyLapidar } from './game/lapidar';
 import {
   InstancedSlot,
   applyDurabilityLoss,
@@ -1484,6 +1485,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     showToast(t('forge.reforged'));
   };
 
+  // Lapidar (lapidar.ts): lock one substat of an Epic / Legendary piece, roll the others again; all-or-nothing charge.
+  const lapidarItem = (id: string, lockIndex: number) => {
+    const next = applyLapidar(saveRef.current, id, lockIndex);
+    if (!next) return;
+    setSaveBoth(next);
+    playSfx('forge_success');
+    showToast(t('forge.lapidarDone'));
+  };
+
   // `id` is a gear INSTANCE id: only that piece changes level.
   const performUpgrade = (id: string, useCatalyst: boolean) => {
     const s = saveRef.current;
@@ -1498,8 +1508,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       showToast(t('forge.upgradeOk', { n: gearText(hit.item.nameKey), m: result.level + 1 }));
     } else {
       playSfx('refine_fail');
-      revealForge(t('forge.upgradeFail'), 'fail');
-      showToast(t('forge.upgradeFail'));
+      const text = result.dropped ? t('forge.upgradeDropped', { m: result.level - 1 }) : t('forge.upgradeFail');
+      revealForge(text, 'fail');
+      showToast(text);
     }
   };
 
@@ -1772,6 +1783,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onSelectSkin={selectSkin}
               onDiscard={discardItem}
               onReforge={reforgeItem}
+              onLapidar={lapidarItem}
               onSalvage={salvageItem}
               onUseConsumable={useConsumableManually}
               onExpandInventory={expandInventoryBag}
@@ -1830,6 +1842,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onUnequip={unequipGear}
           onDiscard={discardItem}
           onReforge={reforgeItem}
+              onLapidar={lapidarItem}
           onSalvage={salvageItem}
           onUseConsumable={useConsumableManually}
           onExpand={expandInventoryBag}

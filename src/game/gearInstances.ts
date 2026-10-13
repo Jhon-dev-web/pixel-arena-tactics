@@ -1,5 +1,5 @@
 import T from './tunables';
-import { GEAR, GearItem, INSTANCED_SLOTS, InstancedSlot, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, getGear, upgradeChance, upgradeCost } from './gear';
+import { GEAR, GearItem, INSTANCED_SLOTS, InstancedSlot, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, BASE_MAX_REFINE, getGear, maxRefineFor, upgradeChance, upgradeCost, upgradeFailDrop } from './gear';
 import { GEMS, GemBonuses, GemId, addGemBonuses, gemListBonuses, getGem, hasGems, socketsForTier } from './gems';
 import { MaterialId, hasMaterials } from './materials';
 import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollRarityAtLeast, FORGE_SEAL_MIN_RARITY, rollSubstats, substatListTotals } from './rarity';
@@ -41,6 +41,8 @@ export interface GearInstance {
   sockets: GemId[];
   durability: number;
   reforgeCount: number;
+  // Lapidations done on this piece (lapidar.ts); absent = none. Each one makes the next dearer.
+  lapidarCount?: number;
   createdAt: number;
   origin: GearOrigin;
   // Bind on equip: set for good the first time the piece is worn (applyEquipInstance); unequipping never clears it. Forging, salvaging, refining, reforging and
@@ -128,7 +130,7 @@ export function createGearInstance(templateId: string, opts: CreateGearInstanceO
     templateId,
     rarity,
     substats: opts.substats ?? rollSubstats(rarity, item.tier ?? 0, item.unique ? 1 : 0),
-    upgrade: clampInt(opts.upgrade ?? 0, 0, MAX_REFINE, 0),
+    upgrade: clampInt(opts.upgrade ?? 0, 0, maxRefineFor(item), 0),
     sockets: sanitizeSockets(opts.sockets ?? []),
     durability: clampInt(opts.durability ?? MAX_DURABILITY, 0, MAX_DURABILITY, MAX_DURABILITY),
     reforgeCount: clampInt(opts.reforgeCount ?? 0, 0, Number.MAX_SAFE_INTEGER, 0),
@@ -150,10 +152,11 @@ export function sanitizeGearInstance(raw: unknown, key: string): GearInstance | 
     templateId: r.templateId,
     rarity: isRarity(r.rarity) ? r.rarity : 'common',
     substats: sanitizeSubstats(r.substats),
-    upgrade: clampInt(r.upgrade, 0, MAX_REFINE, 0),
+    upgrade: clampInt(r.upgrade, 0, maxRefineFor(item), 0),
     sockets: sanitizeSockets(r.sockets),
     durability: clampInt(r.durability, 0, MAX_DURABILITY, MAX_DURABILITY),
     reforgeCount: clampInt(r.reforgeCount, 0, Number.MAX_SAFE_INTEGER, 0),
+    ...(clampInt(r.lapidarCount, 0, 1e6, 0) > 0 ? { lapidarCount: clampInt(r.lapidarCount, 0, 1e6, 0) } : {}),
     createdAt: Number.isFinite(Number(r.createdAt)) ? Number(r.createdAt) : 0,
     origin: ORIGINS.includes(r.origin as GearOrigin) ? (r.origin as GearOrigin) : 'migration',
     ...(r.bound === true ? { bound: true } : {}),
@@ -672,11 +675,13 @@ export function applyUpgrade(
   id: GearInstanceId,
   useCatalyst: boolean,
   rng: () => number = Math.random,
-): { save: SaveData; success: boolean; level: number } | null {
+): { save: SaveData; success: boolean; level: number; dropped?: boolean } | null {
   const hit = resolveGearInstance(save, id);
   if (!hit) return null;
   const lvl = clampRefine(hit.instance.upgrade);
-  if (lvl >= MAX_REFINE) return null;
+  if (lvl >= maxRefineFor(hit.item)) return null;
+  // The Catalyst guarantees the climb up to +8; the chase past it (round 16) has to be won.
+  if (useCatalyst && lvl >= BASE_MAX_REFINE) return null;
   const cost = upgradeCost(hit.item, lvl);
   if (save.gold < cost.gold) return null;
   if (!hasMaterials(save.materials, cost.materials)) return null;
@@ -688,6 +693,10 @@ export function applyUpgrade(
     materials[mid as MaterialId] = (materials[mid as MaterialId] ?? 0) - (count as number);
   }
   const success = useCatalyst || rng() < upgradeChance(lvl);
+  // Past +8 a failed attempt may also take the piece one level down (never below +8, never destroyed); the second draw happens only then.
+  const dropChance = success ? 0 : upgradeFailDrop(lvl);
+  const dropped = dropChance > 0 && rng() < dropChance;
+  const nextLevel = success ? lvl + 1 : dropped ? lvl - 1 : lvl;
   const counters = { ...save.quests.counters };
   if (success) counters.maxRefineEver = Math.max(Math.floor(Number(counters.maxRefineEver ?? 0)) || 0, lvl + 1);
   return {
@@ -697,11 +706,12 @@ export function applyUpgrade(
       materials,
       shards: save.shards - (cost.shards ?? 0),
       consumables: useCatalyst ? { ...save.consumables, refine_catalyst: (save.consumables.refine_catalyst ?? 0) - 1 } : save.consumables,
-      gearInstances: success ? { ...save.gearInstances, [id]: { ...hit.instance, upgrade: lvl + 1 } } : save.gearInstances,
+      gearInstances: nextLevel !== lvl ? { ...save.gearInstances, [id]: { ...hit.instance, upgrade: nextLevel } } : save.gearInstances,
       quests: { ...save.quests, counters, daily: { ...save.quests.daily, forge: (save.quests.daily.forge ?? 0) + 1 } },
     }, success),
     success,
     level: lvl,
+    ...(dropped ? { dropped } : {}),
   };
 }
 
