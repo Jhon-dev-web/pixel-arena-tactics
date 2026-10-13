@@ -13,6 +13,7 @@
     "test": "vitest run",
     "sim": "vitest run --config vitest.sim.config.ts progression --silent=false --reporter=default",
     "sim:cp": "vitest run --config vitest.sim.config.ts cpTable --silent=false --reporter=default",
+    "smoke:ui": "node scripts/smoke/ui.mjs",
     "desktop:dev": "node scripts/desktop-dev.mjs",
     "desktop:build": "node scripts/desktop-build.mjs",
     "desktop:start": "electron .",

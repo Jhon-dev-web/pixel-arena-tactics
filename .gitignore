@@ -30,3 +30,6 @@ dist-ssr
 # Desktop (Electron) build output
 release/
 dist-desktop/
+
+# UI smoke test output (npm run smoke:ui): screenshots and the generated test saves
+smoke-out/
