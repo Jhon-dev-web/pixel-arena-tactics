@@ -1418,3 +1418,20 @@ Ouro gasto em reparo nos 21 dias (mediana): antes 200 → depois 70.
 **Leitura honesta.** O veredito quase não mexe em 21 dias, e o motivo é estrutural, não de receita: o desgaste das duas peças equipadas custa só ~200 de Ouro de reparo em 21 dias (cai para 70 com o kit), então o jogador consome 1 a 2 kits no período (8 Ferro, 8 Madeira, 4 Osso). O Tônico do Prospector e a Isca dependem de Prata, Carvalho e Capim que o jogador simulado só tem a partir do dia ~7-12, e são bebidos 1 vez por sessão. O Pó (5 receitas novas) continua sendo **descarte** neste livro-razão (decisão antiga: o pó que o refino +5 a +8 gasta depois é uso a jusante, mas o simulador só fabrica pó quando um refino o exige). Ou seja: **as receitas dão a todo material um segundo uso e abrem um sumidouro recorrente de verdade (reparo, tônicos, pó) para quem joga mais de 21 dias, mas não transformam "inundada" em "certa" no horizonte medido.** Para isso o desgaste de durabilidade (ou o consumo dos tônicos) teria de crescer, o que é decisão de design (ver as decisões do diretor na Rodada 12).
 
 Materiais que os 21 dias não alcançam (ouro bruto, obsidiana, madeiras élfica e ancestral, as 3 plantas novas, Flor Carmesim, Lírio Lunar): o uso novo é só analítico (as receitas existem e são testadas), o simulador não chega neles.
+
+## 8. Rodada 16: o livro-razão do fim de jogo (13/10/2026)
+
+As tabelas das seções anteriores medem 21 dias. Esta mede os dias 60 a 180 com `npm run sim:long` (6 seeds, sem únicos): para cada 10 dias, o que foi coletado, vendido ao mercador e jogado fora, por material e por motivo (mochila cheia na coleta, baú cheio, orçamento do mercador esgotado, política do jogador), e o Ouro e as Runas que entraram, saíram e sobraram. Detalhe, números de cada sumidouro novo e comparação em `docs/BALANCE_CHANGES.md`, Rodada 16.
+
+**Antes (cenário A, dias 60 a 180, mediana entre seeds):** 338 416 unidades coletadas, 304 343 jogadas fora (89,9% das unidades, 87,1% do valor de referência), 19 144 vendidas. 99% da perda é "baú cheio". Por dia, a última zona (12 h) entrega em média 750 Ossos, 810 Sangues Concentrados, 745 Tutanos Abissais, 190 Cristais Corrompidos e 157 Corações de Sangue; os mais jogados fora em valor: Coração de Sangue (93% do que cai), Tutano Abissal (81%), Cristal Corrompido (87%), Sangue Concentrado (98%), Osso (98%). Dono do Passe: 503 053 coletadas, 476 239 jogadas fora (94,7%).
+
+**O que absorve o excedente agora** (os dois sumidouros novos, ambos escritos em "horas de caça da última zona": Sangue, Tutano, Cristal e Coração na proporção em que a zona os entrega; o Osso ficou de fora de propósito):
+
+| Sumidouro | Onde | Quanto absorve por ação (tier 6) | Repetível |
+| --- | --- | --- | --- |
+| Refino +8 a +12 (tier 5 e 6) | Forja, aba Melhorar | 1,5 a 7,5 h de caça por tentativa: de 100 / 90 / 23 / 18 a 490 / 450 / 113 / 90 (Sangue / Tutano / Cristal / Coração); esperado de +8 a +12: 173 h por peça, 7 peças | até o +12 em cada peça; a peça nova de um tier novo recomeça em +0 |
+| Lapidar | Inventário, detalhe de uma peça Épica ou Lendária | 3 h na primeira (195 / 180 / 45 / 36), +25% a cada lapidação na mesma peça, teto em 12 h | sem fim por peça |
+
+**Depois (cenário A, dias 60 a 180):** 326 685 coletadas, 218 034 jogadas fora (66,7% das unidades, **61,0% do valor**; controle, com o jogador refinando e sem os sumidouros: 82,9%). Nos dias 151 a 180, quando as peças estão na fase do refino fundo, **5 a 14%**. O resto da janela fica em 57 a 88% porque o jogador simulado leva os dias 100 a 150 subindo as peças tier 6 recém-forjadas de +0 a +8 (Pó, Osso e obsidiana refinada que ele descarta ou não tem) e, enquanto isso, não há o que gastar. Dono do Passe: 408 196 de 501 380 (81,4% das unidades, 76,5% do valor).
+
+**Conversão em lote de raros e níveis de baú**, as outras duas ideias da rodada, não foram feitas: todos os raros estão em excesso ao mesmo tempo (não há para onde converter) e o baú de 50 espaços enche em 1 a 2 dias de caça da última zona.

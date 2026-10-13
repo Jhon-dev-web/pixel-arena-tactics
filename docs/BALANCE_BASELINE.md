@@ -1,3 +1,5 @@
+> **2026-10-13 (rodada 16):** o `sim:long` ganhou o livro-razão do que o jogador joga fora (por material e por motivo) e o de Ouro e Runas; a seção "Dias 21 a 180" abaixo é de antes dos sumidouros do fim de jogo. O estado de antes e o de depois estão em `BALANCE_CHANGES.md`, Rodada 16, e `MATERIAL_FLOW.md`, seção 8.
+>
 > **2026-10-13 (rodada 15, dias 21 a 180):** o fim deste documento ganhou a seção "Dias 21 a 180", medida por `npm run sim:long` (6 seeds x 180 dias, jogador comum e dono do Passe). O resto do relatório (3 semanas) segue sendo o de `npm run sim`, com os mesmos valores nos dias 1 a 21 (a rodada 15 só mexe de depois do andar 50 em diante; ver `BALANCE_CHANGES.md`, Rodada 15, seção 6).
 >
 > **2026-10-11 (rodada 8, atributos básicos):** o relatório completo abaixo foi regerado com os novos valores de VIT, RES e AGI (`vitHpPerPoint` 4,5 + 0,03 por nível, `resHpPerPoint` 2, `agiHalfPoint` 80) e os orcs 325 / 48 (`BALANCE_CHANGES.md`, Rodada 8); o resumo e a política acima continuam descrevendo o baseline anterior.

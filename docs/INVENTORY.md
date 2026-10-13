@@ -125,7 +125,7 @@ Rodam no carregamento (`legacyPouch.ts`), em um save que ainda tem `huntPouch`:
 
 Preparação para o mercado de jogadores (integração com a Steam, ainda não existe). As decisões do dono: só equipamento forjado de raridade alta e drops raros/únicos são vendáveis; material comum nunca.
 
-- Toda **instância** de equipamento tem o campo opcional `bound`. Equipar a peça pela primeira vez liga o campo **para sempre**; desequipar não o desliga. Forjar não vincula; desmontar, refinar, reforjar e reparar funcionam igual numa peça vinculada ou não.
+- Toda **instância** de equipamento tem o campo opcional `bound`. Equipar a peça pela primeira vez liga o campo **para sempre**; desequipar não o desliga. Forjar não vincula; desmontar, refinar, reforjar e reparar funcionam igual numa peça vinculada ou não. **Rodada 16:** o refino além do +8 (+9 a +12, só tier 5 e 6) e o Lapidar (travar um atributo e sortear os outros, só Épica ou Lendária de tier 4 ou mais) seguem a mesma regra: nem ligam nem desligam o vínculo, não mudam a raridade (então não mudam `isTradeable`) e não tocam nas outras cópias. Nenhum sumidouro novo cria, troca ou promove raridade: a oferta de peças Épicas e Lendárias no mercado continua sendo só a da tabela da forja (63 / 25 / 10 / 2).
 - Saves antigos: toda instância que está equipada quando o save carrega passa a vinculada; o que está na mochila continua sem vínculo. Os itens iniciais (clava e trapos) já nascem vinculados.
 - **`isTradeable(instância)`** (`src/game/gearInstances.ts`) é a regra única, e o mercado vai chamar só ela: **não vinculada E (raridade Épica ou Lendária OU o molde é um único)**. Tudo o mais não é negociável: equipamento comum ou raro, peças vinculadas, relíquias empilháveis, materiais e consumíveis.
 

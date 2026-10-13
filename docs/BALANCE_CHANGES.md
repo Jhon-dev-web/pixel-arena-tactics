@@ -1421,3 +1421,212 @@ Consertos de política que só aparecem depois do dia 21 (a bandeira `long` liga
 - Nenhum save real de nível 61+ foi carregado no navegador: o mapeamento está no teste `xpCurve.test.ts` (níveis 1 a 99, três pontos de cada nível, o selo novo, o objeto sem selo) e na leitura do código.
 - Os números de depois vêm de 6 seeds (4 com únicos), não de 20: a mediana do nível 60 oscila uns 3 dias de uma rodada para outra, os marcos de chefe um pouco mais.
 - A tela da Caça mostra o novo teto de 6 h na última zona e o XP por hora; não abri a tela com um save de nível 80.
+
+## Rodada 16 — o excedente do fim de jogo vira melhoria (2026-10-13)
+
+A rodada 15 deixou um aviso: a partir do dia ~60 o jogador joga fora centenas de materiais raros. Esta rodada mede isso (livro-razão novo do `sim:long`), constrói os sumidouros que os números sustentam e mostra, com o mesmo simulador, até onde eles chegam.
+
+### 1. O livro-razão (`npm run sim:long`, `scripts/sim/longHaul.sim.ts`)
+
+A cada 10 dias o relatório imprime: Ouro e Runas que entraram, saíram e ficaram em caixa; e, por material e por motivo, o que foi coletado, vendido ao mercador e jogado fora (**mochila** = a coleta deixou para trás porque a mochila estava cheia; **baú** = jogado fora com os 50 espaços do baú cheios; **mercador** = jogado fora com o orçamento do dia esgotado; **política** = jogado fora com espaço em outro lugar), em unidades, em valor de referência (`economy.ts`) e só nos materiais que não são lixo. Mais: a tabela de uso dos sumidouros novos e o maior trecho sem nada novo contando os níveis de refino.
+
+**Estado de antes (6 seeds, sem únicos, dias 60 a 180):** o jogador sem Passe coleta 338 mil unidades e perde 304 mil (**90% das unidades, 87% do valor**); o dono do Passe coleta 503 mil e perde 476 mil (95%, 92%). **99% da perda é "baú cheio"** (mochila, mercador e política somam menos de 1%): o mercador compra uns 1 500 por 10 dias (orçamento de 30 + 2 por nível de Ouro por dia) e o baú tem 50 espaços. O que mais se perde, em valor: Coração de Sangue (93% do que cai), Tutano Abissal, Cristal Corrompido, Sangue Concentrado, Fragmento de Osso. O Ouro em caixa chega a 60 mil no dia 180 e as Runas a 130, sem uso.
+
+**A causa é escala, não falta de um sumidouro pequeno.** A última zona (Abismo de Sangue, 12 h por dia) entrega em média 750 Ossos, 810 Sangues, 745 Tutanos, 190 Cristais e 157 Corações **por dia**; o conjunto T6 inteiro pede uns 45 Corações. Qualquer sumidouro precisa pedir centenas de unidades por ação, por isso cada custo novo está escrito em **horas de caça da última zona** (`T.lateSinks.hour*`, `gear.farmHours`) e não em números soltos.
+
+### 2. O que foi feito, o que foi rejeitado
+
+| Candidato | Decisão | Motivo (dos números) |
+| --- | --- | --- |
+| **Refino além do +8 (+9 a +12), só tier 5 e 6** | **feito** | Consome material em todas as 7 peças vestidas e se repete por peça; tabela na seção 3. |
+| **Lapidar** (travar um atributo, sortear os outros) | **feito** | Sumidouro repetível: o preço sobe 25% a cada lapidação na mesma peça e pede Runas (as Runas sobram: 130 em caixa). |
+| Elevar raridade (3 iguais -> raridade acima) | **rejeitado** | Pede cópias idênticas e cada cópia de uma peça T5 ou T6 arrasta a cadeia inteira (uma peça do tier anterior por forja): o simulador nunca junta cópias, e as chances que cabem na regra de ±20% de Lendárias (abaixo) deixam o sumidouro fraco demais para mexer no livro-razão. |
+| Conversão em lote de 10 raros da zona anterior em 1 da seguinte | **rejeitado** | Todos os raros estão em excesso ao mesmo tempo (Coração, Cristal, Núcleo, Chifre): não há para onde converter. |
+| Níveis de baú além do máximo | **rejeitado** | O baú enche em 1 a 2 dias (3 000 unidades por dia entrando); 10 espaços a mais adiam a perda, não a transformam em nada. |
+
+**Elevar raridade, a conta que decidiu** (por forja: 63 / 25 / 10 / 2% de comum / rara / épica / lendária; um grupo de 3 que falha perde 2 peças e uma sobrevive; o jogador usa todas as cópias):
+
+| Chances | Épicas a mais por 100 forjas | Oferta de Épicas | Lendárias a mais por 100 forjas | Oferta de Lendárias |
+| --- | --- | --- | --- | --- |
+| 3 Raras -> Épica 35%, 3 Épicas -> Lendária 15% | 3,72 | +37% | 0,957 | **+48%** (fora de ±20%) |
+| 30% e 8% | 3,26 | +33% | 0,510 | +26% (fora) |
+| 30% e 6% | 3,26 | +33% | 0,386 | +19% (cabe) |
+| 25% e 5% | 2,78 | +28% | 0,312 | +16% |
+
+As chances do exemplo (35% / 15%) dão **+48%** de Lendárias para quem usa todas as cópias; só 30% / 6% cabe nos 20%, e a 6% um grupo de 3 Épicas (30 forjas de peças) para 6% de uma Lendária vale menos do que forjar de novo (30 forjas = 0,6 Lendária). **Oferta de Lendárias por jogador por mês, antes e depois desta rodada: a mesma** (a tabela 63 / 25 / 10 / 2 não foi tocada e nenhum sumidouro cria, troca ou promove raridade; o Lapidar e o refino mantêm a raridade, então `isTradeable` fica como estava).
+
+### 3. Os números exatos (gerados dos mesmos dados que o motor lê; `lateSinks.test.ts` confere cada um)
+
+**Refino além do +8** (peças tier 5 e 6; +6% do atributo base por nível, o +10% dos primeiros 8 níveis não mudou; falhar nunca destrói; o Catalisador só vale até o +8):
+
+| Tentativa | Chance | Falha tira um nível | Ouro | Tier 6: Sangue / Tutano / Cristal / Coração | Tier 5 (0,6x) | Bônus acumulado |
+| --- | --- | --- | --- | --- | --- | --- |
+| +8 -> +9 | 40% | 0% | 150 | 100 / 90 / 23 / 18 | 60 / 55 / 13 / 11 | +86% |
+| +9 -> +10 | 30% | 20% | 200 | 195 / 180 / 45 / 36 | 115 / 110 / 27 / 22 | +92% |
+| +10 -> +11 | 22% | 30% | 250 | 295 / 270 / 68 / 54 | 175 / 160 / 40 / 32 | +98% |
+| +11 -> +12 | 15% | 40% | 300 | 490 / 450 / 113 / 90 | 295 / 270 / 68 / 54 | +104% |
+
+(Horas de caça por tentativa: 1,5 / 3 / 4,5 / 7,5. O Osso ficou de fora: é lixo que o Pó já absorve e uma exigência de 400 Ossos travava o sumidouro sempre que a mochila acabava de ser limpa.) Esperado a partir do +8, tier 6: +9 em 2,5 tentativas (3,7 h de caça), +10 em 7 (15,5 h), +11 em 16 (48,5 h), **+12 em 44 tentativas (173 h, uns 14 dias de caça de 12 h)**; tier 5, 60% disso.
+
+**Custo dos passos +4 a +8 em peças tier 5 e 6** (mudança que o refino além do +8 pede): o Ouro desses passos passa a **15%** do de antes (`lateRefineGoldShare`: o +6 e o +7 custavam 2 100 e 2 400, agora 315 e 360) e as **2 Runas** dos passos +7 e +8 passam a **0** (`lateRefineShards`). Peças de tier 4 para baixo pagam o que sempre pagaram (teste). Motivo: com 7 peças a uns 25 mil de Ouro cada, o jogador é limitado pelo Ouro (1,5 mil por dia), não pelo material, e o sumidouro nunca começaria; e o simulador longo não tem renda de Runas.
+
+**Lapidar** (peça Épica ou Lendária, tier 4 ou mais, nível 60 ou mais; trava um atributo e sorteia de novo os outros, sem repetir tipo):
+
+| Peça | Horas | Sangue / Tutano / Cristal / Coração | Ouro | Runa |
+| --- | --- | --- | --- | --- |
+| T4, primeira lapidação | 1 | 65 / 60 / 15 / 12 | 200 | 1 |
+| T5, primeira | 2 | 130 / 120 / 30 / 24 | 250 | 1 |
+| T6, primeira | 3 | 195 / 180 / 45 / 36 | 300 | 1 |
+| T6, depois de 1 | 3,75 | 245 / 225 / 56 / 45 | 300 | 1 |
+| T6, depois de 4 | 6 | 390 / 360 / 90 / 72 | 300 | 1 |
+| T6, depois de 12 (o preço para de subir) | 12 | 780 / 720 / 180 / 144 | 300 | 1 |
+
+O preço sobe 25% do da primeira a cada lapidação anterior **na mesma peça** (`GearInstance.lapidarCount`, campo novo e opcional); uma cópia nova começa barata. Raridade, melhoria, encaixes, durabilidade, vínculo e as outras cópias não mudam.
+
+**Onde fica:** o refino é a aba "Melhorar" da Forja (já existia: o cartão mostra custo e chance, mais uma nota com as chances e as quedas); o Lapidar é um painel no detalhe da peça no Inventário, logo abaixo da reforja econômica (escolher o atributo que fica, ver o preço exato, lapidar). Nenhuma tela nova. Textos em pt e en gerados de `lateSinks.ts` (mesmo padrão dos perks do Passe), conferidos contra o motor por `lateSinks.test.ts`.
+
+**Conquistas** (`quests.ts`): `ACH_REFINE_9`, `_10` e `_12` (leem `max_refine`, que o simulador vê: **pagam 0**); `ACH_LAPIDAR_1` (300 Ouro, 1 Runa) e `_25` (1 500 Ouro, 4 Runas), que leem o contador novo `stats.lapidations` (aparece na aba de estatísticas).
+
+### 4. Resultado (6 seeds x 180 dias, sem únicos; A = sem Passe, P = dono)
+
+Três colunas por marco: **antes** (rodada 15), **controle** (o jogador novo: refina as 7 peças T5 e T6 até +8 como um humano faria, com os custos novos de Ouro e Runas, mas **sem** os sumidouros: `SIM_T='{"lateSinks":{"deepMinTier":7,"lapidarMinTier":7}}'`) e **depois** (tudo). O jogador antigo nunca passava do +3 em peça de tier 3 para cima (faltava o material do tier: aço, escamas, obsidiana refinada), então o controle separa "o jogador passou a refinar" de "o jogo ganhou sumidouros".
+
+**Cenário A:**
+
+| Marco | Antes (rodada 15) | Controle (jogador refina, sem sumidouros) | Depois | Depois contra antes | Depois contra controle |
+| --- | --- | --- | --- | --- | --- |
+| nível 60 | 38 | 38 | 38 | +0% | +0% |
+| nível 75 | 71 | 71.5 | 73.5 | +4% | +3% |
+| nível 90 | 106 | 107.5 | 110 | +4% | +2% |
+| nível 100 | 141 | 144.5 | 147.5 | +5% | +2% |
+| andar 100 (chegada) | 115 | 82.5 | 75 | -35% | -9% |
+| chefe do andar 100 vencido (abre as Profundezas) | 136.5 | 107 | 95 | -30% | -11% |
+| conjunto T4 vestido (7 peças) | 39 | 39 | 39 | +0% | +0% |
+| conjunto T5 vestido | 83 | 82 | 84 | +1% | +2% |
+| conjunto T6 vestido | 142 | 144.5 | 149 | +5% | +3% |
+| arma T5 vestida | 59 | 59 | 59 | +0% | +0% |
+| arma T6 vestida | 108.5 | 107.5 | 111 | +2% | +3% |
+| profundeza 10 | 136.5 | 107 | 95.5 | -30% | -11% |
+| profundeza 30 | 141 | 108.5 | 105 | -26% | -3% |
+| profundeza 40 | > 180 | 121.5 | 114.5 | - | -6% |
+| peça refinada a +9 | - | > 180 | 64 | - | - |
+| peça refinada a +10 | - | > 180 | 66.5 | - | - |
+| peça refinada a +11 | - | > 180 | 169.5 | - | - |
+| peça refinada a +12 | - | > 180 | > 180 | - | - |
+| Paragon 1 | 143 | 149 | 151.5 | +6% | +2% |
+| Paragon 10 | 164.5 | 169.5 | 172 | +5% | +1% |
+
+**Cenário P:**
+
+| Marco | Antes (rodada 15) | Controle (jogador refina, sem sumidouros) | Depois | Depois contra antes | Depois contra controle |
+| --- | --- | --- | --- | --- | --- |
+| nível 60 | 24.5 | 24.5 | 24.5 | +0% | +0% |
+| nível 75 | 57 | 59.5 | 54.5 | -4% | -8% |
+| nível 90 | 87 | 91 | 84 | -3% | -8% |
+| nível 100 | 114 | 119 | 114 | +0% | -4% |
+| andar 100 (chegada) | 89 | 77 | 59.5 | -33% | -23% |
+| chefe do andar 100 vencido (abre as Profundezas) | 100 | 92 | 75 | -25% | -18% |
+| conjunto T4 vestido (7 peças) | 28 | 28 | 26.5 | -5% | -5% |
+| conjunto T5 vestido | 67.5 | 72 | 70 | +4% | -3% |
+| conjunto T6 vestido | 114 | 123.5 | 117 | +3% | -5% |
+| arma T5 vestida | 42.5 | 42.5 | 42.5 | +0% | +0% |
+| arma T6 vestida | 87 | 91 | 87.5 | +1% | -4% |
+| profundeza 10 | 100 | 92.5 | 75 | -25% | -19% |
+| profundeza 30 | 103 | 93.5 | 78 | -24% | -17% |
+| profundeza 40 | > 180 | 104 | 93.5 | - | -10% |
+| peça refinada a +9 | - | > 180 | 48 | - | - |
+| peça refinada a +10 | - | > 180 | 48.5 | - | - |
+| peça refinada a +11 | - | > 180 | 52.5 | - | - |
+| peça refinada a +12 | - | > 180 | > 180 | - | - |
+| Paragon 1 | 116 | 122.5 | 116.5 | +0% | -5% |
+| Paragon 10 | 131.5 | 137.5 | 131.5 | +0% | -4% |
+
+**Leitura.** Nível e peças vestidas ficam dentro de ±5% do antes (controle e depois diferem em 0 a 3% no A). **Os marcos da Masmorra (andar 100, chefe do 100, profundezas) vêm bem mais cedo, e a maior parte disso NÃO vem dos sumidouros:** só o jogador passar a refinar (controle) já traz o chefe do 100 de 136 para 107 (-22%): a curva da rodada 15 foi medida com um herói que fica em +0 a +3 nas peças tier 5 e 6, e a tabela de CP recomendada e o `sim:depths` já assumem tier 6 +8. Os sumidouros acrescentam 9 a 11% (A) e 18 a 23% (P) aos marcos da Masmorra em cima do controle. Isso passa do limite de ~5% pedido e **não foi retunado** (decisão 2 da seção 6).
+
+**Livro-razão, dias 60 a 180** (mediana entre seeds; "perdido" = mochila + baú + mercador + política):
+
+| | Coletado | Perdido (unid.) | % das unidades | % do valor | % dos escassos |
+| --- | --- | --- | --- | --- | --- |
+| A, antes | 338 416 | 304 343 | 89,9% | 87,1% | 87,7% |
+| A, controle | 330 441 | 285 828 | 86,5% | 82,9% | 85,1% |
+| **A, depois** | 326 685 | 218 034 | **66,7%** | **61,0%** | 60,7% |
+| P, antes | 503 053 | 476 239 | 94,7% | 91,6% | 93,6% |
+| P, controle | 480 768 | 434 708 | 90,4% | 88,0% | 89,4% |
+| **P, depois** | 501 380 | 408 196 | 81,4% | 76,5% | 77,4% |
+
+**A meta (perder menos de ~15% do que se coleta) não foi atingida na janela inteira.** Por janela de 10 dias, cenário A (valor de referência perdido):
+
+| Dias | Coletado (unid.) | Perdido antes: unid. / % do valor | Controle: % do valor | Depois: unid. / % do valor |
+| --- | --- | --- | --- | --- |
+| 1-10 | 3 056 | 365 / 8.5% | 8.5% | 365 / 8.5% |
+| 11-20 | 5 756 | 992 / 13% | 13% | 992 / 13% |
+| 21-30 | 7 532 | 3 117 / 26.5% | 26.5% | 3 117 / 26.5% |
+| 31-40 | 15 075 | 11 760 / 65.6% | 65.6% | 11 432 / 69.4% |
+| 41-50 | 9 985 | 8 481 / 93.3% | 93.3% | 8 481 / 83.1% |
+| 51-60 | 19 085 | 16 317 / 80.1% | 79.9% | 13 414 / 64.7% |
+| 61-70 | 21 533 | 18 384 / 77.5% | 71.7% | 14 577 / 57.1% |
+| 71-80 | 25 268 | 22 224 / 83.8% | 80.9% | 16 946 / 63.3% |
+| 81-90 | 26 663 | 26 026 / 94.5% | 92.2% | 19 253 / 72.4% |
+| 91-100 | 30 102 | 27 024 / 94.2% | 92.9% | 25 484 / 81.5% |
+| 101-110 | 29 320 | 23 849 / 80.6% | 77.9% | 25 528 / 84.5% |
+| 111-120 | 25 951 | 25 325 / 85.6% | 82.6% | 20 550 / 75.8% |
+| 121-130 | 27 449 | 23 754 / 86.1% | 82% | 23 672 / 87.9% |
+| 131-140 | 26 917 | 26 407 / 87.1% | 85.4% | 22 831 / 83.2% |
+| 141-150 | 26 918 | 28 121 / 86% | 53.6% | 19 702 / 66.7% |
+| 151-160 | 26 212 | 27 958 / 90.5% | 89% | 7 449 / 14.1% |
+| 161-170 | 30 163 | 28 164 / 92.9% | 91.2% | 4 962 / 5.1% |
+| 171-180 | 30 179 | 28 247 / 92.4% | 85.8% | 6 546 / 5.6% |
+
+Quando as peças estão na fase do refino além do +8 o sumidouro absorve quase tudo: **dias 151 a 180, perdido entre 5% e 14%**. O que segura o resto da janela são os dias 100 a 150, em que as peças tier 6 recém-forjadas (+0) ainda sobem de +0 a +8, passo a passo, com Pó, Osso e obsidiana refinada que o simulador descarta ou não tem à mão (tentei guardar Osso e Pó para o refino: o cenário A melhorou uns 5 pontos e o P travou num conjunto, então desfiz). É limitação do simulador, não do sumidouro: o número confiável é o do regime, em que o sumidouro absorve 86 a 95% do que cai.
+
+**Ouro e Runas não inflaram:** o Ouro em caixa no cenário A fica em 12 a 34 mil (31 mil no dia 180) em vez dos 60 mil de antes, porque o jogador passou a gastá-lo refinando; as Runas em caixa vão a 150 em vez de 130 (o refino fundo não pede Runas; o Lapidar pede 1 por vez e quase não é usado).
+
+**Uso dos sumidouros (A):** refino além do +8: 15, 14, 14 e 9 tentativas por 10 dias nos dias 61 a 100, 0 a 4 nos dias 101 a 150, 28 e 42 nos dias 151 a 170; o jogador chega a +9 no dia 64, +10 no 66,5, +11 no 169,5 e +12 em nenhuma seed mediana (a mais rápida: dia 176). **Lapidar: 0 a 4 lapidações por 10 dias** (só entra quem tem peça Épica ou Lendária vestida, uns 12% das peças): é sumidouro de quem caça a peça perfeita, não de volume.
+
+**Maior trecho sem nada novo** (peça de tier novo, zona, chefe, profundeza múltipla de 5, ponto de habilidade, perk de maestria, **mais** cada nível de refino além do +8 novo nas peças vestidas), dia 21 a 180, mediana / pior seed:
+
+| | Antes | Controle | Depois |
+| --- | --- | --- | --- |
+| A, sem Paragon | 28 / 36 dias | 28 / 35 | **15 / 20** (sem contar o refino: 18 / 34) |
+| A, depois do nível 100 e do T6, sem Paragon | 36 (pior) | 28 / 35 | **15 / 20** |
+| P, sem Paragon | 52 / 75 | 32 / 48 | 32 / 77 (sem contar o refino: 37 / 77) |
+| P, depois do nível 100 e do T6, sem Paragon | 75 (pior) | 32 / 48 | 29 / 36 |
+| Contando o Paragon | A 12 / 14, P 9 / 10 | A 12 / 15, P 10 / 13 | **A 3 / 3, P 3 / 3** |
+
+Meta (algo novo a cada ~10 dias depois do nível 100 e do T6): **não atingida sem o Paragon** (A: 15 / 20; P: 29 / 36, contra 75 de antes). Com o Paragon contado o maior buraco é de 3 dias.
+
+### 5. Tabela de guarda dos dias 1 a 21 (cenário A, 20 seeds, mediana), antes -> depois
+
+U = com únicos (padrão), N = `SIM_NO_UNIQUES=1`. Os sumidouros e a política nova só existem a partir do nível 60 e de peças tier 5 (que pedem nível 70): nada do que o jogador simulado faz nos dias 1 a 21 mudou.
+
+| Meta | Antes U / N | Depois U / N |
+| --- | --- | --- |
+| T2 primeira sessão >= andar 8; checkpoint 10 no dia 1 | 8 / 8 | 8 / 8 |
+| T3 primeira peça forjada (dia <= 2) | 2 / 2 | 2 / 2 |
+| T4 nível dia 1 / 3 / 14 (10-16 / 20-29 / 45-60) | 13 / 27 / 47 · 13 / 27 / 47 | 13 / 27 / 47 · 13 / 27 / 47 |
+| T5 chefe 25 pela 1ª vez (dia 4-6); vitória ao chegar | dia 5, 0% · dia 5, 0% | dia 5, 0% · dia 5, 0% |
+| T6 chegada ao andar 50: 1ª seed / mediana (meta 12-15) | 12 / 15 · 12 / 14,5 | 12 / 15 · 12 / 14,5 |
+| T6 chefe 50: 1ª seed / mediana / seeds em 21 dias | 13 / 15 / 20 · 13 / 15 / 20 | 13 / 15 / 20 · 13 / 15 / 20 |
+| T7 menor razão (N+1)/(N-1) em volta dos chefes | 1,08 | 1,08 |
+| T8 derrota mantém 75% do ouro | 75% | 75% |
+| nível no dia 21 | 51 (49-53) · 51 (49-53) | 51 (49-53) · 51 (49-53) |
+| andar mais alto no dia 21 (mediana) | 60 · 62 | 60 · 62 |
+
+(Medido com `npm run sim` e `SIM_NO_UNIQUES=1 npm run sim` no código final desta rodada; "antes" é a tabela da rodada 15.)
+
+### 6. Decisões que o diretor pode discordar
+
+1. **O controle.** Medi também o jogador novo sem sumidouros, porque o de antes nunca refinava peças T3+ (faltava o material do tier) e mudar isso já adianta o chefe do 100 em 22%. "Depois contra antes" mistura as duas coisas; use "depois contra controle".
+2. **Marcos da Masmorra 9 a 23% mais cedo que o controle e 25 a 35% mais cedo que a rodada 15.** O refino fundo dá até +24% do atributo base por peça. Não retunei os andares 76 a 100 (`lateHpGrowth2` e `lateDmgGrowth2`): o herói de referência do `sim:depths` (tier 6 +8) não mudou e a tabela de CP recomendada continua valendo. O botão, se quiser o chefe do 100 de volta perto do dia 130, é esse par; peço decisão antes de mexer, porque endurece a Masmorra para quem não refina.
+3. **Ouro dos passos +4 a +8 em tier 5 e 6 a 15% e sem Runas** (`lateRefineGoldShare`, `lateRefineShards`). Sem isso o refino fundo não começa dentro de 180 dias. Desfazer é trocar os dois números, mas aí o sumidouro some do jogo.
+4. **O Catalisador só vale até o +8.** O Passe dá 3; garantir o sucesso do +9 ao +12 anularia as chances, que são o ponto do sumidouro.
+5. **Elevar raridade, conversão em lote e baú maior: não feitos** (seção 2). Se quiser o Elevar mesmo assim, o teto é 30% / 6% (+19% de Lendárias com uso total) e só faz diferença para quem junta cópias de propósito.
+6. **Custos em horas de caça da última zona.** Um +12 de tier 6 pede 490 Sangues, 450 Tutanos, 113 Cristais e 90 Corações numa tentativa: parece muito e é uma tarde de caça de 12 h. Quem caça 4 h por dia vai demorar o triplo; o jogo não pune quem fica para trás, só não o recompensa.
+
+### 7. Não feito, ou verificado só em parte
+
+- **A meta de 15% não foi atingida** (61% do valor na janela dos dias 60 a 180; 5 a 14% nos dias 151 a 180). O simulador desperdiça os insumos do refino de +0 a +8 nos dias 100 a 150 e não modela as Runas das metas semanais.
+- **O dono do Passe** perde 76,5%: coleta 53% mais (16 h de caça por dia) e o sumidouro absorve 93 mil unidades contra 108 mil do jogador comum.
+- 6 seeds; as medianas de marcos oscilam uns 3 dias entre rodadas.
+- Nenhum save real de nível 100 foi aberto: usei um save montado (herói de nível 100, peças T6 +8 a +10, uma Épica com Lapidar, uma Lendária de reserva) no navegador, em 1280 e 390 de largura (Forja, aba Melhorar; Inventário, painel Lapidar).
+- O Lapidar e o refino fundo não entram na tabela de CP recomendada nem no `sim:depths` (o herói de referência continua em +8).
