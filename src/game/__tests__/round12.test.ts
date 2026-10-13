@@ -7,7 +7,6 @@ import { PLANTS, plantHarvestXp } from '../garden';
 import { applyHarvest, applyPlant } from '../gardenActions';
 import { applyClaimGathering } from '../gathering';
 import { MAX_DURABILITY } from '../gear';
-import { isIconPending } from '../iconPending';
 import { usesOf } from '../itemUses';
 import { gardenTimeFactor, gatherByProducts, gatherMasteryMult, masteryPerks, plantGrowthMs, professionUnlocks } from '../mastery';
 import { MATERIALS, MaterialId } from '../materials';
@@ -152,20 +151,19 @@ describe('Round 12: the new consumables', () => {
     for (const id of ['silver_sage', 'dusk_orchid', 'elder_root']) expect(usesOf('material', id).length, id).toBeGreaterThan(0);
   });
 
-  it('the consumables are defined, never sold in the Shop, have pt / en text and a declared (possibly pending) icon', () => {
+  it('the consumables are defined, never sold in the Shop, have pt / en text and a declared icon', () => {
     for (const id of NEW_IDS) {
       const c = CONSUMABLES.find((x) => x.id === id)!;
       expect(c.purchasable).toBe(false);
       expect(c.cost).toBe(0);
       expect(c.iconUrl).toBe(`/assets/icons/${id}.png`);
-      expect(isIconPending(c.iconUrl)).toBe(true);
       for (const t of [en, pt] as const) {
         const cons = (t as unknown as { consumables: Record<string, string> }).consumables;
         for (const k of [id, `${id}_d`, `${id}_active`]) expect(typeof cons[k], k).toBe('string');
       }
       expect(usesOf('consumable', id).length, id).toBeGreaterThan(0);
     }
-    for (const m of MATERIALS.filter((x) => ['silver_sage', 'dusk_orchid', 'elder_root'].includes(x.id))) expect(isIconPending(m.iconUrl)).toBe(true);
+    for (const m of MATERIALS.filter((x) => ['silver_sage', 'dusk_orchid', 'elder_root'].includes(x.id))) expect(m.iconUrl).toBe('/assets/icons/' + m.id + '.png');
   });
 
   it('descriptions quote the numbers the code uses (they cannot drift)', () => {
