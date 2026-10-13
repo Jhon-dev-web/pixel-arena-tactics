@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { activeLocale, fmtNum, t } from '../locales';
+import { patrimony, pouchGoldHeld } from '../game/goldPouch';
 import T from '../game/tunables';
 import { getConsumable } from '../game/consumables';
 import { STREAK_DAYS, streakReward, streakStatus, weeklyBand, weeklyView, WeeklyGoalId, WeeklyGoalView } from '../game/weekly';
@@ -253,6 +254,8 @@ export default function QuestsModal({
       group: 'economy',
       rows: [
         [t('stats.gold'), fmtNum(stats.goldEarned)],
+        [t('stats.wealth'), fmtNum(patrimony(save))],
+        [t('stats.pouchGold'), fmtNum(pouchGoldHeld(save))],
         [t('stats.wholesaleUnits'), fmtNum(stats.wholesaleUnits ?? 0)],
         [t('stats.wholesaleGold'), fmtNum(stats.wholesaleGold ?? 0)],
         [t('stats.played'), formatPlayed(stats.secondsPlayed)],

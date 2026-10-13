@@ -5,6 +5,7 @@ import { grantDailyPassKit } from '../entitlements';
 import { repairCost } from '../gear';
 import { inventoryCapacity } from '../inventory';
 import { passPerkLines } from '../passPerks';
+import { applyCreatePouch, pouchCost, pouchMinimum, pouchPerDay } from '../goldPouch';
 import { skillXpToReachLevel } from '../skills';
 import { stashCapacity } from '../stash';
 import { claimStreak, DAY_MS, streakStatus } from '../weekly';
@@ -23,7 +24,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
-const render = (tree: unknown, line: { key: string; params?: Record<string, number> }): string => {
+const render = (tree: unknown, line: { key: string; params?: Record<string, number | string> }): string => {
   const raw = line.key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], tree) as string;
   return raw.replace(/\{(\w+)\}/g, (whole, k) => String(line.params?.[k] ?? whole));
 };
@@ -92,7 +93,7 @@ describe('Adventurer Pass perks: the text says what the code does', () => {
   });
 
   it('daily kit: an owner gets the printed number on a new day, once, never past the stock cap; a free player never', () => {
-    const n = perk('kit').label.params!.n;
+    const n = perk('kit').label.params!.n as number;
     for (const tree of [pt, en]) {
       expect(numbersIn(render(tree, perk('kit').label))).toEqual([n]);
       expect(numbersIn(render(tree, perk('kit').sub))).toEqual([T.consumables.repairKitDurability]);
@@ -107,7 +108,7 @@ describe('Adventurer Pass perks: the text says what the code does', () => {
   });
 
   it('streak saver: the printed number is how many missed days a week the owner is forgiven, a free player never is', () => {
-    const n = perk('streak').label.params!.n;
+    const n = perk('streak').label.params!.n as number;
     for (const tree of [pt, en]) expect(numbersIn(render(tree, perk('streak').label))).toEqual([n]);
     expect(n).toBe(T.battlePass.streakSavers);
     const mon = Date.UTC(2026, 5, 22, 12); // a Monday (UTC)
@@ -126,5 +127,25 @@ describe('Adventurer Pass perks: the text says what the code does', () => {
     const again = normalizeSave(JSON.parse(JSON.stringify(first)));
     expect(again.consumables.repair_kit).toBe(T.battlePass.dailyRepairKits);
     expect(normalizeSave(JSON.parse(JSON.stringify(defaultSave()))).consumables.repair_kit).toBe(0);
+  });
+});
+
+describe('Adventurer Pass perks: Gold Pouches (round 18)', () => {
+  it('the line says the minimum, the fee and the daily limit, and exactly the owner can create a pouch under them', () => {
+    const p = perk('pouch');
+    const sub = (tree: unknown): number[] => numbersIn(render(tree, p.sub));
+    const minOf = (tree: unknown): number => Number(render(tree, p.label).replace(/\D/g, ''));
+    for (const tree of [pt, en]) {
+      expect(render(tree, p.label)).not.toMatch(/\{\w+\}/);
+      expect(minOf(tree)).toBe(pouchMinimum());
+      expect(sub(tree)).toEqual([Math.round(T.goldPouch.feePct * 100), pouchPerDay()]);
+    }
+    const cost = pouchCost('gold_pouch_s');
+    expect(applyCreatePouch({ ...defaultSave(), gold: cost, hasBattlePass: true }, 'gold_pouch_s', NOW).ok).toBe(true);
+    expect(applyCreatePouch({ ...defaultSave(), gold: cost, hasBattlePass: false }, 'gold_pouch_s', NOW).reason).toBe('noPass');
+    // the per-day limit printed is the one enforced
+    let s: SaveData = { ...defaultSave(), gold: 100_000_000, hasBattlePass: true };
+    for (let i = 0; i < sub(en)[1]; i++) s = applyCreatePouch(s, 'gold_pouch_s', NOW).save!;
+    expect(applyCreatePouch(s, 'gold_pouch_s', NOW).reason).toBe('limit');
   });
 });

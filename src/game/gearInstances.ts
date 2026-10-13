@@ -5,6 +5,7 @@ import { MaterialId, hasMaterials } from './materials';
 import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollRarityAtLeast, FORGE_SEAL_MIN_RARITY, rollSubstats, substatListTotals } from './rarity';
 import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salvage';
 import { addWithOverflow, fitsBag, stockIsEmpty } from './inventory';
+import { TRADEABLE_CONSUMABLES } from './consumables';
 import { setBonuses } from './setBonuses';
 import type { SaveData } from './engine';
 import { recordForge, recordRefine } from './stats';
@@ -190,7 +191,15 @@ export function bindEquipped(
 // NOT bound AND (it is Epic or Legendary OR its template is a unique drop). Everything else is not tradeable: common and rare forged gear, bound pieces, and
 // everything that is not a gear instance (stackable relics, materials, consumables). Standing decision of the owner: only forged gear of high rarity and rare /
 // unique drops are sellable, common materials never.
-export function isTradeable(instance: GearInstance): boolean {
+// Round 18: ONE exception that is not a gear instance, and it is a rule here and nowhere else: the Gold Pouch (TRADEABLE_CONSUMABLES), a consumable that is unbound by nature
+// (it cannot be worn, so nothing ever binds it). It is asked as { kind: 'consumable', id }; a material asked the same way, and every other consumable, is never tradeable.
+export interface TradeRef {
+  kind: 'material' | 'consumable';
+  id: string;
+}
+export function isTradeable(item: GearInstance | TradeRef): boolean {
+  if (!('templateId' in item)) return item.kind === 'consumable' && (TRADEABLE_CONSUMABLES as readonly string[]).includes(item.id);
+  const instance = item;
   if (instance.bound) return false;
   return instance.rarity === 'epic' || instance.rarity === 'legendary' || !!getGear(instance.templateId)?.unique;
 }

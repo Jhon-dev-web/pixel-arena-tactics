@@ -658,7 +658,8 @@
     "youOwn": "You own {n}",
     "buyTab": "Buy",
     "sellTab": "Sell",
-    "wholesaleTab": "Wholesale"
+    "wholesaleTab": "Wholesale",
+    "pouchTab": "Pouches"
   },
   "consumables": {
     "small_hp": "Small Health Potion",
@@ -726,7 +727,11 @@
     "forge_seal": "Blacksmith's Seal",
     "forge_seal_d": "Toggle it in the Forge: the next piece forged comes out Epic or better. It is only spent if the forge happens.",
     "stash_deed": "Stash Deed",
-    "stash_deed_d": "Use it to enlarge the stash by 5 slots, for good. The total limit is 20 extra slots."
+    "stash_deed_d": "Use it to enlarge the stash by 5 slots, for good. The total limit is 20 extra slots.",
+    "gold_pouch_s": "Small Gold Pouch",
+    "gold_pouch_m": "Medium Gold Pouch",
+    "gold_pouch_l": "Large Gold Pouch",
+    "gold_pouch_d": "Open it to receive exactly its value in Gold, for good. It can be sold to other players once the market opens."
   },
   "forge": {
     "title": "Forge",
@@ -1622,6 +1627,8 @@
     "perkRepairSub": "Forge",
     "perkLoadout": "Second skill set",
     "perkLoadoutSub": "Two point allocations, free switching",
+    "perkPouch": "Can create Gold Pouches (minimum {min})",
+    "perkPouchSub": "Turn Gold into a tradeable item. {fee}% fee in Gold, up to {n} per day",
     "trackTitle": "Season track",
     "goMyLevel": "Go to my level",
     "claimed": "Claimed",
@@ -1805,6 +1812,29 @@
     "fullHint": "No room? The wholesaler buys the excess for little. You decide what to sell.",
     "codexLine": "Merchant: {m} Gold · Wholesale: {w} Gold"
   },
+  "pouch": {
+    "tab": "Pouches",
+    "title": "Gold Pouch",
+    "explain": "Turns Gold into a Gold Pouch: an item that can be sold to other players once the market opens. Only the Adventurer Pass owner creates Pouches. Minimum amount: {min} Gold; the fee is {fee}% in Gold, paid on top; at most {n} Pouches per day.",
+    "openExplain": "Any player can open a Pouch they hold and receive exactly its value. Opening cannot be undone.",
+    "needPass": "Creating Pouches needs the Adventurer Pass. Opening one you received does not.",
+    "face": "{v} Gold",
+    "feeLine": "Fee {fee} · Total {total}",
+    "create": "Create",
+    "madeToday": "Created today: {n} / {m}",
+    "failLimit": "Daily Pouch limit reached. It resets at midnight.",
+    "failGold": "Not enough Gold: it takes the value plus the fee.",
+    "failBag": "No room in the inventory for the Pouch.",
+    "failPass": "Needs the Adventurer Pass.",
+    "created": "Pouch created: -{g} Gold",
+    "opened": "Pouch opened: +{g} Gold",
+    "worth": "Worth {g} Gold",
+    "open": "Open (+{g} Gold)",
+    "confirmOpen": "Open for good? +{g} Gold, no way back",
+    "heldTitle": "Your Pouches",
+    "none": "You have no Gold Pouches in the inventory.",
+    "inStash": "In the Stash: {n}"
+  },
   "claimAll": {
     "title": "Everything claimed",
     "button": "Claim all",
@@ -1879,7 +1909,9 @@
     "gold": "Gold earned in total",
     "played": "Time played",
     "wholesaleUnits": "Materials sold to the wholesaler",
-    "wholesaleGold": "Gold received from the wholesaler"
+    "wholesaleGold": "Gold received from the wholesaler",
+    "wealth": "Net worth (Gold plus Pouches)",
+    "pouchGold": "Gold inside Pouches"
   },
   "codex": {
     "title": "Codex",

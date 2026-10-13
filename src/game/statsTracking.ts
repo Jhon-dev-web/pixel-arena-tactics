@@ -51,7 +51,9 @@ export function fullSetsWorn(save: SaveData): SetFamily[] {
 export function trackSave(prev: SaveData, next: SaveData, pendingSeconds = 0): SaveData {
   let stats = statsOf(next);
   let changed = next.stats === undefined;
-  const gained = Math.max(0, next.gold - prev.gold);
+  // Gold that came back out of an opened Gold Pouch was the hero's already: it is not "earned" (goldPouch.ts applyOpenPouch records exactly that amount).
+  const reopened = Math.max(0, (next.stats?.pouchGoldOpened ?? 0) - (prev.stats?.pouchGoldOpened ?? 0));
+  const gained = Math.max(0, next.gold - prev.gold - reopened);
   if (gained > 0) {
     stats = { ...stats, goldEarned: Math.min(COUNT_CAP, stats.goldEarned + Math.floor(gained)) };
     changed = true;

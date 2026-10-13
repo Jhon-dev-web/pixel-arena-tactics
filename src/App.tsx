@@ -52,6 +52,7 @@ import { addForced, canAddInstances, expandInventory, inventoryCapacity } from '
 import { StackKind, applyStashMove, applyStashUpgrade, applyStoreAll, bagCount, stashCount } from './game/stash';
 import { applyMerchantSell, SellKind } from './game/merchant';
 import { applyWholesaleBatch, WholesaleLine } from './game/wholesale';
+import { applyCreatePouch, applyOpenPouch, PouchId, pouchCost } from './game/goldPouch';
 import { applyDiscard } from './game/bagActions';
 import { ItemUse } from './game/itemUses';
 import { RefiningStation, getRefiningRecipe as refiningRecipeById } from './game/refining';
@@ -136,7 +137,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const flushTimeoutRef = useRef<number | null>(null);
 
   const [shopOpen, setShopOpen] = useState(false);
-  const [shopTab, setShopTab] = useState<'buy' | 'sell' | 'wholesale'>('buy');
+  const [shopTab, setShopTab] = useState<'buy' | 'sell' | 'wholesale' | 'pouch'>('buy');
   const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1421,6 +1422,24 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth(r.save);
     showToast(t('wholesale.sold', { n: fmtNum(r.units), g: fmtNum(r.gold) }));
   };
+  // Gold Pouches (goldPouch.ts): the Pass owner turns Gold into one (fee on top, daily limit, needs bag room); anyone opens one for exactly its face value.
+  const createPouch = (id: PouchId) => {
+    const r = applyCreatePouch(saveRef.current, id, Date.now());
+    if (!r.ok || !r.save) {
+      showToast(t(r.reason === 'limit' ? 'pouch.failLimit' : r.reason === 'bag' ? 'pouch.failBag' : r.reason === 'noPass' ? 'pouch.failPass' : 'pouch.failGold'));
+      return;
+    }
+    playSfx('victory');
+    setSaveBoth(r.save);
+    showToast(t('pouch.created', { g: fmtNum(pouchCost(id)) }));
+  };
+  const openPouch = (id: PouchId) => {
+    const r = applyOpenPouch(saveRef.current, id);
+    if (!r.ok || !r.save) return;
+    playSfx('victory');
+    setSaveBoth(r.save);
+    showToast(t('pouch.opened', { g: fmtNum(r.gold ?? 0) }));
+  };
   const openWholesale = () => {
     playSfx('click');
     setWelcome(null);
@@ -1755,7 +1774,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   ];
 
   return (
-    <BagContext.Provider value={{ save, move: moveStash, storeAllMaterials, sell: sellItem, openUse, upgradeStash, openWholesale }}>
+    <BagContext.Provider value={{ save, move: moveStash, storeAllMaterials, sell: sellItem, openUse, upgradeStash, openWholesale, openPouch }}>
     <div className="game-root">
       <div className="desktop-shell">
         {isDesktop ? (
@@ -1833,6 +1852,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onBuyGem={buyGem}
           onSell={sellItem}
           onSellWholesale={sellWholesale}
+          onCreatePouch={createPouch}
+          onOpenPouch={openPouch}
           initialTab={shopTab}
           onClose={() => {
             playSfx('click');

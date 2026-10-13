@@ -658,7 +658,8 @@
     "youOwn": "Você possui {n}",
     "buyTab": "Comprar",
     "sellTab": "Vender",
-    "wholesaleTab": "Atacado"
+    "wholesaleTab": "Atacado",
+    "pouchTab": "Bolsas"
   },
   "consumables": {
     "small_hp": "Poção de Vida Pequena",
@@ -726,7 +727,11 @@
     "forge_seal": "Selo do Ferreiro",
     "forge_seal_d": "Ative na Forja: a próxima peça forjada nasce Épica ou melhor. Só é gasto se a forja acontecer.",
     "stash_deed": "Escritura do Baú",
-    "stash_deed_d": "Use para ampliar o Baú em 5 espaços, para sempre. O limite total é de 20 espaços extras."
+    "stash_deed_d": "Use para ampliar o Baú em 5 espaços, para sempre. O limite total é de 20 espaços extras.",
+    "gold_pouch_s": "Bolsa de Ouro pequena",
+    "gold_pouch_m": "Bolsa de Ouro média",
+    "gold_pouch_l": "Bolsa de Ouro grande",
+    "gold_pouch_d": "Abra para receber exatamente o valor dela em Ouro, sem volta. Pode ser vendida a outros jogadores quando o mercado abrir."
   },
   "forge": {
     "title": "Forja",
@@ -1622,6 +1627,8 @@
     "perkRepairSub": "Forja",
     "perkLoadout": "Segundo conjunto de habilidades",
     "perkLoadoutSub": "Duas distribuições de pontos, troca grátis",
+    "perkPouch": "Pode criar Bolsas de Ouro (mínimo {min})",
+    "perkPouchSub": "Transforme Ouro em um item negociável. Taxa de {fee}% em Ouro, até {n} por dia",
     "trackTitle": "Trilha da temporada",
     "goMyLevel": "Ir para o meu nível",
     "claimed": "Resgatado",
@@ -1805,6 +1812,29 @@
     "fullHint": "Sem espaço? O atacadista compra o excesso por pouco. Você decide o que vender.",
     "codexLine": "Mercador: {m} Ouro · Atacado: {w} Ouro"
   },
+  "pouch": {
+    "tab": "Bolsas",
+    "title": "Bolsa de Ouro",
+    "explain": "Transforma Ouro em uma Bolsa de Ouro: um item que pode ser vendido a outros jogadores quando o mercado abrir. Só o dono do Passe de Aventureiro cria Bolsas. Valor mínimo: {min} de Ouro; a taxa é de {fee}% em Ouro, paga por cima; no máximo {n} Bolsas por dia.",
+    "openExplain": "Qualquer jogador pode abrir uma Bolsa que tenha e receber exatamente o valor dela. Abrir não tem volta.",
+    "needPass": "Criar Bolsas exige o Passe de Aventureiro. Abrir uma que você recebeu não exige.",
+    "face": "{v} de Ouro",
+    "feeLine": "Taxa {fee} · Total {total}",
+    "create": "Criar",
+    "madeToday": "Criadas hoje: {n} / {m}",
+    "failLimit": "Limite diário de Bolsas atingido. Volta à meia-noite.",
+    "failGold": "Ouro insuficiente: precisa do valor mais a taxa.",
+    "failBag": "Sem espaço no inventário para a Bolsa.",
+    "failPass": "Exige o Passe de Aventureiro.",
+    "created": "Bolsa criada: -{g} Ouro",
+    "opened": "Bolsa aberta: +{g} Ouro",
+    "worth": "Vale {g} de Ouro",
+    "open": "Abrir (+{g} Ouro)",
+    "confirmOpen": "Abrir de vez? +{g} Ouro, sem volta",
+    "heldTitle": "Suas Bolsas",
+    "none": "Você não tem Bolsas de Ouro no inventário.",
+    "inStash": "No Baú: {n}"
+  },
   "claimAll": {
     "title": "Tudo resgatado",
     "button": "Resgatar tudo",
@@ -1879,7 +1909,9 @@
     "gold": "Ouro ganho no total",
     "played": "Tempo de jogo",
     "wholesaleUnits": "Materiais vendidos ao atacadista",
-    "wholesaleGold": "Ouro recebido do atacadista"
+    "wholesaleGold": "Ouro recebido do atacadista",
+    "wealth": "Patrimônio (Ouro mais Bolsas)",
+    "pouchGold": "Ouro dentro de Bolsas"
   },
   "codex": {
     "title": "Códice",

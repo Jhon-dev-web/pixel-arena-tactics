@@ -13,6 +13,8 @@ import ConsumableIcon from './ConsumableIcon';
 import GemIcon from './GemIcon';
 import TitleIcon from './TitleIcon';
 import WholesalePanel from './WholesalePanel';
+import PouchPanel from './PouchPanel';
+import { PouchId } from '../game/goldPouch';
 import { WholesaleLine, wholesaleUnlocked } from '../game/wholesale';
 
 const conText = (k: string): string => t(`consumables.${k}`);
@@ -25,6 +27,8 @@ export default function ShopModal({
   onBuyGem,
   onSell,
   onSellWholesale,
+  onCreatePouch,
+  onOpenPouch,
   initialTab,
   onClose,
 }: {
@@ -33,12 +37,14 @@ export default function ShopModal({
   onBuyGem: (id: GemId) => void;
   onSell: (kind: SellKind, id: string, qty: number | 'all') => void;
   onSellWholesale: (lines: WholesaleLine[]) => void;
-  initialTab?: 'buy' | 'sell' | 'wholesale';
+  onCreatePouch: (id: PouchId) => void;
+  onOpenPouch: (id: PouchId) => void;
+  initialTab?: 'buy' | 'sell' | 'wholesale' | 'pouch';
   onClose: () => void;
 }) {
   const slots = inventorySlotsUsed(save);
   const capacity = inventoryCapacity(save);
-  const [tab, setTab] = useState<'buy' | 'sell' | 'wholesale'>(initialTab ?? 'buy');
+  const [tab, setTab] = useState<'buy' | 'sell' | 'wholesale' | 'pouch'>(initialTab ?? 'buy');
   // selling a WHOLE type needs a second tap on the same button
   const [armed, setArmed] = useState<string | null>(null);
   const now = Date.now();
@@ -68,6 +74,9 @@ export default function ShopModal({
           </button>
           <button className={`tab${tab === 'wholesale' ? ' active' : ''}`} onClick={() => setTab('wholesale')} data-ui>
             {wholesaleUnlocked(save) ? t('shop.wholesaleTab') : `🔒 ${t('shop.wholesaleTab')}`}
+          </button>
+          <button className={`tab${tab === 'pouch' ? ' active' : ''}`} onClick={() => setTab('pouch')} data-ui>
+            {t('shop.pouchTab')}
           </button>
         </div>
 
@@ -132,6 +141,7 @@ export default function ShopModal({
         )}
 
         {tab === 'wholesale' && <WholesalePanel save={save} onSell={onSellWholesale} />}
+        {tab === 'pouch' && <PouchPanel save={save} onCreate={onCreatePouch} onOpen={onOpenPouch} />}
 
         {tab === 'buy' && (
         <div className="shop-body">

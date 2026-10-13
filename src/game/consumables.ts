@@ -23,7 +23,10 @@ export type ConsumableId =
   | 'hunter_lure'
   | 'prospector_tonic'
   | 'forge_seal'
-  | 'stash_deed';
+  | 'stash_deed'
+  | 'gold_pouch_s'
+  | 'gold_pouch_m'
+  | 'gold_pouch_l';
 
 export interface ConsumableDef {
   id: ConsumableId;
@@ -79,7 +82,16 @@ export const CONSUMABLES: ConsumableDef[] = [
   // Adventurer Pass track rewards (seasonItems.ts): reward-only, never bought and never sold (sellValue 0 keeps the merchant out).
   { id: 'forge_seal', nameKey: 'forge_seal', descKey: 'forge_seal_d', icon: '🔨', iconUrl: '/assets/icons/forge_seal.png', cost: 0, sellValue: 0, purchasable: false },
   { id: 'stash_deed', nameKey: 'stash_deed', descKey: 'stash_deed_d', icon: '📜', iconUrl: '/assets/icons/camp_stash.png', cost: 0, sellValue: 0, purchasable: false },
+  // Round 18 (goldPouch.ts): Gold turned into a tradeable item. Made by the Pass owner in the Shop, opened by anyone for exactly its face value (T.goldPouch). Never sold to the
+  // merchants (sellValue 0): they are for other players. The face value is NOT in this table, goldPouch.ts reads it from the tunables.
+  { id: 'gold_pouch_s', nameKey: 'gold_pouch_s', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'gold_pouch_m', nameKey: 'gold_pouch_m', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'gold_pouch_l', nameKey: 'gold_pouch_l', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch.png', cost: 0, sellValue: 0, purchasable: false },
 ];
+
+// The consumables that can be listed on the player market: the Gold Pouches (goldPouch.ts), which are unbound by nature. THE one list isTradeable (gearInstances.ts) reads;
+// every other consumable, and every material, is never tradeable (standing decision of the owner: only forged gear of high rarity, unique drops and Gold in a pouch).
+export const TRADEABLE_CONSUMABLES: readonly ConsumableId[] = ['gold_pouch_s', 'gold_pouch_m', 'gold_pouch_l'];
 
 export function getConsumable(id: string): ConsumableDef | undefined {
   return CONSUMABLES.find((c) => c.id === id);
@@ -112,5 +124,8 @@ export function emptyConsumables(): Record<ConsumableId, number> {
     prospector_tonic: 0,
     forge_seal: 0,
     stash_deed: 0,
+    gold_pouch_s: 0,
+    gold_pouch_m: 0,
+    gold_pouch_l: 0,
   };
 }

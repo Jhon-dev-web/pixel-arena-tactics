@@ -7,6 +7,8 @@ import { SaveData } from '../game/engine';
 import { GEAR, GearItem, getGear, isInstancedSlot } from '../game/gear';
 import { canAffordReforge, getReforgeCost } from '../game/reforge';
 import T from '../game/tunables';
+import { isPouchId, pouchFace } from '../game/goldPouch';
+import PouchOpenButton from './PouchOpenButton';
 import { type GearInstance, clampRefine, isInstanceEquipped, isTradeable, listGearInstances, needsBindConfirm, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
@@ -585,6 +587,13 @@ export default function InventoryPanel({
         )}
 
         {selected?.kind === 'consumable' && selected.id === 'fertilizer' && <div className="inv-detail-desc">{t('inventory.useOnPlot')}</div>}
+
+        {selected?.kind === 'consumable' && isPouchId(selected.id) && !fromStash && selQty > 0 && (
+          <div className="inv-actions">
+            <div className="inv-detail-desc">{t('pouch.worth', { g: fmtNum(pouchFace(selected.id)) })}</div>
+            <PouchOpenButton id={selected.id} onOpen={(id) => bag?.openPouch(id)} className="inv-sell" />
+          </div>
+        )}
 
         {selected?.kind === 'consumable' && MANUALLY_USABLE.has(selected.id) && selQty > 0 && (
           <div className="inv-actions">

@@ -9,6 +9,7 @@ import { REFINING_RECIPES } from './refining';
 import { STASH_UPGRADES } from './stash';
 import { getReforgeCost } from './reforge';
 import { createGearInstance } from './gearInstances';
+import { isPouchId } from './goldPouch';
 
 // "Usar em...": where an item is consumed, derived from the REAL recipe data (never a hand-kept list): forge recipes, refining stations, alchemy, gear
 // refining (upgrade), reforge, delivery orders, the Garden, the stash upgrades. One pure function; the inventory turns each entry into a button that
@@ -82,7 +83,7 @@ export function usesOf(kind: 'material' | 'consumable', id: string, save?: Pick<
   if (EXPEDITION_TICKET_SKIP_MS[c]) push(out, 'delivery', ['board']);
   if (c === 'fertilizer') push(out, 'garden', ['garden']);
   if (c === 'forge_seal') push(out, 'forge', GEAR.filter((g) => g.recipe && !g.unique && isInstancedSlot(g.slot)).map((g) => g.id));
-  if (c === 'stash_deed') push(out, 'use', [c]);
+  if (c === 'stash_deed' || isPouchId(c)) push(out, 'use', [c]);
   if (c === 'xp_potion' || c === 'whetstone_oil' || c === 'repair_kit' || c === 'master_repair_kit' || c === 'atk_elixir' || BUFF_ITEM[c]) push(out, 'use', [c]);
   return out;
 }
