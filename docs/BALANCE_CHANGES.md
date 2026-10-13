@@ -1244,9 +1244,180 @@ Ler: nenhuma meta mexe de lugar, e as duas que mexem (chefe do andar 50 e, no N,
 
 ### 6. Achado que o diretor precisa saber: o nível 100 e o Paragon estão fora do alcance do XP de hoje
 
-`xpToReachLevel`: nível 50 = 326 mil XP, 75 = 18,1 milhões, 90 = 324 milhões, 100 = 3,34 **bilhões**; o nível de Paragon 1 custa 35,2 milhões e o 10, 40,3 milhões cada. A Caça paga no máximo ~9 mil XP/h (nível 75 em diante) e um estágio da Masmorra ou das Profundezas ~350 a 510 XP. Ou seja, ninguém chega ao nível 100, muito menos a Paragon, com as taxas de XP de depois do corte de 10x de 2026-10-10 (`huntingZones.ts`). As faixas altas desta rodada (pedidos acima do nível 75, metas da faixa 4, Paragon nas Profundezas) estão ajustadas contra heróis construídos pelo simulador (`buildHero`), como o pedido descreve, e não contra um ritmo de XP que existe. Este documento não mexe na curva de XP.
+`xpToReachLevel`: nível 50 = 326 mil XP, 75 = 18,1 milhões, 90 = 324 milhões, 100 = 3,34 **bilhões**; o nível de Paragon 1 custa 35,2 milhões e o 10, 40,3 milhões cada. A Caça paga no máximo ~9 mil XP/h (nível 75 em diante) e um estágio da Masmorra ou das Profundezas ~350 a 510 XP. Ou seja, ninguém chega ao nível 100, muito menos a Paragon, com as taxas de XP de depois do corte de 10x de 2026-10-10 (`huntingZones.ts`). As faixas altas desta rodada (pedidos acima do nível 75, metas da faixa 4, Paragon nas Profundezas) estão ajustadas contra heróis construídos pelo simulador (`buildHero`), como o pedido descreve, e não contra um ritmo de XP que existe. Este documento não mexe na curva de XP. **(Resolvido na Rodada 15, abaixo.)**
 
 ### 7. Não feito, ou verificado só em parte
 
 - A tela de metas / pedidos nas faixas 2 a 4 foi conferida por teste e pelos números na tela de Missões num save de nível 100; nenhum pedido de nível 50 a 100 foi aceito e entregue até o fim no navegador (o relógio real não deixa).
 - O simulador de progressão só chega ao nível ~50 no dia 21: as faixas altas dos pedidos (nível 50 a 100) e do Paragon dependem do teste `round14.test.ts` e dos relatórios `sim:orders` / `sim:depths`, não do cenário A.
+
+## Rodada 15 — o jogo depois do dia 21 ganha um ritmo (2026-10-13)
+
+O achado da seção 6 acima (o nível 100 e o Paragon fora do alcance do XP) era só a ponta: **nada depois do dia 21 tinha sido simulado**, e a segunda metade do jogo (peças tier 4 a 6, andares 76 a 100, última zona, Profundezas, Paragon) nunca teve ritmo. Esta rodada traz uma ferramenta nova, o simulador de longo prazo, e usa os números dela para dar um ritmo a esses 160 dias sem mexer nos dias 1 a 21.
+
+**Ferramenta.** `npm run sim:long` (`scripts/sim/longHaul.sim.ts`, `scripts/sim/long.mjs`): 6 seeds x 180 dias para o jogador comum (cenário A: 2 visitas por dia, sem Passe) e para o dono do Passe (cenário P), repartidas em processos (uns 6 min por seed de 180 dias; com 7 processos, uns 15 min para as 12). O jogador é o mesmo de `npm run sim` (as mesmas funções reais do jogo) com a bandeira `long`: depois do chefe do andar 100 as sessões vão para as Profundezas, e ele registra o Paragon, a profundeza, os tiers vestidos e **o que trava o próximo passo** (nível, materiais, ouro, CP). Imprime marcos, uma tabela a cada 10 dias, XP por fonte, a comparação dono contra não-dono e o maior trecho sem desbloqueio. Variáveis: `LONG_SEEDS`, `LONG_DAYS`, `LONG_SCEN`, `LONG_WORKERS`, `LONG_OUT`, `LONG_KEEP`, `SIM_T` / `SIM_ZONES` / `SIM_GEAR` / `SIM_GATES` / `SIM_SETS` (trocar números sem editar) e `SIM_NO_UNIQUES=1`. **As tabelas abaixo são sem peças únicas**: um único de arma ou anel vale +30 a 60% de CP no andar 100 e cai ao acaso, e com ele a mediana de 6 seeds oscila demais; a rodada com únicos (4 seeds) está na seção 4 e conta a mesma história com 0 a 6 dias de diferença.
+
+### 1. Estado de antes (o que o jogo era do dia 21 em diante)
+
+Medido com o jogador corrigido (seção 9) e os números de antes (a árvore desta rodada com os valores velhos trocados por `SIM_T` / `SIM_ZONES` / `SIM_GATES` / `SIM_GEAR`; sem únicos, 6 seeds, mediana / seed mais rápida; "nunca" = não chega em 180 dias):
+
+| Marco | Alvo | Sem Passe (A) | Dono (P) |
+|---|---|---|---|
+| nível 60 | dia 30-40 | 37 / 35 | 30 / 22 |
+| nível 75 | 55-75 | 178 (5 de 6) / 177 | 149 / 148 |
+| nível 90 | 95-125 | nunca | nunca |
+| nível 100 | 130-170 | nunca | nunca |
+| chefe do andar 75 | 35-55 | 29,5 / 27 | 16,5 / 16 |
+| chefe do andar 100 | 110-160 | 155,5 (5 de 6) / 96 | 127,5 / 58 |
+| conjunto T4 vestido | 30-45 | 34,5 / 33 | 23,5 / 20 |
+| conjunto T5 | 60-90 | nunca (a arma T5 no dia 178) | 157,5 / 155 |
+| conjunto T6 | 110-150 | nunca | nunca |
+| última zona de caça (andar 76) | - | 29,5 / 27 | 16,5 / 16 |
+| profundeza 10 | - | nunca (2 de 6, dia 179) | 152,5 / 149 |
+| Paragon 1 | - | nunca | nunca |
+| maior trecho sem desbloqueio (dia 21 a 180) | ~5 dias | mediana 68, pior 73 dias (dias 104-176) | 73 dias (dias 76-148) |
+
+O nível parava em 75: o jogador ganhava uns 145 mil XP por dia (a última zona, 8 h por visita) e o nível 76 custa 3,7 milhões. A primeira medição, ainda com o jogador sem os consertos da seção 9 e com únicos, dava o mesmo quadro (nível 70 só no dia 99, conjunto T4 no dia 57 em 4 de 6 seeds, nenhum T5, nenhum nível 75 em 3 de 6 seeds).
+
+### 2. O que mudou
+
+| Número | Antes | Depois |
+|---|---|---|
+| Curva de XP, crescimento por nível nos níveis 61-80 / 81-100 (`heroGrowth4/5`) | 1,21 / 1,27 | **1,03 / 1,03** |
+| XP total até o nível 100 | 3,34 bilhões | **19,9 milhões** |
+| Caça, Fenda do Demônio (zona 3), XP/h | 4 650 | **6 000** |
+| Caça, Abismo de Sangue (zona 4, a última), XP/h; teto de armazenamento sem Passe | 6 950; 8 h | **13 000; 6 h** (o dono continua com 8 h) |
+| XP de um pedido: fator máximo de nível | 7,7 (no nível 100) | **3,2** (do nível 50 em diante; o Ouro mantém 3,2 / 5,5 / 7,7) |
+| Andares 51-75, PV / dano extra por andar (`lateHp/DmgGrowth`) | 0 | **+1,2% / +0,9%** |
+| Andares 76-100, PV / dano extra por andar (`lateHp/DmgGrowth2`) | 0 | **+7,0% / +4,1%** |
+| Fator sobre o andar 100 (PV / dano / PV x dano) | 1 / 1 / 1 | 3,05 / 2,25 / 6,9 (andares 1-50 intocados, byte a byte) |
+| Peças T5 (elmo / luvas / botas / escudo / anel; arma e armadura seguem em 70) | nível 70 | **72 / 74 / 76 / 78 / 80** |
+| Peças T6 (idem; arma e armadura seguem em 90) | nível 90 | **92 / 94 / 96 / 98 / 100** |
+| Obsidiana e madeira ancestral (nível de Mineração / Lenhador) | 70 | **60** |
+| Fornalha de obsidiana e cabo ancestral (nível do herói) | 75 | **70** |
+| Paragon, dano por nível / teto | +3% / +150% | **+1% / +50%** |
+| Paragon, custo do nível 1 (parte do custo do nível 99 -> 100) / crescimento por nível | 35,2 milhões (0,05) / 1,5% | **457 mil (0,6) / 1%** |
+| Profundezas, profundeza 0 | o monstro do andar 99 | **x0,51** dele (PV e dano) |
+| Profundezas, crescimento por profundeza, PV / dano | 3,5% / 3% | **2,8% / 2,2%** |
+| Profundezas, chefe, PV / dano | x1,1 / x1,05 | **x1 / x1** |
+
+Tabela de recomendação de CP por andar regerada (`npm run sim:cp`): os andares 87 a 100 que nenhum herói da escada (nível 100, tier 6 +8) limpa agora recebem o CP que a lei de potência dos andares medidos pede (andar 99: 9 660, andar 100: 12 394), e não "o CP do herói mais forte" (6 728) repetido em todos. O jogador simulado limpa o andar 100 com ~8 000 de CP porque bebe tônicos e poções; o herói de referência da escada não.
+
+### 3. XP por nível, antes e depois
+
+| Nível | Custo de subir do nível (antes) | (depois) | XP total até o nível (antes) | (depois) |
+|---|---|---|---|---|
+| 50 | 53 070 | 53 070 | 325 729 | 325 729 |
+| 60 | 255 097 | 255 097 | 1 514 126 | 1 514 126 |
+| 70 | 1 418 318 | 332 844 | 7 308 369 | 4 360 779 |
+| 80 | 9 541 732 | 447 314 | 45 991 294 | 8 176 458 |
+| 90 | 82 008 846 | 583 643 | 323 929 743 | 13 168 081 |
+| 99 | 704 845 916 | 761 522 | 2 630 733 708 | 19 097 376 |
+| 100 | - | - | 3 335 579 624 | 19 858 898 |
+
+Os níveis 1 a 60 são idênticos (o teste `xpCurve.test.ts` confere cada nível); a curva é contínua (cada banda começa no preço em que a anterior terminou) e nunca fica mais barata de um nível para o seguinte. Com ~200 mil XP por dia (a última zona, 12 h) um nível custa de 1,3 dia (nível 60) a 3,8 dias (nível 99).
+
+**Saves antigos** (`xpCurve.ts`, `normalizeSave`): um save que tem o selo do esquema de equipamento mas não o selo novo `xpCurve: 2` tem o XP **mapeado**: o jogo lê qual nível e que fração dele o XP tinha na curva velha e grava o XP que dá o mesmo nível e a mesma fração na nova. Até o nível 60 o XP não muda; acima, cai (um herói de nível 75 com 18,1 milhões passa a ter ~6,0 milhões e continua nível 75, a meio caminho do 76). O nível nunca muda, para cima ou para baixo (o teste varre os níveis 1 a 99 no início, no meio e no fim do nível). Um objeto sem nenhum dos dois selos (teste, importação feita à mão) é lido como está: a curva nova só torna um nível mais barato, ninguém perde nível. Quem tivesse passado do nível 100 na curva velha (3,3 bilhões, ninguém) mantém os níveis inteiros de Paragon.
+
+### 4. Marcos depois (sem únicos, 6 seeds; mediana / seed mais rápida)
+
+| Marco | Alvo | Sem Passe (A) | Dono (P) | Dono mais rápido em |
+|---|---|---|---|---|
+| nível 60 | dia 30-40 | **38** / 34 | 24,5 / 23 | 36% |
+| nível 75 | 55-75 | **71** / 67 | 57 / 45 | 20% |
+| nível 90 | 95-125 | **106** / 102 | 87 / 76 | 18% |
+| nível 100 | 130-170 | **141** / 135 | 114 / 104 | 19% |
+| chefe do andar 75 | 35-55 | **37,5** / 30 | 33,5 / 17 | 11% |
+| chefe do andar 100 | 110-160 | **136,5** / 122 | 100 / 87 | 27% |
+| conjunto T4 | 30-45 | **39** / 31 | 28 / 19 | 28% |
+| conjunto T5 | 60-90 | **83** / 78 | 67,5 / 56 | 19% |
+| conjunto T6 | 110-150 | **142** / 135 | 114 / 105 | 20% |
+| última zona (andar 76) | - | 37,5 / 30 | 33,5 / 17 | 11% |
+| profundeza 10 / 30 | - | 136,5 / 141 | 100 / 103 | 27% / 27% |
+| Paragon 1 / 10 / 25 | - | 143 / 164,5 / mais de 180 | 116 / 131,5 / 161 | 19% |
+
+Com únicos (4 seeds, mediana): A nível 60 / 75 / 90 / 100 nos dias 42 / 68,5 / 103,5 / 138, chefe 75 no 39,5, chefe 100 no 113,5, T4 / T5 / T6 nos 35,5 / 76,5 / 138; P nos 25,5 / 49,5 / 77,5 / 103,5, chefe 75 no 21, chefe 100 no 76, T6 no 100,5. Todos dentro das janelas pedidas, menos o nível 60 com únicos (42 contra 30-40) e, no dono, o chefe do 75 (a janela é de CP, não de tempo: o dono só chega 4 dias antes). O dono fica 18 a 28% mais rápido nos marcos de nível e de peças (a meta era 20 a 30%); o que lhe dá a vantagem na segunda metade é o teto de 8 h na última zona (o comum tem 6), os +10% de materiais e a vaga extra de pedidos.
+
+### 5. Paragon e Profundezas
+
+**Paragon** (+1% de dano por nível, teto +50% no nível 50): o nível 1 custa 457 mil XP, o 10 custa 500 mil, o 25 custa 580 mil, o 50 custa 744 mil; os 50 níveis juntos, 29,5 milhões. Um herói de nível 100 que caça 12 h por dia (~200 mil XP) ganha um nível de Paragon a cada 2,3 dias (nível 1) a 3,7 dias (nível 50), 147 dias para os 50: o jogador simulado faz 16 níveis nos 39 dias seguintes ao nível 100 (um a cada 2,4 dias), o dono 33 em 66 dias.
+
+**Profundezas** (`npm run sim:depths`; herói de nível 100 com as sete peças tier 6 +8 da mesma raridade, atributos do simulador, build Guerreiro, sem poções; profundeza vencida = 2 de 3 execuções):
+
+| Herói | Rodada 14 | Agora |
+|---|---|---|
+| comum, Paragon 0 / 10 / 20 / 30 / 40 / 50 | 24 / 29 / 32 / 32 / 35 / 39 | **20 / 23 / 26 / 27 / 27 / 30** |
+| épico, Paragon 0 / 20 / 50 | 37 / 39 / 48 | **35 / 37 / 45** |
+| lendário, Paragon 0 / 10 / 20 / 30 / 40 / 50 | 41 / 47 / 49 / 49 / 49 / 55 | **43 / 43 / 46 / 49 / 51 / 51** |
+
+Um herói de nível 100 em tier 6 +8 comum chega à profundeza 20 (alvo 20-25); cada 10 níveis de Paragon valem +3 a +4 profundezas nos dois primeiros blocos (+1 a +3 depois, onde o teto de 50% já pesa pouco); a profundeza 50 só cai para o herói **todo lendário com Paragon 40 ou mais** (o lendário no Paragon 30 para na 49, o épico no Paragon 50 na 45, o comum no 30). Chance de único / relíquia do chefe, Runas e recorde por profundeza não mudam: o limite de 1 peça de profundeza por ~20 dias do `depths.test.ts` continua verde. O jogador simulado passa pelas profundezas 10, 20 e 30 num intervalo de 4 a 5 dias logo depois do chefe do 100 (as primeiras são fáceis, 0,51 do andar 99), mas cada chefe só rende uma vez e o esperado de peças dessa primeira rajada é menor que 0,5. Ele chega à profundeza 35 (31 a 43) no dia 180, mais fundo que o herói de referência porque a raridade das peças que ele forja varia e ele bebe tônicos.
+
+### 6. Tabela de guarda dos dias 1 a 21 (cenário A, 20 seeds, mediana), antes -> depois
+
+U = com únicos (padrão), N = `SIM_NO_UNIQUES=1`. "Antes" = a árvore antes das mudanças de número desta rodada; "depois" = esta rodada.
+
+| Meta | Antes U / N | Depois U / N |
+|---|---|---|
+| T2 primeira sessão >= andar 8; checkpoint 10 no dia 1 | 8 / 8 | 8 / 8 |
+| T3 primeira peça forjada (dia <= 2) | 2 / 2 | 2 / 2 |
+| T4 nível dia 1 / 3 / 14 (10-16 / 20-29 / 45-60) | 13 / 27 / 47 · 13 / 27 / 47 | 13 / 27 / 47 · 13 / 27 / 47 |
+| T5 chefe 25 pela 1ª vez (dia 4-6); vitória ao chegar | dia 5, 0% · dia 5, 0% | dia 5, 0% · dia 5, 0% |
+| T6 chegada ao andar 50: 1ª seed / mediana (meta 12-15) | 12 / 15 · 12 / 14,5 | 12 / 15 · 12 / 14,5 |
+| T6 chefe 50: 1ª seed / mediana / seeds em 21 dias | 13 / 15 / 20 · 13 / 15 / 20 | 13 / 15 / 20 · 13 / 15 / 20 |
+| T7 menor razão (N+1)/(N-1) em volta dos chefes (>= 1,0) | 1,05 | 1,08 |
+| T8 derrota mantém 75% do ouro | 75% | 75% |
+| nível no dia 21 | 51 (49-53) · 51 (49-52) | 51 (49-53) · 51 (49-53) |
+| andar mais alto no dia 21 (mediana) | 70 · 70 | **60 · 62** |
+
+O que muda nos dias 1-21 é só o andar 51 em diante: a zona 3 paga 6 000 XP/h (a partir do andar 51, uns dias 15-21) e os andares 51-75 ficaram mais duros (no dia 21 a mediana está no andar 60-62, não no 70). O nível do dia 21 e as metas T2 a T8 não se movem.
+
+### 7. Trechos sem desbloqueio (dia 21 a 180)
+
+"Desbloqueio" = uma peça de tier novo vestida, uma zona, um chefe 25/50/75/100, uma profundeza múltipla de 5, um ponto de habilidade (nível múltiplo de 5), um perk de maestria. O `sim:long` mede o maior intervalo entre dois deles; o Paragon (um nível a cada 2-4 dias) conta à parte.
+
+| | Sem Paragon | Contando o Paragon |
+|---|---|---|
+| Antes, A | mediana 68, pior 73 dias (104-176) | idem |
+| Antes, P | 73 dias (76-148) | idem |
+| Agora, A (mediana das seeds / pior seed) | 28 / 36 dias (138-173, **depois** do nível 100 e do T6) | 12 / **14 dias (106-119)** |
+| Agora, P | 52 / 75 dias (106-180, depois do nível 100) | 9 / **10 dias (38-47)** |
+
+Até o nível 100 e o conjunto T6 o pior trecho de qualquer seed é de **14 dias** (A, dias 106-119) e **10 dias** (P, dias 38-47). O trecho típico do comum é de 12 dias entre os dias 90 e 119 (níveis 84 a 95: o conjunto T5 fecha no dia 83 e a primeira peça T6 só vem com o nível 90, no 106): é o buraco que sobra depois de escalonar as portas. Depois do nível 100 e do T6 só restam o Paragon (a cada 2-4 dias) e as profundezas (um múltiplo de 5 a cada poucos dias até a 35, depois mais raro).
+
+### 8. Outras coisas que dependiam do nível, conferidas
+
+- **Pedidos**: o Ouro mantém o fator de 3,2 / 5,5 / 7,7 (ancorado no que a Caça paga em Ouro, que não mudou). O XP, não: 61 mil e 86 mil XP de um pedido de 10 h nos níveis 75 e 100 passariam a valer 15% e 11% de um **nível** na curva nova (e 36% e 51% de uma hora de caça da última zona); o fator do XP agora para em 3,2 (`T.deliveries.xpFactorMax`, 35,8 mil XP por pedido de 10 h do nível 50 em diante). O jogador simulado ganha 0,2 a 17 mil XP por dia em pedidos (de 200 mil no total).
+- **Metas semanais** (faixas 1-24, 25-49, 50-99, 100+): o jogador comum fica na faixa 3 do dia 17 ao dia 141 e entra na faixa 4 no 141; as horas de caça da faixa (10 e 12 por semana) cabem no que ele caça (84 h por semana).
+- **Pontos de habilidade** (1 a cada 5 níveis, 20 no total): o jogador comum ganha um a cada 9 a 19 dias entre os níveis 60 e 100 (8 pontos em 103 dias); sem mudança.
+- **Pontos de atributo** (3 por nível, 300 no 100): sem mudança; o teto de 300 de AGI do combate continua certo.
+- **Conquistas de nível**: não existem no jogo (as de profissão e de CP não dependem da curva); não há nada a mudar.
+- **Tabela de CP recomendada**: regerada (seção 2); o teste `balance.test.ts` confere que está em dia.
+
+### 9. O jogador simulado: o que foi consertado, e o que o simulador longo não modela
+
+Consertos de política que só aparecem depois do dia 21 (a bandeira `long` liga só neles; nada muda nos dias 1-21 do `npm run sim`):
+
+1. O jogador veste a peça de tier maior mesmo que ela esteja em +0 e a antiga em +8. Sem isso ele nunca refinava a nova, ficava com a velha e **forjava a mesma armadura tier 4 outra vez, dezenas de vezes** (era o que segurava o conjunto T4 em 57 dias e o T5 para sempre).
+2. A ordem de forja dos itens de mesmo tier (o garfo dragão do tier 4 é feito com uma peça dourada do tier 4): o ingrediente vem antes. Antes o jogador tentava a armadura de escamas, falhava por falta do ingrediente e ficava dias nisso.
+3. Mochila cheia e uma recompensa de caça com peça única segurada: o jogador libera espaço (guarda, vende, descarta o excesso e as peças de tier menor que não são ingrediente) e resgata de novo. Sem isso a caça parava para sempre por volta do dia 40.
+
+**Não modelado** (o relatório diz o que cada tabela inclui): metas semanais e sequência de login (Ouro e Runas), a trilha do Passe, sessões extras de Masmorra com Runas, rerrolagem de pedidos, mercado entre jogadores, desmonte de peças, reforja, a Relíquia de Temporada, poções além das pequenas de HP, o Jardim além do que a política já planta. **Aviso de economia**: a partir do dia ~60 o jogador simulado precisa jogar fora centenas de unidades dos materiais raros que sobram (a mochila enche, o baú tem 50 espaços e o mercador compra uma quantidade limitada por dia): a segunda metade tem muito material sobrando e pouco destino para ele além das receitas.
+
+### 10. Decisões que o diretor pode discordar
+
+1. **Zona 4 com teto de 6 h (era 8) e 13 000 XP/h.** É o que dá ao dono do Passe (teto de 8 h) +33% de horas na última zona e os 18 a 28%: sem isso o dono ficava só 13 a 23% à frente nos níveis 90 e 100. Quem olha o teto da zona vê 6 h em vez de 8; o comum passa de 145 mil para 203 mil XP por dia na última zona (13 000 x 1,3 x 12 h).
+2. **Zona 3 paga 29% mais XP** (4 650 -> 6 000). Sem isso o nível 60 do jogador comum caía no dia 46 (alvo 30-40), porque a zona 4 agora só abre depois do chefe do 75 (dia ~37). Mexe nos dias 15-21 (o nível do dia 21 e as metas T2-T8 não mudam).
+3. **Andares 51-100 mais duros**: o andar mais alto no dia 21 cai de 70 para 60. É o preço de segurar o chefe do 75 até o dia ~37 e o do 100 até o ~136. A tabela de CP recomendada para os andares 87-100 passa a ser extrapolada (12 394 no andar 100), bem acima do CP com que o jogador simulado limpa o andar (~8 000, com tônicos e poções).
+4. **Portas das peças T5 e T6 escalonadas** (elmo 72 ... anel 80; 92 ... 100). Dá um desbloqueio novo a cada ~5 dias entre os níveis 70-80 e 90-100, mas o conjunto T6 só fecha no nível 100 (dia 142; o alvo era 110-150). Se preferir tudo em 70 / 90, o custo é um buraco de uns 25 dias sem peça nova.
+5. **Obsidiana e madeira ancestral abrem na profissão 60** (eram 70) e os dois consumidores na Fornalha / Carpintaria no nível 70 do herói (eram 75): com 70 a profissão só chegava ao dia ~95 e o conjunto T5 fechava depois do dia 150. O teste `professions.test.ts` passou a pedir 10 níveis de distância da ouro / élfica, não 15.
+6. **Profundeza 0 em 0,51 do monstro do andar 99**: a profundeza 1 é mais fácil que o andar 99 (potência cerca de 0,26x), para que o herói de referência (nível 100, tier 6 +8 comum) chegue à profundeza 20 sem herdar inteiro o fator de 6,9x dos andares 76-100. A recomendação de CP da profundeza 0 é a do andar 99, a da profundeza 1 já cai para ~0,5x.
+7. **XP de pedido limitado em 3,2x**: a decisão 3 da rodada 14 dizia "se for demais, o botão é levelScale50"; usei um teto separado para o Ouro manter as âncoras.
+8. **O mapeamento de saves antigos preserva o nível, não o XP.** A alternativa mais simples (não mapear) deixaria um herói de nível 75 pulando para o 99 só por carregar o jogo; a escolhida mantém o nível 75 e a fração dentro dele. Quem estava no nível 75 com 18,1 milhões passa a ver 6,0 milhões.
+9. **Alvo do nível 60**: a mediana ficou em 38 (sem únicos) e 42 (com únicos), no limite alto da janela de 30-40 (a curva até o 60 é a de antes, para não mexer nos dias 1-21).
+10. **Todas as medianas são sem únicos**; com únicos há 0 a 6 dias de diferença (seção 4).
+
+### 11. Não feito, ou verificado só em parte
+
+- Nenhum save real de nível 61+ foi carregado no navegador: o mapeamento está no teste `xpCurve.test.ts` (níveis 1 a 99, três pontos de cada nível, o selo novo, o objeto sem selo) e na leitura do código.
+- Os números de depois vêm de 6 seeds (4 com únicos), não de 20: a mediana do nível 60 oscila uns 3 dias de uma rodada para outra, os marcos de chefe um pouco mais.
+- A tela da Caça mostra o novo teto de 6 h na última zona e o XP por hora; não abri a tela com um save de nível 80.

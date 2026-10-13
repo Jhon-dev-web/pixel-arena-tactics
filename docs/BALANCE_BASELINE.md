@@ -1,3 +1,5 @@
+> **2026-10-13 (rodada 15, dias 21 a 180):** o fim deste documento ganhou a seção "Dias 21 a 180", medida por `npm run sim:long` (6 seeds x 180 dias, jogador comum e dono do Passe). O resto do relatório (3 semanas) segue sendo o de `npm run sim`, com os mesmos valores nos dias 1 a 21 (a rodada 15 só mexe de depois do andar 50 em diante; ver `BALANCE_CHANGES.md`, Rodada 15, seção 6).
+>
 > **2026-10-11 (rodada 8, atributos básicos):** o relatório completo abaixo foi regerado com os novos valores de VIT, RES e AGI (`vitHpPerPoint` 4,5 + 0,03 por nível, `resHpPerPoint` 2, `agiHalfPoint` 80) e os orcs 325 / 48 (`BALANCE_CHANGES.md`, Rodada 8); o resumo e a política acima continuam descrevendo o baseline anterior.
 >
 > **2026-10-11 (rodada 7, habilidades):** o relatório completo abaixo foi regerado com habilidades (cenário A = Guerreiro) e os inimigos retunados (orcs hp 310 / dmg 46, chefe 25 em 0,30, chefe 50 em 0,88, tabela de CP); o texto de resumo e a política acima descrevem o baseline anterior. Detalhes em `BALANCE_CHANGES.md` (Rodada 7).
@@ -758,3 +760,117 @@ Receitas marcadas: iron_chainmail, iron_greaves, iron_gauntlets, iron_helm, silv
 | 50 | 2 665 × 324 = 863 460 | 5 517 × 267 = 1 473 039 | 2 652 × 343 = 909 636 | 1.05 | 1.7 |
 | 75 | 3 728 × 478 = 1 781 984 | 9 084 × 436 = 3 960 624 | 8 759 × 441 = 3 862 719 | 2.17 | 2.2 |
 | 100 | 11 226 × 563 = 6 320 238 | 14 279 × 682 = 9 738 278 | - | - | 1.5 |
+
+
+## Dias 21 a 180 (rodada 15, 2026-10-13)
+
+O restante deste documento mede as primeiras 3 semanas. A segunda metade do jogo é medida por `npm run sim:long` (`scripts/sim/longHaul.sim.ts`, o mesmo jogador de `npm run sim` com a bandeira `long`; leia o cabeçalho do arquivo para o que ele modela e o que não). **Medição: 6 seeds x 180 dias, sem peças únicas (`SIM_NO_UNIQUES=1`), no commit desta rodada.** Marcos, seeds mais rápidas, antes e depois estão em `docs/BALANCE_CHANGES.md`, Rodada 15; abaixo a tabela de 10 em 10 dias dos dois jogadores.
+
+- **Como reproduzir:** `SIM_NO_UNIQUES=1 npm run sim:long` (uns 15 min com 7 processos; `LONG_SEEDS=3 LONG_WORKERS=6` para uma passada de 7 min). `LONG_SCEN=A` só o jogador comum. Para trocar um número sem editar o código: `SIM_T='{"battle":{"lateHpGrowth2":0.07}}'`, `SIM_ZONES`, `SIM_GEAR`, `SIM_GATES`.
+- **A coluna "Tier vestido"** é a mediana dos 7 slots / o pior slot. **"Trava"** é o que impede o próximo passo no fim do dia (moda entre as seeds): `nível` = a peça seguinte pede um nível do herói que ainda não chegou, `materiais` / `ouro` = falta isso, `pronto` = só falta forjar, `tudo forjado`; e na masmorra `CP` = o herói não passa do próximo andar / profundeza.
+- **O que a tabela mostra** (jogador comum): o nível 60 no dia 38 e o 100 no 141; o conjunto T4 no 39, o T5 no 83, o T6 no 142; o chefe do 75 no 37,5 e o do 100 no 136,5; as Profundezas depois disso (profundeza ~35 no dia 180); o Paragon a cada 2-4 dias depois do nível 100. O XP por dia sobe de ~10 mil (dias 1-10) a ~200 mil (a partir do dia 60, só a Caça da última zona), e é a Caça, não a Masmorra, que paga quase tudo.
+
+### Cenário A (jogador comum, sem Passe): 6 seeds, 180 dias
+
+| Dia | Nível | Andar | Profundeza | Tier vestido: mediana / pior slot | CP | Horas de caça nos 10 dias por zona (z1 / z2 / z3 / z4) | Paragon | Trava: forja; masmorra |
+| --: | --- | --- | --- | --- | --- | --- | --- | --- |
+| 10 | 42 (40–43) | 31 (30–37) | 0 | 2 / 2 | 1 060 (929–1 307) | 15 / 8 / 0 / 0 | 0 | materiais; CP |
+| 20 | 52 (51–52) | 60 | 0 | 3 / 3 | 1 791 (1 672–1 870) | 10 / 26 / 4 / 0 | 0 | materiais; CP |
+| 30 | 55 (54–56) | 75 (60–76) | 0 | 4 / 3 | 2 433 (1 837–2 709) | 0 / 10 / 23 / 0 | 0 | materiais; CP |
+| 40 | 61 (57–62) | 76 (70–78) | 0 | 4 / 3.5 | 2 648 (2 576–2 965) | 0 / 9 / 57 / 20 | 0 | nível; CP |
+| 50 | 64 (61–66) | 76 (75–78) | 0 | 4 / 4 | 2 761 (2 582–3 110) | 0 / 2 / 12 / 41 | 0 | nível; CP |
+| 60 | 70 (65–71) | 80 (75–83) | 0 | 4 / 4 | 4 055 (2 712–4 296) | 0 / 2 / 22 / 82 | 0 | nível; CP |
+| 70 | 75 (68–76) | 86 (75–88) | 0 | 5 / 4 | 4 699 (2 786–5 159) | 0 / 2 / 34 / 65 | 0 | nível; CP |
+| 80 | 80 (73–81) | 88 (82–90) | 0 | 5 / 4 | 5 062 (4 265–5 505) | 0 / 0 / 15 / 95 | 0 | nível; CP |
+| 90 | 84 (78–85) | 89 (86–90) | 0 | 5 / 5 | 5 325 (4 834–5 667) | 0 / 0 / 4 / 111 | 0 | nível; CP |
+| 100 | 88 (82–89) | 90 (88–90) | 0 | 5 / 5 | 5 506 (5 214–5 850) | 0 / 0 / 1 / 118 | 0 | nível; CP |
+| 110 | 91 (86–92) | 94 (90–100) | 0 | 5 / 5 | 7 121 (5 622–7 733) | 0 / 0 / 9 / 104 | 0 | nível; CP |
+| 120 | 95 (90–95) | 100 (90–100) | 0 | 5.5 / 5 | 7 921 (6 282–8 482) | 0 / 0 / 5 / 109 | 0 | nível; CP |
+| 130 | 97 (93–98) | 100 (93–100) | 0 (0–33) | 6 / 5 | 8 191 (6 622–9 092) | 0 / 0 / 10 / 98 | 0 | nível; CP |
+| 140 | 100 (95–100) | 100 | 27 (0–35) | 6 / 5.5 | 8 714 (8 152–9 646) | 0 / 0 / 6 / 109 | 0 (0–2) | tudo forjado; CP |
+| 150 | 100 (98–100) | 100 | 32 (0–40) | 6 / 6 | 8 892 (8 400–9 837) | 0 / 0 / 2 / 117 | 4 (0–6) | tudo forjado; CP |
+| 160 | 100 | 100 | 34 (0–42) | 6 / 6 | 9 214 (8 561–10 024) | 0 / 0 / 2 / 113 | 8 (1–10) | tudo forjado; CP |
+| 170 | 100 | 100 | 34 (0–42) | 6 / 6 | 9 383 (8 720–10 208) | 0 / 0 / 0 / 120 | 12 (5–14) | tudo forjado; CP |
+| 180 | 100 | 100 | 35 (31–43) | 6 / 6 | 9 549 (8 875–10 389) | 0 / 0 / 0 / 120 | 16 (9–18) | tudo forjado; CP |
+
+XP por dia e Ouro em caixa (média dos 10 dias até o dia, mediana entre seeds):
+
+| Dia | XP total | Masmorra | Caça | Pedidos | Missões e outros | Ouro em caixa |
+| --: | --- | --- | --- | --- | --- | --- |
+| 10 | 10 694 | 403 | 6 741 | 3 517 | 0 | 438 |
+| 20 | 33 585 | 644 | 14 488 | 17 226 | 0 | 3 295 |
+| 30 | 32 030 | 427 | 22 025 | 8 193 | 0 | 7 371 |
+| 40 | 100 582 | 92 | 81 570 | 16 159 | 0 | 12 991 |
+| 50 | 65 574 | 14 | 59 636 | 7 408 | 0 | 24 955 |
+| 60 | 171 175 | 87 | 166 827 | 2 902 | 0 | 26 385 |
+| 70 | 172 195 | 148 | 150 882 | 19 395 | 0 | 22 803 |
+| 80 | 193 292 | 95 | 171 564 | 19 887 | 0 | 29 195 |
+| 90 | 204 022 | 48 | 194 957 | 10 069 | 0 | 34 767 |
+| 100 | 205 531 | 0 | 202 755 | 2 755 | 0 | 41 078 |
+| 110 | 188 428 | 177 | 187 156 | 5 615 | 0 | 37 621 |
+| 120 | 201 924 | 53 | 187 166 | 15 967 | 0 | 27 907 |
+| 130 | 177 750 | 60 | 174 302 | 7 661 | 0 | 29 944 |
+| 140 | 208 314 | 207 | 192 236 | 9 048 | 0 | 27 804 |
+| 150 | 203 329 | 143 | 202 773 | 1 849 | 0 | 44 747 |
+| 160 | 203 858 | 69 | 202 777 | 3 718 | 0 | 51 190 |
+| 170 | 204 068 | 0 | 202 775 | 1 296 | 0 | 55 997 |
+| 180 | 203 761 | 71 | 202 775 | 216 | 0 | 60 719 |
+
+### Cenário P (dono do Passe de Aventureiro, só os benefícios): 6 seeds, 180 dias
+
+| Dia | Nível | Andar | Profundeza | Tier vestido: mediana / pior slot | CP | Horas de caça nos 10 dias por zona (z1 / z2 / z3 / z4) | Paragon | Trava: forja; masmorra |
+| --: | --- | --- | --- | --- | --- | --- | --- | --- |
+| 10 | 50 (49–50) | 54 (40–60) | 0 | 3 / 2 | 1 732 (1 437–1 961) | 24 / 40 / 0 / 0 | 0 | materiais; CP |
+| 20 | 57 (55–58) | 75 (75–78) | 0 | 4 / 3 | 2 539 (2 463–2 831) | 1 / 31 / 36 / 3 | 0 | materiais; CP |
+| 30 | 63 (61–65) | 75 (75–79) | 0 | 4 / 4 | 2 732 (2 625–3 107) | 0 / 13 / 85 / 35 | 0 | nível; CP |
+| 40 | 68 (66–72) | 77 (75–85) | 0 | 4 / 4 | 2 937 (2 771–4 351) | 0 / 11 / 57 / 53 | 0 | nível; CP |
+| 50 | 72 (70–78) | 82 (79–87) | 0 | 4 / 4 | 4 399 (3 665–4 966) | 0 / 9 / 35 / 73 | 0 | nível; CP |
+| 60 | 77 (75–82) | 87 (82–90) | 0 | 5 / 4 | 4 892 (4 323–5 294) | 0 / 0 / 20 / 80 | 0 | nível; CP |
+| 70 | 81 (78–87) | 90 (88–90) | 0 | 5 / 5 | 5 282 (5 119–5 546) | 0 / 0 / 15 / 95 | 0 | nível; CP |
+| 80 | 87 (82–91) | 90 (88–100) | 0 | 5 / 5 | 5 718 (5 367–8 283) | 0 / 0 / 5 / 131 | 0 | nível; CP |
+| 90 | 91 (87–95) | 100 (90–100) | 0 (0–33) | 5 / 5 | 7 748 (6 118–8 597) | 0 / 0 / 8 / 137 | 0 | nível; CP |
+| 100 | 95 (91–98) | 100 | 15 (0–35) | 6 / 5 | 8 184 (7 410–8 880) | 0 / 0 / 16 / 125 | 0 | nível; CP |
+| 110 | 99 (94–100) | 100 | 32 (0–35) | 6 / 5 | 8 625 (8 258–9 297) | 0 / 0 / 11 / 129 | 0 (0–4) | nível; CP |
+| 120 | 100 (97–100) | 100 | 33 (0–37) | 6 / 6 | 9 155 (8 782–9 617) | 0 / 0 / 4 / 148 | 4 (0–9) | tudo forjado; CP |
+| 130 | 100 | 100 | 36 (29–41) | 6 / 6 | 9 420 (8 490–9 846) | 0 / 0 / 1 / 155 | 9 (0–14) | tudo forjado; CP |
+| 140 | 100 | 100 | 36 (30–42) | 6 / 6 | 9 636 (8 741–10 113) | 0 / 0 / 0 / 160 | 15 (6–19) | tudo forjado; CP |
+| 150 | 100 | 100 | 36 (30–43) | 6 / 6 | 9 847 (8 945–10 330) | 0 / 0 / 0 / 160 | 20 (11–24) | tudo forjado; CP |
+| 160 | 100 | 100 | 36 (33–43) | 6 / 6 | 10 054 (9 183–10 543) | 0 / 0 / 0 / 160 | 25 (17–29) | tudo forjado; CP |
+| 170 | 100 | 100 | 37 (35–43) | 6 / 6 | 10 236 (9 378–10 711) | 0 / 0 / 0 / 160 | 29 (22–33) | tudo forjado; CP |
+| 180 | 100 | 100 | 37 (36–44) | 6 / 6 | 10 415 (9 530–10 876) | 0 / 0 / 0 / 160 | 33 (26–37) | tudo forjado; CP |
+
+### Dono contra não-dono (mediana de dias)
+
+| Marco | Sem Passe (A), dia | Com Passe (P), dia | Dono mais rápido em |
+| --: | --- | --- | --- |
+| nível 50 | 17 | 10 | 41% |
+| nível 60 | 38 | 24.5 | 36% |
+| nível 70 | 59 | 42.5 | 28% |
+| nível 75 | 71 | 57 | 20% |
+| nível 80 | 81 | 67.5 | 17% |
+| nível 90 | 106 | 87 | 18% |
+| nível 100 | 141 | 114 | 19% |
+| andar 50 (chegada) | 15 | 10 | 33% |
+| chefe do andar 50 vencido | 16.5 | 10.5 | 36% |
+| andar 75 (chegada) | 30 | 19.5 | 35% |
+| chefe do andar 75 vencido | 37.5 | 33.5 | 11% |
+| andar 100 (chegada) | 115 | 89 | 23% |
+| chefe do andar 100 vencido (abre as Profundezas) | 136.5 | 100 | 27% |
+| zona de caça 3 liberada | 16.5 | 10.5 | 36% |
+| zona de caça 4 (a última) liberada | 37.5 | 33.5 | 11% |
+| conjunto T4 vestido (7 peças) | 39 | 28 | 28% |
+| conjunto T5 vestido | 83 | 67.5 | 19% |
+| conjunto T6 vestido | 142 | 114 | 20% |
+| arma T4 / T5 / T6 vestida: T4 | 26.5 | 16 | 40% |
+| arma T5 vestida | 59 | 42.5 | 28% |
+| arma T6 vestida | 108.5 | 87 | 20% |
+| profundeza 10 | 136.5 | 100 | 27% |
+| profundeza 20 | 137 | 100.5 | 27% |
+| profundeza 25 | 138 | 101.5 | 26% |
+| profundeza 30 | 141 | 103 | 27% |
+| profundeza 40 | > 180 | > 180 | - |
+| profundeza 50 | > 180 | > 180 | - |
+| Paragon 1 | 143 | 116 | 19% |
+| Paragon 10 | 164.5 | 131.5 | 20% |
+| Paragon 25 | > 180 | 161 | - |
+| Paragon 50 | > 180 | > 180 | - |

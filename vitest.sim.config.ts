@@ -9,6 +9,6 @@ export default defineConfig({
     environment: 'node',
     include: ['scripts/sim/**/*.sim.ts', 'scripts/sim/**/*.gen.ts'],
     setupFiles: ['src/game/__tests__/setup.ts'],
-    testTimeout: 600_000,
+    testTimeout: 3_600_000, // npm run sim:long plays two 180-day seeds in one shard
   },
 });
