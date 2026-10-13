@@ -59,3 +59,46 @@ Portanto o ranking com prêmio em dinheiro **não deve ser aberto** antes de TOD
 4. **Congelamento e auditoria manual**: ao fim da temporada o ranking é congelado e os candidatos ao prêmio passam por revisão manual antes de qualquer pagamento.
 
 Até lá, qualquer ranking pode existir apenas como brincadeira, sem prêmio em dinheiro e sem prometer nada ao jogador.
+
+## 5. Publicar o portal e o jogo juntos
+
+O repositório tem dois sites independentes: o jogo (raiz do repositório, Vite, saída em `dist/`) e o portal público de divulgação (`portal/`, gerador estático sem dependências, saída em `portal/dist/`). Nada disso foi implantado; esta seção só descreve como fazer quando o dono decidir.
+
+### 5.1 Recomendação: dois projetos na Vercel, portal no domínio raiz e jogo em um subdomínio
+
+Opção A (recomendada): **dois projetos** na Vercel, com o mesmo repositório.
+
+| Projeto | Root Directory | Build | Saída | Endereço |
+| --- | --- | --- | --- | --- |
+| Portal | `portal` | `npm run build` | `dist` | `https://<domínio>/` (e `www`) |
+| Jogo | (raiz do repositório) | `npm run build` | `dist` | `https://jogar.<domínio>/` |
+
+Opção B: **um projeto só**, com o jogo sob `/play`. Exige um build que junte `portal/dist` e `dist/` numa mesma saída (script que não existe hoje), regras de cabeçalho por caminho e testar o jogo fora da raiz (o `vite.config.ts` usa `base: "./"`, mas o jogo nunca foi verificado servido de `/play/`).
+
+Por que a A: (1) a CSP do jogo (`vercel.json` da raiz, com `connect-src https://*.supabase.co`) é bem mais permissiva do que um site estático precisa, e o portal tem a sua própria, mínima; separar os projetos impede que uma relaxe a outra. (2) Só o jogo precisa das variáveis do Supabase; o portal não recebe nenhuma, então um vazamento ou erro de configuração do portal não toca em chave nenhuma. (3) Deploys independentes: dá para corrigir um texto do portal sem republicar o jogo, e um deploy quebrado do jogo não derruba a página de divulgação. (4) O Supabase (Site URL e Redirect URLs, seção 2) aponta para um domínio só, o do jogo. (5) Não exige nenhum script novo nem teste do jogo em outro caminho. O custo é um subdomínio extra e um registro DNS a mais.
+
+### 5.2 O que ajustar no portal
+
+- **`config.playUrl`** em `portal/src/content.mjs` (hoje `null`). Não é variável de ambiente: é uma constante no código, que depois é commitada. Na opção A, `'https://jogar.<domínio>/'`; na B, `'/play/'` não é aceito pelo validador (exige HTTPS), então a B também precisaria do endereço completo `'https://<domínio>/play/'`. Com ele preenchido, o botão "Acompanhar desenvolvimento" vira "Jogar" em todas as páginas.
+- **Remover o `noindex`** só no dia da publicação: `<meta name="robots" content="noindex,nofollow">` aparece em `portal/src/pages.mjs` (cabeçalho de toda página) e em `portal/scripts/build.mjs` (o `index.html` da raiz e o `404.html`). Trocar nos três lugares e rodar o build. O jogo não tem essa meta; se o dono não quiser o jogo indexado, é preciso decidir à parte.
+- `config.community` continua vazio até existirem canais oficiais; as páginas de Privacidade, Termos e Regras da Temporada (`/pt/privacy/`, `/pt/terms/`, `/pt/season-rules/` e `/en/...`) só têm espaço reservado e continuam sem link no menu até o texto legal chegar (seção 3 deste documento). Quando chegar, também é preciso ligá-las no rodapé do portal e do jogo.
+- A imagem e o texto do portal vêm de capturas do jogo em `portal/public/img/`; refazer as capturas se a interface mudar muito.
+
+### 5.3 Variáveis de ambiente (somente nomes)
+
+- **Projeto do jogo**: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (Production com o Supabase de produção; Preview e Development com o de desenvolvimento), como na seção 2.
+- **Projeto do portal**: nenhuma. Não crie variáveis nele.
+
+### 5.4 Cabeçalhos de segurança
+
+- O `vercel.json` da raiz vale **só para o projeto do jogo** (a Vercel lê o `vercel.json` do Root Directory de cada projeto). Ele não vale para o portal e não deve ser copiado para lá.
+- O portal tem o seu: `portal/vercel.json`, com CSP mínima para site estático (`default-src 'none'`; só scripts, estilos, imagens e fontes do próprio domínio; sem `connect-src`, sem iframes, `frame-ancestors 'none'`), `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS, `Cross-Origin-Opener-Policy`, revalidação nas páginas e cache de 1 dia em imagens e fontes. O portal não usa JavaScript inline nem estilos inline (só `/app.js` e `/style.css` do mesmo domínio), por isso não precisa de `unsafe-inline`.
+- Verificado localmente: um servidor de teste serviu `portal/dist` com exatamente os cabeçalhos do `portal/vercel.json`, e as páginas `/pt/`, `/en/`, `/pt/pass/` e `/pt/privacy/` foram abertas num Edge real a 1440 px. Nenhuma violação de CSP no console, imagens WebP e fonte carregadas. Não foi verificado na Vercel de verdade (nada foi implantado), nem o `Strict-Transport-Security` sob HTTPS.
+- Depois do primeiro deploy de cada projeto, repetir a conferência: abrir o site, olhar o console e os cabeçalhos de resposta.
+
+### 5.5 Ordem sugerida no dia da publicação
+
+1. Criar os dois projetos, apontar o DNS (`<domínio>` e `jogar.<domínio>`), definir as variáveis do jogo (5.3) e o Site URL do Supabase (seção 2).
+2. Publicar o jogo, abrir `https://jogar.<domínio>/` e conferir console e cabeçalhos.
+3. Preencher `config.playUrl`, remover o `noindex`, rodar `npm run build`, `npm run check` e `node scripts/editorial-check.mjs` em `portal/`, publicar o portal.
+4. Só então anunciar. Textos legais (seção 3) antes de qualquer cadastro aberto ao público.
