@@ -1435,3 +1435,17 @@ As tabelas das seções anteriores medem 21 dias. Esta mede os dias 60 a 180 com
 **Depois (cenário A, dias 60 a 180):** 326 685 coletadas, 218 034 jogadas fora (66,7% das unidades, **61,0% do valor**; controle, com o jogador refinando e sem os sumidouros: 82,9%). Nos dias 151 a 180, quando as peças estão na fase do refino fundo, **5 a 14%**. O resto da janela fica em 57 a 88% porque o jogador simulado leva os dias 100 a 150 subindo as peças tier 6 recém-forjadas de +0 a +8 (Pó, Osso e obsidiana refinada que ele descarta ou não tem) e, enquanto isso, não há o que gastar. Dono do Passe: 408 196 de 501 380 (81,4% das unidades, 76,5% do valor).
 
 **Conversão em lote de raros e níveis de baú**, as outras duas ideias da rodada, não foram feitas: todos os raros estão em excesso ao mesmo tempo (não há para onde converter) e o baú de 50 espaços enche em 1 a 2 dias de caça da última zona.
+
+## 9. Rodada 17: a oferta das zonas 3 e 4 cai para o que o fim de jogo usa (13/10/2026)
+
+A seção 8 mediu que 58% (comum) / 78% (dono) do valor coletado nos dias 60-180 era jogado fora, 99% por "baú cheio", e que nenhum sumidouro novo bastaria: a última zona entregava 3 000 unidades por dia para um conjunto T6 que pede ~45 Corações. Esta rodada corta a oferta na origem (Abismo e Fenda; Clareira e Pântano intocados) e reescreve em horas de caça o que se paga com esses materiais. Detalhe, tabelas e decisões em `docs/BALANCE_CHANGES.md`, Rodada 17.
+
+**Por dia na última zona (média dos dias 100-180, cenário A):** Osso 730 -> 277, Sangue 789 -> 264, Cristal 182 -> 50, Tutano 727 -> 84, Coração 152 -> 18; Estilhaço e Chifre da Fenda 40 -> 9 e 7 -> 1. Couro, Garra e Núcleo da Fenda não mudaram (são a família da Clareira; cortados abaixo dela mandam o jogador de volta a 1 750 de XP/h).
+
+**Por material (A, dias 60-180, "perdido" em % do coletado, 12 seeds):** Coração 55,7% -> 14,1%, Tutano 52% -> 30,1%, Cristal 53,8% -> 22,9%, Sangue 61% -> 40,9%, Osso 83,8% -> 72,1% (o Osso é lixo de valor 2: dobra em pó, que o simulador usa pouco).
+
+**Horas de caça (modelo estático, `npm run sim:cost`)**: conjunto T5 63,6 -> 63,8 h; conjunto T6 73,4 -> 73,8 h; T6 +0 -> +8 9,0 -> 8,8 h; T6 +8 -> +12 238 -> 239 h; uma lapidação T6 4,12 -> 4,19 h. O que mudou foram as unidades: receita T6 de um capacete 20 ossos / 24 sangues / 6 cristais / 22 tutanos / 5 corações -> 7 / 8 / 2 / 3 / 1; o +12 do T6 de 490 / 450 / 113 / 90 (sangue / tutano / cristal / coração) para 147 / 54 / 27 / 11.
+
+**Pedidos da última faixa** (andar 76+) pedem 6 / 7 / 8 vezes menos Osso / Sangue / Cristal. **Valor de referência** do Estilhaço, Chifre, Tutano e Coração: 6,5 / 34 / 7 / 36 -> 30 / 256,5 / 110 / 451 (a hora de cada zona vale o mesmo ao mercador: Ouro por hora 158,8 -> 161,6 na Fenda, 193,3 -> 203,8 no Abismo).
+
+**Livro-razão depois (12 seeds):** A 101 950 coletadas, 50 891 perdidas (49,9% das unidades, **25,8% do valor**); P 146 287 e 64 635 (44,2%, **17,3%**). Antes, com as mesmas seeds: 57,9% e 77,7%.

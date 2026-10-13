@@ -876,3 +876,49 @@ XP por dia e Ouro em caixa (média dos 10 dias até o dia, mediana entre seeds):
 | Paragon 10 | 164.5 | 131.5 | 20% |
 | Paragon 25 | > 180 | 161 | - |
 | Paragon 50 | > 180 | > 180 | - |
+
+## Dias 21 a 180 depois da rodada 17 (2026-10-13)
+
+Mesma ferramenta (`SIM_NO_UNIQUES=1 npm run sim:long`), agora com **12 seeds** por cenário (~11 min com 8 processos), no código da rodada 17 (docs/BALANCE_CHANGES.md): as zonas 3 e 4 dropam menos (Osso x0,34, Sangue x0,30, Cristal x0,25, Tutano e Coração x0,12, Estilhaço x0,25, Chifre x0,12), os custos em unidades foram reescritos para as mesmas horas de caça, os andares 76-100 ficaram mais duros (`lateHpGrowth2` 0,125, `lateDmgGrowth2` 0,078, chefe do 100 x1,17) e as Profundezas foram reajustadas. As tabelas das seções anteriores (6 seeds, rodada 15/16) continuam sendo o registro daquele momento; **os marcos abaixo substituem os de nível, de conjunto, de andar 100, de chefe 100 e de profundeza**.
+
+Resumo (mediana de 12 seeds, comum A / dono P): nível 60 / 75 / 90 / 100 nos dias 43 / 69,5 / 105,5 / 145 (A) e 25,5 / 50,5 / 77 / 105 (P); conjunto T4 / T5 / T6 nos 32 / 87 / 149 (A, 3 seeds sem o T6 em 180 dias) e 21 / 58,5 / 110 (P); andar 100 no 123,5 (A) e 86 (P); chefe do 100 no 143 (A) e 102,5 (P); profundeza 10 no mesmo dia do chefe; peça +12 no 79,5 (A) e 62 (P); Paragon 1 no 149,5 (A) e 107 (P). Livro-razão dos dias 60-180: perda de 25,8% (A) e 17,3% (P) do valor de referência (era 57,9% e 77,7%). Maior trecho sem desbloqueio depois do nível 100 e do T6, sem Paragon: A 27 (pior 32) dias, P 30 (pior 65); com Paragon 2 (pior 4) e 2 (pior 5).
+
+### Dono contra não-dono (mediana de dias, 12 seeds)
+
+| Marco | Sem Passe (A), dia | Com Passe (P), dia | Dono mais rápido em |
+| --: | --- | --- | --- |
+| nível 50 | 17 | 10 | 41% |
+| nível 60 | 43 | 25.5 | 41% |
+| nível 70 | 57.5 | 37 | 36% |
+| nível 75 | 69.5 | 50.5 | 27% |
+| nível 80 | 81 | 58 | 28% |
+| nível 90 | 105.5 | 77 | 27% |
+| nível 100 | 145 | 105 | 28% |
+| andar 50 (chegada) | 15 | 10 | 33% |
+| chefe do andar 50 vencido | 17 | 11 | 35% |
+| andar 75 (chegada) | 30 | 18 | 40% |
+| chefe do andar 75 vencido | 34 | 21 | 38% |
+| andar 100 (chegada) | 123.5 | 86 | 30% |
+| chefe do andar 100 vencido (abre as Profundezas) | 143 | 102.5 | 28% |
+| zona de caça 3 liberada | 17 | 11 | 35% |
+| zona de caça 4 (a última) liberada | 34 | 21 | 38% |
+| conjunto T4 vestido (7 peças) | 32 | 21 | 34% |
+| conjunto T5 vestido | 87 | 58.5 | 33% |
+| conjunto T6 vestido | 149 | 110 | 26% |
+| arma T4 / T5 / T6 vestida: T4 | 27.5 | 16 | 42% |
+| arma T5 vestida | 57.5 | 37 | 36% |
+| arma T6 vestida | 112 | 80.5 | 28% |
+| profundeza 10 | 143 | 102.5 | 28% |
+| profundeza 20 | 143 | 102.5 | 28% |
+| profundeza 25 | 143.5 | 102.5 | 29% |
+| profundeza 30 | 143.5 | 102.5 | 29% |
+| profundeza 40 | 150.5 | 103 | 32% |
+| profundeza 50 | > 180 | 150 | - |
+| peça refinada a +9 | 62 | 42 | 32% |
+| peça refinada a +10 | 62 | 43 | 31% |
+| peça refinada a +11 | 64.5 | 47 | 27% |
+| peça refinada a +12 | 79.5 | 62 | 22% |
+| Paragon 1 | 149.5 | 107 | 28% |
+| Paragon 10 | 170 | 124 | 27% |
+| Paragon 25 | > 180 | 154 | - |
+| Paragon 50 | > 180 | > 180 | - |

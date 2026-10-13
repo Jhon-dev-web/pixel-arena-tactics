@@ -1630,3 +1630,145 @@ U = com únicos (padrão), N = `SIM_NO_UNIQUES=1`. Os sumidouros e a política n
 - 6 seeds; as medianas de marcos oscilam uns 3 dias entre rodadas.
 - Nenhum save real de nível 100 foi aberto: usei um save montado (herói de nível 100, peças T6 +8 a +10, uma Épica com Lapidar, uma Lendária de reserva) no navegador, em 1280 e 390 de largura (Forja, aba Melhorar; Inventário, painel Lapidar).
 - O Lapidar e o refino fundo não entram na tabela de CP recomendada nem no `sim:depths` (o herói de referência continua em +8).
+
+## Rodada 17 — as zonas tardias dropam o que o fim de jogo usa, e os andares 76 a 100 acompanham o herói (2026-10-13)
+
+Dois problemas que a rodada 16 deixou: (1) do dia 60 ao 180 o jogador ainda perdia 58% (comum) / 78% (dono do Passe) do valor que coleta, quase tudo por "baú cheio", porque a última zona entrega ~3 000 unidades por dia e um conjunto T6 inteiro pede ~45 Corações; (2) com o jogador refinando de verdade a Masmorra correu na frente de tudo (andar 100 no dia 77, chefe no 95, com o nível 100 no 146 e o conjunto T6 no 147). Medido com `npm run sim:long`, **12 seeds**, sem únicos, comum (A) e dono (P). "Antes" = o código da rodada 16 rodado de novo com as mesmas 12 seeds (as medianas de 6 seeds da rodada 16 oscilam uns 3 dias: o nível 60 era 38 com 6 seeds e é 42,5 com 12).
+
+### 1. Os cortes (zonas 3 e 4; as zonas 1 e 2 não mudaram)
+
+| Zona | Material (raridade) | Chance por rolagem antes -> depois | Unidades por hora de caça (modelo estático, Profundo, subnível 10) | Por dia, média dos dias 100-180 (A) |
+| --- | --- | --- | --- | --- |
+| Abismo | Fragmento de Osso (comum) | 0,35 -> **0,12** | 44,1 -> 15,1 | 730 -> 277 |
+| Abismo | Sangue Concentrado (incomum) | 0,12 -> **0,036** | 47,7 -> 14,3 | 789 -> 264 |
+| Abismo | Cristal Corrompido (raro) | 0,021 -> **0,0053** | 11,0 -> 2,8 | 182 -> 50 |
+| Abismo | Tutano Abissal (incomum) | 0,11 -> **0,0132** | 43,7 -> 5,2 | 727 -> 84 |
+| Abismo | Coração de Sangue (raro) | 0,0175 -> **0,0021** | 9,2 -> 1,1 | 152 -> 18 |
+| Fenda | Estilhaço da Fenda (incomum) | 0,1 -> **0,025** | 39,7 -> 9,9 | 40 -> 9 |
+| Fenda | Chifre do Demônio (raro) | 0,014 -> **0,0017** | 7,3 -> 0,9 | 7 -> 1 |
+| Fenda | Retalho de Couro, Garra, Núcleo | 0,32 / 0,105 / 0,0175 (**iguais**) | 40,3 / 41,7 / 9,2 | 41 / 42 / 9 |
+
+Os cortes são x0,34 (osso), x0,30 (sangue), x0,25 (cristal), x0,12 (tutano, coração), x0,25 (estilhaço) e x0,12 (chifre): **o raro é cortado pelo menos tanto quanto o comum da mesma zona**, e "o raro é mais difícil que o incomum" vale por rolagem (`round17.test.ts`, no raso subnível 1 e no profundo subnível 10). O texto do Códice não mudou: ele diz a raridade do drop, não a faixa de chance.
+
+**Por que não cortei tudo igual** (6 seeds, A; "perda" = % do valor de referência jogado fora nos dias 60-180):
+
+| Variante | Perda A | Perda P | O que aconteceu |
+| --- | --- | --- | --- |
+| Rodada 16 | 61% | 76% | - |
+| V1: tudo x0,25-0,35, inclusive Couro / Garra / Núcleo da Fenda (abaixo da Clareira) | 19% | - | **nível 60 no dia 45 em vez de 38**: o jogador volta à Clareira atrás de Garra e Núcleo (caça-se onde o material cai mais, na regra do simulador e na de uma pessoa), e a Clareira paga 1 750 de XP/h contra 6 000 da Fenda |
+| V2: estilhaço / tutano / chifre / coração x0,25, comuns no piso das zonas 1-2 | 44% | - | os insumos baratos (osso, sangue) entopem o baú |
+| V3: o mesmo com x0,12 | 37% | - | idem |
+| V7 / V8 / V9: Abismo x0,5 / 0,4 / 0,4 e raros x0,3 / 0,2 / 0,15 | 44% / 39% / 31% | 33% / 19% / 12% | só cortar osso, sangue e cristal **junto com** os raros chega perto |
+| V6: osso 0,35, sangue 0,3, cristal 0,25, raros 0,12 (o final menos o ajuste do Estilhaço e dos pedidos) | 13% | 14% | - |
+
+O que explica os números: (a) **como todo custo está escrito em horas de caça, cortar a oferta por um fator corta junto o que se consome**; o que baixa a perda é o baú de 99 por vaga passar a guardar 3 a 8 vezes mais horas, não a conta; (b) a Fenda contribui com 6 mil unidades em 120 dias contra 330 mil, por isso Couro / Garra / Núcleo ficam como estão (e o Estilhaço subiu de 0,012 para 0,025 porque o Núcleo, raro, ficava mais fácil que ele por rolagem); (c) tentei um jogador que esvazia o baú do empilhado mais barato para guardar o caro: **piorou** (perda 84%, chefe do 100 no dia 130), porque o baú é o estoque de trabalho das receitas, e desfiz.
+
+### 2. Custos re-resolvidos para as mesmas horas
+
+Modelo: `scripts/sim/farmHours.ts` (`npm run sim:cost`), a unidade do `setCost.ts` (quantidade / taxa por hora no estágio em que o tier é caçado; dentro de uma zona vale o material mais demorado). Os números de antes são os da rodada 16 no mesmo modelo; `round17.test.ts` guarda +-10%.
+
+| Custo em horas de caça | Antes | Depois |
+| --- | --- | --- |
+| Conjunto T5 (peças próprias de cada tier, até o 5) | 63,6 h | 63,8 h |
+| Conjunto T6 | 73,4 h | 73,8 h |
+| T5, +0 -> +8 (tentativas esperadas) | 9,8 h | 9,5 h |
+| T6, +0 -> +8 | 9,0 h | 8,8 h |
+| T5, +8 -> +12 (esperado, com quedas) | 143,0 h | 146,4 h |
+| T6, +8 -> +12 | 238,1 h | 239,2 h |
+| T6, uma tentativa de +8 -> +9 | 5,2 h | 5,4 h |
+| Uma lapidação T6: a primeira / depois de 4 / depois de 12 | 4,12 / 8,24 / 16,47 h | 4,19 / 8,28 / 16,40 h |
+| Uma lapidação T5, a primeira | 2,75 h | 2,88 h |
+
+(O modelo estático dá 238 h ao +12 do T6 onde a rodada 16 contava 173 h: as horas de lá eram as "horas reais" do simulador, 1,36x as do modelo; `hourBlood` etc. continuam nessa unidade, ver `round17.test.ts`.)
+
+- **Receitas T5 e T6** (`gear.ts`): para cada tier e material o total do conjunto virou o total antigo x o corte, repartido pelas 7 peças por maior resto (o machado copia a espada). Totais T5 antes -> depois: osso 305 -> 105, sangue 360 -> 108, cristal 108 -> 27, tutano 630 -> 76, coração 150 -> 18, estilhaço 585 -> 146, chifre 122 -> 15; T6: osso 180 -> 62, sangue 220 -> 66, cristal 54 -> 14, tutano 200 -> 24, coração 43 -> 5, estilhaço 160 -> 40, chifre 34 -> 4. Cada peça de T6 pede 0 a 1 Coração (a arma e a armadura 1). Couro, Garra e Núcleo: iguais.
+- **Refino +4 a +8** (tiers 5 e 6): T5 pede 10 ossos nas tentativas até +6 e 15 ossos + 2 estilhaços no +7 e no +8 (era 25 / 40 + 15 estilhaços + 3 chifres); T6 pede 10 ossos até +6 e 16 ossos + 2 tutanos no +7 e +8, **mais 1 coração só no +8** (era 30 / 48 + 18 tutanos + 3 corações). O chifre saiu do refino T5: um chifre por tentativa custava 1,1 h onde o antigo custava 0,4 h.
+- **Hora-de-fazenda dos sumidouros** (`T.lateSinks.hour*`): sangue 65 -> 19,5, tutano 60 -> 7,2, cristal 15 -> 3,79, coração 12 -> 1,44 (o arredondamento passou de múltiplos de 5 para unidades). O +12 do T6 pede 147 / 54 / 27 / 11 e a primeira lapidação T6 59 / 22 / 11 / 4 (sangue / tutano / cristal / coração; era 490 / 450 / 113 / 90 e 195 / 180 / 45 / 36).
+- **Baú** (melhorias 6 a 8, as que pedem osso e sangue): osso 60 / 80 / 100 -> 21 / 27 / 34, sangue 30 / 50 / 70 -> 9 / 15 / 21. As cinco primeiras ficam como eram.
+- **Pedidos** (`deliveries.ts`, `T.deliveries.abyssCargo*`): na última faixa (andar 76+) um Osso / Sangue / Cristal conta 6 / 7 / 8 vezes o valor de referência no dimensionamento da carga. O corte exato (2,9 / 3,3 / 4) secou os pedidos (o simulador só aceita um pedido do que a próxima forja não precisa): Ouro -15%, 3 a 4 de 12 seeds sem o conjunto T6; com 6 / 7 / 8 o Ouro dos dias 100-180 ficou +13% (137 mil contra 121 mil). Os valores de referência de Osso, Sangue, Cristal, Couro, Garra e Núcleo **não mudam** (os pedidos de antes do andar 76 são dimensionados neles).
+- **Valores de referência** (`economy.ts`): Estilhaço 6,5 -> 30, Chifre 34 -> 256,5, Tutano 7 -> 110, Coração 36 -> 451. O preço do mercador sobe junto (1 / 5 / 1 / 5 -> 4 / 38 / 16 / 67 por unidade), de modo que uma hora de cada zona vale ao mercador o que valia.
+
+**Ouro por hora de caça nas zonas 3 e 4** (`sim:cost`, subnível 10; contínuo = Ouro da zona + 15% do valor de referência, a âncora dos pedidos; real = o que o mercador paga com os pisos): Fenda 158,8 -> 161,6 (real 194,0 -> 191,1), Abismo 193,3 -> 203,8 (real 226,4 -> 214,0, com o coração a 490; com 451, +2% e -8%). Âncora dos pedidos (`round14.test.ts`, subnível 5): razão pedido / caça nos níveis 50 / 75 / 100 = 0,999 / 1,008 / 1,001 -> 1,084 / 0,900 / 0,919 com o coração a 490 (dentro de 0,8-1,2; o valor de caça por hora subiu 12% no nível 75 e 9% no 100; o coração foi para 451 depois dessa medida, sem repetir).
+
+### 3. O livro-razão (dias 60-180, mediana de 12 seeds, sem únicos)
+
+| | Coletado | Perdido | % das unidades | % do valor | % dos escassos |
+| --- | --- | --- | --- | --- | --- |
+| A, antes | 328 974 | 212 044 | 64,5% | **57,9%** | 57,8% |
+| **A, depois** | 101 950 | 50 891 | 49,9% | **25,8%** | 38,5% |
+| P, antes | 495 350 | 408 196 | 82,4% | **77,7%** | 78,5% |
+| **P, depois** | 146 287 | 64 635 | 44,2% | **17,3%** | 24,7% |
+
+A meta era menos de ~25% (A) e ~35% (P): o comum ficou em 25,8% (23,2% antes do ajuste do coração de 490 para 451; 20,9% antes dos andares 76-100 mais duros), o dono em 17,3%. Por janela de 10 dias (A, % do valor): 61-70 52,8 -> 5,7; 81-90 74,3 -> 5,1; 101-110 78,3 -> 29,1; 121-130 88,4 -> 42,2; 141-150 64,8 -> 25,1; 151-160 7,1 -> 1,9. O resto da perda está nos dias 100 a 140, quando as peças T6 recém-forjadas ainda sobem de +0 a +8 (a mesma limitação do simulador da rodada 16).
+
+### 4. Masmorra, andares 76 a 100 (`lateHpGrowth2` 0,07 -> **0,125**, `lateDmgGrowth2` 0,041 -> **0,078**, chefe do 100 x1,2 -> **x1,17**)
+
+Marcos (dias, mediana de 12 seeds; "nunca" = não chega em 180 dias):
+
+| Marco | A antes | A depois | P antes | P depois |
+| --- | --- | --- | --- | --- |
+| nível 60 / 75 / 90 / 100 | 42,5 / 70,5 / 108,5 / 146 | 43 / 69,5 / 105,5 / **145** | 25 / 52 / 83,5 / 116 | 25,5 / 50,5 / 77 / **105** |
+| chefe do andar 75 | 34,5 | 34 | 30,5 | 21 |
+| **andar 100 (chegada)** | 77,5 | **123,5** | 59,5 | **86** |
+| **chefe do andar 100** | 95 | **143** | 75 | **102,5** |
+| profundeza 10 | 95,5 | 143 | 75 | 102,5 |
+| conjunto T4 / T5 / T6 | 33 / 83 / 147 | 32 / 87 / 149 (3 seeds sem T6) | 22,5 / 65,5 / 117 | 21 / 58,5 / 110 |
+| peça +9 / +12 | 62,5 / nunca (3 de 12 chegam) | 62 / 79,5 | 45,5 / nunca (5 de 12 chegam) | 42 / 62 |
+| Paragon 1 | 150 | 149,5 | 118,5 | 107 |
+
+O dono chega ao andar 100 30% e ao chefe 28% antes do comum (era 23% e 21%). A janela pedida foi atendida: chefe 75 no dia 34 (35-55: um dia abaixo, os andares 1-75 não mudaram), chegada no 123,5 (105-125), chefe no 143 (120-150), dono 28-30% antes. **A profundeza 10 cai no mesmo dia do chefe**: a profundeza 1 vale 0,31 do monstro do andar 99, uma fração do chefe, e o herói que acabou de vencê-lo as limpa no mesmo dia (era assim, 95 e 95,5). Deixar a 10 "um pouco depois" pediria uma profundeza 1 tão dura quanto o chefe, o que tira o herói de nível 100 em T6 +8 da profundeza 20-25.
+
+**O comum fica em +-3% nos níveis 60 / 75 / 90 / 100 e em +-5% nos conjuntos T4 / T5 / T6; o dono, não**: nível 90 -8%, nível 100 -9%, T5 -11%, T6 -6%. O que mudou nele, medido: horas na Fenda nos dias 21-100, 196 -> 108, e no Abismo 748 -> 872 (XP 13 000/h contra 6 000): o dono ficava 88 horas a mais na Fenda atrás de estilhaço e chifre que o excesso de drop e de mochila cheia fazia faltar. O comum quase não visita a Fenda (90 -> 78 horas) e não se move.
+
+**Tabela de CP recomendada** (`npm run sim:cp`, regerada): andar 76 3 960 -> 4 270, 85 6 349 -> 7 587, 90 (checkpoint) 9 003 -> 11 709, 95 8 745 -> 11 853, 99 9 875 -> **13 727**, 100 12 394 -> **16 895**. A escada ganhou as construções de tier 5 e 6 com +10 e +12 (nível 60+); o topo dela (nível 100, T6 +12 comum, sem habilidades) tem 7 569 de CP e limpa até o andar 86; os andares 87-100 são o valor da lei de potência. **O que ela assume**: um herói que não bebe tônico nem poção e começa o andar com PV cheio (o jogador simulado bebe os dois e limpa os andares finais com cerca de um quinto a menos de CP). Verificado em `round17.test.ts` e à mão com heróis de nível 100 em T6 inteiro: comum T6 +8 (CP 8 919) limpa até o 88 (tabela 8 807); comum +12, Paragon 50 (12 290) até o 96 (12 315); épico +8 (11 614) até o 94 (11 402); épico +12, Paragon 50 (15 729) até o 99 (13 727) e **não** o 100; lendário +12, Paragon 30 (17 959) limpa o 100 (16 895).
+
+### 5. Profundezas (`T.depths`: base 0,51 -> **0,31 / 0,32**, crescimento 2,8% / 2,2% -> **3,3% / 2,6%**)
+
+O monstro do andar 99 ficou 1,5x mais forte; a base caiu para o mesmo inimigo da profundeza 0 de antes. O crescimento subiu porque o refino +9..+12 (medido: lendário +12 no Paragon 30 chegava à profundeza 54 com a curva velha) empurrava o topo para perto de um herói lendário no Paragon 30. `npm run sim:depths` (nível 100, T6 inteiro da mesma raridade, build Guerreiro, sem poções); "+10 / +12" só existem agora:
+
+| Herói | Rodada 15/16 (+8) | Agora (+8) | Agora +10 | Agora +12 |
+| --- | --- | --- | --- | --- |
+| comum, Paragon 0 / 10 / 20 / 30 / 40 / 50 | 20 / 23 / 26 / 27 / 27 / 30 | **21** / 23 / 26 / 28 / 28 / 29 | - | 29 / 32 / - / 35 / - / 40 (Paragon 0 / 10 / 30 / 50) |
+| épico, Paragon 0 / 20 / 50 | 35 / 37 / 45 | 34 / 36 / 42 | - | - |
+| lendário, Paragon 0 / 10 / 20 / 30 / 40 / 50 | 43 / 43 / 46 / 49 / 51 / 51 | 41 / 41 / 43 / 45 / 48 / 48 | 43 / 43 / - / 47 / - / 50 | 45 / 45 / - / 49 / 51 / **52** |
+
+Alvos: herói de nível 100 em T6 +8 chega à profundeza 21 (20-25); cada 10 níveis de Paragon valem +2 a +3 (o alvo era +3 a +5: a primeira faixa dá +2; um crescimento menor devolve o +3, mas também devolve o topo à profundeza 50 para o lendário com Paragon 30); a profundeza 50 pede lendário com +10 e Paragon 50, ou +12 e Paragon 40 ou mais. `round14.test.ts` passou a pedir +2 a +5 por faixa e a medir o +12.
+
+### 6. Tabela de guarda dos dias 1 a 21 (cenário A, 20 seeds, mediana), antes -> depois
+
+U = com únicos, N = `SIM_NO_UNIQUES=1`. Nada dos dias 1-21 muda: a Fenda abre no andar 51 (dia ~15), o Abismo no 76; os cortes só mexem no que cai a partir daí, e os andares 76-100 só existem depois do dia 21 (o andar mais alto de qualquer seed no dia 21 é 75).
+
+| Meta | Antes U / N | Depois U / N |
+| --- | --- | --- |
+| T2 primeira sessão >= andar 8; checkpoint 10 no dia 1 | 8 / 8 | 8 / 8 |
+| T3 primeira peça forjada (dia <= 2) | 2 / 2 | 2 / 2 |
+| T4 nível dia 1 / 3 / 14 | 13 / 27 / 47 | 13 / 27 / 47 |
+| T5 chefe 25 pela 1ª vez; vitória ao chegar | dia 5, 0% | dia 5, 0% |
+| T6 chegada ao andar 50: 1ª seed / mediana | 12 / 15 · 12 / 14,5 | 12 / 15 · 12 / 14,5 |
+| T7 menor razão (N+1)/(N-1) | 1,08 | 1,08 |
+| T8 derrota mantém 75% do ouro | 75% | 75% |
+| nível no dia 21 | 51 (49-53) | 51 (49-53) |
+| andar mais alto no dia 21 | 60 · 62 | 60 · 63 |
+
+### 7. Trechos sem desbloqueio depois do nível 100 e do conjunto T6 (dias, mediana / pior seed)
+
+Sem contar o Paragon: A 13 / 20 -> **27 / 32** (9 de 12 seeds chegam lá); P 31 / 58 -> **30 / 65**. Contando o Paragon: 2 / 3 -> 2 / 4 (A) e 2 / 3 -> 2 / 5 (P). **Não atinge o alvo de ~12 dias sem Paragon** (também não atingia): depois do T6 o jogo vive do Paragon e das profundezas. O A piorou porque o refino +9..+12 acontece mais cedo (peça +12 no dia 79,5; antes nunca): sobra menos para depois.
+
+### 8. Decisões que o diretor pode discordar
+
+1. **Couro, Garra e Núcleo da Fenda ficaram como estavam, e Osso / Sangue / Cristal do Abismo foram abaixo do piso da zona 2** (a chance por rolagem do Abismo é agora menor que a do Pântano para os três). O jogador volta à zona 2 só quando falta Sangue ou Cristal (3 a 15 horas por 10 dias no cenário A), que paga 2 900 de XP/h.
+2. **Pedidos de última faixa a 6 / 7 / 8 vezes o valor** e não a 2,9 / 3,3 / 4 (o corte exato): sem isso o comum perdia 15% do Ouro e 3 a 4 de 12 seeds não fechavam o T6. O preço é que um pedido da última faixa custa a metade das horas de antes.
+3. **Chifre fora do refino T5; coração só no +8 do T6.** Um chifre por tentativa custava 1,1 h (antes 0,4 h).
+4. **Valores de referência 4 a 15x maiores** (Estilhaço, Chifre, Tutano, Coração) para a hora de cada zona valer o mesmo ao mercador. O Coração vende a 67 Ouro.
+5. **Tutano e Coração a 0,12 do que eram**: um Coração a cada ~55 minutos de caça (era a cada 6,5). Cada peça de T6 pede 0 a 1.
+6. **Dono 6 a 11% mais rápido** nos marcos de nível e de peças (seção 4); nenhum número foi mexido para trazê-lo de volta.
+7. **A profundeza 10 cai no mesmo dia do chefe do 100** (seção 4).
+8. **O refino +12 chega no dia 79,5 (comum) e 62 (dono)** contra "nunca" antes: o sumidouro do fim de jogo agora é um objetivo do dia 60 ao 100 e não de todo o jogo; a alternativa é mexer em `deepChance*` ou nos preços do +9..+12, o que muda as horas desta rodada.
+
+### 9. Não feito, ou verificado só em parte
+
+- **3 de 12 seeds do comum (6, 10, 11) não fecham o T6 em 180 dias** (antes 0 de 12): ficam sem Ouro e sem pedidos por 60+ dias (o simulador só aceita um pedido do que a próxima forja não precisa e, sem Ouro, essa forja nunca acontece). É um impasse do jogador simulado, mas é novo.
+- O ajuste do Coração (490 -> 451) veio depois das 12 seeds; não repeti a rodada (o efeito é de ~3% no valor do Coração).
+- A perda do comum ficou em 25,8%, 0,8 ponto acima do alvo.
+- 12 seeds; as medianas oscilam uns 3 dias, as da chegada ao andar 100 e do chefe até 15 (uma seed presa muda o valor).
+- Nenhum save real foi aberto no navegador; a tela da Caça lê os mesmos dados (testes de locale e de `huntEstimate` verdes).

@@ -443,7 +443,7 @@ const T = DebugPanel.define({
     ratioLonga: { value: 1.2, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Long' },
     ratioEspecial: { value: 1.25, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Special' },
     // Round 17: orders of the last tier (floor 76+) count one Bone / Blood / Crystal as this many times its reference value when the cargo is sized. The Abyss drops 2.9 / 3.3 / 4 times fewer (huntingZones.ts);
-    // the factor is about twice that because an order is only taken from what the next craft does not need: with the exact factor the orders dried up (A: -15% Gold, 5 of 12 seeds without the tier 6 set), with 6 / 7 / 8 the Gold is back (+13% over days 100-180, 12 seeds)
+    // the factor is about twice that because an order is only taken from what the next craft does not need: with the exact factor the orders dried up (A: -15% Gold, 3 to 4 of 12 seeds without the tier 6 set), with 6 / 7 / 8 the Gold is back (+13% over days 100-180, 12 seeds)
     abyssCargoBone: { value: 6, min: 1, max: 10, step: 0.1, label: 'Last order tier: reference value of a Bone Fragment in the cargo, times' },
     abyssCargoBlood: { value: 7, min: 1, max: 10, step: 0.1, label: 'Last order tier: reference value of a Concentrated Blood in the cargo, times' },
     abyssCargoCrystal: { value: 8, min: 1, max: 10, step: 0.1, label: 'Last order tier: reference value of a Corrupted Crystal in the cargo, times' },
