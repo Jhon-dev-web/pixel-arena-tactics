@@ -1,0 +1,131 @@
+import type { SaveData } from './engine';
+import { SET_FAMILIES, SetFamily } from './gear';
+import type { Rarity } from './rarity';
+
+// Lifetime statistics: plain counters that only ever go up, kept in the save (`SaveData.stats`). They are read by the Statistics tab and by the
+// achievements (quests.ts), and they change nothing in the game itself: no reward, drop or timer reads them except the achievements' own gold / Runas.
+//
+// Where they are counted: inside the pure transitions that already carry the event (forge, refine, hunt stop, delivery claim, gather claim, harvest,
+// potion craft), so every path that performs it (the screens, "Resgatar tudo", the simulator) counts it exactly once; the dungeon run is counted by
+// recordDungeonRun at the end of a run; gold earned and the completed sets are read from the save as it changes (trackSave, statsTracking.ts); seconds
+// played are added by the app clock (the app flushes them with the next save). This file is the light half (types, loader, per-event recorders) so the
+// engine can import it without a cycle.
+
+export interface LifetimeStats {
+  kills: number; // monsters defeated, hunting + dungeon
+  killsByZone: Record<string, number>; // hunting zone id -> kills there
+  goldEarned: number; // every Gold the hero gained, from any source (spending is not subtracted)
+  itemsForged: number;
+  forgedByRarity: Record<Rarity, number>; // forged gear pieces by the rarity they came out as (relics have none)
+  uniquesFound: number; // unique pieces dropped (hunting and dungeon bosses)
+  refineSuccess: number; // gear refine attempts that succeeded
+  refineFail: number;
+  deliveries: number; // delivery orders completed
+  oreGathered: number; // units of ore / wood / plants that reached the bag
+  woodGathered: number;
+  plantsHarvested: number;
+  potionsBrewed: number;
+  dungeonRuns: number;
+  bossesKilled: number;
+  secondsPlayed: number;
+  completedSets: SetFamily[]; // families the hero has ever worn the full set of
+}
+
+export const emptyRarityCounts = (): Record<Rarity, number> => ({ common: 0, rare: 0, epic: 0, legendary: 0 });
+
+export const emptyStats = (): LifetimeStats => ({
+  kills: 0,
+  killsByZone: {},
+  goldEarned: 0,
+  itemsForged: 0,
+  forgedByRarity: emptyRarityCounts(),
+  uniquesFound: 0,
+  refineSuccess: 0,
+  refineFail: 0,
+  deliveries: 0,
+  oreGathered: 0,
+  woodGathered: 0,
+  plantsHarvested: 0,
+  potionsBrewed: 0,
+  dungeonRuns: 0,
+  bossesKilled: 0,
+  secondsPlayed: 0,
+  completedSets: [],
+});
+
+export const COUNT_CAP = 1e12;
+export const count = (v: unknown): number => {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) && n > 0 ? Math.min(n, COUNT_CAP) : 0;
+};
+
+// What an old save already proves it did, so the counters do not start from zero for a veteran: the dungeon kills it counted, the gear it owns, ...
+export interface StatsBackfill {
+  kills?: number;
+  forgedByRarity?: Partial<Record<Rarity, number>>;
+  uniquesFound?: number;
+}
+
+// Sanitizes whatever the save holds (absent, partial, corrupt) into trusted counters; each is the larger of the stored value and the backfill.
+export function normalizeStats(raw: unknown, backfill: StatsBackfill = {}): LifetimeStats {
+  const r = raw && typeof raw === 'object' ? (raw as Partial<Record<keyof LifetimeStats, unknown>>) : {};
+  const out = emptyStats();
+  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed'] as const) {
+    out[key] = count(r[key]);
+  }
+  out.kills = Math.max(count(r.kills), count(backfill.kills));
+  out.uniquesFound = Math.max(count(r.uniquesFound), count(backfill.uniquesFound));
+  const zones = r.killsByZone && typeof r.killsByZone === 'object' ? (r.killsByZone as Record<string, unknown>) : {};
+  for (const [id, n] of Object.entries(zones)) if (typeof id === 'string' && id.length < 60 && count(n) > 0) out.killsByZone[id] = count(n);
+  const byRarity = r.forgedByRarity && typeof r.forgedByRarity === 'object' ? (r.forgedByRarity as Record<string, unknown>) : {};
+  for (const rar of Object.keys(out.forgedByRarity) as Rarity[]) out.forgedByRarity[rar] = Math.max(count(byRarity[rar]), count(backfill.forgedByRarity?.[rar]));
+  const sets = Array.isArray(r.completedSets) ? r.completedSets : [];
+  out.completedSets = SET_FAMILIES.filter((f) => sets.includes(f));
+  out.itemsForged = Math.max(out.itemsForged, Object.values(out.forgedByRarity).reduce((a, b) => a + b, 0));
+  return out;
+}
+
+export const statsOf = (save: Pick<SaveData, 'stats'>): LifetimeStats => save.stats ?? emptyStats();
+
+// Returns the save with `fn(stats)` merged into its counters.
+export function withStats(save: SaveData, fn: (stats: LifetimeStats) => Partial<LifetimeStats>): SaveData {
+  const stats = statsOf(save);
+  return { ...save, stats: { ...stats, ...fn(stats) } };
+}
+
+export function recordKills(save: SaveData, zoneId: string, kills: number, uniques = 0): SaveData {
+  const k = count(kills);
+  return withStats(save, (s) => ({
+    kills: s.kills + k,
+    killsByZone: k > 0 ? { ...s.killsByZone, [zoneId]: (s.killsByZone[zoneId] ?? 0) + k } : s.killsByZone,
+    uniquesFound: s.uniquesFound + count(uniques),
+  }));
+}
+
+export function recordForge(save: SaveData, rarity: Rarity | null): SaveData {
+  return withStats(save, (s) => ({
+    itemsForged: s.itemsForged + 1,
+    forgedByRarity: rarity ? { ...s.forgedByRarity, [rarity]: s.forgedByRarity[rarity] + 1 } : s.forgedByRarity,
+  }));
+}
+
+export function recordRefine(save: SaveData, success: boolean): SaveData {
+  return withStats(save, (s) => (success ? { refineSuccess: s.refineSuccess + 1 } : { refineFail: s.refineFail + 1 }));
+}
+
+export function recordDelivery(save: SaveData): SaveData {
+  return withStats(save, (s) => ({ deliveries: s.deliveries + 1 }));
+}
+
+export function recordGather(save: SaveData, kind: 'mining' | 'woodcutting', units: number): SaveData {
+  const n = count(units);
+  return withStats(save, (s) => (kind === 'mining' ? { oreGathered: s.oreGathered + n } : { woodGathered: s.woodGathered + n }));
+}
+
+export function recordHarvest(save: SaveData, units: number): SaveData {
+  return withStats(save, (s) => ({ plantsHarvested: s.plantsHarvested + count(units) }));
+}
+
+export function recordPotion(save: SaveData): SaveData {
+  return withStats(save, (s) => ({ potionsBrewed: s.potionsBrewed + 1 }));
+}

@@ -1,5 +1,6 @@
 import { addBattlePassXp, computeMiningStatus, computeWoodcuttingStatus, SaveData, snapshotGatherPass } from './engine';
 import { addWithOverflow } from './inventory';
+import { recordGather } from './stats';
 import { MaterialId } from './materials';
 import { getOreTier, isOreTierUnlocked } from './ores';
 import { skillLevel } from './skills';
@@ -35,7 +36,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
     const hours = status.pendingMs / 3600000;
     const { battlePassLevel, battlePassXp } = addBattlePassXp(save, Math.floor(hours * T.battlePass.xpPerMiningHour));
     const placed = addWithOverflow(save, { materials: { [status.oreId]: status.oreReady } });
-    const next: SaveData = {
+    const next: SaveData = recordGather({
       ...placed.save,
       gold: save.gold + status.goldReady,
       skillXp: { ...save.skillXp, mining: save.skillXp.mining + status.oreReady * T.skills.xpPerUnit },
@@ -44,7 +45,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
       lastMiningClaim: now,
       battlePassLevel,
       battlePassXp,
-    };
+    }, 'mining', status.oreReady - (placed.leftover.materials[status.oreId] ?? 0));
     return { save: next, kind, material: status.oreId, units: status.oreReady, leftBehind: placed.leftover.materials[status.oreId] ?? 0, gold: status.goldReady, hours };
   }
   if (!save.activeWoodId) return null;
@@ -53,7 +54,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
   const hours = status.pendingMs / 3600000;
   const { battlePassLevel, battlePassXp } = addBattlePassXp(save, Math.floor(hours * T.battlePass.xpPerMiningHour));
   const placed = addWithOverflow(save, { materials: { [status.woodId]: status.woodReady } });
-  const next: SaveData = {
+  const next: SaveData = recordGather({
     ...placed.save,
     gold: save.gold + status.goldReady,
     skillXp: { ...save.skillXp, woodcutting: save.skillXp.woodcutting + status.woodReady * T.skills.xpPerUnit },
@@ -62,7 +63,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
     lastWoodcuttingClaim: now,
     battlePassLevel,
     battlePassXp,
-  };
+  }, 'woodcutting', status.woodReady - (placed.leftover.materials[status.woodId] ?? 0));
   return { save: next, kind, material: status.woodId, units: status.woodReady, leftBehind: placed.leftover.materials[status.woodId] ?? 0, gold: status.goldReady, hours };
 }
 

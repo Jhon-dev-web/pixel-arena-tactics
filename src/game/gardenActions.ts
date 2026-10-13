@@ -4,6 +4,7 @@ import T from './tunables';
 import { MaterialId } from './materials';
 import { skillLevel } from './skills';
 import { addWithOverflow, stockIsEmpty } from './inventory';
+import { recordHarvest } from './stats';
 
 // The Garden's player actions as pure transitions on the save: each returns the WHOLE next save (or null when nothing
 // would change), so a click that arrives twice can never apply twice — the second sees the plot already cleared/planted.
@@ -59,7 +60,10 @@ export function applyHarvest(save: SaveData, slotIndices: number[], now: number)
   }
   if (harvested.length === 0 && blocked.length === 0) return null;
   return {
-    save: { ...bag, gardenSlots, skillXp: { ...save.skillXp, gardening: save.skillXp.gardening + harvested.reduce((sum, h) => sum + h.xp, 0) } },
+    save: recordHarvest(
+      { ...bag, gardenSlots, skillXp: { ...save.skillXp, gardening: save.skillXp.gardening + harvested.reduce((sum, h) => sum + h.xp, 0) } },
+      harvested.reduce((sum, h) => sum + h.qty, 0),
+    ),
     harvested,
     blocked,
   };

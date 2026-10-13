@@ -18,6 +18,7 @@ import {
   DeliveryOffer,
   DeliveryState,
 } from './deliveryState';
+import { recordDelivery } from './stats';
 import T from './tunables';
 
 // Delivery orders: the Expedition's job (idle time -> Gold + XP), now paid for with materials.
@@ -423,15 +424,14 @@ export function applyDeliveryClaim(save: SaveData, now: number): DeliveryClaim |
   return {
     offer: a.offer,
     xpGained,
-    save: {
+    save: recordDelivery({
       ...save,
       gold: save.gold + a.offer.gold,
       xp: save.xp + xpGained,
       shards: save.shards + a.offer.shards,
       deliveries: { ...save.deliveries, active: null },
-      // The daily "Explorer" quest keeps counting under its old counter name (saves stay compatible).
-      quests: { ...save.quests, daily: { ...save.quests.daily, expeditions: (save.quests.daily.expeditions ?? 0) + 1 } },
-    },
+      quests: { ...save.quests, daily: { ...save.quests.daily, deliveries: (save.quests.daily.deliveries ?? 0) + 1 } },
+    }),
   };
 }
 

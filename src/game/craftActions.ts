@@ -4,6 +4,7 @@ import { getPotionRecipe } from './potions';
 import { CONSUMABLE_STACK, getConsumable, ConsumableId } from './consumables';
 import { MaterialId, hasMaterials } from './materials';
 import { addWithOverflow, stockIsEmpty } from './inventory';
+import { recordPotion } from './stats';
 
 // The Refining stations, Alchemy and the Shop as pure transitions on the save (the React handlers and the simulator call these very functions).
 // Every one is a deliberate player action, so when the result does not fit the inventory it is REFUSED ('bag') and nothing is charged - never a silent
@@ -49,7 +50,7 @@ export function applyCraftPotion(save: SaveData, recipeId: string, now?: number)
   if (!hasMaterials(save.materials, recipe.input)) return fail('materials');
   const placed = addWithOverflow(takeMaterials(save, recipe.input), { consumables: { [recipe.id]: 1 } }, { now });
   if (!stockIsEmpty(placed.leftover)) return fail('bag');
-  return { ok: true, save: { ...placed.save, gold: save.gold - recipe.cost, quests: countForge(save) } };
+  return { ok: true, save: recordPotion({ ...placed.save, gold: save.gold - recipe.cost, quests: countForge(save) }) };
 }
 
 // One Shop purchase. CONSUMABLE_STACK is the Shop's own purchase cap per type (not the slot size).

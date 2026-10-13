@@ -42,7 +42,6 @@ import {
   applyUpgrade,
   createGearInstance,
   equippedSubstatTotals,
-  questMaxRefine,
   resolveGearInstance,
 } from './game/gearInstances';
 import { getRefiningRecipe } from './game/refining';
@@ -89,7 +88,9 @@ import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, i
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { isDeliveryReady } from './game/deliveries';
 import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
-import { claimableCount, isClaimed, isComplete, QuestContext, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
+import { claimableCount, isClaimed, isComplete, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
+import { questContext } from './game/questContext';
+import { recordDungeonRun, trackSave } from './game/statsTracking';
 import TutorialOverlay from './components/TutorialOverlay';
 import SettingsModal from './components/SettingsModal';
 import DesktopSidebar, { DesktopNavGroup } from './components/DesktopSidebar';
@@ -186,7 +187,12 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     root.classList.add('hero-knighted-flash');
     window.setTimeout(() => root.classList.remove('hero-knighted-flash'), 1400);
   };
+  // Play time counted by the app clock since the last commit; it rides along with the next save (a flush every few minutes keeps it from waiting forever).
+  const pendingSecondsRef = useRef(0);
   const setSaveBoth = (s: SaveData) => {
+    // Lifetime statistics that are read from the change itself (stats.ts): the Gold gained, the full sets now worn, the seconds played.
+    s = trackSave(saveRef.current, s, pendingSecondsRef.current);
+    pendingSecondsRef.current = 0;
     const prevLevel = playerLevel(saveRef.current.xp);
     const nextLevel = playerLevel(s.xp);
     // The first time each look is worn (sprites.ts withLookMoment): a one-off toast + portrait flash, recorded in save.seenLooks so it never repeats; normalizeSave marks the
@@ -589,6 +595,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
     setSaveBoth({
       ...s,
+      stats: recordDungeonRun(s, startFloor, stages, (rewards.uniques ?? []).length).stats,
       gold,
       gems,
       cosmetics,
@@ -754,16 +761,17 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const s = saveRef.current;
     const def = [...QUESTS_DAILY, ...QUESTS_ACHIEVEMENTS].find((q) => q.id === id);
     if (!def || isClaimed(def, s.quests)) return;
-    const ctx: QuestContext = { cp: computeCP(s), maxRefine: questMaxRefine(s) };
-    if (!isComplete(def, s.quests, ctx)) return;
+    if (!isComplete(def, s.quests, questContext(s))) return;
     const quests = { ...s.quests };
     if (def.kind === 'daily') {
       quests.dailyClaimed = [...quests.dailyClaimed, id];
     } else {
       quests.claimed = [...quests.claimed, id];
     }
-    setSaveBoth({ ...s, gold: s.gold + def.gold, shards: s.shards + def.shards, quests });
+    const cosmetics = def.titleId && !s.cosmetics.includes(def.titleId) ? [...s.cosmetics, def.titleId] : s.cosmetics;
+    setSaveBoth({ ...s, gold: s.gold + def.gold, shards: s.shards + def.shards, cosmetics, quests });
     playSfx('victory');
+    if (def.titleId && cosmetics !== s.cosmetics) showToast(t('quests.titleToast', { name: t(`titles.${getTitleDef(def.titleId)?.nameKey ?? ''}`) }));
   };
 
   // Delivery orders (deliveries.ts): every handler is one pure transition on the latest save, committed at once.
@@ -824,7 +832,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       expeditions: s.expeditions.filter((_, i) => i !== index),
       quests: {
         ...s.quests,
-        daily: { ...s.quests.daily, expeditions: (s.quests.daily.expeditions ?? 0) + 1 },
+        daily: { ...s.quests.daily, deliveries: (s.quests.daily.deliveries ?? 0) + 1 },
       },
     });
     playSfx('victory');
@@ -923,6 +931,22 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       window.removeEventListener('pagehide', leave);
       window.clearInterval(beat);
     };
+  }, []);
+
+  // Seconds played: the clock counts every ten seconds the window is visible; the total joins the next save, and a flush every five minutes keeps a quiet
+  // session from losing it (one extra save per five minutes at most).
+  useEffect(() => {
+    const tick = window.setInterval(() => {
+      if (document.visibilityState === 'visible') pendingSecondsRef.current += 10;
+    }, 10_000);
+    const flush = window.setInterval(() => {
+      if (pendingSecondsRef.current >= 60) setSaveBoth(saveRef.current);
+    }, 300_000);
+    return () => {
+      window.clearInterval(tick);
+      window.clearInterval(flush);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const welcomeAction = (action: WelcomeBackAction) => {
@@ -1504,7 +1528,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         { key: 'skills', icon: <img className="pixel-icon" src="/assets/icons/skill_path_warrior.png" alt="" />, label: t('nav.skills'), active: activeView === 'skills', badge: skillPointsAvailable(save, level) > 0, tutorialTarget: 'skills', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('skills'); } },
         { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
         { key: 'dungeon', icon: <img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
-        { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, { cp: computeCP(save), maxRefine: questMaxRefine(save) }) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
+        { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
       ],
     },
     {

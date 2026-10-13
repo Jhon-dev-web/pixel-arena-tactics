@@ -7,6 +7,7 @@ import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salva
 import { addWithOverflow, fitsBag, stockIsEmpty } from './inventory';
 import { setBonuses } from './setBonuses';
 import type { SaveData } from './engine';
+import { recordForge, recordRefine } from './stats';
 
 // Gear instances: every weapon / armor / helmet / gloves / boots / ring / shield is its OWN object (rarity, substats, refine level, sockets, durability,
 // reforge count). Materials, consumables, gems, relics and tools stay stackable counters keyed by id.
@@ -661,7 +662,7 @@ export function applyForge(
   // The craft nets +1 piece minus the ingredients it eats (instances, and the stacks the materials come out of): it must not take more slots than the
   // inventory has (a bag that is already over the limit may still craft, as long as the bag does not grow).
   if (!fitsBag(save, next)) return { ok: false, reason: 'capacity' };
-  return { ok: true, save: next, instance, consumed, sealUsed };
+  return { ok: true, save: recordForge(next, instance ? instance.rarity : null), instance, consumed, sealUsed };
 }
 
 // --- upgrade
@@ -690,7 +691,7 @@ export function applyUpgrade(
   const counters = { ...save.quests.counters };
   if (success) counters.maxRefineEver = Math.max(Math.floor(Number(counters.maxRefineEver ?? 0)) || 0, lvl + 1);
   return {
-    save: {
+    save: recordRefine({
       ...save,
       gold: save.gold - cost.gold,
       materials,
@@ -698,7 +699,7 @@ export function applyUpgrade(
       consumables: useCatalyst ? { ...save.consumables, refine_catalyst: (save.consumables.refine_catalyst ?? 0) - 1 } : save.consumables,
       gearInstances: success ? { ...save.gearInstances, [id]: { ...hit.instance, upgrade: lvl + 1 } } : save.gearInstances,
       quests: { ...save.quests, counters, daily: { ...save.quests.daily, forge: (save.quests.daily.forge ?? 0) + 1 } },
-    },
+    }, success),
     success,
     level: lvl,
   };

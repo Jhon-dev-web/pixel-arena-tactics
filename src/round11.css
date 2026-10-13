@@ -93,3 +93,92 @@
     font-size: 11px;
   }
 }
+
+/* ---- achievements / statistics (QuestsModal) */
+.quest-summary {
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+  text-align: center;
+  padding: 2px 0 4px;
+}
+.quest-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.quest-group-title {
+  margin: 8px 0 0;
+  font-size: calc(var(--font-size) - 2px);
+  font-weight: normal;
+  color: #b9a46c;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.quest-title-reward {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.stat-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 10px;
+  background: #1c1322;
+  border: 1px solid #4a3a55;
+  border-radius: 8px;
+  font-size: calc(var(--font-size) - 2px);
+}
+.stat-row dt {
+  text-align: left;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #d8c9a0;
+}
+.stat-row dd {
+  margin: 0;
+  flex: none;
+  color: #ffd76a;
+}
+.quests-modal .inv-tabs .tab {
+  white-space: nowrap;
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .quests-modal .inv-tabs {
+    gap: 4px;
+  }
+  .quests-modal .inv-tabs .tab {
+    font-size: 8px;
+    padding: 8px 2px;
+    flex: 1 1 0;
+    overflow-wrap: normal;
+  }
+}
+/* desktop: the quest list is a grid of 320px columns (App.css); the summary and each group span it and lay their cards out the same way */
+@media (min-width: 1024px) {
+  .quest-summary,
+  .quest-group {
+    grid-column: 1 / -1;
+  }
+  .quest-group,
+  .stat-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 10px 14px;
+    align-content: start;
+  }
+  .quest-group-title,
+  .stat-list {
+    grid-column: 1 / -1;
+  }
+  .stat-list {
+    gap: 6px 14px;
+  }
+}

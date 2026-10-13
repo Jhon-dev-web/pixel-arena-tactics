@@ -2,7 +2,7 @@ import T from './tunables';
 import { ownsAdventurerPass } from './entitlements';
 import { sanitizeActiveFrame, sanitizeActiveSkin, sanitizeStashBonus } from './seasonItems';
 import { sanitizeSeasonSummary, seasonNumber, type SeasonSummary } from './seasons';
-import { EquippedGear, HERO_LOOKS, HeroBaseLook, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
+import { EquippedGear, getGear, HERO_LOOKS, HeroBaseLook, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
 import {
   GEAR_SCHEMA_VERSION,
   equippedExtraStats,
@@ -27,8 +27,9 @@ import { ActiveExpedition, getExpedition } from './expedition';
 import { DeliveryState, emptyDeliveries, sanitizeDeliveries } from './deliveryState';
 import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems } from './gems';
-import { QuestState, emptyQuestState } from './quests';
-import { rarityStatMult } from './rarity';
+import { QuestState, emptyQuestState, migrateAchievementId } from './quests';
+import { LifetimeStats, emptyStats, normalizeStats, StatsBackfill } from './stats';
+import { Rarity, rarityStatMult } from './rarity';
 import { setBonuses } from './setBonuses';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef } from './huntingZones';
@@ -171,6 +172,8 @@ export interface SaveData {
   gems: Record<GemId, number>;
   blessed: boolean;
   quests: QuestState;
+  // Lifetime counters (stats.ts): kills, gold earned, forged by rarity, ... Old saves load with what they already prove (kills counted, gear owned) and zero for the rest.
+  stats: LifetimeStats;
   activeOreId: string | null;
   lastMiningClaim: number;
   miningCapHours: number;
@@ -954,6 +957,7 @@ export function defaultSave(): SaveData {
     // existing saves see no gameplay change until the player actually opens the settings.
     autoPotionThreshold: 0.35,
     autoPotionPriority: 'large_first',
+    stats: emptyStats(),
   };
 }
 
@@ -990,6 +994,17 @@ function sanitizeSeenLooks(raw: unknown, legacyKnighted: boolean, current: HeroB
   if (legacyKnighted) for (const l of looksUpTo('knight')) seen.add(l);
   for (const l of looksUpTo(current)) seen.add(l);
   return HERO_LOOKS.filter((l) => seen.has(l));
+}
+
+// What the gear an old save owns proves about forging / uniques, so the counters of a veteran do not start from zero.
+function statsBackfill(gearInstances: Record<GearInstanceId, GearInstance>, kills: number): StatsBackfill {
+  const forgedByRarity: Partial<Record<Rarity, number>> = {};
+  let uniquesFound = 0;
+  for (const inst of Object.values(gearInstances)) {
+    if (inst.origin === 'craft') forgedByRarity[inst.rarity] = (forgedByRarity[inst.rarity] ?? 0) + 1;
+    if (getGear(inst.templateId)?.unique) uniquesFound++;
+  }
+  return { kills, forgedByRarity, uniquesFound };
 }
 
 export function normalizeSave(rawInput: unknown): SaveData {
@@ -1078,13 +1093,16 @@ export function normalizeSave(rawInput: unknown): SaveData {
         daily: { ...emptyQuestState().daily, ...(q.daily ?? {}) },
         dailyClaimed: Array.isArray(q.dailyClaimed) ? q.dailyClaimed : [],
         counters: { ...emptyQuestState().counters, ...(q.counters ?? {}) },
-        claimed: Array.isArray(q.claimed) ? q.claimed : [],
+        claimed: Array.isArray(q.claimed) ? [...new Set((q.claimed as unknown[]).filter((id): id is string => typeof id === 'string').map(migrateAchievementId))] : [],
       };
+      // The daily counter once called `expeditions` (the Expedition the delivery orders replaced) is `deliveries` now.
+      const rawDaily = (q.daily ?? {}) as Record<string, unknown>;
+      quests.daily = { kills: Number(rawDaily.kills) || 0, forge: Number(rawDaily.forge) || 0, purchases: Number(rawDaily.purchases) || 0, deliveries: Number(rawDaily.deliveries ?? rawDaily.expeditions) || 0 };
       // Highest refine ever reached survives destroying the piece (see gearInstances.questMaxRefine).
       quests.counters.maxRefineEver = Math.max(Math.floor(Number(quests.counters.maxRefineEver ?? 0)) || 0, migratedMaxRefine);
       if (quests.dailyDay !== today) {
         quests.dailyDay = today;
-        quests.daily = { kills: 0, forge: 0, purchases: 0, expeditions: 0 };
+        quests.daily = { kills: 0, forge: 0, purchases: 0, deliveries: 0 };
         quests.dailyClaimed = [];
       }
       let dungeonSessionsDay = typeof parsed.dungeonSessionsDay === 'string' ? parsed.dungeonSessionsDay : '';
@@ -1331,6 +1349,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
             ? Math.max(0.1, Math.min(0.7, parsed.autoPotionThreshold))
             : base.autoPotionThreshold,
         autoPotionPriority: parsed.autoPotionPriority === 'small_first' ? 'small_first' : base.autoPotionPriority,
+        stats: normalizeStats(parsed.stats, statsBackfill(gearInstances, quests.counters.kills)),
       };
       // Hunting session snapshot + pending reward (both new, optional fields: an older save simply lacks them). An active
       // session without a usable snapshot (saved before snapshots existed, or corrupt) is rebuilt conservatively.
