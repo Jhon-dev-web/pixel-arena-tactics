@@ -2740,6 +2740,10 @@ body {
   color: #ffd76a;
   align-self: flex-end;
 }
+.hero-stat-cell span.num-abbr {
+  /* `.hero-stat-cell span:last-child` (above) outranks `.num-abbr` and shrank the abbreviated numbers to 11px: keep the 160% compensation */
+  font-size: calc((var(--font-size) - 1px) * 1.6);
+}
 .hero-cp-bar {
   display: flex;
   align-items: center;
@@ -2906,6 +2910,7 @@ body {
   accent-color: #ffd76a;
 }
 .auto-potion-priority {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 0;
 }
 .battle-btn {
@@ -3179,6 +3184,7 @@ body {
   background: linear-gradient(90deg, #ff9a7c, #ff5f4a);
 }
 .battle-arena {
+  position: relative; /* the wave banner is anchored to the arena, not to the whole modal */
   flex: 1;
   display: flex;
   align-items: center;
@@ -3344,7 +3350,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* Round 13: pinned to the upper part of the arena, above the two fighters (centred it sat on the hero's head on a phone) */
+  justify-content: flex-start;
+  padding: 8% 8px 0;
   gap: 8px;
   pointer-events: none;
 }
@@ -4738,6 +4746,9 @@ body {
     --hm: clamp(150px, 15vw, 200px);
     min-height: 300px;
     aspect-ratio: 16 / 9;
+    /* min-height + aspect-ratio transfer a 533px automatic min-width, which pushed the arena over the stats column at ~1024px */
+    min-width: 0;
+    width: 100%;
   }
 }
 

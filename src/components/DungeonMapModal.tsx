@@ -147,20 +147,20 @@ export default function DungeonMapModal({
               onChange={(e) => onUpdateAutoPotionSettings(Number(e.target.value) / 100, save.autoPotionPriority)}
               data-ui
             />
-            <div className="hunt-depth-row auto-potion-priority">
+            <div className="hunt-depths auto-potion-priority">
               <button
-                className={`hunt-depth-btn${save.autoPotionPriority === 'small_first' ? ' active' : ''}`}
+                className={`hunt-depth-opt${save.autoPotionPriority === 'small_first' ? ' active' : ''}`}
                 onClick={() => onUpdateAutoPotionSettings(save.autoPotionThreshold, 'small_first')}
                 data-ui
               >
-                <span className="hunt-depth-name">{dungeonText('autoPotionPrioritySmall')}</span>
+                <span className="hunt-depth-opt-name">{dungeonText('autoPotionPrioritySmall')}</span>
               </button>
               <button
-                className={`hunt-depth-btn${save.autoPotionPriority === 'large_first' ? ' active' : ''}`}
+                className={`hunt-depth-opt${save.autoPotionPriority === 'large_first' ? ' active' : ''}`}
                 onClick={() => onUpdateAutoPotionSettings(save.autoPotionThreshold, 'large_first')}
                 data-ui
               >
-                <span className="hunt-depth-name">{dungeonText('autoPotionPriorityLarge')}</span>
+                <span className="hunt-depth-opt-name">{dungeonText('autoPotionPriorityLarge')}</span>
               </button>
             </div>
           </div>
