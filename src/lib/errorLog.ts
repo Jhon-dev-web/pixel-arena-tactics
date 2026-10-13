@@ -3,6 +3,9 @@
 // Nothing here ever reads the save, the account or any token, and every storage access is guarded (private windows / blocked storage must not
 // turn the error recorder into the next error).
 
+import { APP_VERSION } from './appVersion';
+
+export { APP_VERSION };
 export const ERROR_LOG_KEY = 'arena-error-log-v1';
 export const ERROR_LOG_MAX = 5;
 const MESSAGE_MAX = 300;
@@ -20,8 +23,6 @@ export interface ErrorEntry {
   count: number; // identical consecutive errors are folded into one entry
 }
 
-declare const __APP_VERSION__: string | undefined;
-export const APP_VERSION: string = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
 let currentView = '';
 /** App tells the recorder which game screen is open (a plain label, no player data). */

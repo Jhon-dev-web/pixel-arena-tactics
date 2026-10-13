@@ -14,7 +14,7 @@ import {
   InitialTutorialStep,
   SaveData,
 } from './game/engine';
-import { SaveConflictError, SaveRepository } from './game/saveRepository';
+import { SaveConflictError, SaveRepository, SaveTooLargeError } from './game/saveRepository';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { addRelics, addUniqueInstance } from './game/uniques';
@@ -61,7 +61,7 @@ import { GEMS, GemId } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { playerSpriteUrl, withLookMoment } from './game/sprites';
 import AdminModal from './components/AdminModal';
-import { setErrorContext } from './lib/errorLog';
+import { recordError, setErrorContext } from './lib/errorLog';
 import ShopModal from './components/ShopModal';
 import ForgeModal, { ForgeReveal, ForgeTab } from './components/ForgeModal';
 import OficiosView from './components/OficiosView';
@@ -373,6 +373,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         setSaveStatus('error');
         showToast(t('sync.conflict'));
       } else {
+        // A save over the upload size limit is not transient, but it is not lost either (it stays local); the error report tells support about it.
+        if (err instanceof SaveTooLargeError) recordError('error', err);
         // Network/transient failure: leave it dirty so the next debounce tick (or the online-event
         // handler below) retries instead of silently dropping the change.
         dirtyRef.current = true;

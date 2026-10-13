@@ -161,3 +161,18 @@ mudar nas próximas fases (Fase 2: currencies + inventory + gear_instances serve
 
 Fase 2 — mover Gold/Shards/inventário/gear_instances para autoridade do servidor (endpoints dedicados,
 transações atômicas, RNG/timers server-side).
+
+## Limites do upload e o que o servidor deve validar depois (adicionado em 2026-10-13)
+
+O cliente agora faz três coisas antes de gravar um save no Supabase (`src/game/saveUpload.ts`, usado por `SupabaseSaveRepository.create/save`):
+
+- **Limite de tamanho:** recusa o upload se o JSON passar de `MAX_SAVE_UPLOAD_BYTES` (288 KiB), lançando `SaveTooLargeError` antes de qualquer requisição. O número vem de medir o maior save construível de propósito (herói nível 100 tier 6, mochila e baú cheios com 200 peças lendárias de 3 substats, todos os materiais em 99.999): cerca de 72 KB. Para comparação, um herói novo tem 4,7 KB e o save de fim de jogo das fixtures tem 6,3 KB. O limite é 4x o caso extremo.
+- **Versão do esquema:** `schemaVersion` já faz parte do `SaveData` (hoje é a versão do esquema de gear instances, `GEAR_SCHEMA_VERSION`) e continua sendo copiado para a coluna `save_schema_version`.
+- **Versão do app:** o blob enviado ganha `appVersion` (versão do `package.json` que escreveu o save). No carregamento, `fromUploadBlob` remove esse campo antes de `normalizeSave`, então ele nunca vira parte do estado do jogo.
+
+Isto é só higiene do cliente: um cliente adulterado ignora tudo isso. O que o servidor deve impor quando houver autoridade (Fase 2 em diante), e que hoje NÃO existe:
+
+1. **Mesmo limite de tamanho**, como `check (octet_length(save_data::text) <= 294912)` na tabela (ou na função/Edge Function que grava), com o mesmo valor de `MAX_SAVE_UPLOAD_BYTES`. Manter os dois números em sincronia.
+2. **Versão:** rejeitar `save_schema_version` menor que o mínimo suportado ou maior que o conhecido pelo servidor, e registrar `appVersion` para auditoria (clientes antigos, bugs por versão).
+3. **Revisão:** a escrita continua exigindo `revision = expected` (concorrência otimista) e o servidor deve incrementar a revisão ele mesmo (hoje o cliente manda `revision + 1`), de preferência por função `security definer` em vez de `UPDATE` direto com RLS.
+4. **Forma e plausibilidade** (fora do escopo desta fase): tipos dos campos, limites de moedas e de crescimento entre revisões consecutivas, auditoria de snapshot. Ver `docs/WEB_LAUNCH.md` para a ordem das etapas do lado do servidor.

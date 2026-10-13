@@ -1,5 +1,7 @@
 import { SaveData, loadSave, normalizeSave, persistSave } from './engine';
 import { supabase } from '../lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { assertUploadSize, fromUploadBlob, toUploadBlob } from './saveUpload';
 
 // Phase 1 boundary: this file only decides WHERE SaveData is stored (localStorage vs Supabase). It does
 // NOT change who is trusted to compute gold/gear/RNG/timers — the server just stores whatever SaveData
@@ -8,6 +10,8 @@ import { supabase } from '../lib/supabaseClient';
 // this repository as a claim that the economy is now server-authoritative.
 
 export const LEGACY_LOCAL_SAVE_KEY = 'arena-rpg-save-v1';
+
+export { SaveTooLargeError, MAX_SAVE_UPLOAD_BYTES } from './saveUpload';
 
 export class SaveConflictError extends Error {
   constructor() {
@@ -49,9 +53,14 @@ interface CharacterRow {
 }
 
 export class SupabaseSaveRepository implements SaveRepository {
-  constructor(private readonly userId: string) {}
+  // `client` defaults to the app client; tests pass a fake one.
+  constructor(
+    private readonly userId: string,
+    private readonly client: SupabaseClient | null = supabase,
+  ) {}
 
   async load(): Promise<LoadResult | null> {
+    const supabase = this.client;
     if (!supabase) throw new Error('supabase_not_configured');
     const { data, error } = await supabase
       .from('characters')
@@ -60,20 +69,22 @@ export class SupabaseSaveRepository implements SaveRepository {
       .maybeSingle<CharacterRow>();
     if (error) throw error;
     if (!data) return null;
-    return { save: normalizeSave(data.save_data), revision: data.revision };
+    return { save: normalizeSave(fromUploadBlob(data.save_data)), revision: data.revision };
   }
 
   // Creates the server character for this user for the first time (new hero, or a one-time legacy
   // import — see LegacyImportPrompt). Fails if a character already exists (unique(user_id) — see
   // migration) so this can never silently overwrite one.
   async create(save: SaveData, importedFromLegacy: boolean): Promise<{ revision: number }> {
+    const supabase = this.client;
     if (!supabase) throw new Error('supabase_not_configured');
+    const blob = assertUploadSize(toUploadBlob(save)); // refuses oversized saves before any request
     const { data, error } = await supabase
       .from('characters')
       .insert({
         user_id: this.userId,
         hero_name: save.heroName,
-        save_data: save,
+        save_data: blob,
         save_schema_version: save.schemaVersion,
         revision: 1,
         imported_from_legacy: importedFromLegacy,
@@ -85,13 +96,15 @@ export class SupabaseSaveRepository implements SaveRepository {
   }
 
   async save(data: SaveData, expectedRevision: number): Promise<{ revision: number }> {
+    const supabase = this.client;
     if (!supabase) throw new Error('supabase_not_configured');
+    const blob = assertUploadSize(toUploadBlob(data));
     const nextRevision = expectedRevision + 1;
     const { data: row, error } = await supabase
       .from('characters')
       .update({
         hero_name: data.heroName,
-        save_data: data,
+        save_data: blob,
         save_schema_version: data.schemaVersion,
         revision: nextRevision,
       })
