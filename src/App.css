@@ -6113,9 +6113,16 @@ body {
   }
   .desktop-topbar-stats-row {
     display: flex;
-    gap: 16px;
+    flex-wrap: wrap; /* "Nv 100" and the paragon tag wrap as whole words (they broke into "Nv / 100 · / P1" on a phone) */
+    gap: 0 16px;
     font-size: 12px;
     color: #d8c9a0;
+  }
+  .desktop-topbar-stats-row > span {
+    white-space: nowrap;
+  }
+  .desktop-topbar-stats-row > span + span {
+    color: #ffd76a; /* the paragon tag */
   }
   .desktop-topbar-resources {
     display: flex;
@@ -9907,9 +9914,9 @@ button[data-ui]:focus-visible {
   font-size: 8px;
   line-height: 1.35;
   color: #a99ac8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* wraps instead of cutting the path's tagline with an ellipsis ("Dano, críticos e s…") */
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .sk-col-line {
   display: flex;
@@ -10053,6 +10060,7 @@ button[data-ui]:focus-visible {
 }
 .sk-detail {
   display: flex;
+  flex-wrap: wrap; /* Round 13: icon + preview + button left the text 56px at ~1024px; the text now takes a row of its own when it would be squeezed */
   align-items: center;
   gap: 14px;
   min-height: 108px;
@@ -10068,7 +10076,7 @@ button[data-ui]:focus-visible {
   border-radius: 8px;
 }
 .sk-detail-body {
-  flex: 1;
+  flex: 1 1 220px;
   min-width: 0;
   display: flex;
   flex-direction: column;

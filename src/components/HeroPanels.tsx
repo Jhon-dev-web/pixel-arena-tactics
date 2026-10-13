@@ -3,7 +3,8 @@ import { mitigationFraction } from '../game/derivedStats';
 import { SaveData, buildCombatStats, computeCP, formatNumber, playerLevel } from '../game/engine';
 import { GearSlot, INSTANCED_SLOTS, MAX_DURABILITY } from '../game/gear';
 import { EquippedView, resolveEquipped, viewDurability, viewRarity, viewRefine } from '../game/gearInstances';
-import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
+import { Rarity, rarityDef, substatNameKey } from '../game/rarity';
+import { fmtSubstat } from './substatText';
 import { TITLES } from '../game/titles';
 import type { AttrKey } from '../game/attributes';
 import { attrText } from './attrText';
@@ -80,7 +81,7 @@ function EquipSlotCard({ slot, view }: { slot: GearSlot; view: EquippedView | nu
         ))}
         {subs.map((s, i) => (
           <span className="substat-line" key={i}>
-            +{substatLabel(s)} {t(`rarity.${substatNameKey(s.type)}`)}
+            +{fmtSubstat(s)} {t(`rarity.${substatNameKey(s.type)}`)}
           </span>
         ))}
         {view.instance && <span className={`hero-durability${durClass(dur)}`}>{t('forge.durability', { n: dur, m: MAX_DURABILITY })}</span>}

@@ -1,4 +1,4 @@
-import { t } from '../locales';
+import { fmtDec, t } from '../locales';
 import T from '../game/tunables';
 import { computeCP, SaveData } from '../game/engine';
 import { getBiomeForFloor, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR, nextMilestone, recommendedCpForFloor } from '../game/dungeon';
@@ -109,7 +109,7 @@ export default function DungeonMapModal({
                   </span>
                 </div>
                 <div className="floor-drops">
-                  <span className="drops-label depths-note">{dungeonText('depthCpHint').replace('{n}', String(growthPct))}</span>
+                  <span className="drops-label depths-note">{dungeonText('depthCpHint').replace('{n}', fmtDec(growthPct))}</span>
                 </div>
                 <div className="floor-drops">
                   <span className="drops-label depths-note">

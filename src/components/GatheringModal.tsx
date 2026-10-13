@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fmtNum, t } from '../locales';
+import { fmtDec, fmtNum, t } from '../locales';
 import { buffRemainingMs, isBuffActive } from '../game/buffs';
 import { computeMiningStatus, computeWoodcuttingStatus, SaveData } from '../game/engine';
 import { MaterialId, materialIconUrl } from '../game/materials';
@@ -27,7 +27,7 @@ function formatDuration(ms: number): string {
   return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
 }
 
-const fmtHours = (h: number): string => (h >= 10 ? h.toFixed(0) : h.toFixed(1));
+const fmtHours = (h: number): string => (h >= 10 ? fmtDec(h, 0) : fmtDec(h, 1, true));
 
 export default function GatheringModal({
   kind,

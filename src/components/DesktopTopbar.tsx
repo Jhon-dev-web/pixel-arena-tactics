@@ -65,7 +65,11 @@ export default function DesktopTopbar({
             {titleLabel && <span className="desktop-topbar-title">• {titleLabel}</span>}
           </div>
           <div className="desktop-topbar-stats-row">
-            <span>{levelLabel(save, true)}</span>
+            {levelLabel(save, true)
+              .split(' · ')
+              .map((part) => (
+                <span key={part}>{part}</span>
+              ))}
           </div>
         </div>
       </button>

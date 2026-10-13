@@ -1657,6 +1657,13 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const heroSpriteUrl = playerSpriteUrl(save);
   const isDesktop = useIsDesktop();
+  // Phone / tablet: the Hunt, Dungeon and Forge tutorial steps point at entries of the nav drawer, which is closed by default - without this the "use the highlighted button" step
+  // of the Hunt had no button on screen and could only be skipped.
+  useEffect(() => {
+    if (isDesktop) return;
+    if (tutorialStep === 'hunt' || tutorialStep === 'dungeon' || tutorialStep === 'forge') setDrawerOpen(true);
+    else if (tutorialStep === 'final') setDrawerOpen(false);
+  }, [isDesktop, tutorialStep]);
 
   const closeDrawer = () => setDrawerOpen(false);
 

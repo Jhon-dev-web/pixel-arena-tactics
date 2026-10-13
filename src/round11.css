@@ -728,3 +728,23 @@
 .quests-body .streak-card {
   grid-column: 1 / -1;
 }
+/* four tabs (Diárias, Semanais, Conquistas, Estatísticas) no longer fit one row of a phone: two by two */
+@media (max-width: 480px) {
+  .quests-modal .inv-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .quests-modal .inv-tabs .tab {
+    font-size: 9px;
+    padding: 9px 4px;
+    flex: none;
+  }
+}
+/* phone top bar: the routine "Salvo" / "Salvando" tag only crowds the hero's name and level; a save error or being offline still shows */
+@media (max-width: 480px) {
+  .desktop-topbar .sync-status.saved,
+  .desktop-topbar .sync-status.saving {
+    display: none;
+  }
+}

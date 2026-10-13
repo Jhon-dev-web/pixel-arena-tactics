@@ -1,6 +1,7 @@
 import { t } from '../locales';
 import { getGear } from '../game/gear';
-import { rarityDef, substatLabel, substatNameKey } from '../game/rarity';
+import { rarityDef, substatNameKey } from '../game/rarity';
+import { fmtSubstat } from './substatText';
 import { UniqueDrop } from '../game/uniques';
 import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
@@ -30,7 +31,7 @@ export default function UniqueDrops({ drops, held = false }: { drops: UniqueDrop
               )}
               {d.substats.map((s, j) => (
                 <span className="substat-line" key={j}>
-                  +{substatLabel(s)} {t(`rarity.${substatNameKey(s.type)}`)}
+                  +{fmtSubstat(s)} {t(`rarity.${substatNameKey(s.type)}`)}
                 </span>
               ))}
             </div>

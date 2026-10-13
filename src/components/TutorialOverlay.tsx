@@ -56,9 +56,16 @@ export default function TutorialOverlay({
     observer.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', onViewportChange);
     window.addEventListener('scroll', onViewportChange, true);
+    // A target inside the sliding nav drawer is measured while it is still moving: measure again when the slide ends.
+    window.addEventListener('transitionend', onViewportChange, true);
+    window.addEventListener('animationend', onViewportChange, true);
+    const settle = window.setTimeout(onViewportChange, 450);
     return () => {
+      window.clearTimeout(settle);
       window.removeEventListener('resize', onViewportChange);
       window.removeEventListener('scroll', onViewportChange, true);
+      window.removeEventListener('transitionend', onViewportChange, true);
+      window.removeEventListener('animationend', onViewportChange, true);
       observer.disconnect();
     };
   }, [target, step]);

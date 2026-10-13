@@ -9,7 +9,7 @@ import { setEffectText, setFamilyName } from './setText';
 // piece belongs to and what its bonuses are (the words are in setText.ts).
 
 // "Aço 3/5": the family and how many of the highest threshold's pieces are worn.
-const progressLabel = (v: SetFamilyView): string => `${setFamilyName(v.family)} ${v.count}/${v.max}`;
+const progressLabel = (v: SetFamilyView): string => `${setFamilyName(v.family)} ${Math.min(v.count, v.max)}/${v.max}`;
 
 // A family is listed when a bonus is active or the next one is one piece away (two for a three-piece step): the quiet middle ground between hiding the sets and
 // listing every family the hero owns one piece of.
@@ -59,7 +59,7 @@ export function SetNote({ item, save }: { item: GearItem; save?: SaveData }) {
           <div className="set-note-family" key={family} data-set={family}>
             <span className="set-note-title">
               {t('set.title')} {setFamilyName(family)}
-              {counts ? ` (${counts[family]}/${view.max})` : ''}
+              {counts ? ` (${Math.min(counts[family], view.max)}/${view.max})` : ''}
               {family === 'gilded' && item.setFamily === 'dragon' ? ` · ${t('set.dragonCounts')}` : ''}
             </span>
             {SET_DEFS[family].thresholds.map((pieces, i) => (

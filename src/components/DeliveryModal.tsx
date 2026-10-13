@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fmtNum, t } from '../locales';
+import { fmtDec, fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData } from '../game/engine';
 import { canAffordOffer, deliveryGold, deliveryRarity, deliveryXp, offerCount, rerollsLeft } from '../game/deliveries';
@@ -31,7 +31,7 @@ function formatDuration(ms: number): string {
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
 }
 
-const compact = (n: number): string => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
+const compact = (n: number): string => (n >= 1_000_000 ? `${fmtDec(n / 1_000_000, 1, true)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
 
 function Rewards({ gold, xp, shards }: { gold: number; xp: number; shards: number }) {
   return (

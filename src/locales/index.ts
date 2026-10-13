@@ -49,4 +49,8 @@ export function setLocaleListener(listener: (() => void) | null): void {
 export const locales = Object.keys(LOCALES) as Locale[];
 
 // Number with thousands separators in the active language (pt-BR "1.234", en-US "1,234"): the one formatter every screen uses for counts, gold and XP.
+// Decimal number in the active language (pt-BR "3,5", en-US "3.5"): up to `digits` decimals, or exactly `digits` when `fixed`.
+export const fmtDec = (n: number, digits = 1, fixed = false): string =>
+  Number.isFinite(n) ? n.toLocaleString(activeLocale === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: fixed ? digits : 0, maximumFractionDigits: digits }) : '-';
+
 export const fmtNum = (n: number): string => (Number.isFinite(n) ? n.toLocaleString(activeLocale === 'pt' ? 'pt-BR' : 'en-US') : '-');

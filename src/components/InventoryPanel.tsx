@@ -15,7 +15,8 @@ import { stashCapacity, stashCount, stashSlotsUsed } from '../game/stash';
 import StackActions, { StashTake } from './StackActions';
 import StashPane from './StashPane';
 import { BagContext } from './bagContext';
-import { Rarity, rarityDef, substatLabel, substatNameKey } from '../game/rarity';
+import { Rarity, rarityDef, substatNameKey } from '../game/rarity';
+import { fmtSubstat } from './substatText';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
@@ -416,7 +417,7 @@ export default function InventoryPanel({
               <div className="substat-list">
                 {selectedSubs.map((s, i) => (
                   <span className="substat-line" key={i}>
-                    +{substatLabel(s)} {t(`rarity.${substatNameKey(s.type)}`)}
+                    +{fmtSubstat(s)} {t(`rarity.${substatNameKey(s.type)}`)}
                   </span>
                 ))}
               </div>
