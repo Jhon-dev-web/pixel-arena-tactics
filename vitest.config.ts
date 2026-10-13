@@ -6,6 +6,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/__tests__/**/*.test.ts'],
+    // The public portal (portal/) is a separate, self-contained static site with its own scripts.
+    exclude: ['portal/**', '**/node_modules/**'],
     setupFiles: ['src/game/__tests__/setup.ts'],
     // The statistical tests (seeded drop rates, the recommended-CP table) run hundreds of thousands of rolls and sit close
     // to vitest's 5 s default on a busy machine, where they fail as timeouts rather than as wrong results.

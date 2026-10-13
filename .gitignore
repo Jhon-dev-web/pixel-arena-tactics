@@ -33,3 +33,7 @@ dist-desktop/
 
 # UI smoke test output (npm run smoke:ui): screenshots and the generated test saves
 smoke-out/
+
+# Public portal build output (portal/ is its own static site)
+portal/dist/
+portal/node_modules/
