@@ -1007,3 +1007,113 @@ O dono segue claramente à frente (andar 60 contra 42 no dia 14, materiais +73%,
 3. **T3 arma / armadura com uma peça do T2** foi a alavanca de ritmo que valeu; o tamanho dos conjuntos não moveu a mediana.
 4. **A correção da política da simulação** mudou o "antes" em até 2 dias; as duas colunas ficam na tabela.
 5. **Vantagem do Passe em dias menor** (item 5).
+
+
+## Rodada 12 — maestria, receitas, Profundezas, Paragon e o Passe (2026-10-12)
+
+Quatro commits: `feat: profession mastery and new recipes for the top levels`, `feat: endless depths beyond floor 100 and paragon levels`, `balance: the Adventurer Pass keeps its owner clearly ahead` e o de documentação. Medições: `npm run sim` (20 seeds x 21 dias, cenário A, com e sem `SIM_NO_UNIQUES=1`), `SIM_PASS_ONLY=1` (dono contra não-dono), `npm run sim:flow` (fluxo de materiais). Detalhe de profissões em `docs/PROFESSIONS_AUDIT.md` (seção 8) e de fluxo em `docs/MATERIAL_FLOW.md` (seção 7).
+
+### 1. Profissões, receitas e consumíveis
+
+**Plantas novas (Jardinagem 46-75; XP = 5 por hora de canteiro, como todas):**
+
+| Planta | Nível | Tempo | Colheita | Usada em |
+|---|---|---|---|---|
+| Sálvia Prateada (`silver_sage`) | 50 | 8 h | +2 | Pedra de Amolar |
+| Orquídea do Crepúsculo (`dusk_orchid`) | 60 | 12 h | +1 | Polimento de Armadura |
+| Raiz Anciã (`elder_root`) | 70 | 16 h | +1 | Kit de Reparo Mestre |
+
+**Maestrias** (`mastery.ts`, `T.mastery`; determinísticas, sem sorteio). Mineração e Lenhador: 50 = +4% de unidades, 60 = 1 Pó de Refino a cada 40 unidades, 70 = mais +4% (total +8%), 75 = 1 gema a cada 250 unidades. Jardinagem: 50 = plantas 5% mais rápidas, 60 = mais 5% (total 10%), 70 = 1 Pó por 4 h de crescimento de cada colheita, 75 = colheitas de plantas raras +1. A lista **Próximos desbloqueios** (tiers ou plantas e as quatro maestrias) aparece nas telas de Mineração, Lenhador e Horta.
+
+**11 receitas novas nas estações que já existem** (Poções do Ofícios e Pó de Refino; nenhuma tela nova):
+
+| Receita | Entradas | Ouro | Nv | Efeito |
+|---|---|---|---|---|
+| Kit de Reparo | 4 Ferro, 4 Madeira comum, 2 Osso | 40 | 10 | +60 de durabilidade na arma e na armadura equipadas |
+| Tônico do Prospector | 1 Prata, 2 Carvalho, 2 Cardo, 1 Flor Dourada | 60 | 20 | +10% de minério e madeira por 2 h (soma com a Poção do Coletor) |
+| Isca do Caçador | 3 Sangue, 2 Capim Veloz, 1 Raiz Amarga | 90 | 30 | +10% de chance dos materiais incomuns e raros da zona em que foi usada, 60 min |
+| Pedra de Amolar | 1 Ouro bruto, 3 Ferro, 1 Sálvia, 1 Cristal | 80 | 45 | +4% de dano, 30 min |
+| Kit de Reparo Mestre | 3 Prata, 3 Ébano, 3 Sangue, 1 Raiz Anciã, 1 Lírio Lunar | 120 | 60 | repara a arma e a armadura por completo |
+| Polimento de Armadura | 1 Obsidiana, 1 Madeira élfica, 1 Madeira ancestral, 1 Orquídea, 1 Flor Carmesim, 2 Cristal | 150 | 65 | +5% de redução de dano (soma com a Pele de Pedra), 30 min |
+| Pó de Refino a partir de Ferro / Madeira comum / Carvalho / Ébano / Cardo de Ferro | 10 / 10 / 8 / 8 / 6 | 0 | 1 a 25 | 1 Pó (razão saída/entradas >= 0,6) |
+
+Os efeitos de tempo usam a máquina de buffs que já existe (`buffs.ts`, as janelas da Caça em `huntCombat.ts`); nenhum combate novo. A Isca só vale com uma caça em andamento e só para a zona dela; a Pedra e o Polimento valem na Masmorra e na Caça; o Tônico, na coleta.
+
+**Teto dos consumíveis novos** (documentado e testado, `T.consumables.newConsumableCap` = 10%): tudo o que é novo e pode estar ativo junto soma no máximo **+4% de dano** (só a Pedra de Amolar, que multiplica como os outros buffs de dano) e **+10% de rendimento por atividade** (a Isca na Caça, o Tônico em Mineração e Lenhador; o Polimento só toca a soma de redução). Como empilham com os antigos: dano multiplica (Elixir de Força x Elixir de Ataque x Pedra); o rendimento de coleta soma horas efetivas com a Poção do Coletor (+25% mais +10% = +35% nas horas cobertas); a redução do Polimento soma com a da Pele de Pedra dentro da fórmula assintótica `dano / (1 + soma)`.
+
+**Ícones pendentes** (caem no emoji até o PNG existir; `src/game/iconPending.ts`; o teste exige tirar o id da lista quando o arquivo aparecer): `silver_sage`, `dusk_orchid`, `elder_root`, `repair_kit`, `master_repair_kit`, `sharpening_stone`, `armor_polish`, `hunter_lure`, `prospector_tonic`.
+
+**Efeito no fluxo** (`MATERIAL_FLOW.md`, seção 7): todo material de uso único ganhou segundo uso e os sumidouros existem, mas em 21 dias o veredito quase não muda (o desgaste de durabilidade só custa ~200 de Ouro de reparo no período, 70 com o kit). É estrutural, não de receita: ver a decisão 3.
+
+### 2. Profundezas e Paragon
+
+**Profundezas.** Abrem depois que o chefe do andar 100 cai. A profundeza d é o monstro do andar 99 (11 226 PV, 563 de dano) vezes 1,04^d de PV e 1,03^d de dano (porcentagem fixa por profundeza, sem tabela). Um chefe a cada 10 profundezas, com PV x1,6 e dano x1,25 sobre a regular, usando as quatro fichas de chefe de bioma em rodízio (25 Rei Goblin, 50 Chefe Orc, 75 Lich, 100 Minotauro), tingidas e renomeadas. O CP recomendado vem de fórmula, `CP(andar 99) x raiz(PV x dano)` (a tabela gerada para no 100). O progresso é guardado (a próxima descida começa uma profundeza abaixo da mais funda vencida), então cada profundeza, e a rolagem de únicos do chefe, vale **uma vez**. O recorde (`stats.deepestDepth`) aparece no mapa da Masmorra, nas Estatísticas e no Códice (quatro chefes novos).
+
+| Profundeza | Multiplicador PV / dano | PV / dano do monstro | CP recomendado | Recompensa | Chance de único / relíquia |
+|---|---|---|---|---|---|
+| 1 | 1,04 / 1,03 | 11 675 / 580 | 3 997 | ouro (a mesma fórmula dos andares, +1,2% por estágio) | - |
+| 10 (chefe) | 2,37 / 1,68 | 26 588 / 946 | 7 703 | ouro x5, 4 Runas, 1 gema, XP de chefe | 3,0% |
+| 25 | 2,67 / 2,09 | 29 927 / 1 179 | 9 124 | ouro | - |
+| 50 (chefe) | 11,37 / 5,48 | 127 647 / 3 085 | 30 485 | ouro x5, 4 Runas, 1 gema | 5,0% (teto) |
+| 100 (chefe) | 80,8 / 24,0 | 907 150 / 13 525 | 170 159 | ouro x5, 4 Runas, 1 gema | 5,0% (teto) |
+
+Únicos: o chefe da profundeza 10 k sorteia as peças do chefe de bioma [25, 50, 75, 100][(k-1) mod 4]; chance 2% + 0,1% por profundeza, teto de 5%, por peça e por relíquia, vezes a Sorte Grande. Esperado por chefe vencido: no máximo 3 x 5% = **0,15 peça**, e um chefe de profundeza só é vencido uma vez; mesmo um herói que avance um chefe a cada 3 dias dá no máximo uma peça a cada **20 dias** (testado). Cinco conquistas (profundezas 1 / 10 / 25 / 50 / 100, de 300 a 3 000 de ouro e 1 a 10 Runas; só leem as estatísticas, que o simulador não passa) e um título (Caminhante das Profundezas, na 50).
+
+**Paragon.** Depois do nível 100 o XP continua contando: o nível de Paragon n custa 5% do XP do nível 99 -> 100 vezes 1,015^(n-1) (os 50 primeiros somam ~0,8x o XP de toda a carreira até o 100) e dá **+0,2% de dano para sempre**, no máximo **+10%** (nível 50). Aparece ao lado do nível ("Nv 100 · Paragon 12"). Nada novo no save: o nível sai do `xp`, que antes era zerado no carregamento se passasse do teto. Um herói abaixo do 100 tem os mesmos números de sempre (o termo vale exatamente 1).
+
+**Andares 1 a 100 inalterados.** Testes reescrevem as fórmulas antigas de PV, dano, chefe, checkpoint, XP e CP e conferem os 100 andares; e a saída do simulador de 21 dias (`SIM_FAST=1 SIM_FAST_PASS=1`, com únicos) é **idêntica linha a linha** antes e depois do commit.
+
+### 3. Passe de Aventureiro: o dono volta a ficar claramente à frente
+
+Mudou só o que é do dono: armazém **6 h -> 8 h**, ouro **+10% -> +15%**, XP das Entregas **+10% -> +20%**, e um **Kit de Reparo por dia** (ao abrir o jogo em um dia novo, até 5 guardados). Materiais +10%, pedidos +1 / +1, bolsa, Baú e reparo -20% ficaram. Nada do não-dono e nenhuma meta da tabela de guarda foi tocada. Tentativas (20 seeds, mediana; chegada ao andar 50 em dias de vantagem; CP do dia 7): só aumentar materiais e ouro (+25% / +20%) = 4 dias mas CP do dia 7 +0,4%; só o armazém de 8 h = 3,5 dias e +12,9%; **armazém 8 h + ouro 15% + XP 20% = 4,5 dias e +23,5%** (adotado); somar materiais +15% ou +20% não ajudou (4 dias). O armazém é a alavanca: com duas visitas por dia (12 h entre elas) o dono guarda o dobro do não-dono em cada visita.
+
+| Medida (mediana, dono contra não-dono) | Antes | Depois |
+|---|---|---|
+| dia 7: materiais/dia (média acumulada) | +38,9% | **+138%** |
+| dia 14: materiais/dia | +76,2% | **+137%** (meta >= +60%) |
+| dia 21: materiais/dia | +69,6% | **+141%** |
+| dia 7: nível / CP | +5,1% / +2,2% | +15,4% / **+23,5%** (meta >= +8%) |
+| dia 14: nível / CP | +6,4% / +19,7% | +9,6% / +28,5% |
+| dia 21: nível / CP | +4,0% / +12,4% | +12,0% / +42,4% |
+| dia 14 / 21: andar mais alto | +37,9% / +10% (60 / 72) | +51,7% / +23,1% (66 / 80) |
+| dia 14 / 21: ouro/dia | +73,5% / +11,8% | +83,7% / +82,3% |
+| chegada ao andar 50 (dias adiantados) | 15 contra 12,5 (**2,5**) | 15 contra 10,5 (**4,5**; meta 4 a 5) |
+| chefe 50 (dias adiantados) | 3,5 | 5 |
+| chefe 25 (dias adiantados) | 1 | 1 |
+
+Sem únicos (`SIM_NO_UNIQUES=1`): chegada ao andar 50 do dono 10,5 contra 15 do não-dono (4,5 dias), chefe 50 do dono 11 contra 17,5 (6,5), CP do dia 7 +18,9%. A tela do Passe passou a ser gerada de `passPerks.ts`, e o teste `passPerks.test.ts` confere cada linha (armazém, ouro, materiais, pedidos, bolsa, Baú, reparo, Kit diário) contra o que o motor faz, em pt e en.
+
+### 4. Tabela de guarda (cenário A, 20 seeds, mediana), antes -> depois
+
+U = com únicos (padrão), N = `SIM_NO_UNIQUES=1`. "Antes" = commit f86c612. **Idêntica nas duas colunas em todas as metas.** A única diferença do relatório inteiro é a Jardinagem da tabela de profissões, 1 nível a mais no máximo do dia 12 em diante (os perks da Horta).
+
+| Meta | Antes U / N | Depois U / N |
+|---|---|---|
+| T2 primeira sessão >= andar 8; checkpoint 10 no dia 1 | 8 / 8 | 8 / 8 |
+| T3 primeira peça forjada (dia <= 2) | 2 / 2 | 2 / 2 |
+| T4 nível dia 1 / 3 / 14 (10-16 / 20-29 / 45-60) | 13 / 27 / 47 · 13 / 27 / 47 | 13 / 27 / 47 · 13 / 27 / 47 |
+| T5 chefe 25 pela 1ª vez (dia 4-6); vitória ao chegar | dia 5, 0% · dia 5, 0% | dia 5, 0% · dia 5, 0% |
+| T6 chegada ao andar 50: 1ª seed / mediana (meta 12-15) | 12 / 15 · 12 / 15 | 12 / 15 · 12 / 15 |
+| T6 chefe 50: 1ª seed / mediana / seeds em 21 dias | 13 / 16,5 / 18 · 13 / 17,5 / 19 | 13 / 16,5 / 18 · 13 / 17,5 / 19 |
+| T7 menor razão (N+1)/(N-1) em volta dos chefes (>= 1,0) | 1,05 | 1,05 |
+| T8 derrota mantém 75% do ouro | 75% | 75% |
+| I1 inventário enche (dia 3-6) | 6 | 6 |
+| I2 perda do jogador atento (< 5%), pior seed | 1,26% | 1,26% |
+| I3 perda de quem ignora (>= 10%), mediana | 85,7% | 85,7% |
+| I4 ouro do mercador (< 35%) dias 3 / 7 / 14 | 0 / 20,7 / 25,3% | 0 / 20,7 / 25,3% |
+
+### 5. Decisões que o diretor pode discordar
+
+1. **Maestrias sem sorteio.** O pedido sugeria uma pequena chance de rendimento dobrado; fiz +4% determinístico (mesmo valor médio, coleta reproduzível, simulador intocado).
+2. **Armazém do Passe de 8 h.** É a alavanca que devolveu os 4,5 dias de vantagem, mas com duas visitas a 12 h de intervalo ela dobra a coleta do dono (materiais +137% no dia 14, bem acima da meta de +60%). Alternativa: 7 h (3 dias, CP do dia 7 +6,7%) ou 8 h com materiais de volta a +5%.
+3. **Os sumidouros novos não movem o veredito de 21 dias** (`MATERIAL_FLOW.md`, 7.1): o consumo recorrente do reparo é pequeno porque o desgaste é pequeno. Para a abundância de comuns virar "certa" teria de crescer o desgaste de durabilidade ou o consumo dos tônicos; é decisão de design, não mexi.
+4. **Profundezas íngremes de propósito.** PV +4% e dano +3% por profundeza, compostos, pedem ~7,7 mil de CP na profundeza 10 e ~30 mil na 50: o herói de nível 100 com equipamento do tier 6 chega a uma parede na casa das 10 a 25 profundezas. Dois números em `T.depths` (`hpGrowth`, `dmgGrowth`) movem isso.
+5. **Chefes de profundeza dão Runas (4) e únicos uma vez só**, porque o progresso é guardado; a chance de único (3 a 5%) não leva o ritmo acima de ~1 peça por 20 dias, mas também faz o endgame de únicos depender de ir fundo, não de repetir.
+6. **Paragon em dano (+0,2% por nível, teto +10%)** em vez de ouro: empurra a profundidade sem criar renda. Custo e crescimento em `T.paragon`.
+7. **A Isca do Caçador só funciona durante uma caça** (a zona vem da caça em andamento); fora dela o item não é gasto e um aviso explica.
+
+### 6. Não feito, ou verificado só em parte
+
+- Os ícones dos 3 materiais e dos 6 consumíveis novos estão pendentes (emoji no lugar).
+- O relatório de fluxo mede só o que 21 dias alcançam; Pedra de Amolar, Kit Mestre e Polimento (Jardinagem 50 / 60 / 65) têm testes de receita e de efeito, mas nenhuma medição de uso real.
+- Conferido no navegador em desktop e em 390 x 800: mapa da Masmorra com as Profundezas, uma luta de profundeza (regular e de chefe), a lista de desbloqueios da Mineração, a Horta (só desktop), as receitas (só desktop) e o nível com Paragon. A tela do Passe não foi aberta no navegador (o dono do Passe não existe no save de revisão); ela é coberta por teste.
