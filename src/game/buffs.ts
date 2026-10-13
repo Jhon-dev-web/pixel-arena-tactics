@@ -1,5 +1,5 @@
 import type { ConsumableId } from './consumables';
-import { CombatStats, heroAttackIntervalMs } from './derivedStats';
+import { BLESSED_DAMAGE_PCT, CombatStats, heroAttackIntervalMs } from './derivedStats';
 import type { SaveData } from './engine';
 import type { TimeWindow } from './huntSession';
 import T from './tunables';
@@ -173,3 +173,39 @@ export function goldMultiplier(gearGoldBonusPct: number, fortuneActive: boolean,
 }
 
 export type TonicWindows = Partial<Record<TimedBuffKind, TimeWindow[]>>;
+
+// ---- the table of every temporary effect -------------------------------------------------------------------------------------
+// ONE declarative list of what each timed effect does, read from the tunables at call time (so the tweak panel moves it): the hero panel's breakdown uses the kinds and values,
+// docs/ITEM_BALANCE_AUDIT.md ("Como os status somam") prints it and temporaryEffects.test.ts checks the document against it and each row against the fight. The ENGINE never reads
+// this table (each effect is applied where the comment above it says); it is the description that a test holds equal to what the engine does.
+export type EffectStat = 'damage' | 'critChance' | 'defense' | 'attackSpeed' | 'gold' | 'dropChance' | 'gatherYield';
+export interface TemporaryEffect {
+  kind: BuffKind | 'blessed';
+  item: ConsumableId | null; // blessed comes from the Forge's blessed repair
+  stat: EffectStat;
+  // multiplier: multiplies the hit with the other damage buffs. add: adds to the sum of its stat (defense: the raw resistance sum, crit: absolute points, speed: the same
+  // bonus a relic gives, gold: added to gear + Pass + Ganancia, dropChance / gatherYield: the share of the base).
+  how: 'multiplier' | 'add';
+  value: number; // a fraction: 0.2 = +20%
+  minutes: number | null; // null = until the next Dungeon run spends it
+  dungeon: boolean;
+  hunt: boolean;
+  gather: boolean;
+}
+
+export function temporaryEffects(): TemporaryEffect[] {
+  return [
+    { kind: 'blessed', item: null, stat: 'damage', how: 'multiplier', value: BLESSED_DAMAGE_PCT, minutes: null, dungeon: true, hunt: true, gather: false },
+    { kind: 'strength', item: 'strength_elixir', stat: 'damage', how: 'multiplier', value: T.battle.strengthElixirDmgPct, minutes: T.battle.strengthElixirMinutes, dungeon: true, hunt: true, gather: false },
+    { kind: 'attack', item: 'atk_elixir', stat: 'damage', how: 'multiplier', value: T.battle.attackElixirDmgPct, minutes: T.battle.attackElixirMinutes, dungeon: true, hunt: true, gather: false },
+    { kind: 'sharpened', item: 'sharpening_stone', stat: 'damage', how: 'multiplier', value: T.consumables.sharpenDmgPct, minutes: T.consumables.sharpenMinutes, dungeon: true, hunt: true, gather: false },
+    { kind: 'stoneskin', item: 'stoneskin_tonic', stat: 'defense', how: 'add', value: T.tonics.stoneskinReduction, minutes: T.tonics.stoneskinMinutes, dungeon: true, hunt: true, gather: false },
+    { kind: 'polished', item: 'armor_polish', stat: 'defense', how: 'add', value: T.consumables.polishReduction, minutes: T.consumables.polishMinutes, dungeon: true, hunt: true, gather: false },
+    { kind: 'haste', item: 'haste_tonic', stat: 'attackSpeed', how: 'add', value: T.tonics.hasteAttackSpeed, minutes: T.tonics.hasteMinutes, dungeon: true, hunt: true, gather: false },
+    { kind: 'precision', item: 'precision_elixir', stat: 'critChance', how: 'add', value: T.tonics.precisionCritPoints, minutes: T.tonics.precisionMinutes, dungeon: true, hunt: true, gather: false },
+    { kind: 'fortune', item: 'fortune_tonic', stat: 'gold', how: 'add', value: T.tonics.fortuneGoldPct, minutes: T.tonics.fortuneMinutes, dungeon: true, hunt: true, gather: false },
+    { kind: 'bait', item: 'hunter_lure', stat: 'dropChance', how: 'multiplier', value: T.consumables.baitDropPct, minutes: T.consumables.baitMinutes, dungeon: false, hunt: true, gather: false },
+    { kind: 'gatherer', item: 'gatherer_brew', stat: 'gatherYield', how: 'add', value: T.tonics.gathererYieldPct, minutes: T.tonics.gathererMinutes, dungeon: false, hunt: false, gather: true },
+    { kind: 'prospect', item: 'prospector_tonic', stat: 'gatherYield', how: 'add', value: T.consumables.prospectYieldPct, minutes: T.consumables.prospectMinutes, dungeon: false, hunt: false, gather: true },
+  ];
+}

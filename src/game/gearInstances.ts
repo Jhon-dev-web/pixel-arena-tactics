@@ -341,11 +341,11 @@ export function equippedExtraStats(save: GearState): ExtraSlotStats {
   return t;
 }
 
-export function equippedSubstatTotals(save: GearState): SubstatTotals {
+export function equippedSubstatTotals(save: GearState, includeSet = true): SubstatTotals {
   const total = equippedInstances(save).reduce((acc, inst) => addSubstatTotals(acc, substatListTotals(inst.substats)), substatListTotals([]));
   // The Goblin Lucky Coin (a relic) and the gold bonus of a set go into the same sum, so they count inside the same cap.
   const relicGold = save.equipped.relic ? getGear(save.equipped.relic)?.goldBonusPct ?? 0 : 0;
-  const setGold = setBonuses(equippedSetItems(save)).totals.goldBonusPct;
+  const setGold = includeSet ? setBonuses(equippedSetItems(save)).totals.goldBonusPct : 0;
   return { ...total, goldBonus: Math.min(GOLD_BONUS_CAP, total.goldBonus + relicGold + setGold) };
 }
 

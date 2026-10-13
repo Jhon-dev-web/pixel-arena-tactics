@@ -315,6 +315,9 @@ export function combatPowerCore(stats: CombatStats): number {
   return Math.sqrt((dps * ehp) / (1 - sigma));
 }
 
+// Blessed (the Forge's blessed repair, spent by the next Dungeon run): +5% damage, multiplying like every other damage modifier. The one place the number lives.
+export const BLESSED_DAMAGE_PCT = 0.05;
+
 export interface CombatModifiers {
   blessedMult: number;
   strengthMult: number;

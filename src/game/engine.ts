@@ -32,12 +32,12 @@ import { LifetimeStats, emptyStats, normalizeStats, StatsBackfill } from './stat
 import { rollWeekly, sanitizeStreak, sanitizeWeekly } from './weekly';
 import { CodexState, emptyCodex, normalizeCodex } from './codex';
 import { Rarity, rarityStatMult } from './rarity';
-import { setBonuses } from './setBonuses';
+import { emptySetTotals, setBonuses } from './setBonuses';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
 import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers, withPermanentPassWindow, LEGACY_PASS_CAP_HOURS } from './huntSession';
-import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage, StrikeTally } from './derivedStats';
+import { applyDamageModifiers, BLESSED_DAMAGE_PCT, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage, StrikeTally } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
@@ -351,7 +351,14 @@ export function playerMaxHp(save: SaveData): number {
 //
 // These are the PERMANENT effective stats (relic crit multiplier included); Hunting, the Dungeon and computeCP
 // all read them. Temporary modifiers are never part of this.
-export function buildCombatStats(save: SaveData): CombatStats {
+// `parts` exists only for the hero panel's breakdown (statBreakdown.ts): it leaves the set bonuses and / or the paragon bonus out so the stats can be rebuilt layer by layer with THIS function
+// instead of a second formula. Nothing in the game passes it, so every fight, the CP and every session read the full stats.
+export interface StatParts {
+  sets?: boolean;
+  paragon?: boolean;
+}
+
+export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatStats {
   const { weapon: weaponView, armor: armorView, relic } = resolveEquipped(save);
   const weapon = weaponView.item;
   const armor = armorView.item;
@@ -364,11 +371,11 @@ export function buildCombatStats(save: SaveData): CombatStats {
   const wRarity = rarityStatMult(viewRarity(weaponView));
   const aRarity = rarityStatMult(viewRarity(armorView));
   const gems = equippedGemBonuses(save);
-  const subs = equippedSubstatTotals(save);
+  const subs = equippedSubstatTotals(save, parts.sets !== false);
   // Helmet / gloves / boots / ring / shield (gearInstances.equippedExtraStats): gloves damage joins the weapon term, so STR scales it too.
   const extra = equippedExtraStats(save);
   // Set bonuses (setBonuses.ts): the crafted tier families worn, added to the same numbers the relic and the gear feed.
-  const set = setBonuses(equippedSetItems(save)).totals;
+  const set = parts.sets === false ? emptySetTotals() : setBonuses(equippedSetItems(save)).totals;
 
   // Flat base hit (avg of attackMin/attackMax) plus the weapon term W (refine, durability, rarity); STR is applied on top
   // of that sum by strengthAdjustedDamage (derivedStats.ts). blessed/Elixir/crit come later, at the call sites.
@@ -380,7 +387,7 @@ export function buildCombatStats(save: SaveData): CombatStats {
     maxHp: playerMaxHp(save),
     // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
     // grows the weapon term W before STR scales it.
-    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + set.damagePct) * (1 + paragonDamageBonus(paragonLevel(save.xp))),
+    dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + set.damagePct) * (1 + (parts.paragon === false ? 0 : paragonDamageBonus(paragonLevel(save.xp)))),
     critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance,
     critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus + set.critMultBonus,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
@@ -418,7 +425,7 @@ export function buildCombatStats(save: SaveData): CombatStats {
 // freezes blessed at start and tracks the Elixir as time windows (see HuntSession / buildHuntSession).
 export function combatModifiersFromSave(save: SaveData, now: number): CombatModifiers {
   return {
-    blessedMult: save.blessed ? 1.05 : 1,
+    blessedMult: save.blessed ? 1 + BLESSED_DAMAGE_PCT : 1,
     strengthMult: isBuffActive(save, 'strength', now) ? 1 + T.battle.strengthElixirDmgPct : 1,
     attackMult: isBuffActive(save, 'attack', now) ? 1 + T.battle.attackElixirDmgPct : 1,
     sharpMult: isBuffActive(save, 'sharpened', now) ? 1 + T.consumables.sharpenDmgPct : 1,
@@ -439,7 +446,12 @@ const CP_SCALE = 2;
 // Elixir, potions and every other temporary/economic modifier are deliberately NOT part of CP. CP is a general
 // strength rating, not a matchup predictor: a lower-CP build can beat a higher-CP one.
 export function computeCP(save: SaveData): number {
-  return Math.round(CP_SCALE * combatPowerCore(buildCombatStats(save)));
+  return cpOfStats(buildCombatStats(save));
+}
+
+// The same rating for any CombatStats (the hero panel's "CP now" feeds it the stats with the elixirs applied).
+export function cpOfStats(stats: CombatStats): number {
+  return Math.round(CP_SCALE * combatPowerCore(stats));
 }
 
 // Adventurer Pass convenience perks (owners only, see entitlements.ts): a longer offline window and a small material yield bump (Hunting / Mining /
@@ -750,7 +762,7 @@ export function buildHuntSimSetup(
   // after the session started only count from the next session. The Elixir is applied per hit while its window covers
   // that hit, the Battle Pass drop bonus per cleared fight while its window covers it (see HuntTimeline).
   const stats = session.stats;
-  const mods = { blessedMult: session.blessed ? 1.05 : 1, strengthMult: 1, attackMult: 1 };
+  const mods = { blessedMult: session.blessed ? 1 + BLESSED_DAMAGE_PCT : 1, strengthMult: 1, attackMult: 1 };
   const strengthMods = { ...mods, strengthMult: 1 + T.battle.strengthElixirDmgPct };
   const attackMods = { ...mods, attackMult: 1 + T.battle.attackElixirDmgPct };
 
