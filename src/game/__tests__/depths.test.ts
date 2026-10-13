@@ -63,7 +63,7 @@ describe('Profundezas: floors 1-100 behave exactly as before', () => {
     // floors 1-50 are exactly the Round 14 numbers (the late factor is 1 there)
     for (let floor = 1; floor <= 50; floor++) expect(lateFactor(floor, T.battle.lateHpGrowth, T.battle.lateHpGrowth2) + lateFactor(floor, T.battle.lateDmgGrowth, T.battle.lateDmgGrowth2), `floor ${floor}`).toBe(2);
     expect(recommendedCpForFloor(50)).toBe(1848);
-    expect(recommendedCpForFloor(75)).toBe(3698);
+    expect(recommendedCpForFloor(75)).toBe(3862);
     expect(dungeonRunXp(90, 11)).toBe(Array.from({ length: 11 }, (_, i) => stageVictoryXp(90 + i)).reduce((a, b) => a + b, 0));
   });
 

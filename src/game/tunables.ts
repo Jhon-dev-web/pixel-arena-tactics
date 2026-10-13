@@ -68,9 +68,9 @@ const T = DebugPanel.define({
     dmgGrowth: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Monster damage growth per stage' },
     // Round 15: floors 51+ get one more factor on top of the base curve, piecewise linear and continuous: 1 + late * (stages past 50, at most 25) + late2 * (stages past 75), so the
     // second half of the Dungeon (and the Profundezas, which scale the floor-99 monster) can be paced on its own without touching floors 1-50.
-    lateHpGrowth: { value: 0.009, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 51-75' },
+    lateHpGrowth: { value: 0.012, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 51-75' },
     lateHpGrowth2: { value: 0.07, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 76-100' },
-    lateDmgGrowth: { value: 0.0065, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 51-75' },
+    lateDmgGrowth: { value: 0.009, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 51-75' },
     lateDmgGrowth2: { value: 0.041, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 76-100' },
     rewardGrowth: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'XP reward growth per stage (dungeon.ts stageVictoryXp only)' },
     // Kept separate from rewardGrowth (XP) so gold economy tuning never silently reflows XP pacing.
@@ -252,8 +252,8 @@ const T = DebugPanel.define({
   depths: {
     _label: 'Depths (Profundezas, after floor 100)',
     // Round 15: depth 0 is the floor-99 monster times these (the floors 76-100 got a late factor, battle.lateHpGrowth2, that the depths would otherwise inherit whole).
-    baseHpMult: { value: 0.52, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy HP as a multiple of the floor-99 monster' },
-    baseDmgMult: { value: 0.52, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy damage as a multiple of the floor-99 monster' },
+    baseHpMult: { value: 0.51, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy HP as a multiple of the floor-99 monster' },
+    baseDmgMult: { value: 0.51, min: 0.1, max: 3, step: 0.05, label: 'Depth 0 enemy damage as a multiple of the floor-99 monster' },
     hpGrowth: { value: 0.028, min: 0, max: 0.5, step: 0.005, label: 'Enemy HP growth per depth (compounding)' },
     dmgGrowth: { value: 0.022, min: 0, max: 0.5, step: 0.001, label: 'Enemy damage growth per depth (compounding)' },
     bossEvery: { value: 10, min: 2, max: 50, step: 1, label: 'Depth boss every N depths' },
