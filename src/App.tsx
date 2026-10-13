@@ -5,6 +5,7 @@ import {
   computeCP,
   computeGardenStatuses,
   isBuffActive,
+  computeMiningStatus,
   computeWoodcuttingStatus,
   defaultSave,
   effectiveRepairCost,
@@ -17,7 +18,7 @@ import { SaveConflictError, SaveRepository } from './game/saveRepository';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { addRelics, addUniqueInstance } from './game/uniques';
-import { applyFertilizer, applyHarvest, applyPlant, applyUproot } from './game/gardenActions';
+import { applyFertilizer, applyHarvest, applyPlant, applyUproot, readySlots } from './game/gardenActions';
 import { applyElixir, applyWhetstoneOil, ElixirId, isBuffItem } from './game/elixirs';
 import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
@@ -77,7 +78,11 @@ import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
 import BattlePassModal, { SeasonSummaryModal } from './components/BattlePassModal';
 import ClaimAllModal from './components/ClaimAllModal';
-import { applyClaimAll, ClaimAllLine } from './game/claimAll';
+import { applyClaimAll, ClaimAllLine, readyActivities } from './game/claimAll';
+import WelcomeBackModal from './components/WelcomeBackModal';
+import { WelcomeBackAction } from './components/welcomeBackText';
+import { awayLongEnough, buildWelcomeBack, readLastSeen, WelcomeBackSummary, writeLastSeen } from './game/welcomeBack';
+import { NextStepTarget } from './game/nextStep';
 import { crossedMilestoneFloors, dungeonRunXp, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
@@ -95,6 +100,7 @@ import useIsDesktop from './hooks/useIsDesktop';
 import { initAudio, loadMuted, playSfx, setMuted } from './game/audio';
 import { fmtNum, Locale, setLocale, setLocaleListener, t } from './locales';
 import './App.css';
+import './round11.css';
 
 const gearText = (key: string): string => t(`gear.${key}`);
 
@@ -139,6 +145,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [questsOpen, setQuestsOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [claimAllLines, setClaimAllLines] = useState<ClaimAllLine[] | null>(null);
+  // "Bem-vindo de volta" (welcomeBack.ts): what the idle activities produced while the player was away; null = nothing to show.
+  const [welcome, setWelcome] = useState<{ summary: WelcomeBackSummary; canClaimAll: boolean } | null>(null);
   // The pending hunt reward screen can be set aside to make room in the inventory first (shortcut from the screen itself); the hunt screen brings it back.
   const [rewardHidden, setRewardHidden] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -415,6 +423,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       if (tutorialStep || contextTutorial || battleFloor !== null || (save.pendingHuntReward && !rewardHidden)) return;
       const layers: Array<[boolean, () => void]> = [
         [settingsOpen, () => setSettingsOpen(false)],
+        [welcome !== null, () => setWelcome(null)],
         [import.meta.env.DEV && adminOpen, () => setAdminOpen(false)],
         [battlePassOpen, () => setBattlePassOpen(false)],
         [questsOpen, () => setQuestsOpen(false)],
@@ -444,6 +453,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     save.pendingHuntReward,
     rewardHidden,
     settingsOpen,
+    welcome,
     adminOpen,
     battlePassOpen,
     questsOpen,
@@ -872,6 +882,89 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     commitSave(res.save);
     setRewardHidden(false);
     setClaimAllLines(res.lines);
+  };
+
+  // Welcome back: shown on load and when the window comes back after ten minutes or more away, never over the tutorial / first run, a dungeon fight or the
+  // mandatory hunt reward. The last-seen stamp is a local convenience (welcomeBack.ts), refreshed while the game is open and when it loses focus.
+  const welcomeBlockedRef = useRef(false);
+  welcomeBlockedRef.current =
+    tutorialStep !== null ||
+    contextTutorial !== null ||
+    battleFloor !== null ||
+    !save.seenWelcome ||
+    save.tutorial.initial === 'pending' ||
+    save.tutorial.initial === 'in_progress' ||
+    !!save.pendingHuntReward;
+  useEffect(() => {
+    const check = () => {
+      const now = Date.now();
+      const away = awayLongEnough(readLastSeen(), now);
+      writeLastSeen(now);
+      if (!away || welcomeBlockedRef.current) return;
+      const s = saveRef.current;
+      const summary = buildWelcomeBack(s, now);
+      if (summary.rows.length === 0) return;
+      setWelcome({ summary, canClaimAll: ownsAdventurerPass(s) && readyActivities(s, now).count > 0 });
+    };
+    const leave = () => writeLastSeen(Date.now());
+    const onVisibility = () => (document.visibilityState === 'hidden' ? leave() : check());
+    check();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('blur', leave);
+    window.addEventListener('focus', check);
+    window.addEventListener('pagehide', leave);
+    const beat = window.setInterval(() => {
+      if (document.visibilityState === 'visible') leave();
+    }, 60_000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('blur', leave);
+      window.removeEventListener('focus', check);
+      window.removeEventListener('pagehide', leave);
+      window.clearInterval(beat);
+    };
+  }, []);
+
+  const welcomeAction = (action: WelcomeBackAction) => {
+    const dropRow = (kind: string) =>
+      setWelcome((w) => {
+        if (!w) return w;
+        const rows = w.summary.rows.filter((r) => r.kind !== kind);
+        return rows.length === 0 ? null : { ...w, summary: { rows } };
+      });
+    const now = Date.now();
+    if (action === 'hunt') {
+      setWelcome(null);
+      openHunt();
+      return;
+    }
+    if (action === 'mining') claimMining();
+    else if (action === 'woodcutting') claimWoodcutting();
+    else if (action === 'garden') harvestPlots(readySlots(saveRef.current, now));
+    else if (action === 'delivery') claimDelivery();
+    dropRow(action);
+  };
+
+  const welcomeClaimAll = () => {
+    setWelcome(null);
+    claimEverything();
+  };
+
+  const openNextStep = (target: NextStepTarget) => {
+    if (target === 'inventory') {
+      playSfx('click');
+      setBagOpen(true);
+    } else if (target === 'forge') {
+      playSfx('click');
+      setForgeOpen(true);
+    } else if (target === 'skills') {
+      playSfx('click');
+      setActiveView('skills');
+    } else if (target === 'hero') {
+      playSfx('click');
+      setActiveView('personagem');
+    } else if (target === 'hunt') openHunt();
+    else if (target === 'dungeon') openDungeon();
   };
 
   const claimMining = () => {
@@ -1418,7 +1511,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       key: 'professions',
       header: t('nav.groupProfessions'),
       items: [
-        { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, label: t('nav.mining'), active: mineOpen, onClick: () => { closeDrawer(); playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
+        { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, label: t('nav.mining'), active: mineOpen, badge: computeMiningStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
         { key: 'woodcutting', icon: <img className="pixel-icon" src="/assets/icons/oak_wood.png" alt="" />, label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
         { key: 'garden', icon: <img className="pixel-icon" src="/assets/icons/common_herb.png" alt="" />, label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { closeDrawer(); playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
         { key: 'oficios', icon: <img className="pixel-icon" src="/assets/icons/refine_catalyst.png" alt="" />, label: t('nav.oficios'), active: activeView === 'oficios', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('oficios'); } },
@@ -1492,6 +1585,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onOpenInventory={() => { playSfx('click'); setBagOpen(true); }}
               onClaimAll={claimEverything}
               onOpenPass={() => { playSfx('click'); setBattlePassOpen(true); }}
+              onOpenNextStep={openNextStep}
             />
           )}
           {activeView === 'personagem' && (
@@ -1693,6 +1787,19 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       )}
 
       {claimAllLines && <ClaimAllModal lines={claimAllLines} onClose={() => setClaimAllLines(null)} />}
+
+      {welcome && (
+        <WelcomeBackModal
+          summary={welcome.summary}
+          canClaimAll={welcome.canClaimAll}
+          onAction={welcomeAction}
+          onClaimAll={welcomeClaimAll}
+          onClose={() => {
+            playSfx('click');
+            setWelcome(null);
+          }}
+        />
+      )}
 
       {save.pendingSeasonSummary && <SeasonSummaryModal save={save} onDismiss={dismissSeasonSummary} />}
 

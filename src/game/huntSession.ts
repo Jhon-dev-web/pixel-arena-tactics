@@ -149,6 +149,8 @@ export interface PendingHuntReward {
   // Display only: what the hero skill strikes did in the session (times and damage) and the total damage dealt, for the "N times, x% of the damage" lines.
   skillTally?: StrikeTally;
   totalDamage?: number;
+  // Fights won in the session (display only); absent on a reward written before it existed.
+  kills?: number;
 }
 
 export function sanitizeWindows(raw: unknown): TimeWindow[] {
@@ -308,5 +310,6 @@ export function sanitizePendingHuntReward(raw: unknown): PendingHuntReward | nul
     uniques: sanitizeUniqueDrops(r.uniques),
     ...(r.skillTally && typeof r.skillTally === 'object' ? { skillTally: sanitizeTally(r.skillTally) } : {}),
     ...(nonNegInt(r.totalDamage, 1e15) > 0 ? { totalDamage: nonNegInt(r.totalDamage, 1e15) } : {}),
+    ...(nonNegInt(r.kills, 1e9) > 0 ? { kills: nonNegInt(r.kills, 1e9) } : {}),
   };
 }

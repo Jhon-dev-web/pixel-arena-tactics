@@ -1453,5 +1453,28 @@
     "garden": "Horta",
     "gardenDetail": "{n} canteiros colhidos",
     "gardenBlocked": "{n} aguardam espaço"
+  },
+  "welcomeBack": {
+    "title": "Bem-vindo de volta",
+    "hint": "Enquanto você esteve fora:",
+    "hunt": "Caça",
+    "huntDetail": "{zone} · {time} · {n} vitórias",
+    "uniqueFound": "{n} peça única!",
+    "capHit": "armazém cheio, o herói parou",
+    "open": "Abrir",
+    "collect": "Coletar",
+    "close": "Depois"
+  },
+  "nextStep": {
+    "label": "Próximo passo",
+    "go": "Ir",
+    "bag_full": "A mochila está cheia. Venda, guarde no baú ou desmonte algo.",
+    "forge": "Dá para forjar uma peça melhor: {piece}.",
+    "skill_points": "Você tem {n} pontos de habilidade para gastar.",
+    "attribute_points": "Você tem {n} pontos de atributo para distribuir.",
+    "new_zone": "Uma nova zona de caça foi liberada: {zone}.",
+    "milestone": "O marco do andar {floor} da masmorra está logo ali.",
+    "start_hunt": "Nada em andamento. Comece uma caçada.",
+    "running": "Tudo em andamento. Volte mais tarde."
   }
 }

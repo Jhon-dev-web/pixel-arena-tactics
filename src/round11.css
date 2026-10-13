@@ -1,0 +1,95 @@
+/* Round 11: welcome-back summary, Home next-step line, achievements / statistics / codex tabs, rarity reveal, settings sliders. Quiet, pixel-style, readable at 390x800. */
+
+/* ---- welcome back */
+.wb-modal {
+  width: min(92vw, 440px);
+}
+.wb-row {
+  align-items: center;
+  gap: 8px;
+}
+.wb-row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wb-note {
+  font-size: calc(var(--font-size) - 4px);
+  color: #b8a8d8;
+  overflow-wrap: anywhere;
+}
+.wb-btn {
+  flex: none;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #ffd76a;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  min-height: 34px;
+}
+.wb-btn:hover {
+  border-color: #ffd76a;
+}
+.wb-close {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  color: #b8a8d8;
+  background: transparent;
+  border: 1px solid #4a3a55;
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.wb-close:hover {
+  border-color: #8a6a3a;
+  color: #ffd76a;
+}
+
+/* ---- Home next-step line: a small label over the sentence, the button to its right */
+.dh-nextstep {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: #1c1322;
+  border: 1px dashed #5a4670;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #d8c9a0;
+}
+.dh-nextstep-label {
+  grid-column: 1 / -1;
+  font-size: 9px;
+  color: #8a7aa8;
+  text-transform: uppercase;
+}
+.dh-nextstep-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dh-nextstep-btn {
+  font-family: inherit;
+  font-size: 11px;
+  color: #ffd76a;
+  background: linear-gradient(180deg, #4a3420, #2a1c10);
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.dh-nextstep-btn:hover {
+  border-color: #ffd76a;
+}
+@media (max-width: 640px) {
+  .dh-nextstep {
+    font-size: 11px;
+  }
+}

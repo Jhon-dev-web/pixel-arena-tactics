@@ -1453,5 +1453,28 @@
     "garden": "Garden",
     "gardenDetail": "{n} plots harvested",
     "gardenBlocked": "{n} waiting for room"
+  },
+  "welcomeBack": {
+    "title": "Welcome back",
+    "hint": "While you were away:",
+    "hunt": "Hunt",
+    "huntDetail": "{zone} · {time} · {n} wins",
+    "uniqueFound": "{n} unique piece!",
+    "capHit": "storage full, the hero stopped",
+    "open": "Open",
+    "collect": "Collect",
+    "close": "Later"
+  },
+  "nextStep": {
+    "label": "Next step",
+    "go": "Go",
+    "bag_full": "The bag is full. Sell, store in the stash or salvage something.",
+    "forge": "You can forge a better piece: {piece}.",
+    "skill_points": "You have {n} skill points to spend.",
+    "attribute_points": "You have {n} attribute points to spend.",
+    "new_zone": "A new hunting zone is open: {zone}.",
+    "milestone": "The floor {floor} milestone of the dungeon is close.",
+    "start_hunt": "Nothing running. Start a hunt.",
+    "running": "Everything is running. Come back later."
   }
 }

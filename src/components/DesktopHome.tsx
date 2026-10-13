@@ -30,6 +30,8 @@ import { useDisplayName } from '../game/usernameContext';
 import { portraitFrameClass } from '../game/seasonItems';
 import { ownsAdventurerPass } from '../game/entitlements';
 import { readyActivities } from '../game/claimAll';
+import { nextStep, NextStepTarget } from '../game/nextStep';
+import { getGear } from '../game/gear';
 
 // Inventory pressure: amber from 85% of the slots, red when there is no free slot (the same thresholds as the hunt screen).
 const invTone = (used: number, cap: number): string => (used >= cap ? ' full' : used >= cap * 0.85 ? ' warn' : '');
@@ -88,6 +90,7 @@ export default function DesktopHome({
   onOpenInventory,
   onClaimAll,
   onOpenPass,
+  onOpenNextStep,
 }: {
   save: SaveData;
   spriteUrl: string;
@@ -102,6 +105,7 @@ export default function DesktopHome({
   onOpenInventory: () => void;
   onClaimAll: () => void;
   onOpenPass: () => void;
+  onOpenNextStep: (target: NextStepTarget) => void;
 }) {
   const now = Date.now();
   const owner = ownsAdventurerPass(save);
@@ -120,6 +124,8 @@ export default function DesktopHome({
   const hunting = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
 
   const rewardWaiting = !!save.pendingHuntReward && !hunting;
+  // The one "next step" suggestion (nextStep.ts); it walks the forge recipes, so it is recomputed when the save changes, not on every tick.
+  const step = useMemo(() => nextStep(save), [save]);
   const anyActivity = !!hunting || rewardWaiting || !!mining.oreId || !!woodcutting.woodId;
 
   const biome = getBiomeForFloor(save.highestDungeonFloor);
@@ -209,7 +215,24 @@ export default function DesktopHome({
             </button>
           )}
         </div>
-        {!anyActivity && <div className="dh-idle">{t('home.idle')}</div>}
+        {(step.id !== 'running' || !anyActivity) && (
+          <div className="dh-nextstep">
+            <span className="dh-nextstep-label">{t('nextStep.label')}</span>
+            <span className="dh-nextstep-text">
+              {t(`nextStep.${step.id}`, {
+                n: step.params.n ?? 0,
+                floor: step.params.floor ?? 0,
+                piece: step.params.piece ? gearText(getGear(step.params.piece)?.nameKey ?? '') : '',
+                zone: step.params.zone ? dText(step.params.zone) : '',
+              })}
+            </span>
+            {step.target !== 'none' && (
+              <button className="dh-nextstep-btn" onClick={() => onOpenNextStep(step.target)} data-ui>
+                {t('nextStep.go')}
+              </button>
+            )}
+          </div>
+        )}
         <div className="dh-activity-grid">
           {hunting && (
             <button className="dh-activity-item" onClick={onOpenHunt} data-ui>
