@@ -1117,3 +1117,16 @@ U = com únicos (padrão), N = `SIM_NO_UNIQUES=1`. "Antes" = commit f86c612. **I
 - Os ícones dos 3 materiais e dos 6 consumíveis novos estão pendentes (emoji no lugar).
 - O relatório de fluxo mede só o que 21 dias alcançam; Pedra de Amolar, Kit Mestre e Polimento (Jardinagem 50 / 60 / 65) têm testes de receita e de efeito, mas nenhuma medição de uso real.
 - Conferido no navegador em desktop e em 390 x 800: mapa da Masmorra com as Profundezas, uma luta de profundeza (regular e de chefe), a lista de desbloqueios da Mineração, a Horta (só desktop), as receitas (só desktop) e o nível com Paragon. A tela do Passe não foi aberta no navegador (o dono do Passe não existe no save de revisão); ela é coberta por teste.
+
+## Rodada 13 — metas semanais e sequência de login (2026-10-12)
+
+Nenhum número existente mudou. Entram dois sistemas novos, que o jogador resgata com um botão e que o simulador de progressão nunca resgata (`SIM_FAST=1 npm run sim` antes e depois: saída idêntica, byte a byte, inclusive as medianas do cenário A):
+
+| O quê | Quando | Recompensa |
+|---|---|---|
+| 4 metas semanais (das 5: horas de caça 6, pedidos 3, unidades coletadas 150, peças forjadas 4, andares 25; uma sai a cada semana) | segunda 00:00 UTC | 150 de Ouro cada |
+| bônus das 4 metas | idem | 400 de Ouro + 3 Runas |
+| sequência de login, dia 1 / 2 / 3 / 4 / 5 / 6 / 7 | dia UTC; faltar um dia volta ao dia 1 | 80 Ouro / 120 Ouro / Isca do Caçador / 160 Ouro / Kit de Reparo / 240 Ouro / 300 Ouro + 3 Runas + Polimento de Armadura |
+| Escudo de Sequência (Passe) | 1 por semana UTC | um único dia perdido não zera a sequência |
+
+Soma por semana (tudo resgatado): 1000 de Ouro das metas + 1000 de Ouro da sequência + 6 Runas + 3 itens; as missões diárias pagam 3150 de Ouro e 14 Runas por semana. As metas leem a diferença entre as estatísticas da vida inteira e uma foto tirada no começo da semana (dois contadores novos: `huntSeconds`, `dungeonFloors`), então não há contador novo nos caminhos quentes e a primeira semana de um save antigo começa em zero. Números em `T.weekly`, `T.streak` e `T.battlePass.streakSavers`.

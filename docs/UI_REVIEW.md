@@ -244,3 +244,32 @@ A caçada não é uma arena (a arena fica na Masmorra). A cena da caçada em and
 - **Bolsa**: o bloco "Coletado" mostra a Bolsa como espaços de inventário (ícone, contador, borda pela raridade, espaços vazios visíveis) com a taxa por hora embaixo de cada um; o que se perde por Bolsa cheia continua em linhas vermelhas.
 
 Visto (imagem): 4 zonas em 1280x800 (cena e monstro, pés no chão, quadros de ataque, dano e morte da Abominação sem corte), Clareira em 390x800 e 768x1024, cabeçalho da seleção em 1280 e 390; a Masmorra não foi tocada (`BattleModal`, `SpriteSheet` e as regras `.battle-*` não mudaram).
+
+## Rodada 13 — passagem de QA de ponta a ponta (2026-10-12)
+
+Método: perfil novo no navegador (1024x768 de janela, que é o "desktop" do painel, e 390x800), do boas-vindas ao tutorial, primeira caçada, resgate, Forja, equipar, Masmorra até a primeira derrota, Habilidades, atributos, Horta, Mineração, Lenhador, Pedidos, Loja, Inventário, Missões, Códice, Configurações (volumes, tela cheia, exportar e importar o arquivo, reiniciar, idioma en e pt). Depois saves montados no `localStorage` por módulo importado (nível 40 / andar 50; nível 100 + Paragon / andar 119 com Profundezas, equipamento do tier 6 lendário, conjuntos completos, únicos; dono e não dono do Passe; "Bem-vindo de volta" com a marca de última visita 3 h atrás). Em cada tela um script anotou texto cru de chave, NaN / undefined, imagem quebrada, rolagem horizontal, texto cortado e modal fora da tela; o console e as requisições (404) foram lidos ao final. Capturas antes / depois no diretório de trabalho da rodada (não estão no repositório).
+
+| Tela | Problema | Situação |
+|---|---|---|
+| Caça em andamento (janela ~1024) | A arena (min-height 300 + aspect-ratio 16/9 = largura mínima 533) passava por cima da coluna de números | **corrigido** (`width: 100%; min-width: 0`) |
+| Masmorra, banner "Andar N Concluído!" | Centrado no modal inteiro: na tela de celular o ouro caía na cabeça do herói | **corrigido**: ancorado à arena, acima dos lutadores (medido: 23 px livres no celular; visto só com um banner sintético, porque a luta real passou pelo banner entre duas leituras) |
+| Masmorra, Poção Automática | "Pequena primeiro / Grande primeiro" usavam uma classe sem nenhum CSS (fonte padrão enorme) | **corrigido** (estilo das opções de profundidade) |
+| Inventário (painel da mochila, desktop) | A aba "Poções" quebrava em "Poçõe / s" | **corrigido** |
+| Personagem | Números abreviados (PV, Dano) ficavam em 11 px: a regra `span:last-child` ganhava de `.num-abbr` | **corrigido** |
+| Menu lateral | "Battle Pass" no menu e "Passe de Aventureiro" na tela | **corrigido**: "Passe" / "Pass" |
+| Tutorial no celular | O passo "Caça" manda usar o botão destacado, que está na gaveta fechada: nada destacado, só "pular" funcionava | **corrigido**: a gaveta abre nos passos Caça / Masmorra / Forja e o destaque é medido de novo quando ela termina de deslizar |
+| Habilidades (~1024) | Ícone + prévia + botão deixavam o texto da habilidade com 56 px; a legenda de cada caminho terminava em reticências | **corrigido** (a linha quebra; a legenda quebra) |
+| Missões no celular | Com a aba nova, "Conquistas" e "Estatísticas" cortavam | **corrigido**: abas duas a duas abaixo de 480 px |
+| Barra de cima no celular | "Nv 100 · P1" em três linhas e "Salvo" encostando no nome | **corrigido** (o "Salvo" só some no celular; erro e offline continuam) |
+| pt: números com ponto decimal | Profundezas "3.5%", substat "+1.1% Roubo de Vida", horas na Mineração, "1.5M" nos Pedidos | **corrigido** (`fmtDec`, `fmtSubstat`) |
+| Equipamento: "Conjunto Abissal (7/5)" | Com 7 peças do mesmo conjunto o contador passava do máximo | **corrigido**: mostra 5/5 |
+| Tutorial "Caça" (desktop ~1024) | O cartão cobre o botão "Iniciar Caça" que o jogador usa em seguida | deixado: é só continuar; a regra de posição do cartão é geral e mexer nela mexe em todos os passos |
+| Primeira derrota na Masmorra | "DERROTADO! Ouro retido: -25%" mesmo sem ouro na corrida, sem dizer que o CP estava abaixo do recomendado | deixado: é texto de design (o aviso de CP existe na tela de entrada) |
+| Recompensa da Caça | "Sem promoção nesta caçada · 4 de 4 vitórias para o próximo nível" lê como contradição | deixado: precisa de texto novo (a promoção é tentada na caçada seguinte) |
+| Forja > Gemas | Os botões de gema mostram só o ícone e "×25", sem nome | deixado: as cores são distintas; falta um `title` e texto de acessibilidade |
+| Configurações | O seletor de idioma lista "Portuguese" e "English" traduzidos | deixado: cosmético |
+| Pedidos em nível 100 | Uma entrega de 30 min paga +20 de ouro | deixado: é balanceamento |
+| Som | Nenhum 404: os 18 efeitos de `assets.json` existem em `public/assets/sfx`; a música carrega | verificado (nenhuma falha); não conferido de ouvido |
+| Console | Só o aviso esperado do Supabase sem chaves; nenhum erro ou aviso de chave de tradução ausente em ~30 telas / estados | verificado |
+
+**Não visto**: Electron (nada do lado `desktop/` foi executado), a compra real do Passe, Reforjar e a confirmação de Desmontar até o fim, plantar e colher na Horta com clique, a retirada de gemas, 1920 px, o som de ouvido.
