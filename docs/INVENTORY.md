@@ -139,3 +139,29 @@ Preparação para o mercado de jogadores (integração com a Steam, ainda não e
 - Interface (`InventoryPanel`): no detalhe da peça, uma linha discreta ("Negociável" em verde, "Vinculado" ou "Não negociável" em cinza); no ladrilho, só onde informa: um losango verde nas peças negociáveis ainda sem vínculo e um cadeado nas épicas, lendárias e únicas já vinculadas. Peças comuns e raras forjadas não ganham marca no ladrilho.
 - **Confirmação**: equipar pela primeira vez uma peça negociável pergunta uma vez ("Equipar vincula este item a você. Ele não poderá mais ser vendido no mercado. Equipar mesmo assim?", Equipar / Cancelar). Peças que não são negociáveis equipam direto. Não existe "equipar o melhor" automático na interface; só o simulador equipa sozinho (e ele não tem mercado).
 - Testes: `bindOnEquip.test.ts` (a marca na primeira vez, sobrevive a desequipar e a salvar/carregar, regra dos saves antigos, tabela verdade por raridade x único x vínculo, confirmação só para peça negociável, desmontar/refinar/reforjar/reparar iguais, relíquias nunca negociáveis).
+
+## 9. A Bolsa de Ouro e o Mercador Atacadista (rodada 18)
+
+**Bolsa de Ouro** (`src/game/goldPouch.ts`): Ouro vira um item de inventário que outro jogador poderá comprar quando o mercado existir (precisa de servidor; aqui só a parte local). Três consumíveis empilháveis (`gold_pouch_s` / `_m` / `_l`), 99 por espaço como qualquer pilha, na mochila e no Baú, salvos e exportados como os demais consumíveis. Os valores (10 000 / 50 000 / 100 000), a taxa (5%) e o limite (3 por dia) são `T.goldPouch`; o menor valor é o mínimo de uma Bolsa.
+
+| | Regra |
+| --- | --- |
+| Criar | só o dono do Passe; paga o valor + taxa (arredondada para cima) em Ouro; no máximo 3 por dia local (a mesma virada de dia do mercador e das masmorras, todas as faixas juntas); precisa de espaço na mochila, senão nada é feito e nenhum Ouro sai |
+| Abrir | qualquer jogador que tenha uma, só da mochila, exatamente o valor de face, sem volta (dois toques) |
+| Vender aos NPCs | nunca (`sellValue` 0): nem o mercador comum, nem o atacadista (que só compra material) |
+| Estatística | "Patrimônio" = Ouro + Ouro dentro das Bolsas (mochila e Baú); o Ouro das Bolsas não é gastável; abrir uma Bolsa não conta como Ouro ganho (senão criar e abrir em ciclo faria as conquistas de Ouro) |
+
+**Regra de negociável, em um lugar só.** `isTradeable(item)` (`gearInstances.ts`) aceita uma instância de equipamento **ou** `{ kind, id }`; a lista das exceções é `TRADEABLE_CONSUMABLES` (`consumables.ts`). O mercado chamará só ela.
+
+| item | negociável? |
+| --- | --- |
+| instância forjada Épica / Lendária, sem vínculo | sim |
+| instância forjada Comum / Rara, ou qualquer instância vinculada | não |
+| instância de molde único, sem vínculo (qualquer raridade) | sim |
+| qualquer material (`kind: 'material'`) | não |
+| qualquer consumível exceto as três Bolsas | não |
+| Bolsa de Ouro (pequena, média, grande) | **sim** (sem vínculo por natureza: não se veste) |
+
+**Não duplica Ouro:** criar tira (valor + taxa) e entrega uma Bolsa; abrir tira a Bolsa e devolve o valor, uma vez; criar e abrir dá sempre -taxa (`goldPouch.test.ts` roda 400 passos aleatórios de criar / abrir / guardar / tirar / descartar e confere que Ouro + Ouro nas Bolsas + taxas + o descartado é constante). Descartar uma Bolsa destrói o Ouro dela. **Fora do escopo:** exportar e importar o save copia o herói inteiro (Ouro e Bolsas juntos, como qualquer item); o que impede duplicar por aí é o servidor, que ainda não existe.
+
+**Mercador Atacadista** (`wholesale.ts`): compra só material, só da mochila (nunca do Baú), sem orçamento diário de Ouro; abre com o chefe do andar 50. Detalhes de preço em `docs/BALANCE_CHANGES.md`, Rodada 18. A venda é sempre manual (`wholesale.test.ts` garante que nenhum módulo de jogo chama a venda sozinho): por pilha com quantidade 1 / 10 / tudo / outra, ou uma lista marcada com confirmação; material acima de comum pede uma segunda confirmação ("Outros jogadores pagariam mais por isto no mercado, quando ele abrir").

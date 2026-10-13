@@ -1772,3 +1772,99 @@ Sem contar o Paragon: A 13 / 20 -> **27 / 32** (9 de 12 seeds chegam lá); P 31 
 - A perda do comum ficou em 25,8%, 0,8 ponto acima do alvo.
 - 12 seeds; as medianas oscilam uns 3 dias, as da chegada ao andar 100 e do chefe até 15 (uma seed presa muda o valor).
 - Nenhum save real foi aberto no navegador; a tela da Caça lê os mesmos dados (testes de locale e de `huntEstimate` verdes).
+
+## Rodada 18 — o Mercador Atacadista e a Bolsa de Ouro (2026-10-13)
+
+Dois pedidos do dono: (1) um mercador que, a partir de certo ponto do jogo, compra o excesso por quase nada, para quando o espaço acaba, **sem nunca vender sozinho**; (2) a Bolsa de Ouro, que vira um item vendável a outros jogadores (só o lado local; o mercado de jogadores precisa de servidor). Medido com `npm run sim:long`, **12 seeds**, sem únicos, comum (A) e dono (P), contra o livro-razão da rodada 17 (mesmas 12 seeds).
+
+### 1. Mercador Atacadista (`src/game/wholesale.ts`, `T.wholesale`)
+
+Fica na loja (terceira aba, entre Vender e Bolsas), mostrada trancada com o requisito até vencer o **chefe do andar 50**. Compra **só material, só da mochila** (nunca do Baú, nunca equipamento), **sem orçamento diário de Ouro**. O preço é **25% do preço unitário do mercador comum** e cai com cada unidade do **mesmo material** vendida no mesmo dia local:
+
+| unidade número (no dia) | 1-100 | 101-150 | 151-200 | 201-250 | 251 em diante |
+| --- | --- | --- | --- | --- | --- |
+| parte do preço do atacado | 100% | 80% | 60% | 40% | 32% |
+| parte do preço do mercador comum | 25% | 20% | 15% | 10% | **8% (piso)** |
+
+Parâmetros: `priceRate` 0,25, `freeUnits` 100, `blockUnits` 50, `blockDrop` 0,20, `floorRate` 0,08. O preço é fracionário (um material comum vale 1 Ouro ao mercador, ¼ de Ouro ao atacadista) e a venda paga a soma, arredondada para baixo uma vez; uma venda que pagaria menos de 1 Ouro é recusada (nada é destruído). Exemplos (`npm run sim:wholesale`; entre parênteses, % do que o mercador comum pagaria pelas mesmas unidades):
+
+| Material (preço normal) | 100 unidades | 500 | 2 000 |
+| --- | --- | --- | --- |
+| Fragmento de Osso (1) | 25 (25%) | 67 (13,4%) | 187 (9,3%) |
+| Tutano Abissal (16) | 400 (25%) | 1 080 (13,5%) | 3 000 (9,4%) |
+| Coração de Sangue (67) | 1 675 (25%) | 4 522 (13,5%) | 12 562 (9,4%) |
+
+Despejar milhares de um material só paga perto do piso. A venda é **sempre manual**: por pilha, com 1 / 10 / tudo / outra quantidade (vender a pilha inteira pede um segundo toque), ou várias pilhas marcadas e "Vender selecionados", com uma confirmação que lista o que sai e o total. **Material acima de comum** (raridade da queda; minério e madeira pelo tier; o resto pelo valor de referência) pede uma **segunda confirmação**: "Outros jogadores pagariam mais por isto no mercado, quando ele abrir." Não existe venda automática nem "vender todo o lixo" sem a lista: `wholesale.test.ts` varre o código e exige que só `wholesale.ts` e o botão do `App.tsx` chamem a venda.
+
+Onde mais aparece: o aviso de mochila cheia (Caça em andamento, escolha de zona, tela de recompensa, coleta de minério e lenha), o Baú cheio (detalhe do material) e o resumo "bem-vindo de volta" (quando a caça encheu o armazenamento, ou a mochila ou o Baú estão cheios) ganham um botão "Atacadista" que **só abre a aba**. O Códice mostra os dois preços (mercador e atacado). As estatísticas contam unidades e Ouro vendidos ao atacadista, e há duas conquistas (1 000 unidades vendidas; 25 000 Ouro recebidos): leem as estatísticas, que o simulador de 21 dias não passa, então podem pagar (a regra e o teste de `achievements.test.ts` seguem valendo).
+
+### 2. A conta da renda (por que 25% e por que essa curva)
+
+O que o jogador do fim de jogo coleta por dia na última zona (rodada 17, dias 100-180, A) e quanto perde: Osso 277 (72,1%), Sangue 264 (40,9%), Cristal 50 (22,9%), Tutano 84 (30,1%), Coração 18 (14,1%). Vender **só o excesso** desses ao atacadista, com a curva acima, paga por dia: Osso 42, Sangue 26, Cristal 8, Tutano 100, Coração 50 = **226 Ouro**. A renda de Ouro diária do mesmo jogador (caça 12 Ouro/h por 18 h, pedidos ~1,7 mil por dia, orçamento do mercador comum 230 no nível 100) é de ~2,2 mil: **+10%**. Vender **tudo** o que se coleta na zona (um limite superior: o jogador precisa da maior parte) pagaria 771 por dia, +35%, e é por isso que o preço é 25% e não mais: o que segura a renda é o preço; a curva só impede o despejo de um material só (o Coração vale muito, mas tem poucas unidades por dia, e uma curva por unidade quase não o toca; um teto em Ouro por dia seria o instrumento certo, mas o dono pediu "sem orçamento").
+
+**Medido no simulador longo** (o jogador vende ao atacadista **só o que ia jogar fora**, a partir do dia 22; Ouro do atacadista dividido pelo Ouro que entrou na janela de 10 dias):
+
+| Janela | A: atacadista / entrou | P: atacadista / entrou |
+| --- | --- | --- |
+| 21-30 | 500 / 7 950 = 6,3% | 3 203 / 16 303 = 19,6% |
+| 31-40 | 588 / 17 023 = 3,5% | 4 385 / 18 636 = **23,5%** |
+| 61-70 | 597 / 20 858 = 2,9% | 622 / 18 575 = 3,3% |
+| 91-100 | 1 152 / 7 765 = 14,8% | 1 282 / 38 840 = 3,3% |
+| 101-110 | 2 058 / 11 753 = 17,5% | 785 / 32 852 = 2,4% |
+| 121-130 | 3 593 / 18 772 = **19,1%** | 312 / 26 838 = 1,2% |
+| 151-160 | 172 / 25 204 = 0,7% | 369 / 6 465 = 5,7% |
+| dias 21-180, total (A) | 16 885 / 241 463 = **7,0%** | - |
+
+No fim de jogo (dias 60-180) o comum ganha no máximo **19,1%** a mais em uma janela de 10 dias (12,1% na média dos dias 91-150), dentro do pedido de 15-20%. **O dono do Passe passa disso nos dias 21-40 (19,6% e 23,5%)**, quando a renda dele ainda é pequena e o excesso é grande (perdia 48% do que coletava nos dias 11-20); depois do dia 60 não passa de 6%. Não mexi no preço por isso (ver decisões).
+
+### 3. Livro-razão dos dias 60-180 (12 seeds, sem únicos): o que sobrou
+
+| | Coletado | Perdido | % das unidades | % do valor | Vendido ao atacadista (unidades) |
+| --- | --- | --- | --- | --- | --- |
+| A, antes (rodada 17) | 101 950 | 50 891 | 49,9% | 25,8% | - |
+| **A, depois** | 100 381 | 190 | **0,2%** | **0%** | 45 615 |
+| P, antes | 146 287 | 64 635 | 44,2% | 17,3% | - |
+| **P, depois** | 146 626 | 72 | **0%** | **0%** | 56 117 |
+
+"Perdido" deixou de existir **no livro-razão** porque o jogador simulado manda ao atacadista tudo o que ia jogar fora; **o valor recuperado não é o valor de referência**: pelas 45 615 unidades (674 mil de valor de referência) o atacadista pagou ~14,4 mil de Ouro (2,1% do valor de referência), então a perda **em valor real** continua alta, só que agora paga uns trocados e libera espaço. Nos dias 1-20 (antes do chefe do 50) o livro-razão é o de antes: 8,3% e 15,8% do valor perdido (A) e 17,1% e 22,5% (P).
+
+**Ouro em caixa no dia 180:** A 35 116 (31 mil na rodada 16), P 78 795; o atacadista não inflou o Ouro (7% de tudo o que entrou).
+
+### 4. Efeito colateral medido: o jogador ficou menos preso por Ouro
+
+Mediana de 12 seeds, antes (rodada 17) -> depois: A nível 100 145 -> 142,5; **andar 100 (chegada) 123,5 -> 114; chefe do 100 143 -> 124,5** (11 de 12 seeds chegam; antes eram 9 de 12); conjunto T6 149 -> 149. P: andar 100 86 -> 81,5, chefe do 100 102,5 -> 92, nível 100 105 -> 104,5. O Ouro do atacadista é pequeno (7%), mas o simulador vivia **sem Ouro** em parte das seeds (rodada 17, seção 9), e uns poucos milhares de Ouro tiram essas seeds do impasse. Não mexi em nenhum número para trazer de volta; parte da diferença pode ser ruído (as medianas oscilam, a do chefe do 100 até 15 dias).
+
+### 5. A Bolsa de Ouro (`src/game/goldPouch.ts`, `T.goldPouch`)
+
+| Regra | Valor |
+| --- | --- |
+| Valores de face | 10 000 / 50 000 / 100 000 (`denomSmall`, `denomMedium`, `denomLarge`); o menor é o mínimo de uma Bolsa |
+| Taxa ao criar | 5% do valor, arredondada para cima, **em Ouro, por cima** (500 / 2 500 / 5 000): sumidouro puro |
+| Limite | 3 Bolsas por dia local (todos os valores juntos), mesma virada de dia do mercador |
+| Quem cria | só o dono do Passe; quem não tem vê a aba com o requisito |
+| Quem abre | qualquer um que tenha uma, valor exato, sem volta (dois toques) |
+| Espaço | empilha 99 por espaço, mochila e Baú; sem espaço na mochila nada é criado e nenhum Ouro sai |
+| Negociável | `isTradeable({ kind: 'consumable', id })` é verdadeiro para as três Bolsas e falso para todo outro consumível e todo material |
+| Mercadores | nunca compram (`sellValue` 0); o atacadista só compra material |
+
+Criar e abrir é sempre **perda líquida igual à taxa** (testado para os três valores e qualquer Ouro inicial); o limite diário vira à meia-noite local; não se cria sem o valor **mais** a taxa; nenhum caminho duplica Ouro (400 passos aleatórios conferem a soma Ouro + Ouro nas Bolsas + taxas + descartado). Fora do escopo: exportar e importar o save copia o herói inteiro. Abrir uma Bolsa não conta como "Ouro ganho" (senão criar e abrir em ciclo, pagando 5%, ganharia as conquistas de Ouro). O Ouro dentro das Bolsas aparece como "Patrimônio" nas estatísticas, não como Ouro gastável. Texto em pt e en gerado dos mesmos números (`pouch.explain` e a linha "pode criar Bolsas de Ouro" do Passe), conferido por `passPerks.test.ts` e `goldPouch.test.ts`. O ícone existente `gold_pouch.png` serve às três (precisa de arte própria se o dono quiser distinguir 10 mil, 50 mil e 100 mil à primeira vista).
+
+### 6. Tabela de guarda dos dias 1 a 21 (cenário A, 20 seeds, mediana), antes -> depois
+
+**Idêntica** (a saída de `npm run sim` é a mesma linha por linha, exceto o tempo de execução): T2 8 / checkpoint 10 no dia 1; T3 dia 2; T4 13 / 27 / 47; T5 dia 5, 0%; T6 chegada 12 / 15, chefe 50 mediana 15 (20/20 em 21 dias); T7 1,08; T8 75%; todos os I1 a I4 iguais. O chefe do andar 50 cai **dentro** dos 21 dias, então o atacadista estaria aberto: o jogador simulado só o usa a partir do dia 22 (`wholesaleFirst` em `player.ts`); sem isso o dia 21 mudaria.
+
+### 7. Decisões que o diretor pode discordar
+
+1. **25% e curva por unidade, sem teto em Ouro por dia.** A curva não limita materiais caros e escassos (Coração, Tutano); só o preço limita. Dá +19,1% na pior janela do comum no fim de jogo.
+2. **O dono do Passe passa de 20% nos dias 21-40** (23,5% no pior). Se isso incomoda: baixar `priceRate` para 0,20, ou abrir o atacadista no andar 75 (mais tarde, o excesso do dono já foi consumido pelos sumidouros).
+3. **Compra só da mochila, nunca do Baú.** Quem enche o Baú com excesso precisa tirá-lo antes (a mesma regra do mercador comum).
+4. **Material "acima de comum"** inclui incomum: Sangue, Tutano, Estilhaço, minério e madeira dos tiers 3 e 4 pedem a segunda confirmação.
+5. **A taxa da Bolsa é 5% e o limite 3 por dia.** Com 3 Bolsas grandes por dia o sumidouro máximo é 15 mil Ouro por dia.
+6. **O jogador simulado vende ao atacadista só o que ia jogar fora**, uma política de máximo uso; os marcos da Masmorra andaram (seção 4).
+7. **Uma Bolsa não conta como Ouro ganho nas estatísticas** (nem nas conquistas de Ouro).
+
+### 8. Não feito, ou verificado só em parte
+
+- O mercado de jogadores não existe: a Bolsa é, hoje, só armazenamento com taxa. O preço livre entre jogadores fica para a integração.
+- Não vi no navegador: o botão "Atacadista" nos avisos de mochila cheia e no resumo "bem-vindo de volta", o botão "Abrir" no detalhe do inventário, o detalhe do Códice. São um botão ou uma linha de texto (tsc, lint e testes passam).
+- O simulador longo rodou uma vez só (12 seeds); as medianas oscilam uns 3 dias, as do andar 100 e do chefe até 15.

@@ -1449,3 +1449,7 @@ A seção 8 mediu que 58% (comum) / 78% (dono) do valor coletado nos dias 60-180
 **Pedidos da última faixa** (andar 76+) pedem 6 / 7 / 8 vezes menos Osso / Sangue / Cristal. **Valor de referência** do Estilhaço, Chifre, Tutano e Coração: 6,5 / 34 / 7 / 36 -> 30 / 256,5 / 110 / 451 (a hora de cada zona vale o mesmo ao mercador: Ouro por hora 158,8 -> 161,6 na Fenda, 193,3 -> 203,8 no Abismo).
 
 **Livro-razão depois (12 seeds):** A 101 950 coletadas, 50 891 perdidas (49,9% das unidades, **25,8% do valor**); P 146 287 e 64 635 (44,2%, **17,3%**). Antes, com as mesmas seeds: 57,9% e 77,7%.
+
+## 10. Rodada 18: o Mercador Atacadista compra o que seria jogado fora (13/10/2026)
+
+O atacadista abre no chefe do andar 50, paga 25% do preço do mercador comum no começo do dia e cai até 8% (curva por material e por dia em `docs/BALANCE_CHANGES.md`, Rodada 18). O jogador simulado vende a ele **só o que ia jogar fora**, a partir do dia 22. Livro-razão dos dias 60-180 (12 seeds): A coletou 100 381, perdeu 190 (0,2%) e vendeu 45 615 unidades ao atacadista (antes: perdia 50 891, 49,9% das unidades, 25,8% do valor); P coletou 146 626, perdeu 72 e vendeu 56 117 (antes 64 635 perdidas, 17,3% do valor). O Ouro do atacadista foi 7,0% de tudo o que entrou nos dias 21-180 do comum (no máximo 19,1% em uma janela de 10 dias) e 14,4 mil Ouro pelas 45 615 unidades (2,1% do valor de referência delas). Os relatórios do simulador longo ganharam as colunas "Vendido ao atacadista" e "do qual atacadista (entrou)".

@@ -656,3 +656,15 @@ Harness fora do repositório (75 verificações de reforja e salvage, mais os 22
 ### 21.6 Arquivos da portagem
 
 Novo: `src/game/reforge.ts`. Alterados: `src/App.tsx`, `src/components/InventoryModal.tsx`, `src/App.css`, `src/game/salvage.ts`, `src/game/tunables.ts`, `src/game/gearInstances.ts` (removida a reforja simples, agora em `reforge.ts`), `src/game/gear.ts` (só um comentário), `src/locales/pt.json`, `src/locales/en.json`, `docs/ECONOMY_AUDIT.md`.
+
+## 22. Rodada 18: o Mercador Atacadista e a Bolsa de Ouro nas fontes e sumidouros de Ouro
+
+Fontes de Ouro que **entram**: caça, pedidos, masmorra, mercador comum (orçamento diário `30 + 2 x nível`), metas, **Mercador Atacadista (novo)**. Sumidouros que **saem**: forja, refino, reparo, expansão da mochila, Baú, **taxa da Bolsa de Ouro (novo)**.
+
+| | Fonte ou sumidouro | Regra | Teto |
+| --- | --- | --- | --- |
+| Atacadista | fonte | 25% do preço unitário do mercador comum, sem orçamento por dia, cai a cada unidade do mesmo material vendida no dia (100 unidades ao preço cheio, depois -20% a cada 50, piso de 8% do preço do mercador); só a partir do chefe do andar 50; só o que o jogador marcar e confirmar | ver a tabela de renda na Rodada 18 |
+| Bolsa de Ouro, criar | **sumidouro** | 5% do valor de face, arredondado para cima, mínimo 1 Gold por Bolsa, só dono do Passe, 3 por dia | no máximo 3 x 5 000 = 15 000 Ouro por dia (3 Bolsas grandes) |
+| Bolsa de Ouro, abrir | neutro | devolve exatamente o valor de face; não conta em "Ouro ganho" | - |
+
+Pontos que importam à economia: (1) o atacadista **não** é arbitragem: o preço é a fração de um preço que já é 15% do valor de referência, e a curva derruba mais ainda o excesso de um material só; vender um material ao atacadista e comprá-lo de volta não é possível (a loja não vende material); (2) a Bolsa **não** cria Ouro e a taxa é um sumidouro puro, o que a torna o único canal de Ouro entre jogadores que perde Ouro por troca, de propósito; (3) o Ouro dentro das Bolsas sai da circulação do jogador até que alguém as abra (o jogo continua contando o patrimônio na estatística). O mercado de jogadores ainda não existe, então hoje a Bolsa é só armazenamento com taxa; quando o mercado abrir, o preço de uma Bolsa é livre (pode valer mais ou menos que o valor de face, a decisão é do mercado).
