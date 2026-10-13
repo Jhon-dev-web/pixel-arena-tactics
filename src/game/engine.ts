@@ -49,6 +49,7 @@ import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './invent
 import { migrateLegacyPouch } from './legacyPouch';
 import { emptyStash, sanitizeStash, StashState } from './stash';
 import { emptyMerchant, MerchantState, sanitizeMerchant } from './merchant';
+import { emptyWholesale, sanitizeWholesale, WholesaleState } from './wholesale';
 import { UniqueDrop } from './uniques';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
@@ -163,6 +164,8 @@ export interface SaveData {
   stash: StashState;
   // What the merchant has paid today (merchant.ts); a new local day starts at zero.
   merchant: MerchantState;
+  // Units sold to the wholesale merchant today, by material (wholesale.ts); a new local day starts clean.
+  wholesale: WholesaleState;
   highestDungeonFloor: number;
   heroName: string;
   str: number;
@@ -928,6 +931,7 @@ export function defaultSave(): SaveData {
     pouchMigrated: false,
     stash: emptyStash(),
     merchant: emptyMerchant(),
+    wholesale: emptyWholesale(),
     highestDungeonFloor: 1,
     heroName: 'Hero',
     str: 0,
@@ -1334,6 +1338,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         pouchMigrated: parsed.pouchMigrated === true,
         stash: sanitizeStash(parsed.stash),
         merchant: sanitizeMerchant(parsed.merchant, Date.now()),
+        wholesale: sanitizeWholesale(parsed.wholesale, Date.now()),
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },

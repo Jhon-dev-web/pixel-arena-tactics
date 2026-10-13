@@ -54,3 +54,6 @@ export const fmtDec = (n: number, digits = 1, fixed = false): string =>
   Number.isFinite(n) ? n.toLocaleString(activeLocale === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: fixed ? digits : 0, maximumFractionDigits: digits }) : '-';
 
 export const fmtNum = (n: number): string => (Number.isFinite(n) ? n.toLocaleString(activeLocale === 'pt' ? 'pt-BR' : 'en-US') : '-');
+
+// A unit price can be a fraction of a Gold (the wholesale merchant pays a quarter of a Gold for a common material): decimals only below 10.
+export const fmtPrice = (n: number): string => (n >= 10 ? fmtNum(Math.round(n)) : fmtDec(n, 2));

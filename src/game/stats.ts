@@ -34,6 +34,8 @@ export interface LifetimeStats {
   deepestDepth: number; // the deepest Profundezas depth ever cleared (0 = none, see depths.ts)
   huntSeconds: number; // seconds of Hunting that counted for a reward, added when a hunt ends (the weekly goal reads it)
   dungeonFloors: number; // dungeon floors (Profundezas included) cleared across every run (the weekly goal reads it)
+  wholesaleUnits: number; // materials sold to the wholesale merchant (wholesale.ts)
+  wholesaleGold: number; // Gold the wholesale merchant paid for them
 }
 
 export const emptyRarityCounts = (): Record<Rarity, number> => ({ common: 0, rare: 0, epic: 0, legendary: 0 });
@@ -61,6 +63,8 @@ export const emptyStats = (): LifetimeStats => ({
   deepestDepth: 0,
   huntSeconds: 0,
   dungeonFloors: 0,
+  wholesaleUnits: 0,
+  wholesaleGold: 0,
 });
 
 export const COUNT_CAP = 1e12;
@@ -80,7 +84,7 @@ export interface StatsBackfill {
 export function normalizeStats(raw: unknown, backfill: StatsBackfill = {}): LifetimeStats {
   const r = raw && typeof raw === 'object' ? (raw as Partial<Record<keyof LifetimeStats, unknown>>) : {};
   const out = emptyStats();
-  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'lapidations', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth', 'huntSeconds', 'dungeonFloors'] as const) {
+  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'lapidations', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth', 'huntSeconds', 'dungeonFloors', 'wholesaleUnits', 'wholesaleGold'] as const) {
     out[key] = count(r[key]);
   }
   out.kills = Math.max(count(r.kills), count(backfill.kills));
@@ -132,6 +136,10 @@ export function recordRefine(save: SaveData, success: boolean): SaveData {
 
 export function recordLapidar(save: SaveData): SaveData {
   return withStats(save, (s) => ({ lapidations: (s.lapidations ?? 0) + 1 }));
+}
+
+export function recordWholesale(save: SaveData, units: number, gold: number): SaveData {
+  return withStats(save, (s) => ({ wholesaleUnits: Math.min(COUNT_CAP, (s.wholesaleUnits ?? 0) + count(units)), wholesaleGold: Math.min(COUNT_CAP, (s.wholesaleGold ?? 0) + count(gold)) }));
 }
 
 export function recordDelivery(save: SaveData): SaveData {

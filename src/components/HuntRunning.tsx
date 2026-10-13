@@ -5,6 +5,7 @@ import HuntBattleView from './HuntBattleView';
 import MaterialIcon from './MaterialIcon';
 import { MatIcon, Meter } from './HuntParts';
 import UniqueDrops from './UniqueDrops';
+import WholesaleLink from './WholesaleLink';
 import { fmtNum, t } from '../locales';
 import { buildCombatStats, computeHuntingStatus, huntPromotionRequiredWins, SaveData } from '../game/engine';
 import T from '../game/tunables';
@@ -155,6 +156,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
                       <span>{t('hunting.invLeftOf', { n: fmtNum(i.count), name: matName(i.itemId) })}</span>
                     </span>
                   ))}
+                  <WholesaleLink hint />
                 </div>
               )}
               {fullIn !== null && <div className="hunt-inv-line eta">{t('hunting.invFullIn', { t: fmtSpan(Math.max(fullIn, 1 / 60) * MS_PER_HOUR) })}</div>}

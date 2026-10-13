@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { fmtNum, t } from '../locales';
+import { fmtNum, fmtPrice, t } from '../locales';
+import { merchantPrice } from '../game/merchant';
+import { wholesaleUnitPrice } from '../game/wholesale';
 import { SaveData } from '../game/engine';
 import { GEAR_SLOT_ORDER, CODEX_ITEMS, CODEX_MATERIALS, CODEX_MONSTERS, CODEX_TABS, CodexMonster, CodexTab, DropWording, codexProgress, materialSources, monsterDrops } from '../game/codex';
 import { GearItem, getGear } from '../game/gear';
@@ -116,6 +118,12 @@ function MaterialDetail({ id, found }: { id: MaterialId; found: boolean }) {
           <span className="codex-detail-name">{found && def ? t(`materials.${def.nameKey}`) : t('codex.unknown')}</span>
         </div>
       </div>
+      {found && merchantPrice('material', id) > 0 && (
+        <div className="codex-origin">
+          <span className="codex-label">{t('codex.price')}</span>
+          <span className="codex-price">{t('wholesale.codexLine', { m: fmtNum(merchantPrice('material', id)), w: fmtPrice(wholesaleUnitPrice(id)) })}</span>
+        </div>
+      )}
       {found && (
         <div className="codex-origin">
           <span className="codex-label">{t('codex.origin')}</span>

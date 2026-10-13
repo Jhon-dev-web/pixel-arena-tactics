@@ -4,6 +4,7 @@ import { SaveData, playerLevel } from '../game/engine';
 import { QTY_MODES, QtyMode, unitsFor } from '../game/qty';
 import { ItemUse, usesOf } from '../game/itemUses';
 import { merchantPrice, merchantQuote, merchantBudget, merchantRemaining } from '../game/merchant';
+import WholesaleLink from './WholesaleLink';
 import { StackKind, applyStashMove, bagCount, stashCount, stashFreeSlots } from '../game/stash';
 
 // What can be done with a stack of the inventory: move it to the Baú, sell it to the merchant, discard it, and see where it is consumed ("Usar em...").
@@ -112,6 +113,8 @@ export default function StackActions({
           {armed === 'discard' ? t('inventory.confirmDiscardN', { n: fmtNum(units) }) : t('inventory.discardN', { n: fmtNum(units) })}
         </button>
       </div>
+
+      {!stashRoom && kind === 'material' && <div className="merchant-line"><WholesaleLink hint /></div>}
 
       {sellable && quote && (
         <div className="merchant-line">

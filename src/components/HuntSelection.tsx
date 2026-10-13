@@ -23,6 +23,7 @@ import {
 import { estimateHuntYield, HuntYieldEstimate } from '../game/huntEstimate';
 import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
 import { MaterialId } from '../game/materials';
+import WholesaleLink from './WholesaleLink';
 import { defaultZone, depthsOpen, fmtRate, fmtSpan, matName, startBlockedReason, zoneState, ZoneState } from '../game/huntView';
 
 const zoneName = (zone: HuntingZoneDef): string => t(`dungeon.${zone.nameKey}`);
@@ -260,7 +261,9 @@ export default function HuntSelection({
                   </div>
                   <div className={`hunt-fact${inv.used >= inv.capacity ? ' bad' : inv.used >= inv.capacity * 0.85 ? ' warn' : ''}`}>{t('hunting.invFree', { n: inv.used, m: inv.capacity, f: inv.free })}</div>
                   {overflowIn !== null && (
-                    <p className="hunt-hint bad">{t('hunting.overflowWarning', { t: fmtSpan(Math.max(overflowIn, 1 / 60) * 3600 * 1000), h: capHours })}</p>
+                    <p className="hunt-hint bad">
+                      {t('hunting.overflowWarning', { t: fmtSpan(Math.max(overflowIn, 1 / 60) * 3600 * 1000), h: capHours })} <WholesaleLink hint />
+                    </p>
                   )}
                   <p className="hunt-hint">{t('hunting.invExplain')}</p>
                 </section>

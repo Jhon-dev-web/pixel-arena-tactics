@@ -12,6 +12,7 @@ import { MatIcon, Meter, MonsterPortrait } from './HuntParts';
 import MaterialIcon from './MaterialIcon';
 import UniqueDrops from './UniqueDrops';
 import StrikeLines from './StrikeLines';
+import WholesaleLink from './WholesaleLink';
 
 // Shows the reward a stopped session left in the save (`reward`, frozen at stop) and what claiming it will do to the inventory RIGHT NOW: the same
 // function as the claim (planHuntClaim) decides it, so what is listed here is exactly what happens. Loot goes into the free space, rarest first; what
@@ -142,6 +143,7 @@ export default function HuntRewardModal({
             <button className="hunt-left-btn" onClick={onOpenInventory} data-ui>
               {t('hunting.openInventory')}
             </button>
+            <WholesaleLink className="hunt-left-btn" hint />
           </div>
         )}
         {leftBehind.length === 0 && held && (

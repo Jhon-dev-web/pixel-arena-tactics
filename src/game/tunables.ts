@@ -623,6 +623,27 @@ const T = DebugPanel.define({
     baseBudget: { value: 30, min: 0, max: 2000, step: 5, label: 'Gold the merchant pays per local day, base' },
     budgetPerLevel: { value: 2, min: 0, max: 20, step: 0.1, label: 'Extra daily merchant Gold per character level' },
   },
+  // Round 18 (wholesale.ts): the Mercador Atacadista. No daily Gold budget; a low price (a share of the normal merchant's unit price) that falls with each unit of the SAME material sold
+  // the same local day: the first freeUnits units pay the full wholesale price, then every further block of blockUnits units pays blockDrop less (a share of the wholesale price), down
+  // to floorRate of the NORMAL merchant price. Selling is always manual. docs/BALANCE_CHANGES.md Rodada 18 has the income math.
+  wholesale: {
+    _label: 'Wholesale merchant (surplus, manual only)',
+    unlockFloor: { value: 50, min: 1, max: 100, step: 1, label: 'Dungeon boss floor that opens the wholesale merchant (25, 50, 75 or 100)' },
+    priceRate: { value: 0.25, min: 0.02, max: 1, step: 0.01, label: 'Wholesale unit price as a share of the normal merchant unit price' },
+    freeUnits: { value: 100, min: 0, max: 5000, step: 10, label: 'Units of one material per local day paid at the full wholesale price' },
+    blockUnits: { value: 50, min: 1, max: 2000, step: 5, label: 'Units per block after the free units (each block pays blockDrop less)' },
+    blockDrop: { value: 0.2, min: 0, max: 1, step: 0.01, label: 'Price drop per block (share of the wholesale price)' },
+    floorRate: { value: 0.08, min: 0, max: 1, step: 0.01, label: 'Lowest unit price as a share of the NORMAL merchant price' },
+  },
+  // Round 18 (goldPouch.ts): the Gold Pouch turns Gold into a tradeable bag item. Only the Adventurer Pass owner creates them; anyone can open one for exactly its face value.
+  goldPouch: {
+    _label: 'Gold Pouch (tradeable Gold)',
+    denomSmall: { value: 10000, min: 100, max: 10000000, step: 100, label: 'Face value of the small pouch (also the minimum amount of a pouch)' },
+    denomMedium: { value: 50000, min: 100, max: 10000000, step: 100, label: 'Face value of the medium pouch' },
+    denomLarge: { value: 100000, min: 100, max: 10000000, step: 100, label: 'Face value of the large pouch' },
+    feePct: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Fee paid in Gold on top when a pouch is created (a Gold sink)' },
+    perDay: { value: 3, min: 1, max: 20, step: 1, label: 'Pouches one hero can create per local day' },
+  },
   ui: {
     _label: 'UI Layout',
     spriteSize: { value: 132, min: 80, max: 240, step: 2, cssVar: '--sprite-size', unit: 'px', label: 'Combatant sprite size' },

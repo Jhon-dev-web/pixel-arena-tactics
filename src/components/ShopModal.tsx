@@ -12,6 +12,8 @@ import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import ConsumableIcon from './ConsumableIcon';
 import GemIcon from './GemIcon';
 import TitleIcon from './TitleIcon';
+import WholesalePanel from './WholesalePanel';
+import { WholesaleLine, wholesaleUnlocked } from '../game/wholesale';
 
 const conText = (k: string): string => t(`consumables.${k}`);
 const gemText = (k: string): string => t(`gems.${k}`);
@@ -22,17 +24,21 @@ export default function ShopModal({
   onBuyConsumable,
   onBuyGem,
   onSell,
+  onSellWholesale,
+  initialTab,
   onClose,
 }: {
   save: SaveData;
   onBuyConsumable: (id: ConsumableId) => void;
   onBuyGem: (id: GemId) => void;
   onSell: (kind: SellKind, id: string, qty: number | 'all') => void;
+  onSellWholesale: (lines: WholesaleLine[]) => void;
+  initialTab?: 'buy' | 'sell' | 'wholesale';
   onClose: () => void;
 }) {
   const slots = inventorySlotsUsed(save);
   const capacity = inventoryCapacity(save);
-  const [tab, setTab] = useState<'buy' | 'sell'>('buy');
+  const [tab, setTab] = useState<'buy' | 'sell' | 'wholesale'>(initialTab ?? 'buy');
   // selling a WHOLE type needs a second tap on the same button
   const [armed, setArmed] = useState<string | null>(null);
   const now = Date.now();
@@ -59,6 +65,9 @@ export default function ShopModal({
           </button>
           <button className={`tab${tab === 'sell' ? ' active' : ''}`} onClick={() => setTab('sell')} data-ui>
             {t('shop.sellTab')}
+          </button>
+          <button className={`tab${tab === 'wholesale' ? ' active' : ''}`} onClick={() => setTab('wholesale')} data-ui>
+            {wholesaleUnlocked(save) ? t('shop.wholesaleTab') : `🔒 ${t('shop.wholesaleTab')}`}
           </button>
         </div>
 
@@ -121,6 +130,8 @@ export default function ShopModal({
             })}
           </div>
         )}
+
+        {tab === 'wholesale' && <WholesalePanel save={save} onSell={onSellWholesale} />}
 
         {tab === 'buy' && (
         <div className="shop-body">

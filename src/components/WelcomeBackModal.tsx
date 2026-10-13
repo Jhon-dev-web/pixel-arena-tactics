@@ -3,6 +3,7 @@ import { t } from '../locales';
 import { playSfx } from '../game/audio';
 import { welcomeRowText, WelcomeBackAction } from './welcomeBackText';
 import { WelcomeBackSummary } from '../game/welcomeBack';
+import WholesaleLink from './WholesaleLink';
 
 // One quiet card listing what finished while the player was away. Every row has ONE button: it opens the screen of that activity, or collects it where a free
 // collect action already exists (mining, woodcutting, garden, delivery). The Pass-only "Resgatar tudo" shows up for owners only.
@@ -50,6 +51,7 @@ export default function WelcomeBackModal({
             );
           })}
         </ul>
+        <WholesaleLink className="wb-btn ws-link" hint show={summary.rows.some((r) => 'capHit' in r && r.capHit) ? 'always' : 'ifFull'} />
         {canClaimAll && (
           <button className="quest-btn claim" onClick={onClaimAll} data-ui>
             {t('claimAll.button')}

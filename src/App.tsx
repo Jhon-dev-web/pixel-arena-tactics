@@ -51,6 +51,7 @@ import { ConsumableId, EXPEDITION_TICKET_SKIP_MS } from './game/consumables';
 import { addForced, canAddInstances, expandInventory, inventoryCapacity } from './game/inventory';
 import { StackKind, applyStashMove, applyStashUpgrade, applyStoreAll, bagCount, stashCount } from './game/stash';
 import { applyMerchantSell, SellKind } from './game/merchant';
+import { applyWholesaleBatch, WholesaleLine } from './game/wholesale';
 import { applyDiscard } from './game/bagActions';
 import { ItemUse } from './game/itemUses';
 import { RefiningStation, getRefiningRecipe as refiningRecipeById } from './game/refining';
@@ -135,6 +136,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const flushTimeoutRef = useRef<number | null>(null);
 
   const [shopOpen, setShopOpen] = useState(false);
+  const [shopTab, setShopTab] = useState<'buy' | 'sell' | 'wholesale'>('buy');
   const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1408,6 +1410,28 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     showToast(r.capped ? t('merchant.soldCapped', { n: fmtNum(r.units ?? 0), g: fmtNum(r.gold ?? 0) }) : t('merchant.sold', { n: fmtNum(r.units ?? 0), g: fmtNum(r.gold ?? 0) }));
   };
 
+  // Mercador Atacadista (wholesale.ts): ONLY called from a button the player pressed (one stack, or a ticked list he confirmed); the toast says what it paid.
+  const sellWholesale = (lines: WholesaleLine[]) => {
+    const r = applyWholesaleBatch(saveRef.current, lines, Date.now());
+    if (r.units <= 0) {
+      showToast(t('wholesale.worthless'));
+      return;
+    }
+    playSfx('victory');
+    setSaveBoth(r.save);
+    showToast(t('wholesale.sold', { n: fmtNum(r.units), g: fmtNum(r.gold) }));
+  };
+  const openWholesale = () => {
+    playSfx('click');
+    setWelcome(null);
+    // The shop sits under the hunt and the inventory modals, and the reward screen has its own way back (the next time the hunt is opened).
+    if (saveRef.current.pendingHuntReward) setRewardHidden(true);
+    setHuntOpen(false);
+    setBagOpen(false);
+    setShopTab('wholesale');
+    setShopOpen(true);
+  };
+
   // "Usar em..." from an item: open the screen that consumes it, focused on the first recipe that does.
   const [forgeFocus, setForgeFocus] = useState<{ tab: ForgeTab; itemId?: string } | null>(null);
   const [oficiosFocus, setOficiosFocus] = useState<{ category: RefiningStation | 'potions'; recipeId: string } | null>(null);
@@ -1719,7 +1743,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       items: [
         { key: 'deliveries', icon: <img className="pixel-icon" src="/assets/icons/expedition_ticket_2h.png" alt="" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
         { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { closeDrawer(); playSfx('click'); setBattlePassOpen(true); } },
-        { key: 'shop', icon: <img className="pixel-icon" src="/assets/icons/gold.png" alt="" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopOpen(true); } },
+        { key: 'shop', icon: <img className="pixel-icon" src="/assets/icons/gold.png" alt="" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopTab('buy'); setShopOpen(true); } },
       ],
     },
     {
@@ -1731,7 +1755,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   ];
 
   return (
-    <BagContext.Provider value={{ save, move: moveStash, storeAllMaterials, sell: sellItem, openUse, upgradeStash }}>
+    <BagContext.Provider value={{ save, move: moveStash, storeAllMaterials, sell: sellItem, openUse, upgradeStash, openWholesale }}>
     <div className="game-root">
       <div className="desktop-shell">
         {isDesktop ? (
@@ -1808,6 +1832,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onBuyConsumable={buyConsumable}
           onBuyGem={buyGem}
           onSell={sellItem}
+          onSellWholesale={sellWholesale}
+          initialTab={shopTab}
           onClose={() => {
             playSfx('click');
             setShopOpen(false);

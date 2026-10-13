@@ -41,6 +41,7 @@ import { applyDeliveryAccept, applyDeliveryClaim, canAffordOffer, ensureDelivery
 import { bagFreeSlots, expandInventory, inventoryCapacity, inventorySlotsUsed, slotsForQty } from '../../src/game/inventory';
 import { applyStashMove, applyStashUpgrade, nextStashUpgrade, stashFreeSlots, stashSlotsUsed } from '../../src/game/stash';
 import { applyMerchantSell, merchantPrice, merchantRemaining } from '../../src/game/merchant';
+import { applyWholesaleSell, wholesaleUnlocked } from '../../src/game/wholesale';
 import { applyDiscard } from '../../src/game/bagActions';
 import { baseGoldValue } from '../../src/game/economy';
 import { huntInventoryStatus } from '../../src/game/huntInventory';
@@ -126,9 +127,9 @@ export interface DayLedger {
 // the cheap surplus ('policy'). 'bag' (not in this record) = the claim itself left it behind because the bag was full.
 export type DiscardReason = 'stash' | 'merchant' | 'policy';
 
-export type FlowSink = 'forge' | 'upgrade' | 'alchemy' | 'stash' | 'delivery' | 'workshop' | 'dust' | 'merchant' | 'discard' | 'other';
+export type FlowSink = 'forge' | 'upgrade' | 'alchemy' | 'stash' | 'delivery' | 'workshop' | 'dust' | 'merchant' | 'wholesale' | 'discard' | 'other';
 export const REAL_USE_SINKS: FlowSink[] = ['forge', 'upgrade', 'alchemy', 'stash', 'delivery', 'workshop'];
-export const DISPOSAL_SINKS: FlowSink[] = ['dust', 'merchant', 'discard', 'other'];
+export const DISPOSAL_SINKS: FlowSink[] = ['dust', 'merchant', 'wholesale', 'discard', 'other'];
 export interface MatFlow {
   produced: number; // raw sources: hunting, mining, woodcutting, garden (what entered the inventory)
   refined: number; // made by a station (bars, ingots, leather, handles, essence, scales, dust)
@@ -138,7 +139,7 @@ export interface MatFlow {
   stockEnd: number;
 }
 const newFlow = (): Record<string, MatFlow> =>
-  Object.fromEntries(MATERIALS.map((d) => [d.id, { produced: 0, refined: 0, left: 0, residual: 0, consumed: { forge: 0, upgrade: 0, alchemy: 0, stash: 0, delivery: 0, workshop: 0, dust: 0, merchant: 0, discard: 0, other: 0 }, stockEnd: 0 }]));
+  Object.fromEntries(MATERIALS.map((d) => [d.id, { produced: 0, refined: 0, left: 0, residual: 0, consumed: { forge: 0, upgrade: 0, alchemy: 0, stash: 0, delivery: 0, workshop: 0, dust: 0, merchant: 0, wholesale: 0, discard: 0, other: 0 }, stockEnd: 0 }]));
 
 const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, uniques: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} }, discards: {}, sinks: { deepTry: 0, deepOk: 0, deepDrop: 0, lapidar: 0 } });
 
@@ -707,6 +708,18 @@ export class Player {
     row[reason] += n;
   }
 
+  // Round 18: the wholesale merchant (wholesale.ts) takes the surplus the player was about to THROW AWAY (the round that discards junk, and the last-resort clear): the player
+  // presses sell on exactly those stacks, never anything he would keep. Only from day 22 on, so the first 21 days (the guard) are played exactly as before the merchant existed.
+  // Returns the units still in the bag to discard.
+  private wholesaleFirst(m: MaterialId, n: number): number {
+    if (!this.opts.long || this.day < 21 || n <= 0 || !wholesaleUnlocked(this.S)) return n;
+    const r = applyWholesaleSell(this.S, m, n, this.now);
+    if (!r.ok || !r.save) return n;
+    this.set(r.save, 'atacado');
+    if (this.ledger.flow[m]) this.ledger.flow[m].consumed.wholesale += r.units ?? 0;
+    return n - (r.units ?? 0);
+  }
+
   private makeRoom(want: number) {
     if (this.opts.careless) return;
     const free = () => bagFreeSlots(this.S, this.now);
@@ -746,11 +759,13 @@ export class Player {
         if (free() >= want) return;
         const n = surplus(m);
         if (n <= 0 || baseGoldValue(m) > 5 || keepJunk === 0) continue;
-        const next = applyDiscard(this.S, 'material', m, n);
+        const rest = this.wholesaleFirst(m, n);
+        if (rest <= 0) continue;
+        const next = applyDiscard(this.S, 'material', m, rest);
         if (next) {
-          this.noteDiscard(m, n);
-          this.ledger.inv.discarded += n;
-          if (this.ledger.flow[m]) this.ledger.flow[m].consumed.discard += n;
+          this.noteDiscard(m, rest);
+          this.ledger.inv.discarded += rest;
+          if (this.ledger.flow[m]) this.ledger.flow[m].consumed.discard += rest;
           this.S = next;
         }
       }
@@ -777,7 +792,9 @@ export class Player {
     for (const keep of [297, 198, 99, 0]) {
       for (const m of (Object.keys(this.S.materials) as MaterialId[]).sort((a, b) => (this.S.materials[b] ?? 0) - (this.S.materials[a] ?? 0))) {
         if (free() >= want) return;
-        const n = (this.S.materials[m] ?? 0) - (reserved[m] ?? 0) - keep;
+        const n0 = (this.S.materials[m] ?? 0) - (reserved[m] ?? 0) - keep;
+        if (n0 <= 0) continue;
+        const n = this.wholesaleFirst(m, n0);
         if (n <= 0) continue;
         const next = applyDiscard(this.S, 'material', m, n);
         if (next) {

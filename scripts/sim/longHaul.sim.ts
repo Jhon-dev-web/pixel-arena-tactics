@@ -99,10 +99,11 @@ export interface LongDay {
   // Gold and Runas that came in and went out today (all sources / uses).
   goldIn: number;
   goldOut: number;
+  wsGold?: number; // Gold the wholesale merchant paid today (round 18; absent in runs played before)
   shardsIn: number;
   shardsOut: number;
   // The material ledger of the day, only the materials that moved: [accepted into the bag, left behind by the claim (bag full), sold to the merchant, thrown away with the
-  // stash full, thrown away with the merchant's budget spent, thrown away by policy with room elsewhere].
+  // stash full, thrown away with the merchant's budget spent, thrown away by policy with room elsewhere, sold to the wholesale merchant (round 18: the surplus that would have been thrown away)].
   mat: Record<string, number[]>;
   // Round 16: refine levels past +8 on the worn pieces added up, the highest refine level owned, and what the late-game sinks did today (absent in runs played before).
   deepLevels?: number;
@@ -122,7 +123,7 @@ function matRows(d: DaySnapshot): Record<string, number[]> {
   const out: Record<string, number[]> = {};
   for (const [m, f] of Object.entries(d.ledger.flow)) {
     const x = d.ledger.discards[m];
-    const row = [f.produced, f.left, f.consumed.merchant, x?.stash ?? 0, x?.merchant ?? 0, x?.policy ?? 0];
+    const row = [f.produced, f.left, f.consumed.merchant, x?.stash ?? 0, x?.merchant ?? 0, x?.policy ?? 0, f.consumed.wholesale];
     if (row.some((n) => n > 0)) out[m] = row;
   }
   return out;
@@ -159,6 +160,7 @@ function compact(d: DaySnapshot, checkpoints: number[], zones: number): LongDay 
     shards: d.shards,
     goldIn: Object.values(d.ledger.goldIn).reduce((a, b) => a + b, 0),
     goldOut: Object.values(d.ledger.goldOut).reduce((a, b) => a + b, 0),
+    wsGold: d.ledger.goldIn['atacado'] ?? 0,
     shardsIn: Object.values(d.ledger.currency.shardsIn).reduce((a, b) => a + b, 0),
     shardsOut: Object.values(d.ledger.currency.shardsOut).reduce((a, b) => a + b, 0),
     mat: matRows(d),
@@ -394,7 +396,7 @@ function windowSum(run: LongRun, from: number, to: number, f: (mat: Record<strin
 }
 
 type LedgerKind = 'units' | 'value' | 'scarce';
-type LedgerWhat = 'gathered' | 'lost' | 'bag' | 'stash' | 'merchant' | 'policy' | 'sold';
+type LedgerWhat = 'gathered' | 'lost' | 'bag' | 'stash' | 'merchant' | 'policy' | 'sold' | 'wsold';
 
 // What the player gathered and what he threw away between two days: units of raw materials, the same at the economic reference value (economy.ts), and the units of the
 // materials that are not junk (reference value above 4). Medians across seeds.
@@ -407,7 +409,7 @@ export function discardWindow(runs: LongRun[], from: number, to: number) {
       for (const [m, r] of Object.entries(mat)) {
         if (!rawSet.has(m)) continue;
         const w = kind === 'value' ? baseGoldValue(m as MaterialId) : kind === 'scarce' ? (baseGoldValue(m as MaterialId) > 4 ? 1 : 0) : 1;
-        const n = what === 'gathered' ? r[0] + r[1] : what === 'lost' ? lost(r) : what === 'bag' ? r[1] : what === 'sold' ? r[2] : what === 'stash' ? r[3] : what === 'merchant' ? r[4] : r[5];
+        const n = what === 'gathered' ? r[0] + r[1] : what === 'lost' ? lost(r) : what === 'bag' ? r[1] : what === 'sold' ? r[2] : what === 'wsold' ? r[6] ?? 0 : what === 'stash' ? r[3] : what === 'merchant' ? r[4] : r[5];
         t += n * w;
       }
       return t;
@@ -424,6 +426,8 @@ export function discardWindow(runs: LongRun[], from: number, to: number) {
     merchant: med(pick('units', 'merchant')),
     policy: med(pick('units', 'policy')),
     sold: med(pick('units', 'sold')),
+    wsold: med(pick('units', 'wsold')),
+    wsoldValue: med(pick('value', 'wsold')),
     lost: med(pick('units', 'lost')),
     shareUnits: share('units'),
     shareValue: share('value'),
@@ -442,13 +446,13 @@ export function discardLedger(label: string, runs: LongRun[]): string[] {
   for (let d = 10; d <= DAYS; d += 10) windows.push([d - 9, d]);
   const rows = windows.map(([a, b]) => {
     const w = discardWindow(runs, a, b);
-    return [`${a}-${b}`, num(w.gathered), num(w.sold), num(w.bag), num(w.stash), num(w.merchant), num(w.policy), pct(w.shareUnits), pct(w.shareValue), pct(w.shareScarce)];
+    return [`${a}-${b}`, num(w.gathered), num(w.sold), num(w.wsold), num(w.bag), num(w.stash), num(w.merchant), num(w.policy), pct(w.shareUnits), pct(w.shareValue), pct(w.shareScarce)];
   });
-  out.push(...table(['Dias', 'Coletado', 'Vendido ao mercador', 'Perdido: mochila', 'baú', 'mercador', 'política', '% das unidades', '% do valor', '% dos escassos'], rows));
+  out.push(...table(['Dias', 'Coletado', 'Vendido ao mercador', 'Vendido ao atacadista', 'Perdido: mochila', 'baú', 'mercador', 'política', '% das unidades', '% do valor', '% dos escassos'], rows));
   out.push('');
   const lateFrom = 60;
   const late = discardWindow(runs, lateFrom, DAYS);
-  out.push(`**Dias ${lateFrom}-${DAYS}:** coletado ${num(late.gathered)}, perdido ${num(late.lost)} (${pct(late.shareUnits)} das unidades, ${pct(late.shareValue)} do valor de referência, ${pct(late.shareScarce)} dos materiais escassos); vendido ao mercador ${num(late.sold)}.`);
+  out.push(`**Dias ${lateFrom}-${DAYS}:** coletado ${num(late.gathered)}, perdido ${num(late.lost)} (${pct(late.shareUnits)} das unidades, ${pct(late.shareValue)} do valor de referência, ${pct(late.shareScarce)} dos materiais escassos); vendido ao mercador ${num(late.sold)}; vendido ao atacadista ${num(late.wsold)} unidades (${num(late.wsoldValue)} de valor de referência, que o atacadista paga a uma fração).`);
   out.push('');
   const mats = new Set<string>();
   for (const r of runs) for (const d of r.days) for (const m of Object.keys(d.mat)) mats.add(m);
@@ -485,12 +489,13 @@ export function currencyTable(runs: LongRun[]): string[] {
       num(sum((d) => d.goldIn)),
       num(sum((d) => d.goldOut)),
       num(median(runs.map((r) => r.days[day - 1].gold))),
+      num(sum((d) => d.wsGold ?? 0)),
       num(sum((d) => d.shardsIn)),
       num(sum((d) => d.shardsOut)),
       num(median(runs.map((r) => r.days[day - 1].shards))),
     ]);
   }
-  return table(['Dias', 'Ouro: entrou', 'saiu', 'em caixa no fim', 'Runas: entraram', 'saíram', 'em caixa no fim'], rows);
+  return table(['Dias', 'Ouro: entrou', 'saiu', 'em caixa no fim', 'do qual atacadista (entrou)', 'Runas: entraram', 'saíram', 'em caixa no fim'], rows);
 }
 
 // The late-game sinks (round 16) at work: what the player did with them in each 10 days (median across seeds of the sum of the window).

@@ -14,6 +14,8 @@ export interface BagContextValue {
   // "Usar em...": open the screen that consumes the item
   openUse: (use: ItemUse) => void;
   upgradeStash: () => void;
+  // The wholesale merchant (wholesale.ts): opens the shop on its tab. Only ever opens it: nothing is sold by this call.
+  openWholesale: () => void;
 }
 
 export const BagContext = createContext<BagContextValue | null>(null);

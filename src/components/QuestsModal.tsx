@@ -253,6 +253,8 @@ export default function QuestsModal({
       group: 'economy',
       rows: [
         [t('stats.gold'), fmtNum(stats.goldEarned)],
+        [t('stats.wholesaleUnits'), fmtNum(stats.wholesaleUnits ?? 0)],
+        [t('stats.wholesaleGold'), fmtNum(stats.wholesaleGold ?? 0)],
         [t('stats.played'), formatPlayed(stats.secondsPlayed)],
       ],
     },

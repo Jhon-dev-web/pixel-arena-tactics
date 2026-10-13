@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { fmtDec, fmtNum, t } from '../locales';
+import WholesaleLink from './WholesaleLink';
 import { buffRemainingMs, isBuffActive } from '../game/buffs';
 import { computeMiningStatus, computeWoodcuttingStatus, SaveData } from '../game/engine';
 import { MaterialId, materialIconUrl } from '../game/materials';
@@ -132,7 +133,11 @@ export default function GatheringModal({
               <span className="gather-session-ready">
                 <img className="inline-icon" src={materialIconUrl(activeId as MaterialId)} alt="" /> +{fmtNum(units)} · +{fmtNum(units * T.skills.xpPerUnit)} XP
               </span>
-              {leftNow > 0 && <span className="craft-bag-full">{t('inventory.leftBehindPreview', { n: fmtNum(leftNow) })}</span>}
+              {leftNow > 0 && (
+                <span className="craft-bag-full">
+                  {t('inventory.leftBehindPreview', { n: fmtNum(leftNow) })} <WholesaleLink />
+                </span>
+              )}
               <button className={`camp-mine-claim${units > 0 ? ' blink' : ''}`} onClick={onClaim} disabled={units <= 0} data-ui>
                 {t(`${ns}.collect`)}
               </button>

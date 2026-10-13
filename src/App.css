@@ -10693,3 +10693,125 @@ button[data-ui]:focus-visible {
   color: #ffd76a;
   white-space: nowrap;
 }
+
+/* Round 18: the wholesale merchant tab (WholesalePanel.tsx) and the full-bag link */
+.ws-body .ws-row {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ws-row.ticked {
+  border-color: #ffd76a;
+}
+.ws-tick {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+}
+.ws-tick input {
+  width: 18px;
+  height: 18px;
+  accent-color: #ffd76a;
+}
+.ws-price {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.ws-rare-tag {
+  margin-left: 4px;
+  color: #ffd76a;
+}
+.ws-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  min-width: 0;
+}
+.ws-custom {
+  width: 76px;
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #ffe9a8;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid #8a6a3a;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.ws-batch {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0 2px;
+  background: linear-gradient(to top, rgba(14, 8, 22, 0.96) 70%, rgba(14, 8, 22, 0));
+}
+.ws-locked {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ws-lock-title {
+  margin: 0;
+  color: #ffd76a;
+}
+.ws-confirm-backdrop {
+  z-index: 60;
+}
+.ws-confirm {
+  width: min(92vw, 380px);
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.ws-confirm-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffe9a8;
+}
+.ws-confirm-total {
+  margin: 0;
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffe9a8;
+}
+.ws-rare-title {
+  color: #ffd76a;
+}
+.ws-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+.ws-confirm-actions > button {
+  flex: 1 1 0;
+}
+.ws-link-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  margin-top: 4px;
+}
+.ws-link-hint {
+  font-size: calc(var(--font-size) - 3px);
+  color: #b8a8d8;
+}
+.ws-link {
+  font-family: inherit;
+  font-size: calc(var(--font-size) - 3px);
+  color: #1a1108;
+  background: #ffd76a;
+  border: 1px solid #8a6a3a;
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.codex-price {
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffe9a8;
+}

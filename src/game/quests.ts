@@ -34,7 +34,9 @@ export type QuestMetric =
   | 'potions'
   | 'played_hours'
   | 'codex_pct'
-  | 'max_depth';
+  | 'max_depth'
+  | 'wholesale_units'
+  | 'wholesale_gold';
 
 export type AchievementCategory = 'combat' | 'dungeon' | 'hunting' | 'forging' | 'sets' | 'professions' | 'economy' | 'collection';
 export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = ['combat', 'dungeon', 'hunting', 'forging', 'sets', 'professions', 'economy', 'collection'];
@@ -181,6 +183,9 @@ export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   ach('ACH_DELIVERY_10', 'economy', 'deliveries', 10, 200, 0),
   ach('ACH_DELIVERY_50', 'economy', 'deliveries', 50, 800, 2),
   ach('ACH_POTIONS_25', 'economy', 'potions', 25, 150, 0),
+  // Round 18 (wholesale.ts): they read the lifetime statistics (the progression simulator does not pass them, and the merchant opens at floor 50, after day 21), so they can pay.
+  ach('ACH_WHOLESALE_1K', 'economy', 'wholesale_units', 1000, 150, 0),
+  ach('ACH_WHOLESALE_25K', 'economy', 'wholesale_gold', 25000, 600, 1),
   ach('ACH_PLAYED_10H', 'economy', 'played_hours', 10, 100, 0),
   ach('ACH_PLAYED_100H', 'economy', 'played_hours', 100, 1000, 3),
   // collection (the codex, codex.ts)
@@ -264,6 +269,10 @@ export function questProgress(def: QuestDef, quests: QuestState, ctx: QuestConte
       return ctx.codexPct ?? 0;
     case 'max_depth':
       return st?.deepestDepth ?? 0;
+    case 'wholesale_units':
+      return st?.wholesaleUnits ?? 0;
+    case 'wholesale_gold':
+      return st?.wholesaleGold ?? 0;
     default:
       return 0;
   }
