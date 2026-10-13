@@ -3,6 +3,8 @@ import path from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
+const appVersion = (JSON.parse(fs.readFileSync(path.resolve(__dirname, "package.json"), "utf8")) as { version: string }).version;
+
 // Desktop (Electron/Steam) build only: `vite build --mode desktop` (see scripts/desktop-build.mjs).
 // Turns index.html into a page that satisfies the packaged app's strict CSP and needs no network:
 //  - moves the inline <style>/<script> blocks into same-origin files (the CSP forbids inline code),
@@ -42,12 +44,15 @@ export default defineConfig(({ mode }) => {
       exclude: ["lucide-react"],
     },
     base: "./",
+    // The game version, shown in the error report (src/lib/errorLog.ts). The desktop branch below spreads its own define on top of this one.
+    define: { __APP_VERSION__: JSON.stringify(appVersion) },
     // Desktop build: never read .env* files (a developer's .env.local must not leak into a shipped
     // bundle) and force the backend variables empty so the packaged game runs fully local.
     ...(desktop
       ? {
           envDir: false as const,
           define: {
+            __APP_VERSION__: JSON.stringify(appVersion),
             "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(""),
             "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(""),
           },

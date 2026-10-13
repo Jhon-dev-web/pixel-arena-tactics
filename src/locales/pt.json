@@ -1985,5 +1985,18 @@
     "rar_uncommon": "incomum",
     "rar_rare": "raro",
     "rar_unique": "muito raro"
+  },
+  "errorReport": {
+    "title": "Relatório de erro",
+    "hint": "Se algo travar ou der tela preta, copie o relatório e cole no suporte. Ele guarda só os últimos erros, a versão do jogo e o navegador; nada do seu save nem da sua conta. Nada é enviado automaticamente.",
+    "none": "Nenhum erro registrado.",
+    "count": "Erros registrados: {n}",
+    "copy": "Copiar relatório de erro",
+    "copied": "Relatório copiado.",
+    "copyFailed": "Não foi possível copiar.",
+    "clear": "Limpar",
+    "boundaryTitle": "Algo deu errado",
+    "boundaryHint": "Toque em qualquer lugar da tela pra recarregar o jogo.",
+    "boundaryReload": "Recarregar"
   }
 }

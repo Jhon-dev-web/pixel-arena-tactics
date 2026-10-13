@@ -7,6 +7,10 @@ import { AuthProvider } from "./auth/AuthContext";
 import GameShell from "./shell/GameShell";
 import { uiAudit } from "./lib/uiAudit";
 import pt from "./locales/pt.json";
+import { installGlobalErrorHandlers } from "./lib/errorLog";
+
+// Records uncaught errors and unhandled rejections into a small local ring buffer (Settings can copy it as a report for support). No network.
+installGlobalErrorHandlers();
 
 // DEV only: `window.__uiAudit()` lists raw locale keys, NaN / undefined, horizontal overflow and unnamed buttons on the current screen (the same checker as `npm run smoke:ui`).
 if (import.meta.env.DEV) {

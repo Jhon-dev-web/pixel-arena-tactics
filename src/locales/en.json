@@ -1985,5 +1985,18 @@
     "rar_uncommon": "uncommon",
     "rar_rare": "rare",
     "rar_unique": "very rare"
+  },
+  "errorReport": {
+    "title": "Error report",
+    "hint": "If the game freezes or shows a black screen, copy the report and paste it to support. It holds only the latest errors, the game version and the browser; nothing from your save or account. Nothing is sent automatically.",
+    "none": "No errors recorded.",
+    "count": "Errors recorded: {n}",
+    "copy": "Copy error report",
+    "copied": "Report copied.",
+    "copyFailed": "Could not copy.",
+    "clear": "Clear",
+    "boundaryTitle": "Something went wrong",
+    "boundaryHint": "Tap anywhere on the screen to reload the game.",
+    "boundaryReload": "Reload"
   }
 }

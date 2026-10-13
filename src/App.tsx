@@ -61,6 +61,7 @@ import { GEMS, GemId } from './game/gems';
 import { getTitleDef } from './game/titles';
 import { playerSpriteUrl, withLookMoment } from './game/sprites';
 import AdminModal from './components/AdminModal';
+import { setErrorContext } from './lib/errorLog';
 import ShopModal from './components/ShopModal';
 import ForgeModal, { ForgeReveal, ForgeTab } from './components/ForgeModal';
 import OficiosView from './components/OficiosView';
@@ -145,6 +146,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
   const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills'>('home');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  useEffect(() => setErrorContext(activeView), [activeView]); // the error report says which screen was open
   const [dungeonOpen, setDungeonOpen] = useState(false);
   const [huntOpen, setHuntOpen] = useState(false);
   const [battleFloor, setBattleFloor] = useState<number | null>(null);

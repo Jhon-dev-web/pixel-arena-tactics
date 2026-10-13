@@ -5,6 +5,7 @@ import { SaveData, playerLevel } from '../game/engine';
 import { AudioPrefs } from '../game/audio';
 import { ImportFailure, parseSaveImport, resetWordMatches } from '../game/saveTransfer';
 import useFullscreen from '../hooks/useFullscreen';
+import { APP_VERSION, buildErrorReport, clearErrorLog, copyText, readErrorLog } from '../lib/errorLog';
 import { enableNotifications, notificationsActive, notifyPermission, saveNotifyPref } from '../game/notify';
 
 // Settings: language, the two audio channels (a slider and a mute button each), fullscreen, the account, the tutorial and the game data (export, import and reset
@@ -50,6 +51,16 @@ export default function SettingsModal({
   const [resetting, setResetting] = useState(false);
   const [typed, setTyped] = useState('');
   const resetWord = t('settings.resetWord');
+  const [errorCount, setErrorCount] = useState(() => readErrorLog().length);
+  const [reportMsg, setReportMsg] = useState<string | null>(null);
+  const [reportText, setReportText] = useState<string | null>(null);
+  const copyReport = async () => {
+    const text = buildErrorReport();
+    const ok = await copyText(text);
+    setReportMsg(t(ok ? 'errorReport.copied' : 'errorReport.copyFailed'));
+    // Where the clipboard is blocked the player can still select the text by hand.
+    setReportText(ok ? null : text);
+  };
   const [notifyOn, setNotifyOn] = useState(notificationsActive);
   const [notifyDenied, setNotifyDenied] = useState(false);
   const toggleNotify = async () => {
@@ -276,6 +287,39 @@ export default function SettingsModal({
                 </div>
               </div>
             )}
+          </section>
+
+          <section className="settings-section" data-settings="error-report">
+            <span className="settings-label">{t('errorReport.title')}</span>
+            <span className="settings-description">{t('errorReport.hint')}</span>
+            <span className="settings-description">
+              {errorCount > 0 ? t('errorReport.count', { n: errorCount }) : t('errorReport.none')} · v{APP_VERSION}
+            </span>
+            <div className="settings-data-buttons">
+              <button className="settings-action" onClick={() => void copyReport()} data-ui>
+                {t('errorReport.copy')}
+              </button>
+              {errorCount > 0 && (
+                <button
+                  className="settings-action"
+                  onClick={() => {
+                    clearErrorLog();
+                    setErrorCount(0);
+                    setReportMsg(null);
+                    setReportText(null);
+                  }}
+                  data-ui
+                >
+                  {t('errorReport.clear')}
+                </button>
+              )}
+            </div>
+            {reportMsg && (
+              <span className="settings-description" role="status">
+                {reportMsg}
+              </span>
+            )}
+            {reportText && <textarea className="settings-select" readOnly rows={6} value={reportText} onFocus={(e) => e.currentTarget.select()} aria-label={t('errorReport.title')} />}
           </section>
         </div>
 
