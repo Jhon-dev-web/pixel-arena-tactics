@@ -4,6 +4,8 @@ import { SET_FAMILIES, SetFamily } from './gear';
 import { resolveEquipped } from './gearInstances';
 import { isDungeonBoss } from './dungeon';
 import { COUNT_CAP, count, statsOf, withStats } from './stats';
+import { dungeonEnemyVisualForFloor } from './sprites';
+import { updateCodex } from './codex';
 
 // The heavier half of the lifetime statistics (stats.ts): the dungeon run and what is read from the whole save as it changes.
 
@@ -17,8 +19,14 @@ export function bossesInRun(startFloor: number, stages: number): number {
 // One finished dungeon run, win or lose: the stages it defeated are kills, the bosses among them count, and the unique pieces the bosses dropped.
 export function recordDungeonRun(save: SaveData, startFloor: number, stages: number, uniques = 0): SaveData {
   const st = Math.max(0, Math.floor(stages));
+  const byMonster = { ...statsOf(save).dungeonKills };
+  for (let f = startFloor; f < startFloor + st; f++) {
+    const key = dungeonEnemyVisualForFloor(f).nameKey;
+    byMonster[key] = (byMonster[key] ?? 0) + 1;
+  }
   return withStats(save, (s) => ({
     dungeonRuns: s.dungeonRuns + 1,
+    dungeonKills: byMonster,
     kills: s.kills + st,
     bossesKilled: s.bossesKilled + bossesInRun(startFloor, st),
     uniquesFound: s.uniquesFound + count(uniques),
@@ -55,5 +63,7 @@ export function trackSave(prev: SaveData, next: SaveData, pendingSeconds = 0): S
       changed = true;
     }
   }
-  return changed ? { ...next, stats } : next;
+  // The codex (codex.ts) learns whatever the changed save proves.
+  const withStatsApplied = changed ? { ...next, stats } : next;
+  return updateCodex(prev, withStatsApplied);
 }

@@ -60,7 +60,10 @@ describe('save round trip', () => {
       consumables: { ...base.consumables, small_hp: 3 },
       unlockedHuntingZones: ['demon_glade', 'blood_marsh'],
     };
-    expect(normalizeSave(wire(played))).toEqual(asLoaded(played));
+    // The codex learns the materials the save holds (codex.ts); everything else comes back exactly as saved.
+    const loaded = normalizeSave(wire(played));
+    expect([...loaded.codex.materials].sort()).toEqual(['iron', 'leather_scrap']);
+    expect({ ...loaded, codex: played.codex }).toEqual(asLoaded(played));
   });
 });
 

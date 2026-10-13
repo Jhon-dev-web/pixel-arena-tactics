@@ -164,6 +164,11 @@ export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   ach('ACH_POTIONS_25', 'economy', 'potions', 25, 150, 0),
   ach('ACH_PLAYED_10H', 'economy', 'played_hours', 10, 100, 0),
   ach('ACH_PLAYED_100H', 'economy', 'played_hours', 100, 1000, 3),
+  // collection (the codex, codex.ts)
+  ach('ACH_CODEX_25', 'collection', 'codex_pct', 25, 200, 0),
+  ach('ACH_CODEX_50', 'collection', 'codex_pct', 50, 500, 1),
+  ach('ACH_CODEX_75', 'collection', 'codex_pct', 75, 1000, 3),
+  ach('ACH_CODEX_100', 'collection', 'codex_pct', 100, 3000, 10, { titleId: 'title_codex_sage' }),
 ];
 
 // The achievements of the first save format used lower-case ids (ach_first_blood); they are the ACH_* ones now.

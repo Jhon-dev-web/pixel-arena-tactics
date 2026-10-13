@@ -75,6 +75,7 @@ import { applyClaimGathering, applyStartGathering } from './game/gathering';
 import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
+import CodexModal from './components/CodexModal';
 import BattlePassModal, { SeasonSummaryModal } from './components/BattlePassModal';
 import ClaimAllModal from './components/ClaimAllModal';
 import { applyClaimAll, ClaimAllLine, readyActivities } from './game/claimAll';
@@ -144,6 +145,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [gardenOpen, setGardenOpen] = useState(false);
   const [claimResult, setClaimResult] = useState<{ title: string; name: string; rewards: ExpeditionRewards } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
+  const [codexOpen, setCodexOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
   const [claimAllLines, setClaimAllLines] = useState<ClaimAllLine[] | null>(null);
   // "Bem-vindo de volta" (welcomeBack.ts): what the idle activities produced while the player was away; null = nothing to show.
@@ -433,6 +435,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         [import.meta.env.DEV && adminOpen, () => setAdminOpen(false)],
         [battlePassOpen, () => setBattlePassOpen(false)],
         [questsOpen, () => setQuestsOpen(false)],
+        [codexOpen, () => setCodexOpen(false)],
         [claimResult !== null, () => setClaimResult(null)],
         [gardenOpen, () => setGardenOpen(false)],
         [woodOpen, () => setWoodOpen(false)],
@@ -463,6 +466,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     adminOpen,
     battlePassOpen,
     questsOpen,
+    codexOpen,
     claimResult,
     gardenOpen,
     woodOpen,
@@ -1529,6 +1533,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
         { key: 'dungeon', icon: <img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
         { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
+        { key: 'codex', icon: '📖', label: t('codex.nav'), active: codexOpen, onClick: () => { closeDrawer(); playSfx('click'); setCodexOpen(true); } },
       ],
     },
     {
@@ -1806,6 +1811,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onClose={() => {
             playSfx('click');
             setQuestsOpen(false);
+          }}
+        />
+      )}
+
+      {codexOpen && (
+        <CodexModal
+          save={save}
+          onClose={() => {
+            playSfx('click');
+            setCodexOpen(false);
           }}
         />
       )}

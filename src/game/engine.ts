@@ -29,6 +29,7 @@ import { ConsumableId, emptyConsumables } from './consumables';
 import { GemId, emptyGems } from './gems';
 import { QuestState, emptyQuestState, migrateAchievementId } from './quests';
 import { LifetimeStats, emptyStats, normalizeStats, StatsBackfill } from './stats';
+import { CodexState, emptyCodex, normalizeCodex } from './codex';
 import { Rarity, rarityStatMult } from './rarity';
 import { setBonuses } from './setBonuses';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
@@ -174,6 +175,8 @@ export interface SaveData {
   quests: QuestState;
   // Lifetime counters (stats.ts): kills, gold earned, forged by rarity, ... Old saves load with what they already prove (kills counted, gear owned) and zero for the rest.
   stats: LifetimeStats;
+  // The codex (codex.ts): the gear, materials and monsters ever owned / held / defeated. Backfilled from what an old save holds.
+  codex: CodexState;
   activeOreId: string | null;
   lastMiningClaim: number;
   miningCapHours: number;
@@ -958,6 +961,7 @@ export function defaultSave(): SaveData {
     autoPotionThreshold: 0.35,
     autoPotionPriority: 'large_first',
     stats: emptyStats(),
+    codex: emptyCodex(),
   };
 }
 
@@ -1350,7 +1354,9 @@ export function normalizeSave(rawInput: unknown): SaveData {
             : base.autoPotionThreshold,
         autoPotionPriority: parsed.autoPotionPriority === 'small_first' ? 'small_first' : base.autoPotionPriority,
         stats: normalizeStats(parsed.stats, statsBackfill(gearInstances, quests.counters.kills)),
+        codex: emptyCodex(),
       };
+      loaded.codex = normalizeCodex(parsed.codex, loaded);
       // Hunting session snapshot + pending reward (both new, optional fields: an older save simply lacks them). An active
       // session without a usable snapshot (saved before snapshots existed, or corrupt) is rebuilt conservatively.
       loaded.pendingHuntReward = sanitizePendingHuntReward(parsed.pendingHuntReward);

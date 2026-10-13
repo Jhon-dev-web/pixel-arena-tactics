@@ -1397,7 +1397,15 @@
     "cat_sets": "Sets",
     "cat_professions": "Professions",
     "cat_economy": "Economy",
-    "cat_collection": "Collection"
+    "cat_collection": "Collection",
+    "a_codex_25": "Curious",
+    "a_codex_25_d": "Discover 25% of the Codex",
+    "a_codex_50": "Scholar",
+    "a_codex_50_d": "Discover 50% of the Codex",
+    "a_codex_75": "Erudite",
+    "a_codex_75_d": "Discover 75% of the Codex",
+    "a_codex_100": "Codex Sage",
+    "a_codex_100_d": "Discover 100% of the Codex"
   },
   "battlePass": {
     "title": "Adventurer's Pass",
@@ -1504,7 +1512,9 @@
     "title_tycoon": "Tycoon",
     "req_tycoon": "Earn 1,000,000 gold in total (achievement)",
     "title_artisan": "Complete Artisan",
-    "req_artisan": "Level 75 in Mining, Woodcutting and Gardening (achievement)"
+    "req_artisan": "Level 75 in Mining, Woodcutting and Gardening (achievement)",
+    "title_codex_sage": "Codex Sage",
+    "req_codex_sage": "Discover 100% of the Codex (achievement)"
   },
   "gathering": {
     "rate": "Yield: {n} units/h · {xp} XP/h",
@@ -1628,5 +1638,40 @@
     "deliveries": "Orders completed",
     "gold": "Gold earned in total",
     "played": "Time played"
+  },
+  "codex": {
+    "title": "Codex",
+    "nav": "Codex",
+    "tab_items": "Gear",
+    "tab_materials": "Materials",
+    "tab_monsters": "Monsters",
+    "overall": "{pct}% discovered ({n} of {m})",
+    "hint": "Tap a tile for details. Discovered: {n} of {m}.",
+    "unknown": "???",
+    "tier": "Tier {n}",
+    "set": "{name} set",
+    "uniqueTag": "Unique",
+    "statsUnknown": "Stats: ?",
+    "origin": "Origin",
+    "srcForge": "Forge",
+    "srcZone": "Hunting: {zone}",
+    "srcBoss": "Dungeon boss of floor {n}",
+    "goldCost": "{n} gold",
+    "shards": "{n} Runes",
+    "srcHunt": "Hunting: {zone} ({rarity})",
+    "src_mining": "Mining",
+    "src_woodcutting": "Woodcutting",
+    "src_garden": "Garden",
+    "src_refining": "Refining",
+    "zone": "Zone: {zone}",
+    "floor": "Floor {n}",
+    "floors": "Floors {a} to {b}",
+    "kills": "Defeated: {n}",
+    "drops": "Drops",
+    "noDrops": "Drops nothing besides gold and experience.",
+    "rar_common": "common",
+    "rar_uncommon": "uncommon",
+    "rar_rare": "rare",
+    "rar_unique": "very rare"
   }
 }

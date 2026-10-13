@@ -1397,7 +1397,15 @@
     "cat_sets": "Conjuntos",
     "cat_professions": "Ofícios",
     "cat_economy": "Economia",
-    "cat_collection": "Coleção"
+    "cat_collection": "Coleção",
+    "a_codex_25": "Curioso",
+    "a_codex_25_d": "Descubra 25% do Códice",
+    "a_codex_50": "Estudioso",
+    "a_codex_50_d": "Descubra 50% do Códice",
+    "a_codex_75": "Erudito",
+    "a_codex_75_d": "Descubra 75% do Códice",
+    "a_codex_100": "Sábio do Códice",
+    "a_codex_100_d": "Descubra 100% do Códice"
   },
   "battlePass": {
     "title": "Passe de Aventureiro",
@@ -1504,7 +1512,9 @@
     "title_tycoon": "Magnata",
     "req_tycoon": "Ganhe 1.000.000 de ouro no total (conquista)",
     "title_artisan": "Artesão Completo",
-    "req_artisan": "Nível 75 em Mineração, Lenhador e Horta (conquista)"
+    "req_artisan": "Nível 75 em Mineração, Lenhador e Horta (conquista)",
+    "title_codex_sage": "Sábio do Códice",
+    "req_codex_sage": "Descubra 100% do Códice (conquista)"
   },
   "gathering": {
     "rate": "Rendimento: {n} unidades/h · {xp} XP/h",
@@ -1628,5 +1638,40 @@
     "deliveries": "Pedidos concluídos",
     "gold": "Ouro ganho no total",
     "played": "Tempo de jogo"
+  },
+  "codex": {
+    "title": "Códice",
+    "nav": "Códice",
+    "tab_items": "Equip.",
+    "tab_materials": "Materiais",
+    "tab_monsters": "Monstros",
+    "overall": "{pct}% descoberto ({n} de {m})",
+    "hint": "Toque num quadro para ver os detalhes. Descobertos: {n} de {m}.",
+    "unknown": "???",
+    "tier": "Tier {n}",
+    "set": "Conjunto {name}",
+    "uniqueTag": "Única",
+    "statsUnknown": "Atributos: ?",
+    "origin": "Origem",
+    "srcForge": "Forja",
+    "srcZone": "Caça: {zone}",
+    "srcBoss": "Chefe do andar {n} da Masmorra",
+    "goldCost": "{n} de ouro",
+    "shards": "{n} Runas",
+    "srcHunt": "Caça: {zone} ({rarity})",
+    "src_mining": "Mineração",
+    "src_woodcutting": "Lenhador",
+    "src_garden": "Horta",
+    "src_refining": "Refino",
+    "zone": "Zona: {zone}",
+    "floor": "Andar {n}",
+    "floors": "Andares {a} a {b}",
+    "kills": "Derrotados: {n}",
+    "drops": "Itens que solta",
+    "noDrops": "Não solta nada além de ouro e experiência.",
+    "rar_common": "comum",
+    "rar_uncommon": "incomum",
+    "rar_rare": "raro",
+    "rar_unique": "muito raro"
   }
 }

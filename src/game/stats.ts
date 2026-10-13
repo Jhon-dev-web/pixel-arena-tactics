@@ -14,6 +14,7 @@ import type { Rarity } from './rarity';
 export interface LifetimeStats {
   kills: number; // monsters defeated, hunting + dungeon
   killsByZone: Record<string, number>; // hunting zone id -> kills there
+  dungeonKills: Record<string, number>; // dungeon monster (its enemies.* name key) -> kills
   goldEarned: number; // every Gold the hero gained, from any source (spending is not subtracted)
   itemsForged: number;
   forgedByRarity: Record<Rarity, number>; // forged gear pieces by the rarity they came out as (relics have none)
@@ -36,6 +37,7 @@ export const emptyRarityCounts = (): Record<Rarity, number> => ({ common: 0, rar
 export const emptyStats = (): LifetimeStats => ({
   kills: 0,
   killsByZone: {},
+  dungeonKills: {},
   goldEarned: 0,
   itemsForged: 0,
   forgedByRarity: emptyRarityCounts(),
@@ -77,6 +79,8 @@ export function normalizeStats(raw: unknown, backfill: StatsBackfill = {}): Life
   out.uniquesFound = Math.max(count(r.uniquesFound), count(backfill.uniquesFound));
   const zones = r.killsByZone && typeof r.killsByZone === 'object' ? (r.killsByZone as Record<string, unknown>) : {};
   for (const [id, n] of Object.entries(zones)) if (typeof id === 'string' && id.length < 60 && count(n) > 0) out.killsByZone[id] = count(n);
+  const dungeon = r.dungeonKills && typeof r.dungeonKills === 'object' ? (r.dungeonKills as Record<string, unknown>) : {};
+  for (const [id, n] of Object.entries(dungeon)) if (id.length < 60 && count(n) > 0) out.dungeonKills[id] = count(n);
   const byRarity = r.forgedByRarity && typeof r.forgedByRarity === 'object' ? (r.forgedByRarity as Record<string, unknown>) : {};
   for (const rar of Object.keys(out.forgedByRarity) as Rarity[]) out.forgedByRarity[rar] = Math.max(count(byRarity[rar]), count(backfill.forgedByRarity?.[rar]));
   const sets = Array.isArray(r.completedSets) ? r.completedSets : [];
