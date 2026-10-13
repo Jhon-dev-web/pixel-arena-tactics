@@ -518,6 +518,23 @@
 .depth-tint-100 {
   filter: hue-rotate(300deg) saturate(1.5) brightness(0.95);
 }
+.depths-card {
+  grid-column: 1 / -1;
+}
+.depths-card .floor-header {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.depths-card .floor-name {
+  display: block;
+  flex: 1 1 160px;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.depths-card .floor-cp {
+  flex: 0 1 auto;
+}
 .depths-card.locked {
   opacity: 0.8;
 }
@@ -542,6 +559,7 @@
 
 /* ---- Round 12: profession unlock list (UnlockList.tsx) */
 .unlock-list {
+  text-align: left;
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;

@@ -32,7 +32,7 @@ export default function TopHud({
             {titleLabel && <span className="hero-title-tag">• {titleLabel}</span>}
           </div>
           <div className="profile-stats">
-            <span className="level">{levelLabel(save)}</span>
+            <span className="level">{levelLabel(save, true)}</span>
             <span className="cp-inline">
               ⚔️ CP <span className="num-abbr">{formatNumber(computeCP(save))}</span>
             </span>

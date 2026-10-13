@@ -806,7 +806,7 @@ export class Player {
 
   // ---- 2. upkeep: repair worn gear, throw the starter junk away
   private maintain() {
-    if (this.opts.sinks && (this.S.consumables.repair_kit ?? 0) > 0) {
+    if ((this.S.consumables.repair_kit ?? 0) > 0) {
       const worn = INSTANCED_SLOTS.some((slot) => {
         const eq = resolveEquipped(this.S)[slot];
         return !!eq?.instance && (eq.item.tier ?? 0) >= 1 && eq.instance.durability < 60;

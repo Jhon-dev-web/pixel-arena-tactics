@@ -356,7 +356,7 @@ const T = DebugPanel.define({
     rerollsPass: { value: 2, min: 0, max: 8, step: 1, label: 'Free rerolls per day with Battle Pass' },
     // The Pass no longer doubles Expedition throughput, so it gets a small XP-only bonus on deliveries (never Gold, shards,
     // materials or time). Applied when the order is ACCEPTED and frozen in the snapshot.
-    passXpBonus: { value: 0.1, min: 0, max: 0.5, step: 0.05, label: 'Extra delivery XP with Battle Pass (fraction)' },
+    passXpBonus: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Extra delivery XP with Battle Pass (fraction)' },
     offerTtlHours: { value: 24, min: 1, max: 168, step: 1, label: 'Hours before an unaccepted offer is replaced' },
     durationJitter: { value: 0.1, min: 0, max: 0.4, step: 0.05, label: 'Duration variation around the distance reference (+/-)' },
     tier2Floor: { value: 26, min: 1, max: 100, step: 1, label: 'Highest Dungeon floor for order tier 2' },
@@ -427,7 +427,8 @@ const T = DebugPanel.define({
     // The Pass is a one-time unlock (entitlements.ts); only the 30-level TRACK runs in seasons. Season 1 starts at seasons.ts SEASON_EPOCH_MS.
     seasonDays: { value: 60, min: 7, max: 180, step: 1, label: 'Season length (days)' },
     // Convenience, not power (players trade gear on the Steam market): a moderately longer offline window (capHours) and a small yield bump. Uniques and relics never use the multiplier.
-    capHours: { value: 6, min: 4, max: 24, step: 1, label: 'Offline storage cap with the Pass (hours): Hunting, Mining and Woodcutting (base stays at the zone / skill cap)' },
+    // Round 12: 6 -> 8 h (every zone and skill then keeps the full 8 h an owner can be away), gold 10 -> 15% and delivery XP 10 -> 20%: the owner had fallen to 2.5 days ahead at floor 50 (docs/BALANCE_CHANGES.md, Rodada 12).
+    capHours: { value: 8, min: 4, max: 24, step: 1, label: 'Offline storage cap with the Pass (hours): Hunting, Mining and Woodcutting (base stays at the zone / skill cap)' },
     dropRateMultiplier: { value: 1.1, min: 1, max: 3, step: 0.05, label: 'Material yield multiplier with pass (Hunting, Mining, Woodcutting)' },
     xpPerFloor: { value: 15, min: 1, max: 100, step: 1, label: 'Pass XP per dungeon floor cleared' },
     xpPerHuntHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Hunting claimed' },
@@ -437,8 +438,11 @@ const T = DebugPanel.define({
     bagBonusPct: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Extra inventory capacity for the Pass owner (fraction)' },
     bagBonusSlots: { value: 5, min: 0, max: 20, step: 1, label: 'Minimum extra inventory slots for the Pass owner' },
     // Extra Gold (fraction) from the Dungeon, Hunting and delivery orders. ADDS to the gear bonus (and its cap) and the Fortune Tonic, like the tonic; the merchant is not included.
-    goldBonus: { value: 0.1, min: 0, max: 0.5, step: 0.05, label: 'Extra Gold for the Pass owner: Dungeon, Hunting, deliveries (fraction)' },
+    goldBonus: { value: 0.15, min: 0, max: 0.5, step: 0.05, label: 'Extra Gold for the Pass owner: Dungeon, Hunting, deliveries (fraction)' },
     repairDiscount: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Forge repair gold discount while active' },
+    // Round 12: a Repair Kit (consumables.repairKitDurability) delivered once per local day to the owner, when the game loads on a new day or is open across midnight (entitlements.ts grantDailyPassKit).
+    dailyRepairKits: { value: 1, min: 0, max: 5, step: 1, label: 'Repair Kits the Pass owner receives each new day' },
+    dailyRepairKitStock: { value: 5, min: 1, max: 20, step: 1, label: 'The daily kit stops while the owner already holds this many unused Repair Kits' },
   },
   // Hero skills (heroSkills.ts): three paths of passive skills, 1 point every pointEveryLevels character levels. Every number below is PER RANK; the screen
   // and the descriptions are generated from them. Tuned by scripts/sim (docs/BALANCE_CHANGES.md Rodada 7).

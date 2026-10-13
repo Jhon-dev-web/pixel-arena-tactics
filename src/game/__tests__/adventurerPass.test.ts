@@ -184,20 +184,19 @@ describe('season settlement (battlepass.ts settleSeason)', () => {
 describe('perks of the Pass: convenience, not power', () => {
   const owner = (s: SaveData = defaultSave()): SaveData => ({ ...s, hasBattlePass: true });
 
-  it('the final numbers: a longer storage cap (base stays 4 h), +10 stash slots, +5 bag slots, -20 % repair, +1 offer, +1 reroll, +10 % delivery XP', () => {
+  it('the final numbers: a longer storage cap (base stays 4 h), +10 stash slots, +5 bag slots, -20 % repair, +1 offer, +1 reroll, +20 % delivery XP (Round 12: 8 h storage, +15 % gold)', () => {
     // Measured advantage of an owner (npm run sim, SIM_PASS_ONLY; see docs/BALANCE_CHANGES.md section 28): about +40-60 % materials per day at days 7 / 14
     // and 2-3 days earlier on the milestones. A comment, not an assertion: the sim is not part of the test suite.
-    expect(T.battlePass.capHours).toBeGreaterThan(4);
-    expect(T.battlePass.capHours).toBeLessThanOrEqual(8);
+    expect(T.battlePass.capHours).toBe(8);
     expect(T.battlePass.stashBonusSlots).toBe(10);
     expect(T.battlePass.dropRateMultiplier).toBeCloseTo(1.1, 9);
     expect(T.battlePass.bagBonusSlots).toBe(5); // the floor of the bag perk
     expect(T.battlePass.bagBonusPct).toBeCloseTo(0.2, 9);
-    expect(T.battlePass.goldBonus).toBeCloseTo(0.1, 9);
+    expect(T.battlePass.goldBonus).toBeCloseTo(0.15, 9);
     expect(T.battlePass.repairDiscount).toBeCloseTo(0.2, 9);
     expect(offerCount(true) - offerCount(false)).toBe(1);
     expect(rerollCap(true) - rerollCap(false)).toBe(1);
-    expect(deliveryXp({ xp: 100 }, true)).toBe(110);
+    expect(deliveryXp({ xp: 100 }, true)).toBe(120);
   });
 
   it('every consumer reads ownership: bag, repair, deliveries', () => {
@@ -264,10 +263,10 @@ describe('Pass bag perk: +20 % of the capacity, rounded up, never fewer than 5',
   });
 });
 
-describe('Pass gold bonus: +10 % in the Dungeon, Hunting and delivery orders, added (never multiplied)', () => {
+describe('Pass gold bonus: +15 % in the Dungeon, Hunting and delivery orders, added (never multiplied)', () => {
   it('goldMultiplier adds the Pass share to the gear bonus (inside its own cap) and the Fortune tonic', () => {
     const g = T.battlePass.goldBonus;
-    expect(goldMultiplier(0, false, g)).toBeCloseTo(1.1, 9);
+    expect(goldMultiplier(0, false, g)).toBeCloseTo(1.15, 9);
     expect(goldMultiplier(GOLD_BONUS_CAP, false, g)).toBeCloseTo(1 + GOLD_BONUS_CAP / 100 + g, 9);
     expect(goldMultiplier(GOLD_BONUS_CAP, true, g)).toBeCloseTo(1 + GOLD_BONUS_CAP / 100 + T.tonics.fortuneGoldPct + g, 9);
     expect(goldMultiplier(10, false)).toBeCloseTo(1.1, 9); // a non-owner passes nothing
@@ -280,22 +279,23 @@ describe('Pass gold bonus: +10 % in the Dungeon, Hunting and delivery orders, ad
       const s: SaveData = { ...defaultSave(), hasBattlePass: own, activeHuntingZone: zone.id, activeHuntingDepth: 'shallow', huntingOfflineStart: start };
       return { ...s, huntSession: buildHuntSession(s, start) };
     };
-    expect(mk(true).huntSession!.passGold).toBeCloseTo(10, 9);
+    expect(mk(true).huntSession!.passGold).toBeCloseTo(15, 9);
     expect(mk(false).huntSession!.passGold).toBeUndefined();
     const at = start + 3 * HOUR;
     const plain = computeHuntingStatus(mk(false), at);
     const pass = computeHuntingStatus(mk(true), at);
     expect(plain.goldReady).toBeGreaterThan(0);
-    // the same fights (gold does not change them): about +10 % of the plain Gold
-    expect(pass.goldReady / plain.goldReady).toBeGreaterThan(1.07);
-    expect(pass.goldReady / plain.goldReady).toBeLessThan(1.13);
+    // the same fights (gold does not change them): about +15 % of the plain Gold
+    // (a few Gold an hour, so the whole-number rounding of either side moves the ratio a little)
+    expect(pass.goldReady / plain.goldReady).toBeGreaterThan(1.12);
+    expect(pass.goldReady / plain.goldReady).toBeLessThan(1.3);
     expect(pass.xpReady).toBe(plain.xpReady);
     // survives a save / load
-    expect(normalizeSave(wire(mk(true))).huntSession!.passGold).toBeCloseTo(10, 9);
+    expect(normalizeSave(wire(mk(true))).huntSession!.passGold).toBeCloseTo(15, 9);
   });
 
-  it('delivery orders: the owner is paid +10 % gold, decided at accept and frozen; the merchant is not included', () => {
-    expect(deliveryGold({ gold: 1000 }, true)).toBe(1100);
+  it('delivery orders: the owner is paid +15 % gold, decided at accept and frozen; the merchant is not included', () => {
+    expect(deliveryGold({ gold: 1000 }, true)).toBe(1150);
     expect(deliveryGold({ gold: 1000 }, false)).toBe(1000);
     expect(merchantPrice('material', 'iron')).toBe(merchantPrice('material', 'iron')); // selling stays as it is (no Pass term in merchant.ts)
   });

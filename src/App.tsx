@@ -23,7 +23,7 @@ import { applyElixir, applyRepairKit, applyWhetstoneOil, ElixirId, isBuffItem, R
 import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
 import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
-import { ownsAdventurerPass, purchaseAdventurerPass } from './game/entitlements';
+import { grantDailyPassKit, ownsAdventurerPass, purchaseAdventurerPass } from './game/entitlements';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, characterXpBonusPct, saveSkillEffects, skillPointsAvailable, skillPointsEarned } from './game/heroSkills';
@@ -400,7 +400,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // ...and one that ends while playing is settled within a minute. settleSeason returns the same object when there is nothing to do.
   useEffect(() => {
     const id = window.setInterval(() => {
-      const settled = settleSeason(saveRef.current, Date.now());
+      const now = Date.now();
+      const settled = grantDailyPassKit(settleSeason(saveRef.current, now), new Date(now).toDateString());
       if (settled !== saveRef.current) setSaveBoth(settled);
     }, 60_000);
     return () => window.clearInterval(id);

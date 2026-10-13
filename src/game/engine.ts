@@ -1,5 +1,5 @@
 import T from './tunables';
-import { ownsAdventurerPass } from './entitlements';
+import { grantDailyPassKit, ownsAdventurerPass } from './entitlements';
 import { sanitizeActiveFrame, sanitizeActiveSkin, sanitizeStashBonus } from './seasonItems';
 import { sanitizeSeasonSummary, seasonNumber, type SeasonSummary } from './seasons';
 import { EquippedGear, getGear, HERO_LOOKS, HeroBaseLook, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
@@ -231,6 +231,8 @@ export interface SaveData {
   buffs: Partial<Record<TimedBuffKind, TimedBuff>>;
   dungeonSessionsDay: string;
   dungeonSessionsUsed: number;
+  // The local day the Pass owner's daily Repair Kit was last delivered (entitlements.ts grantDailyPassKit). Missing on saves from before it.
+  passKitDay?: string;
   seenTooltips: string[];
   seenWelcome: boolean;
   tutorial: TutorialState;
@@ -1383,7 +1385,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
       const rawPending = parsed.pendingHuntReward as { pouchCapacity?: unknown } | null | undefined;
       const migrated = migrateLegacyPouch(loaded, (parsed as { huntPouch?: unknown }).huntPouch, Number(rawPending?.pouchCapacity) > 0);
       delete (migrated as unknown as Record<string, unknown>).huntPouch;
-      return migrated;
+      const keptKitDay = typeof parsed.passKitDay === 'string' && parsed.passKitDay.length < 40 ? parsed.passKitDay : undefined;
+      return grantDailyPassKit(keptKitDay ? { ...migrated, passKitDay: keptKitDay } : migrated, today);
     }
   } catch {
     /* ignore */

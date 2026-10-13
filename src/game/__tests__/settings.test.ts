@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultSave, normalizeSave, playerLevel, SaveData, xpToReachLevel } from '../engine';
 import { MAX_IMPORT_BYTES, buildSaveExport, parseSaveImport, readBackup, resetSave, resetWordMatches, writeBackup } from '../saveTransfer';
 import { DEFAULT_AUDIO_PREFS, clampVolume, musicGain, parseAudioPrefs, sfxGain } from '../audio';
@@ -126,11 +126,15 @@ describe('backup and reset', () => {
   });
 
   it('reset is a brand new hero that keeps only the Pass entitlement', () => {
+    // defaultSave() stamps Date.now() into a few fields: freeze the clock so two calls in different milliseconds cannot differ
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
     const fresh = resetSave({ hasBattlePass: true });
     expect(fresh.hasBattlePass).toBe(true);
     expect({ ...fresh, hasBattlePass: false, passSeason: 0 }).toEqual({ ...defaultSave(), hasBattlePass: false, passSeason: 0 });
     expect(resetSave({ hasBattlePass: false }).hasBattlePass).toBe(false);
     expect(fresh.xp).toBe(0);
+    vi.useRealTimers();
   });
 
   it('the typed confirmation ignores case and surrounding spaces, and nothing else', () => {

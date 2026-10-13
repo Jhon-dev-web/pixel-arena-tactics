@@ -65,7 +65,7 @@ export default function DesktopTopbar({
             {titleLabel && <span className="desktop-topbar-title">• {titleLabel}</span>}
           </div>
           <div className="desktop-topbar-stats-row">
-            <span>{levelLabel(save)}</span>
+            <span>{levelLabel(save, true)}</span>
           </div>
         </div>
       </button>

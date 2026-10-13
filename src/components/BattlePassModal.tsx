@@ -14,6 +14,7 @@ import { getGem } from '../game/gems';
 import { getGear } from '../game/gear';
 import { getTitleDef } from '../game/titles';
 import { FORGE_SEAL_MIN_RARITY, RARITIES } from '../game/rarity';
+import { passPerkLines } from '../game/passPerks';
 import T from '../game/tunables';
 import { gearStatLines } from './gearStats';
 
@@ -314,16 +315,7 @@ export default function BattlePassModal({
     return 'claimable';
   };
 
-  const perks: { key: string; icon: string; label: string; sub: string }[] = [
-    { key: 'storage', icon: '/assets/icons/expedition_ticket_4h.png', label: t('battlePass.perkStorage', { n: T.battlePass.capHours }), sub: t('battlePass.perkStorageSub') },
-    { key: 'gold', icon: '/assets/icons/gold.png', label: t('battlePass.perkGold', { n: Math.round(T.battlePass.goldBonus * 100) }), sub: t('battlePass.perkGoldSub') },
-    { key: 'luck', icon: '/assets/icons/ore_gold.png', label: t('battlePass.perkLuck', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) }), sub: t('battlePass.perkLuckSub') },
-    { key: 'orders', icon: '/assets/icons/nav_quests.png', label: t('battlePass.perkDeliveries'), sub: t('battlePass.perkDeliveriesSub', { n: Math.round(T.deliveries.passXpBonus * 100) }) },
-    { key: 'bag', icon: '/assets/icons/nav_bag.png', label: t('battlePass.perkBag', { n: Math.round(T.battlePass.bagBonusPct * 100) }), sub: t('battlePass.perkBagSub', { n: T.battlePass.bagBonusSlots }) },
-    { key: 'stash', icon: '/assets/icons/camp_stash.png', label: t('battlePass.perkStash', { n: T.battlePass.stashBonusSlots }), sub: t('battlePass.perkStashSub') },
-    { key: 'repair', icon: '/assets/icons/whetstone_oil.png', label: t('battlePass.perkRepair', { n: Math.round(T.battlePass.repairDiscount * 100) }), sub: t('battlePass.perkRepairSub') },
-    { key: 'loadout', icon: '/assets/icons/skill_path_warrior.png', label: t('battlePass.perkLoadout'), sub: t('battlePass.perkLoadoutSub') },
-  ];
+  const perks = passPerkLines().map((p) => ({ key: p.key, icon: p.icon, label: t(p.label.key, p.label.params), sub: t(p.sub.key, p.sub.params) }));
 
   const highlights = seasonHighlights();
 

@@ -682,7 +682,7 @@ function passAdvantage(a: Run[], p: Run[]): string[] {
   const upTo = (runs: Run[], d: number, f: (x: DaySnapshot) => number) => runs.map((r) => mean(r.days.slice(0, d + 1).map(f)));
   const pct = (po: number, an: number) => (an > 0 ? `${po >= an ? '+' : ''}${num(((po - an) / an) * 100, 1)}%` : '-');
   const rows: string[][] = [];
-  for (const d of [6, 13]) {
+  for (const d of [6, 13, 20].filter((x) => x < DAYS)) {
     const cells = (label: string, f: (x: DaySnapshot) => number, avg: boolean, digits = 0) => {
       const an = avg ? median(upTo(a, d, f)) : median(a.map((r) => f(r.days[d])));
       const po = avg ? median(upTo(p, d, f)) : median(p.map((r) => f(r.days[d])));
