@@ -30,6 +30,14 @@ export const POTION_RECIPES: PotionRecipe[] = [
   { id: 'fortune_tonic', input: { gold_blossom: 2, common_herb: 2 }, cost: 80, requiredLevel: 20 },
   { id: 'haste_tonic', input: { swift_grass: 3, energy_herb: 2 }, cost: 90, requiredLevel: 30 },
   { id: 'precision_elixir', input: { moon_lily: 1, corrupted_crystal: 1 }, cost: 220, requiredLevel: 45 },
+  // Round 12 (docs/BALANCE_CHANGES.md, Rodada 12): a recurring sink for the materials that pile up (iron, silver, the woods, bone, blood, crystal, the garden produce) and a use for every
+  // ingredient that had only one. The three plants of Gardening 50 / 60 / 70 (silver_sage, dusk_orchid, elder_root) are needed by the late recipes. Gold stays small: the cost is the materials.
+  { id: 'repair_kit', input: { iron: 4, common_wood: 4, bone_fragment: 2 }, cost: 40, requiredLevel: 10 },
+  { id: 'prospector_tonic', input: { silver: 1, oak_wood: 2, iron_thistle: 2, gold_blossom: 1 }, cost: 60, requiredLevel: 20 },
+  { id: 'hunter_lure', input: { concentrated_blood: 3, swift_grass: 2, uncommon_root: 1 }, cost: 90, requiredLevel: 30 },
+  { id: 'sharpening_stone', input: { gold_ore: 1, iron: 3, silver_sage: 1, corrupted_crystal: 1 }, cost: 80, requiredLevel: 45 },
+  { id: 'master_repair_kit', input: { silver: 3, ebony_wood: 3, concentrated_blood: 3, elder_root: 1, moon_lily: 1 }, cost: 120, requiredLevel: 60 },
+  { id: 'armor_polish', input: { obsidian: 1, elven_wood: 1, ancient_wood: 1, dusk_orchid: 1, rare_flower: 1, corrupted_crystal: 2 }, cost: 150, requiredLevel: 65 },
 ];
 
 export function getPotionRecipe(id: string): PotionRecipe | undefined {

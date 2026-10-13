@@ -5,13 +5,14 @@ import type { TimeWindow } from './huntSession';
 import T from './tunables';
 
 // ONE description of every timed consumable effect ("buff"): which item starts it, how long it lasts and how the engine reads it back.
-// Seven kinds share the same machinery (expiry timestamp, Dungeon read per hit, Hunting session windows, elixirs.ts to drink them):
+// Eleven kinds share the same machinery (expiry timestamp, Dungeon read per hit, Hunting session windows, elixirs.ts to drink them):
 //   legacy slots (kept so old saves load untouched): strength -> save.activeBuff, attack -> save.attackBuff
 //   Garden 3.0 tonics: stoneskin / fortune / haste / gatherer / precision -> save.buffs[kind] = { from, expiresAt }
+//   Round 12 (T.consumables): sharpened (+damage), polished (+reduction), bait (+uncommon / rare drop chance of ONE zone, `zone` is stored with the buff), prospect (+Mining / Woodcutting units)
 // Pure data + helpers: the only runtime import besides tunables is derivedStats (heroAttackIntervalMs), so engine.ts can import this file.
 
 export type LegacyBuffKind = 'strength' | 'attack';
-export type TimedBuffKind = 'stoneskin' | 'fortune' | 'haste' | 'gatherer' | 'precision';
+export type TimedBuffKind = 'stoneskin' | 'fortune' | 'haste' | 'gatherer' | 'precision' | 'sharpened' | 'polished' | 'bait' | 'prospect';
 export type BuffKind = LegacyBuffKind | TimedBuffKind;
 
 // A tonic that is running: it covers [from, expiresAt). `from` is when it was FIRST drunk in an unbroken run (drinking again while it is
@@ -19,11 +20,13 @@ export type BuffKind = LegacyBuffKind | TimedBuffKind;
 export interface TimedBuff {
   from: number;
   expiresAt: number;
+  // bait only: the Hunting zone the lure was used for (it does nothing anywhere else)
+  zone?: string;
 }
 
-export const TIMED_BUFF_KINDS: TimedBuffKind[] = ['stoneskin', 'fortune', 'haste', 'gatherer', 'precision'];
+export const TIMED_BUFF_KINDS: TimedBuffKind[] = ['stoneskin', 'fortune', 'haste', 'gatherer', 'precision', 'sharpened', 'polished', 'bait', 'prospect'];
 // The ones a Hunting session has to track as time windows (Mining reads `gatherer` from the save when it is collected).
-export const HUNT_BUFF_KINDS: TimedBuffKind[] = ['stoneskin', 'fortune', 'haste', 'precision'];
+export const HUNT_BUFF_KINDS: TimedBuffKind[] = ['stoneskin', 'fortune', 'haste', 'precision', 'sharpened', 'polished', 'bait'];
 
 export const BUFF_ITEM: Partial<Record<ConsumableId, BuffKind>> = {
   strength_elixir: 'strength',
@@ -33,6 +36,10 @@ export const BUFF_ITEM: Partial<Record<ConsumableId, BuffKind>> = {
   haste_tonic: 'haste',
   gatherer_brew: 'gatherer',
   precision_elixir: 'precision',
+  sharpening_stone: 'sharpened',
+  armor_polish: 'polished',
+  hunter_lure: 'bait',
+  prospector_tonic: 'prospect',
 };
 
 export function buffMinutes(kind: BuffKind): number {
@@ -51,6 +58,14 @@ export function buffMinutes(kind: BuffKind): number {
       return T.tonics.gathererMinutes;
     case 'precision':
       return T.tonics.precisionMinutes;
+    case 'sharpened':
+      return T.consumables.sharpenMinutes;
+    case 'polished':
+      return T.consumables.polishMinutes;
+    case 'bait':
+      return T.consumables.baitMinutes;
+    case 'prospect':
+      return T.consumables.prospectMinutes;
   }
 }
 
@@ -80,12 +95,12 @@ export function buffRemainingMs(save: SaveData, now: number, kind: BuffKind = 's
 }
 
 // The save with `kind` running until `expiresAt`. A tonic that is still active keeps its original `from`.
-export function withBuff(save: SaveData, kind: BuffKind, now: number, expiresAt: number): SaveData {
+export function withBuff(save: SaveData, kind: BuffKind, now: number, expiresAt: number, zone?: string): SaveData {
   if (kind === 'strength') return { ...save, activeBuff: { type: 'strength', expiresAt } };
   if (kind === 'attack') return { ...save, attackBuff: { type: 'attack', expiresAt } };
   const prev = save.buffs?.[kind];
   const from = prev && prev.expiresAt > now ? Math.min(prev.from, now) : now;
-  return { ...save, buffs: { ...(save.buffs ?? {}), [kind]: { from, expiresAt } } };
+  return { ...save, buffs: { ...(save.buffs ?? {}), [kind]: { from, expiresAt, ...(zone ? { zone } : {}) } } };
 }
 
 const MS_PER_HOUR = 3600 * 1000;
@@ -99,12 +114,21 @@ export function gathererBonusHours(save: SaveData, startMs: number, pendingMs: n
   return inside > 0 ? (inside / MS_PER_HOUR) * T.tonics.gathererYieldPct : 0;
 }
 
+// The Prospector's Tonic (Round 12) works exactly like the Gatherer Brew with its own, smaller share: extra effective hours for the part of the session it covered.
+export function prospectBonusHours(save: SaveData, startMs: number, pendingMs: number): number {
+  const b = save.buffs?.prospect;
+  if (!b || !(pendingMs > 0) || !Number.isFinite(startMs)) return 0;
+  const inside = Math.min(startMs + pendingMs, b.expiresAt) - Math.max(startMs, b.from);
+  return inside > 0 ? (inside / MS_PER_HOUR) * T.consumables.prospectYieldPct : 0;
+}
+
 // ---- combat tonics ----------------------------------------------------------------------------------------------------
 
 export interface TonicFlags {
   stoneskin?: boolean;
   haste?: boolean;
   precision?: boolean;
+  polished?: boolean;
 }
 
 // Attack interval with the Haste Tonic: the bonus enters the SAME derivation as a relic's attackSpeedBonus, so heroMinMs still floors it.
@@ -114,6 +138,8 @@ export function hasteIntervalMs(stats: CombatStats): number {
 }
 
 export const stoneskinReduction = (stats: CombatStats): number => stats.reduction + T.tonics.stoneskinReduction;
+// Armor Polish adds to the same Layer-2 reduction SUM (with Stoneskin they simply add: applyDamageReduction keeps the result asymptotic).
+export const polishReductionAdd = (): number => T.consumables.polishReduction;
 export const precisionCrit = (stats: CombatStats): number => Math.min(1, stats.critChance + T.tonics.precisionCritPoints);
 
 // The combat stats with the tonics in `flags` applied: stoneskin adds to the Layer-2 reduction SUM (applyDamageReduction keeps it asymptotic),
@@ -121,7 +147,7 @@ export const precisionCrit = (stats: CombatStats): number => Math.min(1, stats.c
 export function withTonicStats(stats: CombatStats, flags: TonicFlags): CombatStats {
   return {
     ...stats,
-    reduction: flags.stoneskin ? stoneskinReduction(stats) : stats.reduction,
+    reduction: (flags.stoneskin ? stoneskinReduction(stats) : stats.reduction) + (flags.polished ? polishReductionAdd() : 0),
     heroMs: flags.haste ? hasteIntervalMs(stats) : stats.heroMs,
     critChance: flags.precision ? precisionCrit(stats) : stats.critChance,
   };
@@ -133,6 +159,7 @@ export function activeTonicStats(stats: CombatStats, save: SaveData, now: number
     stoneskin: isBuffActive(save, 'stoneskin', now),
     haste: isBuffActive(save, 'haste', now),
     precision: isBuffActive(save, 'precision', now),
+    polished: isBuffActive(save, 'polished', now),
   });
 }
 

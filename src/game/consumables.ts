@@ -16,6 +16,12 @@ export type ConsumableId =
   | 'precision_elixir'
   | 'whetstone_oil'
   | 'fertilizer'
+  | 'repair_kit'
+  | 'master_repair_kit'
+  | 'sharpening_stone'
+  | 'armor_polish'
+  | 'hunter_lure'
+  | 'prospector_tonic'
   | 'forge_seal'
   | 'stash_deed';
 
@@ -63,6 +69,13 @@ export const CONSUMABLES: ConsumableDef[] = [
   { id: 'precision_elixir', nameKey: 'precision_elixir', descKey: 'precision_elixir_d', icon: '🎯', iconUrl: '/assets/icons/precision_elixir.png', cost: 0, sellValue: 80, purchasable: false },
   { id: 'whetstone_oil', nameKey: 'whetstone_oil', descKey: 'whetstone_oil_d', icon: '🛢️', iconUrl: '/assets/icons/whetstone_oil.png', cost: 0, sellValue: 15, purchasable: false },
   { id: 'fertilizer', nameKey: 'fertilizer', descKey: 'fertilizer_d', icon: '🌱', iconUrl: '/assets/icons/fertilizer.png', cost: 0, sellValue: 8, purchasable: false },
+  // Round 12 (potions.ts recipes, buffs.ts / elixirs.ts effects, T.consumables): Alchemy-only, never in the Shop. Their art is pending (iconPending.ts).
+  { id: 'repair_kit', nameKey: 'repair_kit', descKey: 'repair_kit_d', icon: '🧰', iconUrl: '/assets/icons/repair_kit.png', cost: 0, sellValue: 20, purchasable: false },
+  { id: 'master_repair_kit', nameKey: 'master_repair_kit', descKey: 'master_repair_kit_d', icon: '🛠️', iconUrl: '/assets/icons/master_repair_kit.png', cost: 0, sellValue: 60, purchasable: false },
+  { id: 'sharpening_stone', nameKey: 'sharpening_stone', descKey: 'sharpening_stone_d', icon: '🗡️', iconUrl: '/assets/icons/sharpening_stone.png', cost: 0, sellValue: 40, purchasable: false },
+  { id: 'armor_polish', nameKey: 'armor_polish', descKey: 'armor_polish_d', icon: '✨', iconUrl: '/assets/icons/armor_polish.png', cost: 0, sellValue: 70, purchasable: false },
+  { id: 'hunter_lure', nameKey: 'hunter_lure', descKey: 'hunter_lure_d', icon: '🪤', iconUrl: '/assets/icons/hunter_lure.png', cost: 0, sellValue: 25, purchasable: false },
+  { id: 'prospector_tonic', nameKey: 'prospector_tonic', descKey: 'prospector_tonic_d', icon: '⛏️', iconUrl: '/assets/icons/prospector_tonic.png', cost: 0, sellValue: 25, purchasable: false },
   // Adventurer Pass track rewards (seasonItems.ts): reward-only, never bought and never sold (sellValue 0 keeps the merchant out).
   { id: 'forge_seal', nameKey: 'forge_seal', descKey: 'forge_seal_d', icon: '🔨', iconUrl: '/assets/icons/forge_seal.png', cost: 0, sellValue: 0, purchasable: false },
   { id: 'stash_deed', nameKey: 'stash_deed', descKey: 'stash_deed_d', icon: '📜', iconUrl: '/assets/icons/camp_stash.png', cost: 0, sellValue: 0, purchasable: false },
@@ -91,6 +104,12 @@ export function emptyConsumables(): Record<ConsumableId, number> {
     precision_elixir: 0,
     whetstone_oil: 0,
     fertilizer: 0,
+    repair_kit: 0,
+    master_repair_kit: 0,
+    sharpening_stone: 0,
+    armor_polish: 0,
+    hunter_lure: 0,
+    prospector_tonic: 0,
     forge_seal: 0,
     stash_deed: 0,
   };

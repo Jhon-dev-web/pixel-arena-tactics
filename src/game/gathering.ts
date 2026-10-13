@@ -4,6 +4,8 @@ import { recordGather } from './stats';
 import { MaterialId } from './materials';
 import { getOreTier, isOreTierUnlocked } from './ores';
 import { skillLevel } from './skills';
+import { gatherByProducts } from './mastery';
+import { emptyGems } from './gems';
 import T from './tunables';
 import { getWoodTier, isWoodTierUnlocked } from './woodcutting';
 
@@ -11,6 +13,26 @@ import { getWoodTier, isWoodTierUnlocked } from './woodcutting';
 // calls these very functions. A session is: pick a tier (starts the clock), collect (units + skill XP, ends the session).
 
 export type GatherKind = 'mining' | 'woodcutting';
+
+// Mastery by-products of a collection (mastery.ts): Refining Dust and gems, added to the save on top of the units. `dust` is what actually fit the inventory.
+function withByProducts(placed: SaveData, kind: GatherKind, units: number, skillXpBefore: number): { save: SaveData; dust: number; gems: number } {
+  const level = skillLevel(skillXpBefore, kind);
+  const by = gatherByProducts(kind, level, units, skillXpBefore);
+  let save = placed;
+  let dust = 0;
+  if (by.dust > 0) {
+    const r = addWithOverflow(save, { materials: { refining_dust: by.dust } });
+    save = r.save;
+    dust = by.dust - (r.leftover.materials.refining_dust ?? 0);
+  }
+  let gems = 0;
+  const gemTotals = { ...(save.gems ?? emptyGems()) };
+  for (const [id, n] of Object.entries(by.gems)) {
+    gemTotals[id as keyof typeof gemTotals] = (gemTotals[id as keyof typeof gemTotals] ?? 0) + (n as number);
+    gems += n as number;
+  }
+  return { save: gems > 0 ? { ...save, gems: gemTotals } : save, dust, gems };
+}
 
 export interface GatherClaim {
   save: SaveData;
@@ -20,6 +42,9 @@ export interface GatherClaim {
   leftBehind: number; // the part of it the inventory had no room for (gone for good, shown to the player)
   gold: number;
   hours: number;
+  // Mastery by-products added to the save (0 below the perks' levels)
+  dust: number;
+  gems: number;
 }
 
 const validNow = (now: number): boolean => typeof now === 'number' && Number.isFinite(now) && now > 0;
@@ -46,7 +71,8 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
       battlePassLevel,
       battlePassXp,
     }, 'mining', status.oreReady - (placed.leftover.materials[status.oreId] ?? 0));
-    return { save: next, kind, material: status.oreId, units: status.oreReady, leftBehind: placed.leftover.materials[status.oreId] ?? 0, gold: status.goldReady, hours };
+    const by = withByProducts(next, kind, status.oreReady, save.skillXp.mining);
+    return { save: by.save, kind, material: status.oreId, units: status.oreReady, leftBehind: placed.leftover.materials[status.oreId] ?? 0, gold: status.goldReady, hours, dust: by.dust, gems: by.gems };
   }
   if (!save.activeWoodId) return null;
   const status = computeWoodcuttingStatus(save, now);
@@ -64,7 +90,8 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
     battlePassLevel,
     battlePassXp,
   }, 'woodcutting', status.woodReady - (placed.leftover.materials[status.woodId] ?? 0));
-  return { save: next, kind, material: status.woodId, units: status.woodReady, leftBehind: placed.leftover.materials[status.woodId] ?? 0, gold: status.goldReady, hours };
+  const by = withByProducts(next, kind, status.woodReady, save.skillXp.woodcutting);
+  return { save: by.save, kind, material: status.woodId, units: status.woodReady, leftBehind: placed.leftover.materials[status.woodId] ?? 0, gold: status.goldReady, hours, dust: by.dust, gems: by.gems };
 }
 
 export interface GatherStart {

@@ -3,7 +3,7 @@ import T from './tunables';
 
 // Ids are stable: they are what saves store in gardenSlots and what the materials are keyed by. Only the visible names
 // changed with Garden 2.0 (common_herb is now "Erva Medicinal", uncommon_root "Raiz Amarga", rare_flower "Flor Carmesim").
-export type PlantId = 'common_herb' | 'energy_herb' | 'uncommon_root' | 'crimson_mushroom' | 'rare_flower' | 'iron_thistle' | 'gold_blossom' | 'swift_grass' | 'moon_lily';
+export type PlantId = 'common_herb' | 'energy_herb' | 'uncommon_root' | 'crimson_mushroom' | 'rare_flower' | 'iron_thistle' | 'gold_blossom' | 'swift_grass' | 'moon_lily' | 'silver_sage' | 'dusk_orchid' | 'elder_root';
 
 export interface PlantDef {
   id: PlantId;
@@ -39,6 +39,10 @@ export const PLANTS: PlantDef[] = [
   { id: 'swift_grass', nameKey: 'plant_swift_grass', descKey: 'plant_swift_grass_d', useKey: 'plant_swift_grass_use', icon: '🌿', iconUrl: '/assets/icons/swift_grass.png', rarity: 'common', material: 'swift_grass', qty: 2, durationMs: 4 * HOUR, requiredLevel: 30 },
   { id: 'rare_flower', nameKey: 'plant_rare_flower', descKey: 'plant_rare_flower_d', useKey: 'plant_rare_flower_use', icon: '🌸', iconUrl: '/assets/icons/rare_flower.png', rarity: 'rare', material: 'rare_flower', qty: 1, durationMs: 12 * HOUR, requiredLevel: 35 },
   { id: 'moon_lily', nameKey: 'plant_moon_lily', descKey: 'plant_moon_lily_d', useKey: 'plant_moon_lily_use', icon: '🌙', iconUrl: '/assets/icons/moon_lily.png', rarity: 'rare', material: 'moon_lily', qty: 1, durationMs: 10 * HOUR, requiredLevel: 45 },
+  // Round 12 (Gardening 50 / 60 / 70, docs/PROFESSIONS_AUDIT.md section 8): the last plant used to stop at 45, leaving 46-75 with nothing to unlock. Same XP per plot-hour as every plant.
+  { id: 'silver_sage', nameKey: 'plant_silver_sage', descKey: 'plant_silver_sage_d', useKey: 'plant_silver_sage_use', icon: '🌱', iconUrl: '/assets/icons/silver_sage.png', rarity: 'uncommon', material: 'silver_sage', qty: 2, durationMs: 8 * HOUR, requiredLevel: 50 },
+  { id: 'dusk_orchid', nameKey: 'plant_dusk_orchid', descKey: 'plant_dusk_orchid_d', useKey: 'plant_dusk_orchid_use', icon: '🪻', iconUrl: '/assets/icons/dusk_orchid.png', rarity: 'rare', material: 'dusk_orchid', qty: 1, durationMs: 12 * HOUR, requiredLevel: 60 },
+  { id: 'elder_root', nameKey: 'plant_elder_root', descKey: 'plant_elder_root_d', useKey: 'plant_elder_root_use', icon: '🫚', iconUrl: '/assets/icons/elder_root.png', rarity: 'rare', material: 'elder_root', qty: 1, durationMs: 16 * HOUR, requiredLevel: 70 },
 ];
 
 // Plots: the first GARDEN_START_PLOTS are open from the start; the next ones unlock with the Gardening SKILL level (not character level). Old saves with 4

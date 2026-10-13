@@ -54,6 +54,10 @@ export const RAW_REFERENCE_GOLD: Partial<Record<MaterialId, number>> = {
   swift_grass: 8,
   gold_blossom: 20,
   moon_lily: 45,
+  // Round 12 plants: same yield-per-plot-hour logic (sage 0.25/h, orchid 0.083/h, elder root 0.0625/h)
+  silver_sage: 16,
+  dusk_orchid: 48,
+  elder_root: 64,
   // Mining
   copper: 3.5,
   iron: 3.5,

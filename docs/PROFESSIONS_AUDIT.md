@@ -162,3 +162,31 @@ Curva (horas de coleta contínua): Nv10 6,7 h, Nv25 19,9 h, Nv50 68,6 h, Nv55 85
 O único sinal de 3x que sobra é Nv25 -> Nv50 (3,4x), que é a diferença de dificuldade entre prata e ouro, de propósito.
 Nível das profissões no dia 14 / 21 (cenário A): Mineração 34 / 47, Lenhador 29 / 44 (antes 32 / 39 e 28 / 38). Cenário C no dia 14 / 21: Mineração 36 / 42, Lenhador 34 / 42, Jardinagem 51 / 57.
 Dia de liberação em A: ferro 3, prata 7, ouro 3/20 seeds em 21 d; madeira carvalho 4, ébano 12, élfica 0/20.
+
+
+## 8. Rodada 12: maestria e o que há para desbloquear até o nível 75 (12/10/2026)
+
+Auditoria que motivou: Mineração e Lenhador desbloqueavam o último tier no Nv70 (71 a 75 não davam nada); a última planta da Jardinagem era do Nv45 (46 a 75 não davam nada); o Refino não pedia nada além de nível de personagem 75; 10 materiais tinham um único uso.
+
+### 8.1 O que cada profissão mostra e dá
+
+A tela de cada profissão (Mineração, Lenhador, Horta) agora termina com a lista **Próximos desbloqueios** (`UnlockList.tsx`, dados em `mastery.ts professionUnlocks`): tiers ou plantas e as quatro maestrias, em ordem de nível, com o que já foi feito esmaecido e a contagem do que falta. Nunca há mais de 25 níveis sem um desbloqueio.
+
+| Nível | Mineração / Lenhador | Jardinagem |
+|---|---|---|
+| 50 | tier ouro bruto / madeira élfica (já existia) + **maestria 1: +4% de unidades** | **Sálvia Prateada** (8 h, +2) + **maestria 1: toda planta cresce 5% mais rápido** |
+| 60 | **maestria 2: 1 Pó de Refino a cada 40 unidades coletadas** | **Orquídea do Crepúsculo** (12 h, +1) + **maestria 2: mais 5% de velocidade (total 10%)** |
+| 70 | tier obsidiana / madeira ancestral (já existia) + **maestria 3: mais +4% (total +8%)** | **Raiz Anciã** (16 h, +1) + **maestria 3: cada colheita rende 1 Pó de Refino por 4 h de crescimento** |
+| 75 | **maestria 4: 1 gema (rubi, safira ou esmeralda) a cada 250 unidades** | **maestria 4: colheitas de plantas raras rendem +1** |
+
+Todas as maestrias são **determinísticas** (sem sorteio): o pedido falava de "chance de rendimento dobrado"; a versão sem sorteio rende o mesmo em média, é reproduzível (a coleta é uma transição pura) e não toca a ordem dos sorteios do simulador. Números em `T.mastery`.
+
+Plantas novas (XP = 5 por hora de canteiro, como todas; unidades por canteiro-hora 0,25 / 0,083 / 0,0625): Sálvia (Pedra de Amolar, Kit Mestre), Orquídea (Polimento de Armadura), Raiz Anciã (Kit de Reparo Mestre). Valor de referência 16 / 48 / 64.
+
+### 8.2 Impacto na progressão (cenário A, 21 dias)
+
+A Jardinagem do jogador simulado chega ao Nv50 no dia 12 e ao Nv61 no dia 21 (mediana), então as maestrias da Horta e as plantas novas já entram no fim da janela; Mineração e Lenhador ficam em Nv47 / 44 no dia 21 e não alcançam o Nv50. Resultado medido (SIM_FAST, 20 seeds, com e sem únicos): **todas as metas de progressão iguais ao antes** (chegada ao andar 50: mediana 15, primeira seed no dia 12; chefe 25 no dia 5; nível 13 / 27 / 47), ver a tabela da guarda na Rodada 12 em `docs/BALANCE_CHANGES.md`.
+
+### 8.3 Receitas e usos (resumo; tabela completa na Rodada 12)
+
+Nenhum material fica com um único uso: Prata, Ouro bruto, Obsidiana, as cinco madeiras, Raiz Amarga e Flor Carmesim ganharam pelo menos um uso de Alquimia; as três plantas novas só servem às receitas finais. O Refino de equipamento continua pedindo nível de personagem até 75 (a trava 70 / 75 de `smelt_obsidian` e do cabo ancestral não mudou).

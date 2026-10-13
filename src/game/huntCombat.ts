@@ -99,6 +99,14 @@ export interface HuntTimeline {
   heroMsHaste?: number;
   critPrecision?: number;
   fortuneGoldPct?: number;
+  // Round 12 consumables (T.consumables): Sharpening Stone multiplies the hit while its window covers it, Armor Polish adds `reductionPolish` to the reduction sum, the Hunter Lure
+  // raises the chance of the UNCOMMON / RARE drops of the zone by `baitDropPct` while its window covers the cleared fight.
+  sharpWindows?: [number, number][];
+  polishWindows?: [number, number][];
+  baitWindows?: [number, number][];
+  sharpMult?: number;
+  reductionPolish?: number;
+  baitDropPct?: number;
 }
 
 export interface HuntPotionStock {
@@ -220,7 +228,8 @@ export function simulateHuntingSession(
     const economicFraction = economicRollFractionForFight(fightMs, subLevel);
     const dropMult = (timeline ? (inRelativeWindows(timeline.passWindows, sessionMs - timeLeft) ? timeline.passDropMult : 1) : zoneCfg.dropRateMult) * (build.matMult ?? 1);
     for (const entry of zoneCfg.drops) {
-      const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * dropMult * economicFraction;
+      const lured = !!timeline?.baitWindows && entry.rarity !== 'common' && inRelativeWindows(timeline.baitWindows, sessionMs - timeLeft);
+      const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * dropMult * economicFraction * (lured ? 1 + (timeline!.baitDropPct ?? 0) : 1);
       if ((entry.ownStream ? ownRng() : rng()) < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
     }
     // Unique pieces: base chance x the same economic fraction as the materials (no depth / sub-level / Battle Pass multiplier). They never touch
@@ -299,6 +308,7 @@ export function simulateHuntingSession(
           const str = inRelativeWindows(timeline.strengthWindows, at);
           const atk = inRelativeWindows(timeline.attackWindows, at);
           hitBase = str && atk ? timeline.dmgBoth : str ? timeline.dmgStrength : atk ? timeline.dmgAttack : build.heroDmgBase;
+          if (timeline.sharpWindows && inRelativeWindows(timeline.sharpWindows, at)) hitBase *= timeline.sharpMult ?? 1;
         }
         const res = resolveHeroHit(strikeState, build.strikes, doubleRng);
         const plain = Math.max(1, Math.round(hitBase * (crit ? build.critMult : 1)));
@@ -323,9 +333,10 @@ export function simulateHuntingSession(
         heroNext += hasted ? (timeline!.heroMsHaste ?? build.heroMs) : build.heroMs;
       } else if (enemyNext === nextEvent) {
         const stoned = !!timeline?.stoneWindows && inRelativeWindows(timeline.stoneWindows, sessionMs - timeLeft + t);
+        const polished = !!timeline?.polishWindows && inRelativeWindows(timeline.polishWindows, sessionMs - timeLeft + t);
         const blocked = !!build.block && blockRng() < build.block;
         if (blocked) registerBlock(strikeState, build.strikes);
-        const dmgTaken = blocked ? 0 : stoned ? applyDamageReduction(enemy.dmg, timeline!.reductionStone ?? build.reduction) : dmgTakenBase;
+        const dmgTaken = blocked ? 0 : stoned || polished ? applyDamageReduction(enemy.dmg, (stoned ? (timeline!.reductionStone ?? build.reduction) : build.reduction) + (polished ? (timeline!.reductionPolish ?? 0) : 0)) : dmgTakenBase;
         hpRef.hp -= dmgTaken;
         // Ultimo Bastiao: a lethal hit leaves 1 HP plus a heal, once per bastionCooldownMs of combat time.
         const clock = sessionMs - timeLeft + t;
@@ -357,6 +368,7 @@ export function simulateHuntingSession(
           const str = inRelativeWindows(timeline.strengthWindows, sessionMs - timeLeft + t);
           const atk = inRelativeWindows(timeline.attackWindows, sessionMs - timeLeft + t);
           hitBase = str && atk ? timeline.dmgBoth : str ? timeline.dmgStrength : atk ? timeline.dmgAttack : build.heroDmgBase;
+          if (timeline.sharpWindows && inRelativeWindows(timeline.sharpWindows, sessionMs - timeLeft + t)) hitBase *= timeline.sharpMult ?? 1;
         }
         const per = furyHitDamage(hitBase, build.strikes);
         let sum = 0;

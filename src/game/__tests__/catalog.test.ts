@@ -21,6 +21,7 @@ import { TITLES } from '../titles';
 import { FRAMES, SKINS } from '../seasonItems';
 import { WOOD_TIERS } from '../woodcutting';
 import { skillXpToReachLevel } from '../skills';
+import { ICON_PENDING, isIconPending } from '../iconPending';
 
 const materialIds = new Set<string>(MATERIALS.map((m) => m.id));
 const consumableIds = new Set<string>(CONSUMABLES.map((c) => c.id));
@@ -189,6 +190,8 @@ describe('icons point at files that exist under public/', () => {
   // Every file shipped in public/ ('/public/assets/...'), listed without importing any of them.
   const files = new Set(Object.keys(import.meta.glob('/public/**/*')));
   const exists = (url: string) => url.startsWith('/') && files.has('/public' + url);
+  // Art that has not been drawn yet (iconPending.ts): the declared file may be missing, and the icon components show the emoji meanwhile.
+  const existsOrPending = (url: string) => exists(url) || isIconPending(url);
 
   const entries: [string, string | undefined][] = [
     ...MATERIALS.map((m): [string, string | undefined] => [`material ${m.id}`, m.iconUrl]),
@@ -210,8 +213,15 @@ describe('icons point at files that exist under public/', () => {
   });
 
   it('every catalog entry that declares an icon points to an existing local file', () => {
-    const missing = entries.filter(([, url]) => url !== undefined && !exists(url)).map(([name, url]) => `${name} -> ${url}`);
+    const missing = entries.filter(([, url]) => url !== undefined && !existsOrPending(url)).map(([name, url]) => `${name} -> ${url}`);
     expect(missing).toEqual([]);
+  });
+
+  it('the pending-art list holds only ids whose file is really missing', () => {
+    const stale = ICON_PENDING.filter((id) => exists(`/assets/icons/${id}.png`));
+    expect(stale, 'drop these from iconPending.ts, their art exists now').toEqual([]);
+    const declared = new Set(entries.map(([, url]) => url));
+    expect(ICON_PENDING.filter((id) => !declared.has(`/assets/icons/${id}.png`)), 'pending ids no catalog entry declares').toEqual([]);
   });
 
   it('materials, consumables, gems, plants and titles all declare an icon', () => {

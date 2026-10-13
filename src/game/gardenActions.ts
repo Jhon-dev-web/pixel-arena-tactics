@@ -1,5 +1,6 @@
 import { computeGardenSlotStatus, GARDEN_SLOTS, SaveData } from './engine';
 import { getPlant, PlantId, plantHarvestXp, unlockedGardenPlots } from './garden';
+import { gardenDustFor, gardenYieldBonus } from './mastery';
 import T from './tunables';
 import { MaterialId } from './materials';
 import { skillLevel } from './skills';
@@ -14,7 +15,7 @@ const validNow = (now: number): boolean => typeof now === 'number' && Number.isF
 
 export interface HarvestResult {
   save: SaveData;
-  harvested: { slot: number; plantId: PlantId; material: MaterialId; qty: number; xp: number }[];
+  harvested: { slot: number; plantId: PlantId; material: MaterialId; qty: number; xp: number; dust?: number }[];
   // Ready plots whose yield did not fit the inventory: harvesting is a deliberate action, so they are NOT touched (the crop stays ready) and nothing is lost.
   blocked: number[];
 }
@@ -41,6 +42,7 @@ export function applyPlant(save: SaveData, plantId: string, slotIndices: number[
 export function applyHarvest(save: SaveData, slotIndices: number[], now: number): HarvestResult | null {
   if (!validNow(now)) return null;
   let bag = save;
+  const gardenLevel = skillLevel(save.skillXp.gardening, 'gardening');
   const gardenSlots = [...save.gardenSlots];
   const harvested: HarvestResult['harvested'] = [];
   const blocked: number[] = [];
@@ -49,14 +51,17 @@ export function applyHarvest(save: SaveData, slotIndices: number[], now: number)
     const status = computeGardenSlotStatus(save, now, i);
     const def = status.plantId ? getPlant(status.plantId) : undefined;
     if (!status.ready || !def) continue;
-    const placed = addWithOverflow(bag, { materials: { [def.material]: def.qty } });
+    // Gardening mastery (mastery.ts): +units on the rare plants at 75, Refining Dust per growth hour at 70. Both are 0 below those levels, so nothing changes for them.
+    const qty = def.qty + gardenYieldBonus(gardenLevel, def.rarity);
+    const dust = gardenDustFor(gardenLevel, def.durationMs / 3600000);
+    const placed = addWithOverflow(bag, { materials: { [def.material]: qty, ...(dust > 0 ? { refining_dust: dust } : {}) } });
     if (!stockIsEmpty(placed.leftover)) {
       blocked.push(i);
       continue;
     }
     bag = placed.save;
     gardenSlots[i] = { plantId: null, startedAt: 0, lastPlantId: def.id, fertilized: false };
-    harvested.push({ slot: i, plantId: def.id, material: def.material, qty: def.qty, xp: plantHarvestXp(def) });
+    harvested.push({ slot: i, plantId: def.id, material: def.material, qty, xp: plantHarvestXp(def), ...(dust > 0 ? { dust } : {}) });
   }
   if (harvested.length === 0 && blocked.length === 0) return null;
   return {

@@ -308,6 +308,9 @@ describe('material flow', () => {
       a.push(playOne(seed, {}));
       p.push(playOne(seed, { pass: true }));
     }
+    // Rodada 12: the same player A with the new sinks of the first 21 days (repair kit, prospector tonic, hunter lure + the bulk dust recipes are NOT driven: dust is disposal in this ledger)
+    const sinks: Run[] = [];
+    if (process.env.FLOW_SINKS !== '0') for (let seed = 1; seed <= SEEDS; seed++) sinks.push(playOne(seed, { sinks: true }));
     const out: string[] = [];
     const residual = Math.max(...a.flatMap((r) => r.flatMap((d) => Object.values(d.ledger.flow).map((f) => Math.abs(f.residual)))));
     const resid: Record<string, number> = {};
@@ -328,6 +331,13 @@ describe('material flow', () => {
     out.push('## Únicos por zona (cenário A, horas de caça reais do jogador simulado)', '', ...uniqueTable(a));
     out.push('## Runas e gemas, cenário A', '', ...currencyTable(a));
     out.push('## Runas e gemas, dono do Passe', '', ...currencyTable(p));
+    if (sinks.length) {
+      const targets = ['iron', 'silver', 'common_wood', 'oak_wood', 'ebony_wood', 'bone_fragment', 'concentrated_blood', 'corrupted_crystal', 'iron_thistle', 'gold_blossom', 'swift_grass', 'uncommon_root', 'moon_lily', 'rare_flower'];
+      const rows = targets.map((m) => [m, ...STAGES.filter((d) => d >= 7).map((d) => `${verdictOf(share(a, m, d), cum(a, inflow(m), d))} ${pct(share(a, m, d))} → ${verdictOf(share(sinks, m, d), cum(sinks, inflow(m), d))} ${pct(share(sinks, m, d))}`)]);
+      out.push('## Rodada 12: uso real dos materiais com os sumidouros novos, antes (cenário A) → depois (A + sumidouros)', '', ...table(['material', ...STAGES.filter((d) => d >= 7).map((d) => `dia ${d}`)], rows));
+      const kit = (r: Run[]) => num(median(r.map((x) => x.reduce((acc, d) => acc + (d.ledger.goldOut['reparo'] ?? 0), 0))), 0);
+      out.push(`Ouro gasto em reparo nos ${DAYS} dias (mediana): antes ${kit(a)} → depois ${kit(sinks)}.`, '');
+    }
     out.push('## Custo de um conjunto completo (7 peças, cadeia inteira), por tier', '', ...setTables());
     out.push('## Produção por hora no estágio em que cada material é caçado, contra o conjunto do tier', '', ...analyticTable());
     const text = out.join('\n');

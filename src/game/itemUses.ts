@@ -83,7 +83,7 @@ export function usesOf(kind: 'material' | 'consumable', id: string, save?: Pick<
   if (c === 'fertilizer') push(out, 'garden', ['garden']);
   if (c === 'forge_seal') push(out, 'forge', GEAR.filter((g) => g.recipe && !g.unique && isInstancedSlot(g.slot)).map((g) => g.id));
   if (c === 'stash_deed') push(out, 'use', [c]);
-  if (c === 'xp_potion' || c === 'whetstone_oil' || c === 'atk_elixir' || BUFF_ITEM[c]) push(out, 'use', [c]);
+  if (c === 'xp_potion' || c === 'whetstone_oil' || c === 'repair_kit' || c === 'master_repair_kit' || c === 'atk_elixir' || BUFF_ITEM[c]) push(out, 'use', [c]);
   return out;
 }
 

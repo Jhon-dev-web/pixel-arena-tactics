@@ -222,6 +222,36 @@ const T = DebugPanel.define({
     whetstoneDurability: { value: 30, min: 1, max: 100, step: 1, label: 'Whetstone Oil: durability points restored to the equipped weapon AND armor' },
     fertilizerSkipPct: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Fertilizer: share of the REMAINING growth time removed (once per planting)' },
   },
+  // Round 12 consumables (docs/BALANCE_CHANGES.md, Rodada 12). They reuse the timed-buff machinery of the tonics above. CAP: all the NEW consumables that can be active at once
+  // raise the hero's damage by at most newConsumableCap (only the Sharpening Stone does) and the yield of any one activity by at most newConsumableCap (the Lure for Hunting,
+  // the Prospector's Tonic for Mining / Woodcutting); the Polish only touches the Layer-2 reduction SUM (asymptotic, adds to Stoneskin). A test pins the cap.
+  consumables: {
+    _label: 'Round 12 consumables (repair kits, sharpening stone, polish, lure, prospector tonic)',
+    newConsumableCap: { value: 0.1, min: 0, max: 0.5, step: 0.01, label: 'Cap on what all NEW consumables active together add to damage / to the yield of one activity' },
+    repairKitDurability: { value: 60, min: 1, max: 100, step: 1, label: 'Repair Kit: durability points restored to the equipped weapon AND armor' },
+    sharpenMinutes: { value: 30, min: 5, max: 240, step: 5, label: 'Sharpening Stone duration (min)' },
+    sharpenDmgPct: { value: 0.04, min: 0, max: 0.5, step: 0.01, label: 'Sharpening Stone: extra damage (multiplies like the other damage buffs)' },
+    polishMinutes: { value: 30, min: 5, max: 240, step: 5, label: 'Armor Polish duration (min)' },
+    polishReduction: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'Armor Polish: added to the Layer-2 reduction sum (with Stoneskin they simply add up)' },
+    baitMinutes: { value: 60, min: 5, max: 240, step: 5, label: 'Hunter Lure duration (min); it only covers the zone it was used in' },
+    baitDropPct: { value: 0.1, min: 0, max: 0.5, step: 0.01, label: 'Hunter Lure: extra drop chance of the UNCOMMON and RARE materials of that zone' },
+    prospectMinutes: { value: 120, min: 5, max: 480, step: 5, label: "Prospector's Tonic duration (min)" },
+    prospectYieldPct: { value: 0.1, min: 0, max: 0.5, step: 0.01, label: "Prospector's Tonic: extra Mining / Woodcutting units while it covers the session (adds to the Gatherer Brew)" },
+  },
+  // Profession mastery (mastery.ts): perks at fixed profession levels, all deterministic (no rolls), so a claim is reproducible and the simulator stays byte-identical.
+  mastery: {
+    _label: 'Profession mastery (Mining / Woodcutting / Gardening perks at 50 / 60 / 70 / 75)',
+    levelA: { value: 50, min: 1, max: 75, step: 1, label: 'Mastery perk 1 level' },
+    levelB: { value: 60, min: 1, max: 75, step: 1, label: 'Mastery perk 2 level' },
+    levelC: { value: 70, min: 1, max: 75, step: 1, label: 'Mastery perk 3 level' },
+    levelD: { value: 75, min: 1, max: 75, step: 1, label: 'Mastery perk 4 level' },
+    gatherYieldPct: { value: 0.04, min: 0, max: 0.5, step: 0.01, label: 'Mining / Woodcutting: extra units at perk 1 and again at perk 3' },
+    gatherDustUnits: { value: 40, min: 5, max: 500, step: 5, label: 'Mining / Woodcutting perk 2: one Refining Dust for every N units collected' },
+    gatherGemUnits: { value: 250, min: 25, max: 2000, step: 25, label: 'Mining / Woodcutting perk 4: one gem for every N units collected' },
+    gardenSpeedPct: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Gardening perks 1 and 2: each makes every plant grow this much faster' },
+    gardenDustHours: { value: 4, min: 1, max: 24, step: 1, label: 'Gardening perk 3: one Refining Dust per N growth hours of every harvest' },
+    gardenRareBonus: { value: 1, min: 0, max: 3, step: 1, label: 'Gardening perk 4: extra units from every harvest of a RARE plant' },
+  },
   hunting: {
     _label: 'Open Zone Hunting',
     tickMs: { value: 2200, min: 800, max: 6000, step: 100, label: 'Visual attack pulse interval (ms)' },

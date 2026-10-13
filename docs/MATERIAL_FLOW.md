@@ -1383,3 +1383,38 @@ O conjunto completo do tier 1 pede 91 Farrapos de Couro (já contando as peças 
 | abyssal_marrow | 0/h (-) · set 0 = 0 h | 0/h (-) · set 0 = 0 h | 43.7/h (b.abyss) · set 630 = 14.4 h | 43.7/h (b.abyss) · set 830 = 19 h |
 | blood_heart | 0/h (-) · set 0 = 0 h | 0/h (-) · set 0 = 0 h | 9.2/h (b.abyss) · set 150 = 16.4 h | 9.2/h (b.abyss) · set 193 = 21 h |
 
+
+
+## 7. Rodada 12: segundo uso para todo material e sumidouros novos (12/10/2026)
+
+O que mudou (detalhe em `docs/BALANCE_CHANGES.md`, Rodada 12, e `docs/PROFESSIONS_AUDIT.md`, seção 8):
+
+- **6 receitas de Alquimia** (aba Alquimia do Ofícios, a estação que já existia) e **5 receitas de Pó** (estação Pó, a "conversão em lote" que já existia): Kit de Reparo (4 Ferro, 4 Madeira comum, 2 Osso), Kit de Reparo Mestre (3 Prata, 3 Ébano, 3 Sangue, 1 Raiz Anciã, 1 Lírio Lunar), Pedra de Amolar (1 Ouro bruto, 3 Ferro, 1 Sálvia Prateada, 1 Cristal), Polimento de Armadura (1 Obsidiana, 1 Madeira élfica, 1 Madeira ancestral, 1 Orquídea do Crepúsculo, 1 Flor Carmesim, 2 Cristal), Isca do Caçador (3 Sangue, 2 Capim Veloz, 1 Raiz Amarga), Tônico do Prospector (1 Prata, 2 Carvalho, 2 Cardo de Ferro, 1 Flor Dourada); Pó de Refino a partir de Ferro (10), Madeira comum (10), Carvalho (8), Ébano (8) e Cardo de Ferro (6), todos com razão saída/entradas >= 0,6.
+- **Usos dos materiais de um único uso**: Prata (Kit Mestre, Tônico do Prospector), Ouro bruto (Pedra de Amolar), Obsidiana, Madeira élfica e ancestral (Polimento), Raiz Amarga (Isca), Flor Carmesim (Polimento), Madeira comum / Carvalho / Ébano (Kit de Reparo, Tônico, Kit Mestre e Pó). Os 10 passam a ter pelo menos 2 usos (teste `round12.test.ts`).
+- **3 plantas novas** (Jardinagem 50 / 60 / 70) que as receitas finais exigem.
+
+### 7.1 Medido (cenário A, 20 seeds, 21 dias; `npm run sim:flow`, o jogador usa os sumidouros alcançáveis em 21 dias)
+
+O jogador do simulador agora (opção `sinks`, só no relatório de fluxo; a guarda de progressão não a liga) mantém 2 de cada em estoque: Kit de Reparo, Tônico do Prospector e Isca (as únicas deste conjunto que o nível 1-21 alcança: Pedra de Amolar exige Jardinagem 50, Kit Mestre 60, Polimento 65), repara com o kit antes de pagar Ouro e bebe o tônico / a isca no começo de uma coleta / caça. Uso real acumulado, antes → depois:
+
+| material | dia 7 | dia 14 | dia 21 |
+| --- | --: | --: | --: |
+| iron | inundada 34% → inundada 35% | inundada 33% → inundada 28% | inundada 28% → inundada 32% |
+| silver | - - → - - | inundada 17% → inundada 18% | inundada 10% → inundada 10% |
+| common_wood | abundante 43% → abundante 43% | inundada 30% → inundada 35% | abundante 55% → abundante 63% |
+| oak_wood | inundada 20% → inundada 20% | inundada 12% → inundada 11% | inundada 14% → inundada 12% |
+| ebony_wood | - - → - - | inundada 12% → inundada 10% | inundada 4% → inundada 4% |
+| bone_fragment | inundada 2% → inundada 2% | inundada 20% → inundada 20% | inundada 16% → inundada 16% |
+| concentrated_blood | inundada 0% → inundada 0% | inundada 19% → inundada 19% | inundada 15% → inundada 13% |
+| corrupted_crystal | inundada 0% → inundada 0% | inundada 23% → inundada 24% | inundada 20% → inundada 18% |
+| iron_thistle | inundada 25% → inundada 25% | inundada 25% → inundada 25% | inundada 27% → inundada 34% |
+| gold_blossom | certa 80% → certa 80% | certa 80% → certa 80% | abundante 52% → abundante 52% |
+| swift_grass | abundante 40% → abundante 40% | inundada 16% → inundada 17% | inundada 31% → inundada 29% |
+| uncommon_root | inundada 0% → inundada 0% | inundada 0% → inundada 0% | inundada 0% → inundada 0% |
+| moon_lily | - - → - - | inundada 0% → inundada 0% | inundada 2% → inundada 2% |
+| rare_flower | - - → - - | - - → - - | - - → - - |
+Ouro gasto em reparo nos 21 dias (mediana): antes 200 → depois 70.
+
+**Leitura honesta.** O veredito quase não mexe em 21 dias, e o motivo é estrutural, não de receita: o desgaste das duas peças equipadas custa só ~200 de Ouro de reparo em 21 dias (cai para 70 com o kit), então o jogador consome 1 a 2 kits no período (8 Ferro, 8 Madeira, 4 Osso). O Tônico do Prospector e a Isca dependem de Prata, Carvalho e Capim que o jogador simulado só tem a partir do dia ~7-12, e são bebidos 1 vez por sessão. O Pó (5 receitas novas) continua sendo **descarte** neste livro-razão (decisão antiga: o pó que o refino +5 a +8 gasta depois é uso a jusante, mas o simulador só fabrica pó quando um refino o exige). Ou seja: **as receitas dão a todo material um segundo uso e abrem um sumidouro recorrente de verdade (reparo, tônicos, pó) para quem joga mais de 21 dias, mas não transformam "inundada" em "certa" no horizonte medido.** Para isso o desgaste de durabilidade (ou o consumo dos tônicos) teria de crescer, o que é decisão de design (ver as decisões do diretor na Rodada 12).
+
+Materiais que os 21 dias não alcançam (ouro bruto, obsidiana, madeiras élfica e ancestral, as 3 plantas novas, Flor Carmesim, Lírio Lunar): o uso novo é só analítico (as receitas existem e são testadas), o simulador não chega neles.

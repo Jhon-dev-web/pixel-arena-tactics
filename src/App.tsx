@@ -19,7 +19,7 @@ import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { addRelics, addUniqueInstance } from './game/uniques';
 import { applyFertilizer, applyHarvest, applyPlant, applyUproot, readySlots } from './game/gardenActions';
-import { applyElixir, applyWhetstoneOil, ElixirId, isBuffItem } from './game/elixirs';
+import { applyElixir, applyRepairKit, applyWhetstoneOil, ElixirId, isBuffItem, RepairKitId } from './game/elixirs';
 import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
 import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
@@ -767,7 +767,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // persisted at once; nothing happens without a unit.
   const drinkElixir = (id: ElixirId) => {
     const next = applyElixir(saveRef.current, id, Date.now());
-    if (!next) return;
+    if (!next) {
+      if (id === 'hunter_lure' && (saveRef.current.consumables.hunter_lure ?? 0) > 0 && !saveRef.current.activeHuntingZone) showToast(t('consumables.hunter_lure_needs_hunt'));
+      return;
+    }
     playSfx('victory');
     commitSave(next);
     showToast(t(`consumables.${id}_active`));
@@ -785,10 +788,23 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     showToast(t('consumables.whetstone_oil_active'));
   };
 
+  // Repair Kits (elixirs.ts): +60 durability (Master: full) on the equipped weapon and armor, one unit, nothing spent when both are already full.
+  const repairWithKit = (id: RepairKitId) => {
+    const next = applyRepairKit(saveRef.current, id);
+    if (!next) {
+      showToast(t('consumables.whetstone_oil_full'));
+      return;
+    }
+    playSfx('victory');
+    commitSave(next);
+    showToast(t(`consumables.${id}_active`));
+  };
+
   const useConsumableManually = (id: string) => {
     if (id === 'xp_potion') applyXpPotion();
     else if (isBuffItem(id)) drinkElixir(id);
     else if (id === 'whetstone_oil') oilGear();
+    else if (id === 'repair_kit' || id === 'master_repair_kit') repairWithKit(id);
     else if (id === 'stash_deed') redeemStashDeed();
   };
 
@@ -935,9 +951,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   // What a collect says: the units that came in and, spelled out, the ones the inventory had no room for (gathering.ts leaves them behind).
-  const gatherToast = (units: number, leftBehind: number, key: string, gold = 0): string =>
+  const gatherToast = (units: number, leftBehind: number, key: string, gold = 0, dust = 0, gems = 0): string =>
     t(key, { n: units - leftBehind }) +
     (gold > 0 ? ' · ' + t('mining.readyGold', { n: gold }) : '') +
+    (dust > 0 ? ' · ' + t('mastery.byDust', { n: dust }) : '') +
+    (gems > 0 ? ' · ' + t('mastery.byGems', { n: gems }) : '') +
     (leftBehind > 0 ? ' · ' + t('inventory.leftBehind', { n: fmtNum(leftBehind) }) : '');
 
   // Home "Resgatar tudo" (claimAll.ts, Adventurer Pass owners): every finished activity through its own transition, one combined summary.
@@ -1057,7 +1075,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!claim) return;
     playSfx('victory');
     setSaveBoth(claim.save);
-    showToast(gatherToast(claim.units, claim.leftBehind, 'mining.readyOre', claim.gold));
+    showToast(gatherToast(claim.units, claim.leftBehind, 'mining.readyOre', claim.gold, claim.dust, claim.gems));
   };
 
   const cancelMining = () => {
@@ -1094,7 +1112,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!claim) return;
     playSfx('victory');
     setSaveBoth(claim.save);
-    showToast(gatherToast(claim.units, claim.leftBehind, 'woodcutting.readyWood'));
+    showToast(gatherToast(claim.units, claim.leftBehind, 'woodcutting.readyWood', 0, claim.dust, claim.gems));
   };
 
   const cancelWoodcutting = () => {

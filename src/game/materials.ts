@@ -33,6 +33,9 @@ export type MaterialId =
   | 'gold_blossom'
   | 'swift_grass'
   | 'moon_lily'
+  | 'silver_sage'
+  | 'dusk_orchid'
+  | 'elder_root'
   | 'refining_dust'
   | 'common_wood'
   | 'oak_wood'
@@ -97,6 +100,10 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'gold_blossom', nameKey: 'mat_gold_blossom', icon: '🌼', iconUrl: '/assets/icons/gold_blossom.png', packSize: 2, packCost: 140, sellValue: 20 },
   { id: 'swift_grass', nameKey: 'mat_swift_grass', icon: '🌿', iconUrl: '/assets/icons/swift_grass.png', packSize: 5, packCost: 50, sellValue: 8 },
   { id: 'moon_lily', nameKey: 'mat_moon_lily', icon: '🌙', iconUrl: '/assets/icons/moon_lily.png', packSize: 1, packCost: 320, sellValue: 70 },
+  // Round 12 plants (Gardening 50 / 60 / 70): ingredients of the repair kits, the sharpening stone and the armor polish. Their art is pending (iconPending.ts): the emoji shows until the file exists.
+  { id: 'silver_sage', nameKey: 'mat_silver_sage', icon: '🌱', iconUrl: '/assets/icons/silver_sage.png', packSize: 3, packCost: 120, sellValue: 18 },
+  { id: 'dusk_orchid', nameKey: 'mat_dusk_orchid', icon: '🪻', iconUrl: '/assets/icons/dusk_orchid.png', packSize: 1, packCost: 380, sellValue: 80 },
+  { id: 'elder_root', nameKey: 'mat_elder_root', icon: '🫚', iconUrl: '/assets/icons/elder_root.png', packSize: 1, packCost: 460, sellValue: 100 },
   // Refining-only sink for surplus common materials (see refining.ts DUST_RECIPES) — never dropped/mined,
   // and never sold, only ever produced and spent inside the Forge's Refino tab.
   { id: 'refining_dust', nameKey: 'mat_refining_dust', icon: '🌫️', iconUrl: '/assets/icons/refining_dust.png', packSize: 1, packCost: 0, sellValue: 0 },
@@ -156,6 +163,9 @@ export function emptyMaterials(): Materials {
     gold_blossom: 0,
     swift_grass: 0,
     moon_lily: 0,
+    silver_sage: 0,
+    dusk_orchid: 0,
+    elder_root: 0,
     refining_dust: 0,
     common_wood: 0,
     oak_wood: 0,

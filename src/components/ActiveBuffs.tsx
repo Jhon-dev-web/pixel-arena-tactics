@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { t } from '../locales';
 import { BUFF_ITEM, buffRemainingMs, BuffKind, isBuffActive } from '../game/buffs';
 import { ConsumableId, getConsumable } from '../game/consumables';
+import ConsumableIcon from './ConsumableIcon';
 import type { SaveData } from '../game/engine';
 
 // Every timed elixir / tonic that is running, as an icon + the time left (1 s clock). `skip` hides kinds the screen does not care about.
@@ -24,7 +25,7 @@ export default function ActiveBuffs({ save, skip = [] }: { save: SaveData; skip?
     <div className="active-buffs" aria-label={t('inventory.buffsRunning')}>
       {active.map(([itemId, kind]) => (
         <span className="loot-buff" key={kind} title={t(`consumables.${itemId}`)}>
-          <img className="inline-icon" src={getConsumable(itemId)?.iconUrl} alt="" /> {t(`consumables.${itemId}`)} · {left(buffRemainingMs(save, now, kind))}
+          <ConsumableIcon item={getConsumable(itemId)!} className="inline-icon" /> {t(`consumables.${itemId}`)} · {left(buffRemainingMs(save, now, kind))}
         </span>
       ))}
     </div>

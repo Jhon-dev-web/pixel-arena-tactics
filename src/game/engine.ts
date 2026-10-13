@@ -40,14 +40,15 @@ import { applyDamageModifiers, combatPowerCore, CombatModifiers, CombatStats, he
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
-import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillXpToReachLevel } from './skills';
+import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillLevel, skillXpToReachLevel } from './skills';
+import { gatherMasteryMult, plantGrowthMs } from './mastery';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { migrateLegacyPouch } from './legacyPouch';
 import { emptyStash, sanitizeStash, StashState } from './stash';
 import { emptyMerchant, MerchantState, sanitizeMerchant } from './merchant';
 import { UniqueDrop } from './uniques';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
-import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
+import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
 export { buffRemainingMs, isBuffActive };
 
@@ -402,6 +403,7 @@ export function combatModifiersFromSave(save: SaveData, now: number): CombatModi
     blessedMult: save.blessed ? 1.05 : 1,
     strengthMult: isBuffActive(save, 'strength', now) ? 1 + T.battle.strengthElixirDmgPct : 1,
     attackMult: isBuffActive(save, 'attack', now) ? 1 + T.battle.attackElixirDmgPct : 1,
+    sharpMult: isBuffActive(save, 'sharpened', now) ? 1 + T.consumables.sharpenDmgPct : 1,
   };
 }
 
@@ -521,7 +523,7 @@ function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAcc
   const hours = pendingMs / (3600 * 1000);
   const power = gatherPower(BASE_GATHER_POWER, save.skillXp[kind]);
   // Coletor's share (frozen in the snapshot) works like the Gatherer Brew: extra effective hours, for the units only (the Gold of the session is unchanged).
-  const effective = hours * (1 + (snap.gatherPct ?? 0)) + gathererBonusHours(save, startedAt, pendingMs);
+  const effective = hours * (1 + (snap.gatherPct ?? 0)) + gathererBonusHours(save, startedAt, pendingMs) + prospectBonusHours(save, startedAt, pendingMs);
   const dropMult = snap.active ? T.battlePass.dropRateMultiplier : 1;
   const rate = mining ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower;
   const goldRate = mining ? T.mining.goldRatePerPower : T.woodcutting.goldRatePerPower;
@@ -529,7 +531,7 @@ function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAcc
     capMs,
     pendingMs,
     tierId: tier.id,
-    units: Math.floor(effective * power * rate * dropMult),
+    units: Math.floor(effective * power * rate * dropMult * gatherMasteryMult(kind, skillLevel(save.skillXp[kind], kind))),
     gold: Math.floor(hours * power * goldRate),
     full: pendingMs >= capMs,
     passCoversSession: snap.active,
@@ -576,8 +578,10 @@ export function computeGardenSlotStatus(save: SaveData, now: number, slotIndex: 
   // A non-finite clock / start counts as no time elapsed (never as "already ready").
   const rawElapsed = now - slot.startedAt;
   const elapsedMs = Number.isFinite(rawElapsed) ? Math.max(0, rawElapsed) : 0;
-  const remainingMs = Math.max(0, def.durationMs - elapsedMs);
-  return { plantId: def.id, durationMs: def.durationMs, elapsedMs, remainingMs, ready: elapsedMs >= def.durationMs };
+  // Gardening mastery (mastery.ts) shortens every plant's growth from level 50 on; below it the duration is the plant's own, to the millisecond.
+  const durationMs = plantGrowthMs(def, skillLevel(save.skillXp.gardening, 'gardening'));
+  const remainingMs = Math.max(0, durationMs - elapsedMs);
+  return { plantId: def.id, durationMs, elapsedMs, remainingMs, ready: elapsedMs >= durationMs };
 }
 
 export function computeGardenStatuses(save: SaveData, now: number): GardenStatus[] {
@@ -597,7 +601,8 @@ function sanitizeBuffs(raw: unknown): Partial<Record<TimedBuffKind, TimedBuff>> 
     if (!b || typeof b.expiresAt !== 'number' || !Number.isFinite(b.expiresAt)) continue;
     const expiresAt = Math.min(b.expiresAt, now + buffMinutes(kind) * 60 * 1000);
     const from = typeof b.from === 'number' && Number.isFinite(b.from) && b.from > 0 ? Math.min(b.from, expiresAt) : expiresAt - buffMinutes(kind) * 60 * 1000;
-    out[kind] = { from, expiresAt };
+    const zone = (b as { zone?: unknown }).zone;
+    out[kind] = { from, expiresAt, ...(kind === 'bait' && typeof zone === 'string' && zone.length > 0 && zone.length < 64 ? { zone } : {}) };
   }
   return out;
 }
@@ -682,11 +687,12 @@ export function buildHuntSession(save: SaveData, startedAt: number): HuntSession
   };
 }
 
-// One window [from, expiry) for every hunt-relevant tonic that is running at `now`.
+// One window [from, expiry) for every hunt-relevant tonic that is running at `now`. The Hunter Lure only counts for the zone it was used in.
 function runningTonicWindows(save: SaveData, now: number, from: number): TonicWindows {
   const out: TonicWindows = {};
   for (const kind of HUNT_BUFF_KINDS) {
     const expiresAt = buffExpiry(save, kind);
+    if (kind === 'bait' && save.buffs?.bait?.zone !== save.activeHuntingZone) continue;
     if (expiresAt !== null && expiresAt > now) out[kind] = [{ from, to: expiresAt }];
   }
   return out;
@@ -782,6 +788,12 @@ export function buildHuntSimSetup(
     hasteWindows: relativeWindows(session.tonics?.haste ?? [], startedAt),
     precisionWindows: relativeWindows(session.tonics?.precision ?? [], startedAt),
     fortuneWindows: relativeWindows(session.tonics?.fortune ?? [], startedAt),
+    sharpWindows: relativeWindows(session.tonics?.sharpened ?? [], startedAt),
+    polishWindows: relativeWindows(session.tonics?.polished ?? [], startedAt),
+    baitWindows: relativeWindows(session.tonics?.bait ?? [], startedAt),
+    sharpMult: 1 + T.consumables.sharpenDmgPct,
+    reductionPolish: T.consumables.polishReduction,
+    baitDropPct: T.consumables.baitDropPct,
     reductionStone: stoneskinReduction(stats),
     heroMsHaste: hasteIntervalMs(stats),
     critPrecision: precisionCrit(stats),

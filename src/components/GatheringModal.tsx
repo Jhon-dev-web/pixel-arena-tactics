@@ -10,6 +10,7 @@ import { ownsAdventurerPass } from '../game/entitlements';
 import T from '../game/tunables';
 import { WOOD_TIERS } from '../game/woodcutting';
 import SkillLevelBadge from './SkillLevelBadge';
+import UnlockList from './UnlockList';
 
 // Mining and Woodcutting are the same screen over two data sets (ores / woods, mining / woodcutting skill and session fields): a profession header with
 // the level, XP and the rate per hour, the running session (time since start, what has piled up, the primary "collect" action) and every tier with its
@@ -166,6 +167,7 @@ export default function GatheringModal({
             );
           })}
           {activeId && <span className="gather-switch-hint">{t('gathering.switchHint')}</span>}
+          <UnlockList skill={kind} level={level} />
         </div>
 
         <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>

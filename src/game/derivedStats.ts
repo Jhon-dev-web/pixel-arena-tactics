@@ -319,10 +319,11 @@ export interface CombatModifiers {
   blessedMult: number;
   strengthMult: number;
   attackMult: number; // Attack (Battle) Elixir: 1 when inactive
+  sharpMult?: number; // Sharpening Stone (Round 12): 1 / missing when inactive
 }
 
 // Same operation order as the pre-refactor inline code: `(sum) * blessedMult * strengthMult`, then the Attack Elixir
 // (x1 when inactive, which leaves the result bit-identical).
 export function applyDamageModifiers(dmgBase: number, mods: CombatModifiers): number {
-  return dmgBase * mods.blessedMult * mods.strengthMult * mods.attackMult;
+  return dmgBase * mods.blessedMult * mods.strengthMult * mods.attackMult * (mods.sharpMult ?? 1);
 }

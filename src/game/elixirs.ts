@@ -10,7 +10,7 @@ import { withSessionWindow } from './huntSession';
 // Using one again while it is active never stacks the bonus: it only renews the duration from now (and costs one more). Buffs of DIFFERENT kinds
 // coexist; the damage ones multiply like every other damage modifier, the stat ones add in their own place (see buffs.ts withTonicStats).
 
-export type ElixirId = 'strength_elixir' | 'atk_elixir' | 'stoneskin_tonic' | 'fortune_tonic' | 'haste_tonic' | 'gatherer_brew' | 'precision_elixir';
+export type ElixirId = 'strength_elixir' | 'atk_elixir' | 'stoneskin_tonic' | 'fortune_tonic' | 'haste_tonic' | 'gatherer_brew' | 'precision_elixir' | 'sharpening_stone' | 'armor_polish' | 'hunter_lure' | 'prospector_tonic';
 
 const MS_PER_MINUTE = 60 * 1000;
 // A second use of the same item within this long of activating it is a stray double tap, not a renewal: it does nothing
@@ -27,12 +27,15 @@ export function applyElixir(save: SaveData, id: ElixirId, now: number): SaveData
   const qty = save.consumables[id] ?? 0;
   const kind: BuffKind | undefined = BUFF_ITEM[id];
   if (!kind || !(qty > 0) || typeof now !== 'number' || !Number.isFinite(now) || now <= 0) return null;
+  // The Hunter Lure is tied to the zone being hunted when it is used: with no hunt running there is nothing to lure (nothing is spent).
+  const zone = kind === 'bait' ? (save.activeHuntingZone ?? undefined) : undefined;
+  if (kind === 'bait' && !zone) return null;
   const duration = buffMinutes(kind) * MS_PER_MINUTE;
   const expiresAt = now + duration;
   const current = buffExpiry(save, kind);
   const remaining = current !== null ? current - now : 0;
   if (remaining > 0 && remaining <= duration && remaining >= duration - ELIXIR_DOUBLE_TAP_MS) return null;
-  const next: SaveData = withBuff({ ...save, consumables: { ...save.consumables, [id]: qty - 1 } }, kind, now, expiresAt);
+  const next: SaveData = withBuff({ ...save, consumables: { ...save.consumables, [id]: qty - 1 } }, kind, now, expiresAt, zone);
   // A running Hunting session only gets the bonus from now on (never for the time already hunted). The gatherer brew is read when Mining /
   // Woodcutting is collected, not by Hunting.
   const huntKind = kind === 'strength' || kind === 'attack' ? kind : isTimedKind(kind) && HUNT_BUFF_KINDS.includes(kind as TimedBuffKind) ? (kind as TimedBuffKind) : null;
@@ -40,6 +43,26 @@ export function applyElixir(save: SaveData, id: ElixirId, now: number): SaveData
     ...next,
     huntSession: next.huntSession && huntKind ? withSessionWindow(next.huntSession, huntKind, { from: now, to: expiresAt }) : next.huntSession,
   };
+}
+
+// Repair Kits (Round 12): restore the equipped weapon AND armor. The Repair Kit gives T.consumables.repairKitDurability points, the Master Repair Kit repairs both to full. Like the oil,
+// nothing happens and nothing is spent when both pieces are already at full durability. Same rules as the Forge repair otherwise (it never touches the gold repair cost of other pieces).
+export type RepairKitId = 'repair_kit' | 'master_repair_kit';
+export function applyRepairKit(save: SaveData, id: RepairKitId): SaveData | null {
+  const qty = save.consumables[id] ?? 0;
+  if (!(qty > 0)) return null;
+  const points = id === 'master_repair_kit' ? MAX_DURABILITY : T.consumables.repairKitDurability;
+  let instances = save.gearInstances;
+  let restored = false;
+  for (const slot of ['weapon', 'armor'] as const) {
+    const gid = save.equipped[slot];
+    const inst = gid ? instances[gid] : undefined;
+    if (!gid || !inst || inst.durability >= MAX_DURABILITY) continue;
+    instances = { ...instances, [gid]: { ...inst, durability: Math.min(MAX_DURABILITY, inst.durability + points) } };
+    restored = true;
+  }
+  if (!restored) return null;
+  return { ...save, gearInstances: instances, consumables: { ...save.consumables, [id]: qty - 1 } };
 }
 
 // Whetstone Oil: restores T.tonics.whetstoneDurability durability points (30 of 100) to the equipped weapon AND armor at once, capped at full. It is the

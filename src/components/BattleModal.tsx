@@ -32,9 +32,9 @@ const materialName = (mid: string): string => t(`materials.mat_${mid}`);
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
 const enemyDefForFloor = (floor: number): EnemyDef => getEnemyDef(dungeonEnemyKindForFloor(floor));
 
-// Every timed effect that matters in a Dungeon fight, with the item that starts it (gatherer_brew is a Mining / Woodcutting tonic, not shown here).
+// Every timed effect that matters in a Dungeon fight, with the item that starts it (the gatherer brew and the prospector tonic are Mining / Woodcutting tonics and the hunter lure a Hunting one: not shown here).
 const BATTLE_BUFFS = (Object.entries(BUFF_ITEM) as [ConsumableId, BuffKind][])
-  .filter(([, kind]) => kind !== 'gatherer')
+  .filter(([, kind]) => kind !== 'gatherer' && kind !== 'prospect' && kind !== 'bait')
   .map(([itemId, kind]) => [kind, itemId] as [BuffKind, ConsumableId]);
 
 function formatBuffTime(ms: number): string {

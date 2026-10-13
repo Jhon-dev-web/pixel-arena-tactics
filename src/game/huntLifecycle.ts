@@ -189,7 +189,7 @@ export function applyHuntStart(save: SaveData, zoneId: string, depth: HuntingDep
     activeHuntingZone: zoneId,
     activeHuntingDepth: depth,
     huntingOfflineStart: now,
-    huntSession: buildHuntSession(save, now),
+    huntSession: buildHuntSession({ ...save, activeHuntingZone: zoneId }, now),
   };
 }
 

@@ -20,7 +20,7 @@ import { MaterialId, MATERIALS } from '../../src/game/materials';
 import { REFINING_RECIPES } from '../../src/game/refining';
 import { PLANTS } from '../../src/game/garden';
 import { applyHarvest, applyPlant, readySlots } from '../../src/game/gardenActions';
-import { applyElixir, ElixirId } from '../../src/game/elixirs';
+import { applyElixir, applyRepairKit, ElixirId } from '../../src/game/elixirs';
 import { isBuffActive } from '../../src/game/buffs';
 import { MILESTONE_FLOORS } from '../../src/game/dungeon';
 import { POTION_RECIPES } from '../../src/game/potions';
@@ -359,6 +359,9 @@ export interface PlayerOptions {
   deliveriesOnly?: boolean;
   // The hero skill path the policy buys down as the points are earned (heroSkills.ts); scenario A is 'warrior', 'none' is the control without any skill.
   skills?: SkillBuild;
+  // Round 12 (only the material flow report turns it on, the progression guard does not): the player also keeps the new Alchemy consumables that the first 21 days can reach in the bag
+  // (Repair Kit, Prospector's Tonic, Hunter Lure) crafted from surplus materials, repairs with a kit before paying Gold, and drinks the tonic / lure at the start of a gathering / hunting session.
+  sinks?: boolean;
   // A player who ignores the inventory entirely: never stashes, sells, discards, expands or brings anything over (everything else as the baseline).
   careless?: boolean;
 }
@@ -366,6 +369,8 @@ export interface PlayerOptions {
 // Garden 3.0 tonics the policy crafts (one of each in stock) and drinks on a boss attempt; gatherer_brew is drunk before a Mining / Woodcutting session.
 const COMBAT_TONICS = ['stoneskin_tonic', 'precision_elixir', 'haste_tonic', 'fortune_tonic'] as const;
 const TONIC_STOCK = 1;
+const SINK_CONSUMABLES = ['repair_kit', 'prospector_tonic', 'hunter_lure'] as const;
+const SINK_STOCK = 2;
 const BOSS_APPROACH_FLOORS = 6; // a session that starts within this many floors of an unclaimed boss is a boss attempt
 
 export class Player {
@@ -801,6 +806,14 @@ export class Player {
 
   // ---- 2. upkeep: repair worn gear, throw the starter junk away
   private maintain() {
+    if (this.opts.sinks && (this.S.consumables.repair_kit ?? 0) > 0) {
+      const worn = INSTANCED_SLOTS.some((slot) => {
+        const eq = resolveEquipped(this.S)[slot];
+        return !!eq?.instance && (eq.item.tier ?? 0) >= 1 && eq.instance.durability < 60;
+      });
+      const kit = worn ? applyRepairKit(this.S, 'repair_kit') : null;
+      if (kit) this.S = kit;
+    }
     for (const slot of INSTANCED_SLOTS) {
       const eq = resolveEquipped(this.S)[slot];
       if (!eq || !eq.instance || (eq.item.tier ?? 0) < 1) continue;
@@ -844,8 +857,8 @@ export class Player {
   // Alchemy: keep one of each combat tonic (and the gathering brew) in the bag, only with gold beyond what the next gear craft needs.
   private craftTonics(reserve: number) {
     if (this.opts.tonics === false) return;
-    for (const id of [...COMBAT_TONICS, 'gatherer_brew'] as const) {
-      if ((this.S.consumables[id] ?? 0) >= TONIC_STOCK) continue;
+    for (const id of [...COMBAT_TONICS, 'gatherer_brew', ...(this.opts.sinks ? SINK_CONSUMABLES : [])] as const) {
+      if ((this.S.consumables[id] ?? 0) >= ((SINK_CONSUMABLES as readonly string[]).includes(id) ? SINK_STOCK : TONIC_STOCK)) continue;
       const rec = POTION_RECIPES.find((r) => r.id === id)!;
       if (this.S.gold - rec.cost < reserve) continue;
       // plants the next craft is waiting for are not spent on a tonic
@@ -1210,7 +1223,8 @@ export class Player {
   // The Gatherer Brew covers the first 2 h of a gathering session when drunk at its start.
   private drinkBrew(s: SaveData): SaveData {
     if (this.opts.tonics === false) return s;
-    return applyElixir(s, 'gatherer_brew', this.now) ?? s;
+    const brewed = applyElixir(s, 'gatherer_brew', this.now) ?? s;
+    return this.opts.sinks ? applyElixir(brewed, 'prospector_tonic', this.now) ?? brewed : brewed;
   }
 
   // Where to hunt: the zone that drops the Hunting material the next craft / refine / stash upgrade is longest short of (a player hunts where the thing he
@@ -1239,6 +1253,7 @@ export class Player {
         const next = requestHuntStart(this.S, z.id, depth, this.now);
         if (next) {
           this.S = next;
+          if (this.opts.sinks) this.S = applyElixir(this.S, 'hunter_lure', this.now) ?? this.S;
           return true;
         }
       }

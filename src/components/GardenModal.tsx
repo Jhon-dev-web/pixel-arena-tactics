@@ -6,6 +6,8 @@ import { applyHarvest, readySlots } from '../game/gardenActions';
 import { skillLevel } from '../game/skills';
 import SkillLevelBadge from './SkillLevelBadge';
 import TitleIcon from './TitleIcon';
+import UnlockList from './UnlockList';
+import { plantGrowthMs } from '../game/mastery';
 
 const gardenText = (k: string): string => t(`garden.${k}`);
 const matText = (k: string): string => t(`materials.mat_${k}`);
@@ -312,6 +314,7 @@ export default function GardenModal({
               </div>
             ))}
           </div>
+          <UnlockList skill="gardening" level={gardeningLevel} />
         </div>
 
         <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
@@ -343,7 +346,7 @@ export default function GardenModal({
                           <span className="garden-plant-rarity">{gardenText(`rarity_${plant.rarity}`)}</span>
                         </span>
                         <span className="garden-plant-meta">
-                          {formatDuration(plant.durationMs)} · {gardenText('yieldShort').replace('{qty}', String(plant.qty))} · {fmtNum(plantHarvestXp(plant))} XP
+                          {formatDuration(plantGrowthMs(plant, gardeningLevel))} · {gardenText('yieldShort').replace('{qty}', String(plant.qty))} · {fmtNum(plantHarvestXp(plant))} XP
                         </span>
                         <span className="garden-plant-use">{gardenText(plant.useKey)}</span>
                         {!unlocked && <span className="garden-plant-lock">{gardenText('locked').replace('{n}', String(plant.requiredLevel))}</span>}

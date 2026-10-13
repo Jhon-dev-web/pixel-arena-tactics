@@ -64,6 +64,12 @@ export const REFINING_RECIPES: RefiningRecipe[] = [
   { id: 'dust_from_leather_scrap', station: 'dust', output: 'refining_dust', outputQty: 1, input: { leather_scrap: 10 }, cost: 0, requiredLevel: 1 },
   { id: 'dust_from_bone_fragment', station: 'dust', output: 'refining_dust', outputQty: 1, input: { bone_fragment: 10 }, cost: 0, requiredLevel: 1 },
   { id: 'dust_from_common_herb', station: 'dust', output: 'refining_dust', outputQty: 1, input: { common_herb: 8 }, cost: 0, requiredLevel: 1 },
+  // Round 12: more of the same bulk sink for what piles up (docs/MATERIAL_FLOW.md). Iron and the woods are the cheap tiers; the thistle is the oversupplied garden produce.
+  { id: 'dust_from_iron', station: 'dust', output: 'refining_dust', outputQty: 1, input: { iron: 10 }, cost: 0, requiredLevel: 10 },
+  { id: 'dust_from_common_wood', station: 'dust', output: 'refining_dust', outputQty: 1, input: { common_wood: 10 }, cost: 0, requiredLevel: 1 },
+  { id: 'dust_from_oak_wood', station: 'dust', output: 'refining_dust', outputQty: 1, input: { oak_wood: 8 }, cost: 0, requiredLevel: 10 },
+  { id: 'dust_from_ebony_wood', station: 'dust', output: 'refining_dust', outputQty: 1, input: { ebony_wood: 8 }, cost: 0, requiredLevel: 25 },
+  { id: 'dust_from_iron_thistle', station: 'dust', output: 'refining_dust', outputQty: 1, input: { iron_thistle: 6 }, cost: 0, requiredLevel: 10 },
   // Carpentry: Woodcutting's Furnace equivalent — same 5:1 raw-to-refined ratio, same declining-per-tier
   // gold cost logic (higher tiers convert faster per hour of chopping, so the nominal per-conversion
   // price falls even as the real gold *burden* per hour stays proportional). Costs are pinned low in
