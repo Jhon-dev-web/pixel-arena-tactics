@@ -94,6 +94,11 @@ export interface DungeonRun {
   potionsUsed: number;
   skillTally: StrikeTally; // display only: what each strike did (BattleModal counts the same for its result screen)
   totalDamage: number;
+  // Diagnostics for the temporary-effects audit (temporaryEffects.test.ts): hero swings, how many were crits, enemy hits that landed and the HP they took off.
+  heroHits: number;
+  crits: number;
+  enemyHits: number;
+  damageTaken: number;
 }
 
 // Mirrors BattleModal.tsx: both sides start their attack timers when a wave starts, the hero swings every heroMs and the
@@ -121,6 +126,10 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
   const strikeState = newStrikeState(); // the Golpe Esmagador counter runs over the whole run
   const skillTally: StrikeTally = {};
   let totalDamage = 0;
+  let heroHits = 0;
+  let crits = 0;
+  let enemyHits = 0;
+  let damageTaken = 0;
   let furyLeft = T.heroSkills.furyEveryMs;
   let bastionUsed = false; // Ultimo Bastiao: once per run
   let clock = 0;
@@ -182,6 +191,8 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
       clock = next;
       if (heroNext === next) {
         const crit = Math.random() < combat.critChance;
+        heroHits++;
+        if (crit) crits++;
         const res = resolveHeroHit(strikeState, combat.strikes, Math.random);
         const plain = Math.max(1, Math.round(heroBase * (crit ? combat.critMult : 1)));
         const afterCrush = Math.round(plain * res.crushMult);
@@ -204,6 +215,10 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
         const blocked = !!combat.block && Math.random() < combat.block; // Bloqueio: the loop's normal RNG
         if (blocked) registerBlock(strikeState, combat.strikes);
         hp = Math.max(0, hp - (blocked ? 0 : hitTaken));
+        if (!blocked) {
+          enemyHits++;
+          damageTaken += hitTaken;
+        }
         enemyNext += def.atkSpeedMs;
         if (hp <= 0) {
           if (combat.bastion && !bastionUsed) {
@@ -292,6 +307,10 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
     potionsUsed: startPotions - (stock.greater_elixir + stock.large_hp + stock.small_hp),
     skillTally,
     totalDamage,
+    heroHits,
+    crits,
+    enemyHits,
+    damageTaken,
   };
 }
 
