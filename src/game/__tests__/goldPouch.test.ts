@@ -16,7 +16,6 @@ import { statsOf } from '../stats';
 import { mulberry32 } from '../../../scripts/sim/driver';
 import {
   POUCH_IDS,
-  PouchId,
   applyCreatePouch,
   applyOpenPouch,
   canCreatePouches,
