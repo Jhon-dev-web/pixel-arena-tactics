@@ -625,8 +625,20 @@ export default function ForgeModal({
                         {list.length < maxSockets && ownedGems.length > 0 && (
                           <div className="socket-gem-row">
                             {ownedGems.map((g) => (
-                              <button className="socket-gem-btn" key={g.id} onClick={() => onSocket(inst.id, g.id)} data-ui>
-                                <GemIcon item={g} className="inline-icon" /> ×{save.gems?.[g.id]}
+                              <button
+                                className="socket-gem-btn"
+                                key={g.id}
+                                onClick={() => onSocket(inst.id, g.id)}
+                                title={`${gemText(g.nameKey)}: ${gemText(g.descKey)}`}
+                                aria-label={t('forge.socketGem', { name: gemText(g.nameKey), effect: gemText(g.descKey) })}
+                                data-ui
+                              >
+                                <GemIcon item={g} className="inline-icon" />
+                                <span className="socket-gem-text">
+                                  <span className="socket-gem-name">{gemText(g.nameKey)}</span>
+                                  <span className="socket-gem-effect">{gemText(g.descKey)}</span>
+                                </span>
+                                <span className="socket-gem-qty">×{save.gems?.[g.id]}</span>
                               </button>
                             ))}
                           </div>
@@ -656,7 +668,7 @@ export default function ForgeModal({
           </div>
         )}
 
-        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
           ✕
         </button>
       </div>

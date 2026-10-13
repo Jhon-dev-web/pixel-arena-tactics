@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { fmtDec, fmtNum, t } from '../locales';
 import { buffRemainingMs, isBuffActive } from '../game/buffs';
 import { computeMiningStatus, computeWoodcuttingStatus, SaveData } from '../game/engine';
@@ -65,6 +66,15 @@ export default function GatheringModal({
     const id = window.setTimeout(() => setConfirmCancel(false), 3000);
     return () => window.clearTimeout(id);
   }, [confirmCancel]);
+
+  useConfirmKeys(
+    confirmCancel,
+    () => {
+      setConfirmCancel(false);
+      onCancel();
+    },
+    () => setConfirmCancel(false),
+  );
 
   const mining = kind === 'mining';
   const ns = mining ? 'mining' : 'woodcutting';

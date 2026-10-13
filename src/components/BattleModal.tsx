@@ -24,6 +24,8 @@ import { getTitleDef } from '../game/titles';
 import GemIcon from './GemIcon';
 import UniqueDrops from './UniqueDrops';
 import RelicDrops from './RelicDrops';
+import { defeatSummary, DefeatSummary } from '../game/defeatSummary';
+import { nextStepLine } from './nextStepText';
 
 const enemyText = (k: string): string => t(`enemies.${k}`);
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
@@ -103,6 +105,7 @@ export default function BattleModal({
   const [accumGold, setAccumGold] = useState(0);
   const [accumCount, setAccumCount] = useState(0);
   const [finalRewards, setFinalRewards] = useState<RunRewards | null>(null);
+  const [defeatInfo, setDefeatInfo] = useState<DefeatSummary | null>(null);
   const [waveClear, setWaveClear] = useState<{
     stage: number;
     gold: number;
@@ -192,6 +195,7 @@ export default function BattleModal({
     const acc = accumRef.current;
     const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * T.battle.defeatGoldKept);
     setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, uniques: acc.uniques, relics: acc.relics, stages: clearedRef.current });
+    if (outcome === 'defeat') setDefeatInfo(defeatSummary(save, stageRef.current, clearedRef.current, acc.gold, gold));
   };
 
   const handleTensionRetreat = () => {
@@ -601,6 +605,25 @@ export default function BattleModal({
     </>
   );
 
+  // The first-loss screen in plain words: what was kept, how the hero's CP compares with where the run ended, and one thing to do next.
+  const renderDefeatNotes = (d: DefeatSummary) => {
+    const where = isDepthStage(d.stage) ? t('dungeon.depthLabel', { n: depthOfStage(d.stage) }) : t('dungeon.floorLabel', { n: d.stage });
+    const tip =
+      d.tip.kind === 'step' ? t('dungeon.defeatTipStep', { text: nextStepLine(d.tip.step) }) : d.tip.kind === 'hunt' ? t('dungeon.defeatTipHunt') : t('dungeon.defeatTipRetry');
+    return (
+      <div className="defeat-notes">
+        {d.goldLost > 0 && (
+          <div className="gold-penalty">{t('dungeon.goldPenalty', { lost: d.goldLost, kept: d.goldKept, n: Math.round((1 - T.battle.defeatGoldKept) * 100) })}</div>
+        )}
+        <p className="defeat-kept">{d.stagesCleared > 0 ? t('dungeon.defeatKept', { n: d.stagesCleared }) : t('dungeon.defeatKeptNone')}</p>
+        <p className={`defeat-cp${d.below ? ' low' : ''}`}>
+          {t('dungeon.defeatCp', { cp: d.cp, where, rec: d.recommended })} {d.below ? t('dungeon.defeatCpLow') : t('dungeon.defeatCpOk')}
+        </p>
+        <p className="defeat-tip">{tip}</p>
+      </div>
+    );
+  };
+
   // Milestones only ever bank on a successful retreat — a defeat must never show or grant them,
   // even if a boss earlier in this same run was genuinely killed.
   const crossedMilestones =
@@ -866,7 +889,7 @@ export default function BattleModal({
               ) : (
                 <>
                   <h2 className="result-title lose">{t('dungeon.defeated')}</h2>
-                  <div className="gold-penalty">{t('dungeon.goldPenalty', { n: Math.round((1 - T.battle.defeatGoldKept) * 100) })}</div>
+                  {defeatInfo && renderDefeatNotes(defeatInfo)}
                   <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems, finalRewards.uniques, finalRewards.relics)}</div>
                   {skillLines && <StrikeLines tally={skillLines.tally} total={skillLines.total} />}
                   <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>

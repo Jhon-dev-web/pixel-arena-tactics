@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { promotionLine } from './promotionLine';
 import { fmtNum, t } from '../locales';
 import { playSfx } from '../game/audio';
 import { SaveData } from '../game/engine';
@@ -159,7 +160,7 @@ export default function HuntRewardModal({
             )}
             {!maxed && <Meter pct={(Math.min(promotionWins, promotionRequired) / Math.max(1, promotionRequired)) * 100} tone="xp" />}
             <div className="hunt-meter-text">
-              {maxed ? t('hunting.subLevelMax') : t('hunting.subLevelNext', { n: Math.min(promotionWins, promotionRequired), x: promotionRequired })}
+              {maxed ? t('hunting.subLevelMax') : promotionLine(promotionWins, promotionRequired, ceilingSubLevel)}
             </div>
           </div>
         )}

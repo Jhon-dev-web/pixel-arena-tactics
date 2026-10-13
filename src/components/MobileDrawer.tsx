@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { ReactNode } from 'react';
+import { t } from '../locales';
 
 // Mobile/tablet (<1024px) nav drawer: slides in from the left, dims the rest of the screen, and
 // renders whatever's passed as children — in practice the exact same <DesktopSidebar> used for the
@@ -27,7 +28,7 @@ export default function MobileDrawer({ open, onClose, children }: { open: boolea
     <div className="mobile-drawer-overlay" onClick={onClose}>
       <div className="mobile-drawer" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         {children}
-        <button className="mobile-drawer-close" onClick={onClose} aria-label="Close menu" data-ui>
+        <button className="mobile-drawer-close" onClick={onClose} aria-label={t('nav.closeMenu')} data-ui>
           ✕
         </button>
       </div>

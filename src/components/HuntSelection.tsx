@@ -1,4 +1,5 @@
 import { CSSProperties, useMemo, useState } from 'react';
+import { promotionLine } from './promotionLine';
 import ActiveBuffs from './ActiveBuffs';
 import { FramedSprite, MatIcon, Meter, MonsterPortrait, RarityChip, ZoneUniques } from './HuntParts';
 import { fmtNum, t } from '../locales';
@@ -244,7 +245,7 @@ export default function HuntSelection({
                   <h4 className="hunt-section-title">{t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })}</h4>
                   <Meter pct={maxed ? 100 : (Math.min(progress.promotionWins, required) / required) * 100} tone="xp" label={t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })} />
                   <div className="hunt-meter-text">
-                    {maxed ? t('hunting.subLevelMax') : t('hunting.subLevelNext', { n: Math.min(progress.promotionWins, required), x: required })}
+                    {maxed ? t('hunting.subLevelMax') : promotionLine(progress.promotionWins, required, progress.ceiling)}
                   </div>
                   <p className="hunt-hint">{t('hunting.subLevelExplain')}</p>
                 </section>
@@ -267,14 +268,14 @@ export default function HuntSelection({
             )}
 
             <div className="hunt-detail-foot">
-              <button className="battle-btn hunt-start" onClick={() => onStartHunt(zone.id, depth)} disabled={!!blocked} data-ui>
+              <button className="battle-btn hunt-start" onClick={() => onStartHunt(zone.id, depth)} disabled={!!blocked} data-tutorial-target="hunt-start" data-ui>
                 {blocked ? t(blocked.key, blocked.vars) : t('hunting.start')}
               </button>
             </div>
           </div>
         </div>
 
-        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
           ✕
         </button>
       </div>

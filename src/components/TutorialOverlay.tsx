@@ -2,22 +2,33 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ContextualTutorialId, InitialTutorialStep } from '../game/engine';
 import { t } from '../locales';
 import T from '../game/tunables';
+import { placeTutorialCard } from './tutorialPlacement';
 
 type TutorialStep = InitialTutorialStep | ContextualTutorialId;
 
-const targets: Partial<Record<TutorialStep, string>> = {
-  character: 'hero',
-  hunt: 'hunt',
-  huntModal: 'hunt-modal',
-  dungeon: 'dungeon',
-  forge: 'forge',
-  garden: 'garden-modal',
-  mining: 'mining-modal',
-  woodcutting: 'woodcutting-modal',
-  deliveries: 'deliveries-modal',
-  reforge: 'inventory-modal',
-  sockets: 'forge-modal',
-  skills: 'skills',
+// A step points at the first target on screen: the "Iniciar Caça" button itself for the hunt screen (the card must not cover what the player presses next).
+const targets: Partial<Record<TutorialStep, string[]>> = {
+  character: ['hero'],
+  hunt: ['hunt'],
+  huntModal: ['hunt-start', 'hunt-modal'],
+  dungeon: ['dungeon'],
+  forge: ['forge'],
+  garden: ['garden-modal'],
+  mining: ['mining-modal'],
+  woodcutting: ['woodcutting-modal'],
+  deliveries: ['deliveries-modal'],
+  reforge: ['inventory-modal'],
+  sockets: ['forge-modal'],
+  skills: ['skills'],
+};
+
+const findTarget = (names: string[] | undefined): HTMLElement | null => {
+  for (const name of names ?? []) {
+    const element = document.querySelector<HTMLElement>(`[data-tutorial-target="${name}"]`);
+    // A target that is in the DOM but not laid out (the phone's hunt list step keeps the start button in a hidden pane) is skipped.
+    if (element && element.getClientRects().length > 0) return element;
+  }
+  return null;
 };
 
 // {n}: the levels per skill point (the Habilidades step), from the data like every other number.
@@ -38,11 +49,13 @@ export default function TutorialOverlay({
 }) {
   const [rect, setRect] = useState<DOMRect | null>(null);
   const primaryRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  const [cardHeight, setCardHeight] = useState(200);
   const target = targets[step];
 
   useLayoutEffect(() => {
     const update = (scroll = false) => {
-      const element = target ? document.querySelector<HTMLElement>(`[data-tutorial-target="${target}"]`) : null;
+      const element = findTarget(target);
       if (!element) {
         setRect(null);
         return;
@@ -70,22 +83,24 @@ export default function TutorialOverlay({
     };
   }, [target, step]);
 
+  useLayoutEffect(() => {
+    const height = cardRef.current?.offsetHeight;
+    if (height && Math.abs(height - cardHeight) > 1) setCardHeight(height);
+  }, [cardHeight, rect, step]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onDismiss();
     };
     window.addEventListener('keydown', onKeyDown);
-    const targetElement = target ? document.querySelector<HTMLElement>(`[data-tutorial-target="${target}"]`) : null;
+    const targetElement = findTarget(target);
     if (requiresInteraction && targetElement) targetElement.focus();
     else primaryRef.current?.focus();
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onDismiss, requiresInteraction, step, target]);
 
   const cardWidth = Math.min(320, Math.max(260, window.innerWidth - 24));
-  const left = rect ? Math.max(12, Math.min(window.innerWidth - cardWidth - 12, rect.left + rect.width / 2 - cardWidth / 2)) : (window.innerWidth - cardWidth) / 2;
-  const placeAbove = !!rect && rect.bottom + 146 > window.innerHeight && rect.top > 150;
-  const desiredTop = rect ? (placeAbove ? rect.top - 236 : rect.bottom + 12) : window.innerHeight * 0.28;
-  const top = Math.max(12, Math.min(window.innerHeight - 236, desiredTop));
+  const { left, top } = placeTutorialCard(rect, { width: window.innerWidth, height: window.innerHeight }, { width: cardWidth, height: cardHeight });
   const isIntro = step === 'intro';
   const isFinal = step === 'final';
 
@@ -100,6 +115,7 @@ export default function TutorialOverlay({
         />
       )}
       <section
+        ref={cardRef}
         className={`tutorial-card${isIntro || isFinal ? ' centered' : ''}`}
         role="dialog"
         aria-label={textKey(step, 'title')}

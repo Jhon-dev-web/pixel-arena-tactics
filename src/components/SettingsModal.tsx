@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { activeLocale, Locale, locales, t } from '../locales';
 import { SaveData, playerLevel } from '../game/engine';
 import { AudioPrefs } from '../game/audio';
@@ -67,6 +68,30 @@ export default function SettingsModal({
     }
   };
 
+  // Escape closes the question first (the settings stay open); Enter confirms it: the import replaces the hero, the reset only once the typed word matches.
+  useConfirmKeys(
+    pending !== null,
+    () => {
+      if (!pending) return;
+      onImportSave(pending.save);
+      setPending(null);
+    },
+    () => setPending(null),
+  );
+  useConfirmKeys(
+    resetting,
+    () => {
+      if (!resetWordMatches(typed, resetWord)) return;
+      onResetSave();
+      setResetting(false);
+      setTyped('');
+    },
+    () => {
+      setResetting(false);
+      setTyped('');
+    },
+  );
+
   const pickFile = async (file: File | undefined) => {
     setImportError(null);
     setPending(null);
@@ -125,7 +150,7 @@ export default function SettingsModal({
               data-ui
             >
               {locales.map((locale) => (
-                <option key={locale} value={locale}>
+                <option key={locale} value={locale} lang={locale}>
                   {t(`settings.${locale}`)}
                 </option>
               ))}

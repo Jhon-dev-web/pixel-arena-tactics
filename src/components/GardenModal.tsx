@@ -317,7 +317,7 @@ export default function GardenModal({
           <UnlockList skill="gardening" level={gardeningLevel} />
         </div>
 
-        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
           ✕
         </button>
 

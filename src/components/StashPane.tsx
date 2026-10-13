@@ -15,6 +15,7 @@ import ConsumableIcon from './ConsumableIcon';
 // Moving things in and out is done from the item detail (InventoryPanel); here only what lives in the stash is shown.
 
 const matText = (k: string): string => t(`materials.${k}`);
+const gearName = (k: string): string => t(`gear.${k}`);
 const stackCells = (qty: number): number[] => Array.from({ length: slotsForQty(qty) }, (_, i) => Math.min(STACK_LIMIT, qty - i * STACK_LIMIT));
 
 export interface StashSel {
@@ -56,9 +57,9 @@ export default function StashPane({
   const consumableItems = CONSUMABLES.filter((c) => (stash.consumables[c.id] ?? 0) > 0);
   const gearItems = GEAR.filter((g) => !isInstancedSlot(g.slot) && (stash.gear[g.id] ?? 0) > 0);
   const cells = [
-    ...gearItems.flatMap((g) => stackCells(stash.gear[g.id]).map((n, i) => ({ key: `g:${g.id}:${i}`, kind: 'gear' as StackKind, id: g.id, n, icon: <GearIcon item={g} /> }))),
-    ...materialItems.flatMap((m) => stackCells(stash.materials[m.id] ?? 0).map((n, i) => ({ key: `m:${m.id}:${i}`, kind: 'material' as StackKind, id: m.id, n, icon: <MaterialIcon item={m} /> }))),
-    ...consumableItems.flatMap((c) => stackCells(stash.consumables[c.id] ?? 0).map((n, i) => ({ key: `c:${c.id}:${i}`, kind: 'consumable' as StackKind, id: c.id, n, icon: <ConsumableIcon item={c} /> }))),
+    ...gearItems.flatMap((g) => stackCells(stash.gear[g.id]).map((n, i) => ({ key: `g:${g.id}:${i}`, kind: 'gear' as StackKind, id: g.id, n, icon: <GearIcon item={g} />, name: gearName(g.nameKey) }))),
+    ...materialItems.flatMap((m) => stackCells(stash.materials[m.id] ?? 0).map((n, i) => ({ key: `m:${m.id}:${i}`, kind: 'material' as StackKind, id: m.id, n, icon: <MaterialIcon item={m} />, name: matText(m.nameKey) }))),
+    ...consumableItems.flatMap((c) => stackCells(stash.consumables[c.id] ?? 0).map((n, i) => ({ key: `c:${c.id}:${i}`, kind: 'consumable' as StackKind, id: c.id, n, icon: <ConsumableIcon item={c} />, name: t(`consumables.${c.nameKey}`) }))),
   ];
   const empties = Math.max(0, capacity - cells.length);
 
@@ -76,7 +77,7 @@ export default function StashPane({
 
       <div className="inv-grid stash-grid">
         {cells.map((c) => (
-          <button key={c.key} className={`inv-slot${isSel(c.kind, c.id) ? ' active' : ''}`} onClick={() => onSelect({ kind: c.kind, id: c.id })} data-ui>
+          <button key={c.key} className={`inv-slot${isSel(c.kind, c.id) ? ' active' : ''}`} onClick={() => onSelect({ kind: c.kind, id: c.id })} title={c.name} aria-label={`${c.name} ×${fmtNum(c.n)}`} data-ui>
             <span className="inv-icon">{c.icon}</span>
             <span className="inv-qty">×{fmtNum(c.n)}</span>
           </button>

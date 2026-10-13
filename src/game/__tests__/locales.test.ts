@@ -65,4 +65,11 @@ describe('the rare currency is called Runas / Runes', () => {
     expect(ptLeaves['ui.shards']).toBe('◆ Runas: {n}');
     expect(enLeaves['ui.shards']).toBe('◆ Runes: {n}');
   });
+
+  it('each language is named in its own language, whatever the current one is', () => {
+    expect(en.settings.pt).toBe('Português');
+    expect(pt.settings.pt).toBe('Português');
+    expect(en.settings.en).toBe('English');
+    expect(pt.settings.en).toBe('English');
+  });
 });

@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
+import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { fmtNum, t } from '../locales';
 import { BUFF_ITEM, buffRemainingMs, isBuffActive } from '../game/buffs';
 import type { ConsumableId } from '../game/consumables';
@@ -20,7 +21,7 @@ import { fmtSubstat } from './substatText';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
-import { refineTag } from './gearLabel';
+import { gearInstanceLabel, refineTag } from './gearLabel';
 import { gearStatLines } from './gearStats';
 import UniqueTag from './UniqueTag';
 import { AppearanceLine } from './HeroThumb';
@@ -194,6 +195,17 @@ export default function InventoryPanel({
     setConfirmDiscard(false);
   };
 
+  // Enter confirms and Escape cancels whichever question (bind on equip, salvage, discard) is open.
+  useConfirmKeys(
+    confirmEquip || confirmSalvage || confirmDiscard,
+    () => (confirmEquip ? handleEquip() : confirmSalvage ? handleSalvage() : handleDiscard()),
+    () => {
+      setConfirmEquip(false);
+      setConfirmSalvage(false);
+      setConfirmDiscard(false);
+    },
+  );
+
   const cellsShown = gearInstances.length + [...stackableGear.map((g) => save.inventory[g.id]), ...materialItems.map((m) => m.qty), ...consumableItems.map((c) => c.qty)].reduce((sum, q) => sum + slotsForQty(q), 0);
 
   return (
@@ -299,6 +311,8 @@ export default function InventoryPanel({
                 key={inst.id}
                 className={`inv-slot ${rarityClass(g)} ${rarClass(inst.rarity)}${g.unique ? ' unique' : ''}${selected?.kind === 'gear' && selected.id === inst.id ? ' active' : ''}`}
                 onClick={() => select('gear', inst.id)}
+                title={gearInstanceLabel(inst)}
+                aria-label={gearInstanceLabel(inst)}
                 data-ui
               >
                 <span className="inv-icon">
@@ -323,6 +337,8 @@ export default function InventoryPanel({
                 key={`${g.id}:${i}`}
                 className={`inv-slot ${rarityClass(g)} ${rarClass(undefined)}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
                 onClick={() => select('gear', g.id)}
+                title={gearText(g.nameKey)}
+                aria-label={`${gearText(g.nameKey)} ×${fmtNum(n)}`}
                 data-ui
               >
                 <span className="inv-icon">
@@ -339,6 +355,8 @@ export default function InventoryPanel({
                 key={`${m.id}:${i}`}
                 className={`inv-slot${selected?.kind === 'material' && selected.id === m.id ? ' active' : ''}`}
                 onClick={() => select('material', m.id)}
+                title={matText(m.nameKey)}
+                aria-label={`${matText(m.nameKey)} ×${fmtNum(n)}`}
                 data-ui
               >
                 <span className="inv-icon">
@@ -355,6 +373,8 @@ export default function InventoryPanel({
                 key={`${c.id}:${i}`}
                 className={`inv-slot${selected?.kind === 'consumable' && selected.id === c.id ? ' active' : ''}`}
                 onClick={() => select('consumable', c.id)}
+                title={conText(c.nameKey)}
+                aria-label={`${conText(c.nameKey)} ×${fmtNum(n)}`}
                 data-ui
               >
                 <span className="inv-icon">

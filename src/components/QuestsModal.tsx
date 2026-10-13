@@ -341,7 +341,7 @@ export default function QuestsModal({
             ))}
         </div>
 
-        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
           ✕
         </button>
       </div>

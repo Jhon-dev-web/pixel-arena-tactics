@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { promotionLine } from './promotionLine';
 import ActiveBuffs from './ActiveBuffs';
 import HuntBattleView from './HuntBattleView';
 import MaterialIcon from './MaterialIcon';
@@ -173,7 +174,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
               <h4 className="hunt-section-title">{t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })}</h4>
               <Meter pct={maxed ? 100 : (Math.min(status.promotionWins, required) / required) * 100} tone="xp" label={t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })} />
               <div className="hunt-meter-text">
-                {maxed ? t('hunting.subLevelMax') : t('hunting.subLevelNext', { n: Math.min(status.promotionWins, required), x: required })}
+                {maxed ? t('hunting.subLevelMax') : promotionLine(status.promotionWins, required, status.ceilingSubLevel)}
               </div>
               {status.ceilingSubLevel > status.startCeiling && (
                 <div className="hunt-promoted">{t('hunting.promotedRange', { a: status.startCeiling, b: status.ceilingSubLevel })}</div>
@@ -190,7 +191,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
           <span className="hunt-foot-hint">{t('hunting.stopHint')}</span>
         </div>
 
-        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
           ✕
         </button>
       </div>

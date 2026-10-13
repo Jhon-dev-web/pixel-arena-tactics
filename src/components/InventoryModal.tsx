@@ -41,7 +41,7 @@ export default function InventoryModal({
           onUseConsumable={onUseConsumable}
           onExpand={onExpand}
         />
-        <button className="modal-x" onClick={onClose} aria-label="Close" data-ui>
+        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
           ✕
         </button>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { fmtNum, t } from '../locales';
 import { skillText } from './skillText';
 import { FxPreview } from './SkillFx';
@@ -72,14 +73,15 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
   const shownId = peek ?? selected;
   const shown = HERO_SKILLS.find((s) => s.id === shownId)!;
 
-  useEffect(() => {
-    if (!confirmRespec) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setConfirmRespec(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [confirmRespec]);
+  useConfirmKeys(
+    confirmRespec,
+    () => {
+      if (cost > save.gold || battleActive) return;
+      setConfirmRespec(false);
+      onRespec();
+    },
+    () => setConfirmRespec(false),
+  );
 
   const owner = ownsAdventurerPass(save);
   const active = save.skillTree.active;

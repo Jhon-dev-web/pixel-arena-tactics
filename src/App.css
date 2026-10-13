@@ -10616,3 +10616,51 @@ button[data-ui]:focus-visible {
 .set-note-step.on {
   color: #6fe08a;
 }
+
+/* Round 14: the first-loss screen says what was kept, how the CP compares and one thing to do */
+.defeat-notes {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 10px;
+  text-align: center;
+}
+.defeat-notes p {
+  margin: 0;
+  font-size: calc(var(--font-size) - 3px);
+  line-height: 1.45;
+  color: #e8d9a8;
+}
+.defeat-notes .defeat-cp.low {
+  color: #ff8a7a;
+}
+.defeat-notes .defeat-tip {
+  color: #ffd76a;
+}
+
+/* Round 14: Forge > Gems buttons say which gem and what it does */
+.socket-gem-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 150px;
+  min-width: 0;
+  text-align: left;
+}
+.socket-gem-text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+.socket-gem-name {
+  color: #ffe9a8;
+}
+.socket-gem-effect {
+  font-size: calc(var(--font-size) - 4px);
+  color: #c8b890;
+  line-height: 1.3;
+}
+.socket-gem-qty {
+  color: #ffd76a;
+  white-space: nowrap;
+}

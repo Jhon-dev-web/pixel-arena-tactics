@@ -30,7 +30,7 @@ import { portraitFrameClass } from '../game/seasonItems';
 import { ownsAdventurerPass } from '../game/entitlements';
 import { readyActivities } from '../game/claimAll';
 import { nextStep, NextStepTarget } from '../game/nextStep';
-import { getGear } from '../game/gear';
+import { nextStepLine } from './nextStepText';
 
 // Inventory pressure: amber from 85% of the slots, red when there is no free slot (the same thresholds as the hunt screen).
 const invTone = (used: number, cap: number): string => (used >= cap ? ' full' : used >= cap * 0.85 ? ' warn' : '');
@@ -155,7 +155,7 @@ export default function DesktopHome({
     <div className="desktop-home">
       {/* Area A — Hero */}
       <section className="dh-card dh-hero">
-        <button className={`dh-hero-portrait${portraitFrameClass(save)}`} onClick={onOpenHero} data-ui>
+        <button className={`dh-hero-portrait${portraitFrameClass(save)}`} onClick={onOpenHero} aria-label={t('nav.openProfile')} title={t('nav.openProfile')} data-ui>
           <SpriteSheet src={spriteUrl} size="min(148px, 100%)" row={0} />
         </button>
         <div className="dh-hero-body">
@@ -218,12 +218,7 @@ export default function DesktopHome({
           <div className="dh-nextstep">
             <span className="dh-nextstep-label">{t('nextStep.label')}</span>
             <span className="dh-nextstep-text">
-              {t(`nextStep.${step.id}`, {
-                n: step.params.n ?? 0,
-                floor: step.params.floor ?? 0,
-                piece: step.params.piece ? gearText(getGear(step.params.piece)?.nameKey ?? '') : '',
-                zone: step.params.zone ? dText(step.params.zone) : '',
-              })}
+              {nextStepLine(step)}
             </span>
             {step.target !== 'none' && (
               <button className="dh-nextstep-btn" onClick={() => onOpenNextStep(step.target)} data-ui>
