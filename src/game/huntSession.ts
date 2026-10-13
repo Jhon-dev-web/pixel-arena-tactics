@@ -313,3 +313,23 @@ export function sanitizePendingHuntReward(raw: unknown): PendingHuntReward | nul
     ...(nonNegInt(r.kills, 1e9) > 0 ? { kills: nonNegInt(r.kills, 1e9) } : {}),
   };
 }
+
+// Do the stats a session froze at its start differ from what the hero has now? Compared as numbers, field by field: a reload rebuilds the frozen object in another key order
+// (sanitizeHuntSession) and a stat the hero does not have is absent in one and 0 in the other, none of which is a difference. Multipliers of 1 count as absent.
+function canonicalStat(v: unknown, key = ''): unknown {
+  if (typeof v === 'number') return key.endsWith('Mult') && v === 1 ? undefined : v === 0 || !Number.isFinite(v) ? undefined : Math.round(v * 1e9) / 1e9;
+  if (v === false || v === null || v === undefined) return undefined;
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(v as Record<string, unknown>).sort()) {
+      const c = canonicalStat((v as Record<string, unknown>)[k], k);
+      if (c !== undefined && !(typeof c === 'object' && Object.keys(c as object).length === 0)) out[k] = c;
+    }
+    return out;
+  }
+  return v;
+}
+
+export function sessionStatsDiffer(frozen: CombatStats, live: CombatStats): boolean {
+  return JSON.stringify(canonicalStat(frozen)) !== JSON.stringify(canonicalStat(live));
+}

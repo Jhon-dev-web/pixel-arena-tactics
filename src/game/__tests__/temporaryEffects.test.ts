@@ -19,6 +19,7 @@ import {
 import { applyDamageModifiers, applyDamageReduction, heroAttackIntervalMs } from '../derivedStats';
 import { applyEquipInstance, createGearInstance, equippedSubstatTotals, GearInstance } from '../gearInstances';
 import { applyHuntStart } from '../huntLifecycle';
+import { sessionStatsDiffer } from '../huntSession';
 import { dungeonEnemyKindForFloor } from '../dungeon';
 import { getEnemyDef } from '../enemies';
 import { getHuntingZone, unlockedZoneIds } from '../huntingZones';
@@ -439,5 +440,17 @@ describe('the freeze of a Hunting session never loses an effect', () => {
     const s = applyHuntStart({ ...hero('3', 3, { level: 40 }), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) }, 'blood_marsh', 'dense', NOW)!;
     const back = normalizeSave(JSON.parse(JSON.stringify(s)));
     expect(hasteIntervalMs(back.huntSession!.stats)).toBe(hasteIntervalMs(s.huntSession!.stats));
+  });
+});
+
+describe('the frozen-session notice of the running hunt', () => {
+  it('does not fire after a reload (the rebuilt stats are the same numbers in another key order) and does when gear or attributes changed', () => {
+    const s0 = { ...hero('3', 3, { level: 40 }), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) };
+    const s = applyHuntStart(s0, 'blood_marsh', 'dense', NOW)!;
+    expect(sessionStatsDiffer(s.huntSession!.stats, buildCombatStats(s))).toBe(false);
+    const back = normalizeSave(JSON.parse(JSON.stringify(s)));
+    expect(JSON.stringify(back.huntSession!.stats)).not.toBe(JSON.stringify(buildCombatStats(back))); // the old check: same numbers, different key order
+    expect(sessionStatsDiffer(back.huntSession!.stats, buildCombatStats(back))).toBe(false);
+    expect(sessionStatsDiffer(back.huntSession!.stats, buildCombatStats({ ...back, str: back.str + 1 }))).toBe(true);
   });
 });

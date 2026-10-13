@@ -16,6 +16,7 @@ import { getMaterial, MaterialId } from '../game/materials';
 import { heroSheet } from '../game/sprites';
 import { fmtRate, fmtSpan, matName } from '../game/huntView';
 import { useDisplayName } from '../game/usernameContext';
+import { sessionStatsDiffer } from '../game/huntSession';
 
 const MS_PER_HOUR = 3600 * 1000;
 // Per-hour numbers from a handful of seconds of hunting are noise; they appear after the first minute.
@@ -71,7 +72,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
 
   const required = huntPromotionRequiredWins(status.ceilingSubLevel);
   const maxed = status.ceilingSubLevel >= T.hunting.subLevels;
-  const frozen = !!save.huntSession && JSON.stringify(save.huntSession.stats) !== JSON.stringify(buildCombatStats(save));
+  const frozen = !!save.huntSession && sessionStatsDiffer(save.huntSession.stats, buildCombatStats(save));
 
   return (
     <div className="modal-backdrop">
