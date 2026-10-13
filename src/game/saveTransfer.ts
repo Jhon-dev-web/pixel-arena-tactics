@@ -33,7 +33,8 @@ function stripSensitive(value: unknown): unknown {
 
 export function buildSaveExport(save: SaveData, now: number): { text: string; filename: string } {
   const file: SaveExportFile = { format: SAVE_EXPORT_FORMAT, version: 1, exportedAt: new Date(now).toISOString(), save: stripSensitive(save) as SaveData };
-  const stamp = new Date(now).toISOString().slice(0, 19).replace(/[-:T]/g, '');
+  // 2026-10-12T10:20:30 -> 20261012102030 (digits only: a dash-colon character class in the source trips Tailwind's class scanner into emitting broken CSS)
+  const stamp = new Date(now).toISOString().slice(0, 19).replace(/\D/g, '');
   return { text: JSON.stringify(file), filename: `arena-duel-save-${stamp}.json` };
 }
 
