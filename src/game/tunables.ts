@@ -349,10 +349,10 @@ const T = DebugPanel.define({
   lateSinks: {
     _label: 'Late-game sinks (round 16)',
     minLevel: { value: 60, min: 1, max: 100, step: 1, label: 'Hero level that opens Lapidar and the refinement past +8' },
-    hourBlood: { value: 65, min: 1, max: 500, step: 1, label: 'Farm hour: Concentrated Blood' },
-    hourMarrow: { value: 60, min: 1, max: 500, step: 1, label: 'Farm hour: Abyssal Marrow' },
-    hourCrystal: { value: 15, min: 1, max: 100, step: 1, label: 'Farm hour: Corrupted Crystal' },
-    hourHeart: { value: 12, min: 1, max: 100, step: 1, label: 'Farm hour: Blood Heart' },
+    hourBlood: { value: 19.5, min: 0.1, max: 500, step: 1, label: 'Farm hour: Concentrated Blood' },
+    hourMarrow: { value: 7.2, min: 0.1, max: 500, step: 1, label: 'Farm hour: Abyssal Marrow' },
+    hourCrystal: { value: 3.79, min: 0.1, max: 100, step: 1, label: 'Farm hour: Corrupted Crystal' },
+    hourHeart: { value: 1.44, min: 0.1, max: 100, step: 1, label: 'Farm hour: Blood Heart' },
     // Refinement past +8 (tier 5 and 6 pieces only): the attempt from +8 to +9, +9 to +10, +10 to +11 and +11 to +12. Each level is worth deepBonus of the base stat (the first eight are worth 10%).
     // Refining a tier 5 or 6 piece from +3 to +8 asks this share of the Gold the same step costs on a lower tier piece: from day 60 the player is Gold-bound (1.5 thousand a day against 25 thousand
     // a piece), not material-bound, and the chase past +8 has to be paid with the surplus, not with the Gold that builds the next tier.
@@ -438,6 +438,11 @@ const T = DebugPanel.define({
     ratioRegional: { value: 1.15, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Regional' },
     ratioLonga: { value: 1.2, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Long' },
     ratioEspecial: { value: 1.25, min: 0.5, max: 3, step: 0.01, label: 'Reward Gold / cargo reference value, Special' },
+    // Round 17: orders of the last tier (floor 76+) count one Bone / Blood / Crystal as this many times its reference value when the cargo is sized. The Abyss drops 2.9 / 3.3 / 4 times fewer (huntingZones.ts);
+    // the factor is about twice that because an order is only taken from what the next craft does not need: with the exact factor the orders dried up (A: -15% Gold, 5 of 12 seeds without the tier 6 set), with 6 / 7 / 8 the Gold is back (+13% over days 100-180, 12 seeds)
+    abyssCargoBone: { value: 6, min: 1, max: 10, step: 0.1, label: 'Last order tier: reference value of a Bone Fragment in the cargo, times' },
+    abyssCargoBlood: { value: 7, min: 1, max: 10, step: 0.1, label: 'Last order tier: reference value of a Concentrated Blood in the cargo, times' },
+    abyssCargoCrystal: { value: 8, min: 1, max: 10, step: 0.1, label: 'Last order tier: reference value of a Corrupted Crystal in the cargo, times' },
     ratioTolerance: { value: 0.15, min: 0.02, max: 0.5, step: 0.01, label: 'Allowed deviation of the cargo value from its target (+/-, whole units)' },
     // Gold per hour = base + perTier * (tier - 1) + distance bonus.
     goldPerHourBase: { value: 30, min: 5, max: 200, step: 1, label: 'Gold per hour (tier 1, Local)' },

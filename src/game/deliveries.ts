@@ -4,7 +4,7 @@ import { playerLevel, SaveData } from './engine';
 import { PLANTS } from './garden';
 import { characterXpBonusPct } from './heroSkills';
 import { hasMaterials, MaterialId } from './materials';
-import { baseGoldValue, cargoReferenceValue } from './economy';
+import { baseGoldValue } from './economy';
 import { ORE_TIERS } from './ores';
 import { REFINING_RECIPES } from './refining';
 import { skillLevel } from './skills';
@@ -232,39 +232,49 @@ function composition(arch: DeliveryArchetype, ctx: Context): Partial<Record<Mate
 const HOUR = 3600 * 1000;
 const FIVE_MIN = 5 * 60 * 1000;
 
+// Round 17: the last order tier (Dungeon floor 76+, the hero hunts the Abyss) asks fewer Bones, Bloods and Crystals for the same pay: the Abyss drops 3 to 4 times fewer of them
+// (huntingZones.ts), so one unit counts as several times its reference value when the cargo is sized (tunables.ts has the factors and why). The six reference values themselves
+// (economy.ts) do not move: the early orders are sized in them.
+export function cargoUnitValue(m: MaterialId, tier: number): number {
+  const D = T.deliveries;
+  const mult = tier >= 3 ? ({ bone_fragment: D.abyssCargoBone, concentrated_blood: D.abyssCargoBlood, corrupted_crystal: D.abyssCargoCrystal } as Partial<Record<MaterialId, number>>)[m] ?? 1 : 1;
+  return baseGoldValue(m) * mult;
+}
+
 // Sizes the cargo of an order: which quantities of the archetype's materials add up to (about) the wanted reference value.
 // Shares are of VALUE, so quantity = value share x target / baseGoldValue. A material that hits its ceiling is fixed there and
 // the rest of the value is spread over the others; then single units are added/removed until the total is as close to the target
 // as whole units allow. null = this archetype cannot make a worthwhile order of this size (the caller tries another).
-function fitCargo(comp: [MaterialId, number][], signature: MaterialId[], target: number, capOf: (m: MaterialId) => number): Partial<Record<MaterialId, number>> | null {
+function fitCargo(comp: [MaterialId, number][], signature: MaterialId[], target: number, capOf: (m: MaterialId) => number, valueOf: (m: MaterialId) => number = baseGoldValue): Partial<Record<MaterialId, number>> | null {
+  const cargoValue = (it: Partial<Record<MaterialId, number>>): number => (Object.entries(it) as [MaterialId, number][]).reduce((s, [m, q]) => s + q * valueOf(m), 0);
   const items: Partial<Record<MaterialId, number>> = {};
   let free = comp.slice();
   let remaining = target;
   for (;;) {
     const totalW = free.reduce((sum, [, w]) => sum + w, 0);
-    const over = totalW > 0 ? free.find(([m, w]) => (Math.max(0, remaining) * w) / totalW / baseGoldValue(m) > capOf(m)) : undefined;
+    const over = totalW > 0 ? free.find(([m, w]) => (Math.max(0, remaining) * w) / totalW / valueOf(m) > capOf(m)) : undefined;
     if (!over) break;
     items[over[0]] = capOf(over[0]);
-    remaining -= capOf(over[0]) * baseGoldValue(over[0]);
+    remaining -= capOf(over[0]) * valueOf(over[0]);
     free = free.filter((x) => x !== over);
   }
   const totalW = free.reduce((sum, [, w]) => sum + w, 0);
   for (const [m, w] of free) {
-    const q = totalW > 0 ? Math.round((Math.max(0, remaining) * w) / totalW / baseGoldValue(m)) : 0;
+    const q = totalW > 0 ? Math.round((Math.max(0, remaining) * w) / totalW / valueOf(m)) : 0;
     const qty = q < 1 && signature.includes(m) ? 1 : q;
     if (qty > 0) items[m] = Math.min(qty, capOf(m));
   }
   const materials = comp.map(([m]) => m);
   const locked = new Set(signature);
   for (let guard = 0; guard < 400; guard++) {
-    const gap = Math.abs(target - cargoReferenceValue(items));
+    const gap = Math.abs(target - cargoValue(items));
     let best: { m: MaterialId; q: number; gap: number } | null = null;
     for (const m of materials) {
       const cur = items[m] ?? 0;
       for (const q of [cur + 1, cur - 1]) {
         if (q < 0 || q > capOf(m) || (q === 0 && locked.has(m))) continue;
         const next = { ...items, [m]: q };
-        const g = Math.abs(target - cargoReferenceValue(next));
+        const g = Math.abs(target - cargoValue(next));
         if (g < gap - 1e-9 && (!best || g < best.gap)) best = { m, q, gap: g };
       }
     }
@@ -273,7 +283,7 @@ function fitCargo(comp: [MaterialId, number][], signature: MaterialId[], target:
     else items[best.m] = best.q;
   }
   for (const m of signature) if (materials.includes(m) && !items[m]) return null;
-  const cargo = cargoReferenceValue(items);
+  const cargo = cargoValue(items);
   const tol = T.deliveries.ratioTolerance;
   if (Object.keys(items).length === 0 || cargo < target * (1 - tol) || cargo > target * (1 + tol)) return null;
   return items;
@@ -297,7 +307,7 @@ function buildOffer(ctx: Context, arch: DeliveryArchetype, cls: DeliveryClass, i
   // a high-level order asks for the same modest bundle and pays more, a bonus on top of Hunting and not a reason to stop hunting.
   const target = baseGold / rewardRatioTarget(dist);
   const signature = (def.signature ?? []).filter((m) => m in comp);
-  const items = fitCargo(Object.entries(comp) as [MaterialId, number][], signature, target, (m) => quantityCap(m, dist));
+  const items = fitCargo(Object.entries(comp) as [MaterialId, number][], signature, target, (m) => quantityCap(m, dist), (m) => cargoUnitValue(m, ctx.tier));
   if (!items) return null;
   // Processing costs Gold: an order that asks for processed units may never let that fee eat more than a set share of what it pays.
   const fee = (Object.entries(items) as [MaterialId, number][]).reduce((t, [m, q]) => t + q * processingFee(m), 0);

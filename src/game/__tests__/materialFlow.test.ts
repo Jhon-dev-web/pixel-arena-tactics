@@ -6,6 +6,7 @@ import { GEAR, getGear, refineHuntMaterials, upgradeCost } from '../gear';
 import { MATERIALS } from '../materials';
 import { STASH_UPGRADES } from '../stash';
 import { setHours, setNeed } from '../../../scripts/sim/setCost';
+import { setHoursOwn } from '../../../scripts/sim/farmHours';
 import { withSeededRandom } from '../../../scripts/sim/driver';
 
 const HOUR = 3600 * 1000;
@@ -43,8 +44,10 @@ describe('Rodada 9: material flow', () => {
     for (let t = 1; t <= 6; t++) {
       const h = setHours(t);
       const gather = h.mine + h.wood;
-      expect(h.hunt / gather, `tier ${t}: hunt ${h.hunt.toFixed(1)} h, mine+wood ${gather.toFixed(1)} h`).toBeGreaterThan(0.25);
-      expect(h.hunt / gather, `tier ${t}`).toBeLessThan(3);
+      // Round 17: the hunting hours are the tier's own pieces at the tier's stage (farmHours.ts); setHours re-prices the old tiers' pieces at the last zone's rates, which the cut zones no longer match
+      const hunt = setHoursOwn(t);
+      expect(hunt / gather, `tier ${t}: hunt ${hunt.toFixed(1)} h, mine+wood ${gather.toFixed(1)} h`).toBeGreaterThan(0.25);
+      expect(hunt / gather, `tier ${t}`).toBeLessThan(3.5);
     }
   });
 

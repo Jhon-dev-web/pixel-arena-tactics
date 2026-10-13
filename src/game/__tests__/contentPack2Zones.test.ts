@@ -20,11 +20,12 @@ const HOUR = 3600 * 1000;
 describe('zone materials of the Demon Rift and the Blood Abyss', () => {
   const NEW: Record<string, [MaterialId, MaterialId]> = { demon_rift: ['rift_shard', 'fiend_horn'], blood_abyss: ['abyssal_marrow', 'blood_heart'] };
 
-  it('each late zone keeps its old three drops (ids and chances untouched) and adds an uncommon + a rare of its own', () => {
+  it('each late zone keeps its old three drops (the Rift ones untouched, the Abyss ones cut in round 17) and adds an uncommon + a rare of its own', () => {
     const rift = getHuntingZone('demon_rift')!;
     const abyss = getHuntingZone('blood_abyss')!;
     expect(rift.drops.slice(0, 3).map((d) => [d.material, d.rarity, d.chance])).toEqual([['leather_scrap', 'common', 0.32], ['demon_claw', 'uncommon', 0.105], ['demon_core', 'rare', 0.0175]]);
-    expect(abyss.drops.slice(0, 3).map((d) => [d.material, d.rarity, d.chance])).toEqual([['bone_fragment', 'common', 0.35], ['concentrated_blood', 'uncommon', 0.12], ['corrupted_crystal', 'rare', 0.021]]);
+    // Round 17: the Abyss bone, blood and crystal were cut (the Rift three are the Glade family and stay), docs/BALANCE_CHANGES.md
+    expect(abyss.drops.slice(0, 3).map((d) => [d.material, d.rarity, d.chance])).toEqual([['bone_fragment', 'common', 0.12], ['concentrated_blood', 'uncommon', 0.036], ['corrupted_crystal', 'rare', 0.0053]]);
     for (const [zid, [unc, rare]] of Object.entries(NEW)) {
       const z = getHuntingZone(zid)!;
       expect(z.drops).toHaveLength(5);
@@ -32,13 +33,8 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
       const r = z.drops.find((d) => d.material === rare)!;
       expect(u.rarity).toBe('uncommon');
       expect(r.rarity).toBe('rare');
-      // the same range as the zone's existing uncommon / rare entries
-      const oldU = z.drops.find((d) => d.rarity === 'uncommon' && d !== u)!;
-      const oldR = z.drops.find((d) => d.rarity === 'rare' && d !== r)!;
-      expect(u.chance / oldU.chance).toBeGreaterThan(0.8);
-      expect(u.chance / oldU.chance).toBeLessThan(1.1);
-      expect(r.chance / oldR.chance).toBeGreaterThan(0.6);
-      expect(r.chance / oldR.chance).toBeLessThan(1.1);
+      // Round 17 chances (docs/BALANCE_CHANGES.md): the zone's own pair was cut (shard to a quarter, the other three to an eighth of round 16)
+      expect({ [unc]: u.chance, [rare]: r.chance }).toEqual(zid === 'demon_rift' ? { rift_shard: 0.025, fiend_horn: 0.0017 } : { abyssal_marrow: 0.0132, blood_heart: 0.0021 });
     }
     expect(getHuntingZone('demon_glade')!.drops).toHaveLength(3);
     expect(getHuntingZone('blood_marsh')!.drops).toHaveLength(3);
@@ -111,15 +107,12 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
       expect(typeof (en.materials as Record<string, string>)[m.nameKey]).toBe('string');
       expect(typeof (pt.materials as Record<string, string>)[m.nameKey]).toBe('string');
     }
-    // uncommon between the zone's old uncommon and its old rare, rare in the range of the old rare
+    // Round 17: the four are worth far more than they were (their drops were cut and the reference value pays the hour back, see round17.test.ts),
+    // and the zone's rare is worth several times its uncommon, as it always was
     expect(baseGoldValue('rift_shard')).toBeGreaterThan(baseGoldValue('demon_claw'));
-    expect(baseGoldValue('rift_shard')).toBeLessThan(baseGoldValue('demon_core'));
     expect(baseGoldValue('abyssal_marrow')).toBeGreaterThan(baseGoldValue('concentrated_blood'));
-    expect(baseGoldValue('abyssal_marrow')).toBeLessThan(baseGoldValue('corrupted_crystal'));
-    expect(baseGoldValue('fiend_horn') / baseGoldValue('demon_core')).toBeGreaterThan(1);
-    expect(baseGoldValue('fiend_horn') / baseGoldValue('demon_core')).toBeLessThan(1.6);
-    expect(baseGoldValue('blood_heart') / baseGoldValue('corrupted_crystal')).toBeGreaterThan(1);
-    expect(baseGoldValue('blood_heart') / baseGoldValue('corrupted_crystal')).toBeLessThan(1.6);
+    expect(baseGoldValue('fiend_horn') / baseGoldValue('rift_shard')).toBeGreaterThan(4);
+    expect(baseGoldValue('blood_heart') / baseGoldValue('abyssal_marrow')).toBeGreaterThan(4);
   });
 
   it('every new material has real uses: tier 5 recipes take the Rift pair, tier 6 recipes the Abyss pair, every slot, axes and shields included', () => {
