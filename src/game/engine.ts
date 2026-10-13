@@ -1377,7 +1377,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
       };
       loaded.codex = normalizeCodex(parsed.codex, loaded);
       // Weekly goals and the login streak (weekly.ts): an old save has neither and starts its first week now; a new UTC week snapshots the counters again.
-      loaded.quests = { ...loaded.quests, weekly: rollWeekly(sanitizeWeekly(q.weekly, loaded.stats, loadNow), loaded.stats, loadNow), streak: sanitizeStreak(q.streak) };
+      loaded.quests = { ...loaded.quests, weekly: rollWeekly(sanitizeWeekly(q.weekly, loaded.stats, loadNow, playerLevel(loaded.xp)), loaded.stats, loadNow, playerLevel(loaded.xp)), streak: sanitizeStreak(q.streak) };
       // Hunting session snapshot + pending reward (both new, optional fields: an older save simply lacks them). An active
       // session without a usable snapshot (saved before snapshots existed, or corrupt) is rebuilt conservatively.
       loaded.pendingHuntReward = sanitizePendingHuntReward(parsed.pendingHuntReward);

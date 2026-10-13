@@ -135,6 +135,21 @@ function quantityCap(m: MaterialId, dist: DeliveryDistance): number {
 }
 const isBulk = (m: MaterialId) => m === 'leather_scrap' || m === 'bone_fragment' || m === 'demon_claw' || m === 'concentrated_blood' || !!ORE_TIERS.find((o) => o.id === m) || !!WOOD_TIERS.find((w) => w.id === m);
 
+// What an order pays grows with the hero: x1 up to T.deliveries.levelScaleFrom, then linearly to the factors at level 50, 75 and 100 (tunables.ts has the why).
+// Gold and XP both use it; the tier of the materials asked (deliveryTier) is already in the base Gold per hour. Same level, same factor, no RNG.
+export function orderLevelFactor(level: number): number {
+  const D = T.deliveries;
+  const l = Math.max(1, Math.min(100, Math.floor(level) || 1));
+  const points: [number, number][] = [[Math.min(D.levelScaleFrom, 49), 1], [50, D.levelScale50], [75, D.levelScale75], [100, D.levelScale100]];
+  if (l <= points[0][0]) return 1;
+  for (let i = 1; i < points.length; i++) {
+    const [x0, y0] = points[i - 1];
+    const [x1, y1] = points[i];
+    if (l <= x1) return y0 + ((y1 - y0) * (l - x0)) / (x1 - x0);
+  }
+  return D.levelScale100;
+}
+
 // ---- what this player can be asked for
 export function deliveryTier(save: Pick<SaveData, 'highestDungeonFloor'>): number {
   const f = save.highestDungeonFloor;
@@ -144,6 +159,7 @@ export function deliveryTier(save: Pick<SaveData, 'highestDungeonFloor'>): numbe
 
 interface Context {
   tier: number;
+  level: number; // character level (1..100): the order rewards scale with it, see orderLevelFactor
   available: Set<MaterialId>;
   ore: MaterialId;
   wood: MaterialId;
@@ -177,7 +193,7 @@ function buildContext(save: SaveData): Context {
   for (const id of woodTiersUnlocked) available.add(id);
   const processed = playerLevel(save.xp) >= T.deliveries.processedMinLevel;
   if (processed) for (const m of ['leather', 'steel', 'silver_ingot'] as MaterialId[]) available.add(m);
-  return { tier: deliveryTier(save), available, ore, wood: tree, oreTiersUnlocked, woodTiersUnlocked, processed };
+  return { tier: deliveryTier(save), level: playerLevel(save.xp), available, ore, wood: tree, oreTiersUnlocked, woodTiersUnlocked, processed };
 }
 
 function pickWeighted<X>(items: X[], weights: number[], rng: Rng): X {
@@ -276,15 +292,18 @@ function buildOffer(ctx: Context, arch: DeliveryArchetype, cls: DeliveryClass, i
   const hours = durationMs / HOUR;
   // 1) the reward: a function of tier x time only.
   const goldPerHour = D.goldPerHourBase + D.goldPerHourTier * ctx.tier + distGoldBonus(dist);
-  const gold = Math.round(hours * goldPerHour);
-  // 2) the cargo: sized so that its reference value is gold / rewardRatio(distance), whatever the archetype.
-  const target = gold / rewardRatioTarget(dist);
+  const baseGold = Math.round(hours * goldPerHour);
+  // 2) the cargo: sized so that its reference value is baseGold / rewardRatio(distance), whatever the archetype. The level factor below is NOT applied to the cargo:
+  // a high-level order asks for the same modest bundle and pays more, a bonus on top of Hunting and not a reason to stop hunting.
+  const target = baseGold / rewardRatioTarget(dist);
   const signature = (def.signature ?? []).filter((m) => m in comp);
   const items = fitCargo(Object.entries(comp) as [MaterialId, number][], signature, target, (m) => quantityCap(m, dist));
   if (!items) return null;
   // Processing costs Gold: an order that asks for processed units may never let that fee eat more than a set share of what it pays.
   const fee = (Object.entries(items) as [MaterialId, number][]).reduce((t, [m, q]) => t + q * processingFee(m), 0);
-  if (fee > D.processedFeeMaxShare * gold) return null;
+  if (fee > D.processedFeeMaxShare * baseGold) return null;
+  const factor = orderLevelFactor(ctx.level);
+  const gold = Math.round(baseGold * factor);
   return {
     id,
     arch,
@@ -293,7 +312,7 @@ function buildOffer(ctx: Context, arch: DeliveryArchetype, cls: DeliveryClass, i
     tier: ctx.tier,
     items,
     gold,
-    xp: Math.round(hours * distXpPerHour(dist)),
+    xp: Math.round(hours * distXpPerHour(dist) * factor),
     shards: tierShards(dist, ctx.tier),
     durationMs,
     bornAt: now,

@@ -243,11 +243,11 @@ const T = DebugPanel.define({
   // cleared), so its rewards, including the boss unique / relic roll, are paid once per depth: the long-run unique rate cannot exceed the pace at which depths are cleared.
   depths: {
     _label: 'Depths (Profundezas, after floor 100)',
-    hpGrowth: { value: 0.04, min: 0, max: 0.5, step: 0.005, label: 'Enemy HP growth per depth (compounding)' },
+    hpGrowth: { value: 0.035, min: 0, max: 0.5, step: 0.005, label: 'Enemy HP growth per depth (compounding)' },
     dmgGrowth: { value: 0.03, min: 0, max: 0.5, step: 0.005, label: 'Enemy damage growth per depth (compounding)' },
     bossEvery: { value: 10, min: 2, max: 50, step: 1, label: 'Depth boss every N depths' },
-    bossHpMult: { value: 1.6, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: HP multiplier over a regular depth' },
-    bossDmgMult: { value: 1.25, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: damage multiplier over a regular depth' },
+    bossHpMult: { value: 1.1, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: HP multiplier over a regular depth' },
+    bossDmgMult: { value: 1.05, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: damage multiplier over a regular depth' },
     bossShards: { value: 4, min: 0, max: 20, step: 1, label: 'Runes for a depth boss' },
     uniqueChanceBase: { value: 0.02, min: 0, max: 1, step: 0.005, label: 'Depth boss unique / relic chance at depth 0 (per boss cleared)' },
     uniqueChancePerDepth: { value: 0.001, min: 0, max: 0.05, step: 0.0005, label: 'Depth boss unique / relic chance gained per depth' },
@@ -258,8 +258,8 @@ const T = DebugPanel.define({
     _label: 'Paragon levels (after hero level 100)',
     xpShare: { value: 0.05, min: 0.001, max: 5, step: 0.005, label: 'XP of paragon level 1 as a share of the XP of hero level 99 -> 100' },
     xpGrowth: { value: 1.015, min: 1, max: 1.5, step: 0.005, label: 'XP growth per paragon level' },
-    damagePerLevel: { value: 0.002, min: 0, max: 0.05, step: 0.0005, label: 'Damage bonus per paragon level (fraction)' },
-    maxBonus: { value: 0.1, min: 0, max: 1, step: 0.01, label: 'Cap on the total paragon damage bonus (fraction)' },
+    damagePerLevel: { value: 0.03, min: 0, max: 0.1, step: 0.0005, label: 'Damage bonus per paragon level (fraction)' },
+    maxBonus: { value: 1.5, min: 0, max: 3, step: 0.01, label: 'Cap on the total paragon damage bonus (fraction)' },
   },
   // Profession mastery (mastery.ts): perks at fixed profession levels, all deterministic (no rolls), so a claim is reproducible and the simulator stays byte-identical.
   mastery: {
@@ -356,6 +356,14 @@ const T = DebugPanel.define({
     rerollsPass: { value: 2, min: 0, max: 8, step: 1, label: 'Free rerolls per day with Battle Pass' },
     // The Pass no longer doubles Expedition throughput, so it gets a small XP-only bonus on deliveries (never Gold, shards,
     // materials or time). Applied when the order is ACCEPTED and frozen in the snapshot.
+    // Round 14: Gold and XP of an order scale with the hero's level, so a level-100 hero is not offered a 30 minute order for +20 Gold. The factor is 1 up to
+    // levelScaleFrom (the first sessions are untouched) and grows linearly between the anchors below to what an hour of Hunting pays at that level when the
+    // whole haul is sold to the merchant (the order stays about as good as hunting for the same time: scripts/sim/orderScale.sim.ts measures it, and the
+    // test in round14.test.ts keeps it inside 0.8 to 1.2). The cargo an order asks for is NOT scaled: it stays a bonus on top of what the player already has.
+    levelScaleFrom: { value: 40, min: 1, max: 100, step: 1, label: 'Character level where order rewards start to scale' },
+    levelScale50: { value: 3.2, min: 1, max: 20, step: 0.1, label: 'Order reward factor at character level 50' },
+    levelScale75: { value: 5.5, min: 1, max: 20, step: 0.1, label: 'Order reward factor at character level 75' },
+    levelScale100: { value: 7.7, min: 1, max: 30, step: 0.1, label: 'Order reward factor at character level 100' },
     passXpBonus: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Extra delivery XP with Battle Pass (fraction)' },
     offerTtlHours: { value: 24, min: 1, max: 168, step: 1, label: 'Hours before an unaccepted offer is replaced' },
     durationJitter: { value: 0.1, min: 0, max: 0.4, step: 0.05, label: 'Duration variation around the distance reference (+/-)' },
@@ -449,14 +457,34 @@ const T = DebugPanel.define({
   // Round 13 (weekly.ts): four weekly goals (drawn from five activities) and a 7-day login streak. Claimed by the player; the progression simulator never claims them.
   weekly: {
     _label: 'Weekly goals',
-    huntHours: { value: 6, min: 1, max: 40, step: 1, label: 'Goal: hours spent hunting (counted when a hunt ends)' },
-    deliveries: { value: 3, min: 1, max: 20, step: 1, label: 'Goal: delivery orders completed' },
-    gathered: { value: 150, min: 10, max: 2000, step: 10, label: 'Goal: units gathered (ore + wood + plants)' },
-    forged: { value: 4, min: 1, max: 50, step: 1, label: 'Goal: pieces forged' },
-    floors: { value: 25, min: 5, max: 200, step: 5, label: 'Goal: dungeon floors cleared (Profundezas included)' },
-    goldPerGoal: { value: 150, min: 0, max: 2000, step: 10, label: 'Gold for each goal' },
-    bonusGold: { value: 400, min: 0, max: 5000, step: 50, label: 'Gold for finishing all four' },
-    bonusShards: { value: 3, min: 0, max: 20, step: 1, label: 'Runas for finishing all four' },
+    // Round 14: four bands by character level (1-24, 25-49, 50-99, 100 and paragon). The band is fixed when the week begins. Band 1 is the original Round 13 numbers.
+    // The un-numbered keys are band 1, the 2 / 3 / 4 keys the other bands; goldMult2-4 multiply the Gold of a goal, of the bonus and of the login streak. Runas never scale.
+    huntHours: { value: 6, min: 1, max: 40, step: 1, label: 'Goal, band 1: hours spent hunting (counted when a hunt ends)' },
+    deliveries: { value: 3, min: 1, max: 20, step: 1, label: 'Goal, band 1: delivery orders completed' },
+    gathered: { value: 150, min: 10, max: 2000, step: 10, label: 'Goal, band 1: units gathered (ore + wood + plants)' },
+    forged: { value: 4, min: 1, max: 50, step: 1, label: 'Goal, band 1: pieces forged' },
+    floors: { value: 25, min: 5, max: 200, step: 5, label: 'Goal, band 1: dungeon floors cleared (Profundezas included)' },
+    huntHours2: { value: 8, min: 1, max: 40, step: 1, label: 'Goal, band 2 (level 25-49): hours spent hunting' },
+    deliveries2: { value: 4, min: 1, max: 20, step: 1, label: 'Goal, band 2: delivery orders completed' },
+    gathered2: { value: 250, min: 10, max: 2000, step: 10, label: 'Goal, band 2: units gathered' },
+    forged2: { value: 5, min: 1, max: 50, step: 1, label: 'Goal, band 2: pieces forged' },
+    floors2: { value: 35, min: 5, max: 200, step: 5, label: 'Goal, band 2: dungeon floors cleared' },
+    huntHours3: { value: 10, min: 1, max: 40, step: 1, label: 'Goal, band 3 (level 50-99): hours spent hunting' },
+    deliveries3: { value: 5, min: 1, max: 20, step: 1, label: 'Goal, band 3: delivery orders completed' },
+    gathered3: { value: 400, min: 10, max: 2000, step: 10, label: 'Goal, band 3: units gathered' },
+    forged3: { value: 6, min: 1, max: 50, step: 1, label: 'Goal, band 3: pieces forged' },
+    floors3: { value: 50, min: 5, max: 200, step: 5, label: 'Goal, band 3: dungeon floors cleared' },
+    huntHours4: { value: 12, min: 1, max: 40, step: 1, label: 'Goal, band 4 (level 100 and paragon): hours spent hunting' },
+    deliveries4: { value: 6, min: 1, max: 20, step: 1, label: 'Goal, band 4: delivery orders completed' },
+    gathered4: { value: 600, min: 10, max: 2000, step: 10, label: 'Goal, band 4: units gathered' },
+    forged4: { value: 7, min: 1, max: 50, step: 1, label: 'Goal, band 4: pieces forged' },
+    floors4: { value: 60, min: 5, max: 200, step: 5, label: 'Goal, band 4: dungeon floors cleared (Profundezas depths count)' },
+    goldPerGoal: { value: 150, min: 0, max: 2000, step: 10, label: 'Gold for each goal (band 1)' },
+    bonusGold: { value: 400, min: 0, max: 5000, step: 50, label: 'Gold for finishing all four (band 1)' },
+    bonusShards: { value: 3, min: 0, max: 20, step: 1, label: 'Runas for finishing all four (every band)' },
+    goldMult2: { value: 2, min: 1, max: 50, step: 0.5, label: 'Gold multiplier, band 2 (goals, bonus, login streak)' },
+    goldMult3: { value: 6, min: 1, max: 50, step: 0.5, label: 'Gold multiplier, band 3' },
+    goldMult4: { value: 10, min: 1, max: 50, step: 0.5, label: 'Gold multiplier, band 4' },
   },
   streak: {
     _label: 'Login streak',

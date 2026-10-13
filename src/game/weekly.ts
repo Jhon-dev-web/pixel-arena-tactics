@@ -1,3 +1,4 @@
+import { playerLevel } from './engine';
 import type { SaveData } from './engine';
 import type { ConsumableId } from './consumables';
 import { statsOf } from './stats';
@@ -55,8 +56,22 @@ export const weeklyCounters = (stats: LifetimeStats): WeeklyBase => ({
   floors: stats.dungeonFloors ?? 0,
 });
 
+// The four bands by character level (paragon counts as 100): band 1 is levels 1-24, 2 is 25-49, 3 is 50-99, 4 is level 100 and beyond. The weekly goals take the band
+// of the hero when the week begins (WeeklyState.band); the login streak takes the band of the hero on the day it is claimed.
+export type WeeklyBand = 1 | 2 | 3 | 4;
+export const weeklyBand = (level: number): WeeklyBand => (level >= 100 ? 4 : level >= 50 ? 3 : level >= 25 ? 2 : 1);
+const bandOf = (raw: unknown, level: number): WeeklyBand => (raw === 1 || raw === 2 || raw === 3 || raw === 4 ? raw : weeklyBand(level));
+// The band tables live in tunables.ts as <name> (band 1) and <name>2..4.
+const tv = (name: string, band: WeeklyBand): number => {
+  const w = T.weekly as unknown as Record<string, number>;
+  return band === 1 ? w[name] : w[`${name}${band}`];
+};
+// Gold multiplier of a band (1 for band 1): goals, the weekly bonus and the login streak.
+export const weeklyGoldMult = (band: WeeklyBand): number => (band === 1 ? 1 : (T.weekly as unknown as Record<string, number>)[`goldMult${band}`]);
+
 export interface WeeklyState {
   week: string; // 'YYYY-MM-DD' of the Monday this state belongs to
+  band: WeeklyBand; // the hero's band when the week began: it fixes the targets and the Gold of every goal of the week
   base: WeeklyBase; // the counters when the week began (or when the save first saw it)
   claimed: WeeklyGoalId[];
   bonusClaimed: boolean;
@@ -72,35 +87,38 @@ export interface WeeklyGoalDef {
   shards: number;
 }
 
-export function weeklyGoalDefs(): Record<WeeklyGoalId, WeeklyGoalDef> {
-  const w = T.weekly;
-  const goal = (id: WeeklyGoalId, target: number, unit: 'hours' | 'count'): WeeklyGoalDef => ({ id, nameKey: `w_${id}`, descKey: `w_${id}_d`, target, unit, gold: w.goldPerGoal, shards: 0 });
+export function weeklyGoalDefs(band: WeeklyBand = 1): Record<WeeklyGoalId, WeeklyGoalDef> {
+  const gold = Math.round(T.weekly.goldPerGoal * weeklyGoldMult(band));
+  const goal = (id: WeeklyGoalId, target: number, unit: 'hours' | 'count'): WeeklyGoalDef => ({ id, nameKey: `w_${id}`, descKey: `w_${id}_d`, target, unit, gold, shards: 0 });
   return {
-    hunt: goal('hunt', w.huntHours, 'hours'),
-    deliveries: goal('deliveries', w.deliveries, 'count'),
-    gather: goal('gather', w.gathered, 'count'),
-    forge: goal('forge', w.forged, 'count'),
-    floors: goal('floors', w.floors, 'count'),
+    hunt: goal('hunt', tv('huntHours', band), 'hours'),
+    deliveries: goal('deliveries', tv('deliveries', band), 'count'),
+    gather: goal('gather', tv('gathered', band), 'count'),
+    forge: goal('forge', tv('forged', band), 'count'),
+    floors: goal('floors', tv('floors', band), 'count'),
   };
 }
 
+// The Gold for finishing all four goals of a week of this band (the Runas never scale).
+export const weeklyBonusGold = (band: WeeklyBand): number => Math.round(T.weekly.bonusGold * weeklyGoldMult(band));
+
 // The four goals of the week `ms` falls in: the five activities take turns being left out, one per week, so no week repeats the last one's set.
-export function activeWeeklyGoals(ms: number): WeeklyGoalDef[] {
-  const defs = weeklyGoalDefs();
+export function activeWeeklyGoals(ms: number, band: WeeklyBand = 1): WeeklyGoalDef[] {
+  const defs = weeklyGoalDefs(band);
   const leftOut = ((weekIndex(ms) % WEEKLY_GOAL_IDS.length) + WEEKLY_GOAL_IDS.length) % WEEKLY_GOAL_IDS.length;
   return WEEKLY_GOAL_IDS.filter((_, i) => i !== leftOut).map((id) => defs[id]);
 }
 
 export const emptyWeeklyBase = (): WeeklyBase => ({ hunt: 0, deliveries: 0, gather: 0, forge: 0, floors: 0 });
 
-export function freshWeekly(stats: LifetimeStats | undefined, now: number): WeeklyState {
-  return { week: utcWeek(now), base: stats ? weeklyCounters(stats) : emptyWeeklyBase(), claimed: [], bonusClaimed: false };
+export function freshWeekly(stats: LifetimeStats | undefined, now: number, level = 1): WeeklyState {
+  return { week: utcWeek(now), band: weeklyBand(level), base: stats ? weeklyCounters(stats) : emptyWeeklyBase(), claimed: [], bonusClaimed: false };
 }
 
 // Whatever the save holds (absent, partial, corrupt) as a trusted state. Does not roll the week: see rollWeekly.
-export function sanitizeWeekly(raw: unknown, stats: LifetimeStats | undefined, now: number): WeeklyState {
+export function sanitizeWeekly(raw: unknown, stats: LifetimeStats | undefined, now: number, level = 1): WeeklyState {
   const r = raw && typeof raw === 'object' ? (raw as Partial<Record<keyof WeeklyState, unknown>>) : null;
-  if (!r || typeof r.week !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(r.week)) return freshWeekly(stats, now);
+  if (!r || typeof r.week !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(r.week)) return freshWeekly(stats, now, level);
   const base = emptyWeeklyBase();
   const rb = r.base && typeof r.base === 'object' ? (r.base as Record<string, unknown>) : {};
   for (const id of WEEKLY_GOAL_IDS) {
@@ -108,18 +126,19 @@ export function sanitizeWeekly(raw: unknown, stats: LifetimeStats | undefined, n
     base[id] = Number.isFinite(n) && n > 0 ? n : 0;
   }
   const claimed = Array.isArray(r.claimed) ? WEEKLY_GOAL_IDS.filter((id) => (r.claimed as unknown[]).includes(id)) : [];
-  return { week: r.week, base, claimed, bonusClaimed: r.bonusClaimed === true };
+  // A week saved before the bands existed has none: it takes the band of the hero as it is now (the first time the save is seen).
+  return { week: r.week, band: bandOf(r.band, level), base, claimed, bonusClaimed: r.bonusClaimed === true };
 }
 
 // The state for the week `now` is in: the same object when it is already that week, a fresh one (snapshot of the counters, nothing claimed) when a new week has begun.
 // A clock set back (a stored week later than now) keeps the stored week rather than handing out a second round.
-export function rollWeekly(weekly: WeeklyState, stats: LifetimeStats | undefined, now: number): WeeklyState {
-  return weekly.week >= utcWeek(now) ? weekly : freshWeekly(stats, now);
+export function rollWeekly(weekly: WeeklyState, stats: LifetimeStats | undefined, now: number, level = 1): WeeklyState {
+  return weekly.week >= utcWeek(now) ? weekly : freshWeekly(stats, now, level);
 }
 
 // Returns the save with its weekly state rolled to the week `now` is in (the same object when nothing changed).
 export function rollSaveWeekly(save: SaveData, now: number): SaveData {
-  const weekly = rollWeekly(save.quests.weekly, statsOf(save), now);
+  const weekly = rollWeekly(save.quests.weekly, statsOf(save), now, playerLevel(save.xp));
   return weekly === save.quests.weekly ? save : { ...save, quests: { ...save.quests, weekly } };
 }
 
@@ -132,6 +151,8 @@ export interface WeeklyGoalView {
 
 export interface WeeklyView {
   week: string;
+  band: WeeklyBand; // the band the goals of this week were fixed in
+  bonusGold: number; // the Gold of the weekly bonus in that band
   resetsAt: number;
   goals: WeeklyGoalView[];
   allClaimed: boolean; // the four goals are claimed: the bonus can be taken
@@ -139,18 +160,18 @@ export interface WeeklyView {
   claimable: number; // goals ready to claim, plus the bonus when it is ready
 }
 
-export function weeklyView(save: Pick<SaveData, 'quests' | 'stats'>, now: number): WeeklyView {
+export function weeklyView(save: Pick<SaveData, 'quests' | 'stats'> & { xp?: number }, now: number): WeeklyView {
   const stats = statsOf(save);
-  const weekly = rollWeekly(save.quests.weekly, stats, now);
+  const weekly = rollWeekly(save.quests.weekly, stats, now, playerLevel(save.xp ?? 0));
   const counters = weeklyCounters(stats);
-  const goals = activeWeeklyGoals(now).map((def): WeeklyGoalView => {
+  const goals = activeWeeklyGoals(now, weekly.band).map((def): WeeklyGoalView => {
     const gained = Math.max(0, counters[def.id] - weekly.base[def.id]);
     const value = def.unit === 'hours' ? gained / 3600 : gained;
     return { def, progress: Math.min(def.target, value), complete: value >= def.target, claimed: weekly.claimed.includes(def.id) };
   });
   const allClaimed = goals.every((g) => g.claimed);
   const claimable = goals.filter((g) => g.complete && !g.claimed).length + (allClaimed && !weekly.bonusClaimed ? 1 : 0);
-  return { week: weekly.week, resetsAt: nextWeekStart(now), goals, allClaimed, bonusClaimed: weekly.bonusClaimed, claimable };
+  return { week: weekly.week, band: weekly.band, bonusGold: weeklyBonusGold(weekly.band), resetsAt: nextWeekStart(now), goals, allClaimed, bonusClaimed: weekly.bonusClaimed, claimable };
 }
 
 export interface WeeklyClaim {
@@ -164,7 +185,7 @@ export function claimWeeklyGoal(save: SaveData, id: WeeklyGoalId, now: number): 
   const view = weeklyView(save, now);
   const goal = view.goals.find((g) => g.def.id === id);
   if (!goal || !goal.complete || goal.claimed) return null;
-  const weekly = rollWeekly(save.quests.weekly, statsOf(save), now);
+  const weekly = rollWeekly(save.quests.weekly, statsOf(save), now, playerLevel(save.xp));
   const next: WeeklyState = { ...weekly, claimed: [...weekly.claimed, id] };
   return {
     save: { ...save, gold: save.gold + goal.def.gold, shards: save.shards + goal.def.shards, quests: { ...save.quests, weekly: next } },
@@ -177,8 +198,8 @@ export function claimWeeklyGoal(save: SaveData, id: WeeklyGoalId, now: number): 
 export function claimWeeklyBonus(save: SaveData, now: number): WeeklyClaim | null {
   const view = weeklyView(save, now);
   if (!view.allClaimed || view.bonusClaimed) return null;
-  const weekly = rollWeekly(save.quests.weekly, statsOf(save), now);
-  const gold = T.weekly.bonusGold;
+  const weekly = rollWeekly(save.quests.weekly, statsOf(save), now, playerLevel(save.xp));
+  const gold = view.bonusGold;
   const shards = T.weekly.bonusShards;
   return {
     save: { ...save, gold: save.gold + gold, shards: save.shards + shards, quests: { ...save.quests, weekly: { ...weekly, bonusClaimed: true } } },
@@ -214,7 +235,13 @@ export interface StreakReward {
 }
 
 // Escalating small rewards, one per streak day; tunables.ts streak.* holds the Gold and Runas, the consumables are the Round 12 recipes (a streak is one more way to get one).
-export function streakReward(day: number): StreakReward {
+export function streakReward(day: number, band: WeeklyBand = 1): StreakReward {
+  const raw = streakRewardBase(day);
+  const mult = weeklyGoldMult(band);
+  return mult === 1 || raw.gold === 0 ? raw : { ...raw, gold: Math.round(raw.gold * mult) };
+}
+
+function streakRewardBase(day: number): StreakReward {
   const s = T.streak;
   switch (Math.max(1, Math.min(STREAK_DAYS, Math.floor(day)))) {
     case 1:
@@ -244,18 +271,19 @@ export interface StreakStatus {
   reward: StreakReward;
 }
 
-export function streakStatus(streak: StreakState, now: number, ownsPass: boolean): StreakStatus {
+export function streakStatus(streak: StreakState, now: number, ownsPass: boolean, level = 1): StreakStatus {
+  const band = weeklyBand(level);
   const today = utcDay(now);
   const gap = streak.last ? daysBetween(streak.last, today) : NaN;
   const saverAvailable = ownsPass && T.battlePass.streakSavers > 0 && streak.saverWeek !== utcWeek(now);
   // Claimed today, or the stored day lies in the future (a clock set back): nothing to claim, and no second round for the same days.
   if (streak.last && Number.isFinite(gap) && gap <= 0) {
-    return { today, claimedToday: true, day: streak.count, broken: false, saver: false, saverAvailable, reward: streakReward(streak.count) };
+    return { today, claimedToday: true, day: streak.count, broken: false, saver: false, saverAvailable, reward: streakReward(streak.count, band) };
   }
   const continues = streak.count > 0 && gap === 1;
   const saved = streak.count > 0 && gap === 2 && saverAvailable;
   const day = continues || saved ? (streak.count >= STREAK_DAYS ? 1 : streak.count + 1) : 1;
-  return { today, claimedToday: false, day, broken: streak.count > 0 && !continues && !saved, saver: saved, saverAvailable, reward: streakReward(day) };
+  return { today, claimedToday: false, day, broken: streak.count > 0 && !continues && !saved, saver: saved, saverAvailable, reward: streakReward(day, band) };
 }
 
 export interface StreakClaim {
@@ -267,7 +295,7 @@ export interface StreakClaim {
 
 // Claims today's streak reward; null when it was already claimed today.
 export function claimStreak(save: SaveData, now: number, ownsPass: boolean): StreakClaim | null {
-  const status = streakStatus(save.quests.streak, now, ownsPass);
+  const status = streakStatus(save.quests.streak, now, ownsPass, playerLevel(save.xp));
   if (status.claimedToday) return null;
   const reward = status.reward;
   const consumables = reward.item ? { ...save.consumables, [reward.item.id]: (save.consumables[reward.item.id] ?? 0) + reward.item.n } : save.consumables;
@@ -281,6 +309,6 @@ export function claimStreak(save: SaveData, now: number, ownsPass: boolean): Str
 }
 
 // What the sidebar dot counts from this file: goals (and the bonus) ready to claim, plus today's streak reward when it has not been taken.
-export function periodClaimable(save: Pick<SaveData, 'quests' | 'stats'>, now: number, ownsPass: boolean): number {
-  return weeklyView(save, now).claimable + (streakStatus(save.quests.streak, now, ownsPass).claimedToday ? 0 : 1);
+export function periodClaimable(save: Pick<SaveData, 'quests' | 'stats'> & { xp?: number }, now: number, ownsPass: boolean): number {
+  return weeklyView(save, now).claimable + (streakStatus(save.quests.streak, now, ownsPass, playerLevel(save.xp ?? 0)).claimedToday ? 0 : 1);
 }

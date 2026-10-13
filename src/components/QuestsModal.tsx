@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { activeLocale, fmtNum, t } from '../locales';
 import T from '../game/tunables';
 import { getConsumable } from '../game/consumables';
-import { STREAK_DAYS, streakReward, streakStatus, weeklyView, WeeklyGoalId, WeeklyGoalView } from '../game/weekly';
+import { STREAK_DAYS, streakReward, streakStatus, weeklyBand, weeklyView, WeeklyGoalId, WeeklyGoalView } from '../game/weekly';
 import ConsumableIcon from './ConsumableIcon';
 import Assets from '../assets.json';
-import { SaveData } from '../game/engine';
+import { playerLevel, SaveData } from '../game/engine';
 import { questContext } from '../game/questContext';
 import { getTitleDef } from '../game/titles';
 import { statsOf } from '../game/stats';
@@ -55,7 +55,9 @@ export default function QuestsModal({
   const ctx = questContext(save);
   const now = Date.now();
   const weekly = weeklyView(save, now);
-  const streak = streakStatus(save.quests.streak, now, ownsPass);
+  const level = playerLevel(save.xp);
+  const band = weeklyBand(level);
+  const streak = streakStatus(save.quests.streak, now, ownsPass, level);
   const dailyReady = QUESTS_DAILY.some((q) => isComplete(q, save.quests, ctx) && !isClaimed(q, save.quests));
   const achievementReady = QUESTS_ACHIEVEMENTS.some((q) => isComplete(q, save.quests, ctx) && !isClaimed(q, save.quests));
   const dot = (on: boolean) => (on ? <span className="tab-dot" aria-hidden="true" /> : null);
@@ -162,7 +164,7 @@ export default function QuestsModal({
         </div>
         <div className="streak-days">
           {Array.from({ length: STREAK_DAYS }, (_, i) => i + 1).map((d) => {
-            const r = streakReward(d);
+            const r = streakReward(d, band);
             const state = d <= doneDays ? ' done' : d === streak.day ? ' today' : '';
             return (
               <div className={`streak-day${state}`} key={d} data-streak-pip={d}>
@@ -295,7 +297,7 @@ export default function QuestsModal({
               <div className={`quest-card${weekly.bonusClaimed ? ' claimed' : ''}`} data-weekly-id="bonus">
                 <div className="quest-head">
                   <span className="quest-name">{t('quests.weeklyBonus')}</span>
-                  {rewardChips(T.weekly.bonusGold, T.weekly.bonusShards)}
+                  {rewardChips(weekly.bonusGold, T.weekly.bonusShards)}
                 </div>
                 <span className="quest-desc">{t('quests.weeklyBonusD')}</span>
                 {weekly.bonusClaimed ? (

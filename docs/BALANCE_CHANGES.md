@@ -1130,3 +1130,123 @@ Nenhum número existente mudou. Entram dois sistemas novos, que o jogador resgat
 | Escudo de Sequência (Passe) | 1 por semana UTC | um único dia perdido não zera a sequência |
 
 Soma por semana (tudo resgatado): 1000 de Ouro das metas + 900 de Ouro da sequência + 6 Runas + 3 itens; as missões diárias pagam 3150 de Ouro e 14 Runas por semana. As metas leem a diferença entre as estatísticas da vida inteira e uma foto tirada no começo da semana (dois contadores novos: `huntSeconds`, `dungeonFloors`), então não há contador novo nos caminhos quentes e a primeira semana de um save antigo começa em zero. Números em `T.weekly`, `T.streak` e `T.battlePass.streakSavers`.
+
+## Rodada 14 — pedidos, metas semanais e Profundezas acompanham o herói (2026-10-12)
+
+Três mudanças de número, uma por pergunta da revisão de QA da rodada 13 (`UI_REVIEW.md`). O resto da rodada (telas da primeira hora, teste de fumaça) não mexe em balanceamento. Ferramentas novas: `npm run sim:orders` (quanto vale uma hora de Caça por nível de herói e o que o pedido paga), `npm run sim:depths` (até que profundeza chega cada herói de fim de jogo; aceita `DEPTH_HP`, `DEPTH_DMG`, `DEPTH_BOSS_HP`, `DEPTH_BOSS_DMG`, `PARAGON_DMG`, `PARAGON_MAX` para testar hipóteses), e o teste `round14.test.ts`, que mantém as três regras abaixo.
+
+### 1. Pedidos: Ouro e XP crescem com o nível
+
+**Problema.** Um herói de nível 100 recebia pedidos de 30 minutos a +17 Ouro (tier 3 local, 34,5 Ouro/h): o pagamento era função só de tier x tempo e o tier para no andar 76.
+
+**Âncora.** O que uma hora de Caça rende no mesmo nível de herói, medido por `npm run sim:orders`: a melhor zona e profundidade que o herói vence sempre (`outlook 'always'`), sub-nível 5, e tudo o que cai vendido ao mercador (`T.merchant.priceRate` = 15% do valor de referência) mais o Ouro da zona.
+
+| Herói | Valor de referência de 1 h de Caça (Ouro + materiais a 100%) | Vendido ao mercador | Pedido hoje (Ouro/h, tier da zona) |
+|---|---|---|---|
+| nível 1, sem equipamento | 159 | ~27 | 30 a 35 |
+| nível 10, tier 1 +4 | 294 | ~47 | 30 a 35 |
+| nível 30, tier 3 +4 | 435 | ~68 | 33 a 38 |
+| nível 50, tier 4 +4 | 738 | ~120 | 34,5 a 39,5 |
+| nível 75, tier 5 +4 | 1 272 | ~203 | 34,5 a 39,5 |
+| nível 100, tier 6 +8 | 1 821 | ~285 | 34,5 a 39,5 |
+
+No começo o pedido já paga o que a Caça paga (~1,1x no nível 1); a diferença abre de verdade depois do nível 40. Por isso o fator é 1 até o nível 40 (as primeiras sessões e a guarda de progressão ficam idênticas) e depois sobe em linha reta até âncoras que igualam o pedido ao que a Caça pagaria vendida ao mercador.
+
+**Regra nova** (`deliveries.ts orderLevelFactor`, `T.deliveries.levelScale*`): fator 1 até o nível 40; 3,2 no 50; 5,5 no 75; 7,7 no 100 (interpolação linear entre as âncoras). Multiplica o Ouro **e o XP** do pedido, na hora de gerar a oferta (fica congelado no snapshot como antes). **A carga que o pedido pede não muda** (o tamanho dela vem do Ouro sem fator): o pedido continua sendo um bônus sobre materiais que o jogador já tem, e nenhum sorteio muda (as ofertas saem iguais, só o pagamento muda). O tier dos materiais pedidos (`deliveryTier`, andar 26 / 51 / 76) já fazia parte do Ouro por hora, e continua.
+
+Recompensa de um pedido, antes -> depois (valores nominais, sem a variação de ±10% do tempo; Ouro e, na última coluna, XP de um pedido de 10 h):
+
+| Nível (tier) | 30 min Ouro | 4,5 h Ouro | 10 h Ouro | 10 h XP |
+|---|---|---|---|---|
+| 1 (0) | 15 -> 15 | 144 -> 144 | 335 -> 335 | 11 200 -> 11 200 |
+| 10 (0) | 15 -> 15 | 144 -> 144 | 335 -> 335 | 11 200 -> 11 200 |
+| 30 (2) | 17 -> 17 | 158 -> 158 | 365 -> 365 | 11 200 -> 11 200 |
+| 50 (3) | 17 -> 54 | 164 -> 525 | 380 -> 1 216 | 11 200 -> 35 840 |
+| 75 (3) | 17 -> 94 | 164 -> 902 | 380 -> 2 090 | 11 200 -> 61 600 |
+| 100 (3) | 17 -> 131 | 164 -> 1 263 | 380 -> 2 926 | 11 200 -> 86 240 |
+
+O teste confere (a) níveis 1 a 30 pagam exatamente o que pagavam (muito dentro de ±10%), (b) a razão entre o que o pedido paga por hora e o que a Caça paga vendida ao mercador fica entre 0,8 e 1,2 nos níveis 50, 75 e 100 (hoje 0,99 / 1,00 / 1,00), (c) a carga é a mesma que um herói de nível 30 recebe com a mesma semente.
+
+### 2. Metas semanais e sequência de login em quatro faixas
+
+Faixa pelo nível do herói: 1 a 24, 25 a 49, 50 a 99, 100 com Paragon. A faixa das metas fica **fixa quando a semana começa** (`WeeklyState.band`; um herói que sobe de nível na quarta continua na faixa da segunda; uma semana salva antes das faixas assume a faixa do herói na primeira leitura). A sequência de login usa a faixa do herói no dia do resgate. Runas **não** escalam. A faixa 1 é exatamente o que era.
+
+| Faixa | Horas de caça | Pedidos | Coletar | Forjar | Andares (Profundezas contam) | Ouro por meta | Bônus de 4 metas | Sequência: dia 1 / 2 / 4 / 6 / 7 |
+|---|---|---|---|---|---|---|---|---|
+| 1 (1-24) | 6 | 3 | 150 | 4 | 25 | 150 | 400 + 3 Runas | 80 / 120 / 160 / 240 / 300 |
+| 2 (25-49) | 8 | 4 | 250 | 5 | 35 | 300 | 800 + 3 Runas | 160 / 240 / 320 / 480 / 600 |
+| 3 (50-99) | 10 | 5 | 400 | 6 | 50 | 900 | 2 400 + 3 Runas | 480 / 720 / 960 / 1 440 / 1 800 |
+| 4 (100+) | 12 | 6 | 600 | 7 | 60 | 1 500 | 4 000 + 3 Runas | 800 / 1 200 / 1 600 / 2 400 / 3 000 |
+
+Multiplicadores de Ouro 1 / 2 / 6 / 10 (`goldMult2..4`). Uma hora de Caça vendida ao mercador vale ~27 Ouro/h no nível 1, ~60 no 25, ~120 no 50, ~285 no 100 (1 / 2,2 / 4,4 / 10,6 vezes o do nível 1; a faixa 3 vai de 4,4x no 50 a 7,5x no 75, daí o 6). O contador de andares já somava as profundezas (`stats.dungeonFloors` vem de `recordDungeonRun`, que conta as profundezas como estágios): vale em todas as faixas, e só a faixa 4 chega lá. O simulador de progressão nunca resgata metas nem sequência, então nada disso mexe nas medianas.
+
+### 3. Profundezas: do muro nas profundezas 10 a 25 a uma escada até a 50
+
+**Medição** (`npm run sim:depths`; herói de nível 100, equipamento tier 6 +8 nos 7 slots, atributos do simulador, build Guerreiro, sem poções; profundeza vencida = 2 de 3 execuções com a semente, a tabela mostra a última de uma sequência sem quebra):
+
+| Herói | Antes | Depois |
+|---|---|---|
+| comum, Paragon 0 | 19 | **24** |
+| comum, Paragon 10 | 19 | 29 |
+| comum, Paragon 20 | 19 | 32 |
+| comum, Paragon 30 | 19 | 32 |
+| comum, Paragon 40 | 19 | 35 |
+| comum, Paragon 50 | 19 | 39 |
+| épico, Paragon 0 / 20 / 50 | 29 / 29 / 29 | 37 / 39 / 48 |
+| lendário, Paragon 0 | 29 | 41 |
+| lendário, Paragon 10 / 20 / 30 / 40 | 29 / 29 / 29 / 29 | 47 / 49 / 49 / 49 |
+| lendário, Paragon 50 | 29 | **55** |
+
+Antes, o muro era o chefe da profundeza 20 (x1,6 PV, x1,25 dano: um salto de CP de uns 40%, mais do que o herói comum tem para dar) e o Paragon quase não ajudava (+0,2% de dano por nível, +10% no teto, 5% de CP). Agora: o herói comum chega à 24, cada 10 níveis de Paragon valem 3 a 5 profundezas até o próximo muro, e a profundeza 50 só cai para quem tem peças lendárias **e** perto do Paragon máximo (lendário com Paragon 20 a 40 para na 49; épico com Paragon 50 chega à 48; lendário com Paragon 50 passa).
+
+**Números** (`T.depths`, `T.paragon`):
+
+| Número | Antes | Depois |
+|---|---|---|
+| PV por profundeza (composto) | +4% | +3,5% |
+| dano por profundeza (composto) | +3% | +3% |
+| chefe de profundeza, PV / dano | x1,6 / x1,25 | x1,1 / x1,05 |
+| Paragon, dano por nível | +0,2% | **+3%** |
+| Paragon, teto | +10% | **+150%** (no nível 50, como antes) |
+
+O Paragon virou a alavanca principal do fim de jogo, porque só dano: o jogo inteiro até aqui (Caça, Masmorra andares 1-100, Profundezas) o usa, e nenhum herói chega ao nível 100 antes do dia 21 do simulador (mediana do nível no dia 14: 47), então a guarda de progressão não vê a mudança. O custo de XP de cada nível de Paragon não mudou. O custo é real: com +3% por nível, um Paragon 10 já deixa um herói 30% mais forte na Caça e na Masmorra também (não só nas Profundezas); é o preço de a pergunta pedir "+3 a 5 profundezas a cada 10 níveis" sem tirar o muro. Andares 1 a 100 não mudam (o teste de identidade de `depths.test.ts` continua verde). Chance de único / relíquia do chefe, Runas e recorde por profundeza não mudam: o ritmo máximo de únicos vindos das Profundezas continua o mesmo (no máximo 0,15 peça por chefe, e cada chefe só rende uma vez; mesmo um herói que passe por um chefe a cada 3 dias não passa de 1 peça em 20 dias, `depths.test.ts`).
+
+### 4. Tabela de guarda (cenário A, 20 seeds, mediana), antes -> depois
+
+U = com únicos (padrão), N = `SIM_NO_UNIQUES=1`. "Antes" = commit e6e75ca (a árvore antes da rodada, exportada com `git archive`); "depois" = esta rodada.
+
+| Meta | Antes U / N | Depois U / N |
+|---|---|---|
+| T2 primeira sessão >= andar 8; checkpoint 10 no dia 1 | 8 / 8 | 8 / 8 |
+| T3 primeira peça forjada (dia <= 2) | 2 / 2 | 2 / 2 |
+| T4 nível dia 1 / 3 / 14 (10-16 / 20-29 / 45-60) | 13 / 27 / 47 · 13 / 27 / 47 | 13 / 27 / 47 · 13 / 27 / 47 |
+| T5 chefe 25 pela 1ª vez (dia 4-6); vitória ao chegar | dia 5, 0% · dia 5, 0% | dia 5, 0% · dia 5, 0% |
+| T6 chegada ao andar 50: 1ª seed / mediana (meta 12-15) | 12 / 15 · 12 / 15 | 12 / 15 · 12 / 14,5 |
+| T6 chefe 50: 1ª seed / mediana / seeds em 21 dias (meta ~12-16) | 13 / 16,5 / 18 · 13 / 17,5 / 19 | 13 / 15 / 20 · 13 / 15 / 20 |
+| T7 menor razão (N+1)/(N-1) em volta dos chefes (>= 1,0) | 1,05 | 1,05 |
+| T8 derrota mantém 75% do ouro | 75% | 75% |
+| I1 inventário enche (dia 3-6) | 6 | 6 |
+| I2 perda do jogador atento (< 5%), pior seed | 1,26% · 1,83% | 1,75% · 1,08% |
+| I3 perda de quem ignora (>= 10%), mediana | 85,7% · 88,1% | 83,6% · 88% |
+| **I4 ouro do mercador (< 35% do ouro de antes do mercador) dias 3 / 7 / 14** | 0 / 20,7 / 25,3% · 0 / 20,7 / 25,7% | 0 / 20,7 / 25,3% · 0 / 20,7 / 25,7% |
+
+Ler: nenhuma meta mexe de lugar, e as duas que mexem (chefe do andar 50 e, no N, a chegada) melhoram dentro da faixa pedida: de 16,5 / 17,5 para 15 dias (mediana) porque, do nível 40 (por volta do dia 9) em diante, o pedido passa a pagar mais Ouro e XP; chegada ao andar 50 e chefe 25 ficam onde estavam, e o nível do dia 14 fica igual. A linha I4 (a "parcela do mercador" que a guarda pede) não se move: o Ouro do mercador depende do que sobra de material, e o pedido novo não toca nele.
+
+### 5. Decisões que o diretor pode discordar
+
+1. **"O que a Caça pagaria" é Ouro mais materiais vendidos ao mercador (15%)**, não o Ouro cru da zona (3 a 12 por hora, "troco" desde a rodada de 2026-10-10), porque com o Ouro cru o pedido do nível 1 já pagaria 5x o que a Caça paga e a regra de manter o começo igual não fecharia. Com o valor de referência a 100% (a unidade das cargas) o pedido fica a ~0,2x da Caça já no nível 1; o mercador é o que o jogador consegue de fato transformar em Ouro.
+2. **O fator só começa no nível 40**, não no 30: de 1 a 30 os pedidos ficam idênticos (a guarda de progressão nem vê a diferença) e o salto de 1 para 3,2 entre os níveis 40 e 50 é a rampa. Na prática o herói simulado só passa do nível 40 por volta do dia 9, e a guarda quase não se mexeu (abaixo).
+3. **XP dos pedidos sobe junto com o Ouro** (mesmo fator). Só faz diferença de verdade entre os níveis 40 e ~70: um pedido de 10 h dá 36 mil XP no nível 50 (o nível 51 pede 53 mil) e 86 mil no nível 100, onde um nível de Paragon custa 35,2 milhões. Se for demais no meio, a âncora `levelScale50` é o botão.
+4. **A carga do pedido não sobe**: um pedido de nível 100 pede o mesmo punhado de materiais de um de nível 30 e paga 7,7x. Isso o faz valer mais como "Ouro por hora parado" e menos como destino de material. Se a ideia era o contrário, o ajuste é dimensionar a carga pelo Ouro com fator e subir os tetos `cap*` de `T.deliveries`.
+5. **Paragon de +0,2% para +3% por nível** muda mais que as Profundezas: ver 3. A alternativa (manter o Paragon e achatar o crescimento das profundezas para ~1% por nível) tira o muro de todo mundo e deixa a profundeza 50 aberta ao equipamento lendário sozinho.
+6. **Chefes de profundeza quase iguais a uma profundeza comum** (x1,1 PV, x1,05 dano): o salto de x1,6 / x1,25 criava degraus de 10 em 10 profundezas que escondiam o efeito do Paragon e do equipamento. O chefe continua sendo o único que rende Runas e únicos, e é marcado como chefe na tela.
+7. **Faixas pelo nível do herói, não pelo Paragon**: a faixa 4 é "nível 100" (qualquer Paragon).
+
+### 6. Achado que o diretor precisa saber: o nível 100 e o Paragon estão fora do alcance do XP de hoje
+
+`xpToReachLevel`: nível 50 = 326 mil XP, 75 = 18,1 milhões, 90 = 324 milhões, 100 = 3,34 **bilhões**; o nível de Paragon 1 custa 35,2 milhões e o 10, 40,3 milhões cada. A Caça paga no máximo ~9 mil XP/h (nível 75 em diante) e um estágio da Masmorra ou das Profundezas ~350 a 510 XP. Ou seja, ninguém chega ao nível 100, muito menos a Paragon, com as taxas de XP de depois do corte de 10x de 2026-10-10 (`huntingZones.ts`). As faixas altas desta rodada (pedidos acima do nível 75, metas da faixa 4, Paragon nas Profundezas) estão ajustadas contra heróis construídos pelo simulador (`buildHero`), como o pedido descreve, e não contra um ritmo de XP que existe. Este documento não mexe na curva de XP.
+
+### 7. Não feito, ou verificado só em parte
+
+- A tela de metas / pedidos nas faixas 2 a 4 foi conferida por teste e pelos números na tela de Missões num save de nível 100; nenhum pedido de nível 50 a 100 foi aceito e entregue até o fim no navegador (o relógio real não deixa).
+- O simulador de progressão só chega ao nível ~50 no dia 21: as faixas altas dos pedidos (nível 50 a 100) e do Paragon dependem do teste `round14.test.ts` e dos relatórios `sim:orders` / `sim:depths`, não do cenário A.

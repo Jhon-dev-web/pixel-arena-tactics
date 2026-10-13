@@ -17,6 +17,8 @@
     "desktop:dev": "node scripts/desktop-dev.mjs",
     "desktop:build": "node scripts/desktop-build.mjs",
     "desktop:start": "electron .",
+    "sim:orders": "vitest run --config vitest.sim.config.ts orderScale --silent=false --reporter=default",
+    "sim:depths": "vitest run --config vitest.sim.config.ts depthReach --silent=false --reporter=default",
     "sim:items": "vitest run --config vitest.sim.config.ts itemAudit --silent=false --reporter=default",
     "sim:flow": "vitest run --config vitest.sim.config.ts materialFlow --silent=false --reporter=default",
     "sim:recipes": "vitest run --config vitest.sim.config.ts recipeTune --silent=false --reporter=default",

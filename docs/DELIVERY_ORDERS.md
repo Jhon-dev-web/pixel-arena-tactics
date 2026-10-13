@@ -59,6 +59,10 @@ Pedidos de plantas: a produção da Horta é pequena (1 a 3 unidades/dia de Raiz
 
 Medicinal, Alquímico, Alquímico raro (só tier 4), Militar, Armadura, Encomenda rara (Nobres, 1 a 3), Forja, Comercial (processados). Cada um tem uma **assinatura** obrigatória (Militar = Garra, Medicinal = Erva, Alquímico raro = Flor, Armadura = Sangue, Encomenda rara = Núcleo + Cristal, Comercial = só processados, Forja = só minério e madeira). Pedidos com processados só saem de Regional para cima e a taxa de conversão nunca passa de 65% do Gold do pedido (o ratio ≥ 1 já garante Gold líquido positivo).
 
+## Rodada 14: o pagamento acompanha o nível do herói
+
+O Gold e o XP de um pedido são multiplicados por `orderLevelFactor(nível)` (`deliveries.ts`, `T.deliveries.levelScale*`): 1 até o nível 40, depois linear até 3,2 no nível 50, 5,5 no 75 e 7,7 no 100. A carga que o pedido pede **não** é multiplicada (ela continua sendo dimensionada pelo Gold sem fator): é um bônus em cima de materiais que o jogador já tem, e o que as ofertas pedem não muda com o nível. Um pedido de 30 minutos do nível 100 passa de +17 para +131 Gold. A razão com o que a Caça pagaria vendida ao mercador fica entre 0,8 e 1,2 nos níveis 50, 75 e 100 (teste em `round14.test.ts`; medição em `npm run sim:orders`). Números, tabela por nível e as decisões em `BALANCE_CHANGES.md`, Rodada 14. As tabelas acima descrevem a base (nível até 40).
+
 ## Passe = conveniência
 
 Sem Passe: 3 ofertas e 1 reroll/dia. Com Passe: 4 ofertas, 2 rerolls/dia e **+10% de XP nas Entregas**. **Não** dá Gold, slot, multiplicador de material, tempo menor nem melhor rewardRatio. Por escolher melhor entre 4 ofertas, o Passe rende +1 a 8% de Gold (mesmas entregas por dia).

@@ -289,12 +289,12 @@ describe('Paragon', () => {
     expect([p.level, p.into]).toEqual([3, 10]);
   });
 
-  it('the damage bonus is +0.2% per level and capped at +10%', () => {
+  it('the damage bonus is +3% per level (Rodada 14) and capped at +150%, reached at paragon level 50', () => {
     expect(paragonDamageBonus(0)).toBe(0);
-    expect(paragonDamageBonus(10)).toBeCloseTo(0.02);
-    expect(paragonDamageBonus(50)).toBeCloseTo(0.1);
+    expect(paragonDamageBonus(10)).toBeCloseTo(0.3);
+    expect(paragonDamageBonus(50)).toBeCloseTo(1.5);
     expect(paragonDamageBonus(5000)).toBe(T.paragon.maxBonus);
-    expect(T.paragon.maxBonus).toBeLessThanOrEqual(0.1);
+    expect(T.paragon.maxBonus / T.paragon.damagePerLevel).toBeCloseTo(50, 6);
   });
 
   it('raises the hero damage by exactly the bonus, and changes nothing below level 100', () => {
