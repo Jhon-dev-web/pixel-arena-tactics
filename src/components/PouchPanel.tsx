@@ -70,7 +70,7 @@ export default function PouchPanel({ save, onCreate, onOpen }: { save: SaveData;
       <div className="shop-section-title">{t('pouch.heldTitle')}</div>
       {held.length === 0 && <p className="stash-note">{t('pouch.none')}</p>}
       {held.map((id) => (
-        <div className="gear-row" key={`held:${id}`}>
+        <div className="gear-row pouch-held" key={`held:${id}`}>
           <div className="gear-info">
             <span className="gear-name">
               <span className="gear-name-text">

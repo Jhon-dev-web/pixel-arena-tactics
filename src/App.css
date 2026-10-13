@@ -10738,6 +10738,7 @@ button[data-ui]:focus-visible {
   padding: 4px 6px;
 }
 .ws-batch {
+  grid-column: 1 / -1;
   position: sticky;
   bottom: 0;
   display: flex;
@@ -10814,4 +10815,44 @@ button[data-ui]:focus-visible {
 .codex-price {
   font-size: calc(var(--font-size) - 2px);
   color: #ffe9a8;
+}
+
+.ws-batch > .stash-note {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-batch > button {
+  flex: 0 0 auto;
+}
+
+.pouch-body .shop-section-title,
+.pouch-body > .stash-note,
+.pouch-body > .craft-bag-full {
+  grid-column: 1 / -1;
+}
+.pouch-held {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.pouch-held .gear-info {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.pouch-held > button {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.ws-batch {
+  flex-wrap: wrap;
+}
+.ws-batch > .stash-note {
+  flex: 1 1 140px;
+  margin: 0;
+}
+.ws-price {
+  white-space: normal;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
 }
