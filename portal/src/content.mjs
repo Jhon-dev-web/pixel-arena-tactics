@@ -115,11 +115,11 @@ export const seasonPage = {
   generalTable: l('Ranking geral: posição, jogador, nível, andar e profundeza', 'Overall ranking: rank, player, level, floor and depth'),
   professionTable: l('Ranking da profissão: posição, jogador, nível e XP', 'Profession ranking: rank, player, level and XP'),
 };
-// The season championship is under study: no format, rules, dates or rewards exist, and none may be stated here. The one decided rule (owner, 2026-10-14): only Adventurer's Pass owners can take part.
+// Decided rules (owner, 2026-10-14): only Adventurer's Pass owners take part, and the paid season starts when the Pass goal shown on the Temporada page is reached; until then a prize-less pre-season runs. No prize amount, date or link between Passes sold and the prize may be stated here.
 export const championship = {
-  title: l('Campeonato de temporada em estudo', 'Season championship under study'),
-  body: l('Estamos estudando um campeonato de temporada para o Arena Duel. Ele ainda não existe e não está disponível no jogo.', 'We are studying a season championship for Arena Duel. It does not exist yet and is not available in the game.'),
-  note: l('A participação será exclusiva de quem tem o Passe de Aventureiro. Formato, calendário e recompensas ainda não foram definidos. Nada será aberto antes de as regras serem publicadas e de as verificações necessárias estarem prontas.', 'Taking part will be exclusive to Adventurer’s Pass owners. Format, calendar and rewards have not been defined. Nothing will open before the rules are published and the necessary checks are ready.'),
+  title: l('Temporada valendo', 'Ranked season'),
+  body: l('A temporada valendo começa quando a meta de Passes da página Temporada for alcançada. Até lá roda uma pré-temporada sem prêmio, com as mesmas regras, e quando a valendo abrir todos recomeçam do zero.', 'The ranked season begins when the Pass goal on the Season page is reached. Until then a pre-season with no prize runs under the same rules, and everyone starts from zero when the ranked season opens.'),
+  note: l('A participação é exclusiva de quem tem o Passe de Aventureiro. O regulamento e a premiação serão publicados antes da largada.', 'Taking part is exclusive to Adventurer’s Pass owners. The rules and the prize will be published before the start.'),
 };
 // The player market is planned only: no date, no promise.
 export const market = {
@@ -133,7 +133,7 @@ export const roadmap = [
   { id: 'onboarding', status: 'available', title: l('Primeiros passos e conforto', 'Getting started and comfort'), body: l('Tutorial, resumo ao voltar, notificações, português e inglês, controle de som, versão web e versão desktop para Windows.', 'A tutorial, welcome-back summary, notifications, Portuguese and English, sound controls, a web version and a Windows desktop version.') },
   { id: 'steam', status: 'planned', title: l('Lançamento na Steam', 'Steam release'), body: l('Um lançamento na Steam está planejado. Ainda não há data.', 'A Steam release is planned. There is no date yet.') },
   { id: 'market', status: 'planned', title: market.title, body: l('Em estudo e planejado, sem data. Peças Épicas, Lendárias ou únicas sem vínculo e Bolsas de Ouro serão as únicas negociáveis.', 'Under study and planned, with no date. Unbound Epic, Legendary or unique pieces and Gold Pouches will be the only tradeable items.') },
-  { id: 'championship', status: 'planned', title: l('Campeonato de temporada', 'Season championship'), body: l('Em estudo, exclusivo para quem tem o Passe. Formato e recompensas ainda não foram definidos.', 'Under study, exclusive to Pass owners. Format and rewards have not been defined.') },
+  { id: 'championship', status: 'planned', title: l('Campeonato de temporada', 'Season championship'), body: l('Começa quando a meta de Passes for alcançada, exclusiva para quem tem o Passe. Pré-temporada sem prêmio até lá.', 'Begins when the Pass goal is reached, exclusive to Pass owners. A pre-season with no prize runs until then.') },
   { id: 'world', status: 'future', title: l('Mais atividades e desafios', 'More activities and challenges'), body: l('Novas zonas de Caça, equipamento, recursos e eventos temporários são possibilidades para a evolução do jogo.', 'New hunting zones, gear, resources and temporary events are possibilities for the game’s future.') },
   { id: 'long-term', status: 'future', title: l('Novas formas de progressão', 'New ways to progress'), body: l('Novas atividades e mecânicas de profissão poderão ampliar a experiência.', 'New activities and profession mechanics could expand the experience.') },
 ];
@@ -163,7 +163,7 @@ export const articles = [
         { type: 'heading', level: 2, text: 'Passe de Aventureiro' },
         para('O Passe é um desbloqueio permanente, com temporadas de 60 dias e uma trilha de recompensas. A compra ainda não está aberta ao público.'),
         { type: 'heading', level: 2, text: 'O que ainda não existe' },
-        list(['Um lançamento na Steam está planejado, sem data.', 'Um mercado de jogadores está planejado, sem data.', 'Um campeonato de temporada está em estudo.']),
+        list(['Um lançamento na Steam está planejado, sem data.', 'Um mercado de jogadores está planejado, sem data.', 'A temporada valendo começa quando a meta de Passes for alcançada; até lá roda uma pré-temporada sem prêmio.']),
       ],
       en: [
         para('Arena Duel has grown a lot since its first versions. This overview gathers what the game contains today.'),
@@ -178,7 +178,7 @@ export const articles = [
         { type: 'heading', level: 2, text: 'Adventurer’s Pass' },
         para('The Pass is a permanent unlock, with 60-day seasons and a reward track. Buying it is not open to the public yet.'),
         { type: 'heading', level: 2, text: 'What does not exist yet' },
-        list(['A Steam release is planned, with no date.', 'A player market is planned, with no date.', 'A season championship is under study.']),
+        list(['A Steam release is planned, with no date.', 'A player market is planned, with no date.', 'The ranked season begins when the Pass goal is reached; until then a pre-season with no prize runs.']),
       ],
     },
   },
