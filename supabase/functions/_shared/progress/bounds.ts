@@ -52,7 +52,7 @@ export const BOUNDS = {
   orderLumpFactorAt50: 3.2,
 
   // ---- counters per server hour (theoretical) -----------------------------------------------------------------------------------------------
-  /** Kills per hour: one kill per 0.4 s at the highest attack speed (base interval minus 300 AGI points x 4.7 ms, attributes.ts), rounded up. SOURCE: derived, see attributes.ts. */
+  /** Kills per hour: one kill per 0.4 s at the highest attack speed (base interval minus 300 AGI points x 4.7 ms, attributes.ts), rounded up. SOURCE: ESTIMATE, not measured: nothing in the sims counts kills per hour; a flag-level bound that catches edited counters, not a precise limit. */
   killsPerHour: 10_000,
   /** Gold earned per hour (any source, selling included). SOURCE: generous: the long sim earns well under 30,000 a DAY; this is a flag-level bound that mostly catches edited gold. */
   goldPerHour: 100_000,
