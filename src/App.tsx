@@ -15,6 +15,8 @@ import {
   SaveData,
 } from './game/engine';
 import { SaveConflictError, SaveRepository, SaveTooLargeError } from './game/saveRepository';
+import { seasonRankingEnabled } from './game/seasonRanking';
+import { useSeasonSubmit } from './game/useSeasonSubmit';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { addRelics, addUniqueInstance } from './game/uniques';
@@ -250,6 +252,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   }, [passVersion, save.hasBattlePass]);
 
   const userId = user?.id ?? null;
+  // Season ranking (off unless VITE_SEASON_RANKING_ENABLED, and never in the desktop / offline build, which has no backend): posts the save in the background.
+  useSeasonSubmit(seasonRankingEnabled && configured && !!userId, save, saveRef);
   const [passFlow, setPassFlow] = useState<PassFlow>('idle');
   const confirmRun = useRef(0);
   // After the payment page: poll the entitlement for a short time (the webhook may take a moment) and say what happened.

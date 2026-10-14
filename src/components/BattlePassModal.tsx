@@ -18,6 +18,8 @@ import { FORGE_SEAL_MIN_RARITY, RARITIES } from '../game/rarity';
 import { passPerkLines } from '../game/passPerks';
 import T from '../game/tunables';
 import { gearStatLines } from './gearStats';
+import SeasonRankingPanel from './SeasonRankingPanel';
+import { seasonRankingEnabled } from '../game/seasonRanking';
 
 // The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; a vertical list on a phone),
 // the season's exclusives generated from the track data, and the footer with "claim all" and (for non-owners) the purchase button.
@@ -231,6 +233,9 @@ export default function BattlePassModal({
   const drag = useRef<{ x: number; left: number; moved: boolean; id: number } | null>(null);
   const suppressClick = useRef(false);
   const [note, setNote] = useState<string | null>(null);
+  // The season ranking tab exists only when the owner switched it on (VITE_SEASON_RANKING_ENABLED); otherwise this screen is exactly what it always was.
+  const [tab, setTab] = useState<'track' | 'season'>('track');
+  const showSeason = seasonRankingEnabled && tab === 'season';
 
   const claimableCount = BATTLE_PASS_TRACK.reduce(
     (n, l) => n + (l.level <= level ? (save.claimedPassRewards.free.includes(l.level) ? 0 : 1) + (owner && !save.claimedPassRewards.premium.includes(l.level) ? 1 : 0) : 0),
@@ -361,6 +366,21 @@ export default function BattlePassModal({
             </div>
           </header>
 
+          {seasonRankingEnabled && (
+            <div className="ap-tabs" role="tablist">
+              <button role="tab" aria-selected={tab === 'track'} className={`ap-tab${tab === 'track' ? ' on' : ''}`} onClick={() => setTab('track')} data-ui>
+                {t('seasonRanking.tabTrack')}
+              </button>
+              <button role="tab" aria-selected={tab === 'season'} className={`ap-tab${tab === 'season' ? ' on' : ''}`} onClick={() => setTab('season')} data-ui>
+                {t('seasonRanking.tab')}
+              </button>
+            </div>
+          )}
+
+          {showSeason ? (
+            <SeasonRankingPanel online={server} ownsPass={owner} />
+          ) : (
+            <>
           <section className="ap-perks" aria-label={t('battlePass.perksTitle')}>
             {perks.map((p) => (
               <div className={`ap-perk${owner ? ' on' : ' off'}`} key={p.key}>
@@ -447,6 +467,8 @@ export default function BattlePassModal({
           <p className="ap-howxp">
             <strong>{t('battlePass.howXp')}</strong> {t('battlePass.xpFloor', { n: T.battlePass.xpPerFloor })} · {t('battlePass.xpHunt', { n: T.battlePass.xpPerHuntHour })} · {t('battlePass.xpGather', { n: T.battlePass.xpPerMiningHour })}
           </p>
+            </>
+          )}
         </div>
 
         <footer className="ap-footer">

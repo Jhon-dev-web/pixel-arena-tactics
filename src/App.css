@@ -11007,3 +11007,96 @@ button[data-ui]:focus-visible {
 .item-compare-set {
   color: #9a8fb0;
 }
+
+/* season ranking tab inside the Adventurer Pass screen (SeasonRankingPanel.tsx) */
+.ap-tabs {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.ap-tab {
+  font: inherit;
+  font-size: calc(var(--font-size) - 2px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 2px solid #4a3a55;
+  background: rgba(20, 13, 28, 0.85);
+  color: #b8a8d8;
+  cursor: pointer;
+}
+.ap-tab.on {
+  color: #1a1108;
+  background: linear-gradient(180deg, #ffd76a, #e0a83a);
+  border-color: #8a6a3a;
+}
+.ap-season {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: calc(var(--font-size) - 2px);
+  line-height: 1.5;
+  color: #d8cce8;
+}
+.ap-season-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ap-season-dates,
+.ap-season-note,
+.ap-season-submit {
+  color: #b8a8d8;
+  margin: 0;
+}
+.ap-season-passonly {
+  margin: 0;
+  color: #ffd76a;
+}
+.ap-season-prize {
+  margin: 0;
+  color: #f5e9c8;
+}
+.ap-season-status,
+.ap-season-mine {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 2px solid #4a3a55;
+  border-radius: 6px;
+  background: rgba(20, 13, 28, 0.6);
+}
+.ap-season-status strong,
+.ap-season-mine strong {
+  color: #ffd76a;
+  font-weight: normal;
+}
+.ap-season-status.eligible {
+  border-color: #4f9a5a;
+}
+.ap-season-status.flagged,
+.ap-season-status.disqualified {
+  border-color: #b5524a;
+}
+.ap-season-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ap-season-table th,
+.ap-season-table td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #3a2c48;
+  overflow-wrap: anywhere;
+}
+.ap-season-table th {
+  color: #ffd76a;
+  font-weight: normal;
+}
+.ap-season-table tr.me td {
+  background: rgba(255, 215, 106, 0.12);
+}
+.ap-season-flag,
+.ap-season-para {
+  color: #b8a8d8;
+}

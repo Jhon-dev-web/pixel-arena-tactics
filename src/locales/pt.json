@@ -2008,5 +2008,52 @@
     "boundaryTitle": "Algo deu errado",
     "boundaryHint": "Toque em qualquer lugar da tela pra recarregar o jogo.",
     "boundaryReload": "Recarregar"
+  },
+  "seasonRanking": {
+    "tab": "Temporada",
+    "tabTrack": "Trilha",
+    "title": "Ranking da Temporada {n}",
+    "dates": "De {from} a {to} (UTC)",
+    "freeze": "O ranking congela em {date}. Depois disso, nada muda.",
+    "passOnly": "Exclusivo para quem tem o Passe do Aventureiro",
+    "prizeNote": "Prêmio: {note}",
+    "statusTitle": "Sua situação",
+    "elig": {
+      "eligible": "Você está concorrendo. O jogo envia seu progresso ao servidor a cada 10 minutos e a pontuação é calculada lá.",
+      "needs_pass": "Você precisa do Passe do Aventureiro para entrar no ranking. Ele vale para todas as temporadas.",
+      "needs_email": "Confirme seu e-mail para concorrer: abra o link que enviamos quando você criou a conta.",
+      "flagged": "O servidor achou seu progresso rápido demais ou estranho, e ele não está contando por enquanto. Jogando normalmente, volta a contar sozinho. A conta pode ser revisada pelo organizador.",
+      "disqualified": "Esta conta foi desclassificada desta temporada.",
+      "not_open": "O ranking desta temporada ainda não abriu.",
+      "over": "O ranking desta temporada está encerrado. A lista abaixo é a final, sujeita à conferência manual.",
+      "no_season": "Não há temporada de ranking no momento.",
+      "web_only": "Ranking só na versão web. Esta versão não envia progresso."
+    },
+    "yourPlace": "Sua posição",
+    "place": "{n}º lugar",
+    "notRanked": "Você ainda não está na lista.",
+    "parts": "Nível {l} · Andar {f}",
+    "partsDepth": "Nível {l} · Andar {f} · Profundeza {d}",
+    "paragon": "Paragon {n}",
+    "colRank": "#",
+    "colHero": "Herói",
+    "colLevel": "Nível",
+    "colDepth": "Andar / Profundeza",
+    "flagTitle": "avisos da auditoria",
+    "empty": "Ninguém na lista ainda.",
+    "loading": "Carregando…",
+    "loadError": "Não foi possível carregar o ranking agora.",
+    "retry": "Tentar de novo",
+    "anonymous": "Aventureiro",
+    "submit": {
+      "idle": "Progresso ainda não enviado nesta sessão.",
+      "sending": "Enviando progresso…",
+      "done": "Progresso enviado às {time}.",
+      "throttled": "Progresso enviado há pouco (o servidor aceita um a cada 10 minutos).",
+      "error": "Não deu para enviar o progresso agora. O jogo segue normal e tenta de novo mais tarde.",
+      "ok": "Aceito pelo servidor.",
+      "flagged": "Em análise: não conta por enquanto.",
+      "rejected": "Recusado: progresso impossível para o tempo decorrido."
+    }
   }
 }

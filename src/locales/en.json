@@ -2008,5 +2008,52 @@
     "boundaryTitle": "Something went wrong",
     "boundaryHint": "Tap anywhere on the screen to reload the game.",
     "boundaryReload": "Reload"
+  },
+  "seasonRanking": {
+    "tab": "Season",
+    "tabTrack": "Track",
+    "title": "Season {n} ranking",
+    "dates": "From {from} to {to} (UTC)",
+    "freeze": "The ranking freezes on {date}. After that, nothing changes.",
+    "passOnly": "Exclusive to Adventurer Pass owners",
+    "prizeNote": "Prize: {note}",
+    "statusTitle": "Your status",
+    "elig": {
+      "eligible": "You are in the race. The game sends your progress to the server every 10 minutes and the score is worked out there.",
+      "needs_pass": "You need the Adventurer Pass to enter the ranking. It is valid for every season.",
+      "needs_email": "Confirm your e-mail to compete: open the link we sent when you created the account.",
+      "flagged": "The server found your progress too fast or odd, and it is not counting for now. Playing normally, it starts counting again by itself. The organizer may review the account.",
+      "disqualified": "This account was disqualified from this season.",
+      "not_open": "This season's ranking has not opened yet.",
+      "over": "This season's ranking is over. The list below is the final one, subject to manual checks.",
+      "no_season": "There is no ranking season right now.",
+      "web_only": "Ranking is web only. This version does not send progress."
+    },
+    "yourPlace": "Your place",
+    "place": "Rank {n}",
+    "notRanked": "You are not on the list yet.",
+    "parts": "Level {l} · Floor {f}",
+    "partsDepth": "Level {l} · Floor {f} · Depth {d}",
+    "paragon": "Paragon {n}",
+    "colRank": "#",
+    "colHero": "Hero",
+    "colLevel": "Level",
+    "colDepth": "Floor / Depth",
+    "flagTitle": "audit notices",
+    "empty": "Nobody on the list yet.",
+    "loading": "Loading…",
+    "loadError": "Could not load the ranking right now.",
+    "retry": "Try again",
+    "anonymous": "Adventurer",
+    "submit": {
+      "idle": "Progress not sent yet this session.",
+      "sending": "Sending progress…",
+      "done": "Progress sent at {time}.",
+      "throttled": "Progress sent a moment ago (the server takes one every 10 minutes).",
+      "error": "Could not send progress right now. The game carries on and tries again later.",
+      "ok": "Accepted by the server.",
+      "flagged": "Under review: not counting for now.",
+      "rejected": "Refused: impossible progress for the time elapsed."
+    }
   }
 }
