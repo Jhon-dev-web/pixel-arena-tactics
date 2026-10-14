@@ -69,11 +69,11 @@ export const progression = [
   { title: l('Enfrente a Masmorra', 'Take on the Dungeon'), body: l('Andares, chefes e Profundezas', 'Floors, bosses and the Depths'), target: 'combat' },
   { title: l('Decida o próximo foco', 'Choose your next focus'), body: l('Volte às atividades com um objetivo', 'Return to activities with a goal'), target: 'professions' },
 ];
-// The season championship is under study only: no format, rules, dates or rewards exist, and none may be stated here.
+// The season championship is under study: no format, rules, dates or rewards exist, and none may be stated here. The one decided rule (owner, 2026-10-14): only Adventurer's Pass owners can take part.
 export const championship = {
   title: l('Campeonato de temporada em estudo', 'Season championship under study'),
   body: l('Estamos estudando um campeonato de temporada para o Arena Duel. Ele ainda não existe e não está disponível no jogo.', 'We are studying a season championship for Arena Duel. It does not exist yet and is not available in the game.'),
-  note: l('Formato, participação, calendário e recompensas ainda não foram definidos. Nada será aberto antes de as regras serem publicadas e de as verificações necessárias estarem prontas.', 'Format, participation, calendar and rewards have not been defined. Nothing will open before the rules are published and the necessary checks are ready.'),
+  note: l('A participação será exclusiva de quem tem o Passe de Aventureiro. Formato, calendário e recompensas ainda não foram definidos. Nada será aberto antes de as regras serem publicadas e de as verificações necessárias estarem prontas.', 'Taking part will be exclusive to Adventurer’s Pass owners. Format, calendar and rewards have not been defined. Nothing will open before the rules are published and the necessary checks are ready.'),
 };
 // The player market is planned only: no date, no promise.
 export const market = {
@@ -87,7 +87,7 @@ export const roadmap = [
   { id: 'onboarding', status: 'available', title: l('Primeiros passos e conforto', 'Getting started and comfort'), body: l('Tutorial, resumo ao voltar, notificações, português e inglês, controle de som, versão web e versão desktop para Windows.', 'A tutorial, welcome-back summary, notifications, Portuguese and English, sound controls, a web version and a Windows desktop version.') },
   { id: 'steam', status: 'planned', title: l('Lançamento na Steam', 'Steam release'), body: l('Um lançamento na Steam está planejado. Ainda não há data.', 'A Steam release is planned. There is no date yet.') },
   { id: 'market', status: 'planned', title: market.title, body: l('Em estudo e planejado, sem data. Peças Épicas, Lendárias ou únicas sem vínculo e Bolsas de Ouro serão as únicas negociáveis.', 'Under study and planned, with no date. Unbound Epic, Legendary or unique pieces and Gold Pouches will be the only tradeable items.') },
-  { id: 'championship', status: 'planned', title: l('Campeonato de temporada', 'Season championship'), body: l('Em estudo. Formato, participação e recompensas ainda não foram definidos.', 'Under study. Format, participation and rewards have not been defined.') },
+  { id: 'championship', status: 'planned', title: l('Campeonato de temporada', 'Season championship'), body: l('Em estudo, exclusivo para quem tem o Passe. Formato e recompensas ainda não foram definidos.', 'Under study, exclusive to Pass owners. Format and rewards have not been defined.') },
   { id: 'world', status: 'future', title: l('Mais atividades e desafios', 'More activities and challenges'), body: l('Novas zonas de Caça, equipamento, recursos e eventos temporários são possibilidades para a evolução do jogo.', 'New hunting zones, gear, resources and temporary events are possibilities for the game’s future.') },
   { id: 'long-term', status: 'future', title: l('Novas formas de progressão', 'New ways to progress'), body: l('Novas atividades e mecânicas de profissão poderão ampliar a experiência.', 'New activities and profession mechanics could expand the experience.') },
 ];
