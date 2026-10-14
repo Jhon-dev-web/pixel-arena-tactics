@@ -26,7 +26,9 @@
     "sim:skills": "vitest run --config vitest.sim.config.ts skillAudit --silent=false --reporter=default",
     "sim:long": "node scripts/sim/long.mjs",
     "sim:cost": "vitest run --config vitest.sim.config.ts lateCost --silent=false --reporter=default",
-    "sim:wholesale": "vitest run --config vitest.sim.config.ts wholesale --silent=false --reporter=default"
+    "sim:wholesale": "vitest run --config vitest.sim.config.ts wholesale --silent=false --reporter=default",
+    "season:tables": "vitest run --config vitest.sim.config.ts seasonTables --silent=false --reporter=default",
+    "season:bounds": "vitest run --config vitest.sim.config.ts seasonBounds --silent=false --reporter=default"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",
