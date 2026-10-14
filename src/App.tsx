@@ -26,7 +26,7 @@ import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
 import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
 import { getServerPassOwned, grantDailyPassKit, isServerPassSource, ownsAdventurerPass, purchaseAdventurerPass, setServerPassOwned } from './game/entitlements';
-import { applyServerPass, fetchServerPassOwned, pollPassOwned, recheckServerPass, startCheckout, takeCheckoutReturn, passPurchaseEnabled } from './game/passServer';
+import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned, hasBuyIntent, pollPassOwned, recheckServerPass, startCheckout, takeCheckoutReturn, passPurchaseEnabled } from './game/passServer';
 import { usePassEntitlementVersion } from './game/usePassEntitlement';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
@@ -1388,6 +1388,22 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth(res.save);
     showToast(t('battlePass.activated'));
   };
+
+  // The "Comprar o Passe" link of the website (/?comprar=passe, captured in main.tsx): once signed in, open the Pass modal and, with sales on and the account not owning the
+  // Pass according to the server, start the checkout. Runs once per page load (a ref, so React StrictMode's second effect pass does not lose it).
+  const buyIntentDone = useRef(false);
+  useEffect(() => {
+    if (!userId || !isServerPassSource() || buyIntentDone.current || !hasBuyIntent()) return;
+    buyIntentDone.current = true;
+    clearBuyIntent();
+    setBattlePassOpen(true);
+    if (!passPurchaseEnabled) return;
+    fetchServerPassOwned()
+      .then((owned) => (buyIntentAction(passPurchaseEnabled, owned) === 'checkout' ? purchaseBattlePass() : undefined))
+      .catch(() => undefined);
+    // once per page load, for the signed-in account
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, passVersion]);
 
   const dismissSeasonSummary = () => setSaveBoth({ ...saveRef.current, pendingSeasonSummary: null });
 

@@ -172,6 +172,83 @@ export async function startCheckout(redirect: (url: string) => void = (url) => w
   return { ok: true };
 }
 
+// ---- The "buy the Pass" link from the website ---------------------------------------------------------------------------------------------
+// The public site (portal/) links to `<play url>/?comprar=passe`. The site cannot run the checkout (it needs the player's login), so the game catches the marker as
+// early as possible (main.tsx), takes it out of the address bar and remembers it for this tab (sessionStorage, 30 minutes) so it survives the login screen and an
+// e-mail-confirmation reload. Once signed in, App opens the Pass modal and, only when VITE_PASS_PURCHASE_ENABLED is on and the server says the account does not own
+// the Pass, starts the checkout. With the flag off the modal just opens (its button says "Em breve").
+export const BUY_INTENT_PARAM = 'comprar';
+export const BUY_INTENT_VALUE = 'passe';
+export const BUY_INTENT_KEY = 'arena.buyIntent.v1';
+export const BUY_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
+
+type SessionStorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+const defaultSessionStorage = (): SessionStorageLike | null => {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Reads ?comprar=passe once, removes it from the address bar and remembers the intent. Returns true when the marker was in the URL. */
+export function captureBuyIntent(
+  href: string = typeof window !== 'undefined' ? window.location.href : '',
+  replaceUrl: (relative: string) => void = (u) => window.history.replaceState(null, '', u),
+  now: number = Date.now(),
+  storage: SessionStorageLike | null = defaultSessionStorage(),
+): boolean {
+  try {
+    const url = new URL(href);
+    if (url.searchParams.get(BUY_INTENT_PARAM) !== BUY_INTENT_VALUE) return false;
+    url.searchParams.delete(BUY_INTENT_PARAM);
+    replaceUrl(url.pathname + url.search + url.hash);
+    try {
+      storage?.setItem(BUY_INTENT_KEY, JSON.stringify({ at: now }));
+    } catch {
+      /* storage blocked: the intent only lives until the next reload */
+    }
+    pendingBuyIntent = now;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let pendingBuyIntent: number | null = null;
+
+/** True while a fresh buy intent is waiting (in memory or in this tab's session storage). */
+export function hasBuyIntent(now: number = Date.now(), storage: SessionStorageLike | null = defaultSessionStorage()): boolean {
+  let at = pendingBuyIntent;
+  if (at === null) {
+    try {
+      const raw = storage?.getItem(BUY_INTENT_KEY);
+      const parsed = raw ? (JSON.parse(raw) as { at?: unknown }) : null;
+      if (parsed && typeof parsed.at === 'number') at = parsed.at;
+    } catch {
+      at = null;
+    }
+  }
+  return at !== null && now - at >= 0 && now - at <= BUY_INTENT_MAX_AGE_MS;
+}
+
+export function clearBuyIntent(storage: SessionStorageLike | null = defaultSessionStorage()): void {
+  pendingBuyIntent = null;
+  try {
+    storage?.removeItem(BUY_INTENT_KEY);
+  } catch {
+    /* nothing to clear */
+  }
+}
+
+/**
+ * What to do once the player is signed in on the web build with a buy intent: 'open' = only show the Pass modal (sales off, or the account already owns it),
+ * 'checkout' = show it and start the checkout. `owned` is the SERVER's answer (null = it could not be asked: only open the modal, never guess).
+ */
+export function buyIntentAction(purchaseEnabled: boolean, owned: boolean | null): 'open' | 'checkout' {
+  return purchaseEnabled && owned === false ? 'checkout' : 'open';
+}
+
 // ---- Coming back from checkout ------------------------------------------------------------------------------------------------------------
 export type CheckoutReturn = 'success' | 'cancel' | null;
 let returnTaken = false;

@@ -3,6 +3,12 @@ import { buildHuntSession, defaultSave, SaveData } from '../engine';
 import { getServerPassOwned, grantDailyPassKit, isServerPassSource, ownsAdventurerPass, purchaseAdventurerPass, setPassSource, setServerPassOwned } from '../entitlements';
 import {
   applyServerPass,
+  buyIntentAction,
+  BUY_INTENT_KEY,
+  BUY_INTENT_MAX_AGE_MS,
+  captureBuyIntent,
+  clearBuyIntent,
+  hasBuyIntent,
   isTrustedCheckoutUrl,
   PASS_CACHE_KEY,
   PASS_CACHE_MAX_AGE_MS,
@@ -170,5 +176,49 @@ describe('starting a purchase', () => {
     let redirected = false;
     expect(await startCheckout(() => void (redirected = true))).toEqual({ ok: false, reason: 'unavailable' });
     expect(redirected).toBe(false);
+  });
+});
+
+describe('the buy link from the website (?comprar=passe)', () => {
+  const store = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k), raw: m };
+  };
+
+  it('captures the marker once, cleans the address bar and keeps the rest of the URL', () => {
+    clearBuyIntent(store());
+    const s = store();
+    let replaced = '';
+    expect(captureBuyIntent('https://jogo.example.test/play?x=1&comprar=passe#top', (u) => (replaced = u), NOW, s)).toBe(true);
+    expect(replaced).toBe('/play?x=1#top');
+    expect(hasBuyIntent(NOW + 1000, s)).toBe(true);
+    // other values and a plain URL are ignored
+    expect(captureBuyIntent('https://jogo.example.test/?comprar=outra', () => undefined, NOW, store())).toBe(false);
+    expect(captureBuyIntent('https://jogo.example.test/', () => undefined, NOW, store())).toBe(false);
+  });
+
+  it('survives the login screen (a reload reads it back from the tab storage) and expires after 30 minutes', () => {
+    clearBuyIntent(store());
+    const s = store();
+    captureBuyIntent('https://jogo.example.test/?comprar=passe', () => undefined, NOW, s);
+    clearBuyIntent(null); // a fresh page load forgets the in-memory copy but the tab storage stays
+    s.setItem(BUY_INTENT_KEY, JSON.stringify({ at: NOW }));
+    expect(hasBuyIntent(NOW + 60_000, s)).toBe(true);
+    expect(hasBuyIntent(NOW + BUY_INTENT_MAX_AGE_MS + 1, s)).toBe(false);
+    clearBuyIntent(s);
+    expect(hasBuyIntent(NOW + 1000, s)).toBe(false);
+    expect(s.raw.has(BUY_INTENT_KEY)).toBe(false);
+  });
+
+  it('starts the checkout only with sales on AND an account the server says does not own the Pass; otherwise it just opens the modal', () => {
+    expect(buyIntentAction(true, false)).toBe('checkout');
+    expect(buyIntentAction(true, true)).toBe('open'); // already owned
+    expect(buyIntentAction(true, null)).toBe('open'); // the server could not be asked: never guess
+    expect(buyIntentAction(false, false)).toBe('open'); // VITE_PASS_PURCHASE_ENABLED off: harmless
+  });
+
+  it('with the flag off (the test build) startCheckout stays unavailable, so the link can never reach a payment page', async () => {
+    expect(passPurchaseEnabled).toBe(false);
+    expect(await startCheckout(() => undefined)).toEqual({ ok: false, reason: 'unavailable' });
   });
 });
