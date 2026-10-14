@@ -60,6 +60,8 @@ Portanto o ranking com prêmio em dinheiro **não deve ser aberto** antes de TOD
 
 Até lá, qualquer ranking pode existir apenas como brincadeira, sem prêmio em dinheiro e sem prometer nada ao jogador.
 
+**Atualização:** as etapas 2, 3 e 4 estão escritas no repositório (migrations `0004` e `0005`, função `submit-progress`, tela "Temporada" atrás de `VITE_SEASON_RANKING_ENABLED`), mas **nada foi aplicado nem implantado**. O passo a passo, os limites do que a auditoria pega, o SQL de auditoria e a lista de textos legais estão em [`docs/SEASON_RANKING.md`](SEASON_RANKING.md).
+
 ## 5. Publicar o portal e o jogo juntos
 
 O repositório tem dois sites independentes: o jogo (raiz do repositório, Vite, saída em `dist/`) e o portal público de divulgação (`portal/`, gerador estático sem dependências, saída em `portal/dist/`). Nada disso foi implantado; esta seção só descreve como fazer quando o dono decidir.
