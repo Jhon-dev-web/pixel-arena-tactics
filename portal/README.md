@@ -24,6 +24,7 @@ A prévia abre em http://127.0.0.1:4173/pt/ e http://127.0.0.1:4173/en/. Execute
 - `scripts/build.mjs`: geração estática e validação de conteúdo antes de atualizar `dist/`.
 - `scripts/check.mjs`: títulos, idioma, links, âncoras e arquivos locais.
 - `scripts/editorial-check.mjs`: verificações do formato editorial com registros de teste que não são publicados.
+- `public/season.js` e `public/season-core.js`: página Temporada (barra de Passes e rankings lidos do Supabase com a chave pública; o `core` é puro e testado por `npm run check:season`).
 - `public/app.js`: menu móvel, menus de navegação e fechamento por teclado.
 - `public/img/*.webp`: capturas reais do jogo atual (build offline, save de meio de jogo, 1440x900). `public/fonts/`: Press Start 2P (a fonte do jogo, licença OFL incluída). `public/favicon.svg`: ícone provisório.
 

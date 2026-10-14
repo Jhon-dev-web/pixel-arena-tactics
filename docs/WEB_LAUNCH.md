@@ -89,12 +89,12 @@ Por que a A: (1) a CSP do jogo (`vercel.json` da raiz, com `connect-src https://
 ### 5.3 Variáveis de ambiente (somente nomes)
 
 - **Projeto do jogo**: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (Production com o Supabase de produção; Preview e Development com o de desenvolvimento), como na seção 2.
-- **Projeto do portal**: nenhuma. Não crie variáveis nele.
+- **Projeto do portal**: nenhuma. Não crie variáveis nele (o endereço e a chave pública `anon` da página Temporada ficam em `config`, no código; seção 6).
 
 ### 5.4 Cabeçalhos de segurança
 
 - O `vercel.json` da raiz vale **só para o projeto do jogo** (a Vercel lê o `vercel.json` do Root Directory de cada projeto). Ele não vale para o portal e não deve ser copiado para lá.
-- O portal tem o seu: `portal/vercel.json`, com CSP mínima para site estático (`default-src 'none'`; só scripts, estilos, imagens e fontes do próprio domínio; sem `connect-src`, sem iframes, `frame-ancestors 'none'`), `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS, `Cross-Origin-Opener-Policy`, revalidação nas páginas e cache de 1 dia em imagens e fontes. O portal não usa JavaScript inline nem estilos inline (só `/app.js` e `/style.css` do mesmo domínio), por isso não precisa de `unsafe-inline`.
+- O portal tem o seu: `portal/vercel.json`, com CSP mínima para site estático (`default-src 'none'`; só scripts, estilos, imagens e fontes do próprio domínio; `connect-src https://*.supabase.co` (só para a página Temporada ler o ranking; seção 6), sem iframes, `frame-ancestors 'none'`), `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS, `Cross-Origin-Opener-Policy`, revalidação nas páginas e cache de 1 dia em imagens e fontes. O portal não usa JavaScript inline nem estilos inline (só `/app.js` e `/style.css` do mesmo domínio), por isso não precisa de `unsafe-inline`.
 - Verificado localmente: um servidor de teste serviu `portal/dist` com exatamente os cabeçalhos do `portal/vercel.json`, e as páginas `/pt/`, `/en/`, `/pt/pass/` e `/pt/privacy/` foram abertas num Edge real a 1440 px. Nenhuma violação de CSP no console, imagens WebP e fonte carregadas. Não foi verificado na Vercel de verdade (nada foi implantado), nem o `Strict-Transport-Security` sob HTTPS.
 - Depois do primeiro deploy de cada projeto, repetir a conferência: abrir o site, olhar o console e os cabeçalhos de resposta.
 
@@ -104,3 +104,20 @@ Por que a A: (1) a CSP do jogo (`vercel.json` da raiz, com `connect-src https://
 2. Publicar o jogo, abrir `https://jogar.<domínio>/` e conferir console e cabeçalhos.
 3. Preencher `config.playUrl`, remover o `noindex`, rodar `npm run build`, `npm run check` e `node scripts/editorial-check.mjs` em `portal/`, publicar o portal.
 4. Só então anunciar. Textos legais (seção 3) antes de qualquer cadastro aberto ao público.
+
+## 6. A página "Temporada" do portal (Passes adquiridos e rankings)
+
+O portal ganhou a página `/pt/season/` e `/en/season/` (item "Temporada" no menu): barra de Passes adquiridos, botão "Comprar o Passe", ranking geral (top 50) e um ranking por profissão (Mineração, Lenhador, Horta). Ela lê os números **direto do Supabase, no navegador**, com a chave pública `anon` e `fetch` simples (sem SDK). Como o portal nunca recebe variáveis de ambiente, os dois valores ficam em `config`, em `portal/src/content.mjs`, e depois são commitados.
+
+Passo a passo (você faz; nada disto foi aplicado ou implantado por quem escreveu o código):
+
+1. **Aplicar a migration `0006`** (`supabase/migrations/0006_portal_meter_and_profession_ranking.sql`) no projeto Supabase, depois da `0005`, e rodar o plano de testes SQL que está no fim do arquivo. Detalhes e controles do dono (meta, abrir a temporada, encerrar): [`SEASON_RANKING.md`](SEASON_RANKING.md) seção 8. Reimplante a função `submit-progress` (ela agora também envia a XP das profissões).
+2. **Preencher `config.supabaseUrl`** com o endereço do projeto (`https://<project-ref>.supabase.co`, nada além disso: o build recusa outros endereços) **e `config.supabaseAnonKey`** com a chave **pública `anon`** (painel do Supabase, Project Settings, API). A chave `anon` é pública por desenho: ela já vai no JavaScript do jogo e quem a usa só alcança o que as regras do banco liberam (a função `pass_meter` e as visões de ranking). **A chave de serviço (`service_role` ou `sb_secret_...`) NUNCA vai aqui:** o build falha se detectar uma.
+3. **Preencher `config.playUrl`** (como em 5.2). Enquanto for `null`, o botão da página mostra "Em breve" desativado. Preenchido, o botão aponta para `<playUrl>/?comprar=passe`: o jogo abre a janela do Passe depois do login e, **se `VITE_PASS_PURCHASE_ENABLED=true` no projeto do jogo** (e a conta ainda não tiver o Passe), já inicia o pagamento; com a variável desligada apenas abre a janela do Passe.
+4. **A meta (15.000)** não está no portal: ela vive no banco (`arena_private.season_goal.target`; mude lá, seção 8.3 de `SEASON_RANKING.md`) e o site mostra o número que o servidor informa. **O texto sob a barra** ("Quando chegarmos a {target} Passes, a temporada valendo começa.", em PT e EN) está em `seasonPage.goalLabel` em `portal/src/content.mjs`; `{target}` é substituído pelo número do servidor. Não escreva ali nenhuma promessa nem valor de prêmio: o prêmio é um valor fixo seu e nunca é ligado à quantidade vendida.
+5. **CSP:** `portal/vercel.json` agora tem `connect-src https://*.supabase.co` (e nada mais; antes era `'none'`). Isso é necessário para a página funcionar; continue sem `unsafe-inline`. O portal segue sem variáveis de ambiente.
+6. Rodar em `portal/`: `npm run build`, `npm run check`, `node scripts/editorial-check.mjs` e `npm run check:season` (verifica a página, o escape de nomes de jogador, o cálculo da barra e a escolha da temporada exibida).
+
+Sem `supabaseUrl`/`supabaseAnonKey` a página abre normalmente e diz "Dados ao vivo indisponíveis no momento.": ela nunca inventa um número. Se o Supabase falhar depois de a página já ter carregado, os números reais ficam na tela com o aviso de que podem estar desatualizados. A página atualiza sozinha a cada 60 s enquanto está aberta. Os nomes dos jogadores são texto escrito por eles: o site os escapa antes de mostrar.
+
+Textos legais: a página não traz valor de prêmio e repete a regra de que a participação é exclusiva de quem tem o Passe. O regulamento continua sendo seu (`SEASON_RANKING.md` seção 7).

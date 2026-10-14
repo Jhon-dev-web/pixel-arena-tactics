@@ -49,7 +49,7 @@ Por isso: **o primeiro prêmio deve ser modesto**, e **todo vencedor passa por a
 
 ## 3. Aplicar e implantar (você faz, no projeto de DESENVOLVIMENTO primeiro)
 
-1. **Migrations.** Pré-requisitos: `0001`, `0002` e `0003` já aplicadas (ver [`PASS_SALES.md`](PASS_SALES.md)). Aplique `supabase/migrations/0004_season_snapshots.sql` e depois `0005_seasons_ranking.sql` (SQL Editor ou `supabase db push` apontando para o projeto de dev). Cada arquivo termina com um **plano de testes SQL** e as instruções de rollback: rode o plano antes de seguir (cliente não escreve, não lê o que não é dele, a função de pontuação recusa quem não tem Passe ou e-mail confirmado, o trigger recusa mudar pontuação depois do congelamento). As 8 primeiras temporadas já vêm cadastradas, todas `upcoming`, com as mesmas datas de `src/game/seasons.ts` (a 1 começa em 2026-10-01 UTC, 60 dias cada, congelando 2 dias antes do fim) e sem valor de prêmio.
+1. **Migrations.** Pré-requisitos: `0001`, `0002` e `0003` já aplicadas (ver [`PASS_SALES.md`](PASS_SALES.md)). Aplique `supabase/migrations/0004_season_snapshots.sql` e depois `0005_seasons_ranking.sql` (SQL Editor ou `supabase db push` apontando para o projeto de dev). Cada arquivo termina com um **plano de testes SQL** e as instruções de rollback: rode o plano antes de seguir (cliente não escreve, não lê o que não é dele, a função de pontuação recusa quem não tem Passe ou e-mail confirmado, o trigger recusa mudar pontuação depois do congelamento). As 8 primeiras temporadas já vêm cadastradas, todas `upcoming` e sem valor de prêmio (a `0005` as semeia com datas de calendário; a `0006`, seção 8, **tira essas datas**: a temporada valendo só ganha datas quando abre). Depois aplique `0006_portal_meter_and_profession_ranking.sql` (meta de Passes, pré-temporada, `pass_meter()` e rankings por profissão; veja a seção 8).
 2. **Função `submit-progress`.** Segredo por nome: `APP_ORIGIN` (a origem exata do jogo, a mesma das funções de pagamento). `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` já são fornecidas pela plataforma. Implante **com a verificação de JWT ligada** (o padrão; diferente do `stripe-webhook`, **não** use `--no-verify-jwt`).
 3. **Variável na Vercel:** `VITE_SEASON_RANKING_ENABLED=true`. É variável de build do Vite: depois de mudar, faça um novo deploy. Sem ela (ou com qualquer outro valor) a tela some e nada é enviado. Nunca coloque chave de serviço em variável `VITE_*`.
 4. A CSP do `vercel.json` já libera `https://*.supabase.co` em `connect-src`, que é onde a função e as leituras do ranking vão; confira no console de um Preview.
@@ -59,7 +59,7 @@ Por isso: **o primeiro prêmio deve ser modesto**, e **todo vencedor passa por a
 Situações (`seasons.status`): `upcoming` (nada conta), `open` (conta, enquanto o relógio do servidor estiver antes de `freeze_at`), `frozen`, `closed`, `paid`.
 
 ```sql
--- ajustar datas (a temporada começa quando você quiser; o jogo da Trilha do Passe usa os mesmos números, mas o ranking é independente)
+-- ajustar datas (só para abrir à mão; a temporada valendo abre sozinha ao atingir a meta de Passes, seção 8; o ranking é independente da Trilha do Passe de src/game/seasons.ts)
 update public.seasons set starts_at = '2026-11-01 00:00:00+00', freeze_at = '2026-12-29 00:00:00+00', ends_at = '2026-12-31 00:00:00+00' where number = 2;
 -- texto livre mostrado no jogo (deixe nulo para não mostrar nada). Nunca escreva uma fração da receita.
 update public.seasons set prize_note = '<texto que você decidiu>' where number = 2;
@@ -147,3 +147,61 @@ Não há texto jurídico neste repositório. Antes de abrir com prêmio em dinhe
 - [ ] **Passe e reembolso:** que o ranking exige o Passe ativo; o que acontece com a posição se o Passe for reembolsado ou revogado durante a temporada.
 - [ ] **Encerramento ou alteração:** que você pode cancelar, adiar ou corrigir a temporada por falha técnica ou fraude generalizada.
 - [ ] Política de Privacidade e Termos de Uso atualizados com o ranking, e a página `/season-rules/` do portal preenchida (hoje é só espaço reservado, `portal/README.md`).
+
+## 8. Meta de Passes, pré-temporada, página "Temporada" do site e rankings por profissão (migration `0006`)
+
+Esta seção vale para o que a migration `supabase/migrations/0006_portal_meter_and_profession_ranking.sql` acrescenta. Ela **não foi aplicada** por quem a escreveu: você aplica, depois da `0005`.
+
+### 8.1 Dois tipos de "temporada" (não misture os nomes)
+
+| Nome | O que é | Onde vive | Datas |
+| --- | --- | --- | --- |
+| **Temporada da Trilha do Passe** | A trilha de recompensas e os itens sazonais do Passe | `src/game/seasons.ts` (não mudou) | Calendário fixo de 60 dias a partir de 2026-10-01 |
+| **Temporada valendo** (ranking com prêmio) | O ranking de que este documento trata | tabela `public.seasons`, `kind = 'ranked'` | Nenhuma até abrir: **abre sozinha quando a meta de Passes pagos é atingida** |
+| **Pré-temporada** | Ranking sem prêmio que roda até a temporada valendo abrir | `public.seasons`, número 0, `kind = 'pre'` | Aberta desde que a migration `0006` é aplicada |
+
+No jogo e no site a temporada valendo aparece como "Temporada valendo" e a pré-temporada como "Pré-temporada · sem prêmio"; a Trilha do Passe continua se chamando "Trilha". A `0006` **tira as datas** das temporadas `upcoming` que a `0005` cadastrou com base no calendário (agora elas esperam a meta) e não toca em `src/game/seasons.ts`.
+
+### 8.2 Como a meta abre a temporada valendo
+
+- A meta mora **no banco**, numa tabela privada de uma linha: `arena_private.season_goal (target = 15000, season_number = 1, opened_at)`. Só a service role (ou você, no SQL Editor) lê e altera; o público não a vê, só o `pass_meter()` mostra o número `target`.
+- "Passe pago" = linha em `entitlements` com `kind = 'adventurer_pass'`, `status = 'active'` e `source` `stripe` ou `mercadopago`. **Concessões manuais (`grant`), reembolsados e revogados não contam.**
+- Quando a contagem chega ao `target`, a temporada `season_number` (precisa estar `upcoming`) passa a `open` com `starts_at` = agora do servidor, `ends_at` = +60 dias e `freeze_at` = +58 dias; a pré-temporada passa a `closed` (a classificação dela fica guardada, congelada) e a temporada valendo **começa do zero para todos**. Isso acontece **uma única vez**: `opened_at` é gravado e nunca mais se tenta. Uma temporada já fechada nunca reabre sozinha.
+- Mecanismo (o mais simples que é robusto): um trigger `AFTER INSERT/UPDATE OF status` em `entitlements` chama `arena_private.try_open_paid_season()`, que **trava a linha da meta antes de contar**. Duas compras simultâneas se enfileiram nessa trava, então a segunda sempre enxerga a primeira e a compra nº 15.000 não se perde. A chamada está dentro de um bloco de exceção: se algo der errado, vira só um aviso no log e **nunca** desfaz nem bloqueia um pagamento. O código do webhook não foi alterado.
+
+### 8.3 Controles do dono (SQL Editor)
+
+```sql
+-- mudar a meta
+update arena_private.season_goal set target = 12000;
+-- abrir a temporada valendo agora, sem esperar a meta (mesmo efeito: 60 dias, pré-temporada fechada)
+select arena_private.open_paid_season(1);
+-- encerrar / congelar / pagar: igual à seção 4 (update public.seasons set status = ... where number = 1)
+-- texto do prêmio (livre; nunca uma fração das vendas)
+update public.seasons set prize_note = '<texto que você decidiu>' where number = 1;
+-- preparar o próximo ciclo: a temporada 2 espera sem datas; aponte a meta para ela e libere o disparo
+update arena_private.season_goal set season_number = 2, opened_at = null;
+-- reabrir a pré-temporada (só se quiser)
+update public.seasons set status = 'open' where number = 0;
+```
+
+Atenção: depois de `season_goal.opened_at` preenchido a meta não dispara mais; para um novo ciclo use o `update ... opened_at = null` acima (e a contagem de Passes pagos já estará acima do alvo, então ajuste também o `target` se não quiser que abra de imediato).
+
+### 8.4 Rankings por profissão
+
+Profissões com nível no jogo: **Mineração, Lenhador e Horta** (Ofícios/Forja não têm nível). A pontuação de cada uma é o **XP total da profissão** lido do save pelo servidor; empate: quem chegou àquele XP primeiro (hora do servidor). O nível mostrado é calculado pelo servidor com as mesmas curvas do jogo (`tables.ts`, gerado por `npm run season:tables`).
+
+- Tabela privada `season_profession_entries` e visão pública `season_profession_leaderboard` (temporada, profissão, posição, nome, nível, XP). Só aparecem jogadores **sem sinalização e não desclassificados**; nada de id nem e-mail.
+- Entram pelo mesmo caminho do ranking geral e nas mesmas condições: temporada aberta antes do congelamento, Passe no servidor, e-mail confirmado, veredito `ok`. Se a `0006` não estiver aplicada, a função apenas registra o erro e o ranking geral segue normal.
+- Novos limites de plausibilidade (`bounds.ts`, recalculados dos tunables por `npm run season:bounds`; sinaliza no valor e rejeita em 2×; códigos `MINING_XP_RATE`, `WOODCUTTING_XP_RATE`, `GARDENING_XP_RATE`, e as versões `_TOTAL`):
+  - **Mineração e Lenhador:** potência (5 + 0,75 por nível, nível 75 no máximo) × 1 unidade por potência por hora × 1,82 (Passe 1,1 × maestria 1,08 × Coletor, Poção do Coletor e Tônico do Prospector somados 1,53) × 1 XP por unidade ≈ 111 XP/h no teto. Uma coleta pendente pode chegar atrasada: até 8 h (limite do Passe) de produção a mais, uma vez.
+  - **Horta:** parcelas abertas (4, +1 no nível 20 e +1 no 40) × 5 XP por hora de crescimento × 2,24 (Fertilizante corta metade do tempo, perks de velocidade 10%) ≈ 67 XP/h no teto; mais uma colheita atrasada por parcela (até 80 XP, a planta de 16 h).
+  - Em um histórico antigo sem XP de profissão não há linha de base: nada é julgado contra zero. O primeiro snapshot de uma conta nova só é sinalizado (`BASELINE_AHEAD_OF_ACCOUNT_AGE`), nunca rejeitado.
+
+### 8.5 O que o público (anon) pode ler
+
+Somente: a função `public.pass_meter()` (devolve `sold`, `target`, `season_open`, `starts_at`, `ends_at`, `updated_at`; sem ids, valores, e-mails nem origem), as visões `season_leaderboard` e `season_profession_leaderboard`, e a tabela `seasons` (já era pública na `0005`). Tudo o mais continua sem acesso. Plano de testes SQL: fim de `0006`.
+
+### 8.6 O que o site mostra
+
+A página **Temporada** do portal (`/pt/season/`, `/en/season/`, no menu): (1) a barra de Passes adquiridos com a meta que o servidor informa; (2) "Comprar o Passe", que leva ao jogo (`<config.playUrl>/?comprar=passe`); (3) o ranking geral (top 50); (4) um ranking por profissão. Antes da meta o rótulo diz "Quando chegarmos a 15.000 Passes, a temporada valendo começa." (o número vem do servidor); depois que a temporada abre, a área da barra passa a mostrar as datas e a contagem regressiva para o fim. O site **não promete nada** pelo número de Passes e nunca liga a contagem ao prêmio (o prêmio é um valor fixo definido por você em `prize_note`, mostrado junto ao ranking só quando preenchido).
