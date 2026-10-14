@@ -23,7 +23,9 @@ import { applyElixir, applyRepairKit, applyWhetstoneOil, ElixirId, isBuffItem, R
 import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
 import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
-import { grantDailyPassKit, ownsAdventurerPass, purchaseAdventurerPass } from './game/entitlements';
+import { getServerPassOwned, grantDailyPassKit, isServerPassSource, ownsAdventurerPass, purchaseAdventurerPass, setServerPassOwned } from './game/entitlements';
+import { applyServerPass, fetchServerPassOwned, pollPassOwned, recheckServerPass, startCheckout, takeCheckoutReturn, passPurchaseEnabled } from './game/passServer';
+import { usePassEntitlementVersion } from './game/usePassEntitlement';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, characterXpBonusPct, saveSkillEffects, skillPointsAvailable, skillPointsEarned } from './game/heroSkills';
@@ -82,6 +84,7 @@ import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
 import CodexModal from './components/CodexModal';
 import BattlePassModal, { SeasonSummaryModal } from './components/BattlePassModal';
+import type { PassFlow } from './components/BattlePassModal';
 import ClaimAllModal from './components/ClaimAllModal';
 import { applyClaimAll, ClaimAllLine, readyActivities } from './game/claimAll';
 import WelcomeBackModal from './components/WelcomeBackModal';
@@ -235,6 +238,64 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       showToast(skillPointsEarned(nextLevel) > skillPointsEarned(prevLevel) ? t('heroSkills.ui.levelUpPoint', { n: nextLevel }) : t('ui.levelUp', { n: nextLevel }));
     }
   };
+
+  // ---- The Adventurer Pass on the web: the server owns it (entitlements.ts). The save's flag is overwritten from the server's answer, whatever the save says.
+  const passVersion = usePassEntitlementVersion();
+  useEffect(() => {
+    if (!isServerPassSource()) return;
+    const owned = getServerPassOwned();
+    if (!!saveRef.current.hasBattlePass !== owned) setSaveBoth(applyServerPass(saveRef.current, owned, Date.now()));
+    // setSaveBoth is recreated every render; the inputs are the server answer and the save's own flag
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passVersion, save.hasBattlePass]);
+
+  const userId = user?.id ?? null;
+  const [passFlow, setPassFlow] = useState<PassFlow>('idle');
+  const confirmRun = useRef(0);
+  // After the payment page: poll the entitlement for a short time (the webhook may take a moment) and say what happened.
+  const cancelPassConfirm = () => {
+    confirmRun.current++;
+  };
+  const confirmPassPurchase = () => {
+    const run = ++confirmRun.current;
+    setPassFlow('confirming');
+    pollPassOwned(fetchServerPassOwned, { isCancelled: () => confirmRun.current !== run }).then((r) => {
+      if (r === 'cancelled') return;
+      if (r === 'owned') {
+        setServerPassOwned(true);
+        setPassFlow('confirmed');
+        showToast(t('battlePass.activated'));
+      } else setPassFlow('pending');
+    });
+  };
+  useEffect(() => {
+    if (!userId || !isServerPassSource() || takeCheckoutReturn() !== 'success') return;
+    setBattlePassOpen(true);
+    confirmPassPurchase();
+    return cancelPassConfirm;
+    // once per page load, for the signed-in account
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+  // Coming back to the tab after a while re-asks the server (a refund or a manual grant shows up without a reload); coming back from the payment page with Back resets the button.
+  useEffect(() => {
+    if (!userId || !isServerPassSource()) return;
+    let last = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() - last > 5 * 60 * 1000) {
+        last = Date.now();
+        void recheckServerPass(userId);
+      }
+    };
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setPassFlow((f) => (f === 'starting' ? 'idle' : f));
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onShow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onShow);
+    };
+  }, [userId]);
 
   const updateTutorial = (next: SaveData['tutorial']) => setSaveBoth({ ...saveRef.current, tutorial: next, seenWelcome: true });
 
@@ -1303,9 +1364,21 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     else if (lostUnits > 0) showToast(t('hunting.leftBehindToast', { n: fmtNum(lostUnits) }));
   };
 
-  // The only way in is entitlements.ts: a DEV build grants the Pass for testing, a production build has no purchase yet (the screen shows a disabled button).
-  const purchaseBattlePass = () => {
+  // Web (server mode): the button opens Stripe Checkout through the create-checkout function; the entitlement arrives by webhook. Offline/desktop build: entitlements.ts,
+  // where a DEV build grants the Pass for testing and a production build shows a disabled button (Steam will sell it).
+  const purchaseBattlePass = async () => {
     playSfx('click');
+    if (isServerPassSource()) {
+      if (!passPurchaseEnabled || passFlow === 'starting') return;
+      setPassFlow('starting');
+      const started = await startCheckout();
+      if (started.ok) return; // the browser is leaving for the payment page
+      setPassFlow('idle');
+      const reason = (started as { reason?: string }).reason;
+      if (reason === 'already_owned' && userId) void recheckServerPass(userId);
+      else showToast(t(reason === 'rate_limited' ? 'battlePass.checkoutRateLimited' : 'battlePass.checkoutError'));
+      return;
+    }
     const res = purchaseAdventurerPass(saveRef.current, Date.now());
     if (!res.ok) return;
     setSaveBoth(res.save);
@@ -2059,6 +2132,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         <BattlePassModal
           save={save}
           onActivate={purchaseBattlePass}
+          passFlow={passFlow}
+          onRecheck={confirmPassPurchase}
           onClaim={claimBattlePassLevel}
           onClaimAll={claimAllBattlePassRewards}
           onClose={() => {

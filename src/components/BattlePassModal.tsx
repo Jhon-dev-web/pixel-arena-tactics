@@ -3,7 +3,8 @@ import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { battlePassXpForLevel, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/engine';
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
-import { ADVENTURER_PASS_TESTABLE, ownsAdventurerPass } from '../game/entitlements';
+import { ADVENTURER_PASS_TESTABLE, isServerPassSource, ownsAdventurerPass } from '../game/entitlements';
+import { passPurchaseEnabled } from '../game/passServer';
 import { seasonNumber, seasonRemainingMs } from '../game/seasons';
 import type { HeroSheet } from '../game/sprites';
 import HeroThumb from './HeroThumb';
@@ -20,6 +21,10 @@ import { gearStatLines } from './gearStats';
 
 // The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; a vertical list on a phone),
 // the season's exclusives generated from the track data, and the footer with "claim all" and (for non-owners) the purchase button.
+
+// Where the web purchase stands: idle -> starting (calling create-checkout, then the browser leaves for the payment page) -> back on the site: confirming (polling the
+// server) -> confirmed, or pending ("still processing, come back in a moment").
+export type PassFlow = 'idle' | 'starting' | 'confirming' | 'confirmed' | 'pending';
 
 // Levels whose rewards are the season's headline items: bigger cards, art at 64 px.
 const FEATURED_LEVELS = new Set([8, 10, 15, 18, 20, 27, 30]);
@@ -193,17 +198,27 @@ function seasonHighlights(): Highlight[] {
 export default function BattlePassModal({
   save,
   onActivate,
+  passFlow,
+  onRecheck,
   onClaim,
   onClaimAll,
   onClose,
 }: {
   save: SaveData;
   onActivate: () => void;
+  passFlow: PassFlow;
+  onRecheck: () => void;
   onClaim: (level: number, track: 'free' | 'premium') => void;
   onClaimAll: () => { claimed: number; blocked: number };
   onClose: () => void;
 }) {
   const owner = ownsAdventurerPass(save);
+  // Web build (server mode): the button starts a checkout once the owner switches sales on (VITE_PASS_PURCHASE_ENABLED), "Em breve" until then. Offline/desktop: as before.
+  const server = isServerPassSource();
+  const canBuy = server ? passPurchaseEnabled : ADVENTURER_PASS_TESTABLE;
+  const buyLabel = server
+    ? t(passPurchaseEnabled ? (passFlow === 'starting' ? 'battlePass.opening' : 'battlePass.buy') : 'battlePass.comingSoonWeb')
+    : t(ADVENTURER_PASS_TESTABLE ? 'battlePass.activateTest' : 'battlePass.comingSoon');
   const now = Date.now();
   // The season shown is never behind the one the save settled (a clock set back keeps the stored one).
   const season = Math.max(save.passSeason, seasonNumber(now));
@@ -447,13 +462,25 @@ export default function BattlePassModal({
             )}
           </div>
           {owner ? (
-            <span className="ap-owned">{t('battlePass.ownedNote')}</span>
+            <span className="ap-owned">{passFlow === 'confirmed' ? t('battlePass.paymentConfirmed') : t('battlePass.ownedNote')}</span>
           ) : (
             <div className="ap-buy">
-              <button className="battle-btn ap-buy-btn" onClick={onActivate} disabled={!ADVENTURER_PASS_TESTABLE} data-ui>
-                {ADVENTURER_PASS_TESTABLE ? t('battlePass.activateTest') : t('battlePass.comingSoon')}
-              </button>
+              {server && passFlow === 'pending' ? (
+                <button className="battle-btn ap-buy-btn" onClick={onRecheck} data-ui>
+                  {t('battlePass.recheck')}
+                </button>
+              ) : (
+                <button className="battle-btn ap-buy-btn" onClick={onActivate} disabled={!canBuy || passFlow === 'starting' || passFlow === 'confirming'} data-ui>
+                  {buyLabel}
+                </button>
+              )}
+              {server && (passFlow === 'confirming' || passFlow === 'pending') && (
+                <span className="ap-note" role="status">
+                  {t(passFlow === 'confirming' ? 'battlePass.confirming' : 'battlePass.stillProcessing')}
+                </span>
+              )}
               <span className="ap-buy-blurb">{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
+              {server && passPurchaseEnabled && <span className="ap-buy-blurb">{t('battlePass.priceOnCheckout')}</span>}
             </div>
           )}
         </footer>

@@ -4,7 +4,9 @@ import AuthScreen from '../components/AuthScreen';
 import LegacyImportPrompt from '../components/LegacyImportPrompt';
 import UsernameOnboarding from '../components/UsernameOnboarding';
 import App from '../App';
-import { defaultSave } from '../game/engine';
+import { defaultSave, SaveData } from '../game/engine';
+import { getServerPassOwned, setPassSource, setServerPassOwned } from '../game/entitlements';
+import { applyServerPass, refreshServerPass } from '../game/passServer';
 import { getMyUsername } from '../game/usernameRepository';
 import { UsernameContext } from '../game/usernameContext';
 import {
@@ -25,6 +27,9 @@ type Resolution =
   | { kind: 'needsLegacyDecision' }
   | { kind: 'ready'; initial: LoadResult; repository: SaveRepository };
 
+// A save entering the game agrees with the server's Pass answer (only meaningful in server mode; the offline build never calls this path).
+const withServerPass = (save: SaveData): SaveData => applyServerPass(save, getServerPassOwned(), Date.now());
+
 // Resolves WHICH save the player should see before the actual game renders (§0/§12-16): unconfigured
 // backend -> local save, same as before this migration; configured but unauthenticated -> the login
 // gate; authenticated -> the server character (creating a fresh one, or asking about a local legacy
@@ -41,6 +46,9 @@ export default function GameShell() {
   useEffect(() => {
     let cancelled = false;
 
+    // With a backend the Adventurer Pass is the server's entitlement (entitlements.ts); without one (desktop build) it stays the save's flag, as before.
+    setPassSource(configured ? 'server' : 'save');
+
     if (!configured) {
       const repo = new LocalSaveRepository();
       repo.load().then((initial) => {
@@ -52,6 +60,7 @@ export default function GameShell() {
     }
 
     if (status !== 'authenticated' || !user) {
+      setServerPassOwned(false);
       setResolution({ kind: 'loading' });
       return;
     }
@@ -73,17 +82,21 @@ export default function GameShell() {
       }
       setUsername(username);
 
+      // The server's word on the Pass, asked before the game renders; every save below is made to agree with it (a save edited to claim the Pass loses it).
+      await refreshServerPass(user.id);
+      if (cancelled) return;
+
       const existing = await repo.load();
       if (cancelled) return;
       if (existing) {
-        setResolution({ kind: 'ready', initial: existing, repository: repo });
+        setResolution({ kind: 'ready', initial: { ...existing, save: withServerPass(existing.save) }, repository: repo });
         return;
       }
       if (hasLegacyLocalSave()) {
         setResolution({ kind: 'needsLegacyDecision' });
         return;
       }
-      const fresh = defaultSave();
+      const fresh = withServerPass(defaultSave());
       const created = await repo.create(fresh, false);
       if (cancelled) return;
       setResolution({ kind: 'ready', initial: { save: fresh, revision: created.revision }, repository: repo });
@@ -125,7 +138,7 @@ export default function GameShell() {
           setImporting(true);
           try {
             backupLegacyLocalSaveOnce();
-            const legacy = readLegacyLocalSave();
+            const legacy = withServerPass(readLegacyLocalSave());
             const repo = new SupabaseSaveRepository(user.id);
             const created = await repo.create(legacy, true);
             setResolution({ kind: 'ready', initial: { save: legacy, revision: created.revision }, repository: repo });
@@ -137,7 +150,7 @@ export default function GameShell() {
           if (!user) return;
           setImporting(true);
           try {
-            const fresh = defaultSave();
+            const fresh = withServerPass(defaultSave());
             const repo = new SupabaseSaveRepository(user.id);
             const created = await repo.create(fresh, false);
             setResolution({ kind: 'ready', initial: { save: fresh, revision: created.revision }, repository: repo });
