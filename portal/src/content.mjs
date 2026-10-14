@@ -1,7 +1,10 @@
 export const localized = (pt, en) => ({ pt, en });
 const l = localized;
 // playUrl stays null until the owner approves the official address of the game; community stays empty until official channels exist.
-export const config = { playUrl: null, community: [], brand: 'Arena Duel', pageSize: 8 };
+// supabaseUrl / supabaseAnonKey feed the live numbers of the Temporada page (Pass meter and rankings). Both stay null until the owner fills them, and the page then says
+// "dados ao vivo indisponíveis": it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
+// "anon" key (it is public by design and protected by the database rules). The service key must NEVER be written here.
+export const config = { playUrl: null, supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Duel', pageSize: 8 };
 // Player-facing glossary, reused throughout the portal. Terms follow the game's own locale files.
 export const glossary = {
   hero: l('Herói', 'Hero'), heroProgression: l('Progressão do Herói', 'Hero Progression'),
@@ -69,6 +72,49 @@ export const progression = [
   { title: l('Enfrente a Masmorra', 'Take on the Dungeon'), body: l('Andares, chefes e Profundezas', 'Floors, bosses and the Depths'), target: 'combat' },
   { title: l('Decida o próximo foco', 'Choose your next focus'), body: l('Volte às atividades com um objetivo', 'Return to activities with a goal'), target: 'professions' },
 ];
+// Copy of the Temporada page. The goal (15,000 Passes) is NOT written here: it lives in the database (arena_private.season_goal) and the page prints whatever number the server sends.
+// No prize amount and no link between the number of Passes sold and any prize may ever be written in this block. `goalLabel` is the one line under the bar.
+export const seasonPage = {
+  nav: l('Temporada', 'Season'),
+  eyebrow: l('Temporada', 'Season'),
+  title: l('Meta de Passes e rankings', 'Pass goal and rankings'),
+  lead: l('Acompanhe quantos Passes de Aventureiro já foram adquiridos e quem lidera cada ranking.', 'Follow how many Adventurer’s Passes have been acquired and who leads each ranking.'),
+  meterTitle: l('Passes adquiridos', 'Passes acquired'),
+  passesWord: l('Passes', 'Passes'),
+  goalLabel: l('Quando chegarmos a {target} Passes, a temporada valendo começa.', 'When we reach {target} Passes, the ranked season begins.'),
+  openTitle: l('Temporada valendo em andamento', 'Ranked season in progress'),
+  openDates: l('De {from} a {to} (UTC)', 'From {from} to {to} (UTC)'),
+  openEnds: l('Termina em {time}', 'Ends in {time}'),
+  openOver: l('Esta temporada terminou.', 'This season is over.'),
+  openSold: l('{sold} Passes adquiridos', '{sold} Passes acquired'),
+  buy: l('Comprar o Passe', 'Buy the Pass'),
+  soon: l('Em breve', 'Soon'),
+  buyNote: l('A compra é feita dentro do jogo, depois do login.', 'The purchase is made inside the game, after you sign in.'),
+  unavailable: l('Dados ao vivo indisponíveis no momento.', 'Live data is unavailable right now.'),
+  stale: l('Não foi possível atualizar agora. Os números abaixo podem estar desatualizados.', 'Could not refresh right now. The numbers below may be out of date.'),
+  loading: l('Carregando dados ao vivo…', 'Loading live data…'),
+  live: l('Dados ao vivo. Atualizados a cada minuto.', 'Live data. Refreshed every minute.'),
+  noscript: l('Os dados ao vivo precisam de JavaScript.', 'Live data needs JavaScript.'),
+  generalTitle: l('Ranking geral', 'Overall ranking'),
+  rankingEyebrow: l('Ranking geral', 'Overall ranking'),
+  professionTitle: l('Ranking por profissão', 'Ranking by profession'),
+  professionNote: l('A pontuação de cada profissão é o total de XP dela.', 'Each profession’s score is its total XP.'),
+  boardPaid: l('Temporada valendo', 'Ranked season'),
+  boardPre: l('Pré-temporada · sem prêmio', 'Pre-season · no prize'),
+  boardEnded: l('Temporada valendo · encerrada', 'Ranked season · ended'),
+  boardNone: l('A temporada ainda não começou', 'The season has not started yet'),
+  noteOnlyPass: l('A participação é exclusiva de quem tem o Passe de Aventureiro. A pontuação é calculada no servidor.', 'Taking part is exclusive to Adventurer’s Pass owners. Scores are calculated on the server.'),
+  notePre: l('A pré-temporada vale o mesmo placar, só para quem tem o Passe, e não tem prêmio. Ela termina quando a temporada valendo começar; aí todos recomeçam do zero.', 'The pre-season uses the same scoring, for Pass owners only, and has no prize. It ends when the ranked season begins; then everyone starts from zero.'),
+  noteEnded: l('Classificação final da última temporada valendo.', 'Final standings of the last ranked season.'),
+  noteNone: l('Ainda não há ranking aberto. Quando houver, ele aparece aqui.', 'No ranking is open yet. When one is, it appears here.'),
+  prize: l('Prêmio: {note}', 'Prize: {note}'),
+  prizeRule: l('Se houver um prêmio, o texto oficial aparece junto ao ranking. Nenhum valor é divulgado fora dele.', 'If there is a prize, its official text appears next to the ranking. No amount is published anywhere else.'),
+  empty: l('Ainda não há jogadores neste ranking.', 'There are no players in this ranking yet.'),
+  rank: l('Posição', 'Rank'), player: l('Jogador', 'Player'), level: l('Nível', 'Level'), floor: l('Andar', 'Floor'), depth: l('Profundeza', 'Depth'), xp: l('XP', 'XP'),
+  paragon: l('Paragon', 'Paragon'), anonymous: l('Aventureiro', 'Adventurer'),
+  generalTable: l('Ranking geral: posição, jogador, nível, andar e profundeza', 'Overall ranking: rank, player, level, floor and depth'),
+  professionTable: l('Ranking da profissão: posição, jogador, nível e XP', 'Profession ranking: rank, player, level and XP'),
+};
 // The season championship is under study: no format, rules, dates or rewards exist, and none may be stated here. The one decided rule (owner, 2026-10-14): only Adventurer's Pass owners can take part.
 export const championship = {
   title: l('Campeonato de temporada em estudo', 'Season championship under study'),

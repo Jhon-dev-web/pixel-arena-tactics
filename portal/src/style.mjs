@@ -248,5 +248,38 @@ footer small { color: var(--muted); font-size: .875rem; grid-column: 1/-1; }
   footer { grid-template-columns: 1fr; padding: 30px 6%; gap: 18px; }
   .eyebrow { letter-spacing: 1.1px; }
 }
+/* Temporada: Pass meter and rankings */
+.meter-figures { margin: 0 0 14px; color: var(--ink); font-family: var(--serif); font-size: clamp(1.7rem, 4.5vw, 3rem); line-height: 1.2; overflow-wrap: anywhere; }
+.meter-figures strong { color: var(--gold); font-weight: 400; }
+.meter-sep { color: var(--muted); }
+.meter-unit { font-size: .45em; color: var(--muted); font-family: system-ui, sans-serif; letter-spacing: .5px; text-transform: uppercase; }
+.meter-pct { font-size: .5em; color: var(--ink); margin-left: 8px; }
+.meter-bar { height: 22px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; }
+.meter-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #9c7a43, var(--gold)); transition: width .6s ease; }
+.meter-label { margin: 14px 0 0; font-size: 1.0625rem; color: var(--ink); }
+.meter-dates, .meter-countdown { margin: 6px 0; font-size: 1.125rem; color: var(--ink); }
+.meter-countdown { color: var(--gold); font-family: var(--serif); font-size: 1.6rem; }
+.meter-sold-note, .buy-note, .board-note { font-size: .9375rem; }
+.live-state { margin: 18px 0 0; font-size: .9375rem; }
+.live-state[data-state="unavailable"] { color: #d9a98b; }
+.live-state[data-state="live"] { color: #9bc9b6; }
+.button.disabled { cursor: not-allowed; background: transparent; color: var(--muted); border-color: var(--border); }
+.button.disabled:hover { background: transparent; }
+.board-prize { color: var(--gold); border-left: 2px solid var(--gold); padding-left: 14px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 20px; }
+.tab { min-height: 44px; padding: 8px 18px; background: transparent; color: var(--ink); border: 1px solid var(--border); cursor: pointer; }
+.tab:hover { border-color: var(--gold); }
+.tab[aria-selected="true"] { background: var(--gold); color: #151a1b; border-color: var(--gold); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); }
+.table-wrap:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.rank-table { width: 100%; border-collapse: collapse; font-size: .9375rem; }
+.rank-table th, .rank-table td { padding: 10px 14px; border-bottom: 1px solid #ffffff12; text-align: left; vertical-align: top; }
+.rank-table thead th { background: var(--surface); color: var(--gold); font-weight: 600; white-space: nowrap; }
+.rank-table tbody th { font-weight: 500; color: var(--ink); overflow-wrap: anywhere; min-width: 9ch; }
+.rank-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rank-table small { color: var(--muted); }
+.rank-table .anon { color: var(--muted); }
+.rank-empty { padding: 18px 0; }
+@media (max-width:650px) { .rank-table { font-size: .875rem; } .rank-table th, .rank-table td { padding: 8px 8px; } .rank-table tbody th { min-width: 14ch; } .meter-bar { height: 18px; } }
 @media (prefers-reduced-motion:reduce) { * { transition: none!important; scroll-behavior: auto!important; } }
 `;

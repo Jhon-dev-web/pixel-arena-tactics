@@ -1,6 +1,7 @@
 import { mkdir, rm, writeFile, cp, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { config, states, groups, systems, glossary, roadmap, articles } from '../src/content.mjs';
+import { cleanSupabaseUrl } from '../public/season-core.js';
 import { validateArticles, validateLocalized, safeUrl } from '../src/editorial.mjs';
 import { renderSite } from '../src/pages.mjs';
 import { style } from '../src/style.mjs';
@@ -8,6 +9,18 @@ import { style } from '../src/style.mjs';
 validateArticles(articles);
 if (config.playUrl !== null) safeUrl(config.playUrl, { externalOnly: true });
 for (const channel of config.community) { safeUrl(channel.url, { externalOnly: true }); validateLocalized(channel.label, 'channel label'); }
+if (config.supabaseUrl !== null && cleanSupabaseUrl(config.supabaseUrl) === null) throw new Error('config.supabaseUrl must be https://<project-ref>.supabase.co (nothing else is allowed by the CSP)');
+if (config.supabaseAnonKey !== null && (typeof config.supabaseAnonKey !== 'string' || !/^[w.-]{20,}$/.test(config.supabaseAnonKey))) throw new Error('config.supabaseAnonKey must be the public anon key (a JWT or an sb_publishable_ key)');
+if (config.supabaseAnonKey !== null) {
+  // The service key must never reach the public site: refuse an sb_secret_ key and any JWT whose role is not anon.
+  if (config.supabaseAnonKey.startsWith('sb_secret_')) throw new Error('config.supabaseAnonKey holds a SECRET key; only the public anon key may be used');
+  const part = config.supabaseAnonKey.split('.')[1];
+  if (part) {
+    let role = null;
+    try { role = JSON.parse(Buffer.from(part, 'base64url').toString('utf8')).role; } catch { /* not a decodable JWT: leave it to the server to reject */ }
+    if (role !== null && role !== 'anon') throw new Error('config.supabaseAnonKey is a "' + role + '" key; only the public anon key may be used');
+  }
+}
 if (!Number.isInteger(config.pageSize) || config.pageSize < 1) throw new Error('Invalid page size');
 for (const item of roadmap) {
   if (!states[item.status]) throw new Error('Unknown roadmap status');
