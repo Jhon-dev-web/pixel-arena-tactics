@@ -49,11 +49,11 @@ Estes documentos não foram escritos aqui e precisam ser redigidos ou revisados 
 
 ## 4. O ranking com prêmio em dinheiro NÃO abre antes das etapas de servidor
 
-Hoje o servidor só **guarda** o save que o cliente envia; ele não valida ouro, itens, sorteios nem tempo. O direito ao Passe de Aventureiro também é decidido pelo cliente (`hasBattlePass` no save). Qualquer pessoa com conhecimentos básicos consegue editar o save e se colocar no topo.
+Hoje o servidor só **guarda** o save que o cliente envia; ele não valida ouro, itens, sorteios nem tempo. O direito ao Passe de Aventureiro, no estado atual de produção, também é decidido pelo cliente (`hasBattlePass` no save); o código para o servidor decidir já existe e o passo a passo está em [`docs/PASS_SALES.md`](PASS_SALES.md), mas só vale depois que o dono aplicar a migration e implantar as funções. Qualquer pessoa com conhecimentos básicos consegue editar o save e se colocar no topo.
 
 Portanto o ranking com prêmio em dinheiro **não deve ser aberto** antes de TODAS estas etapas estarem prontas, testadas e na ordem abaixo:
 
-1. **Direito ao Passe controlado pelo servidor** (entitlement gravado pelo servidor a partir da compra confirmada; o cliente não escreve esse campo).
+1. **Direito ao Passe controlado pelo servidor** (passo a passo em [`docs/PASS_SALES.md`](PASS_SALES.md); entitlement gravado pelo servidor a partir da compra confirmada; o cliente não escreve esse campo).
 2. **Auditoria de snapshots**: o servidor guarda snapshots do progresso, checa a plausibilidade entre eles (crescimento máximo de ouro, XP, itens por intervalo de tempo) e marca contas suspeitas.
 3. **Tabelas de temporada** no servidor: inscrição, pontuação e ranking calculados no servidor, nunca enviados pelo cliente.
 4. **Congelamento e auditoria manual**: ao fim da temporada o ranking é congelado e os candidatos ao prêmio passam por revisão manual antes de qualquer pagamento.
