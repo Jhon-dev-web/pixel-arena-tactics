@@ -51,6 +51,29 @@ export const BOUNDS = {
   orderLumpXp: 35_400,
   orderLumpFactorAt50: 3.2,
 
+  // ---- profession skill XP (Mining, Woodcutting, Gardening): THEORETICAL, recomputed from tunables by season:bounds / deriveBounds ---------------------------------------
+  /** Mining / Woodcutting: gatherPower = BASE_GATHER_POWER + level x powerPerLevel (skills.ts). SOURCE: BASE_GATHER_POWER = 5, tunables skills.powerPerLevel = 0.75, skills.maxLevel = 75. */
+  gatherBasePower: 5,
+  gatherPowerPerLevel: 0.75,
+  gatherMaxLevel: 75,
+  /** Units per hour per power point (tunables mining.oreRatePerPower = woodcutting.woodRatePerPower = 1) and skill XP per unit (skills.xpPerUnit = 1). */
+  gatherUnitsPerPower: 1,
+  gatherXpPerUnit: 1,
+  /**
+   * Everything that multiplies the units of a session, at its best (engine.ts gatherAccrual): the Pass drop multiplier 1.1 (battlePass.dropRateMultiplier) x the two mastery yield
+   * perks 1.08 (mastery.gatherYieldPct 0.04 x 2) x the effective-hours bonuses 1.53 (Coletor 3 ranks x 0.06 = 0.18, Gatherer Brew 0.25, Prospector's Tonic 0.10, all active the whole time).
+   */
+  gatherYieldFactor: 1.82,
+  /** Gardening XP = growth hours x skills.gardenXpPerHour (5) per harvest, for every plant. SOURCE: tunables skills.gardenXpPerHour. */
+  gardenXpPerPlotHour: 5,
+  /** Plots: 4 at the start, +1 at Gardening level 20 and 40 (garden.ts GARDEN_START_PLOTS / GARDEN_PLOT_UNLOCK_LEVELS). */
+  gardenStartPlots: 4,
+  gardenPlotUnlockLevels: [20, 40] as readonly number[],
+  /** A Fertilizer on a fresh planting halves its growth (x2 XP per hour; tunables tonics.fertilizerSkipPct 0.5) and the two speed perks cut 10% (1 / 0.9 = 1.11, rounded up to 1.12). */
+  gardenSpeedFactor: 2 * 1.12,
+  /** The longest plant (elder_root, 16 h x 5 XP): one ready harvest per plot may be claimed late, so a snapshot can carry one of each. */
+  gardenLongestPlantXp: 80,
+
   // ---- counters per server hour (theoretical) -----------------------------------------------------------------------------------------------
   /** Kills per hour: one kill per 0.4 s at the highest attack speed (base interval minus 300 AGI points x 4.7 ms, attributes.ts), rounded up. SOURCE: ESTIMATE, not measured: nothing in the sims counts kills per hour; a flag-level bound that catches edited counters, not a precise limit. */
   killsPerHour: 10_000,
@@ -144,6 +167,25 @@ export function interpolate(table: readonly (readonly [number, number])[], x: nu
 export const daysAtLevel = (position: number): number => interpolate(BOUNDS.levelPace, position);
 export const daysAtFloor = (floor: number): number => interpolate(BOUNDS.floorPace, floor);
 export const floorCapForLevel = (heroLevel: number): number => interpolate(BOUNDS.floorCapByLevel, heroLevel);
+
+/** Plots open to a Gardening level. */
+export const gardenPlotsAt = (level: number): number => BOUNDS.gardenStartPlots + BOUNDS.gardenPlotUnlockLevels.filter((l) => level >= l).length;
+
+/**
+ * THEORETICAL profession skill XP per server hour for a profession at `level` (the level the new snapshot shows: the power an honest player had during the gap was never higher).
+ * Mining / Woodcutting: power at that level x units per power x every yield bonus x XP per unit. Gardening: open plots x XP per plot-hour x fertilizer and speed perks.
+ */
+export function professionXpPerHour(profession: 'mining' | 'woodcutting' | 'gardening', level: number): number {
+  if (profession === 'gardening') return gardenPlotsAt(level) * BOUNDS.gardenXpPerPlotHour * BOUNDS.gardenSpeedFactor;
+  const power = BOUNDS.gatherBasePower + Math.min(Math.max(1, level), BOUNDS.gatherMaxLevel) * BOUNDS.gatherPowerPerLevel;
+  return power * BOUNDS.gatherUnitsPerPower * BOUNDS.gatherYieldFactor * BOUNDS.gatherXpPerUnit;
+}
+
+/** Profession XP that may arrive in ONE snapshot although earned earlier: a gathering session waits at most burstHours (the Pass cap); each garden plot may hold one finished crop. */
+export function professionBurstXp(profession: 'mining' | 'woodcutting' | 'gardening', level: number): number {
+  if (profession === 'gardening') return gardenPlotsAt(level) * BOUNDS.gardenLongestPlantXp;
+  return BOUNDS.burstHours * professionXpPerHour(profession, level);
+}
 
 /** Hunting XP per hour at the best zone the floor has opened (ZONE_TABLE: zone unlock floors from huntingZones.ts), shallow depth x deep depth x bonuses. */
 export function zoneXpPerHour(highestFloor: number): number {

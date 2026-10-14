@@ -1,10 +1,10 @@
-import { GEAR_LEVEL_GATES, PARAGON_FIRST_XP, PARAGON_GROWTH, UNIQUE_FLOOR_GATES, XP_TO_LEVEL } from './tables.ts';
+import { GEAR_LEVEL_GATES, PARAGON_FIRST_XP, PARAGON_GROWTH, PROFESSION_XP_TO_LEVEL, UNIQUE_FLOOR_GATES, XP_TO_LEVEL } from './tables.ts';
 
 // The numbers the season ranking reads out of a save. Pure and dependency-free (no game import, Web APIs only) so the SAME file runs in the Deno Edge Function
 // (which trusts nothing the client says about itself) and in the browser (which uses it only to know when something worth submitting happened).
 // The input is `unknown` on purpose: a save is player-editable, so every field is read defensively and clamped; garbage becomes 0, never an exception.
 
-export const METRICS_VERSION = 1;
+export const METRICS_VERSION = 2; // 2: profession skill XP and levels
 
 export interface RarityCounts {
   common: number;
@@ -14,7 +14,7 @@ export interface RarityCounts {
 }
 
 /** The counters that may never go down and are tracked as a running maximum ("peak"). */
-export const PEAK_KEYS = ['xp', 'highestFloor', 'deepestDepth', 'kills', 'goldEarned', 'bossesKilled', 'secondsPlayed', 'uniquesFound', 'dungeonFloors', 'dungeonRuns', 'achievements'] as const;
+export const PEAK_KEYS = ['xp', 'highestFloor', 'deepestDepth', 'kills', 'goldEarned', 'bossesKilled', 'secondsPlayed', 'uniquesFound', 'dungeonFloors', 'dungeonRuns', 'achievements', 'miningXp', 'woodcuttingXp', 'gardeningXp'] as const;
 export type PeakKey = (typeof PEAK_KEYS)[number];
 export type Peak = Record<PeakKey, number>;
 
@@ -34,6 +34,13 @@ export interface ProgressMetrics {
   dungeonFloors: number;
   dungeonRuns: number;
   achievements: number; // achievements claimed
+  // Profession skill XP (save.skillXp) and the level the XP table gives. XP is the score of that profession's ranking.
+  miningXp: number;
+  miningLevel: number;
+  woodcuttingXp: number;
+  woodcuttingLevel: number;
+  gardeningXp: number;
+  gardeningLevel: number;
   items: RarityCounts; // gear instances owned, by rarity
   hasPassFlag: boolean; // what the SAVE says; never trusted, only compared with the server entitlement
   premiumClaims: number; // premium Pass track rewards claimed
@@ -51,6 +58,32 @@ const num = (v: unknown, max: number): number => {
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+export const PROFESSIONS = ['mining', 'woodcutting', 'gardening'] as const;
+export type ProfessionId = (typeof PROFESSIONS)[number];
+
+/** Profession skill level (1..max) from its total XP, by the table copied from the game's curves. */
+export function professionLevelFromXp(profession: ProfessionId, xp: number): number {
+  const table = PROFESSION_XP_TO_LEVEL[profession];
+  let lo = 1;
+  let hi = table.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (xp >= table[mid - 1]) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+/** What the profession rankings store for one snapshot: only professions with some XP. score = total skill XP. */
+export function professionScores(m: Pick<ProgressMetrics, 'miningXp' | 'miningLevel' | 'woodcuttingXp' | 'woodcuttingLevel' | 'gardeningXp' | 'gardeningLevel'>): { profession: ProfessionId; xp: number; level: number }[] {
+  const all = [
+    { profession: 'mining' as const, xp: m.miningXp, level: m.miningLevel },
+    { profession: 'woodcutting' as const, xp: m.woodcuttingXp, level: m.woodcuttingLevel },
+    { profession: 'gardening' as const, xp: m.gardeningXp, level: m.gardeningLevel },
+  ];
+  return all.filter((p) => p.xp > 0);
+}
 
 /** Hero level (1..100) from XP, by the table copied from the game's curve. */
 export function levelFromXp(xp: number): number {
@@ -119,6 +152,10 @@ export function extractMetrics(blob: unknown): ProgressMetrics | null {
     }
   }
 
+  const skill = isObj(blob.skillXp) ? blob.skillXp : {};
+  const miningXp = num(skill.mining, CAPS.xp);
+  const woodcuttingXp = num(skill.woodcutting, CAPS.xp);
+  const gardeningXp = num(skill.gardening, CAPS.xp);
   const quests = isObj(blob.quests) ? blob.quests : {};
   const claimedPass = isObj(blob.claimedPassRewards) ? blob.claimedPassRewards : {};
   return {
@@ -137,6 +174,12 @@ export function extractMetrics(blob: unknown): ProgressMetrics | null {
     dungeonFloors: num(stats.dungeonFloors, CAPS.counter),
     dungeonRuns: num(stats.dungeonRuns, CAPS.counter),
     achievements: Array.isArray(quests.claimed) ? Math.min(quests.claimed.length, 1000) : 0,
+    miningXp,
+    miningLevel: professionLevelFromXp('mining', miningXp),
+    woodcuttingXp,
+    woodcuttingLevel: professionLevelFromXp('woodcutting', woodcuttingXp),
+    gardeningXp,
+    gardeningLevel: professionLevelFromXp('gardening', gardeningXp),
     items,
     hasPassFlag: blob.hasBattlePass === true,
     premiumClaims: Array.isArray(claimedPass.premium) ? Math.min(claimedPass.premium.length, 1000) : 0,
@@ -154,7 +197,7 @@ export const peakOf = (m: ProgressMetrics): Peak => {
 export const maxPeak = (a: Peak | null, b: Peak): Peak => {
   if (!a) return { ...b };
   const out = {} as Peak;
-  for (const k of PEAK_KEYS) out[k] = Math.max(a[k] ?? 0, b[k]);
+  for (const k of PEAK_KEYS) out[k] = Math.max(a[k] ?? 0, b[k] ?? 0);
   return out;
 };
 

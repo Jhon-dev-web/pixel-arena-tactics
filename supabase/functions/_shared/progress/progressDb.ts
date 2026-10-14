@@ -1,5 +1,5 @@
 import type { HistoryPoint, Verdict } from './evaluate.ts';
-import type { NewSnapshot, ProgressStore, SeasonApplyStatus, StoredSnapshot } from './handler.ts';
+import type { NewSnapshot, ProfessionApplyStatus, ProgressStore, SeasonApplyStatus, StoredSnapshot } from './handler.ts';
 import { Peak, ProgressMetrics, peakOf } from './metrics.ts';
 
 // The real ProgressStore: PostgREST over fetch with the SERVICE ROLE key (injected by the Supabase Edge runtime; never logged, never returned).
@@ -96,6 +96,16 @@ export function createProgressStore(cfg: ProgressDbConfig): ProgressStore {
       const rows = (await res.json()) as { id: string }[];
       if (!rows[0]?.id) throw new Error('snapshot_write_empty');
       return { id: rows[0].id };
+    },
+
+    async applyProfessionsToSeason(args) {
+      const res = await doFetch(`${base}/rpc/season_apply_professions`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ p_user_id: args.userId, p_snapshot_id: args.snapshotId, p_verdict: args.verdict, p_professions: args.professions }),
+      });
+      if (!res.ok) throw failure('season_apply_professions', res);
+      return (await res.json()) as ProfessionApplyStatus;
     },
 
     async applyToSeason(args) {

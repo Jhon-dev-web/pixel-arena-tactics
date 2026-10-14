@@ -19,8 +19,8 @@ import { activeLocale, fmtNum, t } from '../locales';
 // (the season row, the public leaderboard view, the player's own place); the only thing the game sends is the save, from useSeasonSubmit, in the background.
 // There is no prize amount in the game: the owner may write `prize_note` on the season row and it is shown here verbatim, only when it is not empty.
 
-const dateText = (iso: string): string =>
-  new Date(iso).toLocaleDateString(activeLocale === 'pt' ? 'pt-BR' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+const dateText = (iso: string | null): string =>
+  !iso ? '-' : new Date(iso).toLocaleDateString(activeLocale === 'pt' ? 'pt-BR' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
 
 function submitLine(s: SubmitStatus): string {
   if (s.state === 'sending') return t('seasonRanking.submit.sending');
@@ -81,9 +81,17 @@ export default function SeasonRankingPanel({ online, ownsPass }: { online: boole
     <section className="ap-season" aria-label={t('seasonRanking.tab')}>
       {season && (
         <div className="ap-season-head">
-          <h3 className="ap-h3">{t('seasonRanking.title', { n: season.number })}</h3>
-          <span className="ap-season-dates">{t('seasonRanking.dates', { from: dateText(season.starts_at), to: dateText(season.ends_at) })}</span>
-          <span className="ap-season-dates">{t('seasonRanking.freeze', { date: dateText(season.freeze_at) })}</span>
+          <h3 className="ap-h3">{season.kind === 'pre' ? t('seasonRanking.preTitle') : t('seasonRanking.title', { n: season.number })}</h3>
+          {season.kind === 'pre' ? (
+            <span className="ap-season-dates">{t('seasonRanking.preNote')}</span>
+          ) : season.starts_at && season.ends_at && season.freeze_at ? (
+            <>
+              <span className="ap-season-dates">{t('seasonRanking.dates', { from: dateText(season.starts_at), to: dateText(season.ends_at) })}</span>
+              <span className="ap-season-dates">{t('seasonRanking.freeze', { date: dateText(season.freeze_at) })}</span>
+            </>
+          ) : (
+            <span className="ap-season-dates">{t('seasonRanking.waitingGoal')}</span>
+          )}
         </div>
       )}
 

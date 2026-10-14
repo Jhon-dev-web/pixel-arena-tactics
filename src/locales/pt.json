@@ -2010,6 +2010,9 @@
     "boundaryReload": "Recarregar"
   },
   "seasonRanking": {
+    "preTitle": "Pré-temporada (sem prêmio)",
+    "preNote": "Vale o mesmo placar e as mesmas regras, mas não há prêmio. Ela termina quando a temporada valendo começar; aí todos recomeçam do zero.",
+    "waitingGoal": "A temporada valendo ainda não começou: ela abre quando a meta de Passes for atingida.",
     "tab": "Temporada",
     "tabTrack": "Trilha",
     "title": "Ranking da Temporada {n}",

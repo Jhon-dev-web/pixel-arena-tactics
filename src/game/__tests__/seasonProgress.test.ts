@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSave, playerLevel } from '../engine';
+import { skillLevel } from '../skills';
 import { paragonLevel } from '../paragon';
 import { MAX_SAVE_UPLOAD_BYTES, toUploadBlob } from '../saveUpload';
 import { buildTables } from '../../../scripts/sim/seasonTablesBuild';
 import { deriveBounds } from '../../../scripts/sim/seasonBoundsDerive';
-import { BOUNDS, burstXp, xpPerHourAt } from '../../../supabase/functions/_shared/progress/bounds';
+import { BOUNDS, burstXp, professionBurstXp, professionXpPerHour, xpPerHourAt } from '../../../supabase/functions/_shared/progress/bounds';
 import { MAX_BODY_BYTES } from '../../../supabase/functions/_shared/progress/handler';
-import { computeScore, extractMetrics, levelFromXp, paragonFromXp } from '../../../supabase/functions/_shared/progress/metrics';
+import { computeScore, extractMetrics, levelFromXp, paragonFromXp, professionLevelFromXp } from '../../../supabase/functions/_shared/progress/metrics';
 import * as tables from '../../../supabase/functions/_shared/progress/tables';
 
 // The server copies a few game numbers (tables.ts) and the client shares metrics.ts with the Edge Function. These tests fail the day the game moves and the copies do not.
@@ -21,6 +22,19 @@ describe('season progress: the server tables follow the game', () => {
     expect(tables.UNIQUE_FLOOR_GATES).toEqual(t.floorGates);
     expect([...tables.DUNGEON_RUN_XP]).toEqual(t.dungeonRunXp);
     expect([...tables.ZONE_TABLE]).toEqual(t.zoneFloors);
+    expect({ mining: [...tables.PROFESSION_XP_TO_LEVEL.mining], woodcutting: [...tables.PROFESSION_XP_TO_LEVEL.woodcutting], gardening: [...tables.PROFESSION_XP_TO_LEVEL.gardening] }).toEqual(t.professionXpToLevel);
+  });
+
+  it('profession level read from XP matches skillLevel at the start, middle and end of every level', () => {
+    for (const id of ['mining', 'woodcutting', 'gardening'] as const) {
+      const table = tables.PROFESSION_XP_TO_LEVEL[id];
+      for (let level = 1; level <= table.length; level++) {
+        for (const xp of [table[level - 1], table[level - 1] + 3, (table[level] ?? table[level - 1] + 10) - 1]) {
+          expect(professionLevelFromXp(id, xp)).toBe(skillLevel(xp, id));
+        }
+      }
+      expect(professionLevelFromXp(id, 1e12)).toBe(table.length);
+    }
   });
 
   it('level and paragon read from XP match the game at the start, middle and end of many levels', () => {
@@ -55,6 +69,17 @@ describe('season progress: bounds still hold the game', () => {
     expect(burstXp(100, 100)).toBeGreaterThan(burstXp(1, 0));
   });
 
+  it('the profession XP bounds are at least what the tunables allow', () => {
+    const d = deriveBounds();
+    expect(professionXpPerHour('mining', 75)).toBeGreaterThanOrEqual(d.miningPerHour);
+    expect(professionXpPerHour('woodcutting', 75)).toBeGreaterThanOrEqual(d.woodcuttingPerHour);
+    expect(professionXpPerHour('gardening', 40)).toBeGreaterThanOrEqual(d.gardeningPerHour);
+    expect(BOUNDS.gatherYieldFactor).toBeGreaterThanOrEqual(d.gatherYield);
+    expect(BOUNDS.gardenSpeedFactor).toBeGreaterThanOrEqual(d.gardenSpeed);
+    expect(BOUNDS.gardenLongestPlantXp).toBeGreaterThanOrEqual(d.longestPlantXp);
+    expect(professionBurstXp('mining', 75)).toBeGreaterThanOrEqual(d.capHours * d.miningPerHour);
+  });
+
   it('the body limit is the client upload limit', () => {
     expect(MAX_BODY_BYTES).toBe(MAX_SAVE_UPLOAD_BYTES);
   });
@@ -72,10 +97,13 @@ describe('season progress: metrics of a real save', () => {
     expect(m!.hasPassFlag).toBe(false);
     expect(computeScore(m!)).toBe(1_000_001); // highestDungeonFloor starts at 1
     expect(m!.items.common).toBeGreaterThan(0); // the starter weapon / armor
+    expect(m!.miningXp).toBe(0);
+    expect(m!.gardeningLevel).toBe(1);
   });
 
   it('the fields the metrics read exist under the same names in the real save', () => {
     const save = defaultSave() as unknown as Record<string, unknown>;
+    expect(Object.keys(save.skillXp as object).sort()).toEqual(['gardening', 'mining', 'woodcutting']);
     for (const key of ['xp', 'highestDungeonFloor', 'stats', 'quests', 'gearInstances', 'claimedPassRewards', 'stashBonusSlots', 'hasBattlePass']) expect(save).toHaveProperty(key);
     const stats = save.stats as Record<string, unknown>;
     for (const key of ['deepestDepth', 'kills', 'goldEarned', 'bossesKilled', 'secondsPlayed', 'uniquesFound', 'dungeonFloors', 'dungeonRuns']) expect(stats).toHaveProperty(key);

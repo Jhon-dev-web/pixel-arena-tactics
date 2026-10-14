@@ -23,9 +23,11 @@ export type SeasonStatus = 'upcoming' | 'open' | 'frozen' | 'closed' | 'paid';
 
 export interface SeasonRow {
   number: number;
-  starts_at: string;
-  ends_at: string;
-  freeze_at: string;
+  // null while a ranked season waits for the Pass goal (migration 0006); the pre-season (kind 'pre', number 0) has no prize and no real end.
+  starts_at: string | null;
+  ends_at: string | null;
+  freeze_at: string | null;
+  kind?: 'pre' | 'ranked';
   status: SeasonStatus;
   prize_note: string | null;
 }
@@ -58,7 +60,7 @@ export type Verdict = 'ok' | 'flagged' | 'rejected';
 /** Which season the screen shows: the open one; otherwise the newest that already ran; otherwise the next one coming. */
 export function pickSeason(rows: SeasonRow[], now: number): SeasonRow | null {
   const sorted = [...rows].sort((a, b) => a.number - b.number);
-  const open = sorted.filter((s) => s.status === 'open' && Date.parse(s.starts_at) <= now);
+  const open = sorted.filter((s) => s.status === 'open' && s.starts_at !== null && Date.parse(s.starts_at) <= now);
   if (open.length > 0) return open[open.length - 1];
   const ran = sorted.filter((s) => s.status === 'frozen' || s.status === 'closed' || s.status === 'paid');
   if (ran.length > 0) return ran[ran.length - 1];
@@ -84,7 +86,7 @@ export interface EligibilityInput {
 export function seasonEligibility(i: EligibilityInput): Eligibility {
   if (!i.online) return 'web_only';
   if (!i.season) return 'no_season';
-  if (i.season.status === 'upcoming' || (i.season.status === 'open' && i.now < Date.parse(i.season.starts_at))) return 'not_open';
+  if (i.season.status === 'upcoming' || !i.season.starts_at || !i.season.freeze_at || (i.season.status === 'open' && i.now < Date.parse(i.season.starts_at))) return 'not_open';
   if (i.season.status !== 'open' || i.now >= Date.parse(i.season.freeze_at)) return 'over';
   if (!i.ownsPass) return 'needs_pass';
   if (!i.emailConfirmed) return 'needs_email';
@@ -183,7 +185,7 @@ export async function submitProgress(save: SaveData, now: number = Date.now()): 
 
 export async function fetchSeasons(): Promise<SeasonRow[]> {
   if (!supabase) throw new Error('not_configured');
-  const { data, error } = await supabase.from('seasons').select('number,starts_at,ends_at,freeze_at,status,prize_note').order('number');
+  const { data, error } = await supabase.from('seasons').select('number,kind,starts_at,ends_at,freeze_at,status,prize_note').order('number');
   if (error) throw new Error('seasons_read_failed');
   return (data ?? []) as SeasonRow[];
 }

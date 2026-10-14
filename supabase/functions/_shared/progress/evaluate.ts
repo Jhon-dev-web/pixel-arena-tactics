@@ -1,4 +1,4 @@
-import { BOUNDS, PACE_FLAG_FACTOR, PACE_REJECT_FACTOR, REJECT_FACTOR, burstXp, daysAtFloor, daysAtLevel, floorCapForLevel, xpPerHourAt } from './bounds.ts';
+import { BOUNDS, PACE_FLAG_FACTOR, PACE_REJECT_FACTOR, REJECT_FACTOR, burstXp, daysAtFloor, daysAtLevel, floorCapForLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from './bounds.ts';
 import { PEAK_KEYS, Peak, ProgressMetrics, levelPosition, maxPeak, peakOf } from './metrics.ts';
 
 // The plausibility audit. Pure: given the metrics of a new snapshot, the server's own history of the account and the server clock, it says ok / flagged / rejected and why.
@@ -8,6 +8,7 @@ import { PEAK_KEYS, Peak, ProgressMetrics, levelPosition, maxPeak, peakOf } from
 //   REJECT-capable:  GEAR_BELOW_GATE, DEPTH_WITHOUT_FLOOR_100, PASS_FEATURES_WITHOUT_ENTITLEMENT, FLOOR_ABOVE_LEVEL_CAP,
 //                    XP_RATE, XP_RATE_TOTAL, LEVEL_PACE, LEVEL_PACE_TOTAL, FLOOR_PACE, FLOOR_PACE_TOTAL, DEPTH_PACE, DEPTH_PACE_TOTAL,
 //                    SECONDS_PLAYED_EXCEEDS_CLOCK, SECONDS_PLAYED_EXCEEDS_CLOCK_TOTAL,
+//                    MINING_XP_RATE, WOODCUTTING_XP_RATE, GARDENING_XP_RATE (profession skill XP per server hour, with _TOTAL too),
 //                    KILLS_RATE, GOLD_RATE, DUNGEON_RUNS_RATE, DUNGEON_FLOORS_RATE, BOSSES_RATE, UNIQUES_RATE, ACHIEVEMENTS_RATE (each also with the _TOTAL suffix, against the first snapshot)
 //   FLAG only:       RESTORED_OLDER_SAVE (a counter went down), SAVE_REVISION_BACKWARDS, PASS_FLAG_WITHOUT_ENTITLEMENT, BASELINE_AHEAD_OF_ACCOUNT_AGE
 //   (the REJECT-capable ones answer FLAGGED when the measure is between its flag value and its reject value, REJECTED above.)
@@ -64,6 +65,13 @@ const RATE_RULES: readonly RateRule[] = [
   { code: 'ACHIEVEMENTS_RATE', key: 'achievements', per: 'day', rate: BOUNDS.achievementsPerDay },
 ];
 
+// Profession -> the metrics fields it reads and the reason code of its XP rate (bounds.ts professionXpPerHour / professionBurstXp).
+const PROFESSION_RULES = [
+  { profession: 'mining', xp: 'miningXp', level: 'miningLevel', code: 'MINING_XP_RATE' },
+  { profession: 'woodcutting', xp: 'woodcuttingXp', level: 'woodcuttingLevel', code: 'WOODCUTTING_XP_RATE' },
+  { profession: 'gardening', xp: 'gardeningXp', level: 'gardeningLevel', code: 'GARDENING_XP_RATE' },
+] as const;
+
 class Findings {
   private readonly map = new Map<string, Severity>();
   add(code: string, severity: Severity): void {
@@ -98,6 +106,15 @@ function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedM
   const xpGained = Math.max(0, cur.xp - refPeak.xp);
   const xpAllowed = xpPerHourAt(cur.highestFloor) * hours + burst;
   f.check('XP_RATE' + suffix, xpGained, xpAllowed, xpAllowed * REJECT_FACTOR);
+
+  // Profession skill XP: rate at the level shown now x server hours, plus one late-claimed burst. A reference snapshot from before metrics v2 has no profession XP: no baseline, no check.
+  for (const rule of PROFESSION_RULES) {
+    const ref = refPeak[rule.xp];
+    if (typeof ref !== 'number') continue;
+    const level = cur[rule.level];
+    const allowed = professionXpPerHour(rule.profession, level) * hours + professionBurstXp(rule.profession, level);
+    f.check(rule.code + suffix, Math.max(0, cur[rule.xp] - ref), allowed, allowed * REJECT_FACTOR);
+  }
 
   for (const rule of RATE_RULES) {
     const gained = Math.max(0, cur[rule.key] - refPeak[rule.key]);
@@ -144,7 +161,9 @@ export function evaluateSnapshot(cur: ProgressMetrics, input: EvalInput): Evalua
     const levelDays = daysAtLevel(levelPosition(Math.max(0, cur.xp - burstXp(cur.heroLevel, cur.highestFloor))));
     const floorDays = daysAtFloor(Math.max(0, cur.highestFloor - BOUNDS.floorStepSlack));
     const secondsAllowed = (ageMs / 1000) * BOUNDS.secondsRatio + BOUNDS.secondsSlack;
+    const professionAhead = PROFESSION_RULES.some((r) => cur[r.xp] > professionXpPerHour(r.profession, cur[r.level]) * (ageMs / HOUR_MS) + professionBurstXp(r.profession, cur[r.level]));
     if (
+      professionAhead ||
       levelDays > PACE_FLAG_FACTOR * days + BOUNDS.paceSlackDays ||
       floorDays > PACE_FLAG_FACTOR * days + BOUNDS.floorPaceSlackDays ||
       cur.deepestDepth > PACE_FLAG_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst ||

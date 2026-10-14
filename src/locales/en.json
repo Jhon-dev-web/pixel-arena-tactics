@@ -2010,6 +2010,9 @@
     "boundaryReload": "Reload"
   },
   "seasonRanking": {
+    "preTitle": "Pre-season (no prize)",
+    "preNote": "Same score and rules, but no prize. It ends when the ranked season begins; then everyone starts from zero.",
+    "waitingGoal": "The ranked season has not started yet: it opens when the Pass goal is reached.",
     "tab": "Season",
     "tabTrack": "Track",
     "title": "Season {n} ranking",

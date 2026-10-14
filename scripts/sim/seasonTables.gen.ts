@@ -30,6 +30,9 @@ export const UNIQUE_FLOOR_GATES: Readonly<Record<string, number>> = ${JSON.strin
 /** XP of one Dungeon run clearing floors 1..f (index f); index 100 includes 40 Profundezas depths. */
 export const DUNGEON_RUN_XP: readonly number[] = ${JSON.stringify(t.dungeonRunXp)};
 
+/** Profession (Mining / Woodcutting / Gardening) skill XP at which level l begins: PROFESSION_XP_TO_LEVEL[id][l - 1]. Level 1 = 0, the last entry is the max level. */
+export const PROFESSION_XP_TO_LEVEL: Readonly<Record<'mining' | 'woodcutting' | 'gardening', readonly number[]>> = ${JSON.stringify(t.professionXpToLevel)};
+
 /** Hunting zones: the dungeon floor that opens each one and its XP per hour at the shallow depth. */
 export const ZONE_TABLE: readonly { id: string; unlockFloor: number; xpPerHour: number }[] = ${JSON.stringify(t.zoneFloors)};
 `;

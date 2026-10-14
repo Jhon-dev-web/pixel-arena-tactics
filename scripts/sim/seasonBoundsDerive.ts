@@ -3,6 +3,8 @@
 import { dungeonRunXp, milestoneXpBonus } from '../../src/game/dungeon';
 import { relicXpBonusPct } from '../../src/game/gear';
 import { HUNTING_DEPTHS, HUNTING_ZONES } from '../../src/game/huntingZones';
+import { MAX_GARDEN_PLOTS, PLANTS, plantHarvestXp } from '../../src/game/garden';
+import { BASE_GATHER_POWER } from '../../src/game/skills';
 import T from '../../src/game/tunables';
 import { BOUNDS } from '../../supabase/functions/_shared/progress/bounds';
 
@@ -23,6 +25,15 @@ export function deriveBounds() {
   const runXp = dungeonRunXp(1, 100) + milestoneXpBonus(1, 100) + dungeonRunXp(101, DEPTHS_ALLOWANCE);
   const dungeonPerHour = (runsPerDay * runXp) / 24;
 
+  // Profession skill XP per hour at the very best (see bounds.ts gatherYieldFactor / gardenSpeedFactor)
+  const gatherYield = T.battlePass.dropRateMultiplier * (1 + 2 * T.mastery.gatherYieldPct) * (1 + 3 * T.heroSkills.gathererYield + T.tonics.gathererYieldPct + T.consumables.prospectYieldPct);
+  const gatherPower = BASE_GATHER_POWER + T.skills.maxLevel * T.skills.powerPerLevel;
+  const miningPerHour = gatherPower * T.mining.oreRatePerPower * gatherYield * T.skills.xpPerUnit;
+  const woodcuttingPerHour = gatherPower * T.woodcutting.woodRatePerPower * gatherYield * T.skills.xpPerUnit;
+  const gardenSpeed = (1 / (1 - 2 * T.mastery.gardenSpeedPct)) * (1 / (1 - T.tonics.fertilizerSkipPct));
+  const gardeningPerHour = MAX_GARDEN_PLOTS * T.skills.gardenXpPerHour * gardenSpeed;
+  const longestPlantXp = Math.max(...PLANTS.map((p) => plantHarvestXp(p)));
+
   const xpPerHour = huntPerHour + ordersPerHour + dungeonPerHour;
   return {
     xpBonus,
@@ -32,6 +43,13 @@ export function deriveBounds() {
     runXp,
     runsPerDay,
     xpPerHour,
+    gatherYield,
+    gatherPower,
+    miningPerHour,
+    woodcuttingPerHour,
+    gardeningPerHour,
+    gardenSpeed,
+    longestPlantXp,
     capHours: T.battlePass.capHours,
     constants: BOUNDS,
   };

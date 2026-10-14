@@ -108,3 +108,119 @@ describe('createProgressStore (REST)', () => {
     await expect(store.hasActivePass(USER)).rejects.not.toThrow(/secret/);
   });
 });
+
+// ---- migration 0006: the public meter, the goal that opens the paid season, the pre-season and the profession rankings ----------------------------------------------------
+
+describe('migration 0006 (static checks)', () => {
+  const m6 = sql('0006_portal_meter_and_profession_ranking.sql');
+  const body = (name: string): string => {
+    const start = m6.indexOf(`create or replace function ${name}`);
+    expect(start).toBeGreaterThan(-1);
+    return m6.slice(start, m6.indexOf('$$;', m6.indexOf('as $$', start)) + 3);
+  };
+
+  it('anon can call pass_meter and read the two views, and nothing else; the meter reveals no id, amount, e-mail or source', () => {
+    expect(m6).toContain('grant execute on function public.pass_meter() to anon, authenticated;');
+    expect(m6).toContain('grant select on table public.season_profession_leaderboard to anon, authenticated;');
+    const toAnon = m6.split('\n').filter((l) => /^grant /.test(l) && /\banon\b/.test(l));
+    expect(toAnon).toHaveLength(2);
+    expect(m6).not.toMatch(/grant (insert|update|delete|all)[^;]*to (anon|authenticated)/);
+    const meter = body('public.pass_meter()');
+    const returns = /returns table \(([^)]*)\)/.exec(meter)![1];
+    expect(returns.split(',').map((c) => c.trim().split(' ')[0])).toEqual(['sold', 'target', 'season_open', 'starts_at', 'ends_at', 'updated_at']);
+    expect(meter).not.toMatch(/user_id|email|provider_ref|e\.source/);
+    expect(meter).toContain('security definer');
+    expect(meter).toContain("set search_path = ''");
+    expect(m6).toContain('revoke all on function arena_private.paid_pass_count() from public, anon, authenticated;');
+  });
+
+  it('only paid, active Pass rows count: stripe and mercadopago, never grant, refunded or revoked', () => {
+    const count = body('arena_private.paid_pass_count()');
+    expect(count).toContain("e.kind = 'adventurer_pass'");
+    expect(count).toContain("e.status = 'active'");
+    expect(count).toContain("e.source in ('stripe', 'mercadopago')");
+    expect(count).not.toContain('grant');
+  });
+
+  it('the goal is a private one-row table only the service role can read and update', () => {
+    expect(m6).toContain('constraint season_goal_single_row check (id)');
+    expect(m6).toMatch(/target integer not null default 15000/);
+    expect(m6).toContain('revoke all on table arena_private.season_goal from public, anon, authenticated;');
+    expect(m6).toContain('grant select, update on table arena_private.season_goal to service_role;');
+    expect(m6).not.toMatch(/season_goal to (anon|authenticated)/);
+  });
+
+  it('the auto-open takes the row lock BEFORE counting, fires once, and uses the server clock for 60 days / freeze 58 days', () => {
+    const fn = body('arena_private.try_open_paid_season()');
+    expect(fn).toContain('for update');
+    expect(fn.indexOf('for update')).toBeLessThan(fn.indexOf('arena_private.paid_pass_count()'));
+    expect(fn).toMatch(/if exists \(select 1 from arena_private\.season_goal as g where g\.opened_at is not null\) then\s+return false;/);
+    expect(fn).toContain('v_goal.opened_at is not null'); // re-checked under the lock
+    expect(fn).toMatch(/paid_pass_count\(\) < v_goal\.target/); // not below the target
+    expect(fn).toContain('set opened_at = pg_catalog.now() where id and opened_at is null'); // stamped under the same lock
+    const open = body('arena_private.open_paid_season(p_season integer)');
+    expect(open).toContain("where number = p_season and kind = 'ranked' and status = 'upcoming'"); // a closed or open season never reopens
+    expect(open).toContain('starts_at = pg_catalog.now()');
+    expect(open).toContain("ends_at = pg_catalog.now() + interval '60 days'");
+    expect(open).toContain("freeze_at = pg_catalog.now() + interval '58 days'");
+    expect(open).toContain("update public.seasons set status = 'closed' where kind = 'pre' and status = 'open'"); // the pre-season is archived
+    expect(open).toContain('if v_rows = 0 then');
+  });
+
+  it('the trigger watches only active paid Pass rows (insert or status change) and never blocks a payment', () => {
+    const trg = body('arena_private.entitlements_goal_trigger()');
+    expect(trg).toContain("new.kind = 'adventurer_pass' and new.status = 'active' and new.source in ('stripe', 'mercadopago')");
+    expect(trg).toContain('exception when others then');
+    expect(trg).toContain('raise warning');
+    expect(m6).toMatch(/create trigger entitlements_goal_check\s+after insert or update of status on public\.entitlements\s+for each row/);
+    expect(m6).toContain('revoke all on function arena_private.try_open_paid_season() from public, anon, authenticated;');
+    expect(m6).toContain('revoke all on function arena_private.open_paid_season(integer) from public, anon, authenticated;');
+  });
+
+  it('ranked seasons wait without dates; the pre-season is open, kind pre, with no prize; the Pass reward calendar is not touched', () => {
+    expect(m6).toContain("update public.seasons set starts_at = null, ends_at = null, freeze_at = null where kind = 'ranked' and status = 'upcoming';");
+    expect(m6).toMatch(/insert into public\.seasons \(number, kind, starts_at, ends_at, freeze_at, status, prize_note\)\s+select 0, 'pre'/);
+    const code = m6.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+    expect(code).not.toMatch(/prize_note\s*=\s*'/);
+    expect(code).not.toMatch(/\d ?(reais|brl|usd|r\$)/i);
+    expect(m6).toContain("check (kind in ('pre', 'ranked'))");
+    expect(code).not.toContain('2026-10-01');
+  });
+
+  it('profession entries: private table, service-role writer, same conditions as the main ranking, frozen after the season', () => {
+    expect(m6).toContain('revoke all on table public.season_profession_entries from public, anon, authenticated;');
+    expect(m6).toMatch(/revoke all on function public\.season_apply_professions\(uuid, uuid, text, jsonb\) from public, anon, authenticated;/);
+    expect(m6).toMatch(/grant execute on function public\.season_apply_professions\(uuid, uuid, text, jsonb\) to service_role;/);
+    const fn = body('public.season_apply_professions(p_user_id uuid, p_snapshot_id uuid, p_verdict text, p_professions jsonb)');
+    expect(fn).toContain("if p_verdict <> 'ok' then");
+    expect(fn).toMatch(/s\.status = 'open' and pg_catalog\.now\(\) >= s\.starts_at and pg_catalog\.now\(\) < s\.freeze_at/);
+    expect(fn).toContain('arena_private.owns_adventurer_pass(p_user_id)');
+    expect(fn).toContain('email_confirmed_at is not null');
+    expect(fn).toContain('disqualified');
+    expect(fn).toContain('where pe.score < excluded.score');
+    expect(m6).toContain("check (profession in ('mining', 'woodcutting', 'gardening'))");
+    expect(m6).toContain('SEASON_NOT_OPEN');
+    expect(m6).toMatch(/create trigger season_profession_freeze_guard\s+before insert or update on public\.season_profession_entries/);
+  });
+
+  it('the public profession view exposes season, profession, rank, username, level, score and hides flagged / disqualified players', () => {
+    const view = m6.slice(m6.indexOf('create or replace view public.season_profession_leaderboard'), m6.indexOf('revoke all on table public.season_profession_leaderboard'));
+    expect(view).toContain('with (security_invoker = false)');
+    const selectList = view.slice(view.indexOf('select') + 6, view.indexOf('from public.season_profession_entries'));
+    const names = selectList
+      .split('\n')
+      .map((l) => l.trim().replace(/,$/, ''))
+      .filter(Boolean)
+      .map((l) => / as (\w+)$/.exec(l)?.[1] ?? l.replace(/^\w+\./, ''));
+    expect(names).toEqual(['season', 'profession', 'rank', 'username', 'level', 'score']);
+    expect(names).not.toContain('user_id');
+    expect(view).toContain('se.disqualified = false and pg_catalog.cardinality(se.flags) = 0');
+    expect(view).toMatch(/partition by e\.season, e\.profession order by e\.score desc, e\.tiebreak_at asc/);
+  });
+
+  it('there is a rollback, an owner-controls block and an SQL test plan', () => {
+    expect(m6).toContain('-- ROLLBACK');
+    expect(m6).toContain('-- SQL TEST PLAN');
+    expect(m6).toContain('-- OWNER CONTROLS');
+  });
+});

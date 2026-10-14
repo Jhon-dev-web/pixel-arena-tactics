@@ -1,7 +1,7 @@
 import { AuthConfig, getAuthenticatedUserId } from '../auth.ts';
 import { json } from '../http.ts';
 import { HistoryPoint, Verdict, evaluateSnapshot } from './evaluate.ts';
-import { ProgressMetrics, computeScore, extractMetrics, scoreParts } from './metrics.ts';
+import { ProfessionId, ProgressMetrics, computeScore, extractMetrics, professionScores, scoreParts } from './metrics.ts';
 
 // submit-progress: the game posts its current save; the function extracts the numbers itself, judges them against the account's SERVER history and stores a snapshot
 // stamped with the database clock. The user id comes ONLY from the verified JWT. Nothing in the body is trusted except as the thing being judged.
@@ -47,7 +47,11 @@ export interface ProgressStore {
   insertSnapshot(row: NewSnapshot): Promise<{ id: string }>;
   /** Hands the snapshot to the season ranking (migration 0005). Absent until the ranking is wired. */
   applyToSeason?(args: { userId: string; snapshotId: string; verdict: Verdict; reasons: string[]; score: number }): Promise<SeasonApplyStatus>;
+  /** Hands the profession skill XP to the profession rankings (migration 0006). Absent / failing never blocks the main ranking. */
+  applyProfessionsToSeason?(args: { userId: string; snapshotId: string; verdict: Verdict; professions: { profession: ProfessionId; xp: number; level: number }[] }): Promise<ProfessionApplyStatus>;
 }
+
+export type ProfessionApplyStatus = 'updated' | 'unchanged' | 'season_not_open' | 'no_pass' | 'email_unconfirmed' | 'disqualified' | 'not_ok' | 'nothing';
 
 export interface ProgressDeps {
   auth: AuthConfig;
@@ -157,7 +161,18 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
       ? await deps.store.applyToSeason({ userId, snapshotId: stored.id, verdict: evaluation.verdict, reasons: evaluation.reasons, score })
       : null;
 
-    return json(answer({ verdict: evaluation.verdict, reasons: evaluation.reasons, metrics }, { throttled: false, season }), 200, cors);
+    // The profession rankings follow the main one: only when the main ranking just accepted an ok snapshot of an eligible player ('updated' or 'unchanged'), and a failure here
+    // (migration 0006 not applied yet, a network error) never turns a stored snapshot into an error.
+    let professions: ProfessionApplyStatus | null = null;
+    if (deps.store.applyProfessionsToSeason && (season === 'updated' || season === 'unchanged') && evaluation.verdict === 'ok') {
+      try {
+        professions = await deps.store.applyProfessionsToSeason({ userId, snapshotId: stored.id, verdict: evaluation.verdict, professions: professionScores(metrics) });
+      } catch (err) {
+        console.error('[submit-progress] professions failed', err instanceof Error ? err.message : 'unknown');
+      }
+    }
+
+    return json(answer({ verdict: evaluation.verdict, reasons: evaluation.reasons, metrics }, { throttled: false, season, professions }), 200, cors);
   } catch (err) {
     console.error('[submit-progress] failed', err instanceof Error ? err.message : 'unknown'); // message only: never the save, a key or a token
     return json({ error: 'submit_failed' }, 502, cors);

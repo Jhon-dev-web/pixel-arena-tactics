@@ -1,3 +1,4 @@
+-- NOTE: the ranked seasons seeded below are given no dates (and a pre-season is added) by 0006_portal_meter_and_profession_ranking.sql: the paid season opens when the Pass goal is reached, not on a calendar.
 -- Seasons and the ranking (depends on 0002 profiles, 0003 entitlements, 0004 progress_snapshots).
 --
 -- Who may rank: Adventurer Pass owners (a row in public.entitlements, via arena_private.owns_adventurer_pass), with a confirmed e-mail, while the season is `open`

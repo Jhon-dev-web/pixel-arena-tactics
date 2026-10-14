@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { BOUNDS, daysAtFloor, daysAtLevel } from '../progress/bounds.ts';
+import { BOUNDS, daysAtFloor, daysAtLevel, professionBurstXp, professionXpPerHour } from '../progress/bounds.ts';
 import { EvalInput, HistoryPoint, evaluateSnapshot } from '../progress/evaluate.ts';
-import { MAX_BODY_BYTES, NewSnapshot, ProgressStore, SNAPSHOT_MIN_INTERVAL_MS, SeasonApplyStatus, StoredSnapshot, canonicalJson, handleSubmitProgress } from '../progress/handler.ts';
-import { ProgressMetrics, computeScore, extractMetrics, levelFromXp, levelPosition, paragonFromXp, peakOf, splitScore } from '../progress/metrics.ts';
-import { XP_TO_LEVEL } from '../progress/tables.ts';
+import { createProgressStore } from '../progress/progressDb.ts';
+import { MAX_BODY_BYTES, NewSnapshot, ProfessionApplyStatus, ProgressStore, SNAPSHOT_MIN_INTERVAL_MS, SeasonApplyStatus, StoredSnapshot, canonicalJson, handleSubmitProgress } from '../progress/handler.ts';
+import { ProgressMetrics, computeScore, extractMetrics, levelFromXp, levelPosition, paragonFromXp, peakOf, professionLevelFromXp, professionScores, splitScore } from '../progress/metrics.ts';
+import { PROFESSION_XP_TO_LEVEL, XP_TO_LEVEL } from '../progress/tables.ts';
 
 // Pure tests of the plausibility audit with SYNTHETIC histories. No Deno, no Supabase: the same modules the Edge Function imports.
 
@@ -46,6 +47,9 @@ interface Overrides {
   floors?: number;
   uniques?: number;
   achievements?: number;
+  mining?: number;
+  woodcutting?: number;
+  gardening?: number;
   hasBattlePass?: boolean;
   premium?: number[];
   stashBonusSlots?: number;
@@ -66,6 +70,7 @@ function blob(o: Overrides = {}) {
       dungeonFloors: o.floors ?? 0,
       uniquesFound: o.uniques ?? 0,
     },
+    skillXp: { mining: o.mining ?? 0, woodcutting: o.woodcutting ?? 0, gardening: o.gardening ?? 0 },
     quests: { claimed: Array.from({ length: o.achievements ?? 0 }, (_, i) => `ACH_${i}`) },
     hasBattlePass: o.hasBattlePass ?? false,
     claimedPassRewards: { free: [], premium: o.premium ?? [] },
@@ -326,6 +331,13 @@ class MemoryProgressStore implements ProgressStore {
   character_: { createdAtMs: number; revision: number } | null = { createdAtMs: T0 - DAY * 400, revision: 7 };
   seasonCalls: { userId: string; snapshotId: string; verdict: string; reasons: string[]; score: number }[] = [];
   seasonStatus: SeasonApplyStatus = 'updated';
+  professionCalls: { userId: string; snapshotId: string; verdict: string; professions: { profession: string; xp: number; level: number }[] }[] = [];
+  professionFails = false;
+  async applyProfessionsToSeason(args: { userId: string; snapshotId: string; verdict: 'ok' | 'flagged' | 'rejected'; professions: { profession: string; xp: number; level: number }[] }): Promise<ProfessionApplyStatus> {
+    if (this.professionFails) throw new Error('season_apply_professions_404');
+    this.professionCalls.push(args);
+    return 'updated';
+  }
   now = T0;
   async hasActivePass() {
     return this.pass;
@@ -457,5 +469,181 @@ describe('handleSubmitProgress', () => {
 
   it('canonicalJson is key-order independent', () => {
     expect(canonicalJson({ b: 1, a: [2, { d: 1, c: 2 }] })).toBe(canonicalJson({ a: [2, { c: 2, d: 1 }], b: 1 }));
+  });
+});
+
+// ---- profession rankings ----------------------------------------------------------------------------------------------------------------------
+
+describe('profession metrics', () => {
+  it('reads skill XP and the level the table gives; garbage and a missing skillXp become 0 / level 1', () => {
+    const p = m({ mining: PROFESSION_XP_TO_LEVEL.mining[29] + 5, woodcutting: PROFESSION_XP_TO_LEVEL.woodcutting[74], gardening: 12 });
+    expect(p.miningLevel).toBe(30);
+    expect(p.woodcuttingLevel).toBe(75);
+    expect(p.gardeningLevel).toBe(professionLevelFromXp('gardening', 12));
+    const dirty = extractMetrics({ xp: 1, skillXp: { mining: -3, woodcutting: Number.NaN, gardening: 1e30 } }) as ProgressMetrics;
+    expect([dirty.miningXp, dirty.woodcuttingXp, dirty.gardeningXp]).toEqual([0, 0, 1e12]);
+    expect(dirty.miningLevel).toBe(1);
+    expect((extractMetrics({ xp: 1 }) as ProgressMetrics).gardeningXp).toBe(0);
+    expect((extractMetrics({ xp: 1, skillXp: 'x' }) as ProgressMetrics).miningXp).toBe(0);
+  });
+
+  it('professionScores lists only professions with XP, score = total XP', () => {
+    expect(professionScores(m({}))).toEqual([]);
+    expect(professionScores(m({ mining: 500, gardening: 40 })).map((x) => [x.profession, x.xp])).toEqual([['mining', 500], ['gardening', 40]]);
+  });
+
+  it('score order and tiebreak: more XP first; on equal XP the one who got there earlier (the SQL orders by score desc, tiebreak_at asc)', () => {
+    const rows = [
+      { id: 'a', score: 900, at: 5 },
+      { id: 'b', score: 1200, at: 9 },
+      { id: 'c', score: 900, at: 2 },
+    ];
+    const ranked = [...rows].sort((x, y) => y.score - x.score || x.at - y.at).map((r) => r.id);
+    expect(ranked).toEqual(['b', 'c', 'a']);
+  });
+});
+
+describe('profession XP bounds', () => {
+  const START = 5 * DAY; // the account is old enough for the baseline not to matter
+
+  /** An honest gatherer at the very best settings gains XP at exactly the theoretical rate, snapshot by snapshot. */
+  function gatherer(profession: 'mining' | 'woodcutting' | 'gardening', everyHours: number, days: number) {
+    const steps: { atMs: number; o: Overrides }[] = [];
+    let xp = profession === 'gardening' ? 100 : 1000;
+    for (let h = 0; h <= days * 24; h += everyHours) {
+      if (h > 0) {
+        const level = professionLevelFromXp(profession, xp);
+        xp += Math.floor(professionXpPerHour(profession, level) * everyHours);
+      }
+      steps.push({ atMs: T0 + h * 3_600_000, o: { xp: xpAtPosition(40), floor: 40, seconds: h * 3600 * 0.9, [profession]: xp } });
+    }
+    return steps;
+  }
+
+  it('an honest fast gatherer at the theoretical maximum is ok: every profession, snapshots every 10 minutes, 1 hour, 12 hours', () => {
+    for (const profession of ['mining', 'woodcutting', 'gardening'] as const) {
+      for (const every of [1 / 6, 1, 12]) {
+        const r = play(gatherer(profession, every, 6), T0 - START);
+        expect(r.filter((x) => x.verdict !== 'ok')).toEqual([]);
+      }
+    }
+  });
+
+  it('a late claim is fine: 8 hours of a full session arrive in one snapshot', () => {
+    const level = 50;
+    const base = PROFESSION_XP_TO_LEVEL.mining[level - 1];
+    const gain = Math.floor(professionXpPerHour('mining', level) * 8);
+    const r = play(
+      [
+        { atMs: T0, o: { xp: xpAtPosition(40), floor: 40, seconds: 100, mining: base } },
+        { atMs: T0 + 600_000, o: { xp: xpAtPosition(40), floor: 40, seconds: 700, mining: base + gain } },
+      ],
+      T0 - START,
+    );
+    expect(r.map((x) => x.verdict)).toEqual(['ok', 'ok']);
+  });
+
+  it('edited profession XP is caught: +100k XP ten minutes later is rejected with its own code (and the _TOTAL one)', () => {
+    for (const [profession, code] of [
+      ['mining', 'MINING_XP_RATE'],
+      ['woodcutting', 'WOODCUTTING_XP_RATE'],
+      ['gardening', 'GARDENING_XP_RATE'],
+    ] as const) {
+      const r = play(
+        [
+          { atMs: T0, o: { xp: xpAtPosition(40), floor: 40, seconds: 100, [profession]: 2000 } },
+          { atMs: T0 + 600_000, o: { xp: xpAtPosition(40), floor: 40, seconds: 700, [profession]: 102_000 } },
+        ],
+        T0 - START,
+      );
+      expect(r[1].verdict).toBe('rejected');
+      expect(r[1].reasons).toEqual(expect.arrayContaining([code, code + '_TOTAL']));
+    }
+  });
+
+  it('between the flag value and twice it the snapshot is only flagged (not ranked)', () => {
+    const allowed = professionXpPerHour('mining', 20) * (1 / 6) + professionBurstXp('mining', 20);
+    const base = PROFESSION_XP_TO_LEVEL.mining[19];
+    const r = play(
+      [
+        { atMs: T0, o: { xp: xpAtPosition(40), floor: 40, seconds: 100, mining: base } },
+        { atMs: T0 + 600_000, o: { xp: xpAtPosition(40), floor: 40, seconds: 700, mining: base + Math.floor(allowed * 1.5) } },
+      ],
+      T0 - START,
+    );
+    expect(r[1].verdict).toBe('flagged');
+    expect(r[1].reasons).toContain('MINING_XP_RATE');
+  });
+
+  it('a history from before metrics v2 (no profession XP in the peak) is never judged against a zero baseline', () => {
+    const old = m({ xp: xpAtPosition(40), floor: 40, seconds: 1000 });
+    const legacy: Record<string, unknown> = { ...old };
+    const legacyPeak: Record<string, unknown> = { ...peakOf(old) };
+    for (const k of ['miningXp', 'woodcuttingXp', 'gardeningXp']) {
+      delete legacy[k];
+      delete legacyPeak[k];
+    }
+    const pt = point(T0, legacy as unknown as ProgressMetrics, 1, legacyPeak as unknown as ReturnType<typeof peakOf>);
+    const ev = evaluateSnapshot(m({ xp: xpAtPosition(40), floor: 40, seconds: 1100, mining: 80_000 }), {
+      nowMs: T0 + 600_000,
+      accountCreatedMs: T0 - 300 * DAY,
+      entitled: true,
+      saveRevision: 2,
+      first: pt,
+      previous: pt,
+    });
+    expect(ev.reasons.some((c) => c.startsWith('MINING_XP_RATE'))).toBe(false);
+  });
+
+  it('the first snapshot of a young account with a huge profession XP is flagged as ahead of the account age, never rejected', () => {
+    const o = { xp: xpAtPosition(10), floor: 5, seconds: 100, mining: 500_000 };
+    const r = play([{ atMs: T0, o }], T0 - 2 * DAY);
+    expect(r[0].verdict).toBe('flagged');
+    expect(r[0].reasons).toEqual(['BASELINE_AHEAD_OF_ACCOUNT_AGE']);
+    expect(play([{ atMs: T0, o }], T0 - 400 * DAY)[0].verdict).toBe('ok');
+  });
+});
+
+describe('handleSubmitProgress and the profession rankings', () => {
+  it('hands the profession XP to the profession ranking after an accepted ok snapshot, with the levels the server computed', async () => {
+    const store = new MemoryProgressStore();
+    const body = await (await handleSubmitProgress(request(blob({ xp: xpAtPosition(10), mining: PROFESSION_XP_TO_LEVEL.mining[19] + 3, gardening: 30 })), deps(store))).json();
+    expect(body.professions).toBe('updated');
+    expect(store.professionCalls).toHaveLength(1);
+    expect(store.professionCalls[0]).toMatchObject({ userId: USER, snapshotId: 'snap-1', verdict: 'ok' });
+    expect(store.professionCalls[0].professions).toEqual([
+      { profession: 'mining', xp: PROFESSION_XP_TO_LEVEL.mining[19] + 3, level: 20 },
+      { profession: 'gardening', xp: 30, level: professionLevelFromXp('gardening', 30) },
+    ]);
+  });
+
+  it('does not call it when the ranking said the player is not eligible or the snapshot is flagged; a failing call never turns the answer into an error', async () => {
+    const store = new MemoryProgressStore();
+    store.seasonStatus = 'no_pass';
+    await handleSubmitProgress(request(blob({ xp: xpAtPosition(10), mining: 10 })), deps(store));
+    expect(store.professionCalls).toHaveLength(0);
+    store.seasonStatus = 'updated';
+    store.pass = false;
+    store.now += SNAPSHOT_MIN_INTERVAL_MS * 2;
+    await handleSubmitProgress(request(blob({ xp: xpAtPosition(10), mining: 10, hasBattlePass: true })), deps(store));
+    expect(store.professionCalls).toHaveLength(0); // flagged: PASS_FLAG_WITHOUT_ENTITLEMENT
+    store.pass = true;
+    store.professionFails = true;
+    store.now += SNAPSHOT_MIN_INTERVAL_MS * 2;
+    const res = await handleSubmitProgress(request(blob({ xp: xpAtPosition(10), mining: 20 })), deps(store));
+    expect(res.status).toBe(200);
+    expect((await res.json()).professions).toBeNull();
+  });
+
+  it('createProgressStore posts the professions to the rpc with the service key', async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const fetchFn = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(init.body as string) });
+      return new Response(JSON.stringify('updated'), { status: 200 });
+    }) as typeof fetch;
+    const store = createProgressStore({ supabaseUrl: 'https://p.test', serviceRoleKey: 'k', fetchFn });
+    expect(await store.applyProfessionsToSeason!({ userId: USER, snapshotId: 's', verdict: 'ok', professions: [{ profession: 'mining', xp: 5, level: 2 }] })).toBe('updated');
+    expect(calls[0].url).toBe('https://p.test/rest/v1/rpc/season_apply_professions');
+    expect(calls[0].body).toEqual({ p_user_id: USER, p_snapshot_id: 's', p_verdict: 'ok', p_professions: [{ profession: 'mining', xp: 5, level: 2 }] });
   });
 });
