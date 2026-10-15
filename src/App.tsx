@@ -22,6 +22,7 @@ import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { addRelics, addUniqueInstance } from './game/uniques';
 import { applyFertilizer, applyHarvest, applyPlant, applyUproot, readySlots } from './game/gardenActions';
+import { getPotionRecipe } from './game/potions';
 import { applyElixir, applyRepairKit, applyWhetstoneOil, ElixirId, isBuffItem, RepairKitId } from './game/elixirs';
 import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
@@ -98,7 +99,6 @@ import { awayLongEnough, buildWelcomeBack, readLastSeen, WelcomeBackSummary, wri
 import { attributePointsAvailable, NextStepTarget } from './game/nextStep';
 import { suggestedSpend } from './game/attributes';
 import { GUIDED_DESCENT_FLOOR, nextTutorialStep, tutorialStepDone } from './game/tutorialSteps';
-import { dungeonRunXpGain } from './game/runSummary';
 import { extendLevelUp, LevelUpSummary } from './game/levelUp';
 import LevelUpBanner from './components/LevelUpBanner';
 import { highlightTarget } from './components/highlight';
@@ -215,9 +215,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     toastTimeout.current = window.setTimeout(() => setToast(null), 1600);
   };
 
-  // Character XP is intentionally never shown as a number anywhere in the UI (see TopHud/HeroModal/
-  // HuntModal/HuntRewardModal; DeliveryModal is the one exception: an order card shows the XP it pays) — a level-up toast is the only XP-gain feedback left,
-  // so it's centralized here rather than duplicated at every xp-granting call site.
+  // Character XP is intentionally never shown as a number anywhere in the UI (see TopHud/HeroModal/HuntModal/HuntRewardModal) and only Hunting pays it (since the League,
+  // Rodada 20) — a level-up toast is the only XP-gain feedback left, so it's centralized here (setSaveBoth) rather than duplicated at every call site.
   const celebrateLook = (look: string, armorNameKey: string) => {
     playSfx('victory');
     showToast(look === 'knight' ? t('ui.heroKnighted') : t('ui.heroNewLook', { name: t(`gear.${armorNameKey}`) }));
@@ -727,7 +726,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const looted = addForced(s, { materials: rewards.drops ?? {} });
     const stages = Math.max(0, rewards.stages);
     const success = outcome === 'retreat' && stages > 0;
-    // Past level 100 the XP keeps counting into paragon levels (paragon.ts), so there is no cap to check here.
     // Only the EQUIPPED weapon / armor instances wear down; every other copy is untouched.
     const worn = stages > 0 ? applyDurabilityLoss(s, DURABILITY_LOSS_PER_STAGE * stages) : s;
     // Biome-boss unique pieces (uniques.ts) become stored gear instances. A defeat keeps them like the boss gem; a full bag never costs the drop (the
@@ -780,8 +778,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         if (reward.titleId && !cosmetics.includes(reward.titleId)) cosmetics = [...cosmetics, reward.titleId];
       }
     }
-    // The Season Relic adds its character XP bonus to what the run pays (Hunting and Delivery orders apply it where they compute theirs).
-    const xpGain = dungeonRunXpGain(s, startFloor, stages);
 
     setSaveBoth({
       ...s,
@@ -792,7 +788,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       dungeonCheckpoints,
       materials: looted.materials,
       shards: s.shards + rewards.shards,
-      xp: s.xp + xpGain,
       victories: s.victories + (success ? 1 : 0),
       highestDungeonFloor: nextFloor,
       unlockedHuntingZones,
@@ -874,20 +869,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     }
     playSfx('click');
     setSaveBoth(res.save);
-    showToast(t('forge.toBag', { n: t(`consumables.${recipeId}`) }));
-  };
-
-  const applyXpPotion = () => {
-    const s = saveRef.current;
-    const qty = s.consumables.xp_potion ?? 0;
-    if (qty <= 0) return;
-    playSfx('victory');
-    setSaveBoth({
-      ...s,
-      consumables: { ...s.consumables, xp_potion: qty - 1 },
-      xp: s.xp + T.battle.xpPotionAmount,
-    });
-    showToast(`+${T.battle.xpPotionAmount} XP`);
+    showToast(t('forge.toBag', { n: t(`consumables.${getPotionRecipe(recipeId)?.id ?? recipeId}`) }));
   };
 
   // Damage elixirs (elixirs.ts): using one again while it is active refreshes the full duration from now rather than
@@ -897,6 +879,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const next = applyElixir(saveRef.current, id, Date.now());
     if (!next) {
       if (id === 'hunter_lure' && (saveRef.current.consumables.hunter_lure ?? 0) > 0 && !saveRef.current.activeHuntingZone) showToast(t('consumables.hunter_lure_needs_hunt'));
+      // A Knowledge Elixir is refused (and kept) while the one before it still runs
+      if (id === 'knowledge_elixir' && (saveRef.current.consumables.knowledge_elixir ?? 0) > 0 && isBuffActive(saveRef.current, 'knowledge', Date.now())) showToast(t('consumables.knowledge_elixir_running'));
       return;
     }
     playSfx('victory');
@@ -929,8 +913,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   const useConsumableManually = (id: string) => {
-    if (id === 'xp_potion') applyXpPotion();
-    else if (isBuffItem(id)) drinkElixir(id);
+    if (isBuffItem(id)) drinkElixir(id);
     else if (id === 'whetstone_oil') oilGear();
     else if (id === 'repair_kit' || id === 'master_repair_kit') repairWithKit(id);
     else if (id === 'stash_deed') redeemStashDeed();
@@ -1025,7 +1008,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setClaimResult({
       title: t('deliveries.rewards'),
       name: t(`deliveries.dest_${claim.offer.arch}_${claim.offer.dest}`),
-      rewards: { gold: claim.offer.gold, xp: claim.xpGained, shards: claim.offer.shards },
+      rewards: { gold: claim.offer.gold, shards: claim.offer.shards },
     });
   };
 
@@ -1053,11 +1036,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const def = getExpedition(exp.id);
     if (!def) return;
     const rewards = expeditionRewards(def);
-    const atCap = playerLevel(s.xp) >= 100;
     setSaveBoth({
       ...s,
       gold: s.gold + rewards.gold,
-      xp: atCap ? s.xp : s.xp + rewards.xp,
       shards: s.shards + rewards.shards,
       expeditions: s.expeditions.filter((_, i) => i !== index),
       quests: {

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { fmtDec, fmtNum, t } from '../locales';
+import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData } from '../game/engine';
-import { canAffordOffer, deliveryGold, deliveryRarity, deliveryXp, offerCount, rerollsLeft } from '../game/deliveries';
-import { characterXpBonusPct } from '../game/heroSkills';
+import { canAffordOffer, deliveryGold, deliveryRarity, offerCount, rerollsLeft } from '../game/deliveries';
 import { DeliveryOffer } from '../game/deliveryState';
 import { getExpedition } from '../game/expedition';
 import { ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from '../game/consumables';
@@ -31,9 +30,7 @@ function formatDuration(ms: number): string {
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
 }
 
-const compact = (n: number): string => (n >= 1_000_000 ? `${fmtDec(n / 1_000_000, 1, true)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
-
-function Rewards({ gold, xp, shards }: { gold: number; xp: number; shards: number }) {
+function Rewards({ gold, shards }: { gold: number; shards: number }) {
   return (
     <div className="expedition-option-rewards">
       <span className="floor-drop">
@@ -42,7 +39,6 @@ function Rewards({ gold, xp, shards }: { gold: number; xp: number; shards: numbe
         </span>
         <span>{t('ui.goldReward', { n: fmtNum(gold) })}</span>
       </span>
-      <span className="floor-drop delivery-xp">{dText('xp', { n: compact(xp) })}</span>
       {shards > 0 && (
         <span className="floor-drop">
           <span className="mat-icon shard">
@@ -156,7 +152,7 @@ export default function DeliveryModal({
             <div className="delivery-meta">
               {dText('distance', { d: dText(`dist_${active.offer.dist}`) })} · {dText('time', { n: formatDuration(active.offer.durationMs) })}
             </div>
-            <Rewards gold={active.offer.gold} xp={active.offer.xp} shards={active.offer.shards} />
+            <Rewards gold={active.offer.gold} shards={active.offer.shards} />
             {done ? (
               <button className="camp-expedition-claim blink" onClick={onClaim} data-ui>
                 {dText('collect')}
@@ -226,7 +222,7 @@ export default function DeliveryModal({
                 </div>
                 <Requirements offer={offer} save={save} />
                 <span className="delivery-label">{dText('receives')}</span>
-                <Rewards gold={deliveryGold(offer, passActive)} xp={deliveryXp(offer, passActive, characterXpBonusPct(save))} shards={offer.shards} />
+                <Rewards gold={deliveryGold(offer, passActive)} shards={offer.shards} />
                 <button className="battle-btn" onClick={() => onAccept(offer.id)} disabled={!!active || !affordable} data-ui>
                   {!active && !affordable ? dText('missing') : dText('accept')}
                 </button>

@@ -4,7 +4,7 @@ import { applyBattlePassClaim, BATTLE_PASS_TRACK, settleSeason } from '../battle
 import { ownsAdventurerPass, purchaseAdventurerPass } from '../entitlements';
 import { SEASON_EPOCH_MS, seasonLengthMs, seasonNumber, seasonRemainingMs, seasonStartMs } from '../seasons';
 import { withPermanentPassWindow } from '../huntSession';
-import { deliveryXp, offerCount, rerollCap } from '../deliveries';
+import { offerCount, rerollCap } from '../deliveries';
 import { HUNTING_ZONES } from '../huntingZones';
 import { stashCapacity, STASH_BASE_SLOTS } from '../stash';
 import { passBagBonus } from '../inventory';
@@ -196,7 +196,6 @@ describe('perks of the Pass: convenience, not power', () => {
     expect(T.battlePass.repairDiscount).toBeCloseTo(0.2, 9);
     expect(offerCount(true) - offerCount(false)).toBe(1);
     expect(rerollCap(true) - rerollCap(false)).toBe(1);
-    expect(deliveryXp({ xp: 100 }, true)).toBe(120);
   });
 
   it('every consumer reads ownership: bag, repair, deliveries', () => {

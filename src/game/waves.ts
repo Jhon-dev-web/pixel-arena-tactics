@@ -94,14 +94,14 @@ export function waveRewards(biome: DungeonBiomeDef, stage: number, bossLootMult 
     uniques = isDepthStage(stage) ? rollDepthBossUniques(depthOfStage(stage), Math.random, bossLootMult) : rollBossUniques(stage, Math.random, bossLootMult);
     relics = isDepthStage(stage) ? rollDepthBossRelics(depthOfStage(stage), Math.random, bossLootMult) : rollBossRelics(stage, Math.random, bossLootMult);
     shards = isDepthStage(stage) ? T.depths.bossShards : T.battle.bossShards;
-    gold = Math.round(gold * T.battle.bossGoldMult);
+    gold = Math.round(gold * T.battle.bossGoldMult) + T.advanced.bossGoldBonus;
     // Gate-boss-exclusive: a guaranteed gem every clear, on top of the gold/shard boost — a common
     // wave never grants gems, so this is a clear, repeatable "boss loot is visibly better" signal.
     const gem = GEMS[randInt(0, GEMS.length - 1)].id;
     gems = { [gem]: 1 };
   } else if (isDungeonCheckpoint(stage)) {
     shards = T.battle.miniBossShards;
-    gold = Math.round(gold * T.battle.miniBossGoldMult);
+    gold = Math.round(gold * T.battle.miniBossGoldMult) + T.advanced.checkpointGoldBonus;
   }
   return { gold, drops, shards, gems, uniques, relics };
 }

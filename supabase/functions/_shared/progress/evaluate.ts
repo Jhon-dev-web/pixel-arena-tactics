@@ -113,8 +113,8 @@ function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedM
   const hours = Math.max(0, elapsedMs) / HOUR_MS;
   const days = Math.max(0, elapsedMs) / DAY_MS;
 
-  // XP: the best open zone + orders + Dungeon runs for this hero's floor, per server hour, plus ONE burst (a reward earned before the reference point and claimed now).
-  const burst = burstXp(cur.heroLevel, cur.highestFloor);
+  // XP: the best open zone for this hero's floor, per server hour (Hunting is the only source of hero XP), plus ONE burst (a reward earned before the reference point and claimed now).
+  const burst = burstXp(cur.highestFloor);
   const xpGained = Math.max(0, cur.xp - refPeak.xp);
   const xpAllowed = xpPerHourAt(cur.highestFloor) * hours + burst;
   f.check('XP_RATE' + suffix, xpGained, xpAllowed, xpAllowed * REJECT_FACTOR);
@@ -173,7 +173,7 @@ export function evaluateSnapshot(cur: ProgressMetrics, input: EvalInput): Evalua
     // made before the first sync) cannot be proven wrong, so it is only flagged: it is stored, not ranked, and stays on the owner's audit list.
     const ageMs = input.accountCreatedMs === null ? 0 : Math.max(0, input.nowMs - input.accountCreatedMs);
     const days = ageMs / DAY_MS;
-    const levelDays = daysAtLevel(levelPosition(Math.max(0, cur.xp - burstXp(cur.heroLevel, cur.highestFloor))));
+    const levelDays = daysAtLevel(levelPosition(Math.max(0, cur.xp - burstXp(cur.highestFloor))));
     const floorDays = daysAtFloor(Math.max(0, cur.highestFloor - BOUNDS.floorStepSlack));
     const secondsAllowed = (ageMs / 1000) * BOUNDS.secondsRatio + BOUNDS.secondsSlack;
     const professionAhead = PROFESSION_RULES.some((r) => cur[r.xp] > professionXpPerHour(r.profession, cur[r.level]) * (ageMs / HOUR_MS) + professionBurstXp(r.profession, cur[r.level]));

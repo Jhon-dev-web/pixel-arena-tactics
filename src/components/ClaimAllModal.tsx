@@ -6,7 +6,7 @@ import { getMaterial } from '../game/materials';
 function lineText(line: ClaimAllLine): { title: string; detail: string } {
   switch (line.kind) {
     case 'delivery':
-      return { title: t('claimAll.delivery'), detail: t('claimAll.deliveryDetail', { g: fmtNum(line.gold), x: fmtNum(line.xp), s: fmtNum(line.shards) }) };
+      return { title: t('claimAll.delivery'), detail: t('claimAll.deliveryDetail', { g: fmtNum(line.gold), s: fmtNum(line.shards) }) };
     case 'hunt':
       return {
         title: t('claimAll.hunt'),

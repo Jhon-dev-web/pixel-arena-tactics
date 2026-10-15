@@ -1362,7 +1362,7 @@ export class Player {
       // orders consume from the bag only, but a careful player counts the stash too and brings the cargo over
       .filter((o) => (Object.entries(o.items) as [MaterialId, number][]).every(([m, q]) => owned(this.S, m, !!this.opts.careless) >= q) && o.durationMs <= 12 * HOUR)
       .filter((o) => (Object.entries(o.items) as [MaterialId, number][]).every(([m, q]) => owned(this.S, m, !!this.opts.careless) - q >= (reserved[m] ?? 0)))
-      .sort((a, b) => b.gold - a.gold || b.xp - a.xp);
+      .sort((a, b) => b.gold - a.gold);
     for (const o of offers) {
       this.bring(o.items);
       if (!canAffordOffer(this.S, o)) continue;

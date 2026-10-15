@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCombatStats, computeHuntingStatus, buildHuntSession, defaultSave, normalizeSave, SaveData, xpToReachLevel } from '../engine';
 import { applyBattlePassClaim, BATTLE_PASS_TRACK, BattlePassReward } from '../battlepass';
-import { applyDeliveryAccept, deliveryXp, ensureDeliveryOffers } from '../deliveries';
+import { applyDeliveryAccept, deliveryGold, ensureDeliveryOffers } from '../deliveries';
 import { applyForge, applyUpgrade, isTradeable } from '../gearInstances';
 import { applyReforge } from '../reforge';
 import { applyDiscard } from '../bagActions';
@@ -149,7 +149,7 @@ describe('Season Relic (season_emblem)', () => {
     expect(buildHuntSession(withRelic(s, 'season_emblem'), start).stats.xpBonus).toBe(0);
   });
 
-  it('Delivery orders: the Emblem adds no XP to the accepted order (the Pass bonus is the same with or without it)', () => {
+  it('Delivery orders: an order pays no hero XP at all, and the Emblem changes nothing about what it pays (the Pass Gold bonus is the same with or without it)', () => {
     const now = 1_800_000_000_000;
     let s: SaveData = { ...defaultSave(), xp: xpToReachLevel(30), hasBattlePass: true };
     s = ensureDeliveryOffers(s, now, mulberry32(1), true);
@@ -157,9 +157,9 @@ describe('Season Relic (season_emblem)', () => {
     const stocked = { ...s, materials: { ...emptyMaterials(), ...Object.fromEntries(Object.entries(offer.items).map(([m, q]) => [m, (q as number) + 5])) } as SaveData['materials'] };
     const a = applyDeliveryAccept(withRelic(stocked, null), offer.id, now, mulberry32(2), true)!;
     const b = applyDeliveryAccept(withRelic(stocked, 'season_emblem'), offer.id, now, mulberry32(2), true)!;
-    expect(a.deliveries.active!.offer.xp).toBe(deliveryXp(offer, true));
-    expect(b.deliveries.active!.offer.xp).toBe(a.deliveries.active!.offer.xp);
-    expect(deliveryXp(offer, true, 5)).toBeGreaterThan(deliveryXp(offer, true)); // the plumbing still works for a future bonus
+    expect(a.deliveries.active!.offer.gold).toBe(deliveryGold(offer, true));
+    expect(b.deliveries.active!.offer.gold).toBe(a.deliveries.active!.offer.gold);
+    expect('xp' in a.deliveries.active!.offer).toBe(false);
   });
 
   it('a sidegrade: its real combat value (ln of the duel margin) is clearly BELOW the weakest combat relic at levels 30 / 60 / 90', () => {

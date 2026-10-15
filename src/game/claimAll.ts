@@ -11,7 +11,7 @@ import { MaterialId } from './materials';
 // as the buttons of each screen, so every full-bag rule stays as it is. It changes no number: it only saves the trips. Rolls nothing of its own.
 
 export type ClaimAllLine =
-  | { kind: 'delivery'; gold: number; xp: number; shards: number }
+  | { kind: 'delivery'; gold: number; shards: number }
   | { kind: 'hunt'; gold: number; xp: number; items: number; leftBehind: number; held: boolean }
   | { kind: GatherKind; material: MaterialId; units: number; leftBehind: number }
   | { kind: 'garden'; harvested: number; blocked: number };
@@ -54,7 +54,7 @@ export function applyClaimAll(save: SaveData, now: number): ClaimAllResult {
     const claim = applyDeliveryClaim(s, now);
     if (claim) {
       s = ensureDeliveryOffers(claim.save, now, Math.random, true);
-      lines.push({ kind: 'delivery', gold: claim.offer.gold, xp: claim.xpGained, shards: claim.offer.shards });
+      lines.push({ kind: 'delivery', gold: claim.offer.gold, shards: claim.offer.shards });
     }
   }
 

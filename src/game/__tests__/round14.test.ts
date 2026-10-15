@@ -25,10 +25,8 @@ afterEach(() => vi.useRealTimers());
 const DIST_BONUS = { local: 'goldBonusLocal', curta: 'goldBonusCurta', regional: 'goldBonusRegional', longa: 'goldBonusLonga', especial: 'goldBonusEspecial' } as const;
 const unscaledGoldPerHour = (tier: number, dist: keyof typeof DIST_BONUS): number => T.deliveries.goldPerHourBase + T.deliveries.goldPerHourTier * tier + T.deliveries[DIST_BONUS[dist]];
 const unscaledGold = (o: DeliveryOffer): number => Math.round((o.durationMs / HOUR) * unscaledGoldPerHour(o.tier, o.dist));
-const unscaledXp = (o: DeliveryOffer): number => {
-  const xp = { local: T.deliveries.xpPerHourLocal, curta: T.deliveries.xpPerHourCurta, regional: T.deliveries.xpPerHourRegional, longa: T.deliveries.xpPerHourLonga, especial: T.deliveries.xpPerHourEspecial };
-  return Math.round((o.durationMs / HOUR) * xp[o.dist]);
-};
+// Rodada 20: an order pays Gold x (1 + T.deliveries.goldBonus) in place of the hero XP it no longer pays.
+const paidGold = (unscaled: number, factor = 1): number => Math.round(unscaled * factor * (1 + T.deliveries.goldBonus));
 
 const offersFor = (hero: SaveData, seed: number): DeliveryOffer[] => {
   const s = ensureDeliveryOffers(hero, at(0), mulberry32(seed), true);
@@ -49,13 +47,13 @@ describe('Round 14: delivery orders scale with the hero', () => {
     expect(orderLevelFactor(100)).toBe(orderLevelFactor(5000));
   });
 
-  it('levels 1 to 30 pay exactly what they paid before (well inside +/-10%), Gold and XP', () => {
+  it('levels 1 to 30 pay the base Gold of before plus the bonus that took the XP\'s place, and no XP', () => {
     for (const [level, floor] of [[1, 1], [10, 12], [20, 26], [30, 51]] as const) {
       const hero = buildHero(level, 0, 0, floor);
       for (let seed = 1; seed <= 6; seed++) {
         for (const o of offersFor(hero, seed)) {
-          expect(o.gold, `L${level} gold`).toBe(unscaledGold(o));
-          expect(o.xp, `L${level} xp`).toBe(unscaledXp(o));
+          expect(o.gold, `L${level} gold`).toBe(paidGold(unscaledGold(o)));
+          expect('xp' in o, `L${level} xp`).toBe(false);
         }
       }
     }
@@ -67,9 +65,7 @@ describe('Round 14: delivery orders scale with the hero', () => {
     expect(deliveryTier(top)).toBe(3);
     for (let seed = 1; seed <= 6; seed++) {
       for (const o of offersFor(top, seed)) {
-        expect(o.gold / unscaledGold(o)).toBeCloseTo(T.deliveries.levelScale100, 1);
-        // Round 15: the XP of an order stops scaling at xpFactorMax, the Gold keeps scaling to the level-100 anchor
-        expect(o.xp / unscaledXp(o)).toBeCloseTo(T.deliveries.xpFactorMax, 1);
+        expect(o.gold / unscaledGold(o) / (1 + T.deliveries.goldBonus)).toBeCloseTo(T.deliveries.levelScale100, 1);
       }
     }
     // the same seed on the same tier asks for the same materials whatever the level: only the pay moves
@@ -87,7 +83,7 @@ describe('Round 14: delivery orders scale with the hero', () => {
       const hunt = huntValue(hero, 5);
       expect(hunt, `L${level}`).not.toBeNull();
       const dists = ['local', 'curta', 'regional', 'longa', 'especial'] as const;
-      const orderPerHour = (dists.reduce((sum, d) => sum + unscaledGoldPerHour(deliveryTier(hero), d), 0) / dists.length) * orderLevelFactor(level);
+      const orderPerHour = (dists.reduce((sum, d) => sum + unscaledGoldPerHour(deliveryTier(hero), d), 0) / dists.length) * orderLevelFactor(level) * (1 + T.deliveries.goldBonus);
       const ratio = orderPerHour / merchantGoldPerHour(hunt!);
       expect(ratio, `L${level}`).toBeGreaterThanOrEqual(0.8);
       expect(ratio, `L${level}`).toBeLessThanOrEqual(1.2);

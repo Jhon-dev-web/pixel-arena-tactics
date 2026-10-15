@@ -88,7 +88,7 @@ export interface CombatStats {
   hpRegenPct: number; // max-HP share regenerated per T.battle.effectTickMs of combat (regenAmount)
   // Percent extra Gold from the Dungeon and Hunting (gear goldBonus substats + the Goblin Lucky Coin, already capped at GOLD_BONUS_CAP). No combat effect, no CP.
   goldBonus?: number;
-  // Percent extra character XP from the Dungeon, Hunting and delivery orders (the Season Relic). No combat effect, no CP.
+  // Percent extra character XP from Hunting (the Season Relic, Aprendiz Veloz). No combat effect, no CP.
   xpBonus?: number;
   // Hero skills (heroSkills.ts). Each is present only when the hero has the skill, so a hero without skills has exactly the stats it always had.
   bleed?: number; // share of the (pre-crit) hit the enemy bleeds per second (Sangria); a second effect beside burn

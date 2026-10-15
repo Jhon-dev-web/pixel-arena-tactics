@@ -266,7 +266,7 @@ describe('"with this item": the same breakdown on the hero wearing it instead', 
 });
 
 describe('every temporary effect the engine has is on the breakdown', () => {
-  it('the kinds the breakdown can list are the ones that change a displayed stat (bait, gatherer and prospect change drops and yield, not these rows)', () => {
+  it('the kinds the breakdown can list are the ones that change a displayed stat (bait, gatherer, prospect and knowledge change drops, yield and Hunting XP, not these rows)', () => {
     const s = hero('2', 2, { level: 40 });
     const seen = new Set<string>();
     for (const id of ALL_ELIXIRS) {
@@ -274,6 +274,6 @@ describe('every temporary effect the engine has is on the breakdown', () => {
       for (const t of bd.temporaries) seen.add(t.source);
     }
     expect([...seen].sort()).toEqual(['attack', 'fortune', 'haste', 'polished', 'precision', 'sharpened', 'stoneskin', 'strength']);
-    expect(TIMED_BUFF_KINDS.filter((k) => !seen.has(k)).sort()).toEqual(['bait', 'gatherer', 'prospect']);
+    expect(TIMED_BUFF_KINDS.filter((k) => !seen.has(k)).sort()).toEqual(['bait', 'gatherer', 'knowledge', 'prospect']);
   });
 });

@@ -4,7 +4,7 @@ import { deliverableMaterials } from './deliveries';
 import { EXPEDITION_TICKET_SKIP_MS, ConsumableId } from './consumables';
 import { GEAR, MAX_REFINE, isInstancedSlot, upgradeCost } from './gear';
 import { MATERIALS, MaterialId } from './materials';
-import { POTION_RECIPES } from './potions';
+import { POTION_RECIPES, potionRecipeKey } from './potions';
 import { REFINING_RECIPES } from './refining';
 import { STASH_UPGRADES } from './stash';
 import { getReforgeCost } from './reforge';
@@ -67,7 +67,7 @@ export function usesOf(kind: 'material' | 'consumable', id: string, save?: Pick<
     const m = id as MaterialId;
     push(out, 'forge', GEAR.filter((g) => !g.unique && (g.recipe?.materials?.[m] ?? 0) > 0).map((g) => g.id));
     push(out, 'refine', REFINING_RECIPES.filter((r) => (r.input[m] ?? 0) > 0).map((r) => r.id));
-    push(out, 'alchemy', POTION_RECIPES.filter((r) => (r.input[m] ?? 0) > 0).map((r) => r.id));
+    push(out, 'alchemy', POTION_RECIPES.filter((r) => (r.input[m] ?? 0) > 0).map(potionRecipeKey));
     if (upgradeMaterials().has(m)) push(out, 'upgrade', ['refine']);
     if (reforgeMaterials().has(m)) push(out, 'reforge', ['reforge']);
     if (deliverableMaterials().has(m)) {
@@ -84,7 +84,7 @@ export function usesOf(kind: 'material' | 'consumable', id: string, save?: Pick<
   if (c === 'fertilizer') push(out, 'garden', ['garden']);
   if (c === 'forge_seal') push(out, 'forge', GEAR.filter((g) => g.recipe && !g.unique && isInstancedSlot(g.slot)).map((g) => g.id));
   if (c === 'stash_deed' || isPouchId(c)) push(out, 'use', [c]);
-  if (c === 'xp_potion' || c === 'whetstone_oil' || c === 'repair_kit' || c === 'master_repair_kit' || c === 'atk_elixir' || BUFF_ITEM[c]) push(out, 'use', [c]);
+  if (c === 'knowledge_elixir' || c === 'whetstone_oil' || c === 'repair_kit' || c === 'master_repair_kit' || c === 'atk_elixir' || BUFF_ITEM[c]) push(out, 'use', [c]);
   return out;
 }
 

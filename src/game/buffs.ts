@@ -5,14 +5,15 @@ import type { TimeWindow } from './huntSession';
 import T from './tunables';
 
 // ONE description of every timed consumable effect ("buff"): which item starts it, how long it lasts and how the engine reads it back.
-// Eleven kinds share the same machinery (expiry timestamp, Dungeon read per hit, Hunting session windows, elixirs.ts to drink them):
+// Twelve kinds share the same machinery (expiry timestamp, Dungeon read per hit, Hunting session windows, elixirs.ts to drink them):
 //   legacy slots (kept so old saves load untouched): strength -> save.activeBuff, attack -> save.attackBuff
 //   Garden 3.0 tonics: stoneskin / fortune / haste / gatherer / precision -> save.buffs[kind] = { from, expiresAt }
 //   Round 12 (T.consumables): sharpened (+damage), polished (+reduction), bait (+uncommon / rare drop chance of ONE zone, `zone` is stored with the buff), prospect (+Mining / Woodcutting units)
+//   Rodada 20 (T.consumables): knowledge (+Hunting XP; only ONE can run: elixirs.ts refuses a second while the first is active)
 // Pure data + helpers: the only runtime import besides tunables is derivedStats (heroAttackIntervalMs), so engine.ts can import this file.
 
 export type LegacyBuffKind = 'strength' | 'attack';
-export type TimedBuffKind = 'stoneskin' | 'fortune' | 'haste' | 'gatherer' | 'precision' | 'sharpened' | 'polished' | 'bait' | 'prospect';
+export type TimedBuffKind = 'stoneskin' | 'fortune' | 'haste' | 'gatherer' | 'precision' | 'sharpened' | 'polished' | 'bait' | 'prospect' | 'knowledge';
 export type BuffKind = LegacyBuffKind | TimedBuffKind;
 
 // A tonic that is running: it covers [from, expiresAt). `from` is when it was FIRST drunk in an unbroken run (drinking again while it is
@@ -24,9 +25,9 @@ export interface TimedBuff {
   zone?: string;
 }
 
-export const TIMED_BUFF_KINDS: TimedBuffKind[] = ['stoneskin', 'fortune', 'haste', 'gatherer', 'precision', 'sharpened', 'polished', 'bait', 'prospect'];
+export const TIMED_BUFF_KINDS: TimedBuffKind[] = ['stoneskin', 'fortune', 'haste', 'gatherer', 'precision', 'sharpened', 'polished', 'bait', 'prospect', 'knowledge'];
 // The ones a Hunting session has to track as time windows (Mining reads `gatherer` from the save when it is collected).
-export const HUNT_BUFF_KINDS: TimedBuffKind[] = ['stoneskin', 'fortune', 'haste', 'precision', 'sharpened', 'polished', 'bait'];
+export const HUNT_BUFF_KINDS: TimedBuffKind[] = ['stoneskin', 'fortune', 'haste', 'precision', 'sharpened', 'polished', 'bait', 'knowledge'];
 
 export const BUFF_ITEM: Partial<Record<ConsumableId, BuffKind>> = {
   strength_elixir: 'strength',
@@ -40,6 +41,7 @@ export const BUFF_ITEM: Partial<Record<ConsumableId, BuffKind>> = {
   armor_polish: 'polished',
   hunter_lure: 'bait',
   prospector_tonic: 'prospect',
+  knowledge_elixir: 'knowledge',
 };
 
 export function buffMinutes(kind: BuffKind): number {
@@ -66,6 +68,8 @@ export function buffMinutes(kind: BuffKind): number {
       return T.consumables.baitMinutes;
     case 'prospect':
       return T.consumables.prospectMinutes;
+    case 'knowledge':
+      return T.consumables.knowledgeMinutes;
   }
 }
 
@@ -178,13 +182,13 @@ export type TonicWindows = Partial<Record<TimedBuffKind, TimeWindow[]>>;
 // ONE declarative list of what each timed effect does, read from the tunables at call time (so the tweak panel moves it): the hero panel's breakdown uses the kinds and values,
 // docs/ITEM_BALANCE_AUDIT.md ("Como os status somam") prints it and temporaryEffects.test.ts checks the document against it and each row against the fight. The ENGINE never reads
 // this table (each effect is applied where the comment above it says); it is the description that a test holds equal to what the engine does.
-export type EffectStat = 'damage' | 'critChance' | 'defense' | 'attackSpeed' | 'gold' | 'dropChance' | 'gatherYield';
+export type EffectStat = 'damage' | 'critChance' | 'defense' | 'attackSpeed' | 'gold' | 'dropChance' | 'gatherYield' | 'huntXp';
 export interface TemporaryEffect {
   kind: BuffKind | 'blessed';
   item: ConsumableId | null; // blessed comes from the Forge's blessed repair
   stat: EffectStat;
   // multiplier: multiplies the hit with the other damage buffs. add: adds to the sum of its stat (defense: the raw resistance sum, crit: absolute points, speed: the same
-  // bonus a relic gives, gold: added to gear + Pass + Ganancia, dropChance / gatherYield: the share of the base).
+  // bonus a relic gives, gold: added to gear + Pass + Ganancia, dropChance / gatherYield: the share of the base, huntXp: the share of the Hunting XP of the fight time it covers).
   how: 'multiplier' | 'add';
   value: number; // a fraction: 0.2 = +20%
   minutes: number | null; // null = until the next Dungeon run spends it
@@ -207,5 +211,6 @@ export function temporaryEffects(): TemporaryEffect[] {
     { kind: 'bait', item: 'hunter_lure', stat: 'dropChance', how: 'multiplier', value: T.consumables.baitDropPct, minutes: T.consumables.baitMinutes, dungeon: false, hunt: true, gather: false },
     { kind: 'gatherer', item: 'gatherer_brew', stat: 'gatherYield', how: 'add', value: T.tonics.gathererYieldPct, minutes: T.tonics.gathererMinutes, dungeon: false, hunt: false, gather: true },
     { kind: 'prospect', item: 'prospector_tonic', stat: 'gatherYield', how: 'add', value: T.consumables.prospectYieldPct, minutes: T.consumables.prospectMinutes, dungeon: false, hunt: false, gather: true },
+    { kind: 'knowledge', item: 'knowledge_elixir', stat: 'huntXp', how: 'multiplier', value: T.consumables.knowledgeXpPct, minutes: T.consumables.knowledgeMinutes, dungeon: false, hunt: true, gather: false },
   ];
 }

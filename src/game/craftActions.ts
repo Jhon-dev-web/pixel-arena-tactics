@@ -1,6 +1,6 @@
 import { playerLevel, SaveData } from './engine';
 import { getRefiningRecipe } from './refining';
-import { getPotionRecipe } from './potions';
+import { getPotionRecipe, potionRecipeInTier } from './potions';
 import { CONSUMABLE_STACK, getConsumable, ConsumableId } from './consumables';
 import { MaterialId, hasMaterials } from './materials';
 import { addWithOverflow, stockIsEmpty } from './inventory';
@@ -10,7 +10,7 @@ import { recordPotion } from './stats';
 // Every one is a deliberate player action, so when the result does not fit the inventory it is REFUSED ('bag') and nothing is charged - never a silent
 // loss. The inputs are taken out first, so a craft that eats a whole stack to make one item always has room for it.
 
-export type CraftFailure = 'unknown' | 'gold' | 'level' | 'materials' | 'bag' | 'stack';
+export type CraftFailure = 'unknown' | 'gold' | 'level' | 'materials' | 'bag' | 'stack' | 'tier';
 
 // Flat on purpose (tsconfig is not strict): ok=false => reason is set, ok=true => save is set.
 export interface CraftResult {
@@ -45,6 +45,7 @@ export function applyRefine(save: SaveData, recipeId: string, now?: number): Cra
 export function applyCraftPotion(save: SaveData, recipeId: string, now?: number): CraftResult {
   const recipe = getPotionRecipe(recipeId);
   if (!recipe) return fail('unknown');
+  if (!potionRecipeInTier(recipe, save.highestDungeonFloor)) return fail('tier');
   if (save.gold < recipe.cost) return fail('gold');
   if (playerLevel(save.xp) < recipe.requiredLevel) return fail('level');
   if (!hasMaterials(save.materials, recipe.input)) return fail('materials');

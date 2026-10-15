@@ -232,7 +232,7 @@ export function skillEffects(ranks: SkillRanks): SkillEffects {
 
 export const saveSkillEffects = (save: Pick<SaveData, 'skillTree'>): SkillEffects => skillEffects(activeSkillRanks(save));
 
-// Percent extra character XP the hero's Season Relic and Aprendiz Veloz give together (the Dungeon, Hunting via CombatStats.xpBonus, and delivery orders).
+// Percent extra character XP the hero's Season Relic and Aprendiz Veloz give together. It applies to Hunting XP (via CombatStats.xpBonus): since the League nothing else pays hero XP.
 export function characterXpBonusPct(save: Pick<SaveData, 'skillTree' | 'equipped'>): number {
   return relicXpBonusPct(save.equipped.relic) + Math.round(saveSkillEffects(save).xpPct * 10000) / 100;
 }

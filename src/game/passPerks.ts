@@ -22,7 +22,7 @@ export function passPerkLines(): PassPerkLine[] {
       key: 'orders',
       icon: '/assets/icons/nav_quests.png',
       label: { key: 'battlePass.perkDeliveries', params: { o: T.deliveries.offersPass - T.deliveries.offersBase, r: T.deliveries.rerollsPass - T.deliveries.rerollsBase } },
-      sub: { key: 'battlePass.perkDeliveriesSub', params: { n: pct(T.deliveries.passXpBonus) } },
+      sub: { key: 'battlePass.perkDeliveriesSub' },
     },
     { key: 'bag', icon: '/assets/icons/nav_bag.png', label: { key: 'battlePass.perkBag', params: { n: pct(T.battlePass.bagBonusPct) } }, sub: { key: 'battlePass.perkBagSub', params: { n: T.battlePass.bagBonusSlots } } },
     { key: 'stash', icon: '/assets/icons/camp_stash.png', label: { key: 'battlePass.perkStash', params: { n: T.battlePass.stashBonusSlots } }, sub: { key: 'battlePass.perkStashSub' } },

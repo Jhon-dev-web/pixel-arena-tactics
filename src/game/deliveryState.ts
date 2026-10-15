@@ -5,7 +5,7 @@ import T from './tunables';
 // engine import so engine.ts can own it in SaveData without an import cycle.
 //
 // An offer is generated once and then FROZEN: what it asks for and what it pays never changes afterwards (not even if
-// a tunable changes), and nothing is rolled at claim time. Accepting one snapshots the whole offer into `active`.
+// a tunable changes), and nothing is rolled at claim time. (An order carried hero XP until the League, Rodada 20; the field of a saved order is ignored and never paid.) Accepting one snapshots the whole offer into `active`.
 
 export type DeliveryArchetype = 'medicinal' | 'alquimico' | 'alq_raro' | 'militar' | 'armadura' | 'raro' | 'forja' | 'comercial';
 export type DeliveryDistance = 'local' | 'curta' | 'regional' | 'longa' | 'especial';
@@ -24,7 +24,6 @@ export interface DeliveryOffer {
   tier: number; // 0..3, from the highest Dungeon floor when it was generated
   items: Partial<Record<MaterialId, number>>;
   gold: number;
-  xp: number;
   shards: number; // fixed here, so the player knows it before accepting
   durationMs: number;
   bornAt: number;
@@ -80,7 +79,6 @@ function sanitizeOffer(raw: unknown, now: number): DeliveryOffer | null {
     items,
     // A tampered save cannot mint an absurd reward: every field is bounded by what any order could ever pay.
     gold: posInt(o.gold, maxGold),
-    xp: posInt(o.xp, 48 * 400000),
     shards: posInt(o.shards, 10),
     durationMs: Math.min(MAX_DURATION_MS, Math.floor(o.durationMs)),
     bornAt: isNum(o.bornAt) ? Math.min(o.bornAt, now) : now,

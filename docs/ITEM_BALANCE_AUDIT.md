@@ -836,5 +836,6 @@ Gerada de `temporaryEffects()` (`buffs.ts`); `temporaryEffects.test.ts` confere 
 | bait | hunter_lure | +10% chance (incomuns e raros) | 60 min | só Caça, só na zona em que foi usada | multiplica a chance de queda (limite dos itens novos: 10%) |
 | gatherer | gatherer_brew | +25% minério e madeira | 120 min | só Mineração e Lenhador | soma horas efetivas |
 | prospect | prospector_tonic | +10% minério e madeira | 120 min | só Mineração e Lenhador | soma horas efetivas (com a Poção do Coletor; limite 10%) |
+| knowledge | knowledge_elixir | +25% XP de Caça | 240 min | só Caça (nenhuma outra atividade paga XP do herói) | multiplica o XP do tempo de luta que cobriu; só um por vez (um segundo é recusado e não gasta nada) |
 
-Permanentes que parecem temporários: o Passe (+15% Ouro, x1,1 material na Caça, na Mineração e no Lenhador) e Ganância / Faro (habilidades). O XP do personagem não tem efeito temporário (a Poção de XP é instantânea).
+Permanentes que parecem temporários: o Passe (+15% Ouro, x1,1 material na Caça, na Mineração e no Lenhador) e Ganância / Faro (habilidades). O XP do personagem só vem da Caça (Rodada 20) e o único efeito temporário dele é o Elixir do Conhecimento acima.

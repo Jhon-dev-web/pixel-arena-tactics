@@ -32,7 +32,7 @@ import { MATERIALS, MaterialId } from '../materials';
 import { CONSUMABLES, ConsumableId } from '../consumables';
 import { GEAR, isInstancedSlot } from '../gear';
 import { REFINING_RECIPES } from '../refining';
-import { POTION_RECIPES } from '../potions';
+import { POTION_RECIPES, potionRecipeKey } from '../potions';
 import { getSalvageReturn } from '../salvage';
 import { createGearInstance } from '../gearInstances';
 import { CONSUMABLES_WITHOUT_USE, MATERIALS_WITHOUT_USE, materialsWithoutUse, usesOf } from '../itemUses';
@@ -316,7 +316,7 @@ describe('usesOf: where an item is consumed, from the real recipe data', () => {
       for (const u of usesOf('material', m.id)) {
         if (u.kind === 'forge') for (const ref of u.refs) expect(GEAR.find((g) => g.id === ref)?.recipe?.materials?.[m.id]).toBeGreaterThan(0);
         if (u.kind === 'refine') for (const ref of u.refs) expect(REFINING_RECIPES.find((r) => r.id === ref)?.input[m.id]).toBeGreaterThan(0);
-        if (u.kind === 'alchemy') for (const ref of u.refs) expect(POTION_RECIPES.find((r) => r.id === ref)?.input[m.id]).toBeGreaterThan(0);
+        if (u.kind === 'alchemy') for (const ref of u.refs) expect(POTION_RECIPES.find((r) => potionRecipeKey(r) === ref)?.input[m.id]).toBeGreaterThan(0);
       }
     }
     const copper = usesOf('material', 'copper').map((u) => u.kind);

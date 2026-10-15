@@ -46,7 +46,7 @@ export interface GearItem {
   damagePct?: number;
   lifestealPct?: number;
   goldBonusPct?: number;
-  // Season Relic (Adventurer Pass): percent extra CHARACTER XP from the Dungeon, Hunting and delivery orders (3 = 3 %); no combat effect.
+  // Season Relic (Adventurer Pass): percent extra CHARACTER XP from Hunting (3 = 3 %); no combat effect.
   xpBonusPct?: number;
   // Weapon family: 'axe' is the second weapon line (more damage, less crit, no burn). Forge grouping only.
   line?: 'axe';

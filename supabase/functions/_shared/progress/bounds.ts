@@ -1,4 +1,4 @@
-import { DUNGEON_RUN_XP, ZONE_TABLE } from './tables.ts';
+import { ZONE_TABLE } from './tables.ts';
 
 // EVERY number the plausibility audit uses lives in this one table. Each entry says where it comes from. `npm run season:bounds` prints the table next to the values
 // recomputed from the game's tunables and checks that the theoretical ones here are still >= what the game can do (seasonProgress.test.ts runs the same check).
@@ -42,20 +42,15 @@ export const BOUNDS = {
 
   // ---- XP --------------------------------------------------------------------------------------------------------------------------------------
   /**
-   * XP per server hour, THEORETICAL, at the end of the game (floor 100). Recomputed by season:bounds = 59,489 (rounded up to 60,000); xpPerHourAt(floor) below scales it with the floor:
-   *   Hunting 19,773 = best zone 13,000 xp/h (huntingZones.ts) x deep depth 1.3 x (1 + 17% bonuses: Season Relic 5% + Aprendiz Veloz 3 ranks x 4%)
-   *   + delivery orders 5,391 = 1,200 xp/h (tunables deliveries.xpPerHourEspecial) x 3.2 (xpFactorMax) x 1.2 (Pass) x 1.17
-   *   + the Dungeon 34,325 = 20 runs a day (10 free sessions, tunables dungeon.freeSessionsPerDay, plus 10 bought with Shards) x about 41,200 XP a run
-   *     (100 floors at 60 x (1 + 0.05 x (f - 1)), the boss / checkpoint bonuses and 40 Profundezas depths) / 24 h.
+   * XP per server hour, THEORETICAL, at the end of the game (floor 100). Since the League (Rodada 20) HUNTING IS THE ONLY SOURCE of hero XP (no Dungeon, no delivery order, no instant
+   * potion), so this is one product. Recomputed by season:bounds = 24,716 (rounded up to 25,000); xpPerHourAt(floor) below scales it with the floor:
+   *   best zone 13,000 xp/h (huntingZones.ts) x deep depth 1.3 x (1 + 17% bonuses: Season Relic 5% + Aprendiz Veloz 3 ranks x 4%) x 1.25 (the Knowledge Elixir, tunables
+   *   consumables.knowledgeXpPct, running the whole time: the best and only potion; the Pass adds no XP).
+   * It used to be 60,000: 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, which are gone.
    */
-  xpPerHour: 60_000,
-  /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%). 1.3 x 1.17. */
-  huntXpFactor: 1.521,
-  /** Delivery orders XP per hour at their best (see xpPerHour). */
-  ordersXpPerHour: 5_400,
-  /** One delivery order's XP at hero level 1 to 40 (the level factor is 1 there): 1,200 xp/h x 21 h (the longest order, hoursEspecial) x 1.2 (Pass) x 1.17. Above level 50 the factor is 3.2. */
-  orderLumpXp: 35_400,
-  orderLumpFactorAt50: 3.2,
+  xpPerHour: 25_000,
+  /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%) times the Knowledge Elixir (1.25). 1.3 x 1.17 x 1.25 = 1.90125. */
+  huntXpFactor: 1.902,
 
   // ---- profession skill XP (Mining, Woodcutting, Gardening): THEORETICAL, recomputed from tunables by season:bounds / deriveBounds ---------------------------------------
   /** Mining / Woodcutting: gatherPower = BASE_GATHER_POWER + level x powerPerLevel (skills.ts). SOURCE: BASE_GATHER_POWER = 5, tunables skills.powerPerLevel = 0.75, skills.maxLevel = 75. */
@@ -200,17 +195,15 @@ export function zoneXpPerHour(highestFloor: number): number {
   return rate;
 }
 
-/** THEORETICAL XP per server hour for a hero whose highest floor is `highestFloor`: best open zone + orders + 20 Dungeon runs a day of the floors that hero can clear. */
+/** THEORETICAL XP per server hour for a hero whose highest floor is `highestFloor`: the best open zone with every bonus (the only source of hero XP). */
 export function xpPerHourAt(highestFloor: number): number {
-  const floor = Math.max(0, Math.min(100, Math.floor(highestFloor)));
-  return zoneXpPerHour(floor) * BOUNDS.huntXpFactor + BOUNDS.ordersXpPerHour + (BOUNDS.dungeonRunsPerDay * DUNGEON_RUN_XP[floor]) / 24;
+  return zoneXpPerHour(Math.max(0, Math.min(100, Math.floor(highestFloor)))) * BOUNDS.huntXpFactor;
 }
 
 /**
- * XP that may arrive in ONE snapshot although it was earned before the previous one: an offline Hunt waiting to be claimed (up to burstHours of the best open zone) and one
- * finished delivery order. Not renewable in the cumulative checks (they count it once).
+ * XP that may arrive in ONE snapshot although it was earned before the previous one: an offline Hunt waiting to be claimed (up to burstHours, the largest storage the Pass gives,
+ * of the best open zone). Not renewable in the cumulative checks (they count it once).
  */
-export function burstXp(heroLevel: number, highestFloor: number): number {
-  const factor = 1 + (BOUNDS.orderLumpFactorAt50 - 1) * Math.max(0, Math.min(1, (heroLevel - 40) / 10));
-  return BOUNDS.burstHours * zoneXpPerHour(highestFloor) * BOUNDS.huntXpFactor + BOUNDS.orderLumpXp * factor;
+export function burstXp(highestFloor: number): number {
+  return BOUNDS.burstHours * zoneXpPerHour(highestFloor) * BOUNDS.huntXpFactor;
 }

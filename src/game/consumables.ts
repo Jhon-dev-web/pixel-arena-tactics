@@ -6,7 +6,7 @@ export type ConsumableId =
   | 'expedition_ticket_1h'
   | 'expedition_ticket_2h'
   | 'expedition_ticket_4h'
-  | 'xp_potion'
+  | 'knowledge_elixir'
   | 'greater_elixir'
   | 'strength_elixir'
   | 'stoneskin_tonic'
@@ -61,7 +61,9 @@ export const CONSUMABLES: ConsumableDef[] = [
   { id: 'expedition_ticket_4h', nameKey: 'expedition_ticket_4h', descKey: 'expedition_ticket_4h_d', icon: '⏱️', iconUrl: '/assets/icons/expedition_ticket_4h.png', cost: 0, sellValue: 0, purchasable: false },
   // Alchemy-only (Forja > Refino > Alquimia) — never sold in the Shop, craft-tier consumables that
   // scale with player effort (Garden growing time) instead of flat gold like the Shop potions.
-  { id: 'xp_potion', nameKey: 'xp_potion', descKey: 'xp_potion_d', icon: '📘', iconUrl: '/assets/icons/xp_potion.png', cost: 0, sellValue: 15, purchasable: false },
+  // The Knowledge Elixir (Rodada 20): +25% Hunting XP for 4 h, crafted from high-level Garden plants + the rare drop of the best open zone + a lot of Gold (potions.ts). Never in the
+  // Shop, never on the Pass track, and the merchants do not buy it (sellValue 0): it is an XP buff, not a source of Gold.
+  { id: 'knowledge_elixir', nameKey: 'knowledge_elixir', descKey: 'knowledge_elixir_d', icon: '📘', iconUrl: '/assets/icons/xp_potion.png', cost: 0, sellValue: 0, purchasable: false },
   { id: 'greater_elixir', nameKey: 'greater_elixir', descKey: 'greater_elixir_d', icon: '💚', iconUrl: '/assets/icons/greater_elixir.png', cost: 0, sellValue: 60, purchasable: false },
   { id: 'strength_elixir', nameKey: 'strength_elixir', descKey: 'strength_elixir_d', icon: '🔥', iconUrl: '/assets/icons/strength_elixir.png', cost: 0, sellValue: 120, purchasable: false },
   // Garden 3.0 (potions.ts recipes, buffs.ts effects): Alchemy-only like the ones above, never in the Shop.
@@ -106,7 +108,7 @@ export function emptyConsumables(): Record<ConsumableId, number> {
     expedition_ticket_1h: 0,
     expedition_ticket_2h: 0,
     expedition_ticket_4h: 0,
-    xp_potion: 0,
+    knowledge_elixir: 0,
     greater_elixir: 0,
     strength_elixir: 0,
     stoneskin_tonic: 0,

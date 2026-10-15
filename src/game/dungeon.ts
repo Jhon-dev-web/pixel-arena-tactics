@@ -28,8 +28,9 @@ export const isDepthStage = (stage: number): boolean => stage > MAX_DUNGEON_FLOO
 export const depthOfStage = (stage: number): number => Math.max(0, Math.floor(stage) - MAX_DUNGEON_FLOOR);
 export const stageOfDepth = (depth: number): number => MAX_DUNGEON_FLOOR + Math.max(0, Math.floor(depth));
 
-// The Dungeon never drops farm materials (leather/ore/etc — that's Open Hunting's job exclusively).
-// Its rewards are XP, gold, and the one-time milestone payouts below.
+// The Dungeon never drops farm materials (leather/ore/etc — that's Open Hunting's job exclusively), and since the League (Rodada 20) it pays no hero XP either:
+// the hero levels up ONLY by Hunting. Its rewards are gold, the checkpoint / boss gold bonus (waves.ts), the boss pieces and the one-time milestone payouts below;
+// what it unlocks is the Hunting zones (huntingZones.ts unlockFloor) and the next tiers of the Forge.
 // Economy design: goldMin/goldMax (+ goldRewardGrowth in tunables.ts) were cut hard from their original
 // values — Dungeon + Expedition together were pushing a median player past 10k-100k gold/day, which
 // leaves gold with no real scarcity (a problem if it's ever exchanged for ONE down the line). Checkpoint
@@ -119,35 +120,6 @@ export function nextMilestone(floor: number): { floor: number; boss: boolean } |
     if (isDungeonCheckpoint(f)) return { floor: f, boss: false };
   }
   return null;
-}
-
-// Bonus XP granted (regardless of run outcome) for every checkpoint/boss stage actually defeated this run
-// — floors startFloor..startFloor+stagesCleared-1, i.e. exactly the floors whose enemy was actually killed.
-export function milestoneXpBonus(startFloor: number, stagesCleared: number): number {
-  let bonus = 0;
-  for (let f = startFloor; f <= startFloor + stagesCleared - 1; f++) {
-    if (isDungeonBoss(f)) bonus += T.advanced.bossXpBonus;
-    else if (isDungeonCheckpoint(f)) bonus += T.advanced.checkpointXpBonus;
-  }
-  return bonus;
-}
-
-// Per-kill XP scales with floor difficulty (rewardGrowth) instead of a flat rate — a floor-99 kill is
-// worth far more than a floor-1 kill. This only matters now because normal Dungeon runs are capped to
-// a few sessions/day (see App.tsx enterDungeon), so it's safe for a deep run to pay out a lot without
-// becoming a farmable-forever XP faucet the way flat per-kill XP would have been. Kept on its own
-// tunable (rewardGrowth) separate from gold's (goldRewardGrowth, waves.ts) so tuning the gold economy
-// never silently reflows XP pacing, and vice versa.
-export function stageVictoryXp(floor: number): number {
-  return Math.round(T.advanced.victoryXp * (1 + T.battle.rewardGrowth * (floor - 1)));
-}
-
-export function dungeonRunXp(startFloor: number, stagesCleared: number): number {
-  let total = 0;
-  for (let f = startFloor; f <= startFloor + stagesCleared - 1; f++) {
-    total += stageVictoryXp(f);
-  }
-  return total;
 }
 
 // One-time "first clear" milestone payouts — biome-boss floors only (25/50/75/100).

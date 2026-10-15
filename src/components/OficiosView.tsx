@@ -4,7 +4,7 @@ import { fmtNum, t } from '../locales';
 import { SaveData, playerLevel } from '../game/engine';
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { RefiningRecipe, RefiningStation, refiningRecipesForStation } from '../game/refining';
-import { POTION_RECIPES } from '../game/potions';
+import { POTION_RECIPES, potionRecipeInTier, potionRecipeKey } from '../game/potions';
 import { getConsumable } from '../game/consumables';
 import { REFINE_CATEGORIES } from './refineCategories';
 import MaterialIcon from './MaterialIcon';
@@ -66,20 +66,21 @@ export default function OficiosView({
 
         <div className="oficios-grid">
           {category === 'potions'
-            ? POTION_RECIPES.map((recipe) => {
+            ? POTION_RECIPES.filter((recipe) => potionRecipeInTier(recipe, save.highestDungeonFloor)).map((recipe) => {
+                const key = potionRecipeKey(recipe);
                 const consumable = getConsumable(recipe.id)!;
-                const bagFull = applyCraftPotion(save, recipe.id).reason === 'bag';
+                const bagFull = applyCraftPotion(save, key).reason === 'bag';
                 const ok = save.gold >= recipe.cost && level >= recipe.requiredLevel && hasMaterials(save.materials, recipe.input) && !bagFull;
-                const made = justMade === recipe.id;
+                const made = justMade === key;
                 const owned = save.consumables?.[recipe.id] ?? 0;
                 return (
-                  <div className={`oficios-card${focus?.recipeId === recipe.id ? ' focus' : ''}`} key={recipe.id} data-recipe-id={recipe.id}>
+                  <div className={`oficios-card${focus?.recipeId === key ? ' focus' : ''}`} key={key} data-recipe-id={key}>
                     <div className="oficios-card-head">
                       <span className="oficios-card-icon">
                         <ConsumableIcon item={consumable} />
                       </span>
                       <div className="oficios-card-title">
-                        <span className="craft-name">{conText(consumable.nameKey)}</span>
+                        <span className="craft-name">{conText(consumable.nameKey)}{recipe.zoneTier ? ` · ${t('forge.knowledgeTier', { n: recipe.zoneTier })}` : ''}</span>
                         <span className="gear-count">{t('shop.youHave', { n: owned })}</span>
                       </div>
                     </div>
@@ -120,7 +121,7 @@ export default function OficiosView({
                     {bagFull && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
                     <button
                       className={`craft-btn forge oficios-produce${made ? ' forged' : ''}`}
-                      onClick={() => produce(recipe.id, true)}
+                      onClick={() => produce(key, true)}
                       disabled={!ok}
                       data-ui
                     >

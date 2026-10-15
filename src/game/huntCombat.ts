@@ -95,6 +95,9 @@ export interface HuntTimeline {
   hasteWindows?: [number, number][];
   precisionWindows?: [number, number][];
   fortuneWindows?: [number, number][];
+  // Rodada 20: the Knowledge Elixir adds `xpBuffPct` to the XP of the fight time its window covers (a fight counts by the moment it ENDS, like the Fortune Tonic's Gold).
+  knowledgeWindows?: [number, number][];
+  xpBuffPct?: number;
   reductionStone?: number;
   heroMsHaste?: number;
   critPrecision?: number;
@@ -207,6 +210,7 @@ export function simulateHuntingSession(
   let timeLeft = sessionMs;
   let fightTimeUsedMs = 0;
   let fortuneFightMs = 0; // fight time that ended inside a Fortune Tonic window (extra gold)
+  let knowledgeFightMs = 0; // fight time that ended inside a Knowledge Elixir window (extra XP)
   let potionCooldownUntil = 0;
   let ceiling = Math.min(promotion.maxLevel, Math.max(1, Math.floor(start.ceiling)));
   let promotionWins = ceiling >= promotion.maxLevel ? 0 : Math.max(0, Math.floor(start.promotionWins));
@@ -411,6 +415,7 @@ export function simulateHuntingSession(
         kills++;
         fightTimeUsedMs += r.timeMs;
         if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, sessionMs - timeLeft)) fortuneFightMs += r.timeMs;
+        if (timeline?.knowledgeWindows && inRelativeWindows(timeline.knowledgeWindows, sessionMs - timeLeft)) knowledgeFightMs += r.timeMs;
         rollDropsForOneClear(ceiling + 1, r.timeMs);
         ceiling++;
         promotions++;
@@ -426,6 +431,7 @@ export function simulateHuntingSession(
       kills++;
       fightTimeUsedMs += r.timeMs;
       if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, sessionMs - timeLeft)) fortuneFightMs += r.timeMs;
+      if (timeline?.knowledgeWindows && inRelativeWindows(timeline.knowledgeWindows, sessionMs - timeLeft)) knowledgeFightMs += r.timeMs;
       rollDropsForOneClear(ceiling, r.timeMs);
       if (ceiling < promotion.maxLevel) promotionWins++;
     } else {
@@ -445,7 +451,7 @@ export function simulateHuntingSession(
     defeats,
     potionsUsed,
     fightTimeUsedMs,
-    xpReady: Math.floor(hours * zoneCfg.xpPerHour * (1 + (build.xpBonusPct ?? 0) / 100)),
+    xpReady: Math.floor((hours + (knowledgeFightMs / (3600 * 1000)) * (timeline?.xpBuffPct ?? 0)) * zoneCfg.xpPerHour * (1 + (build.xpBonusPct ?? 0) / 100)),
     goldReady: Math.floor((hours * (1 + (build.goldBonusPct ?? 0) / 100) + (fortuneFightMs / (3600 * 1000)) * (timeline?.fortuneGoldPct ?? 0)) * zoneCfg.goldPerHour),
     drops,
     uniques,

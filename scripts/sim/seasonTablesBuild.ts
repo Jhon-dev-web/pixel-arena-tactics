@@ -1,5 +1,4 @@
 // The game numbers the server needs (see seasonTables.gen.ts, which writes them to supabase/functions/_shared/progress/tables.ts).
-import { dungeonRunXp, milestoneXpBonus } from '../../src/game/dungeon';
 import { MAX_LEVEL, xpForNextLevel, xpToReachLevel } from '../../src/game/engine';
 import { GEAR, GearItem } from '../../src/game/gear';
 import { HUNTING_ZONES } from '../../src/game/huntingZones';
@@ -35,14 +34,10 @@ export function buildTables() {
   }
   const xpToLevel: number[] = [];
   for (let l = 1; l <= MAX_LEVEL; l++) xpToLevel.push(xpToReachLevel(l));
-  // XP of one Dungeon run that clears floors 1..f (index f); the last entry also adds 40 Profundezas depths, the most any sim seed reached (about 44).
-  const dungeonRunXp_: number[] = [];
-  for (let f = 0; f <= 100; f++) dungeonRunXp_.push(f === 0 ? 0 : dungeonRunXp(1, f) + milestoneXpBonus(1, f) + (f === 100 ? dungeonRunXp(101, 40) : 0));
   // XP at which each profession level begins (index l - 1), levels 1..maxLevel. Mining and Woodcutting share one curve, Gardening has its own.
   const professionXpToLevel = (id: 'mining' | 'woodcutting' | 'gardening'): number[] => Array.from({ length: T.skills.maxLevel }, (_, i) => skillXpToReachLevel(i + 1, id));
   return {
     professionXpToLevel: { mining: professionXpToLevel('mining'), woodcutting: professionXpToLevel('woodcutting'), gardening: professionXpToLevel('gardening') },
-    dungeonRunXp: dungeonRunXp_,
     xpToLevel, // xpToLevel[l - 1] = XP at which hero level l begins (level 1 = 0, level 100 = paragon start)
     paragonFirstXp: xpForNextLevel(MAX_LEVEL - 1) * T.paragon.xpShare, // unrounded; paragon level n costs round(this * growth^(n-1))
     paragonGrowth: T.paragon.xpGrowth,

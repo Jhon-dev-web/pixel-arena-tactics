@@ -20,7 +20,6 @@ describe('season progress: the server tables follow the game', () => {
     expect(tables.PARAGON_GROWTH).toBe(t.paragonGrowth);
     expect(tables.GEAR_LEVEL_GATES).toEqual(t.levelGates);
     expect(tables.UNIQUE_FLOOR_GATES).toEqual(t.floorGates);
-    expect([...tables.DUNGEON_RUN_XP]).toEqual(t.dungeonRunXp);
     expect([...tables.ZONE_TABLE]).toEqual(t.zoneFloors);
     expect({ mining: [...tables.PROFESSION_XP_TO_LEVEL.mining], woodcutting: [...tables.PROFESSION_XP_TO_LEVEL.woodcutting], gardening: [...tables.PROFESSION_XP_TO_LEVEL.gardening] }).toEqual(t.professionXpToLevel);
   });
@@ -64,9 +63,8 @@ describe('season progress: bounds still hold the game', () => {
     expect(BOUNDS.burstHours).toBeGreaterThanOrEqual(d.capHours);
     expect(BOUNDS.dungeonRunsPerDay).toBeGreaterThanOrEqual(d.runsPerDay);
     expect(BOUNDS.dungeonFloorsPerDay).toBeGreaterThanOrEqual(d.runsPerDay * 140);
-    expect(BOUNDS.huntXpFactor).toBeGreaterThanOrEqual(1.3 * (1 + d.xpBonus) - 1e-9);
-    expect(BOUNDS.ordersXpPerHour).toBeGreaterThanOrEqual(d.ordersPerHour);
-    expect(burstXp(100, 100)).toBeGreaterThan(burstXp(1, 0));
+    expect(BOUNDS.huntXpFactor).toBeGreaterThanOrEqual(1.3 * (1 + d.xpBonus) * d.potion - 1e-9);
+    expect(burstXp(100)).toBeGreaterThan(burstXp(0));
   });
 
   it('the profession XP bounds are at least what the tunables allow', () => {

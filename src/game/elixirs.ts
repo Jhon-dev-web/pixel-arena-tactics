@@ -7,10 +7,12 @@ import { withSessionWindow } from './huntSession';
 // Timed consumables used by hand from the bag, one machinery for all of them (the kinds and their durations live in buffs.ts):
 //   strength_elixir (+damage), atk_elixir (+damage)                     -> save.activeBuff / save.attackBuff
 //   stoneskin / fortune / haste / gatherer / precision (Garden 3.0)    -> save.buffs[kind]
-// Using one again while it is active never stacks the bonus: it only renews the duration from now (and costs one more). Buffs of DIFFERENT kinds
+//   knowledge (Rodada 20)                                                -> save.buffs.knowledge
+// Using one again while it is active never stacks the bonus: it only renews the duration from now (and costs one more). The Knowledge Elixir is the exception: while one runs a second
+// is REFUSED and costs nothing (a Hunting XP buff of 4 h is not something to top up; it can be drunk again the moment the first has ended). Buffs of DIFFERENT kinds
 // coexist; the damage ones multiply like every other damage modifier, the stat ones add in their own place (see buffs.ts withTonicStats).
 
-export type ElixirId = 'strength_elixir' | 'atk_elixir' | 'stoneskin_tonic' | 'fortune_tonic' | 'haste_tonic' | 'gatherer_brew' | 'precision_elixir' | 'sharpening_stone' | 'armor_polish' | 'hunter_lure' | 'prospector_tonic';
+export type ElixirId = 'strength_elixir' | 'atk_elixir' | 'stoneskin_tonic' | 'fortune_tonic' | 'haste_tonic' | 'gatherer_brew' | 'precision_elixir' | 'sharpening_stone' | 'armor_polish' | 'hunter_lure' | 'prospector_tonic' | 'knowledge_elixir';
 
 const MS_PER_MINUTE = 60 * 1000;
 // A second use of the same item within this long of activating it is a stray double tap, not a renewal: it does nothing
@@ -33,6 +35,7 @@ export function applyElixir(save: SaveData, id: ElixirId, now: number): SaveData
   const duration = buffMinutes(kind) * MS_PER_MINUTE;
   const expiresAt = now + duration;
   const current = buffExpiry(save, kind);
+  if (kind === 'knowledge' && current !== null && current > now) return null;
   const remaining = current !== null ? current - now : 0;
   if (remaining > 0 && remaining <= duration && remaining >= duration - ELIXIR_DOUBLE_TAP_MS) return null;
   const next: SaveData = withBuff({ ...save, consumables: { ...save.consumables, [id]: qty - 1 } }, kind, now, expiresAt, zone);

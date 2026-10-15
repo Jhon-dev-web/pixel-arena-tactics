@@ -23,11 +23,9 @@ import {
   crossedMilestoneFloors,
   dungeonEnemyKindForFloor,
   isDepthStage,
-  dungeonRunXp,
   getBiomeForFloor,
   getMilestoneReward,
   MAX_DUNGEON_FLOOR,
-  milestoneXpBonus,
 } from '../../src/game/dungeon';
 import { getEnemyDef } from '../../src/game/enemies';
 import { applyDurabilityLoss, equippedSubstatTotals } from '../../src/game/gearInstances';
@@ -46,7 +44,7 @@ import { questMaxRefine } from '../../src/game/gearInstances';
 import { activeTonicStats, goldMultiplier, isBuffActive } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
 import { ownsAdventurerPass } from '../../src/game/entitlements';
-import { HeroSkillId, activeSkillRanks, addRank, addRankBlock, characterXpBonusPct, pointsSpent, rankOf, saveSkillEffects, skillPointsEarned } from '../../src/game/heroSkills';
+import { HeroSkillId, activeSkillRanks, addRank, addRankBlock, pointsSpent, rankOf, saveSkillEffects, skillPointsEarned } from '../../src/game/heroSkills';
 
 // ---- seeded RNG ---------------------------------------------------------------------------------------------------
 
@@ -368,7 +366,6 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
       if (reward.titleId && !cosmetics.includes(reward.titleId)) cosmetics = [...cosmetics, reward.titleId];
     }
   }
-  const xpGain = Math.round((dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages)) * (1 + characterXpBonusPct(s) / 100));
   // Boss uniques (App.finishRun): delivered as stored gear instances even when the bag is over capacity - never lost.
   let delivered = worn;
   for (const drop of rewards.uniques ?? []) delivered = addUniqueInstance(delivered, drop, `dg${startFloor}`, 0);
@@ -385,7 +382,6 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
     dungeonCheckpoints,
     materials: looted.materials,
     shards: s.shards + rewards.shards,
-    xp: s.xp + xpGain,
     victories: s.victories + (success ? 1 : 0),
     highestDungeonFloor: nextFloor,
     unlockedHuntingZones,

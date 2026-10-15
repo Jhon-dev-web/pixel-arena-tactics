@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import pt from '../../locales/pt.json';
+import en from '../../locales/en.json';
 import { defaultSave, normalizeSave, playerLevel, SaveData, xpForNextLevel } from '../engine';
 import { attributePointsAvailable, nextStep } from '../nextStep';
 import { suggestedSpend } from '../attributes';
@@ -6,8 +9,6 @@ import { GUIDED_DESCENT_FLOOR, nextTutorialStep, TUTORIAL_ORDER, tutorialStepDon
 import { defeatGoldKept } from '../waves';
 import T from '../tunables';
 import { ATTRIBUTE_POINTS_PER_LEVEL, extendLevelUp, levelUpSummary } from '../levelUp';
-import { dungeonRunGain, dungeonRunXpGain } from '../runSummary';
-import { dungeonRunXp, milestoneXpBonus } from '../dungeon';
 import { HUNTING_ZONES, recommendedCpForDepth } from '../huntingZones';
 import { zoneDifficulty } from '../huntView';
 
@@ -112,14 +113,17 @@ describe('a defeat before the first boss costs no gold', () => {
 });
 
 describe('descent summary', () => {
-  it('the XP shown is the XP banked, and levels gained follow from it', () => {
-    const s = defaultSave();
-    expect(dungeonRunXpGain(s, 1, 0)).toBe(0);
-    expect(dungeonRunXpGain(s, 1, 6)).toBe(Math.round(dungeonRunXp(1, 6) + milestoneXpBonus(1, 6)));
-    const gain = dungeonRunGain(s, 1, 6);
-    expect(gain.xp).toBeGreaterThan(0);
-    expect(gain.levels).toBe(playerLevel(s.xp + gain.xp) - playerLevel(s.xp));
-    expect(dungeonRunGain(s, 1, 0)).toEqual({ xp: 0, levels: 0 });
+  // Rodada 20: the hero earns XP only from Hunting, so a descent shows floors and gold and promises no XP or levels.
+  it('the descent screen and the tutorial text promise no XP, and the descent code never touches the hero XP', () => {
+    const modal = readFileSync('src/components/BattleModal.tsx', 'utf8');
+    expect(modal).not.toMatch(/runXp|runLevels/);
+    const finish = readFileSync('src/App.tsx', 'utf8');
+    const body = finish.slice(finish.indexOf('const finishRun'), finish.indexOf('// `id` is a gear INSTANCE id.'));
+    expect(body).not.toMatch(/\bxp:/);
+    for (const tree of [pt, en]) {
+      expect(tree.tutorial.dungeon.body).not.toMatch(/XP/);
+      expect(tree.dungeon.guidedSubtitle).not.toMatch(/XP/);
+    }
   });
 });
 

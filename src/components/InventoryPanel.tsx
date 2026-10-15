@@ -50,8 +50,8 @@ const tradeTag = (inst: GearInstance): 'tradeable' | 'bound' | null => {
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
-// Everything the bag can use by itself: the XP potion, every timed elixir / tonic (buffs.ts BUFF_ITEM) and the Whetstone Oil. Fertilizer is used on a Garden plot.
-const MANUALLY_USABLE = new Set<string>(['xp_potion', 'whetstone_oil', 'repair_kit', 'master_repair_kit', 'stash_deed', ...Object.keys(BUFF_ITEM)]);
+// Everything the bag can use by itself: every timed elixir / tonic (buffs.ts BUFF_ITEM) and the Whetstone Oil. Fertilizer is used on a Garden plot.
+const MANUALLY_USABLE = new Set<string>(['whetstone_oil', 'repair_kit', 'master_repair_kit', 'stash_deed', ...Object.keys(BUFF_ITEM)]);
 
 function formatBuffLeft(ms: number): string {
   const m = Math.ceil(ms / 60000);

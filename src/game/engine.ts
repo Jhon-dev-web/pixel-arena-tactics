@@ -46,6 +46,7 @@ import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillLevel, skil
 import { gatherMasteryMult, plantGrowthMs } from './mastery';
 import { maxSaneXp, paragonDamageBonus, paragonLevel } from './paragon';
 import { XP_CURVE_VERSION, migrateLegacyXp } from './xpCurve';
+import { legacyXpPotionCount, legacyXpPotionGold, withoutLegacyXpPotion } from './legacyXpPotion';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { migrateLegacyPouch } from './legacyPouch';
 import { emptyStash, sanitizeStash, StashState } from './stash';
@@ -823,6 +824,8 @@ export function buildHuntSimSetup(
     hasteWindows: relativeWindows(session.tonics?.haste ?? [], startedAt),
     precisionWindows: relativeWindows(session.tonics?.precision ?? [], startedAt),
     fortuneWindows: relativeWindows(session.tonics?.fortune ?? [], startedAt),
+    knowledgeWindows: relativeWindows(session.tonics?.knowledge ?? [], startedAt),
+    xpBuffPct: T.consumables.knowledgeXpPct,
     sharpWindows: relativeWindows(session.tonics?.sharpened ?? [], startedAt),
     polishWindows: relativeWindows(session.tonics?.polished ?? [], startedAt),
     baitWindows: relativeWindows(session.tonics?.bait ?? [], startedAt),
@@ -1122,7 +1125,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
       const cleanInt = (raw: unknown, min: number, max: number, fallback: number): number =>
         typeof raw === 'number' && Number.isFinite(raw) && raw >= min ? Math.min(max, Math.floor(raw)) : fallback;
       const maxAttrPoints = MAX_LEVEL * 3; // 3 points per level, level cap 100
-      const gold = cleanInt(parsed.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+      // The old instant XP potion (Rodada 20) is paid out in Gold, bag and stash alike, and the id is dropped from both.
+      const gold = Math.min(Number.MAX_SAFE_INTEGER, cleanInt(parsed.gold, 0, Number.MAX_SAFE_INTEGER, 0) + legacyXpPotionGold(legacyXpPotionCount(parsed as Parameters<typeof legacyXpPotionCount>[0])));
       const shards = cleanInt(parsed.shards, 0, Number.MAX_SAFE_INTEGER, 0);
       const victories = cleanInt(parsed.victories, 0, Number.MAX_SAFE_INTEGER, 0);
       const vit = cleanInt(parsed.vit, 0, maxAttrPoints, 0);
@@ -1364,7 +1368,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },
-        consumables: { ...emptyConsumables(), ...(parsed.consumables ?? {}) },
+        consumables: { ...emptyConsumables(), ...withoutLegacyXpPotion((parsed.consumables ?? {}) as Record<string, number>) },
         expeditions,
         deliveries: sanitizeDeliveries(parsed.deliveries, Date.now()),
         gems,

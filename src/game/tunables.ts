@@ -74,8 +74,6 @@ const T = DebugPanel.define({
     lateHpGrowth2: { value: 0.125, min: 0, max: 1, step: 0.005, label: 'Extra monster HP growth per stage, floors 76-100' },
     lateDmgGrowth: { value: 0.009, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 51-75' },
     lateDmgGrowth2: { value: 0.078, min: 0, max: 1, step: 0.005, label: 'Extra monster damage growth per stage, floors 76-100' },
-    rewardGrowth: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'XP reward growth per stage (dungeon.ts stageVictoryXp only)' },
-    // Kept separate from rewardGrowth (XP) so gold economy tuning never silently reflows XP pacing.
     goldRewardGrowth: { value: 0.012, min: 0, max: 1, step: 0.001, label: 'Gold/drop-qty growth per stage' },
     miniBossEvery: { value: 10, min: 3, max: 20, step: 1, label: 'Dungeon checkpoint every N floors' },
     miniBossHpMult: { value: 1.5, min: 1, max: 3, step: 0.1, label: 'Checkpoint HP multiplier' },
@@ -122,7 +120,6 @@ const T = DebugPanel.define({
     largePotionHeal: { value: 150, min: 10, max: 1000, step: 10, label: 'Auto-potion heal (HP, large_hp)' },
     greaterElixirHealPct: { value: 0.5, min: 0.1, max: 1, step: 0.05, label: 'Greater Elixir heal (% of max HP)' },
     potionCooldownMs: { value: 5000, min: 1000, max: 15000, step: 500, label: 'Auto-potion cooldown (ms)' },
-    xpPotionAmount: { value: 150, min: 10, max: 5000, step: 10, label: 'XP Potion instant XP' },
     strengthElixirDmgPct: { value: 0.2, min: 0.05, max: 1, step: 0.05, label: 'Strength Elixir damage bonus (%)' },
     strengthElixirMinutes: { value: 30, min: 1, max: 180, step: 1, label: 'Strength Elixir duration (minutes)' },
     // Attack (Battle) Elixir: a second, independent timed damage buff. It never stacks with itself (using it again only
@@ -236,7 +233,12 @@ const T = DebugPanel.define({
   // raise the hero's damage by at most newConsumableCap (only the Sharpening Stone does) and the yield of any one activity by at most newConsumableCap (the Lure for Hunting,
   // the Prospector's Tonic for Mining / Woodcutting); the Polish only touches the Layer-2 reduction SUM (asymptotic, adds to Stoneskin). A test pins the cap.
   consumables: {
-    _label: 'Round 12 consumables (repair kits, sharpening stone, polish, lure, prospector tonic)',
+    _label: 'Round 12 consumables (repair kits, sharpening stone, polish, lure, prospector tonic) and the Knowledge Elixir',
+    // Rodada 20 (the League): the old instant XP potion is gone. The Knowledge Elixir is a crafted buff of HUNTING XP only: +knowledgeXpPct for knowledgeMinutes of real time, one at a
+    // time (drinking one while it runs does nothing and costs nothing). A stock of the old potion turns into this much Gold each when a save loads (legacyXpPotion.ts).
+    knowledgeXpPct: { value: 0.25, min: 0, max: 1, step: 0.01, label: 'Knowledge Elixir: extra Hunting XP while it runs (fraction)' },
+    knowledgeMinutes: { value: 240, min: 10, max: 1440, step: 10, label: 'Knowledge Elixir duration (minutes)' },
+    legacyXpPotionGold: { value: 40, min: 0, max: 1000, step: 5, label: 'Gold paid for each old XP potion found in a loaded save' },
     newConsumableCap: { value: 0.1, min: 0, max: 0.5, step: 0.01, label: 'Cap on what all NEW consumables active together add to damage / to the yield of one activity' },
     repairKitDurability: { value: 60, min: 1, max: 100, step: 1, label: 'Repair Kit: durability points restored to the equipped weapon AND armor' },
     sharpenMinutes: { value: 30, min: 5, max: 240, step: 5, label: 'Sharpening Stone duration (min)' },
@@ -327,8 +329,8 @@ const T = DebugPanel.define({
   },
   dungeon: {
     _label: 'Dungeon Access',
-    // Economy design: normal Dungeon runs are throttled by daily attempt count, not by XP value —
-    // per-kill XP now scales with floor difficulty (dungeon.ts stageVictoryXp), which would let a
+    // Economy design: normal Dungeon runs are throttled by daily attempt count, not by reward value —
+    // the Gold per kill grows with the floor, which would let a
     // player farm it endlessly if entries weren't capped. Extra sessions cost Shards (not Gold/ONE):
     // Shards are the one resource Dungeon already earns and already spends on gear refinement, so
     // this stays a closed loop inside Dungeon's own economy instead of touching the gold/ONE faucets.
@@ -406,7 +408,7 @@ const T = DebugPanel.define({
     // Salvage returns floor(recipeQuantity x rate) of each recipe material, with NO minimum of 1.
     salvageRecoveryRate: { value: 0.45, min: 0, max: 0.9, step: 0.05, label: 'Salvage material recovery (rounded down; no minimum)' },
   },
-  // Delivery orders (deliveries.ts): materials + time -> Gold + XP (+ shards on Long/Special). Replaces the Expedition.
+  // Delivery orders (deliveries.ts): materials + time -> Gold (+ shards on Long/Special). Replaces the Expedition. Since the League (Rodada 20) an order pays NO hero XP: the hero earns XP only from Hunting.
   // Everything a delivery pays is a function of TIER x DISTANCE x time, never of how valuable the delivered materials are.
   deliveries: {
     _label: 'Delivery orders',
@@ -414,9 +416,7 @@ const T = DebugPanel.define({
     offersPass: { value: 4, min: 1, max: 8, step: 1, label: 'Visible offers with Battle Pass' },
     rerollsBase: { value: 1, min: 0, max: 5, step: 1, label: 'Free rerolls per day (base)' },
     rerollsPass: { value: 2, min: 0, max: 8, step: 1, label: 'Free rerolls per day with Battle Pass' },
-    // The Pass no longer doubles Expedition throughput, so it gets a small XP-only bonus on deliveries (never Gold, shards,
-    // materials or time). Applied when the order is ACCEPTED and frozen in the snapshot.
-    // Round 14: Gold and XP of an order scale with the hero's level, so a level-100 hero is not offered a 30 minute order for +20 Gold. The factor is 1 up to
+    // Round 14: Gold of an order scales with the hero's level, so a level-100 hero is not offered a 30 minute order for +20 Gold. The factor is 1 up to
     // levelScaleFrom (the first sessions are untouched) and grows linearly between the anchors below to what an hour of Hunting pays at that level when the
     // whole haul is sold to the merchant (the order stays about as good as hunting for the same time: scripts/sim/orderScale.sim.ts measures it, and the
     // test in round14.test.ts keeps it inside 0.8 to 1.2). The cargo an order asks for is NOT scaled: it stays a bonus on top of what the player already has.
@@ -424,10 +424,9 @@ const T = DebugPanel.define({
     levelScale50: { value: 3.2, min: 1, max: 20, step: 0.1, label: 'Order reward factor at character level 50' },
     levelScale75: { value: 5.5, min: 1, max: 20, step: 0.1, label: 'Order reward factor at character level 75' },
     levelScale100: { value: 7.7, min: 1, max: 30, step: 0.1, label: 'Order reward factor at character level 100' },
-    // Round 15: the XP of an order stops scaling at this factor (level 50's). A level now costs 255 thousand to 830 thousand XP, not millions, so the 61 / 86 thousand XP of a
-    // 10 h order at level 75 / 100 would have been a fifth to a third of a day of hunting for a cargo of materials; the Gold keeps its anchors.
-    xpFactorMax: { value: 3.2, min: 1, max: 30, step: 0.1, label: 'Highest level factor on the XP of an order' },
-    passXpBonus: { value: 0.2, min: 0, max: 0.5, step: 0.05, label: 'Extra delivery XP with Battle Pass (fraction)' },
+    // Rodada 20: in place of the XP an order used to pay (about half of what Hunting pays per hour in the first weeks), every order pays this much more Gold. The cargo is still sized
+    // from the Gold WITHOUT it (an order does not ask for more), so it is a pure bonus and the order stays inside the 0.8 to 1.2 band of round14.test.ts (about 0.9 to 1.19 now; 0.15 pushed level 50 to 1.25).
+    goldBonus: { value: 0.1, min: 0, max: 1, step: 0.01, label: 'Extra Gold on every order, in place of the XP orders no longer pay (fraction)' },
     offerTtlHours: { value: 24, min: 1, max: 168, step: 1, label: 'Hours before an unaccepted offer is replaced' },
     durationJitter: { value: 0.1, min: 0, max: 0.4, step: 0.05, label: 'Duration variation around the distance reference (+/-)' },
     tier2Floor: { value: 26, min: 1, max: 100, step: 1, label: 'Highest Dungeon floor for order tier 2' },
@@ -461,13 +460,6 @@ const T = DebugPanel.define({
     goldBonusRegional: { value: 2, min: 0, max: 30, step: 0.5, label: 'Extra Gold per hour, Regional' },
     goldBonusLonga: { value: 3.5, min: 0, max: 30, step: 0.5, label: 'Extra Gold per hour, Long' },
     goldBonusEspecial: { value: 5, min: 0, max: 30, step: 0.5, label: 'Extra Gold per hour, Special' },
-    // Balance pass, round 2: x0.02 on all five (was 39000 / 45000 / 51000 / 56000 / 60000). Orders were >90% of the XP a player earned from day 3
-    // (300-750k/day), which left character level, the recipe level gates and the CP curve meaningless. Gold, timers and requirements untouched.
-    xpPerHourLocal: { value: 780, min: 0, max: 400000, step: 10, label: 'XP per hour, Local' },
-    xpPerHourCurta: { value: 900, min: 0, max: 400000, step: 10, label: 'XP per hour, Short' },
-    xpPerHourRegional: { value: 1020, min: 0, max: 400000, step: 10, label: 'XP per hour, Regional' },
-    xpPerHourLonga: { value: 1120, min: 0, max: 400000, step: 10, label: 'XP per hour, Long' },
-    xpPerHourEspecial: { value: 1200, min: 0, max: 400000, step: 10, label: 'XP per hour, Special' },
     // Shards: fixed when the offer is generated, only on Long / Special, by tier.
     shardsLongaT1: { value: 0, min: 0, max: 10, step: 1, label: 'Shards, Long, tier 1' },
     shardsLongaT2: { value: 1, min: 0, max: 10, step: 1, label: 'Shards, Long, tier 2' },
@@ -664,9 +656,10 @@ const T = DebugPanel.define({
     burnTurns: { value: 2, min: 1, max: 6, step: 1, label: 'Burn duration (turns)' },
     poisonDamage: { value: 6, min: 1, max: 30, step: 1, label: 'Poison damage per turn' },
     poisonTurns: { value: 2, min: 1, max: 6, step: 1, label: 'Poison duration (turns)' },
-    victoryXp: { value: 60, min: 10, max: 500, step: 5, label: 'XP per victory' },
-    checkpointXpBonus: { value: 200, min: 0, max: 2000, step: 10, label: 'Bonus XP per checkpoint cleared' },
-    bossXpBonus: { value: 500, min: 0, max: 5000, step: 25, label: 'Bonus XP per biome boss cleared' },
+    // League design (docs/BALANCE_CHANGES.md, Rodada 20): the hero earns XP ONLY from Hunting. What the Dungeon used to pay in XP at its checkpoints and bosses is a flat
+    // Gold bonus on those waves now (inside waveRewards, so a defeat keeps the same share of it as of the rest of the run's Gold).
+    checkpointGoldBonus: { value: 40, min: 0, max: 1000, step: 5, label: 'Extra Gold on a checkpoint wave (floor 10, 20, 30...)' },
+    bossGoldBonus: { value: 100, min: 0, max: 2000, step: 5, label: 'Extra Gold on a biome boss wave (floor 25, 50, 75, 100)' },
     // NO LONGER read by combat, CP or the HeroModal (they all use strengthFlatDamage + strengthWeaponScalePerPoint
     // below via derivedStats.ts strengthAdjustedDamage). Only the inactive legacy arena still reads it.
     strDmgPerPoint: { value: 1, min: 0, max: 10, step: 0.5, label: 'Damage per STR point (legacy arena only)' },

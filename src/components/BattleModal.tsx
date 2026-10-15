@@ -26,7 +26,6 @@ import UniqueDrops from './UniqueDrops';
 import RelicDrops from './RelicDrops';
 import { defeatSummary, DefeatSummary } from '../game/defeatSummary';
 import { nextStepLine } from './nextStepText';
-import { dungeonRunGain } from '../game/runSummary';
 
 const enemyText = (k: string): string => t(`enemies.${k}`);
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
@@ -610,15 +609,12 @@ export default function BattleModal({
     </>
   );
 
-  // What the descent paid, in plain numbers (the same XP App.finishRun banks): floors cleared, XP, levels gained and the gold kept. Nothing about a loss here: that line only
+  // What the descent paid, in plain numbers: floors cleared and the gold kept (the hero gets no XP from the Dungeon, only from Hunting). Nothing about a loss here: that line only
   // shows up when something was actually lost.
   const renderRunSummary = (stages: number, goldKept: number) => {
-    const gain = dungeonRunGain(save, startFloor, stages);
     return (
       <ul className="run-summary" data-testid="run-summary">
         <li>{t('dungeon.runFloors', { n: stages })}</li>
-        <li>{t('dungeon.runXp', { n: gain.xp })}</li>
-        {gain.levels > 0 && <li className="run-summary-level">{t('dungeon.runLevels', { n: gain.levels })}</li>}
         <li>{t('dungeon.runGold', { n: goldKept })}</li>
       </ul>
     );

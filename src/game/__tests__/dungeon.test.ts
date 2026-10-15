@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import T from '../tunables';
+import { waveRewards } from '../waves';
 import {
   crossedMilestoneFloors,
-  dungeonRunXp,
   getBiomeForFloor,
   getMilestoneReward,
   isDungeonBoss,
   MAX_DUNGEON_FLOOR,
   MILESTONE_FLOORS,
   MILESTONE_REWARDS,
-  milestoneXpBonus,
   nextMilestone,
   recommendedCpForFloor,
-  stageVictoryXp,
 } from '../dungeon';
 import { TITLES } from '../titles';
 import { computeCP, defaultSave } from '../engine';
@@ -83,20 +83,23 @@ describe('dungeon milestone rewards', () => {
   });
 });
 
-describe('dungeon xp and pacing helpers', () => {
-  it('stage XP grows with depth and run XP is the sum of the stages cleared', () => {
-    expect(stageVictoryXp(10)).toBeGreaterThan(stageVictoryXp(1));
-    expect(dungeonRunXp(5, 0)).toBe(0);
-    expect(dungeonRunXp(1, 3)).toBe(stageVictoryXp(1) + stageVictoryXp(2) + stageVictoryXp(3));
+describe('dungeon pacing helpers', () => {
+  // Rodada 20: the Dungeon pays no hero XP; what it paid at checkpoints and bosses is a flat Gold bonus on those waves.
+  it('a checkpoint and a boss wave pay their flat Gold bonus on top of the multiplied wave Gold, an ordinary wave pays none', () => {
+    const biome = getBiomeForFloor(5);
+    const base = (stage: number) => Math.round(biome.goldMin * (1 + T.battle.goldRewardGrowth * (stage - 1)));
+    expect(waveRewards({ ...biome, goldMin: 10, goldMax: 10 }, 9).gold).toBe(Math.round(10 * (1 + T.battle.goldRewardGrowth * 8)));
+    expect(waveRewards({ ...biome, goldMin: 10, goldMax: 10 }, 10).gold).toBe(Math.round(Math.round(10 * (1 + T.battle.goldRewardGrowth * 9)) * T.battle.miniBossGoldMult) + T.advanced.checkpointGoldBonus);
+    expect(waveRewards({ ...biome, goldMin: 10, goldMax: 10 }, 25).gold).toBe(Math.round(Math.round(10 * (1 + T.battle.goldRewardGrowth * 24)) * T.battle.bossGoldMult) + T.advanced.bossGoldBonus);
+    expect(T.advanced.bossGoldBonus).toBeGreaterThan(T.advanced.checkpointGoldBonus);
+    expect(base(1)).toBeGreaterThan(0);
   });
 
-  it('milestone XP bonus counts only the checkpoint / boss floors actually defeated', () => {
-    expect(milestoneXpBonus(1, 9)).toBe(0); // floors 1..9
-    const checkpoint = milestoneXpBonus(1, 10); // floor 10 defeated
-    expect(checkpoint).toBeGreaterThan(0);
-    const boss = milestoneXpBonus(25, 1); // floor 25 only
-    expect(boss).toBeGreaterThan(checkpoint);
-    expect(milestoneXpBonus(1, 25)).toBe(2 * checkpoint + boss); // 10, 20, 25
+  it('the Dungeon has no hero XP anywhere: no helper, no tunable', () => {
+    const dungeon = readFileSync('src/game/dungeon.ts', 'utf8');
+    expect(dungeon).not.toMatch(/export function (stageVictoryXp|dungeonRunXp|milestoneXpBonus)/);
+    expect(Object.keys(T.advanced)).not.toContain('victoryXp');
+    expect(Object.keys(T.battle)).not.toContain('rewardGrowth');
   });
 
   it('floors map to a biome and the recommended-CP table is defined for every floor', () => {

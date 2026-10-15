@@ -2,7 +2,6 @@ import { HUNTING_ZONES, isZoneUnlocked } from './huntingZones';
 import { EXPEDITION_TICKET_SKIP_MS, ConsumableId } from './consumables';
 import { playerLevel, SaveData } from './engine';
 import { PLANTS } from './garden';
-import { characterXpBonusPct } from './heroSkills';
 import { hasMaterials, MaterialId } from './materials';
 import { baseGoldValue } from './economy';
 import { ORE_TIERS } from './ores';
@@ -21,12 +20,13 @@ import {
 import { recordDelivery } from './stats';
 import T from './tunables';
 
-// Delivery orders: the Expedition's job (idle time -> Gold + XP), now paid for with materials.
+// Delivery orders: the Expedition's job (idle time -> Gold), now paid for with materials.
 //
-//   materials + time  ->  Gold + XP (+ shards on Long / Special)
+//   materials + time  ->  Gold (+ shards on Long / Special)
 //
 // Design rules (docs/DELIVERY_ORDERS.md has the numbers behind them):
-//  - Gold, XP and shards are a function of TIER x DISTANCE (i.e. time). They never depend on how valuable the delivered
+//  - An order pays NO hero XP (since the League, Rodada 20: the hero earns XP only from Hunting); T.deliveries.goldBonus pays Gold in its place.
+//  - Gold and shards are a function of TIER x DISTANCE (i.e. time). They never depend on how valuable the delivered
 //    materials are, so nobody delivers expensive material just for XP. Materials are the price of admission.
 //  - What an order asks for is sized from the reward, in the ONE economic reference the game has (economy.ts baseGoldValue):
 //    reward Gold (tier x time) -> desired cargo reference value = Gold / rewardRatio(distance) -> quantities. The archetype
@@ -94,10 +94,6 @@ function distHours(d: DeliveryDistance): number {
 function distGoldBonus(d: DeliveryDistance): number {
   const D = T.deliveries;
   return { local: D.goldBonusLocal, curta: D.goldBonusCurta, regional: D.goldBonusRegional, longa: D.goldBonusLonga, especial: D.goldBonusEspecial }[d];
-}
-function distXpPerHour(d: DeliveryDistance): number {
-  const D = T.deliveries;
-  return { local: D.xpPerHourLocal, curta: D.xpPerHourCurta, regional: D.xpPerHourRegional, longa: D.xpPerHourLonga, especial: D.xpPerHourEspecial }[d];
 }
 function tierShards(d: DeliveryDistance, tier: number): number {
   const D = T.deliveries;
@@ -313,7 +309,7 @@ function buildOffer(ctx: Context, arch: DeliveryArchetype, cls: DeliveryClass, i
   const fee = (Object.entries(items) as [MaterialId, number][]).reduce((t, [m, q]) => t + q * processingFee(m), 0);
   if (fee > D.processedFeeMaxShare * baseGold) return null;
   const factor = orderLevelFactor(ctx.level);
-  const gold = Math.round(baseGold * factor);
+  const gold = Math.round(baseGold * factor * (1 + D.goldBonus));
   return {
     id,
     arch,
@@ -322,7 +318,6 @@ function buildOffer(ctx: Context, arch: DeliveryArchetype, cls: DeliveryClass, i
     tier: ctx.tier,
     items,
     gold,
-    xp: Math.round(hours * distXpPerHour(dist) * Math.min(factor, D.xpFactorMax)),
     shards: tierShards(dist, ctx.tier),
     durationMs,
     bornAt: now,
@@ -371,17 +366,11 @@ export function rerollsLeft(d: DeliveryState, now: number, passActive: boolean):
   const used = d.rerollDay === deliveryDayKey(now) ? d.rerollsUsed : 0;
   return Math.max(0, rerollCap(passActive) - used);
 }
-// XP an order pays when accepted by a player with (or without) the Battle Pass. Gold, shards, materials and time never change.
-// Gold of an order for the Pass owner (decided at accept, like the XP): T.battlePass.goldBonus on top.
+// Gold of an order for the Pass owner (decided at accept and frozen in the snapshot): T.battlePass.goldBonus on top. Shards, materials and time never change.
 export function deliveryGold(offer: Pick<DeliveryOffer, 'gold'>, passActive: boolean): number {
   return passActive ? Math.round(offer.gold * (1 + T.battlePass.goldBonus)) : offer.gold;
 }
 
-// `xpBonusPct`: the worn Season Relic (gear.ts relicXpBonusPct); like the Pass bonus it is decided at accept and frozen in the snapshot.
-export function deliveryXp(offer: Pick<DeliveryOffer, 'xp'>, passActive: boolean, xpBonusPct = 0): number {
-  const withPass = passActive ? Math.round(offer.xp * (1 + T.deliveries.passXpBonus)) : offer.xp;
-  return xpBonusPct > 0 ? Math.round(withPass * (1 + xpBonusPct / 100)) : withPass;
-}
 export const isOfferExpired = (o: DeliveryOffer, now: number): boolean => now - o.bornAt >= T.deliveries.offerTtlHours * HOUR;
 
 function nextSeq(d: DeliveryState): number {
@@ -427,8 +416,8 @@ export function applyDeliveryAccept(save: SaveData, offerId: string, now: number
   if (isOfferExpired(offer, now) || !hasMaterials(save.materials, offer.items)) return null;
   const materials = { ...save.materials };
   for (const [m, q] of Object.entries(offer.items) as [MaterialId, number][]) materials[m] = (materials[m] ?? 0) - q;
-  // The Pass XP bonus is decided here and frozen in the snapshot: later Pass expiry or tunable changes do not touch it.
-  const active: ActiveDelivery = { offer: { ...offer, xp: deliveryXp(offer, passActive, characterXpBonusPct(save)), gold: deliveryGold(offer, passActive) }, startedAt: now, endsAt: now + offer.durationMs };
+  // The Pass Gold bonus is decided here and frozen in the snapshot: later Pass expiry or tunable changes do not touch it.
+  const active: ActiveDelivery = { offer: { ...offer, gold: deliveryGold(offer, passActive) }, startedAt: now, endsAt: now + offer.durationMs };
   const others = d.offers.filter((_, j) => j !== index).map((o) => o.arch);
   const seq = nextSeq(d);
   const fresh = generateOffer(buildContext(save), offer.cls, others, `d${seq + 1}`, now, rng);
@@ -440,7 +429,6 @@ export function applyDeliveryAccept(save: SaveData, offerId: string, now: number
 export interface DeliveryClaim {
   save: SaveData;
   offer: DeliveryOffer;
-  xpGained: number;
 }
 
 // Idempotent: the active delivery is cleared by the same transition that pays it, so a second call finds nothing to claim.
@@ -448,14 +436,11 @@ export interface DeliveryClaim {
 export function applyDeliveryClaim(save: SaveData, now: number): DeliveryClaim | null {
   const a = save.deliveries.active;
   if (!a || typeof now !== 'number' || !Number.isFinite(now) || now < a.endsAt) return null;
-  const xpGained = a.offer.xp; // past level 100 it counts into paragon levels (paragon.ts)
   return {
     offer: a.offer,
-    xpGained,
     save: recordDelivery({
       ...save,
       gold: save.gold + a.offer.gold,
-      xp: save.xp + xpGained,
       shards: save.shards + a.offer.shards,
       deliveries: { ...save.deliveries, active: null },
       quests: { ...save.quests, daily: { ...save.quests.daily, deliveries: (save.quests.daily.deliveries ?? 0) + 1 } },

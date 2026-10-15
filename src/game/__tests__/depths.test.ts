@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { QUESTS_ACHIEVEMENTS, questProgress, emptyQuestState } from '../quests';
 import { buildCombatStats, defaultSave, normalizeSave, playerLevel, SaveData, xpToReachLevel } from '../engine';
-import { DEPTH_BOSS_POOLS, depthBossPool, depthOfStage, depthScale, dungeonEnemyKindForFloor, dungeonRunXp, isDepthStage, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR, recommendedCpForFloor, stageOfDepth, stageVictoryXp } from '../dungeon';
+import { DEPTH_BOSS_POOLS, depthBossPool, depthOfStage, depthScale, dungeonEnemyKindForFloor, isDepthStage, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR, recommendedCpForFloor, stageOfDepth } from '../dungeon';
 import { deepestDepth, depthRewardInfo, depthsUnlocked, nextBossDepth, nextDepthStage, recommendedCpForDepth } from '../depths';
 import { getEnemyDef, ENEMIES } from '../enemies';
 import { paragonDamageBonus, paragonLevel, paragonLevelXp, paragonProgress, paragonStartXp } from '../paragon';
@@ -58,13 +58,11 @@ describe('Profundezas: floors 1-100 behave exactly as before', () => {
       expect(isDungeonBoss(floor), `boss ${floor}`).toBe(floor % T.battle.bossEvery === 0);
       expect(isDungeonCheckpoint(floor), `checkpoint ${floor}`).toBe(floor % T.battle.miniBossEvery === 0);
       expect(isDepthStage(floor)).toBe(false);
-      expect(stageVictoryXp(floor)).toBe(Math.round(T.advanced.victoryXp * (1 + T.battle.rewardGrowth * (floor - 1))));
     }
     // floors 1-50 are exactly the Round 14 numbers (the late factor is 1 there)
     for (let floor = 1; floor <= 50; floor++) expect(lateFactor(floor, T.battle.lateHpGrowth, T.battle.lateHpGrowth2) + lateFactor(floor, T.battle.lateDmgGrowth, T.battle.lateDmgGrowth2), `floor ${floor}`).toBe(2);
     expect(recommendedCpForFloor(50)).toBe(1848);
     expect(recommendedCpForFloor(75)).toBe(3862);
-    expect(dungeonRunXp(90, 11)).toBe(Array.from({ length: 11 }, (_, i) => stageVictoryXp(90 + i)).reduce((a, b) => a + b, 0));
   });
 
   it('the floor-100 boss rewards are the same, and a floor run never reaches a depth reward', () => {
@@ -348,7 +346,5 @@ describe('Profundezas: the stage maths stays total', () => {
       const s = depthScale(stageOfDepth(d));
       expect(Number.isFinite(s.hp) && Number.isFinite(s.dmg)).toBe(true);
     }
-    expect(dungeonRunXp(stageOfDepth(1), 5)).toBeGreaterThan(0);
-    expect(dungeonRunXp(100, 1)).toBe(stageVictoryXp(100));
   });
 });

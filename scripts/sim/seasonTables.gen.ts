@@ -27,9 +27,6 @@ export const GEAR_LEVEL_GATES: Readonly<Record<string, number>> = ${JSON.stringi
 /** Lowest highestDungeonFloor at which a unique can exist (its biome boss floor, or the unlock floor of its hunting zone). */
 export const UNIQUE_FLOOR_GATES: Readonly<Record<string, number>> = ${JSON.stringify(t.floorGates, null, 2)};
 
-/** XP of one Dungeon run clearing floors 1..f (index f); index 100 includes 40 Profundezas depths. */
-export const DUNGEON_RUN_XP: readonly number[] = ${JSON.stringify(t.dungeonRunXp)};
-
 /** Profession (Mining / Woodcutting / Gardening) skill XP at which level l begins: PROFESSION_XP_TO_LEVEL[id][l - 1]. Level 1 = 0, the last entry is the max level. */
 export const PROFESSION_XP_TO_LEVEL: Readonly<Record<'mining' | 'woodcutting' | 'gardening', readonly number[]>> = ${JSON.stringify(t.professionXpToLevel)};
 

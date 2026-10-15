@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { computeMiningStatus, defaultSave, effectiveRepairCost, normalizeSave, SaveData, snapshotGatherPass } from '../engine';
-import { deliveryGold, deliveryXp, offerCount, rerollCap } from '../deliveries';
+import { deliveryGold, offerCount, rerollCap } from '../deliveries';
 import { grantDailyPassKit } from '../entitlements';
 import { repairCost } from '../gear';
 import { inventoryCapacity } from '../inventory';
@@ -72,11 +72,11 @@ describe('Adventurer Pass perks: the text says what the code does', () => {
     expect(paid / free).toBeCloseTo(1 + n / 100, 1);
   });
 
-  it('orders: the extra offers, rerolls and XP are the ones in the lines', () => {
+  it('orders: the extra offers and rerolls are the ones in the lines (and the Pass adds no hero XP to them: orders pay none)', () => {
     const label = perk('orders').label.params!;
     expect(offerCount(true) - offerCount(false)).toBe(label.o);
     expect(rerollCap(true) - rerollCap(false)).toBe(label.r);
-    expect(deliveryXp({ xp: 1000 }, true) / 1000).toBeCloseTo(1 + numbersIn(render(en, perk('orders').sub))[0] / 100, 5);
+    for (const tree of [pt, en]) expect(render(tree, perk('orders').sub)).not.toMatch(/XP/);
     for (const tree of [pt, en]) expect(numbersIn(render(tree, perk('orders').label))).toEqual([label.o, label.r]);
   });
 
