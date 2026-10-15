@@ -238,7 +238,7 @@ O herói passou a ganhar XP **só na Caça** (a Masmorra, os pedidos e a poção
 
 | Número | Antes | Depois |
 | --- | --- | --- |
-| `xpPerHour` (andar 100) | 60 000 (Caça 19 773 + pedidos 5 391 + Masmorra 34 325) | **25 000** (13 000 da zona 4 x 1,3 da profundidade x 1,17 de bônus x 1,25 do Elixir do Conhecimento = 24 716) |
+| `xpPerHour` (andar 100) | 60 000 (Caça 19 773 + pedidos 5 391 + Masmorra 34 325) | **25 000** (13 000 da zona 4 x 1,3 da profundidade x 1,12 de bônus (Aprendiz Veloz; a Relíquia não dá mais XP) x 1,25 do Elixir do Conhecimento = 23 660; o servidor guarda 25 000 e o fator 1,902, que ainda conta 5% da Relíquia, de folga) |
 | `huntXpFactor` | 1,521 | 1,902 |
 | `xpPerHourAt(andar)` | zona x fator + pedidos + 20 corridas da Masmorra | zona x fator (andar 0: 3 300 XP/h; andar 100: 24 700) |
 | `burstXp` (uma recompensa atrasada) | `burstXp(nível, andar)`: 10 h de Caça + um pedido | `burstXp(andar)`: 10 h de Caça da melhor zona (andar 0: 33 mil; andar 100: 247 mil XP) |

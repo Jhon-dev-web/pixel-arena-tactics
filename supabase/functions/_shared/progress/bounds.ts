@@ -43,8 +43,9 @@ export const BOUNDS = {
   // ---- XP --------------------------------------------------------------------------------------------------------------------------------------
   /**
    * XP per server hour, THEORETICAL, at the end of the game (floor 100). Since the League (Rodada 20) HUNTING IS THE ONLY SOURCE of hero XP (no Dungeon, no delivery order, no instant
-   * potion), so this is one product. Recomputed by season:bounds = 24,716 (rounded up to 25,000); xpPerHourAt(floor) below scales it with the floor:
-   *   best zone 13,000 xp/h (huntingZones.ts) x deep depth 1.3 x (1 + 17% bonuses: Season Relic 5% + Aprendiz Veloz 3 ranks x 4%) x 1.25 (the Knowledge Elixir, tunables
+   * potion), so this is one product. Recomputed by season:bounds = 23,660 (25,000 kept: the server factor below still counts a 5% Relic bonus
+   * that no item carries since Rodada 19, as a margin); xpPerHourAt(floor) below scales it with the floor:
+   *   best zone 13,000 xp/h (huntingZones.ts) x deep depth 1.3 x (1 + 12% bonuses: Aprendiz Veloz 3 ranks x 4%; +5% for a Season Relic that carried XP, margin) x 1.25 (the Knowledge Elixir, tunables
    *   consumables.knowledgeXpPct, running the whole time: the best and only potion; the Pass adds no XP).
    * It used to be 60,000: 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, which are gone.
    */

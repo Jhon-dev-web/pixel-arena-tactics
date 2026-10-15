@@ -2008,7 +2008,7 @@ O servidor passou a julgar o XP do herói só pela Caça (a Masmorra e os pedido
 
 | Número | Antes | Depois |
 | --- | --- | --- |
-| `xpPerHour` (teórico no andar 100) | 60 000 = Caça 19 773 + pedidos 5 391 + Masmorra 34 325 | **25 000** = melhor zona 13 000 x profundidade 1,3 x 1,17 (Relíquia + Aprendiz Veloz) x 1,25 (Elixir sempre ativo) = 24 716 |
+| `xpPerHour` (teórico no andar 100) | 60 000 = Caça 19 773 + pedidos 5 391 + Masmorra 34 325 | **25 000** = melhor zona 13 000 x profundidade 1,3 x 1,12 (Aprendiz Veloz, 3 ranks; a Relíquia não dá mais XP desde a Rodada 19) x 1,25 (Elixir sempre ativo) = 23 660 (o servidor guarda 25 000 e o fator 1,902, que ainda conta 5% da Relíquia, de folga) |
 | `huntXpFactor` | 1,521 | **1,902** |
 | `ordersXpPerHour`, `orderLumpXp`, `orderLumpFactorAt50` | 5 400 / 35 400 / 3,2 | removidos |
 | `xpPerHourAt(andar)` | zona x fator + pedidos + 20 corridas da Masmorra | zona x fator (andar 0: 8 100 -> 3 300; andar 100: 59 500 -> 24 700) |
