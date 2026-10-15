@@ -134,31 +134,27 @@
     "replay": "Rever tutorial",
     "intro": {
       "title": "Bem-vindo ao Arena Duel!",
-      "body": "Vamos conhecer as principais áreas."
+      "body": "Vamos aprender jogando, em poucos passos."
     },
-    "character": {
-      "title": "Personagem",
-      "body": "Veja seus atributos, equipamentos e seu Poder de Combate (CP)."
-    },
-    "hunt": {
-      "title": "Caça",
-      "body": "Derrote monstros para ganhar XP e encontrar materiais."
-    },
-    "huntModal": {
-      "title": "Caça",
-      "body": "Escolha onde deseja caçar. Áreas diferentes oferecem desafios e recursos diferentes."
+    "points": {
+      "title": "Pontos de atributo",
+      "body": "Gaste seus pontos: toque em Distribuir sugerido."
     },
     "dungeon": {
       "title": "Masmorra",
-      "body": "Enfrente andares cada vez mais difíceis e receba recompensas conforme avança."
+      "body": "Desça até o andar 5 e recue para guardar ouro e XP."
     },
-    "forge": {
-      "title": "Forja",
-      "body": "Use materiais para criar equipamentos, consumíveis e recursos processados."
+    "hunt": {
+      "title": "Caça",
+      "body": "Abra a Caça: ela rende materiais até com o jogo fechado."
+    },
+    "huntModal": {
+      "title": "Caça",
+      "body": "Escolha uma zona e toque em Iniciar Caça."
     },
     "final": {
       "title": "Agora é com você.",
-      "body": "Explore, teste combinações e encontre sua própria forma de evoluir."
+      "body": "Sua caça está rodando; volte depois para colher e gastar os pontos de cada nível."
     },
     "garden": {
       "title": "Horta",
@@ -868,6 +864,7 @@
     "res": "Resistência",
     "resDesc": "-{red}% de dano sofrido por ponto e +{hp} PV Máx",
     "points": "Pontos Disponíveis: {n}",
+    "suggest": "Distribuir sugerido",
     "cp": "CP: {n}"
   },
   "admin": {
@@ -1010,6 +1007,16 @@
     "dungeon": "Masmorra",
     "quickActionsTitle": "Ações Rápidas"
   },
+    "levelUp": {
+    "title": "Subiu de nível! Nv {n}",
+    "titleMany": "+{g} níveis! Nv {n}",
+    "attributes": "Pontos de atributo: +{n}",
+    "skills": "Pontos de habilidade: +{n}",
+    "recipe": "Receita liberada: {name}",
+    "moreRecipes": "+{n} receitas liberadas",
+    "spendAttrs": "Gastar {n} pontos",
+    "spendSkills": "Habilidades ({n})"
+  },
   "dungeon": {
     "title": "ANDARES DA MASMORRA",
     "floorLabel": "Andar {n}",
@@ -1052,7 +1059,13 @@
     "miniBoss": "CHECKPOINT",
     "mainBoss": "CHEFE",
     "goldPenalty": "Ouro perdido: {lost} (ficou com {kept}, {n}% a menos)",
-    "defeatKept": "Andares vencidos nesta descida: {n}. Eles já contam no seu progresso, e tudo o que você coletou fica com você. Só o ouro foi reduzido.",
+    "defeatKept": "Os andares vencidos já contam no seu progresso, e tudo o que você coletou fica com você.",
+    "runFloors": "Andares vencidos: {n}",
+    "runXp": "XP ganho: +{n}",
+    "runLevels": "Níveis: +{n}",
+    "runGold": "Ouro guardado: {n}",
+    "guidedTitle": "Andar {n} vencido!",
+    "guidedSubtitle": "Recue agora para guardar o ouro e o XP desta descida.",
     "defeatKeptNone": "Nenhum andar foi vencido desta vez, mas nada do que você já tinha foi perdido.",
     "defeatCp": "Seu CP (poder do herói): {cp}. Recomendado para {where}: {rec}.",
     "defeatCpLow": "O herói ainda está mais fraco do que esse andar pede.",
@@ -1118,9 +1131,11 @@
     "subLevelMax": "Nível máximo",
     "claimHeld": "Resgatar",
     "zonesTitle": "Zonas de caça",
-    "cpLine": "Recomendado {rec} CP · Você {you} CP",
-    "stateOk": "Pronta",
-    "stateHard": "CP baixo",
+    "cpLine": "CP exigido {rec} · Você {you}",
+    "cpNeeded": "Exige {n} CP",
+    "state_ready": "Pronto",
+    "state_risky": "Arriscado",
+    "state_tooStrong": "Muito forte",
     "stateLocked": "Bloqueada",
     "depthsOpen": "{n} de {m} profundidades",
     "back": "Voltar",

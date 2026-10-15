@@ -169,7 +169,7 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
   const respecDisabled = battleActive || pointsSpent(committed) === 0;
 
   return (
-    <div className="desktop-home skills-view">
+    <div className="desktop-home skills-view" data-highlight="skills-view">
       <header className="sk-head dh-card">
         <h2 className="sk-title">{t('heroSkills.ui.title')}</h2>
         <div className="sk-head-chips">

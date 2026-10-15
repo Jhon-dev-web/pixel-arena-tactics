@@ -17,7 +17,7 @@ import { MaterialId, materialIconUrl } from '../game/materials';
 import { dungeonEnemyVisualForFloor, playerSpriteUrl } from '../game/sprites';
 import { playSfx } from '../game/audio';
 import SpriteSheet from './SpriteSheet';
-import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
+import { defeatGoldKept, isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 import { getGem, GemId } from '../game/gems';
 import { UniqueDrop } from '../game/uniques';
 import { getTitleDef } from '../game/titles';
@@ -26,6 +26,7 @@ import UniqueDrops from './UniqueDrops';
 import RelicDrops from './RelicDrops';
 import { defeatSummary, DefeatSummary } from '../game/defeatSummary';
 import { nextStepLine } from './nextStepText';
+import { dungeonRunGain } from '../game/runSummary';
 
 const enemyText = (k: string): string => t(`enemies.${k}`);
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
@@ -61,12 +62,15 @@ const ANIM_ROW: Record<string, number> = { idle: 0, attack: 1, hurt: 2 };
 export default function BattleModal({
   save,
   startFloor,
+  guidedStopFloor,
   onRetreat,
   onDefeat,
   onUsePotion,
 }: {
   save: SaveData;
   startFloor: number;
+  // The guided first descent (the tutorial's Masmorra step): the climb stops at this floor and the hero is asked to retreat with the loot.
+  guidedStopFloor?: number;
   onRetreat: (rewards: RunRewards) => void;
   onDefeat: (rewards: RunRewards) => void;
   onUsePotion: (id: ConsumableId) => void;
@@ -193,7 +197,7 @@ export default function BattleModal({
     setEnemyProgress(0);
     setDungeonComplete(dungeonCompleteRef.current);
     const acc = accumRef.current;
-    const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * T.battle.defeatGoldKept);
+    const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * defeatGoldKept(startFloor));
     setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, uniques: acc.uniques, relics: acc.relics, stages: clearedRef.current });
     if (outcome === 'defeat') setDefeatInfo(defeatSummary(save, stageRef.current, clearedRef.current, acc.gold, gold));
   };
@@ -283,7 +287,8 @@ export default function BattleModal({
       setPhase('intermission');
       setHeroProgress(0);
       setEnemyProgress(0);
-      if (isDungeonBoss(st)) {
+      const guidedStop = guidedStopFloor !== undefined && startFloor < guidedStopFloor && st === guidedStopFloor;
+      if (isDungeonBoss(st) || guidedStop) {
         // Milestone floor: hold here for an explicit Recuar-and-bank vs Avançar-and-risk-it decision
         // instead of auto-continuing — see tensionFloor state.
         setTensionFloor(st);
@@ -605,6 +610,20 @@ export default function BattleModal({
     </>
   );
 
+  // What the descent paid, in plain numbers (the same XP App.finishRun banks): floors cleared, XP, levels gained and the gold kept. Nothing about a loss here: that line only
+  // shows up when something was actually lost.
+  const renderRunSummary = (stages: number, goldKept: number) => {
+    const gain = dungeonRunGain(save, startFloor, stages);
+    return (
+      <ul className="run-summary" data-testid="run-summary">
+        <li>{t('dungeon.runFloors', { n: stages })}</li>
+        <li>{t('dungeon.runXp', { n: gain.xp })}</li>
+        {gain.levels > 0 && <li className="run-summary-level">{t('dungeon.runLevels', { n: gain.levels })}</li>}
+        <li>{t('dungeon.runGold', { n: goldKept })}</li>
+      </ul>
+    );
+  };
+
   // The first-loss screen in plain words: what was kept, how the hero's CP compares with where the run ended, and one thing to do next.
   const renderDefeatNotes = (d: DefeatSummary) => {
     const where = isDepthStage(d.stage) ? t('dungeon.depthLabel', { n: depthOfStage(d.stage) }) : t('dungeon.floorLabel', { n: d.stage });
@@ -612,10 +631,11 @@ export default function BattleModal({
       d.tip.kind === 'step' ? t('dungeon.defeatTipStep', { text: nextStepLine(d.tip.step) }) : d.tip.kind === 'hunt' ? t('dungeon.defeatTipHunt') : t('dungeon.defeatTipRetry');
     return (
       <div className="defeat-notes">
+        {renderRunSummary(d.stagesCleared, d.goldKept)}
         {d.goldLost > 0 && (
           <div className="gold-penalty">{t('dungeon.goldPenalty', { lost: d.goldLost, kept: d.goldKept, n: Math.round((1 - T.battle.defeatGoldKept) * 100) })}</div>
         )}
-        <p className="defeat-kept">{d.stagesCleared > 0 ? t('dungeon.defeatKept', { n: d.stagesCleared }) : t('dungeon.defeatKeptNone')}</p>
+        <p className="defeat-kept">{d.stagesCleared > 0 ? t('dungeon.defeatKept') : t('dungeon.defeatKeptNone')}</p>
         <p className={`defeat-cp${d.below ? ' low' : ''}`}>
           {t('dungeon.defeatCp', { cp: d.cp, where, rec: d.recommended })} {d.below ? t('dungeon.defeatCpLow') : t('dungeon.defeatCpOk')}
         </p>
@@ -669,6 +689,7 @@ export default function BattleModal({
   const tensionMilestoneReward =
     tensionFloor !== null && !save.dungeonCheckpoints.includes(tensionFloor) ? getMilestoneReward(tensionFloor) : null;
   const tensionGoldPreview = accumGold + (tensionMilestoneReward?.gold ?? 0);
+  const guidedTension = tensionFloor !== null && guidedStopFloor !== undefined && tensionFloor === guidedStopFloor && !isDungeonBoss(tensionFloor);
 
   return (
     <div className="modal-backdrop battle-backdrop">
@@ -844,8 +865,8 @@ export default function BattleModal({
         {tensionFloor !== null && (
           <div className="battle-result tension-window">
             <div className="battle-result-panel tension-panel">
-              <h2 className="result-title win">{isDepthStage(tensionFloor) ? t('dungeon.depthTensionTitle', { n: depthOfStage(tensionFloor) }) : t('dungeon.tensionTitle', { n: tensionFloor })}</h2>
-              <div className="tension-subtitle">{t('dungeon.tensionSubtitle')}</div>
+              <h2 className="result-title win">{guidedTension ? t('dungeon.guidedTitle', { n: tensionFloor }) : isDepthStage(tensionFloor) ? t('dungeon.depthTensionTitle', { n: depthOfStage(tensionFloor) }) : t('dungeon.tensionTitle', { n: tensionFloor })}</h2>
+              <div className="tension-subtitle">{guidedTension ? t('dungeon.guidedSubtitle') : t('dungeon.tensionSubtitle')}</div>
               <div className="result-rewards">
                 {tensionMilestoneReward ? (
                   <>
@@ -860,14 +881,16 @@ export default function BattleModal({
                   renderLoot(tensionGoldPreview, {}, 0, {})
                 )}
               </div>
-              <div className="tension-warning">{t('dungeon.tensionWarning')}</div>
+              {!guidedTension && <div className="tension-warning">{t('dungeon.tensionWarning')}</div>}
               <div className="tension-actions">
-                <button className="result-btn tension-retreat-btn" onClick={handleTensionRetreat} data-ui>
+                <button className="result-btn tension-retreat-btn" onClick={handleTensionRetreat} data-tutorial-target="guided-retreat" data-ui>
                   {t('dungeon.tensionRetreat')}
                 </button>
-                <button className="result-btn tension-advance-btn" onClick={handleTensionAdvance} data-ui>
-                  {t('dungeon.tensionAdvance')}
-                </button>
+                {!guidedTension && (
+                  <button className="result-btn tension-advance-btn" onClick={handleTensionAdvance} data-ui>
+                    {t('dungeon.tensionAdvance')}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -880,6 +903,7 @@ export default function BattleModal({
                 <>
                   <h2 className="result-title win">{dungeonComplete ? t('dungeon.dungeonComplete') : t('dungeon.retreatTitle')}</h2>
                   {crossedMilestones.length > 0 && renderMilestoneBanner()}
+                  {renderRunSummary(finalRewards.stages, finalRewards.gold)}
                   <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems, finalRewards.uniques, finalRewards.relics)}</div>
                   {skillLines && <StrikeLines tally={skillLines.tally} total={skillLines.total} />}
                   <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>

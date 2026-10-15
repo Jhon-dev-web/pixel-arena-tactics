@@ -1,6 +1,7 @@
 import { activeLocale, fmtNum, t } from '../locales';
 import type { MaterialId } from './materials';
 import type { SaveData } from './engine';
+import type { HuntOutlook } from './huntEstimate';
 import { HUNTING_DEPTHS, HuntingDepth, HuntingZoneDef, isDepthUnlocked, isZoneUnlocked, recommendedCpForDepth } from './huntingZones';
 
 // Presentation helpers of the Hunt screen. Nothing here changes a rule: it only reads the save and the zone tables.
@@ -49,4 +50,19 @@ export function startBlockedReason(save: SaveData, zone: HuntingZoneDef, depth: 
 export function defaultZone(zones: HuntingZoneDef[], save: SaveData, playerCp: number): HuntingZoneDef {
   const ok = zones.filter((z) => zoneState(z, save, playerCp) === 'ok');
   return ok[ok.length - 1] ?? zones[0];
+}
+
+// How hard a zone is for THIS hero at the chosen depth, in the three words the Hunt screen prints beside the CP line. It never contradicts that line: it is built from the same
+// two numbers it shows (the depth's required CP and the hero's CP) plus the outlook of the real hunt estimate shown on the depth cards.
+//   tooStrong - the hero is under the depth's required CP (the hunt cannot even be started), or the estimate says nothing is ever won
+//   risky     - startable, but the estimate says fights are lost along the way
+//   ready     - startable and the estimate wins (nearly) always
+// "Locked" (the dungeon floor that opens the zone is not reached) is a different idea and stays ZoneState 'locked'.
+export type ZoneDifficulty = 'ready' | 'risky' | 'tooStrong';
+
+export function zoneDifficulty(zone: HuntingZoneDef, depth: HuntingDepth, playerCp: number, outlook: HuntOutlook | null): ZoneDifficulty {
+  if (!isDepthUnlocked(zone, depth, playerCp)) return 'tooStrong';
+  if (outlook === 'cannot') return 'tooStrong';
+  if (outlook === 'risky') return 'risky';
+  return 'ready';
 }

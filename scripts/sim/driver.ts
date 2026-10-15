@@ -34,7 +34,7 @@ import { applyDurabilityLoss, equippedSubstatTotals } from '../../src/game/gearI
 import { GemId } from '../../src/game/gems';
 import { MaterialId } from '../../src/game/materials';
 import { unlockedZoneIds } from '../../src/game/huntingZones';
-import { isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
+import { defeatGoldKept, isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
 import { UniqueDrop, addRelics, addUniqueInstance } from '../../src/game/uniques';
 import { recordDungeonRun } from '../../src/game/statsTracking';
 import { applyClaimGathering, applyStartGathering } from '../../src/game/gathering';
@@ -296,7 +296,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
     stage += 1;
   }
 
-  const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * T.battle.defeatGoldKept);
+  const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * defeatGoldKept(startFloor));
   return {
     startFloor,
     stages,

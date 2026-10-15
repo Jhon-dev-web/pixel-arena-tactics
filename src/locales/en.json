@@ -134,31 +134,27 @@
     "replay": "Review tutorial",
     "intro": {
       "title": "Welcome to Arena Duel!",
-      "body": "Let's get to know the main areas."
+      "body": "We will learn by playing, in a few steps."
     },
-    "character": {
-      "title": "Character",
-      "body": "View your attributes, equipment and Combat Power (CP)."
-    },
-    "hunt": {
-      "title": "Hunting",
-      "body": "Defeat monsters to gain XP and find materials."
-    },
-    "huntModal": {
-      "title": "Hunting",
-      "body": "Choose where to hunt. Different areas offer different challenges and resources."
+    "points": {
+      "title": "Attribute points",
+      "body": "Spend your points: tap Spend suggested."
     },
     "dungeon": {
       "title": "Dungeon",
-      "body": "Face increasingly difficult floors and receive rewards as you advance."
+      "body": "Go down to floor 5, then retreat to keep the gold and XP."
     },
-    "forge": {
-      "title": "Forge",
-      "body": "Use materials to create equipment, consumables and processed resources."
+    "hunt": {
+      "title": "Hunting",
+      "body": "Open Hunting: it earns materials even while the game is closed."
+    },
+    "huntModal": {
+      "title": "Hunting",
+      "body": "Pick a zone and tap Start Hunt."
     },
     "final": {
       "title": "Now it's up to you.",
-      "body": "Explore, test combinations and find your own way to progress."
+      "body": "Your hunt is running; come back later to collect and spend each level's points."
     },
     "garden": {
       "title": "Garden",
@@ -868,6 +864,7 @@
     "res": "Resistance",
     "resDesc": "-{red}% damage taken per point and +{hp} Max HP",
     "points": "Available Points: {n}",
+    "suggest": "Spend suggested",
     "cp": "CP: {n}"
   },
   "admin": {
@@ -1010,6 +1007,16 @@
     "dungeon": "Dungeon",
     "quickActionsTitle": "Quick Actions"
   },
+    "levelUp": {
+    "title": "Level up! Lv {n}",
+    "titleMany": "+{g} levels! Lv {n}",
+    "attributes": "Attribute points: +{n}",
+    "skills": "Skill points: +{n}",
+    "recipe": "Recipe unlocked: {name}",
+    "moreRecipes": "+{n} more recipes unlocked",
+    "spendAttrs": "Spend {n} points",
+    "spendSkills": "Skills ({n})"
+  },
   "dungeon": {
     "title": "DUNGEON FLOORS",
     "floorLabel": "Floor {n}",
@@ -1052,7 +1059,13 @@
     "miniBoss": "CHECKPOINT",
     "mainBoss": "BOSS",
     "goldPenalty": "Gold lost: {lost} (you kept {kept}, {n}% less)",
-    "defeatKept": "Floors cleared this run: {n}. They already count toward your progress, and everything you collected is yours. Only the gold was reduced.",
+    "defeatKept": "The floors you cleared already count toward your progress, and everything you collected is yours.",
+    "runFloors": "Floors cleared: {n}",
+    "runXp": "XP gained: +{n}",
+    "runLevels": "Levels: +{n}",
+    "runGold": "Gold kept: {n}",
+    "guidedTitle": "Floor {n} cleared!",
+    "guidedSubtitle": "Retreat now to keep the gold and XP of this descent.",
     "defeatKeptNone": "No floor was cleared this time, but nothing you already had was lost.",
     "defeatCp": "Your CP (hero power): {cp}. Recommended for {where}: {rec}.",
     "defeatCpLow": "Your hero is still weaker than this floor asks for.",
@@ -1118,9 +1131,11 @@
     "subLevelMax": "Max level",
     "claimHeld": "Claim",
     "zonesTitle": "Hunting zones",
-    "cpLine": "Recommended {rec} CP · You {you} CP",
-    "stateOk": "Ready",
-    "stateHard": "Low CP",
+    "cpLine": "Needs {rec} CP · You {you}",
+    "cpNeeded": "Needs {n} CP",
+    "state_ready": "Ready",
+    "state_risky": "Risky",
+    "state_tooStrong": "Too strong",
     "stateLocked": "Locked",
     "depthsOpen": "{n} of {m} depths",
     "back": "Back",

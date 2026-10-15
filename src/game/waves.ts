@@ -28,6 +28,12 @@ const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - 
 
 export { isDungeonBoss, isDungeonCheckpoint };
 
+// The share of the run's gold a defeat keeps. A descent that starts before the first main boss (floor 25) loses nothing: a new hero's first falls must not take
+// gold away, and the 25% only starts to matter once the hero chooses to push past a boss. Depth runs (Profundezas) are always past that point.
+export function defeatGoldKept(startFloor: number): number {
+  return !isDepthStage(startFloor) && startFloor < T.battle.bossEvery ? 1 : T.battle.defeatGoldKept;
+}
+
 // The four biome bosses (25/50/75/100) each carry their own extra multipliers, so tuning one boss never moves the regular floors that share
 // the boss EnemyDef (76-99) or the other bosses.
 export function bossFloorMult(stage: number): { hp: number; dmg: number } {

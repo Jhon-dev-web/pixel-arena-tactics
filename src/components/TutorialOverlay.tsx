@@ -8,11 +8,10 @@ type TutorialStep = InitialTutorialStep | ContextualTutorialId;
 
 // A step points at the first target on screen: the "Iniciar Caça" button itself for the hunt screen (the card must not cover what the player presses next).
 const targets: Partial<Record<TutorialStep, string[]>> = {
-  character: ['hero'],
+  points: ['attrs-suggest', 'attrs'],
   hunt: ['hunt'],
   huntModal: ['hunt-start', 'hunt-modal'],
-  dungeon: ['dungeon'],
-  forge: ['forge'],
+  dungeon: ['dungeon-start', 'dungeon'],
   garden: ['garden-modal'],
   mining: ['mining-modal'],
   woodcutting: ['woodcutting-modal'],

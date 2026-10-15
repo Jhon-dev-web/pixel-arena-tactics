@@ -107,7 +107,7 @@ export function EquipmentPanel({ save }: { save: SaveData }) {
   );
 }
 
-export function AttributesPanel({ save, onAttrChange }: { save: SaveData; onAttrChange: (attr: AttrKey, delta: number) => void }) {
+export function AttributesPanel({ save, onAttrChange, onSuggest }: { save: SaveData; onAttrChange: (attr: AttrKey, delta: number) => void; onSuggest?: () => void }) {
   const level = playerLevel(save.xp);
   const cp = computeCP(save);
 
@@ -129,10 +129,15 @@ export function AttributesPanel({ save, onAttrChange }: { save: SaveData; onAttr
         </span>
       </div>
 
-      <div className="attrs-header">
+      <div className={`attrs-header${remaining > 0 ? ' has-points' : ''}`}>
         <span>{t('attributes.points', { n: remaining })}</span>
         <span>{t('attributes.cp', { n: cp })}</span>
       </div>
+      {remaining > 0 && onSuggest && (
+        <button className="attrs-suggest" onClick={onSuggest} data-tutorial-target="attrs-suggest" data-ui>
+          {t('attributes.suggest')}
+        </button>
+      )}
       <div className="attrs-list">
         {ATTRS.map((a) => (
           <div className="attr-row" key={a.key}>

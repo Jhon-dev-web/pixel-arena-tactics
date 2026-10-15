@@ -80,7 +80,7 @@ export interface GardenSlot {
 
 export const CONTEXTUAL_TUTORIAL_IDS = ['garden', 'mining', 'woodcutting', 'deliveries', 'reforge', 'sockets', 'skills'] as const;
 export type ContextualTutorialId = (typeof CONTEXTUAL_TUTORIAL_IDS)[number];
-export type InitialTutorialStep = 'intro' | 'character' | 'hunt' | 'huntModal' | 'dungeon' | 'forge' | 'final';
+export type InitialTutorialStep = 'intro' | 'points' | 'dungeon' | 'hunt' | 'huntModal' | 'final';
 export type InitialTutorialStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 
 // Presentation-only progress. It intentionally sits beside game progress so the tutorial can never
@@ -108,8 +108,10 @@ function sanitizeTutorial(raw: unknown): TutorialState {
   const initial: InitialTutorialStatus = ['pending', 'in_progress', 'completed', 'skipped'].includes(value.initial ?? '')
     ? (value.initial as InitialTutorialStatus)
     : 'completed';
-  const initialStep: InitialTutorialStep = ['intro', 'character', 'hunt', 'huntModal', 'dungeon', 'forge', 'final'].includes(value.initialStep ?? '')
-    ? (value.initialStep as InitialTutorialStep)
+  // A save written by the first tutorial keeps its place: the old 'character' balloon becomes the points step, the old 'forge' balloon the closing one.
+  const rawStep = value.initialStep === ('character' as string) ? 'points' : value.initialStep === ('forge' as string) ? 'final' : value.initialStep;
+  const initialStep: InitialTutorialStep = ['intro', 'points', 'dungeon', 'hunt', 'huntModal', 'final'].includes(rawStep ?? '')
+    ? (rawStep as InitialTutorialStep)
     : initial === 'pending' ? 'intro' : 'final';
   const seen = Array.isArray(value.seen)
     ? value.seen.filter((id): id is ContextualTutorialId => CONTEXTUAL_TUTORIAL_IDS.includes(id as ContextualTutorialId))

@@ -82,7 +82,8 @@ describe('Dungeon: the BattleModal and the finishRun read the same functions the
 
   it('the run pays Gold with goldMultiplier(gear, fortune, pass, skill) and the character XP bonus; blessed is spent by the run', () => {
     expect(app).toMatch(/goldMultiplier\(subs\.goldBonus, isBuffActive\(s, 'fortune', Date\.now\(\)\), ownsAdventurerPass\(s\) \? T\.battlePass\.goldBonus : 0, saveSkillEffects\(s\)\.goldPct\)/);
-    expect(app).toMatch(/\* \(1 \+ characterXpBonusPct\(s\) \/ 100\)/);
+    expect(app).toMatch(/dungeonRunXpGain\(s, startFloor, stages\)/);
+    expect(readFileSync('src/game/runSummary.ts', 'utf8')).toMatch(/\* \(1 \+ characterXpBonusPct\(save\) \/ 100\)/);
     expect(app).toMatch(/blessed: false/);
   });
 });

@@ -10,8 +10,8 @@ import { nextMilestone } from './dungeon';
 // save (no clock, no RNG, nothing written), so it is cheap to test and can never disagree with the screens it points to. The first rule that applies wins.
 //
 //   1. the bag is full                     -> empty it (sell / store / salvage)
-//   2. a better piece can be forged now    -> forge it
-//   3. unspent skill or attribute points   -> spend them
+//   2. unspent skill or attribute points   -> spend them (free and instant, so it comes before a forge)
+//   3. a better piece can be forged now    -> forge it
 //   4. a hunting zone never hunted yet     -> go hunt there
 //   5. a dungeon milestone is a few floors -> go for it
 //      away
@@ -58,14 +58,14 @@ export function nextStep(save: SaveData): NextStep {
 
   if (inventorySlotsUsed(save) >= inventoryCapacity(save)) return step('bag_full', 'inventory');
 
-  const piece = craftableUpgrade(save);
-  if (piece) return step('forge', 'forge', { piece });
-
   const level = playerLevel(save.xp);
   const skillPoints = skillPointsAvailable(save, level);
   if (skillPoints > 0) return step('skill_points', 'skills', { n: skillPoints });
   const attrPoints = attributePointsAvailable(save);
   if (attrPoints > 0) return step('attribute_points', 'hero', { n: attrPoints });
+
+  const piece = craftableUpgrade(save);
+  if (piece) return step('forge', 'forge', { piece });
 
   // A zone is "new" while the player has never ended a session in it (huntProgress is written when a session ends).
   const hunted = new Set(Object.keys(save.huntProgress).map((k) => k.split(':')[0]));

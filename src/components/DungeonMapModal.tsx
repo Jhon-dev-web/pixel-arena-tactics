@@ -81,7 +81,7 @@ export default function DungeonMapModal({
                 </span>
               </div>
             )}
-            <button className="battle-btn" onClick={onEnterDungeon} disabled={huntingBusy} data-ui>
+            <button className="battle-btn" onClick={onEnterDungeon} disabled={huntingBusy} data-tutorial-target="dungeon-start" data-ui>
               {dungeonText('enterDungeon')}
             </button>
           </div>

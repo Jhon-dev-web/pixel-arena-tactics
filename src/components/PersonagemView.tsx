@@ -18,6 +18,7 @@ export default function PersonagemView({
   save,
   spriteUrl,
   onAttrChange,
+  onSuggestAttrs,
   onEquip,
   onUnequip,
   onSelectTitle,
@@ -34,6 +35,7 @@ export default function PersonagemView({
   save: SaveData;
   spriteUrl: string;
   onAttrChange: (attr: AttrKey, delta: number) => void;
+  onSuggestAttrs?: () => void;
   onEquip: (id: string) => void;
   onUnequip: (id: string) => void;
   onSelectTitle: (id: string | null) => void;
@@ -80,9 +82,9 @@ export default function PersonagemView({
         <EquipmentPanel save={save} />
       </section>
 
-      <section className="dh-card personagem-attrs">
+      <section className="dh-card personagem-attrs" data-highlight="attrs">
         <h3 className="dh-card-title">{t('profile.attrsTab')}</h3>
-        <AttributesPanel save={save} onAttrChange={onAttrChange} />
+        <AttributesPanel save={save} onAttrChange={onAttrChange} onSuggest={onSuggestAttrs} />
       </section>
 
       <section className="dh-card personagem-skills">

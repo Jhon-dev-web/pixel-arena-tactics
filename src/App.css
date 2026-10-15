@@ -4026,20 +4026,27 @@ body {
   font-size: calc(var(--font-size) - 3px);
   white-space: nowrap;
 }
+.hunt-state-chip.ready,
 .hunt-state-chip.ok {
   color: #6fe08a;
   background: rgba(111, 224, 138, 0.14);
   border: 1px solid #3f8f55;
 }
+.hunt-state-chip.risky,
 .hunt-state-chip.hard {
-  color: #ffb15a;
-  background: rgba(255, 177, 90, 0.12);
-  border: 1px solid #a8702a;
+  color: #ffd35a;
+  background: rgba(255, 211, 90, 0.12);
+  border: 1px solid #a8872a;
 }
-.hunt-state-chip.locked {
+.hunt-state-chip.tooStrong {
   color: #ff8a7a;
   background: rgba(255, 138, 122, 0.1);
   border: 1px solid #a03020;
+}
+.hunt-state-chip.locked {
+  color: #b8a8d8;
+  background: rgba(184, 168, 216, 0.08);
+  border: 1px solid #5a4a7a;
 }
 
 .hunt-detail {
@@ -11113,4 +11120,113 @@ button[data-ui]:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .ap-buy-btn.ap-buy-highlight { animation: none; }
+}
+
+/* ---- First session: level-up banner, "Ir" highlight, attribute suggestion, descent summary ---- */
+.levelup-banner {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 95; /* above the tutorial layer (90), below the toast (100): it never hides what the balloon points at for long, and the page behind stays clickable */
+  width: min(360px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 10px 12px;
+  color: #f3e9ff;
+  background: rgba(20, 14, 28, 0.97);
+  border: 2px solid #ffd76a;
+  border-radius: 10px;
+  box-shadow: 0 4px 0 #000, 0 0 18px rgba(255, 215, 106, 0.35);
+  animation: levelupIn 0.35s ease-out;
+}
+@keyframes levelupIn {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.levelup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.levelup-title {
+  color: #ffd76a;
+  font-size: var(--font-size);
+}
+.levelup-x {
+  min-width: 28px;
+  min-height: 28px;
+  color: #b8a8d8;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.levelup-lines {
+  margin: 6px 0 8px;
+  padding-left: 18px;
+  font-size: calc(var(--font-size) - 2px);
+  line-height: 1.5;
+}
+.levelup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.levelup-spend {
+  flex: 1 1 auto;
+}
+.ui-highlight {
+  outline: 3px solid #ffd76a;
+  outline-offset: 3px;
+  border-radius: 8px;
+  animation: uiHighlightPulse 0.8s ease-in-out 3;
+}
+@keyframes uiHighlightPulse {
+  50% {
+    outline-color: #fff2b0;
+    box-shadow: 0 0 22px rgba(255, 215, 106, 0.7);
+  }
+}
+.attrs-header.has-points {
+  border-color: #ffd76a;
+  color: #ffd76a;
+}
+.attrs-suggest {
+  margin: 8px 0;
+  padding: 10px 12px;
+  min-height: 44px;
+  width: 100%;
+  font: inherit;
+  font-size: calc(var(--font-size) - 1px);
+  color: #1c1228;
+  background: #ffd76a;
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  box-shadow: 0 3px 0 #000;
+  cursor: pointer;
+}
+.run-summary {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  font-size: calc(var(--font-size) - 1px);
+  line-height: 1.6;
+  text-align: center;
+}
+.run-summary-level {
+  color: #ffd76a;
+}
+@media (prefers-reduced-motion: reduce) {
+  .levelup-banner {
+    animation: none;
+  }
+  .ui-highlight {
+    animation: none;
+  }
 }

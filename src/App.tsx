@@ -31,7 +31,7 @@ import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned,
 import { usePassEntitlementVersion } from './game/usePassEntitlement';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
-import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, characterXpBonusPct, saveSkillEffects, skillPointsAvailable, skillPointsEarned } from './game/heroSkills';
+import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, saveSkillEffects, skillPointsAvailable } from './game/heroSkills';
 import { applyReforge } from './game/reforge';
 import { applyLapidar } from './game/lapidar';
 import {
@@ -93,8 +93,14 @@ import { applyClaimAll, ClaimAllLine, readyActivities } from './game/claimAll';
 import WelcomeBackModal from './components/WelcomeBackModal';
 import { WelcomeBackAction } from './components/welcomeBackText';
 import { awayLongEnough, buildWelcomeBack, readLastSeen, WelcomeBackSummary, writeLastSeen } from './game/welcomeBack';
-import { NextStepTarget } from './game/nextStep';
-import { crossedMilestoneFloors, dungeonRunXp, getMilestoneReward, MAX_DUNGEON_FLOOR, milestoneXpBonus } from './game/dungeon';
+import { attributePointsAvailable, NextStepTarget } from './game/nextStep';
+import { suggestedSpend } from './game/attributes';
+import { GUIDED_DESCENT_FLOOR, nextTutorialStep, tutorialStepDone } from './game/tutorialSteps';
+import { dungeonRunXpGain } from './game/runSummary';
+import { extendLevelUp, LevelUpSummary } from './game/levelUp';
+import LevelUpBanner from './components/LevelUpBanner';
+import { highlightTarget } from './components/highlight';
+import { crossedMilestoneFloors, getMilestoneReward, MAX_DUNGEON_FLOOR } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { depthsUnlocked, nextDepthStage } from './game/depths';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
@@ -195,6 +201,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     save.tutorial.initial === 'pending' || save.tutorial.initial === 'in_progress' ? save.tutorial.initialStep : null,
   );
   const [contextTutorial, setContextTutorial] = useState<ContextualTutorialId | null>(null);
+  const [levelUp, setLevelUp] = useState<LevelUpSummary | null>(null);
 
   const saveRef = useRef(save);
   const cheatModeRef = useRef(false);
@@ -238,8 +245,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSave(s);
     if (nextLevel > prevLevel) {
       playSfx('level_up');
-      // A level that grants a skill point says so in the same line.
-      showToast(skillPointsEarned(nextLevel) > skillPointsEarned(prevLevel) ? t('heroSkills.ui.levelUpPoint', { n: nextLevel }) : t('ui.levelUp', { n: nextLevel }));
+      // The level-up banner (LevelUpBanner): levels gained while it is still up, or while the player was away, add to the same banner ("+3 níveis").
+      setLevelUp((current) => extendLevelUp(current, prevLevel, nextLevel));
     }
   };
 
@@ -308,13 +315,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const advanceInitialTutorial = () => {
     const step = tutorialStep;
     if (!step) return;
-    const next: Partial<Record<InitialTutorialStep, InitialTutorialStep>> = {
-      intro: 'character',
-      character: 'hunt',
-      huntModal: 'dungeon',
-      dungeon: 'forge',
-      forge: 'final',
-    };
     if (step === 'final') {
       const s = saveRef.current;
       setSaveBoth({ ...s, tutorial: { ...s.tutorial, initial: 'completed', initialStep: 'final' }, seenWelcome: true, seenTooltips: [...new Set([...s.seenTooltips, ...TOOLTIP_IDS])] });
@@ -323,9 +323,12 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       setTutorialStep(null);
       return;
     }
-    const following = next[step];
+    const following = nextTutorialStep(step);
     if (!following) return;
+    // The hunt that was just started keeps running behind the closing balloon; the Dungeon entry is only open while its own step is up.
     if (step === 'huntModal') setHuntOpen(false);
+    if (step === 'dungeon') setDungeonOpen(false);
+    if (following === 'points') setActiveView('personagem');
     updateTutorial({ ...saveRef.current.tutorial, initial: 'in_progress', initialStep: following });
     setTutorialStep(following);
   };
@@ -341,6 +344,17 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Escape only dismisses the current visual layer. The saved step remains intact and reload/replay
   // can resume it; only the explicit Skip button changes the automatic-tutorial preference.
   const dismissInitialTutorial = () => setTutorialStep(null);
+
+  // A "do" step ends when the save shows it was done (points spent, descent finished, hunt running), whether the player did it through the balloon or ahead of it, and
+  // also after a reload. The points step opens Personagem where the points are spent.
+  useEffect(() => {
+    if (tutorialStep && tutorialStepDone(tutorialStep, save)) advanceInitialTutorial();
+    // advanceInitialTutorial is recreated every render; the inputs are the step and the save
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialStep, save]);
+  useEffect(() => {
+    if (tutorialStep === 'points') setActiveView('personagem');
+  }, [tutorialStep]);
 
   const replayTutorial = () => {
     setActiveView('home');
@@ -762,7 +776,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       }
     }
     // The Season Relic adds its character XP bonus to what the run pays (Hunting and Delivery orders apply it where they compute theirs).
-    const xpGain = Math.round((dungeonRunXp(startFloor, stages) + milestoneXpBonus(startFloor, stages)) * (1 + characterXpBonusPct(s) / 100));
+    const xpGain = dungeonRunXpGain(s, startFloor, stages);
 
     setSaveBoth({
       ...s,
@@ -1202,6 +1216,17 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       setActiveView('personagem');
     } else if (target === 'hunt') openHunt();
     else if (target === 'dungeon') openDungeon();
+    // The screen the suggestion points to opens, and the part of it to look at flashes for a moment.
+    const marks: Record<NextStepTarget, string[]> = {
+      inventory: ['inventory-modal'],
+      forge: ['forge-modal'],
+      skills: ['skills-view'],
+      hero: ['attrs'],
+      hunt: ['hunt-start', 'hunt-modal'],
+      dungeon: ['dungeon-start'],
+      none: [],
+    };
+    highlightTarget(marks[target]);
   };
 
   const claimMining = () => {
@@ -1676,6 +1701,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth({ ...saveRef.current, [attr]: next });
   };
 
+  // "Distribuir sugerido" (attributes.ts suggestedSpend): every unspent point at once, balanced by the fixed share.
+  const suggestAttributes = () => {
+    const s = saveRef.current;
+    const add = suggestedSpend(s);
+    if (add.str + add.vit + add.agi + add.res === 0) return;
+    playSfx('click');
+    setSaveBoth({ ...s, str: s.str + add.str, vit: s.vit + add.vit, agi: s.agi + add.agi, res: s.res + add.res });
+  };
+
   // Hero skills (heroSkills.ts): the pending allocation lives in the screen; these commit it, take everything back (gold after the first time) or switch the loadout.
   // Respec and switching are refused in a Dungeon battle; a Hunting / Mining / Woodcutting session keeps the stats it froze at the start.
   const applySkills = (draft: SkillRanks) => {
@@ -1816,7 +1850,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // of the Hunt had no button on screen and could only be skipped.
   useEffect(() => {
     if (isDesktop) return;
-    if (tutorialStep === 'hunt' || tutorialStep === 'dungeon' || tutorialStep === 'forge') setDrawerOpen(true);
+    if (tutorialStep === 'hunt' || tutorialStep === 'dungeon') setDrawerOpen(true);
     else if (tutorialStep === 'final') setDrawerOpen(false);
   }, [isDesktop, tutorialStep]);
 
@@ -1826,7 +1860,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     {
       key: 'main',
       items: [
-        { key: 'hero', icon: '🧝', label: t('nav.hero'), active: activeView === 'personagem', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
+        { key: 'hero', icon: '🧝', label: t('nav.hero'), active: activeView === 'personagem', badge: attributePointsAvailable(save) > 0, onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
         { key: 'skills', icon: <img className="pixel-icon" src="/assets/icons/skill_path_warrior.png" alt="" />, label: t('nav.skills'), active: activeView === 'skills', badge: skillPointsAvailable(save, level) > 0, tutorialTarget: 'skills', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('skills'); } },
         { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
         { key: 'dungeon', icon: <img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
@@ -1920,6 +1954,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               save={save}
               spriteUrl={heroSpriteUrl}
               onAttrChange={attrChange}
+              onSuggestAttrs={suggestAttributes}
               onEquip={equipGear}
               onUnequip={unequipGear}
               onSelectTitle={selectTitle}
@@ -2173,6 +2208,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         <BattleModal
           save={save}
           startFloor={battleFloor}
+          guidedStopFloor={tutorialStep === 'dungeon' ? GUIDED_DESCENT_FLOOR : undefined}
           onRetreat={(rewards) => finishRun(battleFloor, rewards, 'retreat')}
           onDefeat={(rewards) => finishRun(battleFloor, rewards, 'defeat')}
           onUsePotion={useAutoPotion}
@@ -2180,6 +2216,21 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       )}
 
       {toast && <div className="toast">{toast}</div>}
+
+      {levelUp && (
+        <LevelUpBanner
+          summary={levelUp}
+          attrPoints={attributePointsAvailable(save)}
+          skillPoints={skillPointsAvailable(save, level)}
+          onSpend={(where) => {
+            playSfx('click');
+            setLevelUp(null);
+            setActiveView(where);
+            highlightTarget(where === 'skills' ? ['skills-view'] : ['attrs']);
+          }}
+          onClose={() => setLevelUp(null)}
+        />
+      )}
 
       {import.meta.env.DEV && adminOpen && (
         <AdminModal
@@ -2193,13 +2244,13 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         />
       )}
 
-      {tutorialStep && (
+      {tutorialStep && battleFloor === null && (
         <TutorialOverlay
           step={tutorialStep}
           onAdvance={advanceInitialTutorial}
           onSkip={skipInitialTutorial}
           onDismiss={dismissInitialTutorial}
-          requiresInteraction={tutorialStep === 'hunt'}
+          requiresInteraction={tutorialStep === 'points' || tutorialStep === 'dungeon' || tutorialStep === 'hunt' || tutorialStep === 'huntModal'}
         />
       )}
 

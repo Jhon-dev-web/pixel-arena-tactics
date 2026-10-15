@@ -24,11 +24,13 @@ import { estimateHuntYield, HuntYieldEstimate } from '../game/huntEstimate';
 import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
 import { MaterialId } from '../game/materials';
 import WholesaleLink from './WholesaleLink';
-import { defaultZone, depthsOpen, fmtRate, fmtSpan, matName, startBlockedReason, zoneState, ZoneState } from '../game/huntView';
+import { defaultZone, depthsOpen, fmtRate, fmtSpan, matName, startBlockedReason, zoneDifficulty, zoneState } from '../game/huntView';
 
 const zoneName = (zone: HuntingZoneDef): string => t(`dungeon.${zone.nameKey}`);
 const monsterName = (zone: HuntingZoneDef): string => t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`);
-const stateLabel = (s: ZoneState): string => t(`hunting.state${s === 'ok' ? 'Ok' : s === 'hard' ? 'Hard' : 'Locked'}`);
+// The chip of a zone: locked, or how hard it is for this hero (green Pronto / yellow Arriscado / red Muito forte), never 'unlocked' mixed with 'strong enough'.
+const chipOf = (locked: boolean, difficulty: ReturnType<typeof zoneDifficulty>): { cls: string; label: string } =>
+  locked ? { cls: 'locked', label: t('hunting.stateLocked') } : { cls: difficulty, label: t(`hunting.state_${difficulty}`) };
 
 function DepthOption({
   zone,
@@ -116,7 +118,6 @@ export default function HuntSelection({
 
   const zone = HUNTING_ZONES.find((z) => z.id === zoneId) ?? HUNTING_ZONES[0];
   const depth = depthByZone[zone.id] ?? DEFAULT_HUNTING_DEPTH;
-  const state = zoneState(zone, save, playerCp);
   const zoneOpen = isZoneUnlocked(zone, save.highestDungeonFloor);
   // where you are going: the zone's own map strip behind the monster
   const headStyle: CSSProperties & Record<'--bg', string> = { '--bg': `url(${huntingZoneBackgroundUrl(zone.id)})` };
@@ -124,6 +125,12 @@ export default function HuntSelection({
 
   // Real-engine projection per depth (huntEstimate.ts), memoised there on the hero's stats, the zone and its saved sub-level.
   const estimates = useMemo(() => (zoneOpen ? HUNTING_DEPTHS.map((d) => estimateHuntYield(save, zone.id, d.id)) : []), [save, zone.id, zoneOpen]);
+
+  // The shallow-depth outlook of every open zone (the same memoised projection as the depth cards), for the chip on each row of the list.
+  const shallowOutlooks = useMemo(
+    () => Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, isZoneUnlocked(z, save.highestDungeonFloor) ? estimateHuntYield(save, z.id, 'shallow')?.outlook ?? null : null])),
+    [save],
+  );
 
   const progress = getHuntProgress(save, zone.id, depth);
   const required = huntPromotionRequiredWins(progress.ceiling);
@@ -137,6 +144,7 @@ export default function HuntSelection({
   const inv = huntInventoryStatus(save, zone.id, {});
   const perHour: Partial<Record<MaterialId, number>> = {};
   for (const m of depthEstimate?.materialsPerHour ?? []) perHour[m.material] = m.perHour;
+  const headChip = chipOf(!zoneOpen, zoneDifficulty(zone, depth, playerCp, depthEstimate?.outlook ?? null));
   const overflowIn = zoneOpen && depthEstimate && depthEstimate.outlook !== 'cannot' ? hoursUntilInventoryFull(save, zone.id, {}, perHour, capHours) : null;
 
   return (
@@ -153,6 +161,7 @@ export default function HuntSelection({
             </div>
             {HUNTING_ZONES.map((z) => {
               const zs = zoneState(z, save, playerCp);
+              const rowChip = chipOf(zs === 'locked', zoneDifficulty(z, 'shallow', playerCp, shallowOutlooks[z.id] ?? null));
               return (
                 <button
                   type="button"
@@ -172,11 +181,11 @@ export default function HuntSelection({
                       <span className="hunt-zone-sub">{t('dungeon.unlocksAt', { n: z.unlockFloor })}</span>
                     ) : (
                       <>
-                        <span className="hunt-zone-sub">{t('dungeon.cp', { n: fmtNum(z.cp) })}</span>
+                        <span className="hunt-zone-sub">{t('hunting.cpNeeded', { n: fmtNum(recommendedCpForDepth(z, 'shallow')) })}</span>
                         <span className="hunt-zone-sub">{t('hunting.depthsOpen', { n: depthsOpen(z, playerCp), m: HUNTING_DEPTHS.length })}</span>
                       </>
                     )}
-                    <span className={`hunt-state-chip ${zs}`}>{stateLabel(zs)}</span>
+                    <span className={`hunt-state-chip ${rowChip.cls}`}>{rowChip.label}</span>
                   </span>
                 </button>
               );
@@ -196,8 +205,8 @@ export default function HuntSelection({
                 <span className="hunt-monster-name">{monsterName(zone)}</span>
                 <span className="hunt-zone-title">{zoneName(zone)}</span>
                 <span className="hunt-detail-cp">
-                  {zoneOpen ? t('hunting.cpLine', { rec: fmtNum(zone.cp), you: fmtNum(playerCp) }) : t('dungeon.unlocksAt', { n: zone.unlockFloor })}
-                  <span className={`hunt-state-chip ${state}`}>{stateLabel(state)}</span>
+                  {zoneOpen ? t('hunting.cpLine', { rec: fmtNum(recommendedCpForDepth(zone, depth)), you: fmtNum(playerCp) }) : t('dungeon.unlocksAt', { n: zone.unlockFloor })}
+                  <span className={`hunt-state-chip ${headChip.cls}`}>{headChip.label}</span>
                 </span>
               </div>
             </div>
