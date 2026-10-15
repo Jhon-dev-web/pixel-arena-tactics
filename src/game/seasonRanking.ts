@@ -121,6 +121,8 @@ export interface SubmitStatus {
   throttled: boolean;
   /** What the ranking did with it: 'updated', 'unchanged', 'no_pass', 'email_unconfirmed', 'season_not_open', ... */
   season: string | null;
+  /** The server answered 409 save_not_synced: the posted save was not the stored one (yet). Nothing was judged or flagged; try again shortly. */
+  pendingSync?: boolean;
 }
 
 let status: SubmitStatus = { state: 'idle', at: null, verdict: null, reasons: [], throttled: false, season: null };
@@ -170,6 +172,7 @@ export async function submitProgress(save: SaveData, now: number = Date.now()): 
     const verdict = r.verdict === 'ok' || r.verdict === 'flagged' || r.verdict === 'rejected' ? r.verdict : null;
     if (!verdict) throw new Error('bad_response');
     setStatus({
+      pendingSync: false,
       state: 'done',
       at: now,
       verdict,
@@ -177,8 +180,9 @@ export async function submitProgress(save: SaveData, now: number = Date.now()): 
       throttled: r.throttled === true,
       season: typeof r.season === 'string' ? r.season : null,
     });
-  } catch {
-    setStatus({ ...status, state: 'error', at: now });
+  } catch (err) {
+    if ((err as { context?: { status?: number } } | null)?.context?.status === 409) setStatus({ ...status, state: 'idle', at: now, pendingSync: true });
+    else setStatus({ ...status, state: 'error', at: now });
   }
   return status;
 }

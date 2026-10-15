@@ -87,7 +87,7 @@ function point(atMs: number, metrics: ProgressMetrics, revision = 1, peak = peak
   return { atMs, metrics, peak, saveRevision: revision };
 }
 
-/** Plays a history through the evaluator, one snapshot per entry, exactly like the function does (first = first accepted, previous = last accepted). */
+/** Plays a history through the evaluator, one snapshot per entry, exactly like the function does (first = first OK snapshot, previous = last OK snapshot: flagged and rejected are never a baseline). */
 function play(steps: { atMs: number; o: Overrides; revision?: number; entitled?: boolean }[], accountCreatedMs = T0 - 365 * DAY) {
   let first: HistoryPoint | null = null;
   let previous: HistoryPoint | null = null;
@@ -97,7 +97,7 @@ function play(steps: { atMs: number; o: Overrides; revision?: number; entitled?:
     const input: EvalInput = { nowMs: s.atMs, accountCreatedMs, entitled: s.entitled ?? true, saveRevision: s.revision ?? i + 1, first, previous };
     const ev = evaluateSnapshot(metrics, input);
     out.push({ verdict: ev.verdict, reasons: ev.reasons });
-    if (ev.verdict !== 'rejected') {
+    if (ev.verdict === 'ok') {
       const p = point(s.atMs, metrics, s.revision ?? i + 1, ev.peak);
       first = first ?? p;
       previous = p;
@@ -328,7 +328,17 @@ describe('bounds table', () => {
 class MemoryProgressStore implements ProgressStore {
   rows: (NewSnapshot & { id: string; createdAtMs: number })[] = [];
   pass = true;
-  character_: { createdAtMs: number; revision: number } | null = { createdAtMs: T0 - DAY * 400, revision: 7 };
+  /** The SAVED game (characters.save_data) and its revision. `undefined` = "whatever the last request carried" (the save is in sync); set it to model a save that is behind. */
+  saved: unknown = undefined;
+  revision = 7;
+  hasCharacter = true;
+  /** characters.created_at: the player can edit it. The function must never read it. */
+  forgedCharacterCreatedMs: number = T0 - DAY * 400;
+  /** auth.users.created_at: the real account age. */
+  accountCreatedMs: number | null = T0 - DAY * 400;
+  slotAt: number | null = null;
+  slotClaims = 0;
+  releases = 0;
   seasonCalls: { userId: string; snapshotId: string; verdict: string; reasons: string[]; score: number }[] = [];
   seasonStatus: SeasonApplyStatus = 'updated';
   professionCalls: { userId: string; snapshotId: string; verdict: string; professions: { profession: string; xp: number; level: number }[] }[] = [];
@@ -343,7 +353,21 @@ class MemoryProgressStore implements ProgressStore {
     return this.pass;
   }
   async character() {
-    return this.character_;
+    return this.hasCharacter ? { revision: this.revision, saveData: this.saved === undefined ? lastBody : this.saved } : null;
+  }
+  async accountCreatedAtMs() {
+    return this.accountCreatedMs;
+  }
+  async claimSlot(_userId: string, intervalMs: number) {
+    // one synchronous check-and-set: the same guarantee as the single SQL statement (insert ... on conflict do update ... where last_at <= now() - interval)
+    if (this.slotAt !== null && this.now - this.slotAt < intervalMs) return false;
+    this.slotAt = this.now;
+    this.slotClaims++;
+    return true;
+  }
+  async releaseSlot() {
+    this.slotAt = null;
+    this.releases++;
   }
   private toStored(r: (typeof this.rows)[number]): StoredSnapshot {
     return { id: r.id, createdAtMs: r.createdAtMs, verdict: r.verdict, reasons: r.reasons, metrics: r.metrics };
@@ -353,7 +377,7 @@ class MemoryProgressStore implements ProgressStore {
     return mine.length ? this.toStored(mine[mine.length - 1]) : null;
   }
   async acceptedHistory(userId: string) {
-    const ok = this.rows.filter((r) => r.userId === userId && r.verdict !== 'rejected');
+    const ok = this.rows.filter((r) => r.userId === userId && r.verdict === 'ok');
     const pt = (r: (typeof ok)[number]): HistoryPoint => ({ atMs: r.createdAtMs, metrics: r.metrics, peak: r.peak, saveRevision: r.saveRevision });
     return { first: ok[0] ? pt(ok[0]) : null, last: ok.length ? pt(ok[ok.length - 1]) : null };
   }
@@ -375,10 +399,22 @@ function fetchAs(id: string | null): typeof fetch {
   return (async () => (id ? new Response(JSON.stringify({ id }), { status: 200 }) : new Response('{}', { status: 401 }))) as typeof fetch;
 }
 
+// The body of the latest request: the MemoryProgressStore answers "the saved game is this" with it unless a test says the save is behind.
+let lastBody: unknown = null;
+
 function request(body: unknown, init: { token?: string | null; method?: string; origin?: string } = {}): Request {
+  lastBody = typeof body === 'string' ? safeParse(body) : JSON.parse(JSON.stringify(body));
   const headers: Record<string, string> = { 'content-type': 'application/json', origin: init.origin ?? ORIGIN };
   if (init.token !== null) headers.authorization = `Bearer ${init.token ?? TOKEN}`;
   return new Request('https://x.test/functions/v1/submit-progress', { method: init.method ?? 'POST', headers, body: init.method === 'GET' ? undefined : typeof body === 'string' ? body : JSON.stringify(body) });
+}
+
+function safeParse(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 function deps(store: MemoryProgressStore, userId: string | null = USER) {
@@ -645,5 +681,162 @@ describe('handleSubmitProgress and the profession rankings', () => {
     expect(await store.applyProfessionsToSeason!({ userId: USER, snapshotId: 's', verdict: 'ok', professions: [{ profession: 'mining', xp: 5, level: 2 }] })).toBe('updated');
     expect(calls[0].url).toBe('https://p.test/rest/v1/rpc/season_apply_professions');
     expect(calls[0].body).toEqual({ p_user_id: USER, p_snapshot_id: 's', p_verdict: 'ok', p_professions: [{ profession: 'mining', xp: 5, level: 2 }] });
+  });
+});
+
+// ---- review fixes: account age, baseline, saved-game match, atomic limit ----------------------------------------------------------------------------
+
+describe('review B1: the account age comes from auth.users, never from characters.created_at', () => {
+  const level80 = { xp: XP_TO_LEVEL[79], floor: 70, seconds: 3_000_000 };
+
+  it('a 400-day account (per the server) at level 80 gets ok; a 2-day account with a forged 400-day characters.created_at is flagged', async () => {
+    const real = new MemoryProgressStore();
+    real.accountCreatedMs = T0 - 400 * DAY;
+    expect((await (await handleSubmitProgress(request(blob(level80)), deps(real))).json()).verdict).toBe('ok');
+
+    const forged = new MemoryProgressStore();
+    forged.accountCreatedMs = T0 - 2 * DAY; // the truth (auth.users)
+    forged.forgedCharacterCreatedMs = T0 - 400 * DAY; // what the player wrote into his own row
+    const body = await (await handleSubmitProgress(request(blob(level80)), deps(forged))).json();
+    expect(body.verdict).toBe('flagged');
+    expect(body.reasons).toEqual(['BASELINE_AHEAD_OF_ACCOUNT_AGE']);
+  });
+
+  it('an account age the server cannot read fails closed (as a brand-new account), it never falls back to the character row', async () => {
+    const store = new MemoryProgressStore();
+    store.accountCreatedMs = null;
+    store.forgedCharacterCreatedMs = T0 - 400 * DAY;
+    expect((await (await handleSubmitProgress(request(blob(level80)), deps(store))).json()).verdict).toBe('flagged');
+  });
+
+  it('the REST store asks the service-role-only function for the age and reads revision + save_data (never created_at) from characters', async () => {
+    const calls: { url: string; body?: unknown }[] = [];
+    const fetchFn = (async (url: string, init: RequestInit = {}) => {
+      calls.push({ url, body: init.body ? JSON.parse(init.body as string) : undefined });
+      if (url.includes('/rpc/progress_account_created_at')) return new Response(JSON.stringify('2026-01-01T00:00:00+00:00'), { status: 200 });
+      return new Response(JSON.stringify([{ revision: 4, save_data: { xp: 1 } }]), { status: 200 });
+    }) as typeof fetch;
+    const store = createProgressStore({ supabaseUrl: 'https://p.test', serviceRoleKey: 'k', fetchFn });
+    expect(await store.accountCreatedAtMs(USER)).toBe(Date.parse('2026-01-01T00:00:00+00:00'));
+    expect(await store.character(USER)).toEqual({ revision: 4, saveData: { xp: 1 } });
+    expect(calls[0].url).toBe('https://p.test/rest/v1/rpc/progress_account_created_at');
+    expect(calls[0].body).toEqual({ p_user_id: USER });
+    expect(calls[1].url).toContain('/characters?');
+    expect(decodeURIComponent(calls[1].url)).toContain('select=revision,save_data');
+    expect(calls.some((c) => c.url.includes('created_at') && c.url.includes('characters'))).toBe(false);
+  });
+});
+
+describe('review B2: only an ok snapshot is a baseline and raises the peak', () => {
+  it('a flagged snapshot carries the previous peak, so re-sending the same inflated save is not "ok" later', () => {
+    const steps = honestHistory(40, 12, 2.5);
+    const first = play(steps);
+    const i = first.findIndex((r) => r.verdict === 'flagged');
+    expect(i).toBeGreaterThan(0);
+    const again = play([...steps.slice(0, i + 1), { atMs: steps[i].atMs + 10 * 60_000, o: steps[i].o }]);
+    expect(again[i].verdict).toBe('flagged');
+    expect(again[i + 1].verdict).not.toBe('ok'); // before the fix the flagged snapshot became the baseline and the resend was ok
+  });
+
+  it('evaluateSnapshot returns the previous peak for a flagged and for a rejected snapshot, and raises it only for ok', () => {
+    const base = m({ xp: xpAtPosition(20), floor: 10, kills: 5000, seconds: 20_000 });
+    const prev = point(T0, base);
+    const input = (nowMs: number): EvalInput => ({ nowMs, accountCreatedMs: T0 - 400 * DAY, entitled: true, saveRevision: 2, first: prev, previous: prev });
+    const flagged = evaluateSnapshot(m({ xp: xpAtPosition(20), floor: 10, kills: 4000, seconds: 20_000 }), input(T0 + DAY)); // a counter went down: RESTORED_OLDER_SAVE (flag)
+    expect(flagged.verdict).toBe('flagged');
+    expect(flagged.peak).toEqual(prev.peak);
+    const rejected = evaluateSnapshot(m({ xp: XP_TO_LEVEL[89], seconds: 20_100 }), input(T0 + 600_000));
+    expect(rejected.verdict).toBe('rejected');
+    expect(rejected.peak).toEqual(prev.peak);
+    const ok = evaluateSnapshot(m({ xp: xpAtPosition(20) + 50, floor: 10, kills: 5100, seconds: 20_500 }), input(T0 + 3_600_000));
+    expect(ok.verdict).toBe('ok');
+    expect(ok.peak.xp).toBeGreaterThan(prev.peak.xp);
+  });
+
+  it('flags are stored even for a player with no Pass yet, and the snapshot reaches the ranking as flagged', async () => {
+    const store = new MemoryProgressStore();
+    store.pass = false;
+    const body = await (await handleSubmitProgress(request(blob({ xp: xpAtPosition(5), hasBattlePass: true })), deps(store))).json();
+    expect(body.verdict).toBe('flagged');
+    expect(store.rows).toHaveLength(1);
+    expect(store.rows[0]).toMatchObject({ verdict: 'flagged', reasons: ['PASS_FLAG_WITHOUT_ENTITLEMENT'] });
+    expect(store.seasonCalls[0].verdict).toBe('flagged');
+  });
+});
+
+describe('review B3: the posted blob must be the saved game', () => {
+  it('a blob equal to characters.save_data (any key order) is judged; the snapshot records the revision read with it', async () => {
+    const store = new MemoryProgressStore();
+    const posted = blob({ xp: xpAtPosition(10), floor: 5 });
+    const reversed = (v: unknown): unknown => (Array.isArray(v) ? v.map(reversed) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).reverse().map(([k, x]) => [k, reversed(x)])) : v);
+    store.saved = reversed(posted); // same content, other key order
+    const res = await handleSubmitProgress(request(posted), deps(store));
+    expect(res.status).toBe(200);
+    expect(store.rows[0].saveRevision).toBe(7);
+  });
+
+  it('a blob that differs from the saved game is a retryable 409: nothing stored, no flag, the slot is not spent', async () => {
+    const store = new MemoryProgressStore();
+    store.saved = blob({ xp: xpAtPosition(5) });
+    const res = await handleSubmitProgress(request(blob({ xp: xpAtPosition(60) })), deps(store));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: 'save_not_synced', retryable: true });
+    expect(store.rows).toHaveLength(0);
+    expect(store.seasonCalls).toHaveLength(0);
+    expect(store.slotClaims).toBe(0);
+    // once the game has saved the same state, the very same call goes through
+    store.saved = undefined;
+    expect((await handleSubmitProgress(request(blob({ xp: xpAtPosition(60) })), deps(store))).status).toBe(200);
+  });
+
+  it('a save the server has not stored yet (no character row) is the same retryable 409', async () => {
+    const store = new MemoryProgressStore();
+    store.hasCharacter = false;
+    expect((await handleSubmitProgress(request(blob({ xp: 5 })), deps(store))).status).toBe(409);
+    expect(store.rows).toHaveLength(0);
+  });
+});
+
+describe('review B3: the soft "fast" marker', () => {
+  it('1.5x the fastest seed stays ok (ranked) but carries FAST_* notes; 1.2x carries none; 2.5x is flagged as before', () => {
+    const slowish = play(honestHistory(60, 12, 1.2));
+    expect(slowish.every((r) => r.verdict === 'ok' && r.reasons.length === 0)).toBe(true);
+    const fast = play(honestHistory(60, 12, 1.5));
+    expect(fast.every((r) => r.verdict === 'ok')).toBe(true);
+    expect(fast.some((r) => r.reasons.some((c) => c.startsWith('FAST_')))).toBe(true);
+    expect(play(honestHistory(40, 12, 2.5)).some((r) => r.verdict === 'flagged')).toBe(true);
+  });
+});
+
+describe('review: the per-user limit is one atomic claim', () => {
+  it('two parallel calls store exactly one snapshot; the loser gets the last verdict or a short "busy"', async () => {
+    const store = new MemoryProgressStore();
+    const [a, b] = await Promise.all([handleSubmitProgress(request(blob({ xp: 5000 })), deps(store)), handleSubmitProgress(request(blob({ xp: 5000 })), deps(store))]);
+    expect([a.status, b.status].sort()).toEqual([200, 429]);
+    expect(store.rows).toHaveLength(1);
+    expect(store.slotClaims).toBe(1);
+  });
+
+  it('a failure after the claim gives the slot back, so the player is not locked out for 10 minutes by our error', async () => {
+    const store = new MemoryProgressStore();
+    const working = store.insertSnapshot.bind(store);
+    store.insertSnapshot = async () => {
+      throw new Error('snapshot_write_500');
+    };
+    expect((await handleSubmitProgress(request(blob({ xp: 5000 })), deps(store))).status).toBe(502);
+    expect(store.releases).toBe(1);
+    store.insertSnapshot = working;
+    expect((await handleSubmitProgress(request(blob({ xp: 5000 })), deps(store))).status).toBe(200);
+  });
+
+  it('the REST store claims through one rpc with the interval in seconds', async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const fetchFn = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(init.body as string) });
+      return new Response('true', { status: 200 });
+    }) as typeof fetch;
+    const store = createProgressStore({ supabaseUrl: 'https://p.test', serviceRoleKey: 'k', fetchFn });
+    expect(await store.claimSlot(USER, SNAPSHOT_MIN_INTERVAL_MS)).toBe(true);
+    expect(calls).toEqual([{ url: 'https://p.test/rest/v1/rpc/progress_claim_slot', body: { p_user_id: USER, p_interval_seconds: 600 } }]);
   });
 });

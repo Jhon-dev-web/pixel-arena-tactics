@@ -18,6 +18,12 @@ export const REJECT_FACTOR = 2;
 /** A human may be this many times faster than the fastest simulated bot seed before the snapshot is only flagged (not ranked). */
 export const PACE_FLAG_FACTOR = 2;
 
+/**
+ * A softer, NON-hiding marker: above this many times the fastest simulated seed (and under the flag value) the snapshot stays `ok` and is ranked, but it carries a FAST_* reason
+ * so the owner's audit lists the account first. People who check in more often than the simulated player can legitimately be faster than it (that is why the flag stays at 2x).
+ */
+export const PACE_FAST_FACTOR = 1.3;
+
 /** Above this many times the fastest simulated seed the snapshot is rejected (the design asked for at least 2x; 3x leaves room for people). */
 export const PACE_REJECT_FACTOR = 3;
 

@@ -38,9 +38,17 @@ export function createProgressStore(cfg: ProgressDbConfig): ProgressStore {
     return (await res.json()) as T[];
   };
 
+  const rpc = async <T>(fn: string, args: Record<string, unknown>, what: string): Promise<T> => {
+    const res = await doFetch(`${base}/rpc/${fn}`, { method: 'POST', headers: headers(), body: JSON.stringify(args) });
+    if (!res.ok) throw failure(what, res);
+    return (await res.json()) as T;
+  };
+
+  // Only an `ok` snapshot is ever a baseline (first / last) and raises the peak: a flagged or rejected one never does, so re-sending the same inflated save later is judged
+  // against the last clean history again instead of against itself.
   const snapshotRows = (userId: string, order: 'asc' | 'desc', acceptedOnly: boolean): Promise<SnapshotRow[]> => {
     const q = new URLSearchParams({ select: SNAPSHOT_COLUMNS, user_id: `eq.${userId}`, order: `created_at.${order}`, limit: '1' });
-    if (acceptedOnly) q.set('verdict', 'neq.rejected');
+    if (acceptedOnly) q.set('verdict', 'eq.ok');
     return getRows<SnapshotRow>('progress_snapshots', q, 'snapshot_read');
   };
 
@@ -61,10 +69,26 @@ export function createProgressStore(cfg: ProgressDbConfig): ProgressStore {
       return (await getRows<unknown>('entitlements', q, 'entitlement_read')).length > 0;
     },
 
+    // revision + save_data in ONE read, so the hash compared with the posted blob belongs to the revision the snapshot records. Never created_at (the owner can edit it).
     async character(userId: string) {
-      const q = new URLSearchParams({ select: 'created_at,revision', user_id: `eq.${userId}`, limit: '1' });
-      const rows = await getRows<{ created_at: string; revision: number }>('characters', q, 'character_read');
-      return rows[0] ? { createdAtMs: Date.parse(rows[0].created_at), revision: rows[0].revision } : null;
+      const q = new URLSearchParams({ select: 'revision,save_data', user_id: `eq.${userId}`, limit: '1' });
+      const rows = await getRows<{ revision: number; save_data: unknown }>('characters', q, 'character_read');
+      return rows[0] ? { revision: rows[0].revision, saveData: rows[0].save_data } : null;
+    },
+
+    // The account age: auth.users.created_at through a service-role-only function (migration 0007), not a column the player can write.
+    async accountCreatedAtMs(userId: string) {
+      const at = await rpc<string | null>('progress_account_created_at', { p_user_id: userId }, 'account_age_read');
+      const ms = typeof at === 'string' ? Date.parse(at) : Number.NaN;
+      return Number.isFinite(ms) ? ms : null;
+    },
+
+    async claimSlot(userId: string, intervalMs: number) {
+      return (await rpc<unknown>('progress_claim_slot', { p_user_id: userId, p_interval_seconds: Math.ceil(intervalMs / 1000) }, 'slot_claim')) === true;
+    },
+
+    async releaseSlot(userId: string) {
+      await rpc<unknown>('progress_release_slot', { p_user_id: userId }, 'slot_release');
     },
 
     async lastSnapshot(userId: string) {

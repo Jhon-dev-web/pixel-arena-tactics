@@ -17,6 +17,7 @@ import {
 import { SaveConflictError, SaveRepository, SaveTooLargeError } from './game/saveRepository';
 import { seasonRankingEnabled } from './game/seasonRanking';
 import { useSeasonSubmit } from './game/useSeasonSubmit';
+import { setSyncedSave } from './game/syncedSave';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { addRelics, addUniqueInstance } from './game/uniques';
@@ -253,7 +254,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const userId = user?.id ?? null;
   // Season ranking (off unless VITE_SEASON_RANKING_ENABLED, and never in the desktop / offline build, which has no backend): posts the save in the background.
-  useSeasonSubmit(seasonRankingEnabled && configured && !!userId, save, saveRef);
+  useSeasonSubmit(seasonRankingEnabled && configured && !!userId, save);
   const [passFlow, setPassFlow] = useState<PassFlow>('idle');
   const confirmRun = useRef(0);
   // After the payment page: poll the entitlement for a short time (the webhook may take a moment) and say what happened.
@@ -418,8 +419,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     dirtyRef.current = false;
     setSaveStatus('saving');
     try {
-      const result = await repository.save(saveRef.current, revisionRef.current);
+      const toSave = saveRef.current;
+      const result = await repository.save(toSave, revisionRef.current);
       revisionRef.current = result.revision;
+      setSyncedSave(toSave); // the season ranking posts exactly what the server now holds
       setSaveStatus('saved');
     } catch (err) {
       if (err instanceof SaveConflictError) {
@@ -430,6 +433,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           if (fresh) {
             saveRef.current = fresh.save;
             revisionRef.current = fresh.revision;
+            setSyncedSave(null); // the server's copy is not the object we hold until the next successful save
             setSave(fresh.save);
           }
         } catch {

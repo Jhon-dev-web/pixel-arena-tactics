@@ -1,4 +1,4 @@
-import { BOUNDS, PACE_FLAG_FACTOR, PACE_REJECT_FACTOR, REJECT_FACTOR, burstXp, daysAtFloor, daysAtLevel, floorCapForLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from './bounds.ts';
+import { BOUNDS, PACE_FAST_FACTOR, PACE_FLAG_FACTOR, PACE_REJECT_FACTOR, REJECT_FACTOR, burstXp, daysAtFloor, daysAtLevel, floorCapForLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from './bounds.ts';
 import { PEAK_KEYS, Peak, ProgressMetrics, levelPosition, maxPeak, peakOf } from './metrics.ts';
 
 // The plausibility audit. Pure: given the metrics of a new snapshot, the server's own history of the account and the server clock, it says ok / flagged / rejected and why.
@@ -12,9 +12,11 @@ import { PEAK_KEYS, Peak, ProgressMetrics, levelPosition, maxPeak, peakOf } from
 //                    KILLS_RATE, GOLD_RATE, DUNGEON_RUNS_RATE, DUNGEON_FLOORS_RATE, BOSSES_RATE, UNIQUES_RATE, ACHIEVEMENTS_RATE (each also with the _TOTAL suffix, against the first snapshot)
 //   FLAG only:       RESTORED_OLDER_SAVE (a counter went down), SAVE_REVISION_BACKWARDS, PASS_FLAG_WITHOUT_ENTITLEMENT, BASELINE_AHEAD_OF_ACCOUNT_AGE
 //   (the REJECT-capable ones answer FLAGGED when the measure is between its flag value and its reject value, REJECTED above.)
+//   NOTE only (the verdict stays ok, the player stays ranked, but the owner's audit lists the account first): FAST_LEVEL_PACE, FAST_FLOOR_PACE, FAST_DEPTH_PACE (and _TOTAL):
+//   progress faster than PACE_FAST_FACTOR (1.3x) the fastest simulated seed but not above the flag value.
 
 export type Verdict = 'ok' | 'flagged' | 'rejected';
-export type Severity = 'flag' | 'reject';
+export type Severity = 'note' | 'flag' | 'reject';
 
 export interface HistoryPoint {
   /** Server clock (ms) when the snapshot was stored. */
@@ -32,7 +34,7 @@ export interface EvalInput {
   /** The server's answer to "does this account own the Pass right now" (never the save's flag). */
   entitled: boolean;
   saveRevision: number;
-  /** The account's first accepted (ok or flagged) snapshot, and its latest one. null when there is none yet. */
+  /** The account's first and latest ACCEPTED snapshot: only `ok` snapshots count (a flagged or rejected one is never a baseline). null when there is none yet. */
   first: HistoryPoint | null;
   previous: HistoryPoint | null;
 }
@@ -40,7 +42,7 @@ export interface EvalInput {
 export interface Evaluation {
   verdict: Verdict;
   reasons: string[];
-  /** The peak to store with this snapshot (a rejected snapshot does not raise it). */
+  /** The peak to store with this snapshot. Only an `ok` snapshot raises it: a flagged or rejected one carries the previous peak (or, for a first snapshot, its own numbers, which the store never uses as a baseline unless ok). */
   peak: Peak;
 }
 
@@ -78,6 +80,10 @@ class Findings {
     if (this.map.get(code) === 'reject') return;
     this.map.set(code, severity);
   }
+  /** Soft marker: value above noteAt (and not above flagAt) is recorded as a note that never changes the verdict. */
+  note(code: string, value: number, noteAt: number, flagAt: number): void {
+    if (value > noteAt && value <= flagAt) this.add(code, 'note');
+  }
   /** value above flagAt = flag; above rejectAt = reject. */
   check(code: string, value: number, flagAt: number, rejectAt: number): void {
     if (value > rejectAt) this.add(code, 'reject');
@@ -87,7 +93,7 @@ class Findings {
     let v: Verdict = 'ok';
     for (const s of this.map.values()) {
       if (s === 'reject') return 'rejected';
-      v = 'flagged';
+      if (s === 'flag') v = 'flagged';
     }
     return v;
   }
@@ -126,11 +132,14 @@ function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedM
   const effectiveXp = Math.max(refPeak.xp, cur.xp - burst);
   const levelDays = Math.max(0, daysAtLevel(levelPosition(effectiveXp)) - daysAtLevel(levelPosition(refPeak.xp)));
   f.check('LEVEL_PACE' + suffix, levelDays, PACE_FLAG_FACTOR * days + BOUNDS.paceSlackDays, PACE_REJECT_FACTOR * days + BOUNDS.paceSlackDays);
+  f.note('FAST_LEVEL_PACE' + suffix, levelDays, PACE_FAST_FACTOR * days + BOUNDS.paceSlackDays, PACE_FLAG_FACTOR * days + BOUNDS.paceSlackDays);
   const effectiveFloor = Math.max(refPeak.highestFloor, cur.highestFloor - BOUNDS.floorStepSlack);
   const floorDays = Math.max(0, daysAtFloor(effectiveFloor) - daysAtFloor(refPeak.highestFloor));
   f.check('FLOOR_PACE' + suffix, floorDays, PACE_FLAG_FACTOR * days + BOUNDS.floorPaceSlackDays, PACE_REJECT_FACTOR * days + BOUNDS.floorPaceSlackDays);
+  f.note('FAST_FLOOR_PACE' + suffix, floorDays, PACE_FAST_FACTOR * days + BOUNDS.floorPaceSlackDays, PACE_FLAG_FACTOR * days + BOUNDS.floorPaceSlackDays);
   const depthGained = Math.max(0, cur.deepestDepth - refPeak.deepestDepth);
   f.check('DEPTH_PACE' + suffix, depthGained, PACE_FLAG_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst, PACE_REJECT_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst);
+  f.note('FAST_DEPTH_PACE' + suffix, depthGained, PACE_FAST_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst, PACE_FLAG_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst);
 
   // Play time cannot outrun the clock. Impossible, not merely unlikely: reject only.
   const secondsGained = Math.max(0, cur.secondsPlayed - refPeak.secondsPlayed);
@@ -187,5 +196,5 @@ export function evaluateSnapshot(cur: ProgressMetrics, input: EvalInput): Evalua
   growthChecks(f, cur, peakOf(first.metrics), input.nowMs - first.atMs, '_TOTAL');
 
   const verdict = f.verdict;
-  return { verdict, reasons: f.codes, peak: verdict === 'rejected' ? previous.peak : maxPeak(previous.peak, peakOf(cur)) };
+  return { verdict, reasons: f.codes, peak: verdict === 'ok' ? maxPeak(previous.peak, peakOf(cur)) : previous.peak };
 }

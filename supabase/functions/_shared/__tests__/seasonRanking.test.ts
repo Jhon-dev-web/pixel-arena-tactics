@@ -95,7 +95,7 @@ describe('createProgressStore (REST)', () => {
     expect(JSON.parse(calls[0].init.body as string)).toEqual({ p_user_id: USER, p_snapshot_id: 'snap', p_verdict: 'flagged', p_reasons: ['LEVEL_PACE'], p_score: 7_000_100 });
   });
 
-  it('reads the accepted history (not rejected) and rebuilds the peak; errors carry only the status', async () => {
+  it('reads the accepted history (ONLY ok: a flagged or rejected snapshot is never a baseline) and rebuilds the peak; errors carry only the status', async () => {
     const row = { id: 's1', created_at: '2026-10-05T00:00:00Z', save_revision: 4, verdict: 'ok', reasons: [], metrics: { ...metrics, _peak: { ...peakOf(metrics), xp: 9000 } } };
     const { calls, fetchFn } = fakeFetch((url) => (url.includes('/progress_snapshots?') ? new Response(JSON.stringify([row]), { status: 200 }) : new Response('secret body', { status: 500 })));
     const store = createProgressStore({ supabaseUrl: 'https://p.test', serviceRoleKey: SERVICE_KEY, fetchFn });
@@ -103,7 +103,7 @@ describe('createProgressStore (REST)', () => {
     expect(h.first?.peak.xp).toBe(9000);
     expect(h.first?.atMs).toBe(Date.parse('2026-10-05T00:00:00Z'));
     expect(h.first?.metrics).not.toHaveProperty('_peak');
-    expect(calls.every((c) => c.url.includes('verdict=neq.rejected') && c.url.includes(`user_id=eq.${USER}`))).toBe(true);
+    expect(calls.every((c) => c.url.includes('verdict=eq.ok') && c.url.includes(`user_id=eq.${USER}`))).toBe(true);
     await expect(store.hasActivePass(USER)).rejects.toThrow('entitlement_read_500');
     await expect(store.hasActivePass(USER)).rejects.not.toThrow(/secret/);
   });

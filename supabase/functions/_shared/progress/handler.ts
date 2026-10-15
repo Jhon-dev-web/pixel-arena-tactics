@@ -12,6 +12,9 @@ export const MAX_BODY_BYTES = 288 * 1024;
 /** One stored snapshot per user per window (any verdict). Calls inside the window get the last verdict back and store nothing. */
 export const SNAPSHOT_MIN_INTERVAL_MS = 10 * 60 * 1000;
 
+/** What the client is told to wait when its blob is not (yet) the saved game: the game saves on its own rhythm, so a short wait is enough. */
+export const SAVE_NOT_SYNCED_RETRY_S = 30;
+
 export interface StoredSnapshot {
   id: string;
   createdAtMs: number;
@@ -32,16 +35,28 @@ export interface NewSnapshot {
   reasons: string[];
 }
 
-export type SeasonApplyStatus = 'updated' | 'unchanged' | 'flags_recorded' | 'season_not_open' | 'no_pass' | 'email_unconfirmed' | 'disqualified';
+export type SeasonApplyStatus = 'updated' | 'unchanged' | 'flags_recorded' | 'season_not_open' | 'no_pass' | 'email_unconfirmed' | 'disqualified' | 'flagged_history';
 
 /** Persistence used by the handler. The real one (progressDb.ts) talks to PostgREST with the service role; tests use an in-memory fake. */
 export interface ProgressStore {
   hasActivePass(userId: string): Promise<boolean>;
-  /** characters.created_at / characters.revision of the account (null when it has no character yet). */
-  character(userId: string): Promise<{ createdAtMs: number; revision: number } | null>;
-  /** The newest snapshot of any verdict (rate limit and the answer for a throttled call). */
+  /**
+   * characters.revision and characters.save_data of the account, read together (null when it has no character yet). NEVER characters.created_at: the owner of the row can
+   * edit that column through RLS, so the account age comes from accountCreatedAtMs.
+   */
+  character(userId: string): Promise<{ revision: number; saveData: unknown } | null>;
+  /** When the ACCOUNT was created, from auth.users (arena_private.account_created_at, service role only). null when unknown. */
+  accountCreatedAtMs(userId: string): Promise<number | null>;
+  /**
+   * Atomically claims this user's snapshot slot: true for exactly one of any number of concurrent callers inside the interval (a single SQL statement,
+   * progress_claim_slot). The database clock decides, not this process.
+   */
+  claimSlot(userId: string, intervalMs: number): Promise<boolean>;
+  /** Gives a claimed slot back when nothing was stored after all (best effort). */
+  releaseSlot?(userId: string): Promise<void>;
+  /** The newest snapshot of any verdict (the answer for a throttled call). */
   lastSnapshot(userId: string): Promise<StoredSnapshot | null>;
-  /** The account's first and latest ACCEPTED (ok or flagged) snapshots as history points. */
+  /** The account's first and latest `ok` snapshots as history points. A flagged or rejected snapshot is never a baseline. */
   acceptedHistory(userId: string): Promise<{ first: HistoryPoint | null; last: HistoryPoint | null }>;
   /** Inserts the row (created_at = the database clock) and returns its id. */
   insertSnapshot(row: NewSnapshot): Promise<{ id: string }>;
@@ -75,7 +90,7 @@ async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Stable JSON (keys sorted) so equal metrics always hash equal. */
+/** Stable JSON (keys sorted) so equal values always hash equal. Used for the metrics hash AND for comparing the posted save with the stored one. */
 export function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value && typeof value === 'object') {
@@ -124,19 +139,36 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
   const metrics = extractMetrics(blob);
   if (!metrics) return json({ error: 'bad_request' }, 400, cors);
 
+  let slotClaimed = false;
   try {
     const now = deps.nowMs();
 
+    // Fast path for the common throttled call: no big read at all.
     const last = await deps.store.lastSnapshot(userId);
     if (last && now - last.createdAtMs < SNAPSHOT_MIN_INTERVAL_MS) {
       return json(answer(last, { throttled: true, retryAfterSeconds: Math.ceil((SNAPSHOT_MIN_INTERVAL_MS - (now - last.createdAtMs)) / 1000) }), 200, cors);
     }
 
-    const [entitled, character, history] = await Promise.all([deps.store.hasActivePass(userId), deps.store.character(userId), deps.store.acceptedHistory(userId)]);
-    const saveRevision = character?.revision ?? 0;
+    // The blob must BE the saved game: same canonical hash as characters.save_data, read together with the revision it belongs to. If the game saved in between (or has not
+    // saved yet) this is a retryable 409, never a flag: nothing is stored and the rate-limit slot is not spent.
+    const character = await deps.store.character(userId);
+    if (!character || (await sha256Hex(canonicalJson(blob))) !== (await sha256Hex(canonicalJson(character.saveData)))) {
+      return json({ error: 'save_not_synced', retryable: true, retryAfterSeconds: SAVE_NOT_SYNCED_RETRY_S }, 409, { ...cors, 'retry-after': String(SAVE_NOT_SYNCED_RETRY_S) });
+    }
+
+    // The atomic limit: of two parallel calls exactly one gets the slot.
+    slotClaimed = await deps.store.claimSlot(userId, SNAPSHOT_MIN_INTERVAL_MS);
+    if (!slotClaimed) {
+      const again = await deps.store.lastSnapshot(userId);
+      if (again) return json(answer(again, { throttled: true, retryAfterSeconds: Math.ceil(SNAPSHOT_MIN_INTERVAL_MS / 1000) }), 200, cors);
+      return json({ error: 'busy', retryAfterSeconds: 5 }, 429, { ...cors, 'retry-after': '5' }); // the winner has not stored its snapshot yet
+    }
+
+    const [entitled, accountCreatedMs, history] = await Promise.all([deps.store.hasActivePass(userId), deps.store.accountCreatedAtMs(userId), deps.store.acceptedHistory(userId)]);
+    const saveRevision = character.revision;
     const evaluation = evaluateSnapshot(metrics, {
       nowMs: now,
-      accountCreatedMs: character?.createdAtMs ?? null,
+      accountCreatedMs,
       entitled,
       saveRevision,
       first: history.first,
@@ -155,6 +187,7 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
       verdict: evaluation.verdict,
       reasons: evaluation.reasons,
     });
+    slotClaimed = false; // spent for real: a snapshot exists
 
     const score = computeScore(metrics);
     const season = deps.store.applyToSeason
@@ -174,6 +207,7 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
 
     return json(answer({ verdict: evaluation.verdict, reasons: evaluation.reasons, metrics }, { throttled: false, season, professions }), 200, cors);
   } catch (err) {
+    if (slotClaimed && deps.store.releaseSlot) await deps.store.releaseSlot(userId).catch(() => undefined); // nothing was stored: do not make the player wait 10 minutes for our failure
     console.error('[submit-progress] failed', err instanceof Error ? err.message : 'unknown'); // message only: never the save, a key or a token
     return json({ error: 'submit_failed' }, 502, cors);
   }
