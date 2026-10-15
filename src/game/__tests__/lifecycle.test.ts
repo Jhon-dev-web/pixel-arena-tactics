@@ -63,7 +63,7 @@ describe('hunting lifecycle: start -> stop -> claim', () => {
 
   it('time past the zone offline cap is not paid', () => {
     const started = applyHuntStart(fresh(), 'demon_glade', 'shallow', START)!;
-    const atCap = applyHuntStop(started, START + 4 * HOUR)!.pendingHuntReward!; // demon_glade caps at 4h
+    const atCap = applyHuntStop(started, START + 6 * HOUR)!.pendingHuntReward!; // demon_glade caps at 6h
     const wayPast = applyHuntStop(started, START + 40 * HOUR)!.pendingHuntReward!;
     expect(wayPast.pendingMs).toBe(atCap.pendingMs);
     expect(wayPast.xp).toBe(atCap.xp);

@@ -667,6 +667,8 @@ export function applyForge(
       createdAt: opts.now ?? Date.now(),
       ...(sealUsed ? { rarity: rollRarityAtLeast(FORGE_SEAL_MIN_RARITY, opts.rng) } : {}),
     });
+    // A piece made with the Blacksmith's Seal is born BOUND: the Seal is a season reward, so its better roll must not become a tradeable good (isTradeable).
+    if (sealUsed) instance = { ...instance, bound: true };
     next = { ...next, gearInstances: { ...next.gearInstances, [instance.id]: instance } };
   } else {
     next = { ...next, inventory: { ...next.inventory, [templateId]: (next.inventory[templateId] ?? 0) + 1 } };

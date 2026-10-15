@@ -403,7 +403,7 @@
     "overlord_sigil": "Sigilo do Senhor Supremo",
     "overlord_sigil_d": "Um selo de comando: os golpes certeiros ficam mais certeiros e mais cruéis.",
     "season_emblem": "Emblema do Aventureiro",
-    "season_emblem_d": "O brasão de quem terminou a temporada: mais experiência, um pouco mais de ouro e um golpe só um pouco mais forte."
+    "season_emblem_d": "O brasão de quem terminou a temporada: um pouco mais de ouro e um golpe só um pouco mais forte."
   },
   "enemies": {
     "goblinRogue": "Goblin Ladino",
@@ -758,7 +758,7 @@
     "prospector_tonic_d": "+10% de minério e madeira (e de XP de profissão) por 2 horas reais; soma com a Poção do Coletor",
     "prospector_tonic_active": "Tônico do Prospector ativo por 2 horas!",
     "forge_seal": "Selo do Ferreiro",
-    "forge_seal_d": "Ative na Forja: a próxima peça forjada nasce Épica ou melhor. Só é gasto se a forja acontecer.",
+    "forge_seal_d": "Ative na Forja: a próxima peça forjada nasce Épica ou melhor. Só é gasto se a forja acontecer. A peça nasce vinculada, então não pode ser negociada.",
     "stash_deed": "Escritura do Baú",
     "stash_deed_d": "Use para ampliar o Baú em 5 espaços, para sempre. O limite total é de 20 espaços extras.",
     "gold_pouch_s": "Bolsa de Ouro pequena",
@@ -1689,8 +1689,8 @@
     "perkRepairSub": "Forja",
     "perkLoadout": "Segundo conjunto de habilidades",
     "perkLoadoutSub": "Duas distribuições de pontos, troca grátis",
-    "perkPouch": "Pode criar Bolsas de Ouro (mínimo {min})",
-    "perkPouchSub": "Transforme Ouro em um item negociável. Taxa de {fee}% em Ouro, até {n} por dia",
+    "perkPouch": "Taxa menor na Bolsa de Ouro (mínimo {min})",
+    "perkPouchSub": "Qualquer jogador transforma Ouro em um item negociável, até {n} por dia. O Passe paga {fee}% em Ouro em vez de {free}%",
     "trackTitle": "Trilha da temporada",
     "goMyLevel": "Ir para o meu nível",
     "claimed": "Resgatado",
@@ -1877,9 +1877,9 @@
   "pouch": {
     "tab": "Bolsas",
     "title": "Bolsa de Ouro",
-    "explain": "Transforma Ouro em uma Bolsa de Ouro: um item que pode ser vendido a outros jogadores quando o mercado abrir. Só o dono do Passe de Aventureiro cria Bolsas. Valor mínimo: {min} de Ouro; a taxa é de {fee}% em Ouro, paga por cima; no máximo {n} Bolsas por dia.",
+    "explain": "Transforma Ouro em uma Bolsa de Ouro: um item que pode ser vendido a outros jogadores quando o mercado abrir. Qualquer jogador pode criar Bolsas. Valor mínimo: {min} de Ouro; a taxa é de {free}% em Ouro, paga por cima ({fee}% para quem tem o Passe de Aventureiro); no máximo {n} Bolsas por dia.",
     "openExplain": "Qualquer jogador pode abrir uma Bolsa que tenha e receber exatamente o valor dela. Abrir não tem volta.",
-    "needPass": "Criar Bolsas exige o Passe de Aventureiro. Abrir uma que você recebeu não exige.",
+    "passFee": "O Passe de Aventureiro reduz a taxa: {fee}% em vez de {free}%.",
     "face": "{v} de Ouro",
     "feeLine": "Taxa {fee} · Total {total}",
     "create": "Criar",
@@ -1887,7 +1887,6 @@
     "failLimit": "Limite diário de Bolsas atingido. Volta à meia-noite.",
     "failGold": "Ouro insuficiente: precisa do valor mais a taxa.",
     "failBag": "Sem espaço no inventário para a Bolsa.",
-    "failPass": "Exige o Passe de Aventureiro.",
     "created": "Bolsa criada: -{g} Ouro",
     "opened": "Bolsa aberta: +{g} Ouro",
     "worth": "Vale {g} de Ouro",

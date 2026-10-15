@@ -9,8 +9,8 @@ import T from './tunables';
 // BOLSA DE OURO (round 18): Gold turned into a bag item that other players can be sold, once the player market exists (it needs a server that does not exist yet; this module is
 // only the local, offline-safe half).
 //
-//   - CREATING: only the Adventurer Pass owner. A fixed denomination (T.goldPouch.denomSmall / Medium / Large; the smallest is also the minimum amount of a pouch). The player pays the
-//     face value PLUS a fee (T.goldPouch.feePct of it, rounded up: always a Gold sink), and at most T.goldPouch.perDay pouches a local day (the same day boundary as the merchants),
+//   - CREATING: any player. A fixed denomination (T.goldPouch.denomSmall / Medium / Large; the smallest is also the minimum amount of a pouch). The player pays the
+//     face value PLUS a fee (T.goldPouch.feePctFree of it, 10%; the Adventurer Pass owner pays T.goldPouch.feePct, 5%; rounded up: always a Gold sink), and at most T.goldPouch.perDay pouches a local day (the same day boundary as the merchants),
 //     so a pouch cannot be bulk free storage. The pouch goes into the bag like any stackable (99 per slot), so it takes bag room; nothing is created when there is none.
 //   - OPENING: anyone who holds one, owner or not, for EXACTLY its face value, irreversible (the screen confirms). Opening is not "earning" Gold: it is excluded from the
 //     lifetime Gold counter, or create-and-open in a loop would farm the Gold achievements.
@@ -33,14 +33,16 @@ export const pouchFace = (id: PouchId): number => face(id);
 export const pouchMinimum = (): number => Math.min(...POUCH_IDS.map(face));
 
 // The fee in Gold on top of the face value: always at least 1 while the fee rate is positive.
-export const pouchFee = (id: PouchId): number => (T.goldPouch.feePct > 0 ? Math.max(1, Math.ceil(face(id) * T.goldPouch.feePct - 1e-9)) : 0);
+// `owner`: the Adventurer Pass owner pays the lower rate.
+export const feeRate = (owner: boolean): number => (owner ? T.goldPouch.feePct : T.goldPouch.feePctFree);
+export const pouchFee = (id: PouchId, owner: boolean): number => (feeRate(owner) > 0 ? Math.max(1, Math.ceil(face(id) * feeRate(owner) - 1e-9)) : 0);
 
-export const pouchCost = (id: PouchId): number => face(id) + pouchFee(id);
+export const pouchCost = (id: PouchId, owner: boolean): number => face(id) + pouchFee(id, owner);
 
 export const pouchPerDay = (): number => Math.max(1, Math.floor(T.goldPouch.perDay));
 
-// The numbers the rules text prints (pt / en and the Pass perk line), all read from the same tunables as the code above.
-export const pouchRuleParams = (): { min: number; fee: number; n: number } => ({ min: pouchMinimum(), fee: Math.round(T.goldPouch.feePct * 100), n: pouchPerDay() });
+// The numbers the rules text prints (pt / en and the Pass perk line), all read from the same tunables as the code above. `fee` is the Pass owner's rate, `free` everyone else's.
+export const pouchRuleParams = (): { min: number; fee: number; free: number; n: number } => ({ min: pouchMinimum(), fee: Math.round(T.goldPouch.feePct * 100), free: Math.round(T.goldPouch.feePctFree * 100), n: pouchPerDay() });
 
 export interface PouchDayState {
   day: string; // toDateString() of the local day `made` belongs to
@@ -61,9 +63,10 @@ export function pouchesMadeToday(save: Pick<SaveData, 'pouchDay'>, now: number):
 
 export const pouchesLeftToday = (save: Pick<SaveData, 'pouchDay'>, now: number): number => Math.max(0, pouchPerDay() - pouchesMadeToday(save, now));
 
-export const canCreatePouches = (save: Pick<SaveData, 'hasBattlePass'>): boolean => ownsAdventurerPass(save);
+// The Pass does not gate creating a pouch any more, only the fee.
+export const paysPassFee = (save: Pick<SaveData, 'hasBattlePass'>): boolean => ownsAdventurerPass(save);
 
-export type PouchFailure = 'noPass' | 'limit' | 'gold' | 'bag' | 'none';
+export type PouchFailure = 'limit' | 'gold' | 'bag' | 'none';
 export interface PouchResult {
   ok: boolean;
   reason?: PouchFailure;
@@ -71,11 +74,10 @@ export interface PouchResult {
   gold?: number;
 }
 
-// One pouch, made. Gold -(face + fee), the pouch +1 in the bag, today's count +1; all or nothing.
+// One pouch, made (any player; the fee is the Pass owner's or the regular one). Gold -(face + fee), the pouch +1 in the bag, today's count +1; all or nothing.
 export function applyCreatePouch(save: SaveData, id: PouchId, now: number): PouchResult {
-  if (!canCreatePouches(save)) return { ok: false, reason: 'noPass' };
   if (pouchesLeftToday(save, now) <= 0) return { ok: false, reason: 'limit' };
-  const cost = pouchCost(id);
+  const cost = pouchCost(id, paysPassFee(save));
   if (!Number.isFinite(save.gold) || save.gold < cost) return { ok: false, reason: 'gold' };
   const placed = addWithOverflow({ ...save, gold: save.gold - cost }, { consumables: { [id]: 1 } }, { now });
   if (!stockIsEmpty(placed.leftover)) return { ok: false, reason: 'bag' };

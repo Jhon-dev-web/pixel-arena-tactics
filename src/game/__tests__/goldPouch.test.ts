@@ -18,7 +18,7 @@ import {
   POUCH_IDS,
   applyCreatePouch,
   applyOpenPouch,
-  canCreatePouches,
+  paysPassFee,
   isPouchId,
   patrimony,
   pouchCost,
@@ -55,11 +55,15 @@ describe('Gold Pouch: the numbers', () => {
     expect(POUCH_IDS.map(pouchFace)).toEqual([10000, 50000, 100000]);
     expect(pouchMinimum()).toBe(10000);
     expect(T.goldPouch.feePct).toBe(0.05);
+    expect(T.goldPouch.feePctFree).toBe(0.1);
     expect(pouchPerDay()).toBe(3);
     for (const id of POUCH_IDS) {
-      expect(pouchFee(id)).toBe(Math.ceil(pouchFace(id) * 0.05));
-      expect(pouchCost(id)).toBe(pouchFace(id) + pouchFee(id));
-      expect(pouchFee(id)).toBeGreaterThan(0);
+      expect(pouchFee(id, true)).toBe(Math.ceil(pouchFace(id) * 0.05));
+      expect(pouchFee(id, false)).toBe(Math.ceil(pouchFace(id) * 0.1));
+      expect(pouchCost(id, true)).toBe(pouchFace(id) + pouchFee(id, true));
+      expect(pouchCost(id, false)).toBe(pouchFace(id) + pouchFee(id, false));
+      expect(pouchFee(id, true)).toBeGreaterThan(0);
+      expect(pouchFee(id, false)).toBeGreaterThan(pouchFee(id, true));
     }
   });
 
@@ -81,25 +85,30 @@ describe('Gold Pouch: the numbers', () => {
 });
 
 describe('Gold Pouch: creating', () => {
-  it('only the Pass owner creates; everyone sees why', () => {
+  it('anyone creates; the Pass owner pays the lower fee (5% against 10%)', () => {
     const free = rich(1_000_000, false);
-    expect(canCreatePouches(free)).toBe(false);
+    expect(paysPassFee(free)).toBe(false);
+    expect(paysPassFee(rich(0))).toBe(true);
     const r = applyCreatePouch(free, 'gold_pouch_s', NOW);
-    expect(r.ok).toBe(false);
-    expect(r.reason).toBe('noPass');
-    expect(canCreatePouches(rich(0))).toBe(true);
+    expect(r.ok).toBe(true);
+    expect(free.gold - r.save!.gold).toBe(10000 + 1000);
+    expect(r.gold).toBe(11000);
+    const owner = applyCreatePouch(rich(1_000_000), 'gold_pouch_s', NOW);
+    expect(1_000_000 - owner.save!.gold).toBe(10000 + 500);
+    expect(applyCreatePouch(rich(10500, false), 'gold_pouch_s', NOW).reason, 'the free fee is higher').toBe('gold');
+    expect(applyCreatePouch(rich(10500), 'gold_pouch_s', NOW).ok).toBe(true);
   });
 
   it('cannot be created without the face value PLUS the fee, and a failure changes nothing', () => {
     for (const id of POUCH_IDS) {
-      const short = rich(pouchCost(id) - 1);
+      const short = rich(pouchCost(id, true) - 1);
       const before = JSON.stringify(short);
       const r = applyCreatePouch(short, id, NOW);
       expect(r.ok, id).toBe(false);
       expect(r.reason).toBe('gold');
       expect(JSON.stringify(short)).toBe(before);
       expect(applyCreatePouch(rich(pouchFace(id)), id, NOW).reason, 'the face value alone is not enough').toBe('gold');
-      expect(applyCreatePouch(rich(pouchCost(id)), id, NOW).ok, 'exactly the total is enough').toBe(true);
+      expect(applyCreatePouch(rich(pouchCost(id, true)), id, NOW).ok, 'exactly the total is enough').toBe(true);
     }
   });
 
@@ -108,7 +117,7 @@ describe('Gold Pouch: creating', () => {
     for (let i = 0; i < pouchPerDay(); i++) {
       const before = s;
       s = must(applyCreatePouch(s, 'gold_pouch_s', NOW));
-      expect(before.gold - s.gold).toBe(pouchCost('gold_pouch_s'));
+      expect(before.gold - s.gold).toBe(pouchCost('gold_pouch_s', true));
     }
     expect(s.consumables.gold_pouch_s).toBe(pouchPerDay());
     expect(pouchesLeftToday(s, NOW)).toBe(0);
@@ -170,10 +179,10 @@ describe('Gold Pouch: opening', () => {
 
   it('create then open is ALWAYS a net loss of exactly the fee, for every denomination and any starting Gold', () => {
     for (const id of POUCH_IDS) {
-      for (const start of [pouchCost(id), pouchCost(id) + 1, 7_777_777]) {
+      for (const start of [pouchCost(id, true), pouchCost(id, true) + 1, 7_777_777]) {
         const s0 = rich(start);
         const s2 = must(applyOpenPouch(must(applyCreatePouch(s0, id, NOW)), id));
-        expect(s0.gold - s2.gold, `${id} from ${start}`).toBe(pouchFee(id));
+        expect(s0.gold - s2.gold, `${id} from ${start}`).toBe(pouchFee(id, true));
         expect(s2.consumables[id]).toBe(0);
       }
     }
@@ -208,7 +217,7 @@ describe('Gold Pouch: no path makes Gold out of nothing', () => {
         const r = applyCreatePouch(s, id, when);
         if (r.ok) {
           s = r.save!;
-          feesPaid += pouchFee(id);
+          feesPaid += pouchFee(id, true);
         }
       } else if (roll < 0.6) {
         const r = applyOpenPouch(s, id);
@@ -310,11 +319,11 @@ describe('Gold Pouch: the text states the rules from the same tunables', () => {
 
   it('pt and en say the minimum, the fee and the daily limit that the code enforces, and no placeholder is left over', () => {
     const p = pouchRuleParams();
-    expect(p).toEqual({ min: pouchMinimum(), fee: 5, n: pouchPerDay() });
+    expect(p).toEqual({ min: pouchMinimum(), fee: 5, free: 10, n: pouchPerDay() });
     for (const tree of [pt, en]) {
       const text = render(tree, 'pouch.explain', { ...p, min: String(p.min) });
       expect(text).not.toMatch(/\{\w+\}/);
-      expect(digits(text)).toEqual([p.min, p.fee, p.n]);
+      expect(digits(text)).toEqual([p.min, p.free, p.fee, p.n]);
     }
   });
 
@@ -323,13 +332,15 @@ describe('Gold Pouch: the text states the rules from the same tunables', () => {
     try {
       T.goldPouch.denomSmall = 20000;
       T.goldPouch.feePct = 0.1;
+      T.goldPouch.feePctFree = 0.2;
       T.goldPouch.perDay = 5;
       const p = pouchRuleParams();
-      expect(p).toEqual({ min: 20000, fee: 10, n: 5 });
-      expect(pouchCost('gold_pouch_s')).toBe(22000);
+      expect(p).toEqual({ min: 20000, fee: 10, free: 20, n: 5 });
+      expect(pouchCost('gold_pouch_s', true)).toBe(22000);
+      expect(pouchCost('gold_pouch_s', false)).toBe(24000);
       expect(applyCreatePouch(rich(21999), 'gold_pouch_s', NOW).ok).toBe(false);
       expect(applyCreatePouch(rich(22000), 'gold_pouch_s', NOW).ok).toBe(true);
-      expect(digits(render(en, 'pouch.explain', { ...p, min: String(p.min) }))).toEqual([20000, 10, 5]);
+      expect(digits(render(en, 'pouch.explain', { ...p, min: String(p.min) }))).toEqual([20000, 20, 10, 5]);
     } finally {
       Object.assign(T.goldPouch, was);
     }

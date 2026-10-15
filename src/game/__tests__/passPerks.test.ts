@@ -138,14 +138,16 @@ describe('Adventurer Pass perks: Gold Pouches (round 18)', () => {
     for (const tree of [pt, en]) {
       expect(render(tree, p.label)).not.toMatch(/\{\w+\}/);
       expect(minOf(tree)).toBe(pouchMinimum());
-      expect(sub(tree)).toEqual([Math.round(T.goldPouch.feePct * 100), pouchPerDay()]);
+      expect(sub(tree)).toEqual([pouchPerDay(), Math.round(T.goldPouch.feePct * 100), Math.round(T.goldPouch.feePctFree * 100)]);
     }
-    const cost = pouchCost('gold_pouch_s');
+    const cost = pouchCost('gold_pouch_s', true);
     expect(applyCreatePouch({ ...defaultSave(), gold: cost, hasBattlePass: true }, 'gold_pouch_s', NOW).ok).toBe(true);
-    expect(applyCreatePouch({ ...defaultSave(), gold: cost, hasBattlePass: false }, 'gold_pouch_s', NOW).reason).toBe('noPass');
+    // the Pass only lowers the fee: without it the same Gold is not enough, with the higher total it works
+    expect(applyCreatePouch({ ...defaultSave(), gold: cost, hasBattlePass: false }, 'gold_pouch_s', NOW).reason).toBe('gold');
+    expect(applyCreatePouch({ ...defaultSave(), gold: pouchCost('gold_pouch_s', false), hasBattlePass: false }, 'gold_pouch_s', NOW).ok).toBe(true);
     // the per-day limit printed is the one enforced
     let s: SaveData = { ...defaultSave(), gold: 100_000_000, hasBattlePass: true };
-    for (let i = 0; i < sub(en)[1]; i++) s = applyCreatePouch(s, 'gold_pouch_s', NOW).save!;
+    for (let i = 0; i < sub(en)[0]; i++) s = applyCreatePouch(s, 'gold_pouch_s', NOW).save!;
     expect(applyCreatePouch(s, 'gold_pouch_s', NOW).reason).toBe('limit');
   });
 });

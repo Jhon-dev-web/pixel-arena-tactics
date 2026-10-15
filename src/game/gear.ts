@@ -71,7 +71,7 @@ const FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'bronze', 2: 'iron', 3: '
 // gearInstances.equippedExtraStats); META_FIELDS are identity, cost and display data. gearEffects.test.ts checks every entry against both lists
 // and that equipping each live field really changes the combat stats, so a field nothing reads (burn, reflect, focusHpBonus and
 // attackStaminaReduction were dead data for a long time) cannot come back silently.
-export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct', 'xpBonusPct'] as const;
+export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct'] as const; // xpBonusPct is still read (relicXpBonusPct) but no item carries it any more: the Season Emblem lost its XP bonus
 export const META_FIELDS = ['setFamily', 'look', 'id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line'] as const;
 
 // Weapon, armor, helmet, gloves, boots, ring and shield are the INSTANCED slots: each owned piece is its own object with its own rarity, substats,
@@ -202,7 +202,7 @@ export const GEAR: GearItem[] = [
   { id: 'overlord_sigil', slot: 'relic', nameKey: 'overlord_sigil', descKey: 'overlord_sigil_d', icon: '/assets/icons/overlord_sigil.png', cost: 0, critChance: 0.04, critMultBonus: 0.2, source: { bossFloor: 100 } },
   // Season Relic (the Adventurer Pass track, level 30): drop-only from that track (no recipe, no boss source), stackable, a second season's copy only stacks. It is the
   // "progress faster" choice, not the "hit harder" one: +5 % character XP, +5 % gold (inside the 25 % cap) and +2 % final damage, worth less in combat than any other relic.
-  { id: 'season_emblem', slot: 'relic', nameKey: 'season_emblem', descKey: 'season_emblem_d', icon: '/assets/icons/season_emblem.png', cost: 0, damagePct: 0.02, goldBonusPct: 5, xpBonusPct: 5 },
+  { id: 'season_emblem', slot: 'relic', nameKey: 'season_emblem', descKey: 'season_emblem_d', icon: '/assets/icons/season_emblem.png', cost: 0, damagePct: 0.02, goldBonusPct: 5 },
 ];
 
 // The hero's look per ARMOR template: the armor in the armor slot decides which sheet the hero is drawn with (heroLook in sprites.ts). The order of HERO_LOOKS is the

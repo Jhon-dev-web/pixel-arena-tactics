@@ -29,7 +29,7 @@ export function passPerkLines(): PassPerkLine[] {
     { key: 'repair', icon: '/assets/icons/whetstone_oil.png', label: { key: 'battlePass.perkRepair', params: { n: pct(T.battlePass.repairDiscount) } }, sub: { key: 'battlePass.perkRepairSub' } },
     { key: 'kit', icon: '/assets/icons/whetstone_oil.png', label: { key: 'battlePass.perkKit', params: { n: T.battlePass.dailyRepairKits } }, sub: { key: 'battlePass.perkKitSub', params: { m: T.consumables.repairKitDurability } } },
     { key: 'streak', icon: '/assets/icons/nav_quests.png', label: { key: 'battlePass.perkStreak', params: { n: T.battlePass.streakSavers } }, sub: { key: 'battlePass.perkStreakSub' } },
-    { key: 'pouch', icon: '/assets/icons/gold_pouch.png', label: { key: 'battlePass.perkPouch', params: { min: fmtNum(pouchRuleParams().min) } }, sub: { key: 'battlePass.perkPouchSub', params: { fee: pouchRuleParams().fee, n: pouchRuleParams().n } } },
+    { key: 'pouch', icon: '/assets/icons/gold_pouch.png', label: { key: 'battlePass.perkPouch', params: { min: fmtNum(pouchRuleParams().min) } }, sub: { key: 'battlePass.perkPouchSub', params: { n: pouchRuleParams().n, fee: pouchRuleParams().fee, free: pouchRuleParams().free } } },
     { key: 'loadout', icon: '/assets/icons/skill_path_warrior.png', label: { key: 'battlePass.perkLoadout' }, sub: { key: 'battlePass.perkLoadoutSub' } },
   ];
 }

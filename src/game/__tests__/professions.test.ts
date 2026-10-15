@@ -74,13 +74,13 @@ describe('gathering sessions (pure transitions)', () => {
     expect(applyClaimGathering(running, 'woodcutting', at)).toBeNull(); // nothing chopping
   });
 
-  it('offline accrual is capped by the storage window (4 h without the pass) however long the game was closed', () => {
+  it('offline accrual is capped by the storage window (6 h without the pass) however long the game was closed', () => {
     const running = applyStartGathering(fresh(), 'mining', 'copper', T0)!.save;
-    const capped = computeMiningStatus(running, T0 + 4 * HOUR);
+    const capped = computeMiningStatus(running, T0 + 6 * HOUR);
     const weeks = computeMiningStatus(running, T0 + 400 * HOUR);
     expect(capped.full).toBe(true);
     expect(weeks.oreReady).toBe(capped.oreReady);
-    expect(weeks.pendingMs).toBe(4 * HOUR);
+    expect(weeks.pendingMs).toBe(6 * HOUR);
   });
 
   it('a clock that went backwards yields nothing (never negative or NaN)', () => {
@@ -190,8 +190,8 @@ describe('Battle Pass and gathering sessions', () => {
     expect(st.oreReady).toBe(Math.floor(cap * power * T.battlePass.dropRateMultiplier));
     // a non-owner keeps the base cap
     const plain = applyStartGathering(lvl(fresh()), 'mining', 'copper', T0)!.save;
-    expect(plain.miningPass).toEqual({ active: false, capHours: 4 });
-    expect(computeMiningStatus(plain, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
+    expect(plain.miningPass).toEqual({ active: false, capHours: 6 });
+    expect(computeMiningStatus(plain, T0 + 30 * HOUR).capMs).toBe(6 * HOUR);
     // the cap is frozen in the snapshot: a later tunable change does not touch the running session
     const before = T.battlePass.capHours;
     (T.battlePass as unknown as Record<string, number>).capHours = before + 3;
@@ -224,32 +224,32 @@ describe('Battle Pass and gathering sessions', () => {
     expect(computeMiningStatus(old, T0 + 30 * HOUR).oreReady).toBe(Math.floor(24 * power * T.battlePass.dropRateMultiplier)); // that session keeps its 24 h
     // a snapshot that said "no Pass" stays that way for the session
     const none = normalizeSave({ ...wire(running), miningPass: { active: false, until: null } });
-    expect(none.miningPass).toEqual({ active: false, capHours: 4 });
-    expect(computeMiningStatus(none, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
+    expect(none.miningPass).toEqual({ active: false, capHours: 6 });
+    expect(computeMiningStatus(none, T0 + 30 * HOUR).capMs).toBe(6 * HOUR);
   });
 
   it('old saves without the snapshot: the running session gets the Pass as it is at load, never a bigger cap than the player had', () => {
     const running = { ...lvl(fresh()), activeOreId: 'copper', lastMiningClaim: T0 };
     const wire = (s: SaveData) => JSON.parse(JSON.stringify(s));
     const noPass = normalizeSave({ ...wire(running), miningPass: undefined });
-    expect(noPass.miningPass).toEqual({ active: false, capHours: 4 });
-    expect(computeMiningStatus(noPass, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
+    expect(noPass.miningPass).toEqual({ active: false, capHours: 6 });
+    expect(computeMiningStatus(noPass, T0 + 30 * HOUR).capMs).toBe(6 * HOUR);
     const pass = normalizeSave({ ...wire(withPass(running)), miningPass: undefined });
-    expect(pass.miningPass).toEqual({ active: true, capHours: 4 }); // no snapshot: the base cap, never a longer one
+    expect(pass.miningPass).toEqual({ active: true, capHours: 6 }); // no snapshot: the base cap, never a longer one
     // a save that never had a snapshot field at all, computed without loading, falls back to the current Pass
     const raw = { ...running } as SaveData;
     delete raw.miningPass;
-    expect(computeMiningStatus(raw, T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
-    expect(computeMiningStatus(withPass(raw), T0 + 30 * HOUR).capMs).toBe(4 * HOUR);
+    expect(computeMiningStatus(raw, T0 + 30 * HOUR).capMs).toBe(6 * HOUR);
+    expect(computeMiningStatus(withPass(raw), T0 + 30 * HOUR).capMs).toBe(6 * HOUR);
     // nothing running: no snapshot is kept
     expect(normalizeSave(wire(fresh())).miningPass).toBeNull();
   });
 
-  it('a Pass bought mid-session does not stretch that session: the 4 h cap stays and the yield bonus starts with the next session', () => {
+  it('a Pass bought mid-session does not stretch that session: the 6 h cap stays and the yield bonus starts with the next session', () => {
     const s = applyStartGathering(lvl(fresh()), 'woodcutting', 'common_wood', T0)!.save;
     const bought = withPass(s);
     const st = computeWoodcuttingStatus(bought, T0 + 20 * HOUR);
-    expect(st.capMs).toBe(4 * HOUR);
+    expect(st.capMs).toBe(6 * HOUR);
     expect(st.passCoversSession).toBe(false);
     const plain = computeWoodcuttingStatus(s, T0 + 20 * HOUR);
     expect(st.woodReady).toBe(plain.woodReady); // no bonus for that session either

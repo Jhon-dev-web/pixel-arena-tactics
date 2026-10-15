@@ -162,7 +162,7 @@ const T = DebugPanel.define({
   },
   mining: {
     _label: 'Idle Mining',
-    capHours: { value: 4, min: 1, max: 24, step: 1, label: 'Offline storage cap (hours)' },
+    capHours: { value: 6, min: 1, max: 24, step: 1, label: 'Offline storage cap (hours)' },
     oreRatePerPower: { value: 1, min: 0.1, max: 10, step: 0.1, label: 'Ore per hour per Mining Power point' },
     // Economy design: Mining is an unattended, bot-friendly loop — it must stay an exclusive
     // raw-material faucet (ore/gems) with zero liquid currency, or it hyperinflates gold.
@@ -170,7 +170,7 @@ const T = DebugPanel.define({
   },
   woodcutting: {
     _label: 'Idle Woodcutting',
-    capHours: { value: 4, min: 1, max: 24, step: 1, label: 'Offline storage cap (hours)' },
+    capHours: { value: 6, min: 1, max: 24, step: 1, label: 'Offline storage cap (hours)' },
     woodRatePerPower: { value: 1, min: 0.1, max: 10, step: 0.1, label: 'Wood per hour per Woodcutting Power point' },
     // Same economy rule as Mining — an idle, bot-friendly loop, raw material only, zero gold.
     goldRatePerPower: { value: 0, min: 0, max: 20, step: 0.5, label: 'Gold per hour per Woodcutting Power point (kept at 0 — see economy note)' },
@@ -504,7 +504,7 @@ const T = DebugPanel.define({
     seasonDays: { value: 60, min: 7, max: 180, step: 1, label: 'Season length (days)' },
     // Convenience, not power (players trade gear on the Steam market): a moderately longer offline window (capHours) and a small yield bump. Uniques and relics never use the multiplier.
     // Round 12: 6 -> 8 h (every zone and skill then keeps the full 8 h an owner can be away), gold 10 -> 15% and delivery XP 10 -> 20%: the owner had fallen to 2.5 days ahead at floor 50 (docs/BALANCE_CHANGES.md, Rodada 12).
-    capHours: { value: 8, min: 4, max: 24, step: 1, label: 'Offline storage cap with the Pass (hours): Hunting, Mining and Woodcutting (base stays at the zone / skill cap)' },
+    capHours: { value: 10, min: 4, max: 24, step: 1, label: 'Offline storage cap with the Pass (hours): Hunting, Mining and Woodcutting (base stays at the zone / skill cap, 6 h for everyone)' },
     dropRateMultiplier: { value: 1.1, min: 1, max: 3, step: 0.05, label: 'Material yield multiplier with pass (Hunting, Mining, Woodcutting)' },
     xpPerFloor: { value: 15, min: 1, max: 100, step: 1, label: 'Pass XP per dungeon floor cleared' },
     xpPerHuntHour: { value: 10, min: 1, max: 100, step: 1, label: 'Pass XP per hour of Hunting claimed' },
@@ -635,13 +635,14 @@ const T = DebugPanel.define({
     blockDrop: { value: 0.2, min: 0, max: 1, step: 0.01, label: 'Price drop per block (share of the wholesale price)' },
     floorRate: { value: 0.08, min: 0, max: 1, step: 0.01, label: 'Lowest unit price as a share of the NORMAL merchant price' },
   },
-  // Round 18 (goldPouch.ts): the Gold Pouch turns Gold into a tradeable bag item. Only the Adventurer Pass owner creates them; anyone can open one for exactly its face value.
+  // Round 18 (goldPouch.ts): the Gold Pouch turns Gold into a tradeable bag item. Anyone creates them (the Pass owner pays the lower fee); anyone can open one for exactly its face value.
   goldPouch: {
     _label: 'Gold Pouch (tradeable Gold)',
     denomSmall: { value: 10000, min: 100, max: 10000000, step: 100, label: 'Face value of the small pouch (also the minimum amount of a pouch)' },
     denomMedium: { value: 50000, min: 100, max: 10000000, step: 100, label: 'Face value of the medium pouch' },
     denomLarge: { value: 100000, min: 100, max: 10000000, step: 100, label: 'Face value of the large pouch' },
-    feePct: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Fee paid in Gold on top when a pouch is created (a Gold sink)' },
+    feePct: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Fee paid in Gold on top when an Adventurer Pass owner creates a pouch (a Gold sink)' },
+    feePctFree: { value: 0.1, min: 0, max: 0.5, step: 0.01, label: 'Fee paid in Gold on top when a player without the Pass creates a pouch (a Gold sink)' },
     perDay: { value: 3, min: 1, max: 20, step: 1, label: 'Pouches one hero can create per local day' },
   },
   ui: {

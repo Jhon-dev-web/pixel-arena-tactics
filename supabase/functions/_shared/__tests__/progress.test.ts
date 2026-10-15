@@ -598,12 +598,19 @@ describe('profession XP bounds', () => {
   });
 
   it('between the flag value and twice it the snapshot is only flagged (not ranked)', () => {
-    const allowed = professionXpPerHour('mining', 20) * (1 / 6) + professionBurstXp('mining', 20);
+    // The allowance follows the level the new XP reaches (a big gain levels the hero up and raises it), so look for a gain that lands between the flag value and twice it AT that level.
     const base = PROFESSION_XP_TO_LEVEL.mining[19];
+    const allowedAt = (xp: number): number => {
+      const level = professionLevelFromXp('mining', xp);
+      return professionXpPerHour('mining', level) * (1 / 6) + professionBurstXp('mining', level);
+    };
+    let gain = 0;
+    for (let g = 1; g < 1e9 && !gain; g = Math.ceil(g * 1.02)) if (g > allowedAt(base + g) * 1.2 && g < allowedAt(base + g) * 1.8) gain = g;
+    expect(gain).toBeGreaterThan(0);
     const r = play(
       [
         { atMs: T0, o: { xp: xpAtPosition(40), floor: 40, seconds: 100, mining: base } },
-        { atMs: T0 + 600_000, o: { xp: xpAtPosition(40), floor: 40, seconds: 700, mining: base + Math.floor(allowed * 1.5) } },
+        { atMs: T0 + 600_000, o: { xp: xpAtPosition(40), floor: 40, seconds: 700, mining: base + gain } },
       ],
       T0 - START,
     );

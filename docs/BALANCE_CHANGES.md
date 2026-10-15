@@ -1868,3 +1868,51 @@ Criar e abrir é sempre **perda líquida igual à taxa** (testado para os três 
 - O mercado de jogadores não existe: a Bolsa é, hoje, só armazenamento com taxa. O preço livre entre jogadores fica para a integração.
 - Não vi no navegador: o botão "Atacadista" nos avisos de mochila cheia e no resumo "bem-vindo de volta", o botão "Abrir" no detalhe do inventário, o detalhe do Códice. São um botão ou uma linha de texto (tsc, lint e testes passam).
 - O simulador longo rodou uma vez só (12 seeds); as medianas oscilam uns 3 dias, as do andar 100 e do chefe até 15.
+
+## Rodada 19 — o Passe mantém a vantagem sem lucro por pagamento (2026-10-15)
+
+Decisão do dono: quem compra o Passe tem de ficar claramente à frente, mas sem poder lucrar por ter pago. Seis mudanças:
+
+| Peça | Antes | Depois |
+| --- | --- | --- |
+| Armazenamento base (todos): Caça zona 1 / zona 2, Mineração, Lenhador | 4 h / 5 h / 4 h / 4 h | **6 h** em todos (as zonas 3 e 4 já eram 6 h) |
+| Armazenamento do Passe (`T.battlePass.capHours`) | 8 h | **10 h** |
+| Peça forjada com o Selo do Ferreiro | sem vínculo (negociável se Épica+) | **nasce vinculada** (nunca negociável) |
+| Criar Bolsa de Ouro | só dono do Passe, taxa 5% | **qualquer jogador**: 10% sem o Passe (`T.goldPouch.feePctFree`), 5% com o Passe (`feePct`); limite diário igual (3) |
+| Emblema do Aventureiro | +5% XP, +5% ouro, +2% dano | **+5% ouro, +2% dano** (sem XP) |
+| Linha do Passe na lista de vantagens | "Pode criar Bolsas de Ouro" | "Taxa menor na Bolsa de Ouro" (gerada de `passPerks.ts`, conferida por `passPerks.test.ts`) |
+
+**Onde o armazenamento é lido** (todos derivam dos mesmos números): `huntingZones.ts` (`offlineCapHours` das zonas), `tunables.ts` (`mining.capHours`, `woodcutting.capHours`, `battlePass.capHours`), `engine.ts` (a sessão de Caça, de Mineração e de Lenhador congelam o teto de quando começaram, então uma sessão em andamento mantém o teto antigo até acabar; a regra de snapshot não mudou), a tela de seleção de Caça e a de profissões (mostram "guarda até N h"), o resumo de volta e os avisos (usam o teto da própria sessão), a lista de vantagens do Passe e o limite do servidor (`supabase/functions/_shared/progress/bounds.ts`, `burstHours` 8 → 10, para que um resgate de 10 h não seja marcado). A Horta não tem teto de armazenamento (cada canteiro guarda uma colheita pronta) e não mudou. O `ESTIMATE_HOURS = 4` da estimativa de caça é uma janela de referência da tela, não um teto, e ficou.
+
+**Medição** (`npm run sim`, 20 seeds, 21 dias, cenário A contra o dono P; antes e depois, com e sem únicos):
+
+| Meta do guarda (dias 1 a 21) | Antes (com / sem únicos) | Depois, com únicos | Depois, `SIM_NO_UNIQUES=1` |
+| --- | --- | --- | --- |
+| Primeira sessão termina no andar ≥ 8 | 8 / 8 | 8 | 8 |
+| Primeira peça forjada no dia ≤ 2 | 2 / 2 | 2 | 2 |
+| Nível no dia 1 (10-16) | 13 / 13 | 13 | 13 |
+| Nível no dia 3 (20-29) | 28 / 28 | **30 (27-34), fora da faixa** | **30 (27-34), fora da faixa** |
+| Nível no dia 14 (45-60) | 47 / 47 | 50 | 50 |
+| Chefe 25, dia 4-6 (mediana) | 5 / 5 | 4 | 4 |
+| Chegada ao andar 50, mediana 12-15 | 15 / 15 | 12 (primeira seed no dia 9) | 13 (primeira seed no dia 10) |
+| Chefe 50, mediana | 16 / 16 | 12 | 13,5 |
+| Depois do chefe (HP x dano) ≥ 1,0 | 1,08 / 1,08 | 1,08 | 1,08 |
+
+**O guarda que quebrou:** o nível no dia 3 passou de 28 para 30 (a faixa é 20-29). É o efeito direto dos 6 h de base para quem não tem o Passe (a primeira zona passou de 4 h para 6 h). Também o próprio teste T6 do simulador marca "fora da meta" na chegada ao andar 50 com únicos (a primeira seed chega no dia 9; a regra é nenhuma antes do dia 10) e no chefe 50. Nada mais foi ajustado por conta própria: é um efeito esperado da decisão dos 6 h, e fica para o dono decidir (por exemplo manter a zona 1 em 5 h ou subir só a Mineração e o Lenhador).
+
+**Dono contra não dono** (medianas, cenário A contra P, só as vantagens do Passe):
+
+| Quando | Medida | Antes: sem / com Passe | Depois: sem / com Passe |
+| --- | --- | --- | --- |
+| dia 7 | materiais/dia (média 1-7) | 304 / 659 (+116%) | 346 / 828 (+139%) |
+| dia 7 | nível | 41 / 46 (+5) | 41 / 47 (+6) |
+| dia 7 | andar mais alto | 30 / 36 | 30 / 40 |
+| dia 14 | materiais/dia (média 1-14) | 373 / 875 (+135%) | 553 / 1 066 (+93%) |
+| dia 14 | nível | 47 / 53 (+6) | 50 / 54 (+4) |
+| dia 14 | andar mais alto | 43 / 60 | 60 / 69 |
+| marco | chegada ao andar 50 | 15 / 10 (5 dias) | 12 / 9 (3 dias) |
+| marco | chefe 50 | 16 / 11 (5 dias) | 12 / 9 (3 dias) |
+
+Sem únicos o quadro é o mesmo: dia 14 nível 50 / 54 e chegada ao 50 em 13 / 9 (4 dias; antes 15 / 10,5, 4,5 dias). O dono continua claramente à frente (+93% de materiais e 3 a 4 dias nos marcos), mas a vantagem de nível e de tempo diminuiu no dia 14 e no andar 50: o não dono ganhou mais com os 6 h do que o dono ganhou com os 10 h.
+
+**Não verificado:** a tela de Bolsas, o texto novo da lista de vantagens e a linha da descrição do Selo não foram vistos no navegador (só pelos testes). A migração e o servidor de ranking não têm teste de integração com o banco.

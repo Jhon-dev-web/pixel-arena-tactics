@@ -775,7 +775,7 @@ describe('economy skills', () => {
     expect(characterXpBonusPct(h)).toBe(0);
     expect(characterXpBonusPct(q)).toBeCloseTo(3 * T.heroSkills.quickLearnerXp * 100, 6);
     const emblem = { ...q, equipped: { ...q.equipped, relic: 'season_emblem' } };
-    expect(characterXpBonusPct(emblem)).toBeCloseTo(5 + 3 * T.heroSkills.quickLearnerXp * 100, 6);
+    expect(characterXpBonusPct(emblem)).toBeCloseTo(3 * T.heroSkills.quickLearnerXp * 100, 6); // the Season Emblem no longer adds XP
   });
 
   it('Packer adds flat inventory slots through the one capacity function', () => {

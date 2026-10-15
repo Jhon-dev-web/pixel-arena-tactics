@@ -184,10 +184,10 @@ describe('season settlement (battlepass.ts settleSeason)', () => {
 describe('perks of the Pass: convenience, not power', () => {
   const owner = (s: SaveData = defaultSave()): SaveData => ({ ...s, hasBattlePass: true });
 
-  it('the final numbers: a longer storage cap (base stays 4 h), +10 stash slots, +5 bag slots, -20 % repair, +1 offer, +1 reroll, +20 % delivery XP (Round 12: 8 h storage, +15 % gold)', () => {
+  it('the final numbers: a longer storage cap (base 6 h for everyone), +10 stash slots, +5 bag slots, -20 % repair, +1 offer, +1 reroll, +20 % delivery XP (Round 19: 10 h storage, +15 % gold)', () => {
     // Measured advantage of an owner (npm run sim, SIM_PASS_ONLY; see docs/BALANCE_CHANGES.md section 28): about +40-60 % materials per day at days 7 / 14
     // and 2-3 days earlier on the milestones. A comment, not an assertion: the sim is not part of the test suite.
-    expect(T.battlePass.capHours).toBe(8);
+    expect(T.battlePass.capHours).toBe(10);
     expect(T.battlePass.stashBonusSlots).toBe(10);
     expect(T.battlePass.dropRateMultiplier).toBeCloseTo(1.1, 9);
     expect(T.battlePass.bagBonusSlots).toBe(5); // the floor of the bag perk

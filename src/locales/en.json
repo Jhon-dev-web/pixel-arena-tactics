@@ -403,7 +403,7 @@
     "overlord_sigil": "Overlord Sigil",
     "overlord_sigil_d": "A seal of command: precise blows grow more precise, and crueller.",
     "season_emblem": "Adventurer's Emblem",
-    "season_emblem_d": "The crest of one who finished the season: more experience, a little more gold and a slightly stronger blow."
+    "season_emblem_d": "The crest of one who finished the season: a little more gold and a slightly stronger blow."
   },
   "enemies": {
     "goblinRogue": "Goblin Rogue",
@@ -758,7 +758,7 @@
     "prospector_tonic_d": "+10% ore and wood (and profession XP) for 2 real-time hours; adds to the Gatherer Brew",
     "prospector_tonic_active": "Prospector's Tonic active for 2 hours!",
     "forge_seal": "Blacksmith's Seal",
-    "forge_seal_d": "Toggle it in the Forge: the next piece forged comes out Epic or better. It is only spent if the forge happens.",
+    "forge_seal_d": "Toggle it in the Forge: the next piece forged comes out Epic or better. It is only spent if the forge happens. The piece comes out bound, so it cannot be traded.",
     "stash_deed": "Stash Deed",
     "stash_deed_d": "Use it to enlarge the stash by 5 slots, for good. The total limit is 20 extra slots.",
     "gold_pouch_s": "Small Gold Pouch",
@@ -1689,8 +1689,8 @@
     "perkRepairSub": "Forge",
     "perkLoadout": "Second skill set",
     "perkLoadoutSub": "Two point allocations, free switching",
-    "perkPouch": "Can create Gold Pouches (minimum {min})",
-    "perkPouchSub": "Turn Gold into a tradeable item. {fee}% fee in Gold, up to {n} per day",
+    "perkPouch": "Lower fee on Gold Pouches (minimum {min})",
+    "perkPouchSub": "Anyone can turn Gold into a tradeable item, up to {n} per day. The Pass pays {fee}% in Gold instead of {free}%",
     "trackTitle": "Season track",
     "goMyLevel": "Go to my level",
     "claimed": "Claimed",
@@ -1877,9 +1877,9 @@
   "pouch": {
     "tab": "Pouches",
     "title": "Gold Pouch",
-    "explain": "Turns Gold into a Gold Pouch: an item that can be sold to other players once the market opens. Only the Adventurer Pass owner creates Pouches. Minimum amount: {min} Gold; the fee is {fee}% in Gold, paid on top; at most {n} Pouches per day.",
+    "explain": "Turns Gold into a Gold Pouch: an item that can be sold to other players once the market opens. Anyone can create Pouches. Minimum amount: {min} Gold; the fee is {free}% in Gold, paid on top ({fee}% for Adventurer Pass owners); at most {n} Pouches per day.",
     "openExplain": "Any player can open a Pouch they hold and receive exactly its value. Opening cannot be undone.",
-    "needPass": "Creating Pouches needs the Adventurer Pass. Opening one you received does not.",
+    "passFee": "The Adventurer Pass halves the fee: {fee}% instead of {free}%.",
     "face": "{v} Gold",
     "feeLine": "Fee {fee} · Total {total}",
     "create": "Create",
@@ -1887,7 +1887,6 @@
     "failLimit": "Daily Pouch limit reached. It resets at midnight.",
     "failGold": "Not enough Gold: it takes the value plus the fee.",
     "failBag": "No room in the inventory for the Pouch.",
-    "failPass": "Needs the Adventurer Pass.",
     "created": "Pouch created: -{g} Gold",
     "opened": "Pouch opened: +{g} Gold",
     "worth": "Worth {g} Gold",

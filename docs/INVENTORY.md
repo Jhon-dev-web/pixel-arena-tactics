@@ -125,7 +125,7 @@ Rodam no carregamento (`legacyPouch.ts`), em um save que ainda tem `huntPouch`:
 
 Preparação para o mercado de jogadores (integração com a Steam, ainda não existe). As decisões do dono: só equipamento forjado de raridade alta e drops raros/únicos são vendáveis; material comum nunca.
 
-- Toda **instância** de equipamento tem o campo opcional `bound`. Equipar a peça pela primeira vez liga o campo **para sempre**; desequipar não o desliga. Forjar não vincula; desmontar, refinar, reforjar e reparar funcionam igual numa peça vinculada ou não. **Rodada 16:** o refino além do +8 (+9 a +12, só tier 5 e 6) e o Lapidar (travar um atributo e sortear os outros, só Épica ou Lendária de tier 4 ou mais) seguem a mesma regra: nem ligam nem desligam o vínculo, não mudam a raridade (então não mudam `isTradeable`) e não tocam nas outras cópias. Nenhum sumidouro novo cria, troca ou promove raridade: a oferta de peças Épicas e Lendárias no mercado continua sendo só a da tabela da forja (63 / 25 / 10 / 2).
+- Toda **instância** de equipamento tem o campo opcional `bound`. Equipar a peça pela primeira vez liga o campo **para sempre**; desequipar não o desliga. Forjar não vincula (**exceto com o Selo do Ferreiro**: a peça forjada com o Selo já nasce vinculada, então nunca é negociável, seja qual for a raridade); desmontar, refinar, reforjar e reparar funcionam igual numa peça vinculada ou não. **Rodada 16:** o refino além do +8 (+9 a +12, só tier 5 e 6) e o Lapidar (travar um atributo e sortear os outros, só Épica ou Lendária de tier 4 ou mais) seguem a mesma regra: nem ligam nem desligam o vínculo, não mudam a raridade (então não mudam `isTradeable`) e não tocam nas outras cópias. Nenhum sumidouro novo cria, troca ou promove raridade: a oferta de peças Épicas e Lendárias no mercado continua sendo só a da tabela da forja (63 / 25 / 10 / 2).
 - Saves antigos: toda instância que está equipada quando o save carrega passa a vinculada; o que está na mochila continua sem vínculo. Os itens iniciais (clava e trapos) já nascem vinculados.
 - **`isTradeable(instância)`** (`src/game/gearInstances.ts`) é a regra única, e o mercado vai chamar só ela: **não vinculada E (raridade Épica ou Lendária OU o molde é um único)**. Tudo o mais não é negociável: equipamento comum ou raro, peças vinculadas, relíquias empilháveis, materiais e consumíveis.
 
@@ -142,11 +142,11 @@ Preparação para o mercado de jogadores (integração com a Steam, ainda não e
 
 ## 9. A Bolsa de Ouro e o Mercador Atacadista (rodada 18)
 
-**Bolsa de Ouro** (`src/game/goldPouch.ts`): Ouro vira um item de inventário que outro jogador poderá comprar quando o mercado existir (precisa de servidor; aqui só a parte local). Três consumíveis empilháveis (`gold_pouch_s` / `_m` / `_l`), 99 por espaço como qualquer pilha, na mochila e no Baú, salvos e exportados como os demais consumíveis. Os valores (10 000 / 50 000 / 100 000), a taxa (5%) e o limite (3 por dia) são `T.goldPouch`; o menor valor é o mínimo de uma Bolsa.
+**Bolsa de Ouro** (`src/game/goldPouch.ts`): Ouro vira um item de inventário que outro jogador poderá comprar quando o mercado existir (precisa de servidor; aqui só a parte local). Três consumíveis empilháveis (`gold_pouch_s` / `_m` / `_l`), 99 por espaço como qualquer pilha, na mochila e no Baú, salvos e exportados como os demais consumíveis. Os valores (10 000 / 50 000 / 100 000), a taxa (10% sem o Passe, 5% com o Passe: `feePctFree` e `feePct`) e o limite (3 por dia) são `T.goldPouch`; o menor valor é o mínimo de uma Bolsa.
 
 | | Regra |
 | --- | --- |
-| Criar | só o dono do Passe; paga o valor + taxa (arredondada para cima) em Ouro; no máximo 3 por dia local (a mesma virada de dia do mercador e das masmorras, todas as faixas juntas); precisa de espaço na mochila, senão nada é feito e nenhum Ouro sai |
+| Criar | **qualquer jogador** (rodada 19); paga o valor + taxa (10%; 5% para o dono do Passe) (arredondada para cima) em Ouro; no máximo 3 por dia local (a mesma virada de dia do mercador e das masmorras, todas as faixas juntas); precisa de espaço na mochila, senão nada é feito e nenhum Ouro sai |
 | Abrir | qualquer jogador que tenha uma, só da mochila, exatamente o valor de face, sem volta (dois toques) |
 | Vender aos NPCs | nunca (`sellValue` 0): nem o mercador comum, nem o atacadista (que só compra material) |
 | Estatística | "Patrimônio" = Ouro + Ouro dentro das Bolsas (mochila e Baú); o Ouro das Bolsas não é gastável; abrir uma Bolsa não conta como Ouro ganho (senão criar e abrir em ciclo faria as conquistas de Ouro) |

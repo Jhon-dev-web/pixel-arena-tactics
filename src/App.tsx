@@ -57,7 +57,7 @@ import { addForced, canAddInstances, expandInventory, inventoryCapacity } from '
 import { StackKind, applyStashMove, applyStashUpgrade, applyStoreAll, bagCount, stashCount } from './game/stash';
 import { applyMerchantSell, SellKind } from './game/merchant';
 import { applyWholesaleBatch, WholesaleLine } from './game/wholesale';
-import { applyCreatePouch, applyOpenPouch, PouchId, pouchCost } from './game/goldPouch';
+import { applyCreatePouch, applyOpenPouch, PouchId } from './game/goldPouch';
 import { applyDiscard } from './game/bagActions';
 import { ItemUse } from './game/itemUses';
 import { RefiningStation, getRefiningRecipe as refiningRecipeById } from './game/refining';
@@ -1548,16 +1548,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth(r.save);
     showToast(t('wholesale.sold', { n: fmtNum(r.units), g: fmtNum(r.gold) }));
   };
-  // Gold Pouches (goldPouch.ts): the Pass owner turns Gold into one (fee on top, daily limit, needs bag room); anyone opens one for exactly its face value.
+  // Gold Pouches (goldPouch.ts): any player turns Gold into one (fee on top, lower for the Pass owner, daily limit, needs bag room); anyone opens one for exactly its face value.
   const createPouch = (id: PouchId) => {
     const r = applyCreatePouch(saveRef.current, id, Date.now());
     if (!r.ok || !r.save) {
-      showToast(t(r.reason === 'limit' ? 'pouch.failLimit' : r.reason === 'bag' ? 'pouch.failBag' : r.reason === 'noPass' ? 'pouch.failPass' : 'pouch.failGold'));
+      showToast(t(r.reason === 'limit' ? 'pouch.failLimit' : r.reason === 'bag' ? 'pouch.failBag' : 'pouch.failGold'));
       return;
     }
     playSfx('victory');
     setSaveBoth(r.save);
-    showToast(t('pouch.created', { g: fmtNum(pouchCost(id)) }));
+    showToast(t('pouch.created', { g: fmtNum(r.gold ?? 0) }));
   };
   const openPouch = (id: PouchId) => {
     const r = applyOpenPouch(saveRef.current, id);

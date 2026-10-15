@@ -29,8 +29,8 @@ export const PACE_REJECT_FACTOR = 3;
 
 export const BOUNDS = {
   // ---- time / pace ---------------------------------------------------------------------------------------------------------------------------
-  /** Server hours of progress a single snapshot may carry that were earned BEFORE the previous snapshot and only claimed now (an offline Hunt waits at most the Pass cap of 8 h). SOURCE: tunables battlePass.capHours = 8. */
-  burstHours: 8,
+  /** Server hours of progress a single snapshot may carry that were earned BEFORE the previous snapshot and only claimed now (an offline Hunt waits at most the Pass cap of 10 h). SOURCE: tunables battlePass.capHours = 10. */
+  burstHours: 10,
   /**
    * Level pace slack, in pace-days, on top of the XP burst (burstXp() below already lets a claimed-late reward through). Small: only rounding.
    */

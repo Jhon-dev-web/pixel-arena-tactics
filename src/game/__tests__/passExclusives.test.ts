@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCombatStats, computeHuntingStatus, buildHuntSession, defaultSave, normalizeSave, SaveData, xpToReachLevel } from '../engine';
 import { applyBattlePassClaim, BATTLE_PASS_TRACK, BattlePassReward } from '../battlepass';
 import { applyDeliveryAccept, deliveryXp, ensureDeliveryOffers } from '../deliveries';
-import { applyForge, applyUpgrade } from '../gearInstances';
+import { applyForge, applyUpgrade, isTradeable } from '../gearInstances';
 import { applyReforge } from '../reforge';
 import { applyDiscard } from '../bagActions';
 import { GEAR, getGear, isInstancedSlot, relicXpBonusPct } from '../gear';
@@ -114,10 +114,10 @@ describe('Season Relic (season_emblem)', () => {
     expect(applyDiscard(s, 'gear', 'season_emblem', 'all')!.inventory.season_emblem).toBe(1); // the worn copy is kept
   });
 
-  it('effects: +5 % character XP, +5 % gold (inside the cap) and +2 % final damage, nothing else moves', () => {
+  it('effects: +5 % gold (inside the cap) and +2 % final damage, no XP bonus, nothing else moves', () => {
     const b = buildCombatStats(base);
     const e = buildCombatStats(withRelic(base, 'season_emblem'));
-    expect(e.xpBonus).toBe(5);
+    expect(e.xpBonus).toBe(0);
     expect(b.xpBonus).toBe(0);
     expect(e.goldBonus).toBe(5);
     expect(e.dmgBase / b.dmgBase).toBeCloseTo(1.02, 9);
@@ -125,12 +125,12 @@ describe('Season Relic (season_emblem)', () => {
     // gold goes through the same 25 % cap as every other source
     const withCoin = buildCombatStats(withRelic({ ...base }, 'goblin_lucky_coin'));
     expect(withCoin.goldBonus).toBe(10);
-    expect(relicXpBonusPct('season_emblem')).toBe(5);
+    expect(relicXpBonusPct('season_emblem')).toBe(0);
     expect(relicXpBonusPct('warchief_totem')).toBe(0);
     expect(relicXpBonusPct(null)).toBe(0);
   });
 
-  it('Hunting reads the bonus from the session stats: character XP x1.05 and nothing else (Gold, drops and fights are the same)', () => {
+  it('Hunting still reads an XP bonus from the session stats (x1.05 and nothing else); the Emblem no longer carries one', () => {
     const zone = HUNTING_ZONES[0];
     const start = 5_000_000_000;
     const s = { ...defaultSave(), activeHuntingZone: zone.id, activeHuntingDepth: 'shallow' as const, huntingOfflineStart: start };
@@ -146,10 +146,10 @@ describe('Season Relic (season_emblem)', () => {
     const loaded = normalizeSave(wire(mk(5)));
     expect(loaded.huntSession!.stats.xpBonus).toBe(5);
     // and a real equipped emblem is frozen into a fresh session
-    expect(buildHuntSession(withRelic(s, 'season_emblem'), start).stats.xpBonus).toBe(5);
+    expect(buildHuntSession(withRelic(s, 'season_emblem'), start).stats.xpBonus).toBe(0);
   });
 
-  it('Delivery orders: the accepted order carries the relic bonus on top of the Pass bonus (decided at accept, frozen)', () => {
+  it('Delivery orders: the Emblem adds no XP to the accepted order (the Pass bonus is the same with or without it)', () => {
     const now = 1_800_000_000_000;
     let s: SaveData = { ...defaultSave(), xp: xpToReachLevel(30), hasBattlePass: true };
     s = ensureDeliveryOffers(s, now, mulberry32(1), true);
@@ -158,8 +158,8 @@ describe('Season Relic (season_emblem)', () => {
     const a = applyDeliveryAccept(withRelic(stocked, null), offer.id, now, mulberry32(2), true)!;
     const b = applyDeliveryAccept(withRelic(stocked, 'season_emblem'), offer.id, now, mulberry32(2), true)!;
     expect(a.deliveries.active!.offer.xp).toBe(deliveryXp(offer, true));
-    expect(b.deliveries.active!.offer.xp).toBe(deliveryXp(offer, true, 5));
-    expect(b.deliveries.active!.offer.xp).toBeGreaterThan(a.deliveries.active!.offer.xp);
+    expect(b.deliveries.active!.offer.xp).toBe(a.deliveries.active!.offer.xp);
+    expect(deliveryXp(offer, true, 5)).toBeGreaterThan(deliveryXp(offer, true)); // the plumbing still works for a future bonus
   });
 
   it('a sidegrade: its real combat value (ln of the duel margin) is clearly BELOW the weakest combat relic at levels 30 / 60 / 90', () => {
@@ -180,7 +180,7 @@ describe('Season Relic (season_emblem)', () => {
     expect(text).toMatch(/5/);
     expect(text).toMatch(/2/);
     expect(text).not.toMatch(/\{|undefined|NaN/);
-    expect(GEAR.filter((g) => g.xpBonusPct).map((g) => g.id)).toEqual(['season_emblem']);
+    expect(GEAR.filter((g) => g.xpBonusPct).map((g) => g.id)).toEqual([]); // no item gives XP any more
   });
 });
 
@@ -224,6 +224,15 @@ describe("Blacksmith's Seal (forge_seal)", () => {
     expect(plain.ok).toBe(true);
     expect(plain.sealUsed).toBeFalsy();
     expect(plain.save!.consumables.forge_seal).toBe(2);
+  });
+
+  it('a piece forged with the seal is born bound (never tradeable, whatever its rarity); a plain forged piece is not bound', () => {
+    const sealed = applyForge(stocked(1), item.id, { level: 100, seal: true, rng: mulberry32(3) });
+    expect(sealed.instance!.bound).toBe(true);
+    expect(isTradeable(sealed.instance!)).toBe(false);
+    expect(sealed.save!.gearInstances[sealed.instance!.id].bound).toBe(true);
+    const plain = applyForge(stocked(1), item.id, { level: 100, rng: mulberry32(3) });
+    expect(plain.instance!.bound).toBeUndefined();
   });
 
   it('a blocked / failed forge keeps the seal', () => {
