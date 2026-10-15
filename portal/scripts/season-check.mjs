@@ -27,65 +27,48 @@ const init = requestInit(e.meter, 'ANON');
 assert.equal(init.headers.apikey, 'ANON');
 assert.equal(init.headers.authorization, 'Bearer ANON');
 
-// ---- the meter -------------------------------------------------------------------------------------------------------------------------
-const view = meterView([{ sold: 3742, target: 15000, season_open: false, starts_at: null, ends_at: null, updated_at: '2026-10-14T00:00:00Z' }], 'pt');
-assert.equal(view.sold, 3742);
-assert.equal(view.target, 15000);
-assert.equal(view.pct, 24.9);
-assert.equal(view.soldText, '3.742');
-assert.equal(view.targetText, '15.000');
-assert.equal(view.pctText, '24,9%');
+// ---- the meter: progress only ---------------------------------------------------------------------------------------------------------------
+// The public learns ONE number from pass_meter(): a fraction. Neither the Passes sold nor the goal are in the answer, in the view or on the page.
+const view = meterView([{ progress: 0.249, season_open: false, starts_at: null, ends_at: null, updated_at: '2026-10-14T00:00:00Z' }]);
+assert.equal(view.progress, 0.249);
+assert.equal(view.barPct, 24.9);
 assert.equal(view.open, false);
-assert.equal(meterView({ sold: 3742, target: 15000 }, 'en').targetText, '15,000');
-assert.equal(meterView({ sold: 20000, target: 15000 }, 'pt').pct, 100); // never past the full bar
-assert.equal(meterView({ sold: 0, target: 15000 }, 'pt').pct, 0);
-for (const bad of [null, [], {}, { sold: -1, target: 15000 }, { sold: 'x', target: 15000 }, { sold: 10, target: 0 }, { sold: 10 }, 'x', [{ sold: Infinity, target: 5 }]]) {
-  assert.equal(meterView(bad, 'pt'), null, JSON.stringify(bad));
+assert.deepEqual(Object.keys(view).sort(), ['barPct', 'endsAt', 'open', 'progress', 'startsAt'], 'the view carries no count, goal or percentage text');
+assert.equal(meterView({ progress: 1.7 }).barPct, 100); // never past the full bar
+assert.equal(meterView({ progress: 1 }).barPct, 100);
+assert.equal(meterView({ progress: 0 }).barPct, 0);
+assert.equal(meterView({ progress: 0 }).progress, 0);
+for (const bad of [null, [], {}, { progress: -0.1 }, { progress: 'x' }, { progress: '0.5' }, { progress: null }, { sold: 10, target: 100 }, { sold: 3742, target: 15000 }, 'x', [{ progress: Infinity }], [{ progress: NaN }]]) {
+  assert.equal(meterView(bad), null, JSON.stringify(bad));
 }
-const opened = meterView({ sold: 15000, target: 15000, season_open: true, starts_at: '2026-11-01T00:00:00Z', ends_at: '2026-12-31T00:00:00Z' }, 'pt');
+const opened = meterView({ progress: 1, season_open: true, starts_at: '2026-11-01T00:00:00Z', ends_at: '2026-12-31T00:00:00Z' });
 assert.equal(opened.open, true);
-assert.equal(meterView({ sold: 1, target: 2, season_open: true, starts_at: null, ends_at: null }, 'pt').open, false); // open without dates is not trusted
-assert.equal(fillText(seasonPage.goalLabel.pt, { target: '15.000' }), 'Ao chegarmos a 15.000 Passes, abrimos a Liga com prêmio em dinheiro.');
-assert.equal(fillText(seasonPage.goalLabel.en, { target: '15,000' }), 'When we reach 15,000 Passes, we open the League with a cash prize.');
+assert.equal(meterView({ progress: 0.5, season_open: true, starts_at: null, ends_at: null }).open, false); // open without dates is not trusted
+// a server that still answered sold / target would not leak them through the view either
+const leaky = meterView({ progress: 0.2, sold: 3000, target: 15000 });
+assert.ok(!JSON.stringify(leaky).includes('3000') && !JSON.stringify(leaky).includes('15000'));
 
-// ---- the meter states: low count, mid, no-count, failed ------------------------------------------------------------------------------------
-const present = (raw, lang = 'pt', options) => {
+// ---- the states of the bar: low, mid, full, failed ------------------------------------------------------------------------------------------
+const present = (raw, lang = 'pt') => {
   const l = Object.fromEntries(Object.entries(seasonPage).map(([key, value]) => [key, value[lang]]));
-  return meterPresentation(meterView(raw, lang, options), l);
+  return meterPresentation(meterView(raw), l);
 };
-const low = present({ sold: 37, target: 15000 });
-assert.equal(meterView({ sold: 37, target: 15000 }, 'pt').low, true);
-assert.equal(low.figures, false, 'low count: no big "37 / 15.000"');
-assert.equal(low.showPct, false, 'low count: the percentage is hidden');
-assert.equal(low.line, '37 aventureiros já têm o Passe · faltam 14.963 para a Liga');
-assert.ok(low.barPct >= 3, 'low count: the bar has a visible minimum width');
-assert.equal(low.goal, 'Ao chegarmos a 15.000 Passes, abrimos a Liga com prêmio em dinheiro.');
-assert.equal(present({ sold: 37, target: 15000 }, 'en').line, '37 adventurers already own the Pass · 14,963 to go for the League');
-assert.equal(present({ sold: 1, target: 15000 }).line, '1 aventureiro já tem o Passe · faltam 14.999 para a Liga');
-assert.equal(present({ sold: 0, target: 15000 }).line, 'Seja um dos primeiros aventureiros com o Passe · faltam 15.000 para a Liga');
-assert.equal(present({ sold: 0, target: 15000 }).barPct, 0);
-assert.equal(meterView({ sold: 749, target: 15000 }, 'pt').low, true); // 4.99%: still low with the default 5%
-assert.equal(meterView({ sold: 750, target: 15000 }, 'pt').low, false); // exactly 5%: not low
-assert.equal(meterView({ sold: 749, target: 15000 }, 'pt', { lowPct: 2 }).low, false); // the threshold comes from the config
-const mid = present({ sold: 3742, target: 15000 });
-assert.equal(mid.figures, true);
-assert.equal(mid.showPct, true);
-assert.equal(mid.barPct, 24.9);
-assert.equal(meterView({ sold: 3742, target: 15000 }, 'pt').pctText, '24,9%');
-// meterShowCount false: no absolute number and no percentage anywhere in what is shown
-for (const raw of [{ sold: 37, target: 15000 }, { sold: 3742, target: 15000 }, { sold: 8000, target: 15000 }, { sold: 14100, target: 15000 }]) {
-  for (const lang of ['pt', 'en']) {
-    const hidden = present(raw, lang, { showCount: false });
-    assert.equal(hidden.figures, false);
-    assert.equal(hidden.showPct, false);
-    assert.ok(!/\d/.test(hidden.line + hidden.goal), 'no digits when the count is hidden: ' + hidden.line + ' / ' + hidden.goal);
+assert.equal(seasonPage.goalLine.pt, 'Quando a barra encher, a Liga da Temporada começa.');
+assert.equal(seasonPage.goalLine.en, 'When the bar fills, the Season League begins.');
+for (const lang of ['pt', 'en']) {
+  for (const progress of [0, 0.001, 0.0067, 0.03, 0.249, 0.5, 0.93, 1]) {
+    const shown = present({ progress }, lang);
+    assert.equal(shown.line, seasonPage.goalLine[lang], 'one line, always the same');
+    assert.ok(!/[0-9%]/.test(shown.line), 'no digit and no percent sign in what is shown: ' + shown.line);
+    assert.deepEqual(Object.keys(shown).sort(), ['barPct', 'line']);
   }
 }
-assert.equal(present({ sold: 37, target: 15000 }, 'pt', { showCount: false }).line, 'A contagem está só começando.');
-assert.equal(present({ sold: 3742, target: 15000 }, 'pt', { showCount: false }).line, 'A comunidade está a caminho da meta.');
-assert.equal(present({ sold: 8000, target: 15000 }, 'pt', { showCount: false }).line, 'Já passamos da metade do caminho.');
-assert.equal(present({ sold: 14100, target: 15000 }, 'pt', { showCount: false }).line, 'Falta pouco para a Liga abrir.');
-assert.equal(present({ sold: 3742, target: 15000 }, 'pt', { showCount: false }).goal, 'Ao chegarmos à meta de Passes, abrimos a Liga com prêmio em dinheiro.');
+const barOf = progress => present({ progress }).barPct;
+assert.equal(barOf(0), 0, 'nothing yet: an empty bar');
+assert.ok(barOf(0.001) >= 3 && barOf(0.0067) >= 3, 'a little progress: the bar has a visible minimum width');
+assert.equal(barOf(0.249), 24.9);
+assert.equal(barOf(0.5), 50);
+assert.equal(barOf(1), 100);
 // a failed load is its own message, escaped, and never the "no players" text
 const failed = failedRows(labels);
 assert.ok(failed.includes('Ranking indisponível agora. Tente de novo em instantes.') && failed.includes('data-kind="failed"'));
@@ -153,15 +136,17 @@ const page = (lang, route = 'season') => pageOf(lang, route).html;
 const text = html => html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ').replace(/\s+/g, ' ');
 
 const bare = page('pt');
-assert.ok(bare.includes('Contagem de Passes indisponível agora. Tente de novo em instantes.'), 'no live config: the meter says it is unavailable');
+assert.ok(bare.includes('Barra de progresso indisponível agora. Tente de novo em instantes.'), 'no live config: the meter says it is unavailable');
 assert.ok(bare.includes('Ranking indisponível agora. Tente de novo em instantes.'), 'no live config: the rankings say they are unavailable');
 assert.ok(!text(bare).includes('Ainda não há jogadores'), 'unavailable is never shown as empty');
-assert.ok(!bare.includes('>—<') && !/<strong data-meter-sold>[^<]/.test(bare), 'no dash placeholders in the meter');
+assert.ok(!bare.includes('>—<') && !bare.includes('data-meter-sold') && !bare.includes('data-meter-pct') && !bare.includes('data-open-sold'), 'no dash and no count / percentage placeholders in the meter');
 assert.ok(bare.includes('data-meter-closed hidden'), 'the meter figures stay hidden until real data arrives');
 assert.ok(bare.includes('aria-disabled="true">Em breve'), 'no sale: the buy button is disabled "Em breve"');
 assert.ok(bare.includes('data-supabase-url=""') && bare.includes('data-anon-key=""'));
-assert.ok(bare.includes('data-low-pct="5"') && bare.includes('data-show-count="true"'));
-assert.ok(!/15[.,]?000/.test(bare), 'the goal is never written in the page: it comes from the server');
+assert.ok(!bare.includes('data-low-pct') && !bare.includes('data-show-count'), 'no count settings exist any more');
+assert.ok(bare.includes('Quando a barra encher, a Liga da Temporada começa.') && bare.includes('role="img"') && !bare.includes('aria-valuenow'), 'the bar and its one line, no number even for a screen reader');
+assert.ok(!/15[.,]?000/.test(bare), 'the goal is never written in the page and never sent to it');
+assert.ok(!/[{](target|sold|remaining)[}]/.test(bare), 'no count template left in the page');
 assert.ok(!/R\$|US\$|\bUSD\b|reais/i.test(bare), 'no prize amount and no Pass price');
 assert.ok(bare.includes('exclusiva de quem tem o Passe'));
 assert.ok(bare.indexOf('meter-title') < bare.indexOf('board-title') && bare.indexOf('board-title') < bare.indexOf('prof-title'), 'order: meter, buy, general ranking, professions');
@@ -210,9 +195,8 @@ assert.ok(filled.includes('aria-disabled="true">Soon'), 'playUrl set but the sal
 assert.ok(!filled.includes('comprar=passe'));
 assert.ok(filled.includes('data-supabase-url="https://abcdefghij.supabase.co"') && filled.includes('data-anon-key="public-anon-key-for-tests-1234567890"'));
 assert.ok(filled.includes('Loading live data'));
-assert.ok(filled.includes('When we reach {target} Passes, we open the League with a cash prize.'), 'the label template is in the page, the number is filled by the script from the server');
-config.meterLowPct = 8; config.meterShowCount = false;
-assert.ok(page('pt').includes('data-low-pct="8"') && page('pt').includes('data-show-count="false"'), 'the owner settings reach the script');
+assert.ok(filled.includes('When the bar fills, the Season League begins.'), 'the one line under the bar is in the page');
+assert.ok(!/[{](target|sold)[}]/.test(filled) && !filled.includes('Passes acquired'), 'no count or goal template in the page');
 
 config.passSalesOpen = true;
 config.legalLive.refund = true;

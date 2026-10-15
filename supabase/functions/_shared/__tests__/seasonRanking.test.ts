@@ -224,3 +224,58 @@ describe('migration 0006 (static checks)', () => {
     expect(m6).toContain('-- OWNER CONTROLS');
   });
 });
+
+// ---- migration 0008: the public meter answers a progress fraction only -----------------------------------------------------------------------------------------------------------
+
+describe('migration 0008 (static checks): pass_meter() returns progress only', () => {
+  const m8 = sql('0008_meter_progress_only.sql');
+  const code = m8.split('\n').filter((l) => !l.startsWith('--')).join('\n');
+  const start = code.indexOf('create function public.pass_meter()');
+  const fn = code.slice(start, code.indexOf('$$;', code.indexOf('as $$', start)) + 3);
+
+  it('drops the old function and recreates it with exactly progress, season_open, starts_at, ends_at, updated_at (no sold, no target)', () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(code).toContain('drop function if exists public.pass_meter();');
+    const returns = /returns table \(([^)]*)\)/.exec(fn)![1];
+    expect(returns.split(',').map((c) => c.trim().split(' ')[0])).toEqual(['progress', 'season_open', 'starts_at', 'ends_at', 'updated_at']);
+    expect(returns).not.toMatch(/\b(sold|target|count|total)\b/);
+    // the select list never returns the count or the target as a column: they only feed the fraction
+    expect(fn).not.toMatch(/\bas (sold|target)\b/);
+    expect(fn).toMatch(/pg_catalog\.floor\(/);
+    expect(fn).toMatch(/least\(1::numeric,/);
+    expect(fn).toContain('arena_private.paid_pass_count()');
+    expect(fn).toContain('arena_private.season_goal');
+  });
+
+  it('keeps it a security definer with an empty search path and reveals no id, amount, e-mail or source', () => {
+    expect(fn).toContain('security definer');
+    expect(fn).toContain("set search_path = ''");
+    expect(fn).not.toMatch(/user_id|email|provider_ref|e\.source/);
+  });
+
+  it('the grants are recreated: anon and authenticated may execute it, nobody else', () => {
+    expect(code).toContain('revoke all on function public.pass_meter() from public, anon, authenticated;');
+    expect(code).toContain('grant execute on function public.pass_meter() to anon, authenticated;');
+    expect(code.split('\n').filter((l) => /^grant /.test(l))).toHaveLength(1);
+  });
+
+  it('anon cannot read the count or the target by any other door: the goal table and the count function stay private in every migration', () => {
+    const all = ['0006_portal_meter_and_profession_ranking.sql', '0007_review_fixes.sql', '0008_meter_progress_only.sql'].map(sql).join('\n');
+    const grants = all.split('\n').filter((l) => /^grant /.test(l));
+    for (const line of grants) {
+      if (/to (anon|public)\b/.test(line) || /to [a-z_, ]*\banon\b/.test(line)) {
+        expect(line, line).not.toMatch(/season_goal|paid_pass_count|arena_private/);
+      }
+    }
+    expect(all).toContain('revoke all on table arena_private.season_goal from public, anon, authenticated;');
+    expect(all).toContain('revoke all on function arena_private.paid_pass_count() from public, anon, authenticated;');
+    expect(all).not.toMatch(/grant [^;\n]*season_goal to (anon|authenticated)/);
+  });
+
+  it('documents the rollback and a test plan, and leaves the goal and its trigger alone', () => {
+    expect(m8).toMatch(/ROLLBACK/);
+    expect(m8).toMatch(/SQL TEST PLAN/);
+    expect(m8).toMatch(/NOT APPLIED/);
+    expect(code).not.toMatch(/entitlements_goal|try_open_paid_season|alter table|update arena_private/);
+  });
+});

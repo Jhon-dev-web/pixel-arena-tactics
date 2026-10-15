@@ -7,8 +7,6 @@ const l = localized;
 //  passPrice       the text shown only when passSalesOpen is true.
 //  siteUrl         public origin of the portal (https://example.com, no path). null: relative links, noindex, no robots.txt / sitemap.xml. Set: absolute canonical,
 //                  hreflang and Open Graph URLs, robots.txt, sitemap.xml and indexing allowed.
-//  meterShowCount  false hides every absolute number of the Pass meter (only progress wording and the bar remain).
-//  meterLowPct     below this percentage of the goal the meter hides the percentage and shows "N aventureiros já têm o Passe · faltam M para a Liga" instead.
 //  company         shown in the footer only for the fields that are filled (never a placeholder).
 //  legalLive       a legal page is linked from the footer only when its real text is in the site and its flag is true. Placeholder pages stay unlinked.
 // community stays empty until official channels exist.
@@ -16,7 +14,7 @@ const l = localized;
 // the data is unavailable: it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
 // "anon" key (it is public by design and protected by the database rules). The service key must NEVER be written here.
 export const config = {
-  playUrl: null, passSalesOpen: false, passPrice: 'US$ 10', siteUrl: null, meterShowCount: true, meterLowPct: 5,
+  playUrl: null, passSalesOpen: false, passPrice: 'US$ 10', siteUrl: null,
   company: { legalName: null, cnpj: null, supportEmail: null },
   legalLive: { terms: false, privacy: false, refund: false, seasonRules: false },
   supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Idle', pageSize: 8,
@@ -90,9 +88,9 @@ export const progression = [
   { title: l('Enfrente a Masmorra', 'Take on the Dungeon'), body: l('Andares, chefes e Profundezas', 'Floors, bosses and the Depths'), target: 'combat' },
   { title: l('Decida o próximo foco', 'Choose your next focus'), body: l('Volte às atividades com um objetivo', 'Return to activities with a goal'), target: 'professions' },
 ];
-// Copy of the Liga da Temporada page. The goal (15,000 Passes) is NOT written here: it lives in the database (arena_private.config) and reaches the page through pass_meter().
+// Copy of the Liga da Temporada page. The goal is NOT written here and never reaches the page: it lives in the database (arena_private.season_goal) and pass_meter() only returns a progress fraction.
 // No prize amount and no link between the number of Passes sold and any prize may ever be written in this block. "Liga da Temporada" is the only name of the competition;
-// "Temporada do Passe" is only the in-game reward track. `goalLabel` is filled by the script ({target}); `lowLine*` use {sold} and {remaining}.
+// "Temporada do Passe" is only the in-game reward track.
 export const seasonPage = {
   nav: l('Liga da Temporada', 'Season League'),
   eyebrow: l('Competição', 'Competition'),
@@ -103,28 +101,18 @@ export const seasonPage = {
   step2: l('Com o Passe, entre na pré-temporada (sem prêmio).', 'With the Pass, join the pre-season (no prize).'),
   step3: l('Quando a comunidade chegar à meta de Passes, começa a Liga com prêmio em dinheiro, de valor fixo publicado no regulamento.', 'When the community reaches the Pass goal, the League begins with a cash prize, a fixed amount published in the rules.'),
   meterTitle: l('A meta da comunidade', 'The community goal'),
-  passesWord: l('Passes', 'Passes'),
   fixedPrize: l('O prêmio é um valor fixo, definido antes do início. Não depende de quantos Passes forem vendidos e não é sorteio: vence quem chegar mais longe, com auditoria antes do pagamento.', 'The prize is a fixed amount, set before the start. It does not depend on how many Passes are sold and it is not a raffle: whoever gets furthest wins, with an audit before payment.'),
-  goalLabel: l('Ao chegarmos a {target} Passes, abrimos a Liga com prêmio em dinheiro.', 'When we reach {target} Passes, we open the League with a cash prize.'),
-  goalLabelNoCount: l('Ao chegarmos à meta de Passes, abrimos a Liga com prêmio em dinheiro.', 'When we reach the Pass goal, we open the League with a cash prize.'),
-  lowLine: l('{sold} aventureiros já têm o Passe · faltam {remaining} para a Liga', '{sold} adventurers already own the Pass · {remaining} to go for the League'),
-  lowLineOne: l('{sold} aventureiro já tem o Passe · faltam {remaining} para a Liga', '{sold} adventurer already owns the Pass · {remaining} to go for the League'),
-  lowLineZero: l('Seja um dos primeiros aventureiros com o Passe · faltam {remaining} para a Liga', 'Be one of the first adventurers with the Pass · {remaining} to go for the League'),
-  progressStart: l('A contagem está só começando.', 'The count is just getting started.'),
-  progressUnder: l('A comunidade está a caminho da meta.', 'The community is on its way to the goal.'),
-  progressHalf: l('Já passamos da metade do caminho.', 'We are past the halfway mark.'),
-  progressNear: l('Falta pouco para a Liga abrir.', 'Not long until the League opens.'),
+  goalLine: l('Quando a barra encher, a Liga da Temporada começa.', 'When the bar fills, the Season League begins.'),
   openTitle: l('Liga da Temporada em andamento', 'Season League in progress'),
   openDates: l('De {from} a {to} (UTC)', 'From {from} to {to} (UTC)'),
   openEnds: l('Termina em {time}', 'Ends in {time}'),
   openOver: l('Esta Liga terminou.', 'This League is over.'),
-  openSold: l('{sold} Passes adquiridos', '{sold} Passes acquired'),
   buy: l('Comprar o Passe', 'Buy the Pass'),
   soon: l('Em breve', 'Soon'),
   buyNote: l('A compra é feita dentro do jogo, depois do login.', 'The purchase is made inside the game, after you sign in.'),
   closedNote: l('O Passe ainda não está à venda. Veja o que ele inclui na página do Passe.', 'The Pass is not on sale yet. See what it includes on the Pass page.'),
   closedLink: l('Conhecer o Passe', 'See the Pass'),
-  meterFailed: l('Contagem de Passes indisponível agora. Tente de novo em instantes.', 'Pass count unavailable right now. Try again in a moment.'),
+  meterFailed: l('Barra de progresso indisponível agora. Tente de novo em instantes.', 'Progress bar unavailable right now. Try again in a moment.'),
   rankingFailed: l('Ranking indisponível agora. Tente de novo em instantes.', 'Ranking unavailable right now. Try again in a moment.'),
   stale: l('Não foi possível atualizar agora. Os números abaixo podem estar desatualizados.', 'Could not refresh right now. The numbers below may be out of date.'),
   loading: l('Carregando dados ao vivo…', 'Loading live data…'),

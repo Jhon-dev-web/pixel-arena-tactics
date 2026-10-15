@@ -249,17 +249,11 @@ footer small { color: var(--muted); font-size: .875rem; grid-column: 1/-1; }
   .eyebrow { letter-spacing: 1.1px; }
 }
 /* Temporada: Pass meter and rankings */
-.meter-figures { margin: 0 0 14px; color: var(--ink); font-family: var(--serif); font-size: clamp(1.7rem, 4.5vw, 3rem); line-height: 1.2; overflow-wrap: anywhere; }
-.meter-figures strong { color: var(--gold); font-weight: 400; }
-.meter-sep { color: var(--muted); }
-.meter-unit { font-size: .45em; color: var(--muted); font-family: system-ui, sans-serif; letter-spacing: .5px; text-transform: uppercase; }
-.meter-pct { font-size: .5em; color: var(--ink); margin-left: 8px; }
 .meter-bar { height: 22px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; }
 .meter-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #9c7a43, var(--gold)); transition: width .6s ease; }
-.meter-label { margin: 14px 0 0; font-size: 1.0625rem; color: var(--ink); }
 .meter-dates, .meter-countdown { margin: 6px 0; font-size: 1.125rem; color: var(--ink); }
 .meter-countdown { color: var(--gold); font-family: var(--serif); font-size: 1.6rem; }
-.meter-sold-note, .buy-note, .board-note { font-size: .9375rem; }
+.buy-note, .board-note { font-size: .9375rem; }
 .live-state { margin: 18px 0 0; font-size: .9375rem; }
 .live-state[data-state="unavailable"] { color: #d9a98b; }
 .live-state[data-state="live"] { color: #9bc9b6; }
@@ -297,7 +291,7 @@ footer small { color: var(--muted); font-size: .875rem; grid-column: 1/-1; }
 .steps li { counter-increment: league; position: relative; padding: 16px 20px 16px 68px; background: var(--surface); border: 1px solid var(--border); color: var(--ink); font-size: 1.0625rem; }
 .steps li::before { content: counter(league); position: absolute; left: 18px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--gold); color: var(--gold); font: 1.25rem/1 var(--serif); }
 .prize-fixed { margin: 20px 0 0; padding: 14px 20px; border-left: 2px solid var(--gold); background: var(--surface); color: var(--ink); font-size: 1.0625rem; }
-.meter-line { margin: 0 0 14px; color: var(--ink); font-family: var(--serif); font-size: clamp(1.25rem,3.4vw,1.9rem); line-height: 1.3; }
+.meter-line { margin: 14px 0 0; color: var(--ink); font-family: var(--serif); font-size: clamp(1.25rem,3.4vw,1.9rem); line-height: 1.3; }
 .meter-bar span { min-width: 0; }
 .footer-trust { grid-column: 1/-1; border-top: 1px solid var(--border); padding-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 28px; align-items: center; }
 .footer-trust nav { margin-left: auto; }

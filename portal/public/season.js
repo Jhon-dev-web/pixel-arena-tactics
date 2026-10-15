@@ -9,23 +9,16 @@ if (root) {
   const labels = JSON.parse(root.dataset.labels || '{}');
   const base = cleanSupabaseUrl(root.dataset.supabaseUrl);
   const anonKey = root.dataset.anonKey || '';
-  const meterOptions = { lowPct: Number(root.dataset.lowPct), showCount: root.dataset.showCount !== 'false' };
   const $ = selector => root.querySelector(selector);
   const el = {
     state: $('[data-live-state]'),
-    figures: $('[data-meter-figures]'),
-    sold: $('[data-meter-sold]'),
-    target: $('[data-meter-target]'),
-    pct: $('[data-meter-pct]'),
     line: $('[data-meter-line]'),
     bar: $('[data-meter-bar]'),
     fill: $('[data-meter-fill]'),
-    label: $('[data-meter-label]'),
     closed: $('[data-meter-closed]'),
     open: $('[data-meter-open]'),
     openDates: $('[data-open-dates]'),
     openCountdown: $('[data-open-countdown]'),
-    openSold: $('[data-open-sold]'),
     boardTitle: $('[data-board-title]'),
     boardNote: $('[data-board-note]'),
     prize: $('[data-board-prize]'),
@@ -55,7 +48,6 @@ if (root) {
       el.closed.hidden = true;
       el.open.hidden = false;
       el.openDates.textContent = fillText(labels.openDates, { from: dateText(view.startsAt, lang), to: dateText(view.endsAt, lang) });
-      el.openSold.textContent = view.showCount ? fillText(labels.openSold, { sold: view.soldText }) : '';
       endMs = Date.parse(view.endsAt);
       tickCountdown();
       return;
@@ -65,24 +57,10 @@ if (root) {
     el.closed.hidden = false;
     const shown = meterPresentation(view, labels);
     el.bar.hidden = false;
-    el.label.hidden = false;
-    el.figures.hidden = !shown.figures;
-    el.line.hidden = !shown.line;
+    el.line.hidden = false;
     el.line.textContent = shown.line;
-    if (shown.figures) {
-      el.sold.textContent = view.soldText;
-      el.target.textContent = view.targetText;
-      el.pct.textContent = view.pctText;
-    }
     el.fill.style.width = shown.barPct + '%'; // CSSOM, allowed under the strict CSP (no inline style attribute)
-    if (view.showCount) {
-      el.bar.setAttribute('aria-valuenow', String(view.pct));
-      el.bar.setAttribute('aria-valuetext', shown.line || `${view.soldText} / ${view.targetText} (${view.pctText})`);
-    } else {
-      el.bar.removeAttribute('aria-valuenow');
-      el.bar.setAttribute('aria-valuetext', shown.line);
-    }
-    el.label.textContent = shown.goal;
+    el.bar.setAttribute('aria-label', shown.line); // no aria-valuenow: the bar carries no number, not even for a screen reader
   }
 
   function tickCountdown() {
@@ -135,7 +113,7 @@ if (root) {
     if (!base || !anonKey) return;
     try {
       const [meterRaw, seasonRows] = await Promise.all([get(endpoints(base).meter), get(endpoints(base).seasons)]);
-      const view = meterView(meterRaw, lang, meterOptions);
+      const view = meterView(meterRaw);
       if (!view) throw new Error('bad_meter');
       paintMeter(view);
       paintBoard(pickBoard(seasonRows, Date.now()));

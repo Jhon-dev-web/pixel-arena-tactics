@@ -23,8 +23,7 @@ if (config.supabaseAnonKey !== null) {
   }
 }
 // Owner settings (see the comment above config in src/content.mjs).
-if (typeof config.passSalesOpen !== 'boolean' || typeof config.meterShowCount !== 'boolean') throw new Error('config.passSalesOpen and config.meterShowCount must be true or false');
-if (typeof config.meterLowPct !== 'number' || config.meterLowPct < 0 || config.meterLowPct > 100) throw new Error('config.meterLowPct must be a number from 0 to 100');
+if (typeof config.passSalesOpen !== 'boolean') throw new Error('config.passSalesOpen must be true or false');
 if (config.siteUrl !== null) {
   safeUrl(config.siteUrl, { externalOnly: true });
   const site = new URL(config.siteUrl);

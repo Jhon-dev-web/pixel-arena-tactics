@@ -74,13 +74,11 @@ export function renderSite(lang) {
   const rankingStart = live ? `<p class="rank-empty" data-kind="loading">${pick(seasonPage.loading)}</p>` : failedRows(labels);
   const seasonBody = intro(pick(seasonPage.eyebrow), pick(seasonPage.title), pick(seasonPage.lead))
     + `<section class="section narrow league-steps" aria-labelledby="steps-title"><h2 id="steps-title">${pick(seasonPage.stepsTitle)}</h2><ol class="steps"><li>${pick(seasonPage.step1)}</li><li>${pick(seasonPage.step2)}</li><li>${pick(seasonPage.step3)}</li></ol></section>`
-    + `<div data-season-root data-lang="${lang}" data-low-pct="${Number(config.meterLowPct)}" data-show-count="${config.meterShowCount !== false}" data-labels="${esc(JSON.stringify(labels))}" data-supabase-url="${live ? esc(config.supabaseUrl) : ''}" data-anon-key="${live ? esc(config.supabaseAnonKey) : ''}">
+    + `<div data-season-root data-lang="${lang}" data-labels="${esc(JSON.stringify(labels))}" data-supabase-url="${live ? esc(config.supabaseUrl) : ''}" data-anon-key="${live ? esc(config.supabaseAnonKey) : ''}">
 <section class="section narrow season-meter" aria-labelledby="meter-title"><h2 id="meter-title">${pick(seasonPage.meterTitle)}</h2>
-<div data-meter-closed hidden><p class="meter-figures" data-meter-figures hidden><strong data-meter-sold></strong> <span class="meter-sep">/</span> <span data-meter-target></span> <span class="meter-unit">${pick(seasonPage.passesWord)}</span> <span class="meter-pct" data-meter-pct></span></p>
-<p class="meter-line" data-meter-line hidden></p>
-<div class="meter-bar" role="progressbar" aria-labelledby="meter-title" aria-valuemin="0" aria-valuemax="100" data-meter-bar><span data-meter-fill></span></div>
-<p class="meter-label" data-meter-label></p></div>
-<div data-meter-open hidden><h3>${pick(seasonPage.openTitle)}</h3><p class="meter-dates" data-open-dates></p><p class="meter-countdown" data-open-countdown></p><p class="meter-sold-note" data-open-sold></p></div>
+<div data-meter-closed hidden><div class="meter-bar" role="img" aria-label="${esc(pick(seasonPage.goalLine))}" data-meter-bar><span data-meter-fill></span></div>
+<p class="meter-line" data-meter-line>${pick(seasonPage.goalLine)}</p></div>
+<div data-meter-open hidden><h3>${pick(seasonPage.openTitle)}</h3><p class="meter-dates" data-open-dates></p><p class="meter-countdown" data-open-countdown></p></div>
 <p class="prize-fixed">${pick(seasonPage.fixedPrize)}</p>
 <p class="live-state" role="status" data-live-state data-state="unavailable">${live ? pick(seasonPage.loading) : pick(seasonPage.meterFailed)}</p>
 <noscript><p class="live-state" data-state="unavailable">${pick(seasonPage.noscript)}</p></noscript>

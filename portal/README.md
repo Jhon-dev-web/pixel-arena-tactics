@@ -45,8 +45,6 @@ Para editar publicações, consulte [EDITORIAL.md](EDITORIAL.md). Artigos só en
 | `playUrl` | `null` | Endereço HTTPS do jogo. `null`: o botão "Jogar grátis" fica desativado com "Em breve" (nunca aponta para o roadmap). |
 | `passSalesOpen` | `false` | Chave única da venda do Passe. `false`: todas as páginas dizem que o Passe está chegando e nenhum preço aparece. `true`: preço (`passPrice`), "Comprar o Passe" (`<playUrl>/?comprar=passe`), "Pagamento seguro pelo Stripe" e link do reembolso. O build exige `playUrl` e o texto do reembolso. |
 | `siteUrl` | `null` | Origem pública (https, sem caminho). `null`: links relativos, `noindex`, sem robots.txt/sitemap.xml. Preenchido: canonical/hreflang/Open Graph absolutos, indexação liberada, robots.txt e sitemap.xml gerados. |
-| `meterShowCount` | `true` | `false` esconde todo número absoluto do medidor de Passes. |
-| `meterLowPct` | `5` | Abaixo desse % da meta o medidor esconde o percentual e mostra "N aventureiros já têm o Passe · faltam M para a Liga". |
 | `company` | tudo `null` | `legalName`, `cnpj`, `supportEmail`: aparecem no rodapé só os campos preenchidos. |
 | `legalLive` | tudo `false` | `terms`, `privacy`, `refund`, `seasonRules`: o rodapé só linka a página quando a flag é `true` e a entrada em `legal` tem `body` (blocos de EDITORIAL.md). As páginas reservadas continuam sem link. |
 | `supabaseUrl` / `supabaseAnonKey` | `null` | Dados ao vivo da Liga da Temporada (só a chave pública anon). |
