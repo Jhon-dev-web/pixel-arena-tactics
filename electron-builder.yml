@@ -1,7 +1,7 @@
 # Packaging config for the Windows desktop (Steam) build. Run through `npm run desktop:build`.
 # Output: release/win-unpacked/ (unpacked app folder, the shape a Steam depot wants; no installer).
 appId: com.arenaduel.game
-productName: Arena Duel
+productName: Arena Idle
 directories:
   output: release
 # Only the shell and the already-built web bundle go into the app. Source, tests, docs, .env* and the

@@ -1,4 +1,4 @@
-# Context — Arena Duel
+# Context — Arena Idle
 
 ## Project Overview
 

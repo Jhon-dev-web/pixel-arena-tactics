@@ -1,6 +1,6 @@
 'use strict';
 
-// Electron main process for the Arena Duel desktop (Steam) build.
+// Electron main process for the Arena Idle desktop (Steam) build.
 //
 // Production: the Vite bundle built with `--mode desktop` (dist-desktop/) is served through a privileged
 // app://game/ protocol, never file://, so the game's absolute asset URLs (/assets/...), fetch() and Web Audio
@@ -17,7 +17,7 @@ const APP_HOST = 'game';
 const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`;
 const DIST_DIR = path.join(app.getAppPath(), 'dist-desktop');
 const BACKGROUND = '#07050b'; // body background in src/App.css, so the window never flashes white
-const TITLE = 'Arena Duel';
+const TITLE = 'Arena Idle';
 
 const DEV_URL = !app.isPackaged && process.env.ARENA_DEV_URL ? process.env.ARENA_DEV_URL : null;
 const ALLOWED_ORIGIN = DEV_URL ? new URL(DEV_URL).origin : APP_ORIGIN;
@@ -47,6 +47,10 @@ function argValue(name) {
 }
 const SMOKE = process.argv.includes('--smoke-test');
 const smokeUserData = argValue('smoke-user-data');
+// The game was called "Arena Duel" when the first desktop builds shipped. Electron derives the default
+// userData folder from productName, so pin it to the old name: saves and window state survive the rename.
+// The smoke-test override below still wins, so tests never touch the real folder.
+app.setPath('userData', path.join(app.getPath('appData'), 'Arena Duel'));
 if (SMOKE && smokeUserData) app.setPath('userData', path.resolve(smokeUserData));
 
 // Let Web Audio start without a prior click if the game tries to.

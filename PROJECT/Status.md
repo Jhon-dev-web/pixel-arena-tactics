@@ -1,4 +1,4 @@
-# Status — Arena Duel
+# Status — Arena Idle
 
 ## Implemented
 

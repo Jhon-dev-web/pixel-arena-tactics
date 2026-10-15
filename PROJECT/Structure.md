@@ -1,4 +1,4 @@
-# Structure — Arena Duel
+# Structure — Arena Idle
 
 ## `src/main.tsx`
 
@@ -173,7 +173,7 @@ on first user gesture. Uses a single shared `AudioContext`.
 
 ## `index.html`
 
-Vite HTML shell. Title "Arena Duel", `Press Start 2P` font link, `GAME_SIZE_RESPONSE` postMessage
+Vite HTML shell. Title "Arena Idle", `Press Start 2P` font link, `GAME_SIZE_RESPONSE` postMessage
 reporting for embed hosts.
 
 ## Legacy (unused, not imported)

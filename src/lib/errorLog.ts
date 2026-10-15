@@ -114,7 +114,7 @@ export function buildErrorReport(entries: ErrorEntry[] = readErrorLog()): string
   } catch {
     /* ignore */
   }
-  const lines = [`Arena Duel ${APP_VERSION}`, `Browser: ${ua}`, `Language: ${locale}`, `Errors recorded: ${entries.length}`];
+  const lines = [`Arena Idle ${APP_VERSION}`, `Browser: ${ua}`, `Language: ${locale}`, `Errors recorded: ${entries.length}`];
   entries.forEach((e, i) => {
     lines.push('', `#${i + 1} [${e.kind}] ${e.at} x${e.count}`, `version ${e.version} | ${e.screen}`, e.message);
     if (e.stack) lines.push(e.stack);

@@ -19,7 +19,7 @@ export const config = {
   playUrl: null, passSalesOpen: false, passPrice: 'US$ 10', siteUrl: null, meterShowCount: true, meterLowPct: 5,
   company: { legalName: null, cnpj: null, supportEmail: null },
   legalLive: { terms: false, privacy: false, refund: false, seasonRules: false },
-  supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Duel', pageSize: 8,
+  supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Idle', pageSize: 8,
 };
 // Text that depends on the owner settings is computed when read (getters), so a changed setting changes every page at once.
 const dyn = (pt, en) => ({ get pt() { return pt(); }, get en() { return en(); } });
@@ -36,10 +36,10 @@ export const glossary = {
   trade: l('Comércio e itens', 'Trade and items'), welcomeBack: l('Resumo ao voltar', 'Welcome-back summary'),
 };
 export const states = {
-  available: { label: l('Disponível', 'Available'), definition: l('Já existe na versão atual do Arena Duel.', 'Already part of the current version of Arena Duel.') },
+  available: { label: l('Disponível', 'Available'), definition: l('Já existe na versão atual do Arena Idle.', 'Already part of the current version of Arena Idle.') },
   development: { label: l('Em desenvolvimento', 'In development'), definition: l('Está sendo trabalhado ativamente.', 'Currently being worked on.') },
   planned: { label: l('Planejado', 'Planned'), definition: l('Faz parte da direção atual do projeto, mas ainda não tem data nem regras definidas. Alguns itens estão em estudo.', 'Part of the current direction, with no date and no defined rules yet. Some items are still under study.') },
-  future: { label: l('Visão futura', 'Future vision'), definition: l('Ideias e sistemas que poderão fazer parte da evolução do Arena Duel.', 'Ideas and systems that may become part of Arena Duel as it evolves.') },
+  future: { label: l('Visão futura', 'Future vision'), definition: l('Ideias e sistemas que poderão fazer parte da evolução do Arena Idle.', 'Ideas and systems that may become part of Arena Idle as it evolves.') },
 };
 // Screenshots taken from the current game (offline build, prepared mid-game save, 1440x900).
 export const shots = {
@@ -196,14 +196,14 @@ const list = items => ({ type: 'list', ordered: false, items: items.map(t) });
 // The single record below is an UNPUBLISHED DRAFT for the owner to review: it does not render anywhere until `published` is set to true.
 export const articles = [
   {
-    slug: 'o-que-mudou-no-arena-duel', type: 'major', published: false, date: '2026-10-13',
-    title: { pt: 'O que mudou no Arena Duel', en: 'What changed in Arena Duel' },
+    slug: 'o-que-mudou-no-arena-idle', type: 'major', published: false, date: '2026-10-13',
+    title: { pt: 'O que mudou no Arena Idle', en: 'What changed in Arena Idle' },
     subtitle: { pt: 'Um resumo do jogo como ele está hoje.', en: 'A summary of the game as it stands today.' },
     summary: { pt: 'Habilidades, Profundezas, Paragon, profissões com maestria, Pedidos, Passe de Aventureiro e mais: o que existe hoje e o que ainda está no roadmap.', en: 'Skills, the Depths, Paragon, professions with mastery, Orders, the Adventurer’s Pass and more: what exists today and what is still on the roadmap.' },
     categories: [{ pt: 'Resumo', en: 'Overview' }],
     body: {
       pt: [
-        para('O Arena Duel cresceu bastante desde as primeiras versões. Este resumo reúne o que existe hoje no jogo.'),
+        para('O Arena Idle cresceu bastante desde as primeiras versões. Este resumo reúne o que existe hoje no jogo.'),
         { type: 'heading', level: 2, text: 'Combate e exploração' },
         list(['A Caça agora tem quatro zonas, cada uma com profundidades, materiais e peças únicas próprios.', 'A Masmorra tem 100 andares, com chefes nos andares 25, 50, 75 e 100.', 'Depois do andar 100, as Profundezas oferecem andares sem fim, cada um mais forte que o anterior.', 'Depois do nível 100, o Paragon mantém o Herói evoluindo.', 'Três caminhos de habilidades, Guerreiro, Caçador e Guardião, com golpes e efeitos com nome.']),
         { type: 'heading', level: 2, text: 'Equipamento' },
@@ -218,7 +218,7 @@ export const articles = [
         list(['Um lançamento na Steam está planejado, sem data.', 'Um mercado de jogadores está planejado, sem data.', 'A Liga da Temporada começa quando a meta de Passes for alcançada; até lá roda uma pré-temporada sem prêmio.']),
       ],
       en: [
-        para('Arena Duel has grown a lot since its first versions. This overview gathers what the game contains today.'),
+        para('Arena Idle has grown a lot since its first versions. This overview gathers what the game contains today.'),
         { type: 'heading', level: 2, text: 'Combat and exploration' },
         list(['Hunting now has four zones, each with depths, materials and unique pieces of its own.', 'The Dungeon has 100 floors, with bosses on floors 25, 50, 75 and 100.', 'After floor 100, the Depths offer endless floors, each stronger than the last.', 'After level 100, Paragon keeps your Hero growing.', 'Three skill paths, Warrior, Hunter and Guardian, with named strikes and effects.']),
         { type: 'heading', level: 2, text: 'Gear' },
@@ -249,9 +249,9 @@ const playAnswer = dyn(
   () => config.playUrl ? 'Yes. Use the Play free button: the game runs right in your browser.' : 'Soon. The official address of the game is still to be confirmed, and the Play free button starts working once it is live.',
 );
 export const faq = [
-  { question: l('O que é Arena Duel?', 'What is Arena Duel?'), answer: l('Um RPG idle: o herói caça, minera e forja enquanto você está fora. Quando volta, você equipa o Herói, escolhe o próximo foco e desce uma Masmorra de 100 andares e as Profundezas.', 'An idle RPG: your hero hunts, mines and forges while you are away. When you come back, you gear up the Hero, pick your next focus and take on a 100-floor Dungeon and the Depths.') },
+  { question: l('O que é Arena Idle?', 'What is Arena Idle?'), answer: l('Um RPG idle: o herói caça, minera e forja enquanto você está fora. Quando volta, você equipa o Herói, escolhe o próximo foco e desce uma Masmorra de 100 andares e as Profundezas.', 'An idle RPG: your hero hunts, mines and forges while you are away. When you come back, you gear up the Hero, pick your next focus and take on a 100-floor Dungeon and the Depths.') },
   { question: l('Por que as escolhas importam?', 'Why do choices matter?'), answer: l('Algumas atividades disputam o seu tempo. Priorizar uma profissão, escolher um caminho de habilidades, investir em uma peça ou preparar o Herói para a Masmorra faz parte dessas decisões.', 'Some activities compete for your time. You decide when to focus on a profession, which skill path to follow, which piece to invest in or how to prepare your Hero for the Dungeon.') },
-  { question: l('O jogo tem combate entre jogadores?', 'Does the game have player-versus-player combat?'), answer: l('Não. O combate no Arena Duel é contra monstros e chefes; não há combate entre jogadores.', 'No. Combat in Arena Duel is against monsters and bosses; there is no player-versus-player combat.') },
+  { question: l('O jogo tem combate entre jogadores?', 'Does the game have player-versus-player combat?'), answer: l('Não. O combate no Arena Idle é contra monstros e chefes; não há combate entre jogadores.', 'No. Combat in Arena Idle is against monsters and bosses; there is no player-versus-player combat.') },
   { question: l('O jogo é gratuito?', 'Is the game free?'), answer: freeAnswer },
   { question: l('O que é o Passe de Aventureiro?', 'What is the Adventurer’s Pass?'), answer: passAnswer },
   { question: l('O que é a Liga da Temporada?', 'What is the Season League?'), answer: l('Uma competição exclusiva de quem tem o Passe, com prêmio em dinheiro de valor fixo, publicado no regulamento. Ela começa quando a comunidade chegar à meta de Passes; até lá roda uma pré-temporada sem prêmio. Veja a meta e os rankings na página da Liga.', 'A competition exclusive to Pass owners, with a fixed cash prize published in the rules. It begins when the community reaches the Pass goal; until then a pre-season with no prize runs. See the goal and the rankings on the League page.') },
@@ -279,7 +279,7 @@ export const copy = {
   availableNote: l('Sistemas existentes na versão atual; “Disponível” não quer dizer que o sistema é final.', 'Systems in the current version; “Available” does not mean a system is final.'),
   noNews: l('Comunicados do desenvolvimento serão reunidos aqui quando houver novidades para compartilhar. Enquanto isso, conheça o estado atual no Roadmap.', 'Development news will appear here when there is something to share. For the current state of the project, visit the Roadmap.'),
   gameTitle: l('O jogo hoje', 'The game today'),
-  gameBody: l('Capturas da versão atual do Arena Duel.', 'Screenshots from the current version of Arena Duel.'),
+  gameBody: l('Capturas da versão atual do Arena Idle.', 'Screenshots from the current version of Arena Idle.'),
 };
 // Meta descriptions per page (search results and shared links). Pages without an entry use `default`.
 export const descriptions = {

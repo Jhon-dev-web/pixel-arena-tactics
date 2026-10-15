@@ -1,4 +1,4 @@
-# Requirements — Arena Duel
+# Requirements — Arena Idle
 
 ## Combat rules (implemented)
 

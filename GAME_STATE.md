@@ -1,6 +1,6 @@
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
 
-# Arena Duel — mapa completo de estado
+# Arena Idle — mapa completo de estado
 
 > Nota (2026-10-10): o token ONE foi removido do jogo (lançamento na Steam, sem Web3); as menções a ONE abaixo são históricas.
 

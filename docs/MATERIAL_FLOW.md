@@ -1,4 +1,4 @@
-# Fluxo de materiais — Arena Duel
+# Fluxo de materiais — Arena Idle
 
 Rodada 9 (11/10/2026). Pergunta do dono, depois de 1 h 21 m caçando a Clareira dos Pequenos Demônios (Raso) com um herói novo: 211 abates (154/h), Farrapo de Couro 44/h, Garra Demoníaca 14/h, Núcleo Demoníaco 1,5/h. "É muito por hora?"
 

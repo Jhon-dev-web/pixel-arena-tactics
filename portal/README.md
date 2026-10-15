@@ -1,6 +1,6 @@
-# Arena Duel — portal público
+# Arena Idle — portal público
 
-Site estático público do Arena Duel. Vive em `portal/` dentro do repositório do jogo, mas é independente: tem o próprio package.json e scripts e não depende do build do jogo.
+Site estático público do Arena Idle. Vive em `portal/` dentro do repositório do jogo, mas é independente: tem o próprio package.json e scripts e não depende do build do jogo.
 
 ## Executar e verificar
 
@@ -55,7 +55,7 @@ A competição tem um único nome: **Liga da Temporada** / Season League. "Tempo
 
 `config.community` permanece vazio até existirem canais oficiais.
 
-Há um rascunho não publicado (`published: false`) em `articles`: "O que mudou no Arena Duel", para revisão do dono. Ele não aparece no site até ser marcado como publicado.
+Há um rascunho não publicado (`published: false`) em `articles`: "O que mudou no Arena Idle", para revisão do dono. Ele não aparece no site até ser marcado como publicado.
 
 ## Estado de revisão
 

@@ -15,7 +15,7 @@ scripts/desktop-build.mjs, scripts/desktop-dev.mjs
 | Comando | O que faz |
 | --- | --- |
 | `npm run desktop:dev` | Sobe o Vite na porta 5200 (`DESKTOP_DEV_PORT` muda; `ARENA_DEV_URL` aponta para um servidor já existente) e abre a janela Electron apontando para ele, com hot reload e DevTools. |
-| `npm run desktop:build` | Gera `dist-desktop/` (bundle web em modo `desktop`) e empacota em `release/win-unpacked/Arena Duel.exe`. |
+| `npm run desktop:build` | Gera `dist-desktop/` (bundle web em modo `desktop`) e empacota em `release/win-unpacked/Arena Idle.exe`. |
 | `npm run desktop:start` | Abre o Electron com o `dist-desktop/` já construído (sem empacotar). |
 
 Pré-requisito: `npm install` (Electron baixa o binário do GitHub Releases na primeira execução; electron-builder baixa um pacote de ícones).
@@ -45,7 +45,7 @@ Pré-requisito: `npm install` (Electron baixa o binário do GitHub Releases na p
 O jogo salva em `localStorage`. Com a origem estável `app://game`, o Electron persiste isso na pasta de dados do usuário:
 
 ```text
-%APPDATA%\Arena Duel\            (ex.: C:\Users\<usuário>\AppData\Roaming\Arena Duel\)
+%APPDATA%\Arena Duel\            (ex.: C:\Users\<usuário>\AppData\Roaming\Arena Duel\)  <- nome antigo, fixado em main.cjs para os saves sobreviverem ao rename
   Local Storage\leveldb\         <- o save do jogo
   window-state.json              <- tamanho/posição da janela
 ```
@@ -57,7 +57,7 @@ Para apagar o progresso de teste, feche o jogo e apague essa pasta. **Atenção:
 Inerte, a não ser que o executável receba `--smoke-test`:
 
 ```text
-"Arena Duel.exe" --smoke-test --smoke-out=<pasta> --smoke-user-data=<pasta> [--smoke-marker=<texto>]
+"Arena Idle.exe" --smoke-test --smoke-out=<pasta> --smoke-user-data=<pasta> [--smoke-marker=<texto>]
 ```
 
 Espera o jogo renderizar, confere que `#root` tem filhos e que não há erro de console, requisição falha (4xx/5xx no protocolo), requisição externa, violação de CSP ou imagem quebrada, testa uma requisição `Range` de áudio, grava `result.json` e `screenshot.png` em `--smoke-out` e sai com código 0 (ok) ou 1. `--smoke-user-data` isola os dados do teste dos do jogador. `--smoke-marker` grava um valor no `localStorage` e devolve o valor anterior (`markerBefore`), o que prova que o save sobrevive a fechar e abrir o app.
@@ -66,13 +66,13 @@ Espera o jogo renderizar, confere que `#root` tem filhos e que não há erro de 
 
 - **Steamworks.** Sem App ID ainda. O ponto de encaixe está comentado em `desktop/main.cjs` ("Steam hook") e em `desktop/preload.cjs`: criar `desktop/steam.cjs` (steamworks.js ou similar: `init`, conquistas, overlay, Cloud) e chamá-lo antes de criar a janela, de forma opcional para o jogo continuar abrindo fora da Steam. Para testar localmente com a Steam, coloque um `steam_appid.txt` ao lado do `.exe` (não vai para o depot final).
 - **Auto-update.** A Steam atualiza o jogo; não há `electron-updater`.
-- **Assinatura de código.** O `.exe` não é assinado. **Importante:** em Windows 11 com o *Smart App Control* ligado, executáveis não assinados e sem reputação são bloqueados (Política de Controle de Aplicativo). Foi o que aconteceu na máquina de desenvolvimento: o `Arena Duel.exe` recém-gerado é bloqueado. Para distribuir, assine com um certificado de code signing (EV/OV ou Azure Trusted Signing) via `win.certificateSubjectName`/`CSC_LINK` no electron-builder. Enquanto isso, dá para validar o app rodando o `app.asar` com o `electron.exe` do `node_modules`: `node_modules\electron\dist\electron.exe release\win-unpacked\resources\app.asar --smoke-test ...`.
+- **Assinatura de código.** O `.exe` não é assinado. **Importante:** em Windows 11 com o *Smart App Control* ligado, executáveis não assinados e sem reputação são bloqueados (Política de Controle de Aplicativo). Foi o que aconteceu na máquina de desenvolvimento: o `Arena Idle.exe` recém-gerado é bloqueado. Para distribuir, assine com um certificado de code signing (EV/OV ou Azure Trusted Signing) via `win.certificateSubjectName`/`CSC_LINK` no electron-builder. Enquanto isso, dá para validar o app rodando o `app.asar` com o `electron.exe` do `node_modules`: `node_modules\electron\dist\electron.exe release\win-unpacked\resources\app.asar --smoke-test ...`.
 - **macOS / Linux.** Só `win x64`.
 - Nenhum `.env*` entra no pacote: só `package.json`, `desktop/**` e `dist-desktop/**` vão para o `app.asar` (sem `node_modules`, sem fontes `.map`).
 
 ## Subir para a Steam com SteamCMD (documentação; nada disso foi executado)
 
-1. **Pré-requisitos (Steamworks partner):** pagar a taxa do app, criar o App ID e um depot Windows (ex.: `APPID` e `DEPOTID`). Em *SteamPipe > Depots*, associe o depot ao pacote do app. Em *Installation > General*, crie a opção de lançamento: executável `Arena Duel.exe`, sistema operacional Windows.
+1. **Pré-requisitos (Steamworks partner):** pagar a taxa do app, criar o App ID e um depot Windows (ex.: `APPID` e `DEPOTID`). Em *SteamPipe > Depots*, associe o depot ao pacote do app. Em *Installation > General*, crie a opção de lançamento: executável `Arena Idle.exe`, sistema operacional Windows.
 2. **Baixar o SteamCMD** (Valve, só na máquina de build) e criar uma conta de build com permissão "Edit App Metadata" e "Publish App Changes To Steam".
 3. **Gerar o build:** `npm run desktop:build`. A pasta a enviar é `release/win-unpacked/` (~390 MB em disco; a Steam comprime). Rode o smoke test antes (veja acima) e, quando houver certificado, assine o `.exe`.
 4. **`depot_build_<DEPOTID>.vdf`:**
@@ -98,7 +98,7 @@ Espera o jogo renderizar, confere que `#root` tem filhos e que não há erro de 
    "AppBuild"
    {
      "AppID" "<APPID>"
-     "Desc" "Arena Duel 0.1.0"
+     "Desc" "Arena Idle 0.1.0"
      "BuildOutput" "C:\caminho\steam-build-output"
      "ContentRoot" ""
      "SetLive" ""

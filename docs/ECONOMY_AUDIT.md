@@ -2,7 +2,7 @@
 
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
 
-# Auditoria econômica e sinks — Arena Duel
+# Auditoria econômica e sinks — Arena Idle
 
 > **Nota de 10/10/2026 — o Passe mudou.** Onde este documento (e os que o citam) supõe o Passe de Batalha com **+25% de drops, armazém de 24 h em vez de 4 h e validade de 30 dias**, valem agora os números do Passe de Aventureiro: compra única que **não expira** (trilha em temporadas de 60 dias), armazém de **6 h** (a base é 4 h), **+10%** de materiais (Caça, Mineração e Lenhador), **+10%** de ouro (Masmorra, Caça e Pedidos), mais as conveniências de antes (+1 pedido, +1 troca, +10% de XP nas Entregas, +20% de espaço no inventário (mínimo 5), −20% no reparo) e +10 espaços no Baú. Únicos e relíquias de chefe nunca usaram o multiplicador. O motivo e as medições estão em `BALANCE_CHANGES.md` (seção 28, com o histórico das tentativas de armazém de 12 h, sem armazém e 6 h). O restante deste documento não foi reescrito.
 >

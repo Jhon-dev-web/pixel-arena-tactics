@@ -1,4 +1,4 @@
-// npm run desktop:build  ->  release/win-unpacked/Arena Duel.exe (unpacked folder for a Steam depot, no installer)
+// npm run desktop:build  ->  release/win-unpacked/Arena Idle.exe (unpacked folder for a Steam depot, no installer)
 //
 // 1. Builds the web bundle in Vite's "desktop" mode into dist-desktop/ with the backend variables forced empty
 //    (offline / local save only) regardless of any .env* file or shell variable.
@@ -37,4 +37,4 @@ run('electron-builder --win dir --x64', [bin('electron-builder', 'cli.js'), '--w
   CSC_IDENTITY_AUTO_DISCOVERY: 'false', // no code signing yet
 });
 
-console.log('\nDone: release/win-unpacked/Arena Duel.exe');
+console.log('\nDone: release/win-unpacked/Arena Idle.exe');

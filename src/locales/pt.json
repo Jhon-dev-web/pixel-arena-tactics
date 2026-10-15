@@ -12,7 +12,7 @@
     "cta": "Entendi, vamos lá!"
   },
   "auth": {
-    "title": "ARENA DUEL",
+    "title": "ARENA IDLE",
     "subtitle": "Entre para continuar seu progresso em qualquer aparelho.",
     "emailLabel": "E-mail",
     "passwordLabel": "Senha",
@@ -28,7 +28,7 @@
   },
   "usernameOnboarding": {
     "title": "Como os outros jogadores vão conhecer você?",
-    "description": "Escolha seu nome de usuário para o Arena Duel. Ele será sua identidade e não poderá ser alterado.",
+    "description": "Escolha seu nome de usuário para o Arena Idle. Ele será sua identidade e não poderá ser alterado.",
     "usernameLabel": "Nome de usuário",
     "rules": "De 3 a 16 caracteres: letras, números e _.",
     "lengthHint": "Use de 3 a 16 caracteres.",
@@ -110,7 +110,7 @@
     "importError_empty": "O arquivo está vazio.",
     "importError_too_big": "O arquivo é grande demais para ser um save.",
     "importError_not_json": "Não foi possível ler o arquivo.",
-    "importError_not_a_save": "Esse arquivo não é um save do Arena Duel.",
+    "importError_not_a_save": "Esse arquivo não é um save do Arena Idle.",
     "importConfirmTitle": "Importar save",
     "importConfirm": "Substituir o seu herói por um herói de nível {level}, andar {floor}?",
     "importBackup": "O herói atual (nível {level}, andar {floor}) fica guardado como backup neste aparelho.",
@@ -133,7 +133,7 @@
     "interact": "Use o botão destacado para continuar.",
     "replay": "Rever tutorial",
     "intro": {
-      "title": "Bem-vindo ao Arena Duel!",
+      "title": "Bem-vindo ao Arena Idle!",
       "body": "Vamos aprender jogando, em poucos passos."
     },
     "points": {
@@ -1203,7 +1203,7 @@
     "rewardWaiting": "Recompensa esperando para ser resgatada"
   },
   "notify": {
-    "title": "Arena Duel",
+    "title": "Arena Idle",
     "hunt": "Sua caçada terminou: o armazenamento está cheio.",
     "mining": "A mineração encheu o armazenamento.",
     "woodcutting": "O corte de lenha encheu o armazenamento.",

@@ -29,10 +29,10 @@ export default function DesktopSidebar({ groups, onLogoClick }: { groups: Deskto
     <nav className="desktop-sidebar" aria-label="Main navigation">
       {onLogoClick ? (
         <button className="desktop-sidebar-brand desktop-sidebar-brand-btn" onClick={onLogoClick} data-ui>
-          ARENA DUEL
+          ARENA IDLE
         </button>
       ) : (
-        <div className="desktop-sidebar-brand">ARENA DUEL</div>
+        <div className="desktop-sidebar-brand">ARENA IDLE</div>
       )}
       <div className="desktop-sidebar-items">
         {groups.map((group) => (
