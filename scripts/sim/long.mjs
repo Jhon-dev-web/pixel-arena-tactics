@@ -34,7 +34,7 @@ for (const r of results) {
     console.error(r.text);
     process.exit(1);
   }
-  for (const line of r.text.split('\n')) if (/^[AP]\d+: /.test(line)) console.error(line);
+  for (const line of r.text.split('\n')) if (/^[A-Z]+\d+: /.test(line)) console.error(line);
 }
 const rep = await run({ LONG_REPORT_ONLY: '1' });
 console.log(rep.text);

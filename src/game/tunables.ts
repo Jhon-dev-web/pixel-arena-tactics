@@ -182,6 +182,10 @@ const T = DebugPanel.define({
     // Gardening was intentionally NOT touched by the Modelo C recalibration (separate design task).
     xpBase: { value: 5, min: 1, max: 100, step: 1, label: 'Gardening XP for level 1->2' },
     xpGrowth: { value: 1.08, min: 1, max: 1.5, step: 0.01, label: 'Gardening XP growth per level' },
+    // Rodada 20 (the League ranks the professions by total XP): from this level the cost of a Gardening level grows by xpGrowthLate instead. The fastest specialist (six plots, the longest
+    // plant that is ready by each visit, Fertilizer) must be level 65 to 72, not the 75 cap, on day 60 (docs/BALANCE_CHANGES.md, Rodada 20).
+    gardenLateFrom: { value: 45, min: 1, max: 74, step: 1, label: 'Gardening level where the steeper XP growth starts' },
+    xpGrowthLate: { value: 1.14, min: 1, max: 1.5, step: 0.01, label: 'Gardening XP growth per level above gardenLateFrom' },
     // Mining/Woodcutting XP-per-level recalibration for the 45-day championship. First pass (Modelo C,
     // a single cumulative power-law curve) pushed the Lv75 cap out past the tournament window, but also
     // made the curve uniformly steep from Lv2 onward — the resulting slowdown in gatherPower (which
@@ -203,7 +207,12 @@ const T = DebugPanel.define({
     // XP per unit are deliberately UNCHANGED: a "fast profile" (xpPerUnit 4, growth 1.12 / 1.15) opens every profession gate within a day of its character-level gate
     // but moves the first Tier 3 pieces ~4 days earlier, and the first simulated seed reaches floor 50 on day 6 instead of day 10 (progression target T6), see the audit.
     professionGrowth3: { value: 1.06, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 3 (levels 26-50)' },
-    professionGrowth4: { value: 1.10, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 4 (levels 51-75)' },
+    professionGrowth4: { value: 1.10, min: 1, max: 1.5, step: 0.01, label: 'Mining/Woodcutting XP growth, band 4 (levels 51-60)' },
+    // Rodada 20 (the League ranks Mining, Woodcutting and Gardening by TOTAL XP): levels 1-60 cost exactly what they cost (the ore tiers, obsidian included, open when they did and the gear
+    // does not slow down); above 60 a level costs 50% more than the one before. The fastest specialist (Pass owner, brews, 20 h of gathering a day) is level 70 to 72 on day 60, the
+    // median one a couple of levels lower, and the cap (75) takes more than 60 days even at the theoretical rate (professionRace.test.ts). XP keeps counting past the cap.
+    professionBand4To: { value: 60, min: 4, max: 74, step: 1, label: 'Mining/Woodcutting curve band 4 end level' },
+    professionGrowth5: { value: 1.5, min: 1, max: 2, step: 0.01, label: 'Mining/Woodcutting XP growth, band 5 (levels 61-75)' },
     maxLevel: { value: 75, min: 10, max: 200, step: 1, label: 'Max skill level (matches the old tier-4 character-level gate)' },
     xpPerUnit: { value: 1, min: 0.1, max: 20, step: 0.1, label: 'Mining/Woodcutting skill XP per unit gathered' },
     // Gardening XP per harvest = growth hours x this, the same XP per plot-hour for every plant (garden.ts plantHarvestXp): no

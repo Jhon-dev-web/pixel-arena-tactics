@@ -2026,3 +2026,75 @@ Os testes (`seasonProgress.test.ts`, `supabase/functions/_shared/__tests__/progr
 - A mediana sem Passe fica 13 níveis abaixo do dono (seção 4). O dono pediu "poucos"; não dá sem tocar no Passe.
 - O jogador simulado só bebe 2 por dia (uma por visita). Quem confere de 4 em 4 horas chega a 100% de cobertura e a +25% de XP; o limite do servidor já conta com isso (`xpPerHour` com o Elixir sempre ativo).
 - A primeira Liga recomeça todo mundo do zero: a migração de curva só importa para quem joga offline / desktop e para os saves de teste.
+
+
+## Rodada 21 — as profissões são uma corrida de verdade na Liga (2026-10-15)
+
+Pedido do dono: a Liga ranqueia Mineração, Lenhador e Horta à parte e quem se especializar numa só disputa um pedaço do prêmio. Quatro coisas: (a) a pontuação não pode empatar no teto e o especialista mais rápido não pode chegar ao teto (75) em 60 dias; (b) cada alavanca de XP por hora tem de ter custo ou escolha, e nada pode travar o especialista no nível do herói; (c) uma política "especialista" no simulador; (d) os limites do servidor de XP de profissão refeitos.
+
+### 1. (a) O ranking não empata no teto, e o teto ficou longe
+
+- **A pontuação é o XP total da profissão** (`season_profession_entries.score`, migration `0006`; `extractMetrics` lê `save.skillXp`). Conferido no código e travado em teste (`professionRace.test.ts`): a coleta de Mineração / Lenhador soma `unidades x xpPerUnit` e a colheita da Horta soma `plantHarvestXp` **sem teto**, também com o nível já em 75; o nível é que fica em 75 (`skillLevel`). No servidor `professionLevelFromXp` trava em 75 mas o `xp` segue crescendo (limite 1e12). Dois heróis no nível 75 com XP diferente têm pontuações diferentes. Não precisou mudar o código do ranking.
+- **O ritmo estava muito curto:** o jogador simulado que só minera chegava ao 75 no dia 25 (sem Passe) e no dia 13 (dono do Passe); o especialista da Horta no dia ~40; o jogador comum já estava com Horta 75 no dia 60. Medido antes (mediana = mais rápida, a política é determinística, as seeds só mudam o horário das visitas): Mineração sem Passe nível 75 no dia 30 (18 764 XP), dono nível 75 no dia 14 (14 408 XP); Horta nível 71 no dia 30 e 75 no dia 45.
+- **Curvas novas (só o topo mexe, para a Forja não sentir):**
+  - **Mineração / Lenhador** (a mesma curva): níveis 1 a 60 custam **exatamente** o que custavam (as portas de minério e madeira, a obsidiana no 60 incluída, abrem com o mesmo XP; a simulação de 60 dias não se mexeu na Forja). Nova banda 5 (níveis 61 a 75, `professionBand4To` 60, `professionGrowth5` 1,5): cada nível custa 50% mais que o anterior. XP para chegar ao nível: 50 = 1 963; 60 = 3 856 (igual); 65 = 6 650; 70 = 27 097; 72 = 56 532; 75 = 182 365 (antes: 70 = 8 738, 75 = 13 587).
+  - **Horta:** crescimento de 1,08 por nível até o 45 (igual) e **1,14** a partir dele (`gardenLateFrom` 45, `xpGrowthLate` 1,14): 45 = 1 786 (igual); 50 = 2 763; 60 = 8 267; 70 = 28 666; 75 = 54 516. As plantas de nível 45 a 60 (Lírio Lunar, Sálvia de Prata, Orquídea) abrem com o mesmo XP até o 45 e depois mais tarde.
+- **O que o jogador simulado especialista faz** (item (c)), nível (XP total) no fim do dia, 4 seeds por cenário: a política é determinística, mediana, mais rápida e mais lenta são iguais (exceto a Horta e o Lenhador, que variam em < 0,3%); o Lenhador é idêntico à Mineração.
+
+| Dia | Mineração / Lenhador sem Passe | com o Passe (mais rápida) | Horta (com e sem Passe) |
+| --: | --- | --- | --- |
+| 7 | 51 (2 106) | 63 (5 074) | 44 (1 750) |
+| 14 | 64 (6 397) | 67 (13 754) | 56 (5 450) |
+| 30 | 68 (17 537) | 70 (35 032) | 64 (14 090) |
+| 45 | 70 (28 478) | 71 (55 981) | 67 (22 190) |
+| 60 | **71** (39 958) | **72** (77 323) | **70** (30 410) |
+
+  Meta: mais rápido entre 65 e 72 no dia 60 (**72** Mineração / Lenhador do dono, **70** Horta), mediano um pouco abaixo (**71** / **70**; a diferença é de 1 nível porque o topo é íngreme: o dono faz o dobro do XP, mas do nível 70 em diante cada nível custa mais de 10 mil). Ninguém chega ao 75 em 60 dias, nem no ritmo teórico do servidor (24 h por dia com tudo ligado: 151 mil XP de Mineração, nível 74, abaixo dos 182 mil do 75; a Horta só passaria com Fertilizante em **todo** plantio, e teste prova isso).
+- **Frequência pura:** o mesmo especialista conferindo de 6 em 6 horas (4 visitas, o teto de armazenamento aproveitado inteiro) chega a **78 mil XP sem Passe** (nível 72, 2x os 40 mil de 2 visitas) e a **95 mil XP com Passe** (nível 73, +23% sobre os 77 mil), então o humano mais viciado fica **no 73, ainda abaixo do teto**, e 4 visitas sem o Passe valem o mesmo que 2 visitas com ele (por isso o Passe continua a vantagem que o dono quer). A Horta quase não se mexe com a frequência (29,7 mil XP com 4 visitas contra 30,4 mil com 2: o canteiro é o gargalo, não a visita).
+
+### 2. (b) O que sobe o XP de profissão por hora, e o que cada coisa custa
+
+Mineração / Lenhador: XP por hora = unidades por hora = (5 + 0,75 x nível) x 1 x multiplicadores (1 XP por unidade; `xpPerUnit`).
+
+| Alavanca | Quanto dá | O que custa / qual a escolha |
+| --- | --- | --- |
+| Nível da profissão (potência) | +0,75 unidade/h por nível (nível 60 = 50/h, 11x o nível 1) | Tempo: a curva (seção 1). Não depende do nível do herói |
+| Horas por dia | até 24 h/dia (sessão guarda 6 h, 10 h com o Passe) | É a maior alavanca e é de graça: 4 visitas por dia dão 2x (sem Passe) ou +23% (com). Limitada pelo armazenamento da sessão e pelo relógio; o teto de nível protege o ranking, não a frequência. É inerente a um jogo ocioso: o que o dono pode fazer é o prêmio olhar o XP **e** a auditoria (`FAST_*`) sinalizar quem passa de 1,3x a seed mais rápida |
+| Passe | x1,1 material (XP) e armazenamento 10 h contra 6 h: 1,83x as horas de uma sessão e +10% de unidade com 2 visitas por dia | É pago (o ranking é só de quem tem o Passe, então na corrida real todos têm) |
+| Maestria (50 e 70: +4% de unidades cada) | +8% no total | Só com o nível (o 70 só os mais rápidos alcançam em 60 dias) |
+| Poção do Coletor (Brew) | +25% de horas efetivas por 2 h (+5% de uma sessão de 10 h, +8% de uma de 6 h) | 2 Capim Veloz (Horta 30) + 3 Erva Medicinal + 50 de Ouro por poção, uma por visita: ocupa canteiro que renderia XP de Horta |
+| Tônico do Prospector | +10% por 2 h (+2% a +3%) | 1 Prata + 2 Madeira de Carvalho + 2 Cardo + 1 Flor Dourada + 60 de Ouro; soma com a Poção; o teto dos consumíveis novos é 10% (`newConsumableCap`) |
+| Coletor (habilidade do herói) | +6% por rank, 3 ranks (+18%) | 3 pontos de habilidade = 15 níveis do **herói**, que só sobem **caçando**, e a caça disputa o único espaço de atividade com a coleta: custo real de verdade |
+| Ferramenta (picareta / machado) | não existe: as ferramentas saíram do jogo (`skills.ts`, "Profession tools were removed entirely") e o poder só depende do nível | Nada a custear. Criar uma agora seria um sistema novo; fica como sugestão |
+
+Horta: XP por colheita = horas de crescimento da planta x 5, a mesma por hora de canteiro para qualquer planta.
+
+| Alavanca | Quanto dá | O que custa / qual a escolha |
+| --- | --- | --- |
+| Canteiros | 4, +1 na Jardinagem 20, +1 na 40 | Só nível da profissão |
+| Planta que cabe entre as visitas | 6 canteiros x 5 XP x horas ocupadas: sem Fertilizante a planta tem de caber no intervalo (12 h entre visitas: a de 12 h dá 60 XP por canteiro por visita) | Escolha: a planta longa rende mais XP por visita, mas a que não termina até a próxima visita espera outra |
+| Fertilizante | corta metade do tempo restante, uma vez por plantio: com ele a planta de 16 h cabe numa visita de 12 h (80 XP em vez de 60) | 3 Ossos (só caem na Caça das zonas 2 e 4) + 2 Ervas Medicinais (um canteiro inteiro dedicado) + 25 de Ouro **por plantio**: o especialista da Horta tem de caçar, e Fertilizante em todos os canteiros em toda visita é 36 Ossos e 24 Ervas por dia |
+| Maestria (50 e 60: cada uma -5% do tempo de crescimento) | +11% de XP por hora | Só com o nível |
+| Passe | **nenhum** (a Horta corre em paralelo com a atividade principal e não usa armazenamento nem material do Passe) | - |
+| Frequência | pouca: 2 ou 4 visitas dão o mesmo | O canteiro é o gargalo |
+
+Duas consequências a decidir pelo dono: (1) a Horta é uma profissão que **todo mundo cresce de graça** em paralelo com a Caça, porque não ocupa o espaço da atividade; a corrida da Horta é decidida pela rotina (usar o Fertilizante) e não por abrir mão de outra coisa. Quem quiser que ela custe alguma coisa precisa fazer o canteiro competir com algo (por exemplo plantas que só crescem com o herói parado). (2) Mineração e Lenhador competem entre si e com a Caça pelo mesmo espaço: o especialista é o que abre mão da Caça (e por isso vai ficar no nível 1 do herói e fora da corrida de nível).
+
+**Portas de nível do herói que prendiam o especialista, e a decisão:** a **Poção do Coletor** (nível 15), o **Tônico do Prospector** (20) e o **Fertilizante** (5) pediam nível do **herói**, que só sobe caçando: um especialista de Mineração no nível 1 não podia fazer nenhuma. Passaram a pedir nível 1 (`potions.ts`, e a tabela de preços de `garden3.test.ts`). A porta real continua: as plantas pedem nível de Jardinagem (Capim Veloz 30, Flor Dourada 20), a Prata e a Madeira de Carvalho o nível da própria profissão. Conferido por teste (`professionRace.test.ts`): minério, madeira, planta e o sexto canteiro abrem só com o nível da profissão, com o herói no nível 1. Não há nenhuma porta de minério, madeira, planta ou canteiro por nível do herói (`ores.ts`, `woodcutting.ts`, `garden.ts` já diziam "nível da profissão"); o que existe são receitas de equipamento da Forja, que o especialista não precisa.
+
+### 3. (c) A política "especialista" do simulador
+
+`Player` (`scripts/sim/player.ts`) ganhou `specialist: 'mining' | 'woodcutting' | 'gardening'` e `checkInHours`. **Mineração / Lenhador:** todo check-in começa a coleta daquela profissão no melhor tier aberto, sem Masmorra, sem pedido, sem Caça (o herói fica no nível 1); toma a Poção do Coletor e o Tônico do Prospector que tiver (e fabrica a poção, o tônico quando dá); cuida da Horta como todo mundo. **Horta:** a Caça segue (ela dá os Ossos do Fertilizante, o jogador caça onde eles caem), a Horta é cuidada para XP (a planta mais longa que fica pronta até a próxima visita, com Fertilizante nas que ele cobrir, um canteiro de Erva Medicinal para fazer mais). `LONG_SCEN=M,W,G,PM,PW,PG` roda as seis variações (`X` na frente: 4 visitas por dia); o relatório mostra a tabela de nível e XP total da profissão nos dias 7, 14, 30, 45 e 60.
+
+Limite honesto: a política é uma pessoa razoável, não a ótima (o Fertilizante quase não entra: poucos Ossos). O humano mais rápido tem folga de uns 25% sobre os 70 da Horta.
+
+### 4. (d) Limites do servidor das profissões
+
+As taxas teóricas (`MINING_XP_RATE`, `WOODCUTTING_XP_RATE`, `GARDENING_XP_RATE`) não mudaram de fórmula: a potência (5 + 0,75 por nível), o rendimento máximo (x1,82: Passe 1,1 x maestria 1,08 x poção, tônico e Coletor 1,53) e as 5 / 6 parcelas x 5 XP x 2,24 (Fertilizante + perks) valem os mesmos 111 XP/h (Mineração, nível 75) e 67 XP/h (Horta, 6 canteiros). Recalculadas (`npm run season:bounds`) e conferidas: a tabela `PROFESSION_XP_TO_LEVEL` foi regerada (`npm run season:tables`) com as curvas novas, então o nível que o servidor lê do XP é o do jogo e a taxa teórica usa o nível mostrado (que fica **mais baixo** para o mesmo XP; isso só estreita o limite com a potência que o jogador realmente tinha, e a taxa no nível de agora continua sendo a maior que ele teve). Novo: `BOUNDS.professionSimDay60` (Mineração / Lenhador 77 300 XP, Horta 30 440, o especialista mais rápido no dia 60) e um teste (`seasonProgress.test.ts`) que prova que o ritmo teórico (24 h por dia, 60 dias) fica **acima** disso (sem falso positivo no mais rápido que o simulador viu) e que os níveis do especialista no dia 60 estão entre 65 e 72. A diferença para o teórico, 150 mil contra 77 mil XP de Mineração, é a folga dos 2x do sinal e dos 3x da rejeição para humanos que conferem de 4 em 4 horas (95 mil).
+
+### 5. O que não foi verificado e o que o dono pode discordar
+
+- Nenhuma tela de profissão foi vista no navegador depois das curvas novas (a barra "nível em N horas" lê as mesmas funções, só pelos testes).
+- A obsidiana e a madeira ancestral continuam no nível 60 (a mesma quantidade de XP de antes); só o nível 61 a 75 ficou caro. O jogador comum chega à Mineração 64 no dia 60 (antes 74 do dono): os perks de maestria do 70 e 75 passaram a ser coisa de especialista.
+- O Fertilizante e a Horta: a corrida da Horta é cadência e Fertilizante, não escolha; ver a seção 2.
+- "Frequência pura" não foi limitada: 4 visitas por dia dobram o XP de quem não tem o Passe. O limite é o armazenamento da sessão. Se o dono quiser que isso custe, o caminho é um limite diário de XP de profissão ou um rendimento que cai com sessões curtas; não foi feito.

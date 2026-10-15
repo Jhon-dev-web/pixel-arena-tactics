@@ -78,10 +78,10 @@ describe('Garden 3.0 catalog', () => {
       stoneskin_tonic: [{ iron_thistle: 3, bone_fragment: 2 }, 60, 10],
       fortune_tonic: [{ gold_blossom: 2, common_herb: 2 }, 80, 20],
       haste_tonic: [{ swift_grass: 3, energy_herb: 2 }, 90, 30],
-      gatherer_brew: [{ swift_grass: 2, common_herb: 3 }, 50, 15],
+      gatherer_brew: [{ swift_grass: 2, common_herb: 3 }, 50, 1],
       precision_elixir: [{ moon_lily: 1, corrupted_crystal: 1 }, 220, 45],
       whetstone_oil: [{ iron_thistle: 2, leather_scrap: 2 }, 40, 10],
-      fertilizer: [{ bone_fragment: 3, common_herb: 2 }, 25, 5],
+      fertilizer: [{ bone_fragment: 3, common_herb: 2 }, 25, 1],
     };
     for (const [id, [input, cost, level]] of Object.entries(spec)) {
       const r = POTION_RECIPES.find((x) => x.id === id)!;

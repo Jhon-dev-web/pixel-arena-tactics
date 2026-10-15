@@ -12,14 +12,13 @@ export function emptySkillXp(): Record<SkillId, number> {
 
 const isProfession = (skillId: SkillId): boolean => skillId === 'mining' || skillId === 'woodcutting';
 
-// C2-B profession curve (Mining/Woodcutting ONLY — Gardening keeps its original exponential curve
-// below untouched; see tunables.ts skills.professionBand*/professionGrowth* for the rationale). 4
-// bands, continuous at every boundary — mirrors engine.ts's heroBandTable exactly (same construction,
+// C2-B profession curve (Mining/Woodcutting ONLY — Gardening has its own curve below; see tunables.ts skills.professionBand*/professionGrowth* for the rationale). 5
+// bands (the fifth, levels 61-75, is Rodada 20's: the profession rankings must not tie at the cap), continuous at every boundary — mirrors engine.ts's heroBandTable exactly (same construction,
 // same "each band's base is the previous band's own need() at its last level" rule).
 function professionBandTable(): { from: number; base: number; growth: number }[] {
   const s = T.skills;
-  const bounds = [1, s.professionBand1To + 1, s.professionBand2To + 1, s.professionBand3To + 1];
-  const growths = [s.professionGrowth1, s.professionGrowth2, s.professionGrowth3, s.professionGrowth4];
+  const bounds = [1, s.professionBand1To + 1, s.professionBand2To + 1, s.professionBand3To + 1, s.professionBand4To + 1];
+  const growths = [s.professionGrowth1, s.professionGrowth2, s.professionGrowth3, s.professionGrowth4, s.professionGrowth5];
   const bands: { from: number; base: number; growth: number }[] = [];
   let base = s.professionXpBase;
   for (let i = 0; i < bounds.length; i++) {
@@ -43,9 +42,17 @@ function professionXpToReachLevel(level: number): number {
   return total;
 }
 
+// Gardening: one growth up to `gardenLateFrom`, a steeper one after it (Rodada 20: the profession rankings must not tie at the cap, docs/BALANCE_CHANGES.md).
+function gardeningNeed(level: number): number {
+  const s = T.skills;
+  const early = Math.min(level, s.gardenLateFrom);
+  const base = s.xpBase * Math.pow(s.xpGrowth, early - 1);
+  return Math.round(level > s.gardenLateFrom ? base * Math.pow(s.xpGrowthLate, level - s.gardenLateFrom) : base);
+}
+
 export function skillXpForNextLevel(level: number, skillId: SkillId): number {
   if (isProfession(skillId)) return professionNeed(level);
-  return Math.round(T.skills.xpBase * Math.pow(T.skills.xpGrowth, level - 1));
+  return gardeningNeed(level);
 }
 
 export function skillLevel(xp: number, skillId: SkillId): number {

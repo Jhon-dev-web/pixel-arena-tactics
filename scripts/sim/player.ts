@@ -22,6 +22,7 @@ import { REFINING_RECIPES } from '../../src/game/refining';
 import { PLANTS } from '../../src/game/garden';
 import { applyHarvest, applyPlant, readySlots } from '../../src/game/gardenActions';
 import { applyElixir, applyRepairKit, ElixirId } from '../../src/game/elixirs';
+import { applyFertilizer } from '../../src/game/gardenActions';
 import { isBuffActive } from '../../src/game/buffs';
 import { MILESTONE_FLOORS } from '../../src/game/dungeon';
 import { deepestDepth, depthsUnlocked, nextDepthStage } from '../../src/game/depths';
@@ -156,6 +157,7 @@ export interface DaySnapshot {
   shards: number; // Runas in hand at the end of the day
   // Profession levels at the end of the day (Gardening is 1 for a player who never plants).
   skills: { mining: number; woodcutting: number; gardening: number };
+  skillXp?: { mining: number; woodcutting: number; gardening: number }; // total profession XP (the score of the profession rankings)
   // Best tier owned in each of the six slots at the end of the day (what the gear timeline is made of).
   tiers: Record<string, number>;
   stashLevel: number;
@@ -394,6 +396,13 @@ export interface PlayerOptions {
   sinks?: boolean;
   // A player who ignores the inventory entirely: never stashes, sells, discards, expands or brings anything over (everything else as the baseline).
   careless?: boolean;
+  // Rodada 20 (the League ranks Mining, Woodcutting and Gardening apart): a player who goes all in on ONE profession. A Mining / Woodcutting specialist spends every check-in on that
+  // gathering at its best open tier (no Dungeon, no orders, no Hunting; the hero stays level 1), brews the Gatherer Brew and the Prospector's Tonic when the Garden / the ore allows,
+  // and tends the Garden like everybody else. A Gardening specialist keeps the Hunting slot for the Bones of the Fertilizer and tends the six plots for XP: the longest plant that is ready
+  // by the next visit, fertilizing as many as the stock allows, one plot of Medicinal Herb for the Fertilizer itself.
+  specialist?: 'mining' | 'woodcutting' | 'gardening';
+  // Check-in hours of the day (default 9 and 21). A specialist who logs in every 6 hours shows how much of the race is just frequency (docs/BALANCE_CHANGES.md Rodada 21).
+  checkInHours?: number[];
   // Long-horizon sim: once the floor-100 boss is down the Dungeon sessions go to the Profundezas (nextDepthStage), and the snapshots carry the depth, the paragon level and the blockers.
   long?: boolean;
 }
@@ -550,7 +559,7 @@ export class Player {
     this.ledger = newLedger();
     const startStock = this.flowMark();
     this.sessions = [];
-    CHECKIN_HOURS.forEach((h, i) => {
+    (this.opts.checkInHours ?? CHECKIN_HOURS).forEach((h, i) => {
       const at = new Date(2026, 5, 1 + day, h, 0, 0).getTime() + Math.round((jitter() * 2 - 1) * JITTER_MS);
       this.now = Math.max(this.now, at);
       this.checkIn(i === 0 ? 'first' : 'second');
@@ -574,6 +583,7 @@ export class Player {
       gold: this.S.gold,
       shards: this.S.shards,
       skills: { mining: skillLevel(this.S.skillXp.mining, 'mining'), woodcutting: skillLevel(this.S.skillXp.woodcutting, 'woodcutting'), gardening: skillLevel(this.S.skillXp.gardening, 'gardening') },
+      skillXp: { mining: this.S.skillXp.mining, woodcutting: this.S.skillXp.woodcutting, gardening: this.S.skillXp.gardening },
       tiers: Object.fromEntries(CRAFT_PRIORITY.map((slot) => [slot, bestTier(this.S, slot)])),
       stashLevel: this.S.stash.level,
       stashSlots: stashSlotsUsed(this.S),
@@ -603,9 +613,10 @@ export class Player {
     this.maintain();
     this.spend();
     const first = Math.ceil(T.dungeon.freeSessionsPerDay / 2);
-    const todo = kind === 'first' ? first : T.dungeon.freeSessionsPerDay - first;
+    const gatherer = this.opts.specialist === 'mining' || this.opts.specialist === 'woodcutting';
+    const todo = gatherer ? 0 : kind === 'first' ? first : T.dungeon.freeSessionsPerDay - first;
     for (let i = 0; i < todo; i++) this.dungeonSession();
-    this.acceptDelivery();
+    if (!gatherer) this.acceptDelivery();
     this.startActivity();
   }
 
@@ -906,9 +917,54 @@ export class Player {
     if (up.stash.level >= 3) this.mark('stash3');
   }
 
+  // The Gardening specialist's visit: harvest, make Fertilizer from the Bones and Herbs in the bag, plant the longest plant that will be ready by the next visit (twice that long
+  // when a Fertilizer goes on it), keep plot 0 on the Medicinal Herb the Fertilizer needs.
+  private tendGardenSpecialist() {
+    const ready = readySlots(this.S, this.now);
+    if (ready.length > 0) {
+      this.makeRoom(ready.length);
+      const res = applyHarvest(this.S, ready, this.now);
+      if (res) {
+        for (const h of res.harvested) {
+          this.ledger.units[h.material] = (this.ledger.units[h.material] ?? 0) + h.qty;
+          this.ledger.flow[h.material].produced += h.qty;
+        }
+        this.S = res.save;
+      }
+    }
+    for (let i = 0; i < 12; i++) {
+      const next = craftPotion(this.S, 'fertilizer');
+      if (!next) break;
+      this.set(next, 'alquimia');
+    }
+    const lvl = skillLevel(this.S.skillXp.gardening, 'gardening');
+    const unlocked = PLANTS.filter((p) => p.requiredLevel <= lvl);
+    const empty = this.S.gardenSlots.map((sl, i) => (sl.plantId ? -1 : i)).filter((i) => i >= 0);
+    const fert = () => this.S.consumables.fertilizer ?? 0;
+    const SAFE_GAP = (24 / (this.opts.checkInHours?.length ?? 2) - 1.5) * HOUR; // 12 h between visits (6 h for the four-a-day player), give or take 90 minutes at each end
+    const herbs = unlocked.find((p) => p.id === 'common_herb');
+    const wantHerbs = !!herbs && (this.S.materials.common_herb ?? 0) < 24 && empty.includes(0);
+    const rest = wantHerbs ? empty.filter((i) => i !== 0) : empty;
+    const best = (fertilized: boolean) => [...unlocked].filter((p) => p.durationMs * (fertilized ? 1 - T.tonics.fertilizerSkipPct : 1) <= SAFE_GAP).sort((a, b) => b.durationMs - a.durationMs)[0];
+    const fertilizable = Math.min(rest.length, fert());
+    const withFert = rest.slice(0, fertilizable);
+    const without = rest.slice(fertilizable);
+    if (wantHerbs && herbs) this.S = applyPlant(this.S, herbs.id, [0], this.now) ?? this.S;
+    for (const [slots, fertilized] of [[withFert, true], [without, false]] as [number[], boolean][]) {
+      const pick = best(fertilized);
+      if (!pick || slots.length === 0) continue;
+      this.S = applyPlant(this.S, pick.id, slots, this.now) ?? this.S;
+      if (fertilized) for (const i of slots) this.S = applyFertilizer(this.S, i, this.now) ?? this.S;
+    }
+  }
+
   // Garden upkeep of a visit: harvest what is ready, then fill every empty plot.
   private tendGarden() {
     if (this.opts.garden === false) return;
+    if (this.opts.specialist === 'gardening') {
+      this.tendGardenSpecialist();
+      return;
+    }
     const ready = readySlots(this.S, this.now);
     if (ready.length > 0) {
       this.makeRoom(ready.length); // each ready plot needs room for its yield
@@ -1013,7 +1069,8 @@ export class Player {
   // Alchemy: keep one of each combat tonic (and the gathering brew) in the bag, only with gold beyond what the next gear craft needs.
   private craftTonics(reserve: number) {
     if (this.opts.tonics === false) return;
-    for (const id of [...COMBAT_TONICS, 'gatherer_brew', ...(this.opts.sinks ? SINK_CONSUMABLES : [])] as const) {
+    const extra = this.opts.sinks ? SINK_CONSUMABLES : this.opts.specialist ? (['prospector_tonic'] as const) : [];
+    for (const id of [...COMBAT_TONICS, 'gatherer_brew', ...extra] as const) {
       if ((this.S.consumables[id] ?? 0) >= ((SINK_CONSUMABLES as readonly string[]).includes(id) ? SINK_STOCK : TONIC_STOCK)) continue;
       const rec = POTION_RECIPES.find((r) => r.id === id)!;
       if (this.S.gold - rec.cost < reserve) continue;
@@ -1421,7 +1478,23 @@ export class Player {
   }
 
   // ---- 6. start the next background activity (one at a time: hunt / mine / chop)
+  // A Mining / Woodcutting specialist: the best open tier of his profession, with the brews he has.
+  private startSpecialistGathering(kind: 'mining' | 'woodcutting'): boolean {
+    const tiers = kind === 'mining' ? ORE_TIERS : WOOD_TIERS;
+    const lvl = skillLevel(this.S.skillXp[kind], kind);
+    const open = [...tiers].filter((t) => lvl >= t.requiredLevel);
+    const id = open[open.length - 1]?.id;
+    if (!id) return false;
+    this.makeRoom(this.slotsForecast({ [id]: Math.floor(gatherPower(BASE_GATHER_POWER, this.S.skillXp[kind]) * 10) }));
+    const next = startGathering(this.S, kind === 'mining' ? 'mine' : 'wood', id, this.now);
+    if (!next) return false;
+    this.S = this.drinkBrew(next);
+    this.trace.push(`   ${kind} ${id}`);
+    return true;
+  }
+
   private startActivity() {
+    if ((this.opts.specialist === 'mining' || this.opts.specialist === 'woodcutting') && this.startSpecialistGathering(this.opts.specialist)) return;
     const target = chooseTarget(this.S);
     const deficit: Mats = { ...(target?.deficit ?? {}) };
     // refine materials count as demand once the craft itself is covered
@@ -1458,6 +1531,7 @@ export class Player {
       const sp = this.stashPlan();
       if (sp && !sp.blocked) for (const [m, q] of Object.entries(sp.deficit) as [MaterialId, number][]) deficit[m] = Math.max(deficit[m] ?? 0, q);
     }
+    if (this.opts.specialist === 'gardening' && (this.S.materials.bone_fragment ?? 0) < 60) deficit.bone_fragment = Math.max(deficit.bone_fragment ?? 0, 60);
     const power = (skill: 'mining' | 'woodcutting') => gatherPower(BASE_GATHER_POWER, this.S.skillXp[skill]) * (skill === 'mining' ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower);
     const hoursFor = (kind: 'mining' | 'woodcutting', ids: MaterialId[], tiers: { id: string; requiredLevel: number }[]): { hours: number; pick: MaterialId | null } => {
       const lvl = skillLevel(this.S.skillXp[kind], kind);
@@ -1526,7 +1600,7 @@ export class Player {
   private drinkBrew(s: SaveData): SaveData {
     if (this.opts.tonics === false) return s;
     const brewed = applyElixir(s, 'gatherer_brew', this.now) ?? s;
-    return this.opts.sinks ? applyElixir(brewed, 'prospector_tonic', this.now) ?? brewed : brewed;
+    return this.opts.sinks || this.opts.specialist ? applyElixir(brewed, 'prospector_tonic', this.now) ?? brewed : brewed;
   }
 
   // Where to hunt: the zone that drops the Hunting material the next craft / refine / stash upgrade is longest short of (a player hunts where the thing he

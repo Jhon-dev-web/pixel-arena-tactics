@@ -3,6 +3,7 @@
 import { describe, it } from 'vitest';
 import { BOUNDS, PACE_FLAG_FACTOR, REJECT_FACTOR, professionXpPerHour } from '../../supabase/functions/_shared/progress/bounds';
 import { deriveBounds } from './seasonBoundsDerive';
+import { skillLevel } from '../../src/game/skills';
 
 describe('season bounds report', () => {
   it('prints the table', () => {
@@ -18,6 +19,12 @@ describe('season bounds report', () => {
     row('woodcutting xp/h lvl 75', r2(professionXpPerHour('woodcutting', 75)), d.woodcuttingPerHour.toFixed(2), 'tunables skills + woodcutting');
     row('gardening xp/h at lvl 40', r2(professionXpPerHour('gardening', 40)), d.gardeningPerHour.toFixed(2), 'garden.ts + tunables tonics / mastery');
     row('gardenLongestPlantXp', BOUNDS.gardenLongestPlantXp, String(d.longestPlantXp), 'garden.ts PLANTS');
+    // Rodada 21: the total profession XP of the fastest simulated specialist on day 60 against the theoretical rate held 24 h a day for 60 days
+    for (const p of ['mining', 'gardening'] as const) {
+      let xp = 0;
+      for (let h = 0; h < 60 * 24; h++) xp += professionXpPerHour(p, skillLevel(xp, p));
+      row(`${p} xp on day 60`, BOUNDS.professionSimDay60[p], `${Math.round(xp)} (theoretical, 24 h a day)`, 'sim:long LONG_SCEN=PM,PG');
+    }
     row('burstHours', BOUNDS.burstHours, `${d.capHours} (battlePass.capHours)`, 'tunables battlePass.capHours');
     row('paceSlackDays', BOUNDS.paceSlackDays, `${(BOUNDS.burstHours / 24).toFixed(2)} (burstHours / 24)`, 'derived');
     row('dungeonRunsPerDay', BOUNDS.dungeonRunsPerDay, `${d.runsPerDay} (free sessions + 10 bought)`, 'tunables dungeon.freeSessionsPerDay');

@@ -78,6 +78,19 @@ describe('season progress: bounds still hold the game', () => {
     expect(professionBurstXp('mining', 75)).toBeGreaterThanOrEqual(d.capHours * d.miningPerHour);
   });
 
+  it('Rodada 20: the theoretical profession rate, 24 hours a day for 60 days, stays above the fastest simulated specialist (no false flag), and below the level cap', () => {
+    for (const p of ['mining', 'woodcutting'] as const) {
+      let xp = 0;
+      for (let h = 0; h < 60 * 24; h++) xp += professionXpPerHour(p, skillLevel(xp, p));
+      expect(xp, p).toBeGreaterThan(BOUNDS.professionSimDay60[p]);
+    }
+    const garden = BOUNDS.gardenStartPlots + BOUNDS.gardenPlotUnlockLevels.length;
+    expect(garden * BOUNDS.gardenXpPerPlotHour * BOUNDS.gardenSpeedFactor * 60 * 24).toBeGreaterThan(BOUNDS.professionSimDay60.gardening);
+    // and the simulated specialists are level 65 to 72 on day 60
+    expect(skillLevel(BOUNDS.professionSimDay60.mining, 'mining')).toBeLessThanOrEqual(72);
+    expect(skillLevel(BOUNDS.professionSimDay60.gardening, 'gardening')).toBeGreaterThanOrEqual(65);
+  });
+
   it('the body limit is the client upload limit', () => {
     expect(MAX_BODY_BYTES).toBe(MAX_SAVE_UPLOAD_BYTES);
   });

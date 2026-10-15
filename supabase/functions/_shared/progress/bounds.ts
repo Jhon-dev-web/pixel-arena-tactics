@@ -65,6 +65,13 @@ export const BOUNDS = {
    * perks 1.08 (mastery.gatherYieldPct 0.04 x 2) x the effective-hours bonuses 1.53 (Coletor 3 ranks x 0.06 = 0.18, Gatherer Brew 0.25, Prospector's Tonic 0.10, all active the whole time).
    */
   gatherYieldFactor: 1.82,
+  /**
+   * Rodada 20 (the League ranks the three professions apart, by TOTAL XP, which keeps counting past the level cap): the total XP the fastest simulated SPECIALIST had on day 60 (`npm run
+   * sim:long` with LONG_SCEN=PM,PW,PG: a Pass owner who spends every check-in on that profession; Mining and Woodcutting are the same machine, Gardening does not depend on the Pass).
+   * It is what the theoretical rates below are measured against (seasonProgress.test.ts keeps each theoretical 60 days above it) and the day-60 level of that
+   * specialist is 72 (Mining / Woodcutting) and 70 (Gardening), never the cap of 75. The rates themselves (power x yield x XP per unit, plots x XP per plot-hour x speed) did not change.
+   */
+  professionSimDay60: { mining: 77_300, woodcutting: 77_300, gardening: 30_440 },
   /** Gardening XP = growth hours x skills.gardenXpPerHour (5) per harvest, for every plant. SOURCE: tunables skills.gardenXpPerHour. */
   gardenXpPerPlotHour: 5,
   /** Plots: 4 at the start, +1 at Gardening level 20 and 40 (garden.ts GARDEN_START_PLOTS / GARDEN_PLOT_UNLOCK_LEVELS). */

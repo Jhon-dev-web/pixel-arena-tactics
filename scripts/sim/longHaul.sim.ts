@@ -112,11 +112,16 @@ export interface LongDay {
   maxRefine?: number;
   sinks?: { deepTry: number; deepOk: number; deepDrop: number; lapidar: number };
   skills: { mining: number; woodcutting: number; gardening: number };
+  skillXp?: { mining: number; woodcutting: number; gardening: number };
   gearBlock: string;
   dungeonBlock: string;
 }
+// A = the usual player, P = the same with the Pass; M / W / G = a Mining / Woodcutting / Gardening specialist (Rodada 20), P + the letter = with the Pass.
+// X + the letter (XM, XPM...) is the same specialist checking in every 6 hours (3, 9, 15 and 21 h) instead of twice a day: how much of the race is frequency alone.
+export type Scenario = 'A' | 'P' | 'M' | 'W' | 'G' | 'PM' | 'PW' | 'PG' | 'XM' | 'XPM' | 'XG' | 'XPG';
+export const SPECIALIST: Partial<Record<Scenario, 'mining' | 'woodcutting' | 'gardening'>> = { M: 'mining', PM: 'mining', W: 'woodcutting', PW: 'woodcutting', G: 'gardening', PG: 'gardening', XM: 'mining', XPM: 'mining', XG: 'gardening', XPG: 'gardening' };
 export interface LongRun {
-  scenario: 'A' | 'P';
+  scenario: Scenario;
   seed: number;
   days: LongDay[];
 }
@@ -171,15 +176,16 @@ function compact(d: DaySnapshot, checkpoints: number[], zones: number): LongDay 
     maxRefine: d.maxRefine,
     sinks: d.ledger.sinks,
     skills: d.skills,
+    skillXp: d.skillXp,
     gearBlock: d.blockers.gear,
     dungeonBlock: d.blockers.dungeon,
   };
 }
 
-function playSeed(scenario: 'A' | 'P', seed: number): LongRun {
+function playSeed(scenario: Scenario, seed: number): LongRun {
   return withSeededRandom(seed * 7919 + 13, () => {
     const jitter = mulberry32(seed * 104729 + 7);
-    const player = new Player((t) => vi.setSystemTime(t), START, { long: true, pass: scenario === 'P' });
+    const player = new Player((t) => vi.setSystemTime(t), START, { long: true, pass: scenario === 'P' || scenario.startsWith('P') || scenario.startsWith('XP'), ...(SPECIALIST[scenario] ? { specialist: SPECIALIST[scenario] } : {}), ...(scenario.startsWith('X') ? { checkInHours: [3, 9, 15, 21] } : {}) });
     const days: LongDay[] = [];
     for (let d = 0; d < DAYS; d++) {
       player.playDay(d, jitter);
@@ -556,24 +562,55 @@ export function comparisonTable(a: LongRun[], p: LongRun[]): string[] {
   return table(['Marco', 'Sem Passe (A), dia', 'Com Passe (P), dia', 'Dono mais rápido em'], rows);
 }
 
-function loadRuns(): { A: LongRun[]; P: LongRun[] } {
+function loadRuns(): { A: LongRun[]; P: LongRun[]; others: Record<string, LongRun[]> } {
   const A: LongRun[] = [];
   const P: LongRun[] = [];
+  const others: Record<string, LongRun[]> = {};
   if (fs.existsSync(OUT)) {
     for (const f of fs.readdirSync(OUT).filter((x) => x.endsWith('.json'))) {
       const r = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')) as LongRun;
       if (r.days.length < DAYS) continue;
-      (r.scenario === 'A' ? A : P).push(r);
+      if (r.scenario === 'A') A.push(r);
+      else if (r.scenario === 'P') P.push(r);
+      else (others[r.scenario] ??= []).push(r);
     }
   }
   A.sort((x, y) => x.seed - y.seed);
   P.sort((x, y) => x.seed - y.seed);
-  return { A, P };
+  for (const list of Object.values(others)) list.sort((x, y) => x.seed - y.seed);
+  return { A, P, others };
 }
 
+// Rodada 20: the profession race. For a specialist scenario: level and total XP of ITS profession at the league days, median / fastest / slowest seed.
+export function professionRaceSection(label: string, scenario: Scenario, runs: LongRun[]): string[] {
+  const prof = SPECIALIST[scenario];
+  if (!prof || runs.length === 0) return [];
+  const days = LEAGUE_DAYS.filter((d) => d <= DAYS);
+  const rows = days.map((day) => {
+    const lv = runs.map((r) => r.days[day - 1].skills[prof]);
+    const xp = runs.map((r) => r.days[day - 1].skillXp?.[prof] ?? 0);
+    return [String(day), String(median(lv)), String(Math.max(...lv)), String(Math.min(...lv)), num(median(xp)), num(Math.max(...xp))];
+  });
+  return [`#### ${label}: ${runs.length} seeds, ${DAYS} dias`, '', ...table(['Dia', 'Nível (mediana)', 'mais rápida', 'mais lenta', 'XP total (mediana)', 'XP total (mais rápida)'], rows), ''];
+}
+
+const SCENARIO_LABEL: Record<string, string> = {
+  M: 'Especialista em Mineração, sem Passe',
+  PM: 'Especialista em Mineração, dono do Passe',
+  W: 'Especialista em Lenhador, sem Passe',
+  PW: 'Especialista em Lenhador, dono do Passe',
+  G: 'Especialista em Horta, sem Passe',
+  PG: 'Especialista em Horta, dono do Passe',
+  XM: 'Especialista em Mineração, sem Passe, 4 visitas por dia (a cada 6 h)',
+  XPM: 'Especialista em Mineração, dono do Passe, 4 visitas por dia (a cada 6 h)',
+  XG: 'Especialista em Horta, sem Passe, 4 visitas por dia (a cada 6 h)',
+  XPG: 'Especialista em Horta, dono do Passe, 4 visitas por dia (a cada 6 h)',
+};
+
 function printReport() {
-  const { A, P } = loadRuns();
+  const { A, P, others } = loadRuns();
   const text: string[] = [];
+  for (const sc of Object.keys(SCENARIO_LABEL)) text.push(...professionRaceSection(SCENARIO_LABEL[sc], sc as Scenario, others[sc] ?? []));
   if (A.length) text.push(...reportScenario('Cenário A (sem Passe)', A));
   if (P.length) text.push(...reportScenario('Cenário P (dono do Passe de Aventureiro, só os benefícios)', P));
   if (A.length && P.length) {
@@ -592,11 +629,11 @@ describe('long-horizon simulation', () => {
 
   it.skipIf(process.env.LONG_REPORT_ONLY === '1')(`plays ${DAYS} days`, () => {
     fs.mkdirSync(OUT, { recursive: true });
-    const scen = (process.env.LONG_SCEN ?? 'A,P').split(',') as ('A' | 'P')[];
+    const scen = (process.env.LONG_SCEN ?? 'A,P').split(',') as Scenario[];
     const jobs = process.env.LONG_JOBS
       ? process.env.LONG_JOBS.split(',').map((j) => {
           const [s, n] = j.split(':');
-          return { scenario: s as 'A' | 'P', seed: Number(n) };
+          return { scenario: s as Scenario, seed: Number(n) };
         })
       : scen.flatMap((scenario) => Array.from({ length: SEEDS }, (_, i) => ({ scenario, seed: i + 1 })));
     for (const job of jobs) {
