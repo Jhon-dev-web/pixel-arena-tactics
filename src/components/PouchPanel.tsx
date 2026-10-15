@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { fmtNum, t } from '../locales';
 import { SaveData } from '../game/engine';
 import { POUCH_IDS, PouchFailure, PouchId, applyCreatePouch, paysPassFee, pouchCost, pouchFace, pouchFee, pouchPerDay, pouchRuleParams, pouchesMadeToday } from '../game/goldPouch';
+import { useCertificatesVersion, verifiedPouchCount } from '../game/itemCerts';
 import { getConsumable } from '../game/consumables';
 import ConsumableIcon from './ConsumableIcon';
 import PouchOpenButton from './PouchOpenButton';
@@ -9,7 +10,7 @@ import PouchOpenButton from './PouchOpenButton';
 // The Bolsa de Ouro tab of the shop (goldPouch.ts): the rules in words (every number read from the same tunables as the code), one row per denomination with the fee and the
 // total, and the pouches the hero holds with an Open button. A player without the Pass sees the lower Pass fee.
 
-const FAIL_KEY: Record<PouchFailure, string> = { limit: 'pouch.failLimit', gold: 'pouch.failGold', bag: 'pouch.failBag', none: 'pouch.failGold' };
+const FAIL_KEY: Record<PouchFailure, string> = { limit: 'pouch.failLimit', gold: 'pouch.failGold', bag: 'pouch.failBag', none: 'pouch.failGold', certified: 'pouch.failGold' };
 
 // Why a pouch cannot be made right now (the same checks as applyCreatePouch, which is the one that decides), or null.
 function whyNot(save: SaveData, id: PouchId, now: number): PouchFailure | null {
@@ -18,6 +19,7 @@ function whyNot(save: SaveData, id: PouchId, now: number): PouchFailure | null {
 }
 
 export default function PouchPanel({ save, onCreate, onOpen }: { save: SaveData; onCreate: (id: PouchId) => void; onOpen: (id: PouchId) => void }) {
+  useCertificatesVersion(); // the server's list of certificates changed
   const now = Date.now();
   const [lastFail, setLastFail] = useState<PouchFailure | null>(null);
   const owner = paysPassFee(save);
@@ -79,6 +81,7 @@ export default function PouchPanel({ save, onCreate, onOpen }: { save: SaveData;
               <span className="gear-count">{t('shop.youHave', { n: save.consumables?.[id] ?? 0 })}</span>
             </span>
             <span className="gear-desc">{t('pouch.worth', { g: fmtNum(pouchFace(id)) })}</span>
+            <span className="gear-desc">{t('pouch.certifiedLine', { n: verifiedPouchCount(save, id), m: Math.max(0, (save.consumables?.[id] ?? 0) + (save.stash?.consumables?.[id] ?? 0) - verifiedPouchCount(save, id)) })}</span>
           </div>
           <PouchOpenButton id={id} onOpen={onOpen} />
         </div>

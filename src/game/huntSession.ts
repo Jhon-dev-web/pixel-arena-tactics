@@ -146,6 +146,9 @@ export interface PendingHuntReward {
   // Unique pieces the session rolled. The claim delivers them to the bag (a slot is reserved for them before any material), and any the bag has no
   // room for stay HERE (the reward stays pending, with everything else already paid) until there is space.
   uniques: UniqueDrop[];
+  // Web build (itemAuthority.ts): the SERVER rolls the unique drops, at claim time. While this is set the reward still has to be sent to mint-item (huntLifecycle.withServerUniques) before it can
+  // be claimed; `luck` is Sorte Grande's multiplier the hero had, which the server clamps to what the skill allows. Never set offline.
+  uniqueRoll?: { luck: number };
   // Display only: what the hero skill strikes did in the session (times and damage) and the total damage dealt, for the "N times, x% of the damage" lines.
   skillTally?: StrikeTally;
   totalDamage?: number;
@@ -308,6 +311,7 @@ export function sanitizePendingHuntReward(raw: unknown): PendingHuntReward | nul
     lost,
     ...(Object.keys(sanitizeMaterialRecord(r.owed)).length > 0 ? { owed: sanitizeMaterialRecord(r.owed) } : {}),
     uniques: sanitizeUniqueDrops(r.uniques),
+    ...(r.uniqueRoll && typeof r.uniqueRoll === 'object' ? { uniqueRoll: { luck: Math.min(10, Math.max(1, finiteNum((r.uniqueRoll as { luck?: unknown }).luck) ? (r.uniqueRoll as { luck: number }).luck : 1)) } } : {}),
     ...(r.skillTally && typeof r.skillTally === 'object' ? { skillTally: sanitizeTally(r.skillTally) } : {}),
     ...(nonNegInt(r.totalDamage, 1e15) > 0 ? { totalDamage: nonNegInt(r.totalDamage, 1e15) } : {}),
     ...(nonNegInt(r.kills, 1e9) > 0 ? { kills: nonNegInt(r.kills, 1e9) } : {}),

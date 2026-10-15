@@ -4,6 +4,7 @@ import { MaterialId } from './materials';
 import { GEMS, GemId } from './gems';
 import { DungeonBiomeDef, depthOfStage, depthScale, isDepthStage, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR } from './dungeon';
 import { UniqueDrop, rollBossRelics, rollBossUniques, rollDepthBossRelics, rollDepthBossUniques } from './uniques';
+import { isServerItemAuthority } from './itemAuthority';
 
 export interface WaveRewards {
   gold: number;
@@ -22,6 +23,8 @@ export interface RunRewards {
   uniques: UniqueDrop[];
   relics: string[];
   stages: number;
+  // Web build (itemAuthority.ts): the boss stages the run cleared. The SERVER rolls their unique drops when the run is banked (mint-item boss_drop), so `uniques` stays empty there.
+  bossStages?: number[];
 }
 
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -91,7 +94,8 @@ export function waveRewards(biome: DungeonBiomeDef, stage: number, bossLootMult 
   let relics: string[] = [];
   if (isDungeonBoss(stage)) {
     // A depth boss rolls the pieces of one of the four biome bosses (in turn), with a chance that rises slowly with the depth and is capped (uniques.ts); its Runes are its own.
-    uniques = isDepthStage(stage) ? rollDepthBossUniques(depthOfStage(stage), Math.random, bossLootMult) : rollBossUniques(stage, Math.random, bossLootMult);
+    // Web build: no unique is rolled on the device (the server rolls them when the run is banked); relics are not tradeable and keep rolling here.
+    uniques = isServerItemAuthority() ? [] : isDepthStage(stage) ? rollDepthBossUniques(depthOfStage(stage), Math.random, bossLootMult) : rollBossUniques(stage, Math.random, bossLootMult);
     relics = isDepthStage(stage) ? rollDepthBossRelics(depthOfStage(stage), Math.random, bossLootMult) : rollBossRelics(stage, Math.random, bossLootMult);
     shards = isDepthStage(stage) ? T.depths.bossShards : T.battle.bossShards;
     gold = Math.round(gold * T.battle.bossGoldMult) + T.advanced.bossGoldBonus;

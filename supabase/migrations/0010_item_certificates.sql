@@ -12,6 +12,8 @@
 --   * arena_private.item_buckets       the atomic plausibility limits (a token bucket per user and bucket name, refilled with the server clock).
 --   * arena_private.item_account_flags what the owner audits: an account that hit a limit or asked for something it should not.
 --   * public.item_take_tokens / item_commit / item_certificate_transition / item_flag_account   service-role-only functions: every limit and every state change is ONE locked statement.
+--   * a trigger on arena_private.season_goal: when the first League resets every hero (0009 reset_at), the certificates of the heroes that no longer exist are revoked (a held certificate created
+--     before reset_at). The pre-season is an open test: nothing minted in it can reach the market.
 --
 -- NOT APPLIED by the work that wrote this file. The owner applies it (SQL editor or `supabase db push`), AFTER 0009, in the DEVELOPMENT project first. It was never run against a real
 -- database: only read by static tests (supabase/functions/_shared/__tests__/migration0010.test.ts). The SQL TEST PLAN at the end is what proves it for real.
@@ -29,6 +31,8 @@
 --   drop table if exists arena_private.item_buckets;
 --   drop function if exists arena_private.item_certificates_guard();
 --   drop function if exists arena_private.item_certificate_events_no_change();
+--   drop trigger if exists season_goal_revoke_certificates on arena_private.season_goal;
+--   drop function if exists arena_private.item_certificates_league_reset();
 
 create schema if not exists arena_private;
 revoke all on schema arena_private from public, anon, authenticated;
@@ -505,6 +509,43 @@ revoke all on function public.item_certificate_transition(uuid, uuid[], text, js
 grant execute on function public.item_certificate_transition(uuid, uuid[], text, jsonb) to service_role;
 
 -- ---------------------------------------------------------------------------------------------------------------------------------------
+-- The League reset voids what was minted before it (the heroes those certificates described are gone). Set-once like reset_at itself: it fires when reset_at goes from null to a value.
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+create or replace function arena_private.item_certificates_league_reset()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.reset_at is not null and old.reset_at is null then
+    insert into public.item_certificate_events (certificate_id, user_id, event, detail)
+    select c.id, c.user_id, 'revoke', pg_catalog.jsonb_build_object('reason', 'league_reset')
+    from public.item_certificates as c
+    where c.status = 'held' and c.created_at < new.reset_at;
+    update public.item_certificates as c set status = 'revoked' where c.status = 'held' and c.created_at < new.reset_at;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function arena_private.item_certificates_league_reset() from public, anon, authenticated;
+
+drop trigger if exists season_goal_revoke_certificates on arena_private.season_goal;
+create trigger season_goal_revoke_certificates
+  after update of reset_at on arena_private.season_goal
+  for each row
+  execute function arena_private.item_certificates_league_reset();
+
+-- Applied AFTER the League already opened: whatever was minted before the reset is voided now.
+insert into public.item_certificate_events (certificate_id, user_id, event, detail)
+select c.id, c.user_id, 'revoke', pg_catalog.jsonb_build_object('reason', 'league_reset')
+from public.item_certificates as c
+where c.status = 'held' and c.created_at < (select g.reset_at from arena_private.season_goal as g where g.id);
+update public.item_certificates as c set status = 'revoked'
+where c.status = 'held' and c.created_at < (select g.reset_at from arena_private.season_goal as g where g.id);
+
+-- ---------------------------------------------------------------------------------------------------------------------------------------
 -- SQL TEST PLAN (run after applying; nothing here is run automatically).
 --
 -- A. A signed-in client cannot write. Impersonate a normal user:
@@ -533,4 +574,6 @@ grant execute on function public.item_certificate_transition(uuid, uuid[], text,
 -- I. Transition rules: void a held certificate -> status revoked and one 'revoke' event; void it again -> ok, no new event; burn a revoked one -> not_held; bind a burned one -> not_held;
 --    another user's id -> not_found (nothing changes, no hint that the id exists).
 -- J. Flags: select public.item_flag_account('<user>', 'TEST', '{}'); then `select arena_private.has_item_flags('<user>');` -> true.
+-- K. The League reset: with a held certificate created before the League opens, `update arena_private.season_goal set reset_at = now();` (or open the first ranked season) -> that certificate is 'revoked'
+--    with a 'revoke' event whose detail says league_reset; one created after stays held; a second reset_at update is refused by 0009 (set-once) and revokes nothing.
 -- ---------------------------------------------------------------------------------------------------------------------------------------

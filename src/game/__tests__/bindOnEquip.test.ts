@@ -10,6 +10,7 @@ import {
   applyUpgrade,
   createGearInstance,
   isTradeable,
+  isTradeableKind,
   needsBindConfirm,
 } from '../gearInstances';
 import { applyReforge } from '../reforge';
@@ -86,7 +87,9 @@ describe('bind on equip', () => {
   });
 });
 
-describe('isTradeable: one rule, rarity x unique x bound', () => {
+const CERT = '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a';
+
+describe('isTradeableKind: one rule, rarity x unique x bound (isTradeable adds the server certificate)', () => {
   const uniqueTemplate = GEAR.find((g) => g.unique)!.id;
   const forgedTemplate = 'iron_helm';
   const mk = (templateId: string, rarity: Rarity, bound: boolean) => ({ ...createGearInstance(templateId, { id: 'x', origin: 'craft', rarity, substats: [] }), ...(bound ? { bound: true } : {}) });
@@ -96,9 +99,14 @@ describe('isTradeable: one rule, rarity x unique x bound', () => {
       for (const bound of [false, true]) {
         const highRarity = r.id === 'epic' || r.id === 'legendary';
         // forged gear: tradeable only when unbound AND Epic / Legendary
-        expect(isTradeable(mk(forgedTemplate, r.id, bound)), `forged ${r.id} bound=${bound}`).toBe(!bound && highRarity);
+        expect(isTradeableKind(mk(forgedTemplate, r.id, bound)), `forged ${r.id} bound=${bound}`).toBe(!bound && highRarity);
+        // with the certificate the server issued, the same table decides; without one nothing is tradeable
+        expect(isTradeable({ ...mk(forgedTemplate, r.id, bound), certificateId: CERT }), `certified forged ${r.id} bound=${bound}`).toBe(!bound && highRarity);
+        expect(isTradeable(mk(forgedTemplate, r.id, bound)), `uncertified forged ${r.id} bound=${bound}`).toBe(false);
         // unique drops: tradeable when unbound, whatever the rarity
-        expect(isTradeable(mk(uniqueTemplate, r.id, bound)), `unique ${r.id} bound=${bound}`).toBe(!bound);
+        expect(isTradeableKind(mk(uniqueTemplate, r.id, bound)), `unique ${r.id} bound=${bound}`).toBe(!bound);
+        expect(isTradeable({ ...mk(uniqueTemplate, r.id, bound), certificateId: CERT }), `certified unique ${r.id} bound=${bound}`).toBe(!bound);
+        expect(isTradeable(mk(uniqueTemplate, r.id, bound)), `uncertified unique ${r.id} bound=${bound}`).toBe(false);
       }
     }
   });
@@ -112,7 +120,7 @@ describe('isTradeable: one rule, rarity x unique x bound', () => {
 
   it('the equip confirmation is required only for a piece that could be sold', () => {
     const base = defaultSave();
-    const add = (id: string, templateId: string, rarity: Rarity, bound = false): SaveData => ({ ...base, gearInstances: { ...base.gearInstances, [id]: { ...createGearInstance(templateId, { id, origin: 'craft', rarity, substats: [] }), ...(bound ? { bound: true } : {}) } } });
+    const add = (id: string, templateId: string, rarity: Rarity, bound = false): SaveData => ({ ...base, gearInstances: { ...base.gearInstances, [id]: { ...createGearInstance(templateId, { id, origin: 'craft', rarity, substats: [], certificateId: CERT }), ...(bound ? { bound: true } : {}) } } });
     expect(needsBindConfirm(add('a', forgedTemplate, 'common'), 'a')).toBe(false);
     expect(needsBindConfirm(add('a', forgedTemplate, 'rare'), 'a')).toBe(false);
     expect(needsBindConfirm(add('a', forgedTemplate, 'epic'), 'a')).toBe(true);
@@ -120,5 +128,8 @@ describe('isTradeable: one rule, rarity x unique x bound', () => {
     expect(needsBindConfirm(add('a', uniqueTemplate, 'common'), 'a')).toBe(true);
     expect(needsBindConfirm(add('a', forgedTemplate, 'epic', true), 'a')).toBe(false);
     expect(needsBindConfirm(base, 'missing')).toBe(false);
+    // a piece with no certificate (offline, or from an older save) could not be sold anyway: binding it costs nothing, so there is nothing to confirm
+    const uncertified: SaveData = { ...base, gearInstances: { ...base.gearInstances, a: createGearInstance(forgedTemplate, { id: 'a', origin: 'craft', rarity: 'legendary', substats: [] }) } };
+    expect(needsBindConfirm(uncertified, 'a')).toBe(false);
   });
 });

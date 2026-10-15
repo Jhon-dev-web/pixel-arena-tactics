@@ -3,7 +3,7 @@ import { ownsAdventurerPass } from './entitlements';
 import { applyDeliveryClaim, ensureDeliveryOffers, isDeliveryReady } from './deliveries';
 import { applyHarvest, readySlots } from './gardenActions';
 import { applyClaimGathering, GatherKind } from './gathering';
-import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim } from './huntLifecycle';
+import { applyHuntClaim, applyHuntStop, huntClaimBlocked, needsServerUniques, planHuntClaim } from './huntLifecycle';
 import { MaterialId } from './materials';
 
 // "Resgatar tudo" on the Home screen (an Adventurer Pass convenience): one action that collects every FINISHED activity - the hunt reward waiting (or a hunt that
@@ -63,7 +63,8 @@ export function applyClaimAll(save: SaveData, now: number): ClaimAllResult {
     if (st.full && st.capMs > 0) s = applyHuntStop(s, now) ?? s;
   }
   const pending = s.pendingHuntReward;
-  if (pending) {
+  // Web build: a reward still waiting for the server's roll of its uniques is not claimed here (the app rolls it, then claims it); everything else is collected as always.
+  if (pending && !needsServerUniques(pending)) {
     const plan = planHuntClaim(s, pending);
     const claimed = applyHuntClaim(s, pending.id);
     if (claimed) {

@@ -4,7 +4,7 @@ import { fmtNum, t } from '../locales';
 import { playSfx } from '../game/audio';
 import { SaveData } from '../game/engine';
 import { PendingHuntReward } from '../game/huntSession';
-import { planHuntClaim } from '../game/huntLifecycle';
+import { needsServerUniques, planHuntClaim } from '../game/huntLifecycle';
 import { getHuntingZone, huntingEnemyNameKey } from '../game/huntingZones';
 import { getMaterial, MaterialId } from '../game/materials';
 import { fmtSpan, matName } from '../game/huntView';
@@ -121,6 +121,7 @@ export default function HuntRewardModal({
         )}
 
         <UniqueDrops drops={uniques} held={plan.uniquesLeft.length > 0} />
+        {needsServerUniques(reward) && <p className="hunt-meter-text">{t('hunting.uniquesServerNote')}</p>}
         {reward.skillTally && <StrikeLines tally={reward.skillTally} total={reward.totalDamage ?? 0} />}
 
         <p className={`hunt-inv-line ${slotCls}`}>{t('hunting.invAfterClaim', { n: plan.slotsBefore, m: plan.capacity, a: plan.slotsAfter })}</p>

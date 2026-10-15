@@ -18,7 +18,7 @@ function fn(name: string): string {
   return code.slice(start, code.indexOf('$$;', code.indexOf('as $$', start)) + 3);
 }
 
-const FUNCTIONS = ['arena_private.item_certificates_guard()', 'arena_private.item_certificate_events_no_change()', 'arena_private.has_item_flags(p_user_id uuid)', 'public.item_flag_account(', 'public.item_take_tokens(', 'public.item_commit(', 'public.item_certificate_transition('];
+const FUNCTIONS = ['arena_private.item_certificates_league_reset()', 'arena_private.item_certificates_guard()', 'arena_private.item_certificate_events_no_change()', 'arena_private.has_item_flags(p_user_id uuid)', 'public.item_flag_account(', 'public.item_take_tokens(', 'public.item_commit(', 'public.item_certificate_transition('];
 
 describe('0010: certificates cannot be written by a client', () => {
   it('RLS is on for every public table the migration creates, and the only policy is "select own"', () => {
@@ -154,12 +154,23 @@ describe('0010: a certificate is evidence that cannot be edited', () => {
   });
 });
 
+describe('0010: the League reset voids what was minted before it', () => {
+  it('a trigger fires only when reset_at goes from null to a value and revokes held certificates created before it', () => {
+    const f = fn('arena_private.item_certificates_league_reset()');
+    expect(f).toContain('if new.reset_at is not null and old.reset_at is null then');
+    expect(f).toContain("c.status = 'held' and c.created_at < new.reset_at");
+    expect(f).toContain("set status = 'revoked'");
+    expect(code).toMatch(/create trigger season_goal_revoke_certificates\s+after update of reset_at on arena_private\.season_goal\s+for each row/);
+    expect(code).toContain('revoke all on function arena_private.item_certificates_league_reset() from public, anon, authenticated;');
+  });
+});
+
 describe('0010: documentation inside the file', () => {
   it('says it is not applied, how to roll back, and has a SQL test plan (same style as 0003-0009)', () => {
     expect(m10).toContain('NOT APPLIED by the work that wrote this file');
     expect(m10).toContain('ROLLBACK (by hand');
     expect(m10).toContain('SQL TEST PLAN');
-    for (const letter of ['A.', 'B.', 'C.', 'D.', 'E.', 'F.', 'G.', 'H.', 'I.', 'J.']) expect(m10).toContain(`-- ${letter} `);
+    for (const letter of ['A.', 'B.', 'C.', 'D.', 'E.', 'F.', 'G.', 'H.', 'I.', 'J.', 'K.']) expect(m10).toContain(`-- ${letter} `);
     for (const t of ['item_certificates', 'item_certificate_events', 'item_mint_requests', 'item_buckets', 'item_account_flags']) expect(m10).toMatch(new RegExp(`drop table if exists [a-z_.]*${t};`));
   });
 });

@@ -20,6 +20,7 @@ import SpriteSheet from './SpriteSheet';
 import { defeatGoldKept, isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../game/waves';
 import { getGem, GemId } from '../game/gems';
 import { UniqueDrop } from '../game/uniques';
+import { isServerItemAuthority } from '../game/itemAuthority';
 import { getTitleDef } from '../game/titles';
 import GemIcon from './GemIcon';
 import UniqueDrops from './UniqueDrops';
@@ -129,6 +130,7 @@ export default function BattleModal({
   const speedRef = useRef<1 | 2>(1);
   const stageRef = useRef(startFloor);
   const clearedRef = useRef(0);
+  const bossStagesRef = useRef<number[]>([]);
   const accumRef = useRef<{ gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; gems: Partial<Record<GemId, number>>; uniques: UniqueDrop[]; relics: string[]; count: number }>({
     gold: 0,
     drops: {},
@@ -197,7 +199,7 @@ export default function BattleModal({
     setDungeonComplete(dungeonCompleteRef.current);
     const acc = accumRef.current;
     const gold = outcome === 'retreat' ? acc.gold : Math.floor(acc.gold * defeatGoldKept(startFloor));
-    setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, uniques: acc.uniques, relics: acc.relics, stages: clearedRef.current });
+    setFinalRewards({ gold, drops: acc.drops, shards: acc.shards, gems: acc.gems, uniques: acc.uniques, relics: acc.relics, stages: clearedRef.current, ...(bossStagesRef.current.length > 0 ? { bossStages: [...bossStagesRef.current] } : {}) });
     if (outcome === 'defeat') setDefeatInfo(defeatSummary(save, stageRef.current, clearedRef.current, acc.gold, gold));
   };
 
@@ -275,6 +277,8 @@ export default function BattleModal({
       const r = waveRewards(getBiomeForFloor(st), st, combat.bossLootMult ?? 1);
       applyLoot(r.gold, r.drops, r.shards, r.gems, r.uniques, r.relics);
       clearedRef.current += 1;
+      // Web build: the server rolls the boss uniques when the run is banked, so only the boss stages are remembered here.
+      if (isServerItemAuthority() && isDungeonBoss(st)) bossStagesRef.current.push(st);
       burnRef.current = null;
       bleedRef.current = null;
       setEnemyBurning(false);

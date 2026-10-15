@@ -19,7 +19,13 @@ import { seasonRankingEnabled } from './game/seasonRanking';
 import { useSeasonSubmit } from './game/useSeasonSubmit';
 import { setSyncedSave } from './game/syncedSave';
 import { useAuth } from './auth/AuthContext';
-import { applyHuntClaim, applyHuntStop, huntClaimBlocked, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
+import { applyHuntClaim, applyHuntStop, huntClaimBlocked, needsServerUniques, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
+import { isServerItemAuthority } from './game/itemAuthority';
+import { fetchMyCertificates, itemApi, newRequestId } from './game/itemServer';
+import { ActionFail, changeAction, changeVoidsCertificate, createPouchAction, equipAction, forgeAction, openPouchAction, removeAction, resolveHuntUniques, settleBossClaim } from './game/itemActions';
+import { clearCertificates, setCertificates } from './game/itemCerts';
+import { queueBossClaims } from './game/bossClaims';
+import ConfirmVoidModal from './components/ConfirmVoidModal';
 import { addRelics, addUniqueInstance } from './game/uniques';
 import { applyFertilizer, applyHarvest, applyPlant, applyUproot, readySlots } from './game/gardenActions';
 import { getPotionRecipe } from './game/potions';
@@ -41,7 +47,6 @@ import {
   InstancedSlot,
   applyDurabilityLoss,
   applyEquipInstance,
-  applyForge,
   applyRepair,
   applySalvage,
   salvageBlockReason,
@@ -60,7 +65,7 @@ import { addForced, canAddInstances, expandInventory, inventoryCapacity } from '
 import { StackKind, applyStashMove, applyStashUpgrade, applyStoreAll, bagCount, stashCount } from './game/stash';
 import { applyMerchantSell, SellKind } from './game/merchant';
 import { applyWholesaleBatch, WholesaleLine } from './game/wholesale';
-import { applyCreatePouch, applyOpenPouch, PouchId } from './game/goldPouch';
+import { PouchId } from './game/goldPouch';
 import { applyDiscard } from './game/bagActions';
 import { ItemUse } from './game/itemUses';
 import { RefiningStation, getRefiningRecipe as refiningRecipeById } from './game/refining';
@@ -207,6 +212,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const saveRef = useRef(save);
   const cheatModeRef = useRef(false);
+  // Web build: one server-backed item action (forge, equip, refine, pouch...) at a time, and the prompt that warns a change cancels a certificate (itemActions.ts).
+  const itemBusyRef = useRef(false);
+  const [voidPrompt, setVoidPrompt] = useState<{ run: () => Promise<void> } | null>(null);
 
   const toastTimeout = useRef<number | null>(null);
   const showToast = (msg: string) => {
@@ -262,6 +270,49 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   }, [passVersion, save.hasBattlePass]);
 
   const userId = user?.id ?? null;
+  // Web build: the account's certificates as the SERVER lists them. The screens say "Certificado" only for a piece whose certificate is in this list (itemCerts.ts); if the list cannot
+  // be read the pieces simply show as not confirmed.
+  const refreshCertificates = () => {
+    if (!userId || !configured) {
+      clearCertificates();
+      return;
+    }
+    fetchMyCertificates()
+      .then(setCertificates)
+      .catch(() => undefined);
+  };
+  useEffect(() => {
+    refreshCertificates();
+    // refreshCertificates is recreated every render; the inputs are the account and the build
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, configured]);
+  // Web build: the boss unique drops of banked Dungeon runs are rolled by the server. The claim stays in the save until it answers (same request id each time, so a retry is never a
+  // second roll); if the server cannot be reached it is tried again every half minute.
+  const bossClaimId = save.pendingBossClaims?.[0]?.id ?? null;
+  const [bossRetry, setBossRetry] = useState(0);
+  useEffect(() => {
+    if (!bossClaimId || !userId || !configured || !isServerItemAuthority()) return;
+    let cancelled = false;
+    let timer: number | undefined;
+    void (async () => {
+      const claim = saveRef.current.pendingBossClaims?.find((c) => c.id === bossClaimId);
+      if (!claim) return;
+      const r = await settleBossClaim(itemApi, () => saveRef.current, claim, Date.now());
+      if (cancelled) return;
+      if (!r.ok) {
+        timer = window.setTimeout(() => setBossRetry((n) => n + 1), 30_000);
+        return;
+      }
+      setSaveBoth(r.save);
+      if (r.uniques > 0) showToast(t('items.bossUniques', { n: r.uniques }));
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+    // setSaveBoth / showToast are recreated every render; the inputs are the first queued claim and the retry counter
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bossClaimId, bossRetry, userId, configured]);
   // Season ranking (off unless VITE_SEASON_RANKING_ENABLED, and never in the desktop / offline build, which has no backend): posts the save in the background.
   useSeasonSubmit(seasonRankingEnabled && configured && !!userId, save);
   const [passFlow, setPassFlow] = useState<PassFlow>('idle');
@@ -779,7 +830,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       }
     }
 
-    setSaveBoth({
+    // Web build: the boss uniques are rolled by the server; the run only leaves the claim (the stages) in the save until the server has answered (settleBossClaim, below).
+    const bossStages = isServerItemAuthority() ? rewards.bossStages ?? [] : [];
+    setSaveBoth(
+      queueBossClaims(
+        {
       ...s,
       stats: recordDungeonRun(s, startFloor, stages, (rewards.uniques ?? []).length).stats,
       gold,
@@ -797,7 +852,14 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       quests,
       battlePassLevel,
       battlePassXp,
-    });
+        },
+        bossStages,
+        saveSkillEffects(s).bossLootMult,
+        Date.now(),
+        newRequestId,
+      ),
+    );
+    if (bossStages.length > 0) showToast(t('items.bossPending'));
     playSfx(outcome === 'retreat' ? 'victory' : 'hit');
     setBattleFloor(null);
   };
@@ -1094,15 +1156,34 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   // Home "Resgatar tudo" (claimAll.ts, Adventurer Pass owners): every finished activity through its own transition, one combined summary.
   const claimEverything = () => {
+    const finish = (res: ReturnType<typeof applyClaimAll>) => {
+      if (res.lines.length === 0) {
+        showToast(t('claimAll.nothing'));
+        return;
+      }
+      playSfx('victory');
+      commitSave(res.save);
+      setRewardHidden(false);
+      setClaimAllLines(res.lines);
+    };
     const res = applyClaimAll(saveRef.current, Date.now());
-    if (res.lines.length === 0) {
-      showToast(t('claimAll.nothing'));
+    // Web build: a Hunting reward waits for the server's roll of its uniques (applyClaimAll leaves it), so the rest is collected now and the hunt is claimed after the roll.
+    if (isServerItemAuthority() && needsServerUniques(res.save.pendingHuntReward)) {
+      void withItemLock(async () => {
+        commitSave(res.save);
+        const rolled = await resolveHuntUniques(itemApi, () => saveRef.current);
+        if (!rolled.ok) {
+          failToast(rolled);
+          if (res.lines.length > 0) setClaimAllLines(res.lines);
+          return;
+        }
+        commitSave(rolled.save);
+        const second = applyClaimAll(saveRef.current, Date.now());
+        finish({ save: second.save, lines: [...res.lines, ...second.lines] });
+      });
       return;
     }
-    playSfx('victory');
-    commitSave(res.save);
-    setRewardHidden(false);
-    setClaimAllLines(res.lines);
+    finish(res);
   };
 
   // Welcome back: shown on load and when the window comes back after ten minutes or more away, never over the tutorial / first run, a dungeon fight or the
@@ -1314,6 +1395,38 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Hunting lifecycle (see huntLifecycle.ts): each step is ONE pure transition committed in one go and persisted right
   // away (not only by the save effect), so a reload can never land between a step's parts. The reward a stop produces
   // lives in the save (pendingHuntReward), not in React state.
+  // ---- Server-backed item actions (web build; docs/MARKET_FOUNDATION.md). One at a time; if the server cannot be reached the action is blocked with a clear message.
+  const withItemLock = async (run: () => Promise<void>): Promise<void> => {
+    if (itemBusyRef.current) return;
+    itemBusyRef.current = true;
+    try {
+      await run();
+    } catch (err) {
+      recordError('error', err);
+    } finally {
+      itemBusyRef.current = false;
+    }
+  };
+  const REFUSAL_KEYS = ['forge_rate', 'seal_limit', 'seal_pass_required', 'cert_day_limit', 'too_early', 'burn_not_held', 'pouch_gold_limit', 'pouch_count_limit'];
+  const failToast = (r: { blocked?: ActionFail['blocked']; reason?: string }) => {
+    if (r.blocked === 'unreachable') showToast(t('items.unreachable'));
+    else if (r.blocked === 'listed') showToast(t('items.listed'));
+    else if (r.blocked === 'refused') showToast(r.reason && REFUSAL_KEYS.includes(r.reason) ? t(`items.refused.${r.reason}`) : t('items.refusedGeneric'));
+  };
+  // Refining, reforging and lapidating a piece that still carries a certificate cancels it: ask first (a bound or uncertified piece changes at once).
+  const requestChange = (id: string, reason: 'refine' | 'reforge' | 'lapidar', canApply: (s: SaveData) => boolean, apply: (s: SaveData) => void) => {
+    const run = async () => {
+      const gate = await changeAction(itemApi, () => saveRef.current, id, reason, canApply);
+      if (!gate.ok) {
+        if (gate.blocked !== 'game') failToast(gate);
+        return;
+      }
+      apply(gate.save);
+    };
+    if (changeVoidsCertificate(saveRef.current.gearInstances[id])) setVoidPrompt({ run });
+    else void withItemLock(run);
+  };
+
   const commitSave = (next: SaveData) => {
     setSaveBoth(next);
     dirtyRef.current = true;
@@ -1335,6 +1448,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setHuntOpen(false);
     setBattleFloor(null);
     setBattlePassOpen(false);
+    refreshCertificates(); // the League voided every certificate of the heroes it replaced
     setWelcome(null);
     setRewardHidden(false);
     setActiveView('home');
@@ -1440,6 +1554,27 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const confirmHuntReward = () => {
     const pending = saveRef.current.pendingHuntReward;
     if (!pending) return;
+    // Web build: the server rolls the unique drops of this reward first (bounded by server time) and certifies them; unreachable = the claim waits, nothing is lost.
+    if (needsServerUniques(pending)) {
+      void withItemLock(async () => {
+        const r = await resolveHuntUniques(itemApi, () => saveRef.current);
+        if (!r.ok) {
+          failToast(r);
+          return;
+        }
+        commitSave(r.save);
+        const refused = (r as { refused?: string }).refused;
+        if (refused) showToast(t('items.huntNoUniques', { r: refused }));
+        else if (r.uniques > 0) showToast(t('items.huntUniques', { n: r.uniques }));
+        claimHuntReward();
+      });
+      return;
+    }
+    claimHuntReward();
+  };
+  const claimHuntReward = () => {
+    const pending = saveRef.current.pendingHuntReward;
+    if (!pending) return;
     const plan = planHuntClaim(saveRef.current, pending);
     const next = applyHuntClaim(saveRef.current, pending.id);
     if (!next) return;
@@ -1537,6 +1672,21 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Descartar (bagActions.ts): part or all of a stack, or one stored gear instance; the screen has already asked for the confirmation.
   const discardItem = (kind: 'gear' | 'material' | 'consumable', id: string, qty: number | 'all' = 'all') => {
     const s = saveRef.current;
+    // Web build: a certified piece is burned on the server first, so it cannot be sold after it is gone.
+    if (isServerItemAuthority() && s.gearInstances[id]?.certificateId) {
+      void withItemLock(async () => {
+        const gate = await removeAction(itemApi, () => saveRef.current, id, 'discard', (x) => !!applyDiscard(x, 'instance', id));
+        if (!gate.ok) {
+          if (gate.blocked !== 'game') failToast(gate);
+          return;
+        }
+        const next = applyDiscard(gate.save, 'instance', id);
+        if (!next) return;
+        setSaveBoth(next);
+        playSfx('click');
+      });
+      return;
+    }
     const next = s.gearInstances[id] ? applyDiscard(s, 'instance', id) : applyDiscard(s, kind, id, qty);
     if (!next) return;
     setSaveBoth(next);
@@ -1603,22 +1753,31 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     showToast(t('wholesale.sold', { n: fmtNum(r.units), g: fmtNum(r.gold) }));
   };
   // Gold Pouches (goldPouch.ts): any player turns Gold into one (fee on top, lower for the Pass owner, daily limit, needs bag room); anyone opens one for exactly its face value.
+  // Web build: the server limits how much Gold can become pouches and certifies each one; opening a certified pouch burns its certificate first (itemActions.ts).
   const createPouch = (id: PouchId) => {
-    const r = applyCreatePouch(saveRef.current, id, Date.now());
-    if (!r.ok || !r.save) {
-      showToast(t(r.reason === 'limit' ? 'pouch.failLimit' : r.reason === 'bag' ? 'pouch.failBag' : 'pouch.failGold'));
-      return;
-    }
-    playSfx('victory');
-    setSaveBoth(r.save);
-    showToast(t('pouch.created', { g: fmtNum(r.gold ?? 0) }));
+    void withItemLock(async () => {
+      const r = await createPouchAction(itemApi, () => saveRef.current, id, Date.now());
+      if (!r.ok) {
+        if (r.blocked === 'game') showToast(t(r.reason === 'limit' ? 'pouch.failLimit' : r.reason === 'bag' ? 'pouch.failBag' : 'pouch.failGold'));
+        else failToast(r);
+        return;
+      }
+      playSfx('victory');
+      setSaveBoth(r.save);
+      showToast(t('pouch.created', { g: fmtNum(r.gold) }));
+    });
   };
   const openPouch = (id: PouchId) => {
-    const r = applyOpenPouch(saveRef.current, id);
-    if (!r.ok || !r.save) return;
-    playSfx('victory');
-    setSaveBoth(r.save);
-    showToast(t('pouch.opened', { g: fmtNum(r.gold ?? 0) }));
+    void withItemLock(async () => {
+      const r = await openPouchAction(itemApi, () => saveRef.current, id);
+      if (!r.ok) {
+        if (r.blocked !== 'game') failToast(r);
+        return;
+      }
+      playSfx('victory');
+      setSaveBoth(r.save);
+      showToast(t('pouch.opened', { g: fmtNum(r.gold) }));
+    });
   };
   const openWholesale = () => {
     playSfx('click');
@@ -1657,14 +1816,31 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // `id` is a weapon / armor INSTANCE id (or a relic template id). The equipped piece can never be salvaged,
   // another copy of the same template can; socketed gems return to the stock.
   const salvageItem = (id: string) => {
-    const result = applySalvage(saveRef.current, id);
-    if (!result) {
-      if (salvageBlockReason(saveRef.current, id) === 'bag') showToast(t('inventory.salvageBagFull'));
+    const done = (result: NonNullable<ReturnType<typeof applySalvage>>) => {
+      playSfx('click');
+      setSaveBoth(result.save);
+      showToast(result.bonusGranted ? t('inventory.salvageBonus') : t('inventory.salvageDone'));
+    };
+    const blocked = salvageBlockReason(saveRef.current, id);
+    if (blocked) {
+      if (blocked === 'bag') showToast(t('inventory.salvageBagFull'));
       return;
     }
-    playSfx('click');
-    setSaveBoth(result.save);
-    showToast(result.bonusGranted ? t('inventory.salvageBonus') : t('inventory.salvageDone'));
+    // Web build: a certified piece is burned on the server first, so it cannot be sold after it is gone.
+    if (isServerItemAuthority() && saveRef.current.gearInstances[id]?.certificateId) {
+      void withItemLock(async () => {
+        const gate = await removeAction(itemApi, () => saveRef.current, id, 'salvage', (s) => salvageBlockReason(s, id) === null);
+        if (!gate.ok) {
+          if (gate.blocked !== 'game') failToast(gate);
+          return;
+        }
+        const result = applySalvage(gate.save, id);
+        if (result) done(result);
+      });
+      return;
+    }
+    const result = applySalvage(saveRef.current, id);
+    if (result) done(result);
   };
 
   // A weapon / armor craft creates ONE new independent instance (its own rarity roll). Recipe ingredients that
@@ -1673,18 +1849,23 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const forgeItem = (id: string, consumedIds?: string[], useSeal?: boolean) => {
     const item = getGear(id);
     if (!item) return;
-    const s = saveRef.current;
-    const result = applyForge(s, id, { level: playerLevel(s.xp), consumedIds, seal: useSeal });
-    if (!result.ok) {
-      if (result.reason === 'capacity') showToast(t('forge.gearFull', { n: inventoryCapacity(s) }));
-      return;
-    }
-    setSaveBoth(result.save);
-    // Epic / Legendary results get their own fanfare and a glowing line; every forge gets the anvil.
-    const rarity = result.instance?.rarity ?? 'common';
-    playSfx(rarity === 'epic' || rarity === 'legendary' ? 'forge_rare' : 'forge_success');
-    revealForge(rarity === 'common' ? gearText(item.nameKey) : `${gearText(item.nameKey)} · ${t(`rarity.${rarityDef(rarity).nameKey}`)}`, rarity);
-    showToast(t(result.sealUsed ? 'forge.toBagSeal' : 'forge.toBag', { n: gearText(item.nameKey) }));
+    // Web build: the SERVER rolls the rarity and the substats (and burns certified recipe ingredients); the save gets exactly what it returned (itemActions.forgeAction).
+    // Offline / desktop: the device rolls, as it always did, and what it makes is never tradeable.
+    void withItemLock(async () => {
+      const s = saveRef.current;
+      const result = await forgeAction(itemApi, () => saveRef.current, id, { level: playerLevel(s.xp), consumedIds, seal: useSeal });
+      if (!result.ok) {
+        if (result.blocked !== 'game') failToast(result);
+        else if (result.reason === 'capacity') showToast(t('forge.gearFull', { n: inventoryCapacity(s) }));
+        return;
+      }
+      setSaveBoth(result.save);
+      // Epic / Legendary results get their own fanfare and a glowing line; every forge gets the anvil.
+      const rarity = result.instance?.rarity ?? 'common';
+      playSfx(rarity === 'epic' || rarity === 'legendary' ? 'forge_rare' : 'forge_success');
+      revealForge(rarity === 'common' ? gearText(item.nameKey) : `${gearText(item.nameKey)} · ${t(`rarity.${rarityDef(rarity).nameKey}`)}`, rarity);
+      showToast(t(result.sealUsed ? 'forge.toBagSeal' : 'forge.toBag', { n: gearText(item.nameKey) }));
+    });
   };
 
   const refineMaterial = (recipeId: string) => {
@@ -1700,41 +1881,44 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   // Economic reforge (reforge.ts), per INSTANCE: rerolls only that piece's substats; all-or-nothing charge.
-  const reforgeItem = (id: string) => {
-    const next = applyReforge(saveRef.current, id);
-    if (!next) return;
-    setSaveBoth(next);
-    playSfx('click');
-    showToast(t('forge.reforged'));
-  };
+  const reforgeItem = (id: string) =>
+    requestChange(id, 'reforge', (s) => !!applyReforge(s, id), (s) => {
+      const next = applyReforge(s, id);
+      if (!next) return;
+      setSaveBoth(next);
+      playSfx('click');
+      showToast(t('forge.reforged'));
+    });
 
   // Lapidar (lapidar.ts): lock one substat of an Epic / Legendary piece, roll the others again; all-or-nothing charge.
-  const lapidarItem = (id: string, lockIndex: number) => {
-    const next = applyLapidar(saveRef.current, id, lockIndex);
-    if (!next) return;
-    setSaveBoth(next);
-    playSfx('forge_success');
-    showToast(t('forge.lapidarDone'));
-  };
+  const lapidarItem = (id: string, lockIndex: number) =>
+    requestChange(id, 'lapidar', (s) => !!applyLapidar(s, id, lockIndex, () => 0), (s) => {
+      const next = applyLapidar(s, id, lockIndex);
+      if (!next) return;
+      setSaveBoth(next);
+      playSfx('forge_success');
+      showToast(t('forge.lapidarDone'));
+    });
 
   // `id` is a gear INSTANCE id: only that piece changes level.
   const performUpgrade = (id: string, useCatalyst: boolean) => {
-    const s = saveRef.current;
-    const hit = resolveGearInstance(s, id);
+    const hit = resolveGearInstance(saveRef.current, id);
     if (!hit) return;
-    const result = applyUpgrade(s, id, useCatalyst);
-    if (!result) return;
-    setSaveBoth(result.save);
-    if (result.success) {
-      playSfx('forge_success');
-      revealForge(t('forge.upgradeOk', { n: gearText(hit.item.nameKey), m: result.level + 1 }), 'ok');
-      showToast(t('forge.upgradeOk', { n: gearText(hit.item.nameKey), m: result.level + 1 }));
-    } else {
-      playSfx('refine_fail');
-      const text = result.dropped ? t('forge.upgradeDropped', { m: result.level - 1 }) : t('forge.upgradeFail');
-      revealForge(text, 'fail');
-      showToast(text);
-    }
+    requestChange(id, 'refine', (s) => !!applyUpgrade(s, id, useCatalyst, () => 0), (s) => {
+      const result = applyUpgrade(s, id, useCatalyst);
+      if (!result) return;
+      setSaveBoth(result.save);
+      if (result.success) {
+        playSfx('forge_success');
+        revealForge(t('forge.upgradeOk', { n: gearText(hit.item.nameKey), m: result.level + 1 }), 'ok');
+        showToast(t('forge.upgradeOk', { n: gearText(hit.item.nameKey), m: result.level + 1 }));
+      } else {
+        playSfx('refine_fail');
+        const text = result.dropped ? t('forge.upgradeDropped', { m: result.level - 1 }) : t('forge.upgradeFail');
+        revealForge(text, 'fail');
+        showToast(text);
+      }
+    });
   };
 
   const upgradeItem = (id: string) => performUpgrade(id, false);
@@ -1853,6 +2037,20 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const equipGear = (id: string) => {
     const s = saveRef.current;
     if (s.gearInstances[id]) {
+      // Web build: wearing a certified piece binds its certificate on the server first (irreversible, and a bound certificate can never be listed). Anything else equips as always.
+      const inst = s.gearInstances[id];
+      if (isServerItemAuthority() && inst.certificateId && !inst.bound) {
+        void withItemLock(async () => {
+          const r = await equipAction(itemApi, () => saveRef.current, id);
+          if (!r.ok) {
+            if (r.blocked !== 'game') failToast(r);
+            return;
+          }
+          playSfx('click');
+          setSaveBoth(r.save);
+        });
+        return;
+      }
       const next = applyEquipInstance(s, id);
       if (!next) return;
       playSfx('click');
@@ -2227,6 +2425,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       {save.league && !save.league.noticeSeen && <LeagueResetModal pioneer={save.cosmetics.includes(PIONEER_TITLE_ID)} onClose={dismissLeagueNotice} />}
 
       {claimAllLines && <ClaimAllModal lines={claimAllLines} onClose={() => setClaimAllLines(null)} />}
+      {voidPrompt && (
+        <ConfirmVoidModal
+          onConfirm={() => {
+            const p = voidPrompt;
+            setVoidPrompt(null);
+            void withItemLock(p.run);
+          }}
+          onCancel={() => setVoidPrompt(null)}
+        />
+      )}
 
       {welcome && (
         <WelcomeBackModal

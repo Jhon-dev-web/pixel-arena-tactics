@@ -3,7 +3,7 @@ import { defaultSave, normalizeSave, SaveData } from '../engine';
 import { CONSUMABLES, TRADEABLE_CONSUMABLES, getConsumable } from '../consumables';
 import { MATERIALS } from '../materials';
 import { GEAR } from '../gear';
-import { createGearInstance, isTradeable } from '../gearInstances';
+import { createGearInstance, isTradeable, isTradeableKind } from '../gearInstances';
 import { RARITIES, Rarity } from '../rarity';
 import { merchantBuys, merchantPrice } from '../merchant';
 import { applyStashMove } from '../stash';
@@ -255,18 +255,24 @@ describe('Gold Pouch: the tradeable rule, in ONE place', () => {
     for (const r of RARITIES) {
       const high = r.id === 'epic' || r.id === 'legendary';
       for (const bound of [false, true]) {
-        rows.push([`forged ${r.id} bound=${bound}`, isTradeable(mk(forged.id, r.id, bound)), !bound && high]);
-        rows.push([`unique ${r.id} bound=${bound}`, isTradeable(mk(unique.id, r.id, bound)), !bound]);
+        rows.push([`forged ${r.id} bound=${bound}`, isTradeableKind(mk(forged.id, r.id, bound)), !bound && high]);
+        rows.push([`unique ${r.id} bound=${bound}`, isTradeableKind(mk(unique.id, r.id, bound)), !bound]);
       }
     }
-    for (const m of MATERIALS) rows.push([`material ${m.id}`, isTradeable({ kind: 'material', id: m.id }), false]);
-    for (const c of CONSUMABLES) rows.push([`consumable ${c.id}`, isTradeable({ kind: 'consumable', id: c.id }), isPouchId(c.id)]);
+    for (const m of MATERIALS) rows.push([`material ${m.id}`, isTradeableKind({ kind: 'material', id: m.id }), false]);
+    for (const c of CONSUMABLES) rows.push([`consumable ${c.id}`, isTradeableKind({ kind: 'consumable', id: c.id }), isPouchId(c.id)]);
     // a material id asked as a consumable (and the other way round) is never tradeable
-    rows.push(['material id as consumable', isTradeable({ kind: 'consumable', id: 'iron' }), false]);
-    rows.push(['pouch id as material', isTradeable({ kind: 'material', id: 'gold_pouch_s' }), false]);
+    rows.push(['material id as consumable', isTradeableKind({ kind: 'consumable', id: 'iron' }), false]);
+    rows.push(['pouch id as material', isTradeableKind({ kind: 'material', id: 'gold_pouch_s' }), false]);
     for (const [name, got, want] of rows) expect(got, name).toBe(want);
     expect(TRADEABLE_CONSUMABLES.length).toBe(POUCH_IDS.length);
-    for (const id of POUCH_IDS) expect(isTradeable({ kind: 'consumable', id })).toBe(true);
+    for (const id of POUCH_IDS) expect(isTradeableKind({ kind: 'consumable', id })).toBe(true);
+    // and a pouch is tradeable only with the certificate of THAT pouch
+    for (const id of POUCH_IDS) {
+      expect(isTradeable({ kind: 'consumable', id })).toBe(false);
+      expect(isTradeable({ kind: 'consumable', id, certificateId: '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a' })).toBe(true);
+    }
+    expect(isTradeable({ kind: 'consumable', id: 'iron', certificateId: '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a' })).toBe(false);
   });
 });
 

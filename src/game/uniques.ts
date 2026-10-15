@@ -1,6 +1,6 @@
 import type { SaveData } from './engine';
 import { getGear } from './gear';
-import { createGearInstance } from './gearInstances';
+import { createGearInstance, isCertificateId } from './gearInstances';
 import { RARITIES, Rarity, Rng, SUBSTATS, Substat, rollRarity, rollSubstats } from './rarity';
 import T from './tunables';
 import { depthBossPool } from './dungeon';
@@ -15,6 +15,8 @@ export interface UniqueDrop {
   templateId: string;
   rarity: Rarity;
   substats: Substat[];
+  // The certificate the SERVER issued for this drop (itemAuthority.ts, supabase/functions/mint-item). A drop the device rolled itself (the offline / desktop build) has none.
+  certificateId?: string;
 }
 
 // Biome-boss floor -> the unique pieces that boss can drop (gear.ts UNIQUE_DEFS `source.bossFloor`). Each is rolled on its own, T.battle.uniqueBossChance per victory.
@@ -92,7 +94,8 @@ export function addUniqueInstance(save: SaveData, drop: UniqueDrop, seed: string
   let n = 0;
   while (`gd_${seed}:${n}` in save.gearInstances) n++;
   const id = `gd_${seed}:${n}`;
-  const instance = createGearInstance(drop.templateId, { id, origin: 'drop', rarity: drop.rarity, substats: drop.substats, createdAt });
+  // A unique with the server's certificate keeps it; one without (rolled on the device) is marked so: it is usable and never tradeable.
+  const instance = createGearInstance(drop.templateId, { id, origin: 'drop', rarity: drop.rarity, substats: drop.substats, createdAt, ...(isCertificateId(drop.certificateId) ? { certificateId: drop.certificateId } : { certified: false as const }) });
   return { ...save, gearInstances: { ...save.gearInstances, [id]: instance } };
 }
 
@@ -111,7 +114,7 @@ export function sanitizeUniqueDrops(raw: unknown): UniqueDrop[] {
           .slice(0, 4)
           .map((s) => ({ type: s.type, value: s.value }))
       : [];
-    out.push({ templateId: d.templateId, rarity: RARITY_IDS.includes(d.rarity as string) ? (d.rarity as Rarity) : 'common', substats });
+    out.push({ templateId: d.templateId, rarity: RARITY_IDS.includes(d.rarity as string) ? (d.rarity as Rarity) : 'common', substats, ...(isCertificateId(d.certificateId) ? { certificateId: d.certificateId } : {}) });
   }
   return out.slice(0, 50);
 }

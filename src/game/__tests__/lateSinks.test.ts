@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSave, SaveData, xpToReachLevel } from '../engine';
-import { applyUpgrade, createGearInstance, GearInstance, isTradeable, sanitizeGearInstance } from '../gearInstances';
+import { applyUpgrade, createGearInstance, GearInstance, isTradeableKind as isTradeable, sanitizeGearInstance } from '../gearInstances';
 import { BASE_MAX_REFINE, effectiveCrit, effectiveDamage, farmHours, GEAR, getGear, MAX_REFINE, maxRefineFor, refineBonus, upgradeChance, upgradeCost, upgradeFailDrop } from '../gear';
 import { applyLapidar, canAffordLapidar, getLapidarCost, lapidarBlock } from '../lapidar';
 import { deepRefineText, lapidarText } from '../lateSinks';

@@ -17,6 +17,7 @@ import { heroSheet } from '../game/sprites';
 import { fmtRate, fmtSpan, matName } from '../game/huntView';
 import { useDisplayName } from '../game/usernameContext';
 import { sessionStatsDiffer } from '../game/huntSession';
+import { isServerItemAuthority } from '../game/itemAuthority';
 
 const MS_PER_HOUR = 3600 * 1000;
 // Per-hour numbers from a handful of seconds of hunting are noise; they appear after the first minute.
@@ -170,7 +171,13 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
           <div className="hunt-run-extra">
             <section className="hunt-block">
               <h4 className="hunt-section-title">{t('hunting.uniquesFound')}</h4>
-              {status.uniques.length > 0 ? <UniqueDrops drops={status.uniques} /> : <div className="hunt-meter-text">{t('hunting.noUniques')}</div>}
+              {isServerItemAuthority() ? (
+                <div className="hunt-meter-text">{t('hunting.uniquesServerNote')}</div>
+              ) : status.uniques.length > 0 ? (
+                <UniqueDrops drops={status.uniques} />
+              ) : (
+                <div className="hunt-meter-text">{t('hunting.noUniques')}</div>
+              )}
             </section>
 
             <section className="hunt-block">

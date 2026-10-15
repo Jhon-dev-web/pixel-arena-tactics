@@ -13,7 +13,9 @@ import { addWithOverflow, canAddInstances, inventoryCapacity, inventorySlotsUsed
 import { baseGoldValue } from './economy';
 import { MaterialId } from './materials';
 import { gearInstanceCount, maxGearInstances } from './gearInstances';
-import { recordHuntTime, recordKills } from './stats';
+import { recordHuntTime, recordKills, withStats } from './stats';
+import { isServerItemAuthority } from './itemAuthority';
+import { saveSkillEffects } from './heroSkills';
 import T from './tunables';
 
 // The lifecycle of a Hunting session as three pure, atomic transitions on the save: start -> stop -> claim.
@@ -71,6 +73,8 @@ export function applyHuntStop(save: SaveData, now: number): SaveData | null {
     drops: { ...status.drops },
     lost: [],
     uniques: status.uniques.map((u) => ({ ...u, substats: u.substats.map((s) => ({ ...s })) })),
+    // Web build: the uniques are rolled by the server when the reward is claimed (withServerUniques below), never here; the reward carries the luck the hero had.
+    ...(isServerItemAuthority() && (zone?.uniques?.length ?? 0) > 0 && status.pendingMs > 0 ? { uniqueRoll: { luck: saveSkillEffects(save).huntUniqueMult } } : {}),
   };
   // Lifetime statistics (stats.ts): the session's wins and the unique pieces it rolled are counted once, here, when the session ends.
   const counted = recordHuntTime(recordKills(save, zoneId, status.kills, status.uniques.length), status.pendingMs);
@@ -144,6 +148,7 @@ export function planHuntClaim(save: SaveData, reward: Pick<PendingHuntReward, 'i
 export function applyHuntClaim(save: SaveData, id: string): SaveData | null {
   const p = save.pendingHuntReward;
   if (!p || p.id !== id) return null;
+  if (p.uniqueRoll) return null; // the server still has to roll the uniques of this reward (withServerUniques): claiming now would throw them away
   const { battlePassLevel, battlePassXp } = addBattlePassXp(save, p.bpXp);
   const plan = planHuntClaim(save, p);
   const paid: SaveData = {
@@ -159,6 +164,19 @@ export function applyHuntClaim(save: SaveData, id: string): SaveData | null {
   if (plan.uniquesLeft.length === 0 && Object.keys(plan.owedHeld).length === 0) return paid;
   const owed = Object.keys(plan.owedHeld).length > 0 ? { owed: plan.owedHeld } : {};
   return { ...paid, pendingHuntReward: { ...p, gold: 0, xp: 0, bpXp: 0, drops: {}, lost: [], owed: undefined, ...owed, uniques: plan.uniquesLeft } };
+}
+
+// True while the reward waits for the server's roll of its unique drops (web build). The UI asks mint-item, then calls withServerUniques; nothing else may claim it.
+export const needsServerUniques = (reward: Pick<PendingHuntReward, 'uniqueRoll'> | null | undefined): boolean => !!reward?.uniqueRoll;
+
+// Puts what the SERVER rolled into the pending reward (and counts the finds, once). Returns null when the reward is not the one waiting for it. The drops carry their certificates.
+export function withServerUniques(save: SaveData, id: string, uniques: UniqueDrop[]): SaveData | null {
+  const p = save.pendingHuntReward;
+  if (!p || p.id !== id || !p.uniqueRoll) return null;
+  const { uniqueRoll: _done, ...rest } = p;
+  void _done;
+  const next: SaveData = { ...save, pendingHuntReward: { ...rest, uniques: uniques.map((u) => ({ ...u, substats: u.substats.map((s) => ({ ...s })) })) } };
+  return uniques.length > 0 ? withStats(next, (s) => ({ uniquesFound: s.uniquesFound + uniques.length })) : next;
 }
 
 // True when claiming left something in the pending reward because the bag had no free slot for it.

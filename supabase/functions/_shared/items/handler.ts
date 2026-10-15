@@ -145,7 +145,7 @@ const refusalStatus = (reason: RefusalReason): number => (reason === 'bad_reques
 
 export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Response> {
   const pre = await prelude(req, deps.auth, deps.allowedOrigins);
-  if (!pre.ok) return pre.response;
+  if ('response' in pre) return pre.response; // (in, not .ok: the game's tests compile this file without strict null checks)
   const { userId, cors } = pre;
   const body = parseMintBody(pre.body);
   if (!body) return json({ ok: false, reason: 'bad_request' satisfies RefusalReason }, 400, cors);
@@ -186,7 +186,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
       if (body.seal) takes.push({ bucket: 'forge_seal', cost: 1, ratePerHour: ITEM_BOUNDS.sealRatePerHour, capacity: ITEM_BOUNDS.sealCapacity });
       if ((await deps.store.issuedLastDay(userId, 'gear', tpl.tier)) >= ITEM_BOUNDS.certDayCap(tpl.tier)) return refuse('cert_day_limit', 'LIMIT_CERT_DAY', { tier: tpl.tier });
       const took = await deps.store.takeTokens(userId, startMs, takes);
-      if (!took.ok) return refuse(took.failed === 'forge_seal' ? 'seal_limit' : 'forge_rate', took.failed === 'forge_seal' ? 'LIMIT_SEAL' : 'LIMIT_FORGE_RATE', { tier: tpl.tier });
+      if ('failed' in took) return refuse(took.failed === 'forge_seal' ? 'seal_limit' : 'forge_rate', took.failed === 'forge_seal' ? 'LIMIT_SEAL' : 'LIMIT_FORGE_RATE', { tier: tpl.tier });
 
       // THE ROLL. The client never sees it before this point and never supplies a number for it.
       const rarity = body.seal ? sealRarity(deps.rng) : rollRarity(deps.rng);
@@ -209,7 +209,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
       let hours = 0;
       if (requestedSeconds > 0) {
         const took = await deps.store.takeTokens(userId, startMs, [{ bucket: 'hunt_seconds', cost: requestedSeconds, ratePerHour: ITEM_BOUNDS.huntSecondsPerHour, capacity: ITEM_BOUNDS.huntCapacitySeconds, partial: true }]);
-        if (!took.ok) return refuse('hunt_time', 'LIMIT_HUNT_TIME', { zoneId: zone.id });
+        if ('failed' in took) return refuse('hunt_time', 'LIMIT_HUNT_TIME', { zoneId: zone.id });
         const granted = took.granted[0] ?? 0;
         if (requestedSeconds - granted > ITEM_BOUNDS.huntFlagExcessSeconds) await deps.store.flag(userId, 'HUNT_TIME_EXCESS', { zoneId: zone.id, requestedSeconds, grantedSeconds: Math.floor(granted) }).catch(() => undefined);
         hours = granted / 3600;
@@ -223,7 +223,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
       if (!body.stages.every(isBossStage)) return refuse('bad_request', null);
       if (tooEarly(daysAtFloor(Math.max(...body.stages.map(bossStageFloor))))) return refuse('too_early', 'BOSS_TOO_EARLY', { ageDays: Math.floor(ageDays) });
       const took = await deps.store.takeTokens(userId, startMs, [{ bucket: 'boss_kills', cost: body.stages.length, ratePerHour: ITEM_BOUNDS.bossRatePerHour, capacity: ITEM_BOUNDS.bossCapacity, partial: true }]);
-      if (!took.ok) return refuse('boss_rate', 'LIMIT_BOSS_RATE');
+      if ('failed' in took) return refuse('boss_rate', 'LIMIT_BOSS_RATE');
       const allowed = Math.floor(took.granted[0] ?? 0);
       if (allowed < body.stages.length) await deps.store.flag(userId, 'BOSS_KILLS_EXCESS', { claimed: body.stages.length, allowed }).catch(() => undefined);
       if ((await deps.store.issuedLastDay(userId, 'unique', null)) >= ITEM_BOUNDS.uniqueDayCap) return refuse('cert_day_limit', 'LIMIT_UNIQUE_DAY');
@@ -238,7 +238,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
         { bucket: 'pouch_gold', cost: face, ratePerHour: ITEM_BOUNDS.pouchGoldPerDay / 24, capacity: ITEM_BOUNDS.pouchGoldCapacity() },
       ];
       const took = await deps.store.takeTokens(userId, startMs, takes);
-      if (!took.ok) return refuse(took.failed === 'pouch_gold' ? 'pouch_gold_limit' : 'pouch_count_limit', took.failed === 'pouch_gold' ? 'LIMIT_POUCH_GOLD' : 'LIMIT_POUCH_COUNT', { pouchId: body.pouchId });
+      if ('failed' in took) return refuse(took.failed === 'pouch_gold' ? 'pouch_gold_limit' : 'pouch_count_limit', took.failed === 'pouch_gold' ? 'LIMIT_POUCH_GOLD' : 'LIMIT_POUCH_COUNT', { pouchId: body.pouchId });
       const base = { kind: 'gold_pouch' as const, templateId: body.pouchId, rarity: null, tier: null, substats: [], goldAmount: face, source: 'pouch' as const };
       answered = {
         template: { kind: 'pouch', pouchId: body.pouchId, goldAmount: face },
@@ -274,13 +274,13 @@ const bindStatus = (reason: Extract<BindResult, { ok: false }>['reason']): numbe
 
 export async function handleBindItem(req: Request, deps: Pick<ItemDeps, 'auth' | 'allowedOrigins' | 'store'>): Promise<Response> {
   const pre = await prelude(req, deps.auth, deps.allowedOrigins);
-  if (!pre.ok) return pre.response;
+  if ('response' in pre) return pre.response; // (in, not .ok: the game's tests compile this file without strict null checks)
   const { userId, cors } = pre;
   const body = parseBindBody(pre.body);
   if (!body) return json({ ok: false, reason: 'bad_request' } satisfies BindResult, 400, cors);
   try {
     const result = await deps.store.transition({ userId, ids: body.certificateIds, action: body.action as BindAction, reason: body.reason ?? '' });
-    return json(result, result.ok ? 200 : bindStatus(result.reason), cors);
+    return json(result, 'reason' in result ? bindStatus(result.reason) : 200, cors);
   } catch (err) {
     console.error('[bind-item] failed', err instanceof Error ? err.message : 'unknown');
     return json({ error: 'bind_failed' }, 502, cors);

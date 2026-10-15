@@ -1,6 +1,6 @@
 import type { CommitOutcome, ItemStore, StoredRequest, TokenOutcome } from './store.ts';
-import type { BindResult, CertKind, CertSource, CertStatus, CertificateView, StoredTemplate } from './types.ts';
-import type { RarityId } from './tables.ts';
+import type { BindResult, CertStatus, StoredTemplate } from './types.ts';
+import { CERT_COLUMNS, CertRow, toCertificateView } from './view.ts';
 
 // The real ItemStore: PostgREST over fetch with the SERVICE ROLE key (injected by the Supabase Edge runtime; never logged, never returned). Values go through URLSearchParams / JSON,
 // never concatenated into a filter by hand. Errors carry the status only (bodies can echo data). Every limit and every state change is ONE rpc = one locked statement (migration 0010).
@@ -9,40 +9,6 @@ export interface ItemDbConfig {
   serviceRoleKey: string;
   fetchFn?: typeof fetch;
 }
-
-interface CertRow {
-  id: string;
-  kind: CertKind;
-  template_id: string;
-  rarity: RarityId | null;
-  tier: number | null;
-  substats: CertificateView['substats'];
-  upgrade: number;
-  gold_amount: number | null;
-  source: CertSource;
-  status: CertStatus;
-  bound: boolean;
-  created_at: string;
-  content_hash: string;
-}
-
-const CERT_COLUMNS = 'id,kind,template_id,rarity,tier,substats,upgrade,gold_amount,source,status,bound,created_at,content_hash';
-
-export const toCertificateView = (r: CertRow): CertificateView => ({
-  id: r.id,
-  kind: r.kind,
-  templateId: r.template_id,
-  rarity: r.rarity,
-  tier: r.tier,
-  substats: r.substats ?? [],
-  upgrade: r.upgrade,
-  goldAmount: r.gold_amount,
-  source: r.source,
-  status: r.status,
-  bound: r.bound,
-  createdAt: r.created_at,
-  contentHash: r.content_hash,
-});
 
 export function createItemStore(cfg: ItemDbConfig): ItemStore {
   const doFetch = cfg.fetchFn ?? fetch;

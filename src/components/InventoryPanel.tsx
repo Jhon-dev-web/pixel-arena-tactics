@@ -9,7 +9,8 @@ import { canAffordReforge, getReforgeCost } from '../game/reforge';
 import T from '../game/tunables';
 import { isPouchId, pouchFace } from '../game/goldPouch';
 import PouchOpenButton from './PouchOpenButton';
-import { type GearInstance, clampRefine, isInstanceEquipped, isTradeable, listGearInstances, needsBindConfirm, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
+import { type GearInstance, clampRefine, isInstanceEquipped, isTradeable, isTradeableKind, listGearInstances, needsBindConfirm, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
+import { certState, useCertificatesVersion, verifiedPouchCount } from '../game/itemCerts';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
 import { CONSUMABLES, getConsumable } from '../game/consumables';
@@ -41,12 +42,23 @@ const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
 const conText = (k: string): string => t(`consumables.${k}`);
 
-// The quiet tag on a tile: only where it tells the player something - a piece that could be sold (not bound yet), or an Epic / Legendary / unique piece that is
-// already bound. Common and rare forged pieces are never tradeable anyway and carry no tag on the tile.
+// The quiet tag on a tile: only where it tells the player something - a piece that could be sold (not bound yet, and the SERVER confirms its certificate), or an Epic / Legendary / unique
+// piece that is already bound. Common and rare forged pieces are never tradeable anyway and carry no tag on the tile.
 const tradeTag = (inst: GearInstance): 'tradeable' | 'bound' | null => {
-  if (isTradeable(inst)) return 'tradeable';
+  if (isTradeable(inst) && certState(inst) === 'verified') return 'tradeable';
   return inst.bound && (inst.rarity === 'epic' || inst.rarity === 'legendary' || !!getGear(inst.templateId)?.unique) ? 'bound' : null;
 };
+
+// What the detail says about selling the piece: bound, tradeable AND certified by the server, "certificate not confirmed", a piece that could be sold but has no certificate (old, or made
+// offline), or simply not tradeable.
+type TradeLine = 'bound' | 'tradeable' | 'unverified' | 'nocert' | 'untradeable';
+const TRADE_LINE_KEY: Record<TradeLine, string> = { bound: 'bound', tradeable: 'certified', unverified: 'certUnverified', nocert: 'noCertificate', untradeable: 'untradeable' };
+function tradeLine(inst: GearInstance): TradeLine {
+  if (inst.bound) return 'bound';
+  if (!isTradeableKind(inst)) return 'untradeable';
+  const state = certState(inst);
+  return state === 'verified' ? 'tradeable' : state === 'unverified' ? 'unverified' : 'nocert';
+}
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
 const rarClass = (r: Rarity | undefined): string => `r-${r ?? 'common'}`;
@@ -87,6 +99,7 @@ export default function InventoryPanel({
 }) {
   // stash / merchant / "Usar em..." actions come from App through the context (see bagContext.ts)
   const bag = useContext(BagContext);
+  useCertificatesVersion(); // the server's list of certificates changed: the "Certificado" lines follow it
   const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables'>('all');
   // src: where the picked stack lives (the inventory or the Baú). Phones show one pane at a time.
   const [selected, setSelected] = useState<{ src: 'bag' | 'stash'; kind: SelKind; id: string } | null>(null);
@@ -438,9 +451,10 @@ export default function InventoryPanel({
               <div className={`rarity-line ${rarClass(selectedRarity)}`}>{t(`rarity.${rarityDef(selectedRarity).nameKey}`)}</div>
             )}
             {selectedInstance && (
-              <div className={`trade-line ${selectedInstance.bound ? 'bound' : isTradeable(selectedInstance) ? 'tradeable' : 'untradeable'}`}>
-                {t(`inventory.${selectedInstance.bound ? 'bound' : isTradeable(selectedInstance) ? 'tradeable' : 'untradeable'}`)}
-              </div>
+              <>
+                <div className={`trade-line ${tradeLine(selectedInstance)}`}>{t(`inventory.${TRADE_LINE_KEY[tradeLine(selectedInstance)]}`)}</div>
+                {tradeLine(selectedInstance) === 'nocert' && <div className="trade-line untradeable">{t('inventory.noCertificateHint')}</div>}
+              </>
             )}
             {selectedSubs.length > 0 && (
               <div className="substat-list">
@@ -595,6 +609,7 @@ export default function InventoryPanel({
         {selected?.kind === 'consumable' && isPouchId(selected.id) && !fromStash && selQty > 0 && (
           <div className="inv-actions">
             <div className="inv-detail-desc">{t('pouch.worth', { g: fmtNum(pouchFace(selected.id)) })}</div>
+            <div className="inv-detail-desc">{t('pouch.certifiedLine', { n: verifiedPouchCount(save, selected.id), m: Math.max(0, (save.consumables?.[selected.id] ?? 0) + (save.stash?.consumables?.[selected.id] ?? 0) - verifiedPouchCount(save, selected.id)) })}</div>
             <PouchOpenButton id={selected.id} onOpen={(id) => bag?.openPouch(id)} className="inv-sell" />
           </div>
         )}

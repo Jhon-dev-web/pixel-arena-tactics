@@ -8023,6 +8023,10 @@ body {
 .trade-line.untradeable {
   color: #8a8f9a;
 }
+.trade-line.unverified,
+.trade-line.nocert {
+  color: #e8c26a;
+}
 .bind-confirm {
   display: flex;
   flex-direction: column;

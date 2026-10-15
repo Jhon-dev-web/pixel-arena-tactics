@@ -9,6 +9,7 @@ import { TRADEABLE_CONSUMABLES } from './consumables';
 import { setBonuses } from './setBonuses';
 import type { SaveData } from './engine';
 import { recordForge, recordRefine } from './stats';
+import { isServerItemAuthority } from './itemAuthority';
 
 // Gear instances: every weapon / armor / helmet / gloves / boots / ring / shield is its OWN object (rarity, substats, refine level, sockets, durability,
 // reforge count). Materials, consumables, gems, relics and tools stay stackable counters keyed by id.
@@ -49,6 +50,11 @@ export interface GearInstance {
   // Bind on equip: set for good the first time the piece is worn (applyEquipInstance); unequipping never clears it. Forging, salvaging, refining, reforging and
   // repairing neither set nor need it. A bound piece can never be listed on the player market (isTradeable). Absent = not bound.
   bound?: boolean;
+  // The server certificate of this piece (supabase/functions/mint-item, docs/MARKET_FOUNDATION.md). Present ONLY when the server rolled the piece (forge, unique drop) and issued one; the
+  // game shows "Certificado" only when this id matches a certificate the server lists for the account (itemCerts.ts). A piece that has none is usable but never tradeable.
+  certificateId?: string;
+  // Set on a piece the DEVICE rolled itself (the offline / desktop build, itemAuthority.ts): it has no certificate and never will. Absent on old saves (same effect: no certificate id).
+  certified?: false;
 }
 
 export function isInstancedItem(item: GearItem | undefined | null): boolean {
@@ -120,6 +126,9 @@ export interface CreateGearInstanceOpts {
   durability?: number;
   reforgeCount?: number;
   createdAt?: number;
+  bound?: boolean;
+  certificateId?: string;
+  certified?: false;
 }
 
 export function createGearInstance(templateId: string, opts: CreateGearInstanceOpts): GearInstance {
@@ -137,8 +146,15 @@ export function createGearInstance(templateId: string, opts: CreateGearInstanceO
     reforgeCount: clampInt(opts.reforgeCount ?? 0, 0, Number.MAX_SAFE_INTEGER, 0),
     createdAt: Number.isFinite(opts.createdAt) ? (opts.createdAt as number) : 0,
     origin: opts.origin,
+    ...(opts.bound ? { bound: true } : {}),
+    ...(isCertificateId(opts.certificateId) ? { certificateId: opts.certificateId } : {}),
+    ...(opts.certified === false && !isCertificateId(opts.certificateId) ? { certified: false as const } : {}),
   };
 }
+
+// A certificate id is the uuid the database gave it. Anything else in a save is not one.
+const CERT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isCertificateId = (v: unknown): v is string => typeof v === 'string' && CERT_ID_RE.test(v);
 
 const ORIGINS: GearOrigin[] = ['craft', 'starter', 'migration', 'recovery', 'admin', 'drop'];
 
@@ -161,6 +177,7 @@ export function sanitizeGearInstance(raw: unknown, key: string): GearInstance | 
     createdAt: Number.isFinite(Number(r.createdAt)) ? Number(r.createdAt) : 0,
     origin: ORIGINS.includes(r.origin as GearOrigin) ? (r.origin as GearOrigin) : 'migration',
     ...(r.bound === true ? { bound: true } : {}),
+    ...(isCertificateId(r.certificateId) ? { certificateId: r.certificateId } : r.certified === false ? { certified: false as const } : {}),
   };
 }
 
@@ -187,21 +204,29 @@ export function bindEquipped(
   return out;
 }
 
-// ONE rule decides what can be sold on the player market (the Steam market integration will call this and nothing else): a gear instance is tradeable when it is
-// NOT bound AND (it is Epic or Legendary OR its template is a unique drop). Everything else is not tradeable: common and rare forged gear, bound pieces, and
-// everything that is not a gear instance (stackable relics, materials, consumables). Standing decision of the owner: only forged gear of high rarity and rare /
-// unique drops are sellable, common materials never.
-// Round 18: ONE exception that is not a gear instance, and it is a rule here and nowhere else: the Gold Pouch (TRADEABLE_CONSUMABLES), a consumable that is unbound by nature
-// (it cannot be worn, so nothing ever binds it). It is asked as { kind: 'consumable', id }; a material asked the same way, and every other consumable, is never tradeable.
+// ONE rule decides what can be sold on the player market (the player market will call this and nothing else), in two parts.
+//   KIND (isTradeableKind): a gear instance is tradeable when it is NOT bound AND (it is Epic or Legendary OR its template is a unique drop). Everything else is not tradeable: common and
+//   rare forged gear, bound pieces, and everything that is not a gear instance (stackable relics, materials, consumables). Standing decision of the owner: only forged gear of high rarity and
+//   rare / unique drops are sellable, common materials never. Round 18: ONE exception that is not a gear instance, the Gold Pouch (TRADEABLE_CONSUMABLES), a consumable that is unbound by
+//   nature (it cannot be worn, so nothing ever binds it). It is asked as { kind: 'consumable', id }; a material asked the same way, and every other consumable, is never tradeable.
+//   CERTIFICATE (isTradeable): the kind rule AND the piece carries the id of a certificate the server issued for it (certificateId). The server rolled it and checked it was plausible; a piece the
+//   save made up, one an older build rolled on the device, or one made offline has none and can NEVER be sold. The game ALSO checks the id against the server's own list before it says
+//   "Certificado" (itemCerts.ts), and the market checks the certificate itself: this function is the cheap local half.
 export interface TradeRef {
   kind: 'material' | 'consumable';
   id: string;
+  // A Gold Pouch is tradeable only as a certified one: the certificate of THAT pouch.
+  certificateId?: string;
 }
-export function isTradeable(item: GearInstance | TradeRef): boolean {
+export function isTradeableKind(item: GearInstance | TradeRef): boolean {
   if (!('templateId' in item)) return item.kind === 'consumable' && (TRADEABLE_CONSUMABLES as readonly string[]).includes(item.id);
   const instance = item;
   if (instance.bound) return false;
   return instance.rarity === 'epic' || instance.rarity === 'legendary' || !!getGear(instance.templateId)?.unique;
+}
+export function isTradeable(item: GearInstance | TradeRef): boolean {
+  if (!isTradeableKind(item)) return false;
+  return isCertificateId(item.certificateId) && !('certified' in item && item.certified === false);
 }
 
 // An equipped instance pointer is only valid if that instance exists and belongs to that slot.
@@ -620,10 +645,21 @@ export interface ForgeResult {
   sealUsed?: boolean; // a Blacksmith's Seal was spent on this forge
 }
 
+// What the SERVER rolled for a forge (supabase/functions/mint-item): the rarity, the substats, whether the Blacksmith's Seal made it (born bound) and, for an Epic / Legendary, the id of its
+// certificate. Applied as it came; the client adds nothing to it and cannot change it.
+export interface ForgeRoll {
+  rarity: Rarity;
+  substats: Substat[];
+  bound?: boolean;
+  certificateId?: string;
+}
+
 export function applyForge(
   save: SaveData,
   templateId: string,
-  opts: { level: number; consumedIds?: GearInstanceId[]; idFactory?: () => string; now?: number; seal?: boolean; rng?: () => number },
+  // `roll`: the server's roll (itemAuthority.ts). In the web build a forge WITHOUT a roll rolls nothing: it is a preview (can I afford it, does it fit the bag) and, if it were ever applied, it
+  // yields a plain Common with no substats, never a piece worth selling. Offline there is no server: the device rolls, and an Epic / Legendary it makes is marked `certified: false`.
+  opts: { level: number; consumedIds?: GearInstanceId[]; idFactory?: () => string; now?: number; seal?: boolean; rng?: () => number; roll?: ForgeRoll },
 ): ForgeResult {
   const item = getGear(templateId);
   if (!item || !item.recipe) return { ok: false, reason: 'unknown' };
@@ -661,14 +697,26 @@ export function applyForge(
   const sealUsed = !!opts.seal && instanced && (save.consumables.forge_seal ?? 0) > 0;
   if (sealUsed) next = { ...next, consumables: { ...next.consumables, forge_seal: (next.consumables.forge_seal ?? 0) - 1 } };
   if (instanced) {
+    const given = opts.roll;
+    const online = isServerItemAuthority();
+    const fresh: { rarity?: Rarity; substats?: Substat[] } = given
+      ? { rarity: given.rarity, substats: given.substats }
+      : online
+        ? { rarity: 'common', substats: [] }
+        : sealUsed
+          ? { rarity: rollRarityAtLeast(FORGE_SEAL_MIN_RARITY, opts.rng) }
+          : {};
     instance = createGearInstance(templateId, {
       id: uniqueId(next.gearInstances, opts.idFactory ?? newGearInstanceId),
       origin: 'craft',
       createdAt: opts.now ?? Date.now(),
-      ...(sealUsed ? { rarity: rollRarityAtLeast(FORGE_SEAL_MIN_RARITY, opts.rng) } : {}),
+      ...fresh,
+      ...(given?.certificateId ? { certificateId: given.certificateId } : {}),
     });
     // A piece made with the Blacksmith's Seal is born BOUND: the Seal is a season reward, so its better roll must not become a tradeable good (isTradeable).
-    if (sealUsed) instance = { ...instance, bound: true };
+    if (sealUsed || given?.bound) instance = { ...instance, bound: true };
+    // Rolled on this device (no server): the piece is usable but can never be sold.
+    if (!online && !given && (instance.rarity === 'epic' || instance.rarity === 'legendary')) instance = { ...instance, certified: false };
     next = { ...next, gearInstances: { ...next.gearInstances, [instance.id]: instance } };
   } else {
     next = { ...next, inventory: { ...next.inventory, [templateId]: (next.inventory[templateId] ?? 0) + 1 } };

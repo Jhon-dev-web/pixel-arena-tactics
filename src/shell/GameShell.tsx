@@ -6,6 +6,7 @@ import UsernameOnboarding from '../components/UsernameOnboarding';
 import App from '../App';
 import { SaveData } from '../game/engine';
 import { getServerPassOwned, setPassSource, setServerPassOwned } from '../game/entitlements';
+import { setItemAuthority } from '../game/itemAuthority';
 import { applyServerPass, refreshServerPass } from '../game/passServer';
 import { buildNewLeagueHero, readLeagueResetAt, settleLeague } from '../game/leagueReset';
 import { getMyUsername } from '../game/usernameRepository';
@@ -49,6 +50,9 @@ export default function GameShell() {
 
     // With a backend the Adventurer Pass is the server's entitlement (entitlements.ts); without one (desktop build) it stays the save's flag, as before.
     setPassSource(configured ? 'server' : 'save');
+    // Same for the dice of a tradeable thing: with a backend the SERVER rolls the forge, the unique drops and the Gold Pouches (itemAuthority.ts); without one the device does, and what it
+    // makes is never tradeable.
+    setItemAuthority(configured ? 'server' : 'local');
 
     if (!configured) {
       const repo = new LocalSaveRepository();
