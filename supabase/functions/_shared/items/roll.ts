@@ -6,7 +6,7 @@ import type { SubstatRoll } from './types.ts';
 
 export type Rng = () => number;
 
-/** The production RNG: 32 random bits from the platform's CSPRNG, as a fraction in [0, 1). Math.random is never used for a roll that can become money. */
+/** The production RNG: 32 random bits from the platform's CSPRNG, as a fraction in [0, 1). A non-cryptographic generator is never used for a roll that can become money. */
 export function secureRng(): number {
   const buf = new Uint32Array(1);
   crypto.getRandomValues(buf);

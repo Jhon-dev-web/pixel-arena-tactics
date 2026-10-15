@@ -505,3 +505,51 @@ describe('the store is untouched by refused/invalid calls', () => {
     expect(store.certs).toHaveLength(0);
   });
 });
+
+// ---- static checks of the source (nothing here runs the functions) ---------------------------------------------------------------------------------------------------------
+
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
+describe('static: the identity and the secrets', () => {
+  const root = resolve(__dirname, '../../../..');
+  const itemsDir = resolve(root, 'supabase/functions/_shared/items');
+  const handler = readFileSync(resolve(itemsDir, 'handler.ts'), 'utf8');
+
+  it('the handler takes the user id from the verified JWT and from nowhere else', () => {
+    expect(handler).toContain('getAuthenticatedUserId(req, auth)');
+    // the id is read once, from the prelude; no request field is ever turned into one
+    expect(handler).not.toMatch(/body\.(?:userId|user_id)|raw\.(?:userId|user_id)|\.get\('x-user/);
+    expect(handler.match(/userId/g)?.length).toBeGreaterThan(10);
+    // the parsed bodies have no user id field at all
+    expect(JSON.stringify(parseMintBody({ kind: 'pouch', requestId: 'req-00000001', pouchId: 'gold_pouch_s', userId: USER_B, user_id: USER_B }))).not.toMatch(/user/i);
+    expect(JSON.stringify(parseBindBody({ action: 'bind', certificateIds: [USER_A], userId: USER_B }))).not.toMatch(/user/i);
+  });
+
+  it('both Edge Functions are deployed with JWT verification on (no flag, no bypass) and read secrets by name only', () => {
+    for (const fn of ['mint-item', 'bind-item']) {
+      const src = readFileSync(resolve(root, `supabase/functions/${fn}/index.ts`), 'utf8');
+      expect(src).not.toMatch(/verify_jwt\s*=\s*false/);
+      expect(src).toContain('getEdgeEnv()');
+      expect(src).not.toMatch(/Deno\.env\.get\(/);
+    }
+  });
+
+  it('the game never imports the REST store and never names the service role key', () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((n) => {
+        const p = join(dir, n);
+        return statSync(p).isDirectory() ? (n === '__tests__' ? [] : walk(p)) : /\.(ts|tsx)$/.test(n) ? [p] : [];
+      });
+    for (const f of walk(resolve(root, 'src'))) {
+      const text = readFileSync(f, 'utf8');
+      expect(text, f).not.toMatch(/SERVICE_ROLE|serviceRoleKey/);
+      expect(text, f).not.toMatch(/items\/itemDb/);
+    }
+  });
+
+  it('no random number the server rolls with comes from Math.random', () => {
+    for (const f of ['roll.ts', 'handler.ts', 'itemDb.ts']) expect(readFileSync(resolve(itemsDir, f), 'utf8'), f).not.toContain('Math.random');
+    expect(readFileSync(resolve(root, 'supabase/functions/mint-item/index.ts'), 'utf8')).toContain('rng: secureRng');
+  });
+});
