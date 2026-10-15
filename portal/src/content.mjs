@@ -1,10 +1,28 @@
 export const localized = (pt, en) => ({ pt, en });
 const l = localized;
-// playUrl stays null until the owner approves the official address of the game; community stays empty until official channels exist.
-// supabaseUrl / supabaseAnonKey feed the live numbers of the Temporada page (Pass meter and rankings). Both stay null until the owner fills them, and the page then says
-// "dados ao vivo indisponíveis": it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
+// OWNER SETTINGS. Everything the owner has to fill lives in this block; each key explains itself. Defaults keep the site honest while nothing is decided.
+//  playUrl         official address of the game (https). null: the "Jogar grátis / Play free" button stays disabled with "Em breve / Soon".
+//  passSalesOpen   the ONE switch for the Pass sale. false: every page says the Pass is coming and no price is shown. true: the price, the buy button
+//                  (<playUrl>/?comprar=passe), "Pagamento seguro pelo Stripe" and the refund-policy link appear. Needs playUrl and legalLive.refund (the build refuses it otherwise).
+//  passPrice       the text shown only when passSalesOpen is true.
+//  siteUrl         public origin of the portal (https://example.com, no path). null: relative links, noindex, no robots.txt / sitemap.xml. Set: absolute canonical,
+//                  hreflang and Open Graph URLs, robots.txt, sitemap.xml and indexing allowed.
+//  meterShowCount  false hides every absolute number of the Pass meter (only progress wording and the bar remain).
+//  meterLowPct     below this percentage of the goal the meter hides the percentage and shows "N aventureiros já têm o Passe · faltam M para a Liga" instead.
+//  company         shown in the footer only for the fields that are filled (never a placeholder).
+//  legalLive       a legal page is linked from the footer only when its real text is in the site and its flag is true. Placeholder pages stay unlinked.
+// community stays empty until official channels exist.
+// supabaseUrl / supabaseAnonKey feed the live numbers of the Liga da Temporada page (Pass meter and rankings). Both stay null until the owner fills them, and the page then says
+// the data is unavailable: it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
 // "anon" key (it is public by design and protected by the database rules). The service key must NEVER be written here.
-export const config = { playUrl: null, supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Duel', pageSize: 8 };
+export const config = {
+  playUrl: null, passSalesOpen: false, passPrice: 'US$ 10', siteUrl: null, meterShowCount: true, meterLowPct: 5,
+  company: { legalName: null, cnpj: null, supportEmail: null },
+  legalLive: { terms: false, privacy: false, refund: false, seasonRules: false },
+  supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Duel', pageSize: 8,
+};
+// Text that depends on the owner settings is computed when read (getters), so a changed setting changes every page at once.
+const dyn = (pt, en) => ({ get pt() { return pt(); }, get en() { return en(); } });
 // Player-facing glossary, reused throughout the portal. Terms follow the game's own locale files.
 export const glossary = {
   hero: l('Herói', 'Hero'), heroProgression: l('Progressão do Herói', 'Hero Progression'),
@@ -72,68 +90,102 @@ export const progression = [
   { title: l('Enfrente a Masmorra', 'Take on the Dungeon'), body: l('Andares, chefes e Profundezas', 'Floors, bosses and the Depths'), target: 'combat' },
   { title: l('Decida o próximo foco', 'Choose your next focus'), body: l('Volte às atividades com um objetivo', 'Return to activities with a goal'), target: 'professions' },
 ];
-// Copy of the Temporada page. The goal (15,000 Passes) is NOT written here: it lives in the database (arena_private.season_goal) and the page prints whatever number the server sends.
-// No prize amount and no link between the number of Passes sold and any prize may ever be written in this block. `goalLabel` is the one line under the bar.
+// Copy of the Liga da Temporada page. The goal (15,000 Passes) is NOT written here: it lives in the database (arena_private.config) and reaches the page through pass_meter().
+// No prize amount and no link between the number of Passes sold and any prize may ever be written in this block. "Liga da Temporada" is the only name of the competition;
+// "Temporada do Passe" is only the in-game reward track. `goalLabel` is filled by the script ({target}); `lowLine*` use {sold} and {remaining}.
 export const seasonPage = {
-  nav: l('Temporada', 'Season'),
-  eyebrow: l('Temporada', 'Season'),
-  title: l('Meta de Passes e rankings', 'Pass goal and rankings'),
-  lead: l('Acompanhe quantos Passes de Aventureiro já foram adquiridos e quem lidera cada ranking.', 'Follow how many Adventurer’s Passes have been acquired and who leads each ranking.'),
-  meterTitle: l('Passes adquiridos', 'Passes acquired'),
+  nav: l('Liga da Temporada', 'Season League'),
+  eyebrow: l('Competição', 'Competition'),
+  title: l('Liga da Temporada', 'Season League'),
+  lead: l('Uma competição com prêmio em dinheiro para quem tem o Passe de Aventureiro. Veja como ela começa, a meta da comunidade e quem lidera.', 'A competition with a cash prize for Adventurer’s Pass owners. See how it starts, the community goal and who leads.'),
+  stepsTitle: l('Como funciona', 'How it works'),
+  step1: l('Jogue grátis.', 'Play free.'),
+  step2: l('Com o Passe, entre na pré-temporada (sem prêmio).', 'With the Pass, join the pre-season (no prize).'),
+  step3: l('Quando a comunidade chegar à meta de Passes, começa a Liga com prêmio em dinheiro, de valor fixo publicado no regulamento.', 'When the community reaches the Pass goal, the League begins with a cash prize, a fixed amount published in the rules.'),
+  meterTitle: l('A meta da comunidade', 'The community goal'),
   passesWord: l('Passes', 'Passes'),
-  goalLabel: l('Quando chegarmos a {target} Passes, a temporada valendo começa.', 'When we reach {target} Passes, the ranked season begins.'),
-  openTitle: l('Temporada valendo em andamento', 'Ranked season in progress'),
+  fixedPrize: l('O prêmio é um valor fixo, definido antes do início. Não depende de quantos Passes forem vendidos e não é sorteio: vence quem chegar mais longe, com auditoria antes do pagamento.', 'The prize is a fixed amount, set before the start. It does not depend on how many Passes are sold and it is not a raffle: whoever gets furthest wins, with an audit before payment.'),
+  goalLabel: l('Ao chegarmos a {target} Passes, abrimos a Liga com prêmio em dinheiro.', 'When we reach {target} Passes, we open the League with a cash prize.'),
+  goalLabelNoCount: l('Ao chegarmos à meta de Passes, abrimos a Liga com prêmio em dinheiro.', 'When we reach the Pass goal, we open the League with a cash prize.'),
+  lowLine: l('{sold} aventureiros já têm o Passe · faltam {remaining} para a Liga', '{sold} adventurers already own the Pass · {remaining} to go for the League'),
+  lowLineOne: l('{sold} aventureiro já tem o Passe · faltam {remaining} para a Liga', '{sold} adventurer already owns the Pass · {remaining} to go for the League'),
+  lowLineZero: l('Seja um dos primeiros aventureiros com o Passe · faltam {remaining} para a Liga', 'Be one of the first adventurers with the Pass · {remaining} to go for the League'),
+  progressStart: l('A contagem está só começando.', 'The count is just getting started.'),
+  progressUnder: l('A comunidade está a caminho da meta.', 'The community is on its way to the goal.'),
+  progressHalf: l('Já passamos da metade do caminho.', 'We are past the halfway mark.'),
+  progressNear: l('Falta pouco para a Liga abrir.', 'Not long until the League opens.'),
+  openTitle: l('Liga da Temporada em andamento', 'Season League in progress'),
   openDates: l('De {from} a {to} (UTC)', 'From {from} to {to} (UTC)'),
   openEnds: l('Termina em {time}', 'Ends in {time}'),
-  openOver: l('Esta temporada terminou.', 'This season is over.'),
+  openOver: l('Esta Liga terminou.', 'This League is over.'),
   openSold: l('{sold} Passes adquiridos', '{sold} Passes acquired'),
   buy: l('Comprar o Passe', 'Buy the Pass'),
   soon: l('Em breve', 'Soon'),
   buyNote: l('A compra é feita dentro do jogo, depois do login.', 'The purchase is made inside the game, after you sign in.'),
-  unavailable: l('Dados ao vivo indisponíveis no momento.', 'Live data is unavailable right now.'),
+  closedNote: l('O Passe ainda não está à venda. Veja o que ele inclui na página do Passe.', 'The Pass is not on sale yet. See what it includes on the Pass page.'),
+  closedLink: l('Conhecer o Passe', 'See the Pass'),
+  meterFailed: l('Contagem de Passes indisponível agora. Tente de novo em instantes.', 'Pass count unavailable right now. Try again in a moment.'),
+  rankingFailed: l('Ranking indisponível agora. Tente de novo em instantes.', 'Ranking unavailable right now. Try again in a moment.'),
   stale: l('Não foi possível atualizar agora. Os números abaixo podem estar desatualizados.', 'Could not refresh right now. The numbers below may be out of date.'),
   loading: l('Carregando dados ao vivo…', 'Loading live data…'),
   live: l('Dados ao vivo. Atualizados a cada minuto.', 'Live data. Refreshed every minute.'),
   noscript: l('Os dados ao vivo precisam de JavaScript.', 'Live data needs JavaScript.'),
+  rulesTitle: l('Regras em resumo', 'Rules at a glance'),
+  rule1: l('A participação é exclusiva de quem tem o Passe de Aventureiro. A pontuação é calculada no servidor.', 'Taking part is exclusive to Adventurer’s Pass owners. Scores are calculated on the server.'),
+  rule2: l('A pré-temporada usa o mesmo placar, não tem prêmio e termina quando a Liga começar; aí todos recomeçam do zero.', 'The pre-season uses the same scoring, has no prize and ends when the League begins; then everyone starts from zero.'),
+  rule3: l('O regulamento completo e o valor do prêmio são publicados antes da abertura da Liga.', 'The full rules and the prize amount are published before the League opens.'),
+  rulesLink: l('Ler o regulamento', 'Read the rules'),
   generalTitle: l('Ranking geral', 'Overall ranking'),
   rankingEyebrow: l('Ranking geral', 'Overall ranking'),
   professionTitle: l('Ranking por profissão', 'Ranking by profession'),
   professionNote: l('A pontuação de cada profissão é o total de XP dela.', 'Each profession’s score is its total XP.'),
-  boardPaid: l('Temporada valendo', 'Ranked season'),
+  boardPaid: l('Liga da Temporada', 'Season League'),
   boardPre: l('Pré-temporada · sem prêmio', 'Pre-season · no prize'),
-  boardEnded: l('Temporada valendo · encerrada', 'Ranked season · ended'),
-  boardNone: l('A temporada ainda não começou', 'The season has not started yet'),
+  boardEnded: l('Liga da Temporada · encerrada', 'Season League · ended'),
+  boardNone: l('A Liga ainda não começou', 'The League has not started yet'),
   noteOnlyPass: l('A participação é exclusiva de quem tem o Passe de Aventureiro. A pontuação é calculada no servidor.', 'Taking part is exclusive to Adventurer’s Pass owners. Scores are calculated on the server.'),
-  notePre: l('A pré-temporada vale o mesmo placar, só para quem tem o Passe, e não tem prêmio. Ela termina quando a temporada valendo começar; aí todos recomeçam do zero.', 'The pre-season uses the same scoring, for Pass owners only, and has no prize. It ends when the ranked season begins; then everyone starts from zero.'),
-  noteEnded: l('Classificação final da última temporada valendo.', 'Final standings of the last ranked season.'),
+  notePre: l('A pré-temporada vale o mesmo placar, só para quem tem o Passe, e não tem prêmio. Ela termina quando a Liga começar; aí todos recomeçam do zero.', 'The pre-season uses the same scoring, for Pass owners only, and has no prize. It ends when the League begins; then everyone starts from zero.'),
+  noteEnded: l('Classificação final da última Liga.', 'Final standings of the last League.'),
   noteNone: l('Ainda não há ranking aberto. Quando houver, ele aparece aqui.', 'No ranking is open yet. When one is, it appears here.'),
   prize: l('Prêmio: {note}', 'Prize: {note}'),
-  prizeRule: l('Se houver um prêmio, o texto oficial aparece junto ao ranking. Nenhum valor é divulgado fora dele.', 'If there is a prize, its official text appears next to the ranking. No amount is published anywhere else.'),
+  prizeRule: l('O texto oficial do prêmio aparece junto ao ranking quando a Liga abre. Nenhum valor é divulgado fora do regulamento e dele.', 'The official prize text appears next to the ranking when the League opens. No amount is published anywhere except the rules and there.'),
   empty: l('Ainda não há jogadores neste ranking.', 'There are no players in this ranking yet.'),
-  rank: l('Posição', 'Rank'), player: l('Jogador', 'Player'), level: l('Nível', 'Level'), floor: l('Andar', 'Floor'), depth: l('Profundeza', 'Depth'), xp: l('XP', 'XP'),
-  paragon: l('Paragon', 'Paragon'), anonymous: l('Aventureiro', 'Adventurer'),
+  rank: l('Posição', 'Rank'),
+  player: l('Jogador', 'Player'),
+  level: l('Nível', 'Level'),
+  floor: l('Andar', 'Floor'),
+  depth: l('Profundeza', 'Depth'),
+  xp: l('XP', 'XP'),
+  paragon: l('Paragon', 'Paragon'),
+  anonymous: l('Aventureiro', 'Adventurer'),
   generalTable: l('Ranking geral: posição, jogador, nível, andar e profundeza', 'Overall ranking: rank, player, level, floor and depth'),
   professionTable: l('Ranking da profissão: posição, jogador, nível e XP', 'Profession ranking: rank, player, level and XP'),
 };
-// Decided rules (owner, 2026-10-14): only Adventurer's Pass owners take part, and the paid season starts when the Pass goal shown on the Temporada page is reached; until then a prize-less pre-season runs. No prize amount, date or link between Passes sold and the prize may be stated here.
-export const championship = {
-  title: l('Temporada valendo', 'Ranked season'),
-  body: l('A temporada valendo começa quando a meta de Passes da página Temporada for alcançada. Até lá roda uma pré-temporada sem prêmio, com as mesmas regras, e quando a valendo abrir todos recomeçam do zero.', 'The ranked season begins when the Pass goal on the Season page is reached. Until then a pre-season with no prize runs under the same rules, and everyone starts from zero when the ranked season opens.'),
-  note: l('A participação é exclusiva de quem tem o Passe de Aventureiro. O regulamento e a premiação serão publicados antes da largada.', 'Taking part is exclusive to Adventurer’s Pass owners. The rules and the prize will be published before the start.'),
+// Decided rules (owner, 2026-10-14): only Adventurer's Pass owners take part; the League starts when the Pass goal is reached; a pre-season with no prize runs until then.
+export const league = {
+  title: l('Liga da Temporada', 'Season League'),
+  body: l('Quando a comunidade chegar à meta de Passes, abre a Liga: uma competição com prêmio em dinheiro de valor fixo, publicado no regulamento. Até lá, roda uma pré-temporada sem prêmio.', 'When the community reaches the Pass goal, the League opens: a competition with a fixed cash prize published in the rules. Until then, a pre-season with no prize runs.'),
 };
 // The player market is planned only: no date, no promise.
 export const market = {
   title: l('Mercado de jogadores', 'Player market'),
   body: l('Um mercado onde jogadores poderão negociar entre si está planejado, sem data. Quando existir, apenas peças Épicas, Lendárias ou únicas sem vínculo e as Bolsas de Ouro poderão ser negociadas.', 'A market where players can trade with each other is planned, with no date. When it exists, only unbound Epic, Legendary or unique pieces and Gold Pouches will be tradeable.'),
 };
+// `status` of the Pass entry and the text of the entries that depend on the Pass sale are getters: they follow config.passSalesOpen.
 export const roadmap = [
   { id: 'core', status: 'available', title: l('Progressão conectada', 'Connected progression'), body: l('Herói, três caminhos de habilidades, equipamento forjado, Melhoria, Reforja, Lapidar, gemas, conjuntos, profissões com maestria, Caça em quatro zonas, Masmorra de 100 andares, Profundezas, Paragon e Pedidos.', 'Hero, three skill paths, crafted gear, Upgrade, Reforge, Lapidar, gems, sets, professions with mastery, Hunting in four zones, a 100-floor Dungeon, the Depths, Paragon and Orders.') },
   { id: 'goals', status: 'available', title: l('Metas e coleção', 'Goals and collection'), body: l('Missões diárias e semanais, sequência de login, conquistas, títulos e o Códice.', 'Daily and weekly quests, a login streak, achievements, titles and the Codex.') },
-  { id: 'pass', status: 'available', title: l('Passe de Aventureiro', 'Adventurer’s Pass'), body: l('Desbloqueio permanente com temporadas de 60 dias, trilha de recompensas e vantagens. A compra ainda não está aberta ao público.', 'A permanent unlock with 60-day seasons, a reward track and perks. Buying it is not open to the public yet.') },
+  {
+    id: 'pass', get status() { return config.passSalesOpen ? 'available' : 'development'; }, title: l('Passe de Aventureiro', 'Adventurer’s Pass'),
+    body: dyn(
+      () => 'Desbloqueio permanente com a Temporada do Passe de 60 dias, trilha de recompensas e vantagens. ' + (config.passSalesOpen ? 'A compra está aberta.' : 'A venda abre em breve.'),
+      () => 'A permanent unlock with the 60-day Pass Season, a reward track and perks. ' + (config.passSalesOpen ? 'Buying it is open.' : 'The sale opens soon.'),
+    ),
+  },
   { id: 'onboarding', status: 'available', title: l('Primeiros passos e conforto', 'Getting started and comfort'), body: l('Tutorial, resumo ao voltar, notificações, português e inglês, controle de som, versão web e versão desktop para Windows.', 'A tutorial, welcome-back summary, notifications, Portuguese and English, sound controls, a web version and a Windows desktop version.') },
+  { id: 'league', status: 'development', title: l('Liga da Temporada', 'Season League'), body: l('Começa quando a comunidade chegar à meta de Passes, exclusiva para quem tem o Passe, com prêmio em dinheiro de valor fixo. Pré-temporada sem prêmio até lá.', 'Begins when the community reaches the Pass goal, exclusive to Pass owners, with a fixed cash prize. A pre-season with no prize runs until then.') },
   { id: 'steam', status: 'planned', title: l('Lançamento na Steam', 'Steam release'), body: l('Um lançamento na Steam está planejado. Ainda não há data.', 'A Steam release is planned. There is no date yet.') },
-  { id: 'market', status: 'planned', title: market.title, body: l('Em estudo e planejado, sem data. Peças Épicas, Lendárias ou únicas sem vínculo e Bolsas de Ouro serão as únicas negociáveis.', 'Under study and planned, with no date. Unbound Epic, Legendary or unique pieces and Gold Pouches will be the only tradeable items.') },
-  { id: 'championship', status: 'planned', title: l('Campeonato de temporada', 'Season championship'), body: l('Começa quando a meta de Passes for alcançada, exclusiva para quem tem o Passe. Pré-temporada sem prêmio até lá.', 'Begins when the Pass goal is reached, exclusive to Pass owners. A pre-season with no prize runs until then.') },
+  { id: 'market', status: 'planned', title: l('Mercado de jogadores', 'Player market'), body: l('Em estudo e planejado, sem data. Peças Épicas, Lendárias ou únicas sem vínculo e Bolsas de Ouro serão as únicas negociáveis.', 'Under study and planned, with no date. Unbound Epic, Legendary or unique pieces and Gold Pouches will be the only tradeable items.') },
   { id: 'world', status: 'future', title: l('Mais atividades e desafios', 'More activities and challenges'), body: l('Novas zonas de Caça, equipamento, recursos e eventos temporários são possibilidades para a evolução do jogo.', 'New hunting zones, gear, resources and temporary events are possibilities for the game’s future.') },
   { id: 'long-term', status: 'future', title: l('Novas formas de progressão', 'New ways to progress'), body: l('Novas atividades e mecânicas de profissão poderão ampliar a experiência.', 'New activities and profession mechanics could expand the experience.') },
 ];
@@ -161,9 +213,9 @@ export const articles = [
         { type: 'heading', level: 2, text: 'Metas e conforto' },
         list(['Missões diárias e semanais, sequência de login e uma lista longa de conquistas.', 'O Códice registra tudo o que você descobre.', 'Um resumo ao voltar mostra o que aconteceu enquanto você estava fora.', 'Português e inglês, na web e em uma versão desktop para Windows.']),
         { type: 'heading', level: 2, text: 'Passe de Aventureiro' },
-        para('O Passe é um desbloqueio permanente, com temporadas de 60 dias e uma trilha de recompensas. A compra ainda não está aberta ao público.'),
+        para('O Passe é um desbloqueio permanente, com a Temporada do Passe de 60 dias e uma trilha de recompensas.'),
         { type: 'heading', level: 2, text: 'O que ainda não existe' },
-        list(['Um lançamento na Steam está planejado, sem data.', 'Um mercado de jogadores está planejado, sem data.', 'A temporada valendo começa quando a meta de Passes for alcançada; até lá roda uma pré-temporada sem prêmio.']),
+        list(['Um lançamento na Steam está planejado, sem data.', 'Um mercado de jogadores está planejado, sem data.', 'A Liga da Temporada começa quando a meta de Passes for alcançada; até lá roda uma pré-temporada sem prêmio.']),
       ],
       en: [
         para('Arena Duel has grown a lot since its first versions. This overview gathers what the game contains today.'),
@@ -176,44 +228,79 @@ export const articles = [
         { type: 'heading', level: 2, text: 'Goals and comfort' },
         list(['Daily and weekly quests, a login streak and a long list of achievements.', 'The Codex records everything you discover.', 'A welcome-back summary shows what happened while you were away.', 'Portuguese and English, on the web and in a Windows desktop version.']),
         { type: 'heading', level: 2, text: 'Adventurer’s Pass' },
-        para('The Pass is a permanent unlock, with 60-day seasons and a reward track. Buying it is not open to the public yet.'),
+        para('The Pass is a permanent unlock, with the 60-day Pass Season and a reward track.'),
         { type: 'heading', level: 2, text: 'What does not exist yet' },
-        list(['A Steam release is planned, with no date.', 'A player market is planned, with no date.', 'The ranked season begins when the Pass goal is reached; until then a pre-season with no prize runs.']),
+        list(['A Steam release is planned, with no date.', 'A player market is planned, with no date.', 'The Season League begins when the Pass goal is reached; until then a pre-season with no prize runs.']),
       ],
     },
   },
 ];
 export const futureRoutes = ['rankings', 'seasons', 'account', 'profile', 'marketplace'];
+const freeAnswer = dyn(
+  () => 'Sim. O jogo base é grátis no navegador. O Passe de Aventureiro é opcional: um desbloqueio permanente com vantagens, a Temporada do Passe e itens exclusivos. ' + (config.passSalesOpen ? `O Passe custa ${config.passPrice}, em pagamento único e sem renovação.` : 'A venda do Passe abre em breve.'),
+  () => 'Yes. The base game is free in the browser. The Adventurer’s Pass is optional: a permanent unlock with perks, the Pass Season and exclusive items. ' + (config.passSalesOpen ? `The Pass costs ${config.passPrice}, one-time payment, no renewal.` : 'The Pass sale opens soon.'),
+);
+const passAnswer = dyn(
+  () => 'Um desbloqueio permanente com a Temporada do Passe de 60 dias, uma trilha de recompensas, vantagens de conveniência e progressão, cosméticos e itens exclusivos. ' + (config.passSalesOpen ? 'A compra está aberta: pagamento único, sem renovação.' : 'A compra ainda não abriu.'),
+  () => 'A permanent unlock with the 60-day Pass Season, a reward track, convenience and progression perks, cosmetics and exclusive items. ' + (config.passSalesOpen ? 'Buying it is open: one-time payment, no renewal.' : 'Buying it has not opened yet.'),
+);
+const playAnswer = dyn(
+  () => config.playUrl ? 'Sim. Use o botão Jogar grátis: o jogo roda direto no navegador.' : 'Em breve. O endereço oficial do jogo ainda será confirmado e o botão Jogar grátis passa a funcionar quando ele estiver no ar.',
+  () => config.playUrl ? 'Yes. Use the Play free button: the game runs right in your browser.' : 'Soon. The official address of the game is still to be confirmed, and the Play free button starts working once it is live.',
+);
 export const faq = [
-  { question: l('O que é Arena Duel?', 'What is Arena Duel?'), answer: l('Um RPG idle em desenvolvimento ativo. Você evolui um Herói, trabalha em profissões, caça, forja equipamento e enfrenta uma Masmorra de 100 andares e as Profundezas. Parte do progresso continua com o jogo fechado.', 'Arena Duel is an idle RPG in active development. You grow a Hero, work on professions, hunt, forge gear and take on a 100-floor Dungeon and the Depths. Part of your progress continues while the game is closed.') },
+  { question: l('O que é Arena Duel?', 'What is Arena Duel?'), answer: l('Um RPG idle: o herói caça, minera e forja enquanto você está fora. Quando volta, você equipa o Herói, escolhe o próximo foco e desce uma Masmorra de 100 andares e as Profundezas.', 'An idle RPG: your hero hunts, mines and forges while you are away. When you come back, you gear up the Hero, pick your next focus and take on a 100-floor Dungeon and the Depths.') },
   { question: l('Por que as escolhas importam?', 'Why do choices matter?'), answer: l('Algumas atividades disputam o seu tempo. Priorizar uma profissão, escolher um caminho de habilidades, investir em uma peça ou preparar o Herói para a Masmorra faz parte dessas decisões.', 'Some activities compete for your time. You decide when to focus on a profession, which skill path to follow, which piece to invest in or how to prepare your Hero for the Dungeon.') },
   { question: l('O jogo tem combate entre jogadores?', 'Does the game have player-versus-player combat?'), answer: l('Não. O combate no Arena Duel é contra monstros e chefes; não há combate entre jogadores.', 'No. Combat in Arena Duel is against monsters and bosses; there is no player-versus-player combat.') },
-  { question: l('O jogo será gratuito?', 'Will the game be free?'), answer: l('O jogo base poderá ser jogado sem pagar. O Passe de Aventureiro é opcional: é um desbloqueio permanente que traz vantagens, temporadas e itens exclusivos. Os detalhes da venda ainda serão definidos.', 'The base game can be played without paying. The Adventurer’s Pass is optional: a permanent unlock that brings perks, seasons and exclusive items. Details of how it will be sold have yet to be defined.') },
-  { question: l('O que é o Passe de Aventureiro?', 'What is the Adventurer’s Pass?'), answer: l('Um desbloqueio permanente com temporadas de 60 dias, uma trilha de recompensas, vantagens de conveniência e progressão, cosméticos e itens exclusivos. A compra ainda não está aberta.', 'A permanent unlock with 60-day seasons, a reward track, convenience and progression perks, cosmetics and exclusive items. Buying it is not open yet.') },
-  { question: l('O que significa “Disponível”?', 'What does “Available” mean?'), answer: l('O sistema já existe na versão atual do jogo. Isso não indica que o jogo foi lançado ao público nem que o sistema é final.', 'The system exists in the current version of the game. This does not mean the game has launched publicly or that the system is final.') },
-  { question: l('Já posso jogar?', 'Can I play yet?'), answer: l('O portal ainda não possui um endereço oficial de acesso ao jogo. Até sua confirmação, acompanhe o desenvolvimento pelo Roadmap.', 'An official play link has not been confirmed for this portal yet. You can follow development through the Roadmap in the meantime.') },
+  { question: l('O jogo é gratuito?', 'Is the game free?'), answer: freeAnswer },
+  { question: l('O que é o Passe de Aventureiro?', 'What is the Adventurer’s Pass?'), answer: passAnswer },
+  { question: l('O que é a Liga da Temporada?', 'What is the Season League?'), answer: l('Uma competição exclusiva de quem tem o Passe, com prêmio em dinheiro de valor fixo, publicado no regulamento. Ela começa quando a comunidade chegar à meta de Passes; até lá roda uma pré-temporada sem prêmio. Veja a meta e os rankings na página da Liga.', 'A competition exclusive to Pass owners, with a fixed cash prize published in the rules. It begins when the community reaches the Pass goal; until then a pre-season with no prize runs. See the goal and the rankings on the League page.') },
+  { question: l('Já posso jogar?', 'Can I play yet?'), answer: playAnswer },
+  { question: l('O jogo está pronto?', 'Is the game finished?'), answer: l('O jogo está em desenvolvimento ativo: novos sistemas e ajustes chegam com o tempo. O Roadmap mostra o estado de cada parte, e “Disponível” quer dizer que o sistema já existe na versão atual, sem indicar que ele é final.', 'The game is in active development: new systems and tweaks arrive over time. The Roadmap shows where each part stands, and “Available” means the system already exists in the current version, not that it is final.') },
   { question: l('Em quais plataformas o jogo funciona?', 'Which platforms does the game run on?'), answer: l('No navegador e em uma versão desktop para Windows. Um lançamento na Steam está planejado, sem data.', 'In the browser and in a Windows desktop version. A Steam release is planned, with no date.') },
   { question: l('Vai existir um mercado entre jogadores?', 'Will there be a player market?'), answer: l('Está planejado, sem data. Quando existir, apenas peças Épicas, Lendárias ou únicas sem vínculo e as Bolsas de Ouro poderão ser negociadas. Peças equipadas ficam vinculadas e deixam de ser negociáveis.', 'It is planned, with no date. When it exists, only unbound Epic, Legendary or unique pieces and Gold Pouches can be traded. Equipped pieces become bound and are no longer tradeable.') },
-  { question: l('Haverá um campeonato?', 'Will there be a championship?'), answer: championship.note },
-  { question: l('Existe uma data de lançamento?', 'Is there a release date?'), answer: l('Ainda não há uma data oficial anunciada. O roadmap comunica a direção do desenvolvimento, sem datas de entrega.', 'No official release date has been announced. The roadmap shows our development direction without delivery dates.') },
+  { question: l('Existe uma data de lançamento?', 'Is there a release date?'), answer: l('Ainda não há uma data oficial anunciada para a Steam. O roadmap comunica a direção do desenvolvimento, sem datas de entrega.', 'No official date has been announced for Steam. The roadmap shows our development direction without delivery dates.') },
 ];
 export const copy = {
-  headline: l('Progressão que exige escolhas.', 'Progress shaped by your choices.'),
-  subtitle: l('Evolua seu Herói, desenvolva profissões, forje equipamento e desça a Masmorra até as Profundezas. Decida onde investir seu tempo.', 'Develop your Hero, build up professions, forge gear and descend through the Dungeon to the Depths. Decide where your time will make the difference.'),
+  headline: l('Um RPG idle que joga por você. Você só decide.', 'An idle RPG that plays for you. You just decide.'),
+  subtitle: l('Cace, minere e forje enquanto você está fora. Volte para equipar o Herói e descer 100 andares de masmorra. Grátis no navegador.', 'Hunt, mine and forge while you are away. Come back to gear up your Hero and descend 100 dungeon floors. Free in the browser.'),
+  funTitle: l('Por que é divertido', 'Why it is fun'),
+  fun: [
+    { title: l('Progresso mesmo longe', 'Progress while you are away'), body: l('Caça, mineração e forja continuam com o jogo fechado. Você vive a vida; o Herói segue trabalhando.', 'Hunting, mining and forging carry on with the game closed. You live your life; the Hero keeps working.') },
+    { title: l('Um resumo ao voltar', 'A summary when you return'), body: l('Ao abrir o jogo, veja o que rendeu enquanto você esteve fora e decida o próximo passo em segundos.', 'When you open the game, see what you earned while away and pick your next step in seconds.') },
+    { title: l('100 andares e chefes', '100 floors and bosses'), body: l('Desça uma masmorra de 100 andares, enfrente chefes e vá além, até as Profundezas.', 'Descend a 100-floor dungeon, face bosses and keep going, down to the Depths.') },
+    { title: l('Seu equipamento, seus conjuntos', 'Your gear, your sets'), body: l('Forje, melhore e monte conjuntos: o poder do Herói vem do que você constrói.', 'Forge, upgrade and assemble sets: your Hero’s power comes from what you build.') },
+  ],
   choicesTitle: l('Nem tudo pode ser maximizado ao mesmo tempo.', 'You can’t maximize everything at once.'),
   choicesBody: l('Algumas atividades disputam o seu tempo. Escolher onde se especializar faz parte do jogo.', 'Some activities compete for your time. Choosing what to specialize in is part of the game.'),
   loopTitle: l('Das atividades à Masmorra.', 'From activities to the Dungeon.'),
   loopBody: l('Recursos, equipamento e evolução do Herói fazem parte de um mesmo ciclo. A cada etapa, você decide o que desenvolver a seguir.', 'Activities, resources, gear and Hero progression work together. Each step gives you a reason to reconsider your next priority.'),
   roadmapNote: l('O roadmap representa a direção atual do projeto e pode evoluir conforme o desenvolvimento.', 'The roadmap reflects the project’s current direction and may change as development continues.'),
-  availableNote: l('Sistemas existentes na versão atual; não indica lançamento público.', 'Systems in the current version; this does not indicate a public launch.'),
+  availableNote: l('Sistemas existentes na versão atual; “Disponível” não quer dizer que o sistema é final.', 'Systems in the current version; “Available” does not mean a system is final.'),
   noNews: l('Comunicados do desenvolvimento serão reunidos aqui quando houver novidades para compartilhar. Enquanto isso, conheça o estado atual no Roadmap.', 'Development news will appear here when there is something to share. For the current state of the project, visit the Roadmap.'),
   gameTitle: l('O jogo hoje', 'The game today'),
   gameBody: l('Capturas da versão atual do Arena Duel.', 'Screenshots from the current version of Arena Duel.'),
 };
-// Legal pages are owner-provided text. They exist only as clearly marked placeholders and are not linked from any menu until real text is supplied.
+// Meta descriptions per page (search results and shared links). Pages without an entry use `default`.
+export const descriptions = {
+  default: l('Um RPG idle que joga por você: cace, minere e forje enquanto está fora e volte para equipar o Herói e descer 100 andares. Grátis no navegador.', 'An idle RPG that plays for you: hunt, mine and forge while away, then return to gear up your Hero and descend 100 floors. Free in the browser.'),
+  about: l('O que é o jogo: um RPG idle em que o Herói caça, minera e forja enquanto você está fora, e você decide como evoluir.', 'What the game is: an idle RPG where your Hero hunts, mines and forges while you are away and you decide how to grow.'),
+  systems: l('Herói, profissões, Caça, Forja, Masmorra de 100 andares e Profundezas: os sistemas do jogo e como eles se conectam.', 'Hero, professions, Hunting, the Forge, a 100-floor Dungeon and the Depths: the game’s systems and how they connect.'),
+  pass: dyn(
+    () => config.passSalesOpen ? `O Passe de Aventureiro: desbloqueio permanente, ${config.passPrice}, pagamento único e sem renovação, com vantagens e a Temporada do Passe.` : 'O Passe de Aventureiro chega em breve: desbloqueio permanente com vantagens, a Temporada do Passe e acesso à Liga da Temporada.',
+    () => config.passSalesOpen ? `The Adventurer’s Pass: a permanent unlock, ${config.passPrice}, one-time payment, no renewal, with perks and the Pass Season.` : 'The Adventurer’s Pass is coming soon: a permanent unlock with perks, the Pass Season and access to the Season League.',
+  ),
+  season: l('A Liga da Temporada: competição com prêmio em dinheiro de valor fixo, meta de Passes da comunidade e rankings ao vivo.', 'The Season League: a competition with a fixed cash prize, the community Pass goal and live rankings.'),
+  roadmap: l('O estado de cada parte do jogo: o que já existe, o que está em desenvolvimento e o que vem depois.', 'Where each part of the game stands: what exists, what is in development and what comes next.'),
+  faq: l('Perguntas frequentes: é grátis, como funciona o Passe, a Liga da Temporada, plataformas e estado do jogo.', 'Frequently asked questions: is it free, how the Pass works, the Season League, platforms and the state of the game.'),
+  news: l('Novidades e comunicados do desenvolvimento do jogo.', 'News and updates from the game’s development.'),
+  play: l('Como jogar: o jogo roda grátis no navegador.', 'How to play: the game runs free in your browser.'),
+};
+// Legal pages are owner-provided text. They exist only as clearly marked placeholders; the footer links one only when its `flag` in config.legalLive is true (real text in place).
 export const legal = [
-  { route: 'privacy', title: l('Política de Privacidade', 'Privacy Policy') },
-  { route: 'terms', title: l('Termos de Uso', 'Terms of Use') },
-  { route: 'season-rules', title: l('Regras da Temporada', 'Season Rules') },
+  { route: 'privacy', flag: 'privacy', title: l('Política de Privacidade', 'Privacy Policy') },
+  { route: 'terms', flag: 'terms', title: l('Termos de Uso', 'Terms of Use') },
+  { route: 'refund', flag: 'refund', title: l('Política de Reembolso', 'Refund Policy') },
+  { route: 'season-rules', flag: 'seasonRules', title: l('Regulamento da Liga', 'League Rules') },
 ];
 export const legalPlaceholder = l('Texto a ser fornecido pelo responsável do jogo.', 'Text to be provided by the game’s owner.');

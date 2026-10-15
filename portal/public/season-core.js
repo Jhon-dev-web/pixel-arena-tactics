@@ -57,7 +57,16 @@ export function requestInit(spec, anonKey) {
 }
 
 /** pass_meter() answers an array with one row (PostgREST) or an object. Returns a validated view, or null when the answer is not what it should be. */
-export function meterView(raw, lang) {
+export const DEFAULT_LOW_PCT = 5;
+export const MIN_BAR_PCT = 3; // a bar with at least one Pass is always visibly filled
+
+/**
+ * `options.lowPct`: below this percentage of the goal the percentage is hidden and the count line is shown instead (default 5).
+ * `options.showCount`: false hides every absolute number (only the bar and progress wording remain).
+ */
+export function meterView(raw, lang, options = {}) {
+  const lowPct = typeof options.lowPct === 'number' && options.lowPct >= 0 ? options.lowPct : DEFAULT_LOW_PCT;
+  const showCount = options.showCount !== false;
   const row = Array.isArray(raw) ? raw[0] : raw;
   if (!row || typeof row !== 'object') return null;
   const sold = wholeNumber(Number(row.sold));
@@ -65,6 +74,8 @@ export function meterView(raw, lang) {
   if (sold === null || target === null || target < 1) return null;
   const ratio = Math.min(1, sold / target);
   const pct = Math.round(ratio * 1000) / 10; // one decimal; a full bar only at the goal
+  const low = ratio * 100 < lowPct; // the exact ratio, not the rounded percentage
+  const remaining = Math.max(0, target - sold);
   const open = row.season_open === true;
   const startsAt = open && typeof row.starts_at === 'string' && !Number.isNaN(Date.parse(row.starts_at)) ? row.starts_at : null;
   const endsAt = open && typeof row.ends_at === 'string' && !Number.isNaN(Date.parse(row.ends_at)) ? row.ends_at : null;
@@ -72,6 +83,11 @@ export function meterView(raw, lang) {
     sold,
     target,
     pct,
+    low,
+    showCount,
+    remaining,
+    remainingText: formatInt(remaining, lang),
+    barPct: sold > 0 ? Math.max(pct, MIN_BAR_PCT) : 0,
     open: open && startsAt !== null && endsAt !== null,
     startsAt,
     endsAt,
@@ -80,6 +96,23 @@ export function meterView(raw, lang) {
     pctText: `${new Intl.NumberFormat(lang === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(pct)}%`,
   };
 }
+
+/** What the closed meter shows, as plain text (the script sets it with textContent). Never a placeholder dash: a missing number is the failure message, decided by the caller. */
+export function meterPresentation(view, labels) {
+  if (!view.showCount) {
+    const word = view.low ? labels.progressStart : view.pct < 50 ? labels.progressUnder : view.pct < 90 ? labels.progressHalf : labels.progressNear;
+    return { figures: false, showPct: false, line: word, goal: labels.goalLabelNoCount, barPct: view.barPct };
+  }
+  const goal = fillText(labels.goalLabel, { target: view.targetText });
+  if (view.low) {
+    const template = view.sold === 0 ? labels.lowLineZero : view.sold === 1 ? labels.lowLineOne : labels.lowLine;
+    return { figures: false, showPct: false, line: fillText(template, { sold: view.soldText, remaining: view.remainingText }), goal, barPct: view.barPct };
+  }
+  return { figures: true, showPct: true, line: '', goal, barPct: view.barPct };
+}
+
+/** The text of a ranking that could not be loaded. It is never the "no players yet" text. */
+export const failedRows = labels => `<p class="rank-empty" data-kind="failed">${escapeHtml(labels.rankingFailed)}</p>`;
 
 /** "3 d 4 h" / "4 h 12 min" / "menos de 1 min" until `endMs`; null when it is over. */
 export function countdownText(endMs, nowMs, lang) {
@@ -148,7 +181,7 @@ export function renderRows(rows, kind, lang, labels) {
       body.push(`<tr>${cell(position, 'num')}<th scope="row">${playerName(row.username, labels.anonymous)}</th>${cell(formatInt(level, lang), 'num')}${cell(formatInt(score, lang), 'num')}</tr>`);
     }
   }
-  if (!body.length) return `<p class="rank-empty">${escapeHtml(labels.empty)}</p>`;
+  if (!body.length) return `<p class="rank-empty" data-kind="empty">${escapeHtml(labels.empty)}</p>`;
   const heads = kind === 'general' ? [labels.rank, labels.player, labels.level, labels.floor, labels.depth] : [labels.rank, labels.player, labels.level, labels.xp];
   return `<div class="table-wrap" tabindex="0" role="region" aria-label="${escapeHtml(labels.tableLabel)}"><table class="rank-table"><caption class="sr-only">${escapeHtml(labels.tableLabel)}</caption><thead><tr>${heads.map((h, i) => `<th scope="col"${i === 0 || (i > 1) ? ' class="num"' : ''}>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${body.join('')}</tbody></table></div>`;
 }

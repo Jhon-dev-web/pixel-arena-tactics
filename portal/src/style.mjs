@@ -281,5 +281,28 @@ footer small { color: var(--muted); font-size: .875rem; grid-column: 1/-1; }
 .rank-table .anon { color: var(--muted); }
 .rank-empty { padding: 18px 0; }
 @media (max-width:650px) { .rank-table { font-size: .875rem; } .rank-table th, .rank-table td { padding: 8px 8px; } .rank-table tbody th { min-width: 14ch; } .meter-bar { height: 18px; } }
+/* Site v2: fun section, Pass purchase block, Liga steps, meter line, footer trust */
+.fun-grid { list-style: none; padding: 0; margin: 28px 0 0; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); }
+.fun-grid li { padding: 8px 26px 8px; border-left: 1px solid var(--border); }
+.fun-grid li:first-child { padding-left: 0; border: 0; }
+.fun-grid h3 { margin: 10px 0 12px; font-size: 1.5rem; }
+.fun-grid p { margin: 0; font-size: 1rem; }
+.fun-grid .profession-number { display: block; }
+.pass-buy { border-bottom: 1px solid var(--border); }
+.pass-price { color: var(--ink); font-family: var(--serif); font-size: clamp(1.4rem,3.2vw,2.1rem); line-height: 1.3; margin: 0; }
+.pass-price strong { color: var(--gold); font-weight: 400; }
+.trust-line { font-size: .9375rem; margin: 18px 0 6px; }
+.trust-line .text-link { margin-left: 4px; }
+.steps { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 14px; counter-reset: league; }
+.steps li { counter-increment: league; position: relative; padding: 16px 20px 16px 68px; background: var(--surface); border: 1px solid var(--border); color: var(--ink); font-size: 1.0625rem; }
+.steps li::before { content: counter(league); position: absolute; left: 18px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--gold); color: var(--gold); font: 1.25rem/1 var(--serif); }
+.prize-fixed { margin: 20px 0 0; padding: 14px 20px; border-left: 2px solid var(--gold); background: var(--surface); color: var(--ink); font-size: 1.0625rem; }
+.meter-line { margin: 0 0 14px; color: var(--ink); font-family: var(--serif); font-size: clamp(1.25rem,3.4vw,1.9rem); line-height: 1.3; }
+.meter-bar span { min-width: 0; }
+.footer-trust { grid-column: 1/-1; border-top: 1px solid var(--border); padding-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 28px; align-items: center; }
+.footer-trust nav { margin-left: auto; }
+.rank-empty[data-kind="failed"] { color: #d9a98b; }
+@media (max-width:900px) { .fun-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px 0; } .fun-grid li:nth-child(3) { padding-left: 0; border: 0; } .footer-trust nav { margin-left: 0; } }
+@media (max-width:650px) { .fun-grid { grid-template-columns: 1fr; } .fun-grid li, .fun-grid li:first-child, .fun-grid li:nth-child(3) { padding: 16px 0; border: 0; border-top: 1px solid var(--border); } .steps li { padding-left: 60px; } .hero .actions .button { flex: 1 1 100%; } }
 @media (prefers-reduced-motion:reduce) { * { transition: none!important; scroll-behavior: auto!important; } }
 `;

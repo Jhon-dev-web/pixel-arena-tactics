@@ -34,11 +34,26 @@ As 24 páginas PT/EN que já existiam continuam geradas. As áreas editoriais se
 
 O glossário em `src/content.mjs` segue os nomes do próprio jogo (Herói, Habilidades, Equipamento, Masmorra, Profundezas, Paragon, Passe de Aventureiro, Mineração, Lenhador, Horta, Ofícios, Caça, Forja, Pedidos, Códice...). O jogo não tem combate entre jogadores e o portal não o menciona como recurso. Os estados do roadmap são `available`, `development`, `planned` e `future`; suas definições ficam junto dos rótulos. “Disponível” indica existência na versão em desenvolvimento e não anuncia lançamento público.
 
-O ciclo da Home é uma explicação conceitual da progressão, sem fórmulas ou números internos. Mercado de jogadores, campeonato de temporada e Steam estão só no roadmap como Planejado, sem datas, regras ou valores. Páginas de Política de Privacidade, Termos de Uso e Regras da Temporada (`/pt/privacy/`, `/pt/terms/`, `/pt/season-rules/` e as equivalentes em `/en/`) existem apenas como espaço reservado e não têm link no menu nem no rodapé: o texto legal é do responsável pelo jogo.
+O ciclo da Home é uma explicação conceitual da progressão, sem fórmulas ou números internos. Mercado de jogadores, Liga da Temporada (em desenvolvimento) e Steam (planejada) aparecem no roadmap, sem datas, regras ou valores. Páginas de Política de Privacidade, Termos de Uso e Reembolso e Regulamento da Liga (`/pt/privacy/`, `/pt/terms/`, `/pt/refund/`, `/pt/season-rules/` e as equivalentes em `/en/`) existem apenas como espaço reservado e não têm link no menu nem no rodapé: o texto legal é do responsável pelo jogo.
 
 Para editar publicações, consulte [EDITORIAL.md](EDITORIAL.md). Artigos só entram no site com `published: true`. O build rejeita campos essenciais ausentes, links inseguros, slugs duplicados e estados inválidos. O projeto não contém notícias fictícias.
 
-`config.playUrl` fica `null` até o endereço HTTPS oficial ser aprovado. Enquanto isso, o CTA leva ao roadmap. Quando o endereço for fornecido, configure-o ali: o CTA passa a dizer Jogar/Play. `config.community` também permanece vazio; canais oficiais podem ser configurados futuramente.
+## Configuração do dono (`config` em `src/content.mjs`)
+
+| Chave | Padrão | Efeito |
+| --- | --- | --- |
+| `playUrl` | `null` | Endereço HTTPS do jogo. `null`: o botão "Jogar grátis" fica desativado com "Em breve" (nunca aponta para o roadmap). |
+| `passSalesOpen` | `false` | Chave única da venda do Passe. `false`: todas as páginas dizem que o Passe está chegando e nenhum preço aparece. `true`: preço (`passPrice`), "Comprar o Passe" (`<playUrl>/?comprar=passe`), "Pagamento seguro pelo Stripe" e link do reembolso. O build exige `playUrl` e o texto do reembolso. |
+| `siteUrl` | `null` | Origem pública (https, sem caminho). `null`: links relativos, `noindex`, sem robots.txt/sitemap.xml. Preenchido: canonical/hreflang/Open Graph absolutos, indexação liberada, robots.txt e sitemap.xml gerados. |
+| `meterShowCount` | `true` | `false` esconde todo número absoluto do medidor de Passes. |
+| `meterLowPct` | `5` | Abaixo desse % da meta o medidor esconde o percentual e mostra "N aventureiros já têm o Passe · faltam M para a Liga". |
+| `company` | tudo `null` | `legalName`, `cnpj`, `supportEmail`: aparecem no rodapé só os campos preenchidos. |
+| `legalLive` | tudo `false` | `terms`, `privacy`, `refund`, `seasonRules`: o rodapé só linka a página quando a flag é `true` e a entrada em `legal` tem `body` (blocos de EDITORIAL.md). As páginas reservadas continuam sem link. |
+| `supabaseUrl` / `supabaseAnonKey` | `null` | Dados ao vivo da Liga da Temporada (só a chave pública anon). |
+
+A competição tem um único nome: **Liga da Temporada** / Season League. "Temporada do Passe" é só a trilha de recompensas dentro do jogo. A página antiga `/pt/championship/` virou um redirecionamento para `/pt/season/`. A imagem de compartilhamento é `public/img/og.jpg` (1200x630, colagem de capturas reais).
+
+`config.community` permanece vazio até existirem canais oficiais.
 
 Há um rascunho não publicado (`published: false`) em `articles`: "O que mudou no Arena Duel", para revisão do dono. Ele não aparece no site até ser marcado como publicado.
 
