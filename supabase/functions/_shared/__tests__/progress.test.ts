@@ -316,9 +316,9 @@ describe('evaluateSnapshot: cheating', () => {
 describe('bounds table', () => {
   it('the pace tables are increasing and the helpers interpolate', () => {
     for (const t of [BOUNDS.levelPace, BOUNDS.floorPace]) for (let i = 1; i < t.length; i++) expect(t[i][1]).toBeGreaterThan(t[i - 1][1]);
-    expect(daysAtLevel(50)).toBe(9);
-    expect(daysAtLevel(55)).toBeCloseTo(9 + (14 * 5) / 10, 6);
-    expect(daysAtFloor(100)).toBe(75);
+    expect(daysAtLevel(51)).toBe(14);
+    expect(daysAtLevel(55.5)).toBeCloseTo(14 + (10 * 4.5) / 9, 6);
+    expect(daysAtFloor(100)).toBe(53);
     expect(daysAtLevel(0.5)).toBe(0);
   });
 });

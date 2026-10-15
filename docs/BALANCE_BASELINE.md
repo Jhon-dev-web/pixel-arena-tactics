@@ -1,3 +1,5 @@
+> **2026-10-15 (rodada 20, a Liga):** o XP do herói vem só da Caça (a Masmorra e os pedidos não pagam mais; o Elixir do Conhecimento é um buff de +25% de XP de Caça). O jogador simulado ganhou uma política do Elixir e o relatório do `sim:long` ganhou a tabela "Ritmo da Liga". A guarda dos dias 1 a 21 mudou em quatro linhas (T2: checkpoint do andar 10 até o dia 2; T4: nível no dia 2 / 3 / 14 em 20-28 / 20-29 / 45-60; o nível do dia 1 é 1); as medidas estão na seção "Liga" no fim deste arquivo e em `BALANCE_CHANGES.md`, Rodada 20. As tabelas anteriores são o histórico de antes dela.
+>
 > **2026-10-13 (rodada 16):** o `sim:long` ganhou o livro-razão do que o jogador joga fora (por material e por motivo) e o de Ouro e Runas; a seção "Dias 21 a 180" abaixo é de antes dos sumidouros do fim de jogo. O estado de antes e o de depois estão em `BALANCE_CHANGES.md`, Rodada 16, e `MATERIAL_FLOW.md`, seção 8.
 >
 > **2026-10-13 (rodada 15, dias 21 a 180):** o fim deste documento ganhou a seção "Dias 21 a 180", medida por `npm run sim:long` (6 seeds x 180 dias, jogador comum e dono do Passe). O resto do relatório (3 semanas) segue sendo o de `npm run sim`, com os mesmos valores nos dias 1 a 21 (a rodada 15 só mexe de depois do andar 50 em diante; ver `BALANCE_CHANGES.md`, Rodada 15, seção 6).
@@ -922,3 +924,33 @@ Resumo (mediana de 12 seeds, comum A / dono P): nível 60 / 75 / 90 / 100 nos di
 | Paragon 10 | 170 | 124 | 27% |
 | Paragon 25 | > 180 | 154 | - |
 | Paragon 50 | > 180 | > 180 | - |
+
+## Liga (rodada 20, 2026-10-15)
+
+O XP do herói vem só da Caça. Medido com `npm run sim` (20 seeds x 21 dias, com únicos) e com 12 seeds x 60 dias (`SIM_NO_UNIQUES=1 LONG_DAYS=60 LONG_SEEDS=12 npm run sim:long`). A explicação completa está em `BALANCE_CHANGES.md`, Rodada 20.
+
+### Guarda dos dias 1 a 21 (cenário A), antes -> depois
+
+| Meta | Antes (rodada 19) | Depois | Faixa nova |
+| --- | --- | --- | --- |
+| T2 primeira sessão termina no andar | 8 | 8 | >= 8 |
+| T2 checkpoint do andar 10 | dia 1 | dia 2 | **até o dia 2** (era dia 1) |
+| T3 primeira peça forjada | dia 2 | dia 2 | <= dia 2 |
+| T4 nível | dia 1 / 3 / 14: 13 / 30 / 50 | dia 2 / 3 / 14: 24 / 24 / 47 (44-48) | **dia 2 / 3 / 14: 20-28 / 20-29 / 45-60** (a faixa do dia 1 saiu: o nível do fim do dia 1 é 1) |
+| T5 chefe 25 | dia 4 | dia 5 | dia 4-6 |
+| T6 chegada ao andar 50 | primeira seed 9, mediana 12 | primeira seed 10, mediana 14 | nenhuma seed antes do dia 10 |
+| T6 chefe 50 | mediana 12 | primeira seed 11, mediana 14 | por volta dos dias 12-16 (a primeira seed fica 1 dia fora, como já estava) |
+| T7 / T8 | 1,08 / 75% | 1,08 / 75% | iguais |
+| I1 a I4 | ok | ok (dia 6; +0% / +20% / +25%) | iguais |
+
+### Ritmo da Liga (12 seeds x 60 dias): nível do herói no fim do dia, mediana (mais lenta - mais rápida)
+
+| Dia | Dono do Passe (P) | Sem Passe (A) |
+| --: | --- | --- |
+| 7 | 44 (42-44) | 37 (35-37) |
+| 14 | 50 (48-51) | 47 (46-48) |
+| 30 | 64,5 (60-69) | 56 (53-59) |
+| 45 | 75,5 (70-80) | 65 (61-67) |
+| 60 | 87 (76-90) | 73,5 (68-74) |
+
+Marcos (mediana de dias, A / P): nível 50 22 / 14, nível 60 37 / 24, nível 70 51 / 34,5, nível 75 > 60 / 44,5, nível 80 > 60 / 51; zona de Caça 4 31,5 / 23,5; arma T5 51 / 35; conjunto T5 > 60 / 53. Ninguém chega ao nível 100 em 60 dias. `npm run sim:long` completo (6 seeds x 180 dias): nível 90 no dia 94 (A) e 64 (P); nível 100 no dia 125 (A) e 87 (P); andar 100 no 107 e 67; conjunto T6 no 133 e 87,5.

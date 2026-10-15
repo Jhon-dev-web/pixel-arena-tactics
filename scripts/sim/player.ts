@@ -26,7 +26,7 @@ import { isBuffActive } from '../../src/game/buffs';
 import { MILESTONE_FLOORS } from '../../src/game/dungeon';
 import { deepestDepth, depthsUnlocked, nextDepthStage } from '../../src/game/depths';
 import { paragonLevel } from '../../src/game/paragon';
-import { POTION_RECIPES } from '../../src/game/potions';
+import { POTION_RECIPES, PotionRecipe, potionRecipeInTier, potionRecipeKey } from '../../src/game/potions';
 import { ORE_TIERS } from '../../src/game/ores';
 import { WOOD_TIERS } from '../../src/game/woodcutting';
 import { skillLevel, skillXpToReachLevel, gatherPower, BASE_GATHER_POWER } from '../../src/game/skills';
@@ -121,6 +121,8 @@ export interface DayLedger {
   discards: Record<string, Record<DiscardReason, number>>;
   // The late-game sinks (round 16) used today: deep refine attempts / successes / falls, and lapidations.
   sinks: { deepTry: number; deepOk: number; deepDrop: number; lapidar: number };
+  // Rodada 20: the Knowledge Elixir of the day: crafted / drunk, the Gold they cost, and the hours of Hunting (that ended today) they covered.
+  elixir: { crafted: number; drunk: number; gold: number; coveredHours: number };
 }
 
 // Why a unit was thrown away: the stash had no free slot ('stash'), the merchant's budget of the day was spent ('merchant'), or both had room and the policy still threw
@@ -141,7 +143,7 @@ export interface MatFlow {
 const newFlow = (): Record<string, MatFlow> =>
   Object.fromEntries(MATERIALS.map((d) => [d.id, { produced: 0, refined: 0, left: 0, residual: 0, consumed: { forge: 0, upgrade: 0, alchemy: 0, stash: 0, delivery: 0, workshop: 0, dust: 0, merchant: 0, wholesale: 0, discard: 0, other: 0 }, stockEnd: 0 }]));
 
-const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, uniques: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} }, discards: {}, sinks: { deepTry: 0, deepOk: 0, deepDrop: 0, lapidar: 0 } });
+const newLedger = (): DayLedger => ({ xpIn: {}, goldIn: {}, goldOut: {}, mats: { common: 0, uncommon: 0, rare: 0 }, matsValue: 0, lost: 0, inv: { slotsMax: 0, slotsEnd: 0, capacity: 0, lostGather: 0, stashed: 0, sold: 0, discarded: 0 }, hours: { hunt: 0, mine: 0, wood: 0 }, units: {}, flow: newFlow(), hunt: {}, uniques: {}, currency: { shardsIn: {}, shardsOut: {}, gemsIn: {}, gemsOut: {} }, discards: {}, sinks: { deepTry: 0, deepOk: 0, deepDrop: 0, lapidar: 0 }, elixir: { crafted: 0, drunk: 0, gold: 0, coveredHours: 0 } });
 
 export interface DaySnapshot {
   day: number;
@@ -400,6 +402,9 @@ export interface PlayerOptions {
 const COMBAT_TONICS = ['stoneskin_tonic', 'precision_elixir', 'haste_tonic', 'fortune_tonic'] as const;
 const TONIC_STOCK = 1;
 const SINK_CONSUMABLES = ['repair_kit', 'prospector_tonic', 'hunter_lure'] as const;
+// Rodada 20: the Knowledge Elixir (+25% Hunting XP for 4 h, one at a time). The policy keeps KNOWLEDGE_STOCK of them in the bag (one for each visit of the day), crafted with the Gold beyond
+// the next gear craft's reserve and the plants / rare drop the next craft is not waiting for, and drinks one at the start of every hunt when the last one has ended.
+const KNOWLEDGE_STOCK = 2;
 const SINK_STOCK = 2;
 const BOSS_APPROACH_FLOORS = 6; // a session that starts within this many floors of an unclaimed boss is a boss attempt
 
@@ -613,6 +618,10 @@ export class Player {
       if (stopped && stopped.pendingHuntReward) {
         const p = stopped.pendingHuntReward;
         const hours = p.pendingMs / HOUR;
+        for (const w of s.huntSession?.tonics?.knowledge ?? []) {
+          const to = w.to ?? Infinity;
+          this.ledger.elixir.coveredHours += Math.max(0, Math.min(to, s.huntingOfflineStart + p.pendingMs) - Math.max(w.from, s.huntingOfflineStart)) / HOUR;
+        }
         this.ledger.hours.hunt += hours;
         const hz = (this.ledger.hunt[huntKey] ??= { hours: 0, units: {} });
         hz.hours += hours;
@@ -924,6 +933,15 @@ export class Player {
         if (short > 0 && PLANTS.some((p) => p.material === m)) deficit[m] = Math.max(deficit[m] ?? 0, short);
       }
     }
+    // the plants of the Knowledge Elixir of the hero's zone tier, for the stock the policy keeps (asked for after the gear and the tonics)
+    const kRec = this.knowledgeRecipe();
+    if (kRec) {
+      const missing = KNOWLEDGE_STOCK - (this.S.consumables.knowledge_elixir ?? 0);
+      for (const [m, q] of Object.entries(kRec.input) as [MaterialId, number][]) {
+        const short = q * missing - (this.S.materials[m] ?? 0);
+        if (short > 0 && PLANTS.some((p) => p.material === m) && !(m in deficit)) deficit[m] = short;
+      }
+    }
     const wanted = unlocked.filter((p) => (deficit[p.material] ?? 0) > 0).sort((a, b) => (deficit[b.material] ?? 0) - (deficit[a.material] ?? 0))[0];
     const longest = [...unlocked].filter((p) => p.durationMs <= 10 * HOUR).sort((a, b) => b.durationMs - a.durationMs)[0];
     const pick = wanted ?? longest;
@@ -987,6 +1005,7 @@ export class Player {
     }
     this.tryStashUpgrade();
     this.craftTonics(reserve);
+    this.craftKnowledge(reserve);
     this.claimQuestsNow();
     this.checkMarks();
   }
@@ -1007,6 +1026,31 @@ export class Player {
         this.set(next, 'alquimia');
         this.flowCount('alchemy', flowBefore);
       }
+    }
+  }
+
+  // The Knowledge Elixir recipe of the best zone the hero has opened, when he could make it (hero level) and the policy wants more of them.
+  private knowledgeRecipe(): PotionRecipe | null {
+    if (this.opts.tonics === false) return null;
+    if ((this.S.consumables.knowledge_elixir ?? 0) >= KNOWLEDGE_STOCK) return null;
+    const rec = POTION_RECIPES.find((r) => r.id === 'knowledge_elixir' && potionRecipeInTier(r, this.S.highestDungeonFloor));
+    return rec && playerLevel(this.S.xp) >= rec.requiredLevel ? rec : null;
+  }
+
+  private craftKnowledge(reserve: number) {
+    for (let guard = 0; guard < KNOWLEDGE_STOCK; guard++) {
+      const rec = this.knowledgeRecipe();
+      if (!rec || this.S.gold - rec.cost < reserve) return;
+      // ingredients the next gear craft is waiting for are not spent on an elixir
+      const t = chooseTarget(this.S);
+      if (t && Object.entries(rec.input).some(([m, q]) => (t.deficit[m as MaterialId] ?? 0) > 0 && (this.S.materials[m as MaterialId] ?? 0) - (q as number) < (t.deficit[m as MaterialId] ?? 0))) return;
+      const flowBefore = this.flowMark();
+      const next = craftPotion(this.S, potionRecipeKey(rec));
+      if (!next) return;
+      this.set(next, 'alquimia');
+      this.flowCount('alchemy', flowBefore);
+      this.ledger.elixir.crafted += 1;
+      this.ledger.elixir.gold += rec.cost;
     }
   }
 
@@ -1513,6 +1557,13 @@ export class Player {
           this.S = next;
           this.trace.push(`   hunt ${z.id}:${depth}`);
           if (this.opts.sinks) this.S = applyElixir(this.S, 'hunter_lure', this.now) ?? this.S;
+          if (this.opts.tonics !== false) {
+            const drunk = applyElixir(this.S, 'knowledge_elixir', this.now);
+            if (drunk) {
+              this.S = drunk;
+              this.ledger.elixir.drunk += 1;
+            }
+          }
           return true;
         }
       }

@@ -1916,3 +1916,113 @@ Decisão do dono: quem compra o Passe tem de ficar claramente à frente, mas sem
 Sem únicos o quadro é o mesmo: dia 14 nível 50 / 54 e chegada ao 50 em 13 / 9 (4 dias; antes 15 / 10,5, 4,5 dias). O dono continua claramente à frente (+93% de materiais e 3 a 4 dias nos marcos), mas a vantagem de nível e de tempo diminuiu no dia 14 e no andar 50: o não dono ganhou mais com os 6 h do que o dono ganhou com os 10 h.
 
 **Não verificado:** a tela de Bolsas, o texto novo da lista de vantagens e a linha da descrição do Selo não foram vistos no navegador (só pelos testes). A migração e o servidor de ranking não têm teste de integração com o banco.
+
+
+## Rodada 20 — a Liga: o XP do herói vem só da Caça (2026-10-15)
+
+Decisão do dono, para a Liga competitiva (ranking por nível do herói; todo mundo recomeça do zero na primeira Liga): **o herói ganha XP só caçando**, o elixir de XP vira um buff caro e feito à mão, a curva do topo foi acertada para o ritmo da Liga e os limites do servidor foram refeitos a partir das fontes novas. Medido com `npm run sim` (20 seeds, 21 dias, com únicos) e `npm run sim:long` (6 seeds, 180 dias; as tabelas de ritmo abaixo usam 12 seeds x 60 dias com `SIM_NO_UNIQUES=1`, o mesmo jogador de antes com a política nova do Elixir).
+
+### 1. De onde vinha o XP do herói, antes e depois
+
+| Fonte | Antes | Depois | O que ficou no lugar |
+| --- | --- | --- | --- |
+| Caça | `xpPerHour` da zona x profundidade x bônus (Relíquia, Aprendiz Veloz) | **igual**, mais o Elixir do Conhecimento (+25% no tempo de luta que ele cobre) | - |
+| Masmorra | 60 XP x (1 + 5% por andar) por vitória + 200 por checkpoint + 500 por chefe (100% do XP do dia 1 do jogador simulado e de 0,1% a 4% do XP dos dias 10 a 60) | **0** (`stageVictoryXp`, `dungeonRunXp`, `milestoneXpBonus`, `runSummary.ts` e os tunables `victoryXp`, `checkpointXpBonus`, `bossXpBonus`, `battle.rewardGrowth` saíram) | Ouro fixo nas ondas de checkpoint (`T.advanced.checkpointGoldBonus` 40) e de chefe (`bossGoldBonus` 100), dentro de `waveRewards`: a derrota guarda a mesma fatia dele que do resto. A Masmorra continua sendo o que abre as zonas de Caça (`unlockFloor` 0 / 26 / 51 / 76, conferido: usam o maior andar) e os tiers da Forja |
+| Pedidos | `xpPerHour*` 780 a 1 200 x fator de nível (até 3,2) x (1 + 20% do Passe) x bônus da Relíquia: de 16% a 51% do XP do jogador simulado dos dias 10 a 40 e 2% no dia 60 | **0** (o campo `xp` saiu da oferta; uma oferta antiga salva com `xp` é paga sem ele) | **+10% de Ouro em todo pedido** (`T.deliveries.goldBonus`), sem mexer na carga (dimensionada com o Ouro sem o bônus). O teste de âncora contra a Caça (0,8 a 1,2) continua em `round14.test.ts`, agora com o bônus: nível 50 em 1,19 (com 15% passava de 1,2 e foi para 10%) |
+| Poção do Conhecimento (`xp_potion`) | +150 XP instantâneos, 3 Ervas Energéticas + 30 de Ouro | **saiu**. Um save antigo carrega cada uma como **40 de Ouro** (mochila e baú; `legacyXpPotion.ts`, uma vez só) | O Elixir do Conhecimento (seção 2) |
+| Expedição (legado, só as que já estavam em andamento) | 55 mil / 220 mil / 440 mil XP | 0 (paga o Ouro e as Runas de sempre) | - |
+| Passe (bônus de XP nas entregas) | +20% | saiu | A linha do Passe dos pedidos passou a dizer "Mais escolha entre os pedidos"; o Passe continua com 1 oferta e 1 troca a mais e os +15% de Ouro |
+| Missões, conquistas, trilha do Passe, sequência de login, metas semanais, Profundezas, Relíquia da Temporada | conferido: **nenhuma pagava XP do herói** (pagam Ouro, Runas, consumíveis e cosméticos); a Relíquia e o Aprendiz Veloz só *multiplicam* o XP da Caça | sem mudança | Os textos mudaram: "+X% de XP do personagem **na Caça**", o tutorial da Masmorra e o resultado da descida não prometem mais XP, nem níveis, nem o card de pedido |
+
+Consequência de design que vale ler: a Masmorra não sobe mais o herói, então **o nível do fim do dia 1 é 1** no jogador simulado (ele minera e corta para a primeira peça antes de caçar; o primeiro nível chega no primeiro resgate da Caça, dia 2). Um jogador de verdade que segue o tutorial (Masmorra, depois uma Caça de verdade) sobe de nível nos primeiros minutos de Caça: uma Caça de 10 minutos paga cerca de 290 XP (nível 4).
+
+### 2. O Elixir do Conhecimento
+
+- **Efeito:** +25% do XP de Caça por 4 horas reais, só no tempo de luta que a janela cobre (a mesma regra do Tônico da Fortuna: a luta conta pelo instante em que termina). Multiplica com a Relíquia e o Aprendiz Veloz. Não vale para a Masmorra, que não paga XP. Nunca é vendido (Loja, mercadores, Passe, mercado): `purchasable false`, `sellValue 0`.
+- **Um de cada vez:** beber outro com um ativo é **recusado e não gasta nada** (decisão: dobrar a duração ou empilhar tempo deixaria quem confere o jogo de 4 em 4 horas igual a quem deixa um estoque de elixires; assim a cobertura depende de estar presente, que é o que o dono pediu). Depois que o primeiro acabou, vale de novo. Regras de sessão congelada iguais às dos tônicos de Caça: um elixir já ativo na hora de começar a Caça abre uma janela no começo; um bebido durante a Caça abre a janela dali em diante; um bebido depois de parar a Caça nunca é retroativo (a recompensa pendente já está congelada). Persiste em `save.buffs.knowledge` e na janela da sessão.
+- **Receita (uma por tier de zona; só a da melhor zona que o herói abriu aparece e pode ser feita, então ela acompanha a subida):**
+
+| Tier (zona) | Plantas da Horta | Drop raro da zona | Ouro | Nível do herói | Horas de canteiro por elixir |
+| --- | --- | --- | --- | --- | --- |
+| 1 Clareira dos Demônios | 2 Lírio Lunar (Jardinagem 45) | 1 Núcleo Demoníaco | 20 | 30 | 20 |
+| 2 Pântano de Sangue | 1 Lírio Lunar + 3 Sálvia de Prata (50) | 1 Cristal Corrompido | 35 | 40 | 22 |
+| 3 Fenda Demoníaca | 1 Orquídea do Crepúsculo (60) + 2 Sálvia de Prata | 2 Núcleos Demoníacos | 50 | 50 | 20 |
+| 4 Abismo de Sangue | 2 Orquídeas do Crepúsculo (60) | 2 Cristais Corrompidos | 65 | 60 | 24 |
+
+  O raro nunca é o Chifre do Demônio nem o Coração de Sangue (são o gargalo das peças tier 5 e 6) e os dois itens de gargalo da Rodada 17 não foram tocados. Um item só no inventário (`knowledge_elixir`), quatro receitas (`potions.ts`, `zoneTier`).
+- **Conta de manter 100% de cobertura:** 24 h / 4 h = **6 elixires por dia**. Garden: 6 x (20 a 24 horas de canteiro) = 120 a 144 horas por dia, de **83% a 100% das 144 horas** que os seis canteiros dão (a planta de 12 h cabe entre duas visitas; a de 16 h, que seria 100%+, ficou de fora de propósito). Ouro: 6 x 65 = **390 por dia no tier 4** e 300 no tier 3; o ouro que entra no jogador comum sem Passe (cenário A, mediana de 12 seeds) é 1 102 por dia nos dias 36-50 e 1 453 nos dias 46-60, no dono do Passe 2 425 e 2 470: **27% e 27% do ouro do jogador comum, 12% e 16% do dono**. Raros: 12 Núcleos / 12 Cristais por dia nos tiers 3 / 4 contra (estimativa da própria Caça, 4 h por amostra) uns 36 a 170 Núcleos por dia na Fenda e 12 a 70 Cristais no Abismo. Quem confere o jogo duas vezes por dia só chega a 2 elixires (8 h): o jogador simulado bebe 1,3 a 1,6 por dia e cobre **53% a 64% das horas de Caça do jogador comum e 33% das do dono** (ele caça 20 h por dia; o teto de 2 elixires é 40%), gastando 84 a 104 de Ouro por dia (4% a 8% do que entra), o que dá **+14% / +8% de XP**. A política do simulador faz 2 por dia, craftados com o Ouro que sobra depois da próxima peça e das plantas que a próxima peça não pede.
+- **Por que a Horta só tem as plantas de nível 45+:** é o que o dono pediu (Jardinagem 40+); o jogador simulado (comum e dono) chega à Jardinagem 45 / 50 / 60 por volta dos dias 10 / 13 / 30, então na prática o Elixir só entra de verdade depois do dia 30 (Cobertura 0% até lá, 45% a 61% da Caça do jogador comum depois) e as receitas da Fenda e do Abismo pedem uma Horta cuidada.
+
+### 3. A curva de XP do herói
+
+Só a banda 4 (níveis 61 a 80) mudou: o crescimento por nível foi de 3% para **2,3%** (`heroGrowth4` 1,03 -> 1,023). Os níveis 1 a 60 são idênticos (a primeira sessão, o tutorial e os recibos de peça continuam como eram) e a banda 5 (81 a 100) fica em 3%. O custo é o XP do nível, o acumulado é o necessário para chegar nele:
+
+| Nível | Custo do nível, antes | Custo do nível, depois | Acumulado, antes | Acumulado, depois |
+| --: | --: | --: | --: | --: |
+| 10 | 277 | 277 | 1 476 | 1 476 |
+| 20 | 825 | 825 | 6 132 | 6 132 |
+| 30 | 3 060 | 3 060 | 22 093 | 22 093 |
+| 50 | 53 070 | 53 070 | 325 729 | 325 729 |
+| 70 | 332 844 | 313 030 | 4 360 779 | 4 288 052 |
+| 90 | 583 643 | 512 716 | 13 168 081 | 12 148 052 |
+| 100 | 784 368 | 689 048 | 19 858 898 | 18 025 772 |
+
+Por que tão pouco: tirar o XP dos pedidos e da Masmorra já derrubou o ritmo do começo (nível 30 mais tarde) e o Elixir devolveu uns 8% a 14% no fim; o jogador simulado dono do Passe chegava ao nível 85 no dia 60 só com a Caça, perto da meta. O custo cai um pouco para o mais rápido passar do 90 (a banda 4 em 1,02 deixava a mediana em 88,5 com o Elixir; 1,023 deixa 87). A migração (`XP_CURVE_VERSION` 3) mantém o nível e a fração do nível de quem está salvo na curva 2 (e a de quem estava na 1 vai direto para a nova); levels 1-60 ficam com o XP intacto; o paragon é preservado em níveis inteiros do preço novo. O preço do Paragon cai com a banda 5 (o nível 1 de Paragon passa de 470 mil para 401 mil XP, ainda dois dias de Caça da última zona).
+
+### 4. Ritmo da Liga (12 seeds, 60 dias, `SIM_NO_UNIQUES=1`; nível do herói no fim do dia: mediana (mais lenta, mais rápida))
+
+| Dia | Dono do Passe (P): mediana | mais lenta | mais rápida | Sem Passe (A): mediana | mais lenta | mais rápida |
+| --: | --: | --: | --: | --: | --: | --: |
+| 7 | 44 | 42 | 44 | 37 | 35 | 37 |
+| 14 | 50 | 48 | 51 | 47 | 46 | 48 |
+| 30 | 64,5 | 60 | 69 | 56 | 53 | 59 |
+| 45 | 75,5 | 70 | 80 | 65 | 61 | 67 |
+| 60 | **87** | 76 | **90** | **73,5** | 68 | 74 |
+
+Metas pedidas: seed mais rápida do dono entre 90 e 95 no dia 60 (**90**, ok, no limite de baixo), mediana do dono entre 80 e 88 (**87**, ok), ninguém no nível 100 (a seed mais rápida chega ao 100 depois do dia 60: nível 90 no dia 60 em 1 de 12, nível 100 em 0 de 12). **Fora da meta: a mediana sem Passe está 13 níveis abaixo da do dono, não "poucos"** (73,5 contra 87). A causa não é a curva: é o armazenamento do Passe (10 h contra 6 h por visita, +67% de horas de Caça com duas visitas por dia) mais os +10% de material e as zonas 3 e 4 abrindo 2 e 8 dias antes; uma curva mais íngreme no topo aproxima os dois mas tira a mediana do dono da faixa (na conta aberta com o XP desta simulação, `heroGrowth4` 1,04 deixa a mediana do dono em 84 e a mais rápida em 85, abaixo de 90). Para fechar o buraco o caminho é mexer no Passe (armazenamento ou material), não na curva. Os marcos: nível 50 no dia 22 (A) e 14 (P), 60 no 37 e 24, 70 no 51 e 34,5, 75 no 44,5 (P; A depois do dia 60), 80 no 51 (P); zona 4 aberta no dia 31,5 (A) e 23,5 (P); peça T5 de arma no 51 e no 35; conjunto T5 no dia 53 (P; A depois do 60). O Elixir cobre 0% até o dia 30 (a Horta ainda não tem as plantas) e 45% a 61% da Caça do jogador comum depois.
+
+O `npm run sim:long` completo (6 seeds x 180 dias, `SIM_NO_UNIQUES=1`) confirma o dia 60 (dono 87, 83 a 90; comum 74, 71 a 74) e dá o resto: nível 90 no dia 94 (A) e 64 (P), **nível 100 no dia 125 (A) e 87 (P)**, andar 100 no 107 e 67, chefe 100 no 116 e 72,5, conjunto T5 no 74,5 e 52, conjunto T6 no 133 e 87,5, Paragon 1 no 127,5 e 88,5. Antes da Liga (rodada 17, 12 seeds) o nível 100 era no dia 145 (A) e 105 (P): a Liga ficou uns 20 dias mais rápida no fim e mais lenta no começo (nível 50 no 22 / 14 contra 17 / 10).
+
+### 5. Guarda dos dias 1 a 21 (cenário A, 20 seeds, com únicos), antes (Rodada 19) -> depois
+
+| Meta | Antes | Depois | Mudou? |
+| --- | --- | --- | --- |
+| T2 primeira sessão termina no andar >= 8 | 8 | **8** | mantida |
+| T2 checkpoint do andar 10 | dia 1 | **dia 2** | **a meta passou de "dia 1" para "até o dia 2"**: no dia 1 o herói não ganha mais nível na Masmorra, então a segunda visita do dia 1 enfrenta o 10 com o herói do nível 1 |
+| T3 primeira peça forjada (dia <= 2) | 2 | **2** | mantida |
+| T4 nível | dia 1 / 3 / 14: 13 / 30 / 50 (faixas 10-16 / 20-29 / 45-60) | dia 2 / 3 / 14: **24 / 24 / 47** (faixas 20-28 / 20-29 / 45-60) | **a faixa do dia 1 saiu** (o nível do fim do dia 1 é 1 por desenho: o XP só chega no primeiro resgate de Caça) e entrou o dia 2 (20-28); dia 3 e dia 14 continuam dentro da faixa antiga. O dia 3 caiu de 30 para 24 (e o dia 7 de 41 para 37) |
+| T5 chefe 25 vencido (dia 4-6) | dia 4 | **dia 5** | dentro da faixa; vitória ao chegar 0% |
+| T6 chegada ao andar 50 | primeira seed dia 9, mediana 12 | **primeira seed dia 10, mediana 14** | "nenhuma seed antes do dia 10" volta a valer; a mediana 14 está em 12-15 |
+| T6 chefe 50 (faixa 12-16) | mediana 12 | primeira seed dia 11, mediana 14, 20/20 em 21 dias | a primeira seed do chefe 50 cai no dia 11 (a faixa é 12-16): fora por 1 dia; na Rodada 19 essa linha também falhava |
+| T7 menor razão depois de um chefe | 1,08 | 1,08 | igual |
+| T8 derrota mantém 75% do ouro | 75% | 75% | igual |
+| I1 a I4 (inventário) | ok | ok (I1 dia 6, I4 +0% / +20% / +25%) | iguais |
+| nível no dia 21 | 51 | 49 (48-50) | -2 |
+| andar mais alto no dia 21 | 60 | 60 (59-73) | igual |
+
+Chefe 25 no dia 5 mantém "no 1º semana"; primeira peça no dia 2 e primeira sessão no andar 8 também.
+
+### 6. Limites do servidor (`bounds.ts`, `npm run season:bounds`, `npm run season:tables`)
+
+O servidor passou a julgar o XP do herói só pela Caça (a Masmorra e os pedidos saíram da conta; a tabela `DUNGEON_RUN_XP` foi removida de `tables.ts`). As margens de sempre ficam: bandeira no valor, rejeição em 2x (teóricos) ou 3x (ritmo), aviso suave `FAST_*` em 1,3x.
+
+| Número | Antes | Depois |
+| --- | --- | --- |
+| `xpPerHour` (teórico no andar 100) | 60 000 = Caça 19 773 + pedidos 5 391 + Masmorra 34 325 | **25 000** = melhor zona 13 000 x profundidade 1,3 x 1,17 (Relíquia + Aprendiz Veloz) x 1,25 (Elixir sempre ativo) = 24 716 |
+| `huntXpFactor` | 1,521 | **1,902** |
+| `ordersXpPerHour`, `orderLumpXp`, `orderLumpFactorAt50` | 5 400 / 35 400 / 3,2 | removidos |
+| `xpPerHourAt(andar)` | zona x fator + pedidos + 20 corridas da Masmorra | zona x fator (andar 0: 8 100 -> 3 300; andar 100: 59 500 -> 24 700) |
+| `burstXp(nível, andar)` | 10 h da zona x fator + um pedido (35 400 x até 3,2) | `burstXp(andar)` = 10 h da zona x fator (andar 0: 62 mil -> 33 mil; andar 100: 311 mil -> 247 mil) |
+| `levelPace` (dia em que a seed mais rápida chega) | 13 / 27 / 50 / 60 / 75 / 90 / 100 nos dias 1 / 3 / 9 / 23 / 45 / 76 / 104 | 24 / 28 / 44 / 51 / 60 / 68 / 75 / 79 / 88 / 100 nos dias 2 / 3 / 7 / 14 / 24 / 30 / 40 / 45 / 60 / 80 |
+| `floorPace` | andar 25 no dia 3, 50 no 8,5, 90 no 62, 100 no 75 | 25 no dia 2, 50 no 9, 90 no 42, 100 no 53 |
+| `floorCapByLevel` | [1, 6], [27, 30], [50, 66], [57, 85], [77, 98] | [1, 12], [24, 36], [44, 56], [50, 84], [57, 91], [70, 100] (a Masmorra não sobe mais o herói: o nível 1 já está no andar 10) |
+
+Os testes (`seasonProgress.test.ts`, `supabase/functions/_shared/__tests__/progress.test.ts`) continuam provando que a seed mais rápida e um humano 20% mais rápido passam `ok` em 150 dias e que as constantes teóricas cobrem o jogo.
+
+### 7. O que não foi verificado e o que o dono pode discordar
+
+- Nada disto foi visto no navegador (a lista de Alquimia com a receita por tier, o botão de usar o Elixir, os textos novos): só pelos testes de lógica e de locale.
+- O ouro de 20 / 35 / 50 / 65 por elixir é pequeno em números absolutos porque o jogador simulado ganha 1 000 a 2 500 de Ouro por dia; o "caro" está na proporção (27% do ouro de quem não tem o Passe a 100% de cobertura), na Horta (83% a 100%) e nos raros. Se o ouro real dos jogadores for muito maior (o simulador não joga metas semanais nem a trilha do Passe), o preço precisa subir junto.
+- A mediana sem Passe fica 13 níveis abaixo do dono (seção 4). O dono pediu "poucos"; não dá sem tocar no Passe.
+- O jogador simulado só bebe 2 por dia (uma por visita). Quem confere de 4 em 4 horas chega a 100% de cobertura e a +25% de XP; o limite do servidor já conta com isso (`xpPerHour` com o Elixir sempre ativo).
+- A primeira Liga recomeça todo mundo do zero: a migração de curva só importa para quem joga offline / desktop e para os saves de teste.

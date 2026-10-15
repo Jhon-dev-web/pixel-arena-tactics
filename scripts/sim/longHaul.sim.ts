@@ -102,6 +102,8 @@ export interface LongDay {
   wsGold?: number; // Gold the wholesale merchant paid today (round 18; absent in runs played before)
   shardsIn: number;
   shardsOut: number;
+  // Rodada 20: the Knowledge Elixir of the day (absent in runs played before): crafted, drunk, Gold spent on them, hours of Hunting covered, hours hunted.
+  elixir?: { crafted: number; drunk: number; gold: number; coveredHours: number; huntHours: number };
   // The material ledger of the day, only the materials that moved: [accepted into the bag, left behind by the claim (bag full), sold to the merchant, thrown away with the
   // stash full, thrown away with the merchant's budget spent, thrown away by policy with room elsewhere, sold to the wholesale merchant (round 18: the surplus that would have been thrown away)].
   mat: Record<string, number[]>;
@@ -161,6 +163,7 @@ function compact(d: DaySnapshot, checkpoints: number[], zones: number): LongDay 
     goldIn: Object.values(d.ledger.goldIn).reduce((a, b) => a + b, 0),
     goldOut: Object.values(d.ledger.goldOut).reduce((a, b) => a + b, 0),
     wsGold: d.ledger.goldIn['atacado'] ?? 0,
+    elixir: { ...d.ledger.elixir, huntHours: d.ledger.hours.hunt },
     shardsIn: Object.values(d.ledger.currency.shardsIn).reduce((a, b) => a + b, 0),
     shardsOut: Object.values(d.ledger.currency.shardsOut).reduce((a, b) => a + b, 0),
     mat: matRows(d),
@@ -308,6 +311,31 @@ function longestDry(run: LongRun, from: number, withParagon: boolean, withRefine
   return best;
 }
 
+// Rodada 20 (the League): the level at fixed days (median, slowest and fastest seed), and the Knowledge Elixir of the policy: how much of the Hunting it covered, how many were drunk and
+// crafted a day, and the share of the Gold income they cost.
+export const LEAGUE_DAYS = [7, 14, 30, 45, 60];
+export function leagueSection(runs: LongRun[]): string[] {
+  const out: string[] = [];
+  const days = LEAGUE_DAYS.filter((d) => d <= DAYS);
+  if (days.length === 0) return out;
+  out.push('##### Ritmo da Liga: nível do herói e Elixir do Conhecimento', '');
+  const rows = days.map((day) => {
+    const at = runs.map((r) => r.days[day - 1]);
+    const win = runs.map((r) => r.days.slice(Math.max(0, day - 7), day));
+    const sum = (f: (d: LongDay) => number) => win.map((w) => w.reduce((a, d) => a + f(d), 0));
+    const covered = median(sum((d) => d.elixir?.coveredHours ?? 0));
+    const hunted = median(sum((d) => d.elixir?.huntHours ?? 0));
+    const drunk = median(sum((d) => d.elixir?.drunk ?? 0)) / win[0].length;
+    const crafted = median(sum((d) => d.elixir?.crafted ?? 0)) / win[0].length;
+    const gold = median(sum((d) => d.elixir?.gold ?? 0)) / win[0].length;
+    const income = median(sum((d) => d.goldIn)) / win[0].length;
+    const lv = at.map((d) => d.level);
+    return [String(day), String(median(lv)), String(Math.max(...lv)), String(Math.min(...lv)), hunted > 0 ? `${num((covered / hunted) * 100, 0)}%` : '-', num(drunk, 1), num(crafted, 1), num(gold, 0), income > 0 ? `${num((gold / income) * 100, 0)}%` : '-'];
+  });
+  out.push(...table(['Dia', 'Nível (mediana)', 'mais rápida', 'mais lenta', 'Caça coberta pelo Elixir (7 dias)', 'bebidos por dia', 'feitos por dia', 'Ouro gasto por dia', '% do ouro que entrou'], rows), '');
+  return out;
+}
+
 export function reportScenario(label: string, runs: LongRun[]): string[] {
   const out: string[] = [];
   const n = runs.length;
@@ -347,6 +375,7 @@ export function reportScenario(label: string, runs: LongRun[]): string[] {
     const avg = (f: (d: LongDay) => number) => median(win.map((w) => mean(w.map(f))));
     return [String(day), num(avg((d) => d.xp.dungeon + d.xp.hunt + d.xp.order + d.xp.other)), num(avg((d) => d.xp.dungeon)), num(avg((d) => d.xp.hunt)), num(avg((d) => d.xp.order)), num(avg((d) => d.xp.other)), num(avg((d) => d.gold))];
   });
+  out.push(...leagueSection(runs));
   out.push('##### XP por dia (média dos 10 dias até o dia, mediana entre seeds) e Ouro em caixa');
   out.push('');
   out.push(...table(['Dia', 'XP total', 'Masmorra', 'Caça', 'Pedidos', 'Missões e outros', 'Ouro em caixa'], xpRows));

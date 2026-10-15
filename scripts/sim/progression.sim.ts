@@ -610,23 +610,25 @@ function metas(a: Run[], n: Run[], curveWorst: number): string[] {
   const t6 = (runs: Run[]) =>
     `chegada: primeira seed no dia ${firstDay(runs, 'floor50')}, mediana ${medianDay(runs, 'floor50')}; chefe 50: primeira seed no dia ${firstDay(runs, 'boss50')}, mediana ${medianDay(runs, 'boss50')}, ${nReach(runs, 'boss50')}/${runs.length} em ${DAYS} dias`;
   const rows: string[][] = [];
-  const t4 = (runs: Run[]) => `${cell(lvl(runs, 0))} / ${cell(lvl(runs, 2))} / ${cell(lvl(runs, 13))}`;
-  const t4ok = (runs: Run[]) => [inBand(lvl(runs, 0), 10, 16), inBand(lvl(runs, 2), 20, 29), inBand(lvl(runs, 13), 45, 60)];
+  // Rodada 20 (the League): the hero levels up ONLY by Hunting, which pays on the first claim, so the end of day 1 is level 1 for the simulated player (it mines for the first craft
+  // before it hunts) and the guard looks at the end of day 2 instead of day 1 (20-28; the other two bands are unchanged).
+  const t4 = (runs: Run[]) => `${cell(lvl(runs, 1))} / ${cell(lvl(runs, 2))} / ${cell(lvl(runs, 13))}`;
+  const t4ok = (runs: Run[]) => [inBand(lvl(runs, 1), 20, 28), inBand(lvl(runs, 2), 20, 29), inBand(lvl(runs, 13), 45, 60)];
   rows.push([
     'T2',
-    'Primeira sessão da conta nova termina no andar ≥ 8; checkpoint do andar 10 no dia 1',
+    'Primeira sessão da conta nova termina no andar ≥ 8; checkpoint do andar 10 até o dia 2 (era o dia 1 antes da Liga: a Masmorra dava XP)',
     `andar ${cell(firstEnd(a))}; checkpoint 10 no dia ${medianDay(a, 'floor10')}`,
     '-',
-    ok(median(firstEnd(a)) >= 8 && dayMed(a, 'floor10') <= 1),
+    ok(median(firstEnd(a)) >= 8 && dayMed(a, 'floor10') <= 2),
   ]);
   rows.push(['T3', 'Primeira peça forjada no dia 1 ou 2', `dia ${medianDay(a, 'firstCraft')}`, '-', ok(dayMed(a, 'firstCraft') <= 2)]);
   const t4a = t4ok(a);
   rows.push([
     'T4',
-    'Nível no fim do dia 1 / 3 / 14 (alvos 10–16 / 20–29 / 45–60)',
+    'Nível no fim do dia 2 / 3 / 14 (alvos 20–28 / 20–29 / 45–60; era dia 1 / 3 / 14, 10–16 / 20–29 / 45–60, quando a Masmorra dava XP)',
     t4(a),
     '-',
-    t4a.every(Boolean) ? 'ok' : `dia 1 ${ok(t4a[0])}; dia 3 ${ok(t4a[1])}; dia 14 ${ok(t4a[2])}`,
+    t4a.every(Boolean) ? 'ok' : `dia 2 ${ok(t4a[0])}; dia 3 ${ok(t4a[1])}; dia 14 ${ok(t4a[2])}`,
   ]);
   rows.push([
     'T5',
@@ -764,14 +766,13 @@ describe('progression simulation', () => {
     vi.useRealTimers();
   });
 
-  // Diagnostic for tuning the Pass perks: SIM_PASS_ONLY=1 plays only A and P and prints their comparison; SIM_PASS_CAP (storage hours) / SIM_PASS_MULT / SIM_PASS_BAG / SIM_PASS_DELIV (delivery XP bonus) override; SIM_NO_DELIV=1 skips the delivery-only scenario
+  // Diagnostic for tuning the Pass perks: SIM_PASS_ONLY=1 plays only A and P and prints their comparison; SIM_PASS_CAP (storage hours) / SIM_PASS_MULT / SIM_PASS_BAG override; SIM_NO_DELIV=1 skips the delivery-only scenario
   // the tunables for that run (e.g. SIM_PASS_ONLY=1 SIM_PASS_MULT=1 SIM_SEEDS=10 npm run sim).
   it.runIf(process.env.SIM_PASS_ONLY === '1')('prints only the Adventurer Pass owner-vs-non-owner comparison', () => {
     const tun = T.battlePass as unknown as Record<string, number>;
     if (process.env.SIM_PASS_CAP) tun.capHours = Number(process.env.SIM_PASS_CAP);
     if (process.env.SIM_PASS_MULT) tun.dropRateMultiplier = Number(process.env.SIM_PASS_MULT);
     if (process.env.SIM_PASS_BAG) tun.bagBonusPct = Number(process.env.SIM_PASS_BAG);
-    if (process.env.SIM_PASS_DELIV) (T.deliveries as unknown as Record<string, number>).passXpBonus = Number(process.env.SIM_PASS_DELIV);
     const a: Run[] = [];
     const p: Run[] = [];
     const d: Run[] = [];

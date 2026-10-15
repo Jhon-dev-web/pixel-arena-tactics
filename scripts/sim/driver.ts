@@ -430,7 +430,7 @@ export function refineMaterial(s: SaveData, recipeId: string): SaveData | null {
   return applyRefine(s, recipeId).save ?? null;
 }
 
-export function craftPotion(s: SaveData, recipeId: ConsumableId): SaveData | null {
+export function craftPotion(s: SaveData, recipeId: string): SaveData | null {
   return applyCraftPotion(s, recipeId).save ?? null;
 }
 

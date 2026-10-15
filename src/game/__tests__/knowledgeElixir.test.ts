@@ -106,11 +106,12 @@ describe('the recipe: one per Hunting zone tier, only the best open zone is list
   it('there are four, one per zone, each with a Garden plant of Gardening 45+ and the rare drop of ITS zone', () => {
     expect(recipes.map((r) => r.zoneTier)).toEqual([1, 2, 3, 4]);
     expect(new Set(recipes.map(potionRecipeKey)).size).toBe(4);
-    const rare = ['demon_core', 'corrupted_crystal', 'fiend_horn', 'blood_heart'];
+    const rare = ['demon_core', 'corrupted_crystal', 'demon_core', 'corrupted_crystal']; // the rare drops of the zone that are not the gear bottlenecks (Fiend Horn, Blood Heart)
+    const qty = [1, 1, 2, 2];
     recipes.forEach((r, i) => {
       const zone = HUNTING_ZONES[i];
       expect(zone.drops.filter((d) => d.rarity === 'rare').map((d) => d.material), `zone ${i + 1}`).toContain(rare[i]);
-      expect(r.input[rare[i] as keyof typeof r.input], `rare ${i + 1}`).toBe(1);
+      expect(r.input[rare[i] as keyof typeof r.input], `rare ${i + 1}`).toBe(qty[i]);
       const lateGarden = ['moon_lily', 'silver_sage', 'dusk_orchid', 'elder_root'].filter((m) => (r.input[m as keyof typeof r.input] ?? 0) > 0);
       expect(lateGarden.length).toBeGreaterThan(0);
     });
@@ -142,8 +143,8 @@ describe('the recipe: one per Hunting zone tier, only the best open zone is list
     const r = recipes[2];
     const s = { ...strong(60), gold: r.cost };
     expect(applyCraftPotion(s, potionRecipeKey(r)).reason).toBe('materials');
-    expect(applyCraftPotion(mats({ ...s, gold: r.cost - 1 }, { dusk_orchid: 1, silver_sage: 2, fiend_horn: 1 }), potionRecipeKey(r)).reason).toBe('gold');
-    expect(applyCraftPotion(mats({ ...s, xp: 0 }, { dusk_orchid: 1, silver_sage: 2, fiend_horn: 1 }), potionRecipeKey(r)).reason).toBe('level');
+    expect(applyCraftPotion(mats({ ...s, gold: r.cost - 1 }, { dusk_orchid: 1, silver_sage: 2, demon_core: 2 }), potionRecipeKey(r)).reason).toBe('gold');
+    expect(applyCraftPotion(mats({ ...s, xp: 0 }, { dusk_orchid: 1, silver_sage: 2, demon_core: 2 }), potionRecipeKey(r)).reason).toBe('level');
   });
 });
 

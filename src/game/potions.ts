@@ -58,12 +58,12 @@ export const POTION_RECIPES: PotionRecipe[] = [
   { id: 'master_repair_kit', input: { silver: 3, ebony_wood: 3, concentrated_blood: 3, elder_root: 1, moon_lily: 1 }, cost: 120, requiredLevel: 60 },
   { id: 'armor_polish', input: { obsidian: 1, elven_wood: 1, ancient_wood: 1, dusk_orchid: 1, rare_flower: 1, corrupted_crystal: 2 }, cost: 150, requiredLevel: 65 },
   // Rodada 20: the Knowledge Elixir (+25% Hunting XP for 4 h, one at a time). One recipe per Hunting zone tier, only the one of the best open zone is listed; each asks for ~20 plot-hours
-  // of the late Garden plants (Gardening 45 to 70: the moon lily, silver sage, dusk orchid and elder root), ONE rare drop of that zone and a lot of Gold. Never in the Shop, never on
+  // of the late Garden plants (Gardening 45 to 60: the moon lily, silver sage and dusk orchid), a rare drop of that zone (never the Fiend Horn / Blood Heart: the tier 5 and 6 gear needs them) and Gold. Never in the Shop, never on
   // the Pass. docs/BALANCE_CHANGES.md Rodada 20 has the cost of keeping it up all day.
-  { id: 'knowledge_elixir', key: 'knowledge_elixir_t1', zoneTier: 1, input: { moon_lily: 2, demon_core: 1 }, cost: 300, requiredLevel: 30 },
-  { id: 'knowledge_elixir', key: 'knowledge_elixir_t2', zoneTier: 2, input: { moon_lily: 1, silver_sage: 3, corrupted_crystal: 1 }, cost: 600, requiredLevel: 40 },
-  { id: 'knowledge_elixir', key: 'knowledge_elixir_t3', zoneTier: 3, input: { dusk_orchid: 1, silver_sage: 2, fiend_horn: 1 }, cost: 1200, requiredLevel: 50 },
-  { id: 'knowledge_elixir', key: 'knowledge_elixir_t4', zoneTier: 4, input: { elder_root: 1, silver_sage: 1, blood_heart: 1 }, cost: 2400, requiredLevel: 60 },
+  { id: 'knowledge_elixir', key: 'knowledge_elixir_t1', zoneTier: 1, input: { moon_lily: 2, demon_core: 1 }, cost: 20, requiredLevel: 30 },
+  { id: 'knowledge_elixir', key: 'knowledge_elixir_t2', zoneTier: 2, input: { moon_lily: 1, silver_sage: 3, corrupted_crystal: 1 }, cost: 35, requiredLevel: 40 },
+  { id: 'knowledge_elixir', key: 'knowledge_elixir_t3', zoneTier: 3, input: { dusk_orchid: 1, silver_sage: 2, demon_core: 2 }, cost: 50, requiredLevel: 50 },
+  { id: 'knowledge_elixir', key: 'knowledge_elixir_t4', zoneTier: 4, input: { dusk_orchid: 2, corrupted_crystal: 2 }, cost: 65, requiredLevel: 60 },
 ];
 
 // By recipe key (the id for every recipe that has only one).

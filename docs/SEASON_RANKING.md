@@ -24,7 +24,7 @@ Um snapshot `ok` pode trazer **avisos suaves** `FAST_LEVEL_PACE`, `FAST_FLOOR_PA
 | --- | --- | --- |
 | `LEVEL_PACE`, `LEVEL_PACE_TOTAL` | flag acima de 2x, rejeita acima de 3x | Nível subiu mais rápido que a seed mais rápida da simulação longa (entre snapshots / desde o primeiro). |
 | `FLOOR_PACE`, `FLOOR_PACE_TOTAL`, `DEPTH_PACE`, `DEPTH_PACE_TOTAL` | idem | Andares ou profundezas rápidos demais. |
-| `XP_RATE`, `XP_RATE_TOTAL` | flag acima do teórico, rejeita acima de 2x | Mais XP por hora de servidor do que o jogo permite (melhor zona aberta + pedidos + masmorra) mais uma única recompensa atrasada. |
+| `XP_RATE`, `XP_RATE_TOTAL` | flag acima do teórico, rejeita acima de 2x | Mais XP por hora de servidor do que o jogo permite mais uma única recompensa atrasada. Desde a Rodada 20 (a Liga) o herói ganha XP **só na Caça**: o teórico é a melhor zona aberta x profundidade 1,3 x bônus (Relíquia + Aprendiz Veloz) x 1,25 do Elixir do Conhecimento sempre ativo (25 000 XP/h no andar 100; antes 60 000 com os pedidos e a Masmorra), e a recompensa atrasada é a de 10 h de Caça da melhor zona (antes somava um pedido). |
 | `KILLS_RATE`, `GOLD_RATE`, `DUNGEON_RUNS_RATE`, `DUNGEON_FLOORS_RATE`, `BOSSES_RATE`, `UNIQUES_RATE`, `ACHIEVEMENTS_RATE` (e `_TOTAL`) | idem | Contadores crescendo além do teto. |
 | `SECONDS_PLAYED_EXCEEDS_CLOCK` (e `_TOTAL`) | rejeita | Tempo jogado maior que o tempo real (salto de relógio). |
 | `FLOOR_ABOVE_LEVEL_CAP` | flag / rejeita | Andar alto demais para o nível já visto nas simulações. |
@@ -230,6 +230,22 @@ Profissões com nível no jogo: **Mineração, Lenhador e Horta** (Ofícios/Forj
   - **Mineração e Lenhador:** potência (5 + 0,75 por nível, nível 75 no máximo) × 1 unidade por potência por hora × 1,82 (Passe 1,1 × maestria 1,08 × Coletor, Poção do Coletor e Tônico do Prospector somados 1,53) × 1 XP por unidade ≈ 111 XP/h no teto. Uma coleta pendente pode chegar atrasada: até 8 h (limite do Passe) de produção a mais, uma vez.
   - **Horta:** parcelas abertas (4, +1 no nível 20 e +1 no 40) × 5 XP por hora de crescimento × 2,24 (Fertilizante corta metade do tempo, perks de velocidade 10%) ≈ 67 XP/h no teto; mais uma colheita atrasada por parcela (até 80 XP, a planta de 16 h).
   - Em um histórico antigo sem XP de profissão não há linha de base: nada é julgado contra zero. O primeiro snapshot de uma conta nova só é sinalizado (`BASELINE_AHEAD_OF_ACCOUNT_AGE`), nunca rejeitado.
+
+### 8.4b Limites do XP do herói depois da Rodada 20 (a Liga)
+
+O herói passou a ganhar XP **só na Caça** (a Masmorra, os pedidos e a poção instantânea deixaram de pagar; ver `BALANCE_CHANGES.md`, Rodada 20), então os limites de XP do servidor foram refeitos só a partir dela. Tudo está em `supabase/functions/_shared/progress/bounds.ts`; `npm run season:bounds` recalcula os valores teóricos dos tunables e `npm run season:tables` regera `tables.ts` (a tabela `DUNGEON_RUN_XP` saiu). As margens não mudaram: bandeira no valor, rejeição em 2x (teóricos) ou 3x (ritmo), aviso suave `FAST_*` entre 1,3x e 2x.
+
+| Número | Antes | Depois |
+| --- | --- | --- |
+| `xpPerHour` (andar 100) | 60 000 (Caça 19 773 + pedidos 5 391 + Masmorra 34 325) | **25 000** (13 000 da zona 4 x 1,3 da profundidade x 1,17 de bônus x 1,25 do Elixir do Conhecimento = 24 716) |
+| `huntXpFactor` | 1,521 | 1,902 |
+| `xpPerHourAt(andar)` | zona x fator + pedidos + 20 corridas da Masmorra | zona x fator (andar 0: 3 300 XP/h; andar 100: 24 700) |
+| `burstXp` (uma recompensa atrasada) | `burstXp(nível, andar)`: 10 h de Caça + um pedido | `burstXp(andar)`: 10 h de Caça da melhor zona (andar 0: 33 mil; andar 100: 247 mil XP) |
+| `levelPace` (seed mais rápida) | 13 / 27 / 50 / 60 / 75 / 90 / 100 nos dias 1 / 3 / 9 / 23 / 45 / 76 / 104 | 24 / 28 / 44 / 51 / 60 / 68 / 75 / 79 / 88 / 100 nos dias 2 / 3 / 7 / 14 / 24 / 30 / 40 / 45 / 60 / 80 |
+| `floorPace` | 25 no dia 3, 50 no 8,5, 90 no 62, 100 no 75 | 25 no dia 2, 50 no 9, 90 no 42, 100 no 53 |
+| `floorCapByLevel` | nível 1: andar 6, 27: 30, 50: 66 | nível 1: andar 12, 24: 36, 50: 84 (a Masmorra não sobe o herói: no nível 1 já se chega ao andar 10) |
+
+O nível mais rápido que a simulação viu no dia 60 é 90 (mediana do dono 87), o que o limite de ritmo (2x) deixa passar até o nível 100 no dia 60. As rodadas seguintes que mexerem no XP do herói refazem esta tabela com `npm run sim:long`.
 
 ### 8.5 O que o público (anon) pode ler
 

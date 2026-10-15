@@ -153,7 +153,9 @@ const T = DebugPanel.define({
     heroGrowth3: { value: 1.17, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 3 (levels 36-60)' },
     // Round 15 (docs/BALANCE_CHANGES.md): bands 4 and 5 were 1.21 and 1.27, which made level 100 cost 3.3 billion XP against ~200 thousand XP a day. Both are 1.03 now, so the
     // XP a level asks climbs 3% a level from the 255 thousand of level 60 (levels 1-60 are exactly what they were; xpCurve.ts maps an older save onto the new curve).
-    heroGrowth4: { value: 1.03, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 4 (levels 61-80)' },
+    // Rodada 20 (the League, docs/BALANCE_CHANGES.md): band 4 grows 2.3% a level instead of 3%. Hero XP comes only from Hunting now (and the Knowledge Elixir): with this the Pass owner's median is
+    // level 87 on day 60 and the fastest seed 90, nobody reaches 100; levels 1-60 are untouched. xpCurve.ts maps a save from the 3% curve onto this one, keeping its level.
+    heroGrowth4: { value: 1.023, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 4 (levels 61-80)' },
     heroGrowth5: { value: 1.03, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 5 (levels 81-100)' },
     levelHpBonus: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP bonus per level' },
   },

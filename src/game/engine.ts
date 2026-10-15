@@ -45,7 +45,7 @@ import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillLevel, skillXpToReachLevel } from './skills';
 import { gatherMasteryMult, plantGrowthMs } from './mastery';
 import { maxSaneXp, paragonDamageBonus, paragonLevel } from './paragon';
-import { XP_CURVE_VERSION, migrateLegacyXp } from './xpCurve';
+import { XP_CURVE_VERSION, migrateLegacyXp, migrateV2Xp } from './xpCurve';
 import { legacyXpPotionCount, legacyXpPotionGold, withoutLegacyXpPotion } from './legacyXpPotion';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { migrateLegacyPouch } from './legacyPouch';
@@ -154,7 +154,7 @@ export interface SaveData {
   // reforge count). `inventory` now only holds STACKABLE gear (relics, tools); `equipped.weapon/armor` are
   // instance ids. See gearInstances.ts.
   schemaVersion: number;
-  // Which hero XP curve `xp` is on (xpCurve.ts): 2 since Round 15. A save without it is on the old curve and is mapped onto the new one when it loads, keeping its level.
+  // Which hero XP curve `xp` is on (xpCurve.ts): 3 since Rodada 20. A save without it is on the old curve and is mapped onto the new one when it loads, keeping its level.
   xpCurve?: number;
   gearInstances: Record<GearInstanceId, GearInstance>;
   inventory: Record<string, number>;
@@ -1119,6 +1119,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
       // A real save from before the new curve (it has the gear schema stamp but not the curve stamp) keeps its level: its XP is mapped onto the new curve. A raw object with neither stamp
       // (a test, a hand-made import) is taken as it is: the new curve only ever makes a level cheaper, so nobody can lose one.
       if (typeof parsed.xpCurve !== 'number' && typeof (parsed as { schemaVersion?: unknown }).schemaVersion === 'number') xp = migrateLegacyXp(xp);
+      else if (parsed.xpCurve === 2) xp = migrateV2Xp(xp); // the curve of Rodada 20 moved the top of band 4: same level, same share
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
       // Counters and attribute points: only a real, finite number inside the legal range survives (strings, NaN, negatives and
       // tampered giants fall back to the default). Whole numbers: the game only ever adds whole units to these.

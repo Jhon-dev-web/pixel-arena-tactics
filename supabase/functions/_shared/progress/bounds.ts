@@ -102,29 +102,34 @@ export const BOUNDS = {
   // ---- PACE: the fastest simulated seed (Pass owner): [position, server day it was reached] ----------------------------------------------------------
   /**
    * Hero level position (level + share of the next level; paragon levels follow 100) against the day the fastest seed reached it.
-   * SOURCE: docs/BALANCE_BASELINE.md "Cenario P" (nivel 50 by day 10 in every seed; 60 / 75 / 90 / 100 on days 23 / 45 / 76 / 104 for the fastest seed, Rodada 15 section 4);
-   * levels 13 and 27 from the "Metas mantidas" targets of the same file (day 1 and day 3); the paragon runs at about 0.5 level a day (nivel 100, Paragon 33 on day 180, Cenario P).
+   * SOURCE (Rodada 20, the League: hero XP only from Hunting + the Knowledge Elixir; `npm run sim:long`, scenario P, the fastest of 6 seeds): level 24 on day 2, 28 on day 3, 44 on day 7,
+   * 51 on day 14, 60 on day 24, 68 on day 30, 75 on day 40, 79 on day 45 and 88 on day 60 (docs/BALANCE_BASELINE.md "Liga"); past day 60 the hero gains about 0.6 level a day (level 100 on
+   * about day 80, then the paragon at 0.55 level a day, as before). It used to be 13 / 27 / 50 / 60 / 75 / 90 / 100 on days 1 / 3 / 9 / 23 / 45 / 76 / 104: the Dungeon and the orders paid
+   * XP then; the early levels are slower now (a hero levels on the first Hunting claim) and the late ones about 2 weeks faster.
    */
   levelPace: [
     [1, 0],
-    [13, 1],
-    [27, 3],
-    [50, 9],
-    [60, 23],
-    [75, 45],
-    [90, 76],
-    [100, 104],
-    [200, 304],
+    [24, 2],
+    [28, 3],
+    [44, 7],
+    [51, 14],
+    [60, 24],
+    [68, 30],
+    [75, 40],
+    [79, 45],
+    [88, 60],
+    [100, 80],
+    [200, 280],
   ] as const,
-  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE: same tables ("andar 50 (chegada)" day 10 median, 8.5 fastest; "andar 75" day 18, 16 fastest; "andar 100" day 86 median, 75 fastest; floor 8 on day 1). */
+  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE (Rodada 20, scenario P, fastest of 6 seeds): floor 8 on day 1, 25 on day 2, 50 on day 9, 75 on day 16, 90 on day 42, 100 on day 53. */
   floorPace: [
     [0, 0],
     [8, 1],
-    [25, 3],
-    [50, 8.5],
+    [25, 2],
+    [50, 9],
     [75, 16],
-    [90, 62],
-    [100, 75],
+    [90, 42],
+    [100, 53],
   ] as const,
   /** Profundezas depth cleared per day by the fastest seed: 0 to about 30 in the first 3 days after the floor-100 boss (Cenario P, days 90 to 110). Depth is capped by the CP wall at about 44. */
   depthPerDayFastest: 12,
@@ -132,17 +137,20 @@ export const BOUNDS = {
   depthBurst: 10,
 
   // ---- coupling: how high a floor a hero of a given level has been seen on -------------------------------------------------------------------------------
-  /** [hero level, highest floor] = the best floor any sim seed (A or P) stood on at that level, with ~20% room. SOURCE: docs/BALANCE_BASELINE.md level / floor columns (day 10: lvl 42 floor 37; day 20: lvl 57 floor 78; day 60: lvl 77 floor 87; day 90: lvl 91 floor 100). */
+  /**
+   * [hero level, highest floor] = the best floor any sim seed (A or P) stood on at a hero level up to that one, with ~20% room (more at the low levels, where the pace tables interpolate between sparse anchors). SOURCE (Rodada 20, 6 seeds x 60 days): level 1 to 13 floor 10, 24 floor 25,
+   * 37 floor 30, 44 floor 40, 50 floor 70, 57 floor 76, 63 floor 78, 70 floor 85. The Dungeon pays no XP any more, so a hero can stand on floor 10 at level 1 (it was floor 5 at level 1).
+   */
   floorCapByLevel: [
-    [1, 6],
-    [13, 12],
-    [27, 30],
-    [42, 45],
-    [50, 66],
-    [57, 85],
-    [63, 90],
-    [77, 98],
-    [85, 100],
+    [1, 12],
+    [13, 14],
+    [24, 36],
+    [37, 44],
+    [44, 56],
+    [50, 84],
+    [57, 91],
+    [63, 94],
+    [70, 100],
   ] as const,
   /** Above the cap x this + 5 floors the snapshot is rejected (between the cap and that it is flagged). */
   floorCapRejectFactor: 1.4,

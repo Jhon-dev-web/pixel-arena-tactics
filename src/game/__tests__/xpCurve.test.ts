@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSave, MAX_LEVEL, normalizeSave, playerLevel, xpForNextLevel, xpForNextLevelWith, xpToReachLevel } from '../engine';
-import { legacyLevelProgress, migrateLegacyXp, XP_CURVE_VERSION } from '../xpCurve';
+import { legacyLevelProgress, migrateLegacyXp, migrateV2Xp, XP_CURVE_VERSION } from '../xpCurve';
 import { paragonLevel, paragonLevelXp, paragonStartXp } from '../paragon';
 import T from '../tunables';
 
@@ -35,16 +35,16 @@ describe('the new hero XP curve', () => {
       expect(xpForNextLevel(l), `level ${l}`).toBeGreaterThanOrEqual(xpForNextLevel(l - 1));
       expect(xpForNextLevel(l) / xpForNextLevel(l - 1), `ratio at ${l}`).toBeLessThan(1.2);
     }
-    // the bands that changed grow 3% a level from the cost of level 60; like every band of this curve a band starts at the price the one before it ended on
+    // band 4 grows 2.3% a level from the cost of level 60 and band 5 3% from the cost of level 80 (Rodada 20); like every band of this curve a band starts at the price the one before it ended on
     expect(xpForNextLevel(61) / xpForNextLevel(60)).toBeCloseTo(1, 6);
-    expect(xpForNextLevel(62) / xpForNextLevel(61)).toBeCloseTo(1.03, 3);
+    expect(xpForNextLevel(62) / xpForNextLevel(61)).toBeCloseTo(1.023, 3);
     expect(xpForNextLevel(81) / xpForNextLevel(80)).toBeCloseTo(1, 6);
     expect(xpForNextLevel(82) / xpForNextLevel(81)).toBeCloseTo(1.03, 3);
   });
 
   it('lands on the numbers the docs print (XP to reach level 50 / 60 / 70 / 80 / 90 / 100)', () => {
     const reach = [50, 60, 70, 80, 90, 100].map((l) => Math.round(xpToReachLevel(l) / 1000));
-    expect(reach).toEqual([326, 1514, 4361, 8176, 13168, 19859]);
+    expect(reach).toEqual([326, 1514, 4288, 7763, 12148, 18026]);
   });
 
   it('makes the paragon level cost 2 to 4 days of an active level-100 hero, and 50 levels about 5 months', () => {
@@ -117,7 +117,49 @@ describe('an older save keeps its level on the new curve', () => {
   });
 
   it('knows the shipped tunables are the ones the tests above assume', () => {
-    expect(T.progression.heroGrowth4).toBe(1.03);
+    expect(T.progression.heroGrowth4).toBe(1.023);
     expect(T.progression.heroGrowth5).toBe(1.03);
+    expect(XP_CURVE_VERSION).toBe(3);
+  });
+});
+
+// Rodada 20: the stamp is 3. A save stamped 2 (Round 15 to 19, bands 4 and 5 at 3%) keeps its level and its share of the level.
+const V2 = { growth4: 1.03, growth5: 1.03 };
+const v2Reach = (level: number): number => {
+  let t = 0;
+  for (let l = 1; l < level; l++) t += xpForNextLevelWith(l, V2);
+  return t;
+};
+const stamped2 = (xp: number): Record<string, unknown> => ({ ...defaultSave(), xp, xpCurve: 2 });
+
+describe('a save from the curve of Round 15 to 19 keeps its level on the Rodada 20 curve', () => {
+  it('keeps every level from 1 to 99 at the start, the middle and the end of the level, and the XP unchanged up to level 60', () => {
+    for (let level = 1; level < MAX_LEVEL; level++) {
+      for (const share of [0, 0.37, 0.999]) {
+        const xp = Math.floor(v2Reach(level) + share * xpForNextLevelWith(level, V2));
+        const loaded = normalizeSave(stamped2(xp));
+        expect(playerLevel(loaded.xp), `level ${level} share ${share}`).toBe(level);
+        expect(loaded.xpCurve).toBe(XP_CURVE_VERSION);
+        if (level <= 60) expect(loaded.xp).toBe(xp);
+        else {
+          const into = (loaded.xp - xpToReachLevel(level)) / xpForNextLevel(level);
+          expect(into).toBeGreaterThanOrEqual(share - 0.001);
+          expect(into).toBeLessThanOrEqual(share + 0.001);
+        }
+      }
+    }
+  });
+
+  it('a level-100 hero keeps level 100 and a whole paragon level, and loading twice changes nothing', () => {
+    const start = v2Reach(100);
+    const loaded = normalizeSave(stamped2(Math.floor(start + 1)));
+    expect(playerLevel(loaded.xp)).toBe(MAX_LEVEL);
+    expect(paragonLevel(loaded.xp)).toBe(0);
+    const oneParagon = Math.round(xpForNextLevelWith(MAX_LEVEL - 1, V2) * T.paragon.xpShare);
+    const loaded2 = normalizeSave(stamped2(Math.floor(start + oneParagon + 5)));
+    expect(paragonLevel(loaded2.xp)).toBe(1);
+    expect(normalizeSave(JSON.parse(JSON.stringify(loaded2))).xp).toBe(loaded2.xp);
+    expect(migrateV2Xp(0)).toBe(0);
+    expect(migrateV2Xp(NaN)).toBe(0);
   });
 });

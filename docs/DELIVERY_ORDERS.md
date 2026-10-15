@@ -1,5 +1,7 @@
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
 
+> **2026-10-15 (Rodada 20, a Liga):** os Pedidos **não pagam mais XP do herói** (o herói ganha XP só na Caça). No lugar do XP todo pedido paga **+10% de Ouro** (`T.deliveries.goldBonus`), sem mexer na carga (a carga continua dimensionada pelo Ouro sem o bônus). O bônus de XP do Passe (+20%) também saiu; o Passe continua com 1 oferta e 1 troca a mais (e os +15% de Ouro que vale para tudo). Onde este documento fala em XP (tabelas de distância, "Bônus de XP do Passe", resultados da simulação) leia como o histórico de antes da Liga. Números e a conta em `BALANCE_CHANGES.md`, Rodada 20.
+
 # Pedidos / Entregas (substituem a Expedição)
 
 Resumo do design e dos números que o sustentam. Código: `src/game/deliveries.ts` (geração e reducers), `src/game/deliveryState.ts` (estado salvo e sanitização), `src/components/DeliveryModal.tsx` (UI), tunables em `T.deliveries`.

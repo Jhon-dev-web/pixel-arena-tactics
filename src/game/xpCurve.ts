@@ -1,19 +1,26 @@
 import { MAX_LEVEL, xpForNextLevelWith, xpToReachLevel } from './engine';
 import { paragonLevelXp } from './paragon';
+import T from './tunables';
 
 // Round 15: the hero XP curve above level 60 was made far cheaper (bands 4 and 5 grow 3% a level instead of 21% / 27%), see docs/BALANCE_CHANGES.md. The XP of a save is one
 // number and the level is read from it, so an older save would suddenly read a much higher level. This file keeps the old curve and maps an older save's XP onto the new one so
 // that it keeps the level it had and the same share of that level (levels 1 to 60 are identical on both curves: their XP is left exactly as it is).
 
-// The save stamp: a save written with the new curve carries it, a save from before has none.
-export const XP_CURVE_VERSION = 2;
+// The save stamp: a save written with the current curve carries it, a save from before has none (curve 1) or an older number.
+// 1 = until Round 15 (bands 4 and 5 grew 21% / 27% a level); 2 = Round 15 to 19 (both 3%); 3 = Rodada 20, the League (band 4 grows 2.3% a level, band 5 3%): hero XP now comes only from
+// Hunting (+25% with the Knowledge Elixir), and the top of the curve was set so the fastest Pass owner is level 90 to 92 on day 60 and nobody reaches 100.
+export const XP_CURVE_VERSION = 3;
+
+// What the saves stamped 2 used for bands 4 and 5 (the live tunables of Round 15 to 19).
+const V2_GROWTH_4 = 1.03;
+const V2_GROWTH_5 = 1.03;
 
 // The curve the saves written before the stamp used (heroGrowth4 / heroGrowth5 of that time; the other bands are the live tunables, which did not change).
 const LEGACY_GROWTH_4 = 1.21;
 const LEGACY_GROWTH_5 = 1.27;
 const legacyNeed = (level: number): number => xpForNextLevelWith(level, { growth4: LEGACY_GROWTH_4, growth5: LEGACY_GROWTH_5 });
 
-// First level whose cost differs between the two curves (the cost of level 60 -> 61 is the first of band 4).
+// First level whose cost differs between the curves (the cost of level 60 -> 61 is the first of band 4; levels 1 to 60 are the same on all three).
 const FIRST_CHANGED_LEVEL = 60;
 
 // Where an older save's XP sits on the old curve: its level (1 to 100, 100 meaning "at least") and how far into that level, as a 0..1 share (0 at 100 and above).
@@ -45,4 +52,28 @@ export function migrateLegacyXp(xp: number): number {
   let total = xpToReachLevel(MAX_LEVEL);
   for (let i = 1; i <= n; i++) total += paragonLevelXp(i);
   return Math.floor(total + (left / oldParagon(n + 1)) * paragonLevelXp(n + 1));
+}
+
+// A save stamped 2 (the curve of Round 15 to 19): the same level and the same share of it on the current curve, so changing the top of the curve costs nobody a level. Levels 1 to 60 are
+// identical, so their XP is left exactly as it is. At level 100 and beyond the paragon progress is kept as whole paragon levels of the current price.
+const v2Need = (level: number): number => xpForNextLevelWith(level, { growth4: V2_GROWTH_4, growth5: V2_GROWTH_5 });
+export function migrateV2Xp(xp: number): number {
+  if (!Number.isFinite(xp) || xp <= 0) return 0;
+  let left = xp;
+  let level = 1;
+  while (level < MAX_LEVEL && left >= v2Need(level)) {
+    left -= v2Need(level);
+    level++;
+  }
+  if (level <= FIRST_CHANGED_LEVEL) return xp;
+  if (level < MAX_LEVEL) return Math.floor(xpToReachLevel(level) + (left / v2Need(level)) * xpForNextLevelWith(level, {}));
+  const v2Paragon = (n: number) => Math.max(1, Math.round(v2Need(MAX_LEVEL - 1) * T.paragon.xpShare * Math.pow(T.paragon.xpGrowth, Math.max(0, n - 1))));
+  let n = 0;
+  while (left >= v2Paragon(n + 1) && n < 9999) {
+    left -= v2Paragon(n + 1);
+    n++;
+  }
+  let total = xpToReachLevel(MAX_LEVEL);
+  for (let i = 1; i <= n; i++) total += paragonLevelXp(i);
+  return Math.floor(total + (left / v2Paragon(n + 1)) * paragonLevelXp(n + 1));
 }
