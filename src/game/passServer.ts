@@ -176,7 +176,7 @@ export async function startCheckout(redirect: (url: string) => void = (url) => w
 // The public site (portal/) links to `<play url>/?comprar=passe`. The site cannot run the checkout (it needs the player's login), so the game catches the marker as
 // early as possible (main.tsx), takes it out of the address bar and remembers it for this tab (sessionStorage, 30 minutes) so it survives the login screen and an
 // e-mail-confirmation reload. Once signed in, App opens the Pass modal and, only when VITE_PASS_PURCHASE_ENABLED is on and the server says the account does not own
-// the Pass, starts the checkout. With the flag off the modal just opens (its button says "Em breve").
+// the Pass, HIGHLIGHTS the buy button. It never starts the checkout by itself: a link must not lead to a payment page without a click; the player presses the button.
 export const BUY_INTENT_PARAM = 'comprar';
 export const BUY_INTENT_VALUE = 'passe';
 export const BUY_INTENT_KEY = 'arena.buyIntent.v1';
@@ -242,11 +242,11 @@ export function clearBuyIntent(storage: SessionStorageLike | null = defaultSessi
 }
 
 /**
- * What to do once the player is signed in on the web build with a buy intent: 'open' = only show the Pass modal (sales off, or the account already owns it),
- * 'checkout' = show it and start the checkout. `owned` is the SERVER's answer (null = it could not be asked: only open the modal, never guess).
+ * What to do once the player is signed in on the web build with a buy intent. The modal always opens; 'highlight' = also draw attention to the buy button (sales on and the
+ * server says the account does not own the Pass). NEVER a checkout: the player clicks. `owned` is the SERVER's answer (null = it could not be asked: never guess).
  */
-export function buyIntentAction(purchaseEnabled: boolean, owned: boolean | null): 'open' | 'checkout' {
-  return purchaseEnabled && owned === false ? 'checkout' : 'open';
+export function buyIntentAction(purchaseEnabled: boolean, owned: boolean | null): 'open' | 'highlight' {
+  return purchaseEnabled && owned === false ? 'highlight' : 'open';
 }
 
 // ---- Coming back from checkout ------------------------------------------------------------------------------------------------------------

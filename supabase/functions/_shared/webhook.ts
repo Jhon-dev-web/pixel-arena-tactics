@@ -41,11 +41,22 @@ export async function handleWebhook(req: Request, deps: WebhookDeps): Promise<Re
     let result: string;
     const action = event.action;
     if (action.type === 'grant') {
-      const r = await deps.store.insertEntitlement({ userId: action.userId, kind: action.kind, source: provider, providerRef: action.providerRef });
-      result = r === 'inserted' ? 'granted' : r === 'duplicate_ref' ? 'already_active' : 'paid_but_already_owned';
+      const r = await deps.store.insertEntitlement({ userId: action.userId, kind: action.kind, source: provider, providerRef: action.providerRef, livemode: action.livemode });
+      if (action.sessionId) await deps.store.completeCheckoutSession(action.sessionId); // never offer a paid session again
+      if (r === 'inserted') result = 'granted';
+      else if (r === 'duplicate_ref') result = 'already_active';
+      else {
+        // A SECOND, different payment by a user who already owns the Pass: refund it in full, automatically. The idempotency key is this event id, so Stripe's retries of the
+        // webhook (or ours) can never refund twice. A refund that fails answers 500 (below), Stripe delivers again and the same key makes it safe to try again.
+        await deps.provider.refundPayment(action.providerRef, event.eventId);
+        result = 'duplicate_refunded';
+      }
     } else if (action.type === 'reverse') {
-      const changed = await deps.store.markRefunded(provider, action.providerRef);
-      result = changed > 0 ? 'reversed' : 'unmatched';
+      const changed = await deps.store.markReversed(provider, action.providerRef, action.reason);
+      result = changed > 0 ? (action.reason === 'dispute' ? 'revoked' : 'reversed') : 'unmatched';
+    } else if (action.type === 'restore') {
+      const r = await deps.store.restoreRevoked(provider, action.providerRef);
+      result = r === 'restored' ? 'restored' : r === 'blocked' ? 'restore_blocked_already_active' : 'unmatched';
     } else {
       result = `ignored:${action.reason}`;
     }

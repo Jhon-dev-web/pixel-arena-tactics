@@ -164,6 +164,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [questsOpen, setQuestsOpen] = useState(false);
   const [codexOpen, setCodexOpen] = useState(false);
   const [battlePassOpen, setBattlePassOpen] = useState(false);
+  const [highlightBuy, setHighlightBuy] = useState(false);
   const [claimAllLines, setClaimAllLines] = useState<ClaimAllLine[] | null>(null);
   // "Bem-vindo de volta" (welcomeBack.ts): what the idle activities produced while the player was away; null = nothing to show.
   const [welcome, setWelcome] = useState<{ summary: WelcomeBackSummary; canClaimAll: boolean } | null>(null);
@@ -1394,7 +1395,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   // The "Comprar o Passe" link of the website (/?comprar=passe, captured in main.tsx): once signed in, open the Pass modal and, with sales on and the account not owning the
-  // Pass according to the server, start the checkout. Runs once per page load (a ref, so React StrictMode's second effect pass does not lose it).
+  // Pass according to the server, highlight the buy button. It never starts the checkout: the player clicks to go to Stripe. Runs once per page load (a ref, so React StrictMode's second effect pass does not lose it).
   const buyIntentDone = useRef(false);
   useEffect(() => {
     if (!userId || !isServerPassSource() || buyIntentDone.current || !hasBuyIntent()) return;
@@ -1403,10 +1404,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setBattlePassOpen(true);
     if (!passPurchaseEnabled) return;
     fetchServerPassOwned()
-      .then((owned) => (buyIntentAction(passPurchaseEnabled, owned) === 'checkout' ? purchaseBattlePass() : undefined))
+      .then((owned) => setHighlightBuy(buyIntentAction(passPurchaseEnabled, owned) === 'highlight'))
       .catch(() => undefined);
     // once per page load, for the signed-in account
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, passVersion]);
 
   const dismissSeasonSummary = () => setSaveBoth({ ...saveRef.current, pendingSeasonSummary: null });
@@ -2156,6 +2156,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         <BattlePassModal
           save={save}
           onActivate={purchaseBattlePass}
+          highlightBuy={highlightBuy}
           passFlow={passFlow}
           onRecheck={confirmPassPurchase}
           onClaim={claimBattlePassLevel}
@@ -2163,6 +2164,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onClose={() => {
             playSfx('click');
             setBattlePassOpen(false);
+            setHighlightBuy(false);
           }}
         />
       )}

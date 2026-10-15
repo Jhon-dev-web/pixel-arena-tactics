@@ -11100,3 +11100,17 @@ button[data-ui]:focus-visible {
 .ap-season-para {
   color: #b8a8d8;
 }
+
+/* The website's "buy the Pass" link opens the modal with this button highlighted (it never starts the checkout by itself). */
+.ap-buy-btn.ap-buy-highlight {
+  outline: 3px solid #f2c94c;
+  outline-offset: 3px;
+  animation: ap-buy-pulse 1.4s ease-in-out infinite;
+}
+@keyframes ap-buy-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 201, 76, 0.55); }
+  50% { box-shadow: 0 0 0 10px rgba(242, 201, 76, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-buy-btn.ap-buy-highlight { animation: none; }
+}

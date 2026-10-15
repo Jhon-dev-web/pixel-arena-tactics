@@ -1,5 +1,5 @@
 import { UUID_RE } from '../http.ts';
-import { CheckoutInput, PaymentProvider, ProviderAction, ProviderEvent, WebhookRejected } from '../types.ts';
+import { CheckoutInput, CheckoutSession, PaymentProvider, ProviderAction, ProviderEvent, WebhookRejected } from '../types.ts';
 
 // Stripe, with plain fetch and Web Crypto: no SDK, so nothing to install and nothing added to the web bundle.
 // Secrets are only ever read by NAME in index.ts (STRIPE_SECRET_KEY, STRIPE_PRICE_ADVENTURER_PASS, STRIPE_WEBHOOK_SECRET) and passed in here.
@@ -84,7 +84,15 @@ export function mapStripeEvent(event: unknown): ProviderEvent {
     const providerRef = str(obj.payment_intent) ?? str(obj.id);
     if (!providerRef || providerRef.length > 200) throw new WebhookRejected('bad_payload');
     summary.ref = providerRef;
-    const action: ProviderAction = { type: 'grant', userId: userId.toLowerCase(), providerRef, kind: 'adventurer_pass' };
+    const sessionId = str(obj.id);
+    const action: ProviderAction = {
+      type: 'grant',
+      userId: userId.toLowerCase(),
+      providerRef,
+      kind: 'adventurer_pass',
+      livemode: event.livemode === true,
+      sessionId: sessionId && sessionId.length <= 200 ? sessionId : null,
+    };
     return { eventId, summary, action };
   }
 
@@ -103,6 +111,16 @@ export function mapStripeEvent(event: unknown): ProviderEvent {
     return { eventId, summary, action: { type: 'reverse', providerRef: ref, reason: 'dispute' } };
   }
 
+  // The dispute was decided. Won = the money stays with us, so the Pass is restored; lost (or any other status) = it stays revoked.
+  if (type === 'charge.dispute.closed') {
+    const ref = str(obj.payment_intent);
+    if (!ref) return ignore('no_payment_intent');
+    summary.ref = ref;
+    summary.dispute_status = str(obj.status);
+    if (obj.status !== 'won') return ignore('dispute_not_won');
+    return { eventId, summary, action: { type: 'restore', providerRef: ref } };
+  }
+
   return ignore('unhandled_type');
 }
 
@@ -111,7 +129,7 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
   return {
     name: 'stripe',
 
-    async createCheckout(input: CheckoutInput) {
+    async createCheckout(input: CheckoutInput): Promise<CheckoutSession> {
       const form = new URLSearchParams();
       form.set('mode', 'payment');
       form.set('line_items[0][price]', cfg.priceId);
@@ -129,7 +147,7 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
         body: form.toString(),
       });
       if (!res.ok) throw new Error(`stripe_checkout_${res.status}`); // status only: the response body may echo request data
-      const body = (await res.json()) as { url?: unknown };
+      const body = (await res.json()) as { url?: unknown; id?: unknown; expires_at?: unknown };
       const url = typeof body.url === 'string' ? body.url : '';
       let host = '';
       try {
@@ -139,7 +157,23 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
         /* falls through */
       }
       if (host !== CHECKOUT_HOST) throw new Error('stripe_checkout_bad_url');
-      return { url };
+      const id = typeof body.id === 'string' && /^cs_[A-Za-z0-9_]{3,200}$/.test(body.id) ? body.id : null;
+      const expiresAtMs = typeof body.expires_at === 'number' && Number.isFinite(body.expires_at) ? body.expires_at * 1000 : null;
+      return { url, id, expiresAtMs };
+    },
+
+    // POST /v1/refunds for the whole PaymentIntent. Idempotency-Key = the webhook event id: a replay returns the first refund. Status only in errors (the body can echo data).
+    async refundPayment(providerRef: string, idempotencyKey: string) {
+      const form = new URLSearchParams();
+      form.set('payment_intent', providerRef);
+      form.set('reason', 'duplicate');
+      form.set('metadata[arena_reason]', 'duplicate_adventurer_pass');
+      const res = await doFetch(`${STRIPE_API}/refunds`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${cfg.secretKey}`, 'content-type': 'application/x-www-form-urlencoded', 'idempotency-key': idempotencyKey },
+        body: form.toString(),
+      });
+      if (!res.ok) throw new Error(`stripe_refund_${res.status}`);
     },
 
     async parseWebhook(rawBody: string, headers: Headers, nowMs: number) {

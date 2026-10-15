@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { handleCreateCheckout, CHECKOUT_RATE_LIMIT, CheckoutDeps } from '../checkout.ts';
+import { handleCreateCheckout, CHECKOUT_PENDING_MS, CHECKOUT_RATE_LIMIT, CHECKOUT_REUSE_MIN_REMAINING_MS, AttemptRow, CheckoutDeps, decideCheckoutClaim } from '../checkout.ts';
 import { handleWebhook } from '../webhook.ts';
 import { createRestStore } from '../db.ts';
 import { parseAllowedOrigins } from '../http.ts';
 import { createStripeProvider, hmacSha256Hex, mapStripeEvent, verifyStripeSignature } from '../providers/stripe.ts';
-import { EntitlementKind, EntitlementSource, InsertEntitlementResult, ProviderEvent, Store, WebhookRejected } from '../types.ts';
+import { CheckoutClaim, CheckoutSession, EntitlementKind, EntitlementSource, InsertEntitlementResult, ProviderEvent, Store, WebhookRejected } from '../types.ts';
 
 // Everything here runs under the Node test runner. The Edge Functions were NEVER executed in Deno from this repo (no Deno installed): these tests
 // cover the pure parts (signature, mapping, idempotency, refusal paths) through the same modules the functions import.
@@ -20,19 +20,44 @@ async function sign(body: string, secret = WEBHOOK_SECRET, tSeconds = Math.floor
   return `t=${tSeconds},v1=${await hmacSha256Hex(secret, `${tSeconds}.${body}`)}`;
 }
 
+interface MemAttempt extends AttemptRow {
+  id: number;
+  userId: string;
+  sessionId: string | null;
+}
+
 class MemoryStore implements Store {
-  entitlements: { userId: string; kind: EntitlementKind; source: EntitlementSource; providerRef: string; status: string }[] = [];
+  entitlements: { userId: string; kind: EntitlementKind; source: EntitlementSource; providerRef: string; livemode: boolean; status: string }[] = [];
   events = new Map<string, { summary: ProviderEvent['summary']; result: string | null }>();
-  attempts: { userId: string; at: number }[] = [];
+  attempts: MemAttempt[] = [];
   failNextEventWrite = false;
+  now = NOW;
+  /** Test helper: an attempt made `agoMs` ago (with or without a stored session). */
+  addAttempt(userId: string, agoMs: number, session?: { url: string; expiresInMs: number; id?: string }) {
+    this.attempts.push({ id: this.attempts.length + 1, userId, sessionId: session?.id ?? null, createdAtMs: NOW - agoMs, sessionUrl: session?.url ?? null, sessionExpiresAtMs: session ? NOW + session.expiresInMs : null, completed: false });
+  }
   async hasActiveEntitlement(userId: string, kind: EntitlementKind) {
     return this.entitlements.some((e) => e.userId === userId && e.kind === kind && e.status === 'active');
   }
-  async countCheckoutAttemptsSince(userId: string, sinceMs: number) {
-    return this.attempts.filter((a) => a.userId === userId && a.at >= sinceMs).length;
+  // The same rules as the SQL function, through the same pure decision; synchronous inside, like the database's per-user lock.
+  async claimCheckout(userId: string): Promise<CheckoutClaim> {
+    const d = decideCheckoutClaim(this.attempts.filter((a) => a.userId === userId), this.now);
+    if (d.outcome !== 'create') return d;
+    const id = this.attempts.length + 1;
+    this.attempts.push({ id, userId, sessionId: null, createdAtMs: this.now, sessionUrl: null, sessionExpiresAtMs: null, completed: false });
+    return { outcome: 'create', attemptId: id };
   }
-  async recordCheckoutAttempt(userId: string) {
-    this.attempts.push({ userId, at: NOW });
+  async attachCheckoutSession(attemptId: number, session: CheckoutSession) {
+    const a = this.attempts.find((x) => x.id === attemptId)!;
+    a.sessionUrl = session.url;
+    a.sessionId = session.id;
+    a.sessionExpiresAtMs = session.expiresAtMs;
+  }
+  async abandonCheckoutAttempt(attemptId: number) {
+    this.attempts = this.attempts.filter((x) => x.id !== attemptId);
+  }
+  async completeCheckoutSession(sessionId: string) {
+    this.attempts.filter((a) => a.sessionId === sessionId).forEach((a) => (a.completed = true));
   }
   async recordPaymentEvent(provider: string, eventId: string, summary: ProviderEvent['summary']) {
     if (this.failNextEventWrite) {
@@ -48,16 +73,23 @@ class MemoryStore implements Store {
   async finishPaymentEvent(provider: string, eventId: string, result: string) {
     this.events.get(`${provider}:${eventId}`)!.result = result;
   }
-  async insertEntitlement(row: { userId: string; kind: EntitlementKind; source: EntitlementSource; providerRef: string }): Promise<InsertEntitlementResult> {
+  async insertEntitlement(row: { userId: string; kind: EntitlementKind; source: EntitlementSource; providerRef: string; livemode: boolean }): Promise<InsertEntitlementResult> {
     if (this.entitlements.some((e) => e.source === row.source && e.providerRef === row.providerRef)) return 'duplicate_ref';
     if (this.entitlements.some((e) => e.userId === row.userId && e.kind === row.kind && e.status === 'active')) return 'already_active';
     this.entitlements.push({ ...row, status: 'active' });
     return 'inserted';
   }
-  async markRefunded(source: EntitlementSource, providerRef: string) {
+  async markReversed(source: EntitlementSource, providerRef: string, reason: 'refund' | 'dispute') {
     const rows = this.entitlements.filter((e) => e.source === source && e.providerRef === providerRef && e.status === 'active');
-    rows.forEach((r) => (r.status = 'refunded'));
+    rows.forEach((r) => (r.status = reason === 'dispute' ? 'revoked' : 'refunded'));
     return rows.length;
+  }
+  async restoreRevoked(source: EntitlementSource, providerRef: string) {
+    const row = this.entitlements.find((e) => e.source === source && e.providerRef === providerRef && e.status === 'revoked');
+    if (!row) return 'none' as const;
+    if (this.entitlements.some((e) => e.userId === row.userId && e.kind === row.kind && e.status === 'active')) return 'blocked' as const;
+    row.status = 'active';
+    return 'restored' as const;
   }
 }
 
@@ -85,8 +117,14 @@ const webhookReq = async (body: string, header?: string | null) =>
   new Request('https://fn.test/stripe-webhook', { method: 'POST', body, headers: header === null ? {} : { 'stripe-signature': header ?? (await sign(body)) } });
 
 function webhookDeps(store = new MemoryStore()) {
-  const provider = createStripeProvider({ secretKey: 'sk_test_unused', priceId: 'price_test', webhookSecret: WEBHOOK_SECRET });
-  return { store, deps: { provider, store, nowMs: () => NOW } };
+  const stripeCalls: { url: string; headers: Record<string, string>; form: URLSearchParams }[] = [];
+  const state = { refundStatus: 200 };
+  const fetchFn = vi.fn(async (url: string, init: RequestInit) => {
+    stripeCalls.push({ url, headers: init.headers as Record<string, string>, form: new URLSearchParams(String(init.body ?? '')) });
+    return new Response(state.refundStatus === 200 ? JSON.stringify({ id: 're_test_1' }) : 'echoed secret body', { status: state.refundStatus });
+  });
+  const provider = createStripeProvider({ secretKey: 'sk_test_unused', priceId: 'price_test', webhookSecret: WEBHOOK_SECRET, fetchFn: fetchFn as unknown as typeof fetch });
+  return { store, stripeCalls, state, deps: { provider, store, nowMs: () => NOW } };
 }
 
 describe('Stripe signature (documented scheme: t=..,v1=.. over "<t>.<raw body>")', () => {
@@ -120,7 +158,7 @@ describe('Stripe signature (documented scheme: t=..,v1=.. over "<t>.<raw body>")
 describe('Stripe event -> entitlement mapping', () => {
   it('a paid Pass session grants to the user in client_reference_id, keyed by the PaymentIntent', () => {
     const e = mapStripeEvent(JSON.parse(sessionEvent()));
-    expect(e.action).toEqual({ type: 'grant', userId: USER_A, providerRef: 'pi_test_1', kind: 'adventurer_pass' });
+    expect(e.action).toEqual({ type: 'grant', userId: USER_A, providerRef: 'pi_test_1', kind: 'adventurer_pass', livemode: false, sessionId: 'cs_test_1' });
   });
   it('the stored summary has ids and statuses only, never the customer data in the payload', () => {
     const e = mapStripeEvent(JSON.parse(sessionEvent()));
@@ -143,6 +181,8 @@ describe('Stripe event -> entitlement mapping', () => {
     const ev = (type: string, object: Record<string, unknown>) => mapStripeEvent({ id: 'evt_refund_a', type, data: { object } });
     expect(ev('charge.refunded', { payment_intent: 'pi_test_1', refunded: true }).action).toEqual({ type: 'reverse', providerRef: 'pi_test_1', reason: 'refund' });
     expect(ev('charge.dispute.created', { payment_intent: 'pi_test_1' }).action).toEqual({ type: 'reverse', providerRef: 'pi_test_1', reason: 'dispute' });
+    expect(ev('charge.dispute.closed', { payment_intent: 'pi_test_1', status: 'won' }).action).toEqual({ type: 'restore', providerRef: 'pi_test_1' });
+    expect(ev('charge.dispute.closed', { payment_intent: 'pi_test_1', status: 'lost' }).action.type).toBe('ignore');
     expect(ev('charge.refunded', { payment_intent: 'pi_test_1', refunded: false }).action.type).toBe('ignore');
     expect(ev('customer.created', {}).action.type).toBe('ignore');
   });
@@ -153,7 +193,7 @@ describe('stripe-webhook handler', () => {
     const { store, deps } = webhookDeps();
     const res = await handleWebhook(await webhookReq(sessionEvent()), deps);
     expect(res.status).toBe(200);
-    expect(store.entitlements).toEqual([{ userId: USER_A, kind: 'adventurer_pass', source: 'stripe', providerRef: 'pi_test_1', status: 'active' }]);
+    expect(store.entitlements).toEqual([{ userId: USER_A, kind: 'adventurer_pass', source: 'stripe', providerRef: 'pi_test_1', livemode: false, status: 'active' }]);
     expect(store.events.get('stripe:evt_test_1')?.result).toBe('granted');
   });
 
@@ -168,12 +208,77 @@ describe('stripe-webhook handler', () => {
     expect(store.events.get('stripe:evt_test_2')?.result).toBe('already_active');
   });
 
-  it('a second, different payment by a user who already owns the Pass is flagged and creates nothing', async () => {
+  it('a second, different payment by a user who already owns the Pass creates nothing and is refunded automatically (idempotency key = the event id)', async () => {
+    const { store, deps, stripeCalls } = webhookDeps();
+    await handleWebhook(await webhookReq(sessionEvent()), deps);
+    expect(stripeCalls).toHaveLength(0); // the first, legitimate payment is never refunded
+    const second = await webhookReq(sessionEvent({ id: 'evt_test_3' }, { id: 'cs_test_2', payment_intent: 'pi_test_2' }));
+    expect((await handleWebhook(second, deps)).status).toBe(200);
+    expect(store.entitlements).toHaveLength(1);
+    expect(store.events.get('stripe:evt_test_3')?.result).toBe('duplicate_refunded');
+    expect(stripeCalls).toHaveLength(1);
+    expect(stripeCalls[0].url).toBe('https://api.stripe.com/v1/refunds');
+    expect(stripeCalls[0].form.get('payment_intent')).toBe('pi_test_2');
+    expect(stripeCalls[0].headers['idempotency-key']).toBe('evt_test_3');
+    // the same delivery again is a duplicate: no second refund call
+    await handleWebhook(await webhookReq(sessionEvent({ id: 'evt_test_3' }, { id: 'cs_test_2', payment_intent: 'pi_test_2' })), deps);
+    expect(stripeCalls).toHaveLength(1);
+  });
+
+  it('a refund that Stripe refuses answers 500 (so the delivery is retried with the same idempotency key) and the retry refunds once it works', async () => {
+    const { store, deps, stripeCalls, state } = webhookDeps();
+    await handleWebhook(await webhookReq(sessionEvent()), deps);
+    const body = sessionEvent({ id: 'evt_test_4' }, { id: 'cs_test_2', payment_intent: 'pi_test_2' });
+    state.refundStatus = 500;
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect((await handleWebhook(await webhookReq(body), deps)).status).toBe(500);
+    spy.mockRestore();
+    expect(store.events.get('stripe:evt_test_4')?.result).toBeNull();
+    state.refundStatus = 200;
+    expect((await handleWebhook(await webhookReq(body), deps)).status).toBe(200);
+    expect(store.events.get('stripe:evt_test_4')?.result).toBe('duplicate_refunded');
+    expect(stripeCalls.map((c) => c.headers['idempotency-key'])).toEqual(['evt_test_4', 'evt_test_4']);
+    expect(store.entitlements.filter((e) => e.status === 'active')).toHaveLength(1);
+  });
+
+  it('the livemode of the event is stored on the entitlement (test-mode purchases are told apart from live ones)', async () => {
+    const live = webhookDeps();
+    await handleWebhook(await webhookReq(sessionEvent({ livemode: true })), live.deps);
+    expect(live.store.entitlements[0].livemode).toBe(true);
+    const test = webhookDeps();
+    await handleWebhook(await webhookReq(sessionEvent({ livemode: false })), test.deps);
+    expect(test.store.entitlements[0].livemode).toBe(false);
+  });
+
+  it('a dispute opened records revoked (not refunded); a dispute won restores the Pass; a dispute lost leaves it revoked', async () => {
+    const dispute = (id: string, type: string, status?: string) => JSON.stringify({ id, type, data: { object: { payment_intent: 'pi_test_1', ...(status ? { status } : {}) } } });
     const { store, deps } = webhookDeps();
     await handleWebhook(await webhookReq(sessionEvent()), deps);
-    await handleWebhook(await webhookReq(sessionEvent({ id: 'evt_test_3' }, { payment_intent: 'pi_test_2' })), deps);
-    expect(store.entitlements).toHaveLength(1);
-    expect(store.events.get('stripe:evt_test_3')?.result).toBe('paid_but_already_owned');
+    await handleWebhook(await webhookReq(dispute('evt_dispute_1', 'charge.dispute.created')), deps);
+    expect(store.entitlements[0].status).toBe('revoked');
+    expect(store.events.get('stripe:evt_dispute_1')?.result).toBe('revoked');
+    await handleWebhook(await webhookReq(dispute('evt_dispute_2', 'charge.dispute.closed', 'lost')), deps);
+    expect(store.entitlements[0].status).toBe('revoked');
+    expect(store.events.get('stripe:evt_dispute_2')?.result).toBe('ignored:dispute_not_won');
+    await handleWebhook(await webhookReq(dispute('evt_dispute_3', 'charge.dispute.closed', 'won')), deps);
+    expect(store.entitlements[0].status).toBe('active');
+    expect(store.events.get('stripe:evt_dispute_3')?.result).toBe('restored');
+  });
+
+  it('a won dispute does not restore a Pass the player re-bought meanwhile (one active Pass per user), and a refunded one is never restored', async () => {
+    const closed = (id: string) => JSON.stringify({ id, type: 'charge.dispute.closed', data: { object: { payment_intent: 'pi_test_1', status: 'won' } } });
+    const { store, deps } = webhookDeps();
+    await handleWebhook(await webhookReq(sessionEvent()), deps);
+    store.entitlements[0].status = 'revoked';
+    await handleWebhook(await webhookReq(sessionEvent({ id: 'evt_test_5' }, { id: 'cs_test_5', payment_intent: 'pi_test_5' })), deps); // bought again
+    await handleWebhook(await webhookReq(closed('evt_dispute_5')), deps);
+    expect(store.events.get('stripe:evt_dispute_5')?.result).toBe('restore_blocked_already_active');
+    expect(store.entitlements.find((e) => e.providerRef === 'pi_test_1')!.status).toBe('revoked');
+    const refunded = webhookDeps();
+    await handleWebhook(await webhookReq(sessionEvent()), refunded.deps);
+    refunded.store.entitlements[0].status = 'refunded';
+    await handleWebhook(await webhookReq(closed('evt_dispute_6')), refunded.deps);
+    expect(refunded.store.entitlements[0].status).toBe('refunded');
   });
 
   it('rejects unsigned, wrongly signed and stale deliveries with 400 and writes nothing', async () => {
@@ -240,7 +345,7 @@ describe('create-checkout handler', () => {
   const fetchOk = (id: string) => vi.fn(async () => new Response(JSON.stringify({ id }), { status: 200 }));
   function setup(over: Partial<CheckoutDeps> = {}, authId: string | null = USER_A) {
     const store = new MemoryStore();
-    const stripeFetch = vi.fn(async (_url: unknown, init?: RequestInit) => new Response(JSON.stringify({ url: 'https://checkout.stripe.com/c/pay/cs_test_abc' }), { status: 200, headers: { 'x-body': String(init?.body ?? '') } }));
+    const stripeFetch = vi.fn(async (_url: unknown, init?: RequestInit) => new Response(JSON.stringify({ id: 'cs_test_abc', url: 'https://checkout.stripe.com/c/pay/cs_test_abc', expires_at: Math.floor(NOW / 1000) + 24 * 3600 }), { status: 200, headers: { 'x-body': String(init?.body ?? '') } }));
     const provider = createStripeProvider({ secretKey: 'sk_test_unused', priceId: 'price_from_secret', webhookSecret: WEBHOOK_SECRET, fetchFn: stripeFetch as unknown as typeof fetch });
     const authFetch = authId ? fetchOk(authId) : vi.fn(async () => new Response('{}', { status: 401 }));
     const deps: CheckoutDeps = {
@@ -298,7 +403,7 @@ describe('create-checkout handler', () => {
 
   it('refuses a user who already owns the Pass (409)', async () => {
     const { deps, store, stripeFetch } = setup();
-    store.entitlements.push({ userId: USER_A, kind: 'adventurer_pass', source: 'grant', providerRef: 'g1', status: 'active' });
+    store.entitlements.push({ userId: USER_A, kind: 'adventurer_pass', source: 'grant', providerRef: 'g1', livemode: false, status: 'active' });
     const res = await handleCreateCheckout(req(), deps);
     expect(res.status).toBe(409);
     expect(stripeFetch).not.toHaveBeenCalled();
@@ -306,19 +411,20 @@ describe('create-checkout handler', () => {
 
   it('a refunded owner may buy again', async () => {
     const { deps, store } = setup();
-    store.entitlements.push({ userId: USER_A, kind: 'adventurer_pass', source: 'stripe', providerRef: 'pi_old', status: 'refunded' });
+    store.entitlements.push({ userId: USER_A, kind: 'adventurer_pass', source: 'stripe', providerRef: 'pi_old', livemode: false, status: 'refunded' });
     expect((await handleCreateCheckout(req(), deps)).status).toBe(200);
   });
 
   it('rate-limits one user (429 after the window quota) without affecting another', async () => {
     const { deps, store } = setup();
-    for (let i = 0; i < CHECKOUT_RATE_LIMIT.max; i++) store.attempts.push({ userId: USER_A, at: NOW - 1000 });
+    // attempts whose session already expired (so nothing can be reused) still count toward the limit
+    for (let i = 0; i < CHECKOUT_RATE_LIMIT.max; i++) store.addAttempt(USER_A, 120_000 + i, { url: 'https://checkout.stripe.com/c/pay/old', expiresInMs: 1000 });
     expect((await handleCreateCheckout(req(), deps)).status).toBe(429);
     store.attempts.length = 0;
-    for (let i = 0; i < CHECKOUT_RATE_LIMIT.max; i++) store.attempts.push({ userId: USER_A, at: NOW - CHECKOUT_RATE_LIMIT.windowMs - 1 });
+    for (let i = 0; i < CHECKOUT_RATE_LIMIT.max; i++) store.addAttempt(USER_A, CHECKOUT_RATE_LIMIT.windowMs + 1 + i, { url: 'https://checkout.stripe.com/c/pay/old', expiresInMs: 1000 });
     expect((await handleCreateCheckout(req(), deps)).status).toBe(200); // old attempts left the window
     const other = setup({}, USER_B);
-    for (let i = 0; i < CHECKOUT_RATE_LIMIT.max; i++) other.store.attempts.push({ userId: USER_A, at: NOW - 1000 });
+    for (let i = 0; i < CHECKOUT_RATE_LIMIT.max; i++) other.store.addAttempt(USER_A, 120_000 + i, { url: 'https://checkout.stripe.com/c/pay/old', expiresInMs: 1000 });
     expect((await handleCreateCheckout(req(), other.deps)).status).toBe(200);
   });
 
@@ -355,6 +461,87 @@ describe('create-checkout handler', () => {
   });
 });
 
+describe('create-checkout: one open session per user, atomic limit', () => {
+  const stripeOk = () =>
+    vi.fn(async () => new Response(JSON.stringify({ id: 'cs_test_abc', url: 'https://checkout.stripe.com/c/pay/cs_test_abc', expires_at: Math.floor(NOW / 1000) + 24 * 3600 }), { status: 200 }));
+  function setup2(stripeFetch = stripeOk(), userId = USER_A) {
+    const store = new MemoryStore();
+    const provider = createStripeProvider({ secretKey: 'sk_test_unused', priceId: 'p', webhookSecret: WEBHOOK_SECRET, fetchFn: stripeFetch as unknown as typeof fetch });
+    const authFetch = vi.fn(async () => new Response(JSON.stringify({ id: userId }), { status: 200 }));
+    const deps: CheckoutDeps = { auth: { supabaseUrl: 'https://proj.supabase.test', anonKey: 'anon_test', fetchFn: authFetch as unknown as typeof fetch }, allowedOrigins: [ORIGIN], provider, store, nowMs: () => NOW };
+    return { store, deps, stripeFetch };
+  }
+  const r = () => new Request('https://fn.test/create-checkout', { method: 'POST', headers: { authorization: `Bearer ${'a'.repeat(40)}`, origin: ORIGIN } });
+
+  it('a second request while the first session is still open gets the SAME url and creates no second Stripe session (and spends no rate-limit quota)', async () => {
+    const { deps, store, stripeFetch } = setup2();
+    const first = await (await handleCreateCheckout(r(), deps)).json();
+    const second = await (await handleCreateCheckout(r(), deps)).json();
+    expect(second).toEqual(first);
+    expect(stripeFetch).toHaveBeenCalledTimes(1);
+    expect(store.attempts).toHaveLength(1);
+    expect(store.attempts[0].sessionId).toBe('cs_test_abc');
+  });
+
+  it('two parallel requests create exactly one session: the loser is told to retry (429 checkout_in_progress), never a second charge page', async () => {
+    const { deps, stripeFetch } = setup2();
+    const [a, b] = await Promise.all([handleCreateCheckout(r(), deps), handleCreateCheckout(r(), deps)]);
+    expect([a.status, b.status].sort()).toEqual([200, 429]);
+    const loser = a.status === 429 ? a : b;
+    expect(await loser.json()).toEqual({ error: 'checkout_in_progress' });
+    expect(stripeFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('a session that was paid (or expired) is not offered again, and a failed provider call frees the attempt so the next try is not blocked', async () => {
+    const { deps, store, stripeFetch } = setup2();
+    await handleCreateCheckout(r(), deps);
+    await store.completeCheckoutSession('cs_test_abc'); // the webhook saw it paid (and the refund removed the Pass again)
+    expect((await handleCreateCheckout(r(), deps)).status).toBe(200);
+    expect(stripeFetch).toHaveBeenCalledTimes(2);
+
+    const failing = setup2(vi.fn(async () => new Response('x', { status: 500 })));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect((await handleCreateCheckout(r(), failing.deps)).status).toBe(502);
+    spy.mockRestore();
+    expect(failing.store.attempts).toHaveLength(0);
+  });
+
+  it('decideCheckoutClaim: the order is reuse, then in-progress, then the rate limit, then create', () => {
+    const att = (ago: number, session?: { remaining: number }, completed = false): AttemptRow => ({
+      createdAtMs: NOW - ago,
+      sessionUrl: session ? 'https://checkout.stripe.com/c/pay/x' : null,
+      sessionExpiresAtMs: session ? NOW + session.remaining : null,
+      completed,
+    });
+    expect(decideCheckoutClaim([], NOW)).toEqual({ outcome: 'create' });
+    expect(decideCheckoutClaim([att(1000, { remaining: 3_600_000 })], NOW).outcome).toBe('reuse');
+    expect(decideCheckoutClaim([att(1000, { remaining: CHECKOUT_REUSE_MIN_REMAINING_MS - 1 })], NOW).outcome).toBe('create'); // about to expire: not offered
+    expect(decideCheckoutClaim([att(1000, { remaining: 3_600_000 }, true)], NOW).outcome).toBe('create'); // paid
+    expect(decideCheckoutClaim([att(1000)], NOW).outcome).toBe('in_progress');
+    expect(decideCheckoutClaim([att(CHECKOUT_PENDING_MS + 1)], NOW).outcome).toBe('create'); // a crashed request does not block forever
+    const many = Array.from({ length: CHECKOUT_RATE_LIMIT.max }, (_, i) => att(2000 + i, { remaining: 1000 }));
+    expect(decideCheckoutClaim(many, NOW).outcome).toBe('rate_limited');
+    expect(decideCheckoutClaim([...many, att(500, { remaining: 3_600_000 })], NOW).outcome).toBe('reuse'); // an open session beats the limit: the user keeps his page
+  });
+
+  it('the Stripe refund call: POST /v1/refunds, form-encoded PaymentIntent, the idempotency key header, status-only errors', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const provider = createStripeProvider({
+      secretKey: 'sk_test_unused',
+      priceId: 'p',
+      webhookSecret: WEBHOOK_SECRET,
+      fetchFn: (async (url: string, init: RequestInit) => {
+        calls.push({ url, init });
+        return new Response('secret body', { status: 402 });
+      }) as unknown as typeof fetch,
+    });
+    await expect(provider.refundPayment('pi_x', 'evt_x')).rejects.toThrow('stripe_refund_402');
+    expect(calls[0].url).toBe('https://api.stripe.com/v1/refunds');
+    expect((calls[0].init.headers as Record<string, string>)['idempotency-key']).toBe('evt_x');
+    expect(String(calls[0].init.body)).toContain('payment_intent=pi_x');
+  });
+});
+
 describe('helpers', () => {
   it('APP_ORIGIN accepts https origins (and http only on localhost), drops anything else', () => {
     expect(parseAllowedOrigins('https://a.test, http://localhost:5173 ,http://evil.test, ftp://x, nonsense, https://b.test/path')).toEqual(['https://a.test', 'http://localhost:5173', 'https://b.test']);
@@ -372,11 +559,31 @@ describe('helpers', () => {
         return answers.shift()!;
       }) as unknown as typeof fetch,
     });
-    const row = { userId: USER_A, kind: 'adventurer_pass' as const, source: 'stripe' as const, providerRef: 'pi_1' };
+    const row = { userId: USER_A, kind: 'adventurer_pass' as const, source: 'stripe' as const, providerRef: 'pi_1', livemode: true };
     expect(await store.insertEntitlement(row)).toBe('already_active');
     expect(await store.insertEntitlement(row)).toBe('duplicate_ref');
     expect(await store.insertEntitlement(row)).toBe('inserted');
     expect(calls[0].url).toBe('https://proj.supabase.test/rest/v1/entitlements');
     expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bearer service_role_test_value');
+    expect(JSON.parse(calls[2].init.body as string)).toMatchObject({ livemode: true, status: 'active' });
+  });
+
+  it('the REST store: a dispute sets revoked (a refund sets refunded), a won dispute restores, and the unique-index conflict is reported as blocked', async () => {
+    const bodies: unknown[] = [];
+    const answers = [new Response('[{"id":"1"}]', { status: 200 }), new Response('[{"id":"1"}]', { status: 200 }), new Response('[{"id":"1"}]', { status: 200 }), new Response('{}', { status: 409 }), new Response('[]', { status: 200 })];
+    const store = createRestStore({
+      supabaseUrl: 'https://proj.supabase.test',
+      serviceRoleKey: 'k',
+      fetchFn: (async (_url: string, init: RequestInit) => {
+        bodies.push(JSON.parse(init.body as string));
+        return answers.shift()!;
+      }) as unknown as typeof fetch,
+    });
+    expect(await store.markReversed('stripe', 'pi_1', 'dispute')).toBe(1);
+    expect(await store.markReversed('stripe', 'pi_1', 'refund')).toBe(1);
+    expect(await store.restoreRevoked('stripe', 'pi_1')).toBe('restored');
+    expect(await store.restoreRevoked('stripe', 'pi_1')).toBe('blocked');
+    expect(await store.restoreRevoked('stripe', 'pi_1')).toBe('none');
+    expect(bodies).toEqual([{ status: 'revoked' }, { status: 'refunded' }, { status: 'active' }, { status: 'active' }, { status: 'active' }]);
   });
 });

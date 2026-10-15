@@ -200,6 +200,7 @@ function seasonHighlights(): Highlight[] {
 export default function BattlePassModal({
   save,
   onActivate,
+  highlightBuy = false,
   passFlow,
   onRecheck,
   onClaim,
@@ -208,6 +209,8 @@ export default function BattlePassModal({
 }: {
   save: SaveData;
   onActivate: () => void;
+  /** Set by the website link (?comprar=passe): draws attention to the buy button without clicking it. */
+  highlightBuy?: boolean;
   passFlow: PassFlow;
   onRecheck: () => void;
   onClaim: (level: number, track: 'free' | 'premium') => void;
@@ -492,7 +495,7 @@ export default function BattlePassModal({
                   {t('battlePass.recheck')}
                 </button>
               ) : (
-                <button className="battle-btn ap-buy-btn" onClick={onActivate} disabled={!canBuy || passFlow === 'starting' || passFlow === 'confirming'} data-ui>
+                <button className={`battle-btn ap-buy-btn${highlightBuy ? ' ap-buy-highlight' : ''}`} data-highlight={highlightBuy ? 'true' : undefined} onClick={onActivate} disabled={!canBuy || passFlow === 'starting' || passFlow === 'confirming'} data-ui>
                   {buyLabel}
                 </button>
               )}

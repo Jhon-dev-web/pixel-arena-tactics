@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildHuntSession, defaultSave, SaveData } from '../engine';
 import { getServerPassOwned, grantDailyPassKit, isServerPassSource, ownsAdventurerPass, purchaseAdventurerPass, setPassSource, setServerPassOwned } from '../entitlements';
@@ -210,11 +212,21 @@ describe('the buy link from the website (?comprar=passe)', () => {
     expect(s.raw.has(BUY_INTENT_KEY)).toBe(false);
   });
 
-  it('starts the checkout only with sales on AND an account the server says does not own the Pass; otherwise it just opens the modal', () => {
-    expect(buyIntentAction(true, false)).toBe('checkout');
+  it('highlights the buy button only with sales on AND an account the server says does not own the Pass; otherwise it just opens the modal', () => {
+    expect(buyIntentAction(true, false)).toBe('highlight');
     expect(buyIntentAction(true, true)).toBe('open'); // already owned
     expect(buyIntentAction(true, null)).toBe('open'); // the server could not be asked: never guess
     expect(buyIntentAction(false, false)).toBe('open'); // VITE_PASS_PURCHASE_ENABLED off: harmless
+  });
+
+  it('the link never starts a checkout by itself: the buy-intent effect in App calls neither startCheckout nor purchaseBattlePass, only the modal and the highlight', () => {
+    const app = readFileSync(resolve(__dirname, '../../App.tsx'), 'utf8');
+    const start = app.indexOf('const buyIntentDone = useRef(false);');
+    expect(start).toBeGreaterThan(-1);
+    const effect = app.slice(start, app.indexOf('}, [userId, passVersion]);', start));
+    expect(effect).not.toMatch(/startCheckout|purchaseBattlePass|create-checkout/);
+    expect(effect).toContain('setBattlePassOpen(true)');
+    expect(effect).toContain('setHighlightBuy(');
   });
 
   it('with the flag off (the test build) startCheckout stays unavailable, so the link can never reach a payment page', async () => {
