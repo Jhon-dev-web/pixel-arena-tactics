@@ -1,4 +1,5 @@
 import { t } from '../locales';
+import PreseasonResetNotice from './PreseasonResetNotice';
 
 const welcomeText = (k: string): string => t(`welcome.${k}`);
 
@@ -12,6 +13,7 @@ export default function WelcomeModal({ onClose }: { onClose: () => void }) {
         <p className="claim-name">{welcomeText('idleTip')}</p>
         <p className="claim-name">{welcomeText('startTip')}</p>
         <p className="welcome-save-warning">{welcomeText('saveWarning')}</p>
+        <PreseasonResetNotice className="welcome-save-warning" />
 
         <button className="result-btn" onClick={onClose} data-ui>
           {welcomeText('cta')}

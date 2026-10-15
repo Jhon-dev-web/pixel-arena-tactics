@@ -4,9 +4,10 @@ import AuthScreen from '../components/AuthScreen';
 import LegacyImportPrompt from '../components/LegacyImportPrompt';
 import UsernameOnboarding from '../components/UsernameOnboarding';
 import App from '../App';
-import { defaultSave, SaveData } from '../game/engine';
+import { SaveData } from '../game/engine';
 import { getServerPassOwned, setPassSource, setServerPassOwned } from '../game/entitlements';
 import { applyServerPass, refreshServerPass } from '../game/passServer';
+import { buildNewLeagueHero, readLeagueResetAt, settleLeague } from '../game/leagueReset';
 import { getMyUsername } from '../game/usernameRepository';
 import { UsernameContext } from '../game/usernameContext';
 import {
@@ -86,17 +87,28 @@ export default function GameShell() {
       await refreshServerPass(user.id);
       if (cancelled) return;
 
+      // The first League's reset moment (null = not opened yet). Asked before the game renders, like the Pass: a hero from before it is replaced here, once (leagueReset.ts).
+      const resetAt = await readLeagueResetAt();
+      if (cancelled) return;
+
       const existing = await repo.load();
       if (cancelled) return;
       if (existing) {
+        if (typeof resetAt === 'number') {
+          const settled = await settleLeague(repo, existing, { accountId: user.id, resetAt, applyPass: withServerPass });
+          if (cancelled) return;
+          setResolution({ kind: 'ready', initial: { save: withServerPass(settled.save), revision: settled.revision }, repository: repo });
+          return;
+        }
         setResolution({ kind: 'ready', initial: { ...existing, save: withServerPass(existing.save) }, repository: repo });
         return;
       }
-      if (hasLegacyLocalSave()) {
+      // After the League opened no local save can enter the online game: a new account starts from zero like everyone else (the local file stays on the device).
+      if (hasLegacyLocalSave() && typeof resetAt !== 'number') {
         setResolution({ kind: 'needsLegacyDecision' });
         return;
       }
-      const fresh = withServerPass(defaultSave());
+      const fresh = withServerPass(buildNewLeagueHero(resetAt));
       const created = await repo.create(fresh, false);
       if (cancelled) return;
       setResolution({ kind: 'ready', initial: { save: fresh, revision: created.revision }, repository: repo });
@@ -137,9 +149,17 @@ export default function GameShell() {
           if (!user) return;
           setImporting(true);
           try {
+            const repo = new SupabaseSaveRepository(user.id);
+            // The League may have opened while this question was on screen: a local save is then refused online and the hero starts from zero.
+            const resetNow = await readLeagueResetAt();
+            if (typeof resetNow === 'number') {
+              const startFresh = withServerPass(buildNewLeagueHero(resetNow));
+              const made = await repo.create(startFresh, false);
+              setResolution({ kind: 'ready', initial: { save: startFresh, revision: made.revision }, repository: repo });
+              return;
+            }
             backupLegacyLocalSaveOnce();
             const legacy = withServerPass(readLegacyLocalSave());
-            const repo = new SupabaseSaveRepository(user.id);
             const created = await repo.create(legacy, true);
             setResolution({ kind: 'ready', initial: { save: legacy, revision: created.revision }, repository: repo });
           } finally {
@@ -150,7 +170,8 @@ export default function GameShell() {
           if (!user) return;
           setImporting(true);
           try {
-            const fresh = withServerPass(defaultSave());
+            const resetNow = await readLeagueResetAt();
+            const fresh = withServerPass(buildNewLeagueHero(resetNow));
             const repo = new SupabaseSaveRepository(user.id);
             const created = await repo.create(fresh, false);
             setResolution({ kind: 'ready', initial: { save: fresh, revision: created.revision }, repository: repo });

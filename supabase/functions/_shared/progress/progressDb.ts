@@ -46,9 +46,11 @@ export function createProgressStore(cfg: ProgressDbConfig): ProgressStore {
 
   // Only an `ok` snapshot is ever a baseline (first / last) and raises the peak: a flagged or rejected one never does, so re-sending the same inflated save later is judged
   // against the last clean history again instead of against itself.
-  const snapshotRows = (userId: string, order: 'asc' | 'desc', acceptedOnly: boolean): Promise<SnapshotRow[]> => {
+  const snapshotRows = (userId: string, order: 'asc' | 'desc', acceptedOnly: boolean, sinceMs?: number): Promise<SnapshotRow[]> => {
     const q = new URLSearchParams({ select: SNAPSHOT_COLUMNS, user_id: `eq.${userId}`, order: `created_at.${order}`, limit: '1' });
     if (acceptedOnly) q.set('verdict', 'eq.ok');
+    // The first League's reset: snapshots from before it are not history (migration 0009).
+    if (sinceMs !== undefined) q.set('created_at', `gte.${new Date(sinceMs).toISOString()}`);
     return getRows<SnapshotRow>('progress_snapshots', q, 'snapshot_read');
   };
 
@@ -91,13 +93,20 @@ export function createProgressStore(cfg: ProgressDbConfig): ProgressStore {
       await rpc<unknown>('progress_release_slot', { p_user_id: userId }, 'slot_release');
     },
 
-    async lastSnapshot(userId: string) {
-      const rows = await snapshotRows(userId, 'desc', false);
+    // public.league_reset_at(): the moment the first League opened (null before it).
+    async resetAtMs() {
+      const at = await rpc<string | null>('league_reset_at', {}, 'league_reset_read');
+      const ms = typeof at === 'string' ? Date.parse(at) : Number.NaN;
+      return Number.isFinite(ms) ? ms : null;
+    },
+
+    async lastSnapshot(userId: string, sinceMs?: number) {
+      const rows = await snapshotRows(userId, 'desc', false, sinceMs);
       return rows[0] ? toStored(rows[0]) : null;
     },
 
-    async acceptedHistory(userId: string) {
-      const [first, last] = await Promise.all([snapshotRows(userId, 'asc', true), snapshotRows(userId, 'desc', true)]);
+    async acceptedHistory(userId: string, sinceMs?: number) {
+      const [first, last] = await Promise.all([snapshotRows(userId, 'asc', true, sinceMs), snapshotRows(userId, 'desc', true, sinceMs)]);
       return { first: first[0] ? toPoint(first[0]) : null, last: last[0] ? toPoint(last[0]) : null };
     },
 

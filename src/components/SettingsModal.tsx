@@ -4,6 +4,7 @@ import { activeLocale, Locale, locales, t } from '../locales';
 import { SaveData, playerLevel } from '../game/engine';
 import { AudioPrefs } from '../game/audio';
 import { ImportFailure, parseSaveImport, resetWordMatches } from '../game/saveTransfer';
+import { getServerResetAt } from '../game/leagueReset';
 import useFullscreen from '../hooks/useFullscreen';
 import { APP_VERSION, buildErrorReport, clearErrorLog, copyText, readErrorLog } from '../lib/errorLog';
 import { enableNotifications, notificationsActive, notifyPermission, saveNotifyPref } from '../game/notify';
@@ -114,7 +115,7 @@ export default function SettingsModal({
       setImportError('not_json');
       return;
     }
-    const res = parseSaveImport(text, save);
+    const res = parseSaveImport(text, save, accountConfigured ? getServerResetAt() : null);
     if ('reason' in res) setImportError(res.reason);
     else setPending({ save: res.save, level: res.level, floor: res.floor });
     if (fileRef.current) fileRef.current.value = '';

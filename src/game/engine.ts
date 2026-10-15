@@ -1,3 +1,4 @@
+import { LeagueMark, sanitizeLeagueMark } from './leagueMark';
 import T from './tunables';
 import { grantDailyPassKit, ownsAdventurerPass } from './entitlements';
 import { sanitizeActiveFrame, sanitizeActiveSkin, sanitizeStashBonus } from './seasonItems';
@@ -247,6 +248,8 @@ export interface SaveData {
   passKitDay?: string;
   seenTooltips: string[];
   seenWelcome: boolean;
+  // Online only: which reset of the first League this hero belongs to (leagueReset.ts). Absent = never reset (every save from before the League, and every offline / desktop save).
+  league?: LeagueMark;
   tutorial: TutorialState;
   autoPotionThreshold: number;
   autoPotionPriority: 'small_first' | 'large_first';
@@ -1403,6 +1406,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         dungeonSessionsUsed,
         seenTooltips,
         seenWelcome,
+        league: sanitizeLeagueMark(parsed.league),
         tutorial: sanitizeTutorial(parsed.tutorial),
         autoPotionThreshold:
           typeof parsed.autoPotionThreshold === 'number' && Number.isFinite(parsed.autoPotionThreshold)

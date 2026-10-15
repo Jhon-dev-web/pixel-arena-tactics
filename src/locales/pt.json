@@ -4,6 +4,14 @@
     "xpProgress": "{cur} / {need} XP · faltam {left}",
     "maxLevel": "Nível máximo"
   },
+  "leagueReset": {
+    "preseasonWarning": "A pré-temporada é um teste aberto: quando a Liga começar, todos os heróis online recomeçam do zero. O Passe e o seu nome continuam.",
+    "title": "A Liga começou. Todos largaram juntos.",
+    "what": "A pré-temporada era um teste aberto. Agora que a Liga da Temporada começou, todos os heróis online recomeçaram do zero, no mesmo instante: ninguém leva vantagem do que fez antes.",
+    "kept": "Continuam com você: a sua conta, o seu nome e o Passe do Aventureiro. O herói de antes ficou guardado só neste aparelho, como lembrança, e não pode ser trazido de volta para o jogo online.",
+    "pioneer": "Obrigado por testar! Você recebeu o título Pioneiro: só um enfeite, sem atributos.",
+    "cta": "Vamos começar"
+  },
   "welcome": {
     "title": "🏕️ Bem-vindo ao Acampamento!",
     "idleTip": "Este é um jogo idle — seu herói continua progredindo mesmo com o jogo fechado.",
@@ -111,6 +119,7 @@
     "importError_too_big": "O arquivo é grande demais para ser um save.",
     "importError_not_json": "Não foi possível ler o arquivo.",
     "importError_not_a_save": "Esse arquivo não é um save do Arena Idle.",
+    "importError_pre_reset": "Esse herói é de antes da Liga e não pode entrar no jogo online. Ele só serve de lembrança neste aparelho.",
     "importConfirmTitle": "Importar save",
     "importConfirm": "Substituir o seu herói por um herói de nível {level}, andar {floor}?",
     "importBackup": "O herói atual (nível {level}, andar {floor}) fica guardado como backup neste aparelho.",
@@ -1758,7 +1767,9 @@
     "title_codex_sage": "Sábio do Códice",
     "req_codex_sage": "Descubra 100% do Códice (conquista)",
     "title_depths_walker": "Caminhante das Profundezas",
-    "req_depths_walker": "Alcance a Profundeza 50 (conquista)"
+    "req_depths_walker": "Alcance a Profundeza 50 (conquista)",
+    "title_pioneer": "Pioneiro",
+    "req_pioneer": "Jogou o teste aberto, antes da primeira Liga"
   },
   "mastery": {
     "title": "Próximos desbloqueios",

@@ -14,6 +14,7 @@ import {
   useSubmitStatus,
 } from '../game/seasonRanking';
 import { activeLocale, fmtNum, t } from '../locales';
+import PreseasonResetNotice from './PreseasonResetNotice';
 
 // The "Temporada" tab of the Adventurer Pass screen: which season, who is on top, and where the player stands. Everything shown is read from the server
 // (the season row, the public leaderboard view, the player's own place); the only thing the game sends is the save, from useSeasonSubmit, in the background.
@@ -95,6 +96,7 @@ export default function SeasonRankingPanel({ online, ownsPass }: { online: boole
         </div>
       )}
 
+      {online && <PreseasonResetNotice className="ap-season-note ap-season-reset-warning" />}
       <p className="ap-season-passonly">{t('seasonRanking.passOnly')}</p>
       {season?.prize_note && season.prize_note.trim() !== '' && <p className="ap-season-prize">{t('seasonRanking.prizeNote', { note: season.prize_note })}</p>}
 

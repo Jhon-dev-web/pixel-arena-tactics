@@ -336,6 +336,11 @@ class MemoryProgressStore implements ProgressStore {
   forgedCharacterCreatedMs: number = T0 - DAY * 400;
   /** auth.users.created_at: the real account age. */
   accountCreatedMs: number | null = T0 - DAY * 400;
+  /** public.league_reset_at(): null until the first League opened. */
+  resetAt: number | null = null;
+  async resetAtMs() {
+    return this.resetAt;
+  }
   slotAt: number | null = null;
   slotClaims = 0;
   releases = 0;
@@ -372,12 +377,12 @@ class MemoryProgressStore implements ProgressStore {
   private toStored(r: (typeof this.rows)[number]): StoredSnapshot {
     return { id: r.id, createdAtMs: r.createdAtMs, verdict: r.verdict, reasons: r.reasons, metrics: r.metrics };
   }
-  async lastSnapshot(userId: string) {
-    const mine = this.rows.filter((r) => r.userId === userId);
+  async lastSnapshot(userId: string, sinceMs?: number) {
+    const mine = this.rows.filter((r) => r.userId === userId && (sinceMs === undefined || r.createdAtMs >= sinceMs));
     return mine.length ? this.toStored(mine[mine.length - 1]) : null;
   }
-  async acceptedHistory(userId: string) {
-    const ok = this.rows.filter((r) => r.userId === userId && r.verdict === 'ok');
+  async acceptedHistory(userId: string, sinceMs?: number) {
+    const ok = this.rows.filter((r) => r.userId === userId && r.verdict === 'ok' && (sinceMs === undefined || r.createdAtMs >= sinceMs));
     const pt = (r: (typeof ok)[number]): HistoryPoint => ({ atMs: r.createdAtMs, metrics: r.metrics, peak: r.peak, saveRevision: r.saveRevision });
     return { first: ok[0] ? pt(ok[0]) : null, last: ok.length ? pt(ok[ok.length - 1]) : null };
   }
@@ -501,6 +506,99 @@ describe('handleSubmitProgress', () => {
     const bad = await handleSubmitProgress(request(blob({ xp: 20 })), deps(store));
     expect(bad.status).toBe(502);
     expect(await bad.json()).toEqual({ error: 'submit_failed' });
+  });
+
+  // ---- the first League's reset (migration 0009) ----------------------------------------------------------------------------------------------
+  describe('after the first League reset', () => {
+    const withEpoch = (o: Overrides, epoch: number | null) => (epoch === null ? blob(o) : { ...blob(o), league: { epoch, noticeSeen: false, pioneerChecked: true } });
+
+    it('a pre-reset level-80 save posted after the reset is not judged: a retryable 409, nothing stored, nothing flagged', async () => {
+      const store = new MemoryProgressStore();
+      await handleSubmitProgress(request(blob({ xp: xpAtPosition(60), floor: 80 })), deps(store)); // pre-season snapshot, accepted
+      store.resetAt = T0 + DAY;
+      store.now = T0 + DAY + 3 * 3600_000;
+      const res = await handleSubmitProgress(request(withEpoch({ xp: xpAtPosition(80), floor: 90 }, null)), deps(store));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ error: 'league_reset_pending', retryable: true });
+      expect(store.rows).toHaveLength(1); // only the pre-season one
+      expect(store.slotClaims).toBe(1);
+    });
+
+    it('a pre-reset save that LIES about its epoch is judged as a fresh run and REJECTED (history and account age start at reset_at)', async () => {
+      const store = new MemoryProgressStore();
+      await handleSubmitProgress(request(blob({ xp: xpAtPosition(60), floor: 80 })), deps(store));
+      store.resetAt = T0 + DAY;
+      store.now = T0 + DAY + 3 * 3600_000;
+      const body = await (await handleSubmitProgress(request(withEpoch({ xp: xpAtPosition(80), floor: 90, seconds: 400 }, store.resetAt)), deps(store))).json();
+      expect(body.verdict).toBe('rejected');
+      expect(body.reasons).toContain('BASELINE_AHEAD_OF_ACCOUNT_AGE');
+      expect(store.rows[1].verdict).toBe('rejected');
+      expect(store.seasonCalls[1].verdict).toBe('rejected');
+    });
+
+    it('a fresh hero (declares the reset epoch, nothing played) is ok even though the account is over a year old', async () => {
+      const store = new MemoryProgressStore();
+      await handleSubmitProgress(request(blob({ xp: xpAtPosition(60), floor: 80 })), deps(store));
+      store.resetAt = T0 + DAY;
+      store.now = T0 + DAY + 20 * 60_000; // inside the old 10 minute window of the pre-reset snapshot? no: it is judged on its own history
+      const body = await (await handleSubmitProgress(request(withEpoch({ xp: xpAtPosition(2), floor: 1, seconds: 600 }, store.resetAt)), deps(store))).json();
+      expect(body.verdict).toBe('ok');
+      expect(body.throttled).toBe(false);
+      // and its run is judged against ITS first snapshot, not the pre-reset one: a normal hour of play later is fine
+      store.now += 3600_000;
+      const next = await (await handleSubmitProgress(request(withEpoch({ xp: xpAtPosition(3), floor: 2, seconds: 4200 }, store.resetAt)), deps(store))).json();
+      expect(next.verdict).toBe('ok');
+    });
+
+    it('the old rate-limit window of a pre-reset snapshot does not throttle the fresh hero; one just after the reset still does', async () => {
+      const store = new MemoryProgressStore();
+      store.resetAt = T0 + 1000;
+      store.now = T0; // a pre-reset snapshot made seconds before the reset
+      await handleSubmitProgress(request(blob({ xp: 100 })), deps(store)); // resetAt is set but this body is pre-reset...
+      expect(store.rows).toHaveLength(0); // ...so it was refused, not stored
+      store.now = T0 + 60_000;
+      const first = await (await handleSubmitProgress(request(withEpoch({ xp: 10, seconds: 30 }, store.resetAt)), deps(store))).json();
+      expect(first.throttled).toBe(false);
+      store.now += 60_000;
+      const second = await (await handleSubmitProgress(request(withEpoch({ xp: 20, seconds: 90 }, store.resetAt)), deps(store))).json();
+      expect(second.throttled).toBe(true);
+    });
+
+    it('before any reset nothing changes: no epoch needed, a far-ahead first snapshot is only flagged', async () => {
+      const store = new MemoryProgressStore();
+      store.accountCreatedMs = T0 - 3 * 3600_000;
+      const body = await (await handleSubmitProgress(request(blob({ xp: xpAtPosition(80), floor: 90 })), deps(store))).json();
+      expect(body.verdict).toBe('flagged');
+      expect(body.reasons).toContain('BASELINE_AHEAD_OF_ACCOUNT_AGE');
+    });
+
+    it('evaluateSnapshot: sinceReset turns the ahead-of-age baseline into a reject; the age is max(account created, reset)', () => {
+      const cur = m({ xp: xpAtPosition(80), floor: 90 });
+      const base: EvalInput = { nowMs: T0, accountCreatedMs: T0 - 400 * DAY, entitled: true, saveRevision: 1, first: null, previous: null };
+      const young = { ...base, accountCreatedMs: T0 - 3 * 3600_000 };
+      expect(evaluateSnapshot(cur, young).verdict).toBe('flagged'); // before the reset: stored, not ranked
+      expect(evaluateSnapshot(cur, base).verdict).toBe('ok'); // a 400 day old account may legitimately be there
+      expect(evaluateSnapshot(cur, { ...young, sinceReset: true })).toMatchObject({ verdict: 'rejected', reasons: expect.arrayContaining(['BASELINE_AHEAD_OF_ACCOUNT_AGE']) });
+    });
+
+    it('the real store reads the reset and filters snapshots by created_at >= reset_at', async () => {
+      const urls: string[] = [];
+      const fetchFn = (async (url: string) => {
+        urls.push(String(url));
+        return new Response(String(url).includes('/rpc/league_reset_at') ? JSON.stringify('2026-10-20T10:00:00.123456+00:00') : '[]', { status: 200 });
+      }) as unknown as typeof fetch;
+      const store = createProgressStore({ supabaseUrl: 'https://p.test', serviceRoleKey: 'k', fetchFn });
+      const at = (await store.resetAtMs?.()) as number;
+      expect(at).toBe(Date.parse('2026-10-20T10:00:00.123Z'));
+      await store.acceptedHistory(USER, at);
+      await store.lastSnapshot(USER, at);
+      const snapshotCalls = urls.filter((u) => u.includes('/progress_snapshots'));
+      expect(snapshotCalls).toHaveLength(3);
+      for (const u of snapshotCalls) expect(decodeURIComponent(u)).toContain('created_at=gte.2026-10-20T10:00:00.123Z');
+      urls.length = 0;
+      await store.acceptedHistory(USER);
+      for (const u of urls) expect(u).not.toContain('gte.');
+    });
   });
 
   it('canonicalJson is key-order independent', () => {

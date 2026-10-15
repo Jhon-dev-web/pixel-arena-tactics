@@ -251,3 +251,38 @@ Aplique a `0007` **depois da `0006`** (no projeto de desenvolvimento primeiro) e
 - **Tamanho de `characters.save_data`.** Check de banco `characters_save_data_size_check`: `pg_column_size(save_data) <= 294912` (288 KiB, o mesmo `MAX_SAVE_UPLOAD_BYTES` do cliente; um teste confere os dois números). É uma barreira grosseira (o tamanho do jsonb guardado, possivelmente comprimido), criada `NOT VALID` para não varrer linhas existentes; um save real tem de 5 a 70 KB. Depois de conferir o maior save existente, rode o `VALIDATE` que está comentado no arquivo.
 - **Reembolso/chargeback tiram o jogador da lista paga.** As visões `season_leaderboard`, `season_profession_leaderboard` e `season_my_entry` agora exigem um Passe **ativo** (`owns_ranking_pass`); a auditoria da seção 5 também. `revoked` (disputa aberta) e `refunded` saem na hora; uma disputa ganha (`charge.dispute.closed` com `status = won`) devolve o Passe e o jogador volta.
 - **`livemode`.** `entitlements` e `payment_events` guardam o modo do Stripe. A migration copia o valor dos eventos já gravados (`payload.livemode`); linhas sem evento correspondente ficam `false` e, se algum desses for um pagamento real, ajuste à mão (comando no arquivo). Compras de teste continuam dando as vantagens do Passe no jogo, mas **não contam para a meta, para o medidor do site nem para o ranking**.
+
+## 10. Reset da primeira Liga (migration `0009_first_league_reset.sql`)
+
+**Decisão do dono (2026-10-15):** a pré-temporada é um teste aberto. Quando a **primeira** Liga paga abre, todo herói **online** recomeça do zero, uma vez. As Ligas seguintes **não** resetam. O jogo offline/desktop (sem Supabase) nunca é tocado. Esta migration **não foi aplicada** por quem a escreveu: aplique-a depois da `0008`, no projeto de desenvolvimento primeiro (o plano de testes SQL está no fim do arquivo).
+
+### 10.1 O que dispara o reset (e como o jogo percebe)
+
+- `arena_private.season_goal.reset_at` fica **nulo** até a primeira temporada `ranked` virar `open`. Um único trigger (`seasons_stamp_league_reset`, função `arena_private.stamp_league_reset()`) escreve esse valor, com `where reset_at is null`, e um segundo trigger (`season_goal_reset_once`) impede que ele seja mudado ou apagado depois (`LEAGUE_RESET_IS_SET_ONCE`). Como a abertura automática (barra de Passes cheia) e a manual terminam no mesmo `update public.seasons ... status = 'open'`, **os dois caminhos disparam o reset**, e uma segunda Liga não faz nada.
+- **Abrir a Liga à mão = resetar todo mundo.** `select arena_private.open_paid_season(1);` (ou `update public.seasons set status = 'open' where number = 1;`) abre a temporada valendo, fecha a pré-temporada **e** carimba o reset no mesmo instante. Não há como abrir a Liga sem o reset. Para testar no projeto de desenvolvimento, use um projeto descartável: o valor não volta atrás.
+- Se a Liga já estiver aberta quando você aplicar a `0009`, ninguém é resetado. Para resetar mesmo assim (uma vez): `update arena_private.season_goal set reset_at = now();`.
+- O jogo lê o valor pela função pública `public.league_reset_at()` (anon e authenticated leem só o timestamp), no login e ao voltar para a aba (e a cada 5 minutos com a aba visível). O save carrega `league.epoch` = o valor do servidor do reset a que aquele herói pertence. `epoch` menor que `reset_at` (ou ausente) = herói de antes da Liga, trocado por um herói novo. Como o carimbo gravado é o **valor do servidor** (nunca o relógio do aparelho), recarregar, abrir duas abas ou ter o relógio errado não repete nem pula o reset. Sem rede e sem valor guardado, nada é tocado; com o valor guardado (ele nunca muda), o reset acontece igual.
+- Duas abas: a segunda recarrega o save do servidor, vê que já é o herói novo e o adota; se as duas gravarem ao mesmo tempo, vale a regra de sempre (o servidor ganha; `SaveConflictError`).
+
+### 10.2 O que some e o que fica
+
+- **Some:** tudo o que está no save (nível, ouro, equipamento, materiais, andares, profissões, trilha do Passe, cosméticos, estatísticas). O herói antigo é copiado **uma vez** para este aparelho (`arena-pre-league-memory.<conta>.<reset>`, com um rótulo dizendo que é só lembrança) e **nada no jogo lê essa cópia**: ela nunca é oferecida nem reimportada. Importar um save de antes do reset é **recusado online** (mensagem "esse herói é de antes da Liga"); offline/desktop e antes da Liga abrir, importar funciona como sempre.
+- **Fica:** a conta, o nome de usuário (`profiles`), o Passe (é um `entitlement` do servidor, aplicado ao herói novo) e o nome do herói.
+- **Progresso e ranking no servidor:** `progress_snapshots` nunca é apagada (é só-acréscimo). A auditoria passa a tratar como histórico **só** os snapshots criados a partir de `reset_at`: linha de base, picos, o limite de 1 snapshot por 10 minutos e a idade da conta para o ritmo (`max(conta criada, reset_at)`) recomeçam ali. Um primeiro snapshot depois do reset que esteja à frente do que se alcança desde `reset_at` é **rejeitado** (`BASELINE_AHEAD_OF_ACCOUNT_AGE` vira nível reject), por exemplo um save nível 80 de antes do reset; um herói novo passa. As flags vitalícias (`has_open_flags`) também só contam a partir do reset: quem foi marcado no teste aberto começa limpo. A função recusa (409 `league_reset_pending`, nada gravado, nada marcado) o save que declara um `epoch` anterior ao reset: é o jogo antigo que ainda não trocou o herói.
+- O ranking da pré-temporada (temporada 0) fica arquivado como já estava; a Liga nasce vazia.
+
+### 10.3 Título "Pioneiro" (obrigado aos testadores)
+
+Quem teve ao menos um snapshot **aceito** (`verdict = 'ok'`) antes de `reset_at` recebe o título cosmético "Pioneiro" (sem atributos, não negociável). A regra é lida do servidor por `public.my_pioneer()` (só `authenticated`, só a linha do próprio jogador, falso antes da Liga) e aplicada pelo jogo no momento do reset; se a pergunta falhar nessa hora, o reset segue e a pergunta se repete no próximo login (o save guarda `league.pioneerChecked`). É a opção mais simples e segura: nada é gravado no servidor, e o título é só um cosmético que o próprio jogador poderia editar de qualquer forma, sem efeito no jogo.
+
+### 10.4 Avisos ao jogador
+
+Enquanto a pré-temporada roda (o servidor devolve `reset_at` nulo), a aba da Temporada, a tela de boas-vindas e a tela de entrada mostram: "A pré-temporada é um teste aberto: quando a Liga começar, todos os heróis online recomeçam do zero. O Passe e o seu nome continuam." A página Temporada do site e o FAQ dizem o mesmo. No momento do reset o jogador vê uma tela única explicando o que aconteceu e que todos largaram juntos (com um agradecimento a mais para os Pioneiros).
+
+### 10.5 Rollback e consequências
+
+O rollback da `0009` (no cabeçalho do arquivo) remove as funções e os triggers, mas **não devolve os saves**: quem já foi resetado continua com o herói novo (a cópia local fica só no aparelho). Como `reset_at` é "uma vez só" de propósito, desligue o trigger `season_goal_reset_once` antes de limpar o valor. Depois de um rollback com o valor limpo, o jogo para de resetar (a função `league_reset_at()` some e o jogo trata a falta como "não sei": nada é tocado). Reimplante a Edge Function antiga junto: a nova depende de `league_reset_at()`.
+
+### 10.6 O que ninguém verificou
+
+Nada disto rodou contra um banco ou um Supabase de verdade: a SQL é lida por testes estáticos (`supabase/functions/_shared/__tests__/migration0009.test.ts`) e a lógica do jogo e da auditoria por testes com banco simulado. Rode o plano de testes SQL da `0009` e um ensaio completo (login com um herói antigo, abrir a Liga à mão, recarregar, duas abas) no projeto de desenvolvimento antes de produção.

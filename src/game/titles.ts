@@ -19,6 +19,8 @@ export const TITLES: TitleDef[] = [
   { id: 'title_tycoon', nameKey: 'title_tycoon', reqKey: 'req_tycoon', iconUrl: '/assets/icons/title_season_lv30.png' },
   { id: 'title_artisan', nameKey: 'title_artisan', reqKey: 'req_artisan', iconUrl: '/assets/icons/title_shadow_pathfinder.png' },
   { id: 'title_depths_walker', nameKey: 'title_depths_walker', reqKey: 'req_depths_walker', iconUrl: '/assets/icons/title_abyss_conqueror.png' },
+  // Thanks to the testers of the open pre-season (leagueReset.ts): granted when the first League resets the heroes. Decoration only, no stats.
+  { id: 'title_pioneer', nameKey: 'title_pioneer', reqKey: 'req_pioneer', iconUrl: '/assets/icons/title_season_lv30.png' },
   { id: 'title_codex_sage', nameKey: 'title_codex_sage', reqKey: 'req_codex_sage', iconUrl: '/assets/icons/title_100_floors_legend.png' },
 ];
 

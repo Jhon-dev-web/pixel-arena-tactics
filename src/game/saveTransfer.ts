@@ -1,4 +1,5 @@
 import { normalizeSave, playerLevel, defaultSave, SaveData } from './engine';
+import { isPreResetSave } from './leagueReset';
 
 // Save export / import / reset (Settings). All three are pure except the backup, which writes to this device's storage.
 //
@@ -38,11 +39,13 @@ export function buildSaveExport(save: SaveData, now: number): { text: string; fi
   return { text: JSON.stringify(file), filename: `arena-duel-save-${stamp}.json` };
 }
 
-export type ImportFailure = 'empty' | 'too_big' | 'not_json' | 'not_a_save';
+// 'pre_reset': online, after the first League reset every hero, a save from before it (a missing marker counts as before) cannot enter the game.
+export type ImportFailure = 'empty' | 'too_big' | 'not_json' | 'not_a_save' | 'pre_reset';
 export type ImportResult = { ok: true; save: SaveData; level: number; floor: number } | { ok: false; reason: ImportFailure };
 
-// The text of a file the player picked -> the save it would load, or why not. `current` supplies the Pass entitlement the imported hero keeps.
-export function parseSaveImport(text: string, current: Pick<SaveData, 'hasBattlePass'>): ImportResult {
+// The text of a file the player picked -> the save it would load, or why not. `current` supplies the Pass entitlement the imported hero keeps. `onlineResetAt` is the server's
+// first-League reset moment (ms) when the game runs online and the League has opened; omit it (offline / desktop, or the League not open yet) and every save may be imported as before.
+export function parseSaveImport(text: string, current: Pick<SaveData, 'hasBattlePass'>, onlineResetAt?: number | null): ImportResult {
   if (typeof text !== 'string' || text.trim() === '') return { ok: false, reason: 'empty' };
   if (text.length > MAX_IMPORT_BYTES) return { ok: false, reason: 'too_big' };
   let parsed: unknown;
@@ -57,12 +60,14 @@ export function parseSaveImport(text: string, current: Pick<SaveData, 'hasBattle
     return { ok: false, reason: 'not_a_save' };
   }
   const save = { ...normalizeSave(raw), hasBattlePass: !!current.hasBattlePass };
+  if (isPreResetSave(save, onlineResetAt)) return { ok: false, reason: 'pre_reset' };
   return { ok: true, save, level: playerLevel(save.xp), floor: save.highestDungeonFloor };
 }
 
 // A new hero that keeps only the Pass entitlement of the current one.
-export function resetSave(current: Pick<SaveData, 'hasBattlePass'>): SaveData {
-  return { ...defaultSave(), hasBattlePass: !!current.hasBattlePass };
+// (and its League marker: a hero the player starts over by hand is still part of the reset it belongs to, so it is never reset a second time.)
+export function resetSave(current: Pick<SaveData, 'hasBattlePass' | 'league'>): SaveData {
+  return { ...defaultSave(), hasBattlePass: !!current.hasBattlePass, league: current.league };
 }
 
 // The word typed to confirm a reset (case and surrounding spaces do not matter).

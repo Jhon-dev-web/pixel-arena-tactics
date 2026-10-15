@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { extractMetrics } from '../../supabase/functions/_shared/progress/metrics';
 import type { SaveData } from './engine';
 import { getSyncedSave } from './syncedSave';
+import { getServerResetAt, shouldHoldSubmission } from './leagueReset';
 import { FIRST_SUBMIT_DELAY_MS, EVENT_MIN_GAP_MS, SUBMIT_INTERVAL_MS, resetSubmitStatus, shouldSubmitNow, submitProgress } from './seasonRanking';
 
 // Feeds the season ranking: after login, posts the save to the server at most every 10 minutes and soon after an important event (a level gained, a boss killed).
@@ -20,6 +21,7 @@ export function useSeasonSubmit(enabled: boolean, save: SaveData): void {
       if (!shouldSubmitNow({ now, lastAttemptAt: lastAttemptAt.current, event })) return;
       const synced = getSyncedSave();
       if (!synced) return; // nothing saved yet this session: try again on the next minute tick
+      if (shouldHoldSubmission(synced, getServerResetAt())) return; // a hero from before the first League's reset: the game is about to replace it, the server would only say "wait"
       lastAttemptAt.current = now;
       inFlight.current = true;
       void submitProgress(synced, now)

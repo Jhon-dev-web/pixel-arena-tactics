@@ -11230,3 +11230,18 @@ button[data-ui]:focus-visible {
     animation: none;
   }
 }
+
+/* ===== first League reset (leagueReset.ts) ===== */
+.league-preseason-notice,
+.ap-season-reset-warning {
+  font-size: calc(var(--font-size) - 2px);
+  color: #ffd76a;
+  background: rgba(255, 215, 106, 0.08);
+  border: 1px solid #8a7a3a;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 8px 0;
+}
+.league-reset-pioneer {
+  color: #ffd76a;
+}

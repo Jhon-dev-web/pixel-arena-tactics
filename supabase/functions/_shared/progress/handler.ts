@@ -1,6 +1,7 @@
 import { AuthConfig, getAuthenticatedUserId } from '../auth.ts';
 import { json } from '../http.ts';
 import { HistoryPoint, Verdict, evaluateSnapshot } from './evaluate.ts';
+import { LEAGUE_RESET_RETRY_S, declaredLeagueEpochMs, effectiveAccountStartMs } from './league.ts';
 import { ProfessionId, ProgressMetrics, computeScore, extractMetrics, professionScores, scoreParts } from './metrics.ts';
 
 // submit-progress: the game posts its current save; the function extracts the numbers itself, judges them against the account's SERVER history and stores a snapshot
@@ -54,10 +55,15 @@ export interface ProgressStore {
   claimSlot(userId: string, intervalMs: number): Promise<boolean>;
   /** Gives a claimed slot back when nothing was stored after all (best effort). */
   releaseSlot?(userId: string): Promise<void>;
-  /** The newest snapshot of any verdict (the answer for a throttled call). */
-  lastSnapshot(userId: string): Promise<StoredSnapshot | null>;
-  /** The account's first and latest `ok` snapshots as history points. A flagged or rejected snapshot is never a baseline. */
-  acceptedHistory(userId: string): Promise<{ first: HistoryPoint | null; last: HistoryPoint | null }>;
+  /**
+   * When the first League reset every online hero (public.league_reset_at(), migration 0009), in ms; null before it. Optional so older fakes keep working: absent = never reset.
+   * Everything below that reads snapshots takes `sinceMs` = this value: a snapshot created before it is not history any more.
+   */
+  resetAtMs?(): Promise<number | null>;
+  /** The newest snapshot of any verdict (the answer for a throttled call). `sinceMs`: only snapshots created at or after it. */
+  lastSnapshot(userId: string, sinceMs?: number): Promise<StoredSnapshot | null>;
+  /** The account's first and latest `ok` snapshots as history points. A flagged or rejected snapshot is never a baseline. `sinceMs`: only snapshots created at or after it. */
+  acceptedHistory(userId: string, sinceMs?: number): Promise<{ first: HistoryPoint | null; last: HistoryPoint | null }>;
   /** Inserts the row (created_at = the database clock) and returns its id. */
   insertSnapshot(row: NewSnapshot): Promise<{ id: string }>;
   /** Hands the snapshot to the season ranking (migration 0005). Absent until the ranking is wired. */
@@ -143,8 +149,16 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
   try {
     const now = deps.nowMs();
 
+    // The first League's reset: a save that predates it is not judged at all. An honest client that has not noticed the reset yet (an open tab, an old build) is told to wait; its
+    // next login / resume check replaces the hero and the fresh one is posted. Nothing is stored, flagged or rate limited for this call.
+    const resetAtMs = deps.store.resetAtMs ? await deps.store.resetAtMs() : null;
+    const sinceMs = resetAtMs ?? undefined;
+    if (resetAtMs !== null && declaredLeagueEpochMs(blob) < resetAtMs) {
+      return json({ error: 'league_reset_pending', retryable: true, retryAfterSeconds: LEAGUE_RESET_RETRY_S }, 409, { ...cors, 'retry-after': String(LEAGUE_RESET_RETRY_S) });
+    }
+
     // Fast path for the common throttled call: no big read at all.
-    const last = await deps.store.lastSnapshot(userId);
+    const last = await deps.store.lastSnapshot(userId, sinceMs);
     if (last && now - last.createdAtMs < SNAPSHOT_MIN_INTERVAL_MS) {
       return json(answer(last, { throttled: true, retryAfterSeconds: Math.ceil((SNAPSHOT_MIN_INTERVAL_MS - (now - last.createdAtMs)) / 1000) }), 200, cors);
     }
@@ -159,16 +173,18 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
     // The atomic limit: of two parallel calls exactly one gets the slot.
     slotClaimed = await deps.store.claimSlot(userId, SNAPSHOT_MIN_INTERVAL_MS);
     if (!slotClaimed) {
-      const again = await deps.store.lastSnapshot(userId);
+      const again = await deps.store.lastSnapshot(userId, sinceMs);
       if (again) return json(answer(again, { throttled: true, retryAfterSeconds: Math.ceil(SNAPSHOT_MIN_INTERVAL_MS / 1000) }), 200, cors);
       return json({ error: 'busy', retryAfterSeconds: 5 }, 429, { ...cors, 'retry-after': '5' }); // the winner has not stored its snapshot yet
     }
 
-    const [entitled, accountCreatedMs, history] = await Promise.all([deps.store.hasActivePass(userId), deps.store.accountCreatedAtMs(userId), deps.store.acceptedHistory(userId)]);
+    const [entitled, accountCreatedMs, history] = await Promise.all([deps.store.hasActivePass(userId), deps.store.accountCreatedAtMs(userId), deps.store.acceptedHistory(userId, sinceMs)]);
     const saveRevision = character.revision;
     const evaluation = evaluateSnapshot(metrics, {
       nowMs: now,
-      accountCreatedMs,
+      // After the reset the account is as old as the League: a fresh hero is judged on its new run, never on the years of the account.
+      accountCreatedMs: effectiveAccountStartMs(accountCreatedMs, resetAtMs),
+      sinceReset: resetAtMs !== null,
       entitled,
       saveRevision,
       first: history.first,

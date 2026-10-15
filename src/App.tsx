@@ -29,6 +29,8 @@ import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, 
 import { getServerPassOwned, grantDailyPassKit, isServerPassSource, ownsAdventurerPass, purchaseAdventurerPass, setServerPassOwned } from './game/entitlements';
 import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned, hasBuyIntent, pollPassOwned, recheckServerPass, startCheckout, takeCheckoutReturn, passPurchaseEnabled } from './game/passServer';
 import { usePassEntitlementVersion } from './game/usePassEntitlement';
+import { needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
+import LeagueResetModal from './components/LeagueResetModal';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, saveSkillEffects, skillPointsAvailable } from './game/heroSkills';
@@ -429,8 +431,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // (local or Supabase — see saveRepository.ts). This still sends the WHOLE SaveData object as-is on
   // every flush, same as the old direct-localStorage write; only WHERE it's stored changed, not who's
   // trusted to compute gold/gear/RNG/timers (that's a later phase, see docs/backend-phase1.md).
+  const leagueSwapRef = useRef(false);
   const flushSave = useCallback(async () => {
     if (!dirtyRef.current) return;
+    // While the first League's reset swaps the hero, an autosave of the OLD hero must not land on top of it: stay dirty, the next tick saves whatever is current then.
+    if (leagueSwapRef.current) return;
     dirtyRef.current = false;
     setSaveStatus('saving');
     try {
@@ -1335,6 +1340,74 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     void flushSave();
   };
 
+  // The first League (leagueReset.ts): on login GameShell already settled the hero; this keeps it true for a tab that stays open or comes back. It asks the server for the reset
+  // moment, adopts the SERVER's save (another tab may have settled it already) and replaces a hero from before the reset by a fresh one, once. Offline / desktop: never runs.
+  const adoptLeagueSave = (next: SaveData, revision: number) => {
+    saveRef.current = next;
+    revisionRef.current = revision;
+    setSyncedSave(null);
+    setSave(next);
+    setShopOpen(false);
+    setForgeOpen(false);
+    setBagOpen(false);
+    setDungeonOpen(false);
+    setHuntOpen(false);
+    setBattleFloor(null);
+    setBattlePassOpen(false);
+    setWelcome(null);
+    setRewardHidden(false);
+    setActiveView('home');
+    setTutorialStep(next.tutorial.initial === 'pending' || next.tutorial.initial === 'in_progress' ? next.tutorial.initialStep : null);
+    setContextTutorial(null);
+    setActiveTooltip(null);
+    setTooltipQueue(TOOLTIP_IDS.filter((id) => !next.seenTooltips.includes(id)));
+  };
+  const adoptLeagueRef = useRef(adoptLeagueSave);
+  adoptLeagueRef.current = adoptLeagueSave;
+  useEffect(() => {
+    if (!userId || !configured) return;
+    let stopped = false;
+    let busy = false;
+    const check = async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        const resetAt = await readLeagueResetAt();
+        if (stopped || typeof resetAt !== 'number') return;
+        const local = saveRef.current;
+        if (!needsLeagueReset(local, resetAt) && !needsPioneerCheck(local, resetAt)) return;
+        leagueSwapRef.current = true;
+        const server = await repository.load();
+        if (stopped || !server) return;
+        const outcome = await settleLeague(repository, server, { accountId: userId, resetAt, applyPass: (s) => applyServerPass(s, getServerPassOwned(), Date.now()) });
+        if (stopped) return;
+        adoptLeagueRef.current(outcome.save, outcome.revision);
+      } catch {
+        /* the server could not be asked or written: the next resume or tick tries again */
+      } finally {
+        leagueSwapRef.current = false;
+        busy = false;
+      }
+    };
+    void check();
+    const every = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void check();
+    }, 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void check();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      stopped = true;
+      window.clearInterval(every);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [userId, configured, repository]);
+  const dismissLeagueNotice = () => {
+    const s = saveRef.current;
+    if (s.league) commitSave({ ...s, league: { ...s.league, noticeSeen: true } });
+  };
+
   // §22: try to flush whatever's pending before actually signing out, so a quick "sign out right after
   // an action" can't lose that action. Best-effort — signOut still proceeds even if the flush fails.
   const handleSignOut = async () => {
@@ -2169,6 +2242,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           }}
         />
       )}
+
+      {save.league && !save.league.noticeSeen && <LeagueResetModal pioneer={save.cosmetics.includes(PIONEER_TITLE_ID)} onClose={dismissLeagueNotice} />}
 
       {claimAllLines && <ClaimAllModal lines={claimAllLines} onClose={() => setClaimAllLines(null)} />}
 

@@ -73,7 +73,7 @@ export function renderSite(lang) {
   labels.tableLabel = pick(seasonPage.generalTable);
   const rankingStart = live ? `<p class="rank-empty" data-kind="loading">${pick(seasonPage.loading)}</p>` : failedRows(labels);
   const seasonBody = intro(pick(seasonPage.eyebrow), pick(seasonPage.title), pick(seasonPage.lead))
-    + `<section class="section narrow league-steps" aria-labelledby="steps-title"><h2 id="steps-title">${pick(seasonPage.stepsTitle)}</h2><ol class="steps"><li>${pick(seasonPage.step1)}</li><li>${pick(seasonPage.step2)}</li><li>${pick(seasonPage.step3)}</li></ol></section>`
+    + `<section class="section narrow league-steps" aria-labelledby="steps-title"><h2 id="steps-title">${pick(seasonPage.stepsTitle)}</h2><ol class="steps"><li>${pick(seasonPage.step1)}</li><li>${pick(seasonPage.step2)}</li><li>${pick(seasonPage.step3)}</li></ol><div class="notice" data-reset-notice><p><strong>${pick(seasonPage.resetNotice)}</strong></p></div></section>`
     + `<div data-season-root data-lang="${lang}" data-labels="${esc(JSON.stringify(labels))}" data-supabase-url="${live ? esc(config.supabaseUrl) : ''}" data-anon-key="${live ? esc(config.supabaseAnonKey) : ''}">
 <section class="section narrow season-meter" aria-labelledby="meter-title"><h2 id="meter-title">${pick(seasonPage.meterTitle)}</h2>
 <div data-meter-closed hidden><div class="meter-bar" role="img" aria-label="${esc(pick(seasonPage.goalLine))}" data-meter-bar><span data-meter-fill></span></div>

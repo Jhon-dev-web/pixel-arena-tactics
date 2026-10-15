@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { t } from '../locales';
 import { useAuth } from '../auth/AuthContext';
+import PreseasonResetNotice from './PreseasonResetNotice';
 
 // Unauthenticated gate (Phase 1 §10). Reuses the existing .modal / .result-btn visual language instead
 // of a redesign, laid out full-screen since there's no game behind it to show yet.
@@ -35,6 +36,7 @@ export default function AuthScreen() {
       <div className="modal auth-modal">
         <h1 className="modal-title">{t('auth.title')}</h1>
         <p className="auth-subtitle">{t('auth.subtitle')}</p>
+        {configured && <PreseasonResetNotice className="auth-subtitle league-preseason-notice" />}
 
         {!configured && <p className="auth-error">{t('auth.notConfigured')}</p>}
 

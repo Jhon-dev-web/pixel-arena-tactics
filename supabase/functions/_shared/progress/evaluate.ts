@@ -11,6 +11,7 @@ import { PEAK_KEYS, Peak, ProgressMetrics, levelPosition, maxPeak, peakOf } from
 //                    MINING_XP_RATE, WOODCUTTING_XP_RATE, GARDENING_XP_RATE (profession skill XP per server hour, with _TOTAL too),
 //                    KILLS_RATE, GOLD_RATE, DUNGEON_RUNS_RATE, DUNGEON_FLOORS_RATE, BOSSES_RATE, UNIQUES_RATE, ACHIEVEMENTS_RATE (each also with the _TOTAL suffix, against the first snapshot)
 //   FLAG only:       RESTORED_OLDER_SAVE (a counter went down), SAVE_REVISION_BACKWARDS, PASS_FLAG_WITHOUT_ENTITLEMENT, BASELINE_AHEAD_OF_ACCOUNT_AGE
+//                    (BASELINE_AHEAD_OF_ACCOUNT_AGE is REJECT-level once the first League has reset the heroes: input.sinceReset)
 //   (the REJECT-capable ones answer FLAGGED when the measure is between its flag value and its reject value, REJECTED above.)
 //   NOTE only (the verdict stays ok, the player stays ranked, but the owner's audit lists the account first): FAST_LEVEL_PACE, FAST_FLOOR_PACE, FAST_DEPTH_PACE (and _TOTAL):
 //   progress faster than PACE_FAST_FACTOR (1.3x) the fastest simulated seed but not above the flag value.
@@ -34,6 +35,11 @@ export interface EvalInput {
   /** The server's answer to "does this account own the Pass right now" (never the save's flag). */
   entitled: boolean;
   saveRevision: number;
+  /**
+   * true once the first League has reset every online hero (league_reset_at is set). `accountCreatedMs` is then already max(account created, reset_at) and `first` / `previous` only
+   * hold snapshots from the reset on, so a first snapshot ahead of what is reachable since the reset is a pre-reset save coming back: nothing legitimate can be there, REJECT (not just flag).
+   */
+  sinceReset?: boolean;
   /** The account's first and latest ACCEPTED snapshot: only `ok` snapshots count (a flagged or rejected one is never a baseline). null when there is none yet. */
   first: HistoryPoint | null;
   previous: HistoryPoint | null;
@@ -178,7 +184,7 @@ export function evaluateSnapshot(cur: ProgressMetrics, input: EvalInput): Evalua
       cur.deepestDepth > PACE_FLAG_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst ||
       cur.secondsPlayed > secondsAllowed
     ) {
-      f.add('BASELINE_AHEAD_OF_ACCOUNT_AGE', 'flag');
+      f.add('BASELINE_AHEAD_OF_ACCOUNT_AGE', input.sinceReset ? 'reject' : 'flag');
     }
     return { verdict: f.verdict, reasons: f.codes, peak: peakOf(cur) };
   }
