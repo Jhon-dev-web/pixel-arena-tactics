@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import en from '../../locales/en.json';
 import pt from '../../locales/pt.json';
 import { defaultSave, normalizeSave, SaveData } from '../engine';
@@ -166,10 +166,14 @@ describe('the reset happens exactly once per save', () => {
   });
 
   it('building the hero directly: everything but the name is the default hero', () => {
+    // Both heroes stamp Date.now(); freeze the clock so they cannot land on different milliseconds.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-01T00:00:00Z'));
     const hero = buildLeagueHero({ heroName: 'Aldric' }, R, false);
     expect({ ...hero, heroName: 'Hero', league: undefined }).toEqual({ ...defaultSave(), league: undefined });
     expect(hero.cosmetics).toEqual([]);
     expect(buildLeagueHero({ heroName: '' }, R, null).heroName).toBe('Hero');
+    vi.useRealTimers();
   });
 });
 
