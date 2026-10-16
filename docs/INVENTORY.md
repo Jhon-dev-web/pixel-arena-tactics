@@ -165,3 +165,22 @@ Preparação para o mercado de jogadores (integração com a Steam, ainda não e
 **Não duplica Ouro:** criar tira (valor + taxa) e entrega uma Bolsa; abrir tira a Bolsa e devolve o valor, uma vez; criar e abrir dá sempre -taxa (`goldPouch.test.ts` roda 400 passos aleatórios de criar / abrir / guardar / tirar / descartar e confere que Ouro + Ouro nas Bolsas + taxas + o descartado é constante). Descartar uma Bolsa destrói o Ouro dela. **Fora do escopo:** exportar e importar o save copia o herói inteiro (Ouro e Bolsas juntos, como qualquer item); o que impede duplicar por aí é o servidor, que ainda não existe.
 
 **Mercador Atacadista** (`wholesale.ts`): compra só material, só da mochila (nunca do Baú), sem orçamento diário de Ouro; abre com o chefe do andar 75. Detalhes de preço em `docs/BALANCE_CHANGES.md`, Rodada 18. A venda é sempre manual (`wholesale.test.ts` garante que nenhum módulo de jogo chama a venda sozinho): por pilha com quantidade 1 / 10 / tudo / outra, ou uma lista marcada com confirmação; material acima de comum pede uma segunda confirmação ("Outros jogadores pagariam mais por isto no mercado, quando ele abrir").
+
+## 10. Duas variantes de material: o normal e o negociável (rodada 23)
+
+Todo material que uma coleta produz (minérios, madeiras, plantas da Horta e drops da Caça: 32) existe em **duas variantes idênticas em uso**. A normal não é vendida a jogadores (como sempre). A **negociável** é uma queda ocasional do **mesmo** material que o servidor sorteia e que pode ser vendida no mercado (`docs/MARKET_FOUNDATION.md`, `docs/BALANCE_CHANGES.md` Rodada 23). Receita, refino, pedido, mercador e Atacadista tratam as duas como **um** material.
+
+| Coisa | Regra |
+| --- | --- |
+| Representação | `save.materials[id]` continua sendo o **total** das duas; `save.tradeableMaterials[id]` é a parte negociável (sempre ≤ o total). Por isso toda checagem de "tem material suficiente" e todo redutor do jogo continuam como eram |
+| Pilhas | as duas são **pilhas separadas** na mochila: espaços próprios (`ceil(normais / 99) + ceil(negociáveis / 99)`, `stockSlots`); o mesmo ícone, um **canto dourado e o losango** (o sinal do mercado) no ladrilho, o selo "Negociável" no detalhe e um filtro **"Negociável"** no inventário (pilhas negociáveis e peças certificadas pelo servidor) |
+| Baú | as negociáveis **não vão ao Baú** (são para vender); "Guardar tudo" move só as normais |
+| Quem cria | **só o servidor** (`docs/MARKET_FOUNDATION.md`); offline e desktop nunca têm variante negociável; um save importado perde as marcas ao carregar |
+| Gasto | receita, refino, pedido, descarte e venda a NPC gastam as **normais primeiro** e só usam as negociáveis quando as normais acabam (`reconcileTradeable`, em um lugar só, depois de qualquer mudança do save); uma opção nas Configurações inverte a ordem ("Gastar os negociáveis antes dos comuns") |
+| Pergunta | a **primeira vez** que uma mudança gastaria unidades negociáveis o jogo pergunta ("Isso vai gastar N Minério de Ferro negociável..."); depois não pergunta de novo (a opção "Perguntar de novo antes de gastar" volta a perguntar). **Vender a um NPC sempre pergunta** (o preço é o do material normal; outros jogadores pagariam mais) |
+| Servidor fora do ar | **gastar** unidades negociáveis é bloqueado com uma mensagem; as normais seguem normais |
+| Mercador comum e Atacadista | aceitam a variante negociável **pelo mesmo preço** do material normal (sem prêmio, para não inflar o Ouro); o orçamento diário e a curva do Atacadista contam as unidades igual |
+| Pilha escolhida | "tudo" numa pilha significa tudo **daquela** pilha (`stackQty`): vender ou descartar "tudo" da pilha normal nunca leva as negociáveis, e o contrário vale para a pilha negociável |
+| Espaço | a pilha negociável conta no espaço da mochila como qualquer pilha; se a mochila está cheia, uma conversão que exigiria um espaço a mais para dividir a pilha marca só o que cabe |
+
+**Testes:** `tradeableMaterials.test.ts` (quais materiais, pilhas e espaços, ordem de gasto e a opção que a inverte, a pergunta, o bloqueio, mercador e Atacadista com o mesmo preço, o Baú, conversão e entrega, offline nunca negociável, saves antigos), `tradeableActions.test.ts` (da coleta ao servidor e de volta, a queima sem repetição, a reconciliação), `materialServer.test.ts`, `materials.test.ts` (servidor) e `marketLots.test.ts`.

@@ -169,3 +169,27 @@ As funções (Deno), as três migrations (SQL), o nó RPC, uma carteira real (Ph
 - **O servidor não vê o save.** Quem chama a API diretamente só consegue anunciar certificados que o servidor realmente emitiu e limitou; o que fica de fora é o custo local de forja (materiais, Ouro), que o servidor não enxerga.
 - **Volatilidade do SOL.** O preço é em SOL: a taxa e o que o vendedor recebe valem mais ou menos dólares conforme o mercado. A linha "≈ US$" é só informativa e pode estar até 5 minutos atrasada.
 - **Carteira ligada a um endereço que o jogador perde** (perdeu a carteira): a conta fica com ela ligada até ele assinar com outra (a troca exige assinar com a nova carteira, não com a antiga) e sem anúncio ou reserva ativos.
+
+## 12. Lotes de materiais negociáveis (rodada 23)
+
+Além de itens e Bolsas de Ouro, o mercado vende **lotes de material negociável** (`docs/MARKET_FOUNDATION.md`, "Materiais negociáveis"). O SQL é a parte B de `supabase/migrations/0015_tradeable_materials.sql` (**não aplicada**, depois da 0013 e da 0014).
+
+| Regra | Valor |
+| --- | --- |
+| O que é uma oferta | **uma quantidade de UM material** (de 1 a 10 000 unidades, `MARKET_RULES.maxMaterialQtyPerListing`) |
+| Compra **parcial** | **não existe**: o lote é comprado **inteiro** (escolha minha, a mais simples e segura: a mesma reserva, a mesma transação de pagamento e a mesma venda de um item; quem quer vender em partes faz vários lotes) |
+| Preço | **por unidade, em SOL, até 6 casas** (micro-SOL: 0,000001 SOL = 1 000 lamports); o **lote inteiro** vale no mínimo **0,001 SOL** e no máximo 50 SOL (`isMaterialTotalLamports`); total = unidade x quantidade x 1 000 lamports, sempre inteiro |
+| Taxa | 5% sobre o total do lote, arredondada para cima ao lamport (a mesma `splitLamports`); as duas partes somam o total exato |
+| Limites | os 20 anúncios ativos e 20 por dia do vendedor são **compartilhados** com itens |
+| Quem pode anunciar | só as unidades **que estão no save** (`qty - pending`): unidades recém-compradas, ainda chegando, não podem ser anunciadas; conta com marca de auditoria não anuncia |
+| Anunciar | o servidor **tira as unidades do saldo do vendedor e as guarda no anúncio** (escrow); só depois o jogo as tira da mochila. O pedido leva um `requestId` guardado no navegador (`mintIntents`): repetir o mesmo lote devolve o mesmo anúncio, nunca anuncia duas vezes |
+| Comprar | reservar o anúncio (30 min), pagar UMA transação com as duas transferências, o servidor verifica na cadeia e **entrega o lote inteiro ao saldo do comprador como entrega pendente**; o jogo adiciona ao save e confirma (`ack`) só depois de o servidor confirmar um save que já tem as unidades |
+| Cancelar / vencer (30 dias) | as unidades voltam ao vendedor como entrega pendente; cancelar um anúncio reservado é recusado |
+| Reinicialização da Liga | os lotes **abertos** dos heróis substituídos são cancelados e o escrow é descartado; lotes reservados são deixados |
+| Aparece na lista pública | `market_listings_public` (a visão que `anon` lê) mostra `kind = 'material'`, o material, a quantidade e o preço da unidade; **nunca** o vendedor nem o endereço |
+
+**Telas:** a categoria **Materiais** em Comprar (cartões do novo sistema de design, ordenados pelo preço **por unidade**), o formulário do lote em Vender (quantidade com passos e "Máx", preço por unidade com 6 casas, total do lote, taxa e o que o vendedor recebe), Minhas ofertas e Histórico mostram quantidade e preço por unidade, e o detalhe da pilha negociável no inventário tem **"Vender no Mercado"**. Tudo em `pt` e `en` com paridade (`locales/market.ts`).
+
+**Passos do dono:** os de `docs/MARKET_FOUNDATION.md` (aplicar a 0015, publicar `material-claim` e `material-sync`, **reimplantar `market-list`, `market-buy` e `market-my`**). Nada muda nos segredos nem em `VITE_MARKET_ENABLED`. O mercado continua só na versão web: o código novo do mercado está no mesmo pedaço carregado sob demanda e `npm run check:desktop` tem dois marcadores novos (`list_material`, `mk-lot-more`).
+
+**Não verificado:** a SQL (parte B) nunca foi executada, a carteira real nunca foi usada, a Solana real nunca foi chamada. Os testes (`materialMarket.test.ts`, `marketLots.test.ts`, `migration0015.test.ts`) seguem a máquina de estados da SQL em memória e incluem um teste de propriedade com centenas de passos aleatórios (anunciar, cancelar, vencer, comprar, confirmar) que exige que as unidades sejam sempre exatamente as que o servidor emitiu.

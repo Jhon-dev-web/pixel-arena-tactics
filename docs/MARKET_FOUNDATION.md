@@ -14,7 +14,8 @@ Código: `supabase/migrations/0010_item_certificates.sql` (não aplicada), `supa
 | Bolsa de Ouro | sempre, com o valor de face | `pouch` |
 | Peça Comum ou Rara | nunca (não é negociável), mas a rolagem também vem do servidor | - |
 | Peça forjada com o Selo do Ferreiro | nunca (nasce vinculada) | - |
-| Relíquias, materiais, consumíveis | nunca | - |
+| Relíquias e consumíveis | nunca | - |
+| Materiais | o material **normal** nunca; a variante **negociável** não é um certificado: é um **saldo por conta e material** que só o servidor cria (ver "Materiais negociáveis" abaixo) | `claim` (livro-caixa `material_ledger`) |
 
 Cada certificado guarda: dono, tipo (`gear`, `unique`, `gold_pouch`), modelo, raridade, tier, substatus rolados, nível de refino (sempre 0 na emissão), valor em Ouro (Bolsa), origem, estado (`held`, `listed`, `transferred`, `burned`, `revoked`), hora do servidor e um hash do conteúdo. O jogador só consegue **ler** os próprios certificados. Ninguém no cliente escreve neles (RLS e `revoke`, e uma trigger impede mudar o conteúdo depois). Todo evento (emitir, vincular, listar, transferir, queimar, revogar) fica numa tabela de auditoria que só cresce.
 
@@ -87,6 +88,66 @@ Tudo o que já existe (Épicas, Lendárias, únicos, Bolsas) continua utilizáve
 3. Conferir que `npm run item:tables` não muda `supabase/functions/_shared/items/tables.ts` (o teste `itemTables.test.ts` falha se o arquivo ficar velho).
 4. Ver a auditoria: `select * from arena_private.item_account_flags order by created_at desc;` e `select * from public.item_certificates where user_id = '<id>';`.
 5. Nada disso depende de `VITE_SEASON_RANKING_ENABLED`: o mint funciona sem o ranking.
+
+## Materiais negociáveis: um saldo do servidor (rodada 23)
+
+Todo material que uma coleta produz (os 5 minérios, as 5 madeiras, as 12 plantas da Horta e os 10 drops da Caça: **32**) existe em duas variantes idênticas em uso: a **normal** (não negociável, como sempre) e uma **queda ocasional do mesmo material que pode ser vendida no mercado de jogadores**. As regras do jogo (`docs/INVENTORY.md`, seção 10) e a oferta (`docs/BALANCE_CHANGES.md`, Rodada 23) estão nesses arquivos; aqui está só a parte do servidor.
+
+**Por que um saldo e não um certificado.** Um certificado é uma linha por item único. Um material é fungível: 30 000 unidades de ferro não são 30 000 linhas. O servidor guarda **um saldo por conta e material** (`public.material_balances`: `qty`, `pending`, `seq`) e um livro-caixa que só cresce (`public.material_ledger`). O cliente só consegue **ler** as próprias linhas (RLS e `revoke`); ninguém no cliente escreve. Só o servidor cria unidades negociáveis (`material_credit`) e só o servidor as move.
+
+| Coisa | Quem escreve | O que guarda |
+| --- | --- | --- |
+| `material_balances` | só funções do servidor | `qty` = toda unidade negociável da conta (no save, ou esperando para entrar; **não** as que estão num lote anunciado); `pending` = a parte que o save ainda não tem (compra, lote cancelado ou vencido); `seq` = quantas entregas já houve |
+| `material_ledger` | só funções do servidor | uma linha por mudança (`claim`, `burn`, `list`, `unlist`, `sale`, `deliver`, `reset`), com o saldo depois; atualizar a linha é recusado |
+| `material_requests` | só funções do servidor | o `requestId` de cada coleta, queima e confirmação com a resposta: a mesma requisição dá sempre a mesma resposta |
+
+### O caminho de uma coleta
+
+1. O jogo (versão web, com conta) coleta como sempre. Os redutores de Caça, Mineração, Corte de Madeira e Horta deixam um **relato** no save (`materialClaims`): a atividade, o lugar (zona ou nível), o tempo que cobre e as unidades que entraram na mochila. O id é determinístico; o relato não leva nenhum resultado.
+2. `material-claim` (JWT obrigatório; o usuário vem só do JWT) confere o relato com a **mesma abordagem de plausibilidade** do servidor de itens: o relógio do herói (Caça, Mineração e Corte dividem um balde de 1 h por hora, até 10 h), o relógio das parcelas da Horta, e o teto de unidades por hora de cada material (`materials/tables.ts`, **gerado** por `npm run material:tables` e conferido por teste contra o motor real). Zona nova demais para a idade da conta é recusada e marcada.
+3. O servidor **sorteia** (Binomial por unidade, `secureRng`, a chance de `materials/rates.ts`: 3% / 5% / 8%), tira do **teto diário** do material (balde atômico, unidades inteiras) e **credita o saldo** (`material_credit`, uma instrução SQL com trava por usuário). Responde quantas unidades de cada material são negociáveis.
+4. O jogo marca essa quantidade de unidades **que já estão na mochila** como negociáveis (`tradeableMaterials`) e o relato sai da fila **no mesmo passo**. Servidor fora do ar: o relato fica no save e é reenviado com o mesmo id (nunca sorteia duas vezes).
+
+O cliente **não** envia nem pode fazer o servidor aceitar nenhum número do resultado (os campos que nomeiam um resultado são ignorados; um teste cobre isso). Uma conta sem sessão não rola nada.
+
+### Gastar, vender ao NPC, descartar
+
+Depois de qualquer mudança do save, o jogo calcula quantas unidades negociáveis foram gastas (normais primeiro, salvo a opção do jogador) e enfileira a **queima** (`tradeableBurns`). O envio é em lote (`material-sync` ação `burn`): cada lote tem **um `requestId` guardado no save até o servidor responder**, então uma resposta perdida nunca queima duas vezes. A queima nunca leva o saldo abaixo de zero e nunca deixa `pending` acima de `qty`. **Servidor inalcançável: gastar unidades negociáveis é bloqueado com uma mensagem** (as normais continuam funcionando).
+
+### Reconciliar ao carregar (e de tempos em tempos)
+
+`useTradeableSync` (web, com conta) roda ao carregar, a cada 5 minutos e ao voltar à aba: manda as queimas, lê o saldo e faz o save concordar. **A pilha negociável nunca passa do saldo**: o excesso vira unidades normais (o total não muda). Um save editado para ter unidades negociáveis que o servidor nunca emitiu perde essa marca. Unidades que o servidor entregou (compra, lote cancelado ou vencido) entram no save até onde o saldo e a mochila deixam, e **só são confirmadas ao servidor (`ack`) quando o save que o SERVIDOR confirmou já tem as unidades**: uma queda entre "adicionou" e "salvou" nunca perde nada (o servidor continua contando como pendente e a próxima passada adiciona de novo). Uma confirmação perdida, repetida, não adiciona duas vezes (a pilha já está no saldo).
+
+### Limites (fonte única: `supabase/functions/_shared/materials/bounds.ts`)
+
+| Limite | Valor | Fonte |
+| --- | --- | --- |
+| Relógio do herói (Caça + Mineração + Corte) | 1 h por hora do relógio do servidor, até 10 h | `battlePass.capHours` |
+| Relógio das parcelas da Horta | 6 parcelas x a velocidade das duas maestrias; guarda um conjunto da planta mais longa | `garden.ts`, `tunables mastery` |
+| Unidades por hora, por material | Caça: rolagens máximas x chance x melhor profundidade x melhor subnível x Passe x Faro x Isca; coleta: o poder máximo da profissão x todos os rendimentos x o maior evento; Horta: uma parcela | gerado por `npm run material:tables`; testes rodam o motor real |
+| Teto diário por material | **2x o melhor dia do jogador honesto rápido x a chance**, mínimo 3; o balde rende teto/24 por hora e guarda um dia | `rates.ts HONEST_PEAK_DAY_UNITS` (de `npm run sim:long`), `items/bounds.ts MARGIN` |
+| Unidades por relato | 100 000 | `bounds.ts` |
+
+Marcas na auditoria (`arena_private.item_account_flags`; uma conta com marca **não consegue anunciar**): `LIMIT_MATERIAL_TIME`, `MATERIAL_TIME_EXCESS`, `MATERIAL_UNITS_EXCESS`, `LIMIT_MATERIAL_DAY`, `MATERIAL_ZONE_TOO_EARLY`. Recusas: `bad_request`, `unknown_place`, `too_early`, `unavailable`.
+
+### O que um trapaceiro ainda consegue
+
+- **Editar o save para ter unidades negociáveis:** a próxima reconciliação as zera (viram normais); e para anunciar, o servidor confere o próprio saldo.
+- **Não mandar a queima e gastar mesmo assim:** o jogador usa a unidade **e** pode vendê-la. Isso só vale para unidades que o servidor emitiu e o servidor limita a emissão (o teto diário); material normal já é editável no save, então nada de novo é criado.
+- **Anunciar e não tirar as unidades do save:** a reconciliação as transforma em unidades normais (o mesmo que editar material normal).
+- **Relatar o máximo o dia inteiro:** recebe no máximo o teto diário por material (~2x o jogador honesto mais rápido) e é marcado.
+
+### Offline e desktop
+
+Sem servidor, **nenhuma variante negociável existe**: os redutores não enfileiram relato (`isServerItemAuthority()`), e um save importado com unidades negociáveis as perde ao carregar (`stripTradeable`). Saves antigos carregam como sempre, sem nenhum campo novo.
+
+### Passos do dono (nada foi aplicado nem publicado)
+
+1. Aplicar `supabase/migrations/0015_tradeable_materials.sql` **depois da 0014** (primeiro no projeto de desenvolvimento) e rodar o PLANO DE TESTE SQL (A a N) no fim do arquivo. Ela **substitui** `item_take_tokens` (ganha `whole`), `market_cancel_listing`, `market_record_payment`, `market_release_stale` e a função da reinicialização da Liga, e a visão `market_listings_public`. Reversão: bloco `ROLLBACK` no topo.
+2. Publicar as funções novas `material-claim` e `material-sync` (verificação de JWT ligada, o padrão; segredo `APP_ORIGIN`). **Reimplantar também `market-list`, `market-buy` e `market-my`** (mudaram: lotes).
+3. Conferir que `npm run material:tables` não muda `supabase/functions/_shared/materials/tables.ts` (o teste `materialServer.test.ts` falha se o arquivo ficar velho).
+4. Ver a auditoria: `select * from public.material_balances where user_id = '<id>';`, `select * from public.material_ledger where user_id = '<id>' order by id desc;` e `arena_private.item_account_flags`.
+5. Para mudar a oferta: editar `TRADEABLE_CHANCE` em `materials/rates.ts` (e `HONEST_PEAK_DAY_UNITS` se o jogo mudar a coleta; `npm run sim:materials` imprime a tabela) e reimplantar `material-claim`. Nada no jogo precisa mudar.
 
 ## O mercado em SOL na Solana (rodada seguinte, já escrita)
 

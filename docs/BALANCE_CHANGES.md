@@ -2271,3 +2271,367 @@ A tabela de ritmo agora é a da seed mais rápida entre todas as políticas leg�
 - **Dono comum a 82,7 no dia 60:** abaixo da faixa de 85 a 90; o esperto (PS, 84,9) e o guloso (89,0) ficam nela. Subir o XP da zona 4 para levar o P a 85 faz o comprador passar de 95.
 - **Jogador sem Passe:** perde 2,5 níveis (73,3 → 70,8) no dia 60 porque a zona 4 só abre com o nível 60 (dia 41, antes 31). É o preço do portão; o ranking da Liga é só de quem tem o Passe.
 - O painel de eventos ocupa a coluna lateral da Home; a tela de Caça ganhou duas linhas de texto (XP por sub-nível e CP do próximo nível). O visual foi deixado para quem cuida do estilo.
+
+## Rodada 23 — materiais negociáveis (2026-10-16)
+
+Decisão do dono (2026-10-16): quem compra continua à frente (sem espera no mercado, o item comprado serve na hora), e **todo material de receita passa a existir em duas variantes**: o **normal** (não negociável, como sempre) e uma **queda ocasional do MESMO material que pode ser vendida no mercado de jogadores** ("negociável"). Em uso são idênticos (contam como o mesmo material em toda receita, refino, pedido e venda ao mercador); a única diferença é o mercado. O objetivo é deixar os jogadores trocarem material sem inundar o mercado e, de quebra, poupar tempo de coleta de quem não compra. "Vale até pro mercador": os mercadores NPC aceitam a variante negociável **pelo mesmo preço** do material normal (sem prêmio, para não inflar o Ouro).
+
+O código está descrito em `docs/MARKET_FOUNDATION.md` (servidor), `docs/MARKET_SOLANA.md` (lotes no mercado) e `docs/INVENTORY.md` (as duas pilhas). Esta rodada mexe em **oferta**, não em nenhum número do jogo: o que muda é que 3% a 8% das unidades coletadas passam a poder ser vendidas.
+
+### 1. Quais materiais, e quanto
+
+Os **32** materiais que uma coleta produz: os 5 minérios, as 5 madeiras, as 12 plantas da Horta e os 10 drops da Caça. Barras, cabos, Pó de Refino e os materiais da loja (aço, couro, essência, escamas) **nunca** têm variante negociável: são feitos ou comprados, não coletados (uma unidade negociável gasta numa fornalha vira uma barra comum).
+
+**Uma tabela só** (`supabase/functions/_shared/materials/rates.ts`, `TRADEABLE_CHANCE`): a chance de cada unidade coletada ou dropada ser negociável.
+
+| Classe | Chance | Materiais |
+| --- | ---: | --- |
+| comum | **3%** | minério de cobre, minério de ferro, madeira comum, carvalho, erva medicinal, erva energética, cardo de ferro, capim veloz, farrapo de couro, fragmento de osso |
+| incomum | **5%** | minério de prata, minério de ouro, ébano, madeira élfica, raiz amarga, flor dourada, cogumelo rubro, sálvia prateada, garra demoníaca, sangue concentrado, estilhaço da Fenda |
+| rara | **8%** | obsidiana bruta, madeira ancestral, flor carmesim, lírio lunar, orquídea do crepúsculo, raiz anciã, núcleo demoníaco, cristal corrompido, chifre do demônio, coração de sangue, **tutano abissal** |
+
+O tutano abissal é uma queda incomum da última zona, mas o dono o conta entre as raras ("cristais, corações, tutano"): fica em 8% (a única exceção, `RATE_EXCEPTIONS`).
+
+### 2. Como a oferta foi medida
+
+`npm run sim:long` com `LONG_SCEN=A,P,PM,PW,PG,XPM LONG_DAYS=60 LONG_SEEDS=3` (o jogador comum sem Passe; o dono do Passe; os três especialistas com Passe, em minério, madeira e Horta; e o minerador que visita a cada 6 horas) e depois `npm run sim:materials`, que lê as execuções e multiplica o que cada cenário **coletou de cada material** (a coluna "produzido" do livro-caixa do simulador) pela chance do material. As chances são esperanças, não sorteios: o servidor sorteia de verdade (Binomial por unidade, `secureRng`).
+
+A população usa uma mistura declarada: **80% jogador comum (A), 15% dono do Passe (P), 5% especialistas (PM, PW e PG, 1,7% / 1,7% / 1,6%)**. O leitor pode trocar a mistura com `SUPPLY_MIX="A:0.9,P:0.1" npm run sim:materials`. Os totais crescem linearmente com o número de jogadores (a coluna "por jogador" é a mesma nas três populações): **a oferta não depende de haver ou não demanda**.
+
+### 3. Um jogador: o que ele encontra de negociável
+
+| Cenário | Dia 7 | Dia 30 | Dia 60 | Parcela das unidades coletadas que é negociável (dia 60) |
+| --- | ---: | ---: | ---: | ---: |
+| **A** (comum, sem Passe) | 79 | 1 027 | **2 224** | 4,5% |
+| **P** (dono do Passe) | 244 | 2 092 | **4 615** | 4,6% |
+| PM (especialista em minério, Passe) | 283 | 2 701 | 6 110 | 7,8% |
+| PW (especialista em madeira, Passe) | 283 | 2 704 | 6 113 | 7,8% |
+| PG (especialista em Horta e Caça, Passe) | 319 | 2 238 | 5 048 | n/d |
+| XPM (minerador que visita a cada 6 h) | 464 | 3 420 | 7 526 | 7,9% |
+
+(Unidades negociáveis esperadas, somadas em todos os materiais.) A parcela é pequena por unidade (3% a 8%), mas **o jogo coleta muito**: o jogador comum junta ~49 000 unidades em 60 dias, então 4,5% são ~2 200 unidades. Os especialistas puxam a média para cima porque coletam obsidiana e madeira ancestral (8%): **97% das 7 526 do XPM são obsidiana**.
+
+### 4. O servidor: quantas unidades negociáveis existem
+
+Mistura de 80% A, 15% P e 5% especialistas. Totais (esperados) de **todos os materiais**:
+
+| Jogadores | Até o dia 7 | Até o dia 30 | Até o dia 60 | Por jogador (dia 60) |
+| ---: | ---: | ---: | ---: | ---: |
+| 100 | 11 487 | 126 297 | 275 995 | 2 760 |
+| 1 000 | 114 866 | 1 262 973 | 2 759 952 | 2 760 |
+| 10 000 | 1 148 657 | 12 629 734 | 27 599 518 | 2 760 |
+
+Os maiores por material (por jogador, dia 60): sangue concentrado 480, garra demoníaca 438, fragmento de osso 338, farrapo de couro 260, núcleo demoníaco 148, obsidiana 150 (puxada pelos especialistas), cristal corrompido 126, tutano abissal 103; os mais escassos: coração de sangue 19, chifre 12, cogumelo rubro 0,3, raiz anciã 0,006. As tabelas completas, **por material**, estão no fim desta rodada (itens 8 e 9).
+
+### 5. O teto diário contra um bot que edita o save (o limite do servidor)
+
+Um bot que edita o save pode *relatar* o máximo que o jogo permite, o dia inteiro. O servidor limita assim (`materials/bounds.ts`, `MATERIAL_BOUNDS`):
+
+1. **Tempo.** Caça, mineração e corte de madeira dividem **um** relógio do herói (um herói faz uma coisa por vez): 1 hora por hora do relógio do servidor, até 10 h (o teto do Passe). A Horta tem o relógio das parcelas (6 parcelas, a velocidade máxima das duas maestrias). Um relato com mais tempo que o balde guarda é pago só pelo tempo que o balde guarda.
+2. **Unidades por hora.** Cada material tem um teto por hora (Caça: as rolagens econômicas máximas x a chance x a melhor profundidade x o melhor subnível x Passe x Faro x Isca; coleta: poder máximo da profissão x todos os bônus de rendimento x o maior evento; Horta: o rendimento máximo de **uma parcela** da planta). Um relato muito acima do teto é cortado e a conta é marcada para a auditoria. Os testes rodam o motor real (uma hora de Caça nos três estágios, mineração e corte no nível 75 com Passe) e exigem que **nunca** passe do teto.
+3. **Teto diário por material = 2x o melhor dia do jogador honesto rápido x a chance** (mínimo 3). Um balde atômico (o `item_take_tokens` do servidor de itens, agora com a opção `whole`: nunca guarda fração de unidade) rende teto/24 por hora e guarda um dia. O bot que relata o máximo o dia inteiro recebe **no máximo o teto por dia** (mais um dia inicial no começo da conta), que é ~2x o que o jogador honesto mais rápido acha. Passar do teto marca a conta (`LIMIT_MATERIAL_DAY`), que então não consegue anunciar.
+
+Tabela dos tetos (o "melhor dia" é a mediana, entre as seeds, do melhor dia do cenário mais rápido):
+
+| Material | Chance | Melhor dia do jogador honesto rápido (unidades) | Negociáveis nesse dia (esperado) | Teto diário do servidor |
+| --- | ---: | ---: | ---: | ---: |
+| iron | 3% | 645 | 19.3 | 39 |
+| copper | 3% | 663 | 19.9 | 40 |
+| silver | 5% | 941 | 47.1 | 95 |
+| gold_ore | 5% | 1 076 | 53.8 | 108 |
+| obsidian | 8% | 1 870 | 149.6 | 300 |
+| leather_scrap | 3% | 1 149 | 34.5 | 69 |
+| demon_claw | 5% | 1 199 | 60.0 | 120 |
+| demon_core | 8% | 291 | 23.3 | 47 |
+| bone_fragment | 3% | 1 237 | 37.1 | 75 |
+| concentrated_blood | 5% | 1 248 | 62.4 | 125 |
+| corrupted_crystal | 8% | 195 | 15.6 | 32 |
+| rift_shard | 5% | 301 | 15.1 | 31 |
+| fiend_horn | 8% | 29 | 2.3 | 5 |
+| abyssal_marrow | 8% | 194 | 15.5 | 32 |
+| blood_heart | 8% | 42 | 3.4 | 7 |
+| common_herb | 3% | 12 | 0.4 | 3 |
+| energy_herb | 3% | 24 | 0.7 | 3 |
+| uncommon_root | 5% | 16 | 0.8 | 3 |
+| crimson_mushroom | 5% | 6 | 0.3 | 3 |
+| rare_flower | 8% | 6 | 0.5 | 3 |
+| iron_thistle | 3% | 12 | 0.4 | 3 |
+| gold_blossom | 5% | 6 | 0.3 | 3 |
+| swift_grass | 3% | 12 | 0.4 | 3 |
+| moon_lily | 8% | 12 | 1.0 | 3 |
+| silver_sage | 5% | 12 | 0.6 | 3 |
+| dusk_orchid | 8% | 6 | 0.5 | 3 |
+| elder_root | 8% | 2 | 0.2 | 3 |
+| common_wood | 3% | 554 | 16.6 | 34 |
+| oak_wood | 3% | 618 | 18.5 | 38 |
+| ebony_wood | 5% | 811 | 40.6 | 82 |
+| elven_wood | 5% | 1 076 | 53.8 | 108 |
+| ancient_wood | 8% | 1 435 | 114.8 | 230 |
+
+### 6. O que não foi verificado e o que o dono pode contestar
+
+- **A oferta é grande em números absolutos.** 3% a 8% é pouco *por unidade*, mas o jogo coleta dezenas de milhares de unidades: o jogador comum acha ~2 200 negociáveis em 60 dias (~37 por dia), o dono do Passe ~4 600, o especialista em minério ~6 100 (quase tudo obsidiana). Com 1 000 jogadores são ~2,8 milhões de unidades em 60 dias. Se o mercado inundar (preço dos materiais baixos indo a quase zero), a alavanca é **uma tabela só**: com 1% / 2% / 3% a oferta cai a um terço do que está acima, linearmente. Esta rodada **não** simulou a demanda, então não diz qual preço o mercado vai achar.
+- **Amostra pequena:** 3 seeds por cenário, 60 dias; as chances são esperanças. A mistura de jogadores (80 / 15 / 5) é uma suposição minha, não um dado: troque-a com `SUPPLY_MIX`.
+- **Tetos diários:** vêm do melhor dia dos cenários simulados; uma pessoa que joga de um jeito que o simulador não joga (por exemplo, visitas a cada hora com Elixir de Coleta o tempo todo) pode passar de 2x o "honesto rápido" e ser cortada. A margem é `MARGIN` (2x) em `items/bounds.ts`.
+- **As unidades negociáveis não vão para o Baú** (decisão minha): são para vender, e o Baú ficaria cheio de coisas que valem dinheiro sem aparecer no filtro "Negociável". Elas ocupam espaço da mochila (pilha própria). Se você quiser guardá-las, é uma mudança pequena em `stash.ts` (um campo `tradeable` no `StashState` e o mesmo balanço no servidor).
+- **A venda a um NPC sempre pergunta**, não só na primeira vez (a confirmação de receita/pedido/refino é uma vez só): vender a unidade negociável ao mercador por 1 Ouro é quase sempre um erro.
+- **Lotes inteiros:** não existe compra parcial. Um lote tem de 1 a 10 000 unidades de um material; o preço é por unidade com até 6 casas (0,000001 SOL); o lote inteiro vale de 0,001 a 50 SOL.
+- **O que ficou sem ser verificado:** o SQL (`0015_tradeable_materials.sql`) e as funções (Deno) **nunca foram executados**; só testes estáticos e simulações em memória que seguem a máquina de estados da SQL passo a passo. Nenhum navegador real nem carteira real foi usado; as capturas de tela são da tela real do jogo com uma API falsa.
+
+### 7. Tabelas por jogador (todos os materiais)
+
+Unidades **coletadas** (o que o jogo produziu) e **negociáveis esperadas** (coletadas x chance), mediana entre as seeds, no dia 7, 30 e 60.
+
+#### Um jogador, cenário A
+| Material | Chance | Coletado d7 | Coletado d30 | Coletado d60 | Negociáveis d7 | Negociáveis d30 | Negociáveis d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| iron | 3% | 88 | 465 | 573 | 2.6 | 13.9 | 17.2 |
+| copper | 3% | 211 | 389 | 720 | 6.3 | 11.7 | 21.6 |
+| silver | 5% | 0 | 1 575 | 2 030 | 0.0 | 78.8 | 101.5 |
+| gold_ore | 5% | 0 | 292 | 1 223 | 0.0 | 14.6 | 61.2 |
+| obsidian | 8% | 0 | 0 | 312 | 0.0 | 0.0 | 25.0 |
+| leather_scrap | 3% | 525 | 5 475 | 7 929 | 15.8 | 164.3 | 237.9 |
+| demon_claw | 5% | 335 | 5 446 | 8 002 | 16.8 | 272.3 | 400.1 |
+| demon_core | 8% | 37 | 1 091 | 1 692 | 3.0 | 87.3 | 135.4 |
+| bone_fragment | 3% | 214 | 2 026 | 9 336 | 6.4 | 60.8 | 280.1 |
+| concentrated_blood | 5% | 190 | 2 133 | 7 697 | 9.5 | 106.7 | 384.9 |
+| corrupted_crystal | 8% | 28 | 322 | 1 248 | 2.2 | 25.8 | 99.8 |
+| rift_shard | 5% | 0 | 1 044 | 1 648 | 0.0 | 52.2 | 82.4 |
+| fiend_horn | 8% | 0 | 82 | 135 | 0.0 | 6.6 | 10.8 |
+| abyssal_marrow | 8% | 0 | 0 | 1 076 | 0.0 | 0.0 | 86.1 |
+| blood_heart | 8% | 0 | 0 | 197 | 0.0 | 0.0 | 15.8 |
+| common_herb | 3% | 28 | 112 | 196 | 0.8 | 3.4 | 5.9 |
+| energy_herb | 3% | 24 | 42 | 96 | 0.7 | 1.3 | 2.9 |
+| uncommon_root | 5% | 15 | 38 | 38 | 0.8 | 1.9 | 1.9 |
+| crimson_mushroom | 5% | 0 | 0 | 6 | 0.0 | 0.0 | 0.3 |
+| iron_thistle | 3% | 8 | 20 | 56 | 0.2 | 0.6 | 1.7 |
+| gold_blossom | 5% | 10 | 16 | 22 | 0.5 | 0.8 | 1.1 |
+| swift_grass | 3% | 20 | 92 | 164 | 0.6 | 2.8 | 4.9 |
+| moon_lily | 8% | 0 | 66 | 234 | 0.0 | 5.3 | 18.7 |
+| silver_sage | 5% | 0 | 120 | 132 | 0.0 | 6.0 | 6.6 |
+| dusk_orchid | 8% | 0 | 6 | 84 | 0.0 | 0.5 | 6.7 |
+| common_wood | 3% | 91 | 269 | 269 | 2.7 | 8.1 | 8.1 |
+| oak_wood | 3% | 346 | 346 | 346 | 10.4 | 10.4 | 10.4 |
+| ebony_wood | 5% | 0 | 1 554 | 1 554 | 0.0 | 77.7 | 77.7 |
+| elven_wood | 5% | 0 | 269 | 1 810 | 0.0 | 13.5 | 90.5 |
+| ancient_wood | 8% | 0 | 0 | 338 | 0.0 | 0.0 | 27.0 |
+| **total** |  |  |  |  | **79.3** | **1026.8** | **2223.9** |
+
+#### Um jogador, cenário P
+| Material | Chance | Coletado d7 | Coletado d30 | Coletado d60 | Negociáveis d7 | Negociáveis d30 | Negociáveis d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| iron | 3% | 137 | 1 086 | 1 740 | 4.1 | 32.6 | 52.2 |
+| copper | 3% | 283 | 668 | 2 582 | 8.5 | 20.0 | 77.5 |
+| silver | 5% | 286 | 2 334 | 3 402 | 14.3 | 116.7 | 170.1 |
+| gold_ore | 5% | 0 | 1 032 | 1 121 | 0.0 | 51.6 | 56.1 |
+| obsidian | 8% | 0 | 606 | 2 498 | 0.0 | 48.5 | 199.8 |
+| leather_scrap | 3% | 968 | 8 632 | 13 355 | 29.0 | 259.0 | 400.6 |
+| demon_claw | 5% | 699 | 8 708 | 13 687 | 35.0 | 435.4 | 684.4 |
+| demon_core | 8% | 71 | 1 700 | 2 827 | 5.7 | 136.0 | 226.2 |
+| bone_fragment | 3% | 1 242 | 6 632 | 22 220 | 37.3 | 199.0 | 666.6 |
+| concentrated_blood | 5% | 1 284 | 6 110 | 19 597 | 64.2 | 305.5 | 979.9 |
+| corrupted_crystal | 8% | 195 | 990 | 3 313 | 15.6 | 79.2 | 265.0 |
+| rift_shard | 5% | 0 | 1 726 | 2 928 | 0.0 | 86.3 | 146.4 |
+| fiend_horn | 8% | 0 | 153 | 256 | 0.0 | 12.2 | 20.5 |
+| abyssal_marrow | 8% | 0 | 335 | 2 832 | 0.0 | 26.8 | 226.6 |
+| blood_heart | 8% | 0 | 63 | 555 | 0.0 | 5.0 | 44.4 |
+| common_herb | 3% | 18 | 66 | 138 | 0.5 | 2.0 | 4.1 |
+| energy_herb | 3% | 24 | 24 | 60 | 0.7 | 0.7 | 1.8 |
+| uncommon_root | 5% | 31 | 43 | 43 | 1.6 | 2.1 | 2.1 |
+| crimson_mushroom | 5% | 0 | 6 | 6 | 0.0 | 0.3 | 0.3 |
+| iron_thistle | 3% | 8 | 32 | 80 | 0.2 | 1.0 | 2.4 |
+| gold_blossom | 5% | 5 | 23 | 29 | 0.3 | 1.2 | 1.5 |
+| swift_grass | 3% | 10 | 106 | 154 | 0.3 | 3.2 | 4.6 |
+| moon_lily | 8% | 0 | 102 | 216 | 0.0 | 8.2 | 17.3 |
+| silver_sage | 5% | 0 | 48 | 48 | 0.0 | 2.4 | 2.4 |
+| dusk_orchid | 8% | 0 | 18 | 96 | 0.0 | 1.4 | 7.7 |
+| common_wood | 3% | 63 | 617 | 810 | 1.9 | 18.5 | 24.3 |
+| oak_wood | 3% | 365 | 365 | 773 | 10.9 | 10.9 | 23.2 |
+| ebony_wood | 5% | 286 | 1 934 | 1 934 | 14.3 | 96.7 | 96.7 |
+| elven_wood | 5% | 0 | 1 648 | 2 275 | 0.0 | 82.4 | 113.8 |
+| ancient_wood | 8% | 0 | 594 | 1 208 | 0.0 | 47.5 | 96.6 |
+| **total** |  |  |  |  | **244.4** | **2092.3** | **4614.9** |
+
+#### Um jogador, cenário PM
+| Material | Chance | Coletado d7 | Coletado d30 | Coletado d60 | Negociáveis d7 | Negociáveis d30 | Negociáveis d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| iron | 3% | 365 | 365 | 365 | 10.9 | 10.9 | 10.9 |
+| copper | 3% | 63 | 63 | 63 | 1.9 | 1.9 | 1.9 |
+| silver | 5% | 1 899 | 1 899 | 1 899 | 95.0 | 95.0 | 95.0 |
+| gold_ore | 5% | 1 579 | 1 579 | 1 579 | 79.0 | 79.0 | 79.0 |
+| obsidian | 8% | 1 161 | 31 115 | 73 383 | 92.9 | 2489.2 | 5870.6 |
+| common_herb | 3% | 8 | 32 | 92 | 0.2 | 1.0 | 2.8 |
+| energy_herb | 3% | 24 | 24 | 24 | 0.7 | 0.7 | 0.7 |
+| uncommon_root | 5% | 46 | 52 | 52 | 2.3 | 2.6 | 2.6 |
+| swift_grass | 3% | 10 | 22 | 58 | 0.3 | 0.7 | 1.7 |
+| moon_lily | 8% | 0 | 252 | 564 | 0.0 | 20.2 | 45.1 |
+| **total** |  |  |  |  | **283.2** | **2701.0** | **6110.3** |
+
+#### Um jogador, cenário PW
+| Material | Chance | Coletado d7 | Coletado d30 | Coletado d60 | Negociáveis d7 | Negociáveis d30 | Negociáveis d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| common_herb | 3% | 8 | 32 | 92 | 0.2 | 1.0 | 2.8 |
+| energy_herb | 3% | 24 | 24 | 24 | 0.7 | 0.7 | 0.7 |
+| uncommon_root | 5% | 46 | 52 | 52 | 2.3 | 2.6 | 2.6 |
+| swift_grass | 3% | 10 | 22 | 58 | 0.3 | 0.7 | 1.7 |
+| moon_lily | 8% | 0 | 252 | 564 | 0.0 | 20.2 | 45.1 |
+| common_wood | 3% | 63 | 63 | 63 | 1.9 | 1.9 | 1.9 |
+| oak_wood | 3% | 365 | 365 | 365 | 10.9 | 10.9 | 10.9 |
+| ebony_wood | 5% | 1 899 | 1 899 | 1 899 | 95.0 | 95.0 | 95.0 |
+| elven_wood | 5% | 1 579 | 1 579 | 1 579 | 79.0 | 79.0 | 79.0 |
+| ancient_wood | 8% | 1 161 | 31 147 | 73 414 | 92.9 | 2491.8 | 5873.1 |
+| **total** |  |  |  |  | **283.2** | **2703.6** | **6112.8** |
+
+#### Um jogador, cenário PG
+| Material | Chance | Coletado d7 | Coletado d30 | Coletado d60 | Negociáveis d7 | Negociáveis d30 | Negociáveis d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| iron | 3% | 137 | 137 | 228 | 4.1 | 4.1 | 6.8 |
+| copper | 3% | 283 | 283 | 291 | 8.5 | 8.5 | 8.7 |
+| leather_scrap | 3% | 862 | 7 845 | 19 400 | 25.9 | 235.3 | 582.0 |
+| demon_claw | 5% | 594 | 7 615 | 19 592 | 29.7 | 380.8 | 979.6 |
+| demon_core | 8% | 60 | 1 575 | 4 216 | 4.8 | 126.0 | 337.3 |
+| bone_fragment | 3% | 2 506 | 14 563 | 29 913 | 75.2 | 436.9 | 897.4 |
+| concentrated_blood | 5% | 2 611 | 14 768 | 30 898 | 130.6 | 738.4 | 1544.9 |
+| corrupted_crystal | 8% | 380 | 2 272 | 4 712 | 30.4 | 181.8 | 377.0 |
+| rift_shard | 5% | 0 | 1 675 | 4 459 | 0.0 | 83.8 | 223.0 |
+| fiend_horn | 8% | 0 | 151 | 416 | 0.0 | 12.1 | 33.3 |
+| common_herb | 3% | 32 | 124 | 244 | 1.0 | 3.7 | 7.3 |
+| energy_herb | 3% | 18 | 18 | 18 | 0.5 | 0.5 | 0.5 |
+| uncommon_root | 5% | 33 | 37 | 37 | 1.7 | 1.9 | 1.9 |
+| rare_flower | 8% | 8 | 54 | 109 | 0.6 | 4.3 | 8.7 |
+| moon_lily | 8% | 0 | 180 | 420 | 0.0 | 14.4 | 33.6 |
+| elder_root | 8% | 0 | 0 | 5 | 0.0 | 0.0 | 0.4 |
+| common_wood | 3% | 63 | 63 | 63 | 1.9 | 1.9 | 1.9 |
+| oak_wood | 3% | 137 | 137 | 137 | 4.1 | 4.1 | 4.1 |
+| **total** |  |  |  |  | **318.9** | **2238.4** | **5048.4** |
+
+#### Um jogador, cenário XPM
+| Material | Chance | Coletado d7 | Coletado d30 | Coletado d60 | Negociáveis d7 | Negociáveis d30 | Negociáveis d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| iron | 3% | 258 | 258 | 258 | 7.7 | 7.7 | 7.7 |
+| copper | 3% | 124 | 124 | 124 | 3.7 | 3.7 | 3.7 |
+| silver | 5% | 1 744 | 1 744 | 1 744 | 87.2 | 87.2 | 87.2 |
+| gold_ore | 5% | 1 945 | 1 945 | 1 945 | 97.3 | 97.3 | 97.3 |
+| obsidian | 8% | 3 284 | 39 950 | 90 904 | 262.7 | 3196.0 | 7272.3 |
+| common_herb | 3% | 8 | 32 | 92 | 0.2 | 1.0 | 2.8 |
+| energy_herb | 3% | 24 | 24 | 24 | 0.7 | 0.7 | 0.7 |
+| uncommon_root | 5% | 52 | 52 | 52 | 2.6 | 2.6 | 2.6 |
+| swift_grass | 3% | 10 | 22 | 58 | 0.3 | 0.7 | 1.7 |
+| moon_lily | 8% | 24 | 294 | 630 | 1.9 | 23.5 | 50.4 |
+| **total** |  |  |  |  | **464.4** | **3420.4** | **7526.4** |
+
+### 8. Tabelas do servidor (todos os materiais)
+
+Mistura 80% A, 15% P, 5% especialistas; unidades negociáveis esperadas **no total** até o dia indicado.
+
+#### 100 jogadores
+| Material | Negociáveis até o dia 7 | até o dia 30 | até o dia 60 | por jogador no dia 60 |
+| --- | ---: | ---: | ---: | ---: |
+| iron | 298 | 1 630 | 2 188 | 21.9 |
+| copper | 651 | 1 251 | 2 907 | 29.1 |
+| silver | 376 | 8 212 | 10 833 | 108.3 |
+| gold_ore | 134 | 2 076 | 5 867 | 58.7 |
+| obsidian | 158 | 4 959 | 14 974 | 149.7 |
+| leather_scrap | 1 737 | 17 401 | 25 971 | 259.7 |
+| demon_claw | 1 912 | 28 924 | 43 841 | 438.4 |
+| demon_core | 330 | 9 224 | 14 761 | 147.6 |
+| bone_fragment | 1 193 | 8 546 | 33 841 | 338.4 |
+| concentrated_blood | 1 932 | 14 296 | 47 958 | 479.6 |
+| corrupted_crystal | 462 | 3 540 | 12 566 | 125.7 |
+| rift_shard | 0 | 5 605 | 9 145 | 91.4 |
+| fiend_horn | 0 | 728 | 1 224 | 12.2 |
+| abyssal_marrow | 0 | 402 | 10 285 | 102.8 |
+| blood_heart | 0 | 76 | 1 927 | 19.3 |
+| common_herb | 78 | 308 | 554 | 5.5 |
+| energy_herb | 72 | 115 | 261 | 2.6 |
+| uncommon_root | 94 | 196 | 196 | 2.0 |
+| crimson_mushroom | 0 | 5 | 29 | 0.3 |
+| rare_flower | 1 | 7 | 14 | 0.1 |
+| iron_thistle | 23 | 62 | 170 | 1.7 |
+| gold_blossom | 44 | 81 | 110 | 1.1 |
+| swift_grass | 54 | 271 | 469 | 4.7 |
+| moon_lily | 0 | 636 | 1 964 | 19.6 |
+| silver_sage | 0 | 516 | 564 | 5.6 |
+| dusk_orchid | 0 | 60 | 653 | 6.5 |
+| elder_root | 0 | 0 | 1 | 0.0 |
+| common_wood | 253 | 929 | 1 016 | 10.2 |
+| oak_wood | 1 020 | 1 020 | 1 203 | 12.0 |
+| ebony_wood | 376 | 7 828 | 7 828 | 78.3 |
+| elven_wood | 134 | 2 446 | 9 080 | 90.8 |
+| ancient_wood | 158 | 4 949 | 13 597 | 136.0 |
+| **total** | **11 487** | **126 297** | **275 995** | **2760.0** |
+
+#### 1 000 jogadores
+| Material | Negociáveis até o dia 7 | até o dia 30 | até o dia 60 | por jogador no dia 60 |
+| --- | ---: | ---: | ---: | ---: |
+| iron | 2 980 | 16 299 | 21 878 | 21.9 |
+| copper | 6 505 | 12 510 | 29 071 | 29.1 |
+| silver | 3 759 | 82 119 | 108 329 | 108.3 |
+| gold_ore | 1 342 | 20 762 | 58 670 | 58.7 |
+| obsidian | 1 579 | 49 588 | 149 745 | 149.7 |
+| leather_scrap | 17 370 | 174 010 | 259 706 | 259.7 |
+| demon_claw | 19 118 | 289 242 | 438 406 | 438.4 |
+| demon_core | 3 297 | 92 240 | 147 608 | 147.6 |
+| bone_fragment | 11 928 | 85 458 | 338 412 | 338.4 |
+| concentrated_blood | 19 319 | 142 959 | 479 576 | 479.6 |
+| corrupted_crystal | 4 618 | 35 396 | 125 659 | 125.7 |
+| rift_shard | 0 | 56 045 | 91 447 | 91.4 |
+| fiend_horn | 0 | 7 277 | 12 244 | 12.2 |
+| abyssal_marrow | 0 | 4 020 | 102 848 | 102.8 |
+| blood_heart | 0 | 756 | 19 268 | 19.3 |
+| common_herb | 777 | 3 077 | 5 536 | 5.5 |
+| energy_herb | 717 | 1 149 | 2 607 | 2.6 |
+| uncommon_root | 937 | 1 961 | 1 961 | 2.0 |
+| crimson_mushroom | 0 | 45 | 285 | 0.3 |
+| rare_flower | 10 | 69 | 140 | 0.1 |
+| iron_thistle | 228 | 624 | 1 704 | 1.7 |
+| gold_blossom | 438 | 813 | 1 098 | 1.1 |
+| swift_grass | 535 | 2 707 | 4 688 | 4.7 |
+| moon_lily | 0 | 6 364 | 19 640 | 19.6 |
+| silver_sage | 0 | 5 160 | 5 640 | 5.6 |
+| dusk_orchid | 0 | 600 | 6 528 | 6.5 |
+| elder_root | 0 | 0 | 6 | 0.0 |
+| common_wood | 2 530 | 9 295 | 10 163 | 10.2 |
+| oak_wood | 10 198 | 10 198 | 12 034 | 12.0 |
+| ebony_wood | 3 759 | 78 279 | 78 279 | 78.3 |
+| elven_wood | 1 342 | 24 462 | 90 805 | 90.8 |
+| ancient_wood | 1 579 | 49 488 | 135 971 | 136.0 |
+| **total** | **114 866** | **1 262 973** | **2 759 952** | **2760.0** |
+
+#### 10 000 jogadores
+| Material | Negociáveis até o dia 7 | até o dia 30 | até o dia 60 | por jogador no dia 60 |
+| --- | ---: | ---: | ---: | ---: |
+| iron | 29 804 | 162 989 | 218 776 | 21.9 |
+| copper | 65 055 | 125 100 | 290 708 | 29.1 |
+| silver | 37 592 | 821 192 | 1 083 292 | 108.3 |
+| gold_ore | 13 422 | 207 622 | 586 697 | 58.7 |
+| obsidian | 15 790 | 495 884 | 1 497 449 | 149.7 |
+| leather_scrap | 173 698 | 1 740 096 | 2 597 055 | 259.7 |
+| demon_claw | 191 177 | 2 892 420 | 4 384 061 | 438.4 |
+| demon_core | 32 968 | 922 400 | 1 476 085 | 147.6 |
+| bone_fragment | 119 279 | 854 582 | 3 384 122 | 338.4 |
+| concentrated_blood | 193 188 | 1 429 594 | 4 795 759 | 479.6 |
+| corrupted_crystal | 46 184 | 353 962 | 1 256 594 | 125.7 |
+| rift_shard | 0 | 560 450 | 914 472 | 91.4 |
+| fiend_horn | 0 | 72 773 | 122 445 | 12.2 |
+| abyssal_marrow | 0 | 40 200 | 1 028 480 | 102.8 |
+| blood_heart | 0 | 7 560 | 192 680 | 19.3 |
+| common_herb | 7 765 | 30 772 | 55 360 | 5.5 |
+| energy_herb | 7 171 | 11 491 | 26 071 | 2.6 |
+| uncommon_root | 9 371 | 19 605 | 19 605 | 2.0 |
+| crimson_mushroom | 0 | 450 | 2 850 | 0.3 |
+| rare_flower | 102 | 691 | 1 395 | 0.1 |
+| iron_thistle | 2 280 | 6 240 | 17 040 | 1.7 |
+| gold_blossom | 4 375 | 8 125 | 10 975 | 1.1 |
+| swift_grass | 5 352 | 27 074 | 46 882 | 4.7 |
+| moon_lily | 0 | 63 638 | 196 397 | 19.6 |
+| silver_sage | 0 | 51 600 | 56 400 | 5.6 |
+| dusk_orchid | 0 | 6 000 | 65 280 | 6.5 |
+| elder_root | 0 | 0 | 64 | 0.0 |
+| common_wood | 25 299 | 92 949 | 101 634 | 10.2 |
+| oak_wood | 101 984 | 101 984 | 120 344 | 12.0 |
+| ebony_wood | 37 592 | 782 792 | 782 792 | 78.3 |
+| elven_wood | 13 422 | 244 622 | 908 047 | 90.8 |
+| ancient_wood | 15 790 | 494 879 | 1 359 710 | 136.0 |
+| **total** | **1 148 657** | **12 629 734** | **27 599 518** | **2760.0** |
+
