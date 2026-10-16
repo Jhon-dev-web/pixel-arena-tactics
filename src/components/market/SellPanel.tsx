@@ -6,9 +6,13 @@ import { MarketApi } from '../../game/market/api';
 import { SellableEntry, sellableEntries, socketedButCertified } from '../../game/market/items';
 import { getCertificate, useCertificatesVersion } from '../../game/itemCerts';
 import { listForSale } from '../../game/market/sync';
+import { rarityDef } from '../../game/rarity';
+import { t } from '../../locales';
 import { mt } from '../../locales/market';
-import ItemCard, { ItemLike } from './ItemCard';
+import ItemCard, { ItemArt, ItemLike } from './ItemCard';
+import { UsdtIcon } from './icons';
 import { fmtUsdt, parsePriceInput } from './format';
+import { itemName } from './names';
 
 const itemOf = (e: SellableEntry): ItemLike => {
   const cert = getCertificate(e.certificateId);
@@ -16,24 +20,45 @@ const itemOf = (e: SellableEntry): ItemLike => {
   return { kind: e.kind, templateId: e.instance.templateId, rarity: e.instance.rarity, tier: cert?.tier ?? null, substats: e.instance.substats, goldAmount: null };
 };
 
-// Sell: what the SERVER's certificates say can be sold, a price in USDT, a confirmation (the item leaves the save), and my live listings with a cancel button.
-export default function SellPanel({
-  api,
-  save,
-  overview,
-  feePercent,
-  host,
-  onChanged,
-}: {
+/** What the player can pick: one piece of gear / a unique, or ALL the Gold Pouches of one size together (the quantity says how many to list). */
+export interface SellGroup {
+  key: string;
+  entries: SellableEntry[];
+  item: ItemLike;
+}
+
+export function groupEntries(entries: SellableEntry[]): SellGroup[] {
+  const groups: SellGroup[] = [];
+  const pouches = new Map<string, SellGroup>();
+  for (const e of entries) {
+    if (e.kind === 'gold_pouch') {
+      const g = pouches.get(e.pouchId);
+      if (g) g.entries.push(e);
+      else {
+        const made = { key: e.pouchId, entries: [e], item: itemOf(e) };
+        pouches.set(e.pouchId, made);
+        groups.push(made);
+      }
+    } else groups.push({ key: e.certificateId, entries: [e], item: itemOf(e) });
+  }
+  return groups;
+}
+
+export interface SellFlowProps {
   api: MarketApi;
   save: SaveData;
   overview: MarketOverview | null;
   feePercent: number;
   host: { getSave: () => SaveData; applySave: (s: SaveData) => void };
   onChanged: () => void;
-}) {
-  const [picked, setPicked] = useState<string | null>(null);
+}
+
+// The state of the "create offer" flow, shared by the item picker (main area), the offer form (side) and the list of my offers. Only the server's certificates decide what is sellable; the price is
+// checked here for the form (the server checks it again), and publishing is two steps (the item leaves the inventory: it is asked once).
+export function useSellFlow({ api, save, overview, feePercent, host, onChanged }: SellFlowProps) {
+  const [picked, setPickedRaw] = useState<string | null>(null);
   const [priceText, setPriceText] = useState('');
+  const [qty, setQty] = useState(1);
   const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -41,34 +66,51 @@ export default function SellPanel({
   const certVersion = useCertificatesVersion(); // the server's list changed: what is sellable may have too
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const entries = useMemo(() => sellableEntries(save), [save, certVersion]);
+  const groups = useMemo(() => groupEntries(entries), [entries]);
   const socketed = socketedButCertified(save).length;
-  const entry = entries.find((e) => e.certificateId === picked) ?? null;
-  const cents = parsePriceInput(priceText);
-  const valid = cents !== null && cents >= MARKET_MIN_PRICE_CENTS && cents <= MARKET_MAX_PRICE_CENTS;
-  const split = valid ? splitPrice(cents) : null;
+  const group = groups.find((g) => g.key === picked) ?? null;
+  const maxQty = group ? group.entries.length : 1;
+  const count = group?.entries[0]?.kind === 'gold_pouch' ? Math.min(Math.max(1, qty), maxQty) : 1;
+  const unitCents = parsePriceInput(priceText);
+  const valid = unitCents !== null && unitCents >= MARKET_MIN_PRICE_CENTS && unitCents <= MARKET_MAX_PRICE_CENTS;
+  const split = valid ? splitPrice(unitCents) : null;
   const hasWallet = !!overview?.wallet;
 
-  const list = async () => {
-    if (!entry || !valid || busy) return;
+  const setPicked = (key: string | null) => {
+    setPickedRaw(key);
+    setQty(1);
+    setArmed(false);
+    setMessage(null);
+  };
+
+  const publish = async () => {
+    if (!group || !valid || busy) return;
     if (!armed) {
       setArmed(true);
       return;
     }
     setBusy(true);
     setMessage(null);
-    const cert = getCertificate(entry.certificateId);
+    let done = 0;
     try {
-      const r = await listForSale({ api, getSave: host.getSave, applySave: host.applySave }, entry, cert ?? { id: entry.certificateId, kind: entry.kind, templateId: entry.kind === 'gold_pouch' ? entry.pouchId : entry.instance.templateId }, cents as number);
-      if ('reason' in r) {
-        const key = `sell.fail.${r.reason}`;
-        const text = mt(key);
-        setMessage({ text: text === key ? mt('sell.fail.generic') : text, error: true });
-      } else {
-        setMessage({ text: mt('sell.listed'), error: false });
-        setPicked(null);
-        setPriceText('');
-        onChanged();
+      for (const entry of group.entries.slice(0, count)) {
+        const cert = getCertificate(entry.certificateId);
+        const r = await listForSale({ api, getSave: host.getSave, applySave: host.applySave }, entry, cert ?? { id: entry.certificateId, kind: entry.kind, templateId: entry.kind === 'gold_pouch' ? entry.pouchId : entry.instance.templateId }, unitCents as number);
+        if ('reason' in r) {
+          const key = `sell.fail.${r.reason}`;
+          const text = mt(key);
+          setMessage({ text: text === key ? mt('sell.fail.generic') : text, error: true });
+          break;
+        }
+        done += 1;
       }
+      if (done === count) {
+        setMessage({ text: mt('sell.listed'), error: false });
+        setPickedRaw(null);
+        setPriceText('');
+        setQty(1);
+      }
+      if (done > 0) onChanged();
     } catch {
       setMessage({ text: mt('unreachable'), error: true });
     }
@@ -93,81 +135,147 @@ export default function SellPanel({
   };
 
   const live = (overview?.listings ?? []).filter((l) => l.status === 'open' || l.status === 'reserved');
+  return { groups, picked, setPicked, group, priceText, setPriceText: (v: string) => { setPriceText(v); setArmed(false); }, qty: count, maxQty, setQty: (n: number) => { setQty(Math.min(Math.max(1, n), maxQty)); setArmed(false); }, armed, busy, message, socketed, valid, split, hasWallet, feePercent, publish, cancel, live };
+}
+export type SellFlow = ReturnType<typeof useSellFlow>;
 
+const optionLabel = (g: SellGroup): string => {
+  const name = itemName(g.item);
+  if (g.item.kind === 'gold_pouch') return `${name} x${g.entries.length}`;
+  const rar = g.item.rarity ? t(`rarity.${rarityDef(g.item.rarity).nameKey}`) : '';
+  return [name, rar, g.item.tier ? mt('browse.tierN', { n: g.item.tier }) : ''].filter(Boolean).join(' · ');
+};
+
+/** The main area of the Sell tab: everything the server's certificates say can be sold, as tiles to pick from. */
+export function SellPicker({ flow }: { flow: SellFlow }) {
   return (
     <div className="mk-panel">
-      <h3 className="mk-h">{mt('sell.title')}</h3>
+      <h3 className="mk-h">{mt('sell.yourItems')}</h3>
       <p className="mk-note">{mt('rules.certified')}</p>
-      {!hasWallet && <p className="mk-status error">{mt('sell.needWallet')}</p>}
-      {socketed > 0 && <p className="mk-note">{mt('sell.takeGemsOut', { n: socketed })}</p>}
-      {entries.length === 0 && <p className="mk-note">{mt('sell.empty')}</p>}
-      <ul className="mk-list">
-        {entries.map((e) => (
-          <li key={e.certificateId} className={`mk-listing${picked === e.certificateId ? ' picked' : ''}`}>
-            <button
-              className="mk-listing-head"
-              onClick={() => {
-                setPicked(picked === e.certificateId ? null : e.certificateId);
-                setArmed(false);
-                setMessage(null);
-              }}
-              aria-pressed={picked === e.certificateId}
-              data-ui
-            >
-              <ItemCard item={itemOf(e)} compact={picked !== e.certificateId} />
-            </button>
-            {picked === e.certificateId && (
-              <div className="mk-listing-more">
-                <label className="mk-hash">
-                  <span>{mt('sell.price')}</span>
-                  <input
-                    inputMode="decimal"
-                    value={priceText}
-                    onChange={(ev) => {
-                      setPriceText(ev.target.value);
-                      setArmed(false);
-                    }}
-                    placeholder="0,00"
-                    maxLength={10}
-                    autoComplete="off"
-                  />
-                </label>
-                <p className="mk-note">{mt('sell.priceHint', { min: fmtUsdt(MARKET_MIN_PRICE_CENTS), max: fmtUsdt(MARKET_MAX_PRICE_CENTS) })}</p>
-                {split && (
-                  <p className="mk-note">
-                    {mt('sell.youGet', { a: fmtUsdt(split.sellerCents), f: fmtUsdt(split.feeCents) })} ({mt('rules.fee', { pct: feePercent })})
-                  </p>
-                )}
-                {armed && <p className="mk-status">{mt('sell.confirmHint')}</p>}
-                <button className="mk-btn primary" disabled={!valid || busy || !hasWallet} onClick={() => void list()} data-ui>
-                  {busy ? mt('loading') : armed ? mt('sell.confirm') : mt('sell.list')}
-                </button>
-              </div>
-            )}
-          </li>
-        ))}
+      {!flow.hasWallet && <p className="mk-status error">{mt('sell.needWallet')}</p>}
+      {flow.socketed > 0 && <p className="mk-note">{mt('sell.takeGemsOut', { n: flow.socketed })}</p>}
+      {flow.groups.length === 0 && <p className="mk-note">{mt('sell.empty')}</p>}
+      <ul className="mk-grid mk-tiles">
+        {flow.groups.map((g) => {
+          const on = flow.picked === g.key;
+          const rar = g.item.kind === 'gold_pouch' ? 'common' : g.item.rarity ?? 'common';
+          return (
+            <li key={g.key}>
+              <button className={`mk-card mk-tile${on ? ' picked' : ''}`} onClick={() => flow.setPicked(on ? null : g.key)} aria-pressed={on} data-ui>
+                <span className="mk-card-top">
+                  <ItemArt item={g.item} qty={g.entries.length} />
+                  <span className="mk-card-id">
+                    <span className={`mk-item-name r-${rar}`}>{itemName(g.item)}</span>
+                    {g.item.kind !== 'gold_pouch' && g.item.rarity ? <span className={`rarity-line r-${rar}`}>{t(`rarity.${rarityDef(g.item.rarity).nameKey}`)}</span> : null}
+                  </span>
+                  {g.item.tier ? (
+                    <span className="mk-card-tags">
+                      <span className="mk-tag">{mt('browse.tierN', { n: g.item.tier })}</span>
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
-      {message && (
-        <p className={`mk-status${message.error ? ' error' : ''}`} role="status">
-          {message.text}
+    </div>
+  );
+}
+
+/** The "Criar oferta" box: the item, the quantity (Gold Pouches only), the unit price in USDT, the market fee and what the seller receives, computed live. */
+export function OfferForm({ flow }: { flow: SellFlow }) {
+  const total = flow.split ? { fee: flow.split.feeCents * flow.qty, get: flow.split.sellerCents * flow.qty } : null;
+  const pouch = flow.group?.item.kind === 'gold_pouch';
+  return (
+    <div className="mk-form">
+      <label className="mk-field">
+        <span>{mt('sell.form.item')}</span>
+        <select value={flow.picked ?? ''} onChange={(e) => flow.setPicked(e.target.value || null)} disabled={flow.busy}>
+          <option value="">{mt('sell.form.choose')}</option>
+          {flow.groups.map((g) => (
+            <option key={g.key} value={g.key}>
+              {optionLabel(g)}
+            </option>
+          ))}
+        </select>
+      </label>
+      {flow.group && <ItemCard item={flow.group.item} compact />}
+      {pouch && (
+        <div className="mk-field">
+          <span>{mt('sell.form.quantity')}</span>
+          <span className="mk-qty-row">
+            <button className="mk-btn small" onClick={() => flow.setQty(flow.qty - 1)} disabled={flow.qty <= 1 || flow.busy} aria-label="-" data-ui>
+              {'−'}
+            </button>
+            <b>{flow.qty}</b>
+            <button className="mk-btn small" onClick={() => flow.setQty(flow.qty + 1)} disabled={flow.qty >= flow.maxQty || flow.busy} aria-label="+" data-ui>
+              {'+'}
+            </button>
+            <span className="mk-note">{mt('sell.form.max', { n: flow.maxQty })}</span>
+          </span>
+        </div>
+      )}
+      <label className="mk-field">
+        <span>
+          {mt('sell.form.unit')} <small>(USDT)</small>
+        </span>
+        <span className="mk-price-input">
+          <UsdtIcon />
+          <input inputMode="decimal" value={flow.priceText} onChange={(e) => flow.setPriceText(e.target.value)} placeholder="0,00" maxLength={10} autoComplete="off" disabled={flow.busy} />
+        </span>
+      </label>
+      <p className="mk-note">{mt('sell.priceHint', { min: fmtUsdt(MARKET_MIN_PRICE_CENTS), max: fmtUsdt(MARKET_MAX_PRICE_CENTS) })}</p>
+      <div className="mk-calc">
+        <span>{mt('sell.form.fee', { pct: flow.feePercent })}</span>
+        <b>
+          <UsdtIcon /> {fmtUsdt(total?.fee ?? 0)}
+        </b>
+        <span className="mk-receive">{mt('sell.form.receive')}</span>
+        <b className="mk-receive">
+          <UsdtIcon /> {fmtUsdt(total?.get ?? 0)}
+        </b>
+      </div>
+      {!flow.hasWallet && <p className="mk-status error">{mt('sell.needWallet')}</p>}
+      {flow.armed && <p className="mk-status">{mt('sell.confirmHint')}</p>}
+      <button className="mk-btn primary mk-publish" disabled={!flow.group || !flow.valid || flow.busy || !flow.hasWallet} onClick={() => void flow.publish()} data-ui>
+        {flow.busy ? mt('loading') : flow.armed ? mt('sell.confirm') : mt('sell.form.publish')}
+      </button>
+      {flow.message && (
+        <p className={`mk-status${flow.message.error ? ' error' : ''}`} role="status">
+          {flow.message.text}
         </p>
       )}
+    </div>
+  );
+}
 
-      <h3 className="mk-h">{mt('sell.myListings')}</h3>
-      {live.length === 0 && <p className="mk-note">{mt('sell.noListings')}</p>}
+/** My live offers, each with its price, status, expiry and a cancel button. */
+export function MyOffers({ flow }: { flow: SellFlow }) {
+  return (
+    <div className="mk-panel">
+      <h3 className="mk-h">{mt('tabs.offers')}</h3>
+      {flow.message && (
+        <p className={`mk-status${flow.message.error ? ' error' : ''}`} role="status">
+          {flow.message.text}
+        </p>
+      )}
+      {flow.live.length === 0 && <p className="mk-note">{mt('sell.noListings')}</p>}
       <ul className="mk-list">
-        {live.map((l) => (
+        {flow.live.map((l) => (
           <li key={l.id} className="mk-listing">
             <div className="mk-listing-head static">
               <ItemCard item={l.item} compact />
               <span className="mk-price">
-                {fmtUsdt(l.priceCents)} <small>USDT</small>
+                <span>
+                  <UsdtIcon /> {fmtUsdt(l.priceCents)} <small>USDT</small>
+                </span>
                 <span className={`mk-tag${l.status === 'reserved' ? ' warn' : ''}`}>{mt(`sell.status.${l.status}`)}</span>
               </span>
             </div>
             <div className="mk-listing-more">
               <span className="mk-note">{mt('sell.expires', { d: Math.max(0, Math.ceil((Date.parse(l.expiresAt) - Date.now()) / 86_400_000)) })}</span>
-              <button className="mk-btn" disabled={busy || l.status === 'reserved'} onClick={() => void cancel(l.id)} data-ui>
+              <button className="mk-btn" disabled={flow.busy || l.status === 'reserved'} onClick={() => void flow.cancel(l.id)} data-ui>
                 {mt('sell.cancel')}
               </button>
             </div>
@@ -175,5 +283,35 @@ export default function SellPanel({
         ))}
       </ul>
     </div>
+  );
+}
+
+/** "Resumo do mercado": my active offers and what I sold today, from the server's overview. */
+export function MarketSummary({ overview, feePercent }: { overview: MarketOverview | null; feePercent: number }) {
+  const today = new Date().toDateString();
+  const soldToday = (overview?.sales ?? []).filter((s) => s.role === 'seller' && new Date(s.soldAt).toDateString() === today);
+  const volume = soldToday.reduce((n, s) => n + s.priceCents, 0);
+  const active = (overview?.listings ?? []).filter((l) => l.status === 'open' || l.status === 'reserved').length;
+  return (
+    <dl className="mk-stats">
+      <div>
+        <dt>{mt('summary.active')}</dt>
+        <dd>{active}</dd>
+      </div>
+      <div>
+        <dt>{mt('summary.soldToday')}</dt>
+        <dd>{soldToday.length}</dd>
+      </div>
+      <div>
+        <dt>{mt('summary.volume')}</dt>
+        <dd>
+          <UsdtIcon /> {fmtUsdt(volume)}
+        </dd>
+      </div>
+      <div>
+        <dt>{mt('summary.fee')}</dt>
+        <dd>{feePercent}%</dd>
+      </div>
+    </dl>
   );
 }

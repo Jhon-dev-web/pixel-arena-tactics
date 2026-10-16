@@ -141,7 +141,7 @@ import './round11.css';
 // another module would not be folded.)
 const MARKET_BUILD = import.meta.env.VITE_MARKET_ENABLED === 'true';
 const marketOn = MARKET_BUILD && marketEnabled;
-const MarketModal = MARKET_BUILD ? lazy(() => import('./components/MarketModal')) : null;
+const MarketScreen = MARKET_BUILD ? lazy(() => import('./components/MarketScreen')) : null;
 const MarketSync = MARKET_BUILD ? lazy(() => import('./components/market/MarketSync')) : null;
 const PassUsdt = MARKET_BUILD ? lazy(() => import('./components/PassUsdt')) : null;
 
@@ -170,14 +170,13 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const flushTimeoutRef = useRef<number | null>(null);
 
   const [shopOpen, setShopOpen] = useState(false);
-  const [marketOpen, setMarketOpen] = useState(false);
   const [shopTab, setShopTab] = useState<'buy' | 'sell' | 'wholesale' | 'pouch'>('buy');
   const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
-  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado'>('home');
   const [drawerOpen, setDrawerOpen] = useState(false);
   useEffect(() => setErrorContext(activeView), [activeView]); // the error report says which screen was open
   const [dungeonOpen, setDungeonOpen] = useState(false);
@@ -652,7 +651,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         [dungeonOpen, () => setDungeonOpen(false)],
         [bagOpen, () => setBagOpen(false)],
         [forgeOpen, () => setForgeOpen(false)],
-        [marketOpen, () => setMarketOpen(false)],
         [shopOpen, () => setShopOpen(false)],
       ];
       const top = layers.find(([open]) => open);
@@ -685,7 +683,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     bagOpen,
     forgeOpen,
     shopOpen,
-    marketOpen,
   ]);
 
   const toggleMute = () => {
@@ -2185,7 +2182,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         { key: 'deliveries', icon: <img className="pixel-icon" src="/assets/icons/expedition_ticket_2h.png" alt="" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
         { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { closeDrawer(); playSfx('click'); setBattlePassOpen(true); } },
         { key: 'shop', icon: <img className="pixel-icon" src="/assets/icons/gold.png" alt="" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopTab('buy'); setShopOpen(true); } },
-        ...(marketOn ? [{ key: 'market', icon: <img className="pixel-icon" src="/assets/icons/gold_pouch.png" alt="" />, label: mt('title'), active: marketOpen, onClick: () => { closeDrawer(); playSfx('click'); setMarketOpen(true); } }] : []),
+        ...(marketOn ? [{ key: 'market', icon: <img className="pixel-icon" src="/assets/icons/gold_pouch.png" alt="" />, label: mt('title'), active: activeView === 'mercado', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('mercado'); } }] : []),
       ],
     },
     {
@@ -2260,6 +2257,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           {activeView === 'skills' && (
             <SkillsView save={save} battleActive={battleFloor !== null} onApply={applySkills} onRespec={respecSkills} onSwitchLoadout={switchLoadout} onOpenPass={() => { playSfx('click'); setBattlePassOpen(true); }} />
           )}
+          {activeView === 'mercado' && marketOn && MarketScreen && (
+            <Suspense fallback={null}>
+              <MarketScreen save={save} host={marketHost} />
+            </Suspense>
+          )}
           {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} focus={oficiosFocus} />}
         </div>
       </div>
@@ -2272,18 +2274,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       {marketOn && MarketSync && (
         <Suspense fallback={null}>
           <MarketSync host={marketHost} />
-        </Suspense>
-      )}
-      {marketOn && MarketModal && marketOpen && (
-        <Suspense fallback={null}>
-          <MarketModal
-            save={save}
-            host={marketHost}
-            onClose={() => {
-              playSfx('click');
-              setMarketOpen(false);
-            }}
-          />
         </Suspense>
       )}
 

@@ -49,6 +49,7 @@ export interface MarketApi {
   submitPayment(reservationId: string, leg: 'seller' | 'fee', txHash: string): Promise<Result<{ status: string; reservation: ReservationView | null; certificateId?: string }>>;
   overview(): Promise<Result<MarketOverview>>;
   ack(certificateIds: string[]): Promise<Result<{ acked: number }>>;
+  passPrice(): Promise<Result<{ priceCents: number; priceUsdt: string; chain: ChainPublic }>>;
   passStart(): Promise<Result<{ priceCents: number; priceUsdt: string; receiveAddress: string; buyerAddress: string; intentAt: string; chain: ChainPublic }>>;
   passSubmit(txHash: string): Promise<Result<{ status: string; livemode?: boolean }>>;
 }
@@ -84,6 +85,7 @@ export function createMarketApi(transport: MarketTransport = supabaseMarketTrans
     submitPayment: (reservationId, leg, txHash) => call('market-buy', { action: 'submit', reservationId, leg, txHash }),
     overview: () => call('market-my', { action: 'overview' }),
     ack: (certificateIds) => call('market-my', { action: 'ack', certificateIds }),
+    passPrice: () => call('pass-crypto', { action: 'price' }),
     passStart: () => call('pass-crypto', { action: 'start' }),
     passSubmit: (txHash) => call('pass-crypto', { action: 'submit', txHash }),
   };

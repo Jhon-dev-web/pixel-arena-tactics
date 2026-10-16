@@ -52,6 +52,9 @@ export async function handlePassCrypto(req: Request, deps: PassCryptoDeps): Prom
     const pass = deps.pass();
     if (!pass) return json({ ok: false, reason: 'unavailable' }, 503, cors);
 
+    // { action: 'price' }: what the Pass costs in USDT, so the buy screen can say it up front. Public by nature (the same number the 'start' answer carries); no intent is opened, no wallet is needed.
+    if (body.action === 'price') return json({ ok: true, priceCents: pass.priceCents, priceUsdt: formatUsdt(pass.priceCents), chain: chainPublic(pass.config) }, 200, cors);
+
     if (await deps.store.hasActivePass(userId)) return json({ ok: false, reason: 'already_owned' }, 409, cors);
     const wallet = await deps.store.wallet(userId);
     if (!wallet) return json({ ok: false, reason: 'no_wallet' }, 409, cors);

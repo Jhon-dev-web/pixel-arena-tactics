@@ -18,25 +18,36 @@ export interface ItemLike {
   goldAmount: number | null;
 }
 
-export default function ItemCard({ item, compact = false, children }: { item: ItemLike; compact?: boolean; children?: React.ReactNode }) {
+/** The item's icon in a frame of its rarity colour, with the quantity badge when one is given. */
+export function ItemArt({ item, qty, className = '' }: { item: ItemLike; qty?: number; className?: string }) {
   const gear = item.kind === 'gold_pouch' ? undefined : getGear(item.templateId);
   const pouch = item.kind === 'gold_pouch' ? getConsumable(item.templateId) : undefined;
+  const rarity = item.kind === 'gold_pouch' ? 'common' : item.rarity ?? 'common';
+  return (
+    <span className={`mk-art r-${rarity}${className ? ` ${className}` : ''}`} aria-hidden>
+      {gear ? <GearIcon item={gear} /> : pouch ? <ConsumableIcon item={pouch} className="inline-icon" /> : null}
+      {qty !== undefined && <span className="mk-qty">x{qty}</span>}
+    </span>
+  );
+}
+
+export default function ItemCard({ item, compact = false, children }: { item: ItemLike; compact?: boolean; children?: React.ReactNode }) {
+  const gear = item.kind === 'gold_pouch' ? undefined : getGear(item.templateId);
   const rarity = item.rarity ?? 'common';
   return (
     <div className={`mk-item${compact ? ' compact' : ''}`}>
-      <span className="mk-item-art" aria-hidden>
-        {gear ? <GearIcon item={gear} /> : pouch ? <ConsumableIcon item={pouch} className="inline-icon" /> : null}
-      </span>
+      <ItemArt item={item} className="mk-item-art" />
       <span className="mk-item-body">
-        <span className="mk-item-name">{itemName(item)}</span>
+        <span className={`mk-item-name r-${item.kind === 'gold_pouch' ? 'common' : rarity}`}>{itemName(item)}</span>
         <span className="mk-item-meta">
           {item.kind !== 'gold_pouch' && item.rarity && <span className={`rarity-line r-${rarity}`}>{t(`rarity.${rarityDef(rarity).nameKey}`)}</span>}
           {item.kind === 'unique' && <span className="mk-tag">{mt('browse.unique')}</span>}
           {item.tier ? <span className="mk-tag">{mt('browse.tierN', { n: item.tier })}</span> : null}
-          {gear && item.kind !== 'gold_pouch' && <span className="mk-tag">{mt(`slots.${gear.slot}`)}</span>}
+          {gear && item.kind !== 'gold_pouch' && <span className="mk-tag slot">{mt(`slots.${gear.slot}`)}</span>}
           {item.kind === 'gold_pouch' && item.goldAmount !== null && <span className="mk-tag">{mt('browse.pouchWorth', { g: fmtNum(item.goldAmount) })}</span>}
           <span className="mk-cert" title={mt('browse.certificateHint')}>
-            {mt('browse.certificate')}
+            {'✓ '}
+            <span className="mk-cert-text">{mt('browse.certificate')}</span>
           </span>
         </span>
         {!compact && item.substats.length > 0 && (

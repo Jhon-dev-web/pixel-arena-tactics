@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { mt } from '../locales/market';
 import { MarketUnreachable, marketApi } from '../game/market/api';
 import { runLinkFlow } from '../game/market/linkFlow';
@@ -7,6 +7,7 @@ import { sendUsdt } from '../game/market/wallet';
 import { centsToUnits } from '../../supabase/functions/_shared/chain/money';
 import type { ChainPublic } from '../../supabase/functions/_shared/market/types';
 import { LINK_MESSAGE_KEY } from './market/linkMessages';
+import { Warnings } from './market/WalletPanel';
 import { copyText, fmtUsdt } from './market/format';
 import '../market.css';
 
@@ -25,6 +26,20 @@ export default function PassUsdt({ onGranted }: { onGranted: () => void }) {
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [hash, setHash] = useState('');
+  // the price comes from the server (the same number the payment step shows), asked once when the Pass screen opens, so the button can say it before anything is tapped
+  const [priceCents, setPriceCents] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    marketApi
+      .passPrice()
+      .then((r) => {
+        if (alive && !('reason' in r)) setPriceCents(r.priceCents);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const say = (text: string, error = false) => setMessage({ text, error });
 
@@ -121,7 +136,7 @@ export default function PassUsdt({ onGranted }: { onGranted: () => void }) {
         }}
         data-ui
       >
-        {mt('pass.usdtButton')}
+        {priceCents !== null ? mt('pass.usdtButtonPrice', { a: fmtUsdt(priceCents) }) : mt('pass.usdtButton')}
       </button>
     );
   }
@@ -131,10 +146,8 @@ export default function PassUsdt({ onGranted }: { onGranted: () => void }) {
       <h4 className="mk-h">{mt('pass.title')}</h4>
       {plan && (
         <>
-          <p className="mk-warn key">{mt('rules.neverKey')}</p>
-          {!plan.chain.livemode && <p className="mk-warn test">{mt('rules.testnet')}</p>}
-          <p>{mt('pass.price', { a: fmtUsdt(plan.priceCents) })}</p>
-          <p className="mk-note">{mt('pass.pay', { a: fmtUsdt(plan.priceCents) })}</p>
+          <Warnings chain={plan.chain} />
+          <p className="mk-text">{mt('pass.pay', { a: fmtUsdt(plan.priceCents) })}</p>
           <div className="mk-kv">
             <span>{mt('pass.receive')}</span>
             <code className="mk-address">{plan.receiveAddress}</code>

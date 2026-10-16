@@ -680,6 +680,15 @@ describe('the USDT Pass (pass-crypto)', () => {
     return m;
   }
 
+  it('price tells the buy screen the cost up front: no wallet needed, no purchase intent opened, still behind the login', async () => {
+    const m = makeMarket(); // no wallet linked
+    const r = await m.pass({ action: 'price' }, USER_B);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ ok: true, priceCents: 1000, priceUsdt: '10.00', chain: { chainId: 97 } });
+    expect(r.body).not.toHaveProperty('receiveAddress');
+    expect((await m.pass({ action: 'price' }, null)).status).toBe(401);
+  });
+
   it('start says what to pay and to whom; paying 10.00 USDT from the linked wallet to the receiving address grants the Pass', async () => {
     const m = await ready();
     const start = await m.pass({ action: 'start' }, USER_B);

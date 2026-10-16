@@ -1,11 +1,12 @@
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
-import BrowsePanel from '../../components/market/BrowsePanel';
+import BrowsePanel, { PAGE_SIZE } from '../../components/market/BrowsePanel';
 import HistoryPanel from '../../components/market/HistoryPanel';
 import ItemCard from '../../components/market/ItemCard';
 import ReservationPanel from '../../components/market/ReservationPanel';
-import SellPanel from '../../components/market/SellPanel';
+import { MarketSummary, MyOffers, OfferForm, SellPicker, SellFlowProps, useSellFlow } from '../../components/market/SellPanel';
+import Notices from '../../components/market/Notices';
 import WalletPanel from '../../components/market/WalletPanel';
 import { defaultSave, SaveData } from '../engine';
 import { createGearInstance } from '../gearInstances';
@@ -54,6 +55,11 @@ const reservation = (over: Partial<ReservationView> = {}): ReservationView => ({
   ...over,
 });
 const html = (el: ReturnType<typeof h>): string => renderToStaticMarkup(el);
+// the sell screens share one flow (the picker in the main area, the form in the side column, my offers): rendered together here
+function SellScreens(props: SellFlowProps) {
+  const flow = useSellFlow(props);
+  return h('div', null, h(SellPicker, { flow }), h(OfferForm, { flow }), h(MyOffers, { flow }));
+}
 
 beforeEach(() => {
   setLocale('pt');
@@ -103,6 +109,27 @@ describe('market screens', () => {
     expect(html(h(ReservationPanel, { api, reservation: reservation({ status: 'refund_due' }), walletAddress: null, onChanged: () => undefined, onClose: () => undefined, bagFull: false }))).toContain('devolução é feita manualmente');
   });
 
+  it('notices: collapsed to one compact line by default (the full key warning is behind "Saiba mais"); the wallet and payment steps always show the full key warning', () => {
+    const line = html(h(Notices, { chain }));
+    expect(line).toContain('Rede de teste · O jogo nunca pede sua frase secreta · Você paga direto ao vendedor');
+    expect(line).toContain('Saiba mais');
+    expect(line).toContain('aria-expanded="false"');
+    expect(line).not.toContain('NUNCA pede sua chave privada');
+    expect(line).not.toContain('nunca guarda o seu dinheiro');
+    // on the main network there is no test-network piece
+    expect(html(h(Notices, { chain: { ...chain, livemode: true } }))).not.toContain('Rede de teste');
+    // the steps with money or a signature do not hide the warning behind anything
+    expect(html(h(WalletPanel, { api, chain, wallet: null, onChanged: () => undefined }))).toContain('NUNCA pede sua chave privada');
+    expect(html(h(ReservationPanel, { api, reservation: reservation(), walletAddress: WALLET[USER_B], onChanged: () => undefined, onClose: () => undefined, bagFull: false }))).toContain('NUNCA pede sua chave privada');
+    // the fee is explained in the payment step (not in a permanent footer) and in the item detail
+    expect(html(h(ReservationPanel, { api, reservation: reservation(), walletAddress: WALLET[USER_B], onChanged: () => undefined, onClose: () => undefined, bagFull: false }))).toContain('O jogo fica com 5% de cada venda');
+    setLocale('en');
+    const en = html(h(Notices, { chain }));
+    expect(en).toContain('Test network · The game never asks for your secret phrase · You pay the seller directly');
+    expect(en).toContain('Learn more');
+    expect(en).not.toContain('NEVER asks for your private key');
+  });
+
   it('wallet: no wallet -> the link button and the warnings; linked -> the address in full', () => {
     const none = html(h(WalletPanel, { api, chain, wallet: null, onChanged: () => undefined }));
     expect(none).toContain('Ligar carteira');
@@ -119,17 +146,35 @@ describe('market screens', () => {
     const save: SaveData = { ...defaultSave(), gearInstances: { ...defaultSave().gearInstances, gi_1: inst } };
     setCertificates([cert]);
     const overview: MarketOverview = { wallet: null, chain, listings: [], reservation: null, sales: [], refundsDue: [], pending: [] };
-    const out = html(h(SellPanel, { api, save, overview, feePercent: 5, host: { getSave: () => save, applySave: () => undefined }, onChanged: () => undefined }));
+    const out = html(h(SellScreens, { api, save, overview, feePercent: 5, host: { getSave: () => save, applySave: () => undefined }, onChanged: () => undefined }));
     expect(out).toContain('Ligue a sua carteira para vender');
     expect(out).toContain('Só itens com certificado');
-    expect(out).toContain('Meus anúncios');
-    expect(html(h(SellPanel, { api, save: defaultSave(), overview: null, feePercent: 5, host: { getSave: () => save, applySave: () => undefined }, onChanged: () => undefined }))).toContain('Você não tem itens à venda');
+    expect(out).toContain('Minhas ofertas');
+    expect(out).toContain('Publicar oferta');
+    expect(out).toContain('Escolha um item');
+    expect(out).toContain('Taxa do mercado (5%)');
+    expect(out).toContain('Você recebe');
+    expect(html(h(SellScreens, { api, save: defaultSave(), overview: null, feePercent: 5, host: { getSave: () => save, applySave: () => undefined }, onChanged: () => undefined }))).toContain('Você não tem itens à venda');
     // with a live listing of mine: price, status and a cancel button
     const withListing: MarketOverview = { ...overview, wallet: { address: WALLET[USER_A], chainId: 97 }, listings: [{ id: 'l1', certificateId: cert.id, priceCents: 2500, status: 'open', createdAt: cert.createdAt, expiresAt: new Date(Date.now() + 5 * 86_400_000).toISOString(), item: { kind: 'gear', templateId: 'bronze_dagger', rarity: 'epic', tier: 1, substats: [], goldAmount: null } }] };
-    const live = html(h(SellPanel, { api, save: defaultSave(), overview: withListing, feePercent: 5, host: { getSave: () => save, applySave: () => undefined }, onChanged: () => undefined }));
+    const live = html(h(SellScreens, { api, save: defaultSave(), overview: withListing, feePercent: 5, host: { getSave: () => save, applySave: () => undefined }, onChanged: () => undefined }));
     expect(live).toContain('25,00');
     expect(live).toContain('À venda');
     expect(live).toContain('Cancelar anúncio');
+  });
+
+  it('summary and pages: the sales of today and my active offers are counted, and a long list is paged', () => {
+    const sale = { id: 's1', role: 'seller' as const, soldAt: new Date().toISOString(), priceCents: 1000, feeCents: 50, sellerCents: 950, livemode: false, sellerTxHash: '0x', feeTxHash: '0x', item: { kind: 'gear' as const, templateId: 'bronze_dagger' } };
+    const ov: MarketOverview = { wallet: null, chain, listings: [{ id: 'l1', certificateId: 'c', priceCents: 100, status: 'open', createdAt: '', expiresAt: '', item: { kind: 'gear', templateId: 'bronze_dagger', rarity: 'epic', tier: 1, substats: [], goldAmount: null } }], reservation: null, sales: [sale, { ...sale, id: 's2', role: 'buyer' }, { ...sale, id: 's3', soldAt: '2020-01-01T00:00:00.000Z' }], refundsDue: [], pending: [] };
+    const sum = html(h(MarketSummary, { overview: ov, feePercent: 5 }));
+    expect(sum).toContain('Minhas ofertas ativas');
+    expect(sum).toContain('10,00'); // only the sale of today as a seller
+    expect(sum).toContain('5%');
+    const many = Array.from({ length: 19 }, (_, i) => listing({ id: `m${i}`, price_cents: 100 + i }));
+    const page = html(h(BrowsePanel, { listings: many, feePercent: 5, busyId: null, failure: null, onReserve: () => undefined }));
+    expect((page.match(/<li class="mk-card/g) ?? []).length).toBe(PAGE_SIZE);
+    expect(page).toContain('aria-current="page"');
+    expect(page).toContain('Buscar item');
   });
 
   it('history: receipts with the fee and the transactions, refunds to do by hand, and the English version says the same', () => {

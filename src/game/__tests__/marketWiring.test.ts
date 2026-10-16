@@ -47,7 +47,7 @@ describe('the desktop build', () => {
   it('nothing in the main bundle imports the market statically: only lazy imports behind the build constant, plus the type-only host', () => {
     const app = read('src/App.tsx');
     expect(app).toContain("const MARKET_BUILD = import.meta.env.VITE_MARKET_ENABLED === 'true';");
-    for (const lazyImport of ["import('./components/MarketModal')", "import('./components/market/MarketSync')", "import('./components/PassUsdt')"]) {
+    for (const lazyImport of ["import('./components/MarketScreen')", "import('./components/market/MarketSync')", "import('./components/PassUsdt')"]) {
       expect(app).toMatch(new RegExp(`MARKET_BUILD \\? lazy\\(\\(\\) => ${lazyImport.replace(/[().]/g, '\\$&')}\\) : null`));
     }
     const staticMarket = app.split('\n').filter((l) => /^import .* from '.*(market|Market|PassUsdt)/.test(l));
@@ -64,7 +64,7 @@ describe('the desktop build', () => {
   });
 
   it('no other file outside the market itself imports the market modules', () => {
-    const allowedInside = (f: string) => f.startsWith('src/game/market/') || f.startsWith('src/components/market/') || f === 'src/components/MarketModal.tsx' || f === 'src/components/PassUsdt.tsx' || f === 'src/locales/market.ts' || f === 'src/game/marketFlag.ts' || f.includes('__tests__');
+    const allowedInside = (f: string) => f.startsWith('src/game/market/') || f.startsWith('src/components/market/') || f === 'src/components/MarketScreen.tsx' || f === 'src/components/PassUsdt.tsx' || f === 'src/locales/market.ts' || f === 'src/game/marketFlag.ts' || f.includes('__tests__');
     const offenders: string[] = [];
     for (const f of walk('src').filter((x) => /\.(ts|tsx)$/.test(x))) {
       if (allowedInside(f) || f === 'src/App.tsx') continue;
@@ -99,7 +99,7 @@ describe('the desktop build', () => {
 });
 
 describe('no screen can take a private key or a seed phrase', () => {
-  const files = [...walk('src/game/market'), ...walk('src/components/market'), 'src/components/MarketModal.tsx', 'src/components/PassUsdt.tsx', ...walk('supabase/functions/_shared/market'), ...walk('supabase/functions/_shared/chain')].filter((f) => /\.(ts|tsx)$/.test(f));
+  const files = [...walk('src/game/market'), ...walk('src/components/market'), 'src/components/MarketScreen.tsx', 'src/components/PassUsdt.tsx', ...walk('supabase/functions/_shared/market'), ...walk('supabase/functions/_shared/chain')].filter((f) => /\.(ts|tsx)$/.test(f));
 
   it('no code identifier, field name or request names a private key, a seed or a mnemonic', () => {
     for (const f of files) {
@@ -126,9 +126,10 @@ describe('no screen can take a private key or a seed phrase', () => {
     expect(MARKET_TEXT.pt.rules).toMatchObject({ neverKey: expect.stringContaining('NUNCA pede sua chave privada') });
     expect(MARKET_TEXT.en.rules).toMatchObject({ neverKey: expect.stringContaining('NEVER asks for your private key') });
     expect(read('src/components/market/WalletPanel.tsx')).toContain("mt('rules.neverKey')");
-    expect(read('src/components/MarketModal.tsx')).toContain('<Warnings');
+    expect(read('src/components/MarketScreen.tsx')).toContain('<Notices'); // the browse / sell / history tabs: one compact line, the full text behind "Saiba mais"
+    expect(read('src/components/market/Notices.tsx')).toContain('<Warnings');
     expect(read('src/components/market/ReservationPanel.tsx')).toContain('<Warnings');
-    expect(read('src/components/PassUsdt.tsx')).toContain("mt('rules.neverKey')");
+    expect(read('src/components/PassUsdt.tsx')).toContain('<Warnings');
   });
 });
 
@@ -152,7 +153,7 @@ describe('the market text', () => {
 
   it('every key a screen asks for exists', () => {
     const known = new Set(keys(MARKET_TEXT.pt));
-    const files = [...walk('src/components/market'), 'src/components/MarketModal.tsx', 'src/components/PassUsdt.tsx', 'src/components/market/ItemCard.tsx'].filter((f) => /\.tsx?$/.test(f));
+    const files = [...walk('src/components/market'), 'src/components/MarketScreen.tsx', 'src/components/PassUsdt.tsx', 'src/components/market/ItemCard.tsx'].filter((f) => /\.tsx?$/.test(f));
     const missing: string[] = [];
     for (const f of files) {
       for (const m of read(f).matchAll(/\bmt\(\s*'([a-zA-Z0-9_.]+)'/g)) if (!known.has(m[1])) missing.push(`${f}: ${m[1]}`);

@@ -123,6 +123,8 @@ export default function ReservationPanel({
         </div>
       </div>
 
+      <p className="mk-note">{mt('rules.feeExplain', { pct: res.chain.feePercent })}</p>
+
       {sold ? (
         <p className="mk-status ok" role="status">
           {bagFull ? mt('pay.soldWaiting') : mt('pay.sold')}

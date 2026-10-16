@@ -7,16 +7,26 @@ import { mt } from '../locales/market';
 import BrowsePanel from './market/BrowsePanel';
 import HistoryPanel from './market/HistoryPanel';
 import { MarketHost, syncDepsFor } from './market/marketDeps';
+import Notices from './market/Notices';
 import ReservationPanel from './market/ReservationPanel';
-import SellPanel from './market/SellPanel';
-import WalletPanel, { Warnings } from './market/WalletPanel';
+import { MarketSummary, MyOffers, OfferForm, SellPicker, useSellFlow } from './market/SellPanel';
+import WalletPanel from './market/WalletPanel';
+import { ScaleIcon } from './market/icons';
+import { shortAddress } from './market/format';
 import '../market.css';
 
-type Tab = 'buy' | 'sell' | 'history' | 'wallet';
+type Tab = 'buy' | 'sell' | 'offers' | 'history' | 'wallet';
+const TABS: { id: Exclude<Tab, 'wallet'>; icon: string }[] = [
+  { id: 'buy', icon: '🛒' },
+  { id: 'sell', icon: '🏷️' },
+  { id: 'offers', icon: '📦' },
+  { id: 'history', icon: '🕒' },
+];
 
-// The player market (web only, behind VITE_MARKET_ENABLED; this whole module, its text and its styles are a lazy chunk the desktop / Steam build never contains).
-// Buy: browse the public listings, reserve one, pay the two USDT transfers from your own wallet. Sell: list a certified item. History: receipts and refunds. Wallet: link your address.
-export default function MarketModal({ save, host, onClose }: { save: SaveData; host: MarketHost; onClose: () => void }) {
+// The player market as a main screen of the game shell (web only, behind VITE_MARKET_ENABLED; this whole module, its text and its styles are a lazy chunk the desktop / Steam build never contains).
+// Buy: browse the public listings, reserve one, pay the two USDT transfers from your own wallet. Sell: pick an item and publish an offer (the form is the right column). My offers, History: receipts
+// and refunds. The wallet link is a chip in the header. On a phone it is one column: the offer form shows under the Sell tab and the summary under My offers.
+export default function MarketScreen({ save, host }: { save: SaveData; host: MarketHost }) {
   const [tab, setTab] = useState<Tab>('buy');
   const [overview, setOverview] = useState<MarketOverview | null>(null);
   const [listings, setListings] = useState<PublicListing[]>([]);
@@ -83,22 +93,49 @@ export default function MarketModal({ save, host, onClose }: { save: SaveData; h
 
   const wallet = overview?.wallet ?? null;
   const chain = overview?.chain ?? null;
+  const flow = useSellFlow({ api: marketApi, save, overview, feePercent: chain?.feePercent ?? 5, host, onChanged: () => void afterChange() });
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal shop-modal market-modal" role="dialog" aria-modal="true" aria-label={mt('title')} onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">{mt('title')}</h2>
-        <p className="mk-note">{mt('subtitle')}</p>
+    <div className="desktop-home mk-screen" data-tab={tab} aria-label={mt('title')}>
+      <section className="dh-card mk-main">
+        <header className="mk-head">
+          <ScaleIcon />
+          <div className="mk-head-text">
+            <h2 className="mk-title">{mt('title')}</h2>
+            <p className="mk-subtitle">{mt('subtitle')}</p>
+          </div>
+          <div className="mk-head-actions">
+            <button className={`mk-wallet-chip${wallet ? '' : ' none'}${tab === 'wallet' ? ' active' : ''}`} onClick={() => setTab('wallet')} data-ui>
+              {wallet ? (
+                <>
+                  <span className="mk-chip-label">{mt('header.walletLabel')}: </span>
+                  {shortAddress(wallet.address)}
+                </>
+              ) : (
+                mt('header.connect')
+              )}
+            </button>
+            <button className="mk-btn small mk-refresh" onClick={() => void refresh()} aria-label={mt('refresh')} title={mt('refresh')} data-ui>
+              {'↻'}
+            </button>
+          </div>
+        </header>
 
-        <div className="forge-tabs shop-tabs">
-          {(['buy', 'sell', 'history', 'wallet'] as const).map((id) => (
-            <button key={id} className={`tab${tab === id ? ' active' : ''}`} onClick={() => setTab(id)} data-ui>
+        <div className="mk-tabs" role="tablist">
+          {TABS.map(({ id, icon }) => (
+            <button key={id} role="tab" aria-selected={tab === id} className={`tab${tab === id ? ' active' : ''}`} onClick={() => setTab(id)} data-ui>
+              <span className="mk-tab-ico" aria-hidden>
+                {icon}
+              </span>
               {mt(`tabs.${id}`)}
             </button>
           ))}
         </div>
 
-        <div className="shop-body mk-body">
+        {/* one compact line; the wallet-link and payment steps carry the full key warning instead */}
+        {tab !== 'wallet' && !(tab === 'buy' && active) && <Notices chain={chain} />}
+
+        <div className="mk-content">
           {error && (
             <p className="mk-status error" role="alert">
               {error}{' '}
@@ -111,11 +148,11 @@ export default function MarketModal({ save, host, onClose }: { save: SaveData; h
 
           {tab === 'buy' && (
             <>
-              {!wallet && overview && (
+              {!wallet && overview && !active && (
                 <p className="mk-status">
-                  {mt('wallet.none')}{' '}
+                  {mt('wallet.needLink')}{' '}
                   <button className="mk-btn small" onClick={() => setTab('wallet')} data-ui>
-                    {mt('tabs.wallet')}
+                    {mt('header.connect')}
                   </button>
                 </p>
               )}
@@ -132,28 +169,27 @@ export default function MarketModal({ save, host, onClose }: { save: SaveData; h
                   }}
                 />
               ) : (
-                <>
-                  <Warnings chain={chain} />
-                  <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} />
-                </>
+                <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} />
               )}
             </>
           )}
-          {tab === 'sell' && <SellPanel api={marketApi} save={save} overview={overview} feePercent={chain?.feePercent ?? 5} host={host} onChanged={() => void afterChange()} />}
+          {tab === 'sell' && <SellPicker flow={flow} />}
+          {tab === 'offers' && <MyOffers flow={flow} />}
           {tab === 'history' && <HistoryPanel overview={overview} chainId={chain?.chainId ?? 56} />}
           {tab === 'wallet' && <WalletPanel api={marketApi} chain={chain} wallet={wallet} onChanged={() => void refresh()} />}
         </div>
+      </section>
 
-        <div className="mk-footer">
-          <button className="mk-btn small" onClick={() => void refresh()} data-ui>
-            {mt('refresh')}
-          </button>
-          <p className="mk-note">{mt('rules.feeExplain', { pct: chain?.feePercent ?? 5 })}</p>
-        </div>
-        <button className="modal-x" onClick={onClose} aria-label={mt('close')} data-ui>
-          {'✕'}
-        </button>
-      </div>
+      <aside className="mk-side">
+        <section className="dh-card mk-create">
+          <h3 className="dh-card-title">{mt('sell.form.title')}</h3>
+          <OfferForm flow={flow} />
+        </section>
+        <section className="dh-card mk-summary-card">
+          <h3 className="dh-card-title">{mt('summary.title')}</h3>
+          <MarketSummary overview={overview} feePercent={chain?.feePercent ?? 5} />
+        </section>
+      </aside>
     </div>
   );
 }

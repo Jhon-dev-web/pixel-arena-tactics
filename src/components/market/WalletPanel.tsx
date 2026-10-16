@@ -7,12 +7,12 @@ import { copyText } from './format';
 import { LINK_MESSAGE_KEY } from './linkMessages';
 
 /** The warning every money screen carries. */
-export function Warnings({ chain }: { chain: ChainPublic | null }) {
+export function Warnings({ chain, custody = true }: { chain: ChainPublic | null; custody?: boolean }) {
   return (
     <div className="mk-warnings">
       {chain && !chain.livemode && <p className="mk-warn test">{mt('rules.testnet')}</p>}
       <p className="mk-warn key">{mt('rules.neverKey')}</p>
-      <p className="mk-note">{mt('rules.nonCustodial')}</p>
+      {custody && <p className="mk-note">{mt('rules.nonCustodial')}</p>}
     </div>
   );
 }
@@ -62,7 +62,7 @@ export default function WalletPanel({ api, chain, wallet, onChanged }: { api: Ma
         </div>
       ) : (
         <div className="mk-wallet">
-          <p>{mt('wallet.none')}</p>
+          <p className="mk-text">{mt('wallet.none')}</p>
           <button className="mk-btn primary" onClick={link} disabled={!chain || busy !== null} data-ui>
             {busy === 'signing' ? mt('wallet.signing') : mt('wallet.connect')}
           </button>
