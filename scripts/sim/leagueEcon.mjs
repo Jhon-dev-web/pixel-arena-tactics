@@ -1,8 +1,8 @@
 // `node scripts/sim/leagueEcon.mjs TAG POLICIES [SEEDS]` plays the League economy policies (scripts/sim/leagueEcon.sim.ts) one process per policy and seed, then prints the report.
 //   TAG       prefix of the JSON files in LEAGUE_OUT (default: the OS temp dir / arena-league-econ), so before / after runs sit side by side
-//   POLICIES  comma list: A,P,AS,PS,AB,PB,ABE,PBE (see the .sim.ts header)
+//   POLICIES  comma list: A,P,AS,PS,PG,AB,PB,ABE,PBE,PBR,PBER,PBG,PBEG,PBRG (see the .sim.ts header)
 //   SEEDS     seeds per policy (default 6)
-// Env: LEAGUE_WORKERS (6), LEAGUE_DAYS (60), LEAGUE_OUT, LEAGUE_REPORT_ONLY=1 (print from the JSON already there), SIM_T / SIM_ZONES (passed through to the sim).
+// Env: LEAGUE_WORKERS (6), LEAGUE_DAYS (60), LEAGUE_OUT, LEAGUE_REPORT_ONLY=1 (print from the JSON already there), SIM_T / SIM_ZONES / SIM_RARITY (passed through to the sim).
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -85,7 +85,7 @@ for (const p of policies) {
   console.log(`| ${p} | ${DAYS.map((d) => { const v = rs.map((r) => r[d - 1].lvl); return `${f1(med(v))} (${f1(Math.min(...v))}-${f1(Math.max(...v))})`; }).join(' | ')} |`);
 }
 
-const pairs = [['PB', 'PS'], ['PB', 'PG'], ['PB4', 'PG'], ['PB4E', 'PG'], ['PBE', 'PG'], ['AB', 'AG'], ['PS', 'P'], ['PG', 'P'], ['PS', 'A']];
+const pairs = [['PB', 'PS'], ['PB', 'PG'], ['PB', 'PBE'], ['PBE', 'PG'], ['PBR', 'PB'], ['PBR', 'PG'], ['PBER', 'PBE'], ['PBG', 'PG'], ['PBG', 'PBEG'], ['PBEG', 'PG'], ['PBRG', 'PBG'], ['PBRG', 'PG'], ['PB4', 'PG'], ['PB4E', 'PG'], ['AB', 'AG'], ['PS', 'P'], ['PG', 'P'], ['PS', 'A']];
 console.log(`\n### Gap in levels (median of the per-seed difference, same seed = same jitter and same dice)`);
 console.log(`| pair | ${DAYS.map((d) => 'd' + d).join(' | ')} |`);
 console.log(`| --- | ${DAYS.map(() => '---').join(' | ')} |`);

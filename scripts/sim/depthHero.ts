@@ -20,7 +20,8 @@ export function gearHero(rarity: Rarity, paragon: number, refine = 8): SaveData 
   const pieces: [string, string][] = [['weapon', TIER_GEAR[6][0]], ['armor', TIER_GEAR[6][1]], ...TIER_EXTRAS[6]];
   for (const [slot, tpl] of pieces) {
     const tier = getGear(tpl)?.tier ?? 6;
-    const subs: Substat[] = ORDER.slice(0, rarityDef(rarity).substatCount).map((type) => ({ type, value: medianSubstatValue(SUBSTATS.find((s) => s.type === type)!, tier) }));
+    const def = rarityDef(rarity);
+    const subs: Substat[] = ORDER.slice(0, def.substatCount).map((type) => ({ type, value: medianSubstatValue(SUBSTATS.find((s) => s.type === type)!, tier, def.substatMult) }));
     const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity, substats: subs, upgrade: refine });
     instances[inst.id] = inst;
     equipped[slot] = inst.id;

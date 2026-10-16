@@ -413,7 +413,11 @@ export interface PlayerOptions {
   // `greedy` = the review's own "smart" experiment: the moment the last zone is open at its deep depth he hunts ONLY there, whatever the next craft is short of (no more mining,
   // woodcutting or trips for materials: he plays the XP and nothing else, so the gear he has is the gear he keeps).
   greedy?: boolean;
-  buyer?: { fromTier: number; toTier?: number; rarity: Rarity };
+  // `noStash` = never fetches materials for the stash upgrade (the last thing the policy goes for when a craft and the refining are covered). A buyer whose pieces arrive finished has nothing
+  // else to fetch, so without it he spends days mining for a bag upgrade while the others hunt (Rodada 24: that detour made the +8 buyer look slower than the +0 one).
+  noStash?: boolean;
+  // `refine`: the market piece arrives already refined to this level (the +8 Legendary of the buyer table, Rodada 24); the player keeps refining what is worn past it as usual.
+  buyer?: { fromTier: number; toTier?: number; rarity: Rarity; refine?: number };
   // Long-horizon sim: once the floor-100 boss is down the Dungeon sessions go to the Profundezas (nextDepthStage), and the snapshots carry the depth, the paragon level and the blockers.
   long?: boolean;
 }
@@ -647,6 +651,7 @@ export class Player {
           this.ledger.elixir.coveredHours += Math.max(0, Math.min(to, s.huntingOfflineStart + p.pendingMs) - Math.max(w.from, s.huntingOfflineStart)) / HOUR;
         }
         this.ledger.hours.hunt += hours;
+        this.trace.push(`   collected hunt ${huntKey} ${hours.toFixed(2)} h of ${(p.timeMs / HOUR).toFixed(2)} h elapsed, sub-level ${p.startCeiling}->${p.ceilingSubLevel}, kills ${p.kills}`);
         const hz = (this.ledger.hunt[huntKey] ??= { hours: 0, units: {} });
         hz.hours += hours;
         this.huntHours += hours;
@@ -1169,6 +1174,11 @@ export class Player {
       const bought = this.opts.buyer && tier >= this.opts.buyer.fromTier && tier <= (this.opts.buyer.toTier ?? 99) ? { rarity: this.opts.buyer.rarity, substats: rollSubstats(this.opts.buyer.rarity, tier) } : undefined;
       const res = applyForge(this.S, tpl, { level: playerLevel(this.S.xp), now: this.now, ...(bought ? { roll: bought } : {}) });
       if (!res.ok || !res.save) break;
+      if (bought && this.opts.buyer?.refine && res.instance) {
+        const made = res.instance;
+        const upgrade = Math.min(this.opts.buyer.refine, maxRefineFor(getGear(made.templateId)));
+        res.save = { ...res.save, gearInstances: { ...res.save.gearInstances, [made.id]: { ...res.save.gearInstances[made.id], upgrade } } };
+      }
       const flowBefore = this.flowMark();
       this.set(res.save, 'forja');
       this.flowCount('forge', flowBefore);
@@ -1539,7 +1549,9 @@ export class Player {
       }
     }
     // the stash upgrade is the last thing worth fetching materials for: only once the craft and the refining are covered
-    if (Object.keys(deficit).length === 0) {
+    if (this.opts.noStash) {
+      // see PlayerOptions.noStash
+    } else if (Object.keys(deficit).length === 0) {
       const sp = this.stashPlan();
       if (sp && !sp.blocked) for (const [m, q] of Object.entries(sp.deficit) as [MaterialId, number][]) deficit[m] = q;
     } else if (this.S.stash.level < 2) {
@@ -1655,7 +1667,7 @@ export class Player {
         const next = requestHuntStart(this.S, z.id, depth, this.now);
         if (next) {
           this.S = next;
-          this.trace.push(`   hunt ${z.id}:${depth}`);
+          this.trace.push(`   hunt ${z.id}:${depth} pass=${JSON.stringify(this.S.huntSession?.pass)} cap=${this.S.huntSession?.passCapHours} owner=${this.S.hasBattlePass}`);
           if (this.opts.sinks) this.S = applyElixir(this.S, 'hunter_lure', this.now) ?? this.S;
           if (this.opts.tonics !== false) {
             const drunk = applyElixir(this.S, 'knowledge_elixir', this.now);

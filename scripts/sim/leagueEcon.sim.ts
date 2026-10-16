@@ -6,10 +6,11 @@
 //   AS  A + smart.                                      PS  P + smart: once the LAST Hunting zone is open at its deep depth he hunts only there (Player.startBestXp).
 //   AG  / PG  the review's smart: GREEDY, only the last zone's deep depth once it is open (never mines, never forges again for lack of materials).
 //   PB  P + smart + BUYER of a legendary tier 4+ set: every gear recipe of tier 4, 5 and 6 costs nothing (the piece still needs its hero level) and rolls Legendary.
+//   PBR / PBER: the buyer whose pieces arrive already refined to +8 (Legendary / Epic).  PBG / PBEG / PBRG: the same buyers (Legendary, Epic, Legendary +8) playing greedy like PG.
 //   PBE the same with Epic.  PB4 / PB4E: buys ONLY the tier 4 set (Legendary / Epic); tiers 5 and 6 he forges like everybody else. AB / ABE: the buyer without the Pass.
 // "Smart non-buyer vs buyer" (PS vs PB) is the number the League review cared about: how many levels buying a set is worth to an equally good Pass owner.
 // Env: LEAGUE_EVENTS=0 (no League events; they are on by default since Rodada 22's events), LEAGUE_POLICY (required), LEAGUE_SEEDS ("1,2,3,4,5,6"), LEAGUE_DAYS (60), LEAGUE_OUT (dir), LEAGUE_TAG (file prefix).
-// SIM_T / SIM_ZONES: same overrides as longHaul.sim.ts, for what-ifs without editing the tunables.
+// SIM_T / SIM_ZONES: same overrides (SIM_RARITY: the same for the rarity table, Rodada 24) as longHaul.sim.ts, for what-ifs without editing the tunables.
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,7 +18,7 @@ import path from 'node:path';
 import T from '../../src/game/tunables';
 import { GEAR, getGear } from '../../src/game/gear';
 import { HUNTING_ZONES } from '../../src/game/huntingZones';
-import { Rarity } from '../../src/game/rarity';
+import { RARITIES, Rarity } from '../../src/game/rarity';
 import { MAX_LEVEL, playerLevel, xpForNextLevel, xpToReachLevel } from '../../src/game/engine';
 import { paragonLevel } from '../../src/game/paragon';
 import { mulberry32, withSeededRandom } from './driver';
@@ -26,6 +27,10 @@ import { setLeagueEpoch } from '../../src/game/leagueClock';
 
 if (process.env.SIM_T) {
   for (const [group, vals] of Object.entries(JSON.parse(process.env.SIM_T) as Record<string, Record<string, number>>)) Object.assign((T as unknown as Record<string, Record<string, number>>)[group], vals);
+}
+// SIM_RARITY: what-ifs for the rarity table without editing it, {"epic":{"statMult":1.1,"substatMult":1.2}, ...} (Rodada 24).
+if (process.env.SIM_RARITY) {
+  for (const [id, over] of Object.entries(JSON.parse(process.env.SIM_RARITY) as Record<string, Record<string, number>>)) Object.assign(RARITIES.find((r) => r.id === id)!, over);
 }
 if (process.env.SIM_ZONES) {
   for (const [id, over] of Object.entries(JSON.parse(process.env.SIM_ZONES) as Record<string, Record<string, number>>)) Object.assign(HUNTING_ZONES.find((z) => z.id === id)!, over);
@@ -44,6 +49,13 @@ export const POLICIES: Record<string, PlayerOptions> = {
   PBE: { long: true, pass: true, smart: true, buyer: { fromTier: 4, rarity: 'epic' } },
   PB4: { long: true, pass: true, smart: true, buyer: { fromTier: 4, toTier: 4, rarity: 'legendary' } },
   PB4E: { long: true, pass: true, smart: true, buyer: { fromTier: 4, toTier: 4, rarity: 'epic' } },
+  // Rodada 24: the buyer of a piece that arrives already refined to +8 (the refined Legendary / Epic of the market once the server refines).
+  PBR: { long: true, pass: true, smart: true, buyer: { fromTier: 4, rarity: 'legendary', refine: 8 } },
+  PBER: { long: true, pass: true, smart: true, buyer: { fromTier: 4, rarity: 'epic', refine: 8 } },
+  // The same buyers who play like the review's greedy owner (PG): once the last zone is open at its deep depth they only hunt there. The fastest anyone can end (the 97 ceiling) is one of these.
+  PBG: { long: true, pass: true, greedy: true, noStash: true, buyer: { fromTier: 4, rarity: 'legendary' } },
+  PBEG: { long: true, pass: true, greedy: true, noStash: true, buyer: { fromTier: 4, rarity: 'epic' } },
+  PBRG: { long: true, pass: true, greedy: true, noStash: true, buyer: { fromTier: 4, rarity: 'legendary', refine: 8 } },
 };
 
 const POLICY = process.env.LEAGUE_POLICY ?? 'P';
@@ -84,9 +96,13 @@ describe('league economy policies', () => {
     if (!opts) throw new Error(`unknown policy ${POLICY}`);
     fs.mkdirSync(OUT, { recursive: true });
     for (const seed of SEEDS) {
+      const traces: string[] = [];
+      let traceOf: Player | null = null;
       const run = withSeededRandom(seed * 7919 + 13, () => {
         const jitter = mulberry32(seed * 104729 + 7);
         const p = new Player((t) => vi.setSystemTime(t), START, opts);
+        traces.push(`# ${POLICY}${seed}`);
+        traceOf = p;
         const seen = new Set<string>();
         const days: unknown[] = [];
         for (let d = 0; d < DAYS; d++) {
@@ -120,9 +136,11 @@ describe('league economy policies', () => {
           });
           snap.ledger = null as never;
         }
+        traces.push(...(traceOf as unknown as { trace: string[] }).trace);
         return days;
       });
       fs.writeFileSync(path.join(OUT, `${TAG}-${POLICY}-${seed}.json`), JSON.stringify(run));
+      if (process.env.LEAGUE_TRACE === '1') fs.writeFileSync(path.join(OUT, `${TAG}-${POLICY}-${seed}.trace.txt`), traces.join('\n'));
       console.log(`${TAG} ${POLICY}${seed}: level ${(run[DAYS - 1] as { lvl: number }).lvl.toFixed(1)}`);
     }
   });

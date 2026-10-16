@@ -4,12 +4,12 @@
 // Env: SUB_ZONE (blood_abyss), SUB_DEPTH (deep), SUB_DMG / SUB_HP override the sub-level growth for the zone (what-if), SUB_LEVELS (10).
 import { it } from 'vitest';
 import { buildCombatStats, buildHuntSimSetup, computeCP, huntPromotionRequiredWins, SaveData } from '../../src/game/engine';
-import { getHuntingZone, HuntingDepth } from '../../src/game/huntingZones';
+import { getHuntingZone, HUNTING_ZONES, HuntingDepth } from '../../src/game/huntingZones';
 import { simulateHuntingSession } from '../../src/game/huntCombat';
 import { HuntSession } from '../../src/game/huntSession';
 import { createGearInstance } from '../../src/game/gearInstances';
 import { getGear } from '../../src/game/gear';
-import { medianSubstatValue, rarityDef, Rarity, Substat, SUBSTATS } from '../../src/game/rarity';
+import { medianSubstatValue, RARITIES, rarityDef, Rarity, Substat, SUBSTATS } from '../../src/game/rarity';
 import T from '../../src/game/tunables';
 import { buildHero, TIER_EXTRAS, TIER_GEAR } from './ladder';
 import { spendSkillPoints } from './driver';
@@ -22,7 +22,8 @@ export function setHero(level: number, tier: number, refine: number, rarity: Rar
   const equipped = { ...hero.equipped } as unknown as Record<string, string>;
   const pieces: [string, string][] = [['weapon', TIER_GEAR[tier][0]], ['armor', TIER_GEAR[tier][1]], ...TIER_EXTRAS[tier]];
   for (const [slot, tpl] of pieces) {
-    const subs: Substat[] = ORDER.slice(0, rarityDef(rarity).substatCount).map((type) => ({ type, value: medianSubstatValue(SUBSTATS.find((s) => s.type === type)!, getGear(tpl)?.tier ?? tier) }));
+    const def = rarityDef(rarity);
+    const subs: Substat[] = ORDER.slice(0, def.substatCount).map((type) => ({ type, value: medianSubstatValue(SUBSTATS.find((s) => s.type === type)!, getGear(tpl)?.tier ?? tier, def.substatMult) }));
     const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity, substats: subs, upgrade: refine });
     instances[inst.id] = inst;
     equipped[slot] = inst.id;
@@ -46,13 +47,15 @@ it('prints the sub-level reach of the ladder', () => {
   const zoneId = process.env.SUB_ZONE ?? 'blood_abyss';
   const depth = (process.env.SUB_DEPTH ?? 'deep') as HuntingDepth;
   const levels = Number(process.env.SUB_LEVELS ?? T.hunting.subLevels);
+  if (process.env.SIM_RARITY) for (const [id, over] of Object.entries(JSON.parse(process.env.SIM_RARITY) as Record<string, Record<string, number>>)) Object.assign(RARITIES.find((r) => r.id === id)!, over);
+  if (process.env.SIM_ZONES) for (const [id, over] of Object.entries(JSON.parse(process.env.SIM_ZONES) as Record<string, Record<string, number>>)) Object.assign(HUNTING_ZONES.find((z) => z.id === id)!, over);
   const zone = getHuntingZone(zoneId)!;
   if (process.env.SUB_DMG) (zone as { subLevelDmgGrowth?: number }).subLevelDmgGrowth = Number(process.env.SUB_DMG);
   if (process.env.SUB_HP) (zone as { subLevelHpGrowth?: number }).subLevelHpGrowth = Number(process.env.SUB_HP);
   const cases: [string, number, number, number, Rarity][] = [];
   for (const [tier, refine] of [[3, 8], [4, 0], [4, 8], [5, 0], [5, 8], [5, 12], [6, 0], [6, 8], [6, 12]] as [number, number][]) {
-    for (const rarity of ['common', 'legendary'] as Rarity[]) {
-      if (rarity === 'legendary' && refine === 0) continue;
+    for (const rarity of ['common', 'epic', 'legendary'] as Rarity[]) {
+      if (rarity !== 'common' && refine === 0) continue;
       cases.push([`T${tier}+${refine} ${rarity}`, tier >= 6 ? 90 : tier >= 5 ? 75 : 62, tier, refine, rarity]);
     }
   }
