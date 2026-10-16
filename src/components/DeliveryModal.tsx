@@ -31,7 +31,7 @@ function formatDuration(ms: number): string {
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
 }
 
-// What an order pays: the gold and (when there are any) the Runas.
+// What an order pays: the gold and (when there are any) the Éter.
 function Rewards({ gold, shards }: { gold: number; shards: number }) {
   return (
     <div className="ord-rewards">

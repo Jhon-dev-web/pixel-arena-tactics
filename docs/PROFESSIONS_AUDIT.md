@@ -1,6 +1,7 @@
 > **2026-10-15 (rodada 21, a Liga):** as curvas de XP do topo das profissões ficaram íngremes para o ranking por XP total não empatar no teto e o especialista mais rápido não chegar ao nível 75 em 60 dias: Mineração / Lenhador acima do nível 60 (crescimento 1,5 por nível, `professionGrowth5`) e Horta acima do 45 (1,14). Os níveis 1 a 60 de Mineração / Lenhador e 1 a 45 da Horta custam o mesmo de antes (as portas, a obsidiana no 60 inclusa, abrem com o mesmo XP). As receitas do Fertilizante, da Poção do Coletor e do Tônico do Prospector pedem nível 1 do herói. Detalhes e a corrida simulada em `BALANCE_CHANGES.md`, Rodada 21.
 
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+> **2026-10-16:** a moeda rara agora se chama **Éter** (pt) / **Aether** (en) para o jogador (antes Runas / Runes); o campo do save continua `shards`.
 
 # Auditoria das profissões (Mineração, Lenhador, Jardinagem, Refino)
 

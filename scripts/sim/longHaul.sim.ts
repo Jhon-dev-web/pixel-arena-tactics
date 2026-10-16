@@ -8,13 +8,13 @@
 // WHAT IT MODELS: everything the 21-day sim does (hunting in the best unlocked zone/depth, crafting every tier when affordable with the refining chain and gems, refining the
 // weapon and armor, set bonuses and the CP the game computes from them, orders, Dungeon sessions up to the free daily limit, skill points down the Warrior path, attribute points,
 // the inventory policy, the Garden and the tonics), plus the Profundezas and the paragon level (read from the XP).
-// WHAT IT DOES NOT: weekly goals and the login streak (their Gold and Runas are not simulated here, same as the 21-day sim), the Battle Pass track, extra Dungeon sessions bought with
-// Runas, rerolled orders, selling or buying with other players, salvage of old gear, reforge, and the Season Relic.
+// WHAT IT DOES NOT: weekly goals and the login streak (their Gold and Éter are not simulated here, same as the 21-day sim), the Battle Pass track, extra Dungeon sessions bought with
+// Éter, rerolled orders, selling or buying with other players, salvage of old gear, reforge, and the Season Relic.
 //
 // LATE GAME (round 16): from hero level T.lateSinks.minLevel the player also refines all seven worn tier 5 / 6 pieces (up to +8 with the tier material made at its station, then past
 // +8 with the surplus: the deep refine) and lapidates the Epic / Legendary ones (player.ts lateGame, deepRefine, lapidarAll). Nothing of this runs before day ~38, so days 1-21 are untouched.
 // A control run with the chase switched off but the refining kept: SIM_T='{"lateSinks":{"deepMinTier":7,"lapidarMinTier":7}}'.
-// THE LEDGER (round 16): for every 10 days the report also prints the Gold and Runas that came in, went out and were left in hand, and what the player threw away: by material and by
+// THE LEDGER (round 16): for every 10 days the report also prints the Gold and Éter that came in, went out and were left in hand, and what the player threw away: by material and by
 // the reason nothing better was possible (the claim left it behind because the bag was full; the stash had no free slot; the merchant's budget of the day was spent; or the policy
 // threw cheap surplus with room elsewhere), next to what was gathered and what the merchant bought, in units, at the economic reference value and for the non-junk materials.
 // Env: LONG_SEEDS (6) seeds per scenario, LONG_DAYS (180), LONG_SCEN ("A,P"), LONG_JOBS ("A:1,P:1,..." overrides the list), LONG_OUT (dir of the per-seed JSON),
@@ -95,8 +95,8 @@ export interface LongDay {
   huntDepth: Record<string, number>; // hours hunted today by `zone:depth`
   xp: { dungeon: number; hunt: number; order: number; other: number };
   gold: number;
-  shards: number; // Runas in hand
-  // Gold and Runas that came in and went out today (all sources / uses).
+  shards: number; // Éter in hand
+  // Gold and Éter that came in and went out today (all sources / uses).
   goldIn: number;
   goldOut: number;
   wsGold?: number; // Gold the wholesale merchant paid today (round 18; absent in runs played before)
@@ -386,7 +386,7 @@ export function reportScenario(label: string, runs: LongRun[]): string[] {
   out.push('');
   out.push(...table(['Dia', 'XP total', 'Masmorra', 'Caça', 'Pedidos', 'Missões e outros', 'Ouro em caixa'], xpRows));
   out.push('');
-  out.push('##### Ouro e Runas a cada 10 dias (mediana entre seeds)');
+  out.push('##### Ouro e Éter a cada 10 dias (mediana entre seeds)');
   out.push('');
   out.push(...currencyTable(runs));
   out.push('');
@@ -513,7 +513,7 @@ export function discardLedger(label: string, runs: LongRun[]): string[] {
   return out;
 }
 
-// Gold and Runas over time: what came in and went out in each 10 days and what was in hand at the end.
+// Gold and Éter over time: what came in and went out in each 10 days and what was in hand at the end.
 export function currencyTable(runs: LongRun[]): string[] {
   const rows: string[][] = [];
   for (let day = 10; day <= DAYS; day += 10) {
@@ -530,7 +530,7 @@ export function currencyTable(runs: LongRun[]): string[] {
       num(median(runs.map((r) => r.days[day - 1].shards))),
     ]);
   }
-  return table(['Dias', 'Ouro: entrou', 'saiu', 'em caixa no fim', 'do qual atacadista (entrou)', 'Runas: entraram', 'saíram', 'em caixa no fim'], rows);
+  return table(['Dias', 'Ouro: entrou', 'saiu', 'em caixa no fim', 'do qual atacadista (entrou)', 'Éter: entrou', 'saiu', 'em caixa no fim'], rows);
 }
 
 // The late-game sinks (round 16) at work: what the player did with them in each 10 days (median across seeds of the sum of the window).

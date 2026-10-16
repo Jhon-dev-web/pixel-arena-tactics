@@ -93,7 +93,7 @@ export function waveRewards(biome: DungeonBiomeDef, stage: number, bossLootMult 
   let uniques: UniqueDrop[] = [];
   let relics: string[] = [];
   if (isDungeonBoss(stage)) {
-    // A depth boss rolls the pieces of one of the four biome bosses (in turn), with a chance that rises slowly with the depth and is capped (uniques.ts); its Runes are its own.
+    // A depth boss rolls the pieces of one of the four biome bosses (in turn), with a chance that rises slowly with the depth and is capped (uniques.ts); its Aether is its own.
     // Web build: no unique is rolled on the device (the server rolls them when the run is banked); relics are not tradeable and keep rolling here.
     uniques = isServerItemAuthority() ? [] : isDepthStage(stage) ? rollDepthBossUniques(depthOfStage(stage), Math.random, bossLootMult) : rollBossUniques(stage, Math.random, bossLootMult);
     relics = isDepthStage(stage) ? rollDepthBossRelics(depthOfStage(stage), Math.random, bossLootMult) : rollBossRelics(stage, Math.random, bossLootMult);

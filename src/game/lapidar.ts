@@ -7,9 +7,9 @@ import { recordLapidar } from './stats';
 import T from './tunables';
 
 // Lapidar (round 16): the targeted reforge. The player locks ONE substat of an Epic or Legendary piece (type and value stay) and the others are rolled again,
-// excluding the locked type. It is the chase of the late game: unlike the economic reforge (reforge.ts, which rerolls everything for a bundle of Gold, Runa, dust and
+// excluding the locked type. It is the chase of the late game: unlike the economic reforge (reforge.ts, which rerolls everything for a bundle of Gold, Éter, dust and
 // mid-tier drops), a good roll is never at risk, so players keep paying for the rest of the piece. The price is written in farm hours of the last zone
-// (T.lateSinks, gear.farmHours), grows with every earlier lapidation on THAT piece (GearInstance.lapidarCount) and also asks Gold and Runas.
+// (T.lateSinks, gear.farmHours), grows with every earlier lapidation on THAT piece (GearInstance.lapidarCount) and also asks Gold and Éter.
 // Rarity, refine level, sockets, durability, the bound flag and every other copy stay as they were. All-or-nothing, like every reducer here.
 
 export interface LapidarCost {

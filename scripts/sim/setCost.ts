@@ -24,7 +24,7 @@ export type RecipeOf = (tpl: string) => Recipe | undefined;
 const defaultRecipeOf: RecipeOf = (tpl) => getGear(tpl)?.recipe;
 
 // Everything a piece needs through its whole chain, expanded to raw units (bars / leather / handles back to ore, scrap, wood). Essence and dragon scales are
-// alchemy outputs: expanded to their hunting inputs. Garden plants, Runas ('runas') and gems ('gem:ruby') are kept as they are.
+// alchemy outputs: expanded to their hunting inputs. Garden plants, Éter ('eter') and gems ('gem:ruby') are kept as they are.
 export function chainNeed(tpl: string, recipeOf: RecipeOf = defaultRecipeOf, memo: Record<string, Need> = {}): Need {
   if (memo[tpl]) return memo[tpl];
   const rec = recipeOf(tpl);
@@ -38,7 +38,7 @@ export function chainNeed(tpl: string, recipeOf: RecipeOf = defaultRecipeOf, mem
       else addNeed(out, { [m]: n });
     }
     for (const [g, n] of Object.entries(rec.gems ?? {}) as [string, number][]) addNeed(out, { ['gem:' + g]: n });
-    if (rec.shards) addNeed(out, { runas: rec.shards });
+    if (rec.shards) addNeed(out, { eter: rec.shards });
   }
   memo[tpl] = out;
   return out;

@@ -276,7 +276,7 @@ const T = DebugPanel.define({
     bossEvery: { value: 10, min: 2, max: 50, step: 1, label: 'Depth boss every N depths' },
     bossHpMult: { value: 1, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: HP multiplier over a regular depth' },
     bossDmgMult: { value: 1, min: 0.5, max: 5, step: 0.05, label: 'Depth boss: damage multiplier over a regular depth' },
-    bossShards: { value: 4, min: 0, max: 20, step: 1, label: 'Runes for a depth boss' },
+    bossShards: { value: 4, min: 0, max: 20, step: 1, label: 'Aether for a depth boss' },
     uniqueChanceBase: { value: 0.02, min: 0, max: 1, step: 0.005, label: 'Depth boss unique / relic chance at depth 0 (per boss cleared)' },
     uniqueChancePerDepth: { value: 0.001, min: 0, max: 0.05, step: 0.0005, label: 'Depth boss unique / relic chance gained per depth' },
     uniqueChanceCap: { value: 0.05, min: 0, max: 1, step: 0.005, label: 'Depth boss unique / relic chance cap' },
@@ -373,8 +373,8 @@ const T = DebugPanel.define({
     // Refinement past +8 (tier 5 and 6 pieces only): the attempt from +8 to +9, +9 to +10, +10 to +11 and +11 to +12. Each level is worth deepBonus of the base stat (the first eight are worth 10%).
     // Refining a tier 5 or 6 piece from +3 to +8 asks this share of the Gold the same step costs on a lower tier piece: from day 60 the player is Gold-bound (1.5 thousand a day against 25 thousand
     // a piece), not material-bound, and the chase past +8 has to be paid with the surplus, not with the Gold that builds the next tier.
-    lateRefineMinTier: { value: 5, min: 1, max: 7, step: 1, label: 'Lowest gear tier whose +4..+8 refine steps get the late-game Gold share and Runas below' },
-    lateRefineShards: { value: 0, min: 0, max: 5, step: 1, label: 'Runas of the +7 and +8 refine steps for those pieces (a lower tier piece pays 2)' },
+    lateRefineMinTier: { value: 5, min: 1, max: 7, step: 1, label: 'Lowest gear tier whose +4..+8 refine steps get the late-game Gold share and Aether below' },
+    lateRefineShards: { value: 0, min: 0, max: 5, step: 1, label: 'Aether of the +7 and +8 refine steps for those pieces (a lower tier piece pays 2)' },
     lateRefineGoldShare: { value: 0.15, min: 0.05, max: 1, step: 0.05, label: 'Gold share of the +4..+8 refine steps of tier 5 and 6 pieces' },
     deepMinTier: { value: 5, min: 1, max: 6, step: 1, label: 'Lowest gear tier that can be refined past +8' },
     deepBonus: { value: 0.06, min: 0, max: 0.1, step: 0.01, label: 'Base stat per refine level past +8 (fraction)' },
@@ -394,7 +394,7 @@ const T = DebugPanel.define({
     deepGold10: { value: 200, min: 0, max: 20000, step: 50, label: 'Refine +10: Gold per attempt' },
     deepGold11: { value: 250, min: 0, max: 20000, step: 50, label: 'Refine +11: Gold per attempt' },
     deepGold12: { value: 300, min: 0, max: 20000, step: 50, label: 'Refine +12: Gold per attempt' },
-    deepShards: { value: 0, min: 0, max: 10, step: 1, label: 'Refine +11 and +12: Runas per attempt' },
+    deepShards: { value: 0, min: 0, max: 10, step: 1, label: 'Refine +11 and +12: Aether per attempt' },
     // Lapidar: lock one substat of an Epic or Legendary piece (tier 4 and up) and reroll the others. Every earlier lapidation on the same piece makes the next one lapidarGrowth dearer.
     lapidarMinTier: { value: 4, min: 1, max: 6, step: 1, label: 'Lowest gear tier that can be lapidated' },
     lapidarHours4: { value: 1, min: 0, max: 100, step: 0.5, label: 'Lapidar: farm hours, tier 4 piece, first lapidation' },
@@ -403,7 +403,7 @@ const T = DebugPanel.define({
     lapidarGrowth: { value: 0.25, min: 0, max: 2, step: 0.05, label: 'Lapidar: extra cost per earlier lapidation on the same piece (fraction of the first)' },
     lapidarMaxGrowth: { value: 12, min: 1, max: 100, step: 1, label: 'Lapidar: lapidations after which the cost stops rising' },
     lapidarGoldPerTier: { value: 50, min: 0, max: 5000, step: 10, label: 'Lapidar: Gold per piece tier' },
-    lapidarShards: { value: 1, min: 0, max: 10, step: 1, label: 'Lapidar: Runas per lapidation' },
+    lapidarShards: { value: 1, min: 0, max: 10, step: 1, label: 'Lapidar: Aether per lapidation' },
   },
   economySinks: {
     _label: 'Material sinks',
@@ -529,7 +529,7 @@ const T = DebugPanel.define({
   weekly: {
     _label: 'Weekly goals',
     // Round 14: four bands by character level (1-24, 25-49, 50-99, 100 and paragon). The band is fixed when the week begins. Band 1 is the original Round 13 numbers.
-    // The un-numbered keys are band 1, the 2 / 3 / 4 keys the other bands; goldMult2-4 multiply the Gold of a goal, of the bonus and of the login streak. Runas never scale.
+    // The un-numbered keys are band 1, the 2 / 3 / 4 keys the other bands; goldMult2-4 multiply the Gold of a goal, of the bonus and of the login streak. Aether never scales.
     huntHours: { value: 6, min: 1, max: 40, step: 1, label: 'Goal, band 1: hours spent hunting (counted when a hunt ends)' },
     deliveries: { value: 3, min: 1, max: 20, step: 1, label: 'Goal, band 1: delivery orders completed' },
     gathered: { value: 150, min: 10, max: 2000, step: 10, label: 'Goal, band 1: units gathered (ore + wood + plants)' },
@@ -552,7 +552,7 @@ const T = DebugPanel.define({
     floors4: { value: 60, min: 5, max: 200, step: 5, label: 'Goal, band 4: dungeon floors cleared (Profundezas depths count)' },
     goldPerGoal: { value: 150, min: 0, max: 2000, step: 10, label: 'Gold for each goal (band 1)' },
     bonusGold: { value: 400, min: 0, max: 5000, step: 50, label: 'Gold for finishing all four (band 1)' },
-    bonusShards: { value: 3, min: 0, max: 20, step: 1, label: 'Runas for finishing all four (every band)' },
+    bonusShards: { value: 3, min: 0, max: 20, step: 1, label: 'Aether for finishing all four (every band)' },
     goldMult2: { value: 2, min: 1, max: 50, step: 0.5, label: 'Gold multiplier, band 2 (goals, bonus, login streak)' },
     goldMult3: { value: 6, min: 1, max: 50, step: 0.5, label: 'Gold multiplier, band 3' },
     goldMult4: { value: 10, min: 1, max: 50, step: 0.5, label: 'Gold multiplier, band 4' },
@@ -564,7 +564,7 @@ const T = DebugPanel.define({
     gold4: { value: 160, min: 0, max: 2000, step: 10, label: 'Day 4: Gold (day 5 is a Repair Kit)' },
     gold6: { value: 240, min: 0, max: 2000, step: 10, label: 'Day 6: Gold' },
     gold7: { value: 300, min: 0, max: 5000, step: 10, label: 'Day 7: Gold (with an Armor Polish)' },
-    shards7: { value: 3, min: 0, max: 20, step: 1, label: 'Day 7: Runas' },
+    shards7: { value: 3, min: 0, max: 20, step: 1, label: 'Day 7: Aether' },
   },
   // Hero skills (heroSkills.ts): three paths of passive skills, 1 point every pointEveryLevels character levels. Every number below is PER RANK; the screen
   // and the descriptions are generated from them. Tuned by scripts/sim (docs/BALANCE_CHANGES.md Rodada 7).

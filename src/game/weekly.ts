@@ -99,7 +99,7 @@ export function weeklyGoalDefs(band: WeeklyBand = 1): Record<WeeklyGoalId, Weekl
   };
 }
 
-// The Gold for finishing all four goals of a week of this band (the Runas never scale).
+// The Gold for finishing all four goals of a week of this band (the Éter never scales).
 export const weeklyBonusGold = (band: WeeklyBand): number => Math.round(T.weekly.bonusGold * weeklyGoldMult(band));
 
 // The four goals of the week `ms` falls in: the five activities take turns being left out, one per week, so no week repeats the last one's set.
@@ -234,7 +234,7 @@ export interface StreakReward {
   item?: { id: ConsumableId; n: number };
 }
 
-// Escalating small rewards, one per streak day; tunables.ts streak.* holds the Gold and Runas, the consumables are the Round 12 recipes (a streak is one more way to get one).
+// Escalating small rewards, one per streak day; tunables.ts streak.* holds the Gold and Éter, the consumables are the Round 12 recipes (a streak is one more way to get one).
 export function streakReward(day: number, band: WeeklyBand = 1): StreakReward {
   const raw = streakRewardBase(day);
   const mult = weeklyGoldMult(band);

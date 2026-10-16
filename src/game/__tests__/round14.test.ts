@@ -99,7 +99,7 @@ describe('Round 14: weekly goals and the streak in four bands', () => {
     expect([1, 24, 25, 49, 50, 99, 100, 130].map(weeklyBand)).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
   });
 
-  it('band 1 is exactly what it was; the other bands only ask for more and pay more, and the Runas never scale', () => {
+  it('band 1 is exactly what it was; the other bands only ask for more and pay more, and the Éter never scales', () => {
     const b1 = weeklyGoalDefs(1);
     expect([b1.hunt.target, b1.deliveries.target, b1.gather.target, b1.forge.target, b1.floors.target]).toEqual([6, 3, 150, 4, 25]);
     expect(WEEKLY_GOAL_IDS.map((id) => b1[id].gold)).toEqual([150, 150, 150, 150, 150]);

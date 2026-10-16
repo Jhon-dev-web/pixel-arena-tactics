@@ -32,7 +32,7 @@ Cada certificado guarda: dono, tipo (`gear`, `unique`, `gold_pouch`), modelo, ra
 
 Duas opções existiam: (a) mandar o refino/lapidação para o servidor, que rolaria e atualizaria o certificado; (b) **anular o certificado**. Escolhi (b).
 
-- Refinar, reforjar e lapidar gastam recursos que o servidor não enxerga (Ouro, materiais, Runas estão no save). Rolar o sucesso no servidor não prova que o custo foi pago, só adiciona uma segunda superfície de ataque (taxas de sucesso, queda de nível, Catalisador, custo crescente) sem proteger nada que o balde de ritmo já não proteja.
+- Refinar, reforjar e lapidar gastam recursos que o servidor não enxerga (Ouro, materiais, Éter estão no save). Rolar o sucesso no servidor não prova que o custo foi pago, só adiciona uma segunda superfície de ataque (taxas de sucesso, queda de nível, Catalisador, custo crescente) sem proteger nada que o balde de ritmo já não proteja.
 - O certificado descreve a peça **como foi rolada** (refino 0). Se a peça muda, o certificado deixa de descrevê-la. Anulá-lo é a regra mínima e segura: a peça continua no save, usável e mais forte, mas nunca mais é negociável.
 - Peça vinculada (equipada alguma vez) não precisa anular nada: ela já não pode ser vendida. Peça sem certificado não chama o servidor.
 - O jogo **pergunta antes** (o aviso diz que o certificado será cancelado). Se o servidor está fora do ar, a mudança é bloqueada. Uma mudança que o jogo recusaria (sem Ouro, por exemplo) não anula nada.

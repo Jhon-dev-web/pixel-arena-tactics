@@ -99,13 +99,13 @@ function ach(
   return { id, kind: 'achievement', nameKey: key, descKey: `${key}_d`, target, gold, shards, metric, category, ...extra };
 }
 
-// Rewards are small and one-time (Gold, a few Runas, now and then a title): they are a thank-you, not a progression source. The first six are the original
+// Rewards are small and one-time (Gold, a few Éter, now and then a title): they are a thank-you, not a progression source. The first six are the original
 // achievements (same numbers, their ids upper-cased); the rest are new.
 //
 // The progression simulator (scripts/sim/driver.ts claimQuests) claims every achievement it can see, and it sees the kills, CP, floor and refine ones (the counters
 // of the old save format). Even 20 Gold moves its medians, so the new achievements on those metrics (KILLS_*, CP1000+, FLOOR_*) pay NOTHING (prestige only,
 // the highest one with a title). Everything else reads the lifetime statistics, which the simulator does not pass, and pays its small Gold; the ones a
-// player reaches in the first week pay no Runas either, because Runas buy extra dungeon sessions. quests.test.ts guards both rules.
+// player reaches in the first week pay no Éter either, because Éter buys extra dungeon sessions. quests.test.ts guards both rules.
 export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   // combat
   ach('ACH_FIRST_BLOOD', 'combat', 'total_kills', 1, 50, 1),

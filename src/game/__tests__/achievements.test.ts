@@ -48,7 +48,7 @@ describe('achievement list', () => {
     }
   });
 
-  it('rewards stay small: Gold and a few Runas, titles only on the hard ones', () => {
+  it('rewards stay small: Gold and a few Éter, titles only on the hard ones', () => {
     for (const q of QUESTS_ACHIEVEMENTS) {
       expect(q.gold, q.id).toBeLessThanOrEqual(3000);
       expect(q.shards, q.id).toBeLessThanOrEqual(15);

@@ -155,7 +155,7 @@ describe('refinement past +8', () => {
     }
   });
 
-  it('the +4..+8 steps of a tier 5 or 6 piece cost the late-game share of the Gold and no Runas; every lower tier pays what it always paid', () => {
+  it('the +4..+8 steps of a tier 5 or 6 piece cost the late-game share of the Gold and no Éter; every lower tier pays what it always paid', () => {
     const low = getGear(T4_WEAPON);
     for (let lvl = 0; lvl < BASE_MAX_REFINE; lvl++) {
       const expectedGold = lvl < 3 ? 50 * (lvl + 1) : lvl < 6 ? 150 * (lvl + 1) : 300 * (lvl + 1);
@@ -214,7 +214,7 @@ describe('Lapidar', () => {
     expect(new Set(r.gearInstances.gi_x.substats.map((x) => x.type)).size).toBe(3);
   });
 
-  it('charges Gold, Runas and the farm-hour bundle once, counts the lapidation and touches nothing else on the piece', () => {
+  it('charges Gold, Éter and the farm-hour bundle once, counts the lapidation and touches nothing else on the piece', () => {
     const s = epic({ upgrade: 9, sockets: ['ruby'], durability: 61, reforgeCount: 3, bound: true });
     const cost = getLapidarCost(s, 'gi_x')!;
     const r = applyLapidar(s, 'gi_x', 0)!;

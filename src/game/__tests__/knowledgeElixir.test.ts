@@ -153,7 +153,7 @@ describe('the recipe: one per Hunting zone tier, only the best open zone is list
 });
 
 describe('the hero XP comes only from Hunting', () => {
-  it('a delivery order pays Gold (and Runes) and leaves the XP alone', () => {
+  it('a delivery order pays Gold (and Aether) and leaves the XP alone', () => {
     const offer = { id: 'd1', arch: 'militar', dist: 'curta', cls: 'simple', tier: 0, items: { demon_claw: 1 }, gold: 100, shards: 1, durationMs: 90 * 60 * 1000, bornAt: NOW, dest: 0 };
     const s = { ...defaultSave(), xp: 1234, deliveries: { seq: 1, offers: [], active: { offer, startedAt: NOW - 2 * HOUR, endsAt: NOW - 1 }, rerollDay: '', rerollsUsed: 0 } } as unknown as SaveData;
     const claim = applyDeliveryClaim(s, NOW)!;

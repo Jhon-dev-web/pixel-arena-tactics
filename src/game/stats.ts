@@ -3,7 +3,7 @@ import { SET_FAMILIES, SetFamily } from './gear';
 import type { Rarity } from './rarity';
 
 // Lifetime statistics: plain counters that only ever go up, kept in the save (`SaveData.stats`). They are read by the Statistics tab and by the
-// achievements (quests.ts), and they change nothing in the game itself: no reward, drop or timer reads them except the achievements' own gold / Runas.
+// achievements (quests.ts), and they change nothing in the game itself: no reward, drop or timer reads them except the achievements' own gold / Éter.
 //
 // Where they are counted: inside the pure transitions that already carry the event (forge, refine, hunt stop, delivery claim, gather claim, harvest,
 // potion craft), so every path that performs it (the screens, "Resgatar tudo", the simulator) counts it exactly once; the dungeon run is counted by

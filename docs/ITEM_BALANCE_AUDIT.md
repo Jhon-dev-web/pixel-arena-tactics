@@ -3,6 +3,7 @@
 > **2026-10-12 (Rodada 9):** a tabela de raridade da forja passou de 60 / 25 / 12 / 3 para **63 / 25 / 10 / 2** (as peças raras agora serão vendidas), e o Selo do Ferreiro para 83,3% épica / 16,7% lendária. Custo esperado do MESMO item: épico ou melhor 1 / 0,12 = 8,3 forjas (era 6,7); lendário 1 / 0,02 = **50** forjas (era 33,3, uma em 50); épico e lendário 51,7 (era 35,0). Multiplique por 1,5 a coluna "custo esperado de 1 lendário" abaixo; as demais seções (poder por raridade, variância das substats) não dependem das chances e continuam valendo. Selos: 3 por temporada x 2/12 = 0,5 lendária esperada.
 
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+> **2026-10-16:** a moeda rara agora se chama **Éter** (pt) / **Aether** (en) para o jogador (antes Runas / Runes); o campo do save continua `shards`.
 
 # Auditoria de balanceamento dos itens (antes da rodada 3)
 
@@ -523,7 +524,7 @@ Razão maior / menor do Δln P: nível 20: 1.65 · nível 30: 1.07 · nível 60:
 | voidsteel_plate | 25% | 70 | 51 | 7.6% | 7.87% | 4.3% | +0.05 |
 | abyssal_bulwark | 28% | 90 | 74 | 7.4% | 7.67% | 4.6% | +0.00 |
 
-Linha dragão contra a dourada no tier 4 (par comum +0, sem relíquia): nível 50: dourado 883, dragão 1086 (23.0%) · nível 60: dourado 998, dragão 1218 (22.0%). Custo do par (receita do tier, Ouro de referência): dourado 3798, dragão 5382. Desde a Rodada 10 o dragão é feito DO dourado (receita: 1 peça dourada + escamas + Runas), então o custo real do par dragão inclui o par dourado.
+Linha dragão contra a dourada no tier 4 (par comum +0, sem relíquia): nível 50: dourado 883, dragão 1086 (23.0%) · nível 60: dourado 998, dragão 1218 (22.0%). Custo do par (receita do tier, Ouro de referência): dourado 3798, dragão 5382. Desde a Rodada 10 o dragão é feito DO dourado (receita: 1 peça dourada + escamas + Éter), então o custo real do par dragão inclui o par dourado.
 
 # Adendo da rodada 6: escudos, machados e relíquias de chefe
 

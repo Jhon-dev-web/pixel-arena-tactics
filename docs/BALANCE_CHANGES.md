@@ -1,4 +1,5 @@
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+> **2026-10-16:** a moeda rara agora se chama **Éter** (pt) / **Aether** (en) para o jogador (antes Runas / Runes); o campo do save continua `shards`.
 
 # Mudanças de balanceamento: deadlocks do começo e a parede do andar 25
 
@@ -2639,3 +2640,5 @@ Mistura 80% A, 15% P, 5% especialistas; unidades negociáveis esperadas **no tot
 ### Rodada 23b — chances de material negociável reduzidas (2026-10-16)
 
 O dono aprovou reduzir as chances de 3% / 5% / 8% para **1% / 2% / 3%** (comum / incomum / raro; o Tutano Abissal segue na classe rara). A oferta de unidades negociáveis cai para cerca de um terço dos números da Rodada 23 (jogador comum ~740 unidades em 60 dias, dono do Passe ~1 540; ~0,9 milhão de unidades com 1 000 jogadores, estimativa proporcional, não re-simulada). O teto diário anti-robô deriva da chance (`materials/bounds.ts`) e acompanha a redução sem outra mudança.
+
+O dono renomeou a moeda rara de Runas para **Éter** (pt) / **Aether** (en); só o texto visível mudou, o campo do save e os identificadores continuam `shards`. As Rodadas acima mantêm o nome da época.

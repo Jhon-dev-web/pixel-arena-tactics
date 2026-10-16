@@ -147,7 +147,7 @@ describe('Profundezas: the scaling rule', () => {
 describe('Profundezas: rewards and their caps', () => {
   const biome = { id: 'minotaur_lair', nameKey: 'floor4', enemyKind: 'boss' as const, startFloor: 76, endFloor: 100, goldMin: 15, goldMax: 21, drops: [] };
 
-  it('Runes only at boss depths (T.depths.bossShards), gold and a gem at the boss, plain gold otherwise', () => {
+  it('Aether only at boss depths (T.depths.bossShards), gold and a gem at the boss, plain gold otherwise', () => {
     for (let d = 1; d <= 60; d++) {
       const r = waveRewards(biome, stageOfDepth(d));
       expect(r.gold).toBeGreaterThan(0);

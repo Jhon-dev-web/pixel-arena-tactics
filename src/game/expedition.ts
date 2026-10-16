@@ -23,7 +23,7 @@ export interface ActiveExpedition {
 // only so an Expedition that was already running when the update landed can finish and pay out exactly as before.
 // Offline dispatch missions — timed, no combat. Rewards are gold/shards only,
 // deliberately excluding material drops so they never compete with Hunting's economy.
-// They paid hero XP too (55k / 220k / 440k); since the League (Rodada 20) the hero earns XP only from Hunting, so an Expedition that was already running pays its Gold and Runes
+// They paid hero XP too (55k / 220k / 440k); since the League (Rodada 20) the hero earns XP only from Hunting, so an Expedition that was already running pays its Gold and Aether
 // and no XP.
 // gold was cut 10x (same 250:1100:2600 ratio preserved) — 2 parallel epic slots alone were handing a
 // median player ~15.6k gold/day, before even touching Dungeon; see the goldRewardGrowth/DUNGEON_BIOMES

@@ -4,7 +4,7 @@
 // 20 seeds (SIM_SEEDS / SIM_DAYS override) and reads the per-material ledger the Player keeps (player.ts DayLedger.flow): what entered the inventory (hunting,
 // mining, woodcutting, garden), what the stations made, what each sink consumed (forge incl. the tanning / smelting chain, refine+, alchemy, stash upgrades,
 // delivery orders, refining dust, merchant, discard), what a claim left behind, and the stock (bag + stash) at the end of the day. Medians over the seeds.
-// Also prints: the same ledger by hunting place, Runas and gems earned vs spent, the set-cost tables (static) and the brand-new-hero case.
+// Also prints: the same ledger by hunting place, Éter and gems earned vs spent, the set-cost tables (static) and the brand-new-hero case.
 //
 // "Real use" = forge, refine+, alchemy, stash, delivery orders, workshop; "disposal" = dust, merchant, discard, left behind, unexplained.
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
@@ -190,13 +190,13 @@ function currencyTable(runs: Run[]): string[] {
   const block = (title: string, pick: (d: DaySnapshot) => Record<string, number>) => {
     for (const t of tags(pick)) out.push([title, t, ...windows.map(([a, b]) => num(median(runs.map((r) => r.slice(a - 1, b).reduce((x, d) => x + (pick(d)[t] ?? 0), 0))), 0))]);
   };
-  block('Runas ganhas', (d) => d.ledger.currency.shardsIn);
-  block('Runas gastas', (d) => d.ledger.currency.shardsOut);
+  block('Éter ganho', (d) => d.ledger.currency.shardsIn);
+  block('Éter gasto', (d) => d.ledger.currency.shardsOut);
   block('gemas ganhas', (d) => d.ledger.currency.gemsIn);
   block('gemas gastas', (d) => d.ledger.currency.gemsOut);
   const tot = (pick: (d: DaySnapshot) => Record<string, number>) => ([a, b]: [number, number]) => num(median(runs.map((r) => r.slice(a - 1, b).reduce((x, d) => x + Object.values(pick(d)).reduce((y, z) => y + z, 0), 0))), 0);
-  out.push(['**Runas ganhas**', 'total', ...windows.map(tot((d) => d.ledger.currency.shardsIn))]);
-  out.push(['**Runas gastas**', 'total', ...windows.map(tot((d) => d.ledger.currency.shardsOut))]);
+  out.push(['**Éter ganho**', 'total', ...windows.map(tot((d) => d.ledger.currency.shardsIn))]);
+  out.push(['**Éter gasto**', 'total', ...windows.map(tot((d) => d.ledger.currency.shardsOut))]);
   out.push(['**gemas ganhas**', 'total', ...windows.map(tot((d) => d.ledger.currency.gemsIn))]);
   out.push(['**gemas gastas**', 'total', ...windows.map(tot((d) => d.ledger.currency.gemsOut))]);
   return table(['fluxo', 'origem / uso', ...windows.map(([a, b]) => `dias ${a}–${b}`)], out);
@@ -225,7 +225,7 @@ function setTables(): string[] {
     rows3.push([`T${t}`, ...hm.map((m) => (h.huntByMat[m] !== undefined ? num(h.huntByMat[m], 1) : '-'))]);
   }
   out.push(...table(['horas de caça por material', ...hm], rows3));
-  const other = ['gem:ruby', 'gem:sapphire', 'gem:emerald', 'runas', 'common_herb', 'iron_thistle', 'gold_blossom', 'crimson_mushroom', 'moon_lily'];
+  const other = ['gem:ruby', 'gem:sapphire', 'gem:emerald', 'eter', 'common_herb', 'iron_thistle', 'gold_blossom', 'crimson_mushroom', 'moon_lily'];
   const rows4: string[][] = [];
   for (let t = 1; t <= 6; t++) rows4.push([`T${t}`, ...other.map((m) => num(setNeed(t)[m] ?? 0, 0))]);
   out.push(...table(['set completo: outros', ...other], rows4));
@@ -329,8 +329,8 @@ describe('material flow', () => {
     out.push('## Mineração, lenha, horta e estações, cenário A: fluxo por material', '', ...detailTable(a, others(a), true));
     out.push('## Mineração, lenha, horta e estações, dono do Passe: fluxo por material', '', ...detailTable(p, others(p), true));
     out.push('## Únicos por zona (cenário A, horas de caça reais do jogador simulado)', '', ...uniqueTable(a));
-    out.push('## Runas e gemas, cenário A', '', ...currencyTable(a));
-    out.push('## Runas e gemas, dono do Passe', '', ...currencyTable(p));
+    out.push('## Éter e gemas, cenário A', '', ...currencyTable(a));
+    out.push('## Éter e gemas, dono do Passe', '', ...currencyTable(p));
     if (sinks.length) {
       const targets = ['iron', 'silver', 'common_wood', 'oak_wood', 'ebony_wood', 'bone_fragment', 'concentrated_blood', 'corrupted_crystal', 'iron_thistle', 'gold_blossom', 'swift_grass', 'uncommon_root', 'moon_lily', 'rare_flower'];
       const rows = targets.map((m) => [m, ...STAGES.filter((d) => d >= 7).map((d) => `${verdictOf(share(a, m, d), cum(a, inflow(m), d))} ${pct(share(a, m, d))} → ${verdictOf(share(sinks, m, d), cum(sinks, inflow(m), d))} ${pct(share(sinks, m, d))}`)]);

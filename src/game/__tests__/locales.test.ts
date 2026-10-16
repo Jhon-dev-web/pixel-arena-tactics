@@ -54,7 +54,7 @@ describe('gear descriptions', () => {
   });
 });
 
-describe('the rare currency is called Runas / Runes', () => {
+describe('the rare currency is called Éter / Aether', () => {
   // The save field and the code identifiers stay `shards`; only what the player reads changed (the rift_shard material is the Rift Splinter in English).
   it('no player-visible string still uses the old names', () => {
     for (const [name, table] of [['pt', ptLeaves], ['en', enLeaves]] as const) {
@@ -62,8 +62,8 @@ describe('the rare currency is called Runas / Runes', () => {
       expect(bad, name).toEqual([]);
     }
     expect((enLeaves['materials.mat_rift_shard'] as string)).toBe('Rift Splinter');
-    expect(ptLeaves['ui.shards']).toBe('◆ Runas: {n}');
-    expect(enLeaves['ui.shards']).toBe('◆ Runes: {n}');
+    expect(ptLeaves['ui.shards']).toBe('◆ Éter: {n}');
+    expect(enLeaves['ui.shards']).toBe('◆ Aether: {n}');
   });
 
   it('each language is named in its own language, whatever the current one is', () => {

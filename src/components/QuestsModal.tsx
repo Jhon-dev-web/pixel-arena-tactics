@@ -37,7 +37,7 @@ function formatPlayed(seconds: number): string {
   return h > 0 ? `${fmtNum(h)}h ${String(m).padStart(2, '0')}min` : `${m}min`;
 }
 
-// What a quest pays: the gold and (when there are any) the Runas, as two small chips.
+// What a quest pays: the gold and (when there are any) the Éter, as two small chips.
 function Rewards({ gold, shards }: { gold: number; shards: number }) {
   return (
     <span className="qs-rewards">

@@ -113,7 +113,7 @@ export interface DayLedger {
   // Per-material flow of every Hunting material of the day (Rodada 9, docs/MATERIAL_FLOW.md): what the claims accepted, what they left behind for lack of room,
   // what each sink consumed (bag + stash together, so moving stock between them is not a sink) and the stock (bag + stash) at the end of the day.
   flow: Record<string, MatFlow>;
-  // Runas (the `shards` currency) and gems earned / spent today, by source or use.
+  // Éter (the `shards` currency) and gems earned / spent today, by source or use.
   // Hunting by place: hours and accepted units per material for each zone:depth the player hunted today.
   hunt: Record<string, { hours: number; units: Record<string, number> }>;
   // Unique pieces the hunts delivered today, by `zone:templateId:rarity`.
@@ -156,7 +156,7 @@ export interface DaySnapshot {
   weaponTier: number;
   armorTier: number;
   gold: number;
-  shards: number; // Runas in hand at the end of the day
+  shards: number; // Éter in hand at the end of the day
   // Profession levels at the end of the day (Gardening is 1 for a player who never plants).
   skills: { mining: number; woodcutting: number; gardening: number };
   skillXp?: { mining: number; woodcutting: number; gardening: number }; // total profession XP (the score of the profession rankings)
@@ -278,7 +278,7 @@ export function planFor(s: SaveData, tpl: string, bagOnly = false): Plan {
   }
   plan.needs = need;
   const lvl = playerLevel(s.xp);
-  // A missing gem is bought with Runas (buyGemsForTarget), so it only blocks the plan when the Runas that the recipe and the missing gems need are not there.
+  // A missing gem is bought with Éter (buyGemsForTarget), so it only blocks the plan when the Éter that the recipe and the missing gems need are not there.
   const gemShards = Object.entries(plan.gems).reduce((sum, [g, n]) => sum + Math.max(0, (n as number) - (s.gems[g as GemId] ?? 0)) * (GEMS.find((x) => x.id === g)?.shardCost ?? 0), 0);
   plan.blocked = lvl < plan.minLevel || s.shards < plan.shards + gemShards;
   return plan;
@@ -494,7 +494,7 @@ export class Player {
     }
     return next;
   }
-  // Runas and gems that moved between two states of the save.
+  // Éter and gems that moved between two states of the save.
   private acct(prev: SaveData, next: SaveData, tag: string) {
     const c = this.ledger.currency;
     const ds = next.shards - prev.shards;
@@ -545,7 +545,7 @@ export class Player {
     return CRAFT_PRIORITY.map((slot) => w[slot]?.item?.tier ?? 0);
   }
 
-  // What stands between the hero and his next step, in words: the gear craft (level gate, Runas / gems, materials, Gold, or ready) and the Dungeon (the CP wall).
+  // What stands between the hero and his next step, in words: the gear craft (level gate, Éter / gems, materials, Gold, or ready) and the Dungeon (the CP wall).
   private blockers(): { gear: string; dungeon: string } {
     const t = chooseTarget(this.S);
     let gear = 'tudo forjado';
@@ -553,7 +553,7 @@ export class Player {
       const lvl = playerLevel(this.S.xp);
       const missing = Object.keys(t.deficit).length;
       if (lvl < t.minLevel) gear = `nível (${t.tpl} pede ${t.minLevel})`;
-      else if (t.blocked) gear = 'runas/gemas';
+      else if (t.blocked) gear = 'éter/gemas';
       else if (missing > 0) gear = `materiais (${t.tpl})`;
       else if (this.S.gold < t.gold) gear = `ouro (${t.tpl})`;
       else gear = `pronto (${t.tpl})`;

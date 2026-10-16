@@ -1,6 +1,7 @@
 > **2026-10-12:** a conclusão deste documento ("a lacuna é a demanda, não reduzir a caça ainda") foi revisitada com um livro-razão por material, por destino de consumo, no simulador de progressão: veja `docs/MATERIAL_FLOW.md` e a "Rodada 9 — fluxo de materiais" em `docs/BALANCE_CHANGES.md`. Resultado: confirmado para o comum (a demanda é que estava curta; as receitas passaram a pedir 4 a 20 vezes mais, sem mexer na taxa de queda), e corrigido para os raros, que não eram escassos (chance −30%). As chances de raridade da forja e dos únicos citadas aqui (60 / 25 / 12 / 3, ~4 dias por único) mudaram na mesma rodada para 63 / 25 / 10 / 2 e ~25 dias.
 
 > **2026-10-11:** a moeda rara (`shards` no código e nos saves) agora se chama **Runas** (pt) / **Runes** (en) para o jogador; neste documento ela aparece como "Fragmento(s)" / "Shards", o nome antigo.
+> **2026-10-16:** a moeda rara agora se chama **Éter** (pt) / **Aether** (en) para o jogador (antes Runas / Runes); o campo do save continua `shards`.
 
 # Auditoria econômica e sinks — Arena Idle
 

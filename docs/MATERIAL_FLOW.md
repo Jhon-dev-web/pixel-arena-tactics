@@ -42,7 +42,7 @@ Este documento mede, para **todo material do jogo** (caça, mineração, lenha, 
 | Erva de energia | - | inundada | inundada | abundante | abundante | |
 | Raiz incomum | - | inundada | inundada | inundada | inundada | só poções que o simulador não bebe |
 | Cardo, Flor dourada, Capim veloz, Lírio lunar | - | inundada | inundada | inundada | inundada | usos finitos (anéis, tônicos) |
-| Runas | o dia 1–3 rende 10, o 4–7 17, o 8–14 16, o 15–21 7; o simulador não gasta nenhuma (extras de masmorra, reforja e compra de gemas não são dirigidos) | | | | | o conjunto de tier 5 pede 10 e o de tier 6 22: a oferta de ~50 em 21 dias cobre |
+| Éter | o dia 1–3 rende 10, o 4–7 17, o 8–14 16, o 15–21 7; o simulador não gasta nenhuma (extras de masmorra, reforja e compra de gemas não são dirigidos) | | | | | o conjunto de tier 5 pede 10 e o de tier 6 22: a oferta de ~50 em 21 dias cobre |
 | Gemas | 7 / 13 ganhas por janela, 3–4 gastas | | | | | |
 
 Os veredictos por dia e por material saem do relatório gerado abaixo (que também traz o dono do Passe).
@@ -523,14 +523,14 @@ O conjunto completo do tier 1 pede 21 Farrapos de Couro (já contando as peças 
 |  | 8–14 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | - | 0% | - |
 |  | 15–21 | 0 | 2 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 100% | 0% | escassa |
 
-### Runas e gemas, cenário A
+### Éter e gemas, cenário A
 
 | fluxo | origem / uso | dias 1–3 | dias 4–7 | dias 8–14 | dias 15–21 |
 | --- | --: | --: | --: | --: | --: |
-| Runas ganhas | masmorra | 4 | 5 | 7 | 3 |
-| Runas ganhas | missões | 6 | 11 | 6 | 2 |
-| Runas ganhas | pedido | 0 | 1 | 1 | 0 |
-| Runas gastas | compra | 0 | 0 | 0 | 0 |
+| Éter ganho | masmorra | 4 | 5 | 7 | 3 |
+| Éter ganho | missões | 6 | 11 | 6 | 2 |
+| Éter ganho | pedido | 0 | 1 | 1 | 0 |
+| Éter gasto | compra | 0 | 0 | 0 | 0 |
 | gemas ganhas | emerald:compra | 0 | 0 | 0 | 0 |
 | gemas ganhas | emerald:masmorra | 0 | 2 | 4 | 0 |
 | gemas ganhas | ruby:compra | 0 | 0 | 0 | 0 |
@@ -544,19 +544,19 @@ O conjunto completo do tier 1 pede 21 Farrapos de Couro (já contando as peças 
 | gemas gastas | ruby:forja | 0 | 0 | 0 | 0 |
 | gemas gastas | sapphire:engaste | 0 | 2 | 0 | 0 |
 | gemas gastas | sapphire:forja | 0 | 0 | 0 | 0 |
-| **Runas ganhas** | total | 10 | 17 | 16 | 7 |
-| **Runas gastas** | total | 0 | 0 | 0 | 0 |
+| **Éter ganho** | total | 10 | 17 | 16 | 7 |
+| **Éter gasto** | total | 0 | 0 | 0 | 0 |
 | **gemas ganhas** | total | 0 | 7 | 13 | 1 |
 | **gemas gastas** | total | 0 | 4 | 3 | 1 |
 
-### Runas e gemas, dono do Passe
+### Éter e gemas, dono do Passe
 
 | fluxo | origem / uso | dias 1–3 | dias 4–7 | dias 8–14 | dias 15–21 |
 | --- | --: | --: | --: | --: | --: |
-| Runas ganhas | masmorra | 4 | 7 | 9 | 3 |
-| Runas ganhas | missões | 6 | 12 | 8 | 2 |
-| Runas ganhas | pedido | 0 | 1 | 3 | 1 |
-| Runas gastas | compra | 0 | 0 | 2 | 0 |
+| Éter ganho | masmorra | 4 | 7 | 9 | 3 |
+| Éter ganho | missões | 6 | 12 | 8 | 2 |
+| Éter ganho | pedido | 0 | 1 | 3 | 1 |
+| Éter gasto | compra | 0 | 0 | 2 | 0 |
 | gemas ganhas | emerald:compra | 0 | 0 | 0 | 0 |
 | gemas ganhas | emerald:forja | 0 | 0 | 0 | 0 |
 | gemas ganhas | emerald:masmorra | 0 | 2 | 4 | 0 |
@@ -572,8 +572,8 @@ O conjunto completo do tier 1 pede 21 Farrapos de Couro (já contando as peças 
 | gemas gastas | ruby:forja | 0 | 0 | 0 | 0 |
 | gemas gastas | sapphire:engaste | 0 | 2 | 0 | 0 |
 | gemas gastas | sapphire:forja | 0 | 0 | 0 | 0 |
-| **Runas ganhas** | total | 10 | 20 | 20 | 6 |
-| **Runas gastas** | total | 0 | 0 | 2 | 0 |
+| **Éter ganho** | total | 10 | 20 | 20 | 6 |
+| **Éter gasto** | total | 0 | 0 | 2 | 0 |
 | **gemas ganhas** | total | 0 | 7 | 14 | 2 |
 | **gemas gastas** | total | 0 | 7 | 3 | 2 |
 
@@ -606,7 +606,7 @@ O conjunto completo do tier 1 pede 21 Farrapos de Couro (já contando as peças 
 | T5 | 1.8 | 0.3 | 2.1 | 0.4 | 0.4 | 1.4 | 0.2 | 0.5 | - | - |
 | T6 | 1.8 | 0.3 | 2.1 | 0.4 | 0.8 | 2.2 | 0.2 | 0.5 | 0.2 | 0.4 |
 
-| set completo: outros | gem:ruby | gem:sapphire | gem:emerald | runas | common_herb | iron_thistle | gold_blossom | crimson_mushroom | moon_lily |
+| set completo: outros | gem:ruby | gem:sapphire | gem:emerald | eter | common_herb | iron_thistle | gold_blossom | crimson_mushroom | moon_lily |
 | --- | --: | --: | --: | --: | --: | --: | --: | --: | --: |
 | T1 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 |
 | T2 | 0 | 0 | 0 | 0 | 4 | 2 | 0 | 0 | 0 |
@@ -653,7 +653,7 @@ O conjunto completo do tier 1 pede 21 Farrapos de Couro (já contando as peças 
 
 O dono ampliou o mandato: todas as áreas, itens e receitas maiores permitidos, e as raridades altas "um pouco mais difíceis" porque serão vendidas. As alavancas, na ordem do briefing:
 
-1. **(a) Receitas maiores, com o comum e o incomum em toda peça.** Cada receita de equipamento dos tiers 1 a 6 foi recalculada (`npm run sim:recipes`, `scripts/sim/recipeTune.gen.ts`) para que um conjunto completo de 7 peças, cadeia inteira, exija as **horas de caça** da tabela 6.2 no estágio em que o tier é feito. Cada material entra no tier em que a zona dele fica disponível (Farrapo no 1, Garra no 2, Osso, Sangue, Núcleo e Cristal no 3, Estilhaço, Chifre, Medula e Coração no 5) e a quantidade de cada peça segue o peso do espaço (arma e armadura 1,5; as outras 0,75). Arma, armadura e escudo tomam o Farrapo como **Couro** (3 Farrapos), as outras peças o tomam direto. O machado leva as mesmas quantidades da espada do tier. Fora a caça, nada foi mexido (minério, madeira, gemas, Runas).
+1. **(a) Receitas maiores, com o comum e o incomum em toda peça.** Cada receita de equipamento dos tiers 1 a 6 foi recalculada (`npm run sim:recipes`, `scripts/sim/recipeTune.gen.ts`) para que um conjunto completo de 7 peças, cadeia inteira, exija as **horas de caça** da tabela 6.2 no estágio em que o tier é feito. Cada material entra no tier em que a zona dele fica disponível (Farrapo no 1, Garra no 2, Osso, Sangue, Núcleo e Cristal no 3, Estilhaço, Chifre, Medula e Coração no 5) e a quantidade de cada peça segue o peso do espaço (arma e armadura 1,5; as outras 0,75). Arma, armadura e escudo tomam o Farrapo como **Couro** (3 Farrapos), as outras peças o tomam direto. O machado leva as mesmas quantidades da espada do tier. Fora a caça, nada foi mexido (minério, madeira, gemas, Éter).
 2. **Curtume 20 → 8 de Ouro por Couro** (`tan_leather`): o couro de um conjunto passou de ~7 para ~30 unidades e a taxa antiga viraria 600 de Ouro só em curtume no tier 1.
 3. **Baú: as melhorias 3 a 8 também pedem Couro, Osso, Garra e Sangue** (`stash.ts`): um sumidouro único por jogador, mas que pega o excesso do meio do jogo.
 4. **Refino +4 a +8 gasta materiais de caça do tier da peça** (`refineHuntMaterials`, `gear.ts`): o comum nas tentativas até +6; o comum, o incomum e o raro nas de +7 e +8 (5 × tier; 8 × tier, 3 × tier e ⌈tier/2⌉ por tentativa). É o único sumidouro **recorrente** da caça: vale para cada peça de cada slot, em todo tier, e para cada tentativa que falha. O simulador só refina arma e armadura, por isso ele quase não o enxerga.
@@ -1267,14 +1267,14 @@ O conjunto completo do tier 1 pede 91 Farrapos de Couro (já contando as peças 
 | blood_marsh | 53 | 7 | 1.7 | 157 | 25 | 76 | 757 | 3 786 |
 | demon_rift | 5 | 1 | 0.2 | 193 | 18 | 36 | 360 | 1 800 |
 
-#### Runas e gemas, cenário A
+#### Éter e gemas, cenário A
 
 | fluxo | origem / uso | dias 1–3 | dias 4–7 | dias 8–14 | dias 15–21 |
 | --- | --: | --: | --: | --: | --: |
-| Runas ganhas | masmorra | 4 | 5 | 2 | 7 |
-| Runas ganhas | missões | 6 | 11 | 1 | 6 |
-| Runas ganhas | pedido | 0 | 0 | 1 | 2 |
-| Runas gastas | compra | 0 | 0 | 2 | 2 |
+| Éter ganho | masmorra | 4 | 5 | 2 | 7 |
+| Éter ganho | missões | 6 | 11 | 1 | 6 |
+| Éter ganho | pedido | 0 | 0 | 1 | 2 |
+| Éter gasto | compra | 0 | 0 | 2 | 2 |
 | gemas ganhas | emerald:compra | 0 | 0 | 0 | 0 |
 | gemas ganhas | emerald:masmorra | 0 | 2 | 0 | 4 |
 | gemas ganhas | ruby:compra | 0 | 0 | 1 | 1 |
@@ -1288,19 +1288,19 @@ O conjunto completo do tier 1 pede 91 Farrapos de Couro (já contando as peças 
 | gemas gastas | ruby:forja | 0 | 0 | 0 | 1 |
 | gemas gastas | sapphire:engaste | 0 | 2 | 0 | 0 |
 | gemas gastas | sapphire:forja | 0 | 0 | 0 | 1 |
-| **Runas ganhas** | total | 10 | 17 | 5 | 16 |
-| **Runas gastas** | total | 0 | 0 | 2 | 2 |
+| **Éter ganho** | total | 10 | 17 | 5 | 16 |
+| **Éter gasto** | total | 0 | 0 | 2 | 2 |
 | **gemas ganhas** | total | 0 | 7 | 1 | 14 |
 | **gemas gastas** | total | 0 | 5 | 1 | 4 |
 
-#### Runas e gemas, dono do Passe
+#### Éter e gemas, dono do Passe
 
 | fluxo | origem / uso | dias 1–3 | dias 4–7 | dias 8–14 | dias 15–21 |
 | --- | --: | --: | --: | --: | --: |
-| Runas ganhas | masmorra | 4 | 5 | 6 | 5 |
-| Runas ganhas | missões | 6 | 11 | 4 | 5 |
-| Runas ganhas | pedido | 0 | 2 | 3 | 1 |
-| Runas gastas | compra | 0 | 0 | 2 | 0 |
+| Éter ganho | masmorra | 4 | 5 | 6 | 5 |
+| Éter ganho | missões | 6 | 11 | 4 | 5 |
+| Éter ganho | pedido | 0 | 2 | 3 | 1 |
+| Éter gasto | compra | 0 | 0 | 2 | 0 |
 | gemas ganhas | emerald:compra | 0 | 0 | 0 | 0 |
 | gemas ganhas | emerald:forja | 0 | 0 | 0 | 0 |
 | gemas ganhas | emerald:masmorra | 0 | 2 | 2 | 2 |
@@ -1316,8 +1316,8 @@ O conjunto completo do tier 1 pede 91 Farrapos de Couro (já contando as peças 
 | gemas gastas | ruby:forja | 0 | 0 | 1 | 0 |
 | gemas gastas | sapphire:engaste | 0 | 2 | 0 | 0 |
 | gemas gastas | sapphire:forja | 0 | 1 | 0 | 0 |
-| **Runas ganhas** | total | 10 | 18 | 11 | 11 |
-| **Runas gastas** | total | 0 | 0 | 2 | 0 |
+| **Éter ganho** | total | 10 | 18 | 11 | 11 |
+| **Éter gasto** | total | 0 | 0 | 2 | 0 |
 | **gemas ganhas** | total | 0 | 7 | 8 | 8 |
 | **gemas gastas** | total | 0 | 6 | 4 | 2 |
 
@@ -1350,7 +1350,7 @@ O conjunto completo do tier 1 pede 91 Farrapos de Couro (já contando as peças 
 | T5 | 13.9 | 14.5 | 15.9 | 13.7 | 14.3 | 15.7 | 14.7 | 16.6 | 14.4 | 16.4 |
 | T6 | 18 | 18.9 | 20.8 | 17.8 | 18.9 | 20.6 | 18.8 | 21.3 | 19 | 21 |
 
-| set completo: outros | gem:ruby | gem:sapphire | gem:emerald | runas | common_herb | iron_thistle | gold_blossom | crimson_mushroom | moon_lily |
+| set completo: outros | gem:ruby | gem:sapphire | gem:emerald | eter | common_herb | iron_thistle | gold_blossom | crimson_mushroom | moon_lily |
 | --- | --: | --: | --: | --: | --: | --: | --: | --: | --: |
 | T1 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 |
 | T2 | 0 | 0 | 0 | 0 | 4 | 2 | 0 | 0 | 0 |
@@ -1421,7 +1421,7 @@ Materiais que os 21 dias não alcançam (ouro bruto, obsidiana, madeiras élfica
 
 ## 8. Rodada 16: o livro-razão do fim de jogo (13/10/2026)
 
-As tabelas das seções anteriores medem 21 dias. Esta mede os dias 60 a 180 com `npm run sim:long` (6 seeds, sem únicos): para cada 10 dias, o que foi coletado, vendido ao mercador e jogado fora, por material e por motivo (mochila cheia na coleta, baú cheio, orçamento do mercador esgotado, política do jogador), e o Ouro e as Runas que entraram, saíram e sobraram. Detalhe, números de cada sumidouro novo e comparação em `docs/BALANCE_CHANGES.md`, Rodada 16.
+As tabelas das seções anteriores medem 21 dias. Esta mede os dias 60 a 180 com `npm run sim:long` (6 seeds, sem únicos): para cada 10 dias, o que foi coletado, vendido ao mercador e jogado fora, por material e por motivo (mochila cheia na coleta, baú cheio, orçamento do mercador esgotado, política do jogador), e o Ouro e as Éter que entraram, saíram e sobraram. Detalhe, números de cada sumidouro novo e comparação em `docs/BALANCE_CHANGES.md`, Rodada 16.
 
 **Antes (cenário A, dias 60 a 180, mediana entre seeds):** 338 416 unidades coletadas, 304 343 jogadas fora (89,9% das unidades, 87,1% do valor de referência), 19 144 vendidas. 99% da perda é "baú cheio". Por dia, a última zona (12 h) entrega em média 750 Ossos, 810 Sangues Concentrados, 745 Tutanos Abissais, 190 Cristais Corrompidos e 157 Corações de Sangue; os mais jogados fora em valor: Coração de Sangue (93% do que cai), Tutano Abissal (81%), Cristal Corrompido (87%), Sangue Concentrado (98%), Osso (98%). Dono do Passe: 503 053 coletadas, 476 239 jogadas fora (94,7%).
 
