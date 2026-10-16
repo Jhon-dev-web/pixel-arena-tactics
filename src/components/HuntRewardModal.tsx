@@ -9,6 +9,8 @@ import { getHuntingZone, huntingEnemyNameKey } from '../game/huntingZones';
 import { getMaterial, MaterialId } from '../game/materials';
 import { fmtSpan, matName } from '../game/huntView';
 import { MatIcon, Meter, MonsterPortrait } from './HuntParts';
+import { Button, Dialog, ItemFrame, Panel, StatList, StatRow } from './ui';
+import type { CardRarity } from './ui';
 import MaterialIcon from './MaterialIcon';
 import UniqueDrops from './UniqueDrops';
 import StrikeLines from './StrikeLines';
@@ -54,124 +56,97 @@ export default function HuntRewardModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reward.id]);
 
+  const tierOf = (r: string): CardRarity => (r === 'rare' ? 'epic' : r === 'uncommon' ? 'rare' : 'common');
+
   return (
-    <div className="modal-backdrop">
-      <div className="modal claim-modal hunt-reward-modal">
-        <h2 className="modal-title">{t('hunting.rewardsTitle')}</h2>
-
-        {zone && (
-          <div className="hunt-reward-zone">
-            <MonsterPortrait enemyId={zone.enemyId} box="44px" />
-            <span className="hunt-reward-zone-text">
-              <span className="hunt-zone-name">{t(`dungeon.${zone.nameKey}`)}</span>
-              <span className="hunt-zone-sub">
-                {t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)} · {t(`hunting.depth_${reward.depth}`)}
-              </span>
-            </span>
-          </div>
-        )}
-
-        {isSession && (
-          <div className="hunt-tiles reward">
-            <div className="hunt-tile">
-              <span className="hunt-tile-value">{fmtSpan(timeMs)}</span>
-              <span className="hunt-tile-label">{t('hunting.rewardDuration')}</span>
-            </div>
-            {pendingMs < timeMs && (
-              <div className="hunt-tile">
-                <span className="hunt-tile-value">{fmtSpan(pendingMs)}</span>
-                <span className="hunt-tile-label">{t('hunting.rewardCounted')}</span>
-              </div>
-            )}
-            <div className="hunt-tile xp">
-              <span className="hunt-tile-value">{fmtNum(xp)}</span>
-              <span className="hunt-tile-label">{t('hunting.rewardXp')}</span>
-            </div>
-            <div className="hunt-tile gold">
-              <span className="hunt-tile-value">{fmtNum(gold)}</span>
-              <span className="hunt-tile-label">{t('hunting.rewardGold')}</span>
-            </div>
-          </div>
-        )}
-
-        {added.length > 0 && (
+    <Dialog
+      className="hs-reward"
+      icon={zone ? <MonsterPortrait enemyId={zone.enemyId} box="56px" /> : undefined}
+      title={t('hunting.rewardsTitle')}
+      subtitle={
+        zone ? (
           <>
-            <h4 className="hunt-section-title">{t('hunting.goesToInventory')}</h4>
-            <div className="hunt-loot reward">
-              {added.map(([id, n]) => (
-                <div className="hunt-loot-cell" key={id}>
-                  <span className={`inv-slot hunt-loot-slot mat-${rarityOf(id)}${rarityOf(id) === 'rare' ? ' reveal rv-rare' : ''}`} title={matName(id)}>
-                    <span className="inv-icon">
-                      <MaterialIcon item={getMaterial(id)!} />
-                    </span>
-                    <span className="inv-qty">+{fmtNum(n)}</span>
-                  </span>
-                  <span className="hunt-loot-rate">{matName(id)}</span>
-                </div>
-              ))}
-            </div>
+            {t(`dungeon.${zone.nameKey}`)} · {t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)} · {t(`hunting.depth_${reward.depth}`)}
           </>
-        )}
-        {nothing && (
-          <div className="result-rewards">
-            <span className="floor-drop">
-              <span>{t('hunting.noneReady')}</span>
-            </span>
-          </div>
-        )}
-
-        <UniqueDrops drops={uniques} held={plan.uniquesLeft.length > 0} />
-        {needsServerUniques(reward) && <p className="hunt-meter-text">{t('hunting.uniquesServerNote')}</p>}
-        {reward.skillTally && <StrikeLines tally={reward.skillTally} total={reward.totalDamage ?? 0} />}
-
-        <p className={`hunt-inv-line ${slotCls}`}>{t('hunting.invAfterClaim', { n: plan.slotsBefore, m: plan.capacity, a: plan.slotsAfter })}</p>
-
-        {Object.keys(plan.owedHeld).length > 0 && <p className="hunt-inv-line bad">{t('hunting.owedHeld')}</p>}
-
-        {leftBehind.length > 0 && (
-          <div className="hunt-left-card">
-            <p className="hunt-left-text">{t('hunting.leftBehindWarning', { n: fmtNum(unitsLeft) })}</p>
-            <div className="result-rewards">
-              {leftBehind.map((item) => (
-                <span className="floor-drop lost" key={item.itemId}>
-                  <MatIcon id={item.itemId} />
-                  <span>
-                    {fmtNum(item.count)}× {matName(item.itemId)}
-                  </span>
-                </span>
-              ))}
-            </div>
-            <button className="hunt-left-btn" onClick={onOpenInventory} data-ui>
-              {t('hunting.openInventory')}
-            </button>
-            <WholesaleLink className="hunt-left-btn" hint />
-          </div>
-        )}
-        {leftBehind.length === 0 && held && (
-          <button className="hunt-left-btn" onClick={onOpenInventory} data-ui>
-            {t('hunting.openInventory')}
-          </button>
-        )}
-
-        {isSession && (
-          <div className="hunt-reward-level">
-            <span className="hunt-section-title">{t('hunting.subLevelBar', { n: ceilingSubLevel, m: subLevels })}</span>
-            {ceilingSubLevel > startCeiling ? (
-              <div className="hunt-promoted">{t('hunting.promotedRange', { a: startCeiling, b: ceilingSubLevel })}</div>
-            ) : (
-              !maxed && <div className="hunt-meter-text">{t('hunting.promotedNone')}</div>
-            )}
-            {!maxed && <Meter pct={(Math.min(promotionWins, promotionRequired) / Math.max(1, promotionRequired)) * 100} tone="xp" />}
-            <div className="hunt-meter-text">
-              {maxed ? t('hunting.subLevelMax') : promotionLine(promotionWins, promotionRequired, ceilingSubLevel)}
-            </div>
-          </div>
-        )}
-
-        <button className="result-btn" onClick={onClaim} data-ui>
+        ) : undefined
+      }
+      footer={
+        <Button variant="primary" block onClick={onClaim}>
           {t(held ? 'hunting.claimHeld' : 'hunting.claimAndExit')}
-        </button>
-      </div>
-    </div>
+        </Button>
+      }
+    >
+      {isSession && (
+        <Panel tone="inset">
+          <StatList>
+            <StatRow label={t('hunting.rewardDuration')} value={fmtSpan(timeMs)} />
+            {pendingMs < timeMs && <StatRow label={t('hunting.rewardCounted')} value={fmtSpan(pendingMs)} />}
+            <StatRow label={t('hunting.rewardXp')} value={fmtNum(xp)} tone="good" />
+            <StatRow label={t('hunting.rewardGold')} value={fmtNum(gold)} tone="gold" />
+          </StatList>
+        </Panel>
+      )}
+
+      {added.length > 0 && (
+        <Panel title={t('hunting.goesToInventory')}>
+          <div className="hs-loot reward">
+            {added.map(([id, n]) => (
+              <div className={`hs-loot-cell${rarityOf(id) === 'rare' ? ' reveal rv-rare' : ''}`} key={id} title={matName(id)}>
+                <ItemFrame rarity={tierOf(rarityOf(id))} qty={`+${fmtNum(n)}`}>
+                  <MaterialIcon item={getMaterial(id)!} />
+                </ItemFrame>
+                <span className="hs-loot-rate">{matName(id)}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
+      {nothing && <p className="hs-meter-text">{t('hunting.noneReady')}</p>}
+
+      <UniqueDrops drops={uniques} held={plan.uniquesLeft.length > 0} />
+      {needsServerUniques(reward) && <p className="hs-meter-text">{t('hunting.uniquesServerNote')}</p>}
+      {reward.skillTally && <StrikeLines tally={reward.skillTally} total={reward.totalDamage ?? 0} />}
+
+      <p className={`hs-line ${slotCls}`}>{t('hunting.invAfterClaim', { n: plan.slotsBefore, m: plan.capacity, a: plan.slotsAfter })}</p>
+
+      {Object.keys(plan.owedHeld).length > 0 && <p className="hs-line bad">{t('hunting.owedHeld')}</p>}
+
+      {leftBehind.length > 0 && (
+        <Panel tone="inset" className="hs-left">
+          <p className="hs-line bad">{t('hunting.leftBehindWarning', { n: fmtNum(unitsLeft) })}</p>
+          <div className="hs-lostlist">
+            {leftBehind.map((item) => (
+              <span className="hs-lost" key={item.itemId}>
+                <MatIcon id={item.itemId} />
+                <span>
+                  {fmtNum(item.count)}× {matName(item.itemId)}
+                </span>
+              </span>
+            ))}
+          </div>
+          <Button size="sm" onClick={onOpenInventory}>
+            {t('hunting.openInventory')}
+          </Button>
+          <WholesaleLink className="ui-btn secondary sm" hint />
+        </Panel>
+      )}
+      {leftBehind.length === 0 && held && (
+        <Button size="sm" onClick={onOpenInventory}>
+          {t('hunting.openInventory')}
+        </Button>
+      )}
+
+      {isSession && (
+        <Panel tone="inset" title={t('hunting.subLevelBar', { n: ceilingSubLevel, m: subLevels })}>
+          {ceilingSubLevel > startCeiling ? (
+            <p className="hs-promoted">{t('hunting.promotedRange', { a: startCeiling, b: ceilingSubLevel })}</p>
+          ) : (
+            !maxed && <p className="hs-meter-text">{t('hunting.promotedNone')}</p>
+          )}
+          {!maxed && <Meter pct={(Math.min(promotionWins, promotionRequired) / Math.max(1, promotionRequired)) * 100} tone="xp" />}
+          <p className="hs-meter-text">{maxed ? t('hunting.subLevelMax') : promotionLine(promotionWins, promotionRequired, ceilingSubLevel)}</p>
+        </Panel>
+      )}
+    </Dialog>
   );
 }

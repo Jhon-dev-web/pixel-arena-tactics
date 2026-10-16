@@ -18,19 +18,12 @@ import { fmtRate, fmtSpan, matName, subLevelNotes } from '../game/huntView';
 import { useDisplayName } from '../game/usernameContext';
 import { sessionStatsDiffer } from '../game/huntSession';
 import { isServerItemAuthority } from '../game/itemAuthority';
+import { Button, ItemFrame, ModalShell, Panel, ScreenLayout, StatList, StatRow } from './ui';
+import type { CardRarity } from './ui';
 
 const MS_PER_HOUR = 3600 * 1000;
 // Per-hour numbers from a handful of seconds of hunting are noise; they appear after the first minute.
 const RATE_MIN_MS = 60 * 1000;
-
-function Tile({ label, value, tone, wide }: { label: string; value: string; tone?: 'win' | 'lose' | 'xp' | 'gold'; wide?: boolean }) {
-  return (
-    <div className={`hunt-tile${tone ? ` ${tone}` : ''}${wide ? ' wide' : ''}`}>
-      <span className="hunt-tile-value">{value}</span>
-      <span className="hunt-tile-label">{label}</span>
-    </div>
-  );
-}
 
 // The hunt in progress: the arena on one side, the live numbers of the session on the other. Every figure comes from computeHuntingStatus (the
 // same replay that decides the reward when the hunt stops) — nothing here accrues anything.
@@ -75,138 +68,132 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
   const maxed = status.ceilingSubLevel >= T.hunting.subLevels;
   const frozen = !!save.huntSession && sessionStatsDiffer(save.huntSession.stats, buildCombatStats(save));
 
+  const tierOf = (r: string | undefined): CardRarity => (r === 'rare' ? 'epic' : r === 'uncommon' ? 'rare' : 'common');
+  const stage = (
+    <Panel className="hs-stagepanel">
+      <HuntBattleView
+        zone={zone}
+        heroSheet={heroSheet(save)}
+        heroName={heroName}
+        monsterName={t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)}
+        monsterLevel={status.ceilingSubLevel}
+        snapshot={status.liveSnapshot}
+        decor={(() => {
+          const st = save.huntSession?.stats ?? buildCombatStats(save);
+          return { strikes: st.strikes, bleed: st.bleed, block: st.block };
+        })()}
+      >
+        <ActiveBuffs save={save} skip={['gatherer']} />
+      </HuntBattleView>
+      <p className="hs-depthline">
+        {t(`hunting.depth_${depth}`)} · {t('dungeon.cp', { n: fmtNum(zone.cp) })}
+      </p>
+    </Panel>
+  );
+
+  const main = (
+    <>
+      {stage}
+      <Panel title={t('hunting.uniquesFound')}>
+        {isServerItemAuthority() ? (
+          <p className="hs-meter-text">{t('hunting.uniquesServerNote')}</p>
+        ) : status.uniques.length > 0 ? (
+          <UniqueDrops drops={status.uniques} />
+        ) : (
+          <p className="hs-meter-text">{t('hunting.noUniques')}</p>
+        )}
+      </Panel>
+      <Panel title={t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })}>
+        <Meter pct={maxed ? 100 : (Math.min(status.promotionWins, required) / required) * 100} tone="xp" label={t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })} />
+        <p className="hs-meter-text">{maxed ? t('hunting.subLevelMax') : promotionLine(status.promotionWins, required, status.ceilingSubLevel)}</p>
+        {status.ceilingSubLevel > status.startCeiling && <p className="hs-promoted">{t('hunting.promotedRange', { a: status.startCeiling, b: status.ceilingSubLevel })}</p>}
+        <p className="hs-hint">{t('hunting.subLevelExplain')}</p>
+        {subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct > 0 && <p className="hs-hint">{t('hunting.subLevelXp', { n: subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct })}</p>}
+        {!maxed && status.nextSubLevelCp > 0 && <p className="hs-hint">{t('hunting.subLevelNeedCp', { cp: fmtNum(status.nextSubLevelCp) })}</p>}
+      </Panel>
+    </>
+  );
+
+  const side = (
+    <>
+      <Panel tone={status.full ? 'gold' : 'plain'}>
+        <p className="hs-time">{t('hunting.timeHunting', { t: fmtSpan(elapsedMs) })}</p>
+        <Meter pct={status.capMs <= 0 ? 0 : (status.pendingMs / status.capMs) * 100} tone={status.full ? 'full' : undefined} label={t('hunting.capProgress', { cur: fmtSpan(status.pendingMs), cap: fmtSpan(status.capMs) })} />
+        <p className="hs-meter-text">{t('hunting.capProgress', { cur: fmtSpan(status.pendingMs), cap: fmtSpan(status.capMs) })}</p>
+        {!status.full && <p className="hs-meter-text">{t('hunting.capLeft', { t: fmtSpan(status.capMs - status.pendingMs) })}</p>}
+        {status.full && <p className="hs-banner-full">{t('hunting.capFull')}</p>}
+      </Panel>
+
+      <Panel>
+        <StatList>
+          <StatRow label={t('hunting.kills')} value={fmtNum(status.kills)} />
+          <StatRow label={t('hunting.killsPerHour')} value={ratesReady ? fmtRate(status.kills / hours) : '—'} />
+          <StatRow label={t('hunting.xpEarned')} value={fmtNum(status.xpReady)} tone="good" />
+          <StatRow label={t('hunting.winsLosses')} value={`${fmtNum(status.kills)} / ${fmtNum(status.defeats)}`} tone={status.defeats > 0 ? 'bad' : 'good'} />
+          <StatRow label={t('hunting.goldEarned')} value={fmtNum(status.goldReady)} tone="gold" />
+        </StatList>
+      </Panel>
+
+      <Panel title={t('hunting.collected')} actions={<span className={`hs-count${usedClass}`}>{t('hunting.invUsed', { n: inv.used, m: inv.capacity })}</span>}>
+        <div className="hs-loot">
+          {slotItems.map((item) => {
+            const entry = zone.drops.find((d) => d.material === item.itemId);
+            const def = getMaterial(item.itemId);
+            return (
+              <div className={`hs-loot-cell${item.count > 0 ? '' : ' empty'}`} key={item.itemId} title={matName(item.itemId)}>
+                <ItemFrame rarity={tierOf(entry?.rarity)} qty={fmtNum(item.count)}>
+                  {def && <MaterialIcon item={def} />}
+                </ItemFrame>
+                <span className="hs-loot-rate">{entry ? rate(status.drops[entry.material] ?? 0) : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="hs-hint">{t('hunting.collectedGoesTo')}</p>
+        {inv.fits ? (
+          <p className="hs-line ok">{t('hunting.invFits', { n: inv.used, m: inv.capacity })}</p>
+        ) : (
+          <div className="hs-line bad">
+            {t('hunting.invMissing', { n: inv.missingSlots })}
+            {inv.leftBehind.map((i) => (
+              <span className="hs-lost" key={i.itemId}>
+                <MatIcon id={i.itemId} />
+                <span>{t('hunting.invLeftOf', { n: fmtNum(i.count), name: matName(i.itemId) })}</span>
+              </span>
+            ))}
+            <WholesaleLink hint />
+          </div>
+        )}
+        {fullIn !== null && <p className="hs-line eta">{t('hunting.invFullIn', { t: fmtSpan(Math.max(fullIn, 1 / 60) * MS_PER_HOUR) })}</p>}
+        {!ratesReady && <p className="hs-hint">{t('hunting.warmingUp')}</p>}
+      </Panel>
+
+      {frozen && (
+        <Panel tone="inset" className="hs-frozen">
+          <p>{t('hunting.sessionFrozen')}</p>
+        </Panel>
+      )}
+    </>
+  );
+
   return (
-    <div className="modal-backdrop">
-      <div className="modal dungeon-modal hunt-modal hunt-screen running" data-tutorial-target="hunt-modal">
-        <h2 className="modal-title">{t('hunting.runningIn', { zone: t(`dungeon.${zone.nameKey}`) })}</h2>
-
-        <div className="hunt-run">
-          <div className="hunt-run-stage">
-            <HuntBattleView
-              zone={zone}
-              heroSheet={heroSheet(save)}
-              heroName={heroName}
-              monsterName={t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)}
-              monsterLevel={status.ceilingSubLevel}
-              snapshot={status.liveSnapshot}
-              decor={(() => {
-                const st = save.huntSession?.stats ?? buildCombatStats(save);
-                return { strikes: st.strikes, bleed: st.bleed, block: st.block };
-              })()}
-            >
-              <ActiveBuffs save={save} skip={['gatherer']} />
-            </HuntBattleView>
-            <div className="hunt-depth-line">
-              {t(`hunting.depth_${depth}`)} · {t('dungeon.cp', { n: fmtNum(zone.cp) })}
-            </div>
-          </div>
-
-          <div className="hunt-run-stats">
-            <section className={`hunt-block time${status.full ? ' full' : ''}`}>
-              <div className="hunt-time-row">
-                <span className="hunt-time-now">{t('hunting.timeHunting', { t: fmtSpan(elapsedMs) })}</span>
-                {!status.full && <span className="hunt-time-left">{t('hunting.capLeft', { t: fmtSpan(status.capMs - status.pendingMs) })}</span>}
-              </div>
-              <Meter pct={status.capMs <= 0 ? 0 : (status.pendingMs / status.capMs) * 100} tone={status.full ? 'full' : undefined} label={t('hunting.capProgress', { cur: fmtSpan(status.pendingMs), cap: fmtSpan(status.capMs) })} />
-              <div className="hunt-meter-text">{t('hunting.capProgress', { cur: fmtSpan(status.pendingMs), cap: fmtSpan(status.capMs) })}</div>
-              {status.full && <div className="hunt-full-banner">{t('hunting.capFull')}</div>}
-            </section>
-
-            <section className="hunt-tiles">
-              <Tile label={t('hunting.kills')} value={fmtNum(status.kills)} />
-              <Tile label={t('hunting.killsPerHour')} value={ratesReady ? fmtRate(status.kills / hours) : '—'} />
-              <Tile label={t('hunting.xpEarned')} value={fmtNum(status.xpReady)} tone="xp" />
-              <Tile label={t('hunting.winsLosses')} value={`${fmtNum(status.kills)} / ${fmtNum(status.defeats)}`} tone={status.defeats > 0 ? 'lose' : 'win'} wide />
-              <Tile label={t('hunting.goldEarned')} value={fmtNum(status.goldReady)} tone="gold" />
-            </section>
-
-            <section className="hunt-block">
-              <div className="hunt-block-head">
-                <h4 className="hunt-section-title">{t('hunting.collected')}</h4>
-                <span className={`hunt-loot-count${usedClass}`}>{t('hunting.invUsed', { n: inv.used, m: inv.capacity })}</span>
-              </div>
-              <div className="hunt-loot">
-                {slotItems.map((item) => {
-                  const entry = zone.drops.find((d) => d.material === item.itemId);
-                  const def = getMaterial(item.itemId);
-                  return (
-                    <div className="hunt-loot-cell" key={item.itemId}>
-                      <span className={`inv-slot hunt-loot-slot${item.count > 0 ? '' : ' empty'}${entry ? ` mat-${entry.rarity}` : ''}`} title={matName(item.itemId)}>
-                        {def && (
-                          <>
-                            <span className="inv-icon">
-                              <MaterialIcon item={def} />
-                            </span>
-                            <span className="inv-qty">{fmtNum(item.count)}</span>
-                          </>
-                        )}
-                      </span>
-                      <span className="hunt-loot-rate">{entry ? rate(status.drops[entry.material] ?? 0) : ''}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="hunt-inv-note">{t('hunting.collectedGoesTo')}</p>
-              {inv.fits ? (
-                <div className="hunt-inv-line ok">{t('hunting.invFits', { n: inv.used, m: inv.capacity })}</div>
-              ) : (
-                <div className="hunt-inv-line bad">
-                  {t('hunting.invMissing', { n: inv.missingSlots })}
-                  {inv.leftBehind.map((i) => (
-                    <span className="hunt-collected-lost" key={i.itemId}>
-                      <MatIcon id={i.itemId} />
-                      <span>{t('hunting.invLeftOf', { n: fmtNum(i.count), name: matName(i.itemId) })}</span>
-                    </span>
-                  ))}
-                  <WholesaleLink hint />
-                </div>
-              )}
-              {fullIn !== null && <div className="hunt-inv-line eta">{t('hunting.invFullIn', { t: fmtSpan(Math.max(fullIn, 1 / 60) * MS_PER_HOUR) })}</div>}
-              {!ratesReady && <p className="hunt-hint">{t('hunting.warmingUp')}</p>}
-            </section>
-
-            {frozen && <div className="hunt-session-frozen">{t('hunting.sessionFrozen')}</div>}
-          </div>
-
-          <div className="hunt-run-extra">
-            <section className="hunt-block">
-              <h4 className="hunt-section-title">{t('hunting.uniquesFound')}</h4>
-              {isServerItemAuthority() ? (
-                <div className="hunt-meter-text">{t('hunting.uniquesServerNote')}</div>
-              ) : status.uniques.length > 0 ? (
-                <UniqueDrops drops={status.uniques} />
-              ) : (
-                <div className="hunt-meter-text">{t('hunting.noUniques')}</div>
-              )}
-            </section>
-
-            <section className="hunt-block">
-              <h4 className="hunt-section-title">{t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })}</h4>
-              <Meter pct={maxed ? 100 : (Math.min(status.promotionWins, required) / required) * 100} tone="xp" label={t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })} />
-              <div className="hunt-meter-text">
-                {maxed ? t('hunting.subLevelMax') : promotionLine(status.promotionWins, required, status.ceilingSubLevel)}
-              </div>
-              {status.ceilingSubLevel > status.startCeiling && (
-                <div className="hunt-promoted">{t('hunting.promotedRange', { a: status.startCeiling, b: status.ceilingSubLevel })}</div>
-              )}
-              <p className="hunt-hint">{t('hunting.subLevelExplain')}</p>
-              {subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct > 0 && <p className="hunt-hint">{t('hunting.subLevelXp', { n: subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct })}</p>}
-              {!maxed && status.nextSubLevelCp > 0 && <p className="hunt-hint">{t('hunting.subLevelNeedCp', { cp: fmtNum(status.nextSubLevelCp) })}</p>}
-            </section>
-          </div>
-        </div>
-
-        <div className="hunt-run-foot">
-          <button className="battle-btn hunt-claim" onClick={onStopHunt} data-ui>
+    <ModalShell
+      className="hs-modal running"
+      tutorialTarget="hunt-modal"
+      icon={<img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />}
+      title={t('hunting.runningIn', { zone: t(`dungeon.${zone.nameKey}`) })}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <div className="ui-cq hs">
+        <ScreenLayout main={main} side={side} className="hs-layout" />
+        <div className="hs-foot">
+          <Button variant="primary" block className="hunt-claim" onClick={onStopHunt}>
             {t('hunting.stop')}
-          </button>
-          <span className="hunt-foot-hint">{t('hunting.stopHint')}</span>
+          </Button>
+          <p className="hs-hint center">{t('hunting.stopHint')}</p>
         </div>
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

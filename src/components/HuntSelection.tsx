@@ -25,12 +25,13 @@ import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInvent
 import { MaterialId } from '../game/materials';
 import WholesaleLink from './WholesaleLink';
 import { defaultZone, depthsOpen, fmtRate, fmtSpan, matName, startBlockedReason, subLevelNotes, zoneDifficulty, zoneLockedText, zoneState } from '../game/huntView';
+import { Button, Chip, ModalShell, Panel } from './ui';
 
 const zoneName = (zone: HuntingZoneDef): string => t(`dungeon.${zone.nameKey}`);
 const monsterName = (zone: HuntingZoneDef): string => t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`);
 // The chip of a zone: locked, or how hard it is for this hero (green Pronto / yellow Arriscado / red Muito forte), never 'unlocked' mixed with 'strong enough'.
-const chipOf = (locked: boolean, difficulty: ReturnType<typeof zoneDifficulty>): { cls: string; label: string } =>
-  locked ? { cls: 'locked', label: t('hunting.stateLocked') } : { cls: difficulty, label: t(`hunting.state_${difficulty}`) };
+const chipOf = (locked: boolean, difficulty: ReturnType<typeof zoneDifficulty>): { tone: 'plain' | 'good' | 'gold' | 'bad'; label: string } =>
+  locked ? { tone: 'plain', label: t('hunting.stateLocked') } : { tone: difficulty === 'ready' ? 'good' : difficulty === 'risky' ? 'gold' : 'bad', label: t(`hunting.state_${difficulty}`) };
 
 function DepthOption({
   zone,
@@ -50,49 +51,42 @@ function DepthOption({
   const def = HUNTING_DEPTHS.find((d) => d.id === depthId)!;
   const recommended = recommendedCpForDepth(zone, depthId);
   return (
-    <button
-      type="button"
-      className={`hunt-depth-opt${selected ? ' active' : ''}${unlocked ? '' : ' locked'}`}
-      onClick={onPick}
-      role="radio"
-      aria-checked={selected}
-      data-ui
-    >
-      <span className="hunt-depth-opt-head">
-        <span className="hunt-depth-opt-name">{t(`hunting.${def.nameKey}`)}</span>
-        <span className="hunt-depth-opt-cp">{t('dungeon.cp', { n: fmtNum(recommended) })}</span>
+    <button type="button" className={`hs-depth${selected ? ' active' : ''}${unlocked ? '' : ' locked'}`} onClick={onPick} role="radio" aria-checked={selected} data-ui>
+      <span className="hs-depth-head">
+        <span className="hs-depth-name">{t(`hunting.${def.nameKey}`)}</span>
+        <span className="hs-depth-cp">{t('dungeon.cp', { n: fmtNum(recommended) })}</span>
       </span>
       {!unlocked || !estimate ? (
-        <span className="hunt-depth-opt-lock">{t('hunting.depthLocked', { n: fmtNum(recommended) })}</span>
+        <span className="hs-depth-lock">{t('hunting.depthLocked', { n: fmtNum(recommended) })}</span>
       ) : (
         <>
-          <span className="hunt-outlook-row">
-            <span className={`hunt-outlook ${estimate.outlook}`}>{t(`hunting.outlook_${estimate.outlook}`)}</span>
-            <span className="hunt-outlook-level">{t('hunting.estimateLevel', { n: estimate.subLevel })}</span>
+          <span className="hs-depth-tags">
+            <span className={`ui-tag ${estimate.outlook === 'always' ? 'good' : estimate.outlook === 'risky' ? 'gold' : 'bad'}`}>{t(`hunting.outlook_${estimate.outlook}`)}</span>
+            <span className="hs-depth-level">{t('hunting.estimateLevel', { n: estimate.subLevel })}</span>
           </span>
-          <span className="hunt-depth-stats">
-            <span className="hunt-stat-row">
-              <span className="hunt-stat-label">{t('hunting.killsPerHour')}</span>
-              <span className="hunt-stat-value">{fmtRate(estimate.killsPerHour)}</span>
+          <span className="hs-depth-rows">
+            <span className="hs-row">
+              <span className="hs-row-label">{t('hunting.killsPerHour')}</span>
+              <span className="hs-row-value">{fmtRate(estimate.killsPerHour)}</span>
             </span>
             {zone.drops.map((d, i) => (
-              <span className="hunt-stat-row" key={d.material}>
-                <span className="hunt-stat-label">
+              <span className="hs-row" key={d.material}>
+                <span className="hs-row-label">
                   <MatIcon id={d.material} />
                   <RarityChip rarity={d.rarity} />
                 </span>
-                <span className="hunt-stat-value" title={matName(d.material)}>
+                <span className="hs-row-value" title={matName(d.material)}>
                   {t('hunting.perHour', { n: fmtRate(estimate.materialsPerHour[i].perHour) })}
                 </span>
               </span>
             ))}
-            <span className="hunt-stat-row">
-              <span className="hunt-stat-label">{t('hunting.xpPerHour')}</span>
-              <span className="hunt-stat-value">{fmtRate(estimate.xpPerHour)}</span>
+            <span className="hs-row">
+              <span className="hs-row-label">{t('hunting.xpPerHour')}</span>
+              <span className="hs-row-value">{fmtRate(estimate.xpPerHour)}</span>
             </span>
-            <span className="hunt-stat-row">
-              <span className="hunt-stat-label">{t('hunting.goldPerHour')}</span>
-              <span className="hunt-stat-value">{fmtRate(estimate.goldPerHour)}</span>
+            <span className="hs-row">
+              <span className="hs-row-label">{t('hunting.goldPerHour')}</span>
+              <span className="hs-row-value">{fmtRate(estimate.goldPerHour)}</span>
             </span>
           </span>
         </>
@@ -147,96 +141,102 @@ export default function HuntSelection({
   for (const m of depthEstimate?.materialsPerHour ?? []) perHour[m.material] = m.perHour;
   const headChip = chipOf(!zoneOpen, zoneDifficulty(zone, depth, playerCp, depthEstimate?.outlook ?? null));
   const overflowIn = zoneOpen && depthEstimate && depthEstimate.outlook !== 'cannot' ? hoursUntilInventoryFull(save, zone.id, {}, perHour, capHours) : null;
+  const notes = subLevelNotes(zone, depth, progress.ceiling);
 
   return (
-    <div className="modal-backdrop">
-      <div className={`modal dungeon-modal hunt-modal hunt-screen step-${step}`} data-tutorial-target="hunt-modal">
-        <h2 className="modal-title">{t('hunting.title')}</h2>
+    <ModalShell
+      className={`hs-modal step-${step}`}
+      tutorialTarget="hunt-modal"
+      icon={<img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />}
+      title={t('hunting.title')}
+      subtitle={t('dungeon.yourCp', { n: fmtNum(playerCp) })}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <div className="hs">
         <ActiveBuffs save={save} skip={['gatherer']} />
 
-        <div className="hunt-sel">
-          <div className="hunt-zonelist">
-            <div className="hunt-zonelist-head">
-              <h3 className="hunt-section-title">{t('hunting.zonesTitle')}</h3>
-              <span className="hunt-yourcp">{t('dungeon.yourCp', { n: fmtNum(playerCp) })}</span>
+        <div className="hs-cols">
+          <Panel title={t('hunting.zonesTitle')} className="hs-zones">
+            <div className="hs-zone-list">
+              {HUNTING_ZONES.map((z) => {
+                const zs = zoneState(z, save, playerCp);
+                const rowChip = chipOf(zs === 'locked', zoneDifficulty(z, 'shallow', playerCp, shallowOutlooks[z.id] ?? null));
+                return (
+                  <button
+                    type="button"
+                    key={z.id}
+                    className={`hs-zone state-${zs}${z.id === zone.id ? ' selected' : ''}`}
+                    onClick={() => {
+                      setZoneId(z.id);
+                      setStep('detail');
+                    }}
+                    aria-pressed={z.id === zone.id}
+                    data-ui
+                  >
+                    <MonsterPortrait enemyId={z.enemyId} box="56px" />
+                    <span className="hs-zone-info">
+                      <span className="hs-zone-name">{zoneName(z)}</span>
+                      {zs === 'locked' ? (
+                        <span className="hs-zone-sub">{t(zoneLockedText(z).key, zoneLockedText(z).vars)}</span>
+                      ) : (
+                        <>
+                          <span className="hs-zone-sub">{t('hunting.cpNeeded', { n: fmtNum(recommendedCpForDepth(z, 'shallow')) })}</span>
+                          <span className="hs-zone-sub">{t('hunting.depthsOpen', { n: depthsOpen(z, playerCp), m: HUNTING_DEPTHS.length })}</span>
+                        </>
+                      )}
+                      <Chip tone={rowChip.tone}>{rowChip.label}</Chip>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            {HUNTING_ZONES.map((z) => {
-              const zs = zoneState(z, save, playerCp);
-              const rowChip = chipOf(zs === 'locked', zoneDifficulty(z, 'shallow', playerCp, shallowOutlooks[z.id] ?? null));
-              return (
-                <button
-                  type="button"
-                  key={z.id}
-                  className={`hunt-zone-row state-${zs}${z.id === zone.id ? ' selected' : ''}`}
-                  onClick={() => {
-                    setZoneId(z.id);
-                    setStep('detail');
-                  }}
-                  aria-pressed={z.id === zone.id}
-                  data-ui
-                >
-                  <MonsterPortrait enemyId={z.enemyId} box="52px" />
-                  <span className="hunt-zone-info">
-                    <span className="hunt-zone-name">{zoneName(z)}</span>
-                    {zs === 'locked' ? (
-                      <span className="hunt-zone-sub">{t(zoneLockedText(z).key, zoneLockedText(z).vars)}</span>
-                    ) : (
-                      <>
-                        <span className="hunt-zone-sub">{t('hunting.cpNeeded', { n: fmtNum(recommendedCpForDepth(z, 'shallow')) })}</span>
-                        <span className="hunt-zone-sub">{t('hunting.depthsOpen', { n: depthsOpen(z, playerCp), m: HUNTING_DEPTHS.length })}</span>
-                      </>
-                    )}
-                    <span className={`hunt-state-chip ${rowChip.cls}`}>{rowChip.label}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          </Panel>
 
-          <div className="hunt-detail">
-            <button type="button" className="hunt-back" onClick={() => setStep('list')} data-ui>
+          <div className="hs-detail">
+            <Button size="sm" className="hs-back" onClick={() => setStep('list')}>
               &lt; {t('hunting.back')}
-            </button>
+            </Button>
 
-            <div className={`hunt-detail-head${zoneOpen ? '' : ' locked'}`} style={headStyle}>
-              <div className="hunt-detail-monster">
+            <div className={`hs-banner${zoneOpen ? '' : ' locked'}`} style={headStyle}>
+              <div className="hs-banner-monster">
                 <FramedSprite src={huntingEnemySpriteUrl(zone.enemyId)} art={enemyArt} box="120px" height={0.9 * enemyArt.height} row={0} still />
               </div>
-              <div className="hunt-detail-title">
-                <span className="hunt-monster-name">{monsterName(zone)}</span>
-                <span className="hunt-zone-title">{zoneName(zone)}</span>
-                <span className="hunt-detail-cp">
+              <div className="hs-banner-text">
+                <span className="hs-banner-monstername">{monsterName(zone)}</span>
+                <span className="hs-banner-zone">{zoneName(zone)}</span>
+                <span className="hs-banner-cp">
                   {zoneOpen ? t('hunting.cpLine', { rec: fmtNum(recommendedCpForDepth(zone, depth)), you: fmtNum(playerCp) }) : t(zoneLockedText(zone).key, zoneLockedText(zone).vars)}
-                  <span className={`hunt-state-chip ${headChip.cls}`}>{headChip.label}</span>
+                </span>
+                <span>
+                  <Chip tone={headChip.tone}>{headChip.label}</Chip>
                 </span>
               </div>
             </div>
 
-            <section className="hunt-block">
-              <h4 className="hunt-section-title">{t('hunting.materialsTitle')}</h4>
-              <div className="hunt-mats">
+            <Panel title={t('hunting.materialsTitle')}>
+              <div className="hs-mats">
                 {zone.drops.map((d) => (
-                  <span className="hunt-mat" key={d.material}>
+                  <span className="hs-mat" key={d.material}>
                     <MatIcon id={d.material} />
-                    <span className="hunt-mat-name">{matName(d.material)}</span>
+                    <span className="hs-mat-name">{matName(d.material)}</span>
                     <RarityChip rarity={d.rarity} />
                   </span>
                 ))}
               </div>
               {zone.uniques && zone.uniques.length > 0 && (
                 <>
-                  <h4 className="hunt-section-title sub">{t('hunting.uniquesTitle')}</h4>
+                  <p className="hs-sub">{t('hunting.uniquesTitle')}</p>
                   <ZoneUniques itemIds={zone.uniques.map((u) => u.itemId)} />
                 </>
               )}
-            </section>
+            </Panel>
 
             {zoneOpen && (
               <>
-                <section className="hunt-block">
-                  <h4 className="hunt-section-title">{t('hunting.depthTitle')}</h4>
-                  <p className="hunt-hint">{t('hunting.depthExplain')}</p>
-                  <div className="hunt-depths" role="radiogroup" aria-label={t('hunting.depthTitle')}>
+                <Panel title={t('hunting.depthTitle')}>
+                  <p className="hs-hint">{t('hunting.depthExplain')}</p>
+                  <div className="hs-depths" role="radiogroup" aria-label={t('hunting.depthTitle')}>
                     {HUNTING_DEPTHS.map((def, i) => (
                       <DepthOption
                         key={def.id}
@@ -249,51 +249,44 @@ export default function HuntSelection({
                       />
                     ))}
                   </div>
-                  <p className="hunt-hint est">{t('hunting.estimateNote')}</p>
-                </section>
+                  <p className="hs-hint">{t('hunting.estimateNote')}</p>
+                </Panel>
 
-                <section className="hunt-block">
-                  <h4 className="hunt-section-title">{t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })}</h4>
+                <Panel title={t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })}>
                   <Meter pct={maxed ? 100 : (Math.min(progress.promotionWins, required) / required) * 100} tone="xp" label={t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })} />
-                  <div className="hunt-meter-text">
-                    {maxed ? t('hunting.subLevelMax') : promotionLine(progress.promotionWins, required, progress.ceiling)}
-                  </div>
-                  <p className="hunt-hint">{t('hunting.subLevelExplain')}</p>
-                  {subLevelNotes(zone, depth, progress.ceiling).xpPct > 0 && <p className="hunt-hint">{t('hunting.subLevelXp', { n: subLevelNotes(zone, depth, progress.ceiling).xpPct })}</p>}
-                  {!maxed && subLevelNotes(zone, depth, progress.ceiling).nextCp > 0 && <p className="hunt-hint">{t('hunting.subLevelNeedCp', { cp: fmtNum(subLevelNotes(zone, depth, progress.ceiling).nextCp) })}</p>}
-                </section>
+                  <p className="hs-meter-text">{maxed ? t('hunting.subLevelMax') : promotionLine(progress.promotionWins, required, progress.ceiling)}</p>
+                  <p className="hs-hint">{t('hunting.subLevelExplain')}</p>
+                  {notes.xpPct > 0 && <p className="hs-hint">{t('hunting.subLevelXp', { n: notes.xpPct })}</p>}
+                  {!maxed && notes.nextCp > 0 && <p className="hs-hint">{t('hunting.subLevelNeedCp', { cp: fmtNum(notes.nextCp) })}</p>}
+                </Panel>
 
-                <section className="hunt-block facts">
-                  <div className="hunt-fact">
+                <Panel tone="inset" className="hs-facts">
+                  <p className="hs-fact">
                     {passActive
                       ? t('hunting.capLineActive', { n: passCapHours })
                       : zone.offlineCapHours < passCapHours
                         ? t('hunting.capLinePass', { n: zone.offlineCapHours, p: passCapHours })
                         : t('hunting.capLine', { n: zone.offlineCapHours })}
-                  </div>
-                  <div className={`hunt-fact${inv.used >= inv.capacity ? ' bad' : inv.used >= inv.capacity * 0.85 ? ' warn' : ''}`}>{t('hunting.invFree', { n: inv.used, m: inv.capacity, f: inv.free })}</div>
+                  </p>
+                  <p className={`hs-fact${inv.used >= inv.capacity ? ' bad' : inv.used >= inv.capacity * 0.85 ? ' warn' : ''}`}>{t('hunting.invFree', { n: inv.used, m: inv.capacity, f: inv.free })}</p>
                   {overflowIn !== null && (
-                    <p className="hunt-hint bad">
+                    <p className="hs-fact bad">
                       {t('hunting.overflowWarning', { t: fmtSpan(Math.max(overflowIn, 1 / 60) * 3600 * 1000), h: capHours })} <WholesaleLink hint />
                     </p>
                   )}
-                  <p className="hunt-hint">{t('hunting.invExplain')}</p>
-                </section>
+                  <p className="hs-hint">{t('hunting.invExplain')}</p>
+                </Panel>
               </>
             )}
 
-            <div className="hunt-detail-foot">
-              <button className="battle-btn hunt-start" onClick={() => onStartHunt(zone.id, depth)} disabled={!!blocked} data-tutorial-target="hunt-start" data-ui>
+            <div className="hs-foot">
+              <Button variant="primary" block className="hunt-start" onClick={() => onStartHunt(zone.id, depth)} disabled={!!blocked} data-tutorial-target="hunt-start">
                 {blocked ? t(blocked.key, blocked.vars) : t('hunting.start')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

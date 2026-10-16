@@ -1,0 +1,508 @@
+/* Caça (zone selection, the hunt in progress, the reward) in the new style. The shared pieces carry the look; this file is what is particular to the hunt. The scene art (.hunt-stage, App.css) is kept as it was. */
+
+.hs {
+  container: ui / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.hs-hint,
+.hs-meter-text {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+}
+.hs-hint.center {
+  text-align: center;
+}
+.hs-meter-text {
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-sub {
+  margin: var(--sp-3) 0 var(--sp-2);
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-promoted {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-body);
+  color: var(--c-good);
+}
+.hs-count {
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-count.warn {
+  color: var(--c-warn);
+}
+.hs-count.full {
+  color: var(--c-bad);
+}
+
+/* ---------- zone selection ---------- */
+.hs-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+}
+.hs-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.hs-zone-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.hs-zone {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  width: 100%;
+  padding: var(--sp-3);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  text-align: left;
+  color: var(--c-text);
+  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-card);
+  cursor: pointer;
+}
+.hs-zone:hover {
+  border-color: var(--c-gold-line);
+}
+.hs-zone.selected {
+  border-color: var(--c-gold-300);
+  box-shadow: var(--sh-card), 0 0 0 1px rgba(255, 215, 106, 0.4);
+}
+.hs-zone.state-locked {
+  color: var(--c-text-muted);
+}
+.hs-zone.state-locked .hs-portrait {
+  filter: grayscale(1) brightness(0.55);
+}
+.hs-zone-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.hs-zone-name {
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  overflow-wrap: break-word;
+}
+.hs-zone-sub {
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-zone.state-locked .hs-zone-sub {
+  color: var(--c-text-muted);
+}
+.hs-zone-info .ui-tag {
+  margin-top: var(--sp-1);
+}
+.hs-portrait {
+  display: block;
+  flex: 0 0 auto;
+  width: var(--box);
+  height: var(--box);
+  background-color: var(--c-inset);
+  background-repeat: no-repeat;
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  image-rendering: pixelated;
+  box-sizing: border-box;
+}
+.hs-back {
+  display: none;
+  align-self: flex-start;
+}
+.ui-tag.tier-common {
+  color: var(--c-good);
+  background: rgba(111, 224, 138, 0.12);
+  border-color: #2f7a46;
+}
+.ui-tag.tier-uncommon {
+  color: var(--c-info);
+  background: rgba(46, 134, 222, 0.14);
+  border-color: #2e5f94;
+}
+.ui-tag.tier-rare {
+  color: #d3a6ff;
+  background: rgba(176, 108, 255, 0.14);
+  border-color: #7a4cc0;
+}
+
+/* the banner: the zone's own map strip behind the monster */
+.hs-banner {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-4);
+  min-height: 150px;
+  padding: var(--sp-3) var(--sp-4);
+  overflow: hidden;
+  background: #0b0711;
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-panel);
+}
+.hs-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bg) center / cover no-repeat;
+  image-rendering: pixelated;
+  opacity: 0.75;
+}
+.hs-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(11, 7, 17, 0.1), rgba(11, 7, 17, 0.88) 70%);
+}
+.hs-banner.locked::before {
+  filter: grayscale(1) brightness(0.5);
+}
+.hs-banner.locked .hs-banner-monster {
+  filter: grayscale(1) brightness(0.45);
+}
+.hs-banner-monster,
+.hs-banner-text {
+  position: relative;
+  z-index: 1;
+}
+.hs-banner-monster {
+  flex: 0 0 auto;
+  width: 120px;
+  height: 120px;
+}
+.hs-banner-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+  margin-left: auto;
+  min-width: 0;
+  max-width: 62%;
+  text-align: right;
+}
+.hs-banner-monstername {
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-banner-zone {
+  font-family: var(--font-body);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--c-gold-300);
+  text-shadow: 0 2px 0 #000;
+  overflow-wrap: anywhere;
+}
+.hs-banner-cp {
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  text-shadow: 0 1px 0 #000;
+}
+
+.hs-mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.hs-mat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
+  font-size: var(--fs-body);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.hs-mat .mat-icon,
+.hs-lost .mat-icon {
+  width: 28px;
+  height: 28px;
+}
+.hs-uniques {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.hs-unique {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
+  font-size: var(--fs-body);
+  background: rgba(255, 200, 80, 0.07);
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: var(--r-md);
+}
+.hs-unique-icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+}
+.hs-unique-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* the depth cards */
+.hs-depths {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.hs-depth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-3);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  text-align: left;
+  color: var(--c-text);
+  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.hs-depth:hover {
+  border-color: var(--c-gold-line);
+}
+.hs-depth.active {
+  border-color: var(--c-gold-300);
+  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.4);
+}
+.hs-depth.locked {
+  opacity: 0.6;
+}
+.hs-depth-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.hs-depth-name {
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+.hs-depth-cp,
+.hs-depth-level {
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+.hs-depth-lock {
+  color: var(--c-text-muted);
+}
+.hs-depth-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.hs-depth-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.hs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.hs-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--c-text-dim);
+}
+.hs-row-label .mat-icon {
+  width: 20px;
+  height: 20px;
+}
+.hs-row-value {
+  font-weight: 700;
+  text-align: right;
+}
+
+.hs-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.hs-fact {
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-fact.warn {
+  color: var(--c-warn);
+}
+.hs-fact.bad {
+  color: var(--c-bad);
+}
+.hs-foot {
+  position: sticky;
+  bottom: calc(-1 * var(--sp-5));
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0 var(--sp-1);
+  background: linear-gradient(180deg, transparent, #0f0a17 28%);
+}
+
+/* ---------- the hunt in progress ---------- */
+.hs-stagepanel {
+  padding: var(--sp-3);
+}
+.hs-depthline {
+  margin-top: var(--sp-2);
+  text-align: center;
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-time {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+.hs-banner-full {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-body);
+  color: var(--c-bad);
+}
+.hs-loot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+.hs-loot-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 64px;
+  max-width: 96px;
+  text-align: center;
+}
+.hs-loot-cell.empty .ui-frame {
+  opacity: 0.5;
+}
+.hs-loot-rate {
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+  overflow-wrap: anywhere;
+}
+.hs-line {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-line.ok {
+  color: var(--c-good);
+}
+.hs-line.warn,
+.hs-line.eta {
+  color: var(--c-warn);
+}
+.hs-line.bad,
+.hs-line.full {
+  color: var(--c-bad);
+}
+.hs-lost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-2) var(--sp-3) 0 0;
+  padding: var(--sp-1) var(--sp-2);
+  background: rgba(255, 107, 94, 0.08);
+  border: var(--bw-thin) solid #8a3a32;
+  border-radius: var(--r-sm);
+  color: var(--c-text);
+}
+.hs-lostlist {
+  display: flex;
+  flex-wrap: wrap;
+}
+.hs-frozen p {
+  font-size: var(--fs-body);
+  color: var(--c-warn);
+}
+.hs-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+
+/* the reward dialog */
+.hs-reward .hs-loot-cell {
+  min-width: 80px;
+}
+
+/* ---------- phone / narrow: one pane at a time, the two columns side by side only when there is room ---------- */
+@media (max-width: 899px) {
+  .hs-modal.step-list .hs-detail {
+    display: none;
+  }
+  .hs-modal.step-detail .hs-zones {
+    display: none;
+  }
+  .hs-back {
+    display: inline-flex;
+  }
+  .hs-depths {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hs-banner {
+    min-height: 130px;
+    padding: var(--sp-3);
+  }
+  .hs-foot {
+    bottom: calc(-1 * var(--sp-4));
+  }
+}
+@media (min-width: 900px) {
+  .hs-cols {
+    grid-template-columns: 330px minmax(0, 1fr);
+  }
+  .hs-zones {
+    position: sticky;
+    top: 0;
+  }
+}
+@container ui (max-width: 640px) {
+  .hs-depths {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 599px) {
+  .hs-foot {
+    bottom: calc(-1 * var(--sp-3) - env(safe-area-inset-bottom, 0px));
+  }
+}

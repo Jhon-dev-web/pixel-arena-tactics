@@ -782,3 +782,123 @@
     flex-wrap: nowrap;
   }
 }
+
+/* ---------- a progress meter (profession XP, storage, sub-level, hunt time) ---------- */
+.ui-meter {
+  height: 12px;
+  overflow: hidden;
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line-strong);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+.ui-meter.thin {
+  height: 8px;
+}
+.ui-meter-fill {
+  height: 100%;
+  background: linear-gradient(180deg, var(--c-gold-300), var(--c-gold-500));
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.ui-meter-fill.xp {
+  background: linear-gradient(180deg, #7ee6a0, #3fae6a);
+}
+.ui-meter-fill.full {
+  background: linear-gradient(180deg, #ff9a7a, #d65a3a);
+}
+.ui-meter-label {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-meter-fill {
+    transition: none;
+  }
+}
+
+/* ---------- a small dialog (a reward, a result): the shell without a close button ---------- */
+.modal-backdrop:has(> .ui-dialog) {
+  padding: var(--sp-3);
+  z-index: var(--z-modal);
+}
+.ui-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow: hidden;
+  color: var(--c-text);
+  text-align: left;
+  font-size: var(--fs-body);
+  background: linear-gradient(180deg, #181022, #0f0a17);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), var(--sh-panel);
+}
+.ui-dialog :where(p) {
+  margin: 0;
+}
+.ui-dialog-head {
+  flex: 0 0 auto;
+  padding: var(--sp-4) var(--sp-5) var(--sp-3);
+  border-bottom: var(--bw-thin) solid rgba(255, 215, 106, 0.22);
+}
+.ui-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-5);
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-gold-700) var(--c-inset);
+}
+.ui-dialog-foot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5) var(--sp-4);
+  border-top: var(--bw-thin) solid rgba(255, 215, 106, 0.22);
+}
+@media (max-width: 599px) {
+  .ui-dialog-head {
+    padding: var(--sp-3);
+  }
+  .ui-dialog-body {
+    padding: var(--sp-3);
+  }
+  .ui-dialog-foot {
+    padding: var(--sp-3) var(--sp-3) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* the content of a ModalShell / Dialog that lays itself out by its own width (like .ui-screen does for a page) */
+.ui-cq {
+  container: ui / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.ui-note {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+}
+
+/* a narrow screen is a phone even when the pointer is reported as fine: the touch targets stay at 40 px */
+@media (max-width: 640px) {
+  .ui-btn.sm,
+  .ui-chip {
+    min-height: 40px;
+  }
+}

@@ -20,7 +20,7 @@ export function MonsterPortrait({ enemyId, box = '56px', fill = 0.9, className }
     backgroundSize: `${400 * k}% ${400 * k}%`,
     backgroundPosition: `calc(var(--box) * ${0.5 - g.cx * k}) calc(var(--box) * ${0.5 - g.cy * k})`,
   };
-  return <span className={`hunt-portrait${className ? ` ${className}` : ''}`} style={style} role="img" aria-hidden="true" />;
+  return <span className={`hs-portrait${className ? ` ${className}` : ''}`} style={style} role="img" aria-hidden="true" />;
 }
 
 // An animated sheet row standing on the ground line of a square of side `box` (a CSS length, set as --fb): the creature's feet sit on the bottom edge,
@@ -66,7 +66,7 @@ export function FramedSprite({
 
 // Comum / Refino / Nobre, in the colour the rest of the screen uses for that rarity.
 export function RarityChip({ rarity }: { rarity: DropRarity }) {
-  return <span className={`hunt-rarity tier-${rarity}`}>{t(`hunting.tier_${rarity}`)}</span>;
+  return <span className={`ui-tag tier tier-${rarity}`}>{t(`hunting.tier_${rarity}`)}</span>;
 }
 
 export function MatIcon({ id }: { id: MaterialId }) {
@@ -78,8 +78,8 @@ export function MatIcon({ id }: { id: MaterialId }) {
 export function Meter({ pct, tone, label }: { pct: number; tone?: 'full' | 'xp'; label?: string }) {
   const width = Math.max(0, Math.min(100, pct));
   return (
-    <div className="hunt-meter" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(width)} aria-label={label}>
-      <div className={`hunt-meter-fill${tone ? ` ${tone}` : ''}`} style={{ width: `${width}%` }} />
+    <div className="ui-meter" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(width)} aria-label={label}>
+      <div className={`ui-meter-fill${tone ? ` ${tone}` : ''}`} style={{ width: `${width}%` }} />
     </div>
   );
 }
@@ -87,17 +87,17 @@ export function Meter({ pct, tone, label }: { pct: number; tone?: 'full' | 'xp';
 // The unique drops of a zone: icon, name and a "raro" chip (never a percentage).
 export function ZoneUniques({ itemIds }: { itemIds: string[] }) {
   return (
-    <div className="hunt-uniques">
+    <div className="hs-uniques">
       {itemIds.map((id) => {
         const item = getGear(id);
         if (!item) return null;
         return (
-          <span className="hunt-unique" key={id}>
-            <span className="hunt-unique-icon">
+          <span className="hs-unique" key={id}>
+            <span className="hs-unique-icon">
               <GearIcon item={item} />
             </span>
-            <span className="hunt-unique-name">{t(`gear.${item.nameKey}`)}</span>
-            <span className="hunt-rarity unique">{t('hunting.uniqueRare')}</span>
+            <span className="hs-unique-name">{t(`gear.${item.nameKey}`)}</span>
+            <span className="ui-tag gold">{t('hunting.uniqueRare')}</span>
           </span>
         );
       })}

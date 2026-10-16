@@ -145,6 +145,7 @@ import './ui/base.css'; // after App.css: the body face and the typography overr
 import './ui/ui.css';
 import './ui/shell.css';
 import './ui/screens.css';
+import './ui/hunt.css';
 import './ui/materials.css'; // the tradeable-material stack and its question
 
 // The player market (docs/MARKET_SOLANA.md) is WEB ONLY: Valve forbids crypto trading in a Steam game. marketEnabled is a build constant (VITE_MARKET_ENABLED, forced off in the desktop build),
