@@ -418,7 +418,9 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
     // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
     // grows the weapon term W before STR scales it.
     dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + set.damagePct) * (1 + (parts.paragon === false ? 0 : paragonDamageBonus(paragonLevel(save.xp)))),
-    critChance: effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance,
+    // Never above 100 %: a hero who stacks crit rate on every piece (substats, refine, ring, gloves, relic) is simply always critical. Unclamped, a total over 1 made the Hunting session fail
+    // sanitizeHuntSession (critChance is checked against 0..1) and the session was rebuilt from the live save WITHOUT its Pass cap (10 h became 6 h): Rodada 24, docs/BALANCE_CHANGES.md.
+    critChance: Math.min(1, effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance),
     critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus + set.critMultBonus,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
     // The relic's attackSpeedBonus (and the skills') enter the same derivation, so the 400 ms floor still caps them.
