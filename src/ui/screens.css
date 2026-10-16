@@ -1520,3 +1520,10 @@
 .item-compare-chg.down {
   color: var(--c-bad);
 }
+
+/* the small gold tag after a drop-only piece's name */
+.unique-tag {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--c-gold-300);
+}
