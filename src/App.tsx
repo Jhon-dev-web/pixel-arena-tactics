@@ -26,6 +26,10 @@ import { ActionFail, changeAction, changeVoidsCertificate, createPouchAction, di
 import { clearCertificates, setCertificates } from './game/itemCerts';
 import { queueBossClaims } from './game/bossClaims';
 import ConfirmVoidModal from './components/ConfirmVoidModal';
+import TradeableUseModal from './components/TradeableUseModal';
+import type { MaterialId } from './game/materials';
+import { TradeableMap, gateTradeableUse, materialPrefs, reconcileTradeable, stackQty, stripTradeable, withMaterialPrefs } from './game/tradeableMaterials';
+import { isTradeableReachable } from './game/tradeableStatus';
 import { addRelics, addUniqueInstance } from './game/uniques';
 import { applyFertilizer, applyHarvest, applyPlant, applyUproot, readySlots } from './game/gardenActions';
 import { getPotionRecipe } from './game/potions';
@@ -140,6 +144,7 @@ import './ui/base.css'; // after App.css: the body face and the typography overr
 import './ui/ui.css';
 import './ui/shell.css';
 import './ui/screens.css';
+import './ui/materials.css'; // the tradeable-material stack and its question
 
 // The player market (docs/MARKET_SOLANA.md) is WEB ONLY: Valve forbids crypto trading in a Steam game. marketEnabled is a build constant (VITE_MARKET_ENABLED, forced off in the desktop build),
 // so in the desktop bundle these three lines, the screen, its text and its styles are not there at all (npm run check:desktop pins it).
@@ -169,7 +174,8 @@ interface AppProps {
 function App({ repository, initialSave, initialRevision }: AppProps) {
   const { user, signOut, configured } = useAuth();
   // A season that ended while the game was closed is settled before the first frame (battlepass.ts settleSeason).
-  const [save, setSave] = useState<SaveData>(() => settleSeason(initialSave, Date.now()));
+  // (Tradeable materials exist only where a server records them: the offline / desktop build turns any that an imported save carries into normal units, tradeableMaterials.ts.)
+  const [save, setSave] = useState<SaveData>(() => settleSeason(isServerItemAuthority() ? initialSave : stripTradeable(initialSave), Date.now()));
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const revisionRef = useRef(initialRevision);
   const dirtyRef = useRef(false);
@@ -234,6 +240,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Web build: one server-backed item action (forge, equip, refine, pouch...) at a time, and the prompt that warns a change cancels a certificate (itemActions.ts).
   const itemBusyRef = useRef(false);
   const [voidPrompt, setVoidPrompt] = useState<{ run: () => Promise<void> } | null>(null);
+  // The question before the game spends TRADEABLE materials (tradeableMaterials.ts): the change waits here until the player answers. `base` is the save it was computed from.
+  const [tradeablePrompt, setTradeablePrompt] = useState<{ used: TradeableMap; npc: boolean; first: boolean; base: SaveData; next: SaveData } | null>(null);
 
   const toastTimeout = useRef<number | null>(null);
   const showToast = (msg: string) => {
@@ -260,7 +268,24 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
   // Play time counted by the app clock since the last commit; it rides along with the next save (a flush every few minutes keeps it from waiting forever).
   const pendingSecondsRef = useRef(0);
-  const setSaveBoth = (s: SaveData) => {
+  const setSaveBoth = (s: SaveData, opts: { npc?: boolean; confirmed?: boolean; tradeableFirst?: boolean } = {}) => {
+    // Tradeable materials (tradeableMaterials.ts): every change is looked at once, here. Spending tradeable units is refused while the server cannot record it, asked about the first time
+    // (and every time for a sale to an NPC merchant), and queued for the server's burn; moving them on purpose (a listing, a delivery) decides the portion itself.
+    const rec = reconcileTradeable(saveRef.current, s, opts.tradeableFirst ? { first: true } : {});
+    if (Object.keys(rec.used).length > 0) {
+      const gate = opts.confirmed
+        ? 'free'
+        : gateTradeableUse(rec.used, { server: isServerItemAuthority(), reachable: isTradeableReachable(), acked: materialPrefs(saveRef.current).useAcked, npc: !!opts.npc });
+      if (gate === 'blocked') {
+        showToast(t('tradeable.blocked'));
+        return;
+      }
+      if (gate === 'confirm') {
+        setTradeablePrompt({ used: rec.used, npc: !!opts.npc, first: !!opts.tradeableFirst, base: saveRef.current, next: s });
+        return;
+      }
+    }
+    s = rec.save;
     // Lifetime statistics that are read from the change itself (stats.ts): the Gold gained, the full sets now worn, the seconds played.
     s = trackSave(saveRef.current, s, pendingSecondsRef.current);
     pendingSecondsRef.current = 0;
@@ -1704,8 +1729,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   // Descartar (bagActions.ts): part or all of a stack, or one stored gear instance; the screen has already asked for the confirmation.
-  const discardItem = (kind: 'gear' | 'material' | 'consumable', id: string, qty: number | 'all' = 'all') => {
+  const discardItem = (kind: 'gear' | 'material' | 'consumable', id: string, qty: number | 'all' = 'all', variant?: 'tradeable') => {
     const s = saveRef.current;
+    if (kind === 'material') qty = stackQty(s, id as MaterialId, variant, qty);
     // Web build: a certified piece is burned on the server first, so it cannot be sold after it is gone.
     if (isServerItemAuthority() && s.gearInstances[id]?.certificateId) {
       void withItemLock(async () => {
@@ -1736,7 +1762,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     }
     const next = s.gearInstances[id] ? applyDiscard(s, 'instance', id) : applyDiscard(s, kind, id, qty);
     if (!next) return;
-    setSaveBoth(next);
+    setSaveBoth(next, { tradeableFirst: variant === 'tradeable' });
     playSfx('click');
   };
 
@@ -1777,14 +1803,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   // Vender ao mercador (merchant.ts): a low price and a daily budget; the toast says what it paid, or that the budget is spent.
-  const sellItem = (kind: SellKind, id: string, qty: number | 'all') => {
-    const r = applyMerchantSell(saveRef.current, kind, id, qty, Date.now());
+  const sellItem = (kind: SellKind, id: string, qty: number | 'all', variant?: 'tradeable') => {
+    // A material's stacks are separate (tradeable units are their own stack): 'all' means all of the stack the player picked, never the total of both
+    const r = applyMerchantSell(saveRef.current, kind, id, kind === 'material' ? stackQty(saveRef.current, id as MaterialId, variant, qty) : qty, Date.now());
     if (!r.ok || !r.save) {
       showToast(t(r.reason === 'budget' ? 'merchant.budgetSpent' : 'merchant.cannotSell'));
       return;
     }
     playSfx('victory');
-    setSaveBoth(r.save);
+    setSaveBoth(r.save, { npc: true, tradeableFirst: variant === 'tradeable' });
     showToast(r.capped ? t('merchant.soldCapped', { n: fmtNum(r.units ?? 0), g: fmtNum(r.gold ?? 0) }) : t('merchant.sold', { n: fmtNum(r.units ?? 0), g: fmtNum(r.gold ?? 0) }));
   };
 
@@ -1796,7 +1823,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       return;
     }
     playSfx('victory');
-    setSaveBoth(r.save);
+    setSaveBoth(r.save, { npc: true });
     showToast(t('wholesale.sold', { n: fmtNum(r.units), g: fmtNum(r.gold) }));
   };
   // Gold Pouches (goldPouch.ts): any player turns Gold into one (fee on top, lower for the Pass owner, daily limit, needs bag room); anyone opens one for exactly its face value.
@@ -2496,6 +2523,24 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         />
       )}
 
+      {tradeablePrompt && (
+        <TradeableUseModal
+          used={tradeablePrompt.used}
+          npc={tradeablePrompt.npc}
+          onCancel={() => setTradeablePrompt(null)}
+          onConfirm={() => {
+            const p = tradeablePrompt;
+            setTradeablePrompt(null);
+            // the change was computed from p.base: if the materials moved meanwhile (a claim, another action) it is not applied blindly
+            if (saveRef.current.materials !== p.base.materials || saveRef.current.tradeableMaterials !== p.base.tradeableMaterials) {
+              showToast(t('tradeable.useRetry'));
+              return;
+            }
+            setSaveBoth(p.npc ? p.next : withMaterialPrefs(p.next, { useAcked: true }), { npc: p.npc, confirmed: true, tradeableFirst: p.first });
+          }}
+        />
+      )}
+
       {welcome && (
         <WelcomeBackModal
           summary={welcome.summary}
@@ -2595,6 +2640,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onExportSave={exportSaveFile}
           onImportSave={importSaveFile}
           onResetSave={resetHero}
+          onMaterialPrefs={(patch) => setSaveBoth(withMaterialPrefs(saveRef.current, patch))}
           onReplayTutorial={() => {
             setSettingsOpen(false);
             replayTutorial();

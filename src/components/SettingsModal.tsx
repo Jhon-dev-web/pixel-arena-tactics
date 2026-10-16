@@ -8,6 +8,7 @@ import { getServerResetAt } from '../game/leagueReset';
 import useFullscreen from '../hooks/useFullscreen';
 import { APP_VERSION, buildErrorReport, clearErrorLog, copyText, readErrorLog } from '../lib/errorLog';
 import { enableNotifications, notificationsActive, notifyPermission, saveNotifyPref } from '../game/notify';
+import { MaterialPrefs, materialPrefs } from '../game/tradeableMaterials';
 
 // Settings: language, the two audio channels (a slider and a mute button each), fullscreen, the account, the tutorial and the game data (export, import and reset
 // of the save). Importing and resetting replace the hero, so both ask first (what is about to be loaded / a typed word), and App keeps a backup of the current
@@ -27,6 +28,7 @@ export default function SettingsModal({
   onExportSave,
   onImportSave,
   onResetSave,
+  onMaterialPrefs,
   onClose,
 }: {
   save: SaveData;
@@ -43,6 +45,8 @@ export default function SettingsModal({
   onExportSave: () => void;
   onImportSave: (imported: SaveData) => void;
   onResetSave: () => void;
+  // The two preferences about tradeable materials (tradeableMaterials.ts); only offered where such materials exist (an account on the online version).
+  onMaterialPrefs: (patch: Partial<MaterialPrefs>) => void;
   onClose: () => void;
 }) {
   const fullscreen = useFullscreen();
@@ -194,6 +198,27 @@ export default function SettingsModal({
               <button className="settings-action" onClick={() => void toggleNotify()} aria-pressed={notifyOn} data-ui>
                 {notifyOn ? t('settings.notificationsDisable') : t('settings.notificationsEnable')}
               </button>
+            </section>
+          )}
+
+          {accountConfigured && (
+            <section className="settings-section" data-settings="tradeable">
+              <span className="settings-label">{t('tradeable.prefTitle')}</span>
+              <div className="settings-row">
+                <div>
+                  <span className="settings-label">{t('tradeable.prefFirst')}</span>
+                  <span className="settings-description">{materialPrefs(save).useTradeableFirst ? t('settings.on') : t('settings.off')}</span>
+                </div>
+                <button className="settings-action" onClick={() => onMaterialPrefs({ useTradeableFirst: !materialPrefs(save).useTradeableFirst })} aria-pressed={materialPrefs(save).useTradeableFirst} data-ui>
+                  {materialPrefs(save).useTradeableFirst ? t('settings.off') : t('settings.on')}
+                </button>
+              </div>
+              <span className="settings-description">{t('tradeable.prefFirstHint')}</span>
+              {materialPrefs(save).useAcked && (
+                <button className="settings-action" onClick={() => onMaterialPrefs({ useAcked: false })} data-ui>
+                  {t('tradeable.prefAskAgain')}
+                </button>
+              )}
             </section>
           )}
 

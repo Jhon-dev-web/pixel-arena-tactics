@@ -5,6 +5,7 @@ import { getGear, isInstancedSlot } from './gear';
 import { addWithOverflow, emptyStock, placeUnits, Stock, stockSlots } from './inventory';
 import { ConsumableId, getConsumable } from './consumables';
 import { getMaterial, hasMaterials, MaterialId } from './materials';
+import { normalOf } from './tradeableMaterials';
 
 // Baú do acampamento (the camp stash): a second container with the very same stack rule as the inventory (99 per slot, placeUnits). It is STORAGE only:
 // recipes, delivery orders and upgrades consume from the inventory and never from here, so bag space stays a real decision and nothing is spent behind
@@ -85,8 +86,9 @@ export const bagCount = (save: SaveData, kind: StackKind, id: string): number =>
 export const stashCount = (save: Pick<SaveData, 'stash'>, kind: StackKind, id: string): number => (stashOf(save)[GROUP[kind]] as Record<string, number>)[id] ?? 0;
 
 // The equipped relic / tool is never moved out of the bag (the bag count of a stackable that is currently worn is one less than it shows).
+// The TRADEABLE units of a material (tradeableMaterials.ts) never go to the Bau: they are for selling, and only the normal units of the stack can be moved.
 function movableFromBag(save: SaveData, kind: StackKind, id: string): number {
-  const n = bagCount(save, kind, id);
+  const n = kind === 'material' ? normalOf(save, id as MaterialId) : bagCount(save, kind, id);
   return kind === 'gear' && Object.values(save.equipped).includes(id) ? Math.max(0, n - 1) : n;
 }
 
@@ -110,7 +112,9 @@ export function applyStashMove(save: SaveData, dir: 'store' | 'take', kind: Stac
     const moved = (placed.added[group] as Record<string, number>)[id] ?? 0;
     if (moved <= 0) return { save, moved: 0 };
     const stored: SaveData = { ...save, stash: { ...stash, materials: placed.stock.materials, consumables: placed.stock.consumables, gear: placed.stock.gear } };
-    return { save: takeFromBag(stored, kind, id, moved), moved };
+    const taken = takeFromBag(stored, kind, id, moved);
+    // Moving normal units is not a spend: a NEW tradeableMaterials object tells reconcileTradeable (tradeableMaterials.ts) that this change decided the tradeable portion itself.
+    return { save: kind === 'material' && taken.tradeableMaterials ? { ...taken, tradeableMaterials: { ...taken.tradeableMaterials } } : taken, moved };
   }
   const placed = addWithOverflow(save, additions);
   const moved = (placed.added[group] as Record<string, number>)[id] ?? 0;

@@ -1,0 +1,63 @@
+/* Tradeable materials (src/game/tradeableMaterials.ts): the stack of a material that can be sold to other players, and the question asked before the game spends it.
+   Same material, same art: only a gold corner and the market's diamond tell the two stacks apart. Tokens only (colours, spacing, type sizes). */
+.inv-slot.tradeable-mat {
+  border-color: var(--c-gold-line-strong);
+  box-shadow: inset 0 0 8px rgba(255, 215, 106, 0.28);
+}
+.inv-slot.tradeable-mat::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 14px 14px 0;
+  border-color: transparent var(--c-gold-300) transparent transparent;
+  border-top-right-radius: var(--r-sm);
+  pointer-events: none;
+}
+.inv-slot.tradeable-mat .inv-trade-tag.tradeable {
+  color: var(--c-gold-300);
+}
+.inv-slot.tradeable-mat.active {
+  border-color: var(--c-gold-300);
+}
+
+/* the question before tradeable units are spent (components/TradeableUseModal.tsx): a small dialog on the work-surface shell */
+.ui-modal.tm-modal {
+  width: min(460px, 100%);
+  height: auto;
+  max-height: 100%;
+}
+.tm-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.tm-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.tm-icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  padding: var(--sp-1);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-sm);
+}
+.tm-icon img,
+.tm-icon .mat-icon-emoji {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.tm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}

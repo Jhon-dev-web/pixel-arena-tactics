@@ -2160,5 +2160,30 @@
     "desc_profession_week": "Escolha UMA profissão: ela ganha +25% de XP durante a semana.",
     "name_final_race": "Corrida Final",
     "desc_final_race": "Nos últimos 5 dias, no dia em que você coleta as quatro metas diárias, ganha +5% de XP de Caça por 24 h."
+  },
+  "tradeable": {
+    "tag": "Negociável",
+    "badgeTitle": "Material negociável: igual ao comum, mas pode ser vendido a outros jogadores",
+    "filter": "Negociável",
+    "tileLabel": "{name} negociável ×{n}",
+    "desc": "Idêntico ao material comum em qualquer receita, pedido, refino ou venda ao mercador. A única diferença é que este pode ser vendido a outros jogadores no Mercado. Só o servidor cria materiais negociáveis, nas coletas.",
+    "detailLine": "Negociável: pode ser vendido a outros jogadores.",
+    "normalDesc": "Material comum. Em algumas coletas o servidor sorteia unidades negociáveis do mesmo material.",
+    "merchantSame": "O mercador paga o mesmo preço de um material comum. Outros jogadores pagam o que o vendedor pedir.",
+    "useTitle": "Gastar material negociável?",
+    "useText": "Isso vai gastar {list}. Esses materiais podem ser vendidos a outros jogadores. O jogo gasta primeiro os comuns e só usa os negociáveis quando os comuns acabam.",
+    "useNpcTitle": "Vender material negociável ao mercador?",
+    "useNpcText": "Isso vai vender {list} ao mercador pelo mesmo preço de um material comum. Outros jogadores pagariam mais no Mercado.",
+    "useConfirm": "Gastar mesmo assim",
+    "useNpcConfirm": "Vender ao mercador",
+    "useCancel": "Cancelar",
+    "useRetry": "O inventário mudou enquanto você decidia. Tente de novo.",
+    "line": "{n} {name} negociável",
+    "blocked": "Sem conexão com o servidor: materiais negociáveis não podem ser gastos agora. Os comuns continuam valendo.",
+    "prefTitle": "Materiais negociáveis",
+    "prefFirst": "Gastar os negociáveis antes dos comuns",
+    "prefFirstHint": "Desligado (o padrão): receitas, pedidos e refino gastam primeiro os comuns e só usam os negociáveis quando os comuns acabam, para você não gastar por engano o que pode vender.",
+    "prefAskAgain": "Perguntar de novo antes de gastar",
+    "serverNote": "Materiais negociáveis existem só na versão online, com conta."
   }
 }

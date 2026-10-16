@@ -57,6 +57,8 @@ import { emptyWholesale, sanitizeWholesale, WholesaleState } from './wholesale';
 import { emptyPouchDay, migratePouchFaces, PouchCerts, PouchDayState, sanitizeLegacyPouchCerts, sanitizePouchCerts, sanitizePouchDay } from './goldPouch';
 import { UniqueDrop } from './uniques';
 import { PendingBossClaim, sanitizeBossClaims } from './bossClaims';
+import { PendingMaterialClaim, sanitizeMaterialClaims } from './materialClaims';
+import { MaterialPrefs, TradeableMap, sanitizeBurns, sanitizeMaterialPrefs, sanitizeTradeable } from './tradeableMaterials';
 import { isServerItemAuthority } from './itemAuthority';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
@@ -188,6 +190,12 @@ export interface SaveData {
   eventPick?: EventPick;
   // Web build: the boss unique drops of banked Dungeon runs the server has not rolled yet (bossClaims.ts). Old saves load with none.
   pendingBossClaims?: PendingBossClaim[];
+  // Tradeable materials (tradeableMaterials.ts): the part of `materials` that is the tradeable variant (identical in use, sellable on the player market), the units spent that the server has not
+  // burned yet, the Hunting / Mining / Woodcutting / Garden claims whose tradeable roll the server still owes, and the player's two preferences. Web build only; old saves load with none.
+  tradeableMaterials?: TradeableMap;
+  tradeableBurns?: TradeableMap;
+  materialClaims?: PendingMaterialClaim[];
+  materialPrefs?: MaterialPrefs;
   highestDungeonFloor: number;
   heroName: string;
   str: number;
@@ -1096,6 +1104,21 @@ function statsBackfill(gearInstances: Record<GearInstanceId, GearInstance>, kill
   return { kills, forgedByRarity, uniquesFound };
 }
 
+// The tradeable-material fields are optional: kept (sanitized) when the save has them, absent otherwise, and never carried over raw from the file.
+function sanitizeTradeableFields(loaded: SaveData, raw: Record<string, unknown>): void {
+  const set = <K extends 'tradeableMaterials' | 'tradeableBurns' | 'materialClaims' | 'materialPrefs'>(key: K, value: SaveData[K] | undefined, present: boolean): void => {
+    if (present && value !== undefined) loaded[key] = value;
+    else delete loaded[key];
+  };
+  const trade = sanitizeTradeable(raw.tradeableMaterials, loaded.materials);
+  set('tradeableMaterials', trade, Object.keys(trade).length > 0);
+  const burns = sanitizeBurns(raw.tradeableBurns);
+  set('tradeableBurns', burns, Object.keys(burns).length > 0);
+  const claims = sanitizeMaterialClaims(raw.materialClaims);
+  set('materialClaims', claims, claims.length > 0);
+  set('materialPrefs', sanitizeMaterialPrefs(raw.materialPrefs), true);
+}
+
 export function normalizeSave(rawInput: unknown): SaveData {
   try {
     const raw = typeof rawInput === 'string' ? rawInput : rawInput ? JSON.stringify(rawInput) : null;
@@ -1460,6 +1483,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         codex: emptyCodex(),
       };
       loaded.codex = normalizeCodex(parsed.codex, loaded);
+      sanitizeTradeableFields(loaded, parsed as unknown as Record<string, unknown>);
       // Weekly goals and the login streak (weekly.ts): an old save has neither and starts its first week now; a new UTC week snapshots the counters again.
       loaded.quests = { ...loaded.quests, weekly: rollWeekly(sanitizeWeekly(q.weekly, loaded.stats, loadNow, playerLevel(loaded.xp)), loaded.stats, loadNow, playerLevel(loaded.xp)), streak: sanitizeStreak(q.streak) };
       // Hunting session snapshot + pending reward (both new, optional fields: an older save simply lacks them). An active

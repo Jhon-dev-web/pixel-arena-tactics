@@ -11,7 +11,8 @@ export interface BagContextValue {
   // move units between the inventory and the Baú
   move: (dir: 'store' | 'take', kind: StackKind, id: string, qty: number | 'all') => void;
   storeAllMaterials: () => void;
-  sell: (kind: 'material' | 'consumable', id: string, qty: number | 'all') => void;
+  // `variant` 'tradeable': the units are taken from the tradeable stack of a material (tradeableMaterials.ts); anything else is the normal stack
+  sell: (kind: 'material' | 'consumable', id: string, qty: number | 'all', variant?: 'tradeable') => void;
   // "Usar em...": open the screen that consumes the item
   openUse: (use: ItemUse) => void;
   upgradeStash: () => void;

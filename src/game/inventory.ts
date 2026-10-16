@@ -82,6 +82,9 @@ export interface Stock {
   materials: Partial<Record<MaterialId, number>>;
   consumables: Partial<Record<ConsumableId, number>>;
   gear: Record<string, number>;
+  // The part of `materials` that is the TRADEABLE variant (tradeableMaterials.ts). `materials` always holds the total of both variants; the tradeable units are a SEPARATE stack, so they take
+  // slots of their own: ceil(normal / STACK_LIMIT) + ceil(tradeable / STACK_LIMIT). Absent = none (the stash, an old save).
+  tradeable?: Partial<Record<MaterialId, number>>;
 }
 
 export const emptyStock = (): Stock => ({ materials: {}, consumables: {}, gear: {} });
@@ -104,7 +107,12 @@ export function stockSlots(stock: StockLike): number {
   for (const group of GROUPS) {
     const rec = stock[group] as Record<string, number> | undefined;
     if (!rec) continue;
-    for (const [id, qty] of Object.entries(rec)) if (qty > 0 && isKnown(group, id)) slots += slotsForQty(qty);
+    for (const [id, qty] of Object.entries(rec)) {
+      if (!(qty > 0) || !isKnown(group, id)) continue;
+      // Materials: the tradeable units are their own stack (tradeable <= total is kept by tradeableMaterials.ts; clamped here too so a corrupt value cannot make a negative stack).
+      const trade = group === 'materials' ? Math.min(qty, Math.max(0, stock.tradeable?.[id as MaterialId] ?? 0)) : 0;
+      slots += slotsForQty(qty - trade) + slotsForQty(trade);
+    }
   }
   return slots;
 }
@@ -112,10 +120,11 @@ export function stockSlots(stock: StockLike): number {
 type BagFields = Pick<SaveData, 'inventory' | 'materials' | 'consumables' | 'gearInstances' | 'equipped'>;
 
 // The bag's own stackables as a Stock view (no copy).
-export const bagStock = (save: Pick<SaveData, 'inventory' | 'materials' | 'consumables'>): Stock => ({
+export const bagStock = (save: Pick<SaveData, 'inventory' | 'materials' | 'consumables'> & Partial<Pick<SaveData, 'tradeableMaterials'>>): Stock => ({
   materials: save.materials ?? {},
   consumables: save.consumables ?? {},
   gear: save.inventory ?? {},
+  ...(save.tradeableMaterials ? { tradeable: save.tradeableMaterials } : {}),
 });
 
 export function storedInstanceCount(save: Pick<SaveData, 'gearInstances' | 'equipped'>): number {
@@ -161,7 +170,7 @@ export interface PlaceResult {
 // then into new slots in the order the keys are given (the caller orders them, e.g. rarest first), each new slot holding STACK_LIMIT. Whatever does not
 // fit is the leftover. Pure: the input stock is never mutated.
 export function placeUnits(stock: StockLike, additions: Additions, freeSlots: number): PlaceResult {
-  const next: Stock = { materials: { ...stock.materials }, consumables: { ...stock.consumables }, gear: { ...stock.gear } };
+  const next: Stock = { materials: { ...stock.materials }, consumables: { ...stock.consumables }, gear: { ...stock.gear }, ...(stock.tradeable ? { tradeable: stock.tradeable } : {}) };
   const added = emptyStock();
   const leftover = emptyStock();
   type Entry = { group: StackGroup; id: string; amount: number };
@@ -175,6 +184,8 @@ export function placeUnits(stock: StockLike, additions: Additions, freeSlots: nu
     }
   }
   const cur = (e: Entry): number => (next[e.group] as Record<string, number>)[e.id] ?? 0;
+  // The units that fill the NORMAL stack of a material: its total minus the tradeable units, which are a stack of their own (stockSlots).
+  const normalCur = (e: Entry): number => (e.group === 'materials' ? Math.max(0, cur(e) - Math.min(cur(e), Math.max(0, next.tradeable?.[e.id as MaterialId] ?? 0))) : cur(e));
   const put = (e: Entry, n: number) => {
     if (n <= 0) return;
     (next[e.group] as Record<string, number>)[e.id] = cur(e) + n;
@@ -184,7 +195,7 @@ export function placeUnits(stock: StockLike, additions: Additions, freeSlots: nu
   };
   // 1) partial stacks
   for (const e of entries) {
-    const q = cur(e);
+    const q = normalCur(e);
     if (q > 0) put(e, Math.min(e.amount, slotsForQty(q) * STACK_LIMIT - q));
   }
   // 2) new slots, in the given order

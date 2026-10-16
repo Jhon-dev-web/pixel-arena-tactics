@@ -32,7 +32,8 @@ import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
 import StashHint from './StashHint';
 import LapidarPanel from './LapidarPanel';
-import { ChipRow, SearchField, Tabs } from './ui';
+import { Chip, ChipRow, SearchField, Tabs } from './ui';
+import { normalOf, tradeableOf } from '../game/tradeableMaterials';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
 // the Personagem view (embedded, no modal chrome) and the still-existing quick-access "Inventário"
@@ -72,6 +73,7 @@ function formatBuffLeft(ms: number): string {
 }
 
 type SelKind = 'gear' | 'material' | 'consumable';
+type Variant = 'normal' | 'tradeable';
 
 // A type holding more than one stack of STACK_LIMIT occupies several slots: the unit count shown in each of them.
 const stackCells = (qty: number): number[] => Array.from({ length: slotsForQty(qty) }, (_, i) => Math.min(STACK_LIMIT, qty - i * STACK_LIMIT));
@@ -91,8 +93,8 @@ export default function InventoryPanel({
   save: SaveData;
   onEquip: (id: string) => void;
   onUnequip: (id: string) => void;
-  // kind 'gear' with an instance id discards that piece; qty only matters for stacks
-  onDiscard: (kind: SelKind, id: string, qty?: number | 'all') => void;
+  // kind 'gear' with an instance id discards that piece; qty only matters for stacks. `variant` 'tradeable': the units come from the tradeable stack of a material (tradeableMaterials.ts)
+  onDiscard: (kind: SelKind, id: string, qty?: number | 'all', variant?: Variant) => void;
   onReforge: (id: string) => void;
   onLapidar: (id: string, lockIndex: number) => void;
   onSalvage: (id: string) => void;
@@ -104,9 +106,10 @@ export default function InventoryPanel({
   // stash / merchant / "Usar em..." actions come from App through the context (see bagContext.ts)
   const bag = useContext(BagContext);
   useCertificatesVersion(); // the server's list of certificates changed: the "Certificado" lines follow it
-  const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables'>('all');
+  const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables' | 'tradeable'>('all');
   // src: where the picked stack lives (the inventory or the Baú). Phones show one pane at a time.
-  const [selected, setSelected] = useState<{ src: 'bag' | 'stash'; kind: SelKind; id: string } | null>(null);
+  // variant: a material's tradeable stack is a stack of its own (the same icon, a badge, its own actions)
+  const [selected, setSelected] = useState<{ src: 'bag' | 'stash'; kind: SelKind; id: string; variant?: Variant } | null>(null);
   const [pane, setPane] = useState<'bag' | 'stash'>('bag');
   const [query, setQuery] = useState('');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -131,13 +134,16 @@ export default function InventoryPanel({
   // The search box filters what the grid shows by the item's name (the bag itself, its space and every action stay as they are).
   const needle = query.trim().toLocaleLowerCase();
   const matches = (name: string): boolean => !needle || name.toLocaleLowerCase().includes(needle);
-  const gearInstances = listGearInstances(save).filter((inst) => matches(gearInstanceLabel(inst)));
-  const stackableGear = GEAR.filter((g) => !isInstancedSlot(g.slot) && (save.inventory?.[g.id] ?? 0) > 0 && matches(gearText(g.nameKey)));
-  const materialItems = MATERIALS.map((m) => ({ ...m, qty: save.materials?.[m.id] ?? 0 })).filter((m) => m.qty > 0 && matches(matText(m.nameKey)));
-  const consumableItems = CONSUMABLES.map((c) => ({ ...c, qty: save.consumables?.[c.id] ?? 0 })).filter((c) => c.qty > 0 && matches(conText(c.nameKey)));
+  // The 'Negociavel' filter: only what can be sold to other players - the tradeable material stacks and the pieces the SERVER certified.
+  const onlyTradeable = tab === 'tradeable';
+  const gearInstances = listGearInstances(save).filter((inst) => matches(gearInstanceLabel(inst)) && (!onlyTradeable || (isTradeable(inst) && certState(inst) === 'verified')));
+  const stackableGear = onlyTradeable ? [] : GEAR.filter((g) => !isInstancedSlot(g.slot) && (save.inventory?.[g.id] ?? 0) > 0 && matches(gearText(g.nameKey)));
+  // `qty` = the normal units, `trade` = the tradeable ones: two stacks of the same material, each in its own slots
+  const materialItems = MATERIALS.map((m) => ({ ...m, qty: onlyTradeable ? 0 : normalOf(save, m.id), trade: tradeableOf(save, m.id) })).filter((m) => (m.qty > 0 || m.trade > 0) && matches(matText(m.nameKey)));
+  const consumableItems = onlyTradeable ? [] : CONSUMABLES.map((c) => ({ ...c, qty: save.consumables?.[c.id] ?? 0 })).filter((c) => c.qty > 0 && matches(conText(c.nameKey)));
 
-  const showEquipment = tab === 'all' || tab === 'equipment';
-  const showMaterials = tab === 'all' || tab === 'materials';
+  const showEquipment = tab === 'all' || tab === 'equipment' || tab === 'tradeable';
+  const showMaterials = tab === 'all' || tab === 'materials' || tab === 'tradeable';
   const showConsumables = tab === 'all' || tab === 'consumables';
 
   const slots = inventorySlotsUsed(save);
@@ -145,8 +151,8 @@ export default function InventoryPanel({
   const expansion = nextExpansion(save);
   const canAffordExpansion = !!expansion && save.gold >= expansion.goldCost;
 
-  const select = (kind: SelKind, id: string, src: 'bag' | 'stash' = 'bag') => {
-    setSelected({ src, kind, id });
+  const select = (kind: SelKind, id: string, src: 'bag' | 'stash' = 'bag', variant?: Variant) => {
+    setSelected({ src, kind, id, ...(variant === 'tradeable' ? { variant } : {}) });
     setConfirmDiscard(false);
     setConfirmSalvage(false);
     setConfirmEquip(false);
@@ -168,7 +174,9 @@ export default function InventoryPanel({
       : selectedGear
         ? save.inventory?.[selectedGear.id] ?? 0
         : selectedMaterial
-          ? save.materials?.[selectedMaterial.id] ?? 0
+          ? selected?.variant === 'tradeable'
+            ? tradeableOf(save, selectedMaterial.id)
+            : normalOf(save, selectedMaterial.id)
           : selectedConsumable
             ? save.consumables?.[selectedConsumable.id] ?? 0
             : 0;
@@ -217,7 +225,7 @@ export default function InventoryPanel({
       setConfirmDiscard(true);
       return;
     }
-    onDiscard(selected.kind, selected.id, 'all');
+    onDiscard(selected.kind, selected.id, 'all', selected.variant === 'tradeable' ? 'tradeable' : undefined);
     setSelected(null);
     setConfirmDiscard(false);
   };
@@ -233,7 +241,7 @@ export default function InventoryPanel({
     },
   );
 
-  const cellsShown = gearInstances.length + [...stackableGear.map((g) => save.inventory[g.id]), ...materialItems.map((m) => m.qty), ...consumableItems.map((c) => c.qty)].reduce((sum, q) => sum + slotsForQty(q), 0);
+  const cellsShown = gearInstances.length + [...stackableGear.map((g) => save.inventory[g.id]), ...materialItems.flatMap((m) => [m.qty, m.trade]), ...consumableItems.map((c) => c.qty)].reduce((sum, q) => sum + slotsForQty(q), 0);
 
   return (
     <div className={`inv-root ${layout}`}>
@@ -316,7 +324,7 @@ export default function InventoryPanel({
 
       <div className="inv-toolbar">
         <SearchField label={t('inventory.search')} placeholder={t('inventory.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
-        <ChipRow<'all' | 'equipment' | 'materials' | 'consumables'>
+        <ChipRow<'all' | 'equipment' | 'materials' | 'consumables' | 'tradeable'>
           className="inv-tabs"
           label={t('inventory.title')}
           value={tab}
@@ -326,6 +334,7 @@ export default function InventoryPanel({
             { id: 'equipment', label: t('inventory.equipment') },
             { id: 'materials', label: t('inventory.materials') },
             { id: 'consumables', label: t('inventory.consumables') },
+            { id: 'tradeable', label: t('tradeable.filter') },
           ]}
         />
       </div>
@@ -378,11 +387,11 @@ export default function InventoryPanel({
             )),
           )}
         {showMaterials &&
-          materialItems.flatMap((m) =>
-            stackCells(m.qty).map((n, i) => (
+          materialItems.flatMap((m) => [
+            ...stackCells(m.qty).map((n, i) => (
               <button
                 key={`${m.id}:${i}`}
-                className={`inv-slot${selected?.kind === 'material' && selected.id === m.id ? ' active' : ''}`}
+                className={`inv-slot${selected?.kind === 'material' && selected.id === m.id && selected.variant !== 'tradeable' ? ' active' : ''}`}
                 onClick={() => select('material', m.id)}
                 title={matText(m.nameKey)}
                 aria-label={`${matText(m.nameKey)} ×${fmtNum(n)}`}
@@ -394,7 +403,26 @@ export default function InventoryPanel({
                 <span className="inv-qty">×{fmtNum(n)}</span>
               </button>
             )),
-          )}
+            // the tradeable units of the same material: another stack, the same icon, a gold corner and the diamond (the market's mark)
+            ...stackCells(m.trade).map((n, i) => (
+              <button
+                key={`${m.id}:t${i}`}
+                className={`inv-slot tradeable-mat${selected?.kind === 'material' && selected.id === m.id && selected.variant === 'tradeable' ? ' active' : ''}`}
+                onClick={() => select('material', m.id, 'bag', 'tradeable')}
+                title={`${matText(m.nameKey)} · ${t('tradeable.tag')}`}
+                aria-label={t('tradeable.tileLabel', { name: matText(m.nameKey), n: fmtNum(n) })}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <MaterialIcon item={m} />
+                </span>
+                <span className="inv-trade-tag tradeable" aria-hidden>
+                  ◆
+                </span>
+                <span className="inv-qty">×{fmtNum(n)}</span>
+              </button>
+            )),
+          ])}
         {showConsumables &&
           consumableItems.flatMap((c) =>
             stackCells(c.qty).map((n, i) => (
@@ -590,10 +618,26 @@ export default function InventoryPanel({
           <>
             <div className="inv-detail-name">
               <MaterialIcon item={selectedMaterial} className="mat-icon-img" />
-              <span className="inv-detail-name-text">{matText(selectedMaterial.nameKey)}</span>
+              <span className="inv-detail-name-text">
+                {matText(selectedMaterial.nameKey)}
+                {selected?.variant === 'tradeable' && (
+                  <>
+                    {' '}
+                    <Chip tone="gold">{t('tradeable.tag')}</Chip>
+                  </>
+                )}
+              </span>
               <span className="inv-qty">×{fmtNum(selQty)}</span>
             </div>
             <div className="inv-detail-desc">{t('inventory.materialDesc')}</div>
+            {selected?.variant === 'tradeable' ? (
+              <>
+                <div className="trade-line tradeable">{t('tradeable.detailLine')}</div>
+                <div className="inv-detail-desc">{t('tradeable.desc')}</div>
+              </>
+            ) : (
+              tradeableOf(save, selectedMaterial.id) > 0 && <div className="inv-detail-desc">{t('tradeable.normalDesc')}</div>
+            )}
           </>
         ) : selectedConsumable ? (
           <>
@@ -644,9 +688,10 @@ export default function InventoryPanel({
             save={save}
             kind={selected.kind}
             id={selected.id}
+            variant={selected.variant === 'tradeable' ? 'tradeable' : 'normal'}
             onStash={(qty) => bag?.move('store', selected.kind, selected.id, qty)}
-            onSell={(qty) => selected.kind !== 'gear' && bag?.sell(selected.kind, selected.id, qty)}
-            onDiscard={(qty) => onDiscard(selected.kind, selected.id, qty)}
+            onSell={(qty) => selected.kind !== 'gear' && bag?.sell(selected.kind, selected.id, qty, selected.variant === 'tradeable' ? 'tradeable' : undefined)}
+            onDiscard={(qty) => onDiscard(selected.kind, selected.id, qty, selected.variant === 'tradeable' ? 'tradeable' : undefined)}
             onOpenUse={(use) => bag?.openUse(use)}
           />
         )}

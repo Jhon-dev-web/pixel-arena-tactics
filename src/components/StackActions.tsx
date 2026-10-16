@@ -6,6 +6,8 @@ import { ItemUse, usesOf } from '../game/itemUses';
 import { merchantPrice, merchantQuote, merchantBudget, merchantRemaining } from '../game/merchant';
 import WholesaleLink from './WholesaleLink';
 import { StackKind, applyStashMove, bagCount, stashCount, stashFreeSlots } from '../game/stash';
+import { MaterialId } from '../game/materials';
+import { normalOf, tradeableOf } from '../game/tradeableMaterials';
 
 // What can be done with a stack of the inventory: move it to the Baú, sell it to the merchant, discard it, and see where it is consumed ("Usar em...").
 // One quantity selector (1 / 10 / pilha / tudo) serves the three actions; selling or discarding a WHOLE type asks for a second tap.
@@ -20,10 +22,13 @@ export default function StackActions({
   onSell,
   onDiscard,
   onOpenUse,
+  variant = 'normal',
 }: {
   save: SaveData;
   kind: StackKind;
   id: string;
+  // A material's tradeable stack (tradeableMaterials.ts) is its own stack: its own count, no Bau (those units are for selling), the merchant pays the normal price.
+  variant?: 'normal' | 'tradeable';
   onStash: (qty: number | 'all') => void;
   onSell: (qty: number | 'all') => void;
   onDiscard: (qty: number | 'all') => void;
@@ -31,7 +36,9 @@ export default function StackActions({
 }) {
   const [mode, setMode] = useState<QtyMode>(1);
   const [armed, setArmed] = useState<'sell' | 'discard' | null>(null);
-  const have = bagCount(save, kind, id);
+  const trade = variant === 'tradeable' && kind === 'material';
+  // the quantity of THIS stack: a material's normal stack excludes its tradeable units
+  const have = trade ? tradeableOf(save, id as MaterialId) : kind === 'material' ? normalOf(save, id as MaterialId) : bagCount(save, kind, id);
   const units = unitsFor(have, mode);
   const now = Date.now();
 
@@ -43,7 +50,7 @@ export default function StackActions({
   const remaining = merchantRemaining(save, now);
   const uses = kind === 'gear' ? [] : usesOf(kind, id, save);
   const wholeType = units >= have;
-  const stashRoom = stashFreeSlots(save) > 0 || applyStashMove(save, 'store', kind, id, units).moved > 0;
+  const stashRoom = !trade && (stashFreeSlots(save) > 0 || applyStashMove(save, 'store', kind, id, units).moved > 0);
 
   return (
     <div className="stack-actions">
@@ -77,9 +84,11 @@ export default function StackActions({
       </div>
 
       <div className="inv-actions-row">
-        <button className="inv-store" onClick={() => onStash(mode === 'all' ? 'all' : units)} disabled={units <= 0 || !stashRoom} data-ui>
-          {stashRoom ? t('stash.store', { n: fmtNum(units) }) : t('stash.full')}
-        </button>
+        {!trade && (
+          <button className="inv-store" onClick={() => onStash(mode === 'all' ? 'all' : units)} disabled={units <= 0 || !stashRoom} data-ui>
+            {stashRoom ? t('stash.store', { n: fmtNum(units) }) : t('stash.full')}
+          </button>
+        )}
         {sellable && quote && (
           <button
             className={`inv-sell${armed === 'sell' ? ' confirm' : ''}`}
@@ -114,7 +123,8 @@ export default function StackActions({
         </button>
       </div>
 
-      {!stashRoom && kind === 'material' && <div className="merchant-line"><WholesaleLink hint /></div>}
+      {!stashRoom && !trade && kind === 'material' && <div className="merchant-line"><WholesaleLink hint /></div>}
+      {trade && <div className="merchant-line">{t('tradeable.merchantSame')}</div>}
 
       {sellable && quote && (
         <div className="merchant-line">

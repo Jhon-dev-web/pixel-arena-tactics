@@ -2160,5 +2160,30 @@
     "desc_profession_week": "Pick ONE profession: it gets +25% XP for the week.",
     "name_final_race": "Final Race",
     "desc_final_race": "In the last 5 days, the day you collect all four daily goals you get +5% Hunting XP for 24 h."
+  },
+  "tradeable": {
+    "tag": "Tradeable",
+    "badgeTitle": "Tradeable material: the same as the normal one, but it can be sold to other players",
+    "filter": "Tradeable",
+    "tileLabel": "Tradeable {name} ×{n}",
+    "desc": "Identical to the normal material in every recipe, order, refine or sale to the merchant. The only difference is that this one can be sold to other players on the Market. Only the server creates tradeable materials, when you collect.",
+    "detailLine": "Tradeable: it can be sold to other players.",
+    "normalDesc": "Normal material. On some collections the server rolls tradeable units of the same material.",
+    "merchantSame": "The merchant pays the same price as for a normal material. Other players pay what the seller asks.",
+    "useTitle": "Spend tradeable material?",
+    "useText": "This will spend {list}. These materials can be sold to other players. The game spends the normal ones first and only uses tradeable ones when the normal ones run out.",
+    "useNpcTitle": "Sell tradeable material to the merchant?",
+    "useNpcText": "This will sell {list} to the merchant for the same price as a normal material. Other players would pay more on the Market.",
+    "useConfirm": "Spend anyway",
+    "useNpcConfirm": "Sell to the merchant",
+    "useCancel": "Cancel",
+    "useRetry": "The inventory changed while you were deciding. Try again.",
+    "line": "{n} tradeable {name}",
+    "blocked": "No connection to the server: tradeable materials cannot be spent right now. Normal ones still work.",
+    "prefTitle": "Tradeable materials",
+    "prefFirst": "Spend tradeable ones before normal ones",
+    "prefFirstHint": "Off (the default): recipes, orders and refining spend the normal ones first and only use tradeable ones when the normal ones run out, so you never spend by accident what you could sell.",
+    "prefAskAgain": "Ask again before spending",
+    "serverNote": "Tradeable materials exist only in the online version, with an account."
   }
 }
