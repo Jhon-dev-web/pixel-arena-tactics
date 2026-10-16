@@ -887,7 +887,7 @@
   color: #ffe9a8;
 }
 
-/* the Pass in USDT, under the Stripe button */
+/* the Pass in USDC, under the Stripe button */
 .mk-pass {
   display: flex;
   flex-direction: column;

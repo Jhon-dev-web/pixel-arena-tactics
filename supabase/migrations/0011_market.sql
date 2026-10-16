@@ -1,7 +1,7 @@
 -- The player market, paid in USDT (BEP-20, BNB Smart Chain). Depends on 0003 (entitlements), 0007, 0009 and 0010 (item certificates).
 --
 -- NON-CUSTODIAL. The game never holds anyone's money or keys. A buyer pays the SELLER's wallet and the game's FEE wallet directly, on chain, from his own wallet; the server only VERIFIES
--- those two transfers (supabase/functions/_shared/chain/bsc.ts) and then moves the item. The tables below record intentions, verified payments and the ledger of fees. docs/MARKET_USDT.md
+-- those two transfers (supabase/functions/_shared/chain/bsc.ts) and then moves the item. The tables below record intentions, verified payments and the ledger of fees. docs/MARKET_SOLANA.md (0013_solana.sql moved the market to SOL / USDC on Solana)
 -- explains it in Portuguese for the owner.
 --
 -- WHAT THIS FILE CREATES

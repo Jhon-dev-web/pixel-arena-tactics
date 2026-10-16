@@ -1,6 +1,6 @@
 # Fundação do mercado de jogadores: certificados de item
 
-Esta rodada não abre o mercado. Ela garante uma coisa: **uma peça negociável só chega ao mercado se o SERVIDOR emitiu um certificado para ela.** O save continua sendo do cliente (jogo normal, offline e desktop não mudam), mas o que vale dinheiro (USDT, na rodada seguinte) passa a ser o certificado, que o jogador não consegue escrever.
+Esta rodada não abre o mercado. Ela garante uma coisa: **uma peça negociável só chega ao mercado se o SERVIDOR emitiu um certificado para ela.** O save continua sendo do cliente (jogo normal, offline e desktop não mudam), mas o que vale dinheiro (SOL, na rodada seguinte) passa a ser o certificado, que o jogador não consegue escrever.
 
 Código: `supabase/migrations/0010_item_certificates.sql` (não aplicada), `supabase/functions/_shared/items/**`, funções `mint-item` e `bind-item`, e no jogo `src/game/itemActions.ts`, `itemServer.ts`, `itemCerts.ts`, `itemAuthority.ts`, `bossClaims.ts`.
 
@@ -88,9 +88,9 @@ Tudo o que já existe (Épicas, Lendárias, únicos, Bolsas) continua utilizáve
 4. Ver a auditoria: `select * from arena_private.item_account_flags order by created_at desc;` e `select * from public.item_certificates where user_id = '<id>';`.
 5. Nada disso depende de `VITE_SEASON_RANKING_ENABLED`: o mint funciona sem o ranking.
 
-## O mercado em USDT (rodada seguinte, já escrita)
+## O mercado em SOL na Solana (rodada seguinte, já escrita)
 
-**Está descrito em [`MARKET_USDT.md`](MARKET_USDT.md)** (migrations `0011` e `0012`, funções `market-*` e `pass-crypto`, tela Mercado, passos do dono). O que mudou em relação ao plano abaixo: uma venda **não troca o dono** do certificado (a guarda continua tratando `user_id` como imutável): ela termina o certificado antigo (`transferred`) e **emite um novo** ao comprador com o mesmo conteúdo, apontando o antigo em `origin_certificate_id`. O limite diário de emissão (`item_commit`) conta só o que o servidor emitiu (`origin_certificate_id is null`). Um certificado ganhou `in_save` (o item está no save do dono?): listar tira o item do save, comprar/cancelar/expirar devolve ao dono "fora do save" até o jogo construí-lo do certificado e confirmar.
+**Está descrito em [`MARKET_SOLANA.md`](MARKET_SOLANA.md)** (migrations `0011`, `0012` e `0013`, funções `market-*` e `pass-crypto`, tela Mercado, passos do dono). Os itens e as Bolsas são vendidos em SOL e o Passe em USDC, na rede Solana (decisão do dono; a primeira versão, em USDT na BNB Smart Chain, ficou dormente no código). O que mudou em relação ao plano abaixo: uma venda **não troca o dono** do certificado (a guarda continua tratando `user_id` como imutável): ela termina o certificado antigo (`transferred`) e **emite um novo** ao comprador com o mesmo conteúdo, apontando o antigo em `origin_certificate_id`. O limite diário de emissão (`item_commit`) conta só o que o servidor emitiu (`origin_certificate_id is null`). Um certificado ganhou `in_save` (o item está no save do dono?): listar tira o item do save, comprar/cancelar/expirar devolve ao dono "fora do save" até o jogo construí-lo do certificado e confirmar.
 
 ### O plano original desta rodada (mantido como registro)
 

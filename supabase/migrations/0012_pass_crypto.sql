@@ -100,7 +100,7 @@ grant execute on function public.pass_crypto_start(uuid, integer) to service_rol
 -- Grants the Pass for ONE verified transfer (the Edge Function checked the chain). One locked transaction:
 --   * the amount must cover p_required_units and the block must not be older than the intent (defensive; the function verified both on chain);
 --   * the transaction hash is inserted first (primary key of chain_payments): the same hash by the same user again is an idempotent replay, by anyone else it is tx_reused;
---   * a user who ALREADY has an active Pass cannot get a second one: the payment is stored as refund_due (the owner returns it, docs/MARKET_USDT.md) and the answer is already_owned;
+--   * a user who ALREADY has an active Pass cannot get a second one: the payment is stored as refund_due (the owner returns it, docs/MARKET_SOLANA.md (0013_solana.sql moved the market to SOL / USDC on Solana)) and the answer is already_owned;
 --   * otherwise the entitlement (source crypto_bsc, provider_ref = the hash, livemode as given) is inserted; the 0007 goal trigger fires for a live one.
 --   Returns { "status": "granted" | "already_owned" | "tx_reused" | "replayed" | "no_intent" }.
 create or replace function public.pass_crypto_grant(
