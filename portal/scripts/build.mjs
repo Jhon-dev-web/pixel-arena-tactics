@@ -30,6 +30,8 @@ if (config.siteUrl !== null) {
   if (site.pathname !== '/' || site.search || site.hash) throw new Error('config.siteUrl must be an origin only, e.g. https://example.com');
 }
 if (typeof config.waitlistEnabled !== 'boolean') throw new Error('config.waitlistEnabled must be true or false');
+if (typeof config.referralEnabled !== 'boolean') throw new Error('config.referralEnabled must be true or false');
+if (config.referralEnabled && !config.waitlistEnabled) throw new Error('config.referralEnabled needs config.waitlistEnabled (the invite link is shown after the sign-up)');
 if (config.waitlistEnabled && config.supabaseUrl === null) console.warn('WARNING: config.waitlistEnabled is true but config.supabaseUrl is null: the block will say the sign-up is not available yet.');
 if (config.passSalesOpen && config.playUrl === null) throw new Error('config.passSalesOpen needs config.playUrl (the buy link opens the game)');
 if (config.passSalesOpen && !(config.legalLive.refund && legal.find(page => page.route === 'refund')?.body)) throw new Error('config.passSalesOpen needs the refund policy text: set config.legalLive.refund and give the refund entry in legal a body');
@@ -66,7 +68,8 @@ if (config.siteUrl !== null) {
   await writeFile(path.join(out, 'robots.txt'), robotsTxt(config.siteUrl));
   await writeFile(path.join(out, 'sitemap.xml'), sitemapXml(config.siteUrl, output));
 }
-await writeFile(path.join(out, 'index.html'), '<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta http-equiv="refresh" content="0;url=/pt/"><title>Arena Idle</title></head><body><a href="/pt/">Português</a> · <a href="/en/">English</a></body></html>');
+// The root address picks a language and KEEPS the query (?ref=CODE of an invite link). /root.js does it; without JavaScript the refresh goes to Portuguese.
+await writeFile(path.join(out, 'index.html'), '<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><script src="/root.js"></script><noscript><meta http-equiv="refresh" content="0;url=/pt/"></noscript><title>Arena Idle</title></head><body><a href="/pt/">Português</a> · <a href="/en/">English</a></body></html>');
 await writeFile(path.join(out, '404.html'), '<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>404 · Arena Idle</title><link rel="stylesheet" href="/style.css"></head><body><main class="section"><h1>404</h1><p>Página não encontrada / Page not found</p><div class="actions"><a class="button" href="/pt/">Português</a><a class="button secondary" href="/en/">English</a></div></main></body></html>');
 console.log('Built ' + output.length + ' PT/EN pages. No deployment.');
 

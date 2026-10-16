@@ -69,3 +69,97 @@ export function classifyUnsubscribe(status, body) {
   if (status === 400) return 'bad';
   return 'failed';
 }
+
+// ---- referral links -----------------------------------------------------------------------------------------------------------------------
+
+/** The same shapes the Edge Function accepts: a 10-letter public code (no I, O, 0, 1) and a 32-hex private view key. */
+export const CODE_RE = /^[A-HJ-NP-Z2-9]{10}$/;
+export const KEY_RE = /^[0-9a-f]{32}$/;
+export const REF_STORAGE_KEY = 'arena.ref';
+export const INVITE_STORAGE_KEY = 'arena.invite';
+
+/** The ?ref=CODE of an invite link (upper-cased), or null. A malformed code is simply not used. */
+export function refFromSearch(search) {
+  let value = '';
+  try { value = new URLSearchParams(String(search ?? '')).get('ref') ?? ''; } catch { value = ''; }
+  value = value.trim().toUpperCase();
+  return CODE_RE.test(value) ? value : null;
+}
+
+/** Adds the stored ?ref= (if any) to the body of the sign-up. */
+export function withRef(body, ref) {
+  return ref && CODE_RE.test(ref) ? { ...body, ref } : body;
+}
+
+/** What waitlist-join answered: { ok, code, key } with well-formed values, or null. */
+export function parseJoinResult(json) {
+  if (!json || json.ok !== true) return null;
+  return CODE_RE.test(String(json.code)) && KEY_RE.test(String(json.key)) ? { code: json.code, key: json.key } : null;
+}
+
+/** The invite kept in this browser (JSON text from storage), validated, or null. It never holds the e-mail address. */
+export function readInvite(text) {
+  try {
+    const value = JSON.parse(String(text));
+    return value && CODE_RE.test(String(value.code)) && KEY_RE.test(String(value.key)) ? { code: value.code, key: value.key } : null;
+  } catch { return null; }
+}
+
+/**
+ * Which key to keep after a sign-up. The server hands the PUBLIC code of an address already on the list together with a throw-away key (so typing somebody else's address shows nothing of theirs):
+ * when this browser already holds the key for that very code, keep it; otherwise take what came back.
+ */
+export function mergeInvite(stored, fresh) {
+  return stored && fresh && stored.code === fresh.code ? stored : fresh;
+}
+
+/** `<site>/?ref=CODE`: from the configured site address, else the page's own origin. Anything that is not an http(s) origin, or a bad code, gives null. */
+export function inviteUrl(siteUrl, origin, code) {
+  if (!CODE_RE.test(String(code))) return null;
+  for (const candidate of [siteUrl, origin]) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      if (url.protocol === 'https:' || url.protocol === 'http:') return `${url.origin}/?ref=${code}`;
+    } catch { /* try the next one */ }
+  }
+  return null;
+}
+
+/** Share intents: they only OPEN the app or site of the network (no third-party script is loaded). The text and the link are percent-encoded. */
+/** encodeURIComponent plus the five characters it leaves alone (! ' ( ) *), so nothing but letters, digits and %XX survives. */
+const strictEncode = value => encodeURIComponent(value).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+
+export function shareLinks(url, text) {
+  const u = strictEncode(url);
+  const t = strictEncode(text);
+  return {
+    whatsapp: `https://wa.me/?text=${t}`,
+    x: `https://twitter.com/intent/tweet?text=${t}`,
+    telegram: `https://t.me/share/url?url=${u}&text=${strictEncode(text.split(url).join('').trim())}`,
+  };
+}
+
+export const SHARE_PREFIXES = { whatsapp: 'https://wa.me/', x: 'https://twitter.com/intent/tweet', telegram: 'https://t.me/share/url' };
+
+export function referralEndpoint(base) {
+  return base ? `${base}/functions/v1/waitlist-referrals` : null;
+}
+
+/** The two counters of waitlist-referrals, or null when the answer is not what it should be. */
+export function parseCounts(status, json) {
+  if (status !== 200 || !json || json.ok !== true) return null;
+  const whole = v => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : null);
+  const active = whole(json.qualified);
+  const paying = whole(json.paying);
+  if (active === null || paying === null) return null;
+  const goal = whole(json.passGoal);
+  return { active, paying, goal: goal || null };
+}
+
+/** The line under the invite link, as plain text (the script sets it with textContent). */
+export function countsText(counts, lang, labels) {
+  if (!counts) return '';
+  const format = new Intl.NumberFormat(lang === 'pt' ? 'pt-BR' : 'en-US');
+  return fillText(counts.goal ? labels.counts : labels.countsNoGoal, { active: format.format(counts.active), paying: format.format(counts.paying), goal: counts.goal ? format.format(counts.goal) : '' });
+}

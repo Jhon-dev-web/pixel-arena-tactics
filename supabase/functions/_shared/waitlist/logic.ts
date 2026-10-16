@@ -35,6 +35,52 @@ export function normalizeEmail(raw: unknown): string | null {
   return email;
 }
 
+// ---- referral codes ------------------------------------------------------------------------------------------------------------------------
+
+/** 32 characters without I, O, 0 and 1 (easy to read aloud and to type). The same set as the check constraint of migration 0016. */
+export const REFERRAL_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const REFERRAL_CODE_LENGTH = 10; // 32^10 = 2^50 possibilities
+export const REFERRAL_CODE_RE = /^[A-HJ-NP-Z2-9]{10}$/;
+
+export type RandomBytes = (n: number) => Uint8Array;
+export const systemRandom: RandomBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
+
+/** A random public share code. 256 is a multiple of 32, so taking the low five bits of a random byte has no bias. */
+export function generateReferralCode(random: RandomBytes = systemRandom): string {
+  const bytes = random(REFERRAL_CODE_LENGTH);
+  let code = '';
+  for (let i = 0; i < REFERRAL_CODE_LENGTH; i++) code += REFERRAL_ALPHABET[bytes[i] & 31];
+  return code;
+}
+
+/** The PRIVATE view key: 128 random bits as 32 lower-case hex characters. It is shown once, to the person's own browser. */
+export function generateViewKey(random: RandomBytes = systemRandom): string {
+  return Array.from(random(16), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export const VIEW_KEY_RE = /^[0-9a-f]{32}$/;
+
+/** The code from ?ref=, upper-cased, or null when it is not a well-formed code (a bad ref never blocks a sign-up: it is just not counted). */
+export function normalizeRefCode(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const code = raw.trim().toUpperCase();
+  return REFERRAL_CODE_RE.test(code) ? code : null;
+}
+
+export type StatsParse = { kind: 'ok'; code: string; key: string } | { kind: 'invalid' };
+
+/** The body of waitlist-referrals: { code, key }. */
+export function parseStatsBody(raw: unknown): StatsParse {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { kind: 'invalid' };
+  const body = raw as Record<string, unknown>;
+  const code = normalizeRefCode(body.code);
+  const key = typeof body.key === 'string' ? body.key.trim().toLowerCase() : '';
+  return code && VIEW_KEY_RE.test(key) ? { kind: 'ok', code, key } : { kind: 'invalid' };
+}
+
+/** What the database stores of a view key: an HMAC, so the table alone cannot be used to read anybody's counters. */
+export const hashViewKey = (secret: string, key: string): Promise<string> => hmacHex(secret, `viewkey:${key}`);
+
 /** utm / referrer: a short, harmless token. Anything else becomes null. */
 export function cleanSource(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
@@ -42,7 +88,7 @@ export function cleanSource(raw: unknown): string | null {
   return /^[a-z0-9][a-z0-9._:/-]{0,63}$/.test(value) ? value : null;
 }
 
-export type JoinInput = { email: string; locale: Locale; source: string | null };
+export type JoinInput = { email: string; locale: Locale; source: string | null; refCode: string | null };
 export type JoinParse =
   | { kind: 'ok'; input: JoinInput }
   | { kind: 'honeypot' }
@@ -60,7 +106,7 @@ export function parseJoinBody(raw: unknown): JoinParse {
   if (email === null) return { kind: 'invalid', reason: 'bad_email' };
   if (body.consent !== true) return { kind: 'invalid', reason: 'no_consent' };
   const locale: Locale = body.locale === 'en' ? 'en' : 'pt';
-  return { kind: 'ok', input: { email, locale, source: cleanSource(body.source) } };
+  return { kind: 'ok', input: { email, locale, source: cleanSource(body.source), refCode: normalizeRefCode(body.ref) } };
 }
 
 /** The client address as the platform reports it. Used only to be hashed; it is best-effort (a forged header can only move the abuse counters, never reach the data). */

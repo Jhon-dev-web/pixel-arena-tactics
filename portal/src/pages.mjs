@@ -1,4 +1,4 @@
-import { config, seasonPage, glossary, states, systems, groups, progression, league, market, roadmap, articles, faq, copy, descriptions, shots, legal, legalPlaceholder, waitlist } from './content.mjs';
+import { config, seasonPage, glossary, states, systems, groups, progression, league, market, roadmap, articles, faq, copy, descriptions, shots, legal, legalPlaceholder, waitlist, referral } from './content.mjs';
 import { escapeHtml as esc, editorialTypes, publishedArticles, paginate, neighbors, renderBlocks } from './editorial.mjs';
 import { cleanSupabaseUrl, failedRows } from '../public/season-core.js';
 
@@ -41,7 +41,18 @@ export function renderSite(lang) {
   // when the Supabase address is not configured it says the sign-up is not available yet. The honeypot is moved off-screen by CSS (not display:none, which bots skip).
   const waitlistLive = Boolean(cleanSupabaseUrl(config.supabaseUrl));
   const waitlistPrivacy = config.legalLive.privacy && legal.find(page => page.route === 'privacy')?.body ? link('privacy', pick(waitlist.privacyLink)) : '';
-  const waitlistLabels = () => JSON.stringify(Object.fromEntries(['registered', 'badEmail', 'needConsent', 'rateLimited', 'failed', 'sending', 'count'].map(key => [key, pick(waitlist[key])])));
+  const waitlistLabels = () => JSON.stringify({
+    ...Object.fromEntries(['registered', 'badEmail', 'needConsent', 'rateLimited', 'failed', 'sending', 'count'].map(key => [key, pick(waitlist[key])])),
+    ...(config.referralEnabled ? Object.fromEntries(['copied', 'copyFailed', 'shareText', 'counts', 'countsNoGoal'].map(key => [key, pick(referral[key])])) : {}),
+  });
+  // The invite panel (config.referralEnabled): hidden until the script has the person's own code. The share buttons get their href from the script (the intent of each network, no third-party script).
+  const referralPanel = variant => !config.referralEnabled ? '' : `<div class="wl-referral" data-wl-referral hidden>
+<h3>${pick(referral.title)}</h3><p class="wl-lead">${pick(referral.lead)}</p>
+<div class="wl-link-row"><input class="wl-link" type="text" readonly data-wl-link id="waitlist-${variant}-link" aria-label="${esc(pick(referral.linkLabel))}"><button class="button secondary" type="button" data-wl-copy>${pick(referral.copy)}</button></div>
+<p class="wl-status" role="status" aria-live="polite" data-wl-copy-status></p>
+<p class="wl-share-title">${pick(referral.shareTitle)}</p><div class="wl-share"><a class="button secondary" data-wl-share="whatsapp" target="_blank" rel="noopener noreferrer">${pick(referral.shareWhatsapp)}</a><a class="button secondary" data-wl-share="x" target="_blank" rel="noopener noreferrer">${pick(referral.shareX)}</a><a class="button secondary" data-wl-share="telegram" target="_blank" rel="noopener noreferrer">${pick(referral.shareTelegram)}</a></div>
+<p class="wl-counts" data-wl-counts hidden></p><p class="wl-note">${pick(referral.countsNote)}</p>
+<h4>${pick(referral.rewardsTitle)}</h4><ul class="plain-list wl-tiers">${referral.tiers.map(tier => `<li>${pick(tier)}</li>`).join('')}</ul><p class="wl-note">${pick(referral.rules)}</p></div>`;
   const waitlistBlock = variant => {
     if (!config.waitlistEnabled) return '';
     const id = 'waitlist-' + variant;
@@ -53,12 +64,12 @@ export function renderSite(lang) {
 ${waitlistPrivacy ? `<p class="wl-privacy">${waitlistPrivacy}</p>` : ''}
 <button class="button" type="submit">${pick(waitlist.submit)}</button>
 </form>
-<div class="wl-done" data-wl-done hidden><p class="wl-done-text" data-wl-done-text></p></div>
+<div class="wl-done" data-wl-done hidden><p class="wl-done-text" data-wl-done-text></p>${referralPanel(variant)}</div>
 <p class="wl-status" role="status" aria-live="polite" data-wl-status></p>
 <p class="wl-count" data-wl-count hidden></p>
 <p class="wl-note" data-wl-nojs><noscript>${pick(waitlist.noscript)}</noscript></p>`
       : `<p class="wl-note">${pick(waitlist.unavailable)}</p>`;
-    return `<section class="section waitlist waitlist-${variant}" aria-labelledby="${id}-title" data-waitlist data-lang="${lang}" data-labels="${esc(waitlistLabels())}" data-supabase-url="${waitlistLive ? esc(config.supabaseUrl) : ''}" data-anon-key="${waitlistLive && config.supabaseAnonKey ? esc(config.supabaseAnonKey) : ''}"><div class="waitlist-inner"><div><p class="eyebrow">${pick(waitlist.eyebrow)}</p><h2 id="${id}-title">${pick(waitlist.title)}</h2><p class="wl-lead">${pick(variant === 'home' ? waitlist.lead : waitlist.compactLead)}</p></div><div class="wl-body">${body}</div></div>${waitlistLive ? '<script type="module" src="/waitlist.js"></script>' : ''}</section>`;
+    return `<section class="section waitlist waitlist-${variant}" aria-labelledby="${id}-title" data-waitlist data-lang="${lang}" data-referral="${config.referralEnabled}" data-site-url="${config.siteUrl ? esc(config.siteUrl) : ''}" data-labels="${esc(waitlistLabels())}" data-supabase-url="${waitlistLive ? esc(config.supabaseUrl) : ''}" data-anon-key="${waitlistLive && config.supabaseAnonKey ? esc(config.supabaseAnonKey) : ''}"><div class="waitlist-inner"><div><p class="eyebrow">${pick(waitlist.eyebrow)}</p><h2 id="${id}-title">${pick(waitlist.title)}</h2><p class="wl-lead">${pick(variant === 'home' ? waitlist.lead : waitlist.compactLead)}</p></div><div class="wl-body">${body}</div></div>${waitlistLive ? '<script type="module" src="/waitlist.js"></script>' : ''}</section>`;
   };
   const shotImg = (shot, eager = false) => `<img src="${esc(shot.file)}" alt="${esc(pick(shot.alt))}" width="${shot.width}" height="${shot.height}" ${eager ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}>`;
   const figure = (shot, cls = '') => `<figure class="shot ${cls}">${shotImg(shot)}<figcaption>${esc(pick(shot.caption))}</figcaption></figure>`;

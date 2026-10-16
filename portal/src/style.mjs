@@ -301,6 +301,8 @@ footer small { color: var(--muted); font-size: .875rem; grid-column: 1/-1; }
 @media (prefers-reduced-motion:reduce) { * { transition: none!important; scroll-behavior: auto!important; } }
 /* Waitlist ("Avise-me no lançamento") */
 .waitlist { background: linear-gradient(140deg,#243038,#121c21); }
+/* A class that sets display (grid, inline-flex) would beat the hidden attribute: the form, the buttons and the panels must really disappear while they are hidden. */
+.waitlist [hidden], .waitlist-unsub [hidden] { display: none !important; }
 .waitlist-inner { max-width: 1120px; margin: auto; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8%; align-items: center; }
 .waitlist h2 { margin: 6px 0 12px; font-size: clamp(1.6rem,3.4vw,2.4rem); }
 .wl-lead { margin: 0; max-width: 520px; }
@@ -326,4 +328,17 @@ footer small { color: var(--muted); font-size: .875rem; grid-column: 1/-1; }
 .waitlist-season { padding-top: 40px; padding-bottom: 40px; }
 .waitlist-unsub .button { margin-top: 10px; cursor: pointer; }
 @media (max-width:800px) { .waitlist-inner { grid-template-columns: 1fr; gap: 22px; } .waitlist-form .button { justify-self: stretch; } }
+.wl-referral { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.wl-referral h3 { margin: 0 0 6px; font-size: 1.35rem; }
+.wl-referral h4 { margin: 18px 0 6px; font-family: var(--serif); font-weight: 400; font-size: 1.1rem; color: var(--ink); }
+.wl-link-row { display: flex; gap: 10px; margin-top: 12px; }
+.wl-link { flex: 1 1 auto; min-width: 0; min-height: 48px; box-sizing: border-box; padding: 10px 14px; background: var(--bg); color: var(--ink); border: 1px solid #869091; border-radius: 0; font: inherit; font-size: .9375rem; }
+.wl-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.wl-link-row .button { flex: none; cursor: pointer; }
+.wl-share-title { margin: 14px 0 6px; font-size: .875rem; font-weight: 600; color: var(--ink); text-transform: uppercase; letter-spacing: 1px; }
+.wl-share { display: flex; flex-wrap: wrap; gap: 10px; }
+.wl-share .button { min-height: 44px; padding: 8px 18px; }
+.wl-counts { margin: 14px 0 0; color: var(--gold); font-family: var(--serif); font-size: 1.1rem; }
+.wl-tiers { margin: 0 0 4px; font-size: .9375rem; }
+@media (max-width:520px) { .wl-link { font-size: .8125rem; } .wl-link-row { flex-direction: column; } .wl-link-row .button { width: 100%; } .wl-share .button { flex: 1 1 auto; } }
 `;

@@ -2,9 +2,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildJoinBody, classifyJoin, classifyUnsubscribe, countRequest, countView, fillText, looksLikeEmail, sourceFrom, tokenFrom, waitlistEndpoints } from '../public/waitlist-core.js';
+import {
+  SHARE_PREFIXES, buildJoinBody, classifyJoin, classifyUnsubscribe, countRequest, countView, countsText, fillText, inviteUrl, looksLikeEmail, mergeInvite, parseCounts, parseJoinResult, readInvite, referralEndpoint,
+  refFromSearch, shareLinks, sourceFrom, tokenFrom, waitlistEndpoints, withRef,
+} from '../public/waitlist-core.js';
 import { cleanSupabaseUrl } from '../public/season-core.js';
-import { config, legal, waitlist } from '../src/content.mjs';
+import { config, legal, referral, waitlist } from '../src/content.mjs';
 import { renderSite } from '../src/pages.mjs';
 import { sitemapXml } from '../src/seo.mjs';
 
@@ -162,10 +165,118 @@ for (const bad of ['', '?t=', '?t=abc', '?t=a.b.c', '?t=<x>.y', '?x=1']) assert.
 
 // ---- the browser script never writes server text as HTML, and the CSP allows exactly what it does -------------------------------------------------
 const script = readFileSync(path.join(root, 'public/waitlist.js'), 'utf8') + readFileSync(path.join(root, 'public/waitlist-core.js'), 'utf8');
-assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|localStorage/.test(script), 'no HTML injection, no storage of the address');
+assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(/.test(script), 'no HTML injection');
+assert.deepEqual([...script.matchAll(/store\('local', 'set', ([A-Z_]+),/g)].map(m => m[1]), ['INVITE_STORAGE_KEY'], 'the only thing kept in the browser is the invite (code + key), never the address');
+assert.ok(/JSON\.stringify\(invite\)/.test(script) && !/setItem\([^)]*email/i.test(script));
+assert.ok(script.includes('target.startsWith(SHARE_PREFIXES[network])'), 'a share href is only ever set to the intent of its own network');
+const { style } = await import('../src/style.mjs');
+assert.ok(style.includes('.waitlist [hidden], .waitlist-unsub [hidden] { display: none !important; }'), 'hidden really hides: the form is not visible before the script runs (no JavaScript = no broken form)');
 const vercel = JSON.parse(readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 const csp = vercel.headers[0].headers.find(h => h.key === 'Content-Security-Policy').value;
 assert.ok(csp.includes("connect-src https://*.supabase.co") && csp.includes("script-src 'self'") && csp.includes("form-action 'none'"), 'CSP: the Edge Function is on *.supabase.co, scripts are local, the form is posted by fetch only');
+
+
+// ---- referral links: off by default, then the invite panel ---------------------------------------------------------------------------------------------
+assert.equal(config.referralEnabled, false, 'referral is off by default');
+config.waitlistEnabled = true;
+config.supabaseUrl = 'https://abcdefghij.supabase.co';
+assert.ok(!/wl-referral|Seu link de convite|Your invite link|data-wl-share/.test(all('pt') + all('en')), 'referral off: no invite panel anywhere');
+assert.ok(blocks(page('pt'))[0].includes('data-referral="false"'));
+config.referralEnabled = true;
+config.siteUrl = 'https://portal.example.test/';
+const refHome = blocks(page('pt'))[0];
+assert.ok(refHome.includes('data-referral="true"') && refHome.includes('data-site-url="https://portal.example.test/"'));
+assert.ok(/<div class="wl-referral" data-wl-referral hidden>/.test(refHome), 'the panel is hidden until the script has the code of the person');
+assert.ok(refHome.includes('<h3>Seu link de convite</h3>') && /<input class="wl-link" type="text" readonly data-wl-link id="waitlist-home-link" aria-label="Seu link de convite">/.test(refHome));
+assert.ok(refHome.includes('data-wl-copy>Copiar link</button>'));
+for (const network of ['whatsapp', 'x', 'telegram']) assert.ok(new RegExp(`<a class="button secondary" data-wl-share="${network}" target="_blank" rel="noopener noreferrer">`).test(refHome), network);
+assert.ok(!/data-wl-share="[a-z]+"[^>]*href=/.test(refHome), 'share anchors carry no href in the HTML: the script sets it from the validated intent');
+assert.ok(refHome.includes('data-wl-counts hidden') && refHome.includes('1 convite ativo: o título Recrutador') && refHome.includes('10 amigos que comprarem o Passe: um Passe de Aventureiro grátis') && refHome.includes('25 convites ativos: o título Lenda do Recrutamento') && refHome.includes('3 convites ativos: uma moldura de retrato'));
+assert.ok(refHome.includes('chega ao nível 10 do Herói') && refHome.includes('Convidar a si mesmo não conta') && refHome.includes('um prêmio já entregue fica'), 'the rules are in the page');
+assert.equal((refHome.match(/<script/g) ?? []).length, 1, 'no third-party script: only /waitlist.js');
+assert.ok(!/(wa\.me|twitter\.com|t\.me)/.test(refHome), 'the share intents are built by the script, not shipped as links');
+assert.ok(refHome.indexOf('data-wl-done') < refHome.indexOf('data-wl-referral'), 'the invite panel lives inside the success state');
+const unescapeAttr = text => text.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+const refLabels = JSON.parse(unescapeAttr(refHome.match(/data-labels="([^"]*)"/)[1]));
+for (const key of ['copied', 'copyFailed', 'shareText', 'counts', 'countsNoGoal']) assert.ok(refLabels[key], key);
+assert.equal(refLabels.shareText, 'Vem jogar Arena Idle comigo! Entre na lista do lançamento: {url}');
+// ids stay unique when two blocks are on one page; the Temporada page has the panel too
+assert.ok(blocks(page('pt', 'season'))[0].includes('id="waitlist-season-link"'));
+// pt / en have the same markup
+const refHomeEn = blocks(page('en'))[0];
+assert.equal(shape(refHomeEn), shape(refHome));
+assert.ok(refHomeEn.includes('<h3>Your invite link</h3>') && refHomeEn.includes('10 friends who buy the Pass: a free Adventurer’s Pass'));
+assert.equal(JSON.parse(unescapeAttr(refHomeEn.match(/data-labels="([^"]*)"/)[1])).shareText, 'Come play Arena Idle with me! Join the launch list: {url}');
+for (const key of Object.keys(referral)) assert.ok(key === 'tiers' ? referral.tiers.every(t => t.pt && t.en) : referral[key].pt && referral[key].en, 'both languages: ' + key);
+// the block without a Supabase address shows no invite panel either
+config.supabaseUrl = null;
+assert.ok(!blocks(page('pt'))[0].includes('wl-referral'));
+config.supabaseUrl = 'https://abcdefghij.supabase.co';
+// the build refuses a referral switch without the waitlist
+const buildSource = readFileSync(path.join(root, 'scripts/build.mjs'), 'utf8');
+assert.ok(/config\.referralEnabled && !config\.waitlistEnabled\) throw/.test(buildSource));
+// the root address keeps the query (?ref=CODE)
+assert.ok(buildSource.includes('<script src="/root.js"></script><noscript><meta http-equiv="refresh"'), 'root: script redirect, meta refresh only without JavaScript');
+assert.ok(/location\.replace\('\/' \+ lang \+ '\/' \+ location\.search \+ location\.hash\)/.test(readFileSync(path.join(root, 'public/root.js'), 'utf8')));
+reset();
+config.waitlistEnabled = true;
+config.supabaseUrl = 'https://abcdefghij.supabase.co';
+
+// ---- referral: the pure functions ---------------------------------------------------------------------------------------------------------------
+const CODE = 'ABCDEFGH23';
+const KEY = '0123456789abcdef0123456789abcdef';
+assert.equal(refFromSearch('?ref=abcdefgh23'), CODE);
+assert.equal(refFromSearch('?utm_source=x&ref=' + CODE + '&y=1'), CODE);
+for (const bad of ['', '?ref=', '?ref=ABC', '?ref=ABCDEFGHI0', '?ref=ABCDEFGHO1', '?ref=<script>alert(1)</script>', '?ref=ABCDEFGH23ZZ', '?x=1', '?ref=%00ABCDEFGH23']) assert.equal(refFromSearch(bad), null, bad);
+assert.deepEqual(withRef({ email: 'a@b.co' }, CODE), { email: 'a@b.co', ref: CODE });
+assert.deepEqual(withRef({ email: 'a@b.co' }, null), { email: 'a@b.co' });
+assert.deepEqual(withRef({ email: 'a@b.co' }, 'bad code'), { email: 'a@b.co' });
+assert.deepEqual(parseJoinResult({ ok: true, code: CODE, key: KEY }), { code: CODE, key: KEY });
+for (const bad of [null, {}, { ok: false, code: CODE, key: KEY }, { ok: true, code: 'abc', key: KEY }, { ok: true, code: CODE, key: 'zz' }, { ok: true, code: CODE }, { ok: true, code: '<b>', key: KEY }]) assert.equal(parseJoinResult(bad), null, JSON.stringify(bad));
+assert.deepEqual(readInvite(JSON.stringify({ code: CODE, key: KEY, email: 'a@b.co' })), { code: CODE, key: KEY }, 'an e-mail that sneaked into storage is dropped');
+for (const bad of [null, '', '{', '[]', JSON.stringify({ code: CODE }), JSON.stringify({ code: 'x', key: KEY })]) assert.equal(readInvite(bad), null, String(bad));
+// the same person signing up again in this browser keeps the real key; a different address gets what the server sent
+const mine = { code: CODE, key: KEY };
+assert.deepEqual(mergeInvite(mine, { code: CODE, key: 'f'.repeat(32) }), mine);
+assert.deepEqual(mergeInvite(mine, { code: 'ZZZZZZZZZZ', key: 'f'.repeat(32) }), { code: 'ZZZZZZZZZZ', key: 'f'.repeat(32) });
+assert.deepEqual(mergeInvite(null, mine), mine);
+assert.equal(mergeInvite(mine, null), null);
+// the link: <site>/?ref=CODE from siteUrl, else the page origin
+assert.equal(inviteUrl('https://portal.example.test/', 'http://localhost:4173', CODE), 'https://portal.example.test/?ref=ABCDEFGH23');
+assert.equal(inviteUrl('', 'https://preview.example.test', CODE), 'https://preview.example.test/?ref=ABCDEFGH23');
+assert.equal(inviteUrl(null, 'http://127.0.0.1:4173', CODE), 'http://127.0.0.1:4173/?ref=ABCDEFGH23');
+assert.equal(inviteUrl('https://portal.example.test/pt/season/?x=1#y', '', CODE), 'https://portal.example.test/?ref=ABCDEFGH23', 'origin only');
+for (const [site, origin, code] of [['', '', CODE], ['javascript:alert(1)', '', CODE], ['ftp://x.test', '', CODE], ['not a url', 'also not', CODE], ['https://x.test', '', 'bad'], ['https://x.test', '', '<script>']]) assert.equal(inviteUrl(site, origin, code), null, site + code);
+assert.equal(inviteUrl('javascript:alert(1)', 'https://ok.test', CODE), 'https://ok.test/?ref=ABCDEFGH23', 'a bad site falls back to the origin');
+// share intents: fixed hosts, everything percent-encoded
+const url = inviteUrl('https://portal.example.test/', '', CODE);
+const text = fillText('Vem jogar Arena Idle comigo! Entre na lista do lançamento: {url}', { url });
+const strict = value => encodeURIComponent(value).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+const shared = shareLinks(url, text);
+assert.equal(shared.whatsapp, 'https://wa.me/?text=' + strict(text));
+assert.equal(shared.x, 'https://twitter.com/intent/tweet?text=' + strict(text));
+assert.equal(shared.telegram, 'https://t.me/share/url?url=' + strict(url) + '&text=' + strict('Vem jogar Arena Idle comigo! Entre na lista do lançamento:'));
+assert.ok(shared.whatsapp.startsWith(SHARE_PREFIXES.whatsapp) && shared.x.startsWith(SHARE_PREFIXES.x) && shared.telegram.startsWith(SHARE_PREFIXES.telegram));
+assert.ok(shared.whatsapp.includes('%3Fref%3DABCDEFGH23') && !shared.whatsapp.slice(20).includes('?ref') && !shared.whatsapp.slice(20).includes(' '), 'the link inside the text is encoded');
+const hostileText = 'a&b=c#d "q" <script>alert(1)</script>\nlinha 😀 https://x.test/?ref=' + CODE;
+const hostileLinks = shareLinks('https://x.test/?ref=' + CODE, hostileText);
+for (const href of Object.values(hostileLinks)) {
+  const query = href.slice(href.indexOf('?') + 1);
+  assert.ok(!/[<>" \n#]/.test(href) && query.split('&').every(pair => /^[a-z]+=[A-Za-z0-9%._~-]*$/.test(pair)), 'only encoded characters: ' + href);
+  assert.equal(new URL(href).hash, '', 'nothing leaks into the fragment');
+}
+assert.equal(new URL(hostileLinks.whatsapp).searchParams.get('text'), hostileText, 'it decodes back to exactly what was shared');
+// counters: two numbers, from a well-formed answer only
+assert.equal(referralEndpoint('https://abcdefghij.supabase.co'), 'https://abcdefghij.supabase.co/functions/v1/waitlist-referrals');
+assert.equal(referralEndpoint(null), null);
+assert.deepEqual(parseCounts(200, { ok: true, qualified: 4, paying: 2, passGoal: 10 }), { active: 4, paying: 2, goal: 10 });
+assert.deepEqual(parseCounts(200, { ok: true, qualified: 0, paying: 0, passGoal: null }), { active: 0, paying: 0, goal: null });
+for (const [status, json] of [[429, { ok: false }], [503, null], [200, null], [200, { ok: false }], [200, { ok: true, qualified: '4', paying: 2 }], [200, { ok: true, qualified: -1, paying: 2 }], [200, { ok: true, qualified: 1.5, paying: 2 }], [200, { ok: true, qualified: 1 }]]) assert.equal(parseCounts(status, json), null, JSON.stringify(json));
+const countLabels = { counts: 'Convites ativos: {active} · Compraram o Passe: {paying} de {goal}', countsNoGoal: 'Convites ativos: {active} · Compraram o Passe: {paying}' };
+assert.equal(countsText({ active: 4, paying: 2, goal: 10 }, 'pt', countLabels), 'Convites ativos: 4 · Compraram o Passe: 2 de 10');
+assert.equal(countsText({ active: 1234, paying: 0, goal: 10 }, 'en', { counts: 'Active invites: {active} · Bought the Pass: {paying} of {goal}' }), 'Active invites: 1,234 · Bought the Pass: 0 of 10');
+assert.equal(countsText({ active: 0, paying: 0, goal: null }, 'pt', countLabels), 'Convites ativos: 0 · Compraram o Passe: 0');
+assert.equal(countsText(null, 'pt', countLabels), '');
 
 reset();
 console.log('PASS: waitlist block (off by default, markup, consent, honeypot, states, escaping, parity), unsubscribe page, pure module and CSP.');

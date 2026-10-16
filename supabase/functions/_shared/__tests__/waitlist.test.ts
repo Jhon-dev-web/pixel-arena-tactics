@@ -113,7 +113,7 @@ describe('waitlist-join', () => {
     const { fake, deps } = setup();
     const res = await handleWaitlistJoin(post(good), deps);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, code: fake.rows[0].refCode, key: expect.stringMatching(/^[0-9a-f]{32}$/) });
     expect(res.headers.get('access-control-allow-origin')).toBe(ORIGIN);
     expect(fake.rows).toHaveLength(1);
     expect(fake.rows[0]).toMatchObject({ email: 'ana@example.com', locale: 'pt', source: 'twitter' });
@@ -126,8 +126,13 @@ describe('waitlist-join', () => {
     const first = await handleWaitlistJoin(post(good), deps);
     const again = await handleWaitlistJoin(post({ ...good, email: 'ANA@example.com', locale: 'en' }), deps);
     expect(again.status).toBe(first.status);
-    expect(await again.text()).toBe(await first.text());
     expect([...again.headers.entries()].sort()).toEqual([...first.headers.entries()].sort());
+    const a = (await first.json()) as Record<string, string>;
+    const b = (await again.json()) as Record<string, string>;
+    expect(Object.keys(b).sort()).toEqual(Object.keys(a).sort()); // same shape
+    expect(b.code).toBe(a.code); // the PUBLIC share code (it is in every link they post anyway)
+    expect(b.key).toMatch(/^[0-9a-f]{32}$/);
+    expect(b.key).not.toBe(a.key); // the private key of the first sign-up is never handed out again
     expect(fake.rows).toHaveLength(1);
     expect(fake.rows[0].locale).toBe('pt'); // the first sign-up is not overwritten by a stranger
   });
@@ -136,7 +141,7 @@ describe('waitlist-join', () => {
     const { fake, deps } = setup();
     const res = await handleWaitlistJoin(post({ ...good, hp: 'http://spam' }), deps);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, code: expect.stringMatching(/^[A-HJ-NP-Z2-9]{10}$/), key: expect.stringMatching(/^[0-9a-f]{32}$/) });
     expect(fake.rows).toHaveLength(0);
   });
 
@@ -191,6 +196,7 @@ describe('waitlist-join', () => {
           throw new Error('waitlist_join_500 ana@example.com 203.0.113.7');
         },
         unsubscribe: async () => ({ status: 'ok' as const }),
+        referralStats: async () => ({ status: 'rate_limited' as const }),
       },
     });
     const res = await handleWaitlistJoin(post(good), deps);

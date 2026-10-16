@@ -12,6 +12,8 @@ const l = localized;
 //  waitlistEnabled  true: the "Avise-me no lançamento" block (e-mail + consent) appears on the Home and the Temporada page and the /unsubscribe page exists. false (default): none of it is rendered.
 //                  Needs supabaseUrl (the Edge Functions waitlist-join / waitlist-unsubscribe, docs/WAITLIST.md); without it the block says the sign-up is not available yet. The public
 //                  counter appears only when the database flag arena_private.portal_flags.show_waitlist_count is on AND supabaseAnonKey is set.
+//  referralEnabled true (and waitlistEnabled true): after signing up the person sees "Seu link de convite" (copy + WhatsApp / X / Telegram share links) and the in-game reward list. The rewards are
+//                  granted by the server (docs/WAITLIST.md); only turn this on when you are ready to promise them. The link is built from siteUrl (or the page's own origin when siteUrl is null).
 // community stays empty until official channels exist.
 // supabaseUrl / supabaseAnonKey feed the live numbers of the Liga da Temporada page (Pass meter and rankings). Both stay null until the owner fills them, and the page then says
 // the data is unavailable: it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
@@ -19,7 +21,7 @@ const l = localized;
 export const config = {
   playUrl: null, passSalesOpen: false, passPrice: 'US$ 10', siteUrl: null,
   company: { legalName: null, cnpj: null, supportEmail: null },
-  legalLive: { terms: false, privacy: false, refund: false, seasonRules: false }, waitlistEnabled: false,
+  legalLive: { terms: false, privacy: false, refund: false, seasonRules: false }, waitlistEnabled: false, referralEnabled: false,
   supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Idle', pageSize: 8,
 };
 // Text that depends on the owner settings is computed when read (getters), so a changed setting changes every page at once.
@@ -324,4 +326,30 @@ export const waitlist = {
   unsubBad: l('Este link não é válido. Use o link do e-mail mais recente.', 'This link is not valid. Use the link from the most recent email.'),
   unsubFailed: l('Não foi possível cancelar agora. Tente de novo em instantes.', 'Could not cancel right now. Please try again in a moment.'),
   unsubNoscript: l('Para cancelar por aqui é preciso JavaScript. Ou responda ao e-mail pedindo o cancelamento.', 'Cancelling here needs JavaScript. Or reply to the email asking to be removed.'),
+};
+// Referral links ("Seu link de convite"), shown after the sign-up only when config.referralEnabled is true. The reward list below must say what the database tiers say
+// (arena_private.referral_rewards, docs/WAITLIST.md): when you change a tier there, change the matching line here and rebuild.
+export const referral = {
+  title: l('Seu link de convite', 'Your invite link'),
+  lead: l('Convide amigos para a lista e ganhe recompensas dentro do jogo.', 'Invite friends to the list and earn rewards inside the game.'),
+  linkLabel: l('Seu link de convite', 'Your invite link'),
+  copy: l('Copiar link', 'Copy link'),
+  copied: l('Link copiado.', 'Link copied.'),
+  copyFailed: l('Não deu para copiar sozinho. Selecione o link e copie.', 'Could not copy automatically. Select the link and copy it.'),
+  shareTitle: l('Compartilhar', 'Share'),
+  shareWhatsapp: l('WhatsApp', 'WhatsApp'),
+  shareX: l('X', 'X'),
+  shareTelegram: l('Telegram', 'Telegram'),
+  shareText: l('Vem jogar Arena Idle comigo! Entre na lista do lançamento: {url}', 'Come play Arena Idle with me! Join the launch list: {url}'),
+  counts: l('Convites ativos: {active} · Compraram o Passe: {paying} de {goal}', 'Active invites: {active} · Bought the Pass: {paying} of {goal}'),
+  countsNoGoal: l('Convites ativos: {active} · Compraram o Passe: {paying}', 'Active invites: {active} · Bought the Pass: {paying}'),
+  countsNote: l('A contagem aparece aqui, neste navegador, e depois do lançamento nas Configurações do jogo.', 'The count shows here, in this browser, and after launch in the game’s Settings.'),
+  rewardsTitle: l('Recompensas dentro do jogo', 'Rewards inside the game'),
+  tiers: [
+    l('1 convite ativo: o título Recrutador', '1 active invite: the Recruiter title'),
+    l('3 convites ativos: uma moldura de retrato', '3 active invites: a portrait frame'),
+    l('10 amigos que comprarem o Passe: um Passe de Aventureiro grátis', '10 friends who buy the Pass: a free Adventurer’s Pass'),
+    l('25 convites ativos: o título Lenda do Recrutamento', '25 active invites: the Recruitment Legend title'),
+  ],
+  rules: l('Um convite fica ativo quando a pessoa cria a conta no jogo com o mesmo e-mail e chega ao nível 10 do Herói, depois do lançamento. Os prêmios são entregues dentro do jogo. Convidar a si mesmo não conta, e uma compra reembolsada sai da contagem do Passe (um prêmio já entregue fica).', 'An invite becomes active when the person creates a game account with the same email and reaches Hero level 10, after launch. Rewards are delivered inside the game. Inviting yourself does not count, and a refunded purchase leaves the Pass count (a reward already delivered stays).'),
 };

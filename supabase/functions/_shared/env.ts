@@ -16,6 +16,9 @@ export const EDGE_ENV_NAMES = [
   'PASS_RECEIVE_ADDRESS',
   'PASS_PRICE_USDC',
   'SOL_USD_PRICE_URL',
+  // The launch waitlist (docs/WAITLIST.md): the exact origin(s) of the public portal (CORS) and the HMAC key for hashes and unsubscribe tokens.
+  'PORTAL_ORIGIN',
+  'WAITLIST_SECRET',
 ] as const;
 
 export type EdgeEnv = Partial<Record<(typeof EDGE_ENV_NAMES)[number], string>>;

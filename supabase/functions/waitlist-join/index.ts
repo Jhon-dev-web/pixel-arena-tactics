@@ -1,5 +1,5 @@
+import { getEdgeEnv } from '../_shared/env.ts';
 import { parseAllowedOrigins } from '../_shared/http.ts';
-import { getWaitlistEnv } from '../_shared/waitlist/env.ts';
 import { handleWaitlistJoin } from '../_shared/waitlist/handler.ts';
 import { createWaitlistStore } from '../_shared/waitlist/restStore.ts';
 
@@ -7,7 +7,7 @@ import { createWaitlistStore } from '../_shared/waitlist/restStore.ts';
 // Secrets by NAME: PORTAL_ORIGIN (the exact https origin of the portal), WAITLIST_SECRET (a long random string). SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
 // Deploy with --no-verify-jwt: visitors have no account, so there is no JWT to verify. The protection is the origin check, the honeypot and the rate limits (docs/WAITLIST.md).
 Deno.serve((req: Request) => {
-  const env = getWaitlistEnv();
+  const env = getEdgeEnv();
   return handleWaitlistJoin(req, {
     allowedOrigins: parseAllowedOrigins(env.PORTAL_ORIGIN),
     secret: env.WAITLIST_SECRET ?? '',
