@@ -100,6 +100,8 @@ export interface SubmitClock {
   lastAttemptAt: number | null;
   /** Something worth reporting happened (the hero gained a level, a boss fell). */
   event: boolean;
+  /** A factor of 1 or more on the 10 minute rhythm, rolled once per attempt so clients drift apart. Never below 1: the server refuses a second snapshot inside 10 minutes. */
+  jitter?: number;
 }
 
 /** When to post the save: on the 10 minute rhythm, and early (but not more than once a minute) after an important event. */
@@ -108,7 +110,7 @@ export function shouldSubmitNow(c: SubmitClock): boolean {
   const gap = c.now - c.lastAttemptAt;
   if (gap < 0) return true; // the clock went back: ask again rather than wait forever
   if (c.event) return gap >= EVENT_MIN_GAP_MS;
-  return gap >= SUBMIT_INTERVAL_MS;
+  return gap >= SUBMIT_INTERVAL_MS * Math.max(1, c.jitter ?? 1);
 }
 
 // ---- the submission status (a tiny external store so the screen can show one line without prop drilling) ------------------------------------

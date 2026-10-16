@@ -3,6 +3,7 @@ import { extractMetrics } from '../../supabase/functions/_shared/progress/metric
 import type { SaveData } from './engine';
 import { getSyncedSave } from './syncedSave';
 import { flushCloudSave } from './saveScheduler';
+import { startPolling } from '../lib/poller';
 import { getServerResetAt, shouldHoldSubmission } from './leagueReset';
 import { FIRST_SUBMIT_DELAY_MS, EVENT_MIN_GAP_MS, SUBMIT_INTERVAL_MS, resetSubmitStatus, shouldSubmitNow, submitProgress } from './seasonRanking';
 
@@ -14,12 +15,15 @@ export function useSeasonSubmit(enabled: boolean, save: SaveData): void {
   const lastAttemptAt = useRef<number | null>(null);
   const inFlight = useRef(false);
   const seen = useRef<{ levelTotal: number; bosses: number } | null>(null);
+  // 10 minutes plus up to 10 % (rolled again after each attempt): never less, because the server refuses a second snapshot inside 10 minutes
+  const jitter = useRef(1 + Math.random() * 0.1);
 
   const attempt = useCallback(
     (event: boolean) => {
       if (!enabled || inFlight.current) return;
       const now = Date.now();
-      if (!shouldSubmitNow({ now, lastAttemptAt: lastAttemptAt.current, event })) return;
+      if (!shouldSubmitNow({ now, lastAttemptAt: lastAttemptAt.current, event, jitter: jitter.current })) return;
+      jitter.current = 1 + Math.random() * 0.1;
       inFlight.current = true;
       void (async () => {
         try {
@@ -46,12 +50,8 @@ export function useSeasonSubmit(enabled: boolean, save: SaveData): void {
       resetSubmitStatus();
       return;
     }
-    const first = window.setTimeout(() => attempt(false), FIRST_SUBMIT_DELAY_MS);
-    const every = window.setInterval(() => attempt(false), 60 * 1000);
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(every);
-    };
+    // the check itself is local and cheap; it is paused while the tab is hidden, and the request it may make is the 10 minute one
+    return startPolling({ intervalMs: 60 * 1000, startDelayMs: FIRST_SUBMIT_DELAY_MS, run: () => attempt(false) });
   }, [enabled, attempt]);
 
   // Important events: the first reading only remembers where the hero is; a higher level (paragon included) or one more boss afterwards asks for a submission.

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { SaveData } from './engine';
 import { materialApi } from './materialServer';
 import { getSyncedSave } from './syncedSave';
+import { startPolling } from '../lib/poller';
 import { resolveNextClaim, runSync, flushBurns } from './tradeableActions';
 
 // Keeps the web build's tradeable materials in step with the server (tradeableActions.ts): the roll of each claim the game reported, the burn of units it spent, and the reconcile of the save
@@ -52,24 +53,10 @@ export function useTradeableSync({
       stopped = true;
     };
   }, [active, userId, syncTick]);
+  // every 5 minutes (+-10 %) while the tab is visible; a hidden tab asks nothing, and coming back to an overdue one asks within a couple of seconds (lib/poller.ts)
   useEffect(() => {
     if (!active) return;
-    let last = Date.now();
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && Date.now() - last > RESYNC_MS) {
-        last = Date.now();
-        setSyncTick((n) => n + 1);
-      }
-    };
-    const timer = window.setInterval(() => {
-      last = Date.now();
-      if (document.visibilityState === 'visible') setSyncTick((n) => n + 1);
-    }, RESYNC_MS);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
+    return startPolling({ intervalMs: RESYNC_MS, run: () => setSyncTick((n) => n + 1) });
   }, [active]);
 
   // 2. the claims waiting for the server's roll, one after the other

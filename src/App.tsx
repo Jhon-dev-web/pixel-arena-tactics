@@ -18,6 +18,7 @@ import { SaveConflictError, SaveRepository, SaveTooLargeError } from './game/sav
 import { seasonRankingEnabled } from './game/seasonRanking';
 import { useSeasonSubmit } from './game/useSeasonSubmit';
 import { setSyncedSave } from './game/syncedSave';
+import { startPolling } from './lib/poller';
 import { SaveScheduler, UploadOutcome, flushCloudSave, setActiveSaveScheduler } from './game/saveScheduler';
 import { isImportantChange } from './game/saveImportance';
 import { clearPendingCloudSave, writePendingCloudSave } from './game/pendingCloudSave';
@@ -46,7 +47,7 @@ import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned,
 import { usePassEntitlementVersion } from './game/usePassEntitlement';
 import { fetchReferralStatus } from './lib/referral';
 import { applyReferralCosmetics } from './game/referralRewards';
-import { needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
+import { getServerResetAt, needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
 import LeagueResetModal from './components/LeagueResetModal';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
@@ -181,6 +182,8 @@ const gearText = (key: string): string => t(`gear.${key}`);
 // only) is deliberately excluded: it doesn't exist in a production build, so there's nothing to
 // introduce to a real player. See FirstViewTooltip.tsx / SaveData.seenTooltips.
 const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
+
+const REFERRAL_POLL_MS = 30 * 60 * 1000;
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'offline';
 
@@ -1593,7 +1596,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       if (busy) return;
       busy = true;
       try {
-        const resetAt = await readLeagueResetAt();
+        // Once the League opened its reset moment never changes (set-once on the server): a known one is not asked again, only an unknown one (League not open yet, or never answered) is.
+        const knownAt = getServerResetAt();
+        const resetAt = typeof knownAt === 'number' ? knownAt : await readLeagueResetAt();
         if (stopped || typeof resetAt !== 'number') return;
         const local = saveRef.current;
         if (!needsLeagueReset(local, resetAt) && !needsPioneerCheck(local, resetAt)) return;
@@ -1612,22 +1617,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         busy = false;
       }
     };
-    void check();
-    const every = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void check();
-    }, 5 * 60 * 1000);
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void check();
-    };
-    document.addEventListener('visibilitychange', onVisible);
+    // now, then every 5 minutes (+-10 %) while the tab is visible; coming back to an overdue tab asks again within a couple of seconds (lib/poller.ts)
+    const stopPolling = startPolling({ intervalMs: 5 * 60 * 1000, startDelayMs: 0, run: check });
     return () => {
       stopped = true;
-      window.clearInterval(every);
-      document.removeEventListener('visibilitychange', onVisible);
+      stopPolling();
     };
   }, [userId, configured, repository]);
   // Referral rewards (docs/WAITLIST.md): the SERVER grants the inviter a title and a portrait frame; the game reads what it granted and puts those cosmetics in the save. Online only, and idempotent
-  // (the same rewards change nothing the second time, so nothing is saved and nothing re-renders). Read at login, when the window comes back and every 15 minutes. The free Pass needs nothing here:
+  // (the same rewards change nothing the second time, so nothing is saved and nothing re-renders). Read at login and every 30 minutes while the tab is visible (lib/poller.ts: paused while hidden, jittered, asked again when the tab comes back overdue). The free Pass needs nothing here:
   // it is an entitlement the Pass check already reads.
   const commitReferralRef = useRef<(next: SaveData) => void>(() => undefined);
   commitReferralRef.current = commitSave;
@@ -1641,18 +1639,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       const next = applyReferralCosmetics(current, status.rewards);
       if (next !== current) commitReferralRef.current(next);
     };
-    void sync();
-    const every = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void sync();
-    }, 15 * 60 * 1000);
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void sync();
-    };
-    document.addEventListener('visibilitychange', onVisible);
+    const stopPolling = startPolling({ intervalMs: REFERRAL_POLL_MS, startDelayMs: 0, run: sync });
     return () => {
       stopped = true;
-      window.clearInterval(every);
-      document.removeEventListener('visibilitychange', onVisible);
+      stopPolling();
     };
   }, [userId, configured]);
   const dismissLeagueNotice = () => {
