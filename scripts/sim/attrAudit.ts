@@ -5,9 +5,9 @@
 // "Real value" of a point = 100 x ln(P'/P) / points, P = duel margin (time the hero survives / time it needs to kill) against one enemy of the hero's own
 // representative floor. "CP value" = 100 x 2 x ln(core'/core): the CP is the square root of dps x ehp, so its log change is half that of a duel margin and the
 // factor 2 puts the two on one scale (computeCP itself rounds to an integer, so its raw core is used).
-import { buildCombatStats, computeCP, computeHuntingStatus, buildHuntSession, SaveData } from '../../src/game/engine';
+import { buildCombatStats, computeCP, computeHuntingStatus, buildHuntSession, playerLevel, SaveData } from '../../src/game/engine';
 import { combatPowerCore } from '../../src/game/derivedStats';
-import { HUNTING_ZONES, HuntingDepth, HUNTING_DEPTHS, isDepthUnlocked, isZoneUnlocked } from '../../src/game/huntingZones';
+import { HUNTING_ZONES, HuntingDepth, HUNTING_DEPTHS, isDepthUnlocked, isZoneOpen } from '../../src/game/huntingZones';
 import { isDungeonCheckpoint } from '../../src/game/dungeon';
 import { cargoReferenceValue } from '../../src/game/economy';
 import { MaterialId } from '../../src/game/materials';
@@ -130,7 +130,7 @@ export function huntBest(s: SaveData, floor: number) {
   const cp = computeCP(hero);
   let best = { zone: '-', depth: 'shallow' as HuntingDepth, xp: 0, mats: -1, ceiling: 1 };
   for (const z of HUNTING_ZONES) {
-    if (!isZoneUnlocked(z, hero.highestDungeonFloor)) continue;
+    if (!isZoneOpen(z, hero.highestDungeonFloor, playerLevel(hero.xp))) continue;
     for (const d of HUNTING_DEPTHS) {
       if (!isDepthUnlocked(z, d.id, cp)) continue;
       const r = huntRun(hero, z.id, d.id);

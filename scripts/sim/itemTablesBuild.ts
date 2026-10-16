@@ -44,7 +44,7 @@ export function buildItemTables() {
     forge,
     unique,
     farmHoursPerPiece,
-    zones: HUNTING_ZONES.map((z) => ({ id: z.id, unlockFloor: z.unlockFloor, offlineCapHours: z.offlineCapHours, rollsPerHour: UNIQUE_ROLLS_PER_HOUR[z.id] ?? 0, uniques: (z.uniques ?? []).map((u) => ({ itemId: u.itemId, chance: u.chance })) })),
+    zones: HUNTING_ZONES.map((z) => ({ id: z.id, unlockFloor: z.unlockFloor, unlockLevel: z.unlockLevel ?? 0, offlineCapHours: z.offlineCapHours, rollsPerHour: UNIQUE_ROLLS_PER_HOUR[z.id] ?? 0, uniques: (z.uniques ?? []).map((u) => ({ itemId: u.itemId, chance: u.chance })) })),
     maxRollsPerHour: T.hunting.economicReferenceKillsPerHour * T.hunting.economicRollCap,
     boss: {
       biomePools: UNIQUE_BOSS_DROPS,

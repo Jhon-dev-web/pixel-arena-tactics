@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOUNDS, daysAtFloor, daysAtLevel, professionBurstXp, professionXpPerHour } from '../progress/bounds.ts';
+import { BOUNDS, burstXp, daysAtFloor, daysAtLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from '../progress/bounds.ts';
 import { EvalInput, HistoryPoint, evaluateSnapshot } from '../progress/evaluate.ts';
 import { createProgressStore } from '../progress/progressDb.ts';
 import { MAX_BODY_BYTES, NewSnapshot, ProfessionApplyStatus, ProgressStore, SNAPSHOT_MIN_INTERVAL_MS, SeasonApplyStatus, StoredSnapshot, canonicalJson, handleSubmitProgress } from '../progress/handler.ts';
@@ -316,9 +316,9 @@ describe('evaluateSnapshot: cheating', () => {
 describe('bounds table', () => {
   it('the pace tables are increasing and the helpers interpolate', () => {
     for (const t of [BOUNDS.levelPace, BOUNDS.floorPace]) for (let i = 1; i < t.length; i++) expect(t[i][1]).toBeGreaterThan(t[i - 1][1]);
-    expect(daysAtLevel(51)).toBe(14);
-    expect(daysAtLevel(55.5)).toBeCloseTo(14 + (10 * 4.5) / 9, 6);
-    expect(daysAtFloor(100)).toBe(53);
+    expect(daysAtLevel(51)).toBe(11);
+    expect(daysAtLevel(55.5)).toBeCloseTo(11 + (8 * 4.5) / 9, 6);
+    expect(daysAtFloor(100)).toBe(28);
     expect(daysAtLevel(0.5)).toBe(0);
   });
 });
@@ -943,5 +943,17 @@ describe('review: the per-user limit is one atomic claim', () => {
     const store = createProgressStore({ supabaseUrl: 'https://p.test', serviceRoleKey: 'k', fetchFn });
     expect(await store.claimSlot(USER, SNAPSHOT_MIN_INTERVAL_MS)).toBe(true);
     expect(calls).toEqual([{ url: 'https://p.test/rest/v1/rpc/progress_claim_slot', body: { p_user_id: USER, p_interval_seconds: 600 } }]);
+  });
+});
+
+describe('zone level gates in the XP bound (Rodada 22)', () => {
+  it('a hero under the level of a zone is judged by the best zone his level has opened, one at the level by that zone', () => {
+    // floor 80 opens the last zone by the floor; the level must open it too
+    expect(xpPerHourAt(80, 59)).toBeLessThan(xpPerHourAt(80, 60));
+    expect(xpPerHourAt(80, 59)).toBeCloseTo(6000 * BOUNDS.huntXpFactor, 6); // zone 3 (level 40)
+    expect(xpPerHourAt(80, 39)).toBeCloseTo(2900 * BOUNDS.huntXpFactor, 6); // zone 2
+    expect(xpPerHourAt(80, 60)).toBeCloseTo(10000 * BOUNDS.huntXpFactor, 6);
+    expect(xpPerHourAt(80)).toBe(xpPerHourAt(80, 100)); // without a level: the old, looser check
+    expect(burstXp(80, 59)).toBeLessThan(burstXp(80, 60));
   });
 });

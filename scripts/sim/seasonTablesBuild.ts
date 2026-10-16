@@ -43,7 +43,7 @@ export function buildTables() {
     paragonGrowth: T.paragon.xpGrowth,
     levelGates,
     floorGates,
-    zoneFloors: HUNTING_ZONES.map((z) => ({ id: z.id, unlockFloor: z.unlockFloor, xpPerHour: z.xpPerHour })),
+    zoneFloors: HUNTING_ZONES.map((z) => ({ id: z.id, unlockFloor: z.unlockFloor, unlockLevel: z.unlockLevel ?? 0, xpPerHour: z.xpPerHour, xpPerSubLevel: z.xpPerSubLevel ?? 0 })),
   };
 }
 

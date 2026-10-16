@@ -37,8 +37,8 @@ export const UNIQUE_TEMPLATES: Readonly<Record<string, { tier: number; slot: str
 /** Hunting hours of ONE forged piece of a tier through its whole recipe chain (npm run sim:cost model, scripts/sim/farmHours.ts: the hunting hours of the 7 pieces of a set through that tier, over 7). */
 export const FARM_HOURS_PER_PIECE: Readonly<Record<number, number>> = ${JSON.stringify(t.farmHoursPerPiece)};
 
-/** Hunting zones: the floor that opens each one, its storage cap, the economic rolls per hour its unique chances are sized for, and the uniques it drops (chance per economic roll). */
-export const HUNT_ZONES: readonly { id: string; unlockFloor: number; offlineCapHours: number; rollsPerHour: number; uniques: readonly { itemId: string; chance: number }[] }[] = ${JSON.stringify(t.zones)};
+/** Hunting zones: the floor and the hero level (0 = none) that open each one, its storage cap, the economic rolls per hour its unique chances are sized for, and the uniques it drops (chance per economic roll). */
+export const HUNT_ZONES: readonly { id: string; unlockFloor: number; unlockLevel: number; offlineCapHours: number; rollsPerHour: number; uniques: readonly { itemId: string; chance: number }[] }[] = ${JSON.stringify(t.zones)};
 
 /** The most economic rolls per hour any build can reach (reference kills/h x roll cap, sub-level 1): the sized rolls above stay under it. */
 export const MAX_ROLLS_PER_HOUR = ${t.maxRollsPerHour};

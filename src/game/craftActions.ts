@@ -45,7 +45,7 @@ export function applyRefine(save: SaveData, recipeId: string, now?: number): Cra
 export function applyCraftPotion(save: SaveData, recipeId: string, now?: number): CraftResult {
   const recipe = getPotionRecipe(recipeId);
   if (!recipe) return fail('unknown');
-  if (!potionRecipeInTier(recipe, save.highestDungeonFloor)) return fail('tier');
+  if (!potionRecipeInTier(recipe, save.highestDungeonFloor, playerLevel(save.xp))) return fail('tier');
   if (save.gold < recipe.cost) return fail('gold');
   if (playerLevel(save.xp) < recipe.requiredLevel) return fail('level');
   if (!hasMaterials(save.materials, recipe.input)) return fail('materials');

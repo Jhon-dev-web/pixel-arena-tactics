@@ -14,7 +14,7 @@ import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInvent
 import { estimateHuntYield } from '../game/huntEstimate';
 import { getMaterial, MaterialId } from '../game/materials';
 import { heroSheet } from '../game/sprites';
-import { fmtRate, fmtSpan, matName } from '../game/huntView';
+import { fmtRate, fmtSpan, matName, subLevelNotes } from '../game/huntView';
 import { useDisplayName } from '../game/usernameContext';
 import { sessionStatsDiffer } from '../game/huntSession';
 import { isServerItemAuthority } from '../game/itemAuthority';
@@ -190,6 +190,8 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
                 <div className="hunt-promoted">{t('hunting.promotedRange', { a: status.startCeiling, b: status.ceilingSubLevel })}</div>
               )}
               <p className="hunt-hint">{t('hunting.subLevelExplain')}</p>
+              {subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct > 0 && <p className="hunt-hint">{t('hunting.subLevelXp', { n: subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct })}</p>}
+              {!maxed && status.nextSubLevelCp > 0 && <p className="hunt-hint">{t('hunting.subLevelNeedCp', { cp: fmtNum(status.nextSubLevelCp) })}</p>}
             </section>
           </div>
         </div>

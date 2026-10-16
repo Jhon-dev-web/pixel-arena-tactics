@@ -63,7 +63,7 @@ describe('season progress: bounds still hold the game', () => {
     expect(BOUNDS.burstHours).toBeGreaterThanOrEqual(d.capHours);
     expect(BOUNDS.dungeonRunsPerDay).toBeGreaterThanOrEqual(d.runsPerDay);
     expect(BOUNDS.dungeonFloorsPerDay).toBeGreaterThanOrEqual(d.runsPerDay * 140);
-    expect(BOUNDS.huntXpFactor).toBeGreaterThanOrEqual(1.3 * (1 + d.xpBonus) * d.potion - 1e-9);
+    expect(BOUNDS.huntXpFactor).toBeGreaterThanOrEqual(1.3 * (1 + d.xpBonus) * d.potion * d.subLevelBonus - 1e-9);
     expect(burstXp(100)).toBeGreaterThan(burstXp(0));
   });
 

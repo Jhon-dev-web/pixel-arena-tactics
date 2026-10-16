@@ -204,7 +204,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
     } else if (body.kind === 'hunt_drop') {
       const zone = HUNT_ZONES.find((z) => z.id === body.zoneId);
       if (!zone) return refuse('unknown_template', null);
-      if (tooEarly(daysAtFloor(zone.unlockFloor))) return refuse('too_early', 'HUNT_ZONE_TOO_EARLY', { zoneId: zone.id, ageDays: Math.floor(ageDays) });
+      if (tooEarly(Math.max(daysAtFloor(zone.unlockFloor), daysAtLevel(zone.unlockLevel)))) return refuse('too_early', 'HUNT_ZONE_TOO_EARLY', { zoneId: zone.id, ageDays: Math.floor(ageDays) });
       const requestedSeconds = Math.min(ITEM_BOUNDS.huntCapacitySeconds, Math.floor(body.durationMs / 1000));
       let hours = 0;
       if (requestedSeconds > 0) {

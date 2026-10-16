@@ -12,7 +12,7 @@ describe('season bounds report', () => {
     const row = (name: string, constant: number | string, derived: string, source: string) => lines.push(`${name.padEnd(26)} ${String(constant).padStart(10)}  recomputed: ${derived.padEnd(34)} ${source}`);
     lines.push('', 'SEASON PLAUSIBILITY BOUNDS (flag at the value, reject at REJECT_FACTOR x the value; pace entries flag at PACE_FLAG_FACTOR x the fastest seed)');
     lines.push(`REJECT_FACTOR = ${REJECT_FACTOR}   PACE_FLAG_FACTOR = ${PACE_FLAG_FACTOR}`, '');
-    row('xpPerHour', BOUNDS.xpPerHour, `${Math.round(d.xpPerHour)} (Hunting only: best zone x deepest depth x ${(1 + d.xpBonus).toFixed(2)} bonuses x ${d.potion.toFixed(2)} Knowledge Elixir)`, 'tunables + huntingZones');
+    row('xpPerHour', BOUNDS.xpPerHour, `${Math.round(d.xpPerHour)} (Hunting only: best zone x ${d.subLevelBonus.toFixed(2)} sub-levels x deepest depth x ${(1 + d.xpBonus).toFixed(2)} bonuses x ${d.potion.toFixed(2)} Knowledge Elixir)`, 'tunables + huntingZones');
     const r2 = (n: number) => Math.round(n * 100) / 100;
     row('gatherYieldFactor', BOUNDS.gatherYieldFactor, d.gatherYield.toFixed(3), 'Pass x mastery x Coletor/Brew/Prospector');
     row('mining xp/h at lvl 75', r2(professionXpPerHour('mining', 75)), d.miningPerHour.toFixed(2), 'tunables skills + mining');

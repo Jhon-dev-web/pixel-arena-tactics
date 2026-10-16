@@ -3,7 +3,7 @@ import { promotionLine } from './promotionLine';
 import ActiveBuffs from './ActiveBuffs';
 import { FramedSprite, MatIcon, Meter, MonsterPortrait, RarityChip, ZoneUniques } from './HuntParts';
 import { fmtNum, t } from '../locales';
-import { computeCP, getHuntProgress, huntPromotionRequiredWins, SaveData } from '../game/engine';
+import { computeCP, getHuntProgress, huntPromotionRequiredWins, playerLevel, SaveData } from '../game/engine';
 import { ownsAdventurerPass } from '../game/entitlements';
 import T from '../game/tunables';
 import {
@@ -17,14 +17,14 @@ import {
   huntingEnemySpriteUrl,
   huntingZoneBackgroundUrl,
   isDepthUnlocked,
-  isZoneUnlocked,
+  isZoneOpen,
   recommendedCpForDepth,
 } from '../game/huntingZones';
 import { estimateHuntYield, HuntYieldEstimate } from '../game/huntEstimate';
 import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
 import { MaterialId } from '../game/materials';
 import WholesaleLink from './WholesaleLink';
-import { defaultZone, depthsOpen, fmtRate, fmtSpan, matName, startBlockedReason, zoneDifficulty, zoneState } from '../game/huntView';
+import { defaultZone, depthsOpen, fmtRate, fmtSpan, matName, startBlockedReason, subLevelNotes, zoneDifficulty, zoneLockedText, zoneState } from '../game/huntView';
 
 const zoneName = (zone: HuntingZoneDef): string => t(`dungeon.${zone.nameKey}`);
 const monsterName = (zone: HuntingZoneDef): string => t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`);
@@ -118,7 +118,8 @@ export default function HuntSelection({
 
   const zone = HUNTING_ZONES.find((z) => z.id === zoneId) ?? HUNTING_ZONES[0];
   const depth = depthByZone[zone.id] ?? DEFAULT_HUNTING_DEPTH;
-  const zoneOpen = isZoneUnlocked(zone, save.highestDungeonFloor);
+  const heroLevel = playerLevel(save.xp);
+  const zoneOpen = isZoneOpen(zone, save.highestDungeonFloor, heroLevel);
   // where you are going: the zone's own map strip behind the monster
   const headStyle: CSSProperties & Record<'--bg', string> = { '--bg': `url(${huntingZoneBackgroundUrl(zone.id)})` };
   const enemyArt = huntingEnemyArt(zone.enemyId);
@@ -128,7 +129,7 @@ export default function HuntSelection({
 
   // The shallow-depth outlook of every open zone (the same memoised projection as the depth cards), for the chip on each row of the list.
   const shallowOutlooks = useMemo(
-    () => Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, isZoneUnlocked(z, save.highestDungeonFloor) ? estimateHuntYield(save, z.id, 'shallow')?.outlook ?? null : null])),
+    () => Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, isZoneOpen(z, save.highestDungeonFloor, playerLevel(save.xp)) ? estimateHuntYield(save, z.id, 'shallow')?.outlook ?? null : null])),
     [save],
   );
 
@@ -178,7 +179,7 @@ export default function HuntSelection({
                   <span className="hunt-zone-info">
                     <span className="hunt-zone-name">{zoneName(z)}</span>
                     {zs === 'locked' ? (
-                      <span className="hunt-zone-sub">{t('dungeon.unlocksAt', { n: z.unlockFloor })}</span>
+                      <span className="hunt-zone-sub">{t(zoneLockedText(z).key, zoneLockedText(z).vars)}</span>
                     ) : (
                       <>
                         <span className="hunt-zone-sub">{t('hunting.cpNeeded', { n: fmtNum(recommendedCpForDepth(z, 'shallow')) })}</span>
@@ -205,7 +206,7 @@ export default function HuntSelection({
                 <span className="hunt-monster-name">{monsterName(zone)}</span>
                 <span className="hunt-zone-title">{zoneName(zone)}</span>
                 <span className="hunt-detail-cp">
-                  {zoneOpen ? t('hunting.cpLine', { rec: fmtNum(recommendedCpForDepth(zone, depth)), you: fmtNum(playerCp) }) : t('dungeon.unlocksAt', { n: zone.unlockFloor })}
+                  {zoneOpen ? t('hunting.cpLine', { rec: fmtNum(recommendedCpForDepth(zone, depth)), you: fmtNum(playerCp) }) : t(zoneLockedText(zone).key, zoneLockedText(zone).vars)}
                   <span className={`hunt-state-chip ${headChip.cls}`}>{headChip.label}</span>
                 </span>
               </div>
@@ -258,6 +259,8 @@ export default function HuntSelection({
                     {maxed ? t('hunting.subLevelMax') : promotionLine(progress.promotionWins, required, progress.ceiling)}
                   </div>
                   <p className="hunt-hint">{t('hunting.subLevelExplain')}</p>
+                  {subLevelNotes(zone, depth, progress.ceiling).xpPct > 0 && <p className="hunt-hint">{t('hunting.subLevelXp', { n: subLevelNotes(zone, depth, progress.ceiling).xpPct })}</p>}
+                  {!maxed && subLevelNotes(zone, depth, progress.ceiling).nextCp > 0 && <p className="hunt-hint">{t('hunting.subLevelNeedCp', { cp: fmtNum(subLevelNotes(zone, depth, progress.ceiling).nextCp) })}</p>}
                 </section>
 
                 <section className="hunt-block facts">

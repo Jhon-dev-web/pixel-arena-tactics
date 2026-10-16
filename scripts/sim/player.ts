@@ -13,6 +13,7 @@ import {
   GearInstance,
   createGearInstance,
 } from '../../src/game/gearInstances';
+import { Rarity, rollSubstats } from '../../src/game/rarity';
 import { computeCP, effectiveRepairCost, playerLevel, SaveData, defaultSave } from '../../src/game/engine';
 import { BASE_MAX_REFINE, GEAR, getGear, INSTANCED_SLOTS, maxRefineFor, upgradeCost } from '../../src/game/gear';
 import { applyLapidar, canAffordLapidar, getLapidarCost, lapidarBlock } from '../../src/game/lapidar';
@@ -35,7 +36,7 @@ import {
   HUNTING_ZONES,
   HuntingDepth,
   isDepthUnlocked,
-  isZoneUnlocked,
+  isZoneOpen,
 } from '../../src/game/huntingZones';
 import { applyHuntClaim, huntClaimBlocked, planHuntClaim, requestHuntStart, applyHuntStop } from '../../src/game/huntLifecycle';
 import { applyDeliveryAccept, applyDeliveryClaim, canAffordOffer, ensureDeliveryOffers } from '../../src/game/deliveries';
@@ -403,6 +404,15 @@ export interface PlayerOptions {
   specialist?: 'mining' | 'woodcutting' | 'gardening';
   // Check-in hours of the day (default 9 and 21). A specialist who logs in every 6 hours shows how much of the race is just frequency (docs/BALANCE_CHANGES.md Rodada 21).
   checkInHours?: number[];
+  // Rodada 22 (scripts/sim/leagueEcon.sim.ts): the policies of the League economy review. `smart` = a player who knows where the XP is: he plays the usual policy (the same crafts,
+  // the same gathering for what the next craft is missing), but every Hunting visit goes to the LAST zone at its deep depth as soon as that zone is open and drops the thing he is
+  // short of (or he is short of nothing); only a material that drops elsewhere (the Rift's shard and horn) still takes him there. `buyer` = a player who bought gear on the market: every piece of tier `fromTier` or above
+  // is forged for free (leagueEcon.sim.ts empties those recipes for the process) and rolls as `rarity`, with the substats of that rarity.
+  smart?: boolean;
+  // `greedy` = the review's own "smart" experiment: the moment the last zone is open at its deep depth he hunts ONLY there, whatever the next craft is short of (no more mining,
+  // woodcutting or trips for materials: he plays the XP and nothing else, so the gear he has is the gear he keeps).
+  greedy?: boolean;
+  buyer?: { fromTier: number; toTier?: number; rarity: Rarity };
   // Long-horizon sim: once the floor-100 boss is down the Dungeon sessions go to the Profundezas (nextDepthStage), and the snapshots carry the depth, the paragon level and the blockers.
   long?: boolean;
 }
@@ -1090,7 +1100,7 @@ export class Player {
   private knowledgeRecipe(): PotionRecipe | null {
     if (this.opts.tonics === false) return null;
     if ((this.S.consumables.knowledge_elixir ?? 0) >= KNOWLEDGE_STOCK) return null;
-    const rec = POTION_RECIPES.find((r) => r.id === 'knowledge_elixir' && potionRecipeInTier(r, this.S.highestDungeonFloor));
+    const rec = POTION_RECIPES.find((r) => r.id === 'knowledge_elixir' && potionRecipeInTier(r, this.S.highestDungeonFloor, playerLevel(this.S.xp)));
     return rec && playerLevel(this.S.xp) >= rec.requiredLevel ? rec : null;
   }
 
@@ -1152,7 +1162,9 @@ export class Player {
     this.commitPend();
     let crafted = false;
     for (const tpl of target.crafts) {
-      const res = applyForge(this.S, tpl, { level: playerLevel(this.S.xp), now: this.now });
+      const tier = getGear(tpl)?.tier ?? 0;
+      const bought = this.opts.buyer && tier >= this.opts.buyer.fromTier && tier <= (this.opts.buyer.toTier ?? 99) ? { rarity: this.opts.buyer.rarity, substats: rollSubstats(this.opts.buyer.rarity, tier) } : undefined;
+      const res = applyForge(this.S, tpl, { level: playerLevel(this.S.xp), now: this.now, ...(bought ? { roll: bought } : {}) });
       if (!res.ok || !res.save) break;
       const flowBefore = this.flowMark();
       this.set(res.save, 'forja');
@@ -1494,6 +1506,7 @@ export class Player {
   }
 
   private startActivity() {
+    if (this.opts.greedy && this.startBestXp()) return;
     if ((this.opts.specialist === 'mining' || this.opts.specialist === 'woodcutting') && this.startSpecialistGathering(this.opts.specialist)) return;
     const target = chooseTarget(this.S);
     const deficit: Mats = { ...(target?.deficit ?? {}) };
@@ -1603,11 +1616,18 @@ export class Player {
     return this.opts.sinks || this.opts.specialist ? applyElixir(brewed, 'prospector_tonic', this.now) ?? brewed : brewed;
   }
 
+  // The greedy player: the last zone at its deepest depth, the moment both are open.
+  private startBestXp(): boolean {
+    const last = HUNTING_ZONES[HUNTING_ZONES.length - 1];
+    if (!isZoneOpen(last, this.S.highestDungeonFloor, playerLevel(this.S.xp)) || !isDepthUnlocked(last, 'deep', computeCP(this.S))) return false;
+    return this.startHunt({});
+  }
+
   // Where to hunt: the zone that drops the Hunting material the next craft / refine / stash upgrade is longest short of (a player hunts where the thing he
   // needs drops); with nothing missing, the highest-XP zone unlocked by the Dungeon floor.
   private startHunt(deficit: Mats = {}): boolean {
     const cp = computeCP(this.S);
-    const zones = HUNTING_ZONES.filter((z) => isZoneUnlocked(z, this.S.highestDungeonFloor)).sort((a, b) => b.xpPerHour - a.xpPerHour);
+    const zones = HUNTING_ZONES.filter((z) => isZoneOpen(z, this.S.highestDungeonFloor, playerLevel(this.S.xp))).sort((a, b) => b.xpPerHour - a.xpPerHour);
     let wantedMat: MaterialId | null = null;
     let wantedHours = 0;
     for (const m of HUNT_MATS) {
@@ -1622,6 +1642,9 @@ export class Player {
     if (wantedMat) {
       const chanceOf = (z: (typeof zones)[number]) => z.drops.find((d) => d.material === wantedMat)?.chance ?? 0;
       zones.sort((a, b) => chanceOf(b) - chanceOf(a) || b.xpPerHour - a.xpPerHour);
+      // The smart player goes where the XP is whenever the last zone drops the material he is short of too.
+      const last = HUNTING_ZONES[HUNTING_ZONES.length - 1];
+      if (this.opts.smart && chanceOf(last) > 0 && zones.includes(last)) zones.splice(0, zones.length, last, ...zones.filter((z) => z !== last));
     }
     for (const z of zones) {
       for (const depth of ['deep', 'dense', 'shallow'] as HuntingDepth[]) {

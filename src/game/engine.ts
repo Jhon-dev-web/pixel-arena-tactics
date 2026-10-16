@@ -35,7 +35,7 @@ import { CodexState, emptyCodex, normalizeCodex } from './codex';
 import { Rarity, rarityStatMult } from './rarity';
 import { emptySetTotals, setBonuses } from './setBonuses';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
-import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef } from './huntingZones';
+import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef, subLevelCpRequired } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
 import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers, withPermanentPassWindow, LEGACY_PASS_CAP_HOURS } from './huntSession';
 import { applyDamageModifiers, BLESSED_DAMAGE_PCT, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage, StrikeTally } from './derivedStats';
@@ -664,6 +664,8 @@ export interface HuntingStatus {
   ceilingSubLevel: number;
   promotionWins: number;
   promotionRequired: number;
+  // Rodada 22: the CP the NEXT sub-level asks in a zone with a CP gate (huntingZones.ts subLevelCpRequired), 0 when the zone has none or the ceiling is the last level.
+  nextSubLevelCp: number;
   startCeiling: number;
   promotions: number;
   promotionLosses: number;
@@ -813,6 +815,7 @@ export function buildHuntSimSetup(
     // Depth never touches gold — Hunting stays a non-currency faucet by design at every depth.
     goldPerHour: zone.goldPerHour,
     xpPerHour: zone.xpPerHour * depthDef.xpMultiplier,
+    ...(zone.xpPerSubLevel ? { xpPerSubLevel: zone.xpPerSubLevel } : {}),
     drops: zone.drops,
     uniques: zone.uniques,
     depth,
@@ -875,6 +878,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
       ceilingSubLevel: 1,
       promotionWins: 0,
       promotionRequired: huntPromotionRequiredWins(1),
+      nextSubLevelCp: 0,
       startCeiling: 1,
       promotions: 0,
       promotionLosses: 0,
@@ -914,7 +918,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     pendingMs,
     potionCfg,
     `${save.huntingOfflineStart}:${zone.id}:${depth}`,
-    { maxLevel: T.hunting.subLevels, requiredWins: huntPromotionRequiredWins },
+    { maxLevel: T.hunting.subLevels, requiredWins: huntPromotionRequiredWins, ...(zone.subLevelCpGrowth ? { allowed: (next: number) => cpOfStats(session.stats) >= subLevelCpRequired(zone, depth, next) } : {}) },
     timeline,
   );
 
@@ -930,6 +934,7 @@ export function computeHuntingStatus(save: SaveData, now: number): HuntingStatus
     ceilingSubLevel: result.ceilingSubLevel,
     promotionWins: result.promotionWins,
     promotionRequired: result.ceilingSubLevel >= T.hunting.subLevels ? 0 : huntPromotionRequiredWins(result.ceilingSubLevel),
+    nextSubLevelCp: result.ceilingSubLevel >= T.hunting.subLevels ? 0 : subLevelCpRequired(zone, depth, result.ceilingSubLevel + 1),
     startCeiling: Math.min(T.hunting.subLevels, Math.max(1, startProgress.ceiling)),
     promotions: result.promotions,
     promotionLosses: result.promotionLosses,

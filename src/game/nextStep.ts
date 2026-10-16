@@ -2,7 +2,7 @@ import { playerLevel, SaveData } from './engine';
 import { GEAR, INSTANCED_SLOTS } from './gear';
 import { applyForge, resolveEquipped } from './gearInstances';
 import { skillPointsAvailable } from './heroSkills';
-import { HUNTING_ZONES, isZoneUnlocked } from './huntingZones';
+import { HUNTING_ZONES, isZoneOpen } from './huntingZones';
 import { inventoryCapacity, inventorySlotsUsed } from './inventory';
 import { nextMilestone } from './dungeon';
 
@@ -69,7 +69,7 @@ export function nextStep(save: SaveData): NextStep {
 
   // A zone is "new" while the player has never ended a session in it (huntProgress is written when a session ends).
   const hunted = new Set(Object.keys(save.huntProgress).map((k) => k.split(':')[0]));
-  const fresh = HUNTING_ZONES.find((z) => isZoneUnlocked(z, save.highestDungeonFloor) && !hunted.has(z.id) && save.activeHuntingZone !== z.id);
+  const fresh = HUNTING_ZONES.find((z) => isZoneOpen(z, save.highestDungeonFloor, level) && !hunted.has(z.id) && save.activeHuntingZone !== z.id);
   if (fresh) return step('new_zone', 'hunt', { zone: fresh.nameKey });
 
   const milestone = nextMilestone(save.highestDungeonFloor);

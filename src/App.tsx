@@ -110,7 +110,7 @@ import { highlightTarget } from './components/highlight';
 import { crossedMilestoneFloors, getMilestoneReward, MAX_DUNGEON_FLOOR } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { depthsUnlocked, nextDepthStage } from './game/depths';
-import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneUnlocked, unlockedZoneIds } from './game/huntingZones';
+import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneOpen, unlockedZoneIds } from './game/huntingZones';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { isDeliveryReady } from './game/deliveries';
 import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
@@ -1543,7 +1543,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const startHunt = (zoneId: string, depth: HuntingDepth = DEFAULT_HUNTING_DEPTH) => {
     const s = saveRef.current;
     const zone = getHuntingZone(zoneId);
-    if (!zone || !isZoneUnlocked(zone, s.highestDungeonFloor)) return;
+    if (!zone || !isZoneOpen(zone, s.highestDungeonFloor, playerLevel(s.xp))) return;
     if (s.activeHuntingZone === zoneId && s.activeHuntingDepth === depth) return;
     if (!isDepthUnlocked(zone, depth, computeCP(s))) return;
     if (s.pendingHuntReward) {

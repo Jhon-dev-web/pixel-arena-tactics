@@ -30,8 +30,8 @@ export const UNIQUE_FLOOR_GATES: Readonly<Record<string, number>> = ${JSON.strin
 /** Profession (Mining / Woodcutting / Gardening) skill XP at which level l begins: PROFESSION_XP_TO_LEVEL[id][l - 1]. Level 1 = 0, the last entry is the max level. */
 export const PROFESSION_XP_TO_LEVEL: Readonly<Record<'mining' | 'woodcutting' | 'gardening', readonly number[]>> = ${JSON.stringify(t.professionXpToLevel)};
 
-/** Hunting zones: the dungeon floor that opens each one and its XP per hour at the shallow depth. */
-export const ZONE_TABLE: readonly { id: string; unlockFloor: number; xpPerHour: number }[] = ${JSON.stringify(t.zoneFloors)};
+/** Hunting zones: the dungeon floor and the hero level that open each one (0 = no level asked), its XP per hour at the shallow depth and its extra XP per sub-level above 1 (0 = flat). */
+export const ZONE_TABLE: readonly { id: string; unlockFloor: number; unlockLevel: number; xpPerHour: number; xpPerSubLevel: number }[] = ${JSON.stringify(t.zoneFloors)};
 `;
     writeFileSync(OUT, body);
   });

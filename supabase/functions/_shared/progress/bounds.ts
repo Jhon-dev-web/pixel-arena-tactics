@@ -45,13 +45,14 @@ export const BOUNDS = {
    * XP per server hour, THEORETICAL, at the end of the game (floor 100). Since the League (Rodada 20) HUNTING IS THE ONLY SOURCE of hero XP (no Dungeon, no delivery order, no instant
    * potion), so this is one product. Recomputed by season:bounds = 23,660 (25,000 kept: the server factor below still counts a 5% Relic bonus
    * that no item carries since Rodada 19, as a margin); xpPerHourAt(floor) below scales it with the floor:
-   *   best zone 13,000 xp/h (huntingZones.ts) x deep depth 1.3 x (1 + 12% bonuses: Aprendiz Veloz 3 ranks x 4%; +5% for a Season Relic that carried XP, margin) x 1.25 (the Knowledge Elixir, tunables
-   *   consumables.knowledgeXpPct, running the whole time: the best and only potion; the Pass adds no XP).
+   *   best zone 10,000 xp/h (huntingZones.ts; it was 13,000 before Rodada 22) x 1.18 (the last zone pays +2% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels) x deep depth 1.3
+   *   x (1 + 12% bonuses: Aprendiz Veloz 3 ranks x 4%; +5% for a Season Relic that carried XP, margin) x 1.25 (the Knowledge Elixir, tunables consumables.knowledgeXpPct, running the whole
+   *   time: the best and only potion; the Pass adds no XP).
    * It used to be 60,000: 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, which are gone.
    */
   xpPerHour: 25_000,
-  /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%) times the Knowledge Elixir (1.25). 1.3 x 1.17 x 1.25 = 1.90125. */
-  huntXpFactor: 1.902,
+  /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%) times the Knowledge Elixir (1.25) times the last zone's best sub-level (1.18). 1.3 x 1.17 x 1.25 x 1.18 = 2.2437. */
+  huntXpFactor: 2.244,
 
   // ---- profession skill XP (Mining, Woodcutting, Gardening): THEORETICAL, recomputed from tunables by season:bounds / deriveBounds ---------------------------------------
   /** Mining / Woodcutting: gatherPower = BASE_GATHER_POWER + level x powerPerLevel (skills.ts). SOURCE: BASE_GATHER_POWER = 5, tunables skills.powerPerLevel = 0.75, skills.maxLevel = 75. */
@@ -110,34 +111,35 @@ export const BOUNDS = {
   // ---- PACE: the fastest simulated seed (Pass owner): [position, server day it was reached] ----------------------------------------------------------
   /**
    * Hero level position (level + share of the next level; paragon levels follow 100) against the day the fastest seed reached it.
-   * SOURCE (Rodada 20, the League: hero XP only from Hunting + the Knowledge Elixir; `npm run sim:long`, scenario P, the fastest of 6 seeds): level 24 on day 2, 28 on day 3, 44 on day 7,
-   * 51 on day 14, 60 on day 24, 68 on day 30, 75 on day 40, 79 on day 45 and 88 on day 60 (docs/BALANCE_BASELINE.md "Liga"); past day 60 the hero gains about 0.6 level a day (level 100 on
-   * about day 80, then the paragon at 0.55 level a day, as before). It used to be 13 / 27 / 50 / 60 / 75 / 90 / 100 on days 1 / 3 / 9 / 23 / 45 / 76 / 104: the Dungeon and the orders paid
-   * XP then; the early levels are slower now (a hero levels on the first Hunting claim) and the late ones about 2 weeks faster.
+   * SOURCE (Rodada 22, `npm run sim:econ`, the fastest seed of the Pass-owner policies P / PS / PG / PB, 6 seeds each; PB is the owner who BOUGHT a Legendary tier 4+ set): level 24 on day 2,
+   * 44 on day 7, 51 on day 11, 60 on day 19, 68 on day 26, 75 on day 33, 79 on day 38, 88 on day 50 and 92 on day 56 (docs/BALANCE_CHANGES.md Rodada 22); past day 56 the hero gains about 0.55 level
+   * a day (level 100 on about day 72, then the paragon at 0.55 level a day, as before). Rodada 20 had 60 on day 24 and 88 on day 60 for the plain owner alone: the zone level gates of Rodada 22
+   * (zone 3 asks level 40, zone 4 level 60) hold the owner who bought a set back, and the table now follows him, the fastest legitimate player, instead of the plain owner.
    */
   levelPace: [
     [1, 0],
     [24, 2],
     [28, 3],
     [44, 7],
-    [51, 14],
-    [60, 24],
-    [68, 30],
-    [75, 40],
-    [79, 45],
-    [88, 60],
-    [100, 80],
-    [200, 280],
+    [51, 11],
+    [60, 19],
+    [68, 26],
+    [75, 33],
+    [79, 38],
+    [88, 50],
+    [92, 56],
+    [100, 72],
+    [200, 272],
   ] as const,
-  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE (Rodada 20, scenario P, fastest of 6 seeds): floor 8 on day 1, 25 on day 2, 50 on day 9, 75 on day 16, 90 on day 42, 100 on day 53. */
+  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE (Rodada 22, P / PS / PG / PB, fastest of 6 seeds each): floor 8 on day 1, 25 on day 2, 50 on day 8, 75 on day 10, 90 on day 23, 100 on day 28 (the buyer's tier 4+ Legendary set; the plain owner needs until day 53). */
   floorPace: [
     [0, 0],
     [8, 1],
     [25, 2],
-    [50, 9],
-    [75, 16],
-    [90, 42],
-    [100, 53],
+    [50, 8],
+    [75, 10],
+    [90, 23],
+    [100, 28],
   ] as const,
   /** Profundezas depth cleared per day by the fastest seed: 0 to about 30 in the first 3 days after the floor-100 boss (Cenario P, days 90 to 110). Depth is capped by the CP wall at about 44. */
   depthPerDayFastest: 12,
@@ -148,6 +150,7 @@ export const BOUNDS = {
   /**
    * [hero level, highest floor] = the best floor any sim seed (A or P) stood on at a hero level up to that one, with ~20% room (more at the low levels, where the pace tables interpolate between sparse anchors). SOURCE (Rodada 20, 6 seeds x 60 days): level 1 to 13 floor 10, 24 floor 25,
    * 37 floor 30, 44 floor 40, 50 floor 70, 57 floor 76, 63 floor 78, 70 floor 85. The Dungeon pays no XP any more, so a hero can stand on floor 10 at level 1 (it was floor 5 at level 1).
+   * Rodada 22 (the owner who bought a Legendary tier 4+ set, `npm run sim:econ` PB): level 44 floor 40, level 50 floor 86, 57 floor 88, 63 floor 89, 70 floor 100; so from level 50 on the cap is the last floor.
    */
   floorCapByLevel: [
     [1, 12],
@@ -155,9 +158,9 @@ export const BOUNDS = {
     [24, 36],
     [37, 44],
     [44, 56],
-    [50, 84],
-    [57, 91],
-    [63, 94],
+    [50, 100],
+    [57, 100],
+    [63, 100],
     [70, 100],
   ] as const,
   /** Above the cap x this + 5 floors the snapshot is rejected (between the cap and that it is flagged). */
@@ -204,22 +207,25 @@ export function professionBurstXp(profession: 'mining' | 'woodcutting' | 'garden
   return BOUNDS.burstHours * professionXpPerHour(profession, level);
 }
 
-/** Hunting XP per hour at the best zone the floor has opened (ZONE_TABLE: zone unlock floors from huntingZones.ts), shallow depth x deep depth x bonuses. */
-export function zoneXpPerHour(highestFloor: number): number {
+/**
+ * Hunting XP per hour at the best zone the floor AND the hero level have opened (ZONE_TABLE: the unlock floors and, since Rodada 22, the unlock levels of huntingZones.ts), shallow depth.
+ * Without a level every zone the floor opens counts (the old, looser check); the audit passes the level of the NEW snapshot, which is never lower than the level during the gap.
+ */
+export function zoneXpPerHour(highestFloor: number, heroLevel: number = Number.POSITIVE_INFINITY): number {
   let rate = 0;
-  for (const z of ZONE_TABLE) if (highestFloor >= z.unlockFloor) rate = Math.max(rate, z.xpPerHour);
+  for (const z of ZONE_TABLE) if (highestFloor >= z.unlockFloor && heroLevel >= z.unlockLevel) rate = Math.max(rate, z.xpPerHour);
   return rate;
 }
 
-/** THEORETICAL XP per server hour for a hero whose highest floor is `highestFloor`: the best open zone with every bonus (the only source of hero XP). */
-export function xpPerHourAt(highestFloor: number): number {
-  return zoneXpPerHour(Math.max(0, Math.min(100, Math.floor(highestFloor)))) * BOUNDS.huntXpFactor;
+/** THEORETICAL XP per server hour for a hero whose highest floor is `highestFloor` (and level `heroLevel`, when known): the best open zone with every bonus (the only source of hero XP). */
+export function xpPerHourAt(highestFloor: number, heroLevel: number = Number.POSITIVE_INFINITY): number {
+  return zoneXpPerHour(Math.max(0, Math.min(100, Math.floor(highestFloor))), heroLevel) * BOUNDS.huntXpFactor;
 }
 
 /**
  * XP that may arrive in ONE snapshot although it was earned before the previous one: an offline Hunt waiting to be claimed (up to burstHours, the largest storage the Pass gives,
  * of the best open zone). Not renewable in the cumulative checks (they count it once).
  */
-export function burstXp(highestFloor: number): number {
-  return BOUNDS.burstHours * zoneXpPerHour(highestFloor) * BOUNDS.huntXpFactor;
+export function burstXp(highestFloor: number, heroLevel: number = Number.POSITIVE_INFINITY): number {
+  return BOUNDS.burstHours * zoneXpPerHour(highestFloor, heroLevel) * BOUNDS.huntXpFactor;
 }

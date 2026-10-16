@@ -11,7 +11,9 @@ export function deriveBounds() {
   // Rodada 20: the hero earns XP ONLY from Hunting, so the XP rate is the best zone at the deepest depth with every bonus on it: the Season Relic and the best Hunter skill (3 ranks),
   // as a fraction, and the Knowledge Elixir running the whole time (the best potion: there is one kind, +25%).
   const xpBonus = relicXpBonusPct('season_emblem') / 100 + 3 * T.heroSkills.quickLearnerXp;
-  const bestZone = Math.max(...HUNTING_ZONES.map((z) => z.xpPerHour));
+  // Rodada 22: the last zone pays +xpPerSubLevel XP for every sub-level above 1 (+18% at sub-level 10), so its best rate is the base rate x that.
+  const subLevelBonus = Math.max(...HUNTING_ZONES.map((z) => 1 + (z.xpPerSubLevel ?? 0) * (T.hunting.subLevels - 1)));
+  const bestZone = Math.max(...HUNTING_ZONES.map((z) => z.xpPerHour * (1 + (z.xpPerSubLevel ?? 0) * (T.hunting.subLevels - 1))));
   const deepest = Math.max(...HUNTING_DEPTHS.map((d) => d.xpMultiplier));
   const potion = 1 + T.consumables.knowledgeXpPct;
   const huntPerHour = bestZone * deepest * (1 + xpBonus) * potion;
@@ -30,6 +32,7 @@ export function deriveBounds() {
   const xpPerHour = huntPerHour;
   return {
     xpBonus,
+    subLevelBonus,
     potion,
     huntPerHour,
     runsPerDay,

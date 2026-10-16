@@ -1,8 +1,8 @@
 import { activeLocale, fmtNum, t } from '../locales';
 import type { MaterialId } from './materials';
-import type { SaveData } from './engine';
+import { playerLevel, type SaveData } from './engine';
 import type { HuntOutlook } from './huntEstimate';
-import { HUNTING_DEPTHS, HuntingDepth, HuntingZoneDef, isDepthUnlocked, isZoneUnlocked, recommendedCpForDepth } from './huntingZones';
+import { HUNTING_DEPTHS, HuntingDepth, HuntingZoneDef, isDepthUnlocked, isZoneOpen, recommendedCpForDepth, subLevelCpRequired } from './huntingZones';
 
 // Presentation helpers of the Hunt screen. Nothing here changes a rule: it only reads the save and the zone tables.
 
@@ -26,10 +26,20 @@ export function fmtSpan(ms: number): string {
 
 export type ZoneState = 'locked' | 'hard' | 'ok';
 
-// locked: the dungeon floor that opens the zone is not reached yet. hard: open, but the hero is below the CP of even the shallowest depth, so no
+// What the sub-levels of a zone add to the Hunt screen (Rodada 22): the extra XP each pays (percent, 0 for a zone with flat XP) and the CP the NEXT one asks (0 = no gate or the last level).
+export function subLevelNotes(zone: HuntingZoneDef, depth: HuntingDepth, ceiling: number): { xpPct: number; nextCp: number } {
+  return { xpPct: Math.round((zone.xpPerSubLevel ?? 0) * 1000) / 10, nextCp: subLevelCpRequired(zone, depth, ceiling + 1) };
+}
+
+// What opens a zone, as a locale key + vars: the Dungeon floor alone, or the floor and the hero level (zones 3 and 4).
+export function zoneLockedText(zone: HuntingZoneDef): { key: string; vars: Record<string, number> } {
+  return zone.unlockLevel ? { key: 'hunting.unlocksAtLevel', vars: { n: zone.unlockFloor, lvl: zone.unlockLevel } } : { key: 'hunting.startLocked', vars: { n: zone.unlockFloor } };
+}
+
+// locked: the dungeon floor that opens the zone is not reached yet, or the hero is under the level it asks (zone 3: 40, zone 4: 60). hard: open, but the hero is below the CP of even the shallowest depth, so no
 // depth can be started. ok: at least one depth can be started.
 export function zoneState(zone: HuntingZoneDef, save: SaveData, playerCp: number): ZoneState {
-  if (!isZoneUnlocked(zone, save.highestDungeonFloor)) return 'locked';
+  if (!isZoneOpen(zone, save.highestDungeonFloor, playerLevel(save.xp))) return 'locked';
   return isDepthUnlocked(zone, 'shallow', playerCp) ? 'ok' : 'hard';
 }
 
@@ -39,7 +49,7 @@ export function depthsOpen(zone: HuntingZoneDef, playerCp: number): number {
 
 // Why "Start Hunt" is not available for this zone + depth right now (a locale key + vars), or null when it is.
 export function startBlockedReason(save: SaveData, zone: HuntingZoneDef, depth: HuntingDepth, playerCp: number): { key: string; vars?: Record<string, number> } | null {
-  if (!isZoneUnlocked(zone, save.highestDungeonFloor)) return { key: 'hunting.startLocked', vars: { n: zone.unlockFloor } };
+  if (!isZoneOpen(zone, save.highestDungeonFloor, playerLevel(save.xp))) return zoneLockedText(zone);
   if (!isDepthUnlocked(zone, depth, playerCp)) return { key: 'hunting.startNeedCp', vars: { n: recommendedCpForDepth(zone, depth) } };
   if (save.pendingHuntReward) return { key: 'hunting.startClaimFirst' };
   if (save.activeOreId || save.activeWoodId) return { key: 'hunting.startBusy' };

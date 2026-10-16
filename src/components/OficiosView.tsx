@@ -66,7 +66,7 @@ export default function OficiosView({
 
         <div className="oficios-grid">
           {category === 'potions'
-            ? POTION_RECIPES.filter((recipe) => potionRecipeInTier(recipe, save.highestDungeonFloor)).map((recipe) => {
+            ? POTION_RECIPES.filter((recipe) => potionRecipeInTier(recipe, save.highestDungeonFloor, playerLevel(save.xp))).map((recipe) => {
                 const key = potionRecipeKey(recipe);
                 const consumable = getConsumable(recipe.id)!;
                 const bagFull = applyCraftPotion(save, key).reason === 'bag';

@@ -1,5 +1,5 @@
 import { ConsumableId } from './consumables';
-import { HUNTING_ZONES, isZoneUnlocked } from './huntingZones';
+import { HUNTING_ZONES, isZoneOpen } from './huntingZones';
 import { MaterialId } from './materials';
 
 export interface PotionRecipe {
@@ -16,17 +16,17 @@ export interface PotionRecipe {
 
 export const potionRecipeKey = (r: PotionRecipe): string => r.key ?? r.id;
 
-// The best Hunting zone the hero has opened, 1..4 (the order of HUNTING_ZONES is the order they unlock in).
-export function bestZoneTier(highestDungeonFloor: number): number {
+// The best Hunting zone the hero has opened (Dungeon floor AND hero level), 1..4 (the order of HUNTING_ZONES is the order they unlock in).
+export function bestZoneTier(highestDungeonFloor: number, heroLevel: number): number {
   let tier = 1;
   HUNTING_ZONES.forEach((z, i) => {
-    if (isZoneUnlocked(z, highestDungeonFloor)) tier = i + 1;
+    if (isZoneOpen(z, highestDungeonFloor, heroLevel)) tier = i + 1;
   });
   return tier;
 }
 
 // Can the hero make this recipe now as far as the zone tier goes? (Every recipe without a tier always can.)
-export const potionRecipeInTier = (r: PotionRecipe, highestDungeonFloor: number): boolean => r.zoneTier === undefined || r.zoneTier === bestZoneTier(highestDungeonFloor);
+export const potionRecipeInTier = (r: PotionRecipe, highestDungeonFloor: number, heroLevel: number): boolean => r.zoneTier === undefined || r.zoneTier === bestZoneTier(highestDungeonFloor, heroLevel);
 
 // Alchemy consumables — Garden herbs are the primary ingredient, tying the two systems together
 // (see garden.ts). Unlike Shop potions (flat gold, always available), these scale with how much

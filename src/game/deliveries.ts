@@ -1,4 +1,4 @@
-import { HUNTING_ZONES, isZoneUnlocked } from './huntingZones';
+import { HUNTING_ZONES, isZoneOpen } from './huntingZones';
 import { EXPEDITION_TICKET_SKIP_MS, ConsumableId } from './consumables';
 import { playerLevel, SaveData } from './engine';
 import { PLANTS } from './garden';
@@ -172,7 +172,7 @@ interface Context {
 const HIGHER_TIER_MIN_LEVEL = 25; // matches ORE_TIERS/WOOD_TIERS' 3rd entry (silver/ebony_wood)
 function buildContext(save: SaveData): Context {
   const available = new Set<MaterialId>();
-  for (const z of HUNTING_ZONES) if (isZoneUnlocked(z, save.highestDungeonFloor)) for (const d of z.drops) available.add(d.material);
+  for (const z of HUNTING_ZONES) if (isZoneOpen(z, save.highestDungeonFloor, playerLevel(save.xp))) for (const d of z.drops) available.add(d.material);
   const garden = skillLevel(save.skillXp.gardening, 'gardening');
   for (const p of PLANTS) if (garden >= p.requiredLevel) available.add(p.material);
   const mining = skillLevel(save.skillXp.mining, 'mining');

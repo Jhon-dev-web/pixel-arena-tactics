@@ -70,6 +70,9 @@ export interface HuntZoneCombatCfg {
   depthMult: number; // shared hp/dmg multiplier for the chosen depth
   goldPerHour: number;
   xpPerHour: number; // already includes the depth's xpMultiplier
+  // Rodada 22: extra XP per sub-level above 1 (0.02 = +2% a sub-level, +18% at 10), 0 / absent for every zone but the last. Applied to the fight time of each WON fight, by the
+  // sub-level of the enemy that was defeated (a promotion win counts at the new level), so a hero that only reaches sub-level 3 earns +4% and no more.
+  xpPerSubLevel?: number;
   drops: HuntingDrop[];
   uniques?: HuntingUnique[];
   depth: HuntingDepth;
@@ -151,6 +154,9 @@ export interface HuntProgress {
 export interface HuntPromotionCfg {
   maxLevel: number;
   requiredWins: (ceiling: number) => number; // wins needed AT `ceiling` before attempting ceiling + 1
+  // Rodada 22: may the hero try sub-level `next`? Absent = always. A zone with a CP gate (huntingZones.ts subLevelCpRequired) answers false while the hero's CP is under it: the wins keep
+  // counting, the attempt waits (no fight is spent on it) until the CP is there.
+  allowed?: (next: number) => boolean;
 }
 
 export interface HuntSessionResult {
@@ -162,6 +168,7 @@ export interface HuntSessionResult {
   defeats: number; // fights lost this session (promotion losses included) - display only
   potionsUsed: HuntPotionStock;
   fightTimeUsedMs: number; // total ms across every COMPLETED (won) fight — the only time that earns reward
+  xpFightMs: number; // the same fight time weighted by the XP of its sub-level (equal to fightTimeUsedMs for a zone without xpPerSubLevel)
   xpReady: number;
   goldReady: number;
   drops: Partial<Record<MaterialId, number>>;
@@ -210,7 +217,8 @@ export function simulateHuntingSession(
   let timeLeft = sessionMs;
   let fightTimeUsedMs = 0;
   let fortuneFightMs = 0; // fight time that ended inside a Fortune Tonic window (extra gold)
-  let knowledgeFightMs = 0; // fight time that ended inside a Knowledge Elixir window (extra XP)
+  let xpFightMs = 0; // fight time x the XP of the sub-level it was won at (zoneCfg.xpPerSubLevel)
+  let knowledgeXpFightMs = 0; // the same, for the part inside a Knowledge Elixir window
   let potionCooldownUntil = 0;
   let ceiling = Math.min(promotion.maxLevel, Math.max(1, Math.floor(start.ceiling)));
   let promotionWins = ceiling >= promotion.maxLevel ? 0 : Math.max(0, Math.floor(start.promotionWins));
@@ -241,6 +249,17 @@ export function simulateHuntingSession(
     for (const u of zoneCfg.uniques ?? []) {
       if (uniqueRng() < u.chance * economicFraction * (build.uniqueMult ?? 1)) uniques.push(rollUniqueDrop(u.itemId, uniqueRng));
     }
+  };
+
+  // A won fight of `fightMs` at `subLevel`: its time goes to the reward (fightTimeUsedMs), to the Fortune / Knowledge windows it ended in, and weighted by the sub-level's XP.
+  // `timeLeft` is already reduced by the fight, so sessionMs - timeLeft is the moment it ended.
+  const creditFight = (fightMs: number, subLevel: number) => {
+    fightTimeUsedMs += fightMs;
+    const at = sessionMs - timeLeft;
+    const weight = 1 + Math.max(0, zoneCfg.xpPerSubLevel ?? 0) * (Math.max(1, subLevel) - 1);
+    xpFightMs += fightMs * weight;
+    if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, at)) fortuneFightMs += fightMs;
+    if (timeline?.knowledgeWindows && inRelativeWindows(timeline.knowledgeWindows, at)) knowledgeXpFightMs += fightMs * weight; // fight time that ended inside a Knowledge Elixir window (extra XP)
   };
 
   const tryAutoPotion = (now: number, hpRef: { hp: number }) => {
@@ -407,15 +426,13 @@ export function simulateHuntingSession(
   // next loop iteration is a single full-HP promotion attempt against ceiling + 1. It costs real session
   // time like any fight, only pays out (and promotes) if won, and either way restarts the win counter.
   while (timeLeft > 0) {
-    if (ceiling < promotion.maxLevel && promotionWins >= promotion.requiredWins(ceiling)) {
+    if (ceiling < promotion.maxLevel && promotionWins >= promotion.requiredWins(ceiling) && (promotion.allowed?.(ceiling + 1) ?? true)) {
       const r = attempt(ceiling + 1, build.playerMax);
       if (!r) break;
       promotionWins = 0;
       if (r.win) {
         kills++;
-        fightTimeUsedMs += r.timeMs;
-        if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, sessionMs - timeLeft)) fortuneFightMs += r.timeMs;
-        if (timeline?.knowledgeWindows && inRelativeWindows(timeline.knowledgeWindows, sessionMs - timeLeft)) knowledgeFightMs += r.timeMs;
+        creditFight(r.timeMs, ceiling + 1);
         rollDropsForOneClear(ceiling + 1, r.timeMs);
         ceiling++;
         promotions++;
@@ -429,9 +446,7 @@ export function simulateHuntingSession(
     if (!r) break;
     if (r.win) {
       kills++;
-      fightTimeUsedMs += r.timeMs;
-      if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, sessionMs - timeLeft)) fortuneFightMs += r.timeMs;
-      if (timeline?.knowledgeWindows && inRelativeWindows(timeline.knowledgeWindows, sessionMs - timeLeft)) knowledgeFightMs += r.timeMs;
+      creditFight(r.timeMs, ceiling);
       rollDropsForOneClear(ceiling, r.timeMs);
       if (ceiling < promotion.maxLevel) promotionWins++;
     } else {
@@ -451,7 +466,8 @@ export function simulateHuntingSession(
     defeats,
     potionsUsed,
     fightTimeUsedMs,
-    xpReady: Math.floor((hours + (knowledgeFightMs / (3600 * 1000)) * (timeline?.xpBuffPct ?? 0)) * zoneCfg.xpPerHour * (1 + (build.xpBonusPct ?? 0) / 100)),
+    xpFightMs,
+    xpReady: Math.floor(((xpFightMs + knowledgeXpFightMs * (timeline?.xpBuffPct ?? 0)) / (3600 * 1000)) * zoneCfg.xpPerHour * (1 + (build.xpBonusPct ?? 0) / 100)),
     goldReady: Math.floor((hours * (1 + (build.goldBonusPct ?? 0) / 100) + (fortuneFightMs / (3600 * 1000)) * (timeline?.fortuneGoldPct ?? 0)) * zoneCfg.goldPerHour),
     drops,
     uniques,

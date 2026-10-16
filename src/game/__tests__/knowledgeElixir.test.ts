@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hero } from '../../../scripts/sim/duel';
-import { buildHuntSession, computeHuntingStatus, defaultSave, normalizeSave, SaveData } from '../engine';
+import { buildHuntSession, computeHuntingStatus, defaultSave, normalizeSave, SaveData, xpToReachLevel } from '../engine';
 import { applyElixir } from '../elixirs';
 import { applyHuntClaim, applyHuntStart, applyHuntStop } from '../huntLifecycle';
 import { applyCraftPotion } from '../craftActions';
@@ -120,12 +120,14 @@ describe('the recipe: one per Hunting zone tier, only the best open zone is list
   });
 
   it('bestZoneTier follows the zone unlock floors, and a recipe of another tier is neither listed nor craftable', () => {
-    expect([0, 25, 26, 50, 51, 75, 76, 100].map(bestZoneTier)).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
+    expect([0, 25, 26, 50, 51, 75, 76, 100].map((floor) => bestZoneTier(floor, 100))).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
+    // Rodada 22: zone 3 also asks hero level 40 and zone 4 level 60
+    expect([bestZoneTier(60, 39), bestZoneTier(60, 40), bestZoneTier(90, 59), bestZoneTier(90, 60)]).toEqual([2, 3, 3, 4]);
     const rich = (floor: number) => mats({ ...strong(floor), gold: 1e6 }, { moon_lily: 9, silver_sage: 9, dusk_orchid: 9, elder_root: 9, demon_core: 9, corrupted_crystal: 9, fiend_horn: 9, blood_heart: 9 });
     for (const [floor, tier] of [[10, 1], [30, 2], [60, 3], [90, 4]] as const) {
       const s = rich(floor);
       for (const r of recipes) {
-        expect(potionRecipeInTier(r, floor), `${floor}/${r.zoneTier}`).toBe(r.zoneTier === tier);
+        expect(potionRecipeInTier(r, floor, 60), `${floor}/${r.zoneTier}`).toBe(r.zoneTier === tier);
         const res = applyCraftPotion(s, potionRecipeKey(r));
         if (r.zoneTier === tier) {
           expect(res.ok).toBe(true);
@@ -144,7 +146,7 @@ describe('the recipe: one per Hunting zone tier, only the best open zone is list
     const s = { ...strong(60), gold: r.cost };
     expect(applyCraftPotion(s, potionRecipeKey(r)).reason).toBe('materials');
     expect(applyCraftPotion(mats({ ...s, gold: r.cost - 1 }, { dusk_orchid: 1, silver_sage: 2, demon_core: 2 }), potionRecipeKey(r)).reason).toBe('gold');
-    expect(applyCraftPotion(mats({ ...s, xp: 0 }, { dusk_orchid: 1, silver_sage: 2, demon_core: 2 }), potionRecipeKey(r)).reason).toBe('level');
+    expect(applyCraftPotion(mats({ ...s, xp: xpToReachLevel(45) }, { dusk_orchid: 1, silver_sage: 2, demon_core: 2 }), potionRecipeKey(r)).reason).toBe('level'); // zone 3 is open at 40, the recipe asks 50
   });
 });
 

@@ -105,6 +105,15 @@ export interface HuntingZoneDef {
   drops: HuntingDrop[];
   offlineCapHours: number;
   unlockFloor: number;
+  // Rodada 22: the hero level that also opens the zone (in addition to the Dungeon floor). Absent = the floor alone opens it. Zone 3 asks level 40 and zone 4 level 60, so a hero
+  // that bought gear cannot walk into the last zones on day 3: the XP of the League is paced by levels, not by the Dungeon floor alone.
+  unlockLevel?: number;
+  // Rodada 22: a zone whose sub-levels pay more XP the deeper they go (+xpPerSubLevel per sub-level above 1, so +18% at sub-level 10 with 0.02) and that asks CP for each of them: the hero
+  // is PROMOTED to sub-level N only while his CP is at least recommendedCpForDepth x subLevelCpGrowth^(N - 1) (subLevelCpRequired), so the later sub-levels need the CP of tier 5 and 6 gear.
+  // The fights themselves keep the global sub-level growth (they are easy for a hero over the CP): the gate is the CP, not a lucky win that would trap the hero on a level he cannot farm.
+  // Absent = the usual flat XP and no CP gate.
+  xpPerSubLevel?: number;
+  subLevelCpGrowth?: number;
   // Sub-level-1, Raso-depth enemy stats — real combat stats (see huntCombat.ts), not decorative.
   // Used as-is for Denso/Profundo (scaled by the depth's cpMultiplier) and for Raso too, UNLESS the
   // zone defines its own shallow* override below.
@@ -188,6 +197,12 @@ export function recommendedCpForDepth(zone: HuntingZoneDef, depth: HuntingDepth)
 
 export function isDepthUnlocked(zone: HuntingZoneDef, depth: HuntingDepth, playerCp: number): boolean {
   return playerCp >= recommendedCpForDepth(zone, depth);
+}
+
+// The CP a hero needs to be promoted to `subLevel` of this zone at this depth: 0 for a zone without a gate and for sub-level 1.
+export function subLevelCpRequired(zone: HuntingZoneDef, depth: HuntingDepth, subLevel: number): number {
+  if (!zone.subLevelCpGrowth || !(subLevel > 1)) return 0;
+  return Math.round(recommendedCpForDepth(zone, depth) * Math.pow(zone.subLevelCpGrowth, Math.floor(subLevel) - 1));
 }
 
 // Shared sub-level sanitizer: non-finite -> 1, otherwise floored and clamped to 1..T.hunting.subLevels.
@@ -310,6 +325,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     ],
     offlineCapHours: 6,
     unlockFloor: 51,
+    unlockLevel: 40,
     baseEnemyHp: 4800,
     baseEnemyDmg: 19,
   },
@@ -319,7 +335,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'blood_abomination',
     cp: 1607,
     goldPerHour: 12,
-    xpPerHour: 13000,
+    xpPerHour: 10000,
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.12, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.036, qty: 1 },
@@ -333,6 +349,9 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     ],
     offlineCapHours: 6,
     unlockFloor: 76,
+    unlockLevel: 60,
+    xpPerSubLevel: 0.02,
+    subLevelCpGrowth: 1.18,
     baseEnemyHp: 7200,
     baseEnemyDmg: 28,
   },
@@ -342,10 +361,21 @@ export function getHuntingZone(id: string): HuntingZoneDef | undefined {
   return HUNTING_ZONES.find((z) => z.id === id);
 }
 
+// The Dungeon floor alone: the zone is DISCOVERED (it shows in save.unlockedHuntingZones, which only the floor feeds). Starting a hunt there also asks the hero level (isZoneOpen).
 export function isZoneUnlocked(zone: HuntingZoneDef, highestDungeonFloor: number): boolean {
   return highestDungeonFloor >= zone.unlockFloor;
 }
 
+// Can a hero of this Dungeon floor AND level start a hunt in the zone? (Rodada 22: zone 3 asks level 40, zone 4 level 60, besides the floor.) Every place that starts a hunt, lists what
+// a hero can hunt or counts what the zones drop for him asks this, never isZoneUnlocked.
+export function isZoneOpen(zone: HuntingZoneDef, highestDungeonFloor: number, heroLevel: number): boolean {
+  return highestDungeonFloor >= zone.unlockFloor && heroLevel >= (zone.unlockLevel ?? 0);
+}
+
 export function unlockedZoneIds(highestDungeonFloor: number): string[] {
   return HUNTING_ZONES.filter((z) => isZoneUnlocked(z, highestDungeonFloor)).map((z) => z.id);
+}
+
+export function openZoneIds(highestDungeonFloor: number, heroLevel: number): string[] {
+  return HUNTING_ZONES.filter((z) => isZoneOpen(z, highestDungeonFloor, heroLevel)).map((z) => z.id);
 }
