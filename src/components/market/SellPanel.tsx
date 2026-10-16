@@ -12,11 +12,12 @@ import { MARKET_RULES } from '../../../supabase/functions/_shared/market/rules';
 import { rarityDef } from '../../game/rarity';
 import { fmtNum, t } from '../../locales';
 import { mt } from '../../locales/market';
-import ItemCard, { ItemArt, ItemLike } from './ItemCard';
+import ItemCard, { ItemArt, ItemLike, frameOf } from './ItemCard';
+import { Button, Chip, Panel, SelectField, StatList, StatRow } from '../ui';
 import { SolIcon } from './icons';
 import { fmtSol, parsePriceInput } from './format';
 import UsdLine from './UsdLine';
-import { itemName, materialFrame } from './names';
+import { itemName } from './names';
 
 const itemOf = (e: SellableEntry): ItemLike => {
   const cert = getCertificate(e.certificateId);
@@ -190,42 +191,33 @@ const optionLabel = (g: SellGroup): string => {
 /** The main area of the Sell tab: everything the server's certificates say can be sold, as tiles to pick from. */
 export function SellPicker({ flow }: { flow: SellFlow }) {
   return (
-    <div className="mk-panel">
-      <h3 className="mk-h">{mt('sell.yourItems')}</h3>
-      <p className="mk-note">{mt('rules.certified')}</p>
-      {!flow.hasWallet && <p className="mk-status error">{mt('sell.needWallet')}</p>}
-      {flow.socketed > 0 && <p className="mk-note">{mt('sell.takeGemsOut', { n: flow.socketed })}</p>}
-      {flow.groups.some((g) => g.material) && <p className="mk-note">{mt('sell.materialsNote')}</p>}
-      {flow.groups.length === 0 && <p className="mk-note">{mt('sell.empty')}</p>}
+    <Panel className="mk-panel" title={mt('sell.yourItems')}>
+      <p className="ui-note">{mt('rules.certified')}</p>
+      {!flow.hasWallet && <p className="ui-alert bad">{mt('sell.needWallet')}</p>}
+      {flow.socketed > 0 && <p className="ui-note">{mt('sell.takeGemsOut', { n: flow.socketed })}</p>}
+      {flow.groups.some((g) => g.material) && <p className="ui-note">{mt('sell.materialsNote')}</p>}
+      {flow.groups.length === 0 && <p className="ui-note">{mt('sell.empty')}</p>}
       <ul className="mk-grid mk-tiles">
         {flow.groups.map((g) => {
           const on = flow.picked === g.key;
-          const rar = g.material ? materialFrame(g.material.id) : g.item.kind === 'gold_pouch' ? 'common' : g.item.rarity ?? 'common';
+          const rar = frameOf(g.item);
           return (
             <li key={g.key}>
-              <button className={`mk-card mk-tile${g.item.kind === 'gold_pouch' ? ' pouch' : ''}${on ? ' picked' : ''}`} onClick={() => flow.setPicked(on ? null : g.key)} aria-pressed={on} data-ui>
-                <span className="mk-card-top">
+              <button className={`ui-item mk-tile${g.item.kind === 'gold_pouch' ? ' pouch' : ''}${on ? ' picked selected' : ''}`} onClick={() => flow.setPicked(on ? null : g.key)} aria-pressed={on} data-ui>
+                <span className="mk-tile-top">
                   <ItemArt item={g.item} qty={g.material ? g.material.stack : g.entries.length} />
-                  <span className="mk-card-id">
-                    <span className={`mk-item-name r-${rar}`}>{itemName(g.item)}</span>
-                    {g.item.kind !== 'gold_pouch' && g.item.rarity ? <span className={`rarity-line r-${rar}`}>{t(`rarity.${rarityDef(g.item.rarity).nameKey}`)}</span> : null}
+                  <span className="mk-tile-id">
+                    <span className={`mk-item-name r-${g.item.kind === 'gold_pouch' ? 'common' : rar}`}>{itemName(g.item)}</span>
+                    {g.item.kind !== 'gold_pouch' && g.item.rarity ? <span className={`ui-item-rarity r-${rar}`}>{t(`rarity.${rarityDef(g.item.rarity).nameKey}`)}</span> : null}
+                    {g.item.tier ? <Chip>{mt('browse.tierN', { n: g.item.tier })}</Chip> : g.material ? <Chip tone="gold">{mt('browse.tradeable')}</Chip> : null}
                   </span>
-                  {g.item.tier ? (
-                    <span className="mk-card-tags">
-                      <span className="mk-tag">{mt('browse.tierN', { n: g.item.tier })}</span>
-                    </span>
-                  ) : g.material ? (
-                    <span className="mk-card-tags">
-                      <span className="mk-tag lot">{mt('browse.tradeable')}</span>
-                    </span>
-                  ) : null}
                 </span>
               </button>
             </li>
           );
         })}
       </ul>
-    </div>
+    </Panel>
   );
 }
 
@@ -236,88 +228,77 @@ export function OfferForm({ flow }: { flow: SellFlow }) {
   const pouch = flow.group?.item.kind === 'gold_pouch';
   return (
     <div className="mk-form">
-      <label className="mk-field">
-        <span>{mt('sell.form.item')}</span>
-        <select value={flow.picked ?? ''} onChange={(e) => flow.setPicked(e.target.value || null)} disabled={flow.busy}>
+      <div className="ui-labelled">
+        <span className="ui-labelled-caption">{mt('sell.form.item')}</span>
+        <SelectField label={mt('sell.form.item')} value={flow.picked ?? ''} onChange={(e) => flow.setPicked(e.target.value || null)} disabled={flow.busy}>
           <option value="">{mt('sell.form.choose')}</option>
           {flow.groups.map((g) => (
             <option key={g.key} value={g.key}>
               {optionLabel(g)}
             </option>
           ))}
-        </select>
-      </label>
+        </SelectField>
+      </div>
       {flow.group && <ItemCard item={flow.group.item} compact />}
       {flow.isLot && (
-        <div className="mk-field">
-          <span>{mt('sell.form.lotQty')}</span>
+        <div className="ui-labelled">
+          <span className="ui-labelled-caption">{mt('sell.form.lotQty')}</span>
           <span className="mk-lot-qty">
-            <button className="mk-btn small" onClick={() => flow.setQty(flow.qty - 1)} disabled={flow.qty <= 1 || flow.busy} aria-label="-" data-ui>
+            <Button size="sm" onClick={() => flow.setQty(flow.qty - 1)} disabled={flow.qty <= 1 || flow.busy} aria-label="-">
               {'−'}
-            </button>
-            <input inputMode="numeric" value={flow.qty} onChange={(e) => flow.setQty(Math.floor(Number(e.target.value.replace(/[^0-9]/g, ''))) || 1)} maxLength={5} autoComplete="off" disabled={flow.busy} aria-label={mt('sell.form.lotQty')} />
-            <button className="mk-btn small" onClick={() => flow.setQty(flow.qty + 1)} disabled={flow.qty >= flow.maxQty || flow.busy} aria-label="+" data-ui>
+            </Button>
+            <span className="ui-field mk-qty-field">
+              <input inputMode="numeric" value={flow.qty} onChange={(e) => flow.setQty(Math.floor(Number(e.target.value.replace(/[^0-9]/g, ''))) || 1)} maxLength={5} autoComplete="off" disabled={flow.busy} aria-label={mt('sell.form.lotQty')} />
+            </span>
+            <Button size="sm" onClick={() => flow.setQty(flow.qty + 1)} disabled={flow.qty >= flow.maxQty || flow.busy} aria-label="+">
               {'+'}
-            </button>
-            <button className="mk-btn small" onClick={() => flow.setQty(flow.maxQty)} disabled={flow.qty >= flow.maxQty || flow.busy} data-ui>
+            </Button>
+            <Button size="sm" onClick={() => flow.setQty(flow.maxQty)} disabled={flow.qty >= flow.maxQty || flow.busy}>
               {mt('sell.form.maxBtn')}
-            </button>
-            <span className="mk-note">{mt('sell.form.max', { n: flow.maxQty })}</span>
+            </Button>
+            <span className="ui-note">{mt('sell.form.max', { n: flow.maxQty })}</span>
           </span>
         </div>
       )}
       {pouch && (
-        <div className="mk-field">
-          <span>{mt('sell.form.quantity')}</span>
+        <div className="ui-labelled">
+          <span className="ui-labelled-caption">{mt('sell.form.quantity')}</span>
           <span className="mk-qty-row">
-            <button className="mk-btn small" onClick={() => flow.setQty(flow.qty - 1)} disabled={flow.qty <= 1 || flow.busy} aria-label="-" data-ui>
+            <Button size="sm" onClick={() => flow.setQty(flow.qty - 1)} disabled={flow.qty <= 1 || flow.busy} aria-label="-">
               {'−'}
-            </button>
+            </Button>
             <b>{flow.qty}</b>
-            <button className="mk-btn small" onClick={() => flow.setQty(flow.qty + 1)} disabled={flow.qty >= flow.maxQty || flow.busy} aria-label="+" data-ui>
+            <Button size="sm" onClick={() => flow.setQty(flow.qty + 1)} disabled={flow.qty >= flow.maxQty || flow.busy} aria-label="+">
               {'+'}
-            </button>
-            <span className="mk-note">{mt('sell.form.max', { n: flow.maxQty })}</span>
+            </Button>
+            <span className="ui-note">{mt('sell.form.max', { n: flow.maxQty })}</span>
           </span>
         </div>
       )}
-      <label className="mk-field">
-        <span>
+      <label className="ui-labelled">
+        <span className="ui-labelled-caption">
           {flow.isLot ? mt('sell.form.unitMat') : mt('sell.form.unit')} <small>(SOL)</small>
         </span>
-        <span className="mk-price-input">
+        <span className="ui-field">
           <SolIcon />
           <input inputMode="decimal" value={flow.priceText} onChange={(e) => flow.setPriceText(e.target.value)} placeholder={flow.isLot ? '0,000000' : '0,000'} maxLength={11} autoComplete="off" disabled={flow.busy} />
         </span>
       </label>
-      <p className="mk-note">{mt(flow.isLot ? 'sell.priceHintLot' : 'sell.priceHint', { min: fmtSol(MARKET_MIN_PRICE_LAMPORTS), max: fmtSol(MARKET_MAX_PRICE_LAMPORTS) })}</p>
-      {flow.isLot && <p className="mk-note">{mt('sell.wholeLotNote', { n: fmtNum(MARKET_RULES.maxMaterialQtyPerListing) })}</p>}
-      <div className="mk-calc">
-        {flow.lot && (
-          <>
-            <span>{mt('sell.form.lotTotal')}</span>
-            <b>
-              <SolIcon /> {fmtSol(flow.lot.totalLamports)}
-            </b>
-          </>
-        )}
-        <span>{mt('sell.form.fee', { pct: flow.feePercent })}</span>
-        <b>
-          <SolIcon /> {fmtSol(total?.fee ?? 0)}
-        </b>
-        <span className="mk-receive">{mt('sell.form.receive')}</span>
-        <b className="mk-receive">
-          <SolIcon /> {fmtSol(total?.get ?? 0)}
-        </b>
-        {total && <UsdLine lamports={total.get} solUsd={flow.solUsd} className="mk-receive" />}
-      </div>
-      {!flow.hasWallet && <p className="mk-status error">{mt('sell.needWallet')}</p>}
-      {flow.armed && <p className="mk-status">{mt('sell.confirmHint')}</p>}
-      <button className="mk-btn primary mk-publish" disabled={!flow.group || !flow.valid || flow.busy || !flow.hasWallet} onClick={() => void flow.publish()} data-ui>
+      <p className="ui-note">{mt(flow.isLot ? 'sell.priceHintLot' : 'sell.priceHint', { min: fmtSol(MARKET_MIN_PRICE_LAMPORTS), max: fmtSol(MARKET_MAX_PRICE_LAMPORTS) })}</p>
+      {flow.isLot && <p className="ui-note">{mt('sell.wholeLotNote', { n: fmtNum(MARKET_RULES.maxMaterialQtyPerListing) })}</p>}
+      <StatList className="mk-calc">
+        {flow.lot && <StatRow label={mt('sell.form.lotTotal')} value={<><SolIcon /> {fmtSol(flow.lot.totalLamports)}</>} tone="gold" />}
+        <StatRow label={mt('sell.form.fee', { pct: flow.feePercent })} value={<><SolIcon /> {fmtSol(total?.fee ?? 0)}</>} tone="gold" />
+        <StatRow label={mt('sell.form.receive')} value={<><SolIcon /> {fmtSol(total?.get ?? 0)}</>} tone="good" />
+      </StatList>
+      {total && <UsdLine lamports={total.get} solUsd={flow.solUsd} className="mk-receive" />}
+      {!flow.hasWallet && <p className="ui-alert bad">{mt('sell.needWallet')}</p>}
+      {flow.armed && <p className="ui-alert">{mt('sell.confirmHint')}</p>}
+      <Button variant="primary" block disabled={!flow.group || !flow.valid || flow.busy || !flow.hasWallet} onClick={() => void flow.publish()}>
         {flow.busy ? mt('loading') : flow.armed ? mt('sell.confirm') : mt('sell.form.publish')}
-      </button>
+      </Button>
       {flow.message && (
-        <p className={`mk-status${flow.message.error ? ' error' : ''}`} role="status">
+        <p className={`ui-alert${flow.message.error ? ' bad' : ' good'}`} role="status">
           {flow.message.text}
         </p>
       )}
@@ -328,36 +309,35 @@ export function OfferForm({ flow }: { flow: SellFlow }) {
 /** My live offers, each with its price, status, expiry and a cancel button. */
 export function MyOffers({ flow }: { flow: SellFlow }) {
   return (
-    <div className="mk-panel">
-      <h3 className="mk-h">{mt('tabs.offers')}</h3>
+    <Panel className="mk-panel" title={mt('tabs.offers')}>
       {flow.message && (
-        <p className={`mk-status${flow.message.error ? ' error' : ''}`} role="status">
+        <p className={`ui-alert${flow.message.error ? ' bad' : ' good'}`} role="status">
           {flow.message.text}
         </p>
       )}
-      {flow.live.length === 0 && <p className="mk-note">{mt('sell.noListings')}</p>}
+      {flow.live.length === 0 && <p className="ui-note">{mt('sell.noListings')}</p>}
       <ul className="mk-list">
         {flow.live.map((l) => (
-          <li key={l.id} className="mk-listing">
-            <div className="mk-listing-head static">
+          <li key={l.id} className="mk-listing ui-item">
+            <div className="mk-listing-head">
               <ItemCard item={l.item} compact />
               <span className="mk-price">
                 <span>
                   <SolIcon /> {fmtSol(l.priceLamports)} <small>SOL</small>
                 </span>
-                <span className={`mk-tag${l.status === 'reserved' ? ' warn' : ''}`}>{mt(`sell.status.${l.status}`)}</span>
+                <Chip tone={l.status === 'reserved' ? 'gold' : 'plain'}>{mt(`sell.status.${l.status}`)}</Chip>
               </span>
             </div>
             <div className="mk-listing-more">
-              <span className="mk-note">{mt('sell.expires', { d: Math.max(0, Math.ceil((Date.parse(l.expiresAt) - Date.now()) / 86_400_000)) })}</span>
-              <button className="mk-btn" disabled={flow.busy || l.status === 'reserved'} onClick={() => void flow.cancel(l.id)} data-ui>
+              <span className="ui-note">{mt('sell.expires', { d: Math.max(0, Math.ceil((Date.parse(l.expiresAt) - Date.now()) / 86_400_000)) })}</span>
+              <Button size="sm" disabled={flow.busy || l.status === 'reserved'} onClick={() => void flow.cancel(l.id)}>
                 {mt('sell.cancel')}
-              </button>
+              </Button>
             </div>
           </li>
         ))}
       </ul>
-    </div>
+    </Panel>
   );
 }
 
@@ -368,25 +348,11 @@ export function MarketSummary({ overview, feePercent }: { overview: MarketOvervi
   const volume = soldToday.reduce((n, s) => n + s.priceLamports, 0);
   const active = (overview?.listings ?? []).filter((l) => l.status === 'open' || l.status === 'reserved').length;
   return (
-    <dl className="mk-stats">
-      <div>
-        <dt>{mt('summary.active')}</dt>
-        <dd>{active}</dd>
-      </div>
-      <div>
-        <dt>{mt('summary.soldToday')}</dt>
-        <dd>{soldToday.length}</dd>
-      </div>
-      <div>
-        <dt>{mt('summary.volume')}</dt>
-        <dd>
-          <SolIcon /> {fmtSol(volume)}
-        </dd>
-      </div>
-      <div>
-        <dt>{mt('summary.fee')}</dt>
-        <dd>{feePercent}%</dd>
-      </div>
-    </dl>
+    <StatList className="mk-stats">
+      <StatRow label={mt('summary.active')} value={active} tone="gold" />
+      <StatRow label={mt('summary.soldToday')} value={soldToday.length} tone="gold" />
+      <StatRow label={mt('summary.volume')} value={<><SolIcon /> {fmtSol(volume)}</>} tone="gold" />
+      <StatRow label={mt('summary.fee')} value={`${feePercent}%`} tone="gold" />
+    </StatList>
   );
 }

@@ -75,8 +75,8 @@ export default function LotCard({
       <UsdLine lamports={listing.price_lamports} solUsd={solUsd} />
       {expanded && (
         <div className="mk-lot-more">
-          <p className="mk-note">{mt('browse.wholeLot', { n: fmtNum(quantity) })}</p>
-          <p className="mk-note">
+          <p className="ui-note">{mt('browse.wholeLot', { n: fmtNum(quantity) })}</p>
+          <p className="ui-note">
             {mt('rules.fee', { pct: feePercent })}: {fmtSol(split.feeLamports)} SOL. {mt('pay.toSeller')}: {fmtSol(split.sellerLamports)} SOL.
           </p>
           <Button variant="primary" size="sm" block disabled={reserved || busy} onClick={onReserve}>

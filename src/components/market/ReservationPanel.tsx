@@ -8,6 +8,7 @@ import { SolIcon } from './icons';
 import { clock, copyText, fmtSol, msLeft, shortAddress } from './format';
 import UsdLine from './UsdLine';
 import { Warnings } from './WalletPanel';
+import { Button, Panel, StatList, StatRow, TextField } from '../ui';
 
 interface PayState {
   signature: string;
@@ -115,29 +116,20 @@ export default function ReservationPanel({
   ];
 
   return (
-    <div className="mk-panel">
-      <h3 className="mk-h">{mt('pay.title')}</h3>
+    <Panel className="mk-panel" title={mt('pay.title')}>
       <Warnings chain={res.chain} />
-      <div className="mk-summary">
-        <div>
-          <span>{mt('pay.total')}</span>
-          <b>
-            <SolIcon /> {fmtSol(res.priceLamports)} SOL
-          </b>
-        </div>
+      <StatList className="mk-summary">
+        <StatRow label={mt('pay.total')} value={<><SolIcon /> {fmtSol(res.priceLamports)} SOL</>} tone="gold" />
         {lines.map((l) => (
-          <div key={l.key}>
-            <span>{l.label}</span>
-            <b>{fmtSol(l.lamports)} SOL</b>
-          </div>
+          <StatRow key={l.key} label={l.label} value={`${fmtSol(l.lamports)} SOL`} />
         ))}
-      </div>
+      </StatList>
       <UsdLine lamports={res.priceLamports} solUsd={solUsd} />
 
-      <p className="mk-note">{mt('rules.feeExplain', { pct: res.chain.feePercent })}</p>
+      <p className="ui-note">{mt('rules.feeExplain', { pct: res.chain.feePercent })}</p>
 
       {sold ? (
-        <p className="mk-status ok" role="status">
+        <p className="ui-alert good" role="status">
           {bagFull ? mt('pay.soldWaiting') : mt('pay.sold')}
           {tx && (
             <>
@@ -149,15 +141,14 @@ export default function ReservationPanel({
           )}
         </p>
       ) : refund ? (
-        <p className="mk-status error" role="alert">
+        <p className="ui-alert bad" role="alert">
           {mt('pay.refundDue')}
         </p>
       ) : (
         <>
           <p className={`mk-timer${left <= 0 ? ' over' : ''}`}>{left > 0 ? mt('pay.timeLeft', { m, s }) : mt('pay.expired', { h: graceH })}</p>
-          <div className={`mk-leg${done ? ' done' : ''}`}>
-            <h4>{mt('pay.oneTx')}</h4>
-            <p className="mk-note">{mt('pay.oneTxHelp')}</p>
+          <Panel tone="inset" className={`mk-leg${done ? ' done' : ''}`} title={mt('pay.oneTx')}>
+            <p className="ui-note">{mt('pay.oneTxHelp')}</p>
             {lines.map((l) => (
               <div className="mk-kv" key={l.key}>
                 <span>
@@ -166,13 +157,13 @@ export default function ReservationPanel({
                 <code className="mk-address" title={l.to}>
                   {shortAddress(l.to)}
                 </code>
-                <button className="mk-btn small" onClick={() => void copyText(l.to)} data-ui>
+                <Button size="sm" onClick={() => void copyText(l.to)}>
                   {mt('copy')}
-                </button>
+                </Button>
               </div>
             ))}
             {done ? (
-              <p className="mk-status ok">
+              <p className="ui-alert good">
                 {mt('pay.done')}
                 {tx && (
                   <>
@@ -185,44 +176,45 @@ export default function ReservationPanel({
               </p>
             ) : (
               <>
-              <p className="mk-note">{mt('pay.checkWallet')}</p>
-              <button className="mk-btn primary" disabled={pay.busy || !walletAddress} onClick={() => void payFromWallet()} data-ui>
-                {pay.busy ? mt('pay.checking') : mt('pay.payFromWallet')}
-              </button>
-              <label className="mk-hash">
-                <span>{mt('pay.orPaste')}</span>
-                <input value={pay.signature} onChange={(e) => patch({ signature: e.target.value.trim() })} placeholder={mt('pay.hashPlaceholder')} maxLength={100} autoComplete="off" spellCheck={false} />
-              </label>
-              <button className="mk-btn" disabled={pay.busy || pay.signature.length < 40} onClick={() => void verify(pay.signature)} data-ui>
-                {pay.busy ? mt('pay.checking') : mt('pay.submit')}
-              </button>
+                <p className="ui-note">{mt('pay.checkWallet')}</p>
+                <Button variant="primary" block disabled={pay.busy || !walletAddress} onClick={() => void payFromWallet()}>
+                  {pay.busy ? mt('pay.checking') : mt('pay.payFromWallet')}
+                </Button>
+                <TextField
+                  label={mt('pay.orPaste')}
+                  value={pay.signature}
+                  onChange={(e) => patch({ signature: e.target.value.trim() })}
+                  placeholder={mt('pay.hashPlaceholder')}
+                  maxLength={100}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <Button block disabled={pay.busy || pay.signature.length < 40} onClick={() => void verify(pay.signature)}>
+                  {pay.busy ? mt('pay.checking') : mt('pay.submit')}
+                </Button>
               </>
             )}
             {pay.message && (
-              <p className={`mk-status${pay.error ? ' error' : ''}`} role="status">
+              <p className={`ui-alert${pay.error ? ' bad' : ''}`} role="status">
                 {pay.message}
               </p>
             )}
-          </div>
+          </Panel>
         </>
       )}
       {note && (
-        <p className="mk-status" role="status">
+        <p className="ui-alert" role="status">
           {note}
         </p>
       )}
       <div className="mk-row">
-        {!sold && !refund && (
-          <button className="mk-btn" onClick={() => void cancel()} data-ui>
-            {mt('pay.cancel')}
-          </button>
-        )}
+        {!sold && !refund && <Button onClick={() => void cancel()}>{mt('pay.cancel')}</Button>}
         {(sold || refund) && (
-          <button className="mk-btn primary" onClick={onClose} data-ui>
+          <Button variant="primary" onClick={onClose}>
             {mt('close')}
-          </button>
+          </Button>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

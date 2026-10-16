@@ -147,22 +147,32 @@ ${selector} {`) + 1; // at the start of a line: not inside a longer selector
   };
 
   it('an item name breaks only between words: break-word, never "anywhere", normal word-break, hyphenation of the language the screen declares', () => {
-    for (const sel of ['.mk-item-name', '.mk-note', '.mk-status', '.mk-notices-line']) {
+    for (const sel of ['.mk-item-name', '.mk-notices-line']) {
       const r = rule(sel);
       expect(r, sel).toContain('overflow-wrap: break-word;');
       expect(r, sel).toContain('word-break: normal;');
       expect(r, sel).toContain('hyphens: auto;');
       expect(r, sel).not.toContain('anywhere');
     }
-    expect(read('src/components/MarketScreen.tsx')).toMatch(/className="desktop-home mk-screen"[^>]*lang=\{activeLocale === 'en' \? 'en' : 'pt-BR'\}/);
-    // the title is smaller where the card is narrow, and a phone row never cuts a pouch's size with an ellipsis (3 lines)
-    expect(css).toMatch(/\.mk-card \.mk-item-name \{\s*font-size: var\(--fs-body\);/);
-    expect(css).toContain('-webkit-line-clamp: 3;');
+    // the notes and warnings of the market are the shared .ui-note / .ui-alert: they wrap the same way
+    const ui = read('src/ui/ui.css');
+    for (const sel of ['.ui-note', '.ui-alert']) {
+      const at = ui.indexOf(`
+${sel} {`) + 1;
+      expect(at, sel).toBeGreaterThan(0);
+      const r = ui.slice(at, ui.indexOf('}', at));
+      expect(r, sel).toContain('overflow-wrap: break-word;');
+      expect(r, sel).toContain('word-break: normal;');
+      expect(r, sel).toContain('hyphens: auto;');
+    }
+    expect(read('src/components/MarketScreen.tsx')).toMatch(/className="mk-screen"[^>]*lang=\{activeLocale === 'en' \? 'en' : 'pt-BR'\}/);
+    // the card title breaks between words too
+    expect(css).toMatch(/\.mk-card \.ui-item-name,\s*\.mk-item-name \{/);
   });
 
   it('a pouch card has a gold border and a shine that stops for people who asked for less motion', () => {
     const pouch = rule('.mk-card.pouch');
-    expect(pouch).toContain('border-color: #ffd76a;');
+    expect(pouch).toContain('border-color: var(--c-gold-300);');
     expect(css).toContain('@keyframes mk-pouch-shine');
     expect(rule('.mk-card.pouch::after')).toContain('animation: mk-pouch-shine');
     const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));

@@ -919,6 +919,9 @@
   font-size: var(--fs-small);
   line-height: var(--lh-body);
   color: var(--c-text-muted);
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 
 /* a narrow screen is a phone even when the pointer is reported as fine: the touch targets stay at 40 px */
@@ -939,11 +942,19 @@
   background: rgba(255, 213, 74, 0.08);
   border: var(--bw-thin) solid #8a6a1a;
   border-radius: var(--r-md);
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .ui-alert.bad {
   color: var(--c-bad);
   background: rgba(255, 107, 94, 0.09);
   border-color: #8a3a32;
+}
+.ui-alert.info {
+  color: var(--c-info);
+  background: rgba(46, 134, 222, 0.12);
+  border-color: #2e5f94;
 }
 .ui-alert.good {
   color: var(--c-good);

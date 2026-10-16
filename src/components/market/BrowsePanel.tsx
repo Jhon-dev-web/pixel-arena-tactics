@@ -3,15 +3,15 @@ import { INSTANCED_SLOTS, getGear } from '../../game/gear';
 import { fmtNum, t } from '../../locales';
 import { mt } from '../../locales/market';
 import { PublicListing } from '../../game/market/api';
-import { rarityDef, substatNameKey } from '../../game/rarity';
+import { rarityDef } from '../../game/rarity';
 import { splitLamports } from '../../../supabase/functions/_shared/chain/solMoney';
-import { fmtSubstat } from '../substatText';
-import { ItemArt, ItemLike } from './ItemCard';
+import { CertMark, ItemIcon, ItemLike, Substats, frameOf } from './ItemCard';
 import { SolIcon } from './icons';
 import { fmtSol } from './format';
 import UsdLine from './UsdLine';
 import { itemName } from './names';
 import LotCard from './LotCard';
+import { Button, Chip, ChipRow, ItemCard as UiItemCard, Panel, SearchField, SelectField } from '../ui';
 
 type KindFilter = 'all' | 'gear' | 'unique' | 'gold_pouch' | 'material';
 type Sort = 'new' | 'cheap' | 'dear';
@@ -81,62 +81,51 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
   const noGear = kind === 'gold_pouch' || kind === 'material';
 
   return (
-    <div className="mk-panel">
+    <Panel className="mk-panel">
       <div className="mk-toolbar">
         <div className="mk-searchrow">
-          <label className="mk-search">
-            <span className="mk-search-ico" aria-hidden>
-              {'🔍'}
-            </span>
-            <input type="search" aria-label={mt('browse.search')} placeholder={mt('browse.search')} value={search} onChange={(e) => change(setSearch)(e.target.value)} maxLength={40} autoComplete="off" spellCheck={false} />
-          </label>
-          <button className={`mk-btn small mk-filters-toggle${filtersOpen ? ' active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen} data-ui>
+          <SearchField label={mt('browse.search')} placeholder={mt('browse.search')} value={search} onChange={(e) => change(setSearch)(e.target.value)} maxLength={40} />
+          <Button className="mk-filters-toggle" variant={filtersOpen ? 'primary' : 'secondary'} onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen}>
             {mt('browse.filters')}
-          </button>
+          </Button>
         </div>
         <div className={`mk-selects${filtersOpen ? ' open' : ''}`}>
-          <select aria-label={mt('browse.slot')} value={slot} onChange={(e) => change(setSlot)(e.target.value)} disabled={noGear}>
+          <SelectField label={mt('browse.slot')} value={slot} onChange={(e) => change(setSlot)(e.target.value)} disabled={noGear}>
             <option value="">{mt('browse.allCategories')}</option>
             {INSTANCED_SLOTS.map((s) => (
               <option key={s} value={s}>
                 {mt(`slots.${s}`)}
               </option>
             ))}
-          </select>
-          <select aria-label={mt('browse.rarity')} value={rarity} onChange={(e) => change(setRarity)(e.target.value)} disabled={noGear}>
+          </SelectField>
+          <SelectField label={mt('browse.rarity')} value={rarity} onChange={(e) => change(setRarity)(e.target.value)} disabled={noGear}>
             <option value="">{mt('browse.rarity')}</option>
             <option value="rare">{t('rarity.rar_rare')}</option>
             <option value="epic">{t('rarity.rar_epic')}</option>
             <option value="legendary">{t('rarity.rar_legendary')}</option>
-          </select>
-          <select aria-label={mt('browse.tier')} value={tier} onChange={(e) => change(setTier)(e.target.value)} disabled={noGear}>
+          </SelectField>
+          <SelectField label={mt('browse.tier')} value={tier} onChange={(e) => change(setTier)(e.target.value)} disabled={noGear}>
             <option value="">{mt('browse.tier')}</option>
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <option key={n} value={String(n)}>
                 {mt('browse.tierN', { n })}
               </option>
             ))}
-          </select>
-          <select aria-label={mt('browse.sort')} value={sort} onChange={(e) => change(setSort)(e.target.value as Sort)}>
+          </SelectField>
+          <SelectField label={mt('browse.sort')} value={sort} onChange={(e) => change(setSort)(e.target.value as Sort)}>
             <option value="new">{mt('browse.sortNew')}</option>
             <option value="cheap">{mt('browse.sortCheap')}</option>
             <option value="dear">{mt('browse.sortDear')}</option>
-          </select>
+          </SelectField>
         </div>
       </div>
-      <div className="mk-chips" role="radiogroup">
-        {kinds.map((k) => (
-          <button key={k.id} className={`mk-chip${kind === k.id ? ' active' : ''}`} onClick={() => change(setKind)(k.id)} aria-pressed={kind === k.id} data-ui>
-            {k.label}
-          </button>
-        ))}
-      </div>
+      <ChipRow<KindFilter> items={kinds} value={kind} onChange={change(setKind)} label={mt('browse.all')} className="mk-chips" />
       {failure && (
-        <p className="mk-status error" role="alert">
+        <p className="ui-alert bad" role="alert">
           {failure}
         </p>
       )}
-      {shown.length === 0 && <p className="mk-note">{mt('browse.empty')}</p>}
+      {shown.length === 0 && <p className="ui-note">{mt('browse.empty')}</p>}
       <ul className="mk-grid">
         {pageItems.map((l) => {
           const split = splitLamports(l.price_lamports);
@@ -146,77 +135,77 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
           const rar = l.rarity ?? 'common';
           if (l.kind === 'material') {
             return (
-              <li key={l.id}>
+              <li key={l.id} className={expanded ? 'open' : undefined}>
                 <LotCard listing={l} feePercent={feePercent} solUsd={solUsd} expanded={expanded} busy={busyId !== null} onToggle={() => setOpen(expanded ? null : l.id)} onReserve={() => onReserve(l)} />
               </li>
             );
           }
           return (
-            <li key={l.id} className={`mk-card${l.kind === 'gold_pouch' ? ' pouch' : ''}${reserved ? ' reserved' : ''}${expanded ? ' open' : ''}`}>
-              <div className="mk-card-top">
-                <ItemArt item={item} qty={1} />
-                <span className="mk-card-id">
-                  <span className={`mk-item-name r-${l.kind === 'gold_pouch' ? 'common' : rar}`}>{itemName(item)}</span>
-                  {l.kind !== 'gold_pouch' && l.rarity ? <span className={`rarity-line r-${rar}`}>{t(`rarity.${rarityDef(rar).nameKey}`)}</span> : l.gold_amount !== null ? <span className="rarity-line r-common">{mt('browse.pouchWorth', { g: fmtNum(l.gold_amount) })}</span> : null}
-                </span>
-                <span className="mk-card-tags">
-                  {l.kind === 'unique' && <span className="mk-tag">{mt('browse.unique')}</span>}
-                  {l.tier ? <span className="mk-tag">{mt('browse.tierN', { n: l.tier })}</span> : null}
-                  <span className="mk-cert" title={mt('browse.certificateHint')}>
-                    {'✓ '}
-                    <span className="mk-cert-text">{mt('browse.certificate')}</span>
+            <li key={l.id} className={expanded ? 'open' : undefined}>
+              <UiItemCard
+                className={`mk-card${l.kind === 'gold_pouch' ? ' pouch' : ''}${reserved ? ' reserved' : ''}${expanded ? ' open' : ''}`}
+                icon={<ItemIcon item={item} />}
+                rarity={frameOf(item)}
+                qty="x1"
+                name={itemName(item)}
+                rarityLabel={l.kind !== 'gold_pouch' && l.rarity ? t(`rarity.${rarityDef(rar).nameKey}`) : l.gold_amount !== null ? mt('browse.pouchWorth', { g: fmtNum(l.gold_amount) }) : undefined}
+                tag={
+                  <span className="mk-card-tags">
+                    {l.kind === 'unique' && <Chip tone="gold">{mt('browse.unique')}</Chip>}
+                    {l.tier ? <Chip>{mt('browse.tierN', { n: l.tier })}</Chip> : null}
+                    <CertMark />
+                    {reserved && <Chip tone="gold">{mt('browse.reserved')}</Chip>}
                   </span>
-                  {reserved && <span className="mk-tag warn">{mt('browse.reserved')}</span>}
-                </span>
-              </div>
-              <div className="mk-card-price">
-                <span>{mt('browse.price')}</span>
-                <b>
-                  <SolIcon /> {fmtSol(l.price_lamports)} <small>SOL</small>
-                </b>
+                }
+                rows={[
+                  {
+                    label: mt('browse.price'),
+                    tone: 'gold',
+                    value: (
+                      <>
+                        <SolIcon /> {fmtSol(l.price_lamports)} <small>SOL</small>
+                      </>
+                    ),
+                  },
+                ]}
+                action={
+                  <Button size="sm" block onClick={() => setOpen(expanded ? null : l.id)} aria-expanded={expanded} disabled={reserved}>
+                    {expanded ? mt('browse.back') : mt('browse.buy')}
+                  </Button>
+                }
+              >
                 <UsdLine lamports={l.price_lamports} solUsd={solUsd} />
-              </div>
-              <button className="mk-btn mk-card-buy" onClick={() => setOpen(expanded ? null : l.id)} aria-expanded={expanded} disabled={reserved} data-ui>
-                {expanded ? mt('browse.back') : mt('browse.buy')}
-              </button>
-              {expanded && (
-                <div className="mk-card-more">
-                  {item.substats.length > 0 && (
-                    <span className="substat-list">
-                      {item.substats.map((s, i) => (
-                        <span className="substat-line" key={i}>
-                          +{fmtSubstat(s as never)} {t(`rarity.${substatNameKey(s.type as never)}`)}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                  <p className="mk-note">
-                    {mt('rules.fee', { pct: feePercent })}: {fmtSol(split.feeLamports)} SOL. {mt('pay.toSeller')}: {fmtSol(split.sellerLamports)} SOL.
-                  </p>
-                  <button className="mk-btn primary" disabled={reserved || busyId !== null} onClick={() => onReserve(l)} data-ui>
-                    {busyId === l.id ? mt('loading') : mt('browse.reserve')}
-                  </button>
-                </div>
-              )}
+                {expanded && (
+                  <div className="mk-card-more">
+                    <Substats item={item} />
+                    <p className="ui-note">
+                      {mt('rules.fee', { pct: feePercent })}: {fmtSol(split.feeLamports)} SOL. {mt('pay.toSeller')}: {fmtSol(split.sellerLamports)} SOL.
+                    </p>
+                    <Button variant="primary" size="sm" block disabled={reserved || busyId !== null} onClick={() => onReserve(l)}>
+                      {busyId === l.id ? mt('loading') : mt('browse.reserve')}
+                    </Button>
+                  </div>
+                )}
+              </UiItemCard>
             </li>
           );
         })}
       </ul>
       {pages > 1 && (
         <nav className="mk-pager" aria-label={mt('browse.page', { n: current + 1 })}>
-          <button className="mk-page" onClick={() => setPage(0)} disabled={current === 0} aria-label={mt('browse.first')} data-ui>
+          <Button size="sm" onClick={() => setPage(0)} disabled={current === 0} aria-label={mt('browse.first')}>
             {'«'}
-          </button>
+          </Button>
           {pageWindow(current, pages).map((p) => (
-            <button key={p} className={`mk-page${p === current ? ' active' : ''}`} onClick={() => setPage(p)} aria-current={p === current ? 'page' : undefined} data-ui>
+            <Button key={p} size="sm" variant={p === current ? 'primary' : 'secondary'} onClick={() => setPage(p)} aria-current={p === current ? 'page' : undefined}>
               {p + 1}
-            </button>
+            </Button>
           ))}
-          <button className="mk-page" onClick={() => setPage(pages - 1)} disabled={current === pages - 1} aria-label={mt('browse.last')} data-ui>
+          <Button size="sm" onClick={() => setPage(pages - 1)} disabled={current === pages - 1} aria-label={mt('browse.last')}>
             {'»'}
-          </button>
+          </Button>
         </nav>
       )}
-    </div>
+    </Panel>
   );
 }

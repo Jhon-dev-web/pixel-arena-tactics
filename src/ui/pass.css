@@ -680,3 +680,14 @@
   color: var(--c-gold-200);
   overflow-wrap: anywhere;
 }
+
+/* with the USDC steps open the footer gives them a row of their own and scrolls when they are tall */
+.ui-modal.pa-modal .ui-modal-foot {
+  max-height: 60%;
+  overflow-y: auto;
+}
+.pa-buy:has(.pa-usdc) {
+  flex: 1 0 100%;
+  max-width: none;
+  align-items: stretch;
+}

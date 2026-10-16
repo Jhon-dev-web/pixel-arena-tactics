@@ -1,456 +1,309 @@
-/* The player market (a main screen of the shell) and the USDC Pass. Loaded only with the market chunk (web build, VITE_MARKET_ENABLED). Reuses the game's dh-card panels, rarity colours and gear icons.
-   Layout: wide screen = the market panel on the left and a column on the right (create an offer, the summary); phone = one column, the offer form under the Sell tab and the summary under My offers. */
+/* The player market (a main screen of the shell) in the shared style: the Screen / PageHeader / Tabs / Panel / ItemCard / Button / ChipRow / fields of components/ui carry the look, this file is only what is particular to the market
+   (the SOL mark, the price lines, the listing rows, the pouch shine, the payment legs). Loaded only with the market chunk (web build, VITE_MARKET_ENABLED); the desktop / Steam build never carries it.
+   Layout: a wide area = the market panel on the left and a column on the right (create an offer, the summary); a narrow one (a phone) = one column, the offer form under the Sell tab and the summary under My offers. */
 
-.desktop-home.mk-screen {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: none;
-  align-content: start;
-  gap: 14px;
-  padding: 16px 20px 24px;
-  text-align: left;
-  font-size: var(--fs-body);
+/* ---------- the layout by the width of the screen ---------- */
+.mk-screen a {
+  color: var(--c-info);
+  overflow-wrap: anywhere;
 }
-/* an unstyled <p> used to fall back to the browser's 16 px and look twice as big as the rest: every plain paragraph of the market takes the game's body size */
-:where(.mk-screen, .mk-pass) p {
-  margin: 0;
-  font-size: var(--fs-body);
-  line-height: 1.45;
+/* a link in a row is a touch target on a phone */
+@container ui (max-width: 599px) {
+  .mk-screen a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+  }
 }
-.mk-main {
-  container: mk / inline-size;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-  padding: 16px 18px 18px;
-}
-.mk-head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-}
-.mk-head-text {
-  flex: 1 1 200px;
-  min-width: 0;
-}
-.mk-title {
-  margin: 0;
-  font-size: var(--fs-title);
-  text-transform: uppercase;
-  color: #ffd76a;
-  text-shadow: 0 2px 0 #000;
-}
-.mk-subtitle {
-  margin-top: 4px;
-  color: #d8c9a0;
-  font-size: var(--fs-body);
-}
-.mk-scale {
-  flex: 0 0 auto;
-}
-.mk-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.mk-wallet-chip {
-  font-family: inherit;
-  font-size: var(--fs-body);
-  min-height: 34px;
-  padding: 4px 12px;
-  color: #8ecbff;
-  background: rgba(46, 134, 222, 0.12);
-  border: 2px solid #2e5f94;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.mk-wallet-chip.none {
-  color: #1a1108;
-  background: linear-gradient(180deg, #ffd76a, #e0a83a);
-  border-color: #a8761a;
-  font-weight: bold;
-}
-.mk-wallet-chip.active {
-  border-color: #8ecbff;
-}
-
-/* the tabs: one row (icon + name); a very narrow phone goes 2 x 2 */
-.mk-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-.mk-tabs .tab {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 0;
-  min-height: 42px;
-  padding: 8px 6px;
-  font-size: var(--fs-small);
-  line-height: 1.2;
-  word-break: normal;
-  overflow-wrap: normal;
-  text-align: center;
-}
-.mk-tabs .tab.active {
-  color: #1a1108;
-  font-weight: bold;
-  background: linear-gradient(180deg, #ffd76a, #e0a83a);
-  border-color: #a8761a;
-}
-.mk-tab-ico {
-  font-size: var(--glyph-s);
-  line-height: 1;
-}
-@container mk (max-width: 700px) {
-  .mk-tab-ico {
+@container ui (max-width: 979px) {
+  /* the side cards show only where they belong */
+  .mk-layout > .ui-side {
+    display: none;
+  }
+  .mk-layout[data-tab='sell'] > .ui-side,
+  .mk-layout[data-tab='offers'] > .ui-side {
+    display: flex;
+  }
+  .mk-layout[data-tab='sell'] .mk-summary-card,
+  .mk-layout[data-tab='offers'] .mk-create {
     display: none;
   }
 }
-
-/* the standing notices: ONE compact line, the full texts behind "Saiba mais" */
-.mk-notices {
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #3a2a4a;
-}
-.mk-notices-line {
-  color: #d8c9a0;
-  font-size: var(--fs-small);
-  overflow-wrap: break-word;
-  word-break: normal;
-  hyphens: auto;
-}
-.mk-notices-test {
-  color: #a8d2ff;
-}
-.mk-notices-full {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-}
-.mk-link {
-  font-family: inherit;
-  font-size: inherit;
-  padding: 2px 4px;
-  color: #8ecbff;
-  background: none;
-  border: 0;
-  text-decoration: underline;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.mk-text {
-  color: #f5e9c8;
-}
-
 .mk-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
   min-width: 0;
 }
 .mk-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-width: 0;
+  gap: var(--sp-3);
 }
-.mk-h {
-  margin: 4px 0 0;
-  font-size: var(--fs-section);
-  color: #ffe9a8;
+.mk-panel > .ui-panel-head {
+  margin-bottom: 0;
 }
-.mk-note {
+.mk-wallet-chip .mk-chip-label {
+  color: var(--c-text-dim);
+}
+@container ui (max-width: 599px) {
+  .mk-chip-label {
+    display: none;
+  }
+  .mk-screen .ui-pagehead-sub {
+    display: none;
+  }
+}
+
+/* the one compact line of notices under the tabs */
+.mk-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
+.mk-notices-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.mk-notices-line {
+  flex: 1 1 240px;
   margin: 0;
+  min-width: 0;
   font-size: var(--fs-small);
-  color: #b9a98a;
+  color: var(--c-text-dim);
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: auto;
 }
-.mk-label {
-  font-size: var(--fs-small);
-  color: #b9a98a;
+.mk-notices-line.test {
+  color: var(--c-info);
+}
+.mk-notices-full {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
 }
 .mk-warnings {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-2);
 }
-.mk-warn {
+.mk-warnings .ui-alert {
   margin: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
+}
+
+/* ---------- the money marks and small texts ---------- */
+.mk-sol {
+  flex: 0 0 auto;
+  vertical-align: -2px;
+}
+.mk-usd {
+  color: var(--c-text-muted);
   font-size: var(--fs-small);
-  border: 1px solid #8a6a3a;
-  background: rgba(255, 215, 106, 0.08);
-  color: #ffe9a8;
+  white-space: nowrap;
 }
-.mk-warn.key {
-  border-color: #c0392b;
-  background: rgba(192, 57, 43, 0.14);
-  color: #ffb3a8;
-}
-.mk-warn.test {
-  border-color: #2e86de;
-  background: rgba(46, 134, 222, 0.14);
-  color: #a8d2ff;
-}
-.mk-status {
-  margin: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
+/* the pixel font has no "≈": the sign takes a font that does */
+.mk-approx {
+  font-family: 'Segoe UI Symbol', 'DejaVu Sans', 'Arial Unicode MS', sans-serif;
   font-size: var(--fs-body);
-  background: rgba(255, 255, 255, 0.06);
-  color: #f5e9c8;
-  overflow-wrap: break-word;
-  word-break: normal;
-  hyphens: auto;
+  line-height: 0.5;
+  vertical-align: -0.12em;
 }
-.mk-status.ok {
-  background: rgba(74, 214, 124, 0.14);
-  color: #9ef0bb;
+.mk-text {
+  color: var(--c-text);
 }
-.mk-status.error {
-  background: rgba(255, 107, 94, 0.14);
-  color: #ffb3a8;
+.mk-label {
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+.mk-address {
+  font-family: inherit;
+  font-size: var(--fs-small);
+  color: var(--c-info);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.mk-sig {
+  display: block;
+  overflow-wrap: anywhere;
 }
 .mk-row {
   display: flex;
   align-items: center;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
 }
-
-/* buttons: 44 px high targets (small ones 32) */
-.mk-btn {
-  font-family: inherit;
+.mk-kv {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
   font-size: var(--fs-body);
-  font-weight: bold;
-  min-height: 44px;
-  padding: 8px 12px;
-  color: #ffe9a8;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid #6a4a2a;
-  border-radius: 8px;
-  cursor: pointer;
 }
-.mk-btn.small {
-  min-height: 32px;
-  padding: 4px 10px;
+.mk-kv > span {
+  color: var(--c-text-dim);
 }
-.mk-btn.primary {
-  color: #1a1108;
-  background: linear-gradient(180deg, #ffd76a, #e0a83a);
-  border-color: #a8761a;
+.mk-kv b {
+  color: var(--c-gold-200);
 }
-.mk-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.mk-wallet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.mk-wallet-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.mk-timer {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-200);
+}
+.mk-timer.over {
+  color: var(--c-bad);
+}
+.mk-leg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.mk-leg > .ui-panel-head {
+  margin-bottom: 0;
+}
+.mk-leg.done {
+  border-color: #2f7a46;
+}
+.mk-summary .ui-stat-value,
+.mk-calc .ui-stat-value,
+.mk-stats .ui-stat-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  white-space: nowrap;
+}
+.mk-receive {
+  color: var(--c-info);
+}
+.mk-h {
+  margin: var(--sp-2) 0 0;
 }
 
-/* search, filters, chips */
+/* ---------- browsing: the toolbar, the chips, the cards ---------- */
 .mk-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .mk-searchrow {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
-.mk-search {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  min-height: 38px;
-  padding: 0 10px;
-  background: #1a1208;
-  border: 2px solid #4a3a55;
-  border-radius: 8px;
-}
-.mk-search input {
-  flex: 1;
-  min-width: 0;
-  font-family: inherit;
-  font-size: var(--fs-body);
-  color: #f5e9c8;
-  background: transparent;
-  border: 0;
-  outline: 0;
-  padding: 6px 0;
-}
-.mk-search-ico {
-  font-size: var(--fs-body);
-  opacity: 0.8;
+.mk-searchrow > .ui-field {
+  flex: 1 1 auto;
 }
 .mk-filters-toggle {
   display: none;
 }
-.mk-filters-toggle.active {
-  border-color: #ffd76a;
-}
 .mk-selects {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--sp-2);
 }
-.mk-toolbar select,
-.mk-field select,
-.mk-hash input {
-  font-family: inherit;
-  font-size: var(--fs-small);
-  min-height: 38px;
-  width: 100%;
-  min-width: 0;
-  color: #f5e9c8;
-  background: #1a1208;
-  border: 2px solid #4a3a55;
-  border-radius: 8px;
-  padding: 4px 8px;
-}
-@container mk (min-width: 520px) {
+@container ui (min-width: 620px) {
   .mk-selects {
     grid-template-columns: 2fr 1.2fr 1fr 1.8fr;
   }
 }
-.mk-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+@container ui (max-width: 599px) {
+  .mk-filters-toggle {
+    display: inline-flex;
+  }
+  .mk-selects {
+    display: none;
+  }
+  .mk-selects.open {
+    display: grid;
+  }
+  .mk-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .mk-chips .ui-chip {
+    flex: 0 0 auto;
+  }
 }
-.mk-screen .rarity-line.r-common {
-  color: #b9a98a;
-}
-.mk-chip {
-  font-family: inherit;
-  font-size: var(--fs-small);
-  min-height: 34px;
-  padding: 4px 12px;
-  color: #d8c9a0;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid #3a2a4a;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.mk-chip.active {
-  color: #ffe9a8;
-  background: linear-gradient(180deg, #4a3420, #2a1c10);
-  border-color: #ffd76a;
-}
-.mk-hash {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: var(--fs-small);
-  color: #b9a98a;
-}
-
-/* the item frame: its rarity colour, the quantity badge */
-.mk-art {
-  position: relative;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  padding: 4px;
-  box-sizing: border-box;
-  background: #0f0a16;
-  border: 2px solid #6a6a7a;
-  border-radius: 6px;
-  font-size: var(--glyph-m);
-}
-.mk-art.r-rare {
-  border-color: #4ad67c;
-}
-.mk-art.r-epic {
-  border-color: #b06cff;
-}
-.mk-art.r-legendary {
-  border-color: #ffa940;
-}
-.mk-art .pixel-icon,
-.mk-art .inline-icon,
-.mk-art .gear-icon-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-.mk-art > .gear-icon-sheet {
-  width: 100%;
-  height: 100%;
-}
-.mk-qty {
-  position: absolute;
-  right: 1px;
-  bottom: 0;
-  padding: 0 2px;
-  font-size: var(--fs-small);
-  line-height: 1.2;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000;
-}
-
-/* the listing cards: a grid on a wide screen, compact rows on a phone */
 .mk-grid {
-  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-auto-flow: row dense;
+  gap: var(--sp-3);
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  grid-auto-flow: row dense;
-  gap: 10px;
+  list-style: none;
+}
+.mk-grid > li {
+  min-width: 0;
+}
+.mk-grid > li.open {
+  grid-column: 1 / -1;
+}
+@container ui (max-width: 599px) {
+  .mk-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .mk-card {
-  display: grid;
-  grid-template-areas: 'top' 'price' 'buy' 'more';
-  gap: 8px;
-  min-width: 0;
-  padding: 10px;
-  font-family: inherit;
-  color: inherit;
-  text-align: left;
-  background: linear-gradient(180deg, #1c1426, #140d1c);
-  border: 2px solid #3a2a4a;
-  border-radius: 10px;
-}
-.mk-card.open {
-  grid-column: 1 / -1;
-  border-color: #8a6a3a;
+  height: 100%;
 }
 .mk-card.reserved {
   opacity: 0.7;
 }
-/* a card is narrow (about 170 px, two thirds of it text): its title is a little smaller so most words fit whole on a line */
-.mk-card .mk-item-name {
-  font-size: var(--fs-body);
-  line-height: 1.25;
-}
-.mk-card .rarity-line {
+.mk-card .ui-item-name,
+.mk-item-name {
+  /* a name breaks only BETWEEN words (or at a hyphenation point): never "Ceifado r" */
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: auto;
+}
+.mk-card .ui-item-row dd,
+.mk-lot .ui-item-row dd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-1);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.mk-card .ui-item-row {
+  align-items: center;
+}
+.mk-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.mk-card-more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
 }
 /* Gold Pouches: a gold border and a slow shine passing over the card (stopped for people who asked for less motion) */
 .mk-card.pouch {
   position: relative;
   overflow: hidden;
-  border-color: #ffd76a;
+  border-color: var(--c-gold-300);
   background: linear-gradient(180deg, #2f2310, #1a1109);
   box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.35), 0 0 12px rgba(255, 215, 106, 0.2);
 }
@@ -481,677 +334,150 @@
     display: none;
   }
 }
-.mk-card-top {
-  grid-area: top;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 6px 10px;
-  min-width: 0;
-}
-.mk-card-id {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  min-width: 0;
-}
-.mk-card-tags {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px 4px;
-}
-.mk-card-price {
-  grid-area: price;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: var(--fs-small);
-  color: #b9a98a;
-}
-.mk-card-price b {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: var(--fs-body);
-  color: #ffe9a8;
-}
-.mk-card-price small {
-  font-size: var(--fs-small);
-  color: #b9a98a;
-}
-.mk-card-buy {
-  grid-area: buy;
-  min-height: 36px;
-  padding: 6px 10px;
-}
-.mk-card-more {
-  grid-area: more;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-}
-.mk-tile {
-  width: 100%;
-  grid-template-areas: 'top';
-  cursor: pointer;
-}
-.mk-tile.picked {
-  border-color: #ffd76a;
-  background: linear-gradient(180deg, #3a2a18, #1c1208);
-}
-.mk-sol {
-  flex: 0 0 auto;
-  vertical-align: -2px;
-}
-/* "about US$ x" next to a SOL price (only when the server has a price) */
-.mk-usd {
-  color: #9fb3a6;
-  font-size: var(--fs-small);
-  white-space: nowrap;
-}
-.mk-approx {
-  font-family: 'Segoe UI Symbol', 'DejaVu Sans', 'Arial Unicode MS', sans-serif;
-  font-size: var(--fs-body);
-  line-height: 0.5;
-  vertical-align: -0.12em;
-}
-.mk-summary b {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.mk-sig {
-  display: block;
-  overflow-wrap: anywhere;
-}
-
-/* pages */
 .mk-pager {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-.mk-page {
-  font-family: inherit;
-  min-width: 36px;
-  min-height: 36px;
-  padding: 0 8px;
-  font-size: var(--fs-body);
-  color: #d8c9a0;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid #3a2a4a;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.mk-page.active {
-  color: #1a1108;
-  font-weight: bold;
-  background: linear-gradient(180deg, #ffd76a, #e0a83a);
-  border-color: #a8761a;
-}
-.mk-page:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
 }
 
-/* the row list (my offers, history) */
+/* ---------- an item in a row (the sell list, the offer form, my offers, the history) ---------- */
+.mk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.mk-item-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.mk-item-name {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--c-text);
+}
+.mk-item-name.r-rare {
+  color: var(--rar-rare);
+}
+.mk-item-name.r-epic {
+  color: var(--rar-epic);
+}
+.mk-item-name.r-legendary {
+  color: var(--rar-legendary);
+}
+.mk-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+}
+.mk-item .substat-list {
+  display: flex;
+  flex-direction: column;
+}
+.mk-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+.mk-tile {
+  width: 100%;
+  min-height: var(--tap);
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mk-tile:hover {
+  border-color: var(--c-gold-line-strong);
+}
+.mk-tile.pouch {
+  border-color: var(--c-gold-line);
+  background: linear-gradient(180deg, #2f2310, #1a1109);
+}
+.mk-tile-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.mk-tile-id {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  min-width: 0;
+}
 .mk-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@container ui (min-width: 600px) {
+  .mk-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .mk-listing {
-  border: 2px solid #3a2a4a;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #1c1426, #140d1c);
   min-width: 0;
 }
 .mk-listing-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  padding: 8px;
-  font-family: inherit;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  text-align: left;
+  gap: var(--sp-2);
   min-width: 0;
 }
 .mk-listing-more {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px 12px;
-  padding: 0 8px 8px;
+  gap: var(--sp-2) var(--sp-3);
 }
 .mk-price {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 3px;
+  gap: var(--sp-1);
   flex: 0 0 auto;
   white-space: nowrap;
-  font-weight: bold;
-  color: #ffe9a8;
+  font-weight: 700;
+  color: var(--c-gold-200);
   font-size: var(--fs-body);
 }
 .mk-price > span:first-child {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--sp-1);
 }
 .mk-price small {
   font-size: var(--fs-small);
-  color: #b9a98a;
-}
-.mk-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-.mk-item-art {
-  width: 40px;
-  height: 40px;
-  font-size: var(--glyph-m);
-}
-.mk-item-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.mk-item-name {
-  font-size: var(--fs-body);
-  font-weight: bold;
-  color: #f5e9c8;
-  /* an item name breaks only BETWEEN words (or at a hyphenation point of the language, the screen carries lang): never "Ceifado r". A word longer than the card is the last resort of break-word. */
-  overflow-wrap: break-word;
-  word-break: normal;
-  hyphens: auto;
-}
-.mk-item-name.r-rare {
-  color: #4ad67c;
-}
-.mk-item-name.r-epic {
-  color: #b06cff;
-}
-.mk-item-name.r-legendary {
-  color: #ffa940;
-}
-.mk-item.compact .mk-item-name {
-  font-size: var(--fs-body);
-  line-height: 1.25;
-}
-.mk-item-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-}
-.mk-tag {
-  font-size: var(--fs-small);
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #d8c9a0;
-}
-.mk-tag.warn {
-  background: rgba(255, 169, 64, 0.2);
-  color: #ffc07a;
-}
-.mk-cert {
-  white-space: nowrap;
-  font-size: var(--fs-small);
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: rgba(74, 214, 124, 0.16);
-  color: #9ef0bb;
+  color: var(--c-text-muted);
 }
 
-/* the right column: create an offer, the summary */
-.mk-side {
-  display: none;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-.mk-side .dh-card {
-  padding: 16px 18px;
-}
+/* ---------- the offer form ---------- */
 .mk-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
-.mk-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: var(--fs-body);
-  color: #d8c9a0;
-}
+.mk-lot-qty,
 .mk-qty-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: #f5e9c8;
-}
-.mk-price-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  background: #1a1208;
-  border: 2px solid #4a3a55;
-  border-radius: 8px;
-}
-.mk-price-input input {
-  flex: 1;
-  min-width: 0;
-  min-height: 36px;
-  font-family: inherit;
-  font-size: var(--fs-body);
-  color: #f5e9c8;
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-.mk-calc {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 10px;
-  align-items: center;
-  font-size: var(--fs-body);
-  color: #d8c9a0;
-}
-.mk-calc b {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #ffe9a8;
-}
-.mk-calc .mk-receive {
-  color: #8ecbff;
-}
-.mk-publish {
-  width: 100%;
-}
-.mk-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 0;
-  font-size: var(--fs-body);
-}
-.mk-stats > div {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-.mk-stats dt {
-  color: #d8c9a0;
-}
-.mk-stats dd {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  color: #ffe9a8;
-  font-weight: bold;
-}
-
-/* wallet / addresses */
-.mk-wallet {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-}
-.mk-address {
-  font-size: var(--fs-small);
-  color: #8ecbff;
-  overflow-wrap: anywhere;
-  word-break: break-all;
-}
-.mk-kv {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   flex-wrap: wrap;
-  font-size: var(--fs-body);
+  gap: var(--sp-2);
+  color: var(--c-text);
 }
-.mk-kv > span {
-  color: #b9a98a;
-}
-.mk-kv b {
-  color: #ffe9a8;
-}
-
-/* reservation / payment */
-.mk-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-.mk-summary > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  font-size: var(--fs-small);
-  color: #b9a98a;
-}
-.mk-summary b {
-  font-size: var(--fs-body);
-  color: #ffe9a8;
-}
-.mk-timer {
-  margin: 0;
-  font-size: var(--fs-body);
-  font-weight: bold;
-  color: #ffe9a8;
-}
-.mk-timer.over {
-  color: #ffb3a8;
-}
-.mk-leg {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border: 2px solid #3a2a4a;
-  border-radius: 8px;
-}
-.mk-leg.done {
-  border-color: #2f7d4f;
-}
-.mk-leg h4 {
-  margin: 0;
-  color: #ffe9a8;
-}
-
-/* the Pass in USDC, under the Stripe button */
-.mk-pass {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  margin-top: 8px;
-  border: 2px solid #6a4a2a;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.3);
-  text-align: left;
-  color: #f5e9c8;
-}
-.mk-pass-btn {
-  margin-top: 6px;
-}
-.mk-screen a,
-.mk-pass a {
-  color: #8ecbff;
-  overflow-wrap: anywhere;
-}
-
-/* ---- the side column and the grid by width ---- */
-
-/* phone and narrow: the side cards show only where they belong (the form under Sell, the summary under My offers) */
-.mk-screen[data-tab='sell'] .mk-side,
-.mk-screen[data-tab='offers'] .mk-side {
-  display: flex;
-}
-.mk-screen[data-tab='sell'] .mk-summary-card,
-.mk-screen[data-tab='offers'] .mk-create {
-  display: none;
-}
-
-/* tablet: two columns of cards, the filters wider */
-@media (min-width: 600px) {
-  .mk-toolbar select {
-    flex: 1 1 140px;
-  }
-  .mk-search {
-    flex: 2 1 220px;
-  }
-  .mk-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .mk-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (min-width: 1024px) {
-  .mk-grid {
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  }
-}
-/* a wide screen: the main panel and the right column side by side */
-@media (min-width: 1280px) {
-  .desktop-home.mk-screen {
-    grid-template-columns: minmax(0, 1fr) 320px;
-    align-items: start;
-  }
-  .desktop-home.mk-screen[data-tab] .mk-side {
-    display: flex;
-  }
-  .desktop-home.mk-screen[data-tab] .mk-side .dh-card {
-    display: block;
-  }
-}
-@media (min-width: 1440px) {
-  .desktop-home.mk-screen {
-    grid-template-columns: minmax(0, 1fr) 340px;
-  }
-}
-
-/* a phone */
-@media (max-width: 599px) {
-  .desktop-home.mk-screen {
-    padding: 8px 8px calc(18px + env(safe-area-inset-bottom, 0px));
-    gap: 10px;
-  }
-  .mk-main {
-    padding: 8px;
-    gap: 8px;
-  }
-  .mk-head {
-    flex-wrap: nowrap;
-    gap: 8px;
-  }
-  .mk-head-text {
-    flex: 1 1 auto;
-  }
-  .mk-scale {
-    width: 28px;
-    height: 28px;
-  }
-  .mk-title {
-    font-size: var(--fs-title);
-  }
-  .mk-subtitle,
-  .mk-chip-label {
-    display: none;
-  }
-  .mk-head-actions {
-    flex-wrap: nowrap;
-    gap: 6px;
-  }
-  .mk-wallet-chip {
-    font-size: var(--fs-small);
-    min-height: 30px;
-    padding: 3px 8px;
-  }
-  .mk-refresh {
-    min-width: 32px;
-    padding: 2px 6px;
-  }
-  .mk-tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5px;
-  }
-  .mk-tabs .tab {
-    min-height: 32px;
-    padding: 4px 2px;
-  }
-  .mk-notices {
-    padding: 5px 8px;
-  }
-  .mk-notices-line {
-    font-size: var(--fs-small);
-    line-height: 1.35;
-  }
-  .mk-toolbar {
-    gap: 6px;
-  }
-  .mk-filters-toggle {
-    display: block;
-    min-height: 34px;
-  }
-  .mk-selects {
-    display: none;
-    gap: 6px;
-  }
-  .mk-selects.open {
-    display: grid;
-  }
-  .mk-toolbar select {
-    min-height: 34px;
-    font-size: var(--fs-small);
-    padding: 3px 4px;
-  }
-  .mk-search {
-    min-height: 34px;
-  }
-  /* one scrollable row of chips, never two */
-  .mk-chips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 4px;
-    padding-bottom: 2px;
-  }
-  .mk-chip {
-    flex: 0 0 auto;
-    padding: 2px 8px;
-    font-size: var(--fs-small);
-    min-height: 28px;
-  }
-  /* compact rows: icon, name, rarity colour, tier, certificate | price and a small Comprar */
-  .mk-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 5px;
-  }
-  .mk-card {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: 'top price' 'top buy' 'more more';
-    align-items: center;
-    gap: 2px 8px;
-    padding: 5px 7px;
-  }
-  /* the price and its optional dollar line stack: a wide price would squeeze the name */
-  .mk-card-price {
-    align-items: flex-end;
-    flex-direction: column;
-    gap: 0;
-  }
-  .mk-card-price .mk-usd {
-    font-size: var(--fs-small);
-  }
-  .mk-card-price > span {
-    display: none;
-  }
-  .mk-card-price b {
-    font-size: var(--fs-body);
-  }
-  .mk-card-buy {
-    min-height: 28px;
-    padding: 2px 10px;
-    font-size: var(--fs-small);
-  }
-  .mk-art {
-    width: 36px;
-    height: 36px;
-    padding: 3px;
-  }
-  .mk-qty {
-    font-size: var(--fs-small);
-  }
-  .mk-card-top {
-    gap: 2px 7px;
-    align-items: center;
-  }
-  .mk-card-top > .mk-art {
-    grid-row: 1 / span 2;
-  }
-  .mk-card-id {
-    gap: 2px;
-  }
-  .mk-card .mk-item-name {
-    font-size: var(--fs-small);
-    line-height: 1.25;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3; /* three lines: "Bolsa de Ouro grande" must never lose the size of the pouch to an ellipsis */
-    line-clamp: 3;
-    overflow: hidden;
-  }
-  .mk-card .rarity-line {
-    font-size: var(--fs-small);
-  }
-  .mk-card-tags {
-    grid-column: 2;
-    gap: 2px 3px;
-  }
-  .mk-card .mk-tag,
-  .mk-card .mk-cert {
-    font-size: var(--fs-small);
-    padding: 0 4px;
-  }
-  .mk-card .mk-cert-text {
-    display: none;
-  }
-  .mk-tile {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .mk-side .dh-card {
-    padding: 12px;
-  }
-  .mk-list {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (max-width: 420px) {
-  .mk-summary {
-    grid-template-columns: 1fr;
-  }
-}
-/* the narrowest phones (320): the wallet chip and the refresh button go under the title */
-@media (max-width: 359px) {
-  .mk-head {
-    flex-wrap: wrap;
-  }
-  .mk-head-actions {
-    flex: 1 0 100%;
-    justify-content: space-between;
-  }
-}
-/* a phone between 480 and 599: the tabs fit in a row */
-@media (min-width: 480px) and (max-width: 599px) {
-  .mk-tabs {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+.mk-qty-field {
+  width: 7em;
+  flex: 0 0 auto;
 }

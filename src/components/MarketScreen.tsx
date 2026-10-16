@@ -15,6 +15,8 @@ import { MarketSummary, MyOffers, OfferForm, SellPicker, useSellFlow } from './m
 import WalletPanel from './market/WalletPanel';
 import { ScaleIcon } from './market/icons';
 import { shortAddress } from './market/format';
+import { Button, PageHeader, Panel, Screen, ScreenLayout, Tabs } from './ui';
+import type { TabItem } from './ui';
 import '../market.css';
 
 type Tab = 'buy' | 'sell' | 'offers' | 'history' | 'wallet';
@@ -108,17 +110,86 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pick]);
 
+  const tabs: TabItem<Tab>[] = TABS.map(({ id, icon }) => ({
+    id,
+    label: mt(`tabs.${id}`),
+    icon: <span aria-hidden>{icon}</span>,
+  }));
+
+  const main = (
+    <>
+      <Tabs<Tab> items={tabs} value={tab} onChange={setTab} label={mt('title')} className="mk-tabs" />
+
+      {/* one compact line; the wallet-link and payment steps carry the full key warning instead */}
+      {tab !== 'wallet' && !(tab === 'buy' && active) && <Notices chain={chain} />}
+
+      <div className="mk-content">
+        {error && (
+          <p className="ui-alert bad" role="alert">
+            {error}{' '}
+            <Button size="sm" onClick={() => void refresh()}>
+              {mt('retry')}
+            </Button>
+          </p>
+        )}
+        {loading && !overview && <p className="ui-note">{mt('loading')}</p>}
+
+        {tab === 'buy' && (
+          <>
+            {!wallet && overview && !active && (
+              <p className="ui-alert">
+                {mt('wallet.needLink')}{' '}
+                <Button size="sm" variant="primary" onClick={() => setTab('wallet')}>
+                  {mt('header.connect')}
+                </Button>
+              </p>
+            )}
+            {active ? (
+              <ReservationPanel
+                api={marketApi}
+                reservation={active}
+                walletAddress={wallet?.address ?? null}
+                solUsd={overview?.solUsd ?? null}
+                bagFull={bagFull}
+                onChanged={() => void afterChange()}
+                onClose={() => {
+                  setActive(null);
+                  void refresh();
+                }}
+              />
+            ) : (
+              <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} solUsd={overview?.solUsd ?? null} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} />
+            )}
+          </>
+        )}
+        {tab === 'sell' && <SellPicker flow={flow} />}
+        {tab === 'offers' && <MyOffers flow={flow} />}
+        {tab === 'history' && <HistoryPanel overview={overview} cluster={chain?.cluster ?? 'mainnet-beta'} />}
+        {tab === 'wallet' && <WalletPanel api={marketApi} chain={chain} wallet={wallet} onChanged={() => void refresh()} />}
+      </div>
+    </>
+  );
+
+  const side = (
+    <>
+      <Panel className="mk-create" title={mt('sell.form.title')}>
+        <OfferForm flow={flow} />
+      </Panel>
+      <Panel className="mk-summary-card" title={mt('summary.title')}>
+        <MarketSummary overview={overview} feePercent={chain?.feePercent ?? 5} />
+      </Panel>
+    </>
+  );
+
   return (
-    <div className="desktop-home mk-screen" data-tab={tab} aria-label={mt('title')} lang={activeLocale === 'en' ? 'en' : 'pt-BR'}>
-      <section className="dh-card mk-main">
-        <header className="mk-head">
-          <ScaleIcon />
-          <div className="mk-head-text">
-            <h2 className="mk-title">{mt('title')}</h2>
-            <p className="mk-subtitle">{mt('subtitle')}</p>
-          </div>
-          <div className="mk-head-actions">
-            <button className={`mk-wallet-chip${wallet ? '' : ' none'}${tab === 'wallet' ? ' active' : ''}`} onClick={() => setTab('wallet')} data-ui>
+    <Screen label={mt('title')} className="mk-screen" lang={activeLocale === 'en' ? 'en' : 'pt-BR'} data-tab={tab}>
+      <PageHeader
+        icon={<ScaleIcon />}
+        title={mt('title')}
+        subtitle={mt('subtitle')}
+        actions={
+          <>
+            <Button size="sm" variant={wallet ? 'secondary' : 'primary'} className={`mk-wallet-chip${tab === 'wallet' ? ' active' : ''}`} onClick={() => setTab('wallet')}>
               {wallet ? (
                 <>
                   <span className="mk-chip-label">{mt('header.walletLabel')}: </span>
@@ -127,83 +198,14 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
               ) : (
                 mt('header.connect')
               )}
-            </button>
-            <button className="mk-btn small mk-refresh" onClick={() => void refresh()} aria-label={mt('refresh')} title={mt('refresh')} data-ui>
+            </Button>
+            <Button size="sm" className="mk-refresh" onClick={() => void refresh()} aria-label={mt('refresh')} title={mt('refresh')}>
               {'↻'}
-            </button>
-          </div>
-        </header>
-
-        <div className="mk-tabs" role="tablist">
-          {TABS.map(({ id, icon }) => (
-            <button key={id} role="tab" aria-selected={tab === id} className={`tab${tab === id ? ' active' : ''}`} onClick={() => setTab(id)} data-ui>
-              <span className="mk-tab-ico" aria-hidden>
-                {icon}
-              </span>
-              {mt(`tabs.${id}`)}
-            </button>
-          ))}
-        </div>
-
-        {/* one compact line; the wallet-link and payment steps carry the full key warning instead */}
-        {tab !== 'wallet' && !(tab === 'buy' && active) && <Notices chain={chain} />}
-
-        <div className="mk-content">
-          {error && (
-            <p className="mk-status error" role="alert">
-              {error}{' '}
-              <button className="mk-btn small" onClick={() => void refresh()} data-ui>
-                {mt('retry')}
-              </button>
-            </p>
-          )}
-          {loading && !overview && <p className="mk-note">{mt('loading')}</p>}
-
-          {tab === 'buy' && (
-            <>
-              {!wallet && overview && !active && (
-                <p className="mk-status">
-                  {mt('wallet.needLink')}{' '}
-                  <button className="mk-btn small" onClick={() => setTab('wallet')} data-ui>
-                    {mt('header.connect')}
-                  </button>
-                </p>
-              )}
-              {active ? (
-                <ReservationPanel
-                  api={marketApi}
-                  reservation={active}
-                  walletAddress={wallet?.address ?? null}
-                  solUsd={overview?.solUsd ?? null}
-                  bagFull={bagFull}
-                  onChanged={() => void afterChange()}
-                  onClose={() => {
-                    setActive(null);
-                    void refresh();
-                  }}
-                />
-              ) : (
-                <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} solUsd={overview?.solUsd ?? null} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} />
-              )}
-            </>
-          )}
-          {tab === 'sell' && <SellPicker flow={flow} />}
-          {tab === 'offers' && <MyOffers flow={flow} />}
-          {tab === 'history' && <HistoryPanel overview={overview} cluster={chain?.cluster ?? 'mainnet-beta'} />}
-          {tab === 'wallet' && <WalletPanel api={marketApi} chain={chain} wallet={wallet} onChanged={() => void refresh()} />}
-        </div>
-      </section>
-
-      <aside className="mk-side">
-        <section className="dh-card mk-create">
-          <h3 className="dh-card-title">{mt('sell.form.title')}</h3>
-          <OfferForm flow={flow} />
-        </section>
-        <section className="dh-card mk-summary-card">
-          <h3 className="dh-card-title">{mt('summary.title')}</h3>
-          <MarketSummary overview={overview} feePercent={chain?.feePercent ?? 5} />
-        </section>
-      </aside>
-    </div>
+            </Button>
+          </>
+        }
+      />
+      <ScreenLayout className="mk-layout" data-tab={tab} main={main} side={side} />
+    </Screen>
   );
 }

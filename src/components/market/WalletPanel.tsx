@@ -6,14 +6,15 @@ import { explorerAddressUrl, listSolWallets } from '../../game/market/wallet';
 import type { ChainPublic } from '../../../supabase/functions/_shared/market/types';
 import { copyText } from './format';
 import { LINK_MESSAGE_KEY } from './linkMessages';
+import { Button, Panel } from '../ui';
 
 /** The warning every money screen carries. */
 export function Warnings({ chain, custody = true }: { chain: ChainPublic | null; custody?: boolean }) {
   return (
     <div className="mk-warnings">
-      {chain && !chain.livemode && <p className="mk-warn test">{mt('rules.testnet')}</p>}
-      <p className="mk-warn key">{mt('rules.neverKey')}</p>
-      {custody && <p className="mk-note">{mt('rules.nonCustodial')}</p>}
+      {chain && !chain.livemode && <p className="ui-alert info">{mt('rules.testnet')}</p>}
+      <p className="ui-alert bad">{mt('rules.neverKey')}</p>
+      {custody && <p className="ui-note">{mt('rules.nonCustodial')}</p>}
     </div>
   );
 }
@@ -49,61 +50,59 @@ export default function WalletPanel({ api, chain, wallet, onChanged }: { api: Ma
 
   const picker = choices && (
     <div className="mk-wallet-choices" role="group" aria-label={mt('wallet.choose')}>
-      <span className="mk-note">{mt('wallet.choose')}</span>
+      <span className="ui-note">{mt('wallet.choose')}</span>
       {choices.map((name) => (
-        <button key={name} className="mk-btn" onClick={() => void link(name)} disabled={busy !== null} data-ui>
+        <Button key={name} onClick={() => void link(name)} disabled={busy !== null}>
           {name}
-        </button>
+        </Button>
       ))}
     </div>
   );
 
   return (
-    <div className="mk-panel">
-      <h3 className="mk-h">{mt('wallet.title')}</h3>
+    <Panel className="mk-panel" title={mt('wallet.title')}>
       <Warnings chain={chain} />
       {wallet ? (
         <div className="mk-wallet">
           <span className="mk-label">{mt('wallet.linked')}</span>
           <code className="mk-address">{wallet.address}</code>
           <div className="mk-row">
-            <button
-              className="mk-btn small"
+            <Button
+              size="sm"
               onClick={async () => {
                 setCopied(await copyText(wallet.address));
                 window.setTimeout(() => setCopied(false), 1500);
               }}
-              data-ui
             >
               {copied ? mt('copied') : mt('copy')}
-            </button>
+            </Button>
             {chain && (
-              <a className="mk-note" href={explorerAddressUrl(chain.cluster, wallet.address)} target="_blank" rel="noopener noreferrer">
+              <a className="ui-note" href={explorerAddressUrl(chain.cluster, wallet.address)} target="_blank" rel="noopener noreferrer">
                 {mt('wallet.explorer')}
               </a>
             )}
-            {chain && <span className="mk-note">{mt('wallet.network', { name: chain.livemode ? 'Solana' : mt('wallet.devnet') })}</span>}
+            {chain && <span className="ui-note">{mt('wallet.network', { name: chain.livemode ? 'Solana' : mt('wallet.devnet') })}</span>}
           </div>
-          <p className="mk-note">{mt('wallet.changeHint')}</p>
-          <button className="mk-btn" onClick={() => void start()} disabled={!chain || busy !== null} data-ui>
+          <p className="ui-note">{mt('wallet.changeHint')}</p>
+          <Button onClick={() => void start()} disabled={!chain || busy !== null}>
             {busy === 'signing' ? mt('wallet.signing') : mt('wallet.change')}
-          </button>
+          </Button>
           {picker}
         </div>
       ) : (
         <div className="mk-wallet">
           <p className="mk-text">{mt('wallet.none')}</p>
-          <button className="mk-btn primary" onClick={() => void start()} disabled={!chain || busy !== null} data-ui>
+          <Button variant="primary" onClick={() => void start()} disabled={!chain || busy !== null}>
             {busy === 'signing' ? mt('wallet.signing') : mt('wallet.connect')}
-          </button>
+          </Button>
           {picker}
         </div>
       )}
       {message && (
-        <p className="mk-status" role="status">
+        <p className="ui-alert" role="status">
           {message}
         </p>
       )}
-    </div>
+    </Panel>
   );
 }
