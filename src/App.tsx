@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import T, { setTunableListener } from './game/tunables';
 import {
   addBattlePassXp,
@@ -18,6 +18,9 @@ import { SaveConflictError, SaveRepository, SaveTooLargeError } from './game/sav
 import { seasonRankingEnabled } from './game/seasonRanking';
 import { useSeasonSubmit } from './game/useSeasonSubmit';
 import { setSyncedSave } from './game/syncedSave';
+import { SaveScheduler, UploadOutcome, flushCloudSave, setActiveSaveScheduler } from './game/saveScheduler';
+import { isImportantChange } from './game/saveImportance';
+import { clearPendingCloudSave, writePendingCloudSave } from './game/pendingCloudSave';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, needsServerUniques, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { isServerItemAuthority } from './game/itemAuthority';
@@ -194,8 +197,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [save, setSave] = useState<SaveData>(() => settleSeason(isServerItemAuthority() ? initialSave : stripTradeable(initialSave), Date.now()));
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const revisionRef = useRef(initialRevision);
-  const dirtyRef = useRef(false);
-  const flushTimeoutRef = useRef<number | null>(null);
+  // Set by setSaveBoth when a change must reach the server at once (saveImportance.ts); the autosave effect reads and clears it.
+  const importantRef = useRef(false);
+  const schedulerRef = useRef<SaveScheduler | null>(null);
 
   const [shopOpen, setShopOpen] = useState(false);
   const [shopTab, setShopTab] = useState<'buy' | 'sell' | 'wholesale' | 'pouch'>('buy');
@@ -316,6 +320,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       s = moment.save;
       celebrateLook(moment.look, moment.armorNameKey);
     }
+    if (isImportantChange(saveRef.current, s)) importantRef.current = true;
     saveRef.current = s;
     setSave(s);
     if (nextLevel > prevLevel) {
@@ -385,7 +390,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     userId,
     save,
     getSave: () => saveRef.current,
-    commit: (s) => setSaveBoth(s),
+    commit: (s) => {
+      setSaveBoth(s);
+      importantRef.current = true; // a claim's roll or a burn: the server confirms the delivery against the save it holds
+    },
     onFound: (found) => showToast(t('tradeable.found', { list: Object.entries(found).map(([id, n]) => t('tradeable.line', { n: fmtNum(n), name: t(`materials.${getMaterial(id as MaterialId)?.nameKey ?? id}`) })).join(', ') })),
   });
   // Season ranking (off unless VITE_SEASON_RANKING_ENABLED, and never in the desktop / offline build, which has no backend): posts the save in the background.
@@ -437,7 +445,14 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     };
   }, [userId]);
 
-  marketFns.current = { apply: setSaveBoth, toast: showToast };
+  // A delivery from the market (or a listing that left the bag) is acknowledged only once the server holds a save that has it: it is uploaded at once.
+  marketFns.current = {
+    apply: (next) => {
+      setSaveBoth(next);
+      importantRef.current = true;
+    },
+    toast: showToast,
+  };
 
   const updateTutorial = (next: SaveData['tutorial']) => setSaveBoth({ ...saveRef.current, tutorial: next, seenWelcome: true });
 
@@ -554,23 +569,27 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     };
   }, [activeTooltip]);
 
-  // Phase 1 persistence: debounced, conflict-aware save through whichever repository GameShell resolved
-  // (local or Supabase — see saveRepository.ts). This still sends the WHOLE SaveData object as-is on
-  // every flush, same as the old direct-localStorage write; only WHERE it's stored changed, not who's
-  // trusted to compute gold/gear/RNG/timers (that's a later phase, see docs/backend-phase1.md).
+  // Phase 1 persistence: batched, conflict-aware save through whichever repository GameShell resolved (local or Supabase — see saveRepository.ts). This still sends the WHOLE SaveData object
+  // as-is on every upload, same as the old direct-localStorage write; only WHERE it's stored changed, not who's trusted to compute gold/gear/RNG/timers (that's a later phase, see
+  // docs/backend-phase1.md). WHEN it goes is decided by saveScheduler.ts: a signed-in hero's changes are mirrored to the device at once (pendingCloudSave.ts) and uploaded at most every
+  // 45 s, at once for the important moments (saveImportance.ts), when a caller flushes, and when the page is going away. The local (offline) build still writes within a second.
   const leagueSwapRef = useRef(false);
-  const flushSave = useCallback(async () => {
-    if (!dirtyRef.current) return;
-    // While the first League's reset swaps the hero, an autosave of the OLD hero must not land on top of it: stay dirty, the next tick saves whatever is current then.
-    if (leagueSwapRef.current) return;
-    dirtyRef.current = false;
+  const uploadOnce = async ({ keepalive }: { keepalive: boolean }): Promise<UploadOutcome> => {
+    // While the first League's reset swaps the hero, an autosave of the OLD hero must not land on top of it: stay pending, the scheduler asks again in a moment.
+    if (leagueSwapRef.current) return 'skipped';
     setSaveStatus('saving');
+    const toSave = saveRef.current;
     try {
-      const toSave = saveRef.current;
-      const result = await repository.save(toSave, revisionRef.current);
+      const result = await repository.save(toSave, revisionRef.current, { keepalive });
       revisionRef.current = result.revision;
       setSyncedSave(toSave); // the season ranking posts exactly what the server now holds
-      setSaveStatus('saved');
+      if (repository.remote && userId) {
+        // the server holds everything up to `toSave`: nothing left to journal, unless the hero moved on while the request was out
+        if (saveRef.current === toSave) clearPendingCloudSave();
+        else writePendingCloudSave(userId, result.revision, saveRef.current);
+      }
+      setSaveStatus(saveRef.current === toSave ? 'saved' : 'dirty');
+      return 'ok';
     } catch (err) {
       if (err instanceof SaveConflictError) {
         // Another tab/device saved first — the server always wins (§18/§21): reload its current state
@@ -581,49 +600,70 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             saveRef.current = fresh.save;
             revisionRef.current = fresh.revision;
             setSyncedSave(null); // the server's copy is not the object we hold until the next successful save
+            clearPendingCloudSave();
             setSave(fresh.save);
           }
         } catch {
-          /* keep local state; next flush attempt will surface the same conflict */
+          /* keep local state; the retry surfaces the same conflict again */
+          setSaveStatus('error');
+          return 'failed';
         }
         setSaveStatus('error');
         showToast(t('sync.conflict'));
-      } else {
-        // A save over the upload size limit is not transient, but it is not lost either (it stays local); the error report tells support about it.
-        if (err instanceof SaveTooLargeError) recordError('error', err);
-        // Network/transient failure: leave it dirty so the next debounce tick (or the online-event
-        // handler below) retries instead of silently dropping the change.
-        dirtyRef.current = true;
-        setSaveStatus(navigator.onLine ? 'error' : 'offline');
+        return 'conflict';
       }
+      // A save over the upload size limit is not transient, but it is not lost either (it stays local); the error report tells support about it.
+      if (err instanceof SaveTooLargeError) recordError('error', err);
+      // Network/transient failure: stays pending, the scheduler retries with a growing delay (and at once when the browser comes back online) instead of silently dropping the change.
+      setSaveStatus(navigator.onLine ? 'error' : 'offline');
+      return 'failed';
     }
-  }, [repository]);
+  };
+  const uploadRef = useRef(uploadOnce);
+  uploadRef.current = uploadOnce;
+  if (!schedulerRef.current) {
+    schedulerRef.current = new SaveScheduler(
+      repository.remote ? { upload: (o) => uploadRef.current(o) } : { upload: (o) => uploadRef.current(o), minIntervalMs: 0, importantGapMs: 0 },
+    );
+  }
 
   useEffect(() => {
-    dirtyRef.current = true;
+    const scheduler = schedulerRef.current!;
+    scheduler.enable();
+    setActiveSaveScheduler(scheduler);
+    return () => {
+      setActiveSaveScheduler(null);
+      scheduler.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (repository.remote && userId) writePendingCloudSave(userId, revisionRef.current, saveRef.current);
     setSaveStatus((s) => (s === 'saving' ? s : 'dirty'));
-    if (flushTimeoutRef.current) window.clearTimeout(flushTimeoutRef.current);
-    // §19: debounce autosave instead of firing a request per React state tick.
-    flushTimeoutRef.current = window.setTimeout(() => {
-      void flushSave();
-    }, 800);
-    return () => {
-      if (flushTimeoutRef.current) window.clearTimeout(flushTimeoutRef.current);
-    };
-  }, [save, flushSave]);
+    const important = importantRef.current;
+    importantRef.current = false;
+    schedulerRef.current!.markDirty(important);
+  }, [save, repository, userId]);
 
+  // The page is going away (tab hidden, closed, navigated off) or the network is back: send what is pending now. The hidden / pagehide upload is a keepalive request when the client supports it.
   useEffect(() => {
-    const onBeforeUnload = () => {
-      if (dirtyRef.current) void flushSave();
+    const scheduler = schedulerRef.current!;
+    const leaving = () => void scheduler.flush({ keepalive: true });
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') leaving();
     };
-    const onOnline = () => void flushSave();
-    window.addEventListener('beforeunload', onBeforeUnload);
+    const onOnline = () => scheduler.resumeNow();
+    window.addEventListener('beforeunload', leaving);
+    window.addEventListener('pagehide', leaving);
     window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onHide);
     return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('beforeunload', leaving);
+      window.removeEventListener('pagehide', leaving);
       window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onHide);
     };
-  }, [flushSave]);
+  }, []);
 
   // ...and one that ends while playing is settled within a minute. settleSeason returns the same object when there is nothing to do.
   useEffect(() => {
@@ -781,7 +821,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       showToast(t('settings.backupFailed'));
       return;
     }
-    commitSave(next);
+    commitSave(next, { important: true });
     setWelcome(null);
     setRewardHidden(false);
     setActiveView('home');
@@ -1513,11 +1553,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     else void withItemLock(run);
   };
 
-  const commitSave = (next: SaveData) => {
+  // A time-sensitive transition (stop a hunt, harvest, claim): changes the save and asks for an upload. On the signed-in build it joins the batch (the device keeps it meanwhile); only
+  // `important` ones, and every change of the local build, are written at once.
+  const commitSave = (next: SaveData, opts: { important?: boolean } = {}) => {
     setSaveBoth(next);
-    dirtyRef.current = true;
-    if (flushTimeoutRef.current) window.clearTimeout(flushTimeoutRef.current);
-    void flushSave();
+    if (opts.important || !repository.remote) importantRef.current = true;
   };
 
   // The first League (leagueReset.ts): on login GameShell already settled the hero; this keeps it true for a tab that stays open or comes back. It asks the server for the reset
@@ -1557,6 +1597,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         if (stopped || typeof resetAt !== 'number') return;
         const local = saveRef.current;
         if (!needsLeagueReset(local, resetAt) && !needsPioneerCheck(local, resetAt)) return;
+        // This adopts the SERVER's save, and uploads are batched: make the server hold the latest one first so nothing played since the last upload is replaced.
+        await flushCloudSave();
         leagueSwapRef.current = true;
         const server = await repository.load();
         if (stopped || !server) return;
@@ -1621,10 +1663,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // §22: try to flush whatever's pending before actually signing out, so a quick "sign out right after
   // an action" can't lose that action. Best-effort — signOut still proceeds even if the flush fails.
   const handleSignOut = async () => {
-    if (flushTimeoutRef.current) window.clearTimeout(flushTimeoutRef.current);
-    dirtyRef.current = true;
     try {
-      await flushSave();
+      await schedulerRef.current!.flush();
     } catch {
       /* proceed with sign-out regardless; nothing server-side is deleted either way */
     }

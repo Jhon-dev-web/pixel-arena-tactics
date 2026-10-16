@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { extractMetrics } from '../../supabase/functions/_shared/progress/metrics';
 import type { SaveData } from './engine';
 import { getSyncedSave } from './syncedSave';
+import { flushCloudSave } from './saveScheduler';
 import { getServerResetAt, shouldHoldSubmission } from './leagueReset';
 import { FIRST_SUBMIT_DELAY_MS, EVENT_MIN_GAP_MS, SUBMIT_INTERVAL_MS, resetSubmitStatus, shouldSubmitNow, submitProgress } from './seasonRanking';
 
@@ -19,19 +20,22 @@ export function useSeasonSubmit(enabled: boolean, save: SaveData): void {
       if (!enabled || inFlight.current) return;
       const now = Date.now();
       if (!shouldSubmitNow({ now, lastAttemptAt: lastAttemptAt.current, event })) return;
-      const synced = getSyncedSave();
-      if (!synced) return; // nothing saved yet this session: try again on the next minute tick
-      if (shouldHoldSubmission(synced, getServerResetAt())) return; // a hero from before the first League's reset: the game is about to replace it, the server would only say "wait"
-      lastAttemptAt.current = now;
       inFlight.current = true;
-      void submitProgress(synced, now)
-        .then((status) => {
+      void (async () => {
+        try {
+          // The server compares the blob's hash with the game it stores, and uploads are batched: make it hold the latest save first, then post exactly that one.
+          await flushCloudSave();
+          const synced = getSyncedSave();
+          if (!synced) return; // nothing saved yet this session: try again on the next minute tick
+          if (shouldHoldSubmission(synced, getServerResetAt())) return; // a hero from before the first League's reset: the game is about to replace it, the server would only say "wait"
+          lastAttemptAt.current = now;
+          const status = await submitProgress(synced, now);
           // The server said the saved game was not (yet) the one posted: ask again in about a minute instead of waiting 10.
           if (status.pendingSync) lastAttemptAt.current = now - SUBMIT_INTERVAL_MS + EVENT_MIN_GAP_MS;
-        })
-        .finally(() => {
+        } finally {
           inFlight.current = false;
-        });
+        }
+      })();
     },
     [enabled],
   );

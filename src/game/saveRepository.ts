@@ -2,6 +2,7 @@ import { SaveData, loadSave, normalizeSave, persistSave } from './engine';
 import { supabase } from '../lib/supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { assertUploadSize, fromUploadBlob, toUploadBlob } from './saveUpload';
+import { withKeepalive } from '../lib/supabaseFetch';
 
 // Phase 1 boundary: this file only decides WHERE SaveData is stored (localStorage vs Supabase). It does
 // NOT change who is trusted to compute gold/gear/RNG/timers — the server just stores whatever SaveData
@@ -28,8 +29,11 @@ export interface LoadResult {
 }
 
 export interface SaveRepository {
+  /** True when the save goes to a server: its uploads are batched (saveScheduler.ts) and the device keeps a journal in between (pendingCloudSave.ts). Absent / false = the device itself (localStorage). */
+  readonly remote?: boolean;
   load(): Promise<LoadResult>;
-  save(data: SaveData, expectedRevision: number): Promise<{ revision: number }>;
+  /** `keepalive` marks an upload made while the page is going away: the request may outlive it (when the client supports that and the body is small enough). */
+  save(data: SaveData, expectedRevision: number, opts?: { keepalive?: boolean }): Promise<{ revision: number }>;
 }
 
 // ---- Local (pre-auth / offline fallback) ----------------------------------------------------------
@@ -53,6 +57,7 @@ interface CharacterRow {
 }
 
 export class SupabaseSaveRepository implements SaveRepository {
+  readonly remote = true;
   // `client` defaults to the app client; tests pass a fake one.
   constructor(
     private readonly userId: string,
@@ -95,23 +100,25 @@ export class SupabaseSaveRepository implements SaveRepository {
     return { revision: data.revision };
   }
 
-  async save(data: SaveData, expectedRevision: number): Promise<{ revision: number }> {
+  async save(data: SaveData, expectedRevision: number, opts: { keepalive?: boolean } = {}): Promise<{ revision: number }> {
     const supabase = this.client;
     if (!supabase) throw new Error('supabase_not_configured');
     const blob = assertUploadSize(toUploadBlob(data));
     const nextRevision = expectedRevision + 1;
-    const { data: row, error } = await supabase
-      .from('characters')
-      .update({
-        hero_name: data.heroName,
-        save_data: blob,
-        save_schema_version: data.schemaVersion,
-        revision: nextRevision,
-      })
-      .eq('user_id', this.userId)
-      .eq('revision', expectedRevision)
-      .select('revision')
-      .maybeSingle<{ revision: number }>();
+    const request = () =>
+      supabase
+        .from('characters')
+        .update({
+          hero_name: data.heroName,
+          save_data: blob,
+          save_schema_version: data.schemaVersion,
+          revision: nextRevision,
+        })
+        .eq('user_id', this.userId)
+        .eq('revision', expectedRevision)
+        .select('revision')
+        .maybeSingle<{ revision: number }>();
+    const { data: row, error } = await (opts.keepalive ? withKeepalive(request) : request());
     if (error) throw error;
     // No row matched user_id+revision: someone else (another tab/device) saved first. The caller must
     // reload the server's current state rather than retry blindly — server always wins (see §18/§21).

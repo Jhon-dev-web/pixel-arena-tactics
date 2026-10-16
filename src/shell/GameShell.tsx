@@ -10,6 +10,7 @@ import { getServerPassOwned, setPassSource, setServerPassOwned } from '../game/e
 import { setItemAuthority } from '../game/itemAuthority';
 import { applyServerPass, refreshServerPass } from '../game/passServer';
 import { buildNewLeagueHero, readLeagueResetAt, settleLeague } from '../game/leagueReset';
+import { takePendingCloudSave } from '../game/pendingCloudSave';
 import { getMyUsername } from '../game/usernameRepository';
 import { UsernameContext } from '../game/usernameContext';
 import {
@@ -99,13 +100,21 @@ export default function GameShell() {
       const existing = await repo.load();
       if (cancelled) return;
       if (existing) {
+        // Uploads are batched, so a tab or phone that died between two of them left its newest changes only on this device (pendingCloudSave.ts): carry on from them when the server still holds
+        // exactly the revision they were made on (nothing else saved since); otherwise the server wins, as always.
+        const fromDevice = (r: LoadResult): LoadResult => {
+          const pending = takePendingCloudSave(user.id, r.revision);
+          return pending ? { save: pending, revision: r.revision } : r;
+        };
         if (typeof resetAt === 'number') {
           const settled = await settleLeague(repo, existing, { accountId: user.id, resetAt, applyPass: withServerPass });
           if (cancelled) return;
-          setResolution({ kind: 'ready', initial: { save: withServerPass(settled.save), revision: settled.revision }, repository: repo });
+          const carried = fromDevice({ save: settled.save, revision: settled.revision });
+          setResolution({ kind: 'ready', initial: { save: withServerPass(carried.save), revision: carried.revision }, repository: repo });
           return;
         }
-        setResolution({ kind: 'ready', initial: { ...existing, save: withServerPass(existing.save) }, repository: repo });
+        const carried = fromDevice(existing);
+        setResolution({ kind: 'ready', initial: { ...carried, save: withServerPass(carried.save) }, repository: repo });
         return;
       }
       // After the League opened no local save can enter the online game: a new account starts from zero like everyone else (the local file stays on the device).

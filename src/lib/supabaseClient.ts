@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { supabaseFetch } from './supabaseFetch';
 
 // Phase 1 (account + persistence foundation) only. The frontend must NEVER hold anything but the
 // anon/publishable key — RLS on the `characters` table is what actually protects the data (see
@@ -24,5 +25,6 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
         autoRefreshToken: true,
         detectSessionInUrl: false,
       },
+      global: { fetch: supabaseFetch },
     })
   : null;
