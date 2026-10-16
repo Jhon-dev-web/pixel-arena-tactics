@@ -29,6 +29,8 @@ if (config.siteUrl !== null) {
   const site = new URL(config.siteUrl);
   if (site.pathname !== '/' || site.search || site.hash) throw new Error('config.siteUrl must be an origin only, e.g. https://example.com');
 }
+if (typeof config.waitlistEnabled !== 'boolean') throw new Error('config.waitlistEnabled must be true or false');
+if (config.waitlistEnabled && config.supabaseUrl === null) console.warn('WARNING: config.waitlistEnabled is true but config.supabaseUrl is null: the block will say the sign-up is not available yet.');
 if (config.passSalesOpen && config.playUrl === null) throw new Error('config.passSalesOpen needs config.playUrl (the buy link opens the game)');
 if (config.passSalesOpen && !(config.legalLive.refund && legal.find(page => page.route === 'refund')?.body)) throw new Error('config.passSalesOpen needs the refund policy text: set config.legalLive.refund and give the refund entry in legal a body');
 for (const page of legal) if (config.legalLive[page.flag] && !page.body) throw new Error('config.legalLive.' + page.flag + ' is true but the legal entry has no body');

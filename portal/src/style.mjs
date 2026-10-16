@@ -299,4 +299,31 @@ footer small { color: var(--muted); font-size: .875rem; grid-column: 1/-1; }
 @media (max-width:900px) { .fun-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px 0; } .fun-grid li:nth-child(3) { padding-left: 0; border: 0; } .footer-trust nav { margin-left: 0; } }
 @media (max-width:650px) { .fun-grid { grid-template-columns: 1fr; } .fun-grid li, .fun-grid li:first-child, .fun-grid li:nth-child(3) { padding: 16px 0; border: 0; border-top: 1px solid var(--border); } .steps li { padding-left: 60px; } .hero .actions .button { flex: 1 1 100%; } }
 @media (prefers-reduced-motion:reduce) { * { transition: none!important; scroll-behavior: auto!important; } }
+/* Waitlist ("Avise-me no lançamento") */
+.waitlist { background: linear-gradient(140deg,#243038,#121c21); }
+.waitlist-inner { max-width: 1120px; margin: auto; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8%; align-items: center; }
+.waitlist h2 { margin: 6px 0 12px; font-size: clamp(1.6rem,3.4vw,2.4rem); }
+.wl-lead { margin: 0; max-width: 520px; }
+.waitlist-form { display: grid; gap: 14px; }
+.wl-field { display: grid; gap: 6px; }
+.wl-field label { color: var(--ink); font-size: .9375rem; font-weight: 600; }
+.wl-field input { min-height: 48px; width: 100%; box-sizing: border-box; padding: 10px 14px; background: var(--bg); color: var(--ink); border: 1px solid #869091; border-radius: 0; font: inherit; }
+.wl-field input:focus-visible, .wl-consent input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.wl-consent { display: flex; gap: 12px; align-items: flex-start; color: var(--ink); font-size: .9375rem; line-height: 1.5; cursor: pointer; }
+.wl-consent input { flex: none; width: 24px; height: 24px; margin: 1px 0 0; accent-color: var(--gold); }
+.wl-privacy { margin: -6px 0 0; font-size: .875rem; }
+.wl-privacy a { color: var(--gold); text-decoration: underline; }
+.waitlist-form .button { justify-self: start; cursor: pointer; }
+.waitlist-form .button:disabled { opacity: .6; cursor: progress; }
+.wl-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.wl-status { min-height: 1.5em; margin: 12px 0 0; font-size: .9375rem; }
+.wl-status[data-state="error"] { color: #e8a98f; }
+.wl-status[data-state="busy"] { color: var(--muted); }
+.wl-note { margin: 12px 0 0; font-size: .9375rem; }
+.wl-count { margin: 12px 0 0; font-family: var(--serif); color: var(--gold); font-size: 1.2rem; }
+.wl-done { padding: 18px 22px; border-left: 2px solid var(--gold); background: var(--surface); }
+.wl-done-text { margin: 0; color: var(--ink); font-size: 1.0625rem; }
+.waitlist-season { padding-top: 40px; padding-bottom: 40px; }
+.waitlist-unsub .button { margin-top: 10px; cursor: pointer; }
+@media (max-width:800px) { .waitlist-inner { grid-template-columns: 1fr; gap: 22px; } .waitlist-form .button { justify-self: stretch; } }
 `;

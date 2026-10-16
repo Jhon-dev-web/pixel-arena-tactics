@@ -9,6 +9,9 @@ const l = localized;
 //                  hreflang and Open Graph URLs, robots.txt, sitemap.xml and indexing allowed.
 //  company         shown in the footer only for the fields that are filled (never a placeholder).
 //  legalLive       a legal page is linked from the footer only when its real text is in the site and its flag is true. Placeholder pages stay unlinked.
+//  waitlistEnabled  true: the "Avise-me no lançamento" block (e-mail + consent) appears on the Home and the Temporada page and the /unsubscribe page exists. false (default): none of it is rendered.
+//                  Needs supabaseUrl (the Edge Functions waitlist-join / waitlist-unsubscribe, docs/WAITLIST.md); without it the block says the sign-up is not available yet. The public
+//                  counter appears only when the database flag arena_private.portal_flags.show_waitlist_count is on AND supabaseAnonKey is set.
 // community stays empty until official channels exist.
 // supabaseUrl / supabaseAnonKey feed the live numbers of the Liga da Temporada page (Pass meter and rankings). Both stay null until the owner fills them, and the page then says
 // the data is unavailable: it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
@@ -16,7 +19,7 @@ const l = localized;
 export const config = {
   playUrl: null, passSalesOpen: false, passPrice: 'US$ 10', siteUrl: null,
   company: { legalName: null, cnpj: null, supportEmail: null },
-  legalLive: { terms: false, privacy: false, refund: false, seasonRules: false },
+  legalLive: { terms: false, privacy: false, refund: false, seasonRules: false }, waitlistEnabled: false,
   supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Idle', pageSize: 8,
 };
 // Text that depends on the owner settings is computed when read (getters), so a changed setting changes every page at once.
@@ -293,3 +296,32 @@ export const legal = [
   { route: 'season-rules', flag: 'seasonRules', title: l('Regulamento da Liga', 'League Rules') },
 ];
 export const legalPlaceholder = l('Texto a ser fornecido pelo responsável do jogo.', 'Text to be provided by the game’s owner.');
+// "Avise-me no lançamento" (waitlist). The consent sentence is fixed by the owner; the block only renders when config.waitlistEnabled is true.
+export const waitlist = {
+  eyebrow: l('Lançamento', 'Launch'),
+  title: l('Avise-me no lançamento', 'Notify me at launch'),
+  lead: l('Deixe seu e-mail para ser avisado quando o Arena Idle abrir. Só o aviso do lançamento, nada de spam.', 'Leave your email to hear when Arena Idle opens. Just the launch notice, no spam.'),
+  compactLead: l('Quer saber quando a Liga e o jogo abrem? Deixe seu e-mail.', 'Want to know when the League and the game open? Leave your email.'),
+  emailLabel: l('Seu e-mail', 'Your email'),
+  emailPlaceholder: l('voce@exemplo.com', 'you@example.com'),
+  consent: l('Quero receber e-mails sobre o lançamento do Arena Idle. Posso cancelar quando quiser.', 'I want to receive emails about the Arena Idle launch. I can cancel any time.'),
+  privacyLink: l('Política de Privacidade', 'Privacy Policy'),
+  honeypotLabel: l('Não preencha este campo', 'Leave this field empty'),
+  submit: l('Avise-me', 'Notify me'),
+  sending: l('Enviando…', 'Sending…'),
+  registered: l('Você está na lista. Avisaremos quando o Arena Idle abrir.', 'You are on the list. We will let you know when Arena Idle opens.'),
+  badEmail: l('Confira o e-mail digitado.', 'Please check the email you typed.'),
+  needConsent: l('Marque a caixa para receber o aviso.', 'Tick the box to receive the notice.'),
+  rateLimited: l('Muitas tentativas. Tente de novo mais tarde.', 'Too many attempts. Please try again later.'),
+  failed: l('Não foi possível salvar agora. Tente de novo em instantes.', 'Could not save right now. Please try again in a moment.'),
+  unavailable: l('O cadastro ainda não está disponível. Volte em breve.', 'Sign-up is not available yet. Please come back soon.'),
+  noscript: l('O cadastro precisa de JavaScript. Ative-o no navegador para deixar seu e-mail.', 'Sign-up needs JavaScript. Turn it on in your browser to leave your email.'),
+  count: l('{n} aventureiros na lista', '{n} adventurers on the list'),
+  unsubTitle: l('Cancelar o aviso de lançamento', 'Cancel the launch notice'),
+  unsubLead: l('Confirme para parar de receber e-mails sobre o lançamento do Arena Idle.', 'Confirm to stop receiving emails about the Arena Idle launch.'),
+  unsubButton: l('Cancelar o aviso', 'Cancel the notice'),
+  unsubDone: l('Pronto. Você não receberá mais e-mails sobre o lançamento.', 'Done. You will not receive any more launch emails.'),
+  unsubBad: l('Este link não é válido. Use o link do e-mail mais recente.', 'This link is not valid. Use the link from the most recent email.'),
+  unsubFailed: l('Não foi possível cancelar agora. Tente de novo em instantes.', 'Could not cancel right now. Please try again in a moment.'),
+  unsubNoscript: l('Para cancelar por aqui é preciso JavaScript. Ou responda ao e-mail pedindo o cancelamento.', 'Cancelling here needs JavaScript. Or reply to the email asking to be removed.'),
+};

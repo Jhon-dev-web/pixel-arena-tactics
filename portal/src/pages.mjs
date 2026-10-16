@@ -1,6 +1,6 @@
-import { config, seasonPage, glossary, states, systems, groups, progression, league, market, roadmap, articles, faq, copy, descriptions, shots, legal, legalPlaceholder } from './content.mjs';
+import { config, seasonPage, glossary, states, systems, groups, progression, league, market, roadmap, articles, faq, copy, descriptions, shots, legal, legalPlaceholder, waitlist } from './content.mjs';
 import { escapeHtml as esc, editorialTypes, publishedArticles, paginate, neighbors, renderBlocks } from './editorial.mjs';
-import { failedRows } from '../public/season-core.js';
+import { cleanSupabaseUrl, failedRows } from '../public/season-core.js';
 
 export const OG_IMAGE = { file: '/img/og.jpg', width: 1200, height: 630 };
 
@@ -37,12 +37,36 @@ export function renderSite(lang) {
   const newsEmpty = () => `<div class="empty"><h2>${t('Acompanhe o que está em desenvolvimento.', 'See what we’re working on.')}</h2><p>${pick(copy.noNews)}</p>${link('roadmap', t('Ver roadmap', 'View roadmap'), 'button secondary')}</div>`;
   const allPosts = publishedArticles(articles);
   const community = () => config.community.length ? `<section class="section community"><p class="eyebrow">${t('Comunidade', 'Community')}</p><h2>${t('Converse sobre Arena Idle.', 'Talk about Arena Idle.')}</h2><div class="actions">${config.community.map(channel => `<a class="button secondary" href="${esc(channel.url)}">${esc(pick(channel.label))} ↗</a>`).join('')}</div></section>` : '';
+  // "Avise-me no lançamento": hidden entirely while config.waitlistEnabled is false. The form itself stays hidden until /waitlist.js runs (no JavaScript = a short note, never a broken form);
+  // when the Supabase address is not configured it says the sign-up is not available yet. The honeypot is moved off-screen by CSS (not display:none, which bots skip).
+  const waitlistLive = Boolean(cleanSupabaseUrl(config.supabaseUrl));
+  const waitlistPrivacy = config.legalLive.privacy && legal.find(page => page.route === 'privacy')?.body ? link('privacy', pick(waitlist.privacyLink)) : '';
+  const waitlistLabels = () => JSON.stringify(Object.fromEntries(['registered', 'badEmail', 'needConsent', 'rateLimited', 'failed', 'sending', 'count'].map(key => [key, pick(waitlist[key])])));
+  const waitlistBlock = variant => {
+    if (!config.waitlistEnabled) return '';
+    const id = 'waitlist-' + variant;
+    const body = waitlistLive
+      ? `<form class="waitlist-form" data-wl-form method="post" novalidate hidden>
+<div class="wl-field"><label for="${id}-email">${pick(waitlist.emailLabel)}</label><input id="${id}-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="${esc(pick(waitlist.emailPlaceholder))}"></div>
+<div class="wl-hp" aria-hidden="true"><label for="${id}-hp">${pick(waitlist.honeypotLabel)}</label><input id="${id}-hp" name="hp" type="text" tabindex="-1" autocomplete="off"></div>
+<label class="wl-consent"><input name="consent" type="checkbox" required><span>${pick(waitlist.consent)}</span></label>
+${waitlistPrivacy ? `<p class="wl-privacy">${waitlistPrivacy}</p>` : ''}
+<button class="button" type="submit">${pick(waitlist.submit)}</button>
+</form>
+<div class="wl-done" data-wl-done hidden><p class="wl-done-text" data-wl-done-text></p></div>
+<p class="wl-status" role="status" aria-live="polite" data-wl-status></p>
+<p class="wl-count" data-wl-count hidden></p>
+<p class="wl-note" data-wl-nojs><noscript>${pick(waitlist.noscript)}</noscript></p>`
+      : `<p class="wl-note">${pick(waitlist.unavailable)}</p>`;
+    return `<section class="section waitlist waitlist-${variant}" aria-labelledby="${id}-title" data-waitlist data-lang="${lang}" data-labels="${esc(waitlistLabels())}" data-supabase-url="${waitlistLive ? esc(config.supabaseUrl) : ''}" data-anon-key="${waitlistLive && config.supabaseAnonKey ? esc(config.supabaseAnonKey) : ''}"><div class="waitlist-inner"><div><p class="eyebrow">${pick(waitlist.eyebrow)}</p><h2 id="${id}-title">${pick(waitlist.title)}</h2><p class="wl-lead">${pick(variant === 'home' ? waitlist.lead : waitlist.compactLead)}</p></div><div class="wl-body">${body}</div></div>${waitlistLive ? '<script type="module" src="/waitlist.js"></script>' : ''}</section>`;
+  };
   const shotImg = (shot, eager = false) => `<img src="${esc(shot.file)}" alt="${esc(pick(shot.alt))}" width="${shot.width}" height="${shot.height}" ${eager ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}>`;
   const figure = (shot, cls = '') => `<figure class="shot ${cls}">${shotImg(shot)}<figcaption>${esc(pick(shot.caption))}</figcaption></figure>`;
   const pages = {};
   const add = (route, title, body, options = {}) => { pages[route] = { title, body, ...options }; };
 
   add('', t('Início', 'Home'), `<section class="hero"><div class="hero-art" aria-hidden="true"></div><div class="hero-copy"><p class="eyebrow">${t('RPG idle · Web e Windows', 'Idle RPG · Web and Windows')}</p><div class="hero-brand">ARENA <span>IDLE</span></div><h1>${pick(copy.headline)}</h1><p>${pick(copy.subtitle)}</p><div class="actions">${primary()}${passLink()}</div></div><figure class="hero-shot">${shotImg(shots.dungeon, true)}</figure><p class="hero-foot">${t('Captura do jogo atual', 'Screenshot of the current game')}</p></section>
+    ${waitlistBlock('home')}
     <section class="section fun-section"><p class="eyebrow">${t('Para quem joga', 'For players')}</p><h2>${pick(copy.funTitle)}</h2><ul class="fun-grid">${copy.fun.map((item, index) => `<li><span class="profession-number" aria-hidden="true">0${index + 1}</span><h3>${pick(item.title)}</h3><p>${pick(item.body)}</p></li>`).join('')}</ul></section>
     <section class="section loop-section"><div class="section-head"><div><p class="eyebrow">${t('Entenda a progressão', 'How progression works')}</p><h2>${pick(copy.loopTitle)}</h2></div>${link('systems', t('Explorar sistemas', 'Explore systems') + ' →', 'text-link')}</div><p class="section-copy">${pick(copy.loopBody)}</p>${loop()}</section>
     <section class="section choice-section"><div><p class="eyebrow">${t('Especialização e tempo', 'Focus and time')}</p><h2>${pick(copy.choicesTitle)}</h2><p>${pick(copy.choicesBody)}</p></div><div class="focus-paths"><p class="eyebrow">${t('Onde investir agora?', 'Where will you focus?')}</p>${groups.filter(group => ['professions', 'hero-gear', 'combat'].includes(group.id)).map(group => link('systems', `<span>${pick(group.title)}</span><span aria-hidden="true">→</span>`, '', '#' + group.id)).join('')}<p>${t('O próximo objetivo orienta suas escolhas.', 'Let your next goal guide your choices.')}</p></div></section>
@@ -74,6 +98,7 @@ export function renderSite(lang) {
   const rankingStart = live ? `<p class="rank-empty" data-kind="loading">${pick(seasonPage.loading)}</p>` : failedRows(labels);
   const seasonBody = intro(pick(seasonPage.eyebrow), pick(seasonPage.title), pick(seasonPage.lead))
     + `<section class="section narrow league-steps" aria-labelledby="steps-title"><h2 id="steps-title">${pick(seasonPage.stepsTitle)}</h2><ol class="steps"><li>${pick(seasonPage.step1)}</li><li>${pick(seasonPage.step2)}</li><li>${pick(seasonPage.step3)}</li></ol><div class="notice" data-reset-notice><p><strong>${pick(seasonPage.resetNotice)}</strong></p></div></section>`
+    + waitlistBlock('season')
     + `<div data-season-root data-lang="${lang}" data-labels="${esc(JSON.stringify(labels))}" data-supabase-url="${live ? esc(config.supabaseUrl) : ''}" data-anon-key="${live ? esc(config.supabaseAnonKey) : ''}">
 <section class="section narrow season-meter" aria-labelledby="meter-title"><h2 id="meter-title">${pick(seasonPage.meterTitle)}</h2>
 <div data-meter-closed hidden><div class="meter-bar" role="img" aria-label="${esc(pick(seasonPage.goalLine))}" data-meter-bar><span data-meter-fill></span></div>
@@ -99,6 +124,11 @@ export function renderSite(lang) {
   for (const page of legal) {
     const isLive = Boolean(config.legalLive[page.flag]) && Boolean(page.body);
     add(page.route, pick(page.title), intro(t('Documento legal', 'Legal document'), pick(page.title), isLive ? '' : t('Esta página é um espaço reservado.', 'This page is a placeholder.')) + (isLive ? `<article class="section narrow rich-content">${renderBlocks(page.body[lang])}</article>` : `<section class="section narrow"><div class="notice placeholder"><p><strong>${pick(legalPlaceholder)}</strong></p></div></section>`), { indexable: isLive, desc: 'legal' });
+  }
+  // The unsubscribe page a future launch e-mail links to (/pt/unsubscribe/?t=<signed token>). It asks for a click (so a link scanner cannot unsubscribe anybody) and posts the token to waitlist-unsubscribe.
+  if (config.waitlistEnabled) {
+    const unsubLabels = JSON.stringify({ done: pick(waitlist.unsubDone), bad: pick(waitlist.unsubBad), failed: pick(waitlist.unsubFailed) });
+    add('unsubscribe', pick(waitlist.unsubTitle), intro(pick(waitlist.eyebrow), pick(waitlist.unsubTitle), pick(waitlist.unsubLead)) + `<section class="section narrow waitlist-unsub" data-unsubscribe data-labels="${esc(unsubLabels)}" data-supabase-url="${waitlistLive ? esc(config.supabaseUrl) : ''}"><button class="button" type="button" data-unsub-button hidden>${pick(waitlist.unsubButton)}</button><p class="wl-status" role="status" aria-live="polite" data-unsub-status></p><p class="wl-note" data-unsub-nojs><noscript>${pick(waitlist.unsubNoscript)}</noscript></p></section><script type="module" src="/waitlist.js"></script>`, { indexable: false });
   }
   add('roadmap', 'Roadmap', intro('Roadmap', t('A evolução do Arena Idle.', 'Arena Idle’s development.'), t('Entenda o estado de cada parte do projeto.', 'See where each part of the project stands.')) + `<section class="section roadmap-section"><h2 class="sr-only">${t('Significado dos estados', 'Status definitions')}</h2>${roadmapLegend()}<p class="availability-note">${pick(copy.availableNote)}</p>${road()}${!roadmap.some(item => item.status === 'planned') ? `<p class="note">${t('Planejado: ainda não há itens públicos nesta categoria.', 'Planned: there are no public items in this category yet.')}</p>` : ''}</section>`);
 

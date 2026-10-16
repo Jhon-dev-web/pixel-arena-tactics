@@ -25,6 +25,7 @@ A prévia abre em http://127.0.0.1:4173/pt/ e http://127.0.0.1:4173/en/. Execute
 - `scripts/check.mjs`: títulos, idioma, links, âncoras e arquivos locais.
 - `scripts/editorial-check.mjs`: verificações do formato editorial com registros de teste que não são publicados.
 - `public/season.js` e `public/season-core.js`: página Temporada (barra de Passes e rankings lidos do Supabase com a chave pública; o `core` é puro e testado por `npm run check:season`).
+- `public/waitlist.js` e `public/waitlist-core.js`: bloco "Avise-me no lançamento" (Home e Temporada) e página de cancelamento; o `core` é puro e testado por `npm run check:waitlist`. Ver `docs/WAITLIST.md`.
 - `public/app.js`: menu móvel, menus de navegação e fechamento por teclado.
 - `public/img/*.webp`: capturas reais do jogo atual (build offline, save de meio de jogo, 1440x900). `public/fonts/`: Press Start 2P (a fonte do jogo, licença OFL incluída). `public/favicon.svg`: ícone provisório.
 
@@ -47,6 +48,7 @@ Para editar publicações, consulte [EDITORIAL.md](EDITORIAL.md). Artigos só en
 | `siteUrl` | `null` | Origem pública (https, sem caminho). `null`: links relativos, `noindex`, sem robots.txt/sitemap.xml. Preenchido: canonical/hreflang/Open Graph absolutos, indexação liberada, robots.txt e sitemap.xml gerados. |
 | `company` | tudo `null` | `legalName`, `cnpj`, `supportEmail`: aparecem no rodapé só os campos preenchidos. |
 | `legalLive` | tudo `false` | `terms`, `privacy`, `refund`, `seasonRules`: o rodapé só linka a página quando a flag é `true` e a entrada em `legal` tem `body` (blocos de EDITORIAL.md). As páginas reservadas continuam sem link. |
+| `waitlistEnabled` | `false` | Liga o bloco "Avise-me no lançamento" (Home e Temporada) e a página `/unsubscribe/`. Precisa de `supabaseUrl` e das funções `waitlist-join` / `waitlist-unsubscribe` implantadas (`docs/WAITLIST.md`). `false`: nada é renderizado. |
 | `supabaseUrl` / `supabaseAnonKey` | `null` | Dados ao vivo da Liga da Temporada (só a chave pública anon). |
 
 A competição tem um único nome: **Liga da Temporada** / Season League. "Temporada do Passe" é só a trilha de recompensas dentro do jogo. A página antiga `/pt/championship/` virou um redirecionamento para `/pt/season/`. A imagem de compartilhamento é `public/img/og.jpg` (1200x630, colagem de capturas reais).
