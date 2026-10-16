@@ -38,7 +38,7 @@ export function buildItemTables() {
   const seals = BATTLE_PASS_TRACK.filter((l) => l.premium.kind === 'consumable' && l.premium.id === 'forge_seal').length;
 
   return {
-    rarities: RARITIES.map((r) => ({ id: r.id, chance: r.chance, substatCount: r.substatCount })),
+    rarities: RARITIES.map((r) => ({ id: r.id, chance: r.chance, substatCount: r.substatCount, substatMult: r.substatMult })),
     substats: SUBSTATS.map((s) => ({ type: s.type, min: s.min, max: s.max, perTier: s.perTier, ranges: s.ranges ?? null, decimals: s.decimals ?? 0 })),
     sealMinRarity: FORGE_SEAL_MIN_RARITY,
     forge,

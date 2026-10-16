@@ -11,15 +11,17 @@ export interface RarityDef {
   id: Rarity;
   nameKey: string;
   statMult: number;
+  // Strength of each substat roll of a piece of this rarity (1 = the tier's own range): the rolled value is scaled once and stored, so what the card shows is what the fight uses.
+  substatMult: number;
   substatCount: number;
   chance: number;
 }
 
 export const RARITIES: RarityDef[] = [
-  { id: 'common', nameKey: 'rar_common', statMult: 1, substatCount: 0, chance: 0.63 },
-  { id: 'rare', nameKey: 'rar_rare', statMult: 1.02, substatCount: 1, chance: 0.25 },
-  { id: 'epic', nameKey: 'rar_epic', statMult: 1.06, substatCount: 2, chance: 0.1 },
-  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.18, substatCount: 3, chance: 0.02 },
+  { id: 'common', nameKey: 'rar_common', statMult: 1, substatMult: 1, substatCount: 0, chance: 0.63 },
+  { id: 'rare', nameKey: 'rar_rare', statMult: 1.02, substatMult: 1, substatCount: 1, chance: 0.25 },
+  { id: 'epic', nameKey: 'rar_epic', statMult: 1.06, substatMult: 1, substatCount: 2, chance: 0.1 },
+  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.18, substatMult: 1, substatCount: 3, chance: 0.02 },
 ];
 
 interface SubstatDef {
@@ -88,33 +90,36 @@ export function rollRarityAtLeast(min: Rarity, rng: Rng = Math.random): Rarity {
 const tierRange = (def: SubstatDef, tier: number): [number, number] | undefined =>
   def.ranges?.[Math.min(def.ranges.length, Math.max(1, Math.floor(tier) || 1)) - 1];
 
-// One roll of a substat for a piece of the given tier.
-export function rollSubstatValue(def: SubstatDef, tier: number, rng: Rng = Math.random): number {
+// One roll of a substat for a piece of the given tier. `mult` is the rarity's substatMult: the tier's roll scaled once and kept to one decimal (the same draws as an unscaled roll, so a seeded stream does not move).
+const scaleSubstat = (value: number, mult: number): number => (mult === 1 ? value : Math.round(value * mult * 10) / 10);
+
+export function rollSubstatValue(def: SubstatDef, tier: number, rng: Rng = Math.random, mult = 1): number {
   const range = tierRange(def, tier);
-  if (!range) return def.min + randInt(0, def.max - def.min, rng) + Math.round(def.perTier * tier);
+  if (!range) return scaleSubstat(def.min + randInt(0, def.max - def.min, rng) + Math.round(def.perTier * tier), mult);
   const scale = Math.pow(10, def.decimals ?? 0);
-  return (Math.round(range[0] * scale) + randInt(0, Math.round((range[1] - range[0]) * scale), rng)) / scale;
+  return scaleSubstat((Math.round(range[0] * scale) + randInt(0, Math.round((range[1] - range[0]) * scale), rng)) / scale, mult);
 }
 
 // The middle of the range a piece of that tier rolls in.
-export function medianSubstatValue(def: SubstatDef, tier: number): number {
+export function medianSubstatValue(def: SubstatDef, tier: number, mult = 1): number {
   const range = tierRange(def, tier);
-  return range ? (range[0] + range[1]) / 2 : (def.min + def.max) / 2 + def.perTier * tier;
+  return scaleSubstat(range ? (range[0] + range[1]) / 2 : (def.min + def.max) / 2 + def.perTier * tier, mult);
 }
 
-export function rollSubstat(tier: number, exclude: SubstatType[] = [], rng: Rng = Math.random): Substat {
+export function rollSubstat(tier: number, exclude: SubstatType[] = [], rng: Rng = Math.random, mult = 1): Substat {
   const pool = SUBSTATS.filter((s) => !exclude.includes(s.type));
   const def = pool[randInt(0, pool.length - 1, rng)];
-  return { type: def.type, value: rollSubstatValue(def, tier, rng) };
+  return { type: def.type, value: rollSubstatValue(def, tier, rng, mult) };
 }
 
 // `extra` = additional guaranteed substat slots (a unique piece rolls one more than its rarity's count).
 export function rollSubstats(rarity: Rarity, tier: number, extra = 0, rng: Rng = Math.random): Substat[] {
-  const count = rarityDef(rarity).substatCount + extra;
+  const def = rarityDef(rarity);
+  const count = def.substatCount + extra;
   const subs: Substat[] = [];
   const used: SubstatType[] = [];
   for (let i = 0; i < count; i++) {
-    const s = rollSubstat(tier, used, rng);
+    const s = rollSubstat(tier, used, rng, def.substatMult);
     used.push(s.type);
     subs.push(s);
   }

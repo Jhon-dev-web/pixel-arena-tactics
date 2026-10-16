@@ -45,26 +45,30 @@ type SubstatDef = (typeof SUBSTAT_TABLE)[number];
 
 const tierRange = (def: SubstatDef, tier: number): readonly [number, number] | undefined => def.ranges?.[Math.min(def.ranges.length, Math.max(1, Math.floor(tier) || 1)) - 1];
 
-function rollSubstatValue(def: SubstatDef, tier: number, rng: Rng): number {
+// The rarity's substatMult scales the tier's roll once, kept to one decimal (rarity.ts scaleSubstat); the draws are the same as an unscaled roll.
+const scaleSubstat = (value: number, mult: number): number => (mult === 1 ? value : Math.round(value * mult * 10) / 10);
+
+function rollSubstatValue(def: SubstatDef, tier: number, rng: Rng, mult: number): number {
   const range = tierRange(def, tier);
-  if (!range) return def.min + randInt(0, def.max - def.min, rng) + Math.round(def.perTier * tier);
+  if (!range) return scaleSubstat(def.min + randInt(0, def.max - def.min, rng) + Math.round(def.perTier * tier), mult);
   const scale = Math.pow(10, def.decimals);
-  return (Math.round(range[0] * scale) + randInt(0, Math.round((range[1] - range[0]) * scale), rng)) / scale;
+  return scaleSubstat((Math.round(range[0] * scale) + randInt(0, Math.round((range[1] - range[0]) * scale), rng)) / scale, mult);
 }
 
-function rollSubstat(tier: number, exclude: SubstatKind[], rng: Rng): SubstatRoll {
+function rollSubstat(tier: number, exclude: SubstatKind[], rng: Rng, mult: number): SubstatRoll {
   const pool = SUBSTAT_TABLE.filter((s) => !exclude.includes(s.type));
   const def = pool[randInt(0, pool.length - 1, rng)];
-  return { type: def.type, value: rollSubstatValue(def, tier, rng) };
+  return { type: def.type, value: rollSubstatValue(def, tier, rng, mult) };
 }
 
 /** `extra` = additional guaranteed substat slots (a unique piece rolls one more than its rarity's count). */
 export function rollSubstats(rarity: RarityId, tier: number, extra: number, rng: Rng): SubstatRoll[] {
-  const count = (RARITY_TABLE.find((r) => r.id === rarity)?.substatCount ?? 0) + extra;
+  const def = RARITY_TABLE.find((r) => r.id === rarity);
+  const count = (def?.substatCount ?? 0) + extra;
   const subs: SubstatRoll[] = [];
   const used: SubstatKind[] = [];
   for (let i = 0; i < count; i++) {
-    const s = rollSubstat(tier, used, rng);
+    const s = rollSubstat(tier, used, rng, def?.substatMult ?? 1);
     used.push(s.type);
     subs.push(s);
   }

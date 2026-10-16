@@ -2,7 +2,7 @@ import { farmHours } from './gear';
 import { playerLevel, type SaveData } from './engine';
 import { GearInstanceId, resolveGearInstance } from './gearInstances';
 import { hasMaterials, MaterialId } from './materials';
-import { Rng, rollSubstat, Substat, SubstatType } from './rarity';
+import { Rng, rarityDef, rollSubstat, Substat, SubstatType } from './rarity';
 import { recordLapidar } from './stats';
 import T from './tunables';
 
@@ -64,7 +64,7 @@ export function applyLapidar(save: SaveData, id: GearInstanceId, lockIndex: numb
       substats.push({ ...locked });
       continue;
     }
-    const s = rollSubstat(item.tier ?? 0, used, rng);
+    const s = rollSubstat(item.tier ?? 0, used, rng, rarityDef(instance.rarity).substatMult);
     used.push(s.type);
     substats.push(s);
   }

@@ -17,7 +17,7 @@ export type RarityId = 'common' | 'rare' | 'epic' | 'legendary';
 export type SubstatKind = 'critRate' | 'critDamage' | 'lifesteal' | 'defense' | 'maxHp' | 'goldBonus';
 
 /** The forge rarity table (rarity.ts RARITIES), in roll order. */
-export const RARITY_TABLE: readonly { id: RarityId; chance: number; substatCount: number }[] = ${JSON.stringify(t.rarities)};
+export const RARITY_TABLE: readonly { id: RarityId; chance: number; substatCount: number; substatMult: number }[] = ${JSON.stringify(t.rarities)};
 
 /** The substat ranges (rarity.ts SUBSTATS): a roll is min + int(0..max-min) + round(perTier x tier), or, when \`ranges\` exists, the tier's own [min, max] in steps of 10^-decimals. */
 export const SUBSTAT_TABLE: readonly { type: SubstatKind; min: number; max: number; perTier: number; ranges: readonly (readonly [number, number])[] | null; decimals: number }[] = ${JSON.stringify(t.substats)};
