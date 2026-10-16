@@ -168,7 +168,8 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
         notBeforeMs: reservation.createdAtMs,
       };
       const verified = await verifyUsdtTransfer(chain.rpc, chain.config, exp);
-      if (!verified.ok) {
+      if ('reason' in verified) {
+        // (`in`, not `.ok`: the game's tests compile this file without strict null checks, where the discriminant does not narrow)
         const map = SUBMIT_REFUSAL[verified.reason];
         return json({ ok: false, reason: map.reason, ...(verified.confirmations !== undefined ? { confirmations: verified.confirmations, needed: chain.config.minConfirmations } : {}) }, map.status, map.status === 503 ? { ...cors, 'retry-after': '10' } : cors);
       }

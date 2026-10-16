@@ -86,7 +86,7 @@ export async function handlePassCrypto(req: Request, deps: PassCryptoDeps): Prom
         minAmountUnits: centsToUnits(pass.priceCents),
         notBeforeMs: intentMs,
       });
-      if (!verified.ok) {
+      if ('reason' in verified) {
         const status = verified.reason === 'rpc_error' || verified.reason === 'wrong_network' ? 503 : verified.reason === 'bad_hash' ? 400 : 409;
         const reason = verified.reason === 'not_found' ? 'not_found_tx' : verified.reason;
         return json({ ok: false, reason, ...(verified.confirmations !== undefined ? { confirmations: verified.confirmations, needed: pass.config.minConfirmations } : {}) }, status, cors);
