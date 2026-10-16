@@ -7,7 +7,7 @@ export { Button, PrimaryButton, SecondaryButton } from './Button';
 export type { ButtonProps } from './Button';
 export { default as ChipRow, Chip } from './Chips';
 export type { ChipItem } from './Chips';
-export { SearchField, SelectField } from './Fields';
+export { SearchField, SelectField, TextField } from './Fields';
 export { default as ItemCard, ItemFrame } from './ItemCard';
 export type { CardRarity, ItemRow } from './ItemCard';
 export { StatRow, StatList } from './StatRow';

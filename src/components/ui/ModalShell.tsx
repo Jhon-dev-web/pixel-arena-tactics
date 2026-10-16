@@ -12,6 +12,7 @@ export default function ModalShell({
   onClose,
   className = '',
   tutorialTarget,
+  footer,
   children,
 }: {
   icon?: ReactNode;
@@ -22,6 +23,8 @@ export default function ModalShell({
   onClose: () => void;
   className?: string;
   tutorialTarget?: string;
+  // A bar that stays in reach under the scrolling body (a primary action, a purchase).
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -43,6 +46,7 @@ export default function ModalShell({
           />
         </div>
         <div className="ui-modal-body">{children}</div>
+        {footer && <div className="ui-modal-foot">{footer}</div>}
       </div>
     </div>
   );

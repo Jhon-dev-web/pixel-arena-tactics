@@ -29,3 +29,16 @@ export function SelectField({ label, children, className = '', ...rest }: Select
     </label>
   );
 }
+
+// A labelled text box (a transaction hash, a price, a name): the caption above and the field box (same look as the search box) under it. `hint` is a small line under the box.
+export function TextField({ label, hint, className = '', ...rest }: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode; hint?: ReactNode }) {
+  return (
+    <label className={`ui-labelled${className ? ` ${className}` : ''}`}>
+      <span className="ui-labelled-caption">{label}</span>
+      <span className="ui-field">
+        <input {...rest} />
+      </span>
+      {hint && <span className="ui-note">{hint}</span>}
+    </label>
+  );
+}

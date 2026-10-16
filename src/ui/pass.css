@@ -1,0 +1,682 @@
+/* Passe de Aventureiro (BattlePassModal) in the new style: the season banner, the perks, the reward track (a horizontal scroller on a wide area, a list on a phone), the exclusives and the footer bar.
+   The shared ModalShell / Panel / Tabs / Button / Chip / Meter carry the look; the League tab keeps its own file (season.css). */
+.pa-root {
+  gap: var(--sp-4);
+}
+
+/* the season banner */
+.pa-hero {
+  position: relative;
+  min-height: 150px;
+  overflow: hidden;
+  background: #0c0712;
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: var(--r-lg);
+}
+.pa-hero-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 78% 50%;
+}
+.pa-hero-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(12, 7, 18, 0.94) 0%, rgba(12, 7, 18, 0.8) 30%, rgba(12, 7, 18, 0.3) 52%, transparent 70%), linear-gradient(0deg, rgba(12, 7, 18, 0.55), transparent 45%);
+}
+.pa-hero-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-3);
+  width: min(100%, 460px);
+  min-height: 150px;
+  padding: var(--sp-4);
+  box-sizing: border-box;
+}
+.pa-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.pa-hero-time {
+  font-size: var(--fs-small);
+  color: var(--c-text-dim);
+  text-shadow: 0 2px 0 #000;
+}
+.pa-level {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.pa-level-text {
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  text-shadow: 0 2px 0 #000;
+}
+@container ui (max-width: 520px) {
+  .pa-hero-art {
+    object-position: 90% 40%;
+  }
+  .pa-hero-shade {
+    background: linear-gradient(90deg, rgba(12, 7, 18, 0.92) 0%, rgba(12, 7, 18, 0.55) 50%, rgba(12, 7, 18, 0.05) 90%), linear-gradient(0deg, rgba(12, 7, 18, 0.72), transparent 50%);
+  }
+  .pa-hero-content {
+    width: 100%;
+  }
+}
+
+/* the perks */
+.pa-perks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+@container ui (min-width: 760px) {
+  .pa-perks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.pa-perk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-3);
+  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.pa-perk:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+@container ui (min-width: 760px) {
+  .pa-perk:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}
+.pa-perk.on {
+  border-color: #2f7a46;
+  background: linear-gradient(180deg, rgba(74, 214, 124, 0.1), #150e1d);
+}
+.pa-perk.off {
+  opacity: 0.8;
+}
+.pa-perk-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.pa-perk-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.pa-perk.off .pa-perk-icon {
+  filter: grayscale(0.8);
+}
+.pa-perk-state {
+  flex: none;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+  border: var(--bw-thin) solid var(--c-line-strong);
+  border-radius: 999px;
+}
+.pa-perk.on .pa-perk-state {
+  color: var(--c-good);
+  border-color: #2f7a46;
+}
+.pa-perk-label {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-text);
+  overflow-wrap: anywhere;
+}
+.pa-perk-sub {
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+
+/* the reward track */
+.pa-track-legend {
+  display: flex;
+  gap: var(--sp-2);
+}
+.pa-track-panel .ui-panel-actions {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.pa-track {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-1) var(--sp-3);
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: grab;
+  user-select: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-gold-700) var(--c-inset);
+  border-radius: var(--r-md);
+}
+.pa-track.dragging {
+  cursor: grabbing;
+}
+.pa-track:focus-visible {
+  outline: 2px solid var(--c-gold-300);
+  outline-offset: 2px;
+}
+.pa-col {
+  flex: none;
+  width: 118px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.pa-col.featured {
+  width: 176px;
+}
+.pa-col.supreme {
+  width: 248px;
+}
+.pa-lvl {
+  display: flex;
+  justify-content: center;
+}
+.pa-lvl-num {
+  min-width: 36px;
+  padding: var(--sp-1) var(--sp-2);
+  text-align: center;
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-sm);
+}
+.pa-col.reached .pa-lvl-num {
+  color: var(--c-text-on-gold);
+  font-weight: 700;
+  background: linear-gradient(180deg, var(--c-gold-300), var(--c-gold-500));
+  border-color: var(--c-gold-700);
+}
+.pa-col.current .pa-lvl-num {
+  box-shadow: 0 0 0 2px var(--c-gold-100), 0 0 14px rgba(255, 215, 106, 0.7);
+}
+.pa-card {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: 16px var(--sp-2) var(--sp-2);
+  font-family: inherit;
+  text-align: center;
+  color: var(--c-text-muted);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: default;
+}
+.pa-col.featured .pa-card {
+  min-height: 130px;
+}
+.pa-col.supreme .pa-card {
+  min-height: 134px;
+}
+.pa-card.premium {
+  border-color: #5c4a2c;
+}
+.pa-card.future {
+  opacity: 0.65;
+}
+.pa-card.premiumLocked {
+  opacity: 0.65;
+  filter: saturate(0.55);
+}
+.pa-card.claimed {
+  color: var(--c-good);
+  border-color: #2f7a46;
+  background: rgba(74, 214, 124, 0.1);
+}
+.pa-card.claimable {
+  color: var(--c-text);
+  cursor: pointer;
+  border-color: var(--c-gold-300);
+  background: linear-gradient(180deg, #3a2a14, var(--c-surface-2));
+  animation: pa-glow 1.8s ease-in-out infinite;
+}
+.pa-card.claimable:hover {
+  filter: brightness(1.15);
+}
+.pa-card.claimable:active {
+  transform: translateY(2px);
+}
+.pa-card:focus-visible {
+  outline: 2px solid var(--c-gold-100);
+  outline-offset: 2px;
+}
+@keyframes pa-glow {
+  50% {
+    box-shadow: 0 0 14px rgba(255, 215, 106, 0.6);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pa-card.claimable {
+    animation: none;
+    box-shadow: 0 0 10px rgba(255, 215, 106, 0.6);
+  }
+}
+.pa-card-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+}
+.pa-col.featured .pa-card-art {
+  height: 64px;
+}
+.pa-col.supreme .pa-card-art {
+  height: 80px;
+  gap: var(--sp-3);
+}
+.pa-art {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.pa-art.big {
+  width: 64px;
+  height: 64px;
+}
+.ui-frame-art .pa-art,
+.ui-frame-art .pa-frame-preview {
+  width: 100%;
+  height: 100%;
+}
+.pa-art-fallback {
+  font-size: var(--glyph-m);
+}
+.pa-frame-preview {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-sm);
+  background: radial-gradient(circle at 50% 38%, rgba(255, 215, 106, 0.18), transparent 65%), #1a1108;
+  --frame-s: 8px;
+  --frame-w: 2px;
+  --frame-out: -4px;
+}
+.pa-frame-preview.big {
+  width: 54px;
+  height: 54px;
+  --frame-s: 13px;
+  --frame-w: 3px;
+  --frame-out: -6px;
+}
+.pa-card-text {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pa-card-name {
+  max-width: 100%;
+  font-size: var(--fs-small);
+  line-height: var(--lh-tight);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+.pa-card-amount,
+.pa-card-extra {
+  font-size: var(--fs-small);
+  color: var(--c-gold-300);
+  overflow-wrap: anywhere;
+}
+.pa-card-tag {
+  position: absolute;
+  top: var(--sp-1);
+  right: var(--sp-1);
+  padding: 2px 6px;
+  font-size: var(--fs-small);
+  line-height: 1.2;
+  border-radius: var(--r-xs);
+}
+.pa-card-tag.ok {
+  color: #0d2a14;
+  background: var(--c-good);
+}
+.pa-card-tag.go {
+  color: var(--c-text-on-gold);
+  background: var(--c-gold-300);
+}
+.pa-card-tag.lock {
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.55);
+}
+.pa-card-tag.lock img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+}
+
+/* a phone: the track is a list, one row per level (free | premium), a featured level is a boxed column */
+@media (max-width: 640px) {
+  .pa-track {
+    flex-direction: column;
+    overflow: visible;
+    cursor: default;
+    padding: var(--sp-1) 0 var(--sp-2);
+    gap: var(--sp-2);
+  }
+  .pa-col,
+  .pa-col.featured,
+  .pa-col.supreme {
+    width: auto;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: 'lvl free premium';
+    gap: var(--sp-2);
+    align-items: stretch;
+  }
+  .pa-col.featured,
+  .pa-col.supreme {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'lvl' 'free' 'premium';
+    padding: var(--sp-2);
+    border: var(--bw) solid var(--c-gold-line-strong);
+    border-radius: var(--r-md);
+    background: rgba(255, 215, 106, 0.05);
+  }
+  .pa-lvl {
+    grid-area: lvl;
+    align-items: center;
+  }
+  .pa-col.featured .pa-lvl,
+  .pa-col.supreme .pa-lvl {
+    justify-content: flex-start;
+  }
+  .pa-lvl-num {
+    min-width: 0;
+    width: 36px;
+    padding: var(--sp-1) 0;
+    box-sizing: border-box;
+  }
+  .pa-card.free {
+    grid-area: free;
+  }
+  .pa-card.premium {
+    grid-area: premium;
+  }
+  .pa-card,
+  .pa-col.featured .pa-card,
+  .pa-col.supreme .pa-card {
+    min-height: 76px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--sp-2);
+    padding: 22px var(--sp-2) var(--sp-2);
+    text-align: left;
+  }
+  .pa-col.featured .pa-card,
+  .pa-col.supreme .pa-card {
+    min-height: 100px;
+    padding: 24px var(--sp-3) var(--sp-3);
+  }
+  .pa-card-text {
+    align-items: flex-start;
+    flex: 1 1 auto;
+  }
+  .pa-card-art,
+  .pa-col.featured .pa-card-art,
+  .pa-col.supreme .pa-card-art {
+    flex: none;
+    height: auto;
+  }
+  .pa-col:not(.featured):not(.supreme) .pa-art {
+    width: 28px;
+    height: 28px;
+  }
+  .pa-card-name {
+    -webkit-line-clamp: 3;
+  }
+}
+
+/* the exclusives of the season */
+.pa-hl-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@container ui (min-width: 720px) {
+  .pa-hl-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.pa-hl {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-3);
+  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  border: var(--bw) solid var(--c-gold-line);
+  border-radius: var(--r-md);
+}
+.pa-hl-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.pa-hl-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+.pa-hl-levels {
+  font-size: var(--fs-small);
+  font-weight: 400;
+  color: var(--c-text-muted);
+}
+.pa-hl-line {
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-dim);
+  overflow-wrap: anywhere;
+}
+.pa-howxp {
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+}
+.pa-howxp strong {
+  font-weight: 400;
+  color: var(--c-gold-300);
+}
+
+/* the footer bar */
+.pa-foot-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.pa-claimall-count {
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.pa-note {
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 460px;
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-dim);
+}
+.pa-owned {
+  font-size: var(--fs-small);
+  color: var(--c-good);
+}
+.pa-buy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+  min-width: 0;
+  max-width: 460px;
+}
+.pa-buy-blurbs {
+  flex: 1 0 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+}
+/* The website link "buy the Pass" opens the modal with this button highlighted (it never starts the checkout by itself). */
+.pa-buy-btn.pa-buy-highlight {
+  outline: 3px solid var(--c-gold-300);
+  outline-offset: 3px;
+  animation: pa-buy-pulse 1.4s ease-in-out infinite;
+}
+@keyframes pa-buy-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(242, 201, 76, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(242, 201, 76, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pa-buy-btn.pa-buy-highlight {
+    animation: none;
+  }
+}
+@media (max-width: 599px) {
+  .ui-modal.pa-modal .ui-modal-foot {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .pa-foot-main,
+  .pa-buy {
+    flex: 1 1 150px;
+  }
+  .pa-buy {
+    align-items: stretch;
+    max-width: none;
+  }
+  .pa-foot-main .ui-btn,
+  .pa-buy .ui-btn {
+    width: 100%;
+  }
+  .pa-owned {
+    display: none;
+  }
+}
+
+/* the end-of-season card */
+.pa-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pa-summary-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.pa-summary-art {
+  flex: none;
+  display: inline-flex;
+  justify-content: center;
+  width: 36px;
+}
+.pa-summary-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pa-summary-amount {
+  flex: none;
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+
+/* the USDC purchase (PassUsdc, a lazy chunk of the web build): the same Button / Panel / TextField as everything else */
+.pa-usdc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  width: 100%;
+  text-align: left;
+}
+.pa-usdc > .ui-panel-head {
+  margin-bottom: 0;
+}
+.pa-usdc .ui-alert {
+  margin: 0;
+}
+.pa-usdc-btn {
+  white-space: normal;
+}
+.pa-usdc-pay {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-200);
+}
+.pa-usdc-kv {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.pa-usdc-address {
+  font-family: inherit;
+  color: var(--c-gold-200);
+  overflow-wrap: anywhere;
+}

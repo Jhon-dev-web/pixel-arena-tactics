@@ -446,6 +446,16 @@
 .ui-field input[type='search']::-webkit-search-cancel-button {
   display: none;
 }
+.ui-labelled {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.ui-labelled-caption {
+  font-size: var(--fs-small);
+  color: var(--c-text-dim);
+}
 .ui-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -734,6 +744,17 @@
   scrollbar-width: thin;
   scrollbar-color: var(--c-gold-700) var(--c-inset);
 }
+.ui-modal-foot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-3) var(--sp-5) var(--sp-4);
+  background: var(--c-shell);
+  border-top: var(--bw-thin) solid rgba(255, 215, 106, 0.22);
+}
 .ui-modal-close {
   display: inline-flex;
   align-items: center;
@@ -766,6 +787,11 @@
   }
   .ui-modal-body {
     padding: var(--sp-3) var(--sp-3) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  }
+  .ui-modal-foot {
+    padding: var(--sp-3) var(--sp-3) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+    flex-direction: column;
+    align-items: stretch;
   }
   .ui-modal .ui-pagehead-icon {
     width: 40px;

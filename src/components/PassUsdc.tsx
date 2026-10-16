@@ -8,6 +8,7 @@ import { WalletError, connectSolWallet, listSolWallets } from '../game/market/wa
 import { LINK_MESSAGE_KEY } from './market/linkMessages';
 import { Warnings } from './market/WalletPanel';
 import { copyText, fmtUsdc, shortAddress } from './market/format';
+import { Button, Panel, TextField } from './ui';
 import '../market.css';
 
 // The second way to buy the Adventurer Pass: USDC (an SPL token on Solana), sent from the player's own wallet (Phantom, Solflare) to the game's receiving wallet, verified on chain by the
@@ -142,59 +143,63 @@ export default function PassUsdc({ onGranted }: { onGranted: () => void }) {
 
   if (!open) {
     return (
-      <button
-        className="battle-btn ap-buy-btn mk-pass-btn"
+      <Button
+        variant="secondary"
+        className="pa-usdc-btn"
         onClick={() => {
           setOpen(true);
           void start();
         }}
-        data-ui
       >
         {priceUnits !== null ? mt('pass.usdcButtonPrice', { a: fmtUsdc(priceUnits) }) : mt('pass.usdcButton')}
-      </button>
+      </Button>
     );
   }
 
   return (
-    <div className="mk-pass">
-      <h4 className="mk-h">{mt('pass.title')}</h4>
+    <Panel tone="inset" className="pa-usdc" title={mt('pass.title')}>
       {plan && (
         <>
           <Warnings chain={plan.chain} custody={false} />
-          <p className="mk-note">{mt('pass.nonCustodial')}</p>
-          <p className="mk-text">{mt('pass.pay', { a: fmtUsdc(plan.priceUnits) })}</p>
-          <div className="mk-kv">
+          <p className="ui-note">{mt('pass.nonCustodial')}</p>
+          <p className="pa-usdc-pay">{mt('pass.pay', { a: fmtUsdc(plan.priceUnits) })}</p>
+          <div className="pa-usdc-kv">
             <span>{mt('pass.receive')}</span>
-            <code className="mk-address" title={plan.receiveAddress}>
+            <code className="pa-usdc-address" title={plan.receiveAddress}>
               {shortAddress(plan.receiveAddress)}
             </code>
-            <button className="mk-btn small" onClick={() => void copyText(plan.receiveAddress)} data-ui>
+            <Button size="sm" onClick={() => void copyText(plan.receiveAddress)}>
               {mt('copy')}
-            </button>
+            </Button>
           </div>
-          <button className="mk-btn primary" disabled={busy} onClick={() => void payFromWallet()} data-ui>
+          <Button variant="primary" block disabled={busy} onClick={() => void payFromWallet()}>
             {mt('pay.payFromWallet')}
-          </button>
-          <label className="mk-hash">
-            <span>{mt('pass.hash')}</span>
-            <input value={signature} onChange={(e) => setSignature(e.target.value.trim())} placeholder={mt('pay.hashPlaceholder')} maxLength={100} autoComplete="off" spellCheck={false} />
-          </label>
-          <button className="mk-btn" disabled={busy || signature.length < 40} onClick={() => void submit(signature)} data-ui>
+          </Button>
+          <TextField
+            label={mt('pass.hash')}
+            value={signature}
+            onChange={(e) => setSignature(e.target.value.trim())}
+            placeholder={mt('pay.hashPlaceholder')}
+            maxLength={100}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <Button block disabled={busy || signature.length < 40} onClick={() => void submit(signature)}>
             {mt('pay.submit')}
-          </button>
-          {!plan.chain.livemode && <p className="mk-note">{mt('pass.testNote')}</p>}
+          </Button>
+          {!plan.chain.livemode && <p className="ui-note">{mt('pass.testNote')}</p>}
         </>
       )}
       {message && (
-        <p className={`mk-status${message.error ? ' error' : ''}`} role="status">
+        <p className={`ui-alert${message.error ? ' bad' : ''}`} role="status">
           {message.text}
         </p>
       )}
       {!plan && !busy && (
-        <button className="mk-btn" onClick={() => void start()} data-ui>
+        <Button block onClick={() => void start()}>
           {mt('pass.start')}
-        </button>
+        </Button>
       )}
-    </div>
+    </Panel>
   );
 }

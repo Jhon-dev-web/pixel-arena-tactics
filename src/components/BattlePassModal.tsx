@@ -20,6 +20,8 @@ import T from '../game/tunables';
 import { gearStatLines } from './gearStats';
 import SeasonRankingPanel from './SeasonRankingPanel';
 import { seasonRankingEnabled } from '../game/seasonRanking';
+import { Button, Chip, Dialog, ItemFrame, Meter, ModalShell, Panel, Tabs } from './ui';
+import type { TabItem } from './ui';
 
 // The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; a vertical list on a phone),
 // the season's exclusives generated from the track data, and the footer with "claim all" and (for non-owners) the purchase button.
@@ -78,9 +80,9 @@ function rewardView(reward: BattlePassReward): RewardView {
 
 function RewardArt({ view, big, size }: { view: RewardView; big?: boolean; size?: number }) {
   if (view.skin) return <HeroThumb sheet={view.skin} size={size ?? (big ? 64 : 32)} />;
-  if (view.frame) return <span className={`ap-frame-preview portrait-frame frame-season-gold${big ? ' big' : ''}`} aria-hidden />;
-  if (view.src) return <img className={`ap-art${big ? ' big' : ''}`} src={view.src} alt="" draggable={false} />;
-  return <span className="ap-art-fallback">{view.fallback}</span>;
+  if (view.frame) return <span className={`pa-frame-preview portrait-frame frame-season-gold${big ? ' big' : ''}`} aria-hidden />;
+  if (view.src) return <img className={`pa-art${big ? ' big' : ''}`} src={view.src} alt="" draggable={false} />;
+  return <span className="pa-art-fallback">{view.fallback}</span>;
 }
 
 // "42 d 6 h" / "5 h" / "< 1 h": what is left of the season.
@@ -114,33 +116,33 @@ function RewardCard({
   const title = [view.name, ...extras.map((e) => e.name)].join(' + ');
   return (
     <button
-      className={`ap-card ${track} ${state}${featured ? ' featured' : ''}${supreme ? ' supreme' : ''}`}
+      className={`pa-card ${track} ${state}${featured ? ' featured' : ''}${supreme ? ' supreme' : ''}`}
       onClick={claimable ? onClaim : undefined}
       aria-disabled={!claimable}
       tabIndex={claimable ? 0 : -1}
       title={title}
       data-ui
     >
-      <span className="ap-card-art">
+      <span className="pa-card-art">
         <RewardArt view={view} big={featured} size={supreme ? 52 : undefined} />
         {supreme && extras.filter((e) => e.skin).map((e) => <RewardArt key={e.name} view={e} big size={80} />)}
       </span>
-      <span className="ap-card-text">
-        <span className="ap-card-name">{view.name}</span>
-        {view.amountText && <span className="ap-card-amount">{view.amountText}</span>}
+      <span className="pa-card-text">
+        <span className="pa-card-name">{view.name}</span>
+        {view.amountText && <span className="pa-card-amount">{view.amountText}</span>}
         {extras.map((e) => (
-          <span className="ap-card-extra" key={e.name}>
+          <span className="pa-card-extra" key={e.name}>
             + {e.name}
           </span>
         ))}
       </span>
-      {state === 'claimed' && <span className="ap-card-tag ok">{t('battlePass.claimed')}</span>}
+      {state === 'claimed' && <span className="pa-card-tag ok">{t('battlePass.claimed')}</span>}
       {state === 'premiumLocked' && (
-        <span className="ap-card-tag lock" aria-label={t('battlePass.premiumLocked')}>
+        <span className="pa-card-tag lock" aria-label={t('battlePass.premiumLocked')}>
           <img src="/assets/icons/garden_plot_locked.png" alt="" draggable={false} />
         </span>
       )}
-      {claimable && <span className="ap-card-tag go">{t('battlePass.claim')}</span>}
+      {claimable && <span className="pa-card-tag go">{t('battlePass.claim')}</span>}
     </button>
   );
 }
@@ -345,176 +347,186 @@ export default function BattlePassModal({
 
   const highlights = seasonHighlights();
 
-  return (
-    <div className="modal-backdrop ap-backdrop">
-      <div className="modal ap-modal" role="dialog" aria-label={t('battlePass.title')}>
-        <button className="modal-x" onClick={onClose} aria-label={t('battlePass.close')} data-ui>
-          ✕
-        </button>
+  const tabs: TabItem<'track' | 'season'>[] = [
+    { id: 'track', label: t('seasonRanking.tabTrack') },
+    { id: 'season', label: t('seasonRanking.tab') },
+  ];
 
-        <div className="ap-body">
-          <header className="ap-hero">
-            <img className="ap-hero-art" src="/assets/backgrounds/battlepass_season.png" alt="" draggable={false} />
-            <div className="ap-hero-shade" aria-hidden />
-            <div className="ap-hero-content">
-              <h2 className="ap-title">{t('battlePass.title')}</h2>
-              <div className="ap-hero-meta">
-                <span className="ap-chip season">{t('battlePass.season', { n: season })}</span>
-                <span className="ap-hero-time">{remainingText(seasonRemainingMs(season, now))}</span>
-                <span className={`ap-chip state${owner ? ' owner' : ''}`}>{owner ? t('battlePass.statusActive') : t('battlePass.statusFree')}</span>
-              </div>
-              <div className="ap-level">
-                <span className="ap-level-text">{maxed ? t('battlePass.levelDone', { n: level }) : t('battlePass.levelBar', { n: level, cur: fmtNum(save.battlePassXp), need: fmtNum(need) })}</span>
-                <div className="ap-xpbar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
-                  <div className="ap-xpfill" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {seasonRankingEnabled && (
-            <div className="ap-tabs" role="tablist">
-              <button role="tab" aria-selected={tab === 'track'} className={`ap-tab${tab === 'track' ? ' on' : ''}`} onClick={() => setTab('track')} data-ui>
-                {t('seasonRanking.tabTrack')}
-              </button>
-              <button role="tab" aria-selected={tab === 'season'} className={`ap-tab${tab === 'season' ? ' on' : ''}`} onClick={() => setTab('season')} data-ui>
-                {t('seasonRanking.tab')}
-              </button>
-            </div>
-          )}
-
-          {showSeason ? (
-            <SeasonRankingPanel online={server} ownsPass={owner} />
-          ) : (
-            <>
-          <section className="ap-perks" aria-label={t('battlePass.perksTitle')}>
-            {perks.map((p) => (
-              <div className={`ap-perk${owner ? ' on' : ' off'}`} key={p.key}>
-                <span className="ap-perk-top">
-                  <img className="ap-perk-icon" src={p.icon} alt="" draggable={false} />
-                  <span className="ap-perk-state">{owner ? t('battlePass.perkOn') : t('battlePass.perkOff')}</span>
-                </span>
-                <span className="ap-perk-label">{p.label}</span>
-                <span className="ap-perk-sub">{p.sub}</span>
-              </div>
-            ))}
-          </section>
-
-          <section className="ap-track-section">
-            <div className="ap-track-head">
-              <h3 className="ap-h3">{t('battlePass.trackTitle')}</h3>
-              <div className="ap-track-legend">
-                <span className="ap-legend free">{t('battlePass.colFree')}</span>
-                <span className="ap-legend premium">{t('battlePass.colPremium')}</span>
-              </div>
-              <button className="ap-goto" onClick={() => goToMyLevel(true)} data-ui>
-                {t('battlePass.goMyLevel')}
-              </button>
-            </div>
-            <div
-              className="ap-track"
-              ref={scrollerRef}
-              tabIndex={0}
-              role="region"
-              aria-label={t('battlePass.trackTitle')}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              onClickCapture={(e) => {
-                if (suppressClick.current) {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }
-              }}
-              onKeyDown={onKeyDown}
-            >
-              {BATTLE_PASS_TRACK.map((lvl) => {
-                const featured = FEATURED_LEVELS.has(lvl.level);
-                const reached = lvl.level <= level;
-                return (
-                  <div
-                    className={`ap-col${reached ? ' reached' : ''}${lvl.level === level ? ' current' : ''}${featured ? ' featured' : ''}${lvl.level === MAX_BATTLE_PASS_LEVEL ? ' supreme' : ''}`}
-                    data-level={lvl.level}
-                    key={lvl.level}
-                    style={{ '--ap-i': lvl.level } as CSSProperties}
-                  >
-                    <div className="ap-lvl">
-                      <span className="ap-lvl-num">{lvl.level}</span>
-                    </div>
-                    <RewardCard reward={lvl.free} state={cardState(lvl.level, 'free')} featured={featured} track="free" onClaim={() => onClaim(lvl.level, 'free')} />
-                    <RewardCard reward={lvl.premium} state={cardState(lvl.level, 'premium')} featured={featured} supreme={lvl.level === MAX_BATTLE_PASS_LEVEL} track="premium" onClaim={() => onClaim(lvl.level, 'premium')} />
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="ap-highlights">
-            <h3 className="ap-h3">{t('battlePass.highlightsTitle')}</h3>
-            <ul className="ap-hl-list">
-              {highlights.map((h) => (
-                <li className="ap-hl" key={h.id}>
-                  <span className="ap-hl-art">
-                    <RewardArt view={h.view} big />
-                  </span>
-                  <span className="ap-hl-text">
-                    <span className="ap-hl-name">
-                      {h.name}
-                      <span className="ap-hl-levels">{h.levels.length > 1 ? t('battlePass.atLevels', { l: h.levels.join(', ') }) : t('battlePass.atLevel', { l: h.levels[0] })}</span>
-                    </span>
-                    <span className="ap-hl-line">{h.line}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <p className="ap-howxp">
-            <strong>{t('battlePass.howXp')}</strong> {t('battlePass.xpFloor', { n: T.battlePass.xpPerFloor })} · {t('battlePass.xpHunt', { n: T.battlePass.xpPerHuntHour })} · {t('battlePass.xpGather', { n: T.battlePass.xpPerMiningHour })}
-          </p>
-            </>
-          )}
-        </div>
-
-        <footer className="ap-footer">
-          <div className="ap-footer-main">
-            <button className="quest-btn claim ap-claimall" onClick={claimAll} disabled={claimableCount === 0} data-ui>
-              {t('battlePass.claimAll')}
-              {claimableCount > 0 && <span className="ap-claimall-count">{claimableCount}</span>}
-            </button>
-            {note && (
-              <span className="ap-note" role="status">
-                {note}
-              </span>
-            )}
-          </div>
-          {owner ? (
-            <span className="ap-owned">{passFlow === 'confirmed' ? t('battlePass.paymentConfirmed') : t('battlePass.ownedNote')}</span>
-          ) : (
-            <div className="ap-buy">
-              {server && passFlow === 'pending' ? (
-                <button className="battle-btn ap-buy-btn" onClick={onRecheck} data-ui>
-                  {t('battlePass.recheck')}
-                </button>
-              ) : (
-                <button className={`battle-btn ap-buy-btn${highlightBuy ? ' ap-buy-highlight' : ''}`} data-highlight={highlightBuy ? 'true' : undefined} onClick={onActivate} disabled={!canBuy || passFlow === 'starting' || passFlow === 'confirming'} data-ui>
-                  {buyLabel}
-                </button>
-              )}
-              {server && (passFlow === 'confirming' || passFlow === 'pending') && (
-                <span className="ap-note" role="status">
-                  {t(passFlow === 'confirming' ? 'battlePass.confirming' : 'battlePass.stillProcessing')}
-                </span>
-              )}
-              <span className="ap-buy-blurb">{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
-              {server && passPurchaseEnabled && <span className="ap-buy-blurb">{t('battlePass.priceOnCheckout')}</span>}
-              {buyExtra}
-            </div>
-          )}
-        </footer>
+  // The bar under the scrolling body: "claim all" on the left, the purchase (when the Pass is not owned) on the right.
+  const footer = (
+    <>
+      <div className="pa-foot-main">
+        <Button variant="primary" className="pa-claimall" onClick={claimAll} disabled={claimableCount === 0}>
+          {t('battlePass.claimAll')}
+          {claimableCount > 0 && <span className="pa-claimall-count">{claimableCount}</span>}
+        </Button>
+        {note && (
+          <span className="pa-note" role="status">
+            {note}
+          </span>
+        )}
       </div>
-    </div>
+      {owner ? (
+        <span className="pa-owned">{passFlow === 'confirmed' ? t('battlePass.paymentConfirmed') : t('battlePass.ownedNote')}</span>
+      ) : (
+        <div className="pa-buy">
+          {server && passFlow === 'pending' ? (
+            <Button variant="primary" className="pa-buy-btn" onClick={onRecheck}>
+              {t('battlePass.recheck')}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              className={`pa-buy-btn${highlightBuy ? ' pa-buy-highlight' : ''}`}
+              data-highlight={highlightBuy ? 'true' : undefined}
+              onClick={onActivate}
+              disabled={!canBuy || passFlow === 'starting' || passFlow === 'confirming'}
+            >
+              {buyLabel}
+            </Button>
+          )}
+          {server && (passFlow === 'confirming' || passFlow === 'pending') && (
+            <span className="pa-note" role="status">
+              {t(passFlow === 'confirming' ? 'battlePass.confirming' : 'battlePass.stillProcessing')}
+            </span>
+          )}
+          {buyExtra}
+        </div>
+      )}
+      {!owner && (
+        <p className="pa-buy-blurbs">
+          <span>{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
+          {server && passPurchaseEnabled && <span>{t('battlePass.priceOnCheckout')}</span>}
+        </p>
+      )}
+    </>
+  );
+
+  return (
+    <ModalShell
+      className="pa-modal"
+      icon={<img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />}
+      title={t('battlePass.title')}
+      closeLabel={t('battlePass.close')}
+      onClose={onClose}
+      footer={footer}
+    >
+      <div className="ui-cq pa-root">
+        <header className="pa-hero">
+          <img className="pa-hero-art" src="/assets/backgrounds/battlepass_season.png" alt="" draggable={false} />
+          <div className="pa-hero-shade" aria-hidden />
+          <div className="pa-hero-content">
+            <div className="pa-hero-meta">
+              <Chip tone="gold">{t('battlePass.season', { n: season })}</Chip>
+              <span className="pa-hero-time">{remainingText(seasonRemainingMs(season, now))}</span>
+              <Chip tone={owner ? 'good' : 'plain'}>{owner ? t('battlePass.statusActive') : t('battlePass.statusFree')}</Chip>
+            </div>
+            <div className="pa-level">
+              <span className="pa-level-text">{maxed ? t('battlePass.levelDone', { n: level }) : t('battlePass.levelBar', { n: level, cur: fmtNum(save.battlePassXp), need: fmtNum(need) })}</span>
+              <Meter pct={pct} label={t('battlePass.levelBar', { n: level, cur: fmtNum(save.battlePassXp), need: fmtNum(need) })} />
+            </div>
+          </div>
+        </header>
+
+        {seasonRankingEnabled && <Tabs<'track' | 'season'> items={tabs} value={tab} onChange={setTab} label={t('battlePass.title')} />}
+
+        {showSeason ? (
+          <SeasonRankingPanel online={server} ownsPass={owner} />
+        ) : (
+          <>
+            <section className="pa-perks" aria-label={t('battlePass.perksTitle')}>
+              {perks.map((p) => (
+                <div className={`pa-perk${owner ? ' on' : ' off'}`} key={p.key}>
+                  <span className="pa-perk-top">
+                    <img className="pa-perk-icon" src={p.icon} alt="" draggable={false} />
+                    <span className="pa-perk-state">{owner ? t('battlePass.perkOn') : t('battlePass.perkOff')}</span>
+                  </span>
+                  <span className="pa-perk-label">{p.label}</span>
+                  <span className="pa-perk-sub">{p.sub}</span>
+                </div>
+              ))}
+            </section>
+
+            <Panel
+              className="pa-track-panel"
+              title={t('battlePass.trackTitle')}
+              actions={
+                <>
+                  <span className="pa-track-legend">
+                    <Chip>{t('battlePass.colFree')}</Chip>
+                    <Chip tone="gold">{t('battlePass.colPremium')}</Chip>
+                  </span>
+                  <Button size="sm" onClick={() => goToMyLevel(true)}>
+                    {t('battlePass.goMyLevel')}
+                  </Button>
+                </>
+              }
+            >
+              <div
+                className="pa-track"
+                ref={scrollerRef}
+                tabIndex={0}
+                role="region"
+                aria-label={t('battlePass.trackTitle')}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onClickCapture={(e) => {
+                  if (suppressClick.current) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }
+                }}
+                onKeyDown={onKeyDown}
+              >
+                {BATTLE_PASS_TRACK.map((lvl) => {
+                  const featured = FEATURED_LEVELS.has(lvl.level);
+                  const reached = lvl.level <= level;
+                  return (
+                    <div
+                      className={`pa-col${reached ? ' reached' : ''}${lvl.level === level ? ' current' : ''}${featured ? ' featured' : ''}${lvl.level === MAX_BATTLE_PASS_LEVEL ? ' supreme' : ''}`}
+                      data-level={lvl.level}
+                      key={lvl.level}
+                      style={{ '--pa-i': lvl.level } as CSSProperties}
+                    >
+                      <div className="pa-lvl">
+                        <span className="pa-lvl-num">{lvl.level}</span>
+                      </div>
+                      <RewardCard reward={lvl.free} state={cardState(lvl.level, 'free')} featured={featured} track="free" onClaim={() => onClaim(lvl.level, 'free')} />
+                      <RewardCard reward={lvl.premium} state={cardState(lvl.level, 'premium')} featured={featured} supreme={lvl.level === MAX_BATTLE_PASS_LEVEL} track="premium" onClaim={() => onClaim(lvl.level, 'premium')} />
+                    </div>
+                  );
+                })}
+              </div>
+            </Panel>
+
+            <Panel title={t('battlePass.highlightsTitle')}>
+              <ul className="pa-hl-list">
+                {highlights.map((h) => (
+                  <li className="pa-hl" key={h.id}>
+                    <ItemFrame size="lg" rarity="legendary">
+                      <RewardArt view={h.view} big />
+                    </ItemFrame>
+                    <span className="pa-hl-text">
+                      <span className="pa-hl-name">
+                        {h.name}
+                        <span className="pa-hl-levels">{h.levels.length > 1 ? t('battlePass.atLevels', { l: h.levels.join(', ') }) : t('battlePass.atLevel', { l: h.levels[0] })}</span>
+                      </span>
+                      <span className="pa-hl-line">{h.line}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+
+            <p className="pa-howxp">
+              <strong>{t('battlePass.howXp')}</strong> {t('battlePass.xpFloor', { n: T.battlePass.xpPerFloor })} · {t('battlePass.xpHunt', { n: T.battlePass.xpPerHuntHour })} · {t('battlePass.xpGather', { n: T.battlePass.xpPerMiningHour })}
+            </p>
+          </>
+        )}
+      </div>
+    </ModalShell>
   );
 }
 
@@ -523,28 +535,31 @@ export function SeasonSummaryModal({ save, onDismiss }: { save: SaveData; onDism
   const summary = save.pendingSeasonSummary;
   if (!summary) return null;
   return (
-    <div className="modal-backdrop ap-summary-backdrop">
-      <div className="modal ap-summary" role="dialog" aria-label={t('battlePass.seasonDelivered', { n: summary.season })}>
-        <h2 className="modal-title win">{t('battlePass.seasonDelivered', { n: summary.season })}</h2>
-        <p className="ap-summary-hint">{t('battlePass.seasonDeliveredHint')}</p>
-        <ul className="ap-summary-list">
-          {summary.rewards.map((r) => {
-            const view = rewardView({ kind: r.kind, id: r.id, amount: r.amount });
-            return (
-              <li className="ap-summary-row" key={`${r.kind}:${r.id ?? ''}`}>
-                <span className="ap-summary-art">
-                  <RewardArt view={view} />
-                </span>
-                <span className="ap-summary-name">{view.name}</span>
-                <span className="ap-summary-amount">{view.amountText || '+1'}</span>
-              </li>
-            );
-          })}
-        </ul>
-        <button className="quest-btn claim" onClick={onDismiss} data-ui>
+    <Dialog
+      className="pa-summary"
+      icon={<img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />}
+      title={t('battlePass.seasonDelivered', { n: summary.season })}
+      subtitle={t('battlePass.seasonDeliveredHint')}
+      footer={
+        <Button variant="primary" block onClick={onDismiss}>
           {t('battlePass.seasonOk')}
-        </button>
-      </div>
-    </div>
+        </Button>
+      }
+    >
+      <ul className="pa-summary-list">
+        {summary.rewards.map((r) => {
+          const view = rewardView({ kind: r.kind, id: r.id, amount: r.amount });
+          return (
+            <li className="pa-summary-row" key={`${r.kind}:${r.id ?? ''}`}>
+              <span className="pa-summary-art">
+                <RewardArt view={view} />
+              </span>
+              <span className="pa-summary-name">{view.name}</span>
+              <span className="pa-summary-amount">{view.amountText || '+1'}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </Dialog>
   );
 }
