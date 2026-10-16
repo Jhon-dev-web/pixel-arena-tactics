@@ -74,7 +74,7 @@ function EquipSlotCard({ slot, view }: { slot: GearSlot; view: EquippedView | nu
       rarityLabel={`${gearText(slot)}${rarityText}`}
     >
       <div className="pg-lines">
-        {gearStatLines(item, lvl).map((l) => (
+        {gearStatLines(item, lvl, rar).map((l) => (
           <span className={`pg-line ${l.kind}`} key={l.kind}>
             {l.text}
           </span>

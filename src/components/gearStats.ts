@@ -1,10 +1,12 @@
 import { activeLocale, t } from '../locales';
 import T from '../game/tunables';
 import { GearItem, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance } from '../game/gear';
+import { Rarity, rarityStatMult } from '../game/rarity';
 
 // The one place a gear piece is turned into its display stat lines (forge cards, inventory detail, equipment panel). Which lines show is
-// decided by which fields the template defines, so every slot reads right without per-slot ternaries. Values are the base + refine numbers
-// the item cards always showed (rarity, durability and substats are listed separately).
+// decided by which fields the template defines, so every slot reads right without per-slot ternaries. Values are the base + refine numbers;
+// when the caller passes the RARITY of a piece it owns they carry its multiplier too (damage, HP, defense and crit damage, the stats the engine multiplies: engine.ts buildCombatStats), so a
+// Legendary card shows what the fight uses. Durability and the substats are listed separately.
 export type GearStatKind = 'damage' | 'maxHp' | 'critChance' | 'critMult' | 'resistance' | 'burn' | 'reflect' | 'regen' | 'attackSpeed' | 'damagePct' | 'lifesteal' | 'gold' | 'xp';
 
 export interface GearStatLine {
@@ -19,15 +21,16 @@ const pct = (frac: number): string => {
   return activeLocale === 'pt' ? p.replace('.', ',') : p;
 };
 
-export function gearStatLines(item: GearItem, level = 0): GearStatLine[] {
+export function gearStatLines(item: GearItem, level = 0, rarity?: Rarity): GearStatLine[] {
   const out: GearStatLine[] = [];
+  const mult = rarityStatMult(rarity);
   const push = (kind: GearStatKind, label: string, value: string) => out.push({ kind, label, value, text: `${value} ${label}` });
-  if (item.damage) push('damage', t('profile.damage'), `+${effectiveDamage(item, level)}`);
+  if (item.damage) push('damage', t('profile.damage'), `+${Math.round(effectiveDamage(item, level) * mult)}`);
   if (item.damagePct) push('damagePct', t('profile.finalDamage'), `+${pct(item.damagePct)}%`);
-  if (item.maxHp) push('maxHp', t('profile.hp'), `+${effectiveMaxHp(item, level)}`);
+  if (item.maxHp) push('maxHp', t('profile.hp'), `+${Math.round(effectiveMaxHp(item, level) * mult)}`);
   if (item.critChance) push('critChance', t('profile.critRate'), `+${pct(effectiveCrit(item, level))}%`);
-  if (item.critMultBonus) push('critMult', t('profile.critDamage'), `+${pct(item.critMultBonus)}%`);
-  if (item.resistance) push('resistance', t('profile.defense'), `+${pct(effectiveResistance(item, level))}%`);
+  if (item.critMultBonus) push('critMult', t('profile.critDamage'), `+${pct(item.critMultBonus * mult)}%`);
+  if (item.resistance) push('resistance', t('profile.defense'), `+${pct(effectiveResistance(item, level) * mult)}%`);
   // Boss relics: lifestealPct and goldBonusPct are already whole percents (3 = 3 %), unlike the 0..1 fractions above.
   if (item.lifestealPct) push('lifesteal', t('profile.lifesteal'), `+${pct(item.lifestealPct / 100)}%`);
   if (item.goldBonusPct) push('gold', t('profile.goldBonus'), `+${pct(item.goldBonusPct / 100)}%`);

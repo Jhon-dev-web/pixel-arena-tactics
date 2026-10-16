@@ -457,7 +457,7 @@ export default function ForgeModal({
                       {gearText(item.nameKey)}
                       {instanceTag(inst)}
                     </span>
-                    <span className="craft-desc">{gearStatLines(item, lvl).map((l) => l.text).join(' · ')}</span>
+                    <span className="craft-desc">{gearStatLines(item, lvl, inst.rarity).map((l) => l.text).join(' · ')}</span>
                     <ItemCompare save={save} slot={item.slot} templateId={item.id} instance={inst} />
                     {!isMax && (
                       <div className="craft-req">

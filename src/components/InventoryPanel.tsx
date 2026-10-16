@@ -458,7 +458,7 @@ export default function InventoryPanel({
             <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
             <AppearanceLine item={selectedGear} />
             <div className="gear-stat-list">
-              {gearStatLines(selectedGear, selectedLevel).map((l) => (
+              {gearStatLines(selectedGear, selectedLevel, selectedRarity).map((l) => (
                 <span className={`gear-stat gear-stat-${l.kind}`} key={l.kind}>
                   {l.text}
                 </span>
