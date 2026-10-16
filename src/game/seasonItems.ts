@@ -38,7 +38,11 @@ export interface FrameDef {
   descKey: string;
 }
 
-export const FRAMES: FrameDef[] = [{ id: 'frame_season_gold', nameKey: 'frame_season_gold', descKey: 'frame_season_gold_d' }];
+export const FRAMES: FrameDef[] = [
+  { id: 'frame_season_gold', nameKey: 'frame_season_gold', descKey: 'frame_season_gold_d' },
+  // The portrait frame of the invite program (referralRewards.ts): not on the Pass track, granted by the server when three invited people qualify.
+  { id: 'frame_recruiter', nameKey: 'frame_recruiter', descKey: 'frame_recruiter_d' },
+];
 
 export const getFrameDef = (id: string): FrameDef | undefined => FRAMES.find((f) => f.id === id);
 

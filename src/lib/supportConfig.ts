@@ -7,6 +7,8 @@ export interface SupportConfig {
   termsUrl: string | null;
   privacyUrl: string | null;
   refundUrl: string | null;
+  /** the public origin of the portal (https://example.com, no path): the invite link of Settings > Convites is built on it (`<portal>/?ref=CODE`, the same shape portal/public/waitlist-core.js inviteUrl makes). null: the panel shows the code only. */
+  portalUrl: string | null;
 }
 
 export const SUPPORT: SupportConfig = {
@@ -14,6 +16,7 @@ export const SUPPORT: SupportConfig = {
   termsUrl: null,
   privacyUrl: null,
   refundUrl: null,
+  portalUrl: null,
 };
 
 /** Only a plain https address becomes a link; anything else (an empty string, a script URL) is treated as "not configured". */

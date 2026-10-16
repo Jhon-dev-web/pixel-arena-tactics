@@ -41,6 +41,8 @@ import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, 
 import { getServerPassOwned, grantDailyPassKit, isServerPassSource, ownsAdventurerPass, purchaseAdventurerPass, setServerPassOwned } from './game/entitlements';
 import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned, hasBuyIntent, pollPassOwned, recheckServerPass, startCheckout, takeCheckoutReturn, passPurchaseEnabled } from './game/passServer';
 import { usePassEntitlementVersion } from './game/usePassEntitlement';
+import { fetchReferralStatus } from './lib/referral';
+import { applyReferralCosmetics } from './game/referralRewards';
 import { needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
 import LeagueResetModal from './components/LeagueResetModal';
 import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
@@ -1582,6 +1584,35 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [userId, configured, repository]);
+  // Referral rewards (docs/WAITLIST.md): the SERVER grants the inviter a title and a portrait frame; the game reads what it granted and puts those cosmetics in the save. Online only, and idempotent
+  // (the same rewards change nothing the second time, so nothing is saved and nothing re-renders). Read at login, when the window comes back and every 15 minutes. The free Pass needs nothing here:
+  // it is an entitlement the Pass check already reads.
+  const commitReferralRef = useRef<(next: SaveData) => void>(() => undefined);
+  commitReferralRef.current = commitSave;
+  useEffect(() => {
+    if (!userId || !configured) return;
+    let stopped = false;
+    const sync = async () => {
+      const status = await fetchReferralStatus();
+      if (stopped || !status) return;
+      const current = saveRef.current;
+      const next = applyReferralCosmetics(current, status.rewards);
+      if (next !== current) commitReferralRef.current(next);
+    };
+    void sync();
+    const every = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void sync();
+    }, 15 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void sync();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      stopped = true;
+      window.clearInterval(every);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [userId, configured]);
   const dismissLeagueNotice = () => {
     const s = saveRef.current;
     if (s.league) commitSave({ ...s, league: { ...s.league, noticeSeen: true } });

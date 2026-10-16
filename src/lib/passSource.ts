@@ -2,8 +2,8 @@ import { supabase } from './supabaseClient';
 
 // Settings > Passe: HOW the account got the Adventurer Pass, read-only from the account's own active entitlement row (the same row passServer.ts reads for "does it own the Pass"; RLS lets a user read
 // only his own). Nothing is written and nothing here decides ownership.
-export type PassSourceId = 'stripe' | 'mercadopago' | 'crypto_bsc' | 'crypto_sol' | 'grant';
-const KNOWN: PassSourceId[] = ['stripe', 'mercadopago', 'crypto_bsc', 'crypto_sol', 'grant'];
+export type PassSourceId = 'stripe' | 'mercadopago' | 'crypto_bsc' | 'crypto_sol' | 'grant' | 'referral';
+const KNOWN: PassSourceId[] = ['stripe', 'mercadopago', 'crypto_bsc', 'crypto_sol', 'grant', 'referral'];
 
 /** The way the active Pass was obtained, or null when it cannot be told (no backend, not signed in, no row, an answer from a newer server). */
 export async function fetchPassSource(): Promise<PassSourceId | null> {

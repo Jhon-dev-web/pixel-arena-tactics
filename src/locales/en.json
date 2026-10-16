@@ -164,7 +164,25 @@
     "exportFailed": "The save could not be exported.",
     "imported": "Save imported.",
     "resetDone": "A new hero has begun.",
-    "backupFailed": "The backup could not be saved; nothing was changed."
+    "backupFailed": "The backup could not be saved; nothing was changed.",
+    "passSource_referral": "Invites",
+    "invitesTitle": "Invites",
+    "invitesHint": "Invite friends with your link. When they join the game and reach level 10, you earn rewards.",
+    "invitesLink": "Your invite link",
+    "invitesCode": "Your invite code",
+    "invitesCopy": "Copy",
+    "invitesCopied": "Copied",
+    "invitesNoCode": "You do not have an invite link yet. Join the waitlist on the game website with the same e-mail as this account to get yours.",
+    "invitesCounts": "Active invites: {n} · Bought the Pass: {m} of {goal}",
+    "invitesCountsNoGoal": "Active invites: {n} · Bought the Pass: {m}",
+    "invitesTiersTitle": "Rewards",
+    "invitesTierQualified": "Active invites: {n}",
+    "invitesTierPaying": "Bought the Pass: {n}",
+    "invitesEarned": "Earned",
+    "invitesLocked": "To earn",
+    "invitesLoading": "Loading your invites...",
+    "invitesError": "Your invites could not be loaded right now.",
+    "invitesRetry": "Try again"
   },
   "tutorial": {
     "start": "START",
@@ -1816,7 +1834,13 @@
     "title_depths_walker": "Depths Walker",
     "req_depths_walker": "Reach Depth 50 (achievement)",
     "title_pioneer": "Pioneer",
-    "req_pioneer": "Played the open test, before the first League"
+    "req_pioneer": "Played the open test, before the first League",
+    "title_recruiter": "Recruiter",
+    "req_recruiter": "Invite a friend who joins the game and reaches level 10 (invites)",
+    "title_recruitment_legend": "Recruitment Legend",
+    "req_recruitment_legend": "Have 25 active invites (invites)",
+    "frame_recruiter": "Recruiter Frame",
+    "frame_recruiter_d": "A blue frame around the hero portrait. A reward of the invites. Purely cosmetic."
   },
   "mastery": {
     "title": "Upcoming unlocks",

@@ -21,6 +21,9 @@ export const TITLES: TitleDef[] = [
   { id: 'title_depths_walker', nameKey: 'title_depths_walker', reqKey: 'req_depths_walker', iconUrl: '/assets/icons/title_abyss_conqueror.png' },
   // Thanks to the testers of the open pre-season (leagueReset.ts): granted when the first League resets the heroes. Decoration only, no stats.
   { id: 'title_pioneer', nameKey: 'title_pioneer', reqKey: 'req_pioneer', iconUrl: '/assets/icons/title_season_lv30.png' },
+  // Rewards of the invite program (referralRewards.ts): granted by the SERVER when enough invited people qualify. Decoration only, no stats; they reuse existing crests until each gets its own.
+  { id: 'title_recruiter', nameKey: 'title_recruiter', reqKey: 'req_recruiter', iconUrl: '/assets/icons/title_shadow_pathfinder.png' },
+  { id: 'title_recruitment_legend', nameKey: 'title_recruitment_legend', reqKey: 'req_recruitment_legend', iconUrl: '/assets/icons/title_100_floors_legend.png' },
   { id: 'title_codex_sage', nameKey: 'title_codex_sage', reqKey: 'req_codex_sage', iconUrl: '/assets/icons/title_100_floors_legend.png' },
 ];
 

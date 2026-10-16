@@ -164,7 +164,25 @@
     "exportFailed": "Não foi possível exportar o save.",
     "imported": "Save importado.",
     "resetDone": "Um novo herói começou.",
-    "backupFailed": "Não foi possível guardar o backup; nada foi alterado."
+    "backupFailed": "Não foi possível guardar o backup; nada foi alterado.",
+    "passSource_referral": "Convites",
+    "invitesTitle": "Convites",
+    "invitesHint": "Convide amigos pelo seu link. Quando eles entram no jogo e chegam ao nível 10, você ganha recompensas.",
+    "invitesLink": "Seu link de convite",
+    "invitesCode": "Seu código de convite",
+    "invitesCopy": "Copiar",
+    "invitesCopied": "Copiado",
+    "invitesNoCode": "Você ainda não tem um link de convite. Entre na lista de espera, no site do jogo, com o mesmo e-mail desta conta para receber o seu.",
+    "invitesCounts": "Convites ativos: {n} · Compraram o Passe: {m} de {goal}",
+    "invitesCountsNoGoal": "Convites ativos: {n} · Compraram o Passe: {m}",
+    "invitesTiersTitle": "Recompensas",
+    "invitesTierQualified": "Convites ativos: {n}",
+    "invitesTierPaying": "Compraram o Passe: {n}",
+    "invitesEarned": "Conquistado",
+    "invitesLocked": "A conquistar",
+    "invitesLoading": "Carregando seus convites...",
+    "invitesError": "Não foi possível carregar seus convites agora.",
+    "invitesRetry": "Tentar de novo"
   },
   "tutorial": {
     "start": "COMEÇAR",
@@ -1816,7 +1834,13 @@
     "title_depths_walker": "Caminhante das Profundezas",
     "req_depths_walker": "Alcance a Profundeza 50 (conquista)",
     "title_pioneer": "Pioneiro",
-    "req_pioneer": "Jogou o teste aberto, antes da primeira Liga"
+    "req_pioneer": "Jogou o teste aberto, antes da primeira Liga",
+    "title_recruiter": "Recrutador",
+    "req_recruiter": "Convide um amigo que entre no jogo e chegue ao nível 10 (convites)",
+    "title_recruitment_legend": "Lenda do Recrutamento",
+    "req_recruitment_legend": "Tenha 25 convites ativos (convites)",
+    "frame_recruiter": "Moldura do Recrutador",
+    "frame_recruiter_d": "Uma moldura azul em volta do retrato do herói. Prêmio dos convites. Só enfeite."
   },
   "mastery": {
     "title": "Próximos desbloqueios",

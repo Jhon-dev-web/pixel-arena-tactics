@@ -101,7 +101,7 @@ describe('data, support and about', () => {
   });
 
   it('shows no support e-mail and no legal links while the owner has not configured them (the shipped default)', () => {
-    expect(SUPPORT).toEqual({ supportEmail: null, termsUrl: null, privacyUrl: null, refundUrl: null });
+    expect(SUPPORT).toEqual({ supportEmail: null, termsUrl: null, privacyUrl: null, refundUrl: null, portalUrl: null });
     const html = render();
     expect(html).not.toContain('data-settings="legal"');
     expect(html).not.toContain('data-settings="support-email"');

@@ -165,14 +165,16 @@ Quem já recebeu não perde nada ao mudar a tabela. **Atenção:** a lista de re
 4. **Rodada periódica de segurança (opcional, recomendada)**: os gatilhos já qualificam e entregam em tempo real (a cada progresso aceito e a cada compra de Passe) e **nunca** bloqueiam um pagamento ou um progresso (qualquer erro vira um aviso). Para recuperar atrasos (queda do servidor, faixa alterada, conta criada depois), agende a varredura. No Supabase: habilite a extensão `pg_cron` (Database > Extensions) e rode `select cron.schedule('referral-sweep', '*/15 * * * *', $$select public.referral_sweep()$$);`. Para rodar à mão: `select public.referral_sweep();` (devolve quantas pessoas qualificou mais quantas recompensas entregou).
 5. `referralEnabled: true` no portal, `npm run build`, publicar.
 
-### O que o jogo precisa ler (próximo passo, fora do portal)
+### O que o jogo lê (feito: Configurações > Convites)
 
-O jogo mostra as recompensas ao entrar e na tela de Configurações. O servidor já oferece:
+O jogo lê tudo pela conta logada, **só online** (no jogo offline / desktop o painel nem aparece), e nunca manda um id:
 
-- `select public.my_referral_status();` (a pessoa logada; só enxerga os próprios dados): devolve `code` (o código de convite dela, se ela estiver na lista com o mesmo e-mail), `qualified`, `paying`, `pass_goal` (o número da faixa do Passe, 10) e `rewards` (lista com `kind`, `ref`, `label_pt`, `label_en`, `granted_at`). É o dado para a linha **"convites ativos: N · compraram o Passe: M de 10"**.
-- A tabela `public.referral_rewards_granted` (a pessoa lê só as próprias linhas, pelo Supabase com o JWT dela): `kind` + `reward_ref`. O jogo mapeia `recruiter`, `portrait_frame_recruiter` e `recruitment_legend` para os próprios títulos e molduras (reaproveitando o que já existe para títulos e cosméticos do Passe). O **Passe grátis** não precisa de nada novo: o jogo já lê o direito `adventurer_pass`.
+- `select public.my_referral_status();` (a pessoa logada; só enxerga os próprios dados): devolve `code` (o código de convite dela, se ela estiver na lista com o mesmo e-mail), `qualified`, `paying`, `pass_goal` (o número da faixa do Passe, 10) e `rewards` (lista com `kind`, `ref`, `label_pt`, `label_en`, `granted_at`). É o dado da linha **"Convites ativos: N · Compraram o Passe: M de 10"** do painel **Configurações > Convites**, que também mostra o link (ou o código, enquanto o endereço do portal não estiver configurado), as faixas de recompensa e um ✓ nas que o servidor já entregou.
+- `select public.referral_tiers();` (**migração `0017_referral_reads.sql`, ainda não aplicada**): a lista das faixas **ativas** de `arena_private.referral_rewards`, só para quem está logado. Sem ela o painel usa as quatro faixas padrão da 0016, então o jogo funciona antes e depois de aplicar. Aplique quando quiser que uma faixa nova ou desligada apareça no jogo sem publicar o jogo de novo.
+- A tabela `public.referral_rewards_granted` **não é lida direto**: `my_referral_status` já devolve as linhas da própria pessoa. O jogo mapeia `recruiter` (título "Recrutador"), `portrait_frame_recruiter` (moldura de retrato) e `recruitment_legend` (título "Lenda do Recrutamento") para os próprios cosméticos e os coloca nos cosméticos do save ao entrar, ao voltar para a janela e a cada 15 minutos; aplicar de novo não muda nada. O **Passe grátis** não precisa de nada no cliente: é um direito `adventurer_pass` com `source = 'referral'`, que o jogo já lê como qualquer Passe (Configurações > Passe mostra "Convites" como origem).
+- **Link de convite no jogo:** preencha `SUPPORT.portalUrl` em `src/lib/supportConfig.ts` com o endereço público do portal (`https://seu-dominio`, sem caminho). O jogo monta `<portal>/?ref=CÓDIGO`, o mesmo formato do portal. Enquanto estiver vazio, o painel mostra só o código.
 
-Esses nomes de recompensa (`reward_ref`) são o contrato com o jogo. **A parte do jogo (ler `my_referral_status`, exibir o título e a moldura) ainda não foi feita**; as recompensas ficam registradas no banco e esperando.
+Esses nomes de recompensa (`reward_ref`) são o contrato com o jogo; uma recompensa nova precisa de uma linha em `REFERRAL_COSMETICS` (`src/game/referralRewards.ts`) e do cosmético (título ou moldura) no jogo.
 
 ### "Meus convites": por que não há consulta por e-mail
 

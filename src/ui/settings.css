@@ -152,7 +152,7 @@
 .st-range {
   flex: 1 1 auto;
   min-width: 0;
-  height: 28px;
+  height: var(--tap);
   accent-color: var(--c-gold-300);
   cursor: pointer;
 }
@@ -172,4 +172,87 @@
   .st-row-ctl {
     max-width: 100%;
   }
+}
+
+/* Convites: the invite link, the counters and the reward tiers (components/InvitesPanel.tsx) */
+.rf-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.rf-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.rf-link-text {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  color: var(--c-info);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.rf-counts {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-200);
+  overflow-wrap: anywhere;
+}
+.rf-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.rf-tier-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rf-tier {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.rf-tier.earned {
+  border-color: #2f7a46;
+  background: rgba(74, 214, 124, 0.08);
+}
+.rf-tier-check {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: var(--glyph-s);
+  line-height: 1;
+  color: var(--c-good);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+}
+.rf-tier.earned .rf-tier-check {
+  border-color: var(--c-good);
+}
+.rf-tier-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }

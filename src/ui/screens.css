@@ -463,8 +463,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
-  min-height: 34px;
+  min-width: 40px;
+  min-height: 40px;
   padding: 0 var(--sp-2);
   font: inherit;
   font-size: var(--fs-body);
@@ -476,7 +476,7 @@
   cursor: pointer;
 }
 .inv-storeall {
-  min-height: 34px;
+  min-height: 40px;
   margin-left: auto;
   padding: 0 var(--sp-3);
   font: inherit;

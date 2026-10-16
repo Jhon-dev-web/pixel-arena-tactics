@@ -17,8 +17,9 @@ import { fetchPassSource, PassSourceId } from '../lib/passSource';
 import { manualReduceMotion, setManualReduceMotion, subscribeMotion, systemReducesMotion } from '../lib/motionPref';
 import { cleanEmail, safeHttpsUrl, SUPPORT } from '../lib/supportConfig';
 import { Button, Chip, ModalShell, Panel, SelectField } from './ui';
+import InvitesPanel from './InvitesPanel';
 
-// Settings, in panels: Conta (the account, masked), Passe (read-only), the wallet (web only, handed in as `walletSlot`), Jogo (language, the two audio channels, fullscreen, notifications, reduced motion, the
+// Settings, in panels: Conta (the account, masked), Passe (read-only), Convites (the invite link, the counters and the reward tiers; online only), the wallet (web only, handed in as `walletSlot`), Jogo (language, the two audio channels, fullscreen, notifications, reduced motion, the
 // tradeable-material spending order, the tutorial), Dados (export, import and reset of the save), Suporte (the error report and whatever contact / legal links the owner has configured) and Sobre.
 // Importing and resetting replace the hero, so both ask first (what is about to be loaded / a typed word), and App keeps a backup of the current hero before it replaces anything.
 
@@ -255,6 +256,8 @@ export default function SettingsModal({
               </Row>
             )}
           </Panel>
+
+          {accountConfigured && <InvitesPanel online />}
 
           {walletSlot}
 
