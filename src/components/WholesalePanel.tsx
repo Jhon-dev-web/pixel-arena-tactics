@@ -6,6 +6,7 @@ import { merchantPrice } from '../game/merchant';
 import { WholesaleLine, isRareMaterial, wholesaleMultiplier, wholesalePlan, wholesaleQuote, wholesaleSoldToday, wholesaleUnitPrice, wholesaleUnlockFloor, wholesaleUnlocked } from '../game/wholesale';
 import T from '../game/tunables';
 import MaterialIcon from './MaterialIcon';
+import { Button, ChipRow, Dialog, ItemCard, Panel } from './ui';
 
 // The Mercador Atacadista tab of the shop (wholesale.ts). EVERYTHING here is manual: a stack is sold with its own quantity selector, or several are ticked and sold together after
 // a confirmation that lists what goes and what it pays; a rare material asks a second time. Nothing is ever sold without a button the player pressed.
@@ -29,11 +30,10 @@ export default function WholesalePanel({ save, onSell }: { save: SaveData; onSel
 
   if (!wholesaleUnlocked(save)) {
     return (
-      <div className="shop-body ws-locked">
-        <p className="ws-lock-title">🔒 {t('wholesale.title')}</p>
-        <p className="stash-note">{t('wholesale.locked', { n: wholesaleUnlockFloor() })}</p>
-        <p className="stash-note">{t('wholesale.explain', { rate: Math.round(T.wholesale.priceRate * 100) })}</p>
-      </div>
+      <Panel tone="inset" className="ws-locked" title={`🔒 ${t('wholesale.title')}`}>
+        <p className="ui-note">{t('wholesale.locked', { n: wholesaleUnlockFloor() })}</p>
+        <p className="ui-note">{t('wholesale.explain', { rate: Math.round(T.wholesale.priceRate * 100) })}</p>
+      </Panel>
     );
   }
 
@@ -71,140 +71,143 @@ export default function WholesalePanel({ save, onSell }: { save: SaveData; onSel
   const nameOf = (id: MaterialId): string => matName(MATERIALS.find((m) => m.id === id)!);
 
   return (
-    <div className="shop-body shop-sell ws-body">
-      <div className="merchant-budget">
-        <span className="stash-note">{t('wholesale.explain', { rate: Math.round(T.wholesale.priceRate * 100) })}</span>
-        <span className="stash-note">
+    <>
+      <Panel tone="inset" className="ws-intro">
+        <span className="ui-note">{t('wholesale.explain', { rate: Math.round(T.wholesale.priceRate * 100) })}</span>
+        <span className="ui-note">
           {t('wholesale.curve', { n: fmtNum(T.wholesale.freeUnits), b: fmtNum(T.wholesale.blockUnits), d: Math.round(T.wholesale.blockDrop * 100), f: Math.round(T.wholesale.floorRate * 100) })}
         </span>
-        <span className="stash-note">{t('wholesale.fromBag')}</span>
-      </div>
-      {rows.length === 0 && <p className="stash-note">{t('wholesale.nothing')}</p>}
-      {rows.map(({ def, qty }) => {
-        const id = def.id;
-        const units = unitsOf(id, qty);
-        const q = wholesaleQuote(save, id, modeOf(id) === 'all' ? 'all' : units, now);
-        const rare = isRareMaterial(id);
-        const sold = wholesaleSoldToday(save, id, now);
-        const next = wholesaleUnitPrice(id) * wholesaleMultiplier(sold);
-        const whole = q.units >= qty;
-        const key = `ws:${id}`;
-        return (
-          <div className={`gear-row ws-row${ticked[id] ? ' ticked' : ''}`} key={id}>
-            <div className="gear-info">
-              <span className="gear-name">
+        <span className="ui-note">{t('wholesale.fromBag')}</span>
+      </Panel>
+      {rows.length === 0 && <p className="ui-note">{t('wholesale.nothing')}</p>}
+      <div className="ui-grid shop-grid ws-grid">
+        {rows.map(({ def, qty }) => {
+          const id = def.id;
+          const units = unitsOf(id, qty);
+          const q = wholesaleQuote(save, id, modeOf(id) === 'all' ? 'all' : units, now);
+          const rare = isRareMaterial(id);
+          const sold = wholesaleSoldToday(save, id, now);
+          const next = wholesaleUnitPrice(id) * wholesaleMultiplier(sold);
+          const whole = q.units >= qty;
+          const key = `ws:${id}`;
+          return (
+            <ItemCard
+              key={id}
+              className={`ws-row${ticked[id] ? ' ticked' : ''}`}
+              selected={!!ticked[id]}
+              icon={<MaterialIcon item={def} className="pixel-icon" />}
+              rarity={rare ? 'legendary' : 'common'}
+              qty={fmtNum(qty)}
+              name={
+                <>
+                  {matName(def)}
+                  {rare && <span className="ws-rare-tag"> ★</span>}
+                </>
+              }
+              tag={
                 <label className="ws-tick" title={t('wholesale.tick')}>
                   <input type="checkbox" checked={!!ticked[id]} onChange={(e) => setTicked({ ...ticked, [id]: e.target.checked })} data-ui />
+                  <span>{t('shop.youHave', { n: fmtNum(qty) })}</span>
                 </label>
-                <span className="gear-name-text">
-                  <MaterialIcon item={def} className="inline-icon" /> {matName(def)}
-                  {rare && <span className="ws-rare-tag">★</span>}
-                </span>
-                <span className="gear-count">{t('shop.youHave', { n: fmtNum(qty) })}</span>
-              </span>
-              <span className="gear-cost ws-price">
+              }
+              action={
+                <Button
+                  block
+                  variant={armed === key ? 'primary' : 'secondary'}
+                  disabled={q.units <= 0 || q.gold <= 0}
+                  title={q.units > 0 && q.gold <= 0 ? t('wholesale.paysNothing') : undefined}
+                  onClick={() => {
+                    const line = lineFor(id, qty);
+                    if (rare) {
+                      setConfirm({ lines: [line], step: 'rare' });
+                      return;
+                    }
+                    if (whole && armed !== key) {
+                      setArmed(key);
+                      return;
+                    }
+                    finish([line]);
+                  }}
+                >
+                  {armed === key ? t('merchant.confirmShort') : q.units > 0 && q.gold <= 0 ? t('wholesale.paysNothing') : t('wholesale.sell', { n: fmtNum(q.units), g: fmtNum(q.gold) })}
+                </Button>
+              }
+            >
+              <p className="shop-each">
                 {t('wholesale.priceEach', { n: fmtPrice(wholesaleUnitPrice(id)), m: fmtNum(merchantPrice('material', id)) })}
                 {sold > 0 && ` · ${t('wholesale.nextPrice', { n: fmtPrice(next) })} · ${t('wholesale.soldToday', { n: fmtNum(sold) })}`}
-              </span>
-            </div>
-            <div className="ws-controls">
-              <div className="qty-picker" role="radiogroup" aria-label={t('inventory.qtyLabel')}>
-                {MODES.map((m) => (
-                  <button
-                    key={String(m)}
-                    className={`qty-btn${modeOf(id) === m ? ' active' : ''}`}
-                    onClick={() => {
-                      setModes({ ...modes, [id]: m });
-                      setArmed(null);
-                    }}
-                    aria-pressed={modeOf(id) === m}
-                    data-ui
-                  >
-                    {m === 'all' ? t('inventory.qtyAll') : m === 'custom' ? t('wholesale.custom') : String(m)}
-                  </button>
-                ))}
-                {modeOf(id) === 'custom' && (
-                  <input
-                    className="ws-custom"
-                    type="number"
-                    min={1}
-                    max={qty}
-                    inputMode="numeric"
-                    aria-label={t('wholesale.customLabel')}
-                    value={custom[id] ?? ''}
-                    onChange={(e) => {
-                      setCustom({ ...custom, [id]: e.target.value });
-                      setArmed(null);
-                    }}
-                  />
-                )}
-              </div>
-              <button
-                className={`gear-action sell${armed === key ? ' confirm' : ''}`}
-                disabled={q.units <= 0 || q.gold <= 0}
-                title={q.units > 0 && q.gold <= 0 ? t('wholesale.paysNothing') : undefined}
-                onClick={() => {
-                  const line = lineFor(id, qty);
-                  if (rare) {
-                    setConfirm({ lines: [line], step: 'rare' });
-                    return;
-                  }
-                  if (whole && armed !== key) {
-                    setArmed(key);
-                    return;
-                  }
-                  finish([line]);
+              </p>
+              <ChipRow<string>
+                label={t('inventory.qtyLabel')}
+                items={MODES.map((m) => ({ id: String(m), label: m === 'all' ? t('inventory.qtyAll') : m === 'custom' ? t('wholesale.custom') : String(m) }))}
+                value={String(modeOf(id))}
+                onChange={(v) => {
+                  setModes({ ...modes, [id]: (v === 'all' || v === 'custom' ? v : Number(v)) as Mode });
+                  setArmed(null);
                 }}
-                data-ui
-              >
-                {armed === key ? t('merchant.confirmShort') : q.units > 0 && q.gold <= 0 ? t('wholesale.paysNothing') : t('wholesale.sell', { n: fmtNum(q.units), g: fmtNum(q.gold) })}
-              </button>
-            </div>
-          </div>
-        );
-      })}
+              />
+              {modeOf(id) === 'custom' && (
+                <input
+                  className="ws-custom"
+                  type="number"
+                  min={1}
+                  max={qty}
+                  inputMode="numeric"
+                  aria-label={t('wholesale.customLabel')}
+                  value={custom[id] ?? ''}
+                  onChange={(e) => {
+                    setCustom({ ...custom, [id]: e.target.value });
+                    setArmed(null);
+                  }}
+                />
+              )}
+            </ItemCard>
+          );
+        })}
+      </div>
 
       {rows.length > 0 && (
-        <div className="ws-batch">
-          <span className="stash-note">{t('wholesale.selectedHint', { n: tickedLines.length, u: fmtNum(tickedPlan.units) })}</span>
-          <button className="inv-sell" disabled={tickedPlan.lines.length === 0} onClick={() => askSell(tickedLines)} data-ui>
+        <Panel tone="inset" className="ws-batch">
+          <span className="ui-note">{t('wholesale.selectedHint', { n: tickedLines.length, u: fmtNum(tickedPlan.units) })}</span>
+          <Button variant="primary" disabled={tickedPlan.lines.length === 0} onClick={() => askSell(tickedLines)}>
             {t('wholesale.sellSelected', { n: tickedPlan.lines.length })}
-          </button>
-        </div>
+          </Button>
+        </Panel>
       )}
 
       {confirm && confirmPlan && (
-        <div className="modal-backdrop ws-confirm-backdrop">
-          <div className="modal ws-confirm" role="dialog" aria-label={t('wholesale.confirmTitle')}>
-            {confirm.step === 'list' ? (
-              <>
-                <h3 className="modal-title">{t('wholesale.confirmTitle')}</h3>
-                <ul className="ws-confirm-list">
-                  {confirmPlan.lines.map((l) => (
-                    <li key={l.id}>{t('wholesale.confirmLine', { name: nameOf(l.id), n: fmtNum(l.units), g: fmtNum(l.gold) })}</li>
-                  ))}
-                </ul>
-                <p className="ws-confirm-total">{t('wholesale.confirmTotal', { n: fmtNum(confirmPlan.units), g: fmtNum(confirmPlan.gold) })}</p>
-              </>
-            ) : (
-              <>
-                <h3 className="modal-title ws-rare-title">★ {t('wholesale.rareTitle')}</h3>
-                <p className="ws-confirm-total">{t('wholesale.rareWarn')}</p>
-                <p className="stash-note">{t('wholesale.rareList', { names: confirmPlan.lines.filter((l) => l.rare).map((l) => nameOf(l.id)).join(', ') })}</p>
-                <p className="stash-note">{t('wholesale.confirmTotal', { n: fmtNum(confirmPlan.units), g: fmtNum(confirmPlan.gold) })}</p>
-              </>
-            )}
-            <div className="ws-confirm-actions">
-              <button className="inv-store" onClick={() => setConfirm(null)} data-ui>
-                {t('wholesale.cancel')}
-              </button>
-              <button className="inv-sell confirm" onClick={proceed} data-ui>
+        <Dialog
+          icon={confirm.step === 'rare' ? <span aria-hidden>★</span> : undefined}
+          title={confirm.step === 'rare' ? t('wholesale.rareTitle') : t('wholesale.confirmTitle')}
+          footer={
+            <>
+              <Button variant="primary" block onClick={proceed}>
                 {confirm.step === 'rare' ? t('wholesale.rareYes') : t('wholesale.confirmYes')}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+              <Button block onClick={() => setConfirm(null)}>
+                {t('wholesale.cancel')}
+              </Button>
+            </>
+          }
+        >
+          {confirm.step === 'list' ? (
+            <>
+              <ul className="ws-confirm-list">
+                {confirmPlan.lines.map((l) => (
+                  <li key={l.id}>{t('wholesale.confirmLine', { name: nameOf(l.id), n: fmtNum(l.units), g: fmtNum(l.gold) })}</li>
+                ))}
+              </ul>
+              <p className="ws-confirm-total">{t('wholesale.confirmTotal', { n: fmtNum(confirmPlan.units), g: fmtNum(confirmPlan.gold) })}</p>
+            </>
+          ) : (
+            <>
+              <p className="ws-confirm-total">{t('wholesale.rareWarn')}</p>
+              <p className="ui-note">{t('wholesale.rareList', { names: confirmPlan.lines.filter((l) => l.rare).map((l) => nameOf(l.id)).join(', ') })}</p>
+              <p className="ui-note">{t('wholesale.confirmTotal', { n: fmtNum(confirmPlan.units), g: fmtNum(confirmPlan.gold) })}</p>
+            </>
+          )}
+        </Dialog>
       )}
-    </div>
+    </>
   );
 }

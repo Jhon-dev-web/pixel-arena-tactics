@@ -9,6 +9,7 @@ import { ConsumableId, EXPEDITION_TICKET_SKIP_MS, getConsumable } from '../game/
 import { getMaterial, MaterialDef, MaterialId } from '../game/materials';
 import ConsumableIcon from './ConsumableIcon';
 import StashHint from './StashHint';
+import { Button, Chip, Meter, ModalShell, Panel, ScreenLayout } from './ui';
 
 const TICKET_IDS = Object.keys(EXPEDITION_TICKET_SKIP_MS) as ConsumableId[];
 const dText = (k: string, v?: Record<string, string | number>): string => t(`deliveries.${k}`, v);
@@ -30,21 +31,18 @@ function formatDuration(ms: number): string {
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
 }
 
+// What an order pays: the gold and (when there are any) the Runas.
 function Rewards({ gold, shards }: { gold: number; shards: number }) {
   return (
-    <div className="expedition-option-rewards">
-      <span className="floor-drop">
-        <span className="mat-icon">
-          <img src={Assets.icons.gold.url} alt="" />
-        </span>
-        <span>{t('ui.goldReward', { n: fmtNum(gold) })}</span>
+    <div className="ord-rewards">
+      <span className="ord-reward">
+        <img className="inline-icon" src={Assets.icons.gold.url} alt="" />
+        {t('ui.goldReward', { n: fmtNum(gold) })}
       </span>
       {shards > 0 && (
-        <span className="floor-drop">
-          <span className="mat-icon shard">
-            <img src="/assets/icons/shards.png" alt="" />
-          </span>
-          <span>{t('ui.shardsReward', { n: shards })}</span>
+        <span className="ord-reward shards">
+          <img className="inline-icon" src="/assets/icons/shards.png" alt="" />
+          {t('ui.shardsReward', { n: shards })}
         </span>
       )}
     </div>
@@ -52,12 +50,12 @@ function Rewards({ gold, shards }: { gold: number; shards: number }) {
 }
 
 // Some material icons are large remote images that take seconds to arrive on a cold visit. Until the image is really there (and
-// if it never arrives) the catalog emoji fills the same 18px box, so a requirement row never shows an empty square.
+// if it never arrives) the catalog emoji fills the same box, so a requirement row never shows an empty square.
 function RequirementIcon({ item }: { item: MaterialDef }) {
   const [loaded, setLoaded] = useState(false);
   const [broken, setBroken] = useState(false);
   return (
-    <span className="delivery-req-icon">
+    <span className="fg-req-icon ord-req-icon" aria-hidden>
       {(!loaded || broken || !item.iconUrl) && <span className="mat-icon-emoji">{item.icon}</span>}
       {item.iconUrl && !broken && <img className={loaded ? 'ready' : ''} src={item.iconUrl} alt="" draggable={false} onLoad={() => setLoaded(true)} onError={() => setBroken(true)} />}
     </span>
@@ -66,24 +64,24 @@ function RequirementIcon({ item }: { item: MaterialDef }) {
 
 function Requirements({ offer, save }: { offer: DeliveryOffer; save: SaveData }) {
   return (
-    <div className="delivery-req">
-      <span className="delivery-label">{dText('requires')}</span>
-      {(Object.entries(offer.items) as [MaterialId, number][]).map(([id, need]) => {
-        const def = getMaterial(id);
-        const have = save.materials[id] ?? 0;
-        return (
-          <div className={`delivery-req-row${have < need ? ' short' : ''}`} key={id}>
-            <span className="delivery-req-name">
+    <div className="ord-block">
+      <span className="ord-label">{dText('requires')}</span>
+      <div className="fg-reqs" role="list">
+        {(Object.entries(offer.items) as [MaterialId, number][]).map(([id, need]) => {
+          const def = getMaterial(id);
+          const have = save.materials[id] ?? 0;
+          return (
+            <div className="fg-req" role="listitem" key={id}>
               {def && <RequirementIcon item={def} />}
-              <span>{def ? t(`materials.${def.nameKey}`) : id}</span>
-            </span>
-            <span className="delivery-req-qty">
-              {fmtNum(Math.min(have, 99999))} / {fmtNum(need)}
+              <span className="fg-req-label">{def ? t(`materials.${def.nameKey}`) : id}</span>
+              <span className={`fg-req-qty${have < need ? ' missing' : ''}`}>
+                {fmtNum(Math.min(have, 99999))} / {fmtNum(need)}
+              </span>
               <StashHint kind="material" id={id} need={need} />
-            </span>
-          </div>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -127,114 +125,127 @@ export default function DeliveryModal({
   const progress = active ? (done ? 1 : Math.max(0, Math.min(1, (active.offer.durationMs - remaining) / active.offer.durationMs))) : 0;
 
   const renderTickets = (onUse: (id: ConsumableId) => void) => (
-    <div className="expedition-tickets">
+    <div className="ord-tickets">
       {ownedTickets.map((id) => {
         const def = getConsumable(id);
         if (!def) return null;
         return (
-          <button className="expedition-ticket-btn" key={id} onClick={() => onUse(id)} data-ui>
-            <ConsumableIcon item={def} className="inline-icon" /> {t(`consumables.${def.nameKey}`)} ×{save.consumables[id]}
-          </button>
+          <Button key={id} size="sm" onClick={() => onUse(id)} icon={<ConsumableIcon item={def} className="inline-icon" />}>
+            {t(`consumables.${def.nameKey}`)} ×{save.consumables[id]}
+          </Button>
         );
       })}
     </div>
   );
 
-  return (
-    <div className="modal-backdrop">
-      <div className="modal expedition-modal delivery-modal" data-tutorial-target="deliveries-modal">
-        <h2 className="modal-title">{dText('title')}</h2>
-
+  // The summary column: the delivery on the road and the old expeditions that still run.
+  const side =
+    active || save.expeditions.length > 0 ? (
+      <>
         {active && (
-          <div className="expedition-active-card delivery-active">
-            <span className="delivery-label">{dText('activeTitle')}</span>
-            <div className="camp-expedition-name">{dText(`dest_${active.offer.arch}_${active.offer.dest}`)}</div>
-            <div className="delivery-meta">
-              {dText('distance', { d: dText(`dist_${active.offer.dist}`) })} · {dText('time', { n: formatDuration(active.offer.durationMs) })}
+          <Panel tone="gold" className="ord-active" title={dText('activeTitle')}>
+            <h4 className="ord-name">{dText(`dest_${active.offer.arch}_${active.offer.dest}`)}</h4>
+            <div className="ord-chips">
+              <Chip tone="info">{dText('distance', { d: dText(`dist_${active.offer.dist}`) })}</Chip>
+              <Chip>{dText('time', { n: formatDuration(active.offer.durationMs) })}</Chip>
             </div>
             <Rewards gold={active.offer.gold} shards={active.offer.shards} />
             {done ? (
-              <button className="camp-expedition-claim blink" onClick={onClaim} data-ui>
+              <Button variant="primary" block className="ord-claim blink" onClick={onClaim}>
                 {dText('collect')}
-              </button>
+              </Button>
             ) : (
               <>
-                <div className="camp-expedition-bar">
-                  <div className="camp-expedition-fill" style={{ width: `${progress * 100}%` }} />
-                </div>
-                <span className="camp-expedition-time">{dText('inDelivery', { n: formatRemaining(remaining) })}</span>
+                <Meter pct={progress * 100} tone="xp" label={dText('activeTitle')} />
+                <span className="ord-time">{dText('inDelivery', { n: formatRemaining(remaining) })}</span>
                 {ownedTickets.length > 0 && renderTickets(onUseTicket)}
               </>
             )}
-          </div>
+          </Panel>
         )}
 
         {save.expeditions.length > 0 && (
-          <div className="delivery-legacy">
-            <span className="delivery-label">{dText('legacyTitle')}</span>
-            <p className="expedition-note">{dText('legacyNote')}</p>
+          <Panel tone="inset" className="ord-legacy" title={dText('legacyTitle')}>
+            <p className="ui-note">{dText('legacyNote')}</p>
             {save.expeditions.map((expedition, index) => {
               const def = getExpedition(expedition.id);
               if (!def) return null;
               const rem = expedition.endsAt - now;
               const legacyDone = rem <= 0;
               return (
-                <div className="expedition-active-card" key={index}>
-                  <div className="camp-expedition-name">{t(`expedition.${def.nameKey}`)}</div>
+                <div className="ord-legacy-row" key={index}>
+                  <h4 className="ord-name">{t(`expedition.${def.nameKey}`)}</h4>
                   {legacyDone ? (
-                    <button className="camp-expedition-claim blink" onClick={() => onClaimLegacy(index)} data-ui>
+                    <Button variant="primary" block className="ord-claim blink" onClick={() => onClaimLegacy(index)}>
                       {t('expedition.collect')}
-                    </button>
+                    </Button>
                   ) : (
                     <>
-                      <div className="camp-expedition-bar">
-                        <div className="camp-expedition-fill" style={{ width: `${Math.max(0, Math.min(1, (def.durationMs - rem) / def.durationMs)) * 100}%` }} />
-                      </div>
-                      <span className="camp-expedition-time">{t('expedition.inExpedition', { n: formatRemaining(rem) })}</span>
+                      <Meter pct={Math.max(0, Math.min(1, (def.durationMs - rem) / def.durationMs)) * 100} tone="xp" label={t(`expedition.${def.nameKey}`)} />
+                      <span className="ord-time">{t('expedition.inExpedition', { n: formatRemaining(rem) })}</span>
                       {ownedTickets.length > 0 && renderTickets((id) => onUseLegacyTicket(index, id))}
                     </>
                   )}
                 </div>
               );
             })}
-          </div>
+          </Panel>
         )}
+      </>
+    ) : undefined;
 
-        <div className="delivery-board-head">
-          <span className="delivery-label">{dText('availableTitle')}</span>
-          <button className="delivery-reroll" onClick={onReroll} disabled={left <= 0} data-ui>
-            {left > 0 ? dText('reroll', { n: left }) : dText('rerollNone')}
-          </button>
-        </div>
-        {active ? <p className="expedition-note">{dText('busy')}</p> : <p className="expedition-note">{dText('note')}</p>}
-
-        <div className="expedition-list">
-          {save.deliveries.offers.slice(0, offerCount(passActive)).map((offer) => {
-            const affordable = canAffordOffer(save, offer);
-            return (
-              <div className={`expedition-option delivery-offer rarity-${deliveryRarity(offer.dist)}`} key={offer.id}>
-                <div className="expedition-option-head">
-                  <span className="expedition-option-name">{dText(`dest_${offer.arch}_${offer.dest}`)}</span>
-                  <span className="expedition-option-dur">{formatDuration(offer.durationMs)}</span>
-                </div>
-                <div className="delivery-meta">
-                  {dText(`arch_${offer.arch}`)} · {dText('distance', { d: dText(`dist_${offer.dist}`) })} · {rarityLabel(offer)}
-                </div>
-                <Requirements offer={offer} save={save} />
-                <span className="delivery-label">{dText('receives')}</span>
-                <Rewards gold={deliveryGold(offer, passActive)} shards={offer.shards} />
-                <button className="battle-btn" onClick={() => onAccept(offer.id)} disabled={!!active || !affordable} data-ui>
-                  {!active && !affordable ? dText('missing') : dText('accept')}
-                </button>
+  const main = (
+    <Panel
+      className="ord-board"
+      title={dText('availableTitle')}
+      actions={
+        <Button size="sm" onClick={onReroll} disabled={left <= 0}>
+          {left > 0 ? dText('reroll', { n: left }) : dText('rerollNone')}
+        </Button>
+      }
+    >
+      <p className="ui-note ord-note">{active ? dText('busy') : dText('note')}</p>
+      <div className="ord-grid">
+        {save.deliveries.offers.slice(0, offerCount(passActive)).map((offer) => {
+          const affordable = canAffordOffer(save, offer);
+          return (
+            <article className={`ui-item ord-card rarity-${deliveryRarity(offer.dist)}`} key={offer.id}>
+              <div className="ord-card-head">
+                <h4 className="ui-item-name">{dText(`dest_${offer.arch}_${offer.dest}`)}</h4>
+                <Chip tone="gold">{formatDuration(offer.durationMs)}</Chip>
               </div>
-            );
-          })}
-        </div>
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
+              <div className="ord-chips">
+                <Chip>{dText(`arch_${offer.arch}`)}</Chip>
+                <Chip tone="info">{dText('distance', { d: dText(`dist_${offer.dist}`) })}</Chip>
+                <span className={`ord-rarity rarity-${deliveryRarity(offer.dist)}`}>{rarityLabel(offer)}</span>
+              </div>
+              <Requirements offer={offer} save={save} />
+              <div className="ord-block">
+                <span className="ord-label">{dText('receives')}</span>
+                <Rewards gold={deliveryGold(offer, passActive)} shards={offer.shards} />
+              </div>
+              <Button variant={!!active || !affordable ? 'secondary' : 'primary'} block className="ord-accept" onClick={() => onAccept(offer.id)} disabled={!!active || !affordable}>
+                {!active && !affordable ? dText('missing') : dText('accept')}
+              </Button>
+            </article>
+          );
+        })}
       </div>
-    </div>
+    </Panel>
+  );
+
+  return (
+    <ModalShell
+      className="ord-modal"
+      tutorialTarget="deliveries-modal"
+      icon={<img className="pixel-icon" src="/assets/icons/expedition_ticket_2h.png" alt="" />}
+      title={dText('title')}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <div className="ui-cq ord-root">
+        <ScreenLayout sideFirst main={main} side={side} />
+      </div>
+    </ModalShell>
   );
 }

@@ -11,15 +11,28 @@ import { GEMS, GemId } from '../game/gems';
 import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import ConsumableIcon from './ConsumableIcon';
 import GemIcon from './GemIcon';
-import TitleIcon from './TitleIcon';
 import WholesalePanel from './WholesalePanel';
 import PouchPanel from './PouchPanel';
 import { PouchId } from '../game/goldPouch';
 import { WholesaleLine, wholesaleUnlocked } from '../game/wholesale';
+import { Button, ItemCard, Meter, ModalShell, Panel, Tabs } from './ui';
+import type { TabItem } from './ui';
 
 const conText = (k: string): string => t(`consumables.${k}`);
 const gemText = (k: string): string => t(`gems.${k}`);
 const costLabel = (): string => t('forge.cost');
+
+type ShopTab = 'buy' | 'sell' | 'wholesale' | 'pouch';
+
+// A price: the currency icon and the number.
+function Price({ icon, n }: { icon: string; n: number | string }) {
+  return (
+    <span className="shop-price">
+      <img className="inline-icon" src={icon} alt="" />
+      {n}
+    </span>
+  );
+}
 
 export default function ShopModal({
   save,
@@ -39,12 +52,12 @@ export default function ShopModal({
   onSellWholesale: (lines: WholesaleLine[]) => void;
   onCreatePouch: (id: PouchId) => void;
   onOpenPouch: (id: PouchId) => void;
-  initialTab?: 'buy' | 'sell' | 'wholesale' | 'pouch';
+  initialTab?: ShopTab;
   onClose: () => void;
 }) {
   const slots = inventorySlotsUsed(save);
   const capacity = inventoryCapacity(save);
-  const [tab, setTab] = useState<'buy' | 'sell' | 'wholesale' | 'pouch'>(initialTab ?? 'buy');
+  const [tab, setTab] = useState<ShopTab>(initialTab ?? 'buy');
   // selling a WHOLE type needs a second tap on the same button
   const [armed, setArmed] = useState<string | null>(null);
   const now = Date.now();
@@ -56,157 +69,143 @@ export default function ShopModal({
   const budget = merchantBudget(playerLevel(save.xp));
   const left = merchantRemaining(save, now);
 
-  return (
-    <div className="modal-backdrop">
-      <div className="modal shop-modal">
-        <h2 className="modal-title">
-          <TitleIcon src={Assets.icons.gold.url} fallback="🛒" /> {t('shop.title')}
-        </h2>
-        <p className="shop-gold">{t('ui.owned', { n: fmtNum(save.gold) })}</p>
-        <p className="shop-space">{t('inventory.space', { n: slots, m: capacity })}</p>
+  const tabs: TabItem<ShopTab>[] = [
+    { id: 'buy', label: t('shop.buyTab') },
+    { id: 'sell', label: t('shop.sellTab') },
+    { id: 'wholesale', label: wholesaleUnlocked(save) ? t('shop.wholesaleTab') : `🔒 ${t('shop.wholesaleTab')}` },
+    { id: 'pouch', label: t('shop.pouchTab') },
+  ];
 
-        <div className="forge-tabs shop-tabs">
-          <button className={`tab${tab === 'buy' ? ' active' : ''}`} onClick={() => setTab('buy')} data-ui>
-            {t('shop.buyTab')}
-          </button>
-          <button className={`tab${tab === 'sell' ? ' active' : ''}`} onClick={() => setTab('sell')} data-ui>
-            {t('shop.sellTab')}
-          </button>
-          <button className={`tab${tab === 'wholesale' ? ' active' : ''}`} onClick={() => setTab('wholesale')} data-ui>
-            {wholesaleUnlocked(save) ? t('shop.wholesaleTab') : `🔒 ${t('shop.wholesaleTab')}`}
-          </button>
-          <button className={`tab${tab === 'pouch' ? ' active' : ''}`} onClick={() => setTab('pouch')} data-ui>
-            {t('shop.pouchTab')}
-          </button>
-        </div>
+  return (
+    <ModalShell
+      className="shop-modal"
+      icon={<img className="pixel-icon" src={Assets.icons.gold.url} alt="" />}
+      title={t('shop.title')}
+      subtitle={`${t('ui.owned', { n: fmtNum(save.gold) })} · ${t('inventory.space', { n: slots, m: capacity })}`}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <div className="ui-cq shop-root">
+        <Tabs<ShopTab> items={tabs} value={tab} onChange={setTab} label={t('shop.title')} />
 
         {tab === 'sell' && (
-          <div className="shop-body shop-sell">
-            <div className="merchant-budget">
+          <>
+            <Panel tone="inset" className="shop-budget">
               <span>{t('merchant.budgetToday', { n: fmtNum(left), m: fmtNum(budget) })}</span>
-              <div className="bar merchant-budget-bar">
-                <div className="bar-fill xp-fill" style={{ width: `${budget > 0 ? Math.round((left / budget) * 100) : 0}%` }} />
-              </div>
-              <span className="stash-note">{t('merchant.explain')}</span>
+              <Meter pct={budget > 0 ? Math.round((left / budget) * 100) : 0} tone="xp" thin label={t('merchant.budgetToday', { n: fmtNum(left), m: fmtNum(budget) })} />
+              <span className="ui-note">{t('merchant.explain')}</span>
+            </Panel>
+            {sellRows.length === 0 && <p className="ui-note">{t('merchant.nothing')}</p>}
+            <div className="ui-grid shop-grid">
+              {sellRows.map((r) => {
+                const def = r.kind === 'material' ? MATERIALS.find((m) => m.id === r.id)! : CONSUMABLES.find((c) => c.id === r.id)!;
+                return (
+                  <ItemCard
+                    key={`${r.kind}:${r.id}`}
+                    icon={r.kind === 'material' ? <MaterialIcon item={def as (typeof MATERIALS)[number]} className="pixel-icon" /> : <ConsumableIcon item={def as (typeof CONSUMABLES)[number]} className="pixel-icon" />}
+                    qty={fmtNum(r.qty)}
+                    name={r.kind === 'material' ? t(`materials.${def.nameKey}`) : conText(def.nameKey)}
+                    tag={<span className="shop-have">{t('shop.youHave', { n: fmtNum(r.qty) })}</span>}
+                    action={
+                      <div className="shop-sell-buttons">
+                        {QTY_MODES.map((m) => {
+                          const units = unitsFor(r.qty, m);
+                          const q = merchantQuote(save, r.kind, r.id, units, now);
+                          const key = `${r.kind}:${r.id}:${m}`;
+                          const whole = units >= r.qty;
+                          return (
+                            <Button
+                              key={String(m)}
+                              size="sm"
+                              variant={armed === key ? 'primary' : 'secondary'}
+                              disabled={q.units <= 0}
+                              title={t('merchant.sell', { n: fmtNum(q.units), g: fmtNum(q.gold) })}
+                              onClick={() => {
+                                if (whole && armed !== key) {
+                                  setArmed(key);
+                                  return;
+                                }
+                                setArmed(null);
+                                onSell(r.kind, r.id, m === 'all' ? 'all' : units);
+                              }}
+                            >
+                              {armed === key ? t('merchant.confirmShort') : `${modeLabel(m)} · ${fmtNum(q.gold)}`}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    }
+                  >
+                    <p className="shop-each">
+                      <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {t('shop.sellEach', { n: r.price })}
+                    </p>
+                  </ItemCard>
+                );
+              })}
             </div>
-            {sellRows.length === 0 && <p className="stash-note">{t('merchant.nothing')}</p>}
-            {sellRows.map((r) => {
-              const def = r.kind === 'material' ? MATERIALS.find((m) => m.id === r.id)! : CONSUMABLES.find((c) => c.id === r.id)!;
-              return (
-                <div className="gear-row" key={`${r.kind}:${r.id}`}>
-                  <div className="gear-info">
-                    <span className="gear-name">
-                      <span className="gear-name-text">
-                        {r.kind === 'material' ? <MaterialIcon item={def as (typeof MATERIALS)[number]} className="inline-icon" /> : <ConsumableIcon item={def as (typeof CONSUMABLES)[number]} className="inline-icon" />}{' '}
-                        {r.kind === 'material' ? t(`materials.${def.nameKey}`) : conText(def.nameKey)}
-                      </span>
-                      <span className="gear-count">{t('shop.youHave', { n: fmtNum(r.qty) })}</span>
-                    </span>
-                    <span className="gear-cost">
-                      <img className="inline-icon" src={Assets.icons.gold.url} alt="" />
-                      <span className="cost-value">{t('shop.sellEach', { n: r.price })}</span>
-                    </span>
-                  </div>
-                  <div className="sell-buttons">
-                    {QTY_MODES.map((m) => {
-                      const units = unitsFor(r.qty, m);
-                      const q = merchantQuote(save, r.kind, r.id, units, now);
-                      const key = `${r.kind}:${r.id}:${m}`;
-                      const whole = units >= r.qty;
-                      return (
-                        <button
-                          key={String(m)}
-                          className={`gear-action sell${armed === key ? ' confirm' : ''}`}
-                          disabled={q.units <= 0}
-                          title={t('merchant.sell', { n: fmtNum(q.units), g: fmtNum(q.gold) })}
-                          onClick={() => {
-                            if (whole && armed !== key) {
-                              setArmed(key);
-                              return;
-                            }
-                            setArmed(null);
-                            onSell(r.kind, r.id, m === 'all' ? 'all' : units);
-                          }}
-                          data-ui
-                        >
-                          {armed === key ? t('merchant.confirmShort') : `${modeLabel(m)} · ${fmtNum(q.gold)}`}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          </>
         )}
 
         {tab === 'wholesale' && <WholesalePanel save={save} onSell={onSellWholesale} />}
         {tab === 'pouch' && <PouchPanel save={save} onCreate={onCreatePouch} onOpen={onOpenPouch} />}
 
         {tab === 'buy' && (
-        <div className="shop-body">
-          {CONSUMABLES.filter((c) => c.purchasable).map((c) => {
-            const qty = save.consumables?.[c.id] ?? 0;
-            const bagFull = qty === 0 && slots >= capacity;
-            const disabled = save.gold < c.cost || qty >= CONSUMABLE_STACK || bagFull;
-            return (
-              <div className="gear-row" key={c.id}>
-                <div className="gear-info">
-                  <span className="gear-name">
-                    <span className="gear-name-text">
-                      <ConsumableIcon item={c} className="inline-icon" /> {conText(c.nameKey)}
-                    </span>
-                    <span className="gear-count">{t('shop.youHave', { n: qty })}</span>
-                  </span>
-                  <span className="gear-desc">{conText(c.descKey)}</span>
-                  <span className="gear-cost">
-                    <span>{costLabel()}:</span>
-                    <img className="inline-icon" src={Assets.icons.gold.url} alt="" />
-                    <span className="cost-value">{c.cost}</span>
-                  </span>
-                </div>
-                <button className="gear-action buy" onClick={() => onBuyConsumable(c.id)} disabled={disabled} data-ui>
-                  {bagFull ? t('shop.bagFull') : t('gear.buy')}
-                </button>
+          <>
+            <Panel title={t('shop.consumables')}>
+              <div className="ui-grid shop-grid">
+                {CONSUMABLES.filter((c) => c.purchasable).map((c) => {
+                  const qty = save.consumables?.[c.id] ?? 0;
+                  const bagFull = qty === 0 && slots >= capacity;
+                  const disabled = save.gold < c.cost || qty >= CONSUMABLE_STACK || bagFull;
+                  return (
+                    <ItemCard
+                      key={c.id}
+                      icon={<ConsumableIcon item={c} className="pixel-icon" />}
+                      qty={qty > 0 ? fmtNum(qty) : undefined}
+                      name={conText(c.nameKey)}
+                      tag={<span className="shop-have">{t('shop.youHave', { n: qty })}</span>}
+                      rows={[{ label: `${costLabel()}`, value: <Price icon={Assets.icons.gold.url} n={c.cost} />, tone: save.gold < c.cost ? 'bad' : 'gold' }]}
+                      action={
+                        <Button block variant="primary" onClick={() => onBuyConsumable(c.id)} disabled={disabled}>
+                          {bagFull ? t('shop.bagFull') : t('gear.buy')}
+                        </Button>
+                      }
+                    >
+                      <p className="shop-desc">{conText(c.descKey)}</p>
+                    </ItemCard>
+                  );
+                })}
               </div>
-            );
-          })}
+            </Panel>
 
-          <div className="shop-section-title">
-            <img className="inline-icon" src="/assets/icons/gem_ruby.png" alt="" /> {t('shop.gems')}
-          </div>
-          {GEMS.map((g) => {
-            const owned = save.gems?.[g.id] ?? 0;
-            const disabled = save.shards < g.shardCost;
-            return (
-              <div className="gear-row" key={g.id}>
-                <div className="gear-info">
-                  <span className="gear-name">
-                    <span className="gear-name-text">
-                      <GemIcon item={g} className="inline-icon" /> {gemText(g.nameKey)}
-                    </span>
-                    <span className="gear-count">{t('shop.youOwn', { n: owned })}</span>
-                  </span>
-                  <span className="gear-desc">{gemText(g.descKey)}</span>
-                  <span className="gear-cost">
-                    <span>{costLabel()}:</span>
-                    <img className="inline-icon" src="/assets/icons/shards.png" alt="" />
-                    <span className="cost-value">{g.shardCost}</span>
-                  </span>
-                </div>
-                <button className="gear-action buy" onClick={() => onBuyGem(g.id)} disabled={disabled} data-ui>
-                  {t('gear.buy')}
-                </button>
+            <Panel title={t('shop.gems')} icon={<img src="/assets/icons/gem_ruby.png" alt="" />}>
+              <div className="ui-grid shop-grid">
+                {GEMS.map((g) => {
+                  const owned = save.gems?.[g.id] ?? 0;
+                  const disabled = save.shards < g.shardCost;
+                  return (
+                    <ItemCard
+                      key={g.id}
+                      icon={<GemIcon item={g} className="pixel-icon" />}
+                      qty={owned > 0 ? fmtNum(owned) : undefined}
+                      name={gemText(g.nameKey)}
+                      tag={<span className="shop-have">{t('shop.youOwn', { n: owned })}</span>}
+                      rows={[{ label: `${costLabel()}`, value: <Price icon="/assets/icons/shards.png" n={g.shardCost} />, tone: disabled ? 'bad' : 'gold' }]}
+                      action={
+                        <Button block variant="primary" onClick={() => onBuyGem(g.id)} disabled={disabled}>
+                          {t('gear.buy')}
+                        </Button>
+                      }
+                    >
+                      <p className="shop-desc">{gemText(g.descKey)}</p>
+                    </ItemCard>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            </Panel>
+          </>
         )}
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

@@ -151,23 +151,6 @@ body {
   color: #9d8bff;
 }
 
-.shop-btn {
-  font-family: inherit;
-  font-size: var(--fs-body);
-  color: #ffe9a8;
-  background: linear-gradient(180deg, #4a3420, #2a1c10);
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  box-shadow: 0 3px 0 #1a1108, inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  white-space: nowrap;
-}
-.shop-btn:active {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 #1a1108;
-}
-
 .topbar-right {
   display: flex;
   align-items: center;
@@ -328,41 +311,6 @@ body {
   color: #ff6b5e;
 }
 
-.shop-gold {
-  font-size: var(--fs-body);
-  color: #ffd76a;
-  margin: 0 0 16px;
-}
-
-.shop-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 10px;
-  margin-bottom: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #3a2a4a;
-  border-radius: 10px;
-}
-
-.shop-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  text-align: left;
-}
-.shop-name {
-  font-size: var(--fs-body);
-  color: #fff;
-}
-.shop-level {
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-}
-
-.shop-buy,
 .result-btn,
 .modal-close {
   font-family: inherit;
@@ -380,11 +328,6 @@ body {
   white-space: normal;
   line-height: 1.3;
 }
-.shop-buy:disabled {
-  filter: grayscale(0.9) brightness(0.5);
-  cursor: not-allowed;
-}
-.shop-buy:active,
 .result-btn:active,
 .modal-close:active {
   transform: translateY(2px);
@@ -419,17 +362,6 @@ body {
 }
 
 /* --- shop tabs --- */
-.shop-modal {
-  display: flex;
-  flex-direction: column;
-  max-height: 86vh;
-}
-
-.shop-tabs {
-  display: flex;
-  gap: 8px;
-  margin: 0 0 14px;
-}
 
 .tab {
   flex: 1;
@@ -451,114 +383,13 @@ body {
   border-color: #8a6a3a;
 }
 
-.shop-body,
 .armory {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
 }
-.shop-body {
-  padding-right: 6px;
-  scrollbar-width: thin;
-  scrollbar-color: #5a3a20 #1a1208;
-}
-.shop-body::-webkit-scrollbar {
-  width: 8px;
-}
-.shop-body::-webkit-scrollbar-track {
-  background: #1a1208;
-  border-radius: 4px;
-}
-.shop-body::-webkit-scrollbar-thumb {
-  background: #5a3a20;
-  border-radius: 4px;
-  border: 1px solid #2a1608;
-}
 
 /* --- armory / gear list --- */
-.gear-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 10px;
-  margin-bottom: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #3a2a4a;
-  border-radius: 10px;
-  text-align: left;
-}
-.gear-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-.gear-name {
-  font-size: var(--fs-body);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  min-width: 0;
-  width: 100%;
-}
-.gear-name-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-.gear-desc {
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-}
-.gear-cost {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-  font-size: var(--fs-small);
-  color: #d8c9a0;
-}
-.cost-value {
-  color: #ffd76a;
-  font-weight: bold;
-}
-.gear-action {
-  font-family: inherit;
-  font-size: var(--fs-small);
-  color: #ffe9a8;
-  background: linear-gradient(180deg, #4a3420, #2a1c10);
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  box-shadow: 0 3px 0 #1a1108;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.gear-action:active {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 #1a1108;
-}
-.gear-action.equipped {
-  color: #6fe08a;
-  border-color: #2fbf4f;
-  background: linear-gradient(180deg, #1f3a24, #14251a);
-  box-shadow: 0 3px 0 #0d1a10;
-  cursor: default;
-}
-.gear-action.buy:disabled {
-  filter: grayscale(0.9) brightness(0.5);
-  cursor: not-allowed;
-}
-.gear-action.sell {
-  color: #1a1108;
-  font-weight: bold;
-  background: linear-gradient(180deg, #ffd76a, #e0a83a);
-  border-color: #8a6a3a;
-}
 .sell-empty {
   font-size: var(--fs-small);
   color: #8a7aa8;
@@ -852,31 +683,8 @@ body {
   font-size: var(--fs-small);
   color: #ffd9a0;
 }
-.gear-action.forge {
-  color: #ffd9a0;
-  border-color: #e06a20;
-  background: linear-gradient(180deg, #6a3010, #3a1a08);
-}
-.gear-action.forge:disabled {
-  filter: grayscale(0.9) brightness(0.5);
-  cursor: not-allowed;
-}
-.gear-count {
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-}
-.shop-section-title {
-  font-size: var(--fs-small);
-  color: #ffd76a;
-  text-align: left;
-  margin: 4px 0 6px;
-  padding-left: 2px;
-}
 
 /* --- attributes modal --- */
-.shop-gold.cp {
-  color: #9d8bff;
-}
 
 /* --- camp extras --- */
 .hero-name {
@@ -1100,7 +908,6 @@ body {
   line-height: 1;
 }
 .hunt-btn,
-.expedition-btn,
 .garden-btn {
   position: relative;
 }
@@ -1713,11 +1520,6 @@ body {
   line-height: 1.3;
   cursor: pointer;
 }
-.shop-space {
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-  margin: -8px 0 12px;
-}
 .inv-emoji {
   font-size: var(--glyph-m);
   line-height: 1;
@@ -2316,25 +2118,6 @@ body {
 .floor-drop.lost .mat-icon {
   filter: grayscale(0.6);
 }
-.expedition-entry {
-  width: 100%;
-  margin-top: 4px;
-  font-family: inherit;
-  font-size: var(--fs-body);
-  font-weight: bold;
-  color: #eaffd8;
-  background: linear-gradient(180deg, #3a4a2a, #223018);
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 12px 14px;
-  cursor: pointer;
-  box-shadow: 0 3px 0 #1a1108;
-  white-space: nowrap;
-}
-.expedition-entry:active {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 #1a1108;
-}
 
 /* ===== battle modal ===== */
 .battle-backdrop {
@@ -2694,309 +2477,6 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
-}
-
-/* ===== expedition config modal ===== */
-.expedition-modal {
-  width: min(90vw, 420px);
-  max-height: 88vh;
-  overflow-y: auto;
-}
-.expedition-slots {
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-  margin: -6px 0 10px;
-}
-.expedition-active-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #3a2a4a;
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-.expedition-note {
-  font-size: var(--fs-small);
-  color: #8a7aa8;
-  /* Was a negative top margin to sit snug under .delivery-board-head — but that head wraps onto two
-     lines at narrow widths (see the comment on .delivery-board-head .delivery-label below), and the
-     fixed negative offset then pulled this note up into the wrapped second line instead of just under
-     it. A small positive margin keeps clearance whether the head wraps or not. */
-  margin: 6px 0 12px;
-}
-.expedition-tickets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 6px 0;
-}
-.expedition-ticket-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: inherit;
-  font-size: var(--fs-small);
-  color: #ffd9a0;
-  background: rgba(224, 106, 32, 0.15);
-  border: 1px solid #e06a20;
-  border-radius: 999px;
-  padding: 4px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.expedition-ticket-btn:active {
-  transform: translateY(1px);
-}
-.expedition-list {
-  overflow-y: auto;
-  max-height: 62vh;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 2px;
-  scrollbar-width: thin;
-  scrollbar-color: #6a4a2a transparent;
-}
-.expedition-option {
-  padding: 12px;
-  background: #1c1322;
-  border: 2px solid #a87c3a;
-  border-radius: 12px;
-  text-align: left;
-}
-.expedition-option-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.expedition-option-name {
-  font-size: var(--fs-body);
-  color: #ffd76a;
-  font-weight: bold;
-}
-.expedition-option-dur {
-  flex-shrink: 0;
-  font-size: var(--fs-small);
-  color: #7cc4ff;
-  background: rgba(124, 196, 255, 0.1);
-  border: 1px solid #3a5a7a;
-  border-radius: 999px;
-  padding: 2px 8px;
-  white-space: nowrap;
-}
-.expedition-option-desc {
-  font-size: var(--fs-small);
-  color: #d8c9a0;
-  margin: 0 0 8px;
-}
-.expedition-option-rewards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-/* ===== delivery orders (reuses the expedition modal look) ===== */
-/* No text-transform: the pixel font has no glyph for accented capitals (Í, É...), so these labels stay in their written case. */
-.delivery-label {
-  display: block;
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-  margin: 6px 0 4px;
-}
-.delivery-meta {
-  font-size: var(--fs-small);
-  color: #8a7aa8;
-  margin-bottom: 6px;
-}
-.delivery-board-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  margin-top: 6px;
-}
-.delivery-board-head .delivery-label {
-  /* Flex items don't shrink below their content's natural width without min-width:0 — at narrow
-     widths "Pedidos disponíveis" alongside the reroll pill pushed the row past its container. Letting
-     the row wrap (rather than forcing the label to break mid-word beside the pill) drops the pill to
-     its own line instead of overlapping the label's second line. */
-  min-width: 0;
-  flex: 1 1 auto;
-  white-space: nowrap;
-  margin: 0;
-}
-.delivery-board-head .delivery-reroll {
-  flex-shrink: 0;
-}
-.delivery-reroll {
-  font-family: inherit;
-  font-size: var(--fs-small);
-  color: #ffd9a0;
-  background: rgba(224, 106, 32, 0.15);
-  border: 1px solid #e06a20;
-  border-radius: 999px;
-  padding: 4px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.delivery-reroll:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-.delivery-req {
-  margin-bottom: 4px;
-}
-.delivery-req-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--fs-small);
-  color: #d8c9a0;
-  padding: 2px 0;
-}
-.delivery-req-row.short .delivery-req-qty {
-  color: #ff8a80;
-}
-.delivery-req-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-.delivery-req-icon {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 18px;
-  height: 18px;
-}
-.delivery-req-icon .mat-icon-emoji {
-  font-size: var(--glyph-s);
-  line-height: 1;
-}
-/* The image sits over the emoji box but stays invisible until it has loaded */
-.delivery-req-icon img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 0;
-}
-.delivery-req-icon img.ready {
-  opacity: 1;
-}
-.delivery-req-qty {
-  flex-shrink: 0;
-  color: #9be59b;
-  white-space: nowrap;
-}
-.delivery-xp {
-  color: #9ad0ff;
-  font-size: var(--fs-small);
-}
-.delivery-offer.rarity-uncommon {
-  border-color: #6fae6f;
-}
-.delivery-offer.rarity-rare {
-  border-color: #6a9ae0;
-}
-.delivery-offer.rarity-epic {
-  border-color: #b070e0;
-}
-.delivery-legacy {
-  margin-bottom: 8px;
-}
-
-/* ===== camp expedition ===== */
-.camp-expedition-btn {
-  position: absolute;
-  top: 66px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  width: min(72%, 280px);
-  font-family: inherit;
-  font-size: var(--fs-body);
-  color: #eaffd8;
-  background: linear-gradient(180deg, #3a4a2a, #223018);
-  border: 2px solid #8a6a3a;
-  border-radius: 10px;
-  padding: 10px 18px;
-  cursor: pointer;
-  box-shadow: 0 3px 0 #1a1108;
-  white-space: nowrap;
-}
-.camp-expedition-card {
-  position: absolute;
-  top: 66px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  width: min(88vw, 320px);
-  padding: 10px 12px;
-  background: #1c1322;
-  border: 2px solid #a87c3a;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.camp-expedition-name {
-  font-size: var(--fs-body);
-  color: #ffd76a;
-  font-weight: bold;
-}
-.camp-expedition-bar {
-  width: 100%;
-  height: 8px;
-  background: #1a1220;
-  border: 1px solid #000;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.camp-expedition-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #7ce88a, #2fbf4f);
-  border-radius: 3px;
-  transition: width 1s linear;
-}
-.camp-expedition-time {
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-}
-.camp-expedition-claim {
-  font-family: inherit;
-  font-size: var(--fs-body);
-  font-weight: bold;
-  color: #1a1108;
-  background: linear-gradient(180deg, #ffd76a, #e0a83a);
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 10px 16px;
-  cursor: pointer;
-  box-shadow: 0 3px 0 #6a4a20;
-}
-.camp-expedition-claim.blink {
-  animation: claimBlink 1s ease-in-out infinite;
-}
-@keyframes claimBlink {
-  0%,
-  100% {
-    filter: brightness(1);
-  }
-  50% {
-    filter: brightness(1.6);
-    box-shadow: 0 0 14px #ffd76a;
-  }
 }
 
 /* ===== camp mine (idle mining) ===== */
@@ -3854,135 +3334,6 @@ body {
   }
 
   /* Orders become a near-full-height work surface with compact, scan-friendly requirements. */
-  .modal-backdrop:has(.delivery-modal) {
-    align-items: stretch;
-    padding: 6px;
-  }
-  .delivery-modal {
-    width: 100%;
-    max-width: none;
-    height: calc(100dvh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-    max-height: none;
-    padding: 14px 12px calc(12px + env(safe-area-inset-bottom, 0px));
-    border-radius: 13px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-  .delivery-modal .modal-title {
-    margin: 0 0 8px;
-    padding-right: 32px;
-    font-size: var(--fs-section);
-  }
-  .delivery-active {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 4px 8px;
-    padding: 8px 10px;
-    text-align: left;
-  }
-  .delivery-active .delivery-label,
-  .delivery-active .camp-expedition-name,
-  .delivery-active .delivery-meta,
-  .delivery-active .expedition-option-rewards,
-  .delivery-active .camp-expedition-bar,
-  .delivery-active .camp-expedition-time,
-  .delivery-active .expedition-tickets {
-    grid-column: 1 / -1;
-  }
-  .delivery-active .delivery-label {
-    margin: 0;
-  }
-  .delivery-active .camp-expedition-name {
-    margin: 0;
-    font-size: var(--fs-body);
-  }
-  .delivery-active .delivery-meta {
-    margin: 0;
-  }
-  .delivery-active .expedition-option-rewards {
-    margin: 0;
-  }
-  .delivery-active .camp-expedition-bar {
-    height: 5px;
-  }
-  .delivery-active .camp-expedition-time {
-    font-size: var(--fs-small);
-  }
-  .delivery-board-head {
-    margin-top: 9px;
-  }
-  .delivery-board-head .delivery-label {
-    font-size: var(--fs-small);
-  }
-  .delivery-reroll {
-    padding: 5px 9px;
-    font-size: var(--fs-small);
-  }
-  .delivery-modal > .expedition-note {
-    display: none;
-  }
-  .expedition-list {
-    max-height: none;
-    gap: 7px;
-    padding: 1px 1px 10px;
-  }
-  .expedition-option {
-    padding: 9px;
-    border-width: 1px;
-    border-radius: 9px;
-  }
-  .expedition-option-head {
-    margin-bottom: 2px;
-  }
-  .expedition-option-name {
-    min-width: 0;
-    font-size: var(--fs-small);
-    overflow-wrap: anywhere;
-  }
-  .expedition-option-dur {
-    font-size: var(--fs-small);
-    padding: 2px 6px;
-  }
-  .delivery-meta {
-    margin-bottom: 4px;
-    font-size: var(--fs-small);
-  }
-  .delivery-label {
-    margin: 4px 0 2px;
-    font-size: var(--fs-small);
-  }
-  .delivery-req {
-    margin-bottom: 3px;
-  }
-  .delivery-req-row {
-    gap: 6px;
-    padding: 2px 0;
-    font-size: var(--fs-small);
-  }
-  .delivery-req-name {
-    flex: 1;
-    min-width: 0;
-  }
-  .delivery-req-name > span:last-child {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .delivery-req-qty {
-    font-size: var(--fs-small);
-  }
-  .expedition-option-rewards {
-    gap: 4px 8px;
-    margin-bottom: 5px;
-    font-size: var(--fs-small);
-  }
-  .expedition-option .battle-btn {
-    width: auto;
-    min-width: 116px;
-    min-height: 34px;
-    padding: 6px 14px;
-    font-size: var(--fs-small);
-  }
   .modal-x {
     top: 9px;
     right: 9px;
@@ -4089,16 +3440,6 @@ body {
   }
 
   /* --- size scale --- */
-  .shop-modal {
-    width: var(--modal-w-medium);
-    max-height: var(--modal-max-h);
-    padding: 26px 28px 24px;
-  }
-  .delivery-modal {
-    width: var(--modal-w-wide);
-    max-height: var(--modal-max-h);
-    padding: 26px 28px 24px;
-  }
   .modal-x {
     top: 12px;
     right: 12px;
@@ -4109,8 +3450,7 @@ body {
     border-color: #ffd76a;
   }
   /* the global img{display:block} reset would drop a title icon onto its own line above the text */
-  .modal-title .inline-icon,
-  .shop-modal .inline-icon {
+  .modal-title .inline-icon {
     display: inline-block;
   }
 
@@ -4123,39 +3463,10 @@ body {
   }
 
   /* --- Pedidos --- */
-  .delivery-modal .expedition-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 14px;
-    max-height: none;
-    overflow: visible;
-    padding: 2px;
-  }
-  .delivery-modal .expedition-option {
-    display: flex;
-    flex-direction: column;
-  }
-  .delivery-modal .expedition-option > .battle-btn {
-    margin-top: auto;
-  }
 
   /* --- Missões --- */
 
   /* --- Loja --- */
-  .shop-body {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 10px 14px;
-    align-content: start;
-    padding-right: 8px;
-  }
-  .shop-body > .shop-section-title {
-    grid-column: 1 / -1;
-    margin: 8px 0 0;
-  }
-  .shop-body .gear-row {
-    margin-bottom: 0;
-  }
 
   /* --- Batalha: wide panel, header strip + arena stage with the arena background --- */
   .battle {
@@ -4533,12 +3844,6 @@ button[data-ui]:focus-visible {
 
 /* Tablet (600-1023 px): the phone-sized modals (420 px) left most of the screen empty and broke names mid-word; give them the width a tablet has */
 @media (min-width: 600px) and (max-width: 1023px) {
-  .shop-modal {
-    width: min(92vw, 640px);
-  }
-  .delivery-modal {
-    width: min(94vw, 720px);
-  }
   .battle {
     width: min(94vw, 680px);
   }
@@ -4699,53 +4004,14 @@ button[data-ui]:focus-visible {
   border-color: #7cc4ff;
   box-shadow: 0 0 10px rgba(124, 196, 255, 0.45);
 }
-.shop-tabs {
-  margin-bottom: 10px;
-}
-.merchant-budget {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
-  text-align: left;
-  font-size: var(--fs-small);
-  color: #ffe9a8;
-}
-.merchant-budget-bar {
-  height: 8px;
-}
-.sell-buttons {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-.sell-buttons .gear-action {
-  flex: 0 0 auto;
-  min-width: 0;
-  padding: 6px 8px;
-}
-.sell-buttons .gear-action.confirm {
-  background: #ff9a3c;
-  color: #1a1108;
-}
-
-.shop-sell .merchant-budget {
-  grid-column: 1 / -1;
-}
 /* the Baú hint goes on its own line under the requirement it belongs to, so a narrow recipe card never squeezes the name */
 .craft-req .req-item:has(.stash-hint) {
   flex-wrap: wrap;
 }
-.craft-req .req-item .stash-hint,
-.delivery-req-qty .stash-hint {
+.craft-req .req-item .stash-hint {
   flex: 0 0 100%;
   margin: 2px 0 0 0;
   flex-wrap: wrap;
-}
-.delivery-req-qty {
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 /* ===== 8 equipment cards on the Home hero card (seven gear slots + the relic): always a compact 2-column grid ===== */
@@ -6451,102 +5717,6 @@ button[data-ui]:focus-visible {
 /* Round 14: Forge > Gems buttons say which gem and what it does */
 
 /* Round 18: the wholesale merchant tab (WholesalePanel.tsx) and the full-bag link */
-.ws-body .ws-row {
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.ws-row.ticked {
-  border-color: #ffd76a;
-}
-.ws-tick {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 4px;
-}
-.ws-tick input {
-  width: 18px;
-  height: 18px;
-  accent-color: #ffd76a;
-}
-.ws-price {
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-}
-.ws-rare-tag {
-  margin-left: 4px;
-  color: #ffd76a;
-}
-.ws-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: stretch;
-  min-width: 0;
-}
-.ws-custom {
-  width: 76px;
-  font-family: inherit;
-  font-size: var(--fs-small);
-  color: #ffe9a8;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid #8a6a3a;
-  border-radius: 6px;
-  padding: 4px 6px;
-}
-.ws-batch {
-  grid-column: 1 / -1;
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 0 2px;
-  background: linear-gradient(to top, rgba(14, 8, 22, 0.96) 70%, rgba(14, 8, 22, 0));
-}
-.ws-locked {
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.ws-lock-title {
-  margin: 0;
-  color: #ffd76a;
-}
-.ws-confirm-backdrop {
-  z-index: 60;
-}
-.ws-confirm {
-  width: min(92vw, 380px);
-  max-height: 80vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  text-align: left;
-}
-.ws-confirm-list {
-  margin: 0;
-  padding-left: 18px;
-  font-size: var(--fs-small);
-  color: #ffe9a8;
-}
-.ws-confirm-total {
-  margin: 0;
-  font-size: var(--fs-small);
-  color: #ffe9a8;
-}
-.ws-rare-title {
-  color: #ffd76a;
-}
-.ws-confirm-actions {
-  display: flex;
-  gap: 8px;
-}
-.ws-confirm-actions > button {
-  flex: 1 1 0;
-}
 .ws-link-wrap {
   display: inline-flex;
   flex-direction: column;
@@ -6567,46 +5737,6 @@ button[data-ui]:focus-visible {
   border-radius: 6px;
   padding: 5px 10px;
   cursor: pointer;
-}
-
-.ws-batch > .stash-note {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.ws-batch > button {
-  flex: 0 0 auto;
-}
-
-.pouch-body .shop-section-title,
-.pouch-body > .stash-note,
-.pouch-body > .craft-bag-full {
-  grid-column: 1 / -1;
-}
-.pouch-held {
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.pouch-held .gear-info {
-  flex: 1 1 160px;
-  min-width: 0;
-}
-.pouch-held > button {
-  flex: 0 1 auto;
-  max-width: 100%;
-}
-
-.ws-batch {
-  flex-wrap: wrap;
-}
-.ws-batch > .stash-note {
-  flex: 1 1 140px;
-  margin: 0;
-}
-.ws-price {
-  white-space: normal;
-  flex-wrap: wrap;
-  overflow-wrap: anywhere;
 }
 
 /* Hero panel: the stat cells are buttons that open the breakdown by source (CombatStats.tsx), and show the total with the elixirs in it. */

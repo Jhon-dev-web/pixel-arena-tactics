@@ -1,0 +1,172 @@
+/* Pedidos (DeliveryModal) in the new style: the order cards of the board, the delivery on the road and the old expeditions in the summary column. The requirement rows are the Forja's .fg-req. */
+.ord-root {
+  gap: var(--sp-4);
+}
+.ord-note {
+  margin-bottom: var(--sp-3);
+}
+.ord-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-3);
+}
+@container ui (min-width: 560px) {
+  .ord-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+.ord-card {
+  gap: var(--sp-3);
+}
+.ord-card.rarity-uncommon {
+  border-color: #4f8a5a;
+}
+.ord-card.rarity-rare {
+  border-color: #4a7fc0;
+}
+.ord-card.rarity-epic {
+  border-color: var(--rar-epic);
+}
+.ord-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.ord-card-head .ui-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ord-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+}
+.ord-chips .ui-tag {
+  white-space: normal;
+}
+.ord-rarity {
+  font-size: var(--fs-small);
+  color: var(--rar-common);
+}
+.ord-rarity.rarity-uncommon {
+  color: var(--c-good);
+}
+.ord-rarity.rarity-rare {
+  color: var(--c-info);
+}
+.ord-rarity.rarity-epic {
+  color: var(--rar-epic);
+}
+.ord-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.ord-label {
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  color: var(--c-gold-500);
+}
+.ord-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+}
+.ord-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+.ord-reward.shards {
+  color: var(--c-rune);
+}
+.ord-reward img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.ord-accept {
+  margin-top: auto;
+}
+/* the requirement icon: the emoji until the remote image has really arrived */
+.ord-req-icon {
+  position: relative;
+}
+.ord-req-icon img {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.ord-req-icon img.ready {
+  opacity: 1;
+}
+.ord-req-icon .mat-icon-emoji {
+  font-size: var(--glyph-s);
+  line-height: 1;
+}
+
+/* the delivery on the road */
+.ord-active,
+.ord-legacy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.ord-active > .ui-panel-head,
+.ord-legacy > .ui-panel-head {
+  margin-bottom: 0;
+}
+.ord-name {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-text);
+  overflow-wrap: anywhere;
+}
+.ord-time {
+  font-size: var(--fs-body);
+  color: var(--c-gold-200);
+}
+.ord-tickets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.ord-tickets .ui-btn-icon img,
+.ord-tickets .inline-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.ord-legacy-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: var(--bw-thin) solid var(--c-line);
+}
+.ord-legacy-row:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+.ord-claim.blink {
+  animation: ord-blink 1.4s ease-in-out infinite;
+}
+@keyframes ord-blink {
+  50% {
+    box-shadow: var(--sh-btn), 0 0 22px rgba(255, 215, 106, 0.7);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ord-claim.blink {
+    animation: none;
+  }
+}
