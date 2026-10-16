@@ -117,4 +117,5 @@ Espera o jogo renderizar, confere que `#root` tem filhos e que não há erro de 
 ## Licenças de terceiros
 
 - **Press Start 2P** (fonte do jogo): SIL Open Font License 1.1, copyright 2012 The Press Start 2P Project Authors. Vem do pacote npm `@fontsource/press-start-2p` (só o subset latin, peso 400, que cobre ã, ç, é, õ), empacotada pelo Vite como asset local; nada é carregado do Google Fonts. O texto da licença fica em `public/licenses/press-start-2p-OFL.txt` e é copiado para o build web e para o app.
+- **Jersey 10** (fonte do texto da interface; Press Start 2P fica só nos títulos): SIL Open Font License 1.1, copyright 2023 The Soft Type Project Authors. Vem do pacote npm `@fontsource/jersey-10` (só o subset latin, peso 400), empacotada pelo Vite como asset local; nada é carregado do Google Fonts. O texto da licença fica em `public/licenses/jersey-10-OFL.txt`.
 - **Electron / Chromium**: o build empacotado inclui `LICENSE.electron.txt` e `LICENSES.chromium.html` ao lado do `.exe`; mantenha-os na pasta enviada para a Steam.

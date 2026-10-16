@@ -43,7 +43,7 @@
 }
 
 :root {
-  --font-size: 12px;
+  /* --font-size lives in ui/tokens.css */
   --sprite-size: 132px;
   --bar-w: 120px;
   --bar-h: 14px;

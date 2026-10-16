@@ -132,8 +132,11 @@ import { fmtNum, Locale, setLocale, setLocaleListener, t } from './locales';
 import { marketEnabled } from './game/marketFlag';
 import type { MarketHost } from './components/market/marketDeps';
 import { mt } from './locales/market';
+import './ui/tokens.css'; // the design tokens first: App.css and everything after it reads them
 import './App.css';
 import './round11.css';
+import './ui/base.css'; // after App.css: the body face and the typography override its `body` rule
+import './ui/ui.css';
 
 // The player market (docs/MARKET_SOLANA.md) is WEB ONLY: Valve forbids crypto trading in a Steam game. marketEnabled is a build constant (VITE_MARKET_ENABLED, forced off in the desktop build),
 // so in the desktop bundle these three lines, the screen, its text and its styles are not there at all (npm run check:desktop pins it).
