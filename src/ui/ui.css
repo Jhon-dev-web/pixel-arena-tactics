@@ -21,7 +21,7 @@
   scrollbar-width: thin;
   scrollbar-color: var(--c-gold-700) var(--c-inset);
   text-align: left;
-  font-size: var(--font-size);
+  font-size: var(--fs-body);
   background: radial-gradient(ellipse at 50% -10%, rgba(120, 80, 200, 0.1), transparent 60%), var(--c-bg);
 }
 .ui-screen :where(p) {
@@ -70,7 +70,7 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  font-size: 40px;
+  font-size: var(--glyph-l);
   line-height: 1;
 }
 .ui-pagehead-icon img,
@@ -87,7 +87,6 @@
 .ui-pagehead-title {
   margin: 0;
   font-size: var(--fs-title);
-  letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--c-gold-300);
   text-shadow: 0 2px 0 #000;
@@ -95,7 +94,7 @@
 }
 .ui-pagehead-sub {
   margin: var(--sp-1) 0 0;
-  font-size: var(--fs-md);
+  font-size: var(--fs-body);
   color: var(--c-text-dim);
 }
 .ui-pagehead-actions {
@@ -108,11 +107,10 @@
   .ui-pagehead-icon {
     width: 44px;
     height: 44px;
-    font-size: 32px;
+    font-size: var(--glyph-l);
   }
   .ui-pagehead-title {
-    font-size: 18px;
-    letter-spacing: 1px;
+    font-size: var(--fs-title);
   }
 }
 
@@ -149,7 +147,7 @@
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  font-size: 18px;
+  font-size: var(--glyph-m);
 }
 .ui-panel-icon img {
   width: 22px;
@@ -161,8 +159,7 @@
   flex: 1 1 auto;
   min-width: min(100%, 12ch);
   margin: 0;
-  font-size: var(--fs-md);
-  letter-spacing: 1px;
+  font-size: var(--fs-section);
   text-transform: uppercase;
   color: var(--c-gold-300);
   text-shadow: 0 2px 0 #000;
@@ -192,7 +189,7 @@
   min-height: var(--tap);
   padding: var(--sp-2) var(--sp-3);
   font-family: inherit;
-  font-size: var(--fs-md);
+  font-size: var(--fs-body);
   line-height: 1.2;
   color: var(--c-gold-300);
   background: linear-gradient(180deg, var(--c-surface-2), var(--c-surface-1));
@@ -218,7 +215,7 @@
 .ui-tab-icon {
   display: inline-flex;
   align-items: center;
-  font-size: 18px;
+  font-size: var(--glyph-m);
 }
 .ui-tab-icon img {
   width: 20px;
@@ -252,7 +249,7 @@
   min-height: var(--tap);
   padding: var(--sp-2) var(--sp-4);
   font-family: inherit;
-  font-size: var(--fs-md);
+  font-size: var(--fs-body);
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
@@ -269,7 +266,7 @@
 .ui-btn.sm {
   min-height: 34px;
   padding: var(--sp-1) var(--sp-3);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
 }
 .ui-btn.primary {
   color: var(--c-text-on-gold);
@@ -325,7 +322,7 @@
   min-height: 36px;
   padding: var(--sp-1) var(--sp-3);
   font-family: inherit;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
   color: var(--c-text-dim);
   background: var(--c-surface-1);
   border: var(--bw) solid var(--c-line);
@@ -357,7 +354,7 @@
   align-items: center;
   gap: var(--sp-1);
   padding: 1px var(--sp-2);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-small);
   line-height: 1.4;
   color: var(--c-text-dim);
   background: rgba(255, 255, 255, 0.06);
@@ -415,7 +412,7 @@
   height: 100%;
   min-height: 38px;
   font-family: inherit;
-  font-size: var(--fs-md);
+  font-size: var(--fs-body);
   color: inherit;
   background: transparent;
   border: 0;
@@ -499,7 +496,7 @@
   width: 100%;
   height: 100%;
   padding: 5px;
-  font-size: 26px;
+  font-size: var(--glyph-l);
   line-height: 1;
 }
 .ui-frame-art .pixel-icon,
@@ -519,7 +516,7 @@
   right: 2px;
   bottom: 0;
   padding: 0 2px;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-small);
   font-weight: 700;
   line-height: 1.25;
   color: #fff;
@@ -556,7 +553,7 @@
 .ui-item-name {
   margin: 0;
   font-family: inherit;
-  font-size: var(--fs-md);
+  font-size: var(--fs-body);
   font-weight: 700;
   line-height: var(--lh-tight);
   color: var(--c-text);
@@ -566,7 +563,7 @@
   hyphens: auto;
 }
 .ui-item-rarity {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
   color: var(--rar-common);
 }
 .ui-item-rarity.r-rare {
@@ -589,7 +586,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--sp-2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
   color: var(--c-text-dim);
 }
 .ui-item-row dt {
@@ -636,7 +633,7 @@
   align-items: center;
   gap: var(--sp-3);
   min-width: 0;
-  font-size: var(--fs-md);
+  font-size: var(--fs-body);
 }
 .ui-stat-icon {
   flex: 0 0 auto;
@@ -714,7 +711,7 @@
   overflow: hidden;
   color: var(--c-text);
   text-align: left;
-  font-size: var(--font-size);
+  font-size: var(--fs-body);
   background: linear-gradient(180deg, #181022, #0f0a17);
   border: var(--bw) solid var(--c-gold-line-strong);
   border-radius: var(--r-lg);
@@ -744,7 +741,7 @@
   width: 42px;
   height: 42px;
   font-family: inherit;
-  font-size: 18px;
+  font-size: var(--glyph-m);
   line-height: 1;
   color: var(--c-gold-200);
   background: linear-gradient(180deg, #33250f, var(--c-gold-fill));
@@ -773,11 +770,10 @@
   .ui-modal .ui-pagehead-icon {
     width: 40px;
     height: 40px;
-    font-size: 28px;
+    font-size: var(--glyph-l);
   }
   .ui-modal .ui-pagehead-title {
-    font-size: 16px;
-    letter-spacing: 1px;
+    font-size: var(--fs-title);
   }
   .ui-modal .ui-pagehead-text {
     flex-basis: 120px;

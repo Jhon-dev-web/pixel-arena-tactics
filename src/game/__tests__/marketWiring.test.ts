@@ -156,7 +156,7 @@ ${selector} {`) + 1; // at the start of a line: not inside a longer selector
     }
     expect(read('src/components/MarketScreen.tsx')).toMatch(/className="desktop-home mk-screen"[^>]*lang=\{activeLocale === 'en' \? 'en' : 'pt-BR'\}/);
     // the title is smaller where the card is narrow, and a phone row never cuts a pouch's size with an ellipsis (3 lines)
-    expect(css).toMatch(/\.mk-card \.mk-item-name \{\s*font-size: calc\(var\(--font-size\) - 1px\);/);
+    expect(css).toMatch(/\.mk-card \.mk-item-name \{\s*font-size: var\(--fs-body\);/);
     expect(css).toContain('-webkit-line-clamp: 3;');
   });
 

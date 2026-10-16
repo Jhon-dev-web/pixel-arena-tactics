@@ -15,19 +15,19 @@
 }
 .ev-panel .ev-name {
   color: var(--c-gold-200);
-  font-size: var(--fs-md);
+  font-size: var(--fs-body);
 }
 .ev-panel .ev-desc,
 .ev-panel .ev-lead {
   margin: 0;
   color: var(--c-text-dim);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
   line-height: var(--lh-body);
 }
 .ev-panel .ev-time {
   margin: 0;
   color: var(--c-text);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
 }
 .ev-panel .ev-next {
   margin-top: 8px;
@@ -36,7 +36,7 @@
 }
 .ev-panel .ev-next-label {
   color: var(--c-text-muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-small);
   text-transform: uppercase;
 }
 .ev-panel .ev-buffs {
@@ -44,12 +44,12 @@
   padding: 0;
   list-style: none;
   color: var(--c-good);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
 }
 .ev-panel .ev-foot {
   margin: 8px 0 0;
   color: var(--c-text-muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-small);
 }
 .ev-panel .ev-toggle,
 .ev-panel .ev-pick-btn {
@@ -60,7 +60,7 @@
   border-radius: 6px;
   padding: 4px 10px;
   font: inherit;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
   cursor: pointer;
 }
 .ev-panel .ev-pick-row {
@@ -81,12 +81,12 @@
   grid-template-columns: 1fr auto;
   gap: 2px 8px;
   align-items: center;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
 }
 .ev-panel .ev-cal-days {
   grid-column: 1 / -1;
   color: var(--c-text-muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-small);
 }
 .ev-panel .ev-cal-name {
   color: var(--c-text);

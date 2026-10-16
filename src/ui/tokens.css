@@ -2,17 +2,22 @@
    The look (taken from the market mockup): dark purple-black panels, thin gold borders with a slight inner glow, gold primary buttons, rarity-coloured item frames.
    Everything in ui.css / screens.css reads these; the older App.css rules still carry some literal colours of the same palette and move over screen by screen. */
 :root {
-  /* type: the pixel display face is for titles and headers only, the body face is the readable pixel font (see base.css) */
+  /* TYPE: two faces and four sizes, nothing else (the mockup is calm because everything shares one monospaced face and a couple of sizes).
+     --font-display (Press Start 2P, ALWAYS uppercase and gold): screen titles and panel / section / modal titles only.
+     --font-body (Departure Mono): every other text of the game (labels, buttons, chips, fields, names, numbers), mixed case, wide letter spacing.
+     Every font-size of the CSS is one of the four --fs-* tokens; emoji / icon glyphs (which are pictures, not letters) use the --glyph-* tokens. src/game/__tests__/uiFonts.test.ts enforces it. */
   --font-display: 'Press Start 2P', 'Courier New', monospace;
-  --font-body: 'Jersey 10', 'Press Start 2P', 'Courier New', monospace;
-  --font-size: 14px; /* the base size every `calc(var(--font-size) - Npx)` in the older CSS hangs on */
-  --fs-xs: 12px;
-  --fs-sm: 13px;
-  --fs-md: 14px;
-  --fs-lg: 16px;
-  --fs-xl: 20px;
-  --fs-title: 24px;
-  --lh-body: 1.45;
+  --font-body: 'Departure Mono', 'Courier New', monospace;
+  --fs-title: 24px; /* display: the title of a screen (16px on a phone) */
+  --fs-section: 12px; /* display: panel / section / modal titles */
+  --fs-body: 13px; /* body: everything that is read */
+  --fs-small: 11px; /* body: captions, hints, counters, badges (11 px is the grid Departure Mono is drawn on) */
+  --glyph-s: 16px; /* emoji / icon glyphs */
+  --glyph-m: 22px;
+  --glyph-l: 32px;
+  --ls-body: 0.03em;
+  --ls-title: 0.06em;
+  --lh-body: 1.5;
   --lh-tight: 1.25;
 
   /* surfaces, darkest to lightest */
@@ -104,4 +109,9 @@
   --side-col-w: 340px;
   --page-pad: 20px;
   --tap: 44px; /* the minimum touch target */
+}
+@media (max-width: 640px) {
+  :root {
+    --fs-title: 16px;
+  }
 }

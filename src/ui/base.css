@@ -1,43 +1,70 @@
-/* The body face of the game: Jersey 10 (SIL OFL 1.1, @fontsource/jersey-10, bundled: no remote font loading, works offline and under the CSP font-src 'self'; licence in public/licenses).
-   Why this one: it keeps the pixel look of the game but has real lower-case letters, proper accented capitals (Á É Ô Ç...) and digits that cannot be confused (Pixelify Sans, tried first, draws 5 like S and 7 like 1 at
-   small sizes; Press Start 2P draws 8 like &), and it is much narrower than Press Start 2P, so Portuguese labels fit where they used to wrap or clip.
-   size-adjust makes its glyphs match the visual size the old font had at the same font-size (the older CSS has hard-coded 11-13 px labels). It ships one weight: the range 400-700 stops the browser from faking a bold.
-   Press Start 2P stays for titles / headers only (var(--font-display)) and as the fallback of the body face. */
+/* Typography of the game: two faces, four sizes (tokens.css), set once here.
+   BODY: Departure Mono (SIL OFL 1.1, @proj-airi/font-departure-mono, bundled: no remote font loading, works offline and under the CSP font-src 'self'; licence in public/licenses). A monospaced pixel face with real
+   lower-case letters, accented capitals (Á É Ô Ç) and digits that cannot be confused; it is what the market mockup uses for ALL text but its titles (wide letter spacing, mixed case, one or two sizes), so every
+   screen reads even and calm instead of big and small letters mixed. It ships one weight: the range 400-700 stops the browser from faking a bold.
+   DISPLAY: Press Start 2P, only for the screen title and the panel / section / modal titles: always uppercase, never mixed with the body face inside one line. */
 @font-face {
-  font-family: 'Jersey 10';
+  font-family: 'Departure Mono';
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  size-adjust: 150%;
-  src: url('../../node_modules/@fontsource/jersey-10/files/jersey-10-latin-400-normal.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  src: url('../../node_modules/@proj-airi/font-departure-mono/dist/files/DepartureMono-Regular.woff2') format('woff2');
 }
 
 body {
   font-family: var(--font-body);
-  font-size: var(--font-size);
+  font-size: var(--fs-body);
   line-height: var(--lh-body);
+  letter-spacing: var(--ls-body);
+  font-synthesis: none;
   color: var(--c-text);
   background: var(--c-bg);
 }
 
-/* titles and headers keep the pixel display face */
-h1,
-h2,
-h3,
+/* screen titles (the big gold one at the top of a screen) */
+.ui-pagehead-title,
+.mk-title,
+.result-title,
+.ap-title,
+.hm-hero-name,
+.pg-hero-name,
+.battle-stage .battle-vs {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 400;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-title);
+  text-transform: uppercase;
+}
+/* panel / section / modal titles */
 .modal-title,
 .dh-card-title,
 .desktop-sidebar-brand,
+.ui-panel-title,
+.camp-title,
+.wave-title,
+.tutorial-card h2,
+.ap-h3,
+.sk-title,
+.mk-h,
+.hunt-section-title,
+.quest-group-title,
+.garden-picker-title,
+.unlock-title,
+.stat-breakdown-title,
 .ui-display {
   font-family: var(--font-display);
+  font-size: var(--fs-section);
   font-weight: 400;
   line-height: var(--lh-tight);
+  letter-spacing: var(--ls-title);
+  text-transform: uppercase;
 }
 
 /* the abbreviation suffix (K / M / B) used a monospace override for the old font; the body face draws it fine */
 .num-abbr {
   font-family: inherit;
-  font-size: 100%;
+  font-size: inherit;
 }
 
 /* keyboard focus is always visible, on every control of the game */

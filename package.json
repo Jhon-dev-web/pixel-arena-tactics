@@ -35,8 +35,8 @@
     "season:bounds": "vitest run --config vitest.sim.config.ts seasonBounds --silent=false --reporter=default"
   },
   "dependencies": {
-    "@fontsource/jersey-10": "5.3.0",
     "@fontsource/press-start-2p": "^5.3.0",
+    "@proj-airi/font-departure-mono": "0.11.3",
     "@supabase/supabase-js": "^2.117.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",

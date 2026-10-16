@@ -16,14 +16,14 @@
   gap: 2px;
 }
 .wb-note {
-  font-size: calc(var(--font-size) - 4px);
+  font-size: var(--fs-small);
   color: #b8a8d8;
   overflow-wrap: anywhere;
 }
 .wb-btn {
   flex: none;
   font-family: inherit;
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
   color: #ffd76a;
   background: linear-gradient(180deg, #4a3420, #2a1c10);
   border: 2px solid #8a6a3a;
@@ -37,7 +37,7 @@
 }
 .wb-close {
   font-family: inherit;
-  font-size: calc(var(--font-size) - 2px);
+  font-size: var(--fs-small);
   color: #b8a8d8;
   background: transparent;
   border: 1px solid #4a3a55;
@@ -54,7 +54,7 @@
 
 /* ---- achievements / statistics (QuestsModal) */
 .quest-summary {
-  font-size: calc(var(--font-size) - 2px);
+  font-size: var(--fs-small);
   color: #b8a8d8;
   text-align: center;
   padding: 2px 0 4px;
@@ -66,14 +66,13 @@
 }
 .quest-group-title {
   margin: 8px 0 0;
-  font-size: calc(var(--font-size) - 2px);
+  font-size: var(--fs-small);
   font-weight: normal;
   color: #b9a46c;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 .quest-title-reward {
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
   color: #b8a8d8;
 }
 .stat-list {
@@ -91,7 +90,7 @@
   background: #1c1322;
   border: 1px solid #4a3a55;
   border-radius: 8px;
-  font-size: calc(var(--font-size) - 2px);
+  font-size: var(--fs-small);
 }
 .stat-row dt {
   text-align: left;
@@ -113,7 +112,7 @@
     gap: 4px;
   }
   .quests-modal .inv-tabs .tab {
-    font-size: 8px;
+    font-size: var(--fs-small);
     padding: 8px 2px;
     flex: 1 1 0;
     overflow-wrap: normal;
@@ -160,7 +159,7 @@
   margin-bottom: 8px;
 }
 .codex-overall-text {
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
   color: #b8a8d8;
   text-align: center;
 }
@@ -178,7 +177,7 @@
 }
 .codex-hint {
   margin: 0;
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
   color: #8a7aa8;
   text-align: center;
 }
@@ -221,7 +220,7 @@
   border-color: #6a4a8a;
 }
 .codex-tile-name {
-  font-size: calc(var(--font-size) - 5px);
+  font-size: var(--fs-small);
   line-height: 1.2;
   text-align: center;
   overflow-wrap: anywhere;
@@ -257,7 +256,7 @@
   background: #1c1322;
   border: 2px solid #a87c3a;
   border-radius: 10px;
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
 }
 .codex-detail-head {
   display: flex;
@@ -272,7 +271,7 @@
 }
 .codex-detail-name {
   color: #ffd76a;
-  font-size: calc(var(--font-size) - 1px);
+  font-size: var(--fs-body);
   overflow-wrap: anywhere;
 }
 .codex-detail-sub,
@@ -297,10 +296,10 @@
 .codex-label {
   color: #b9a46c;
   text-transform: uppercase;
-  font-size: calc(var(--font-size) - 5px);
+  font-size: var(--fs-small);
 }
 .codex-rar {
-  font-size: calc(var(--font-size) - 4px);
+  font-size: var(--fs-small);
   padding: 1px 5px;
   border: 1px solid #4a3a55;
   border-radius: 999px;
@@ -316,7 +315,7 @@
 }
 @media (max-width: 480px) {
   .codex-modal .inv-tabs .tab {
-    font-size: 8px;
+    font-size: var(--fs-small);
     padding: 8px 2px;
     flex: 1 1 0;
     overflow-wrap: normal;
@@ -360,7 +359,7 @@
   margin: 4px 0 8px;
   padding: 7px 10px;
   text-align: center;
-  font-size: calc(var(--font-size) - 2px);
+  font-size: var(--fs-small);
   color: rgb(var(--rv));
   background: #1c1322;
   border: 2px solid;
@@ -450,7 +449,7 @@
   background: #1c1322;
   border: 1px solid #8a3a3a;
   border-radius: 8px;
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: #d8c9a0;
 }
@@ -459,7 +458,7 @@
 }
 .settings-warning {
   margin: 0;
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
   color: #ffb4a8;
 }
 
@@ -498,12 +497,12 @@
 }
 .depths-card .depths-note {
   color: #b8a8d8;
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
   white-space: normal;
 }
 .depths-paragon {
   margin-left: 8px;
-  font-size: calc(var(--font-size) - 4px);
+  font-size: var(--fs-small);
   color: #1a1030;
   background: #c9a0ff;
   border-radius: 8px;
@@ -511,7 +510,7 @@
 }
 .paragon-tag {
   margin-left: 6px;
-  font-size: 0.8em;
+  font-size: var(--fs-small);
   color: #c9a0ff;
 }
 
@@ -532,12 +531,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: calc(var(--font-size) - 1px);
+  font-size: var(--fs-body);
   color: #ffd76a;
   font-weight: normal;
 }
 .unlock-count {
-  font-size: calc(var(--font-size) - 4px);
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  text-transform: none;
   color: #1a1030;
   background: #ffd76a;
   border-radius: 8px;
@@ -556,7 +557,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px 8px;
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
   color: #e6dcf5;
   padding: 3px 0;
   border-bottom: 1px dashed rgba(138, 106, 58, 0.35);
@@ -588,7 +589,7 @@
 .unlock-tag,
 .unlock-done {
   flex: none;
-  font-size: calc(var(--font-size) - 5px);
+  font-size: var(--fs-small);
   color: #b8a8d8;
   border: 1px solid #6a5a8a;
   border-radius: 6px;
@@ -601,7 +602,7 @@
 .unlock-sub {
   flex: 1 1 100%;
   padding-left: 52px;
-  font-size: calc(var(--font-size) - 5px);
+  font-size: var(--fs-small);
   color: #b8a8d8;
 }
 
@@ -637,7 +638,7 @@
   background: #1a1220;
   border: 1px solid #4a3a55;
   border-radius: 8px;
-  font-size: calc(var(--font-size) - 4px);
+  font-size: var(--fs-small);
   color: #b8a8d8;
 }
 .streak-day.today {
@@ -650,7 +651,7 @@
   color: #6fe08a;
 }
 .streak-day-n {
-  font-size: calc(var(--font-size) - 3px);
+  font-size: var(--fs-small);
 }
 .streak-day-r {
   display: inline-flex;
@@ -686,7 +687,7 @@
     gap: 4px;
   }
   .quests-modal .inv-tabs .tab {
-    font-size: 9px;
+    font-size: var(--fs-small);
     padding: 9px 4px;
     flex: none;
   }
