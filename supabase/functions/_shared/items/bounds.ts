@@ -50,25 +50,33 @@ export const ITEM_BOUNDS = {
   /** A claim that asks for more than the server clock allows by this much is flagged (a clock set forward, or a made-up duration). */
   huntFlagExcessSeconds: 2 * 3600,
 
-  /** BOSS KILLS a claim can be paid for: SOURCE progress BOUNDS.bossesPerDay (20 runs x 10 bosses), a day of it at most. */
-  bossRatePerHour: BOUNDS.bossesPerDay / 24,
-  bossCapacity: BOUNDS.bossesPerDay,
+  /**
+   * BOSS KILLS a claim can be paid for, per rolling day. The server cannot see a fight, so this is what it is willing to ROLL uniques for, not what a hero can kill (that is
+   * BOUNDS.bossesPerDay = 200, which the progress audit uses to judge the game's own counters). League review (Rodada 22): at 200 a save-editing bot minted about 12 certified
+   * uniques a day. An honest hero does 10 free runs a day and meets each of the four biome bosses at most once per run, so 15 paid kills cover the runs that reach a boss with room to
+   * spare. Kills beyond it are not rolled (a partial grant, and the excess is flagged), never refused.
+   */
+  bossKillsPerDay: 15,
+  bossRatePerHour: 15 / 24,
+  bossCapacity: 15,
   /** The most boss stages one claim may list (one run is at most a few dozen). */
   bossStagesPerClaim: 60,
 
   /**
-   * UNIQUES per rolling day (hunting and bosses together), certified: the grinder who clears 80 bosses a day with Sorte Grande expects 80 x 0.03 x 1.25 = 3.0; the cap is 4x that (a lucky streak)
-   * and is the last safety net behind the two time limits above.
+   * UNIQUES per rolling day (hunting and bosses together), certified. League review (Rodada 22): an honest player finds 1 to 2 uniques in a whole 60-day season (docs/BALANCE_CHANGES.md
+   * Rodada 22). With 15 paid boss kills a day (0.03 x 1.25 each = 0.56 expected at the very most) plus 10 h of Hunting, the day's expectation is under 1; 2 is a lucky day, and it is the
+   * most a save-editing bot gets in a day (it was 12). Atomic in item_commit: a claim that would pass it is thrown away unseen.
    */
-  uniqueDayCap: 12,
+  uniqueDayCap: 2,
 
   /**
    * GOLD POUCH. Count: POUCH_TABLE.perDay (3) per local day, MARGIN x that per rolling day (the client counts local days, a day can straddle two). Gold: what the hero could have earned.
-   * SOURCE docs/BALANCE_BASELINE.md: the Pass owner earns about 2,470 Gold a day at days 46-60 (the median of the long sim); docs/ECONOMY_AUDIT.md: a Dungeon clear at floor 100 pays about
-   * 197 Gold and a hero can do 20 runs a day = 3,940. Together 6,410 a day; 10,000 leaves about a 1.5x margin. The bucket holds the biggest pouch (never less) so a saver can make it.
+   * SOURCE docs/BALANCE_BASELINE.md: the Pass owner earns about 2,470 Gold a day at days 46-60 (the median of the long sim), and docs/BALANCE_CHANGES.md Rodada 22 measured 2,200 to
+   * 3,100 a day for the owner. That is what an honest hero can turn into pouches, so the limit is 3,000 a day (it was 10,000, which let a save-editing bot mint 10,000 pouch Gold a day:
+   * the old term for Dungeon clears, 3,940 a day, was never reachable by a hero who also spends). The bucket holds the biggest pouch (never less) so a saver can make it in about a week.
    */
   pouchCountPerHour: (MARGIN * POUCH_TABLE.perDay) / 24,
   pouchCountCapacity: MARGIN * POUCH_TABLE.perDay,
-  pouchGoldPerDay: 10_000,
+  pouchGoldPerDay: 3_000,
   pouchGoldCapacity: (): number => Math.max(...Object.values(POUCH_TABLE.faces)),
 } as const;

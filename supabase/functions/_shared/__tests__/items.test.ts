@@ -276,11 +276,11 @@ describe('hunting unique drops: rolled by the server, bounded by server-observed
 
   it('rolls with the zone\'s chances and certifies every unique', async () => {
     const s = oldServer(() => 0); // every dice is a hit
-    const r = await s.mint({ kind: 'hunt_drop', requestId: REQ(1), zoneId: 'demon_glade', durationMs: 60_000 }); // one minute: 3.73 rolls -> 4 with a rng that always rounds up
+    const r = await s.mint({ kind: 'hunt_drop', requestId: REQ(1), zoneId: 'demon_glade', durationMs: 16_000 }); // 16 s: 0.996 of a roll -> 1 with a rng that always rounds up
     expect(r.status).toBe(200);
     const body = r.body as { items: { templateId: string; certificate: { kind: string; source: string } }[]; rolls: number };
-    expect(body.rolls).toBe(4);
-    expect(body.items).toHaveLength(4 * glade.uniques.length);
+    expect(body.rolls).toBe(1);
+    expect(body.items).toHaveLength(glade.uniques.length);
     for (const it of body.items) {
       expect(glade.uniques.map((u) => u.itemId)).toContain(it.templateId);
       expect(it.certificate).toMatchObject({ kind: 'unique', source: 'hunt_drop' });
@@ -375,6 +375,36 @@ describe('boss unique drops', () => {
   });
 });
 
+describe('the minting limits close the bot gap (Rodada 22)', () => {
+  it('the three numbers the League review set', () => {
+    expect(ITEM_BOUNDS.bossCapacity).toBe(15);
+    expect(ITEM_BOUNDS.bossRatePerHour * 24).toBeCloseTo(15, 9);
+    expect(ITEM_BOUNDS.uniqueDayCap).toBe(2);
+    expect(ITEM_BOUNDS.pouchGoldPerDay).toBe(3_000);
+  });
+
+  it('a bot whose every roll is a hit still gets at most 2 certified uniques in a day, from bosses and hunting together', async () => {
+    const s = oldServer(() => 0);
+    const out: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      const r = await s.mint({ kind: 'boss_drop', requestId: REQ(i), stages: [25] });
+      out.push(r.status);
+    }
+    const hunt = await s.mint({ kind: 'hunt_drop', requestId: REQ(50), zoneId: 'demon_glade', durationMs: 16_000 });
+    expect(s.store.certs.filter((c) => c.kind === 'unique')).toHaveLength(2); // goblin_king_crown twice, then the cap
+    expect(out.filter((st) => st === 200)).toHaveLength(2);
+    expect(hunt.status).toBe(429);
+    expect(s.store.flags.map((f) => f.code)).toContain('LIMIT_UNIQUE_DAY');
+  });
+
+  it('a day of boss claims is paid for at most 15 kills', async () => {
+    const s = oldServer(() => 0.99);
+    let rolled = 0;
+    for (let i = 0; i < 10; i++) rolled += (await s.mint({ kind: 'boss_drop', requestId: REQ(i), stages: [100, 100, 100, 100, 100, 100] })).body.rolls as number;
+    expect(rolled).toBe(15);
+  });
+});
+
 describe('gold pouches', () => {
   it('certifies a pouch with its face value', async () => {
     const s = oldServer();
@@ -388,9 +418,10 @@ describe('gold pouches', () => {
 
   it('is bounded by the Gold a hero could have earned', async () => {
     const s = oldServer();
-    s.store.accountCreatedMs = s.store.nowMs - 2 * DAY; // 20,000 Gold of income at most
-    expect((await s.mint({ kind: 'pouch', requestId: REQ(1), pouchId: 'gold_pouch_s' })).status).toBe(200); // 10,000
-    expect((await s.mint({ kind: 'pouch', requestId: REQ(2), pouchId: 'gold_pouch_s' })).status).toBe(200); // 10,000
+    const face = POUCH_TABLE.faces.gold_pouch_s;
+    s.store.accountCreatedMs = s.store.nowMs - ((2 * face) / ITEM_BOUNDS.pouchGoldPerDay + 0.5) * DAY; // room for two pouches of Gold at the daily limit, not for three
+    expect((await s.mint({ kind: 'pouch', requestId: REQ(1), pouchId: 'gold_pouch_s' })).status).toBe(200);
+    expect((await s.mint({ kind: 'pouch', requestId: REQ(2), pouchId: 'gold_pouch_s' })).status).toBe(200);
     const third = await s.mint({ kind: 'pouch', requestId: REQ(3), pouchId: 'gold_pouch_s' });
     expect(third.status).toBe(429);
     expect(third.body).toEqual({ ok: false, reason: 'pouch_gold_limit' });

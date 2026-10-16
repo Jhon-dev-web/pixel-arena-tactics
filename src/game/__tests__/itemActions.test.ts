@@ -223,7 +223,7 @@ describe('Hunting uniques: rolled by the server when the reward is claimed', () 
   it('the server\'s uniques (bounded by server time) land in the reward with their certificates and are delivered by the normal claim', async () => {
     const { api, server } = setup(() => 0);
     server.store.accountCreatedMs = server.store.nowMs - 60 * DAY;
-    current = reward({ pendingMs: 60_000 }); // a minute: a handful of rolls, every dice a hit
+    current = reward({ pendingMs: 16_000 }); // 16 seconds: one roll, every dice a hit (the day's cap of certified uniques is 2)
     const r = await resolveHuntUniques(api, getSave);
     expect(r.ok).toBe(true);
     const resolved = (r as { save: SaveData }).save;
@@ -301,19 +301,19 @@ describe('Dungeon boss uniques', () => {
 
   it('a banked run\'s claim is rolled by the server and the uniques go to the bag; the claim leaves the queue', async () => {
     const { api, server } = setup(() => 0);
-    current = queueBossClaims(defaultSave(), [50, 50], 1, 1, () => 'boss-claim-0001');
+    current = queueBossClaims(defaultSave(), [50], 1, 1, () => 'boss-claim-0001');
     expect(current.pendingBossClaims).toHaveLength(1);
     const r = await settleBossClaim(api, getSave, current.pendingBossClaims![0], 1);
     expect(r.ok).toBe(true);
     const saved = (r as { save: SaveData }).save;
     expect(saved.pendingBossClaims).toBeUndefined();
     const uniques = listGearInstances(saved).filter((i) => getGear(i.templateId).unique);
-    expect(uniques).toHaveLength(4); // two bosses x two pieces, every dice a hit
+    expect(uniques).toHaveLength(2); // one boss x two pieces, every dice a hit (the day's cap of certified uniques is 2)
     for (const u of uniques) {
       expect(u.certificateId).toBeTruthy();
       expect(certState(u)).toBe('verified');
     }
-    expect(server.store.certs).toHaveLength(4);
+    expect(server.store.certs).toHaveLength(2);
   });
 
   it('the server unreachable: the claim stays queued (nothing lost, nothing created locally)', async () => {

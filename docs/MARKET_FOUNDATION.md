@@ -49,10 +49,10 @@ Tudo é por conta, desde `max(conta criada, reset da Liga)`. Um balde que nunca 
 | Selo do Ferreiro | só com o Passe; 6 por temporada de 60 dias (capacidade 6) | a trilha do Passe dá 3 por temporada; 2x |
 | Tempo de Caça pago por reivindicação | 1 h por hora do relógio, até 10 h (balde parcial) | `battlePass.capHours` = 10, o maior armazenamento da recompensa |
 | Sorteios de único por hora de Caça | 224 / 165 / 140 / 140 (Clareira / Pântano / Fenda / Abismo) x chance da zona x Sorte Grande (no máximo 1,5) | comentário de `huntingZones.ts` (Rodada 9): as chances foram calibradas para esses sorteios econômicos por hora; o teto físico é 385 |
-| Mortes de chefe pagas | 200 por dia (capacidade 200), até 60 andares por pedido | `BOUNDS.bossesPerDay` (20 expedições x 10 chefes); Sorte Grande no máximo 1,25 |
-| Únicos certificados por dia (Caça + chefes) | 12 | quem faz 80 chefes por dia com Sorte Grande espera 3,0; 4x |
+| Mortes de chefe pagas | 15 por dia (capacidade 15; era 200), até 60 andares por pedido; o excesso não rola e é marcado | Rodada 22: 10 expedições grátis por dia encontram cada chefe de bioma no máximo uma vez por expedição. 200 (`BOUNDS.bossesPerDay`) continua valendo só para o contador do jogo na auditoria de progresso; Sorte Grande no máximo 1,25 |
+| Únicos certificados por dia (Caça + chefes) | 2 (era 12) | Rodada 22: um jogador honesto acha 1 a 2 únicos em 60 dias; com 15 chefes (0,03 x 1,25 cada, 0,56 no máximo) mais 10 h de Caça a expectativa do dia fica abaixo de 1. Um bot que edita o save fazia ~12 por dia |
 | Bolsas por dia | 6 (capacidade 6; o jogo limita a 3 por dia local) | `goldPouch.perDay` x 2 |
-| Ouro que vira Bolsa | 10 000 por dia, capacidade 100 000 (a maior Bolsa) | `BALANCE_BASELINE.md` (dono do Passe: ~2 470 Ouro/dia nos dias 46-60) + `ECONOMY_AUDIT.md` (20 expedições x 197 = 3 940) = 6 410/dia, com ~1,5x de margem |
+| Ouro que vira Bolsa | 3 000 por dia (era 10 000), capacidade = a maior Bolsa | Rodada 22: o dono do Passe ganha 2 200 a 3 100 Ouro/dia (`BALANCE_CHANGES.md` Rodada 22; `BALANCE_BASELINE.md`: ~2 470 nos dias 46-60). O termo de 3 940/dia das expedições nunca foi alcançável por quem também gasta |
 | Idade mínima da conta para uma peça, zona ou chefe | `dias do herói mais rápido simulado no nível/andar / 3` | `progress/bounds.ts` (`levelPace`, `floorPace`, `PACE_REJECT_FACTOR`) |
 
 Conferido: o servidor só aceita chefe nos andares 25/50/75/100 e a cada 10 profundidades depois do 100; zona e receita desconhecidas dão `400`; o corpo é limitado a 16 KB.
