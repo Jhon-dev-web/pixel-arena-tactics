@@ -3,6 +3,7 @@ import type { MarketOverview, ReservationView } from '../../supabase/functions/_
 import type { SaveData } from '../game/engine';
 import { MarketUnreachable, PublicListing, fetchPublicListings, marketApi } from '../game/market/api';
 import { syncMarket } from '../game/market/sync';
+import { syncMaterials } from '../game/market/materialSync';
 import { activeLocale } from '../locales';
 import { mt } from '../locales/market';
 import BrowsePanel from './market/BrowsePanel';
@@ -27,7 +28,7 @@ const TABS: { id: Exclude<Tab, 'wallet'>; icon: string }[] = [
 // The player market as a main screen of the game shell (web only, behind VITE_MARKET_ENABLED; this whole module, its text and its styles are a lazy chunk the desktop / Steam build never contains).
 // Buy: browse the public listings, reserve one, pay ONE SOL transaction (the seller and the game fee) from your own wallet. Sell: pick an item and publish an offer (the form is the right column). My offers, History: receipts
 // and refunds. The wallet link is a chip in the header. On a phone it is one column: the offer form shows under the Sell tab and the summary under My offers.
-export default function MarketScreen({ save, host }: { save: SaveData; host: MarketHost }) {
+export default function MarketScreen({ save, host, pick = null, onPickUsed }: { save: SaveData; host: MarketHost; pick?: string | null; onPickUsed?: () => void }) {
   const [tab, setTab] = useState<Tab>('buy');
   const [overview, setOverview] = useState<MarketOverview | null>(null);
   const [listings, setListings] = useState<PublicListing[]>([]);
@@ -63,6 +64,7 @@ export default function MarketScreen({ save, host }: { save: SaveData; host: Mar
   const afterChange = useCallback(async () => {
     try {
       const r = await syncMarket(syncDepsFor(host));
+      await syncMaterials(host).catch(() => undefined); // (a failure is retried by the background pass)
       setBagFull(r.waitingForRoom > 0);
     } catch {
       /* the background pass tries again */
@@ -95,6 +97,16 @@ export default function MarketScreen({ save, host }: { save: SaveData; host: Mar
   const wallet = overview?.wallet ?? null;
   const chain = overview?.chain ?? null;
   const flow = useSellFlow({ api: marketApi, save, overview, feePercent: chain?.feePercent ?? 5, solUsd: overview?.solUsd ?? null, host, onChanged: () => void afterChange() });
+
+  // "Vender no Mercado" from the inventory: open the Sell tab with that tradeable material picked
+  useEffect(() => {
+    if (!pick) return;
+    setTab('sell');
+    flow.setPicked(`mat:${pick}`);
+    onPickUsed?.();
+    // flow is recreated every render; the input is the pick itself
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pick]);
 
   return (
     <div className="desktop-home mk-screen" data-tab={tab} aria-label={mt('title')} lang={activeLocale === 'en' ? 'en' : 'pt-BR'}>

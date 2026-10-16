@@ -273,7 +273,7 @@ describe('reconcile with the balance', () => {
     await server.store.credit({ userId: USER_A, requestId: 'seed:copper:aaaa', credits: { copper: 6 } });
     let save: SaveData = { ...defaultSave(), materials: { ...defaultSave().materials, copper: 10, silver: 3 }, tradeableMaterials: { copper: 10, silver: 3 }, tradeableBurns: { copper: 1 } };
     const out = await runSync(apiFor(server), () => save, (s) => (save = s), () => 'dddddddd');
-    expect(out).toBe('ok');
+    expect(out).toEqual({ status: 'ok', waiting: false });
     // the burn of 1 copper went first: the balance is 5, so the stack (10) is cut to 5; silver has no balance; the 4 delivered iron came in
     expect(server.store.qty(USER_A, 'copper')).toBe(5);
     expect(save.tradeableMaterials).toEqual({ copper: 5, iron: 4 });
@@ -287,8 +287,44 @@ describe('reconcile with the balance', () => {
     const save: SaveData = { ...defaultSave(), materials: { ...defaultSave().materials, iron: 5 }, tradeableMaterials: { iron: 5 } };
     let current = save;
     const out = await runSync(apiFor(server, { down: true, calls: 0 }), () => current, (s) => (current = s));
-    expect(out).toBe('unreachable');
+    expect(out).toEqual({ status: 'unreachable', waiting: false });
     expect(current).toBe(save);
+  });
+});
+
+describe('a delivery is acknowledged only once the server holds a save with the units', () => {
+  it('units added in memory wait for the save the server confirmed; a crash before that loses nothing (they are still pending and are added again)', async () => {
+    const server = makeMaterialServer();
+    server.store.deliver(USER_A, 'iron', 6); // a purchase: qty 6, pending 6, seq 1
+    const base: SaveData = { ...defaultSave() };
+    let save: SaveData = base;
+    let synced: SaveData | null = base; // the server's copy has no iron yet
+    const first = await runSync(apiFor(server), () => save, (s) => (save = s), () => 'eeeeeeee', () => synced);
+    expect(first).toEqual({ status: 'ok', waiting: true });
+    expect(tradeableOf(save, 'iron')).toBe(6); // in memory
+    expect((await server.store.balances(USER_A)).iron.pending).toBe(6); // NOT acknowledged
+    // the tab crashes here: the server's copy is loaded again, without the iron
+    let reloaded: SaveData = base;
+    await runSync(apiFor(server), () => reloaded, (s) => (reloaded = s), () => 'ffffffff', () => base);
+    expect(tradeableOf(reloaded, 'iron')).toBe(6); // delivered again: nothing was lost
+    // this time the save is confirmed by the server before the next pass
+    synced = reloaded;
+    const done = await runSync(apiFor(server), () => reloaded, (s) => (reloaded = s), () => 'gggggggg', () => synced);
+    expect(done).toEqual({ status: 'ok', waiting: false });
+    expect((await server.store.balances(USER_A)).iron.pending).toBe(0);
+    expect(tradeableOf(reloaded, 'iron')).toBe(6); // and not twice
+  });
+
+  it('before the first save of a session, the save that was loaded from the server counts as the confirmed one', async () => {
+    const server = makeMaterialServer();
+    server.store.deliver(USER_A, 'iron', 4);
+    // a save the server already holds with the 4 units, whose acknowledgement was lost
+    const loaded: SaveData = { ...defaultSave(), materials: { ...defaultSave().materials, iron: 4 }, tradeableMaterials: { iron: 4 } };
+    let save = loaded;
+    const out = await runSync(apiFor(server), () => save, (s) => (save = s), () => 'hhhhhhhh', () => loaded);
+    expect(out.waiting).toBe(false);
+    expect((await server.store.balances(USER_A)).iron.pending).toBe(0);
+    expect(save).toBe(loaded);
   });
 });
 

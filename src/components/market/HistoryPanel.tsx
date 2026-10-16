@@ -18,7 +18,10 @@ export default function HistoryPanel({ overview, cluster }: { overview: MarketOv
           <li key={s.id} className="mk-listing">
             <div className="mk-listing-head static">
               <span className="mk-item-body">
-                <span className="mk-item-name">{itemName(s.item)}</span>
+                <span className="mk-item-name">
+                  {itemName(s.item)}
+                  {s.item.kind === 'material' && s.item.quantity ? ` x${s.item.quantity}` : ''}
+                </span>
                 <span className="mk-item-meta">
                   <span className="mk-tag">{s.role === 'buyer' ? mt('history.bought') : mt('history.sold')}</span>
                   {!s.livemode && <span className="mk-tag warn">{mt('history.test')}</span>}

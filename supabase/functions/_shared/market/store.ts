@@ -56,7 +56,7 @@ export interface RecordPaymentArgs {
 
 export type RecordOutcome =
   | { status: 'recorded'; extra?: boolean }
-  | { status: 'sold'; saleId: string; certificateId: string }
+  | { status: 'sold'; saleId: string; certificateId: string | null; materialId?: string; quantity?: number }
   | { status: 'refund_due' | 'already_sold' | 'tx_reused' | 'not_found' }
   | { status: 'replayed'; reservationStatus: ReservationStatus };
 
@@ -83,7 +83,10 @@ export interface MarketStore {
   setWallet(userId: string, address: string, chainId: number): Promise<'linked' | 'unchanged' | 'busy' | 'address_taken'>;
 
   list(userId: string, certificateId: string, priceLamports: number): Promise<{ status: 'listed'; listingId: string; expiresAtMs: number } | { status: 'refused'; reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'> }>;
-  cancelListing(userId: string, listingId: string): Promise<{ status: 'cancelled'; certificateId: string } | { status: 'not_found' | 'reserved' | 'not_open' }>;
+  /** Lists a LOT of one tradeable material: the units leave the seller's balance into escrow in the listing (migration 0015). `requestId` makes a retry return the same listing. */
+  listMaterial(userId: string, args: { requestId: string; materialId: string; quantity: number; unitPriceMicro: number }): Promise<{ status: 'listed'; listingId: string; expiresAtMs: number } | { status: 'refused'; reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'> }>;
+  /** A cancelled listing returns an item (certificate) or the units of a lot of materials to the seller (as a delivery the game collects). */
+  cancelListing(userId: string, listingId: string): Promise<{ status: 'cancelled'; certificateId: string | null; materialId?: string; quantity?: number } | { status: 'not_found' | 'reserved' | 'not_open' }>;
 
   reserve(args: { buyerId: string; listingId: string; feeAddress: string; chainId: number; livemode: boolean }): Promise<ReserveOutcome>;
   cancelReservation(buyerId: string, reservationId: string): Promise<CancelReservationOutcome>;

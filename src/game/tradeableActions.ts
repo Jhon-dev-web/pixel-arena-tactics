@@ -2,6 +2,7 @@ import type { MaterialBalances } from '../../supabase/functions/_shared/material
 import type { SaveData } from './engine';
 import { ItemServerUnreachable, newRequestId } from './itemServer';
 import { MaterialApi } from './materialServer';
+import type { MaterialId } from './materials';
 import { dropMaterialClaim } from './materialClaims';
 import {
   TRADEABLE_MATERIALS,
@@ -101,6 +102,10 @@ export interface SyncPlan {
   ack: Record<string, number>;
   /** a request id for that acknowledgement that is the same for the same delivery (retry-safe) and different for a newer one */
   ackKey: string;
+  /** the tradeable stack of each acknowledged material in the new save: the delivery is acknowledged only once the SERVER holds a save with at least this many */
+  holds: Record<string, number>;
+  /** the delivery of each acknowledged material (its `seq`), to build a request id for the part that can be acknowledged */
+  seqs: Record<string, number>;
 }
 
 const fnv = (text: string): string => {
@@ -121,7 +126,8 @@ const fnv = (text: string): string => {
 export function planSync(save: SaveData, balances: MaterialBalances): SyncPlan {
   let s = save;
   const ack: Record<string, number> = {};
-  const parts: string[] = [];
+  const holds: Record<string, number> = {};
+  const seqs: Record<string, number> = {};
   for (const id of TRADEABLE_MATERIALS) {
     const qty = Math.max(0, balances[id]?.qty ?? 0);
     const pending = Math.min(Math.max(0, balances[id]?.pending ?? 0), qty);
@@ -148,22 +154,40 @@ export function planSync(save: SaveData, balances: MaterialBalances): SyncPlan {
     const n = added.added + stale;
     if (n > 0) {
       ack[id] = n;
-      parts.push(`${id}.${balances[id]?.seq ?? 0}.${n}`);
+      holds[id] = tradeableOf(s, id);
+      seqs[id] = balances[id]?.seq ?? 0;
     }
   }
-  return { save: s, ack, ackKey: `ack:${fnv(parts.sort().join('|'))}${fnv(parts.length + parts.join(''))}`.slice(0, 64) };
+  return { save: s, ack, ackKey: ackKeyFor(ack, seqs), holds, seqs };
+}
+
+/** The request id of an acknowledgement: the same units of the same deliveries always give the same id (a retry after a lost answer), a newer delivery gives another. */
+export function ackKeyFor(ack: Record<string, number>, seqs: Record<string, number>): string {
+  const parts = Object.keys(ack).map((id) => `${id}.${seqs[id] ?? 0}.${ack[id]}`).sort();
+  return `ack:${fnv(parts.join('|'))}${fnv(parts.length + parts.join(''))}`.slice(0, 64);
 }
 
 /**
  * The reconcile on load (and now and then): sends the queued burns first (so the balance already counts what was spent), reads the balances, makes the save agree and acknowledges what it
  * took in. `commit` replaces the save. Resolves 'unreachable' when the server could not be reached (nothing changes then).
  */
-export async function runSync(api: MaterialApi, getSave: () => SaveData, commit: (s: SaveData) => void, newId: () => string = newRequestId): Promise<'ok' | 'unreachable'> {
-  if ((await flushBurns(api, getSave, commit, newId)) === 'unreachable') return 'unreachable';
+export async function runSync(
+  api: MaterialApi,
+  getSave: () => SaveData,
+  commit: (s: SaveData) => void,
+  newId: () => string = newRequestId,
+  // The save the SERVER last confirmed (syncedSave.ts), or null before the first one. Given, a delivery is acknowledged only once that save already holds its units, so a crash between "added" and
+  // "saved" can never lose them: the server still counts them as pending and the next pass adds them again. Omitted (a test, a save that was just loaded from the server), everything is acknowledged.
+  getSynced?: () => SaveData | null,
+): Promise<{ status: 'ok' | 'unreachable'; waiting: boolean }> {
+  if ((await flushBurns(api, getSave, commit, newId)) === 'unreachable') return { status: 'unreachable', waiting: false };
   const balances = await ask(() => api.balances());
-  if (balances === 'unreachable') return 'unreachable';
+  if (balances === 'unreachable') return { status: 'unreachable', waiting: false };
   const plan = planSync(getSave(), balances);
   if (plan.save !== getSave()) commit(plan.save);
-  if (Object.keys(plan.ack).length > 0) await ask(() => api.sync({ action: 'ack', requestId: plan.ackKey, units: plan.ack }));
-  return 'ok';
+  const synced = getSynced ? getSynced() : undefined;
+  const ready = Object.keys(plan.ack).filter((id) => synced === undefined || (!!synced && tradeableOf(synced, id as MaterialId) >= plan.holds[id]));
+  const ack = Object.fromEntries(ready.map((id) => [id, plan.ack[id]]));
+  if (ready.length > 0) await ask(() => api.sync({ action: 'ack', requestId: ackKeyFor(ack, plan.seqs), units: ack }));
+  return { status: 'ok', waiting: ready.length < Object.keys(plan.ack).length };
 }

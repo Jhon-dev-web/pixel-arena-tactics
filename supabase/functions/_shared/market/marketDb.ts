@@ -156,8 +156,32 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       throw new Error('market_list_bad_answer');
     },
 
+    async listMaterial(userId, a) {
+      const r = await d.rpc<{ status?: unknown; reason?: unknown; listing_id?: unknown; expires_at?: unknown }>(
+        'market_list_material',
+        {
+          p_user_id: userId,
+          p_request_id: a.requestId,
+          p_material_id: a.materialId,
+          p_qty: a.quantity,
+          p_unit_price_micro: a.unitPriceMicro,
+          p_ttl_days: MARKET_RULES.listingTtlDays,
+          p_max_active: MARKET_RULES.maxActiveListings,
+          p_max_per_day: MARKET_RULES.maxListingsPerDay,
+          p_min_lamports: MARKET_RULES.minPriceLamports,
+          p_max_lamports: MARKET_RULES.maxPriceLamports,
+          p_max_qty: MARKET_RULES.maxMaterialQtyPerListing,
+        },
+        'market_list_material',
+      );
+      if (r.status === 'listed' && typeof r.listing_id === 'string' && typeof r.expires_at === 'string') return { status: 'listed', listingId: r.listing_id, expiresAtMs: Date.parse(r.expires_at) };
+      if (r.status === 'refused' && typeof r.reason === 'string') return { status: 'refused', reason: r.reason as Exclude<ListRefusal, 'bad_request' | 'unavailable'> };
+      throw new Error('market_list_material_bad_answer');
+    },
+
     async cancelListing(userId, listingId) {
-      const r = await d.rpc<{ status?: unknown; certificate_id?: unknown }>('market_cancel_listing', { p_user_id: userId, p_listing_id: listingId }, 'market_cancel_listing');
+      const r = await d.rpc<{ status?: unknown; certificate_id?: unknown; material_id?: unknown; material_qty?: unknown }>('market_cancel_listing', { p_user_id: userId, p_listing_id: listingId }, 'market_cancel_listing');
+      if (r.status === 'cancelled' && typeof r.material_id === 'string') return { status: 'cancelled', certificateId: null, materialId: r.material_id, quantity: Number(r.material_qty) };
       if (r.status === 'cancelled' && typeof r.certificate_id === 'string') return { status: 'cancelled', certificateId: r.certificate_id };
       if (r.status === 'not_found' || r.status === 'reserved' || r.status === 'not_open') return { status: r.status };
       throw new Error('market_cancel_listing_bad_answer');
@@ -234,7 +258,9 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       );
       switch (r.status) {
         case 'sold':
-          return { status: 'sold', saleId: String(r.sale_id), certificateId: String(r.certificate_id) };
+          return typeof r.material_id === 'string'
+            ? { status: 'sold', saleId: String(r.sale_id), certificateId: null, materialId: r.material_id, quantity: Number(r.material_qty) }
+            : { status: 'sold', saleId: String(r.sale_id), certificateId: String(r.certificate_id) };
         case 'recorded':
           return { status: 'recorded', ...(r.extra === true ? { extra: true } : {}) };
         case 'replayed':
@@ -253,19 +279,22 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       const wallet = await walletOf(d, userId);
 
       const lq = new URLSearchParams({
-        select: `id,certificate_id,price_lamports,status,created_at,expires_at,item_certificates(${LISTING_ITEM_COLUMNS})`,
+        select: `id,certificate_id,material_id,material_qty,unit_price_micro,price_lamports,status,created_at,expires_at,item_certificates(${LISTING_ITEM_COLUMNS})`,
         seller_id: `eq.${userId}`,
         order: 'created_at.desc',
         limit: '100',
       });
       const listingRows = await d.rows<{
         id: string;
-        certificate_id: string;
+        certificate_id: string | null;
+        material_id: string | null;
+        material_qty: number | null;
+        unit_price_micro: number | null;
         price_lamports: number;
         status: MyListingView['status'];
         created_at: string;
         expires_at: string;
-        item_certificates: { kind: MyListingView['item']['kind']; template_id: string; rarity: MyListingView['item']['rarity']; tier: number | null; substats: MyListingView['item']['substats']; gold_amount: number | null };
+        item_certificates: { kind: MyListingView['item']['kind']; template_id: string; rarity: MyListingView['item']['rarity']; tier: number | null; substats: MyListingView['item']['substats']; gold_amount: number | null } | null;
       }>('market_listings', lq, 'listings_read');
       const listings: MyListingView[] = listingRows.map((l) => ({
         id: l.id,
@@ -274,7 +303,10 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
         status: l.status,
         createdAt: l.created_at,
         expiresAt: l.expires_at,
-        item: { kind: l.item_certificates.kind, templateId: l.item_certificates.template_id, rarity: l.item_certificates.rarity, tier: l.item_certificates.tier, substats: l.item_certificates.substats ?? [], goldAmount: l.item_certificates.gold_amount },
+        // a lot of materials has no certificate: its item is the material, the quantity and the price of one unit
+        item: l.item_certificates
+          ? { kind: l.item_certificates.kind, templateId: l.item_certificates.template_id, rarity: l.item_certificates.rarity, tier: l.item_certificates.tier, substats: l.item_certificates.substats ?? [], goldAmount: l.item_certificates.gold_amount }
+          : { kind: 'material', templateId: l.material_id ?? '', rarity: null, tier: null, substats: [], goldAmount: null, quantity: l.material_qty ?? 0, unitPriceMicro: l.unit_price_micro ?? 0 },
       }));
 
       const rq = new URLSearchParams({ select: RESERVATION_COLUMNS, buyer_id: `eq.${userId}`, status: 'eq.pending', limit: '1' });
@@ -283,12 +315,12 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       const reservationPayments = reservation ? await paymentsOf(d, reservation.id) : [];
 
       const sq = new URLSearchParams({
-        select: 'id,seller_id,buyer_id,price_lamports,fee_lamports,seller_lamports,livemode,sold_at,tx_signature,item_kind,item_template',
+        select: 'id,seller_id,buyer_id,price_lamports,fee_lamports,seller_lamports,livemode,sold_at,tx_signature,item_kind,item_template,material_qty',
         or: `(seller_id.eq.${userId},buyer_id.eq.${userId})`,
         order: 'sold_at.desc',
         limit: '100',
       });
-      const saleRows = await d.rows<{ id: string; seller_id: string; buyer_id: string; price_lamports: number; fee_lamports: number; seller_lamports: number; livemode: boolean; sold_at: string; tx_signature: string; item_kind: MyListingView['item']['kind']; item_template: string }>(
+      const saleRows = await d.rows<{ id: string; seller_id: string; buyer_id: string; price_lamports: number; fee_lamports: number; seller_lamports: number; livemode: boolean; sold_at: string; tx_signature: string; item_kind: MyListingView['item']['kind']; item_template: string; material_qty: number | null }>(
         'market_sales',
         sq,
         'sales_read',
@@ -302,7 +334,7 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
         sellerLamports: s.seller_lamports,
         livemode: s.livemode,
         signature: s.tx_signature,
-        item: { kind: s.item_kind, templateId: s.item_template },
+        item: { kind: s.item_kind, templateId: s.item_template, ...(s.item_kind === 'material' ? { quantity: s.material_qty ?? 0 } : {}) },
       }));
 
       const fq = new URLSearchParams({ select: 'id', buyer_id: `eq.${userId}`, status: 'eq.refund_due', order: 'created_at.desc', limit: '20' });

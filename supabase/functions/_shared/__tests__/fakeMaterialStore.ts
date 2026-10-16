@@ -36,7 +36,7 @@ export class FakeMaterialStore implements MaterialStore {
   takeTokens: MaterialStore['takeTokens'] = (userId, startMs, takes) => this.items.takeTokens(userId, startMs, takes);
   flag: MaterialStore['flag'] = (userId, code, detail) => this.items.flag(userId, code, detail);
 
-  protected row(userId: string, id: string): MaterialBalance {
+  row(userId: string, id: string): MaterialBalance {
     let m = this.balancesByUser.get(userId);
     if (!m) this.balancesByUser.set(userId, (m = new Map()));
     let b = m.get(id);

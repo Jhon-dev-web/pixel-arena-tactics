@@ -55,13 +55,15 @@ export interface MarketApi {
   walletNonce(address: string): Promise<Result<{ nonce: string; message: string }>>;
   walletLink(address: string, nonce: string, signature: string): Promise<Result<{ wallet: { address: string; chainId: number } }>>;
   list(certificateId: string, priceLamports: number): Promise<Result<{ listingId: string; expiresAt: string }>>;
-  cancelListing(listingId: string): Promise<Result<{ certificateId: string }>>;
+  /** A LOT of one tradeable material (bought whole): the server moves the units from the account's balance into the listing. `requestId` makes a retry return the same listing. */
+  listMaterial(requestId: string, materialId: string, quantity: number, unitPriceMicro: number): Promise<Result<{ listingId: string; expiresAt: string }>>;
+  cancelListing(listingId: string): Promise<Result<{ certificateId: string | null; materialId?: string; quantity?: number }>>;
   reserve(listingId: string): Promise<Result<{ reservation: ReservationView }>>;
   cancelReservation(reservationId: string): Promise<Result>;
   reservationStatus(reservationId: string): Promise<Result<{ reservation: ReservationView }>>;
   /** a recent blockhash for the transaction the wallet signs (the browser never calls the node) */
   prepare(reservationId: string): Promise<Result<{ blockhash: string; lastValidBlockHeight: number }>>;
-  submitPayment(reservationId: string, signature: string): Promise<Result<{ status: string; reservation: ReservationView | null; certificateId?: string }>>;
+  submitPayment(reservationId: string, signature: string): Promise<Result<{ status: string; reservation: ReservationView | null; certificateId?: string | null; materialId?: string; quantity?: number }>>;
   overview(): Promise<Result<MarketOverview>>;
   ack(certificateIds: string[]): Promise<Result<{ acked: number }>>;
   passPrice(): Promise<Result<{ priceUnits: number; priceUsdc: string; chain: ChainPublic }>>;
@@ -94,6 +96,7 @@ export function createMarketApi(transport: MarketTransport = supabaseMarketTrans
     walletNonce: (address) => call('market-wallet', { action: 'nonce', address }),
     walletLink: (address, nonce, signature) => call('market-wallet', { action: 'link', address, nonce, signature }),
     list: (certificateId, priceLamports) => call('market-list', { action: 'list', certificateId, priceLamports }),
+    listMaterial: (requestId, materialId, quantity, unitPriceMicro) => call('market-list', { action: 'list_material', requestId, materialId, quantity, unitPriceMicro }),
     cancelListing: (listingId) => call('market-list', { action: 'cancel', listingId }),
     reserve: (listingId) => call('market-buy', { action: 'reserve', listingId }),
     cancelReservation: (reservationId) => call('market-buy', { action: 'cancel', reservationId }),
@@ -115,7 +118,7 @@ export const marketApi: MarketApi = createMarketApi();
 
 export interface PublicListing {
   id: string;
-  kind: 'gear' | 'unique' | 'gold_pouch';
+  kind: 'gear' | 'unique' | 'gold_pouch' | 'material';
   template_id: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary' | null;
   tier: number | null;
@@ -126,11 +129,14 @@ export interface PublicListing {
   status: 'open' | 'reserved';
   created_at: string;
   expires_at: string;
+  /** a lot of a tradeable material: how many units, and the price of one unit in micro-SOL (null for an item) */
+  material_qty?: number | null;
+  unit_price_micro?: number | null;
 }
 
 export async function fetchPublicListings(limit = 200): Promise<PublicListing[]> {
   if (!supabase) throw new MarketUnreachable('not_configured');
-  const { data, error } = await supabase.from('market_listings_public').select('id,kind,template_id,rarity,tier,substats,gold_amount,content_hash,price_lamports,status,created_at,expires_at').order('created_at', { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from('market_listings_public').select('id,kind,template_id,rarity,tier,substats,gold_amount,content_hash,price_lamports,status,created_at,expires_at,material_qty,unit_price_micro').order('created_at', { ascending: false }).limit(limit);
   if (error) throw new MarketUnreachable('read_failed');
   return (data ?? []) as PublicListing[];
 }

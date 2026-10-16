@@ -190,6 +190,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
   const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado'>('home');
+  // A tradeable material the player asked to sell from the inventory: the market opens on its Sell tab with it picked (once).
+  const [marketPick, setMarketPick] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   useEffect(() => setErrorContext(activeView), [activeView]); // the error report says which screen was open
   const [dungeonOpen, setDungeonOpen] = useState(false);
@@ -2246,7 +2248,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   ];
 
   return (
-    <BagContext.Provider value={{ save, move: moveStash, storeAllMaterials, sell: sellItem, openUse, upgradeStash, openWholesale, openPouch }}>
+    <BagContext.Provider value={{ save, move: moveStash, storeAllMaterials, sell: sellItem, openUse, upgradeStash, openWholesale, openPouch, ...(marketOn ? { openMarket: (materialId: string) => { playSfx('click'); setMarketPick(materialId); setBagOpen(false); setActiveView('mercado'); } } : {}) }}>
     <div className="game-root">
       <div className="desktop-shell">
         {isDesktop ? (
@@ -2312,7 +2314,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           )}
           {activeView === 'mercado' && marketOn && MarketScreen && (
             <Suspense fallback={null}>
-              <MarketScreen save={save} host={marketHost} />
+              <MarketScreen save={save} host={marketHost} pick={marketPick} onPickUsed={() => setMarketPick(null)} />
             </Suspense>
           )}
           {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} focus={oficiosFocus} />}

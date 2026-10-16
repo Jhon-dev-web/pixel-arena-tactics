@@ -1,5 +1,7 @@
 import { SolVerifyFailure, fetchRecentBlockhash, normalizeSolSignature, verifySolSale } from '../chain/solana.ts';
-import { isPriceLamports } from '../chain/solMoney.ts';
+import { isMaterialTotalLamports, isPriceLamports, isUnitPriceMicro, materialTotalLamports } from '../chain/solMoney.ts';
+import { MATERIAL_IDS } from '../materials/tables.ts';
+import { MARKET_RULES } from './rules.ts';
 import { UUID_RE, json } from '../http.ts';
 import { chainPublic, MarketChain } from './chainEnv.ts';
 import type { MarketDeps } from './deps.ts';
@@ -26,6 +28,7 @@ const LIST_STATUS: Record<Exclude<ListRefusal, 'bad_request' | 'unavailable'>, n
   not_in_save: 409,
   limit_active: 429,
   limit_day: 429,
+  not_enough: 409,
 };
 
 const RESERVE_STATUS: Record<Exclude<ReserveRefusal, 'bad_request' | 'unavailable'>, number> = {
@@ -78,7 +81,9 @@ const failed = (what: string, err: unknown): void => {
 
 // ---- market-list ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-/** { action: 'list', certificateId, priceLamports } | { action: 'cancel', listingId } */
+const REQUEST_ID_RE = /^[A-Za-z0-9_.:-]{8,64}$/;
+
+/** { action: 'list', certificateId, priceLamports } | { action: 'list_material', requestId, materialId, quantity, unitPriceMicro } | { action: 'cancel', listingId } */
 export async function handleMarketList(req: Request, deps: MarketDeps): Promise<Response> {
   const pre = await prelude(req, deps.auth, deps.allowedOrigins);
   if ('response' in pre) return pre.response;
@@ -91,10 +96,20 @@ export async function handleMarketList(req: Request, deps: MarketDeps): Promise<
       if (r.status === 'refused') return json({ ok: false, reason: r.reason }, LIST_STATUS[r.reason], cors);
       return json({ ok: true, listingId: r.listingId, expiresAt: iso(r.expiresAtMs) }, 200, cors);
     }
+    // A LOT of one tradeable material: bought whole (never in parts), priced per unit in micro-SOL (up to 6 decimals), a total of at least 0.001 SOL. The units leave the seller's balance into escrow.
+    if (body.action === 'list_material') {
+      const q = body.quantity;
+      const bad = !isStr(body.requestId) || !REQUEST_ID_RE.test(body.requestId) || !isStr(body.materialId) || !MATERIAL_IDS.includes(body.materialId) || typeof q !== 'number' || !Number.isInteger(q) || q < 1 || q > MARKET_RULES.maxMaterialQtyPerListing;
+      if (bad) return json({ ok: false, reason: 'bad_request' satisfies ListRefusal }, 400, cors);
+      if (!isUnitPriceMicro(body.unitPriceMicro) || !isMaterialTotalLamports(materialTotalLamports(body.unitPriceMicro, q as number))) return json({ ok: false, reason: 'price' satisfies ListRefusal }, 400, cors);
+      const r = await deps.store.listMaterial(userId, { requestId: body.requestId as string, materialId: body.materialId as string, quantity: q as number, unitPriceMicro: body.unitPriceMicro });
+      if (r.status === 'refused') return json({ ok: false, reason: r.reason }, LIST_STATUS[r.reason], cors);
+      return json({ ok: true, listingId: r.listingId, expiresAt: iso(r.expiresAtMs) }, 200, cors);
+    }
     if (body.action === 'cancel') {
       if (!isUuid(body.listingId)) return json({ ok: false, reason: 'bad_request' }, 400, cors);
       const r = await deps.store.cancelListing(userId, body.listingId.toLowerCase());
-      if (r.status === 'cancelled') return json({ ok: true, certificateId: r.certificateId }, 200, cors);
+      if (r.status === 'cancelled') return json({ ok: true, certificateId: r.certificateId, ...(r.materialId ? { materialId: r.materialId, quantity: r.quantity } : {}) }, 200, cors);
       return json({ ok: false, reason: r.status }, r.status === 'not_found' ? 404 : 409, cors);
     }
     return json({ ok: false, reason: 'bad_request' }, 400, cors);
@@ -203,7 +218,7 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
       if (outcome.status === 'not_found') return json({ ok: false, reason: 'not_found' satisfies SubmitRefusal }, 404, cors);
       const fresh = await deps.store.reservation(userId, reservation.id);
       return json(
-        { ok: true, status: outcome.status, ...(outcome.status === 'sold' ? { certificateId: outcome.certificateId } : {}), reservation: fresh ? reservationView(fresh, await deps.store.payments(reservation.id), chain) : null },
+        { ok: true, status: outcome.status, ...(outcome.status === 'sold' ? { certificateId: outcome.certificateId, ...(outcome.materialId ? { materialId: outcome.materialId, quantity: outcome.quantity } : {}) } : {}), reservation: fresh ? reservationView(fresh, await deps.store.payments(reservation.id), chain) : null },
         200,
         cors,
       );

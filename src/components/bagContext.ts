@@ -20,6 +20,8 @@ export interface BagContextValue {
   openWholesale: () => void;
   // A Gold Pouch (goldPouch.ts) opened for its face value; the caller has already confirmed (two taps).
   openPouch: (id: PouchId) => void;
+  // Web build with the market on: open the market's Sell tab with this tradeable material picked. Absent everywhere else (the offline / desktop build has no market).
+  openMarket?: (materialId: string) => void;
 }
 
 export const BagContext = createContext<BagContextValue | null>(null);

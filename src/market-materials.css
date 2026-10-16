@@ -1,0 +1,62 @@
+/* Lots of tradeable materials on the market (components/market/LotCard.tsx, the lot form of SellPanel.tsx). Part of the market chunk: the desktop / Steam build never loads it. Tokens only. */
+.mk-lot {
+  height: 100%;
+}
+.mk-lot-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.mk-lot-more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.mk-tag.lot {
+  color: var(--c-gold-200);
+  border-color: var(--c-gold-line);
+  background: var(--c-gold-fill);
+}
+.mk-lot-qty {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.mk-lot-qty input {
+  width: 6.5em;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+  font: inherit;
+  color: var(--c-text);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+}
+.mk-lot-qty input:focus-visible {
+  outline: 2px solid var(--c-gold-300);
+  outline-offset: 1px;
+}
+
+/* the price rows of a lot card: the SOL mark, the number and "SOL" on ONE line, right aligned (the card's label / value rows are baseline-aligned text) */
+.mk-lot .ui-item-row dd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-1);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.mk-lot .ui-item-row dd .mk-sol {
+  flex: none;
+  vertical-align: middle;
+}
+.mk-lot .ui-item-row {
+  align-items: center;
+}
+.mk-lot .ui-item-row dt {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}

@@ -26,6 +26,8 @@ export const MARKET_MARKERS = [
   { marker: 'NEVER asks for your private key', what: 'the market text, English (locales/market.ts)' },
   { marker: 'Pagar com USDC', what: 'the Pass button text (locales/market.ts)' },
   { marker: 'mk-listing', what: 'the market styles (market.css)' },
+  { marker: 'list_material', what: 'the lot listing call of tradeable materials (game/market/api.ts)' },
+  { marker: 'mk-lot-more', what: 'the lot styles of tradeable materials (market-materials.css)' },
 ];
 
 /** Returns the markers found in the given text (pure; unit-tested). */

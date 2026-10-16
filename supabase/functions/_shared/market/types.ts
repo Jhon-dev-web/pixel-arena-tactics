@@ -16,7 +16,7 @@ export interface ChainPublic {
   feePercent: number;
 }
 
-export type ListRefusal = 'bad_request' | 'no_wallet' | 'flagged' | 'price' | 'not_found' | 'already_listed' | 'not_held' | 'bound' | 'not_in_save' | 'limit_active' | 'limit_day' | 'unavailable';
+export type ListRefusal = 'bad_request' | 'no_wallet' | 'flagged' | 'price' | 'not_found' | 'already_listed' | 'not_held' | 'bound' | 'not_in_save' | 'limit_active' | 'limit_day' | 'not_enough' | 'unavailable';
 export type ReserveRefusal = 'bad_request' | 'no_wallet' | 'reservation_exists' | 'rate_limited' | 'not_found' | 'reserved' | 'not_open' | 'own_listing' | 'unavailable';
 export type SubmitRefusal =
   | 'bad_request'
@@ -66,18 +66,25 @@ export interface ReservationView {
   chain: ChainPublic;
 }
 
+/** What a listing holds: a certified item, or a lot of one tradeable material (kind 'material': templateId is the material id). */
+export type MarketItemKind = CertKind | 'material';
+
 export interface MarketItemView {
-  kind: CertKind;
+  kind: MarketItemKind;
   templateId: string;
   rarity: RarityId | null;
   tier: number | null;
   substats: CertificateView['substats'];
   goldAmount: number | null;
+  /** a lot of a tradeable material: how many units, and the price of one unit in micro-SOL (the listing's priceLamports is the whole lot: unit x quantity x 1,000) */
+  quantity?: number;
+  unitPriceMicro?: number;
 }
 
 export interface MyListingView {
   id: string;
-  certificateId: string;
+  /** null for a lot of materials */
+  certificateId: string | null;
   priceLamports: number;
   status: 'open' | 'reserved' | 'sold' | 'cancelled' | 'expired';
   createdAt: string;
@@ -95,7 +102,7 @@ export interface SaleView {
   livemode: boolean;
   /** the signature of the one transaction that paid the seller and the game */
   signature: string;
-  item: Pick<MarketItemView, 'kind' | 'templateId'>;
+  item: Pick<MarketItemView, 'kind' | 'templateId' | 'quantity'>;
 }
 
 export interface MarketOverview {

@@ -32,7 +32,7 @@ import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
 import StashHint from './StashHint';
 import LapidarPanel from './LapidarPanel';
-import { Chip, ChipRow, SearchField, Tabs } from './ui';
+import { Button, Chip, ChipRow, SearchField, Tabs } from './ui';
 import { normalOf, tradeableOf } from '../game/tradeableMaterials';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
@@ -678,6 +678,14 @@ export default function InventoryPanel({
             >
               {t('inventory.use')}
             </button>
+          </div>
+        )}
+
+        {selected?.variant === 'tradeable' && !fromStash && selQty > 0 && bag?.openMarket && (
+          <div className="inv-actions">
+            <Button variant="primary" block onClick={() => bag.openMarket?.(selected.id)}>
+              {t('tradeable.sellOnMarket')}
+            </Button>
           </div>
         )}
 

@@ -1,5 +1,5 @@
 import { activeLocale, fmtDec, fmtNum } from '../../locales';
-import { formatSol, formatUsdc, parseSolAmount } from '../../../supabase/functions/_shared/chain/solMoney';
+import { formatSol, formatUnitPrice, formatUsdc, parseSolAmount } from '../../../supabase/functions/_shared/chain/solMoney';
 
 // Small formatters of the market screens. All SOL money is whole lamports (1 SOL = 1,000,000,000) until it is printed; the Pass is USDC base units (1 USDC = 1,000,000).
 
@@ -8,6 +8,12 @@ const decimalMark = (): string => (activeLocale === 'pt' ? ',' : '.');
 /** 1_500_000 -> "0,0015" (pt) / "0.0015" (en): SOL with the decimals it needs, at least two. */
 export const fmtSol = (lamports: number): string => {
   const [whole, frac = ''] = formatSol(lamports).split('.');
+  return frac ? `${fmtNum(Number(whole))}${decimalMark()}${frac}` : fmtNum(Number(whole));
+};
+
+/** The price of ONE unit of a material, in micro-SOL: 2500 -> "0,0025" (pt) / "0.0025" (en); up to 6 decimals. */
+export const fmtUnitPrice = (micro: number): string => {
+  const [whole, frac = ''] = formatUnitPrice(micro).split('.');
   return frac ? `${fmtNum(Number(whole))}${decimalMark()}${frac}` : fmtNum(Number(whole));
 };
 

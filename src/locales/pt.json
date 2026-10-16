@@ -2186,6 +2186,7 @@
     "prefAskAgain": "Perguntar de novo antes de gastar",
     "serverNote": "Materiais negociáveis existem só na versão online, com conta.",
     "found": "Você achou material negociável: {list}.",
-    "waiting": "{n} {name} negociável esperando espaço no inventário."
+    "waiting": "{n} {name} negociável esperando espaço no inventário.",
+    "sellOnMarket": "Vender no Mercado"
   }
 }

@@ -11,14 +11,15 @@ import { SolIcon } from './icons';
 import { fmtSol } from './format';
 import UsdLine from './UsdLine';
 import { itemName } from './names';
+import LotCard from './LotCard';
 
-type KindFilter = 'all' | 'gear' | 'unique' | 'gold_pouch';
+type KindFilter = 'all' | 'gear' | 'unique' | 'gold_pouch' | 'material';
 type Sort = 'new' | 'cheap' | 'dear';
 
 /** Listings per page (two rows of four on a wide screen). */
 export const PAGE_SIZE = 8;
 
-const itemOfListing = (l: PublicListing): ItemLike => ({ kind: l.kind, templateId: l.template_id, rarity: l.rarity, tier: l.tier, substats: l.substats, goldAmount: l.gold_amount });
+const itemOfListing = (l: PublicListing): ItemLike => ({ kind: l.kind, templateId: l.template_id, rarity: l.rarity, tier: l.tier, substats: l.substats, goldAmount: l.gold_amount, ...(l.kind === 'material' ? { quantity: l.material_qty ?? 0, unitPriceMicro: l.unit_price_micro ?? 0 } : {}) });
 
 /** The page numbers to show: a window of up to five around the current one. */
 export function pageWindow(page: number, pages: number): number[] {
@@ -53,7 +54,7 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
     const q = search.trim().toLowerCase();
     const list = listings.filter((l) => {
       if (kind !== 'all' && l.kind !== kind) return false;
-      if (l.kind !== 'gold_pouch') {
+      if (l.kind !== 'gold_pouch' && l.kind !== 'material') {
         if (slot && getGear(l.template_id)?.slot !== slot) return false;
         if (tier && String(l.tier ?? '') !== tier) return false;
         if (rarity && l.rarity !== rarity) return false;
@@ -61,7 +62,9 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
       if (q && !itemName({ kind: l.kind, templateId: l.template_id }).toLowerCase().includes(q)) return false;
       return true;
     });
-    return [...list].sort((a, b) => (sort === 'cheap' ? a.price_lamports - b.price_lamports : sort === 'dear' ? b.price_lamports - a.price_lamports : Date.parse(b.created_at) - Date.parse(a.created_at)));
+    // Lots of different sizes are compared by the price of ONE unit (the whole lot's price says nothing about which is the better deal); everything else by its price.
+    const price = (l: PublicListing): number => (l.kind === 'material' && l.unit_price_micro ? l.unit_price_micro * 1000 : l.price_lamports);
+    return [...list].sort((a, b) => (sort === 'cheap' ? price(a) - price(b) : sort === 'dear' ? price(b) - price(a) : Date.parse(b.created_at) - Date.parse(a.created_at)));
   }, [listings, kind, slot, tier, rarity, sort, search]);
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
@@ -73,8 +76,9 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
     { id: 'gear', label: mt('browse.gear') },
     { id: 'unique', label: mt('browse.unique') },
     { id: 'gold_pouch', label: mt('browse.pouch') },
+    { id: 'material', label: mt('browse.material') },
   ];
-  const noGear = kind === 'gold_pouch';
+  const noGear = kind === 'gold_pouch' || kind === 'material';
 
   return (
     <div className="mk-panel">
@@ -140,6 +144,13 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
           const item = itemOfListing(l);
           const reserved = l.status === 'reserved';
           const rar = l.rarity ?? 'common';
+          if (l.kind === 'material') {
+            return (
+              <li key={l.id}>
+                <LotCard listing={l} feePercent={feePercent} solUsd={solUsd} expanded={expanded} busy={busyId !== null} onToggle={() => setOpen(expanded ? null : l.id)} onReserve={() => onReserve(l)} />
+              </li>
+            );
+          }
           return (
             <li key={l.id} className={`mk-card${l.kind === 'gold_pouch' ? ' pouch' : ''}${reserved ? ' reserved' : ''}${expanded ? ' open' : ''}`}>
               <div className="mk-card-top">

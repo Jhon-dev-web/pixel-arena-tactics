@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SaveData } from './engine';
 import { materialApi } from './materialServer';
+import { getSyncedSave } from './syncedSave';
 import { resolveNextClaim, runSync, flushBurns } from './tradeableActions';
 
 // Keeps the web build's tradeable materials in step with the server (tradeableActions.ts): the roll of each claim the game reported, the burn of units it spent, and the reconcile of the save
@@ -10,6 +11,7 @@ import { resolveNextClaim, runSync, flushBurns } from './tradeableActions';
 const RETRY_MS = 30_000;
 const BURN_DELAY_MS = 1_200;
 const RESYNC_MS = 5 * 60_000;
+const WAITING_MS = 8_000;
 
 export function useTradeableSync({
   enabled,
@@ -29,6 +31,9 @@ export function useTradeableSync({
 }) {
   const live = useRef({ getSave, commit, onFound });
   live.current = { getSave, commit, onFound };
+  // The save the SERVER holds: the last one it confirmed this session, or (before the first save) the one the game loaded, which came from the server.
+  const loaded = useRef(save);
+  const confirmed = (): SaveData => getSyncedSave() ?? loaded.current;
   const active = enabled && !!userId;
 
   // 1. the reconcile on load, when the tab comes back after a while, and every few minutes
@@ -37,9 +42,11 @@ export function useTradeableSync({
     if (!active) return;
     let stopped = false;
     void (async () => {
-      const r = await runSync(materialApi, () => live.current.getSave(), (s) => live.current.commit(s));
-      if (stopped || r === 'ok') return;
-      window.setTimeout(() => !stopped && setSyncTick((n) => n + 1), RETRY_MS);
+      const r = await runSync(materialApi, () => live.current.getSave(), (s) => live.current.commit(s), undefined, confirmed);
+      if (stopped) return;
+      // unreachable: try again in a while; a delivery waiting for the server to confirm a save that holds it: look again very soon
+      if (r.status === 'unreachable') window.setTimeout(() => !stopped && setSyncTick((n) => n + 1), RETRY_MS);
+      else if (r.waiting) window.setTimeout(() => !stopped && setSyncTick((n) => n + 1), WAITING_MS);
     })();
     return () => {
       stopped = true;

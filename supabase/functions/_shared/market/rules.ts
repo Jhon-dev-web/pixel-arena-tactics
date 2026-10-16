@@ -8,6 +8,8 @@ export const MARKET_RULES = {
   maxPriceLamports: MARKET_MAX_PRICE_LAMPORTS,
   /** a listing lives this long, then the item goes back to its owner */
   listingTtlDays: 30,
+  /** the most units of one material in ONE listing (a lot is bought whole; a bag holds at most about this many of a material) */
+  maxMaterialQtyPerListing: 10_000,
   /** live (open or reserved) listings per seller */
   maxActiveListings: 20,
   /** listings created per seller in 24 hours */

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { mt } from '../../locales/market';
 import { MarketUnreachable } from '../../game/market/api';
 import { syncMarket } from '../../game/market/sync';
+import { syncMaterials } from '../../game/market/materialSync';
 import { MarketHost, syncDepsFor } from './marketDeps';
 
 // Renders nothing. While the market is switched on (web build, signed in) it keeps the save and the server's certificates in line: items listed or sold leave the save, bought or returned items
@@ -24,6 +25,13 @@ export default function MarketSync({ host }: { host: MarketHost }) {
       if (document.visibilityState === 'visible') {
         try {
           const r = await syncMarket(syncDepsFor(hostRef.current));
+          // the lots of tradeable materials the server holds for this account (a purchase, a cancelled or an expired lot)
+          const lots = await syncMaterials(hostRef.current).catch(() => null);
+          if (lots && lots.added > 0) hostRef.current.notify(mt('toast.materials', { n: lots.added }));
+          if (lots?.waiting && soon < MAX_SOON) {
+            soon++;
+            next = SOON_MS;
+          }
           if (r.added > 0) hostRef.current.notify(mt('toast.received'));
           if (r.removed > 0) hostRef.current.notify(mt('toast.removed'));
           if (r.waitingForRoom > 0 && soon === 0) hostRef.current.notify(mt('toast.bagFull'));

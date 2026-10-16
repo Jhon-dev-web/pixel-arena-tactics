@@ -3,6 +3,7 @@ import type { CertificateView } from '../items/types.ts';
 import { MARKET_RULES } from '../market/rules.ts';
 import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoStore, PassGrantOutcome, PaymentRow, RecordOutcome, RecordPaymentArgs, ReservationRow, ReserveOutcome } from '../market/store.ts';
 import type { ListRefusal, MyListingView, ReservationPayment, SaleView } from '../market/types.ts';
+import { FakeMaterialStore } from './fakeMaterialStore.ts';
 
 // An in-memory MarketStore that follows migrations 0011 / 0012 / 0013 step by step. Every method is one atomic step (JS is single threaded between awaits and none of the bodies below has an await in the middle
 // of its read-modify-write), the clock is the `nowMs` field, and each rule carries the name of the SQL function it mirrors. It is the executable specification the handler tests run against; the real
@@ -18,7 +19,12 @@ export interface FakeCert extends CertificateView {
 
 interface FakeListing {
   id: string;
-  certificateId: string;
+  certificateId: string | null;
+  /** a LOT of one tradeable material (migration 0015 part B): the units sit in the listing (escrow), not in any balance */
+  materialId?: string;
+  materialQty?: number;
+  unitPriceMicro?: number;
+  requestId?: string;
   sellerId: string;
   sellerAddress: string;
   priceLamports: number;
@@ -40,8 +46,10 @@ interface FakeSale {
   id: string;
   listingId: string;
   reservationId: string;
-  certificateId: string;
-  newCertificateId: string;
+  certificateId: string | null;
+  newCertificateId: string | null;
+  materialId?: string;
+  materialQty?: number;
   sellerId: string;
   buyerId: string;
   priceLamports: number;
@@ -50,7 +58,7 @@ interface FakeSale {
   signature: string;
   livemode: boolean;
   soldAtMs: number;
-  itemKind: CertificateView['kind'];
+  itemKind: CertificateView['kind'] | 'material';
   itemTemplate: string;
 }
 
@@ -71,6 +79,8 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
   verifyBudgetDefault = 1000;
   entitlements: { userId: string; source: string; providerRef: string; status: string; livemode: boolean }[] = [];
   intents = new Map<string, number>();
+  /** the balances of tradeable materials (migration 0015): the same object a test can run claim -> list -> buy on */
+  materials = new FakeMaterialStore();
   private seq = 0;
 
   // ---- helpers ----
@@ -147,10 +157,13 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     }
     if (l.status === 'open' && l.expiresAtMs <= this.nowMs) {
       l.status = 'expired';
-      const c = this.certs.get(l.certificateId);
-      if (c && c.status === 'listed') {
-        c.status = 'held';
-        this.certEvent(c.id, 'unlist');
+      if (l.materialId) this.materials.deliver(l.sellerId, l.materialId, l.materialQty as number);
+      else {
+        const c = this.certs.get(l.certificateId as string);
+        if (c && c.status === 'listed') {
+          c.status = 'held';
+          this.certEvent(c.id, 'unlist');
+        }
       }
       this.log('listing_expired', l.sellerId, listingId, null);
     }
@@ -226,6 +239,28 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     return { status: 'listed' as const, listingId: l.id, expiresAtMs: l.expiresAtMs };
   }
 
+  // ---- market_list_material (migration 0015 part B): a LOT of one tradeable material ----
+  async listMaterial(userId: string, a: { requestId: string; materialId: string; quantity: number; unitPriceMicro: number }) {
+    const refuse = (reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'>) => ({ status: 'refused' as const, reason });
+    const old = [...this.listings.values()].find((l) => l.sellerId === userId && l.requestId === a.requestId);
+    if (old) return { status: 'listed' as const, listingId: old.id, expiresAtMs: old.expiresAtMs };
+    const total = a.unitPriceMicro * a.quantity * 1000;
+    if (total < MARKET_RULES.minPriceLamports || total > MARKET_RULES.maxPriceLamports) return refuse('price');
+    const w = this.wallets.get(userId);
+    if (!w) return refuse('no_wallet');
+    if (this.flagged.has(userId)) return refuse('flagged');
+    const bal = this.materials.row(userId, a.materialId);
+    if (bal.qty - bal.pending < a.quantity) return refuse('not_enough');
+    const mine = [...this.listings.values()].filter((l) => l.sellerId === userId);
+    if (mine.filter((l) => l.status === 'open' || l.status === 'reserved').length >= MARKET_RULES.maxActiveListings) return refuse('limit_active');
+    if (mine.filter((l) => l.createdAtMs > this.nowMs - DAY).length >= MARKET_RULES.maxListingsPerDay) return refuse('limit_day');
+    bal.qty -= a.quantity; // the escrow: the units leave the balance (pending never exceeds qty, since qty - pending >= quantity was checked)
+    const l: FakeListing = { id: this.id(), certificateId: null, materialId: a.materialId, materialQty: a.quantity, unitPriceMicro: a.unitPriceMicro, requestId: a.requestId, sellerId: userId, sellerAddress: w.address, priceLamports: total, status: 'open', createdAtMs: this.nowMs, expiresAtMs: this.nowMs + MARKET_RULES.listingTtlDays * DAY };
+    this.listings.set(l.id, l);
+    this.log('listed', userId, l.id, null, { materialId: a.materialId, materialQty: a.quantity });
+    return { status: 'listed' as const, listingId: l.id, expiresAtMs: l.expiresAtMs };
+  }
+
   // ---- market_cancel_listing ----
   async cancelListing(userId: string, listingId: string) {
     const l = this.listings.get(listingId);
@@ -234,11 +269,15 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     if (l.status === 'reserved') return { status: 'reserved' as const };
     if (l.status !== 'open') return { status: 'not_open' as const };
     l.status = 'cancelled';
-    const c = this.certs.get(l.certificateId);
-    if (c && c.status === 'listed') c.status = 'held';
-    this.certEvent(l.certificateId, 'unlist');
     this.log('listing_cancelled', userId, listingId, null);
-    return { status: 'cancelled' as const, certificateId: l.certificateId };
+    if (l.materialId) {
+      this.materials.deliver(userId, l.materialId, l.materialQty as number);
+      return { status: 'cancelled' as const, certificateId: null, materialId: l.materialId, quantity: l.materialQty };
+    }
+    const c = this.certs.get(l.certificateId as string);
+    if (c && c.status === 'listed') c.status = 'held';
+    this.certEvent(l.certificateId as string, 'unlist');
+    return { status: 'cancelled' as const, certificateId: l.certificateId as string };
   }
 
   // ---- market_reserve ----
@@ -364,7 +403,34 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     this.log('payment_recorded', a.buyerId, res.listingId, res.id);
 
     // 5. the payment is in: the sale
-    const cert = this.certs.get(listing.certificateId);
+    if (listing.materialId) {
+      const lotSale = this.id();
+      this.materials.deliver(a.buyerId, listing.materialId, listing.materialQty as number);
+      this.sales.push({
+        id: lotSale,
+        listingId: listing.id,
+        reservationId: res.id,
+        certificateId: null,
+        newCertificateId: null,
+        materialId: listing.materialId,
+        materialQty: listing.materialQty,
+        sellerId: listing.sellerId,
+        buyerId: a.buyerId,
+        priceLamports: res.priceLamports,
+        feeLamports: res.feeLamports,
+        sellerLamports: res.sellerLamports,
+        signature: a.txHash,
+        livemode: res.livemode,
+        soldAtMs: this.nowMs,
+        itemKind: 'material',
+        itemTemplate: listing.materialId,
+      });
+      listing.status = 'sold';
+      res.status = 'paid';
+      this.log('sold', a.buyerId, listing.id, res.id, { saleId: lotSale });
+      return { status: 'sold', saleId: lotSale, certificateId: null, materialId: listing.materialId, quantity: listing.materialQty };
+    }
+    const cert = this.certs.get(listing.certificateId as string);
     if (!cert || cert.status !== 'listed') throw new Error('MARKET_CERTIFICATE_NOT_LISTED');
     const saleId = this.id();
     cert.status = 'transferred';
@@ -398,13 +464,15 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     const listings: MyListingView[] = [...this.listings.values()]
       .filter((l) => l.sellerId === userId)
       .map((l) => {
-        const c = this.certs.get(l.certificateId) as FakeCert;
-        return { id: l.id, certificateId: l.certificateId, priceLamports: l.priceLamports, status: l.status, createdAt: new Date(l.createdAtMs).toISOString(), expiresAt: new Date(l.expiresAtMs).toISOString(), item: { kind: c.kind, templateId: c.templateId, rarity: c.rarity, tier: c.tier, substats: c.substats, goldAmount: c.goldAmount } };
+        const base = { id: l.id, certificateId: l.certificateId, priceLamports: l.priceLamports, status: l.status, createdAt: new Date(l.createdAtMs).toISOString(), expiresAt: new Date(l.expiresAtMs).toISOString() };
+        if (l.materialId) return { ...base, item: { kind: 'material' as const, templateId: l.materialId, rarity: null, tier: null, substats: [], goldAmount: null, quantity: l.materialQty, unitPriceMicro: l.unitPriceMicro } };
+        const c = this.certs.get(l.certificateId as string) as FakeCert;
+        return { ...base, item: { kind: c.kind, templateId: c.templateId, rarity: c.rarity, tier: c.tier, substats: c.substats, goldAmount: c.goldAmount } };
       });
     const reservation = [...this.reservations.values()].find((r) => r.buyerId === userId && r.status === 'pending') ?? null;
     const sales: SaleView[] = this.sales
       .filter((s) => s.sellerId === userId || s.buyerId === userId)
-      .map((s) => ({ id: s.id, role: s.sellerId === userId ? ('seller' as const) : ('buyer' as const), soldAt: new Date(s.soldAtMs).toISOString(), priceLamports: s.priceLamports, feeLamports: s.feeLamports, sellerLamports: s.sellerLamports, livemode: s.livemode, signature: s.signature, item: { kind: s.itemKind, templateId: s.itemTemplate } }));
+      .map((s) => ({ id: s.id, role: s.sellerId === userId ? ('seller' as const) : ('buyer' as const), soldAt: new Date(s.soldAtMs).toISOString(), priceLamports: s.priceLamports, feeLamports: s.feeLamports, sellerLamports: s.sellerLamports, livemode: s.livemode, signature: s.signature, item: { kind: s.itemKind, templateId: s.itemTemplate, ...(s.itemKind === 'material' ? { quantity: s.materialQty } : {}) } }));
     const refundsDue = [...this.reservations.values()]
       .filter((r) => r.buyerId === userId && r.status === 'refund_due')
       .map((r) => ({ reservationId: r.id, signatures: [...this.paid.values()].filter((p) => p.reservationId === r.id && p.status === 'refund_due').map((p) => p.txHash) }));

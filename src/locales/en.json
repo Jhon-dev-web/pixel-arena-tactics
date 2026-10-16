@@ -2186,6 +2186,7 @@
     "prefAskAgain": "Ask again before spending",
     "serverNote": "Tradeable materials exist only in the online version, with an account.",
     "found": "You found tradeable material: {list}.",
-    "waiting": "{n} tradeable {name} waiting for room in the inventory."
+    "waiting": "{n} tradeable {name} waiting for room in the inventory.",
+    "sellOnMarket": "Sell on the Market"
   }
 }

@@ -9,7 +9,7 @@ import { ITEM_BOUNDS } from '../items/bounds.ts';
 // proves it against a real database.
 
 const root = resolve(__dirname, '../../../..');
-const raw = readFileSync(resolve(root, 'supabase/migrations/0015_tradeable_materials.sql'), 'utf8');
+const raw = readFileSync(resolve(root, 'supabase/migrations/0015_tradeable_materials.sql'), 'utf8').split('\r\n').join('\n'); // (a checkout on Windows may carry CRLF)
 const code = raw
   .split('\n')
   .filter((l) => !l.trim().startsWith('--'))
@@ -137,5 +137,87 @@ describe('0015: documented', () => {
   it('the server numbers the SQL relies on are the ones in the TypeScript tables (a sanity link, not a copy)', () => {
     expect(MATERIAL_BOUNDS.heroCapacitySeconds).toBe(ITEM_BOUNDS.huntCapacitySeconds);
     expect(MARKET_RULES.maxActiveListings).toBeGreaterThan(0);
+  });
+});
+
+describe('0015 (part B): a listing is an item OR a lot, never both, never neither', () => {
+  it('the table checks say so, and the lot\'s price is exactly unit x quantity x 1000 lamports', () => {
+    expect(code).toContain('alter table public.market_listings alter column certificate_id drop not null;');
+    expect(code).toMatch(/constraint \(\s*\(certificate_id is not null and material_id is null and material_qty is null and unit_price_micro is null\)|add constraint market_listings_item_check check \(\s*\(certificate_id is not null and material_id is null and material_qty is null and unit_price_micro is null\)/);
+    expect(code).toContain("or (certificate_id is null and material_id ~ '^[a-z][a-z_]{1,39}$' and material_qty between 1 and 100000 and unit_price_micro >= 1 and price_lamports = unit_price_micro * material_qty * 1000)");
+    expect(code).toContain('(certificate_id is not null and new_certificate_id is not null and material_id is null and material_qty is null)');
+    expect(code).toContain('or (certificate_id is null and new_certificate_id is null and material_id is not null and material_qty > 0)');
+  });
+
+  it('items keep their 0.001 SOL steps; a lot only needs a whole number of micro-SOL', () => {
+    expect(code).toContain('price_lamports between 1000000 and 1000000000000 and (price_lamports % 1000000 = 0 or (material_id is not null and price_lamports % 1000 = 0))');
+  });
+
+  it('a retry of the same lot is the same listing (one request id per seller)', () => {
+    expect(code).toContain('create unique index if not exists market_listings_request_unique on public.market_listings (seller_id, request_id) where request_id is not null;');
+  });
+
+  it('the public view shows lots without a seller, a wallet address or a certificate id, and keeps its first twelve columns', () => {
+    const start = code.indexOf('create or replace view public.market_listings_public as');
+    const view = code.slice(start, code.indexOf('revoke all on table public.market_listings_public', start));
+    expect(view).toContain('union all');
+    expect(view).not.toMatch(/seller_|buyer_|certificate_id,|wallet|address/);
+    expect(view).toContain("l.status in ('open', 'reserved') and l.expires_at > pg_catalog.now()");
+    expect(view.match(/l\.material_qty/g)?.length).toBe(1);
+    expect(code).toContain('grant select on table public.market_listings_public to anon, authenticated, service_role;');
+  });
+});
+
+describe('0015 (part B): the units move exactly once', () => {
+  const list = fn('public.market_list_material(');
+  it('listing: under the seller\'s lock, idempotent first, then the checks, then the escrow, then the listing and the ledger', () => {
+    expect(list).toContain("pg_advisory_xact_lock(pg_catalog.hashtextextended('item_commit:' || p_user_id::text, 0))");
+    const order = ["where l.seller_id = p_user_id and l.request_id = p_request_id", "'reason', 'price'", "'reason', 'no_wallet'", "'reason', 'flagged'", "'reason', 'not_enough'", "'reason', 'limit_active'", "'reason', 'limit_day'", 'update public.material_balances', 'insert into public.market_listings', "insert into public.material_ledger"];
+    const at = order.map((s) => list.indexOf(s));
+    expect(at.every((i) => i > -1), JSON.stringify(at)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+  it('the balance that can be listed is the one IN THE SAVE (qty - pending), taken with a row lock', () => {
+    expect(list).toContain('v_bal.qty - v_bal.pending < p_qty');
+    expect(list).toContain('for update');
+    expect(list).toContain('set qty = b.qty - p_qty');
+    expect(list).toContain('v_total := p_unit_price_micro * p_qty * 1000;');
+    expect(list).toContain('p_qty > p_max_qty');
+  });
+  it('a cancelled or expired lot goes back to the seller through the delivery helper, not to the stack directly', () => {
+    expect(fn('public.market_cancel_listing(')).toContain("arena_private.material_deliver(p_user_id, v_listing.material_id, v_listing.material_qty, 'unlist'");
+    expect(fn('arena_private.market_release_stale(')).toContain("arena_private.material_deliver(v_listing.seller_id, v_listing.material_id, v_listing.material_qty, 'unlist'");
+    const deliver = fn('arena_private.material_deliver(');
+    expect(deliver).toContain('qty = b.qty + excluded.qty, pending = b.pending + excluded.pending, seq = b.seq + 1');
+    expect(code).toContain('revoke all on function arena_private.material_deliver(uuid, text, integer, text, text) from public, anon, authenticated;');
+  });
+  it('a sale of a lot delivers the whole lot to the BUYER and creates no certificate; items keep their path', () => {
+    const f = fn('public.market_record_payment(');
+    const lot = f.indexOf('if v_listing.material_id is not null then');
+    expect(lot).toBeGreaterThan(-1);
+    expect(f.indexOf("arena_private.material_deliver(p_buyer_id, v_listing.material_id, v_listing.material_qty, 'sale'")).toBeGreaterThan(lot);
+    // the lot returns before any certificate is touched
+    expect(f.indexOf("'material_qty', v_listing.material_qty);\n  end if;")).toBeGreaterThan(lot);
+    expect(f.indexOf('select * into v_cert from public.item_certificates')).toBeGreaterThan(f.indexOf("'material_qty', v_listing.material_qty);\n  end if;"));
+    // the money steps are untouched: the numbers, the signature consumed first, the late-payment rules
+    for (const part of ["raise exception using errcode = '22023', message = 'MARKET_PAYMENT_MISMATCH';", 'on conflict (tx_hash) do nothing;', "'late_payment_accepted'", "'refund_due'", "'already_sold'"]) expect(f, part).toContain(part);
+    expect(f.indexOf('on conflict (tx_hash) do nothing;')).toBeLessThan(lot);
+  });
+  it('every new function is service-role only', () => {
+    for (const sig of ['public.market_list_material(uuid, text, text, integer, bigint, integer, integer, integer, bigint, bigint, integer)', 'public.market_cancel_listing(uuid, uuid)', 'public.market_record_payment(uuid, uuid, text, text, text, numeric, bigint, timestamptz)']) {
+      expect(code).toContain(`revoke all on function ${sig} from public, anon, authenticated;`);
+      expect(code).toContain(`grant execute on function ${sig} to service_role;`);
+    }
+    for (const name of ['public.market_list_material(', 'public.market_cancel_listing(', 'public.market_record_payment(', 'arena_private.market_release_stale(', 'arena_private.material_deliver(']) {
+      expect(fn(name), name).toContain('security definer');
+      expect(fn(name), name).toContain("set search_path = ''");
+    }
+  });
+  it('the League reset cancels the open lots of the replaced heroes (a reserved lot is left alone)', () => {
+    const f = fn('arena_private.item_certificates_league_reset()');
+    expect(f).toContain("l.material_id is not null and l.status = 'open' and l.created_at < new.reset_at");
+  });
+  it('the test plan covers lots', () => {
+    for (const letter of 'IJKLMN') expect(raw).toContain(`-- ${letter}. `);
   });
 });
