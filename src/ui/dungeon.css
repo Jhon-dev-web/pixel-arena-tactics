@@ -1,0 +1,303 @@
+/* Masmorra: the entry screen (floors, Profundezas, auto potion, milestones) and the HUD / result panels of the battle, in the new style. The arena itself (.battle-stage, .battle-arena, sprites, floats) keeps its art and layout (App.css). */
+
+/* ---------- the entry screen ---------- */
+.dm-mark {
+  font-family: var(--font-body);
+}
+.dm-sessions {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-body);
+  color: var(--c-text-muted);
+}
+.dm-lead {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-body);
+  color: var(--c-text);
+}
+.dm-locked {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-body);
+  color: var(--c-warn);
+}
+.dm-paragon {
+  margin-left: var(--sp-2);
+  padding: 2px var(--sp-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  text-transform: none;
+  color: #1a1030;
+  background: #c9a0ff;
+  border-radius: 999px;
+  letter-spacing: 0;
+  text-shadow: none;
+}
+.dm-modal .ui-panel .ui-btn.block {
+  margin-top: var(--sp-4);
+}
+.depths-card.locked {
+  opacity: 0.85;
+}
+.dm-slider-label {
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.dm-slider {
+  width: 100%;
+  margin: 0 0 var(--sp-3);
+  min-height: 28px;
+  accent-color: var(--c-gold-300);
+}
+.dm-subtitle {
+  margin: var(--sp-4) 0 var(--sp-2);
+  color: var(--c-gold-300);
+}
+.dm-milestones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dm-milestone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.dm-milestone.banked {
+  border-color: #2f7a46;
+}
+.dm-milestone-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.dm-milestone-floor {
+  font-weight: 700;
+  color: var(--c-text);
+}
+.dm-milestone-rewards {
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+}
+
+/* ---------- the battle: the frame, the HUD and the result panels ---------- */
+.battle-backdrop {
+  background: rgba(4, 2, 8, 0.9);
+}
+.battle {
+  background: linear-gradient(180deg, #181022, #0f0a17);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), var(--sh-panel);
+}
+.battle .battle-controls {
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.battle .battle-left {
+  gap: var(--sp-2);
+}
+.battle .battle-biome {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.battle .battle-loot-hud {
+  gap: var(--sp-2) var(--sp-4);
+  justify-content: flex-start;
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.battle .loot-gold {
+  color: var(--c-gold-300);
+}
+.battle .loot-drops {
+  color: var(--c-text-dim);
+}
+.battle .loot-potions {
+  color: var(--c-good);
+}
+.battle .loot-buff {
+  color: var(--c-warn);
+}
+.battle .hp-label {
+  font-size: var(--fs-body);
+  color: var(--c-text);
+}
+.battle .battle-hud {
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(11, 7, 17, 0.78);
+  border: var(--bw-thin) solid var(--c-line-strong);
+  border-radius: var(--r-md);
+}
+.battle .hp-num {
+  font-size: var(--fs-small);
+}
+.battle .miniboss-tag {
+  padding: 1px var(--sp-2);
+  font-size: var(--fs-small);
+  border-radius: 999px;
+}
+
+/* the result panel over the arena */
+.battle .battle-result {
+  padding: var(--sp-4);
+  background: rgba(4, 2, 8, 0.82);
+}
+.battle .battle-result-panel {
+  align-items: stretch;
+  gap: var(--sp-3);
+  max-width: 460px;
+  margin: 0 auto;
+  padding: var(--sp-4);
+  text-align: left;
+  background: linear-gradient(180deg, #181022, #0f0a17);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), var(--sh-panel);
+}
+.battle .result-title {
+  margin: 0;
+  text-align: center;
+  text-shadow: 0 2px 0 #000;
+}
+.battle .result-title.win {
+  color: var(--c-gold-300);
+}
+.battle .result-title.lose {
+  color: var(--c-bad);
+}
+.battle .run-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: var(--sp-3);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  text-align: left;
+  color: var(--c-text);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.battle .defeat-notes {
+  gap: var(--sp-2);
+  margin: 0;
+  text-align: left;
+}
+.battle .defeat-notes p {
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.battle .defeat-notes .defeat-cp.low {
+  color: var(--c-bad);
+}
+.battle .defeat-notes .defeat-tip {
+  color: var(--c-gold-300);
+}
+.battle .gold-penalty {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  color: var(--c-bad);
+  background: rgba(255, 107, 94, 0.09);
+  border: var(--bw-thin) solid #8a3a32;
+  border-radius: var(--r-md);
+}
+.battle .result-rewards,
+.battle .wave-loot,
+.battle .milestone-rewards {
+  gap: var(--sp-2);
+  justify-content: flex-start;
+}
+.battle .floor-drop {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line-strong);
+  border-radius: var(--r-md);
+}
+.battle .floor-drop .mat-icon {
+  width: 28px;
+  height: 28px;
+}
+.battle .wave-banner .floor-drop {
+  background: rgba(11, 7, 17, 0.85);
+}
+.battle .wave-title {
+  padding: var(--sp-1) var(--sp-3);
+  color: var(--c-gold-300);
+  background: rgba(11, 7, 17, 0.85);
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: var(--r-md);
+}
+.battle .milestone-banner {
+  max-width: none;
+  max-height: none;
+  gap: var(--sp-2);
+}
+.battle .milestone-card {
+  padding: var(--sp-3);
+  background: rgba(255, 215, 106, 0.07);
+  border: var(--bw) solid var(--c-gold-300);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-glow);
+}
+.battle .milestone-title {
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-body);
+  color: var(--c-gold-300);
+}
+.battle .milestone-title-unlocked {
+  font-size: var(--fs-body);
+  color: var(--c-rune);
+}
+.battle .tension-panel {
+  border-color: var(--c-gold-300);
+}
+.battle .tension-subtitle {
+  margin: 0;
+  font-size: var(--fs-body);
+  text-align: center;
+  color: var(--c-text-dim);
+}
+.battle .tension-warning {
+  max-width: none;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  color: var(--c-bad);
+  background: rgba(255, 107, 94, 0.09);
+  border: var(--bw-thin) solid #8a3a32;
+  border-radius: var(--r-md);
+}
+.battle .tension-actions {
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.battle .unique-drops {
+  width: 100%;
+}
+.battle .sk-strike-lines {
+  width: 100%;
+}
+@media (min-width: 600px) {
+  .battle .tension-actions {
+    flex-direction: row;
+  }
+}

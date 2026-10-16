@@ -27,6 +27,7 @@ import UniqueDrops from './UniqueDrops';
 import RelicDrops from './RelicDrops';
 import { defeatSummary, DefeatSummary } from '../game/defeatSummary';
 import { nextStepLine } from './nextStepText';
+import { Button, Chip } from './ui';
 
 const enemyText = (k: string): string => t(`enemies.${k}`);
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
@@ -696,19 +697,16 @@ export default function BattleModal({
       <div className="battle">
         <div className="battle-controls">
           <div className="battle-left">
-            <span className="stage-indicator">{isDepthStage(stage) ? t('dungeon.depthLabel', { n: depthOfStage(stage) }) : t('dungeon.floorProgress', { n: stage, m: MAX_DUNGEON_FLOOR })}</span>
-            <button className="battle-speed" onClick={toggleSpeed} data-ui>
+            <span className="stage-indicator">
+              <Chip tone="gold">{isDepthStage(stage) ? t('dungeon.depthLabel', { n: depthOfStage(stage) }) : t('dungeon.floorProgress', { n: stage, m: MAX_DUNGEON_FLOOR })}</Chip>
+            </span>
+            <Button size="sm" className="battle-speed" onClick={toggleSpeed}>
               {dungeonText('speed').replace('{n}', String(speed))}
-            </button>
+            </Button>
           </div>
-          <button
-            className="battle-run"
-            onClick={() => endCombat('retreat')}
-            disabled={phase === 'retreat' || phase === 'defeat'}
-            data-ui
-          >
+          <Button size="sm" variant="danger" className="battle-run" onClick={() => endCombat('retreat')} disabled={phase === 'retreat' || phase === 'defeat'}>
             {t('dungeon.retreat')}
-          </button>
+          </Button>
         </div>
         <span className="battle-biome">{isDepthStage(stage) ? dungeonText('depthBiome') : biomeText(currentBiome.nameKey)}</span>
 
@@ -883,13 +881,13 @@ export default function BattleModal({
               </div>
               {!guidedTension && <div className="tension-warning">{t('dungeon.tensionWarning')}</div>}
               <div className="tension-actions">
-                <button className="result-btn tension-retreat-btn" onClick={handleTensionRetreat} data-tutorial-target="guided-retreat" data-ui>
+                <Button variant="primary" block className="tension-retreat-btn" onClick={handleTensionRetreat} data-tutorial-target="guided-retreat">
                   {t('dungeon.tensionRetreat')}
-                </button>
+                </Button>
                 {!guidedTension && (
-                  <button className="result-btn tension-advance-btn" onClick={handleTensionAdvance} data-ui>
+                  <Button variant="danger" block className="tension-advance-btn" onClick={handleTensionAdvance}>
                     {t('dungeon.tensionAdvance')}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -906,9 +904,9 @@ export default function BattleModal({
                   {renderRunSummary(finalRewards.stages, finalRewards.gold)}
                   <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems, finalRewards.uniques, finalRewards.relics)}</div>
                   {skillLines && <StrikeLines tally={skillLines.tally} total={skillLines.total} />}
-                  <button className="result-btn" onClick={() => onRetreat(finalRewards)} data-ui>
+                  <Button variant="primary" block onClick={() => onRetreat(finalRewards)}>
                     {t('dungeon.collect')}
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <>
@@ -916,9 +914,9 @@ export default function BattleModal({
                   {defeatInfo && renderDefeatNotes(defeatInfo)}
                   <div className="result-rewards">{renderLoot(finalRewards.gold, finalRewards.drops, finalRewards.shards, finalRewards.gems, finalRewards.uniques, finalRewards.relics)}</div>
                   {skillLines && <StrikeLines tally={skillLines.tally} total={skillLines.total} />}
-                  <button className="result-btn" onClick={() => onDefeat(finalRewards)} data-ui>
+                  <Button variant="primary" block onClick={() => onDefeat(finalRewards)}>
                     {t('dungeon.return')}
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

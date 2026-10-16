@@ -902,3 +902,25 @@
     min-height: 40px;
   }
 }
+
+/* a one-line warning or notice inside a panel */
+.ui-alert {
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text);
+  background: rgba(255, 213, 74, 0.08);
+  border: var(--bw-thin) solid #8a6a1a;
+  border-radius: var(--r-md);
+}
+.ui-alert.bad {
+  color: var(--c-bad);
+  background: rgba(255, 107, 94, 0.09);
+  border-color: #8a3a32;
+}
+.ui-alert.good {
+  color: var(--c-good);
+  background: rgba(111, 224, 138, 0.08);
+  border-color: #2f7a46;
+}

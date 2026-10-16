@@ -1,9 +1,13 @@
-import { fmtDec, t } from '../locales';
+import { fmtDec, fmtNum, t } from '../locales';
 import T from '../game/tunables';
 import { computeCP, SaveData } from '../game/engine';
-import { getBiomeForFloor, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR, nextMilestone, recommendedCpForFloor } from '../game/dungeon';
+import { getBiomeForFloor, getMilestoneReward, isDungeonBoss, isDungeonCheckpoint, MAX_DUNGEON_FLOOR, MILESTONE_REWARDS, nextMilestone, recommendedCpForFloor } from '../game/dungeon';
 import { deepestDepth, depthRewardInfo, depthsUnlocked, nextBossDepth, recommendedCpForDepth } from '../game/depths';
 import { paragonLevel } from '../game/paragon';
+import { getGem } from '../game/gems';
+import { getTitleDef } from '../game/titles';
+import { Button, Chip, ChipRow, ModalShell, Panel, ScreenLayout, StatList, StatRow } from './ui';
+import { Meter } from './HuntParts';
 
 const dungeonText = (k: string): string => t(`dungeon.${k}`);
 
@@ -37,139 +41,143 @@ export default function DungeonMapModal({
   const depthCpLow = playerCp < depthCp;
   const bossInfo = depthRewardInfo(nextBossDepth(nextDepth));
   const growthPct = Math.round((Math.sqrt((1 + T.depths.hpGrowth) * (1 + T.depths.dmgGrowth)) - 1) * 100 * 10) / 10;
+  const paragon = paragonLevel(save.xp);
+
+  const main = (
+    <>
+      <Panel
+        title={
+          <>
+            {dungeonText(biome.nameKey)}
+            {isDungeonBoss(floor) && <span className="dm-mark"> 👑</span>}
+            {!isDungeonBoss(floor) && isDungeonCheckpoint(floor) && <span className="dm-mark"> 💀</span>}
+          </>
+        }
+        actions={<Chip tone="gold">{t('dungeon.floorProgress', { n: floor, m: MAX_DUNGEON_FLOOR })}</Chip>}
+      >
+        <StatList>
+          <StatRow label={dungeonText('recommendedCp')} value={fmtNum(recommendedCp)} tone={cpInsufficient ? 'bad' : 'plain'} />
+          <StatRow label={dungeonText('cpLabelYou')} value={fmtNum(playerCp)} tone="gold" />
+          {milestone && <StatRow label={milestone.boss ? '👑 ' + dungeonText('nextBoss') : '💀 ' + dungeonText('nextCheckpoint')} value={t('dungeon.floorProgress', { n: milestone.floor, m: MAX_DUNGEON_FLOOR })} />}
+        </StatList>
+        <p className="dm-sessions">
+          {freeSessionsLeft > 0 ? t('dungeon.sessionsLeft', { n: freeSessionsLeft, m: T.dungeon.freeSessionsPerDay }) : t('dungeon.sessionsPaidNotice', { n: T.dungeon.extraSessionShardCost })}
+        </p>
+        {cpInsufficient && <p className="ui-alert bad">{t('dungeon.cpWarning', { n: recommendedCp })}</p>}
+        {huntingBusy && <p className="ui-alert bad">{t('hunting.busyOther')}</p>}
+        <Button variant="primary" block className="dm-enter" onClick={onEnterDungeon} disabled={huntingBusy} data-tutorial-target="dungeon-start">
+          {dungeonText('enterDungeon')}
+        </Button>
+      </Panel>
+
+      <Panel
+        className={`depths-card${depthsOpen ? '' : ' locked'}`}
+        data-testid="depths-card"
+        title={
+          <>
+            🕳️ {dungeonText('depthsTitle')}
+            {paragon > 0 && <span className="dm-paragon">{t('paragon.short', { n: paragon })}</span>}
+          </>
+        }
+        actions={<Chip tone={deepest > 0 ? 'info' : 'plain'}>{deepest > 0 ? dungeonText('depthsDeepest').replace('{n}', String(deepest)) : dungeonText('depthsNone')}</Chip>}
+      >
+        {depthsOpen ? (
+          <>
+            <p className="dm-lead">{dungeonText('depthsNext').replace('{n}', String(nextDepth))}</p>
+            <StatList>
+              <StatRow label={dungeonText('recommendedCp')} value={fmtNum(depthCp)} tone={depthCpLow ? 'bad' : 'plain'} />
+              <StatRow label={dungeonText('cpLabelYou')} value={fmtNum(playerCp)} tone="gold" />
+            </StatList>
+            <p className="ui-note">{dungeonText('depthCpHint').replace('{n}', fmtDec(growthPct))}</p>
+            <p className="ui-note">
+              👑{' '}
+              {dungeonText('depthsBossEvery').replace('{n}', String(T.depths.bossEvery)).replace('{r}', String(bossInfo.shards)).replace('{p}', String(Math.round(bossInfo.uniqueChance * 1000) / 10))}
+            </p>
+            {depthCpLow && <p className="ui-alert bad">{t('dungeon.cpWarning', { n: depthCp })}</p>}
+            <Button variant="primary" block onClick={onEnterDepths} disabled={huntingBusy}>
+              {dungeonText('depthsEnter')}
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="ui-note">{dungeonText('depthsIntro')}</p>
+            <p className="dm-locked">{dungeonText('depthsLocked')}</p>
+          </>
+        )}
+      </Panel>
+
+      <Panel title={dungeonText('autoPotionTitle')}>
+        <label className="dm-slider-label" htmlFor="auto-potion-threshold">
+          {t('dungeon.autoPotionThreshold', { n: Math.round(save.autoPotionThreshold * 100) })}
+        </label>
+        <input
+          id="auto-potion-threshold"
+          className="dm-slider"
+          type="range"
+          min={10}
+          max={70}
+          step={5}
+          value={Math.round(save.autoPotionThreshold * 100)}
+          onChange={(e) => onUpdateAutoPotionSettings(Number(e.target.value) / 100, save.autoPotionPriority)}
+          data-ui
+        />
+        <ChipRow
+          className="dm-priority"
+          label={dungeonText('autoPotionTitle')}
+          value={save.autoPotionPriority}
+          onChange={(id) => onUpdateAutoPotionSettings(save.autoPotionThreshold, id)}
+          items={[
+            { id: 'small_first', label: dungeonText('autoPotionPrioritySmall') },
+            { id: 'large_first', label: dungeonText('autoPotionPriorityLarge') },
+          ]}
+        />
+      </Panel>
+    </>
+  );
+
+  const side = (
+    <Panel title={t('dungeon.progressTitle')}>
+      <Meter pct={(floor / MAX_DUNGEON_FLOOR) * 100} label={t('dungeon.floorProgress', { n: floor, m: MAX_DUNGEON_FLOOR })} />
+      <p className="hs-meter-text">{t('dungeon.floorProgress', { n: floor, m: MAX_DUNGEON_FLOOR })}</p>
+      <h4 className="ui-display dm-subtitle">{t('dungeon.milestonesTitle')}</h4>
+      <ul className="dm-milestones">
+        {MILESTONE_REWARDS.map((m) => {
+          const banked = save.dungeonCheckpoints.includes(m.floor);
+          const reward = getMilestoneReward(m.floor);
+          const titleDef = reward?.titleId ? getTitleDef(reward.titleId) : undefined;
+          return (
+            <li className={`dm-milestone${banked ? ' banked' : ''}`} key={m.floor}>
+              <span className="dm-milestone-head">
+                <span className="dm-milestone-floor">{t('dungeon.floorLabel', { n: m.floor })}</span>
+                <Chip tone={banked ? 'good' : 'plain'}>{banked ? t('dungeon.milestoneBanked') : t('dungeon.milestonePending')}</Chip>
+              </span>
+              <span className="dm-milestone-rewards">
+                {t('ui.goldReward', { n: fmtNum(m.gold) })}
+                {Object.entries(m.gems).map(([gid, qty]) => {
+                  const gem = getGem(gid);
+                  return gem ? ` · +${qty as number} ${t(`gems.${gem.nameKey}`)}` : '';
+                })}
+                {titleDef ? ` · ${t(`titles.${titleDef.nameKey}`)}` : ''}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
+  );
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal dungeon-modal dungeon-entry-modal">
-        <h2 className="modal-title">{t('dungeon.title')}</h2>
-
-        <div className="dungeon-body">
-          <div className="floor-card">
-            <div className="floor-header">
-              <span className="floor-name">
-                {dungeonText(biome.nameKey)}
-                {isDungeonBoss(floor) && <span className="milestone-icon boss">👑</span>}
-                {!isDungeonBoss(floor) && isDungeonCheckpoint(floor) && <span className="milestone-icon">💀</span>}
-              </span>
-              <span className="floor-cp">{t('dungeon.floorProgress', { n: floor, m: MAX_DUNGEON_FLOOR })}</span>
-            </div>
-            <div className="floor-drops">
-              <span className="drops-label">{dungeonText('recommendedCp')}:</span>
-              <span className={`floor-drop${cpInsufficient ? ' cp-insufficient' : ''}`}>
-                <span>{recommendedCp}</span>
-              </span>
-              <span className="floor-drop">
-                <span>{t('dungeon.yourCp', { n: playerCp })}</span>
-              </span>
-            </div>
-            {cpInsufficient && <div className="cp-warning-banner">{t('dungeon.cpWarning', { n: recommendedCp })}</div>}
-            {huntingBusy && <div className="cp-warning-banner">{t('hunting.busyOther')}</div>}
-            <div className="floor-drops">
-              <span className="drops-label">
-                {freeSessionsLeft > 0
-                  ? t('dungeon.sessionsLeft', { n: freeSessionsLeft, m: T.dungeon.freeSessionsPerDay })
-                  : t('dungeon.sessionsPaidNotice', { n: T.dungeon.extraSessionShardCost })}
-              </span>
-            </div>
-            {milestone && (
-              <div className="floor-drops">
-                <span className="drops-label">
-                  {milestone.boss ? '👑 ' + dungeonText('nextBoss') : '💀 ' + dungeonText('nextCheckpoint')}:
-                </span>
-                <span className="floor-drop">
-                  <span>{t('dungeon.floorProgress', { n: milestone.floor, m: MAX_DUNGEON_FLOOR })}</span>
-                </span>
-              </div>
-            )}
-            <button className="battle-btn" onClick={onEnterDungeon} disabled={huntingBusy} data-tutorial-target="dungeon-start" data-ui>
-              {dungeonText('enterDungeon')}
-            </button>
-          </div>
-
-          <div className={`floor-card depths-card${depthsOpen ? '' : ' locked'}`} data-testid="depths-card">
-            <div className="floor-header">
-              <span className="floor-name">
-                🕳️ {dungeonText('depthsTitle')}
-                {paragonLevel(save.xp) > 0 && <span className="depths-paragon">{t('paragon.short', { n: paragonLevel(save.xp) })}</span>}
-              </span>
-              <span className="floor-cp">{deepest > 0 ? dungeonText('depthsDeepest').replace('{n}', String(deepest)) : dungeonText('depthsNone')}</span>
-            </div>
-            {depthsOpen ? (
-              <>
-                <div className="floor-drops">
-                  <span className="drops-label">{dungeonText('depthsNext').replace('{n}', String(nextDepth))}</span>
-                </div>
-                <div className="floor-drops">
-                  <span className="drops-label">{dungeonText('recommendedCp')}:</span>
-                  <span className={`floor-drop${depthCpLow ? ' cp-insufficient' : ''}`}>
-                    <span>{depthCp}</span>
-                  </span>
-                  <span className="floor-drop">
-                    <span>{t('dungeon.yourCp', { n: playerCp })}</span>
-                  </span>
-                </div>
-                <div className="floor-drops">
-                  <span className="drops-label depths-note">{dungeonText('depthCpHint').replace('{n}', fmtDec(growthPct))}</span>
-                </div>
-                <div className="floor-drops">
-                  <span className="drops-label depths-note">
-                    👑 {dungeonText('depthsBossEvery').replace('{n}', String(T.depths.bossEvery)).replace('{r}', String(bossInfo.shards)).replace('{p}', String(Math.round(bossInfo.uniqueChance * 1000) / 10))}
-                  </span>
-                </div>
-                {depthCpLow && <div className="cp-warning-banner">{t('dungeon.cpWarning', { n: depthCp })}</div>}
-                <button className="battle-btn" onClick={onEnterDepths} disabled={huntingBusy} data-ui>
-                  {dungeonText('depthsEnter')}
-                </button>
-              </>
-            ) : (
-              <div className="floor-drops">
-                <span className="drops-label depths-note">{dungeonText('depthsIntro')}</span>
-                <span className="floor-locked">{dungeonText('depthsLocked')}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="floor-card auto-potion-card">
-            <div className="floor-header">
-              <span className="floor-name">{dungeonText('autoPotionTitle')}</span>
-            </div>
-            <label className="auto-potion-threshold-label" htmlFor="auto-potion-threshold">
-              {t('dungeon.autoPotionThreshold', { n: Math.round(save.autoPotionThreshold * 100) })}
-            </label>
-            <input
-              id="auto-potion-threshold"
-              className="auto-potion-slider"
-              type="range"
-              min={10}
-              max={70}
-              step={5}
-              value={Math.round(save.autoPotionThreshold * 100)}
-              onChange={(e) => onUpdateAutoPotionSettings(Number(e.target.value) / 100, save.autoPotionPriority)}
-              data-ui
-            />
-            <div className="hunt-depths auto-potion-priority">
-              <button
-                className={`hunt-depth-opt${save.autoPotionPriority === 'small_first' ? ' active' : ''}`}
-                onClick={() => onUpdateAutoPotionSettings(save.autoPotionThreshold, 'small_first')}
-                data-ui
-              >
-                <span className="hunt-depth-opt-name">{dungeonText('autoPotionPrioritySmall')}</span>
-              </button>
-              <button
-                className={`hunt-depth-opt${save.autoPotionPriority === 'large_first' ? ' active' : ''}`}
-                onClick={() => onUpdateAutoPotionSettings(save.autoPotionThreshold, 'large_first')}
-                data-ui
-              >
-                <span className="hunt-depth-opt-name">{dungeonText('autoPotionPriorityLarge')}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
+    <ModalShell
+      className="dm-modal"
+      icon={<img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />}
+      title={t('dungeon.title')}
+      subtitle={t('dungeon.yourCp', { n: fmtNum(playerCp) })}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <div className="ui-cq">
+        <ScreenLayout main={main} side={side} className="dm-layout" />
       </div>
-    </div>
+    </ModalShell>
   );
 }
