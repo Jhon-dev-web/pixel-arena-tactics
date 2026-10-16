@@ -81,6 +81,31 @@ describe('market screens', () => {
     expect(html(h(BrowsePanel, { listings: [], feePercent: 5, busyId: null, solUsd: null, failure: 'Outro comprador está pagando', onReserve: () => undefined }))).toContain('Nenhum anúncio');
   });
 
+  it('the dollar line: "≈ US$" next to a SOL price ONLY when the server sent a SOL price, in the browse list, the payment step and the offer form', () => {
+    const many = [listing(), listing({ id: 'l2', price_lamports: 500_000_000 })];
+    expect(html(h(BrowsePanel, { listings: many, feePercent: 5, solUsd: null, busyId: null, failure: null, onReserve: () => undefined }))).not.toContain('US$');
+    const priced = html(h(BrowsePanel, { listings: many, feePercent: 5, solUsd: 100, busyId: null, failure: null, onReserve: () => undefined }));
+    expect(priced).toContain('US$ 123,40'); // 1.234 SOL at US$ 100
+    expect(priced).toContain('US$ 50,00');
+    expect(priced).toContain('≈');
+    expect(priced).toContain('aria-label="aproximadamente US$ 123,40"');
+    const pay = (solUsd: number | null) => html(h(ReservationPanel, { api, reservation: reservation(), walletAddress: WALLET[USER_B], solUsd, onChanged: () => undefined, onClose: () => undefined, bagFull: false }));
+    expect(pay(null)).not.toContain('US$');
+    expect(pay(150)).toContain('US$ 150,00'); // 1 SOL
+    setLocale('en');
+    expect(html(h(BrowsePanel, { listings: many, feePercent: 5, solUsd: 100, busyId: null, failure: null, onReserve: () => undefined }))).toContain('US$ 123.40');
+    setLocale('pt');
+  });
+
+  it('Gold Pouches: each size has its own icon and its card is a gold-bordered "pouch" card; gear cards are not', () => {
+    const pouches = ['gold_pouch_s', 'gold_pouch_m', 'gold_pouch_l'].map((id, i) => listing({ id: `p${i}`, kind: 'gold_pouch', template_id: id, rarity: null, tier: null, substats: [], gold_amount: [10_000, 50_000, 100_000][i] }));
+    const out = html(h(BrowsePanel, { listings: [...pouches, listing({ id: 'g1' })], feePercent: 5, solUsd: null, busyId: null, failure: null, onReserve: () => undefined }));
+    expect(out.match(/<li class="mk-card pouch/g)).toHaveLength(3);
+    expect(out.match(/<li class="mk-card"/g) ?? []).toHaveLength(1);
+    for (const f of ['gold_pouch_small.png', 'gold_pouch_medium.png', 'gold_pouch_large.png']) expect(out, f).toContain(`/assets/icons/${f}`);
+    expect(out).not.toContain('/assets/icons/gold_pouch.png');
+  });
+
   it('item card: a real unique, a real piece and a pouch all render with their names', () => {
     const piece = html(h(ItemCard, { item: { kind: 'gear', templateId: 'bronze_dagger', rarity: 'legendary', tier: 2, substats: [{ type: 'defense', value: 4 }, { type: 'maxHp', value: 30 }], goldAmount: null } }));
     expect(piece).toContain('Lendário');

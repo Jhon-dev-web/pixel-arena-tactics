@@ -3,6 +3,7 @@ import type { MarketOverview, ReservationView } from '../../supabase/functions/_
 import type { SaveData } from '../game/engine';
 import { MarketUnreachable, PublicListing, fetchPublicListings, marketApi } from '../game/market/api';
 import { syncMarket } from '../game/market/sync';
+import { activeLocale } from '../locales';
 import { mt } from '../locales/market';
 import BrowsePanel from './market/BrowsePanel';
 import HistoryPanel from './market/HistoryPanel';
@@ -96,7 +97,7 @@ export default function MarketScreen({ save, host }: { save: SaveData; host: Mar
   const flow = useSellFlow({ api: marketApi, save, overview, feePercent: chain?.feePercent ?? 5, solUsd: overview?.solUsd ?? null, host, onChanged: () => void afterChange() });
 
   return (
-    <div className="desktop-home mk-screen" data-tab={tab} aria-label={mt('title')}>
+    <div className="desktop-home mk-screen" data-tab={tab} aria-label={mt('title')} lang={activeLocale === 'en' ? 'en' : 'pt-BR'}>
       <section className="dh-card mk-main">
         <header className="mk-head">
           <ScaleIcon />

@@ -137,6 +137,40 @@ describe('no screen can take a private key or a seed phrase', () => {
   });
 });
 
+describe('the market styles', () => {
+  const css = read('src/market.css');
+  const rule = (selector: string): string => {
+    const at = css.indexOf(`
+${selector} {`) + 1; // at the start of a line: not inside a longer selector
+    expect(at, selector).toBeGreaterThan(0);
+    return css.slice(at, css.indexOf('}', at));
+  };
+
+  it('an item name breaks only between words: break-word, never "anywhere", normal word-break, hyphenation of the language the screen declares', () => {
+    for (const sel of ['.mk-item-name', '.mk-note', '.mk-status', '.mk-notices-line']) {
+      const r = rule(sel);
+      expect(r, sel).toContain('overflow-wrap: break-word;');
+      expect(r, sel).toContain('word-break: normal;');
+      expect(r, sel).toContain('hyphens: auto;');
+      expect(r, sel).not.toContain('anywhere');
+    }
+    expect(read('src/components/MarketScreen.tsx')).toMatch(/className="desktop-home mk-screen"[^>]*lang=\{activeLocale === 'en' \? 'en' : 'pt-BR'\}/);
+    // the title is smaller where the card is narrow, and a phone row never cuts a pouch's size with an ellipsis (3 lines)
+    expect(css).toMatch(/\.mk-card \.mk-item-name \{\s*font-size: calc\(var\(--font-size\) - 1px\);/);
+    expect(css).toContain('-webkit-line-clamp: 3;');
+  });
+
+  it('a pouch card has a gold border and a shine that stops for people who asked for less motion', () => {
+    const pouch = rule('.mk-card.pouch');
+    expect(pouch).toContain('border-color: #ffd76a;');
+    expect(css).toContain('@keyframes mk-pouch-shine');
+    expect(rule('.mk-card.pouch::after')).toContain('animation: mk-pouch-shine');
+    const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(reduced.slice(0, reduced.indexOf('\n}\n') + 3)).toContain('.mk-card.pouch::after');
+    expect(reduced).toContain('animation: none;');
+  });
+});
+
 describe('the market text', () => {
   const keys = (tree: unknown, prefix = ''): string[] =>
     Object.entries(tree as Record<string, unknown>).flatMap(([k, v]) => (typeof v === 'string' ? [`${prefix}${k}`] : keys(v, `${prefix}${k}.`)));

@@ -11,7 +11,8 @@ import { t } from '../../locales';
 import { mt } from '../../locales/market';
 import ItemCard, { ItemArt, ItemLike } from './ItemCard';
 import { SolIcon } from './icons';
-import { fmtSol, fmtUsdAround, parsePriceInput } from './format';
+import { fmtSol, parsePriceInput } from './format';
+import UsdLine from './UsdLine';
 import { itemName } from './names';
 
 const itemOf = (e: SellableEntry): ItemLike => {
@@ -162,7 +163,7 @@ export function SellPicker({ flow }: { flow: SellFlow }) {
           const rar = g.item.kind === 'gold_pouch' ? 'common' : g.item.rarity ?? 'common';
           return (
             <li key={g.key}>
-              <button className={`mk-card mk-tile${on ? ' picked' : ''}`} onClick={() => flow.setPicked(on ? null : g.key)} aria-pressed={on} data-ui>
+              <button className={`mk-card mk-tile${g.item.kind === 'gold_pouch' ? ' pouch' : ''}${on ? ' picked' : ''}`} onClick={() => flow.setPicked(on ? null : g.key)} aria-pressed={on} data-ui>
                 <span className="mk-card-top">
                   <ItemArt item={g.item} qty={g.entries.length} />
                   <span className="mk-card-id">
@@ -187,7 +188,6 @@ export function SellPicker({ flow }: { flow: SellFlow }) {
 /** The "Criar oferta" box: the item, the quantity (Gold Pouches only), the unit price in SOL, the market fee and what the seller receives, computed live. */
 export function OfferForm({ flow }: { flow: SellFlow }) {
   const total = flow.split ? { fee: flow.split.feeLamports * flow.qty, get: flow.split.sellerLamports * flow.qty } : null;
-  const aroundGet = total ? fmtUsdAround(total.get, flow.solUsd) : null;
   const pouch = flow.group?.item.kind === 'gold_pouch';
   return (
     <div className="mk-form">
@@ -237,7 +237,7 @@ export function OfferForm({ flow }: { flow: SellFlow }) {
         <b className="mk-receive">
           <SolIcon /> {fmtSol(total?.get ?? 0)}
         </b>
-        {aroundGet && <small className="mk-usd mk-receive">{mt('browse.around', { a: aroundGet })}</small>}
+        {total && <UsdLine lamports={total.get} solUsd={flow.solUsd} className="mk-receive" />}
       </div>
       {!flow.hasWallet && <p className="mk-status error">{mt('sell.needWallet')}</p>}
       {flow.armed && <p className="mk-status">{mt('sell.confirmHint')}</p>}

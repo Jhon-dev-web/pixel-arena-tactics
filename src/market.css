@@ -125,7 +125,9 @@
 .mk-notices-line {
   color: #d8c9a0;
   font-size: calc(var(--font-size) - 2px);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .mk-notices-test {
   color: #a8d2ff;
@@ -172,7 +174,9 @@
   margin: 0;
   font-size: calc(var(--font-size) - 2px);
   color: #b9a98a;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .mk-label {
   font-size: calc(var(--font-size) - 2px);
@@ -209,7 +213,9 @@
   font-size: calc(var(--font-size) - 1px);
   background: rgba(255, 255, 255, 0.06);
   color: #f5e9c8;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .mk-status.ok {
   background: rgba(74, 214, 124, 0.14);
@@ -431,6 +437,51 @@
 .mk-card.reserved {
   opacity: 0.7;
 }
+/* a card is narrow (about 170 px, two thirds of it text): its title is a little smaller so most words fit whole on a line */
+.mk-card .mk-item-name {
+  font-size: calc(var(--font-size) - 1px);
+  line-height: 1.25;
+}
+.mk-card .rarity-line {
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+}
+/* Gold Pouches: a gold border and a slow shine passing over the card (stopped for people who asked for less motion) */
+.mk-card.pouch {
+  position: relative;
+  overflow: hidden;
+  border-color: #ffd76a;
+  background: linear-gradient(180deg, #2f2310, #1a1109);
+  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.35), 0 0 12px rgba(255, 215, 106, 0.2);
+}
+.mk-card.pouch::after {
+  content: '';
+  position: absolute;
+  top: -25%;
+  bottom: -25%;
+  left: -45%;
+  width: 28%;
+  background: linear-gradient(100deg, transparent, rgba(255, 240, 184, 0.3), transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+  animation: mk-pouch-shine 5s ease-in-out infinite;
+}
+@keyframes mk-pouch-shine {
+  0%,
+  55% {
+    left: -45%;
+  }
+  100% {
+    left: 150%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-card.pouch::after {
+    animation: none;
+    display: none;
+  }
+}
 .mk-card-top {
   grid-area: top;
   display: grid;
@@ -492,10 +543,30 @@
   border-color: #ffd76a;
   background: linear-gradient(180deg, #3a2a18, #1c1208);
 }
-.mk-sol,
-.mk-usdc {
+.mk-sol {
   flex: 0 0 auto;
   vertical-align: -2px;
+}
+/* "about US$ x" next to a SOL price (only when the server has a price) */
+.mk-usd {
+  color: #9fb3a6;
+  font-size: calc(var(--font-size) - 3px);
+  white-space: nowrap;
+}
+.mk-approx {
+  font-family: 'Segoe UI Symbol', 'DejaVu Sans', 'Arial Unicode MS', sans-serif;
+  font-size: 1.4em;
+  line-height: 0.5;
+  vertical-align: -0.12em;
+}
+.mk-summary b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mk-sig {
+  display: block;
+  overflow-wrap: anywhere;
 }
 
 /* pages */
@@ -607,7 +678,10 @@
   font-size: var(--font-size);
   font-weight: bold;
   color: #f5e9c8;
-  overflow-wrap: anywhere;
+  /* an item name breaks only BETWEEN words (or at a hyphenation point of the language, the screen carries lang): never "Ceifado r". A word longer than the card is the last resort of break-word. */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .mk-item-name.r-rare {
   color: #4ad67c;
@@ -990,10 +1064,14 @@
     gap: 2px 8px;
     padding: 5px 7px;
   }
+  /* the price and its optional dollar line stack: a wide price would squeeze the name */
   .mk-card-price {
     align-items: flex-end;
-    flex-direction: row;
-    gap: 4px;
+    flex-direction: column;
+    gap: 0;
+  }
+  .mk-card-price .mk-usd {
+    font-size: calc(var(--font-size) - 4px);
   }
   .mk-card-price > span {
     display: none;
@@ -1025,12 +1103,12 @@
     gap: 2px;
   }
   .mk-card .mk-item-name {
-    font-size: calc(var(--font-size) - 1px);
+    font-size: calc(var(--font-size) - 2px);
     line-height: 1.25;
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 3; /* three lines: "Bolsa de Ouro grande" must never lose the size of the pouch to an ellipsis */
+    line-clamp: 3;
     overflow: hidden;
   }
   .mk-card .rarity-line {

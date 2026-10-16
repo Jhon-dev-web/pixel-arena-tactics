@@ -6,7 +6,6 @@ import { RETRY_REASONS } from '../game/market/payFlow';
 import { buildUsdcTransferTx } from '../game/market/solTx';
 import { WalletError, connectSolWallet, listSolWallets } from '../game/market/wallet';
 import { LINK_MESSAGE_KEY } from './market/linkMessages';
-import { UsdcIcon } from './market/icons';
 import { Warnings } from './market/WalletPanel';
 import { copyText, fmtUsdc, shortAddress } from './market/format';
 import '../market.css';
@@ -161,10 +160,9 @@ export default function PassUsdc({ onGranted }: { onGranted: () => void }) {
       <h4 className="mk-h">{mt('pass.title')}</h4>
       {plan && (
         <>
-          <Warnings chain={plan.chain} />
-          <p className="mk-text">
-            <UsdcIcon /> {mt('pass.pay', { a: fmtUsdc(plan.priceUnits) })}
-          </p>
+          <Warnings chain={plan.chain} custody={false} />
+          <p className="mk-note">{mt('pass.nonCustodial')}</p>
+          <p className="mk-text">{mt('pass.pay', { a: fmtUsdc(plan.priceUnits) })}</p>
           <div className="mk-kv">
             <span>{mt('pass.receive')}</span>
             <code className="mk-address" title={plan.receiveAddress}>

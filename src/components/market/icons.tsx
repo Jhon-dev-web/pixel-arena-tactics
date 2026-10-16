@@ -11,19 +11,6 @@ export function SolIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-/** The USDC coin of the Adventurer Pass. */
-export function UsdcIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg className="mk-usdc" width={size} height={size} viewBox="0 0 16 16" aria-hidden shapeRendering="crispEdges">
-      <circle cx="8" cy="8" r="8" fill="#2775ca" />
-      <rect x="7" y="3" width="2" height="10" fill="#fff" />
-      <rect x="5" y="5" width="6" height="1" fill="#fff" />
-      <rect x="5" y="7" width="6" height="2" fill="#fff" />
-      <rect x="5" y="10" width="6" height="1" fill="#fff" />
-    </svg>
-  );
-}
-
 /** The scales of the Market screen title. */
 export function ScaleIcon({ size = 44 }: { size?: number }) {
   return (

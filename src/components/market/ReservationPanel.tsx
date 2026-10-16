@@ -5,7 +5,8 @@ import { explorerTxUrl } from '../../game/market/wallet';
 import { mt } from '../../locales/market';
 import type { ReservationView } from '../../../supabase/functions/_shared/market/types';
 import { SolIcon } from './icons';
-import { clock, copyText, fmtSol, fmtUsdAround, msLeft, shortAddress } from './format';
+import { clock, copyText, fmtSol, msLeft, shortAddress } from './format';
+import UsdLine from './UsdLine';
 import { Warnings } from './WalletPanel';
 
 interface PayState {
@@ -108,7 +109,6 @@ export default function ReservationPanel({
   const graceH = Math.round((Date.parse(res.graceUntil) - Date.parse(res.expiresAt)) / 3_600_000);
   const done = paymentDone(res);
   const tx = res.payments.find((p) => p.leg === 'sale' && p.status === 'applied');
-  const around = fmtUsdAround(res.priceLamports, solUsd);
   const lines: { key: string; label: string; to: string; lamports: number }[] = [
     { key: 'seller', label: mt('pay.toSeller'), to: res.sellerAddress, lamports: res.sellerLamports },
     { key: 'fee', label: mt('pay.toGame', { pct: res.chain.feePercent }), to: res.feeAddress, lamports: res.feeLamports },
@@ -132,7 +132,7 @@ export default function ReservationPanel({
           </div>
         ))}
       </div>
-      {around && <p className="mk-note mk-usd">{mt('browse.around', { a: around })}</p>}
+      <UsdLine lamports={res.priceLamports} solUsd={solUsd} />
 
       <p className="mk-note">{mt('rules.feeExplain', { pct: res.chain.feePercent })}</p>
 

@@ -86,9 +86,9 @@ export const CONSUMABLES: ConsumableDef[] = [
   { id: 'stash_deed', nameKey: 'stash_deed', descKey: 'stash_deed_d', icon: '📜', iconUrl: '/assets/icons/camp_stash.png', cost: 0, sellValue: 0, purchasable: false },
   // Round 18 (goldPouch.ts): Gold turned into a tradeable item. Made by the Pass owner in the Shop, opened by anyone for exactly its face value (T.goldPouch). Never sold to the
   // merchants (sellValue 0): they are for other players. The face value is NOT in this table, goldPouch.ts reads it from the tunables.
-  { id: 'gold_pouch_s', nameKey: 'gold_pouch_s', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch.png', cost: 0, sellValue: 0, purchasable: false },
-  { id: 'gold_pouch_m', nameKey: 'gold_pouch_m', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch.png', cost: 0, sellValue: 0, purchasable: false },
-  { id: 'gold_pouch_l', nameKey: 'gold_pouch_l', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'gold_pouch_s', nameKey: 'gold_pouch_s', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch_small.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'gold_pouch_m', nameKey: 'gold_pouch_m', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch_medium.png', cost: 0, sellValue: 0, purchasable: false },
+  { id: 'gold_pouch_l', nameKey: 'gold_pouch_l', descKey: 'gold_pouch_d', icon: '👛', iconUrl: '/assets/icons/gold_pouch_large.png', cost: 0, sellValue: 0, purchasable: false },
 ];
 
 // The consumables that can be listed on the player market: the Gold Pouches (goldPouch.ts), which are unbound by nature. THE one list isTradeable (gearInstances.ts) reads;

@@ -8,7 +8,8 @@ import { splitLamports } from '../../../supabase/functions/_shared/chain/solMone
 import { fmtSubstat } from '../substatText';
 import { ItemArt, ItemLike } from './ItemCard';
 import { SolIcon } from './icons';
-import { fmtSol, fmtUsdAround } from './format';
+import { fmtSol } from './format';
+import UsdLine from './UsdLine';
 import { itemName } from './names';
 
 type KindFilter = 'all' | 'gear' | 'unique' | 'gold_pouch';
@@ -135,13 +136,12 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
       <ul className="mk-grid">
         {pageItems.map((l) => {
           const split = splitLamports(l.price_lamports);
-          const around = fmtUsdAround(l.price_lamports, solUsd);
           const expanded = open === l.id;
           const item = itemOfListing(l);
           const reserved = l.status === 'reserved';
           const rar = l.rarity ?? 'common';
           return (
-            <li key={l.id} className={`mk-card${reserved ? ' reserved' : ''}${expanded ? ' open' : ''}`}>
+            <li key={l.id} className={`mk-card${l.kind === 'gold_pouch' ? ' pouch' : ''}${reserved ? ' reserved' : ''}${expanded ? ' open' : ''}`}>
               <div className="mk-card-top">
                 <ItemArt item={item} qty={1} />
                 <span className="mk-card-id">
@@ -163,7 +163,7 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
                 <b>
                   <SolIcon /> {fmtSol(l.price_lamports)} <small>SOL</small>
                 </b>
-                {around && <small className="mk-usd">{mt('browse.around', { a: around })}</small>}
+                <UsdLine lamports={l.price_lamports} solUsd={solUsd} />
               </div>
               <button className="mk-btn mk-card-buy" onClick={() => setOpen(expanded ? null : l.id)} aria-expanded={expanded} disabled={reserved} data-ui>
                 {expanded ? mt('browse.back') : mt('browse.buy')}
