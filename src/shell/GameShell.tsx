@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import AuthScreen from '../components/AuthScreen';
 import LegacyImportPrompt from '../components/LegacyImportPrompt';
 import UsernameOnboarding from '../components/UsernameOnboarding';
+import { Button, Dialog } from '../components/ui';
 import App from '../App';
 import { SaveData } from '../game/engine';
 import { getServerPassOwned, setPassSource, setServerPassOwned } from '../game/entitlements';
@@ -208,16 +209,26 @@ export default function GameShell() {
   if (resolution.kind === 'profileError') {
     return (
       <div className="auth-screen">
-        <section className="modal auth-modal" aria-labelledby="profile-load-error-title">
-          <h1 className="modal-title" id="profile-load-error-title">{t('usernameOnboarding.profileTitle')}</h1>
-          <p className="auth-subtitle">{t('usernameOnboarding.loadError')}</p>
-          <button className="result-btn" type="button" onClick={() => {
-            setResolution({ kind: 'loading' });
-            setProfileRetry((attempt) => attempt + 1);
-          }}>
-            {t('usernameOnboarding.retry')}
-          </button>
-        </section>
+        <Dialog
+          inline
+          className="auth-dialog"
+          title={t('usernameOnboarding.profileTitle')}
+          subtitle={t('usernameOnboarding.loadError')}
+          footer={
+            <Button
+              variant="primary"
+              block
+              onClick={() => {
+                setResolution({ kind: 'loading' });
+                setProfileRetry((attempt) => attempt + 1);
+              }}
+            >
+              {t('usernameOnboarding.retry')}
+            </Button>
+          }
+        >
+          {null}
+        </Dialog>
       </div>
     );
   }

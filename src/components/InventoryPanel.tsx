@@ -32,7 +32,7 @@ import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
 import StashHint from './StashHint';
 import LapidarPanel from './LapidarPanel';
-import { Button, Chip, ChipRow, SearchField, Tabs } from './ui';
+import { Button, Chip, ChipRow, Dialog, SearchField, StatList, StatRow, Tabs } from './ui';
 import { normalOf, tradeableOf } from '../game/tradeableMaterials';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
@@ -276,50 +276,40 @@ export default function InventoryPanel({
       </div>
 
       {expandOpen && (
-        <div className="modal-backdrop" onClick={() => setExpandOpen(false)}>
-          <div className="modal expand-modal" onClick={(event) => event.stopPropagation()}>
-            <h2 className="modal-title">{t('inventory.expandTitle')}</h2>
-            <div className="expand-rows">
-              <div className="expand-row">
-                <span>{t('inventory.currentCapacity')}</span>
-                <span>{capacity}</span>
-              </div>
-              {expansion ? (
-                <>
-                  <div className="expand-row">
-                    <span>{t('inventory.newCapacity')}</span>
-                    <span>{expansion.nextCapacity}</span>
-                  </div>
-                  <div className="expand-row">
-                    <span>{t('inventory.expandCost')}</span>
-                    <span className={canAffordExpansion ? '' : 'missing'}>{fmtNum(expansion.goldCost)} {t('inventory.reforgeGold')}</span>
-                  </div>
-                </>
-              ) : (
-                <p className="salvage-hint">{t('inventory.maxCapacityReached')}</p>
-              )}
-            </div>
-            <div className="expand-actions">
-              <button className="expand-cancel-btn" type="button" onClick={() => setExpandOpen(false)} data-ui>
-                {t('inventory.cancel')}
-              </button>
+        <Dialog
+          title={t('inventory.expandTitle')}
+          footer={
+            <>
               {expansion && (
-                <button
-                  className="craft-btn"
-                  type="button"
+                <Button
+                  variant="primary"
+                  block
                   disabled={!canAffordExpansion}
                   onClick={() => {
                     onExpand();
                     setExpandOpen(false);
                   }}
-                  data-ui
                 >
                   {t('inventory.confirmExpand')}
-                </button>
+                </Button>
               )}
-            </div>
-          </div>
-        </div>
+              <Button block onClick={() => setExpandOpen(false)}>
+                {t('inventory.cancel')}
+              </Button>
+            </>
+          }
+        >
+          <StatList>
+            <StatRow label={t('inventory.currentCapacity')} value={capacity} />
+            {expansion && (
+              <>
+                <StatRow label={t('inventory.newCapacity')} value={expansion.nextCapacity} />
+                <StatRow label={t('inventory.expandCost')} value={`${fmtNum(expansion.goldCost)} ${t('inventory.reforgeGold')}`} tone={canAffordExpansion ? 'gold' : 'bad'} />
+              </>
+            )}
+          </StatList>
+          {!expansion && <p className="ui-note">{t('inventory.maxCapacityReached')}</p>}
+        </Dialog>
       )}
 
       <div className="inv-toolbar">
@@ -520,17 +510,21 @@ export default function InventoryPanel({
                 </button>
               ))}
             {confirmEquip && (
-              <div className="bind-confirm" role="alertdialog" aria-label={t('inventory.bindTitle')}>
-                <div className="bind-confirm-text">{t('inventory.bindConfirm')}</div>
-                <div className="bind-confirm-actions">
-                  <button className="craft-btn" onClick={handleEquip} data-ui>
-                    {t('inventory.equip')}
-                  </button>
-                  <button className="inv-discard" onClick={() => setConfirmEquip(false)} data-ui>
-                    {t('inventory.bindCancel')}
-                  </button>
-                </div>
-              </div>
+              <Dialog
+                title={t('inventory.bindTitle')}
+                footer={
+                  <>
+                    <Button variant="primary" block onClick={handleEquip}>
+                      {t('inventory.equip')}
+                    </Button>
+                    <Button block onClick={() => setConfirmEquip(false)}>
+                      {t('inventory.bindCancel')}
+                    </Button>
+                  </>
+                }
+              >
+                <p>{t('inventory.bindConfirm')}</p>
+              </Dialog>
             )}
             {selectedInstance &&
               selectedRarity !== 'common' &&

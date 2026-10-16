@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { t } from '../locales';
 import { getGear } from '../game/gear';
 import { LevelUpSummary } from '../game/levelUp';
+import { Button, Panel } from './ui';
 
 // The level-up moment: a banner at the top of the screen that says what the levels gave and offers to spend it. It never blocks (the page behind stays usable), goes away
 // by itself, and a second batch of levels while it is up grows the same banner. The sound is played where the level is granted (App.tsx setSaveBoth, muted like any effect).
@@ -37,13 +38,20 @@ export default function LevelUpBanner({
 
   const title = summary.gained > 1 ? t('levelUp.titleMany', { n: summary.to, g: summary.gained }) : t('levelUp.title', { n: summary.to });
   return (
-    <div className="levelup-banner" role="status" aria-live="polite" data-testid="levelup-banner">
-      <div className="levelup-head">
-        <strong className="levelup-title">{title}</strong>
-        <button className="levelup-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
+    <Panel
+      as="aside"
+      tone="gold"
+      className="levelup-banner"
+      role="status"
+      aria-live="polite"
+      data-testid="levelup-banner"
+      title={title}
+      actions={
+        <Button size="sm" className="levelup-x" onClick={onClose} aria-label={t('ui.close')}>
           ×
-        </button>
-      </div>
+        </Button>
+      }
+    >
       <ul className="levelup-lines">
         {levelUpLines(summary).map((line) => (
           <li key={line}>{line}</li>
@@ -51,16 +59,16 @@ export default function LevelUpBanner({
       </ul>
       <div className="levelup-actions">
         {attrPoints > 0 && (
-          <button className="result-btn levelup-spend" onClick={() => onSpend('personagem')} data-ui>
+          <Button variant="primary" onClick={() => onSpend('personagem')}>
             {t('levelUp.spendAttrs', { n: attrPoints })}
-          </button>
+          </Button>
         )}
         {skillPoints > 0 && (
-          <button className="result-btn levelup-spend" onClick={() => onSpend('skills')} data-ui>
+          <Button variant="primary" onClick={() => onSpend('skills')}>
             {t('levelUp.spendSkills', { n: skillPoints })}
-          </button>
+          </Button>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

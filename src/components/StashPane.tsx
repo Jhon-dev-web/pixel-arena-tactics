@@ -10,6 +10,7 @@ import Assets from '../assets.json';
 import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
+import { Button, Dialog, StatList, StatRow } from './ui';
 
 // The Baú do acampamento: its slots (the same stack rule as the inventory), the item the player picked, and the upgrade dialog.
 // Moving things in and out is done from the item detail (InventoryPanel); here only what lives in the stash is shown.
@@ -88,71 +89,53 @@ export default function StashPane({
       </div>
 
       {upgradeOpen && (
-        <div className="modal-backdrop" onClick={() => setUpgradeOpen(false)}>
-          <div className="modal expand-modal" onClick={(event) => event.stopPropagation()}>
-            <h2 className="modal-title">
-              <img className="inline-icon" src="/assets/icons/camp_stash.png" alt="" /> {t('stash.upgradeTitle')}
-            </h2>
-            <div className="expand-rows">
-              <div className="expand-row">
-                <span>{t('inventory.currentCapacity')}</span>
-                <span>{capacity}</span>
-              </div>
-              {quote ? (
-                <>
-                  <div className="expand-row">
-                    <span>{t('inventory.newCapacity')}</span>
-                    <span>{quote.capacity}</span>
-                  </div>
-                  <div className="expand-row">
-                    <span>{t('inventory.expandCost')}</span>
-                    <span className={save.gold >= quote.gold ? '' : 'missing'}>
-                      <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {fmtNum(quote.gold)}
-                    </span>
-                  </div>
-                  {(Object.entries(quote.materials) as [MaterialId, number][]).map(([mid, need]) => {
-                    const have = save.materials[mid] ?? 0;
-                    return (
-                      <div className="expand-row" key={mid}>
-                        <span className="stash-cost-name">
-                          <span className="mat-icon">
-                            <MaterialIcon item={getMaterial(mid)!} />
-                          </span>
-                          {matText(`mat_${mid}`)}
-                        </span>
-                        <span className={have >= need ? '' : 'missing'}>
-                          {fmtNum(have)} / {fmtNum(need)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  <p className="salvage-hint">{t('stash.upgradeFromBag')}</p>
-                </>
-              ) : (
-                <p className="salvage-hint">{t('stash.maxLevel')}</p>
-              )}
-            </div>
-            <div className="expand-actions">
-              <button className="expand-cancel-btn" type="button" onClick={() => setUpgradeOpen(false)} data-ui>
-                {t('inventory.cancel')}
-              </button>
+        <Dialog
+          icon={<img className="pixel-icon" src="/assets/icons/camp_stash.png" alt="" />}
+          title={t('stash.upgradeTitle')}
+          footer={
+            <>
               {quote && (
-                <button
-                  className="craft-btn"
-                  type="button"
+                <Button
+                  variant="primary"
+                  block
                   disabled={!affordable}
                   onClick={() => {
                     onUpgrade();
                     setUpgradeOpen(false);
                   }}
-                  data-ui
                 >
                   {t('inventory.confirmExpand')}
-                </button>
+                </Button>
               )}
-            </div>
-          </div>
-        </div>
+              <Button block onClick={() => setUpgradeOpen(false)}>
+                {t('inventory.cancel')}
+              </Button>
+            </>
+          }
+        >
+          <StatList>
+            <StatRow label={t('inventory.currentCapacity')} value={capacity} />
+            {quote && (
+              <>
+                <StatRow label={t('inventory.newCapacity')} value={quote.capacity} />
+                <StatRow icon={<img src={Assets.icons.gold.url} alt="" />} label={t('inventory.expandCost')} value={fmtNum(quote.gold)} tone={save.gold >= quote.gold ? 'gold' : 'bad'} />
+                {(Object.entries(quote.materials) as [MaterialId, number][]).map(([mid, need]) => {
+                  const have = save.materials[mid] ?? 0;
+                  return (
+                    <StatRow
+                      key={mid}
+                      icon={<MaterialIcon item={getMaterial(mid)!} />}
+                      label={matText(`mat_${mid}`)}
+                      value={`${fmtNum(have)} / ${fmtNum(need)}`}
+                      tone={have >= need ? 'good' : 'bad'}
+                    />
+                  );
+                })}
+              </>
+            )}
+          </StatList>
+          <p className="ui-note">{quote ? t('stash.upgradeFromBag') : t('stash.maxLevel')}</p>
+        </Dialog>
       )}
     </>
   );

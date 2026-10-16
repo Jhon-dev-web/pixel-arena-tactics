@@ -1,5 +1,6 @@
 import { t } from '../locales';
 import PreseasonResetNotice from './PreseasonResetNotice';
+import { Button, Dialog } from './ui';
 
 const welcomeText = (k: string): string => t(`welcome.${k}`);
 
@@ -7,18 +8,20 @@ const welcomeText = (k: string): string => t(`welcome.${k}`);
 // SaveData.seenWelcome gates both this modal and the tooltip queue).
 export default function WelcomeModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="modal-backdrop">
-      <div className="modal claim-modal welcome-modal">
-        <h2 className="modal-title">{welcomeText('title')}</h2>
-        <p className="claim-name">{welcomeText('idleTip')}</p>
-        <p className="claim-name">{welcomeText('startTip')}</p>
-        <p className="welcome-save-warning">{welcomeText('saveWarning')}</p>
-        <PreseasonResetNotice className="welcome-save-warning" />
-
-        <button className="result-btn" onClick={onClose} data-ui>
+    <Dialog
+      className="welcome-modal"
+      tone="win"
+      title={welcomeText('title')}
+      footer={
+        <Button variant="primary" block onClick={onClose}>
           {welcomeText('cta')}
-        </button>
-      </div>
-    </div>
+        </Button>
+      }
+    >
+      <p>{welcomeText('idleTip')}</p>
+      <p>{welcomeText('startTip')}</p>
+      <p className="ui-alert">{welcomeText('saveWarning')}</p>
+      <PreseasonResetNotice className="ui-alert" />
+    </Dialog>
   );
 }

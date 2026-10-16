@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { t } from '../locales';
 import { checkUsernameAvailability, claimUsername } from '../game/usernameRepository';
+import { Button, Dialog } from './ui';
 
 type Availability = 'idle' | 'length' | 'characters' | 'checking' | 'available' | 'taken' | 'reserved' | 'error';
 type OnboardingStep = 'choose' | 'confirm';
@@ -98,75 +99,73 @@ export default function UsernameOnboarding({ onComplete }: { onComplete: () => v
     error: t('usernameOnboarding.availabilityError'),
   }[availability];
 
+  const statusTone = availability === 'available' ? ' good' : availability === 'taken' || availability === 'reserved' || availability === 'error' ? ' bad' : '';
   return (
     <div className="auth-screen">
-      <section className="modal auth-modal username-modal" aria-labelledby="username-title">
-        <h1 className="modal-title" id="username-title">
-          {step === 'choose' ? t('usernameOnboarding.title') : t('usernameOnboarding.confirmTitle')}
-        </h1>
-
-        {step === 'choose' ? (
-          <>
-            <p className="auth-subtitle">{t('usernameOnboarding.description')}</p>
-            <form className="auth-form username-form" onSubmit={continueToConfirmation}>
-              <label className="auth-field">
-                <span className="settings-label">{t('usernameOnboarding.usernameLabel')}</span>
-                <span className="username-input-wrap">
-                  <span className="username-prefix" aria-hidden="true">@</span>
-                  <input
-                    className="settings-select"
-                    type="text"
-                    autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    maxLength={32}
-                    value={username}
-                    onChange={(event) => {
-                      setUsername(event.target.value);
-                      setClaimError(null);
-                    }}
-                    aria-describedby="username-hint username-status"
-                    autoFocus
-                  />
-                </span>
-              </label>
-              <p className="username-hint" id="username-hint">{t('usernameOnboarding.rules')}</p>
-              <p className={`username-status ${availability}`} id="username-status" aria-live="polite">
-                {claimError ?? availabilityText}
-              </p>
-              <button className="result-btn" type="submit" disabled={availability !== 'available'}>
-                {t('usernameOnboarding.continue')}
-              </button>
-            </form>
-          </>
-        ) : (
-          <div className="username-confirmation">
-            <p className="auth-subtitle">
-              {t('usernameOnboarding.confirmQuestion', { username: displayUsername })}
-            </p>
-            <p className="username-permanent-note">{t('usernameOnboarding.permanentWarning')}</p>
-            {claimError && <p className="username-status error" role="alert">{claimError}</p>}
-            <div className="username-confirm-actions">
-              <button
-                className="username-back"
-                type="button"
-                onClick={() => setStep('choose')}
-                disabled={claiming}
-              >
-                {t('usernameOnboarding.back')}
-              </button>
-              <button
-                className="result-btn"
-                type="button"
-                onClick={confirmUsername}
-                disabled={claiming}
-              >
+      <Dialog
+        inline
+        className="auth-dialog username-modal"
+        title={step === 'choose' ? t('usernameOnboarding.title') : t('usernameOnboarding.confirmTitle')}
+        subtitle={step === 'choose' ? t('usernameOnboarding.description') : t('usernameOnboarding.confirmQuestion', { username: displayUsername })}
+        footer={
+          step === 'choose' ? (
+            <Button type="submit" form="username-form" variant="primary" block disabled={availability !== 'available'}>
+              {t('usernameOnboarding.continue')}
+            </Button>
+          ) : (
+            <>
+              <Button variant="primary" block onClick={confirmUsername} disabled={claiming}>
                 {claiming ? t('usernameOnboarding.saving') : t('usernameOnboarding.confirm')}
-              </button>
-            </div>
-          </div>
+              </Button>
+              <Button block onClick={() => setStep('choose')} disabled={claiming}>
+                {t('usernameOnboarding.back')}
+              </Button>
+            </>
+          )
+        }
+      >
+        {step === 'choose' ? (
+          <form className="auth-form username-form" id="username-form" onSubmit={continueToConfirmation}>
+            <label className="ui-labelled">
+              <span className="ui-labelled-caption">{t('usernameOnboarding.usernameLabel')}</span>
+              <span className="ui-field">
+                <span className="username-prefix" aria-hidden="true">
+                  @
+                </span>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  maxLength={32}
+                  value={username}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                    setClaimError(null);
+                  }}
+                  aria-describedby="username-hint username-status"
+                  autoFocus
+                />
+              </span>
+            </label>
+            <p className="ui-note" id="username-hint">
+              {t('usernameOnboarding.rules')}
+            </p>
+            <p className={`username-status${statusTone}`} id="username-status" aria-live="polite">
+              {claimError ?? availabilityText}
+            </p>
+          </form>
+        ) : (
+          <>
+            <p className="ui-alert">{t('usernameOnboarding.permanentWarning')}</p>
+            {claimError && (
+              <p className="ui-alert bad" role="alert">
+                {claimError}
+              </p>
+            )}
+          </>
         )}
-      </section>
+      </Dialog>
     </div>
   );
 }

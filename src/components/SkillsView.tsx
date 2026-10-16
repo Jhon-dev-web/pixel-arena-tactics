@@ -28,7 +28,8 @@ import {
   tierRequirement,
 } from '../game/heroSkills';
 import { ownsAdventurerPass } from '../game/entitlements';
-import { Button } from './ui';
+import { Button, Chip, Dialog, ItemFrame, PageHeader, Panel, Screen, Tabs } from './ui';
+import type { TabItem } from './ui';
 
 // "Habilidades": the whole skill tree on one screen (heroSkills.ts). Three paths side by side (tabs on a phone), each skill a tile with rank pips, a detail panel that
 // shows the real numbers of the current and the next rank, and a PENDING allocation: "+" only changes the draft held here, "Aplicar" commits it, "Desfazer" drops it,
@@ -141,17 +142,16 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
     const skills = skillsOfPath(path);
     const tiers = [1, 2, 3, 4] as const;
     return (
-      <section className={`sk-col sk-col-${path}${tab === path ? ' current' : ''}`} key={path} aria-label={t(`heroSkills.paths.${path}.name`)}>
-        <header className="sk-col-head">
-          <img className="sk-path-icon" src={pathIcon(path)} alt="" />
-          <div className="sk-col-title">
-            <div className="sk-col-line">
-              <span className="sk-col-name">{t(`heroSkills.paths.${path}.name`)}</span>
-              <span className="sk-col-points">{t('heroSkills.ui.pathPoints', { n: pathPoints(draft, path) })}</span>
-            </div>
-            <span className="sk-col-identity">{t(`heroSkills.paths.${path}.identity`)}</span>
-          </div>
-        </header>
+      <Panel
+        as="section"
+        className={`sk-col sk-col-${path}${tab === path ? ' current' : ''}`}
+        key={path}
+        aria-label={t(`heroSkills.paths.${path}.name`)}
+        title={t(`heroSkills.paths.${path}.name`)}
+        icon={<img src={pathIcon(path)} alt="" />}
+        actions={<Chip tone="gold">{t('heroSkills.ui.pathPoints', { n: pathPoints(draft, path) })}</Chip>}
+      >
+        <p className="sk-col-identity">{t(`heroSkills.paths.${path}.identity`)}</p>
         <div className="sk-tiers">
           {tiers.map((tier) => (
             <div className={`sk-row sk-tier-${tier}`} key={tier}>
@@ -159,7 +159,7 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
             </div>
           ))}
         </div>
-      </section>
+      </Panel>
     );
   };
 
@@ -169,122 +169,131 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
   const loadoutName = t(`heroSkills.ui.set${active + 1}`);
   const respecDisabled = battleActive || pointsSpent(committed) === 0;
 
+  const nextLine =
+    earned === 0 ? t('heroSkills.ui.firstPoint', { n: nextLevel ?? 5 }) : nextLevel === null ? t('heroSkills.ui.allPoints') : t('heroSkills.ui.nextPoint', { n: nextLevel });
+
+  const pathTabs: TabItem<SkillPathId>[] = SKILL_PATH_IDS.map((path) => ({
+    id: path,
+    icon: <img src={pathIcon(path)} alt="" />,
+    label: (
+      <>
+        {t(`heroSkills.paths.${path}.name`)} <b className="sk-tab-points">{pathPoints(draft, path)}</b>
+      </>
+    ),
+  }));
+
   return (
-    <div className="desktop-home skills-view" data-highlight="skills-view">
-      <header className="sk-head dh-card">
-        <h2 className="sk-title">{t('heroSkills.ui.title')}</h2>
-        <div className="sk-head-chips">
-          <span className={`sk-chip points${available > 0 ? ' has' : ''}`}>{t('heroSkills.ui.available', { n: available })}</span>
-          <span className="sk-chip">{t('heroSkills.ui.spent', { n: spentDraft, m: earned })}</span>
-        </div>
-        <p className="sk-next">
-          {earned === 0 ? t('heroSkills.ui.firstPoint', { n: nextLevel ?? 5 }) : nextLevel === null ? t('heroSkills.ui.allPoints') : t('heroSkills.ui.nextPoint', { n: nextLevel })}
-        </p>
-      </header>
+    <Screen label={t('heroSkills.ui.title')} className="skills-view" data-highlight="skills-view">
+      <PageHeader
+        icon={<img className="pixel-icon" src="/assets/icons/skill_path_warrior.png" alt="" />}
+        title={t('heroSkills.ui.title')}
+        subtitle={nextLine}
+        actions={
+          <>
+            <Chip tone={available > 0 ? 'gold' : 'plain'}>{t('heroSkills.ui.available', { n: available })}</Chip>
+            <Chip>{t('heroSkills.ui.spent', { n: spentDraft, m: earned })}</Chip>
+          </>
+        }
+      />
 
-      <div className="sk-tabs" role="tablist">
-        {SKILL_PATH_IDS.map((path) => (
-          <button key={path} type="button" role="tab" aria-selected={tab === path} className={`sk-tab${tab === path ? ' active' : ''}`} onClick={() => setTab(path)} data-ui>
-            <img src={pathIcon(path)} alt="" />
-            <span>{t(`heroSkills.paths.${path}.name`)}</span>
-            <b>{pathPoints(draft, path)}</b>
-          </button>
-        ))}
-      </div>
+      <div className="sk-root">
+        <Tabs<SkillPathId> className="sk-tabs" items={pathTabs} value={tab} onChange={setTab} label={t('heroSkills.ui.title')} />
 
-      <div className="sk-cols">{SKILL_PATH_IDS.map(renderPath)}</div>
+        <div className="sk-cols">{SKILL_PATH_IDS.map(renderPath)}</div>
 
-      <div className="sk-bottom">
-        <section className="sk-detail dh-card" aria-live="polite">
-          <img className="sk-detail-icon" src={shown.icon} alt="" />
-          {fxOf(shown.id) && <FxPreview fx={fxOf(shown.id)!} />}
-          <div className="sk-detail-body">
-            <div className="sk-detail-head">
-              <span className="sk-detail-name">{t(`heroSkills.skills.${shown.id}.name`)}</span>
-              <span className="sk-detail-rank">{t('heroSkills.ui.rank', { n: shownRank, m: shown.maxRank })}</span>
-              <span className="sk-detail-tier">{shown.tier === 4 ? t('heroSkills.ui.capstone') : t('heroSkills.ui.tier', { n: shown.tier })}</span>
+        <div className="sk-bottom">
+          <Panel className="sk-detail" aria-live="polite">
+            <ItemFrame size="lg" rarity={rankOf(draft, shown.id) >= shown.maxRank ? 'legendary' : 'common'}>
+              <img className="sk-detail-icon" src={shown.icon} alt="" />
+            </ItemFrame>
+            {fxOf(shown.id) && <FxPreview fx={fxOf(shown.id)!} />}
+            <div className="sk-detail-body">
+              <div className="sk-detail-head">
+                <h3 className="sk-detail-name">{t(`heroSkills.skills.${shown.id}.name`)}</h3>
+                <Chip tone="gold">{t('heroSkills.ui.rank', { n: shownRank, m: shown.maxRank })}</Chip>
+                <Chip>{shown.tier === 4 ? t('heroSkills.ui.capstone') : t('heroSkills.ui.tier', { n: shown.tier })}</Chip>
+              </div>
+              {triggerText(shown.id) && (
+                <p className="sk-trigger">
+                  {t('heroSkills.ui.trigger')} {triggerText(shown.id)}
+                </p>
+              )}
+              <p className="sk-detail-line">
+                <b>{t('heroSkills.ui.current')}</b> {shownRank > 0 ? skillText(shown.id, shownRank) : t('heroSkills.ui.none')}
+              </p>
+              {shownRank < shown.maxRank && (
+                <p className="sk-detail-line next">
+                  <b>{t('heroSkills.ui.next')}</b> {skillText(shown.id, shownRank + 1)}
+                </p>
+              )}
+              {lockReason && <p className="sk-detail-lock">{lockReason}</p>}
             </div>
-            {triggerText(shown.id) && (
-              <p className="sk-trigger">
-                {t('heroSkills.ui.trigger')} {triggerText(shown.id)}
-              </p>
-            )}
-            <p className="sk-detail-line">
-              <b>{t('heroSkills.ui.current')}</b> {shownRank > 0 ? skillText(shown.id, shownRank) : t('heroSkills.ui.none')}
-            </p>
-            {shownRank < shown.maxRank && (
-              <p className="sk-detail-line next">
-                <b>{t('heroSkills.ui.next')}</b> {skillText(shown.id, shownRank + 1)}
-              </p>
-            )}
-            {lockReason && <p className="sk-detail-lock">{lockReason}</p>}
-          </div>
-          <button type="button" className="sk-detail-add" disabled={!canAddShown} onClick={() => add(shown.id)} data-ui>
-            + {t('heroSkills.ui.add')}
-          </button>
-        </section>
+            <Button variant="primary" className="sk-detail-add" disabled={!canAddShown} onClick={() => add(shown.id)}>
+              + {t('heroSkills.ui.add')}
+            </Button>
+          </Panel>
 
-        <section className="sk-actions dh-card">
-          <div className="sk-apply-row">
-            <button type="button" className="sk-btn primary" disabled={pending === 0} onClick={() => onApply(draft)} data-ui>
-              {pending > 0 ? t('heroSkills.ui.applyN', { n: pending }) : t('heroSkills.ui.apply')}
-            </button>
-            <button type="button" className="sk-btn" disabled={pending === 0} onClick={() => setDraft(committed)} data-ui>
-              {t('heroSkills.ui.undo')}
-            </button>
-          </div>
-          <div className="sk-loadouts" role="group" aria-label={t('heroSkills.ui.loadouts')}>
-            <button type="button" className={`sk-set${active === 0 ? ' on' : ''}`} disabled={battleActive && active !== 0} onClick={() => onSwitchLoadout(0)} data-ui>
-              {t('heroSkills.ui.set1')}
-            </button>
-            {owner ? (
-              <button type="button" className={`sk-set${active === 1 ? ' on' : ''}`} disabled={battleActive && active !== 1} onClick={() => onSwitchLoadout(1)} data-ui>
-                {t('heroSkills.ui.set2')}
-              </button>
-            ) : (
-              <button type="button" className="sk-set locked" onClick={onOpenPass} title={t('heroSkills.ui.passOnly')} data-ui>
-                <img src="/assets/icons/nav_battlepass.png" alt="" />
-                {t('heroSkills.ui.set2')}
-                <i>{t('heroSkills.ui.passBadge')}</i>
-              </button>
-            )}
-          </div>
-          <button type="button" className="sk-btn respec" disabled={respecDisabled} onClick={() => setConfirmRespec(true)} title={battleActive ? t('heroSkills.ui.respecBattle') : undefined} data-ui>
-            {t('heroSkills.ui.respec')} · {cost === 0 ? t('heroSkills.ui.free') : t('heroSkills.ui.gold', { n: fmtNum(cost) })}
-          </button>
-          {battleActive && <p className="sk-note">{t('heroSkills.ui.respecBattle')}</p>}
-        </section>
+          <Panel className="sk-actions">
+            <div className="sk-apply-row">
+              <Button variant="primary" disabled={pending === 0} onClick={() => onApply(draft)}>
+                {pending > 0 ? t('heroSkills.ui.applyN', { n: pending }) : t('heroSkills.ui.apply')}
+              </Button>
+              <Button disabled={pending === 0} onClick={() => setDraft(committed)}>
+                {t('heroSkills.ui.undo')}
+              </Button>
+            </div>
+            <div className="sk-loadouts" role="group" aria-label={t('heroSkills.ui.loadouts')}>
+              <Button variant={active === 0 ? 'primary' : 'secondary'} aria-pressed={active === 0} disabled={battleActive && active !== 0} onClick={() => onSwitchLoadout(0)}>
+                {t('heroSkills.ui.set1')}
+              </Button>
+              {owner ? (
+                <Button variant={active === 1 ? 'primary' : 'secondary'} aria-pressed={active === 1} disabled={battleActive && active !== 1} onClick={() => onSwitchLoadout(1)}>
+                  {t('heroSkills.ui.set2')}
+                </Button>
+              ) : (
+                <Button className="sk-set-locked" onClick={onOpenPass} title={t('heroSkills.ui.passOnly')} icon={<img src="/assets/icons/nav_battlepass.png" alt="" />}>
+                  {t('heroSkills.ui.set2')}
+                  <Chip tone="gold">{t('heroSkills.ui.passBadge')}</Chip>
+                </Button>
+              )}
+            </div>
+            <Button variant="danger" block disabled={respecDisabled} onClick={() => setConfirmRespec(true)} title={battleActive ? t('heroSkills.ui.respecBattle') : undefined}>
+              {t('heroSkills.ui.respec')} · {cost === 0 ? t('heroSkills.ui.free') : t('heroSkills.ui.gold', { n: fmtNum(cost) })}
+            </Button>
+            {battleActive && <p className="ui-alert bad">{t('heroSkills.ui.respecBattle')}</p>}
+          </Panel>
+        </div>
       </div>
 
       {confirmRespec && (
-        <div className="modal-backdrop sk-confirm-backdrop" onClick={() => setConfirmRespec(false)}>
-          <div className="sk-confirm" role="dialog" aria-modal="true" aria-label={t('heroSkills.ui.respec')} onClick={(e) => e.stopPropagation()}>
-            <h3>{t('heroSkills.ui.respec')}</h3>
-            <p>{t('heroSkills.ui.respecBody', { n: pointsSpent(committed), set: loadoutName })}</p>
-            <p className="cost">{cost === 0 ? t('heroSkills.ui.respecFree') : t('heroSkills.ui.respecCost', { n: fmtNum(cost) })}</p>
-            {cost > save.gold && <p className="sk-detail-lock">{t('heroSkills.ui.respecNoGold')}</p>}
-            <p className="note">{t('heroSkills.ui.respecSessions')}</p>
-            <div className="sk-confirm-actions">
-              <button type="button" className="sk-btn" onClick={() => setConfirmRespec(false)} data-ui>
-                {t('heroSkills.ui.cancel')}
-              </button>
-              <button
-                type="button"
-                className="sk-btn primary"
+        <Dialog
+          title={t('heroSkills.ui.respec')}
+          footer={
+            <>
+              <Button
+                variant="primary"
+                block
                 disabled={cost > save.gold || battleActive}
                 onClick={() => {
                   setConfirmRespec(false);
                   onRespec();
                 }}
-                data-ui
               >
                 {t('heroSkills.ui.confirm')}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+              <Button block onClick={() => setConfirmRespec(false)}>
+                {t('heroSkills.ui.cancel')}
+              </Button>
+            </>
+          }
+        >
+          <p>{t('heroSkills.ui.respecBody', { n: pointsSpent(committed), set: loadoutName })}</p>
+          <p className="sk-cost">{cost === 0 ? t('heroSkills.ui.respecFree') : t('heroSkills.ui.respecCost', { n: fmtNum(cost) })}</p>
+          {cost > save.gold && <p className="ui-alert bad">{t('heroSkills.ui.respecNoGold')}</p>}
+          <p className="ui-note">{t('heroSkills.ui.respecSessions')}</p>
+        </Dialog>
       )}
-    </div>
+    </Screen>
   );
 }
 

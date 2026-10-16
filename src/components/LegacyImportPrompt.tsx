@@ -1,4 +1,5 @@
 import { t } from '../locales';
+import { Button, Dialog } from './ui';
 
 // Shown once: authenticated, but no server character exists yet AND a local (pre-auth) save was found
 // (§13-15). The player decides explicitly — nothing is imported silently, and this can only ever appear
@@ -14,18 +15,24 @@ export default function LegacyImportPrompt({
 }) {
   return (
     <div className="auth-screen">
-      <div className="modal auth-modal">
-        <h1 className="modal-title">{t('legacyImport.title')}</h1>
-        <p className="auth-subtitle">{t('legacyImport.description')}</p>
-        <p className="welcome-save-warning">{t('legacyImport.warning')}</p>
-
-        <button className="result-btn" onClick={onImport} disabled={importing} data-ui>
-          {importing ? t('legacyImport.importing') : t('legacyImport.importCta')}
-        </button>
-        <button className="auth-switch" onClick={onStartNew} disabled={importing} data-ui>
-          {t('legacyImport.newCta')}
-        </button>
-      </div>
+      <Dialog
+        inline
+        className="auth-dialog"
+        title={t('legacyImport.title')}
+        subtitle={t('legacyImport.description')}
+        footer={
+          <>
+            <Button variant="primary" block onClick={onImport} disabled={importing}>
+              {importing ? t('legacyImport.importing') : t('legacyImport.importCta')}
+            </Button>
+            <Button block onClick={onStartNew} disabled={importing}>
+              {t('legacyImport.newCta')}
+            </Button>
+          </>
+        }
+      >
+        <p className="ui-alert">{t('legacyImport.warning')}</p>
+      </Dialog>
     </div>
   );
 }

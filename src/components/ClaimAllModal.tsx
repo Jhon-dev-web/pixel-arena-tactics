@@ -1,6 +1,7 @@
 import { fmtNum, t } from '../locales';
 import { ClaimAllLine } from '../game/claimAll';
 import { getMaterial } from '../game/materials';
+import { Button, Dialog } from './ui';
 
 // The one combined summary of the Home "Resgatar tudo": a line per activity that was collected.
 function lineText(line: ClaimAllLine): { title: string; detail: string } {
@@ -30,24 +31,26 @@ function lineText(line: ClaimAllLine): { title: string; detail: string } {
 
 export default function ClaimAllModal({ lines, onClose }: { lines: ClaimAllLine[]; onClose: () => void }) {
   return (
-    <div className="modal-backdrop ap-summary-backdrop">
-      <div className="modal ap-summary" role="dialog" aria-label={t('claimAll.title')}>
-        <h2 className="modal-title win">{t('claimAll.title')}</h2>
-        <ul className="ap-summary-list">
-          {lines.map((l, i) => {
-            const text = lineText(l);
-            return (
-              <li className="ap-summary-row claimall-row" key={`${l.kind}${i}`}>
-                <span className="ap-summary-name">{text.title}</span>
-                <span className="claimall-detail">{text.detail}</span>
-              </li>
-            );
-          })}
-        </ul>
-        <button className="quest-btn claim" onClick={onClose} data-ui>
+    <Dialog
+      tone="win"
+      title={t('claimAll.title')}
+      footer={
+        <Button variant="primary" block onClick={onClose}>
           {t('claimAll.ok')}
-        </button>
-      </div>
-    </div>
+        </Button>
+      }
+    >
+      <ul className="dlg-list">
+        {lines.map((l, i) => {
+          const text = lineText(l);
+          return (
+            <li className="dlg-row" key={`${l.kind}${i}`}>
+              <span className="dlg-row-name">{text.title}</span>
+              <span className="dlg-row-detail">{text.detail}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </Dialog>
   );
 }

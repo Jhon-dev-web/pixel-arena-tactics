@@ -127,7 +127,7 @@ export default function HuntRewardModal({
           <Button size="sm" onClick={onOpenInventory}>
             {t('hunting.openInventory')}
           </Button>
-          <WholesaleLink className="ui-btn secondary sm" hint />
+          <WholesaleLink hint />
         </Panel>
       )}
       {leftBehind.length === 0 && held && (

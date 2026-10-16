@@ -1,6 +1,7 @@
 import { t } from '../locales';
 import Assets from '../assets.json';
 import { ExpeditionRewards } from '../game/expedition';
+import { Button, Dialog } from './ui';
 
 export default function ClaimModal({
   title,
@@ -14,36 +15,29 @@ export default function ClaimModal({
   onClose: () => void;
 }) {
   return (
-    <div className="modal-backdrop">
-      <div className="modal claim-modal">
-        <h2 className="modal-title">{title}</h2>
-        <p className="claim-name">{name}</p>
-
-        <div className="result-rewards">
-          <span className="floor-drop">
-            <span className="mat-icon">
-              <img src={Assets.icons.gold.url} alt="" />
-            </span>
-            <span>{t('ui.goldReward', { n: rewards.gold })}</span>
-          </span>
-          {rewards.shards > 0 && (
-            <span className="floor-drop">
-              <span className="mat-icon shard">
-                <img src="/assets/icons/shards.png" alt="" />
-              </span>
-              <span>{t('ui.shardsReward', { n: rewards.shards })}</span>
-            </span>
-          )}
-        </div>
-
-        <button className="result-btn" onClick={onClose} data-ui>
+    <Dialog
+      className="claim-modal"
+      tone="win"
+      title={title}
+      subtitle={name}
+      footer={
+        <Button variant="primary" block onClick={onClose}>
           {t('expedition.close')}
-        </button>
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
+        </Button>
+      }
+    >
+      <div className="dlg-rewards">
+        <span className="dlg-reward">
+          <img className="inline-icon" src={Assets.icons.gold.url} alt="" />
+          {t('ui.goldReward', { n: rewards.gold })}
+        </span>
+        {rewards.shards > 0 && (
+          <span className="dlg-reward shards">
+            <img className="inline-icon" src="/assets/icons/shards.png" alt="" />
+            {t('ui.shardsReward', { n: rewards.shards })}
+          </span>
+        )}
       </div>
-    </div>
+    </Dialog>
   );
 }

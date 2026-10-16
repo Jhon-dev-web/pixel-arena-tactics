@@ -1,4 +1,5 @@
 import { t } from '../locales';
+import { Button, ModalShell } from './ui';
 
 export default function AdminModal({
   cheatMode,
@@ -18,28 +19,24 @@ export default function AdminModal({
   onClose: () => void;
 }) {
   return (
-    <div className="modal-backdrop">
-      <div className="modal admin-modal">
-        <h2 className="modal-title">{t('admin.title')}</h2>
-        <button className="admin-btn" onClick={onGold} data-ui>
+    <ModalShell className="admin-modal" icon={<span aria-hidden>🛠️</span>} title={t('admin.title')} closeLabel={t('ui.close')} onClose={onClose}>
+      <div className="ui-cq admin-list">
+        <Button block onClick={onGold}>
           {t('admin.gold')}
-        </button>
-        <button className="admin-btn" onClick={onShards} data-ui>
+        </Button>
+        <Button block onClick={onShards}>
           {t('admin.shards')}
-        </button>
-        <button className="admin-btn" onClick={onUnlock} data-ui>
+        </Button>
+        <Button block onClick={onUnlock}>
           {t('admin.unlock')}
-        </button>
-        <button className={`admin-btn cheat${cheatMode ? ' active' : ''}`} onClick={onToggleCheat} data-ui>
+        </Button>
+        <Button block variant={cheatMode ? 'primary' : 'secondary'} aria-pressed={cheatMode} onClick={onToggleCheat}>
           {t('admin.cheatMode')}: {cheatMode ? t('admin.on') : t('admin.off')}
-        </button>
-        <button className="admin-btn danger" onClick={onReset} data-ui>
+        </Button>
+        <Button block variant="danger" onClick={onReset}>
           {t('admin.reset')}
-        </button>
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
+        </Button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

@@ -16,7 +16,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Strings that exist only in code paths guarded by import.meta.env.DEV. Each one is tagged with the thing it proves.
 export const DEV_MARKERS = [
   { marker: 'dev-admin-fab', what: 'the admin panel button (App.tsx)' },
-  { marker: 'admin-btn', what: 'the admin panel itself (AdminModal.tsx)' },
+  { marker: 'admin-modal', what: 'the admin panel itself (AdminModal.tsx)' },
   { marker: '__uiAudit', what: 'window.__uiAudit (main.tsx)' },
   { marker: 'unnamed-button', what: 'the UI audit checker (lib/uiAudit.ts)' },
   { marker: 'hasBattlePass:!0,huntSession', what: 'the DEV purchase path of the Adventurer Pass, ADVENTURER_PASS_TESTABLE being true (entitlements.ts)' },

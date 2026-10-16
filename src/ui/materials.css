@@ -24,17 +24,7 @@
   border-color: var(--c-gold-300);
 }
 
-/* the question before tradeable units are spent (components/TradeableUseModal.tsx): a small dialog on the work-surface shell */
-.ui-modal.tm-modal {
-  width: min(460px, 100%);
-  height: auto;
-  max-height: 100%;
-}
-.tm-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
+/* the question before tradeable units are spent (components/TradeableUseModal.tsx): a small Dialog */
 .tm-icons {
   display: flex;
   flex-wrap: wrap;
@@ -55,9 +45,4 @@
   height: 100%;
   object-fit: contain;
   image-rendering: pixelated;
-}
-.tm-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
 }

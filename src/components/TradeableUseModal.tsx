@@ -1,7 +1,7 @@
 import { fmtNum, t } from '../locales';
 import { getMaterial, MaterialId } from '../game/materials';
 import type { TradeableMap } from '../game/tradeableMaterials';
-import { Button, ModalShell } from './ui';
+import { Button, Dialog } from './ui';
 import MaterialIcon from './MaterialIcon';
 
 // Asked before the game spends tradeable materials (a recipe, a refine, an order that ran out of normal units) the first time, and every time a stack is sold to an NPC merchant: these units
@@ -10,30 +10,33 @@ export default function TradeableUseModal({ used, npc, onConfirm, onCancel }: { 
   const rows = (Object.entries(used) as [MaterialId, number][]).filter(([, n]) => n > 0);
   const list = rows.map(([id, n]) => t('tradeable.line', { n: fmtNum(n), name: t(`materials.${getMaterial(id)?.nameKey ?? id}`) })).join(', ');
   return (
-    <ModalShell className="tm-modal" title={t(npc ? 'tradeable.useNpcTitle' : 'tradeable.useTitle')} closeLabel={t('tradeable.useCancel')} onClose={onCancel}>
-      <div className="tm-body" role="alertdialog" aria-label={t(npc ? 'tradeable.useNpcTitle' : 'tradeable.useTitle')}>
-        <div className="tm-icons" aria-hidden>
-          {rows.map(([id]) => {
-            const def = getMaterial(id);
-            return (
-              def && (
-                <span key={id} className="tm-icon">
-                  <MaterialIcon item={def} />
-                </span>
-              )
-            );
-          })}
-        </div>
-        <p>{t(npc ? 'tradeable.useNpcText' : 'tradeable.useText', { list })}</p>
-        <div className="tm-actions">
+    <Dialog
+      className="tm-modal"
+      title={t(npc ? 'tradeable.useNpcTitle' : 'tradeable.useTitle')}
+      footer={
+        <>
           <Button variant="primary" block onClick={onConfirm}>
             {t(npc ? 'tradeable.useNpcConfirm' : 'tradeable.useConfirm')}
           </Button>
-          <Button variant="secondary" block onClick={onCancel}>
+          <Button block onClick={onCancel}>
             {t('tradeable.useCancel')}
           </Button>
-        </div>
+        </>
+      }
+    >
+      <div className="tm-icons" aria-hidden>
+        {rows.map(([id]) => {
+          const def = getMaterial(id);
+          return (
+            def && (
+              <span key={id} className="tm-icon">
+                <MaterialIcon item={def} />
+              </span>
+            )
+          );
+        })}
       </div>
-    </ModalShell>
+      <p>{t(npc ? 'tradeable.useNpcText' : 'tradeable.useText', { list })}</p>
+    </Dialog>
   );
 }

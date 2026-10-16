@@ -218,8 +218,8 @@ async function main() {
           await check(`${layer} ${step}`);
           await cdp.eval(
             layer === 'welcome'
-              ? `document.querySelector('.welcome-modal .result-btn').click()`
-              : `(document.querySelector('.tutorial-card .result-btn') ?? document.querySelector('.tutorial-card .tutorial-skip')).click()`,
+              ? `document.querySelector('.welcome-modal .ui-btn.primary').click()`
+              : `(document.querySelector('.tutorial-card .ui-btn.primary') ?? document.querySelector('.tutorial-card .tutorial-skip')).click()`,
           );
           await sleep(500);
         }

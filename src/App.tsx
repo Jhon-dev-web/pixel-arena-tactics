@@ -154,6 +154,8 @@ import './ui/codex.css';
 import './ui/orders.css';
 import './ui/shop.css';
 import './ui/pass.css';
+import './ui/skills.css';
+import './ui/dialogs.css';
 import './ui/settings.css';
 import './ui/materials.css'; // the tradeable-material stack and its question
 

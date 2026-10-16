@@ -347,20 +347,6 @@
   }
 }
 
-/* the skills summary */
-.sk-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--sp-3);
-}
-.sk-summary p {
-  flex: 1 1 200px;
-  font-size: var(--fs-body);
-  color: var(--c-text);
-}
-
 /* titles, skins, frames */
 .titles-body {
   display: flex;
@@ -929,16 +915,6 @@
   background: transparent;
   border-color: var(--c-line);
   cursor: default;
-}
-.bind-confirm {
-  background: rgba(255, 215, 106, 0.08);
-  border: var(--bw-thin) solid var(--c-gold-line);
-  border-radius: var(--r-md);
-  padding: var(--sp-3);
-}
-.bind-confirm-text {
-  color: var(--c-gold-200);
-  font-size: var(--fs-body);
 }
 
 /* a wide screen: the grid and the detail side by side (the Inventory screen) */

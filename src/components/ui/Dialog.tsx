@@ -10,6 +10,7 @@ export default function Dialog({
   footer,
   className = '',
   tone,
+  inline,
   children,
 }: {
   icon?: ReactNode;
@@ -18,17 +19,18 @@ export default function Dialog({
   footer?: ReactNode;
   className?: string;
   tone?: 'win' | 'lose';
+  // Without the dimmed backdrop: the card sits on whatever page holds it (the login gate has its own background).
+  inline?: boolean;
   children: ReactNode;
 }) {
-  return (
-    <div className="modal-backdrop">
-      <div className={`ui-dialog${tone ? ` ${tone}` : ''}${className ? ` ${className}` : ''}`} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
-        <div className="ui-dialog-head">
-          <PageHeader icon={icon} title={title} subtitle={subtitle} />
-        </div>
-        <div className="ui-dialog-body">{children}</div>
-        {footer && <div className="ui-dialog-foot">{footer}</div>}
+  const card = (
+    <div className={`ui-dialog${tone ? ` ${tone}` : ''}${className ? ` ${className}` : ''}`} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
+      <div className="ui-dialog-head">
+        <PageHeader icon={icon} title={title} subtitle={subtitle} />
       </div>
+      <div className="ui-dialog-body">{children}</div>
+      {footer && <div className="ui-dialog-foot">{footer}</div>}
     </div>
   );
+  return inline ? card : <div className="modal-backdrop">{card}</div>;
 }

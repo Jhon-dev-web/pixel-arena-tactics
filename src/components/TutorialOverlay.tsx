@@ -120,28 +120,28 @@ export default function TutorialOverlay({
         aria-label={textKey(step, 'title')}
         style={{ width: cardWidth, left, top }}
       >
-        <h2>{textKey(step, 'title')}</h2>
+        <h2 className="ui-panel-title tutorial-title">{textKey(step, 'title')}</h2>
         <p>{textKey(step, 'body')}</p>
         {isIntro ? (
           <div className="tutorial-actions">
-            <button ref={primaryRef} className="result-btn" onClick={onAdvance} data-ui>
+            <button ref={primaryRef} className="ui-btn primary" onClick={onAdvance} data-ui>
               {t('tutorial.start')}
             </button>
-            <button className="tutorial-skip" onClick={onSkip} data-ui>
+            <button className="ui-btn secondary sm tutorial-skip" onClick={onSkip} data-ui>
               {t('tutorial.skip')}
             </button>
           </div>
         ) : requiresInteraction ? (
           <div className="tutorial-actions">
             <span className="tutorial-action-hint">{t('tutorial.interact')}</span>
-            <button ref={primaryRef} className="tutorial-skip" onClick={onSkip} data-ui>{t('tutorial.skip')}</button>
+            <button ref={primaryRef} className="ui-btn secondary sm tutorial-skip" onClick={onSkip} data-ui>{t('tutorial.skip')}</button>
           </div>
         ) : (
           <div className="tutorial-actions">
-            <button ref={primaryRef} className="result-btn" onClick={onAdvance} data-ui>
+            <button ref={primaryRef} className="ui-btn primary" onClick={onAdvance} data-ui>
               {isFinal ? t('tutorial.finish') : t('tutorial.next')}
             </button>
-            <button className="tutorial-skip" onClick={onSkip} data-ui>{t('tutorial.skip')}</button>
+            <button className="ui-btn secondary sm tutorial-skip" onClick={onSkip} data-ui>{t('tutorial.skip')}</button>
           </div>
         )}
       </section>
