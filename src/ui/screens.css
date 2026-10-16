@@ -1,0 +1,1522 @@
+/* Personagem, Inventário and Forja in the new style (loaded after ui.css / shell.css, reads tokens.css). The shared pieces carry the look; this file is only what is particular to these three screens. */
+
+/* =====================================================================================================================================
+   PERSONAGEM
+   ===================================================================================================================================== */
+.pg-hero {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: center;
+}
+.pg-portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  background: radial-gradient(circle at 50% 38%, rgba(255, 215, 106, 0.12), transparent 65%), var(--c-inset);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-lg);
+}
+.pg-hero-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.pg-hero-name {
+  margin: 0;
+  font-size: var(--fs-xl);
+  color: var(--c-text);
+  text-shadow: 0 2px 0 #000;
+  overflow-wrap: anywhere;
+}
+.pg-hero-title {
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--c-rune);
+}
+.pg-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.pg-hero-chips .ui-tag {
+  font-size: var(--fs-md);
+  padding: 2px var(--sp-3);
+}
+@container ui (max-width: 520px) {
+  .pg-hero {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: var(--sp-3);
+  }
+  .pg-portrait {
+    width: 84px;
+    height: 84px;
+  }
+}
+
+/* the equipment cards */
+.pg-equip-grid {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  margin-top: var(--sp-3);
+}
+.pg-equip-grid:first-child {
+  margin-top: 0;
+}
+.pg-equip.unique {
+  border-color: var(--c-gold-line-strong);
+}
+.pg-equip.empty {
+  opacity: 0.6;
+  border-style: dashed;
+}
+.pg-equip.empty .ui-item-rarity {
+  color: var(--c-text-muted);
+}
+.pg-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.pg-line {
+  font-size: var(--fs-sm);
+  color: var(--c-good);
+}
+.pg-line.damage {
+  color: #ff9a7a;
+}
+.pg-line.critChance,
+.pg-line.critMult {
+  color: var(--c-gold-300);
+}
+.pg-line.resistance {
+  color: var(--c-info);
+}
+.pg-line.sub {
+  color: var(--c-info);
+}
+.hero-durability {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+.hero-durability.worn {
+  color: var(--c-warn);
+}
+.hero-durability.broken {
+  color: var(--c-bad);
+}
+
+/* set bonus lines above the grid */
+.set-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.set-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-left: 3px solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+}
+.set-line.active {
+  border-left-color: var(--c-gold-300);
+}
+.set-line-head {
+  color: var(--c-text);
+}
+.set-line-title {
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+  font-size: var(--fs-xs);
+}
+.set-line-now {
+  color: var(--c-good);
+}
+.set-line-next {
+  color: var(--c-text-muted);
+}
+
+/* attributes column: combat stats, CP strip, points header, attribute rows */
+.combat-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.hero-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.hero-stat-cell,
+.hero-stat-cell.stat-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.hero-stat-cell.stat-cell:hover,
+.hero-stat-cell.stat-cell.open,
+.hero-stat-cell.stat-cell:focus-visible {
+  border-color: var(--c-gold-300);
+  outline: none;
+}
+.hero-stat-cell.stat-cell:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.hero-stat-cell.stat-cell.buffed {
+  border-color: #3f8a55;
+  background: rgba(111, 224, 138, 0.08);
+}
+.hero-stat-cell span:first-child {
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+}
+.hero-stat-cell.stat-cell > span:nth-child(2),
+.hero-stat-cell.stat-cell > span.num-abbr:nth-child(2) {
+  align-self: flex-end;
+  font-size: var(--fs-xl);
+  line-height: 1.05;
+  color: var(--c-gold-300);
+}
+.hero-stat-cell.stat-cell.buffed > span:nth-child(2) {
+  color: var(--c-good);
+}
+.hero-stat-cell.stat-cell .stat-buff {
+  align-self: flex-end;
+  text-align: right;
+  font-size: var(--fs-xs);
+  color: var(--c-good);
+  line-height: 1.3;
+}
+.hero-stat-cell.stat-cell .stat-buff .stat-base {
+  color: var(--c-text-muted);
+}
+.stat-breakdown {
+  padding: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-gold-300);
+  border-radius: var(--r-md);
+}
+.stat-breakdown-title {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-md);
+  color: var(--c-gold-300);
+}
+.stat-lines .stat-val,
+.stat-totals b {
+  color: var(--c-gold-300);
+}
+.stat-note,
+.stat-left,
+.stat-lines .stat-base {
+  color: var(--c-text-muted);
+}
+.stat-breakdown-close {
+  min-height: 34px;
+  margin-top: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--c-gold-200);
+  background: var(--c-gold-fill);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.hero-cp-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-lg);
+  color: var(--c-text-on-gold);
+  background: linear-gradient(180deg, var(--c-gold-300), var(--c-gold-500));
+  border: var(--bw) solid var(--c-gold-700);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-btn);
+}
+.attrs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-md);
+  color: var(--c-gold-300);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.attrs-header.has-points {
+  border-color: var(--c-gold-300);
+  box-shadow: var(--sh-glow);
+}
+.pg-attrs-panel > * + * {
+  margin-top: var(--sp-3);
+}
+.pg-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.pg-attr {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-surface-2);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.pg-attr-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.pg-attr-name {
+  font-size: var(--fs-lg);
+  color: var(--c-text);
+}
+.pg-attr-desc {
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+  color: var(--c-text-muted);
+  overflow-wrap: break-word;
+}
+.pg-attr-ctl {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.pg-attr-val {
+  min-width: 28px;
+  text-align: center;
+  font-size: var(--fs-xl);
+  color: var(--c-gold-300);
+}
+.pg-step {
+  width: 38px;
+  height: 38px;
+  font-family: inherit;
+  font-size: var(--fs-xl);
+  line-height: 1;
+  color: var(--c-gold-200);
+  background: linear-gradient(180deg, #33250f, var(--c-gold-fill));
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.pg-step:hover:not(:disabled) {
+  border-color: var(--c-gold-300);
+}
+.pg-step:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.pg-step:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+@media (pointer: coarse) {
+  .pg-step {
+    width: var(--tap);
+    height: var(--tap);
+  }
+}
+
+/* the skills summary */
+.sk-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+.sk-summary p {
+  flex: 1 1 200px;
+  font-size: var(--fs-md);
+  color: var(--c-text);
+}
+
+/* titles, skins, frames */
+.titles-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 46px;
+  padding: var(--sp-2) var(--sp-3);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  text-align: left;
+  color: var(--c-text-dim);
+  background: var(--c-surface-2);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.title-row:hover:not(:disabled) {
+  border-color: var(--c-gold-line-strong);
+}
+.title-row.active {
+  color: var(--c-gold-200);
+  background: linear-gradient(180deg, #3d2c15, var(--c-gold-fill));
+  border-color: var(--c-gold-300);
+}
+.title-row.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.title-req {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+.title-tag {
+  font-size: var(--fs-xs);
+  padding: 1px var(--sp-2);
+  color: var(--c-good);
+  background: rgba(74, 214, 124, 0.1);
+  border: var(--bw-thin) solid #2f7a46;
+  border-radius: 999px;
+}
+.title-tag.equip {
+  color: var(--c-gold-200);
+  background: var(--c-gold-fill);
+  border-color: var(--c-gold-line);
+}
+.frame-heading {
+  margin: var(--sp-3) 0 var(--sp-1);
+  font-size: var(--fs-sm);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+/* =====================================================================================================================================
+   INVENTARIO (the screen and the panel embedded in Personagem): tabs Mochila / Bau, search + category chips, the grid, the item detail
+   ===================================================================================================================================== */
+.inv-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.inv-pane-tabs {
+  --ui-tabs: 2;
+}
+.inv-pane-tabs .ui-tab {
+  min-height: 40px;
+}
+.inv-panes {
+  display: block;
+  min-width: 0;
+}
+.inv-pane {
+  display: none;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.inv-pane.active {
+  display: flex;
+}
+.inv-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.inventory-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.inventory-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 2px var(--sp-3);
+  font-size: var(--fs-md);
+  color: var(--c-gold-200);
+  background: var(--c-gold-fill);
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: 999px;
+}
+.inventory-summary-chip.over {
+  color: var(--c-bad);
+  border-color: #a03020;
+}
+.inventory-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0 var(--sp-2);
+  font: inherit;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  color: var(--c-gold-200);
+  background: linear-gradient(180deg, #33250f, var(--c-gold-fill));
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.inv-storeall {
+  min-height: 34px;
+  margin-left: auto;
+  padding: 0 var(--sp-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--c-gold-200);
+  background: linear-gradient(180deg, #33250f, var(--c-gold-fill));
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.inv-storeall:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.stash-note {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+  line-height: 1.35;
+}
+
+/* the grid of slots */
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: var(--sp-2);
+  align-content: start;
+  padding: 2px;
+}
+.inv-slot {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: radial-gradient(circle at 50% 35%, #1d1628, var(--c-inset) 75%);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+.inv-slot:hover:not(.empty) {
+  border-color: var(--c-gold-line-strong);
+}
+.inv-slot.empty {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: #241a30;
+  box-shadow: none;
+  cursor: default;
+}
+.inv-slot.rarity-bronze {
+  border-color: var(--tier-bronze);
+}
+.inv-slot.rarity-iron {
+  border-color: var(--tier-iron);
+}
+.inv-slot.rarity-steel {
+  border-color: var(--tier-steel);
+}
+.inv-slot.rarity-dragon {
+  border-color: var(--tier-dragon);
+}
+.inv-slot.rarity-gold {
+  border-color: var(--tier-gold);
+}
+.inv-slot.r-rare {
+  border-color: var(--rar-rare);
+  box-shadow: inset 0 0 8px rgba(74, 214, 124, 0.3);
+}
+.inv-slot.r-epic {
+  border-color: var(--rar-epic);
+  box-shadow: inset 0 0 8px rgba(176, 108, 255, 0.35);
+}
+.inv-slot.r-legendary {
+  border-color: var(--rar-legendary);
+  box-shadow: inset 0 0 8px rgba(255, 169, 64, 0.4);
+}
+.inv-slot.unique {
+  box-shadow: inset 0 0 0 1px var(--c-gold-300), 0 0 6px rgba(255, 200, 80, 0.4);
+}
+.inv-slot.active,
+.inv-slot.active.r-rare,
+.inv-slot.active.r-epic,
+.inv-slot.active.r-legendary {
+  border-color: var(--c-gold-300);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.55), var(--sh-glow);
+}
+.inv-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  font-size: 24px;
+}
+.inv-icon img,
+.inv-icon .pixel-icon,
+.inv-icon .gear-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.inv-icon > .gear-icon-sheet {
+  width: 100%;
+  height: 100%;
+}
+.inv-slot .inv-qty {
+  position: absolute;
+  right: 3px;
+  bottom: 0;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #fff;
+  text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000;
+}
+.inv-trade-tag {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+}
+.inv-nomatch {
+  grid-column: 1 / -1;
+  padding: var(--sp-5) 0;
+  text-align: center;
+  color: var(--c-text-muted);
+}
+
+/* the detail: a sheet over the screen on a phone; beside the grid (wide) or under it (compact) on a big screen */
+.inv-detail-backdrop {
+  display: contents;
+}
+.inv-detail {
+  display: none;
+}
+.inv-detail-backdrop.open {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: var(--sp-3) var(--sp-3) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+  background: rgba(5, 3, 10, 0.72);
+}
+.inv-detail-backdrop.open .inv-detail {
+  display: flex;
+}
+.inv-detail {
+  position: relative;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: min(100%, 600px);
+  max-height: min(78dvh, 680px);
+  overflow-y: auto;
+  padding: var(--sp-4);
+  text-align: left;
+  background: linear-gradient(180deg, var(--c-surface-2), #120b1a);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55), var(--sh-panel);
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-gold-700) transparent;
+}
+.inv-detail-close {
+  position: sticky;
+  top: 0;
+  align-self: flex-end;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  margin: -6px -6px 0 0;
+  font: inherit;
+  color: var(--c-gold-200);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.inv-detail-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: var(--fs-lg);
+  color: var(--c-text);
+}
+.inv-detail-icon,
+.inv-detail-name > .mat-icon-img {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 5px;
+  background: radial-gradient(circle at 50% 35%, #1d1628, var(--c-inset) 75%);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.inv-detail-icon .gear-icon-img,
+.inv-detail-icon .pixel-icon,
+.inv-detail-name > .mat-icon-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.inv-detail-icon > .gear-icon-sheet {
+  width: 100%;
+  height: 100%;
+}
+.inv-detail-name-text {
+  flex: 1 1 120px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.inv-detail-name .inv-qty {
+  font-size: var(--fs-md);
+  color: var(--c-gold-300);
+}
+.inv-detail-desc {
+  font-size: var(--fs-md);
+  color: var(--c-text-dim);
+}
+.inv-detail-empty {
+  margin: auto;
+  padding: var(--sp-5) 0;
+  font-size: var(--fs-md);
+  color: var(--c-text-muted);
+  text-align: center;
+}
+.refine-tag {
+  color: var(--c-gold-300);
+}
+.gear-stat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.gear-stat {
+  font-size: var(--fs-md);
+  color: var(--c-good);
+}
+.gear-stat-damage {
+  color: #ff9a7a;
+}
+.gear-stat-critChance,
+.gear-stat-critMult {
+  color: var(--c-gold-300);
+}
+.gear-stat-resistance {
+  color: var(--c-info);
+}
+.rarity-line {
+  font-size: var(--fs-md);
+  color: var(--rar-common);
+}
+.rarity-line.r-rare {
+  color: var(--rar-rare);
+}
+.rarity-line.r-epic {
+  color: var(--rar-epic);
+}
+.rarity-line.r-legendary {
+  color: var(--rar-legendary);
+}
+.substat-line {
+  font-size: var(--fs-sm);
+  color: var(--c-info);
+}
+.trade-line {
+  font-size: var(--fs-sm);
+}
+.set-note {
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+}
+.salvage-hint,
+.merchant-line,
+.item-uses-title,
+.qty-units {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+  line-height: 1.35;
+}
+.salvage-hint.bad {
+  color: var(--c-bad);
+}
+.salvage-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+}
+.req-amount {
+  color: var(--c-text);
+}
+.req-amount.missing {
+  color: var(--c-bad);
+}
+
+/* the buttons inside the detail wear the two shared looks */
+.inv-detail .craft-btn,
+.inv-sell,
+.inv-detail .reforge-btn,
+.inv-detail .salvage-btn,
+.inv-store,
+.inv-discard {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 40px;
+  margin-top: 0;
+  padding: var(--sp-1) var(--sp-3);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  font-weight: 400;
+  line-height: 1.2;
+  text-transform: none;
+  white-space: normal;
+  text-align: center;
+  border-radius: var(--r-md);
+  border: var(--bw) solid var(--c-gold-line-strong);
+  cursor: pointer;
+}
+.inv-detail .craft-btn,
+.inv-sell {
+  color: var(--c-text-on-gold);
+  background: linear-gradient(180deg, var(--c-gold-300), var(--c-gold-500));
+  border-color: var(--c-gold-700);
+  box-shadow: var(--sh-btn);
+}
+.inv-detail .craft-btn.equipped,
+.inv-detail .reforge-btn,
+.inv-detail .salvage-btn,
+.inv-store {
+  color: var(--c-gold-300);
+  background: linear-gradient(180deg, #33250f, var(--c-gold-fill));
+  border-color: var(--c-gold-line-strong);
+  box-shadow: var(--sh-btn-dark);
+}
+.inv-discard {
+  color: var(--c-bad);
+  background: linear-gradient(180deg, #2f1416, #1d0d10);
+  border-color: #a8362f;
+  box-shadow: var(--sh-btn-dark);
+}
+.inv-discard.confirm,
+.inv-detail .salvage-btn.confirm {
+  color: var(--c-text-on-gold);
+  background: #ff6a55;
+  border-color: #a03020;
+}
+.inv-sell.confirm {
+  background: #ff9a3c;
+}
+.inv-detail .craft-btn:disabled,
+.inv-sell:disabled,
+.inv-detail .reforge-btn:disabled,
+.inv-detail .salvage-btn:disabled,
+.inv-store:disabled,
+.inv-discard:disabled {
+  opacity: 1;
+  filter: grayscale(0.85) brightness(0.6);
+  cursor: not-allowed;
+}
+.inv-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.inv-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.inv-actions-row > button {
+  flex: 1 1 120px;
+}
+.stack-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+.qty-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.qty-btn {
+  min-height: 34px;
+  padding: 0 var(--sp-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.qty-btn.active {
+  color: var(--c-text-on-gold);
+  background: linear-gradient(180deg, var(--c-gold-300), var(--c-gold-500));
+  border-color: var(--c-gold-700);
+}
+.item-use {
+  min-height: 32px;
+  padding: 0 var(--sp-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--c-info);
+  background: rgba(46, 134, 222, 0.12);
+  border: var(--bw-thin) solid #2e5f94;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.item-use.note {
+  color: var(--c-text-muted);
+  background: transparent;
+  border-color: var(--c-line);
+  cursor: default;
+}
+.bind-confirm {
+  background: rgba(255, 215, 106, 0.08);
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+}
+.bind-confirm-text {
+  color: var(--c-gold-200);
+  font-size: var(--fs-md);
+}
+
+/* a wide screen: the grid and the detail side by side (the Inventory screen) */
+@media (min-width: 900px) {
+  .inv-root.wide {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+    gap: var(--sp-4);
+  }
+  .inv-root.wide > .ui-tabs,
+  .inv-root.wide > .inv-panes {
+    grid-column: 1;
+  }
+  .inv-root.wide .inv-detail-backdrop,
+  .inv-root.wide .inv-detail-backdrop.open {
+    position: sticky;
+    top: 0;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: block;
+    padding: 0;
+    background: none;
+    z-index: auto;
+  }
+  .inv-root.wide .inv-detail,
+  .inv-root.wide .inv-detail-backdrop.open .inv-detail {
+    display: flex;
+    width: 100%;
+    max-height: calc(min(90vh, 880px) - 150px);
+    box-shadow: var(--sh-panel);
+  }
+  .inv-root.wide .inv-detail-close {
+    display: none;
+  }
+}
+/* embedded in Personagem on a big screen: the detail sits under the grid */
+@media (min-width: 1024px) {
+  .inv-root.compact .inv-detail-backdrop,
+  .inv-root.compact .inv-detail-backdrop.open {
+    position: static;
+    display: block;
+    padding: 0;
+    background: none;
+    z-index: auto;
+  }
+  .inv-root.compact .inv-detail,
+  .inv-root.compact .inv-detail-backdrop.open .inv-detail {
+    display: flex;
+    width: 100%;
+    max-height: none;
+    box-shadow: var(--sh-panel);
+  }
+  .inv-root.compact .inv-detail-close {
+    display: none;
+  }
+}
+@media (max-width: 599px) {
+  .inv-grid {
+    grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+  }
+}
+
+/* =====================================================================================================================================
+   FORJA: tabs, the recipe browser as cards, the craft panel on the right; the upgrade / repair / gems lists
+   ===================================================================================================================================== */
+.fg-root {
+  container: ui / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.fg-tabs .ui-tab-icon img {
+  width: 22px;
+  height: 22px;
+}
+.fg-layout {
+  gap: var(--sp-4);
+}
+.fg-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.fg-space {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+.fg-recipes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--sp-2);
+}
+.fg-recipe {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+.fg-recipe:hover {
+  border-color: var(--c-gold-line-strong);
+}
+.fg-recipe.selected {
+  border-color: var(--c-gold-300);
+  background: linear-gradient(180deg, #3a2a14, #1e150b);
+  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.35);
+}
+.fg-recipe.focus:not(.selected) {
+  border-color: var(--c-info);
+}
+.fg-recipe.rarity-bronze .ui-frame {
+  border-color: var(--tier-bronze);
+}
+.fg-recipe.rarity-iron .ui-frame {
+  border-color: var(--tier-iron);
+}
+.fg-recipe.rarity-steel .ui-frame {
+  border-color: var(--tier-steel);
+}
+.fg-recipe.rarity-dragon .ui-frame {
+  border-color: var(--tier-dragon);
+}
+.fg-recipe.rarity-gold .ui-frame {
+  border-color: var(--tier-gold);
+}
+.fg-recipe-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.fg-recipe-name {
+  font-size: var(--fs-md);
+  line-height: var(--lh-tight);
+  color: var(--c-text);
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+}
+.fg-recipe-stats {
+  font-size: var(--fs-sm);
+  line-height: 1.25;
+  color: var(--c-text-muted);
+  overflow-wrap: break-word;
+}
+.fg-ready {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: var(--fs-md);
+  line-height: 1;
+  color: var(--c-good);
+  text-shadow: 0 1px 0 #000;
+}
+.gear-material {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+}
+.gear-material.bronze {
+  color: var(--tier-bronze);
+}
+.gear-material.iron {
+  color: var(--tier-iron);
+}
+.gear-material.steel {
+  color: var(--tier-steel);
+}
+.gear-material.dragon {
+  color: var(--tier-dragon);
+}
+.gear-material.gold {
+  color: var(--tier-gold);
+}
+.gear-material.obsidian {
+  color: var(--rar-epic);
+}
+.rarity-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* the craft panel (right column on a wide screen, under the list on a narrow one) */
+.fg-panel-wrap {
+  position: sticky;
+  top: 0;
+  min-width: 0;
+}
+.fg-panel .ui-panel-head {
+  align-items: center;
+}
+.fg-panel .ui-panel-title {
+  font-size: var(--fs-md);
+  line-height: 1.3;
+}
+.fg-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.fg-desc {
+  font-size: var(--fs-md);
+  color: var(--c-text-dim);
+}
+.fg-reqs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.fg-req {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: var(--fs-md);
+}
+.fg-req-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 18px;
+}
+.fg-req-icon img,
+.fg-req-icon .pixel-icon,
+.fg-req-icon .gear-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.fg-req-icon .mat-icon {
+  width: 100%;
+  height: 100%;
+}
+.fg-req-label {
+  flex: 1 1 100px;
+  min-width: 0;
+  color: var(--c-text-dim);
+  overflow-wrap: break-word;
+}
+.fg-req-qty {
+  flex: 0 0 auto;
+  color: var(--c-good);
+}
+.fg-req-qty.missing {
+  color: var(--c-bad);
+}
+.fg-req .stash-hint {
+  flex: 0 0 100%;
+  margin: 0 0 0 34px;
+}
+.craft-bag-full {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--c-bad);
+}
+.forge-seal-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  font: inherit;
+  text-align: left;
+  color: var(--c-text-dim);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.forge-seal-toggle.on {
+  color: var(--c-gold-200);
+  border-color: var(--c-gold-300);
+  background: var(--c-gold-fill);
+}
+.forge-seal-icon {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+.forge-seal-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.forge-seal-hint {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+.forge-seal-state {
+  font-size: var(--fs-sm);
+  color: var(--c-gold-300);
+}
+.forge-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.forge-confirm-name {
+  color: var(--c-text);
+}
+.forge-confirm-gems {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--c-info);
+}
+.ui-btn.forged {
+  color: #0c1f12;
+  background: linear-gradient(180deg, #8bf0a6, #3fbf64);
+  border-color: #2a8a46;
+}
+
+/* the lists of the other tabs: a card per piece, the actions on the right */
+.fg-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.fg-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.fg-card.rarity-bronze .ui-frame {
+  border-color: var(--tier-bronze);
+}
+.fg-card.rarity-iron .ui-frame {
+  border-color: var(--tier-iron);
+}
+.fg-card.rarity-steel .ui-frame {
+  border-color: var(--tier-steel);
+}
+.fg-card.rarity-dragon .ui-frame {
+  border-color: var(--tier-dragon);
+}
+.fg-card.rarity-gold .ui-frame {
+  border-color: var(--tier-gold);
+}
+.fg-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.fg-card-info .craft-name {
+  font-size: var(--fs-lg);
+  color: var(--c-text);
+  overflow-wrap: break-word;
+}
+.fg-card-info .craft-desc {
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+}
+.fg-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 140px;
+}
+.fg-card .craft-req {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+}
+.fg-card .req-item {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+}
+.fg-card .req-plus {
+  color: var(--c-text-muted);
+}
+.upgrade-chance {
+  font-size: var(--fs-sm);
+  color: var(--c-warn);
+}
+.upgrade-chance.deep-note {
+  color: var(--c-text-muted);
+}
+.socket-count {
+  color: var(--c-text-muted);
+}
+.durability-text {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--c-good);
+}
+.durability-text.worn {
+  color: var(--c-warn);
+}
+.durability-text.broken {
+  color: var(--c-bad);
+}
+.durability-bar {
+  width: 100%;
+  max-width: 320px;
+  height: 8px;
+  background: var(--c-inset);
+  border: 1px solid #000;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+}
+.durability-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #a8e06a, #5aa02a);
+}
+.durability-fill.worn {
+  background: linear-gradient(180deg, #ffd54a, #c9961a);
+}
+.durability-fill.broken {
+  background: #ff5f4a;
+}
+.repair-cost {
+  font-size: var(--fs-sm);
+}
+.repair-discount-tag {
+  color: var(--c-good);
+}
+.socket-slots {
+  display: flex;
+  gap: var(--sp-2);
+}
+.socket {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+}
+.socket.filled {
+  border-color: var(--c-gold-line-strong);
+  cursor: pointer;
+}
+.socket .inline-icon {
+  width: 26px;
+  height: 26px;
+}
+.socket-none {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+.socket-gem-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.socket-gem-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  font: inherit;
+  text-align: left;
+  color: var(--c-text);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.socket-gem-btn:hover {
+  border-color: var(--c-gold-300);
+}
+.socket-gem-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.socket-gem-effect {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+}
+.socket-gem-qty {
+  color: var(--c-gold-300);
+}
+.gem-library {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.gem-library-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.gem-library-top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.gem-library-owned {
+  color: var(--c-gold-300);
+}
+.gem-desc {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+@container ui (max-width: 640px) {
+  .fg-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .fg-card-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .fg-card-actions > .ui-btn {
+    flex: 1 1 140px;
+  }
+  .fg-recipes {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+@container ui (min-width: 980px) {
+  .fg-layout.has-side {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fg-recipe {
+    transition: none;
+  }
+}
+
+/* the "with this item" comparison under a piece (inventory detail, forge) */
+.item-compare {
+  gap: 2px var(--sp-3);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+  background: var(--c-inset);
+  border: var(--bw-thin) dashed var(--c-line-strong);
+  border-radius: var(--r-md);
+}
+.item-compare-lead,
+.item-compare-set {
+  color: var(--c-text-muted);
+}
+.item-compare-chg.up {
+  color: var(--c-good);
+}
+.item-compare-chg.down {
+  color: var(--c-bad);
+}

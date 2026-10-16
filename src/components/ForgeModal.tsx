@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
 import { effectiveRepairCost, playerLevel, SaveData } from '../game/engine';
@@ -29,7 +29,7 @@ import {
 } from '../game/gearInstances';
 import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import { rarityDef } from '../game/rarity';
-import { gearInstanceLabel, refineTag } from './gearLabel';
+import { gearInstanceLabel } from './gearLabel';
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
 import { GEMS, GemId, getGem, hasGems, socketsForTier } from '../game/gems';
 import { getConsumable } from '../game/consumables';
@@ -43,6 +43,8 @@ import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
 import StashHint from './StashHint';
 import ConsumableIcon from './ConsumableIcon';
+import { ChipRow, ItemFrame, ModalShell, Panel, PrimaryButton, ScreenLayout, SecondaryButton, Tabs } from './ui';
+import type { TabItem } from './ui';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -67,6 +69,19 @@ function rarityIcon(key: string): string {
 }
 
 const rarityClass = (g: GearItem): string => `rarity-${g.materialKey?.replace('material_', '') ?? 'default'}`;
+
+// One requirement of a recipe in the craft panel: what the hero has against what it takes.
+interface ReqRow {
+  key: string;
+  icon: ReactNode;
+  label: string;
+  have: number;
+  need: number;
+  // a threshold (the hero level): shown as the number it takes, not "have / need"
+  plain?: boolean;
+  // a material that may sit in the Baú: the hint that says so
+  stash?: string;
+}
 
 export type ForgeTab = 'forge' | 'upgrade' | 'repair' | 'socket';
 const ALL_TABS: ForgeTab[] = ['forge', 'upgrade', 'repair', 'socket'];
@@ -109,7 +124,6 @@ export default function ForgeModal({
   reveal = null,
   allowedTabs = ALL_TABS,
   title,
-  icon = '⚒️',
   initialTab,
   focusItemId,
 }: {
@@ -125,19 +139,26 @@ export default function ForgeModal({
   reveal?: ForgeReveal | null;
   allowedTabs?: ForgeTab[];
   title?: string;
-  icon?: string;
   // Opened from an item's "Usar em...": the tab to start on and the recipe to bring into view (its category opens and the card is highlighted).
   initialTab?: ForgeTab;
   focusItemId?: string;
 }) {
   const focusItem = focusItemId ? getGear(focusItemId) : undefined;
   const [tab, setTab] = useState<ForgeTab>(initialTab && allowedTabs.includes(initialTab) ? initialTab : allowedTabs[0] ?? 'forge');
-  const [forgeCategory, setForgeCategory] = useState<ForgeCategory>(() => (focusItem && FORGE_CATEGORIES.includes(categoryOf(focusItem)) ? categoryOf(focusItem) : 'weapon'));
+  const [forgeCategory, setForgeCategoryRaw] = useState<ForgeCategory>(() => (focusItem && FORGE_CATEGORIES.includes(categoryOf(focusItem)) ? categoryOf(focusItem) : 'weapon'));
+  // a category change drops the picked recipe: the panel falls back to the first of the new category
+  const setForgeCategory = (cat: ForgeCategory) => {
+    setForgeCategoryRaw(cat);
+    setSelectedId(null);
+  };
   useEffect(() => {
     if (!focusItemId) return;
     document.querySelector(`[data-recipe-id="${focusItemId}"]`)?.scrollIntoView({ block: 'center' });
   }, [focusItemId]);
   const [justForged, setJustForged] = useState<string | null>(null);
+  // the recipe shown in the craft panel (the first of the category until one is picked)
+  const [selectedId, setSelectedId] = useState<string | null>(focusItemId ?? null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [pendingForge, setPendingForge] = useState<{ id: string; ids: string[] } | null>(null);
   // Blacksmith's Seal (season reward): the toggle is on offer only while one is held; the forge spends it only when the forge really happens (gearInstances.applyForge).
   const sealCount = save.consumables?.forge_seal ?? 0;
@@ -204,238 +225,221 @@ export default function ForgeModal({
     );
   };
 
+  // The recipe the craft panel shows: the picked one, else (a category change, first open) the first of the category; `focusItemId` (from "Usar em...") starts on its recipe.
+  const categoryItems = forgeRecipes(forgeCategory);
+  const current = categoryItems.find((i) => i.id === selectedId) ?? categoryItems[0] ?? null;
+  const pickRecipe = (id: string) => {
+    setSelectedId(id);
+    // on a narrow screen the craft panel sits under the list: bring it into view
+    if (window.matchMedia('(max-width: 1100px)').matches) window.setTimeout(() => panelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
+  };
+
+  // the requirement rows of a recipe: what the player has against what it takes
+  const reqRows = (item: GearItem): ReqRow[] => {
+    const rows: ReqRow[] = [{ key: 'gold', icon: <img src={Assets.icons.gold.url} alt="" />, label: t('inventory.reforgeGold'), have: save.gold, need: item.cost }];
+    if ((item.recipe?.requiredLevel ?? 0) > 0) rows.push({ key: 'level', icon: <span>⭐</span>, label: t('forge.levelReq', { n: item.recipe?.requiredLevel ?? 0 }), have: level, need: item.recipe?.requiredLevel ?? 0, plain: true });
+    for (const [itemId, count] of Object.entries(item.recipe?.items ?? {})) {
+      const g = getGear(itemId);
+      rows.push({ key: `item-${itemId}`, icon: <GearIcon item={g} />, label: gearText(g.nameKey), have: countUsableInstances(save, itemId), need: count as number });
+    }
+    for (const [mid, count] of Object.entries(item.recipe?.materials ?? {})) {
+      rows.push({ key: `mat-${mid}`, icon: <MaterialIcon item={getMaterial(mid as MaterialId)!} />, label: matText(`mat_${mid}`), have: save.materials[mid as MaterialId] ?? 0, need: count as number, stash: mid });
+    }
+    for (const [gid, count] of Object.entries(item.recipe?.gems ?? {})) {
+      const g = getGem(gid);
+      rows.push({ key: `gem-${gid}`, icon: g ? <GemIcon item={g} /> : <span>💎</span>, label: g ? gemText(g.nameKey) : gid, have: save.gems[gid as GemId] ?? 0, need: count as number });
+    }
+    if ((item.recipe?.shards ?? 0) > 0) rows.push({ key: 'shards', icon: <img src="/assets/icons/shards.png" alt="" />, label: t('ui.shardsX', { n: '' }).replace(/[\d\s×x]+/g, '').trim() || t('inventory.reforgeShard'), have: save.shards, need: item.recipe?.shards ?? 0 });
+    return rows;
+  };
+
+  const tabItems: TabItem<ForgeTab>[] = [
+    { id: 'forge', label: t('forge.forgeTab'), icon: <img src="/assets/icons/steel.png" alt="" /> },
+    { id: 'upgrade', label: t('forge.upgradeTab'), icon: <img src="/assets/icons/refine_catalyst.png" alt="" /> },
+    { id: 'repair', label: t('forge.repairTab'), icon: <img src="/assets/icons/repair_kit.png" alt="" /> },
+    { id: 'socket', label: t('forge.socketTab'), icon: <img src="/assets/icons/gem_ruby.png" alt="" /> },
+  ].filter((it) => allowedTabs.includes(it.id as ForgeTab)) as TabItem<ForgeTab>[];
+
   return (
-    <div className="modal-backdrop">
-      <div className="modal forge-modal" data-tutorial-target="forge-modal">
-        <h2 className="modal-title">
-          {/* A 15px inline sword sprite reads as a stray "!"/vertical dash at this size (confirmed
-              live — it loads fine, it's just illegible that small), not worth the misread risk for
-              a purely decorative title icon. Reuse the hammer emoji already used for Forge elsewhere. */}
-          <span className="inline-icon-emoji">{icon}</span> {title ?? t('forge.title')}
-        </h2>
-        <p className="shop-gold">{t('ui.owned', { n: fmtNum(save.gold) })}</p>
+    <ModalShell
+      className="forge-modal"
+      tutorialTarget="forge-modal"
+      icon={<img className="pixel-icon" src="/assets/icons/steel.png" alt="" />}
+      title={title ?? t('forge.title')}
+      subtitle={t('ui.owned', { n: fmtNum(save.gold) })}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <div className="fg-root">
         {reveal && (
           <div key={reveal.id} className={`forge-reveal reveal rv-${reveal.tone}`} role="status">
             {reveal.text}
           </div>
         )}
 
-        {allowedTabs.length > 1 && (
-        <div className="forge-tabs">
-          {allowedTabs.includes('forge') && (
-            <button className={`tab${tab === 'forge' ? ' active' : ''}`} onClick={() => setTab('forge')} data-ui>
-              {t('forge.forgeTab')}
-            </button>
-          )}
-          {allowedTabs.includes('upgrade') && (
-            <button className={`tab${tab === 'upgrade' ? ' active' : ''}`} onClick={() => setTab('upgrade')} data-ui>
-              {t('forge.upgradeTab')}
-            </button>
-          )}
-          {allowedTabs.includes('repair') && (
-            <button className={`tab${tab === 'repair' ? ' active' : ''}`} onClick={() => setTab('repair')} data-ui>
-              {t('forge.repairTab')}
-            </button>
-          )}
-          {allowedTabs.includes('socket') && (
-            <button className={`tab${tab === 'socket' ? ' active' : ''}`} onClick={() => setTab('socket')} data-ui>
-              <img className="inline-icon" src="/assets/icons/gem_ruby.png" alt="" /> {t('forge.socketTab')}
-            </button>
-          )}
-        </div>
-        )}
+        {tabItems.length > 1 && <Tabs<ForgeTab> items={tabItems} value={tab} onChange={setTab} label={title ?? t('forge.title')} className="fg-tabs" />}
 
         {tab === 'forge' && (
-          <div className="forge-body">
-            <p className="shop-space">{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</p>
-            {pendingForge && (
-              <div className="salvage-preview forge-confirm">
-                <span className="salvage-preview-label">{t('forge.confirmIngredients')}</span>
-                {pendingForge.ids
-                  .filter((id) => save.gearInstances[id])
-                  .map((id) => (
-                    <span className="floor-drop forge-confirm-item" key={id}>
-                      <span className="forge-confirm-name">
-                        {gearInstanceLabel(save.gearInstances[id])}
-                        <UniqueTag templateId={save.gearInstances[id].templateId} />
-                      </span>
-                      {save.gearInstances[id].sockets.length > 0 && (
-                        <span className="forge-confirm-gems">
-                          {t('forge.gemsBack', {
-                            list: save.gearInstances[id].sockets.map((g) => gemText(getGem(g)?.nameKey ?? g)).join(', '),
-                          })}
-                        </span>
-                      )}
-                    </span>
-                  ))}
-                <button
-                  className="craft-btn forge"
-                  onClick={() => {
-                    const p = pendingForge;
-                    setPendingForge(null);
-                    doForge(p.id, p.ids);
-                  }}
-                  data-ui
-                >
-                  {t('forge.confirmForge')}
-                </button>
-                <button className="craft-btn" onClick={() => setPendingForge(null)} data-ui>
-                  {t('forge.cancel')}
-                </button>
-              </div>
-            )}
-            <div className="forge-tabs forge-category-tabs">
-              {FORGE_CATEGORIES.map((cat) => {
-                const count = forgeRecipes(cat).length;
-                return (
-                  <button
-                    key={cat}
-                    className={`tab${forgeCategory === cat ? ' active' : ''}`}
-                    onClick={() => setForgeCategory(cat)}
-                    data-ui
-                  >
-                    {t(`forge.${CATEGORY_LABEL_KEY[cat]}`)} ({count})
-                  </button>
-                );
-              })}
-            </div>
-            {sealCount > 0 && forgeCategory !== 'relic' && (
-              <button className={`forge-seal-toggle${sealOn ? ' on' : ''}`} onClick={() => setSealOn(!sealOn)} aria-pressed={sealOn} data-ui>
-                <img className="forge-seal-icon" src="/assets/icons/forge_seal.png" alt="" />
-                <span className="forge-seal-text">
-                  <span className="forge-seal-name">{t('forge.useSeal')}</span>
-                  <span className="forge-seal-hint">{t('forge.sealHint', { n: sealCount })}</span>
-                </span>
-                <span className="forge-seal-state">{sealOn ? t('forge.sealOn') : t('forge.sealOff')}</span>
-              </button>
-            )}
-            {(() => {
-              const items = forgeRecipes(forgeCategory);
-              if (items.length === 0) {
-                return <span className="socket-none">{t('forge.noCategoryRecipes')}</span>;
-              }
-              return (
-                <div className="gear-section">
-                  {items.map((item) => {
-                    const ok = canForge(item);
-                    const forged = justForged === item.id;
-                    return (
-                      <div className={`craft-card ${rarityClass(item)}${item.id === focusItemId ? ' focus' : ''}`} key={item.id} data-recipe-id={item.id}>
-                        <span className="craft-icon">
-                          <GearIcon item={item} />
-                        </span>
-                        <div className="craft-info">
-                          <div className="craft-header">
-                            <span className="craft-name">{gearText(item.nameKey)}</span>
+          <ScreenLayout
+            className="fg-layout"
+            main={
+              <>
+                <div className="fg-toolbar">
+                  <ChipRow<ForgeCategory>
+                    className="fg-categories"
+                    label={t('forge.forgeTab')}
+                    value={forgeCategory}
+                    onChange={setForgeCategory}
+                    items={FORGE_CATEGORIES.map((cat) => ({ id: cat, label: `${t(`forge.${CATEGORY_LABEL_KEY[cat]}`)} (${forgeRecipes(cat).length})` }))}
+                  />
+                  <span className="fg-space">{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
+                </div>
+                {categoryItems.length === 0 ? (
+                  <span className="socket-none">{t('forge.noCategoryRecipes')}</span>
+                ) : (
+                  <div className="fg-recipes">
+                    {categoryItems.map((item) => {
+                      const ok = canForge(item);
+                      const selected = current?.id === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          className={`fg-recipe ${rarityClass(item)}${selected ? ' selected' : ''}${ok ? ' ok' : ''}${item.id === focusItemId ? ' focus' : ''}`}
+                          onClick={() => pickRecipe(item.id)}
+                          aria-pressed={selected}
+                          data-recipe-id={item.id}
+                          data-ui
+                        >
+                          <ItemFrame>
+                            <GearIcon item={item} />
+                          </ItemFrame>
+                          <span className="fg-recipe-text">
+                            <span className="fg-recipe-name">{gearText(item.nameKey)}</span>
                             {item.materialKey && (
                               <span className={`gear-material ${item.materialKey.replace('material_', '')}`}>
-                                {rarityIcon(item.materialKey) && (
-                                  <img className="rarity-icon" src={rarityIcon(item.materialKey)} alt="" />
-                                )}
+                                {rarityIcon(item.materialKey) && <img className="rarity-icon" src={rarityIcon(item.materialKey)} alt="" />}
                                 {gearText(item.materialKey)}
                               </span>
                             )}
-                          </div>
-                          <span className="craft-desc">{gearText(item.descKey)}</span>
-                          <span className="craft-stats">{gearStatLines(item).map((l) => l.text).join(' · ')}</span>
-                          <AppearanceLine item={item} />
-                          <SetNote item={item} save={save} />
-                          <ItemCompare save={save} slot={item.slot} templateId={item.id} />
-                          {blockedByBag(item) && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
-                          <div className="craft-req">
-                            <span className="req-item">
-                              <span className="mat-icon">
-                                <img src={Assets.icons.gold.url} alt="" />
-                              </span>
-                              <span className={`req-amount${save.gold < item.cost ? ' missing' : ''}`}>{fmtNum(item.cost)}</span>
+                            <span className="fg-recipe-stats">{gearStatLines(item).map((l) => l.text).join(' · ')}</span>
+                          </span>
+                          {ok && (
+                            <span className="fg-ready" aria-hidden>
+                              ✓
                             </span>
-                            {(item.recipe?.requiredLevel ?? 0) > 0 && (
-                              <span className="req-item">
-                                <span className="req-plus">+</span>
-                                <span className="mat-icon level">⭐</span>
-                                <span className={`req-amount${level < (item.recipe?.requiredLevel ?? 0) ? ' missing' : ''}`}>
-                                  {t('forge.levelReq', { n: item.recipe?.requiredLevel ?? 0 })}
-                                </span>
-                              </span>
-                            )}
-                            {Object.entries(item.recipe?.items ?? {}).map(([itemId, count]) => {
-                              const need = count as number;
-                              const have = countUsableInstances(save, itemId);
-                              const g = getGear(itemId);
-                              return (
-                                <span className="req-item" key={`item-${itemId}`}>
-                                  <span className="req-plus">+</span>
-                                  <span className="mat-icon">
-                                    <GearIcon item={g} />
-                                  </span>
-                                  <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                                    {gearText(g.nameKey)}: {fmtNum(have)}/{fmtNum(need)}
-                                  </span>
-                                </span>
-                              );
-                            })}
-                            {Object.entries(item.recipe?.materials ?? {}).map(([mid, count]) => {
-                              const need = count as number;
-                              const have = save.materials[mid as MaterialId] ?? 0;
-                              return (
-                                <span className="req-item" key={`mat-${mid}`}>
-                                  <span className="req-plus">+</span>
-                                  <span className="mat-icon">
-                                    <MaterialIcon item={getMaterial(mid as MaterialId)!} />
-                                  </span>
-                                  <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                                    {need}× {matText(`mat_${mid}`)}
-                                  </span>
-                                  <StashHint kind="material" id={mid} need={need} />
-                                </span>
-                              );
-                            })}
-                            {Object.entries(item.recipe?.gems ?? {}).map(([gid, count]) => {
-                              const need = count as number;
-                              const have = save.gems[gid as GemId] ?? 0;
-                              const g = getGem(gid);
-                              return (
-                                <span className="req-item" key={`gem-${gid}`}>
-                                  <span className="req-plus">+</span>
-                                  <span className="mat-icon">{g ? <GemIcon item={g} /> : '💎'}</span>
-                                  <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                                    {need}× {g ? gemText(g.nameKey) : gid}
-                                  </span>
-                                </span>
-                              );
-                            })}
-                            {(item.recipe?.shards ?? 0) > 0 && (
-                              <span className="req-item">
-                                <span className="req-plus">+</span>
-                                <span className="mat-icon shard">
-                                  <img src="/assets/icons/shards.png" alt="" />
-                                </span>
-                                <span className={`req-amount${save.shards < (item.recipe?.shards ?? 0) ? ' missing' : ''}`}>
-                                  {t('ui.shardsX', { n: item.recipe?.shards ?? 0 })}
-                                </span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          className={`craft-btn forge${forged ? ' forged' : ''}`}
-                          onClick={() => handleForge(item.id)}
-                          disabled={!ok}
-                          data-ui
-                        >
-                          {forged ? t('forge.forged') : t('forge.forge')}
+                          )}
                         </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            }
+            side={
+              current && (
+                <div className="fg-panel-wrap" ref={panelRef}>
+                  <Panel
+                    title={gearText(current.nameKey)}
+                    className={`fg-panel ${rarityClass(current)}`}
+                    icon={
+                      <ItemFrame size="md">
+                        <GearIcon item={current} />
+                      </ItemFrame>
+                    }
+                  >
+                    <div className="fg-panel-body">
+                      <p className="fg-desc">{gearText(current.descKey)}</p>
+                      <div className="gear-stat-list">
+                        {gearStatLines(current).map((l) => (
+                          <span className={`gear-stat gear-stat-${l.kind}`} key={l.kind}>
+                            {l.text}
+                          </span>
+                        ))}
                       </div>
-                    );
-                  })}
+                      <AppearanceLine item={current} />
+                      <SetNote item={current} save={save} />
+                      <ItemCompare save={save} slot={current.slot} templateId={current.id} />
+
+                      <div className="fg-reqs" role="list">
+                        {reqRows(current).map((r) => {
+                          const short = r.have < r.need;
+                          return (
+                            <div className="fg-req" role="listitem" key={r.key}>
+                              <span className="fg-req-icon" aria-hidden>
+                                {r.icon}
+                              </span>
+                              <span className="fg-req-label">{r.label}</span>
+                              <span className={`fg-req-qty${short ? ' missing' : ''}`}>
+                                {r.plain ? `${fmtNum(r.need)}` : `${fmtNum(r.have)} / ${fmtNum(r.need)}`}
+                              </span>
+                              {r.stash && <StashHint kind="material" id={r.stash} need={r.need} />}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {blockedByBag(current) && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
+
+                      {sealCount > 0 && forgeCategory !== 'relic' && (
+                        <button className={`forge-seal-toggle${sealOn ? ' on' : ''}`} onClick={() => setSealOn(!sealOn)} aria-pressed={sealOn} data-ui>
+                          <img className="forge-seal-icon" src="/assets/icons/forge_seal.png" alt="" />
+                          <span className="forge-seal-text">
+                            <span className="forge-seal-name">{t('forge.useSeal')}</span>
+                            <span className="forge-seal-hint">{t('forge.sealHint', { n: sealCount })}</span>
+                          </span>
+                          <span className="forge-seal-state">{sealOn ? t('forge.sealOn') : t('forge.sealOff')}</span>
+                        </button>
+                      )}
+
+                      {pendingForge && (
+                        <div className="salvage-preview forge-confirm">
+                          <span className="salvage-preview-label">{t('forge.confirmIngredients')}</span>
+                          {pendingForge.ids
+                            .filter((id) => save.gearInstances[id])
+                            .map((id) => (
+                              <span className="floor-drop forge-confirm-item" key={id}>
+                                <span className="forge-confirm-name">
+                                  {gearInstanceLabel(save.gearInstances[id])}
+                                  <UniqueTag templateId={save.gearInstances[id].templateId} />
+                                </span>
+                                {save.gearInstances[id].sockets.length > 0 && (
+                                  <span className="forge-confirm-gems">
+                                    {t('forge.gemsBack', {
+                                      list: save.gearInstances[id].sockets.map((g) => gemText(getGem(g)?.nameKey ?? g)).join(', '),
+                                    })}
+                                  </span>
+                                )}
+                              </span>
+                            ))}
+                          <PrimaryButton
+                            block
+                            onClick={() => {
+                              const p = pendingForge;
+                              setPendingForge(null);
+                              doForge(p.id, p.ids);
+                            }}
+                          >
+                            {t('forge.confirmForge')}
+                          </PrimaryButton>
+                          <SecondaryButton block onClick={() => setPendingForge(null)}>
+                            {t('forge.cancel')}
+                          </SecondaryButton>
+                        </div>
+                      )}
+
+                      <PrimaryButton block className={justForged === current.id ? 'forged' : undefined} onClick={() => handleForge(current.id)} disabled={!canForge(current)}>
+                        {justForged === current.id ? t('forge.forged') : t('forge.forge')}
+                      </PrimaryButton>
+                    </div>
+                  </Panel>
                 </div>
-              );
-            })()}
-          </div>
+              )
+            }
+          />
         )}
 
         {tab === 'upgrade' && (
-          <div className="forge-body">
+          <div className="fg-list">
             {gearList.length === 0 && <span className="socket-none">{t('forge.noGear')}</span>}
             {gearList.map((inst) => {
               const item = getGear(inst.templateId);
@@ -444,21 +448,16 @@ export default function ForgeModal({
               const cost = upgradeCost(item, lvl);
               const chance = Math.round(upgradeChance(lvl) * 100);
               return (
-                <div className={`craft-card ${rarityClass(item)}`} key={inst.id}>
-                  <span className="craft-icon">
+                <div className={`fg-card ${rarityClass(item)}`} key={inst.id}>
+                  <ItemFrame rarity={inst.rarity} qty={lvl > 0 ? `+${lvl}` : undefined}>
                     <GearIcon item={item} />
-                  </span>
-                  <div className="craft-info">
-                    <div className="craft-header">
-                      <span className="craft-name">
-                        {gearText(item.nameKey)}
-                        <span className="refine-tag">{refineTag(lvl)}</span>
-                        {instanceTag(inst)}
-                      </span>
-                    </div>
-                    <span className="craft-desc">
-                      {gearStatLines(item, lvl).map((l) => l.text).join(' · ')}
+                  </ItemFrame>
+                  <div className="fg-card-info">
+                    <span className="craft-name">
+                      {gearText(item.nameKey)}
+                      {instanceTag(inst)}
                     </span>
+                    <span className="craft-desc">{gearStatLines(item, lvl).map((l) => l.text).join(' · ')}</span>
                     <ItemCompare save={save} slot={item.slot} templateId={item.id} instance={inst} />
                     {!isMax && (
                       <div className="craft-req">
@@ -490,9 +489,7 @@ export default function ForgeModal({
                             <span className="mat-icon shard">
                               <img src="/assets/icons/shards.png" alt="" />
                             </span>
-                            <span className={`req-amount${save.shards < (cost.shards ?? 0) ? ' missing' : ''}`}>
-                              {t('ui.shardsX', { n: cost.shards ?? 0 })}
-                            </span>
+                            <span className={`req-amount${save.shards < (cost.shards ?? 0) ? ' missing' : ''}`}>{t('ui.shardsX', { n: cost.shards ?? 0 })}</span>
                           </span>
                         )}
                       </div>
@@ -500,34 +497,27 @@ export default function ForgeModal({
                     {!isMax && <span className="upgrade-chance">{t('forge.chance', { n: chance })}</span>}
                     {!isMax && lvl >= BASE_MAX_REFINE && <span className="upgrade-chance deep-note">{t(deepRefineText().key, deepRefineText().params)}</span>}
                   </div>
-                  {isMax ? (
-                    <button className="craft-btn equipped" disabled data-ui>
-                      {t('forge.max')}
-                    </button>
-                  ) : (
-                    <div className="repair-btns upgrade-btns">
-                      <button
-                        className="craft-btn forge repair-action-btn"
-                        onClick={() => onUpgrade(inst.id)}
-                        disabled={!canUpgrade(inst)}
-                        data-ui
-                      >
-                        {t('forge.upgrade')}
-                      </button>
-                      {catalystCount > 0 && lvl < BASE_MAX_REFINE && (
-                        <button
-                          className="craft-btn blessed repair-action-btn"
-                          onClick={() => onUpgradeWithCatalyst(inst.id)}
-                          disabled={!canUpgrade(inst)}
-                          data-ui
-                          title={t('forge.catalystHint')}
-                        >
-                          <ConsumableIcon item={getConsumable('refine_catalyst')!} className="inline-icon" />
-                          <span>{t('forge.useCatalyst')}</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <div className="fg-card-actions">
+                    {isMax ? (
+                      <SecondaryButton disabled>{t('forge.max')}</SecondaryButton>
+                    ) : (
+                      <>
+                        <PrimaryButton onClick={() => onUpgrade(inst.id)} disabled={!canUpgrade(inst)}>
+                          {t('forge.upgrade')}
+                        </PrimaryButton>
+                        {catalystCount > 0 && lvl < BASE_MAX_REFINE && (
+                          <SecondaryButton
+                            onClick={() => onUpgradeWithCatalyst(inst.id)}
+                            disabled={!canUpgrade(inst)}
+                            title={t('forge.catalystHint')}
+                            icon={<ConsumableIcon item={getConsumable('refine_catalyst')!} className="inline-icon" />}
+                          >
+                            {t('forge.useCatalyst')}
+                          </SecondaryButton>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -535,7 +525,7 @@ export default function ForgeModal({
         )}
 
         {tab === 'repair' && (
-          <div className="forge-body">
+          <div className="fg-list">
             {gearList.length === 0 && <span className="socket-none">{t('forge.noGear')}</span>}
             {gearList.map((inst) => {
               const item = getGear(inst.templateId);
@@ -543,48 +533,36 @@ export default function ForgeModal({
               const broken = dur <= 0;
               const cost = effectiveRepairCost(save, item.tier ?? 0);
               const discounted = ownsAdventurerPass(save);
+              const lvl = clampRefine(inst.upgrade);
               return (
-                <div className={`craft-card ${rarityClass(item)}`} key={inst.id}>
-                  <span className="craft-icon">
+                <div className={`fg-card ${rarityClass(item)}`} key={inst.id}>
+                  <ItemFrame rarity={inst.rarity} qty={lvl > 0 ? `+${lvl}` : undefined}>
                     <GearIcon item={item} />
-                  </span>
-                  <div className="craft-info">
+                  </ItemFrame>
+                  <div className="fg-card-info">
                     <span className="craft-name">
                       {gearText(item.nameKey)}
-                      <span className="refine-tag">{refineTag(clampRefine(inst.upgrade))}</span>
                       {instanceTag(inst)}
                     </span>
-                    <span className={`durability-text${broken ? ' broken' : dur < 30 ? ' worn' : ''}`}>
-                      {broken ? t('forge.broken') : t('forge.durability', { n: dur, m: MAX_DURABILITY })}
-                    </span>
+                    <span className={`durability-text${broken ? ' broken' : dur < 30 ? ' worn' : ''}`}>{broken ? t('forge.broken') : t('forge.durability', { n: dur, m: MAX_DURABILITY })}</span>
                     <div className="durability-bar">
                       <div className={`durability-fill${broken ? ' broken' : dur < 30 ? ' worn' : ''}`} style={{ width: `${dur}%` }} />
                     </div>
-                    <div className="repair-btns">
-                      <button
-                        className="craft-btn forge repair-action-btn"
-                        onClick={() => onRepair(inst.id, false)}
-                        disabled={save.gold < cost || dur >= MAX_DURABILITY}
-                        data-ui
-                      >
-                        <span>{t('forge.repair')}</span>
-                        <span className="repair-cost">
-                          (<img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {fmtNum(cost)}
-                          {discounted && <span className="repair-discount-tag"> -20%</span>})
-                        </span>
-                      </button>
-                      <button
-                        className="craft-btn blessed repair-action-btn"
-                        onClick={() => onRepair(inst.id, true)}
-                        disabled={save.gold < cost || save.shards < 1 || dur >= MAX_DURABILITY}
-                        data-ui
-                      >
-                        <span>{t('forge.blessedRepair')}</span>
-                        <span className="repair-cost">
-                          (+1 <img className="inline-icon" src="/assets/icons/shards.png" alt="" />)
-                        </span>
-                      </button>
-                    </div>
+                  </div>
+                  <div className="fg-card-actions">
+                    <PrimaryButton onClick={() => onRepair(inst.id, false)} disabled={save.gold < cost || dur >= MAX_DURABILITY}>
+                      <span>{t('forge.repair')}</span>
+                      <span className="repair-cost">
+                        (<img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {fmtNum(cost)}
+                        {discounted && <span className="repair-discount-tag"> -20%</span>})
+                      </span>
+                    </PrimaryButton>
+                    <SecondaryButton onClick={() => onRepair(inst.id, true)} disabled={save.gold < cost || save.shards < 1 || dur >= MAX_DURABILITY}>
+                      <span>{t('forge.blessedRepair')}</span>
+                      <span className="repair-cost">
+                        (+1 <img className="inline-icon" src="/assets/icons/shards.png" alt="" />)
+                      </span>
+                    </SecondaryButton>
                   </div>
                 </div>
               );
@@ -593,26 +571,24 @@ export default function ForgeModal({
         )}
 
         {tab === 'socket' && (
-          <div className="forge-body">
+          <div className="fg-list">
             {gearList.length === 0 && <span className="socket-none">{t('forge.noGear')}</span>}
             {gearList.map((inst) => {
               const item = getGear(inst.templateId);
               const maxSockets = socketsForTier(item.tier ?? 0);
               const list = inst.sockets;
               const ownedGems = GEMS.filter((g) => (save.gems?.[g.id] ?? 0) > 0);
+              const lvl = clampRefine(inst.upgrade);
               return (
-                <div className={`craft-card ${rarityClass(item)}`} key={inst.id}>
-                  <span className="craft-icon">
+                <div className={`fg-card socket-card ${rarityClass(item)}`} key={inst.id}>
+                  <ItemFrame rarity={inst.rarity} qty={lvl > 0 ? `+${lvl}` : undefined}>
                     <GearIcon item={item} />
-                  </span>
-                  <div className="craft-info">
+                  </ItemFrame>
+                  <div className="fg-card-info">
                     <span className="craft-name">
                       {gearText(item.nameKey)}
-                      <span className="refine-tag">{refineTag(clampRefine(inst.upgrade))}</span>
                       {instanceTag(inst)}
-                      <span className="socket-count">
-                        {maxSockets > 0 ? ` ${list.length}/${maxSockets}` : ''}
-                      </span>
+                      <span className="socket-count">{maxSockets > 0 ? ` ${list.length}/${maxSockets}` : ''}</span>
                     </span>
                     {maxSockets > 0 ? (
                       <>
@@ -620,7 +596,7 @@ export default function ForgeModal({
                           {Array.from({ length: maxSockets }).map((_, i) => {
                             const gem = getGem(list[i] ?? '');
                             return gem ? (
-                              <button className="socket filled" key={i} onClick={() => onUnsocket(inst.id, i)} title={gemText(gem.nameKey)} data-ui>
+                              <button className="socket filled" key={i} onClick={() => onUnsocket(inst.id, i)} title={gemText(gem.nameKey)} aria-label={gemText(gem.nameKey)} data-ui>
                                 <GemIcon item={gem} className="inline-icon" />
                               </button>
                             ) : (
@@ -657,8 +633,7 @@ export default function ForgeModal({
                 </div>
               );
             })}
-            <div className="gem-library">
-              <div className="gear-section-title">{t('gems.title')}</div>
+            <Panel tone="inset" title={t('gems.title')} className="gem-library">
               {GEMS.map((g) => (
                 <div className="gem-library-row" key={g.id}>
                   <div className="gem-library-top">
@@ -670,14 +645,10 @@ export default function ForgeModal({
                   <span className="gem-desc">{gemText(g.descKey)}</span>
                 </div>
               ))}
-            </div>
+            </Panel>
           </div>
         )}
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

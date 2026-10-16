@@ -16,6 +16,7 @@ import { FRAMES, SKINS } from '../game/seasonItems';
 import { heroBaseLook } from '../game/sprites';
 import HeroThumb from './HeroThumb';
 import { CombatStatsGrid, CpLine } from './CombatStats';
+import { Button, ItemCard } from './ui';
 
 // The three "Personagem" panels — extracted from what used to be HeroModal's three tabs, so the
 // Personagem view (desktop area + mobile stack, see PersonagemView.tsx) and any future modal reuse
@@ -25,7 +26,6 @@ import { CombatStatsGrid, CpLine } from './CombatStats';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const attrsText = (k: string): string => t(`attributes.${k}`);
-const refineTag = (lvl: number): string => (lvl > 0 ? ` +${lvl}` : '');
 
 export type { AttrKey };
 
@@ -36,57 +36,57 @@ const ATTRS: { key: AttrKey; nameKey: string }[] = [
   { key: 'res', nameKey: 'res' },
 ];
 
-// One equipment card per slot (the seven instanced ones, then the relic). `view` is null when the slot is empty (helmet / gloves / boots / ring / shield /
-// relic); an empty weapon / armor resolves to the zero-stat starter, which is shown like any other piece. The relic is a stackable template: no instance, so
-// no rarity, refine or durability lines.
+// One equipment card per slot (the seven instanced ones, then the relic): the shared item card, the icon in its rarity frame with the refine level as the badge, the slot and rarity line, the stat
+// lines and the durability. `view` is null when the slot is empty (helmet / gloves / boots / ring / shield / relic); an empty weapon / armor resolves to the zero-stat starter, which is shown like any other
+// piece. The relic is a stackable template: no instance, so no rarity, refine or durability lines.
 function EquipSlotCard({ slot, view }: { slot: GearSlot; view: EquippedView | null }) {
-  const rarClass = (r: Rarity) => `r-${r}`;
   const durClass = (d: number) => (d <= 0 ? ' broken' : d < 30 ? ' worn' : '');
   if (!view) {
     return (
-      <div className="hero-equip-card empty" data-slot={slot}>
-        <span className="hero-equip-icon empty">
-          <GearIcon item={{ id: slot, slot, nameKey: slot, descKey: slot, cost: 0 }} />
-        </span>
-        <div className="hero-equip-info">
-          <span className="hero-equip-slot-name">{gearText(slot)}</span>
-          <span className="hero-equip-empty">— {gearText('none')}</span>
-        </div>
-      </div>
+      <ItemCard
+        className="pg-equip empty"
+        data-slot={slot}
+        icon={<GearIcon item={{ id: slot, slot, nameKey: slot, descKey: slot, cost: 0 }} />}
+        name={gearText(slot)}
+        rarityLabel={`— ${gearText('none')}`}
+      />
     );
   }
   const { item } = view;
   const lvl = viewRefine(view);
   const dur = viewDurability(view);
-  const rar = viewRarity(view);
+  const rar: Rarity = viewRarity(view);
   const subs = view.instance?.substats ?? [];
+  const rarityText = rar !== 'common' ? ` · ${t(`rarity.${rarityDef(rar).nameKey}`)}` : '';
   return (
-    <div className={`hero-equip-card ${rarClass(rar)}${item.unique ? ' unique' : ''}`} data-slot={slot}>
-      <span className="hero-equip-icon">
-        <GearIcon item={item} />
-      </span>
-      <div className="hero-equip-info">
-        <span className="hero-equip-name">
-          <span className="hero-equip-name-text">
-            {gearText(item.nameKey)}
-            <UniqueTag templateId={item.id} />
-          </span>
-          <span className="refine-tag">{refineTag(lvl)}</span>
-        </span>
-        {rar !== 'common' && <span className={`rarity-line ${rarClass(rar)}`}>{t(`rarity.${rarityDef(rar).nameKey}`)}</span>}
+    <ItemCard
+      className={`pg-equip${item.unique ? ' unique' : ''}`}
+      data-slot={slot}
+      icon={<GearIcon item={item} />}
+      rarity={rar}
+      qty={lvl > 0 ? `+${lvl}` : undefined}
+      name={
+        <>
+          {gearText(item.nameKey)}
+          <UniqueTag templateId={item.id} />
+        </>
+      }
+      rarityLabel={`${gearText(slot)}${rarityText}`}
+    >
+      <div className="pg-lines">
         {gearStatLines(item, lvl).map((l) => (
-          <span className={`hero-equip-stat ${l.kind}`} key={l.kind}>
+          <span className={`pg-line ${l.kind}`} key={l.kind}>
             {l.text}
           </span>
         ))}
         {subs.map((s, i) => (
-          <span className="substat-line" key={i}>
+          <span className="pg-line sub" key={i}>
             +{fmtSubstat(s)} {t(`rarity.${substatNameKey(s.type)}`)}
           </span>
         ))}
-        {view.instance && <span className={`hero-durability${durClass(dur)}`}>{t('forge.durability', { n: dur, m: MAX_DURABILITY })}</span>}
       </div>
-    </div>
+      {view.instance && <span className={`hero-durability${durClass(dur)}`}>{t('forge.durability', { n: dur, m: MAX_DURABILITY })}</span>}
+    </ItemCard>
   );
 }
 
@@ -96,13 +96,12 @@ export function EquipmentPanel({ save }: { save: SaveData }) {
   return (
     <>
       <SetLines save={save} />
-      <div className="hero-equip">
+      <div className="ui-grid pg-equip-grid">
         {INSTANCED_SLOTS.map((slot) => (
           <EquipSlotCard key={slot} slot={slot} view={equipped[slot]} />
         ))}
         <EquipSlotCard slot="relic" view={equipped.relic ? { item: equipped.relic, instance: null } : null} />
       </div>
-
     </>
   );
 }
@@ -123,7 +122,9 @@ export function AttributesPanel({ save, onAttrChange, onSuggest }: { save: SaveD
       <CombatStatsGrid save={save} />
 
       <div className="hero-cp-bar">
-        <span className="hero-cp-icon">⚔️</span>
+        <span className="hero-cp-icon" aria-hidden>
+          ⚔️
+        </span>
         <span>
           <CpLine save={save} />
         </span>
@@ -134,24 +135,26 @@ export function AttributesPanel({ save, onAttrChange, onSuggest }: { save: SaveD
         <span>{t('attributes.cp', { n: cp })}</span>
       </div>
       {remaining > 0 && onSuggest && (
-        <button className="attrs-suggest" onClick={onSuggest} data-tutorial-target="attrs-suggest" data-ui>
+        <Button variant="primary" block onClick={onSuggest} data-tutorial-target="attrs-suggest">
           {t('attributes.suggest')}
-        </button>
+        </Button>
       )}
-      <div className="attrs-list">
+      <div className="pg-attrs">
         {ATTRS.map((a) => (
-          <div className="attr-row" key={a.key}>
-            <div className="attr-info">
-              <span className="attr-name">{attrsText(a.nameKey)}</span>
-              <span className="attr-desc">{attrText(a.key, save)}</span>
+          <div className="pg-attr" key={a.key}>
+            <div className="pg-attr-info">
+              <span className="pg-attr-name">{attrsText(a.nameKey)}</span>
+              <span className="pg-attr-desc">{attrText(a.key, save)}</span>
             </div>
-            <button className="attr-btn" onClick={() => onAttrChange(a.key, -1)} disabled={save[a.key] <= 0} data-ui>
-              −
-            </button>
-            <span className="attr-val">{save[a.key]}</span>
-            <button className="attr-btn" onClick={() => onAttrChange(a.key, 1)} disabled={remaining <= 0} data-ui>
-              +
-            </button>
+            <div className="pg-attr-ctl">
+              <button className="pg-step" onClick={() => onAttrChange(a.key, -1)} disabled={save[a.key] <= 0} aria-label={`− ${attrsText(a.nameKey)}`} data-ui>
+                −
+              </button>
+              <span className="pg-attr-val">{save[a.key]}</span>
+              <button className="pg-step" onClick={() => onAttrChange(a.key, 1)} disabled={remaining <= 0} aria-label={`+ ${attrsText(a.nameKey)}`} data-ui>
+                +
+              </button>
+            </div>
           </div>
         ))}
       </div>

@@ -1,9 +1,10 @@
 import { t } from '../locales';
 import { SaveData } from '../game/engine';
 import InventoryPanel from './InventoryPanel';
+import { ModalShell } from './ui';
+import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 
-// Quick-access modal for the sidebar's direct "Inventário" entry — the same InventoryPanel also
-// renders embedded (no modal chrome) inside PersonagemView, sharing all state/handlers.
+// The sidebar's direct "Inventário" entry: a big work surface (the shared ModalShell) around the same InventoryPanel that also renders embedded inside PersonagemView, sharing all state/handlers.
 export default function InventoryModal({
   save,
   onEquip,
@@ -28,26 +29,27 @@ export default function InventoryModal({
   onClose: () => void;
 }) {
   return (
-    <div className="modal-backdrop">
-      <div className="modal inventory-modal" data-tutorial-target="inventory-modal">
-        <h2 className="modal-title">
-          <img className="inline-icon" src="/assets/icons/nav_bag.png" alt="" /> {t('inventory.title')}
-        </h2>
-        <InventoryPanel
-          save={save}
-          onEquip={onEquip}
-          onUnequip={onUnequip}
-          onDiscard={onDiscard}
-          onReforge={onReforge}
-          onLapidar={onLapidar}
-          onSalvage={onSalvage}
-          onUseConsumable={onUseConsumable}
-          onExpand={onExpand}
-        />
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
-      </div>
-    </div>
+    <ModalShell
+      className="inv-modal"
+      tutorialTarget="inventory-modal"
+      icon={<img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />}
+      title={t('inventory.title')}
+      subtitle={t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <InventoryPanel
+        save={save}
+        onEquip={onEquip}
+        onUnequip={onUnequip}
+        onDiscard={onDiscard}
+        onReforge={onReforge}
+        onLapidar={onLapidar}
+        onSalvage={onSalvage}
+        onUseConsumable={onUseConsumable}
+        onExpand={onExpand}
+        layout="wide"
+      />
+    </ModalShell>
   );
 }

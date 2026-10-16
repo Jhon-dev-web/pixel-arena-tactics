@@ -28,6 +28,7 @@ import {
   tierRequirement,
 } from '../game/heroSkills';
 import { ownsAdventurerPass } from '../game/entitlements';
+import { Button } from './ui';
 
 // "Habilidades": the whole skill tree on one screen (heroSkills.ts). Three paths side by side (tabs on a phone), each skill a tile with rank pips, a detail panel that
 // shows the real numbers of the current and the next rank, and a PENDING allocation: "+" only changes the draft held here, "Aplicar" commits it, "Desfazer" drops it,
@@ -299,9 +300,9 @@ export function SkillsSummary({ save, onOpen }: { save: SaveData; onOpen: () => 
         {free > 0 ? t('heroSkills.ui.summaryFree', { n: free }) : skillPointsEarned(level) === 0 ? t('heroSkills.ui.firstPoint', { n: next ?? 5 }) : t('heroSkills.ui.summarySpent', { n: spent })}
         {free === 0 && next !== null && skillPointsEarned(level) > 0 ? ` ${t('heroSkills.ui.nextPoint', { n: next })}` : ''}
       </p>
-      <button type="button" className="sk-btn primary" onClick={onOpen} data-ui>
+      <Button variant="primary" onClick={onOpen}>
         {t('heroSkills.ui.open')}
-      </button>
+      </Button>
     </div>
   );
 }

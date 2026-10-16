@@ -519,6 +519,8 @@
     "bindCancel": "Cancel",
     "equipped": "EQUIPPED",
     "hint": "Select an item to see details",
+    "search": "Search item...",
+    "noMatches": "No items found",
     "materialDesc": "Crafting material",
     "space": "Space: {n} / {m}",
     "sell": "Sell ({n} Gold)",

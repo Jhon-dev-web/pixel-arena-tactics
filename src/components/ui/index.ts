@@ -12,3 +12,4 @@ export { default as ItemCard, ItemFrame } from './ItemCard';
 export type { CardRarity, ItemRow } from './ItemCard';
 export { StatRow, StatList } from './StatRow';
 export { Screen, ScreenLayout, SummaryColumn } from './Layout';
+export { default as ModalShell } from './ModalShell';

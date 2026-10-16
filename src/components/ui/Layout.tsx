@@ -14,9 +14,10 @@ export function SummaryColumn({ children }: { children: ReactNode }) {
   return <aside className="ui-side">{children}</aside>;
 }
 
-export function ScreenLayout({ main, side, className = '' }: { main: ReactNode; side?: ReactNode; className?: string }) {
+// `sideFirst`: on a narrow area the summary column goes ABOVE the main column (a screen whose summary is what the player acts on first).
+export function ScreenLayout({ main, side, sideFirst, className = '' }: { main: ReactNode; side?: ReactNode; sideFirst?: boolean; className?: string }) {
   return (
-    <div className={`ui-layout${side ? ' has-side' : ''}${className ? ` ${className}` : ''}`}>
+    <div className={`ui-layout${side ? ' has-side' : ''}${sideFirst ? ' side-first' : ''}${className ? ` ${className}` : ''}`}>
       <div className="ui-main">{main}</div>
       {side && <SummaryColumn>{side}</SummaryColumn>}
     </div>

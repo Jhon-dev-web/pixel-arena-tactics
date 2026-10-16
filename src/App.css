@@ -478,16 +478,6 @@ body {
 }
 
 /* --- armory / gear list --- */
-.gear-section {
-  margin-bottom: 12px;
-}
-.gear-section-title {
-  font-size: calc(var(--font-size) - 2px);
-  color: #ffd76a;
-  text-align: left;
-  margin-bottom: 6px;
-  padding-left: 2px;
-}
 .gear-row {
   display: flex;
   align-items: center;
@@ -811,41 +801,6 @@ body {
 }
 
 /* --- gear material badges --- */
-.gear-material {
-  font-size: calc(var(--font-size) - 4px);
-  padding: 1px 5px;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.5);
-  /* Most material labels (Bronze/Ferro/Aço) are one short word and read fine as a single line, but
-     "Escamas de Dragão" is long enough to overflow its own flex box at narrow widths since it never
-     shrinks below its unbroken text width — let it wrap like every other badge in a .craft-header. */
-  max-width: 100%;
-  overflow-wrap: break-word;
-}
-.gear-material.wood {
-  background: #6b4a2b;
-  color: #e8c9a0;
-}
-.gear-material.bronze {
-  background: #8a5a2a;
-  color: #ffd9a0;
-}
-.gear-material.iron {
-  background: #5a6268;
-  color: #d8e0e8;
-}
-.gear-material.steel {
-  background: #3a4a5a;
-  color: #b8d8ff;
-}
-.gear-material.dragon {
-  background: #4a1420;
-  color: #ff7a5a;
-}
-.gear-material.cloth {
-  background: #5a5248;
-  color: #d8d0c0;
-}
 
 /* --- weapon overlay --- */
 .weapon {
@@ -895,18 +850,6 @@ body {
 }
 
 /* --- forge theme --- */
-.forge-modal {
-  display: flex;
-  flex-direction: column;
-  max-height: 82vh;
-  background: linear-gradient(180deg, #2a1508, #160a05);
-  border-color: #8a4a2a;
-}
-.forge-body {
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-}
 .gear-recipe {
   font-size: calc(var(--font-size) - 3px);
   color: #ffd9a0;
@@ -1615,18 +1558,6 @@ body {
 }
 
 /* ===== forge craft cards ===== */
-.craft-card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #3a2a4a;
-  border-radius: 10px;
-  text-align: left;
-}
 /* Refino tab cards carry a lot less info per item (no material badge, no desc, 1-2 inputs) than a
    Forjar card — compact them so all 3 stations (Fornalha/Curtume/Alquimia) need less scrolling. */
 .refine-card {
@@ -1658,20 +1589,6 @@ body {
 .refine-card .craft-btn {
   padding: 6px 8px;
   font-size: calc(var(--font-size) - 4px);
-}
-.craft-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.craft-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  flex-wrap: wrap;
-  min-width: 0;
 }
 .craft-name {
   flex: 1 1 auto;
@@ -1772,231 +1689,10 @@ body {
   background: linear-gradient(180deg, #6a5520, #3a2e08);
   box-shadow: 0 3px 0 #2a2004;
 }
-.durability-text {
-  display: block;
-  font-size: calc(var(--font-size) - 2px);
-  color: #a8e06a;
-}
-.durability-text.worn {
-  color: #ffd54a;
-}
-.durability-text.broken {
-  color: #ff5f4a;
-  font-weight: bold;
-}
-.durability-bar {
-  width: 100%;
-  height: 8px;
-  background: #1a1220;
-  border: 1px solid #000;
-  border-radius: 4px;
-  overflow: hidden;
-  margin: 4px 0;
-}
-.durability-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #7ce88a, #2fbf4f);
-  border-radius: 3px;
-  transition: width 0.4s ease;
-}
-.durability-fill.worn {
-  background: linear-gradient(90deg, #ffd54a, #e0a83a);
-}
-.durability-fill.broken {
-  background: linear-gradient(90deg, #ff5f4a, #a03020);
-}
-.repair-btns {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 6px;
-  margin-top: 6px;
-}
-.repair-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  flex-shrink: 1;
-  font-size: calc(var(--font-size) - 4px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.upgrade-btns {
-  /* A column of two action buttons (Melhorar / Catalisar) sized against the item name via
-     an explicit basis — without it, a flex column's auto width is driven by its widest
-     child's max-content size regardless of the child's own flex-shrink, which forces the
-     sibling item name (.craft-info) down to 0 width whenever the button text is long. */
-  flex: 0 1 100px;
-  max-width: 100px;
-}
-.repair-action-btn > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.repair-cost {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  gap: 3px;
-  white-space: nowrap;
-}
-.socket-count {
-  font-size: calc(var(--font-size) - 2px);
-  color: #b8a8d8;
-}
-.socket-slots {
-  display: flex;
-  gap: 6px;
-  margin: 6px 0;
-}
-.socket {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  border: 2px solid #3a2a4a;
-  background: rgba(0, 0, 0, 0.3);
-}
-.socket.empty {
-  border-style: dashed;
-  color: #3a2a4a;
-}
-.socket.filled {
-  border-color: #8a6a3a;
-  background: #241a30;
-  cursor: pointer;
-}
-.socket-none {
-  font-size: calc(var(--font-size) - 2px);
-  color: #8a7aa8;
-}
-.socket-gem-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.socket-gem-btn {
-  font-family: inherit;
-  font-size: calc(var(--font-size) - 2px);
-  color: #ffe9a8;
-  background: #2a1c10;
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 5px 8px;
-  cursor: pointer;
-}
-.gem-library {
-  margin-top: 8px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #3a2a4a;
-  border-radius: 8px;
-}
-.gem-library-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 8px;
-  padding: 6px 10px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-}
-.gem-library-row:last-child {
-  margin-bottom: 0;
-}
-.gem-library-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.gem-library-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  overflow-wrap: break-word;
-  font-size: calc(var(--font-size) - 2px);
-  color: #fff;
-  line-height: 1.3;
-}
-.gem-desc {
-  display: block;
-  font-size: calc(var(--font-size) - 3px);
-  color: #b8a8d8;
-  line-height: 1.3;
-}
-.gem-library-owned {
-  font-size: calc(var(--font-size) - 2px);
-  color: #ffd76a;
-  white-space: nowrap;
-}
 
 /* --- forge scrollbar (dark brown) --- */
-.forge-body::-webkit-scrollbar {
-  width: 8px;
-}
-.forge-body::-webkit-scrollbar-track {
-  background: #1a1208;
-  border-radius: 4px;
-}
-.forge-body::-webkit-scrollbar-thumb {
-  background: #5a3a20;
-  border-radius: 4px;
-  border: 1px solid #2a1608;
-}
-.forge-body {
-  scrollbar-width: thin;
-  scrollbar-color: #5a3a20 #1a1208;
-}
-.gear-material {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-.rarity-icon {
-  width: 10px;
-  height: 10px;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
 
 /* ===== inventory modal ===== */
-.inventory-modal {
-  display: flex;
-  flex-direction: column;
-  max-height: 82vh;
-}
-.inv-tabs {
-  display: flex;
-  gap: 4px;
-  width: 100%;
-  margin-bottom: 10px;
-}
-.inv-tabs .tab {
-  padding: 8px 4px;
-  font-size: calc(var(--font-size) - 3px);
-}
-.inv-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 6px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-  padding: 2px;
-  align-content: start;
-}
 .inv-slot {
   position: relative;
   aspect-ratio: 1;
@@ -2043,67 +1739,6 @@ body {
   bottom: 2px;
   right: 3px;
 }
-.inv-detail {
-  margin-top: 10px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #3a2a4a;
-  border-radius: 8px;
-  min-height: 84px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  text-align: left;
-}
-.inv-detail-name {
-  font-size: var(--font-size);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-.inv-detail-name-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-.inv-detail-desc {
-  font-size: calc(var(--font-size) - 3px);
-  color: #b8a8d8;
-}
-.inventory-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: -4px 0 12px;
-}
-.inventory-summary-chip {
-  font-size: calc(var(--font-size) - 2px);
-  color: #b8a8d8;
-}
-.inventory-expand-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  min-width: 26px;
-  min-height: 26px;
-  padding: 0 8px;
-  border: 1px solid #6a4a2a;
-  border-radius: 999px;
-  background: rgba(255, 215, 106, 0.12);
-  color: #ffd76a;
-  font: inherit;
-  font-size: calc(var(--font-size) - 1px);
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-}
-.inventory-expand-btn:active {
-  transform: translateY(1px);
-}
 .expand-modal {
   width: min(86vw, 300px);
 }
@@ -2146,14 +1781,6 @@ body {
   font-size: var(--font-size);
   line-height: 1.3;
   cursor: pointer;
-}
-.inv-detail-empty {
-  font-size: calc(var(--font-size) - 2px);
-  color: #8a7aa8;
-  margin: auto;
-}
-.inv-detail .craft-btn {
-  margin-top: 4px;
 }
 .shop-space {
   font-size: calc(var(--font-size) - 2px);
@@ -2377,44 +2004,6 @@ body {
   width: 70%;
   height: 70%;
 }
-.craft-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #14101c;
-  border: 1px solid #3a2a4a;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.craft-icon .gear-icon-img {
-  width: 80%;
-  height: 80%;
-}
-.craft-icon .gear-icon-emoji {
-  font-size: 20px;
-}
-.inv-detail-icon {
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #14101c;
-  border: 1px solid #3a2a4a;
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.inv-detail-icon .gear-icon-img {
-  width: 80%;
-  height: 80%;
-}
-.inv-detail-icon .gear-icon-emoji {
-  font-size: 18px;
-}
 .inv-slot.rarity-bronze {
   border-color: #8a5a2a;
 }
@@ -2503,13 +2092,6 @@ body {
   border-color: #c79bff;
   background: rgba(106, 58, 168, 0.45);
 }
-.upgrade-chance.deep-note {
-  display: block;
-  margin-top: 4px;
-  font-style: italic;
-  color: #8a7aa8;
-  white-space: normal;
-}
 .salvage-hint {
   margin: 6px 0 0;
   font-size: calc(var(--font-size) - 3px);
@@ -2551,21 +2133,6 @@ body {
 .salvage-btn.confirm {
   color: #1a1108;
   background: linear-gradient(180deg, #6fe08a, #2fbf4f);
-}
-.craft-card.rarity-bronze {
-  border-left: 3px solid #8a5a2a;
-}
-.craft-card.rarity-iron {
-  border-left: 3px solid #7a8288;
-}
-.craft-card.rarity-steel {
-  border-left: 3px solid #7cb8e8;
-}
-.craft-card.rarity-dragon {
-  border-left: 3px solid #ff9a3a;
-}
-.craft-card.rarity-gold {
-  border-left: 3px solid #ffd76a;
 }
 .craft-btn.forged {
   color: #6fe08a;
@@ -2743,9 +2310,6 @@ body {
   font-size: calc(var(--font-size) - 3px);
   color: #6fe08a;
 }
-.repair-discount-tag {
-  color: #6fe08a;
-}
 .hero-stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2808,23 +2372,12 @@ body {
      let a slightly-too-wide label spill a couple px rather than force a mid-word break. */
   overflow-wrap: normal;
 }
-.forge-category-tabs {
-  /* 9 categories (swords, axes, armors, shields, helmets, gloves, boots, rings, relics): 5 + 4 on two rows on desktop, 3 x 3 on a phone */
-  grid-template-columns: repeat(5, 1fr);
-  margin-bottom: 14px;
-}
 .refine-tag {
   color: #ffd76a;
   font-size: calc(var(--font-size) - 2px);
   margin-left: 4px;
   flex-shrink: 0;
   white-space: nowrap;
-}
-.upgrade-chance {
-  display: block;
-  font-size: calc(var(--font-size) - 3px);
-  color: #d8c9a0;
-  margin-top: 2px;
 }
 
 /* ===== dungeon map modal ===== */
@@ -2871,9 +2424,6 @@ body {
 }
 .camp-mine-time.compact {
   font-size: calc(var(--font-size) - 3px);
-}
-.repair-btns.compact {
-  gap: 6px;
 }
 .craft-btn.small {
   padding: 5px 6px;
@@ -5146,25 +4696,6 @@ body {
 }
 
 /* Forge: "these pieces will be consumed" confirmation — each piece wraps instead of being cut off on narrow modals. */
-.forge-confirm .forge-confirm-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.forge-confirm .forge-confirm-name {
-  color: #f0e2b6;
-  font-weight: bold;
-}
-.forge-confirm .forge-confirm-gems {
-  color: #8fd0ff;
-}
-.forge-confirm .craft-btn {
-  width: 100%;
-  margin-top: 4px;
-}
 
 /* Inventory: economic reforge panel (stock / cost per line) */
 .reforge-panel {
@@ -6026,85 +5557,6 @@ body {
 }
 
 /* =====================================================================
-   PERSONAGEM VIEW — same main-content area pattern as Home (a
-   .desktop-home grid of .dh-card sections), each card is a straight port
-   of what used to be HeroModal's/InventoryModal's content. See
-   PersonagemView.tsx / HeroPanels.tsx / InventoryPanel.tsx.
-   ===================================================================== */
-.personagem-view {
-  grid-template-columns: 1fr;
-  align-content: start;
-}
-.personagem-hero {
-  display: flex;
-  gap: 22px;
-  align-items: center;
-}
-.personagem-hero .dh-hero-portrait {
-  cursor: default;
-}
-.personagem-hero .name-btn {
-  font-family: inherit;
-  font-size: 22px;
-  color: #f5e9c8;
-  text-shadow: 0 2px 0 #000;
-  background: none;
-  border: none;
-  cursor: default;
-  padding: 0;
-  text-align: left;
-  overflow: visible;
-  white-space: normal;
-  text-overflow: clip;
-  max-width: 100%;
-}
-.personagem-hero .name-btn .pencil {
-  font-size: 14px;
-  opacity: 0.7;
-}
-.personagem-hero .dh-hero-badge.cp {
-  display: none;
-}
-.personagem-hero .name-input {
-  font-family: inherit;
-  font-size: 20px;
-  color: #f5e9c8;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid #8a6a3a;
-  border-radius: 6px;
-  padding: 4px 8px;
-  width: 100%;
-  max-width: 240px;
-}
-.personagem-hero .hero-title-line {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: #9d8bff;
-}
-@media (max-width: 1023px) {
-  .personagem-hero {
-    flex-direction: column;
-    text-align: center;
-  }
-  .personagem-hero .dh-hero-badges,
-  .personagem-hero .hero-title-line {
-    justify-content: center;
-    text-align: center;
-  }
-  .personagem-hero .name-btn {
-    text-align: center;
-  }
-}
-@media (min-width: 1280px) {
-  .personagem-view {
-    grid-template-columns: 1fr 1fr;
-  }
-  .personagem-hero {
-    grid-column: 1 / -1;
-  }
-}
-
-/* =====================================================================
    MOBILE LAYOUT SYSTEM — shared rhythm for tablet and phone. Desktop
    keeps its original dashboard and modal proportions.
    ===================================================================== */
@@ -6118,12 +5570,6 @@ body {
   }
   .dh-card-title {
     margin-bottom: 10px;
-  }
-  .personagem-hero .name-btn {
-    font-size: 18px;
-  }
-  .personagem-hero .name-input {
-    font-size: 16px;
   }
 }
 
@@ -6202,109 +5648,9 @@ body {
     padding-bottom: 7px;
     margin-bottom: 9px;
   }
-  .personagem-hero .name-btn {
-    max-width: 100%;
-    font-size: 16px;
-  }
 
   /* Character panel follows the same compact identity row, then keeps each RPG section distinct. */
-  .personagem-view {
-    gap: var(--mobile-gap);
-  }
-  .personagem-hero {
-    display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
-    gap: 8px 10px;
-    text-align: left;
-  }
-  .personagem-hero .dh-hero-portrait {
-    width: 64px;
-    height: 64px;
-    grid-row: 1 / span 2;
-  }
-  .personagem-hero .dh-hero-body {
-    display: flex;
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    min-width: 0;
-    gap: 6px;
-    padding: 0;
-  }
-  .personagem-hero .dh-hero-headline,
-  .personagem-hero .dh-hero-badges {
-    justify-content: flex-start;
-    text-align: left;
-  }
-  .personagem-hero .hero-title-line {
-    font-size: 10px;
-    text-align: left;
-  }
-  .personagem-hero .name-btn {
-    text-align: left;
-  }
-  .personagem-hero .dh-hero-badge.cp {
-    display: inline-flex;
-  }
-  .personagem-attrs .hero-cp-bar,
-  .personagem-attrs .attrs-header > span:nth-child(2) {
-    display: none;
-  }
-  .personagem-equip .hero-equip {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 7px;
-  }
-  .personagem-equip .hero-equip-card {
-    min-width: 0;
-    padding: 8px;
-    gap: 7px;
-  }
-  .personagem-equip .hero-equip-icon {
-    width: 32px;
-    height: 32px;
-    flex: 0 0 32px;
-  }
-  .personagem-equip .hero-equip-info {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .personagem-equip .hero-equip-name-text {
-    overflow-wrap: normal;
-  }
-  .personagem-attrs .hero-stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
-  }
-  .personagem-attrs .attrs-list {
-    gap: 6px;
-  }
-  .personagem-attrs .attr-row {
-    min-width: 0;
-    padding: 7px 8px;
-  }
 
-  /* Inventory: compact counters and grid remain visible behind a bottom-sheet item detail. */
-  .inventory-summary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 0 0 8px;
-  }
-  .inventory-summary-chip {
-    padding: 4px 7px;
-    color: #d8c9a0;
-    font-size: 10px;
-    line-height: 1.3;
-    background: rgba(0, 0, 0, 0.24);
-    border: 1px solid #3a2a4a;
-    border-radius: 999px;
-  }
-  .inventory-expand-btn {
-    min-width: 24px;
-    min-height: 24px;
-    padding: 0 7px;
-    font-size: 11px;
-  }
   .expand-modal {
     width: min(90vw, 300px);
     padding: 16px 14px;
@@ -6317,24 +5663,6 @@ body {
     min-height: 40px;
     font-size: 10px;
   }
-  .inv-tabs {
-    gap: 4px;
-    margin-bottom: 8px;
-  }
-  .inv-tabs .tab {
-    min-width: 0;
-    min-height: 34px;
-    padding: 6px 3px;
-    font-size: 10px;
-    overflow-wrap: anywhere;
-  }
-  .inv-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 5px;
-    flex: none;
-    max-height: 42dvh;
-    padding: 1px;
-  }
   .inv-slot {
     border-radius: 5px;
   }
@@ -6344,66 +5672,13 @@ body {
   .inv-qty {
     font-size: 9px;
   }
-  .inv-detail-backdrop {
-    display: contents;
-  }
-  .inv-detail-backdrop.open {
-    position: fixed;
-    inset: 0;
-    z-index: 80;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding: 12px 10px calc(10px + env(safe-area-inset-bottom, 0px));
-    background: rgba(5, 3, 10, 0.68);
-  }
-  .inv-detail {
-    display: none;
-  }
-  .inv-detail-backdrop.open .inv-detail {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    width: min(100%, 560px);
-    max-height: min(72dvh, 620px);
-    overflow-y: auto;
-    margin: 0;
-    padding: 18px 14px 14px;
-    padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
-    text-align: left;
-    background: linear-gradient(180deg, #241a30, #140d1c);
-    border: 2px solid #8a6a3a;
-    border-radius: 16px 16px 12px 12px;
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
-  }
-  .inv-detail-close {
-    position: sticky;
-    top: -10px;
-    align-self: flex-end;
-    z-index: 1;
-    width: 32px;
-    height: 32px;
-    margin: -9px -5px 2px 0;
-    color: #ffe9a8;
-    background: #1a1220;
-    border: 1px solid #6a4a2a;
-    border-radius: 50%;
-  }
-  .inv-detail .inv-detail-name {
-    padding-right: 24px;
-  }
 
   /* Orders become a near-full-height work surface with compact, scan-friendly requirements. */
   .modal-backdrop:has(.delivery-modal) {
     align-items: stretch;
     padding: 6px;
   }
-  .modal-backdrop:has(.inventory-modal) {
-    align-items: center;
-    padding: 12px 6px;
-  }
-  .delivery-modal,
-  .inventory-modal {
+  .delivery-modal {
     width: 100%;
     max-width: none;
     height: calc(100dvh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
@@ -6413,22 +5688,7 @@ body {
     overflow-y: auto;
     overscroll-behavior: contain;
   }
-  .inventory-modal {
-    display: flex;
-    flex-direction: column;
-    height: min(68dvh, 600px);
-    min-height: min(420px, calc(100dvh - 24px));
-    max-height: calc(100dvh - 24px);
-    overflow: hidden;
-  }
-  .inventory-modal .inv-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    flex: none;
-    min-height: 0;
-    max-height: 56dvh;
-  }
-  .delivery-modal .modal-title,
-  .inventory-modal .modal-title {
+  .delivery-modal .modal-title {
     margin: 0 0 8px;
     padding-right: 32px;
     font-size: 17px;
@@ -6657,7 +5917,6 @@ body {
     padding: 26px 28px 24px;
   }
   .hunt-modal,
-  .forge-modal,
   .delivery-modal {
     width: var(--modal-w-wide);
     max-height: var(--modal-max-h);
@@ -6680,9 +5939,7 @@ body {
   }
   /* the global img{display:block} reset would drop a title icon onto its own line above the text */
   .modal-title .inline-icon,
-  .shop-modal .inline-icon,
-  .forge-modal .inline-icon,
-  .inventory-modal .inline-icon {
+  .shop-modal .inline-icon {
     display: inline-block;
   }
 
@@ -6717,90 +5974,7 @@ body {
     font-size: calc(var(--font-size) - 1px);
     padding: 10px 6px;
   }
-  .forge-body {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-    gap: 12px;
-    align-content: start;
-    padding: 2px 8px 4px 2px;
-  }
-  .forge-body > :not(.craft-card) {
-    grid-column: 1 / -1;
-  }
-  .forge-body .gear-section {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-    gap: 12px;
-    margin-bottom: 0;
-  }
-  .forge-body > .shop-space {
-    margin: 0;
-  }
-  .forge-body .craft-card,
-  .forge-body .gear-section .craft-card {
-    margin-bottom: 0;
-  }
-  .forge-body .gem-library {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 8px 12px;
-    margin-top: 0;
-  }
-  .forge-body .gem-library .gear-section-title {
-    grid-column: 1 / -1;
-    margin-bottom: 0;
-  }
-  .forge-body .gem-library-row {
-    margin-bottom: 0;
-  }
 
-  /* --- Inventário: the bag and the Baú side by side, the item detail panel on the right --- */
-  .inventory-modal {
-    width: min(1240px, 96vw);
-    height: min(86vh, 780px);
-    max-height: none;
-    padding: 26px 28px 24px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .inventory-modal > .modal-title {
-    flex: none;
-  }
-  .inventory-modal .inv-root {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    column-gap: 24px;
-    min-height: 0;
-    flex: 1;
-  }
-  .inventory-modal .inv-panes {
-    grid-column: 1;
-    min-height: 0;
-  }
-  .inventory-modal .inv-grid {
-    gap: 8px;
-    padding: 2px 8px 2px 2px;
-  }
-  .inventory-modal .inv-detail-backdrop {
-    grid-column: 2;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  /* the detail panel is always visible beside the panes here; the mobile bottom-sheet close button is not needed */
-  .inventory-modal .inv-detail-close {
-    display: none;
-  }
-  .inventory-modal .inv-detail {
-    margin-top: 0;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 14px;
-    scrollbar-width: thin;
-    scrollbar-color: #6a4a2a transparent;
-  }
 
   /* --- Pedidos --- */
   .delivery-modal .expedition-list {
@@ -6990,10 +6164,6 @@ body {
   box-shadow: 0 0 0 1px #6a4300, 0 0 6px rgba(255, 200, 80, 0.45);
   vertical-align: middle;
   white-space: nowrap;
-}
-.craft-stats {
-  font-size: calc(var(--font-size) - 3px);
-  color: #6fe08a;
 }
 .gear-stat-list {
   display: flex;
@@ -7333,10 +6503,6 @@ button[data-ui]:focus-visible {
 }
 
 /* Inventory: over-capacity chip and the running-tonic line of the detail panel */
-.inventory-summary-chip.over {
-  color: #ffb4a2;
-  border-color: #e0553a;
-}
 .inv-buff-active {
   align-self: flex-start;
   padding: 2px 8px;
@@ -7362,16 +6528,6 @@ button[data-ui]:focus-visible {
 }
 
 /* Forge action buttons with an icon (catalyst / blessed): the English labels ("CATALYZE") are longer than the Portuguese ones, so they may shrink and wrap */
-.repair-action-btn {
-  gap: 4px;
-  padding-inline: 6px;
-}
-.repair-action-btn span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  text-align: center;
-  font-size: calc(var(--font-size) - 3px);
-}
 .craft-btn.repair-action-btn {
   padding-inline: 3px;
   gap: 2px;
@@ -7404,23 +6560,6 @@ button[data-ui]:focus-visible {
     font-size: calc(var(--font-size) - 2px);
     padding: 9px 4px;
   }
-  .forge-body .craft-card:has(.upgrade-btns) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .forge-modal .craft-card .upgrade-btns {
-    flex-direction: row;
-    flex: none;
-    width: 100%;
-    max-width: none;
-  }
-  .forge-modal .craft-card .upgrade-btns .craft-btn {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 40px;
-    width: auto;
-    height: auto;
-  }
 }
 
 /* Tablet (600-1023 px): the phone-sized modals (420 px) left most of the screen empty and broke names mid-word; give them the width a tablet has */
@@ -7429,34 +6568,15 @@ button[data-ui]:focus-visible {
   .shop-modal,
   .quests-modal,
   .gather-modal,
-  .inventory-modal,
   .garden-modal {
     width: min(92vw, 640px);
   }
   .hunt-modal,
-  .forge-modal,
   .delivery-modal {
     width: min(94vw, 720px);
   }
   .battle {
     width: min(94vw, 680px);
-  }
-  .forge-body .craft-card:has(.upgrade-btns) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .forge-modal .craft-card .upgrade-btns {
-    flex-direction: row;
-    flex: none;
-    width: 100%;
-    max-width: none;
-  }
-  .forge-modal .craft-card .upgrade-btns .craft-btn {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 40px;
-    width: auto;
-    height: auto;
   }
 }
 
@@ -7514,42 +6634,6 @@ button[data-ui]:focus-visible {
 }
 
 /* ===== inventory + stash panes, stack actions, merchant ===== */
-.inv-root {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
-}
-.inv-pane-tabs {
-  display: none;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-.inv-pane-tabs .tab {
-  flex: 1;
-}
-.inv-panes {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14px;
-  min-height: 0;
-  flex: 1;
-}
-.inv-pane {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-.inv-pane-title {
-  margin: 0 0 6px;
-  font-size: calc(var(--font-size) - 1px);
-  color: #ffe9a8;
-  text-align: left;
-}
-.inv-pane .inv-grid {
-  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
-}
 .stash-note {
   margin: 0 0 8px;
   font-size: calc(var(--font-size) - 3px);
@@ -7696,7 +6780,6 @@ button[data-ui]:focus-visible {
   font-size: calc(var(--font-size) - 3px);
   color: #ff8a7a;
 }
-.craft-card.focus,
 .oficios-card.focus {
   border-color: #7cc4ff;
   box-shadow: 0 0 10px rgba(124, 196, 255, 0.45);
@@ -7732,35 +6815,7 @@ button[data-ui]:focus-visible {
   color: #1a1108;
 }
 
-/* two panes side by side from tablet width up; a tab switch on phones */
-@media (max-width: 599px) {
-  .inv-pane-tabs {
-    display: flex;
-  }
-  .inv-panes {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .inv-pane:not(.active) {
-    display: none;
-  }
-  .inv-pane-title {
-    display: none;
-  }
-}
 
-/* tablet: the modal is wide enough for both panes; the item detail sits under them */
-@media (min-width: 600px) and (max-width: 1023px) {
-  .inventory-modal {
-    width: min(96vw, 760px);
-  }
-  .inventory-modal .inv-grid {
-    max-height: 34vh;
-  }
-}
-/* the same two panes inside the Hero view: the detail sits under them */
-.personagem-inventory .inv-grid {
-  max-height: 320px;
-}
 .shop-sell .merchant-budget {
   grid-column: 1 / -1;
 }
@@ -7840,50 +6895,6 @@ button[data-ui]:focus-visible {
   --frame-s: 8px;
   --frame-w: 2px;
   --frame-out: -4px;
-}
-.forge-seal-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin: 0 0 8px;
-  padding: 8px 12px;
-  font-family: inherit;
-  color: #d8c9a0;
-  background: #1c1322;
-  border: 2px solid #6b5230;
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: left;
-}
-.forge-seal-toggle.on {
-  border-color: #ffd76a;
-  box-shadow: 0 0 12px rgba(255, 215, 106, 0.35);
-  color: #ffd76a;
-}
-.forge-seal-icon {
-  width: 32px;
-  height: 32px;
-  flex: none;
-  image-rendering: pixelated;
-}
-.forge-seal-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.forge-seal-name {
-  font-size: calc(var(--font-size) - 1px);
-}
-.forge-seal-hint {
-  font-size: calc(var(--font-size) - 3px);
-  color: #8a7aa8;
-}
-.forge-seal-state {
-  flex: none;
-  font-size: calc(var(--font-size) - 2px);
 }
 .frame-heading {
   margin: 14px 0 6px;
@@ -9536,32 +8547,6 @@ button[data-ui]:focus-visible {
 }
 
 /* Round 14: Forge > Gems buttons say which gem and what it does */
-.socket-gem-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1 1 150px;
-  min-width: 0;
-  text-align: left;
-}
-.socket-gem-text {
-  display: grid;
-  min-width: 0;
-  flex: 1;
-  gap: 1px;
-}
-.socket-gem-name {
-  color: #ffe9a8;
-}
-.socket-gem-effect {
-  font-size: calc(var(--font-size) - 4px);
-  color: #c8b890;
-  line-height: 1.3;
-}
-.socket-gem-qty {
-  color: #ffd76a;
-  white-space: nowrap;
-}
 
 /* Round 18: the wholesale merchant tab (WholesalePanel.tsx) and the full-bag link */
 .ws-body .ws-row {

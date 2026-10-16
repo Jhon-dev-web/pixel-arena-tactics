@@ -606,14 +606,6 @@
 }
 
 /* Round 13: the bag pane of the inventory is ~210px wide on a desktop window, which broke "Poções" into "Poçõe / s": the tabs keep their words whole and wrap as a group instead */
-.inv-pane .inv-tabs {
-  flex-wrap: wrap;
-}
-.inv-pane .inv-tabs .tab {
-  flex: 1 0 auto;
-  white-space: nowrap;
-  overflow-wrap: normal;
-}
 
 /* Round 13: weekly goals + login streak inside the quests screen (QuestsModal.tsx) */
 .quests-modal .inv-tabs .tab {

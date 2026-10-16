@@ -70,6 +70,7 @@ export default function DesktopTopbar({
               .map((part) => (
                 <span key={part}>{part}</span>
               ))}
+            <span className="desktop-topbar-cp">{t('camp.cp', { n: formatNumber(computeCP(save)) })}</span>
           </div>
         </div>
       </button>

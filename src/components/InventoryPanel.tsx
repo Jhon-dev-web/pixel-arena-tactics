@@ -32,6 +32,7 @@ import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
 import StashHint from './StashHint';
 import LapidarPanel from './LapidarPanel';
+import { ChipRow, SearchField, Tabs } from './ui';
 
 // The inventory grid + detail panel — extracted from what used to be InventoryModal's whole body, so
 // the Personagem view (embedded, no modal chrome) and the still-existing quick-access "Inventário"
@@ -85,6 +86,7 @@ export default function InventoryPanel({
   onSalvage,
   onUseConsumable,
   onExpand,
+  layout = 'compact',
 }: {
   save: SaveData;
   onEquip: (id: string) => void;
@@ -96,6 +98,8 @@ export default function InventoryPanel({
   onSalvage: (id: string) => void;
   onUseConsumable: (id: string) => void;
   onExpand: () => void;
+  // 'wide': the bag and the item detail side by side when the screen is wide enough (the Inventory screen); 'compact': the grid on its own, the detail below it (a wide screen) or as a sheet (a phone) - embedded in Personagem.
+  layout?: 'wide' | 'compact';
 }) {
   // stash / merchant / "Usar em..." actions come from App through the context (see bagContext.ts)
   const bag = useContext(BagContext);
@@ -104,6 +108,7 @@ export default function InventoryPanel({
   // src: where the picked stack lives (the inventory or the Baú). Phones show one pane at a time.
   const [selected, setSelected] = useState<{ src: 'bag' | 'stash'; kind: SelKind; id: string } | null>(null);
   const [pane, setPane] = useState<'bag' | 'stash'>('bag');
+  const [query, setQuery] = useState('');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmSalvage, setConfirmSalvage] = useState(false);
   // Bind on equip: wearing a TRADEABLE piece for the first time binds it for good, so that one case asks first (the panel's own inline confirm, like discard).
@@ -123,10 +128,13 @@ export default function InventoryPanel({
     return () => document.removeEventListener('keydown', onKey);
   }, [expandOpen]);
 
-  const gearInstances = listGearInstances(save);
-  const stackableGear = GEAR.filter((g) => !isInstancedSlot(g.slot) && (save.inventory?.[g.id] ?? 0) > 0);
-  const materialItems = MATERIALS.map((m) => ({ ...m, qty: save.materials?.[m.id] ?? 0 })).filter((m) => m.qty > 0);
-  const consumableItems = CONSUMABLES.map((c) => ({ ...c, qty: save.consumables?.[c.id] ?? 0 })).filter((c) => c.qty > 0);
+  // The search box filters what the grid shows by the item's name (the bag itself, its space and every action stay as they are).
+  const needle = query.trim().toLocaleLowerCase();
+  const matches = (name: string): boolean => !needle || name.toLocaleLowerCase().includes(needle);
+  const gearInstances = listGearInstances(save).filter((inst) => matches(gearInstanceLabel(inst)));
+  const stackableGear = GEAR.filter((g) => !isInstancedSlot(g.slot) && (save.inventory?.[g.id] ?? 0) > 0 && matches(gearText(g.nameKey)));
+  const materialItems = MATERIALS.map((m) => ({ ...m, qty: save.materials?.[m.id] ?? 0 })).filter((m) => m.qty > 0 && matches(matText(m.nameKey)));
+  const consumableItems = CONSUMABLES.map((c) => ({ ...c, qty: save.consumables?.[c.id] ?? 0 })).filter((c) => c.qty > 0 && matches(conText(c.nameKey)));
 
   const showEquipment = tab === 'all' || tab === 'equipment';
   const showMaterials = tab === 'all' || tab === 'materials';
@@ -228,18 +236,19 @@ export default function InventoryPanel({
   const cellsShown = gearInstances.length + [...stackableGear.map((g) => save.inventory[g.id]), ...materialItems.map((m) => m.qty), ...consumableItems.map((c) => c.qty)].reduce((sum, q) => sum + slotsForQty(q), 0);
 
   return (
-    <div className="inv-root">
-      <div className="inv-pane-tabs" role="tablist">
-        <button className={`tab${pane === 'bag' ? ' active' : ''}`} onClick={() => setPane('bag')} role="tab" aria-selected={pane === 'bag'} data-ui>
-          {t('inventory.bagTitle')} {slots}/{capacity}
-        </button>
-        <button className={`tab${pane === 'stash' ? ' active' : ''}`} onClick={() => setPane('stash')} role="tab" aria-selected={pane === 'stash'} data-ui>
-          <img className="inline-icon" src="/assets/icons/camp_stash.png" alt="" /> {t('stash.title')} {stashSlotsUsed(save)}/{stashCapacity(save)}
-        </button>
-      </div>
+    <div className={`inv-root ${layout}`}>
+      <Tabs<'bag' | 'stash'>
+        className="inv-pane-tabs"
+        label={t('inventory.title')}
+        value={pane}
+        onChange={setPane}
+        items={[
+          { id: 'bag', label: `${t('inventory.bagTitle')} ${slots}/${capacity}` },
+          { id: 'stash', icon: <img src="/assets/icons/camp_stash.png" alt="" />, label: `${t('stash.title')} ${stashSlotsUsed(save)}/${stashCapacity(save)}` },
+        ]}
+      />
       <div className="inv-panes">
       <section className={`inv-pane inv-pane-bag${pane === 'bag' ? ' active' : ''}`}>
-      <h4 className="inv-pane-title">{t('inventory.bagTitle')}</h4>
       <div className="inventory-summary">
         <span className={`inventory-summary-chip${slots > capacity ? ' over' : ''}`} title={slots > capacity ? t('inventory.overCapacity') : undefined}>
           {t('inventory.space', { n: slots, m: capacity })}
@@ -305,19 +314,20 @@ export default function InventoryPanel({
         </div>
       )}
 
-      <div className="inv-tabs">
-        <button className={`tab${tab === 'all' ? ' active' : ''}`} onClick={() => setTab('all')} data-ui>
-          {t('inventory.all')}
-        </button>
-        <button className={`tab${tab === 'equipment' ? ' active' : ''}`} onClick={() => setTab('equipment')} data-ui>
-          {t('inventory.equipment')}
-        </button>
-        <button className={`tab${tab === 'materials' ? ' active' : ''}`} onClick={() => setTab('materials')} data-ui>
-          {t('inventory.materials')}
-        </button>
-        <button className={`tab${tab === 'consumables' ? ' active' : ''}`} onClick={() => setTab('consumables')} data-ui>
-          {t('inventory.consumables')}
-        </button>
+      <div className="inv-toolbar">
+        <SearchField label={t('inventory.search')} placeholder={t('inventory.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <ChipRow<'all' | 'equipment' | 'materials' | 'consumables'>
+          className="inv-tabs"
+          label={t('inventory.title')}
+          value={tab}
+          onChange={setTab}
+          items={[
+            { id: 'all', label: t('inventory.all') },
+            { id: 'equipment', label: t('inventory.equipment') },
+            { id: 'materials', label: t('inventory.materials') },
+            { id: 'consumables', label: t('inventory.consumables') },
+          ]}
+        />
       </div>
 
       <div className="inv-grid">
@@ -403,16 +413,14 @@ export default function InventoryPanel({
               </button>
             )),
           )}
-        {Array.from({ length: Math.max(0, 24 - cellsShown) }).map((_, i) => (
+        {cellsShown === 0 && !!needle && <p className="inv-nomatch">{t('inventory.noMatches')}</p>}
+        {Array.from({ length: Math.max(0, (needle ? 0 : 24) - cellsShown) }).map((_, i) => (
           <span key={`empty-${i}`} className="inv-slot empty" />
         ))}
       </div>
       </section>
 
       <section className={`inv-pane inv-pane-stash${pane === 'stash' ? ' active' : ''}`}>
-        <h4 className="inv-pane-title">
-          <img className="inline-icon" src="/assets/icons/camp_stash.png" alt="" /> {t('stash.title')}
-        </h4>
         <StashPane save={save} selected={fromStash && selected ? { kind: selected.kind, id: selected.id } : null} onSelect={(sel) => select(sel.kind, sel.id, 'stash')} onUpgrade={() => bag?.upgradeStash()} />
       </section>
       </div>

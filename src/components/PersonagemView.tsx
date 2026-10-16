@@ -2,18 +2,20 @@ import { t } from '../locales';
 import { levelLabel, levelBarProgress } from './levelLabel';
 import { useDisplayName } from '../game/usernameContext';
 import SpriteSheet from './SpriteSheet';
+import HeroThumb from './HeroThumb';
 import { EquipmentPanel, AttributesPanel, TitlesPanel, AttrKey } from './HeroPanels';
 import InventoryPanel from './InventoryPanel';
 import { SkillsSummary } from './SkillsView';
 import { SaveData } from '../game/engine';
 import { CpLine } from './CombatStats';
 import { getTitleDef } from '../game/titles';
+import { heroBaseLook } from '../game/sprites';
 import { portraitFrameClass } from '../game/seasonItems';
+import { Chip, PageHeader, Panel, Screen, ScreenLayout } from './ui';
 
-// "Personagem" as its own main-content area (desktop: alongside the fixed sidebar; mobile: same
-// cards, stacked) instead of the old small floating modal. Every card below is a straight port of
-// HeroModal's/InventoryModal's real content via the shared panels in HeroPanels.tsx/InventoryPanel.tsx
-// — same handlers, same state, same save fields. No mechanic changed.
+// "Personagem" as its own main screen: the page header, then the hero art with the attributes in the summary column on the right (first on a phone, where the points to spend matter most) and the
+// equipment, the skills, the titles and the inventory in the main column. Every panel is a straight port of the old cards via the shared panels in HeroPanels.tsx / InventoryPanel.tsx: same handlers,
+// same state, same save fields. No mechanic changed; only the presentation moved onto the shared pieces (src/components/ui).
 export default function PersonagemView({
   save,
   spriteUrl,
@@ -55,62 +57,66 @@ export default function PersonagemView({
   const titleLabel = titleDef ? t(`titles.${titleDef.nameKey}`) : null;
 
   return (
-    <div className="desktop-home personagem-view">
-      <section className="dh-card personagem-hero">
-        <div className={`dh-hero-portrait${portraitFrameClass(save)}`} aria-hidden>
-          <SpriteSheet src={spriteUrl} size="min(148px, 100%)" row={0} />
-        </div>
-        <div className="dh-hero-body">
-          <div className="dh-hero-headline">
-            <span className="name-btn">{displayName}</span>
-          </div>
-          {titleLabel && <p className="hero-title-line">• {titleLabel}</p>}
-          <div className="dh-hero-badges">
-            <span className="dh-hero-badge level">{levelLabel(save)}</span>
-            <span className="dh-hero-badge cp">
-              <CpLine save={save} />
-            </span>
-          </div>
-          <div className="bar dh-hero-xpbar">
-            <div className="bar-fill xp-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
-          </div>
-        </div>
-      </section>
+    <Screen label={t('nav.hero')}>
+      <PageHeader icon={<HeroThumb sheet={heroBaseLook(save)} size={52} />} title={t('nav.hero')} subtitle={titleLabel ? `${displayName} • ${titleLabel}` : displayName} />
+      <ScreenLayout
+        sideFirst
+        main={
+          <>
+            <Panel title={t('profile.equipTab')} className="pg-equip-panel">
+              <EquipmentPanel save={save} />
+            </Panel>
 
-      <section className="dh-card personagem-equip">
-        <h3 className="dh-card-title">{t('profile.equipTab')}</h3>
-        <EquipmentPanel save={save} />
-      </section>
+            <Panel title={t('heroSkills.ui.title')}>
+              <SkillsSummary save={save} onOpen={onOpenSkills} />
+            </Panel>
 
-      <section className="dh-card personagem-attrs" data-highlight="attrs">
-        <h3 className="dh-card-title">{t('profile.attrsTab')}</h3>
-        <AttributesPanel save={save} onAttrChange={onAttrChange} onSuggest={onSuggestAttrs} />
-      </section>
+            <Panel title={t('profile.titlesTab')}>
+              <TitlesPanel save={save} onSelectTitle={onSelectTitle} onSelectFrame={onSelectFrame} onSelectSkin={onSelectSkin} />
+            </Panel>
 
-      <section className="dh-card personagem-skills">
-        <h3 className="dh-card-title">{t('heroSkills.ui.title')}</h3>
-        <SkillsSummary save={save} onOpen={onOpenSkills} />
-      </section>
+            <Panel title={t('inventory.title')} className="pg-bag-panel">
+              <InventoryPanel
+                save={save}
+                onEquip={onEquip}
+                onUnequip={onUnequip}
+                onDiscard={onDiscard}
+                onReforge={onReforge}
+                onLapidar={onLapidar}
+                onSalvage={onSalvage}
+                onUseConsumable={onUseConsumable}
+                onExpand={onExpandInventory}
+              />
+            </Panel>
+          </>
+        }
+        side={
+          <>
+            <Panel className="pg-hero">
+              <div className={`pg-portrait${portraitFrameClass(save)}`} aria-hidden>
+                <SpriteSheet src={spriteUrl} size="min(132px, 100%)" row={0} />
+              </div>
+              <div className="pg-hero-body">
+                <h3 className="pg-hero-name">{displayName}</h3>
+                {titleLabel && <p className="pg-hero-title">• {titleLabel}</p>}
+                <div className="pg-hero-chips">
+                  <Chip tone="gold">{levelLabel(save)}</Chip>
+                  <Chip>
+                    <CpLine save={save} />
+                  </Chip>
+                </div>
+                <div className="bar hm-bar">
+                  <div className="bar-fill xp-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
+                </div>
+              </div>
+            </Panel>
 
-      <section className="dh-card personagem-titles">
-        <h3 className="dh-card-title">{t('profile.titlesTab')}</h3>
-        <TitlesPanel save={save} onSelectTitle={onSelectTitle} onSelectFrame={onSelectFrame} onSelectSkin={onSelectSkin} />
-      </section>
-
-      <section className="dh-card personagem-inventory">
-        <h3 className="dh-card-title">{t('inventory.title')}</h3>
-        <InventoryPanel
-          save={save}
-          onEquip={onEquip}
-          onUnequip={onUnequip}
-          onDiscard={onDiscard}
-          onReforge={onReforge}
-          onLapidar={onLapidar}
-          onSalvage={onSalvage}
-          onUseConsumable={onUseConsumable}
-          onExpand={onExpandInventory}
-        />
-      </section>
-    </div>
+            <Panel title={t('profile.attrsTab')} data-highlight="attrs" className="pg-attrs-panel">
+              <AttributesPanel save={save} onAttrChange={onAttrChange} onSuggest={onSuggestAttrs} />
+            </Panel>
+          </>
+        }
+      />
+    </Screen>
   );
 }

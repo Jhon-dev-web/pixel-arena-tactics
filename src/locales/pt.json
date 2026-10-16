@@ -519,6 +519,8 @@
     "bindCancel": "Cancelar",
     "equipped": "EQUIPADO",
     "hint": "Selecione um item para ver os detalhes",
+    "search": "Buscar item...",
+    "noMatches": "Nenhum item encontrado",
     "materialDesc": "Material de forja",
     "space": "Espaço: {n} / {m}",
     "sell": "Vender ({n} Ouro)",
