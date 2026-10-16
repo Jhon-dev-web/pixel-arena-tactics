@@ -8,6 +8,14 @@ export const EDGE_ENV_NAMES = [
   'STRIPE_PRICE_ADVENTURER_PASS',
   'STRIPE_WEBHOOK_SECRET',
   'APP_ORIGIN',
+  // The USDT market and the USDT Pass (docs/MARKET_USDT.md). BSC_RPC_URL may carry the provider's API key: it is read here and used by the chain module only, never logged or returned.
+  'BSC_RPC_URL',
+  'BSC_CHAIN_ID',
+  'BSC_MIN_CONFIRMATIONS',
+  'BSC_USDT_CONTRACT',
+  'MARKET_FEE_ADDRESS',
+  'PASS_RECEIVE_ADDRESS',
+  'PASS_PRICE_USDT',
 ] as const;
 
 export type EdgeEnv = Partial<Record<(typeof EDGE_ENV_NAMES)[number], string>>;
