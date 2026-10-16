@@ -8,7 +8,7 @@
 //   PB  P + smart + BUYER of a legendary tier 4+ set: every gear recipe of tier 4, 5 and 6 costs nothing (the piece still needs its hero level) and rolls Legendary.
 //   PBE the same with Epic.  PB4 / PB4E: buys ONLY the tier 4 set (Legendary / Epic); tiers 5 and 6 he forges like everybody else. AB / ABE: the buyer without the Pass.
 // "Smart non-buyer vs buyer" (PS vs PB) is the number the League review cared about: how many levels buying a set is worth to an equally good Pass owner.
-// Env: LEAGUE_POLICY (required), LEAGUE_SEEDS ("1,2,3,4,5,6"), LEAGUE_DAYS (60), LEAGUE_OUT (dir), LEAGUE_TAG (file prefix).
+// Env: LEAGUE_EVENTS=0 (no League events; they are on by default since Rodada 22's events), LEAGUE_POLICY (required), LEAGUE_SEEDS ("1,2,3,4,5,6"), LEAGUE_DAYS (60), LEAGUE_OUT (dir), LEAGUE_TAG (file prefix).
 // SIM_T / SIM_ZONES: same overrides as longHaul.sim.ts, for what-ifs without editing the tunables.
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
 import fs from 'node:fs';
@@ -22,6 +22,7 @@ import { MAX_LEVEL, playerLevel, xpForNextLevel, xpToReachLevel } from '../../sr
 import { paragonLevel } from '../../src/game/paragon';
 import { mulberry32, withSeededRandom } from './driver';
 import { Player, PlayerOptions } from './player';
+import { setLeagueEpoch } from '../../src/game/leagueClock';
 
 if (process.env.SIM_T) {
   for (const [group, vals] of Object.entries(JSON.parse(process.env.SIM_T) as Record<string, Record<string, number>>)) Object.assign((T as unknown as Record<string, Record<string, number>>)[group], vals);
@@ -51,6 +52,9 @@ const DAYS = Number(process.env.LEAGUE_DAYS ?? 60);
 const OUT = process.env.LEAGUE_OUT ?? path.join(os.tmpdir(), 'arena-league-econ');
 const TAG = process.env.LEAGUE_TAG ?? 'run';
 const START = new Date(2026, 5, 1, 0, 0, 0).getTime();
+
+// League events (leagueEvents.ts) hang from the League clock: day 1 of the sim is League day 1. LEAGUE_EVENTS=0 plays the same policy with no events (the control of the events' own effect).
+if (process.env.LEAGUE_EVENTS !== '0') setLeagueEpoch(START);
 
 const opts = POLICIES[POLICY];
 if (opts?.buyer) {

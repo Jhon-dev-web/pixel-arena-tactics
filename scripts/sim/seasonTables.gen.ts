@@ -30,6 +30,9 @@ export const UNIQUE_FLOOR_GATES: Readonly<Record<string, number>> = ${JSON.strin
 /** Profession (Mining / Woodcutting / Gardening) skill XP at which level l begins: PROFESSION_XP_TO_LEVEL[id][l - 1]. Level 1 = 0, the last entry is the max level. */
 export const PROFESSION_XP_TO_LEVEL: Readonly<Record<'mining' | 'woodcutting' | 'gardening', readonly number[]>> = ${JSON.stringify(t.professionXpToLevel)};
 
+/** The League event calendar (src/game/leagueEvents.ts LEAGUE_EVENT_SLOTS; migration 0014 has the same rows): hours after the League opened. The XP and profession bounds widen only while one runs. */
+export const EVENT_SLOTS: readonly { id: string; kind: 'hero' | 'profession' | 'final'; startHour: number; hours: number }[] = ${JSON.stringify(t.eventSlots)};
+
 /** Hunting zones: the dungeon floor and the hero level that open each one (0 = no level asked), its XP per hour at the shallow depth and its extra XP per sub-level above 1 (0 = flat). */
 export const ZONE_TABLE: readonly { id: string; unlockFloor: number; unlockLevel: number; xpPerHour: number; xpPerSubLevel: number }[] = ${JSON.stringify(t.zoneFloors)};
 `;

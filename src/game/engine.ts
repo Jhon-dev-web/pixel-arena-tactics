@@ -1,4 +1,6 @@
 import { LeagueMark, sanitizeLeagueMark } from './leagueMark';
+import { getLeagueEpoch } from './leagueClock';
+import { activeEventBuffs, EVENT_XP_CAP, EventBuffs, EventPick, eventGatherBonusHours, huntEventWindows, sanitizeEventBuffs, sanitizeEventPick } from './leagueEvents';
 import T from './tunables';
 import { grantDailyPassKit, ownsAdventurerPass } from './entitlements';
 import { sanitizeActiveFrame, sanitizeActiveSkin, sanitizeStashBonus } from './seasonItems';
@@ -181,6 +183,9 @@ export interface SaveData {
   // uncertified pouches became Gold at the old face); `legacyPouchCerts` are the certificates of pouches minted at the old face that the hero still holds, which open for the OLD face.
   pouchFacesV2?: boolean;
   legacyPouchCerts?: string[];
+  // Rodada 22 League events (leagueEvents.ts): the timed Hunting XP buffs the player earned from the Corrida da Masmorra / Grande Entrega / Corrida Final, and the profession picked for the Semana das Profissoes.
+  eventBuffs?: EventBuffs;
+  eventPick?: EventPick;
   // Web build: the boss unique drops of banked Dungeon runs the server has not rolled yet (bossClaims.ts). Old saves load with none.
   pendingBossClaims?: PendingBossClaim[];
   highestDungeonFloor: number;
@@ -569,7 +574,7 @@ function gatherAccrual(save: SaveData, kind: GatherKind, now: number): GatherAcc
   const hours = pendingMs / (3600 * 1000);
   const power = gatherPower(BASE_GATHER_POWER, save.skillXp[kind]);
   // Coletor's share (frozen in the snapshot) works like the Gatherer Brew: extra effective hours, for the units only (the Gold of the session is unchanged).
-  const effective = hours * (1 + (snap.gatherPct ?? 0)) + gathererBonusHours(save, startedAt, pendingMs) + prospectBonusHours(save, startedAt, pendingMs);
+  const effective = hours * (1 + (snap.gatherPct ?? 0)) + gathererBonusHours(save, startedAt, pendingMs) + prospectBonusHours(save, startedAt, pendingMs) + eventGatherBonusHours(kind, startedAt, pendingMs);
   const dropMult = snap.active ? T.battlePass.dropRateMultiplier : 1;
   const rate = mining ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower;
   const goldRate = mining ? T.mining.goldRatePerPower : T.woodcutting.goldRatePerPower;
@@ -732,7 +737,15 @@ export function buildHuntSession(save: SaveData, startedAt: number): HuntSession
     ...(ownsAdventurerPass(save) ? { passCapHours: T.battlePass.capHours, passGold: T.battlePass.goldBonus * 100 } : {}),
     storageFlat: true,
     tonics: runningTonicWindows(save, startedAt, startedAt),
+    // League events (leagueEvents.ts): the calendar the session is played under, fixed when it starts (no League = no events), and the event buffs already earned.
+    ...(getLeagueEpoch() !== null ? { league: getLeagueEpoch()! } : {}),
+    ...(activeEventBuffs(save, startedAt).length > 0 ? { eventXp: activeEventBuffs(save, startedAt) } : {}),
   };
+}
+
+// The event buffs of a session as session-relative windows (fractions kept).
+function relativeEventBuffs(buffs: { from: number; to: number; pct: number }[], startedAt: number): { from: number; to: number; pct: number }[] {
+  return buffs.map((b) => ({ from: Math.max(0, b.from - startedAt), to: b.to - startedAt, pct: b.pct })).filter((b) => b.to > b.from);
 }
 
 // One window [from, expiry) for every hunt-relevant tonic that is running at `now`. The Hunter Lure only counts for the zone it was used in.
@@ -839,6 +852,8 @@ export function buildHuntSimSetup(
     fortuneWindows: relativeWindows(session.tonics?.fortune ?? [], startedAt),
     knowledgeWindows: relativeWindows(session.tonics?.knowledge ?? [], startedAt),
     xpBuffPct: T.consumables.knowledgeXpPct,
+    ...(session.league ? { eventWindows: huntEventWindows(session.league, startedAt, 48 * 3600 * 1000), eventXpCap: EVENT_XP_CAP } : {}),
+    ...(session.eventXp && session.eventXp.length > 0 ? { eventBuffs: relativeEventBuffs(session.eventXp, startedAt), eventXpCap: EVENT_XP_CAP } : {}),
     sharpWindows: relativeWindows(session.tonics?.sharpened ?? [], startedAt),
     polishWindows: relativeWindows(session.tonics?.polished ?? [], startedAt),
     baitWindows: relativeWindows(session.tonics?.bait ?? [], startedAt),
@@ -1385,6 +1400,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         pouchDay: sanitizePouchDay(parsed.pouchDay, Date.now()),
         ...(Object.keys(sanitizePouchCerts(parsed.pouchCerts)).length > 0 ? { pouchCerts: sanitizePouchCerts(parsed.pouchCerts) } : {}),
         pouchFacesV2: parsed.pouchFacesV2 === true, // (explicit: the defaults the save is merged over already carry true)
+        ...(Object.keys(sanitizeEventBuffs(parsed.eventBuffs)).length > 0 ? { eventBuffs: sanitizeEventBuffs(parsed.eventBuffs) } : {}),
+        ...(sanitizeEventPick(parsed.eventPick) ? { eventPick: sanitizeEventPick(parsed.eventPick)! } : {}),
         ...(sanitizeLegacyPouchCerts(parsed.legacyPouchCerts).length > 0 ? { legacyPouchCerts: sanitizeLegacyPouchCerts(parsed.legacyPouchCerts) } : {}),
         ...(sanitizeBossClaims(parsed.pendingBossClaims).length > 0 ? { pendingBossClaims: sanitizeBossClaims(parsed.pendingBossClaims) } : {}),
         highestDungeonFloor,

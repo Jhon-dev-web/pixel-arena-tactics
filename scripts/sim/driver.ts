@@ -32,6 +32,7 @@ import { applyDurabilityLoss, equippedSubstatTotals } from '../../src/game/gearI
 import { GemId } from '../../src/game/gems';
 import { MaterialId } from '../../src/game/materials';
 import { unlockedZoneIds } from '../../src/game/huntingZones';
+import { applyDungeonRace, applyFinalRaceClaim } from '../../src/game/leagueEvents';
 import { defeatGoldKept, isDungeonBoss, isDungeonCheckpoint, RunRewards, stageEnemyDmg, stageEnemyHp, waveRewards } from '../../src/game/waves';
 import { UniqueDrop, addRelics, addUniqueInstance } from '../../src/game/uniques';
 import { recordDungeonRun } from '../../src/game/statsTracking';
@@ -392,7 +393,9 @@ export function applyDungeonRun(s: SaveData, run: DungeonRun, now = Date.now()):
     battlePassLevel,
     battlePassXp,
   };
-  return { save, goldFromRun: goldGain, goldFromMilestones, crossed };
+  // Corrida da Masmorra (leagueEvents.ts): the bosses the run cleared pay Gold and a timed Hunting XP buff while that event runs (the same call as App.tsx finishRun).
+  const raced = applyDungeonRace(save, startFloor, stages, now);
+  return { save: raced.save, goldFromRun: goldGain + raced.gold, goldFromMilestones, crossed };
 }
 
 // Mirrors App.tsx enterDungeon (380-410) for a FREE session (the policy never pays shards for extra ones).
@@ -450,6 +453,7 @@ export function claimQuests(s: SaveData): { save: SaveData; gold: number } {
     if (def.kind === 'daily') quests.dailyClaimed = [...quests.dailyClaimed, def.id];
     else quests.claimed = [...quests.claimed, def.id];
     cur = { ...cur, gold: cur.gold + def.gold, shards: cur.shards + def.shards, quests };
+    if (def.kind === 'daily') cur = applyFinalRaceClaim(cur, Date.now()); // Corrida Final (the same call as App.tsx claimQuest)
     gold += def.gold;
   }
   return { save: cur, gold };

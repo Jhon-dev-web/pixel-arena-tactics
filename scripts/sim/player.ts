@@ -14,6 +14,7 @@ import {
   createGearInstance,
 } from '../../src/game/gearInstances';
 import { Rarity, rollSubstats } from '../../src/game/rarity';
+import { applyProfessionPick } from '../../src/game/leagueEvents';
 import { computeCP, effectiveRepairCost, playerLevel, SaveData, defaultSave } from '../../src/game/engine';
 import { BASE_MAX_REFINE, GEAR, getGear, INSTANCED_SLOTS, maxRefineFor, upgradeCost } from '../../src/game/gear';
 import { applyLapidar, canAffordLapidar, getLapidarCost, lapidarBlock } from '../../src/game/lapidar';
@@ -618,6 +619,8 @@ export class Player {
       this.freeSessionsToday = T.dungeon.freeSessionsPerDay;
     }
     this.collect();
+    // League events (only when the sim sets the League clock): a Semana das Profissoes asks for one profession; the policy picks the Garden, the one every player grows.
+    this.S = applyProfessionPick(this.S, 'gardening', this.now) ?? this.S;
     this.tendGarden();
     this.claimQuestsNow();
     this.maintain();

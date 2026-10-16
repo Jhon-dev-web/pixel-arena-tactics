@@ -4,6 +4,7 @@ import { describe, it } from 'vitest';
 import { BOUNDS, PACE_FLAG_FACTOR, REJECT_FACTOR, professionXpPerHour } from '../../supabase/functions/_shared/progress/bounds';
 import { deriveBounds } from './seasonBoundsDerive';
 import { skillLevel } from '../../src/game/skills';
+import { EVENT_PROFESSION_FACTOR, EVENT_XP_CAP } from '../../src/game/leagueEvents';
 
 describe('season bounds report', () => {
   it('prints the table', () => {
@@ -25,6 +26,8 @@ describe('season bounds report', () => {
       for (let h = 0; h < 60 * 24; h++) xp += professionXpPerHour(p, skillLevel(xp, p));
       row(`${p} xp on day 60`, BOUNDS.professionSimDay60[p], `${Math.round(xp)} (theoretical, 24 h a day)`, 'sim:long LONG_SCEN=PM,PG');
     }
+    row('eventHeroBonus', BOUNDS.eventHeroBonus, `${EVENT_XP_CAP} (leagueEvents.ts EVENT_XP_CAP, only while a hero event runs)`, 'src/game/leagueEvents.ts');
+    row('eventProfessionBonus', BOUNDS.eventProfessionBonus, `${EVENT_PROFESSION_FACTOR - 1} (the biggest profession event bonus, only while one runs)`, 'src/game/leagueEvents.ts');
     row('burstHours', BOUNDS.burstHours, `${d.capHours} (battlePass.capHours)`, 'tunables battlePass.capHours');
     row('paceSlackDays', BOUNDS.paceSlackDays, `${(BOUNDS.burstHours / 24).toFixed(2)} (burstHours / 24)`, 'derived');
     row('dungeonRunsPerDay', BOUNDS.dungeonRunsPerDay, `${d.runsPerDay} (free sessions + 10 bought)`, 'tunables dungeon.freeSessionsPerDay');

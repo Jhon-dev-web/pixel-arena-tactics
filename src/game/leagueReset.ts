@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { defaultSave, SaveData } from './engine';
 import { leagueEpochOf, LeagueMark } from './leagueMark';
+import { setLeagueEpoch } from './leagueClock';
 import { SaveConflictError, SaveRepository } from './saveRepository';
 
 // The first paid League starts every ONLINE hero from zero, once (owner decision; migration 0009_first_league_reset.sql, docs/SEASON_RANKING.md "Reset da primeira Liga").
@@ -33,6 +34,7 @@ const defaultStorage = (): StorageLike | null => {
 let known: number | null | undefined;
 const listeners = new Set<() => void>();
 const setKnown = (v: number | null | undefined): void => {
+  setLeagueEpoch(typeof v === 'number' ? v : null); // the event calendar (leagueEvents.ts) hangs from the server's moment
   if (known === v) return;
   known = v;
   listeners.forEach((l) => l());

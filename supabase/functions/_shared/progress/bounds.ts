@@ -1,4 +1,4 @@
-import { ZONE_TABLE } from './tables.ts';
+import { EVENT_SLOTS, ZONE_TABLE } from './tables.ts';
 
 // EVERY number the plausibility audit uses lives in this one table. Each entry says where it comes from. `npm run season:bounds` prints the table next to the values
 // recomputed from the game's tunables and checks that the theoretical ones here are still >= what the game can do (seasonProgress.test.ts runs the same check).
@@ -51,6 +51,11 @@ export const BOUNDS = {
    * It used to be 60,000: 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, which are gone.
    */
   xpPerHour: 25_000,
+  // ---- League events (Rodada 22: src/game/leagueEvents.ts; the calendar is EVENT_SLOTS) -----------------------------------------------------------------------------------
+  /** While a hero event (or the Corrida Final) runs, Hunting XP may be this much higher than the rate above: leagueEvents.ts EVENT_XP_CAP, all the hero-event bonuses together never pass it. */
+  eventHeroBonus: 0.15,
+  /** While a profession event runs, profession skill XP may be this much higher: the biggest of the three (+25% Mining units in the Febre, +25% in the picked profession of the Semana, +15% in the Festival). */
+  eventProfessionBonus: 0.25,
   /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%) times the Knowledge Elixir (1.25) times the last zone's best sub-level (1.18). 1.3 x 1.17 x 1.25 x 1.18 = 2.2437. */
   huntXpFactor: 2.244,
 
@@ -112,7 +117,7 @@ export const BOUNDS = {
   /**
    * Hero level position (level + share of the next level; paragon levels follow 100) against the day the fastest seed reached it.
    * SOURCE (Rodada 22, `npm run sim:econ`, the fastest seed of the Pass-owner policies P / PS / PG / PB, 6 seeds each; PB is the owner who BOUGHT a Legendary tier 4+ set): level 24 on day 2,
-   * 44 on day 7, 51 on day 11, 60 on day 19, 68 on day 26, 75 on day 33, 79 on day 38, 88 on day 50 and 92 on day 56 (docs/BALANCE_CHANGES.md Rodada 22); past day 56 the hero gains about 0.55 level
+   * 44 on day 7, 51 on day 12, 60 on day 19, 68 on day 26, 75 on day 34, 79 on day 38, 88 on day 50 and 92 on day 56 (docs/BALANCE_CHANGES.md Rodada 22); past day 56 the hero gains about 0.55 level
    * a day (level 100 on about day 72, then the paragon at 0.55 level a day, as before). Rodada 20 had 60 on day 24 and 88 on day 60 for the plain owner alone: the zone level gates of Rodada 22
    * (zone 3 asks level 40, zone 4 level 60) hold the owner who bought a set back, and the table now follows him, the fastest legitimate player, instead of the plain owner.
    */
@@ -121,25 +126,25 @@ export const BOUNDS = {
     [24, 2],
     [28, 3],
     [44, 7],
-    [51, 11],
+    [51, 12],
     [60, 19],
     [68, 26],
-    [75, 33],
+    [75, 34],
     [79, 38],
     [88, 50],
     [92, 56],
     [100, 72],
     [200, 272],
   ] as const,
-  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE (Rodada 22, P / PS / PG / PB, fastest of 6 seeds each): floor 8 on day 1, 25 on day 2, 50 on day 8, 75 on day 10, 90 on day 23, 100 on day 28 (the buyer's tier 4+ Legendary set; the plain owner needs until day 53). */
+  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE (Rodada 22, P / PS / PG / PB, fastest of 6 seeds each): floor 8 on day 1, 25 on day 2, 50 on day 9, 75 on day 11, 90 on day 26, 100 on day 39 (the buyer's tier 4+ Legendary set; the plain owner needs until day 53). */
   floorPace: [
     [0, 0],
     [8, 1],
     [25, 2],
-    [50, 8],
-    [75, 10],
-    [90, 23],
-    [100, 28],
+    [50, 9],
+    [75, 11],
+    [90, 26],
+    [100, 39],
   ] as const,
   /** Profundezas depth cleared per day by the fastest seed: 0 to about 30 in the first 3 days after the floor-100 boss (Cenario P, days 90 to 110). Depth is capped by the CP wall at about 44. */
   depthPerDayFastest: 12,
@@ -167,6 +172,18 @@ export const BOUNDS = {
   floorCapRejectFactor: 1.4,
   floorCapRejectSlack: 5,
 } as const;
+
+/** Hours of [fromMs, toMs] that fall inside an event of one of `kinds` (the League opened at `epochMs`; no epoch = no events = 0). */
+export function eventHoursBetween(epochMs: number | null | undefined, fromMs: number, toMs: number, kinds: readonly ('hero' | 'profession' | 'final')[]): number {
+  if (typeof epochMs !== 'number' || !Number.isFinite(epochMs) || !(toMs > fromMs)) return 0;
+  let ms = 0;
+  for (const e of EVENT_SLOTS) {
+    if (!kinds.includes(e.kind)) continue;
+    const a = epochMs + e.startHour * 3_600_000;
+    ms += Math.max(0, Math.min(toMs, a + e.hours * 3_600_000) - Math.max(fromMs, a));
+  }
+  return ms / 3_600_000;
+}
 
 /** Linear interpolation over a [x, y] table (sorted by x); beyond the ends it continues with the slope of the last segment (and 0 below the first). */
 export function interpolate(table: readonly (readonly [number, number])[], x: number): number {

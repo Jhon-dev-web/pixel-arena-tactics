@@ -33,6 +33,8 @@ import { ownsAdventurerPass } from '../game/entitlements';
 import { readyActivities } from '../game/claimAll';
 import { nextStep, NextStepTarget } from '../game/nextStep';
 import { nextStepLine } from './nextStepText';
+import EventsPanel from './events/EventsPanel';
+import type { ProfessionId } from '../game/leagueEvents';
 
 // Inventory pressure: amber from 85% of the slots, red when there is no free slot (the same thresholds as the hunt screen).
 const invTone = (used: number, cap: number): string => (used >= cap ? ' full' : used >= cap * 0.85 ? ' warn' : '');
@@ -99,6 +101,7 @@ export default function DesktopHome({
   onClaimAll,
   onOpenPass,
   onOpenNextStep,
+  onPickProfession,
 }: {
   save: SaveData;
   spriteUrl: string;
@@ -114,6 +117,7 @@ export default function DesktopHome({
   onClaimAll: () => void;
   onOpenPass: () => void;
   onOpenNextStep: (target: NextStepTarget) => void;
+  onPickProfession: (profession: ProfessionId) => void;
 }) {
   const now = Date.now();
   const owner = ownsAdventurerPass(save);
@@ -345,6 +349,9 @@ export default function DesktopHome({
                 </Button>
               </div>
             </Panel>
+
+            {/* Eventos da Liga */}
+            <EventsPanel save={save} onPickProfession={onPickProfession} />
 
             {/* Progressão */}
             <Panel title={t('home.progressionTitle')}>

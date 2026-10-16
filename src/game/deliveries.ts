@@ -18,6 +18,7 @@ import {
   DeliveryState,
 } from './deliveryState';
 import { recordDelivery } from './stats';
+import { grantEventBuff } from './leagueEvents';
 import T from './tunables';
 
 // Delivery orders: the Expedition's job (idle time -> Gold), now paid for with materials.
@@ -438,13 +439,18 @@ export function applyDeliveryClaim(save: SaveData, now: number): DeliveryClaim |
   if (!a || typeof now !== 'number' || !Number.isFinite(now) || now < a.endsAt) return null;
   return {
     offer: a.offer,
-    save: recordDelivery({
-      ...save,
-      gold: save.gold + a.offer.gold,
-      shards: save.shards + a.offer.shards,
-      deliveries: { ...save.deliveries, active: null },
-      quests: { ...save.quests, daily: { ...save.quests.daily, deliveries: (save.quests.daily.deliveries ?? 0) + 1 } },
-    }),
+    // Grande Entrega (leagueEvents.ts): an order collected while the event runs pays a timed Hunting XP buff (nothing outside it).
+    save: grantEventBuff(
+      recordDelivery({
+        ...save,
+        gold: save.gold + a.offer.gold,
+        shards: save.shards + a.offer.shards,
+        deliveries: { ...save.deliveries, active: null },
+        quests: { ...save.quests, daily: { ...save.quests.daily, deliveries: (save.quests.daily.deliveries ?? 0) + 1 } },
+      }),
+      'grand_delivery',
+      now,
+    ),
   };
 }
 

@@ -5,6 +5,7 @@ import { BurnState, StrikeStats, StrikeTally, applyDamageReduction, bastionHp, b
 import T from './tunables';
 import { economicRollFractionForFight } from './huntEconomy';
 import { inRelativeWindows } from './huntSession';
+import type { HuntEventWindow } from './leagueEvents';
 
 // Open Hunting's idle session is now real combat instead of a smooth time-based EV formula, using the
 // exact same per-hit formulas as the Dungeon (BattleModal.tsx) — this module intentionally does NOT
@@ -107,6 +108,11 @@ export interface HuntTimeline {
   fortuneGoldPct?: number;
   // Round 12 consumables (T.consumables): Sharpening Stone multiplies the hit while its window covers it, Armor Polish adds `reductionPolish` to the reduction sum, the Hunter Lure
   // raises the chance of the UNCOMMON / RARE drops of the zone by `baitDropPct` while its window covers the cleared fight.
+  // Rodada 22 (leagueEvents.ts): the hero events of the League that overlap the session, as session-relative windows [from, to) with the rules of each (streak XP, escalating waves, a harder
+  // enemy, the Target), the timed Hunting XP buffs the player earned (`eventBuffs`, fractions), and the most all of them can add together (`eventXpCap`). Absent = no League, no events.
+  eventWindows?: HuntEventWindow[];
+  eventBuffs?: { from: number; to: number; pct: number }[];
+  eventXpCap?: number;
   sharpWindows?: [number, number][];
   polishWindows?: [number, number][];
   baitWindows?: [number, number][];
@@ -217,7 +223,13 @@ export function simulateHuntingSession(
   let timeLeft = sessionMs;
   let fightTimeUsedMs = 0;
   let fortuneFightMs = 0; // fight time that ended inside a Fortune Tonic window (extra gold)
-  let xpFightMs = 0; // fight time x the XP of the sub-level it was won at (zoneCfg.xpPerSubLevel)
+  let xpFightMs = 0; // fight time x the XP of the sub-level it was won at (zoneCfg.xpPerSubLevel) and of the League event running
+  // League events: the run of fights won since the last defeat (the streak and the wave), the fights won toward the next Target, and the buffs the Target gave in this session.
+  let streak = 0;
+  let eventWins = 0;
+  const targetBuffs: { from: number; to: number; pct: number }[] = [];
+  // The hero event window the moment `t` (session-relative ms) falls in, or undefined.
+  const eventWindowAt = (t: number): HuntEventWindow | undefined => timeline?.eventWindows?.find((w) => w.from <= t && t < w.to);
   let knowledgeXpFightMs = 0; // the same, for the part inside a Knowledge Elixir window
   let potionCooldownUntil = 0;
   let ceiling = Math.min(promotion.maxLevel, Math.max(1, Math.floor(start.ceiling)));
@@ -256,7 +268,15 @@ export function simulateHuntingSession(
   const creditFight = (fightMs: number, subLevel: number) => {
     fightTimeUsedMs += fightMs;
     const at = sessionMs - timeLeft;
-    const weight = 1 + Math.max(0, zoneCfg.xpPerSubLevel ?? 0) * (Math.max(1, subLevel) - 1);
+    let eventPct = 0;
+    if (timeline?.eventWindows || timeline?.eventBuffs || targetBuffs.length > 0) {
+      const ev = eventWindowAt(at - 1);
+      if (ev?.streakStep && ev.streakGain) eventPct += Math.min(ev.streakCap ?? Infinity, Math.floor(streak / ev.streakStep) * ev.streakGain);
+      for (const b of timeline?.eventBuffs ?? []) if (b.from < at && at <= b.to) eventPct += b.pct;
+      for (const b of targetBuffs) if (b.from < at && at <= b.to) eventPct += b.pct;
+      eventPct = Math.min(eventPct, timeline?.eventXpCap ?? 0.15);
+    }
+    const weight = (1 + Math.max(0, zoneCfg.xpPerSubLevel ?? 0) * (Math.max(1, subLevel) - 1)) * (1 + eventPct);
     xpFightMs += fightMs * weight;
     if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, at)) fortuneFightMs += fightMs;
     if (timeline?.knowledgeWindows && inRelativeWindows(timeline.knowledgeWindows, at)) knowledgeXpFightMs += fightMs * weight; // fight time that ended inside a Knowledge Elixir window (extra XP)
@@ -295,8 +315,12 @@ export function simulateHuntingSession(
   // One full, fresh-HP attempt at `subLevel`. Returns null if the session's remaining idle time ran
   // out mid-fight (that attempt doesn't count either way — nothing to persist from an unfinished fight).
   // Event order at equal times: hero hit, enemy hit, burn tick, regeneration tick (scripts/sim/driver.ts runDungeon uses the same).
-  const attempt = (subLevel: number, startHp: number) => {
-    const enemy = enemyStatsAt(zoneCfg, subLevel);
+  const attempt = (subLevel: number, startHp: number, target?: { hp: number; dmg: number }) => {
+    const base = enemyStatsAt(zoneCfg, subLevel);
+    // League events: a harder enemy for the whole window (Fenda), the escalating wave (Invasao: more HP and damage for every run of fights won) and the Target (a single, much stronger enemy).
+    const ev = eventWindowAt(sessionMs - timeLeft);
+    const wave = ev?.escalateEvery && ev.escalatePct ? Math.min(ev.escalateCap ?? Infinity, Math.floor(streak / ev.escalateEvery) * ev.escalatePct) : 0;
+    const enemy = ev || target ? { ...base, hp: Math.round(base.hp * (1 + wave) * (target?.hp ?? 1)), dmg: Math.round(base.dmg * (1 + wave) * (1 + (ev?.enemyDmgPct ?? 0)) * (target?.dmg ?? 1)) } : base;
     // Layer 2 (Damage Reduction) — asymptotic, see derivedStats.ts. This assembly step is mirrored
     // inline in BattleModal.tsx's monsterAttack; keep both in sync.
     const dmgTakenBase = applyDamageReduction(enemy.dmg, build.reduction);
@@ -433,12 +457,33 @@ export function simulateHuntingSession(
       if (r.win) {
         kills++;
         creditFight(r.timeMs, ceiling + 1);
+        streak++;
         rollDropsForOneClear(ceiling + 1, r.timeMs);
         ceiling++;
         promotions++;
       } else {
         promotionLosses++;
         defeats++;
+        streak = 0;
+      }
+      continue;
+    }
+    // League events: the Target (Cacada ao Alvo) is the next fight once enough fights were won inside its window. It pays no drops and counts for no promotion; winning it gives a timed XP buff.
+    const ev = eventWindowAt(sessionMs - timeLeft);
+    if (!ev?.targetEvery) eventWins = 0;
+    if (ev?.targetEvery && eventWins >= ev.targetEvery) {
+      const r = attempt(ceiling, build.playerMax, { hp: ev.targetHp ?? 1, dmg: ev.targetDmg ?? 1 });
+      if (!r) break;
+      eventWins = 0;
+      if (r.win) {
+        kills++;
+        creditFight(r.timeMs, ceiling);
+        streak++;
+        const end = sessionMs - timeLeft;
+        targetBuffs.push({ from: end, to: end + (ev.targetBuffHours ?? 0) * 3600 * 1000, pct: ev.targetBuffPct ?? 0 });
+      } else {
+        defeats++;
+        streak = 0;
       }
       continue;
     }
@@ -447,10 +492,13 @@ export function simulateHuntingSession(
     if (r.win) {
       kills++;
       creditFight(r.timeMs, ceiling);
+      streak++;
+      if (ev?.targetEvery) eventWins++;
       rollDropsForOneClear(ceiling, r.timeMs);
       if (ceiling < promotion.maxLevel) promotionWins++;
     } else {
       defeats++;
+      streak = 0;
     }
     // A loss at the farm level just costs that attempt's time — it's already deducted from timeLeft
     // inside attempt(); the loop simply retries the same level next.

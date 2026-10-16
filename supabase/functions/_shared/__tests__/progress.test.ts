@@ -4,11 +4,12 @@ import { EvalInput, HistoryPoint, evaluateSnapshot } from '../progress/evaluate.
 import { createProgressStore } from '../progress/progressDb.ts';
 import { MAX_BODY_BYTES, NewSnapshot, ProfessionApplyStatus, ProgressStore, SNAPSHOT_MIN_INTERVAL_MS, SeasonApplyStatus, StoredSnapshot, canonicalJson, handleSubmitProgress } from '../progress/handler.ts';
 import { ProgressMetrics, computeScore, extractMetrics, levelFromXp, levelPosition, paragonFromXp, peakOf, professionLevelFromXp, professionScores, splitScore } from '../progress/metrics.ts';
-import { PROFESSION_XP_TO_LEVEL, XP_TO_LEVEL } from '../progress/tables.ts';
+import { EVENT_SLOTS, PROFESSION_XP_TO_LEVEL, XP_TO_LEVEL } from '../progress/tables.ts';
 
 // Pure tests of the plausibility audit with SYNTHETIC histories. No Deno, no Supabase: the same modules the Edge Function imports.
 
 const DAY = 86_400_000;
+const HOUR = 3_600_000;
 const T0 = Date.UTC(2026, 9, 5);
 const USER = '11111111-1111-4111-8111-111111111111';
 
@@ -316,9 +317,9 @@ describe('evaluateSnapshot: cheating', () => {
 describe('bounds table', () => {
   it('the pace tables are increasing and the helpers interpolate', () => {
     for (const t of [BOUNDS.levelPace, BOUNDS.floorPace]) for (let i = 1; i < t.length; i++) expect(t[i][1]).toBeGreaterThan(t[i - 1][1]);
-    expect(daysAtLevel(51)).toBe(11);
-    expect(daysAtLevel(55.5)).toBeCloseTo(11 + (8 * 4.5) / 9, 6);
-    expect(daysAtFloor(100)).toBe(28);
+    expect(daysAtLevel(51)).toBe(12);
+    expect(daysAtLevel(55.5)).toBeCloseTo(12 + (7 * 4.5) / 9, 6);
+    expect(daysAtFloor(100)).toBe(39);
     expect(daysAtLevel(0.5)).toBe(0);
   });
 });
@@ -955,5 +956,44 @@ describe('zone level gates in the XP bound (Rodada 22)', () => {
     expect(xpPerHourAt(80, 60)).toBeCloseTo(10000 * BOUNDS.huntXpFactor, 6);
     expect(xpPerHourAt(80)).toBe(xpPerHourAt(80, 100)); // without a level: the old, looser check
     expect(burstXp(80, 59)).toBeLessThan(burstXp(80, 60));
+  });
+});
+
+describe('League events widen the XP bound only while one runs (Rodada 22)', () => {
+  const EPOCH = T0 - 30 * DAY; // the League opened 30 days before T0: day 31
+  const ev = (id: string, nth = 0) => {
+    const slot = EVENT_SLOTS.filter((s) => s.id === id)[nth];
+    return { start: EPOCH + slot.startHour * HOUR, end: EPOCH + (slot.startHour + slot.hours) * HOUR };
+  };
+  const xpAllowedBase = (hours: number, level: number) => xpPerHourAt(100, level) * hours + burstXp(100, level);
+
+  function verdictFor(nowMs: number, hours: number, gainFactor: number, leagueEpochMs: number | null) {
+    const level = 80;
+    const x0 = XP_TO_LEVEL[level - 1];
+    const prev = m({ xp: x0, floor: 100 });
+    const gain = Math.floor(xpAllowedBase(hours, level) * gainFactor);
+    const cur = m({ xp: x0 + gain, floor: 100 });
+    const p = point(nowMs - hours * HOUR, prev);
+    return evaluateSnapshot(cur, { nowMs, accountCreatedMs: EPOCH, entitled: true, saveRevision: 2, first: p, previous: p, ...(leagueEpochMs !== undefined ? { leagueEpochMs } : {}) });
+  }
+
+  it('10% more than the plain bound is fine during a hero event and an XP_RATE flag outside one (or without a League clock)', () => {
+    const inv = ev('invasion');
+    const during = inv.start + 20 * HOUR;
+    expect(verdictFor(during, 2, 1.1, EPOCH).reasons).not.toContain('XP_RATE');
+    expect(verdictFor(during, 2, 1.1, null).reasons).toContain('XP_RATE');
+    // the same gain with no event around is flagged: League day 31 minus the events, e.g. 1 day after the first Invasao ends and before the Febre da Mineracao (a profession event)
+    const quiet = inv.end + 6 * HOUR;
+    expect(verdictFor(quiet, 2, 1.1, EPOCH).reasons).toContain('XP_RATE');
+  });
+
+  it('a profession event does not widen the Hunting XP bound', () => {
+    const fever = ev('mining_fever');
+    expect(verdictFor(fever.start + 10 * HOUR, 2, 1.1, EPOCH).reasons).toContain('XP_RATE');
+  });
+
+  it('more than the cap above the plain bound is still a flag during an event', () => {
+    const inv = ev('invasion');
+    expect(verdictFor(inv.start + 20 * HOUR, 2, 1.3, EPOCH).reasons).toContain('XP_RATE');
   });
 });

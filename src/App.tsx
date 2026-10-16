@@ -115,6 +115,7 @@ import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expe
 import { isDeliveryReady } from './game/deliveries';
 import { applyDeliveryAccept, applyDeliveryClaim, applyDeliveryReroll, applyDeliveryTicket, ensureDeliveryOffers } from './game/deliveries';
 import { claimableCount, isClaimed, isComplete, QUESTS_ACHIEVEMENTS, QUESTS_DAILY } from './game/quests';
+import { applyDungeonRace, applyFinalRaceClaim, applyProfessionPick, ProfessionId } from './game/leagueEvents';
 import { loadNotifyPref, notificationsActive, planNotifications, readyEvents, showNotification } from './game/notify';
 import { claimStreak, claimWeeklyBonus, claimWeeklyGoal, periodClaimable, rollSaveWeekly, utcDay, WeeklyGoalId } from './game/weekly';
 import { questContext } from './game/questContext';
@@ -856,8 +857,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
     // Web build: the boss uniques are rolled by the server; the run only leaves the claim (the stages) in the save until the server has answered (settleBossClaim, below).
     const bossStages = isServerItemAuthority() ? rewards.bossStages ?? [] : [];
-    setSaveBoth(
-      queueBossClaims(
+    const queued = queueBossClaims(
         {
       ...s,
       stats: recordDungeonRun(s, startFloor, stages, (rewards.uniques ?? []).length).stats,
@@ -881,8 +881,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         saveSkillEffects(s).bossLootMult,
         Date.now(),
         newRequestId,
-      ),
-    );
+      );
+    // Corrida da Masmorra (leagueEvents.ts): the bosses this run cleared pay Gold and a timed Hunting XP buff while that event runs.
+    setSaveBoth(applyDungeonRace(queued, startFloor, stages, Date.now()).save);
     if (bossStages.length > 0) showToast(t('items.bossPending'));
     playSfx(outcome === 'retreat' ? 'victory' : 'hit');
     setBattleFloor(null);
@@ -1043,9 +1044,18 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       quests.claimed = [...quests.claimed, id];
     }
     const cosmetics = def.titleId && !s.cosmetics.includes(def.titleId) ? [...s.cosmetics, def.titleId] : s.cosmetics;
-    setSaveBoth({ ...s, gold: s.gold + def.gold, shards: s.shards + def.shards, cosmetics, quests });
+    // Corrida Final (leagueEvents.ts): the fourth daily goal of a day starts the day's Hunting XP buff.
+    setSaveBoth(applyFinalRaceClaim({ ...s, gold: s.gold + def.gold, shards: s.shards + def.shards, cosmetics, quests }, Date.now()));
     playSfx('victory');
     if (def.titleId && cosmetics !== s.cosmetics) showToast(t('quests.titleToast', { name: t(`titles.${getTitleDef(def.titleId)?.nameKey ?? ''}`) }));
+  };
+
+  // Semana das Profissoes (leagueEvents.ts): the player picks ONE profession for the week; the pick is final for that week.
+  const pickProfession = (profession: ProfessionId) => {
+    const next = applyProfessionPick(saveRef.current, profession, Date.now());
+    if (!next) return;
+    playSfx('click');
+    setSaveBoth(next);
   };
 
   // Weekly goals and the login streak (weekly.ts): each claim is one pure transition on the latest save, rolled to the current UTC week first.
@@ -2237,6 +2247,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onClaimAll={claimEverything}
               onOpenPass={() => { playSfx('click'); setBattlePassOpen(true); }}
               onOpenNextStep={openNextStep}
+              onPickProfession={pickProfession}
             />
           )}
           {activeView === 'personagem' && (

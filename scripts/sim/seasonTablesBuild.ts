@@ -2,6 +2,7 @@
 import { MAX_LEVEL, xpForNextLevel, xpToReachLevel } from '../../src/game/engine';
 import { GEAR, GearItem } from '../../src/game/gear';
 import { HUNTING_ZONES } from '../../src/game/huntingZones';
+import { LEAGUE_EVENT_SLOTS } from '../../src/game/leagueEvents';
 import { skillXpToReachLevel } from '../../src/game/skills';
 import T from '../../src/game/tunables';
 
@@ -43,6 +44,7 @@ export function buildTables() {
     paragonGrowth: T.paragon.xpGrowth,
     levelGates,
     floorGates,
+    eventSlots: LEAGUE_EVENT_SLOTS.map((s) => ({ id: s.id, kind: s.kind, startHour: s.startHour, hours: s.hours })),
     zoneFloors: HUNTING_ZONES.map((z) => ({ id: z.id, unlockFloor: z.unlockFloor, unlockLevel: z.unlockLevel ?? 0, xpPerHour: z.xpPerHour, xpPerSubLevel: z.xpPerSubLevel ?? 0 })),
   };
 }

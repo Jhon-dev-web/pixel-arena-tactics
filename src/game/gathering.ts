@@ -7,6 +7,7 @@ import { skillLevel } from './skills';
 import { gatherByProducts } from './mastery';
 import { emptyGems } from './gems';
 import T from './tunables';
+import { eventSkillXpMultiplier } from './leagueEvents';
 import { getWoodTier, isWoodTierUnlocked } from './woodcutting';
 
 // Mining / Woodcutting sessions as pure transitions on the save (the same shape as gardenActions.ts): the UI only decides WHEN, and the simulator
@@ -47,6 +48,13 @@ export interface GatherClaim {
   gems: number;
 }
 
+// The skill XP of a collected session: units x xpPerUnit, plus what a League profession event adds over the part of the session it covered (leagueEvents.ts; exactly units x xpPerUnit without one).
+function gatherXp(save: SaveData, kind: GatherKind, units: number, startedAt: number, pendingMs: number): number {
+  const base = units * T.skills.xpPerUnit;
+  const mult = eventSkillXpMultiplier(save, kind, startedAt, startedAt + pendingMs);
+  return mult === 1 ? base : Math.round(base * mult);
+}
+
 const validNow = (now: number): boolean => typeof now === 'number' && Number.isFinite(now) && now > 0;
 
 // Collect the running session of `kind`: the accrued units go to the inventory (as many as fit - a gathering session is passive, so what has no room is
@@ -64,7 +72,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
     const next: SaveData = recordGather({
       ...placed.save,
       gold: save.gold + status.goldReady,
-      skillXp: { ...save.skillXp, mining: save.skillXp.mining + status.oreReady * T.skills.xpPerUnit },
+      skillXp: { ...save.skillXp, mining: save.skillXp.mining + gatherXp(save, 'mining', status.oreReady, save.lastMiningClaim, status.pendingMs) },
       activeOreId: null,
       miningPass: null,
       lastMiningClaim: now,
@@ -83,7 +91,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
   const next: SaveData = recordGather({
     ...placed.save,
     gold: save.gold + status.goldReady,
-    skillXp: { ...save.skillXp, woodcutting: save.skillXp.woodcutting + status.woodReady * T.skills.xpPerUnit },
+    skillXp: { ...save.skillXp, woodcutting: save.skillXp.woodcutting + gatherXp(save, 'woodcutting', status.woodReady, save.lastWoodcuttingClaim, status.pendingMs) },
     activeWoodId: null,
     woodcuttingPass: null,
     lastWoodcuttingClaim: now,

@@ -1,4 +1,4 @@
-import { BOUNDS, PACE_FAST_FACTOR, PACE_FLAG_FACTOR, PACE_REJECT_FACTOR, REJECT_FACTOR, burstXp, daysAtFloor, daysAtLevel, floorCapForLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from './bounds.ts';
+import { BOUNDS, eventHoursBetween, PACE_FAST_FACTOR, PACE_FLAG_FACTOR, PACE_REJECT_FACTOR, REJECT_FACTOR, burstXp, daysAtFloor, daysAtLevel, floorCapForLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from './bounds.ts';
 import { PEAK_KEYS, Peak, ProgressMetrics, levelPosition, maxPeak, peakOf } from './metrics.ts';
 
 // The plausibility audit. Pure: given the metrics of a new snapshot, the server's own history of the account and the server clock, it says ok / flagged / rejected and why.
@@ -34,6 +34,8 @@ export interface EvalInput {
   accountCreatedMs: number | null;
   /** The server's answer to "does this account own the Pass right now" (never the save's flag). */
   entitled: boolean;
+  /** The server's League opening (public.league_reset_at(), ms), or null before it: the event calendar hangs from it, and only while an event runs may XP be a little faster (bounds.ts eventHeroBonus). */
+  leagueEpochMs?: number | null;
   saveRevision: number;
   /**
    * true once the first League has reset every online hero (league_reset_at is set). `accountCreatedMs` is then already max(account created, reset_at) and `first` / `previous` only
@@ -109,14 +111,18 @@ class Findings {
 }
 
 /** The growth checks between a reference point (the previous snapshot, or the first one) and the new metrics. `suffix` is '' or '_TOTAL'. */
-function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedMs: number, suffix: string): void {
+function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedMs: number, suffix: string, nowMs: number, epochMs: number | null | undefined): void {
   const hours = Math.max(0, elapsedMs) / HOUR_MS;
   const days = Math.max(0, elapsedMs) / DAY_MS;
+  // League events: hours of the gap during which a hero / profession event ran. They widen the XP rate by their cap, only for those hours, and the burst (a reward earned earlier, claimed now) by one cap.
+  const sinceMs = nowMs - Math.max(0, elapsedMs);
+  const heroEventHours = eventHoursBetween(epochMs, sinceMs, nowMs, ['hero', 'final']);
+  const professionEventHours = eventHoursBetween(epochMs, sinceMs, nowMs, ['profession']);
 
   // XP: the best open zone for this hero's floor, per server hour (Hunting is the only source of hero XP), plus ONE burst (a reward earned before the reference point and claimed now).
-  const burst = burstXp(cur.highestFloor, cur.heroLevel);
+  const burst = burstXp(cur.highestFloor, cur.heroLevel) * (1 + (heroEventHours > 0 ? BOUNDS.eventHeroBonus : 0));
   const xpGained = Math.max(0, cur.xp - refPeak.xp);
-  const xpAllowed = xpPerHourAt(cur.highestFloor, cur.heroLevel) * hours + burst;
+  const xpAllowed = xpPerHourAt(cur.highestFloor, cur.heroLevel) * (hours + BOUNDS.eventHeroBonus * heroEventHours) + burst;
   f.check('XP_RATE' + suffix, xpGained, xpAllowed, xpAllowed * REJECT_FACTOR);
 
   // Profession skill XP: rate at the level shown now x server hours, plus one late-claimed burst. A reference snapshot from before metrics v2 has no profession XP: no baseline, no check.
@@ -124,7 +130,7 @@ function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedM
     const ref = refPeak[rule.xp];
     if (typeof ref !== 'number') continue;
     const level = cur[rule.level];
-    const allowed = professionXpPerHour(rule.profession, level) * hours + professionBurstXp(rule.profession, level);
+    const allowed = professionXpPerHour(rule.profession, level) * (hours + BOUNDS.eventProfessionBonus * professionEventHours) + professionBurstXp(rule.profession, level) * (1 + (professionEventHours > 0 ? BOUNDS.eventProfessionBonus : 0));
     f.check(rule.code + suffix, Math.max(0, cur[rule.xp] - ref), allowed, allowed * REJECT_FACTOR);
   }
 
@@ -198,8 +204,8 @@ export function evaluateSnapshot(cur: ProgressMetrics, input: EvalInput): Evalua
     }
   }
 
-  growthChecks(f, cur, previous.peak, input.nowMs - previous.atMs, '');
-  growthChecks(f, cur, peakOf(first.metrics), input.nowMs - first.atMs, '_TOTAL');
+  growthChecks(f, cur, previous.peak, input.nowMs - previous.atMs, '', input.nowMs, input.leagueEpochMs);
+  growthChecks(f, cur, peakOf(first.metrics), input.nowMs - first.atMs, '_TOTAL', input.nowMs, input.leagueEpochMs);
 
   const verdict = f.verdict;
   return { verdict, reasons: f.codes, peak: verdict === 'ok' ? maxPeak(previous.peak, peakOf(cur)) : previous.peak };

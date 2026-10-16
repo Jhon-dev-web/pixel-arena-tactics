@@ -6,6 +6,7 @@ import { MaterialId } from './materials';
 import { skillLevel } from './skills';
 import { addWithOverflow, stockIsEmpty } from './inventory';
 import { recordHarvest } from './stats';
+import { eventSkillXpMultiplier } from './leagueEvents';
 
 // The Garden's player actions as pure transitions on the save: each returns the WHOLE next save (or null when nothing
 // would change), so a click that arrives twice can never apply twice — the second sees the plot already cleared/planted.
@@ -61,7 +62,7 @@ export function applyHarvest(save: SaveData, slotIndices: number[], now: number)
     }
     bag = placed.save;
     gardenSlots[i] = { plantId: null, startedAt: 0, lastPlantId: def.id, fertilized: false };
-    harvested.push({ slot: i, plantId: def.id, material: def.material, qty, xp: plantHarvestXp(def), ...(dust > 0 ? { dust } : {}) });
+    harvested.push({ slot: i, plantId: def.id, material: def.material, qty, xp: Math.round(plantHarvestXp(def) * eventSkillXpMultiplier(save, 'gardening', now, now)), ...(dust > 0 ? { dust } : {}) });
   }
   if (harvested.length === 0 && blocked.length === 0) return null;
   return {

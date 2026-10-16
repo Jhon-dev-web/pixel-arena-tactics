@@ -185,6 +185,7 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
       // After the reset the account is as old as the League: a fresh hero is judged on its new run, never on the years of the account.
       accountCreatedMs: effectiveAccountStartMs(accountCreatedMs, resetAtMs),
       sinceReset: resetAtMs !== null,
+      leagueEpochMs: resetAtMs,
       entitled,
       saveRevision,
       first: history.first,

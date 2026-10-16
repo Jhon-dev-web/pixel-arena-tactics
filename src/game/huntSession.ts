@@ -35,6 +35,10 @@ export interface HuntSession {
   passCapHours?: number;
   passGold?: number; // percent extra Gold the Pass gave this session when it started (T.battlePass.goldBonus x 100); adds to the gear bonus
   storageFlat?: true; // written by the current model: a session without it (and with a Pass window) came from the old one
+  // Rodada 22 (leagueEvents.ts). `league`: the server's League opening (leagueClock.ts) the moment the session STARTED, so the event calendar of the session is fixed with it (null / absent = no League:
+  // no events). `eventXp`: the timed Hunting XP buffs the player had earned at the start, and every one earned while it ran (from then on, never for the time already hunted); `pct` is a fraction.
+  league?: number;
+  eventXp?: { from: number; to: number; pct: number }[];
 }
 
 export const LEGACY_PASS_CAP_HOURS = 24;
@@ -229,7 +233,19 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
     ...(finiteNum(r.passCapHours) ? { passCapHours: r.passCapHours } : !r.storageFlat && sanitizeWindows(r.pass).length > 0 ? { passCapHours: LEGACY_PASS_CAP_HOURS } : {}),
     storageFlat: true,
     ...(finiteNum(r.passGold) && r.passGold > 0 && r.passGold <= 100 ? { passGold: r.passGold } : {}),
+    ...(finiteNum(r.league) && r.league > 0 && r.league <= MAX_MS ? { league: Math.floor(r.league) } : {}),
+    ...(sanitizeEventXp(r.eventXp).length > 0 ? { eventXp: sanitizeEventXp(r.eventXp) } : {}),
   };
+}
+
+// The event buffs of a session: finite windows, a fraction between 0 and 0.5 (no rule gives more), at most MAX_WINDOWS.
+function sanitizeEventXp(raw: unknown): { from: number; to: number; pct: number }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { from: number; to: number; pct: number }[] = [];
+  for (const w of raw as { from?: unknown; to?: unknown; pct?: unknown }[]) {
+    if (w && finiteNum(w.from) && w.from > 0 && w.from <= MAX_MS && finiteNum(w.to) && w.to > w.from && w.to <= MAX_MS && finiteNum(w.pct) && w.pct > 0 && w.pct <= 0.5) out.push({ from: w.from, to: w.to, pct: w.pct });
+  }
+  return out.slice(-MAX_WINDOWS);
 }
 
 const MAX_REWARD = 1e12;
