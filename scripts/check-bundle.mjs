@@ -18,6 +18,7 @@ export const DEV_MARKERS = [
   { marker: 'dev-admin-fab', what: 'the admin panel button (App.tsx)' },
   { marker: 'admin-modal', what: 'the admin panel itself (AdminModal.tsx)' },
   { marker: '__uiAudit', what: 'window.__uiAudit (main.tsx)' },
+  { marker: '__netStats', what: 'window.__netStats, the request counter (main.tsx, lib/netStats.ts)' },
   { marker: 'unnamed-button', what: 'the UI audit checker (lib/uiAudit.ts)' },
   { marker: 'hasBattlePass:!0,huntSession', what: 'the DEV purchase path of the Adventurer Pass, ADVENTURER_PASS_TESTABLE being true (entitlements.ts)' },
   { marker: 'VITE_SUPABASE_ANON_KEY are not set', what: 'the DEV-only missing-backend console warning (lib/supabaseClient.ts)' },

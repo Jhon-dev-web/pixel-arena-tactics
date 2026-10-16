@@ -10,6 +10,7 @@ import pt from "./locales/pt.json";
 import { installGlobalErrorHandlers } from "./lib/errorLog";
 import { captureBuyIntent } from "./game/passServer";
 import { applyMotionPref } from "./lib/motionPref";
+import { installNetStats } from "./lib/netStats";
 
 // Records uncaught errors and unhandled rejections into a small local ring buffer (Settings can copy it as a report for support). No network.
 installGlobalErrorHandlers();
@@ -23,6 +24,8 @@ captureBuyIntent();
 // DEV only: `window.__uiAudit()` lists raw locale keys, NaN / undefined, horizontal overflow and unnamed buttons on the current screen (the same checker as `npm run smoke:ui`).
 if (import.meta.env.DEV) {
   (window as unknown as { __uiAudit: () => ReturnType<typeof uiAudit> }).__uiAudit = () => uiAudit(Object.keys(pt));
+  // DEV only: `window.__netStats.perMinute()` / `.total()` / `.perHour()` count the requests to the server by kind (lib/netStats.ts).
+  installNetStats(window);
 }
 
 createRoot(document.getElementById("root")!).render(
