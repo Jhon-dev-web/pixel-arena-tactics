@@ -130,6 +130,7 @@
 .ui-panel-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--sp-2);
   margin: 0 0 var(--sp-3);
   padding-bottom: var(--sp-2);
@@ -150,14 +151,15 @@
 }
 .ui-panel-title {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: min(100%, 12ch);
   margin: 0;
   font-size: var(--fs-md);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--c-gold-300);
   text-shadow: 0 2px 0 #000;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .ui-panel-actions {
   display: flex;

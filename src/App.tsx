@@ -137,6 +137,7 @@ import './App.css';
 import './round11.css';
 import './ui/base.css'; // after App.css: the body face and the typography override its `body` rule
 import './ui/ui.css';
+import './ui/shell.css';
 
 // The player market (docs/MARKET_SOLANA.md) is WEB ONLY: Valve forbids crypto trading in a Steam game. marketEnabled is a build constant (VITE_MARKET_ENABLED, forced off in the desktop build),
 // so in the desktop bundle these three lines, the screen, its text and its styles are not there at all (npm run check:desktop pins it).

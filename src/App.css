@@ -2311,13 +2311,13 @@ body {
     box-shadow: 0 0 0 rgba(255, 215, 106, 0);
   }
 }
-.hero-knighted-flash .dh-hero-portrait,
+.hero-knighted-flash .hm-portrait,
 .hero-knighted-flash .avatar,
 .hero-knighted-flash .desktop-topbar-avatar {
   animation: heroKnightedFlash 1.2s ease-out 1;
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-knighted-flash .dh-hero-portrait,
+  .hero-knighted-flash .hm-portrait,
   .hero-knighted-flash .avatar,
   .hero-knighted-flash .desktop-topbar-avatar {
     animation: none;
@@ -4735,9 +4735,6 @@ body {
   font-size: 9px;
   color: #8a7aa8;
 }
-.dh-activity-icon.portrait {
-  width: 44px;
-}
 
 /* ----- desktop: two panes ----- */
 @media (min-width: 1024px) {
@@ -5969,246 +5966,7 @@ body {
   }
 }
 
-/* =====================================================================
-   APP SHELL (mobile-first, unified with desktop) — sidebar/drawer +
-   topbar + Home dashboard. Same class name prefixes (desktop- and dh-)
-   render at every width now: a fixed sidebar >=1024px, a slide-in drawer
-   below it (see the mobile-drawer rules and mobile overrides further down).
-   Every color here is reused from the tokens already established above
-   (panel gradient #241a30/#140d1c, bronze #8a6a3a, gold #ffd76a/#e0a83a,
-   purple XP #9d8bff/#5a46c8, rarity greens/purples/oranges) — no new
-   palette.
-   ===================================================================== */
-  .desktop-shell {
-    display: flex;
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    background: #07050b;
-  }
-
-  /* --- sidebar --- */
-  .desktop-sidebar {
-    flex-shrink: 0;
-    width: 250px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(180deg, rgba(22, 15, 30, 0.98), rgba(10, 6, 16, 0.98));
-    border-right: 2px solid #3a2a4a;
-    overflow-y: auto;
-  }
-  .desktop-sidebar-brand {
-    font-size: 14px;
-    color: #ffd76a;
-    text-align: center;
-    padding: 22px 12px;
-    letter-spacing: 1px;
-    text-shadow: 0 2px 0 #000, 0 0 12px rgba(255, 215, 106, 0.25);
-    border-bottom: 2px solid #3a2a4a;
-  }
-  .desktop-sidebar-items {
-    display: flex;
-    flex-direction: column;
-    padding: 10px 0;
-  }
-  .desktop-sidebar-group {
-    display: flex;
-    flex-direction: column;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-  .desktop-sidebar-group:last-child {
-    border-bottom: none;
-  }
-  .desktop-sidebar-group-title {
-    font-size: 10px;
-    color: #6a5a8a;
-    letter-spacing: 1px;
-    padding: 6px 18px 8px;
-  }
-  .desktop-nav-item {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-family: inherit;
-    font-size: 12px;
-    color: #a99ac8;
-    background: none;
-    border: none;
-    padding: 14px 18px;
-    cursor: pointer;
-    text-align: left;
-    white-space: nowrap;
-    transition: color 0.15s ease, background 0.15s ease;
-  }
-  .desktop-nav-item:hover {
-    color: #d8c9a0;
-    background: rgba(255, 255, 255, 0.04);
-  }
-  .desktop-nav-item.active {
-    color: #ffd76a;
-    background: rgba(255, 215, 106, 0.08);
-  }
-  .desktop-nav-item:focus-visible {
-    outline: 2px solid #ffd76a;
-    outline-offset: -2px;
-  }
-  .desktop-nav-indicator {
-    position: absolute;
-    left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 4px;
-    background: #ffd76a;
-    border-radius: 0 3px 3px 0;
-    box-shadow: 0 0 8px rgba(255, 215, 106, 0.6);
-  }
-  .desktop-nav-icon {
-    font-size: 20px;
-    width: 24px;
-    text-align: center;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .desktop-nav-icon .pixel-icon {
-    width: 22px;
-    height: 22px;
-  }
-  .desktop-nav-label {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .desktop-nav-badge {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #ff3b30;
-    box-shadow: 0 0 6px rgba(255, 59, 48, 0.8);
-    flex-shrink: 0;
-  }
-
-  /* --- main column --- */
-  .desktop-main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  /* --- topbar --- */
-  .desktop-topbar {
-    flex-shrink: 0;
-    height: 76px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 28px;
-    background: linear-gradient(180deg, #241a30, #140d1c);
-    border-bottom: 2px solid #3a2a4a;
-  }
-  .desktop-topbar-profile {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-family: inherit;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 6px 10px;
-    border-radius: 10px;
-  }
-  .desktop-topbar-profile:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-  .desktop-topbar-profile-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: flex-start;
-  }
-  .desktop-topbar-name-row {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-  }
-  .desktop-topbar-name {
-    font-size: 15px;
-    color: #f5e9c8;
-    text-shadow: 0 2px 0 #000;
-  }
-  .desktop-topbar-title {
-    font-size: 11px;
-    color: #b8a8d8;
-  }
-  .desktop-topbar-stats-row {
-    display: flex;
-    flex-wrap: wrap; /* "Nv 100" and the paragon tag wrap as whole words (they broke into "Nv / 100 · / P1" on a phone) */
-    gap: 0 16px;
-    font-size: 12px;
-    color: #d8c9a0;
-  }
-  .desktop-topbar-stats-row > span {
-    white-space: nowrap;
-  }
-  .desktop-topbar-stats-row > span + span {
-    color: #ffd76a; /* the paragon tag */
-  }
-  .desktop-topbar-resources {
-    display: flex;
-    align-items: center;
-    gap: 22px;
-  }
-  .desktop-topbar-res {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 16px;
-    text-shadow: 0 2px 0 #000;
-  }
-  .desktop-topbar-res .inline-icon {
-    width: 24px;
-    height: 24px;
-  }
-  .desktop-topbar-res.gold {
-    color: #ffd76a;
-  }
-  .desktop-topbar-res.shards {
-    color: #9d8bff;
-  }
-  .desktop-topbar-settings {
-    width: 42px;
-    height: 42px;
-    font-size: 20px;
-    color: #ffe9a8;
-    background: linear-gradient(180deg, #4a3420, #2a1c10);
-    border: 2px solid #8a6a3a;
-    border-radius: 10px;
-    cursor: pointer;
-  }
-  .desktop-topbar-settings:active {
-    transform: translateY(2px);
-  }
-  .desktop-topbar-settings:hover {
-    border-color: #ffd76a;
-  }
-  .desktop-topbar-settings:focus-visible,
-  .desktop-topbar-profile:focus-visible,
-  .dh-hero-portrait:focus-visible,
-  .dh-inventory-chip:focus-visible,
-  .dh-activity-item:focus-visible,
-  .dh-quick-btn:focus-visible {
-    outline: 2px solid #ffd76a;
-    outline-offset: 2px;
-  }
-
-  /* --- home dashboard grid --- */
+/* The app shell (sidebar, drawer, top bar) and the Home dashboard live in ui/shell.css; .desktop-home / .dh-card below are the generic page grid and panel the older screens still use. */
   /* 1024-1279px: single column, natural DOM order (Hero, Activity, Progression, Quick Actions) —
      the 2-column placement below is added back in at >=1280px, where there's room for it. */
   .desktop-home {
@@ -6240,467 +5998,16 @@ body {
     border-bottom: 1px solid #3a2a4a;
   }
 
-  /* Area A — hero */
-  .dh-hero {
-    display: flex;
-    gap: 26px;
-    align-items: flex-start;
-  }
-  .dh-hero-portrait {
-    flex-shrink: 0;
-    width: 176px;
-    height: 176px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: radial-gradient(circle at 50% 38%, rgba(255, 215, 106, 0.1), transparent 65%), #1a1108;
-    border: 2px solid #8a6a3a;
-    border-radius: 14px;
-    cursor: pointer;
-  }
-  .dh-hero-portrait:hover {
-    border-color: #ffd76a;
-    box-shadow: 0 0 18px rgba(255, 215, 106, 0.4);
-  }
-  .dh-hero-body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-top: 4px;
-  }
-  .dh-hero-headline {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .dh-hero-name {
-    font-size: 22px;
-    color: #f5e9c8;
-    text-shadow: 0 2px 0 #000;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .dh-hero-badges {
-    display: flex;
-    gap: 10px;
-  }
-  .dh-hero-badge {
-    font-size: 13px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid #3a2a4a;
-  }
-  .dh-hero-badge.level {
-    color: #ffd76a;
-  }
-  .dh-hero-badge.cp {
-    color: #f5e9c8;
-  }
-  .dh-hero-xpbar {
-    width: 100%;
-    height: 12px;
-  }
-  .dh-hero-equip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    margin-top: 4px;
-  }
-  .dh-equip-slot {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1 1 200px;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid #3a2a4a;
-    border-radius: 10px;
-    padding: 10px 14px;
-  }
-  .dh-equip-icon {
-    width: 38px;
-    height: 38px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #1a1108;
-    border: 2px solid #8a6a3a;
-    border-radius: 8px;
-  }
-  .dh-equip-icon .pixel-icon,
-  .dh-equip-icon .gear-icon-img {
-    width: 80%;
-    height: 80%;
-  }
-  .dh-equip-icon.r-rare {
-    border-color: #4ad67c;
-  }
-  .dh-equip-icon.r-epic {
-    border-color: #b06cff;
-  }
-  .dh-equip-icon.r-legendary {
-    border-color: #ffa940;
-  }
-  .dh-equip-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  .dh-equip-label {
-    font-size: 10px;
-    color: #b8a8d8;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .dh-equip-name {
-    font-size: 12px;
-    color: #f5e9c8;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .dh-inventory-chip {
-    align-self: flex-start;
-    margin-top: 2px;
-    font-family: inherit;
-    font-size: 12px;
-    color: #ffe9a8;
-    background: linear-gradient(180deg, #4a3420, #2a1c10);
-    border: 2px solid #8a6a3a;
-    border-radius: 8px;
-    padding: 8px 16px;
-    cursor: pointer;
-  }
-  .dh-inventory-chip:active {
-    transform: translateY(2px);
-  }
-
-  /* Area B — atividade atual */
-  .dh-idle {
-    text-align: center;
-    color: #8a7aa8;
-    font-size: 13px;
-    padding: 28px 6px;
-  }
-  .dh-activity-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .dh-activity-item {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    font-family: inherit;
-    text-align: left;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid #3a2a4a;
-    border-radius: 10px;
-    padding: 14px 16px;
-    cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease;
-  }
-  .dh-activity-item:hover {
-    border-color: #ffd76a;
-    background: rgba(255, 255, 255, 0.06);
-  }
-  .dh-activity-icon {
-    font-size: 24px;
-    flex-shrink: 0;
-    width: 30px;
-    text-align: center;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .dh-activity-icon .pixel-icon {
-    width: 26px;
-    height: 26px;
-  }
-  .dh-activity-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .dh-activity-name {
-    font-size: 13px;
-    color: #ffe9a8;
-  }
-  .dh-activity-detail {
-    font-size: 12px;
-    color: #b8a8d8;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .dh-activity-bar {
-    width: 100%;
-    height: 6px;
-    margin-top: 2px;
-  }
-  .dh-activity-time {
-    font-size: 11px;
-    color: #8a7aa8;
-    margin-top: 1px;
-  }
-  .dh-garden-dots {
-    display: flex;
-    gap: 6px;
-    margin-top: 2px;
-  }
-  .dh-garden-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid #3a2a4a;
-  }
-  .dh-garden-dot.growing {
-    background: #5a46c8;
-    border-color: #9d8bff;
-  }
-  .dh-garden-dot.ready {
-    background: #2fbf4f;
-    border-color: #7ce88a;
-    box-shadow: 0 0 5px rgba(124, 232, 138, 0.6);
-  }
-
-  /* Area C — progressao */
-  .dh-skill-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 16px;
-  }
-  .dh-skill-row:last-child {
-    margin-bottom: 0;
-  }
-  .dh-skill-icon {
-    font-size: 24px;
-    width: 32px;
-    text-align: center;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .dh-skill-icon .pixel-icon {
-    width: 28px;
-    height: 28px;
-  }
-  .dh-skill-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .dh-skill-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 6px;
-    gap: 8px;
-  }
-  .dh-skill-name {
-    font-size: 13px;
-    color: #f5e9c8;
-  }
-  .dh-skill-level {
-    font-size: 12px;
-    color: #ffd76a;
-    flex-shrink: 0;
-  }
-  .dh-skill-bar {
-    width: 100%;
-    height: 10px;
-  }
-  .dh-dungeon-detail {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 11px;
-    color: #b8a8d8;
-    margin-top: 4px;
-  }
-  .dh-dungeon-next {
-    color: #9d8bff;
-  }
-
-  /* Area D — acoes rapidas */
-  .dh-quick-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-  }
-  .dh-quick-btn {
-    min-width: 0;
-    font-family: inherit;
-    font-size: 13px;
-    color: #ffe9a8;
-    background: linear-gradient(180deg, #4a3420, #2a1c10);
-    border: 2px solid #8a6a3a;
-    border-radius: 10px;
-    padding: 18px 12px;
-    cursor: pointer;
-    text-shadow: 0 1px 0 #000;
-    box-shadow: 0 3px 0 #1a1108, inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    transition: border-color 0.15s ease, filter 0.15s ease;
-  }
-  .dh-quick-btn:hover {
-    border-color: #ffd76a;
-    filter: brightness(1.08);
-  }
-  .dh-quick-btn:active {
-    transform: translateY(2px);
-    box-shadow: 0 1px 0 #1a1108;
-  }
-  .dh-quick-btn.primary {
-    color: #1a1108;
-    background: linear-gradient(180deg, #ffd76a, #e0a83a);
-    border-color: #b8863a;
-    text-shadow: none;
-    box-shadow: 0 3px 0 #6a4a20, 0 0 14px rgba(255, 215, 106, 0.3);
-  }
-  .dh-quick-btn.primary:hover {
-    border-color: #fff0c0;
-    filter: brightness(1.05);
-  }
-  .dh-quickactions {
-    display: flex;
-    flex-direction: column;
-  }
-  .dh-quickactions .dh-quick-grid {
-    margin-top: auto;
-    margin-bottom: auto;
-  }
-
 /* >=1280px: room for the 2-column layout (232px sidebar leaves only ~790px at 1024, too tight for it) */
 @media (min-width: 1280px) {
   .desktop-home {
     grid-template-columns: 1.15fr 1fr;
     grid-template-rows: auto auto;
   }
-  .dh-hero {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .dh-activity {
-    grid-column: 2;
-    grid-row: 1;
-  }
   .dh-progression {
     grid-column: 1;
     grid-row: 2;
   }
-  .dh-quickactions {
-    grid-column: 2;
-    grid-row: 2;
-  }
-}
-
-/* =====================================================================
-   MOBILE NAV (hamburger + drawer) — <1024px only. The drawer renders the
-   exact same <DesktopSidebar> used for the fixed desktop column, so the
-   items/order/icons/active state never diverge (see App.tsx).
-   ===================================================================== */
-.desktop-topbar-menu {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  font-size: 20px;
-  color: #ffe9a8;
-  background: linear-gradient(180deg, #4a3420, #2a1c10);
-  border: 2px solid #8a6a3a;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-right: 4px;
-}
-.desktop-topbar-menu:hover,
-.desktop-topbar-menu:focus-visible {
-  border-color: #ffd76a;
-}
-.desktop-topbar-menu:active {
-  transform: translateY(1px);
-}
-
-.desktop-sidebar-brand-btn {
-  width: 100%;
-  font-family: inherit;
-  border: none;
-  cursor: pointer;
-  background: linear-gradient(180deg, rgba(22, 15, 30, 0.98), rgba(10, 6, 16, 0.98));
-}
-.desktop-sidebar-brand-btn:hover {
-  color: #fff0c0;
-}
-
-.mobile-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 60;
-  animation: drawerFadeIn 0.18s ease;
-}
-@keyframes drawerFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.mobile-drawer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: min(82%, 320px);
-  overflow-y: auto;
-  background: linear-gradient(180deg, rgba(22, 15, 30, 0.98), rgba(10, 6, 16, 0.98));
-  border-right: 2px solid #3a2a4a;
-  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.5);
-  animation: drawerSlideIn 0.2s ease;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-@keyframes drawerSlideIn {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-.mobile-drawer .desktop-sidebar {
-  width: 100%;
-  height: auto;
-  min-height: 100%;
-  border-right: none;
-}
-.mobile-drawer-close {
-  position: absolute;
-  top: calc(10px + env(safe-area-inset-top, 0px));
-  right: 10px;
-  width: 34px;
-  height: 34px;
-  font-size: 16px;
-  color: #ffe9a8;
-  background: rgba(0, 0, 0, 0.4);
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.mobile-drawer-close:hover {
-  border-color: #ffd76a;
 }
 
 .dev-admin-fab {
@@ -6802,16 +6109,6 @@ body {
    keeps its original dashboard and modal proportions.
    ===================================================================== */
 @media (max-width: 1023px) {
-  .desktop-topbar {
-    height: auto;
-    min-height: 76px;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
-    gap: 10px;
-  }
-  .desktop-topbar-name,
-  .desktop-topbar-res {
-    font-size: 13px;
-  }
   .desktop-home {
     padding: 16px 16px calc(20px + env(safe-area-inset-bottom, 0px));
     gap: 14px;
@@ -6822,88 +6119,11 @@ body {
   .dh-card-title {
     margin-bottom: 10px;
   }
-  .dh-hero-name,
   .personagem-hero .name-btn {
     font-size: 18px;
   }
   .personagem-hero .name-input {
     font-size: 16px;
-  }
-  .dh-hero-badge {
-    font-size: 12px;
-    padding: 5px 10px;
-  }
-  .dh-hero-xpbar {
-    height: 8px;
-  }
-  .dh-hero-equip {
-    gap: 8px;
-    margin-top: 2px;
-  }
-  .dh-equip-slot {
-    flex: 1 1 100%;
-    padding: 8px 10px;
-    gap: 8px;
-  }
-  .dh-equip-icon {
-    width: 30px;
-    height: 30px;
-  }
-  .dh-equip-label {
-    font-size: 9px;
-  }
-  .dh-equip-name {
-    font-size: 11px;
-  }
-  .dh-inventory-chip {
-    font-size: 11px;
-    padding: 6px 12px;
-  }
-  .dh-idle {
-    padding: 12px 6px;
-    font-size: 12px;
-  }
-  .dh-activity-item {
-    padding: 10px 12px;
-    gap: 10px;
-  }
-  .dh-activity-icon {
-    font-size: 20px;
-    width: 26px;
-  }
-  .dh-activity-icon .pixel-icon {
-    width: 22px;
-    height: 22px;
-  }
-  .dh-activity-name,
-  .dh-skill-name {
-    font-size: 12px;
-  }
-  .dh-activity-detail {
-    font-size: 11px;
-  }
-  .dh-activity-time,
-  .dh-skill-level {
-    font-size: 10px;
-  }
-  .dh-skill-row {
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-  .dh-skill-icon {
-    font-size: 20px;
-    width: 26px;
-  }
-  .dh-skill-icon .pixel-icon {
-    width: 24px;
-    height: 24px;
-  }
-  .dh-quick-grid {
-    gap: 10px;
-  }
-  .dh-quick-btn {
-    padding: 12px 10px;
-    font-size: 12px;
   }
 }
 
@@ -6967,53 +6187,6 @@ body {
   .auth-success {
     font-size: 9px;
   }
-  .desktop-topbar {
-    min-height: 62px;
-    padding: env(safe-area-inset-top, 0px) var(--mobile-page-pad) 6px;
-    gap: 6px;
-  }
-  .desktop-topbar-menu {
-    width: 34px;
-    height: 34px;
-    margin-right: 0;
-    font-size: 16px;
-  }
-  .desktop-topbar-profile {
-    gap: 7px;
-    padding: 4px;
-    min-width: 0;
-    flex-shrink: 1;
-  }
-  .desktop-topbar-name {
-    max-width: 74px;
-    font-size: 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .desktop-topbar-title {
-    display: none;
-  }
-  .desktop-topbar-stats-row {
-    font-size: 10px;
-  }
-  .desktop-topbar-resources {
-    gap: 7px;
-    flex-shrink: 0;
-  }
-  .desktop-topbar-res {
-    gap: 3px;
-    font-size: 11px;
-  }
-  .desktop-topbar-res .inline-icon {
-    width: 17px;
-    height: 17px;
-  }
-  .desktop-topbar-settings {
-    width: 32px;
-    height: 32px;
-    font-size: 15px;
-  }
 
   /* Phone dashboard: the hero summary is a two-column card, its gear strip spans below it. */
   .desktop-home {
@@ -7029,161 +6202,9 @@ body {
     padding-bottom: 7px;
     margin-bottom: 9px;
   }
-  .dh-hero {
-    display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
-    align-items: center;
-    gap: 8px 10px;
-    text-align: left;
-  }
-  .dh-hero-portrait {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    width: 64px;
-    height: 64px;
-    padding: 0;
-    border-radius: 10px;
-  }
-  .dh-hero-body {
-    display: contents;
-  }
-  .dh-hero-headline {
-    grid-column: 2;
-    grid-row: 1;
-    min-width: 0;
-    justify-content: flex-start;
-  }
-  .dh-hero-name,
   .personagem-hero .name-btn {
     max-width: 100%;
     font-size: 16px;
-  }
-  .dh-hero-badges {
-    grid-column: 2;
-    grid-row: 2;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 5px;
-  }
-  .dh-hero-badge {
-    padding: 3px 7px;
-    font-size: 10px;
-    border-radius: 6px;
-  }
-  .dh-hero-xpbar {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    height: 7px;
-  }
-  .dh-hero-equip {
-    grid-column: 1 / -1;
-    grid-row: 4;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    margin: 0;
-  }
-  .dh-equip-slot {
-    min-width: 0;
-    padding: 6px;
-    gap: 6px;
-    flex-basis: auto;
-    border-radius: 8px;
-  }
-  .dh-equip-icon {
-    width: 26px;
-    height: 26px;
-    border-width: 1px;
-  }
-  .dh-equip-label {
-    font-size: 8px;
-  }
-  .dh-equip-name {
-    font-size: 10px;
-  }
-  .dh-inventory-chip {
-    grid-column: 1 / -1;
-    grid-row: 5;
-    align-self: start;
-    margin: 0;
-    padding: 5px 9px;
-    font-size: 10px;
-    border-width: 1px;
-  }
-  .dh-activity-grid {
-    gap: 6px;
-  }
-  .dh-activity-item {
-    min-height: var(--mobile-control-height);
-    padding: 7px 9px;
-    gap: 8px;
-    border-radius: 8px;
-  }
-  .dh-activity-icon {
-    width: 22px;
-    font-size: 18px;
-  }
-  .dh-activity-icon .pixel-icon {
-    width: 20px;
-    height: 20px;
-  }
-  .dh-activity-info {
-    gap: 2px;
-  }
-  .dh-activity-name {
-    font-size: 11px;
-  }
-  .dh-activity-detail,
-  .dh-activity-time {
-    font-size: 10px;
-  }
-  .dh-activity-bar {
-    height: 4px;
-    margin-top: 1px;
-  }
-  .dh-idle {
-    padding: 5px 2px;
-    font-size: var(--mobile-muted-size);
-    line-height: 1.35;
-  }
-  .dh-skill-row {
-    gap: 7px;
-    margin-bottom: 9px;
-  }
-  .dh-skill-icon {
-    width: 22px;
-    font-size: 17px;
-  }
-  .dh-skill-icon .pixel-icon {
-    width: 20px;
-    height: 20px;
-  }
-  .dh-skill-head {
-    gap: 4px;
-    margin-bottom: 4px;
-  }
-  .dh-skill-name {
-    font-size: 11px;
-  }
-  .dh-skill-level {
-    font-size: 10px;
-  }
-  .dh-skill-bar {
-    height: 7px;
-  }
-  .dh-dungeon-detail {
-    gap: 4px;
-    font-size: 10px;
-  }
-  .dh-quick-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
-  }
-  .dh-quick-btn {
-    min-height: var(--mobile-control-height);
-    padding: 8px 6px;
-    font-size: 11px;
-    border-radius: 8px;
   }
 
   /* Character panel follows the same compact identity row, then keeps each RPG section distinct. */
@@ -7951,9 +6972,6 @@ body {
   }
 
   /* --- Home hero card: long gear names ellipsise inside their slot instead of pushing it past the card --- */
-  .dh-equip-slot {
-    min-width: 0;
-  }
 }
 
 /* ===== 6 gear slots + unique (drop-only) pieces ===== */
@@ -8152,28 +7170,6 @@ body {
   font-size: calc(var(--font-size) - 3px);
   color: #ff8a7a;
 }
-.dh-equip-slot.empty {
-  border-style: dashed;
-  opacity: 0.6;
-}
-.dh-equip-empty-mark {
-  color: #6a5a82;
-}
-.dh-equip-name-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-.dh-equip-name-row .dh-equip-name {
-  min-width: 0;
-}
-.dh-equip-name-row .unique-tag {
-  flex-shrink: 0;
-  margin-left: 0;
-  padding: 0 3px;
-  font-size: 8px;
-}
 
 /* ---- Profession header (SkillLevelBadge): level row, bar, XP numbers and screen-specific meta lines ---- */
 .skill-level-row {
@@ -8308,14 +7304,6 @@ body {
 }
 
 /* ---- Interface review: names wrap instead of being cut, one hover / pressed / disabled language for every button ---- */
-.dh-equip-name {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-height: 1.25;
-}
 button[data-ui]:not(:disabled):hover {
   filter: brightness(1.12);
 }
@@ -8475,30 +7463,15 @@ button[data-ui]:focus-visible {
 /* ===== inventory pressure (hunt screens, Home) ===== */
 .hunt-loot-count.warn,
 .hunt-fact.warn,
-.dh-activity-inv.warn,
-.dh-inventory-chip.warn,
 .hunt-inv-line.warn {
   color: #ffc857;
 }
 .hunt-loot-count.full,
 .hunt-fact.bad,
 .hunt-hint.bad,
-.dh-activity-inv.full,
-.dh-inventory-chip.full,
 .hunt-inv-line.full,
 .hunt-inv-line.bad {
   color: #ff8a7a;
-}
-.dh-inventory-chip.warn {
-  border-color: #b8892a;
-}
-.dh-inventory-chip.full {
-  border-color: #a03020;
-}
-.dh-activity-inv {
-  font-size: 11px;
-  color: #b8a8d8;
-  margin-top: 1px;
 }
 .hunt-loot.reward {
   margin-bottom: 8px;
@@ -8816,65 +7789,8 @@ button[data-ui]:focus-visible {
 }
 
 /* ===== 8 equipment cards on the Home hero card (seven gear slots + the relic): always a compact 2-column grid ===== */
-.dh-hero-equip {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-.dh-equip-slot {
-  min-width: 0;
-  flex-basis: auto;
-}
-.dh-equip-slot {
-  padding: 6px 8px;
-  gap: 6px;
-}
-.dh-equip-icon {
-  width: 28px;
-  height: 28px;
-}
-.dh-equip-name-row {
-  min-width: 0;
-}
-.dh-equip-name {
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.25;
-}
-.dh-equip-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 /* the slot label is redundant next to the icon on this card (the Personagem view keeps it) and its row is what made the names ellipsise at three letters */
-.dh-hero-equip .dh-equip-label {
-  display: none;
-}
-.dh-hero-equip .dh-equip-name {
-  font-size: 11px;
-  word-break: normal;
-  overflow-wrap: break-word;
-}
 /* Wide screens: the hero card sits beside the activity card with the portrait next to the list, so two columns would leave names ~70 px: one compact column there */
-@media (min-width: 1000px) {
-  .dh-hero-equip {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 5px;
-  }
-  .dh-hero-equip .dh-equip-label {
-    display: block;
-  }
-  .dh-hero-equip .dh-equip-slot {
-    padding: 4px 8px;
-  }
-  .dh-hero-equip .dh-equip-name {
-    -webkit-line-clamp: 1;
-    font-size: 12px;
-  }
-}
 
 /* --- Portrait frame (Adventurer Pass, seasonItems.ts FRAMES): gold border + corner brackets drawn with CSS only, no art --- */
 .portrait-frame {
@@ -8968,64 +7884,6 @@ button[data-ui]:focus-visible {
 .forge-seal-state {
   flex: none;
   font-size: calc(var(--font-size) - 2px);
-}
-.dh-activity-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.dh-activity-head .dh-card-title {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.dh-claimall {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: inherit;
-  font-size: 11px;
-  color: #1a1108;
-  background: linear-gradient(180deg, #ffd76a, #e0a83a);
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 6px 12px;
-  cursor: pointer;
-  box-shadow: 0 2px 0 #6a4a20;
-}
-.dh-claimall:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-.dh-claimall-count {
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.3);
-  color: #fff3c4;
-}
-.dh-claimall.locked {
-  color: #b8a8d8;
-  background: #241a30;
-  border-color: #4a3a55;
-  box-shadow: none;
-}
-.dh-claimall.locked:hover {
-  border-color: #8a6a3a;
-}
-.dh-claimall-lock {
-  width: 14px;
-  height: 14px;
-  image-rendering: pixelated;
-}
-.dh-claimall-badge {
-  font-size: 9px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  color: #ffd76a;
-  border: 1px solid #8a6a3a;
 }
 .frame-heading {
   margin: 14px 0 6px;

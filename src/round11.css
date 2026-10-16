@@ -51,48 +51,6 @@
 }
 
 /* ---- Home next-step line: a small label over the sentence, the button to its right */
-.dh-nextstep {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 4px 10px;
-  padding: 8px 10px;
-  margin-bottom: 8px;
-  background: #1c1322;
-  border: 1px dashed #5a4670;
-  border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #d8c9a0;
-}
-.dh-nextstep-label {
-  grid-column: 1 / -1;
-  font-size: 9px;
-  color: #8a7aa8;
-  text-transform: uppercase;
-}
-.dh-nextstep-text {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.dh-nextstep-btn {
-  font-family: inherit;
-  font-size: 11px;
-  color: #ffd76a;
-  background: linear-gradient(180deg, #4a3420, #2a1c10);
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-.dh-nextstep-btn:hover {
-  border-color: #ffd76a;
-}
-@media (max-width: 640px) {
-  .dh-nextstep {
-    font-size: 11px;
-  }
-}
 
 /* ---- achievements / statistics (QuestsModal) */
 .quest-summary {
@@ -742,9 +700,3 @@
   }
 }
 /* phone top bar: the routine "Salvo" / "Salvando" tag only crowds the hero's name and level; a save error or being offline still shows */
-@media (max-width: 480px) {
-  .desktop-topbar .sync-status.saved,
-  .desktop-topbar .sync-status.saving {
-    display: none;
-  }
-}

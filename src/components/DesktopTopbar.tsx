@@ -2,7 +2,7 @@ import SpriteSheet from './SpriteSheet';
 import { t } from '../locales';
 import { levelLabel } from './levelLabel';
 import Assets from '../assets.json';
-import { SaveData, formatNumber } from '../game/engine';
+import { SaveData, computeCP, formatNumber } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 import { useDisplayName } from '../game/usernameContext';
 import { portraitFrameClass } from '../game/seasonItems';
@@ -76,11 +76,11 @@ export default function DesktopTopbar({
 
       <div className="desktop-topbar-resources">
         {syncLabel && <span className={`sync-status ${syncStatus}`}>{syncLabel}</span>}
-        <span className="desktop-topbar-res gold">
+        <span className="desktop-topbar-res gold" title={t('ui.gold', { n: formatNumber(save.gold) })}>
           <img className="inline-icon" src={Assets.icons.gold.url} alt="" />
           {formatNumber(save.gold)}
         </span>
-        <span className="desktop-topbar-res shards">
+        <span className="desktop-topbar-res shards" title={t('ui.shards', { n: formatNumber(save.shards) })}>
           <img className="inline-icon" src="/assets/icons/shards.png" alt="" />
           {formatNumber(save.shards)}
         </span>

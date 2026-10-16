@@ -3,6 +3,8 @@ import SpriteSheet from './SpriteSheet';
 import { MonsterPortrait } from './HuntParts';
 import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
+import { Button, Chip, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout } from './ui';
+import type { CardRarity } from './ui';
 import { INSTANCED_SLOTS } from '../game/gear';
 import { gearInstanceLabel } from './gearLabel';
 import { t } from '../locales';
@@ -60,14 +62,19 @@ function formatElapsed(ms: number): string {
 
 function SkillRow({ icon, name, level, cap, progress }: { icon: ReactNode; name: string; level: number; cap: number; progress: number }) {
   return (
-    <div className="dh-skill-row">
-      <span className="dh-skill-icon">{icon}</span>
-      <div className="dh-skill-info">
-        <div className="dh-skill-head">
-          <span className="dh-skill-name">{name}</span>
-          <span className="dh-skill-level">{t('skills.level', { n: level })}{level >= cap ? ' (MAX)' : ''}</span>
+    <div className="hm-skill">
+      <span className="hm-skill-icon" aria-hidden>
+        {icon}
+      </span>
+      <div className="hm-skill-info">
+        <div className="hm-skill-head">
+          <span className="hm-skill-name">{name}</span>
+          <span className="hm-skill-level">
+            {t('skills.level', { n: level })}
+            {level >= cap ? ' (MAX)' : ''}
+          </span>
         </div>
-        <div className="bar dh-skill-bar">
+        <div className="bar hm-bar">
           <div className="bar-fill xp-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>
       </div>
@@ -75,6 +82,8 @@ function SkillRow({ icon, name, level, cap, progress }: { icon: ReactNode; name:
   );
 }
 
+// The Home dashboard in the shared screen layout: the camp header, the hero and the current activity on the left; the quick actions and the progression in the summary column on the right
+// (under them on a phone). Same data and handlers as before; only the presentation moved onto the shared pieces (src/components/ui).
 export default function DesktopHome({
   save,
   spriteUrl,
@@ -152,213 +161,226 @@ export default function DesktopHome({
   const dungeonProgress = save.highestDungeonFloor / MAX_DUNGEON_FLOOR;
 
   return (
-    <div className="desktop-home">
-      {/* Area A — Hero */}
-      <section className="dh-card dh-hero">
-        <button className={`dh-hero-portrait${portraitFrameClass(save)}`} onClick={onOpenHero} aria-label={t('nav.openProfile')} title={t('nav.openProfile')} data-ui>
-          <SpriteSheet src={spriteUrl} size="min(148px, 100%)" row={0} />
-        </button>
-        <div className="dh-hero-body">
-          <div className="dh-hero-headline">
-            <span className="dh-hero-name">{displayName}</span>
-          </div>
-          <div className="dh-hero-badges">
-            <span className="dh-hero-badge level">{levelLabel(save)}</span>
-            <span className="dh-hero-badge cp">{t('camp.cp', { n: formatNumber(cp) })}</span>
-          </div>
-          <div className="bar dh-hero-xpbar">
-            <div className="bar-fill xp-fill" style={{ width: `${Math.round(heroProgress * 100)}%` }} />
-          </div>
-          <div className="dh-hero-equip">
-            {[...INSTANCED_SLOTS, 'relic' as const].map((slot) => {
-              const view = slot === 'relic' ? (equipped.relic ? { item: equipped.relic, instance: null } : null) : equipped[slot];
-              const name = view ? (view.instance ? gearInstanceLabel(view.instance) : t(`gear.${view.item.nameKey}`)) : '—';
-              return (
-                <div className={`dh-equip-slot${view ? '' : ' empty'}`} key={slot}>
-                  <span className={`dh-equip-icon r-${view ? viewRarity(view) : 'common'}`}>
-                    {view ? <GearIcon item={view.item} /> : <span className="dh-equip-empty-mark">·</span>}
-                  </span>
-                  <div className="dh-equip-text">
-                    <span className="dh-equip-label">{gearText(slot)}</span>
-                    <span className="dh-equip-name-row">
-                      <span className="dh-equip-name" title={name}>
-                        {name}
-                      </span>
-                      {view && <UniqueTag templateId={view.item.id} />}
+    <Screen label={t('camp.title')}>
+      <ScreenLayout
+        main={
+          <>
+            <PageHeader icon={<img className="pixel-icon" src="/assets/icons/camp_stash.png" alt="" />} title={t('camp.title')} subtitle={t('camp.resting')} />
+
+            {/* Hero */}
+            <Panel className="hm-hero">
+              <button className={`hm-portrait${portraitFrameClass(save)}`} onClick={onOpenHero} aria-label={t('nav.openProfile')} title={t('nav.openProfile')} data-ui>
+                <SpriteSheet src={spriteUrl} size="min(132px, 100%)" row={0} />
+              </button>
+              <div className="hm-hero-body">
+                <h3 className="hm-hero-name">{displayName}</h3>
+                <div className="hm-hero-chips">
+                  <Chip tone="gold">{levelLabel(save)}</Chip>
+                  <Chip>{t('camp.cp', { n: formatNumber(cp) })}</Chip>
+                </div>
+                <div className="bar hm-bar hm-hero-xp">
+                  <div className="bar-fill xp-fill" style={{ width: `${Math.round(heroProgress * 100)}%` }} />
+                </div>
+                <button className={`hm-bag${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`} onClick={onOpenInventory} data-ui>
+                  <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />
+                  <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
+                </button>
+              </div>
+              <div className="hm-slots">
+                {[...INSTANCED_SLOTS, 'relic' as const].map((slot) => {
+                  const view = slot === 'relic' ? (equipped.relic ? { item: equipped.relic, instance: null } : null) : equipped[slot];
+                  const name = view ? (view.instance ? gearInstanceLabel(view.instance) : t(`gear.${view.item.nameKey}`)) : '—';
+                  const rarity = (view ? viewRarity(view) : 'common') as CardRarity;
+                  return (
+                    <div className={`hm-slot${view ? '' : ' empty'}`} key={slot}>
+                      <ItemFrame rarity={rarity} size="sm">
+                        {view ? <GearIcon item={view.item} /> : <span className="hm-slot-empty">·</span>}
+                      </ItemFrame>
+                      <div className="hm-slot-text">
+                        <span className="hm-slot-label">{gearText(slot)}</span>
+                        <span className="hm-slot-name" title={name}>
+                          {name}
+                          {view && <UniqueTag templateId={view.item.id} />}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Panel>
+
+            {/* Atividade atual */}
+            <Panel
+              title={t('home.activityTitle')}
+              actions={
+                owner ? (
+                  <Button variant="primary" size="sm" onClick={onClaimAll} disabled={ready.count === 0} title={t('claimAll.hint')}>
+                    {t('claimAll.button')}
+                    {ready.count > 0 && <span className="hm-count">{ready.count}</span>}
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="sm" onClick={onOpenPass} title={t('claimAll.lockedHint')}>
+                    <img className="hm-lock" src="/assets/icons/garden_plot_locked.png" alt="" />
+                    {t('claimAll.button')}
+                    <Chip tone="gold">{t('claimAll.passBadge')}</Chip>
+                  </Button>
+                )
+              }
+            >
+              {(step.id !== 'running' || !anyActivity) && (
+                <div className="hm-next">
+                  <span className="hm-next-label">{t('nextStep.label')}</span>
+                  <span className="hm-next-text">{nextStepLine(step)}</span>
+                  {step.target !== 'none' && (
+                    <Button size="sm" onClick={() => onOpenNextStep(step.target)}>
+                      {t('nextStep.go')}
+                    </Button>
+                  )}
+                </div>
+              )}
+              <div className="hm-acts">
+                {hunting && (
+                  <button className="hm-act" onClick={onOpenHunt} data-ui>
+                    <span className="hm-act-icon portrait">
+                      <MonsterPortrait enemyId={hunting.enemyId} box="44px" />
                     </span>
+                    <div className="hm-act-info">
+                      <span className="hm-act-name">{t('home.hunting')}</span>
+                      <span className="hm-act-detail">{dText(hunting.nameKey)}</span>
+                      <div className="bar hm-bar">
+                        <div className={`bar-fill xp-fill${huntStatus?.full ? ' full' : ''}`} style={{ width: `${Math.round(huntingProgress * 100)}%` }} />
+                      </div>
+                      <span className="hm-act-time">{huntStatus?.full ? t('hunting.capFull') : `${formatElapsed(huntingElapsedMs)} / ${formatElapsed(huntingCapMs)}`}</span>
+                      <span className={`hm-act-inv${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`}>{t('hunting.invUsed', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
+                    </div>
+                  </button>
+                )}
+                {rewardWaiting && (
+                  <button className="hm-act" onClick={onOpenHunt} data-ui>
+                    <span className="hm-act-icon">
+                      <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />
+                    </span>
+                    <div className="hm-act-info">
+                      <span className="hm-act-name">{t('home.hunting')}</span>
+                      <span className="hm-act-detail">{t('hunting.rewardWaiting')}</span>
+                      <span className={`hm-act-inv${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`}>{t('hunting.invUsed', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
+                    </div>
+                  </button>
+                )}
+                {mining.oreId && (
+                  <button className="hm-act" onClick={onOpenMining} data-ui>
+                    <span className="hm-act-icon">
+                      <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />
+                    </span>
+                    <div className="hm-act-info">
+                      <span className="hm-act-name">{t('home.mining')}</span>
+                      <span className="hm-act-detail">{oreText(getOreTier(mining.oreId)?.nameKey ?? '')}</span>
+                      <div className="bar hm-bar">
+                        <div className="bar-fill xp-fill" style={{ width: `${Math.round((mining.pendingMs / Math.max(1, mining.capMs)) * 100)}%` }} />
+                      </div>
+                      <span className="hm-act-time">
+                        {formatElapsed(mining.pendingMs)} / {formatElapsed(mining.capMs)}
+                      </span>
+                    </div>
+                  </button>
+                )}
+                {woodcutting.woodId && (
+                  <button className="hm-act" onClick={onOpenWoodcutting} data-ui>
+                    <span className="hm-act-icon">🪓</span>
+                    <div className="hm-act-info">
+                      <span className="hm-act-name">{t('home.woodcutting')}</span>
+                      <span className="hm-act-detail">{woodText(getWoodTier(woodcutting.woodId)?.nameKey ?? '')}</span>
+                      <div className="bar hm-bar">
+                        <div className="bar-fill xp-fill" style={{ width: `${Math.round((woodcutting.pendingMs / Math.max(1, woodcutting.capMs)) * 100)}%` }} />
+                      </div>
+                      <span className="hm-act-time">
+                        {formatElapsed(woodcutting.pendingMs)} / {formatElapsed(woodcutting.capMs)}
+                      </span>
+                    </div>
+                  </button>
+                )}
+                {(gardenGrowing > 0 || gardenReady > 0) && (
+                  <button className="hm-act" onClick={onOpenGarden} data-ui>
+                    <span className="hm-act-icon">🌱</span>
+                    <div className="hm-act-info">
+                      <span className="hm-act-name">{t('tooltips.garden')}</span>
+                      <span className="hm-act-detail">{t('home.gardenStatus', { n: gardenReady, m: gardenGrowing + gardenReady })}</span>
+                      <div className="hm-dots">
+                        {gardenStatuses.map((s, i) => (
+                          <span key={i} className={`hm-dot${s.ready ? ' ready' : s.plantId ? ' growing' : ''}`} />
+                        ))}
+                      </div>
+                    </div>
+                  </button>
+                )}
+                {activeDelivery && (
+                  <button className="hm-act" onClick={onOpenExpedition} data-ui>
+                    <span className="hm-act-icon">🏕️</span>
+                    <div className="hm-act-info">
+                      <span className="hm-act-name">{t('home.delivery')}</span>
+                      <span className="hm-act-detail">{deliveryDone ? t('home.deliveryReady') : formatRemaining(deliveryRemaining)}</span>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </Panel>
+          </>
+        }
+        side={
+          <>
+            {/* Ações rápidas */}
+            <Panel title={t('home.quickActionsTitle')}>
+              <div className="hm-quick">
+                <PrimaryButton block onClick={onOpenDungeon}>
+                  {t('camp.enterArena')}
+                </PrimaryButton>
+                <Button block onClick={onOpenHunt}>
+                  🏹 {t('tooltips.hunt')}
+                </Button>
+                <Button block onClick={onOpenForge}>
+                  {t('ui.forge')}
+                </Button>
+                <Button block onClick={onOpenExpedition}>
+                  🏕️ {t('nav.deliveries')}
+                </Button>
+              </div>
+            </Panel>
+
+            {/* Progressão */}
+            <Panel title={t('home.progressionTitle')}>
+              <div className="hm-skills">
+                <SkillRow icon="⚔️" name={t('home.hero')} level={level} cap={MAX_LEVEL} progress={heroProgress} />
+                {skillDefs.map((s) => (
+                  <SkillRow key={s.key} icon={s.icon} name={s.name} level={skillLevel(s.xp, s.key)} cap={75} progress={skillLevelProgress(s.xp, s.key)} />
+                ))}
+                <div className="hm-skill">
+                  <span className="hm-skill-icon" aria-hidden>
+                    ⚔️
+                  </span>
+                  <div className="hm-skill-info">
+                    <div className="hm-skill-head">
+                      <span className="hm-skill-name">{t('home.dungeon')}</span>
+                      <span className="hm-skill-level">{dText('floorLabel', { n: save.highestDungeonFloor })}</span>
+                    </div>
+                    <div className="bar hm-bar">
+                      <div className="bar-fill xp-fill" style={{ width: `${Math.round(dungeonProgress * 100)}%` }} />
+                    </div>
+                    <div className="hm-skill-detail">
+                      <span>{dText(biome.nameKey)}</span>
+                      {milestone && (
+                        <span className="hm-skill-next">
+                          {milestone.boss ? dText('nextBoss') : dText('nextCheckpoint')}: {dText('floorLabel', { n: milestone.floor })}
+                        </span>
+                      )}
+                      {!milestone && <span>{dText('floorLabel', { n: MAX_DUNGEON_FLOOR })}</span>}
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          <button className={`dh-inventory-chip${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`} onClick={onOpenInventory} data-ui>
-            <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
-          </button>
-        </div>
-      </section>
-
-      {/* Area B — Atividade atual */}
-      <section className="dh-card dh-activity">
-        <div className="dh-activity-head">
-          <h3 className="dh-card-title">{t('home.activityTitle')}</h3>
-          {owner ? (
-            <button className="dh-claimall" onClick={onClaimAll} disabled={ready.count === 0} title={t('claimAll.hint')} data-ui>
-              {t('claimAll.button')}
-              {ready.count > 0 && <span className="dh-claimall-count">{ready.count}</span>}
-            </button>
-          ) : (
-            <button className="dh-claimall locked" onClick={onOpenPass} title={t('claimAll.lockedHint')} data-ui>
-              <img className="dh-claimall-lock" src="/assets/icons/garden_plot_locked.png" alt="" />
-              {t('claimAll.button')}
-              <span className="dh-claimall-badge">{t('claimAll.passBadge')}</span>
-            </button>
-          )}
-        </div>
-        {(step.id !== 'running' || !anyActivity) && (
-          <div className="dh-nextstep">
-            <span className="dh-nextstep-label">{t('nextStep.label')}</span>
-            <span className="dh-nextstep-text">
-              {nextStepLine(step)}
-            </span>
-            {step.target !== 'none' && (
-              <button className="dh-nextstep-btn" onClick={() => onOpenNextStep(step.target)} data-ui>
-                {t('nextStep.go')}
-              </button>
-            )}
-          </div>
-        )}
-        <div className="dh-activity-grid">
-          {hunting && (
-            <button className="dh-activity-item" onClick={onOpenHunt} data-ui>
-              <span className="dh-activity-icon portrait">
-                <MonsterPortrait enemyId={hunting.enemyId} box="44px" />
-              </span>
-              <div className="dh-activity-info">
-                <span className="dh-activity-name">{t('home.hunting')}</span>
-                <span className="dh-activity-detail">{dText(hunting.nameKey)}</span>
-                <div className="bar dh-activity-bar">
-                  <div className={`bar-fill xp-fill${huntStatus?.full ? ' full' : ''}`} style={{ width: `${Math.round(huntingProgress * 100)}%` }} />
-                </div>
-                <span className="dh-activity-time">
-                  {huntStatus?.full ? t('hunting.capFull') : `${formatElapsed(huntingElapsedMs)} / ${formatElapsed(huntingCapMs)}`}
-                </span>
-                <span className={`dh-activity-inv${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`}>{t('hunting.invUsed', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
               </div>
-            </button>
-          )}
-          {rewardWaiting && (
-            <button className="dh-activity-item" onClick={onOpenHunt} data-ui>
-              <span className="dh-activity-icon"><img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" /></span>
-              <div className="dh-activity-info">
-                <span className="dh-activity-name">{t('home.hunting')}</span>
-                <span className="dh-activity-detail">{t('hunting.rewardWaiting')}</span>
-                <span className={`dh-activity-inv${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`}>{t('hunting.invUsed', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
-              </div>
-            </button>
-          )}
-          {mining.oreId && (
-            <button className="dh-activity-item" onClick={onOpenMining} data-ui>
-              <span className="dh-activity-icon"><img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" /></span>
-              <div className="dh-activity-info">
-                <span className="dh-activity-name">{t('home.mining')}</span>
-                <span className="dh-activity-detail">{oreText(getOreTier(mining.oreId)?.nameKey ?? '')}</span>
-                <div className="bar dh-activity-bar">
-                  <div className="bar-fill xp-fill" style={{ width: `${Math.round((mining.pendingMs / Math.max(1, mining.capMs)) * 100)}%` }} />
-                </div>
-                <span className="dh-activity-time">{formatElapsed(mining.pendingMs)} / {formatElapsed(mining.capMs)}</span>
-              </div>
-            </button>
-          )}
-          {woodcutting.woodId && (
-            <button className="dh-activity-item" onClick={onOpenWoodcutting} data-ui>
-              <span className="dh-activity-icon">🪓</span>
-              <div className="dh-activity-info">
-                <span className="dh-activity-name">{t('home.woodcutting')}</span>
-                <span className="dh-activity-detail">{woodText(getWoodTier(woodcutting.woodId)?.nameKey ?? '')}</span>
-                <div className="bar dh-activity-bar">
-                  <div className="bar-fill xp-fill" style={{ width: `${Math.round((woodcutting.pendingMs / Math.max(1, woodcutting.capMs)) * 100)}%` }} />
-                </div>
-                <span className="dh-activity-time">{formatElapsed(woodcutting.pendingMs)} / {formatElapsed(woodcutting.capMs)}</span>
-              </div>
-            </button>
-          )}
-          {(gardenGrowing > 0 || gardenReady > 0) && (
-            <button className="dh-activity-item" onClick={onOpenGarden} data-ui>
-              <span className="dh-activity-icon">🌱</span>
-              <div className="dh-activity-info">
-                <span className="dh-activity-name">{t('tooltips.garden')}</span>
-                <span className="dh-activity-detail">{t('home.gardenStatus', { n: gardenReady, m: gardenGrowing + gardenReady })}</span>
-                <div className="dh-garden-dots">
-                  {gardenStatuses.map((s, i) => (
-                    <span key={i} className={`dh-garden-dot${s.ready ? ' ready' : s.plantId ? ' growing' : ''}`} />
-                  ))}
-                </div>
-              </div>
-            </button>
-          )}
-          {activeDelivery && (
-            <button className="dh-activity-item" onClick={onOpenExpedition} data-ui>
-              <span className="dh-activity-icon">🏕️</span>
-              <div className="dh-activity-info">
-                <span className="dh-activity-name">{t('home.delivery')}</span>
-                <span className="dh-activity-detail">{deliveryDone ? t('home.deliveryReady') : formatRemaining(deliveryRemaining)}</span>
-              </div>
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* Area C — Progressao */}
-      <section className="dh-card dh-progression">
-        <h3 className="dh-card-title">{t('home.progressionTitle')}</h3>
-        <SkillRow icon="⚔️" name={t('home.hero')} level={level} cap={MAX_LEVEL} progress={heroProgress} />
-        {skillDefs.map((s) => (
-          <SkillRow
-            key={s.key}
-            icon={s.icon}
-            name={s.name}
-            level={skillLevel(s.xp, s.key)}
-            cap={75}
-            progress={skillLevelProgress(s.xp, s.key)}
-          />
-        ))}
-        <div className="dh-skill-row">
-          <span className="dh-skill-icon">⚔️</span>
-          <div className="dh-skill-info">
-            <div className="dh-skill-head">
-              <span className="dh-skill-name">{t('home.dungeon')}</span>
-              <span className="dh-skill-level">{dText('floorLabel', { n: save.highestDungeonFloor })}</span>
-            </div>
-            <div className="bar dh-skill-bar">
-              <div className="bar-fill xp-fill" style={{ width: `${Math.round(dungeonProgress * 100)}%` }} />
-            </div>
-            <div className="dh-dungeon-detail">
-              <span>{dText(biome.nameKey)}</span>
-              {milestone && <span className="dh-dungeon-next">{milestone.boss ? dText('nextBoss') : dText('nextCheckpoint')}: {dText('floorLabel', { n: milestone.floor })}</span>}
-              {!milestone && <span>{dText('floorLabel', { n: MAX_DUNGEON_FLOOR })}</span>}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Area D — Acoes rapidas */}
-      <section className="dh-card dh-quickactions">
-        <h3 className="dh-card-title">{t('home.quickActionsTitle')}</h3>
-        <div className="dh-quick-grid">
-          <button className="dh-quick-btn primary" onClick={onOpenDungeon} data-ui>
-            {t('camp.enterArena')}
-          </button>
-          <button className="dh-quick-btn" onClick={onOpenHunt} data-ui>
-            🏹 {t('tooltips.hunt')}
-          </button>
-          <button className="dh-quick-btn" onClick={onOpenForge} data-ui>
-            {t('ui.forge')}
-          </button>
-          <button className="dh-quick-btn" onClick={onOpenExpedition} data-ui>
-            🏕️ {t('nav.deliveries')}
-          </button>
-        </div>
-      </section>
-    </div>
+            </Panel>
+          </>
+        }
+      />
+    </Screen>
   );
 }
