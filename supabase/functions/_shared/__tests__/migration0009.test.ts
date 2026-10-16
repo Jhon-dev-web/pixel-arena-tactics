@@ -62,10 +62,10 @@ describe('0009: the reset timestamp is set only once and only by the opening pat
   });
 
   it('no other migration, and no code in the game or the functions, writes reset_at', () => {
-    // Another migration may READ reset_at (0010 revokes the certificates minted before it, from a trigger on the column); none may write it: no `set reset_at`.
+    // Another migration may READ reset_at (0010 revokes the certificates minted before it, from a trigger on the column; 0011 replaces that trigger function so it also pulls open listings down); none may write it: no `set reset_at`.
     for (const f of readdirSync(dir).filter((n) => n.endsWith('.sql') && !n.startsWith('0009'))) {
       const sql = noComments(read(f));
-      if (!f.startsWith('0010')) expect(sql, f).not.toContain('reset_at');
+      if (!f.startsWith('0010') && !f.startsWith('0011')) expect(sql, f).not.toContain('reset_at');
       expect(sql, f).not.toMatch(/\bset\s+reset_at\b/);
     }
     for (const f of ['functions/_shared/progress/progressDb.ts', 'functions/_shared/progress/handler.ts', 'functions/_shared/progress/league.ts']) {

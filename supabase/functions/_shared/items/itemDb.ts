@@ -59,7 +59,8 @@ export function createItemStore(cfg: ItemDbConfig): ItemStore {
     },
 
     async issuedLastDay(userId, kind, tier) {
-      const q = new URLSearchParams({ select: 'id', user_id: `eq.${userId}`, kind: `eq.${kind}`, created_at: `gte.${new Date(Date.now() - 86_400_000).toISOString()}`, limit: '1000' });
+      // only what the server MINTED counts (migration 0011): a piece the account bought carries origin_certificate_id and is not an issue of his
+      const q = new URLSearchParams({ select: 'id', user_id: `eq.${userId}`, kind: `eq.${kind}`, origin_certificate_id: 'is.null', created_at: `gte.${new Date(Date.now() - 86_400_000).toISOString()}`, limit: '1000' });
       if (tier !== null) q.set('tier', `eq.${tier}`);
       return (await getRows<unknown>('item_certificates', q, 'issued_read')).length;
     },
