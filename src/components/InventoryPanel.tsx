@@ -9,7 +9,7 @@ import { canAffordReforge, getReforgeCost } from '../game/reforge';
 import T from '../game/tunables';
 import { isPouchId, pouchFace } from '../game/goldPouch';
 import PouchOpenButton from './PouchOpenButton';
-import { type GearInstance, clampRefine, isInstanceEquipped, isTradeable, isTradeableKind, listGearInstances, needsBindConfirm, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
+import { type GearInstance, clampRefine, isInstanceEquipped, isTradeable, isTradeableKind, listGearInstances, needsBindConfirm, equipLevelBlock, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
 import { certState, useCertificatesVersion, verifiedPouchCount } from '../game/itemCerts';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
@@ -186,6 +186,8 @@ export default function InventoryPanel({
     : !fromStash && !!selectedGear && save.equipped[selectedGear.slot as 'relic'] === selectedGear.id;
   // Every instanced slot (weapon, armor, helmet, gloves, boots, ring, shield) and the relic slot equip straight from the bag.
   const isEquippable = !!selectedGear && (isInstancedSlot(selectedGear.slot) || selectedGear.slot === 'relic');
+  // Wearing needs the hero level the piece needs: the button is disabled and says so. A piece already worn above the level (an old save) stays on, with a warning.
+  const levelBlock = isEquippable && !fromStash && selectedGear ? equipLevelBlock(save, selectedGear.id) : null;
   const selectedRarity: Rarity = selectedInstance?.rarity ?? 'common';
   const selectedSubs = selectedInstance?.substats ?? [];
   const selectedLevel = selectedInstance ? clampRefine(selectedInstance.upgrade) : 0;
@@ -199,7 +201,7 @@ export default function InventoryPanel({
   const salvagePreview = selectedGear ? getSalvageReturn(selectedGear) : null;
 
   const handleEquip = () => {
-    if (!selected) return;
+    if (!selected || levelBlock) return;
     if (selected.kind === 'gear' && needsBindConfirm(save, selected.id) && !confirmEquip) {
       setConfirmEquip(true);
       return;
@@ -500,10 +502,11 @@ export default function InventoryPanel({
                   {t('inventory.unequip')}
                 </Button>
               ) : (
-                <Button block variant="primary" onClick={handleEquip}>
-                  {t('inventory.equip')}
+                <Button block variant="primary" onClick={handleEquip} disabled={!!levelBlock}>
+                  {levelBlock ? t('inventory.requiresLevel', { n: levelBlock.requiredLevel }) : t('inventory.equip')}
                 </Button>
               ))}
+            {isEquipped && levelBlock && <p className="ui-alert bad">{t('inventory.wornAboveLevel', { n: levelBlock.requiredLevel })}</p>}
             {confirmEquip && (
               <Dialog
                 title={t('inventory.bindTitle')}

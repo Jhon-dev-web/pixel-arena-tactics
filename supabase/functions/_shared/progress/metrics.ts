@@ -139,16 +139,20 @@ export function extractMetrics(blob: unknown): ProgressMetrics | null {
 
   const items: RarityCounts = { common: 0, rare: 0, epic: 0, legendary: 0 };
   const violations: string[] = [];
+  // The level gate is about WEARING (the game refuses to put on a piece above the hero's level, and bind-item refuses to bind it): a piece above the level may sit in the bag (it was bought
+  // or found, and waits). So the level check looks only at the pieces worn in the save's `equipped` slots; the floor gate of a unique (where it can drop) still looks at every instance.
+  const worn = new Set<string>();
+  if (isObj(blob.equipped)) for (const v of Object.values(blob.equipped)) if (typeof v === 'string') worn.add(v);
   if (isObj(blob.gearInstances)) {
     let seen = 0;
-    for (const inst of Object.values(blob.gearInstances)) {
+    for (const [instId, inst] of Object.entries(blob.gearInstances)) {
       if (!isObj(inst) || ++seen > 5000) continue;
       const r = inst.rarity;
       if (r === 'common' || r === 'rare' || r === 'epic' || r === 'legendary') items[r]++;
       const id = typeof inst.templateId === 'string' ? inst.templateId : '';
       const levelGate = Object.prototype.hasOwnProperty.call(GEAR_LEVEL_GATES, id) ? GEAR_LEVEL_GATES[id] : 0;
       const floorGate = Object.prototype.hasOwnProperty.call(UNIQUE_FLOOR_GATES, id) ? UNIQUE_FLOOR_GATES[id] : 0;
-      if ((heroLevel < levelGate || highestFloor < floorGate) && violations.length < 5 && !violations.includes(id)) violations.push(id);
+      if (((heroLevel < levelGate && worn.has(instId)) || highestFloor < floorGate) && violations.length < 5 && !violations.includes(id)) violations.push(id);
     }
   }
 

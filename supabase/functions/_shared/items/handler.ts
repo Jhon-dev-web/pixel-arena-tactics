@@ -1,5 +1,6 @@
 import { AuthConfig, getAuthenticatedUserId } from '../auth.ts';
 import { PACE_REJECT_FACTOR, daysAtFloor, daysAtLevel } from '../progress/bounds.ts';
+import { GEAR_LEVEL_GATES } from '../progress/tables.ts';
 import { UUID_RE, json } from '../http.ts';
 import { certificateContentHash } from './hash.ts';
 import { ITEM_BOUNDS } from './bounds.ts';
@@ -272,6 +273,9 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
 
 const bindStatus = (reason: Extract<BindResult, { ok: false }>['reason']): number => (reason === 'bad_request' ? 400 : reason === 'not_found' ? 404 : 409);
 
+/** The hero level wearing this template needs (0 = none): the recipe's gate, a unique's twin's. The same table the anti-cheat judges with. */
+export const requiredLevelOf = (templateId: string): number => (Object.prototype.hasOwnProperty.call(GEAR_LEVEL_GATES, templateId) ? GEAR_LEVEL_GATES[templateId] : 0);
+
 export async function handleBindItem(req: Request, deps: Pick<ItemDeps, 'auth' | 'allowedOrigins' | 'store'>): Promise<Response> {
   const pre = await prelude(req, deps.auth, deps.allowedOrigins);
   if ('response' in pre) return pre.response; // (in, not .ok: the game's tests compile this file without strict null checks)
@@ -279,6 +283,18 @@ export async function handleBindItem(req: Request, deps: Pick<ItemDeps, 'auth' |
   const body = parseBindBody(pre.body);
   if (!body) return json({ ok: false, reason: 'bad_request' } satisfies BindResult, 400, cors);
   try {
+    // BINDING is what wearing a piece does, and a piece needs the hero level its recipe needs: a certified piece whose gate is above the level in the account's latest ACCEPTED snapshot is not bound
+    // (the game refuses the same thing before it asks). void / burn (refine, salvage, discard) are free of it: they remove value, they never wear anything. Nothing is flagged here: the
+    // snapshot can simply be a few minutes behind a level the hero just reached, and the rule is the game's own, so only a hand-made request can disagree with it.
+    if (body.action === 'bind') {
+      const certs = await deps.store.certificateTemplates(userId, body.certificateIds);
+      const needed = certs.filter((c) => !c.bound && (c.kind === 'gear' || c.kind === 'unique')).reduce((m, c) => Math.max(m, requiredLevelOf(c.templateId)), 0);
+      if (needed > 0) {
+        const startMs = await deps.store.accountStartMs(userId);
+        const heroLevel = (await deps.store.acceptedHeroLevel(userId, startMs)) ?? 1;
+        if (heroLevel < needed) return json({ ok: false, reason: 'level_too_low', requiredLevel: needed, heroLevel } satisfies BindResult, 409, cors);
+      }
+    }
     const result = await deps.store.transition({ userId, ids: body.certificateIds, action: body.action as BindAction, reason: body.reason ?? '' });
     return json(result, 'reason' in result ? bindStatus(result.reason) : 200, cors);
   } catch (err) {

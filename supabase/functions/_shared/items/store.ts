@@ -57,6 +57,10 @@ export interface ItemStore {
   takeTokens(userId: string, startMs: number, takes: TokenTake[]): Promise<TokenOutcome>;
   /** Issues the certificates of one request atomically; see public.item_commit. */
   commit(args: { userId: string; requestId: string; kind: CertSource; template: StoredTemplate; certificates: NewCertificate[]; burnIds: string[]; caps: DayCap[] }): Promise<CommitOutcome>;
+  /** What the user's own certificates (of these ids) are: the template and whether each is already bound. Ids that are not his are simply absent (bind-item answers not_found for them as before). */
+  certificateTemplates(userId: string, ids: string[]): Promise<{ id: string; kind: CertKind; templateId: string; bound: boolean }[]>;
+  /** The hero level in the user's newest ACCEPTED (verdict ok) progress snapshot since `sinceMs` (the League reset / account start), or null when there is none. */
+  acceptedHeroLevel(userId: string, sinceMs: number | null): Promise<number | null>;
   /** bind / void / burn certificates the user owns, atomically; see public.item_certificate_transition. */
   transition(args: { userId: string; ids: string[]; action: BindAction; reason: string }): Promise<BindResult>;
   /** Records a flag for the owner's audit. Never throws to the caller of a refusal (best effort). */

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MarketOverview, ReservationView } from '../../supabase/functions/_shared/market/types';
-import type { SaveData } from '../game/engine';
+import { playerLevel, type SaveData } from '../game/engine';
 import { MarketUnreachable, PublicListing, fetchPublicListings, marketApi } from '../game/market/api';
 import { syncMarket } from '../game/market/sync';
 import { syncMaterials } from '../game/market/materialSync';
@@ -158,7 +158,7 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
                 }}
               />
             ) : (
-              <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} solUsd={overview?.solUsd ?? null} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} />
+              <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} solUsd={overview?.solUsd ?? null} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} heroLevel={playerLevel(save.xp)} />
             )}
           </>
         )}

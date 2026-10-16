@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCombatStats, buildHuntSession, defaultSave, normalizeSave, SaveData } from '../engine';
+import { buildCombatStats, buildHuntSession, defaultSave, normalizeSave, SaveData, xpToReachLevel } from '../engine';
 import { GEAR, SET_FAMILIES, getGear, setFamiliesOf } from '../gear';
 import { applyEquipInstance, createGearInstance, equippedSetItems, equippedSubstatTotals } from '../gearInstances';
 import { GOLD_BONUS_CAP } from '../rarity';
@@ -16,7 +16,7 @@ const items = (ids: string[]) => ids.map((id) => getGear(id));
 
 // A fresh save wearing the listed templates (any slot), ids `t_<templateId>`.
 function wear(ids: string[], rarity: 'common' | 'epic' = 'common'): SaveData {
-  let s = defaultSave();
+  let s = { ...defaultSave(), xp: xpToReachLevel(100) }; // a max-level hero: wearing needs the recipe's level (levelGateEquip.test.ts)
   const gearInstances = { ...s.gearInstances };
   for (const id of ids) gearInstances[`t_${id}`] = createGearInstance(id, { id: `t_${id}`, origin: 'craft', rarity, substats: [] });
   s = { ...s, gearInstances };

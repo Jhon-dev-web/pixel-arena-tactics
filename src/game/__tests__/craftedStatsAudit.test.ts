@@ -37,7 +37,6 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 const CRAFTABLE: GearItem[] = GEAR.filter((g) => g.recipe && !g.unique);
-const BY_ID = new Map(GEAR.map((g) => [g.id, g]));
 const REFINES = [0, 4, 8, 12];
 const DURABILITIES = [100, 50, 29, 0];
 
@@ -639,7 +638,7 @@ describe('tier N+1 is never worse than tier N on its line', () => {
           const b = (hi[f] as number | undefined) ?? 0;
           expect(b, `${key}: ${hi.id}.${f} (${b}) must not be below ${lo.id}.${f} (${a})`).toBeGreaterThanOrEqual(a);
         }
-        expect(gearLevelGate(hi, BY_ID), `${hi.id} level gate`).toBeGreaterThanOrEqual(gearLevelGate(lo, BY_ID));
+        expect(gearLevelGate(hi), `${hi.id} level gate`).toBeGreaterThanOrEqual(gearLevelGate(lo));
         for (const refine of [0, 8]) {
           const cpLo = computeCP(wear(bare(), lo.id, { upgrade: refine }));
           const cpHi = computeCP(wear(bare(), hi.id, { upgrade: refine }));

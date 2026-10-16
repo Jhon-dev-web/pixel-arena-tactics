@@ -1,33 +1,22 @@
 // The game numbers the server needs (see seasonTables.gen.ts, which writes them to supabase/functions/_shared/progress/tables.ts).
 import { MAX_LEVEL, xpForNextLevel, xpToReachLevel } from '../../src/game/engine';
-import { GEAR, GearItem } from '../../src/game/gear';
+import { GEAR, GearItem, gearRequiredLevel } from '../../src/game/gear';
 import { HUNTING_ZONES } from '../../src/game/huntingZones';
 import { LEAGUE_EVENT_SLOTS } from '../../src/game/leagueEvents';
 import { skillXpToReachLevel } from '../../src/game/skills';
 import T from '../../src/game/tunables';
 
-// Highest hero level a piece cannot exist below: a crafted piece needs its recipe's requiredLevel (a piece made from a previous piece inherits that one's gate); a
-// unique takes its twin's. Pieces with no gate (starters, tier 1) are left out.
-export function gearLevelGate(g: GearItem, byId: Map<string, GearItem>): number {
-  let gate = g.recipe?.requiredLevel ?? 0;
-  for (const inputId of Object.keys(g.recipe?.items ?? {})) {
-    const input = byId.get(inputId);
-    if (input) gate = Math.max(gate, gearLevelGate(input, byId));
-  }
-  if (g.salvageLike) {
-    const twin = byId.get(g.salvageLike);
-    if (twin) gate = Math.max(gate, gearLevelGate(twin, byId));
-  }
-  return gate;
+// Highest hero level a piece cannot exist below: src/game/gear.ts gearRequiredLevel (the same number the equip rule uses). Pieces with no gate (starters, tier 1) are left out.
+export function gearLevelGate(g: GearItem): number {
+  return gearRequiredLevel(g);
 }
 
 export function buildTables() {
-  const byId = new Map(GEAR.map((g) => [g.id, g]));
   const levelGates: Record<string, number> = {};
   const floorGates: Record<string, number> = {};
   for (const g of GEAR) {
     if (g.slot === 'relic') continue; // relics are stackable inventory entries, not instances
-    const gate = gearLevelGate(g, byId);
+    const gate = gearLevelGate(g);
     if (gate > 0) levelGates[g.id] = gate;
     const src = g.source as { zone?: string; bossFloor?: number } | undefined;
     if (g.unique && src?.bossFloor) floorGates[g.id] = src.bossFloor;

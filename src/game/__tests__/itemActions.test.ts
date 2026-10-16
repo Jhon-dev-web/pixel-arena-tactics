@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defaultSave, normalizeSave, SaveData } from '../engine';
+import { defaultSave, normalizeSave, SaveData, xpToReachLevel } from '../engine';
 import { getGear } from '../gear';
 import { applyEquipInstance, applyUpgrade, applySalvage, createGearInstance, isTradeable, listGearInstances, planForgeIngredients } from '../gearInstances';
 import { emptyMaterials } from '../materials';
@@ -553,7 +553,7 @@ describe('what the screens may call "Certificado"', () => {
 
 describe('saves', () => {
   it('an old save (Epic, a unique and pouches, no certificate anywhere) loads and plays; nothing in it is tradeable and nothing is retro-certified', () => {
-    const old = JSON.parse(JSON.stringify(defaultSave()));
+    const old = JSON.parse(JSON.stringify({ ...defaultSave(), xp: xpToReachLevel(10) })); // level 10: the helm's recipe level
     old.gearInstances.old_epic = { id: 'old_epic', templateId: 'iron_helm', rarity: 'epic', substats: [{ type: 'critRate', value: 3 }, { type: 'defense', value: 4 }], upgrade: 0, sockets: [], durability: 100, reforgeCount: 0, createdAt: 1, origin: 'craft' };
     old.gearInstances.old_unique = { id: 'old_unique', templateId: 'demon_fang_dagger', rarity: 'legendary', substats: [], upgrade: 0, sockets: [], durability: 100, reforgeCount: 0, createdAt: 1, origin: 'drop' };
     old.consumables.gold_pouch_s = 2;

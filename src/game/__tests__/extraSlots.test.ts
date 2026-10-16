@@ -8,6 +8,7 @@ import {
   normalizeSave,
   playerMaxHp,
   SaveData,
+  xpToReachLevel,
 } from '../engine';
 import { GEAR, INSTANCED_SLOTS, UNIQUE_MAIN_BOOST, UNIQUE_OTHER_BOOST, getGear, isInstancedSlot } from '../gear';
 import {
@@ -47,7 +48,7 @@ const wire = (s: unknown) => JSON.parse(JSON.stringify(s)) as Record<string, unk
 
 // A fresh save holding one piece of each extra slot (stored, unequipped), ids `t_<templateId>`.
 function withPieces(ids: string[], rarity: 'common' | 'epic' = 'common'): SaveData {
-  const s = defaultSave();
+  const s = { ...defaultSave(), xp: xpToReachLevel(100) }; // a max-level hero: these tests are about the slots, not the level rule (levelGateEquip.test.ts)
   const gearInstances = { ...s.gearInstances };
   for (const id of ids) gearInstances[`t_${id}`] = createGearInstance(id, { id: `t_${id}`, origin: 'craft', rarity, substats: [] });
   return { ...s, gearInstances };
@@ -484,7 +485,7 @@ describe('unique pieces', () => {
   });
 
   it('equipping a unique adds its stats and its substats count', () => {
-    const base = defaultSave();
+    const base = { ...defaultSave(), xp: xpToReachLevel(100) };
     const inst = createGearInstance('goblin_king_crown', { id: 'crown', origin: 'drop', rarity: 'legendary', substats: [{ type: 'goldBonus', value: 20 }, { type: 'goldBonus', value: 20 }] });
     const s = applyEquipInstance({ ...base, gearInstances: { ...base.gearInstances, crown: inst } }, 'crown')!;
     expect(s.equipped.helmet).toBe('crown');

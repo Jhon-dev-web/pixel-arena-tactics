@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { INSTANCED_SLOTS, getGear } from '../../game/gear';
+import { usableAtLevel } from '../../game/market/levelNote';
 import { fmtNum, t } from '../../locales';
 import { mt } from '../../locales/market';
 import { PublicListing } from '../../game/market/api';
@@ -30,7 +31,7 @@ export function pageWindow(page: number, pages: number): number[] {
 
 // The public listings (the one view anon may read): the item as its certificate describes it and its price in SOL (with an optional "about US$" line when the server has a price). A search box, filters by kind, slot, tier and rarity, a sort, pages of cards. "Comprar"
 // opens the item's detail (its substats, the game's fee and the seller's share); "Reservar e pagar" there reserves it and moves to the payment step.
-export default function BrowsePanel({ listings, feePercent, solUsd, busyId, failure, onReserve }: { listings: PublicListing[]; feePercent: number; solUsd: number | null; busyId: string | null; failure: string | null; onReserve: (listing: PublicListing) => void }) {
+export default function BrowsePanel({ listings, feePercent, solUsd, busyId, failure, onReserve, heroLevel }: { listings: PublicListing[]; feePercent: number; solUsd: number | null; busyId: string | null; failure: string | null; onReserve: (listing: PublicListing) => void; heroLevel?: number }) {
   const [kind, setKind] = useState<KindFilter>('all');
   const [slot, setSlot] = useState('');
   const [tier, setTier] = useState('');
@@ -178,6 +179,7 @@ export default function BrowsePanel({ listings, feePercent, solUsd, busyId, fail
                 {expanded && (
                   <div className="mk-card-more">
                     <Substats item={item} />
+                    {usableAtLevel(l, heroLevel) !== null && <p className="ui-note mk-level-note">{mt('browse.usableAtLevel', { n: usableAtLevel(l, heroLevel) as number })}</p>}
                     <p className="ui-note">
                       {mt('rules.fee', { pct: feePercent })}: {fmtSol(split.feeLamports)} SOL. {mt('pay.toSeller')}: {fmtSol(split.sellerLamports)} SOL.
                     </p>

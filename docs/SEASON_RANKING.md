@@ -28,7 +28,7 @@ Um snapshot `ok` pode trazer **avisos suaves** `FAST_LEVEL_PACE`, `FAST_FLOOR_PA
 | `KILLS_RATE`, `GOLD_RATE`, `DUNGEON_RUNS_RATE`, `DUNGEON_FLOORS_RATE`, `BOSSES_RATE`, `UNIQUES_RATE`, `ACHIEVEMENTS_RATE` (e `_TOTAL`) | idem | Contadores crescendo além do teto. |
 | `SECONDS_PLAYED_EXCEEDS_CLOCK` (e `_TOTAL`) | rejeita | Tempo jogado maior que o tempo real (salto de relógio). |
 | `FLOOR_ABOVE_LEVEL_CAP` | flag / rejeita | Andar alto demais para o nível já visto nas simulações. |
-| `GEAR_BELOW_GATE` | rejeita | Peça (ex.: tier 6) que não pode existir no nível ou andar do herói. |
+| `GEAR_BELOW_GATE` | rejeita | Peça **equipada** acima do nível do herói (ex.: tier 6 num herói nível 30), ou único que não pode existir no andar atingido. Peça acima do nível parada na mochila (comprada no mercado) não conta: o jogo e o `bind-item` já recusam vesti-la. |
 | `DEPTH_WITHOUT_FLOOR_100` | rejeita | Profundeza sem ter passado do andar 100. |
 | `PASS_FEATURES_WITHOUT_ENTITLEMENT` | rejeita | Recompensas premium ou vagas de Baú do Passe sem o Passe no servidor. |
 | `PASS_FLAG_WITHOUT_ENTITLEMENT` | flag | O save diz que tem o Passe, o servidor diz que não. |

@@ -331,7 +331,7 @@ export function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
 // A weapon of one template worn in place of the current one, to compare lines by the game's own computeCP (refine +0, common).
 function cpWith(s: SaveData, tpl: string): number {
   const inst = createGearInstance(tpl, { id: 'probe', origin: 'admin', rarity: 'common', substats: [] });
-  const trial = applyEquipInstance({ ...s, gearInstances: { ...s.gearInstances, probe: inst } }, 'probe');
+  const trial = applyEquipInstance({ ...s, gearInstances: { ...s.gearInstances, probe: inst } }, 'probe', { skipLevelGate: true }); // a what-if of the line's CP, nothing is worn
   return trial ? computeCP(trial) : 0;
 }
 

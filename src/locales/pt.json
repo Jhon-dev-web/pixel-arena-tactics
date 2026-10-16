@@ -564,6 +564,8 @@
     "noCertificateHint": "Itens feitos antes do mercado ou fora do servidor continuam seus e podem ser usados, mas não são negociáveis.",
     "certUnverified": "Certificado não confirmado pelo servidor",
     "untradeable": "Não negociável",
+    "requiresLevel": "Requer nível {n}",
+    "wornAboveLevel": "Acima do seu nível: requer nível {n}. Continua equipada, mas troque por uma peça que você possa usar.",
     "bindTitle": "Equipar e vincular",
     "bindConfirm": "Equipar vincula este item a você. Ele não poderá mais ser vendido no mercado. Equipar mesmo assim?",
     "bindCancel": "Cancelar",
@@ -1990,7 +1992,8 @@
       "too_early": "O servidor ainda não reconhece esta peça nesta conta. Nada foi gasto.",
       "burn_not_held": "Um ingrediente certificado não está mais disponível. Recarregue o jogo. Nada foi gasto.",
       "pouch_gold_limit": "Ainda não dá para transformar tanto Ouro em Bolsa nesta conta (limite do servidor). Nada foi gasto.",
-      "pouch_count_limit": "Limite de Bolsas por dia atingido. Nada foi gasto."
+      "pouch_count_limit": "Limite de Bolsas por dia atingido. Nada foi gasto.",
+      "level_too_low": "O servidor ainda não registrou o seu nível para esta peça. Espere a próxima sincronização e tente de novo. Nada foi gasto."
     },
     "listed": "Este item está à venda e não pode ser alterado.",
     "huntNoUniques": "O servidor não sorteou itens únicos desta caça ({r}). O resto da recompensa foi coletado.",

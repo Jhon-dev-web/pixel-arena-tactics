@@ -1,5 +1,5 @@
 import type { CommitOutcome, ItemStore, StoredRequest, TokenOutcome } from './store.ts';
-import type { BindResult, CertStatus, StoredTemplate } from './types.ts';
+import type { BindResult, CertKind, CertStatus, StoredTemplate } from './types.ts';
 import { CERT_COLUMNS, CertRow, toCertificateView } from './view.ts';
 
 // The real ItemStore: PostgREST over fetch with the SERVICE ROLE key (injected by the Supabase Edge runtime; never logged, never returned). Values go through URLSearchParams / JSON,
@@ -97,6 +97,22 @@ export function createItemStore(cfg: ItemDbConfig): ItemStore {
       if (r.status === 'created' && Array.isArray(r.certificates)) return { status: 'created', certificates: r.certificates.map((c) => ({ id: c.id, createdAt: c.created_at })) };
       if (r.status === 'replay' || r.status === 'cap' || r.status === 'burn_failed') return { status: r.status };
       throw new Error('item_commit_bad_answer');
+    },
+
+    async certificateTemplates(userId, ids) {
+      // PostgREST "in" list of UUIDs (the handler validated every id against UUID_RE); user_id keeps it to the caller's own rows
+      const q = new URLSearchParams({ select: 'id,kind,template_id,bound', user_id: `eq.${userId}`, id: `in.(${ids.join(',')})` });
+      const rows = await getRows<{ id: string; kind: CertKind; template_id: string; bound: boolean }>('item_certificates', q, 'certificate_read');
+      return rows.map((r) => ({ id: r.id, kind: r.kind, templateId: r.template_id, bound: r.bound }));
+    },
+
+    // Only an `ok` snapshot counts (a flagged or rejected one never describes the hero), the newest one, and not from before the first League's reset.
+    async acceptedHeroLevel(userId, sinceMs) {
+      const q = new URLSearchParams({ select: 'metrics', user_id: `eq.${userId}`, verdict: 'eq.ok', order: 'created_at.desc', limit: '1' });
+      if (sinceMs !== null) q.set('created_at', `gte.${new Date(sinceMs).toISOString()}`);
+      const rows = await getRows<{ metrics: { heroLevel?: unknown } | null }>('progress_snapshots', q, 'snapshot_level_read');
+      const level = Number(rows[0]?.metrics?.heroLevel);
+      return Number.isFinite(level) && level >= 1 ? Math.floor(level) : null;
     },
 
     async transition(args): Promise<BindResult> {

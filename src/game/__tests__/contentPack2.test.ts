@@ -64,7 +64,7 @@ const set6 = (k: string): [string, string, Rarity, never[]][] => TIER_EXTRAS[tie
 const shieldOf = (k: string): [string, string, Rarity, never[]] => ['shield', SHIELDS[k], 'common', []];
 
 function withPieces(ids: string[]): SaveData {
-  const s = defaultSave();
+  const s = { ...defaultSave(), xp: xpToReachLevel(100) }; // a max-level hero: these tests are about the slots, not the level rule (levelGateEquip.test.ts)
   const gearInstances = { ...s.gearInstances };
   for (const id of ids) gearInstances[`t_${id}`] = createGearInstance(id, { id: `t_${id}`, origin: 'craft', rarity: 'common', substats: [] });
   return { ...s, gearInstances };

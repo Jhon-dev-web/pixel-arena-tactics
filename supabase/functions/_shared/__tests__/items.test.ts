@@ -506,6 +506,77 @@ describe('bind-item: bind, void and burn', () => {
   });
 });
 
+describe('bind-item: wearing needs the hero level (the same gate as the game)', () => {
+  /** A held certificate of `templateId` (gate known from the progress tables) for USER_A, minted the way the server would, or planted for a unique. */
+  async function certOf(s: ReturnType<typeof oldServer>, templateId: string, n: number): Promise<string> {
+    if (FORGE_TEMPLATES[templateId]) {
+      const r = await s.mint({ kind: 'forge', requestId: REQ(900 + n), templateId });
+      return (r.body.item as { certificate: { id: string } }).certificate.id;
+    }
+    const id = `00000000-0000-4000-8000-0000000009${String(n).padStart(2, '0')}`;
+    s.store.certs.push({ id, kind: 'unique', templateId, rarity: 'epic', tier: 3, substats: [], upgrade: 0, goldAmount: null, source: 'hunt_drop', status: 'held', bound: false, createdAt: '2026-10-01T00:00:00.000Z', contentHash: 'x', userId: USER_A, requestId: 'planted', requestIndex: 0, createdMs: s.store.nowMs });
+    return id;
+  }
+
+  it('a piece with no gate binds with no snapshot at all', async () => {
+    const s = oldServer(() => 0.99);
+    const id = await certOf(s, 'bronze_dagger', 1);
+    expect((await s.bind({ action: 'bind', certificateIds: [id] })).status).toBe(200);
+  });
+
+  it('a gated piece is refused below its level (no snapshot counts as level 1), allowed at it, and nothing is bound by the refusal', async () => {
+    const s = oldServer(() => 0.99);
+    const id = await certOf(s, 'iron_helm', 2); // recipe level 10
+    const none = await s.bind({ action: 'bind', certificateIds: [id] });
+    expect(none.status).toBe(409);
+    expect(none.body).toEqual({ ok: false, reason: 'level_too_low', requiredLevel: 10, heroLevel: 1 });
+    s.store.acceptedLevels.set(USER_A, 9);
+    expect((await s.bind({ action: 'bind', certificateIds: [id] })).body).toEqual({ ok: false, reason: 'level_too_low', requiredLevel: 10, heroLevel: 9 });
+    expect(s.store.certs[0].bound).toBe(false);
+    expect(s.store.events.some((e) => e.event === 'bind')).toBe(false);
+    s.store.acceptedLevels.set(USER_A, 10);
+    expect((await s.bind({ action: 'bind', certificateIds: [id] })).body).toEqual({ ok: true, certificates: [{ id, status: 'held', bound: true }] });
+  });
+
+  it('a unique takes its twin level', async () => {
+    const s = oldServer(() => 0.99);
+    const id = await certOf(s, 'bloodbound_cleaver', 3); // twin steel_greatsword: level 25
+    s.store.acceptedLevels.set(USER_A, 24);
+    expect((await s.bind({ action: 'bind', certificateIds: [id] })).body).toMatchObject({ ok: false, reason: 'level_too_low', requiredLevel: 25 });
+    s.store.acceptedLevels.set(USER_A, 25);
+    expect((await s.bind({ action: 'bind', certificateIds: [id] })).status).toBe(200);
+  });
+
+  it('several certificates are all-or-nothing: one above the level keeps the others unbound', async () => {
+    const s = oldServer(() => 0.99);
+    const low = await certOf(s, 'bronze_dagger', 4);
+    const high = await certOf(s, 'steel_greatsword', 5); // level 25
+    s.store.acceptedLevels.set(USER_A, 12);
+    const r = await s.bind({ action: 'bind', certificateIds: [low, high] });
+    expect(r.body).toMatchObject({ ok: false, reason: 'level_too_low', requiredLevel: 25, heroLevel: 12 });
+    expect(s.store.certs.every((c) => !c.bound)).toBe(true);
+  });
+
+  it('void and burn (refine, salvage, discard) are not level-gated, and a piece already bound is not asked again', async () => {
+    const s = oldServer(() => 0.99);
+    const a = await certOf(s, 'iron_helm', 6);
+    const b = await certOf(s, 'iron_gauntlets', 7);
+    expect((await s.bind({ action: 'void', certificateIds: [a], reason: 'refine' })).status).toBe(200);
+    expect((await s.bind({ action: 'burn', certificateIds: [b] })).status).toBe(200);
+    const c = await certOf(s, 'iron_greaves', 8);
+    s.store.certs.find((x) => x.id === c)!.bound = true; // worn earlier, when the level allowed it
+    expect((await s.bind({ action: 'bind', certificateIds: [c] })).status).toBe(200);
+  });
+
+  it('only the level of the own accepted snapshot of the account counts, and the certificate of another account still answers not_found', async () => {
+    const s = oldServer(() => 0.99);
+    const id = await certOf(s, 'iron_helm', 9);
+    s.store.acceptedLevels.set(USER_B, 99);
+    expect((await s.bind({ action: 'bind', certificateIds: [id] }, USER_B)).body).toEqual({ ok: false, reason: 'not_found' });
+    expect((await s.bind({ action: 'bind', certificateIds: [id] })).body).toMatchObject({ ok: false, reason: 'level_too_low' });
+  });
+});
+
 describe('what a cheater can still do is bounded, not impossible (docs/MARKET_FOUNDATION.md)', () => {
   it('a flood of forge calls never certifies more than the daily caps per tier', async () => {
     const s = oldServer(() => 0.99); // legendary on every roll

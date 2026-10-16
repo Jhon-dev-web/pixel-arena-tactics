@@ -58,6 +58,8 @@ import {
   InstancedSlot,
   applyDurabilityLoss,
   applyEquipInstance,
+  equipBlock,
+  equipLevelBlock,
   applyRepair,
   applySalvage,
   salvageBlockReason,
@@ -1536,7 +1538,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       itemBusyRef.current = false;
     }
   };
-  const REFUSAL_KEYS = ['forge_rate', 'seal_limit', 'seal_pass_required', 'cert_day_limit', 'too_early', 'burn_not_held', 'pouch_gold_limit', 'pouch_count_limit'];
+  const REFUSAL_KEYS = ['forge_rate', 'seal_limit', 'seal_pass_required', 'cert_day_limit', 'too_early', 'burn_not_held', 'pouch_gold_limit', 'pouch_count_limit', 'level_too_low'];
   const failToast = (r: { blocked?: ActionFail['blocked']; reason?: string }) => {
     if (r.blocked === 'unreachable') showToast(t('items.unreachable'));
     else if (r.blocked === 'listed') showToast(t('items.listed'));
@@ -2196,6 +2198,12 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // `id` is a weapon / armor INSTANCE id, or a template id for stackable gear (relic, tools).
   const equipGear = (id: string) => {
     const s = saveRef.current;
+    // Wearing needs the hero level the piece needs (gearInstances.equipLevelBlock). The buttons are disabled with the same reason; this guards every other path (and a stale click).
+    const levelBlock = s.gearInstances[id] ? equipBlock(s, id) : equipLevelBlock(s, id);
+    if (levelBlock) {
+      showToast(t('inventory.requiresLevel', { n: levelBlock.requiredLevel }));
+      return;
+    }
     if (s.gearInstances[id]) {
       // Web build: wearing a certified piece binds its certificate on the server first (irreversible, and a bound certificate can never be listed). Anything else equips as always.
       const inst = s.gearInstances[id];

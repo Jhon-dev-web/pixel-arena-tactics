@@ -54,7 +54,8 @@ interface Overrides {
   hasBattlePass?: boolean;
   premium?: number[];
   stashBonusSlots?: number;
-  templates?: { templateId: string; rarity?: string }[];
+  /** worn: true = the piece is in an equipped slot of the save (the level gate is about wearing); otherwise it sits in the bag. */
+  templates?: { templateId: string; rarity?: string; worn?: boolean }[];
 }
 
 function blob(o: Overrides = {}) {
@@ -77,6 +78,7 @@ function blob(o: Overrides = {}) {
     claimedPassRewards: { free: [], premium: o.premium ?? [] },
     stashBonusSlots: o.stashBonusSlots ?? 0,
     gearInstances: Object.fromEntries((o.templates ?? []).map((t, i) => [`gi_${i}`, { id: `gi_${i}`, templateId: t.templateId, rarity: t.rarity ?? 'common' }])),
+    equipped: Object.fromEntries((o.templates ?? []).flatMap((t, i) => (t.worn ? [[`slot${i}`, `gi_${i}`]] : []))),
     schemaVersion: 2,
     appVersion: '0.1.0',
   };
@@ -157,8 +159,20 @@ describe('extractMetrics', () => {
     expect(ok.items.legendary).toBe(1);
     expect(ok.items.common).toBe(1);
     expect(ok.gateViolations).toEqual([]);
-    const bad = m({ xp: XP_TO_LEVEL[29], templates: [{ templateId: 'abyssal_greatblade' }, { templateId: 'abyssal_greatblade' }] });
+    const bad = m({ xp: XP_TO_LEVEL[29], templates: [{ templateId: 'abyssal_greatblade', worn: true }, { templateId: 'abyssal_greatblade', worn: true }] });
     expect(bad.gateViolations).toEqual(['abyssal_greatblade']);
+  });
+
+  it('the level gate is about WEARING: a piece above the hero level in the bag (bought, waiting) is no violation, the same piece worn is', () => {
+    const bag = m({ xp: XP_TO_LEVEL[29], templates: [{ templateId: 'abyssal_greatblade' }, { templateId: 'voidsteel_blade', rarity: 'epic' }] });
+    expect(bag.gateViolations).toEqual([]);
+    expect(bag.items.epic).toBe(1); // still counted as an item
+    const worn = m({ xp: XP_TO_LEVEL[29], templates: [{ templateId: 'abyssal_greatblade' }, { templateId: 'voidsteel_blade', worn: true }] });
+    expect(worn.gateViolations).toEqual(['voidsteel_blade']);
+    // at the level it is fine worn
+    expect(m({ xp: XP_TO_LEVEL[69], templates: [{ templateId: 'voidsteel_blade', worn: true }] }).gateViolations).toEqual([]);
+    // the floor gate of a unique is about where it can DROP, so it still looks at the bag
+    expect(m({ xp: XP_TO_LEVEL[99], floor: 10, templates: [{ templateId: 'overlord_greataxe' }] }).gateViolations).toEqual(['overlord_greataxe']);
   });
 
   it('level and paragon follow the XP table', () => {
@@ -280,9 +294,12 @@ describe('evaluateSnapshot: cheating', () => {
   });
 
   it('tier 6 gear on a low-level hero is rejected; the same piece on a level 90 hero is fine', () => {
-    const low = play([{ atMs: T0, o: { xp: XP_TO_LEVEL[29], templates: [{ templateId: 'abyssal_greatblade', rarity: 'legendary' }] } }], T0 - 30 * DAY);
+    const low = play([{ atMs: T0, o: { xp: XP_TO_LEVEL[29], templates: [{ templateId: 'abyssal_greatblade', rarity: 'legendary', worn: true }] } }], T0 - 30 * DAY);
     expect(low[0].verdict).toBe('rejected');
     expect(low[0].reasons).toContain('GEAR_BELOW_GATE');
+    // the same piece waiting in the bag (bought on the market, not wearable yet) is not a violation
+    const bag = play([{ atMs: T0, o: { xp: XP_TO_LEVEL[29], templates: [{ templateId: 'abyssal_greatblade', rarity: 'legendary' }] } }], T0 - 30 * DAY);
+    expect(bag[0].reasons).not.toContain('GEAR_BELOW_GATE');
     const high = play([{ atMs: T0, o: { xp: XP_TO_LEVEL[89], floor: 90, templates: [{ templateId: 'abyssal_greatblade', rarity: 'legendary' }] } }], T0 - 200 * DAY);
     expect(high[0].reasons).not.toContain('GEAR_BELOW_GATE');
   });

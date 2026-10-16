@@ -1,7 +1,7 @@
 import { t } from '../locales';
 import { SaveData, computeCP, playerLevel } from '../game/engine';
-import { GearSlot, INSTANCED_SLOTS, MAX_DURABILITY } from '../game/gear';
-import { EquippedView, resolveEquipped, viewDurability, viewRarity, viewRefine } from '../game/gearInstances';
+import { GearSlot, INSTANCED_SLOTS, MAX_DURABILITY, getGear } from '../game/gear';
+import { EquippedView, resolveEquipped, viewDurability, viewRarity, viewRefine, wornAboveLevel } from '../game/gearInstances';
 import { Rarity, rarityDef, substatNameKey } from '../game/rarity';
 import { fmtSubstat } from './substatText';
 import { TITLES } from '../game/titles';
@@ -39,7 +39,7 @@ const ATTRS: { key: AttrKey; nameKey: string }[] = [
 // One equipment card per slot (the seven instanced ones, then the relic): the shared item card, the icon in its rarity frame with the refine level as the badge, the slot and rarity line, the stat
 // lines and the durability. `view` is null when the slot is empty (helmet / gloves / boots / ring / shield / relic); an empty weapon / armor resolves to the zero-stat starter, which is shown like any other
 // piece. The relic is a stackable template: no instance, so no rarity, refine or durability lines.
-function EquipSlotCard({ slot, view }: { slot: GearSlot; view: EquippedView | null }) {
+function EquipSlotCard({ slot, view, requiredLevel }: { slot: GearSlot; view: EquippedView | null; requiredLevel?: number }) {
   const durClass = (d: number) => (d <= 0 ? ' broken' : d < 30 ? ' worn' : '');
   if (!view) {
     return (
@@ -84,6 +84,7 @@ function EquipSlotCard({ slot, view }: { slot: GearSlot; view: EquippedView | nu
             +{fmtSubstat(s)} {t(`rarity.${substatNameKey(s.type)}`)}
           </span>
         ))}
+        {requiredLevel ? <span className="pg-line sub">{'⚠ '}{t('inventory.requiresLevel', { n: requiredLevel })}</span> : null}
       </div>
       {view.instance && <span className={`hero-durability${durClass(dur)}`}>{t('forge.durability', { n: dur, m: MAX_DURABILITY })}</span>}
     </ItemCard>
@@ -92,16 +93,24 @@ function EquipSlotCard({ slot, view }: { slot: GearSlot; view: EquippedView | nu
 
 export function EquipmentPanel({ save }: { save: SaveData }) {
   const equipped = resolveEquipped(save);
+  // Old saves: a piece worn above the hero's level stays on (nothing is taken away silently) but is flagged here and in the bag.
+  const above = wornAboveLevel(save);
+  const lockOf = (slot: GearSlot): number | undefined => above.find((a) => a.slot === slot)?.requiredLevel;
 
   return (
     <>
       <SetLines save={save} />
       <div className="ui-grid pg-equip-grid">
         {INSTANCED_SLOTS.map((slot) => (
-          <EquipSlotCard key={slot} slot={slot} view={equipped[slot]} />
+          <EquipSlotCard key={slot} slot={slot} view={equipped[slot]} requiredLevel={lockOf(slot)} />
         ))}
         <EquipSlotCard slot="relic" view={equipped.relic ? { item: equipped.relic, instance: null } : null} />
       </div>
+      {above.map((a) => (
+        <p className="ui-alert bad" key={a.slot} role="status">
+          {gearText(getGear(a.templateId).nameKey)}: {t('inventory.wornAboveLevel', { n: a.requiredLevel })}
+        </p>
+      ))}
     </>
   );
 }

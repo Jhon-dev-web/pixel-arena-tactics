@@ -564,6 +564,8 @@
     "noCertificateHint": "Items made before the market or outside the server stay yours and can be used, but they are not tradable.",
     "certUnverified": "Certificate not confirmed by the server",
     "untradeable": "Not tradable",
+    "requiresLevel": "Requires level {n}",
+    "wornAboveLevel": "Above your level: requires level {n}. It stays equipped, but swap it for a piece you can use.",
     "bindTitle": "Equip and bind",
     "bindConfirm": "Equipping binds this item to you. It can no longer be sold on the market. Equip anyway?",
     "bindCancel": "Cancel",
@@ -1990,7 +1992,8 @@
       "too_early": "The server does not recognise this piece on this account yet. Nothing was spent.",
       "burn_not_held": "A certified ingredient is no longer available. Reload the game. Nothing was spent.",
       "pouch_gold_limit": "This account cannot turn that much Gold into a Pouch yet (server limit). Nothing was spent.",
-      "pouch_count_limit": "Daily Pouch limit reached. Nothing was spent."
+      "pouch_count_limit": "Daily Pouch limit reached. Nothing was spent.",
+      "level_too_low": "The server has not recorded your level for this piece yet. Wait for the next sync and try again. Nothing was spent."
     },
     "listed": "This item is for sale and cannot be changed.",
     "huntNoUniques": "The server rolled no unique items for this hunt ({r}). The rest of the reward was collected.",

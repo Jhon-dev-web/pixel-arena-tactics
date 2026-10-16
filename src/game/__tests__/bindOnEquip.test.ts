@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultSave, normalizeSave, SaveData } from '../engine';
+import { defaultSave, normalizeSave, SaveData, xpToReachLevel } from '../engine';
 import { getGear, GEAR, isInstancedSlot } from '../gear';
 import {
   applyEquipInstance,
@@ -19,7 +19,7 @@ import { emptyMaterials } from '../materials';
 import { recipeStock } from './recipeStock';
 
 const withPiece = (templateId: string, rarity: Rarity, id = 'p1', extra: Partial<SaveData> = {}): SaveData => {
-  const base = defaultSave();
+  const base = { ...defaultSave(), xp: xpToReachLevel(100) }; // a max-level hero: these tests are about binding, not the level rule (levelGateEquip.test.ts)
   const inst = createGearInstance(templateId, { id, origin: 'craft', rarity, substats: [] });
   return { ...base, ...extra, gearInstances: { ...base.gearInstances, [id]: inst } };
 };

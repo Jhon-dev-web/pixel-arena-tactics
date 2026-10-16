@@ -326,7 +326,7 @@ describe('CP values the effects and never punishes them', () => {
   });
 
   it('every item raises CP over the empty slot in its own slot (equipping never lowers it)', () => {
-    const h = { ...defaultSave(), xp: xpToReachLevel(60) };
+    const h = { ...defaultSave(), xp: xpToReachLevel(100) }; // wearing needs the recipe's level; the top pieces need 100
     const base = computeCP(h);
     for (const item of GEAR) {
       let s: SaveData;
@@ -369,7 +369,7 @@ describe('no dead gear fields', () => {
   });
 
   it('equipping each item changes the combat stat that each of its live fields promises', () => {
-    const base = { ...defaultSave(), xp: xpToReachLevel(60) };
+    const base = { ...defaultSave(), xp: xpToReachLevel(100) };
     const baseStats = buildCombatStats(base);
     for (const item of GEAR) {
       let s: SaveData;

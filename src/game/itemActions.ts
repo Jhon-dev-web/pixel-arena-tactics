@@ -1,7 +1,7 @@
 import type { CertificateView } from '../../supabase/functions/_shared/items/types';
 import type { SaveData } from './engine';
 import { getGear } from './gear';
-import { ForgeRoll, GearInstance, applyEquipInstance, applyForge, isCertificateId, isInstancedItem } from './gearInstances';
+import { ForgeRoll, GearInstance, applyEquipInstance, applyForge, equipBlock, isCertificateId, isInstancedItem } from './gearInstances';
 import { PouchId, applyCreatePouch, applyOpenPouch, certificateToBurnOnOpen, certificatesToBurnOnDiscard, withoutPouchCertificates } from './goldPouch';
 import { applyDiscard } from './bagActions';
 import { clearIntent, intentRequestId } from './mintIntents';
@@ -53,7 +53,7 @@ const rememberCertificate = (c: CertificateView | null | undefined): void => {
 
 // ---- bind / void / burn of one certificate ----------------------------------------------------------------------------------------------------------------------------
 
-type Transition = 'ok' | 'dead' | 'listed' | 'unreachable';
+type Transition = 'ok' | 'dead' | 'listed' | 'unreachable' | 'level';
 
 /** 'dead' = the server says that certificate is not a live one of this account (already burned / revoked, or unknown): there is nothing to protect, the piece just has no certificate any more. */
 async function transition(api: ItemApi, action: 'bind' | 'void' | 'burn', certificateId: string, reason: string): Promise<Transition> {
@@ -63,6 +63,8 @@ async function transition(api: ItemApi, action: 'bind' | 'void' | 'burn', certif
     for (const c of r.certificates) patchCertificate(c.id, { status: c.status, bound: c.bound });
     return 'ok';
   }
+  // 'level_too_low' = bind-item judged the level of the account's latest accepted snapshot (a few minutes behind a level the hero just reached): the piece is alive, only not wearable YET.
+  if (refusal(r) === 'level_too_low') return 'level';
   return refusal(r) === 'listed' ? 'listed' : 'dead';
 }
 
@@ -71,15 +73,17 @@ const certifiedUnbound = (inst: GearInstance | undefined): inst is GearInstance 
 /** The pieces whose certificate would be voided if the player changed them now (the UI asks before). */
 export const changeVoidsCertificate = (inst: GearInstance | undefined): boolean => certifiedUnbound(inst);
 
-/** Equip: a certified piece is bound on the server first. Equipping a piece with no live certificate works as always. */
+/** Equip: a certified piece is bound on the server first. Equipping a piece with no live certificate works as always. A piece above the hero's level is refused before the server is asked. */
 export async function equipAction(api: ItemApi, getSave: () => SaveData, instanceId: string): Promise<ActionResult> {
   const inst = getSave().gearInstances[instanceId];
   if (!inst) return { ok: false, blocked: 'game' };
+  if (equipBlock(getSave(), instanceId)) return { ok: false, blocked: 'game', reason: 'level' };
   let dead = false;
   if (certifiedUnbound(inst)) {
     const t = await transition(api, 'bind', inst.certificateId, 'equip');
     if (t === 'unreachable') return unreachable();
     if (t === 'listed') return { ok: false, blocked: 'listed' };
+    if (t === 'level') return { ok: false, blocked: 'refused', reason: 'level_too_low' };
     dead = t === 'dead';
   }
   let s = getSave();

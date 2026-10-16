@@ -91,6 +91,7 @@ const pt: Tree = {
     wholeLot: 'O lote é vendido inteiro: você leva as {n} unidades de uma vez. Não dá para comprar só uma parte.',
     tierN: 'Tier {n}',
     reserve: 'Reservar e pagar',
+    usableAtLevel: 'Você poderá usar no nível {n}',
     back: 'Voltar',
     fail: {
       reserved: 'Outro comprador está pagando este item. Tente de novo em alguns minutos.',
@@ -317,6 +318,7 @@ const en: Tree = {
     wholeLot: 'The lot is sold whole: you get all {n} units at once. You cannot buy only part of it.',
     tierN: 'Tier {n}',
     reserve: 'Reserve and pay',
+    usableAtLevel: 'You will be able to use it at level {n}',
     back: 'Back',
     fail: {
       reserved: 'Another buyer is paying for this item. Try again in a few minutes.',

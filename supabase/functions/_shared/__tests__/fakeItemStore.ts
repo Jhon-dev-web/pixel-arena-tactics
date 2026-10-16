@@ -18,6 +18,8 @@ export class FakeItemStore implements ItemStore {
   accountCreatedMs: number | null = Date.UTC(2026, 8, 1);
   resetMs: number | null = null;
   pass = false;
+  /** The hero level of the newest ACCEPTED progress snapshot per user (absent = no snapshot yet); a test sets it. */
+  acceptedLevels = new Map<string, number>();
   buckets = new Map<string, { tokens: number; updatedMs: number }>();
   requests = new Map<string, StoredTemplate>();
   certs: FakeCert[] = [];
@@ -107,6 +109,14 @@ export class FakeItemStore implements ItemStore {
       return { id, createdAt };
     });
     return { status: 'created', certificates: created };
+  }
+
+  async certificateTemplates(userId: string, ids: string[]) {
+    return this.certs.filter((c) => c.userId === userId && ids.includes(c.id)).map((c) => ({ id: c.id, kind: c.kind, templateId: c.templateId, bound: c.bound }));
+  }
+
+  async acceptedHeroLevel(userId: string): Promise<number | null> {
+    return this.acceptedLevels.get(userId) ?? null;
   }
 
   async transition(args: { userId: string; ids: string[]; action: BindAction; reason: string }): Promise<BindResult> {

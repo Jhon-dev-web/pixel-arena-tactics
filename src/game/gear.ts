@@ -323,6 +323,24 @@ export function getGear(id: string): GearItem {
   return GEAR_BY_ID[id];
 }
 
+// The hero level a piece needs to be WORN (and the lowest it can be forged at): a crafted piece needs its recipe's requiredLevel, a piece made from a previous piece inherits that one's
+// gate, a unique takes its twin's (salvageLike); starters, tier 1 and the relics have none (0). One definition for the forge, the equip rule (gearInstances.equipBlock), the UI and the
+// server tables (scripts/sim/seasonTablesBuild.ts generates GEAR_LEVEL_GATES from it, so the anti-cheat and bind-item judge with the same number).
+export function gearRequiredLevel(g: GearItem | string | undefined | null): number {
+  const item = typeof g === 'string' ? GEAR_BY_ID[g] : g;
+  if (!item) return 0;
+  let gate = item.recipe?.requiredLevel ?? 0;
+  for (const inputId of Object.keys(item.recipe?.items ?? {})) {
+    const input = GEAR_BY_ID[inputId];
+    if (input && input !== item) gate = Math.max(gate, gearRequiredLevel(input));
+  }
+  if (item.salvageLike) {
+    const twin = GEAR_BY_ID[item.salvageLike];
+    if (twin && twin !== item) gate = Math.max(gate, gearRequiredLevel(twin));
+  }
+  return gate;
+}
+
 // Percent extra character XP of the worn relic (the Season Relic); 0 for none.
 export const relicXpBonusPct = (relicId: string | null | undefined): number => (relicId ? getGear(relicId)?.xpBonusPct ?? 0 : 0);
 

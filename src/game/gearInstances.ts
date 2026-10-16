@@ -1,5 +1,5 @@
 import T from './tunables';
-import { GEAR, GearItem, INSTANCED_SLOTS, InstancedSlot, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, BASE_MAX_REFINE, getGear, maxRefineFor, upgradeChance, upgradeCost, upgradeFailDrop } from './gear';
+import { GEAR, GearItem, INSTANCED_SLOTS, gearRequiredLevel, InstancedSlot, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, BASE_MAX_REFINE, getGear, maxRefineFor, upgradeChance, upgradeCost, upgradeFailDrop } from './gear';
 import { GEMS, GemBonuses, GemId, addGemBonuses, gemListBonuses, getGem, hasGems, socketsForTier } from './gems';
 import { MaterialId, hasMaterials } from './materials';
 import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollRarityAtLeast, FORGE_SEAL_MIN_RARITY, rollSubstats, substatListTotals } from './rarity';
@@ -10,6 +10,7 @@ import { setBonuses } from './setBonuses';
 import type { SaveData } from './engine';
 import { recordForge, recordRefine } from './stats';
 import { isServerItemAuthority } from './itemAuthority';
+import { playerLevel } from './heroLevel';
 
 // Gear instances: every weapon / armor / helmet / gloves / boots / ring / shield is its OWN object (rarity, substats, refine level, sockets, durability,
 // reforge count). Materials, consumables, gems, relics and tools stay stackable counters keyed by id.
@@ -559,10 +560,49 @@ function removeInstances(save: SaveData, ids: GearInstanceId[]): SaveData {
 
 // --- equip
 
-export function applyEquipInstance(save: SaveData, id: GearInstanceId): SaveData | null {
+// Wearing a piece needs the hero level its recipe needs (gear.ts gearRequiredLevel: a unique takes its twin's, tier 1 and the relics need none). Buying or finding a piece above the level is fine
+// (it waits in the bag); only putting it on is refused. The same number is what the server judges with (bind-item, the anti-cheat's GEAR_BELOW_GATE).
+export interface EquipLevelBlock {
+  reason: 'level';
+  requiredLevel: number;
+  heroLevel: number;
+}
+
+/** The level rule for wearing a template (an instanced piece's templateId, or a relic id): null = allowed, otherwise what it needs and what the hero has. */
+export function equipLevelBlock(save: Pick<SaveData, 'xp'>, templateId: string): EquipLevelBlock | null {
+  const requiredLevel = gearRequiredLevel(templateId);
+  if (requiredLevel <= 0) return null;
+  const heroLevel = playerLevel(save.xp);
+  return heroLevel >= requiredLevel ? null : { reason: 'level', requiredLevel, heroLevel };
+}
+
+/** Why this instance cannot be worn right now (null = the level allows it). */
+export function equipBlock(save: SaveData, id: GearInstanceId): EquipLevelBlock | null {
+  const hit = resolveGearInstance(save, id);
+  return hit ? equipLevelBlock(save, hit.item.id) : null;
+}
+
+/**
+ * OLD SAVES: pieces already worn above the hero's level (worn before the rule existed, or put on by a hand-edited save). They are NOT stripped (nobody loses gear silently): they stay on, the
+ * character sheet and the bag flag them, and the anti-cheat (GEAR_BELOW_GATE, which looks at WORN pieces) judges the snapshot until they are swapped for a piece the hero can wear.
+ */
+export function wornAboveLevel(save: SaveData): { slot: InstancedSlot; id: GearInstanceId; templateId: string; requiredLevel: number }[] {
+  const out: { slot: InstancedSlot; id: GearInstanceId; templateId: string; requiredLevel: number }[] = [];
+  for (const slot of INSTANCED_SLOTS) {
+    const hit = resolveGearInstance(save, save.equipped[slot]);
+    if (!hit) continue;
+    const block = equipLevelBlock(save, hit.item.id);
+    if (block) out.push({ slot, id: hit.instance.id, templateId: hit.item.id, requiredLevel: block.requiredLevel });
+  }
+  return out;
+}
+
+// `skipLevelGate` exists for the balance simulation's probes (what would this piece add to the CP?), never for a player action.
+export function applyEquipInstance(save: SaveData, id: GearInstanceId, opts: { skipLevelGate?: boolean } = {}): SaveData | null {
   const hit = resolveGearInstance(save, id);
   if (!hit || !isInstancedSlot(hit.item.slot)) return null;
   if (save.equipped[hit.item.slot] === id) return null;
+  if (!opts.skipLevelGate && equipLevelBlock(save, hit.item.id)) return null;
   // Wearing a piece binds it for good (the UI asks first when the piece is tradeable, see needsBindConfirm).
   const gearInstances = hit.instance.bound ? save.gearInstances : { ...save.gearInstances, [id]: { ...hit.instance, bound: true } };
   return { ...save, gearInstances, equipped: { ...save.equipped, [hit.item.slot]: id } };

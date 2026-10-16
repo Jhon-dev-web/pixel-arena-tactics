@@ -20,7 +20,6 @@ import { gearLevelGate } from './seasonTablesBuild';
 export const UNIQUE_ROLLS_PER_HOUR: Record<string, number> = { demon_glade: 224, blood_marsh: 165, demon_rift: 140, blood_abyss: 140 };
 
 export function buildItemTables() {
-  const byId = new Map(GEAR.map((g) => [g.id, g]));
   const instanced = (slot: string) => slot !== 'relic';
 
   const forge: Record<string, { tier: number; slot: string; levelGate: number }> = {};
@@ -28,7 +27,7 @@ export function buildItemTables() {
   for (const g of GEAR) {
     if (!instanced(g.slot)) continue;
     if (g.unique) unique[g.id] = { tier: g.tier ?? 0, slot: g.slot };
-    else if (g.recipe) forge[g.id] = { tier: g.tier ?? 0, slot: g.slot, levelGate: gearLevelGate(g, byId) };
+    else if (g.recipe) forge[g.id] = { tier: g.tier ?? 0, slot: g.slot, levelGate: gearLevelGate(g) };
   }
 
   // Farm hours of ONE forged piece of a tier, the whole chain (sim:cost model, scripts/sim/farmHours.ts): the hunting hours of the 7 pieces of a set through that tier, over 7.

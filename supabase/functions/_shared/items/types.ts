@@ -75,7 +75,10 @@ export interface BindBody {
 
 export type BindResult =
   | { ok: true; certificates: { id: string; status: CertStatus; bound: boolean }[] }
-  | { ok: false; reason: 'bad_request' | 'not_found' | 'not_held' | 'listed' };
+  | { ok: false; reason: 'bad_request' | 'not_found' | 'not_held' | 'listed' }
+  // Binding is what wearing a piece does, and wearing needs the hero level the piece's recipe needs (the same rule as the game, gear.ts gearRequiredLevel): refused when the level in the account's
+  // latest ACCEPTED progress snapshot is below it. `heroLevel` is that level (1 when the account has none yet).
+  | { ok: false; reason: 'level_too_low'; requiredLevel: number; heroLevel: number };
 
 /** The stored shape of a request's answer without the certificate bodies (those are rows of item_certificates, by request_index). */
 export type StoredItem = Omit<MintedItem, 'certificate'> & { certIndex: number | null };
