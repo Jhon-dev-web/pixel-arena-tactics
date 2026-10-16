@@ -10,10 +10,15 @@ const appVersion = (JSON.parse(fs.readFileSync(path.resolve(__dirname, "package.
 //  - moves the inline <style>/<script> blocks into same-origin files (the CSP forbids inline code),
 //  - drops the iframe size-reporting script (only meaningful when embedded in the web platform).
 // The web build never loads this plugin, so its output is unchanged.
-function desktopHtml(outDir: string): Plugin {
+function desktopHtml(): Plugin {
+  // The folder is the one Vite resolved for this build (dist-desktop by default; a check can build somewhere else).
+  let outDir = "dist-desktop";
   return {
     name: "arena-desktop-html",
     apply: "build",
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
     closeBundle() {
       const file = path.resolve(outDir, "index.html");
       let html = fs.readFileSync(file, "utf8");
@@ -37,9 +42,8 @@ function desktopHtml(outDir: string): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const desktop = mode === "desktop";
-  const desktopOutDir = "dist-desktop";
   return {
-    plugins: [react(), ...(desktop ? [desktopHtml(desktopOutDir)] : [])],
+    plugins: [react(), ...(desktop ? [desktopHtml()] : [])],
     optimizeDeps: {
       exclude: ["lucide-react"],
     },
@@ -55,11 +59,13 @@ export default defineConfig(({ mode }) => {
             __APP_VERSION__: JSON.stringify(appVersion),
             "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(""),
             "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(""),
+            // The player market (crypto, web only: Valve forbids crypto trading) is compiled out of the desktop build, whatever the environment says. `npm run check:desktop` verifies it.
+            "import.meta.env.VITE_MARKET_ENABLED": JSON.stringify("false"),
           },
         }
       : {}),
     build: {
-      outDir: desktop ? desktopOutDir : "dist",
+      outDir: desktop ? "dist-desktop" : "dist",
       // Skip gzip-size reporting: our users don't optimize by bundle size,
       // and it only slows the build. Output is byte-identical.
       reportCompressedSize: false,

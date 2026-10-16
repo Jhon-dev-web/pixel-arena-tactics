@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import T, { setTunableListener } from './game/tunables';
 import {
   addBattlePassXp,
@@ -129,8 +129,21 @@ import useIsDesktop from './hooks/useIsDesktop';
 import { AudioPrefs, getAudioPrefs, initAudio, playSfx, setMuted, setMusicMuted, setMusicVolume, setSfxMuted, setSfxVolume } from './game/audio';
 import { buildSaveExport, resetSave, writeBackup } from './game/saveTransfer';
 import { fmtNum, Locale, setLocale, setLocaleListener, t } from './locales';
+import { marketEnabled } from './game/marketFlag';
+import type { MarketHost } from './components/market/marketDeps';
+import { mt } from './locales/market';
 import './App.css';
 import './round11.css';
+
+// The player market (docs/MARKET_USDT.md) is WEB ONLY: Valve forbids crypto trading in a Steam game. marketEnabled is a build constant (VITE_MARKET_ENABLED, forced off in the desktop build),
+// so in the desktop bundle these three lines, the screen, its text and its styles are not there at all (npm run check:desktop pins it).
+// (The first constant is read right here on purpose: the bundler folds it where it stands, which is what lets it drop the dynamic imports below from the desktop bundle. A constant imported from
+// another module would not be folded.)
+const MARKET_BUILD = import.meta.env.VITE_MARKET_ENABLED === 'true';
+const marketOn = MARKET_BUILD && marketEnabled;
+const MarketModal = MARKET_BUILD ? lazy(() => import('./components/MarketModal')) : null;
+const MarketSync = MARKET_BUILD ? lazy(() => import('./components/market/MarketSync')) : null;
+const PassUsdt = MARKET_BUILD ? lazy(() => import('./components/PassUsdt')) : null;
 
 const gearText = (key: string): string => t(`gear.${key}`);
 
@@ -157,6 +170,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const flushTimeoutRef = useRef<number | null>(null);
 
   const [shopOpen, setShopOpen] = useState(false);
+  const [marketOpen, setMarketOpen] = useState(false);
   const [shopTab, setShopTab] = useState<'buy' | 'sell' | 'wholesale' | 'pouch'>('buy');
   const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
@@ -222,6 +236,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (toastTimeout.current) window.clearTimeout(toastTimeout.current);
     toastTimeout.current = window.setTimeout(() => setToast(null), 1600);
   };
+
+  // What the market screens may do with the game: read the live save, replace it (the autosave persists it), and say something. Stable across renders; the functions are read through a ref.
+  const marketFns = useRef<{ apply: (s: SaveData) => void; toast: (m: string) => void }>({ apply: () => undefined, toast: () => undefined });
+  const marketHost = useMemo<MarketHost>(() => ({ getSave: () => saveRef.current, applySave: (next) => marketFns.current.apply(next), notify: (m) => marketFns.current.toast(m) }), []);
 
   // Character XP is intentionally never shown as a number anywhere in the UI (see TopHud/HeroModal/HuntModal/HuntRewardModal) and only Hunting pays it (since the League,
   // Rodada 20) — a level-up toast is the only XP-gain feedback left, so it's centralized here (setSaveBoth) rather than duplicated at every call site.
@@ -361,6 +379,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       window.removeEventListener('pageshow', onShow);
     };
   }, [userId]);
+
+  marketFns.current = { apply: setSaveBoth, toast: showToast };
 
   const updateTutorial = (next: SaveData['tutorial']) => setSaveBoth({ ...saveRef.current, tutorial: next, seenWelcome: true });
 
@@ -632,6 +652,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         [dungeonOpen, () => setDungeonOpen(false)],
         [bagOpen, () => setBagOpen(false)],
         [forgeOpen, () => setForgeOpen(false)],
+        [marketOpen, () => setMarketOpen(false)],
         [shopOpen, () => setShopOpen(false)],
       ];
       const top = layers.find(([open]) => open);
@@ -664,6 +685,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     bagOpen,
     forgeOpen,
     shopOpen,
+    marketOpen,
   ]);
 
   const toggleMute = () => {
@@ -2163,6 +2185,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         { key: 'deliveries', icon: <img className="pixel-icon" src="/assets/icons/expedition_ticket_2h.png" alt="" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
         { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { closeDrawer(); playSfx('click'); setBattlePassOpen(true); } },
         { key: 'shop', icon: <img className="pixel-icon" src="/assets/icons/gold.png" alt="" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopTab('buy'); setShopOpen(true); } },
+        ...(marketOn ? [{ key: 'market', icon: <img className="pixel-icon" src="/assets/icons/gold_pouch.png" alt="" />, label: mt('title'), active: marketOpen, onClick: () => { closeDrawer(); playSfx('click'); setMarketOpen(true); } }] : []),
       ],
     },
     {
@@ -2244,6 +2267,24 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         <button className="dev-admin-fab" onClick={() => setAdminOpen(true)} aria-label="Admin" data-ui>
           ⚙️
         </button>
+      )}
+
+      {marketOn && MarketSync && (
+        <Suspense fallback={null}>
+          <MarketSync host={marketHost} />
+        </Suspense>
+      )}
+      {marketOn && MarketModal && marketOpen && (
+        <Suspense fallback={null}>
+          <MarketModal
+            save={save}
+            host={marketHost}
+            onClose={() => {
+              playSfx('click');
+              setMarketOpen(false);
+            }}
+          />
+        </Suspense>
       )}
 
       {shopOpen && (
@@ -2471,6 +2512,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           highlightBuy={highlightBuy}
           passFlow={passFlow}
           onRecheck={confirmPassPurchase}
+          buyExtra={marketOn && PassUsdt && isServerPassSource() ? (
+            <Suspense fallback={null}>
+              <PassUsdt onGranted={confirmPassPurchase} />
+            </Suspense>
+          ) : undefined}
           onClaim={claimBattlePassLevel}
           onClaimAll={claimAllBattlePassRewards}
           onClose={() => {

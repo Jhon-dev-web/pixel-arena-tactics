@@ -203,6 +203,7 @@ export default function BattlePassModal({
   highlightBuy = false,
   passFlow,
   onRecheck,
+  buyExtra,
   onClaim,
   onClaimAll,
   onClose,
@@ -213,6 +214,8 @@ export default function BattlePassModal({
   highlightBuy?: boolean;
   passFlow: PassFlow;
   onRecheck: () => void;
+  /** A second way to pay, rendered under the main buy button (an extra payment option of the web build; nothing in the desktop build). */
+  buyExtra?: ReactNode;
   onClaim: (level: number, track: 'free' | 'premium') => void;
   onClaimAll: () => { claimed: number; blocked: number };
   onClose: () => void;
@@ -506,6 +509,7 @@ export default function BattlePassModal({
               )}
               <span className="ap-buy-blurb">{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
               {server && passPurchaseEnabled && <span className="ap-buy-blurb">{t('battlePass.priceOnCheckout')}</span>}
+              {buyExtra}
             </div>
           )}
         </footer>
