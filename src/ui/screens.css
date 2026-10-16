@@ -650,6 +650,7 @@
   position: sticky;
   top: 0;
   align-self: flex-end;
+  flex: 0 0 auto;
   z-index: 1;
   width: 40px;
   height: 40px;
