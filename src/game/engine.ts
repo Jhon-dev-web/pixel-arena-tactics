@@ -52,7 +52,7 @@ import { migrateLegacyPouch } from './legacyPouch';
 import { emptyStash, sanitizeStash, StashState } from './stash';
 import { emptyMerchant, MerchantState, sanitizeMerchant } from './merchant';
 import { emptyWholesale, sanitizeWholesale, WholesaleState } from './wholesale';
-import { emptyPouchDay, PouchCerts, PouchDayState, sanitizePouchCerts, sanitizePouchDay } from './goldPouch';
+import { emptyPouchDay, migratePouchFaces, PouchCerts, PouchDayState, sanitizeLegacyPouchCerts, sanitizePouchCerts, sanitizePouchDay } from './goldPouch';
 import { UniqueDrop } from './uniques';
 import { PendingBossClaim, sanitizeBossClaims } from './bossClaims';
 import { isServerItemAuthority } from './itemAuthority';
@@ -177,6 +177,10 @@ export interface SaveData {
   pouchDay: PouchDayState;
   // The certificate ids of the Gold Pouches the hero holds, by pouch id (goldPouch.ts). A pouch without one is uncertified. Old saves load with none.
   pouchCerts?: PouchCerts;
+  // Rodada 22: the Gold Pouch faces changed from 10,000 / 50,000 / 100,000 to 2,000 / 5,000 / 20,000. `pouchFacesV2` records that this save was settled once (goldPouch.ts migratePouchFaces:
+  // uncertified pouches became Gold at the old face); `legacyPouchCerts` are the certificates of pouches minted at the old face that the hero still holds, which open for the OLD face.
+  pouchFacesV2?: boolean;
+  legacyPouchCerts?: string[];
   // Web build: the boss unique drops of banked Dungeon runs the server has not rolled yet (bossClaims.ts). Old saves load with none.
   pendingBossClaims?: PendingBossClaim[];
   highestDungeonFloor: number;
@@ -968,6 +972,7 @@ export function defaultSave(): SaveData {
     merchant: emptyMerchant(),
     wholesale: emptyWholesale(),
     pouchDay: emptyPouchDay(),
+    pouchFacesV2: true,
     highestDungeonFloor: 1,
     heroName: 'Hero',
     str: 0,
@@ -1379,6 +1384,8 @@ export function normalizeSave(rawInput: unknown): SaveData {
         wholesale: sanitizeWholesale(parsed.wholesale, Date.now()),
         pouchDay: sanitizePouchDay(parsed.pouchDay, Date.now()),
         ...(Object.keys(sanitizePouchCerts(parsed.pouchCerts)).length > 0 ? { pouchCerts: sanitizePouchCerts(parsed.pouchCerts) } : {}),
+        pouchFacesV2: parsed.pouchFacesV2 === true, // (explicit: the defaults the save is merged over already carry true)
+        ...(sanitizeLegacyPouchCerts(parsed.legacyPouchCerts).length > 0 ? { legacyPouchCerts: sanitizeLegacyPouchCerts(parsed.legacyPouchCerts) } : {}),
         ...(sanitizeBossClaims(parsed.pendingBossClaims).length > 0 ? { pendingBossClaims: sanitizeBossClaims(parsed.pendingBossClaims) } : {}),
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
@@ -1451,7 +1458,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
       const migrated = migrateLegacyPouch(loaded, (parsed as { huntPouch?: unknown }).huntPouch, Number(rawPending?.pouchCapacity) > 0);
       delete (migrated as unknown as Record<string, unknown>).huntPouch;
       const keptKitDay = typeof parsed.passKitDay === 'string' && parsed.passKitDay.length < 40 ? parsed.passKitDay : undefined;
-      return grantDailyPassKit(keptKitDay ? { ...migrated, passKitDay: keptKitDay } : migrated, today);
+      return grantDailyPassKit(migratePouchFaces(keptKitDay ? { ...migrated, passKitDay: keptKitDay } : migrated), today);
     }
   } catch {
     /* ignore */

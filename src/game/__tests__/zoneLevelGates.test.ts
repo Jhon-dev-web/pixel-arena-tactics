@@ -67,6 +67,13 @@ describe('the hero level opens zones 3 and 4', () => {
   });
 });
 
+describe('uniques are rare per player (Rodada 22)', () => {
+  it('the last zone drops each of its uniques at 0.000008 a roll (it was 0.000024), the others at most that', () => {
+    expect(abyss.uniques!.map((u) => u.chance)).toEqual([0.000008, 0.000008]);
+    for (const z of HUNTING_ZONES) for (const u of z.uniques ?? []) expect(u.chance, `${z.id}/${u.itemId}`).toBeLessThanOrEqual(0.000008);
+  });
+});
+
 describe('zone 4: +2% XP per sub-level and a CP for each', () => {
   it('the CP of sub-level N is the zone\'s recommended CP at the depth x 1.18^(N - 1), and only the last zone has a gate', () => {
     expect(abyss.xpPerSubLevel).toBe(0.02);

@@ -2,7 +2,7 @@ import type { CertificateView } from '../../../supabase/functions/_shared/items/
 import type { SaveData } from '../engine';
 import { getGear } from '../gear';
 import { GearInstance, createGearInstance, isInstanceEquipped, isInstancedItem, isTradeable } from '../gearInstances';
-import { PouchId, certifiedPouchIds, isPouchId, pouchFace } from '../goldPouch';
+import { PouchId, certifiedPouchIds, isPouchId, pouchFaceMatches } from '../goldPouch';
 import { addWithOverflow, fitsBag, stockIsEmpty } from '../inventory';
 import { certState, getCertificate } from '../itemCerts';
 import { RARITIES } from '../rarity';
@@ -34,7 +34,7 @@ export function sellableEntries(save: SaveData): SellableEntry[] {
   for (const pouchId of ['gold_pouch_s', 'gold_pouch_m', 'gold_pouch_l'] as const) {
     for (const id of certifiedPouchIds(save, pouchId)) {
       const row = getCertificate(id);
-      if (row && row.status === 'held' && row.kind === 'gold_pouch' && row.templateId === pouchId && row.goldAmount === pouchFace(pouchId)) out.push({ kind: 'gold_pouch', certificateId: id, pouchId, goldAmount: row.goldAmount });
+      if (row && row.status === 'held' && row.kind === 'gold_pouch' && row.templateId === pouchId && pouchFaceMatches(pouchId, row.goldAmount)) out.push({ kind: 'gold_pouch', certificateId: id, pouchId, goldAmount: row.goldAmount });
     }
   }
   return out;
@@ -79,7 +79,7 @@ export type DeliverStatus = 'added' | 'present' | 'full' | 'bad';
 export function deliverCertificate(save: SaveData, cert: CertificateView, now: number): { save: SaveData; status: DeliverStatus } {
   if (cert.status !== 'held') return { save, status: 'bad' };
   if (cert.kind === 'gold_pouch') {
-    if (!isPouchId(cert.templateId) || cert.goldAmount !== pouchFace(cert.templateId)) return { save, status: 'bad' };
+    if (!isPouchId(cert.templateId) || !pouchFaceMatches(cert.templateId, cert.goldAmount)) return { save, status: 'bad' };
     const id = cert.templateId;
     if ((save.pouchCerts?.[id] ?? []).includes(cert.id)) return { save, status: 'present' };
     const placed = addWithOverflow(save, { consumables: { [id]: 1 } }, { now });

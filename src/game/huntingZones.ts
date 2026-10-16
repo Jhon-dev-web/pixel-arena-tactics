@@ -271,12 +271,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.08, qty: 1 },
       { material: 'demon_core', rarity: 'rare', chance: 0.007, qty: 1 },
     ],
+    // Rodada 22: the chances below are the Rodada 9 ones cut again (zones 1 and 2 x0.4, zone 3 and 4 to 0.000008): in the 60-day sim the owner of the Pass (20 h of Hunting a day) found 5 to 7 uniques
+    // of any kind, a plain player (6 h a day) 2 to 3; now 1 to 2 for the plain player and 3 to 4 for the owner who hunts all day (docs/BALANCE_CHANGES.md Rodada 22).
     // Unique drops (chance per victory before the economic fraction f). Rodada 9 (docs/BALANCE_CHANGES.md): uniques are tradeable goods, so they are rare PER PLAYER - a
     // normal player (2 check-ins a day, ~6 h of hunting a day) finds ONE unique of any kind per ~20-30 days in the zone that fits his stage (it was ~4). The zone's
     // economic rolls/h are ~224 / 165 / 140 / 140 (glade / marsh / rift / abyss) for a hero past the zone's recommended CP, which is what the chances below are sized for.
     uniques: [
-      { itemId: 'demon_fang_dagger', chance: 0.000015 },
-      { itemId: 'demonhide_vest', chance: 0.000015 },
+      { itemId: 'demon_fang_dagger', chance: 0.000006 },
+      { itemId: 'demonhide_vest', chance: 0.000006 },
     ],
     offlineCapHours: 6,
     unlockFloor: 0,
@@ -296,9 +298,9 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'corrupted_crystal', rarity: 'rare', chance: 0.0105, qty: 1 },
     ],
     uniques: [
-      { itemId: 'bloodbound_cleaver', chance: 0.000014 },
-      { itemId: 'bloodvein_plate', chance: 0.000014 },
-      { itemId: 'bone_ward', chance: 0.000014 },
+      { itemId: 'bloodbound_cleaver', chance: 0.000006 },
+      { itemId: 'bloodvein_plate', chance: 0.000006 },
+      { itemId: 'bone_ward', chance: 0.000006 },
     ],
     offlineCapHours: 6,
     unlockFloor: 26,
@@ -320,8 +322,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'fiend_horn', rarity: 'rare', chance: 0.0017, qty: 1, ownStream: true },
     ],
     uniques: [
-      { itemId: 'riftwalker_boots', chance: 0.000024 },
-      { itemId: 'shadow_hood', chance: 0.000024 },
+      { itemId: 'riftwalker_boots', chance: 0.000008 },
+      { itemId: 'shadow_hood', chance: 0.000008 },
     ],
     offlineCapHours: 6,
     unlockFloor: 51,
@@ -344,8 +346,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'blood_heart', rarity: 'rare', chance: 0.0021, qty: 1, ownStream: true },
     ],
     uniques: [
-      { itemId: 'abyss_heart_ring', chance: 0.000024 },
-      { itemId: 'bonecrusher_maul', chance: 0.000024 },
+      { itemId: 'abyss_heart_ring', chance: 0.000008 },
+      { itemId: 'bonecrusher_maul', chance: 0.000008 },
     ],
     offlineCapHours: 6,
     unlockFloor: 76,

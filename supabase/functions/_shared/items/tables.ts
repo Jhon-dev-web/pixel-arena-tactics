@@ -334,7 +334,7 @@ export const UNIQUE_TEMPLATES: Readonly<Record<string, { tier: number; slot: str
 export const FARM_HOURS_PER_PIECE: Readonly<Record<number, number>> = {"1":0.338,"2":0.937,"3":2.418,"4":4.376,"5":9.117,"6":10.538};
 
 /** Hunting zones: the floor and the hero level (0 = none) that open each one, its storage cap, the economic rolls per hour its unique chances are sized for, and the uniques it drops (chance per economic roll). */
-export const HUNT_ZONES: readonly { id: string; unlockFloor: number; unlockLevel: number; offlineCapHours: number; rollsPerHour: number; uniques: readonly { itemId: string; chance: number }[] }[] = [{"id":"demon_glade","unlockFloor":0,"unlockLevel":0,"offlineCapHours":6,"rollsPerHour":224,"uniques":[{"itemId":"demon_fang_dagger","chance":0.000015},{"itemId":"demonhide_vest","chance":0.000015}]},{"id":"blood_marsh","unlockFloor":26,"unlockLevel":0,"offlineCapHours":6,"rollsPerHour":165,"uniques":[{"itemId":"bloodbound_cleaver","chance":0.000014},{"itemId":"bloodvein_plate","chance":0.000014},{"itemId":"bone_ward","chance":0.000014}]},{"id":"demon_rift","unlockFloor":51,"unlockLevel":40,"offlineCapHours":6,"rollsPerHour":140,"uniques":[{"itemId":"riftwalker_boots","chance":0.000024},{"itemId":"shadow_hood","chance":0.000024}]},{"id":"blood_abyss","unlockFloor":76,"unlockLevel":60,"offlineCapHours":6,"rollsPerHour":140,"uniques":[{"itemId":"abyss_heart_ring","chance":0.000024},{"itemId":"bonecrusher_maul","chance":0.000024}]}];
+export const HUNT_ZONES: readonly { id: string; unlockFloor: number; unlockLevel: number; offlineCapHours: number; rollsPerHour: number; uniques: readonly { itemId: string; chance: number }[] }[] = [{"id":"demon_glade","unlockFloor":0,"unlockLevel":0,"offlineCapHours":6,"rollsPerHour":224,"uniques":[{"itemId":"demon_fang_dagger","chance":0.000006},{"itemId":"demonhide_vest","chance":0.000006}]},{"id":"blood_marsh","unlockFloor":26,"unlockLevel":0,"offlineCapHours":6,"rollsPerHour":165,"uniques":[{"itemId":"bloodbound_cleaver","chance":0.000006},{"itemId":"bloodvein_plate","chance":0.000006},{"itemId":"bone_ward","chance":0.000006}]},{"id":"demon_rift","unlockFloor":51,"unlockLevel":40,"offlineCapHours":6,"rollsPerHour":140,"uniques":[{"itemId":"riftwalker_boots","chance":0.000008},{"itemId":"shadow_hood","chance":0.000008}]},{"id":"blood_abyss","unlockFloor":76,"unlockLevel":60,"offlineCapHours":6,"rollsPerHour":140,"uniques":[{"itemId":"abyss_heart_ring","chance":0.000008},{"itemId":"bonecrusher_maul","chance":0.000008}]}];
 
 /** The most economic rolls per hour any build can reach (reference kills/h x roll cap, sub-level 1): the sized rolls above stay under it. */
 export const MAX_ROLLS_PER_HOUR = 385;
@@ -375,7 +375,7 @@ export const BOSS_TABLE = {
 export const LUCK_TABLE = {"hunt":1.5,"boss":1.25} as const;
 
 /** The Gold Pouch (goldPouch.ts): the face values and how many a hero may create per day. */
-export const POUCH_TABLE = {"perDay":3,"faces":{"gold_pouch_s":10000,"gold_pouch_m":50000,"gold_pouch_l":100000}} as const;
+export const POUCH_TABLE = {"perDay":3,"faces":{"gold_pouch_s":2000,"gold_pouch_m":5000,"gold_pouch_l":20000}} as const;
 
 /** The Pass storage cap in hours (tunables battlePass.capHours): the longest a Hunting reward can wait to be claimed. */
 export const PASS_CAP_HOURS = 10;

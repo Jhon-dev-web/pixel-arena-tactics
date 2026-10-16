@@ -28,10 +28,16 @@ export const POUCH_IDS: readonly PouchId[] = ['gold_pouch_s', 'gold_pouch_m', 'g
 
 export const isPouchId = (id: string): id is PouchId => (POUCH_IDS as readonly string[]).includes(id);
 
+// The faces before Rodada 22. Pouches minted at them (certificates kept by the server) keep their value, and an old save's uncertified pouches were settled at them (migratePouchFaces).
+export const LEGACY_POUCH_FACES: Record<PouchId, number> = { gold_pouch_s: 10000, gold_pouch_m: 50000, gold_pouch_l: 100000 };
+
 const face = (id: PouchId): number => Math.max(1, Math.floor(id === 'gold_pouch_s' ? T.goldPouch.denomSmall : id === 'gold_pouch_m' ? T.goldPouch.denomMedium : T.goldPouch.denomLarge));
 
 // What a pouch is worth when opened (and what the market values it at least): its denomination.
 export const pouchFace = (id: PouchId): number => face(id);
+
+// Does a certificate of `goldAmount` describe a pouch of this kind: its current face, or the face it had before Rodada 22.
+export const pouchFaceMatches = (id: PouchId, goldAmount: number): boolean => goldAmount === face(id) || goldAmount === LEGACY_POUCH_FACES[id];
 
 // The smallest amount a pouch can hold.
 export const pouchMinimum = (): number => Math.min(...POUCH_IDS.map(face));
@@ -127,28 +133,80 @@ export function applyCreatePouch(save: SaveData, id: PouchId, now: number, certi
 export function applyOpenPouch(save: SaveData, id: PouchId, burnedCertificateId?: string): PouchResult {
   const have = save.consumables?.[id] ?? 0;
   if (have <= 0) return { ok: false, reason: 'none' };
-  const value = face(id);
   const certs = certifiedPouchIds(save, id);
+  // a pouch minted at the old face (its certificate is on the save's legacy list) opens for that face
+  const value = burnedCertificateId && save.legacyPouchCerts?.includes(burnedCertificateId) ? LEGACY_POUCH_FACES[id] : face(id);
   let pouchCerts = save.pouchCerts;
   if (uncertifiedPouchCount(save, id) <= 0 && certs.length > 0) {
     if (!burnedCertificateId || !certs.includes(burnedCertificateId)) return { ok: false, reason: 'certified' };
     pouchCerts = { ...pouchCerts, [id]: certs.filter((c) => c !== burnedCertificateId) };
   }
-  const opened = { ...save, gold: save.gold + value, consumables: { ...save.consumables, [id]: have - 1 }, ...(pouchCerts !== save.pouchCerts ? { pouchCerts } : {}) };
+  const legacyLeft = burnedCertificateId && save.legacyPouchCerts?.includes(burnedCertificateId) ? (save.legacyPouchCerts ?? []).filter((c) => c !== burnedCertificateId) : undefined;
+  const opened: SaveData = { ...save, gold: save.gold + value, consumables: { ...save.consumables, [id]: have - 1 }, ...(pouchCerts !== save.pouchCerts ? { pouchCerts } : {}) };
+  if (legacyLeft) {
+    if (legacyLeft.length > 0) opened.legacyPouchCerts = legacyLeft;
+    else delete opened.legacyPouchCerts;
+  }
   // Opening is Gold that was already the hero's: not "earned" (trackSave subtracts exactly this from the Gold counter).
   const next = withStats(opened, (s) => ({ pouchGoldOpened: (s.pouchGoldOpened ?? 0) + count(value) }));
   return { ok: true, save: next, gold: value };
 }
 
-// Gold inside the pouches the hero holds, in the bag and in the stash: not spendable.
-export function pouchGoldHeld(save: Pick<SaveData, 'consumables' | 'stash'>): number {
+// Gold inside the pouches the hero holds, in the bag and in the stash: not spendable. A pouch minted at the old face counts that face.
+export function pouchGoldHeld(save: Pick<SaveData, 'consumables' | 'stash'> & Partial<Pick<SaveData, 'pouchCerts' | 'legacyPouchCerts'>>): number {
   let sum = 0;
-  for (const id of POUCH_IDS) sum += ((save.consumables?.[id] ?? 0) + (save.stash?.consumables?.[id] ?? 0)) * face(id);
+  for (const id of POUCH_IDS) {
+    const total = (save.consumables?.[id] ?? 0) + (save.stash?.consumables?.[id] ?? 0);
+    const legacy = save.legacyPouchCerts ?? [];
+    const legacyHeld = legacy.length > 0 ? certifiedPouchIds({ consumables: save.consumables, stash: save.stash, pouchCerts: save.pouchCerts }, id).filter((c) => legacy.includes(c)).length : 0;
+    sum += (total - legacyHeld) * face(id) + legacyHeld * LEGACY_POUCH_FACES[id];
+  }
   return sum;
 }
 
+export function sanitizeLegacyPouchCerts(raw: unknown): string[] {
+  return Array.isArray(raw) ? Array.from(new Set((raw as unknown[]).filter(isCertificateId))).slice(0, 500) : [];
+}
+
+// ONE-TIME SETTLEMENT of the Rodada 22 faces (10,000 / 50,000 / 100,000 became 2,000 / 5,000 / 20,000). A save without `pouchFacesV2` is settled once, on load:
+//   - an UNCERTIFIED pouch (made offline, or before certificates) becomes Gold at the face it had when it was made: nothing is lost, and the Gold is not "earned" (it was the hero's: it
+//     counts like opening a pouch), taken from the bag first and then from the stash;
+//   - a CERTIFIED pouch stays a pouch (its certificate lives on the server, and burning it needs the server): its certificate goes on `legacyPouchCerts`, and when it is opened it pays the OLD
+//     face, so it is worth what it was when it was minted (the market lists it at the certificate's own amount).
+// A save that has the marker (every new hero, every save settled before) is returned as it is.
+export function migratePouchFaces(save: SaveData): SaveData {
+  if (save.pouchFacesV2) return save;
+  const consumables = { ...save.consumables };
+  const stashConsumables = { ...(save.stash?.consumables ?? {}) };
+  const legacy: string[] = [];
+  let gold = 0;
+  for (const id of POUCH_IDS) {
+    const inBag = consumables[id] ?? 0;
+    const inStash = stashConsumables[id] ?? 0;
+    const total = inBag + inStash;
+    if (total <= 0) continue;
+    const certs = (save.pouchCerts?.[id] ?? []).slice(0, total);
+    legacy.push(...certs);
+    const uncertified = total - certs.length;
+    if (uncertified <= 0) continue;
+    const fromBag = Math.min(inBag, uncertified);
+    consumables[id] = inBag - fromBag;
+    stashConsumables[id] = inStash - (uncertified - fromBag);
+    gold += uncertified * LEGACY_POUCH_FACES[id];
+  }
+  const settled: SaveData = {
+    ...save,
+    gold: save.gold + gold,
+    consumables,
+    stash: save.stash ? { ...save.stash, consumables: stashConsumables } : save.stash,
+    pouchFacesV2: true,
+    ...(legacy.length > 0 ? { legacyPouchCerts: Array.from(new Set([...(save.legacyPouchCerts ?? []), ...legacy])) } : {}),
+  };
+  return gold > 0 ? withStats(settled, (s) => ({ pouchGoldOpened: (s.pouchGoldOpened ?? 0) + count(gold) })) : settled;
+}
+
 // Spendable Gold plus the Gold in pouches: the "patrimônio" line of the statistics.
-export const patrimony = (save: Pick<SaveData, 'gold' | 'consumables' | 'stash'>): number => save.gold + pouchGoldHeld(save);
+export const patrimony = (save: Pick<SaveData, 'gold' | 'consumables' | 'stash'> & Partial<Pick<SaveData, 'pouchCerts' | 'legacyPouchCerts'>>): number => save.gold + pouchGoldHeld(save);
 
 // DISCARDING pouches from the stack menu (bagActions.applyDiscard just lowers the count). A certified pouch that is thrown away must burn its certificate, or the server would keep a "held"
 // certificate for a pouch that no longer exists (and it could, in principle, still be listed). The pouches thrown away are the uncertified ones first, then the certified ones from the end of

@@ -641,9 +641,9 @@ const T = DebugPanel.define({
   // Round 18 (goldPouch.ts): the Gold Pouch turns Gold into a tradeable bag item. Anyone creates them (the Pass owner pays the lower fee); anyone can open one for exactly its face value.
   goldPouch: {
     _label: 'Gold Pouch (tradeable Gold)',
-    denomSmall: { value: 10000, min: 100, max: 10000000, step: 100, label: 'Face value of the small pouch (also the minimum amount of a pouch)' },
-    denomMedium: { value: 50000, min: 100, max: 10000000, step: 100, label: 'Face value of the medium pouch' },
-    denomLarge: { value: 100000, min: 100, max: 10000000, step: 100, label: 'Face value of the large pouch' },
+    denomSmall: { value: 2000, min: 100, max: 10000000, step: 100, label: 'Face value of the small pouch (also the minimum amount of a pouch)' },
+    denomMedium: { value: 5000, min: 100, max: 10000000, step: 100, label: 'Face value of the medium pouch' },
+    denomLarge: { value: 20000, min: 100, max: 10000000, step: 100, label: 'Face value of the large pouch' },
     feePct: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Fee paid in Gold on top when an Adventurer Pass owner creates a pouch (a Gold sink)' },
     feePctFree: { value: 0.1, min: 0, max: 0.5, step: 0.01, label: 'Fee paid in Gold on top when a player without the Pass creates a pouch (a Gold sink)' },
     perDay: { value: 3, min: 1, max: 20, step: 1, label: 'Pouches one hero can create per local day' },

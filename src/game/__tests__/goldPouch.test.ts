@@ -52,8 +52,8 @@ const must = (r: { ok: boolean; save?: SaveData }): SaveData => {
 
 describe('Gold Pouch: the numbers', () => {
   it('three denominations from the tunables, the smallest is the minimum, the fee is a rounded-up share on top', () => {
-    expect(POUCH_IDS.map(pouchFace)).toEqual([10000, 50000, 100000]);
-    expect(pouchMinimum()).toBe(10000);
+    expect(POUCH_IDS.map(pouchFace)).toEqual([2000, 5000, 20000]); // Rodada 22 (it was 10,000 / 50,000 / 100,000)
+    expect(pouchMinimum()).toBe(2000);
     expect(T.goldPouch.feePct).toBe(0.05);
     expect(T.goldPouch.feePctFree).toBe(0.1);
     expect(pouchPerDay()).toBe(3);
@@ -91,12 +91,12 @@ describe('Gold Pouch: creating', () => {
     expect(paysPassFee(rich(0))).toBe(true);
     const r = applyCreatePouch(free, 'gold_pouch_s', NOW);
     expect(r.ok).toBe(true);
-    expect(free.gold - r.save!.gold).toBe(10000 + 1000);
-    expect(r.gold).toBe(11000);
+    expect(free.gold - r.save!.gold).toBe(2000 + 200);
+    expect(r.gold).toBe(2200);
     const owner = applyCreatePouch(rich(1_000_000), 'gold_pouch_s', NOW);
-    expect(1_000_000 - owner.save!.gold).toBe(10000 + 500);
-    expect(applyCreatePouch(rich(10500, false), 'gold_pouch_s', NOW).reason, 'the free fee is higher').toBe('gold');
-    expect(applyCreatePouch(rich(10500), 'gold_pouch_s', NOW).ok).toBe(true);
+    expect(1_000_000 - owner.save!.gold).toBe(2000 + 100);
+    expect(applyCreatePouch(rich(2100, false), 'gold_pouch_s', NOW).reason, 'the free fee is higher').toBe('gold');
+    expect(applyCreatePouch(rich(2100), 'gold_pouch_s', NOW).ok).toBe(true);
   });
 
   it('cannot be created without the face value PLUS the fee, and a failure changes nothing', () => {
@@ -337,6 +337,8 @@ describe('Gold Pouch: the text states the rules from the same tunables', () => {
     const was = { ...T.goldPouch };
     try {
       T.goldPouch.denomSmall = 20000;
+      T.goldPouch.denomMedium = 30000;
+      T.goldPouch.denomLarge = 40000;
       T.goldPouch.feePct = 0.1;
       T.goldPouch.feePctFree = 0.2;
       T.goldPouch.perDay = 5;

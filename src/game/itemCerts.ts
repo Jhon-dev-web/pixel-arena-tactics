@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { CertificateView } from '../../supabase/functions/_shared/items/types';
 import { getGear } from './gear';
 import type { GearInstance } from './gearInstances';
-import { PouchId, certifiedPouchIds, pouchFace } from './goldPouch';
+import { PouchId, certifiedPouchIds, pouchFaceMatches } from './goldPouch';
 
 // The certificates the SERVER holds for this account (public.item_certificates, readable by its owner only). The game keeps a copy so the screens can say "Certificado" -- and it says it ONLY
 // when the piece carries a certificate id that is in this list AND the certificate describes exactly this piece. The save is the player's to edit; this list is the server's word.
@@ -97,7 +97,7 @@ export function certState(inst: GearInstance): CertState {
 export function verifiedPouchCount(save: Parameters<typeof certifiedPouchIds>[0], id: PouchId): number {
   return certifiedPouchIds(save, id).filter((c) => {
     const row = byId.get(c);
-    return !!row && row.status === 'held' && row.kind === 'gold_pouch' && row.templateId === id && row.goldAmount === pouchFace(id);
+    return !!row && row.status === 'held' && row.kind === 'gold_pouch' && row.templateId === id && pouchFaceMatches(id, row.goldAmount);
   }).length;
 }
 

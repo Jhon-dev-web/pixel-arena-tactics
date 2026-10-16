@@ -6,7 +6,7 @@ import { emptyMaterials } from '../materials';
 import { applyHuntClaim, applyHuntStart, applyHuntStop, needsServerUniques, withServerUniques } from '../huntLifecycle';
 import { applyLapidar } from '../lapidar';
 import { applyReforge } from '../reforge';
-import { applyCreatePouch, applyOpenPouch, certifiedPouchIds, certificateToBurnOnOpen, uncertifiedPouchCount } from '../goldPouch';
+import { applyCreatePouch, applyOpenPouch, certifiedPouchIds, certificateToBurnOnOpen, uncertifiedPouchCount, pouchFace } from '../goldPouch';
 import { setItemAuthority } from '../itemAuthority';
 import { certState, clearCertificates, getCertificate, upsertCertificates, verifiedPouchCount } from '../itemCerts';
 import { ItemApi, ItemServerUnreachable, createItemApi } from '../itemServer';
@@ -354,7 +354,7 @@ describe('Gold Pouch', () => {
     expect(o2.ok).toBe(true);
     current = (o2 as { save: SaveData }).save;
     expect(server.store.certs[0].status).toBe('burned');
-    expect(current.gold).toBe(gold0 + 2 * 10_000);
+    expect(current.gold).toBe(gold0 + 2 * pouchFace('gold_pouch_s'));
     expect(certifiedPouchIds(current, 'gold_pouch_s')).toEqual([]);
   });
 

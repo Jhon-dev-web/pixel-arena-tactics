@@ -117,6 +117,8 @@ describe('the recipe: one per Hunting zone tier, only the best open zone is list
     });
     // dearer every tier
     for (let i = 1; i < 4; i++) expect(recipes[i].cost).toBeGreaterThan(recipes[i - 1].cost);
+    // Rodada 22: Gold has a use again: the last tier costs 250 (it was 65) and the first three follow in proportion (20 / 35 / 50 before)
+    expect(recipes.map((r) => r.cost)).toEqual([77, 135, 192, 250]);
   });
 
   it('bestZoneTier follows the zone unlock floors, and a recipe of another tier is neither listed nor craftable', () => {
