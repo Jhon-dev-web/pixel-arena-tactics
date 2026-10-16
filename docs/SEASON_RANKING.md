@@ -248,6 +248,8 @@ O herói passou a ganhar XP **só na Caça** (a Masmorra, os pedidos e a poção
 
 O nível mais rápido que a simulação viu no dia 60 é 90 (mediana do dono 87), o que o limite de ritmo (2x) deixa passar até o nível 100 no dia 60. As rodadas seguintes que mexerem no XP do herói refazem esta tabela com `npm run sim:long`.
 
+**Rodada 22 (zonas com nível, sub-níveis da zona 4, eventos):** o XP da Caça da zona 4 caiu de 13 000 para 10 000 por hora e ganhou até +18% por sub-nível; as zonas 3 e 4 só abrem com o nível 40 e 60. Números novos (`npm run season:bounds` recalcula 21 476 XP/h teóricos, o servidor guarda 25 000): `huntXpFactor` **2,244** (era 1,902), `xpPerHourAt(andar, nível)` e `burstXp(andar, nível)` contam a melhor zona que o **andar e o nível** do snapshot novo abrem, `levelPace` 24:2 28:3 44:7 51:12 60:19 68:26 75:34 79:38 88:50 92:56 100:72 (a seed mais rápida de qualquer política do dono, comprador de conjunto incluído; o dono comum chega ao nível 60 por volta do dia 26), `floorPace` 100 no dia 39 (era 53), `floorCapByLevel` do nível 50 em diante é o último andar. O nível mais rápido que a simulação viu no dia 60 é **94,3** (comprador de um conjunto T4+ Lendário), a mediana do dono que não compra **84,9**, e ninguém chega ao 100. Os limites de XP ganham folga só nas horas de evento (seção 11).
+
 ### 8.5 O que o público (anon) pode ler
 
 Somente: a função `public.pass_meter()` (desde a `0008` devolve só `progress` de 0 a 1, arredondado para baixo a 0,1%, mais `season_open`, `starts_at`, `ends_at`, `updated_at`; nem `sold` nem `target`, sem ids, valores, e-mails nem origem), as visões `season_leaderboard` e `season_profession_leaderboard`, e a tabela `seasons` (já era pública na `0005`). Tudo o mais continua sem acesso. Plano de testes SQL: fim de `0006`.
@@ -303,3 +305,48 @@ O rollback da `0009` (no cabeçalho do arquivo) remove as funções e os trigger
 ### 10.6 O que ninguém verificou
 
 Nada disto rodou contra um banco ou um Supabase de verdade: a SQL é lida por testes estáticos (`supabase/functions/_shared/__tests__/migration0009.test.ts`) e a lógica do jogo e da auditoria por testes com banco simulado. Rode o plano de testes SQL da `0009` e um ensaio completo (login com um herói antigo, abrir a Liga à mão, recarregar, duas abas) no projeto de desenvolvimento antes de produção.
+
+## 11. Eventos da Liga (migration `0014_economy_events.sql`, Rodada 22)
+
+Um calendário de eventos para os dias 25 a 60 da Liga, **no relógio do servidor**: cada evento é um número fixo de horas depois de `league_reset_at()` (o momento da seção 10). Um evento por vez, **um dia de descanso entre dois**, eventos de herói (XP de Caça) e de profissão (Mineração / Lenhador / Horta) se alternando, nunca o mesmo evento duas vezes seguidas, e a **Corrida Final** nos 5 últimos dias (56 a 60). O build offline / desktop não tem Liga e portanto não tem eventos. O texto, os números e a medição estão em [`BALANCE_CHANGES.md`](BALANCE_CHANGES.md) (Rodada 22, seção 5); aqui fica o que interessa ao ranking.
+
+### 11.1 O calendário (a mesma tabela no jogo, no servidor e no SQL)
+
+| # | Dias | Evento | Tipo | Horas |
+| --: | --- | --- | --- | --: |
+| 1 | 25-26 | Invasão de Monstros | herói | 48 |
+| 2 | 28 | Febre da Mineração | profissão | 24 |
+| 3 | 30-31 | Caçada ao Alvo | herói | 48 |
+| 4 | 33-35 | Semana das Profissões (o jogador escolhe uma) | profissão | 72 |
+| 5 | 37-38 | Corrida da Masmorra | herói | 36 |
+| 6 | 40-41 | Festival dos Ofícios | profissão | 48 |
+| 7 | 43 | Grande Entrega | herói | 24 |
+| 8 | 45 | Febre da Mineração | profissão | 24 |
+| 9 | 47 | Fenda Temporal | herói | 24 |
+| 10 | 49-51 | Semana das Profissões | profissão | 72 |
+| 11 | 53-54 | Invasão de Monstros | herói | 48 |
+| 12 | 56-60 | Corrida Final | final | 120 |
+
+A tabela mora em `src/game/leagueEvents.ts` (`LEAGUE_EVENT_SLOTS`); `npm run season:tables` copia para `supabase/functions/_shared/progress/tables.ts` (`EVENT_SLOTS`, usada pelos limites); a `0014` tem as mesmas 12 linhas num `values (...)`, e o teste `migration0014.test.ts` compara célula por célula as três.
+
+### 11.2 O que o portal lê
+
+`public.league_events()` (somente leitura, sem estado, `security definer`, legível por `anon` e `authenticated`) devolve uma linha por evento: `slot`, `event_id`, `kind` (`hero`, `profession`, `final`), `league_day_from`, `league_day_to`, `hours`, `starts_at`, `ends_at`. **Antes da Liga abrir** (`reset_at` nulo) `starts_at` e `ends_at` vêm nulos e os dias continuam lá: o jogo e o site mostram "na Liga, dias 25 a 26...". Não expõe nada de nenhum jogador. Rollback: `drop function if exists public.league_events();`. **Não foi aplicada nem rodada contra um banco**; o plano de testes SQL está no fim do arquivo.
+
+### 11.3 O que a auditoria permite durante um evento
+
+Os bônus são pequenos e **limitados**: os de XP de Caça dos eventos de herói somam no máximo **+15%** (`EVENT_XP_CAP`, aplicado por luta ganha), os de profissão no máximo **+25%** em cima do XP de profissão. O servidor alarga os limites **só nas horas do intervalo entre dois snapshots em que um evento do tipo rodava**:
+
+| Limite | Fora de evento | Dentro de um evento |
+| --- | --- | --- |
+| `XP_RATE` / `XP_RATE_TOTAL` (XP do herói por hora) | taxa teórica x horas + 1 recompensa atrasada | taxa x (horas + 0,15 x horas de evento de herói ou final) + a recompensa atrasada x 1,15 |
+| `MINING_XP_RATE`, `WOODCUTTING_XP_RATE`, `GARDENING_XP_RATE` | taxa teórica x horas + 1 colheita atrasada | taxa x (horas + 0,25 x horas de evento de profissão) + a colheita atrasada x 1,25 |
+| ritmo (`LEVEL_PACE`, `FLOOR_PACE`) | tabela da seed mais rápida (agora incluindo o dono que comprou um conjunto) | a mesma tabela (a simulação dessa tabela já jogou os eventos) |
+
+`EvalInput.leagueEpochMs` vem de `league_reset_at()`; sem Liga (`null`), sem folga nenhuma. Testes: `progress.test.ts` ("League events widen the XP bound only while one runs"), `leagueEvents.test.ts` ("the anti-cheat bound allows exactly what the events give").
+
+### 11.4 O que o dono precisa decidir
+
+- **A Semana das Profissões** pede uma escolha do jogador (painel "Eventos" da Home; a escolha é final para aquela semana e vive em `save.eventPick`). O servidor não a vê: o bônus é de +25% no XP da profissão, dentro do limite de +25% acima.
+- Os buffs de XP de Caça que o jogador ganha (Corrida da Masmorra, Grande Entrega, Corrida Final) ficam no save (`save.eventBuffs`) e entram na sessão de Caça como as poções: só a partir do momento em que são ganhos, nunca para o tempo já caçado; o save não pode inventar mais que a regra (a leitura do save corta a duração e a porcentagem ao que a regra dá).
+- Quem edita o save para ganhar o buff sem o evento só ganha o que o limite de +15% permite, e só dentro das horas em que um evento rodava.

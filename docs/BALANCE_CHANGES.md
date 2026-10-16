@@ -2098,3 +2098,176 @@ As taxas teóricas (`MINING_XP_RATE`, `WOODCUTTING_XP_RATE`, `GARDENING_XP_RATE`
 - A obsidiana e a madeira ancestral continuam no nível 60 (a mesma quantidade de XP de antes); só o nível 61 a 75 ficou caro. O jogador comum chega à Mineração 64 no dia 60 (antes 74 do dono): os perks de maestria do 70 e 75 passaram a ser coisa de especialista.
 - O Fertilizante e a Horta: a corrida da Horta é cadência e Fertilizante, não escolha; ver a seção 2.
 - "Frequência pura" não foi limitada: 4 visitas por dia dobram o XP de quem não tem o Passe. O limite é o armazenamento da sessão. Se o dono quiser que isso custe, o caminho é um limite diário de XP de profissão ou um rendimento que cai com sessões curtas; não foi feito.
+
+## Rodada 22 — o comprador, o Ouro, os únicos e os eventos da Liga (2026-10-16)
+
+Pedido do dono, depois da revisão econômica independente dos 60 dias da Liga. A revisão achou quatro coisas: (a) comprar um conjunto T4 punha o dono do Passe uns **+5,5 níveis** à frente do dono igualmente bom que não compra nada (a meta era +2 a +3); (b) a partir do dia ~23, quando a zona 4 Profundo abre, o equipamento deixa de importar para o XP do herói (o XP da Caça só conta tempo de luta ganha), então forjar T5/T6 era uma armadilha para o ranking e a ordem do ranking travava no dia ~25; (c) o Ouro quase não tem valor (Bolsas de 50 000 e 100 000 inalcançáveis, sobra de 25 a 40 mil sem nada para comprar); (d) os limites de cunhagem deixavam um bot que edita o save fazer ~12 únicos certificados e 10 000 de Ouro em Bolsas **por dia e por conta**. Esta rodada mexe nos quatro e acrescenta o calendário de eventos da Liga (dias 25 a 60).
+
+### 0. Como foi medido (e o que cada política é)
+
+`scripts/sim/leagueEcon.sim.ts` joga **uma política** por vez por 60 dias (o mesmo `Player` do `npm run sim:long`, a mesma semente de sorteio e de horário das visitas, então duas políticas da mesma seed só diferem pela política). `scripts/sim/leagueEcon.mjs` espalha política x seed em processos e imprime os quadros (`npm run sim:econ -- TAG A,P,PS,PG,PB 6`; `LEAGUE_EVENTS=0` desliga os eventos; `LEAGUE_REPORT_ONLY=1` só imprime). `npm run sim:sublevels` imprime a taxa de vitória de cada herói da escada em cada sub-nível da zona 4 (`subLevelReach.sim.ts`).
+
+| Política | Quem é |
+| --- | --- |
+| **A** | jogador comum sem Passe (2 visitas por dia) |
+| **P** | o mesmo com o Passe: caça onde cai o material que a próxima peça pede, minera e corta o que falta |
+| **PS** | P "esperto": todas as visitas de Caça vão para a última zona no Profundo quando ela também dá o material que falta; ainda minera e forja o que a próxima peça pede |
+| **PG** | o "esperto" da revisão (guloso): assim que a zona 4 Profundo abre só caça lá, nunca mais minera nem forja por falta de material (é o experimento `greedy` da revisão, portado) |
+| **PB** | dono + comprador de um conjunto T4+ **Lendário**: toda peça de tier 4, 5 e 6 sai de graça (continua pedindo o nível da receita: 50 / 70 / 90) e nasce Lendária; joga como PS (sem material em falta, só caça onde há XP) |
+| **PB4** | o mesmo comprador, mas só do conjunto **T4** (T5 e T6 ele forja como todo mundo) |
+
+"Antes" = o jogo no commit anterior à rodada (cópia congelada do `HEAD`); "depois" = o jogo com os 4 commits da rodada e os eventos ligados. Seis seeds por política, mediana (mín-máx). O +5,5 da revisão veio do script dela (que forçava a raridade em toda forja, de qualquer tier); aqui o comprador só recebe Lendária nas peças de tier 4 em diante, e o mesmo experimento no jogo de antes dá +4,1 contra o guloso.
+
+### 1. Limites de cunhagem (commit `fix(server): minting limits close the bot gap`)
+
+Fonte única: `supabase/functions/_shared/items/bounds.ts` (a tabela comentada está em `MARKET_FOUNDATION.md`).
+
+| Limite | Antes | Depois |
+| --- | --- | --- |
+| Mortes de chefe pagas por dia (balde, parcial) | 200 | **15** |
+| Únicos certificados por dia (Caça + chefes) | 12 | **2** |
+| Ouro que vira Bolsa por dia | 10 000 (capacidade 100 000) | **3 000** (capacidade = a maior Bolsa, 20 000: uma semana de economia) |
+
+Produção diária de um bot que edita o save e pede ao servidor o máximo (Sorte Grande declarada: 1,25 no chefe, 1,5 na Caça; chefes de profundidade, a chance mais alta, 6,25%; zona 3 ou 4 a cada hora do dia, 385 sorteios por hora):
+
+| Por conta e por dia | Antes | Depois |
+| --- | --- | --- |
+| Únicos esperados dos chefes | 200 x 6,25% = **12,5** | 15 x 6,25% = **0,94** |
+| Únicos esperados da Caça | 385 x 24 x 2 x 2,4e-5 x 1,5 = 0,67 | 385 x 24 x 2 x 8e-6 x 1,5 = 0,22 |
+| Únicos certificados (teto duro, atômico no banco) | **12** | **2** |
+| Ouro em Bolsas | **10 000** | **3 000** |
+
+Um herói honesto não chega perto: faz 10 corridas grátis por dia e encontra cada chefe de bioma no máximo uma vez por corrida; ganha de 1 000 a 3 300 de Ouro por dia (quadro do item 4). O que passa de 15 mortes de chefe por dia não rola único (concessão parcial, o excesso é marcado `BOSS_KILLS_EXCESS`), e o `BOUNDS.bossesPerDay` (200) da auditoria de progresso continua valendo para o contador do jogo, que é outra coisa. Três testes novos em `items.test.ts` travam os três números e o teto de 2 únicos (e dois testes do cliente, `itemActions.test.ts`, passaram a esperar a recusa do teto).
+
+### 2. Zonas pedem nível; os sub-níveis da zona 4 pagam XP e pedem CP (commit `balance: zones need hero level and late gear matters again`)
+
+- **Nível do herói para abrir:** zona 3 (Fenda) **nível 40**, zona 4 (Abismo) **nível 60**, além do andar (51 e 76). A zona continua "descoberta" pelo andar (`save.unlockedHuntingZones`); começar uma caça, listar o que se caça, as receitas do Elixir (que dependem da melhor zona aberta) e os materiais que um pedido pode pedir passam a perguntar `isZoneOpen(zona, andar, nível)`. A tela de Caça diz "Destrava no Andar 76 e no nível 60".
+- **Sub-níveis da zona 4:** cada sub-nível acima do 1 paga **+2% de XP de Caça** (+18% no 10; vale o sub-nível do inimigo derrotado, promoção incluída). O herói só é **promovido** ao sub-nível N com CP >= `CP recomendado da profundidade x 1,18^(N-1)`; o contador de vitórias continua andando e a tentativa espera, sem gastar luta.
+- **Por que uma porta de CP e não lutas mais duras:** a primeira tentativa foi fazer o inimigo da zona 4 crescer mais depressa por sub-nível (dano x 24 no 10). Falhou: a promoção acontece com **uma** vitória no teste, e um herói promovido por sorte a um nível que não vence fica preso nele (o jogo não rebaixa), com XP perto de zero (medido: nível 61 parado do dia 30 ao 60). A porta de CP é determinística, aparece na tela ("Para subir ao próximo nível desta zona você precisa de N CP") e as lutas ficam como estavam.
+
+CP exigido por sub-nível (arredondado) e o sub-nível que cada herói da escada alcança no Profundo (CP da escada de `npm run sim:sublevels`: nível 62 a 90, peças comuns salvo quando diz Lendária, sem gemas):
+
+| Sub-nível | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+| --- | --: | --: | --: | --: | --: | --: | --: | --: | --: |
+| CP no Raso | 1 896 | 2 238 | 2 640 | 3 116 | 3 676 | 4 338 | 5 119 | 6 040 | 7 128 |
+| CP no Denso | 2 181 | 2 573 | 3 036 | 3 583 | 4 228 | 4 989 | 5 887 | 6 946 | 8 197 |
+| CP no **Profundo** | 2 465 | 2 909 | 3 432 | 4 050 | 4 779 | 5 639 | 6 654 | 7 852 | 9 266 |
+
+| Herói | CP | Sub-nível no Profundo |
+| --- | --: | --: |
+| T4 +8 comum | 2 941 | 3 |
+| T4 +8 Lendário | 4 686 | 5 |
+| T5 +0 comum | 3 260 | 3 |
+| T5 +8 comum | 5 330 | 6 |
+| T5 +8 Lendário | 8 720 | 9 |
+| T5 +12 Lendário | 9 719 | 10 |
+| T6 +0 comum | 5 022 | 6 |
+| T6 +8 comum | 8 265 | 9 |
+| T6 +8 / +12 Lendário | 13 279 / 14 719 | 10 |
+
+- **XP base da zona 4: 13 000 → 10 000 por hora.** Com o bônus de até +18% o topo (11 800) fica 9% abaixo do que a zona pagava, e só quem tem o equipamento chega lá. Sem a redução o guloso passava de 95 no dia 60 e o comprador ficava em 99 (medido com 13 000: PG 95,0, PB 99,3).
+- **Servidor:** `xpPerHourAt(andar, nível)` e `burstXp` olham o nível do snapshot novo (a zona 4 só conta com nível 60); `huntXpFactor` 1,902 → 2,244 (o fator dos +18%); o item server recusa um único de zona cuja idade mínima da conta (andar **e** nível) ainda não passou. `levelPace` e `floorPace` agora seguem a seed mais rápida **de qualquer política do dono, comprador incluído** (antes só o dono comum), `floorCapByLevel` a partir do nível 50 é o último andar. Tabelas regeneradas (`npm run season:tables`, `item:tables`).
+
+### 3. O comprador (o número que a revisão queria baixar)
+
+Nível do herói (posição = nível + fração) no fim do dia, mediana de 6 seeds:
+
+| Política | Dia 14 antes → depois | Dia 30 | Dia 45 | Dia 60 | Mín-máx no dia 60 (depois) |
+| --- | --- | --- | --- | --- | --- |
+| A (sem Passe) | 46,7 → 46,7 | 56,7 → 56,6 | 66,4 → 63,1 | 73,3 → **70,8** | 70,5-71,2 |
+| P | 50,8 → 51,1 | 64,9 → 63,3 | 75,1 → 73,5 | 84,9 → **82,7** | 79,2-84,4 |
+| PS (esperto, forja) | 50,8 → 51,1 | 64,6 → 63,3 | 76,2 → 74,8 | 87,8 → **84,9** | 82,1-86,1 |
+| PG (guloso) | 50,8 → 51,1 | 67,8 → 63,3 | 83,4 → 77,7 | 94,7 → **89,0** | 87,5-90,3 |
+| PB4 (compra o T4) | 52,9 → 52,2 | 70,8 → 65,4 | 83,2 → 77,4 | 94,0 → **88,7** | 88,2-89,7 |
+| PB (compra T4+) | 58,9 → 54,5 | 76,9 → 70,6 | 89,4 → 83,6 | 98,6 → **93,5** | 93,4-94,3 |
+
+Quanto o comprador está à frente (mediana da diferença na mesma seed):
+
+| Comprador contra... | Dia 14 | Dia 30 | Dia 45 | Dia 60 antes → **depois** |
+| --- | --- | --- | --- | --- |
+| PB (T4+) contra PG | 9,2 → 3,2 | 9,3 → 7,7 | 6,1 → 6,0 | 4,1 → **4,6** |
+| PB (T4+) contra PS | 9,2 → 3,2 | 12,3 → 7,7 | 13,1 → 9,2 | 10,8 → **8,6** |
+| PB4 (só T4) contra PS | 2,3 → 1,1 | 6,8 → 2,2 | 7,2 → 3,1 | 5,6 → **3,5** |
+| PB4 (só T4) contra PG | 2,3 → 1,1 | 3,5 → 2,2 | -0,6 → -0,1 | -1,1 → **0,1** |
+
+- **Quem fica entre 85 e 90:** a mediana dos três donos que não compram (P 82,7, PS 84,9, PG 89,0) é **84,9**; o mais rápido de todos é um comprador com **94,3** (meta <= 95) e **ninguém chega ao 100** (antes: 97 a 99 para o comprador, 97,8 para o guloso). O jogador sem Passe termina no 70,8 (antes 73,3: a zona 4 abre no nível 60, dia 41 em vez de 31).
+- **Meta de +2 a +3 do dono: atingida só para quem compra o conjunto T4** (PB4 contra o mesmo jogador esperto sem compra: +3,5, antes +5,6). **Quem compra T4, T5 e T6 Lendários continua +8,6 à frente do esperto que forja** (antes +10,8) e **+4,6 do guloso** (antes +4,1). Não consegui baixar isso com as alavancas pedidas, e o motivo está medido:
+  - O que dá vantagem ao comprador não é o XP por hora na zona 4 (depois do dia 30 ele e o guloso fazem 313 a 318 mil XP por dia): é o **tempo**. Quem não compra passa de 4 a 10 horas por dia minerando, cortando e caçando material (P no dia 15 a 21: 10,5 h de Caça e 9,5 h de coleta; o comprador: 20 h de Caça). Essa diferença de horas de Caça nos primeiros 30 dias vira 4 a 5 níveis no dia 60.
+  - Os portões de nível fizeram o que a revisão esperava na hora de abrir a zona 4 (o comprador abria no **dia 11,5**, agora no **dia 21**; o guloso no 22,5, agora no 27,5) e cortaram a vantagem do comprador de T4+ no dia 30 de +12,3 para +7,7 sobre o PS; mas o comprador chega ao nível 60 seis dias antes porque caça 20 h por dia desde a zona 3, e o portão de nível não segura isso.
+  - Variações testadas com 4 seeds (comprador contra guloso no dia 60): portão da zona 3 no nível 50: +4,6; XP da zona 3 de 6 000 para 5 000: +4,8; XP da zona 4 de 10 000 para 9 500: +3,9 (e tudo abaixo de 1 a 3 níveis); nenhuma moveu o resultado, porque depois do dia ~30 comprador e guloso caçam a mesma zona pelas mesmas horas: a diferença é a vantagem acumulada antes.
+  - O bônus por sub-nível (até +18%) vale cerca de 1,7 nível (estimativa: ~9% de XP de diferença médio sobre ~10 milhões de XP) da diferença do comprador de T4+ contra o guloso (o comprador chega ao sub-nível 8 no dia 30, o guloso ao 3). É o preço de "o equipamento depois do T4 voltar a importar para o XP". Quem forja (PS) chega ao sub-nível 9 no dia 45 e ao 10 no 60.
+  - Alternativas que **não** fiz (a decidir pelo dono): (1) queda do XP por hora da zona 4 acima do nível ~80 (comprime o topo, mas tira a corrida dos mais rápidos); (2) tornar o material mais barato em tempo (comprar material não é o mesmo problema: o limite é o tempo de coleta); (3) liberar as peças compradas só a partir do nível da receita **no equipar** (já é verdade na auditoria: `GEAR_BELOW_GATE` rejeita a peça acima do nível do herói, mas o jogo não impede de equipar; a simulação já respeita o nível).
+
+### 4. Bolsas de Ouro, Elixir do Conhecimento e únicos (commit `balance: pouches, elixir and uniques`)
+
+- **Bolsas:** 10 000 / 50 000 / 100 000 → **2 000 / 5 000 / 20 000** (a mesma taxa de 10%, 5% com o Passe, 3 por dia; os ícones continuam pequena/média/grande). O dono comum junta o Ouro de uma Bolsa grande (20 mil + 5%) no dia **23,5** (antes a pequena de 10 mil só no dia 22 e as outras nunca):
+
+| Dono, mediana | Ouro na mão d30 / d45 / d60 antes → depois | 1º dia com Ouro para a Bolsa P / M / G (face + 5%) antes → depois |
+| --- | --- | --- |
+| P | 25 222 / 18 007 / 24 516 → 33 680 / 20 273 / 14 880 | 22 / nunca / nunca → **12 / 14 / 23,5** |
+| PG | 25 533 / 35 922 / 39 787 → 33 680 / 29 893 / 29 736 | 22 / nunca / nunca → 12 / 14 / 23,5 |
+| A (sem Passe) | 14 595 / 22 292 / 22 903 → 6 625 / 30 740 / 17 703 | 29,5 / nunca / nunca → 14 / 16,5 / 33,5 |
+
+- **Saves antigos:** uma vez, ao carregar (`pouchFacesV2`, `migratePouchFaces`), as Bolsas **sem certificado** (feitas offline ou antes dos certificados) viram **Ouro pelo valor de face antigo** (10 000 / 50 000 / 100 000: ninguém perde nada; o Ouro não conta como ganho). As **certificadas** continuam Bolsas, com o certificado na lista `legacyPouchCerts`: ao abrir, pagam o valor de face em que foram cunhadas, e o mercado aceita certificado de qualquer das duas gerações (`pouchFaceMatches`). Escolhi isto em vez de mapear para as faces novas (não existe mapeamento exato: 10 000 = 5 x 2 000, 50 000 não é múltiplo de 20 000...) e em vez de converter as certificadas (precisaria queimar o certificado no servidor durante o carregamento). Testado em `goldPouchFaces.test.ts` (6 testes).
+- **Elixir do Conhecimento:** custo em Ouro 20 / 35 / 50 / 65 → **77 / 135 / 192 / 250** (tier 4 = 250, os outros na mesma proporção). Um dono que o mantém ligado faz 36 a 56 por temporada e gasta **9 000 a 14 250 de Ouro** com ele (antes cerca de 2 700 no P); o dono não fica mais com 25 a 40 mil sem uso (mão no dia 60: 14 880 a 29 736, antes 24 516 a 39 787).
+- **Únicos por jogador até o dia 60** (média; máximo entre parênteses; Caça + chefes da Masmorra):
+
+| Política | Antes | Depois |
+| --- | --- | --- |
+| A | 3,8 (6) | **1,0 (2)** |
+| P | 6,7 (13) | **3,5 (6)** |
+| PS | 7,0 (10) | 3,0 (6) |
+| PG | 8,2 (10) | 4,3 (8) |
+| PB | 11,2 (15) | 4,7 (7) |
+
+  Chances por sorteio: zona 1 0,000015 → **0,000006**, zona 2 0,000014 → **0,000006**, zona 3 0,000024 → **0,000008**, zona 4 0,000024 → **0,000008** (o número do dono). **Meta de 1 a 2 por jogador: cumprida para o jogador sem Passe (1,0) e não cumprida para o dono, que caça 1,8 a 2,2x mais horas por dia (3,0 a 4,7; o guloso, que fica na zona 4 desde o dia 27, 4,3).** O que resta vem quase todo da zona 4 (1,5 a 2,3 por dono, medido com as chances anteriores às últimas); cortar a zona 4 para 0,000004 deixaria os donos em 2 a 3,5. Os únicos de tier alto dão CP, então o dono com sorte (máximo 6 a 8) sai na frente: o corte reduz a variância além da média.
+
+### 5. Eventos da Liga (commit `feat: League events from day 25`)
+
+Calendário no relógio do **servidor** (`league_reset_at()` + horas fixas; `src/game/leagueEvents.ts`; o build offline não tem Liga e não tem eventos), um evento por vez, **um dia de descanso entre dois**, herói e profissão alternando, nunca o mesmo evento duas vezes seguidas, a Corrida Final nos 5 últimos dias.
+
+| # | Dias da Liga | Evento | Tipo | Duração | O que faz |
+| --: | --- | --- | --- | --: | --- |
+| 1 | 25-26 | Invasão de Monstros | herói | 48 h | Ondas que crescem: +1% de XP de Caça a cada 50 lutas vencidas seguidas (até +10%); a cada 100 vitórias seguidas o inimigo tem +3% de vida e dano (até +30%); uma derrota termina a onda |
+| 2 | 28 | Febre da Mineração | profissão | 24 h | +25% de minério por sessão de Mineração (e de XP de Mineração) |
+| 3 | 30-31 | Caçada ao Alvo | herói | 48 h | A cada 300 lutas vencidas aparece um alvo (2x vida, 1,5x dano) que só quem tem o poder derrota; ganha +8% de XP de Caça por 1h30 |
+| 4 | 33-35 | Semana das Profissões | profissão | 72 h | O jogador escolhe UMA profissão (Home, painel "Eventos"): +25% de XP nela; a escolha é final para a semana |
+| 5 | 37-38 | Corrida da Masmorra | herói | 36 h | Cada chefe da Masmorra derrotado paga 120 de Ouro e +8% de XP de Caça por 4 h |
+| 6 | 40-41 | Festival dos Ofícios | profissão | 48 h | +15% de XP de profissão em Mineração, Lenhador e Horta |
+| 7 | 43 | Grande Entrega | herói | 24 h | Cada pedido recebido paga +10% de XP de Caça por 3 h (o pedido continua gastando os materiais dele: a escolha é entregar ou forjar) |
+| 8 | 45 | Febre da Mineração | profissão | 24 h | igual ao nº 2 |
+| 9 | 47 | Fenda Temporal | herói | 24 h | Os inimigos batem 25% mais forte; sequência de lutas vencidas na caça automática: +1% a cada 25 (até +10%) |
+| 10 | 49-51 | Semana das Profissões | profissão | 72 h | igual ao nº 4 |
+| 11 | 53-54 | Invasão de Monstros | herói | 48 h | igual ao nº 1 |
+| 12 | 56-60 | Corrida Final | final | 5 dias | No dia em que o jogador coleta as 4 metas diárias: +5% de XP de Caça por 24 h |
+
+- **Limites:** todos os bônus de XP de Caça dos eventos juntos valem **no máximo +15%** (`EVENT_XP_CAP`, aplicado por luta ganha dentro da simulação); os de profissão no máximo **+25%**. Nada dá XP fora da Caça (o herói só ganha XP caçando) e nada depende de ter equipamento comprado, a não ser o alvo, que um herói sem o CP não derrota (e perder só custa aquela luta).
+- **Efeito medido** (mesmas seeds, eventos desligados contra ligados, nível no dia 60): A -0,1, P +0,6 (ruído de sorteio), PS +0,1, PG **+0,4**, PB **+0,4**. Os eventos de herói somam ~0,4 nível ao herói que caça o dia inteiro e **não aumentam a diferença do comprador** (PB contra PG: +4,5 sem eventos, +4,6 com).
+- **Anúncio no jogo:** painel "Eventos" na Home (componente novo `src/components/events/EventsPanel.tsx`): o evento em andamento (nome, linha, tempo restante, escolha da profissão da Semana), o próximo com a contagem regressiva e os bônus de evento ainda ativos; **antes da Liga** mostra o calendário como "na Liga, dias 25 a 26...".
+- **Portal:** `public.league_events()` (migration `0014_economy_events.sql`, **não aplicada**; rollback e plano de testes SQL no fim do arquivo) devolve as 12 linhas (slot, evento, tipo, dias da Liga, horas, início e fim; início e fim são nulos antes da Liga). O teste `migration0014.test.ts` compara cada célula do SQL com a tabela do jogo e com a cópia do servidor (`progress/tables.ts` `EVENT_SLOTS`, gerada por `npm run season:tables`).
+- **Servidor (auditoria de progresso):** o limite de XP por hora de Caça soma `eventHeroBonus` (0,15) **só nas horas do intervalo em que um evento de herói rodava**; o de profissão soma `eventProfessionBonus` (0,25) só nas horas de evento de profissão; a recompensa atrasada ganha a mesma margem. `EvalInput.leagueEpochMs` vem de `league_reset_at()`. Sem Liga, sem folga.
+
+### 6. Limites da auditoria de progresso, antes e depois
+
+| Número | Antes | Depois |
+| --- | --- | --- |
+| `xpPerHour` (teórico) | 25 000 (`season:bounds` recalcula 23 660) | 25 000 (`season:bounds` recalcula **21 476**: 10 000 x 1,18 x 1,3 x 1,12 x 1,25) |
+| `huntXpFactor` | 1,902 | **2,244** |
+| `xpPerHourAt` / `burstXp` | só o andar | andar **e nível** (zona 3: 40, zona 4: 60) |
+| folga de evento | - | +15% (herói), +25% (profissão), só nas horas do evento |
+| `levelPace` (nível, dia) | 24:2 28:3 44:7 51:14 60:24 68:30 75:40 79:45 88:60 100:80 | 24:2 28:3 44:7 51:12 **60:19** 68:26 **75:34** 79:38 **88:50** 92:56 100:72 |
+| `floorPace` (andar, dia) | 8:1 25:2 50:9 75:16 90:42 100:53 | 8:1 25:2 50:9 **75:11 90:26 100:39** |
+| `floorCapByLevel` | 50:84 57:91 63:94 70:100 | 50:100 57:100 63:100 70:100 |
+| Cunhagem | ver o item 1 | ver o item 1 |
+
+A tabela de ritmo agora é a da seed mais rápida entre todas as políticas legítimas do dono (inclui o comprador): o jogador que abre a zona 4 no nível 60 no dia 19 não é mais "sinalizado" por estar à frente do dono comum.
+
+### 7. O que não foi verificado e o que o dono pode contestar
+
+- **O comprador:** a meta de +2 a +3 só é cumprida para quem compra o conjunto T4 (ver o item 3). O comprador de T4+T5+T6 é um limite superior (as peças saem de graça e Lendárias); se a loja vender poucas peças T5/T6 Lendárias, o número real fica entre PB4 e PB.
+- **Os eventos não foram jogados com uma pessoa nem no navegador** (o painel foi renderizado em teste de servidor, nos dois idiomas; nenhum clique foi visto). O jogador simulado só escolhe a Horta na Semana das Profissões e não faz "escolha de material" na Grande Entrega (ele coleta o pedido que já tinha). O dano de +25% da Fenda e o alvo (2x, 1,5x) foram calibrados só em teste de unidade, não em partida longa.
+- **Migrações 0014 não aplicada** (nenhuma foi); o SQL só foi lido por teste estático.
+- **Únicos:** a meta de 1 a 2 por jogador só vale para o jogador sem Passe (ver o item 4); o dono de Passe fica em 3 a 4,7. A chance da zona 4 é a que o dono pediu (0,000008).
+- **Dono comum a 82,7 no dia 60:** abaixo da faixa de 85 a 90; o esperto (PS, 84,9) e o guloso (89,0) ficam nela. Subir o XP da zona 4 para levar o P a 85 faz o comprador passar de 95.
+- **Jogador sem Passe:** perde 2,5 níveis (73,3 → 70,8) no dia 60 porque a zona 4 só abre com o nível 60 (dia 41, antes 31). É o preço do portão; o ranking da Liga é só de quem tem o Passe.
+- O painel de eventos ocupa a coluna lateral da Home; a tela de Caça ganhou duas linhas de texto (XP por sub-nível e CP do próximo nível). O visual foi deixado para quem cuida do estilo.

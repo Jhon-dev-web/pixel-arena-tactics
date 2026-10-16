@@ -63,7 +63,7 @@ export const ITEM_BOUNDS = {
   bossStagesPerClaim: 60,
 
   /**
-   * UNIQUES per rolling day (hunting and bosses together), certified. League review (Rodada 22): an honest player finds 1 to 2 uniques in a whole 60-day season (docs/BALANCE_CHANGES.md
+   * UNIQUES per rolling day (hunting and bosses together), certified. League review (Rodada 22): a plain player finds 1 to 2 uniques in a whole 60-day season and an owner who hunts all day 3 to 5 (docs/BALANCE_CHANGES.md
    * Rodada 22). With 15 paid boss kills a day (0.03 x 1.25 each = 0.56 expected at the very most) plus 10 h of Hunting, the day's expectation is under 1; 2 is a lucky day, and it is the
    * most a save-editing bot gets in a day (it was 12). Atomic in item_commit: a claim that would pass it is thrown away unseen.
    */
@@ -71,8 +71,8 @@ export const ITEM_BOUNDS = {
 
   /**
    * GOLD POUCH. Count: POUCH_TABLE.perDay (3) per local day, MARGIN x that per rolling day (the client counts local days, a day can straddle two). Gold: what the hero could have earned.
-   * SOURCE docs/BALANCE_BASELINE.md: the Pass owner earns about 2,470 Gold a day at days 46-60 (the median of the long sim), and docs/BALANCE_CHANGES.md Rodada 22 measured 2,200 to
-   * 3,100 a day for the owner. That is what an honest hero can turn into pouches, so the limit is 3,000 a day (it was 10,000, which let a save-editing bot mint 10,000 pouch Gold a day:
+   * SOURCE docs/BALANCE_BASELINE.md: the Pass owner earns about 2,470 Gold a day at days 46-60 (the median of the long sim), and docs/BALANCE_CHANGES.md Rodada 22 measured 1,000 to
+   * 3,300 a day for the owner (the weekly mean, by policy). That is what an honest hero can turn into pouches, so the limit is 3,000 a day (it was 10,000, which let a save-editing bot mint 10,000 pouch Gold a day:
    * the old term for Dungeon clears, 3,940 a day, was never reachable by a hero who also spends). The bucket holds the biggest pouch (never less) so a saver can make it in about a week.
    */
   pouchCountPerHour: (MARGIN * POUCH_TABLE.perDay) / 24,

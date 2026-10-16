@@ -26,6 +26,8 @@
     "sim:recipes": "vitest run --config vitest.sim.config.ts recipeTune --silent=false --reporter=default",
     "sim:skills": "vitest run --config vitest.sim.config.ts skillAudit --silent=false --reporter=default",
     "sim:long": "node scripts/sim/long.mjs",
+    "sim:econ": "node scripts/sim/leagueEcon.mjs",
+    "sim:sublevels": "vitest run --config vitest.sim.config.ts subLevelReach --silent=false --reporter=default",
     "sim:cost": "vitest run --config vitest.sim.config.ts lateCost --silent=false --reporter=default",
     "sim:wholesale": "vitest run --config vitest.sim.config.ts wholesale --silent=false --reporter=default",
     "season:tables": "vitest run --config vitest.sim.config.ts seasonTables --silent=false --reporter=default",
