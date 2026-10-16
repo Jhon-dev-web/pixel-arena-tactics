@@ -2815,3 +2815,394 @@ A `levelPace` nova não é "o Lendário ficou mais rápido": é a seed mais ráp
 - **Faixas de preço** (ECONOMY_AUDIT, seção 23) são estimativas: o mercado de jogadores ainda não tem preço.
 - **O Épico perdeu 2 a 3 pontos de CP de conjunto** (1,31 → 1,29 em T6 +8 e T4 +8): é o preço do degrau Lendário. A Épica continua 10% acima da Rara e 28 a 29% acima da Comum.
 - Nenhum clique no navegador; a tela de cartões foi checada só pelo texto gerado e pelos testes.
+
+
+## Rodada 25 — mercado com 1 000 jogadores (2026-10-16)
+
+Pedido do dono (2026-10-16), uma crítica correta: as tabelas de comprador das Rodadas 22 e 24 davam ao comprador um conjunto Lendário **desde o dia 1** (as receitas de tier 4+ custavam zero e rolavam Lendário). Mas ninguém compra uma Lendária no dia 10 se ninguém forjou nem dropou uma ainda. Esta rodada refaz a conta do jeito certo: **1 000 jogadores começam juntos no dia 0 da Liga**, uma população realista com desistência, um mercado com a oferta que eles realmente geram, e compradores que só levam o que existe no estoque no dia. **Nenhum número do jogo mudou**: esta rodada só mede e recomenda.
+
+Código: `scripts/sim/marketPopulation.sim.ts` (o modelo; todos os parâmetros documentados no topo), `scripts/sim/market.mjs` (`npm run sim:market`, que roda as etapas em processos paralelos e imprime o relatório) e a opção `schedule` do `Player` (`scripts/sim/player.ts`: uma lista de peças entregues em dias dados, usada para o herói comprador). Commit `test(sim): a 1 000-player market with real supply`.
+
+### 0. Como foi medido, o que é medido e o que é modelo
+
+Quatro etapas (`npm run sim:market`; env `MARKET_PARAMS` troca qualquer parâmetro, `MARKET_SKIP` / `MARKET_ONLY` repetem só uma etapa; as etapas de mercado e relatório levam segundos, então hipóteses novas de listagem ou churn não exigem jogar nada de novo):
+
+1. **Perfis (medido, o jogo de verdade).** O `Player` de `sim:long` / `sim:econ` joga cada arquétipo por 75 dias e 6 seeds. Guardamos, por dia, as peças forjadas (tier e encaixe), os únicos achados (Caça e chefes), as unidades coletadas de cada material negociável, o Ouro ganho, gasto e na mão, as horas jogadas (XP do Passe) e o nível. **A raridade que o simulador sorteou é ignorada** e re-sorteada abaixo: usamos só *o que foi forjado e quando*. Nenhuma taxa é inventada.
+2. **Oráculo (medido).** Heróis que ganham de graça cada peça de tier 4 a 6 no instante em que o nível da receita permite (o "comprador" antigo, agora com o portão de nível). A trajetória de nível deles diz **quando** um comprador quer cada peça.
+3. **Mercado (modelo).** 1 000 jogadores: cada um sorteia um perfil do arquétipo e uma velocidade (escala de tempo 0,75 a 1,25), desiste num dia da curva de churn, sorteia a raridade de cada forja (63/25/10/2), usa o Selo, rola os dados dos materiais negociáveis (Binomial por unidade, `rates.ts`), cria Bolsas de Ouro, e lista uma parte do que não está ligado. Os compradores entram na fila na ordem em que o nível deles pede a peça e levam **a primeira peça anunciada** que serve. 5 repetições com outros dados.
+4. **Heróis compradores (medido).** O cronograma real de compras de um comprador (o melhor, o 10% melhor, o mediano, o 10% pior de cada tipo) é entregue ao mesmo `Player` (`PlayerOptions.schedule`), que joga 60 dias e dá o nível, o Ouro e as peças vestidas. A peça é entregue na primeira visita em que o herói tem o nível da receita.
+
+**População (parâmetros, trocáveis):** 30% donos do Passe, 70% sem Passe. Mistura: comum A 40%, esperto AS 12%, guloso AG 6%, especialistas sem Passe em mineração/lenhador/Horta 4% cada; dono do Passe comum P 11%, esperto PS 7%, guloso PG 5%, esperto que visita a cada 6 h (PX) 2%, especialistas PM/PW/PGa 1,5% cada, minerador de 6 h (XPM) 0,5%. **Churn:** quem ainda joga no dia 7 / 30 / 60: sem Passe 60% / 40% / 30%; dono do Passe 90% / 75% / 60%. **Listagem:** donos anunciam 30% e sem Passe 60% das peças Épicas+ não ligadas e dos únicos; 80% dos materiais negociáveis. **Compradores:** 25% dos donos (hunters que jogam pelo menos 30 dias) e 6% dos sem Passe, metade querendo Épico e metade Lendário (117 compradores: 75 donos e 42 sem Passe); o Lendário aceita uma peça Lendária **um tier abaixo** do melhor que pode vestir se não houver (um conjunto Lendário T4 supera um Comum T5 em CP), o Épico não. **Selo do Ferreiro:** o dono ganha um Selo nos níveis 10 / 20 / 27 do Passe (XP do Passe = 10 por hora de Caça/Mineração/Corte + 15 por andar), e o gasta na primeira forja de tier 4+; a peça nasce **ligada** (Épica 5 em 6, Lendária 1 em 6), nunca vai ao mercado.
+
+**Arquétipos medidos (por jogador, 60 dias, mediana de 6 seeds).** Isto é o que o jogo de verdade produz; o resto da rodada só multiplica e sorteia:
+
+| arquetipo (parcela da populacao) | nivel d30 | nivel d60 | forjas T4 | T5 | T6 | unicos | trad. Horta | Mineracao | Lenhador | Cacada | Ouro ganho | Ouro gasto |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| A (40.0%) comum, sem Passe (2 visitas por dia) | 56.9 | 69.6 | 7 | 0 | 0 | 1.0 | 18 | 86 | 84 | 760 | 84 219 | 55 128 |
+| AS (12.0%) esperto, sem Passe | 56.9 | 69.6 | 7 | 0 | 0 | 1.0 | 18 | 86 | 84 | 760 | 84 305 | 55 128 |
+| AG (6.0%) guloso (so caca onde esta o XP), sem Passe | 56.9 | 71.3 | 7 | 0 | 0 | 1.0 | 18 | 78 | 79 | 765 | 81 623 | 55 409 |
+| M (4.0%) especialista em mineracao, sem Passe | 1.0 | 1.0 | 0 | 0 | 0 | 0.0 | 20 | 1 165 | 0 | 0 | 1 600 | 1 450 |
+| W (4.0%) especialista em lenhador, sem Passe | 1.0 | 1.0 | 0 | 0 | 0 | 0.0 | 20 | 0 | 1 154 | 0 | 1 632 | 1 450 |
+| G (4.0%) especialista em Horta, sem Passe | 58.1 | 64.2 | 0 | 0 | 0 | 1.5 | 19 | 4 | 2 | 989 | 48 769 | 29 429 |
+| P (11.0%) dono do Passe, comum | 63.0 | 80.1 | 7 | 7 | 0 | 3.0 | 18 | 187 | 128 | 1 409 | 129 585 | 111 308 |
+| PS (7.0%) dono do Passe, esperto | 63.0 | 82.7 | 7 | 7 | 0 | 2.5 | 18 | 187 | 127 | 1 304 | 127 192 | 118 724 |
+| PG (5.0%) dono do Passe, guloso | 63.9 | 87.3 | 7 | 1 | 0 | 3.0 | 18 | 70 | 77 | 1 360 | 98 052 | 69 805 |
+| PX (2.0%) dono do Passe, esperto, visita a cada 6 h | 70.7 | 95.5 | 7 | 5 | 0 | 4.0 | 23 | 122 | 86 | 1 715 | 163 020 | 164 128 |
+| PM (1.5%) dono do Passe, especialista em mineracao | 1.0 | 1.0 | 0 | 0 | 0 | 0.0 | 20 | 2 296 | 0 | 0 | 1 680 | 1 525 |
+| PW (1.5%) dono do Passe, especialista em lenhador | 1.0 | 1.0 | 0 | 0 | 0 | 0.0 | 20 | 0 | 2 276 | 0 | 1 728 | 1 550 |
+| PGa (1.5%) dono do Passe, especialista em Horta | 63.4 | 75.3 | 0 | 0 | 0 | 3.0 | 19 | 4 | 2 | 1 905 | 140 492 | 51 878 |
+| XPM (0.5%) dono do Passe, minerador que visita a cada 6 h | 1.0 | 1.0 | 0 | 0 | 0 | 0.0 | 22 | 2 831 | 0 | 0 | 1 760 | 1 600 |
+
+Três fatos saem direto daqui: (a) **o jogador sem Passe, comum, termina o dia 60 no nível ~70 e forja 7 peças T4 e nenhuma T5** (o portão do T5 é o nível 70 a 80): os 70% de jogadores sem Passe só alimentam o mercado até o tier 4; (b) mesmo o dono comum forja ~7 peças T5 e nenhuma T6; (c) os especialistas de mineração e lenhador ficam no nível 1 (não caçam) e criam 1 200 a 2 800 unidades negociáveis do seu ofício em 60 dias, contra 80 a 190 de mineração de um caçador; o caçador, por sua vez, cria 760 a 1 900 de drops de Caça.
+
+**Aviso de calibração (honesto).** O oráculo desta rodada **não reproduz o ganho inteiro** do comprador PBG da Rodada 24 (re-rodado com as mesmas seeds: 95,1 contra 87,6 do PG, +7,6). Aqui o oráculo Lendário dá **+3,4** (sem os T4 dragão) a **+3,7** (com eles) sobre o PG na política gulosa, e +6,0 / +6,1 na esperta. Mesma CP no dia 13 (6 680 contra 6 760), mas o comprador antigo cruza o andar 100 da Masmorra nos dias 13 a 20 e o oráculo nos dias 18 a 34; não achei a causa dentro desta rodada (o comprador antigo *forja* as peças, o oráculo as *recebe*; as peças dragão e a linha da espada com queimadura foram testadas e explicam pouco). **O que vale ler nas tabelas de Liga é a comparação interna**: não comprador × oráculo × comprador real, mesma seed. O ganho absoluto do comprador está subestimado em ~3 níveis em relação à Rodada 24; a razão "o que o comprador real consegue / o que o oráculo daria" é a medida desta rodada.
+
+**Achado de código (não mexi).** O motor **não tem portão de nível para vestir uma peça**: `applyEquipInstance` (`gearInstances.ts`) e a função `bind-item` só olham o encaixe; o nível da receita (`requiredLevel`) só vale para **forjar** (`applyForge`, `craftActions`). Um comprador pode vestir uma Lendária T6 no nível 1. As Rodadas 22 e 24 (e esta) assumem o portão (`o comprador não veste o que não poderia ter forjado`), que na verdade é só uma regra de simulação. Decisão do dono (recomendação 5).
+
+### 1. Quantos itens vendáveis e materiais negociáveis por dia, de cada fonte
+
+Média dos 7 dias até o dia da coluna, população inteira (1 000 jogadores no dia 0, com churn), mediana de 5 repetições. "Sorteadas" = as peças forjadas que saíram Épicas ou Lendárias (antes de decidir listar); "anunciadas" = as que os jogadores puseram à venda.
+
+| dia | 1 | 3 | 7 | 14 | 21 | 30 | 45 | 60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| jogadores ativos (churn) | 1 000 | 909 (903-916) | 724 (711-734) | 626 (610-645) | 569 (550-590) | 507 (480-519) | 439 (427-450) | 386 (376-395) |
+
+| fonte \ dia | d1 | d3 | d7 | d14 | d21 | d30 | d45 | d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Pecas forjadas T1-T3 (todas as raridades) | 1 992.0 | 2 339.7 | 1 670.1 | 414.0 | 19.1 | 0.0 | 0.0 | 0.0 |
+| Pecas forjadas T4 | 0.0 | 0.0 | 0.0 | 63.4 | 205.1 | 99.3 | 6.4 | 1.0 |
+| Pecas forjadas T5 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 4.7 | 34.3 | 36.0 |
+| Pecas forjadas T6 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 2.4 |
+| Epicas+Lendarias sorteadas, T1-T3 (nao ligadas) | 236.00 | 286.67 | 204.57 | 52.29 | 2.71 | 0.00 | 0.00 | 0.00 |
+| Epicas+Lendarias sorteadas, T4 | 0.00 | 0.00 | 0.00 | 4.71 | 20.43 | 12.43 | 0.57 | 0.00 |
+| Epicas+Lendarias sorteadas, T5 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.43 | 3.14 | 4.43 |
+| Epicas+Lendarias sorteadas, T6 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.29 |
+| Epicas ANUNCIADAS, T1-T3 | 88.00 | 107.67 | 82.71 | 21.00 | 1.14 | 0.00 | 0.00 | 0.00 |
+| Epicas ANUNCIADAS, T4 | 0.00 | 0.00 | 0.00 | 1.14 | 7.14 | 6.29 | 0.29 | 0.00 |
+| Epicas ANUNCIADAS, T5 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.14 | 0.71 | 1.71 |
+| Epicas ANUNCIADAS, T6 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.14 |
+| Lendarias ANUNCIADAS, T1-T3 | 21.00 | 25.33 | 18.43 | 5.00 | 0.43 | 0.00 | 0.00 | 0.00 |
+| Lendarias ANUNCIADAS, T4 | 0.00 | 0.00 | 0.00 | 0.29 | 1.57 | 0.86 | 0.14 | 0.00 |
+| Lendarias ANUNCIADAS, T5 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.29 |
+| Lendarias ANUNCIADAS, T6 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| Unicos anunciados (Cacada + chefes) | 3.00 | 12.00 | 9.57 | 18.00 | 4.43 | 3.57 | 2.43 | 4.43 |
+|   dos quais de tier 4 ou mais | 0.00 | 0.00 | 0.14 | 6.29 | 4.29 | 2.57 | 2.43 | 4.29 |
+| Pecas nascidas ligadas pelo Selo (Epica+Lendaria, fora do mercado) | 0.00 | 0.00 | 0.00 | 23.71 | 35.86 | 2.57 | 7.00 | 0.00 |
+| Materiais negociaveis criados, Horta (unidades) | 196.0 | 196.3 | 185.4 | 210.3 | 187.0 | 163.7 | 144.9 | 132.9 |
+| Materiais negociaveis criados, Mineracao (unidades) | 328.0 | 792.3 | 1 347.4 | 2 700.0 | 2 685.6 | 1 918.3 | 1 638.3 | 1 215.3 |
+| Materiais negociaveis criados, Lenhador (unidades) | 478.0 | 659.3 | 1 184.1 | 2 258.0 | 2 563.0 | 1 483.3 | 1 114.0 | 871.9 |
+| Materiais negociaveis criados, Cacada (drops) (unidades) | 2 069.0 | 2 664.0 | 5 031.3 | 7 217.6 | 9 120.0 | 10 114.6 | 8 255.9 | 6 976.6 |
+| Materiais negociaveis criados, TOTAL | 3 026.0 | 4 312.0 | 7 722.7 | 12 305.1 | 14 390.6 | 13 833.7 | 11 154.4 | 9 151.3 |
+| Materiais negociaveis ANUNCIADOS, TOTAL | 2 428.0 | 3 458.3 | 6 164.6 | 9 845.7 | 11 522.3 | 11 062.7 | 8 929.4 | 7 317.4 |
+| Bolsas de Ouro criadas (unidades) | 0.0 | 0.0 | 0.0 | 0.9 | 14.1 | 40.0 | 34.1 | 15.3 |
+| Bolsas de Ouro: Ouro de face (mil) | 0.0 | 0.0 | 0.0 | 3.9 | 39.9 | 107.7 | 84.6 | 42.6 |
+
+Leitura:
+
+- **Forja.** No dia 14 forjam-se ~63 peças T4 por dia na população; o pico de T4 é ~205 por dia no dia 21; o T5 só passa de 30 por dia depois do dia 40; o T6 é praticamente zero (28 peças em 60 dias na população inteira, contra 3 136 de T4 e 997 de T5). Em 60 dias saem ~321 Épicas+Lendárias T4, 105 T5 e **3 T6**; os jogadores anunciam 155 (T4), 35 (T5) e 0 a 1 (T6).
+- **Selo.** O Selo gera ~591 peças Épicas+Lendárias **ligadas** em 60 dias (99 Lendárias): 3,1 vezes tudo que os jogadores anunciam de T4+ (191). É oferta de poder para o dono, **não** de mercado. Quase todas saem entre os dias 14 e 25 (o dono gasta os 3 Selos nas primeiras forjas T4).
+- **Materiais negociáveis.** ~690 mil unidades criadas e ~550 mil anunciadas em 60 dias: 71% da Caça (489 mil), 16% da Mineração (110 mil), 13% do Lenhador (87 mil) e 1,4% da Horta (10 mil). É a única oferta abundante do mercado.
+- **Únicos.** 367 anunciados em 60 dias (201 de tier 4+), 2 a 18 por dia na população (mais nos primeiros 20 dias). Os de tier 6 (arma e anel, +30 a 60% de CP no andar 100) são o item de maior poder que existe no mercado.
+- **Bolsas de Ouro.** ~1 370 criadas e 3,5 milhões de Ouro de face em 60 dias (modelo: 30% dos jogadores vendem Ouro excedente, no máximo o teto do servidor de 3 000 por dia por conta), pico por volta do dia 30 (~40 por dia).
+
+| estoque \ dia | d1 | d3 | d7 | d14 | d21 | d30 | d45 | d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Epicas T3 | 0 | 0 | 31 (25-37) | 181 (143-188) | 188 (155-193) | 188 (155-193) | 188 (155-193) | 188 (155-193) |
+| Lendarias T3 | 0 | 0 | 5 (2-8) | 40 (37-44) | 43 (39-47) | 43 (39-47) | 43 (39-47) | 43 (39-47) |
+| Epicas T4 | 0 | 0 | 0 | 8 (5-12) | 56 (54-68) | 121 (108-135) | 131 (117-149) | 131 (119-151) |
+| Lendarias T4 | 0 | 0 | 0 | 2 (1-4) | 13 (12-18) | 22 (20-28) | 24 (23-30) | 24 (23-31) |
+| Epicas T5 | 0 | 0 | 0 | 0 | 0 | 1 (0-2) | 13 (7-16) | 32 (29-40) |
+| Lendarias T5 | 0 | 0 | 0 | 0 | 0 | 0 | 1 (0-1) | 3 (2-7) |
+| Epicas T6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 (0-2) |
+| Lendarias T6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Pecas Epicas+Lendarias nascidas LIGADAS pelo Selo (T4+) | 0 | 0 | 0 | 166 (156-177) | 414 (398-424) | 435 (428-450) | 575 (557-579) | 591 (569-603) |
+| Unicos | 3 (1-5) | 36 (34-52) | 67 (53-83) | 201 (180-209) | 237 (209-242) | 272 (239-282) | 303 (270-315) | 367 (330-389) |
+| Materiais negociaveis anunciados (mil) | 2 (2-3) | 10 (10-10) | 43 (43-44) | 112 (111-115) | 193 (191-200) | 295 (288-304) | 434 (424-452) | 550 (540-571) |
+| Ouro em Bolsas criadas (mil) | 0 | 0 | 0 | 27 (14-73) | 303 (262-404) | 1 212 (1 144-1 445) | 2 559 (2 295-2 808) | 3 520 (3 130-3 649) |
+
+### 2. Quando um comprador consegue uma Lendária, ou um conjunto
+
+Oferta pura: o k-ésimo comprador precisa da k-ésima peça anunciada de cada encaixe (os k-1 compradores anteriores já levaram as primeiras). Primeiro dia (1 a 60) em que o estoque acumulado chega a k; `> 60` = não chega em 60 dias; `(a/5)` = chega em só a das 5 repetições. Não olha o nível exigido (um conjunto T5 pede nível 70 a 80, T6 pede 90 a 100).
+
+| peca | 1o comprador | 10o comprador | 100o comprador |
+| --- | ---: | ---: | ---: |
+| Epica T6 (qualquer encaixe) | 60 (4/5) | > 60 | > 60 |
+| Epica T5 (qualquer encaixe) | 30 (26-31) | 43 (37-49) | > 60 |
+| Epica T4 (qualquer encaixe) | 11 (10-12) | 15 (14-16) | 26 (25-28) |
+| Lendaria T6 (qualquer encaixe) | > 60 | > 60 | > 60 |
+| Lendaria T5 (qualquer encaixe) | 38 (33-48) | > 60 | > 60 |
+| Lendaria T4 (qualquer encaixe) | 12 (10-13) | 19 (18-21) | > 60 |
+| Lendaria T4 weapon | 18 (17-19) | > 60 | > 60 |
+| Lendaria T4 armor | 16 (12-20) | > 60 | > 60 |
+| Lendaria T4 helmet | 17 (4/5) | > 60 | > 60 |
+| Lendaria T4 gloves | 14 (10-24) | > 60 | > 60 |
+| Lendaria T4 boots | 18 (12-29) | > 60 | > 60 |
+| Lendaria T4 ring | 21 (15-24) | > 60 | > 60 |
+| Lendaria T4 shield | 16 (13-24) | > 60 | > 60 |
+| Lendaria T5 weapon | > 60 (2/5) | > 60 | > 60 |
+| Lendaria T5 armor | > 60 (2/5) | > 60 | > 60 |
+| Lendaria T5 helmet | 60 (3/5) | > 60 | > 60 |
+| Lendaria T5 gloves | 56 (3/5) | > 60 | > 60 |
+| Lendaria T5 boots | 48 (4/5) | > 60 | > 60 |
+| Lendaria T5 ring | > 60 (1/5) | > 60 | > 60 |
+| Lendaria T5 shield | > 60 (1/5) | > 60 | > 60 |
+| Epica T4 weapon | 17 (17-18) | 23 (22-27) | > 60 |
+| Epica T4 armor | 13 (12-17) | 22 (20-24) | > 60 |
+| Epica T4 helmet | 11 (10-14) | 22 (18-22) | > 60 |
+| Epica T4 gloves | 12 (11-14) | 19 (17-21) | > 60 |
+| Epica T4 boots | 14 (10-20) | 25 (20-29) | > 60 |
+| Epica T4 ring | 14 (12-22) | 29 (25-46) | > 60 |
+| Epica T4 shield | 15 (13-15) | 22 (21-27) | > 60 |
+| Epica T5 weapon | 47 (45-51) | > 60 | > 60 |
+| Epica T5 armor | 36 (33-42) | > 60 (1/5) | > 60 |
+| Epica T5 helmet | 30 (26-38) | > 60 | > 60 |
+| Epica T5 gloves | 38 (32-42) | > 60 | > 60 |
+| Epica T5 boots | 41 (29-50) | > 60 | > 60 |
+| Epica T5 ring | 52 (37-56) | > 60 | > 60 |
+| Epica T5 shield | 35 (30-49) | > 60 | > 60 |
+
+| conjunto | 1o comprador | 10o comprador | 100o comprador |
+| --- | ---: | ---: | ---: |
+| Conjunto Lendario T4 (7 pecas) | 24 (4/5) | > 60 | > 60 |
+| Conjunto Epico T4 (7 pecas) | 18 (17-22) | 29 (25-46) | > 60 |
+| Conjunto Epico-ou-melhor T4 (7 pecas) | 17 (17-18) | 28 (24-36) | > 60 |
+| Arma + armadura Lendarias T4 (2 pecas) | 18 (17-20) | > 60 | > 60 |
+| Conjunto Lendario T5 (7 pecas) | > 60 | > 60 | > 60 |
+| Conjunto Epico T5 (7 pecas) | 52 (45-56) | > 60 | > 60 |
+| Conjunto Epico-ou-melhor T5 (7 pecas) | 52 (45-55) | > 60 | > 60 |
+| Arma + armadura Lendarias T5 (2 pecas) | > 60 | > 60 | > 60 |
+| Conjunto Lendario T6 (7 pecas) | > 60 | > 60 | > 60 |
+| Conjunto Epico T6 (7 pecas) | > 60 | > 60 | > 60 |
+| Conjunto Epico-ou-melhor T6 (7 pecas) | > 60 | > 60 | > 60 |
+| Arma + armadura Lendarias T6 (2 pecas) | > 60 | > 60 | > 60 |
+
+**Em resumo:** o 1º comprador de Lendária T4 acha uma peça por volta do dia **12 a 21** (conjunto de 7 só por volta do dia 24, e só em 4 das 5 repetições); o 10º comprador acha uma peça T4 qualquer no dia ~19 mas **nunca** o conjunto; o 100º, nunca. T5 Lendária: a primeira aparece por volta do dia 38 (qualquer encaixe), a arma ou a armadura Lendárias T5 só em 2 repetições de 5. **T6 Lendária não existe em 60 dias.** O conjunto Épico T4 chega ao 1º comprador no dia 18, ao 10º no dia 29 e ao 100º nunca; o Épico T5, ao 1º no dia 52 e ao 10º nunca.
+
+O que os compradores da população conseguiram (repetição 0; "7 peças T4+" = todos os encaixes):
+
+| comprador | n | pecas compradas ate o dia 60 (media) | % com 7 pecas T4+ no dia 30 | dia 45 | dia 60 | % com 7 pecas T5+ no dia 45 | dia 60 | % sem nenhuma peca |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Epico, dono do Passe | 36 | 4.1 (3.3-5.3) | 0 | 0 | 0 (0-3) | 0 | 0 | 3 (0-21) |
+| Epico, sem Passe | 20 | 0.8 (0.4-1.5) | 0 | 0 | 0 | 0 | 0 | 55 (0-59) |
+| Lendario, dono do Passe | 39 | 0.7 (0.5-1.1) | 0 (0-6) | 0 (0-9) | 0 (0-9) | 0 | 0 | 82 (76-86) |
+| Lendario, sem Passe | 22 | 0.0 | 0 | 0 | 0 | 0 | 0 | 100 |
+
+Pecas compradas por tier (total de todos os compradores do tipo, ate o dia):
+
+| tipo / tier | dia 30 | dia 45 | dia 60 |
+| --- | ---: | ---: | ---: |
+| Epico T4 | 121 (108-135) | 131 (117-149) | 131 (119-151) |
+| Epico T5 | 0 | 13 (7-16) | 31 (27-38) |
+| Epico T6 | 0 | 0 | 0 |
+| Lendario T4 | 22 (20-28) | 24 (23-30) | 24 (23-31) |
+| Lendario T5 | 0 | 1 (0-1) | 3 (2-7) |
+| Lendario T6 | 0 | 0 | 0 |
+
+Dia da primeira compra (mediana dos compradores): Epico dono 20 (18-21), Lendario dono 20 (19-24); Epico sem Passe 23 (22-25), Lendario sem Passe -.
+
+**T4 Épico: as 131 peças anunciadas foram todas compradas** (e as 24 Lendárias T4 também): a demanda (117 compradores x 7 encaixes) é 5 vezes a oferta anunciada. Os primeiros compradores por nível (donos do Passe, que chegam ao 50 antes) levam tudo; os sem Passe chegam depois e ficam sem nada (55% a 100% sem nenhuma peça).
+
+Índice de preço (modelo: escassez do estoque contra os compradores que ainda esperam a melhor peça; 3 é o teto):
+
+| indice \ dia | d1 | d3 | d7 | d14 | d21 | d30 | d45 | d60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| T4 Epica | 1.00 | 1.00 | 1.00 | 3.00 | 3.00 | 3.00 | 3.00 | 3.00 |
+| T4 Lendaria | 1.00 | 1.00 | 1.00 | 3.00 | 3.00 | 3.00 | 3.00 | 3.00 |
+| T5 Epica | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.41 | 3.00 | 3.00 |
+| T5 Lendaria | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.73 | 3.00 | 3.00 |
+| T6 Epica | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.87 |
+| T6 Lendaria | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.63 |
+
+O índice trava no teto de T4 a partir do dia 14 e de T5 a partir do dia 45: **o mercado está em escassez permanente de tudo que é Épico ou melhor de tier 4+.** (Um modelo de preço não diz preço; diz que o vendedor de uma Lendária T4 ou T5 nunca tem concorrência.)
+
+Sensibilidade (mesmas medições com outras hipóteses declaradas; só o mercado, nada é jogado de novo):
+
+| hipotese | conj. Epico T4: 1o | 10o | 100o | conj. Lendario T4: 1o | arma+armadura Lendarias T4: 10o | conj. Epico T5: 1o | arma Lendaria T5: 1o | Lendarias T4+ anunciadas ate d60 | % donos com 7 pecas T4+ (Epico / Lendario) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| base | 18 (17-22) | 29 (25-46) | > 60 | 24 (4/5) | > 60 | 52 (45-56) | > 60 | 30 | 0 / 0 |
+| anuncia metade (30% dono / 60% sem Passe -> 15% / 30%) | 20 (19-23) | > 60 | > 60 | > 60 (2/5) | > 60 | > 60 (2/5) | > 60 | 13 | 0 / 0 |
+| anuncia o dobro (60% / 100%) | 17 (17-18) | 23 (22-24) | > 60 | 21 (18-29) | > 60 | 51 (45-55) | 47 (3/5) | 51 | 3 / 5 |
+| guarda a Lendaria para si (anuncia metade das Lendarias) | 18 (17-22) | 29 (25-46) | > 60 | > 60 (2/5) | > 60 | 52 (45-56) | > 60 | 13 | 0 / 0 |
+| menos desistencia (45% jogam ainda no dia 30 / 35% no 60 sem Passe; 80% / 70% dono) | 17 (17-21) | 29 (25-29) | > 60 | 24 (20-28) | > 60 | 52 (45-56) | > 60 | 38 | 5 / 3 |
+| metade dos compradores | 18 (17-22) | 29 (25-46) | > 60 | 24 (4/5) | > 60 | 52 (45-56) | > 60 | 30 | 0 / 4 |
+| o dobro de compradores | 18 (17-22) | 29 (25-46) | > 60 | 24 (4/5) | > 60 | 52 (45-56) | > 60 | 30 | 1 / 1 |
+| 50% donos do Passe (em vez de 30%) | 17 (17-20) | 28 (3/5) | > 60 | 20 (4/5) | > 60 | 46 (3/5) | > 60 | 35 | 0 / 3 |
+| Selo guardado para tier 5+ | 15 (14-22) | 28 (27-47) | > 60 | 22 (18-24) | > 60 | 57 (52-60) | > 60 | 33 | 43 / 3 |
+| todos anunciam tudo (teto da oferta: 100%) | 17 | 22 (20-24) | > 60 | 18 (18-21) | > 60 | 47 (45-51) | 47 (3/5) | 71 | 9 / 7 |
+
+Nenhuma hipótese razoável dá um conjunto Lendário ao 10º comprador. Anunciar o dobro leva a oferta de Lendárias T4+ de 30 para 51 e traz o 1º conjunto Épico T5 para o dia 51; **anunciar tudo (100%) ainda dá só 71 Lendárias T4+ em 60 dias** para 117 compradores. Guardar a Lendária para si (metade anunciada) corta a oferta pela metade. Mais donos do Passe (50% em vez de 30%) ou menos desistência pouco mudam (a oferta é limitada pela chance de rolar, não por quem joga). Guardar o Selo para tier 5+ faz 43% dos donos compradores de Épico completarem um conjunto T4+ (contra 0%), porque o Selo gasto no T4 era demanda de T4 já satisfeita com uma peça ligada.
+
+### 3. Quanto Ouro o comprador ainda precisa em 60 dias
+
+O mercado cobra em dinheiro, não em Ouro: **comprar a peça custa zero de Ouro**. Mas o herói comprador continua refinando, lapidando, reparando, bebendo Elixir e alargando a mochila. Estes números vêm do próprio `Player` (Ouro de cada herói, por política G = gulosa e S = esperta; "oráculo" = conjunto cheio de graça, "real" = o que o mercado deu; `q00` o melhor dos compradores, `q50` o mediano).
+
+| heroi | ganha/dia d30 | gasta/dia d30 | ganha/dia d60 | gasta/dia d60 | na mao d14 | d30 | d45 | d60 | ganho total 60 dias | gasto total 60 dias | dias travado por Ouro |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| G: nao comprador (PG) | 2 161 | 789 | 1 135 | 1 144 | 7 136 | 25 050 | 30 621 | 29 052 | 105 345 | 90 434 | 3 |
+| G: Lendario oraculo | 2 331 | 1 475 | 765 | 2 643 | 20 550 | 43 210 | 62 310 | 42 937 | 137 691 | 94 899 | 3 |
+| G: Lendario oraculo com dragao (como a Rodada 24) | 3 581 | 1 323 | 833 | 1 368 | 18 013 | 41 494 | 54 691 | 47 449 | 141 571 | 97 238 | 3 |
+| G: Lendario real q00 | 3 213 | 1 379 | 1 079 | 566 | 7 763 | 43 313 | 27 702 | 49 777 | 133 832 | 78 274 | 3 |
+| G: Lendario real q10 | 2 580 | 1 129 | 1 048 | 2 018 | 8 552 | 32 462 | 37 049 | 53 093 | 139 828 | 78 345 | 3 |
+| G: Lendario real q50 | 2 250 | 661 | 1 181 | 1 054 | 8 552 | 37 300 | 26 340 | 25 383 | 95 279 | 69 622 | 3 |
+| G: Epico real q50 | 2 395 | 1 347 | 1 254 | 2 963 | 8 552 | 32 354 | 24 239 | 8 903 | 98 892 | 107 647 | 3 |
+| G: Lendario +8 real q50 (hipotetico) | 2 250 | 661 | 1 181 | 1 054 | 8 552 | 37 300 | 26 340 | 25 383 | 95 279 | 69 622 | 3 |
+| S: nao comprador (PS) | 2 165 | 688 | 1 480 | 2 769 | 7 136 | 31 191 | 18 151 | 13 157 | 160 466 | 154 545 | 3 |
+| S: Lendario oraculo | 2 459 | 1 426 | 2 418 | 2 430 | 20 075 | 52 494 | 69 113 | 62 832 | 163 387 | 100 990 | 3 |
+| S: Lendario oraculo com dragao (como a Rodada 24) | 2 647 | 1 251 | 1 717 | 1 833 | 19 280 | 48 467 | 71 017 | 75 768 | 165 985 | 92 778 | 3 |
+| S: Lendario real q00 | 2 243 | 1 182 | 4 406 | 3 034 | 6 456 | 37 758 | 23 110 | 18 317 | 149 535 | 134 870 | 3 |
+| S: Lendario real q10 | 2 165 | 688 | 1 480 | 2 769 | 7 136 | 31 191 | 18 151 | 13 157 | 115 530 | 119 345 | 3 |
+| S: Lendario real q50 | 2 165 | 688 | 1 480 | 2 769 | 7 136 | 31 191 | 18 151 | 13 157 | 115 530 | 119 345 | 3 |
+| S: Epico real q50 | 2 918 | 789 | 2 899 | 3 048 | 7 136 | 22 724 | 13 957 | 71 | 111 397 | 114 579 | 3 |
+| S: Lendario +8 real q50 (hipotetico) | 2 165 | 688 | 1 480 | 2 769 | 7 136 | 31 191 | 18 151 | 13 157 | 115 530 | 119 345 | 3 |
+
+Ouro gasto em 60 dias, por destino (mediana das seeds):
+
+| destino | G: nao comprador | G: Lendario oraculo (conjunto cheio) | G: Lendario real q00 | G: Lendario real q50 | S: nao comprador | S: Lendario oraculo (conjunto cheio) | S: Lendario real q00 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| estações | 8 182 | 5 655 | 7 698 | 11 429 | 14 356 | 5 898 | 11 983 |
+| forja | 8 485 | 3 370 | 8 150 | 11 385 | 22 790 | 3 370 | 20 150 |
+| refino | 4 338 | 4 846 | 5 582 | 4 938 | 77 166 | 51 606 | 53 819 |
+| poções | 4 020 | 4 740 | 5 820 | 4 170 | 6 030 | 7 770 | 5 370 |
+| alquimia | 24 226 | 16 486 | 24 810 | 18 460 | 21 110 | 11 250 | 21 270 |
+| mochila | 27 750 | 15 250 | 7 750 | 7 750 | 1 750 | 750 | 3 750 |
+| baú | 785 | 245 | 245 | 245 | 785 | 785 | 785 |
+| lapidar | 14 400 | 30 850 | 25 200 | 15 100 | 13 800 | 19 650 | 14 850 |
+| reparo | 152 | 960 | 748 | 304 | 152 | 1 136 | 420 |
+
+Ouro ganho em 60 dias, por origem:
+
+| origem | G: nao comprador | G: Lendario oraculo (conjunto cheio) | G: Lendario real q00 | G: Lendario real q50 | S: nao comprador | S: Lendario oraculo (conjunto cheio) | S: Lendario real q00 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| masmorra | 2 886 | 9 336 | 8 008 | 2 606 | 3 280 | 10 617 | 3 430 |
+| marcos | 19 000 | 49 000 | 49 000 | 19 000 | 19 000 | 49 000 | 19 000 |
+| missões | 9 960 | 11 540 | 12 230 | 9 440 | 16 820 | 15 220 | 16 130 |
+| caça | 17 870 | 13 258 | 13 428 | 11 812 | 13 246 | 12 264 | 10 679 |
+| pedido | 22 191 | 36 031 | 40 725 | 28 562 | 78 400 | 62 516 | 85 732 |
+| mercador | 12 262 | 9 156 | 9 002 | 8 820 | 11 491 | 8 775 | 8 642 |
+| atacado | 18 986 | 7 582 | 12 244 | 12 556 | 8 866 | 7 813 | 6 006 |
+
+Leitura:
+
+- **Um comprador de conjunto cheio ainda gasta ~95 a 101 mil de Ouro em 60 dias** (guloso 95 mil, esperto 101 mil), contra 90 mil do guloso e 155 mil do esperto que forjam o próprio. O guloso poupa só 8 mil de forja e estações (9 mil contra 17 mil) e gasta 16 mil a mais em lapidar (Épico e Lendário se lapidam: 31 mil contra 14 mil); o esperto poupa 28 mil de forja e estações e 25 mil de refino (52 mil contra 77 mil) e gasta 6 mil a mais em lapidar. O resto não muda: Elixir do Conhecimento (11 a 25 mil), poções (4 a 8 mil), mochila (1 a 28 mil), reparo (0,2 a 1,1 mil). O Ouro do comprador **não** é a restrição: ele ganha 134 a 163 mil, termina o dia 60 com 43 a 76 mil na mão, e os dias travados por Ouro são os mesmos 3 do não comprador (início do jogo).
+- O comprador real (que recebe poucas peças) gasta 70 a 135 mil, a mesma faixa do não comprador (90 a 155 mil). **Com a oferta real, o Ouro de um comprador é igual ao de um não comprador.**
+- **Pode pagar?** Sim. O dinheiro vai para a peça; o Ouro vem do próprio jogo. Para quem quiser Ouro por dinheiro, as Bolsas somam 3,5 milhões de Ouro de face em 60 dias (item 1), mas o comprador médio não precisa: ganha mais do que gasta.
+- **Não simulado:** a trilha do Passe (~10 mil de Ouro na faixa premium: 1 500, 500, 600, 3 000 e 5 000), as metas semanais e a sequência de login não são reivindicadas pelo `Player`; somam poucos milhares de Ouro e não mudam a conclusão.
+
+### 4. A Liga com a oferta real (mediana de 3 seeds; nível + fração do próximo; mesma seed = mesmos dados)
+
+Dono do Passe. "Oráculo" é o modelo antigo (conjunto cheio de graça assim que o nível permite); "REAL" é o comprador da população com o cronograma que o mercado deu. A linha "+8" é **hipotética**: o refino anula o certificado (`docs/MARKET_FOUNDATION.md`), então ninguém compra uma peça já refinada; o servidor ainda não refina.
+
+Politica GULOSA (so caca onde esta o XP; a de referencia da Rodada 24):
+
+| quem | seeds | dia 14 | dia 30 | dia 45 | dia 60 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Nao comprador (PG) | 3 | 50.8 (50.4-51.1) | 65.4 (62.3-66.3) | 77.6 (75.9-79.7) | 87.6 (87.1-90.4) |
+| Comprador Epico, conjunto gratis (ORACULO: o modelo antigo, so o nivel limita) | 3 | 52.0 (50.7-53.1) | 65.0 (64.2-65.6) | 78.5 (77.4-78.9) | 89.5 (88.7-90.3) |
+| Comprador Lendario, conjunto gratis (ORACULO) | 3 | 52.0 (50.7-53.1) | 65.2 (64.6-66.2) | 79.3 (78.9-80.8) | 91.0 (90.4-92.3) |
+| Comprador Lendario, conjunto gratis COM os T4 dragao (ORACULO: o equivalente ao PBG da Rodada 24) | 3 | 50.7 (50.7-52.0) | 65.2 (64.5-65.9) | 79.7 (79.4-80.7) | 91.3 (90.9-92.3) |
+| Comprador Lendario +8, conjunto gratis (ORACULO, hipotetico) | 3 | 52.0 (50.7-53.1) | 66.1 (65.8-68.5) | 81.1 (80.8-82.8) | 92.5 (92.1-93.2) |
+| Comprador Epico REAL, o melhor de todos (so o que existia) | 3 | 52.0 (50.7-52.3) | 64.1 (63.6-65.4) | 77.6 (77.1-79.0) | 88.8 (88.4-90.1) |
+| Comprador Epico REAL, mediano (so o que existia) | 3 | 52.0 (50.7-52.3) | 63.8 (63.1-64.4) | 77.1 (76.8-77.9) | 88.4 (88.2-88.7) |
+| Comprador Lendario REAL, o melhor de todos (so o que existia) | 3 | 52.0 (50.7-52.3) | 64.8 (64.2-66.0) | 79.0 (78.7-79.7) | 90.0 (89.9-90.8) |
+| Comprador Lendario REAL, melhor 10% (so o que existia) | 3 | 52.0 (50.7-52.3) | 63.2 (62.8-64.9) | 76.7 (76.6-79.4) | 88.1 (88.0-90.6) |
+| Comprador Lendario REAL, mediano (so o que existia) | 3 | 52.0 (50.7-52.3) | 62.6 (62.5-64.6) | 76.0 (76.0-77.4) | 87.4 (87.1-87.4) |
+| Comprador Lendario +8 REAL (hipotetico), o melhor de todos | 3 | 52.0 (50.7-52.3) | 64.3 (60.9-65.7) | 79.3 (76.0-80.7) | 91.0 (88.3-92.0) |
+| Comprador Lendario +8 REAL (hipotetico), mediano | 3 | 52.0 (50.7-52.3) | 62.6 (62.5-64.6) | 76.0 (76.0-77.4) | 87.4 (87.1-87.4) |
+
+Diferenca de nivel contra o nao comprador da mesma seed (mediana):
+
+| par | dia 14 | dia 30 | dia 45 | dia 60 |
+| --- | ---: | ---: | ---: | ---: |
+| Epico oraculo − nao comprador | 1.2 | -1.2 | -0.2 | 1.2 |
+| Lendario oraculo − nao comprador | 1.2 | -0.8 | 1.7 | 3.4 |
+| Lendario real (mediano) − nao comprador | 1.2 | -2.9 | -1.6 | -0.1 |
+| Epico real (mediano) − nao comprador | 1.2 | -2.3 | -0.8 | 0.6 |
+| Lendario real (o melhor de todos) − nao comprador | 1.2 | -0.6 | 1.4 | 2.4 |
+| Epico real (o melhor de todos) − nao comprador | 1.2 | -1.4 | -0.0 | 1.2 |
+| Lendario real (melhor 10%) − nao comprador | 1.2 | -2.7 | -0.9 | 0.4 |
+| Lendario +8 real (mediano, hipotetico) − nao comprador | 1.2 | -2.9 | -1.6 | -0.1 |
+
+Politica ESPERTA (minera e forja o que falta):
+
+| quem | seeds | dia 14 | dia 30 | dia 45 | dia 60 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Nao comprador (PS) | 3 | 50.8 (50.4-51.1) | 63.0 (62.3-63.4) | 73.8 (72.7-75.5) | 80.9 (80.3-85.8) |
+| Comprador Epico, conjunto gratis (ORACULO: o modelo antigo, so o nivel limita) | 3 | 51.1 (50.8-52.0) | 64.8 (64.7-65.0) | 75.3 (74.2-75.6) | 85.2 (83.2-85.3) |
+| Comprador Lendario, conjunto gratis (ORACULO) | 3 | 51.1 (50.8-52.0) | 64.3 (64.1-65.2) | 77.6 (77.4-78.8) | 88.5 (87.0-89.2) |
+| Comprador Lendario, conjunto gratis COM os T4 dragao (ORACULO: o equivalente ao PBG da Rodada 24) | 3 | 51.1 (50.8-52.0) | 64.7 (64.3-65.2) | 76.7 (75.8-77.7) | 87.0 (84.9-89.0) |
+| Comprador Lendario +8, conjunto gratis (ORACULO, hipotetico) | 3 | 51.1 (50.8-52.0) | 65.1 (64.7-65.7) | 78.6 (76.1-79.1) | 89.8 (88.5-90.8) |
+| Comprador Epico REAL, o melhor de todos (so o que existia) | 3 | 50.8 (50.4-51.1) | 63.8 (63.6-64.4) | 74.2 (74.2-76.6) | 84.6 (83.9-85.9) |
+| Comprador Epico REAL, mediano (so o que existia) | 3 | 50.8 (50.4-51.1) | 63.5 (62.2-64.2) | 73.9 (72.6-74.2) | 80.5 (80.2-83.1) |
+| Comprador Lendario REAL, o melhor de todos (so o que existia) | 3 | 50.8 (50.4-51.1) | 64.0 (63.6-64.3) | 75.2 (75.0-75.3) | 85.1 (84.8-85.8) |
+| Comprador Lendario REAL, melhor 10% (so o que existia) | 3 | 50.8 (50.4-51.1) | 63.0 (62.3-63.4) | 73.8 (72.7-75.5) | 80.9 (80.3-85.8) |
+| Comprador Lendario REAL, mediano (so o que existia) | 3 | 50.8 (50.4-51.1) | 63.0 (62.3-63.4) | 73.8 (72.7-75.5) | 80.9 (80.3-85.8) |
+| Comprador Lendario +8 REAL (hipotetico), o melhor de todos | 3 | 50.8 (50.4-51.1) | 64.4 (63.9-65.1) | 75.0 (75.0-76.7) | 84.8 (84.5-87.9) |
+| Comprador Lendario +8 REAL (hipotetico), mediano | 3 | 50.8 (50.4-51.1) | 63.0 (62.3-63.4) | 73.8 (72.7-75.5) | 80.9 (80.3-85.8) |
+
+Diferenca de nivel contra o nao comprador da mesma seed (mediana):
+
+| par | dia 14 | dia 30 | dia 45 | dia 60 |
+| --- | ---: | ---: | ---: | ---: |
+| Epico oraculo − nao comprador | 0.7 | 1.8 | 0.5 | 2.9 |
+| Lendario oraculo − nao comprador | 0.7 | 1.8 | 4.7 | 6.0 |
+| Lendario real (mediano) − nao comprador | 0.0 | 0.0 | 0.0 | 0.0 |
+| Epico real (mediano) − nao comprador | 0.0 | 0.1 | -1.1 | -0.4 |
+| Lendario real (o melhor de todos) − nao comprador | 0.0 | 1.3 | 1.5 | 4.4 |
+| Epico real (o melhor de todos) − nao comprador | 0.0 | 0.8 | 1.2 | 3.5 |
+| Lendario real (melhor 10%) − nao comprador | 0.0 | 0.0 | 0.0 | 0.0 |
+| Lendario +8 real (mediano, hipotetico) − nao comprador | 0.0 | 0.0 | 0.0 | 0.0 |
+
+| heroi | pecas T4 | dia mediano T4 | pecas T5 | dia mediano T5 | pecas T6 | dia mediano T6 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| G Epico q00 | 5 | 14 | 5 | 41 (40-42) | 0 | - |
+| G Epico q10 | 5 | 14 | 5 | 41 (40-42) | 0 | - |
+| G Epico q50 | 5 | 23 | 1 | 56 | 0 | - |
+| G Epico q90 | 2 | 32 | 0 | - | 0 | - |
+| G Lendario q00 | 6 | 17 | 1 | 48 | 0 | - |
+| G Lendario q10 | 5 | 29 | 0 | - | 0 | - |
+| G Lendario q50 | 0 | - | 0 | - | 0 | - |
+| G Lendario q90 | 0 | - | 0 | - | 0 | - |
+| S Epico q00 | 5 | 15 | 6 | 47 | 0 | - |
+| S Epico q10 | 5 | 19 | 3 | 47 | 0 | - |
+| S Epico q50 | 5 | 22 | 0 | - | 0 | - |
+| S Epico q90 | 2 | 32 | 0 | - | 0 | - |
+| S Lendario q00 | 6 | 18 | 1 | 59 | 0 | - |
+| S Lendario q10 | 0 | - | 0 | - | 0 | - |
+| S Lendario q50 | 0 | - | 0 | - | 0 | - |
+| S Lendario q90 | 0 | - | 0 | - | 0 | - |
+
+**Resposta.** Com a oferta de verdade, o ganho do comprador na Liga some para a grande maioria:
+
+| Quem (dia 60, mesma seed, contra o não comprador) | Guloso | Esperto |
+| --- | --: | --: |
+| Oráculo Lendário (o modelo antigo, com o portão de nível) | +3,4 | +6,0 |
+| Comprador Lendário REAL, o melhor de todos | **+2,4** | **+4,4** |
+| Comprador Lendário REAL, 10% melhor | +0,4 | 0,0 |
+| Comprador Lendário REAL, mediano e pior | **−0,1** | **0,0** |
+| Comprador Épico REAL, o melhor | +1,2 | +3,5 |
+| Comprador Épico REAL, mediano | +0,6 | −0,4 |
+| Lendário +8 REAL, o melhor (hipotético; diferença das medianas) | ≈ +3,4 | ≈ +3,9 |
+
+(Todos pequenos, porque o oráculo desta rodada já é ~3 níveis mais fraco que o da Rodada 24; ler como razão.) O melhor comprador pega ~70% do ganho do oráculo; **o mediano e os de baixo, ~0%**. Em número de peças: o melhor Lendário T4 recebe 6 peças T4 (dia 17 a 18) e 1 T5 (dia 48 a 59); o mediano, **nenhuma**. O Épico T4 chega a 5 peças para os 50% melhores (dias 14 a 23) e a 5 a 6 peças T5 só para o 10% melhor (dias 41 a 47).
+
+### 5. Recomendações (nada foi mudado)
+
+1. **A Lendária 1,40 não está forte nem fraca demais: ela está rara demais para decidir qualquer coisa.** O oráculo mostra que a Lendária vale +3 a +6 níveis na Liga a um conjunto cheio; mas, com a oferta real, o comprador mediano recebe zero Lendária em 60 dias. Subir o 1,40 só reforça um prêmio de loteria. Antes de mexer no multiplicador, decidir *quem deve ter o conjunto*.
+2. **Quem compra só leva vantagem se a oferta crescer, e o motivo é a chance de rolar, não a vontade de vender.** Anunciar 100% de tudo ainda deixa o 10º comprador sem conjunto Lendário T4 em 60 dias. Alavancas que movem a conta (estimativas lineares, não rodadas): **Lendária 2% → 4%** (dobra a oferta de Lendárias); um contador de **piedade** (garantia de Épica+ a cada ~8 forjas de tier 4+); queda de **Épica+ de chefe da Masmorra** negociável (hoje só únicos); ou uma **versão negociável do Selo** (as ~591 peças Épicas+ ligadas são 3,1x as 191 que o mercado recebe: um Selo que gere uma peça certificada em vez de ligada levaria a oferta de T4+ de 191 para ~780 (4x)). Incentivos de listagem (taxa menor, destaque) movem a oferta no máximo ~1,7x (30 → 51 Lendárias T4+ ao dobrar a parcela).
+3. **O Selo do Ferreiro hoje não ajuda o mercado e satisfaz o dono antes dele.** O dono gasta os 3 Selos nas 3 primeiras peças T4; isso tira ~590 peças da demanda por Épica T4 e não põe nenhuma no mercado. Se o objetivo é "quem compra fica à frente" com um mercado vivo, o Selo no T4 (barato) é um desperdício: o Selo guardado para tier 5+ (hipótese da tabela de sensibilidade) deixa 43% dos donos comprarem o conjunto T4 completo.
+4. **Taxas dos únicos: mantidas, mas contar a oferta deles.** 201 únicos de tier 4+ em 60 dias é a maior fonte de peças de tier alto no mercado (contra 35 Épicas T5 e 3 Lendárias T5 anunciadas). Esta rodada não os deixou entrar na demanda do comprador (só conjunto de forja); um comprador que aceite um único T6 de arma ou anel é um jogador à frente, e isso ainda não foi medido. É a próxima rodada se o dono quiser saber quanto do poder de mercado vem dos únicos.
+5. **Decidir o portão de vestir.** O motor deixa vestir qualquer peça em qualquer nível (item 0). Se o dono quer o portão, é uma checagem em `applyEquipInstance` e na função `bind-item`; se não quer, o comprador de uma Lendária T6 (quando ela existir, depois do dia 60) anda anos à frente.
+6. **Não prometer "compre o conjunto Lendário" como atalho de 60 dias.** Em T4 existe estoque para entre 10 e 18 conjuntos Épicos na população (131 peças / 7 é o teto) e para nenhum Lendário completo além do 1º comprador (dia 24, em 4 repetições de 5); em T5, nenhum Épico completo antes do dia ~50; T6 não existe. A oferta cresce com o tamanho da população, mas a demanda também (proporção igual): com 10 000 jogadores a razão oferta/demanda é a mesma.
+7. **Risco para o campeonato de temporada:** com o mercado raso, o nível do dia 60 de quem compra depende de sorte de fila (o melhor comprador +2,4 a +4,4, o mediano 0). Se o ranking em dinheiro premia o nível, a posição na fila de compra vira fator de sorte; pesa a favor de não pôr o ranking em dinheiro antes de o mercado ter oferta.
+
+### 6. O que não foi verificado e o que o dono pode contestar
+
+- **A população e o comportamento são hipóteses declaradas** (o topo do `marketPopulation.sim.ts`): a mistura, a curva de churn (60% saem até o dia 7 etc.), a parcela anunciada (30% / 60%), a parcela de compradores (25% dos donos, 6% dos sem Passe) e a regra "o comprador leva a primeira peça anunciada". O que é medido é o que cada arquétipo produz e o que o herói faz com a peça; a sensibilidade (item 2) mostra o quanto a resposta depende dessas hipóteses: quase nada, porque o limite é a chance de rolar.
+- **Oráculo mais fraco que o da Rodada 24** (aviso do item 0). Se a causa for um viés do oráculo, o ganho absoluto de todo comprador está subestimado em ~3 níveis; a razão real/oráculo não muda.
+- **Só as peças que os jogadores do simulador forjam existem.** Todos os heróis do `Player` usam a linha do machado e a armadura dourada de tier 4; ninguém forja as peças dragão (a peça é comida pela receita de tier 5 no mesmo dia, então nunca sobra uma para anunciar), nem a espada com queimadura. Um jogador real que forje a espada oferece mais variedade; o total de peças Épicas+ não muda.
+- **Peças forjadas e consumidas no mesmo dia** (cadeia gilded → dragão → void) não aparecem nas contagens do perfil; são peças que, na prática, o jogador não teria como anunciar.
+- **Os compradores não compram únicos nem materiais.** O comprador de materiais negociáveis (para forjar) e o de únicos não estão no modelo; a oferta deles está nas tabelas.
+- **O índice de preço é um modelo**, não um preço: o jogo não cobra nada em Ouro por uma peça de mercado.
+- **A trilha do Passe, as metas semanais, o login e o Ouro das Bolsas do comprador não são reivindicados** pelo `Player` (mesmo limite das Rodadas 22 e 24).
+- **3 seeds por herói comprador** (as medianas por herói têm faixas de 1 a 3 níveis); a comparação dos pares usa a mesma seed.
+- **Tempo de execução:** `npm run sim:market` leva ~11 minutos com a máquina parada e 7 processos (perfis ~5 min, oráculos ~2 min, mercado ~10 s, heróis ~4 min); medido 23 minutos com a máquina ocupada. Baixar `profileSeeds` / `heroSeeds` em `MARKET_PARAMS` encurta.

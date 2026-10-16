@@ -418,6 +418,11 @@ export interface PlayerOptions {
   noStash?: boolean;
   // `refine`: the market piece arrives already refined to this level (the +8 Legendary of the buyer table, Rodada 24); the player keeps refining what is worn past it as usual.
   buyer?: { fromTier: number; toTier?: number; rarity: Rarity; refine?: number };
+  // Rodada 25 (marketPopulation.sim.ts): the buyer's REAL acquisition timeline. Each entry is a piece the market delivered: it is bought on `day` (0-based; the first visit of that day) or, when the
+  // hero is not yet at the level of the recipe of that piece, on the first visit he reaches it (a buyer does not pay for what he cannot wear: `scheduleGate`, default on). The piece arrives unbound,
+  // with the substats of its rarity, refined to `refine` (0 by default), and the policy wears it like any other piece (equipBest). It costs the hero no Gold (the market is paid in money).
+  schedule?: { day: number; tpl: string; rarity: Rarity; refine?: number; minLevel?: number }[];
+  scheduleGate?: boolean;
   // Long-horizon sim: once the floor-100 boss is down the Dungeon sessions go to the Profundezas (nextDepthStage), and the snapshots carry the depth, the paragon level and the blockers.
   long?: boolean;
 }
@@ -454,6 +459,9 @@ export class Player {
   private visit: 'first' | 'second' = 'first';
   private opts: PlayerOptions;
   trace: string[] = []; // one line per decision, for debugging a policy
+  // Rodada 25: pieces of `opts.schedule` delivered so far (index in the list) and what was delivered when (day 0-based, hero level at the moment).
+  private delivered = new Set<number>();
+  boughtOn: { day: number; tpl: string; rarity: Rarity; level: number }[] = [];
   // The save the first time the hero is about to face the floor-25 boss (floors 1-24 cleared): the boss diagnostic replays it.
   atFloor25: { save: SaveData; day: number; now: number } | null = null;
   // The hero the moment the floor-25 boss is first beaten (milestone claimed).
@@ -623,6 +631,7 @@ export class Player {
       this.freeSessionsToday = T.dungeon.freeSessionsPerDay;
     }
     this.collect();
+    this.receiveScheduled();
     // League events (only when the sim sets the League clock): a Semana das Profissoes asks for one profession; the policy picks the Garden, the one every player grows.
     this.S = applyProfessionPick(this.S, 'gardening', this.now) ?? this.S;
     this.tendGarden();
@@ -635,6 +644,29 @@ export class Player {
     for (let i = 0; i < todo; i++) this.dungeonSession();
     if (!gatherer) this.acceptDelivery();
     this.startActivity();
+  }
+
+  // Rodada 25: the pieces the market delivers to this buyer (opts.schedule), on the first visit on or after their day at which the hero can wear them.
+  private receiveScheduled() {
+    const list = this.opts.schedule;
+    if (!list) return;
+    const level = playerLevel(this.S.xp);
+    list.forEach((e, idx) => {
+      if (this.delivered.has(idx) || e.day > this.day) return;
+      const item = getGear(e.tpl);
+      if (!item) return;
+      if (this.opts.scheduleGate !== false && level < Math.max(item.recipe?.requiredLevel ?? 0, e.minLevel ?? 0)) return;
+      const inst = createGearInstance(e.tpl, {
+        origin: 'drop',
+        rarity: e.rarity,
+        substats: rollSubstats(e.rarity, item.tier ?? 0),
+        upgrade: Math.min(e.refine ?? 0, maxRefineFor(item)),
+        createdAt: this.now,
+      });
+      this.S = { ...this.S, gearInstances: { ...this.S.gearInstances, [inst.id]: inst } };
+      this.delivered.add(idx);
+      this.boughtOn.push({ day: this.day, tpl: e.tpl, rarity: e.rarity, level });
+    });
   }
 
   // ---- 1. collect whatever has been running

@@ -32,6 +32,7 @@
     "sim:prices": "vitest run --config vitest.sim.config.ts itemPrices --silent=false --reporter=default",
     "sim:cost": "vitest run --config vitest.sim.config.ts lateCost --silent=false --reporter=default",
     "sim:wholesale": "vitest run --config vitest.sim.config.ts wholesale --silent=false --reporter=default",
+    "sim:market": "node scripts/sim/market.mjs",
     "season:tables": "vitest run --config vitest.sim.config.ts seasonTables --silent=false --reporter=default",
     "item:tables": "vitest run --config vitest.sim.config.ts itemTables --silent=false --reporter=default",
     "season:bounds": "vitest run --config vitest.sim.config.ts seasonBounds --silent=false --reporter=default",
