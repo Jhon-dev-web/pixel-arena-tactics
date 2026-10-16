@@ -16,6 +16,7 @@ import { MaterialId } from './materials';
 import { gearInstanceCount, maxGearInstances } from './gearInstances';
 import { recordHuntTime, recordKills, withStats } from './stats';
 import { isServerItemAuthority } from './itemAuthority';
+import { claimId, queueMaterialClaim } from './materialClaims';
 import { saveSkillEffects } from './heroSkills';
 import T from './tunables';
 
@@ -152,14 +153,19 @@ export function applyHuntClaim(save: SaveData, id: string): SaveData | null {
   if (p.uniqueRoll) return null; // the server still has to roll the uniques of this reward (withServerUniques): claiming now would throw them away
   const { battlePassLevel, battlePassXp } = addBattlePassXp(save, p.bpXp);
   const plan = planHuntClaim(save, p);
-  const paid: SaveData = {
-    ...plan.save,
-    gold: save.gold + p.gold,
-    xp: save.xp + p.xp, // past level 100 the XP counts into paragon levels (paragon.ts)
-    battlePassLevel,
-    battlePassXp,
-    pendingHuntReward: null,
-  };
+  // Web build: the units that went into the bag are reported for the server's roll of which ones are tradeable (materialClaims.ts); nothing else about the claim changes.
+  const placed = Object.values(plan.added).reduce((a, n) => a + (n ?? 0), 0);
+  const paid: SaveData = queueMaterialClaim(
+    {
+      ...plan.save,
+      gold: save.gold + p.gold,
+      xp: save.xp + p.xp, // past level 100 the XP counts into paragon levels (paragon.ts)
+      battlePassLevel,
+      battlePassXp,
+      pendingHuntReward: null,
+    },
+    { id: claimId('h', p.id, placed), activity: 'hunt', place: p.zoneId, depth: p.depth, durationMs: p.pendingMs, units: plan.added, at: p.endedAt },
+  );
   // Whatever the bag has no room for among the unique pieces (and the units owed from before the inventory rule) is NOT destroyed: the reward stays
   // pending with only those left (gold / XP / drops are already paid and zeroed, so claiming again is harmless) and the player frees space and claims again.
   if (plan.uniquesLeft.length === 0 && Object.keys(plan.owedHeld).length === 0) return paid;

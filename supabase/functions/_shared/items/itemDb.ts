@@ -71,7 +71,7 @@ export function createItemStore(cfg: ItemDbConfig): ItemStore {
         {
           p_user_id: userId,
           p_start_at: new Date(startMs).toISOString(),
-          p_takes: takes.map((t) => ({ bucket: t.bucket, cost: t.cost, rate_per_hour: t.ratePerHour, capacity: t.capacity, partial: t.partial === true })),
+          p_takes: takes.map((t) => ({ bucket: t.bucket, cost: t.cost, rate_per_hour: t.ratePerHour, capacity: t.capacity, partial: t.partial === true, whole: t.whole === true })),
         },
         'take_tokens',
       );

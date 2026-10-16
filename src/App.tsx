@@ -27,9 +27,10 @@ import { clearCertificates, setCertificates } from './game/itemCerts';
 import { queueBossClaims } from './game/bossClaims';
 import ConfirmVoidModal from './components/ConfirmVoidModal';
 import TradeableUseModal from './components/TradeableUseModal';
-import type { MaterialId } from './game/materials';
+import { getMaterial, type MaterialId } from './game/materials';
 import { TradeableMap, gateTradeableUse, materialPrefs, reconcileTradeable, stackQty, stripTradeable, withMaterialPrefs } from './game/tradeableMaterials';
 import { isTradeableReachable } from './game/tradeableStatus';
+import { useTradeableSync } from './game/useTradeableSync';
 import { addRelics, addUniqueInstance } from './game/uniques';
 import { applyFertilizer, applyHarvest, applyPlant, applyUproot, readySlots } from './game/gardenActions';
 import { getPotionRecipe } from './game/potions';
@@ -361,6 +362,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     // setSaveBoth / showToast are recreated every render; the inputs are the first queued claim and the retry counter
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bossClaimId, bossRetry, userId, configured]);
+  // Web build: tradeable materials (tradeableMaterials.ts). The SERVER rolls which units of a claim are tradeable, records the ones the game spends and owns the balance; this keeps the save in step.
+  useTradeableSync({
+    enabled: configured && isServerItemAuthority(),
+    userId,
+    save,
+    getSave: () => saveRef.current,
+    commit: (s) => setSaveBoth(s),
+    onFound: (found) => showToast(t('tradeable.found', { list: Object.entries(found).map(([id, n]) => t('tradeable.line', { n: fmtNum(n), name: t(`materials.${getMaterial(id as MaterialId)?.nameKey ?? id}`) })).join(', ') })),
+  });
   // Season ranking (off unless VITE_SEASON_RANKING_ENABLED, and never in the desktop / offline build, which has no backend): posts the save in the background.
   useSeasonSubmit(seasonRankingEnabled && configured && !!userId, save);
   const [passFlow, setPassFlow] = useState<PassFlow>('idle');

@@ -32,7 +32,9 @@
     "sim:wholesale": "vitest run --config vitest.sim.config.ts wholesale --silent=false --reporter=default",
     "season:tables": "vitest run --config vitest.sim.config.ts seasonTables --silent=false --reporter=default",
     "item:tables": "vitest run --config vitest.sim.config.ts itemTables --silent=false --reporter=default",
-    "season:bounds": "vitest run --config vitest.sim.config.ts seasonBounds --silent=false --reporter=default"
+    "season:bounds": "vitest run --config vitest.sim.config.ts seasonBounds --silent=false --reporter=default",
+    "material:tables": "vitest run --config vitest.sim.config.ts materialTables --silent=false --reporter=default",
+    "sim:materials": "vitest run --config vitest.sim.config.ts materialSupply --silent=false --reporter=default"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",

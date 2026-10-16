@@ -58,7 +58,7 @@ import { emptyPouchDay, migratePouchFaces, PouchCerts, PouchDayState, sanitizeLe
 import { UniqueDrop } from './uniques';
 import { PendingBossClaim, sanitizeBossClaims } from './bossClaims';
 import { PendingMaterialClaim, sanitizeMaterialClaims } from './materialClaims';
-import { MaterialPrefs, TradeableMap, sanitizeBurns, sanitizeMaterialPrefs, sanitizeTradeable } from './tradeableMaterials';
+import { BurningBatch, MaterialPrefs, TradeableMap, sanitizeBurning, sanitizeBurns, sanitizeMaterialPrefs, sanitizeTradeable } from './tradeableMaterials';
 import { isServerItemAuthority } from './itemAuthority';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
@@ -194,6 +194,7 @@ export interface SaveData {
   // burned yet, the Hunting / Mining / Woodcutting / Garden claims whose tradeable roll the server still owes, and the player's two preferences. Web build only; old saves load with none.
   tradeableMaterials?: TradeableMap;
   tradeableBurns?: TradeableMap;
+  tradeableBurning?: BurningBatch;
   materialClaims?: PendingMaterialClaim[];
   materialPrefs?: MaterialPrefs;
   highestDungeonFloor: number;
@@ -1106,7 +1107,7 @@ function statsBackfill(gearInstances: Record<GearInstanceId, GearInstance>, kill
 
 // The tradeable-material fields are optional: kept (sanitized) when the save has them, absent otherwise, and never carried over raw from the file.
 function sanitizeTradeableFields(loaded: SaveData, raw: Record<string, unknown>): void {
-  const set = <K extends 'tradeableMaterials' | 'tradeableBurns' | 'materialClaims' | 'materialPrefs'>(key: K, value: SaveData[K] | undefined, present: boolean): void => {
+  const set = <K extends 'tradeableMaterials' | 'tradeableBurns' | 'tradeableBurning' | 'materialClaims' | 'materialPrefs'>(key: K, value: SaveData[K] | undefined, present: boolean): void => {
     if (present && value !== undefined) loaded[key] = value;
     else delete loaded[key];
   };
@@ -1114,6 +1115,8 @@ function sanitizeTradeableFields(loaded: SaveData, raw: Record<string, unknown>)
   set('tradeableMaterials', trade, Object.keys(trade).length > 0);
   const burns = sanitizeBurns(raw.tradeableBurns);
   set('tradeableBurns', burns, Object.keys(burns).length > 0);
+  const burning = sanitizeBurning(raw.tradeableBurning);
+  set('tradeableBurning', burning, !!burning);
   const claims = sanitizeMaterialClaims(raw.materialClaims);
   set('materialClaims', claims, claims.length > 0);
   set('materialPrefs', sanitizeMaterialPrefs(raw.materialPrefs), true);

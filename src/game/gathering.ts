@@ -1,6 +1,7 @@
 import { addBattlePassXp, computeMiningStatus, computeWoodcuttingStatus, SaveData, snapshotGatherPass } from './engine';
 import { addWithOverflow } from './inventory';
 import { recordGather } from './stats';
+import { claimId, queueMaterialClaim } from './materialClaims';
 import { MaterialId } from './materials';
 import { getOreTier, isOreTierUnlocked } from './ores';
 import { skillLevel } from './skills';
@@ -33,6 +34,11 @@ function withByProducts(placed: SaveData, kind: GatherKind, units: number, skill
     gems += n as number;
   }
   return { save: gems > 0 ? { ...save, gems: gemTotals } : save, dust, gems };
+}
+
+// Web build: the units a collection put in the bag are reported for the server's roll of which ones are tradeable (materialClaims.ts); the game's own numbers do not change.
+function queueClaim(save: SaveData, kind: GatherKind, tier: MaterialId, startedAt: number, now: number, pendingMs: number, units: number): SaveData {
+  return queueMaterialClaim(save, { id: claimId(kind === 'mining' ? 'm' : 'w', tier, startedAt, now), activity: kind, place: tier, durationMs: pendingMs, units: { [tier]: units }, at: now });
 }
 
 export interface GatherClaim {
@@ -79,7 +85,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
       battlePassLevel,
       battlePassXp,
     }, 'mining', status.oreReady - (placed.leftover.materials[status.oreId] ?? 0));
-    const by = withByProducts(next, kind, status.oreReady, save.skillXp.mining);
+    const by = withByProducts(queueClaim(next, kind, status.oreId, save.lastMiningClaim, now, status.pendingMs, status.oreReady - (placed.leftover.materials[status.oreId] ?? 0)), kind, status.oreReady, save.skillXp.mining);
     return { save: by.save, kind, material: status.oreId, units: status.oreReady, leftBehind: placed.leftover.materials[status.oreId] ?? 0, gold: status.goldReady, hours, dust: by.dust, gems: by.gems };
   }
   if (!save.activeWoodId) return null;
@@ -98,7 +104,7 @@ export function applyClaimGathering(save: SaveData, kind: GatherKind, now: numbe
     battlePassLevel,
     battlePassXp,
   }, 'woodcutting', status.woodReady - (placed.leftover.materials[status.woodId] ?? 0));
-  const by = withByProducts(next, kind, status.woodReady, save.skillXp.woodcutting);
+  const by = withByProducts(queueClaim(next, kind, status.woodId, save.lastWoodcuttingClaim, now, status.pendingMs, status.woodReady - (placed.leftover.materials[status.woodId] ?? 0)), kind, status.woodReady, save.skillXp.woodcutting);
   return { save: by.save, kind, material: status.woodId, units: status.woodReady, leftBehind: placed.leftover.materials[status.woodId] ?? 0, gold: status.goldReady, hours, dust: by.dust, gems: by.gems };
 }
 

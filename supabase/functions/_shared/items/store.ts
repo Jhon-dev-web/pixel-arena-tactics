@@ -9,6 +9,8 @@ export interface TokenTake {
   capacity: number;
   /** true: grant min(cost, what the bucket holds) instead of refusing (the hunt time). */
   partial?: boolean;
+  /** true (with partial): grant WHOLE units only, floor(min(cost, what the bucket holds)), and take only those (the daily cap on tradeable materials, migration 0015). */
+  whole?: boolean;
 }
 
 export type TokenOutcome = { ok: true; granted: number[] } | { ok: false; failed: string };

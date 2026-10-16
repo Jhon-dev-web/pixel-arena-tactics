@@ -6,6 +6,7 @@ import { MaterialId } from './materials';
 import { skillLevel } from './skills';
 import { addWithOverflow, stockIsEmpty } from './inventory';
 import { recordHarvest } from './stats';
+import { claimId, queueMaterialClaim } from './materialClaims';
 import { eventSkillXpMultiplier } from './leagueEvents';
 
 // The Garden's player actions as pure transitions on the save: each returns the WHOLE next save (or null when nothing
@@ -65,11 +66,19 @@ export function applyHarvest(save: SaveData, slotIndices: number[], now: number)
     harvested.push({ slot: i, plantId: def.id, material: def.material, qty, xp: Math.round(plantHarvestXp(def) * eventSkillXpMultiplier(save, 'gardening', now, now)), ...(dust > 0 ? { dust } : {}) });
   }
   if (harvested.length === 0 && blocked.length === 0) return null;
+  // Web build: what was harvested is reported for the server's roll of which units are tradeable (materialClaims.ts). The time it covers is the growth time of each harvested plant, added up.
+  const units: Partial<Record<MaterialId, number>> = {};
+  let plotMs = 0;
+  for (const h of harvested) {
+    units[h.material] = (units[h.material] ?? 0) + h.qty;
+    plotMs += getPlant(h.plantId)?.durationMs ?? 0;
+  }
+  const harvestedSave = recordHarvest(
+    { ...bag, gardenSlots, skillXp: { ...save.skillXp, gardening: save.skillXp.gardening + harvested.reduce((sum, h) => sum + h.xp, 0) } },
+    harvested.reduce((sum, h) => sum + h.qty, 0),
+  );
   return {
-    save: recordHarvest(
-      { ...bag, gardenSlots, skillXp: { ...save.skillXp, gardening: save.skillXp.gardening + harvested.reduce((sum, h) => sum + h.xp, 0) } },
-      harvested.reduce((sum, h) => sum + h.qty, 0),
-    ),
+    save: queueMaterialClaim(harvestedSave, { id: claimId('g', now, harvested.map((h) => h.slot).join('-')), activity: 'garden', place: '', durationMs: plotMs, units, at: now }),
     harvested,
     blocked,
   };

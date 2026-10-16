@@ -55,7 +55,7 @@ export class FakeItemStore implements ItemStore {
       if (!b || b.updatedMs < startMs) tokens = Math.min(t.capacity, t.ratePerHour * Math.max(0, (this.nowMs - startMs) / 3_600_000));
       else tokens = Math.min(t.capacity, b.tokens + t.ratePerHour * Math.max(0, (this.nowMs - b.updatedMs) / 3_600_000));
       let g: number;
-      if (t.partial) g = Math.min(t.cost, tokens);
+      if (t.partial) g = t.whole ? Math.floor(Math.min(t.cost, tokens)) : Math.min(t.cost, tokens);
       else if (tokens >= t.cost) g = t.cost;
       else return { ok: false, failed: t.bucket };
       plan.push({ key, left: tokens - g });

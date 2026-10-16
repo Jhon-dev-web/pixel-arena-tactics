@@ -84,11 +84,12 @@ export function clampTradeable(save: SaveData): SaveData {
 
 /** Every unit becomes a normal unit: the offline / desktop build (no server) has no tradeable variant, whatever an imported save says. */
 export function stripTradeable(save: SaveData): SaveData {
-  if (!save.tradeableMaterials && !save.tradeableBurns && !save.materialClaims) return save;
-  const { tradeableMaterials: _a, tradeableBurns: _b, materialClaims: _c, ...rest } = save;
+  if (!save.tradeableMaterials && !save.tradeableBurns && !save.tradeableBurning && !save.materialClaims) return save;
+  const { tradeableMaterials: _a, tradeableBurns: _b, tradeableBurning: _d, materialClaims: _c, ...rest } = save;
   void _a;
   void _b;
   void _c;
+  void _d;
   return rest as SaveData;
 }
 
@@ -264,4 +265,35 @@ export function sanitizeBurns(raw: unknown): TradeableMap {
 export function stackQty(save: Holder, id: MaterialId, variant: 'tradeable' | undefined, qty: number | 'all'): number {
   const stack = variant === 'tradeable' ? tradeableOf(save, id) : normalOf(save, id);
   return qty === 'all' ? stack : Math.min(stack, Math.max(0, Math.floor(qty)));
+}
+
+/** A batch of burns on its way to the server: it keeps ONE request id until the server has answered, so a lost answer retried later is never burned twice. */
+export interface BurningBatch {
+  id: string;
+  units: TradeableMap;
+}
+
+export function sanitizeBurning(raw: unknown): BurningBatch | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as Partial<BurningBatch>;
+  const units = sanitizeBurns(r.units);
+  return typeof r.id === 'string' && /^[A-Za-z0-9_.:-]{8,64}$/.test(r.id) && Object.keys(units).length > 0 ? { id: r.id, units } : undefined;
+}
+
+/** Moves the queued burns into the batch that is sent (a new request id), unless one is already on its way. null = nothing to send. */
+export function startBurn(save: SaveData, newId: () => string): SaveData | null {
+  if (save.tradeableBurning) return null;
+  const queue = save.tradeableBurns;
+  if (!queue || Object.keys(queue).length === 0) return null;
+  const { tradeableBurns: _q, ...rest } = save;
+  void _q;
+  return { ...rest, tradeableBurning: { id: `burn:${newId()}`.slice(0, 64), units: queue } } as SaveData;
+}
+
+/** The server answered: the batch is done. */
+export function finishBurn(save: SaveData): SaveData {
+  if (!save.tradeableBurning) return save;
+  const { tradeableBurning: _b, ...rest } = save;
+  void _b;
+  return rest as SaveData;
 }

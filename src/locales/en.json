@@ -2184,6 +2184,8 @@
     "prefFirst": "Spend tradeable ones before normal ones",
     "prefFirstHint": "Off (the default): recipes, orders and refining spend the normal ones first and only use tradeable ones when the normal ones run out, so you never spend by accident what you could sell.",
     "prefAskAgain": "Ask again before spending",
-    "serverNote": "Tradeable materials exist only in the online version, with an account."
+    "serverNote": "Tradeable materials exist only in the online version, with an account.",
+    "found": "You found tradeable material: {list}.",
+    "waiting": "{n} tradeable {name} waiting for room in the inventory."
   }
 }

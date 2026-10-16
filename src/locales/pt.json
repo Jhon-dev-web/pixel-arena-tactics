@@ -2184,6 +2184,8 @@
     "prefFirst": "Gastar os negociáveis antes dos comuns",
     "prefFirstHint": "Desligado (o padrão): receitas, pedidos e refino gastam primeiro os comuns e só usam os negociáveis quando os comuns acabam, para você não gastar por engano o que pode vender.",
     "prefAskAgain": "Perguntar de novo antes de gastar",
-    "serverNote": "Materiais negociáveis existem só na versão online, com conta."
+    "serverNote": "Materiais negociáveis existem só na versão online, com conta.",
+    "found": "Você achou material negociável: {list}.",
+    "waiting": "{n} {name} negociável esperando espaço no inventário."
   }
 }
