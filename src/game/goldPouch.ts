@@ -149,3 +149,26 @@ export function pouchGoldHeld(save: Pick<SaveData, 'consumables' | 'stash'>): nu
 
 // Spendable Gold plus the Gold in pouches: the "patrimônio" line of the statistics.
 export const patrimony = (save: Pick<SaveData, 'gold' | 'consumables' | 'stash'>): number => save.gold + pouchGoldHeld(save);
+
+// DISCARDING pouches from the stack menu (bagActions.applyDiscard just lowers the count). A certified pouch that is thrown away must burn its certificate, or the server would keep a "held"
+// certificate for a pouch that no longer exists (and it could, in principle, still be listed). The pouches thrown away are the uncertified ones first, then the certified ones from the end of
+// the list (the same order opening uses), so this returns exactly the certificates that have to be burned for `n` pouches to go.
+export function certificatesToBurnOnDiscard(save: Pick<SaveData, 'consumables' | 'stash' | 'pouchCerts'>, id: PouchId, qty: number | 'all'): string[] {
+  const inBag = save.consumables?.[id] ?? 0;
+  const n = Math.min(inBag, qty === 'all' ? Number.MAX_SAFE_INTEGER : Math.max(0, Math.floor(qty)));
+  if (n <= 0) return [];
+  const certs = certifiedPouchIds(save, id);
+  const uncertified = uncertifiedPouchCount(save, id);
+  const fromCerts = Math.max(0, n - uncertified);
+  return fromCerts > 0 ? certs.slice(Math.max(0, certs.length - fromCerts)) : [];
+}
+
+/** Takes the burned certificate ids out of the save's list for this pouch (after the server confirmed the burn). */
+export function withoutPouchCertificates<S extends Pick<SaveData, 'pouchCerts'>>(save: S, id: PouchId, burned: string[]): S {
+  if (burned.length === 0 || !save.pouchCerts?.[id]) return save;
+  const left = save.pouchCerts[id]!.filter((c) => !burned.includes(c));
+  const pouchCerts = { ...save.pouchCerts };
+  if (left.length > 0) pouchCerts[id] = left;
+  else delete pouchCerts[id];
+  return { ...save, pouchCerts };
+}

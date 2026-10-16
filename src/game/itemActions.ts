@@ -2,7 +2,9 @@ import type { CertificateView } from '../../supabase/functions/_shared/items/typ
 import type { SaveData } from './engine';
 import { getGear } from './gear';
 import { ForgeRoll, GearInstance, applyEquipInstance, applyForge, isCertificateId, isInstancedItem } from './gearInstances';
-import { PouchId, applyCreatePouch, applyOpenPouch, certificateToBurnOnOpen } from './goldPouch';
+import { PouchId, applyCreatePouch, applyOpenPouch, certificateToBurnOnOpen, certificatesToBurnOnDiscard, withoutPouchCertificates } from './goldPouch';
+import { applyDiscard } from './bagActions';
+import { clearIntent, intentRequestId } from './mintIntents';
 import { needsServerUniques, withServerUniques } from './huntLifecycle';
 import { ItemApi, ItemServerUnreachable, newRequestId } from './itemServer';
 import { isServerItemAuthority } from './itemAuthority';
@@ -136,10 +138,18 @@ export async function forgeAction(api: ItemApi, getSave: () => SaveData, templat
   if (!pre.ok) return { ok: false, blocked: 'game', reason: pre.reason };
   const burn = Array.from(new Set((pre.consumed ?? []).map((i) => i.certificateId).filter(isCertificateId)));
   const sealWanted = !!opts.seal && (s0.consumables.forge_seal ?? 0) > 0;
-  const answer = await ask(() => api.mint({ kind: 'forge', requestId: newRequestId(), templateId, seal: sealWanted, ...(burn.length > 0 ? { burnCertificateIds: burn } : {}) }));
-  if (answer === 'unreachable') return unreachable();
-  if (!answer.ok) return { ok: false, blocked: 'refused', reason: refusal(answer) };
-  if (answer.kind !== 'forge') return { ok: false, blocked: 'refused', reason: 'bad_request' };
+  // The request id outlives a lost answer (mintIntents.ts): asking again for the SAME forge returns what the server already rolled instead of rolling (and certifying) a second piece.
+  const intentKey = `forge:${templateId}:${sealWanted ? 1 : 0}:${[...burn].sort().join(',')}`;
+  const answer = await ask(() => api.mint({ kind: 'forge', requestId: intentRequestId(intentKey, newRequestId), templateId, seal: sealWanted, ...(burn.length > 0 ? { burnCertificateIds: burn } : {}) }));
+  if (answer === 'unreachable') return unreachable(); // the id is kept: the next try fetches the stored result
+  if (!answer.ok) {
+    clearIntent(intentKey); // a refusal is final (nothing was stored)
+    return { ok: false, blocked: 'refused', reason: refusal(answer) };
+  }
+  if (answer.kind !== 'forge') {
+    clearIntent(intentKey);
+    return { ok: false, blocked: 'refused', reason: 'bad_request' };
+  }
   const roll: ForgeRoll = { rarity: answer.item.rarity, substats: answer.item.substats, bound: answer.item.bound, certificateId: answer.item.certificate?.id };
   rememberCertificate(answer.item.certificate);
   for (const id of burn) patchCertificate(id, { status: 'burned' });
@@ -148,6 +158,7 @@ export async function forgeAction(api: ItemApi, getSave: () => SaveData, templat
   // The pieces the recipe really consumed must be exactly the ones the server burned (the save may have changed while the request was in flight).
   const leaked = (r.consumed ?? []).some((i) => isCertificateId(i.certificateId) && !burn.includes(i.certificateId));
   if (leaked) return { ok: false, blocked: 'game', reason: 'ingredients' };
+  clearIntent(intentKey); // applied: this action is finished (if the game refused above, the id stays so a retry gets the same piece)
   return { ok: true, save: r.save, instance: r.instance ?? null, sealUsed: !!r.sealUsed };
 }
 
@@ -208,13 +219,24 @@ export async function createPouchAction(api: ItemApi, getSave: () => SaveData, i
   const pre = applyCreatePouch(s0, id, now);
   if (!pre.ok) return { ok: false, blocked: 'game', reason: pre.reason };
   if (!isServerItemAuthority()) return { ok: true, save: pre.save!, gold: pre.gold ?? 0 };
-  const answer = await ask(() => api.mint({ kind: 'pouch', requestId: newRequestId(), pouchId: id }));
-  if (answer === 'unreachable') return unreachable();
-  if (!answer.ok) return { ok: false, blocked: 'refused', reason: refusal(answer) };
-  if (answer.kind !== 'pouch') return { ok: false, blocked: 'refused', reason: 'bad_request' };
+  const intentKey = `pouch:${id}`;
+  const answer = await ask(() => api.mint({ kind: 'pouch', requestId: intentRequestId(intentKey, newRequestId), pouchId: id }));
+  if (answer === 'unreachable') return unreachable(); // the id is kept: the next try fetches the stored pouch instead of minting a second one
+  if (!answer.ok) {
+    clearIntent(intentKey);
+    return { ok: false, blocked: 'refused', reason: refusal(answer) };
+  }
+  if (answer.kind !== 'pouch') {
+    clearIntent(intentKey);
+    return { ok: false, blocked: 'refused', reason: 'bad_request' };
+  }
   rememberCertificate(answer.certificate);
   const r = applyCreatePouch(getSave(), id, now, answer.certificate.id);
-  return r.ok && r.save ? { ok: true, save: r.save, gold: r.gold ?? 0 } : { ok: false, blocked: 'game', reason: r.reason };
+  if (r.ok && r.save) {
+    clearIntent(intentKey);
+    return { ok: true, save: r.save, gold: r.gold ?? 0 };
+  }
+  return { ok: false, blocked: 'game', reason: r.reason };
 }
 
 /** Open a pouch. An uncertified one opens as always; a certified one is burned on the server first. */
@@ -229,4 +251,27 @@ export async function openPouchAction(api: ItemApi, getSave: () => SaveData, id:
   // Offline (or uncertified), a certified pouch cannot be opened locally: applyOpenPouch refuses it without a burned certificate.
   const r = applyOpenPouch(getSave(), id, certId ?? undefined);
   return r.ok && r.save ? { ok: true, save: r.save, gold: r.gold ?? 0 } : { ok: false, blocked: 'game', reason: r.reason };
+}
+
+/**
+ * Discard part or all of a stack of Gold Pouches from the stack menu (the lost gap of the foundation round): the certificates of the pouches thrown away are burned on the server FIRST, so a
+ * pouch that no longer exists cannot keep a live certificate. Uncertified pouches go first, then the certified ones from the end of the list (the order opening uses). Unreachable = blocked, nothing
+ * is thrown away. The burn is idempotent, so a retry after a partial failure is safe.
+ */
+export async function discardPouchAction(api: ItemApi, getSave: () => SaveData, id: PouchId, qty: number | 'all'): Promise<ActionResult> {
+  const s0 = getSave();
+  if (!applyDiscard(s0, 'consumable', id, qty)) return { ok: false, blocked: 'game' };
+  const ids = isServerItemAuthority() ? certificatesToBurnOnDiscard(s0, id, qty) : [];
+  for (let i = 0; i < ids.length; i += 16) {
+    const chunk = ids.slice(i, i + 16);
+    const r = await ask(() => api.bind('burn', chunk, 'discard_pouch'));
+    if (r === 'unreachable') return unreachable();
+    if (r.ok) {
+      for (const c of r.certificates) patchCertificate(c.id, { status: c.status, bound: c.bound });
+    } else if (refusal(r) === 'listed') return { ok: false, blocked: 'listed' };
+    // 'not_found' / 'not_held' = the server does not hold it as a live certificate of this account: there is nothing left to protect
+  }
+  const now = getSave();
+  const next = applyDiscard(now, 'consumable', id, qty);
+  return next ? { ok: true, save: withoutPouchCertificates(next, id, ids) } : { ok: false, blocked: 'game' };
 }

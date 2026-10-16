@@ -22,7 +22,7 @@ import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, needsServerUniques, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { isServerItemAuthority } from './game/itemAuthority';
 import { fetchMyCertificates, itemApi, newRequestId } from './game/itemServer';
-import { ActionFail, changeAction, changeVoidsCertificate, createPouchAction, equipAction, forgeAction, openPouchAction, removeAction, resolveHuntUniques, settleBossClaim } from './game/itemActions';
+import { ActionFail, changeAction, changeVoidsCertificate, createPouchAction, discardPouchAction, equipAction, forgeAction, openPouchAction, removeAction, resolveHuntUniques, settleBossClaim } from './game/itemActions';
 import { clearCertificates, setCertificates } from './game/itemCerts';
 import { queueBossClaims } from './game/bossClaims';
 import ConfirmVoidModal from './components/ConfirmVoidModal';
@@ -65,7 +65,7 @@ import { addForced, canAddInstances, expandInventory, inventoryCapacity } from '
 import { StackKind, applyStashMove, applyStashUpgrade, applyStoreAll, bagCount, stashCount } from './game/stash';
 import { applyMerchantSell, SellKind } from './game/merchant';
 import { applyWholesaleBatch, WholesaleLine } from './game/wholesale';
-import { PouchId } from './game/goldPouch';
+import { PouchId, isPouchId } from './game/goldPouch';
 import { applyDiscard } from './game/bagActions';
 import { ItemUse } from './game/itemUses';
 import { RefiningStation, getRefiningRecipe as refiningRecipeById } from './game/refining';
@@ -1683,6 +1683,19 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         const next = applyDiscard(gate.save, 'instance', id);
         if (!next) return;
         setSaveBoth(next);
+        playSfx('click');
+      });
+      return;
+    }
+    // A stack of Gold Pouches: the certificates of the pouches thrown away are burned on the server first (itemActions.discardPouchAction).
+    if (isServerItemAuthority() && kind === 'consumable' && isPouchId(id)) {
+      void withItemLock(async () => {
+        const gate = await discardPouchAction(itemApi, () => saveRef.current, id, qty);
+        if (!gate.ok) {
+          if (gate.blocked !== 'game') failToast(gate);
+          return;
+        }
+        setSaveBoth(gate.save);
         playSfx('click');
       });
       return;
