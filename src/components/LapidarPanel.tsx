@@ -9,6 +9,7 @@ import { substatNameKey } from '../game/rarity';
 import T from '../game/tunables';
 import MaterialIcon from './MaterialIcon';
 import StashHint from './StashHint';
+import { Button } from './ui';
 import { fmtSubstat } from './substatText';
 
 const matText = (k: string): string => t(`materials.${k}`);
@@ -70,9 +71,9 @@ export default function LapidarPanel({ save, instanceId, onLapidar }: { save: Sa
           </span>
         ))}
       </div>
-      <button className="reforge-btn" onClick={() => chosen !== null && onLapidar(instanceId, chosen)} disabled={chosen === null || !canAffordLapidar(save, cost)} data-ui>
+      <Button block variant="primary" onClick={() => chosen !== null && onLapidar(instanceId, chosen)} disabled={chosen === null || !canAffordLapidar(save, cost)}>
         {t('inventory.lapidarBtn')}
-      </button>
+      </Button>
     </div>
   );
 }

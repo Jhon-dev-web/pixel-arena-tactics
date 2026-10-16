@@ -2,6 +2,7 @@ import { useContext } from 'react';
 import { fmtNum, t } from '../locales';
 import { StackKind, stashHintFor } from '../game/stash';
 import { BagContext } from './bagContext';
+import { Button } from './ui';
 
 // Recipes, orders and upgrades consume only from the inventory, never from the camp stash. So wherever a screen says "you lack X", this small hint says when
 // the Baú holds the missing units ("você tem 40 no Baú") and offers one click to bring them over, when there is room for them.
@@ -16,9 +17,9 @@ export default function StashHint({ kind, id, need }: { kind: StackKind; id: str
     <span className="stash-hint">
       {t('stash.hintHave', { n: fmtNum(hint.inStash) })}
       {hint.fits ? (
-        <button className="stash-hint-btn" onClick={() => ctx.move('take', kind, id, hint.bring)} data-ui>
+        <Button size="sm" className="stash-hint-btn" onClick={() => ctx.move('take', kind, id, hint.bring)}>
           {t('stash.bring', { n: fmtNum(hint.bring) })}
-        </button>
+        </Button>
       ) : (
         <span className="stash-hint-full">{t('stash.noRoomToBring')}</span>
       )}

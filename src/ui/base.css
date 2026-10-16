@@ -23,7 +23,6 @@ body {
 
 /* screen titles (the big gold one at the top of a screen) */
 .ui-pagehead-title,
-.mk-title,
 .result-title,
 .hm-hero-name,
 .pg-hero-name,
@@ -36,15 +35,11 @@ body {
   text-transform: uppercase;
 }
 /* panel / section / modal titles */
-.dh-card-title,
 .desktop-sidebar-brand,
 .ui-panel-title,
-.camp-title,
 .wave-title,
 .tutorial-card h2,
 .mk-h,
-.garden-picker-title,
-.unlock-title,
 .stat-breakdown-title,
 .ui-display {
   font-family: var(--font-display);

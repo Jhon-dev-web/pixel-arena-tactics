@@ -46,7 +46,7 @@
 .dm-slider {
   width: 100%;
   margin: 0 0 var(--sp-3);
-  min-height: 28px;
+  min-height: var(--tap);
   accent-color: var(--c-gold-300);
 }
 .dm-subtitle {

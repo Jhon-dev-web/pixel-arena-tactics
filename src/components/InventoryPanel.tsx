@@ -262,17 +262,12 @@ export default function InventoryPanel({
           {t('inventory.space', { n: slots, m: capacity })}
           {slots > capacity && ` · ${t('inventory.overCapacity')}`}
         </span>
-        <button
-          className="inventory-expand-btn"
-          onClick={() => setExpandOpen(true)}
-          aria-label={t('inventory.expandTitle')}
-          data-ui
-        >
+        <Button size="sm" className="inventory-expand-btn" onClick={() => setExpandOpen(true)} aria-label={t('inventory.expandTitle')}>
           +
-        </button>
-        <button className="inv-storeall" onClick={() => bag?.storeAllMaterials()} disabled={!materialItems.length} data-ui>
+        </Button>
+        <Button size="sm" className="inv-storeall" onClick={() => bag?.storeAllMaterials()} disabled={!materialItems.length}>
           {t('stash.storeAllMaterials')}
-        </button>
+        </Button>
       </div>
 
       {expandOpen && (
@@ -501,13 +496,13 @@ export default function InventoryPanel({
             )}
             {isEquippable &&
               (isEquipped ? (
-                <button className="craft-btn equipped" onClick={() => onUnequip(selected!.id)} data-ui>
+                <Button block onClick={() => onUnequip(selected!.id)}>
                   {t('inventory.unequip')}
-                </button>
+                </Button>
               ) : (
-                <button className="craft-btn" onClick={handleEquip} data-ui>
+                <Button block variant="primary" onClick={handleEquip}>
                   {t('inventory.equip')}
-                </button>
+                </Button>
               ))}
             {confirmEquip && (
               <Dialog
@@ -564,14 +559,9 @@ export default function InventoryPanel({
                         </span>
                       ))}
                     </div>
-                    <button
-                      className="reforge-btn"
-                      onClick={() => onReforge(selectedInstance.id)}
-                      disabled={!canAffordReforge(save, cost)}
-                      data-ui
-                    >
+                    <Button block variant="primary" onClick={() => onReforge(selectedInstance.id)} disabled={!canAffordReforge(save, cost)}>
                       {t('forge.reforge')}
-                    </button>
+                    </Button>
                   </div>
                 );
               })()}
@@ -602,9 +592,9 @@ export default function InventoryPanel({
                     </div>
                   )}
                   {salvageReason === 'bag' && <p className="salvage-hint bad">{t('inventory.salvageBagFull')}</p>}
-                  <button className={`salvage-btn${confirmSalvage ? ' confirm' : ''}`} onClick={handleSalvage} disabled={salvageReason === 'bag'} data-ui>
+                  <Button block variant={confirmSalvage ? 'primary' : 'secondary'} onClick={handleSalvage} disabled={salvageReason === 'bag'}>
                     {confirmSalvage ? t('inventory.confirmSalvage') : t('inventory.salvage')}
-                  </button>
+                  </Button>
                 </div>
               ))}
           </>
@@ -656,22 +646,22 @@ export default function InventoryPanel({
           <div className="inv-actions">
             <div className="inv-detail-desc">{t('pouch.worth', { g: fmtNum(pouchFace(selected.id)) })}</div>
             <div className="inv-detail-desc">{t('pouch.certifiedLine', { n: verifiedPouchCount(save, selected.id), m: Math.max(0, (save.consumables?.[selected.id] ?? 0) + (save.stash?.consumables?.[selected.id] ?? 0) - verifiedPouchCount(save, selected.id)) })}</div>
-            <PouchOpenButton id={selected.id} onOpen={(id) => bag?.openPouch(id)} className="inv-sell" />
+            <PouchOpenButton id={selected.id} onOpen={(id) => bag?.openPouch(id)} />
           </div>
         )}
 
         {selected?.kind === 'consumable' && MANUALLY_USABLE.has(selected.id) && selQty > 0 && (
           <div className="inv-actions">
-            <button
-              className="inv-sell"
+            <Button
+              block
+              variant="primary"
               onClick={() => {
                 onUseConsumable(selected.id);
                 setSelected(null);
               }}
-              data-ui
             >
               {t('inventory.use')}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -703,9 +693,9 @@ export default function InventoryPanel({
             {confirmDiscard && selectedInstance && selectedInstance.sockets.length > 0 && (
               <span className="salvage-hint">{t('inventory.gemsReturn', { n: selectedInstance.sockets.length })}</span>
             )}
-            <button className={`inv-discard${confirmDiscard ? ' confirm' : ''}`} onClick={handleDiscard} data-ui>
+            <Button block variant="danger" className={confirmDiscard ? 'armed' : undefined} onClick={handleDiscard}>
               {confirmDiscard ? t('inventory.confirm') : t('inventory.discard')}
-            </button>
+            </Button>
           </div>
         )}
       </div>

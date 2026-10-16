@@ -5,6 +5,7 @@ import { QTY_MODES, QtyMode, unitsFor } from '../game/qty';
 import { ItemUse, usesOf } from '../game/itemUses';
 import { merchantPrice, merchantQuote, merchantBudget, merchantRemaining } from '../game/merchant';
 import WholesaleLink from './WholesaleLink';
+import { Button, ChipRow } from './ui';
 import { StackKind, applyStashMove, bagCount, stashCount, stashFreeSlots } from '../game/stash';
 import { MaterialId } from '../game/materials';
 import { normalOf, tradeableOf } from '../game/tradeableMaterials';
@@ -64,34 +65,32 @@ export default function StackActions({
                   {t(`inventory.useIn_${u.kind}`)}
                 </span>
               ) : (
-                <button className="item-use" key={u.kind} onClick={() => onOpenUse(u)} data-ui>
+                <Button size="sm" className="item-use" key={u.kind} onClick={() => onOpenUse(u)}>
                   {t(`inventory.useIn_${u.kind}`, { n: u.refs.length })}
                   {u.kind === 'delivery' && u.refs[0] !== 'board' && ` · ${t('inventory.onBoard')}`}
-                </button>
+                </Button>
               ),
             )}
           </div>
         </div>
       )}
 
-      <div className="qty-picker" role="radiogroup" aria-label={t('inventory.qtyLabel')}>
-        {QTY_MODES.map((m) => (
-          <button key={String(m)} className={`qty-btn${mode === m ? ' active' : ''}`} onClick={() => setMode(m)} aria-pressed={mode === m} data-ui>
-            {modeLabel(m)}
-          </button>
-        ))}
+      <div className="qty-picker">
+        <ChipRow<string> label={t('inventory.qtyLabel')} items={QTY_MODES.map((m) => ({ id: String(m), label: modeLabel(m) }))} value={String(mode)} onChange={(id) => setMode(QTY_MODES.find((m) => String(m) === id) ?? mode)} />
         <span className="qty-units">{t('inventory.qtyUnits', { n: fmtNum(units) })}</span>
       </div>
 
       <div className="inv-actions-row">
         {!trade && (
-          <button className="inv-store" onClick={() => onStash(mode === 'all' ? 'all' : units)} disabled={units <= 0 || !stashRoom} data-ui>
+          <Button block onClick={() => onStash(mode === 'all' ? 'all' : units)} disabled={units <= 0 || !stashRoom}>
             {stashRoom ? t('stash.store', { n: fmtNum(units) }) : t('stash.full')}
-          </button>
+          </Button>
         )}
         {sellable && quote && (
-          <button
-            className={`inv-sell${armed === 'sell' ? ' confirm' : ''}`}
+          <Button
+            block
+            variant="primary"
+            className={armed === 'sell' ? 'armed' : undefined}
             onClick={() => {
               if (wholeType && armed !== 'sell') {
                 setArmed('sell');
@@ -101,13 +100,14 @@ export default function StackActions({
               onSell(mode === 'all' ? 'all' : units);
             }}
             disabled={quote.units <= 0}
-            data-ui
           >
             {armed === 'sell' ? t('merchant.confirmSellAll') : quote.units <= 0 ? t('merchant.noBudget') : t('merchant.sell', { n: fmtNum(quote.units), g: fmtNum(quote.gold) })}
-          </button>
+          </Button>
         )}
-        <button
-          className={`inv-discard${armed === 'discard' ? ' confirm' : ''}`}
+        <Button
+          block
+          variant="danger"
+          className={armed === 'discard' ? 'armed' : undefined}
           onClick={() => {
             if (armed !== 'discard') {
               setArmed('discard');
@@ -117,10 +117,9 @@ export default function StackActions({
             onDiscard(mode === 'all' ? 'all' : units);
           }}
           disabled={units <= 0}
-          data-ui
         >
           {armed === 'discard' ? t('inventory.confirmDiscardN', { n: fmtNum(units) }) : t('inventory.discardN', { n: fmtNum(units) })}
-        </button>
+        </Button>
       </div>
 
       {!stashRoom && !trade && kind === 'material' && <div className="merchant-line"><WholesaleLink hint /></div>}
@@ -145,18 +144,14 @@ export function StashTake({ save, kind, id, onTake }: { save: SaveData; kind: St
   const room = applyStashMove(save, 'take', kind, id, units).moved;
   return (
     <div className="stack-actions">
-      <div className="qty-picker" role="radiogroup" aria-label={t('inventory.qtyLabel')}>
-        {QTY_MODES.map((m) => (
-          <button key={String(m)} className={`qty-btn${mode === m ? ' active' : ''}`} onClick={() => setMode(m)} aria-pressed={mode === m} data-ui>
-            {modeLabel(m)}
-          </button>
-        ))}
+      <div className="qty-picker">
+        <ChipRow<string> label={t('inventory.qtyLabel')} items={QTY_MODES.map((m) => ({ id: String(m), label: modeLabel(m) }))} value={String(mode)} onChange={(id) => setMode(QTY_MODES.find((m) => String(m) === id) ?? mode)} />
         <span className="qty-units">{t('inventory.qtyUnits', { n: fmtNum(units) })}</span>
       </div>
       <div className="inv-actions-row">
-        <button className="inv-store" onClick={() => onTake(mode === 'all' ? 'all' : units)} disabled={units <= 0 || room <= 0} data-ui>
+        <Button block onClick={() => onTake(mode === 'all' ? 'all' : units)} disabled={units <= 0 || room <= 0}>
           {room <= 0 && units > 0 ? t('stash.bagFull') : room < units ? t('stash.takeSome', { n: fmtNum(room) }) : t('stash.take', { n: fmtNum(units) })}
-        </button>
+        </Button>
       </div>
     </div>
   );

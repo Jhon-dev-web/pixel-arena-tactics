@@ -293,6 +293,15 @@
   transform: translateY(2px);
   box-shadow: none;
 }
+.ui-btn.armed:not(:disabled) {
+  color: var(--c-text-on-gold);
+  background: linear-gradient(180deg, #ff8a70, #ff6a55);
+  border-color: #a03020;
+}
+.ui-btn.primary.armed:not(:disabled) {
+  background: linear-gradient(180deg, #ffb35a, #ff9a3c);
+  border-color: #a8761a;
+}
 .ui-btn:disabled {
   cursor: not-allowed;
   filter: grayscale(0.85) brightness(0.6);

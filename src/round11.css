@@ -1,14 +1,4 @@
-/* Round 11: welcome-back summary, Home next-step line, achievements / statistics / codex tabs, rarity reveal, settings sliders. Quiet, pixel-style, readable at 390x800. */
-
-/* ---- welcome back */
-
-/* ---- Home next-step line: a small label over the sentence, the button to its right */
-
-/* ---- achievements / statistics (QuestsModal) */
-/* desktop: the quest list is a grid of 320px columns (App.css); the summary and each group span it and lay their cards out the same way */
-
-/* ---- codex */
-/* a silhouette: the art flattened to a dark shape, never readable */
+/* The rarity reveal (a brief glow in the colour of the rarity) and the depths cards. */
 
 /* ---- rarity reveal: a brief glow once in the colour of the rarity (forge result, rare / unique lines of the hunt reward and the welcome-back summary).
    Under prefers-reduced-motion it is only the static coloured edge: nothing pulses. */
@@ -92,16 +82,4 @@
 .depths-card.locked {
   opacity: 0.8;
 }
-.paragon-tag {
-  margin-left: 6px;
-  font-size: var(--fs-small);
-  color: #c9a0ff;
-}
 
-/* ---- Round 12: profession unlock list (UnlockList.tsx) */
-
-/* Round 13: the bag pane of the inventory is ~210px wide on a desktop window, which broke "Poções" into "Poçõe / s": the tabs keep their words whole and wrap as a group instead */
-
-/* Round 13: weekly goals + login streak inside the quests screen (QuestsModal.tsx) */
-/* four tabs (Diárias, Semanais, Conquistas, Estatísticas) no longer fit one row of a phone: two by two */
-/* phone top bar: the routine "Salvo" / "Salvando" tag only crowds the hero's name and level; a save error or being offline still shows */

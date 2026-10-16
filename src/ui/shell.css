@@ -428,7 +428,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  min-height: 36px;
+  min-height: 40px;
   padding: var(--sp-1) var(--sp-3);
   font-family: inherit;
   font-size: var(--fs-body);

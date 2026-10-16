@@ -232,7 +232,7 @@
   color: var(--c-text-muted);
 }
 .stat-breakdown-close {
-  min-height: 34px;
+  min-height: var(--tap);
   margin-top: var(--sp-2);
   padding: var(--sp-1) var(--sp-3);
   font: inherit;
@@ -319,8 +319,8 @@
   color: var(--c-gold-300);
 }
 .pg-step {
-  width: 38px;
-  height: 38px;
+  width: var(--tap);
+  height: var(--tap);
   font-family: inherit;
   font-size: var(--fs-body);
   line-height: 1;
@@ -651,8 +651,8 @@
   top: 0;
   align-self: flex-end;
   z-index: 1;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   margin: -6px -6px 0 0;
   font: inherit;
   color: var(--c-gold-200);
@@ -791,73 +791,6 @@
 }
 
 /* the buttons inside the detail wear the two shared looks */
-.inv-detail .craft-btn,
-.inv-sell,
-.inv-detail .reforge-btn,
-.inv-detail .salvage-btn,
-.inv-store,
-.inv-discard {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: stretch;
-  gap: var(--sp-2);
-  width: 100%;
-  min-height: 40px;
-  margin-top: 0;
-  padding: var(--sp-1) var(--sp-3);
-  font-family: inherit;
-  font-size: var(--fs-body);
-  font-weight: 400;
-  line-height: 1.2;
-  text-transform: none;
-  white-space: normal;
-  text-align: center;
-  border-radius: var(--r-md);
-  border: var(--bw) solid var(--c-gold-line-strong);
-  cursor: pointer;
-}
-.inv-detail .craft-btn,
-.inv-sell {
-  color: var(--c-text-on-gold);
-  background: linear-gradient(180deg, var(--c-gold-300), var(--c-gold-500));
-  border-color: var(--c-gold-700);
-  box-shadow: var(--sh-btn);
-}
-.inv-detail .craft-btn.equipped,
-.inv-detail .reforge-btn,
-.inv-detail .salvage-btn,
-.inv-store {
-  color: var(--c-gold-300);
-  background: linear-gradient(180deg, #33250f, var(--c-gold-fill));
-  border-color: var(--c-gold-line-strong);
-  box-shadow: var(--sh-btn-dark);
-}
-.inv-discard {
-  color: var(--c-bad);
-  background: linear-gradient(180deg, #2f1416, #1d0d10);
-  border-color: #a8362f;
-  box-shadow: var(--sh-btn-dark);
-}
-.inv-discard.confirm,
-.inv-detail .salvage-btn.confirm {
-  color: var(--c-text-on-gold);
-  background: #ff6a55;
-  border-color: #a03020;
-}
-.inv-sell.confirm {
-  background: #ff9a3c;
-}
-.inv-detail .craft-btn:disabled,
-.inv-sell:disabled,
-.inv-detail .reforge-btn:disabled,
-.inv-detail .salvage-btn:disabled,
-.inv-store:disabled,
-.inv-discard:disabled {
-  opacity: 1;
-  filter: grayscale(0.85) brightness(0.6);
-  cursor: not-allowed;
-}
 .inv-actions {
   display: flex;
   flex-direction: column;
@@ -882,22 +815,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--sp-1);
-}
-.qty-btn {
-  min-height: 34px;
-  padding: 0 var(--sp-3);
-  font: inherit;
-  font-size: var(--fs-body);
-  color: var(--c-text-dim);
-  background: var(--c-inset);
-  border: var(--bw) solid var(--c-line-strong);
-  border-radius: var(--r-sm);
-  cursor: pointer;
-}
-.qty-btn.active {
-  color: var(--c-text-on-gold);
-  background: linear-gradient(180deg, var(--c-gold-300), var(--c-gold-500));
-  border-color: var(--c-gold-700);
 }
 .item-use {
   min-height: 32px;
