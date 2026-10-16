@@ -2642,3 +2642,176 @@ Mistura 80% A, 15% P, 5% especialistas; unidades negociáveis esperadas **no tot
 O dono aprovou reduzir as chances de 3% / 5% / 8% para **1% / 2% / 3%** (comum / incomum / raro; o Tutano Abissal segue na classe rara). A oferta de unidades negociáveis cai para cerca de um terço dos números da Rodada 23 (jogador comum ~740 unidades em 60 dias, dono do Passe ~1 540; ~0,9 milhão de unidades com 1 000 jogadores, estimativa proporcional, não re-simulada). O teto diário anti-robô deriva da chance (`materials/bounds.ts`) e acompanha a redução sem outra mudança.
 
 O dono renomeou a moeda rara de Runas para **Éter** (pt) / **Aether** (en); só o texto visível mudou, o campo do save e os identificadores continuam `shards`. As Rodadas acima mantêm o nome da época.
+
+
+## Rodada 24 — o que cada raridade vale e o que o forjado entrega (2026-10-16)
+
+Pedido do dono: conferir o balanceamento; dar valor à venda de itens (quem compra tem que achar que vale a pena); e, ao craftar equipamento, os status têm que funcionar bem. Regras que continuam: quem compra sai na frente; peça comprada vale na hora; só dono do Passe disputa a Liga em dinheiro; o XP do herói só vem da Caça; ninguém chega ao nível 100 em 60 dias; a escala de tipografia de 4 tamanhos fica.
+
+### 1. Os status do que se forja (commits `fix:` x2 e `test: every crafted stat reaches the fight`)
+
+`src/game/__tests__/craftedStatsAudit.test.ts` (461 testes, 2,4 s) é um gerador: para as **53 receitas forjáveis** (7 armaduras, 13 armas em duas linhas, 6 elmos, 6 luvas, 6 botas, 6 anéis, 6 escudos, 3 relíquias) em **4 raridades** e **refino +0 / +4 / +8 / +12** (800 combinações de peças instanciadas), ele recalcula, a partir do dado da própria peça e das regras do documento "Como os status somam", o que a peça tem que somar ao herói, e compara com o motor, com o painel do herói e com a Caça:
+
+| Conferência | Resultado |
+| --- | --- |
+| `buildCombatStats` contra a regra (dano, crítico, dano crítico, defesa, PV, reflexo, queimadura, regeneração, velocidade, roubo de vida, Ouro, XP), nenhum outro status se mexe | **0 divergências** em 800 + 3 combinações |
+| Escada do painel (`statBreakdown`): a linha do encaixe é o que a peça soma e as linhas somam o total | 0 divergências (também com 3 gemas de cada tipo nos soquetes do tier, e com os 14 únicos) |
+| Durabilidade 100 / 50 / 29 / 0 em toda peça: x1, x0,75 (abaixo de 30), x0,4 (zero) em dano, PV, crítico, defesa, dano crítico e reflexo; **não** mexe em substats, conjuntos e gemas | confere, e nunca vira penalidade |
+| Substats: cada tipo, em cada raridade e tier, soma seu valor ao status que nomeia; a peça nasce com `substatCount` substats distintos dentro da faixa do tier (x o multiplicador da raridade); bônus de Ouro respeita o teto 25% | confere |
+| Conjuntos: as 7 famílias, peça a peça, somam exatamente o que `SET_DEFS` diz (motor e linha "Conjunto" do painel) | confere |
+| A Caça vê o que a Masmorra vê (`buildHuntSimSetup` contra `buildCombatStats`) | confere |
+| Cada status declarado ajuda na luta: margem do duelo fechado sobe com a peça e **cai** quando o status volta ao valor da casa vazia (queimadura, reflexo, regeneração, crítico, dano crítico, PV, defesa, velocidade, roubo de vida), e a Masmorra de verdade (uma andar, dados fixos) não demora mais nem custa mais PV com a peça | confere |
+| Prévia da forja e cartões: toda linha mostrada muda algo no motor, todo status que muda aparece numa linha (a prévia da forja confere); o número do cartão de uma peça que o jogador tem é o que o motor soma | **1 achado, corrigido** (cartões sem a raridade, abaixo) |
+| Tier N+1 nunca é pior que o tier N na mesma linha (cada status declarado, nível exigido pela cadeia, preço, CP em +0 e +8; queimadura e reflexo nunca somem) | confere nas 8 linhas (espada, machado, armadura, elmo, luvas, botas, anel, escudo) |
+| Nenhuma peça declara um status que o encaixe dela não lê (arma: dano, crítico, queimadura; armadura: PV, defesa, reflexo; os cinco encaixes extras e a relíquia têm a lista própria) | confere |
+
+**Bugs achados e corrigidos**
+
+1. **Chance de crítico passava de 100% e a sessão de Caça perdia o teto do Passe** (`fix: crit chance is capped at 100% so the Hunting session keeps its Pass cap`). `buildCombatStats` somava crítico de arma, substats, refino, anel, luvas, relíquia e habilidades sem teto; `sanitizeHuntSession` só aceita `critChance` entre 0 e 1 e **descartava a sessão congelada** a cada carga do save, reconstruindo-a "de forma conservadora" a partir do herói vivo, **sem o teto de 10 h do Passe** (a sessão do dono passava a contar 6 h) e sem as janelas de elixir. Achado de verdade: com a raridade nova, o dono comprador perdia ~170 das 580 horas de Caça dos dias 31 a 60 (nível 90,7 em vez de 94,2). Hoje só um herói com crítico em todas as peças chega lá (7 peças T6 Lendárias com a substat de crítico no máximo passam de 100%), mas com o Lendário mais forte seria comum. Corrigido no motor (`Math.min(1, ...)`); a escada do painel continua somando por construção.
+2. **Os cartões não mostravam a raridade** (`fix: item cards show the rarity multiplier the fight uses`). O painel de equipamento, o detalhe do inventário e a lista de refino da forja mostravam base x refino; a luta usava x1,18 (hoje x1,4) em dano, PV, defesa e dano crítico. Um Lendário lia igual a um Comum. `gearStatLines(item, nível, raridade)` agora multiplica. Não olhei o resultado no navegador (só o texto gerado, por teste).
+
+**Observações que não são bugs e ficam como estão** (documentadas no teste):
+
+- A raridade multiplica dano, PV, defesa e dano crítico; **não** multiplica a chance de crítico nem o reflexo. Um anel ou uma arma Lendários ganham pelo dano e pelo dano crítico, não pela chance.
+- O refino arredonda o dano/PV base para inteiro antes de multiplicar a raridade: a Luva de Couro (dano 4) em +1 fica com 4 (4 x 1,1 = 4,4), só o +2 sobe; e um x1,02 sobre uma bota de 17 PV (17,3) volta ao mesmo inteiro no total de PV. O teste só exige alta estrita quando a regra diz que o número muda em uma unidade inteira.
+
+### 2. Por que a raridade não mexia no nível (a medição)
+
+Antes de mexer em número eu joguei os compradores do jeito da revisão da Rodada 22 (o guloso: só caça onde está o XP), 6 seeds, 60 dias, jogo como estava:
+
+| Dia 60, mediana | Épico T4+ (PBEG) | Lendário T4+ (PBG) | Lendário +8 (PBRG) |
+| --- | --: | --: | --: |
+| nível | 95,0 | 95,3 | 95,8 (máx. 96,2) |
+
+**Lendário e Épico terminavam a Liga no mesmo nível (+0,3).** O motivo é estrutural: o XP da Caça só conta tempo de luta ganha, então um herói mais forte não caça mais depressa; a força só vira nível por dois portões de CP (a profundidade e os sub-níveis da última zona). Com +2% de XP por sub-nível e portão x1,18, **qualquer conjunto T5/T6 comum já abre o sub-nível 10 por volta do dia 45**, e a diferença entre Épico e Lendário (34% contra 62% de CP) some no teto. Mexer só nos multiplicadores de raridade não resolve (tentei Épico 1,10 e Lendário 1,35/substats x1,5: +0,4 nível).
+
+### 3. Os números novos
+
+**Raridade** (`src/game/rarity.ts`, `RARITIES`; o servidor de itens rola com o mesmo `substatMult`, gerado em `supabase/functions/_shared/items/tables.ts`):
+
+| Raridade | Chance | Substats | `statMult` antes → depois | `substatMult` antes → depois |
+| --- | --: | --: | --- | --- |
+| Comum | 63% | 0 | 1 | 1 |
+| Rara | 25% | 1 | 1,02 | 1 |
+| Épica | 10% | 2 | 1,06 → **1,04** | 1 |
+| Lendária | 2% | 3 | 1,18 → **1,40** | 1 → **1,7** |
+
+`statMult` multiplica dano, PV, defesa e dano crítico da peça; `substatMult` multiplica cada substat sorteado (uma vez, guardado com uma casa decimal: o cartão mostra o que a luta usa; os mesmos sorteios, então nenhuma semente anda). A reforja, o lapidar e os únicos rolam com a raridade da própria peça. As chances da forja (63 / 25 / 10 / 2) não mudaram.
+
+**Poder de um conjunto de 7 peças** (`npm run sim:rarity`; substats medianos; "x Comum" = CP do conjunto / CP do conjunto Comum do mesmo tier e refino) e o sub-nível do Abismo Profundo que o CP abre com o portão novo:
+
+| Conjunto | Comum | Rara | Épica | Lendária |
+| --- | --- | --- | --- | --- |
+| T4 +8 | 2 941 [2] | 3 453 (x1,17) [3] | 3 799 (x1,29) [3] | **6 308 (x2,14)** [5] |
+| T5 +8 | 5 330 [5] | 6 332 (x1,19) [5] | 7 005 (x1,31) [6] | **11 444 (x2,15)** [8] |
+| T5 +12 | 6 006 [5] | 7 083 (x1,18) [6] | 7 798 (x1,30) [6] | **12 673 (x2,11)** [9] |
+| T6 +8 | 8 265 [7] | 9 590 (x1,16) [7] | 10 608 (x1,28) [8] | **17 428 (x2,11)** [10] |
+| T6 +12 | 9 319 [7] | 10 670 (x1,15) [8] | 11 744 (x1,26) [8] | **19 327 (x2,07)** [10] |
+
+Antes da rodada a coluna era Comum 1 / Rara 1,19 / Épica 1,34 / Lendária 1,62 (T6 +8: x1,16 / x1,31 / x1,61). A Épica **perde** 2 a 3 pontos de CP de conjunto (1,31 → 1,29 em T6 +8 e T4 +8) e a Lendária **ganha** 0,5 (1,62 → 2,1): o degrau Épica → Lendária passa de x1,2 para x1,6. Só com uma peça (arma + armadura, `npm run sim:items`, seção B do `ITEM_BALANCE_AUDIT.md`) a mediana é Rara +4 a +5%, Épica +7 a +10%, Lendária **+38 a +53%** (era +21 a +26%).
+
+**Zona 4, o Abismo** (`src/game/huntingZones.ts`): XP base 10 000 → **8 750** por hora, **+4,5% de XP por sub-nível** (era 2%), portão de CP **x1,25 por sub-nível** (era x1,18). Um herói no sub-nível 8 ganha o que ganhava (11,5 mil por hora); o 10 paga 12,3 mil (era 11,8), o 5 paga 10,3 mil (era 10,8). CP exigido por sub-nível (arredondado):
+
+| Sub-nível | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+| --- | --: | --: | --: | --: | --: | --: | --: | --: | --: |
+| Raso, antes → depois | 1 896 → 2 009 | 2 238 → 2 511 | 2 640 → 3 139 | 3 116 → 3 923 | 3 676 → 4 904 | 4 338 → 6 130 | 5 119 → 7 663 | 6 040 → 9 578 | 7 128 → 11 973 |
+| Denso | 2 310 | 2 888 | 3 609 | 4 512 | 5 640 | 7 050 | 8 812 | 11 015 | 13 769 |
+| **Profundo** | 2 611 | 3 264 | 4 080 | 5 100 | 6 375 | 7 969 | 9 961 | 12 451 | **15 564** (era 9 266) |
+
+O sub-nível 10 no Profundo agora só abre com um conjunto **Lendário de tier 6** (17 a 19 mil de CP); um Comum para no 7, um Épico no 8.
+
+**Como cheguei nesses números** (cada linha é uma rodada de simulação, 6 seeds; as marcadas † com 3 seeds; dia 60, política gulosa de cada comprador):
+
+| Tentativa | Mudança | Lendário − Épico | Lendário +8 (máx.) | Dono guloso sem compra (PG) |
+| --- | --- | --: | --: | --: |
+| jogo antes da rodada | — | +0,3 | 96,2 | 89,0 |
+| só raridade | Épica 1,10; Lendária 1,35, substats x1,5 | +0,5 | — | 90,0 |
+| e2 | + zona 4: 4%/sub-nível, x1,25, base 8 800 | +1,2 | 96,1 | 87,9 |
+| e3 † | Épica 1,08; 5%/sub-nível, x1,30, base 8 600 | +1,7 | — | 85,8 |
+| e4 † | Épica 1,08; 5%/sub-nível, x1,25, base 8 600 | +1,6 | — | 86,2 |
+| f1 | Épica 1,06 (subs x0,9); Lendária 1,40, subs x1,7; 4%, x1,25, base 8 900 | +1,6 | 96,4 | 87,9 |
+| g1 | Épica 1,05 (subs x0,85); idem; 4,5%, x1,25, base 8 750 | +2,2 | 96,8 | 88,2 |
+| **final** | Épica 1,04 (subs x1); idem; 4,5%, x1,25, base 8 750 | **+2,1** | **96,7** | 87,3 |
+
+O Épica com substats x0,85 (g1) rolava substats mais fracos que a Rara; voltei para x1 e baixei só o `statMult` (1,04): mesmo CP de conjunto, regra mais simples de explicar ("só a Lendária rola substats mais fortes").
+
+### 4. A tabela do comprador (mesmas 6 seeds, dia 60; posição = nível + fração; mediana (mín-máx))
+
+Políticas do dono do Passe, jogo antes da rodada → depois. As quatro de cima são as pedidas (a, b, c, d); as de baixo são as do método da Rodada 22 (o dono comum, o esperto e o comprador "esperto", que ainda minera e forja o que falta).
+
+| Quem | Antes | Depois | O que é |
+| --- | --: | --: | --- |
+| (a) PG, dono guloso que forja o próprio equipamento, sem comprar | 89,0 (87,5-90,3) | **87,3** (86,9-90,4) | referência do dono "esperto sem compra" |
+| (b) PBEG, compra o conjunto T4+ **Épico** | 95,0 (94,5-95,8) | **93,6** (93,0-94,8) | guloso |
+| (c) PBG, compra o conjunto T4+ **Lendário** | 95,3 (95,0-96,2) | **95,4** (95,1-96,2) | guloso |
+| (d) PBRG, compra o T4+ **Lendário já refinado a +8** (simulado: o refino no servidor ainda não existe) | 95,8 (94,6-96,1) | **96,3** (95,8-96,7) | guloso |
+| P, dono comum | 82,7 (79,2-84,4) | 80,1 (79,1-83,9) | |
+| PS, esperto (minera, forja) | 84,9 (82,1-86,1) | 82,7 (80,3-85,8) | |
+| PBE / PB, comprador esperto Épico / Lendário | 93,5 / 93,5 | 92,5 / 93,6 | método da Rodada 22 |
+
+Diferença na mesma seed (mediana), dia 14 / 30 / 45 / 60:
+
+| Par | Dia 14 | Dia 30 | Dia 45 | Dia 60 |
+| --- | --: | --: | --: | --: |
+| Lendário − Épico (PBG − PBEG) | 0,0 | 0,9 | 1,6 | **2,1** |
+| Épico − não comprador (PBEG − PG) | 5,6 | 7,3 | 7,0 | 6,0 |
+| Lendário − não comprador (PBG − PG) | 5,6 | 8,4 | 8,8 | 8,3 |
+| Lendário +8 − Lendário (PBRG − PBG) | 0,3 | 1,1 | 1,0 | 0,8 |
+
+Metas do diretor: **Lendário na frente do Épico na frente de quem não compra: sim. Lendário ≥ +2 sobre o Épico: sim, +2,1 no dia 60 (e ainda subindo, cerca de 0,03 por dia: +1,6 no dia 45). O mais rápido de todos termina em 96,7 (≤ 97) e ninguém chega ao 100. Mediana do dono do Passe em 85 a 90: não, ficou em 82,7 (P 80,1, PS 82,7, PG 87,3); era 84,9.** O dono que não compra perdeu 1,7 a 2,6 níveis: os portões de CP x1,25 o põem em sub-níveis mais baixos (PG: 5 no dia 60, era 8) e o bônus por sub-nível menor-que-o-do-topo não cobre. Subir tudo 1,4 nível (base de XP da zona 4 em 9 200; **estimativa, não rodei**) levaria P/PS/PG para ~81,5 / 84 / 88,7 e o Lendário +8 para ~97,7, acima do teto de 97; os dois alvos (mediana ≥ 85 e teto 97) não cabem juntos com um Lendário +2 sobre o Épico, e escolhi o teto. É a decisão que mais pede o dono (item 7).
+
+Por política (dia 30 / 45 / 60) e sub-nível médio da zona 4:
+
+| Política | Nível d30 | d45 | d60 | Sub-nível d30 / d45 / d60 | XP por dia, d31-60 |
+| --- | --: | --: | --: | --- | --: |
+| P | 63,0 | 72,6 | 80,1 | 2 / 5,5 / 7 | 185 mil |
+| PS | 63,0 | 74,0 | 82,7 | 2 / 5 / 7,5 | 217 mil |
+| PG | 63,9 | 76,5 | 87,3 | 2 / 4,5 / 5 | 281 mil |
+| PBEG | 71,2 | 83,7 | 93,6 | 5,5 / 6,5 / 8 | 310 mil |
+| PBG | 72,1 | 85,3 | 95,4 | 8 / 9 / 9,5 | 340 mil |
+| PBRG | 73,3 | 86,5 | 96,3 | 9,5 / 10 / 10 | 346 mil |
+
+### 5. Guarda dos dias 1 a 21
+
+`npm run sim` (cenário A, jogador comum sem Passe, 20 seeds, 21 dias, com únicos), jogo da Rodada 22 → depois desta rodada. A raridade só chega a esse jogador pelo que ele forja (63 / 25 / 10 / 2%), e a zona 4 só abre depois do dia 21 para ele.
+
+| Meta | Antes | Depois | Mudou? |
+| --- | --- | --- | --- |
+| T2 primeira sessão termina no andar >= 8; checkpoint 10 até o dia 2 | 8; dia 2 | **8; dia 2** | igual |
+| T3 primeira peça forjada (dia <= 2) | 2 | **2** | igual |
+| T4 nível no fim do dia 2 / 3 / 14 (faixas 20-28 / 20-29 / 45-60) | 24 / 24 / 47 | **24 / 24 / 47 (45-48)** | igual |
+| T5 chefe 25 vencido (dia 4-6) | dia 5 | **dia 5** | igual |
+| T6 chegada ao andar 50 (nenhuma seed antes do dia 10) | primeira seed dia 10, mediana 14 | **primeira seed dia 10, mediana 13,5** | mantida |
+| T6 chefe 50 (faixa 12-16) | primeira seed dia 11, mediana 14, 20/20 em 21 dias | primeira seed **dia 10**, mediana **15**, 20/20 em 21 dias | **fora da faixa como já estava** (por 1 dia; agora por 2 na primeira seed). Uma Lendária de sorte (2% por forja) leva um comum ao chefe 50 um dia antes |
+| T7 menor razão depois de um chefe | 1,08 | 1,08 | igual |
+| T8 derrota mantém 75% do ouro | 75% | 75% | igual |
+| I1 a I4 (inventário) | ok | ok (I1 dia 6, I4 +0% / +20% / +25,7%) | iguais |
+| nível no dia 21 | 49 (48-50) | **49 (48-51)** | igual |
+| andar mais alto no dia 21 | 60 (59-73) | 60 (59-76) | igual |
+
+As três metas que o diretor mandou guardar (primeira sessão no andar >= 8, primeira peça até o dia 2, chefe 25 entre os dias 4 e 6) valem: **8, dia 2, dia 5**.
+
+### 6. Limites do servidor (`supabase/functions/_shared/progress/bounds.ts`, `npm run season:bounds`, `npm run season:tables`, `npm run item:tables`)
+
+| Número | Antes | Depois |
+| --- | --- | --- |
+| `xpPerHour` (teórico; recalculado por `season:bounds`) | 25 000 (recalculado 21 476) | 25 000 (recalculado **22 375**) |
+| `huntXpFactor` (1,3 x 1,17 x 1,25 x o melhor sub-nível) | 2,244 | **2,671** (1,3 x 1,17 x 1,25 x 1,405) |
+| XP por hora da zona 4 no servidor (`ZONE_TABLE`) | 10 000, 0,02 | **8 750, 0,045** (gerada) |
+| `levelPace` (nível, dia) | 51:12 60:19 68:26 75:34 79:38 88:50 92:56 100:72 200:272 | **51:11 60:18 68:25 75:32 79:36 88:47 92:53 100:68 200:268** |
+| `floorPace` (andar, dia) | 50:9 75:11 90:26 100:39 | **50:8 75:9 90:10 100:11** |
+| `floorCapByLevel` | 44:56 50:100 | 44:56 **46:85 48:100** |
+| Tabela de itens do servidor (`RARITY_TABLE`) | chance, substats | + **`substatMult`** (o servidor rola os substats com ele) |
+| Limites de cunhagem (Épicas/Lendárias por dia, únicos, Bolsas) | — | **sem mudança**: dependem das chances de forja e das horas por peça, que não mudaram |
+
+A `levelPace` nova não é "o Lendário ficou mais rápido": é a seed mais rápida de **qualquer** política do dono, e a rodada incluiu pela primeira vez os compradores gulosos (no jogo de antes eles já faziam 88 no dia 47 e 92 no dia 53; a tabela da Rodada 22 vinha dos compradores "espertos"). A `floorPace` e o `floorCapByLevel` sim vêm da raridade: um conjunto T4 Lendário (x2,1) limpa o andar 100 no **dia 10** (antes 39; os compradores gulosos, no jogo de antes, 20); a Masmorra não paga XP e não entra no ranking, então o efeito é só a tabela da checagem de plausibilidade. O `floorCapByLevel` ganhou um ponto: a seed Lendária estava no andar 82 com nível 47.
+
+### 7. O que não foi verificado e o que o dono pode contestar
+
+- **Mediana do dono do Passe (item 4):** 82,7 contra a meta de 85 a 90. O dono comum (P) perde 2,6 níveis. Alternativas, **estimadas e não rodadas**: base de XP da zona 4 em 9 200 (dono +1,4, Lendário +8 em ~97,7: passa do teto); portão x1,22 (dono +0,8, Lendário − Épico cai para ~1,4). Medi de verdade só f1 (4%/sub-nível, base 8 900: P 81,4, PS 82,9, PG 87,9, mas Lendário − Épico +1,6).
+- **Profundezas (depois do andar 100) não foram retunadas.** Um herói T6 +8 Lendário agora limpa a profundidade 51 sem paragon e 55 com algum (era 41 a 48); a profundidade 50 deixou de ser uma meta do paragon e passou a ser do conjunto Lendário (comum e épico continuam abaixo de 50 em qualquer paragon). Se o dono quiser os muros de volta, é `T.depths.hpGrowth` / `dmgGrowth` (e as faixas de `round14.test.ts`).
+- **Lendário e Dungeon:** o conjunto Lendário T4 passa o andar 100 no dia 10; chefes e relíquias de chefe chegam cedo para o comprador. Os limites diários de cunhagem (15 mortes de chefe, 2 únicos) seguram o excesso; a economia de itens não foi remedida.
+- **Refino de comprador (d):** simulado como a peça nascendo +8; o refino no servidor ainda não existe, e o comprador "gulosamente" nunca minera, o que um jogador real pode não fazer. O guloso-comprador é o limite superior (o esperto da Rodada 22 fica em 92,5 e 93,6).
+- **Faixas de preço** (ECONOMY_AUDIT, seção 23) são estimativas: o mercado de jogadores ainda não tem preço.
+- **O Épico perdeu 2 a 3 pontos de CP de conjunto** (1,31 → 1,29 em T6 +8 e T4 +8): é o preço do degrau Lendário. A Épica continua 10% acima da Rara e 28 a 29% acima da Comum.
+- Nenhum clique no navegador; a tela de cartões foi checada só pelo texto gerado e pelos testes.

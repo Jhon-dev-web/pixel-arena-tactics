@@ -5,6 +5,8 @@
 
 # Auditoria econômica e sinks — Arena Idle
 
+> **Nota de 16/10/2026 — valor dos itens (Rodada 24).** A raridade mudou (Épica x1,04, Lendária x1,40 com substats x1,7; as seções 11 e 21 descrevem o jogo de antes) e o conjunto Lendário passou a valer 2,1 vezes o CP do Comum. A **seção 23** (nova) estima as faixas de preço por raridade e tier; são **estimativas**, o mercado de jogadores ainda não tem preço.
+>
 > **Nota de 16/10/2026 — Ouro, Bolsas e únicos (Rodada 22).** O Ouro tinha pouco uso no fim da Liga (o dono chegava ao dia 60 com 25 a 40 mil na mão e nada para comprar) e as Bolsas de 50 000 e 100 000 eram inalcançáveis. Agora: Bolsas **2 000 / 5 000 / 20 000** (a taxa de 10% / 5% não mudou), Elixir do Conhecimento **77 / 135 / 192 / 250** de Ouro (era 20 / 35 / 50 / 65: um dono que o mantém ligado gasta 9 000 a 14 250 de Ouro por temporada, antes ~2 700), chances de único da Caça cortadas (zona 4: 0,000008) e os limites de cunhagem do servidor em 15 mortes de chefe, 2 únicos e 3 000 de Ouro em Bolsas por dia. As medições estão em `BALANCE_CHANGES.md`, Rodada 22. As tabelas abaixo que usam as Bolsas de 10 000 a 100 000 ou o custo antigo do Elixir são as das rodadas em que foram medidas.
 
 > **Nota de 15/10/2026 — percepção do Passe (Rodada 19).** A base de armazenamento sobe para **6 h para todos** (as zonas de caça de 4 h e 5 h e a Mineração e o Lenhador, que eram 4 h, passam a 6 h) e o Passe sobe de 8 h para **10 h**. A Bolsa de Ouro abre para todos (10% de taxa; o Passe paga 5%) e deixa de ser vantagem de quem tem o Passe. O Emblema do Aventureiro perde o bônus de XP. A peça feita com o Selo do Ferreiro nasce vinculada. As medições estão em `BALANCE_CHANGES.md`, Rodada 19. As tabelas abaixo que usam 4 h, 8 h ou 24 h continuam sendo as das rodadas em que foram medidas.
@@ -673,3 +675,57 @@ Fontes de Ouro que **entram**: caça, pedidos, masmorra, mercador comum (orçame
 | Bolsa de Ouro, abrir | neutro | devolve exatamente o valor de face; não conta em "Ouro ganho" | - |
 
 Pontos que importam à economia: (1) o atacadista **não** é arbitragem: o preço é a fração de um preço que já é 15% do valor de referência, e a curva derruba mais ainda o excesso de um material só; vender um material ao atacadista e comprá-lo de volta não é possível (a loja não vende material); (2) a Bolsa **não** cria Ouro e a taxa é um sumidouro puro, o que a torna o único canal de Ouro entre jogadores que perde Ouro por troca, de propósito; (3) o Ouro dentro das Bolsas sai da circulação do jogador até que alguém as abra (o jogo continua contando o patrimônio na estatística). O mercado de jogadores ainda não existe, então hoje a Bolsa é só armazenamento com taxa; quando o mercado abrir, o preço de uma Bolsa é livre (pode valer mais ou menos que o valor de face, a decisão é do mercado).
+
+## 23. Valor dos itens por raridade e tier depois da Rodada 24 (estimativas, 2026-10-16)
+
+**Isto é uma estimativa.** O jogo não vende equipamento a ninguém e o mercado de jogadores ainda não tem lista de preços; a tabela abaixo é o que o custo de fazer a peça e o poder dela sugerem, na moeda de referência da auditoria (Ouro de referência de `economy.ts`; `npm run sim:prices`, `scripts/sim/itemPrices.sim.ts`). Quando o mercado abrir, o preço é livre e pode ficar fora das faixas. As seções 11 e 21 acima descrevem as raridades de antes (Épica x1,05, Lendária x1,15, depois x1,06 e x1,18): os valores de hoje são os da Rodada 24 (`docs/BALANCE_CHANGES.md`): Rara x1,02, Épica x1,04, Lendária x1,40 com substats x1,7.
+
+Como se chega a cada coluna:
+
+- **Custo de uma forja do tier**: Ouro + materiais a `baseGoldValue` + Éter e gemas a 2 cada, média dos 7 encaixes, só da receita do tier (a peça do tier de baixo que ela consome foi paga no tier dela).
+- **Vale para o comprador**: um tier é um degrau de CP (o conjunto Comum +8 do tier contra o do tier de baixo) que custa "custo de uma forja" por peça para subir; uma raridade que acrescenta a fração f desse degrau vale `custo x (1 + f)`. É o preço em que comprar a peça é igual a construir o mesmo poder sozinho.
+- **Faixa plausível**: do valor até valor x o prêmio de escassez (Rara 1,2, Épica 1,35, Lendária 1,8: quanto menos peças à venda, mais perto do limite do comprador o vendedor chega).
+- **Piso se forjada para vender**: custo x peças forjadas por uma (4, 10, 50), contando as que falham como desmanchadas (45% dos materiais de volta). Quase todas ficam acima da faixa: ninguém forja para vender uma Épica ou Lendária do tier 4 em diante; o mercado vive do subproduto de quem forja o próprio conjunto (cada forja tem 2% de chance de sair Lendária).
+
+| Tier | Custo de uma forja | Horas de Caça de uma peça | CP do conjunto Comum +8 | Degrau do tier de baixo |
+| --- | --: | --: | --: | --: |
+| T1 | 147 | 0,34 | 457 | +396 |
+| T2 | 198 | 0,60 | 1 059 | +602 |
+| T3 | 905 | 1,48 | 2 242 | +1 183 |
+| T4 | 1 212 | 1,96 | 2 941 | +699 |
+| T5 | 5 469 | 4,74 | 5 330 | +2 389 |
+| T6 | 3 624 | 1,42 | 8 265 | +2 935 |
+
+| Peça | Chance | Forjas para uma | CP do conjunto contra o Comum +8 | Vale para o comprador | Faixa plausível (estimativa) | Piso se forjada para vender |
+| --- | --: | --: | --: | --: | --: | --: |
+| T1 Comum | 63% | 1,6 | 1,00 | 147 | 147 | 203 |
+| T1 Rara | 25% | 4 | 1,13 | 169 | 169 - 203 | 430 |
+| T1 Épica | 10% | 10 | 1,20 | 181 | 181 - 244 | 995 |
+| T1 Lendária | 2% | 50 | 1,86 | 294 | 294 - 529 | 4 764 |
+| T2 Comum | 63% | 1,6 | 1,00 | 198 | 198 | 281 |
+| T2 Rara | 25% | 4 | 1,13 | 241 | 241 - 289 | 625 |
+| T2 Épica | 10% | 10 | 1,21 | 269 | 269 - 363 | 1 479 |
+| T2 Lendária | 2% | 50 | 1,94 | 524 | 524 - 944 | 7 176 |
+| T3 Comum | 63% | 1,6 | 1,00 | 905 | 905 | 1 256 |
+| T3 Rara | 25% | 4 | 1,17 | 1 193 | 1 193 - 1 432 | 2 697 |
+| T3 Épica | 10% | 10 | 1,26 | 1 348 | 1 348 - 1 819 | 6 282 |
+| T3 Lendária | 2% | 50 | 2,08 | 2 759 | 2 759 - 4 966 | 30 180 |
+| T4 Comum | 63% | 1,6 | 1,00 | 1 212 | 1 212 | 1 709 |
+| T4 Rara | 25% | 4 | 1,17 | 2 099 | 2 099 - 2 519 | 3 751 |
+| T4 Épica | 10% | 10 | 1,29 | 2 699 | 2 699 - 3 644 | 8 830 |
+| T4 Lendária | 2% | 50 | 2,14 | 7 049 | 7 049 - 12 688 | 42 686 |
+| T5 Comum | 63% | 1,6 | 1,00 | 5 469 | 5 469 | 7 544 |
+| T5 Rara | 25% | 4 | 1,19 | 7 763 | 7 763 - 9 316 | 16 067 |
+| T5 Épica | 10% | 10 | 1,31 | 9 304 | 9 304 - 12 561 | 37 261 |
+| T5 Lendária | 2% | 50 | 2,15 | 19 467 | 19 467 - 35 041 | 178 556 |
+| T6 Comum | 63% | 1,6 | 1,00 | 3 624 | 3 624 | 5 332 |
+| T6 Rara | 25% | 4 | 1,16 | 5 260 | 5 260 - 6 313 | 12 348 |
+| T6 Épica | 10% | 10 | 1,28 | 6 518 | 6 518 - 8 799 | 29 796 |
+| T6 Lendária | 2% | 50 | 2,11 | 14 939 | 14 939 - 26 891 | 146 117 |
+
+Leitura:
+
+- Uma peça **Rara** vale de 15% a 75% a mais que uma Comum do mesmo tier (T4 2,1 mil contra 1,2 mil; T1 só 15%); uma **Épica** de 20% (T1) a 120% (T4); uma **Lendária** de 2 a 6 vezes (T4 7 mil contra 1,2 mil, T5 19 mil contra 5,5 mil). O salto é maior onde o degrau de CP do tier é pequeno (T4, +699): a mesma raridade vale "mais tiers" ali.
+- O preço de uma Lendária do tier 4 em diante (7 a 35 mil) fica **bem abaixo** do piso de quem tentasse forjá-la para vender (43 a 179 mil): ela só aparece no mercado como sorte de quem forja o próprio conjunto. O comprador que paga o valor da faixa recebe a força de um conjunto do tier e meio acima; o vendedor sortudo recebe de 3 a 6 vezes o que a peça Comum dele valeria.
+- O comprador também poupa as horas de Caça que a peça pediria (uma peça T4 2 h, T5 4,7 h, T6 1,4 h; uma peça de cada encaixe nos tiers 4 a 6 são cerca de 57 horas de Caça, quase 3 dias de jogo do dono). Na Liga isso e o poder viram **+6 a +8 níveis** no dia 60 contra o dono que forja o próprio equipamento (docs/BALANCE_CHANGES.md, Rodada 24, item 4).
+- Sem medição: a escassez real depende de quantos jogadores existem; o prêmio de escassez (1,2 / 1,35 / 1,8) é um palpite; a faixa não considera o refino (uma peça +8 vale mais: o refino de uma peça de tier 1 a 4 custa 17 a 32 mil de Ouro de referência no modelo do script).

@@ -1,3 +1,5 @@
+> **2026-10-16 (Rodada 24):** a raridade foi refeita (Épica x1,04, Lendária x1,40 com substats x1,7: um conjunto de 7 peças é x1,00 / 1,15-1,20 / 1,26-1,36 / 2,07-2,28 o CP do Comum). A tabela **B**, a pergunta B1 do resumo e o texto sobre o valor de um Lendário (A2) descrevem o jogo de antes; os números novos estão na seção **O**. As chances da forja (A) e os custos em forjas não mudaram. Ver `docs/BALANCE_CHANGES.md`, Rodada 24.
+>
 > **2026-10-12 (Rodada 10):** os degraus de tier de cada linha de equipamento foram refeitos (anéis e luvas ganham crítico a cada tier, botas / escudos / elmo / anel dos tiers 5-6 e a armadura e a arma do tier 6 sobem), o dragão passou a ser feito do dourado (uma cadeia por linha) e os únicos mudaram de tier. Seção **N** (nova) e tabelas **E** e **G** regeradas; o resto do arquivo descreve o estado de antes. Ver `docs/BALANCE_CHANGES.md`, Rodada 10.
 >
 > **2026-10-12 (Rodada 9):** a tabela de raridade da forja passou de 60 / 25 / 12 / 3 para **63 / 25 / 10 / 2** (as peças raras agora serão vendidas), e o Selo do Ferreiro para 83,3% épica / 16,7% lendária. Custo esperado do MESMO item: épico ou melhor 1 / 0,12 = 8,3 forjas (era 6,7); lendário 1 / 0,02 = **50** forjas (era 33,3, uma em 50); épico e lendário 51,7 (era 35,0). Multiplique por 1,5 a coluna "custo esperado de 1 lendário" abaixo; as demais seções (poder por raridade, variância das substats) não dependem das chances e continuam valendo. Selos: 3 por temporada x 2/12 = 0,5 lendária esperada.
@@ -656,6 +658,49 @@ Poder da peça única (comum, sem a substat garantida) / poder da gêmea. Meta: 
 | lich_soul_ring | bossFloor:75 | T5 (obsidian_ring) | 14.4% crít. · +45% dano crít. | x1.12 |
 | overlord_greataxe | bossFloor:100 | T6 (abyssal_reaver) | 331 dano · 13.0% crít. | x1.10 |
 
+## O. Raridade e substats depois da Rodada 24 (2026-10-16)
+
+As seções A a N e o resumo acima descrevem o jogo de antes da Rodada 24 quando falam de poder por raridade (B, B1) e do valor de um Lendário (A2). As **chances da forja (A) e os custos esperados em forjas não mudaram** (Comum 63%, Rara 25%, Épica 10%, Lendária 2%: 4 forjas para uma Rara, 10 para uma Épica, **50 para uma Lendária**; o Selo do Ferreiro continua 83,3% Épica / 16,7% Lendária). O que mudou é o que cada uma vale. Decisões e medições em `docs/BALANCE_CHANGES.md`, Rodada 24.
+
+| Raridade | `statMult` (dano, PV, defesa, dano crítico) | `substatMult` (cada substat) | Substats |
+| --- | --: | --: | --: |
+| Comum | 1 | 1 | 0 |
+| Rara | 1,02 | 1 | 1 |
+| Épica | 1,04 (era 1,06) | 1 | 2 |
+| Lendária | **1,40** (era 1,18) | **1,7** (era 1) | 3 |
+
+**B recalculada** (`npm run sim:items`): arma + armadura da mesma raridade, substats medianos, mediana de 400 sorteios; "vs comum" = CP / CP do mesmo par comum.
+
+| Tier | Rara | Épica | Lendária (pior - melhor sorteio) |
+| --- | --: | --: | --: |
+| T1 +0 / +8 | +3,8% / +4,1% | +7,5% / +8,9% | **+37,7% / +47,3%** (26,4-64,2 / 34,2-77,4) |
+| T2 +0 / +8 | +4,4% / +4,6% | +9,2% / +9,4% | **+43,2% / +50,2%** |
+| T3 +0 / +8 | +4,6% / +4,8% | +9,4% / +10,2% | **+46,2% / +53,3%** |
+| T4 (dourado) +0 / +8 | +4,3% / +4,9% | +9,1% / +9,6% | **+43,4% / +49,2%** |
+| T5 +0 / +8 | +5,0% / +5,0% | +9,7% / +10,1% | **+47,9% / +53,4%** |
+| T6 +0 / +8 | +4,4% / +4,8% | +9,3% / +9,7% | **+46,6% / +51,6%** (35,7-61,7 / 40,0-69,2) |
+
+Era: Rara +2,7 a +4,3%, Épica +10,5 a +13,0%, Lendária +20,8 a +26,0%. O teste `itemBalance.test.ts` R1 passa a exigir Lendária entre +36% e +58%, e o novo R5 trava o conjunto de 7 peças.
+
+**Conjunto de 7 peças** (`npm run sim:rarity`, substats medianos; CP x o do conjunto Comum): Rara 1,15 a 1,20, Épica 1,26 a 1,36 (T5 +0 1,36; T6 +12 1,26), **Lendária 2,07 a 2,28**. O degrau Épica → Lendária é x1,6 a x1,7 (era x1,2).
+
+**Faixa de cada substat** de uma peça Lendária (a faixa do tier x 1,7, uma casa decimal; as outras raridades continuam na faixa do tier):
+
+| Substat | T1 normal → Lendária | T3 | T6 |
+| --- | --- | --- | --- |
+| Crítico (%) | 3-6 → 5,1-10,2 | 4-7 → 6,8-11,9 | 5-8 → 8,5-13,6 |
+| Dano crítico (%) | 60-90 → 102-153 | 30-50 → 51-85 | 16-26 → 27,2-44,2 |
+| Roubo de vida (%) | 1,5-2,5 → 2,6-4,3 | 1,5-2,3 → 2,6-3,9 | 0,8-1,2 → 1,4-2 |
+| Defesa (%) | 3-7 → 5,1-11,9 | 4-8 → 6,8-13,6 | 5-9 → 8,5-15,3 |
+| PV | 5-8 → 8,5-13,6 | 20-30 → 34-51 | 55-90 → 93,5-153 |
+| Ouro (%) | 2-5 → 3,4-8,5 | 3-6 → 5,1-10,2 | 4-7 → 6,8-11,9 |
+
+A regra R2 (nenhum substat de combate vale mais de 2x outro, no valor mediano) continua valendo: todos escalam juntos. O Ouro soma ao teto de 25% de tudo que se veste, Lendária ou não. Uma peça tem no máximo três substats distintos; a chance de crítico somada de tudo que se veste é limitada a 100% pelo motor (achado da Rodada 24).
+
+**Reforja e lapidar** rolam com o `substatMult` da raridade da peça (uma Lendária reforjada continua Lendária e rola x1,7; uma Rara reforjada continua x1). Os cartões mostram o valor guardado (o servidor guarda o número já escalado, e o certificado é igual).
+
+**Por que o degrau é grande:** a Lendária sai de 1 forja em 50. Quem a tem recebe, por peça, 40% a mais de dano, PV, defesa e dano crítico e substats 70% mais fortes; um conjunto inteiro põe o herói na força de um conjunto Comum um tier e meio acima (`ECONOMY_AUDIT.md`, seção 23, com as faixas de preço estimadas).
+
 ## Seção I — Habilidades (Rodada 7, números finais)
 
 Medido por `npm run sim:skills` (`scripts/sim/skillAudit.sim.ts`) com o duelo fechado de `duel.ts` (sangria, golpes, Contra-ataque, bloqueio, Postura Firme e Último Bastião). `SKILL_T='{"crushBonusStep":0.2}'` sobrescreve `T.heroSkills`. Orçamento: caminho de combate completo +55% a +75%, Guerreiro e Guardião a menos de 15% um do outro, Último Bastião a menos de 1,5x um Bloqueio completo no Monte Carlo da Masmorra. Tabela e notas na Rodada 7 de `BALANCE_CHANGES.md`.
@@ -812,6 +857,8 @@ O painel do herói ("Status de combate") mostra o total **de agora**, com os eli
 7. **Paragon**: multiplica o dano.
 8. **Passe**: soma ao Ouro extra (+15%).
 9. **Temporários**, na ordem: Abençoado, depois os elixires e tônicos. O dano **multiplica** (x1,05 x1,20 x1,10 x1,04); o resto soma na sua própria conta.
+
+**Raridade, durabilidade e refino (Rodada 24, `craftedStatsAudit.test.ts`).** Por peça: `base x (1 + refino) x durabilidade x raridade` para dano, PV e defesa; o dano crítico da peça (anel) também leva durabilidade e raridade; a chance de crítico e o reflexo levam a durabilidade mas **não a raridade**; o refino soma 0,5 ponto de crítico / defesa por nível (0,3 depois do +8), sem passar pela raridade no crítico. Durabilidade: x1 com 30 ou mais, x0,75 abaixo de 30, x0,4 em zero; não toca substats, conjuntos e gemas. A **chance de crítico total é limitada a 100%** (`buildCombatStats`). Os cartões do jogo mostram dano, PV, defesa e dano crítico já com a raridade.
 
 **Defesa.** Itens, tônicos e RES somam numa **soma bruta** (é o "Defesa +11%" das peças). O que a soma remove do dano é `soma / (1 + soma)`: 43% brutos removem 30,1%. O painel mostra o segundo número e a lista mostra o primeiro. Pele de Pedra e Polimento de Armadura somam na mesma soma (+0,10 e +0,05).
 
