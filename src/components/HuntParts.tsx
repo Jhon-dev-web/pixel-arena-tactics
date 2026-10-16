@@ -74,15 +74,8 @@ export function MatIcon({ id }: { id: MaterialId }) {
   return <span className="mat-icon">{def && <MaterialIcon item={def} />}</span>;
 }
 
-// A horizontal progress bar with an optional full / urgent tone.
-export function Meter({ pct, tone, label }: { pct: number; tone?: 'full' | 'xp'; label?: string }) {
-  const width = Math.max(0, Math.min(100, pct));
-  return (
-    <div className="ui-meter" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(width)} aria-label={label}>
-      <div className={`ui-meter-fill${tone ? ` ${tone}` : ''}`} style={{ width: `${width}%` }} />
-    </div>
-  );
-}
+// The shared progress bar (components/ui/Meter): kept exported from here for the hunt screens.
+export { Meter } from './ui';
 
 // The unique drops of a zone: icon, name and a "raro" chip (never a percentage).
 export function ZoneUniques({ itemIds }: { itemIds: string[] }) {

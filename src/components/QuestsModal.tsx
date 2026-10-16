@@ -14,6 +14,8 @@ import { SET_FAMILIES } from '../game/gear';
 import { getHuntingZone } from '../game/huntingZones';
 import { paragonLevel } from '../game/paragon';
 import { achievementSummary, ACHIEVEMENT_CATEGORIES, QUESTS_DAILY, QUESTS_ACHIEVEMENTS, QuestDef, isClaimed, isComplete, questProgress } from '../game/quests';
+import { Button, Chip, Meter, ModalShell, Panel, StatList, StatRow, Tabs } from './ui';
+import type { TabItem } from './ui';
 
 const questText = (k: string): string => t(`quests.${k}`);
 
@@ -33,6 +35,40 @@ function formatPlayed(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return h > 0 ? `${fmtNum(h)}h ${String(m).padStart(2, '0')}min` : `${m}min`;
+}
+
+// What a quest pays: the gold and (when there are any) the Runas, as two small chips.
+function Rewards({ gold, shards }: { gold: number; shards: number }) {
+  return (
+    <span className="qs-rewards">
+      {gold > 0 && (
+        <span className="qs-reward">
+          <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {fmtNum(gold)}
+        </span>
+      )}
+      {shards > 0 && (
+        <span className="qs-reward shards">
+          <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {shards}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// The foot of every card: Resgatado (done), Resgatar lit (ready) or Resgatar dimmed (still short).
+function ClaimButton({ claimed, ready, onClick, label }: { claimed: boolean; ready: boolean; onClick: () => void; label?: string }) {
+  if (claimed) {
+    return (
+      <Button block disabled className="qs-claimed">
+        ✓ {t('quests.claimed')}
+      </Button>
+    );
+  }
+  return (
+    <Button block variant={ready ? 'primary' : 'secondary'} onClick={onClick} disabled={!ready}>
+      {label ?? t('quests.claim')}
+    </Button>
+  );
 }
 
 export default function QuestsModal({
@@ -61,7 +97,13 @@ export default function QuestsModal({
   const streak = streakStatus(save.quests.streak, now, ownsPass, level);
   const dailyReady = QUESTS_DAILY.some((q) => isComplete(q, save.quests, ctx) && !isClaimed(q, save.quests));
   const achievementReady = QUESTS_ACHIEVEMENTS.some((q) => isComplete(q, save.quests, ctx) && !isClaimed(q, save.quests));
-  const dot = (on: boolean) => (on ? <span className="tab-dot" aria-hidden="true" /> : null);
+
+  const tabs: TabItem<Tab>[] = [
+    { id: 'daily', label: t('quests.dailyTab'), dot: !streak.claimedToday || dailyReady },
+    { id: 'weekly', label: t('quests.weeklyTab'), dot: weekly.claimable > 0 },
+    { id: 'achievements', label: t('quests.achievementsTab'), dot: achievementReady },
+    { id: 'stats', label: t('quests.statsTab') },
+  ];
 
   const card = (q: QuestDef) => {
     const claimed = isClaimed(q, save.quests);
@@ -70,57 +112,21 @@ export default function QuestsModal({
     const pct = q.target <= 0 ? 100 : Math.min(100, (progress / q.target) * 100);
     const title = q.titleId ? getTitleDef(q.titleId) : undefined;
     return (
-      <div className={`quest-card${claimed ? ' claimed' : ''}`} key={q.id} data-quest-id={q.id}>
-        <div className="quest-head">
-          <span className="quest-name">{questText(q.nameKey)}</span>
-          <span className="quest-reward">
-            {q.gold > 0 && (
-              <span className="quest-reward-item">
-                <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {fmtNum(q.gold)}
-              </span>
-            )}
-            {q.shards > 0 && (
-              <span className="quest-reward-item quest-shards">
-                <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {q.shards}
-              </span>
-            )}
-          </span>
+      <article className={`ui-item qs-card${claimed ? ' claimed' : ''}`} key={q.id} data-quest-id={q.id}>
+        <div className="qs-card-head">
+          <h4 className="ui-item-name">{questText(q.nameKey)}</h4>
+          <Rewards gold={q.gold} shards={q.shards} />
         </div>
-        <span className="quest-desc">{questText(q.descKey)}</span>
-        {title && <span className="quest-title-reward">🎖️ {t(`titles.${title.nameKey}`)}</span>}
-        <div className="quest-progress-row">
-          <div className="quest-bar">
-            <div className={`quest-bar-fill${complete ? ' done' : ''}`} style={{ width: `${pct}%` }} />
-          </div>
-          <span className="quest-count">{t('quests.progress', { n: fmtNum(progress), m: fmtNum(q.target) })}</span>
+        <p className="qs-desc">{questText(q.descKey)}</p>
+        {title && <Chip tone="gold">🎖️ {t(`titles.${title.nameKey}`)}</Chip>}
+        <div className="qs-progress">
+          <Meter pct={pct} done={complete} label={questText(q.nameKey)} />
+          <span className="qs-count">{t('quests.progress', { n: fmtNum(progress), m: fmtNum(q.target) })}</span>
         </div>
-        {claimed ? (
-          <button className="quest-btn claimed" disabled data-ui>
-            {t('quests.claimed')}
-          </button>
-        ) : (
-          <button className={`quest-btn${complete ? ' claim' : ''}`} onClick={() => onClaim(q.id)} disabled={!complete} data-ui>
-            {t('quests.claim')}
-          </button>
-        )}
-      </div>
+        <ClaimButton claimed={claimed} ready={complete} onClick={() => onClaim(q.id)} />
+      </article>
     );
   };
-
-  const rewardChips = (gold: number, shards: number) => (
-    <span className="quest-reward">
-      {gold > 0 && (
-        <span className="quest-reward-item">
-          <img className="inline-icon" src={Assets.icons.gold.url} alt="" /> {fmtNum(gold)}
-        </span>
-      )}
-      {shards > 0 && (
-        <span className="quest-reward-item quest-shards">
-          <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {shards}
-        </span>
-      )}
-    </span>
-  );
 
   const weeklyCard = (g: WeeklyGoalView) => {
     const { def } = g;
@@ -128,52 +134,38 @@ export default function QuestsModal({
     const hours = (Math.floor(g.progress * 10) / 10).toLocaleString(activeLocale === 'pt' ? 'pt-BR' : 'en-US');
     const shown = def.unit === 'hours' ? t('quests.progressHours', { n: hours, m: def.target }) : t('quests.progress', { n: fmtNum(Math.floor(g.progress)), m: fmtNum(def.target) });
     return (
-      <div className={`quest-card${g.claimed ? ' claimed' : ''}`} key={def.id} data-weekly-id={def.id}>
-        <div className="quest-head">
-          <span className="quest-name">{questText(def.nameKey)}</span>
-          {rewardChips(def.gold, def.shards)}
+      <article className={`ui-item qs-card${g.claimed ? ' claimed' : ''}`} key={def.id} data-weekly-id={def.id}>
+        <div className="qs-card-head">
+          <h4 className="ui-item-name">{questText(def.nameKey)}</h4>
+          <Rewards gold={def.gold} shards={def.shards} />
         </div>
-        <span className="quest-desc">{t(`quests.${def.descKey}`, { n: def.target })}</span>
-        <div className="quest-progress-row">
-          <div className="quest-bar">
-            <div className={`quest-bar-fill${g.complete ? ' done' : ''}`} style={{ width: `${pct}%` }} />
-          </div>
-          <span className="quest-count">{shown}</span>
+        <p className="qs-desc">{t(`quests.${def.descKey}`, { n: def.target })}</p>
+        <div className="qs-progress">
+          <Meter pct={pct} done={g.complete} label={questText(def.nameKey)} />
+          <span className="qs-count">{shown}</span>
         </div>
-        {g.claimed ? (
-          <button className="quest-btn claimed" disabled data-ui>
-            {t('quests.claimed')}
-          </button>
-        ) : (
-          <button className={`quest-btn${g.complete ? ' claim' : ''}`} onClick={() => onClaimWeekly(def.id)} disabled={!g.complete} data-ui>
-            {t('quests.claim')}
-          </button>
-        )}
-      </div>
+        <ClaimButton claimed={g.claimed} ready={g.complete} onClick={() => onClaimWeekly(def.id)} />
+      </article>
     );
   };
 
   // The 7 days of the streak with what each pays; the claimed ones are ticked, today's is lit.
-  const streakCard = () => {
+  const streakPanel = () => {
     const doneDays = streak.claimedToday ? streak.day : streak.day - 1;
     const item = streak.reward.item;
     return (
-      <div className="quest-card streak-card" data-streak-day={streak.day}>
-        <div className="quest-head">
-          <span className="quest-name">{t('quests.streakTitle')}</span>
-          <span className="quest-count">{t('quests.streakDays', { n: streak.day, m: STREAK_DAYS })}</span>
-        </div>
-        <div className="streak-days">
+      <Panel className="qs-streak" title={t('quests.streakTitle')} actions={<Chip tone="gold">{t('quests.streakDays', { n: streak.day, m: STREAK_DAYS })}</Chip>} data-streak-day={streak.day}>
+        <div className="qs-days">
           {Array.from({ length: STREAK_DAYS }, (_, i) => i + 1).map((d) => {
             const r = streakReward(d, band);
             const state = d <= doneDays ? ' done' : d === streak.day ? ' today' : '';
             return (
-              <div className={`streak-day${state}`} key={d} data-streak-pip={d}>
-                <span className="streak-day-n">{d <= doneDays ? '✓' : d}</span>
+              <div className={`qs-day${state}`} key={d} data-streak-pip={d}>
+                <span className="qs-day-n">{d <= doneDays ? '✓' : d}</span>
                 {r.item ? <ConsumableIcon item={getConsumable(r.item.id)!} className="inline-icon" /> : <img className="inline-icon" src={Assets.icons.gold.url} alt="" />}
-                <span className="streak-day-r">{r.gold > 0 ? fmtNum(r.gold) : `×${r.item?.n ?? 0}`}</span>
+                <span className="qs-day-r">{r.gold > 0 ? fmtNum(r.gold) : `×${r.item?.n ?? 0}`}</span>
                 {r.shards > 0 && (
-                  <span className="streak-day-r quest-shards">
+                  <span className="qs-day-r shards">
                     <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {r.shards}
                   </span>
                 )}
@@ -181,7 +173,7 @@ export default function QuestsModal({
             );
           })}
         </div>
-        <span className="quest-desc">
+        <p className="qs-today">
           {[
             item ? `${t(`consumables.${item.id}`)} ×${item.n}` : '',
             streak.reward.gold > 0 ? `${fmtNum(streak.reward.gold)} ${t('quests.goldWord')}` : '',
@@ -189,23 +181,13 @@ export default function QuestsModal({
           ]
             .filter(Boolean)
             .join(' · ')}
-        </span>
-        {streak.broken && !streak.claimedToday && <span className="quest-desc streak-note warn">{t('quests.streakBroken')}</span>}
-        {streak.saver && !streak.claimedToday && <span className="quest-desc streak-note good">{t('quests.streakSaverNow')}</span>}
-        {streak.claimedToday ? (
-          <>
-            <button className="quest-btn claimed" disabled data-ui>
-              {t('quests.claimed')}
-            </button>
-            <span className="quest-desc streak-note">{t('quests.streakDone', { n: streak.day >= STREAK_DAYS ? 1 : streak.day + 1 })}</span>
-          </>
-        ) : (
-          <button className="quest-btn claim" onClick={onClaimStreak} data-ui>
-            {t('quests.streakClaim', { n: streak.day })}
-          </button>
-        )}
-        <span className="quest-desc streak-note">{ownsPass ? (streak.saverAvailable ? t('quests.streakSaverReady') : t('quests.streakSaverUsed')) : t('quests.streakPassHint')}</span>
-      </div>
+        </p>
+        {streak.broken && !streak.claimedToday && <p className="ui-alert bad">{t('quests.streakBroken')}</p>}
+        {streak.saver && !streak.claimedToday && <p className="ui-alert good">{t('quests.streakSaverNow')}</p>}
+        <ClaimButton claimed={streak.claimedToday} ready onClick={onClaimStreak} label={t('quests.streakClaim', { n: streak.day })} />
+        {streak.claimedToday && <p className="ui-note">{t('quests.streakDone', { n: streak.day >= STREAK_DAYS ? 1 : streak.day + 1 })}</p>}
+        <p className="ui-note">{ownsPass ? (streak.saverAvailable ? t('quests.streakSaverReady') : t('quests.streakSaverUsed')) : t('quests.streakPassHint')}</p>
+      </Panel>
     );
   };
 
@@ -264,95 +246,66 @@ export default function QuestsModal({
   ];
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal quests-modal">
-        <h2 className="modal-title">
-          <img className="inline-icon" src="/assets/icons/nav_quests.png" alt="" /> {t('quests.title')}
-        </h2>
+    <ModalShell className="qs-modal" icon={<img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />} title={t('quests.title')} closeLabel={t('ui.close')} onClose={onClose}>
+      <div className="ui-cq qs-root">
+        <Tabs<Tab> items={tabs} value={tab} onChange={setTab} label={t('quests.title')} />
 
-        <div className="inv-tabs">
-          <button className={`tab${tab === 'daily' ? ' active' : ''}`} onClick={() => setTab('daily')} data-ui>
-            {t('quests.dailyTab')}
-            {dot(!streak.claimedToday || dailyReady)}
-          </button>
-          <button className={`tab${tab === 'weekly' ? ' active' : ''}`} onClick={() => setTab('weekly')} data-ui>
-            {t('quests.weeklyTab')}
-            {dot(weekly.claimable > 0)}
-          </button>
-          <button className={`tab${tab === 'achievements' ? ' active' : ''}`} onClick={() => setTab('achievements')} data-ui>
-            {t('quests.achievementsTab')}
-            {dot(achievementReady)}
-          </button>
-          <button className={`tab${tab === 'stats' ? ' active' : ''}`} onClick={() => setTab('stats')} data-ui>
-            {t('quests.statsTab')}
-          </button>
-        </div>
-
-        <div className="quests-body">
-          {tab === 'daily' && (
-            <>
-              {streakCard()}
-              {QUESTS_DAILY.map(card)}
-            </>
-          )}
-          {tab === 'weekly' && (
-            <>
-              <div className="quest-summary">{t('quests.weeklyHint')}</div>
-              <div className="quest-summary weekly-reset">{t('quests.weeklyResets', { time: formatLeft(weekly.resetsAt - now) })}</div>
+        {tab === 'daily' && (
+          <>
+            {streakPanel()}
+            <div className="qs-grid">{QUESTS_DAILY.map(card)}</div>
+          </>
+        )}
+        {tab === 'weekly' && (
+          <>
+            <Panel tone="inset" className="qs-weekly-head">
+              <p>{t('quests.weeklyHint')}</p>
+              <Chip tone="info">{t('quests.weeklyResets', { time: formatLeft(weekly.resetsAt - now) })}</Chip>
+            </Panel>
+            <div className="qs-grid">
               {weekly.goals.map(weeklyCard)}
-              <div className={`quest-card${weekly.bonusClaimed ? ' claimed' : ''}`} data-weekly-id="bonus">
-                <div className="quest-head">
-                  <span className="quest-name">{t('quests.weeklyBonus')}</span>
-                  {rewardChips(weekly.bonusGold, T.weekly.bonusShards)}
+              <article className={`ui-item qs-card bonus${weekly.bonusClaimed ? ' claimed' : ''}`} data-weekly-id="bonus">
+                <div className="qs-card-head">
+                  <h4 className="ui-item-name">{t('quests.weeklyBonus')}</h4>
+                  <Rewards gold={weekly.bonusGold} shards={T.weekly.bonusShards} />
                 </div>
-                <span className="quest-desc">{t('quests.weeklyBonusD')}</span>
-                {weekly.bonusClaimed ? (
-                  <button className="quest-btn claimed" disabled data-ui>
-                    {t('quests.claimed')}
-                  </button>
-                ) : (
-                  <button className={`quest-btn${weekly.allClaimed ? ' claim' : ''}`} onClick={onClaimWeeklyBonus} disabled={!weekly.allClaimed} data-ui>
-                    {t('quests.claim')}
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-          {tab === 'achievements' && (
-            <>
-              <div className="quest-summary">{t('quests.summary', { n: summary.done, m: summary.total })}</div>
-              {ACHIEVEMENT_CATEGORIES.map((cat) => {
-                const list = QUESTS_ACHIEVEMENTS.filter((q) => q.category === cat);
-                if (list.length === 0) return null;
-                return (
-                  <section className="quest-group" key={cat}>
-                    <h3 className="quest-group-title">{t(`quests.cat_${cat}`)}</h3>
-                    {list.map(card)}
-                  </section>
-                );
-              })}
-            </>
-          )}
-          {tab === 'stats' &&
-            statRows.map((g) => (
-              <section className="quest-group" key={g.group}>
-                <h3 className="quest-group-title">{t(`quests.cat_${g.group}`)}</h3>
-                <dl className="stat-list">
+                <p className="qs-desc">{t('quests.weeklyBonusD')}</p>
+                <ClaimButton claimed={weekly.bonusClaimed} ready={weekly.allClaimed} onClick={onClaimWeeklyBonus} />
+              </article>
+            </div>
+          </>
+        )}
+        {tab === 'achievements' && (
+          <>
+            <Panel tone="inset" className="qs-summary">
+              <span>{t('quests.summary', { n: summary.done, m: summary.total })}</span>
+              <Meter pct={summary.total > 0 ? (summary.done / summary.total) * 100 : 0} thin label={t('quests.summary', { n: summary.done, m: summary.total })} />
+            </Panel>
+            {ACHIEVEMENT_CATEGORIES.map((cat) => {
+              const list = QUESTS_ACHIEVEMENTS.filter((q) => q.category === cat);
+              if (list.length === 0) return null;
+              return (
+                <Panel key={cat} title={t(`quests.cat_${cat}`)}>
+                  <div className="qs-grid">{list.map(card)}</div>
+                </Panel>
+              );
+            })}
+          </>
+        )}
+        {tab === 'stats' && (
+          <div className="qs-stats">
+            {statRows.map((g) => (
+              <Panel key={g.group} title={t(`quests.cat_${g.group}`)}>
+                <StatList>
                   {g.rows.map(([label, value]) => (
-                    <div className="stat-row" key={label}>
-                      <dt>{label}</dt>
-                      <dd>{value}</dd>
-                    </div>
+                    <StatRow key={label} label={label} value={value} tone="gold" />
                   ))}
-                </dl>
-              </section>
+                </StatList>
+              </Panel>
             ))}
-        </div>
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
+          </div>
+        )}
       </div>
-    </div>
+    </ModalShell>
   );
 }

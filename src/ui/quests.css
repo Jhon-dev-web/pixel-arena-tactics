@@ -1,0 +1,179 @@
+/* Missões (QuestsModal) in the new style: the shared ModalShell / Tabs / Panel / Button / Meter carry the look; this is the layout of the quest cards, the login streak and the statistics. */
+.qs-root {
+  gap: var(--sp-4);
+}
+.qs-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: stretch;
+}
+@container ui (min-width: 640px) {
+  .qs-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container ui (min-width: 980px) {
+  .qs-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.qs-card {
+  gap: var(--sp-2);
+}
+.qs-card.claimed {
+  opacity: 0.7;
+}
+.qs-card.bonus {
+  border-color: var(--c-gold-line-strong);
+}
+.qs-card .ui-btn {
+  margin-top: auto;
+}
+.qs-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.qs-card-head .ui-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.qs-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-1) var(--sp-2);
+  flex: 0 0 auto;
+}
+.qs-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-300);
+  white-space: nowrap;
+}
+.qs-reward.shards {
+  color: var(--c-rune);
+}
+.qs-reward img,
+.qs-day img.inline-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.qs-desc {
+  color: var(--c-text-dim);
+  font-size: var(--fs-body);
+}
+.qs-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.qs-progress .ui-meter {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.qs-count {
+  flex: 0 0 auto;
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+.qs-claimed:disabled {
+  color: var(--c-good);
+  background: rgba(111, 224, 138, 0.1);
+  border-color: #2f7a46;
+  filter: none;
+}
+
+/* the login streak */
+.qs-streak {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.qs-streak > .ui-panel-head {
+  margin-bottom: 0;
+}
+.qs-days {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+@container ui (min-width: 560px) {
+  .qs-days {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+.qs-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 76px;
+  padding: var(--sp-2) var(--sp-1);
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.qs-day.today {
+  color: var(--c-gold-200);
+  border-color: var(--c-gold-300);
+  box-shadow: var(--sh-glow);
+}
+.qs-day.done {
+  color: var(--c-good);
+  opacity: 0.75;
+}
+.qs-day-r {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.qs-day-r.shards {
+  color: var(--c-rune);
+}
+.qs-today {
+  font-size: var(--fs-body);
+  color: var(--c-gold-200);
+}
+.qs-streak .ui-alert {
+  margin: 0;
+}
+
+/* the weekly head, the achievements summary and the statistics */
+.qs-weekly-head,
+.qs-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  color: var(--c-text-dim);
+}
+.qs-summary {
+  align-items: stretch;
+  text-align: center;
+}
+.qs-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: start;
+}
+@container ui (min-width: 720px) {
+  .qs-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

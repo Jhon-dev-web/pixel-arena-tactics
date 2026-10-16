@@ -1,0 +1,149 @@
+/* Códice (CodexModal) in the new style: tiles inside the shared ItemFrame, a detail panel in the summary column, the completion meters. */
+.cx-root {
+  gap: var(--sp-3);
+}
+/* three tabs stay on one row of a phone: the name over its percentage */
+@container ui (max-width: 560px) {
+  .cx-root .ui-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cx-root .ui-tab {
+    padding-inline: var(--sp-1);
+  }
+  .cx-root .ui-tab-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+}
+.cx-hint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  color: var(--c-text-dim);
+}
+.cx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: var(--sp-2);
+}
+.cx-grid.monsters {
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+}
+.cx-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  min-height: var(--tap);
+  padding: var(--sp-1);
+  font-family: inherit;
+  font-size: var(--fs-small);
+  color: var(--c-text-dim);
+  background: transparent;
+  border: var(--bw) solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.cx-tile:hover .ui-frame {
+  border-color: var(--c-gold-line-strong);
+}
+.cx-tile.selected {
+  border-color: var(--c-gold-300);
+  background: rgba(255, 215, 106, 0.07);
+}
+.cx-tile-name {
+  max-width: 100%;
+  line-height: var(--lh-tight);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.cx-tile.unknown .cx-tile-name {
+  color: var(--c-text-muted);
+}
+/* a silhouette: the art flattened to a dark shape, never readable */
+.cx-tile.unknown .ui-frame-art,
+.cx-art.unknown .ui-frame-art {
+  filter: brightness(0) saturate(0);
+  opacity: 0.5;
+}
+.cx-art {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+/* the detail panel */
+.cx-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  font-size: var(--fs-body);
+}
+.cx-detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.cx-detail-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.cx-detail-name {
+  font-weight: 700;
+  color: var(--c-gold-200);
+  overflow-wrap: anywhere;
+}
+.cx-detail-sub,
+.cx-note {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+.cx-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--c-text-dim);
+}
+.cx-origin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--c-text-dim);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.cx-label {
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  color: var(--c-gold-500);
+}
+.cx-price {
+  color: var(--c-gold-300);
+}
+.cx-rar {
+  display: inline-block;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+  border: var(--bw-thin) solid var(--c-line-strong);
+  border-radius: 999px;
+}
+.cx-rar.rare {
+  color: var(--c-info);
+  border-color: #2e5f94;
+}
+.cx-rar.unique {
+  color: var(--c-gold-300);
+  border-color: var(--c-gold-line);
+}

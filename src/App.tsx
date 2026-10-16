@@ -149,6 +149,8 @@ import './ui/hunt.css';
 import './ui/dungeon.css';
 import './ui/professions.css';
 import './ui/season.css';
+import './ui/quests.css';
+import './ui/codex.css';
 import './ui/settings.css';
 import './ui/materials.css'; // the tradeable-material stack and its question
 
