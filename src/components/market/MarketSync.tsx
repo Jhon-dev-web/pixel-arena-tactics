@@ -6,7 +6,7 @@ import { MarketHost, syncDepsFor } from './marketDeps';
 
 // Renders nothing. While the market is switched on (web build, signed in) it keeps the save and the server's certificates in line: items listed or sold leave the save, bought or returned items
 // come in from their certificate, and each delivery is acknowledged only after the server confirmed a save that has the item (game/market/sync.ts).
-const EVERY_MS = 60_000;
+const EVERY_MS = 120_000;
 const SOON_MS = 6_000;
 const MAX_SOON = 12;
 

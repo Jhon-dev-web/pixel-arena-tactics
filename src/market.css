@@ -380,3 +380,9 @@
     align-items: flex-start;
   }
 }
+
+.market-modal a,
+.mk-pass a {
+  color: #8ecbff;
+  overflow-wrap: anywhere;
+}

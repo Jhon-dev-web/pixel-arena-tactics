@@ -4,7 +4,7 @@ import type { MarketOverview } from '../../../supabase/functions/_shared/market/
 import type { SaveData } from '../../game/engine';
 import { MarketApi } from '../../game/market/api';
 import { SellableEntry, sellableEntries, socketedButCertified } from '../../game/market/items';
-import { getCertificate } from '../../game/itemCerts';
+import { getCertificate, useCertificatesVersion } from '../../game/itemCerts';
 import { listForSale } from '../../game/market/sync';
 import { mt } from '../../locales/market';
 import ItemCard, { ItemLike } from './ItemCard';
@@ -38,7 +38,9 @@ export default function SellPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
-  const entries = useMemo(() => sellableEntries(save), [save]);
+  const certVersion = useCertificatesVersion(); // the server's list changed: what is sellable may have too
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const entries = useMemo(() => sellableEntries(save), [save, certVersion]);
   const socketed = socketedButCertified(save).length;
   const entry = entries.find((e) => e.certificateId === picked) ?? null;
   const cents = parsePriceInput(priceText);

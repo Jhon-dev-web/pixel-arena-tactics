@@ -24,8 +24,8 @@ export const MARKET_RULES = {
   nonceMax: 10,
   nonceWindowSeconds: 60 * 60,
   /** verifications (each one costs the RPC provider calls) per account: refill per hour and capacity */
-  verifyPerHour: 120,
-  verifyCapacity: 30,
+  verifyPerHour: 240,
+  verifyCapacity: 60,
   /** the USDT Pass: how long a purchase intent counts payments from */
   passIntentTtlHours: 24,
 } as const;

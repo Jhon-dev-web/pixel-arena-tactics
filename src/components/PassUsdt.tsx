@@ -67,7 +67,7 @@ export default function PassUsdt({ onGranted }: { onGranted: () => void }) {
     setBusy(true);
     say(mt('pay.checking'));
     try {
-      for (let i = 0; i < 45; i++) {
+      for (let i = 0; i < 36; i++) {
         const r = await marketApi.passSubmit(txHash);
         if (!('reason' in r)) {
           say(mt('pass.granted'));
@@ -89,7 +89,7 @@ export default function PassUsdt({ onGranted }: { onGranted: () => void }) {
         }
         const extra = (r.extra ?? {}) as { confirmations?: number; needed?: number };
         say(r.reason === 'unconfirmed' ? mt('pay.confirming', { n: extra.confirmations ?? 0, m: extra.needed ?? plan?.chain.minConfirmations ?? 0 }) : mt('pay.fail.not_found_tx'));
-        await new Promise((res) => setTimeout(res, 4000));
+        await new Promise((res) => setTimeout(res, 5000));
       }
     } catch {
       say(mt('unreachable'), true);

@@ -55,6 +55,7 @@ export function useCertificatesVersion(): number {
       return () => listeners.delete(cb);
     },
     () => version,
+    () => version, // (server rendering: only the tests render this on a server)
   );
 }
 

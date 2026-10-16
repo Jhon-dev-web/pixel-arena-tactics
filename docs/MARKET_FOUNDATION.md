@@ -77,8 +77,8 @@ Tudo o que já existe (Épicas, Lendárias, únicos, Bolsas) continua utilizáve
 - **Reaproveitar um item vendido:** o certificado vale uma vez, mas a cópia local continua no save do vendedor. A rodada do mercado deve exigir que a entrega ao comprador saia do certificado (não do save do vendedor) e que o vendedor perca o item ao listar.
 - **Declarar Sorte Grande sem ter a habilidade:** o servidor aceita até 1,5x (Caça) e 1,25x (chefe). Ganho máximo de 50% / 25% sobre a chance de única, ainda sob os limites diários.
 - **Pedir chefes/caça que não fez:** o servidor não vê o combate. Ele só limita quantas mortes e quantas horas pagar por tempo de servidor. Isso é plausibilidade, não prova.
-- **Perder a resposta de uma forja:** o certificado pode existir no servidor sem a peça no save (a forja não gastou materiais). É inofensivo (o dono pode revogar por SQL); a recuperação automática não foi construída.
-- **Descartar Bolsa certificada pelo menu de empilháveis:** o certificado não é queimado (a Bolsa foi destruída; ninguém ganha com isso, mas o certificado fica `held`).
+- ~~Perder a resposta de uma forja ou de uma Bolsa deixava um certificado órfão.~~ **Corrigido na rodada do mercado:** o jogo guarda o `requestId` da ação não terminada (`src/game/mintIntents.ts`, no navegador, por um dia) e a próxima tentativa idêntica usa o mesmo id, então o servidor devolve o resultado guardado em vez de rolar de novo. Sobra apenas o caso de o jogador nunca repetir a ação (o certificado fica no servidor sem a peça, inofensivo).
+- ~~Descartar Bolsa certificada pelo menu de empilháveis não queimava o certificado.~~ **Corrigido:** `discardPouchAction` queima no servidor os certificados das Bolsas jogadas fora (as sem certificado primeiro, depois as certificadas pelo fim da lista, como ao abrir) antes de a quantidade cair; sem servidor a ação é bloqueada.
 
 ## Passos do dono (nada foi aplicado nem publicado por esta rodada)
 
@@ -88,7 +88,12 @@ Tudo o que já existe (Épicas, Lendárias, únicos, Bolsas) continua utilizáve
 4. Ver a auditoria: `select * from arena_private.item_account_flags order by created_at desc;` e `select * from public.item_certificates where user_id = '<id>';`.
 5. Nada disso depende de `VITE_SEASON_RANKING_ENABLED`: o mint funciona sem o ranking.
 
-## O que a próxima rodada (o mercado em USDT) vai usar
+## O mercado em USDT (rodada seguinte, já escrita)
+
+**Está descrito em [`MARKET_USDT.md`](MARKET_USDT.md)** (migrations `0011` e `0012`, funções `market-*` e `pass-crypto`, tela Mercado, passos do dono). O que mudou em relação ao plano abaixo: uma venda **não troca o dono** do certificado (a guarda continua tratando `user_id` como imutável): ela termina o certificado antigo (`transferred`) e **emite um novo** ao comprador com o mesmo conteúdo, apontando o antigo em `origin_certificate_id`. O limite diário de emissão (`item_commit`) conta só o que o servidor emitiu (`origin_certificate_id is null`). Um certificado ganhou `in_save` (o item está no save do dono?): listar tira o item do save, comprar/cancelar/expirar devolve ao dono "fora do save" até o jogo construí-lo do certificado e confirmar.
+
+### O plano original desta rodada (mantido como registro)
+
 
 - `public.item_certificates` com `status = 'held'`, `bound = false` e `arena_private.has_item_flags(user) = false` como as condições de listagem (listar = `held -> listed`; a trigger já recusa um certificado vinculado).
 - Os eventos `list` e `transfer` já existem no `check` da auditoria; a guarda já impede ressuscitar um certificado `transferred`, `burned` ou `revoked`. A transferência precisa trocar o dono numa função própria (a guarda atual trata `user_id` como imutável: a rodada nova deve recriá-la).

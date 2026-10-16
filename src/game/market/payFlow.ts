@@ -29,8 +29,9 @@ export interface PollOptions {
 /** Submits a hash and keeps asking while the network is not ready. Resolves with the final outcome. */
 export async function submitWithPolling(api: MarketApi, reservationId: string, leg: 'seller' | 'fee', txHash: string, opts: PollOptions = {}): Promise<SubmitOutcome> {
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-  const tries = opts.maxTries ?? 45;
-  const interval = opts.intervalMs ?? 4000;
+  // about 10 questions a minute for up to 3 minutes: the server budget (240 an hour, 60 at once) covers a purchase with room to spare
+  const tries = opts.maxTries ?? 36;
+  const interval = opts.intervalMs ?? 5000;
   let last: SubmitOutcome = { kind: 'pending', reason: 'not_found_tx' };
   for (let i = 0; i < tries; i++) {
     if (opts.isCancelled?.()) return { kind: 'stopped' };
