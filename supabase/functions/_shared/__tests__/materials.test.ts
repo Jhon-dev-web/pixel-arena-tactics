@@ -56,7 +56,7 @@ describe('the server rolls, the client never supplies the outcome', () => {
     expect(r.status).toBe(200);
     const got = (r.body.tradeable as Record<string, number>).iron ?? 0;
     expect(got).toBeGreaterThan(0);
-    expect(got).toBeLessThan(40); // 3% of 400 is 12; the daily cap of iron is 39
+    expect(got).toBeLessThan(40); // 1% of 400 is 4; well under the daily cap of iron
     expect(s.store.qty(USER_A, 'iron')).toBe(got);
     expect(s.rngCalls()).toBe(400); // one die per eligible unit
   });
@@ -94,8 +94,8 @@ describe('the server rolls, the client never supplies the outcome', () => {
     expect(s.store.requestsFor(USER_B)).toBe(1);
   });
 
-  it('the chance of a unit is the chance of its material: about 3% / 5% / 8% of the units over many claims', async () => {
-    for (const [id, chance] of [['iron', 0.03], ['silver', 0.05], ['obsidian', 0.08]] as const) {
+  it('the chance of a unit is the chance of its material: about 1% / 2% / 3% of the units over many claims', async () => {
+    for (const [id, chance] of [['iron', 0.01], ['silver', 0.02], ['obsidian', 0.03]] as const) {
       const rng = lcg(11);
       let k = 0;
       const n = 200_000;
@@ -300,13 +300,13 @@ describe('the one table of chances', () => {
     expect(Object.keys(HONEST_PEAK_DAY_UNITS).sort()).toEqual([...MATERIAL_IDS].sort());
   });
 
-  it('each chance is the rate of its class (3% common, 5% uncommon, 8% rare), except the one named exception', () => {
+  it('each chance is the rate of its class (1% common, 2% uncommon, 3% rare), except the one named exception', () => {
     for (const id of MATERIAL_IDS) {
       const expected = CLASS_RATE[MATERIAL_CLASS[id]];
       if (id === 'abyssal_marrow') expect(TRADEABLE_CHANCE[id], id).toBe(CLASS_RATE.rare);
       else expect(TRADEABLE_CHANCE[id], id).toBe(expected);
     }
-    expect(CLASS_RATE).toEqual({ common: 0.03, uncommon: 0.05, rare: 0.08 });
+    expect(CLASS_RATE).toEqual({ common: 0.01, uncommon: 0.02, rare: 0.03 });
   });
 });
 

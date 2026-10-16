@@ -3,8 +3,8 @@
 //
 // A claim reports N units of a material; the server rolls each one: it is tradeable with the chance below (Binomial(N, chance), the server's own dice, never the client's).
 
-/** The starting chances by class of material: common ~3%, uncommon ~5%, rare ~8% of the units that are gathered or dropped. */
-export const CLASS_RATE = { common: 0.03, uncommon: 0.05, rare: 0.08 } as const;
+/** The chances by class of material: common 1%, uncommon 2%, rare 3% of the units that are gathered or dropped (cut from 3/5/8% by the owner on 2026-10-16 so the market does not flood). */
+export const CLASS_RATE = { common: 0.01, uncommon: 0.02, rare: 0.03 } as const;
 
 /**
  * The chance of EVERY material that can be tradeable, spelled out (a test pins this list to the game's materials and each value to its class). Classes come from the game
@@ -13,41 +13,41 @@ export const CLASS_RATE = { common: 0.03, uncommon: 0.05, rare: 0.08 } as const;
  */
 export const TRADEABLE_CHANCE: Readonly<Record<string, number>> = {
   // Mining (ore tiers)
-  copper: 0.03,
-  iron: 0.03,
-  silver: 0.05,
-  gold_ore: 0.05,
-  obsidian: 0.08,
+  copper: 0.01,
+  iron: 0.01,
+  silver: 0.02,
+  gold_ore: 0.02,
+  obsidian: 0.03,
   // Woodcutting (wood tiers)
-  common_wood: 0.03,
-  oak_wood: 0.03,
-  ebony_wood: 0.05,
-  elven_wood: 0.05,
-  ancient_wood: 0.08,
+  common_wood: 0.01,
+  oak_wood: 0.01,
+  ebony_wood: 0.02,
+  elven_wood: 0.02,
+  ancient_wood: 0.03,
   // Garden (plants)
-  common_herb: 0.03,
-  energy_herb: 0.03,
-  iron_thistle: 0.03,
-  swift_grass: 0.03,
-  uncommon_root: 0.05,
-  gold_blossom: 0.05,
-  crimson_mushroom: 0.05,
-  silver_sage: 0.05,
-  rare_flower: 0.08,
-  moon_lily: 0.08,
-  dusk_orchid: 0.08,
-  elder_root: 0.08,
+  common_herb: 0.01,
+  energy_herb: 0.01,
+  iron_thistle: 0.01,
+  swift_grass: 0.01,
+  uncommon_root: 0.02,
+  gold_blossom: 0.02,
+  crimson_mushroom: 0.02,
+  silver_sage: 0.02,
+  rare_flower: 0.03,
+  moon_lily: 0.03,
+  dusk_orchid: 0.03,
+  elder_root: 0.03,
   // Hunting drops
-  leather_scrap: 0.03,
-  bone_fragment: 0.03,
-  demon_claw: 0.05,
-  concentrated_blood: 0.05,
-  rift_shard: 0.05,
-  demon_core: 0.08,
-  corrupted_crystal: 0.08,
-  fiend_horn: 0.08,
-  blood_heart: 0.08,
-  abyssal_marrow: 0.08,
+  leather_scrap: 0.01,
+  bone_fragment: 0.01,
+  demon_claw: 0.02,
+  concentrated_blood: 0.02,
+  rift_shard: 0.02,
+  demon_core: 0.03,
+  corrupted_crystal: 0.03,
+  fiend_horn: 0.03,
+  blood_heart: 0.03,
+  abyssal_marrow: 0.03,
 };
 
 /** The materials whose chance is NOT the rate of their game class (see above). */

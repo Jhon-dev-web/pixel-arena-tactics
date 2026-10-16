@@ -2635,3 +2635,7 @@ Mistura 80% A, 15% P, 5% especialistas; unidades negociáveis esperadas **no tot
 | ancient_wood | 15 790 | 494 879 | 1 359 710 | 136.0 |
 | **total** | **1 148 657** | **12 629 734** | **27 599 518** | **2760.0** |
 
+
+### Rodada 23b — chances de material negociável reduzidas (2026-10-16)
+
+O dono aprovou reduzir as chances de 3% / 5% / 8% para **1% / 2% / 3%** (comum / incomum / raro; o Tutano Abissal segue na classe rara). A oferta de unidades negociáveis cai para cerca de um terço dos números da Rodada 23 (jogador comum ~740 unidades em 60 dias, dono do Passe ~1 540; ~0,9 milhão de unidades com 1 000 jogadores, estimativa proporcional, não re-simulada). O teto diário anti-robô deriva da chance (`materials/bounds.ts`) e acompanha a redução sem outra mudança.
