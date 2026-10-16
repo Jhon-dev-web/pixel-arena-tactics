@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
 import { SaveData, playerLevel } from '../game/engine';
@@ -11,14 +11,46 @@ import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
 import StashHint from './StashHint';
 import { applyCraftPotion, applyRefine } from '../game/craftActions';
+import { ItemCard, PageHeader, Panel, PrimaryButton, Screen, Tabs } from './ui';
+import type { TabItem } from './ui';
 
 const matText = (k: string): string => t(`materials.${k}`);
 const conText = (k: string): string => t(`consumables.${k}`);
 
-// Ofícios as its own main-content area (desktop: big panel + category tabs + a responsive grid of
-// recipe cards; mobile: same categories/cards, one per row) — instead of the old narrow modal. Same
-// REFINE_CATEGORIES / RefiningRecipe / POTION_RECIPES data and onRefine/onCraftPotion handlers as
-// ForgeModal's "Refino" tab (mobile) and the previous OficiosModal; only the presentation changes.
+// One requirement of a recipe, shown like the Forja's: what the hero has against what it takes.
+interface Req {
+  key: string;
+  icon: ReactNode;
+  label: ReactNode;
+  have: number;
+  need: number;
+  plain?: boolean; // a threshold (the hero level): shown as the number it takes, not "have / need"
+  stash?: string;
+}
+
+function Reqs({ rows }: { rows: Req[] }) {
+  return (
+    <div className="fg-reqs" role="list">
+      {rows.map((r) => {
+        const short = r.have < r.need;
+        return (
+          <div className="fg-req" role="listitem" key={r.key}>
+            <span className="fg-req-icon" aria-hidden>
+              {r.icon}
+            </span>
+            <span className="fg-req-label">{r.label}</span>
+            <span className={`fg-req-qty${short ? ' missing' : ''}`}>{r.plain ? fmtNum(r.need) : `${fmtNum(r.have)} / ${fmtNum(r.need)}`}</span>
+            {r.stash && <StashHint kind="material" id={r.stash} need={r.need} />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Ofícios as its own main-content area (a page header, the station tabs and a responsive grid of recipe cards like the Forja's: one per row on a phone) — instead of the old narrow modal.
+// Same REFINE_CATEGORIES / RefiningRecipe / POTION_RECIPES data and onRefine/onCraftPotion handlers as ForgeModal's "Refino" tab (mobile) and the previous OficiosModal;
+// only the presentation changes.
 export default function OficiosView({
   save,
   onRefine,
@@ -47,24 +79,26 @@ export default function OficiosView({
 
   const stationRecipes: RefiningRecipe[] = category === 'potions' ? [] : refiningRecipesForStation(category);
 
-  return (
-    <div className="desktop-home oficios-view">
-      <section className="dh-card oficios-panel">
-        <h3 className="dh-card-title">{t('nav.oficios')}</h3>
-        <div className="forge-tabs oficios-tabs">
-          {REFINE_CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              className={`tab${category === c.id ? ' active' : ''}`}
-              onClick={() => setCategory(c.id)}
-              data-ui
-            >
-              {t(`forge.${c.titleKey}`)}
-            </button>
-          ))}
-        </div>
+  const goldRow = (cost: number): Req => ({ key: 'gold', icon: <img src={Assets.icons.gold.url} alt="" />, label: t('inventory.reforgeGold'), have: save.gold, need: cost });
+  const levelRow = (required: number): Req => ({ key: 'level', icon: <span>⭐</span>, label: t('forge.levelReq', { n: required }), have: level, need: required, plain: true });
+  const inputRows = (input: Record<string, number | undefined>): Req[] =>
+    Object.entries(input).map(([mid, count]) => ({
+      key: `in-${mid}`,
+      icon: <MaterialIcon item={getMaterial(mid as MaterialId)!} />,
+      label: matText(`mat_${mid}`),
+      have: save.materials[mid as MaterialId] ?? 0,
+      need: count as number,
+      stash: mid,
+    }));
 
-        <div className="oficios-grid">
+  const tabs: TabItem<string>[] = REFINE_CATEGORIES.map((c) => ({ id: c.id, label: t(`forge.${c.titleKey}`) }));
+
+  return (
+    <Screen label={t('nav.oficios')}>
+      <PageHeader icon={<img className="pixel-icon" src="/assets/icons/refine_catalyst.png" alt="" />} title={t('nav.oficios')} />
+      <Tabs items={tabs} value={category} onChange={(id) => setCategory(id as RefiningStation | 'potions')} label={t('nav.oficios')} className="of-tabs" />
+      <Panel className="of-panel">
+        <div className="ui-grid of-grid">
           {category === 'potions'
             ? POTION_RECIPES.filter((recipe) => potionRecipeInTier(recipe, save.highestDungeonFloor, playerLevel(save.xp))).map((recipe) => {
                 const key = potionRecipeKey(recipe);
@@ -73,61 +107,31 @@ export default function OficiosView({
                 const ok = save.gold >= recipe.cost && level >= recipe.requiredLevel && hasMaterials(save.materials, recipe.input) && !bagFull;
                 const made = justMade === key;
                 const owned = save.consumables?.[recipe.id] ?? 0;
+                const rows = [goldRow(recipe.cost), ...(recipe.requiredLevel > 0 ? [levelRow(recipe.requiredLevel)] : []), ...inputRows(recipe.input)];
                 return (
-                  <div className={`oficios-card${focus?.recipeId === key ? ' focus' : ''}`} key={key} data-recipe-id={key}>
-                    <div className="oficios-card-head">
-                      <span className="oficios-card-icon">
-                        <ConsumableIcon item={consumable} />
-                      </span>
-                      <div className="oficios-card-title">
-                        <span className="craft-name">{conText(consumable.nameKey)}{recipe.zoneTier ? ` · ${t('forge.knowledgeTier', { n: recipe.zoneTier })}` : ''}</span>
-                        <span className="gear-count">{t('shop.youHave', { n: owned })}</span>
-                      </div>
-                    </div>
-                    <span className="craft-desc">{conText(consumable.descKey)}</span>
-                    <div className="craft-req">
-                      <span className="req-item">
-                        <span className="mat-icon">
-                          <img src={Assets.icons.gold.url} alt="" />
-                        </span>
-                        <span className={`req-amount${save.gold < recipe.cost ? ' missing' : ''}`}>{recipe.cost}</span>
-                      </span>
-                      {recipe.requiredLevel > 0 && (
-                        <span className="req-item">
-                          <span className="req-plus">+</span>
-                          <span className="mat-icon level">⭐</span>
-                          <span className={`req-amount${level < recipe.requiredLevel ? ' missing' : ''}`}>
-                            {t('forge.levelReq', { n: recipe.requiredLevel })}
-                          </span>
-                        </span>
-                      )}
-                      {Object.entries(recipe.input).map(([mid, count]) => {
-                        const need = count as number;
-                        const have = save.materials[mid as MaterialId] ?? 0;
-                        return (
-                          <span className="req-item" key={`in-${mid}`}>
-                            <span className="req-plus">+</span>
-                            <span className="mat-icon">
-                              <MaterialIcon item={getMaterial(mid as MaterialId)!} />
-                            </span>
-                            <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                              {fmtNum(have)}/{fmtNum(need)} {matText(`mat_${mid}`)}
-                            </span>
-                            <StashHint kind="material" id={mid} need={need} />
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {bagFull && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
-                    <button
-                      className={`craft-btn forge oficios-produce${made ? ' forged' : ''}`}
-                      onClick={() => produce(key, true)}
-                      disabled={!ok}
-                      data-ui
-                    >
-                      {made ? t('forge.forged') : t('forge.forge')}
-                    </button>
-                  </div>
+                  <ItemCard
+                    key={key}
+                    className="of-card"
+                    data-recipe-id={key}
+                    selected={focus?.recipeId === key}
+                    icon={<ConsumableIcon item={consumable} />}
+                    name={
+                      <>
+                        {conText(consumable.nameKey)}
+                        {recipe.zoneTier ? ` · ${t('forge.knowledgeTier', { n: recipe.zoneTier })}` : ''}
+                      </>
+                    }
+                    rarityLabel={t('shop.youHave', { n: owned })}
+                    action={
+                      <PrimaryButton block className={made ? 'of-made' : ''} onClick={() => produce(key, true)} disabled={!ok}>
+                        {made ? t('forge.forged') : t('forge.forge')}
+                      </PrimaryButton>
+                    }
+                  >
+                    <p className="ui-note">{conText(consumable.descKey)}</p>
+                    <Reqs rows={rows} />
+                    {bagFull && <p className="ui-alert bad">{t('inventory.bagFullAction')}</p>}
+                  </ItemCard>
                 );
               })
             : stationRecipes.map((recipe) => {
@@ -136,68 +140,35 @@ export default function OficiosView({
                 const made = justMade === recipe.id;
                 const outputMat = getMaterial(recipe.output)!;
                 const owned = save.materials[recipe.output] ?? 0;
+                const rows = [goldRow(recipe.cost), ...(recipe.requiredLevel > 0 ? [levelRow(recipe.requiredLevel)] : []), ...inputRows(recipe.input)];
                 return (
-                  <div className={`oficios-card${focus?.recipeId === recipe.id ? ' focus' : ''}`} key={recipe.id} data-recipe-id={recipe.id}>
-                    <div className="oficios-card-head">
-                      <span className="oficios-card-icon">
-                        <MaterialIcon item={outputMat} />
-                      </span>
-                      <div className="oficios-card-title">
-                        <span className="craft-name">
-                          {recipe.outputQty}× {matText(`mat_${recipe.output}`)}
-                          {/* the four dust recipes make the same item: the title names what each one eats */}
-                          {recipe.station === 'dust' && ` (${matText(`mat_${Object.keys(recipe.input)[0]}`)})`}
-                        </span>
-                        <span className="gear-count">{t('shop.youHave', { n: owned })}</span>
-                      </div>
-                    </div>
-                    <div className="craft-req">
-                      <span className="req-item">
-                        <span className="mat-icon">
-                          <img src={Assets.icons.gold.url} alt="" />
-                        </span>
-                        <span className={`req-amount${save.gold < recipe.cost ? ' missing' : ''}`}>{recipe.cost}</span>
-                      </span>
-                      {recipe.requiredLevel > 0 && (
-                        <span className="req-item">
-                          <span className="req-plus">+</span>
-                          <span className="mat-icon level">⭐</span>
-                          <span className={`req-amount${level < recipe.requiredLevel ? ' missing' : ''}`}>
-                            {t('forge.levelReq', { n: recipe.requiredLevel })}
-                          </span>
-                        </span>
-                      )}
-                      {Object.entries(recipe.input).map(([mid, count]) => {
-                        const need = count as number;
-                        const have = save.materials[mid as MaterialId] ?? 0;
-                        return (
-                          <span className="req-item" key={`in-${mid}`}>
-                            <span className="req-plus">+</span>
-                            <span className="mat-icon">
-                              <MaterialIcon item={getMaterial(mid as MaterialId)!} />
-                            </span>
-                            <span className={`req-amount${have < need ? ' missing' : ''}`}>
-                              {fmtNum(have)}/{fmtNum(need)} {matText(`mat_${mid}`)}
-                            </span>
-                            <StashHint kind="material" id={mid} need={need} />
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {bagFull && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
-                    <button
-                      className={`craft-btn forge oficios-produce${made ? ' forged' : ''}`}
-                      onClick={() => produce(recipe.id, false)}
-                      disabled={!ok}
-                      data-ui
-                    >
-                      {made ? t('forge.forged') : t('forge.refine')}
-                    </button>
-                  </div>
+                  <ItemCard
+                    key={recipe.id}
+                    className="of-card"
+                    data-recipe-id={recipe.id}
+                    selected={focus?.recipeId === recipe.id}
+                    icon={<MaterialIcon item={outputMat} />}
+                    name={
+                      <>
+                        {recipe.outputQty}× {matText(`mat_${recipe.output}`)}
+                        {/* the four dust recipes make the same item: the title names what each one eats */}
+                        {recipe.station === 'dust' && ` (${matText(`mat_${Object.keys(recipe.input)[0]}`)})`}
+                      </>
+                    }
+                    rarityLabel={t('shop.youHave', { n: owned })}
+                    action={
+                      <PrimaryButton block className={made ? 'of-made' : ''} onClick={() => produce(recipe.id, false)} disabled={!ok}>
+                        {made ? t('forge.forged') : t('forge.refine')}
+                      </PrimaryButton>
+                    }
+                  >
+                    <Reqs rows={rows} />
+                    {bagFull && <p className="ui-alert bad">{t('inventory.bagFullAction')}</p>}
+                  </ItemCard>
                 );
               })}
         </div>
-      </section>
-    </div>
+      </Panel>
+    </Screen>
   );
 }

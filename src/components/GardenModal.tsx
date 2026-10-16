@@ -8,9 +8,13 @@ import SkillLevelBadge from './SkillLevelBadge';
 import TitleIcon from './TitleIcon';
 import UnlockList from './UnlockList';
 import { plantGrowthMs } from '../game/mastery';
+import { Button, Chip, ItemCard, ItemFrame, ModalShell, Panel, ScreenLayout } from './ui';
+import type { CardRarity } from './ui';
+import { Meter } from './HuntParts';
 
 const gardenText = (k: string): string => t(`garden.${k}`);
 const matText = (k: string): string => t(`materials.mat_${k}`);
+const plantRarity = (r: PlantDef['rarity']): CardRarity => (r === 'rare' ? 'epic' : r === 'uncommon' ? 'rare' : 'common');
 
 function formatRemaining(ms: number): string {
   const totalSec = Math.max(0, Math.ceil(ms / 1000));
@@ -68,98 +72,88 @@ function Plot({
 
   if (lock.locked) {
     return (
-      <div className="garden-plot locked">
-        <div className="garden-plot-head">
-          <span className="garden-plot-num">{title}</span>
-        </div>
-        <img className="garden-plot-lock" src="/assets/icons/garden_plot_locked.png" alt="" />
-        <span className="garden-plot-hint">{gardenText('plotLockedBody')}</span>
-        <span className="garden-plot-chip lock-level">{gardenText('plotLockedLevel').replace('{n}', String(lock.level))}</span>
-      </div>
+      <ItemCard
+        className="gd-plot locked"
+        icon={<img className="pixel-icon" src="/assets/icons/garden_plot_locked.png" alt="" />}
+        name={title}
+        rarityLabel={gardenText('plotLockedBody')}
+        tag={<Chip>{gardenText('plotLockedLevel').replace('{n}', String(lock.level))}</Chip>}
+      />
     );
   }
 
   if (!def) {
     const canAgain = !!lastPlant && gardeningLevel >= lastPlant.requiredLevel;
     return (
-      <div className="garden-plot empty">
-        <div className="garden-plot-head">
-          <span className="garden-plot-num">{title}</span>
-          <span className="garden-plot-chip">{gardenText('empty')}</span>
-        </div>
-        <span className="garden-plot-soil" aria-hidden="true">
-          +
-        </span>
-        <button className="garden-plot-btn plant" onClick={onPick} data-ui>
-          {gardenText('plant')}
-        </button>
-        {canAgain && lastPlant && (
-          <button className="garden-plot-again" onClick={() => onPlantAgain(lastPlant.id)} aria-label={gardenText('plantAgain')} data-ui>
-            <span className="garden-plot-again-label">↻ {gardenText('plantAgain')}</span>
-            <span>
-              <TitleIcon src={lastPlant.iconUrl} fallback={lastPlant.icon} className="garden-inline-icon" /> {gardenText(lastPlant.nameKey)}
-            </span>
-          </button>
-        )}
-      </div>
+      <ItemCard
+        className="gd-plot empty"
+        icon={<span className="gd-soil">+</span>}
+        name={title}
+        rarityLabel={gardenText('empty')}
+        action={
+          <div className="gd-actions">
+            <Button block onClick={onPick}>
+              {gardenText('plant')}
+            </Button>
+            {canAgain && lastPlant && (
+              <Button block size="sm" className="gd-again" onClick={() => onPlantAgain(lastPlant.id)} aria-label={gardenText('plantAgain')}>
+                <span>↻ {gardenText('plantAgain')}</span>
+                <span>
+                  <TitleIcon src={lastPlant.iconUrl} fallback={lastPlant.icon} className="garden-inline-icon" /> {gardenText(lastPlant.nameKey)}
+                </span>
+              </Button>
+            )}
+          </div>
+        }
+      />
     );
   }
 
   const progress = status.durationMs <= 0 ? 0 : Math.max(0, Math.min(1, status.elapsedMs / status.durationMs));
   const pct = status.ready ? 100 : Math.min(99, Math.floor(progress * 100));
   return (
-    <div className={`garden-plot ${status.ready ? 'ready' : 'growing'} rarity-${def.rarity}`}>
-      <div className="garden-plot-head">
-        <span className="garden-plot-num">{title}</span>
-        <span className="garden-plot-chip">{gardenText(status.ready ? 'statusReady' : 'statusGrowing')}</span>
-      </div>
-      <div className="garden-plot-plant">
-        <span className="garden-plot-icon" aria-hidden="true">
-          <TitleIcon src={def.iconUrl} fallback={def.icon} className="garden-item-icon" />
-        </span>
-        <span className="garden-plot-name">{gardenText(def.nameKey)}</span>
-      </div>
-      <span className="garden-plot-yield">
-        {gardenText('yield').replace('{qty}', String(def.qty)).replace('{name}', matText(def.material))}
-      </span>
-      <div
-        className="garden-plot-bar"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={pct}
-        aria-label={gardenText(def.nameKey)}
-      >
-        <div className="garden-plot-fill" style={{ width: `${pct}%` }} />
-      </div>
-      {status.ready ? (
-        <>
-          <span className="garden-plot-ready-text">{gardenText('readyLong')}</span>
-          <button className="garden-plot-btn harvest" onClick={onHarvest} data-ui>
+    <ItemCard
+      className={`gd-plot ${status.ready ? 'ready' : 'growing'}`}
+      icon={<TitleIcon src={def.iconUrl} fallback={def.icon} className="garden-item-icon" />}
+      rarity={plantRarity(def.rarity)}
+      name={gardenText(def.nameKey)}
+      rarityLabel={title}
+      tag={<Chip tone={status.ready ? 'good' : 'gold'}>{gardenText(status.ready ? 'statusReady' : 'statusGrowing')}</Chip>}
+      selected={status.ready}
+      action={
+        status.ready ? (
+          <Button variant="primary" block onClick={onHarvest}>
             {gardenText('harvest')}
-          </button>
-        </>
+          </Button>
+        ) : (
+          <div className="gd-actions">
+            {fertilized ? (
+              <Chip tone="good">{gardenText('fertilized')}</Chip>
+            ) : (
+              fertilizerQty > 0 && (
+                <Button block size="sm" onClick={onFertilize} title={gardenText('fertilizeHint').replace('{n}', String(fertilizerQty))}>
+                  <img className="garden-inline-icon" src="/assets/icons/fertilizer.png" alt="" /> {gardenText('fertilize')} ({fertilizerQty})
+                </Button>
+              )
+            )}
+            <Button block size="sm" variant="danger" onClick={onUproot}>
+              {armedUproot ? gardenText('uprootConfirm') : gardenText('cancel')}
+            </Button>
+          </div>
+        )
+      }
+    >
+      <p className="gd-yield">{gardenText('yield').replace('{qty}', String(def.qty)).replace('{name}', matText(def.material))}</p>
+      <Meter pct={pct} tone={status.ready ? 'xp' : undefined} label={gardenText(def.nameKey)} />
+      {status.ready ? (
+        <p className="gd-time ready">{gardenText('readyLong')}</p>
       ) : (
-        <>
-          <span className="garden-plot-time">
-            <span className="garden-plot-remaining">{formatRemaining(status.remainingMs)}</span>
-            <span className="garden-plot-pct">{pct}%</span>
-          </span>
-          {fertilized ? (
-            <span className="garden-plot-fertilized">{gardenText('fertilized')}</span>
-          ) : (
-            fertilizerQty > 0 && (
-              <button className="garden-plot-fertilize" onClick={onFertilize} title={gardenText('fertilizeHint').replace('{n}', String(fertilizerQty))} data-ui>
-                <img className="garden-inline-icon" src="/assets/icons/fertilizer.png" alt="" /> {gardenText('fertilize')} ({fertilizerQty})
-              </button>
-            )
-          )}
-          <button className={`garden-plot-uproot${armedUproot ? ' armed' : ''}`} onClick={onUproot} data-ui>
-            {armedUproot ? gardenText('uprootConfirm') : gardenText('cancel')}
-          </button>
-        </>
+        <p className="gd-time">
+          <span>{formatRemaining(status.remainingMs)}</span>
+          <span>{pct}%</span>
+        </p>
       )}
-    </div>
+    </ItemCard>
   );
 }
 
@@ -259,115 +253,119 @@ export default function GardenModal({
     setPlantAll(false);
   };
 
-  return (
-    <div className="modal-backdrop">
-      <div className={`modal dungeon-modal garden-modal${pickerFor !== null ? ' picking' : ''}`} data-tutorial-target="garden-modal">
-        <h2 className="modal-title">{gardenText('title')}</h2>
-
+  const summary = (
+    <>
+      <Panel>
         <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" skillId="gardening">
-          <span className="skill-level-meta">
+          <p className="pf-meta">
             {gardenText('plotsOpen').replace('{n}', String(openPlots)).replace('{max}', String(GARDEN_SLOTS))}
             {nextPlotLevel > 0 && ` · ${gardenText('nextPlot').replace('{n}', String(nextPlotLevel))}`}
-          </span>
-          <span className="skill-level-meta">
-            {nextPlant
-              ? gardenText('nextUnlock').replace('{name}', gardenText(nextPlant.nameKey)).replace('{n}', String(nextPlant.requiredLevel))
-              : gardenText('allUnlocked')}
-          </span>
+          </p>
+          <p className="pf-meta">
+            {nextPlant ? gardenText('nextUnlock').replace('{name}', gardenText(nextPlant.nameKey)).replace('{n}', String(nextPlant.requiredLevel)) : gardenText('allUnlocked')}
+          </p>
         </SkillLevelBadge>
+      </Panel>
+    </>
+  );
 
-        <div className="dungeon-body">
-          {bagBlocked.length > 0 && <p className="craft-bag-full">{t('garden.bagFull')}</p>}
-          {readyIdx.length >= 2 && (
-            <button className="garden-harvest-all" onClick={() => harvest(readyIdx)} data-ui>
-              {gardenText('harvestAll').replace('{n}', String(readyIdx.length))}
-            </button>
-          )}
-          <div className="garden-plots">
-            {statuses.map((status, i) => (
-              <div className="garden-plot-wrap" key={i}>
-                <Plot
-                  index={i}
-                  status={status}
-                  lastPlant={save.gardenSlots[i]?.lastPlantId ? getPlant(save.gardenSlots[i].lastPlantId as string) : undefined}
-                  gardeningLevel={gardeningLevel}
-                  armedUproot={armedUproot === i}
-                  fertilized={!!save.gardenSlots[i]?.fertilized}
-                  fertilizerQty={fertilizerQty}
-                  lock={i >= openPlots ? { locked: true, level: plotUnlockLevel(i) } : {}}
-                  onFertilize={() => onFertilize(i)}
-                  onPick={() => {
-                    setPlantAll(false);
-                    setPickerFor(i);
-                  }}
-                  onPlantAgain={(plantId) => onPlant(plantId, [i])}
-                  onHarvest={() => harvest([i])}
-                  onUproot={() => uproot(i)}
-                />
-                {floats
-                  .filter((f) => f.slot === i)
-                  .map((f) => (
-                    <span className="garden-float" key={f.id} aria-hidden="true">
-                      {f.text}
-                    </span>
-                  ))}
-              </div>
-            ))}
-          </div>
-          <UnlockList skill="gardening" level={gardeningLevel} />
-        </div>
-
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
-
-        {pickerFor !== null && (
-          <div className="garden-picker" role="dialog" aria-label={gardenText('pickerTitle').replace('{n}', String(pickerFor + 1))}>
-            <div className="garden-picker-panel">
-              <h3 className="garden-picker-title">{gardenText('pickerTitle').replace('{n}', String(pickerFor + 1))}</h3>
-              <div className="garden-picker-list">
-                {PLANTS.map((plant) => {
-                  const unlocked = gardeningLevel >= plant.requiredLevel;
-                  return (
-                    <button
-                      className={`garden-plant-row rarity-${plant.rarity}${unlocked ? '' : ' locked'}`}
-                      key={plant.id}
-                      onClick={() => choose(plant.id)}
-                      disabled={!unlocked}
-                      title={gardenText(plant.descKey)}
-                      data-ui
-                    >
-                      <span className="garden-plant-icon" aria-hidden="true">
-                        <TitleIcon src={plant.iconUrl} fallback={plant.icon} className="garden-item-icon" />
-                      </span>
-                      <span className="garden-plant-info">
-                        <span className="garden-plant-name">
-                          {gardenText(plant.nameKey)}
-                          <span className="garden-plant-rarity">{gardenText(`rarity_${plant.rarity}`)}</span>
-                        </span>
-                        <span className="garden-plant-meta">
-                          {formatDuration(plantGrowthMs(plant, gardeningLevel))} · {gardenText('yieldShort').replace('{qty}', String(plant.qty))} · {fmtNum(plantHarvestXp(plant))} XP
-                        </span>
-                        <span className="garden-plant-use">{gardenText(plant.useKey)}</span>
-                        {!unlocked && <span className="garden-plant-lock">{gardenText('locked').replace('{n}', String(plant.requiredLevel))}</span>}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {emptyIdx.length > 1 && (
-                <label className="garden-picker-all">
-                  <input type="checkbox" checked={plantAll} onChange={(e) => setPlantAll(e.target.checked)} />
-                  <span>{gardenText('pickerAll').replace('{n}', String(emptyIdx.length))}</span>
-                </label>
-              )}
-              <button className="camp-expedition-cancel garden-picker-close" onClick={() => setPickerFor(null)} data-ui>
-                {gardenText('close')}
-              </button>
+  const main = (
+    <>
+      {bagBlocked.length > 0 && <p className="ui-alert bad gd-bagfull">{t('garden.bagFull')}</p>}
+      {readyIdx.length >= 2 && (
+        <Button variant="primary" block onClick={() => harvest(readyIdx)}>
+          {gardenText('harvestAll').replace('{n}', String(readyIdx.length))}
+        </Button>
+      )}
+      <Panel title={gardenText('slotsTitle')}>
+        <div className="ui-grid gd-plots">
+          {statuses.map((status, i) => (
+            <div className="gd-plot-wrap" key={i}>
+              <Plot
+                index={i}
+                status={status}
+                lastPlant={save.gardenSlots[i]?.lastPlantId ? getPlant(save.gardenSlots[i].lastPlantId as string) : undefined}
+                gardeningLevel={gardeningLevel}
+                armedUproot={armedUproot === i}
+                fertilized={!!save.gardenSlots[i]?.fertilized}
+                fertilizerQty={fertilizerQty}
+                lock={i >= openPlots ? { locked: true, level: plotUnlockLevel(i) } : {}}
+                onFertilize={() => onFertilize(i)}
+                onPick={() => {
+                  setPlantAll(false);
+                  setPickerFor(i);
+                }}
+                onPlantAgain={(plantId) => onPlant(plantId, [i])}
+                onHarvest={() => harvest([i])}
+                onUproot={() => uproot(i)}
+              />
+              {floats
+                .filter((f) => f.slot === i)
+                .map((f) => (
+                  <span className="gd-float" key={f.id} aria-hidden="true">
+                    {f.text}
+                  </span>
+                ))}
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      </Panel>
+      <UnlockList skill="gardening" level={gardeningLevel} />
+    </>
+  );
+
+  return (
+    <ModalShell
+      className={`pf-modal gd-modal${pickerFor !== null ? ' picking' : ''}`}
+      tutorialTarget="garden-modal"
+      icon={<img className="pixel-icon" src="/assets/icons/common_herb.png" alt="" />}
+      title={gardenText('title')}
+      subtitle={t('skills.level', { n: gardeningLevel })}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <div className="ui-cq">
+        <ScreenLayout main={main} side={summary} sideFirst className="pf-layout" />
       </div>
-    </div>
+
+      {pickerFor !== null && (
+        <div className="gd-picker" role="dialog" aria-label={gardenText('pickerTitle').replace('{n}', String(pickerFor + 1))}>
+          <Panel className="gd-picker-panel" title={gardenText('pickerTitle').replace('{n}', String(pickerFor + 1))}>
+            <div className="gd-picker-list">
+              {PLANTS.map((plant) => {
+                const unlocked = gardeningLevel >= plant.requiredLevel;
+                return (
+                  <button className={`gd-plant${unlocked ? '' : ' locked'}`} key={plant.id} onClick={() => choose(plant.id)} disabled={!unlocked} title={gardenText(plant.descKey)} data-ui>
+                    <ItemFrame size="sm" rarity={plantRarity(plant.rarity)}>
+                      <TitleIcon src={plant.iconUrl} fallback={plant.icon} className="garden-item-icon" />
+                    </ItemFrame>
+                    <span className="gd-plant-info">
+                      <span className="gd-plant-name">
+                        {gardenText(plant.nameKey)}
+                        <span className={`ui-item-rarity r-${plantRarity(plant.rarity)}`}>{gardenText(`rarity_${plant.rarity}`)}</span>
+                      </span>
+                      <span className="gd-plant-meta">
+                        {formatDuration(plantGrowthMs(plant, gardeningLevel))} · {gardenText('yieldShort').replace('{qty}', String(plant.qty))} · {fmtNum(plantHarvestXp(plant))} XP
+                      </span>
+                      <span className="gd-plant-use">{gardenText(plant.useKey)}</span>
+                      {!unlocked && <span className="gd-plant-lock">{gardenText('locked').replace('{n}', String(plant.requiredLevel))}</span>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {emptyIdx.length > 1 && (
+              <label className="gd-picker-all">
+                <input type="checkbox" checked={plantAll} onChange={(e) => setPlantAll(e.target.checked)} />
+                <span>{gardenText('pickerAll').replace('{n}', String(emptyIdx.length))}</span>
+              </label>
+            )}
+            <Button block variant="secondary" className="gd-picker-close" onClick={() => setPickerFor(null)}>
+              {gardenText('close')}
+            </Button>
+          </Panel>
+        </div>
+      )}
+    </ModalShell>
   );
 }

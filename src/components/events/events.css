@@ -30,9 +30,9 @@
   font-size: var(--fs-body);
 }
 .ev-panel .ev-next {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--c-line);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: var(--bw-thin) solid var(--c-line);
 }
 .ev-panel .ev-next-label {
   color: var(--c-text-muted);
@@ -51,17 +51,8 @@
   color: var(--c-text-muted);
   font-size: var(--fs-small);
 }
-.ev-panel .ev-toggle,
-.ev-panel .ev-pick-btn {
+.ev-panel .ev-toggle {
   align-self: flex-start;
-  background: var(--c-gold-fill);
-  color: var(--c-gold-200);
-  border: 1px solid var(--c-gold-line);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font: inherit;
-  font-size: var(--fs-body);
-  cursor: pointer;
 }
 .ev-panel .ev-pick-row {
   display: flex;

@@ -418,7 +418,6 @@ body {
   }
 }
 
-
 /* --- shop tabs --- */
 .shop-modal {
   display: flex;
@@ -426,8 +425,7 @@ body {
   max-height: 86vh;
 }
 
-.shop-tabs,
-.dungeon-tabs {
+.shop-tabs {
   display: flex;
   gap: 8px;
   margin: 0 0 14px;
@@ -2264,26 +2262,6 @@ body {
 }
 
 /* ===== dungeon map modal ===== */
-.dungeon-modal {
-  display: flex;
-  flex-direction: column;
-  width: min(90vw, 420px);
-  max-height: 88vh;
-  padding: 20px 16px 16px;
-}
-.dungeon-body {
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 2px;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #6a4a2a transparent;
-}
 .floor-card {
   padding: 14px;
   background: #1c1322;
@@ -2302,50 +2280,9 @@ body {
 }
 /* Compact variant for the "Canteiros" tab — a quick-glance progress check shouldn't need the same
    vertical room as the "Plantar" tab's full cards (icon/level/drops/description/stepper). */
-.camp-mine-bar.thin {
-  height: 4px;
-}
-.camp-mine-time.compact {
-  font-size: var(--fs-small);
-}
 .craft-btn.small {
   padding: 5px 6px;
   font-size: var(--fs-small);
-}
-.floor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.floor-name {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--fs-body);
-  color: #ffd76a;
-  font-weight: bold;
-  line-height: 1.3;
-  white-space: normal;
-  overflow-wrap: break-word;
-}
-.floor-cp {
-  flex-shrink: 0;
-  font-size: var(--fs-small);
-  color: #ffd76a;
-  background: rgba(255, 215, 106, 0.12);
-  border: 1px solid #a87c3a;
-  border-radius: 999px;
-  padding: 4px 10px;
-  white-space: nowrap;
-}
-.floor-drops {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  row-gap: 6px;
-  margin-bottom: 12px;
 }
 .drops-label {
   font-size: var(--fs-small);
@@ -2359,21 +2296,6 @@ body {
   font-size: var(--fs-small);
   color: #d8c9a0;
   white-space: nowrap;
-}
-.auto-potion-threshold-label {
-  display: block;
-  font-size: var(--fs-small);
-  color: #d8c9a0;
-  margin-bottom: 6px;
-}
-.auto-potion-slider {
-  width: 100%;
-  margin-bottom: 10px;
-  accent-color: #ffd76a;
-}
-.auto-potion-priority {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-bottom: 0;
 }
 .battle-btn {
   width: 100%;
@@ -2403,34 +2325,6 @@ body {
 .battle-btn:disabled:active {
   transform: none;
   box-shadow: 0 3px 0 #2a261f;
-}
-.floor-locked {
-  display: block;
-  width: 100%;
-  text-align: center;
-  font-size: var(--fs-small);
-  color: #8a7aa8;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid #4a3a55;
-  border-radius: 8px;
-  padding: 10px 14px;
-}
-.milestone-icon {
-  margin-left: 6px;
-  font-size: var(--fs-body);
-}
-.floor-drop.cp-insufficient span {
-  color: #ff8a7a;
-  font-weight: bold;
-}
-.cp-warning-banner {
-  font-size: var(--fs-small);
-  color: #ff8a7a;
-  background: rgba(255, 138, 122, 0.1);
-  border: 1px solid #a03020;
-  border-radius: 8px;
-  padding: 6px 10px;
-  margin-bottom: 10px;
 }
 .floor-drop.lost {
   color: #ff8a7a;
@@ -3096,16 +2990,6 @@ body {
   font-size: var(--fs-small);
   color: #b8a8d8;
 }
-.camp-expedition-cancel {
-  font-family: inherit;
-  font-size: var(--fs-small);
-  color: #ff8a7a;
-  background: none;
-  border: 1px solid #5a3a3a;
-  border-radius: 8px;
-  padding: 6px 12px;
-  cursor: pointer;
-}
 .camp-expedition-claim {
   font-family: inherit;
   font-size: var(--fs-body);
@@ -3133,112 +3017,6 @@ body {
 }
 
 /* ===== camp mine (idle mining) ===== */
-.camp-mine-btn {
-  position: absolute;
-  top: 178px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  width: min(72%, 280px);
-  font-family: inherit;
-  font-size: var(--fs-body);
-  color: #ffe9c8;
-  background: linear-gradient(180deg, #4a3a2a, #302018);
-  border: 2px solid #8a6a3a;
-  border-radius: 10px;
-  padding: 10px 18px;
-  cursor: pointer;
-  box-shadow: 0 3px 0 #1a1108;
-  white-space: nowrap;
-}
-.camp-mine-card {
-  position: absolute;
-  top: 178px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  width: min(88vw, 320px);
-  padding: 10px 12px;
-  background: #1c1322;
-  border: 2px solid #8a6a3a;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-.camp-mine-name {
-  font-size: var(--fs-body);
-  color: #ffd76a;
-  font-weight: bold;
-}
-.camp-mine-bar {
-  width: 100%;
-  height: 8px;
-  margin-top: 8px;
-  background: #1a1220;
-  border: 1px solid #000;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.camp-mine-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #b8874a, #8a6a2a);
-  border-radius: 3px;
-  transition: width 1s linear;
-}
-.camp-mine-fill.full {
-  background: linear-gradient(90deg, #ff8a4a, #d95f1f);
-}
-.camp-mine-time {
-  display: block;
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-  margin-top: 6px;
-}
-.camp-mine-ready {
-  display: block;
-  font-size: var(--fs-small);
-  color: #d8c9a0;
-  margin-top: 2px;
-}
-.skill-level-badge {
-  margin: 4px 0 12px;
-  padding: 8px 10px;
-  background: #1a1220;
-  border: 1px solid #3a2a4a;
-  border-radius: 6px;
-}
-.skill-level-label {
-  display: block;
-  font-size: var(--fs-body);
-  color: #ffd76a;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-.camp-mine-claim {
-  display: block;
-  width: 100%;
-  margin-top: 8px;
-  font-family: inherit;
-  font-size: var(--fs-body);
-  font-weight: bold;
-  color: #1a1108;
-  background: linear-gradient(180deg, #ffd76a, #e0a83a);
-  border: 2px solid #8a6a3a;
-  border-radius: 8px;
-  padding: 10px 16px;
-  cursor: pointer;
-  box-shadow: 0 3px 0 #6a4a20;
-}
-.camp-mine-claim:disabled {
-  filter: grayscale(0.6) brightness(0.7);
-  cursor: not-allowed;
-  box-shadow: none;
-}
-.camp-mine-claim.blink {
-  animation: claimBlink 1s ease-in-out infinite;
-}
 
 /* the arena: laid out like the Dungeon battle, tinted per zone */
 .hunt-stage {
@@ -4074,348 +3852,7 @@ body {
   .tutorial-spotlight { animation: none; }
 }
 
-/* ---- Garden plots: each plot is one production card (empty / growing / ready / locked) ---- */
-.garden-modal {
-  width: min(92vw, 600px);
-}
-/* Keep the modal tall enough for the 5-plant picker sheet even when the plots above are short (desktop) */
-.garden-modal.picking {
-  min-height: min(88vh, 540px);
-}
-.garden-plots {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-.garden-plot-wrap {
-  position: relative;
-  min-width: 0;
-  display: flex;
-}
-.garden-plot {
-  flex: 1;
-  min-width: 0;
-  min-height: 176px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  text-align: left;
-  background: linear-gradient(180deg, #221829, #17101d);
-  border: 2px solid #a87c3a;
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 6px rgba(0, 0, 0, 0.4);
-}
-.garden-plot-head {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 3px 6px;
-  min-width: 0;
-}
-.garden-plot-num {
-  font-size: var(--fs-small);
-  color: #b9a37a;
-  white-space: nowrap;
-}
-.garden-plot-chip {
-  font-size: var(--fs-small);
-  padding: 1px 6px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  color: #8a7aa8;
-  white-space: nowrap;
-  max-width: 100%;
-}
-.garden-plot.empty {
-  align-items: stretch;
-  border-style: dashed;
-  border-color: #5a4a35;
-  background: #150f1b;
-}
-.garden-plot-soil {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 34px;
-  font-size: var(--glyph-l);
-  color: #5a4a35;
-  line-height: 1;
-}
-.garden-plot-btn {
-  width: 100%;
-  min-height: 40px;
-  padding: 6px;
-  border-radius: 8px;
-  border: 2px solid #ffd76a;
-  background: linear-gradient(180deg, #7a5a1a, #4d3610);
-  color: #fff3c4;
-  font-family: inherit;
-  font-size: var(--fs-body);
-  cursor: pointer;
-}
-.garden-plot-btn.plant {
-  border-color: #a87c3a;
-  background: linear-gradient(180deg, #4a3a1f, #2f2413);
-}
-.garden-plot-btn:active {
-  transform: translateY(1px);
-}
-.garden-plot-again {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  min-height: 36px;
-  padding: 3px 4px;
-  border-radius: 8px;
-  border: 1px dashed #6b5a3a;
-  background: transparent;
-  color: #d9c9a0;
-  font-family: inherit;
-  font-size: var(--fs-small);
-  cursor: pointer;
-}
-.garden-plot-again-label {
-  font-size: var(--fs-small);
-  color: #8a7aa8;
-}
-.garden-plot-plant {
-  display: block;
-  min-width: 0;
-  line-height: 1.25;
-}
-/* Phone: the longest names (Energética, Cogumelo) only fit next to the icon at 9px in a ~120px card */
-.garden-plot-icon {
-  display: inline-block;
-  font-size: var(--glyph-m);
-  line-height: 1;
-  vertical-align: middle;
-  margin-right: 4px;
-}
-.garden-plot-name {
-  font-size: var(--fs-small);
-  color: #fff;
-  vertical-align: middle;
-  word-break: normal;
-  overflow-wrap: break-word; /* only if a single word is wider than the whole card */
-  hyphens: manual;
-}
-.garden-plot-yield {
-  font-size: var(--fs-small);
-  color: #b9a37a;
-  line-height: 1.2;
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-.garden-plot-bar {
-  height: 10px;
-  border-radius: 6px;
-  background: #0d0913;
-  border: 1px solid #3a2d4a;
-  overflow: hidden;
-}
-.garden-plot-fill {
-  height: 100%;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #4f9d4f, #8fe08f);
-  transition: width 1s linear;
-}
-.garden-plot-time {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 6px;
-  font-size: var(--fs-small);
-}
-.garden-plot-remaining {
-  color: #f5e9c8;
-}
-.garden-plot-pct {
-  color: #8a7aa8;
-  font-size: var(--fs-small);
-}
-.garden-plot-uproot {
-  margin-top: auto;
-  min-height: 30px;
-  border-radius: 8px;
-  border: 1px solid #5a4a35;
-  background: transparent;
-  color: #a8957a;
-  font-family: inherit;
-  font-size: var(--fs-small);
-  cursor: pointer;
-}
-.garden-plot-uproot.armed {
-  border-color: #e0685a;
-  color: #ffb3a8;
-  background: rgba(224, 104, 90, 0.12);
-}
-.garden-plot.growing.rarity-uncommon {
-  border-color: #4d83c4;
-}
-.garden-plot.growing.rarity-rare {
-  border-color: #9a63c9;
-}
-.garden-plot.growing .garden-plot-chip {
-  color: #8fe08f;
-}
-.garden-plot.ready {
-  border-color: #ffd76a;
-  background: linear-gradient(180deg, #33261a, #1f1610);
-  animation: garden-ready-glow 1.8s ease-in-out infinite;
-}
-.garden-plot.ready .garden-plot-chip {
-  color: #ffd76a;
-}
-.garden-plot.ready .garden-plot-fill {
-  background: linear-gradient(90deg, #d9a93a, #ffe08a);
-}
-.garden-plot-ready-text {
-  margin-top: auto;
-  font-size: var(--fs-small);
-  color: #ffd76a;
-  text-align: center;
-}
-.garden-plot.locked {
-  opacity: 0.6;
-  align-items: center;
-  justify-content: center;
-  border-style: dashed;
-  border-color: #5a4a35;
-  background: #120d18;
-}
-.garden-plot-lock {
-  font-size: var(--glyph-l);
-  line-height: 1;
-}
-.garden-plot-hint {
-  font-size: var(--fs-small);
-  color: #8a7aa8;
-  text-align: center;
-}
-@keyframes garden-ready-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 6px rgba(255, 215, 106, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  }
-  50% {
-    box-shadow: 0 0 14px rgba(255, 215, 106, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  }
-}
-.garden-harvest-all {
-  width: 100%;
-  min-height: 42px;
-  margin-bottom: 8px;
-  border-radius: 10px;
-  border: 2px solid #ffd76a;
-  background: linear-gradient(180deg, #7a5a1a, #4d3610);
-  color: #fff3c4;
-  font-family: inherit;
-  font-size: var(--fs-body);
-  cursor: pointer;
-}
-.garden-float {
-  position: absolute;
-  left: 50%;
-  top: 38%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: 96%;
-  padding: 3px 8px;
-  border-radius: 10px;
-  background: rgba(20, 13, 28, 0.94);
-  border: 1px solid #ffd76a;
-  color: #ffe9a0;
-  font-size: var(--fs-small);
-  line-height: 1.25;
-  text-align: center;
-  overflow-wrap: anywhere;
-  pointer-events: none;
-  animation: garden-float-up 1.4s ease-out forwards;
-}
-@keyframes garden-float-up {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 8px);
-  }
-  15% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -34px);
-  }
-}
-/* Plant picker: a compact sheet over the modal, one comparable row per plant */
-.garden-picker {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  display: flex;
-  align-items: flex-end;
-  background: rgba(8, 5, 12, 0.72);
-  border-radius: 11px;
-}
-.garden-picker-panel {
-  width: 100%;
-  max-height: 100%;
-  overflow-y: auto;
-  padding: 14px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: linear-gradient(180deg, #2b1f38, #17101f);
-  border-top: 2px solid #a87c3a;
-  border-radius: 14px 14px 10px 10px;
-}
-.garden-picker-title {
-  margin: 0;
-  font-size: var(--fs-body);
-  color: #ffd76a;
-}
-.garden-picker-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.garden-plant-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 52px;
-  padding: 8px 10px;
-  text-align: left;
-  border-radius: 10px;
-  border: 2px solid #5a4a35;
-  background: #1c1322;
-  color: #f5e9c8;
-  font-family: inherit;
-  cursor: pointer;
-}
-.garden-plant-row.rarity-common {
-  border-color: #4f8f4f;
-}
-.garden-plant-row.rarity-uncommon {
-  border-color: #4d83c4;
-}
-.garden-plant-row.rarity-rare {
-  border-color: #9a63c9;
-}
-.garden-plant-row.locked,
-.garden-plant-row:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  border-color: #4a3d33;
-}
-.garden-plant-icon {
-  font-size: var(--glyph-l);
-  line-height: 1;
-  flex: none;
-}
+/* the plant icon (a TitleIcon) inside the Garden cards and picker */
 .garden-item-icon,
 .garden-inline-icon {
   width: 1em;
@@ -4424,105 +3861,6 @@ body {
   image-rendering: pixelated;
   vertical-align: -0.12em;
 }
-.garden-plant-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.garden-plant-name {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: var(--fs-body);
-  color: #fff;
-}
-.garden-plant-rarity {
-  font-size: var(--fs-small);
-  padding: 0 6px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  color: #8fe08f;
-}
-.garden-plant-row.rarity-uncommon .garden-plant-rarity {
-  color: #7db4f2;
-}
-.garden-plant-row.rarity-rare .garden-plant-rarity {
-  color: #c99cf0;
-}
-.garden-plant-meta {
-  font-size: var(--fs-small);
-  color: #b9a37a;
-  line-height: 1.25;
-}
-.garden-plant-use {
-  font-size: var(--fs-small);
-  color: #8a7aa8;
-  line-height: 1.25;
-}
-.garden-plant-lock {
-  font-size: var(--fs-small);
-  color: #e0a96a;
-}
-.garden-picker-all {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  font-size: var(--fs-small);
-  color: #d9c9a0;
-  cursor: pointer;
-}
-.garden-picker-all input {
-  width: 18px;
-  height: 18px;
-  flex: none;
-}
-.garden-picker-close {
-  align-self: center;
-}
-/* Desktop: still 2 x 2, but with a wider modal (two comfortable cards per row) and more breathing room inside each card.
-   The phone layout above is untouched. */
-@media (min-width: 640px) {
-  .garden-modal {
-    width: min(94vw, 720px);
-  }
-  .garden-plots {
-    gap: 14px;
-  }
-  .garden-plot {
-    min-height: 196px;
-    padding: 14px;
-    gap: 8px;
-  }
-  .garden-plot-icon {
-    font-size: var(--glyph-l);
-    margin-right: 8px;
-  }
-  .garden-plot-name {
-    font-size: var(--fs-body);
-  }
-  .garden-plot-yield {
-    font-size: var(--fs-small);
-  }
-  .garden-plot-bar {
-    height: 12px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .garden-plot.ready {
-    animation: none;
-  }
-  .garden-plot-fill {
-    transition: none;
-  }
-  .garden-float {
-    animation: none;
-  }
-}
-
 /* The app shell (sidebar, drawer, top bar) and the Home dashboard live in ui/shell.css; .desktop-home / .dh-card below are the generic page grid and panel the older screens still use. */
   /* 1024-1279px: single column, natural DOM order (Hero, Activity, Progression, Quick Actions) —
      the 2-column placement below is added back in at >=1280px, where there's room for it. */
@@ -4927,9 +4265,8 @@ body {
   }
 
   /* --- size scale --- */
-  .dungeon-modal,
   .shop-modal,
-  .quests-modal {
+.quests-modal {
     width: var(--modal-w-medium);
     max-height: var(--modal-max-h);
     padding: 26px 28px 24px;
@@ -4938,12 +4275,6 @@ body {
     width: var(--modal-w-wide);
     max-height: var(--modal-max-h);
     padding: 26px 28px 24px;
-  }
-  .garden-modal {
-    width: min(1000px, 92vw);
-  }
-  .garden-modal.picking {
-    min-height: min(90vh, 640px);
   }
   .modal-x {
     top: 12px;
@@ -4961,37 +4292,12 @@ body {
   }
 
   /* --- Masmorra entry (two cards side by side), Hunt zones, Mineração/Lenhador tiers --- */
-  .dungeon-body {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
-    align-content: start;
-    padding: 4px 8px 4px 2px;
-  }
-  .dungeon-entry-modal .dungeon-body {
-    align-items: stretch;
-  }
-  .garden-modal .dungeon-body > * {
-    grid-column: 1 / -1;
-  }
-  .garden-plots {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .garden-picker-panel {
-    padding: 18px 22px 16px;
-  }
-  .garden-picker-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 12px;
-  }
 
   /* --- Forja --- */
   .forge-tabs .tab {
     font-size: var(--fs-body);
     padding: 10px 6px;
   }
-
 
   /* --- Pedidos --- */
   .delivery-modal .expedition-list {
@@ -5318,136 +4624,10 @@ body {
 }
 
 /* ---- Profession header (SkillLevelBadge): level row, bar, XP numbers and screen-specific meta lines ---- */
-.skill-level-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.skill-level-row .skill-level-label {
-  margin-bottom: 0;
-}
-.skill-level-num {
-  font-size: var(--fs-body);
-  color: #fff3c4;
-  font-weight: bold;
-  white-space: nowrap;
-}
-.skill-level-xp {
-  display: block;
-  margin-top: 4px;
-  font-size: var(--fs-small);
-  color: #b9a8d8;
-}
-.skill-level-meta {
-  display: block;
-  margin-top: 3px;
-  font-size: var(--fs-small);
-  color: #d8c9a0;
-}
 
 /* ---- Garden 3.0: fertilizer, locked plots with their level, 3-column plot grid on desktop ---- */
-.garden-plot-fertilize {
-  min-height: 34px;
-  padding: 4px 8px;
-  font-family: inherit;
-  font-size: var(--fs-small);
-  color: #e8dcc0;
-  background: #2d3a1c;
-  border: 1px solid #6f8f3a;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.garden-plot-fertilize:hover {
-  background: #3a4a24;
-  border-color: #a4c95a;
-}
-.garden-plot-fertilize:active {
-  transform: translateY(1px);
-}
-.garden-plot-fertilized {
-  align-self: flex-start;
-  padding: 1px 6px;
-  font-size: var(--fs-small);
-  color: #a4c95a;
-  border: 1px solid #6f8f3a;
-  border-radius: 999px;
-}
-.garden-plot-lock {
-  width: 40px;
-  height: 40px;
-  image-rendering: pixelated;
-  object-fit: contain;
-}
-.garden-plot-chip.lock-level {
-  color: #ffd76a;
-}
-@media (min-width: 1024px) {
-  .garden-plots {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
 
 /* ---- Mining / Woodcutting screen (GatheringModal): running session card, tier grid ---- */
-.gather-modal {
-  width: min(94vw, 640px);
-}
-.gather-session {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 0 12px;
-  padding: 10px;
-  background: #1f1628;
-  border: 2px solid #a87c3a;
-  border-radius: 10px;
-}
-.gather-session-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: var(--fs-small);
-  color: #ffd76a;
-}
-.gather-session-ready {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-body);
-  color: #fff3c4;
-}
-.gather-tier-state {
-  font-size: var(--fs-small);
-  color: #a4c95a;
-}
-.gather-switch-hint,
-.gather-brew {
-  font-size: var(--fs-small);
-  color: #b9a8d8;
-}
-.gather-brew {
-  color: #a4c95a;
-}
-.gather-switch-hint {
-  display: block;
-  grid-column: 1 / -1;
-}
-.camp-expedition-cancel.armed {
-  border-color: #e0553a;
-  color: #ffb4a2;
-}
-@media (min-width: 1024px) {
-  .gather-modal {
-    width: min(92vw, 760px);
-  }
-  .gather-tiers {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-}
 
 /* ---- Interface review: names wrap instead of being cut, one hover / pressed / disabled language for every button ---- */
 button[data-ui]:not(:disabled):hover {
@@ -5537,11 +4717,8 @@ button[data-ui]:focus-visible {
 
 /* Tablet (600-1023 px): the phone-sized modals (420 px) left most of the screen empty and broke names mid-word; give them the width a tablet has */
 @media (min-width: 600px) and (max-width: 1023px) {
-  .dungeon-modal,
   .shop-modal,
-  .quests-modal,
-  .gather-modal,
-  .garden-modal {
+  .quests-modal {
     width: min(92vw, 640px);
   }
   .delivery-modal {
@@ -5737,7 +4914,6 @@ button[data-ui]:focus-visible {
   background: #ff9a3c;
   color: #1a1108;
 }
-
 
 .shop-sell .merchant-budget {
   grid-column: 1 / -1;
@@ -7794,77 +6970,6 @@ button[data-ui]:focus-visible {
   background: linear-gradient(180deg, #ffd76a, #e0a83a);
   border-color: #8a6a3a;
 }
-.ap-season {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-size: var(--fs-small);
-  line-height: 1.5;
-  color: #d8cce8;
-}
-.ap-season-head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.ap-season-dates,
-.ap-season-note,
-.ap-season-submit {
-  color: #b8a8d8;
-  margin: 0;
-}
-.ap-season-passonly {
-  margin: 0;
-  color: #ffd76a;
-}
-.ap-season-prize {
-  margin: 0;
-  color: #f5e9c8;
-}
-.ap-season-status,
-.ap-season-mine {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border: 2px solid #4a3a55;
-  border-radius: 6px;
-  background: rgba(20, 13, 28, 0.6);
-}
-.ap-season-status strong,
-.ap-season-mine strong {
-  color: #ffd76a;
-  font-weight: normal;
-}
-.ap-season-status.eligible {
-  border-color: #4f9a5a;
-}
-.ap-season-status.flagged,
-.ap-season-status.disqualified {
-  border-color: #b5524a;
-}
-.ap-season-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.ap-season-table th,
-.ap-season-table td {
-  text-align: left;
-  padding: 4px 6px;
-  border-bottom: 1px solid #3a2c48;
-  overflow-wrap: anywhere;
-}
-.ap-season-table th {
-  color: #ffd76a;
-  font-weight: normal;
-}
-.ap-season-table tr.me td {
-  background: rgba(255, 215, 106, 0.12);
-}
-.ap-season-flag,
-.ap-season-para {
-  color: #b8a8d8;
-}
 
 /* The website's "buy the Pass" link opens the modal with this button highlighted (it never starts the checkout by itself). */
 .ap-buy-btn.ap-buy-highlight {
@@ -7976,16 +7081,6 @@ button[data-ui]:focus-visible {
 }
 
 /* ===== first League reset (leagueReset.ts) ===== */
-.league-preseason-notice,
-.ap-season-reset-warning {
-  font-size: var(--fs-small);
-  color: #ffd76a;
-  background: rgba(255, 215, 106, 0.08);
-  border: 1px solid #8a7a3a;
-  border-radius: 6px;
-  padding: 8px 10px;
-  margin: 8px 0;
-}
 .league-reset-pioneer {
   color: #ffd76a;
 }

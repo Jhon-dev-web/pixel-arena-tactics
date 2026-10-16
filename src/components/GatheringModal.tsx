@@ -13,6 +13,9 @@ import T from '../game/tunables';
 import { WOOD_TIERS } from '../game/woodcutting';
 import SkillLevelBadge from './SkillLevelBadge';
 import UnlockList from './UnlockList';
+import { Button, Chip, ItemCard, ModalShell, Panel, ScreenLayout } from './ui';
+import type { CardRarity } from './ui';
+import { Meter } from './HuntParts';
 
 // Mining and Woodcutting are the same screen over two data sets (ores / woods, mining / woodcutting skill and session fields): a profession header with
 // the level, XP and the rate per hour, the running session (time since start, what has piled up, the primary "collect" action) and every tier with its
@@ -102,93 +105,104 @@ export default function GatheringModal({
   const brew = isBuffActive(save, 'gatherer', now);
   const capHours = status.capMs / MS_H;
 
-  return (
-    <div className="modal-backdrop">
-      <div className="modal dungeon-modal gather-modal" data-tutorial-target={`${ns}-modal`}>
-        <h2 className="modal-title">
-          {t(`${ns}.title`)}
-        </h2>
+  const TIER_RARITY: CardRarity[] = ['common', 'common', 'rare', 'epic', 'legendary'];
+  const iconOf = (mid: string) => <img className="pixel-icon" src={materialIconUrl(mid as MaterialId)} alt="" draggable={false} />;
 
+  const summary = (
+    <>
+      <Panel>
         <SkillLevelBadge xp={xp} labelKey={`${ns}.skillLabel`} skillId={kind}>
-          <span className="skill-level-meta">{t('gathering.rate', { n: fmtNum(Math.round(ratePerHour * 10) / 10), xp: fmtNum(Math.round(xpPerHour * 10) / 10) })}</span>
-          {Number.isFinite(hoursToNext) && level < T.skills.maxLevel && <span className="skill-level-meta">{t('gathering.nextLevelIn', { t: formatDuration(hoursToNext * MS_H) })}</span>}
-          <span className="skill-level-meta">{t('gathering.storage', { n: fmtHours(capHours) })}{passActive ? ` · ${t('gathering.passBonus', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) })}` : ''}</span>
-          {activeId && passNow && !status.passCoversSession && <span className="skill-level-meta">{t('gathering.passNextSession')}</span>}
-          {brew && <span className="skill-level-meta gather-brew">{t('gathering.brew', { t: formatDuration(buffRemainingMs(save, now, 'gatherer')) })}</span>}
+          <p className="pf-meta">{t('gathering.rate', { n: fmtNum(Math.round(ratePerHour * 10) / 10), xp: fmtNum(Math.round(xpPerHour * 10) / 10) })}</p>
+          {Number.isFinite(hoursToNext) && level < T.skills.maxLevel && <p className="pf-meta">{t('gathering.nextLevelIn', { t: formatDuration(hoursToNext * MS_H) })}</p>}
+          <p className="pf-meta">
+            {t('gathering.storage', { n: fmtHours(capHours) })}
+            {passActive ? ` · ${t('gathering.passBonus', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) })}` : ''}
+          </p>
+          {activeId && passNow && !status.passCoversSession && <p className="pf-meta">{t('gathering.passNextSession')}</p>}
+          {brew && <p className="pf-meta gold">{t('gathering.brew', { t: formatDuration(buffRemainingMs(save, now, 'gatherer')) })}</p>}
         </SkillLevelBadge>
-
-        <div className="dungeon-body gather-tiers">
-          {activeId && (
-            <div className="gather-session">
-              <div className="gather-session-head">
-                <span>{t('gathering.running')}</span>
-                <span>{t('gathering.since', { t: formatDuration(Math.max(0, now - startedAt)) })}</span>
-              </div>
-              <div className="camp-mine-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label={t(`${ns}.title`)}>
-                <div className={`camp-mine-fill${status.full ? ' full' : ''}`} style={{ width: `${progress * 100}%` }} />
-              </div>
-              <span className="camp-mine-time">
-                {status.full ? t(`${ns}.full`) : t('gathering.storageFill', { cur: fmtHours(status.pendingMs / MS_H), cap: fmtHours(capHours) })}
-              </span>
-              <span className="gather-session-ready">
-                <img className="inline-icon" src={materialIconUrl(activeId as MaterialId)} alt="" /> +{fmtNum(units)} · +{fmtNum(units * T.skills.xpPerUnit)} XP
-              </span>
-              {leftNow > 0 && (
-                <span className="craft-bag-full">
-                  {t('inventory.leftBehindPreview', { n: fmtNum(leftNow) })} <WholesaleLink />
-                </span>
-              )}
-              <button className={`camp-mine-claim${units > 0 ? ' blink' : ''}`} onClick={onClaim} disabled={units <= 0} data-ui>
-                {t(`${ns}.collect`)}
-              </button>
-              <button className={`camp-expedition-cancel${confirmCancel ? ' armed' : ''}`} onClick={() => (confirmCancel ? (setConfirmCancel(false), onCancel()) : setConfirmCancel(true))} data-ui>
-                {confirmCancel ? t('gathering.cancelConfirm') : t('expedition.cancel')}
-              </button>
-            </div>
+      </Panel>
+      {activeId && (
+        <Panel tone="gold" title={t('gathering.running')} icon={iconOf(activeId)} actions={<Chip>{t('gathering.since', { t: formatDuration(Math.max(0, now - startedAt)) })}</Chip>}>
+          <Meter pct={progress * 100} tone={status.full ? 'full' : undefined} label={t(`${ns}.title`)} />
+          <p className="pf-line">{status.full ? t(`${ns}.full`) : t('gathering.storageFill', { cur: fmtHours(status.pendingMs / MS_H), cap: fmtHours(capHours) })}</p>
+          <p className="pf-ready">
+            <img className="inline-icon" src={materialIconUrl(activeId as MaterialId)} alt="" /> +{fmtNum(units)} · +{fmtNum(units * T.skills.xpPerUnit)} XP
+          </p>
+          {leftNow > 0 && (
+            <p className="ui-alert bad">
+              {t('inventory.leftBehindPreview', { n: fmtNum(leftNow) })} <WholesaleLink />
+            </p>
           )}
+          <div className="pf-actions">
+            <Button variant="primary" className={units > 0 ? 'pf-blink' : ''} onClick={onClaim} disabled={units <= 0}>
+              {t(`${ns}.collect`)}
+            </Button>
+            <Button variant="danger" onClick={() => (confirmCancel ? (setConfirmCancel(false), onCancel()) : setConfirmCancel(true))}>
+              {confirmCancel ? t('gathering.cancelConfirm') : t('expedition.cancel')}
+            </Button>
+          </div>
+        </Panel>
+      )}
 
-          {tiers.map((tier) => {
+    </>
+  );
+
+  const main = (
+    <>
+      <Panel title={t(`${ns}.title`)}>
+        <div className="ui-grid pf-tiers">
+          {tiers.map((tier, ti) => {
             const unlocked = level >= tier.requiredLevel;
             const isActive = activeId === tier.id;
             const name = t(mining ? `ore.${tier.nameKey}` : `wood.${tier.nameKey}`);
             return (
-              <div className={`floor-card${unlocked ? '' : ' locked'}${isActive ? ' equipped' : ''}`} key={tier.id}>
-                <div className="floor-header">
-                  <span className="floor-name">
-                    <span className="mat-icon">
-                      <img src={materialIconUrl(tier.id)} alt="" />
-                    </span>{' '}
-                    {name}
-                  </span>
-                  <span className="floor-cp">{t(`${ns}.levelReq`, { n: tier.requiredLevel })}</span>
-                </div>
+              <ItemCard
+                key={tier.id}
+                className={`pf-tier${unlocked ? '' : ' locked'}`}
+                icon={iconOf(tier.id)}
+                rarity={TIER_RARITY[Math.min(ti, TIER_RARITY.length - 1)]}
+                name={name}
+                tag={<Chip tone={isActive ? 'good' : unlocked ? 'gold' : 'plain'}>{isActive ? t('gathering.activeTier') : t(`${ns}.levelReq`, { n: tier.requiredLevel })}</Chip>}
+                selected={isActive}
+                action={
+                  unlocked && !isActive ? (
+                    <Button block onClick={() => onStart(tier.id)} disabled={blocked} title={blocked ? blockedMsg : undefined}>
+                      {activeId ? t('gathering.switch') : t(`${ns}.available`)}
+                    </Button>
+                  ) : undefined
+                }
+              >
                 {unlocked ? (
-                  isActive ? (
-                    <span className="gather-tier-state">{t('gathering.activeTier')}</span>
-                  ) : (
-                    <>
-                      <button className="battle-btn" onClick={() => onStart(tier.id)} disabled={blocked} title={blocked ? blockedMsg : undefined} data-ui>
-                        {activeId ? t('gathering.switch') : t(`${ns}.available`)}
-                      </button>
-                      {blocked && <span className="floor-locked">{blockedMsg}</span>}
-                    </>
-                  )
+                  !isActive && blocked && <p className="ui-note">{blockedMsg}</p>
                 ) : (
-                  <span className="floor-locked">
+                  <p className="ui-note">
                     {t(`${ns}.locked`, { n: tier.requiredLevel })} · {t('gathering.levelsToGo', { n: tier.requiredLevel - level })}
-                  </span>
+                  </p>
                 )}
-              </div>
+              </ItemCard>
             );
           })}
-          {activeId && <span className="gather-switch-hint">{t('gathering.switchHint')}</span>}
-          <UnlockList skill={kind} level={level} />
         </div>
+        {activeId && <p className="ui-note pf-switch">{t('gathering.switchHint')}</p>}
+      </Panel>
+      <UnlockList skill={kind} level={level} />
+    </>
+  );
 
-        <button className="modal-x" onClick={onClose} aria-label={t('ui.close')} data-ui>
-          ✕
-        </button>
+  return (
+    <ModalShell
+      className="pf-modal"
+      tutorialTarget={`${ns}-modal`}
+      icon={<img className="pixel-icon" src={mining ? '/assets/icons/nav_mining.png' : '/assets/icons/oak_wood.png'} alt="" />}
+      title={t(`${ns}.title`)}
+      subtitle={t('skills.level', { n: level })}
+      closeLabel={t('ui.close')}
+      onClose={onClose}
+    >
+      <div className="ui-cq">
+        <ScreenLayout main={main} side={summary} sideFirst className="pf-layout" />
       </div>
-    </div>
+    </ModalShell>
   );
 }

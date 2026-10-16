@@ -1,0 +1,372 @@
+/* Mineração, Lenhador and Horta: one profession layout (a summary column with the level and what is next, the running activity, the tier / plot cards, the unlock list) in the new style. */
+
+/* ---------- the summary: level, XP bar, rate ---------- */
+.pf-level {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.pf-level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.pf-level-label {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-text);
+}
+.pf-xp {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.pf-meta {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+}
+.pf-meta.gold {
+  color: var(--c-gold-300);
+}
+
+/* ---------- the running activity ---------- */
+.pf-line {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.pf-ready {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+.pf-ready .inline-icon {
+  width: 24px;
+  height: 24px;
+}
+.pf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+.pf-actions > .ui-btn {
+  flex: 1 1 160px;
+}
+.pf-actions > .ui-btn.primary {
+  flex-grow: 2;
+}
+.pf-blink {
+  animation: pfBlink 1.2s ease-in-out infinite;
+}
+@keyframes pfBlink {
+  50% {
+    box-shadow: var(--sh-btn), 0 0 22px rgba(255, 215, 106, 0.6);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-blink {
+    animation: none;
+  }
+}
+
+/* ---------- tier cards ---------- */
+.pf-tiers {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+.pf-tier.locked {
+  opacity: 0.7;
+}
+.pf-tier .ui-frame-art {
+  padding: 8px;
+}
+.pf-switch {
+  margin-top: var(--sp-3);
+}
+
+/* ---------- the unlock list ---------- */
+.pf-unlocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-unlock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.pf-unlock.done {
+  color: var(--c-text-muted);
+  border-color: transparent;
+}
+.pf-unlock.perk .pf-unlock-label {
+  color: var(--c-info);
+}
+.pf-unlock-level {
+  flex: 0 0 auto;
+  min-width: 48px;
+  color: var(--c-gold-300);
+  font-weight: 700;
+}
+.pf-unlock.done .pf-unlock-level {
+  color: var(--c-text-muted);
+}
+.pf-unlock-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.pf-unlock-label {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.pf-unlock-sub {
+  flex: 1 1 100%;
+  padding-left: calc(48px + var(--sp-3));
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+
+/* ---------- Horta: the plots ---------- */
+.gd-plots {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.gd-plot-wrap {
+  position: relative;
+  min-width: 0;
+  display: flex;
+}
+.gd-plot-wrap > .ui-item {
+  flex: 1;
+}
+.gd-plot.empty {
+  border-style: dashed;
+}
+.gd-plot.locked {
+  opacity: 0.65;
+  border-style: dashed;
+}
+.gd-plot.ready {
+  box-shadow: var(--sh-card), 0 0 14px rgba(111, 224, 138, 0.25);
+  border-color: var(--c-good);
+}
+.gd-plot .ui-item-rarity {
+  color: var(--c-text-muted);
+}
+.gd-plot.growing .ui-item-rarity,
+.gd-plot.ready .ui-item-rarity {
+  color: var(--c-text-muted);
+}
+.gd-soil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: var(--glyph-l);
+  color: var(--c-text-muted);
+}
+.gd-yield {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.gd-time {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.gd-time.ready {
+  color: var(--c-good);
+}
+.gd-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.gd-actions .ui-tag {
+  align-self: flex-start;
+}
+.gd-float {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  z-index: var(--z-raised);
+  transform: translateX(-50%);
+  padding: 2px var(--sp-2);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-good);
+  background: rgba(11, 7, 17, 0.88);
+  border: var(--bw-thin) solid #2f7a46;
+  border-radius: var(--r-sm);
+  pointer-events: none;
+  animation: gdFloat 1.5s ease-out forwards;
+}
+@keyframes gdFloat {
+  from {
+    opacity: 1;
+    margin-top: 0;
+  }
+  to {
+    opacity: 0;
+    margin-top: -40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gd-float {
+    animation: none;
+  }
+}
+.garden-inline-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-bottom;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.gd-again {
+  flex-direction: column;
+  gap: 2px;
+}
+.gd-bagfull {
+  margin-top: 0;
+}
+
+/* the plant picker, over the garden */
+.gd-picker {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-raised);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: var(--sp-3);
+  background: rgba(4, 2, 8, 0.82);
+  border-radius: inherit;
+}
+.gd-picker-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100%);
+  max-height: 100%;
+  background: linear-gradient(180deg, #181022, #0f0a17);
+  border-color: var(--c-gold-line-strong);
+}
+.gd-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--sp-1);
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-gold-700) var(--c-inset);
+}
+.gd-plant {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  text-align: left;
+  color: var(--c-text);
+  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.gd-plant:hover:not(:disabled) {
+  border-color: var(--c-gold-300);
+}
+.gd-plant.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.gd-plant-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.gd-plant-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-weight: 700;
+}
+.gd-plant-meta {
+  color: var(--c-text-dim);
+}
+.gd-plant-use,
+.gd-plant-lock {
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+.gd-plant-lock {
+  color: var(--c-warn);
+}
+.gd-picker-all {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  min-height: var(--tap);
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+  cursor: pointer;
+}
+.gd-picker-all input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--c-gold-300);
+}
+.gd-picker-close {
+  margin-top: var(--sp-3);
+}
+@media (max-width: 599px) {
+  .gd-picker {
+    padding: var(--sp-2);
+  }
+}
+
+/* ---------- Ofícios: station tabs and the recipe cards (the requirement rows are the Forja's .fg-req) ---------- */
+.of-tabs {
+  margin-bottom: var(--sp-4);
+}
+.of-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.of-card .fg-reqs {
+  margin: 0;
+}
+.of-card .ui-alert {
+  margin-top: 0;
+}
+.of-made {
+  filter: brightness(1.2);
+}

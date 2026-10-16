@@ -478,35 +478,8 @@
 .depths-card {
   grid-column: 1 / -1;
 }
-.depths-card .floor-header {
-  flex-wrap: wrap;
-  gap: 4px 12px;
-}
-.depths-card .floor-name {
-  display: block;
-  flex: 1 1 160px;
-  min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.depths-card .floor-cp {
-  flex: 0 1 auto;
-}
 .depths-card.locked {
   opacity: 0.8;
-}
-.depths-card .depths-note {
-  color: #b8a8d8;
-  font-size: var(--fs-small);
-  white-space: normal;
-}
-.depths-paragon {
-  margin-left: 8px;
-  font-size: var(--fs-small);
-  color: #1a1030;
-  background: #c9a0ff;
-  border-radius: 8px;
-  padding: 1px 6px;
 }
 .paragon-tag {
   margin-left: 6px;
@@ -515,96 +488,6 @@
 }
 
 /* ---- Round 12: profession unlock list (UnlockList.tsx) */
-.unlock-list {
-  text-align: left;
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 10px;
-  border: 2px solid #4a3a6a;
-  border-radius: 10px;
-  background: rgba(20, 12, 36, 0.55);
-}
-.unlock-title {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--fs-body);
-  color: #ffd76a;
-  font-weight: normal;
-}
-.unlock-count {
-  font-family: var(--font-body);
-  font-size: var(--fs-small);
-  text-transform: none;
-  color: #1a1030;
-  background: #ffd76a;
-  border-radius: 8px;
-  padding: 1px 6px;
-}
-.unlock-list ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.unlock-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  font-size: var(--fs-small);
-  color: #e6dcf5;
-  padding: 3px 0;
-  border-bottom: 1px dashed rgba(138, 106, 58, 0.35);
-}
-.unlock-row:last-child {
-  border-bottom: 0;
-}
-.unlock-row.done {
-  opacity: 0.55;
-}
-.unlock-level {
-  flex: none;
-  min-width: 44px;
-  color: #ffd76a;
-}
-.unlock-icon {
-  width: 18px;
-  height: 18px;
-  image-rendering: pixelated;
-}
-.unlock-label {
-  flex: 1 1 140px;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.unlock-row.perk .unlock-label {
-  color: #a4c95a;
-}
-.unlock-tag,
-.unlock-done {
-  flex: none;
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-  border: 1px solid #6a5a8a;
-  border-radius: 6px;
-  padding: 0 4px;
-}
-.unlock-done {
-  color: #a4c95a;
-  border-color: #5a7a3a;
-}
-.unlock-sub {
-  flex: 1 1 100%;
-  padding-left: 52px;
-  font-size: var(--fs-small);
-  color: #b8a8d8;
-}
 
 /* Round 13: the bag pane of the inventory is ~210px wide on a desktop window, which broke "Poções" into "Poçõe / s": the tabs keep their words whole and wrap as a group instead */
 

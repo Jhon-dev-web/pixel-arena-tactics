@@ -1,0 +1,91 @@
+/* The League / season tab of the Adventurer Pass screen (SeasonRankingPanel) and the pre-season notice, on the design tokens. */
+.ap-season {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text-dim);
+}
+.ap-season :where(p) {
+  margin: 0;
+}
+.ap-season-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.ap-season-dates,
+.ap-season-note,
+.ap-season-submit {
+  margin: 0;
+  color: var(--c-text-muted);
+}
+.ap-season-passonly {
+  margin: 0;
+  color: var(--c-gold-300);
+}
+.ap-season-prize {
+  margin: 0;
+  color: var(--c-text);
+}
+.ap-season-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-md);
+}
+.ap-season-mine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.ap-season-status strong,
+.ap-season-mine strong {
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+.ap-season-status.eligible {
+  border-color: #2f7a46;
+}
+.ap-season-status.flagged,
+.ap-season-status.disqualified {
+  border-color: #8a3a32;
+}
+.ap-season-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--c-inset);
+  border-radius: var(--r-md);
+}
+.ap-season-table th,
+.ap-season-table td {
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  border-bottom: var(--bw-thin) solid var(--c-line);
+  overflow-wrap: anywhere;
+}
+.ap-season-table th {
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+.ap-season-table tr.me td {
+  background: rgba(255, 215, 106, 0.12);
+}
+.ap-season-flag,
+.ap-season-para {
+  color: var(--c-text-muted);
+}
+.league-preseason-notice,
+.ap-season-reset-warning {
+  margin: var(--sp-2) 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  color: var(--c-gold-300);
+  background: rgba(255, 215, 106, 0.08);
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: var(--r-md);
+}

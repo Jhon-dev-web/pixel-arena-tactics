@@ -3,6 +3,7 @@ import { PLANTS } from '../game/garden';
 import { materialIconUrl, MaterialId } from '../game/materials';
 import { professionUnlocks } from '../game/mastery';
 import type { SkillId } from '../game/skills';
+import { Chip, Panel } from './ui';
 
 // The list of what a profession unlocks, in level order (mastery.ts professionUnlocks): tiers / plants and the four mastery perks, with what is already done dimmed.
 // Shown in the Mining / Woodcutting screen and in the Garden, so every profession always shows its next reward.
@@ -10,12 +11,8 @@ export default function UnlockList({ skill, level }: { skill: SkillId; level: nu
   const entries = professionUnlocks(skill);
   const upcoming = entries.filter((e) => e.level > level).length;
   return (
-    <section className="unlock-list" aria-label={t('mastery.title')} data-testid="unlock-list">
-      <h4 className="unlock-title">
-        {t('mastery.title')}
-        <span className="unlock-count">{upcoming}</span>
-      </h4>
-      <ul>
+    <Panel title={t('mastery.title')} actions={<Chip tone="gold">{upcoming}</Chip>} aria-label={t('mastery.title')} data-testid="unlock-list">
+      <ul className="pf-unlocks">
         {entries.map((e) => {
           const done = level >= e.level;
           let label: string;
@@ -31,17 +28,17 @@ export default function UnlockList({ skill, level }: { skill: SkillId; level: nu
             sub = plant ? t(`garden.${plant.useKey}`) : null;
           }
           return (
-            <li key={`${e.kind}-${e.id}`} className={`unlock-row${done ? ' done' : ''}${e.kind === 'perk' ? ' perk' : ''}`}>
-              <span className="unlock-level">{t('mastery.level', { n: e.level })}</span>
-              {icon && <img className="unlock-icon" src={icon} alt="" draggable={false} onError={(ev) => (ev.currentTarget.style.display = 'none')} />}
-              <span className="unlock-label">{label}</span>
-              {e.kind === 'perk' && <span className="unlock-tag">{t('mastery.perk')}</span>}
-              {done && <span className="unlock-done">{t('mastery.done')}</span>}
-              {sub && <span className="unlock-sub">{sub}</span>}
+            <li key={`${e.kind}-${e.id}`} className={`pf-unlock${done ? ' done' : ''}${e.kind === 'perk' ? ' perk' : ''}`}>
+              <span className="pf-unlock-level">{t('mastery.level', { n: e.level })}</span>
+              {icon && <img className="pf-unlock-icon" src={icon} alt="" draggable={false} onError={(ev) => (ev.currentTarget.style.display = 'none')} />}
+              <span className="pf-unlock-label">{label}</span>
+              {e.kind === 'perk' && <Chip tone="info">{t('mastery.perk')}</Chip>}
+              {done && <Chip tone="good">{t('mastery.done')}</Chip>}
+              {sub && <span className="pf-unlock-sub">{sub}</span>}
             </li>
           );
         })}
       </ul>
-    </section>
+    </Panel>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from '../game/seasonRanking';
 import { activeLocale, fmtNum, t } from '../locales';
 import PreseasonResetNotice from './PreseasonResetNotice';
+import { Button, Chip, Panel } from './ui';
 
 // The "Temporada" tab of the Adventurer Pass screen: which season, who is on top, and where the player stands. Everything shown is read from the server
 // (the season row, the public leaderboard view, the player's own place); the only thing the game sends is the save, from useSeasonSubmit, in the background.
@@ -81,19 +82,20 @@ export default function SeasonRankingPanel({ online, ownsPass }: { online: boole
   return (
     <section className="ap-season" aria-label={t('seasonRanking.tab')}>
       {season && (
-        <div className="ap-season-head">
-          <h3 className="ap-h3">{season.kind === 'pre' ? t('seasonRanking.preTitle') : t('seasonRanking.title', { n: season.number })}</h3>
-          {season.kind === 'pre' ? (
-            <span className="ap-season-dates">{t('seasonRanking.preNote')}</span>
-          ) : season.starts_at && season.ends_at && season.freeze_at ? (
-            <>
-              <span className="ap-season-dates">{t('seasonRanking.dates', { from: dateText(season.starts_at), to: dateText(season.ends_at) })}</span>
-              <span className="ap-season-dates">{t('seasonRanking.freeze', { date: dateText(season.freeze_at) })}</span>
-            </>
-          ) : (
-            <span className="ap-season-dates">{t('seasonRanking.waitingGoal')}</span>
-          )}
-        </div>
+        <Panel title={season.kind === 'pre' ? t('seasonRanking.preTitle') : t('seasonRanking.title', { n: season.number })} actions={<Chip tone="gold">{t('seasonRanking.tab')}</Chip>}>
+          <div className="ap-season-head">
+            {season.kind === 'pre' ? (
+              <span className="ap-season-dates">{t('seasonRanking.preNote')}</span>
+            ) : season.starts_at && season.ends_at && season.freeze_at ? (
+              <>
+                <span className="ap-season-dates">{t('seasonRanking.dates', { from: dateText(season.starts_at), to: dateText(season.ends_at) })}</span>
+                <span className="ap-season-dates">{t('seasonRanking.freeze', { date: dateText(season.freeze_at) })}</span>
+              </>
+            ) : (
+              <span className="ap-season-dates">{t('seasonRanking.waitingGoal')}</span>
+            )}
+          </div>
+        </Panel>
       )}
 
       {online && <PreseasonResetNotice className="ap-season-note ap-season-reset-warning" />}
@@ -109,15 +111,15 @@ export default function SeasonRankingPanel({ online, ownsPass }: { online: boole
       {online && phase === 'error' && (
         <p className="ap-season-note">
           {t('seasonRanking.loadError')}{' '}
-          <button className="ap-goto" onClick={() => setAttempt((n) => n + 1)} data-ui>
+          <Button size="sm" onClick={() => setAttempt((n) => n + 1)}>
             {t('seasonRanking.retry')}
-          </button>
+          </Button>
         </p>
       )}
 
       {online && phase === 'ready' && season && season.status !== 'upcoming' && (
         <>
-          <div className="ap-season-mine">
+          <Panel tone="inset" className="ap-season-mine">
             <strong>{t('seasonRanking.yourPlace')}</strong>
             {mine && mine.rank ? (
               <span>
@@ -130,7 +132,7 @@ export default function SeasonRankingPanel({ online, ownsPass }: { online: boole
             ) : (
               <span>{t('seasonRanking.notRanked')}</span>
             )}
-          </div>
+          </Panel>
 
           {rows.length === 0 ? (
             <p className="ap-season-note">{t('seasonRanking.empty')}</p>

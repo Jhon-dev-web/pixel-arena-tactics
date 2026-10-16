@@ -924,3 +924,10 @@
   background: rgba(111, 224, 138, 0.08);
   border-color: #2f7a46;
 }
+
+.ui-item-id > .ui-tag {
+  align-self: flex-start;
+}
+.ui-item .ui-tag {
+  white-space: normal;
+}

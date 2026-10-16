@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Chip, Panel } from '../ui';
+import { Button, Chip, Panel } from '../ui';
 import { t } from '../../locales';
 import { useLeagueResetAt } from '../../game/leagueReset';
 import { PROFESSION_IDS, ProfessionId } from '../../game/leagueEvents';
@@ -37,9 +37,9 @@ export default function EventsPanel({ save, onPickProfession }: { save: Pick<Sav
       {view.mode === 'preseason' && (
         <div className="ev-block" data-testid="events-preseason">
           <p className="ev-lead">{t('events.preseasonLead')}</p>
-          <button className="ev-toggle" onClick={() => setOpen(!open)} aria-expanded={open} data-ui>
+          <Button size="sm" className="ev-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
             {open ? t('events.hideCalendar') : t('events.showCalendar')}
-          </button>
+          </Button>
           {open && (
             <ul className="ev-calendar">
               {view.preview.map((e, i) => (
@@ -73,9 +73,9 @@ export default function EventsPanel({ save, onPickProfession }: { save: Pick<Sav
                   <p className="ev-desc">{t('events.pickHint')}</p>
                   <div className="ev-pick-row">
                     {PROFESSION_IDS.map((p) => (
-                      <button key={p} className="ev-pick-btn" onClick={() => onPickProfession(p)} data-ui>
+                      <Button key={p} size="sm" className="ev-pick-btn" onClick={() => onPickProfession(p)}>
                         {t(`events.prof_${p}`)}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </>
