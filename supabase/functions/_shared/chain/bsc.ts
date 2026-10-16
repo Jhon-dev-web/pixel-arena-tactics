@@ -1,4 +1,8 @@
 import type { ChainConfig } from './config.ts';
+import { createJsonRpc } from './rpc.ts';
+import type { RpcClient } from './rpc.ts';
+
+// DORMANT (owner decision: the market runs on Solana only, chain/solana.ts). This BNB Smart Chain verifier is kept, tested, and wired to nothing.
 
 // Verifies that a BEP-20 USDT transfer really happened on BNB Smart Chain, by asking a JSON-RPC node (the URL is the secret BSC_RPC_URL; the provider is the owner's choice).
 // NON-CUSTODIAL: this module only READS the chain. The game never holds a key, never signs, never sends a transaction.
@@ -53,32 +57,8 @@ export interface TransferExpectation {
   notBeforeMs: number;
 }
 
-/** One JSON-RPC call. Throws on anything that is not a clean `result`. */
-export interface RpcClient {
-  call(method: string, params: unknown[]): Promise<unknown>;
-}
-
-export function createJsonRpc(url: string, opts: { fetchFn?: typeof fetch; timeoutMs?: number } = {}): RpcClient {
-  const doFetch = opts.fetchFn ?? fetch;
-  const timeoutMs = opts.timeoutMs ?? 8000;
-  let id = 0;
-  return {
-    async call(method, params) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-      try {
-        const res = await doFetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }), signal: ctrl.signal });
-        if (!res.ok) throw new Error(`rpc_http_${res.status}`); // status only: the URL may carry the provider's API key and is never put in an error
-        const body = (await res.json()) as { result?: unknown; error?: unknown };
-        if (body.error !== undefined && body.error !== null) throw new Error('rpc_error');
-        if (!('result' in body)) throw new Error('rpc_bad_answer');
-        return body.result;
-      } finally {
-        clearTimeout(timer);
-      }
-    },
-  };
-}
+export { createJsonRpc };
+export type { RpcClient };
 
 const TX_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 
