@@ -149,6 +149,7 @@ import './ui/hunt.css';
 import './ui/dungeon.css';
 import './ui/professions.css';
 import './ui/season.css';
+import './ui/settings.css';
 import './ui/materials.css'; // the tradeable-material stack and its question
 
 // The player market (docs/MARKET_SOLANA.md) is WEB ONLY: Valve forbids crypto trading in a Steam game. marketEnabled is a build constant (VITE_MARKET_ENABLED, forced off in the desktop build),
@@ -160,6 +161,7 @@ const marketOn = MARKET_BUILD && marketEnabled;
 const MarketScreen = MARKET_BUILD ? lazy(() => import('./components/MarketScreen')) : null;
 const MarketSync = MARKET_BUILD ? lazy(() => import('./components/market/MarketSync')) : null;
 const PassUsdc = MARKET_BUILD ? lazy(() => import('./components/PassUsdc')) : null;
+const SettingsWallet = MARKET_BUILD ? lazy(() => import('./components/market/SettingsWallet')) : null;
 
 const gearText = (key: string): string => t(`gear.${key}`);
 
@@ -2657,6 +2659,13 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onImportSave={importSaveFile}
           onResetSave={resetHero}
           onMaterialPrefs={(patch) => setSaveBoth(withMaterialPrefs(saveRef.current, patch))}
+          walletSlot={
+            marketOn && SettingsWallet && configured ? (
+              <Suspense fallback={null}>
+                <SettingsWallet />
+              </Suspense>
+            ) : undefined
+          }
           onReplayTutorial={() => {
             setSettingsOpen(false);
             replayTutorial();

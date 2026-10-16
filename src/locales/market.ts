@@ -30,6 +30,8 @@ const pt: Tree = {
   },
   wallet: {
     title: 'Sua carteira',
+    settingsTitle: 'Carteira Solana',
+    settingsHint: 'A carteira ligada à sua conta, usada no Mercado e no Passe em USDC.',
     none: 'Nenhuma carteira ligada. Para comprar ou vender, ligue a sua carteira Solana (Phantom, Solflare): você só assina uma mensagem, não custa nada e não move dinheiro.',
     needLink: 'Ligue sua carteira para comprar ou vender.',
     linked: 'Carteira ligada',
@@ -254,6 +256,8 @@ const en: Tree = {
   },
   wallet: {
     title: 'Your wallet',
+    settingsTitle: 'Solana wallet',
+    settingsHint: 'The wallet linked to your account, used on the Market and for the USDC Pass.',
     none: 'No wallet linked. To buy or sell, link your Solana wallet (Phantom, Solflare): you only sign a message, it costs nothing and moves no money.',
     needLink: 'Link your wallet to buy or sell.',
     linked: 'Linked wallet',

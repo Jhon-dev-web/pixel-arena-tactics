@@ -9,9 +9,13 @@ import { uiAudit } from "./lib/uiAudit";
 import pt from "./locales/pt.json";
 import { installGlobalErrorHandlers } from "./lib/errorLog";
 import { captureBuyIntent } from "./game/passServer";
+import { applyMotionPref } from "./lib/motionPref";
 
 // Records uncaught errors and unhandled rejections into a small local ring buffer (Settings can copy it as a report for support). No network.
 installGlobalErrorHandlers();
+
+// The player's own "reduce motion" switch (Settings) is put on the page before the first paint; the system setting needs no code (the CSS media queries read it).
+applyMotionPref();
 
 // The website links to /?comprar=passe: remember it (and clean the address bar) before the login screen can drop it.
 captureBuyIntent();

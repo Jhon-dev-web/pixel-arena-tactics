@@ -9,6 +9,7 @@ import { StrikeStats } from '../game/derivedStats';
 import { FX_PATH_COLOR, SKILL_FX, SkillFxId } from '../game/skillFx';
 import { FxLayer } from './SkillFx';
 import { useFxScale, useFxStage } from '../hooks/useSkillFx';
+import { reducedMotion, subscribeMotion } from '../lib/motionPref';
 
 // What the hero has learned that shows in the scene (CombatStats of the running session). The scene is decorative: it never drives the simulation, so these strikes play on its own
 // beat at a believable cadence derived from the same parameters (every Nth decorative hit is an Esmagador, ...), never implying a specific result. Passive-only builds look as before.
@@ -32,14 +33,9 @@ const ACTION_MS = 700; // how long an attack / hurt pose lasts inside a beat
 const hpPct = (cur: number, max: number): number => (max <= 0 ? 0 : Math.max(0, Math.min(100, (cur / max) * 100)));
 
 function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
+  // the system setting or the player's own switch (Settings > Jogo)
+  const [reduced, setReduced] = useState(() => reducedMotion());
+  useEffect(() => subscribeMotion(() => setReduced(reducedMotion())), []);
   return reduced;
 }
 

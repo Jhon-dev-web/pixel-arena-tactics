@@ -3599,46 +3599,12 @@ body {
   color: #d8c9a0;
   font-size: var(--fs-small);
 }
-.settings-modal {
-  width: min(90vw, 380px);
-  text-align: left;
-}
-.settings-backdrop {
-  z-index: 80;
-}
-.settings-modal .modal-title {
-  text-align: center;
-}
-.settings-list {
-  display: grid;
-  gap: 10px;
-}
-.settings-section {
-  display: grid;
-  gap: 6px;
-  padding: 11px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #3a2a4a;
-  border-radius: 10px;
-}
-.settings-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
 .settings-label {
   color: #ffe9a8;
   font-size: var(--fs-body);
   font-weight: bold;
 }
-.settings-description {
-  display: block;
-  color: #c9bcd8;
-  font-size: var(--fs-small);
-  line-height: 1.35;
-  word-break: break-word;
-}
-.settings-select,
-.settings-action {
+.settings-select {
   min-height: 42px;
   border: 2px solid #8a6a3a;
   border-radius: 8px;
@@ -3650,35 +3616,6 @@ body {
 }
 .settings-select {
   width: 100%;
-}
-.settings-action {
-  cursor: pointer;
-  white-space: nowrap;
-}
-.settings-toggle {
-  width: 54px;
-  height: 30px;
-  padding: 3px;
-  border: 2px solid #6a4a2a;
-  border-radius: 999px;
-  background: #3a2a4a;
-  cursor: pointer;
-}
-.settings-toggle.active {
-  background: #3f8a55;
-  border-color: #81d681;
-}
-.settings-toggle-knob {
-  display: block;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #f5e9c8;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  transition: transform 0.15s ease;
-}
-.settings-toggle.active .settings-toggle-knob {
-  transform: translateX(24px);
 }
 /* --- auth / account gate (Phase 1 backend migration) --- */
 .auth-screen {

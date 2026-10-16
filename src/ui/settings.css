@@ -1,0 +1,175 @@
+/* Configurações in panels (SettingsModal): Conta, Passe, Carteira, Jogo, Dados, Suporte, Sobre. The shared Panel / Button / SelectField carry the look; this is the row layout inside them. */
+.st-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+}
+@container ui (min-width: 760px) {
+  .st-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .st-grid > .st-wide {
+    grid-column: 1 / -1;
+  }
+}
+.st-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.st-panel > .ui-panel-head {
+  margin-bottom: 0;
+}
+.st-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.st-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.st-row-ctl {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 60%;
+}
+.st-label {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-text);
+  overflow-wrap: anywhere;
+}
+.st-hint {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+  overflow-wrap: anywhere;
+}
+.st-value {
+  font-family: inherit;
+  font-size: var(--fs-body);
+  color: var(--c-gold-200);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.st-warning {
+  display: block;
+  margin-top: var(--sp-1);
+  color: var(--c-bad);
+}
+.st-select {
+  min-width: 170px;
+}
+.st-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.st-actions > .ui-btn {
+  flex: 1 1 130px;
+}
+.st-file {
+  display: none;
+}
+.st-input {
+  width: 100%;
+  min-height: 42px;
+  padding: var(--sp-2) var(--sp-3);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-md);
+}
+.st-input:focus {
+  border-color: var(--c-gold-300);
+  outline: 0;
+}
+.st-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+}
+.st-confirm p,
+.st-delete p {
+  margin: 0;
+}
+.st-delete {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+}
+.st-delete a,
+.st-link {
+  color: var(--c-gold-300);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+.st-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+}
+.st-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  font-size: var(--fs-body);
+}
+
+/* the audio channels */
+.st-channel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.st-channel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.st-channel-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.st-range {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  accent-color: var(--c-gold-300);
+  cursor: pointer;
+}
+.st-channel-row > .ui-btn {
+  flex: none;
+  min-width: 96px;
+}
+.st-muted {
+  color: var(--c-text-muted);
+  border-color: var(--c-line-strong);
+}
+
+@media (max-width: 599px) {
+  .st-row {
+    flex-wrap: wrap;
+  }
+  .st-row-ctl {
+    max-width: 100%;
+  }
+}

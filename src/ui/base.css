@@ -74,3 +74,13 @@ body {
 :where(input, select, textarea):focus-visible {
   outline-offset: 0;
 }
+
+/* the player's own "reduce motion" switch (Settings > Jogo, lib/motionPref.ts): the same effect as the system setting for every CSS animation and transition */
+:root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before,
+:root[data-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
