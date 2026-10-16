@@ -442,7 +442,7 @@
     "xp": "XP: {n}",
     "goldPerSec": "+{n} Gold/s",
     "xpPerSec": "+{n} XP/s",
-    "resting": "Your hero trains and gathers loot while you rest.",
+    "resting": "Pick an activity: your hero hunts, mines and farms while you are away.",
     "cp": "CP: {n}",
     "name": "Name",
     "attributes": "Attributes",

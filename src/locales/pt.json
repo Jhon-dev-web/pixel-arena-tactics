@@ -442,7 +442,7 @@
     "xp": "XP: {n}",
     "goldPerSec": "+{n} Ouro/s",
     "xpPerSec": "+{n} XP/s",
-    "resting": "Seu herói treina e coleta saques enquanto você descansa.",
+    "resting": "Escolha uma atividade: seu herói caça, minera e cultiva enquanto você está fora.",
     "cp": "CP: {n}",
     "name": "Nome",
     "attributes": "Atributos",
