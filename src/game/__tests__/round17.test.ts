@@ -42,7 +42,7 @@ describe('Round 17: the late zones drop what the late game can use', () => {
     expect(cut('demon_rift', 'fiend_horn')).toBeLessThanOrEqual(cut('demon_rift', 'leather_scrap'));
     expect(getHuntingZone('demon_glade')!.drops.map((d) => d.chance)).toEqual([0.25, 0.08, 0.007]);
     expect(getHuntingZone('blood_marsh')!.drops.map((d) => d.chance)).toEqual([0.28, 0.09, 0.0105]);
-    expect(HUNTING_ZONES.map((z) => z.xpPerHour)).toEqual([1750, 2900, 6000, 10000]); // the last zone was 13,000 until Rodada 22 (its sub-levels pay up to +18% now)
+    expect(HUNTING_ZONES.map((z) => z.xpPerHour)).toEqual([1750, 2900, 6000, 8750]); // the last zone was 13,000 until Rodada 22 and 10,000 until Rodada 24 (its sub-levels pay up to +40.5% now)
   });
 
   it('the hours of hunting of a tier 5 set, a tier 6 set, +0 -> +8, +8 -> +12 and one Lapidar stay within 10% of round 16', () => {

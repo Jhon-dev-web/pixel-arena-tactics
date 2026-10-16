@@ -337,7 +337,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'blood_abomination',
     cp: 1607,
     goldPerHour: 12,
-    xpPerHour: 10000,
+    xpPerHour: 8750,
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.12, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.036, qty: 1 },
@@ -352,8 +352,10 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     offlineCapHours: 6,
     unlockFloor: 76,
     unlockLevel: 60,
-    xpPerSubLevel: 0.02,
-    subLevelCpGrowth: 1.18,
+    // Rodada 24: +4.5 % XP a sub-level (it was 2 %) and a CP gate that grows 25 % a sub-level (it was 18 %), with the base XP lowered from 10,000 to 8,750 so that a hero at sub-level 8 earns what he earned (11.5k an hour; sub-level 10 pays 12.3k, sub-level 5 10.3k);
+    // The sub-levels are where the power of the set becomes levels: sub-level 10 now asks 15.6k CP in the deep depth, which only a Legendary set of tier 6 reaches (a Common one stops at 7, an Epic one at 8).
+    xpPerSubLevel: 0.045,
+    subLevelCpGrowth: 1.25,
     baseEnemyHp: 7200,
     baseEnemyDmg: 28,
   },

@@ -186,14 +186,17 @@ describe('Round 14: how deep end-game heroes get in the Profundezas', () => {
     expect(p20 - p0).toBeGreaterThanOrEqual(5);
   });
 
-  it('depth 50 needs near-max paragon and Legendary-heavy gear including the refinement past +8 (+9 to +12, round 17)', () => {
+  // Rodada 24 (docs/BALANCE_CHANGES.md): the Legendary became a different animal (x1.4 stats, substats x1.7: a Legendary set is 2.1 times the CP of a Common one, it was 1.6) and the walls of the Profundezas
+  // were NOT retuned, so a Legendary T6 +8 hero now clears depth 51 with no paragon at all and 55 with some (it was 41 to 48). Depth 50 is a goal of the Legendary SET now, not of the paragon; Common and Epic sets,
+  // however much paragon they have, still stop far short of it. Whether to steepen the walls (T.depths hpGrowth / dmgGrowth) so that Legendary +8 stops again under 50 is the owner's call.
+  it('depth 50 is a goal of the Legendary set: Common and Epic gear stay short of it at any paragon, a Legendary T6 set clears it without the refinement past +8', () => {
     const deep = (rarity: 'common' | 'epic' | 'legendary', paragon: number, refine: number) => depthReach(gearHero(rarity, paragon, refine));
     expect(reach('common', 50)).toBeLessThan(50);
     expect(reach('epic', 50)).toBeLessThan(50);
-    expect(reach('legendary', 50)).toBeLessThan(50); // at +8 even a legendary hero at paragon 50 stops short
-    expect(deep('legendary', 0, 12)).toBeLessThan(50);
-    expect(deep('legendary', 30, 12)).toBeLessThan(50);
     expect(deep('common', 50, 12)).toBeLessThan(50);
-    expect(deep('legendary', 50, 12)).toBeGreaterThanOrEqual(50);
+    expect(reach('legendary', 0)).toBeGreaterThanOrEqual(50);
+    expect(reach('legendary', 50)).toBeGreaterThanOrEqual(reach('legendary', 0));
+    expect(deep('legendary', 50, 12)).toBeGreaterThanOrEqual(reach('legendary', 50));
+    expect(deep('legendary', 50, 12)).toBeLessThan(70);
   });
 });

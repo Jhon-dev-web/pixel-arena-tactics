@@ -6,9 +6,11 @@ import { duel, hero, MAIN_TIERS, repFloor, tierNum } from '../../../scripts/sim/
 import { withSeededRandom } from '../../../scripts/sim/driver';
 import { pieceGain } from '../../../scripts/sim/tierSteps';
 import { GEAR, GearItem, getGear, isInstancedSlot } from '../gear';
+import { rarityHero } from '../../../scripts/sim/rarityHero';
 
 // Rules of the item balance round (docs/ITEM_BALANCE_AUDIT.md, docs/BALANCE_CHANGES.md "Rodada 3"):
-//   R1  at equal tier and refine, median rolls: rare +3-6 % CP over common, epic +8-14 %, legendary +18-28 %;
+//   R1  at equal tier and refine, median rolls (weapon + armor of that rarity): rare +3-6 % CP over common, epic +8-14 %, legendary +36-58 % (Rodada 24; it was +18-28 %);
+//   R5  a full seven-piece set (Rodada 24): rare 1.10-1.25 times the CP of a common one, epic 1.20-1.40, legendary 1.9-2.4, and the step epic -> legendary is at least 1.4 times;
 //   R2  no combat substat worth more than 2x another at its median roll (goldBonus exempt, capped at +25 % in total);
 //   R4  forge chances are 63 / 25 / 10 / 2 (Rodada 9: higher rarities are sold on the market, so they are a bit harder).
 
@@ -33,7 +35,7 @@ describe('R4: forge rarity chances', () => {
 });
 
 describe('R1: rarity power at median substat rolls (weapon + armor of that rarity)', () => {
-  const BANDS: Record<Exclude<Rarity, 'common'>, [number, number]> = { rare: [0.03, 0.06], epic: [0.08, 0.14], legendary: [0.18, 0.28] };
+  const BANDS: Record<Exclude<Rarity, 'common'>, [number, number]> = { rare: [0.03, 0.06], epic: [0.08, 0.14], legendary: [0.36, 0.58] };
   for (const tk of MAIN_TIERS) {
     for (const refine of [0, 8]) {
       it(`tier ${tk} +${refine}`, () => {
@@ -52,6 +54,30 @@ describe('R1: rarity power at median substat rolls (weapon + armor of that rarit
       });
     }
   }
+});
+
+describe('R5: what a rarity is worth for a whole set (the buyer view)', () => {
+  for (const [tier, level, refine] of [[4, 62, 0], [4, 62, 8], [5, 75, 8], [5, 75, 12], [6, 90, 8], [6, 90, 12]] as [number, number, number][]) {
+    it(`tier ${tier} +${refine}: rare 1.10-1.25, epic 1.20-1.40, legendary 1.9-2.4 times the common set, and the epic -> legendary step is at least 1.4x`, () => {
+      const cp = (r: Rarity) => computeCP(rarityHero(level, tier, refine, r));
+      const common = cp('common');
+      const [rare, epic, legendary] = (['rare', 'epic', 'legendary'] as Rarity[]).map((r) => cp(r) / common);
+      expect(rare, `rare x${rare.toFixed(3)}`).toBeGreaterThanOrEqual(1.1);
+      expect(rare).toBeLessThanOrEqual(1.25);
+      expect(epic, `epic x${epic.toFixed(3)}`).toBeGreaterThanOrEqual(1.2);
+      expect(epic).toBeLessThanOrEqual(1.4);
+      expect(legendary, `legendary x${legendary.toFixed(3)}`).toBeGreaterThanOrEqual(1.9);
+      expect(legendary).toBeLessThanOrEqual(2.4);
+      expect(epic).toBeGreaterThan(rare);
+      expect(legendary / epic, 'step epic -> legendary').toBeGreaterThanOrEqual(1.4);
+    });
+  }
+
+  it('the rarity table: multipliers climb, only the Legendary rolls stronger substats, the chances are the ones of R4', () => {
+    expect(RARITIES.map((r) => r.statMult)).toEqual([1, 1.02, 1.04, 1.4]);
+    expect(RARITIES.map((r) => r.substatMult)).toEqual([1, 1, 1, 1.7]);
+    expect(RARITIES.map((r) => r.substatCount)).toEqual([0, 1, 2, 3]);
+  });
 });
 
 describe('R2: combat substats are worth about the same at their median roll', () => {

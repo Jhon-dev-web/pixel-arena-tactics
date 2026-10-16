@@ -43,9 +43,9 @@ export const BOUNDS = {
   // ---- XP --------------------------------------------------------------------------------------------------------------------------------------
   /**
    * XP per server hour, THEORETICAL, at the end of the game (floor 100). Since the League (Rodada 20) HUNTING IS THE ONLY SOURCE of hero XP (no Dungeon, no delivery order, no instant
-   * potion), so this is one product. Recomputed by season:bounds = 23,660 (25,000 kept: the server factor below still counts a 5% Relic bonus
+   * potion), so this is one product. Recomputed by season:bounds = 22,375 since Rodada 24 (it was 23,660; 25,000 kept: the server factor below still counts a 5% Relic bonus
    * that no item carries since Rodada 19, as a margin); xpPerHourAt(floor) below scales it with the floor:
-   *   best zone 10,000 xp/h (huntingZones.ts; it was 13,000 before Rodada 22) x 1.18 (the last zone pays +2% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels) x deep depth 1.3
+   *   best zone 8,750 xp/h (huntingZones.ts; it was 13,000 before Rodada 22 and 10,000 before Rodada 24) x 1.405 (the last zone pays +4.5% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels; it was +2% / 1.18) x deep depth 1.3
    *   x (1 + 12% bonuses: Aprendiz Veloz 3 ranks x 4%; +5% for a Season Relic that carried XP, margin) x 1.25 (the Knowledge Elixir, tunables consumables.knowledgeXpPct, running the whole
    *   time: the best and only potion; the Pass adds no XP).
    * It used to be 60,000: 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, which are gone.
@@ -56,8 +56,8 @@ export const BOUNDS = {
   eventHeroBonus: 0.15,
   /** While a profession event runs, profession skill XP may be this much higher: the biggest of the three (+25% Mining units in the Febre, +25% in the picked profession of the Semana, +15% in the Festival). */
   eventProfessionBonus: 0.25,
-  /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%) times the Knowledge Elixir (1.25) times the last zone's best sub-level (1.18). 1.3 x 1.17 x 1.25 x 1.18 = 2.2437. */
-  huntXpFactor: 2.244,
+  /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%) times the Knowledge Elixir (1.25) times the last zone's best sub-level (1.405 since Rodada 24, it was 1.18). 1.3 x 1.17 x 1.25 x 1.405 = 2.6706. */
+  huntXpFactor: 2.671,
 
   // ---- profession skill XP (Mining, Woodcutting, Gardening): THEORETICAL, recomputed from tunables by season:bounds / deriveBounds ---------------------------------------
   /** Mining / Woodcutting: gatherPower = BASE_GATHER_POWER + level x powerPerLevel (skills.ts). SOURCE: BASE_GATHER_POWER = 5, tunables skills.powerPerLevel = 0.75, skills.maxLevel = 75. */
@@ -116,9 +116,9 @@ export const BOUNDS = {
   // ---- PACE: the fastest simulated seed (Pass owner): [position, server day it was reached] ----------------------------------------------------------
   /**
    * Hero level position (level + share of the next level; paragon levels follow 100) against the day the fastest seed reached it.
-   * SOURCE (Rodada 22, `npm run sim:econ`, the fastest seed of the Pass-owner policies P / PS / PG / PB, 6 seeds each; PB is the owner who BOUGHT a Legendary tier 4+ set): level 24 on day 2,
-   * 44 on day 7, 51 on day 12, 60 on day 19, 68 on day 26, 75 on day 34, 79 on day 38, 88 on day 50 and 92 on day 56 (docs/BALANCE_CHANGES.md Rodada 22); past day 56 the hero gains about 0.55 level
-   * a day (level 100 on about day 72, then the paragon at 0.55 level a day, as before). Rodada 20 had 60 on day 24 and 88 on day 60 for the plain owner alone: the zone level gates of Rodada 22
+   * SOURCE (Rodada 24, `npm run sim:econ`, the fastest seed of ANY Pass-owner policy: P / PS / PG, the buyers PB / PBE and the greedy buyers PBG / PBEG / PBRG (a Legendary tier 4+ set, +8 refined for PBRG), 6 seeds each):
+   * level 24 on day 2, 44 on day 7, 51 on day 11, 60 on day 18, 68 on day 25, 75 on day 32, 79 on day 36, 88 on day 47 and 92 on day 53 (docs/BALANCE_CHANGES.md Rodada 24; Rodada 22 had 12, 19, 26, 34, 38, 50, 56);
+   * past day 53 the hero gains about 0.55 level a day (level 100 on about day 68, then the paragon at 0.55 level a day, as before). Rodada 20 had 60 on day 24 and 88 on day 60 for the plain owner alone: the zone level gates of Rodada 22
    * (zone 3 asks level 40, zone 4 level 60) hold the owner who bought a set back, and the table now follows him, the fastest legitimate player, instead of the plain owner.
    */
   levelPace: [
@@ -126,25 +126,26 @@ export const BOUNDS = {
     [24, 2],
     [28, 3],
     [44, 7],
-    [51, 12],
-    [60, 19],
-    [68, 26],
-    [75, 34],
-    [79, 38],
-    [88, 50],
-    [92, 56],
-    [100, 72],
-    [200, 272],
+    [51, 11],
+    [60, 18],
+    [68, 25],
+    [75, 32],
+    [79, 36],
+    [88, 47],
+    [92, 53],
+    [100, 68],
+    [200, 268],
   ] as const,
-  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE (Rodada 22, P / PS / PG / PB, fastest of 6 seeds each): floor 8 on day 1, 25 on day 2, 50 on day 9, 75 on day 11, 90 on day 26, 100 on day 39 (the buyer's tier 4+ Legendary set; the plain owner needs until day 53). */
+  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE (Rodada 24, every Pass-owner policy, fastest of 6 seeds each): floor 8 on day 1, 25 on day 2, 50 on day 8, 75 on day 9, 90 on day 10, 100 on day 10 (11 here: the days must increase; the buyer's tier 4+ Legendary set, which is 2.1 times the CP of a Common one since Rodada 24;
+   * the plain owner needs until day 56, Rodada 22 had 100 on day 39 for the buyer). The Dungeon floors pay no XP and do not rank, so this table is only the plausibility check of the floor counter. */
   floorPace: [
     [0, 0],
     [8, 1],
     [25, 2],
-    [50, 9],
-    [75, 11],
-    [90, 26],
-    [100, 39],
+    [50, 8],
+    [75, 9],
+    [90, 10],
+    [100, 11],
   ] as const,
   /** Profundezas depth cleared per day by the fastest seed: 0 to about 30 in the first 3 days after the floor-100 boss (Cenario P, days 90 to 110). Depth is capped by the CP wall at about 44. */
   depthPerDayFastest: 12,
@@ -156,6 +157,7 @@ export const BOUNDS = {
    * [hero level, highest floor] = the best floor any sim seed (A or P) stood on at a hero level up to that one, with ~20% room (more at the low levels, where the pace tables interpolate between sparse anchors). SOURCE (Rodada 20, 6 seeds x 60 days): level 1 to 13 floor 10, 24 floor 25,
    * 37 floor 30, 44 floor 40, 50 floor 70, 57 floor 76, 63 floor 78, 70 floor 85. The Dungeon pays no XP any more, so a hero can stand on floor 10 at level 1 (it was floor 5 at level 1).
    * Rodada 22 (the owner who bought a Legendary tier 4+ set, `npm run sim:econ` PB): level 44 floor 40, level 50 floor 86, 57 floor 88, 63 floor 89, 70 floor 100; so from level 50 on the cap is the last floor.
+   * Rodada 24 (the Legendary set is 2.1 times a Common one, the seven buyer policies of `npm run sim:econ`): level 44 floor 40, level 47 floor 82 (a lucky tier 3 Legendary), level 50 floor 100; the cap is the last floor from level 48.
    */
   floorCapByLevel: [
     [1, 12],
@@ -163,7 +165,8 @@ export const BOUNDS = {
     [24, 36],
     [37, 44],
     [44, 56],
-    [50, 100],
+    [46, 85],
+    [48, 100],
     [57, 100],
     [63, 100],
     [70, 100],
