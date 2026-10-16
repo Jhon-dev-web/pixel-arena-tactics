@@ -239,7 +239,7 @@ export async function verifySolSale(rpc: RpcClient, cfg: SolanaConfig, exp: SolS
   if (typeof exp.signature !== 'string' || !isSignatureText(exp.signature)) return { ok: false, reason: 'bad_signature' };
   try {
     const got = await fetchFinalized(rpc, cfg, exp.signature);
-    if (!got.ok) return got;
+    if ('reason' in got) return got; // ("in", not ".ok": the game's tests compile this file without strict null checks, where the discriminant does not narrow)
     const transfers = systemTransfers(got.tx);
     if (transfers.length === 0) return { ok: false, reason: 'no_transfer' };
 
@@ -295,7 +295,7 @@ export async function verifyUsdcPayment(rpc: RpcClient, cfg: SolanaConfig, exp: 
   if (typeof exp.signature !== 'string' || !isSignatureText(exp.signature)) return { ok: false, reason: 'bad_signature' };
   try {
     const got = await fetchFinalized(rpc, cfg, exp.signature);
-    if (!got.ok) return got;
+    if ('reason' in got) return got; // ("in", not ".ok": the game's tests compile this file without strict null checks, where the discriminant does not narrow)
     const all = [...tokenEntries(got.tx.meta?.preTokenBalances), ...tokenEntries(got.tx.meta?.postTokenBalances)];
     if (all.length === 0) return { ok: false, reason: 'no_transfer' };
     if (!all.some((e) => e.owner === exp.receiver)) return { ok: false, reason: 'wrong_recipient' };

@@ -14,18 +14,17 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Strings that exist only in market code, its text or its styles. Each is tagged with the thing it proves.
 export const MARKET_MARKERS = [
-  { marker: 'personal_sign', what: 'the wallet signature request (game/market/wallet.ts)' },
-  { marker: 'eth_sendTransaction', what: 'the USDT transfer request (game/market/wallet.ts)' },
-  { marker: 'eth_requestAccounts', what: 'the wallet connection (game/market/wallet.ts)' },
-  { marker: 'wallet_switchEthereumChain', what: 'the BNB Smart Chain switch (game/market/wallet.ts)' },
+  { marker: 'solana:signAndSendTransaction', what: 'the wallet payment request (game/market/wallet.ts)' },
+  { marker: 'solana:signMessage', what: 'the wallet signature request (game/market/wallet.ts)' },
+  { marker: 'wallet-standard:app-ready', what: 'the wallet discovery (game/market/wallet.ts)' },
   { marker: 'market_listings_public', what: 'the public listings view (game/market/api.ts)' },
   { marker: 'market-wallet', what: 'the wallet function call (game/market/api.ts)' },
   { marker: 'market-buy', what: 'the purchase function call (game/market/api.ts)' },
-  { marker: 'pass-crypto', what: 'the USDT Pass function call (game/market/api.ts)' },
-  { marker: 'a9059cbb', what: 'the USDT transfer calldata (supabase/functions/_shared/chain/bsc.ts)' },
+  { marker: 'pass-crypto', what: 'the USDC Pass function call (game/market/api.ts)' },
+  { marker: 'solscan.io', what: 'the block explorer links (game/market/wallet.ts)' },
   { marker: 'NUNCA pede sua chave privada', what: 'the market text, Portuguese (locales/market.ts)' },
   { marker: 'NEVER asks for your private key', what: 'the market text, English (locales/market.ts)' },
-  { marker: 'Pagar com USDT', what: 'the Pass button text (locales/market.ts)' },
+  { marker: 'Pagar com USDC', what: 'the Pass button text (locales/market.ts)' },
   { marker: 'mk-listing', what: 'the market styles (market.css)' },
 ];
 

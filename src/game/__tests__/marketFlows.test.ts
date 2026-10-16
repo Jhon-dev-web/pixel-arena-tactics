@@ -1,76 +1,152 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WalletPort, runLinkFlow } from '../market/linkFlow';
 import { MarketApi, MarketFn, createMarketApi } from '../market/api';
-import { RETRY_REASONS, legDone, payLegFromWallet, submitWithPolling } from '../market/payFlow';
-import { Eip1193Provider, WalletError, connectWallet, ensureChain, explorerTxUrl, sendUsdt, signMessage } from '../market/wallet';
+import { RETRY_REASONS, paymentDone, payReservationFromWallet, submitWithPolling } from '../market/payFlow';
+import { StdWallet, WalletError, connectSolWallet, explorerAddressUrl, explorerTxUrl, listSolWallets } from '../market/wallet';
 import { FEE_ADDRESS, USER_A, USER_B, WALLET, makeMarket, throwawayWallet } from '../../../supabase/functions/_shared/__tests__/marketHarness';
-import { centsToUnits } from '../../../supabase/functions/_shared/chain/money';
+import { addr, sig } from '../../../supabase/functions/_shared/__tests__/solanaFixtures';
+import { decodeBase58 } from '../../../supabase/functions/_shared/chain/base58';
+import { SYSTEM_PROGRAM_ID } from '../../../supabase/functions/_shared/chain/solana';
+import { verifySolanaSignature } from '../../../supabase/functions/_shared/chain/solWallet';
 import type { ReservationView } from '../../../supabase/functions/_shared/market/types';
+import { parseLegacyTx, readU64 } from './solTxParse';
 
-// The wallet side of the game with a FAKE wallet (an EIP-1193 provider object) and the real handlers behind the api: no browser, no extension, no network.
+// The wallet side of the game with FAKE wallets (Wallet Standard objects on a fake window) and the real handlers behind the api: no browser, no extension, no network.
 
-const fakeProvider = (handlers: Record<string, (params?: unknown[]) => unknown>, seen: { method: string; params?: unknown }[] = []): Eip1193Provider => ({
-  async request({ method, params }) {
-    seen.push({ method, params });
-    const h = handlers[method];
-    if (!h) throw Object.assign(new Error('unsupported'), { code: 4200 });
-    return h(params as unknown[]);
-  },
-});
+type Throwaway = ReturnType<typeof throwawayWallet>;
+const bytes = (b58: string): Uint8Array => decodeBase58(b58) as Uint8Array;
 
-const ADDR = '0xAbCdEf0123456789aBcDeF0123456789AbCdEf01';
-const HASH = `0x${'ab'.repeat(32)}`;
+/** A Wallet Standard wallet backed by an in-memory key. `log` records what the game asked it to do. */
+function fakeStdWallet(name: string, w: Throwaway, log: { signed: string[]; sent: { chain: string; tx: Uint8Array }[] } = { signed: [], sent: [] }, over: { reject?: boolean; address?: string } = {}): StdWallet {
+  const account = { address: over.address ?? w.address, publicKey: bytes(over.address ?? w.address), chains: ['solana:mainnet', 'solana:devnet'] };
+  const refuse = () => {
+    throw Object.assign(new Error('User rejected the request.'), { code: 4001 });
+  };
+  return {
+    name,
+    chains: ['solana:mainnet', 'solana:devnet'],
+    accounts: [],
+    features: {
+      'standard:connect': { connect: async () => (over.reject ? refuse() : { accounts: [account] }) },
+      'solana:signMessage': {
+        signMessage: async (input: { account: unknown; message: Uint8Array }) => {
+          if (over.reject) refuse();
+          const text = new TextDecoder().decode(input.message);
+          log.signed.push(text);
+          return [{ signedMessage: input.message, signature: bytes(w.sign(text)) }];
+        },
+      },
+      'solana:signAndSendTransaction': {
+        signAndSendTransaction: async (input: { account: unknown; transaction: Uint8Array; chain: string }) => {
+          if (over.reject) refuse();
+          log.sent.push({ chain: input.chain, tx: input.transaction });
+          return [{ signature: new Uint8Array(64).fill(7) }];
+        },
+      },
+    } as StdWallet['features'],
+  };
+}
 
-describe('the wallet adapter (window.ethereum, EIP-1193)', () => {
-  it('connects, lowercasing the first account, and fails clearly without a wallet or on a refusal', async () => {
-    expect(await connectWallet(fakeProvider({ eth_requestAccounts: () => [ADDR] }))).toBe(ADDR.toLowerCase());
-    await expect(connectWallet(null)).rejects.toMatchObject({ kind: 'no_provider' });
-    await expect(connectWallet(fakeProvider({ eth_requestAccounts: () => { throw Object.assign(new Error('no'), { code: 4001 }); } }))).rejects.toMatchObject({ kind: 'rejected' });
-    await expect(connectWallet(fakeProvider({ eth_requestAccounts: () => [] }))).rejects.toBeInstanceOf(WalletError);
-    await expect(connectWallet(fakeProvider({ eth_requestAccounts: () => ['nope'] }))).rejects.toBeInstanceOf(WalletError);
+/** A fake window: an EventTarget that answers the Wallet Standard handshake. `early` wallets are registered when the page announces itself. */
+function fakeWindow(early: StdWallet[] = []): Window & EventTarget {
+  const win = new EventTarget();
+  win.addEventListener('wallet-standard:app-ready', (event) => (event as CustomEvent<{ register: (...w: StdWallet[]) => void }>).detail.register(...early));
+  return win as unknown as Window & EventTarget;
+}
+const announceLate = (win: EventTarget, wallet: StdWallet) => win.dispatchEvent(new CustomEvent('wallet-standard:register-wallet', { detail: (api: { register: (...w: StdWallet[]) => void }) => api.register(wallet) }));
+
+describe('the wallet adapter (Wallet Standard: Phantom, Solflare)', () => {
+  it('lists the Solana wallets the page was told about, Phantom and Solflare first, and ignores wallets that cannot sign messages', async () => {
+    const w = throwawayWallet();
+    const win = fakeWindow([fakeStdWallet('Backpack', w), fakeStdWallet('Solflare', w), fakeStdWallet('Phantom', w)]);
+    const noSign: StdWallet = { name: 'Only Ethereum', chains: ['eip155:1'], accounts: [], features: { 'standard:connect': { connect: async () => ({ accounts: [] }) } } as StdWallet['features'] };
+    announceLate(win, noSign);
+    expect(await listSolWallets(win)).toEqual(['Phantom', 'Solflare', 'Backpack']);
   });
 
-  it('switches to the chain the server uses, adds it when the wallet has never seen it, and says so when it cannot', async () => {
-    const seen: { method: string; params?: unknown }[] = [];
-    await ensureChain(97, fakeProvider({ wallet_switchEthereumChain: () => null }, seen));
-    expect(seen[0]).toEqual({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x61' }] });
-    const added: unknown[] = [];
-    await ensureChain(56, fakeProvider({ wallet_switchEthereumChain: () => { throw Object.assign(new Error('unknown chain'), { code: 4902 }); }, wallet_addEthereumChain: (p) => added.push(p) }));
-    expect(added[0]).toMatchObject([{ chainId: '0x38', chainName: 'BNB Smart Chain', nativeCurrency: { symbol: 'BNB', decimals: 18 } }]);
-    await expect(ensureChain(56, fakeProvider({ wallet_switchEthereumChain: () => { throw Object.assign(new Error('x'), { code: -32000 }); } }))).rejects.toMatchObject({ kind: 'wrong_chain' });
-    await expect(ensureChain(56, fakeProvider({ wallet_switchEthereumChain: () => { throw Object.assign(new Error('x'), { code: 4001 }); } }))).rejects.toMatchObject({ kind: 'rejected' });
+  it('a wallet that loads AFTER the page announced itself still shows up', async () => {
+    const w = throwawayWallet();
+    const win = fakeWindow();
+    const first = listSolWallets(win);
+    announceLate(win, fakeStdWallet('Phantom', w));
+    expect(await first).toEqual(['Phantom']);
   });
 
-  it('asks the wallet to sign the text as hex UTF-8 (personal_sign), nothing else', async () => {
-    const seen: { method: string; params?: unknown }[] = [];
-    const sig = `0x${'11'.repeat(65)}`;
-    expect(await signMessage(ADDR, 'olá', fakeProvider({ personal_sign: () => sig }, seen))).toBe(sig);
-    expect(seen).toEqual([{ method: 'personal_sign', params: ['0x6f6cc3a1', ADDR] }]);
-    await expect(signMessage(ADDR, 'x', fakeProvider({ personal_sign: () => '0x12' }))).rejects.toBeInstanceOf(WalletError);
+  it('connects to the wallet the player picked and returns its address; no wallet at all is "no_provider"', async () => {
+    const a = throwawayWallet();
+    const b = throwawayWallet();
+    const win = fakeWindow([fakeStdWallet('Phantom', a), fakeStdWallet('Solflare', b)]);
+    expect((await connectSolWallet('Solflare', undefined, win)).address).toBe(b.address);
+    expect((await connectSolWallet(undefined, undefined, win)).address).toBe(a.address); // Phantom by default
+    await expect(connectSolWallet(undefined, undefined, fakeWindow())).rejects.toMatchObject({ kind: 'no_provider' });
+    await expect(connectSolWallet(undefined, undefined, undefined)).rejects.toMatchObject({ kind: 'no_provider' });
   });
 
-  it('asks for exactly one USDT.transfer(to, amount) with value 0, to the token contract, and returns the hash', async () => {
-    const seen: { method: string; params?: unknown }[] = [];
-    const hash = await sendUsdt(ADDR, '0x5555555555555555555555555555555555555555', FEE_ADDRESS, centsToUnits(1234), fakeProvider({ eth_sendTransaction: () => HASH.toUpperCase().replace('0X', '0x') }, seen));
-    expect(hash).toBe(HASH);
-    const tx = (seen[0].params as Record<string, string>[])[0];
-    expect(tx).toMatchObject({ from: ADDR, to: '0x5555555555555555555555555555555555555555', value: '0x0' });
-    expect(tx.data.startsWith('0xa9059cbb')).toBe(true);
-    expect(BigInt(`0x${tx.data.slice(74)}`)).toBe(centsToUnits(1234));
-    expect(tx.data.slice(10, 74)).toBe(FEE_ADDRESS.slice(2).padStart(64, '0'));
-    await expect(sendUsdt(ADDR, '0x5555555555555555555555555555555555555555', FEE_ADDRESS, 1n, fakeProvider({ eth_sendTransaction: () => 'oops' }))).rejects.toBeInstanceOf(WalletError);
+  it('insists on the account that is linked to the game: another one is "wrong_account"', async () => {
+    const w = throwawayWallet();
+    const win = fakeWindow([fakeStdWallet('Phantom', w)]);
+    expect((await connectSolWallet(undefined, w.address, win)).address).toBe(w.address);
+    await expect(connectSolWallet(undefined, addr(99), win)).rejects.toMatchObject({ kind: 'wrong_account' });
   });
 
-  it('only ever uses these five wallet methods', async () => {
+  it('a refusal in the wallet is "rejected", in connect, in signMessage and in the payment', async () => {
+    const w = throwawayWallet();
+    await expect(connectSolWallet(undefined, undefined, fakeWindow([fakeStdWallet('Phantom', w, undefined, { reject: true })]))).rejects.toMatchObject({ kind: 'rejected' });
+  });
+
+  it('signMessage sends the UTF-8 bytes of the server\'s text and returns a base58 signature the server accepts', async () => {
+    const w = throwawayWallet();
+    const log = { signed: [] as string[], sent: [] };
+    const session = await connectSolWallet(undefined, undefined, fakeWindow([fakeStdWallet('Phantom', w, log)]));
+    const text = 'Arena Idle: olá\nNonce: 1';
+    const signature = await session.signMessage(text);
+    expect(log.signed).toEqual([text]);
+    expect(verifySolanaSignature(text, signature, w.address)).toBe(true);
+    expect(verifySolanaSignature(`${text}!`, signature, w.address)).toBe(false);
+  });
+
+  it('signAndSend hands the wallet the transaction bytes and the cluster, and returns the signature in base58', async () => {
+    const w = throwawayWallet();
+    const log = { signed: [] as string[], sent: [] as { chain: string; tx: Uint8Array }[] };
+    const session = await connectSolWallet(undefined, undefined, fakeWindow([fakeStdWallet('Phantom', w, log)]));
+    const tx = Uint8Array.of(1, 2, 3);
+    expect(await session.signAndSend(tx, 'devnet')).toBe(sig(7));
+    expect(await session.signAndSend(tx, 'mainnet-beta')).toBe(sig(7));
+    expect(log.sent.map((s) => s.chain)).toEqual(['solana:devnet', 'solana:mainnet']);
+    expect(Array.from(log.sent[0].tx)).toEqual([1, 2, 3]);
+  });
+
+  it('an older wallet (window.phantom.solana) can still LINK, but cannot pay', async () => {
+    const w = throwawayWallet();
+    const win = new EventTarget() as unknown as Window & EventTarget & { phantom?: unknown };
+    win.phantom = {
+      solana: {
+        isPhantom: true,
+        connect: async () => ({ publicKey: { toBase58: () => w.address } }),
+        signMessage: async (message: Uint8Array) => ({ signature: bytes(w.sign(new TextDecoder().decode(message))) }),
+      },
+    };
+    expect(await listSolWallets(win)).toEqual(['Phantom']);
+    const session = await connectSolWallet(undefined, undefined, win);
+    expect(session.address).toBe(w.address);
+    expect(verifySolanaSignature('hello', await session.signMessage('hello'), w.address)).toBe(true);
+    await expect(session.signAndSend(Uint8Array.of(1), 'devnet')).rejects.toMatchObject({ kind: 'unsupported' });
+    await expect(connectSolWallet(undefined, addr(98), win)).rejects.toMatchObject({ kind: 'wrong_account' });
+  });
+
+  it('only ever asks the wallet for these three things, and no private key or seed is ever requested', async () => {
     const { readFileSync } = await import('node:fs');
     const src = readFileSync(new URL('../market/wallet.ts', import.meta.url), 'utf8');
-    const methods = [...src.matchAll(/(?:method: |request[<(][^,]*?, |request<[^>]*>\(p, )'([a-z_A-Z]+)'/g)].map((m) => m[1]);
-    expect(new Set(methods)).toEqual(new Set(['eth_requestAccounts', 'wallet_switchEthereumChain', 'wallet_addEthereumChain', 'personal_sign', 'eth_sendTransaction']));
+    const features = [...src.matchAll(/'((?:standard|solana):[A-Za-z]+)'/g)].map((m) => m[1]).filter((f) => !f.startsWith('solana:main') && !f.startsWith('solana:dev'));
+    expect(new Set(features)).toEqual(new Set(['standard:connect', 'solana:signMessage', 'solana:signAndSendTransaction']));
+    const code = src.replace(/\/\/.*$/gm, '');
+    expect(code).not.toMatch(/privateKey|secretKey|mnemonic|seed|eth_|personal_sign|signTransaction\b/i);
   });
 
   it('explorer links', () => {
-    expect(explorerTxUrl(56, HASH)).toBe(`https://bscscan.com/tx/${HASH}`);
-    expect(explorerTxUrl(97, HASH)).toBe(`https://testnet.bscscan.com/tx/${HASH}`);
+    expect(explorerTxUrl('mainnet-beta', 'SIG')).toBe('https://solscan.io/tx/SIG');
+    expect(explorerTxUrl('devnet', 'SIG')).toBe('https://solscan.io/tx/SIG?cluster=devnet');
+    expect(explorerAddressUrl('devnet', 'ADDR')).toBe('https://solscan.io/account/ADDR?cluster=devnet');
   });
 });
 
@@ -84,24 +160,34 @@ describe('linking a wallet through the real market-wallet handler', () => {
     return { m, api: (u: string): MarketApi => createMarketApi(transport(u)) };
   };
 
-  const portFor = (w: ReturnType<typeof throwawayWallet>, over: Partial<WalletPort> = {}): WalletPort => ({ connect: async () => w.address, ensureChain: async () => undefined, sign: async (_a, message) => w.sign(message), ...over });
+  const portFor = (w: Throwaway, over: { connect?: WalletPort['connect']; sign?: (message: string) => Promise<string> } = {}): WalletPort => ({
+    connect: over.connect ?? (async () => ({ address: w.address, signMessage: over.sign ?? (async (message: string) => w.sign(message)) })),
+  });
 
-  it('connect, switch chain, sign the server\'s text, and the account is linked', async () => {
+  it('connect, sign the server\'s text, and the account is linked', async () => {
     const { m, api } = setup();
     const w = throwawayWallet();
     const steps: string[] = [];
-    const r = await runLinkFlow(api(USER_A), 97, portFor(w), (s) => steps.push(s));
+    const r = await runLinkFlow(api(USER_A), undefined, portFor(w), (s) => steps.push(s));
     expect(r).toEqual({ ok: true, address: w.address });
     expect(steps).toEqual(['connecting', 'signing']);
     expect((await m.store.wallet(USER_A))?.address).toBe(w.address);
   });
 
-  it('a wallet that refuses, has the wrong chain, or does not exist leaves the account unlinked with a clear failure', async () => {
+  it('passes the wallet the player picked to the port', async () => {
+    const { api } = setup();
+    const w = throwawayWallet();
+    const seen: (string | undefined)[] = [];
+    await runLinkFlow(api(USER_A), 'Solflare', { connect: async (p) => (seen.push(p), { address: w.address, signMessage: async (t) => w.sign(t) }) });
+    expect(seen).toEqual(['Solflare']);
+  });
+
+  it('a wallet that refuses, has another account, or does not exist leaves the account unlinked with a clear failure', async () => {
     const { m, api } = setup();
     const w = throwawayWallet();
-    expect(await runLinkFlow(api(USER_A), 97, portFor(w, { sign: async () => { throw new WalletError('rejected'); } }))).toEqual({ ok: false, failure: 'rejected' });
-    expect(await runLinkFlow(api(USER_A), 97, portFor(w, { ensureChain: async () => { throw new WalletError('wrong_chain'); } }))).toEqual({ ok: false, failure: 'wrongChain' });
-    expect(await runLinkFlow(api(USER_A), 97, portFor(w, { connect: async () => { throw new WalletError('no_provider'); } }))).toEqual({ ok: false, failure: 'noProvider' });
+    expect(await runLinkFlow(api(USER_A), undefined, portFor(w, { sign: async () => { throw new WalletError('rejected'); } }))).toEqual({ ok: false, failure: 'rejected' });
+    expect(await runLinkFlow(api(USER_A), undefined, portFor(w, { connect: async () => { throw new WalletError('wrong_account'); } }))).toEqual({ ok: false, failure: 'wrongAccount' });
+    expect(await runLinkFlow(api(USER_A), undefined, portFor(w, { connect: async () => { throw new WalletError('no_provider'); } }))).toEqual({ ok: false, failure: 'noProvider' });
     expect(await m.store.wallet(USER_A)).toBeNull();
   });
 
@@ -109,7 +195,7 @@ describe('linking a wallet through the real market-wallet handler', () => {
     const { m, api } = setup();
     const claimed = throwawayWallet();
     const other = throwawayWallet();
-    const r = await runLinkFlow(api(USER_A), 97, portFor(claimed, { sign: async (_a, message) => other.sign(message) }));
+    const r = await runLinkFlow(api(USER_A), undefined, portFor(claimed, { sign: async (message) => other.sign(message) }));
     expect(r).toEqual({ ok: false, failure: 'badSignature' });
     expect(await m.store.wallet(USER_A)).toBeNull();
   });
@@ -117,15 +203,15 @@ describe('linking a wallet through the real market-wallet handler', () => {
   it('an address already linked to another account is "taken"', async () => {
     const { api } = setup();
     const w = throwawayWallet();
-    expect((await runLinkFlow(api(USER_A), 97, portFor(w))).ok).toBe(true);
-    expect(await runLinkFlow(api(USER_B), 97, portFor(w))).toEqual({ ok: false, failure: 'taken' });
+    expect((await runLinkFlow(api(USER_A), undefined, portFor(w))).ok).toBe(true);
+    expect(await runLinkFlow(api(USER_B), undefined, portFor(w))).toEqual({ ok: false, failure: 'taken' });
   });
 
   it('no connection is "unreachable", never a thrown error', async () => {
     const down = createMarketApi(async () => {
       throw new Error('offline');
     });
-    expect(await runLinkFlow(down, 97, portFor(throwawayWallet()))).toEqual({ ok: false, failure: 'unreachable' });
+    expect(await runLinkFlow(down, undefined, portFor(throwawayWallet()))).toEqual({ ok: false, failure: 'unreachable' });
   });
 });
 
@@ -134,16 +220,16 @@ describe('paying a reservation', () => {
     id: 'r1',
     listingId: 'l1',
     status: 'pending',
-    priceCents: 1000,
-    feeCents: 50,
-    sellerCents: 950,
+    priceLamports: 1_000_000_000,
+    feeLamports: 50_000_000,
+    sellerLamports: 950_000_000,
     sellerAddress: WALLET[USER_A],
     feeAddress: FEE_ADDRESS,
     buyerAddress: WALLET[USER_B],
     expiresAt: '2026-11-02T12:30:00.000Z',
     graceUntil: '2026-11-02T14:30:00.000Z',
     payments: [],
-    chain: { chainId: 97, usdtContract: '0x5555555555555555555555555555555555555555', minConfirmations: 15, livemode: false, feePercent: 5 },
+    chain: { network: 'solana', cluster: 'devnet', chainId: 502, usdcMint: addr(77), livemode: false, feePercent: 5 },
     ...over,
   });
 
@@ -155,61 +241,73 @@ describe('paying a reservation', () => {
     });
   };
   const noSleep = { intervalMs: 0, sleep: async () => undefined };
+  const SIGNATURE = sig(33);
 
-  it('keeps asking while the network is not ready, then reports the recorded payment', async () => {
+  it('keeps asking while the network has not finalized the transaction, then reports the recorded payment', async () => {
     const api = apiReturning([
       { status: 409, body: { ok: false, reason: 'not_found_tx' } },
-      { status: 409, body: { ok: false, reason: 'unconfirmed', confirmations: 6, needed: 15 } },
-      { body: { ok: true, status: 'recorded', reservation: view({ payments: [{ leg: 'fee', txHash: HASH, status: 'applied' }] }) } },
+      { status: 409, body: { ok: false, reason: 'unconfirmed' } },
+      { body: { ok: true, status: 'sold', certificateId: 'c9', reservation: view({ status: 'paid', payments: [{ leg: 'sale', signature: SIGNATURE, status: 'applied' }] }) } },
     ]);
     const pending: unknown[] = [];
-    const out = await submitWithPolling(api, 'r1', 'fee', HASH, { ...noSleep, onPending: (p) => pending.push(p) });
-    expect(out).toMatchObject({ kind: 'recorded', status: 'recorded' });
-    expect(pending).toEqual([{ reason: 'not_found_tx' }, { reason: 'unconfirmed', confirmations: 6, needed: 15 }]);
-    expect(legDone((out as { reservation: ReservationView }).reservation, 'fee')).toBe(true);
-    expect(legDone((out as { reservation: ReservationView }).reservation, 'seller')).toBe(false);
+    const out = await submitWithPolling(api, 'r1', SIGNATURE, { ...noSleep, onPending: (p) => pending.push(p) });
+    expect(out).toMatchObject({ kind: 'recorded', status: 'sold', certificateId: 'c9' });
+    expect(pending).toEqual([{ reason: 'not_found_tx' }, { reason: 'unconfirmed' }]);
+    expect(paymentDone((out as { reservation: ReservationView }).reservation)).toBe(true);
+    expect(paymentDone(view())).toBe(false);
   });
 
   it('stops at a final refusal (a short amount is not retried), at "unreachable", and when the screen closed', async () => {
-    expect(await submitWithPolling(apiReturning([{ status: 409, body: { ok: false, reason: 'short_amount' } }]), 'r1', 'fee', HASH, noSleep)).toEqual({ kind: 'refused', reason: 'short_amount' });
+    expect(await submitWithPolling(apiReturning([{ status: 409, body: { ok: false, reason: 'short_amount' } }]), 'r1', SIGNATURE, noSleep)).toEqual({ kind: 'refused', reason: 'short_amount' });
     const down = createMarketApi(async () => {
       throw new Error('offline');
     });
-    expect(await submitWithPolling(down, 'r1', 'fee', HASH, noSleep)).toEqual({ kind: 'unreachable' });
+    expect(await submitWithPolling(down, 'r1', SIGNATURE, noSleep)).toEqual({ kind: 'unreachable' });
     const cancelled = vi.fn().mockReturnValue(true);
-    expect(await submitWithPolling(apiReturning([{ body: { ok: true, status: 'recorded', reservation: null } }]), 'r1', 'fee', HASH, { ...noSleep, isCancelled: cancelled })).toEqual({ kind: 'stopped' });
+    expect(await submitWithPolling(apiReturning([{ body: { ok: true, status: 'sold', reservation: null } }]), 'r1', SIGNATURE, { ...noSleep, isCancelled: cancelled })).toEqual({ kind: 'stopped' });
   });
 
   it('gives up politely after its patience, nothing consumed', async () => {
-    const out = await submitWithPolling(apiReturning([{ status: 409, body: { ok: false, reason: 'unconfirmed', confirmations: 2, needed: 15 } }]), 'r1', 'fee', HASH, { ...noSleep, maxTries: 3 });
+    const out = await submitWithPolling(apiReturning([{ status: 409, body: { ok: false, reason: 'unconfirmed' } }]), 'r1', SIGNATURE, { ...noSleep, maxTries: 3 });
     expect(out).toMatchObject({ kind: 'pending', reason: 'unconfirmed' });
     expect(RETRY_REASONS.has('short_amount')).toBe(false);
+    expect(RETRY_REASONS.has('unconfirmed')).toBe(true);
   });
 
-  it('pays a leg from the wallet with the SERVER\'s amount and address, never one the screen computed', async () => {
-    const sent: { to: string; data: string }[] = [];
-    (globalThis as { ethereum?: Eip1193Provider }).ethereum = fakeProvider({
-      eth_sendTransaction: (p) => {
-        sent.push((p as { to: string; data: string }[])[0]);
-        return HASH;
-      },
+  const prepareApi = (blockhash: string | null): MarketApi =>
+    apiReturning([blockhash ? { body: { ok: true, blockhash, lastValidBlockHeight: 1 } } : { status: 503, body: { ok: false, reason: 'rpc_error' } }]);
+
+  it('pays from the wallet with ONE transaction built from the SERVER\'s amounts, addresses and blockhash, never from anything the screen computed', async () => {
+    const buyer = throwawayWallet();
+    const log = { signed: [] as string[], sent: [] as { chain: string; tx: Uint8Array }[] };
+    (globalThis as { window?: unknown }).window = fakeWindow([fakeStdWallet('Phantom', buyer, log)]);
+    const r = await payReservationFromWallet(prepareApi(addr(5)), view({ buyerAddress: buyer.address }), buyer.address);
+    expect(r).toEqual({ ok: true, signature: sig(7) });
+    expect(log.sent).toHaveLength(1);
+    expect(log.sent[0].chain).toBe('solana:devnet');
+    const tx = parseLegacyTx(log.sent[0].tx);
+    expect(tx).toMatchObject({ signatureSlots: 1, signaturesAreEmpty: true, blockhash: addr(5), exact: true });
+    expect(tx.instructions.map((i) => i.program)).toEqual([SYSTEM_PROGRAM_ID, SYSTEM_PROGRAM_ID]);
+    expect(tx.instructions.map((i) => i.accounts)).toEqual([[buyer.address, WALLET[USER_A]], [buyer.address, FEE_ADDRESS]]);
+    expect(tx.instructions.map((i) => readU64(i.data, 4))).toEqual([950_000_000n, 50_000_000n]);
+  });
+
+  it('says why it could not pay: no wallet, a refusal, another account, an old wallet, the server has no blockhash, no connection', async () => {
+    const buyer = throwawayWallet();
+    (globalThis as { window?: unknown }).window = fakeWindow();
+    expect(await payReservationFromWallet(prepareApi(addr(5)), view(), buyer.address)).toEqual({ ok: false, failure: 'noProvider' });
+    (globalThis as { window?: unknown }).window = fakeWindow([fakeStdWallet('Phantom', buyer, undefined, { reject: true })]);
+    expect(await payReservationFromWallet(prepareApi(addr(5)), view(), buyer.address)).toEqual({ ok: false, failure: 'rejected' });
+    (globalThis as { window?: unknown }).window = fakeWindow([fakeStdWallet('Phantom', buyer)]);
+    expect(await payReservationFromWallet(prepareApi(addr(5)), view(), addr(98))).toEqual({ ok: false, failure: 'wrongAccount' });
+    expect(await payReservationFromWallet(prepareApi(null), view(), buyer.address)).toEqual({ ok: false, failure: 'blockhash' });
+    const down = createMarketApi(async () => {
+      throw new Error('offline');
     });
-    try {
-      const r = await payLegFromWallet(view(), 'seller', WALLET[USER_B]);
-      expect(r).toEqual({ ok: true, txHash: HASH });
-      expect(sent[0].to).toBe('0x5555555555555555555555555555555555555555');
-      expect(sent[0].data.slice(10, 74)).toBe(WALLET[USER_A].slice(2).padStart(64, '0'));
-      expect(BigInt(`0x${sent[0].data.slice(74)}`)).toBe(centsToUnits(950));
-      (globalThis as { ethereum?: Eip1193Provider }).ethereum = fakeProvider({ eth_sendTransaction: () => { throw Object.assign(new Error('rejected'), { code: 4001 }); } });
-      expect(await payLegFromWallet(view(), 'fee', WALLET[USER_B])).toEqual({ ok: false, failure: 'rejected' });
-      delete (globalThis as { ethereum?: Eip1193Provider }).ethereum;
-      expect(await payLegFromWallet(view(), 'fee', WALLET[USER_B])).toEqual({ ok: false, failure: 'noProvider' });
-    } finally {
-      delete (globalThis as { ethereum?: Eip1193Provider }).ethereum;
-    }
+    expect(await payReservationFromWallet(down, view(), buyer.address)).toEqual({ ok: false, failure: 'unreachable' });
   });
 });
 
 afterEach(() => {
-  delete (globalThis as { ethereum?: Eip1193Provider }).ethereum;
+  delete (globalThis as { window?: unknown }).window;
 });

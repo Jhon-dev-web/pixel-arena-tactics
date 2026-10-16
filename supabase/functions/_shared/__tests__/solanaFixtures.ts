@@ -46,8 +46,14 @@ export class FakeSolana implements RpcClient {
   txs = new Map<string, FakeTx>();
   /** signatures that were seen at a lower commitment only */
   unfinalized = new Map<string, { err: unknown }>();
+  /** signatures the cluster has seen but not finalized yet: getTransaction (finalized) answers null for them until they are released */
+  held = new Set<string>();
+  /** accounts that exist (getAccountInfo answers null for any other address) */
+  accounts = new Set<string>();
   genesis = SOLANA_GENESIS_HASHES['mainnet-beta'];
   down = false;
+  /** while set, every call waits for it (to interleave two requests) */
+  gate: Promise<void> | null = null;
   calls = 0;
   methods: string[] = [];
   private n = 0;
@@ -82,12 +88,13 @@ export class FakeSolana implements RpcClient {
     this.calls++;
     this.methods.push(method);
     if (this.down) throw new Error('rpc_down');
+    if (this.gate) await this.gate;
     switch (method) {
       case 'getGenesisHash':
         return this.genesis;
       case 'getTransaction': {
         const tx = this.txs.get(String(params[0]));
-        if (!tx) return null;
+        if (!tx || this.held.has(String(params[0]))) return null;
         const bal = (key: 'pre' | 'post') =>
           tx.tokens.map((t, i) => ({ accountIndex: i + 1, mint: t.mint, owner: t.owner, programId: TOKEN_PROGRAM_ID, uiTokenAmount: { amount: String(t[key]), decimals: t.decimals ?? 6, uiAmount: t[key] / 1e6, uiAmountString: String(t[key] / 1e6) } }));
         return {
@@ -116,11 +123,13 @@ export class FakeSolana implements RpcClient {
       }
       case 'getSignatureStatuses': {
         const list = (params[0] as string[]).map((s) => {
-          const u = this.unfinalized.get(s);
+          const u = this.unfinalized.get(s) ?? (this.held.has(s) ? { err: null } : undefined);
           return u ? { slot: 1, confirmations: 3, err: u.err, confirmationStatus: 'confirmed' } : null;
         });
         return { context: { slot: 1 }, value: list };
       }
+      case 'getAccountInfo':
+        return { context: { slot: 1 }, value: this.accounts.has(String(params[0])) ? { lamports: 2_039_280, owner: TOKEN_PROGRAM_ID, data: ['', 'base64'], executable: false, rentEpoch: 0 } : null };
       case 'getLatestBlockhash':
         return { context: { slot: 1 }, value: { blockhash: addr(5), lastValidBlockHeight: 400_000_000 } };
       default:

@@ -1,5 +1,5 @@
-import { TransferExpectation, VerifyFailure, normalizeTxHash, verifyUsdtTransfer } from '../chain/bsc.ts';
-import { centsToUnits, isPriceCents } from '../chain/money.ts';
+import { SolVerifyFailure, fetchRecentBlockhash, normalizeSolSignature, verifySolSale } from '../chain/solana.ts';
+import { isPriceLamports } from '../chain/solMoney.ts';
 import { UUID_RE, json } from '../http.ts';
 import { chainPublic, MarketChain } from './chainEnv.ts';
 import type { MarketDeps } from './deps.ts';
@@ -8,8 +8,8 @@ import type { ReservationRow } from './store.ts';
 import type { ListRefusal, MarketOverview, ReservationView, ReserveRefusal, SubmitRefusal } from './types.ts';
 
 // The four market functions (market-wallet, market-list, market-buy, market-my). The user id comes ONLY from the verified JWT. Nothing in a body is trusted except as the thing being asked
-// for: an address to link, a listing id, a price, a transaction hash. Amounts and addresses a payment is checked against come from the RESERVATION stored on the server, never from the request.
-// NON-CUSTODIAL: nothing here holds, sends or signs money; the chain is only read.
+// for: an address to link, a listing id, a price, a transaction signature. Amounts and addresses a payment is checked against come from the RESERVATION stored on the server, never from the request.
+// NON-CUSTODIAL: nothing here holds, sends or signs money; the chain is only read. The buyer's wallet signs ONE transaction with two SOL transfers (the seller's 95% and the game's 5%).
 
 const isStr = (v: unknown): v is string => typeof v === 'string';
 const isUuid = (v: unknown): v is string => isStr(v) && UUID_RE.test(v);
@@ -39,15 +39,15 @@ const RESERVE_STATUS: Record<Exclude<ReserveRefusal, 'bad_request' | 'unavailabl
 };
 
 // A payment that is not acceptable. 'rpc_error' is the node's fault (503: try again, nothing was consumed); 'unconfirmed' / 'not_found_tx' are "not yet" (the game keeps asking); the rest are final.
-const SUBMIT_REFUSAL: Record<VerifyFailure, { reason: SubmitRefusal; status: number }> = {
-  bad_hash: { reason: 'bad_hash', status: 400 },
+const SUBMIT_REFUSAL: Record<SolVerifyFailure, { reason: SubmitRefusal; status: number }> = {
+  bad_signature: { reason: 'bad_signature', status: 400 },
   rpc_error: { reason: 'rpc_error', status: 503 },
   wrong_network: { reason: 'wrong_network', status: 503 },
   not_found: { reason: 'not_found_tx', status: 409 },
   tx_failed: { reason: 'tx_failed', status: 409 },
   unconfirmed: { reason: 'unconfirmed', status: 409 },
   no_transfer: { reason: 'no_transfer', status: 409 },
-  wrong_contract: { reason: 'wrong_contract', status: 409 },
+  wrong_mint: { reason: 'wrong_mint', status: 409 },
   wrong_recipient: { reason: 'wrong_recipient', status: 409 },
   wrong_sender: { reason: 'wrong_sender', status: 409 },
   short_amount: { reason: 'short_amount', status: 409 },
@@ -59,9 +59,9 @@ function reservationView(r: ReservationRow, payments: ReservationView['payments'
     id: r.id,
     listingId: r.listingId,
     status: r.status,
-    priceCents: r.priceCents,
-    feeCents: r.feeCents,
-    sellerCents: r.sellerCents,
+    priceLamports: r.priceLamports,
+    feeLamports: r.feeLamports,
+    sellerLamports: r.sellerLamports,
     sellerAddress: r.sellerAddress,
     feeAddress: r.feeAddress,
     buyerAddress: r.buyerAddress,
@@ -78,7 +78,7 @@ const failed = (what: string, err: unknown): void => {
 
 // ---- market-list ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-/** { action: 'list', certificateId, priceCents } | { action: 'cancel', listingId } */
+/** { action: 'list', certificateId, priceLamports } | { action: 'cancel', listingId } */
 export async function handleMarketList(req: Request, deps: MarketDeps): Promise<Response> {
   const pre = await prelude(req, deps.auth, deps.allowedOrigins);
   if ('response' in pre) return pre.response;
@@ -86,8 +86,8 @@ export async function handleMarketList(req: Request, deps: MarketDeps): Promise<
   try {
     if (deps.chain() === null) return json({ ok: false, reason: 'unavailable' satisfies ListRefusal }, 503, cors);
     if (body.action === 'list') {
-      if (!isUuid(body.certificateId) || !isPriceCents(body.priceCents)) return json({ ok: false, reason: (isUuid(body.certificateId) ? 'price' : 'bad_request') satisfies ListRefusal }, 400, cors);
-      const r = await deps.store.list(userId, body.certificateId.toLowerCase(), body.priceCents);
+      if (!isUuid(body.certificateId) || !isPriceLamports(body.priceLamports)) return json({ ok: false, reason: (isUuid(body.certificateId) ? 'price' : 'bad_request') satisfies ListRefusal }, 400, cors);
+      const r = await deps.store.list(userId, body.certificateId.toLowerCase(), body.priceLamports);
       if (r.status === 'refused') return json({ ok: false, reason: r.reason }, LIST_STATUS[r.reason], cors);
       return json({ ok: true, listingId: r.listingId, expiresAt: iso(r.expiresAtMs) }, 200, cors);
     }
@@ -106,7 +106,7 @@ export async function handleMarketList(req: Request, deps: MarketDeps): Promise<
 
 // ---- market-buy -----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-/** { action: 'reserve', listingId } | { action: 'cancel', reservationId } | { action: 'status', reservationId } | { action: 'submit', reservationId, leg, txHash } */
+/** { action: 'reserve', listingId } | { action: 'cancel', reservationId } | { action: 'status', reservationId } | { action: 'prepare', reservationId } | { action: 'submit', reservationId, signature } */
 export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<Response> {
   const pre = await prelude(req, deps.auth, deps.allowedOrigins);
   if ('response' in pre) return pre.response;
@@ -138,17 +138,29 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
       return json({ ok: true, reservation: reservationView(row, await deps.store.payments(row.id), chain) }, 200, cors);
     }
 
+    // { action: 'prepare', reservationId }: a recent blockhash for the transaction the player's wallet is about to sign. The browser cannot ask the node itself (the node URL may carry the
+    // provider's API key), and the amounts and addresses are already in the reservation. Costs one node call, so it spends the same per-account budget as a verification.
+    if (body.action === 'prepare') {
+      if (!isUuid(body.reservationId)) return json({ ok: false, reason: 'bad_request' }, 400, cors);
+      const reservation = await deps.store.reservation(userId, body.reservationId.toLowerCase());
+      if (!reservation) return json({ ok: false, reason: 'not_found' }, 404, cors);
+      if (reservation.status !== 'pending') return json({ ok: false, reason: 'not_open' }, 409, cors);
+      if (!(await deps.store.takeVerifyBudget(userId))) return json({ ok: false, reason: 'rate_limited' }, 429, { ...cors, 'retry-after': '30' });
+      const bh = await fetchRecentBlockhash(chain.rpc);
+      if (!bh) return json({ ok: false, reason: 'rpc_error' }, 503, { ...cors, 'retry-after': '10' });
+      return json({ ok: true, blockhash: bh.blockhash, lastValidBlockHeight: bh.lastValidBlockHeight }, 200, cors);
+    }
+
     if (body.action === 'submit') {
-      const txHash = normalizeTxHash(body.txHash);
-      if (!isUuid(body.reservationId) || (body.leg !== 'seller' && body.leg !== 'fee')) return json({ ok: false, reason: 'bad_request' }, 400, cors);
-      if (!txHash) return json({ ok: false, reason: 'bad_hash' satisfies SubmitRefusal }, 400, cors);
-      const leg = body.leg;
+      const signature = normalizeSolSignature(body.signature);
+      if (!isUuid(body.reservationId)) return json({ ok: false, reason: 'bad_request' }, 400, cors);
+      if (!signature) return json({ ok: false, reason: 'bad_signature' satisfies SubmitRefusal }, 400, cors);
       const reservation = await deps.store.reservation(userId, body.reservationId.toLowerCase());
       if (!reservation) return json({ ok: false, reason: 'not_found' satisfies SubmitRefusal }, 404, cors);
       if (reservation.chainId !== chain.config.chainId) return json({ ok: false, reason: 'chain_changed' satisfies SubmitRefusal }, 409, cors);
 
-      // A hash the server already holds costs no node call: the same reservation = the same answer (a double submit), anything else = used.
-      const known = await deps.store.payment(txHash);
+      // A signature the server already holds costs no node call: the same reservation = the same answer (a double submit), anything else = used.
+      const known = await deps.store.payment(signature);
       if (known) {
         if (known.userId === userId && known.reservationId === reservation.id) {
           const fresh = await deps.store.reservation(userId, reservation.id);
@@ -159,23 +171,34 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
 
       if (!(await deps.store.takeVerifyBudget(userId))) return json({ ok: false, reason: 'rate_limited' satisfies SubmitRefusal }, 429, { ...cors, 'retry-after': '30' });
 
-      const exp: TransferExpectation = {
-        txHash,
-        from: reservation.buyerAddress,
-        to: leg === 'seller' ? reservation.sellerAddress : reservation.feeAddress,
-        minAmountUnits: centsToUnits(leg === 'seller' ? reservation.sellerCents : reservation.feeCents),
+      // ONE transaction must carry both transfers, from the buyer's linked address: the seller's share and the game's fee. The amounts and addresses are the RESERVATION's, never the request's.
+      const verified = await verifySolSale(chain.rpc, chain.config, {
+        signature,
+        buyer: reservation.buyerAddress,
+        payouts: [
+          { to: reservation.sellerAddress, minLamports: BigInt(reservation.sellerLamports) },
+          { to: reservation.feeAddress, minLamports: BigInt(reservation.feeLamports) },
+        ],
         // a payment mined before the reservation began cannot be for it
         notBeforeMs: reservation.createdAtMs,
-      };
-      const verified = await verifyUsdtTransfer(chain.rpc, chain.config, exp);
+      });
       if ('reason' in verified) {
-        // (`in`, not `.ok`: the game's tests compile this file without strict null checks, where the discriminant does not narrow)
+        // ("in", not ".ok": the game's tests compile this file without strict null checks, where the discriminant does not narrow)
         const map = SUBMIT_REFUSAL[verified.reason];
-        return json({ ok: false, reason: map.reason, ...(verified.confirmations !== undefined ? { confirmations: verified.confirmations, needed: chain.config.minConfirmations } : {}) }, map.status, map.status === 503 ? { ...cors, 'retry-after': '10' } : cors);
+        return json({ ok: false, reason: map.reason }, map.status, map.status === 503 ? { ...cors, 'retry-after': '10' } : cors);
       }
 
-      const t = verified.transfer;
-      const outcome = await deps.store.recordPayment({ buyerId: userId, reservationId: reservation.id, leg, txHash: t.txHash, from: t.from, to: t.to, amountUnits: t.amountUnits, blockNumber: t.blockNumber, blockTimeMs: t.blockTime * 1000 });
+      const p = verified.payment;
+      const outcome = await deps.store.recordPayment({
+        buyerId: userId,
+        reservationId: reservation.id,
+        txHash: p.signature,
+        from: reservation.buyerAddress,
+        to: reservation.sellerAddress,
+        amountUnits: p.paid.reduce((n, x) => n + x.amount, 0n),
+        blockNumber: p.slot,
+        blockTimeMs: p.blockTime * 1000,
+      });
       if (outcome.status === 'tx_reused') return json({ ok: false, reason: 'tx_reused' satisfies SubmitRefusal }, 409, cors);
       if (outcome.status === 'not_found') return json({ ok: false, reason: 'not_found' satisfies SubmitRefusal }, 404, cors);
       const fresh = await deps.store.reservation(userId, reservation.id);
@@ -212,6 +235,7 @@ export async function handleMarketMy(req: Request, deps: MarketDeps): Promise<Re
         sales: o.sales,
         refundsDue: o.refundsDue,
         pending: o.pending,
+        solUsd: await deps.solUsd().catch(() => null),
       };
       return json({ ok: true, ...view }, 200, cors);
     }

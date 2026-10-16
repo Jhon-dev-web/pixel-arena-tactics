@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "@noble/curves/ed25519": "npm:@noble/curves@1.9.7/ed25519",
+    "@noble/hashes/sha256": "npm:@noble/hashes@1.8.0/sha256"
+  }
+}

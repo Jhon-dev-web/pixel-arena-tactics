@@ -24,7 +24,7 @@ const TABS: { id: Exclude<Tab, 'wallet'>; icon: string }[] = [
 ];
 
 // The player market as a main screen of the game shell (web only, behind VITE_MARKET_ENABLED; this whole module, its text and its styles are a lazy chunk the desktop / Steam build never contains).
-// Buy: browse the public listings, reserve one, pay the two USDT transfers from your own wallet. Sell: pick an item and publish an offer (the form is the right column). My offers, History: receipts
+// Buy: browse the public listings, reserve one, pay ONE SOL transaction (the seller and the game fee) from your own wallet. Sell: pick an item and publish an offer (the form is the right column). My offers, History: receipts
 // and refunds. The wallet link is a chip in the header. On a phone it is one column: the offer form shows under the Sell tab and the summary under My offers.
 export default function MarketScreen({ save, host }: { save: SaveData; host: MarketHost }) {
   const [tab, setTab] = useState<Tab>('buy');
@@ -93,7 +93,7 @@ export default function MarketScreen({ save, host }: { save: SaveData; host: Mar
 
   const wallet = overview?.wallet ?? null;
   const chain = overview?.chain ?? null;
-  const flow = useSellFlow({ api: marketApi, save, overview, feePercent: chain?.feePercent ?? 5, host, onChanged: () => void afterChange() });
+  const flow = useSellFlow({ api: marketApi, save, overview, feePercent: chain?.feePercent ?? 5, solUsd: overview?.solUsd ?? null, host, onChanged: () => void afterChange() });
 
   return (
     <div className="desktop-home mk-screen" data-tab={tab} aria-label={mt('title')}>
@@ -161,6 +161,7 @@ export default function MarketScreen({ save, host }: { save: SaveData; host: Mar
                   api={marketApi}
                   reservation={active}
                   walletAddress={wallet?.address ?? null}
+                  solUsd={overview?.solUsd ?? null}
                   bagFull={bagFull}
                   onChanged={() => void afterChange()}
                   onClose={() => {
@@ -169,13 +170,13 @@ export default function MarketScreen({ save, host }: { save: SaveData; host: Mar
                   }}
                 />
               ) : (
-                <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} />
+                <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} solUsd={overview?.solUsd ?? null} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} />
               )}
             </>
           )}
           {tab === 'sell' && <SellPicker flow={flow} />}
           {tab === 'offers' && <MyOffers flow={flow} />}
-          {tab === 'history' && <HistoryPanel overview={overview} chainId={chain?.chainId ?? 56} />}
+          {tab === 'history' && <HistoryPanel overview={overview} cluster={chain?.cluster ?? 'mainnet-beta'} />}
           {tab === 'wallet' && <WalletPanel api={marketApi} chain={chain} wallet={wallet} onChanged={() => void refresh()} />}
         </div>
       </section>

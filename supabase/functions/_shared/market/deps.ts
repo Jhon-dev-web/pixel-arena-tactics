@@ -11,4 +11,6 @@ export interface MarketDeps {
   chain: () => MarketChain | null;
   /** a fresh unguessable nonce (production: 16 random bytes in hex) */
   nonce: () => string;
+  /** US dollars per SOL from the optional SOL_USD_PRICE_URL (cached on the server), or null */
+  solUsd: () => Promise<number | null>;
 }

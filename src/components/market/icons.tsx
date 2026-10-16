@@ -1,14 +1,25 @@
-// Two tiny pixel-style icons of the market screen (no image files, no network).
+// Tiny pixel-style icons of the market screen (no image files, no network).
 
-/** The USDT coin: the price tag of every listing. */
-export function UsdtIcon({ size = 14 }: { size?: number }) {
+/** The SOL mark: the price tag of every listing (three slanted bars, purple to green, the colours of the Solana logo). */
+export function SolIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg className="mk-usdt" width={size} height={size} viewBox="0 0 16 16" aria-hidden shapeRendering="crispEdges">
-      <circle cx="8" cy="8" r="8" fill="#26a17b" />
-      <rect x="4" y="4" width="8" height="2" fill="#fff" />
-      <rect x="7" y="6" width="2" height="7" fill="#fff" />
-      <rect x="4" y="7" width="8" height="1" fill="#26a17b" />
-      <rect x="5" y="8" width="6" height="1" fill="#fff" />
+    <svg className="mk-sol" width={size} height={size} viewBox="0 0 16 16" aria-hidden shapeRendering="crispEdges">
+      <polygon points="4,2 15,2 12,5 1,5" fill="#9945ff" />
+      <polygon points="1,6.5 12,6.5 15,9.5 4,9.5" fill="#5f9bd8" />
+      <polygon points="4,11 15,11 12,14 1,14" fill="#14f195" />
+    </svg>
+  );
+}
+
+/** The USDC coin of the Adventurer Pass. */
+export function UsdcIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg className="mk-usdc" width={size} height={size} viewBox="0 0 16 16" aria-hidden shapeRendering="crispEdges">
+      <circle cx="8" cy="8" r="8" fill="#2775ca" />
+      <rect x="7" y="3" width="2" height="10" fill="#fff" />
+      <rect x="5" y="5" width="6" height="1" fill="#fff" />
+      <rect x="5" y="7" width="6" height="2" fill="#fff" />
+      <rect x="5" y="10" width="6" height="1" fill="#fff" />
     </svg>
   );
 }

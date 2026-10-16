@@ -4,7 +4,7 @@ import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoSto
 import { LISTING_ITEM_COLUMNS } from './types.ts';
 import type { ListRefusal, MyListingView, ReservationPayment, ReservationStatus, ReserveRefusal, SaleView } from './types.ts';
 
-// The real MarketStore / PassCryptoStore: PostgREST over fetch with the SERVICE ROLE key (injected by the Supabase Edge runtime; never logged, never returned). Values go through
+// The real MarketStore / PassCryptoStore (migrations 0011 / 0012 / 0013; the chain_payments.tx_hash column holds the Solana transaction SIGNATURE): PostgREST over fetch with the SERVICE ROLE key (injected by the Supabase Edge runtime; never logged, never returned). Values go through
 // URLSearchParams / JSON, never concatenated into a filter by hand (the ids in the one `or` filter are UUIDs the handlers validated). Errors carry the status only. Every state change is
 // ONE rpc = one locked transaction (migrations 0011 / 0012).
 export interface MarketDbConfig {
@@ -20,9 +20,9 @@ interface ReservationDbRow {
   buyer_address: string;
   seller_address: string;
   fee_address: string;
-  price_cents: number;
-  fee_cents: number;
-  seller_cents: number;
+  price_lamports: number;
+  fee_lamports: number;
+  seller_lamports: number;
   chain_id: number;
   livemode: boolean;
   status: ReservationStatus;
@@ -38,9 +38,9 @@ const toReservation = (r: ReservationDbRow): ReservationRow => ({
   buyerAddress: r.buyer_address,
   sellerAddress: r.seller_address,
   feeAddress: r.fee_address,
-  priceCents: r.price_cents,
-  feeCents: r.fee_cents,
-  sellerCents: r.seller_cents,
+  priceLamports: r.price_lamports,
+  feeLamports: r.fee_lamports,
+  sellerLamports: r.seller_lamports,
   chainId: r.chain_id,
   livemode: r.livemode,
   status: r.status,
@@ -49,7 +49,7 @@ const toReservation = (r: ReservationDbRow): ReservationRow => ({
   graceUntilMs: Date.parse(r.grace_until),
 });
 
-const RESERVATION_COLUMNS = 'id,listing_id,buyer_id,buyer_address,seller_address,fee_address,price_cents,fee_cents,seller_cents,chain_id,livemode,status,created_at,expires_at,grace_until';
+const RESERVATION_COLUMNS = 'id,listing_id,buyer_id,buyer_address,seller_address,fee_address,price_lamports,fee_lamports,seller_lamports,chain_id,livemode,status,created_at,expires_at,grace_until';
 
 function db(cfg: MarketDbConfig) {
   const doFetch = cfg.fetchFn ?? fetch;
@@ -87,8 +87,8 @@ async function paymentOf(d: Db, txHash: string): Promise<PaymentRow | null> {
 
 async function paymentsOf(d: Db, reservationId: string): Promise<ReservationPayment[]> {
   const q = new URLSearchParams({ select: 'tx_hash,leg,status', reservation_id: `eq.${reservationId}`, order: 'created_at.asc' });
-  const rows = await d.rows<{ tx_hash: string; leg: 'seller' | 'fee' | 'extra'; status: ReservationPayment['status'] }>('chain_payments', q, 'payments_read');
-  return rows.map((r) => ({ leg: r.leg, txHash: r.tx_hash, status: r.status }));
+  const rows = await d.rows<{ tx_hash: string; leg: string; status: ReservationPayment['status'] }>('chain_payments', q, 'payments_read');
+  return rows.map((r) => ({ leg: r.leg === 'extra' ? ('extra' as const) : ('sale' as const), signature: r.tx_hash, status: r.status }));
 }
 
 async function takeBudget(d: Db, userId: string): Promise<boolean> {
@@ -136,18 +136,18 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       throw new Error('wallet_set_bad_answer');
     },
 
-    async list(userId, certificateId, priceCents) {
+    async list(userId, certificateId, priceLamports) {
       const r = await d.rpc<{ status?: unknown; reason?: unknown; listing_id?: unknown; expires_at?: unknown }>(
         'market_list',
         {
           p_user_id: userId,
           p_certificate_id: certificateId,
-          p_price_cents: priceCents,
+          p_price_lamports: priceLamports,
           p_ttl_days: MARKET_RULES.listingTtlDays,
           p_max_active: MARKET_RULES.maxActiveListings,
           p_max_per_day: MARKET_RULES.maxListingsPerDay,
-          p_min_cents: MARKET_RULES.minPriceCents,
-          p_max_cents: MARKET_RULES.maxPriceCents,
+          p_min_lamports: MARKET_RULES.minPriceLamports,
+          p_max_lamports: MARKET_RULES.maxPriceLamports,
         },
         'market_list',
       );
@@ -188,9 +188,9 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
             listingId: String(r.listing_id),
             sellerAddress: String(r.seller_address),
             feeAddress: String(r.fee_address),
-            priceCents: Number(r.price_cents),
-            feeCents: Number(r.fee_cents),
-            sellerCents: Number(r.seller_cents),
+            priceLamports: Number(r.price_lamports),
+            feeLamports: Number(r.fee_lamports),
+            sellerLamports: Number(r.seller_lamports),
             expiresAtMs: Date.parse(String(r.expires_at)),
             graceUntilMs: Date.parse(String(r.grace_until)),
           },
@@ -223,7 +223,6 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
         {
           p_buyer_id: a.buyerId,
           p_reservation_id: a.reservationId,
-          p_leg: a.leg,
           p_tx_hash: a.txHash,
           p_from: a.from,
           p_to: a.to,
@@ -237,7 +236,7 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
         case 'sold':
           return { status: 'sold', saleId: String(r.sale_id), certificateId: String(r.certificate_id) };
         case 'recorded':
-          return { status: 'recorded', ...(r.missing === 'seller' || r.missing === 'fee' ? { missing: r.missing } : {}), ...(r.extra === true ? { extra: true } : {}) };
+          return { status: 'recorded', ...(r.extra === true ? { extra: true } : {}) };
         case 'replayed':
           return { status: 'replayed', reservationStatus: r.reservation_status as ReservationStatus };
         case 'refund_due':
@@ -254,7 +253,7 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       const wallet = await walletOf(d, userId);
 
       const lq = new URLSearchParams({
-        select: `id,certificate_id,price_cents,status,created_at,expires_at,item_certificates(${LISTING_ITEM_COLUMNS})`,
+        select: `id,certificate_id,price_lamports,status,created_at,expires_at,item_certificates(${LISTING_ITEM_COLUMNS})`,
         seller_id: `eq.${userId}`,
         order: 'created_at.desc',
         limit: '100',
@@ -262,7 +261,7 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       const listingRows = await d.rows<{
         id: string;
         certificate_id: string;
-        price_cents: number;
+        price_lamports: number;
         status: MyListingView['status'];
         created_at: string;
         expires_at: string;
@@ -271,7 +270,7 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       const listings: MyListingView[] = listingRows.map((l) => ({
         id: l.id,
         certificateId: l.certificate_id,
-        priceCents: l.price_cents,
+        priceLamports: l.price_lamports,
         status: l.status,
         createdAt: l.created_at,
         expiresAt: l.expires_at,
@@ -284,12 +283,12 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       const reservationPayments = reservation ? await paymentsOf(d, reservation.id) : [];
 
       const sq = new URLSearchParams({
-        select: 'id,seller_id,buyer_id,price_cents,fee_cents,seller_cents,livemode,sold_at,seller_tx_hash,fee_tx_hash,item_kind,item_template',
+        select: 'id,seller_id,buyer_id,price_lamports,fee_lamports,seller_lamports,livemode,sold_at,tx_signature,item_kind,item_template',
         or: `(seller_id.eq.${userId},buyer_id.eq.${userId})`,
         order: 'sold_at.desc',
         limit: '100',
       });
-      const saleRows = await d.rows<{ id: string; seller_id: string; buyer_id: string; price_cents: number; fee_cents: number; seller_cents: number; livemode: boolean; sold_at: string; seller_tx_hash: string; fee_tx_hash: string; item_kind: MyListingView['item']['kind']; item_template: string }>(
+      const saleRows = await d.rows<{ id: string; seller_id: string; buyer_id: string; price_lamports: number; fee_lamports: number; seller_lamports: number; livemode: boolean; sold_at: string; tx_signature: string; item_kind: MyListingView['item']['kind']; item_template: string }>(
         'market_sales',
         sq,
         'sales_read',
@@ -298,18 +297,17 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
         id: s.id,
         role: s.seller_id === userId ? 'seller' : 'buyer',
         soldAt: s.sold_at,
-        priceCents: s.price_cents,
-        feeCents: s.fee_cents,
-        sellerCents: s.seller_cents,
+        priceLamports: s.price_lamports,
+        feeLamports: s.fee_lamports,
+        sellerLamports: s.seller_lamports,
         livemode: s.livemode,
-        sellerTxHash: s.seller_tx_hash,
-        feeTxHash: s.fee_tx_hash,
+        signature: s.tx_signature,
         item: { kind: s.item_kind, templateId: s.item_template },
       }));
 
       const fq = new URLSearchParams({ select: 'id', buyer_id: `eq.${userId}`, status: 'eq.refund_due', order: 'created_at.desc', limit: '20' });
       const due = await d.rows<{ id: string }>('market_reservations', fq, 'refunds_read');
-      const refundsDue = await Promise.all(due.map(async (x) => ({ reservationId: x.id, txHashes: (await paymentsOf(d, x.id)).filter((p) => p.status === 'refund_due').map((p) => p.txHash) })));
+      const refundsDue = await Promise.all(due.map(async (x) => ({ reservationId: x.id, signatures: (await paymentsOf(d, x.id)).filter((p) => p.status === 'refund_due').map((p) => p.signature) })));
 
       const cq = new URLSearchParams({ select: CERT_COLUMNS, user_id: `eq.${userId}`, in_save: 'eq.false', status: 'eq.held', order: 'created_at.asc', limit: '100' });
       const pending = (await d.rows<CertRow>('item_certificates', cq, 'pending_read')).map(toCertificateView);
@@ -323,7 +321,7 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
   };
 }
 
-// ---- the USDT Pass ------------------------------------------------------------------------------------------------------------------------------------------------
+// ---- the USDC Pass ------------------------------------------------------------------------------------------------------------------------------------------------
 
 export function createPassCryptoStore(cfg: MarketDbConfig): PassCryptoStore {
   const d = db(cfg);

@@ -1,4 +1,4 @@
-/* The player market (a main screen of the shell) and the USDT Pass. Loaded only with the market chunk (web build, VITE_MARKET_ENABLED). Reuses the game's dh-card panels, rarity colours and gear icons.
+/* The player market (a main screen of the shell) and the USDC Pass. Loaded only with the market chunk (web build, VITE_MARKET_ENABLED). Reuses the game's dh-card panels, rarity colours and gear icons.
    Layout: wide screen = the market panel on the left and a column on the right (create an offer, the summary); phone = one column, the offer form under the Sell tab and the summary under My offers. */
 
 .desktop-home.mk-screen {
@@ -492,7 +492,8 @@
   border-color: #ffd76a;
   background: linear-gradient(180deg, #3a2a18, #1c1208);
 }
-.mk-usdt {
+.mk-sol,
+.mk-usdc {
   flex: 0 0 auto;
   vertical-align: -2px;
 }

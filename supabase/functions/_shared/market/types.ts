@@ -3,12 +3,15 @@ import type { RarityId } from '../items/tables.ts';
 
 // The wire format of the market functions, shared by the Edge Functions and the game (the client imports this file for its types; no Deno API is used here).
 
-/** What the client may know about the chain. Public by nature: every number here is visible on bscscan. */
+/** What the client may know about the chain. Public by nature: every value here is visible on solscan. */
 export interface ChainPublic {
+  network: 'solana';
+  cluster: 'mainnet-beta' | 'devnet';
+  /** the internal tag of the cluster stored with each payment (501 mainnet-beta, 502 devnet): not a protocol value */
   chainId: number;
-  usdtContract: string;
-  minConfirmations: number;
-  /** true only on BSC mainnet */
+  /** the USDC mint of this cluster (the Adventurer Pass is paid in it) */
+  usdcMint: string;
+  /** true only on mainnet-beta; devnet is a test network and its money is worth nothing */
   livemode: boolean;
   feePercent: number;
 }
@@ -28,16 +31,18 @@ export type SubmitRefusal =
   | 'tx_failed'
   | 'unconfirmed'
   | 'no_transfer'
-  | 'wrong_contract'
+  | 'wrong_mint'
   | 'wrong_recipient'
   | 'wrong_sender'
   | 'short_amount'
   | 'too_early'
-  | 'bad_hash';
+  | 'bad_signature';
 
+/** The payment of a reservation is ONE transaction that carries both transfers ('sale'); a second transaction for the same reservation is kept as an 'extra' owed back. */
 export interface ReservationPayment {
-  leg: 'seller' | 'fee' | 'extra';
-  txHash: string;
+  leg: 'sale' | 'extra';
+  /** the transaction signature (base58) */
+  signature: string;
   status: 'applied' | 'refund_due' | 'refunded';
 }
 
@@ -48,9 +53,9 @@ export interface ReservationView {
   id: string;
   listingId: string;
   status: ReservationStatus;
-  priceCents: number;
-  feeCents: number;
-  sellerCents: number;
+  priceLamports: number;
+  feeLamports: number;
+  sellerLamports: number;
   /** the seller's payout address: shown ONLY to the buyer who reserved the listing */
   sellerAddress: string;
   feeAddress: string;
@@ -73,7 +78,7 @@ export interface MarketItemView {
 export interface MyListingView {
   id: string;
   certificateId: string;
-  priceCents: number;
+  priceLamports: number;
   status: 'open' | 'reserved' | 'sold' | 'cancelled' | 'expired';
   createdAt: string;
   expiresAt: string;
@@ -84,12 +89,12 @@ export interface SaleView {
   id: string;
   role: 'buyer' | 'seller';
   soldAt: string;
-  priceCents: number;
-  feeCents: number;
-  sellerCents: number;
+  priceLamports: number;
+  feeLamports: number;
+  sellerLamports: number;
   livemode: boolean;
-  sellerTxHash: string;
-  feeTxHash: string;
+  /** the signature of the one transaction that paid the seller and the game */
+  signature: string;
   item: Pick<MarketItemView, 'kind' | 'templateId'>;
 }
 
@@ -100,10 +105,12 @@ export interface MarketOverview {
   reservation: ReservationView | null;
   /** purchases and sales, newest first */
   sales: SaleView[];
-  /** reservations that ended in refund_due: the money is owed back by hand (docs/MARKET_USDT.md) */
-  refundsDue: { reservationId: string; txHashes: string[] }[];
+  /** reservations that ended in refund_due: the money is owed back by hand (docs/MARKET_SOLANA.md) */
+  refundsDue: { reservationId: string; signatures: string[] }[];
   /** certificates the account owns that are NOT in the save yet (a purchase, a cancelled or expired listing): the game adds them from the certificate and acks */
   pending: CertificateView[];
+  /** US dollars per SOL, read by the SERVER from the optional SOL_USD_PRICE_URL (cached 5 minutes), or null when none is configured: then the game shows no dollar line */
+  solUsd: number | null;
 }
 
 export const LISTING_ITEM_COLUMNS = 'kind,template_id,rarity,tier,substats,gold_amount';

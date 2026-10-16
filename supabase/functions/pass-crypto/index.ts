@@ -3,8 +3,8 @@ import { parseAllowedOrigins } from '../_shared/http.ts';
 import { createPassCryptoStore } from '../_shared/market/marketDb.ts';
 import { handlePassCrypto, loadPassCrypto } from '../_shared/market/passCrypto.ts';
 
-// Supabase Edge Function (Deno): the Adventurer Pass paid in USDT (BEP-20, BNB Smart Chain). { action: 'start' } says what to pay and to whom; { action: 'submit', txHash } verifies the transfer on chain
-// and grants the entitlement (source crypto_bsc). Secrets by NAME: APP_ORIGIN, BSC_RPC_URL, BSC_CHAIN_ID, BSC_MIN_CONFIRMATIONS, BSC_USDT_CONTRACT, PASS_PRICE_USDT, PASS_RECEIVE_ADDRESS (or MARKET_FEE_ADDRESS).
+// Supabase Edge Function (Deno): the Adventurer Pass paid in USDC on Solana. { action: 'start' } says what to pay and to whom; { action: 'submit', signature } verifies the transfer on chain
+// and grants the entitlement (source crypto_sol). Needs the npm import map in this folder (deno.json: the associated token account is derived with @noble). Secrets by NAME: APP_ORIGIN, SOLANA_RPC_URL, SOLANA_CLUSTER, SOLANA_USDC_MINT, PASS_PRICE_USDC, PASS_RECEIVE_ADDRESS (or MARKET_FEE_ADDRESS).
 // Deploy with JWT verification ON (the default): the player's session token is the only way in, and the user id comes from it and from nowhere else.
 Deno.serve((req: Request) => {
   const env = getEdgeEnv();

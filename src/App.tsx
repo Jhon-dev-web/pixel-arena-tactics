@@ -135,7 +135,7 @@ import { mt } from './locales/market';
 import './App.css';
 import './round11.css';
 
-// The player market (docs/MARKET_USDT.md) is WEB ONLY: Valve forbids crypto trading in a Steam game. marketEnabled is a build constant (VITE_MARKET_ENABLED, forced off in the desktop build),
+// The player market (docs/MARKET_SOLANA.md) is WEB ONLY: Valve forbids crypto trading in a Steam game. marketEnabled is a build constant (VITE_MARKET_ENABLED, forced off in the desktop build),
 // so in the desktop bundle these three lines, the screen, its text and its styles are not there at all (npm run check:desktop pins it).
 // (The first constant is read right here on purpose: the bundler folds it where it stands, which is what lets it drop the dynamic imports below from the desktop bundle. A constant imported from
 // another module would not be folded.)
@@ -143,7 +143,7 @@ const MARKET_BUILD = import.meta.env.VITE_MARKET_ENABLED === 'true';
 const marketOn = MARKET_BUILD && marketEnabled;
 const MarketScreen = MARKET_BUILD ? lazy(() => import('./components/MarketScreen')) : null;
 const MarketSync = MARKET_BUILD ? lazy(() => import('./components/market/MarketSync')) : null;
-const PassUsdt = MARKET_BUILD ? lazy(() => import('./components/PassUsdt')) : null;
+const PassUsdc = MARKET_BUILD ? lazy(() => import('./components/PassUsdc')) : null;
 
 const gearText = (key: string): string => t(`gear.${key}`);
 
@@ -2502,9 +2502,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           highlightBuy={highlightBuy}
           passFlow={passFlow}
           onRecheck={confirmPassPurchase}
-          buyExtra={marketOn && PassUsdt && isServerPassSource() ? (
+          buyExtra={marketOn && PassUsdc && isServerPassSource() ? (
             <Suspense fallback={null}>
-              <PassUsdt onGranted={confirmPassPurchase} />
+              <PassUsdc onGranted={confirmPassPurchase} />
             </Suspense>
           ) : undefined}
           onClaim={claimBattlePassLevel}

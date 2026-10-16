@@ -4,7 +4,7 @@ import type { LinkFailure } from '../../game/market/linkFlow';
 export const LINK_MESSAGE_KEY: Record<LinkFailure, string> = {
   noProvider: 'wallet.noProvider',
   rejected: 'wallet.rejected',
-  wrongChain: 'wallet.wrongChain',
+  wrongAccount: 'wallet.wrongAccount',
   taken: 'wallet.taken',
   busy: 'wallet.busy',
   badSignature: 'wallet.badSignature',

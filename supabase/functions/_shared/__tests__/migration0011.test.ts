@@ -21,6 +21,10 @@ const m11 = stripComments(raw11);
 const raw12 = read('supabase/migrations/0012_pass_crypto.sql');
 const m12 = stripComments(raw12);
 const m10 = stripComments(read('supabase/migrations/0010_item_certificates.sql'));
+const m13 = stripComments(read('supabase/migrations/0013_solana.sql'));
+// Migration 0013 (Solana) REPLACES some functions of 0011 / 0012: the TypeScript is pinned to the latest definition of each one.
+const latestSql = (name: string): string => (m13.includes(`create or replace function public.${name}(`) ? m13 : m11);
+const latestPassSql = (name: string): string => (m13.includes(`create or replace function public.${name}(`) ? m13 : m12);
 const marketDb = read('supabase/functions/_shared/market/marketDb.ts');
 
 function body(sql: string, name: string): string {
@@ -276,7 +280,7 @@ describe('0011: the certificates keep their guarantees', () => {
   });
 });
 
-describe('0011: the TypeScript calls the SQL with exactly the arguments it declares', () => {
+describe('0011 + 0013: the TypeScript calls the SQL with exactly the arguments it declares', () => {
   const sqlParams = (src: string, name: string): string[] => {
     const m = new RegExp(`create or replace function public\\.${name}\\(([\\s\\S]*?)\\)\\s*returns`).exec(src);
     expect(m, name).not.toBeNull();
@@ -299,16 +303,16 @@ describe('0011: the TypeScript calls the SQL with exactly the arguments it decla
   };
 
   it.each(PUBLIC_FUNCTIONS.map(([n]) => n))('%s', (name) => {
-    expect(tsParams(name)).toEqual(sqlParams(m11, name));
+    expect(tsParams(name)).toEqual(sqlParams(latestSql(name), name));
   });
 
   it('the pass functions too', () => {
-    expect(tsParams('pass_crypto_start')).toEqual(sqlParams(m12, 'pass_crypto_start'));
-    expect(tsParams('pass_crypto_grant')).toEqual(sqlParams(m12, 'pass_crypto_grant'));
+    expect(tsParams('pass_crypto_start')).toEqual(sqlParams(latestPassSql('pass_crypto_start'), 'pass_crypto_start'));
+    expect(tsParams('pass_crypto_grant')).toEqual(sqlParams(latestPassSql('pass_crypto_grant'), 'pass_crypto_grant'));
   });
 
   it('the rules the SQL receives as arguments are the TypeScript rules, and the SQL has no copy of them', () => {
-    for (const k of ['listingTtlDays', 'maxActiveListings', 'maxListingsPerDay', 'minPriceCents', 'maxPriceCents', 'reservationTtlMinutes', 'graceMinutes', 'reserveRateMax', 'reserveRateWindowSeconds', 'nonceTtlSeconds', 'nonceMax', 'nonceWindowSeconds', 'feePercent', 'passIntentTtlHours']) {
+    for (const k of ['listingTtlDays', 'maxActiveListings', 'maxListingsPerDay', 'minPriceLamports', 'maxPriceLamports', 'reservationTtlMinutes', 'graceMinutes', 'reserveRateMax', 'reserveRateWindowSeconds', 'nonceTtlSeconds', 'nonceMax', 'nonceWindowSeconds', 'feePercent', 'passIntentTtlHours']) {
       expect(marketDb, k).toContain(`MARKET_RULES.${k}`);
     }
     expect(MARKET_RULES.reservationTtlMinutes).toBe(30);
@@ -320,7 +324,7 @@ describe('0011: the TypeScript calls the SQL with exactly the arguments it decla
 describe('0011: documented', () => {
   it('has a rollback that names everything it creates, and a SQL test plan', () => {
     for (const t of TABLES) expect(raw11).toContain(`drop table if exists public.${t};`);
-    for (const [name] of PUBLIC_FUNCTIONS) expect(raw11).toContain(`drop function if exists public.${name}(`);
+    for (const [name] of PUBLIC_FUNCTIONS) expect(raw11).toContain(`drop function if exists public.${name}(`); // the 0011 rollback (0013 has its own)
     expect(raw11).toContain('drop view if exists public.market_listings_public;');
     expect(raw11).toContain('NOT APPLIED');
     expect(raw11).toContain('SQL TEST PLAN');
@@ -328,7 +332,7 @@ describe('0011: documented', () => {
   });
 });
 
-describe('0012: the USDT Pass', () => {
+describe('0012: the first crypto Pass (BNB Smart Chain; 0013 moves it to Solana, see migration0013.test.ts)', () => {
   it('the source check allows crypto_bsc and keeps the others', () => {
     expect(m12).toContain("check (source in ('stripe', 'mercadopago', 'crypto_bsc', 'grant'))");
   });

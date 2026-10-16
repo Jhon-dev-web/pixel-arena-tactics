@@ -1,10 +1,10 @@
 import type { ReservationView } from '../../../supabase/functions/_shared/market/types';
-import { centsToUnits } from '../../../supabase/functions/_shared/chain/money';
+import { buildSolTransfersTx } from './solTx';
 import { MarketApi, MarketUnreachable } from './api';
-import { WalletError, sendUsdt } from './wallet';
+import { WalletError, connectSolWallet } from './wallet';
 
-// Paying a reservation: the player's wallet makes the USDT transfer (or he pastes the hash of one he made), the SERVER verifies it on chain. Both are polled until the network has enough
-// confirmations. Nothing here decides whether a payment is good: only the server does.
+// Paying a reservation: the player's wallet signs ONE transaction with two SOL transfers (the seller's share and the game's fee), or he pastes the signature of one he made. The SERVER verifies it on
+// chain (finalized) and keeps asking until the network has finalized it. Nothing here decides whether a payment is good: only the server does.
 
 /** Reasons that mean "not yet / try again" (the transaction exists or will; nothing was consumed), as opposed to a final refusal. */
 export const RETRY_REASONS = new Set(['unconfirmed', 'not_found_tx', 'rpc_error']);
@@ -12,24 +12,24 @@ export const RETRY_REASONS = new Set(['unconfirmed', 'not_found_tx', 'rpc_error'
 export type SubmitOutcome =
   | { kind: 'recorded'; reservation: ReservationView | null; status: string; certificateId?: string }
   | { kind: 'refused'; reason: string }
-  | { kind: 'pending'; reason: string; confirmations?: number; needed?: number }
+  | { kind: 'pending'; reason: string }
   | { kind: 'unreachable' }
   | { kind: 'stopped' };
 
 export interface PollOptions {
-  /** seconds-between-tries in ms (tests pass 0) */
+  /** milliseconds between tries (tests pass 0) */
   intervalMs?: number;
   maxTries?: number;
   sleep?: (ms: number) => Promise<void>;
   /** called with the latest "not yet" answer while waiting */
-  onPending?: (p: { reason: string; confirmations?: number; needed?: number }) => void;
+  onPending?: (p: { reason: string }) => void;
   isCancelled?: () => boolean;
 }
 
-/** Submits a hash and keeps asking while the network is not ready. Resolves with the final outcome. */
-export async function submitWithPolling(api: MarketApi, reservationId: string, leg: 'seller' | 'fee', txHash: string, opts: PollOptions = {}): Promise<SubmitOutcome> {
+/** Submits a signature and keeps asking while the network is not ready. Resolves with the final outcome. */
+export async function submitWithPolling(api: MarketApi, reservationId: string, signature: string, opts: PollOptions = {}): Promise<SubmitOutcome> {
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-  // about 10 questions a minute for up to 3 minutes: the server budget (240 an hour, 60 at once) covers a purchase with room to spare
+  // about 10 questions a minute for up to 3 minutes (Solana finalizes in about 15 to 30 seconds): the server budget (240 an hour, 60 at once) covers a purchase with room to spare
   const tries = opts.maxTries ?? 36;
   const interval = opts.intervalMs ?? 5000;
   let last: SubmitOutcome = { kind: 'pending', reason: 'not_found_tx' };
@@ -37,34 +37,49 @@ export async function submitWithPolling(api: MarketApi, reservationId: string, l
     if (opts.isCancelled?.()) return { kind: 'stopped' };
     let r;
     try {
-      r = await api.submitPayment(reservationId, leg, txHash);
+      r = await api.submitPayment(reservationId, signature);
     } catch (err) {
       if (err instanceof MarketUnreachable) return { kind: 'unreachable' };
       throw err;
     }
     if (!('reason' in r)) return { kind: 'recorded', reservation: r.reservation, status: r.status, ...(r.certificateId ? { certificateId: r.certificateId } : {}) };
     if (!RETRY_REASONS.has(r.reason)) return { kind: 'refused', reason: r.reason };
-    const extra = (r.extra ?? {}) as { confirmations?: number; needed?: number };
-    const progress = { reason: r.reason, ...(extra.confirmations !== undefined ? { confirmations: extra.confirmations, needed: extra.needed } : {}) };
-    last = { kind: 'pending', ...progress };
-    opts.onPending?.(progress);
+    last = { kind: 'pending', reason: r.reason };
+    opts.onPending?.({ reason: r.reason });
     await sleep(interval);
   }
   return last; // still not ready after the patience: the player can press "verify" again, nothing was consumed
 }
 
-/** Asks the wallet to pay one leg of the reservation (the amount and the address are the SERVER's), then returns the hash. */
-export async function payLegFromWallet(reservation: ReservationView, leg: 'seller' | 'fee', from: string): Promise<{ ok: true; txHash: string } | { ok: false; failure: 'noProvider' | 'rejected' | 'failed' }> {
+export type PayFailure = 'noProvider' | 'rejected' | 'wrongAccount' | 'unsupported' | 'unreachable' | 'blockhash' | 'failed';
+
+/**
+ * Asks the wallet to pay the reservation: the SERVER hands over a fresh blockhash, the transaction is built here from the reservation's own amounts and addresses (the seller's share and the game's
+ * fee, in ONE transaction), and the wallet signs and sends it after the player approves on its own screen. Resolves with the signature.
+ */
+export async function payReservationFromWallet(api: MarketApi, reservation: ReservationView, walletAddress: string): Promise<{ ok: true; signature: string } | { ok: false; failure: PayFailure }> {
   try {
-    const to = leg === 'seller' ? reservation.sellerAddress : reservation.feeAddress;
-    const cents = leg === 'seller' ? reservation.sellerCents : reservation.feeCents;
-    const txHash = await sendUsdt(from, reservation.chain.usdtContract, to, centsToUnits(cents));
-    return { ok: true, txHash };
+    const session = await connectSolWallet(undefined, walletAddress);
+    const prepared = await api.prepare(reservation.id);
+    if ('reason' in prepared) return { ok: false, failure: 'blockhash' };
+    const tx = buildSolTransfersTx({
+      payer: walletAddress,
+      blockhash: prepared.blockhash,
+      transfers: [
+        { to: reservation.sellerAddress, lamports: reservation.sellerLamports },
+        { to: reservation.feeAddress, lamports: reservation.feeLamports },
+      ],
+    });
+    const signature = await session.signAndSend(tx, reservation.chain.cluster);
+    return { ok: true, signature };
   } catch (err) {
-    if (err instanceof WalletError) return { ok: false, failure: err.kind === 'no_provider' ? 'noProvider' : err.kind === 'rejected' ? 'rejected' : 'failed' };
+    if (err instanceof MarketUnreachable) return { ok: false, failure: 'unreachable' };
+    if (err instanceof WalletError) {
+      return { ok: false, failure: err.kind === 'no_provider' ? 'noProvider' : err.kind === 'rejected' ? 'rejected' : err.kind === 'wrong_account' ? 'wrongAccount' : err.kind === 'unsupported' ? 'unsupported' : 'failed' };
+    }
     return { ok: false, failure: 'failed' };
   }
 }
 
-/** The leg already counted on the server (so the screen shows it done). */
-export const legDone = (r: ReservationView, leg: 'seller' | 'fee'): boolean => r.payments.some((p) => p.leg === leg && p.status === 'applied');
+/** The payment already counted on the server (so the screen shows it done). */
+export const paymentDone = (r: ReservationView): boolean => r.payments.some((p) => p.leg === 'sale' && p.status === 'applied');

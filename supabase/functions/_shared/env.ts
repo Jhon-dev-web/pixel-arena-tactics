@@ -8,14 +8,14 @@ export const EDGE_ENV_NAMES = [
   'STRIPE_PRICE_ADVENTURER_PASS',
   'STRIPE_WEBHOOK_SECRET',
   'APP_ORIGIN',
-  // The USDT market and the USDT Pass (docs/MARKET_USDT.md). BSC_RPC_URL may carry the provider's API key: it is read here and used by the chain module only, never logged or returned.
-  'BSC_RPC_URL',
-  'BSC_CHAIN_ID',
-  'BSC_MIN_CONFIRMATIONS',
-  'BSC_USDT_CONTRACT',
+  // The Solana market and the USDC Pass (docs/MARKET_SOLANA.md). SOLANA_RPC_URL may carry the provider's API key: it is read here and used by the chain module only, never logged or returned.
+  'SOLANA_RPC_URL',
+  'SOLANA_CLUSTER',
+  'SOLANA_USDC_MINT',
   'MARKET_FEE_ADDRESS',
   'PASS_RECEIVE_ADDRESS',
-  'PASS_PRICE_USDT',
+  'PASS_PRICE_USDC',
+  'SOL_USD_PRICE_URL',
 ] as const;
 
 export type EdgeEnv = Partial<Record<(typeof EDGE_ENV_NAMES)[number], string>>;

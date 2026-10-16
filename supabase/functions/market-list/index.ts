@@ -1,11 +1,12 @@
 import { getEdgeEnv } from '../_shared/env.ts';
 import { parseAllowedOrigins } from '../_shared/http.ts';
+import { solUsdReaderFor } from '../_shared/market/solPrice.ts';
 import { loadMarketChain } from '../_shared/market/chainEnv.ts';
 import { handleMarketList } from '../_shared/market/handler.ts';
 import { createMarketStore } from '../_shared/market/marketDb.ts';
 
 // Supabase Edge Function (Deno): list a certified item for sale, or cancel a listing.
-// Secrets by NAME: APP_ORIGIN, BSC_RPC_URL, BSC_CHAIN_ID, BSC_MIN_CONFIRMATIONS, BSC_USDT_CONTRACT, MARKET_FEE_ADDRESS (docs/MARKET_USDT.md). SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
+// Secrets by NAME: APP_ORIGIN, SOLANA_RPC_URL, SOLANA_CLUSTER, SOLANA_USDC_MINT, MARKET_FEE_ADDRESS, SOL_USD_PRICE_URL (docs/MARKET_SOLANA.md). SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
 // Deploy with JWT verification ON (the default): the player's session token is the only way in, and the user id comes from it and from nowhere else.
 Deno.serve((req: Request) => {
   const env = getEdgeEnv();
@@ -15,6 +16,7 @@ Deno.serve((req: Request) => {
     store: createMarketStore({ supabaseUrl: env.SUPABASE_URL ?? '', serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY ?? '' }),
     nowMs: () => Date.now(),
     chain: () => loadMarketChain(env),
+    solUsd: solUsdReaderFor(env.SOL_USD_PRICE_URL),
     nonce: () => {
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);

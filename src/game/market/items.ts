@@ -7,7 +7,7 @@ import { addWithOverflow, fitsBag, stockIsEmpty } from '../inventory';
 import { certState, getCertificate } from '../itemCerts';
 import { RARITIES } from '../rarity';
 
-// The game's side of the market, all pure (docs/MARKET_USDT.md):
+// The game's side of the market, all pure (docs/MARKET_SOLANA.md):
 //   * WHAT can be sold: a certified, unbound, socket-free piece the SERVER confirms, or a certified Gold Pouch the server confirms;
 //   * taking a listed item OUT of the save (the item lives on the server while it is listed);
 //   * putting a bought / returned item INTO the save from its CERTIFICATE (never from the seller's save, which the seller no longer has);

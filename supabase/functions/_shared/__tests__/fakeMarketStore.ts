@@ -1,10 +1,10 @@
-import { splitPrice } from '../chain/money.ts';
+import { splitLamports } from '../chain/solMoney.ts';
 import type { CertificateView } from '../items/types.ts';
 import { MARKET_RULES } from '../market/rules.ts';
 import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoStore, PassGrantOutcome, PaymentRow, RecordOutcome, RecordPaymentArgs, ReservationRow, ReserveOutcome } from '../market/store.ts';
 import type { ListRefusal, MyListingView, ReservationPayment, SaleView } from '../market/types.ts';
 
-// An in-memory MarketStore that follows migration 0011 / 0012 step by step. Every method is one atomic step (JS is single threaded between awaits and none of the bodies below has an await in the middle
+// An in-memory MarketStore that follows migrations 0011 / 0012 / 0013 step by step. Every method is one atomic step (JS is single threaded between awaits and none of the bodies below has an await in the middle
 // of its read-modify-write), the clock is the `nowMs` field, and each rule carries the name of the SQL function it mirrors. It is the executable specification the handler tests run against; the real
 // SQL is pinned to the same shape by migration0011.test.ts.
 export const MIN = 60_000;
@@ -21,7 +21,7 @@ interface FakeListing {
   certificateId: string;
   sellerId: string;
   sellerAddress: string;
-  priceCents: number;
+  priceLamports: number;
   status: 'open' | 'reserved' | 'sold' | 'cancelled' | 'expired';
   createdAtMs: number;
   expiresAtMs: number;
@@ -44,11 +44,10 @@ interface FakeSale {
   newCertificateId: string;
   sellerId: string;
   buyerId: string;
-  priceCents: number;
-  feeCents: number;
-  sellerCents: number;
-  sellerTxHash: string;
-  feeTxHash: string;
+  priceLamports: number;
+  feeLamports: number;
+  sellerLamports: number;
+  signature: string;
   livemode: boolean;
   soldAtMs: number;
   itemKind: CertificateView['kind'];
@@ -108,7 +107,7 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
   }
 
   linkWallet(userId: string, address: string): void {
-    this.wallets.set(userId, { address, chainId: 97, linkedAtMs: this.nowMs });
+    this.wallets.set(userId, { address, chainId: 502, linkedAtMs: this.nowMs });
   }
 
   private view(c: FakeCert): CertificateView {
@@ -203,12 +202,12 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
   }
 
   // ---- market_list ----
-  async list(userId: string, certificateId: string, priceCents: number) {
+  async list(userId: string, certificateId: string, priceLamports: number) {
     const refuse = (reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'>) => ({ status: 'refused' as const, reason });
     const w = this.wallets.get(userId);
     if (!w) return refuse('no_wallet');
     if (this.flagged.has(userId)) return refuse('flagged');
-    if (priceCents < MARKET_RULES.minPriceCents || priceCents > MARKET_RULES.maxPriceCents) return refuse('price');
+    if (priceLamports < MARKET_RULES.minPriceLamports || priceLamports > MARKET_RULES.maxPriceLamports) return refuse('price');
     const c = this.certs.get(certificateId);
     if (!c || c.userId !== userId) return refuse('not_found');
     if (c.status === 'listed') return refuse('already_listed');
@@ -220,7 +219,7 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     if (mine.filter((l) => l.createdAtMs > this.nowMs - DAY).length >= MARKET_RULES.maxListingsPerDay) return refuse('limit_day');
     c.status = 'listed';
     c.inSave = false;
-    const l: FakeListing = { id: this.id(), certificateId, sellerId: userId, sellerAddress: w.address, priceCents, status: 'open', createdAtMs: this.nowMs, expiresAtMs: this.nowMs + MARKET_RULES.listingTtlDays * DAY };
+    const l: FakeListing = { id: this.id(), certificateId, sellerId: userId, sellerAddress: w.address, priceLamports, status: 'open', createdAtMs: this.nowMs, expiresAtMs: this.nowMs + MARKET_RULES.listingTtlDays * DAY };
     this.listings.set(l.id, l);
     this.certEvent(c.id, 'list');
     this.log('listed', userId, l.id, null);
@@ -257,7 +256,7 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     if (l.status === 'reserved') return { status: 'refused', reason: 'reserved' };
     if (l.status !== 'open') return { status: 'refused', reason: 'not_open' };
     if (l.sellerId === a.buyerId || l.sellerAddress === w.address) return { status: 'refused', reason: 'own_listing' };
-    const split = splitPrice(l.priceCents);
+    const split = splitLamports(l.priceLamports);
     const res: ReservationRow = {
       id: this.id(),
       listingId: l.id,
@@ -265,9 +264,9 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
       buyerAddress: w.address,
       sellerAddress: l.sellerAddress,
       feeAddress: a.feeAddress,
-      priceCents: l.priceCents,
-      feeCents: split.feeCents,
-      sellerCents: split.sellerCents,
+      priceLamports: l.priceLamports,
+      feeLamports: split.feeLamports,
+      sellerLamports: split.sellerLamports,
       chainId: a.chainId,
       livemode: a.livemode,
       status: 'pending',
@@ -278,7 +277,7 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     this.reservations.set(res.id, res);
     l.status = 'reserved';
     this.log('reserved', a.buyerId, l.id, res.id);
-    return { status: 'reserved', reservation: { id: res.id, listingId: l.id, sellerAddress: l.sellerAddress, feeAddress: a.feeAddress, priceCents: l.priceCents, feeCents: split.feeCents, sellerCents: split.sellerCents, expiresAtMs: res.expiresAtMs, graceUntilMs: res.graceUntilMs } };
+    return { status: 'reserved', reservation: { id: res.id, listingId: l.id, sellerAddress: l.sellerAddress, feeAddress: a.feeAddress, priceLamports: l.priceLamports, feeLamports: split.feeLamports, sellerLamports: split.sellerLamports, expiresAtMs: res.expiresAtMs, graceUntilMs: res.graceUntilMs } };
   }
 
   // ---- market_cancel_reservation ----
@@ -305,31 +304,28 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
   }
 
   async payments(reservationId: string): Promise<ReservationPayment[]> {
-    return [...this.paid.values()].filter((p) => p.reservationId === reservationId).map((p) => ({ leg: p.leg as ReservationPayment['leg'], txHash: p.txHash, status: p.status }));
+    return [...this.paid.values()].filter((p) => p.reservationId === reservationId).map((p) => ({ leg: p.leg as ReservationPayment['leg'], signature: p.txHash, status: p.status }));
   }
 
-  // ---- market_record_payment ----
+  // ---- market_record_payment (migration 0013): ONE transaction pays both transfers ----
   async recordPayment(a: RecordPaymentArgs): Promise<RecordOutcome> {
-    const res0 = this.reservations.get(a.reservationId);
-    if (!res0 || res0.buyerId !== a.buyerId) return { status: 'not_found' };
-    const res = res0;
+    const res = this.reservations.get(a.reservationId);
+    if (!res || res.buyerId !== a.buyerId) return { status: 'not_found' };
     this.releaseStale(res.listingId);
     const listing = this.listings.get(res.listingId) as FakeListing;
 
-    // 1. the numbers must be the reservation's own
-    const expectedTo = a.leg === 'seller' ? res.sellerAddress : res.feeAddress;
-    const expectedUnits = BigInt(a.leg === 'seller' ? res.sellerCents : res.feeCents) * 10_000_000_000_000_000n;
-    if (a.from !== res.buyerAddress || a.to !== expectedTo || a.amountUnits < expectedUnits) throw new Error('MARKET_PAYMENT_MISMATCH');
+    // 1. the numbers must be the reservation's own: the buyer's address paid, to the seller (the fee is checked by the function), the whole price
+    if (a.from !== res.buyerAddress || a.to !== res.sellerAddress || a.amountUnits < BigInt(res.priceLamports)) throw new Error('MARKET_PAYMENT_MISMATCH');
 
-    // 3. a leg already paid: this transfer is an extra
-    let leg: FakePayment['leg'] = a.leg;
+    // 3. a payment already counted for this reservation: this transaction is an extra
+    let leg: FakePayment['leg'] = 'sale';
     let status: FakePayment['status'] = 'applied';
-    if ([...this.paid.values()].some((p) => p.reservationId === res.id && p.leg === a.leg)) {
+    if ([...this.paid.values()].some((p) => p.reservationId === res.id && p.leg === 'sale')) {
       leg = 'extra';
       status = 'refund_due';
     }
 
-    // 2. the hash is consumed first
+    // 2. the signature is consumed first
     const existing = this.paid.get(a.txHash);
     if (existing) return existing.reservationId === res.id && existing.userId === a.buyerId ? { status: 'replayed', reservationStatus: res.status } : { status: 'tx_reused' };
     const payment: FakePayment = { txHash: a.txHash, userId: a.buyerId, reservationId: res.id, leg, status, fromAddress: a.from, toAddress: a.to, amountUnits: a.amountUnits, blockTimeMs: a.blockTimeMs, chainId: res.chainId, livemode: res.livemode };
@@ -367,12 +363,7 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     }
     this.log('payment_recorded', a.buyerId, res.listingId, res.id);
 
-    // 5. both legs in: the sale
-    const applied = (l: 'seller' | 'fee') => [...this.paid.values()].find((p) => p.reservationId === res.id && p.leg === l && p.status === 'applied');
-    const sellerPay = applied('seller');
-    const feePay = applied('fee');
-    if (!sellerPay || !feePay) return { status: 'recorded', missing: sellerPay ? 'fee' : 'seller' };
-
+    // 5. the payment is in: the sale
     const cert = this.certs.get(listing.certificateId);
     if (!cert || cert.status !== 'listed') throw new Error('MARKET_CERTIFICATE_NOT_LISTED');
     const saleId = this.id();
@@ -388,11 +379,10 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
       newCertificateId: fresh.id,
       sellerId: listing.sellerId,
       buyerId: a.buyerId,
-      priceCents: res.priceCents,
-      feeCents: res.feeCents,
-      sellerCents: res.sellerCents,
-      sellerTxHash: sellerPay.txHash,
-      feeTxHash: feePay.txHash,
+      priceLamports: res.priceLamports,
+      feeLamports: res.feeLamports,
+      sellerLamports: res.sellerLamports,
+      signature: a.txHash,
       livemode: res.livemode,
       soldAtMs: this.nowMs,
       itemKind: cert.kind,
@@ -409,15 +399,15 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
       .filter((l) => l.sellerId === userId)
       .map((l) => {
         const c = this.certs.get(l.certificateId) as FakeCert;
-        return { id: l.id, certificateId: l.certificateId, priceCents: l.priceCents, status: l.status, createdAt: new Date(l.createdAtMs).toISOString(), expiresAt: new Date(l.expiresAtMs).toISOString(), item: { kind: c.kind, templateId: c.templateId, rarity: c.rarity, tier: c.tier, substats: c.substats, goldAmount: c.goldAmount } };
+        return { id: l.id, certificateId: l.certificateId, priceLamports: l.priceLamports, status: l.status, createdAt: new Date(l.createdAtMs).toISOString(), expiresAt: new Date(l.expiresAtMs).toISOString(), item: { kind: c.kind, templateId: c.templateId, rarity: c.rarity, tier: c.tier, substats: c.substats, goldAmount: c.goldAmount } };
       });
     const reservation = [...this.reservations.values()].find((r) => r.buyerId === userId && r.status === 'pending') ?? null;
     const sales: SaleView[] = this.sales
       .filter((s) => s.sellerId === userId || s.buyerId === userId)
-      .map((s) => ({ id: s.id, role: s.sellerId === userId ? ('seller' as const) : ('buyer' as const), soldAt: new Date(s.soldAtMs).toISOString(), priceCents: s.priceCents, feeCents: s.feeCents, sellerCents: s.sellerCents, livemode: s.livemode, sellerTxHash: s.sellerTxHash, feeTxHash: s.feeTxHash, item: { kind: s.itemKind, templateId: s.itemTemplate } }));
+      .map((s) => ({ id: s.id, role: s.sellerId === userId ? ('seller' as const) : ('buyer' as const), soldAt: new Date(s.soldAtMs).toISOString(), priceLamports: s.priceLamports, feeLamports: s.feeLamports, sellerLamports: s.sellerLamports, livemode: s.livemode, signature: s.signature, item: { kind: s.itemKind, templateId: s.itemTemplate } }));
     const refundsDue = [...this.reservations.values()]
       .filter((r) => r.buyerId === userId && r.status === 'refund_due')
-      .map((r) => ({ reservationId: r.id, txHashes: [...this.paid.values()].filter((p) => p.reservationId === r.id && p.status === 'refund_due').map((p) => p.txHash) }));
+      .map((r) => ({ reservationId: r.id, signatures: [...this.paid.values()].filter((p) => p.reservationId === r.id && p.status === 'refund_due').map((p) => p.txHash) }));
     return {
       wallet: await this.wallet(userId),
       listings,
@@ -442,7 +432,7 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     return n;
   }
 
-  // ---- the USDT Pass (pass_crypto_start / pass_crypto_grant) ----
+  // ---- the USDC Pass (pass_crypto_start / pass_crypto_grant) ----
   async hasActivePass(userId: string): Promise<boolean> {
     return this.entitlements.some((e) => e.userId === userId && e.status === 'active');
   }
@@ -465,7 +455,7 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
       payment.status = 'refund_due';
       return 'already_owned';
     }
-    this.entitlements.push({ userId: a.userId, source: 'crypto_bsc', providerRef: a.txHash, status: 'active', livemode: a.livemode });
+    this.entitlements.push({ userId: a.userId, source: 'crypto_sol', providerRef: a.txHash, status: 'active', livemode: a.livemode });
     return 'granted';
   }
 }

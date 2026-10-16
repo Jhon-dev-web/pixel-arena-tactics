@@ -1,7 +1,7 @@
 import type { CertificateView } from '../items/types.ts';
 import type { ListRefusal, MyListingView, ReservationPayment, ReservationStatus, ReserveRefusal, SaleView } from './types.ts';
 
-// What the market handlers need from the database. The real one (marketDb.ts) calls the SQL functions of migration 0011 / 0012 with the service role; the tests use an in-memory fake
+// What the market handlers need from the database. The real one (marketDb.ts) calls the SQL functions of migrations 0011 / 0012 / 0013 with the service role; the tests use an in-memory fake
 // that follows the same state machine. Every method that changes state is ONE call = ONE locked transaction in the database.
 
 export interface ReservationRow {
@@ -11,9 +11,9 @@ export interface ReservationRow {
   buyerAddress: string;
   sellerAddress: string;
   feeAddress: string;
-  priceCents: number;
-  feeCents: number;
-  sellerCents: number;
+  priceLamports: number;
+  feeLamports: number;
+  sellerLamports: number;
   chainId: number;
   livemode: boolean;
   status: ReservationStatus;
@@ -23,6 +23,7 @@ export interface ReservationRow {
 }
 
 export interface PaymentRow {
+  /** the transaction signature (stored in the chain_payments.tx_hash column, the primary key) */
   txHash: string;
   userId: string;
   reservationId: string | null;
@@ -33,26 +34,28 @@ export interface PaymentRow {
 export type ReserveOutcome =
   | {
       status: 'reserved';
-      reservation: { id: string; listingId: string; sellerAddress: string; feeAddress: string; priceCents: number; feeCents: number; sellerCents: number; expiresAtMs: number; graceUntilMs: number };
+      reservation: { id: string; listingId: string; sellerAddress: string; feeAddress: string; priceLamports: number; feeLamports: number; sellerLamports: number; expiresAtMs: number; graceUntilMs: number };
     }
   | { status: 'refused'; reason: Exclude<ReserveRefusal, 'bad_request' | 'unavailable'>; reservationId?: string; listingId?: string };
 
 export type CancelReservationOutcome = 'cancelled' | 'not_found' | 'not_pending' | 'has_payment';
 
+/** ONE verified transaction that carries both transfers (the seller's share and the game's fee). amountUnits = the lamports paid to the seller and to the fee address together. */
 export interface RecordPaymentArgs {
   buyerId: string;
   reservationId: string;
-  leg: 'seller' | 'fee';
   txHash: string;
   from: string;
+  /** the seller's address */
   to: string;
   amountUnits: bigint;
+  /** the slot */
   blockNumber: number;
   blockTimeMs: number;
 }
 
 export type RecordOutcome =
-  | { status: 'recorded'; missing?: 'seller' | 'fee'; extra?: boolean }
+  | { status: 'recorded'; extra?: boolean }
   | { status: 'sold'; saleId: string; certificateId: string }
   | { status: 'refund_due' | 'already_sold' | 'tx_reused' | 'not_found' }
   | { status: 'replayed'; reservationStatus: ReservationStatus };
@@ -63,7 +66,7 @@ export interface OverviewRows {
   reservation: ReservationRow | null;
   reservationPayments: ReservationPayment[];
   sales: SaleView[];
-  refundsDue: { reservationId: string; txHashes: string[] }[];
+  refundsDue: { reservationId: string; signatures: string[] }[];
   pending: CertificateView[];
 }
 
@@ -79,7 +82,7 @@ export interface MarketStore {
   takeNonce(userId: string, nonce: string): Promise<string | null>;
   setWallet(userId: string, address: string, chainId: number): Promise<'linked' | 'unchanged' | 'busy' | 'address_taken'>;
 
-  list(userId: string, certificateId: string, priceCents: number): Promise<{ status: 'listed'; listingId: string; expiresAtMs: number } | { status: 'refused'; reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'> }>;
+  list(userId: string, certificateId: string, priceLamports: number): Promise<{ status: 'listed'; listingId: string; expiresAtMs: number } | { status: 'refused'; reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'> }>;
   cancelListing(userId: string, listingId: string): Promise<{ status: 'cancelled'; certificateId: string } | { status: 'not_found' | 'reserved' | 'not_open' }>;
 
   reserve(args: { buyerId: string; listingId: string; feeAddress: string; chainId: number; livemode: boolean }): Promise<ReserveOutcome>;
@@ -94,7 +97,7 @@ export interface MarketStore {
   ackDelivered(userId: string, ids: string[]): Promise<number>;
 }
 
-// ---- the USDT Pass ------------------------------------------------------------------------------------------------------------------------------------------------
+// ---- the USDC Pass ------------------------------------------------------------------------------------------------------------------------------------------------
 
 export type PassGrantOutcome = 'granted' | 'already_owned' | 'tx_reused' | 'replayed' | 'no_intent';
 

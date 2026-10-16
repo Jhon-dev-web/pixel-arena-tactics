@@ -42,28 +42,34 @@ describe('the market functions', () => {
   });
 
   it('the secrets are read by NAME in one place, and the new names are all there', () => {
-    for (const name of ['BSC_RPC_URL', 'BSC_CHAIN_ID', 'BSC_MIN_CONFIRMATIONS', 'BSC_USDT_CONTRACT', 'MARKET_FEE_ADDRESS', 'PASS_RECEIVE_ADDRESS', 'PASS_PRICE_USDT', 'APP_ORIGIN']) expect(EDGE_ENV_NAMES).toContain(name);
+    for (const name of ['SOLANA_RPC_URL', 'SOLANA_CLUSTER', 'SOLANA_USDC_MINT', 'MARKET_FEE_ADDRESS', 'PASS_RECEIVE_ADDRESS', 'PASS_PRICE_USDC', 'SOL_USD_PRICE_URL', 'APP_ORIGIN']) expect(EDGE_ENV_NAMES).toContain(name);
+    for (const dormant of ['BSC_RPC_URL', 'BSC_CHAIN_ID', 'BSC_USDT_CONTRACT', 'PASS_PRICE_USDT']) expect(EDGE_ENV_NAMES, dormant).not.toContain(dormant); // the BNB Smart Chain code is dormant: no secret reaches it
     const offenders = walk('supabase/functions').filter((f) => f.endsWith('.ts') && !f.includes('__tests__') && read(f).includes('Deno.env'));
     expect(offenders).toEqual(['supabase/functions/_shared/env.ts']);
   });
 
-  it('only market-wallet imports the signature library, and its import map pins the versions the tests run', () => {
+  it('the crypto library is imported by two files only, each reached by ONE function, and the import maps pin the versions the tests run', () => {
     const code = (f: string): string => read(f).replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    const importers = walk('supabase/functions').filter((f) => f.endsWith('.ts') && !f.includes('__tests__') && /from '@noble\//.test(code(f)));
-    expect(importers).toEqual(['supabase/functions/_shared/chain/wallet.ts']);
-    // wallet.ts is reached ONLY from walletHandler.ts, which only market-wallet imports
-    const reachers = walk('supabase/functions').filter((f) => f.endsWith('.ts') && !f.includes('__tests__') && /chain\/wallet\.ts'/.test(read(f)));
-    expect(reachers).toEqual(['supabase/functions/_shared/market/walletHandler.ts']);
-    const users = walk('supabase/functions').filter((f) => f.endsWith('.ts') && !f.includes('__tests__') && /market\/walletHandler\.ts'/.test(read(f)));
-    expect(users).toEqual(['supabase/functions/market-wallet/index.ts']);
-    expect(existsSync(resolve(root, 'supabase/functions/market-wallet/deno.json'))).toBe(true);
-    for (const other of ['market-list', 'market-buy', 'market-my', 'pass-crypto']) expect(existsSync(resolve(root, `supabase/functions/${other}/deno.json`))).toBe(false);
-    const map = (JSON.parse(read('supabase/functions/market-wallet/deno.json')) as { imports: Record<string, string> }).imports;
+    const source = walk('supabase/functions').filter((f) => f.endsWith('.ts') && !f.includes('__tests__'));
+    const importers = source.filter((f) => /from '@noble\//.test(code(f)));
+    // chain/wallet.ts is the DORMANT BNB Smart Chain link (secp256k1): nothing reaches it
+    expect(importers).toEqual(['supabase/functions/_shared/chain/ata.ts', 'supabase/functions/_shared/chain/solWallet.ts', 'supabase/functions/_shared/chain/wallet.ts']);
+    expect(source.filter((f) => /chain\/wallet\.ts'/.test(read(f)))).toEqual([]);
+    // solWallet.ts is reached ONLY from walletHandler.ts, which only market-wallet imports; ata.ts ONLY from passCrypto.ts, which only pass-crypto imports
+    expect(source.filter((f) => /chain\/solWallet\.ts'/.test(read(f)))).toEqual(['supabase/functions/_shared/market/walletHandler.ts']);
+    expect(source.filter((f) => /market\/walletHandler\.ts'/.test(read(f)))).toEqual(['supabase/functions/market-wallet/index.ts']);
+    expect(source.filter((f) => /chain\/ata\.ts'/.test(read(f)))).toEqual(['supabase/functions/_shared/market/passCrypto.ts']);
+    expect(source.filter((f) => /market\/passCrypto\.ts'/.test(read(f)))).toEqual(['supabase/functions/pass-crypto/index.ts']);
+    for (const other of ['market-list', 'market-buy', 'market-my']) expect(existsSync(resolve(root, `supabase/functions/${other}/deno.json`))).toBe(false);
     const pkg = JSON.parse(read('package.json')) as { devDependencies: Record<string, string> };
-    expect(map['@noble/curves/secp256k1']).toBe(`npm:@noble/curves@${pkg.devDependencies['@noble/curves']}/secp256k1`);
-    expect(map['@noble/hashes/sha3']).toBe(`npm:@noble/hashes@${pkg.devDependencies['@noble/hashes']}/sha3`);
-    expect(pkg.devDependencies['@noble/curves']).toMatch(/^\d+\.\d+\.\d+$/); // exact, not a range
-    expect(pkg.devDependencies['@noble/hashes']).toMatch(/^\d+\.\d+\.\d+$/);
+    const curves = pkg.devDependencies['@noble/curves'];
+    const hashes = pkg.devDependencies['@noble/hashes'];
+    const wallet = (JSON.parse(read('supabase/functions/market-wallet/deno.json')) as { imports: Record<string, string> }).imports;
+    expect(wallet).toEqual({ '@noble/curves/ed25519': `npm:@noble/curves@${curves}/ed25519` });
+    const pass = (JSON.parse(read('supabase/functions/pass-crypto/deno.json')) as { imports: Record<string, string> }).imports;
+    expect(pass).toEqual({ '@noble/curves/ed25519': `npm:@noble/curves@${curves}/ed25519`, '@noble/hashes/sha256': `npm:@noble/hashes@${hashes}/sha256` });
+    expect(curves).toMatch(/^\d+\.\d+\.\d+$/); // exact, not a range
+    expect(hashes).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it('the game bundle does not import the signature library (the wallet signs, the server checks)', () => {
@@ -83,7 +89,7 @@ describe('the market functions', () => {
   });
 
   it('the RPC client never puts its url in an error', () => {
-    const src = read('supabase/functions/_shared/chain/bsc.ts');
+    const src = read('supabase/functions/_shared/chain/rpc.ts');
     expect(src).toContain("throw new Error(`rpc_http_${res.status}`)");
     expect(src).not.toMatch(/Error\([^)]*\burl\b/);
   });

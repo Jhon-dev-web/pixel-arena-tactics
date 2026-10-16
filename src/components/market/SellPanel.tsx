@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MARKET_MAX_PRICE_CENTS, MARKET_MIN_PRICE_CENTS, splitPrice } from '../../../supabase/functions/_shared/chain/money';
+import { MARKET_MAX_PRICE_LAMPORTS, MARKET_MIN_PRICE_LAMPORTS, SOL_PRICE_STEP_LAMPORTS, splitLamports } from '../../../supabase/functions/_shared/chain/solMoney';
 import type { MarketOverview } from '../../../supabase/functions/_shared/market/types';
 import type { SaveData } from '../../game/engine';
 import { MarketApi } from '../../game/market/api';
@@ -10,8 +10,8 @@ import { rarityDef } from '../../game/rarity';
 import { t } from '../../locales';
 import { mt } from '../../locales/market';
 import ItemCard, { ItemArt, ItemLike } from './ItemCard';
-import { UsdtIcon } from './icons';
-import { fmtUsdt, parsePriceInput } from './format';
+import { SolIcon } from './icons';
+import { fmtSol, fmtUsdAround, parsePriceInput } from './format';
 import { itemName } from './names';
 
 const itemOf = (e: SellableEntry): ItemLike => {
@@ -49,13 +49,14 @@ export interface SellFlowProps {
   save: SaveData;
   overview: MarketOverview | null;
   feePercent: number;
+  solUsd: number | null;
   host: { getSave: () => SaveData; applySave: (s: SaveData) => void };
   onChanged: () => void;
 }
 
 // The state of the "create offer" flow, shared by the item picker (main area), the offer form (side) and the list of my offers. Only the server's certificates decide what is sellable; the price is
 // checked here for the form (the server checks it again), and publishing is two steps (the item leaves the inventory: it is asked once).
-export function useSellFlow({ api, save, overview, feePercent, host, onChanged }: SellFlowProps) {
+export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onChanged }: SellFlowProps) {
   const [picked, setPickedRaw] = useState<string | null>(null);
   const [priceText, setPriceText] = useState('');
   const [qty, setQty] = useState(1);
@@ -71,9 +72,9 @@ export function useSellFlow({ api, save, overview, feePercent, host, onChanged }
   const group = groups.find((g) => g.key === picked) ?? null;
   const maxQty = group ? group.entries.length : 1;
   const count = group?.entries[0]?.kind === 'gold_pouch' ? Math.min(Math.max(1, qty), maxQty) : 1;
-  const unitCents = parsePriceInput(priceText);
-  const valid = unitCents !== null && unitCents >= MARKET_MIN_PRICE_CENTS && unitCents <= MARKET_MAX_PRICE_CENTS;
-  const split = valid ? splitPrice(unitCents) : null;
+  const unitLamports = parsePriceInput(priceText);
+  const valid = unitLamports !== null && unitLamports >= MARKET_MIN_PRICE_LAMPORTS && unitLamports <= MARKET_MAX_PRICE_LAMPORTS && unitLamports % SOL_PRICE_STEP_LAMPORTS === 0;
+  const split = valid ? splitLamports(unitLamports) : null;
   const hasWallet = !!overview?.wallet;
 
   const setPicked = (key: string | null) => {
@@ -95,7 +96,7 @@ export function useSellFlow({ api, save, overview, feePercent, host, onChanged }
     try {
       for (const entry of group.entries.slice(0, count)) {
         const cert = getCertificate(entry.certificateId);
-        const r = await listForSale({ api, getSave: host.getSave, applySave: host.applySave }, entry, cert ?? { id: entry.certificateId, kind: entry.kind, templateId: entry.kind === 'gold_pouch' ? entry.pouchId : entry.instance.templateId }, unitCents as number);
+        const r = await listForSale({ api, getSave: host.getSave, applySave: host.applySave }, entry, cert ?? { id: entry.certificateId, kind: entry.kind, templateId: entry.kind === 'gold_pouch' ? entry.pouchId : entry.instance.templateId }, unitLamports as number);
         if ('reason' in r) {
           const key = `sell.fail.${r.reason}`;
           const text = mt(key);
@@ -135,7 +136,7 @@ export function useSellFlow({ api, save, overview, feePercent, host, onChanged }
   };
 
   const live = (overview?.listings ?? []).filter((l) => l.status === 'open' || l.status === 'reserved');
-  return { groups, picked, setPicked, group, priceText, setPriceText: (v: string) => { setPriceText(v); setArmed(false); }, qty: count, maxQty, setQty: (n: number) => { setQty(Math.min(Math.max(1, n), maxQty)); setArmed(false); }, armed, busy, message, socketed, valid, split, hasWallet, feePercent, publish, cancel, live };
+  return { groups, picked, setPicked, group, priceText, setPriceText: (v: string) => { setPriceText(v); setArmed(false); }, qty: count, maxQty, setQty: (n: number) => { setQty(Math.min(Math.max(1, n), maxQty)); setArmed(false); }, armed, busy, message, socketed, valid, split, hasWallet, feePercent, solUsd, publish, cancel, live };
 }
 export type SellFlow = ReturnType<typeof useSellFlow>;
 
@@ -183,9 +184,10 @@ export function SellPicker({ flow }: { flow: SellFlow }) {
   );
 }
 
-/** The "Criar oferta" box: the item, the quantity (Gold Pouches only), the unit price in USDT, the market fee and what the seller receives, computed live. */
+/** The "Criar oferta" box: the item, the quantity (Gold Pouches only), the unit price in SOL, the market fee and what the seller receives, computed live. */
 export function OfferForm({ flow }: { flow: SellFlow }) {
-  const total = flow.split ? { fee: flow.split.feeCents * flow.qty, get: flow.split.sellerCents * flow.qty } : null;
+  const total = flow.split ? { fee: flow.split.feeLamports * flow.qty, get: flow.split.sellerLamports * flow.qty } : null;
+  const aroundGet = total ? fmtUsdAround(total.get, flow.solUsd) : null;
   const pouch = flow.group?.item.kind === 'gold_pouch';
   return (
     <div className="mk-form">
@@ -218,23 +220,24 @@ export function OfferForm({ flow }: { flow: SellFlow }) {
       )}
       <label className="mk-field">
         <span>
-          {mt('sell.form.unit')} <small>(USDT)</small>
+          {mt('sell.form.unit')} <small>(SOL)</small>
         </span>
         <span className="mk-price-input">
-          <UsdtIcon />
-          <input inputMode="decimal" value={flow.priceText} onChange={(e) => flow.setPriceText(e.target.value)} placeholder="0,00" maxLength={10} autoComplete="off" disabled={flow.busy} />
+          <SolIcon />
+          <input inputMode="decimal" value={flow.priceText} onChange={(e) => flow.setPriceText(e.target.value)} placeholder="0,000" maxLength={9} autoComplete="off" disabled={flow.busy} />
         </span>
       </label>
-      <p className="mk-note">{mt('sell.priceHint', { min: fmtUsdt(MARKET_MIN_PRICE_CENTS), max: fmtUsdt(MARKET_MAX_PRICE_CENTS) })}</p>
+      <p className="mk-note">{mt('sell.priceHint', { min: fmtSol(MARKET_MIN_PRICE_LAMPORTS), max: fmtSol(MARKET_MAX_PRICE_LAMPORTS) })}</p>
       <div className="mk-calc">
         <span>{mt('sell.form.fee', { pct: flow.feePercent })}</span>
         <b>
-          <UsdtIcon /> {fmtUsdt(total?.fee ?? 0)}
+          <SolIcon /> {fmtSol(total?.fee ?? 0)}
         </b>
         <span className="mk-receive">{mt('sell.form.receive')}</span>
         <b className="mk-receive">
-          <UsdtIcon /> {fmtUsdt(total?.get ?? 0)}
+          <SolIcon /> {fmtSol(total?.get ?? 0)}
         </b>
+        {aroundGet && <small className="mk-usd mk-receive">{mt('browse.around', { a: aroundGet })}</small>}
       </div>
       {!flow.hasWallet && <p className="mk-status error">{mt('sell.needWallet')}</p>}
       {flow.armed && <p className="mk-status">{mt('sell.confirmHint')}</p>}
@@ -268,7 +271,7 @@ export function MyOffers({ flow }: { flow: SellFlow }) {
               <ItemCard item={l.item} compact />
               <span className="mk-price">
                 <span>
-                  <UsdtIcon /> {fmtUsdt(l.priceCents)} <small>USDT</small>
+                  <SolIcon /> {fmtSol(l.priceLamports)} <small>SOL</small>
                 </span>
                 <span className={`mk-tag${l.status === 'reserved' ? ' warn' : ''}`}>{mt(`sell.status.${l.status}`)}</span>
               </span>
@@ -290,7 +293,7 @@ export function MyOffers({ flow }: { flow: SellFlow }) {
 export function MarketSummary({ overview, feePercent }: { overview: MarketOverview | null; feePercent: number }) {
   const today = new Date().toDateString();
   const soldToday = (overview?.sales ?? []).filter((s) => s.role === 'seller' && new Date(s.soldAt).toDateString() === today);
-  const volume = soldToday.reduce((n, s) => n + s.priceCents, 0);
+  const volume = soldToday.reduce((n, s) => n + s.priceLamports, 0);
   const active = (overview?.listings ?? []).filter((l) => l.status === 'open' || l.status === 'reserved').length;
   return (
     <dl className="mk-stats">
@@ -305,7 +308,7 @@ export function MarketSummary({ overview, feePercent }: { overview: MarketOvervi
       <div>
         <dt>{mt('summary.volume')}</dt>
         <dd>
-          <UsdtIcon /> {fmtUsdt(volume)}
+          <SolIcon /> {fmtSol(volume)}
         </dd>
       </div>
       <div>

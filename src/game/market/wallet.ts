@@ -1,15 +1,41 @@
-import { BSC_MAINNET_CHAIN_ID, BSC_TESTNET_CHAIN_ID } from '../../../supabase/functions/_shared/chain/config';
-import { encodeTransferCall } from '../../../supabase/functions/_shared/chain/bsc';
+import { decodeBase58, encodeBase58 } from '../../../supabase/functions/_shared/chain/base58';
 
-// The player's OWN wallet (MetaMask, Trust Wallet...) through the standard browser provider (window.ethereum, EIP-1193). The game only ASKS it to do two things: sign a short readable message
-// (to prove he owns the address) and send an USDT transfer he approves on the wallet's own screen. The game NEVER asks for, receives or stores a private key or a seed phrase, and there is no
-// field anywhere that could take one. No web3 library is used: five JSON-RPC methods and the transfer calldata.
+// The player's OWN Solana wallet (Phantom, Solflare...) through the Wallet Standard (https://github.com/wallet-standard/wallet-standard), the protocol every modern Solana wallet speaks: the page
+// announces itself with the event "wallet-standard:app-ready" and wallets answer with "wallet-standard:register-wallet". The game only ASKS the wallet to do two things: sign a short readable message
+// (to prove he owns the address) and sign-and-send ONE transaction he approves on the wallet's own screen. The game NEVER asks for, receives or stores a private key or a seed phrase, and there is no
+// field anywhere that could take one. No Solana SDK is used: the messages are plain bytes.
+//
+// A wallet that predates the standard still works for LINKING (window.phantom.solana / window.solflare / window.solana `connect` + `signMessage`); it cannot pay, because its transaction API takes
+// objects of a web3.js class this game does not load, so the screen then asks him to update the wallet.
 
-export interface Eip1193Provider {
-  request(args: { method: string; params?: unknown[] | object }): Promise<unknown>;
+type Cluster = 'mainnet-beta' | 'devnet';
+
+interface StdAccount {
+  address: string;
+  publicKey: Uint8Array;
+  chains?: readonly string[];
+}
+interface StdFeatures {
+  'standard:connect'?: { connect(input?: { silent?: boolean }): Promise<{ accounts: readonly StdAccount[] }> };
+  'solana:signMessage'?: { signMessage(...inputs: { account: StdAccount; message: Uint8Array }[]): Promise<{ signedMessage: Uint8Array; signature: Uint8Array }[]> };
+  'solana:signAndSendTransaction'?: { signAndSendTransaction(...inputs: { account: StdAccount; transaction: Uint8Array; chain: string }[]): Promise<{ signature: Uint8Array }[]> };
+}
+export interface StdWallet {
+  name: string;
+  chains: readonly string[];
+  features: StdFeatures & Record<string, unknown>;
+  accounts: readonly StdAccount[];
 }
 
-export type WalletErrorKind = 'no_provider' | 'rejected' | 'wrong_chain' | 'other';
+interface LegacyProvider {
+  isPhantom?: boolean;
+  isSolflare?: boolean;
+  publicKey?: { toBase58(): string } | null;
+  connect(): Promise<{ publicKey: { toBase58(): string } } | void>;
+  signMessage?(message: Uint8Array, display?: string): Promise<{ signature: Uint8Array } | Uint8Array>;
+}
+
+export type WalletErrorKind = 'no_provider' | 'rejected' | 'wrong_account' | 'unsupported' | 'other';
 export class WalletError extends Error {
   constructor(public readonly kind: WalletErrorKind) {
     super(`wallet_${kind}`);
@@ -17,76 +43,173 @@ export class WalletError extends Error {
   }
 }
 
-export const getProvider = (): Eip1193Provider | null => {
-  const eth = (globalThis as { ethereum?: Eip1193Provider }).ethereum;
-  return eth && typeof eth.request === 'function' ? eth : null;
-};
+/** What the game holds after "connect": the address and the two things it may ask the wallet. */
+export interface SolWalletSession {
+  name: string;
+  address: string;
+  /** the signature, base58 */
+  signMessage(message: string): Promise<string>;
+  /** signs and SENDS one serialised transaction (empty signature slot); resolves with its signature, base58 */
+  signAndSend(transaction: Uint8Array, cluster: Cluster): Promise<string>;
+}
 
 function classify(err: unknown): WalletError {
   if (err instanceof WalletError) return err;
-  const code = (err as { code?: number } | null)?.code;
-  return code === 4001 ? new WalletError('rejected') : new WalletError('other');
+  const e = err as { code?: number; message?: string } | null;
+  if (e?.code === 4001 || /reject|denied|declin|cancel/i.test(e?.message ?? '')) return new WalletError('rejected');
+  return new WalletError('other');
 }
 
-async function request<T>(p: Eip1193Provider, method: string, params?: unknown[]): Promise<T> {
-  try {
-    return (await p.request({ method, ...(params ? { params } : {}) })) as T;
-  } catch (err) {
-    throw classify(err);
-  }
+// ---- discovery (Wallet Standard) -----------------------------------------------------------------------------------------------------------------------------------------
+
+// One registry per window (so a test can use a fake window): the wallets that announced themselves.
+interface Registry {
+  wallets: StdWallet[];
 }
+const registries = new WeakMap<object, Registry>();
 
-/** Asks the wallet to share an account (it shows its own approval). Resolves with the first address, lowercase. */
-export async function connectWallet(p: Eip1193Provider | null = getProvider()): Promise<string> {
-  if (!p) throw new WalletError('no_provider');
-  const accounts = await request<string[]>(p, 'eth_requestAccounts');
-  const first = Array.isArray(accounts) ? accounts[0] : undefined;
-  if (typeof first !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(first)) throw new WalletError('other');
-  return first.toLowerCase();
-}
-
-const CHAINS: Record<number, { chainName: string; rpcUrls: string[]; blockExplorerUrls: string[] }> = {
-  [BSC_MAINNET_CHAIN_ID]: { chainName: 'BNB Smart Chain', rpcUrls: ['https://bsc-dataseed.binance.org/'], blockExplorerUrls: ['https://bscscan.com'] },
-  [BSC_TESTNET_CHAIN_ID]: { chainName: 'BNB Smart Chain Testnet', rpcUrls: ['https://data-seed-prebsc-1-s1.bnbchain.org:8545/'], blockExplorerUrls: ['https://testnet.bscscan.com'] },
-};
-
-export const explorerTxUrl = (chainId: number, txHash: string): string => `${CHAINS[chainId]?.blockExplorerUrls[0] ?? 'https://bscscan.com'}/tx/${txHash}`;
-
-/** Switches the wallet to the chain the server uses (adds it first when the wallet has never seen it). */
-export async function ensureChain(chainId: number, p: Eip1193Provider | null = getProvider()): Promise<void> {
-  if (!p) throw new WalletError('no_provider');
-  const hex = `0x${chainId.toString(16)}`;
-  try {
-    await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] });
-  } catch (err) {
-    const code = (err as { code?: number } | null)?.code;
-    const meta = CHAINS[chainId];
-    if (code === 4902 && meta) {
-      try {
-        await p.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName: meta.chainName, nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 }, rpcUrls: meta.rpcUrls, blockExplorerUrls: meta.blockExplorerUrls }] });
-        return;
-      } catch (err2) {
-        throw classify(err2);
-      }
+function registryFor(win: Window): { registry: Registry; isNew: boolean } {
+  const had = registries.get(win);
+  if (had) return { registry: had, isNew: false };
+  const registry: Registry = { wallets: [] };
+  registries.set(win, registry);
+  const api = {
+    register: (...wallets: StdWallet[]) => {
+      for (const w of wallets) if (!registry.wallets.includes(w)) registry.wallets.push(w);
+      return () => undefined;
+    },
+  };
+  // a wallet that loads later announces itself and hands us a callback
+  win.addEventListener('wallet-standard:register-wallet', (event) => {
+    try {
+      (event as CustomEvent<(api: unknown) => void>).detail(api);
+    } catch {
+      /* a broken wallet is skipped */
     }
-    throw code === 4001 ? new WalletError('rejected') : new WalletError('wrong_chain');
+  });
+  // a wallet that loaded first hears us
+  try {
+    win.dispatchEvent(new CustomEvent('wallet-standard:app-ready', { detail: api }));
+  } catch {
+    /* no CustomEvent: no standard wallets */
   }
+  return { registry, isNew: true };
 }
 
-const utf8Hex = (s: string): string => `0x${Array.from(new TextEncoder().encode(s), (b) => b.toString(16).padStart(2, '0')).join('')}`;
+const isSolanaWallet = (w: StdWallet): boolean => !!w.features['standard:connect'] && !!w.features['solana:signMessage'] && (w.chains ?? []).some((c) => c.startsWith('solana:'));
 
-/** personal_sign (EIP-191) of the text the SERVER wrote. The wallet shows the text; the signature costs nothing and moves nothing. */
-export async function signMessage(address: string, message: string, p: Eip1193Provider | null = getProvider()): Promise<string> {
-  if (!p) throw new WalletError('no_provider');
-  const sig = await request<string>(p, 'personal_sign', [utf8Hex(message), address]);
-  if (typeof sig !== 'string' || !/^0x[0-9a-fA-F]{130}$/.test(sig)) throw new WalletError('other');
-  return sig;
+/** The Solana wallets this browser announced, Phantom and Solflare first. Waits a moment the first time, because wallets answer asynchronously. */
+export async function listSolWallets(win: Window | undefined = typeof window === 'undefined' ? undefined : window): Promise<string[]> {
+  if (!win) return [];
+  const { registry, isNew } = registryFor(win);
+  if (isNew) await new Promise((r) => setTimeout(r, 150));
+  const names = registry.wallets.filter(isSolanaWallet).map((w) => w.name);
+  const rank = (n: string) => (n === 'Phantom' ? 0 : n === 'Solflare' ? 1 : 2);
+  const legacy = names.length === 0 ? legacyProviders(win).map((p) => p.name) : [];
+  return [...new Set([...names, ...legacy])].sort((a, b) => rank(a) - rank(b));
 }
 
-/** Asks the wallet to send USDT.transfer(to, units) from `from`. Resolves with the transaction hash the wallet returns once the player approved it. */
-export async function sendUsdt(from: string, tokenContract: string, to: string, units: bigint, p: Eip1193Provider | null = getProvider()): Promise<string> {
-  if (!p) throw new WalletError('no_provider');
-  const hash = await request<string>(p, 'eth_sendTransaction', [{ from, to: tokenContract, data: encodeTransferCall(to, units), value: '0x0' }]);
-  if (typeof hash !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new WalletError('other');
-  return hash.toLowerCase();
+function legacyProviders(win: Window): { name: string; provider: LegacyProvider }[] {
+  const w = win as unknown as { phantom?: { solana?: LegacyProvider }; solflare?: LegacyProvider; solana?: LegacyProvider };
+  const out: { name: string; provider: LegacyProvider }[] = [];
+  if (w.phantom?.solana?.connect) out.push({ name: 'Phantom', provider: w.phantom.solana });
+  if (w.solflare?.connect) out.push({ name: 'Solflare', provider: w.solflare });
+  if (out.length === 0 && w.solana?.connect) out.push({ name: w.solana.isPhantom ? 'Phantom' : w.solana.isSolflare ? 'Solflare' : 'Wallet', provider: w.solana });
+  return out;
 }
+
+const chainOf = (cluster: Cluster): string => (cluster === 'mainnet-beta' ? 'solana:mainnet' : 'solana:devnet');
+
+function standardSession(wallet: StdWallet, account: StdAccount): SolWalletSession {
+  return {
+    name: wallet.name,
+    address: account.address,
+    async signMessage(message) {
+      const feature = wallet.features['solana:signMessage'];
+      if (!feature) throw new WalletError('unsupported');
+      try {
+        const [out] = await feature.signMessage({ account, message: new TextEncoder().encode(message) });
+        if (!out || !(out.signature instanceof Uint8Array) || out.signature.length !== 64) throw new WalletError('other');
+        return encodeBase58(out.signature);
+      } catch (err) {
+        throw classify(err);
+      }
+    },
+    async signAndSend(transaction, cluster) {
+      const feature = wallet.features['solana:signAndSendTransaction'];
+      if (!feature) throw new WalletError('unsupported');
+      try {
+        const [out] = await feature.signAndSendTransaction({ account, transaction, chain: chainOf(cluster) });
+        if (!out || !(out.signature instanceof Uint8Array) || out.signature.length !== 64) throw new WalletError('other');
+        return encodeBase58(out.signature);
+      } catch (err) {
+        throw classify(err);
+      }
+    },
+  };
+}
+
+function legacySession(name: string, provider: LegacyProvider): Promise<SolWalletSession> {
+  return (async () => {
+    try {
+      const res = await provider.connect();
+      const pk = (res && 'publicKey' in res ? res.publicKey : provider.publicKey) ?? null;
+      const address = pk?.toBase58();
+      if (!address || !decodeBase58(address)) throw new WalletError('other');
+      return {
+        name,
+        address,
+        async signMessage(message: string) {
+          if (!provider.signMessage) throw new WalletError('unsupported');
+          try {
+            const out = await provider.signMessage(new TextEncoder().encode(message), 'utf8');
+            const sig = out instanceof Uint8Array ? out : out.signature;
+            if (!(sig instanceof Uint8Array) || sig.length !== 64) throw new WalletError('other');
+            return encodeBase58(sig);
+          } catch (err) {
+            throw classify(err);
+          }
+        },
+        async signAndSend() {
+          throw new WalletError('unsupported');
+        },
+      };
+    } catch (err) {
+      throw classify(err);
+    }
+  })();
+}
+
+/**
+ * Asks the wallet to share an account (it shows its own approval). `want` is the address that must come back (the one linked to the account); without it the first account is used.
+ * `preferred` is the wallet's name when the player picked one.
+ */
+export async function connectSolWallet(preferred?: string, want?: string, win: Window | undefined = typeof window === 'undefined' ? undefined : window): Promise<SolWalletSession> {
+  if (!win) throw new WalletError('no_provider');
+  await listSolWallets(win);
+  const standard = registryFor(win).registry.wallets.filter(isSolanaWallet);
+  const pick = (preferred ? standard.find((w) => w.name === preferred) : undefined) ?? standard.find((w) => w.name === 'Phantom') ?? standard.find((w) => w.name === 'Solflare') ?? standard[0];
+  if (pick) {
+    try {
+      const connect = pick.features['standard:connect'];
+      const result = connect ? await connect.connect() : { accounts: pick.accounts };
+      const accounts = result.accounts.length > 0 ? result.accounts : pick.accounts;
+      const account = want ? accounts.find((a) => a.address === want) : accounts[0];
+      if (!account) throw new WalletError(accounts.length > 0 ? 'wrong_account' : 'other');
+      return standardSession(pick, account);
+    } catch (err) {
+      throw classify(err);
+    }
+  }
+  const legacy = legacyProviders(win);
+  const chosen = (preferred ? legacy.find((p) => p.name === preferred) : undefined) ?? legacy[0];
+  if (!chosen) throw new WalletError('no_provider');
+  const session = await legacySession(chosen.name, chosen.provider);
+  if (want && session.address !== want) throw new WalletError('wrong_account');
+  return session;
+}
+
+/** A block explorer page of a transaction (solscan). */
+export const explorerTxUrl = (cluster: Cluster, signature: string): string => `https://solscan.io/tx/${signature}${cluster === 'devnet' ? '?cluster=devnet' : ''}`;
+/** A block explorer page of an address. */
+export const explorerAddressUrl = (cluster: Cluster, address: string): string => `https://solscan.io/account/${address}${cluster === 'devnet' ? '?cluster=devnet' : ''}`;

@@ -3,7 +3,7 @@ import type { SaveData } from '../engine';
 import { MarketApi } from './api';
 import { DeliverStatus, SellableEntry, deliverCertificate, reconcileOutgoing, removeListedItem, saveHoldsCertificate } from './items';
 
-// The game keeps its save and the server's certificates in line (docs/MARKET_USDT.md). One pass does, in this order:
+// The game keeps its save and the server's certificates in line (docs/MARKET_SOLANA.md). One pass does, in this order:
 //   1. an item the server says is on the market or sold, but the save still holds (the game closed between the listing and the save): taken out of the save;
 //   2. an item the server holds FOR this account (a purchase, a cancelled or expired listing): built from its certificate and put in the save (a full bag leaves it waiting);
 //   3. the delivery is ACKNOWLEDGED only when the save the SERVER holds (the last one that was saved successfully) already has the item, so a crash between "added" and "saved" can never lose it:
@@ -73,8 +73,8 @@ export type ListOutcome = { ok: true; listingId: string } | { ok: false; reason:
  * Puts one entry on the market: the SERVER lists it first (it checks the certificate, the wallet, the limits), and only then the item leaves the save. If the game closes in between,
  * syncMarketOnce takes it out on the next start. Returns the server's refusal untouched.
  */
-export async function listForSale(d: Pick<SyncDeps, 'api' | 'getSave' | 'applySave'>, entry: SellableEntry, certificate: Pick<CertificateView, 'id' | 'kind' | 'templateId'>, priceCents: number): Promise<ListOutcome> {
-  const r = await d.api.list(entry.certificateId, priceCents);
+export async function listForSale(d: Pick<SyncDeps, 'api' | 'getSave' | 'applySave'>, entry: SellableEntry, certificate: Pick<CertificateView, 'id' | 'kind' | 'templateId'>, priceLamports: number): Promise<ListOutcome> {
+  const r = await d.api.list(entry.certificateId, priceLamports);
   if ('reason' in r) return { ok: false, reason: r.reason };
   const next = removeListedItem(d.getSave(), certificate);
   if (next !== d.getSave()) d.applySave(next);

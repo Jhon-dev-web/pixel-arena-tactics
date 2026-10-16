@@ -4,11 +4,11 @@ import { fmtNum, t } from '../../locales';
 import { mt } from '../../locales/market';
 import { PublicListing } from '../../game/market/api';
 import { rarityDef, substatNameKey } from '../../game/rarity';
-import { splitPrice } from '../../../supabase/functions/_shared/chain/money';
+import { splitLamports } from '../../../supabase/functions/_shared/chain/solMoney';
 import { fmtSubstat } from '../substatText';
 import { ItemArt, ItemLike } from './ItemCard';
-import { UsdtIcon } from './icons';
-import { fmtUsdt } from './format';
+import { SolIcon } from './icons';
+import { fmtSol, fmtUsdAround } from './format';
 import { itemName } from './names';
 
 type KindFilter = 'all' | 'gear' | 'unique' | 'gold_pouch';
@@ -26,9 +26,9 @@ export function pageWindow(page: number, pages: number): number[] {
   return Array.from({ length: size }, (_, i) => start + i);
 }
 
-// The public listings (the one view anon may read): the item as its certificate describes it and its price in USDT. A search box, filters by kind, slot, tier and rarity, a sort, pages of cards. "Comprar"
+// The public listings (the one view anon may read): the item as its certificate describes it and its price in SOL (with an optional "about US$" line when the server has a price). A search box, filters by kind, slot, tier and rarity, a sort, pages of cards. "Comprar"
 // opens the item's detail (its substats, the game's fee and the seller's share); "Reservar e pagar" there reserves it and moves to the payment step.
-export default function BrowsePanel({ listings, feePercent, busyId, failure, onReserve }: { listings: PublicListing[]; feePercent: number; busyId: string | null; failure: string | null; onReserve: (listing: PublicListing) => void }) {
+export default function BrowsePanel({ listings, feePercent, solUsd, busyId, failure, onReserve }: { listings: PublicListing[]; feePercent: number; solUsd: number | null; busyId: string | null; failure: string | null; onReserve: (listing: PublicListing) => void }) {
   const [kind, setKind] = useState<KindFilter>('all');
   const [slot, setSlot] = useState('');
   const [tier, setTier] = useState('');
@@ -60,7 +60,7 @@ export default function BrowsePanel({ listings, feePercent, busyId, failure, onR
       if (q && !itemName({ kind: l.kind, templateId: l.template_id }).toLowerCase().includes(q)) return false;
       return true;
     });
-    return [...list].sort((a, b) => (sort === 'cheap' ? a.price_cents - b.price_cents : sort === 'dear' ? b.price_cents - a.price_cents : Date.parse(b.created_at) - Date.parse(a.created_at)));
+    return [...list].sort((a, b) => (sort === 'cheap' ? a.price_lamports - b.price_lamports : sort === 'dear' ? b.price_lamports - a.price_lamports : Date.parse(b.created_at) - Date.parse(a.created_at)));
   }, [listings, kind, slot, tier, rarity, sort, search]);
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
@@ -134,7 +134,8 @@ export default function BrowsePanel({ listings, feePercent, busyId, failure, onR
       {shown.length === 0 && <p className="mk-note">{mt('browse.empty')}</p>}
       <ul className="mk-grid">
         {pageItems.map((l) => {
-          const split = splitPrice(l.price_cents);
+          const split = splitLamports(l.price_lamports);
+          const around = fmtUsdAround(l.price_lamports, solUsd);
           const expanded = open === l.id;
           const item = itemOfListing(l);
           const reserved = l.status === 'reserved';
@@ -160,8 +161,9 @@ export default function BrowsePanel({ listings, feePercent, busyId, failure, onR
               <div className="mk-card-price">
                 <span>{mt('browse.price')}</span>
                 <b>
-                  <UsdtIcon /> {fmtUsdt(l.price_cents)} <small>USDT</small>
+                  <SolIcon /> {fmtSol(l.price_lamports)} <small>SOL</small>
                 </b>
+                {around && <small className="mk-usd">{mt('browse.around', { a: around })}</small>}
               </div>
               <button className="mk-btn mk-card-buy" onClick={() => setOpen(expanded ? null : l.id)} aria-expanded={expanded} disabled={reserved} data-ui>
                 {expanded ? mt('browse.back') : mt('browse.buy')}
@@ -178,7 +180,7 @@ export default function BrowsePanel({ listings, feePercent, busyId, failure, onR
                     </span>
                   )}
                   <p className="mk-note">
-                    {mt('rules.fee', { pct: feePercent })}: {fmtUsdt(split.feeCents)} USDT. {mt('pay.toSeller')}: {fmtUsdt(split.sellerCents)} USDT.
+                    {mt('rules.fee', { pct: feePercent })}: {fmtSol(split.feeLamports)} SOL. {mt('pay.toSeller')}: {fmtSol(split.sellerLamports)} SOL.
                   </p>
                   <button className="mk-btn primary" disabled={reserved || busyId !== null} onClick={() => onReserve(l)} data-ui>
                     {busyId === l.id ? mt('loading') : mt('browse.reserve')}

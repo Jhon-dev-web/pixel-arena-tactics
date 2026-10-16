@@ -47,10 +47,10 @@ describe('the desktop build', () => {
   it('nothing in the main bundle imports the market statically: only lazy imports behind the build constant, plus the type-only host', () => {
     const app = read('src/App.tsx');
     expect(app).toContain("const MARKET_BUILD = import.meta.env.VITE_MARKET_ENABLED === 'true';");
-    for (const lazyImport of ["import('./components/MarketScreen')", "import('./components/market/MarketSync')", "import('./components/PassUsdt')"]) {
+    for (const lazyImport of ["import('./components/MarketScreen')", "import('./components/market/MarketSync')", "import('./components/PassUsdc')"]) {
       expect(app).toMatch(new RegExp(`MARKET_BUILD \\? lazy\\(\\(\\) => ${lazyImport.replace(/[().]/g, '\\$&')}\\) : null`));
     }
-    const staticMarket = app.split('\n').filter((l) => /^import .* from '.*(market|Market|PassUsdt)/.test(l));
+    const staticMarket = app.split('\n').filter((l) => /^import .* from '.*(market|Market|PassUsdc)/.test(l));
     expect(staticMarket).toEqual([
       "import { marketEnabled } from './game/marketFlag';",
       "import type { MarketHost } from './components/market/marketDeps';",
@@ -64,18 +64,18 @@ describe('the desktop build', () => {
   });
 
   it('no other file outside the market itself imports the market modules', () => {
-    const allowedInside = (f: string) => f.startsWith('src/game/market/') || f.startsWith('src/components/market/') || f === 'src/components/MarketScreen.tsx' || f === 'src/components/PassUsdt.tsx' || f === 'src/locales/market.ts' || f === 'src/game/marketFlag.ts' || f.includes('__tests__');
+    const allowedInside = (f: string) => f.startsWith('src/game/market/') || f.startsWith('src/components/market/') || f === 'src/components/MarketScreen.tsx' || f === 'src/components/PassUsdc.tsx' || f === 'src/locales/market.ts' || f === 'src/game/marketFlag.ts' || f.includes('__tests__');
     const offenders: string[] = [];
     for (const f of walk('src').filter((x) => /\.(ts|tsx)$/.test(x))) {
       if (allowedInside(f) || f === 'src/App.tsx') continue;
-      if (/from '[./]*(?:game\/market|components\/market|locales\/market|components\/MarketModal|components\/PassUsdt|market\.css)/.test(read(f)) || /import '[./]*market\.css'/.test(read(f))) offenders.push(f);
+      if (/from '[./]*(?:game\/market|components\/market|locales\/market|components\/MarketModal|components\/PassUsdc|market\.css)/.test(read(f)) || /import '[./]*market\.css'/.test(read(f))) offenders.push(f);
     }
     expect(offenders).toEqual([]);
   });
 
   it('BattlePassModal only renders what App hands it (no market import)', () => {
     const modal = read('src/components/BattlePassModal.tsx');
-    expect(modal).not.toMatch(/market|PassUsdt|USDT/i);
+    expect(modal).not.toMatch(/market|PassUsdc|USDC|USDT|solana/i);
     expect(modal).toContain('buyExtra');
   });
 
@@ -88,7 +88,7 @@ describe('the desktop build', () => {
         checkDesktop: () => Promise<{ leaked: { marker: string }[]; missingInControl: { marker: string }[] }>;
       };
       expect(mod.findMarkers('console.log(1)')).toEqual([]);
-      expect(mod.findMarkers('x.request({method:"personal_sign"})').map((m) => m.marker)).toEqual(['personal_sign']);
+      expect(mod.findMarkers('f["solana:signAndSendTransaction"]').map((m) => m.marker)).toEqual(['solana:signAndSendTransaction']);
       expect(mod.MARKET_MARKERS.length).toBeGreaterThanOrEqual(10);
       const { leaked, missingInControl } = await mod.checkDesktop();
       expect(leaked.map((m) => m.marker)).toEqual([]);
@@ -99,7 +99,7 @@ describe('the desktop build', () => {
 });
 
 describe('no screen can take a private key or a seed phrase', () => {
-  const files = [...walk('src/game/market'), ...walk('src/components/market'), 'src/components/MarketScreen.tsx', 'src/components/PassUsdt.tsx', ...walk('supabase/functions/_shared/market'), ...walk('supabase/functions/_shared/chain')].filter((f) => /\.(ts|tsx)$/.test(f));
+  const files = [...walk('src/game/market'), ...walk('src/components/market'), 'src/components/MarketScreen.tsx', 'src/components/PassUsdc.tsx', ...walk('supabase/functions/_shared/market'), ...walk('supabase/functions/_shared/chain')].filter((f) => /\.(ts|tsx)$/.test(f));
 
   it('no code identifier, field name or request names a private key, a seed or a mnemonic', () => {
     for (const f of files) {
@@ -116,9 +116,13 @@ describe('no screen can take a private key or a seed phrase', () => {
     }
   });
 
-  it('the only text input that takes a long secret-looking string is the transaction hash, capped at 80 characters', () => {
+  it('the only text input that takes a long secret-looking string is the transaction signature, capped at 100 characters (a signature is about 88)', () => {
     for (const f of files.filter((x) => x.endsWith('.tsx'))) {
-      for (const m of read(f).matchAll(/<input[\s\S]*?\/>/g)) expect(m[0], f).toMatch(/maxLength=\{?"?\d{1,2}/);
+      for (const m of read(f).matchAll(/<input[\s\S]*?\/>/g)) {
+        const cap = /maxLength=\{?"?(\d+)/.exec(m[0]);
+        expect(cap, f).not.toBeNull();
+        expect(Number((cap as RegExpExecArray)[1]), f).toBeLessThanOrEqual(100);
+      }
     }
   });
 
@@ -129,7 +133,7 @@ describe('no screen can take a private key or a seed phrase', () => {
     expect(read('src/components/MarketScreen.tsx')).toContain('<Notices'); // the browse / sell / history tabs: one compact line, the full text behind "Saiba mais"
     expect(read('src/components/market/Notices.tsx')).toContain('<Warnings');
     expect(read('src/components/market/ReservationPanel.tsx')).toContain('<Warnings');
-    expect(read('src/components/PassUsdt.tsx')).toContain('<Warnings');
+    expect(read('src/components/PassUsdc.tsx')).toContain('<Warnings');
   });
 });
 
@@ -153,7 +157,7 @@ describe('the market text', () => {
 
   it('every key a screen asks for exists', () => {
     const known = new Set(keys(MARKET_TEXT.pt));
-    const files = [...walk('src/components/market'), 'src/components/MarketScreen.tsx', 'src/components/PassUsdt.tsx', 'src/components/market/ItemCard.tsx'].filter((f) => /\.tsx?$/.test(f));
+    const files = [...walk('src/components/market'), 'src/components/MarketScreen.tsx', 'src/components/PassUsdc.tsx', 'src/components/market/ItemCard.tsx'].filter((f) => /\.tsx?$/.test(f));
     const missing: string[] = [];
     for (const f of files) {
       for (const m of read(f).matchAll(/\bmt\(\s*'([a-zA-Z0-9_.]+)'/g)) if (!known.has(m[1])) missing.push(`${f}: ${m[1]}`);

@@ -115,7 +115,7 @@ describe('listing takes the item out of the save', () => {
     const p = player(USER_A, save);
     await p.deps().loadCertificates();
     const entry = sellableEntries(save)[0];
-    const r = await listForSale(p.deps(), entry, cert, 1500);
+    const r = await listForSale(p.deps(), entry, cert, 1_500_000_000);
     expect(r.ok).toBe(true);
     expect(p.state.save.gearInstances[inst.id]).toBeUndefined();
     expect(m.store.certs.get(cert.id)).toMatchObject({ status: 'listed', inSave: false });
@@ -143,7 +143,7 @@ describe('listing takes the item out of the save', () => {
     const p = player(USER_A, save);
     await p.deps().loadCertificates();
     m.store.flagged.add(USER_A);
-    const r = await listForSale(p.deps(), sellableEntries(save)[0], cert, 1500);
+    const r = await listForSale(p.deps(), sellableEntries(save)[0], cert, 1_500_000_000);
     expect(r).toEqual({ ok: false, reason: 'flagged' });
     expect(p.state.save.gearInstances[inst.id]).toBeTruthy();
   });
@@ -167,7 +167,7 @@ describe('a crash between the listing and the save', () => {
     const p = player(USER_A, save);
     await p.deps().loadCertificates();
     // the server listed it, but the game died before it saved the removal
-    await p.api.list(cert.id, 1500);
+    await p.api.list(cert.id, 1_500_000_000);
     expect(p.state.save.gearInstances[inst.id]).toBeTruthy();
     const sync = await syncMarketOnce(p.deps());
     expect(sync).toMatchObject({ ok: true, removed: 1 });
@@ -182,23 +182,23 @@ describe('a crash between the listing and the save', () => {
   });
 });
 
-describe('a purchase, end to end: reserve, pay two legs, deliver from the certificate', () => {
+describe('a purchase, end to end: reserve, pay ONE transaction, deliver from the certificate', () => {
   it('the buyer\'s item is built from the NEW certificate; the seller keeps nothing; the delivery is acknowledged only after a confirmed save', async () => {
     const { cert, inst, save } = withCertifiedPiece(USER_A);
     const seller = player(USER_A, save);
     await seller.deps().loadCertificates();
-    await listForSale(seller.deps(), sellableEntries(save)[0], cert, 1000);
+    await listForSale(seller.deps(), sellableEntries(save)[0], cert, 1_000_000_000);
     const listingId = [...m.store.listings.keys()][0];
 
     const buyer = player(USER_B);
     const reserved = await buyer.api.reserve(listingId);
     expect(reserved.ok).toBe(true);
-    const res = (reserved as { reservation: { id: string; feeCents: number; sellerCents: number; sellerAddress: string } }).reservation;
-    expect(res.feeCents + res.sellerCents).toBe(1000);
-    const feeTx = m.chain.pay(WALLET[USER_B], FEE_ADDRESS, res.feeCents);
-    const sellerTx = m.chain.pay(WALLET[USER_B], res.sellerAddress, res.sellerCents);
-    expect((await buyer.api.submitPayment(res.id, 'fee', feeTx)).ok).toBe(true);
-    const sold = await buyer.api.submitPayment(res.id, 'seller', sellerTx);
+    const res = (reserved as unknown as { reservation: { id: string; feeLamports: number; sellerLamports: number; sellerAddress: string } }).reservation;
+    expect(res.feeLamports + res.sellerLamports).toBe(1_000_000_000);
+    // the wallet signs ONE transaction with both transfers; the game asks for a blockhash first
+    expect((await buyer.api.prepare(res.id)).ok).toBe(true);
+    const tx = m.chain.sale(WALLET[USER_B], [{ to: res.sellerAddress, lamports: res.sellerLamports }, { to: FEE_ADDRESS, lamports: res.feeLamports }]);
+    const sold = await buyer.api.submitPayment(res.id, tx);
     expect(sold).toMatchObject({ ok: true, status: 'sold' });
 
     // the seller has nothing left, in the save or on the server
@@ -232,7 +232,7 @@ describe('a purchase, end to end: reserve, pay two legs, deliver from the certif
     const { cert, save } = withCertifiedPiece(USER_A);
     const seller = player(USER_A, save);
     await seller.deps().loadCertificates();
-    await listForSale(seller.deps(), sellableEntries(save)[0], cert, 1000);
+    await listForSale(seller.deps(), sellableEntries(save)[0], cert, 1_000_000_000);
     const buyerCert = m.store.addCert(USER_B, { inSave: false });
     void buyerCert;
     const full: SaveData = { ...defaultSave(), inventoryCapacity: 1 as never };
