@@ -1,0 +1,39 @@
+/* The maintenance banner (components/OpsBanner.tsx): a thin bar above everything, tokens only. */
+.ops-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  align-items: baseline;
+  justify-content: center;
+  padding: var(--sp-2) var(--sp-3);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  letter-spacing: var(--ls-body);
+  color: var(--c-text-on-gold);
+  background: var(--c-gold-300);
+  border-bottom: var(--bw-thin) solid var(--c-gold-700);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.ops-banner strong {
+  font-weight: inherit;
+  text-transform: uppercase;
+}
+
+/* A short notice inside a screen that one of the pauses affects (market, Pass purchase, ranking). */
+.ops-note {
+  margin: var(--sp-2) 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text);
+  background: var(--c-gold-fill);
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: var(--r-md);
+}

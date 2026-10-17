@@ -4,7 +4,8 @@ import { playerLevel, type SaveData } from '../game/engine';
 import { MarketUnreachable, PublicListing, fetchPublicListings, marketApi } from '../game/market/api';
 import { syncMarket } from '../game/market/sync';
 import { syncMaterials } from '../game/market/materialSync';
-import { activeLocale } from '../locales';
+import { activeLocale, t } from '../locales';
+import { useOpsState } from '../lib/opsStatus';
 import { mt } from '../locales/market';
 import BrowsePanel from './market/BrowsePanel';
 import HistoryPanel from './market/HistoryPanel';
@@ -40,6 +41,7 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
   const [failure, setFailure] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [bagFull, setBagFull] = useState(false);
+  const ops = useOpsState(); // the owner / watchdog can pause the market: say so plainly instead of letting every button fail
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -205,6 +207,11 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
           </>
         }
       />
+      {ops.marketPaused && (
+        <p className="ops-note" role="status" data-testid="ops-market-paused">
+          {t('ops.marketPaused')}
+        </p>
+      )}
       <ScreenLayout className="mk-layout" data-tab={tab} main={main} side={side} />
     </Screen>
   );

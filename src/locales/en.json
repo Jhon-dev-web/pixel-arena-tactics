@@ -1,4 +1,13 @@
 {
+  "ops": {
+    "maintenanceTitle": "Maintenance",
+    "maintenanceText": "We are working on the server. The game may be unstable for a few minutes; your saved progress is safe.",
+    "unreachableTitle": "Server not answering",
+    "unreachableText": "The server has not answered for a few minutes. It may be maintenance; your saved progress is safe and will sync again by itself.",
+    "marketPaused": "The market is paused for now. Your items and listings are safe.",
+    "passSalesPaused": "Pass sales are paused for now. Nobody will be charged.",
+    "scoringPaused": "League scoring is paused for now. Your progress is still being saved."
+  },
   "skills": {
     "level": "Level {n}",
     "xpProgress": "{cur} / {need} XP · {left} to go",

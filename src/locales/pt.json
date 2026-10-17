@@ -1,4 +1,13 @@
 {
+  "ops": {
+    "maintenanceTitle": "Manutenção",
+    "maintenanceText": "Estamos mexendo no servidor. O jogo pode ficar instável por alguns minutos; o seu progresso salvo está seguro.",
+    "unreachableTitle": "Servidor sem resposta",
+    "unreachableText": "O servidor não está respondendo há alguns minutos. Pode ser uma manutenção; o seu progresso salvo está seguro e volta a sincronizar sozinho.",
+    "marketPaused": "O mercado está pausado por enquanto. Os seus itens e anúncios continuam seguros.",
+    "passSalesPaused": "As vendas do Passe estão pausadas por enquanto. Nenhuma cobrança será feita.",
+    "scoringPaused": "A pontuação da Liga está pausada por enquanto. O seu progresso continua sendo salvo."
+  },
   "skills": {
     "level": "Nível {n}",
     "xpProgress": "{cur} / {need} XP · faltam {left}",

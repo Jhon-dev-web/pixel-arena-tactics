@@ -5,6 +5,7 @@ import { battlePassXpForLevel, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/e
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
 import { ADVENTURER_PASS_TESTABLE, isServerPassSource, ownsAdventurerPass } from '../game/entitlements';
 import { passPurchaseEnabled } from '../game/passServer';
+import { useOpsState } from '../lib/opsStatus';
 import { seasonNumber, seasonRemainingMs } from '../game/seasons';
 import type { HeroSheet } from '../game/sprites';
 import HeroThumb from './HeroThumb';
@@ -225,7 +226,9 @@ export default function BattlePassModal({
   const owner = ownsAdventurerPass(save);
   // Web build (server mode): the button starts a checkout once the owner switches sales on (VITE_PASS_PURCHASE_ENABLED), "Em breve" until then. Offline/desktop: as before.
   const server = isServerPassSource();
-  const canBuy = server ? passPurchaseEnabled : ADVENTURER_PASS_TESTABLE;
+  const ops = useOpsState();
+  const salesPaused = server && ops.passSalesPaused; // the owner / watchdog paused Pass sales: no checkout is started, and the player is told why
+  const canBuy = (server ? passPurchaseEnabled : ADVENTURER_PASS_TESTABLE) && !salesPaused;
   const buyLabel = server
     ? t(passPurchaseEnabled ? (passFlow === 'starting' ? 'battlePass.opening' : 'battlePass.buy') : 'battlePass.comingSoonWeb')
     : t(ADVENTURER_PASS_TESTABLE ? 'battlePass.activateTest' : 'battlePass.comingSoon');
@@ -384,6 +387,11 @@ export default function BattlePassModal({
             >
               {buyLabel}
             </Button>
+          )}
+          {salesPaused && (
+            <span className="pa-note" role="status" data-testid="ops-pass-paused">
+              {t('ops.passSalesPaused')}
+            </span>
           )}
           {server && (passFlow === 'confirming' || passFlow === 'pending') && (
             <span className="pa-note" role="status">

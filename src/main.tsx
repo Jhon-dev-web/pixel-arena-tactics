@@ -5,6 +5,7 @@ import "./index.css";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import { AuthProvider } from "./auth/AuthContext";
 import GameShell from "./shell/GameShell";
+import OpsBanner from "./components/OpsBanner";
 import { uiAudit } from "./lib/uiAudit";
 import pt from "./locales/pt.json";
 import { installGlobalErrorHandlers } from "./lib/errorLog";
@@ -32,6 +33,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
       <AuthProvider>
+        <OpsBanner />
         <GameShell />
       </AuthProvider>
     </ErrorBoundary>

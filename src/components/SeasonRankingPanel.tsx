@@ -15,6 +15,7 @@ import {
 } from '../game/seasonRanking';
 import { activeLocale, fmtNum, t } from '../locales';
 import PreseasonResetNotice from './PreseasonResetNotice';
+import { useOpsState } from '../lib/opsStatus';
 import { Button, Chip, Panel } from './ui';
 
 // The "Temporada" tab of the Adventurer Pass screen: which season, who is on top, and where the player stands. Everything shown is read from the server
@@ -43,6 +44,7 @@ export default function SeasonRankingPanel({ online, ownsPass }: { online: boole
   const [mine, setMine] = useState<MyEntry | null>(null);
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>(online ? 'loading' : 'ready');
   const [attempt, setAttempt] = useState(0);
+  const ops = useOpsState();
 
   const load = useCallback(async () => {
     setPhase('loading');
@@ -99,6 +101,11 @@ export default function SeasonRankingPanel({ online, ownsPass }: { online: boole
       )}
 
       {online && <PreseasonResetNotice className="ap-season-note ap-season-reset-warning" />}
+      {online && ops.scoringPaused && (
+        <p className="ap-season-note" role="status" data-testid="ops-scoring-paused">
+          {t('ops.scoringPaused')}
+        </p>
+      )}
       <p className="ap-season-passonly">{t('seasonRanking.passOnly')}</p>
       {season?.prize_note && season.prize_note.trim() !== '' && <p className="ap-season-prize">{t('seasonRanking.prizeNote', { note: season.prize_note })}</p>}
 
