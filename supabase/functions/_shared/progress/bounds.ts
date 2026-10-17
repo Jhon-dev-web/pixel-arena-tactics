@@ -116,9 +116,10 @@ export const BOUNDS = {
   // ---- PACE: the fastest simulated seed (Pass owner): [position, server day it was reached] ----------------------------------------------------------
   /**
    * Hero level position (level + share of the next level; paragon levels follow 100) against the day the fastest seed reached it.
-   * SOURCE (Rodada 24, `npm run sim:econ`, the fastest seed of ANY Pass-owner policy: P / PS / PG, the buyers PB / PBE and the greedy buyers PBG / PBEG / PBRG (a Legendary tier 4+ set, +8 refined for PBRG), 6 seeds each):
-   * level 24 on day 2, 44 on day 7, 51 on day 11, 60 on day 18, 68 on day 25, 75 on day 32, 79 on day 36, 88 on day 47 and 92 on day 53 (docs/BALANCE_CHANGES.md Rodada 24; Rodada 22 had 12, 19, 26, 34, 38, 50, 56);
-   * past day 53 the hero gains about 0.55 level a day (level 100 on about day 68, then the paragon at 0.55 level a day, as before). Rodada 20 had 60 on day 24 and 88 on day 60 for the plain owner alone: the zone level gates of Rodada 22
+   * SOURCE (Rodada 26, `npm run sim:econ`, the fastest seed of ANY Pass-owner policy: P / PS / PG, the buyers PB / PBE / PBR / PBER and the greedy buyers PBG / PBEG / PBRG (a Legendary tier 4+ set, +8 refined for PBRG), 6 seeds each, with the Epic x1.15 / Legendary x1.50 and the Abyss sub-levels of Rodada 26):
+   * level 24 on day 2, 44 on day 7, 51 on day 11, 60 on day 18, 68 on day 25, 75 on day 31, 79 on day 35, 88 on day 45 and 92 on day 51 (docs/BALANCE_CHANGES.md Rodada 26; Rodada 24 had 32, 36, 47, 53; Rodada 22 had 12, 19, 26, 34, 38, 50, 56);
+   * past day 51 the hero gains about 0.65 level a day (the fastest seed ends day 60 on 97.9, level 100 on about day 64, then the paragon at 0.5 level a day, as before).
+   * Days 28 and below keep the Rodada 24 values (the seeds say day 2 for level 28; kept at 3, the looser): a Legendary of luck at 4% moves the first days by one. Rodada 20 had 60 on day 24 and 88 on day 60 for the plain owner alone: the zone level gates of Rodada 22
    * (zone 3 asks level 40, zone 4 level 60) hold the owner who bought a set back, and the table now follows him, the fastest legitimate player, instead of the plain owner.
    */
   levelPace: [
@@ -129,14 +130,14 @@ export const BOUNDS = {
     [51, 11],
     [60, 18],
     [68, 25],
-    [75, 32],
-    [79, 36],
-    [88, 47],
-    [92, 53],
-    [100, 68],
-    [200, 268],
+    [75, 31],
+    [79, 35],
+    [88, 45],
+    [92, 51],
+    [100, 64],
+    [200, 264],
   ] as const,
-  /** Highest dungeon floor against the day the fastest seed first stood on it. SOURCE (Rodada 24, every Pass-owner policy, fastest of 6 seeds each): floor 8 on day 1, 25 on day 2, 50 on day 8, 75 on day 9, 90 on day 10, 100 on day 10 (11 here: the days must increase; the buyer's tier 4+ Legendary set, which is 2.1 times the CP of a Common one since Rodada 24;
+  /** Highest dungeon floor against the day the fastest seed first stood on it. Rodada 26 re-measured it (floor 50 on day 9, 75 on day 9, 90 on day 10, 100 on day 10: not faster than the table, which is kept). SOURCE (Rodada 24, every Pass-owner policy, fastest of 6 seeds each): floor 8 on day 1, 25 on day 2, 50 on day 8, 75 on day 9, 90 on day 10, 100 on day 10 (11 here: the days must increase; the buyer's tier 4+ Legendary set, which is 2.1 times the CP of a Common one since Rodada 24;
    * the plain owner needs until day 56, Rodada 22 had 100 on day 39 for the buyer). The Dungeon floors pay no XP and do not rank, so this table is only the plausibility check of the floor counter. */
   floorPace: [
     [0, 0],
