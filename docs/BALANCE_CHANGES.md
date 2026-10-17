@@ -3511,3 +3511,7 @@ A alavanca **funciona** para o esperto mediano (de +2 para +5,5) mas **para a me
 - **Sem lote mínimo e sem validade do anúncio** (o mercado real só vende lote inteiro de 1 a 10 000 unidades de um material e o anúncio vence em 30 dias): o modelo compra qualquer quantidade e o estoque nunca expira.
 - O oráculo não pede o material de **Elixir**, **poção** e **pedido de entrega** (o Player coleta para a forja, o refino, a obsidiana tardia e a Estante); as plantas do Elixir vêm do próprio canteiro.
 - `commonScale` mexe só na oferta de anúncio do mercado simulado; as curvas de pedido (oráculo) são as de 1%, que o jogador de hoje teria.
+
+### Rodada 27b — material comum negociável volta a 3% (2026-10-17)
+
+Decisão do dono depois da Rodada 27: a chance de uma unidade de material **comum** sair negociável sobe de 1% para **3%**; incomum (2%) e raro (3%) não mudam. Na simulação da Rodada 27, com 3% o comprador mediano (dono do Passe, jogo esperto) fica cerca de +3,7 níveis à frente no dia 60 e encontra ~88% do material que procura (era +2,0 e 56%). Couro e osso ficam baratos para quem vende. O teto diário anti-robô deriva da chance e acompanha sem outra mudança. Números de simulação, margem de 0,5 a 1,5 nível.

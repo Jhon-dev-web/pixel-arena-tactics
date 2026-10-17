@@ -3,8 +3,8 @@
 //
 // A claim reports N units of a material; the server rolls each one: it is tradeable with the chance below (Binomial(N, chance), the server's own dice, never the client's).
 
-/** The chances by class of material: common 1%, uncommon 2%, rare 3% of the units that are gathered or dropped (cut from 3/5/8% by the owner on 2026-10-16 so the market does not flood). */
-export const CLASS_RATE = { common: 0.01, uncommon: 0.02, rare: 0.03 } as const;
+/** The chances by class of material: common 3%, uncommon 2%, rare 3% of the units that are gathered or dropped (owner 2026-10-16 cut 3/5/8% to 1/2/3%; on 2026-10-17 common went back up to 3% because buyers could not find common materials — Rodada 27). */
+export const CLASS_RATE = { common: 0.03, uncommon: 0.02, rare: 0.03 } as const;
 
 /**
  * The chance of EVERY material that can be tradeable, spelled out (a test pins this list to the game's materials and each value to its class). Classes come from the game
@@ -13,22 +13,22 @@ export const CLASS_RATE = { common: 0.01, uncommon: 0.02, rare: 0.03 } as const;
  */
 export const TRADEABLE_CHANCE: Readonly<Record<string, number>> = {
   // Mining (ore tiers)
-  copper: 0.01,
-  iron: 0.01,
+  copper: 0.03,
+  iron: 0.03,
   silver: 0.02,
   gold_ore: 0.02,
   obsidian: 0.03,
   // Woodcutting (wood tiers)
-  common_wood: 0.01,
-  oak_wood: 0.01,
+  common_wood: 0.03,
+  oak_wood: 0.03,
   ebony_wood: 0.02,
   elven_wood: 0.02,
   ancient_wood: 0.03,
   // Garden (plants)
-  common_herb: 0.01,
-  energy_herb: 0.01,
-  iron_thistle: 0.01,
-  swift_grass: 0.01,
+  common_herb: 0.03,
+  energy_herb: 0.03,
+  iron_thistle: 0.03,
+  swift_grass: 0.03,
   uncommon_root: 0.02,
   gold_blossom: 0.02,
   crimson_mushroom: 0.02,
@@ -38,8 +38,8 @@ export const TRADEABLE_CHANCE: Readonly<Record<string, number>> = {
   dusk_orchid: 0.03,
   elder_root: 0.03,
   // Hunting drops
-  leather_scrap: 0.01,
-  bone_fragment: 0.01,
+  leather_scrap: 0.03,
+  bone_fragment: 0.03,
   demon_claw: 0.02,
   concentrated_blood: 0.02,
   rift_shard: 0.02,
