@@ -2,6 +2,8 @@
 // The flags are read through public.ops_status() and the readers here FAIL OPEN: if the flags cannot be read, nothing is paused, because a broken read must never take the game down by itself.
 // (The last answer that was good a moment ago is kept for a few minutes, so a blip does not silently un-pause a market that is paused on purpose.)
 
+import { json } from '../http.ts';
+
 export const FLAG_KEYS = ['maintenance_mode', 'market_paused', 'season_scoring_paused', 'pass_sales_paused'] as const;
 export type FlagKey = (typeof FLAG_KEYS)[number];
 export type OpsFlags = Record<FlagKey, boolean>;
@@ -97,3 +99,11 @@ export function pausedBody(flag: FlagKey): { ok: false; error: 'paused'; reason:
   return { ok: false, error: 'paused', reason: flag };
 }
 export const PAUSED_RETRY_AFTER_S = 300;
+
+/** Marks an answer as a DELIBERATE pause: the 5xx monitor does not count it as a failure (otherwise a pause would keep its own incident open, and re-pause the area right after the owner clears it). */
+export const PAUSED_HEADER = 'x-ops-paused';
+
+/** The 503 every paused function answers: the body above, Retry-After, and the marker header. */
+export function pausedResponse(flag: FlagKey, cors: Record<string, string> = {}): Response {
+  return json(pausedBody(flag), 503, { ...cors, 'retry-after': String(PAUSED_RETRY_AFTER_S), [PAUSED_HEADER]: flag });
+}

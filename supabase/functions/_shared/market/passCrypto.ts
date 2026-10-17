@@ -5,7 +5,7 @@ import { SolanaConfig, SolanaEnv, cleanSolAddress, fetchRecentBlockhash, loadPas
 import { USDC_DECIMALS, formatUsdc } from '../chain/solMoney.ts';
 import { json } from '../http.ts';
 import { chainPublic, rpcFor } from './chainEnv.ts';
-import { PAUSED_RETRY_AFTER_S, isPaused, pausedBody, type OpsFlagReader } from '../ops/flags.ts';
+import { isPaused, pausedResponse, type OpsFlagReader } from '../ops/flags.ts';
 import { prelude } from './prelude.ts';
 import type { PassCryptoStore } from './store.ts';
 
@@ -69,7 +69,7 @@ export async function handlePassCrypto(req: Request, deps: PassCryptoDeps): Prom
     if (body.action === 'price') return json({ ok: true, priceUnits: pass.priceUnits, priceUsdc: formatUsdc(pass.priceUnits), chain: chainPublic(pass.config) }, 200, cors);
 
     // Pass sales are paused: no new intent, no verification. A payment that was already sent stays on chain and is picked up by a later 'submit' once the owner clears the flag.
-    if ((body.action === 'start' || body.action === 'prepare' || body.action === 'submit') && (await isPaused(deps.opsFlags, 'pass_sales_paused'))) return json(pausedBody('pass_sales_paused'), 503, { ...cors, 'retry-after': String(PAUSED_RETRY_AFTER_S) });
+    if ((body.action === 'start' || body.action === 'prepare' || body.action === 'submit') && (await isPaused(deps.opsFlags, 'pass_sales_paused'))) return pausedResponse('pass_sales_paused', cors);
 
     if (await deps.store.hasActivePass(userId)) return json({ ok: false, reason: 'already_owned' }, 409, cors);
     const wallet = await deps.store.wallet(userId);

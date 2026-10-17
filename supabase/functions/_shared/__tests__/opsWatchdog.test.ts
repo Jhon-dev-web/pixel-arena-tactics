@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { REMINDER_MS } from '../ops/alerts.ts';
 import { DEFAULT_LIMITS } from '../ops/budget.ts';
-import { FLAG_KEYS, NO_FLAGS, type FlagKey, type OpsFlags } from '../ops/flags.ts';
+import { FLAG_KEYS, NO_FLAGS, PAUSED_HEADER, type FlagKey, type OpsFlags } from '../ops/flags.ts';
 import { ModelError } from '../ops/model.ts';
 import { withOpsMonitor } from '../ops/monitor.ts';
 import { authorizeOps, createWatchdogHandler, handleAuditorRequest, secretsMatch } from '../ops/opsHandlers.ts';
@@ -521,6 +521,15 @@ describe('the 5xx monitor', () => {
     expect(report).toHaveBeenCalledWith('market-buy');
     await expect(call(new Error('boom'), report)).rejects.toThrow('boom');
     expect(report).toHaveBeenCalledTimes(4);
+  });
+
+  it('a DELIBERATE pause (503 + the marker header) is not a failure: it must not keep its own incident open or re-pause the area right after the owner clears it', async () => {
+    const report = vi.fn(async () => undefined);
+    const paused = await call(new Response('{}', { status: 503, headers: { [PAUSED_HEADER]: 'market_paused' } }), report);
+    expect(paused.status).toBe(503);
+    expect(report).not.toHaveBeenCalled();
+    await call(new Response('{}', { status: 503 }), report); // an ordinary 503 still counts
+    expect(report).toHaveBeenCalledTimes(1);
   });
 
   it('a failing or hanging reporter never changes the answer and never delays it for long', async () => {

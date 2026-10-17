@@ -3,7 +3,7 @@ import { isMaterialTotalLamports, isPriceLamports, isUnitPriceMicro, materialTot
 import { MATERIAL_IDS } from '../materials/tables.ts';
 import { MARKET_RULES } from './rules.ts';
 import { UUID_RE, json } from '../http.ts';
-import { PAUSED_RETRY_AFTER_S, isPaused, pausedBody } from '../ops/flags.ts';
+import { isPaused, pausedResponse } from '../ops/flags.ts';
 import { chainPublic, MarketChain } from './chainEnv.ts';
 import type { MarketDeps } from './deps.ts';
 import { prelude } from './prelude.ts';
@@ -92,7 +92,7 @@ export async function handleMarketList(req: Request, deps: MarketDeps): Promise<
   try {
     if (deps.chain() === null) return json({ ok: false, reason: 'unavailable' satisfies ListRefusal }, 503, cors);
     // The owner (or the watchdog) paused the market: nothing new is listed. Cancelling a listing stays possible (it only gives the item back to its seller).
-    if ((body.action === 'list' || body.action === 'list_material') && (await isPaused(deps.opsFlags, 'market_paused'))) return json(pausedBody('market_paused'), 503, { ...cors, 'retry-after': String(PAUSED_RETRY_AFTER_S) });
+    if ((body.action === 'list' || body.action === 'list_material') && (await isPaused(deps.opsFlags, 'market_paused'))) return pausedResponse('market_paused', cors);
     if (body.action === 'list') {
       if (!isUuid(body.certificateId) || !isPriceLamports(body.priceLamports)) return json({ ok: false, reason: (isUuid(body.certificateId) ? 'price' : 'bad_request') satisfies ListRefusal }, 400, cors);
       const r = await deps.store.list(userId, body.certificateId.toLowerCase(), body.priceLamports);
@@ -134,7 +134,7 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
     if (!chain) return json({ ok: false, reason: 'unavailable' }, 503, cors);
 
     // The market is paused: no new reservation, no blockhash, no payment verification. 'cancel' and 'status' stay open so a player can still release a reservation and see where it stands.
-    if ((body.action === 'reserve' || body.action === 'prepare' || body.action === 'submit') && (await isPaused(deps.opsFlags, 'market_paused'))) return json(pausedBody('market_paused'), 503, { ...cors, 'retry-after': String(PAUSED_RETRY_AFTER_S) });
+    if ((body.action === 'reserve' || body.action === 'prepare' || body.action === 'submit') && (await isPaused(deps.opsFlags, 'market_paused'))) return pausedResponse('market_paused', cors);
 
     if (body.action === 'reserve') {
       if (!isUuid(body.listingId)) return json({ ok: false, reason: 'bad_request' }, 400, cors);

@@ -1,6 +1,6 @@
 import { AuthConfig, getAuthenticatedUserId } from './auth.ts';
 import { json } from './http.ts';
-import { PAUSED_RETRY_AFTER_S, isPaused, pausedBody, type OpsFlagReader } from './ops/flags.ts';
+import { isPaused, pausedResponse, type OpsFlagReader } from './ops/flags.ts';
 import type { PaymentProvider, Store } from './types.ts';
 
 export const CHECKOUT_RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000 };
@@ -74,7 +74,7 @@ export async function handleCreateCheckout(req: Request, deps: CheckoutDeps): Pr
   if (!userId) return json({ error: 'unauthenticated' }, 401, cors);
 
   try {
-    if (await isPaused(deps.opsFlags, 'pass_sales_paused')) return json(pausedBody('pass_sales_paused'), 503, { ...cors, 'retry-after': String(PAUSED_RETRY_AFTER_S) });
+    if (await isPaused(deps.opsFlags, 'pass_sales_paused')) return pausedResponse('pass_sales_paused', cors);
     if (await deps.store.hasActiveEntitlement(userId, 'adventurer_pass')) return json({ error: 'already_owned' }, 409, cors);
 
     // One atomic step: reuse the user's open session, or wait for the request that is creating one, or hit the limit, or get permission to create.

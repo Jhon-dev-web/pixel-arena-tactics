@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { handleCreateCheckout } from '../checkout.ts';
-import { NO_FLAGS, createFlagReader, isPaused, parseOpsStatus, type OpsFlagReader, type OpsFlags } from '../ops/flags.ts';
+import { NO_FLAGS, PAUSED_HEADER, createFlagReader, isPaused, parseOpsStatus, pausedResponse, type OpsFlagReader, type OpsFlags } from '../ops/flags.ts';
 import { handlePassCrypto } from '../market/passCrypto.ts';
 import { canonicalJson, handleSubmitProgress, type NewSnapshot, type ProgressStore, type StoredSnapshot } from '../progress/handler.ts';
 import { authFetch, bearer } from './fakeItemStore.ts';
@@ -56,8 +56,19 @@ describe('the flag reader', () => {
   });
 });
 
+describe('the paused answer', () => {
+  it('is a 503 with Retry-After, the body the game reads and the marker header; CORS headers are kept', async () => {
+    const res = pausedResponse('market_paused', { 'access-control-allow-origin': 'https://play.example' });
+    expect(res.status).toBe(503);
+    expect(res.headers.get('retry-after')).toBe('300');
+    expect(res.headers.get(PAUSED_HEADER)).toBe('market_paused');
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://play.example');
+    expect(await res.json()).toEqual({ ok: false, error: 'paused', reason: 'market_paused' });
+  });
+});
+
 describe('market_paused', () => {
-  it('refuses to list, to list a lot, to reserve, to prepare and to submit a payment, with 503 + Retry-After; cancel, status, overview and the wallet stay open', async () => {
+  it('refuses to list, to list a lot, to reserve, to prepare and to submit a payment, with 503 + Retry-After + the marker the 5xx monitor ignores; cancel, status, overview and the wallet stay open', async () => {
     const h = makeMarket();
     h.deps.opsFlags = flags({ market_paused: true });
     for (const body of [
@@ -138,6 +149,7 @@ describe('pass_sales_paused on the card checkout', () => {
     const res = await handleCreateCheckout(req(), deps);
     expect(res.status).toBe(503);
     expect(res.headers.get('retry-after')).toBe('300');
+    expect(res.headers.get(PAUSED_HEADER)).toBe('pass_sales_paused');
     expect(await res.json()).toEqual({ ok: false, error: 'paused', reason: 'pass_sales_paused' });
     expect(createCheckout).not.toHaveBeenCalled();
   });

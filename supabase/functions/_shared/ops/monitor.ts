@@ -1,6 +1,8 @@
 // Counts the 5xx answers of an Edge Function (public.ops_function_error, 5-minute buckets) so the watchdog can see "the market function is failing" without reading logs.
 // It only OBSERVES: the wrapped handler runs unchanged and its answer is returned as it is.
 
+import { PAUSED_HEADER } from './flags.ts';
+
 export type ErrorReporter = (fn: string) => Promise<void>;
 
 export interface MonitorOptions {
@@ -27,7 +29,8 @@ export function withOpsMonitor(fnName: string, handler: (req: Request) => Respon
       await send();
       throw err;
     }
-    if (res.status >= 500) await send();
+    // a deliberate pause (503 + marker header) is not a failure: counting it would keep the incident open for as long as the pause lasts
+    if (res.status >= 500 && !res.headers.has(PAUSED_HEADER)) await send();
     return res;
   };
 }
