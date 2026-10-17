@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { AccessDeniedError, ApiError, createRpcApi, toError, type RpcClient } from '../src/lib/api';
 import { defaultLegendaryQuery, defaultMarketQuery, defaultPlayerQuery } from '../src/lib/filters';
+import { OPS_READ_RPC_NAMES, OPS_WRITE_RPC_NAMES } from '../src/lib/opsRpcNames';
 import { RPC_NAMES } from '../src/lib/rpcNames';
 
 function fake(answer: (name: string, args?: Record<string, unknown>) => { data: unknown; error: { message: string; code?: string } | null }) {
@@ -42,6 +43,30 @@ describe('createRpcApi', () => {
     await Promise.all([api.overview(), api.economy(), api.waitlist(7)]);
     for (const c of calls) expect(RPC_NAMES as readonly string[]).toContain(c.name);
     expect(Object.keys(client)).toEqual(['rpc']);
+  });
+
+  test('the AI-operations methods call their own functions with named arguments (the two writes carry the note)', async () => {
+    const { client, calls } = fake(() => ({ data: {}, error: null }));
+    const api = createRpcApi(client);
+    await api.opsOverview();
+    await api.aiReports({ status: 'open', page: 2, pageSize: 20 });
+    await api.aiCost();
+    await api.setOpsFlag('market_paused', false, 'tudo certo');
+    await api.ackReport('00000000-0000-4000-8000-000000000009');
+    expect(calls.map((c) => c.name)).toEqual(['admin_ops_overview', 'admin_ai_reports', 'admin_ai_cost', 'admin_set_ops_flag', 'admin_ack_report']);
+    expect(new Set(calls.map((c) => c.name))).toEqual(new Set([...OPS_READ_RPC_NAMES, ...OPS_WRITE_RPC_NAMES]));
+    expect(calls[1].args).toEqual({ p_status: 'open', p_page: 2, p_page_size: 20 });
+    expect(calls[3].args).toEqual({ p_key: 'market_paused', p_value: false, p_note: 'tudo certo' });
+    expect(calls[4].args).toEqual({ p_id: '00000000-0000-4000-8000-000000000009' });
+  });
+
+  test('the database refusing a flag change (not an admin / no note) surfaces as the right error', async () => {
+    const denied = fake(() => ({ data: null, error: { message: 'ADMIN_ONLY', code: '42501' } }));
+    await expect(createRpcApi(denied.client).setOpsFlag('market_paused', true, 'abc')).rejects.toBeInstanceOf(AccessDeniedError);
+    const noNote = fake(() => ({ data: null, error: { message: 'OPS_NOTE_REQUIRED', code: '22023' } }));
+    const err = await createRpcApi(noNote.client).setOpsFlag('market_paused', true, '').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as Error).message).toBe('OPS_NOTE_REQUIRED');
   });
 
   test('ADMIN_ONLY from the database becomes AccessDeniedError', async () => {

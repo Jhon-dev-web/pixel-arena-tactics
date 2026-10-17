@@ -75,6 +75,16 @@ export function useAsync<T>(load: (api: AdminApi) => Promise<T>, deps: readonly 
   return { data, error, loading, loadedAt, reload: run };
 }
 
+/** The value of ?name= in the address hash ("#/jogadores?q=abc" -> "abc"), read once; empty when absent. Used by the links of the AI reports to open a page already searching for something. */
+export function hashParam(name: string): string {
+  try {
+    const query = window.location.hash.split('?')[1] ?? '';
+    return (new URLSearchParams(query).get(name) ?? '').slice(0, 100);
+  } catch {
+    return '';
+  }
+}
+
 /** Re-renders every `ms` and returns Date.now(). */
 export function useNow(ms = 1000): number {
   const [now, setNow] = useState(() => Date.now());

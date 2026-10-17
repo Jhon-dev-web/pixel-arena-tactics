@@ -11,6 +11,7 @@ const Market = lazy(() => import('./pages/Market'));
 const Economy = lazy(() => import('./pages/Economy'));
 const League = lazy(() => import('./pages/League'));
 const Waitlist = lazy(() => import('./pages/WaitlistPage'));
+const AiOps = lazy(() => import('./pages/AiOps'));
 
 export const ROUTES: { id: string; label: string; icon: IconName }[] = [
   { id: 'visao-geral', label: 'Visão geral', icon: 'overview' },
@@ -20,6 +21,7 @@ export const ROUTES: { id: string; label: string; icon: IconName }[] = [
   { id: 'economia', label: 'Economia', icon: 'economy' },
   { id: 'liga', label: 'Liga', icon: 'league' },
   { id: 'espera', label: 'Lista de espera', icon: 'waitlist' },
+  { id: 'ia-operacao', label: 'IA e operação', icon: 'shield' },
 ];
 
 const PAGES: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
@@ -30,6 +32,7 @@ const PAGES: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
   economia: Economy,
   liga: League,
   espera: Waitlist,
+  'ia-operacao': AiOps,
 };
 
 export function routeFromHash(hash: string): string {

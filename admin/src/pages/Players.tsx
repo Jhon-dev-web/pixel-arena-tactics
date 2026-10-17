@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Drawer } from '../components/Drawer';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
 import { Card, DefList, ExternalLink, Field, Notice, Pill, Skeleton } from '../components/ui';
-import { useApp, useAsync, useDebounced } from '../hooks';
+import { hashParam, useApp, useAsync, useDebounced } from '../hooks';
 import { activeFilterCount, defaultPlayerQuery, EXPORT_PAGE_SIZE, toggleSort } from '../lib/filters';
 import { DASH, fmtDateTime, fmtGold, fmtInt, fmtSol, fmtAgo, shortAddress, shortId, solscanAccount, solscanTx } from '../lib/format';
 import { kindLabel, passSourceLabel, rarityLabel, statusLabel } from '../lib/labels';
@@ -34,7 +34,7 @@ const SORT_HEADERS = new Set<string>(['username', 'level', 'floor', 'depth', 'go
 
 export default function PlayersPage() {
   const { api } = useApp();
-  const [q, setQ] = useState<PlayerQuery>(defaultPlayerQuery());
+  const [q, setQ] = useState<PlayerQuery>(() => ({ ...defaultPlayerQuery(), search: hashParam('q') }));
   const [openId, setOpenId] = useState<string | null>(null);
   const search = useDebounced(q.search, 350);
   const query: PlayerQuery = { ...q, search };

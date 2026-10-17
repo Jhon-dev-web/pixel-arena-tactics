@@ -30,6 +30,8 @@ describe('production bundle', () => {
   test('contains none of the demo backend or its invented data', () => {
     expect(js).not.toContain('dono@exemplo.com');
     expect(js).not.toContain('Aldric');
+    expect(js).not.toContain('demo-report-1');
+    expect(js).not.toContain('funções do mercado falhando repetidamente');
     expect(js).not.toContain('VITE_ADMIN_DEMO');
     expect(list.some((f) => /demo/i.test(f))).toBe(false);
   });

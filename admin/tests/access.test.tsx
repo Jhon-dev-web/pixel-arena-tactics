@@ -97,7 +97,7 @@ describe('access', () => {
     const { auth } = fakeAuth({ session: { email: 'dono@exemplo.com' }, admin: true });
     render(<App backend={backend(auth, api)} />);
     const nav = await screen.findByRole('navigation', { name: 'Seções' });
-    for (const label of ['Visão geral', 'Jogadores', 'Lendários', 'Mercado', 'Economia', 'Liga', 'Lista de espera']) {
+    for (const label of ['Visão geral', 'Jogadores', 'Lendários', 'Mercado', 'Economia', 'Liga', 'Lista de espera', 'IA e operação']) {
       expect(nav.textContent).toContain(label);
     }
     expect(await screen.findByRole('heading', { name: 'Visão geral' })).toBeTruthy();

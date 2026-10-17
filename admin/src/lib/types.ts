@@ -391,3 +391,110 @@ export interface Waitlist {
   referral_ignored: { referral_ignored: string; count: number }[];
   top_referrers: { ref_code: string; email_masked: string; invited: number; qualified: number; since: string }[];
 }
+
+// ---- AI operations (supabase/migrations/0021_ai_ops.sql) ----------------------------------------------------------------------------------------------------------------
+
+export type OpsFlagKey = 'maintenance_mode' | 'market_paused' | 'season_scoring_paused' | 'pass_sales_paused';
+export type OpsSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
+
+export interface OpsFlagRow {
+  key: OpsFlagKey;
+  value: boolean;
+  changed_at: string;
+  /** 'migration' | 'watchdog' | 'admin:<user id>' */
+  changed_by: string;
+  note: string | null;
+}
+
+export interface OpsIncident {
+  id: string;
+  check: string;
+  severity: OpsSeverity;
+  summary: string;
+  opened_at: string;
+  last_seen_at: string;
+  alert_count: number;
+  /** the flags the watchdog switched on because of this incident */
+  actions: { flag: OpsFlagKey; changed: boolean }[];
+}
+
+export interface OpsEvent {
+  id: number;
+  at: string;
+  kind: string;
+  severity: OpsSeverity;
+  check: string | null;
+  ok: boolean | null;
+  actor: string | null;
+  summary: string;
+}
+
+export interface OpsCheck {
+  check: string;
+  consecutive_failures: number;
+  first_failed_at: string | null;
+  last_ok_at: string | null;
+  last_checked_at: string;
+}
+
+export interface OpsOverview {
+  flags: OpsFlagRow[];
+  incidents: OpsIncident[];
+  recent_events: OpsEvent[];
+  checks: OpsCheck[];
+  open_reports: number;
+  now: string;
+}
+
+export interface ReportEvidence {
+  type: string;
+  id: string;
+  label?: string;
+}
+
+export interface ReportFindingRow {
+  category: string;
+  severity: OpsSeverity;
+  summary: string;
+  suggested_action: string;
+  evidence: ReportEvidence[];
+  gate_note?: string;
+}
+
+export interface AiReportRow {
+  id: string;
+  kind: 'anomaly' | 'daily' | 'incident';
+  severity: OpsSeverity;
+  summary: string;
+  details: {
+    mode?: string;
+    window_hours?: number;
+    model?: string | null;
+    model_used?: boolean;
+    model_status?: string;
+    alerted?: boolean;
+    notes?: string[];
+    findings?: ReportFindingRow[];
+    signals?: { id: string; category: string; severity: OpsSeverity; summary: string }[];
+    usage?: { input_tokens: number; output_tokens: number; cost_usd_estimate: number };
+  };
+  suggested_actions: { action: string; reason?: string }[];
+  created_at: string;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+}
+
+export type ReportStatus = 'open' | 'acknowledged' | 'all';
+export interface AiReportsQuery {
+  status: ReportStatus;
+  page: number;
+  pageSize: number;
+}
+
+export interface AiCost {
+  month_to_date_usd: number;
+  projected_month_usd: number;
+  runs_today: number;
+  months: { month: string; cost_usd: number; runs: number }[];
+  by_model: { model: string; runs: number; cost_usd: number }[];
+}

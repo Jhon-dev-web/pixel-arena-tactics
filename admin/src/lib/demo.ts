@@ -2,6 +2,7 @@
 // functions (search, sort, filters, paging, masked e-mails), so every control on every page works against it. It never touches the network.
 import type { AdminApi } from './api';
 import type { AuthPort } from './auth';
+import { createDemoOpsApi } from './demoOps';
 import type { Backend } from './backend';
 import { maskEmail } from './format';
 import type {
@@ -469,6 +470,7 @@ const delay = <T>(v: T, ms = 120): Promise<T> => new Promise((res) => setTimeout
 export function createDemoApi(): AdminApi {
   const w = build();
   return {
+    ...createDemoOpsApi(w.players),
     overview: () => delay({ ...w.overview, generated_at: new Date().toISOString() }),
     async players(q) {
       const s = q.search.trim().toLowerCase();

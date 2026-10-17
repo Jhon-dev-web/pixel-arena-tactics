@@ -2,7 +2,7 @@
 
 AVISO: **nada disto foi aplicado, implantado ou executado contra um serviço real por este trabalho.** A migration `0020_admin.sql` não foi aplicada, nenhum projeto Supabase ou Vercel foi tocado, nenhuma chave foi lida ou escrita. O código está no repositório; o painel só funciona depois dos passos abaixo. Os valores de segredos ficam só nos painéis; aqui há apenas nomes.
 
-O painel é um app **separado do jogo e do portal** (pasta `admin/`, `package.json` próprio, projeto Vercel próprio). Não parece com o jogo de propósito. **Somente leitura**: nada nele grava, apaga ou muda nada.
+O painel é um app **separado do jogo e do portal** (pasta `admin/`, `package.json` próprio, projeto Vercel próprio). Não parece com o jogo de propósito. **Somente leitura, com duas exceções auditadas** na página “IA e operação” (migration `0021_ai_ops.sql`, ainda não aplicada): ligar/desligar um dos quatro interruptores de segurança (com motivo obrigatório, registrado com o seu nome) e marcar um relatório da IA como lido. Todo o resto só lê.
 
 ## 1. O que ele mostra
 
@@ -15,6 +15,7 @@ O painel é um app **separado do jogo e do portal** (pasta `admin/`, `package.js
 | **Economia** | Ouro nos saves (total, média, mediana, percentil 90, maior saldo, parte dos 10 mais ricos, série diária, maiores saldos), Bolsas de Ouro (em circulação, criadas, abertas, por tamanho), materiais negociáveis, itens certificados por tipo, raridade e estado, volume em SOL. |
 | **Liga** | Temporada, datas, meta de Passes pagos e progresso, topo do ranking com “aparece no ranking público?”, e a **fila de auditoria antifraude** (alertas de progresso e de itens, motivos mais comuns). |
 | **Lista de espera** | Total, por dia, por origem, indicações ignoradas e quem mais indicou (e-mails mascarados), quantos já criaram conta. |
+| **IA e operação** | Os quatro interruptores (`maintenance_mode`, `market_paused`, `season_scoring_paused`, `pass_sales_paused`) com botões Ligar/Desligar e confirmação com motivo, incidentes abertos do vigia automático, relatórios da IA do mais grave ao menos grave (com links para o jogador e a venda envolvidos e botão “Marcar como lido”), custo estimado da IA no mês e o registro recente. Guia completo, segredos e roteiro de incidente em `docs/AI_OPS.md`. |
 
 Cada tabela tem **Exportar CSV** (lê todas as páginas do filtro atual, até 10.000 linhas). O CSV neutraliza células que começam com `=`, `+`, `-` ou `@` (nome de jogador não executa fórmula na planilha).
 

@@ -56,3 +56,32 @@ describe('demo api contract', () => {
     expect(flags.total).toBeGreaterThan(0);
   });
 });
+
+describe('demo api: AI operations', () => {
+  test('flags really toggle, only with a note; reports really get acknowledged', async () => {
+    const api = createDemoApi();
+    const before = await api.opsOverview();
+    expect(before.flags.map((f) => f.key).sort()).toEqual(['maintenance_mode', 'market_paused', 'pass_sales_paused', 'season_scoring_paused']);
+    await expect(api.setOpsFlag('maintenance_mode', true, '')).rejects.toThrow('OPS_NOTE_REQUIRED');
+    await expect(api.setOpsFlag('nope' as never, true, 'abc')).rejects.toThrow('OPS_BAD_FLAG');
+    expect(await api.setOpsFlag('maintenance_mode', true, 'deploy às 18h')).toMatchObject({ changed: true });
+    expect(await api.setOpsFlag('maintenance_mode', true, 'de novo')).toMatchObject({ changed: false });
+    const after = await api.opsOverview();
+    expect(after.flags.find((f) => f.key === 'maintenance_mode')).toMatchObject({ value: true, note: 'deploy às 18h' });
+    expect(after.recent_events[0]).toMatchObject({ kind: 'flag_change', check: 'maintenance_mode' });
+
+    const open = await api.aiReports({ status: 'open', page: 0, pageSize: 20 });
+    const rank = { info: 1, low: 2, medium: 3, high: 4, critical: 5 } as const;
+    expect(open.rows.map((r) => rank[r.severity])).toEqual([...open.rows.map((r) => rank[r.severity])].sort((a, b) => b - a));
+    expect(await api.ackReport(open.rows[0].id)).toEqual({ id: open.rows[0].id, acknowledged: true });
+    expect(await api.ackReport(open.rows[0].id)).toMatchObject({ acknowledged: false });
+    expect((await api.aiReports({ status: 'open', page: 0, pageSize: 20 })).total).toBe(open.total - 1);
+    expect((await api.aiReports({ status: 'all', page: 0, pageSize: 20 })).total).toBe(open.total + 1);
+  });
+
+  test('the cost is an estimate with a projection', async () => {
+    const c = await createDemoApi().aiCost();
+    expect(c.projected_month_usd).toBeGreaterThanOrEqual(c.month_to_date_usd);
+    expect(c.by_model.length).toBeGreaterThan(0);
+  });
+});

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
 import { Card, ExternalLink, Field, Kpi, Notice, Pill } from '../components/ui';
-import { useApp, useAsync, useDebounced } from '../hooks';
+import { hashParam, useApp, useAsync, useDebounced } from '../hooks';
 import { dayEndIso, dayStartIso, defaultMarketQuery, EXPORT_PAGE_SIZE } from '../lib/filters';
 import { DASH, fmtDateTime, fmtInt, fmtSol, humanize, shortAddress, shortId, solscanTx } from '../lib/format';
 import { rarityLabel, statusLabel } from '../lib/labels';
@@ -35,7 +35,7 @@ const LISTING_COLUMNS: Column<ListingRow>[] = [
 
 export default function MarketPageView() {
   const { api } = useApp();
-  const [q, setQ] = useState<MarketQuery>(defaultMarketQuery());
+  const [q, setQ] = useState<MarketQuery>(() => ({ ...defaultMarketQuery(), search: hashParam('q') }));
   const [fromDay, setFromDay] = useState('');
   const [toDay, setToDay] = useState('');
   const search = useDebounced(q.search, 350);
