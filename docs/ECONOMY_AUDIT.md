@@ -678,6 +678,8 @@ Pontos que importam à economia: (1) o atacadista **não** é arbitragem: o pre�
 
 ## 23. Valor dos itens por raridade e tier depois da Rodada 24 (estimativas, 2026-10-16)
 
+> **Atualizada pela seção 24 (Rodada 26, 2026-10-17):** as chances da forja (61 / 25 / 10 / 4), a Épica x1,15 e a Lendária x1,50 mudaram os valores e os pisos desta tabela.
+
 **Isto é uma estimativa.** O jogo não vende equipamento a ninguém e o mercado de jogadores ainda não tem lista de preços; a tabela abaixo é o que o custo de fazer a peça e o poder dela sugerem, na moeda de referência da auditoria (Ouro de referência de `economy.ts`; `npm run sim:prices`, `scripts/sim/itemPrices.sim.ts`). Quando o mercado abrir, o preço é livre e pode ficar fora das faixas. As seções 11 e 21 acima descrevem as raridades de antes (Épica x1,05, Lendária x1,15, depois x1,06 e x1,18): os valores de hoje são os da Rodada 24 (`docs/BALANCE_CHANGES.md`): Rara x1,02, Épica x1,04, Lendária x1,40 com substats x1,7.
 
 Como se chega a cada coluna:
@@ -729,3 +731,45 @@ Leitura:
 - O preço de uma Lendária do tier 4 em diante (7 a 35 mil) fica **bem abaixo** do piso de quem tentasse forjá-la para vender (43 a 179 mil): ela só aparece no mercado como sorte de quem forja o próprio conjunto. O comprador que paga o valor da faixa recebe a força de um conjunto do tier e meio acima; o vendedor sortudo recebe de 3 a 6 vezes o que a peça Comum dele valeria.
 - O comprador também poupa as horas de Caça que a peça pediria (uma peça T4 2 h, T5 4,7 h, T6 1,4 h; uma peça de cada encaixe nos tiers 4 a 6 são cerca de 57 horas de Caça, quase 3 dias de jogo do dono). Na Liga isso e o poder viram **+6 a +8 níveis** no dia 60 contra o dono que forja o próprio equipamento (docs/BALANCE_CHANGES.md, Rodada 24, item 4).
 - Sem medição: a escassez real depende de quantos jogadores existem; o prêmio de escassez (1,2 / 1,35 / 1,8) é um palpite; a faixa não considera o refino (uma peça +8 vale mais: o refino de uma peça de tier 1 a 4 custa 17 a 32 mil de Ouro de referência no modelo do script).
+
+
+## 24. Valor dos itens depois da Rodada 26 (estimativas, 2026-10-17)
+
+**Isto é uma estimativa**, como a seção 23 (mesmo método, `npm run sim:prices`, `scripts/sim/itemPrices.sim.ts`); o mercado de jogadores ainda não tem lista de preços. O que mudou desde a seção 23: a tabela de raridade é **61 / 25 / 10 / 4** (a Lendária passa de 1 forja em 50 para 1 em 25), a Épica tem `statMult` **1,15** (era 1,04) e a Lendária **1,50** (era 1,40), e há uma **piedade** (a 41ª forja de tier 4+ sem Lendária é Lendária, o que baixa o número médio de forjas até uma Lendária de tier 4+ de 25 para **20,3**). Os custos da forja, as horas de Caça e o CP do conjunto Comum +8 da seção 23 **não mudaram**.
+
+| Peça | Chance | Forjas para uma | CP do conjunto contra o Comum +8 | Vale para o comprador | Faixa plausível (estimativa) | Piso se forjada para vender |
+| --- | --: | --: | --: | --: | --: | --: |
+| T1 Comum | 61% | 1,6 | 1,00 | 147 | 147 | 208 |
+| T1 Rara | 25% | 4 | 1,13 | 169 | 169 - 203 | 430 |
+| T1 Épica | 10% | 10 | 1,27 | 194 | 194 - 262 | 995 |
+| T1 Lendária | 4% | 25 | 1,95 | 309 | 309 - 557 | 2 409 |
+| T2 Comum | 61% | 1,6 | 1,00 | 198 | 198 | 289 |
+| T2 Rara | 25% | 4 | 1,13 | 241 | 241 - 289 | 625 |
+| T2 Épica | 10% | 10 | 1,29 | 300 | 300 - 405 | 1 479 |
+| T2 Lendária | 4% | 25 | 2,05 | 561 | 561 - 1 010 | 3 616 |
+| T3 Comum | 61% | 1,6 | 1,00 | 905 | 905 | 1 287 |
+| T3 Rara | 25% | 4 | 1,17 | 1 193 | 1 193 - 1 432 | 2 697 |
+| T3 Épica | 10% | 10 | 1,36 | 1 524 | 1 524 - 2 057 | 6 282 |
+| T3 Lendária | 4% | 25 | 2,20 | 2 969 | 2 969 - 5 343 | 15 243 |
+| T4 Comum | 61% | 1,6 | 1,00 | 1 212 | 1 212 | 1 753 |
+| T4 Rara | 25% | 4 | 1,17 | 2 099 | 2 099 - 2 519 | 3 751 |
+| T4 Épica | 10% | 10 | 1,41 | 3 297 | 3 297 - 4 451 | 8 830 |
+| T4 Lendária | 4% | 25 (20,3 com a piedade) | 2,28 | 7 751 | 7 751 - 13 952 | 21 526 (~17 500 com a piedade) |
+| T5 Comum | 61% | 1,6 | 1,00 | 5 469 | 5 469 | 7 728 |
+| T5 Rara | 25% | 4 | 1,19 | 7 763 | 7 763 - 9 316 | 16 067 |
+| T5 Épica | 10% | 10 | 1,45 | 10 902 | 10 902 - 14 718 | 37 261 |
+| T5 Lendária | 4% | 25 (20,3) | 2,30 | 21 276 | 21 276 - 38 296 | 90 246 (~73 300) |
+| T6 Comum | 61% | 1,6 | 1,00 | 3 624 | 3 624 | 5 484 |
+| T6 Rara | 25% | 4 | 1,16 | 5 260 | 5 260 - 6 313 | 12 348 |
+| T6 Épica | 10% | 10 | 1,42 | 7 888 | 7 888 - 10 649 | 29 796 |
+| T6 Lendária | 4% | 25 (20,3) | 2,26 | 16 495 | 16 495 - 29 691 | 73 417 (~59 600) |
+
+(O script usa os 4% da tabela; o "piso" com a piedade escala pelas 20,3 forjas do ciclo, aproximadamente 19% menos nos tiers 4 a 6. As colunas de CP do conjunto T1 a T3 são de peças que o conjunto de um herói do tier 4 em diante não usa mais; ficam por completude.)
+
+Leitura:
+
+- Uma **Épica** de tier 4 em diante vale agora de 1,4 a 1,45 vezes o conjunto Comum do tier (era 1,29 a 1,31): T4 3,3 mil contra 1,2 mil de uma Comum (era 2,7 mil), T5 10,9 mil contra 5,5 mil (era 9,3 mil). Uma **Lendária** vale 2,3 vezes: T4 7,8 mil (era 7 mil), T5 21 mil (era 19 mil), T6 16,5 mil (era 14,9 mil). O degrau Épica → Lendária continua ≥ 1,5 vez.
+- O **piso de quem forjasse para vender** caiu pela metade nas Lendárias (25 forjas em vez de 50) e ~60% nas de tier 4 a 6 com a piedade (20 forjas): T4 21,5 mil, ~17,5 mil com a piedade (era 42,7 mil), T5 90 mil, ~73 mil (era 179 mil). Continua **muito acima da faixa** do valor para o comprador (7,8 a 14 mil no T4): ninguém forja para vender uma Lendária do tier 4 em diante; o mercado vive do subproduto de quem forja o próprio conjunto. A oferta dobrou (24 → 46 Lendárias T4 anunciadas em 60 dias; `BALANCE_CHANGES.md`, Rodada 26), a demanda do modelo continua várias vezes maior: a faixa alta (valor x 1,8) é a mais provável para uma Lendária T4 ou T5.
+- O **Selo do Ferreiro** passou a 71,4% Épica / 28,6% Lendária: três Selos de uma temporada dão 0,86 Lendária esperada (era 0,5). Elas nascem ligadas e não entram na tabela.
+- Na Liga (Rodada 26), a diferença de uma peça para o comprador real é menor que a do conjunto: o comprador Lendário real mediano ganha de +1,2 a +1,7 níveis no dia 60 e o melhor +1,7 a +2,7, contra +3,7 a +4,2 do conjunto inteiro de graça. **O valor do conjunto inteiro está nas faixas acima; o de uma ou duas peças T4 é bem menor** (a Lendária T4 abre o sub-nível 6 do Abismo, a T5 o 9).
+- Sem medição: o prêmio de escassez (1,2 / 1,35 / 1,8) continua um palpite; a faixa não considera o refino.

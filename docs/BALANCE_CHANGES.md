@@ -3206,3 +3206,170 @@ Diferenca de nivel contra o nao comprador da mesma seed (mediana):
 - **A trilha do Passe, as metas semanais, o login e o Ouro das Bolsas do comprador não são reivindicados** pelo `Player` (mesmo limite das Rodadas 22 e 24).
 - **3 seeds por herói comprador** (as medianas por herói têm faixas de 1 a 3 níveis); a comparação dos pares usa a mesma seed.
 - **Tempo de execução:** `npm run sim:market` leva ~11 minutos com a máquina parada e 7 processos (perfis ~5 min, oráculos ~2 min, mercado ~10 s, heróis ~4 min); medido 23 minutos com a máquina ocupada. Baixar `profileSeeds` / `heroSeeds` em `MARKET_PARAMS` encurta.
+
+
+## Rodada 26 — mais Lendárias, piedade e comprador na frente (2026-10-17)
+
+Decisão do dono (2026-10-17), depois da Rodada 25: **subir a oferta de Lendárias** e "quem compra tem que ficar mais na frente, para comprar fazer sentido". As peças do Selo continuam ligadas. Metas do diretor para o dia 60 entre donos do Passe: comprador real mediano **≥ +3 níveis** sobre o não comprador da mesma política, os melhores **+5 a +7**; ninguém chega ao nível 100 e o mais rápido de todos termina em **≤ 98**; o dono do Passe que não compra, mediano, **≥ 82**; guarda dos dias 1 a 21 sem mudança. Commits: `balance: more Legendaries and a pity guarantee`, `balance: buyers who find items get clearly ahead`, `balance: anti-cheat pace from the new fastest seeds`.
+
+**Resumo honesto.** A oferta de Lendárias dobrou, o Épico e a Lendária ficaram mais fortes, o Épico abre dois sub-níveis a mais que o Comum e a Lendária outros dois, e os tetos e pisos (≤ 98, não comprador ≥ 82, guarda dos dias 1 a 21) foram respeitados. **As metas de ganho do comprador não foram atingidas:** o comprador Lendário real mediano fica em **+1,7 (guloso) / +1,2 (esperto)**, o melhor em **+2,7 / +1,7**, o Épico mediano em +0,4. O motivo é medido (itens 3 e 4): o oráculo (conjunto Lendário inteiro de graça) dá só +3,7 / +4,2 nesta configuração, e o comprador mediano tem de 1 a 5 peças, quase todas de tier 4.
+
+### 1. Mais Lendárias e a piedade (commit 1)
+
+| | Antes | Depois |
+| --- | --- | --- |
+| Tabela de raridade da forja (Comum / Rara / Épica / Lendária) | 63 / 25 / 10 / 2 | **61 / 25 / 10 / 4** |
+| Forjas esperadas para 1 Lendária (mesmo item, dado puro) | 50 | **25** |
+| Piedade | não havia | depois de **40 forjas de tier 4 ou mais sem Lendária, a 41ª é Lendária** |
+| Forjas esperadas até uma Lendária de tier 4+, com a piedade | 50 | **20,3** (a Lendária passa de 4,00% para 4,93% das forjas; nunca mais de 41) |
+| Épica ou melhor (tabela / com a piedade) | 12% | 14% / 14,8% |
+| Selo do Ferreiro (Épica / Lendária) | 83,3% / 16,7% | **71,4% / 28,6%** (os pesos 10 e 4 da própria tabela) |
+| Lendárias esperadas dos 3 Selos de uma temporada | 0,50 | **0,86** |
+| Lendárias esperadas de 13 forjas T4+ (as de um dono comum em 60 dias) | 0,26 | **0,64** |
+
+Regras da piedade (`FORGE_PITY` em `rarity.ts`, `rollForgeRarity`): conta a forja **normal** de tier 4, 5 ou 6; a Lendária (do dado ou da piedade) zera o contador; forja abaixo do tier 4 **não** conta e não gasta a garantia; forja com **Selo** não conta, não zera e não gasta (a peça do Selo nasce ligada, nunca vai ao mercado). A Lendária garantida não gasta número aleatório na raridade (só os dados dos substats).
+
+**Onde vive o contador.** Online, no **servidor**: `public.item_pity` (migração `0018_forge_pity.sql`, **não aplicada**: o dono roda), uma linha por conta, RLS ligada e nenhuma política, só o service role lê e escreve. `mint-item` lê o contador, sorteia (`roll.ts rollForgeRarity` sobre a tabela gerada `PITY_TABLE`) e o grava **na mesma instrução** que emite o certificado (`item_commit` ganhou `p_pity`; a assinatura antiga é removida para o PostgREST não ver duas sobrecargas). Duas forjas ao mesmo tempo a partir de 40: uma recebe a Lendária, a outra volta `busy` (429, o sorteio é jogado fora sem ser visto); um pedido repetido (mesmo `requestId`) devolve a resposta guardada e não anda o contador; recusa por limite (cedo demais, taxa, teto do dia) deixa o contador onde estava. O cliente não envia nem recebe o contador (nada na resposta o cita; um campo `pity` no corpo é ignorado). Offline/desktop o aparelho guarda o seu (`stats.forgePity`) e a peça nunca é certificada.
+
+**Limites de cunhagem** (`items/bounds.ts`): `P_EPIC_PLUS` 0,12 → **0,15** (14,8% arredondado para cima). Épicas/Lendárias certificadas por dia e por tier: **15 / 8 / 4 / 4 / 4 / 4** (era 12 / 7 / 4 / 4 / 4 / 4). Os tiers 4 a 6 ficam no piso 4: 2 x 24 h / horas por peça dá 11, 5 e 4,6 forjas por dia, x 0,148 = 1,6 / 0,8 / 0,7; um dono honesto nunca chega perto (o teste soma a piedade). Quem edita o save ganha, no pior caso, 3 e 1 certificados a mais por dia nos tiers 1 e 2 (peças baratas).
+
+Testes novos: `forgePity.test.ts` (16: a regra pura, exatamente a 41ª, reset, tier 4+, contador único em 4/5/6, nenhuma seca maior que 40 em 200 mil forjas, Lendária de longo prazo 4,93%, jogo e servidor iguais, forja offline, Selo, online não toca o contador local, save corrompido), 13 em `items.test.ts` (servidor: 41ª, reset, tier 4+, Selo, uma conta por contador, o cliente não influencia, repetição, corrida, recusas, teto honesto) e `migration0018.test.ts` (estático).
+
+### 2. O comprador na frente (commit 2)
+
+| | Antes (depois do commit 1) | Depois |
+| --- | --- | --- |
+| Épica `statMult` | 1,04 | **1,15** |
+| Lendária `statMult` (substats x1,7, 3 substats) | 1,40 | **1,50** |
+| Conjunto de 7 peças, CP em relação ao Comum (T4/T5/T6 +8), Épica | 1,29 / 1,31 / 1,28 | **1,41 / 1,45 / 1,42** |
+| idem Lendária | 2,14 / 2,15 / 2,11 | **2,28 / 2,30 / 2,26** |
+| Sub-nível do Abismo que o conjunto +8 abre, Comum / Épica / Lendária, T4 | 2 / 3 / 5 | **2 / 4 / 6** |
+| idem T5 | 5 / 6 / 8 | **5 / 7 / 9** |
+| idem T6 | 7 / 8 / 10 | **7 / 9 / 10** |
+| Abismo: XP base por hora | 8 750 | **8 800** |
+| Abismo: XP por sub-nível | +4,5% (+40,5% no 10) | **+5% (+45% no 10)** |
+| Abismo: portão de CP por sub-nível | x1,25 | **x1,23** (sub-nível 10 no Profundo: 15 564 → **13 461**) |
+
+Degraus pedidos: o Épico abre **dois sub-níveis a mais que o Comum** em todos os tiers, a Lendária outros dois (um no T6, onde acabam os dez). Um teste novo (`itemBalance.test.ts`) trava isso. Incentivos de listagem: **nenhum** (o jogo só tem a taxa fixa de 5% do mercado; não mexi, não criei recurso).
+
+**Como cheguei na zona** (cada linha, uma rodada de `sim:market`; dia 60, dono do Passe, mediana):
+
+| Tentativa | Mudança | Seeds | Não comprador PS / PG | Oráculo Lendário − não comprador (guloso / esperto) | Mais rápido (comprador hipotético com Lendário +8 grátis, PBRG) |
+| --- | --- | --: | --- | --- | --- |
+| A | commit 1 só (Épica 1,04; Lendária 1,40; zona antiga) | 8 | 83,6 / 87,2 | +4,0 / +5,4 | não medido |
+| E1 | Épica 1,12 | 4 | 83,4 / 88,1 | +3,1 / +5,2 | — |
+| E2 | Épica 1,15; Lendária 1,50; 6,5%/sub-nível, base 8 200, x1,25 | 4 | 79,8 / 86,0 | +5,5 / +6,9 | — |
+| E3 | idem; base 8 400, x1,23 | 8 | 82,2 / 87,8 | **+4,7 / +6,0** | **98,9** |
+| F (final) | idem; **5%/sub-nível, base 8 800, x1,23** | 8 | **84,1 / 88,1** | +3,7 / +4,2 | **97,9** |
+
+O E3 dava o melhor ganho do comprador (Lendário real mediano +2,5 / +2,2, o melhor +3,5 / +3,8), mas o comprador hipotético "Lendário +8 grátis" terminava o dia 60 em 98,9 (Rodada 24: 96,7), acima do teto de 98 que o diretor fixou; achatei o bônus por sub-nível para 5% com a base em 8 800 (`sim:econ`, 6 seeds: 97,3 a 97,9; o comprador sem refino PBG 96,8 a 97,1) e paguei com ~1 nível de ganho do comprador. **É a escolha explícita desta rodada: o teto de 98 contra o ganho do comprador.** Aceitar o teto de 99 (E3) devolve ~+0,8 de ganho ao comprador mediano.
+
+### 3. A tabela (final, 8 seeds; dia 60; mediana (mín-máx); `sim:market` com `light`)
+
+Dono do Passe. "Real" = comprador da população (1 000 jogadores, churn, o mercado cheio) **que de fato obteve peças**: o ranking é só entre quem obteve pelo menos uma (quem a fila não serviu aparece em "% sem nenhuma peça" no item 4). Diferença contra o não comprador **da mesma seed**.
+
+Política GULOSA:
+
+| Quem | Antes (commit 1 só) | Depois | Ganho antes → depois |
+| --- | --- | --- | --- |
+| Não comprador (PG) | 87,2 (83,1-88,5) | **88,1** (84,3-89,5) | — |
+| Oráculo Épico (conjunto de graça) | — | 89,9 (88,5-91,0) | +2,0 → **+1,8** |
+| Oráculo Lendário (conjunto de graça) | 91,0 (89,8-91,7) | **92,4** (90,5-93,1) | +4,0 → **+3,7** |
+| Comprador Épico real, mediano | 87,3 | 88,6 (87,5-89,4) | +0,1 → **+0,4** |
+| Comprador Épico real, o melhor | 88,7 | 89,4 (87,6-90,0) | +1,5 → **+1,7** |
+| Comprador Lendário real, mediano | 89,2 | 90,1 (88,5-92,3) | +1,3 → **+1,7** |
+| Comprador Lendário real, melhor 10% (= o melhor: grupo de poucos) | 90,6 | 90,6 (88,2-91,8) | +3,4 → **+2,7** |
+
+Política ESPERTA:
+
+| Quem | Antes | Depois | Ganho antes → depois |
+| --- | --- | --- | --- |
+| Não comprador (PS) | 83,6 (79,0-87,4) | **84,1** (79,1-87,8) | — |
+| Oráculo Lendário | 89,1 (84,0-90,1) | **87,7** (83,3-91,2) | +5,4 → **+4,2** |
+| Oráculo Épico (diferença) | | | +1,2 → **+2,5** |
+| Comprador Épico real, mediano | 83,1 | 84,9 (77,4-86,8) | −0,3 → **+0,4** |
+| Comprador Épico real, o melhor | 84,3 | 85,0 (81,4-86,6) | +0,1 → **+0,5** |
+| Comprador Lendário real, mediano | 84,3 | 85,1 (80,2-87,3) | −0,1 → **+1,2** |
+| Comprador Lendário real, o melhor | 84,4 | 85,8 (83,1-89,1) | +0,9 → **+1,7** |
+
+Outros donos do Passe que não compram (mediana de 8 seeds): comum P **81,0**, esperto PS **84,1**, guloso PG **88,1**, esperto de 6 em 6 h PX **95,6** (o mais rápido dos não compradores: 96,5 no pior seed). A mediana do dono que não compra, lida como nas rodadas anteriores (o PS), é **84,1** (o `sim:econ`, 6 seeds, dá 82,3): **meta ≥ 82: sim**.
+
+**Metas do diretor, uma a uma:** mediano ≥ +3: **não** (+1,7 / +1,2 Lendário; +0,4 Épico). Melhores +5 a +7: **não** (+2,7 / +1,7 reais; o oráculo, que é o teto de qualquer comprador nesta configuração, é +3,7 / +4,2). Ninguém no 100 e o mais rápido ≤ 98: **sim** (97,9 no pior seed do comprador hipotético com Lendária +8 grátis desde o dia 1; 97,1 sem o refino; 96,5 o mais rápido real). Mediana do não comprador ≥ 82: **sim**.
+
+### 4. Por que o comprador mediano não passa de ~+1,5 (medido)
+
+| comprador (população de 117, repetição 0) | n | peças compradas até o dia 60 (média) | % sem nenhuma peça |
+| --- | --: | --: | --: |
+| Épico, dono do Passe | 36 | 4,3 (3,8-5,3) | 6 (0-22) |
+| Lendário, dono do Passe | 39 | 1,3 (1,2-1,8) | **74** (64-74) |
+| Épico, sem Passe | 20 | 0,7 | 48 |
+| Lendário, sem Passe | 22 | 0,0 | 100 |
+
+O Lendário real **mediano** (entre quem obteve) tem 4 peças T4 no dia 22 e nada de T5 antes do dia 60 (esperto); 6 T4 no dia 26 (guloso); o melhor tem 7 T4 (dia 23) e 3 T5 (dia 55) no esperto, 6 T4 (dia 16) e 5 T5 (dia 41) no guloso. O Épico mediano: 5 peças T4 (dias 18 a 26) e nenhuma T5. Uma peça T4 vale pouco nível (o conjunto T4 +8 Lendário abre o sub-nível 6, o T5 +8 o 9 e o T6 o 10): **o ganho da Lendária está nos tiers 5 e 6, que o comprador real só tem depois do dia 40**, quando sobram 20 dias de Liga. O oráculo (tudo de graça, desde que o nível permita) é o teto: +3,7 / +4,2.
+
+**Oferta agora** (mediana de 5 repetições do mercado de 1 000 jogadores; Rodada 25 entre parênteses no cabeçalho da segunda tabela):
+
+| Lendárias anunciadas em 60 dias | T4 | T5 | T6 |
+| --- | --: | --: | --: |
+| Depois | **46** (40-51) | **10** (9-13) | **1** (0-3) |
+| Rodada 25 | 24 | 3 | 0 |
+| (controle A: só o commit 1, mesmo mercado) | 55 | 13 | 0 |
+
+(Épicas anunciadas: T4 139 (Rodada 25: 131), T5 29 (32), T6 1 (0). O controle A mostra a variação entre rodadas do simulador: 46 contra 55 nas Lendárias T4 é dado, não efeito dos multiplicadores. Peças Épicas+Lendárias nascidas ligadas pelo Selo: ~590, 3 vezes tudo o que se anuncia.)
+
+| Dia em que o k-ésimo comprador consegue (Rodada 25 entre parênteses) | 1o | 10o | 100o |
+| --- | --: | --: | --: |
+| Uma Lendária T4 (qualquer encaixe) | 11 (12) | 19 (19) | > 60 |
+| Uma Lendária T5 | 36 (38) | 55 (> 60) | > 60 |
+| Uma Lendária T6 | 58 (3/5) (> 60) | > 60 | > 60 |
+| Uma Épica T4 / T5 | 9 / 31 (11 / 30) | 15 / 45 (15 / 43) | 28 / > 60 (26 / > 60) |
+| Conjunto Lendário T4 (7 peças) | 22 (24) | > 60 | > 60 |
+| Conjunto Épico T4 | 19 (18) | 30 (4/5) (29) | > 60 |
+| Conjunto Épico T5 | 53 (3/5) (52) | > 60 | > 60 |
+| Conjunto Lendário T5 | > 60 (1/5) (> 60) | > 60 | > 60 |
+| Arma + armadura Lendárias T5 | 50 (> 60) | > 60 | > 60 |
+
+O 10º comprador **ainda não completa um conjunto Lendário** (46 peças T4 para ~39 compradores Lendários x 7 encaixes = 273); a oferta de Lendárias dobrou e a demanda do modelo continua 6 vezes maior. O que moveria a mediana é **peças por comprador**, não multiplicador: com 25% dos donos comprando, cada comprador Lendário recebe em média 1,3 peça; para o mediano ter 5 peças de tier 5 ou mais até o dia 45 a oferta teria de ser da ordem de 5 a 8 vezes maior (estimativa linear, não rodada).
+
+### 5. Guardas (dias 1 a 21) e limites
+
+`npm run sim` (cenário A, 20 seeds, 21 dias): jogo da Rodada 24 → agora.
+
+| Meta | Antes | Depois |
+| --- | --- | --- |
+| T2 primeira sessão no andar ≥ 8; checkpoint 10 até o dia 2 | 8; dia 2 | **8; dia 2** |
+| T3 primeira peça forjada (dia ≤ 2) | 2 | **2** |
+| T4 nível no fim do dia 2 / 3 / 14 (20-28 / 20-29 / 45-60) | 24 / 24 / 47 | **24 / 24 / 46 (43-48)** |
+| T5 chefe 25 (dia 4-6) | dia 5 | **dia 5** (vitória ao chegar 0%) |
+| T6 chegada ao andar 50 (nenhuma seed antes do dia 10) | primeira seed dia 10, mediana 13,5 | primeira seed **dia 9**, mediana 12: **1 dia fora da meta** |
+| T6 chefe 50 (faixa 12-16) | primeira seed 10, mediana 15 | primeira seed 10, mediana **12** (20/20 em 21 dias) |
+| T7, T8, I1 a I4 | iguais | iguais (I1 dia 6; I4 +0% / +20% / +25,3%) |
+| nível no dia 21 | 49 (48-51) | 50 (48-51) |
+
+As três guardas do diretor (andar 8 na primeira sessão, primeira peça até o dia 2, chefe 25 entre os dias 4 e 6) valem. **T6 escorregou um dia numa seed:** a Lendária de 4% (era 2%) de uma forja dos tiers 1 a 3 leva um jogador comum ao andar 50 um dia antes. Não mexi (a meta T6 já estava fora por um dia na Rodada 24).
+
+Limites do servidor:
+
+| Número | Antes | Depois |
+| --- | --- | --- |
+| `P_EPIC_PLUS` | 0,12 | **0,15** |
+| Épicas/Lendárias certificadas por dia, tiers 1 a 6 | 12 / 7 / 4 / 4 / 4 / 4 | **15 / 8 / 4 / 4 / 4 / 4** |
+| `xpPerHour` teórico (recalculado) | 25 000 (22 375) | 25 000 (**23 223**) |
+| `huntXpFactor` (1,3 x 1,17 x 1,25 x o melhor sub-nível) | 2,671 (x1,405) | **2,757** (x1,45) |
+| `ZONE_TABLE` do Abismo (`progress/tables.ts`, gerada) | 8 750, 0,045 | **8 800, 0,05** |
+| `levelPace` 75 / 79 / 88 / 92 / 100 / 200 | 32 / 36 / 47 / 53 / 68 / 268 | **31 / 35 / 45 / 51 / 64 / 264** |
+| `levelPace` 24 a 68 | 2 / 3 / 7 / 11 / 18 / 25 | iguais (as seeds dão 28 no dia 2; mantido 3, o mais folgado) |
+| `floorPace`, `floorCapByLevel` | — | **mantidos** (re-medidos: andar 50 no dia 9, 75 no 9, 90 no 10, 100 no 10; nível 44 andar 40, 46 andar 52, 48 andar 85, 50 andar 100) |
+
+A `levelPace` segue a seed mais rápida de **qualquer** política do dono do Passe (P, PS, PG, PB, PBE, PBR, PBER, PBG, PBEG, PBRG; `sim:econ`, 6 seeds cada; o mais rápido de todos é o comprador hipotético PBRG, 97,3 a 97,9 no dia 60). Todas as tabelas geradas foram regeradas (`item:tables`, `season:tables`).
+
+### 6. O que não foi verificado e o que o dono pode contestar
+
+- **A meta de +3 / +5 a +7 não foi atingida** (item 3). Alternativas, **estimadas e não rodadas**: voltar ao E3 (bônus 6,5% por sub-nível) devolve ~+0,8 ao comprador mediano e põe o comprador hipotético "Lendário +8 grátis" em 98,9; a única alavanca que mexe a mediana de verdade é a oferta (peças por comprador), por exemplo um Selo que gere peça certificada (hoje ~590 peças Épicas+ ficam ligadas), Épica de chefe negociável ou uma piedade mais curta (a cada 20 forjas a Lendária sobe de 4,93% para 6,9% das forjas T4+).
+- **O comprador de 6 em 6 h (PX) como comprador** não foi simulado (os heróis compradores são S e G, duas visitas por dia). O PX não comprador já termina em 95,6 (96,5 no pior seed); um PX que também compra passaria dos 98 e talvez do 100. Se a regra "ninguém chega ao 100" tem de valer para ele, é outro teste.
+- **8 seeds por herói**: o ranking mediano de um grupo de 5 a 15 compradores tem ruído de ±1 nível; a comparação dos pares usa a mesma seed. As tentativas E1 e E2 têm 4 seeds. O controle A e o final F usam as mesmas seeds.
+- **O contador de piedade online é medido só por testes com a loja em memória**; a migração 0018 nunca rodou num banco (o plano de testes SQL está no fim do arquivo).
+- **Piedade no simulador:** o `Player` (heróis e perfis) usa o contador local do jogo; o mercado re-sorteia as forjas com o mesmo `rollForgeRarity`. As Lendárias que uma conta recebe do Selo não contam.
+- **Faixas de preço** (`ECONOMY_AUDIT.md`, seção 24) continuam estimativas.
+- A taxa de 5% do mercado e qualquer incentivo de listagem **não foram tocados**; o jogo não tem outro.
+- `npm run sim:market` com `MARKET_PARAMS='{"light":true,"profileSeeds":8,"heroSeeds":8}'` leva ~17 minutos (perfis 7, oráculos 3, heróis 6,5).
