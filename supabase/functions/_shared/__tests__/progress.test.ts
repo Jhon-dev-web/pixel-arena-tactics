@@ -970,7 +970,7 @@ describe('zone level gates in the XP bound (Rodada 22)', () => {
     expect(xpPerHourAt(80, 59)).toBeLessThan(xpPerHourAt(80, 60));
     expect(xpPerHourAt(80, 59)).toBeCloseTo(6000 * BOUNDS.huntXpFactor, 6); // zone 3 (level 40)
     expect(xpPerHourAt(80, 39)).toBeCloseTo(2900 * BOUNDS.huntXpFactor, 6); // zone 2
-    expect(xpPerHourAt(80, 60)).toBeCloseTo(8750 * BOUNDS.huntXpFactor, 6); // 10,000 until Rodada 24
+    expect(xpPerHourAt(80, 60)).toBeCloseTo(8800 * BOUNDS.huntXpFactor, 6); // 8,750 until Rodada 26, 10,000 until Rodada 24
     expect(xpPerHourAt(80)).toBe(xpPerHourAt(80, 100)); // without a level: the old, looser check
     expect(burstXp(80, 59)).toBeLessThan(burstXp(80, 60));
   });

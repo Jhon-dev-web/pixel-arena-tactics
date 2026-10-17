@@ -55,18 +55,21 @@ export const PARAMS = {
   buyerShareFree: 0.06,
   legendaryBuyerShare: 0.5, // of the buyers, the share that wants Legendary (the rest wants Epic)
   buyerMinTier: 4,
+  pity: true, // Rodada 26: the Legendary pity (rarity.ts FORGE_PITY) applies to every forge of tier 4+ of a market player (a Seal forge does not count); false = the dice alone
   legendaryDowngrade: 1, // a Legendary buyer takes a Legendary one tier below the best he can wear when there is none of the best (T4 Legendary > T5 Common in CP)
   repeats: 5, // repetitions of the market with other dice (the report gives the median and the range)
   profileSeeds: 6,
   profileDays: 75,
   heroSeeds: 3,
+  // Rodada 26: true skips the hypothetical heroes (the dragon-piece oracle, the +8 oracle and the +8 real buyers) and the worst-10% buyer, so a tuning run plays about half as many heroes
+  light: false,
 };
 
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { RARITIES, Rarity } from '../../src/game/rarity';
+import { RARITIES, Rarity, rollForgeRarity } from '../../src/game/rarity';
 import { MAX_LEVEL, playerLevel, xpForNextLevel, xpToReachLevel } from '../../src/game/engine';
 import { paragonLevel } from '../../src/game/paragon';
 import { getGear } from '../../src/game/gear';
@@ -226,8 +229,8 @@ const oracleJobs = (): HeroJob[] => {
     for (let seed = 1; seed <= PARAMS.heroSeeds; seed++) {
       jobs.push({ tag: `${policy}-oracleE-s${seed}`, policy, seed, kind: 'oracleE', schedule: oracleSchedule('epic', 0) });
       jobs.push({ tag: `${policy}-oracleL-s${seed}`, policy, seed, kind: 'oracleL', schedule: oracleSchedule('legendary', 0) });
-      jobs.push({ tag: `${policy}-oracleLD-s${seed}`, policy, seed, kind: 'oracleLD', schedule: [...oracleSchedule('legendary', 0)!.filter((e) => !AXE_LINE.includes(e.tpl)), ...['gilded_warblade', 'dragon_flameblade', 'voidsteel_blade', 'abyssal_greatblade'].map((tpl) => ({ day: 0, tpl, rarity: 'legendary' as const, minLevel: 50 })), { day: 0, tpl: 'dragon_scale_armor', rarity: 'legendary', minLevel: 50 }] });
-      jobs.push({ tag: `${policy}-oracleL8-s${seed}`, policy, seed, kind: 'oracleL8', schedule: oracleSchedule('legendary', 8) });
+      if (!PARAMS.light) jobs.push({ tag: `${policy}-oracleLD-s${seed}`, policy, seed, kind: 'oracleLD', schedule: [...oracleSchedule('legendary', 0)!.filter((e) => !AXE_LINE.includes(e.tpl)), ...['gilded_warblade', 'dragon_flameblade', 'voidsteel_blade', 'abyssal_greatblade'].map((tpl) => ({ day: 0, tpl, rarity: 'legendary' as const, minLevel: 50 })), { day: 0, tpl: 'dragon_scale_armor', rarity: 'legendary', minLevel: 50 }] });
+      if (!PARAMS.light) jobs.push({ tag: `${policy}-oracleL8-s${seed}`, policy, seed, kind: 'oracleL8', schedule: oracleSchedule('legendary', 8) });
     }
   }
   return jobs;
@@ -348,6 +351,7 @@ interface PlayerM {
   rng: () => number;
   seller: boolean; // sells Gold (makes pouches) at all
   seals: { day: number; tier: number; slot: string; rarity: Rarity }[]; // Seal pieces he wears (born bound)
+  pity: number; // the Legendary pity counter (Rodada 26): normal forges of tier 4+ since his last Legendary
   buyer?: { kind: 'E' | 'L'; pathPolicy: 'S' | 'G' | 'A' };
 }
 interface BuyerLog {
@@ -397,7 +401,7 @@ function simulateMarket(profiles: Record<string, ProfDay[][]>, paths: Record<str
     const prng = mulberry32(100003 * (id + 1) + rep * 7919);
     const prof = profiles[arch][Math.floor(prng() * profiles[arch].length)];
     const speed = Math.max(PARAMS.speedMin, Math.min(PARAMS.speedMax, Math.exp(PARAMS.speedSigma * gauss(prng))));
-    return { id, arch, owner: meta.pass, profile: prof, speed, stop: stopDay(meta.pass ? PARAMS.survivalOwner : PARAMS.survivalFree, prng()), rng: prng, seller: prng() < PARAMS.pouchShare, seals: [] };
+    return { id, arch, owner: meta.pass, profile: prof, speed, stop: stopDay(meta.pass ? PARAMS.survivalOwner : PARAMS.survivalFree, prng()), rng: prng, seller: prng() < PARAMS.pouchShare, seals: [], pity: 0 };
   });
   // ---- who buys: owners and free hunters who will play at least 30 days
   const pick = (pool: PlayerM[], n: number): PlayerM[] => {
@@ -471,7 +475,10 @@ function simulateMarket(profiles: Record<string, ProfDay[][]>, paths: Record<str
               p.seals.push({ day: d, tier, slot, rarity: r });
               continue;
             }
-            const rar = rollRarityWith(p.rng);
+            // Rodada 26: the same function the game and the server roll with (rarity.ts rollForgeRarity); the pity only exists when `pity` is on
+            const rolled = PARAMS.pity ? rollForgeRarity(tier, p.pity, p.rng) : { rarity: rollRarityWith(p.rng), pity: p.pity };
+            p.pity = rolled.pity;
+            const rar = rolled.rarity;
             if (rar !== 'epic' && rar !== 'legendary') continue;
             s.epicPlus[tier - 1][d]++;
             const share = listP * (rar === 'legendary' ? PARAMS.listLegendaryFactor : 1);
@@ -681,17 +688,18 @@ describe('market with real supply', () => {
       const rep0 = reps[0];
       for (const policy of ['S', 'G'] as const) {
         for (const kind of ['E', 'L'] as const) {
-          const group = rep0.buyers.filter((b) => b.owner && b.kind === kind && (policy === 'G' ? b.policy === 'G' : b.policy === 'S'));
+          // Rodada 26: the buyers that ACTUALLY obtained something (a buyer the queue never served is the share reported as "sem nenhuma peca", not a point of the ranking)
+          const group = rep0.buyers.filter((b) => b.owner && b.kind === kind && (policy === 'G' ? b.policy === 'G' : b.policy === 'S') && b.buys.length > 0);
           const score = (b: BuyerLog) => b.buys.reduce((a, x) => a + x.tier * 100 - x.day, 0);
           const ranked = [...group].sort((a, b) => score(b) - score(a));
           if (!ranked.length) continue;
           const at = (q: number) => ranked[Math.min(ranked.length - 1, Math.floor(ranked.length * q))];
-          const picks: [string, BuyerLog][] = [['q00', ranked[0]], ['q10', at(0.1)], ['q50', at(0.5)], ['q90', at(0.9)]];
+          const picks: [string, BuyerLog][] = [['q00', ranked[0]], ['q10', at(0.1)], ['q50', at(0.5)], ...(PARAMS.light ? [] : [['q90', at(0.9)] as [string, BuyerLog]])];
           for (const [label, b] of picks) {
             const schedule = b.buys.map((x) => ({ day: x.day, tpl: tplFor(x.slot, x.tier), rarity: x.rarity }));
             for (let seed = 1; seed <= PARAMS.heroSeeds; seed++) {
               jobs.push({ tag: `${policy}-real${kind}-${label}-s${seed}`, policy, seed, kind: 'real', schedule, note: `${label} of ${group.length} buyers (id ${b.id}, ${b.buys.length} pieces)` });
-              if (kind === 'L' && (label === 'q00' || label === 'q50')) jobs.push({ tag: `${policy}-real${kind}8-${label}-s${seed}`, policy, seed, kind: 'real', schedule: schedule.map((x) => ({ ...x, refine: 8 })), refine: 8, note: `${label} refinado a +8 (hipotetico)` });
+              if (!PARAMS.light && kind === 'L' && (label === 'q00' || label === 'q50')) jobs.push({ tag: `${policy}-real${kind}8-${label}-s${seed}`, policy, seed, kind: 'real', schedule: schedule.map((x) => ({ ...x, refine: 8 })), refine: 8, note: `${label} refinado a +8 (hipotetico)` });
             }
           }
         }

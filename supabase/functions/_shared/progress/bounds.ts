@@ -43,9 +43,9 @@ export const BOUNDS = {
   // ---- XP --------------------------------------------------------------------------------------------------------------------------------------
   /**
    * XP per server hour, THEORETICAL, at the end of the game (floor 100). Since the League (Rodada 20) HUNTING IS THE ONLY SOURCE of hero XP (no Dungeon, no delivery order, no instant
-   * potion), so this is one product. Recomputed by season:bounds = 22,375 since Rodada 24 (it was 21,476 after Rodada 22; 25,000 kept: the server factor below still counts a 5% Relic bonus
+   * potion), so this is one product. Recomputed by season:bounds = 23,223 since Rodada 26 (22,375 after Rodada 24, 21,476 after Rodada 22; 25,000 kept: the server factor below still counts a 5% Relic bonus
    * that no item carries since Rodada 19, as a margin); xpPerHourAt(floor) below scales it with the floor:
-   *   best zone 8,750 xp/h (huntingZones.ts; it was 13,000 before Rodada 22 and 10,000 before Rodada 24) x 1.405 (the last zone pays +4.5% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels; it was +2% / 1.18) x deep depth 1.3
+   *   best zone 8,800 xp/h (huntingZones.ts; it was 13,000 before Rodada 22, 10,000 before Rodada 24 and 8,750 before Rodada 26) x 1.45 (the last zone pays +5% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels; it was +4.5% / 1.405 and +2% / 1.18) x deep depth 1.3
    *   x (1 + 12% bonuses: Aprendiz Veloz 3 ranks x 4%; +5% for a Season Relic that carried XP, margin) x 1.25 (the Knowledge Elixir, tunables consumables.knowledgeXpPct, running the whole
    *   time: the best and only potion; the Pass adds no XP).
    * It used to be 60,000: 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, which are gone.
@@ -56,8 +56,8 @@ export const BOUNDS = {
   eventHeroBonus: 0.15,
   /** While a profession event runs, profession skill XP may be this much higher: the biggest of the three (+25% Mining units in the Febre, +25% in the picked profession of the Semana, +15% in the Festival). */
   eventProfessionBonus: 0.25,
-  /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%) times the Knowledge Elixir (1.25) times the last zone's best sub-level (1.405 since Rodada 24, it was 1.18). 1.3 x 1.17 x 1.25 x 1.405 = 2.6706. */
-  huntXpFactor: 2.671,
+  /** The XP multiplier of the deepest Hunt depth (huntingZones.ts HUNTING_DEPTHS) times the best XP bonuses (1 + 17%) times the Knowledge Elixir (1.25) times the last zone's best sub-level (1.45 since Rodada 26, 1.405 since Rodada 24, it was 1.18). 1.3 x 1.17 x 1.25 x 1.45 = 2.7569. */
+  huntXpFactor: 2.757,
 
   // ---- profession skill XP (Mining, Woodcutting, Gardening): THEORETICAL, recomputed from tunables by season:bounds / deriveBounds ---------------------------------------
   /** Mining / Woodcutting: gatherPower = BASE_GATHER_POWER + level x powerPerLevel (skills.ts). SOURCE: BASE_GATHER_POWER = 5, tunables skills.powerPerLevel = 0.75, skills.maxLevel = 75. */

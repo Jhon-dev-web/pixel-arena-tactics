@@ -21,11 +21,13 @@ export interface RarityDef {
 // because every set of tier 5 and 6 already opened the last sub-level. Now Common 1.00, Rare 1.19, Epic 1.30 and Legendary 2.1 times the CP of a full set (median substats, tier 4 to 6 at +8; npm run sim:rarity):
 // Rare and Epic keep their stat multiplier and their rolls, the Legendary is a different animal - 40 % more of every multiplied stat (damage, HP, defense, crit damage) and each of its three substats
 // rolls 70 % higher - because it is the piece 1 forge in 50 makes, and the one a buyer pays the most for. The Epic lost 2 points (1.06 -> 1.04) so that the step Epic -> Legendary shows in the League.
+// Rodada 26 (owner: raise the Legendary supply, and whoever buys must get clearly ahead): the Legendary is 4 % of the forges (was 2 %, plus the pity below), the Epic goes 1.04 -> 1.15 (a full Epic set is
+// 1.40 to 1.48 times a Common one, two Hunting sub-levels above it) and the Legendary 1.40 -> 1.50 (2.2 to 2.4 times, the top sub-levels): npm run sim:rarity, docs/BALANCE_CHANGES.md Rodada 26.
 export const RARITIES: RarityDef[] = [
   { id: 'common', nameKey: 'rar_common', statMult: 1, substatMult: 1, substatCount: 0, chance: 0.61 },
   { id: 'rare', nameKey: 'rar_rare', statMult: 1.02, substatMult: 1, substatCount: 1, chance: 0.25 },
-  { id: 'epic', nameKey: 'rar_epic', statMult: 1.04, substatMult: 1, substatCount: 2, chance: 0.1 },
-  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.4, substatMult: 1.7, substatCount: 3, chance: 0.04 },
+  { id: 'epic', nameKey: 'rar_epic', statMult: 1.15, substatMult: 1, substatCount: 2, chance: 0.1 },
+  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.5, substatMult: 1.7, substatCount: 3, chance: 0.04 },
 ];
 
 interface SubstatDef {

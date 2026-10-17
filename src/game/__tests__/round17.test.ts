@@ -42,7 +42,7 @@ describe('Round 17: the late zones drop what the late game can use', () => {
     expect(cut('demon_rift', 'fiend_horn')).toBeLessThanOrEqual(cut('demon_rift', 'leather_scrap'));
     expect(getHuntingZone('demon_glade')!.drops.map((d) => d.chance)).toEqual([0.25, 0.08, 0.007]);
     expect(getHuntingZone('blood_marsh')!.drops.map((d) => d.chance)).toEqual([0.28, 0.09, 0.0105]);
-    expect(HUNTING_ZONES.map((z) => z.xpPerHour)).toEqual([1750, 2900, 6000, 8750]); // the last zone was 13,000 until Rodada 22 and 10,000 until Rodada 24 (its sub-levels pay up to +40.5% now)
+    expect(HUNTING_ZONES.map((z) => z.xpPerHour)).toEqual([1750, 2900, 6000, 8800]); // the last zone was 13,000 until Rodada 22, 10,000 until Rodada 24 and 8,750 until Rodada 26 (its sub-levels pay up to +45% now)
   });
 
   it('the hours of hunting of a tier 5 set, a tier 6 set, +0 -> +8, +8 -> +12 and one Lapidar stay within 10% of round 16', () => {
@@ -109,7 +109,7 @@ describe('Round 17: the late zones drop what the late game can use', () => {
     const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
     const wins = (hero: ReturnType<typeof gearHero>, floor: number) => clearRate(hero, floor, NOW, 3) >= 2 / 3;
     const common = gearHero('common', 0, 8); // CP ~8.9k
-    const epic = gearHero('epic', 50, 12); // CP ~15.7k
+    const epic = gearHero('epic', 0, 12); // CP ~13.9k (Rodada 26: the Epic is x1.15, so an Epic set with paragon 50 now clears floor 100 at ~17k)
     const legendary = gearHero('legendary', 30, 12); // CP ~18k
     for (const f of [87, 88]) if (computeCP(common) >= recommendedCpForFloor(f)) expect(wins(common, f), `common +8 floor ${f}`).toBe(true);
     expect(computeCP(common)).toBeLessThan(recommendedCpForFloor(94) * 0.95);

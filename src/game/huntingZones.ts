@@ -337,7 +337,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'blood_abomination',
     cp: 1607,
     goldPerHour: 12,
-    xpPerHour: 8750,
+    xpPerHour: 8800,
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.12, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.036, qty: 1 },
@@ -353,9 +353,11 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     unlockFloor: 76,
     unlockLevel: 60,
     // Rodada 24: +4.5 % XP a sub-level (it was 2 %) and a CP gate that grows 25 % a sub-level (it was 18 %), with the base XP lowered from 10,000 to 8,750 so that a hero at sub-level 8 earns what he earned (11.5k an hour; sub-level 10 pays 12.3k, sub-level 5 10.3k);
-    // The sub-levels are where the power of the set becomes levels: sub-level 10 now asks 15.6k CP in the deep depth, which only a Legendary set of tier 6 reaches (a Common one stops at 7, an Epic one at 8).
-    xpPerSubLevel: 0.045,
-    subLevelCpGrowth: 1.25,
+    // Rodada 26 (the Epic is x1.15, the Legendary x1.50): +5 % XP a sub-level (+45 % at 10) and a CP gate that grows 23 % a sub-level (it was 4.5 % and 25 %), with the base XP 8,750 -> 8,800: an Epic set now opens two sub-levels more than a Common one
+    // and a Legendary one two more than that (npm run sim:rarity), the fastest free set (Legendary +8) ends day 60 on 97.9 and a non-buyer Pass owner who plays smart on 82-84 (docs/BALANCE_CHANGES.md Rodada 26).
+    // The sub-levels are where the power of the set becomes levels: (Rodada 24: sub-level 10 asked 15.6k CP in the deep depth; Rodada 26: 13.5k, which a Legendary set of tier 6 reaches, an Epic one of tier 6 +8 stops at 9 and a Common one at 7).
+    xpPerSubLevel: 0.05,
+    subLevelCpGrowth: 1.23,
     baseEnemyHp: 7200,
     baseEnemyDmg: 28,
   },

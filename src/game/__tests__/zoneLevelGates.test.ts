@@ -12,7 +12,7 @@ import pt from '../../locales/pt.json';
 import en from '../../locales/en.json';
 
 // Rodada 22 (docs/BALANCE_CHANGES.md): zone 3 asks hero level 40 and zone 4 level 60 besides their Dungeon floors; zone 4 pays +2% XP per sub-level above 1 (+18% at 10) and
-// promotes the hero to a sub-level only while his CP is at least recommendedCp x 1.18^(sub-level - 1). Rodada 24 made it +4.5% a sub-level (+40.5% at 10) and x 1.25, with the base XP 10,000 -> 8,750.
+// promotes the hero to a sub-level only while his CP is at least recommendedCp x 1.18^(sub-level - 1). Rodada 24 made it +4.5% a sub-level (+40.5% at 10) and x 1.25, with the base XP 10,000 -> 8,750; Rodada 26 +5% (+45% at 10) and x 1.23, base 8,800.
 const HOUR = 3600 * 1000;
 const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
 beforeEach(() => {
@@ -76,19 +76,19 @@ describe('uniques are rare per player (Rodada 22)', () => {
 
 describe('zone 4: a bonus XP per sub-level and a CP for each', () => {
   it('the CP of sub-level N is the zone\'s recommended CP at the depth x growth^(N - 1), and only the last zone has a gate', () => {
-    expect(abyss.xpPerSubLevel).toBe(0.045);
-    expect(abyss.subLevelCpGrowth).toBe(1.25);
+    expect(abyss.xpPerSubLevel).toBe(0.05);
+    expect(abyss.subLevelCpGrowth).toBe(1.23);
     expect(HUNTING_ZONES.filter((z) => z.subLevelCpGrowth).map((z) => z.id)).toEqual(['blood_abyss']);
     expect(subLevelCpRequired(abyss, 'deep', 1)).toBe(0);
-    expect(subLevelCpRequired(abyss, 'deep', 2)).toBe(Math.round(recommendedCpForDepth(abyss, 'deep') * 1.25));
-    expect(subLevelCpRequired(abyss, 'deep', 10)).toBe(Math.round(recommendedCpForDepth(abyss, 'deep') * Math.pow(1.25, 9)));
-    expect(subLevelCpRequired(abyss, 'deep', 10)).toBeGreaterThan(14000); // only a Legendary set of tier 6 gets there (CP 17k to 19k; a Common one stops at sub-level 6 to 8, an Epic one at 8 or 9)
+    expect(subLevelCpRequired(abyss, 'deep', 2)).toBe(Math.round(recommendedCpForDepth(abyss, 'deep') * 1.23));
+    expect(subLevelCpRequired(abyss, 'deep', 10)).toBe(Math.round(recommendedCpForDepth(abyss, 'deep') * Math.pow(1.23, 9)));
+    expect(subLevelCpRequired(abyss, 'deep', 10)).toBeGreaterThan(13000); // only a Legendary set of tier 6 gets there (CP 18.7k to 20.8k at +8 to +12; since Rodada 26 an Epic one stops at 9 and a Common one at 7 or 8)
     expect(subLevelCpRequired(rift, 'deep', 10)).toBe(0);
     // each sub-level asks more than the one before, at every depth
     for (const depth of ['shallow', 'dense', 'deep'] as const) for (let n = 2; n <= 10; n++) expect(subLevelCpRequired(abyss, depth, n)).toBeGreaterThan(subLevelCpRequired(abyss, depth, n - 1));
   });
 
-  it('a won fight pays its sub-level\'s XP: sub-level 1 the base, 6 +22.5%, 10 +40.5%; a zone without the field stays flat', () => {
+  it('a won fight pays its sub-level\'s XP: sub-level 1 the base, 6 +25%, 10 +45%; a zone without the field stays flat', () => {
     const h = at(100, 100);
     const per = (zone: string, level: number) => {
       const s = { ...h, huntProgress: { [`${zone}:shallow`]: { ceiling: level, promotionWins: 0 } } };

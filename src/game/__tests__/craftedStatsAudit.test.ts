@@ -607,9 +607,9 @@ describe('what the forge preview and the cards show is what the engine does', ()
           const where = `${item.id} ${r.id} +${refine}`;
           if (item.damage) expect(Math.abs(stat('damage')! - add.hit), where + ' damage').toBeLessThanOrEqual(0.5 + 1e-9);
           if (item.slot !== 'relic' && item.maxHp) expect(Math.abs(stat('maxHp')! - add.maxHp), where + ' maxHp').toBeLessThanOrEqual(0.5 + 1e-9);
-          if (item.slot !== 'relic' && item.critChance) expect(stat('critChance'), where + ' critChance').toBeCloseTo(add.critChance * 100, 1);
-          if (item.slot !== 'relic' && item.resistance) expect(stat('resistance'), where + ' resistance').toBeCloseTo(add.reduction * 100, 1);
-          if (item.slot !== 'relic' && item.critMultBonus) expect(stat('critMult'), where + ' critMult').toBeCloseTo(add.critMult * 100, 1);
+          if (item.slot !== 'relic' && item.critChance) expect(Math.abs(stat('critChance')! - add.critChance * 100), where + ' critChance').toBeLessThanOrEqual(0.05 + 1e-9); // the card rounds to 0.1: a tie is a half step
+          if (item.slot !== 'relic' && item.resistance) expect(Math.abs(stat('resistance')! - add.reduction * 100), where + ' resistance').toBeLessThanOrEqual(0.05 + 1e-9);
+          if (item.slot !== 'relic' && item.critMultBonus) expect(Math.abs(stat('critMult')! - add.critMult * 100), where + ' critMult').toBeLessThanOrEqual(0.05 + 1e-9);
         }
       }
     });
