@@ -63,6 +63,20 @@ export const PARAMS = {
   heroSeeds: 3,
   // Rodada 26: true skips the hypothetical heroes (the dragon-piece oracle, the +8 oracle and the +8 real buyers) and the worst-10% buyer, so a tuning run plays about half as many heroes
   light: false,
+  // Rodada 27 (scripts/sim/marketBuy.ts): the buyers who buy MATERIALS. Stage "buy": every buyer of the population follows one policy with one budget (US$ over the 60 days) at the same time, so the
+  // stock is shared; the hero runs of the stage "buyheroes" play the buyers' real deliveries.
+  usdPerGold: 0.001, // US$ per reference Gold: 1 000 reference Gold ~ one hunting hour of the late zones ~ US$ 1 (an ASSUMPTION; the budget is linear in it)
+  budgets: [10, 30, 100, 1e9], // 1e9 = unlimited (what the market could give a buyer who pays anything)
+  buyPolicies: ['M', 'MG', 'MGP'] as string[],
+  matLookahead: 3, // days of the twin's burn a buyer keeps in the bag
+  gearShare: 0.5, // policy MG: share of the budget for pieces
+  mixShare: [0.45, 0.4, 0.15] as number[], // policy MGP: materials / pieces / pouches
+  releaseDay: 30, // the unspent wallet of the pieces and the pouches goes to the materials from this day on
+  priceK: 20, // K of the material price index
+  tradeableScale: 1, // x the tradeable chance of rates.ts (a lever to measure: 1 = the game, 5 = five times the tradeable units)
+  commonScale: 1, // x the tradeable chance of the COMMON class only (the 1% materials: copper, iron, common wood, oak, leather scrap, bone, the cheap herbs); 3 = those at 3%
+  buyHeroSeeds: 6,
+  buyLabels: ['q00', 'q50'] as string[], // which buyers (by value bought) are played as heroes: the most served, the median
 };
 
 import { afterAll, beforeAll, describe, it, vi } from 'vitest';
@@ -79,6 +93,7 @@ import { TRADEABLE_CHANCE } from '../../supabase/functions/_shared/materials/rat
 import { mulberry32, withSeededRandom } from './driver';
 import { Player, PlayerOptions } from './player';
 import { SET_SLOTS } from './setCost';
+import { Asks, GEAR_REF_GOLD, BuyMode, BuyParams, MAT_GROUP, MatBuyer, MatMarket, POLICY_LABEL, TRADEABLE_MATS, UNLIMITED, gearUsd, makeBuyer, GROUPS, MatGroup, DayStat, MAT_REF } from './marketBuy';
 
 // ---- archetypes: PlayerOptions of the real sims (scripts/sim/longHaul.sim.ts and leagueEcon.sim.ts) ------------------------------------------------------------------------------------------------
 const CHECK6 = [3, 9, 15, 21]; // the 6-hour checker
@@ -117,8 +132,6 @@ const TIERS = [1, 2, 3, 4, 5, 6];
 const GATE: Record<string, number> = {}; // `${tier}:${slot}` -> level of the recipe
 for (const s of SLOTS) for (const t of TIERS) GATE[`${t}:${s}`] = getGear(SET_SLOTS[s][t - 1])?.recipe?.requiredLevel ?? 0;
 
-const MAT_GROUP: Record<string, 'horta' | 'mineracao' | 'lenhador' | 'caca'> = {};
-for (const m of Object.keys(TRADEABLE_CHANCE)) MAT_GROUP[m] = ['copper', 'iron', 'silver', 'gold_ore', 'obsidian'].includes(m) ? 'mineracao' : ['common_wood', 'oak_wood', 'ebony_wood', 'elven_wood', 'ancient_wood'].includes(m) ? 'lenhador' : ['common_herb', 'energy_herb', 'iron_thistle', 'swift_grass', 'uncommon_root', 'gold_blossom', 'crimson_mushroom', 'silver_sage', 'rare_flower', 'moon_lily', 'dusk_orchid', 'elder_root'].includes(m) ? 'horta' : 'caca';
 
 const OUT = process.env.MARKET_OUT ?? path.join(os.tmpdir(), 'arena-market');
 const STAGE = process.env.MARKET_STAGE ?? 'report';
@@ -165,6 +178,10 @@ interface HeroDay {
   cp: number;
   floor: number;
   hunt: Record<string, number>; // hours hunted today by zone:depth
+  hrs?: { hunt: number; mine: number; wood: number }; // Rodada 27: hours of the day by activity
+  f4?: number; // Rodada 27: pieces of tier 4+ FORGED so far (the hero's own forges: the dice and the pity of the game)
+  e4?: number; // ... of them Epic
+  l4?: number; // ... of them Legendary
 }
 
 function playDays(opts: PlayerOptions, seed: number, days: number, withProfile: boolean): { prof: ProfDay[]; hero: HeroDay[]; player: Player } {
@@ -178,19 +195,22 @@ function playDays(opts: PlayerOptions, seed: number, days: number, withProfile: 
       p.playDay(d, jitter);
       const snap = p.snapshots[d];
       const L = snap.ledger;
-      if (withProfile) {
-        const forge: Record<string, number> = {};
-        const uniq: ProfDay['uniq'] = [];
-        for (const i of Object.values(p.S.gearInstances)) {
-          if (seen.has(i.id)) continue;
-          seen.add(i.id);
-          const g = getGear(i.templateId) as { tier?: number; slot?: string; unique?: boolean } | undefined;
-          if (!g?.slot) continue;
-          if (g.unique) uniq.push({ slot: g.slot, tier: g.tier ?? 0, rarity: i.rarity });
-          else if (i.origin === 'craft') {
-            forge[`${g.tier ?? 0}:${g.slot}`] = (forge[`${g.tier ?? 0}:${g.slot}`] ?? 0) + 1;
-          }
+      const forge: Record<string, number> = {};
+      const uniq: ProfDay['uniq'] = [];
+      for (const i of Object.values(p.S.gearInstances)) {
+        if (seen.has(i.id)) continue;
+        seen.add(i.id);
+        const g = getGear(i.templateId) as { tier?: number; slot?: string; unique?: boolean } | undefined;
+        if (!g?.slot) continue;
+        if (g.unique) uniq.push({ slot: g.slot, tier: g.tier ?? 0, rarity: i.rarity });
+        else if (i.origin === 'craft') {
+          forge[`${g.tier ?? 0}:${g.slot}`] = (forge[`${g.tier ?? 0}:${g.slot}`] ?? 0) + 1;
         }
+      }
+      const f4 = p.forged.filter((x) => x.tier >= 4).length;
+      const e4 = p.forged.filter((x) => x.tier >= 4 && x.rarity === 'epic').length;
+      const l4 = p.forged.filter((x) => x.tier >= 4 && x.rarity === 'legendary').length;
+      if (withProfile) {
         const mats: Record<string, number> = {};
         for (const m of Object.keys(TRADEABLE_CHANCE)) {
           const q = L.flow[m]?.produced ?? 0;
@@ -200,7 +220,7 @@ function playDays(opts: PlayerOptions, seed: number, days: number, withProfile: 
         const passXp = T.battlePass.xpPerHuntHour * L.hours.hunt + T.battlePass.xpPerMiningHour * (L.hours.mine + L.hours.wood) + T.battlePass.xpPerFloor * stages;
         prof.push({ lvl: levelPosition(p.S.xp), gold: snap.gold, goldIn: { ...L.goldIn }, goldOut: { ...L.goldOut }, passXp, forge, uniq, mats, tiers: { ...snap.tiers }, worn: snap.wornTiers, gearBlock: snap.blockers.gear });
       }
-      hero.push({ lvl: levelPosition(p.S.xp), gold: snap.gold, goldIn: { ...L.goldIn }, goldOut: { ...L.goldOut }, worn: snap.wornTiers, gearBlock: snap.blockers.gear, cp: snap.cp, floor: snap.floor, hunt: Object.fromEntries(Object.entries(L.hunt).map(([k, v]) => [k, v.hours])) });
+      hero.push({ lvl: levelPosition(p.S.xp), gold: snap.gold, goldIn: { ...L.goldIn }, goldOut: { ...L.goldOut }, worn: snap.wornTiers, gearBlock: snap.blockers.gear, cp: snap.cp, floor: snap.floor, hunt: Object.fromEntries(Object.entries(L.hunt).map(([k, v]) => [k, v.hours])), hrs: { ...L.hours }, f4, e4, l4 });
       snap.ledger = null as never;
     }
     return { prof, hero, player: p };
@@ -211,8 +231,9 @@ interface HeroJob {
   tag: string;
   policy: 'S' | 'G';
   seed: number;
-  kind: 'none' | 'oracleE' | 'oracleL' | 'oracleL8' | 'oracleLD' | 'real';
-  schedule?: { day: number; tpl: string; rarity: Rarity; refine?: number; minLevel?: number }[];
+  kind: 'none' | 'oracleE' | 'oracleL' | 'oracleL8' | 'oracleLD' | 'real' | 'buy' | 'need';
+  freeNeeds?: { mats: boolean; gold: boolean };
+  schedule?: { day: number; tpl?: string; rarity?: Rarity; refine?: number; minLevel?: number; mat?: string; qty?: number; gold?: number }[];
   refine?: number;
   note?: string;
 }
@@ -241,9 +262,9 @@ function runHeroJobs(jobs: HeroJob[]) {
   setLeagueEpoch(START);
   jobs.forEach((job, idx) => {
     if (idx % SHARD_N !== SHARD_I) return;
-    const opts: PlayerOptions = { ...HERO_POLICY[job.policy], ...(job.schedule ? { schedule: job.schedule } : {}) };
+    const opts: PlayerOptions = { ...HERO_POLICY[job.policy], ...(job.schedule ? { schedule: job.schedule } : {}), ...(job.freeNeeds ? { freeNeeds: job.freeNeeds } : {}) };
     const r = playDays(opts, job.seed, DAYS, false);
-    fs.writeFileSync(path.join(OUT, `hero-${job.tag}.json`), JSON.stringify({ job: { ...job, schedule: undefined, scheduleLen: job.schedule?.length ?? 0 }, days: r.hero, bought: r.player.boughtOn }));
+    fs.writeFileSync(path.join(OUT, `hero-${job.tag}.json`), JSON.stringify({ job: { ...job, schedule: undefined, scheduleLen: job.schedule?.length ?? 0 }, days: r.hero, bought: r.player.boughtOn, boughtMats: r.player.boughtMats, boughtGold: r.player.boughtGold, askedMats: r.player.askedMats, askedGold: r.player.askedGold }));
     console.log(`hero ${job.tag}: level ${r.hero[DAYS - 1].lvl.toFixed(1)}, bought ${r.player.boughtOn.length}`);
   });
 }
@@ -363,7 +384,30 @@ interface BuyerLog {
   start: number; // first day he wants a piece of tier >= buyerMinTier
   buys: { day: number; tier: number; slot: string; rarity: Rarity; listedDay: number; paid: number }[];
 }
+interface BuyerMat {
+  id: number;
+  arch: string;
+  owner: boolean;
+  policy: 'S' | 'G' | 'A';
+  kind: 'E' | 'L';
+  spent: { mat: number; gear: number; pouch: number };
+  refValue: number; // reference Gold of everything bought (materials, pieces, Gold Pouches)
+  units: Record<string, number>;
+  twinTotal: number;
+  demand: Record<string, number>;
+  orders: { day: number; mat?: string; qty?: number; gold?: number; usd: number }[];
+}
+interface MatRep {
+  mode: BuyMode;
+  buyers: BuyerMat[];
+  daily: DayStat[];
+  listedUnits: Record<string, number>;
+  boughtUnits: Record<string, number>;
+  wishedUnits: Record<string, number>;
+  idxByMat: Record<string, number[]>;
+}
 interface MarketRep {
+  mat?: MatRep;
   supply: {
     active: number[];
     forges: number[][]; // [tier-1][day] pieces forged by everybody
@@ -384,7 +428,12 @@ interface MarketRep {
   priceIndex: Record<string, number[]>; // `${tier}:${rarity}` -> index by day
 }
 
-function simulateMarket(profiles: Record<string, ProfDay[][]>, paths: Record<string, number[]>, rep: number): MarketRep {
+const buyParams = (): BuyParams => ({ usdPerGold: PARAMS.usdPerGold, lookahead: PARAMS.matLookahead, gearShare: PARAMS.gearShare, mixShare: PARAMS.mixShare as [number, number, number], releaseDay: PARAMS.releaseDay, priceK: PARAMS.priceK });
+const modeId = (policy: string, budget: number) => `${policy}-${budget >= UNLIMITED ? 'inf' : budget}`;
+const allModes = (): BuyMode[] => PARAMS.buyPolicies.flatMap((policy) => PARAMS.budgets.map((budget) => ({ id: modeId(policy, budget), policy: policy as BuyMode['policy'], budget })));
+
+/** The market of one repetition. `modes`: [null] = the market of Rodada 25 / 26 (buyers of finished pieces, no money); a mode = every buyer follows that policy with that budget (Rodada 27). The supply is the same for every mode. */
+function simulateMarket(profiles: Record<string, ProfDay[][]>, paths: Record<string, number[]>, rep: number, modes: (BuyMode | null)[] = [null], needs?: Record<'S' | 'G', Asks[]>): MarketRep[] {
   const rng = mulberry32(777 + rep * 1013);
   const names = Object.keys(PARAMS.mix);
   // ---- the population (exact quotas, shuffled)
@@ -436,6 +485,8 @@ function simulateMarket(profiles: Record<string, ProfDay[][]>, paths: Record<str
     pouchGold: zero(),
   };
   const listings: Listing[][] = Array.from({ length: DAYS }, () => []);
+  const matList: Record<string, number[]> = Object.fromEntries(TRADEABLE_MATS.map((m) => [m, zero()])); // tradeable units listed per material and day
+  const pouchFace: Record<number, number[]> = Object.fromEntries(POUCH_FACES.map((f) => [f, zero()])); // Gold Pouches listed per face and day
   for (const p of players) {
     const listP = p.owner ? PARAMS.listOwner : PARAMS.listFree;
     const listMat = p.owner ? PARAMS.listMatOwner : PARAMS.listMatFree;
@@ -496,11 +547,13 @@ function simulateMarket(profiles: Record<string, ProfDay[][]>, paths: Record<str
         }
         // tradeable materials
         for (const [m, q] of Object.entries(pd.mats)) {
-          const n = binomial(q, TRADEABLE_CHANCE[m], p.rng);
+          const n = binomial(q, Math.min(1, TRADEABLE_CHANCE[m] * PARAMS.tradeableScale * (TRADEABLE_CHANCE[m] <= 0.0101 ? PARAMS.commonScale : 1)), p.rng);
           if (n <= 0) continue;
           const g = MAT_GROUP[m];
           s.matsMade[g][d] += n;
-          s.matsListed[g][d] += binomial(n, listMat, p.rng);
+          const nl = binomial(n, listMat, p.rng);
+          s.matsListed[g][d] += nl;
+          matList[m][d] += nl;
         }
       }
       // Gold Pouches (a model on top of the profile's Gold in hand at the end of the day)
@@ -518,6 +571,7 @@ function simulateMarket(profiles: Record<string, ProfDay[][]>, paths: Record<str
           virtualHand += face * (1 + (p.owner ? T.goldPouch.feePct : T.goldPouch.feePctFree));
           s.pouchN[d]++;
           s.pouchGold[d] += face;
+          pouchFace[face][d]++;
           made++;
         }
       }
@@ -530,79 +584,118 @@ function simulateMarket(profiles: Record<string, ProfDay[][]>, paths: Record<str
   for (let d = 0; d < DAYS; d++) for (const l of listings[d]) if (l.kind === 'gear') cum[`${l.tier}:${l.slot}:${l.rarity}`][d]++;
   for (const k of Object.keys(cum)) for (let d = 1; d < DAYS; d++) cum[k][d] += cum[k][d - 1];
 
-  // ---- the buyers
-  const buyerLogs: BuyerLog[] = [];
-  const stock: Record<string, Listing[]> = {};
-  const priceIndex: Record<string, number[]> = {};
-  const levelAt = (b: PlayerM, d: number): number => {
-    const pol = b.buyer!.pathPolicy;
-    const path = pol === 'A' ? paths['A'] : paths[`${pol}-oracle${b.buyer!.kind}`];
-    const x = Math.min(path.length - 1, Math.max(0, d * b.speed));
-    const lo = Math.floor(x);
-    const hi = Math.min(path.length - 1, lo + 1);
-    return path[lo] + (path[hi] - path[lo]) * (x - lo);
-  };
-  const selfTier = (b: PlayerM, d: number, slot: string): number => {
-    const k = Math.min(b.profile.length - 1, Math.max(0, Math.floor(d * b.speed)));
-    return b.profile[k].tiers[slot] ?? 0;
-  };
-  const buyers = players.filter((p) => p.buyer);
-  // arrival order: the first day each wants a piece of tier >= buyerMinTier
-  const startOf = (b: PlayerM): number => {
-    for (let d = 0; d < DAYS; d++) if (levelAt(b, d) >= GATE[`${PARAMS.buyerMinTier}:weapon`]) return d;
-    return Infinity;
-  };
-  const logs = new Map<number, BuyerLog>();
-  for (const b of buyers) {
-    const log: BuyerLog = { id: b.id, arch: b.arch, owner: b.owner, kind: b.buyer!.kind, policy: b.buyer!.pathPolicy, start: startOf(b), buys: [] };
-    logs.set(b.id, log);
-    buyerLogs.push(log);
-  }
-  buyerLogs.sort((a, b) => a.start - b.start || a.id - b.id);
-  const held = new Map<number, Record<string, number>>();
-  for (const b of buyers) held.set(b.id, {});
-  const byId = new Map(players.map((p) => [p.id, p]));
-  for (let d = 0; d < DAYS; d++) {
-    for (const l of listings[d]) if (l.kind === 'gear') (stock[`${l.tier}:${l.slot}:${l.rarity}`] ??= []).push(l);
-    const unmet: Record<string, number> = {};
-    for (const log of buyerLogs) {
-      const b = byId.get(log.id)!;
-      if (d >= b.stop) continue;
-      const lvl = levelAt(b, d);
-      const h = held.get(b.id)!;
-      for (const sl of b.seals) if (sl.day <= d && (log.kind === 'E' || sl.rarity === 'legendary') && sl.tier > (h[sl.slot] ?? 0)) h[sl.slot] = sl.tier; // the Seal piece he already wears
-      for (const slot of SLOTS) {
-        const gate = (t: number) => GATE[`${t}:${slot}`];
-        let best = 0;
-        for (const t of TIERS) if (gate(t) <= lvl) best = t;
-        if (best < PARAMS.buyerMinTier) continue;
-        const floorT = Math.max(PARAMS.buyerMinTier, best - (log.kind === 'L' ? PARAMS.legendaryDowngrade : 0));
-        for (let t = best; t >= floorT; t--) {
-          if (t <= (h[slot] ?? 0)) break; // already holds that tier or better
-          if (t < selfTier(b, d, slot)) break;
-          const key = `${t}:${slot}:${log.kind === 'L' ? 'legendary' : 'epic'}`;
-          const q = stock[key];
-          if (q && q.length) {
-            const l = q.shift()!;
-            log.buys.push({ day: d, tier: t, slot, rarity: l.rarity, listedDay: l.day, paid: 0 });
-            h[slot] = t;
-            break;
-          }
-        }
-        if ((h[slot] ?? 0) < best && !(log.kind === 'L' && (h[slot] ?? 0) >= best - PARAMS.legendaryDowngrade)) {
-          const uk = `${best}:${log.kind === 'L' ? 'legendary' : 'epic'}`;
-          unmet[uk] = (unmet[uk] ?? 0) + 1; // still without a piece of the best tier he can wear
-        }
+  const runBuyers = (mode: BuyMode | null): MarketRep => {
+    // ---- the buyers
+    const buyerLogs: BuyerLog[] = [];
+    const stock: Record<string, Listing[]> = {};
+    const priceIndex: Record<string, number[]> = {};
+    const levelAt = (b: PlayerM, d: number): number => {
+      const pol = b.buyer!.pathPolicy;
+      const path = pol === 'A' ? paths['A'] : paths[`${pol}-oracle${b.buyer!.kind}`];
+      const x = Math.min(path.length - 1, Math.max(0, d * b.speed));
+      const lo = Math.floor(x);
+      const hi = Math.min(path.length - 1, lo + 1);
+      return path[lo] + (path[hi] - path[lo]) * (x - lo);
+    };
+    const selfTier = (b: PlayerM, d: number, slot: string): number => {
+      const k = Math.min(b.profile.length - 1, Math.max(0, Math.floor(d * b.speed)));
+      return b.profile[k].tiers[slot] ?? 0;
+    };
+    const buyers = players.filter((p) => p.buyer);
+    // arrival order: the first day each wants a piece of tier >= buyerMinTier
+    const startOf = (b: PlayerM): number => {
+      for (let d = 0; d < DAYS; d++) if (levelAt(b, d) >= GATE[`${PARAMS.buyerMinTier}:weapon`]) return d;
+      return Infinity;
+    };
+    const logs = new Map<number, BuyerLog>();
+    for (const b of buyers) {
+      const log: BuyerLog = { id: b.id, arch: b.arch, owner: b.owner, kind: b.buyer!.kind, policy: b.buyer!.pathPolicy, start: startOf(b), buys: [] };
+      logs.set(b.id, log);
+      buyerLogs.push(log);
+    }
+    buyerLogs.sort((a, b) => a.start - b.start || a.id - b.id);
+    const held = new Map<number, Record<string, number>>();
+    for (const b of buyers) held.set(b.id, {});
+    const byId = new Map(players.map((p) => [p.id, p]));
+    // Rodada 27: the money. A mode gives every buyer a wallet and a MatMarket shares the tradeable units of the materials (marketBuy.ts)
+    const bp = buyParams();
+    const mm = mode ? new MatMarket(bp, mode, mulberry32(4242 + rep * 31), DAYS) : null;
+    const matBuyers = new Map<number, MatBuyer>();
+    if (mode) {
+      for (const b of buyers) {
+        const list = needs![b.buyer!.pathPolicy === 'G' ? 'G' : 'S'];
+        matBuyers.set(b.id, makeBuyer({ id: b.id, stop: b.stop, speed: b.speed, asks: list[(b.id + rep) % list.length], curveDays: DAYS, days: DAYS, mode, bp }));
       }
     }
-    // price index (a model): scarcity of the stock against the buyers waiting, per tier and rarity
-    for (const t of TIERS) for (const r of ['epic', 'legendary'] as const) {
-      const avail = SLOTS.reduce((a, sl) => a + (stock[`${t}:${sl}:${r}`]?.length ?? 0), 0);
-      const arr = (priceIndex[`${t}:${r}`] ??= zero());
-      arr[d] = Math.max(0.5, Math.min(3, Math.pow(((unmet[`${t}:${r}`] ?? 0) + 3) / (avail + 3), 0.5)));
+    const gearOn = !mode || mode.policy !== 'M';
+    for (let d = 0; d < DAYS; d++) {
+      for (const l of listings[d]) if (l.kind === 'gear') (stock[`${l.tier}:${l.slot}:${l.rarity}`] ??= []).push(l);
+      const unmet: Record<string, number> = {};
+      for (const log of gearOn ? buyerLogs : []) {
+        const b = byId.get(log.id)!;
+        if (d >= b.stop) continue;
+        const lvl = levelAt(b, d);
+        const h = held.get(b.id)!;
+        for (const sl of b.seals) if (sl.day <= d && (log.kind === 'E' || sl.rarity === 'legendary') && sl.tier > (h[sl.slot] ?? 0)) h[sl.slot] = sl.tier; // the Seal piece he already wears
+        for (const slot of SLOTS) {
+          const gate = (t: number) => GATE[`${t}:${slot}`];
+          let best = 0;
+          for (const t of TIERS) if (gate(t) <= lvl) best = t;
+          if (best < PARAMS.buyerMinTier) continue;
+          const floorT = Math.max(PARAMS.buyerMinTier, best - (log.kind === 'L' ? PARAMS.legendaryDowngrade : 0));
+          for (let t = best; t >= floorT; t--) {
+            if (t <= (h[slot] ?? 0)) break; // already holds that tier or better
+            if (t < selfTier(b, d, slot)) break;
+            const key = `${t}:${slot}:${log.kind === 'L' ? 'legendary' : 'epic'}`;
+            const q = stock[key];
+            if (q && q.length) {
+              let usd = 0;
+              if (mode) {
+                // a piece costs money: the middle of its band x the index of yesterday, out of the wallet kept for pieces
+                const mb = matBuyers.get(b.id)!;
+                const rar = log.kind === 'L' ? 'legendary' : 'epic';
+              usd = gearUsd(t, rar, d > 0 ? priceIndex[`${t}:${rar}`][d - 1] : 1, bp);
+                if (usd > mb.wallet.gear) continue; // cannot pay: a cheaper tier (the Legendary buyer's fallback) is tried
+                mb.wallet.gear -= usd;
+                mb.spent.gear += usd;
+                mb.refValue += GEAR_REF_GOLD[`${t}:${rar}`] ?? 0;
+                mb.orders.push({ day: d, usd });
+              }
+              const l = q.shift()!;
+              log.buys.push({ day: d, tier: t, slot, rarity: l.rarity, listedDay: l.day, paid: usd });
+              h[slot] = t;
+              break;
+            }
+          }
+          if ((h[slot] ?? 0) < best && !(log.kind === 'L' && (h[slot] ?? 0) >= best - PARAMS.legendaryDowngrade)) {
+            const uk = `${best}:${log.kind === 'L' ? 'legendary' : 'epic'}`;
+            unmet[uk] = (unmet[uk] ?? 0) + 1; // still without a piece of the best tier he can wear
+          }
+        }
+      }
+      if (mm) mm.day(d, [...matBuyers.values()], Object.fromEntries(TRADEABLE_MATS.map((m) => [m, matList[m][d]])), Object.fromEntries(POUCH_FACES.map((f) => [f, pouchFace[f][d]])));
+      // price index (a model): scarcity of the stock against the buyers waiting, per tier and rarity
+      for (const t of TIERS) for (const r of ['epic', 'legendary'] as const) {
+        const avail = SLOTS.reduce((a, sl) => a + (stock[`${t}:${sl}:${r}`]?.length ?? 0), 0);
+        const arr = (priceIndex[`${t}:${r}`] ??= zero());
+        arr[d] = Math.max(0.5, Math.min(3, Math.pow(((unmet[`${t}:${r}`] ?? 0) + 3) / (avail + 3), 0.5)));
+      }
     }
-  }
-  return { supply: s, cum, buyers: buyerLogs, priceIndex };
+    const matRep: MatRep | undefined = mm && mode ? {
+      mode,
+      buyers: buyers.map((b) => {
+        const mb = matBuyers.get(b.id)!;
+        return { id: b.id, arch: b.arch, owner: b.owner, policy: b.buyer!.pathPolicy, kind: b.buyer!.kind, spent: mb.spent, refValue: mb.refValue, units: mb.bought, twinTotal: mb.twinTotal, demand: mb.demand, orders: mb.orders };
+      }),
+      daily: mm.daily,
+      listedUnits: mm.listedUnits,
+      boughtUnits: mm.boughtUnits,
+      wishedUnits: mm.wishedUnits,
+      idxByMat: mm.idxByMat,
+    } : undefined;
+    return { supply: s, cum, buyers: buyerLogs, priceIndex, ...(matRep ? { mat: matRep } : {}) };
+  };
+  return modes.map(runBuyers);
 }
 
 // ---- sensitivity: the same market with other stated assumptions (cheap: no hero is played) ------------------------------------------------------------------------------------------------
@@ -680,8 +773,8 @@ describe('market with real supply', () => {
       const paths: Record<string, number[]> = { A: Array.from({ length: DAYS }, (_, d) => med(profiles.A.map((r) => r[d].lvl))) };
       for (const pol of ['S', 'G']) for (const k of ['E', 'L']) paths[`${pol}-oracle${k}`] = loadPath(`${pol}-oracle${k}`);
       const reps: MarketRep[] = [];
-      for (let r = 0; r < PARAMS.repeats; r++) reps.push(simulateMarket(profiles, paths, r));
-      const sens = VARIANTS.map((v) => ({ name: v.name, metrics: withParams(v.patch(), () => Array.from({ length: PARAMS.repeats }, (_, r) => metrics(simulateMarket(profiles, paths, r)))) }));
+      for (let r = 0; r < PARAMS.repeats; r++) reps.push(simulateMarket(profiles, paths, r)[0]);
+      const sens = VARIANTS.map((v) => ({ name: v.name, metrics: withParams(v.patch(), () => Array.from({ length: PARAMS.repeats }, (_, r) => metrics(simulateMarket(profiles, paths, r)[0]))) }));
       fs.writeFileSync(path.join(OUT, 'market.json'), JSON.stringify({ params: PARAMS, reps, sens }));
       // the heroes of the real timelines: from repetition 0, the best / median / worst buyer of each kind and policy (ranked by the tiers held at day 60, then by how early)
       const jobs: HeroJob[] = [];
@@ -708,11 +801,242 @@ describe('market with real supply', () => {
       console.log(`market: ${reps.length} repetitions, ${jobs.length} hero jobs`);
     } else if (STAGE === 'heroes') {
       runHeroJobs(JSON.parse(fs.readFileSync(path.join(OUT, 'hero-jobs.json'), 'utf8')) as HeroJob[]);
+    } else if (STAGE === 'need') {
+      runHeroJobs(needJobs());
+    } else if (STAGE === 'buy') {
+      buyStage();
+    } else if (STAGE === 'buyheroes') {
+      runHeroJobs(JSON.parse(fs.readFileSync(path.join(OUT, 'hero-jobs-buy.json'), 'utf8')) as HeroJob[]);
+    } else if (STAGE === 'buyreport') {
+      buyReport();
     } else {
       report();
     }
   }, 3_600_000);
 });
+
+// ---- Rodada 27: the buyers who buy materials ---------------------------------------------------------------------------------------------------------------------------------------------------
+/** Stage "buy": the market of every repetition, once per mode (policy x budget), every buyer of the population following the mode at the same time. Repetition 0 keeps the orders (they become the hero schedules). */
+const needJobs = (): HeroJob[] => {
+  const jobs: HeroJob[] = [];
+  for (const policy of ['S', 'G'] as const) {
+    for (let seed = 1; seed <= PARAMS.buyHeroSeeds; seed++) {
+      jobs.push({ tag: `${policy}-none-s${seed}`, policy, seed, kind: 'none' });
+      jobs.push({ tag: `${policy}-needM-s${seed}`, policy, seed, kind: 'need', freeNeeds: { mats: true, gold: false } });
+      jobs.push({ tag: `${policy}-needMG-s${seed}`, policy, seed, kind: 'need', freeNeeds: { mats: true, gold: true } });
+    }
+  }
+  return jobs;
+};
+
+/** The demand curves: what the heroes with no limit asked for (stage "need", tags needMG), by path policy. */
+function loadNeeds(): Record<'S' | 'G', Asks[]> {
+  const out: Record<'S' | 'G', Asks[]> = { S: [], G: [] };
+  for (const policy of ['S', 'G'] as const) {
+    for (let seed = 1; seed <= PARAMS.buyHeroSeeds; seed++) {
+      const f = path.join(OUT, `hero-${policy}-needMG-s${seed}.json`);
+      if (!fs.existsSync(f)) continue;
+      const h = JSON.parse(fs.readFileSync(f, 'utf8')) as { askedMats: { day: number; mat: string; qty: number }[]; askedGold: { day: number; gold: number }[] };
+      out[policy].push({ mats: h.askedMats, gold: h.askedGold });
+    }
+    if (!out[policy].length) throw new Error(`no demand curves for ${policy} in ${OUT}: run the need stage first`);
+  }
+  return out;
+}
+
+function buyStage() {
+  const profiles = loadProfiles();
+  const needs = loadNeeds();
+  const paths: Record<string, number[]> = { A: Array.from({ length: DAYS }, (_, d) => med(profiles.A.map((r) => r[d].lvl))) };
+  for (const pol of ['S', 'G']) for (const k of ['E', 'L']) paths[`${pol}-oracle${k}`] = loadPath(`${pol}-oracle${k}`);
+  const modes = allModes();
+  const perMode: { mode: BuyMode; reps: MatRep[] }[] = modes.map((mode) => ({ mode, reps: [] }));
+  let rep0: MarketRep[] = [];
+  for (let r = 0; r < PARAMS.repeats; r++) {
+    const res = simulateMarket(profiles, paths, r, modes, needs);
+    if (r === 0) rep0 = res;
+    res.forEach((x, i) => {
+      const mat = x.mat!;
+      perMode[i].reps.push(r === 0 ? mat : { ...mat, buyers: mat.buyers.map((b) => ({ ...b, orders: [] })) });
+    });
+  }
+  fs.writeFileSync(path.join(OUT, 'buy.json'), JSON.stringify({ params: PARAMS, perMode }));
+  // the heroes: from repetition 0, the buyers (Pass owners) that were actually served, ranked by what they bought (reference Gold), played at the most served (q00) and the median (q50) of each path policy
+  const jobs: HeroJob[] = [];
+  const sigs = new Map<string, string>();
+  const alias: Record<string, string> = {};
+  for (let i = 0; i < modes.length; i++) {
+    const mat = rep0[i].mat!;
+    const gearOf = new Map(rep0[i].buyers.map((b) => [b.id, b.buys]));
+    for (const policy of ['S', 'G'] as const) {
+      const group = mat.buyers.filter((b) => b.owner && (policy === 'G' ? b.policy === 'G' : b.policy === 'S') && b.refValue > 0);
+      const ranked = [...group].sort((a, b) => b.refValue - a.refValue);
+      if (!ranked.length) continue;
+      const at = (q: number) => ranked[Math.min(ranked.length - 1, Math.floor(ranked.length * q))];
+      const pickBy: Record<string, BuyerMat> = { q00: ranked[0], q10: at(0.1), q25: at(0.25), q50: at(0.5), q90: at(0.9) };
+      for (const label of PARAMS.buyLabels) {
+        const b = pickBy[label];
+        if (!b) continue;
+        // orders of a day and a material are one delivery
+        const merged = new Map<string, { day: number; mat?: string; qty: number; gold: number }>();
+        for (const o of b.orders) {
+          if (!o.mat && !o.gold) continue;
+          const key = `${o.day}:${o.mat ?? 'gold'}:${o.gold ?? 0}`;
+          const e = merged.get(key) ?? { day: o.day, mat: o.mat, qty: 0, gold: o.gold ?? 0 };
+          e.qty += o.qty ?? 0;
+          merged.set(key, e);
+        }
+        const schedule: NonNullable<HeroJob['schedule']> = [
+          ...(gearOf.get(b.id) ?? []).map((x) => ({ day: x.day, tpl: tplFor(x.slot, x.tier), rarity: x.rarity })),
+          ...[...merged.values()].map((e) => (e.mat ? { day: e.day, mat: e.mat, qty: e.qty } : { day: e.day, gold: e.gold })),
+        ];
+        // two modes that delivered exactly the same things to the same buyer are one hero run (the Player is deterministic given the seed)
+        const sig = `${policy}|${label}|${JSON.stringify(schedule)}`;
+        const first = sigs.get(sig);
+        if (first !== undefined) {
+          alias[`${policy}|${modes[i].id}|${label}`] = first;
+          continue;
+        }
+        sigs.set(sig, modes[i].id);
+        for (let seed = 1; seed <= PARAMS.buyHeroSeeds; seed++) {
+          jobs.push({ tag: `${policy}-buy-${modes[i].id}-${label}-s${seed}`, policy, seed, kind: 'buy', schedule, note: `${label} of ${group.length} served buyers (id ${b.id}, US$ ${(b.spent.mat + b.spent.gear + b.spent.pouch).toFixed(1)})` });
+        }
+      }
+    }
+  }
+  fs.writeFileSync(path.join(OUT, 'hero-jobs-buy.json'), JSON.stringify(jobs));
+  fs.writeFileSync(path.join(OUT, 'buy-alias.json'), JSON.stringify(alias));
+  console.log(`buy: ${modes.length} modes x ${PARAMS.repeats} repetitions, ${jobs.length} hero jobs`);
+}
+
+function buyReport() {
+  const buy = JSON.parse(fs.readFileSync(path.join(OUT, 'buy.json'), 'utf8')) as { params: typeof PARAMS; perMode: { mode: BuyMode; reps: MatRep[] }[] };
+  const P = buy.params;
+  const out: string[] = [];
+  const sumG = (r: Record<MatGroup, number>[]) => r.reduce((a, x) => a + GROUPS.reduce((b, g) => b + x[g], 0), 0);
+  const modeLabel = (m: BuyMode) => `${POLICY_LABEL[m.policy]}, ${m.budget >= UNLIMITED ? 'sem limite' : `US$ ${m.budget}`}`;
+  out.push('#### Parametros do estagio de compra', '', '```', JSON.stringify({ usdPerGold: P.usdPerGold, budgets: P.budgets, buyPolicies: P.buyPolicies, matLookahead: P.matLookahead, gearShare: P.gearShare, mixShare: P.mixShare, releaseDay: P.releaseDay, priceK: P.priceK, tradeableScale: P.tradeableScale, commonScale: P.commonScale, buyHeroSeeds: P.buyHeroSeeds, buyLabels: P.buyLabels, repeats: P.repeats }), '```', '');
+
+  // ---- A. prices
+  const grpRef: Record<string, number[]> = { mineracao: [], lenhador: [], horta: [], caca: [] };
+  for (const m of TRADEABLE_MATS) grpRef[MAT_GROUP[m]].push(MAT_REF[m]);
+  out.push(`#### A. Precos do modelo (US$ por unidade com indice 1; usdPerGold ${P.usdPerGold})`, '');
+  out.push(table(['grupo', 'unidade mais barata', 'mediana', 'mais cara'], GROUPS.map((g) => [g, ...[Math.min(...grpRef[g]), med(grpRef[g]), Math.max(...grpRef[g])].map((x) => (x * P.usdPerGold).toFixed(4))])), '');
+  out.push(table(['peca', 'preco medio da faixa (US$, indice 1)'], Object.entries(GEAR_REF_GOLD).map(([k, v]) => [k.replace(':', ' '), (v * P.usdPerGold).toFixed(1)])), '');
+
+  // ---- B. supply and demand of materials, per mode (median of the repetitions)
+  const base = buy.perMode[0].reps;
+  const buyersN = base[0].buyers.length;
+  const ownersN = base[0].buyers.filter((b) => b.owner).length;
+  const listedG = GROUPS.map((g) => ({ g, v: med(base.map((r) => r.daily.reduce((a, x) => a + x.listed[g], 0))) }));
+  const twinTot = med(base.map((r) => r.buyers.reduce((a, b) => a + b.twinTotal, 0)));
+  out.push(`#### B. Oferta e procura de materiais negociaveis (${buyersN} compradores, ${ownersN} donos do Passe, mediana de ${base.length} repeticoes)`, '');
+  out.push(`Unidades negociaveis anunciadas em 60 dias: ${listedG.map((x) => `${x.g} ${fmt(x.v)}`).join(', ')}; total ${fmt(listedG.reduce((a, x) => a + x.v, 0))}. O que os compradores PEDEM em 60 dias (o que o heroi sem limite foi buscar em vez de coletar: a falta da proxima forja, do refino da arma e da armadura, do bloco de obsidiana e da Estante; so os materiais que podem ser negociaveis): ${fmt(twinTot)} unidades, ${fmt(twinTot / Math.max(1, buyersN))} por comprador.`, '');
+  const units = (b: BuyerMat) => Object.values(b.units).reduce((x, y) => x + y, 0);
+  const rowsB: string[][] = buy.perMode.map(({ mode, reps }) => {
+    const listed = med(reps.map((r) => sumG(r.daily.map((x) => x.listed))));
+    const bought = med(reps.map((r) => Object.values(r.boughtUnits).reduce((a, b) => a + b, 0)));
+    const boughtG = (g: MatGroup) => med(reps.map((r) => r.daily.reduce((a, x) => a + x.bought[g], 0)));
+    const cov = med(reps.map((r) => r.buyers.reduce((a, b) => a + units(b), 0) / Math.max(1, r.buyers.reduce((a, b) => a + b.twinTotal, 0))));
+    const covMed = med(reps.map((r) => med(r.buyers.map((b) => units(b) / Math.max(1, b.twinTotal)))));
+    const spent = med(reps.map((r) => med(r.buyers.map((b) => b.spent.mat + b.spent.gear + b.spent.pouch))));
+    const usd = med(reps.map((r) => r.buyers.reduce((a, b) => a + b.spent.mat + b.spent.gear + b.spent.pouch, 0)));
+    return [modeLabel(mode), fmt(bought), `${fmt((100 * bought) / Math.max(1, listed), 1)}%`, `${fmt(100 * cov, 1)}%`, `${fmt(100 * covMed, 1)}%`, GROUPS.map((g) => fmt(boughtG(g))).join(' / '), fmt(spent, 2), fmt(usd)];
+  });
+  out.push(table(['modo', 'unidades compradas (todos)', '% do anunciado que foi comprado', 'cobertura do pedido (soma)', 'cobertura do comprador mediano', 'compradas por grupo (minerio / madeira / Horta / Cacada)', 'US$ gasto pelo comprador mediano', 'US$ gasto por todos'], rowsB), '');
+
+  // ---- B2. which materials are short (the unlimited materials-only mode: what the buyers asked for, what was listed, what was bought)
+  const inf = buy.perMode.find((m) => m.mode.policy === 'M' && m.mode.budget >= UNLIMITED);
+  if (inf) {
+    const demandOf = (m: string) => med(inf.reps.map((r) => r.buyers.reduce((a, b) => a + (b.demand[m] ?? 0), 0)));
+    const listedOf = (m: string) => med(inf.reps.map((r) => r.listedUnits[m] ?? 0));
+    const boughtOf = (m: string) => med(inf.reps.map((r) => r.boughtUnits[m] ?? 0));
+    const idxOf = (m: string) => med(inf.reps.map((r) => med(r.idxByMat[m].slice(10))));
+    const mats = TRADEABLE_MATS.filter((m) => demandOf(m) > 0).sort((a, b) => demandOf(b) - demandOf(a));
+    out.push('#### B2. Que materiais faltam (modo so materiais sem limite; soma dos ' + buyersN + ' compradores em 60 dias; mediana das repeticoes)', '');
+    out.push(table(['material', 'grupo', 'pedido', 'anunciado', 'comprado', '% do pedido atendido', 'indice de preco (mediana dos dias 11-60)'], mats.map((m) => [m, MAT_GROUP[m], fmt(demandOf(m)), fmt(listedOf(m)), fmt(boughtOf(m)), `${fmt((100 * boughtOf(m)) / Math.max(1, demandOf(m)), 0)}%`, fmt(idxOf(m), 2)])), '');
+    const grpRows = GROUPS.map((g) => {
+      const d = med(inf.reps.map((r) => r.buyers.reduce((a, b) => a + TRADEABLE_MATS.filter((m) => MAT_GROUP[m] === g).reduce((x, m) => x + (b.demand[m] ?? 0), 0), 0)));
+      const l = med(inf.reps.map((r) => TRADEABLE_MATS.filter((m) => MAT_GROUP[m] === g).reduce((x, m) => x + (r.listedUnits[m] ?? 0), 0)));
+      const b = med(inf.reps.map((r) => TRADEABLE_MATS.filter((m) => MAT_GROUP[m] === g).reduce((x, m) => x + (r.boughtUnits[m] ?? 0), 0)));
+      return [g, fmt(d), fmt(l), fmt(b), `${fmt((100 * b) / Math.max(1, d), 0)}%`, `${fmt((100 * b) / Math.max(1, l), 0)}%`];
+    });
+    out.push(table(['grupo', 'pedido', 'anunciado', 'comprado', '% do pedido atendido', '% do anunciado comprado'], grpRows), '');
+  }
+
+  // ---- C. the price index of the materials
+  const DC = [1, 10, 20, 30, 45, 60].filter((d) => d <= DAYS);
+  out.push('#### C. Indice de preco dos materiais (media ponderada pelas unidades compradas; modelo: sqrt((pedido de ontem + K) / (estoque hoje + K)), entre 0,5 e 3)', '');
+  const idxRows: string[][] = [];
+  for (const { mode, reps } of buy.perMode) {
+    if (mode.policy !== 'MGP' || (mode.budget < UNLIMITED && mode.budget !== 100)) continue;
+    for (const g of GROUPS) idxRows.push([`${modeLabel(mode)} - ${g}`, ...DC.map((d) => fmt(med(reps.map((r) => r.daily[d - 1].idx[g]).filter(Number.isFinite)), 2))]);
+  }
+  out.push(table(['modo / grupo', ...DC.map((d) => `d${d}`)], idxRows), '');
+  out.push('Estoque disponivel no inicio do dia (unidades, mediana):', '');
+  const stockRows: string[][] = [];
+  for (const { mode, reps } of buy.perMode) {
+    if (!(mode.policy === 'M' && (mode.budget >= UNLIMITED || mode.budget === 100))) continue;
+    for (const g of GROUPS) stockRows.push([`${modeLabel(mode)} - ${g}`, ...DC.map((d) => fmt(med(reps.map((r) => r.daily[d - 1].onOffer[g]))))]);
+  }
+  out.push(table(['modo / grupo', ...DC.map((d) => `d${d}`)], stockRows), '');
+
+  // ---- D. heroes
+  const alias = JSON.parse(fs.readFileSync(path.join(OUT, 'buy-alias.json'), 'utf8')) as Record<string, string>;
+  const modeHeroes = <X extends { job: HeroJob }>(all: X[], policy: string, modeId: string, label: string): X[] => {
+    const src = alias[`${policy}|${modeId}|${label}`] ?? modeId;
+    return all.filter((h) => h.job.kind === 'buy' && h.job.policy === policy && h.job.tag.startsWith(`${policy}-buy-${src}-${label}-s`));
+  };
+  const heroFiles = fs.readdirSync(OUT).filter((f) => f.startsWith('hero-') && (f.includes('-buy-') || f.includes('-none-') || f.includes('-need')) && f.endsWith('.json'));
+  type H = { job: HeroJob; days: HeroDay[]; boughtMats: { day: number; mat: string; qty: number }[]; boughtGold: { day: number; gold: number }[]; bought: { tpl: string }[] };
+  const heroes = heroFiles.map((f) => JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')) as H);
+  const none = (policy: string, seed: number) => heroes.find((h) => h.job.kind === 'none' && h.job.policy === policy && h.job.seed === seed);
+  const HD = [14, 30, 45, 60];
+  const gapCell = (xs: number[]): string => {
+    const v = xs.filter(Number.isFinite);
+    if (v.length < 2) return '-';
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    const sd = Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
+    return `${fmt(m, 1)} +- ${fmt(sd / Math.sqrt(v.length), 1)}`;
+  };
+  const gatherHours = (h: H) => h.days.reduce((a, x) => a + (x.hrs?.mine ?? 0) + (x.hrs?.wood ?? 0), 0);
+  for (const policy of ['S', 'G'] as const) {
+    out.push(`#### D${policy === 'S' ? '1' : '2'}. A Liga dos compradores de material, politica ${policy === 'G' ? 'GULOSA' : 'ESPERTA'} (dono do Passe; nivel + fracao; ganho = nivel no dia 60 menos o do nao comprador DA MESMA SEED; mediana (min-max) de ${P.buyHeroSeeds} seeds)`, '');
+    const nones = heroes.filter((h) => h.job.kind === 'none' && h.job.policy === policy);
+    const rows: string[][] = [['nao comprador (mesma seed)', '-', ...HD.map((d) => rng3(nones.map((h) => h.days[d - 1].lvl), 1)), '-', '-', fmt(med(nones.map((h) => h.days[DAYS - 1].f4 ?? 0)), 1), fmt(med(nones.map((h) => h.days[DAYS - 1].l4 ?? 0)), 1), fmt(med(nones.map(gatherHours)))]];
+    for (const [tagPart, lab] of [['needM', 'ORACULO: materiais gratis e sem limite'], ['needMG', 'ORACULO: materiais e Ouro gratis e sem limite']] as const) {
+      const hs = heroes.filter((h) => h.job.kind === 'need' && h.job.policy === policy && h.job.tag.includes(`-${tagPart}-`));
+      if (!hs.length) continue;
+      const gap = (d: number) => hs.map((h) => h.days[d - 1].lvl - (none(policy, h.job.seed)?.days[d - 1].lvl ?? NaN));
+      rows.push([lab, '0', ...HD.map((d) => rng3(hs.map((h) => h.days[d - 1].lvl), 1)), rng3(gap(DAYS), 1), gapCell(gap(DAYS)), fmt(med(hs.map((h) => h.days[DAYS - 1].f4 ?? 0)), 1), fmt(med(hs.map((h) => h.days[DAYS - 1].l4 ?? 0)), 1), fmt(med(hs.map(gatherHours)))]);
+    }
+    for (const { mode } of buy.perMode) {
+      for (const label of P.buyLabels) {
+        const hs = modeHeroes(heroes, policy, mode.id, label);
+        if (!hs.length) continue;
+        const gap = (d: number) => hs.map((h) => h.days[d - 1].lvl - (none(policy, h.job.seed)?.days[d - 1].lvl ?? NaN));
+        const usd = /US\$ ([0-9.]+)/.exec(hs[0].job.note ?? '')?.[1] ?? '-';
+        rows.push([`${modeLabel(mode)}, ${label === 'q00' ? 'o mais servido' : label === 'q50' ? 'mediano' : label}`, usd, ...HD.map((d) => rng3(hs.map((h) => h.days[d - 1].lvl), 1)), rng3(gap(DAYS), 1), gapCell(gap(DAYS)), fmt(med(hs.map((h) => h.days[DAYS - 1].f4 ?? 0)), 1), fmt(med(hs.map((h) => h.days[DAYS - 1].l4 ?? 0)), 1), fmt(med(hs.map(gatherHours)))]);
+      }
+    }
+    out.push(table(['quem', 'US$ gasto', ...HD.map((d) => `dia ${d}`), 'ganho no dia 60: mediana (min-max)', 'ganho: media +- erro padrao', 'forjas T4+', 'Lendarias forjadas', 'horas de minerio+lenha em 60 dias'], rows), '');
+  }
+  // what was delivered to the played heroes
+  out.push('#### E. O que os herois comprados receberam (mediana das seeds)', '');
+  const rowsE: string[][] = [];
+  for (const policy of ['S', 'G'] as const) {
+    for (const { mode } of buy.perMode) {
+      for (const label of P.buyLabels) {
+        const hs = modeHeroes(heroes, policy, mode.id, label);
+        if (!hs.length) continue;
+        const grp = (h: H, g: MatGroup) => h.boughtMats.filter((x) => MAT_GROUP[x.mat] === g).reduce((a, x) => a + x.qty, 0);
+        rowsE.push([`${policy} ${modeLabel(mode)} ${label}`, GROUPS.map((g) => fmt(med(hs.map((h) => grp(h, g))))).join(' / '), fmt(med(hs.map((h) => h.boughtGold.reduce((a, x) => a + x.gold, 0)))), fmt(med(hs.map((h) => h.bought.length)))]);
+      }
+    }
+  }
+  out.push(table(['heroi', 'unidades (minerio / madeira / Horta / Cacada)', 'Ouro de Bolsas', 'pecas'], rowsE), '');
+  console.log(out.join('\n'));
+}
 
 // ---- the report -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 function table(header: string[], rows: string[][]): string {

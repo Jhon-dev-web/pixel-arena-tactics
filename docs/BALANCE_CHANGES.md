@@ -3373,3 +3373,141 @@ A `levelPace` segue a seed mais rápida de **qualquer** política do dono do Pas
 - **Faixas de preço** (`ECONOMY_AUDIT.md`, seção 24) continuam estimativas.
 - A taxa de 5% do mercado e qualquer incentivo de listagem **não foram tocados**; o jogo não tem outro.
 - `npm run sim:market` com `MARKET_PARAMS='{"light":true,"profileSeeds":8,"heroSeeds":8}'` leva ~17 minutos (perfis 7, oráculos 3, heróis 6,5).
+
+## Rodada 27 — comprar material (2026-10-17)
+
+Pergunta do dono: depois da Lendária a 4% e da piedade (Rodada 26), o comprador real ainda ganha pouco (mediano +1,2 a +1,7 níveis no dia 60, 74% dos compradores Lendários sem nenhuma peça) porque há pouca peça pronta à venda. Mas o mercado também lista **~547 mil unidades de material negociável** (70% queda da Caça, 16% minério, 13% madeira) e o comprador da Rodada 26 nunca compra material. Hipótese: a vantagem de quem compra está em **comprar material** (não minerar, não cortar, forjar mais cedo, atingir a piedade antes) e **Bolsas de Ouro**, não em Lendária pronta. **Esta rodada só mede: nenhum número de balanceamento mudou** (só `scripts/sim/`, `package.json`).
+
+**Resumo honesto.**
+
+- A hipótese **vale como teto, não como realidade**. Um comprador com material de graça e sem limite (oráculo) chega ao dia 60 **+10,7 níveis** à frente (esperto; 94,4 contra 84,1) e **+4,5** (guloso; 92,5 contra 87,7), porque **deixa de minerar e cortar madeira (334 h → 0 em 60 dias; a Caça vai de 858 h a 1 187 h)**. Não forja mais peças (22 contra 22 de tier 4+, a forja é travada pelo nível da receita), então **a piedade não chega antes**.
+- No mercado real a vantagem cai para **+1 a +2** (mediano) e **+3 a +5** (melhores): o oferta de material negociável **tem o formato errado**. O comprador pede ~3 200 unidades em 60 dias e 74% disso é **material comum (1%)**: cobre, ferro, madeira comum, retalho de couro, osso. Dessas, o mercado tem 12% (cobre), 24% (ferro), 16% (madeira comum), 40% (retalho), 64% (osso) do pedido; o material raro (3%) sobra (obsidiana 95%, madeira ancestral 95%, coração 100%). **A falta é de comum, e o herói continua minerando cobre.**
+- O dinheiro quase não pesa: pedir tudo o que o mercado entrega custa **US$ 10 a 12** por comprador no preço do modelo. US$ 10 de orçamento já compra 70% disso (39% do pedido contra 56%); US$ 30, 100 e "sem limite" compram **exatamente o mesmo**. Só a **peça pronta** custa mais (US$ 3,9 a 30 por peça).
+- Alavanca testada: subir a chance negociável **só da classe comum de 1% para 3% / 5%** leva o comprador esperto mediano de **+2,0 para +3,7 / +5,5** (média ± erro padrão, 10 seeds). É a maior alavanca medida, e ainda fica na metade do teto de +10,7.
+
+### 1. O que foi medido (e o que é modelo)
+
+**Medido (o Player de verdade, 60 dias, 10 seeds por herói, mesma seed do não comprador):**
+
+- `Player` ganhou entregas de **material** e de **Ouro (Bolsa)** no mesmo `schedule` das peças (`mat`/`qty`, `gold`) e a opção `freeNeeds` (o comprador sem limite). Onde a política mandaria o herói **coletar** (falta da próxima forja, refino da arma e da armadura, bloco de obsidiana, Estante), o oráculo **pede ao mercado** o que pode ser negociável e fica na Caça; só pede o material da receita quando está a até 2 níveis dela (quem compra não estoca nem coleta muito antes). Quando a forja só falta Ouro, abre uma Bolsa. O que ele pediu (`askedMats`, `askedGold`) são as **curvas de demanda** (10 por política).
+- Os heróis compradores recebem exatamente o que o mercado entregou ao comprador sorteado (`schedule` com `mat`, `gold` e as peças), e o simulador conta as **forjas T4+ e as Lendárias de verdade** (dados e piedade do jogo) e as horas de minério e lenha.
+
+**Modelo (`scripts/sim/marketBuy.ts`):** (a) cada comprador da população (117: 75 donos do Passe) segue uma das curvas de demanda da sua política (esperto ou guloso), na velocidade dele, e pede o que a curva pediria nos próximos 3 dias; (b) o **estoque** é o que os 1 000 jogadores anunciam (dados negociáveis de `rates.ts` x anuncia 80%), por material, sem validade e sem lote mínimo; (c) a fila reparte o estoque do dia **proporcional ao pedido**; (d) **preço**: valor de referência x `usdPerGold` (0,001: 1 000 de Ouro de referência ≈ 1 hora de Caça das últimas zonas ≈ US$ 1, **uma suposição**: o orçamento é linear nela) x um **índice de escassez** por material e dia (raiz de (pedido de ontem + 20) / (estoque + 20), entre 0,5 e 3); (e) peça pronta a US$ (meio da faixa de `ECONOMY_AUDIT.md` seção 24) x índice de ontem; Bolsa a face x `usdPerGold` x índice (1 a 3); (f) política **M** = só material; **MG** = material + peça (metade do orçamento cada); **MGP** = material 45% / peça 40% / Bolsa 15%; o que sobra da peça e da Bolsa vai para o material do dia 30 em diante.
+
+Comandos: perfis e oráculos como na Rodada 25 (`npm run sim:market`), depois `npm run sim:market:buy` (estágios `need`, `buy`, `buyheroes`, `buyreport`; `MARKET_PARAMS` aceita `usdPerGold`, `budgets`, `buyPolicies`, `commonScale`, `tradeableScale`, `buyHeroSeeds`). A execução desta rodada: `{"light":true,"profileSeeds":8,"heroSeeds":4,"buyHeroSeeds":10,"repeats":5}`; ~5 min o estágio `need`, ~27 min o `buyheroes`.
+
+### 2. O teto: material de graça e sem limite (oráculo)
+
+Dono do Passe, dia 60, nível + fração; mediana (min-max) de 10 seeds; ganho contra o não comprador **da mesma seed**.
+
+| | Não comprador | Oráculo: material grátis | Oráculo: material + Ouro grátis |
+| --- | --- | --- | --- |
+| Esperto, nível dia 60 | 84,1 (79,1-87,8) | **94,4** (93,4-94,9) | 94,5 (93,5-95,3) |
+| Esperto, ganho | — | **+10,7** (+5,6 a +14,2); média 10,6 ± 0,9 | +10,8; média 10,9 ± 0,9 |
+| Esperto: horas de minério + lenha / de Caça | 334 / 858 | **0 / 1 187** | 0 / 1 187 |
+| Esperto: forjas T4+ / Lendárias | 22 / 1 | 22 / 1 | 33 / 1 |
+| Guloso, nível dia 60 | 87,7 (84,2-90,2) | **92,5** (90,2-93,9) | 92,2 (90,4-93,9) |
+| Guloso, ganho | — | **+4,5** (+3,2 a +8,2); média 4,9 ± 0,5 | +4,4; média 4,9 ± 0,6 |
+| Guloso: horas de minério + lenha | 239 | 0 | 0 |
+| Guloso: forjas T4+ / Lendárias | 7 / 0 | 7 / 0 | 7 / 0 |
+| Pedido do herói em 60 dias (esperto) | — | 3 099 unidades | 3 826 unidades + 25 498 de Ouro |
+
+Leitura: o ganho vem **todo** do tempo (a Caça ganha 330 h, +38%); a forja não anda mais depressa (22 e 7 forjas com ou sem material, a receita pede nível) e por isso **a piedade e as Lendárias não mudam**. A Bolsa de Ouro dá 11 forjas T4+ a mais ao esperto (22 → 33) mas nenhum nível: o Ouro nunca foi a trava (o oráculo pede ~25 mil de Ouro em 60 dias). O guloso quase não coleta (240 h), então tem menos a ganhar.
+
+### 3. A oferta: o que existe e o que falta
+
+Mediana de 5 repetições do mercado de 1 000 jogadores. Material negociável **anunciado** em 60 dias: minério 89 076, madeira 69 679, Horta 7 866, Caça 380 518; **total 547 139**. **Pedido** dos 117 compradores: 372 368 unidades (3 183 por comprador). Modo só material, sem limite:
+
+| Grupo | Pedido | Anunciado | Comprado | % do pedido atendido | % do anunciado comprado |
+| --- | --: | --: | --: | --: | --: |
+| Minério | 126 032 | 89 076 | 73 679 | 58% | **83%** |
+| Madeira | 31 371 | 69 679 | 16 270 | 52% | 23% |
+| Horta | 1 131 | 7 866 | 946 | 84% | 12% |
+| Caça | 213 722 | 380 518 | 118 790 | 56% | 31% |
+| **Total** | **372 368** | **547 139** | **211 650** | **56%** | **39%** |
+
+Por material (os que mais pesam; o resto, 100%):
+
+| Material (chance negociável) | Pedido | Anunciado | % atendido | Índice de preço (mediana, dias 11-60) |
+| --- | --: | --: | --: | --: |
+| retalho de couro (1%) | 108 456 | 42 980 | **40%** | 3,00 |
+| fragmento de osso (1%) | 86 662 | 55 356 | **64%** | 3,00 |
+| cobre (1%) | 39 525 | 4 914 | **12%** | 3,00 |
+| ferro (1%) | 20 121 | 4 881 | **24%** | 3,00 |
+| madeira comum (1%) | 14 711 | 2 334 | **16%** | 3,00 |
+| carvalho (1%) | 5 330 | 2 802 | 53% | 3,00 |
+| cogumelo carmesim (2%) | 218 | 45 | 21% | 2,72 |
+| obsidiana (3%) | 41 071 | 50 491 | 95% | 0,50 |
+| prata (2%) | 16 360 | 19 971 | 98% | 0,50 |
+| ouro bruto (2%) | 8 955 | 9 006 | 97% | 0,65 |
+| garra / núcleo / sangue / coração / tutano / chifre / estilhaço (2-3%) | 22 642 | 256 879 | 90-100% | 0,50 |
+
+**A oferta é suficiente para o material raro e curta no comum.** O pedido é pesado nos de 1% (couro, osso, cobre, ferro, madeira comum e carvalho: 74% das unidades pedidas) e o mercado só lista 1% deles. Nenhum comprador "esgota" o mercado: 39% do anunciado é comprado e sobram 54 mil unidades de madeira e 261 mil de Caça no dia 60. O **índice de preço se mexe**: nos 10 primeiros dias (os compradores chegam todos juntos, a oferta ainda é pequena) ele vai a 1,5-2,7 e depois cai a 0,7-0,9 no minério; só o comum de 1% fica no teto 3,0 até o fim.
+
+Dinheiro (modelo): o comprador mediano gasta **US$ 6,9** com US$ 10 de orçamento, **US$ 11,7** com US$ 30, 100 ou sem limite (os três compram igual). Preços por unidade com índice 1: minério US$ 0,0035-0,007, madeira 0,0035-0,006, Horta 0,003-0,064, Caça 0,002-0,45.
+
+### 4. A Liga do comprador real (dia 60, dono do Passe)
+
+Ganho contra o não comprador da **mesma seed**: média ± erro padrão (mediana); 10 seeds. "Mediano" = o comprador do meio entre os servidos (pelo valor de referência comprado) e "melhor" = o mais servido (que **não** é o de melhor resultado: ele é o que mais comprou, e compra muito osso e retalho que não liberam tempo). Em US$ entre parênteses: gasto do mediano / do melhor.
+
+Esperto:
+
+| Política, orçamento | Mediano | Melhor |
+| --- | --- | --- |
+| M, US$ 10 (7 / 7) | +1,6 ± 0,8 (+0,7) | +1,6 ± 1,2 (+2,3) |
+| M, US$ 30 / 100 / sem limite (10 / 16) | +2,0 ± 0,9 (+1,2) | +1,6 ± 1,0 (+1,1) |
+| MG, US$ 10 (6 / 7) | +0,5 ± 1,2 (+1,5) | +1,9 ± 0,6 (+1,9) |
+| MG, US$ 30 (22 / 18) | +3,2 ± 0,9 (+4,1) | +3,8 ± 1,1 (+3,8) |
+| MG, US$ 100 (45 / 63) | +1,9 ± 0,9 (+1,3) | +2,7 ± 0,6 (+2,5) |
+| MG, sem limite (22 / 187) | +1,3 ± 1,1 (+1,8) | +3,2 ± 1,1 (+3,3) |
+| MGP, US$ 10 (6 / 7) | +1,0 ± 0,8 (+0,6) | +1,1 ± 1,2 (+2,1) |
+| MGP, US$ 30 (22 / 21) | +1,3 ± 1,2 (+0,9) | **+4,6 ± 1,3** (+5,4) |
+| MGP, US$ 100 (50 / 56) | +1,2 ± 1,2 (+1,8) | **+4,9 ± 1,3** (+5,3) |
+| MGP, sem limite (37 / 216) | +3,1 ± 0,9 (+2,9) | +3,2 ± 1,1 (+3,3) |
+
+Guloso:
+
+| Política, orçamento | Mediano | Melhor |
+| --- | --- | --- |
+| M, US$ 10 (7 / 8) | +0,8 ± 0,7 (+0,2) | +1,7 ± 0,6 (+1,9) |
+| M, US$ 30 / 100 / sem limite (6 / 9) | +0,6 ± 0,8 (+0,5) | +1,5 ± 0,7 (+2,3) |
+| MG, US$ 10 (5 / 7) | +0,4 ± 1,0 (+1,0) | +1,2 ± 0,5 (+1,3) |
+| MG, US$ 30 (16 / 24) | +1,1 ± 0,4 (+1,3) | +3,0 ± 0,6 (+2,6) |
+| MG, US$ 100 (41 / 59) | +2,5 ± 0,7 (+2,4) | +3,7 ± 0,7 (+3,6) |
+| MG, sem limite (102 / 625) | +1,4 ± 0,5 (+1,4) | **+4,1 ± 0,8** (+3,4) |
+| MGP, US$ 10 (5 / 7) | +0,1 ± 0,7 (+0,3) | −0,2 ± 1,0 (+0,5) |
+| MGP, US$ 30 (10 / 16) | +1,4 ± 0,6 (+1,5) | +1,5 ± 0,7 (+1,0) |
+| MGP, US$ 100 (44 / 50) | +1,1 ± 0,7 (+1,3) | +3,8 ± 0,7 (+3,3) |
+| MGP, sem limite (103 / 625) | +2,4 ± 0,6 (+2,5) | +4,1 ± 0,8 (+3,4) |
+
+**Contra as metas do diretor (mediano ≥ +3, melhores +5 a +7):** o mediano fica em **+0,5 a +3,2** (esperto) e **+0,1 a +2,5** (guloso); o melhor, em **+3 a +5** (esperto: +4,6 e +4,9 com MGP de US$ 30 e 100; guloso: +4,1). Na Rodada 26 (só peça) eram +1,2 / +1,7 (mediano) e +1,7 / +2,7 (melhor): **o melhor comprador ganhou ~+2 a +3 níveis, o mediano pouco**. O erro padrão é de 0,5 a 1,3 e a diferença entre dois orçamentos vizinhos quase nunca passa de 2 erros: leia faixas, não linhas. O que se vê com firmeza: (1) **US$ 10 não basta**, abaixo de US$ 30 o ganho é ≤ +1,6; (2) acima de US$ 30 **material sozinho não sobe** (a oferta, não o dinheiro, é o limite); (3) o ganho do melhor comprador vem da **peça pronta** (MG e MGP, +3 a +5), como na Rodada 26; (4) a **Bolsa de Ouro não compra nível** (MGP ≈ MG em todos os orçamentos); (5) as horas de minério e lenha do comprador caem de 334 para ~300 (M) e 220-330 (MG/MGP), contra 0 do oráculo: **o herói comprador continua minerando cobre**. Forjas T4+ e Lendárias não mudam (esperto 22 e ~1, guloso 7-9 e ~0): a hipótese da piedade antes **não aparece**.
+
+### 5. Alavancas: o material comum negociável
+
+Só `commonScale` (chance negociável da classe de 1%, de `rates.ts`) muda; mesmas seeds, mesmo pedido, política M (US$ 30) e MGP sem limite. Média ± erro padrão (mediana), 10 seeds, dia 60.
+
+| Chance negociável do material comum | Pedido atendido (soma) | Cobre / ferro / madeira comum atendidos | Esperto M, mediano | Esperto M, melhor | Esperto MGP, melhor | Guloso M, mediano | Horas de minério + lenha (esperto M, mediano) |
+| --- | --: | --- | --- | --- | --- | --- | --: |
+| 1% (hoje) | 56% | 12% / 24% / 16% | +2,0 ± 0,9 (+1,2) | +1,6 ± 1,0 | +3,2 ± 1,1 | +0,6 ± 0,8 | 299 |
+| 3% | 88% | 37% / 73% / 47% | +3,7 ± 1,5 (+3,8) | +3,0 ± 1,4 | +4,3 ± 1,2 | +1,6 ± 0,6 | 234 |
+| 5% | 94% | 62% / 98% / 79% | **+5,5 ± 0,9** (+5,0) | +2,9 ± 1,2 | +3,3 ± 1,0 | +1,3 ± 0,6 | 200 |
+| (oráculo) | 100% | 100% | +10,7 | | | +4,5 | 0 |
+
+A alavanca **funciona** para o esperto mediano (de +2 para +5,5) mas **para a meio caminho do oráculo**, ainda a 200 h de minério e lenha. O guloso quase não sente (só tem 240 h de coleta a liberar). O melhor comprador não melhora (ele já é o que compra peça).
+
+### 6. Recomendação (nada foi alterado)
+
+1. **A alavanca mais barata é a chance negociável do material comum, de 1% para 3% (ou 5%).** É uma linha de `rates.ts` (`CLASS_RATE.common`), sem mexer em receita, em XP ou em Lendária. Pelo medido: com 5%, 94% do pedido é atendido e o mediano esperto sobe ~+3,5 níveis. **Efeito colateral:** a oferta de comum cresce 3 a 5 vezes (retalho + osso anunciados em 60 dias: 98 mil hoje, 495 mil a 5%) e o índice de preço do couro e do osso cai de 3,0 para 0,5, ou seja, o vendedor desses materiais vende quase de graça; é o contrário do que a Rodada 23 cortou (3/5/8% → 1/2/3% "para o mercado não inundar") e precisa da decisão do dono.
+2. **Receitas mais pesadas em material nos tiers 5 e 6 (não medido).** O ganho do comprador é proporcional ao tempo de coleta que a receita obriga o não comprador a gastar: hoje são 334 h (esperto) ou 240 h (guloso) em 60 dias; o teto é +10,7 / +4,5 níveis. Receita mais pesada aumenta o teto, **mas só vale se a oferta comum acompanha** (alavanca 1), senão o comprador também fica sem o cobre.
+3. **Piedade mais curta (não medida aqui).** Esta rodada mostra que a piedade não é o gargalo do comprador: ele **não forja mais peças** (22 e 7 forjas T4+ com ou sem material), então uma piedade de 40 para 20 mexe a Lendária de **todos** igual, comprador ou não. Para o comprador a alavanca é tempo, não forja.
+4. **O Passe esperto tem 10 níveis de teto, o guloso 4,5.** Se o dono quer "comprador claramente na frente" sem passar de 98 no dia 60 (o oráculo esperto chega a 94,9 no melhor seed; um PX de 6 em 6 h que compra tudo **não foi simulado** e pode passar de 100), o alvo é o comprador esperto a **+4 a +6** (alavanca 1 a 5%), não o teto.
+
+### 7. Modelo contra medido, e o que não foi verificado
+
+- **Medido:** o nível, as horas de coleta e de Caça, as forjas T4+ e as Lendárias dos heróis (o `Player` e as funções do jogo, dados e piedade incluídos). **Modelo:** quem compra, o pedido (reaproveitado do herói do oráculo), o estoque, a fila, o preço em US$ (`usdPerGold` 0,001 é suposição) e o índice.
+- **A curva de pedido é a do oráculo**, que corre à frente de um comprador com orçamento: o pedido de um comprador pobre chega um pouco cedo (3 dias de antecipação) e o herói real recebe material que ainda não precisa, ou deixa de receber o que o oráculo pediria mais tarde. Por isso o herói com 94% de cobertura (comum a 5%) ganha +5,5 e não +10,7. A diferença é uma mistura de oferta que falta (cobre 62%) e desencontro de tempo; **não separei as duas**.
+- **Ruído:** 10 seeds por herói, erro padrão de 0,5 a 1,5 níveis; um herói isolado varia ±5. Os dois compradores do rank (o mediano e o mais servido) são **um** comprador cada, da repetição 0 do mercado (as outras 4 repetições entram só nas tabelas de oferta e de demanda). Por isso a leitura da seção 4 é por faixa.
+- **Compradores sem Passe** (6% da população) entram no mercado (pedem e compram) mas **não foram jogados como herói**.
+- **Sem lote mínimo e sem validade do anúncio** (o mercado real só vende lote inteiro de 1 a 10 000 unidades de um material e o anúncio vence em 30 dias): o modelo compra qualquer quantidade e o estoque nunca expira.
+- O oráculo não pede o material de **Elixir**, **poção** e **pedido de entrega** (o Player coleta para a forja, o refino, a obsidiana tardia e a Estante); as plantas do Elixir vêm do próprio canteiro.
+- `commonScale` mexe só na oferta de anúncio do mercado simulado; as curvas de pedido (oráculo) são as de 1%, que o jogador de hoje teria.

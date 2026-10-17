@@ -50,6 +50,7 @@ import { baseGoldValue } from '../../src/game/economy';
 import { huntInventoryStatus } from '../../src/game/huntInventory';
 import { computeMiningStatus, computeWoodcuttingStatus } from '../../src/game/engine';
 import T from '../../src/game/tunables';
+import { TRADEABLE_CHANCE } from '../../supabase/functions/_shared/materials/rates';
 import {
   applyDungeonRun,
   buyConsumable,
@@ -421,8 +422,15 @@ export interface PlayerOptions {
   // Rodada 25 (marketPopulation.sim.ts): the buyer's REAL acquisition timeline. Each entry is a piece the market delivered: it is bought on `day` (0-based; the first visit of that day) or, when the
   // hero is not yet at the level of the recipe of that piece, on the first visit he reaches it (a buyer does not pay for what he cannot wear: `scheduleGate`, default on). The piece arrives unbound,
   // with the substats of its rarity, refined to `refine` (0 by default), and the policy wears it like any other piece (equipBest). It costs the hero no Gold (the market is paid in money).
-  schedule?: { day: number; tpl: string; rarity: Rarity; refine?: number; minLevel?: number }[];
+  // Rodada 27 (marketBuy.ts): the same list carries MATERIAL deliveries (`mat` + `qty`: units of a tradeable material bought on the market, put in the bag on the first visit on or after `day`, no level
+  // gate) and GOLD deliveries (`gold`: a Gold Pouch opened, its face value). A gear entry has `tpl` and `rarity`; an entry has exactly one of the three kinds.
+  schedule?: { day: number; tpl?: string; rarity?: Rarity; refine?: number; minLevel?: number; mat?: string; qty?: number; gold?: number }[];
   scheduleGate?: boolean;
+  // Rodada 27 (the buyer with no limit: marketBuy.ts "need" stage): where the policy would send the hero to GATHER something (the deficit of the next craft, of the refining of the weapon and the armor,
+  // of the late-game obsidian and of the stash upgrade) he buys the units that can be tradeable at all instead (`mats`), and when the next craft is covered but for Gold he opens a pouch for what it lacks
+  // (`gold`). Supply and money are unlimited here; what he asked is logged (askedMats, askedGold) and is the DEMAND the market model then shares among the real buyers. The craft's own materials are asked
+  // only once he is within two levels of the recipe (a buyer does not stock up long before).
+  freeNeeds?: { mats: boolean; gold: boolean };
   // Long-horizon sim: once the floor-100 boss is down the Dungeon sessions go to the Profundezas (nextDepthStage), and the snapshots carry the depth, the paragon level and the blockers.
   long?: boolean;
 }
@@ -462,6 +470,13 @@ export class Player {
   // Rodada 25: pieces of `opts.schedule` delivered so far (index in the list) and what was delivered when (day 0-based, hero level at the moment).
   private delivered = new Set<number>();
   boughtOn: { day: number; tpl: string; rarity: Rarity; level: number }[] = [];
+  // Rodada 27: the materials and the Gold bought on the market (opts.schedule entries with `mat` / `gold`).
+  boughtMats: { day: number; mat: string; qty: number }[] = [];
+  boughtGold: { day: number; gold: number }[] = [];
+  askedMats: { day: number; visit: number; mat: string; qty: number }[] = [];
+  askedGold: { day: number; visit: number; gold: number }[] = [];
+  // Rodada 27: every piece the policy forged (the dice and the pity of the game), for the "how many forges / Legendaries" tables.
+  forged: { day: number; tier: number; rarity: Rarity }[] = [];
   // The save the first time the hero is about to face the floor-25 boss (floors 1-24 cleared): the boss diagnostic replays it.
   atFloor25: { save: SaveData; day: number; now: number } | null = null;
   // The hero the moment the floor-25 boss is first beaten (milestone claimed).
@@ -632,6 +647,7 @@ export class Player {
     }
     this.collect();
     this.receiveScheduled();
+    this.buyNeeds();
     // League events (only when the sim sets the League clock): a Semana das Profissoes asks for one profession; the policy picks the Garden, the one every player grows.
     this.S = applyProfessionPick(this.S, 'gardening', this.now) ?? this.S;
     this.tendGarden();
@@ -653,6 +669,25 @@ export class Player {
     const level = playerLevel(this.S.xp);
     list.forEach((e, idx) => {
       if (this.delivered.has(idx) || e.day > this.day) return;
+      if (e.mat && (e.qty ?? 0) > 0) {
+        // a material bought on the market: it goes to the bag like a claim (the policy makes room the same way) and the ledger counts it as produced, so the stock reconciles
+        const m = e.mat as MaterialId;
+        const q = Math.floor(e.qty ?? 0);
+        if (!this.opts.careless) this.makeRoom(slotsForQty((this.S.materials[m] ?? 0) + q) - slotsForQty(this.S.materials[m] ?? 0));
+        this.S = { ...this.S, materials: { ...this.S.materials, [m]: (this.S.materials[m] ?? 0) + q } };
+        if (this.ledger.flow[m]) this.ledger.flow[m].produced += q;
+        this.delivered.add(idx);
+        this.boughtMats.push({ day: this.day, mat: e.mat, qty: q });
+        return;
+      }
+      if (e.gold && e.gold > 0) {
+        this.S = { ...this.S, gold: this.S.gold + e.gold };
+        this.ledger.goldIn.pouch = (this.ledger.goldIn.pouch ?? 0) + e.gold;
+        this.delivered.add(idx);
+        this.boughtGold.push({ day: this.day, gold: e.gold });
+        return;
+      }
+      if (!e.tpl || !e.rarity) return;
       const item = getGear(e.tpl);
       if (!item) return;
       if (this.opts.scheduleGate !== false && level < Math.max(item.recipe?.requiredLevel ?? 0, e.minLevel ?? 0)) return;
@@ -667,6 +702,43 @@ export class Player {
       this.delivered.add(idx);
       this.boughtOn.push({ day: this.day, tpl: e.tpl, rarity: e.rarity, level });
     });
+  }
+
+  // Rodada 27: the buyer with no limit (opts.freeNeeds). The materials are bought where the policy decides what to GATHER (startActivity: whatever it would have sent him to fetch, buyDeficit);
+  // here, at the start of the visit, only the Gold: the next craft is covered but for Gold, so he opens a pouch for what it lacks.
+  private buyNeeds() {
+    const o = this.opts.freeNeeds;
+    if (!o?.gold) return;
+    const t = chooseTarget(this.S);
+    if (!t || t.impossible || t.blocked || Object.keys(t.deficit).length > 0 || this.S.gold >= t.gold) return;
+    const lack = Math.ceil(t.gold - this.S.gold);
+    this.S = { ...this.S, gold: this.S.gold + lack };
+    this.ledger.goldIn.pouch = (this.ledger.goldIn.pouch ?? 0) + lack;
+    this.askedGold.push({ day: this.day, visit: this.visit === 'first' ? 0 : 1, gold: lack });
+  }
+
+  // Rodada 27: buys (free, unlimited) every unit of `deficit` that can be tradeable at all, instead of going to gather it; what cannot be bought stays in `deficit`. The craft's own part waits until the hero
+  // is within two levels of the recipe: a buyer does not stock up (or go and gather) long before, he hunts and buys the day the recipe opens.
+  private buyDeficit(deficit: Mats, target: Plan | null) {
+    const far = target ? target.minLevel - playerLevel(this.S.xp) > 2 : false;
+    if (far && target) {
+      for (const m of Object.keys(target.deficit) as MaterialId[]) {
+        const left = (deficit[m] ?? 0) - (target.deficit[m] ?? 0);
+        if (left > 0) deficit[m] = left;
+        else delete deficit[m];
+      }
+    }
+    for (const m of Object.keys(deficit) as MaterialId[]) {
+      const q = deficit[m] ?? 0;
+      if (q <= 0 || !(m in TRADEABLE_CHANCE)) continue;
+      if (!this.opts.careless) this.makeRoom(slotsForQty((this.S.materials[m] ?? 0) + q) - slotsForQty(this.S.materials[m] ?? 0));
+      this.S = { ...this.S, materials: { ...this.S.materials, [m]: (this.S.materials[m] ?? 0) + q } };
+      if (this.ledger.flow[m]) this.ledger.flow[m].produced += q;
+      this.askedMats.push({ day: this.day, visit: this.visit === 'first' ? 0 : 1, mat: m, qty: q });
+      const left = (deficit[m] ?? 0) - q;
+      if (left > 0) deficit[m] = left;
+      else delete deficit[m];
+    }
   }
 
   // ---- 1. collect whatever has been running
@@ -1206,6 +1278,7 @@ export class Player {
       const bought = this.opts.buyer && tier >= this.opts.buyer.fromTier && tier <= (this.opts.buyer.toTier ?? 99) ? { rarity: this.opts.buyer.rarity, substats: rollSubstats(this.opts.buyer.rarity, tier) } : undefined;
       const res = applyForge(this.S, tpl, { level: playerLevel(this.S.xp), now: this.now, ...(bought ? { roll: bought } : {}) });
       if (!res.ok || !res.save) break;
+      if (res.instance) this.forged.push({ day: this.day, tier, rarity: res.instance.rarity });
       if (bought && this.opts.buyer?.refine && res.instance) {
         const made = res.instance;
         const upgrade = Math.min(this.opts.buyer.refine, maxRefineFor(getGear(made.templateId)));
@@ -1592,6 +1665,7 @@ export class Player {
       if (sp && !sp.blocked) for (const [m, q] of Object.entries(sp.deficit) as [MaterialId, number][]) deficit[m] = Math.max(deficit[m] ?? 0, q);
     }
     if (this.opts.specialist === 'gardening' && (this.S.materials.bone_fragment ?? 0) < 60) deficit.bone_fragment = Math.max(deficit.bone_fragment ?? 0, 60);
+    if (this.opts.freeNeeds?.mats) this.buyDeficit(deficit, target);
     const power = (skill: 'mining' | 'woodcutting') => gatherPower(BASE_GATHER_POWER, this.S.skillXp[skill]) * (skill === 'mining' ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower);
     const hoursFor = (kind: 'mining' | 'woodcutting', ids: MaterialId[], tiers: { id: string; requiredLevel: number }[]): { hours: number; pick: MaterialId | null } => {
       const lvl = skillLevel(this.S.skillXp[kind], kind);
