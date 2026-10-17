@@ -1,0 +1,35 @@
+{
+  "name": "arena-idle-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Painel de administracao do dono (somente leitura). Projeto separado do jogo e do portal.",
+  "scripts": {
+    "dev": "vite --port 5225",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview --port 5225"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "22.19.1",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "6.1.1",
+    "jsdom": "30.1.3",
+    "typescript": "5.7.3",
+    "vite": "8.2.2",
+    "vitest": "5.0.3"
+  }
+}

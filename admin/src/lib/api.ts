@@ -1,0 +1,64 @@
+// The app's only door to the data: the ten read-only functions of 0020_admin.sql, called with the signed-in admin's session.
+// The anon key is public by design (it is in every browser that opens the game); what protects the data is the function itself,
+// which refuses anyone who is not in arena_private.admins. No service key is, or may ever be, in this app.
+import { flagsArgs, legendaryArgs, marketArgs, playerArgs } from './filters';
+import type { RpcName } from './rpcNames';
+import type { Economy, FlagsPage, FlagsQuery, League, LegendaryPage, LegendaryQuery, ListingRow, MarketPage, MarketQuery, Overview, Page, PlayerDetail, PlayerQuery, PlayerRow, SaleRow, SeriesDay, Waitlist } from './types';
+
+export interface AdminApi {
+  overview(): Promise<Overview>;
+  players(q: PlayerQuery): Promise<Page<PlayerRow>>;
+  playerDetail(userId: string): Promise<PlayerDetail | null>;
+  legendaries(q: LegendaryQuery): Promise<LegendaryPage>;
+  market(q: MarketQuery): Promise<MarketPage<SaleRow> | MarketPage<ListingRow>>;
+  economy(): Promise<Economy>;
+  series(days: number): Promise<SeriesDay[]>;
+  flags(q: FlagsQuery): Promise<FlagsPage>;
+  league(season: number | null, top: number): Promise<League>;
+  waitlist(days: number): Promise<Waitlist>;
+}
+
+/** What the app needs from a Supabase client (so tests can pass a fake). */
+export interface RpcClient {
+  rpc(name: string, args?: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
+}
+
+/** The database refused: the signed-in account is not an admin (or the session ended). */
+export class AccessDeniedError extends Error {
+  constructor() {
+    super('ADMIN_ONLY');
+    this.name = 'AccessDeniedError';
+  }
+}
+
+export class ApiError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+export function toError(error: { message: string; code?: string }): Error {
+  if (/ADMIN_ONLY/.test(error.message) || error.code === '42501') return new AccessDeniedError();
+  return new ApiError(error.message);
+}
+
+export function createRpcApi(client: RpcClient): AdminApi {
+  async function call<T>(name: RpcName, args?: Record<string, unknown>): Promise<T> {
+    const { data, error } = await client.rpc(name, args);
+    if (error) throw toError(error);
+    return data as T;
+  }
+  return {
+    overview: () => call<Overview>('admin_overview'),
+    players: (q) => call<Page<PlayerRow>>('admin_players', playerArgs(q)),
+    playerDetail: (userId) => call<PlayerDetail | null>('admin_player_detail', { p_user_id: userId }),
+    legendaries: (q) => call<LegendaryPage>('admin_legendaries', legendaryArgs(q)),
+    market: (q) => call<MarketPage<SaleRow> | MarketPage<ListingRow>>('admin_market', marketArgs(q)),
+    economy: () => call<Economy>('admin_economy'),
+    series: (days) => call<SeriesDay[]>('admin_economy_series', { p_days: days }),
+    flags: (q) => call<FlagsPage>('admin_flags', flagsArgs(q)),
+    league: (season, top) => call<League>('admin_league', { p_season: season, p_top: top }),
+    waitlist: (days) => call<Waitlist>('admin_waitlist', { p_days: days }),
+  };
+}
