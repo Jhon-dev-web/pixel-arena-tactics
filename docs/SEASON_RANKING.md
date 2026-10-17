@@ -350,3 +350,28 @@ Os bônus são pequenos e **limitados**: os de XP de Caça dos eventos de herói
 - **A Semana das Profissões** pede uma escolha do jogador (painel "Eventos" da Home; a escolha é final para aquela semana e vive em `save.eventPick`). O servidor não a vê: o bônus é de +25% no XP da profissão, dentro do limite de +25% acima.
 - Os buffs de XP de Caça que o jogador ganha (Corrida da Masmorra, Grande Entrega, Corrida Final) ficam no save (`save.eventBuffs`) e entram na sessão de Caça como as poções: só a partir do momento em que são ganhos, nunca para o tempo já caçado; o save não pode inventar mais que a regra (a leitura do save corta a duração e a porcentagem ao que a regra dá).
 - Quem edita o save para ganhar o buff sem o evento só ganha o que o limite de +15% permite, e só dentro das horas em que um evento rodava.
+
+## 12. Retenção de dados (migration `0019_retention.sql`, 2026-10-17)
+
+`progress_snapshots` só cresce (cerca de 6 linhas por hora ativa, ~1,45 KB cada com índices): sem limpeza, 50 000 contas passam dos 8 GB do disco incluso em uns dois meses. A `0019` adiciona `public.retention_run()` (só service role, em lotes de 10 000 linhas, idempotente) que compacta a tabela **sem tocar no que a auditoria da seção 5 precisa**. Os bytes, o crescimento por mês, o agendamento no pg_cron e o disco esperado estão em `docs/backend-phase1.md`, seção "Retenção de dados". **Não foi aplicada nem rodada contra um banco.**
+
+### 12.1 O que fica e por quanto tempo
+
+| Fica inteiro | Até quando |
+|---|---|
+| Todo snapshot dentro de uma temporada valendo que **não está `paid`** (`open`, `frozen`, `closed`), dos participantes dela (quem tem linha em `season_entries` ou `season_profession_entries` daquela temporada) | até você marcar a temporada `paid` |
+| Todo snapshot de veredito `flagged` ou `rejected` | para sempre (a função só apaga linhas `ok`) |
+| Os snapshots `ok` de uma conta com flag aberto (um `flagged`/`rejected` que você não perdoou com `progress_clear_flags`) | 90 dias; perdoar o flag libera a conta para a compactação |
+| O último `ok` de cada conta (a linha-base do próximo envio), o primeiro `ok` da conta e o primeiro `ok` depois do reset da Liga | para sempre |
+| `ok` com notas (`FAST_*`, `MANUAL_BASELINE`) e o snapshot apontado por `best_snapshot_id` (a prova do melhor resultado) | para sempre |
+| Qualquer snapshot com menos de 30 dias fora de temporada paga | 30 dias |
+
+O que é compactado: dentro de uma temporada `paid` (imediatamente) ou com mais de 30 dias fora de temporada, ficam o **primeiro e o último** snapshot `ok` de cada conta por dia (UTC); com mais de 90 dias, por mês. O resto é apagado.
+
+### 12.2 O que isso muda no seu fluxo
+
+- **Marque a temporada como `paid` só depois de terminar a auditoria da seção 5 e pagar.** Antes disso a história inteira dos participantes é preservada; depois, vira um snapshot de abertura e um de fechamento por dia. Uma temporada que nunca é marcada `paid` guarda a história completa para sempre (é o lado seguro, mas cresce).
+- A auditoria que você faz **durante** a temporada (seção 5) não é afetada. Uma investigação **depois** de `paid` enxerga o primeiro e o último estado de cada dia, as notas `FAST_*`, todos os flags e o melhor snapshot, mas não cada envio de 10 minutos.
+- A pré-temporada (sem prêmio) compacta pela regra dos 30 dias; `update arena_private.retention_config set snapshot_pre_season_full = true;` guarda tudo nela enquanto estiver aberta.
+- Quem não é participante de uma temporada nunca foi ranqueado nela: seus snapshots seguem a regra dos 30 dias mesmo dentro da janela. Quem compra o Passe no meio da temporada começa a ter a história completa guardada a partir da primeira entrada; os envios de antes dessa entrada podem já ter sido compactados. `update arena_private.retention_config set snapshot_participants_only = false;` guarda a temporada inteira de todo mundo (~4 GB por mês com 50 000 contas).
+- Antes de rodar de verdade, faça `select public.retention_run(true);` (dry run) e exporte `progress_snapshots` se houver uma temporada em andamento: linhas apagadas não voltam.
