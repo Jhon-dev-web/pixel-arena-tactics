@@ -22,6 +22,8 @@ export class FakeItemStore implements ItemStore {
   acceptedLevels = new Map<string, number>();
   buckets = new Map<string, { tokens: number; updatedMs: number }>();
   requests = new Map<string, StoredTemplate>();
+  /** The Legendary pity counter per user (public.item_pity): forges of tier 4+ since the last Legendary. A test may set it. */
+  pity = new Map<string, number>();
   certs: FakeCert[] = [];
   flags: { userId: string; code: string; detail: Record<string, unknown> }[] = [];
   events: { certificateId: string; event: string }[] = [];
@@ -47,6 +49,10 @@ export class FakeItemStore implements ItemStore {
     return this.certs.filter((c) => c.userId === userId && c.kind === kind && (tier === null || c.tier === tier) && c.createdMs >= this.nowMs - DAY).length;
   }
 
+  async forgePity(userId: string): Promise<number> {
+    return this.pity.get(userId) ?? 0;
+  }
+
   async takeTokens(userId: string, startMs: number, takes: TokenTake[]): Promise<TokenOutcome> {
     const plan: { key: string; left: number }[] = [];
     const granted: number[] = [];
@@ -67,13 +73,14 @@ export class FakeItemStore implements ItemStore {
     return { ok: true, granted };
   }
 
-  async commit(args: { userId: string; requestId: string; kind: string; template: StoredTemplate; certificates: NewCertificate[]; burnIds: string[]; caps: DayCap[] }): Promise<CommitOutcome> {
+  async commit(args: { userId: string; requestId: string; kind: string; template: StoredTemplate; certificates: NewCertificate[]; burnIds: string[]; caps: DayCap[]; pity?: { expect: number; next: number } }): Promise<CommitOutcome> {
     if (this.requests.has(`${args.userId}:${args.requestId}`)) return { status: 'replay' };
     for (const cap of args.caps) {
       const existing = this.certs.filter((c) => c.userId === args.userId && c.kind === cap.kind && (cap.tier === null || c.tier === cap.tier) && c.createdMs >= this.nowMs - DAY).length;
       const added = args.certificates.filter((c) => c.kind === cap.kind && (cap.tier === null || c.tier === cap.tier)).length;
       if (added > 0 && existing + added > cap.max) return { status: 'cap' };
     }
+    if (args.pity && (this.pity.get(args.userId) ?? 0) !== args.pity.expect) return { status: 'pity_changed' };
     if (args.burnIds.length > 0) {
       const held = this.certs.filter((c) => args.burnIds.includes(c.id) && c.userId === args.userId && c.status === 'held');
       if (held.length !== args.burnIds.length) return { status: 'burn_failed' };
@@ -83,6 +90,7 @@ export class FakeItemStore implements ItemStore {
       }
     }
     this.requests.set(`${args.userId}:${args.requestId}`, args.template);
+    if (args.pity) this.pity.set(args.userId, args.pity.next);
     const created = args.certificates.map((c, i) => {
       const id = `00000000-0000-4000-8000-${String(++this.seq).padStart(12, '0')}`;
       const createdAt = new Date(this.nowMs).toISOString();

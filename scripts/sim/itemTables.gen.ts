@@ -25,6 +25,9 @@ export const SUBSTAT_TABLE: readonly { type: SubstatKind; min: number; max: numb
 /** The Blacksmith's Seal (season reward): the forge roll is conditioned on this rarity or better, and the piece is born bound (gearInstances.applyForge). */
 export const SEAL_MIN_RARITY: RarityId = ${JSON.stringify(t.sealMinRarity)};
 
+/** The Legendary pity (rarity.ts FORGE_PITY): a normal forge of tier minTier or above that is not Legendary adds 1 to the account's counter; at threshold the next such forge is Legendary and the counter resets (roll.ts rollForgeRarity). */
+export const PITY_TABLE = ${JSON.stringify(t.pity)} as const;
+
 /** Seals the Pass track gives per season and the season length: the server lets a Pass owner use a few more than that (items/bounds.ts). */
 export const SEAL_TABLE = ${JSON.stringify(t.seal)} as const;
 

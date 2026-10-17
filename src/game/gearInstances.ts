@@ -2,13 +2,13 @@ import T from './tunables';
 import { GEAR, GearItem, INSTANCED_SLOTS, gearRequiredLevel, InstancedSlot, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, isInstancedSlot, MAX_DURABILITY, MAX_REFINE, BASE_MAX_REFINE, getGear, maxRefineFor, upgradeChance, upgradeCost, upgradeFailDrop } from './gear';
 import { GEMS, GemBonuses, GemId, addGemBonuses, gemListBonuses, getGem, hasGems, socketsForTier } from './gems';
 import { MaterialId, hasMaterials } from './materials';
-import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollRarityAtLeast, FORGE_SEAL_MIN_RARITY, rollSubstats, substatListTotals } from './rarity';
+import { GOLD_BONUS_CAP, RARITIES, Rarity, Substat, SubstatTotals, addSubstatTotals, rarityStatMult, rollRarity, rollRarityAtLeast, rollForgeRarity, FORGE_SEAL_MIN_RARITY, rollSubstats, substatListTotals } from './rarity';
 import { SALVAGE_BONUS_CHANCE, getSalvageReturn, hasSalvageValue } from './salvage';
 import { addWithOverflow, fitsBag, stockIsEmpty } from './inventory';
 import { TRADEABLE_CONSUMABLES } from './consumables';
 import { setBonuses } from './setBonuses';
 import type { SaveData } from './engine';
-import { recordForge, recordRefine } from './stats';
+import { recordForge, recordRefine, statsOf, withStats } from './stats';
 import { isServerItemAuthority } from './itemAuthority';
 import { playerLevel } from './heroLevel';
 
@@ -739,13 +739,20 @@ export function applyForge(
   if (instanced) {
     const given = opts.roll;
     const online = isServerItemAuthority();
+    // Offline, a normal forge of tier 4+ goes through the Legendary pity (rarity.ts FORGE_PITY) on the device's own counter; a Seal forge and a forge below tier 4 never touch it. Online the server rolled (`given`).
+    let pityAfter: number | null = null;
     const fresh: { rarity?: Rarity; substats?: Substat[] } = given
       ? { rarity: given.rarity, substats: given.substats }
       : online
         ? { rarity: 'common', substats: [] }
         : sealUsed
           ? { rarity: rollRarityAtLeast(FORGE_SEAL_MIN_RARITY, opts.rng) }
-          : {};
+          : (() => {
+              const before = statsOf(save).forgePity ?? 0;
+              const rolled = rollForgeRarity(item.tier ?? 0, before, opts.rng);
+              if (rolled.pity !== before) pityAfter = rolled.pity;
+              return { rarity: rolled.rarity };
+            })();
     instance = createGearInstance(templateId, {
       id: uniqueId(next.gearInstances, opts.idFactory ?? newGearInstanceId),
       origin: 'craft',
@@ -758,6 +765,10 @@ export function applyForge(
     // Rolled on this device (no server): the piece is usable but can never be sold.
     if (!online && !given && (instance.rarity === 'epic' || instance.rarity === 'legendary')) instance = { ...instance, certified: false };
     next = { ...next, gearInstances: { ...next.gearInstances, [instance.id]: instance } };
+    if (pityAfter !== null) {
+      const pity: number = pityAfter;
+      next = withStats(next, () => ({ forgePity: pity }));
+    }
   } else {
     next = { ...next, inventory: { ...next.inventory, [templateId]: (next.inventory[templateId] ?? 0) + 1 } };
   }

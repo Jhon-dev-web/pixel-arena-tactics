@@ -80,6 +80,12 @@ export function createItemStore(cfg: ItemDbConfig): ItemStore {
       throw new Error('take_tokens_bad_answer');
     },
 
+    async forgePity(userId) {
+      const q = new URLSearchParams({ select: 'forges', user_id: `eq.${userId}`, limit: '1' });
+      const n = Number((await getRows<{ forges: unknown }>('item_pity', q, 'pity_read'))[0]?.forges);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+    },
+
     async commit(args): Promise<CommitOutcome> {
       const r = await rpc<{ status?: unknown; certificates?: { id: string; created_at: string }[] }>(
         'item_commit',
@@ -91,11 +97,12 @@ export function createItemStore(cfg: ItemDbConfig): ItemStore {
           p_certs: args.certificates.map((c) => ({ kind: c.kind, template_id: c.templateId, rarity: c.rarity, tier: c.tier, substats: c.substats, gold_amount: c.goldAmount, source: c.source, content_hash: c.contentHash })),
           p_burn_ids: args.burnIds,
           p_caps: args.caps.map((c) => ({ kind: c.kind, tier: c.tier, max: c.max })),
+          p_pity: args.pity ? { expect: args.pity.expect, next: args.pity.next } : null,
         },
         'item_commit',
       );
       if (r.status === 'created' && Array.isArray(r.certificates)) return { status: 'created', certificates: r.certificates.map((c) => ({ id: c.id, createdAt: c.created_at })) };
-      if (r.status === 'replay' || r.status === 'cap' || r.status === 'burn_failed') return { status: r.status };
+      if (r.status === 'replay' || r.status === 'cap' || r.status === 'burn_failed' || r.status === 'pity_changed') return { status: r.status };
       throw new Error('item_commit_bad_answer');
     },
 

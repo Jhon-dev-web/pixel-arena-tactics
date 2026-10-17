@@ -12,13 +12,13 @@ import { rarityHero } from '../../../scripts/sim/rarityHero';
 //   R1  at equal tier and refine, median rolls (weapon + armor of that rarity): rare +3-6 % CP over common, epic +8-14 %, legendary +36-58 % (Rodada 24; it was +18-28 %);
 //   R5  a full seven-piece set (Rodada 24): rare 1.10-1.25 times the CP of a common one, epic 1.20-1.40, legendary 1.9-2.4, and the step epic -> legendary is at least 1.4 times;
 //   R2  no combat substat worth more than 2x another at its median roll (goldBonus exempt, capped at +25 % in total);
-//   R4  forge chances are 63 / 25 / 10 / 2 (Rodada 9: higher rarities are sold on the market, so they are a bit harder).
+//   R4  forge chances are 61 / 25 / 10 / 4 (Rodada 9 had 63 / 25 / 10 / 2; Rodada 26 doubled the Legendary because the market had too few and added a pity after 40 forges of tier 4+).
 
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
 describe('R4: forge rarity chances', () => {
-  it('table is 63 / 25 / 10 / 2', () => {
-    expect(RARITIES.map((r) => r.chance)).toEqual([0.63, 0.25, 0.1, 0.02]);
+  it('table is 61 / 25 / 10 / 4', () => {
+    expect(RARITIES.map((r) => r.chance)).toEqual([0.61, 0.25, 0.1, 0.04]);
   });
 
   it('realised rates of createGearInstance over 120k seeded rolls are within 0.5 points of the table', () => {

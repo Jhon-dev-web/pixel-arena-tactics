@@ -15,10 +15,13 @@ export const STOCKPILE_DAYS = 7;
 /** A forged piece never costs less than this many hunting hours in the limit (tier 1 and 2 pieces cost almost no Hunting; without a floor their limit would be silly high). */
 export const MIN_PIECE_HOURS = 0.5;
 
-/** P(Epic or Legendary) of one forge: 0.10 + 0.02 (rarity.ts RARITIES). */
-export const P_EPIC_PLUS = 0.12;
+/**
+ * P(Epic or Legendary) of one forge. The table gives 0.10 + 0.04 = 0.14 (rarity.ts RARITIES, Rodada 26); the Legendary pity (FORGE_PITY: the 41st forge of tier 4+ without one is Legendary) lifts the
+ * long-run Legendary share of a tier-4+ forge from 4.00 % to 1 / (sum of 0.96^k, k = 0..40) = 4.93 %, and the Epic share dips to 9.9 %: 14.8 %, rounded UP to 0.15 so the cap never sits under what an honest account is dealt.
+ */
+export const P_EPIC_PLUS = 0.15;
 
-/** Fewest certified Epic / Legendary pieces of one tier per rolling day the cap ever allows: a lucky day at the forge must not be refused (P of 4 in 7 forges at 12% is 0.4%). */
+/** Fewest certified Epic / Legendary pieces of one tier per rolling day the cap ever allows: a lucky day at the forge must not be refused (P of 4 in 7 forges at 15% is 0.9%; the Seal pieces are born bound and never count). */
 export const CERT_DAY_FLOOR = 4;
 
 const forgeRatePerHour = (tier: number): number => MARGIN / Math.max(MIN_PIECE_HOURS, FARM_HOURS_PER_PIECE[tier] ?? FARM_HOURS_PER_PIECE[6]);

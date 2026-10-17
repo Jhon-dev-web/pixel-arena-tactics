@@ -26,6 +26,7 @@ describe('items/tables.ts is exactly what `npm run item:tables` would write now'
     expect([...tables.RARITY_TABLE]).toEqual(t.rarities);
     expect(JSON.parse(JSON.stringify(tables.SUBSTAT_TABLE))).toEqual(t.substats);
     expect(tables.SEAL_MIN_RARITY).toBe(t.sealMinRarity);
+    expect(tables.PITY_TABLE).toEqual(t.pity);
     expect(tables.FORGE_TEMPLATES).toEqual(t.forge);
     expect(tables.UNIQUE_TEMPLATES).toEqual(t.unique);
     expect(tables.FARM_HOURS_PER_PIECE).toEqual(t.farmHoursPerPiece);
@@ -65,9 +66,9 @@ describe('items/tables.ts is exactly what `npm run item:tables` would write now'
 describe('the server rolls what the game would roll from the same random stream', () => {
   it('rollRarity', () => {
     for (let seed = 1; seed <= 400; seed++) expect(server.rollRarity(lcg(seed))).toBe(rollRarity(lcg(seed)));
-    // the table itself: 63 / 25 / 10 / 2
-    expect(RARITIES.map((r) => r.chance)).toEqual([0.63, 0.25, 0.1, 0.02]);
-    expect(tables.RARITY_TABLE.map((r) => r.chance)).toEqual([0.63, 0.25, 0.1, 0.02]);
+    // the table itself: 61 / 25 / 10 / 4 (Rodada 26)
+    expect(RARITIES.map((r) => r.chance)).toEqual([0.61, 0.25, 0.1, 0.04]);
+    expect(tables.RARITY_TABLE.map((r) => r.chance)).toEqual([0.61, 0.25, 0.1, 0.04]);
   });
 
   it('rollRarityAtLeast (the Blacksmith\'s Seal)', () => {
@@ -75,8 +76,8 @@ describe('the server rolls what the game would roll from the same random stream'
     const counts = { epic: 0, legendary: 0 } as Record<string, number>;
     const rng = lcg(99);
     for (let i = 0; i < 6000; i++) counts[server.sealRarity(rng)]++;
-    expect(counts.legendary / 6000).toBeGreaterThan(0.13);
-    expect(counts.legendary / 6000).toBeLessThan(0.2); // 2 / 12 = 16.7 %
+    expect(counts.legendary / 6000).toBeGreaterThan(0.25);
+    expect(counts.legendary / 6000).toBeLessThan(0.32); // 4 / 14 = 28.6 %
   });
 
   it('rollSubstats for every rarity, tier and extra slot', () => {

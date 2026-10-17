@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ITEM_BOUNDS } from '../items/bounds.ts';
 import { parseBindBody, parseMintBody } from '../items/handler.ts';
-import { FORGE_TEMPLATES, HUNT_ZONES, POUCH_TABLE } from '../items/tables.ts';
+import { FARM_HOURS_PER_PIECE, FORGE_TEMPLATES, HUNT_ZONES, PITY_TABLE, POUCH_TABLE } from '../items/tables.ts';
 import { DAY, FakeItemStore, USER_A, USER_B, makeServer } from './fakeItemStore.ts';
 
 // The mint-item / bind-item handlers over an in-memory store that behaves like migration 0010. No Deno, no Supabase: the same modules the Edge Functions import.
@@ -590,6 +590,175 @@ describe('what a cheater can still do is bounded, not impossible (docs/MARKET_FO
     const tiers = new Set(allTiers.map(([, t]) => t.tier));
     const max = [...tiers].reduce((sum, t) => sum + ITEM_BOUNDS.certDayCap(t), 0);
     expect(certified).toBeLessThanOrEqual(max);
+  });
+});
+
+describe('Legendary pity (Rodada 26): the SERVER counts, rolls and resets, per account', () => {
+  const T4 = 'gilded_warblade';
+  const T3 = 'steel_greatsword';
+  const rarityOf = (r: { body: Record<string, unknown> }): string => (r.body.item as { rarity: string }).rarity;
+  /** One normal forge every 6 server hours (the forge bucket and the day cap refill; the point of these tests is the counter). */
+  const forgeAt = async (s: ReturnType<typeof oldServer>, n: number, templateId = T4, userId = USER_A, extra: Record<string, unknown> = {}) => {
+    s.store.nowMs += 6 * 3600 * 1000;
+    return s.mint({ kind: 'forge', requestId: REQ(n), templateId, ...extra }, userId);
+  };
+  const common = () => 0.2;
+
+  it("the table is the game's: 40 forges of tier 4 and above", () => {
+    expect(PITY_TABLE).toEqual({ minTier: 4, threshold: 40 });
+    expect(FORGE_TEMPLATES[T4].tier).toBe(4);
+    expect(FORGE_TEMPLATES[T3].tier).toBe(3);
+  });
+
+  it('triggers exactly at the 41st forge of tier 4+ and then starts over', async () => {
+    const s = oldServer(common);
+    const rarities: string[] = [];
+    for (let n = 1; n <= 41; n++) {
+      const r = await forgeAt(s, n);
+      expect(r.status, `forge ${n}`).toBe(200);
+      rarities.push(rarityOf(r));
+      if (n <= 40) expect(s.store.pity.get(USER_A)).toBe(n);
+    }
+    expect(rarities.slice(0, 40).every((x) => x === 'common')).toBe(true);
+    expect(rarities[40]).toBe('legendary');
+    expect(s.store.pity.get(USER_A)).toBe(0);
+    // the guaranteed Legendary is a real, certified one with three substats
+    const last = s.store.certs[s.store.certs.length - 1];
+    expect(last).toMatchObject({ rarity: 'legendary', templateId: T4, status: 'held', bound: false });
+    expect(last.substats).toHaveLength(3);
+    // ...and the next forge is an ordinary one again (the dice say Common)
+    expect(rarityOf(await forgeAt(s, 42))).toBe('common');
+    expect(s.store.pity.get(USER_A)).toBe(1);
+  });
+
+  it("a Legendary by the dice resets the counter, and it is the dice's own Legendary (no guarantee spent)", async () => {
+    const s = oldServer(scripted(0.2, 0.2, 0.99, 0, 0, 0, 0, 0, 0));
+    expect(rarityOf(await forgeAt(s, 1))).toBe('common');
+    expect(rarityOf(await forgeAt(s, 2))).toBe('common');
+    expect(s.store.pity.get(USER_A)).toBe(2);
+    expect(rarityOf(await forgeAt(s, 3))).toBe('legendary');
+    expect(s.store.pity.get(USER_A)).toBe(0);
+  });
+
+  it('a guaranteed forge draws no number for the rarity (only the substat dice), exactly like the game', async () => {
+    const s = oldServer(common);
+    s.store.pity.set(USER_A, PITY_TABLE.threshold);
+    const before = s.rngCalls();
+    const r = await forgeAt(s, 1);
+    expect(rarityOf(r)).toBe('legendary');
+    expect(s.rngCalls() - before).toBe(3 * 2); // three substats: each a type draw and a value draw
+  });
+
+  it('only tier 4+ counts: tiers 1-3 never move the counter and never use the guarantee', async () => {
+    const s = oldServer(common);
+    for (let n = 1; n <= 45; n++) expect(rarityOf(await forgeAt(s, n, T3))).toBe('common');
+    expect(s.store.pity.get(USER_A) ?? 0).toBe(0);
+    s.store.pity.set(USER_A, 40);
+    expect(rarityOf(await forgeAt(s, 100, T3))).toBe('common');
+    expect(s.store.pity.get(USER_A)).toBe(40);
+    expect(rarityOf(await forgeAt(s, 101, T4))).toBe('legendary');
+    expect(s.store.pity.get(USER_A)).toBe(0);
+  });
+
+  it('tier 4, 5 and 6 pieces share one counter', async () => {
+    const s = oldServer(common);
+    const t5 = Object.entries(FORGE_TEMPLATES).find(([, t]) => t.tier === 5)![0];
+    await forgeAt(s, 1, T4);
+    await forgeAt(s, 2, t5);
+    expect(s.store.pity.get(USER_A)).toBe(2);
+  });
+
+  it("a Blacksmith's Seal forge neither counts nor resets nor spends the guarantee", async () => {
+    const s = oldServer(common);
+    s.store.pass = true;
+    s.store.pity.set(USER_A, 40);
+    const sealed = await forgeAt(s, 1, T4, USER_A, { seal: true });
+    expect(['epic', 'legendary']).toContain(rarityOf(sealed));
+    expect((sealed.body.item as { bound: boolean }).bound).toBe(true);
+    expect(s.store.pity.get(USER_A)).toBe(40);
+    expect(rarityOf(await forgeAt(s, 2, T4))).toBe('legendary');
+    expect(s.store.pity.get(USER_A)).toBe(0);
+  });
+
+  it('every account has its own counter', async () => {
+    const s = oldServer(common);
+    s.store.pity.set(USER_A, 40);
+    expect(rarityOf(await forgeAt(s, 1, T4, USER_B))).toBe('common');
+    expect(s.store.pity.get(USER_B)).toBe(1);
+    expect(s.store.pity.get(USER_A)).toBe(40);
+  });
+
+  it('the client cannot move it: a pity / counter / guaranteed field in the body is ignored, and nothing in the answer is a counter to echo', async () => {
+    const s = oldServer(common);
+    const r = await forgeAt(s, 1, T4, USER_A, { pity: 40, forgePity: 40, guaranteed: true, rarity: 'legendary' });
+    expect(rarityOf(r)).toBe('common');
+    expect(s.store.pity.get(USER_A)).toBe(1);
+    expect(JSON.stringify(r.body)).not.toMatch(/pity/i);
+  });
+
+  it('a same-request retry is the same answer and does not step the counter twice', async () => {
+    const s = oldServer(common);
+    s.store.nowMs += 6 * 3600 * 1000;
+    const first = await s.mint({ kind: 'forge', requestId: REQ(5), templateId: T4 });
+    const again = await s.mint({ kind: 'forge', requestId: REQ(5), templateId: T4 });
+    expect(again.body).toEqual(first.body);
+    expect(s.store.pity.get(USER_A)).toBe(1);
+    // a replayed Legendary does not reset a counter that has moved on
+    s.store.pity.set(USER_A, 40);
+    const legendary = await forgeAt(s, 6);
+    expect(rarityOf(legendary)).toBe('legendary');
+    s.store.pity.set(USER_A, 7);
+    expect((await s.mint({ kind: 'forge', requestId: REQ(6), templateId: T4 })).body).toEqual(legendary.body);
+    expect(s.store.pity.get(USER_A)).toBe(7);
+  });
+
+  it('two forges at once from a counter at the threshold: ONE Legendary is guaranteed, the other is refused as busy and rolled again later', async () => {
+    const s = oldServer(common);
+    s.store.pity.set(USER_A, 40);
+    s.store.nowMs += 6 * 3600 * 1000;
+    const [a, b] = await Promise.all([s.mint({ kind: 'forge', requestId: REQ(1), templateId: T4 }), s.mint({ kind: 'forge', requestId: REQ(2), templateId: T4 })]);
+    expect([a.status, b.status].sort()).toEqual([200, 429]);
+    expect(s.store.certs.filter((c) => c.rarity === 'legendary')).toHaveLength(1);
+    expect(s.store.pity.get(USER_A)).toBe(0);
+    const loser = a.status === 429 ? a : b;
+    expect(loser.body).toMatchObject({ error: 'busy' });
+    // the loser's roll left nothing behind: no request, no certificate
+    expect(s.store.requests.size).toBe(1);
+  });
+
+  it('a refused forge (too early, daily cap) leaves the counter where it was', async () => {
+    const s = oldServer(common);
+    s.store.pity.set(USER_A, 40);
+    s.store.accountCreatedMs = s.store.nowMs - 3600 * 1000; // an hour old: tier 4 is out of reach
+    const early = await s.mint({ kind: 'forge', requestId: REQ(1), templateId: T4 });
+    expect(early.status).toBe(429);
+    expect(s.store.pity.get(USER_A)).toBe(40);
+    // the daily cap of certified pieces refuses the guaranteed Legendary too, unseen
+    const t = oldServer(common);
+    const cap = ITEM_BOUNDS.certDayCap(4);
+    for (let i = 0; i < cap; i++) {
+      t.store.pity.set(USER_A, 40);
+      expect((await t.mint({ kind: 'forge', requestId: REQ(200 + i), templateId: T4 })).status).toBe(200);
+    }
+    t.store.pity.set(USER_A, 40);
+    const over = await t.mint({ kind: 'forge', requestId: REQ(300), templateId: T4 });
+    expect(over.status).toBe(429);
+    expect(t.store.pity.get(USER_A)).toBe(40);
+    expect(t.store.certs).toHaveLength(cap);
+  });
+
+  it('an honest account is never refused by the daily cap: a day of tier-4+ supply stays under it, pity included', () => {
+    // the cap is MARGIN x the forges a day of supply allows x P(Epic or better); the pity lifts P from 14 % to 14.8 %
+    let cycle = 0;
+    for (let k = 0; k <= PITY_TABLE.threshold; k++) cycle += Math.pow(0.96, k);
+    const legendary = 1 / cycle;
+    const epic = 0.1 * (1 - Math.pow(0.96, PITY_TABLE.threshold) / cycle);
+    expect(epic + legendary).toBeLessThan(0.15);
+    expect(epic + legendary).toBeGreaterThan(0.14);
+    for (let tier = 4; tier <= 6; tier++) {
+      const honestForges = 24 / (FARM_HOURS_PER_PIECE[tier] as number);
+      expect(ITEM_BOUNDS.certDayCap(tier)).toBeGreaterThanOrEqual(Math.ceil(honestForges * (epic + legendary)) + 1);
+    }
   });
 });
 

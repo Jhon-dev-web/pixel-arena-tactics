@@ -4,9 +4,9 @@ import { GEAR_LEVEL_GATES } from '../progress/tables.ts';
 import { UUID_RE, json } from '../http.ts';
 import { certificateContentHash } from './hash.ts';
 import { ITEM_BOUNDS } from './bounds.ts';
-import { Rng, RolledPiece, bossStageFloor, clampLuck, isBossStage, maxBossLuck, maxHuntLuck, rollBossUniques, rollHuntUniques, rollRarity, rollSubstats, sealRarity } from './roll.ts';
+import { Rng, RolledPiece, bossStageFloor, clampLuck, isBossStage, maxBossLuck, maxHuntLuck, rollBossUniques, rollForgeRarity, rollHuntUniques, rollSubstats, sealRarity } from './roll.ts';
 import type { DayCap, ItemStore, NewCertificate, TokenTake } from './store.ts';
-import { FORGE_TEMPLATES, HUNT_ZONES, POUCH_TABLE, UNIQUE_TEMPLATES } from './tables.ts';
+import { FORGE_TEMPLATES, HUNT_ZONES, PITY_TABLE, POUCH_TABLE, UNIQUE_TEMPLATES } from './tables.ts';
 import type { BindAction, BindBody, BindResult, CertificateView, MintBody, MintResult, MintedItem, RefusalReason, StoredItem, StoredTemplate } from './types.ts';
 
 // mint-item and bind-item. The user id comes ONLY from the verified JWT. The server rolls every random outcome of a tradeable thing (the forge rarity and substats, the unique drops, the
@@ -175,7 +175,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
       return { template: { kind: source, items, rolls } as StoredTemplate, certificates, caps: certificates.length > 0 ? [{ kind: 'unique' as const, tier: null, max: ITEM_BOUNDS.uniqueDayCap }] : [], burnIds: [], source };
     };
 
-    let answered: { template: StoredTemplate; certificates: NewCertificate[]; caps: DayCap[]; burnIds: string[]; source: NewCertificate['source'] };
+    let answered: { template: StoredTemplate; certificates: NewCertificate[]; caps: DayCap[]; burnIds: string[]; source: NewCertificate['source']; pity?: { expect: number; next: number } };
 
     if (body.kind === 'forge') {
       const tpl = FORGE_TEMPLATES[body.templateId];
@@ -190,7 +190,12 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
       if ('failed' in took) return refuse(took.failed === 'forge_seal' ? 'seal_limit' : 'forge_rate', took.failed === 'forge_seal' ? 'LIMIT_SEAL' : 'LIMIT_FORGE_RATE', { tier: tpl.tier });
 
       // THE ROLL. The client never sees it before this point and never supplies a number for it.
-      const rarity = body.seal ? sealRarity(deps.rng) : rollRarity(deps.rng);
+      // The LEGENDARY PITY lives here, on the server, per account: a normal forge of tier `PITY_TABLE.minTier` or above counts toward it (rarity.ts FORGE_PITY), the one after `PITY_TABLE.threshold` non-Legendary ones is Legendary,
+      // and the counter is written in the SAME statement as the issue (item_commit, p_pity), so two requests at once cannot both claim the guarantee. A Seal forge neither counts nor resets it.
+      const usesPity = !body.seal && tpl.tier >= PITY_TABLE.minTier;
+      const pityBefore = usesPity ? await deps.store.forgePity(userId) : 0;
+      const forged = body.seal ? { rarity: sealRarity(deps.rng), pity: pityBefore } : rollForgeRarity(tpl.tier, pityBefore, deps.rng);
+      const rarity = forged.rarity;
       const substats = rollSubstats(rarity, tpl.tier, 0, deps.rng);
       // Only an unbound Epic / Legendary is tradeable (gearInstances.isTradeable); a Seal piece is born bound, so it gets no certificate.
       const certify = !body.seal && (rarity === 'epic' || rarity === 'legendary');
@@ -201,6 +206,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
         caps: certify ? [{ kind: 'gear', tier: tpl.tier, max: ITEM_BOUNDS.certDayCap(tpl.tier) }] : [],
         burnIds: body.burnCertificateIds ?? [],
         source: 'forge',
+        ...(usesPity ? { pity: { expect: pityBefore, next: forged.pity } } : {}),
       };
     } else if (body.kind === 'hunt_drop') {
       const zone = HUNT_ZONES.find((z) => z.id === body.zoneId);
@@ -250,7 +256,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
       };
     }
 
-    const outcome = await deps.store.commit({ userId, requestId: body.requestId, kind: answered.source, template: answered.template, certificates: answered.certificates, burnIds: answered.burnIds, caps: answered.caps });
+    const outcome = await deps.store.commit({ userId, requestId: body.requestId, kind: answered.source, template: answered.template, certificates: answered.certificates, burnIds: answered.burnIds, caps: answered.caps, pity: answered.pity });
     if (outcome.status === 'created') {
       const views = answered.certificates.map((c, i) => certificateView(c, outcome.certificates[i].id, outcome.certificates[i].createdAt));
       return json(assembleResult(answered.template, views), 200, cors);
@@ -261,6 +267,8 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
       return json({ error: 'busy', retryAfterSeconds: 2 }, 429, { ...cors, 'retry-after': '2' });
     }
     if (outcome.status === 'cap') return refuse('cert_day_limit', 'LIMIT_CERT_DAY');
+    // The pity counter moved between the read and the commit (another forge of the same account won the race): the roll is thrown away unseen and the client asks again.
+    if (outcome.status === 'pity_changed') return json({ error: 'busy', retryAfterSeconds: 1 }, 429, { ...cors, 'retry-after': '1' });
     return refuse('burn_not_held', 'BURN_NOT_HELD');
 
   } catch (err) {

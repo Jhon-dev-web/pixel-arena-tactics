@@ -22,10 +22,10 @@ export interface RarityDef {
 // Rare and Epic keep their stat multiplier and their rolls, the Legendary is a different animal - 40 % more of every multiplied stat (damage, HP, defense, crit damage) and each of its three substats
 // rolls 70 % higher - because it is the piece 1 forge in 50 makes, and the one a buyer pays the most for. The Epic lost 2 points (1.06 -> 1.04) so that the step Epic -> Legendary shows in the League.
 export const RARITIES: RarityDef[] = [
-  { id: 'common', nameKey: 'rar_common', statMult: 1, substatMult: 1, substatCount: 0, chance: 0.63 },
+  { id: 'common', nameKey: 'rar_common', statMult: 1, substatMult: 1, substatCount: 0, chance: 0.61 },
   { id: 'rare', nameKey: 'rar_rare', statMult: 1.02, substatMult: 1, substatCount: 1, chance: 0.25 },
   { id: 'epic', nameKey: 'rar_epic', statMult: 1.04, substatMult: 1, substatCount: 2, chance: 0.1 },
-  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.4, substatMult: 1.7, substatCount: 3, chance: 0.02 },
+  { id: 'legendary', nameKey: 'rar_legendary', statMult: 1.4, substatMult: 1.7, substatCount: 3, chance: 0.04 },
 ];
 
 interface SubstatDef {
@@ -75,7 +75,7 @@ export function rollRarity(rng: Rng = Math.random): Rarity {
 }
 
 // The Blacksmith's Seal (season reward): a forge roll CONDITIONED on this rarity or better. The odds are the normal table's own weights restricted to the
-// rarities from here up (epic 10 : legendary 2 = 83.3 % : 16.7 %), derived from RARITIES, never hard-coded.
+// rarities from here up (epic 10 : legendary 4 = 71.4 % : 28.6 %), derived from RARITIES, never hard-coded.
 export const FORGE_SEAL_MIN_RARITY: Rarity = 'epic';
 
 export function rollRarityAtLeast(min: Rarity, rng: Rng = Math.random): Rarity {
@@ -89,6 +89,19 @@ export function rollRarityAtLeast(min: Rarity, rng: Rng = Math.random): Rarity {
     if (r < acc) return def.id;
   }
   return pool[pool.length - 1].id;
+}
+
+// LEGENDARY PITY (Rodada 26): a forge of tier `minTier` or above that did not come out Legendary adds one to the account's counter, and once it holds `threshold` the NEXT such forge is Legendary
+// and the counter goes back to zero (a Legendary by the dice resets it too). So the 41st forge of tier 4+ is at the latest the first Legendary. A Blacksmith's Seal forge neither counts nor
+// resets it, and a forge below `minTier` never touches it. Online the SERVER holds the counter and rolls (supabase/functions/_shared/items/roll.ts rollForgeRarity, the same function over the
+// generated table); offline the device keeps its own (stats.forgePity) and what it makes is never certified.
+export const FORGE_PITY = { minTier: 4, threshold: 40 } as const;
+
+/** The rarity of one normal (non-Seal) forge of `tier` given the `pity` counter, and the counter after it. A guaranteed Legendary draws no random number. */
+export function rollForgeRarity(tier: number, pity: number, rng: Rng = Math.random): { rarity: Rarity; pity: number } {
+  if (tier < FORGE_PITY.minTier) return { rarity: rollRarity(rng), pity };
+  const rarity: Rarity = pity >= FORGE_PITY.threshold ? 'legendary' : rollRarity(rng);
+  return { rarity, pity: rarity === 'legendary' ? 0 : pity + 1 };
 }
 
 const tierRange = (def: SubstatDef, tier: number): [number, number] | undefined =>

@@ -36,7 +36,7 @@ export interface DayCap {
 
 export type CommitOutcome =
   | { status: 'created'; certificates: { id: string; createdAt: string }[] }
-  | { status: 'replay' | 'cap' | 'burn_failed' };
+  | { status: 'replay' | 'cap' | 'burn_failed' | 'pity_changed' };
 
 export interface StoredRequest {
   template: StoredTemplate;
@@ -55,8 +55,10 @@ export interface ItemStore {
   issuedLastDay(userId: string, kind: CertKind, tier: number | null): Promise<number>;
   /** The atomic limit (a single locked statement in the database): all non-partial takes fit or nothing is taken. */
   takeTokens(userId: string, startMs: number, takes: TokenTake[]): Promise<TokenOutcome>;
-  /** Issues the certificates of one request atomically; see public.item_commit. */
-  commit(args: { userId: string; requestId: string; kind: CertSource; template: StoredTemplate; certificates: NewCertificate[]; burnIds: string[]; caps: DayCap[] }): Promise<CommitOutcome>;
+  /** The account's Legendary pity counter (forges of tier 4+ since the last Legendary; 0 for an account that never forged one). Read before the roll; the commit re-checks it under the lock. */
+  forgePity(userId: string): Promise<number>;
+  /** Issues the certificates of one request atomically; see public.item_commit. `pity`: the counter the roll started from and the one it ends at (written in the same statement, refused with 'pity_changed' if the stored one moved in between). */
+  commit(args: { userId: string; requestId: string; kind: CertSource; template: StoredTemplate; certificates: NewCertificate[]; burnIds: string[]; caps: DayCap[]; pity?: { expect: number; next: number } }): Promise<CommitOutcome>;
   /** What the user's own certificates (of these ids) are: the template and whether each is already bound. Ids that are not his are simply absent (bind-item answers not_found for them as before). */
   certificateTemplates(userId: string, ids: string[]): Promise<{ id: string; kind: CertKind; templateId: string; bound: boolean }[]>;
   /** The hero level in the user's newest ACCEPTED (verdict ok) progress snapshot since `sinceMs` (the League reset / account start), or null when there is none. */

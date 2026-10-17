@@ -5,13 +5,16 @@ export type RarityId = 'common' | 'rare' | 'epic' | 'legendary';
 export type SubstatKind = 'critRate' | 'critDamage' | 'lifesteal' | 'defense' | 'maxHp' | 'goldBonus';
 
 /** The forge rarity table (rarity.ts RARITIES), in roll order. */
-export const RARITY_TABLE: readonly { id: RarityId; chance: number; substatCount: number; substatMult: number }[] = [{"id":"common","chance":0.63,"substatCount":0,"substatMult":1},{"id":"rare","chance":0.25,"substatCount":1,"substatMult":1},{"id":"epic","chance":0.1,"substatCount":2,"substatMult":1},{"id":"legendary","chance":0.02,"substatCount":3,"substatMult":1.7}];
+export const RARITY_TABLE: readonly { id: RarityId; chance: number; substatCount: number; substatMult: number }[] = [{"id":"common","chance":0.61,"substatCount":0,"substatMult":1},{"id":"rare","chance":0.25,"substatCount":1,"substatMult":1},{"id":"epic","chance":0.1,"substatCount":2,"substatMult":1},{"id":"legendary","chance":0.04,"substatCount":3,"substatMult":1.7}];
 
 /** The substat ranges (rarity.ts SUBSTATS): a roll is min + int(0..max-min) + round(perTier x tier), or, when `ranges` exists, the tier's own [min, max] in steps of 10^-decimals. */
 export const SUBSTAT_TABLE: readonly { type: SubstatKind; min: number; max: number; perTier: number; ranges: readonly (readonly [number, number])[] | null; decimals: number }[] = [{"type":"critRate","min":2,"max":5,"perTier":0.5,"ranges":null,"decimals":0},{"type":"critDamage","min":5,"max":12,"perTier":1,"ranges":[[60,90],[45,75],[30,50],[25,40],[20,32],[16,26]],"decimals":0},{"type":"lifesteal","min":1,"max":4,"perTier":0.3,"ranges":[[1.5,2.5],[1,1.4],[1.5,2.3],[1,1.8],[1,2],[0.8,1.2]],"decimals":1},{"type":"defense","min":2,"max":6,"perTier":0.5,"ranges":null,"decimals":0},{"type":"maxHp","min":15,"max":40,"perTier":5,"ranges":[[5,8],[10,18],[20,30],[30,50],[45,70],[55,90]],"decimals":0},{"type":"goldBonus","min":2,"max":5,"perTier":0.25,"ranges":null,"decimals":0}];
 
 /** The Blacksmith's Seal (season reward): the forge roll is conditioned on this rarity or better, and the piece is born bound (gearInstances.applyForge). */
 export const SEAL_MIN_RARITY: RarityId = "epic";
+
+/** The Legendary pity (rarity.ts FORGE_PITY): a normal forge of tier minTier or above that is not Legendary adds 1 to the account's counter; at threshold the next such forge is Legendary and the counter resets (roll.ts rollForgeRarity). */
+export const PITY_TABLE = {"minTier":4,"threshold":40} as const;
 
 /** Seals the Pass track gives per season and the season length: the server lets a Pass owner use a few more than that (items/bounds.ts). */
 export const SEAL_TABLE = {"perSeason":3,"seasonDays":60} as const;

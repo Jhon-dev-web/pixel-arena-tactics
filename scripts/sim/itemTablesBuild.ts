@@ -6,7 +6,7 @@ import { DEPTH_BOSS_POOLS } from '../../src/game/dungeon';
 import { BATTLE_PASS_TRACK } from '../../src/game/battlepass';
 import { HUNTING_ZONES } from '../../src/game/huntingZones';
 import { POUCH_IDS, pouchFace, pouchPerDay } from '../../src/game/goldPouch';
-import { FORGE_SEAL_MIN_RARITY, RARITIES, SUBSTATS } from '../../src/game/rarity';
+import { FORGE_PITY, FORGE_SEAL_MIN_RARITY, RARITIES, SUBSTATS } from '../../src/game/rarity';
 import { UNIQUE_BOSS_DROPS } from '../../src/game/uniques';
 import T from '../../src/game/tunables';
 import { setHoursOwn } from './farmHours';
@@ -40,6 +40,7 @@ export function buildItemTables() {
     rarities: RARITIES.map((r) => ({ id: r.id, chance: r.chance, substatCount: r.substatCount, substatMult: r.substatMult })),
     substats: SUBSTATS.map((s) => ({ type: s.type, min: s.min, max: s.max, perTier: s.perTier, ranges: s.ranges ?? null, decimals: s.decimals ?? 0 })),
     sealMinRarity: FORGE_SEAL_MIN_RARITY,
+    pity: { minTier: FORGE_PITY.minTier, threshold: FORGE_PITY.threshold },
     forge,
     unique,
     farmHoursPerPiece,

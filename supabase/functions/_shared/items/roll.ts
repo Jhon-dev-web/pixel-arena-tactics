@@ -1,4 +1,4 @@
-import { BOSS_TABLE, HUNT_ZONES, LUCK_TABLE, RARITY_TABLE, RarityId, SEAL_MIN_RARITY, SUBSTAT_TABLE, SubstatKind } from './tables.ts';
+import { BOSS_TABLE, HUNT_ZONES, LUCK_TABLE, PITY_TABLE, RARITY_TABLE, RarityId, SEAL_MIN_RARITY, SUBSTAT_TABLE, SubstatKind } from './tables.ts';
 import type { SubstatRoll } from './types.ts';
 
 // The server's dice. These are the game's own rolls (rarity.ts rollRarity / rollRarityAtLeast / rollSubstats, uniques.ts rollUniqueDrop / rollBossUniques) written over the generated
@@ -25,7 +25,17 @@ export function rollRarity(rng: Rng): RarityId {
   return 'common';
 }
 
-/** The Blacksmith's Seal: the table's own weights restricted to `min` and better (epic 10 : legendary 2). */
+/**
+ * One normal (non-Seal) forge of `tier` with the account's pity counter (rarity.ts rollForgeRarity over the generated table): below the pity's tier the plain table and the counter untouched; from there on a counter at
+ * the threshold is a guaranteed Legendary (no random number drawn), any other forge is the table's roll, and the counter after is 0 on a Legendary and +1 otherwise.
+ */
+export function rollForgeRarity(tier: number, pity: number, rng: Rng): { rarity: RarityId; pity: number } {
+  if (tier < PITY_TABLE.minTier) return { rarity: rollRarity(rng), pity };
+  const rarity: RarityId = pity >= PITY_TABLE.threshold ? 'legendary' : rollRarity(rng);
+  return { rarity, pity: rarity === 'legendary' ? 0 : pity + 1 };
+}
+
+/** The Blacksmith's Seal: the table's own weights restricted to `min` and better (epic 10 : legendary 4). */
 export function rollRarityAtLeast(min: RarityId, rng: Rng): RarityId {
   const from = Math.max(0, RARITY_TABLE.findIndex((r) => r.id === min));
   const pool = RARITY_TABLE.slice(from);

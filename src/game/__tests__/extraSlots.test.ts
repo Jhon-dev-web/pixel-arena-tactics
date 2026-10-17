@@ -349,7 +349,7 @@ describe('unique pieces', () => {
     });
   });
 
-  it('a unique drop rolls the normal 63 / 25 / 10 / 2 rarity table', () => {
+  it('a unique drop rolls the normal 61 / 25 / 10 / 4 rarity table', () => {
     const N = 40_000;
     const counts = withSeededRandom(77, () => {
       const c: Record<string, number> = {};
@@ -360,8 +360,8 @@ describe('unique pieces', () => {
       }
       return c;
     });
-    expect(Math.abs(counts.common / N - 0.63)).toBeLessThan(0.01);
-    expect(Math.abs(counts.legendary / N - 0.02)).toBeLessThan(0.005);
+    expect(Math.abs(counts.common / N - 0.61)).toBeLessThan(0.01);
+    expect(Math.abs(counts.legendary / N - 0.04)).toBeLessThan(0.005);
   });
 
   it('Hunting: about one unique per ~6-7 days (24 h) of round-the-clock hunting in a zone, i.e. ~25 days of a normal 6 h a day, rolled with the economic fraction', () => {

@@ -37,6 +37,7 @@ export interface LifetimeStats {
   wholesaleUnits: number; // materials sold to the wholesale merchant (wholesale.ts)
   wholesaleGold: number; // Gold the wholesale merchant paid for them
   pouchGoldOpened: number; // Gold that came back from opened Gold Pouches (goldPouch.ts): not "earned", trackSave leaves it out of goldEarned
+  forgePity?: number; // OFFLINE Legendary pity (rarity.ts FORGE_PITY): forges of tier 4+ since the last Legendary. Online the server keeps its own and this stays untouched
 }
 
 export const emptyRarityCounts = (): Record<Rarity, number> => ({ common: 0, rare: 0, epic: 0, legendary: 0 });
@@ -67,6 +68,7 @@ export const emptyStats = (): LifetimeStats => ({
   wholesaleUnits: 0,
   wholesaleGold: 0,
   pouchGoldOpened: 0,
+  forgePity: 0,
 });
 
 export const COUNT_CAP = 1e12;
@@ -86,7 +88,7 @@ export interface StatsBackfill {
 export function normalizeStats(raw: unknown, backfill: StatsBackfill = {}): LifetimeStats {
   const r = raw && typeof raw === 'object' ? (raw as Partial<Record<keyof LifetimeStats, unknown>>) : {};
   const out = emptyStats();
-  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'lapidations', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth', 'huntSeconds', 'dungeonFloors', 'wholesaleUnits', 'wholesaleGold', 'pouchGoldOpened'] as const) {
+  for (const key of ['goldEarned', 'itemsForged', 'refineSuccess', 'refineFail', 'lapidations', 'deliveries', 'oreGathered', 'woodGathered', 'plantsHarvested', 'potionsBrewed', 'dungeonRuns', 'bossesKilled', 'secondsPlayed', 'deepestDepth', 'huntSeconds', 'dungeonFloors', 'wholesaleUnits', 'wholesaleGold', 'pouchGoldOpened', 'forgePity'] as const) {
     out[key] = count(r[key]);
   }
   out.kills = Math.max(count(r.kills), count(backfill.kills));
