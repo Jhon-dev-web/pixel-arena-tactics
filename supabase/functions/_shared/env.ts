@@ -19,6 +19,18 @@ export const EDGE_ENV_NAMES = [
   // The launch waitlist (docs/WAITLIST.md): the exact origin(s) of the public portal (CORS) and the HMAC key for hashes and unsubscribe tokens.
   'PORTAL_ORIGIN',
   'WAITLIST_SECRET',
+  // The AI operations layer (docs/AI_OPS.md). ANTHROPIC_API_KEY is read by the ai-auditor / ops-watchdog model client only and never logged or returned. OPS_CRON_SECRET is the shared secret pg_cron sends
+  // (header x-ops-secret); the two functions answer 503 until it is set. OPS_ALERT_WEBHOOK_URL is a Discord-compatible webhook (a secret in itself: it is never logged). OPS_ALERT_EMAIL_TO is reserved for a later e-mail alert.
+  'ANTHROPIC_API_KEY',
+  'AI_AUDITOR_MODEL_FAST',
+  'AI_AUDITOR_MODEL_DAILY',
+  'AI_AUDITOR_MAX_RUNS_PER_DAY',
+  'AI_AUDITOR_MONTHLY_BUDGET_USD',
+  'AI_AUDITOR_MAX_OUTPUT_TOKENS_FAST',
+  'AI_AUDITOR_MAX_OUTPUT_TOKENS_DAILY',
+  'OPS_CRON_SECRET',
+  'OPS_ALERT_WEBHOOK_URL',
+  'OPS_ALERT_EMAIL_TO',
 ] as const;
 
 export type EdgeEnv = Partial<Record<(typeof EDGE_ENV_NAMES)[number], string>>;

@@ -1,5 +1,6 @@
 import { AuthConfig, getAuthenticatedUserId } from '../auth.ts';
 import { json } from '../http.ts';
+import { isPaused, type OpsFlagReader } from '../ops/flags.ts';
 import { HistoryPoint, Verdict, evaluateSnapshot } from './evaluate.ts';
 import { LEAGUE_RESET_RETRY_S, declaredLeagueEpochMs, effectiveAccountStartMs } from './league.ts';
 import { ProfessionId, ProgressMetrics, computeScore, extractMetrics, professionScores, scoreParts } from './metrics.ts';
@@ -79,6 +80,8 @@ export interface ProgressDeps {
   allowedOrigins: string[];
   store: ProgressStore;
   nowMs: () => number;
+  /** The operations flags (migration 0021). `season_scoring_paused`: the snapshot is still judged and stored (the audit trail goes on) but the League is not touched: season = 'paused'. */
+  opsFlags?: OpsFlagReader;
 }
 
 function corsHeaders(origin: string | null, allowed: string[]): Record<string, string> {
@@ -207,9 +210,13 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
     slotClaimed = false; // spent for real: a snapshot exists
 
     const score = computeScore(metrics);
-    const season = deps.store.applyToSeason
-      ? await deps.store.applyToSeason({ userId, snapshotId: stored.id, verdict: evaluation.verdict, reasons: evaluation.reasons, score })
-      : null;
+    // League scoring paused by the owner or the watchdog: nothing reaches the ranking. The next snapshot after the flag is cleared brings the account up to date (scores only ever go up to the best snapshot).
+    const scoringPaused = await isPaused(deps.opsFlags, 'season_scoring_paused');
+    const season: SeasonApplyStatus | 'paused' | null = scoringPaused
+      ? 'paused'
+      : deps.store.applyToSeason
+        ? await deps.store.applyToSeason({ userId, snapshotId: stored.id, verdict: evaluation.verdict, reasons: evaluation.reasons, score })
+        : null;
 
     // The profession rankings follow the main one: only when the main ranking just accepted an ok snapshot of an eligible player ('updated' or 'unchanged'), and a failure here
     // (migration 0006 not applied yet, a network error) never turns a stored snapshot into an error.

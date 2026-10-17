@@ -5,6 +5,7 @@ import { SolanaConfig, SolanaEnv, cleanSolAddress, fetchRecentBlockhash, loadPas
 import { USDC_DECIMALS, formatUsdc } from '../chain/solMoney.ts';
 import { json } from '../http.ts';
 import { chainPublic, rpcFor } from './chainEnv.ts';
+import { PAUSED_RETRY_AFTER_S, isPaused, pausedBody, type OpsFlagReader } from '../ops/flags.ts';
 import { prelude } from './prelude.ts';
 import type { PassCryptoStore } from './store.ts';
 
@@ -40,6 +41,8 @@ export interface PassCryptoDeps {
   store: PassCryptoStore;
   nowMs: () => number;
   pass: () => PassCryptoChain | null;
+  /** The operations flags (migration 0021). `pass_sales_paused` makes start / prepare / submit answer 503; 'price' (a read) stays open. */
+  opsFlags?: OpsFlagReader;
 }
 
 /** Does this token account exist on the cluster? Resolves true/false, or null when the node could not say. */
@@ -64,6 +67,9 @@ export async function handlePassCrypto(req: Request, deps: PassCryptoDeps): Prom
 
     // { action: 'price' }: what the Pass costs in USDC, so the buy screen can say it up front. Public by nature (the same number the 'start' answer carries); no intent is opened, no wallet is needed.
     if (body.action === 'price') return json({ ok: true, priceUnits: pass.priceUnits, priceUsdc: formatUsdc(pass.priceUnits), chain: chainPublic(pass.config) }, 200, cors);
+
+    // Pass sales are paused: no new intent, no verification. A payment that was already sent stays on chain and is picked up by a later 'submit' once the owner clears the flag.
+    if ((body.action === 'start' || body.action === 'prepare' || body.action === 'submit') && (await isPaused(deps.opsFlags, 'pass_sales_paused'))) return json(pausedBody('pass_sales_paused'), 503, { ...cors, 'retry-after': String(PAUSED_RETRY_AFTER_S) });
 
     if (await deps.store.hasActivePass(userId)) return json({ ok: false, reason: 'already_owned' }, 409, cors);
     const wallet = await deps.store.wallet(userId);

@@ -1,11 +1,15 @@
 import { getEdgeEnv } from '../_shared/env.ts';
+import { withOpsMonitor } from '../_shared/ops/monitor.ts';
+import { opsWiring } from '../_shared/ops/wiring.ts';
 import { createRestStore } from '../_shared/db.ts';
 import { createStripeProvider } from '../_shared/providers/stripe.ts';
 import { handleWebhook } from '../_shared/webhook.ts';
 import { json } from '../_shared/http.ts';
 
 // Supabase Edge Function (Deno), deployed with --no-verify-jwt: Stripe does not send a Supabase JWT; the Stripe signature is the authentication.
-Deno.serve((req: Request) => {
+// The operations layer (docs/AI_OPS.md): 5xx answers are counted for the watchdog (this function is never paused: money already taken must still be recorded).
+const ops = opsWiring(getEdgeEnv());
+Deno.serve(withOpsMonitor('stripe-webhook', (req: Request) => {
   const env = getEdgeEnv();
   if (!env.STRIPE_WEBHOOK_SECRET || !env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ADVENTURER_PASS) return json({ error: 'unavailable' }, 503);
   return handleWebhook(req, {
@@ -13,4 +17,4 @@ Deno.serve((req: Request) => {
     store: createRestStore({ supabaseUrl: env.SUPABASE_URL ?? '', serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY ?? '' }),
     nowMs: () => Date.now(),
   });
-});
+}, ops.report));

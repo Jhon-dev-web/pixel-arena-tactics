@@ -1,16 +1,21 @@
 import { getEdgeEnv } from '../_shared/env.ts';
+import { withOpsMonitor } from '../_shared/ops/monitor.ts';
+import { opsWiring } from '../_shared/ops/wiring.ts';
 import { parseAllowedOrigins } from '../_shared/http.ts';
 import { handleSubmitProgress } from '../_shared/progress/handler.ts';
 import { createProgressStore } from '../_shared/progress/progressDb.ts';
 
 // Supabase Edge Function (Deno). Secrets by NAME: APP_ORIGIN. SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
 // Deploy with JWT verification ON (the default): the player's session token is the only way in. Unlike stripe-webhook, no --no-verify-jwt.
-Deno.serve((req: Request) => {
+// The operations layer (docs/AI_OPS.md): 5xx answers are counted for the watchdog, and the pause flags are honoured.
+const ops = opsWiring(getEdgeEnv());
+Deno.serve(withOpsMonitor('submit-progress', (req: Request) => {
   const env = getEdgeEnv();
   return handleSubmitProgress(req, {
     auth: { supabaseUrl: env.SUPABASE_URL ?? '', anonKey: env.SUPABASE_ANON_KEY ?? '' },
     allowedOrigins: parseAllowedOrigins(env.APP_ORIGIN),
     store: createProgressStore({ supabaseUrl: env.SUPABASE_URL ?? '', serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY ?? '' }),
     nowMs: () => Date.now(),
+    opsFlags: ops.flags,
   });
-});
+}, ops.report));
