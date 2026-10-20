@@ -411,6 +411,16 @@ export const home = {
     { icon: 'bars', title: l('Temporadas de 60 dias', '60-day seasons'), body: l('Ranking e recompensas a cada temporada.', 'Ranking and rewards every season.') },
     { icon: 'chest', title: l('Itens lendários', 'Legendary items'), body: l('Equipe, colecione, evolua.', 'Equip, collect, evolve.') },
   ],
+  market: {
+    eyebrow: l('Mercado de jogadores', 'Player market'), title: l('Negocie seus tesouros.', 'Trade your treasures.'), tagline: l('Abre junto com a Temporada 1.', 'Opens together with Season 1.'),
+    bullets: [
+      { icon: 'swords', title: l('Peças raras', 'Rare pieces'), body: l('Venda e compre peças Épicas, Lendárias e únicas de outros jogadores.', 'Sell and buy Epic, Legendary and unique pieces with other players.') },
+      { icon: 'coin', title: l('Materiais e Bolsas de Ouro', 'Materials and Gold Pouches'), body: l('Materiais negociáveis e Bolsas de Ouro também entram no Mercado.', 'Tradeable materials and Gold Pouches are on the Market too.') },
+      { icon: 'rise', title: l('Revenda liberada', 'Resale allowed'), body: l('O que você comprou pode ser revendido. Equipou, ficou com você.', 'What you bought can be resold. Once equipped, it is yours.') },
+    ],
+    network: l('Na rede Solana, com carteira Phantom ou Solflare.', 'On the Solana network, with a Phantom or Solflare wallet.'),
+    cta: l('Como funciona o Mercado', 'How the Market works'), art: l('Dois aventureiros encapuzados negociam uma espada lendária, um elmo e cristais numa banca de mercado à luz de tochas.', 'Two hooded adventurers trade a legendary sword, a helmet and crystals at a torch-lit market stall.'),
+  },
   stepsEyebrow: l('Como funciona', 'How it works'), stepsTitle: l('Três passos. O resto o herói faz.', 'Three steps. Your hero does the rest.'),
   steps: [
     { icon: 'hourglass', title: l('Deixe trabalhando', 'Let it work'), body: l('Caça, Mineração, Lenhador e Horta continuam rendendo enquanto você está fora.', 'Hunting, Mining, Woodcutting and the Garden keep paying off while you are away.') },
