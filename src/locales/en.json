@@ -41,6 +41,7 @@
     "signUpSuccess": "Account created! Check your email to confirm, then sign in.",
     "genericError": "Couldn't continue. Please try again.",
     "notConfigured": "Sign-in isn't configured in this environment yet.",
+    "invitedByFriend": "You were invited by a friend",
     "restoringSession": "Restoring session…"
   },
   "usernameOnboarding": {
@@ -173,7 +174,7 @@
     "invitesCode": "Your invite code",
     "invitesCopy": "Copy",
     "invitesCopied": "Copied",
-    "invitesNoCode": "You do not have an invite link yet. Join the waitlist on the game website with the same e-mail as this account to get yours.",
+    "invitesNoCode": "Your invite code could not be created right now. Try again in a moment.",
     "invitesCounts": "Active invites: {n} · Bought the Pass: {m} of {goal}",
     "invitesCountsNoGoal": "Active invites: {n} · Bought the Pass: {m}",
     "invitesTiersTitle": "Rewards",
@@ -183,7 +184,13 @@
     "invitesLocked": "To earn",
     "invitesLoading": "Loading your invites...",
     "invitesError": "Your invites could not be loaded right now.",
-    "invitesRetry": "Try again"
+    "invitesRetry": "Try again",
+    "invitesRule": "An invite becomes active when your friend reaches Hero level 10.",
+    "invitesShare": "Share",
+    "invitesShareText": "Come play Arena Idle with me!",
+    "invitesShare_whatsapp": "WhatsApp",
+    "invitesShare_x": "X",
+    "invitesShare_telegram": "Telegram"
   },
   "tutorial": {
     "start": "START",
@@ -1038,6 +1045,11 @@
       "summarySpent": "{n} skill points spent.",
       "open": "Open skills"
     }
+  },
+  "invites": {
+    "nav": "Invite friends",
+    "passHint": "Invite {n} friends who buy the Pass and get a free Pass",
+    "passHintButton": "Invite friends"
   },
   "nav": {
     "base": "Base / AFK",

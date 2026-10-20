@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { t } from '../locales';
 import { useAuth } from '../auth/AuthContext';
+import { pendingInvite } from '../lib/inviteMemory';
 import PreseasonResetNotice from './PreseasonResetNotice';
 import { Button, Dialog, TextField } from './ui';
 
 // Unauthenticated gate (Phase 1 §10): the shared Dialog card on the login background, laid out full-screen since there's no game behind it to show yet.
 export default function AuthScreen() {
   const { signIn, signUp, configured } = useAuth();
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+  // Someone who arrived by an invite link (the code is in memory only, lib/inviteMemory.ts) most likely needs an account.
+  const [invited] = useState(() => pendingInvite() !== null);
+  const [mode, setMode] = useState<'signIn' | 'signUp'>(invited ? 'signUp' : 'signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'error' | 'signedUp'>('idle');
@@ -53,6 +56,12 @@ export default function AuthScreen() {
         }
       >
         {configured && <PreseasonResetNotice className="ui-alert" />}
+
+        {configured && invited && (
+          <p className="ui-alert good" data-testid="auth-invited">
+            {t('auth.invitedByFriend')}
+          </p>
+        )}
 
         {!configured && <p className="ui-alert bad">{t('auth.notConfigured')}</p>}
 

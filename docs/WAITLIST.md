@@ -117,7 +117,23 @@ Nada disto está feito, de propósito:
 3. **Link de cancelamento**: o módulo `supabase/functions/_shared/waitlist/token.ts` já assina e verifica o token (`signUnsubscribeToken(WAITLIST_SECRET, idDaLinha)`). O link vai para `https://<portal>/pt/unsubscribe/?t=<token>`; a página pede um clique e chama `waitlist-unsubscribe`. O token só consegue cancelar aquela linha e não expira (um e-mail antigo continua funcionando).
 4. Só envie para linhas com `unsubscribed_at is null`.
 
-## Convites com recompensa (link de indicação)
+## Convites dentro do jogo (por conta, sem e-mail) — migração 0024
+
+Decisão do dono (20/10/2026): ninguém quer receber e-mail, então o programa de convites **não depende mais da lista de espera**. As recompensas são exatamente as mesmas (a tabela `arena_private.referral_rewards` e `public.referral_rewards_granted`); muda só de onde vem o convite. **O jogo lê apenas este caminho.** O caminho antigo por e-mail (seção seguinte) continua funcionando e nenhum dado foi apagado.
+
+- **Cada conta do jogo tem um código de convite** (10 caracteres, o mesmo alfabeto do portal), em `arena_private.invite_codes`. É criado na primeira vez que a pessoa abre **Convidar amigos** (função `public.my_invite()`, só para logados).
+- **Quem convidou fica na conta convidada** (`arena_private.account_referrals`: conta, quem convidou, data, motivo de ter sido ignorado, e quando ficou ativa). Escrito **uma vez**, nunca muda.
+- **Como é registrado:** o link do jogo é `<endereço do jogo>/?ref=CÓDIGO`. O jogo guarda o código **só na memória** (nada no navegador), tira o `?ref` do endereço, mostra na tela de entrada "Você foi convidado por um amigo" e manda o código junto do cadastro (`signUp` com `data: { invite }`). Um gatilho em `auth.users` registra o convite; ele **nunca falha** (qualquer erro vira aviso), então o cadastro não quebra por causa de convite. Se o gatilho não pegou, depois do primeiro login o jogo chama `public.claim_invite(código)` uma vez (só vale para conta com menos de 24 h, sem convite e sem progresso aceito acima do nível 1; repetir não muda nada). Recarregar a página antes do login esquece o código, mas o cadastro já o levou ao servidor.
+- **Nunca a si mesmo:** convite da própria conta, ou de outro apelido do mesmo e-mail (sem `+etiqueta`, sem pontos no Gmail), fica registrado com o motivo (`self` / `self_email`) e **não conta**. Código desconhecido ou malformado não grava nada.
+- **Contadores** (calculados na hora): **convites ativos** = a conta convidada tem e-mail confirmado e um progresso aceito (`progress_snapshots`, `verdict = 'ok'`) com Herói no nível `min_hero_level` (10) ou mais, **depois de `launch_at`**; **compraram o Passe** = a conta convidada tem Passe ativo, pago, em modo real (mesmas origens do `paid_pass_count`). Aliases do mesmo e-mail contam como uma pessoa.
+- **Entrega:** os mesmos gatilhos de progresso e de Passe (e a varredura `public.referral_sweep()`) processam os dois caminhos. Uma faixa é entregue uma vez por conta; o Passe grátis só se a conta ainda não tem Passe ativo.
+- **O dono precisa definir `launch_at`** (enquanto vazio nada qualifica): `update arena_private.referral_config set launch_at = now();`. Aplique a migração `0024_account_invites.sql` no SQL editor (ou `supabase db push`), primeiro no projeto de desenvolvimento.
+- **No jogo (só online; no desktop/offline nada aparece):** item **Convidar amigos** no menu (grupo ECONOMIA) abre a página com o link (ou só o código, no desktop), copiar, compartilhar por WhatsApp / X / Telegram (links simples, sem script de terceiros), a regra "um convite fica ativo quando o amigo chega ao nível 10 do Herói", os contadores e as recompensas com ✓. A página do **Passe** mostra a linha "Convide 10 amigos que comprem o Passe e ganhe um Passe grátis" com um botão para essa página.
+- **Painel do dono:** a página "Lista de espera" mostra também **Convites no jogo** (total e quantos qualificaram).
+
+## Convites com recompensa (link de indicação) — caminho antigo por e-mail
+
+> Desde a migração 0024 o jogo **não lê mais** este caminho (veja a seção anterior). Ele segue funcionando e os dados continuam; o trecho "O que o jogo lê" abaixo descreve o painel antigo de Configurações, que foi substituído pela página **Convidar amigos**.
 
 Depois de se cadastrar, a pessoa vê **"Seu link de convite"** (`<site>/?ref=CÓDIGO`), com botão de copiar e botões de compartilhar no WhatsApp, X e Telegram. Os botões só **abrem** o aplicativo ou o site da rede com a mensagem pronta; nenhum script de terceiros é carregado. Quem entra pelo link tem o código guardado na aba (sessionStorage) e o cadastro dela registra **quem convidou**.
 

@@ -432,7 +432,7 @@ function build(): World {
 
   const waitlist: Waitlist = {
     days: 30,
-    totals: { total: 9340, active: 9128, unsubscribed: 212, confirmed: 0, locale_pt: 8710, locale_en: 630, referred: 2480, qualified: 611, registered_in_game: 1432 },
+    totals: { total: 9340, active: 9128, unsubscribed: 212, confirmed: 0, locale_pt: 8710, locale_en: 630, referred: 2480, qualified: 611, registered_in_game: 1432, account_referred: 318, account_qualified: 97 },
     by_day: Array.from({ length: 30 }, (_, i) => ({ day: dayKey((29 - i) * DAY), count: Math.floor(40 + r() * 140 + i * 3) })),
     by_source: [
       { source: 'tiktok', count: 3120 },

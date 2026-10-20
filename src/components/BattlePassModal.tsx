@@ -21,8 +21,12 @@ import T from '../game/tunables';
 import { gearStatLines } from './gearStats';
 import SeasonRankingPanel from './SeasonRankingPanel';
 import { seasonRankingEnabled } from '../game/seasonRanking';
+import { DEFAULT_REFERRAL_TIERS } from '../lib/referralTiers';
 import { Button, Chip, Dialog, ItemFrame, Meter, PageHeader, Panel, Screen, Tabs } from './ui';
 import type { TabItem } from './ui';
+
+// The paying-friends goal of the free Pass (the owner may move it on the server; the hint falls back to the default tier).
+const FREE_PASS_INVITES = DEFAULT_REFERRAL_TIERS.find((tier) => tier.kind === 'pass')?.minCount ?? 10;
 
 // The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; a vertical list on a phone),
 // the season's exclusives generated from the track data, and the footer with "claim all" and (for non-owners) the purchase button.
@@ -209,6 +213,7 @@ export default function BattlePassView({
   buyExtra,
   onClaim,
   onClaimAll,
+  onOpenInvites,
 }: {
   save: SaveData;
   onActivate: () => void;
@@ -220,6 +225,8 @@ export default function BattlePassView({
   buyExtra?: ReactNode;
   onClaim: (level: number, track: 'free' | 'premium') => void;
   onClaimAll: () => { claimed: number; blocked: number };
+  /** Online only: opens the "Convidar amigos" page. Shown as a one-line hint to someone who does not own the Pass yet. */
+  onOpenInvites?: () => void;
 }) {
   const owner = ownsAdventurerPass(save);
   // Web build (server mode): the button starts a checkout once the owner switches sales on (VITE_PASS_PURCHASE_ENABLED), "Em breve" until then. Offline/desktop: as before.
@@ -452,6 +459,15 @@ export default function BattlePassView({
                 ))}
               </ul>
             </section>
+
+            {!owner && onOpenInvites && (
+              <p className="pa-invite-hint rf-invite-hint" data-testid="pass-invite-hint">
+                <span>{t('invites.passHint', { n: FREE_PASS_INVITES })}</span>{' '}
+                <Button size="sm" onClick={onOpenInvites}>
+                  {t('invites.passHintButton')}
+                </Button>
+              </p>
+            )}
 
             <Panel
               className="pa-track-panel"

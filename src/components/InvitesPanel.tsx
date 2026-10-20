@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { activeLocale, t } from '../locales';
 import { copyText } from '../lib/errorLog';
-import { fetchReferralStatus, fetchReferralTiers, inviteLink, tierProgress } from '../lib/referral';
+import { fetchInvite, fetchReferralTiers, gameInviteLink, shareLinks, tierProgress } from '../lib/referral';
 import type { ReferralStatus, ReferralTier } from '../lib/referral';
-import { Button, Chip, Panel } from './ui';
+import { Button, Chip, PageHeader, Panel, Screen } from './ui';
 
-// Settings > Convites: the player's invite link, how many invited people are active and how many bought the Pass, and the reward tiers with a check on the ones earned. ONLINE ONLY: offline / desktop there
-// is no account to read it from and the panel is not there at all. Everything shown is the server's word (my_referral_status, referral_tiers); the game never counts invites by itself and never grants a reward
-// from this screen (the cosmetics a granted reward gives are put in the save by game/referralRewards.ts, the free Pass is an entitlement).
+// Convidar amigos: the player's invite link (web build) or code, how many invited people are active and how many bought the Pass, the rule, and the reward tiers with a check on the ones earned.
+// A page of the sidebar (InvitesPage, like Ofícios / Passe). ONLINE ONLY: offline / desktop there is no account to read it from and the page is not there at all. Everything shown is the server's
+// word (my_invite, referral_tiers); the game never counts invites by itself and never grants a reward from this screen (the cosmetics a granted reward gives are put in the save by
+// game/referralRewards.ts, the free Pass is an entitlement). Sharing uses plain links to WhatsApp / X / Telegram: no third-party script.
 
 export type InvitesState = { phase: 'loading' } | { phase: 'error' } | { phase: 'ready'; status: ReferralStatus; tiers: ReferralTier[] };
 
@@ -18,6 +19,7 @@ export function InvitesView({ state, link, copied = false, onCopy, onRetry }: { 
   return (
     <Panel title={t('settings.invitesTitle')} className="st-panel rf-panel" data-settings="invites">
       <p className="st-hint">{t('settings.invitesHint')}</p>
+      <p className="st-hint" data-testid="invite-rule">{t('settings.invitesRule')}</p>
       {state.phase === 'loading' && <p className="st-hint">{t('settings.invitesLoading')}</p>}
       {state.phase === 'error' && (
         <div className="st-actions">
@@ -58,6 +60,19 @@ function InvitesBody({ status, tiers, link, copied, onCopy }: { status: Referral
         </p>
       )}
 
+      {link && (
+        <div className="rf-share" data-testid="invite-share">
+          <span className="st-label">{t('settings.invitesShare')}</span>
+          <div className="rf-share-row">
+            {shareLinks(t('settings.invitesShareText'), link).map((s) => (
+              <a key={s.key} className="rf-share-link" href={s.href} target="_blank" rel="noopener noreferrer" data-share={s.key}>
+                {t(`settings.invitesShare_${s.key}`)}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="rf-counts" data-testid="invite-counts">
         {goal !== null ? t('settings.invitesCounts', { n: status.qualified, m: status.paying, goal }) : t('settings.invitesCountsNoGoal', { n: status.qualified, m: status.paying })}
       </p>
@@ -94,7 +109,7 @@ export default function InvitesPanel({ online }: { online: boolean }) {
     let live = true;
     setState({ phase: 'loading' });
     void (async () => {
-      const status = await fetchReferralStatus();
+      const status = await fetchInvite();
       if (!live) return;
       if (!status) {
         setState({ phase: 'error' });
@@ -111,11 +126,22 @@ export default function InvitesPanel({ online }: { online: boolean }) {
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   if (!online) return null;
   const code = state.phase === 'ready' ? state.status.code : null;
-  const link = inviteLink(code);
+  const link = gameInviteLink(code);
   const onCopy = async () => {
     const ok = await copyText(link ?? code ?? '');
     setCopied(ok);
     window.setTimeout(() => setCopied(false), 1500);
   };
   return <InvitesView state={state} link={link} copied={copied} onCopy={onCopy} onRetry={retry} />;
+}
+
+/** The sidebar page: the same panel inside a Screen with a header, like Ofícios and the Passe. */
+export function InvitesPage({ online }: { online: boolean }) {
+  if (!online) return null;
+  return (
+    <Screen label={t('invites.nav')} className="pa-page">
+      <PageHeader icon="🤝" title={t('invites.nav')} />
+      <InvitesPanel online />
+    </Screen>
+  );
 }

@@ -69,6 +69,7 @@ function Body({ w }: { w: Waitlist }) {
         <Kpi label="Chegaram por indicação" value={fmtInt(t.referred)} sub={`${fmtPercent(t.total ? t.referred / t.total : 0)} da lista`} />
         <Kpi label="Indicados qualificados" value={fmtInt(t.qualified)} sub="já têm conta e nível mínimo" />
         <Kpi label="Já criaram conta" value={fmtInt(t.registered_in_game)} sub={`${fmtPercent(t.total ? t.registered_in_game / t.total : 0)} da lista`} />
+        <Kpi label="Convites no jogo" value={fmtInt(t.account_referred ?? 0)} sub={`${fmtInt(t.account_qualified ?? 0)} qualificados`} />
         <Kpi label="Idioma" value={`${fmtInt(t.locale_pt)} pt`} sub={`${fmtInt(t.locale_en)} en`} />
       </div>
 

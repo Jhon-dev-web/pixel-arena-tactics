@@ -256,3 +256,34 @@
   flex-direction: column;
   gap: 2px;
 }
+
+/* Convidar amigos: share links (plain anchors to WhatsApp / X / Telegram) */
+.rf-share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.rf-share-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.rf-share-link {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+  color: var(--c-info);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  text-decoration: none;
+}
+.rf-share-link:hover,
+.rf-share-link:focus-visible {
+  border-color: var(--c-info);
+}
+.rf-invite-hint {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--c-gold-200);
+}

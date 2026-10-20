@@ -41,6 +41,7 @@
     "signUpSuccess": "Conta criada! Verifique seu e-mail para confirmar, depois entre.",
     "genericError": "Não foi possível continuar. Tente novamente.",
     "notConfigured": "Login ainda não está configurado neste ambiente.",
+    "invitedByFriend": "Você foi convidado por um amigo",
     "restoringSession": "Restaurando sessão…"
   },
   "usernameOnboarding": {
@@ -173,7 +174,7 @@
     "invitesCode": "Seu código de convite",
     "invitesCopy": "Copiar",
     "invitesCopied": "Copiado",
-    "invitesNoCode": "Você ainda não tem um link de convite. Entre na lista de espera, no site do jogo, com o mesmo e-mail desta conta para receber o seu.",
+    "invitesNoCode": "Não foi possível gerar seu código de convite agora. Tente de novo em instantes.",
     "invitesCounts": "Convites ativos: {n} · Compraram o Passe: {m} de {goal}",
     "invitesCountsNoGoal": "Convites ativos: {n} · Compraram o Passe: {m}",
     "invitesTiersTitle": "Recompensas",
@@ -183,7 +184,13 @@
     "invitesLocked": "A conquistar",
     "invitesLoading": "Carregando seus convites...",
     "invitesError": "Não foi possível carregar seus convites agora.",
-    "invitesRetry": "Tentar de novo"
+    "invitesRetry": "Tentar de novo",
+    "invitesRule": "Um convite fica ativo quando o amigo chega ao nível 10 do Herói.",
+    "invitesShare": "Compartilhar",
+    "invitesShareText": "Venha jogar Arena Idle comigo!",
+    "invitesShare_whatsapp": "WhatsApp",
+    "invitesShare_x": "X",
+    "invitesShare_telegram": "Telegram"
   },
   "tutorial": {
     "start": "COMEÇAR",
@@ -1038,6 +1045,11 @@
       "summarySpent": "{n} pontos de habilidade gastos.",
       "open": "Abrir habilidades"
     }
+  },
+  "invites": {
+    "nav": "Convidar amigos",
+    "passHint": "Convide {n} amigos que comprem o Passe e ganhe um Passe grátis",
+    "passHintButton": "Convidar amigos"
   },
   "nav": {
     "base": "Base / AFK",

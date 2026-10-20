@@ -1,12 +1,12 @@
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
-import InvitesPanel, { InvitesView } from '../../components/InvitesPanel';
+import InvitesPanel, { InvitesPage, InvitesView } from '../../components/InvitesPanel';
 import SettingsModal from '../../components/SettingsModal';
 import { defaultSave } from '../engine';
 import { UsernameContext } from '../usernameContext';
 import { setLocale } from '../../locales';
-import { DEFAULT_REFERRAL_TIERS, parseReferralStatus } from '../../lib/referral';
+import { DEFAULT_REFERRAL_TIERS, gameInviteLink, parseReferralStatus } from '../../lib/referral';
 import pt from '../../locales/pt.json';
 import en from '../../locales/en.json';
 
@@ -20,11 +20,13 @@ const lockedRefs = (html: string): string[] => [...html.matchAll(/data-tier="([a
 beforeEach(() => setLocale('pt'));
 
 describe('the Convites panel', () => {
-  it('none: no link to give (the e-mail is not on the waitlist), a line saying where to get one, zero counters and every tier still to earn', () => {
+  it('none: no code could be read, a line saying so (no e-mail wording), zero counters and every tier still to earn', () => {
     const html = view(ready({ code: null, qualified: 0, paying: 0, pass_goal: 10, rewards: [] }));
     expect(html).toContain('data-settings="invites"');
     expect(html).toContain('data-testid="invite-no-code"');
-    expect(html).toContain('lista de espera');
+    expect(html).toContain('Não foi possível gerar seu código');
+    expect(html).not.toMatch(/e-mail|lista de espera/i);
+    expect(html).toContain('Um convite fica ativo quando o amigo chega ao nível 10 do Herói');
     expect(html).not.toContain('data-testid="invite-link"');
     expect(html).toContain('Convites ativos: 0 · Compraram o Passe: 0 de 10');
     expect(earnedRefs(html)).toEqual([]);
@@ -66,16 +68,38 @@ describe('the Convites panel', () => {
     expect(html).toContain('Passe de Aventureiro grátis');
   });
 
-  it('offline (no account / the desktop build): the panel is not there, neither alone nor inside the Settings screen', () => {
+  it('offline (no account / the desktop build): the page and the panel are not there; Settings no longer carries the panel (the sidebar page replaces it)', () => {
     expect(renderToStaticMarkup(h(InvitesPanel, { online: false }))).toBe('');
+    expect(renderToStaticMarkup(h(InvitesPage, { online: false }))).toBe('');
     const noop = () => undefined;
     const props = { save: defaultSave(), audio: { music: 60, sfx: 40, musicMuted: false, sfxMuted: false }, onMusicVolume: noop, onSfxVolume: noop, onToggleMusicMute: noop, onToggleSfxMute: noop, onChangeLocale: noop, onReplayTutorial: noop, accountEmail: null, onSignOut: noop, onExportSave: noop, onImportSave: noop, onResetSave: noop, onMaterialPrefs: noop, onClose: noop };
-    const offline = renderToStaticMarkup(h(UsernameContext.Provider, { value: null }, h(SettingsModal, { ...props, accountConfigured: false } as never)));
-    expect(offline).not.toContain('data-settings="invites"');
-    expect(offline).not.toContain('Convites');
-    const online = renderToStaticMarkup(h(UsernameContext.Provider, { value: 'jhon' }, h(SettingsModal, { ...props, accountConfigured: true, accountEmail: 'jhon@gmail.com' } as never)));
-    expect(online).toContain('data-settings="invites"');
-    expect(online).toContain('Carregando seus convites');
+    for (const accountConfigured of [false, true]) {
+      const html = renderToStaticMarkup(h(UsernameContext.Provider, { value: 'jhon' }, h(SettingsModal, { ...props, accountConfigured, accountEmail: accountConfigured ? 'jhon@gmail.com' : null } as never)));
+      expect(html).not.toContain('data-settings="invites"');
+    }
+    // online, the page is there and reads the server
+    const page = renderToStaticMarkup(h(InvitesPage, { online: true }));
+    expect(page).toContain('Convidar amigos');
+    expect(page).toContain('data-settings="invites"');
+    expect(page).toContain('Carregando seus convites');
+  });
+
+  it('shares the web link through plain WhatsApp / X / Telegram links; the desktop build shows the code only', () => {
+    const raw = { code: 'K7M2QXA9RB', qualified: 0, paying: 0, pass_goal: 10, rewards: [] };
+    const link = 'https://arena.example/?ref=K7M2QXA9RB';
+    const html = view(ready(raw), link);
+    expect(html).toContain('data-testid="invite-share"');
+    expect(html).toContain('href="https://wa.me/?text=');
+    expect(html).toContain('href="https://twitter.com/intent/tweet?text=');
+    expect(html).toContain('href="https://t.me/share/url?url=');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).not.toContain('<script');
+    const codeOnly = view(ready(raw), null);
+    expect(codeOnly).toContain('Seu código de convite');
+    expect(codeOnly).not.toContain('data-testid="invite-share"');
+    expect(gameInviteLink('K7M2QXA9RB', 'https://play.example', false)).toBe('https://play.example/?ref=K7M2QXA9RB');
+    expect(gameInviteLink('K7M2QXA9RB', 'https://play.example', true)).toBeNull();
+    expect(gameInviteLink('bad', 'https://play.example', false)).toBeNull();
   });
 
   it('while the read is running or when it failed it says so, and offers a retry only for the failure', () => {

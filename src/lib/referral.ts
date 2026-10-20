@@ -95,3 +95,41 @@ export async function fetchReferralTiers(): Promise<ReferralTier[]> {
     return [...DEFAULT_REFERRAL_TIERS];
   }
 }
+
+/** my_invite() (migration 0024): the account's own invite code (created the first time), its counters and the rewards granted to it. Same shape as my_referral_status. null: no backend, signed out, or unreachable. */
+export async function fetchInvite(): Promise<ReferralStatus | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.rpc('my_invite');
+    if (error) return null;
+    return parseReferralStatus(data);
+  } catch {
+    return null;
+  }
+}
+
+/** claim_invite(code): the fallback for a sign-up whose metadata did not reach the trigger. Fire and forget: the answer changes nothing on screen. */
+export async function claimInvite(code: string): Promise<void> {
+  if (!supabase || !INVITE_CODE_RE.test(code)) return;
+  try {
+    await supabase.rpc('claim_invite', { p_code: code });
+  } catch {
+    /* the sign-up already carried the code; this is only the second chance */
+  }
+}
+
+/** The link the game gives out: `<game origin>/?ref=CODE` on the web build, null on the desktop build (no origin worth sharing: only the code is shown) or without a code. */
+export function gameInviteLink(code: string | null, origin: string | null = typeof window !== 'undefined' && /^https?:$/.test(window.location?.protocol ?? '') ? window.location.origin : null, desktop: boolean = !supabase): string | null {
+  if (desktop || !origin || !code || !INVITE_CODE_RE.test(code)) return null;
+  return `${origin}/?ref=${code}`;
+}
+
+/** Share links that need no script of ours: WhatsApp, X and Telegram open their own page with the text filled in. */
+export function shareLinks(text: string, link: string): { key: 'whatsapp' | 'x' | 'telegram'; href: string }[] {
+  const both = encodeURIComponent(`${text} ${link}`);
+  return [
+    { key: 'whatsapp', href: `https://wa.me/?text=${both}` },
+    { key: 'x', href: `https://twitter.com/intent/tweet?text=${both}` },
+    { key: 'telegram', href: `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}` },
+  ];
+}

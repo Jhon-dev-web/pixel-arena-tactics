@@ -46,6 +46,7 @@ import { getServerPassOwned, grantDailyPassKit, isServerPassSource, ownsAdventur
 import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned, hasBuyIntent, pollPassOwned, recheckServerPass, startCheckout, takeCheckoutReturn, passPurchaseEnabled } from './game/passServer';
 import { usePassEntitlementVersion } from './game/usePassEntitlement';
 import { fetchReferralStatus } from './lib/referral';
+import { InvitesPage } from './components/InvitesPanel';
 import { applyReferralCosmetics } from './game/referralRewards';
 import { getServerResetAt, needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
 import LeagueResetModal from './components/LeagueResetModal';
@@ -213,7 +214,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
-  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado' | 'passe'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado' | 'passe' | 'convites'>('home');
   // A tradeable material the player asked to sell from the inventory: the market opens on its Sell tab with it picked (once).
   const [marketPick, setMarketPick] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -2341,6 +2342,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       items: [
         { key: 'deliveries', icon: <img className="pixel-icon" src="/assets/icons/expedition_ticket_2h.png" alt="" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
         { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: activeView === 'passe', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('passe'); } },
+        // Inviting friends is online only (an account holds the code): no entry in the offline / desktop build.
+        ...(configured ? [{ key: 'invites', icon: '🤝', label: t('invites.nav'), active: activeView === 'convites', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('convites'); } }] : []),
         { key: 'shop', icon: <img className="pixel-icon" src="/assets/icons/gold.png" alt="" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopTab('buy'); setShopOpen(true); } },
         ...(marketOn ? [{ key: 'market', icon: <img className="pixel-icon" src="/assets/icons/gold_pouch.png" alt="" />, label: mt('title'), active: activeView === 'mercado', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('mercado'); } }] : []),
       ],
@@ -2437,8 +2440,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               ) : undefined}
               onClaim={claimBattlePassLevel}
               onClaimAll={claimAllBattlePassRewards}
+              onOpenInvites={configured ? () => { playSfx('click'); setActiveView('convites'); } : undefined}
             />
           )}
+          {activeView === 'convites' && configured && <InvitesPage online />}
           {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} focus={oficiosFocus} />}
         </div>
       </div>

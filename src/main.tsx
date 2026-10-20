@@ -10,6 +10,7 @@ import { uiAudit } from "./lib/uiAudit";
 import pt from "./locales/pt.json";
 import { installGlobalErrorHandlers } from "./lib/errorLog";
 import { captureBuyIntent } from "./game/passServer";
+import { captureInvite } from "./lib/inviteMemory";
 import { applyMotionPref } from "./lib/motionPref";
 import { installNetStats } from "./lib/netStats";
 
@@ -21,6 +22,9 @@ applyMotionPref();
 
 // The website links to /?comprar=passe: remember it (and clean the address bar) before the login screen can drop it.
 captureBuyIntent();
+
+// The invite link (/?ref=CODE): the code is kept in MEMORY only (nothing saved in the browser) and taken out of the address bar; the login screen and the sign-up use it.
+captureInvite();
 
 // DEV only: `window.__uiAudit()` lists raw locale keys, NaN / undefined, horizontal overflow and unnamed buttons on the current screen (the same checker as `npm run smoke:ui`).
 if (import.meta.env.DEV) {

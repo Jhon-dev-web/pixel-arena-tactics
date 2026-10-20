@@ -385,7 +385,7 @@ export interface League {
 
 export interface Waitlist {
   days: number;
-  totals: { total: number; active: number; unsubscribed: number; confirmed: number; locale_pt: number; locale_en: number; referred: number; qualified: number; registered_in_game: number };
+  totals: { total: number; active: number; unsubscribed: number; confirmed: number; locale_pt: number; locale_en: number; referred: number; qualified: number; registered_in_game: number; account_referred?: number; account_qualified?: number };
   by_day: { day: string; count: number }[];
   by_source: { source: string; count: number }[];
   referral_ignored: { referral_ignored: string; count: number }[];

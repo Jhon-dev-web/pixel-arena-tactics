@@ -1,6 +1,8 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+import { clearPendingInvite, pendingInvite } from '../lib/inviteMemory';
+import { claimInvite } from '../lib/referral';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -46,9 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp: AuthContextValue['signUp'] = async (email, password) => {
     if (!supabase) return { error: 'not_configured' };
-    const { error } = await supabase.auth.signUp({ email, password });
+    // The invite of the link the player came by rides along as user metadata; a server trigger records it on the new account (migration 0024). It is only a code, never an e-mail.
+    const invite = pendingInvite();
+    const { error } = await supabase.auth.signUp(invite ? { email, password, options: { data: { invite } } } : { email, password });
     return { error: error ? error.message : null };
   };
+
+  // After a fresh sign-up + first login: if the trigger missed the code, claim it once while it is still in memory (the server accepts it only for an account under 24 h old with no progress).
+  const signedInUserId = session?.user?.id ?? null;
+  useEffect(() => {
+    if (!signedInUserId) return;
+    const code = pendingInvite();
+    if (!code) return;
+    clearPendingInvite();
+    void claimInvite(code);
+  }, [signedInUserId]);
 
   const signIn: AuthContextValue['signIn'] = async (email, password) => {
     if (!supabase) return { error: 'not_configured' };
