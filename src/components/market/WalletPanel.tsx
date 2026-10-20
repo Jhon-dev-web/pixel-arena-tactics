@@ -7,6 +7,7 @@ import type { ChainPublic } from '../../../supabase/functions/_shared/market/typ
 import { copyText } from './format';
 import { LINK_MESSAGE_KEY } from './linkMessages';
 import { Button, Panel } from '../ui';
+import { AccountMismatch, useOpenAccount } from './AccountMismatch';
 
 /** The warning every money screen carries. */
 export function Warnings({ chain, custody = true }: { chain: ChainPublic | null; custody?: boolean }) {
@@ -24,6 +25,7 @@ export default function WalletPanel({ api, chain, wallet, onChanged }: { api: Ma
   const [message, setMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [choices, setChoices] = useState<string[] | null>(null);
+  const watched = useOpenAccount(wallet !== null);
 
   const link = async (preferred?: string) => {
     if (!chain || busy) return;
@@ -33,7 +35,7 @@ export default function WalletPanel({ api, chain, wallet, onChanged }: { api: Ma
     setBusy(null);
     if ('failure' in r) setMessage(mt(LINK_MESSAGE_KEY[r.failure]));
     else {
-      setMessage(mt('wallet.done'));
+      setMessage(mt(r.unchanged ? 'wallet.unchanged' : 'wallet.done'));
       onChanged();
     }
   };
@@ -83,6 +85,7 @@ export default function WalletPanel({ api, chain, wallet, onChanged }: { api: Ma
             )}
             {chain && <span className="ui-note">{mt('wallet.network', { name: chain.livemode ? 'Solana' : mt('wallet.devnet') })}</span>}
           </div>
+          <AccountMismatch linked={wallet.address} open={watched.open} walletName={watched.walletName} onRelink={() => void start()} busy={busy !== null} />
           <p className="ui-note">{mt('wallet.changeHint')}</p>
           <Button onClick={() => void start()} disabled={!chain || busy !== null}>
             {busy === 'signing' ? mt('wallet.signing') : mt('wallet.change')}

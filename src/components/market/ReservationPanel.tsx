@@ -8,6 +8,7 @@ import { SolIcon } from './icons';
 import { clock, copyText, fmtSol, msLeft, shortAddress } from './format';
 import UsdLine from './UsdLine';
 import { Warnings } from './WalletPanel';
+import { AccountMismatch, mismatchText, useOpenAccount } from './AccountMismatch';
 import { Button, Panel, StatList, StatRow, TextField } from '../ui';
 
 interface PayState {
@@ -50,6 +51,7 @@ export default function ReservationPanel({
   const [now, setNow] = useState(() => Date.now());
   const [note, setNote] = useState<string | null>(null);
   const alive = useRef(true);
+  const watched = useOpenAccount(walletAddress !== null);
 
   useEffect(() => {
     alive.current = true;
@@ -86,7 +88,7 @@ export default function ReservationPanel({
     patch({ busy: true, message: null, error: false });
     const r = await payReservationFromWallet(api, res, walletAddress);
     if ('failure' in r) {
-      patch({ busy: false, message: mt(PAY_FAILURE_KEY[r.failure]), error: true });
+      patch({ busy: false, message: r.failure === 'wrongAccount' && walletAddress ? mismatchText(walletAddress, r.open, watched.walletName) : mt(PAY_FAILURE_KEY[r.failure]), error: true });
       return;
     }
     patch({ signature: r.signature, message: mt('pay.sentHash') });
@@ -176,8 +178,10 @@ export default function ReservationPanel({
               </p>
             ) : (
               <>
+                {/* a reservation is open: the server does not change the linked wallet meanwhile, so the way out is the linked account, or cancelling */}
+                <AccountMismatch linked={walletAddress} open={watched.open} walletName={watched.walletName} locked />
                 <p className="ui-note">{mt('pay.checkWallet')}</p>
-                <Button variant="primary" block disabled={pay.busy || !walletAddress} onClick={() => void payFromWallet()}>
+                <Button variant="primary" block disabled={pay.busy || !walletAddress || (watched.open !== null && watched.open !== walletAddress)} onClick={() => void payFromWallet()}>
                   {pay.busy ? mt('pay.checking') : mt('pay.payFromWallet')}
                 </Button>
                 <TextField

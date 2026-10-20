@@ -7,6 +7,7 @@ import { mt } from '../../locales/market';
 import { Button, Panel } from '../ui';
 import { shortAddress } from './format';
 import { LINK_MESSAGE_KEY } from './linkMessages';
+import { AccountMismatch, useOpenAccount } from './AccountMismatch';
 
 // Settings > Carteira Solana: the wallet linked to the account (masked) and the button to link or change it. It runs the SAME link flow as the Market's wallet tab (runLinkFlow: the wallet signs one
 // message, nothing moves). Web only and behind the market flag: App.tsx loads this file lazily and only there, so the desktop bundle never carries it.
@@ -35,6 +36,7 @@ export default function SettingsWallet() {
 
   const wallet = overview?.wallet ?? null;
   const chain = overview?.chain ?? null;
+  const watched = useOpenAccount(wallet !== null);
 
   const link = async (preferred?: string) => {
     if (!chain || busy) return;
@@ -44,7 +46,7 @@ export default function SettingsWallet() {
     setBusy(null);
     if ('failure' in r) setMessage(mt(LINK_MESSAGE_KEY[r.failure]));
     else {
-      setMessage(mt('wallet.done'));
+      setMessage(mt(r.unchanged ? 'wallet.unchanged' : 'wallet.done'));
       void load();
     }
   };
@@ -78,6 +80,7 @@ export default function SettingsWallet() {
               </div>
             )}
           </div>
+          {wallet && <AccountMismatch linked={wallet.address} open={watched.open} walletName={watched.walletName} onRelink={() => void start()} busy={busy !== null} />}
           {wallet && <p className="st-hint">{mt('wallet.changeHint')}</p>}
           <div className="st-actions">
             <Button size="sm" variant={wallet ? 'secondary' : 'primary'} onClick={() => void start()} disabled={!chain || busy !== null}>

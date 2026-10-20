@@ -17,6 +17,10 @@ interface StdAccount {
 }
 interface StdFeatures {
   'standard:connect'?: { connect(input?: { silent?: boolean }): Promise<{ accounts: readonly StdAccount[] }> };
+  /** drops the page's authorisation: the next connect() asks the wallet again and answers with the account selected NOW */
+  'standard:disconnect'?: { disconnect(): Promise<void> };
+  /** 'change' fires with the new `accounts` when the player picks another account in the extension */
+  'standard:events'?: { on(event: 'change', listener: (properties: { accounts?: readonly StdAccount[] }) => void): () => void };
   'solana:signMessage'?: { signMessage(...inputs: { account: StdAccount; message: Uint8Array }[]): Promise<{ signedMessage: Uint8Array; signature: Uint8Array }[]> };
   'solana:signAndSendTransaction'?: { signAndSendTransaction(...inputs: { account: StdAccount; transaction: Uint8Array; chain: string }[]): Promise<{ signature: Uint8Array }[]> };
 }
@@ -32,12 +36,20 @@ interface LegacyProvider {
   isSolflare?: boolean;
   publicKey?: { toBase58(): string } | null;
   connect(): Promise<{ publicKey: { toBase58(): string } } | void>;
+  disconnect?(): Promise<void>;
+  on?(event: string, listener: (publicKey?: { toBase58(): string } | null) => void): void;
+  off?(event: string, listener: (publicKey?: { toBase58(): string } | null) => void): void;
+  removeListener?(event: string, listener: (publicKey?: { toBase58(): string } | null) => void): void;
   signMessage?(message: Uint8Array, display?: string): Promise<{ signature: Uint8Array } | Uint8Array>;
 }
 
 export type WalletErrorKind = 'no_provider' | 'rejected' | 'wrong_account' | 'unsupported' | 'other';
 export class WalletError extends Error {
-  constructor(public readonly kind: WalletErrorKind) {
+  /** `open`, for 'wrong_account': the address of the account that is open in the wallet right now */
+  constructor(
+    public readonly kind: WalletErrorKind,
+    public readonly open?: string,
+  ) {
     super(`wallet_${kind}`);
     this.name = 'WalletError';
   }
@@ -47,6 +59,10 @@ export class WalletError extends Error {
 export interface SolWalletSession {
   name: string;
   address: string;
+  /** the account that is selected in the wallet RIGHT NOW (the wallet keeps it current when the player switches), or null when the wallet shows none */
+  currentAddress(): string | null;
+  /** calls back when the player switches account in the wallet (or disconnects: null); returns the unsubscribe */
+  onAccountChange(listener: (address: string | null) => void): () => void;
   /** the signature, base58 */
   signMessage(message: string): Promise<string>;
   /** signs and SENDS one serialised transaction (empty signature slot); resolves with its signature, base58 */
@@ -120,10 +136,41 @@ function legacyProviders(win: Window): { name: string; provider: LegacyProvider 
 
 const chainOf = (cluster: Cluster): string => (cluster === 'mainnet-beta' ? 'solana:mainnet' : 'solana:devnet');
 
+function subscribeStd(wallet: StdWallet, listener: (address: string | null, walletName?: string) => void): () => void {
+  const events = wallet.features['standard:events'];
+  if (!events) return () => undefined;
+  try {
+    return events.on('change', (properties) => {
+      if (properties?.accounts) listener(properties.accounts.length > 0 ? properties.accounts[0].address : null, wallet.name);
+    });
+  } catch {
+    return () => undefined;
+  }
+}
+
+function subscribeLegacy(provider: LegacyProvider, listener: (address: string | null, walletName?: string) => void, name?: string): () => void {
+  if (typeof provider.on !== 'function') return () => undefined;
+  const moved = (pk?: { toBase58(): string } | null) => listener(pk ? pk.toBase58() : null, name);
+  const gone = () => listener(null, name);
+  provider.on('accountChanged', moved);
+  provider.on('disconnect', gone);
+  return () => {
+    const off = provider.off ?? provider.removeListener;
+    try {
+      off?.call(provider, 'accountChanged', moved);
+      off?.call(provider, 'disconnect', gone);
+    } catch {
+      /* nothing to undo */
+    }
+  };
+}
+
 function standardSession(wallet: StdWallet, account: StdAccount): SolWalletSession {
   return {
     name: wallet.name,
     address: account.address,
+    currentAddress: () => (wallet.accounts.length > 0 ? wallet.accounts[0].address : account.address),
+    onAccountChange: (listener) => subscribeStd(wallet, listener),
     async signMessage(message) {
       const feature = wallet.features['solana:signMessage'];
       if (!feature) throw new WalletError('unsupported');
@@ -159,6 +206,8 @@ function legacySession(name: string, provider: LegacyProvider): Promise<SolWalle
       return {
         name,
         address,
+        currentAddress: () => provider.publicKey?.toBase58() ?? address,
+        onAccountChange: (listener) => subscribeLegacy(provider, listener),
         async signMessage(message: string) {
           if (!provider.signMessage) throw new WalletError('unsupported');
           try {
@@ -180,33 +229,94 @@ function legacySession(name: string, provider: LegacyProvider): Promise<SolWalle
   })();
 }
 
+/** The wallet the player picked (Phantom by default, then Solflare, then any other standard one), or undefined. */
+function pickStandard(win: Window, preferred?: string): StdWallet | undefined {
+  const standard = registryFor(win).registry.wallets.filter(isSolanaWallet);
+  return (preferred ? standard.find((w) => w.name === preferred) : undefined) ?? standard.find((w) => w.name === 'Phantom') ?? standard.find((w) => w.name === 'Solflare') ?? standard[0];
+}
+
+function pickLegacy(win: Window, preferred?: string): { name: string; provider: LegacyProvider } | undefined {
+  const legacy = legacyProviders(win);
+  return (preferred ? legacy.find((p) => p.name === preferred) : undefined) ?? legacy[0];
+}
+
+/** Drops the page's authorisation with the wallet (best effort: a wallet without the feature, or one that refuses, is simply left as it is). */
+async function disconnectWallet(standard: StdWallet | undefined, legacy: LegacyProvider | undefined): Promise<void> {
+  try {
+    if (standard) await standard.features['standard:disconnect']?.disconnect();
+    else if (legacy && typeof legacy.disconnect === 'function') await legacy.disconnect();
+  } catch {
+    /* it was not connected, or the wallet does not care: connecting next asks again anyway */
+  }
+}
+
 /**
  * Asks the wallet to share an account (it shows its own approval). `want` is the address that must come back (the one linked to the account); without it the first account is used.
  * `preferred` is the wallet's name when the player picked one.
+ *
+ * `fresh` is for LINKING. A wallet that is already connected to the page answers connect() with the account the player approved EARLIER, even after he switched to another account in the
+ * extension: that is why "change wallet" kept the old address. With `fresh` the session is first disconnected (`standard:disconnect`, or the legacy `disconnect`), so connect() asks the wallet again
+ * and answers with the account that is selected now. Without it (paying) no extra approval is asked, but the account the wallet shows NOW is what counts: a different one than `want` is
+ * "wrong_account", carrying the address that is open.
  */
-export async function connectSolWallet(preferred?: string, want?: string, win: Window | undefined = typeof window === 'undefined' ? undefined : window): Promise<SolWalletSession> {
+export async function connectSolWallet(preferred?: string, want?: string, win: Window | undefined = typeof window === 'undefined' ? undefined : window, fresh = false): Promise<SolWalletSession> {
   if (!win) throw new WalletError('no_provider');
   await listSolWallets(win);
-  const standard = registryFor(win).registry.wallets.filter(isSolanaWallet);
-  const pick = (preferred ? standard.find((w) => w.name === preferred) : undefined) ?? standard.find((w) => w.name === 'Phantom') ?? standard.find((w) => w.name === 'Solflare') ?? standard[0];
+  const pick = pickStandard(win, preferred);
   if (pick) {
     try {
+      if (fresh) await disconnectWallet(pick, undefined);
       const connect = pick.features['standard:connect'];
       const result = connect ? await connect.connect() : { accounts: pick.accounts };
-      const accounts = result.accounts.length > 0 ? result.accounts : pick.accounts;
+      // the wallet keeps `accounts` current when the player switches; the answer of connect() can be the older authorisation
+      const accounts = pick.accounts.length > 0 ? pick.accounts : result.accounts;
+      if (accounts.length === 0) throw new WalletError('other');
       const account = want ? accounts.find((a) => a.address === want) : accounts[0];
-      if (!account) throw new WalletError(accounts.length > 0 ? 'wrong_account' : 'other');
+      if (!account) throw new WalletError('wrong_account', accounts[0].address);
       return standardSession(pick, account);
     } catch (err) {
       throw classify(err);
     }
   }
-  const legacy = legacyProviders(win);
-  const chosen = (preferred ? legacy.find((p) => p.name === preferred) : undefined) ?? legacy[0];
+  const chosen = pickLegacy(win, preferred);
   if (!chosen) throw new WalletError('no_provider');
+  if (fresh) await disconnectWallet(undefined, chosen.provider);
   const session = await legacySession(chosen.name, chosen.provider);
-  if (want && session.address !== want) throw new WalletError('wrong_account');
+  if (want && session.address !== want) throw new WalletError('wrong_account', session.address);
   return session;
+}
+
+/**
+ * Follows the account that is open in the wallet: calls `onChange` with it now (when the wallet already shares one with this page) and again every time the player switches or disconnects.
+ * It never asks the wallet for approval. Resolves with the unsubscribe. Nothing is sent anywhere.
+ */
+export async function watchOpenAccount(onChange: (address: string | null, walletName?: string) => void, preferred?: string, win: Window | undefined = typeof window === 'undefined' ? undefined : window): Promise<() => void> {
+  if (!win) return () => undefined;
+  await listSolWallets(win);
+  const pick = pickStandard(win, preferred);
+  if (pick) {
+    if (pick.accounts.length > 0) onChange(pick.accounts[0].address, pick.name);
+    else {
+      try {
+        const quiet = await pick.features['standard:connect']?.connect({ silent: true });
+        if (quiet && quiet.accounts.length > 0) onChange(quiet.accounts[0].address, pick.name);
+      } catch {
+        /* the wallet does not know this page yet: nothing is open for it */
+      }
+    }
+    return subscribeStd(pick, onChange);
+  }
+  const chosen = pickLegacy(win, preferred);
+  if (!chosen) return () => undefined;
+  const known = chosen.provider.publicKey?.toBase58();
+  if (known) onChange(known, chosen.name);
+  return subscribeLegacy(chosen.provider, onChange, chosen.name);
+}
+
+/** Throws "wrong_account" (with the open address) when the wallet is showing a different account than `want`. Call it right before asking the wallet to sign a payment. */
+export function assertOpenAccount(session: SolWalletSession, want: string): void {
+  const open = session.currentAddress();
+  if (open !== null && open !== want) throw new WalletError('wrong_account', open);
 }
 
 /** A block explorer page of a transaction (solscan). */

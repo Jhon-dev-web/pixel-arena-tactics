@@ -53,7 +53,7 @@ export interface PassPlan {
 export interface MarketApi {
   walletStatus(): Promise<Result<{ enabled: boolean; wallet: { address: string; chainId: number } | null; chain: ChainPublic | null }>>;
   walletNonce(address: string): Promise<Result<{ nonce: string; message: string }>>;
-  walletLink(address: string, nonce: string, signature: string): Promise<Result<{ wallet: { address: string; chainId: number } }>>;
+  walletLink(address: string, nonce: string, signature: string): Promise<Result<{ status?: 'linked' | 'unchanged'; wallet: { address: string; chainId: number } }>>;
   list(certificateId: string, priceLamports: number): Promise<Result<{ listingId: string; expiresAt: string }>>;
   /** A LOT of one tradeable material (bought whole): the server moves the units from the account's balance into the listing. `requestId` makes a retry return the same listing. */
   listMaterial(requestId: string, materialId: string, quantity: number, unitPriceMicro: number): Promise<Result<{ listingId: string; expiresAt: string }>>;

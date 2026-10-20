@@ -134,11 +134,11 @@ describe('the wallet adapter (Wallet Standard: Phantom, Solflare)', () => {
     await expect(connectSolWallet(undefined, addr(98), win)).rejects.toMatchObject({ kind: 'wrong_account' });
   });
 
-  it('only ever asks the wallet for these three things, and no private key or seed is ever requested', async () => {
+  it('only ever asks the wallet to connect, disconnect, tell about account changes, sign a message and sign-and-send one transaction; no private key or seed is ever requested', async () => {
     const { readFileSync } = await import('node:fs');
     const src = readFileSync(new URL('../market/wallet.ts', import.meta.url), 'utf8');
     const features = [...src.matchAll(/'((?:standard|solana):[A-Za-z]+)'/g)].map((m) => m[1]).filter((f) => !f.startsWith('solana:main') && !f.startsWith('solana:dev'));
-    expect(new Set(features)).toEqual(new Set(['standard:connect', 'solana:signMessage', 'solana:signAndSendTransaction']));
+    expect(new Set(features)).toEqual(new Set(['standard:connect', 'standard:disconnect', 'standard:events', 'solana:signMessage', 'solana:signAndSendTransaction']));
     const code = src.replace(/\/\/.*$/gm, '');
     expect(code).not.toMatch(/privateKey|secretKey|mnemonic|seed|eth_|personal_sign|signTransaction\b/i);
   });
@@ -169,7 +169,7 @@ describe('linking a wallet through the real market-wallet handler', () => {
     const w = throwawayWallet();
     const steps: string[] = [];
     const r = await runLinkFlow(api(USER_A), undefined, portFor(w), (s) => steps.push(s));
-    expect(r).toEqual({ ok: true, address: w.address });
+    expect(r).toEqual({ ok: true, address: w.address, unchanged: false });
     expect(steps).toEqual(['connecting', 'signing']);
     expect((await m.store.wallet(USER_A))?.address).toBe(w.address);
   });
@@ -299,7 +299,7 @@ describe('paying a reservation', () => {
     (globalThis as { window?: unknown }).window = fakeWindow([fakeStdWallet('Phantom', buyer, undefined, { reject: true })]);
     expect(await payReservationFromWallet(prepareApi(addr(5)), view(), buyer.address)).toEqual({ ok: false, failure: 'rejected' });
     (globalThis as { window?: unknown }).window = fakeWindow([fakeStdWallet('Phantom', buyer)]);
-    expect(await payReservationFromWallet(prepareApi(addr(5)), view(), addr(98))).toEqual({ ok: false, failure: 'wrongAccount' });
+    expect(await payReservationFromWallet(prepareApi(addr(5)), view(), addr(98))).toEqual({ ok: false, failure: 'wrongAccount', open: buyer.address });
     expect(await payReservationFromWallet(prepareApi(null), view(), buyer.address)).toEqual({ ok: false, failure: 'blockhash' });
     const down = createMarketApi(async () => {
       throw new Error('offline');

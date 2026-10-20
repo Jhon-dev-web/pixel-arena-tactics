@@ -1,7 +1,7 @@
 import type { ReservationView } from '../../../supabase/functions/_shared/market/types';
 import { buildSolTransfersTx } from './solTx';
 import { MarketApi, MarketUnreachable } from './api';
-import { WalletError, connectSolWallet } from './wallet';
+import { WalletError, assertOpenAccount, connectSolWallet } from './wallet';
 
 // Paying a reservation: the player's wallet signs ONE transaction with two SOL transfers (the seller's share and the game's fee), or he pastes the signature of one he made. The SERVER verifies it on
 // chain (finalized) and keeps asking until the network has finalized it. Nothing here decides whether a payment is good: only the server does.
@@ -57,7 +57,7 @@ export type PayFailure = 'noProvider' | 'rejected' | 'wrongAccount' | 'unsupport
  * Asks the wallet to pay the reservation: the SERVER hands over a fresh blockhash, the transaction is built here from the reservation's own amounts and addresses (the seller's share and the game's
  * fee, in ONE transaction), and the wallet signs and sends it after the player approves on its own screen. Resolves with the signature.
  */
-export async function payReservationFromWallet(api: MarketApi, reservation: ReservationView, walletAddress: string): Promise<{ ok: true; signature: string } | { ok: false; failure: PayFailure }> {
+export async function payReservationFromWallet(api: MarketApi, reservation: ReservationView, walletAddress: string): Promise<{ ok: true; signature: string } | { ok: false; failure: PayFailure; open?: string }> {
   try {
     const session = await connectSolWallet(undefined, walletAddress);
     const prepared = await api.prepare(reservation.id);
@@ -70,12 +70,15 @@ export async function payReservationFromWallet(api: MarketApi, reservation: Rese
         { to: reservation.feeAddress, lamports: reservation.feeLamports },
       ],
     });
+    // the player may have switched account in the wallet since connecting: never send from an account that is not the linked one
+    assertOpenAccount(session, walletAddress);
     const signature = await session.signAndSend(tx, reservation.chain.cluster);
     return { ok: true, signature };
   } catch (err) {
     if (err instanceof MarketUnreachable) return { ok: false, failure: 'unreachable' };
     if (err instanceof WalletError) {
-      return { ok: false, failure: err.kind === 'no_provider' ? 'noProvider' : err.kind === 'rejected' ? 'rejected' : err.kind === 'wrong_account' ? 'wrongAccount' : err.kind === 'unsupported' ? 'unsupported' : 'failed' };
+      const failure = err.kind === 'no_provider' ? 'noProvider' : err.kind === 'rejected' ? 'rejected' : err.kind === 'wrong_account' ? 'wrongAccount' : err.kind === 'unsupported' ? 'unsupported' : 'failed';
+      return { ok: false, failure, ...(err.open ? { open: err.open } : {}) };
     }
     return { ok: false, failure: 'failed' };
   }

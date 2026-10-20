@@ -3,8 +3,9 @@ import { mt } from '../locales/market';
 import { MarketUnreachable, PassPlan, marketApi } from '../game/market/api';
 import { runLinkFlow } from '../game/market/linkFlow';
 import { RETRY_REASONS } from '../game/market/payFlow';
-import { buildUsdcTransferTx } from '../game/market/solTx';
-import { WalletError, connectSolWallet, listSolWallets } from '../game/market/wallet';
+import { payPassFromWallet } from '../game/market/passPay';
+import { listSolWallets } from '../game/market/wallet';
+import { AccountMismatch, mismatchText, useOpenAccount } from './market/AccountMismatch';
 import { LINK_MESSAGE_KEY } from './market/linkMessages';
 import { Warnings } from './market/WalletPanel';
 import { copyText, fmtUsdc, shortAddress } from './market/format';
@@ -111,35 +112,41 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
     setBusy(false);
   };
 
+  const watched = useOpenAccount(plan !== null);
+
+  // The account open in the wallet is not the linked one: link THIS one (a new signature; the server accepts the change), then ask for the payment details again for the new address.
+  const relink = async () => {
+    if (busy) return;
+    setBusy(true);
+    setMessage(null);
+    const names = await listSolWallets().catch(() => []);
+    const linked = await runLinkFlow(marketApi, names[0]);
+    if ('failure' in linked) {
+      say(mt(LINK_MESSAGE_KEY[linked.failure]), true);
+      setBusy(false);
+      return;
+    }
+    setPlan(null);
+    setBusy(false);
+    await start();
+  };
+
   const payFromWallet = async () => {
     if (!plan) return;
     setBusy(true);
     setMessage(null);
-    try {
-      const session = await connectSolWallet(undefined, plan.buyerAddress);
-      const prepared = await marketApi.passPrepare();
-      if ('reason' in prepared) {
-        say(mt('pay.fail.rpc_error'), true);
-        setBusy(false);
-        return;
-      }
-      const tx = buildUsdcTransferTx({
-        payer: plan.buyerAddress,
-        blockhash: prepared.blockhash,
-        sourceTokenAccount: plan.buyerTokenAccount,
-        destinationTokenAccount: plan.receiverTokenAccount,
-        mint: plan.chain.usdcMint,
-        units: plan.priceUnits,
-        decimals: plan.decimals,
-      });
-      const sig = await session.signAndSend(tx, plan.chain.cluster);
-      setSignature(sig);
-      await submit(sig);
-    } catch (err) {
-      const kind = err instanceof WalletError ? err.kind : 'other';
-      say(kind === 'rejected' ? mt('wallet.rejected') : kind === 'no_provider' ? mt('wallet.noProvider') : kind === 'wrong_account' ? mt('pay.wrongAccount') : kind === 'unsupported' ? mt('pay.unsupported') : mt('pay.sendFailed'), true);
+    const paid = await payPassFromWallet(marketApi, plan);
+    if ('failure' in paid) {
+      const f = paid.failure;
+      say(
+        f === 'rejected' ? mt('wallet.rejected') : f === 'noProvider' ? mt('wallet.noProvider') : f === 'wrongAccount' ? mismatchText(plan.buyerAddress, paid.open, watched.walletName) : f === 'unsupported' ? mt('pay.unsupported') : f === 'blockhash' ? mt('pay.fail.rpc_error') : f === 'unreachable' ? mt('unreachable') : mt('pay.sendFailed'),
+        true,
+      );
       setBusy(false);
+      return;
     }
+    setSignature(paid.signature);
+    await submit(paid.signature);
   };
 
   if (!open) {
@@ -173,7 +180,8 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
               {mt('copy')}
             </Button>
           </div>
-          <Button variant="primary" block disabled={busy} onClick={() => void payFromWallet()}>
+          <AccountMismatch linked={plan.buyerAddress} open={watched.open} walletName={watched.walletName} onRelink={() => void relink()} busy={busy} />
+          <Button variant="primary" block disabled={busy || (watched.open !== null && watched.open !== plan.buyerAddress)} onClick={() => void payFromWallet()}>
             {mt('pay.payFromWallet')}
           </Button>
           <TextField
