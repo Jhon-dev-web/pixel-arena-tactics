@@ -24,7 +24,7 @@ import { estimateHuntYield, HuntYieldEstimate } from '../game/huntEstimate';
 import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
 import { MaterialId } from '../game/materials';
 import WholesaleLink from './WholesaleLink';
-import { defaultZone, depthsOpen, fmtRate, fmtSpan, matName, startBlockedReason, subLevelNotes, zoneDifficulty, zoneLockedText, zoneState } from '../game/huntView';
+import { defaultZone, depthsOpen, fmtSpan, matName, startBlockedReason, subLevelNotes, zoneDifficulty, zoneLockedText, zoneState } from '../game/huntView';
 import { Button, Chip, ModalShell, Panel } from './ui';
 
 const zoneName = (zone: HuntingZoneDef): string => t(`dungeon.${zone.nameKey}`);
@@ -63,31 +63,6 @@ function DepthOption({
           <span className="hs-depth-tags">
             <span className={`ui-tag ${estimate.outlook === 'always' ? 'good' : estimate.outlook === 'risky' ? 'gold' : 'bad'}`}>{t(`hunting.outlook_${estimate.outlook}`)}</span>
             <span className="hs-depth-level">{t('hunting.estimateLevel', { n: estimate.subLevel })}</span>
-          </span>
-          <span className="hs-depth-rows">
-            <span className="hs-row">
-              <span className="hs-row-label">{t('hunting.killsPerHour')}</span>
-              <span className="hs-row-value">{fmtRate(estimate.killsPerHour)}</span>
-            </span>
-            {zone.drops.map((d, i) => (
-              <span className="hs-row" key={d.material}>
-                <span className="hs-row-label">
-                  <MatIcon id={d.material} />
-                  <RarityChip rarity={d.rarity} />
-                </span>
-                <span className="hs-row-value" title={matName(d.material)}>
-                  {t('hunting.perHour', { n: fmtRate(estimate.materialsPerHour[i].perHour) })}
-                </span>
-              </span>
-            ))}
-            <span className="hs-row">
-              <span className="hs-row-label">{t('hunting.xpPerHour')}</span>
-              <span className="hs-row-value">{fmtRate(estimate.xpPerHour)}</span>
-            </span>
-            <span className="hs-row">
-              <span className="hs-row-label">{t('hunting.goldPerHour')}</span>
-              <span className="hs-row-value">{fmtRate(estimate.goldPerHour)}</span>
-            </span>
           </span>
         </>
       )}
@@ -249,7 +224,6 @@ export default function HuntSelection({
                       />
                     ))}
                   </div>
-                  <p className="hs-hint">{t('hunting.estimateNote')}</p>
                 </Panel>
 
                 <Panel title={t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })}>

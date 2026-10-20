@@ -14,7 +14,7 @@ import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInvent
 import { estimateHuntYield } from '../game/huntEstimate';
 import { getMaterial, MaterialId } from '../game/materials';
 import { heroSheet } from '../game/sprites';
-import { fmtRate, fmtSpan, matName, subLevelNotes } from '../game/huntView';
+import { fmtSpan, matName, subLevelNotes } from '../game/huntView';
 import { useDisplayName } from '../game/usernameContext';
 import { sessionStatsDiffer } from '../game/huntSession';
 import { isServerItemAuthority } from '../game/itemAuthority';
@@ -22,7 +22,7 @@ import { Button, ItemFrame, ModalShell, Panel, ScreenLayout, StatList, StatRow }
 import type { CardRarity } from './ui';
 
 const MS_PER_HOUR = 3600 * 1000;
-// Per-hour numbers from a handful of seconds of hunting are noise; they appear after the first minute.
+// The inventory-full extrapolation from a handful of seconds of hunting is noise; it uses the zone's estimate until the first minute is in.
 const RATE_MIN_MS = 60 * 1000;
 
 // The hunt in progress: the arena on one side, the live numbers of the session on the other. Every figure comes from computeHuntingStatus (the
@@ -50,7 +50,6 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
   const elapsedMs = Math.max(0, now - save.huntingOfflineStart);
   const hours = status.pendingMs / MS_PER_HOUR;
   const ratesReady = status.pendingMs >= RATE_MIN_MS;
-  const rate = (n: number): string => (ratesReady ? t('hunting.perHour', { n: fmtRate(n / hours) }) : '—');
 
   // What claiming would do to the inventory if the hunt stopped now: the very rule of the claim (planHuntClaim), so this line can never disagree with it.
   const inv = huntInventoryStatus(save, zone.id, status.drops, status.uniques);
@@ -127,7 +126,6 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
       <Panel>
         <StatList>
           <StatRow label={t('hunting.kills')} value={fmtNum(status.kills)} />
-          <StatRow label={t('hunting.killsPerHour')} value={ratesReady ? fmtRate(status.kills / hours) : '—'} />
           <StatRow label={t('hunting.xpEarned')} value={fmtNum(status.xpReady)} tone="good" />
           <StatRow label={t('hunting.winsLosses')} value={`${fmtNum(status.kills)} / ${fmtNum(status.defeats)}`} tone={status.defeats > 0 ? 'bad' : 'good'} />
           <StatRow label={t('hunting.goldEarned')} value={fmtNum(status.goldReady)} tone="gold" />
@@ -144,7 +142,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
                 <ItemFrame rarity={tierOf(entry?.rarity)} qty={fmtNum(item.count)}>
                   {def && <MaterialIcon item={def} />}
                 </ItemFrame>
-                <span className="hs-loot-rate">{entry ? rate(status.drops[entry.material] ?? 0) : ''}</span>
+                <span className="hs-loot-rate">{matName(item.itemId)}</span>
               </div>
             );
           })}
@@ -165,7 +163,6 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
           </div>
         )}
         {fullIn !== null && <p className="hs-line eta">{t('hunting.invFullIn', { t: fmtSpan(Math.max(fullIn, 1 / 60) * MS_PER_HOUR) })}</p>}
-        {!ratesReady && <p className="hs-hint">{t('hunting.warmingUp')}</p>}
       </Panel>
 
       {frozen && (

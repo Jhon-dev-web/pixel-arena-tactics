@@ -7,7 +7,7 @@ import { computeMiningStatus, computeWoodcuttingStatus, SaveData } from '../game
 import { MaterialId, materialIconUrl } from '../game/materials';
 import { addWithOverflow } from '../game/inventory';
 import { ORE_TIERS } from '../game/ores';
-import { BASE_GATHER_POWER, gatherPower, skillLevel, skillXpForNextLevel, skillXpToReachLevel } from '../game/skills';
+import { skillLevel } from '../game/skills';
 import { ownsAdventurerPass } from '../game/entitlements';
 import T from '../game/tunables';
 import { WOOD_TIERS } from '../game/woodcutting';
@@ -18,7 +18,7 @@ import type { CardRarity } from './ui';
 import { Meter } from './HuntParts';
 
 // Mining and Woodcutting are the same screen over two data sets (ores / woods, mining / woodcutting skill and session fields): a profession header with
-// the level, XP and the rate per hour, the running session (time since start, what has piled up, the primary "collect" action) and every tier with its
+// the level, XP, the running session (time since start, what has piled up, the primary "collect" action) and every tier with its
 // unlock level. The per-tier cards keep the game's floor-card look.
 
 export type GatherKind = 'mining' | 'woodcutting';
@@ -92,9 +92,6 @@ export default function GatheringModal({
   const passNow = ownsAdventurerPass(save);
   // A running session keeps the Pass it started with (cap and yield); the Pass bought mid-session only applies from the next one.
   const passActive = activeId ? status.passCoversSession : passNow;
-  const ratePerHour = gatherPower(BASE_GATHER_POWER, xp) * (mining ? T.mining.oreRatePerPower : T.woodcutting.woodRatePerPower) * (passActive ? T.battlePass.dropRateMultiplier : 1);
-  const xpPerHour = ratePerHour * T.skills.xpPerUnit;
-  const hoursToNext = xpPerHour > 0 ? (skillXpForNextLevel(level, kind) - (xp - skillXpToReachLevel(level, kind))) / xpPerHour : Infinity;
   const progress = status.capMs <= 0 ? 0 : Math.max(0, Math.min(1, status.pendingMs / status.capMs));
   const hunting = !!save.activeHuntingZone;
   const otherBusy = mining ? !!save.activeWoodId : !!save.activeOreId;
@@ -112,8 +109,6 @@ export default function GatheringModal({
     <>
       <Panel>
         <SkillLevelBadge xp={xp} labelKey={`${ns}.skillLabel`} skillId={kind}>
-          <p className="pf-meta">{t('gathering.rate', { n: fmtNum(Math.round(ratePerHour * 10) / 10), xp: fmtNum(Math.round(xpPerHour * 10) / 10) })}</p>
-          {Number.isFinite(hoursToNext) && level < T.skills.maxLevel && <p className="pf-meta">{t('gathering.nextLevelIn', { t: formatDuration(hoursToNext * MS_H) })}</p>}
           <p className="pf-meta">
             {t('gathering.storage', { n: fmtHours(capHours) })}
             {passActive ? ` · ${t('gathering.passBonus', { n: Math.round((T.battlePass.dropRateMultiplier - 1) * 100) })}` : ''}

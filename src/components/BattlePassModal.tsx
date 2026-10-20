@@ -531,7 +531,7 @@ export default function BattlePassModal({
             </Panel>
 
             <p className="pa-howxp">
-              <strong>{t('battlePass.howXp')}</strong> {t('battlePass.xpFloor', { n: T.battlePass.xpPerFloor })} · {t('battlePass.xpHunt', { n: T.battlePass.xpPerHuntHour })} · {t('battlePass.xpGather', { n: T.battlePass.xpPerMiningHour })}
+              <strong>{t('battlePass.howXp')}</strong> {t('battlePass.xpFloor', { n: T.battlePass.xpPerFloor })} · {t('battlePass.xpHunt')} · {t('battlePass.xpGather')}
             </p>
           </>
         )}

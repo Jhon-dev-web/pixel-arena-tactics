@@ -91,7 +91,7 @@ export default function DungeonMapModal({
             <p className="ui-note">{dungeonText('depthCpHint').replace('{n}', fmtDec(growthPct))}</p>
             <p className="ui-note">
               👑{' '}
-              {dungeonText('depthsBossEvery').replace('{n}', String(T.depths.bossEvery)).replace('{r}', String(bossInfo.shards)).replace('{p}', String(Math.round(bossInfo.uniqueChance * 1000) / 10))}
+              {dungeonText('depthsBossEvery').replace('{n}', String(T.depths.bossEvery)).replace('{r}', String(bossInfo.shards))}
             </p>
             {depthCpLow && <p className="ui-alert bad">{t('dungeon.cpWarning', { n: depthCp })}</p>}
             <Button variant="primary" block onClick={onEnterDepths} disabled={huntingBusy}>
