@@ -572,6 +572,8 @@
     "noCertificateHint": "Itens feitos antes do mercado ou fora do servidor continuam seus e podem ser usados, mas não são negociáveis.",
     "certUnverified": "Certificado não confirmado pelo servidor",
     "untradeable": "Não negociável",
+    "tradeReason": { "rarity": "Só Épico, Lendário ou Único pode ser vendido", "bound": "Preso à conta: já foi equipado", "uncertified": "Feito sem o servidor: não pode ser vendido" },
+    "tradeReasonCount": "{n} × {why}",
     "requiresLevel": "Requer nível {n}",
     "wornAboveLevel": "Acima do seu nível: requer nível {n}. Continua equipada, mas troque por uma peça que você possa usar.",
     "bindTitle": "Equipar e vincular",

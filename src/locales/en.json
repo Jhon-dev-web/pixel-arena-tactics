@@ -572,6 +572,8 @@
     "noCertificateHint": "Items made before the market or outside the server stay yours and can be used, but they are not tradable.",
     "certUnverified": "Certificate not confirmed by the server",
     "untradeable": "Not tradable",
+    "tradeReason": { "rarity": "Only Epic, Legendary or Unique pieces can be sold", "bound": "Bound to the account: it has been equipped", "uncertified": "Made without the server: it cannot be sold" },
+    "tradeReasonCount": "{n} × {why}",
     "requiresLevel": "Requires level {n}",
     "wornAboveLevel": "Above your level: requires level {n}. It stays equipped, but swap it for a piece you can use.",
     "bindTitle": "Equip and bind",

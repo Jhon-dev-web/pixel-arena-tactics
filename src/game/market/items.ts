@@ -1,7 +1,7 @@
 import type { CertificateView } from '../../../supabase/functions/_shared/items/types';
 import type { SaveData } from '../engine';
 import { getGear } from '../gear';
-import { GearInstance, createGearInstance, isInstanceEquipped, isInstancedItem, isTradeable } from '../gearInstances';
+import { GearInstance, TradeBlockReason, createGearInstance, isInstanceEquipped, isInstancedItem, isTradeable, tradeBlockReason } from '../gearInstances';
 import { PouchId, certifiedPouchIds, isPouchId, pouchFaceMatches } from '../goldPouch';
 import { addWithOverflow, fitsBag, stockIsEmpty } from '../inventory';
 import { certState, getCertificate } from '../itemCerts';
@@ -36,6 +36,17 @@ export function sellableEntries(save: SaveData): SellableEntry[] {
       const row = getCertificate(id);
       if (row && row.status === 'held' && row.kind === 'gold_pouch' && row.templateId === pouchId && pouchFaceMatches(pouchId, row.goldAmount)) out.push({ kind: 'gold_pouch', certificateId: id, pouchId, goldAmount: row.goldAmount });
     }
+  }
+  return out;
+}
+
+/** The pieces the player owns that cannot be sold, counted by the reason (the Sell tab says why they are not on offer). Starter pieces are left out. */
+export function unsellableReasons(save: SaveData): Partial<Record<TradeBlockReason, number>> {
+  const out: Partial<Record<TradeBlockReason, number>> = {};
+  for (const inst of Object.values(save.gearInstances)) {
+    if (inst.origin === 'starter') continue;
+    const why = tradeBlockReason(inst);
+    if (why) out[why] = (out[why] ?? 0) + 1;
   }
   return out;
 }

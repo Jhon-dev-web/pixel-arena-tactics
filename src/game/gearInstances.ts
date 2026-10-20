@@ -230,6 +230,15 @@ export function isTradeable(item: GearInstance | TradeRef): boolean {
   return isCertificateId(item.certificateId) && !('certified' in item && item.certified === false);
 }
 
+// WHY a gear piece cannot be sold (null = it can): the three reasons the rule above has, in the order the player can act on them. Pure explanation of isTradeable, it decides nothing.
+export type TradeBlockReason = 'rarity' | 'bound' | 'uncertified';
+export function tradeBlockReason(item: GearInstance): TradeBlockReason | null {
+  if (isTradeable(item)) return null;
+  if (!(item.rarity === 'epic' || item.rarity === 'legendary' || !!getGear(item.templateId)?.unique)) return 'rarity';
+  if (item.bound) return 'bound';
+  return 'uncertified';
+}
+
 // An equipped instance pointer is only valid if that instance exists and belongs to that slot.
 export function sanitizeEquippedInstance(
   id: unknown,

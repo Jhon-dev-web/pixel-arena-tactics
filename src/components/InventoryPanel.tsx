@@ -9,7 +9,7 @@ import { canAffordReforge, getReforgeCost } from '../game/reforge';
 import T from '../game/tunables';
 import { isPouchId, pouchFace } from '../game/goldPouch';
 import PouchOpenButton from './PouchOpenButton';
-import { type GearInstance, clampRefine, isInstanceEquipped, isTradeable, isTradeableKind, listGearInstances, needsBindConfirm, equipLevelBlock, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
+import { type GearInstance, clampRefine, isInstanceEquipped, isTradeable, isTradeableKind, listGearInstances, tradeBlockReason, needsBindConfirm, equipLevelBlock, resolveGearInstance, salvageBlockReason } from '../game/gearInstances';
 import { certState, useCertificatesVersion, verifiedPouchCount } from '../game/itemCerts';
 import { MATERIALS, MaterialId, getMaterial } from '../game/materials';
 import { getSalvageReturn, hasSalvageValue } from '../game/salvage';
@@ -475,7 +475,7 @@ export default function InventoryPanel({
             )}
             {selectedInstance && (
               <>
-                <div className={`trade-line ${tradeLine(selectedInstance)}`}>{t(`inventory.${TRADE_LINE_KEY[tradeLine(selectedInstance)]}`)}</div>
+                <div className={`trade-line ${tradeLine(selectedInstance)}`}>{tradeBlockReason(selectedInstance) ? t(`inventory.tradeReason.${tradeBlockReason(selectedInstance)}`) : t(`inventory.${TRADE_LINE_KEY[tradeLine(selectedInstance)]}`)}</div>
                 {tradeLine(selectedInstance) === 'nocert' && <div className="trade-line untradeable">{t('inventory.noCertificateHint')}</div>}
               </>
             )}

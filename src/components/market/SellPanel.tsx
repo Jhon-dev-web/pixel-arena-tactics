@@ -3,7 +3,7 @@ import { MARKET_MAX_PRICE_LAMPORTS, MARKET_MIN_PRICE_LAMPORTS, SOL_PRICE_STEP_LA
 import type { MarketOverview } from '../../../supabase/functions/_shared/market/types';
 import type { SaveData } from '../../game/engine';
 import { MarketApi } from '../../game/market/api';
-import { SellableEntry, sellableEntries, socketedButCertified } from '../../game/market/items';
+import { SellableEntry, sellableEntries, socketedButCertified, unsellableReasons } from '../../game/market/items';
 import { getCertificate, useCertificatesVersion } from '../../game/itemCerts';
 import { listForSale } from '../../game/market/sync';
 import { LotQuote, listLot, lotQuote, sellableLots } from '../../game/market/lots';
@@ -85,6 +85,7 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onC
   const entries = useMemo(() => sellableEntries(save), [save, certVersion]);
   const groups = useMemo(() => [...groupEntries(entries), ...lotGroups(save)], [entries, save]);
   const socketed = socketedButCertified(save).length;
+  const blocked = useMemo(() => unsellableReasons(save), [save]);
   const group = groups.find((g) => g.key === picked) ?? null;
   const lotInfo = group?.material ?? null;
   const maxQty = lotInfo ? lotInfo.max : group ? group.entries.length : 1;
@@ -176,7 +177,7 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onC
   };
 
   const live = (overview?.listings ?? []).filter((l) => l.status === 'open' || l.status === 'reserved');
-  return { isLot: !!lotInfo, lot, groups, picked, setPicked, group, priceText, setPriceText: (v: string) => { setPriceText(v); setArmed(false); }, qty: count, maxQty, setQty: (n: number) => { setQty(Math.min(Math.max(1, n), maxQty)); setArmed(false); }, armed, busy, message, socketed, valid, split, hasWallet, feePercent, solUsd, publish, cancel, live };
+  return { isLot: !!lotInfo, lot, groups, picked, setPicked, group, priceText, setPriceText: (v: string) => { setPriceText(v); setArmed(false); }, qty: count, maxQty, setQty: (n: number) => { setQty(Math.min(Math.max(1, n), maxQty)); setArmed(false); }, armed, busy, message, socketed, blocked, valid, split, hasWallet, feePercent, solUsd, publish, cancel, live };
 }
 export type SellFlow = ReturnType<typeof useSellFlow>;
 
@@ -197,6 +198,7 @@ export function SellPicker({ flow }: { flow: SellFlow }) {
       {flow.socketed > 0 && <p className="ui-note">{mt('sell.takeGemsOut', { n: flow.socketed })}</p>}
       {flow.groups.some((g) => g.material) && <p className="ui-note">{mt('sell.materialsNote')}</p>}
       {flow.groups.length === 0 && <p className="ui-note">{mt('sell.empty')}</p>}
+      {(['rarity', 'bound', 'uncertified'] as const).map((why) => (flow.blocked[why] ? <p className="ui-note" key={why}>{t('inventory.tradeReasonCount', { n: flow.blocked[why] ?? 0, why: t(`inventory.tradeReason.${why}`) })}</p> : null))}
       <ul className="mk-grid mk-tiles">
         {flow.groups.map((g) => {
           const on = flow.picked === g.key;
