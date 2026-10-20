@@ -7,7 +7,8 @@ import { applyDeliveryAccept, ensureDeliveryOffers } from '../deliveries';
 import { HUNTING_ZONES } from '../huntingZones';
 import { emptyMaterials } from '../materials';
 import { skillXpToReachLevel } from '../skills';
-import { awayLongEnough, buildWelcomeBack, WELCOME_BACK_AWAY_MS } from '../welcomeBack';
+import { awayLongEnough, buildWelcomeBack, readLastSeen, WELCOME_BACK_AWAY_MS, writeLastSeen } from '../welcomeBack';
+import { buildLeagueHero, buildNewLeagueHero } from '../leagueReset';
 import { welcomeRowText } from '../../components/welcomeBackText';
 import { mulberry32 } from '../../../scripts/sim/driver';
 
@@ -26,10 +27,32 @@ describe('welcome back summary (welcomeBack.ts)', () => {
     expect(buildWelcomeBack(base(), T0 + 5 * HOUR).rows).toEqual([]);
   });
 
-  it('is away only after ten minutes (or when the last visit is unknown)', () => {
+  it('is away only after ten minutes; an unknown last visit is a first session, never "away"', () => {
     expect(awayLongEnough(T0, T0 + WELCOME_BACK_AWAY_MS - 1)).toBe(false);
     expect(awayLongEnough(T0, T0 + WELCOME_BACK_AWAY_MS)).toBe(true);
-    expect(awayLongEnough(null, T0)).toBe(true);
+    expect(awayLongEnough(null, T0)).toBe(false);
+  });
+
+  it('a brand-new hero (online create path and league-reset rebuild) is idle with nothing produced, and has no last visit', () => {
+    const later = Date.now() + 8 * HOUR;
+    for (const hero of [buildNewLeagueHero(1_000), buildNewLeagueHero(null), buildLeagueHero({ heroName: 'Old' }, 1_000, true)]) {
+      expect(hero.activeOreId).toBeNull();
+      expect(hero.activeWoodId).toBeNull();
+      expect(hero.activeHuntingZone).toBeNull();
+      expect(buildWelcomeBack(hero, later).rows).toEqual([]);
+    }
+    // A second account on the same browser does not inherit the first one's stamp, and a new account has none.
+    writeLastSeen(T0, 'old-account');
+    expect(readLastSeen('new-account')).toBeNull();
+    expect(awayLongEnough(readLastSeen('new-account'), T0 + 5 * HOUR)).toBe(false);
+  });
+
+  it('a returning player (stamp older than ten minutes) still gets the summary', () => {
+    writeLastSeen(T0, 'returning');
+    const mining = applyStartGathering(base(), 'mining', 'copper', T0)!.save;
+    const now = T0 + 3 * HOUR;
+    expect(awayLongEnough(readLastSeen('returning'), now)).toBe(true);
+    expect(buildWelcomeBack(mining, now).rows.some((r) => r.kind === 'mining')).toBe(true);
   });
 
   it('a running hunt lists time hunted, kills and the rarest materials first, and says when the storage cap was hit', () => {

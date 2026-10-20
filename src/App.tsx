@@ -1319,6 +1319,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   // Welcome back: shown on load and when the window comes back after ten minutes or more away, never over the tutorial / first run, a dungeon fight or the
   // mandatory hunt reward. The last-seen stamp is a local convenience (welcomeBack.ts), refreshed while the game is open and when it loses focus.
+  const seenId = user?.id ?? null;
   const welcomeBlockedRef = useRef(false);
   welcomeBlockedRef.current =
     tutorialStep !== null ||
@@ -1331,15 +1332,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   useEffect(() => {
     const check = () => {
       const now = Date.now();
-      const away = awayLongEnough(readLastSeen(), now);
-      writeLastSeen(now);
+      const away = awayLongEnough(readLastSeen(seenId), now);
+      writeLastSeen(now, seenId);
       if (!away || welcomeBlockedRef.current) return;
       const s = saveRef.current;
       const summary = buildWelcomeBack(s, now);
       if (summary.rows.length === 0) return;
       setWelcome({ summary, canClaimAll: ownsAdventurerPass(s) && readyActivities(s, now).count > 0 });
     };
-    const leave = () => writeLastSeen(Date.now());
+    const leave = () => writeLastSeen(Date.now(), seenId);
     const onVisibility = () => (document.visibilityState === 'hidden' ? leave() : check());
     check();
     document.addEventListener('visibilitychange', onVisibility);

@@ -25,9 +25,10 @@ export interface WelcomeBackSummary {
   rows: WelcomeBackRow[];
 }
 
-// Whether the player has been away long enough: `lastSeen` is the last time the game was seen alive (null = never recorded -> treated as away).
+// Whether the player has been away long enough: `lastSeen` is the last time THIS account's game was seen alive. null = never recorded = the first session of
+// this hero on this device (a brand-new account, or storage that cannot remember): nobody is "back", so there is no summary.
 export function awayLongEnough(lastSeen: number | null, now: number): boolean {
-  return lastSeen === null || !Number.isFinite(lastSeen) || now - lastSeen >= WELCOME_BACK_AWAY_MS;
+  return lastSeen !== null && Number.isFinite(lastSeen) && now - lastSeen >= WELCOME_BACK_AWAY_MS;
 }
 
 const countUniques = (u: UniqueDrop[] | undefined): number => (u ?? []).length;
@@ -72,19 +73,29 @@ export function buildWelcomeBack(save: SaveData, now: number): WelcomeBackSummar
 }
 
 // When the game was last seen alive in THIS browser / app (a local convenience only, never saved with the hero).
+// Stamped per account (a second account on the same browser never inherits the first one's absence) and mirrored in memory (storage that refuses writes
+// still answers within a session).
 const LAST_SEEN_KEY = 'arena-last-seen';
-export function readLastSeen(): number | null {
+const memorySeen = new Map<string, number>();
+const seenKey = (accountId: string | null | undefined) => (accountId ? `${LAST_SEEN_KEY}.${accountId}` : LAST_SEEN_KEY);
+export function readLastSeen(accountId?: string | null): number | null {
+  const key = seenKey(accountId);
+  let stored: number | null = null;
   try {
-    const v = Number(localStorage.getItem(LAST_SEEN_KEY));
-    return Number.isFinite(v) && v > 0 ? v : null;
+    const v = Number(localStorage.getItem(key));
+    stored = Number.isFinite(v) && v > 0 ? v : null;
   } catch {
-    return null;
+    /* no storage: the in-memory stamp below still answers */
   }
+  const mem = memorySeen.get(key) ?? null;
+  return stored === null ? mem : mem === null ? stored : Math.max(stored, mem);
 }
-export function writeLastSeen(now: number): void {
+export function writeLastSeen(now: number, accountId?: string | null): void {
+  const key = seenKey(accountId);
+  memorySeen.set(key, Math.floor(now));
   try {
-    localStorage.setItem(LAST_SEEN_KEY, String(Math.floor(now)));
+    localStorage.setItem(key, String(Math.floor(now)));
   } catch {
-    /* private mode: the summary then simply shows on every load */
+    /* private mode: the in-memory stamp keeps short absences quiet */
   }
 }
