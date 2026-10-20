@@ -107,7 +107,7 @@ import ClaimModal from './components/ClaimModal';
 import HuntRewardModal from './components/HuntRewardModal';
 import QuestsModal from './components/QuestsModal';
 import CodexModal from './components/CodexModal';
-import BattlePassModal, { SeasonSummaryModal } from './components/BattlePassModal';
+import BattlePassView, { SeasonSummaryModal } from './components/BattlePassModal';
 import type { PassFlow } from './components/BattlePassModal';
 import ClaimAllModal from './components/ClaimAllModal';
 import { applyClaimAll, ClaimAllLine, readyActivities } from './game/claimAll';
@@ -213,7 +213,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
-  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado' | 'passe'>('home');
   // A tradeable material the player asked to sell from the inventory: the market opens on its Sell tab with it picked (once).
   const [marketPick, setMarketPick] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -228,8 +228,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [claimResult, setClaimResult] = useState<{ title: string; name: string; rewards: ExpeditionRewards } | null>(null);
   const [questsOpen, setQuestsOpen] = useState(false);
   const [codexOpen, setCodexOpen] = useState(false);
-  const [battlePassOpen, setBattlePassOpen] = useState(false);
+  // The Pass is a page (activeView 'passe') like Ofícios; this opens it.
+  const openPassView = () => setActiveView('passe');
   const [highlightBuy, setHighlightBuy] = useState(false);
+  useEffect(() => { if (activeView !== 'passe') setHighlightBuy(false); }, [activeView]); // leaving the Pass page ends the buy-button highlight
   const [claimAllLines, setClaimAllLines] = useState<ClaimAllLine[] | null>(null);
   // "Bem-vindo de volta" (welcomeBack.ts): what the idle activities produced while the player was away; null = nothing to show.
   const [welcome, setWelcome] = useState<{ summary: WelcomeBackSummary; canClaimAll: boolean } | null>(null);
@@ -423,7 +425,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
   useEffect(() => {
     if (!userId || !isServerPassSource() || takeCheckoutReturn() !== 'success') return;
-    setBattlePassOpen(true);
+    openPassView();
     confirmPassPurchase();
     return cancelPassConfirm;
     // once per page load, for the signed-in account
@@ -759,7 +761,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         [settingsOpen, () => setSettingsOpen(false)],
         [welcome !== null, () => setWelcome(null)],
         [import.meta.env.DEV && adminOpen, () => setAdminOpen(false)],
-        [battlePassOpen, () => setBattlePassOpen(false)],
         [questsOpen, () => setQuestsOpen(false)],
         [codexOpen, () => setCodexOpen(false)],
         [claimResult !== null, () => setClaimResult(null)],
@@ -790,7 +791,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     settingsOpen,
     welcome,
     adminOpen,
-    battlePassOpen,
     questsOpen,
     codexOpen,
     claimResult,
@@ -1603,7 +1603,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setDungeonOpen(false);
     setHuntOpen(false);
     setBattleFloor(null);
-    setBattlePassOpen(false);
     refreshCertificates(); // the League voided every certificate of the heroes it replaced
     setWelcome(null);
     setRewardHidden(false);
@@ -1787,7 +1786,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!userId || !isServerPassSource() || buyIntentDone.current || !hasBuyIntent()) return;
     buyIntentDone.current = true;
     clearBuyIntent();
-    setBattlePassOpen(true);
+    openPassView();
     if (!passPurchaseEnabled && !marketOn) return;
     fetchServerPassOwned()
       .then((owned) => setHighlightBuy(buyIntentAction(passPurchaseEnabled || marketOn, owned) === 'highlight'))
@@ -2159,7 +2158,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const switchLoadout = (index: 0 | 1) => {
     const r = applyLoadoutSwitch(saveRef.current, index, battleFloor !== null);
     if (!r.ok) {
-      if (r.reason === 'pass') setBattlePassOpen(true);
+      if (r.reason === 'pass') openPassView();
       else if (r.reason === 'battle') showToast(t('heroSkills.ui.respecBattle'));
       return;
     }
@@ -2341,7 +2340,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       header: t('nav.groupEconomy'),
       items: [
         { key: 'deliveries', icon: <img className="pixel-icon" src="/assets/icons/expedition_ticket_2h.png" alt="" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
-        { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: battlePassOpen, onClick: () => { closeDrawer(); playSfx('click'); setBattlePassOpen(true); } },
+        { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: activeView === 'passe', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('passe'); } },
         { key: 'shop', icon: <img className="pixel-icon" src="/assets/icons/gold.png" alt="" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopTab('buy'); setShopOpen(true); } },
         ...(marketOn ? [{ key: 'market', icon: <img className="pixel-icon" src="/assets/icons/gold_pouch.png" alt="" />, label: mt('title'), active: activeView === 'mercado', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('mercado'); } }] : []),
       ],
@@ -2391,7 +2390,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onOpenGarden={() => { playSfx('click'); setGardenOpen(true); }}
               onOpenInventory={() => { playSfx('click'); setBagOpen(true); }}
               onClaimAll={claimEverything}
-              onOpenPass={() => { playSfx('click'); setBattlePassOpen(true); }}
+              onOpenPass={() => { playSfx('click'); openPassView(); }}
               onOpenNextStep={openNextStep}
               onPickProfession={pickProfession}
             />
@@ -2417,12 +2416,28 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             />
           )}
           {activeView === 'skills' && (
-            <SkillsView save={save} battleActive={battleFloor !== null} onApply={applySkills} onRespec={respecSkills} onSwitchLoadout={switchLoadout} onOpenPass={() => { playSfx('click'); setBattlePassOpen(true); }} />
+            <SkillsView save={save} battleActive={battleFloor !== null} onApply={applySkills} onRespec={respecSkills} onSwitchLoadout={switchLoadout} onOpenPass={() => { playSfx('click'); openPassView(); }} />
           )}
           {activeView === 'mercado' && marketOn && MarketScreen && (
             <Suspense fallback={null}>
               <MarketScreen save={save} host={marketHost} pick={marketPick} onPickUsed={() => setMarketPick(null)} />
             </Suspense>
+          )}
+          {activeView === 'passe' && (
+            <BattlePassView
+              save={save}
+              onActivate={purchaseBattlePass}
+              highlightBuy={highlightBuy}
+              passFlow={passFlow}
+              onRecheck={confirmPassPurchase}
+              buyExtra={marketOn && PassUsdc && isServerPassSource() ? (
+                <Suspense fallback={null}>
+                  <PassUsdc onGranted={confirmPassPurchase} autoOpen={highlightBuy} />
+                </Suspense>
+              ) : undefined}
+              onClaim={claimBattlePassLevel}
+              onClaimAll={claimAllBattlePassRewards}
+            />
           )}
           {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} focus={oficiosFocus} />}
         </div>
@@ -2674,28 +2689,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       )}
 
       {save.pendingSeasonSummary && <SeasonSummaryModal save={save} onDismiss={dismissSeasonSummary} />}
-
-      {battlePassOpen && (
-        <BattlePassModal
-          save={save}
-          onActivate={purchaseBattlePass}
-          highlightBuy={highlightBuy}
-          passFlow={passFlow}
-          onRecheck={confirmPassPurchase}
-          buyExtra={marketOn && PassUsdc && isServerPassSource() ? (
-            <Suspense fallback={null}>
-              <PassUsdc onGranted={confirmPassPurchase} autoOpen={highlightBuy} />
-            </Suspense>
-          ) : undefined}
-          onClaim={claimBattlePassLevel}
-          onClaimAll={claimAllBattlePassRewards}
-          onClose={() => {
-            playSfx('click');
-            setBattlePassOpen(false);
-            setHighlightBuy(false);
-          }}
-        />
-      )}
 
       {battleFloor !== null && (
         <BattleModal

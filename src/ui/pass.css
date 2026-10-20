@@ -1,7 +1,24 @@
-/* Passe de Aventureiro (BattlePassModal) in the new style: the season banner, the perks, the reward track (a horizontal scroller on a wide area, a list on a phone), the exclusives and the footer bar.
+/* Passe de Aventureiro (BattlePassView) in the new style: the season banner, the perks, the reward track (a horizontal scroller on a wide area, a list on a phone), the exclusives and the footer bar.
    The shared ModalShell / Panel / Tabs / Button / Chip / Meter carry the look; the League tab keeps its own file (season.css). */
-.pa-root {
+.pa-root,
+.ui-screen.pa-page {
   gap: var(--sp-4);
+}
+.ui-screen.pa-page {
+  display: flex;
+  flex-direction: column;
+}
+.ui-screen.pa-page > * {
+  flex: 0 0 auto;
+}
+/* the claim-all / buy bar, in the page flow */
+
+.pa-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-4);
 }
 
 /* the season banner */
@@ -575,9 +592,7 @@
   }
 }
 @media (max-width: 599px) {
-  .ui-modal.pa-modal .ui-modal-foot {
-    flex-direction: row;
-    flex-wrap: wrap;
+  .pa-foot {
     align-items: flex-start;
   }
   .pa-foot-main,
@@ -669,11 +684,6 @@
   overflow-wrap: anywhere;
 }
 
-/* with the USDC steps open the footer gives them a row of their own and scrolls when they are tall */
-.ui-modal.pa-modal .ui-modal-foot {
-  max-height: 60%;
-  overflow-y: auto;
-}
 .pa-buy:has(.pa-usdc) {
   flex: 1 0 100%;
   max-width: none;

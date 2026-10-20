@@ -225,7 +225,7 @@ describe('the buy link from the website (?comprar=passe)', () => {
     expect(start).toBeGreaterThan(-1);
     const effect = app.slice(start, app.indexOf('}, [userId, passVersion]);', start));
     expect(effect).not.toMatch(/startCheckout|purchaseBattlePass|create-checkout/);
-    expect(effect).toContain('setBattlePassOpen(true)');
+    expect(effect).toContain('openPassView()');
     expect(effect).toContain('setHighlightBuy(');
   });
 

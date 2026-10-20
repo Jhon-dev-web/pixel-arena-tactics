@@ -21,7 +21,7 @@ import T from '../game/tunables';
 import { gearStatLines } from './gearStats';
 import SeasonRankingPanel from './SeasonRankingPanel';
 import { seasonRankingEnabled } from '../game/seasonRanking';
-import { Button, Chip, Dialog, ItemFrame, Meter, ModalShell, Panel, Tabs } from './ui';
+import { Button, Chip, Dialog, ItemFrame, Meter, PageHeader, Panel, Screen, Tabs } from './ui';
 import type { TabItem } from './ui';
 
 // The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; a vertical list on a phone),
@@ -200,7 +200,7 @@ function seasonHighlights(): Highlight[] {
 
 // ---- the screen ------------------------------------------------------------------------------------------------------------------
 
-export default function BattlePassModal({
+export default function BattlePassView({
   save,
   onActivate,
   highlightBuy = false,
@@ -209,7 +209,6 @@ export default function BattlePassModal({
   buyExtra,
   onClaim,
   onClaimAll,
-  onClose,
 }: {
   save: SaveData;
   onActivate: () => void;
@@ -221,7 +220,6 @@ export default function BattlePassModal({
   buyExtra?: ReactNode;
   onClaim: (level: number, track: 'free' | 'premium') => void;
   onClaimAll: () => { claimed: number; blocked: number };
-  onClose: () => void;
 }) {
   const owner = ownsAdventurerPass(save);
   // Web build (server mode): the button starts a checkout once the owner switches sales on (VITE_PASS_PURCHASE_ENABLED), "Em breve" until then. Offline/desktop: as before.
@@ -359,7 +357,7 @@ export default function BattlePassModal({
 
   // The bar under the scrolling body: "claim all" on the left, the purchase (when the Pass is not owned) on the right.
   const footer = (
-    <>
+    <Panel className="pa-foot">
       <div className="pa-foot-main">
         <Button variant="primary" className="pa-claimall" onClick={claimAll} disabled={claimableCount === 0}>
           {t('battlePass.claimAll')}
@@ -409,19 +407,12 @@ export default function BattlePassModal({
           {server && passPurchaseEnabled && !buyExtra && <span>{t('battlePass.priceOnCheckout')}</span>}
         </p>
       )}
-    </>
+    </Panel>
   );
 
   return (
-    <ModalShell
-      className="pa-modal"
-      icon={<img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />}
-      title={t('battlePass.title')}
-      closeLabel={t('battlePass.close')}
-      onClose={onClose}
-      footer={footer}
-    >
-      <div className="ui-cq pa-root">
+    <Screen label={t('battlePass.title')} className="pa-page">
+      <PageHeader icon={<img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />} title={t('battlePass.title')} />
         <header className="pa-hero">
           <img className="pa-hero-art" src="/assets/backgrounds/battlepass_season.png" alt="" draggable={false} />
           <div className="pa-hero-shade" aria-hidden />
@@ -540,8 +531,8 @@ export default function BattlePassModal({
             </p>
           </>
         )}
-      </div>
-    </ModalShell>
+      {footer}
+    </Screen>
   );
 }
 

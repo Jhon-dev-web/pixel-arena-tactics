@@ -73,7 +73,7 @@ describe('the desktop build', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('BattlePassModal only renders what App hands it (no market import)', () => {
+  it('BattlePassView only renders what App hands it (no market import)', () => {
     const modal = read('src/components/BattlePassModal.tsx');
     expect(modal).not.toMatch(/market|PassUsdc|USDC|USDT|solana/i);
     expect(modal).toContain('buyExtra');
