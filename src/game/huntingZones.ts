@@ -58,14 +58,14 @@ const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
 const KNIGHT_ART: SheetArt = { cell: 256, box: [71, 12, 204, 251] };
 const DRAGON_ART: SheetArt = { cell: 256, box: [49, 6, 217, 253] };
 export const HERO_ART: Record<HeroSheet, SheetArt> = {
-  peasant: { cell: 256, box: [66, 20, 189, 253] },
+  hero_peasant_v2: { cell: 256, box: [69, 43, 207, 251] },
   bronze: { cell: 256, box: [65, 25, 216, 253] },
-  iron: { cell: 256, box: [56, 25, 203, 253] },
-  knight: KNIGHT_ART,
+  hero_iron_v2: { cell: 256, box: [51, 43, 212, 251] },
+  hero_steel_v2: { cell: 256, box: [47, 47, 211, 251] },
   hero_dark_knight: { cell: 256, box: [50, 41, 216, 251] },
   dragon: DRAGON_ART,
-  hero_voidsteel: DRAGON_ART,
-  hero_abyssal: DRAGON_ART,
+  hero_voidsteel_v2: { cell: 256, box: [16, 45, 248, 251] },
+  hero_abyssal_v2: { cell: 256, box: [34, 45, 224, 251] },
   knight_golden: KNIGHT_ART,
 };
 

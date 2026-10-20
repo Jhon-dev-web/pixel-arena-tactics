@@ -521,6 +521,151 @@
         }
       },
       "metadata": {}
+    },
+    "hero_peasant_v2": {
+      "url": "/assets/spritesheets/hero_peasant_v2.png",
+      "description": "Ragged-clothes look (the owner's hero: ragged tunic): facing right, 4 animation rows (idle/attack/hurt/death; death = the hurt frames held)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
+    "hero_iron_v2": {
+      "url": "/assets/spritesheets/hero_iron_v2.png",
+      "description": "Iron chainmail look (the owner's hero: silver chainmail, blue cape): facing right, 4 animation rows (idle/attack/hurt/death; death = the hurt frames held)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
+    "hero_steel_v2": {
+      "url": "/assets/spritesheets/hero_steel_v2.png",
+      "description": "Steel plate look (the owner's hero: silver plate, blue tabard and cape): facing right, 4 animation rows (idle/attack/hurt/death; death = the hurt frames held)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
+    "hero_voidsteel_v2": {
+      "url": "/assets/spritesheets/hero_voidsteel_v2.png",
+      "description": "Voidsteel look (the owner's hero: violet voidsteel plate and cape): facing right, 4 animation rows (idle/attack/hurt/death; death = the hurt frames held)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
+    "hero_abyssal_v2": {
+      "url": "/assets/spritesheets/hero_abyssal_v2.png",
+      "description": "Abyssal look (the owner's hero: black and crimson plate, tattered cape): facing right, 4 animation rows (idle/attack/hurt/death; death = the hurt frames held)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
     }
   },
   "background": {

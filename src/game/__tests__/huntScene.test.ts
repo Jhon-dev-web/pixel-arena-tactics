@@ -29,7 +29,7 @@ describe('Hunt scenes', () => {
       expect(w, z.enemyId).toBe(h);
       expect(huntingEnemyArt(z.enemyId).cell * 4, z.enemyId).toBe(w);
     }
-    for (const sheet of ['peasant', 'knight', 'knight_golden'] as const) {
+    for (const sheet of ['hero_peasant_v2', 'hero_steel_v2', 'knight_golden'] as const) {
       const [w, h] = pngSize(`/assets/spritesheets/${sheet}.png`);
       expect(w, sheet).toBe(h);
       expect(w, sheet).toBe(HERO_ART[sheet].cell * 4);

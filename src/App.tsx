@@ -288,7 +288,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Rodada 20) — a level-up toast is the only XP-gain feedback left, so it's centralized here (setSaveBoth) rather than duplicated at every call site.
   const celebrateLook = (look: string, armorNameKey: string) => {
     playSfx('victory');
-    showToast(look === 'knight' ? t('ui.heroKnighted') : t('ui.heroNewLook', { name: t(`gear.${armorNameKey}`) }));
+    showToast(look === 'hero_steel_v2' ? t('ui.heroKnighted') : t('ui.heroNewLook', { name: t(`gear.${armorNameKey}`) }));
     // The level-up style flash on every portrait: one class on <html>, styled in App.css (.hero-knighted-flash).
     const root = document.documentElement;
     root.classList.remove('hero-knighted-flash');

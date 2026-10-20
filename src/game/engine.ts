@@ -6,7 +6,7 @@ import T from './tunables';
 import { grantDailyPassKit, ownsAdventurerPass } from './entitlements';
 import { sanitizeActiveFrame, sanitizeActiveSkin, sanitizeStashBonus } from './seasonItems';
 import { sanitizeSeasonSummary, seasonNumber, type SeasonSummary } from './seasons';
-import { EquippedGear, getGear, HERO_LOOKS, HeroBaseLook, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
+import { BASE_LOOK, EquippedGear, getGear, HERO_LOOKS, HeroBaseLook, LEGACY_LOOK_IDS, DEFAULT_EQUIPPED, INSTANCED_SLOTS, DEFAULT_INVENTORY, durabilityFactor, effectiveCrit, effectiveDamage, effectiveMaxHp, effectiveResistance, repairCost, sanitizeLegacyInventory, sanitizeStackableGear } from './gear';
 import {
   GEAR_SCHEMA_VERSION,
   equippedExtraStats,
@@ -1055,8 +1055,10 @@ let unbackedLegacyRaw: string | null = null;
 // seenLooks: the stored list (known looks only) plus, for a hero whose old save carried the heroKnighted flag, every look up to the knight, plus every look up to the
 // armor he wears right now (he has plainly worn those), so an old save is never spammed with celebrations for gear it already owns.
 function sanitizeSeenLooks(raw: unknown, legacyKnighted: boolean, current: HeroBaseLook): HeroBaseLook[] {
-  const seen = new Set<HeroBaseLook>(Array.isArray(raw) ? raw.filter((l): l is HeroBaseLook => typeof l === 'string' && (HERO_LOOKS as readonly string[]).includes(l) && l !== 'peasant') : []);
-  if (legacyKnighted) for (const l of looksUpTo('knight')) seen.add(l);
+  const known = (l: unknown): l is HeroBaseLook => typeof l === 'string' && (HERO_LOOKS as readonly string[]).includes(l) && l !== BASE_LOOK;
+  // ids from before the owner's new hero art (iron, knight, hero_voidsteel...) map to the look that replaced them instead of being dropped
+  const seen = new Set<HeroBaseLook>(Array.isArray(raw) ? raw.map((l) => (typeof l === 'string' && LEGACY_LOOK_IDS[l]) || l).filter(known) : []);
+  if (legacyKnighted) for (const l of looksUpTo('hero_steel_v2')) seen.add(l);
   for (const l of looksUpTo(current)) seen.add(l);
   return HERO_LOOKS.filter((l) => seen.has(l));
 }

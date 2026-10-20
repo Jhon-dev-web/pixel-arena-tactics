@@ -63,7 +63,7 @@ export default function HuntBattleView({
   children?: ReactNode; // tonic badges under the plates
 }) {
   // Each sheet is drawn at the same pixel scale as the knight's, so the peasant keeps his natural (slightly shorter) proportions instead of being stretched.
-  const heroHeight = (HERO_HEIGHT * artGeometry(HERO_ART[heroSheet]).h) / artGeometry(HERO_ART.knight).h;
+  const heroHeight = (HERO_HEIGHT * artGeometry(HERO_ART[heroSheet]).h) / artGeometry(HERO_ART.knight_golden).h;
   const reduced = usePrefersReducedMotion();
   const fx = useFxStage();
   const fxScale = useFxScale();

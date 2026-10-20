@@ -2,7 +2,7 @@ import Assets from '../assets.json';
 import { depthBossPool, dungeonEnemyKindForFloor, isDungeonBoss, MAX_DUNGEON_FLOOR } from './dungeon';
 import { EnemyKind, getEnemyDef } from './enemies';
 import { ownsAdventurerPass } from './entitlements';
-import { getGear, HERO_LOOKS, type HeroBaseLook } from './gear';
+import { BASE_LOOK, getGear, HERO_LOOKS, type HeroBaseLook } from './gear';
 import { resolveGearInstance } from './gearInstances';
 import { sanitizeActiveSkin } from './seasonItems';
 import type { SaveData } from './engine';
@@ -26,24 +26,24 @@ export type HeroSheet = HeroBaseLook | 'knight_golden';
 type LookSave = Pick<SaveData, 'activeSkin' | 'cosmetics' | 'gearInstances' | 'equipped' | 'hasBattlePass'>;
 
 const SHEET_URLS: Record<HeroSheet, string> = {
-  peasant: Assets.spritesheets.peasant.url,
+  hero_peasant_v2: Assets.spritesheets.hero_peasant_v2.url,
   bronze: Assets.spritesheets.bronze.url,
-  iron: Assets.spritesheets.iron.url,
-  knight: Assets.spritesheets.knight.url,
+  hero_iron_v2: Assets.spritesheets.hero_iron_v2.url,
+  hero_steel_v2: Assets.spritesheets.hero_steel_v2.url,
   hero_dark_knight: Assets.spritesheets.hero_dark_knight.url,
   dragon: Assets.spritesheets.dragon.url,
-  hero_voidsteel: Assets.spritesheets.hero_voidsteel.url,
-  hero_abyssal: Assets.spritesheets.hero_abyssal.url,
+  hero_voidsteel_v2: Assets.spritesheets.hero_voidsteel_v2.url,
+  hero_abyssal_v2: Assets.spritesheets.hero_abyssal_v2.url,
   knight_golden: Assets.spritesheets.knight_golden.url,
 };
 
 // The look of an armor template (the starter rags and anything unknown are the peasant).
-export const armorLook = (templateId: string | null | undefined): HeroBaseLook => (templateId ? getGear(templateId)?.look : undefined) ?? 'peasant';
+export const armorLook = (templateId: string | null | undefined): HeroBaseLook => (templateId ? getGear(templateId)?.look : undefined) ?? BASE_LOOK;
 
 // What the armor slot makes of the hero, ignoring skins.
 export function heroBaseLook(save: Pick<SaveData, 'gearInstances' | 'equipped'>): HeroBaseLook {
   const hit = resolveGearInstance(save, save.equipped?.armor);
-  return hit && hit.item.slot === 'armor' ? armorLook(hit.instance.templateId) : 'peasant';
+  return hit && hit.item.slot === 'armor' ? armorLook(hit.instance.templateId) : BASE_LOOK;
 }
 
 // THE one function that decides the hero's look from a save; every place that draws the hero goes through it.
@@ -65,7 +65,7 @@ export interface LookMoment {
 }
 export function withLookMoment(next: SaveData): LookMoment | null {
   const look = heroBaseLook(next);
-  if (look === 'peasant' || (next.seenLooks ?? []).includes(look)) return null;
+  if (look === BASE_LOOK || (next.seenLooks ?? []).includes(look)) return null;
   const armor = resolveGearInstance(next, next.equipped.armor);
   return { save: { ...next, seenLooks: [...(next.seenLooks ?? []), look] }, look, armorNameKey: armor?.item.nameKey ?? '' };
 }

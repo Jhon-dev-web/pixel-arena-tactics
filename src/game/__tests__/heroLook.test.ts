@@ -35,16 +35,16 @@ describe('the armor -> look mapping', () => {
   it('the documented mapping', () => {
     const m = Object.fromEntries(ARMORS.map((a) => [a.id, a.look]));
     expect(m).toMatchObject({
-      ragged_clothes: 'peasant',
+      ragged_clothes: 'hero_peasant_v2',
       bronze_leather: 'bronze',
-      iron_chainmail: 'iron',
-      steel_plate: 'knight',
+      iron_chainmail: 'hero_iron_v2',
+      steel_plate: 'hero_steel_v2',
       gilded_aegis: 'hero_dark_knight',
       dragon_scale_armor: 'dragon',
-      voidsteel_plate: 'hero_voidsteel',
-      abyssal_bulwark: 'hero_abyssal',
-      demonhide_vest: 'iron', // twin: iron_chainmail
-      bloodvein_plate: 'knight', // twin: steel_plate
+      voidsteel_plate: 'hero_voidsteel_v2',
+      abyssal_bulwark: 'hero_abyssal_v2',
+      demonhide_vest: 'hero_iron_v2', // twin: iron_chainmail
+      bloodvein_plate: 'hero_steel_v2', // twin: steel_plate
     });
   });
 
@@ -68,10 +68,10 @@ describe('the armor -> look mapping', () => {
 
   it('all sheets stand on the same ground line (within 2 sheet pixels); the dragon family is bigger than the knight, the peasant smaller', () => {
     const foot = (s: HeroSheet) => artGeometry(HERO_ART[s]).foot * 256;
-    for (const s of ALL_SHEETS) expect(Math.abs(foot(s) - foot('knight')), s).toBeLessThanOrEqual(2);
+    for (const s of ALL_SHEETS) expect(Math.abs(foot(s) - foot('knight_golden')), s).toBeLessThanOrEqual(2);
     const h = (s: HeroSheet) => artGeometry(HERO_ART[s]).h;
-    expect(h('peasant')).toBeLessThan(h('knight'));
-    expect(h('dragon')).toBeGreaterThan(h('knight'));
+    expect(h('hero_peasant_v2')).toBeLessThan(h('knight_golden'));
+    expect(h('dragon')).toBeGreaterThan(h('knight_golden'));
   });
 });
 
@@ -79,15 +79,15 @@ describe('the hero look (heroSheet)', () => {
   it('a new hero (starter rags + wooden club) is the peasant', () => {
     const s = defaultSave();
     expect(s.gearInstances[s.equipped.armor as string].templateId).toBe('ragged_clothes');
-    expect(heroBaseLook(s)).toBe('peasant');
-    expect(heroSheet(s)).toBe('peasant');
-    expect(playerSpriteUrl(s)).toBe('/assets/spritesheets/peasant.png');
-    expect(armorLook('ragged_clothes')).toBe('peasant');
+    expect(heroBaseLook(s)).toBe('hero_peasant_v2');
+    expect(heroSheet(s)).toBe('hero_peasant_v2');
+    expect(playerSpriteUrl(s)).toBe('/assets/spritesheets/hero_peasant_v2.png');
+    expect(armorLook('ragged_clothes')).toBe('hero_peasant_v2');
   });
 
   it('an empty armor slot is the peasant too, and so is an id that points nowhere', () => {
-    expect(heroSheet(bare())).toBe('peasant');
-    expect(heroSheet({ ...defaultSave(), equipped: { ...defaultSave().equipped, armor: 'gi_missing' } })).toBe('peasant');
+    expect(heroSheet(bare())).toBe('hero_peasant_v2');
+    expect(heroSheet({ ...defaultSave(), equipped: { ...defaultSave().equipped, armor: 'gi_missing' } })).toBe('hero_peasant_v2');
   });
 
   it('every armor template, forged or unique, draws the sheet of its look', () => {
@@ -95,30 +95,30 @@ describe('the hero look (heroSheet)', () => {
       expect(heroSheet(wearing(a.id)), a.id).toBe(a.look);
       expect(playerSpriteUrl(wearing(a.id)), a.id).toBe(heroSheetUrl(a.look as HeroSheet));
     }
-    expect(playerSpriteUrl(wearing('steel_plate'))).toBe('/assets/spritesheets/knight.png');
+    expect(playerSpriteUrl(wearing('steel_plate'))).toBe('/assets/spritesheets/hero_steel_v2.png');
     expect(playerSpriteUrl(wearing('dragon_scale_armor'))).toBe('/assets/spritesheets/dragon.png');
-    expect(heroSheet(wearing('demonhide_vest'))).toBe('iron');
-    expect(heroSheet(wearing('bloodvein_plate'))).toBe('knight');
+    expect(heroSheet(wearing('demonhide_vest'))).toBe('hero_iron_v2');
+    expect(heroSheet(wearing('bloodvein_plate'))).toBe('hero_steel_v2');
   });
 
   it('the weapon never matters: a peasant with a forged sword is still the peasant sheet', () => {
     const s = defaultSave();
     const sword = createGearInstance('iron_short_sword', { id: 't_sword', origin: 'craft', rarity: 'common' });
     const armed: SaveData = { ...s, gearInstances: { ...s.gearInstances, [sword.id]: sword }, equipped: { ...s.equipped, weapon: sword.id } };
-    expect(heroSheet(armed)).toBe('peasant');
+    expect(heroSheet(armed)).toBe('hero_peasant_v2');
   });
 
   it('a helmet or shield never changes the look either', () => {
     const s = wearing('iron_chainmail');
     const helm = createGearInstance('iron_helm', { id: 't_helm', origin: 'craft', rarity: 'common' });
     const withHelm: SaveData = { ...s, gearInstances: { ...s.gearInstances, [helm.id]: helm }, equipped: { ...s.equipped, helmet: helm.id } };
-    expect(heroSheet(withHelm)).toBe('iron');
+    expect(heroSheet(withHelm)).toBe('hero_iron_v2');
   });
 
   it('taking the armor off shows the peasant again', () => {
     const knight = wearing('iron_chainmail');
-    expect(heroSheet(knight)).toBe('iron');
-    expect(heroSheet(bare(knight))).toBe('peasant');
+    expect(heroSheet(knight)).toBe('hero_iron_v2');
+    expect(heroSheet(bare(knight))).toBe('hero_peasant_v2');
   });
 
   it('a skin the hero owns (and the Pass) wins over every armor', () => {
@@ -128,12 +128,12 @@ describe('the hero look (heroSheet)', () => {
   });
 
   it('an unknown, un-owned or Pass-less skin falls back to the armor-driven look', () => {
-    expect(heroSheet(withSkin(defaultSave(), { activeSkin: 'skin_nope' }))).toBe('peasant');
+    expect(heroSheet(withSkin(defaultSave(), { activeSkin: 'skin_nope' }))).toBe('hero_peasant_v2');
     expect(heroSheet(withSkin(wearing('dragon_scale_armor'), { activeSkin: 'skin_nope' }))).toBe('dragon');
-    expect(heroSheet(withSkin(defaultSave(), { cosmetics: [] }))).toBe('peasant'); // not owned
-    expect(heroSheet(withSkin(wearing('steel_plate'), { cosmetics: [] }))).toBe('knight');
-    expect(heroSheet(withSkin(defaultSave(), { hasBattlePass: false }))).toBe('peasant'); // no Pass
-    expect(heroSheet({ ...defaultSave(), activeSkin: null })).toBe('peasant');
+    expect(heroSheet(withSkin(defaultSave(), { cosmetics: [] }))).toBe('hero_peasant_v2'); // not owned
+    expect(heroSheet(withSkin(wearing('steel_plate'), { cosmetics: [] }))).toBe('hero_steel_v2');
+    expect(heroSheet(withSkin(defaultSave(), { hasBattlePass: false }))).toBe('hero_peasant_v2'); // no Pass
+    expect(heroSheet({ ...defaultSave(), activeSkin: null })).toBe('hero_peasant_v2');
   });
 
   it('the gilded look is its own sheet, not the Pass skin', () => {
@@ -144,15 +144,15 @@ describe('the hero look (heroSheet)', () => {
 
 describe('seen looks and the first-time moment', () => {
   it('looksUpTo lists the looks in progression order, never the peasant', () => {
-    expect(looksUpTo('peasant')).toEqual([]);
-    expect(looksUpTo('knight')).toEqual(['bronze', 'iron', 'knight']);
-    expect(looksUpTo('hero_abyssal')).toEqual(HERO_LOOKS.slice(1));
+    expect(looksUpTo('hero_peasant_v2')).toEqual([]);
+    expect(looksUpTo('hero_steel_v2')).toEqual(['bronze', 'hero_iron_v2', 'hero_steel_v2']);
+    expect(looksUpTo('hero_abyssal_v2')).toEqual(HERO_LOOKS.slice(1));
   });
 
   it('each look fires once, in any order; unequip and re-equip never repeats; the peasant never fires', () => {
     let s = defaultSave();
     expect(withLookMoment(s)).toBeNull();
-    for (const [armor, look] of [['bronze_leather', 'bronze'], ['steel_plate', 'knight'], ['dragon_scale_armor', 'dragon']] as const) {
+    for (const [armor, look] of [['bronze_leather', 'bronze'], ['steel_plate', 'hero_steel_v2'], ['dragon_scale_armor', 'dragon']] as const) {
       const m = withLookMoment(wearing(armor, s));
       expect(m?.look, armor).toBe(look);
       expect(m?.armorNameKey).toBe(armor);
@@ -164,8 +164,8 @@ describe('seen looks and the first-time moment', () => {
     expect(withLookMoment(bare(s))).toBeNull();
     expect(withLookMoment(wearing('bronze_leather', bare(s)))).toBeNull();
     // a look reached out of order still fires once, and a unique wearing a twin's look fires that look
-    expect(withLookMoment(wearing('abyssal_bulwark', s))?.look).toBe('hero_abyssal');
-    expect(withLookMoment(wearing('demonhide_vest', defaultSave()))?.look).toBe('iron');
+    expect(withLookMoment(wearing('abyssal_bulwark', s))?.look).toBe('hero_abyssal_v2');
+    expect(withLookMoment(wearing('demonhide_vest', defaultSave()))?.look).toBe('hero_iron_v2');
   });
 
   it('a skin does not hide or trigger the moment: it follows the armor', () => {
@@ -178,16 +178,16 @@ describe('seen looks and the first-time moment', () => {
     const old = wire(wearing('iron_chainmail'));
     delete (old as unknown as Record<string, unknown>).seenLooks;
     const loaded = normalizeSave(old);
-    expect(loaded.seenLooks).toEqual(['bronze', 'iron']);
+    expect(loaded.seenLooks).toEqual(['bronze', 'hero_iron_v2']);
     expect(withLookMoment(loaded)).toBeNull(); // wears iron: no celebration
     expect(withLookMoment(wearing('bronze_leather', loaded))).toBeNull(); // a lower look: none
-    expect(withLookMoment(wearing('steel_plate', loaded))?.look).toBe('knight'); // a higher one still celebrates
+    expect(withLookMoment(wearing('steel_plate', loaded))?.look).toBe('hero_steel_v2'); // a higher one still celebrates
   });
 
   it('a hero in dragon armor loads as the dragon look with everything up to it seen; the rags load with nothing seen', () => {
     const d = normalizeSave(wire(wearing('dragon_scale_armor')));
     expect(heroSheet(d)).toBe('dragon');
-    expect(d.seenLooks).toEqual(['bronze', 'iron', 'knight', 'hero_dark_knight', 'dragon']);
+    expect(d.seenLooks).toEqual(['bronze', 'hero_iron_v2', 'hero_steel_v2', 'hero_dark_knight', 'dragon']);
     expect(normalizeSave(wire(defaultSave())).seenLooks).toEqual([]);
   });
 
@@ -196,13 +196,18 @@ describe('seen looks and the first-time moment', () => {
     delete (old as unknown as Record<string, unknown>).seenLooks;
     (old as unknown as Record<string, unknown>).heroKnighted = true;
     const loaded = normalizeSave(old);
-    expect(loaded.seenLooks).toContain('knight');
+    expect(loaded.seenLooks).toContain('hero_steel_v2');
     expect(withLookMoment(wearing('steel_plate', loaded))).toBeNull();
   });
 
   it('the stored list round-trips; unknown ids and the peasant are dropped', () => {
     const s = wire({ ...defaultSave(), seenLooks: ['hero_dark_knight', 'peasant', 'nope', 42] });
     expect(normalizeSave(s).seenLooks).toEqual(['hero_dark_knight']);
-    expect(normalizeSave(wire(normalizeSave(wire({ ...wearing('steel_plate') })))).seenLooks).toEqual(['bronze', 'iron', 'knight']);
+    expect(normalizeSave(wire(normalizeSave(wire({ ...wearing('steel_plate') })))).seenLooks).toEqual(['bronze', 'hero_iron_v2', 'hero_steel_v2']);
+  });
+
+  it('look ids from before the new hero art map to the look that replaced them instead of being dropped', () => {
+    const s = wire({ ...defaultSave(), seenLooks: ['iron', 'knight', 'hero_gilded', 'hero_voidsteel', 'hero_abyssal'] });
+    expect(normalizeSave(s).seenLooks).toEqual(['hero_iron_v2', 'hero_steel_v2', 'hero_dark_knight', 'hero_voidsteel_v2', 'hero_abyssal_v2']);
   });
 });
