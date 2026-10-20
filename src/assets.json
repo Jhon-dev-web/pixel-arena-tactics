@@ -435,6 +435,35 @@
       },
       "metadata": {}
     },
+    "hero_dark_knight": {
+      "url": "/assets/spritesheets/hero_dark_knight.png",
+      "description": "Gilded-aegis armour (the owner's dark knight: navy plate with gold trim, purple cape): facing right, 4 animation rows (idle/attack/hurt/death)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
     "hero_voidsteel": {
       "url": "/assets/spritesheets/hero_voidsteel.png",
       "description": "Voidsteel armour (violet): a recolor of the dragon sheet, facing right, 4 animation rows (idle/attack/hurt/death)",

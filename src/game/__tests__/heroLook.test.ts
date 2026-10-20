@@ -39,7 +39,7 @@ describe('the armor -> look mapping', () => {
       bronze_leather: 'bronze',
       iron_chainmail: 'iron',
       steel_plate: 'knight',
-      gilded_aegis: 'hero_gilded',
+      gilded_aegis: 'hero_dark_knight',
       dragon_scale_armor: 'dragon',
       voidsteel_plate: 'hero_voidsteel',
       abyssal_bulwark: 'hero_abyssal',
@@ -137,8 +137,8 @@ describe('the hero look (heroSheet)', () => {
   });
 
   it('the gilded look is its own sheet, not the Pass skin', () => {
-    expect(heroSheetUrl('hero_gilded')).not.toBe(heroSheetUrl('knight_golden'));
-    expect(heroSheet(wearing('gilded_aegis'))).toBe('hero_gilded');
+    expect(heroSheetUrl('hero_dark_knight')).not.toBe(heroSheetUrl('knight_golden'));
+    expect(heroSheet(wearing('gilded_aegis'))).toBe('hero_dark_knight');
   });
 });
 
@@ -187,7 +187,7 @@ describe('seen looks and the first-time moment', () => {
   it('a hero in dragon armor loads as the dragon look with everything up to it seen; the rags load with nothing seen', () => {
     const d = normalizeSave(wire(wearing('dragon_scale_armor')));
     expect(heroSheet(d)).toBe('dragon');
-    expect(d.seenLooks).toEqual(['bronze', 'iron', 'knight', 'hero_gilded', 'dragon']);
+    expect(d.seenLooks).toEqual(['bronze', 'iron', 'knight', 'hero_dark_knight', 'dragon']);
     expect(normalizeSave(wire(defaultSave())).seenLooks).toEqual([]);
   });
 
@@ -201,8 +201,8 @@ describe('seen looks and the first-time moment', () => {
   });
 
   it('the stored list round-trips; unknown ids and the peasant are dropped', () => {
-    const s = wire({ ...defaultSave(), seenLooks: ['hero_gilded', 'peasant', 'nope', 42] });
-    expect(normalizeSave(s).seenLooks).toEqual(['hero_gilded']);
+    const s = wire({ ...defaultSave(), seenLooks: ['hero_dark_knight', 'peasant', 'nope', 42] });
+    expect(normalizeSave(s).seenLooks).toEqual(['hero_dark_knight']);
     expect(normalizeSave(wire(normalizeSave(wire({ ...wearing('steel_plate') })))).seenLooks).toEqual(['bronze', 'iron', 'knight']);
   });
 });

@@ -208,14 +208,14 @@ export const GEAR: GearItem[] = [
 // The hero's look per ARMOR template: the armor in the armor slot decides which sheet the hero is drawn with (heroLook in sprites.ts). The order of HERO_LOOKS is the
 // progression order (used to tell which looks a hero has already outgrown). Every armor template must be keyed here (gear.test / heroLook.test check it), so a new armor
 // cannot ship without a look; uniques take their twin's (UNIQUE_DEFS.like). Weapon, helmet, shield and the other slots never change the sprite.
-export const HERO_LOOKS = ['peasant', 'bronze', 'iron', 'knight', 'hero_gilded', 'dragon', 'hero_voidsteel', 'hero_abyssal'] as const;
+export const HERO_LOOKS = ['peasant', 'bronze', 'iron', 'knight', 'hero_dark_knight', 'dragon', 'hero_voidsteel', 'hero_abyssal'] as const;
 export type HeroBaseLook = (typeof HERO_LOOKS)[number];
 export const ARMOR_LOOKS: Record<string, HeroBaseLook> = {
   ragged_clothes: 'peasant',
   bronze_leather: 'bronze',
   iron_chainmail: 'iron',
   steel_plate: 'knight',
-  gilded_aegis: 'hero_gilded',
+  gilded_aegis: 'hero_dark_knight',
   dragon_scale_armor: 'dragon',
   voidsteel_plate: 'hero_voidsteel',
   abyssal_bulwark: 'hero_abyssal',

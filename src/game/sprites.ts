@@ -30,7 +30,7 @@ const SHEET_URLS: Record<HeroSheet, string> = {
   bronze: Assets.spritesheets.bronze.url,
   iron: Assets.spritesheets.iron.url,
   knight: Assets.spritesheets.knight.url,
-  hero_gilded: Assets.spritesheets.hero_gilded.url,
+  hero_dark_knight: Assets.spritesheets.hero_dark_knight.url,
   dragon: Assets.spritesheets.dragon.url,
   hero_voidsteel: Assets.spritesheets.hero_voidsteel.url,
   hero_abyssal: Assets.spritesheets.hero_abyssal.url,
