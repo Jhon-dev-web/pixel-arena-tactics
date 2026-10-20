@@ -500,4 +500,5 @@ html { scroll-behavior: smooth; }
   .s-facts { grid-column: auto; }
   .h-roadmap .button { flex: 1 1 100%; }
 }
+.group-art { display: block; width: min(100%,320px); height: auto; margin: 18px auto 0; filter: drop-shadow(0 0 26px #a35ee055); }
 `;
