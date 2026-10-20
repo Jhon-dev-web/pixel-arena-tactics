@@ -6,6 +6,7 @@ import { SaveData, computeCP, formatNumber } from '../game/engine';
 import { getTitleDef } from '../game/titles';
 import { useDisplayName } from '../game/usernameContext';
 import { portraitFrameClass } from '../game/seasonItems';
+import ActivityChip from './ActivityChip';
 
 // Top bar shared by desktop (fixed sidebar alongside it) and mobile (hamburger + drawer instead) —
 // same data as the old mobile-only TopHud, just laid out wider on desktop. CP is deliberately left
@@ -74,6 +75,8 @@ export default function DesktopTopbar({
           </div>
         </div>
       </button>
+
+      <ActivityChip save={save} />
 
       <div className="desktop-topbar-resources">
         {syncLabel && <span className={`sync-status ${syncStatus}`}>{syncLabel}</span>}

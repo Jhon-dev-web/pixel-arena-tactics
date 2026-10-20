@@ -117,7 +117,7 @@ export interface GatherStart {
 // Start gathering `tierId` now. null = refused: unknown or still locked tier, that very tier already running, or another background
 // activity (Hunting, the other gathering skill) in the way. Switching from a running tier of the same skill collects it first.
 export function applyStartGathering(save: SaveData, kind: GatherKind, tierId: string, now: number): GatherStart | null {
-  if (!validNow(now) || save.activeHuntingZone) return null;
+  if (!validNow(now) || save.activeHuntingZone || save.craftJob) return null;
   if (kind === 'mining') {
     const tier = getOreTier(tierId);
     if (!tier || save.activeWoodId || save.activeOreId === tier.id || !isOreTierUnlocked(tier, skillLevel(save.skillXp.mining, 'mining'))) return null;

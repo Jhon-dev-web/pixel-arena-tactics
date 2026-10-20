@@ -198,7 +198,7 @@ function canRequestHunt(save: SaveData, zoneId: string, depth: HuntingDepth): bo
   const zone = getHuntingZone(zoneId);
   if (!zone) return false;
   if (!isZoneOpen(zone, save.highestDungeonFloor, playerLevel(save.xp)) || !isDepthUnlocked(zone, depth, computeCP(save))) return false;
-  if (save.activeOreId || save.activeWoodId) return false;
+  if (save.activeOreId || save.activeWoodId || save.craftJob) return false;
   return !(save.activeHuntingZone === zoneId && save.activeHuntingDepth === depth);
 }
 
