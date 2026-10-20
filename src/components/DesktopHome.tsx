@@ -198,7 +198,7 @@ export default function DesktopHome({
                   return (
                     <div className={`hm-slot${view ? '' : ' empty'}`} key={slot}>
                       <ItemFrame rarity={rarity} size="sm">
-                        {view ? <GearIcon item={view.item} /> : <span className="hm-slot-empty">·</span>}
+                        {view ? <GearIcon item={view.item} /> : null}
                       </ItemFrame>
                       <div className="hm-slot-text">
                         <span className="hm-slot-label">{gearText(slot)}</span>

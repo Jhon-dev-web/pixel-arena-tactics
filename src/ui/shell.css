@@ -469,9 +469,6 @@
 .hm-slot.empty {
   opacity: 0.6;
 }
-.hm-slot-empty {
-  color: var(--c-text-muted);
-}
 .hm-slot-text {
   display: flex;
   flex-direction: column;

@@ -46,7 +46,7 @@ function EquipSlotCard({ slot, view, requiredLevel }: { slot: GearSlot; view: Eq
       <ItemCard
         className="pg-equip empty"
         data-slot={slot}
-        icon={<GearIcon item={{ id: slot, slot, nameKey: slot, descKey: slot, cost: 0 }} />}
+        icon={null}
         name={gearText(slot)}
         rarityLabel={`— ${gearText('none')}`}
       />
