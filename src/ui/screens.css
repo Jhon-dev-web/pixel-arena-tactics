@@ -906,6 +906,30 @@
   gap: var(--sp-3);
   min-width: 0;
 }
+/* the page: the header, then the tabs and the lists */
+.ui-screen.fg-page {
+  display: flex;
+  flex-direction: column;
+}
+.ui-screen.fg-page > * {
+  flex: 0 0 auto;
+}
+/* the result line floats over the top of the page (zero height, sticky): it shows wherever the list is scrolled to and never pushes the cards around */
+.fg-reveal-slot {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  height: 0;
+}
+.fg-reveal-slot .forge-reveal {
+  position: absolute;
+  top: var(--sp-2);
+  left: 0;
+  right: 0;
+  margin: 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
 .fg-tabs .ui-tab-icon img {
   width: 22px;
   height: 22px;
@@ -1232,6 +1256,21 @@
   flex-wrap: wrap;
   gap: var(--sp-1);
   font-size: var(--fs-body);
+}
+/* the gold / shard pictures of a cost row are bare <img>s: without a size they showed at their full pixel size and pushed everything down */
+.fg-card .mat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.fg-card .mat-icon > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 .fg-card .req-plus {
   color: var(--c-text-muted);
