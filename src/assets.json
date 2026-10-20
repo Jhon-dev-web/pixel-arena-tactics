@@ -666,6 +666,64 @@
         }
       },
       "metadata": {}
+    },
+    "hero_bronze_v2": {
+      "url": "/assets/spritesheets/hero_bronze_v2.png",
+      "description": "Bronze leather look (the owner's hero: bronze plates, brown cape): facing right, 4 animation rows (idle/attack/hurt/death; death is a real fall)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
+    },
+    "hero_dragon_v2": {
+      "url": "/assets/spritesheets/hero_dragon_v2.png",
+      "description": "Dragon scale look (the owner's hero: black and red dragon plate, flame cape): facing right, 4 animation rows (idle/attack/hurt/death; death = the hurt frames held)",
+      "imageWidth": 1024,
+      "imageHeight": 1024,
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "gridRows": 4,
+      "gridCols": 4,
+      "animations": {
+        "idle": {
+          "start": 0,
+          "end": 3
+        },
+        "attack": {
+          "start": 4,
+          "end": 7
+        },
+        "hurt": {
+          "start": 8,
+          "end": 11
+        },
+        "death": {
+          "start": 12,
+          "end": 15
+        }
+      },
+      "metadata": {}
     }
   },
   "background": {

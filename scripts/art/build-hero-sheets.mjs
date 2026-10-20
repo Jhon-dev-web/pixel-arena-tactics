@@ -20,9 +20,9 @@ const LOOKS = {
   hero_peasant_v2: { file: 'fe8543cc-image.png', bg: 'alpha', labels: false, minAlpha: 150 },
   hero_steel_v2: { file: '166c10ea-image.png', bg: 'black', labels: true, minAlpha: 0 },
   hero_voidsteel_v2: { file: '08397be6-image.png', bg: 'alpha', labels: false, minAlpha: 215 },
-  hero_dragon_v2: { file: 'e56e9091-image.png', bg: 'gradient', labels: true, minAlpha: 0 },
+  hero_dragon_v2: { file: 'f1857e82-image.png', bg: 'alpha', labels: false, minAlpha: 215 },
   hero_abyssal_v2: { file: '13c12581-image.png', bg: 'black', labels: true, minAlpha: 0 },
-  hero_bronze_v2: { file: '467fe764-image.png', bg: 'alpha', labels: false, minAlpha: 254 },
+  hero_bronze_v2: { file: '4f00acc0-image.png', bg: 'alpha', labels: false, minAlpha: 215, rows: 5 }, // 5th row = a real death animation
 };
 
 async function load(p) {
@@ -144,7 +144,7 @@ function bbox(img, f, th = ALPHA) {
 // Frames: the 16 biggest cores (the visible pixels eroded by 2, so thin bridges between neighbours disappear) are the 16 bodies (row = sorted by height, column = by x).
 // Every visible pixel is then owned by the nearest body through the visible pixels (multi-source flood from the cores); pieces not connected to any body (stars, detached
 // sparks) go to the nearest body by centroid. Each frame keeps only its own pixels, so neighbours that overlap in x (a sword tip meeting the next frame's slash) cannot leak.
-function frames(img) {
+function frames(img, nRows = 4) {
   const { data: d, W, H } = img;
   const vis = (x, y) => x >= 0 && y >= 0 && x < W && y < H && d[(y * W + x) * 4 + 3] > ALPHA;
   const R = 2;
@@ -178,7 +178,7 @@ function frames(img) {
   const big = sorted.filter((c) => c.size >= 3000).sort((p, q) => p.cy - q.cy);
   const rows = [];
   for (const c of big) { const r = rows[rows.length - 1]; if (r && Math.abs(c.cy - r.reduce((t, k) => t + k.cy, 0) / r.length) < 110) r.push(c); else rows.push([c]); }
-  if (rows.length !== 4) throw new Error('expected 4 rows, found ' + rows.length);
+  if (rows.length !== nRows) throw new Error(`expected ${nRows} rows, found ` + rows.length);
   for (const row of rows) {
     while (row.length < 4) {
       row.sort((p, q) => q.size - p.size);
@@ -277,14 +277,14 @@ for (const [id, cfg] of Object.entries(LOOKS)) {
   console.log(id);
   const A = await prepare(cfg);
   if (process.env.DUMP) await sharp({ create: { width: A.W, height: A.H, channels: 4, background: '#808080' } }).composite([{ input: A.data, raw: { width: A.W, height: A.H, channels: 4 } }]).png().toFile(process.env.DUMP + id + '.png');
-  const [idle, walk, attack, hurt] = frames(A);
+  const [idle, walk, attack, hurt, death] = frames(A, cfg.rows ?? 4);
   const solidH = (f) => { let y0 = 1e9, y1 = -1; for (let y = f.y0; y <= f.y1; y++) for (let x = f.x0; x <= f.x1; x++) if (A.data[(y * A.W + x) * 4 + 3] > 200 && f.keep.has(f.label[y * A.W + x])) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); } return y1 - y0 + 1; };
   const idleH = Math.max(...idle.map(solidH));
   const s = IDLE_TARGET / idleH;
-  console.log('  idleH', idleH, 'scale', s.toFixed(4), 'frames', [idle, walk, attack, hurt].map((r) => r.map((f) => `${f.x0}-${f.x1}`).join('/')).join(' | '));
+  console.log('  idleH', idleH, 'scale', s.toFixed(4), 'frames', [idle, walk, attack, hurt, death].filter(Boolean).map((r) => r.map((f) => `${f.x0}-${f.x1}`).join('/')).join(' | '));
   const cells = async (frames) => Promise.all(frames.map((f) => renderCell(A, f, s)));
   const [ci, ca, ch] = [await cells(idle), await cells(attack), await cells(hurt)];
-  const cd = [ch[0], ch[0], ch[1], ch[1]];
+  const cd = death ? await cells(death) : [ch[0], ch[0], ch[1], ch[1]];
   const main = await sheet([ci, ca, ch, cd], 1024, 1024, path.join(OUT, `${id}.png`));
   await sheet([await cells(walk)], 1024, 256, path.join(OUT, `${id}_walk.png`));
   built.push({ id, main, idleBox: (() => { const c = ci[0]; let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1; for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (c[(y * CELL + x) * 4 + 3] > ALPHA) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } return [x0, y0, x1, y1]; })() });

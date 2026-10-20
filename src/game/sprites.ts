@@ -27,11 +27,11 @@ type LookSave = Pick<SaveData, 'activeSkin' | 'cosmetics' | 'gearInstances' | 'e
 
 const SHEET_URLS: Record<HeroSheet, string> = {
   hero_peasant_v2: Assets.spritesheets.hero_peasant_v2.url,
-  bronze: Assets.spritesheets.bronze.url,
+  hero_bronze_v2: Assets.spritesheets.hero_bronze_v2.url,
   hero_iron_v2: Assets.spritesheets.hero_iron_v2.url,
   hero_steel_v2: Assets.spritesheets.hero_steel_v2.url,
   hero_dark_knight: Assets.spritesheets.hero_dark_knight.url,
-  dragon: Assets.spritesheets.dragon.url,
+  hero_dragon_v2: Assets.spritesheets.hero_dragon_v2.url,
   hero_voidsteel_v2: Assets.spritesheets.hero_voidsteel_v2.url,
   hero_abyssal_v2: Assets.spritesheets.hero_abyssal_v2.url,
   knight_golden: Assets.spritesheets.knight_golden.url,

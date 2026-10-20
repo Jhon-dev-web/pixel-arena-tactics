@@ -208,19 +208,19 @@ export const GEAR: GearItem[] = [
 // The hero's look per ARMOR template: the armor in the armor slot decides which sheet the hero is drawn with (heroLook in sprites.ts). The order of HERO_LOOKS is the
 // progression order (used to tell which looks a hero has already outgrown). Every armor template must be keyed here (gear.test / heroLook.test check it), so a new armor
 // cannot ship without a look; uniques take their twin's (UNIQUE_DEFS.like). Weapon, helmet, shield and the other slots never change the sprite.
-export const HERO_LOOKS = ['hero_peasant_v2', 'bronze', 'hero_iron_v2', 'hero_steel_v2', 'hero_dark_knight', 'dragon', 'hero_voidsteel_v2', 'hero_abyssal_v2'] as const;
+export const HERO_LOOKS = ['hero_peasant_v2', 'hero_bronze_v2', 'hero_iron_v2', 'hero_steel_v2', 'hero_dark_knight', 'hero_dragon_v2', 'hero_voidsteel_v2', 'hero_abyssal_v2'] as const;
 export type HeroBaseLook = (typeof HERO_LOOKS)[number];
 // The look of rags / an empty armor slot: never "seen" (no celebration for him).
 export const BASE_LOOK: HeroBaseLook = HERO_LOOKS[0];
 // Look ids older saves may carry in seenLooks, mapped to the look that replaced them (the owner's new hero art), so a save never loses what it had already seen.
-export const LEGACY_LOOK_IDS: Record<string, HeroBaseLook> = { iron: 'hero_iron_v2', knight: 'hero_steel_v2', hero_gilded: 'hero_dark_knight', hero_voidsteel: 'hero_voidsteel_v2', hero_abyssal: 'hero_abyssal_v2' };
+export const LEGACY_LOOK_IDS: Record<string, HeroBaseLook> = { bronze: 'hero_bronze_v2', dragon: 'hero_dragon_v2', iron: 'hero_iron_v2', knight: 'hero_steel_v2', hero_gilded: 'hero_dark_knight', hero_voidsteel: 'hero_voidsteel_v2', hero_abyssal: 'hero_abyssal_v2' };
 export const ARMOR_LOOKS: Record<string, HeroBaseLook> = {
   ragged_clothes: 'hero_peasant_v2',
-  bronze_leather: 'bronze',
+  bronze_leather: 'hero_bronze_v2',
   iron_chainmail: 'hero_iron_v2',
   steel_plate: 'hero_steel_v2',
   gilded_aegis: 'hero_dark_knight',
-  dragon_scale_armor: 'dragon',
+  dragon_scale_armor: 'hero_dragon_v2',
   voidsteel_plate: 'hero_voidsteel_v2',
   abyssal_bulwark: 'hero_abyssal_v2',
 };

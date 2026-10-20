@@ -56,14 +56,13 @@ const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
 // other, about 1 px on screen) and keeps its own natural proportions: the peasant is the smallest, the dragon family (dragon, voidsteel, abyssal) the widest and tallest.
 // The recolors share their source sheet's box: golden knight and gilded = knight (the dark knight has its own box); voidsteel and abyssal = dragon.
 const KNIGHT_ART: SheetArt = { cell: 256, box: [71, 12, 204, 251] };
-const DRAGON_ART: SheetArt = { cell: 256, box: [49, 6, 217, 253] };
 export const HERO_ART: Record<HeroSheet, SheetArt> = {
   hero_peasant_v2: { cell: 256, box: [69, 43, 207, 251] },
-  bronze: { cell: 256, box: [65, 25, 216, 253] },
+  hero_bronze_v2: { cell: 256, box: [44, 45, 248, 251] },
   hero_iron_v2: { cell: 256, box: [51, 43, 212, 251] },
   hero_steel_v2: { cell: 256, box: [47, 47, 211, 251] },
   hero_dark_knight: { cell: 256, box: [50, 41, 216, 251] },
-  dragon: DRAGON_ART,
+  hero_dragon_v2: { cell: 256, box: [14, 45, 228, 251] },
   hero_voidsteel_v2: { cell: 256, box: [16, 45, 248, 251] },
   hero_abyssal_v2: { cell: 256, box: [34, 45, 224, 251] },
   knight_golden: KNIGHT_ART,
