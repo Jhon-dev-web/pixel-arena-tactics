@@ -376,7 +376,7 @@ export const home = {
       { icon: 'shield', title: l('Vantagens exclusivas', 'Exclusive perks'), body: l('Mais espaço e mais tempo acumulando offline.', 'More room and longer offline accumulation.') },
       { icon: 'crown', title: l('Acesso à Liga', 'League access'), body: l('Só quem tem o Passe disputa o prêmio.', 'Only Pass owners compete for the prize.') },
     ],
-    only: l('Apenas', 'Only'), soon: l('Em breve', 'Soon'), cta: l('Ver benefícios do Passe', 'See the Pass benefits'), art: l('Carta dourada do Passe do Aventureiro', 'Golden card of the Adventurer’s Pass'),
+    only: l('Apenas', 'Only'), saleLabel: l('Venda', 'Sale'), soon: l('Em breve', 'Soon'), cta: l('Ver benefícios do Passe', 'See the Pass benefits'), art: l('Carta dourada do Passe do Aventureiro', 'Golden card of the Adventurer’s Pass'),
   },
   features: [
     { icon: 'hero', title: l('Progressão idle', 'Idle progression'), body: l('Seu herói evolui, mesmo offline.', 'Your hero grows, even offline.') },
