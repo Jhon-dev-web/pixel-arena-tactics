@@ -439,4 +439,65 @@ html { scroll-behavior: smooth; }
 }
 @media (prefers-reduced-motion:no-preference) { .h-arena { animation: h-glow 5s ease-in-out infinite alternate; } @keyframes h-glow { from { filter: drop-shadow(0 3px 0 #00000099) drop-shadow(0 0 14px #e6a43c22); } to { filter: drop-shadow(0 3px 0 #00000099) drop-shadow(0 0 30px #e6a43c66); } } }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior: auto; } }
+/* Redesign (owner plan, 2026-10-20): home sections after the cards, Temporada and Passe tops, header JOGAR */
+.h-title { font-family: var(--cinzel); font-weight: 700; text-transform: uppercase; letter-spacing: .01em; font-size: clamp(1.6rem,2.8vw,2.4rem); line-height: 1.1; margin: 0 0 22px; color: #f3e6cb; }
+.h-steps, .h-shots, .h-pillars, .h-roadmap { max-width: 1400px; margin: 0 auto; }
+.h-step-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; counter-reset: none; }
+.h-step-list li { position: relative; padding: 28px 26px 24px; background: linear-gradient(180deg,#121a20,#0a0e12); border: 1px solid #b8914a66; }
+.h-step-list h3 { font-family: var(--cinzel); font-weight: 700; font-size: 1.25rem; margin: 16px 0 8px; color: var(--gold-hi); text-transform: uppercase; }
+.h-step-list p { margin: 0; }
+.h-step-no { position: absolute; top: 14px; right: 18px; font-family: var(--cinzel); font-weight: 700; font-size: 2.6rem; line-height: 1; color: #b8914a55; }
+.h-gallery { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; }
+.h-gallery .shot { margin: 0; min-width: 0; }
+.h-gallery .h-shot-lead { grid-column: span 4; }
+.h-gallery .shot img { border-color: #b8914a55; }
+.h-pillars .section-head { align-items: end; }
+.h-pillar-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; }
+.h-pillar-list a { display: block; height: 100%; box-sizing: border-box; padding: 26px 22px; border: 1px solid #ffffff1c; background: #0d1317; transition: border-color .2s, background .2s; }
+.h-pillar-list a:hover { border-color: var(--gold-line); background: #141b20; }
+.h-pillar-list h3 { font-family: var(--cinzel); font-weight: 700; font-size: 1.2rem; margin: 16px 0 8px; color: var(--gold-hi); text-transform: uppercase; }
+.h-pillar-list p { margin: 0; font-size: .9375rem; }
+.h-roadmap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; border-top: 1px solid #ffffff1c; border-bottom: 1px solid #ffffff1c; }
+.h-roadmap .h-title { margin: 0; font-size: clamp(1.25rem,2vw,1.7rem); }
+.h-final { text-align: center; padding: 84px 16px 96px; background: radial-gradient(ellipse 60% 80% at 50% 100%,#3a240f66,transparent 70%),#0a0e11; border-top: 1px solid #b8914a44; }
+.h-final .h-title { max-width: 820px; margin: 0 auto 14px; }
+.h-final p { max-width: 620px; margin: 0 auto 26px; color: #c9c6bc; }
+.h-final .actions { justify-content: center; }
+.button.h-gold.nav-play { min-height: 44px; padding: 8px 26px; font-size: .875rem; letter-spacing: .14em; text-transform: uppercase; }
+.s-hero, .p-hero { position: relative; display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); align-items: center; gap: 24px 40px; padding: 56px max(7%,calc((100vw - 1400px)/2)) 48px; border-bottom: 1px solid #b8914a44; overflow: hidden; }
+.s-hero { background: radial-gradient(ellipse 55% 75% at 78% 45%,#1a2a44,transparent 70%),#090d12; }
+.p-hero { background: radial-gradient(ellipse 55% 75% at 78% 45%,#341a4a,transparent 70%),#0b0910; }
+.s-hero .h-title, .p-hero .h-title { font-size: clamp(2.2rem,4.4vw,3.6rem); margin: 0; color: var(--gold); background: linear-gradient(180deg,var(--gold-hi) 0%,var(--gold-mid) 52%,var(--gold-lo) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.s-pre { display: inline-block; margin: 14px 0 0; padding: 6px 14px; border: 1px solid #c56b4a; color: #f0b9a2; font-size: .8125rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.s-lead { max-width: 560px; font-size: 1.0625rem; color: #d3d0c6; }
+.s-trophy, .p-card { justify-self: center; width: min(100%,380px); height: auto; }
+.s-trophy { filter: drop-shadow(0 0 30px #e0a23a55); }
+.p-card { filter: drop-shadow(0 0 30px #a35ee066); }
+.s-facts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin: 8px 0 0; }
+.s-facts div { padding: 16px 18px; border: 1px solid #b8914a66; background: #05070acc; }
+.s-facts dt { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase; color: #c7cbd0; }
+.s-facts dd { margin: 6px 0 0; }
+.s-facts strong { display: block; font-family: var(--cinzel); font-weight: 700; font-size: 1.5rem; color: var(--gold-hi); text-transform: uppercase; }
+.s-facts span { display: block; margin-top: 4px; font-size: .8125rem; line-height: 1.35; color: #aab1b6; }
+.p-tag { margin: 12px 0 0; font-family: var(--cinzel); font-weight: 700; font-size: 1.15rem; letter-spacing: .06em; text-transform: uppercase; color: #f1ead9; }
+.p-copy .h-bullets { margin: 22px 0 6px; }
+.p-price { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin-top: 16px; }
+.p-price > p:first-child { margin: 0; padding: 10px 22px; border: 1px solid var(--gold-line); background: #05070aee; line-height: 1.1; }
+.p-price small { display: block; font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase; color: #c7cbd0; margin-bottom: 4px; }
+.p-price strong { display: block; font-family: var(--cinzel); font-weight: 700; font-size: 1.9rem; color: var(--gold-hi); text-transform: uppercase; }
+.p-pay { flex: 1 1 240px; margin: 0; font-size: .9375rem; }
+@media (max-width:1000px) {
+  .h-step-list, .h-pillar-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .h-gallery { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .h-gallery .h-shot-lead { grid-column: span 2; }
+  .s-facts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:650px) {
+  .h-step-list, .h-pillar-list, .h-gallery { grid-template-columns: minmax(0,1fr); }
+  .h-gallery .h-shot-lead { grid-column: auto; }
+  .s-hero, .p-hero { grid-template-columns: minmax(0,1fr); padding: 36px 16px 32px; }
+  .s-trophy, .p-card { order: -1; width: min(70%,260px); }
+  .s-facts { grid-column: auto; }
+  .h-roadmap .button { flex: 1 1 100%; }
+}
 `;

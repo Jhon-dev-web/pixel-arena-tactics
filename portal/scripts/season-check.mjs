@@ -174,7 +174,7 @@ assert.ok(!/não foram definidos/i.test(renderSite('pt').map(item => item.html).
 
 // ---- the Pass: one flag (passSalesOpen) drives every page ---------------------------------------------------------------------------------------------------
 const passClosed = text(page('pt', 'pass'));
-assert.ok(passClosed.includes('O Passe está chegando') && passClosed.includes('A venda ainda não abriu'));
+assert.ok(passClosed.includes('Em breve') && passClosed.includes('A venda ainda não abriu') && !passClosed.includes('10 USDC'));
 const closedEverywhere = (renderSite('pt').map(item => item.html).join(' ') + renderSite('en').map(item => item.html).join(' ')).replace(/data-labels="[^"]*"/g, ''); // the labels attribute carries every label, used or not
 assert.ok(!/US\$ ?10|Comprar o Passe|Buy the Pass|Pagamento seguro|Secure payment|Stripe|comprar=passe/.test(closedEverywhere), 'closed: no price, no buy link, no Stripe line anywhere');
 assert.ok(!pageOf('pt', 'pass').html.includes('Política de reembolso'));
@@ -189,7 +189,7 @@ config.playUrl = 'https://jogo.example.test/';
 config.supabaseUrl = 'https://abcdefghij.supabase.co';
 config.supabaseAnonKey = 'public-anon-key-for-tests-1234567890';
 const playing = renderSite('pt').find(item => item.route === '').html;
-assert.ok(playing.includes('href="https://jogo.example.test/">Jogar grátis ↗'), 'with playUrl the play button is live');
+assert.ok(playing.includes('href="https://jogo.example.test/">Jogar</a>'), 'with playUrl the play button is live');
 assert.ok(!page('pt', 'pass').replace(/US\$ 1\.000/g, '').includes('US$'), 'playUrl alone does not open the sale');
 const filled = page('en');
 assert.ok(filled.includes('aria-disabled="true">Soon'), 'playUrl set but the sale closed: the buy button stays disabled');
@@ -204,11 +204,11 @@ config.legalLive.refund = true;
 const refund = legal.find(item => item.route === 'refund');
 refund.body = { pt: [{ type: 'paragraph', content: [{ type: 'text', text: 'Texto de reembolso <de teste>.' }] }], en: [{ type: 'paragraph', content: [{ type: 'text', text: 'Test refund text.' }] }] };
 const passOpen = page('pt', 'pass');
-assert.ok(passOpen.includes('<strong>10 USDC</strong>, pagamento único, pela carteira Solana (Phantom ou Solflare)'));
+assert.ok(passOpen.includes('<small>Pagamento único</small><strong>10 USDC</strong>') && passOpen.includes('Em USDC, pela carteira Solana (Phantom ou Solflare)'));
 assert.ok(passOpen.includes('href="https://jogo.example.test/?comprar=passe"') && passOpen.includes('Comprar o Passe'));
 assert.ok(passOpen.includes('href="/pt/refund/"') && !/Stripe|cart[ãa]o|credit card/i.test(passOpen), 'the Pass page has the refund link and no card/Stripe mention');
-assert.ok(!passOpen.includes('O Passe está chegando'));
-assert.ok(page('en', 'pass').includes('<strong>10 USDC</strong>, one-time payment, from a Solana wallet (Phantom or Solflare)'));
+assert.ok(!passOpen.includes('A venda ainda não abriu'));
+assert.ok(page('en', 'pass').includes('<small>One-time payment</small><strong>10 USDC</strong>') && page('en', 'pass').includes('from a Solana wallet (Phantom or Solflare)'));
 const openSeason = page('en');
 assert.ok(openSeason.includes('href="https://jogo.example.test/?comprar=passe"') && openSeason.includes('Buy the Pass'));
 assert.ok(openSeason.includes('The purchase is made inside the game'));
@@ -251,7 +251,7 @@ config.siteUrl = 'https://portal.example.test/';
 const seoHead = head(page('en', 'pass'));
 assert.ok(seoHead.includes('<link rel="canonical" href="https://portal.example.test/en/pass/">'));
 assert.ok(seoHead.includes('hreflang="pt" href="https://portal.example.test/pt/pass/"') && seoHead.includes('hreflang="en" href="https://portal.example.test/en/pass/"') && seoHead.includes('hreflang="x-default"'));
-assert.ok(seoHead.includes('content="index,follow"') && seoHead.includes('property="og:url" content="https://portal.example.test/en/pass/"') && seoHead.includes('content="https://portal.example.test/img/og.jpg"'));
+assert.ok(seoHead.includes('content="index,follow"') && seoHead.includes('property="og:url" content="https://portal.example.test/en/pass/"') && seoHead.includes('content="https://portal.example.test/img/og-en.jpg"'));
 assert.ok(head(page('pt', 'championship')).includes('noindex,follow') && head(page('pt', 'terms')).includes('noindex,follow'), 'redirect and placeholder pages are never indexed');
 const everything = renderSite('pt').map(item => ({ ...item, lang: 'pt' })).concat(renderSite('en').map(item => ({ ...item, lang: 'en' })));
 const sitemap = sitemapXml(config.siteUrl, everything);

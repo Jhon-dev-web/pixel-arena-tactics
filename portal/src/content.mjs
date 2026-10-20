@@ -44,15 +44,20 @@ export const states = {
   planned: { label: l('Planejado', 'Planned'), definition: l('Faz parte da direção atual do projeto, mas ainda não tem data nem regras definidas. Alguns itens estão em estudo.', 'Part of the current direction, with no date and no defined rules yet. Some items are still under study.') },
   future: { label: l('Visão futura', 'Future vision'), definition: l('Ideias e sistemas que poderão fazer parte da evolução do Arena Idle.', 'Ideas and systems that may become part of Arena Idle as it evolves.') },
 };
-// Screenshots taken from the current game (offline build, prepared mid-game save, 1440x900).
+// Screenshots taken from the current game (offline build, mid-game save from scripts/sim/smokeSaves.gen.ts, 1440x900), one set per language.
+const shotFile = id => l(`/img/shots/pt/${id}.webp`, `/img/shots/en/${id}.webp`);
+const shot = (id, alt, caption) => ({ file: shotFile(id), width: 1440, height: 900, alt, caption });
 export const shots = {
-  dungeon: { file: '/img/dungeon.webp', width: 1440, height: 900, alt: l('Combate na Masmorra: o herói de armadura enfrenta um chefe orc no andar 50 das Catacumbas Esquecidas, com os números de dano na tela.', 'Dungeon combat: the armored hero fights an orc boss on floor 50 of the Forgotten Catacombs, with damage numbers on screen.'), caption: l('Masmorra: andares, chefes e combate automático.', 'Dungeon: floors, bosses and automatic combat.') },
-  hero: { file: '/img/hero-panel.webp', width: 1440, height: 900, alt: l('Painel do Herói com o retrato, o nível, os sete espaços de equipamento preenchidos e a relíquia vazia.', 'Hero panel with the portrait, level, the seven gear slots filled and an empty relic slot.'), caption: l('Herói: sete espaços de equipamento e uma relíquia.', 'Hero: seven gear slots and a relic.') },
-  hunt: { file: '/img/hunt.webp', width: 1440, height: 900, alt: l('Tela de Caça em andamento no Pântano de Sangue, com o herói enfrentando um monstro, o progresso da caçada e os materiais coletados.', 'Hunt in progress in the Blood Marsh, with the hero fighting a monster, the hunt progress and the materials gathered.'), caption: l('Caça: o herói luta e coleta materiais mesmo com o jogo fechado.', 'Hunting: your hero fights and gathers materials even while the game is closed.') },
-  zones: { file: '/img/hunt-zones.webp', width: 1440, height: 900, alt: l('Seleção de zonas de Caça com quatro zonas, os materiais e as peças únicas de cada uma e as três profundidades.', 'Hunting zone selection with four zones, the materials and unique pieces of each one and the three depths.'), caption: l('Quatro zonas de Caça, cada uma com materiais e peças únicas próprios.', 'Four hunting zones, each with its own materials and unique pieces.') },
-  forge: { file: '/img/forge.webp', width: 1440, height: 900, alt: l('Tela da Forja com as abas Forjar, Melhorar, Reparo e Gemas, categorias de equipamento e receitas com seus materiais.', 'Forge screen with the Forge, Upgrade, Repair and Gems tabs, gear categories and recipes with their materials.'), caption: l('Forja: receitas, melhorias, reparo e gemas.', 'Forge: recipes, upgrades, repair and gems.') },
-  skills: { file: '/img/skills.webp', width: 1440, height: 900, alt: l('Tela de Habilidades com os três caminhos, Guerreiro, Guardião e Caçador, e a descrição do Golpe Esmagador.', 'Skills screen with the three paths, Warrior, Guardian and Hunter, and the description of the Crushing Blow.'), caption: l('Habilidades: três caminhos, cada um com golpes próprios.', 'Skills: three paths, each with strikes of its own.') },
-  codex: { file: '/img/codex.webp', width: 1440, height: 900, alt: l('Códice com abas de equipamento, materiais e monstros e quadros de armas e armaduras ainda por descobrir.', 'Codex with gear, materials and monsters tabs and tiles of weapons and armor still to be discovered.'), caption: l('Códice: o registro de tudo o que você já descobriu.', 'Codex: a record of everything you have discovered.') },
+  base: shot('home', l('Acampamento: o Herói com o equipamento, as ações rápidas e o progresso das profissões e da Masmorra.', 'Base camp: the Hero with his gear, the quick actions and the progress of the professions and the Dungeon.'), l('Acampamento: tudo o que o Herói está fazendo, numa tela só.', 'Base camp: everything your Hero is doing, on one screen.')),
+  dungeon: shot('dungeon', l('Combate na Masmorra: o herói de armadura enfrenta o Chefe de Guerra Orc no andar 50 das Catacumbas Esquecidas.', 'Dungeon combat: the armored hero fights the Orc Warchief on floor 50 of the Forgotten Catacombs.'), l('Masmorra: 100 andares, chefes e combate automático.', 'Dungeon: 100 floors, bosses and automatic combat.')),
+  hero: shot('character', l('Tela do Personagem com os espaços de equipamento preenchidos, os atributos e o poder de combate.', 'Character screen with the gear slots filled, the attributes and the combat power.'), l('Personagem: equipamento, atributos e poder de combate.', 'Character: gear, attributes and combat power.')),
+  hunt: shot('hunt', l('Caçada em andamento no Pântano de Sangue, com o herói enfrentando um monstro e os materiais coletados.', 'Hunt in progress in the Blood Marsh, with the hero fighting a monster and the materials gathered.'), l('Caça: o herói luta e coleta materiais mesmo com o jogo fechado.', 'Hunting: your hero fights and gathers materials even while the game is closed.')),
+  zones: shot('zones', l('Seleção de zonas de Caça com quatro zonas, os materiais, as peças únicas e as três profundidades.', 'Hunting zone selection with four zones, the materials, the unique pieces and the three depths.'), l('Quatro zonas de Caça, cada uma com materiais e peças únicas próprios.', 'Four hunting zones, each with its own materials and unique pieces.')),
+  forge: shot('forge', l('Tela da Forja com as abas Forjar, Melhorar, Reparo e Gemas e receitas com seus materiais.', 'Forge screen with the Forge, Upgrade, Repair and Gems tabs and recipes with their materials.'), l('Forja: receitas, melhorias, reparo e gemas.', 'Forge: recipes, upgrades, repair and gems.')),
+  inventory: shot('inventory', l('Inventário cheio de armas, armaduras, materiais e poções, com filtros por tipo.', 'Inventory full of weapons, armor, materials and potions, with filters by type.'), l('Inventário: o que a Caça, as profissões e a Masmorra trazem.', 'Inventory: what Hunting, professions and the Dungeon bring in.')),
+  mining: shot('mining', l('Tela de Mineração com os minérios, o nível da profissão e os próximos desbloqueios.', 'Mining screen with the ores, the profession level and the next unlocks.'), l('Profissões: cada uma com níveis e desbloqueios próprios.', 'Professions: each with its own levels and unlocks.')),
+  skills: shot('skills', l('Tela de Habilidades com os três caminhos, Guerreiro, Guardião e Caçador.', 'Skills screen with the three paths, Warrior, Guardian and Hunter.'), l('Habilidades: três caminhos, cada um com golpes próprios.', 'Skills: three paths, each with strikes of its own.')),
+  codex: shot('codex', l('Códice com abas de equipamento, materiais e monstros e quadros de itens ainda por descobrir.', 'Codex with gear, materials and monsters tabs and tiles of items still to be discovered.'), l('Códice: o registro de tudo o que você já descobriu.', 'Codex: a record of everything you have discovered.')),
 };
 export const systems = [
   { id: 'hero', term: 'heroProgression', body: l('O Herói sobe de nível, distribui pontos de atributo e ganha cada vez mais poder. Depois do nível 100, o Paragon continua a evolução.', 'Your Hero gains levels, spends attribute points and grows stronger. After level 100, Paragon keeps the progression going.') },
@@ -78,7 +83,7 @@ export const systems = [
 ];
 export const groups = [
   { id: 'hero-gear', status: 'available', shot: 'skills', title: l('Herói e equipamento', 'Hero and gear'), body: l('O Herói evolui com atributos e habilidades, e as peças que ele usa evoluem com Melhoria, Reforja, Lapidar e gemas.', 'Your Hero grows through attributes and skills, and the pieces he wears grow through Upgrade, Reforge, Lapidar and gems.'), systems: ['hero', 'skills', 'gear', 'upgrade', 'reforge', 'gems'] },
-  { id: 'professions', status: 'available', title: l('Profissões', 'Professions'), body: l('Mineração, Lenhador, Horta e Ofícios fornecem os materiais e consumíveis da progressão. Cada profissão tem maestria própria.', 'Mining, Woodcutting, Garden and Crafting provide the materials and consumables behind progression. Each profession has its own mastery.'), systems: ['mining', 'woodcutting', 'gardening', 'crafting'] },
+  { id: 'professions', status: 'available', shot: 'mining', title: l('Profissões', 'Professions'), body: l('Mineração, Lenhador, Horta e Ofícios fornecem os materiais e consumíveis da progressão. Cada profissão tem maestria própria.', 'Mining, Woodcutting, Garden and Crafting provide the materials and consumables behind progression. Each profession has its own mastery.'), systems: ['mining', 'woodcutting', 'gardening', 'crafting'] },
   { id: 'combat', status: 'available', shot: 'zones', title: l('Combate e exploração', 'Combat and exploration'), body: l('A Caça traz materiais e peças únicas; a Masmorra e as Profundezas desafiam o Herói até onde o equipamento levar.', 'Hunting brings materials and unique pieces; the Dungeon and the Depths challenge your Hero as far as your gear can go.'), systems: ['hunting', 'dungeon', 'depths'] },
   { id: 'resources', status: 'available', shot: 'forge', title: l('Forja e recursos', 'Forge and resources'), body: l('A Forja conecta recursos a equipamento. Consumíveis e Pedidos ampliam as atividades entre as quais você divide o tempo.', 'The Forge connects resources to gear. Consumables and Orders add more activities to share your time between.'), systems: ['craft', 'consumables', 'orders'] },
   { id: 'economy', status: 'available', title: l('Comércio e itens', 'Trade and items'), body: l('Hoje você vende o excesso aos mercadores e vincula peças ao equipá-las. O mercado de jogadores ainda não existe: ele está no roadmap.', 'Today you sell surplus to merchants and bind pieces by equipping them. The player market does not exist yet: it is on the roadmap.'), systems: ['trade'] },
@@ -98,6 +103,25 @@ export const progression = [
 // "Temporada do Passe" is only the in-game reward track.
 export const seasonPage = {
   nav: l('Liga da Temporada', 'Season League'),
+  navShort: l('Temporada', 'Season'),
+  heroEyebrow: l('Temporada 1', 'Season 1'),
+  heroStatus: l('Pré-temporada', 'Pre-season'),
+  heroPre: l('Sem premiação oficial', 'No official prize'),
+  heroLead: l('Teste seu progresso antes da primeira temporada oficial. Quando a barra de Passes da comunidade encher, a Temporada 1 começa: 60 dias de disputa com prêmio em dinheiro.', 'Test your progress before the first official season. When the community Pass bar fills, Season 1 begins: 60 days of contest with a cash prize.'),
+  heroArt: l('Taça dourada da Temporada', 'Golden Season trophy'),
+  facts: [
+    { label: l('Duração', 'Length'), value: l('60 dias', '60 days'), note: l('O ranking congela 2 dias antes do fim.', 'The ranking freezes 2 days before the end.') },
+    { label: l('Prêmio', 'Prize'), value: l('US$ 1.000+', 'US$ 1,000+'), note: l('Mínimo para os primeiros lugares; pode crescer.', 'Minimum for the top places; it can grow.') },
+    { label: l('Quem disputa', 'Who competes'), value: l('Com o Passe', 'Pass owners'), note: l('Só quem tem o Passe entra no ranking.', 'Only Pass owners enter the ranking.') },
+    { label: l('Ranking', 'Ranking'), value: l('Por nível', 'By level'), note: l('Calculado no servidor, com auditoria.', 'Calculated on the server, with an audit.') },
+  ],
+  faqTitle: l('Perguntas sobre a Temporada', 'Season questions'),
+  faq: [
+    { question: l('A Temporada 1 já começou?', 'Has Season 1 started?'), answer: l('Ainda não. Agora roda a pré-temporada, sem premiação oficial. A Temporada 1 começa sozinha quando a barra de Passes da comunidade encher.', 'Not yet. The pre-season runs now, with no official prize. Season 1 begins on its own when the community Pass bar fills.') },
+    { question: l('Quem pode ganhar o prêmio?', 'Who can win the prize?'), answer: l('Só quem tem o Passe de Aventureiro. Não é sorteio: vence quem chegar mais longe, e os primeiros colocados passam por auditoria antes do pagamento. A divisão entre as posições e o valor final saem no regulamento antes da abertura.', 'Only Adventurer’s Pass owners. It is not a raffle: whoever gets furthest wins, and the top finishers are audited before payment. The split among places and the final amount are published in the rules before it opens.') },
+    { question: l('O que acontece com meu herói da pré-temporada?', 'What happens to my pre-season hero?'), answer: l('Quando a Temporada 1 começar, todos os heróis online recomeçam do zero, uma única vez. O Passe e o seu nome continuam.', 'When Season 1 begins, every online hero starts again from zero, once. Your Pass and your name stay.') },
+    { question: l('Preciso comprar o Passe de novo a cada temporada?', 'Do I buy the Pass again every season?'), answer: l('Não. O Passe é uma compra única e vale para todas as temporadas.', 'No. The Pass is a one-time purchase and counts for every season.') },
+  ],
   eyebrow: l('Competição', 'Competition'),
   title: l('Liga da Temporada', 'Season League'),
   lead: l('Uma competição com prêmio em dinheiro para quem tem o Passe de Aventureiro. Veja como ela começa, a meta da comunidade e quem lidera.', 'A competition with a cash prize for Adventurer’s Pass owners. See how it starts, the community goal and who leads.'),
@@ -354,34 +378,54 @@ export const referral = {
   rules: l('Um convite fica ativo quando a pessoa cria a conta no jogo com o mesmo e-mail e chega ao nível 10 do Herói, depois do lançamento. Os prêmios são entregues dentro do jogo. Convidar a si mesmo não conta, e uma compra reembolsada sai da contagem do Passe (um prêmio já entregue fica).', 'An invite becomes active when the person creates a game account with the same email and reaches Hero level 10, after launch. Rewards are delivered inside the game. Inviting yourself does not count, and a refunded purchase leaves the Pass count (a reward already delivered stays).'),
 };
 
-// Home page (the epic hero, the Season and Pass cards, the feature strip). Every claim follows the rest of this file: the League prize is a minimum of US$ 1,000 and can grow; no PvP is promised.
+// Home page, in the order of the owner's redesign plan: hero, Season (pre-season while the League has not begun), Pass, 3 steps, screenshots, 4 pillars, roadmap teaser, final call.
+// Every claim follows the rest of this file: the League prize is a minimum of US$ 1,000 and can grow; no PvP and no crypto are promised. The Season card says "Pré-temporada"
+// until the owner switches `home.season` to the League text when it opens (the live state is on the Temporada page).
 export const home = {
   headline: l('Progressão idle com disputa de temporada.', 'Idle progression with a seasonal contest.'),
-  sub: l('Evolua seu herói, desenvolva profissões, conquiste equipamentos e dispute as melhores posições a cada temporada.', 'Grow your hero, train professions, earn gear and compete for the top spots every season.'),
-  learn: l('Saiba mais', 'Learn more'),
+  sub: l('Evolua seu herói, desenvolva profissões, conquiste equipamentos raros e dispute as melhores posições a cada temporada.', 'Grow your hero, train professions, earn rare gear and compete for the top spots every season.'),
+  learn: l('Conhecer o jogo', 'Discover the game'),
   playtest: l('Entrar no Playtest', 'Join the Playtest'),
   season: {
-    eyebrow: l('Temporada', 'Season'), title: l('Temporada 1', 'Season 1'), tagline: l('Dispute, evolua, seja lendário.', 'Compete, grow, become legendary.'),
+    eyebrow: l('Temporada 1', 'Season 1'), title: l('Pré-temporada', 'Pre-season'), tagline: l('Teste seu progresso antes da primeira temporada oficial.', 'Test your progress before the first official season.'),
     bullets: [
-      { icon: 'trophy', title: l('Ranking da Liga', 'League ranking'), body: l('Veja quem chegou mais longe na temporada.', 'See who got furthest this season.') },
-      { icon: 'chest', title: l('Recompensas exclusivas', 'Exclusive rewards'), body: l('Conquiste itens e visuais únicos.', 'Earn unique items and looks.') },
-      { icon: 'coin', title: l('Prêmio em dinheiro', 'Cash prize'), body: l('Para quem tem o Passe, com mínimo de US$ 1.000.', 'For Pass owners, with a US$ 1,000 minimum.') },
+      { icon: 'trophy', title: l('Ranking da pré-temporada', 'Pre-season ranking'), body: l('Para quem tem o Passe. Sem premiação oficial.', 'For Pass owners. No official prize.') },
+      { icon: 'bars', title: l('Meta da comunidade', 'Community goal'), body: l('Quando a barra de Passes encher, a Temporada 1 começa.', 'When the Pass bar fills, Season 1 begins.') },
+      { icon: 'coin', title: l('Prêmio da Temporada 1', 'Season 1 prize'), body: l('Mínimo de US$ 1.000 para os primeiros lugares, só para quem tem o Passe.', 'At least US$ 1,000 for the top places, for Pass owners only.') },
     ],
-    lengthLabel: l('Duração da Liga', 'League length'), length: l('60 dias de disputa', '60 days of contest'), art: l('Taça dourada da Temporada 1', 'Golden trophy of Season 1'),
+    lengthLabel: l('Temporada 1', 'Season 1'), length: l('60 dias de disputa', '60 days of contest'), cta: l('Ver a Temporada', 'See the Season'), art: l('Taça dourada da Temporada', 'Golden Season trophy'),
   },
   pass: {
-    eyebrow: l('Passe', 'Pass'), title: l('Passe do Aventureiro', 'Adventurer’s Pass'), tagline: l('Mais recompensas para sua jornada.', 'More rewards for your journey.'),
+    eyebrow: l('Passe', 'Pass'), title: l('Passe do Aventureiro', 'Adventurer’s Pass'), tagline: l('Compre uma vez. O Passe é seu para sempre.', 'Buy once. The Pass is yours forever.'),
     bullets: [
       { icon: 'rise', title: l('Bônus de progresso', 'Progress bonus'), body: l('Mais Ouro e materiais, reparo mais barato.', 'More Gold and materials, cheaper repair.') },
-      { icon: 'shield', title: l('Vantagens exclusivas', 'Exclusive perks'), body: l('Mais espaço e mais tempo acumulando offline.', 'More room and longer offline accumulation.') },
-      { icon: 'crown', title: l('Acesso à Liga', 'League access'), body: l('Só quem tem o Passe disputa o prêmio.', 'Only Pass owners compete for the prize.') },
+      { icon: 'shield', title: l('Mais conforto', 'More comfort'), body: l('Mais espaço e mais tempo acumulando com o jogo fechado.', 'More room and longer accumulation while the game is closed.') },
+      { icon: 'crown', title: l('Acesso à Temporada', 'Season access'), body: l('Só quem tem o Passe disputa o ranking e o prêmio.', 'Only Pass owners compete for the ranking and the prize.') },
     ],
-    only: l('Apenas', 'Only'), saleLabel: l('Venda', 'Sale'), soon: l('Em breve', 'Soon'), cta: l('Ver benefícios do Passe', 'See the Pass benefits'), art: l('Carta dourada do Passe do Aventureiro', 'Golden card of the Adventurer’s Pass'),
+    once: l('Pagamento único', 'One-time payment'), saleLabel: l('Venda', 'Sale'), soon: l('Em breve', 'Soon'), cta: l('Ver benefícios do Passe', 'See the Pass benefits'), art: l('Carta dourada do Passe do Aventureiro', 'Golden card of the Adventurer’s Pass'),
   },
   features: [
     { icon: 'hero', title: l('Progressão idle', 'Idle progression'), body: l('Seu herói evolui, mesmo offline.', 'Your hero grows, even offline.') },
     { icon: 'swords', title: l('Combate automático', 'Automatic combat'), body: l('Estratégia e construção de build.', 'Strategy and build crafting.') },
-    { icon: 'bars', title: l('Temporadas recorrentes', 'Recurring seasons'), body: l('Novos desafios e recompensas.', 'New challenges and rewards.') },
+    { icon: 'bars', title: l('Temporadas de 60 dias', '60-day seasons'), body: l('Ranking e recompensas a cada temporada.', 'Ranking and rewards every season.') },
     { icon: 'chest', title: l('Itens lendários', 'Legendary items'), body: l('Equipe, colecione, evolua.', 'Equip, collect, evolve.') },
   ],
+  stepsEyebrow: l('Como funciona', 'How it works'), stepsTitle: l('Três passos. O resto o herói faz.', 'Three steps. Your hero does the rest.'),
+  steps: [
+    { icon: 'hourglass', title: l('Deixe trabalhando', 'Let it work'), body: l('Caça, Mineração, Lenhador e Horta continuam rendendo enquanto você está fora.', 'Hunting, Mining, Woodcutting and the Garden keep paying off while you are away.') },
+    { icon: 'chest', title: l('Volte e equipe', 'Come back and gear up'), body: l('Colete o que rendeu, forje equipamento e monte a sua build.', 'Collect what you earned, forge gear and shape your build.') },
+    { icon: 'rise', title: l('Avance', 'Push forward'), body: l('Desça a Masmorra, consiga loot melhor e suba no ranking da temporada.', 'Descend the Dungeon, get better loot and climb the season ranking.') },
+  ],
+  shotsEyebrow: l('Capturas reais', 'Real screenshots'), shotsTitle: l('O jogo hoje', 'The game today'),
+  gallery: ['dungeon', 'base', 'hunt', 'forge', 'inventory'],
+  pillarsEyebrow: l('Sistemas', 'Systems'), pillarsTitle: l('Quatro pilares da sua jornada.', 'Four pillars of your journey.'), pillarsCta: l('Ver todos os sistemas', 'See every system'),
+  pillars: [
+    { icon: 'swords', anchor: 'combat', title: l('Caça', 'Hunting'), body: l('Derrote monstros, acumule recursos e busque drops raros.', 'Defeat monsters, stack up resources and chase rare drops.') },
+    { icon: 'hourglass', anchor: 'professions', title: l('Profissões', 'Professions'), body: l('Mineração, Lenhador, Horta e Ofícios constroem sua economia e sua progressão.', 'Mining, Woodcutting, Garden and Crafting build your economy and your progress.') },
+    { icon: 'shield', anchor: 'hero-gear', title: l('Forja e equipamento', 'Forge and gear'), body: l('Crie, melhore e encontre equipamentos de raridades e atributos diferentes.', 'Craft, upgrade and find gear of different rarities and stats.') },
+    { icon: 'crown', anchor: 'combat', title: l('Masmorra', 'Dungeon'), body: l('Teste sua força, avance pelos andares e enfrente chefes cada vez mais fortes.', 'Test your strength, push through the floors and face ever stronger bosses.') },
+  ],
+  roadmapTitle: l('Veja o que está chegando ao Arena Idle.', 'See what is coming to Arena Idle.'), roadmapCta: l('Ver Roadmap', 'View the Roadmap'),
+  finalTitle: l('Sua jornada começa antes da primeira temporada.', 'Your journey starts before the first season.'),
+  finalBody: l('Entre no playtest, evolua seu herói e ajude a preparar o Arena Idle para a Temporada 1.', 'Join the playtest, grow your hero and help get Arena Idle ready for Season 1.'),
 };

@@ -28,7 +28,7 @@ A prévia abre em http://127.0.0.1:4173/pt/ e http://127.0.0.1:4173/en/. Execute
 - `public/waitlist.js` e `public/waitlist-core.js`: bloco "Avise-me no lançamento" (Home e Temporada) e página de cancelamento; o `core` é puro e testado por `npm run check:waitlist`. Ver `docs/WAITLIST.md`.
 - `public/root.js`: o endereço raiz escolhe o idioma e mantém `?ref=CÓDIGO` dos links de convite.
 - `public/app.js`: menu móvel, menus de navegação e fechamento por teclado.
-- `public/img/*.webp`: capturas reais do jogo atual (build offline, save de meio de jogo, 1440x900). `public/fonts/`: Press Start 2P (a fonte do jogo, licença OFL incluída). `public/favicon.svg`: ícone provisório.
+- `public/img/shots/{pt,en}/*.webp`: capturas reais do jogo atual em cada idioma (build offline sem backend, save de meio de jogo de `scripts/sim/smokeSaves.gen.ts`, 1440x900). `public/img/home-*-v2.webp`: artes do dono (arena, taça, carta do Passe). `public/fonts/`: Press Start 2P (a fonte do jogo, licença OFL incluída). `public/favicon.svg`: ícone provisório.
 
 As 24 páginas PT/EN que já existiam continuam geradas. As áreas editoriais sem publicações permanecem acessíveis pelo endereço, mas não recebem links no menu nem destaque na Home. O menu público oferece apenas Notícias enquanto não houver artigos aprovados. A Home oculta Comunidade até existirem canais configurados.
 
@@ -53,7 +53,7 @@ Para editar publicações, consulte [EDITORIAL.md](EDITORIAL.md). Artigos só en
 | `referralEnabled` | `false` | Com `waitlistEnabled`: depois do cadastro aparece "Seu link de convite" (copiar e compartilhar no WhatsApp / X / Telegram) e a lista de recompensas dentro do jogo. As recompensas são entregues pelo servidor (`docs/WAITLIST.md`); ligue só quando for prometê-las. |
 | `supabaseUrl` / `supabaseAnonKey` | `null` | Dados ao vivo da Liga da Temporada (só a chave pública anon). |
 
-A competição tem um único nome: **Liga da Temporada** / Season League. "Temporada do Passe" é só a trilha de recompensas dentro do jogo. A página antiga `/pt/championship/` virou um redirecionamento para `/pt/season/`. A imagem de compartilhamento é `public/img/og.jpg` (1200x630, colagem de capturas reais).
+A competição tem um único nome: **Liga da Temporada** / Season League. "Temporada do Passe" é só a trilha de recompensas dentro do jogo. A página antiga `/pt/championship/` virou um redirecionamento para `/pt/season/`. As imagens de compartilhamento são `public/img/og.jpg` (PT) e `public/img/og-en.jpg` (EN), 1200x630, montadas com a arte da arena e o nome do jogo.
 
 `config.community` permanece vazio até existirem canais oficiais.
 

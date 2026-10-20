@@ -49,7 +49,7 @@ assert.ok(!/ on[a-z]+=|javascript:|<style|style="/.test(homeBlock), 'no inline h
 assert.ok(!homeBlock.includes('href='), 'no privacy link while the privacy page is not published');
 assert.ok(!homeBlock.includes('class="actions"'));
 // the block sits after the hero and before the rest of the Home
-assert.ok(home.indexOf('data-waitlist') > home.indexOf('class="hero"') && home.indexOf('data-waitlist') < home.indexOf('fun-section'));
+assert.ok(home.indexOf('data-waitlist') > home.indexOf('class="hero"') && home.indexOf('data-waitlist') < home.indexOf('h-steps'));
 // the compact one on the Temporada page
 const season = page('pt', 'season');
 assert.equal(blocks(season).length, 1);
