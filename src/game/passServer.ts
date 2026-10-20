@@ -1,3 +1,4 @@
+import { deviceStorage } from '../lib/deviceStore';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeSave, SaveData } from './engine';
 import { setServerPassOwned } from './entitlements';
@@ -33,11 +34,7 @@ export const PASS_CACHE_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 const defaultStorage = (): StorageLike | null => {
-  try {
-    return typeof localStorage !== 'undefined' ? localStorage : null;
-  } catch {
-    return null;
-  }
+  return deviceStorage;
 };
 
 export function readPassCache(userId: string, now: number, storage: StorageLike | null = defaultStorage()): boolean | null {

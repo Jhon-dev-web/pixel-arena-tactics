@@ -1,3 +1,4 @@
+import { deviceStorage } from '../lib/deviceStore';
 import en from './en.json';
 import pt from './pt.json';
 
@@ -6,7 +7,7 @@ const LOCALES = { en, pt } as const;
 export type Locale = keyof typeof LOCALES;
 
 function resolve(): Locale {
-  const saved = localStorage.getItem('locale');
+  const saved = deviceStorage.getItem('locale');
   if (saved && saved in LOCALES) return saved as Locale;
   const want = navigator.language.slice(0, 2);
   return (want in LOCALES ? want : DEFAULT_LOCALE) as Locale;
@@ -32,9 +33,18 @@ export function t(path: string, vars?: Record<string, string | number>): string 
   return vars ? raw.replace(/\{(\w+)\}/g, (whole, key) => String(vars[key] ?? whole)) : raw;
 }
 
+/** The online game learns the player's language from the server save after this module loaded: take it. */
+export function reloadLocale(): void {
+  const next = resolve();
+  if (next === current) return;
+  current = next;
+  activeLocale = next;
+  localeListener?.();
+}
+
 export function setLocale(next: Locale): void {
   if (next === current) return;
-  localStorage.setItem('locale', next);
+  deviceStorage.setItem('locale', next);
   current = next;
   activeLocale = next;
   localeListener?.();

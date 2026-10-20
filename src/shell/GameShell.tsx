@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import AuthScreen from '../components/AuthScreen';
-import LegacyImportPrompt from '../components/LegacyImportPrompt';
 import UsernameOnboarding from '../components/UsernameOnboarding';
 import { Button, Dialog } from '../components/ui';
 import App from '../App';
@@ -11,17 +10,15 @@ import { setItemAuthority } from '../game/itemAuthority';
 import { applyServerPass, refreshServerPass } from '../game/passServer';
 import { buildNewLeagueHero, readLeagueResetAt, settleLeague } from '../game/leagueReset';
 import { setSyncedSave } from '../game/syncedSave';
-import { takePendingCloudSave } from '../game/pendingCloudSave';
+import { clearMemoryStore, hydratePrefs, purgeLegacyBrowserGameData } from '../lib/deviceStore';
+import { reloadAudioPrefs } from '../game/audio';
+import { applyMotionPref } from '../lib/motionPref';
+import { reloadLocale } from '../locales';
 import { getMyUsername } from '../game/usernameRepository';
 import { UsernameContext } from '../game/usernameContext';
 import {
-  backupLegacyLocalSaveOnce,
-  claimLegacyLocalSave,
-  LegacyOffer,
-  legacyOfferFor,
   LoadResult,
   LocalSaveRepository,
-  readLegacyLocalSave,
   SaveRepository,
   SupabaseSaveRepository,
 } from '../game/saveRepository';
@@ -31,7 +28,6 @@ type Resolution =
   | { kind: 'loading' }
   | { kind: 'needsUsername' }
   | { kind: 'profileError' }
-  | { kind: 'needsLegacyDecision'; userId: string; offer: LegacyOffer }
   // `userId` is the account this hero was resolved for (null = the offline build): a resolution is never shown to anyone else.
   | { kind: 'ready'; userId: string | null; initial: LoadResult; repository: SaveRepository };
 
@@ -46,10 +42,18 @@ const withServerPass = (save: SaveData): SaveData => applyServerPass(save, getSe
 export default function GameShell() {
   const { status, user, configured } = useAuth();
   const [resolution, setResolution] = useState<Resolution>({ kind: 'loading' });
-  const [importing, setImporting] = useState(false);
   const [usernameReadyFor, setUsernameReadyFor] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [profileRetry, setProfileRetry] = useState(0);
+
+  // The preferences of the loaded server save become the ones in memory (language, volume, notifications, motion, last-seen stamp) before the game renders.
+  const enter = (userId: string, initial: LoadResult, repository: SaveRepository) => {
+    hydratePrefs(initial.save.prefs);
+    reloadAudioPrefs();
+    reloadLocale();
+    applyMotionPref();
+    setResolution({ kind: 'ready', userId, initial, repository });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -73,12 +77,15 @@ export default function GameShell() {
     if (status !== 'authenticated' || !user) {
       setServerPassOwned(false);
       setSyncedSave(null);
+      clearMemoryStore();
       setUsername(null);
       setUsernameReadyFor(null);
       setResolution({ kind: 'loading' });
       return;
     }
 
+    // Older versions left game data in this browser: delete it (never read it into an account).
+    purgeLegacyBrowserGameData();
     const repo = new SupabaseSaveRepository(user.id);
     (async () => {
       let username: string | null;
@@ -107,36 +114,21 @@ export default function GameShell() {
       const existing = await repo.load();
       if (cancelled) return;
       if (existing) {
-        // This account has played online from this device: the device's offline save (if any) is never offered to another account.
-        claimLegacyLocalSave(user.id);
-        // Uploads are batched, so a tab or phone that died between two of them left its newest changes only on this device (pendingCloudSave.ts): carry on from them when the server still holds
-        // exactly the revision they were made on (nothing else saved since); otherwise the server wins, as always.
-        const fromDevice = (r: LoadResult): LoadResult => {
-          const pending = takePendingCloudSave(user.id, r.revision, undefined, repo.characterId);
-          return pending ? { save: pending, revision: r.revision } : r;
-        };
+        // The server save is the only source. (No device journal, no local copy: nothing is read from the browser.)
         if (typeof resetAt === 'number') {
           const settled = await settleLeague(repo, existing, { accountId: user.id, resetAt, applyPass: withServerPass });
           if (cancelled) return;
-          const carried = fromDevice({ save: settled.save, revision: settled.revision });
-          setResolution({ kind: 'ready', initial: { save: withServerPass(carried.save), revision: carried.revision }, repository: repo, userId: user.id });
+          enter(user.id, { save: withServerPass(settled.save), revision: settled.revision }, repo);
           return;
         }
-        const carried = fromDevice(existing);
-        setResolution({ kind: 'ready', userId: user.id, initial: { ...carried, save: withServerPass(carried.save) }, repository: repo });
+        enter(user.id, { ...existing, save: withServerPass(existing.save) }, repo);
         return;
       }
-      // After the League opened no local save can enter the online game: a new account starts from zero like everyone else (the local file stays on the device). Before it, a save is offered ONLY
-      // when it is a never-synced offline save nobody has taken (legacyOfferFor), and only as a question that shows what it holds.
-      const offer = typeof resetAt !== 'number' ? legacyOfferFor(user.id) : null;
-      if (offer) {
-        setResolution({ kind: 'needsLegacyDecision', userId: user.id, offer });
-        return;
-      }
+      // A new account ALWAYS starts from a brand-new hero (tutorial on, empty bag). No device save is ever offered or read: the online game keeps nothing in the browser.
       const fresh = withServerPass(buildNewLeagueHero(resetAt));
       const created = await repo.create(fresh, false);
       if (cancelled) return;
-      setResolution({ kind: 'ready', userId: user.id, initial: { save: fresh, revision: created.revision }, repository: repo });
+      enter(user.id, { save: fresh, revision: created.revision }, repo);
     })().catch((err) => {
       console.error('[GameShell] failed to resolve character', err);
     });
@@ -159,58 +151,12 @@ export default function GameShell() {
   }
 
   // A resolution made for another account (switching accounts in the same tab) is never shown: wait for this account's own.
-  const staleFor = configured && (resolution.kind === 'ready' || resolution.kind === 'needsLegacyDecision') && resolution.userId !== (user?.id ?? null);
+  const staleFor = configured && resolution.kind === 'ready' && resolution.userId !== (user?.id ?? null);
   if (resolution.kind === 'loading' || staleFor) {
     return (
       <div className="auth-screen">
         <p className="auth-loading">{t('auth.restoringSession')}</p>
       </div>
-    );
-  }
-
-  if (resolution.kind === 'needsLegacyDecision') {
-    return (
-      <LegacyImportPrompt
-        level={resolution.offer.level}
-        floor={resolution.offer.floor}
-        importing={importing}
-        onImport={async () => {
-          if (!user) return;
-          setImporting(true);
-          try {
-            const repo = new SupabaseSaveRepository(user.id);
-            // The League may have opened while this question was on screen: a local save is then refused online and the hero starts from zero.
-            const resetNow = await readLeagueResetAt();
-            if (typeof resetNow === 'number') {
-              const startFresh = withServerPass(buildNewLeagueHero(resetNow));
-              const made = await repo.create(startFresh, false);
-              setResolution({ kind: 'ready', userId: user.id, initial: { save: startFresh, revision: made.revision }, repository: repo });
-              return;
-            }
-            claimLegacyLocalSave(user.id);
-            backupLegacyLocalSaveOnce();
-            const legacy = withServerPass(readLegacyLocalSave());
-            const created = await repo.create(legacy, true);
-            setResolution({ kind: 'ready', userId: user.id, initial: { save: legacy, revision: created.revision }, repository: repo });
-          } finally {
-            setImporting(false);
-          }
-        }}
-        onStartNew={async () => {
-          if (!user) return;
-          setImporting(true);
-          try {
-            claimLegacyLocalSave(user.id);
-            const resetNow = await readLeagueResetAt();
-            const fresh = withServerPass(buildNewLeagueHero(resetNow));
-            const repo = new SupabaseSaveRepository(user.id);
-            const created = await repo.create(fresh, false);
-            setResolution({ kind: 'ready', userId: user.id, initial: { save: fresh, revision: created.revision }, repository: repo });
-          } finally {
-            setImporting(false);
-          }
-        }}
-      />
     );
   }
 

@@ -1,3 +1,4 @@
+import { deviceStorage, isOnlineStorage } from '../lib/deviceStore';
 import { computeHuntingStatus, computeMiningStatus, computeWoodcuttingStatus, SaveData } from './engine';
 import { isDeliveryReady } from './deliveries';
 import { readySlots } from './gardenActions';
@@ -82,19 +83,19 @@ export function readLastSeen(accountId?: string | null): number | null {
   const key = seenKey(accountId);
   let stored: number | null = null;
   try {
-    const v = Number(localStorage.getItem(key));
+    const v = Number(deviceStorage.getItem(key));
     stored = Number.isFinite(v) && v > 0 ? v : null;
   } catch {
     /* no storage: the in-memory stamp below still answers */
   }
-  const mem = memorySeen.get(key) ?? null;
+  const mem = isOnlineStorage() ? null : (memorySeen.get(key) ?? null); // online the in-memory store already answers, and is emptied at sign-out
   return stored === null ? mem : mem === null ? stored : Math.max(stored, mem);
 }
 export function writeLastSeen(now: number, accountId?: string | null): void {
   const key = seenKey(accountId);
-  memorySeen.set(key, Math.floor(now));
+  if (!isOnlineStorage()) memorySeen.set(key, Math.floor(now));
   try {
-    localStorage.setItem(key, String(Math.floor(now)));
+    deviceStorage.setItem(key, String(Math.floor(now)));
   } catch {
     /* private mode: the in-memory stamp keeps short absences quiet */
   }

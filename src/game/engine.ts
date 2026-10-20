@@ -1,3 +1,4 @@
+import { deviceStorage, isPrefKey } from '../lib/deviceStore';
 import { LeagueMark, sanitizeLeagueMark } from './leagueMark';
 import { getLeagueEpoch } from './leagueClock';
 import { activeEventBuffs, EVENT_XP_CAP, EventBuffs, EventPick, eventGatherBonusHours, huntEventWindows, sanitizeEventBuffs, sanitizeEventPick } from './leagueEvents';
@@ -47,7 +48,7 @@ import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillLevel, skillXpToReachLevel } from './skills';
 import { gatherMasteryMult, plantGrowthMs } from './mastery';
 import { maxSaneXp, paragonDamageBonus, paragonLevel } from './paragon';
-import { XP_CURVE_VERSION, migrateLegacyXp, migrateV2Xp } from './xpCurve';
+import { XP_CURVE_VERSION, migrateLegacyXp, migrateV2Xp, migrateV3Xp } from './xpCurve';
 import { legacyXpPotionCount, legacyXpPotionGold, withoutLegacyXpPotion } from './legacyXpPotion';
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { migrateLegacyPouch } from './legacyPouch';
@@ -275,6 +276,9 @@ export interface SaveData {
   seenWelcome: boolean;
   // Online only: which reset of the first League this hero belongs to (leagueReset.ts). Absent = never reset (every save from before the League, and every offline / desktop save).
   league?: LeagueMark;
+  // Online only: the player's preferences (volume, language, notifications, reduced motion) and the last-seen stamp, kept in the server save because the online game keeps nothing in the browser
+  // (lib/deviceStore.ts). Absent = none set yet. Never read by the economy.
+  prefs?: Record<string, string>;
   tutorial: TutorialState;
   autoPotionThreshold: number;
   autoPotionPriority: 'small_first' | 'large_first';
@@ -1014,6 +1018,14 @@ export function defaultSave(): SaveData {
   };
 }
 
+/** Only known preference keys with short string values survive (a save is untrusted input). */
+export function sanitizePrefs(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (isPrefKey(k) && typeof v === 'string' && v.length <= 400) out[k] = v;
+  return Object.keys(out).length ? out : undefined;
+}
+
 // Raw v1 save, kept once before the first v2 write so the migration can always be audited / rolled back by hand.
 const LEGACY_BACKUP_KEY = 'arena-rpg-save-v1.pre-instances';
 // Per-itemId gear maps that no longer exist in SaveData; stripped from the loaded object (they'd otherwise leak in
@@ -1024,8 +1036,8 @@ const LEGACY_GEAR_KEYS = ['upgrades', 'durability', 'sockets', 'itemRarity', 'it
 // back). An EXISTING backup is never overwritten.
 function ensureLegacyBackup(raw: string): boolean {
   try {
-    if (localStorage.getItem(LEGACY_BACKUP_KEY) === null) localStorage.setItem(LEGACY_BACKUP_KEY, raw);
-    return localStorage.getItem(LEGACY_BACKUP_KEY) !== null;
+    if (deviceStorage.getItem(LEGACY_BACKUP_KEY) === null) deviceStorage.setItem(LEGACY_BACKUP_KEY, raw);
+    return deviceStorage.getItem(LEGACY_BACKUP_KEY) !== null;
   } catch {
     return false;
   }
@@ -1133,6 +1145,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
       // (a test, a hand-made import) is taken as it is: the new curve only ever makes a level cheaper, so nobody can lose one.
       if (typeof parsed.xpCurve !== 'number' && typeof (parsed as { schemaVersion?: unknown }).schemaVersion === 'number') xp = migrateLegacyXp(xp);
       else if (parsed.xpCurve === 2) xp = migrateV2Xp(xp); // the curve of Rodada 20 moved the top of band 4: same level, same share
+      else if (parsed.xpCurve === 3) xp = migrateV3Xp(xp); // Rodada 28 made the first levels dearer: same level, same share
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
       // Counters and attribute points: only a real, finite number inside the legal range survives (strings, NaN, negatives and
       // tampered giants fall back to the default). Whole numbers: the game only ever adds whole units to these.
@@ -1431,6 +1444,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         seenTooltips,
         seenWelcome,
         league: sanitizeLeagueMark(parsed.league),
+        ...(sanitizePrefs(parsed.prefs) ? { prefs: sanitizePrefs(parsed.prefs) } : {}),
         tutorial: sanitizeTutorial(parsed.tutorial),
         autoPotionThreshold:
           typeof parsed.autoPotionThreshold === 'number' && Number.isFinite(parsed.autoPotionThreshold)
@@ -1466,7 +1480,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
 }
 
 export function loadSave(): SaveData {
-  return normalizeSave(localStorage.getItem(SAVE_KEY));
+  return normalizeSave(deviceStorage.getItem(SAVE_KEY));
 }
 
 export function persistSave(data: SaveData): void {
@@ -1475,7 +1489,7 @@ export function persistSave(data: SaveData): void {
     unbackedLegacyRaw = null;
   }
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    deviceStorage.setItem(SAVE_KEY, JSON.stringify(data));
   } catch {
     /* ignore */
   }

@@ -1,3 +1,4 @@
+import { deviceStorage } from '../lib/deviceStore';
 // A mint (the forge, a Gold Pouch) asks the server to roll. If the server rolled and committed but the ANSWER was lost, the certificate exists on the server and the piece is not in the save:
 // an orphan. The cure is the idempotent request id of mint-item (docs/MARKET_FOUNDATION.md): ask again with the SAME id and the server returns the stored result instead of rolling again.
 // So the id of an action that has not finished is remembered (in this browser, across a reload) under a key that describes WHAT was asked, and the next identical attempt reuses it.
@@ -17,11 +18,7 @@ interface Intent {
 type Book = Record<string, Intent>;
 
 const defaultStorage = (): StorageLike | null => {
-  try {
-    return typeof localStorage !== 'undefined' ? localStorage : null;
-  } catch {
-    return null;
-  }
+  return deviceStorage;
 };
 
 function read(storage: StorageLike | null, now: number): Book {

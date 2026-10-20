@@ -1,5 +1,4 @@
 import { SaveData, loadSave, normalizeSave, persistSave } from './engine';
-import { playerLevel } from './heroLevel';
 import { supabase } from '../lib/supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { assertUploadSize, fromUploadBlob, toUploadBlob } from './saveUpload';
@@ -10,8 +9,6 @@ import { withKeepalive } from '../lib/supabaseFetch';
 // the client hands it, unvalidated, exactly like localStorage did. See docs/backend-phase1.md
 // ("Phase 1 = identity + persistence, Phase 2+ = economic authority") — do not read the existence of
 // this repository as a claim that the economy is now server-authoritative.
-
-export const LEGACY_LOCAL_SAVE_KEY = 'arena-rpg-save-v1';
 
 export { SaveTooLargeError, MAX_SAVE_UPLOAD_BYTES } from './saveUpload';
 
@@ -131,76 +128,5 @@ export class SupabaseSaveRepository implements SaveRepository {
     // reload the server's current state rather than retry blindly — server always wins (see §18/§21).
     if (!row) throw new SaveConflictError();
     return { revision: row.revision };
-  }
-}
-
-// ---- Legacy local-save detection/import helpers ------------------------------------------------------
-
-/** Which account the device's offline save was handed to (imported, or turned down for a fresh hero) or already belonged to. After that, nobody else is ever offered it. */
-export const LEGACY_CLAIM_KEY = 'arena-legacy-local-claimed';
-
-export function hasLegacyLocalSave(): boolean {
-  try {
-    return localStorage.getItem(LEGACY_LOCAL_SAVE_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
-function readLegacyClaim(): string | null {
-  try {
-    return localStorage.getItem(LEGACY_CLAIM_KEY);
-  } catch {
-    return null;
-  }
-}
-
-/** Records that this account has dealt with the device's offline save (or has played online from this device already). The first claim stands: it is never taken over. */
-export function claimLegacyLocalSave(userId: string): void {
-  try {
-    if (localStorage.getItem(LEGACY_LOCAL_SAVE_KEY) !== null && localStorage.getItem(LEGACY_CLAIM_KEY) === null) localStorage.setItem(LEGACY_CLAIM_KEY, userId);
-  } catch {
-    /* ignore */
-  }
-}
-
-export interface LegacyOffer {
-  level: number;
-  floor: number;
-}
-
-/**
- * The one case a device save may enter the online game: it is a never-synced offline save nobody has claimed. Anything an account already took (or any account that already
- * played online here, see claimLegacyLocalSave) is not offered to another account. Returns what the prompt shows, or null for "do not ask".
- */
-export function legacyOfferFor(userId: string): LegacyOffer | null {
-  if (!hasLegacyLocalSave()) return null;
-  const claim = readLegacyClaim();
-  if (claim !== null && claim !== userId) return null;
-  try {
-    const save = readLegacyLocalSave();
-    return { level: playerLevel(save.xp), floor: save.highestDungeonFloor };
-  } catch {
-    return null;
-  }
-}
-
-export function readLegacyLocalSave(): SaveData {
-  return loadSave();
-}
-
-// Back up the local save exactly as it existed the moment a player chose to import it into (or replace
-// it with) a server character — belt-and-suspenders alongside engine.ts's own v1->v2 migration backup,
-// kept under a distinct key so it's never confused with that one.
-const PRE_SERVER_BACKUP_KEY = 'arena-rpg-save-v1.pre-server';
-
-export function backupLegacyLocalSaveOnce(): void {
-  try {
-    const raw = localStorage.getItem(LEGACY_LOCAL_SAVE_KEY);
-    if (raw && localStorage.getItem(PRE_SERVER_BACKUP_KEY) === null) {
-      localStorage.setItem(PRE_SERVER_BACKUP_KEY, raw);
-    }
-  } catch {
-    /* ignore */
   }
 }

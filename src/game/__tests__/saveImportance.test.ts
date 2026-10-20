@@ -3,7 +3,6 @@ import { defaultSave } from '../engine';
 import { GEAR, isInstancedSlot } from '../gear';
 import { createGearInstance } from '../gearInstances';
 import { isImportantChange } from '../saveImportance';
-import { PENDING_CLOUD_SAVE_KEY, clearPendingCloudSave, pendingCloudSaveKey, takePendingCloudSave, writePendingCloudSave } from '../pendingCloudSave';
 import { keepaliveFor, withKeepalive } from '../../lib/supabaseFetch';
 
 const CERT = '11111111-1111-4111-8111-111111111111';
@@ -55,56 +54,6 @@ describe('which changes of the save go to the server at once', () => {
   it('a server roll that is owed (a boss claim, a material claim) does', () => {
     expect(isImportantChange(base, { ...base, materialClaims: [] })).toBe(true);
     expect(isImportantChange(base, { ...base, pendingBossClaims: [] })).toBe(true);
-  });
-});
-
-describe('the device journal of a signed-in hero', () => {
-  function memory() {
-    const data = new Map<string, string>();
-    return {
-      getItem: (k: string) => data.get(k) ?? null,
-      setItem: (k: string, v: string) => void data.set(k, v),
-      removeItem: (k: string) => void data.delete(k),
-      raw: data,
-    };
-  }
-
-  it('carries on from the journal when the server still holds the revision it was made on', () => {
-    const storage = memory();
-    const played = { ...defaultSave(), gold: 4_321 };
-    writePendingCloudSave('user-1', 7, played, storage, 1000);
-    const back = takePendingCloudSave('user-1', 7, storage);
-    expect(back?.gold).toBe(4_321);
-  });
-
-  it('the server wins when it moved on (another tab or device saved), and the stale journal is dropped', () => {
-    const storage = memory();
-    writePendingCloudSave('user-1', 7, defaultSave(), storage, 1000);
-    expect(takePendingCloudSave('user-1', 8, storage)).toBeNull();
-    expect(storage.raw.has(pendingCloudSaveKey('user-1'))).toBe(false);
-  });
-
-  it('never hands one account\'s journal to another', () => {
-    const storage = memory();
-    writePendingCloudSave('user-1', 7, defaultSave(), storage, 1000);
-    expect(takePendingCloudSave('user-2', 7, storage)).toBeNull();
-    expect(storage.raw.has(pendingCloudSaveKey('user-1'))).toBe(true); // user-1's own journal is untouched
-  });
-
-  it('survives garbage and a missing storage', () => {
-    const storage = memory();
-    storage.setItem(pendingCloudSaveKey('user-1'), '{not json');
-    expect(takePendingCloudSave('user-1', 1, storage)).toBeNull();
-    expect(takePendingCloudSave('user-1', 1, null)).toBeNull();
-    expect(() => writePendingCloudSave('user-1', 1, defaultSave(), null)).not.toThrow();
-  });
-
-  it('is cleared once the server holds everything, and uses its own key (never the legacy local save)', () => {
-    const storage = memory();
-    writePendingCloudSave('user-1', 1, defaultSave(), storage);
-    expect(PENDING_CLOUD_SAVE_KEY).not.toBe('arena-rpg-save-v1');
-    clearPendingCloudSave('user-1', storage);
-    expect(storage.raw.size).toBe(0);
   });
 });
 

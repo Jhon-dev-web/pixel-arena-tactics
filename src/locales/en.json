@@ -67,20 +67,11 @@
     "loadError": "Couldn't load your profile. Check your connection and try again.",
     "retry": "Try again"
   },
-  "legacyImport": {
-    "title": "We found saved progress on this device",
-    "description": "This progress was saved only in this browser. You can import it into your account or start a new character.",
-    "warning": "This local progress was never validated by a server. It can be imported for testing/beta, but it won't be treated as official once the game involves real value.",
-    "stats": "Progress found: level {level}, Dungeon floor {floor}.",
-    "importCta": "Import progress",
-    "newCta": "Start new character",
-    "importing": "Importing…"
-  },
   "sync": {
     "saving": "Saving…",
     "saved": "Saved",
-    "offline": "Offline — changes pending",
-    "error": "Save failed — retrying",
+    "offline": "No connection — trying to save",
+    "error": "No connection — trying to save",
     "conflict": "Your progress was updated from another device/tab."
   },
   "tooltips": {

@@ -1,3 +1,4 @@
+import { deviceStorage } from '../lib/deviceStore';
 import { useEffect, useSyncExternalStore } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { defaultSave, SaveData } from './engine';
@@ -21,11 +22,7 @@ export const PRE_LEAGUE_BACKUP_PREFIX = 'arena-pre-league-memory.';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 const defaultStorage = (): StorageLike | null => {
-  try {
-    return typeof localStorage !== 'undefined' ? localStorage : null;
-  } catch {
-    return null;
-  }
+  return deviceStorage;
 };
 
 // ---- the server's reset moment, as the game knows it -------------------------------------------------------------------------------------------

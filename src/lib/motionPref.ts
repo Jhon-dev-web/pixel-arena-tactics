@@ -1,15 +1,10 @@
+import { deviceStorage } from './deviceStore';
 // Reduced motion. The game follows the system setting (prefers-reduced-motion) by default; Settings adds a manual switch for someone whose system does not ask for it. When it is on, the root element
 // carries data-motion="reduce" (base.css then stops every CSS animation and transition) and the scenes that animate from script read reducedMotion() below.
 const KEY = 'arena.reduceMotion.v1';
 const listeners = new Set<() => void>();
 
-const storage = (): Storage | null => {
-  try {
-    return typeof localStorage !== 'undefined' ? localStorage : null;
-  } catch {
-    return null;
-  }
-};
+const storage = () => deviceStorage;
 
 export const systemReducesMotion = (): boolean => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 

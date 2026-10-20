@@ -63,7 +63,7 @@ navegador (dev only) e o jogo roda 100% local, sem tela de login.
 ## Arquitetura desta fase
 
 ```
-localStorage (save legado, pré-fase-1)
+(nada no navegador no jogo online)
         │
         ▼
 GameShell (src/shell/GameShell.tsx)
@@ -71,8 +71,7 @@ GameShell (src/shell/GameShell.tsx)
   - configurado, sem sessão   -> AuthScreen (login/criar conta)
   - configurado, autenticado  -> resolve character:
         existe no servidor        -> carrega
-        não existe + save local   -> LegacyImportPrompt (importar ou começar novo)
-        não existe, sem save local-> cria personagem novo (defaultSave())
+        não existe                -> cria personagem novo (defaultSave(), tutorial ligado); nenhum save do aparelho é lido nem oferecido
         ▼
 App (src/App.tsx) — recebe { repository, initialSave, initialRevision } como props
         ▼
@@ -122,8 +121,7 @@ sempre vence** — nenhuma sobrescrita silenciosa) e mostra um toast (`sync.conf
 
 > **2026-10-16:** o upload para o servidor é em **lote** (antes: debounce de ~800 ms a cada mudança). Ver "Carga estimada" abaixo.
 
-A mudança do jogador é aplicada na hora no estado do jogo e **espelhada no aparelho** (`localStorage`, chave
-`arena-rpg-pending-cloud-v1`, `src/game/pendingCloudSave.ts`). O upload para o Supabase é decidido por
+A mudança do jogador é aplicada na hora no estado do jogo (em memória; **o jogo online não grava nada no navegador**, ver "Nada no navegador" abaixo). O upload para o Supabase é decidido por
 `src/game/saveScheduler.ts`:
 
 - **No máximo 1 upload a cada 45 s** enquanto houver mudança pendente (`CLOUD_SAVE_MIN_INTERVAL_MS`). A primeira
@@ -160,17 +158,21 @@ pendentes" até a conexão voltar ou até fechar/recarregar a aba (nesse ponto, 
 mais recente pode não ter sido persistida no servidor — isso é uma limitação conhecida da Fase 1, não
 resolvida por um Service Worker/fila de sincronização, que ficaria para uma fase futura se necessário).
 
-## Saves legados (importação)
+## Nada no navegador (2026-10-20)
 
-Só aparece quando: autenticado, **sem** personagem no servidor, **com** save local em
-`arena-rpg-save-v1`. Nunca acontece automaticamente, nunca acontece mais de uma vez (depois que o
-personagem existe no servidor, o servidor sempre vence). Escolher "Importar" marca
-`imported_from_legacy = true` na linha — hoje é apenas informativo, nenhuma lógica de economia lê essa
-flag.
+Decisão do dono: "não quero nada salvo em navegadores, deve ficar tudo no servidor". No build **online** (Supabase configurado):
 
-**Importante**: um save legado nunca foi validado por servidor. Ele é aceito para desenvolvimento/beta
-nesta fase, mas isso **não é uma política definitiva** — antes de qualquer lançamento com valor real será
-necessário decidir separadamente como (ou se) tratar saves legados.
+- O servidor é a única fonte do save. Não existe cópia local, diário do aparelho (`pendingCloudSave` foi removido), cache de Passe offline, carimbos por conta nem backups em `localStorage`/`sessionStorage`/IndexedDB. Tudo passa por `src/lib/deviceStore.ts`, que online guarda só em memória da aba.
+- Preferências (idioma, volume/mudo, notificações, reduzir movimento) e o carimbo "visto por último" (boas-vindas de volta) vão em `save.prefs` (só chaves conhecidas, valores curtos; `sanitizePrefs`). O tutorial já era parte do save. Ao carregar, `GameShell` põe `prefs` na memória antes de desenhar o jogo; mudar uma preferência marca o save como pendente (lote normal de 45 s); fechar/esconder a aba envia o carimbo com upload `keepalive`.
+- Sem rede: o jogo segue em memória, mostra "Sem conexão — tentando salvar" e o agendador tenta de novo (backoff). Ao fechar a aba com mudança pendente, o navegador avisa (`beforeunload`) e ainda tenta o upload keepalive. Fechar a aba com a rede fora perde o que não subiu: é o preço da decisão.
+- O buffer do relatório de erro fica só em memória (some ao recarregar). Intenções de mint do mercado também (a idempotência não sobrevive a recarregar a página).
+- Limpeza única: no primeiro carregamento online, as chaves de jogo antigas (`arena-rpg-*`, `arena-last-seen*`, `arena.passEntitlement*`, `arena.mintIntents*`, `arena.leagueResetAt*`, `arena.reduceMotion*`, `arena-error-log*`, `locale`, etc.) são **apagadas, nunca lidas** para dentro de uma conta.
+- Único armazenamento do navegador ainda usado online: o que o **Supabase Auth** precisa para manter a sessão de login (`sb-*`), mais um marcador temporário da compra do Passe em `sessionStorage` (volta do checkout, 30 min, nenhum dado do jogo). Se o dono quiser "sair ao fechar", o cliente Supabase aceita `sessionStorage` como storage de sessão.
+- Build offline/desktop (sem Supabase): continua com o save em `localStorage`, exatamente como antes.
+
+## Saves legados
+
+**Removido do build online.** Não há mais tela de importação: uma conta nova sempre começa de um herói novo, e o save antigo do aparelho nunca é lido (é apagado na limpeza acima). Foi isso que causava o bug em que uma conta nova herdava o herói de outra no mesmo navegador. A coluna `imported_from_legacy` continua na tabela, informativa.
 
 ## Limitações de segurança conhecidas desta fase
 

@@ -1,3 +1,4 @@
+import { deviceStorage } from '../lib/deviceStore';
 import type { SaveData } from './engine';
 import { computeGardenSlotStatus, computeHuntingStatus, computeMiningStatus, computeWoodcuttingStatus } from './engine';
 import { isDeliveryReady } from './deliveries';
@@ -71,7 +72,7 @@ const PREF_KEY = 'arena-rpg-notify';
 // Stored per device (not in the save: it is not progress). The desktop app defaults to ON, the browser to OFF.
 export function loadNotifyPref(): boolean {
   try {
-    const raw = localStorage.getItem(PREF_KEY);
+    const raw = deviceStorage.getItem(PREF_KEY);
     if (raw === 'on') return true;
     if (raw === 'off') return false;
   } catch {
@@ -88,7 +89,7 @@ export function notificationsActive(): boolean {
 
 export function saveNotifyPref(on: boolean): void {
   try {
-    localStorage.setItem(PREF_KEY, on ? 'on' : 'off');
+    deviceStorage.setItem(PREF_KEY, on ? 'on' : 'off');
   } catch {
     /* ignore */
   }

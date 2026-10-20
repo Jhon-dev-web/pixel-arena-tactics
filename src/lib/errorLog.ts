@@ -3,6 +3,7 @@
 // Nothing here ever reads the save, the account or any token, and every storage access is guarded (private windows / blocked storage must not
 // turn the error recorder into the next error).
 
+import { deviceStorage } from './deviceStore';
 import { APP_VERSION } from './appVersion';
 
 export { APP_VERSION };
@@ -41,7 +42,7 @@ function screenLabel(): string {
 
 export function readErrorLog(): ErrorEntry[] {
   try {
-    const raw = localStorage.getItem(ERROR_LOG_KEY);
+    const raw = deviceStorage.getItem(ERROR_LOG_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -55,7 +56,7 @@ export function readErrorLog(): ErrorEntry[] {
 
 function writeErrorLog(entries: ErrorEntry[]): void {
   try {
-    localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(entries.slice(-ERROR_LOG_MAX)));
+    deviceStorage.setItem(ERROR_LOG_KEY, JSON.stringify(entries.slice(-ERROR_LOG_MAX)));
   } catch {
     /* storage unavailable or full: the report is best effort */
   }
@@ -63,7 +64,7 @@ function writeErrorLog(entries: ErrorEntry[]): void {
 
 export function clearErrorLog(): void {
   try {
-    localStorage.removeItem(ERROR_LOG_KEY);
+    deviceStorage.removeItem(ERROR_LOG_KEY);
   } catch {
     /* ignore */
   }
@@ -110,7 +111,7 @@ export function buildErrorReport(entries: ErrorEntry[] = readErrorLog()): string
   let locale = '';
   try {
     ua = navigator.userAgent;
-    locale = localStorage.getItem('locale') ?? navigator.language;
+    locale = deviceStorage.getItem('locale') ?? navigator.language;
   } catch {
     /* ignore */
   }

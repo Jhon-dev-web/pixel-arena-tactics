@@ -21,7 +21,7 @@ import { setSyncedSave } from './game/syncedSave';
 import { startPolling } from './lib/poller';
 import { SaveScheduler, UploadOutcome, flushCloudSave, setActiveSaveScheduler } from './game/saveScheduler';
 import { isImportantChange } from './game/saveImportance';
-import { clearPendingCloudSave, writePendingCloudSave } from './game/pendingCloudSave';
+import { snapshotPrefs, subscribePrefs } from './lib/deviceStore';
 import { useAuth } from './auth/AuthContext';
 import { applyHuntClaim, applyHuntStop, huntClaimBlocked, needsServerUniques, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { isServerItemAuthority } from './game/itemAuthority';
@@ -588,11 +588,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       const result = await repository.save(toSave, revisionRef.current, { keepalive });
       revisionRef.current = result.revision;
       setSyncedSave(toSave); // the season ranking posts exactly what the server now holds
-      if (repository.remote && userId) {
-        // the server holds everything up to `toSave`: nothing left to journal, unless the hero moved on while the request was out
-        if (saveRef.current === toSave) clearPendingCloudSave(userId);
-        else writePendingCloudSave(userId, result.revision, saveRef.current, undefined, undefined, repository.characterId);
-      }
       setSaveStatus(saveRef.current === toSave ? 'saved' : 'dirty');
       return 'ok';
     } catch (err) {
@@ -605,7 +600,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             saveRef.current = fresh.save;
             revisionRef.current = fresh.revision;
             setSyncedSave(null); // the server's copy is not the object we hold until the next successful save
-            if (userId) clearPendingCloudSave(userId);
             setSave(fresh.save);
           }
         } catch {
@@ -624,6 +618,22 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       return 'failed';
     }
   };
+  // Online, the player's preferences and the last-seen stamp live in memory (lib/deviceStore.ts) and ride in the save. A real preference change uploads with the next batch; the stamp alone only
+  // rides along with whatever uploads next (and with the upload when the page is hidden or closed).
+  const syncPrefs = (forceDirty: boolean) => {
+    if (!repository.remote) return;
+    const next = snapshotPrefs();
+    const cur = saveRef.current;
+    const before = cur.prefs ?? {};
+    const keys = new Set([...Object.keys(before), ...Object.keys(next)]);
+    const changed = [...keys].filter((k) => before[k] !== next[k]);
+    if (changed.length === 0) return;
+    saveRef.current = { ...cur, prefs: next };
+    if (forceDirty || changed.some((k) => !k.startsWith('arena-last-seen'))) schedulerRef.current?.markDirty(false);
+  };
+  const syncPrefsRef = useRef(syncPrefs);
+  syncPrefsRef.current = syncPrefs;
+  useEffect(() => subscribePrefs(() => syncPrefsRef.current(false)), []);
   const uploadRef = useRef(uploadOnce);
   uploadRef.current = uploadOnce;
   if (!schedulerRef.current) {
@@ -643,7 +653,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   }, []);
 
   useEffect(() => {
-    if (repository.remote && userId) writePendingCloudSave(userId, revisionRef.current, saveRef.current, undefined, undefined, repository.characterId);
     setSaveStatus((s) => (s === 'saving' ? s : 'dirty'));
     const important = importantRef.current;
     importantRef.current = false;
@@ -654,15 +663,23 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   useEffect(() => {
     const scheduler = schedulerRef.current!;
     const leaving = () => void scheduler.flush({ keepalive: true });
+    // Online nothing is kept in the browser: a change not yet on the server exists only in this tab, so closing it asks first (and still tries the keepalive upload).
+    const warn = (e: BeforeUnloadEvent) => {
+      if (!repository.remote || !scheduler.pending) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
     const onHide = () => {
       if (document.visibilityState === 'hidden') leaving();
     };
     const onOnline = () => scheduler.resumeNow();
+    window.addEventListener('beforeunload', warn);
     window.addEventListener('beforeunload', leaving);
     window.addEventListener('pagehide', leaving);
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onHide);
     return () => {
+      window.removeEventListener('beforeunload', warn);
       window.removeEventListener('beforeunload', leaving);
       window.removeEventListener('pagehide', leaving);
       window.removeEventListener('online', onOnline);
@@ -1340,21 +1357,28 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       if (summary.rows.length === 0) return;
       setWelcome({ summary, canClaimAll: ownsAdventurerPass(s) && readyActivities(s, now).count > 0 });
     };
-    const leave = () => writeLastSeen(Date.now(), seenId);
-    const onVisibility = () => (document.visibilityState === 'hidden' ? leave() : check());
+    const leave = () => {
+      writeLastSeen(Date.now(), seenId);
+      syncPrefsRef.current(true);
+    };
+    const leaveAndSend = () => {
+      leave();
+      void schedulerRef.current?.flush({ keepalive: true });
+    };
+    const onVisibility = () => (document.visibilityState === 'hidden' ? leaveAndSend() : check());
     check();
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('blur', leave);
     window.addEventListener('focus', check);
-    window.addEventListener('pagehide', leave);
+    window.addEventListener('pagehide', leaveAndSend);
     const beat = window.setInterval(() => {
-      if (document.visibilityState === 'visible') leave();
+      if (document.visibilityState === 'visible') writeLastSeen(Date.now(), seenId);
     }, 60_000);
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('blur', leave);
       window.removeEventListener('focus', check);
-      window.removeEventListener('pagehide', leave);
+      window.removeEventListener('pagehide', leaveAndSend);
       window.clearInterval(beat);
     };
   }, []);

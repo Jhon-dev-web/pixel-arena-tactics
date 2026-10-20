@@ -1,3 +1,4 @@
+import { deviceStorage } from '../lib/deviceStore';
 import Assets from '../assets.json';
 
 export type SfxKey = keyof typeof Assets.sfx;
@@ -54,7 +55,7 @@ export const sfxGain = (p: AudioPrefs): number => (p.sfxMuted ? 0 : SFX_BASE_GAI
 
 function readStored(): AudioPrefs {
   try {
-    return parseAudioPrefs(localStorage.getItem(PREFS_KEY), localStorage.getItem(LEGACY_MUTE_KEY));
+    return parseAudioPrefs(deviceStorage.getItem(PREFS_KEY), deviceStorage.getItem(LEGACY_MUTE_KEY));
   } catch {
     return { ...DEFAULT_AUDIO_PREFS };
   }
@@ -101,11 +102,17 @@ async function loadBuffer(url: string): Promise<AudioBuffer> {
 
 function persist(): void {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
-    localStorage.setItem(LEGACY_MUTE_KEY, prefs.musicMuted && prefs.sfxMuted ? '1' : '0');
+    deviceStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    deviceStorage.setItem(LEGACY_MUTE_KEY, prefs.musicMuted && prefs.sfxMuted ? '1' : '0');
   } catch {
     /* ignore */
   }
+}
+
+/** The online game hydrates the preferences from the server save after this module loaded: read them again (applies to the music already playing). */
+export function reloadAudioPrefs(): void {
+  prefs = readStored();
+  if (ambientGain) ambientGain.gain.value = musicGain(prefs);
 }
 
 export function getAudioPrefs(): AudioPrefs {

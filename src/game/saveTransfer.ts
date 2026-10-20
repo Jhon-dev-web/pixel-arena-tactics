@@ -1,3 +1,4 @@
+import { deviceStorage } from '../lib/deviceStore';
 import { normalizeSave, playerLevel, defaultSave, SaveData } from './engine';
 import { isPreResetSave } from './leagueReset';
 
@@ -79,10 +80,10 @@ const BACKUP_PREVIOUS = 'arena-rpg-save-backup.prev';
 // Keeps `save` as the latest backup (the one before it moves to the second slot). false when the device refused the write: the caller must then not replace anything.
 export function writeBackup(save: SaveData, now: number): boolean {
   try {
-    const latest = localStorage.getItem(BACKUP_LATEST);
-    if (latest !== null) localStorage.setItem(BACKUP_PREVIOUS, latest);
-    localStorage.setItem(BACKUP_LATEST, JSON.stringify({ at: now, save }));
-    return localStorage.getItem(BACKUP_LATEST) !== null;
+    const latest = deviceStorage.getItem(BACKUP_LATEST);
+    if (latest !== null) deviceStorage.setItem(BACKUP_PREVIOUS, latest);
+    deviceStorage.setItem(BACKUP_LATEST, JSON.stringify({ at: now, save }));
+    return deviceStorage.getItem(BACKUP_LATEST) !== null;
   } catch {
     return false;
   }
@@ -90,7 +91,7 @@ export function writeBackup(save: SaveData, now: number): boolean {
 
 export function readBackup(slot: 'latest' | 'previous' = 'latest'): { at: number; save: SaveData } | null {
   try {
-    const raw = localStorage.getItem(slot === 'latest' ? BACKUP_LATEST : BACKUP_PREVIOUS);
+    const raw = deviceStorage.getItem(slot === 'latest' ? BACKUP_LATEST : BACKUP_PREVIOUS);
     if (!raw) return null;
     const p = JSON.parse(raw) as { at?: unknown; save?: unknown };
     return { at: Number(p.at) || 0, save: normalizeSave(p.save) };
