@@ -1146,6 +1146,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
       if (typeof parsed.xpCurve !== 'number' && typeof (parsed as { schemaVersion?: unknown }).schemaVersion === 'number') xp = migrateLegacyXp(xp);
       else if (parsed.xpCurve === 2) xp = migrateV2Xp(xp); // the curve of Rodada 20 moved the top of band 4: same level, same share
       else if (parsed.xpCurve === 3) xp = migrateV3Xp(xp); // Rodada 28 made the first levels dearer: same level, same share
+      else if (parsed.xpCurve === 3) xp = migrateV3Xp(xp); // Rodada 28 made the first levels dearer: same level, same share
       const highestDungeonFloor = Math.max(1, Math.min(MAX_DUNGEON_FLOOR, Math.floor(Number(parsed.highestDungeonFloor ?? 1)) || 1));
       // Counters and attribute points: only a real, finite number inside the legal range survives (strings, NaN, negatives and
       // tampered giants fall back to the default). Whole numbers: the game only ever adds whole units to these.

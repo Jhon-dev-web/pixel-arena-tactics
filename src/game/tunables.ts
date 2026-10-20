@@ -157,6 +157,11 @@ const T = DebugPanel.define({
     // level 87 on day 60 and the fastest seed 90, nobody reaches 100; levels 1-60 are untouched. xpCurve.ts maps a save from the 3% curve onto this one, keeping its level.
     heroGrowth4: { value: 1.023, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 4 (levels 61-80)' },
     heroGrowth5: { value: 1.03, min: 1, max: 2, step: 0.01, label: 'Hero XP growth, band 5 (levels 81-100)' },
+    // Rodada 28 (docs/BALANCE_CHANGES.md): the first levels were too fast (a new hero went from level 1 to 24 in one 6 hour hunt). Levels 2 to 16 ask 3.3x the XP of the bands, then the
+    // multiplier falls by a constant ratio and is gone at level 27, so from there the curve is the plain one plus a fixed, small extra (about 17 thousand XP). xpCurve.ts maps an older save.
+    heroEarlyMult: { value: 3.3, min: 1, max: 10, step: 0.1, label: 'Hero XP multiplier, early levels (1 = off)' },
+    heroEarlyPlateauTo: { value: 16, min: 2, max: 60, step: 1, label: 'Early multiplier holds through level' },
+    heroEarlyFadeTo: { value: 27, min: 3, max: 80, step: 1, label: 'Early multiplier is gone at level' },
     levelHpBonus: { value: 5, min: 0, max: 50, step: 1, label: 'Max HP bonus per level' },
   },
   mining: {

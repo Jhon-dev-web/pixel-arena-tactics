@@ -954,3 +954,7 @@ O XP do herói vem só da Caça. Medido com `npm run sim` (20 seeds x 21 dias, c
 | 60 | 87 (76-90) | 73,5 (68-74) |
 
 Marcos (mediana de dias, A / P): nível 50 22 / 14, nível 60 37 / 24, nível 70 51 / 34,5, nível 75 > 60 / 44,5, nível 80 > 60 / 51; zona de Caça 4 31,5 / 23,5; arma T5 51 / 35; conjunto T5 > 60 / 53. Ninguém chega ao nível 100 em 60 dias. `npm run sim:long` completo (6 seeds x 180 dias): nível 90 no dia 94 (A) e 64 (P); nível 100 no dia 125 (A) e 87 (P); andar 100 no 107 e 67; conjunto T6 no 133 e 87,5.
+
+## Rodada 28: os primeiros níveis custam mais (2026-10-20)
+
+A guarda T4 (cenário A, dias 1 a 21) mudou para **nível no fim do dia 2 / 3 / 5 / 14 = 12-16 / 12-16 / 20-32 / 44-60** (antes 20-28 / 20-29 / 45-60): a primeira Caça de 6 h (10 442 XP) termina no nível 14, não no 24. Medido: 14 / 14 / 22 / 46. Inalteradas: T2 (primeira sessão no andar >= 8, checkpoint 10 até o dia 2), T3 (primeira peça forjada até o dia 2), T5 (chefe 25 no dia 5, dentro de dia 4-6, portanto na primeira semana), I1 a I4. Ritmo da Liga (sim:econ, 6 seeds): dia 60 P 81,6, PB 95,2 (mais rápido 96,0), nunca 100. Detalhes e antes/depois em `BALANCE_CHANGES.md`, Rodada 28.

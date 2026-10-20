@@ -3515,3 +3515,32 @@ A alavanca **funciona** para o esperto mediano (de +2 para +5,5) mas **para a me
 ### Rodada 27b — material comum negociável volta a 3% (2026-10-17)
 
 Decisão do dono depois da Rodada 27: a chance de uma unidade de material **comum** sair negociável sobe de 1% para **3%**; incomum (2%) e raro (3%) não mudam. Na simulação da Rodada 27, com 3% o comprador mediano (dono do Passe, jogo esperto) fica cerca de +3,7 níveis à frente no dia 60 e encontra ~88% do material que procura (era +2,0 e 56%). Couro e osso ficam baratos para quem vende. O teto diário anti-robô deriva da chance e acompanha sem outra mudança. Números de simulação, margem de 0,5 a 1,5 nível.
+
+## Rodada 28 — os primeiros níveis custam mais (2026-10-20)
+
+**Motivo.** Teste do dono na prévia: um herói novo (CP 58) fez uma Caça na primeira zona, 6 h contadas, ganhou 10 442 XP e foi do nível 1 ao 24 num único resgate ("É muito rápido"). O XP do herói só vem da Caça.
+
+**Mudança.** Três tunables novos em `progression` (`heroEarlyMult` 3,3; `heroEarlyPlateauTo` 16; `heroEarlyFadeTo` 27). O nível 1 continua custando 100 XP (o primeiro nível sai em ~3 min); os níveis 2 a 16 custam 3,3x o que as faixas diziam; do 17 ao 26 o multiplicador cai por uma razão constante (nunca um nível custa menos que o anterior) e some no 27. A partir do nível 27 a curva é a de antes, deslocada por um extra fixo de ~17 mil XP (XP para chegar ao nível 50: 326 mil -> 343 mil; ao 100: 18 026 mil -> 18 043 mil). As bandas 3 a 5 e a Liga não foram tocadas; nenhuma compensação foi necessária.
+
+| XP para chegar ao nível | 15 | 24 | 30 | 47 | 60 |
+| --- | --: | --: | --: | --: | --: |
+| antes | 3 238 | 10 194 | 22 093 | 208 467 | 1 514 mil |
+| depois | 10 461 | 26 052 | 39 081 | 225 455 | 1 531 mil |
+
+**Saves antigos.** `XP_CURVE_VERSION` 4. Um save carimbado 3 (ou 2, ou sem carimbo) é mapeado para a curva nova mantendo o nível e a fração do nível (`migrateV3Xp`, e as migrações antigas agora também recalculam os níveis 1 a 60). O XP sobe, ninguém perde nível. Teste: todos os níveis de 1 a 99 em três frações.
+
+**Medido** (`npm run sim`, 20 seeds x 21 dias, e `npm run sim:econ` A,P,PB 6 seeds x 60 dias; "antes" = `SIM_T={"progression":{"heroEarlyMult":1}}`).
+
+| | antes | depois |
+| --- | --- | --- |
+| nível depois da 1ª Caça de 6 h (10 442 XP) | 24 | **14** (30 min = nível 3) |
+| A (sem Passe), dia 3 / 7 / 14 / 30 / 60 (sim:econ) | 24,2 / 37,9 / 47,2 / 57,2 / 70,2 | 15,0 / 35,2 / 46,6 / 56,3 / 70,8 |
+| P (Passe), dia 3 / 7 / 14 / 30 / 60 | 28,2 / 44,5 / 49,8 / 63,4 / 80,5 | 19,2 / 44,0 / 50,1 / 63,7 / 81,6 |
+| PB (comprador), dia 60, mediano / mais rápido | 95,4 / 96,8 | 95,2 / 96,0 |
+| A (sim, T4) dia 2 / 3 / 5 / 14 | 24 / 24 / 30 / 46 | 14 / 14 / 22 / 46 |
+
+O ritmo a partir do dia 14 e o do dia 60 não mudaram (diferenças dentro do ruído; ninguém chega ao 100). **Ressalva sobre "nível 24-28 por volta do dia 3":** o jogador simulado só faz a segunda Caça no dia 4-5 (a primeira, no dia 2, porque minera antes para a primeira peça), então na simulação o nível 22 chega no dia 5 (A) e o 29 no dia 5 (P, mais cedo). Quem resgata duas vezes por dia passa de 26 mil XP no 2º dia e está no 24-28 no terceiro. Não mexi nos XP/h das zonas.
+
+**Guarda dos dias 1 a 21 (T4), explícita:** nível no fim do dia 2 / 3 / 5 / 14 = 12-16 / 12-16 / 20-32 / 44-60 (antes 20-28 / 20-29 / -, 45-60). Continuam valendo: primeira sessão termina no andar >= 8, primeira peça forjada até o dia 2, chefe do 25 nos dias 4-6 (dia 5), I1 a I4.
+
+**Anti-trapaça.** `seasonTables.gen.ts` regenerada (`XP_TO_LEVEL`). `levelPace` foi mantida como o lado mais folgado: os seeds mais rápidos agora chegam ao 24 / 28 no dia 4 (eram 2 / 3) e ao 51-92 cerca de 1 dia mais tarde; nenhum jogador honesto passa a ser marcado.

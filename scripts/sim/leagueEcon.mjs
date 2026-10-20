@@ -73,7 +73,7 @@ const load = (p) =>
     })
     .filter(Boolean);
 const runs = Object.fromEntries(policies.map((p) => [p, load(p)]));
-const DAYS = [7, 14, 21, 30, 38, 45, 52, 60].filter((d) => d <= days);
+const DAYS = [1, 3, 7, 14, 21, 30, 38, 45, 52, 60].filter((d) => d <= days);
 const f1 = (x) => (Number.isFinite(x) ? x.toFixed(1) : '-');
 
 console.log(`\n### Level position (level + share of the next), median (min-max) of ${seeds.length} seeds, tag ${tag}`);

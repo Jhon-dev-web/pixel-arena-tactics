@@ -21,14 +21,26 @@ function heroBandTable(override: { growth4?: number; growth5?: number } = {}): {
   return bands;
 }
 
-export function xpForNextLevelWith(level: number, override: { growth4?: number; growth5?: number }): number {
+// Rodada 28: the first levels cost more. Level 1 stays at xpBase; levels 2 to heroEarlyPlateauTo ask heroEarlyMult times what the bands say; from there the multiplier falls
+// geometrically (a constant per-level ratio, so a level never costs less than the one before) and reaches 1 at heroEarlyFadeTo, where the plain band curve takes over again.
+// `early: false` rebuilds the curve of the saves stamped before that round (xpCurve.ts).
+function earlyMultiplier(level: number): number {
+  const p = T.progression;
+  if (level <= 1 || p.heroEarlyMult <= 1) return 1;
+  if (level <= p.heroEarlyPlateauTo) return p.heroEarlyMult;
+  if (level >= p.heroEarlyFadeTo) return 1;
+  return Math.pow(p.heroEarlyMult, (p.heroEarlyFadeTo - level) / (p.heroEarlyFadeTo - p.heroEarlyPlateauTo));
+}
+
+export function xpForNextLevelWith(level: number, override: { growth4?: number; growth5?: number; early?: boolean }): number {
   const bands = heroBandTable(override);
   let band = bands[0];
   for (const b of bands) {
     if (b.from > level) break;
     band = b;
   }
-  return Math.round(band.base * Math.pow(band.growth, level - band.from));
+  const plain = band.base * Math.pow(band.growth, level - band.from);
+  return Math.round(override.early === false ? plain : plain * earlyMultiplier(level));
 }
 
 export function xpForNextLevel(level: number): number {

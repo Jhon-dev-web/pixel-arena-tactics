@@ -612,8 +612,10 @@ function metas(a: Run[], n: Run[], curveWorst: number): string[] {
   const rows: string[][] = [];
   // Rodada 20 (the League): the hero levels up ONLY by Hunting, which pays on the first claim, so the end of day 1 is level 1 for the simulated player (it mines for the first craft
   // before it hunts) and the guard looks at the end of day 2 instead of day 1 (20-28; the other two bands are unchanged).
-  const t4 = (runs: Run[]) => `${cell(lvl(runs, 1))} / ${cell(lvl(runs, 2))} / ${cell(lvl(runs, 13))}`;
-  const t4ok = (runs: Run[]) => [inBand(lvl(runs, 1), 20, 28), inBand(lvl(runs, 2), 20, 29), inBand(lvl(runs, 13), 45, 60)];
+  // Rodada 28 (the first levels cost more): the first 6 h hunt ends at level 12-16 (days 2 and 3: the simulated player has made one claim by then), the second claim lands on day 4-5 (day 5: 20-32),
+  // and day 14 stays 44-60. A player who claims twice a day is at level 24-28 around his third day.
+  const t4 = (runs: Run[]) => `${cell(lvl(runs, 1))} / ${cell(lvl(runs, 2))} / ${cell(lvl(runs, 4))} / ${cell(lvl(runs, 13))}`;
+  const t4ok = (runs: Run[]) => [inBand(lvl(runs, 1), 12, 16), inBand(lvl(runs, 2), 12, 16), inBand(lvl(runs, 4), 20, 32), inBand(lvl(runs, 13), 44, 60)];
   rows.push([
     'T2',
     'Primeira sessão da conta nova termina no andar ≥ 8; checkpoint do andar 10 até o dia 2 (era o dia 1 antes da Liga: a Masmorra dava XP)',
@@ -625,10 +627,10 @@ function metas(a: Run[], n: Run[], curveWorst: number): string[] {
   const t4a = t4ok(a);
   rows.push([
     'T4',
-    'Nível no fim do dia 2 / 3 / 14 (alvos 20–28 / 20–29 / 45–60; era dia 1 / 3 / 14, 10–16 / 20–29 / 45–60, quando a Masmorra dava XP)',
+    'Nível no fim do dia 2 / 3 / 5 / 14 (alvos 12–16 / 12–16 / 20–32 / 44–60; rodada 28: as primeiras 6 h de Caça terminam no nível 12–16, não no 24)',
     t4(a),
     '-',
-    t4a.every(Boolean) ? 'ok' : `dia 2 ${ok(t4a[0])}; dia 3 ${ok(t4a[1])}; dia 14 ${ok(t4a[2])}`,
+    t4a.every(Boolean) ? 'ok' : `dia 2 ${ok(t4a[0])}; dia 3 ${ok(t4a[1])}; dia 5 ${ok(t4a[2])}; dia 14 ${ok(t4a[3])}`,
   ]);
   rows.push([
     'T5',

@@ -122,6 +122,8 @@ export const BOUNDS = {
    * Days 28 and below keep the Rodada 24 values (the seeds say day 2 for level 28; kept at 3, the looser): a Legendary of luck at 4% moves the first days by one. Rodada 20 had 60 on day 24 and 88 on day 60 for the plain owner alone: the zone level gates of Rodada 22
    * (zone 3 asks level 40, zone 4 level 60) hold the owner who bought a set back, and the table now follows him, the fastest legitimate player, instead of the plain owner.
    */
+  // Rodada 28 (the first levels cost 3.3x, tunables progression.heroEarly*): the fastest simulated seeds reach level 24 / 28 on day 4 (they were day 2 / 3) and 51 to 92 about a day later than the anchors below; the
+  // anchors are KEPT as the looser side (a person who hunts twice a day reaches level 24, now 26 thousand XP, on his second day), and the XP table (tables.ts) is regenerated, which is what moves the XP of a level.
   levelPace: [
     [1, 0],
     [24, 2],
