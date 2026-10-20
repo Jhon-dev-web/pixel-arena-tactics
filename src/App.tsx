@@ -90,7 +90,7 @@ import { playerSpriteUrl, withLookMoment } from './game/sprites';
 import AdminModal from './components/AdminModal';
 import { recordError, setErrorContext } from './lib/errorLog';
 import ShopModal from './components/ShopModal';
-import ForgeModal, { ForgeReveal, ForgeTab } from './components/ForgeModal';
+import ForgeView, { ForgeReveal, ForgeTab } from './components/ForgeModal';
 import OficiosView from './components/OficiosView';
 import InventoryModal from './components/InventoryModal';
 import PersonagemView from './components/PersonagemView';
@@ -209,12 +209,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const [shopOpen, setShopOpen] = useState(false);
   const [shopTab, setShopTab] = useState<'buy' | 'sell' | 'wholesale' | 'pouch'>('buy');
-  const [forgeOpen, setForgeOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
-  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado' | 'passe' | 'convites'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado' | 'passe' | 'convites' | 'forja'>('home');
   // A tradeable material the player asked to sell from the inventory: the market opens on its Sell tab with it picked (once).
   const [marketPick, setMarketPick] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -772,7 +771,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         [huntOpen, () => setHuntOpen(false)],
         [dungeonOpen, () => setDungeonOpen(false)],
         [bagOpen, () => setBagOpen(false)],
-        [forgeOpen, () => setForgeOpen(false)],
         [shopOpen, () => setShopOpen(false)],
       ];
       const top = layers.find(([open]) => open);
@@ -802,7 +800,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     huntOpen,
     dungeonOpen,
     bagOpen,
-    forgeOpen,
     shopOpen,
   ]);
 
@@ -1431,7 +1428,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       setBagOpen(true);
     } else if (target === 'forge') {
       playSfx('click');
-      setForgeOpen(true);
+      setActiveView('forja');
     } else if (target === 'skills') {
       playSfx('click');
       setActiveView('skills');
@@ -1599,7 +1596,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSyncedSave(null);
     setSave(next);
     setShopOpen(false);
-    setForgeOpen(false);
+    setForgeFocus(null);
     setBagOpen(false);
     setDungeonOpen(false);
     setHuntOpen(false);
@@ -1978,15 +1975,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   // "Usar em..." from an item: open the screen that consumes it, focused on the first recipe that does.
-  const [forgeFocus, setForgeFocus] = useState<{ tab: ForgeTab; itemId?: string } | null>(null);
+  const [forgeFocus, setForgeFocus] = useState<{ tab: ForgeTab; itemId?: string; nonce: number } | null>(null);
+  useEffect(() => { if (activeView !== 'forja') setForgeFocus(null); }, [activeView]); // the deep link is spent once the Forge page is left
   const [oficiosFocus, setOficiosFocus] = useState<{ category: RefiningStation | 'potions'; recipeId: string } | null>(null);
   const openUse = (use: ItemUse) => {
     playSfx('click');
     const first = use.refs[0];
     if (use.kind === 'forge' || use.kind === 'upgrade') {
       setBagOpen(false);
-      setForgeFocus({ tab: use.kind === 'forge' ? 'forge' : 'upgrade', itemId: use.kind === 'forge' ? first : undefined });
-      setForgeOpen(true);
+      setForgeFocus({ tab: use.kind === 'forge' ? 'forge' : 'upgrade', itemId: use.kind === 'forge' ? first : undefined, nonce: Date.now() });
+      setActiveView('forja');
     } else if (use.kind === 'refine' || use.kind === 'alchemy') {
       setBagOpen(false);
       setOficiosFocus({ category: use.kind === 'alchemy' ? 'potions' : refiningRecipeById(first)?.station ?? 'furnace', recipeId: first });
@@ -2327,10 +2325,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       key: 'equipment',
       header: t('nav.groupEquipment'),
       items: [
-        { key: 'forge', icon: <img className="pixel-icon" src="/assets/icons/steel.png" alt="" />, label: t('nav.forge'), active: forgeOpen, tutorialTarget: 'forge', onClick: () => {
+        { key: 'forge', icon: <img className="pixel-icon" src="/assets/icons/steel.png" alt="" />, label: t('nav.forge'), active: activeView === 'forja', tutorialTarget: 'forge', onClick: () => {
             closeDrawer();
             playSfx('click');
-            setForgeOpen(true);
+            setActiveView('forja');
             if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
           } },
         { key: 'inventory', icon: <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />, label: t('nav.inventory'), active: bagOpen, onClick: () => { closeDrawer(); playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
@@ -2386,7 +2384,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onOpenHero={() => setActiveView('personagem')}
               onOpenHunt={openHunt}
               onOpenDungeon={openDungeon}
-              onOpenForge={() => { playSfx('click'); setForgeOpen(true); }}
+              onOpenForge={() => { playSfx('click'); setActiveView('forja'); }}
               onOpenExpedition={openExpedition}
               onOpenMining={() => { playSfx('click'); setMineOpen(true); }}
               onOpenWoodcutting={() => { playSfx('click'); setWoodOpen(true); }}
@@ -2444,6 +2442,21 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             />
           )}
           {activeView === 'convites' && configured && <InvitesPage online />}
+          {activeView === 'forja' && (
+            <ForgeView
+              key={forgeFocus?.nonce ?? 'free'}
+              save={save}
+              onForge={forgeItem}
+              onUpgrade={upgradeItem}
+              onUpgradeWithCatalyst={upgradeItemWithCatalyst}
+              onRepair={repairItem}
+              onSocket={socketGem}
+              onUnsocket={unsocketGem}
+              reveal={forgeReveal}
+              initialTab={forgeFocus?.tab}
+              focusItemId={forgeFocus?.itemId}
+            />
+          )}
           {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} focus={oficiosFocus} />}
         </div>
       </div>
@@ -2472,26 +2485,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onClose={() => {
             playSfx('click');
             setShopOpen(false);
-          }}
-        />
-      )}
-
-      {forgeOpen && (
-        <ForgeModal
-          save={save}
-          onForge={forgeItem}
-          onUpgrade={upgradeItem}
-          onUpgradeWithCatalyst={upgradeItemWithCatalyst}
-          onRepair={repairItem}
-          onSocket={socketGem}
-          onUnsocket={unsocketGem}
-          reveal={forgeReveal}
-          initialTab={forgeFocus?.tab}
-          focusItemId={forgeFocus?.itemId}
-          onClose={() => {
-            playSfx('click');
-            setForgeOpen(false);
-            setForgeFocus(null);
           }}
         />
       )}

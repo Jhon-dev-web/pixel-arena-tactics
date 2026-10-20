@@ -43,7 +43,7 @@ import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
 import StashHint from './StashHint';
 import ConsumableIcon from './ConsumableIcon';
-import { ChipRow, ItemFrame, ModalShell, Panel, PrimaryButton, ScreenLayout, SecondaryButton, Tabs } from './ui';
+import { ChipRow, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout, SecondaryButton, Tabs } from './ui';
 import type { TabItem } from './ui';
 
 const gearText = (k: string): string => t(`gear.${k}`);
@@ -112,7 +112,8 @@ export interface ForgeReveal {
   tone: 'common' | 'rare' | 'epic' | 'legendary' | 'ok' | 'fail';
 }
 
-export default function ForgeModal({
+// The Forja as its own main-content area (like Ofícios and the Passe): a page header, the four tabs and the same lists / craft panel the old modal had.
+export default function ForgeView({
   save,
   onForge,
   onUpgrade,
@@ -120,7 +121,6 @@ export default function ForgeModal({
   onRepair,
   onSocket,
   onUnsocket,
-  onClose,
   reveal = null,
   allowedTabs = ALL_TABS,
   title,
@@ -135,7 +135,6 @@ export default function ForgeModal({
   onRepair: (id: string, blessed: boolean) => void;
   onSocket: (itemId: string, gemId: GemId) => void;
   onUnsocket: (itemId: string, index: number) => void;
-  onClose: () => void;
   reveal?: ForgeReveal | null;
   allowedTabs?: ForgeTab[];
   title?: string;
@@ -230,8 +229,8 @@ export default function ForgeModal({
   const current = categoryItems.find((i) => i.id === selectedId) ?? categoryItems[0] ?? null;
   const pickRecipe = (id: string) => {
     setSelectedId(id);
-    // on a narrow screen the craft panel sits under the list: bring it into view
-    if (window.matchMedia('(max-width: 1100px)').matches) window.setTimeout(() => panelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
+    // when the craft panel sits under the list (a narrow page) bring it into view; side by side it is already visible, so 'nearest' leaves the page alone
+    window.setTimeout(() => panelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
   };
 
   // the requirement rows of a recipe: what the player has against what it takes
@@ -261,21 +260,17 @@ export default function ForgeModal({
   ].filter((it) => allowedTabs.includes(it.id as ForgeTab)) as TabItem<ForgeTab>[];
 
   return (
-    <ModalShell
-      className="forge-modal"
-      tutorialTarget="forge-modal"
-      icon={<img className="pixel-icon" src="/assets/icons/steel.png" alt="" />}
-      title={title ?? t('forge.title')}
-      subtitle={t('ui.owned', { n: fmtNum(save.gold) })}
-      closeLabel={t('ui.close')}
-      onClose={onClose}
-    >
+    <Screen label={title ?? t('forge.title')} className="fg-page" data-tutorial-target="forge-modal">
+      <PageHeader icon={<img className="pixel-icon" src="/assets/icons/steel.png" alt="" />} title={title ?? t('forge.title')} subtitle={t('ui.owned', { n: fmtNum(save.gold) })} />
       <div className="fg-root">
-        {reveal && (
-          <div key={reveal.id} className={`forge-reveal reveal rv-${reveal.tone}`} role="status">
-            {reveal.text}
-          </div>
-        )}
+        {/* a slot of its own: the result line appearing / going away never moves the list under the player's finger */}
+        <div className="fg-reveal-slot" aria-live="polite">
+          {reveal && (
+            <div key={reveal.id} className={`forge-reveal reveal rv-${reveal.tone}`} role="status">
+              {reveal.text}
+            </div>
+          )}
+        </div>
 
         {tabItems.length > 1 && <Tabs<ForgeTab> items={tabItems} value={tab} onChange={setTab} label={title ?? t('forge.title')} className="fg-tabs" />}
 
@@ -649,6 +644,6 @@ export default function ForgeModal({
           </div>
         )}
       </div>
-    </ModalShell>
+    </Screen>
   );
 }
