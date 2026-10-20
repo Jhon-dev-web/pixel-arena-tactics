@@ -1,0 +1,9 @@
+# The game's Vercel project builds from source; never upload local build outputs, the desktop build or the separate apps.
+release
+dist-desktop
+smoke-out
+admin
+portal
+supabase/.temp
+.claude
+docs
