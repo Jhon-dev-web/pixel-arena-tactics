@@ -389,8 +389,8 @@ html { scroll-behavior: smooth; }
 .h-ring { flex: none; width: 46px; height: 46px; display: grid; place-items: center; border: 1.5px solid var(--gold-line); border-radius: 50%; color: var(--gold-hi); background: radial-gradient(circle,#2b200e,#0c0e12); }
 .h-icon { display: block; }
 .h-art { position: absolute; z-index: 1; display: block; height: auto; }
-.h-trophy { right: 5px; top: 70px; width: min(42%,300px); -webkit-mask-image: linear-gradient(90deg,transparent 0%,#000 28%,#000 94%,transparent 100%),linear-gradient(0deg,transparent 0%,#000 20%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg,transparent 0%,#000 28%,#000 94%,transparent 100%),linear-gradient(0deg,transparent 0%,#000 20%); mask-composite: intersect; }
-.h-passcard { right: 5px; top: 8px; width: min(34%,250px); -webkit-mask-image: linear-gradient(90deg,transparent 0%,#000 26%,#000 94%,transparent 100%),linear-gradient(0deg,transparent 0%,#000 22%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg,transparent 0%,#000 26%,#000 94%,transparent 100%),linear-gradient(0deg,transparent 0%,#000 22%); mask-composite: intersect; }
+.h-trophy { right: 5px; top: 70px; width: min(42%,300px); filter: drop-shadow(0 0 24px #e0a23a55); }
+.h-passcard { right: 5px; top: 8px; width: min(34%,250px); filter: drop-shadow(0 0 24px #a35ee055); }
 .h-card-foot { position: relative; z-index: 2; margin-top: auto; padding-top: 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
 .h-length, .h-price { margin: 0; display: flex; align-items: center; gap: 14px; padding: 12px 22px; border: 1px solid var(--gold-line); background: #05070aee; color: var(--gold-hi); }
 .h-length > span, .h-price { line-height: 1.1; }
