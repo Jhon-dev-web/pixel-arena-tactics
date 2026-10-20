@@ -87,9 +87,9 @@ function Body({ ov, series, now }: { ov: Overview; series: SeriesDay[] | null; n
       <SectionTitle>Passe do Aventureiro</SectionTitle>
       <div className="kpis">
         <Kpi label="Passes ativos" value={fmtInt(ov.pass.owners_active)} sub={goalTarget ? `${fmtInt(ov.pass.goal_paid)} pagos de ${fmtInt(goalTarget)} da meta` : undefined} />
-        <Kpi label="Receita estimada" value={fmtUsd(rev.total)} sub={`cartão ${fmtUsd(rev.card)} + USDC ${fmtUsd(rev.usdc)}`} tone="good" />
-        <Kpi label="Vendas no cartão" value={fmtInt(ov.pass.card_sold_live)} sub={`× ${fmtUsd(ov.pass.card_price_usd)} · ${fmtInt(ov.pass.card_refunded_live)} reembolsadas`} />
+        <Kpi label="Receita estimada" value={fmtUsd(rev.total)} sub={rev.card > 0 ? `USDC ${fmtUsd(rev.usdc)} + cartão ${fmtUsd(rev.card)}` : `USDC ${fmtUsd(rev.usdc)}`} tone="good" />
         <Kpi label="Vendas em USDC" value={fmtInt(ov.pass.usdc_payments_live)} sub={`${fmtUsd(ov.pass.usdc_live)} recebidos${ov.pass.usdc_to_refund > 0 ? ` · ${fmtUsd(ov.pass.usdc_to_refund)} a devolver` : ''}`} tone={ov.pass.usdc_to_refund > 0 ? 'warn' : undefined} />
+        {(ov.pass.card_sold_live > 0 || ov.pass.card_refunded_live > 0) && <Kpi label="Vendas no cartão (legado)" value={fmtInt(ov.pass.card_sold_live)} sub={`× ${fmtUsd(ov.pass.card_price_usd)} · ${fmtInt(ov.pass.card_refunded_live)} reembolsadas`} />}
       </div>
       <div className="grid-2" style={{ marginTop: 12 }}>
         <Card title="Passes ativos por origem" note={testOwners ? `fora disto: ${fmtInt(testOwners)} de teste` : undefined}>
@@ -152,7 +152,7 @@ function Body({ ov, series, now }: { ov: Overview; series: SeriesDay[] | null; n
             <LineChart label="Cadastros e jogadores ativos por dia" labels={labels} axis={(n) => fmtInt(n)} tip={fmtInt} series={[{ name: 'Cadastros', tone: 1, values: col((d) => d.signups) }, { name: 'Jogadores ativos', tone: 3, values: col((d) => d.active_players) }]} />
           </Card>
           <Card title="Vendas do Passe por origem">
-            <BarChart stacked label="Vendas do Passe por dia e origem" labels={labels} axis={(n) => fmtInt(n)} tip={fmtInt} series={[{ name: 'Cartão', tone: 1, values: col((d) => d.pass_stripe) }, { name: 'USDC', tone: 3, values: col((d) => d.pass_usdc) }, { name: 'Indicação', tone: 4, values: col((d) => d.pass_referral) }, { name: 'Concessão', tone: 6, values: col((d) => d.pass_grant) }, { name: 'Teste', tone: 2, values: col((d) => d.pass_test) }]} />
+            <BarChart stacked label="Vendas do Passe por dia e origem" labels={labels} axis={(n) => fmtInt(n)} tip={fmtInt} series={[{ name: 'USDC', tone: 3, values: col((d) => d.pass_usdc) }, ...((series ?? []).some((d) => d.pass_stripe > 0) ? [{ name: 'Cartão', tone: 1 as const, values: col((d) => d.pass_stripe) }] : []), { name: 'Indicação', tone: 4, values: col((d) => d.pass_referral) }, { name: 'Concessão', tone: 6, values: col((d) => d.pass_grant) }, { name: 'Teste', tone: 2, values: col((d) => d.pass_test) }]} />
           </Card>
           <Card title="Receita do Passe por dia (US$)">
             <BarChart label="Receita do Passe por dia" labels={labels} axis={(n) => fmtUsd(n).replace(',00', '')} tip={fmtUsd} series={[{ name: 'Receita estimada', tone: 3, values: col((d) => d.pass_revenue_usd) }]} />

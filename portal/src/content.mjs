@@ -3,7 +3,7 @@ const l = localized;
 // OWNER SETTINGS. Everything the owner has to fill lives in this block; each key explains itself. Defaults keep the site honest while nothing is decided.
 //  playUrl         official address of the game (https). null: the "Jogar grátis / Play free" button stays disabled with "Em breve / Soon".
 //  passSalesOpen   the ONE switch for the Pass sale. false: every page says the Pass is coming and no price is shown. true: the price, the buy button
-//                  (<playUrl>/?comprar=passe), "Pagamento seguro pelo Stripe" and the refund-policy link appear. Needs playUrl and legalLive.refund (the build refuses it otherwise).
+//                  (<playUrl>/?comprar=passe), and the refund-policy link appear (USDC on Solana only; no card). Needs playUrl and legalLive.refund (the build refuses it otherwise).
 //  passPrice       the text shown only when passSalesOpen is true.
 //  siteUrl         public origin of the portal (https://example.com, no path). null: relative links, noindex, no robots.txt / sitemap.xml. Set: absolute canonical,
 //                  hreflang and Open Graph URLs, robots.txt, sitemap.xml and indexing allowed.
@@ -19,7 +19,7 @@ const l = localized;
 // the data is unavailable: it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
 // "anon" key (it is public by design and protected by the database rules). The service key must NEVER be written here.
 export const config = {
-  playUrl: null, passSalesOpen: false, passPrice: 'US$ 10', siteUrl: null,
+  playUrl: null, passSalesOpen: false, passPrice: '10 USDC', siteUrl: null,
   company: { legalName: null, cnpj: null, supportEmail: null },
   legalLive: { terms: false, privacy: false, refund: false, seasonRules: false }, waitlistEnabled: false, referralEnabled: false,
   supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Idle', pageSize: 8,
@@ -248,6 +248,7 @@ export const faq = [
   { question: l('O jogo tem combate entre jogadores?', 'Does the game have player-versus-player combat?'), answer: l('Não. O combate no Arena Idle é contra monstros e chefes; não há combate entre jogadores.', 'No. Combat in Arena Idle is against monsters and bosses; there is no player-versus-player combat.') },
   { question: l('O jogo é gratuito?', 'Is the game free?'), answer: freeAnswer },
   { question: l('O que é o Passe de Aventureiro?', 'What is the Adventurer’s Pass?'), answer: passAnswer },
+  { question: l('Como pago o Passe com USDC?', 'How do I pay for the Pass with USDC?'), answer: l('Você precisa de uma carteira Solana (Phantom ou Solflare) com 10 USDC e um pouco de SOL para a taxa da rede. Dentro do jogo, abra o Passe, toque em pagar com USDC, ligue a carteira e aprove a transação. O Passe é liberado assim que o pagamento é confirmado, em geral em instantes. O jogo nunca guarda o seu dinheiro nem a sua chave.', 'You need a Solana wallet (Phantom or Solflare) holding 10 USDC and a little SOL for the network fee. In the game, open the Pass, tap pay with USDC, connect your wallet and approve the transaction. The Pass unlocks as soon as the payment is confirmed, usually within moments. The game never holds your money or your key.') },
   { question: l('O que é a Liga da Temporada?', 'What is the Season League?'), answer: l('Uma competição exclusiva de quem tem o Passe, com prêmio em dinheiro de valor fixo, publicado no regulamento. Ela começa quando a comunidade chegar à meta de Passes; até lá roda uma pré-temporada sem prêmio. Veja a meta e os rankings na página da Liga. A pré-temporada é um teste aberto: quando a Liga começar, todos os heróis online recomeçam do zero. O Passe e o seu nome continuam.', 'A competition exclusive to Pass owners, with a fixed cash prize published in the rules. It begins when the community reaches the Pass goal; until then a pre-season with no prize runs. See the goal and the rankings on the League page. The pre-season is an open test: when the League begins, every online hero starts again from zero. Your Pass and your name stay.') },
   { question: l('Já posso jogar?', 'Can I play yet?'), answer: playAnswer },
   { question: l('O jogo está pronto?', 'Is the game finished?'), answer: l('O jogo está em desenvolvimento ativo: novos sistemas e ajustes chegam com o tempo. O Roadmap mostra o estado de cada parte, e “Disponível” quer dizer que o sistema já existe na versão atual, sem indicar que ele é final.', 'The game is in active development: new systems and tweaks arrive over time. The Roadmap shows where each part stands, and “Available” means the system already exists in the current version, not that it is final.') },

@@ -1763,9 +1763,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     buyIntentDone.current = true;
     clearBuyIntent();
     setBattlePassOpen(true);
-    if (!passPurchaseEnabled) return;
+    if (!passPurchaseEnabled && !marketOn) return;
     fetchServerPassOwned()
-      .then((owned) => setHighlightBuy(buyIntentAction(passPurchaseEnabled, owned) === 'highlight'))
+      .then((owned) => setHighlightBuy(buyIntentAction(passPurchaseEnabled || marketOn, owned) === 'highlight'))
       .catch(() => undefined);
     // once per page load, for the signed-in account
   }, [userId, passVersion]);
@@ -2659,7 +2659,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onRecheck={confirmPassPurchase}
           buyExtra={marketOn && PassUsdc && isServerPassSource() ? (
             <Suspense fallback={null}>
-              <PassUsdc onGranted={confirmPassPurchase} />
+              <PassUsdc onGranted={confirmPassPurchase} autoOpen={highlightBuy} />
             </Suspense>
           ) : undefined}
           onClaim={claimBattlePassLevel}

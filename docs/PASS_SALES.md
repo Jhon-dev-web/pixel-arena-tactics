@@ -1,5 +1,7 @@
 # Como ligar a venda do Passe do Aventureiro (web)
 
+> **Decisão do dono (2026-10-20): sem Stripe. O Passe é vendido SOMENTE em USDC na rede Solana, pela carteira do jogador.** O caminho de lançamento é o USDC (`VITE_MARKET_ENABLED`, função `pass-crypto`, veja [`MARKET_SOLANA.md`](MARKET_SOLANA.md)); o modal do Passe mostra só a opção USDC e o portal/FAQ falam só em USDC. **Tudo o que este documento diz sobre Stripe (seções 0 a 3 sobre checkout, 5, e os testes de cartão) é OPCIONAL e fica DESLIGADO**: o código (`create-checkout`, `stripe-webhook`, `VITE_PASS_PURCHASE_ENABLED`) continua no repositório, dormente, para o futuro. Não configure Stripe para lançar. As origens `stripe` já existentes em `entitlements` continuam valendo e aparecem no painel como "cartão (legado)".
+
 AVISO: **nada disto foi aplicado em produção por este trabalho.** Nenhuma migration foi aplicada, nenhuma função foi implantada, nenhum projeto Supabase, Stripe ou Vercel foi tocado, nenhuma chave foi lida ou escrita. O código está no repositório e a venda continua DESLIGADA até você seguir os passos abaixo. Os valores de segredos ficam só nos painéis; aqui há apenas nomes.
 
 ## 0. Como funciona (resumo)

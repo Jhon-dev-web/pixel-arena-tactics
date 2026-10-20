@@ -11,10 +11,11 @@ import { copyText, fmtUsdc, shortAddress } from './market/format';
 import { Button, Panel, TextField } from './ui';
 import '../market.css';
 
-// The second way to buy the Adventurer Pass: USDC (an SPL token on Solana), sent from the player's own wallet (Phantom, Solflare) to the game's receiving wallet, verified on chain by the
-// pass-crypto function. Lives in the market chunk (web only, VITE_MARKET_ENABLED). The Stripe button next to it is untouched.
-export default function PassUsdc({ onGranted }: { onGranted: () => void }) {
-  const [open, setOpen] = useState(false);
+// The way to buy the Adventurer Pass: USDC (an SPL token on Solana), sent from the player's own wallet (Phantom, Solflare) to the game's receiving wallet, verified on chain by the
+// pass-crypto function. Lives in the market chunk (web only, VITE_MARKET_ENABLED). The Pass is sold with USDC only; the dormant Stripe button is hidden by BattlePassModal while VITE_PASS_PURCHASE_ENABLED is off.
+export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: () => void; autoOpen?: boolean }) {
+  // autoOpen (the website's ?comprar=passe link): the payment panel is already open, but nothing starts (no wallet prompt) until the player taps.
+  const [open, setOpen] = useState(autoOpen);
   const [plan, setPlan] = useState<PassPlan | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -144,7 +145,7 @@ export default function PassUsdc({ onGranted }: { onGranted: () => void }) {
   if (!open) {
     return (
       <Button
-        variant="secondary"
+        variant="primary"
         className="pa-usdc-btn"
         onClick={() => {
           setOpen(true);

@@ -232,6 +232,8 @@ export default function BattlePassModal({
   const buyLabel = server
     ? t(passPurchaseEnabled ? (passFlow === 'starting' ? 'battlePass.opening' : 'battlePass.buy') : 'battlePass.comingSoonWeb')
     : t(ADVENTURER_PASS_TESTABLE ? 'battlePass.activateTest' : 'battlePass.comingSoon');
+  // The Pass is sold through the extra option only: on the web build with it present and the card checkout off, it is the only buy control (no card button).
+  const showMainBuy = !server || passPurchaseEnabled || !buyExtra;
   const now = Date.now();
   // The season shown is never behind the one the save settled (a clock set back keeps the stored one).
   const season = Math.max(save.passSeason, seasonNumber(now));
@@ -377,7 +379,7 @@ export default function BattlePassModal({
             <Button variant="primary" className="pa-buy-btn" onClick={onRecheck}>
               {t('battlePass.recheck')}
             </Button>
-          ) : (
+          ) : showMainBuy ? (
             <Button
               variant="primary"
               className={`pa-buy-btn${highlightBuy ? ' pa-buy-highlight' : ''}`}
@@ -387,7 +389,7 @@ export default function BattlePassModal({
             >
               {buyLabel}
             </Button>
-          )}
+          ) : null}
           {salesPaused && (
             <span className="pa-note" role="status" data-testid="ops-pass-paused">
               {t('ops.passSalesPaused')}
@@ -404,7 +406,7 @@ export default function BattlePassModal({
       {!owner && (
         <p className="pa-buy-blurbs">
           <span>{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
-          {server && passPurchaseEnabled && <span>{t('battlePass.priceOnCheckout')}</span>}
+          {server && passPurchaseEnabled && !buyExtra && <span>{t('battlePass.priceOnCheckout')}</span>}
         </p>
       )}
     </>

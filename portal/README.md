@@ -45,7 +45,7 @@ Para editar publicações, consulte [EDITORIAL.md](EDITORIAL.md). Artigos só en
 | Chave | Padrão | Efeito |
 | --- | --- | --- |
 | `playUrl` | `null` | Endereço HTTPS do jogo. `null`: o botão "Jogar grátis" fica desativado com "Em breve" (nunca aponta para o roadmap). |
-| `passSalesOpen` | `false` | Chave única da venda do Passe. `false`: todas as páginas dizem que o Passe está chegando e nenhum preço aparece. `true`: preço (`passPrice`), "Comprar o Passe" (`<playUrl>/?comprar=passe`), "Pagamento seguro pelo Stripe" e link do reembolso. O build exige `playUrl` e o texto do reembolso. |
+| `passSalesOpen` | `false` | Chave única da venda do Passe. `false`: todas as páginas dizem que o Passe está chegando e nenhum preço aparece. `true`: preço (`passPrice`), "Comprar o Passe" (`<playUrl>/?comprar=passe`), pagamento em USDC pela carteira Solana (sem cartão) e link do reembolso. O build exige `playUrl` e o texto do reembolso. |
 | `siteUrl` | `null` | Origem pública (https, sem caminho). `null`: links relativos, `noindex`, sem robots.txt/sitemap.xml. Preenchido: canonical/hreflang/Open Graph absolutos, indexação liberada, robots.txt e sitemap.xml gerados. |
 | `company` | tudo `null` | `legalName`, `cnpj`, `supportEmail`: aparecem no rodapé só os campos preenchidos. |
 | `legalLive` | tudo `false` | `terms`, `privacy`, `refund`, `seasonRules`: o rodapé só linka a página quando a flag é `true` e a entrada em `legal` tem `body` (blocos de EDITORIAL.md). As páginas reservadas continuam sem link. |
