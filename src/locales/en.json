@@ -2259,5 +2259,43 @@
     "found": "You found tradeable material: {list}.",
     "waiting": "{n} tradeable {name} waiting for room in the inventory.",
     "sellOnMarket": "Sell on the Market"
+  },
+  "craft": {
+    "qty": "Quantity",
+    "qtyMinus": "Fewer",
+    "qtyPlus": "More",
+    "max": "Max",
+    "time": "Time: {time}",
+    "total": "{n} for {time}",
+    "start": "Make {n}",
+    "making": "Producing {name}",
+    "progress": "{done} / {total}",
+    "left": "{time} left",
+    "cancel": "Cancel production",
+    "cancelled": "Production cancelled. {n} unit(s) not made were refunded.",
+    "started": "Production started: {n}× {name}",
+    "finished": "Production finished: {n}× {name}",
+    "stalledBag": "Your bag is full: the next unit waits for room.",
+    "stalledOther": "The next unit could not be made yet. Free up space or cancel.",
+    "gearReady": "{n} piece(s) forged",
+    "seconds": "{n} s",
+    "minutes": "{m} min {s} s"
+  },
+  "busy": {
+    "title": "Hero busy",
+    "heroIn": "Your hero is in {activity}.",
+    "hunt": "Open Hunt",
+    "mining": "Mining",
+    "woodcutting": "Woodcutting",
+    "craft": "Production",
+    "dungeon": "the Dungeon",
+    "stopHunt": "Stop hunting",
+    "stopMining": "Stop and collect mining",
+    "stopWoodcutting": "Stop and collect woodcutting",
+    "stopCraft": "Cancel production",
+    "keep": "Keep going",
+    "hud": "Hero: {activity}",
+    "hudCraft": "Producing {done}/{total}",
+    "stopped": "Stopped. You can start the new activity."
   }
 }

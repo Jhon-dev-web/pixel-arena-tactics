@@ -717,6 +717,15 @@ const T = DebugPanel.define({
     textFloatMs: { value: 900, min: 300, max: 2000, step: 50, label: 'Damage text float (ms)' },
     particleCount: { value: 14, min: 0, max: 40, step: 1, label: 'Hit spark count' },
   },
+  // Forge / Oficios batch production (craftJob.ts): the hero makes the units one after another, this many seconds each.
+  crafting: {
+    _label: 'Crafting (batch production)',
+    secondsPerUnit: { value: 1, min: 0.1, max: 60, step: 0.1, label: 'Seconds the hero takes to make one unit' },
+    maxBatch: { value: 999, min: 1, max: 9999, step: 1, label: 'Technical ceiling: units in one batch' },
+  },
 });
+
+// Per-recipe override of the seconds one unit takes (key = refining recipe id, potion recipe key or gear template id). Empty on purpose: every recipe uses crafting.secondsPerUnit for now.
+export const CRAFT_SECONDS_OVERRIDES: Record<string, number> = {};
 
 export default T;

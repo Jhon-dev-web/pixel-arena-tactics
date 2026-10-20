@@ -44,6 +44,7 @@ import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeH
 import { applyDamageModifiers, BLESSED_DAMAGE_PCT, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage, StrikeTally } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
+import { CraftJob, sanitizeCraftJob } from './craftJobTypes';
 import { getPlant, MAX_GARDEN_PLOTS, PlantId } from './garden';
 import { BASE_GATHER_POWER, emptySkillXp, gatherPower, SkillId, skillLevel, skillXpToReachLevel } from './skills';
 import { gatherMasteryMult, plantGrowthMs } from './mastery';
@@ -198,6 +199,8 @@ export interface SaveData {
   tradeableBurning?: BurningBatch;
   materialClaims?: PendingMaterialClaim[];
   materialPrefs?: MaterialPrefs;
+  // The Forge / Oficios production job in progress (craftJob.ts); the hero is busy with it. Absent = none.
+  craftJob?: CraftJob | null;
   highestDungeonFloor: number;
   heroName: string;
   str: number;
@@ -1400,6 +1403,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         ...(sanitizeEventPick(parsed.eventPick) ? { eventPick: sanitizeEventPick(parsed.eventPick)! } : {}),
         ...(sanitizeLegacyPouchCerts(parsed.legacyPouchCerts).length > 0 ? { legacyPouchCerts: sanitizeLegacyPouchCerts(parsed.legacyPouchCerts) } : {}),
         ...(sanitizeBossClaims(parsed.pendingBossClaims).length > 0 ? { pendingBossClaims: sanitizeBossClaims(parsed.pendingBossClaims) } : {}),
+        ...(sanitizeCraftJob(parsed.craftJob) ? { craftJob: sanitizeCraftJob(parsed.craftJob)! } : {}),
         highestDungeonFloor,
         materials: { ...emptyMaterials(), ...(parsed.materials ?? {}) },
         potions: { hp: 0, stamina: 0, elixir: 0, ...(parsed.potions ?? {}) },

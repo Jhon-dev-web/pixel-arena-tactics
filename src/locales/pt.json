@@ -2259,5 +2259,43 @@
     "found": "Você achou material negociável: {list}.",
     "waiting": "{n} {name} negociável esperando espaço no inventário.",
     "sellOnMarket": "Vender no Mercado"
+  },
+  "craft": {
+    "qty": "Quantidade",
+    "qtyMinus": "Menos",
+    "qtyPlus": "Mais",
+    "max": "Máx",
+    "time": "Tempo: {time}",
+    "total": "{n} em {time}",
+    "start": "Fazer {n}",
+    "making": "Produzindo {name}",
+    "progress": "{done} / {total}",
+    "left": "faltam {time}",
+    "cancel": "Cancelar produção",
+    "cancelled": "Produção cancelada. {n} unidade(s) não feitas foram devolvidas.",
+    "started": "Produção iniciada: {n}× {name}",
+    "finished": "Produção concluída: {n}× {name}",
+    "stalledBag": "Sua mochila está cheia: a próxima unidade espera por espaço.",
+    "stalledOther": "A próxima unidade ainda não pôde ser feita. Libere espaço ou cancele.",
+    "gearReady": "{n} peça(s) forjada(s)",
+    "seconds": "{n} s",
+    "minutes": "{m} min {s} s"
+  },
+  "busy": {
+    "title": "Herói ocupado",
+    "heroIn": "Seu herói está em {activity}.",
+    "hunt": "Caça Aberta",
+    "mining": "Mineração",
+    "woodcutting": "Lenhaçaria",
+    "craft": "Produção",
+    "dungeon": "Masmorra",
+    "stopHunt": "Parar a caça",
+    "stopMining": "Parar e coletar a mineração",
+    "stopWoodcutting": "Parar e coletar a lenhaçaria",
+    "stopCraft": "Cancelar produção",
+    "keep": "Continuar",
+    "hud": "Herói: {activity}",
+    "hudCraft": "Produzindo {done}/{total}",
+    "stopped": "Parado. Você já pode iniciar a nova atividade."
   }
 }

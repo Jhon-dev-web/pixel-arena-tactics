@@ -50,7 +50,11 @@ import { InvitesPage } from './components/InvitesPanel';
 import { applyReferralCosmetics } from './game/referralRewards';
 import { getServerResetAt, needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
 import LeagueResetModal from './components/LeagueResetModal';
-import { applyBuyConsumable, applyCraftPotion, applyRefine, CraftFailure } from './game/craftActions';
+import { applyBuyConsumable, CraftFailure } from './game/craftActions';
+import { cancelCraftJob, craftUnitsDue, prepaidForgeSave, resolveCraftJob, settleForgeUnit, startCraftJob } from './game/craftJob';
+import type { CraftJobKind } from './game/craftJobTypes';
+import { HeroActivity } from './game/activity';
+import BusyNotice from './components/BusyNotice';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, saveSkillEffects, skillPointsAvailable } from './game/heroSkills';
 import { applyReforge } from './game/reforge';
@@ -238,6 +242,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // The pending hunt reward screen can be set aside to make room in the inventory first (shortcut from the screen itself); the hunt screen brings it back.
   const [rewardHidden, setRewardHidden] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // The hero does one task at a time (activity.ts): what he is busy with when the player asks for another (BusyNotice), and whether the forge job waits on something (a full bag).
+  const [busyNotice, setBusyNotice] = useState<HeroActivity | null>(null);
+  const [craftStalled, setCraftStalled] = useState(false);
   // The brief rarity-coloured line on the forge result (ForgeModal `reveal`): what was just forged / refined, glowing in the colour of its rarity.
   const [forgeReveal, setForgeReveal] = useState<ForgeReveal | null>(null);
   const revealTimeout = useRef<number | null>(null);
@@ -875,6 +882,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const startSession = (depths: boolean) => {
     const s = saveRef.current;
     if (depths && !depthsUnlocked(s)) return;
+    if (s.craftJob) {
+      setBusyNotice('craft');
+      return;
+    }
     if (s.activeOreId) {
       showToast(t('mining.busyDungeon'));
       return;
@@ -1058,17 +1069,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const craftBlockedToast = (reason: CraftFailure | undefined) => {
     if (reason === 'bag') showToast(t('inventory.bagFullAction'));
     else if (reason === 'stack') showToast(t('shop.stackFull'));
-  };
-
-  const craftPotion = (recipeId: string) => {
-    const res = applyCraftPotion(saveRef.current, recipeId);
-    if (!res.ok || !res.save) {
-      craftBlockedToast(res.reason);
-      return;
-    }
-    playSfx('click');
-    setSaveBoth(res.save);
-    showToast(t('forge.toBag', { n: t(`consumables.${getPotionRecipe(recipeId)?.id ?? recipeId}`) }));
   };
 
   // Damage elixirs (elixirs.ts): using one again while it is active refreshes the full duration from now rather than
@@ -1272,6 +1272,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const startMining = (oreId: string) => {
     const s = saveRef.current;
+    if (s.craftJob) {
+      setBusyNotice('craft');
+      return;
+    }
     if (battleFloor !== null) {
       showToast(t('mining.busyBattle'));
       return;
@@ -1468,6 +1472,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Mirrors startMining/claimMining/cancelMining exactly — see gathering.ts and woodcutting.ts/computeWoodcuttingStatus.
   const startWoodcutting = (woodId: string) => {
     const s = saveRef.current;
+    if (s.craftJob) {
+      setBusyNotice('craft');
+      return;
+    }
     if (battleFloor !== null) {
       showToast(t('woodcutting.busyBattle'));
       return;
@@ -1691,6 +1699,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!zone || !isZoneOpen(zone, s.highestDungeonFloor, playerLevel(s.xp))) return;
     if (s.activeHuntingZone === zoneId && s.activeHuntingDepth === depth) return;
     if (!isDepthUnlocked(zone, depth, computeCP(s))) return;
+    if (s.craftJob) {
+      setBusyNotice('craft');
+      return;
+    }
     if (s.pendingHuntReward) {
       setRewardHidden(false);
       showToast(t('hunting.claimFirst'));
@@ -2031,39 +2043,116 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // A weapon / armor craft creates ONE new independent instance (its own rarity roll). Recipe ingredients that
   // are gear consume real instances: `consumedIds` is the selection the player confirmed in the Forge, otherwise
   // the cheapest unequipped copies (see gearInstances.planForgeIngredients). Their gems go back to the stock.
-  const forgeItem = (id: string, consumedIds?: string[], useSeal?: boolean) => {
-    const item = getGear(id);
-    if (!item) return;
-    // Web build: the SERVER rolls the rarity and the substats (and burns certified recipe ingredients); the save gets exactly what it returned (itemActions.forgeAction).
-    // Offline / desktop: the device rolls, as it always did, and what it makes is never tradeable.
-    void withItemLock(async () => {
-      const s = saveRef.current;
-      const result = await forgeAction(itemApi, () => saveRef.current, id, { level: playerLevel(s.xp), consumedIds, seal: useSeal });
-      if (!result.ok) {
-        if (result.blocked !== 'game') failToast(result);
-        else if (result.reason === 'capacity') showToast(t('forge.gearFull', { n: inventoryCapacity(s) }));
-        return;
-      }
-      setSaveBoth(result.save);
-      // Epic / Legendary results get their own fanfare and a glowing line; every forge gets the anvil.
-      const rarity = result.instance?.rarity ?? 'common';
-      playSfx(rarity === 'epic' || rarity === 'legendary' ? 'forge_rare' : 'forge_success');
-      revealForge(rarity === 'common' ? gearText(item.nameKey) : `${gearText(item.nameKey)} · ${t(`rarity.${rarityDef(rarity).nameKey}`)}`, rarity);
-      showToast(t(result.sealUsed ? 'forge.toBagSeal' : 'forge.toBag', { n: gearText(item.nameKey) }));
-    });
+  // ---- Forge / Oficios batch production (craftJob.ts): the batch is paid when it starts, the hero makes one unit per second, a closed game finishes them too, Cancel gives back the rest. -------
+  const craftNameOf = (kind: CraftJobKind, recipeId: string): string => {
+    if (kind === 'forge') return gearText(getGear(recipeId)?.nameKey ?? recipeId);
+    if (kind === 'refine') return t(`materials.mat_${getRefiningRecipe(recipeId)?.output ?? recipeId}`);
+    return t(`consumables.${getPotionRecipe(recipeId)?.id ?? recipeId}`);
   };
-
-  const refineMaterial = (recipeId: string) => {
-    const res = applyRefine(saveRef.current, recipeId);
+  const startBatch = (kind: CraftJobKind, recipeId: string, qty: number, seal?: boolean) => {
+    const res = startCraftJob(saveRef.current, kind, recipeId, qty, Date.now(), { seal });
     if (!res.ok || !res.save) {
-      craftBlockedToast(res.reason);
+      if (res.reason === 'busy' && res.busyWith) {
+        playSfx('click');
+        setBusyNotice(res.busyWith);
+      } else if (res.reason === 'bag' || res.reason === 'capacity') showToast(t(kind === 'forge' ? 'forge.gearFull' : 'inventory.bagFullAction', { n: inventoryCapacity(saveRef.current) }));
       return;
     }
     playSfx('click');
     setSaveBoth(res.save);
-    const output = getRefiningRecipe(recipeId)?.output;
-    if (output) showToast(t('forge.toBag', { n: t(`materials.mat_${output}`) }));
+    setCraftStalled(false);
+    showToast(t('craft.started', { n: qty, name: craftNameOf(kind, recipeId) }));
   };
+
+  // Gear: one server call per finished unit (the web build never rolls a piece on the device). Runs inside the item lock; stops at the first unit that cannot be made yet.
+  const settleForgeDue = async (): Promise<void> => {
+    for (let guard = 0; guard < 1000; guard++) {
+      const job = saveRef.current.craftJob;
+      if (!job || job.kind !== 'forge' || craftUnitsDue(job, Date.now()) <= 0) {
+        setCraftStalled(false);
+        return;
+      }
+      const item = getGear(job.recipeId);
+      // The batch paid this unit at the start: the action sees the save with the unit's price added back and charges it again, so the save it returns is already right.
+      const result = await forgeAction(itemApi, () => prepaidForgeSave(saveRef.current), job.recipeId, { level: playerLevel(saveRef.current.xp), seal: job.seal });
+      if (!result.ok) {
+        if (result.blocked !== 'game') failToast(result);
+        else if (result.reason === 'capacity') showToast(t('forge.gearFull', { n: inventoryCapacity(saveRef.current) }));
+        setCraftStalled(true);
+        return;
+      }
+      setSaveBoth(settleForgeUnit(result.save));
+      const rarity = result.instance?.rarity ?? 'common';
+      playSfx(rarity === 'epic' || rarity === 'legendary' ? 'forge_rare' : 'forge_success');
+      if (item) revealForge(rarity === 'common' ? gearText(item.nameKey) : `${gearText(item.nameKey)} · ${t(`rarity.${rarityDef(rarity).nameKey}`)}`, rarity);
+    }
+  };
+
+  // The clock of the job: delivers what is due, every second and right when the game loads (so units finished while it was closed arrive).
+  const craftTick = () => {
+    const s = saveRef.current;
+    const job = s.craftJob;
+    if (!job) return;
+    if (job.kind === 'forge') {
+      if (craftUnitsDue(job, Date.now()) > 0) void withItemLock(settleForgeDue);
+      return;
+    }
+    const next = resolveCraftJob(s, Date.now());
+    if (next === s) return;
+    setSaveBoth(next);
+    if (!next.craftJob) {
+      playSfx('forge_success');
+      showToast(t('craft.finished', { n: job.qty, name: craftNameOf(job.kind, job.recipeId) }));
+    }
+  };
+  const craftTickRef = useRef(craftTick);
+  craftTickRef.current = craftTick;
+  useEffect(() => {
+    craftTickRef.current();
+    const id = window.setInterval(() => craftTickRef.current(), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const cancelCraft = () => {
+    const done = () => {
+      const { save: next, refundedUnits } = cancelCraftJob(saveRef.current);
+      setSaveBoth(next);
+      setCraftStalled(false);
+      playSfx('click');
+      showToast(t('craft.cancelled', { n: refundedUnits }));
+    };
+    const job = saveRef.current.craftJob;
+    if (!job) return;
+    if (job.kind === 'forge') {
+      // pieces that were finished in time are delivered first (they stay); then the rest is refunded
+      void withItemLock(async () => {
+        await settleForgeDue();
+        if (saveRef.current.craftJob) done();
+      });
+      return;
+    }
+    // units finished in time are delivered first (they stay); then the rest is refunded
+    const resolved = resolveCraftJob(saveRef.current, Date.now());
+    if (resolved !== saveRef.current) setSaveBoth(resolved);
+    if (resolved.craftJob) done();
+  };
+
+  // Stops what the hero is doing so another task can start (BusyNotice): each activity's own stop / claim.
+  const stopActivity = (activity: HeroActivity) => {
+    setBusyNotice(null);
+    if (activity === 'craft') cancelCraft();
+    else if (activity === 'mining') claimMining();
+    else if (activity === 'woodcutting') claimWoodcutting();
+    else {
+      stopHunt();
+      setHuntOpen(true); // the reward the stop leaves is claimed on the hunt screen
+      setRewardHidden(false);
+    }
+  };
+
+  const forgeItem = (id: string, _consumedIds?: string[], useSeal?: boolean, qty = 1) => startBatch('forge', id, qty, useSeal);
+  const refineMaterial = (recipeId: string, qty = 1) => startBatch('refine', recipeId, qty);
+  const craftPotion = (recipeId: string, qty = 1) => startBatch('potion', recipeId, qty);
 
   // Economic reforge (reforge.ts), per INSTANCE: rerolls only that piece's substats; all-or-nothing charge.
   const reforgeItem = (id: string) =>
@@ -2447,6 +2536,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               key={forgeFocus?.nonce ?? 'free'}
               save={save}
               onForge={forgeItem}
+              onCancelCraft={cancelCraft}
+              craftStalled={craftStalled}
               onUpgrade={upgradeItem}
               onUpgradeWithCatalyst={upgradeItemWithCatalyst}
               onRepair={repairItem}
@@ -2457,7 +2548,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               focusItemId={forgeFocus?.itemId}
             />
           )}
-          {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} focus={oficiosFocus} />}
+          {activeView === 'oficios' && <OficiosView key={oficiosFocus?.recipeId ?? 'free'} save={save} onRefine={refineMaterial} onCraftPotion={craftPotion} onCancelCraft={cancelCraft} craftStalled={craftStalled} focus={oficiosFocus} />}
         </div>
       </div>
       {import.meta.env.DEV && !adminOpen && (
@@ -2699,6 +2790,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         />
       )}
 
+      {busyNotice && <BusyNotice activity={busyNotice} onStop={() => stopActivity(busyNotice)} onKeep={() => setBusyNotice(null)} />}
       {toast && <div className="toast">{toast}</div>}
 
       {levelUp && (

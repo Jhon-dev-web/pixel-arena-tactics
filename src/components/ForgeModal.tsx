@@ -43,6 +43,8 @@ import MaterialIcon from './MaterialIcon';
 import GemIcon from './GemIcon';
 import StashHint from './StashHint';
 import ConsumableIcon from './ConsumableIcon';
+import { QtyPicker, CraftJobPanel } from './CraftQty';
+import { planBatchIngredients } from '../game/craftJob';
 import { ChipRow, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout, SecondaryButton, Tabs } from './ui';
 import type { TabItem } from './ui';
 
@@ -116,6 +118,8 @@ export interface ForgeReveal {
 export default function ForgeView({
   save,
   onForge,
+  onCancelCraft,
+  craftStalled,
   onUpgrade,
   onUpgradeWithCatalyst,
   onRepair,
@@ -129,7 +133,11 @@ export default function ForgeView({
 }: {
   save: SaveData;
   // consumedIds: the confirmed selection of gear instances a recipe consumes (omitted = the cheapest copies).
-  onForge: (id: string, consumedIds?: string[], useSeal?: boolean) => void;
+  // qty: how many units the batch makes (the hero makes them one after another, craftJob.ts).
+  onForge: (id: string, consumedIds?: string[], useSeal?: boolean, qty?: number) => void;
+  // The running production job's controls (the panel at the top of the page).
+  onCancelCraft?: () => void;
+  craftStalled?: boolean;
   onUpgrade: (id: string) => void;
   onUpgradeWithCatalyst: (id: string) => void;
   onRepair: (id: string, blessed: boolean) => void;
@@ -149,12 +157,14 @@ export default function ForgeView({
   const setForgeCategory = (cat: ForgeCategory) => {
     setForgeCategoryRaw(cat);
     setSelectedId(null);
+    setQty(1);
   };
   useEffect(() => {
     if (!focusItemId) return;
     document.querySelector(`[data-recipe-id="${focusItemId}"]`)?.scrollIntoView({ block: 'center' });
   }, [focusItemId]);
   const [justForged, setJustForged] = useState<string | null>(null);
+  const [qty, setQty] = useState(1);
   // the recipe shown in the craft panel (the first of the category until one is picked)
   const [selectedId, setSelectedId] = useState<string | null>(focusItemId ?? null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -185,7 +195,7 @@ export default function ForgeView({
 
   const doForge = (id: string, consumedIds?: string[]) => {
     const item = getGear(id);
-    onForge(id, consumedIds, sealOn && sealCount > 0 && !!item && isInstancedSlot(item.slot));
+    onForge(id, consumedIds, sealOn && sealCount > 0 && !!item && isInstancedSlot(item.slot), qty);
     setJustForged(id);
     window.setTimeout(() => setJustForged(null), 1500);
   };
@@ -194,7 +204,7 @@ export default function ForgeView({
   // exactly which pieces go.
   const handleForge = (id: string) => {
     const item = getGear(id);
-    const plan = item ? planForgeIngredients(save, item) : null;
+    const plan = item ? planBatchIngredients(save, id, Math.max(1, qty)) : null;
     if (plan && plan.some(isRelevantInstance)) {
       setPendingForge({ id, ids: plan.map((i) => i.id) });
       return;
@@ -229,6 +239,7 @@ export default function ForgeView({
   const current = categoryItems.find((i) => i.id === selectedId) ?? categoryItems[0] ?? null;
   const pickRecipe = (id: string) => {
     setSelectedId(id);
+    setQty(1);
     // when the craft panel sits under the list (a narrow page) bring it into view; side by side it is already visible, so 'nearest' leaves the page alone
     window.setTimeout(() => panelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
   };
@@ -263,6 +274,7 @@ export default function ForgeView({
     <Screen label={title ?? t('forge.title')} className="fg-page" data-tutorial-target="forge-modal">
       <PageHeader icon={<img className="pixel-icon" src="/assets/icons/steel.png" alt="" />} title={title ?? t('forge.title')} subtitle={t('ui.owned', { n: fmtNum(save.gold) })} />
       <div className="fg-root">
+        <CraftJobPanel save={save} name={(rid) => gearText(getGear(rid)?.nameKey ?? rid)} stalled={craftStalled} onCancel={() => onCancelCraft?.()} />
         {/* a slot of its own: the result line appearing / going away never moves the list under the player's finger */}
         <div className="fg-reveal-slot" aria-live="polite">
           {reveal && (
@@ -422,8 +434,9 @@ export default function ForgeView({
                         </div>
                       )}
 
+                      <QtyPicker save={save} kind="forge" recipeId={current.id} qty={qty} onChange={setQty} />
                       <PrimaryButton block className={justForged === current.id ? 'forged' : undefined} onClick={() => handleForge(current.id)} disabled={!canForge(current)}>
-                        {justForged === current.id ? t('forge.forged') : t('forge.forge')}
+                        {justForged === current.id ? t('forge.forged') : qty > 1 ? t('craft.start', { n: qty }) : t('forge.forge')}
                       </PrimaryButton>
                     </div>
                   </Panel>

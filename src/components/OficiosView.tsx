@@ -3,14 +3,15 @@ import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
 import { SaveData, playerLevel } from '../game/engine';
 import { getMaterial, MaterialId, hasMaterials } from '../game/materials';
-import { RefiningRecipe, RefiningStation, refiningRecipesForStation } from '../game/refining';
-import { POTION_RECIPES, potionRecipeInTier, potionRecipeKey } from '../game/potions';
+import { RefiningRecipe, RefiningStation, getRefiningRecipe, refiningRecipesForStation } from '../game/refining';
+import { POTION_RECIPES, getPotionRecipe, potionRecipeInTier, potionRecipeKey } from '../game/potions';
 import { getConsumable } from '../game/consumables';
 import { REFINE_CATEGORIES } from './refineCategories';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
 import StashHint from './StashHint';
 import { applyCraftPotion, applyRefine } from '../game/craftActions';
+import { QtyPicker, CraftJobPanel } from './CraftQty';
 import { ItemCard, PageHeader, Panel, PrimaryButton, Screen, Tabs } from './ui';
 import type { TabItem } from './ui';
 
@@ -55,11 +56,16 @@ export default function OficiosView({
   save,
   onRefine,
   onCraftPotion,
+  onCancelCraft,
+  craftStalled,
   focus,
 }: {
   save: SaveData;
-  onRefine: (recipeId: string) => void;
-  onCraftPotion: (recipeId: string) => void;
+  // qty: how many units the batch makes (the hero makes them one after another, craftJob.ts).
+  onRefine: (recipeId: string, qty: number) => void;
+  onCraftPotion: (recipeId: string, qty: number) => void;
+  onCancelCraft?: () => void;
+  craftStalled?: boolean;
   // Opened from an item's "Usar em...": the station (or 'potions') to open and the recipe to bring into view.
   focus?: { category: RefiningStation | 'potions'; recipeId: string } | null;
 }) {
@@ -70,9 +76,11 @@ export default function OficiosView({
   const [justMade, setJustMade] = useState<string | null>(null);
   const level = playerLevel(save.xp);
 
+  const [qtys, setQtys] = useState<Record<string, number>>({});
+  const qtyOf = (id: string): number => qtys[id] ?? 1;
   const produce = (recipeId: string, isPotion: boolean) => {
-    if (isPotion) onCraftPotion(recipeId);
-    else onRefine(recipeId);
+    if (isPotion) onCraftPotion(recipeId, qtyOf(recipeId));
+    else onRefine(recipeId, qtyOf(recipeId));
     setJustMade(recipeId);
     window.setTimeout(() => setJustMade(null), 1500);
   };
@@ -96,6 +104,17 @@ export default function OficiosView({
   return (
     <Screen label={t('nav.oficios')}>
       <PageHeader icon={<img className="pixel-icon" src="/assets/icons/refine_catalyst.png" alt="" />} title={t('nav.oficios')} />
+      <CraftJobPanel
+        save={save}
+        name={(rid) => {
+          const r = getRefiningRecipe(rid);
+          if (r) return matText(`mat_${r.output}`);
+          const p = getPotionRecipe(rid);
+          return p ? conText(getConsumable(p.id)?.nameKey ?? p.id) : rid;
+        }}
+        stalled={craftStalled}
+        onCancel={() => onCancelCraft?.()}
+      />
       <Tabs items={tabs} value={category} onChange={(id) => setCategory(id as RefiningStation | 'potions')} label={t('nav.oficios')} className="of-tabs" />
       <Panel className="of-panel">
         <div className="ui-grid of-grid">
@@ -124,12 +143,13 @@ export default function OficiosView({
                     rarityLabel={t('shop.youHave', { n: owned })}
                     action={
                       <PrimaryButton block className={made ? 'of-made' : ''} onClick={() => produce(key, true)} disabled={!ok}>
-                        {made ? t('forge.forged') : t('forge.forge')}
+                        {made ? t('forge.forged') : qtyOf(key) > 1 ? t('craft.start', { n: qtyOf(key) }) : t('forge.forge')}
                       </PrimaryButton>
                     }
                   >
                     <p className="ui-note">{conText(consumable.descKey)}</p>
                     <Reqs rows={rows} />
+                    <QtyPicker save={save} kind="potion" recipeId={key} qty={qtyOf(key)} onChange={(n) => setQtys({ ...qtys, [key]: n })} />
                     {bagFull && <p className="ui-alert bad">{t('inventory.bagFullAction')}</p>}
                   </ItemCard>
                 );
@@ -158,11 +178,12 @@ export default function OficiosView({
                     rarityLabel={t('shop.youHave', { n: owned })}
                     action={
                       <PrimaryButton block className={made ? 'of-made' : ''} onClick={() => produce(recipe.id, false)} disabled={!ok}>
-                        {made ? t('forge.forged') : t('forge.refine')}
+                        {made ? t('forge.forged') : qtyOf(recipe.id) > 1 ? t('craft.start', { n: qtyOf(recipe.id) }) : t('forge.refine')}
                       </PrimaryButton>
                     }
                   >
                     <Reqs rows={rows} />
+                    <QtyPicker save={save} kind="refine" recipeId={recipe.id} qty={qtyOf(recipe.id)} onChange={(n) => setQtys({ ...qtys, [recipe.id]: n })} />
                     {bagFull && <p className="ui-alert bad">{t('inventory.bagFullAction')}</p>}
                   </ItemCard>
                 );

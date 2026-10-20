@@ -1459,3 +1459,77 @@
   font-weight: 400;
   color: var(--c-gold-300);
 }
+
+/* Batch production (craftJob.ts): the quantity picker, the running job and the top-bar activity chip. */
+.craft-qty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0;
+}
+.craft-qty-label,
+.craft-qty-time {
+  font-size: var(--fs-small);
+  color: var(--c-muted, inherit);
+}
+.craft-qty-btn,
+.craft-qty-max {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid var(--c-gold-300);
+  border-radius: 6px;
+}
+.craft-qty-btn:disabled,
+.craft-qty-max:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.craft-qty-input {
+  width: 72px;
+  min-height: 44px;
+  text-align: center;
+  font: inherit;
+  color: inherit;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--c-gold-300);
+  border-radius: 6px;
+}
+.craft-job {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid var(--c-gold-300);
+  border-radius: 8px;
+}
+.craft-job-head,
+.craft-job-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.craft-job-stalled {
+  color: var(--c-danger, #ff8a80);
+  font-size: var(--fs-small);
+}
+.activity-chip {
+  flex-shrink: 0;
+  padding: 4px var(--sp-3);
+  font-size: var(--fs-small);
+  line-height: 1.2;
+  color: var(--c-gold-300);
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid var(--c-gold-300);
+  border-radius: 999px;
+  white-space: nowrap;
+}
