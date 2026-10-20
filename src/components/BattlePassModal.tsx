@@ -444,17 +444,22 @@ export default function BattlePassModal({
           <SeasonRankingPanel online={server} ownsPass={owner} />
         ) : (
           <>
-            <section className="pa-perks" aria-label={t('battlePass.perksTitle')}>
-              {perks.map((p) => (
-                <div className={`pa-perk${owner ? ' on' : ' off'}`} key={p.key}>
-                  <span className="pa-perk-top">
+            <section className={`pa-perks${owner ? ' on' : ' off'}`} aria-label={t('battlePass.perksTitle')}>
+              <div className="pa-perks-head">
+                <span className="pa-perks-title">{t('battlePass.perksTitle')}</span>
+                <Chip tone={owner ? 'good' : 'plain'}>{owner ? t('battlePass.perkOn') : t('battlePass.perkOff')}</Chip>
+              </div>
+              <ul className="pa-perk-list">
+                {perks.map((p) => (
+                  <li className="pa-perk" key={p.key}>
                     <img className="pa-perk-icon" src={p.icon} alt="" draggable={false} />
-                    <span className="pa-perk-state">{owner ? t('battlePass.perkOn') : t('battlePass.perkOff')}</span>
-                  </span>
-                  <span className="pa-perk-label">{p.label}</span>
-                  <span className="pa-perk-sub">{p.sub}</span>
-                </div>
-              ))}
+                    <span className="pa-perk-text">
+                      <span className="pa-perk-label">{p.label}</span>
+                      <span className="pa-perk-sub">{p.sub}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </section>
 
             <Panel

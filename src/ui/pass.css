@@ -70,73 +70,61 @@
   }
 }
 
-/* the perks */
-.pa-perks {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-2);
-}
-@container ui (min-width: 760px) {
-  .pa-perks {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-.pa-perk {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  min-width: 0;
-  padding: var(--sp-3);
-  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
-  border: var(--bw) solid var(--c-line);
-  border-radius: var(--r-md);
-}
-.pa-perk:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-@container ui (min-width: 760px) {
-  .pa-perk:last-child:nth-child(odd) {
-    grid-column: auto;
-  }
-}
-.pa-perk.on {
-  border-color: #2f7a46;
-  background: linear-gradient(180deg, rgba(74, 214, 124, 0.1), #150e1d);
-}
-.pa-perk.off {
-  opacity: 0.8;
-}
-.pa-perk-top {
+/* the perks: a compact list, one header line with the state, thin dividers between rows */
+.pa-perks-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
+  padding-bottom: var(--sp-2);
+  border-bottom: var(--bw-thin) solid var(--c-line-strong);
+}
+.pa-perks-title {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-text);
+}
+.pa-perk-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 719px) {
+  .pa-perk-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.pa-perk {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2) 0;
+  border-bottom: var(--bw-thin) solid var(--c-line);
 }
 .pa-perk-icon {
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   image-rendering: pixelated;
 }
-.pa-perk.off .pa-perk-icon {
+.pa-perks.off .pa-perk-icon {
   filter: grayscale(0.8);
 }
-.pa-perk-state {
-  flex: none;
-  padding: 0 var(--sp-2);
-  font-size: var(--fs-small);
-  color: var(--c-text-muted);
-  border: var(--bw-thin) solid var(--c-line-strong);
-  border-radius: 999px;
+.pa-perks.off .pa-perk-text {
+  opacity: 0.8;
 }
-.pa-perk.on .pa-perk-state {
-  color: var(--c-good);
-  border-color: #2f7a46;
+.pa-perk-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 .pa-perk-label {
   font-size: var(--fs-body);
-  font-weight: 700;
   color: var(--c-text);
   overflow-wrap: anywhere;
 }
