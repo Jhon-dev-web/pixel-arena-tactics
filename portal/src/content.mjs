@@ -94,7 +94,7 @@ export const progression = [
   { title: l('Decida o próximo foco', 'Choose your next focus'), body: l('Volte às atividades com um objetivo', 'Return to activities with a goal'), target: 'professions' },
 ];
 // Copy of the Liga da Temporada page. The goal is NOT written here and never reaches the page: it lives in the database (arena_private.season_goal) and pass_meter() only returns a progress fraction.
-// No prize amount and no link between the number of Passes sold and any prize may ever be written in this block. "Liga da Temporada" is the only name of the competition;
+// Prize policy: only a guaranteed minimum of US$ 1,000 for the top places may be written here, and it may grow with Passes bought. No other amount and no split per place; the distribution and the final amount are published in the rules before the League opens. "Liga da Temporada" is the only name of the competition;
 // "Temporada do Passe" is only the in-game reward track.
 export const seasonPage = {
   nav: l('Liga da Temporada', 'Season League'),
@@ -104,10 +104,10 @@ export const seasonPage = {
   stepsTitle: l('Como funciona', 'How it works'),
   step1: l('Jogue grátis.', 'Play free.'),
   step2: l('Com o Passe, entre na pré-temporada (sem prêmio).', 'With the Pass, join the pre-season (no prize).'),
-  step3: l('Quando a comunidade chegar à meta de Passes, começa a Liga com prêmio em dinheiro, de valor fixo publicado no regulamento.', 'When the community reaches the Pass goal, the League begins with a cash prize, a fixed amount published in the rules.'),
+  step3: l('Quando a comunidade chegar à meta de Passes, começa a Liga com prêmio em dinheiro, com mínimo garantido de US$ 1.000, que pode crescer conforme mais Passes forem comprados.', 'When the community reaches the Pass goal, the League begins with a cash prize, with a guaranteed minimum of US$ 1,000 that can grow as more Passes are bought.'),
   resetNotice: l('A pré-temporada é um teste aberto: quando a Liga começar, todos os heróis online recomeçam do zero. O Passe e o seu nome continuam.', 'The pre-season is an open test: when the League begins, every online hero starts again from zero. Your Pass and your name stay.'),
   meterTitle: l('A meta da comunidade', 'The community goal'),
-  fixedPrize: l('O prêmio é um valor fixo, definido antes do início. Não depende de quantos Passes forem vendidos e não é sorteio: vence quem chegar mais longe, com auditoria antes do pagamento.', 'The prize is a fixed amount, set before the start. It does not depend on how many Passes are sold and it is not a raffle: whoever gets furthest wins, with an audit before payment.'),
+  fixedPrize: l('O prêmio tem mínimo garantido de US$ 1.000 para as primeiras colocações e pode crescer conforme mais Passes forem comprados. A distribuição entre as colocações e o valor final são publicados no regulamento antes da abertura da Liga. Não é sorteio: vence quem chegar mais longe, com auditoria antes do pagamento. Só concorre quem tem o Passe.', 'The prize has a guaranteed minimum of US$ 1,000 for the top places and can grow as more Passes are bought. The distribution among places and the final amount are published in the rules before the League opens. It is not a raffle: whoever gets furthest wins, with an audit before payment. Only Pass owners compete.'),
   goalLine: l('Quando a barra encher, a Liga da Temporada começa.', 'When the bar fills, the Season League begins.'),
   openTitle: l('Liga da Temporada em andamento', 'Season League in progress'),
   openDates: l('De {from} a {to} (UTC)', 'From {from} to {to} (UTC)'),
@@ -127,7 +127,7 @@ export const seasonPage = {
   rulesTitle: l('Regras em resumo', 'Rules at a glance'),
   rule1: l('A participação é exclusiva de quem tem o Passe de Aventureiro. A pontuação é calculada no servidor.', 'Taking part is exclusive to Adventurer’s Pass owners. Scores are calculated on the server.'),
   rule2: l('A pré-temporada usa o mesmo placar, não tem prêmio e termina quando a Liga começar; aí todos recomeçam do zero.', 'The pre-season uses the same scoring, has no prize and ends when the League begins; then everyone starts from zero.'),
-  rule3: l('O regulamento completo e o valor do prêmio são publicados antes da abertura da Liga.', 'The full rules and the prize amount are published before the League opens.'),
+  rule3: l('O regulamento completo, a distribuição entre as colocações e o valor final do prêmio são publicados antes da abertura da Liga.', 'The full rules, the distribution among places and the final prize amount are published before the League opens.'),
   rulesLink: l('Ler o regulamento', 'Read the rules'),
   generalTitle: l('Ranking geral', 'Overall ranking'),
   rankingEyebrow: l('Ranking geral', 'Overall ranking'),
@@ -142,7 +142,7 @@ export const seasonPage = {
   noteEnded: l('Classificação final da última Liga.', 'Final standings of the last League.'),
   noteNone: l('Ainda não há ranking aberto. Quando houver, ele aparece aqui.', 'No ranking is open yet. When one is, it appears here.'),
   prize: l('Prêmio: {note}', 'Prize: {note}'),
-  prizeRule: l('O texto oficial do prêmio aparece junto ao ranking quando a Liga abre. Nenhum valor é divulgado fora do regulamento e dele.', 'The official prize text appears next to the ranking when the League opens. No amount is published anywhere except the rules and there.'),
+  prizeRule: l('O texto oficial do prêmio aparece junto ao ranking quando a Liga abre. Nenhum valor além do mínimo de US$ 1.000 é divulgado fora do regulamento e dele.', 'The official prize text appears next to the ranking when the League opens. No amount beyond the US$ 1,000 minimum is published anywhere except the rules and there.'),
   empty: l('Ainda não há jogadores neste ranking.', 'There are no players in this ranking yet.'),
   rank: l('Posição', 'Rank'),
   player: l('Jogador', 'Player'),
@@ -158,7 +158,7 @@ export const seasonPage = {
 // Decided rules (owner, 2026-10-14): only Adventurer's Pass owners take part; the League starts when the Pass goal is reached; a pre-season with no prize runs until then.
 export const league = {
   title: l('Liga da Temporada', 'Season League'),
-  body: l('Quando a comunidade chegar à meta de Passes, abre a Liga: uma competição com prêmio em dinheiro de valor fixo, publicado no regulamento. Até lá, roda uma pré-temporada sem prêmio.', 'When the community reaches the Pass goal, the League opens: a competition with a fixed cash prize published in the rules. Until then, a pre-season with no prize runs.'),
+  body: l('Quando a comunidade chegar à meta de Passes, abre a Liga: uma competição com prêmio em dinheiro, com mínimo garantido de US$ 1.000 que pode crescer com os Passes comprados; os detalhes saem no regulamento. Até lá, roda uma pré-temporada sem prêmio.', 'When the community reaches the Pass goal, the League opens: a competition with a cash prize, with a guaranteed minimum of US$ 1,000 that can grow with Passes bought; details are published in the rules. Until then, a pre-season with no prize runs.'),
 };
 // The player market is planned only: no date, no promise.
 export const market = {
@@ -176,9 +176,8 @@ export const roadmap = [
       () => 'A permanent unlock with the 60-day Pass Season, a reward track and perks. ' + (config.passSalesOpen ? 'Buying it is open.' : 'The sale opens soon.'),
     ),
   },
-  { id: 'onboarding', status: 'available', title: l('Primeiros passos e conforto', 'Getting started and comfort'), body: l('Tutorial, resumo ao voltar, notificações, português e inglês, controle de som, versão web e versão desktop para Windows.', 'A tutorial, welcome-back summary, notifications, Portuguese and English, sound controls, a web version and a Windows desktop version.') },
-  { id: 'league', status: 'development', title: l('Liga da Temporada', 'Season League'), body: l('Começa quando a comunidade chegar à meta de Passes, exclusiva para quem tem o Passe, com prêmio em dinheiro de valor fixo. Pré-temporada sem prêmio até lá.', 'Begins when the community reaches the Pass goal, exclusive to Pass owners, with a fixed cash prize. A pre-season with no prize runs until then.') },
-  { id: 'steam', status: 'planned', title: l('Lançamento na Steam', 'Steam release'), body: l('Um lançamento na Steam está planejado. Ainda não há data.', 'A Steam release is planned. There is no date yet.') },
+  { id: 'onboarding', status: 'available', title: l('Primeiros passos e conforto', 'Getting started and comfort'), body: l('Tutorial, resumo ao voltar, notificações, português e inglês, controle de som, no navegador do computador ou do celular.', 'A tutorial, welcome-back summary, notifications, Portuguese and English, sound controls, in the browser on your computer or phone.') },
+  { id: 'league', status: 'development', title: l('Liga da Temporada', 'Season League'), body: l('Começa quando a comunidade chegar à meta de Passes, exclusiva para quem tem o Passe, com prêmio em dinheiro, mínimo garantido de US$ 1.000 que pode crescer. Pré-temporada sem prêmio até lá.', 'Begins when the community reaches the Pass goal, exclusive to Pass owners, with a cash prize, a guaranteed US$ 1,000 minimum that can grow. A pre-season with no prize runs until then.') },
   { id: 'market', status: 'planned', title: l('Mercado de jogadores', 'Player market'), body: l('Em estudo e planejado, sem data. Peças Épicas, Lendárias ou únicas sem vínculo e Bolsas de Ouro serão as únicas negociáveis.', 'Under study and planned, with no date. Unbound Epic, Legendary or unique pieces and Gold Pouches will be the only tradeable items.') },
   { id: 'world', status: 'future', title: l('Mais atividades e desafios', 'More activities and challenges'), body: l('Novas zonas de Caça, equipamento, recursos e eventos temporários são possibilidades para a evolução do jogo.', 'New hunting zones, gear, resources and temporary events are possibilities for the game’s future.') },
   { id: 'long-term', status: 'future', title: l('Novas formas de progressão', 'New ways to progress'), body: l('Novas atividades e mecânicas de profissão poderão ampliar a experiência.', 'New activities and profession mechanics could expand the experience.') },
@@ -205,11 +204,11 @@ export const articles = [
         { type: 'heading', level: 2, text: 'Profissões e economia' },
         list(['Mineração, Lenhador, Horta e Ofícios, cada uma com maestria.', 'Poções, elixirs e tônicos para momentos específicos.', 'Pedidos: entregas que continuam com o jogo fechado.', 'Mercador comum e Mercador Atacadista para vender o excesso.']),
         { type: 'heading', level: 2, text: 'Metas e conforto' },
-        list(['Missões diárias e semanais, sequência de login e uma lista longa de conquistas.', 'O Códice registra tudo o que você descobre.', 'Um resumo ao voltar mostra o que aconteceu enquanto você estava fora.', 'Português e inglês, na web e em uma versão desktop para Windows.']),
+        list(['Missões diárias e semanais, sequência de login e uma lista longa de conquistas.', 'O Códice registra tudo o que você descobre.', 'Um resumo ao voltar mostra o que aconteceu enquanto você estava fora.', 'Português e inglês, no navegador do computador ou do celular.']),
         { type: 'heading', level: 2, text: 'Passe de Aventureiro' },
         para('O Passe é um desbloqueio permanente, com a Temporada do Passe de 60 dias e uma trilha de recompensas.'),
         { type: 'heading', level: 2, text: 'O que ainda não existe' },
-        list(['Um lançamento na Steam está planejado, sem data.', 'Um mercado de jogadores está planejado, sem data.', 'A Liga da Temporada começa quando a meta de Passes for alcançada; até lá roda uma pré-temporada sem prêmio.']),
+        list(['Um mercado de jogadores está planejado, sem data.', 'A Liga da Temporada começa quando a meta de Passes for alcançada; até lá roda uma pré-temporada sem prêmio.']),
       ],
       en: [
         para('Arena Idle has grown a lot since its first versions. This overview gathers what the game contains today.'),
@@ -220,11 +219,11 @@ export const articles = [
         { type: 'heading', level: 2, text: 'Professions and economy' },
         list(['Mining, Woodcutting, Garden and Crafting, each with mastery.', 'Potions, elixirs and tonics for specific moments.', 'Orders: deliveries that keep going while the game is closed.', 'A regular merchant and a Wholesale Merchant to sell surplus.']),
         { type: 'heading', level: 2, text: 'Goals and comfort' },
-        list(['Daily and weekly quests, a login streak and a long list of achievements.', 'The Codex records everything you discover.', 'A welcome-back summary shows what happened while you were away.', 'Portuguese and English, on the web and in a Windows desktop version.']),
+        list(['Daily and weekly quests, a login streak and a long list of achievements.', 'The Codex records everything you discover.', 'A welcome-back summary shows what happened while you were away.', 'Portuguese and English, in the browser on your computer or phone.']),
         { type: 'heading', level: 2, text: 'Adventurer’s Pass' },
         para('The Pass is a permanent unlock, with the 60-day Pass Season and a reward track.'),
         { type: 'heading', level: 2, text: 'What does not exist yet' },
-        list(['A Steam release is planned, with no date.', 'A player market is planned, with no date.', 'The Season League begins when the Pass goal is reached; until then a pre-season with no prize runs.']),
+        list(['A player market is planned, with no date.', 'The Season League begins when the Pass goal is reached; until then a pre-season with no prize runs.']),
       ],
     },
   },
@@ -249,12 +248,12 @@ export const faq = [
   { question: l('O jogo é gratuito?', 'Is the game free?'), answer: freeAnswer },
   { question: l('O que é o Passe de Aventureiro?', 'What is the Adventurer’s Pass?'), answer: passAnswer },
   { question: l('Como pago o Passe com USDC?', 'How do I pay for the Pass with USDC?'), answer: l('Você precisa de uma carteira Solana (Phantom ou Solflare) com 10 USDC e um pouco de SOL para a taxa da rede. Dentro do jogo, abra o Passe, toque em pagar com USDC, ligue a carteira e aprove a transação. O Passe é liberado assim que o pagamento é confirmado, em geral em instantes. O jogo nunca guarda o seu dinheiro nem a sua chave.', 'You need a Solana wallet (Phantom or Solflare) holding 10 USDC and a little SOL for the network fee. In the game, open the Pass, tap pay with USDC, connect your wallet and approve the transaction. The Pass unlocks as soon as the payment is confirmed, usually within moments. The game never holds your money or your key.') },
-  { question: l('O que é a Liga da Temporada?', 'What is the Season League?'), answer: l('Uma competição exclusiva de quem tem o Passe, com prêmio em dinheiro de valor fixo, publicado no regulamento. Ela começa quando a comunidade chegar à meta de Passes; até lá roda uma pré-temporada sem prêmio. Veja a meta e os rankings na página da Liga. A pré-temporada é um teste aberto: quando a Liga começar, todos os heróis online recomeçam do zero. O Passe e o seu nome continuam.', 'A competition exclusive to Pass owners, with a fixed cash prize published in the rules. It begins when the community reaches the Pass goal; until then a pre-season with no prize runs. See the goal and the rankings on the League page. The pre-season is an open test: when the League begins, every online hero starts again from zero. Your Pass and your name stay.') },
+  { question: l('O que é a Liga da Temporada?', 'What is the Season League?'), answer: l('Uma competição exclusiva de quem tem o Passe, com prêmio em dinheiro, com mínimo garantido de US$ 1.000 que pode crescer conforme mais Passes forem comprados. Ela começa quando a comunidade chegar à meta de Passes; até lá roda uma pré-temporada sem prêmio. Veja a meta e os rankings na página da Liga. A pré-temporada é um teste aberto: quando a Liga começar, todos os heróis online recomeçam do zero. O Passe e o seu nome continuam.', 'A competition exclusive to Pass owners, with a cash prize, with a guaranteed minimum of US$ 1,000 that can grow as more Passes are bought. It begins when the community reaches the Pass goal; until then a pre-season with no prize runs. See the goal and the rankings on the League page. The pre-season is an open test: when the League begins, every online hero starts again from zero. Your Pass and your name stay.') },
   { question: l('Já posso jogar?', 'Can I play yet?'), answer: playAnswer },
   { question: l('O jogo está pronto?', 'Is the game finished?'), answer: l('O jogo está em desenvolvimento ativo: novos sistemas e ajustes chegam com o tempo. O Roadmap mostra o estado de cada parte, e “Disponível” quer dizer que o sistema já existe na versão atual, sem indicar que ele é final.', 'The game is in active development: new systems and tweaks arrive over time. The Roadmap shows where each part stands, and “Available” means the system already exists in the current version, not that it is final.') },
-  { question: l('Em quais plataformas o jogo funciona?', 'Which platforms does the game run on?'), answer: l('No navegador e em uma versão desktop para Windows. Um lançamento na Steam está planejado, sem data.', 'In the browser and in a Windows desktop version. A Steam release is planned, with no date.') },
+  { question: l('Em quais plataformas o jogo funciona?', 'Which platforms does the game run on?'), answer: l('Só no navegador, no computador ou no celular, sem instalar nada.', 'Only in the browser, on your computer or phone, with nothing to install.') },
   { question: l('Vai existir um mercado entre jogadores?', 'Will there be a player market?'), answer: l('Está planejado, sem data. Quando existir, apenas peças Épicas, Lendárias ou únicas sem vínculo e as Bolsas de Ouro poderão ser negociadas. Peças equipadas ficam vinculadas e deixam de ser negociáveis.', 'It is planned, with no date. When it exists, only unbound Epic, Legendary or unique pieces and Gold Pouches can be traded. Equipped pieces become bound and are no longer tradeable.') },
-  { question: l('Existe uma data de lançamento?', 'Is there a release date?'), answer: l('Ainda não há uma data oficial anunciada para a Steam. O roadmap comunica a direção do desenvolvimento, sem datas de entrega.', 'No official date has been announced for Steam. The roadmap shows our development direction without delivery dates.') },
+  { question: l('Existe uma data de lançamento?', 'Is there a release date?'), answer: l('Ainda não há uma data de lançamento anunciada. O roadmap comunica a direção do desenvolvimento, sem datas de entrega.', 'No release date has been announced yet. The roadmap shows our development direction without delivery dates.') },
 ];
 export const copy = {
   headline: l('Um RPG idle que joga por você. Você só decide.', 'An idle RPG that plays for you. You just decide.'),
@@ -285,7 +284,7 @@ export const descriptions = {
     () => config.passSalesOpen ? `O Passe de Aventureiro: desbloqueio permanente, ${config.passPrice}, pagamento único e sem renovação, com vantagens e a Temporada do Passe.` : 'O Passe de Aventureiro chega em breve: desbloqueio permanente com vantagens, a Temporada do Passe e acesso à Liga da Temporada.',
     () => config.passSalesOpen ? `The Adventurer’s Pass: a permanent unlock, ${config.passPrice}, one-time payment, no renewal, with perks and the Pass Season.` : 'The Adventurer’s Pass is coming soon: a permanent unlock with perks, the Pass Season and access to the Season League.',
   ),
-  season: l('A Liga da Temporada: competição com prêmio em dinheiro de valor fixo, meta de Passes da comunidade e rankings ao vivo.', 'The Season League: a competition with a fixed cash prize, the community Pass goal and live rankings.'),
+  season: l('A Liga da Temporada: competição com prêmio em dinheiro (mínimo de US$ 1.000), meta de Passes da comunidade e rankings ao vivo.', 'The Season League: a competition with a cash prize (US$ 1,000 minimum), the community Pass goal and live rankings.'),
   roadmap: l('O estado de cada parte do jogo: o que já existe, o que está em desenvolvimento e o que vem depois.', 'Where each part of the game stands: what exists, what is in development and what comes next.'),
   faq: l('Perguntas frequentes: é grátis, como funciona o Passe, a Liga da Temporada, plataformas e estado do jogo.', 'Frequently asked questions: is it free, how the Pass works, the Season League, platforms and the state of the game.'),
   news: l('Novidades e comunicados do desenvolvimento do jogo.', 'News and updates from the game’s development.'),
