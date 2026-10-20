@@ -28,7 +28,7 @@ A prévia abre em http://127.0.0.1:4173/pt/ e http://127.0.0.1:4173/en/. Execute
 - `public/waitlist.js` e `public/waitlist-core.js`: bloco "Avise-me no lançamento" (Home e Temporada) e página de cancelamento; o `core` é puro e testado por `npm run check:waitlist`. Ver `docs/WAITLIST.md`.
 - `public/root.js`: o endereço raiz escolhe o idioma e mantém `?ref=CÓDIGO` dos links de convite.
 - `public/app.js`: menu móvel, menus de navegação e fechamento por teclado.
-- `public/img/shots/{pt,en}/*.webp`: capturas reais do jogo atual em cada idioma (build offline sem backend, save de meio de jogo de `scripts/sim/smokeSaves.gen.ts`, 1440x900). `public/img/home-*-v2.webp`: artes do dono (arena, taça, carta do Passe). `public/fonts/`: Press Start 2P (a fonte do jogo, licença OFL incluída). `public/favicon.svg`: ícone provisório.
+- `public/img/shots/{pt,en}/*.webp`: capturas reais do jogo atual em cada idioma (build offline sem backend, save de meio de jogo de `scripts/sim/smokeSaves.gen.ts`, 1440x900). `public/img/home-*-v2.webp`: artes do dono (arena, taça, carta do Passe). `public/fonts/`: Press Start 2P (a fonte do jogo, licença OFL incluída). `public/favicon-32.png`, `favicon-48.png`, `apple-touch-icon.png` e `img/emblem-192.png`: o emblema do jogo (escudo roxo e dourado do dono).
 
 As 24 páginas PT/EN que já existiam continuam geradas. As áreas editoriais sem publicações permanecem acessíveis pelo endereço, mas não recebem links no menu nem destaque na Home. O menu público oferece apenas Notícias enquanto não houver artigos aprovados. A Home oculta Comunidade até existirem canais configurados.
 
