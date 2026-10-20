@@ -71,6 +71,7 @@
     "title": "Encontramos um progresso salvo neste dispositivo",
     "description": "Esse progresso foi salvo apenas neste navegador. Você pode importá-lo para sua conta ou começar um personagem novo.",
     "warning": "Este progresso local nunca foi validado por um servidor. Ele pode ser importado para uso/beta, mas não será tratado como oficial quando o jogo envolver valor real.",
+    "stats": "Progresso encontrado: nível {level}, andar {floor} da Masmorra.",
     "importCta": "Importar progresso",
     "newCta": "Começar novo personagem",
     "importing": "Importando…"

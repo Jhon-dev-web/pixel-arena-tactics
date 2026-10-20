@@ -1,4 +1,5 @@
 import { SaveData, loadSave, normalizeSave, persistSave } from './engine';
+import { playerLevel } from './heroLevel';
 import { supabase } from '../lib/supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { assertUploadSize, fromUploadBlob, toUploadBlob } from './saveUpload';
@@ -31,6 +32,8 @@ export interface LoadResult {
 export interface SaveRepository {
   /** True when the save goes to a server: its uploads are batched (saveScheduler.ts) and the device keeps a journal in between (pendingCloudSave.ts). Absent / false = the device itself (localStorage). */
   readonly remote?: boolean;
+  /** The server character row this repository last loaded or created (remote only); the device journal is bound to it. */
+  readonly characterId?: string;
   load(): Promise<LoadResult>;
   /** `keepalive` marks an upload made while the page is going away: the request may outlive it (when the client supports that and the body is small enough). */
   save(data: SaveData, expectedRevision: number, opts?: { keepalive?: boolean }): Promise<{ revision: number }>;
@@ -52,12 +55,14 @@ export class LocalSaveRepository implements SaveRepository {
 // ---- Supabase (authenticated) ----------------------------------------------------------------------
 
 interface CharacterRow {
+  id?: string;
   save_data: unknown;
   revision: number;
 }
 
 export class SupabaseSaveRepository implements SaveRepository {
   readonly remote = true;
+  characterId: string | undefined;
   // `client` defaults to the app client; tests pass a fake one.
   constructor(
     private readonly userId: string,
@@ -69,11 +74,12 @@ export class SupabaseSaveRepository implements SaveRepository {
     if (!supabase) throw new Error('supabase_not_configured');
     const { data, error } = await supabase
       .from('characters')
-      .select('save_data, revision')
+      .select('id, save_data, revision')
       .eq('user_id', this.userId)
       .maybeSingle<CharacterRow>();
     if (error) throw error;
     if (!data) return null;
+    this.characterId = data.id;
     return { save: normalizeSave(fromUploadBlob(data.save_data)), revision: data.revision };
   }
 
@@ -94,9 +100,10 @@ export class SupabaseSaveRepository implements SaveRepository {
         revision: 1,
         imported_from_legacy: importedFromLegacy,
       })
-      .select('revision')
-      .single<{ revision: number }>();
+      .select('id, revision')
+      .single<{ id?: string; revision: number }>();
     if (error) throw error;
+    this.characterId = data.id;
     return { revision: data.revision };
   }
 
@@ -129,11 +136,52 @@ export class SupabaseSaveRepository implements SaveRepository {
 
 // ---- Legacy local-save detection/import helpers ------------------------------------------------------
 
+/** Which account the device's offline save was handed to (imported, or turned down for a fresh hero) or already belonged to. After that, nobody else is ever offered it. */
+export const LEGACY_CLAIM_KEY = 'arena-legacy-local-claimed';
+
 export function hasLegacyLocalSave(): boolean {
   try {
     return localStorage.getItem(LEGACY_LOCAL_SAVE_KEY) !== null;
   } catch {
     return false;
+  }
+}
+
+function readLegacyClaim(): string | null {
+  try {
+    return localStorage.getItem(LEGACY_CLAIM_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Records that this account has dealt with the device's offline save (or has played online from this device already). The first claim stands: it is never taken over. */
+export function claimLegacyLocalSave(userId: string): void {
+  try {
+    if (localStorage.getItem(LEGACY_LOCAL_SAVE_KEY) !== null && localStorage.getItem(LEGACY_CLAIM_KEY) === null) localStorage.setItem(LEGACY_CLAIM_KEY, userId);
+  } catch {
+    /* ignore */
+  }
+}
+
+export interface LegacyOffer {
+  level: number;
+  floor: number;
+}
+
+/**
+ * The one case a device save may enter the online game: it is a never-synced offline save nobody has claimed. Anything an account already took (or any account that already
+ * played online here, see claimLegacyLocalSave) is not offered to another account. Returns what the prompt shows, or null for "do not ask".
+ */
+export function legacyOfferFor(userId: string): LegacyOffer | null {
+  if (!hasLegacyLocalSave()) return null;
+  const claim = readLegacyClaim();
+  if (claim !== null && claim !== userId) return null;
+  try {
+    const save = readLegacyLocalSave();
+    return { level: playerLevel(save.xp), floor: save.highestDungeonFloor };
+  } catch {
+    return null;
   }
 }
 

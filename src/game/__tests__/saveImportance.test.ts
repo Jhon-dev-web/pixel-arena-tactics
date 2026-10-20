@@ -3,7 +3,7 @@ import { defaultSave } from '../engine';
 import { GEAR, isInstancedSlot } from '../gear';
 import { createGearInstance } from '../gearInstances';
 import { isImportantChange } from '../saveImportance';
-import { PENDING_CLOUD_SAVE_KEY, clearPendingCloudSave, takePendingCloudSave, writePendingCloudSave } from '../pendingCloudSave';
+import { PENDING_CLOUD_SAVE_KEY, clearPendingCloudSave, pendingCloudSaveKey, takePendingCloudSave, writePendingCloudSave } from '../pendingCloudSave';
 import { keepaliveFor, withKeepalive } from '../../lib/supabaseFetch';
 
 const CERT = '11111111-1111-4111-8111-111111111111';
@@ -81,19 +81,19 @@ describe('the device journal of a signed-in hero', () => {
     const storage = memory();
     writePendingCloudSave('user-1', 7, defaultSave(), storage, 1000);
     expect(takePendingCloudSave('user-1', 8, storage)).toBeNull();
-    expect(storage.raw.has(PENDING_CLOUD_SAVE_KEY)).toBe(false);
+    expect(storage.raw.has(pendingCloudSaveKey('user-1'))).toBe(false);
   });
 
   it('never hands one account\'s journal to another', () => {
     const storage = memory();
     writePendingCloudSave('user-1', 7, defaultSave(), storage, 1000);
     expect(takePendingCloudSave('user-2', 7, storage)).toBeNull();
-    expect(storage.raw.has(PENDING_CLOUD_SAVE_KEY)).toBe(false);
+    expect(storage.raw.has(pendingCloudSaveKey('user-1'))).toBe(true); // user-1's own journal is untouched
   });
 
   it('survives garbage and a missing storage', () => {
     const storage = memory();
-    storage.setItem(PENDING_CLOUD_SAVE_KEY, '{not json');
+    storage.setItem(pendingCloudSaveKey('user-1'), '{not json');
     expect(takePendingCloudSave('user-1', 1, storage)).toBeNull();
     expect(takePendingCloudSave('user-1', 1, null)).toBeNull();
     expect(() => writePendingCloudSave('user-1', 1, defaultSave(), null)).not.toThrow();
@@ -103,7 +103,7 @@ describe('the device journal of a signed-in hero', () => {
     const storage = memory();
     writePendingCloudSave('user-1', 1, defaultSave(), storage);
     expect(PENDING_CLOUD_SAVE_KEY).not.toBe('arena-rpg-save-v1');
-    clearPendingCloudSave(storage);
+    clearPendingCloudSave('user-1', storage);
     expect(storage.raw.size).toBe(0);
   });
 });

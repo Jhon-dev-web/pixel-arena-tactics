@@ -71,6 +71,7 @@
     "title": "We found saved progress on this device",
     "description": "This progress was saved only in this browser. You can import it into your account or start a new character.",
     "warning": "This local progress was never validated by a server. It can be imported for testing/beta, but it won't be treated as official once the game involves real value.",
+    "stats": "Progress found: level {level}, Dungeon floor {floor}.",
     "importCta": "Import progress",
     "newCta": "Start new character",
     "importing": "Importing…"

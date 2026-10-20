@@ -5,10 +5,14 @@ import { Button, Dialog } from './ui';
 // (§13-15). The player decides explicitly — nothing is imported silently, and this can only ever appear
 // before a server character exists (see GameShell.tsx).
 export default function LegacyImportPrompt({
+  level,
+  floor,
   importing,
   onImport,
   onStartNew,
 }: {
+  level: number;
+  floor: number;
   importing: boolean;
   onImport: () => void;
   onStartNew: () => void;
@@ -31,6 +35,7 @@ export default function LegacyImportPrompt({
           </>
         }
       >
+        <p>{t('legacyImport.stats', { level, floor })}</p>
         <p className="ui-alert">{t('legacyImport.warning')}</p>
       </Dialog>
     </div>

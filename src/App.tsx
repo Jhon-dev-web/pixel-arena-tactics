@@ -590,8 +590,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       setSyncedSave(toSave); // the season ranking posts exactly what the server now holds
       if (repository.remote && userId) {
         // the server holds everything up to `toSave`: nothing left to journal, unless the hero moved on while the request was out
-        if (saveRef.current === toSave) clearPendingCloudSave();
-        else writePendingCloudSave(userId, result.revision, saveRef.current);
+        if (saveRef.current === toSave) clearPendingCloudSave(userId);
+        else writePendingCloudSave(userId, result.revision, saveRef.current, undefined, undefined, repository.characterId);
       }
       setSaveStatus(saveRef.current === toSave ? 'saved' : 'dirty');
       return 'ok';
@@ -605,7 +605,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             saveRef.current = fresh.save;
             revisionRef.current = fresh.revision;
             setSyncedSave(null); // the server's copy is not the object we hold until the next successful save
-            clearPendingCloudSave();
+            if (userId) clearPendingCloudSave(userId);
             setSave(fresh.save);
           }
         } catch {
@@ -643,7 +643,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   }, []);
 
   useEffect(() => {
-    if (repository.remote && userId) writePendingCloudSave(userId, revisionRef.current, saveRef.current);
+    if (repository.remote && userId) writePendingCloudSave(userId, revisionRef.current, saveRef.current, undefined, undefined, repository.characterId);
     setSaveStatus((s) => (s === 'saving' ? s : 'dirty'));
     const important = importantRef.current;
     importantRef.current = false;
