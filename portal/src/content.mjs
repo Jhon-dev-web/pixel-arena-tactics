@@ -353,3 +353,35 @@ export const referral = {
   ],
   rules: l('Um convite fica ativo quando a pessoa cria a conta no jogo com o mesmo e-mail e chega ao nível 10 do Herói, depois do lançamento. Os prêmios são entregues dentro do jogo. Convidar a si mesmo não conta, e uma compra reembolsada sai da contagem do Passe (um prêmio já entregue fica).', 'An invite becomes active when the person creates a game account with the same email and reaches Hero level 10, after launch. Rewards are delivered inside the game. Inviting yourself does not count, and a refunded purchase leaves the Pass count (a reward already delivered stays).'),
 };
+
+// Home page (the epic hero, the Season and Pass cards, the feature strip). Every claim follows the rest of this file: the League prize is a minimum of US$ 1,000 and can grow; no PvP is promised.
+export const home = {
+  headline: l('Progressão idle com disputa de temporada.', 'Idle progression with a seasonal contest.'),
+  sub: l('Evolua seu herói, desenvolva profissões, conquiste equipamentos e dispute as melhores posições a cada temporada.', 'Grow your hero, train professions, earn gear and compete for the top spots every season.'),
+  learn: l('Saiba mais', 'Learn more'),
+  playtest: l('Entrar no Playtest', 'Join the Playtest'),
+  season: {
+    eyebrow: l('Temporada', 'Season'), title: l('Temporada 1', 'Season 1'), tagline: l('Dispute, evolua, seja lendário.', 'Compete, grow, become legendary.'),
+    bullets: [
+      { icon: 'trophy', title: l('Ranking da Liga', 'League ranking'), body: l('Veja quem chegou mais longe na temporada.', 'See who got furthest this season.') },
+      { icon: 'chest', title: l('Recompensas exclusivas', 'Exclusive rewards'), body: l('Conquiste itens e visuais únicos.', 'Earn unique items and looks.') },
+      { icon: 'coin', title: l('Prêmio em dinheiro', 'Cash prize'), body: l('Para quem tem o Passe, com mínimo de US$ 1.000.', 'For Pass owners, with a US$ 1,000 minimum.') },
+    ],
+    lengthLabel: l('Duração da Liga', 'League length'), length: l('60 dias de disputa', '60 days of contest'), art: l('Taça dourada da Temporada 1', 'Golden trophy of Season 1'),
+  },
+  pass: {
+    eyebrow: l('Passe', 'Pass'), title: l('Passe do Aventureiro', 'Adventurer’s Pass'), tagline: l('Mais recompensas para sua jornada.', 'More rewards for your journey.'),
+    bullets: [
+      { icon: 'rise', title: l('Bônus de progresso', 'Progress bonus'), body: l('Mais Ouro e materiais, reparo mais barato.', 'More Gold and materials, cheaper repair.') },
+      { icon: 'shield', title: l('Vantagens exclusivas', 'Exclusive perks'), body: l('Mais espaço e mais tempo acumulando offline.', 'More room and longer offline accumulation.') },
+      { icon: 'crown', title: l('Acesso à Liga', 'League access'), body: l('Só quem tem o Passe disputa o prêmio.', 'Only Pass owners compete for the prize.') },
+    ],
+    only: l('Apenas', 'Only'), soon: l('Em breve', 'Soon'), cta: l('Ver benefícios do Passe', 'See the Pass benefits'), art: l('Carta dourada do Passe do Aventureiro', 'Golden card of the Adventurer’s Pass'),
+  },
+  features: [
+    { icon: 'hero', title: l('Progressão idle', 'Idle progression'), body: l('Seu herói evolui, mesmo offline.', 'Your hero grows, even offline.') },
+    { icon: 'swords', title: l('Combate automático', 'Automatic combat'), body: l('Estratégia e construção de build.', 'Strategy and build crafting.') },
+    { icon: 'bars', title: l('Temporadas recorrentes', 'Recurring seasons'), body: l('Novos desafios e recompensas.', 'New challenges and rewards.') },
+    { icon: 'chest', title: l('Itens lendários', 'Legendary items'), body: l('Equipe, colecione, evolua.', 'Equip, collect, evolve.') },
+  ],
+};

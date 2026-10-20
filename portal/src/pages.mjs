@@ -1,4 +1,4 @@
-import { config, seasonPage, glossary, states, systems, groups, progression, league, market, roadmap, articles, faq, copy, descriptions, shots, legal, legalPlaceholder, waitlist, referral } from './content.mjs';
+import { config, seasonPage, glossary, states, systems, groups, progression, league, market, roadmap, articles, faq, copy, descriptions, shots, legal, legalPlaceholder, waitlist, referral, home } from './content.mjs';
 import { escapeHtml as esc, editorialTypes, publishedArticles, paginate, neighbors, renderBlocks } from './editorial.mjs';
 import { cleanSupabaseUrl, failedRows } from '../public/season-core.js';
 
@@ -76,7 +76,27 @@ ${waitlistPrivacy ? `<p class="wl-privacy">${waitlistPrivacy}</p>` : ''}
   const pages = {};
   const add = (route, title, body, options = {}) => { pages[route] = { title, body, ...options }; };
 
-  add('', t('Início', 'Home'), `<section class="hero"><div class="hero-art" aria-hidden="true"></div><div class="hero-copy"><p class="eyebrow">${t('RPG idle · No navegador', 'Idle RPG · In the browser')}</p><div class="hero-brand">ARENA <span>IDLE</span></div><h1>${pick(copy.headline)}</h1><p>${pick(copy.subtitle)}</p><div class="actions">${primary()}${passLink()}</div></div><figure class="hero-shot">${shotImg(shots.dungeon, true)}</figure><p class="hero-foot">${t('Captura do jogo atual', 'Screenshot of the current game')}</p></section>
+  const ICONS = {
+    trophy: '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 20h8M9 18h6"/>',
+    chest: '<path d="M4 11a8 7 0 0 1 16 0v8H4z"/><path d="M4 12h16M12 10v4M4 19h16"/>',
+    coin: '<circle cx="12" cy="12" r="8"/><path d="M14.5 9.5c-.6-.8-1.5-1.1-2.5-1.1-1.4 0-2.4.7-2.4 1.8 0 2.5 5 1.2 5 3.6 0 1.1-1.1 1.9-2.600 1.900-1.100 0-2-.4-2.700-1.200M12 6.500v1.900M12 15.600v1.900"/>',
+    rise: '<path d="M4 18l6-6 4 4 6-8"/><path d="M15 8h5v5"/>',
+    shield: '<path d="M12 3l7 3v6c0 4.500-3 7.500-7 9-4-1.500-7-4.500-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    crown: '<path d="M4 18h16M4 18L3 8l5 4 4-7 4 7 5-4-1 10"/>',
+    hero: '<path d="M12 3c-4 0-6 3-6 6v5l2 1v5h8v-5l2-1V9c0-3-2-6-6-6z"/><path d="M9 11h6M12 11v4"/>',
+    swords: '<path d="M5 4l9 9M4 5l1.500-1.500M13 14l-3 3M9 14l-4 4M19 4l-9 9M20 5l-1.500-1.500M11 14l3 3M15 14l4 4"/>',
+    bars: '<path d="M5 20V12M10 20V6M15 20V10M20 20V3"/>',
+    hourglass: '<path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9"/>',
+  };
+  const icon = name => `<svg class="h-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONS[name]}</svg>`;
+  const homeBullets = list => `<ul class="h-bullets">${list.map(item => `<li><span class="h-ring">${icon(item.icon)}</span><span><strong>${pick(item.title)}</strong>${pick(item.body)}</span></li>`).join('')}</ul>`;
+  const heroPlay = config.playUrl ? `<a class="button h-gold" href="${esc(config.playUrl)}">${pick(home.playtest)} <span aria-hidden="true">→</span></a>` : primary('h-gold');
+  const passPriceBox = config.passSalesOpen ? `<p class="h-price"><small>${pick(home.pass.only)}</small><strong>${esc(config.passPrice)}</strong></p>` : `<p class="h-price"><small>${pick(home.pass.only)}</small><strong>${pick(home.pass.soon)}</strong></p>`;
+  const homeHero = `<section class="hero hero-epic"><div class="hero-art" aria-hidden="true"><img src="/img/home-hero.webp" alt="" width="798" height="490" fetchpriority="high"></div><div class="hero-copy"><div class="hero-brand" role="img" aria-label="Arena Idle"><span class="h-arena">ARENA</span><span class="h-idle"><i></i><b>IDLE</b><i></i></span></div><h1>${pick(home.headline)}</h1><p class="h-sub">${pick(home.sub)}</p><div class="actions">${heroPlay}<a class="button h-ghost" href="#home-season">${pick(home.learn)} <span aria-hidden="true">⌄</span></a></div></div></section>
+    <div class="h-cards" id="home-season"><section class="h-card h-season" aria-labelledby="h-season-title"><div class="h-card-copy"><p class="h-eyebrow"><span>${pick(home.season.eyebrow)}</span></p><h2 id="h-season-title">${pick(home.season.title)}</h2><p class="h-tagline">${pick(home.season.tagline)}</p>${homeBullets(home.season.bullets)}</div><img class="h-art h-trophy" src="/img/home-trophy.webp" alt="${esc(pick(home.season.art))}" width="276" height="285" loading="lazy" decoding="async"><div class="h-card-foot"><p class="h-length">${icon('hourglass')}<span><small>${pick(home.season.lengthLabel)}</small><strong>${pick(home.season.length)}</strong></span></p><img class="h-items" src="/img/home-items.webp" alt="" width="300" height="70" loading="lazy" decoding="async"></div></section>
+    <section class="h-card h-pass" aria-labelledby="h-pass-title"><div class="h-card-copy"><p class="h-eyebrow"><span>${pick(home.pass.eyebrow)}</span></p><h2 id="h-pass-title">${pick(home.pass.title)}</h2><p class="h-tagline">${pick(home.pass.tagline)}</p>${homeBullets(home.pass.bullets)}</div><img class="h-art h-passcard" src="/img/home-pass.webp" alt="${esc(pick(home.pass.art))}" width="250" height="335" loading="lazy" decoding="async"><div class="h-card-foot">${passPriceBox}${link('pass', pick(home.pass.cta) + ' <span aria-hidden="true">→</span>', 'button h-gold')}</div></section></div>
+    <ul class="h-features" aria-label="${t('Destaques do jogo', 'Game highlights')}">${home.features.map(item => `<li><span class="h-ring">${icon(item.icon)}</span><span><strong>${pick(item.title)}</strong>${pick(item.body)}</span></li>`).join('')}</ul>`;
+  add('', t('Início', 'Home'), `${homeHero}
     ${waitlistBlock('home')}
     <section class="section fun-section"><p class="eyebrow">${t('Para quem joga', 'For players')}</p><h2>${pick(copy.funTitle)}</h2><ul class="fun-grid">${copy.fun.map((item, index) => `<li><span class="profession-number" aria-hidden="true">0${index + 1}</span><h3>${pick(item.title)}</h3><p>${pick(item.body)}</p></li>`).join('')}</ul></section>
     <section class="section loop-section"><div class="section-head"><div><p class="eyebrow">${t('Entenda a progressão', 'How progression works')}</p><h2>${pick(copy.loopTitle)}</h2></div>${link('systems', t('Explorar sistemas', 'Explore systems') + ' →', 'text-link')}</div><p class="section-copy">${pick(copy.loopBody)}</p>${loop()}</section>

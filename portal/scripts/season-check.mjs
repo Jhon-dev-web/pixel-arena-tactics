@@ -181,8 +181,8 @@ assert.ok(!pageOf('pt', 'pass').html.includes('Política de reembolso'));
 assert.ok(renderSite('pt').find(item => item.route === '').html.includes('aria-disabled="true">Jogar grátis · Em breve'));
 assert.ok(!renderSite('pt').find(item => item.route === '').html.includes('Em desenvolvimento ativo'), 'no "in active development" on the home page');
 assert.ok(renderSite('pt').find(item => item.route === 'faq').html.includes('em desenvolvimento ativo'), 'the status line lives in the FAQ');
-assert.ok(renderSite('pt').find(item => item.route === '').html.includes('Um RPG idle que joga por você. Você só decide.'));
-assert.ok(renderSite('en').find(item => item.route === '').html.includes('An idle RPG that plays for you. You just decide.'));
+assert.ok(renderSite('pt').find(item => item.route === '').html.includes('Progressão idle com disputa de temporada.'));
+assert.ok(renderSite('en').find(item => item.route === '').html.includes('Idle progression with a seasonal contest.'));
 assert.ok(!/href="[^"]*roadmap[^"]*"[^>]*>[^<]*(Jogar|Play)/.test(renderSite('pt').find(item => item.route === '').html), 'the play button never points at the roadmap');
 
 config.playUrl = 'https://jogo.example.test/';
