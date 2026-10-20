@@ -36,6 +36,7 @@ export type SubmitRefusal =
   | 'wrong_sender'
   | 'short_amount'
   | 'too_early'
+  | 'self_payment'
   | 'bad_signature';
 
 /** The payment of a reservation is ONE transaction that carries both transfers ('sale'); a second transaction for the same reservation is kept as an 'extra' owed back. */
@@ -64,6 +65,8 @@ export interface ReservationView {
   graceUntil: string;
   payments: ReservationPayment[];
   chain: ChainPublic;
+  /** the reference the payment transaction must carry in an SPL Memo instruction ("pa1:sale:<reservation id>"); the server recognises the payment by it, from any wallet of the buyer */
+  memo?: string;
 }
 
 /** What a listing holds: a certified item, or a lot of one tradeable material (kind 'material': templateId is the material id). */

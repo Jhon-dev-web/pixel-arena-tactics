@@ -1,4 +1,5 @@
-import { SolVerifyFailure, fetchRecentBlockhash, normalizeSolSignature, verifySolSale } from '../chain/solana.ts';
+import { SolSaleInspection, SolVerifyFailure, cleanSolAddress, fetchRecentBlockhash, normalizeSolSignature, verifySolSale } from '../chain/solana.ts';
+import { isGameMemo, saleMemo } from '../chain/memo.ts';
 import { isMaterialTotalLamports, isPriceLamports, isUnitPriceMicro, materialTotalLamports } from '../chain/solMoney.ts';
 import { MATERIAL_IDS } from '../materials/tables.ts';
 import { MARKET_RULES } from './rules.ts';
@@ -7,7 +8,7 @@ import { isPaused, pausedResponse } from '../ops/flags.ts';
 import { chainPublic, MarketChain } from './chainEnv.ts';
 import type { MarketDeps } from './deps.ts';
 import { prelude } from './prelude.ts';
-import type { ReservationRow } from './store.ts';
+import type { ExceptionReason, ReservationRow } from './store.ts';
 import type { ListRefusal, MarketOverview, ReservationView, ReserveRefusal, SubmitRefusal } from './types.ts';
 
 // The four market functions (market-wallet, market-list, market-buy, market-my). The user id comes ONLY from the verified JWT. Nothing in a body is trusted except as the thing being asked
@@ -73,8 +74,12 @@ function reservationView(r: ReservationRow, payments: ReservationView['payments'
     graceUntil: iso(r.graceUntilMs),
     payments,
     chain: chainPublic(chain.config),
+    memo: saleMemo(r.id),
   };
 }
+
+// The refusals that still mean "money reached the game (or the seller) and nobody could match it": with the transfers on chain they go to the owner's queue instead of being forgotten.
+const QUEUED_REFUSALS: Partial<Record<SolVerifyFailure, ExceptionReason>> = { short_amount: 'short_amount', too_early: 'too_early', wrong_sender: 'wrong_sender', wrong_recipient: 'wrong_sender' };
 
 const failed = (what: string, err: unknown): void => {
   console.error(`[${what}] failed`, err instanceof Error ? err.message : 'unknown'); // message only: never a key, a token, the RPC url or a body
@@ -166,6 +171,10 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
       const reservation = await deps.store.reservation(userId, body.reservationId.toLowerCase());
       if (!reservation) return json({ ok: false, reason: 'not_found' }, 404, cors);
       if (reservation.status !== 'pending') return json({ ok: false, reason: 'not_open' }, 409, cors);
+      // The wallet that is about to pay (optional; the linked one otherwise). Paying from the game's own address, or to oneself as the seller, nets zero: refused before a blockhash is even asked.
+      const payer = body.payer === undefined ? reservation.buyerAddress : cleanSolAddress(isStr(body.payer) ? body.payer : null);
+      if (!payer) return json({ ok: false, reason: 'bad_request' }, 400, cors);
+      if (payer === reservation.feeAddress || payer === reservation.sellerAddress) return json({ ok: false, reason: 'self_payment' satisfies SubmitRefusal }, 409, cors);
       if (!(await deps.store.takeVerifyBudget(userId))) return json({ ok: false, reason: 'rate_limited' }, 429, { ...cors, 'retry-after': '30' });
       const bh = await fetchRecentBlockhash(chain.rpc);
       if (!bh) return json({ ok: false, reason: 'rpc_error' }, 503, { ...cors, 'retry-after': '10' });
@@ -192,7 +201,10 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
 
       if (!(await deps.store.takeVerifyBudget(userId))) return json({ ok: false, reason: 'rate_limited' satisfies SubmitRefusal }, 429, { ...cors, 'retry-after': '30' });
 
-      // ONE transaction must carry both transfers, from the buyer's linked address: the seller's share and the game's fee. The amounts and addresses are the RESERVATION's, never the request's.
+      // ONE transaction must carry both transfers: the seller's share and the game's fee. They come from the buyer's linked address, OR from any single wallet when the transaction carries the
+      // reservation's memo. That is safe because the reservation is bound to this buyer on the server (store.reservation(userId, id) above), the signature is consumed once (primary key), and the memo
+      // selects nothing but this reservation. The amounts and addresses are the RESERVATION's, never the request's.
+      let seen: SolSaleInspection | null = null;
       const verified = await verifySolSale(chain.rpc, chain.config, {
         signature,
         buyer: reservation.buyerAddress,
@@ -202,19 +214,45 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
         ],
         // a payment mined before the reservation began cannot be for it
         notBeforeMs: reservation.createdAtMs,
+        memo: saleMemo(reservation.id),
+        onInspect: (i) => {
+          seen = i;
+        },
       });
       if ('reason' in verified) {
         // ("in", not ".ok": the game's tests compile this file without strict null checks, where the discriminant does not narrow)
         const map = SUBMIT_REFUSAL[verified.reason];
+        const why = QUEUED_REFUSALS[verified.reason];
+        const insp = seen as SolSaleInspection | null;
+        if (why && insp && insp.reachedLamports > 0n) {
+          // It moved money to the addresses of this sale but cannot be matched (short, too early, from several wallets): the owner sees it, the player gets the code to quote.
+          await deps.store.recordException({
+            signature,
+            chainId: chain.config.chainId,
+            livemode: chain.config.livemode,
+            purpose: 'market',
+            reason: why,
+            userId,
+            reservationId: reservation.id,
+            payer: insp.payer,
+            receiver: reservation.feeAddress,
+            amountUnits: insp.reachedLamports,
+            memo: insp.memos.find(isGameMemo) ?? null,
+            blockTimeMs: insp.blockTime * 1000,
+          });
+          return json({ ok: false, reason: map.reason, unmatched: true, code: signature }, map.status, cors);
+        }
         return json({ ok: false, reason: map.reason }, map.status, map.status === 503 ? { ...cors, 'retry-after': '10' } : cors);
       }
 
       const p = verified.payment;
+      // A soft signal, not a refusal: the memo matched but the payer is not the linked wallet (the player used another account of his).
+      const otherWallet = p.viaMemo && p.payer !== undefined && p.payer !== reservation.buyerAddress;
       const outcome = await deps.store.recordPayment({
         buyerId: userId,
         reservationId: reservation.id,
         txHash: p.signature,
-        from: reservation.buyerAddress,
+        from: reservation.buyerAddress, // the database ties a payment to the reservation's buyer address; the wallet that really paid is noted below
         to: reservation.sellerAddress,
         amountUnits: p.paid.reduce((n, x) => n + x.amount, 0n),
         blockNumber: p.slot,
@@ -222,6 +260,24 @@ export async function handleMarketBuy(req: Request, deps: MarketDeps): Promise<R
       });
       if (outcome.status === 'tx_reused') return json({ ok: false, reason: 'tx_reused' satisfies SubmitRefusal }, 409, cors);
       if (outcome.status === 'not_found') return json({ ok: false, reason: 'not_found' satisfies SubmitRefusal }, 404, cors);
+      // A valid payment the sale could not use (the item was gone, the reservation had been paid): it is recorded as owed back, and also queued so the owner sees every such payment in one place.
+      if (outcome.status === 'refund_due' || outcome.status === 'already_sold' || (outcome.status === 'recorded' && outcome.extra)) {
+        await deps.store.recordException({
+          signature: p.signature,
+          chainId: chain.config.chainId,
+          livemode: chain.config.livemode,
+          purpose: 'market',
+          reason: 'duplicate',
+          userId,
+          reservationId: reservation.id,
+          payer: p.payer ?? null,
+          receiver: reservation.feeAddress,
+          amountUnits: p.paid.reduce((n, x) => n + x.amount, 0n),
+          memo: saleMemo(reservation.id),
+          blockTimeMs: p.blockTime * 1000,
+        });
+      } else if (outcome.status === 'sold' || outcome.status === 'recorded') await deps.store.closeException(p.signature);
+      if (otherWallet && p.payer && (outcome.status === 'sold' || outcome.status === 'recorded')) await deps.store.notePayer(p.signature, p.payer);
       const fresh = await deps.store.reservation(userId, reservation.id);
       return json(
         { ok: true, status: outcome.status, ...(outcome.status === 'sold' ? { certificateId: outcome.certificateId, ...(outcome.materialId ? { materialId: outcome.materialId, quantity: outcome.quantity } : {}) } : {}), reservation: fresh ? reservationView(fresh, await deps.store.payments(reservation.id), chain) : null },

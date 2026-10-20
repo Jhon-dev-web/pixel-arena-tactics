@@ -70,7 +70,48 @@ export interface OverviewRows {
   pending: CertificateView[];
 }
 
-export interface MarketStore {
+/** Why a payment that reached the game could not be matched to a purchase (migration 0022, payment_exceptions.reason). */
+export type ExceptionReason = 'no_memo' | 'wrong_memo' | 'short_amount' | 'too_early' | 'wrong_sender' | 'already_owned' | 'duplicate';
+
+/** One verified on-chain payment that reached the game's receiving address but cannot be matched: it goes to the owner's queue. */
+export interface RecordExceptionArgs {
+  signature: string;
+  chainId: number;
+  livemode: boolean;
+  purpose: 'pass' | 'market';
+  reason: ExceptionReason;
+  /** the player who submitted it (null when unknown) */
+  userId: string | null;
+  reservationId: string | null;
+  /** the wallet that paid (null when it cannot be told) */
+  payer: string | null;
+  /** the game's address that received it */
+  receiver: string;
+  /** USDC base units for the Pass, lamports for a sale: what reached the game */
+  amountUnits: bigint;
+  memo: string | null;
+  blockTimeMs: number | null;
+}
+
+/** An unresolved exception as the PLAYER who submitted it may see it. */
+export interface UserException {
+  signature: string;
+  reason: ExceptionReason;
+  purpose: 'pass' | 'market';
+  amountUnits: string;
+  createdAt: string;
+}
+
+export interface PaymentExceptionStore {
+  /** idempotent on the signature; 'applied' = it is already a counted payment, there is nothing to resolve */
+  recordException(args: RecordExceptionArgs): Promise<'recorded' | 'exists' | 'applied'>;
+  /** the payment was matched after all: closes the open row (true when one was closed) */
+  closeException(signature: string): Promise<boolean>;
+  /** a sale was paid from another wallet of the buyer (recognised by the memo): the counted payment records the wallet that really paid */
+  notePayer(signature: string, payer: string): Promise<void>;
+}
+
+export interface MarketStore extends PaymentExceptionStore {
   /** sweeps stale reservations and expired listings (best effort; every read path also tidies what it touches) */
   expireDue(): Promise<void>;
   /** the atomic verification budget (bucket market_verify): false = over it */
@@ -104,7 +145,13 @@ export interface MarketStore {
 
 export type PassGrantOutcome = 'granted' | 'already_owned' | 'tx_reused' | 'replayed' | 'no_intent';
 
-export interface PassCryptoStore {
+export interface PassCryptoStore extends PaymentExceptionStore {
+  /** the player's random reference (32 hex characters) the Pass memo carries; created on first use and never changed */
+  passRef(userId: string): Promise<string>;
+  /** the player a Pass reference belongs to, or null when it belongs to nobody */
+  passRefOwner(ref: string): Promise<string | null>;
+  /** this player's unresolved exceptions, newest first */
+  openExceptions(userId: string): Promise<UserException[]>;
   hasActivePass(userId: string): Promise<boolean>;
   wallet(userId: string): Promise<{ address: string; chainId: number } | null>;
   /** the moment payments are counted from (the existing intent while it is young, else a new one) */

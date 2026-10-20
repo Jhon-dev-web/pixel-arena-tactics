@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { mt } from '../locales/market';
-import { MarketUnreachable, PassPlan, marketApi } from '../game/market/api';
+import { MarketUnreachable, PassPlan, UnmatchedPayment, marketApi } from '../game/market/api';
 import { runLinkFlow } from '../game/market/linkFlow';
 import { RETRY_REASONS } from '../game/market/payFlow';
 import { payPassFromWallet } from '../game/market/passPay';
 import { listSolWallets } from '../game/market/wallet';
-import { AccountMismatch, mismatchText, useOpenAccount } from './market/AccountMismatch';
+import { AccountMismatch } from './market/AccountMismatch';
+import { mismatchText, useOpenAccount } from './market/openAccount';
 import { LINK_MESSAGE_KEY } from './market/linkMessages';
 import { Warnings } from './market/WalletPanel';
 import { copyText, fmtUsdc, shortAddress } from './market/format';
@@ -21,6 +22,21 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [signature, setSignature] = useState('');
+  // payments of this player that reached the game but could not be matched to his purchase: queued for the owner, the signature is the code he keeps
+  const [waiting, setWaiting] = useState<UnmatchedPayment[]>([]);
+  useEffect(() => {
+    if (!open) return undefined;
+    let alive = true;
+    marketApi
+      .passExceptions()
+      .then((r) => {
+        if (alive && !('reason' in r)) setWaiting(r.exceptions);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [open]);
   // the price comes from the server (the same number the payment step shows), asked once when the Pass screen opens, so the button can say it before anything is tapped
   const [priceUnits, setPriceUnits] = useState<number | null>(null);
   useEffect(() => {
@@ -91,6 +107,14 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
           setBusy(false);
           return;
         }
+        if (r.reason === 'payment_unmatched') {
+          // it reached the game's wallet but could not be linked to this purchase: recorded for the owner, the signature is the code
+          const code = typeof (r.extra as { code?: unknown } | undefined)?.code === 'string' ? String((r.extra as { code: string }).code) : sig;
+          setMessage(null); // the waiting list below shows the code
+          setWaiting((w) => (w.some((x) => x.signature === code) ? w : [{ signature: code, reason: 'unmatched', purpose: 'pass', amountUnits: '0', createdAt: '' }, ...w]));
+          setBusy(false);
+          return;
+        }
         if (r.reason === 'already_owned') {
           say((r.extra as { refundDue?: boolean } | undefined)?.refundDue ? mt('pass.alreadyRefund') : mt('pass.already'), !!(r.extra as { refundDue?: boolean } | undefined)?.refundDue);
           setBusy(false);
@@ -139,7 +163,7 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
     if ('failure' in paid) {
       const f = paid.failure;
       say(
-        f === 'rejected' ? mt('wallet.rejected') : f === 'noProvider' ? mt('wallet.noProvider') : f === 'wrongAccount' ? mismatchText(plan.buyerAddress, paid.open, watched.walletName) : f === 'unsupported' ? mt('pay.unsupported') : f === 'blockhash' ? mt('pay.fail.rpc_error') : f === 'unreachable' ? mt('unreachable') : mt('pay.sendFailed'),
+        f === 'rejected' ? mt('wallet.rejected') : f === 'noProvider' ? mt('wallet.noProvider') : f === 'wrongAccount' ? mismatchText(plan.buyerAddress, paid.open, watched.walletName) : f === 'unsupported' ? mt('pay.unsupported') : f === 'selfPayment' ? mt('pay.selfPayment') : f === 'blockhash' ? mt('pay.fail.rpc_error') : f === 'unreachable' ? mt('unreachable') : mt('pay.sendFailed'),
         true,
       );
       setBusy(false);
@@ -180,8 +204,16 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
               {mt('copy')}
             </Button>
           </div>
+          {plan.buyerAddress === plan.receiveAddress && (
+            <div className="ui-alert bad" role="alert">
+              <p>{mt('pay.selfPayment')}</p>
+              <Button size="sm" variant="primary" disabled={busy} onClick={() => void relink()}>
+                {mt('wallet.change')}
+              </Button>
+            </div>
+          )}
           <AccountMismatch linked={plan.buyerAddress} open={watched.open} walletName={watched.walletName} onRelink={() => void relink()} busy={busy} />
-          <Button variant="primary" block disabled={busy || (watched.open !== null && watched.open !== plan.buyerAddress)} onClick={() => void payFromWallet()}>
+          <Button variant="primary" block disabled={busy || plan.buyerAddress === plan.receiveAddress || (watched.open !== null && watched.open !== plan.buyerAddress)} onClick={() => void payFromWallet()}>
             {mt('pay.payFromWallet')}
           </Button>
           <TextField
@@ -198,6 +230,16 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
           </Button>
           {!plan.chain.livemode && <p className="ui-note">{mt('pass.testNote')}</p>}
         </>
+      )}
+      {waiting.length > 0 && (
+        <div className="ui-alert" role="status" data-testid="pass-waiting">
+          <strong>{mt('pass.waitingTitle')}</strong>
+          {waiting.map((w) => (
+            <p key={w.signature}>
+              {mt('pay.unmatched', { code: w.signature })}
+            </p>
+          ))}
+        </div>
       )}
       {message && (
         <p className={`ui-alert${message.error ? ' bad' : ''}`} role="status">

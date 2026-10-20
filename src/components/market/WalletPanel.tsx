@@ -7,7 +7,8 @@ import type { ChainPublic } from '../../../supabase/functions/_shared/market/typ
 import { copyText } from './format';
 import { LINK_MESSAGE_KEY } from './linkMessages';
 import { Button, Panel } from '../ui';
-import { AccountMismatch, useOpenAccount } from './AccountMismatch';
+import { AccountMismatch } from './AccountMismatch';
+import { useOpenAccount } from './openAccount';
 
 /** The warning every money screen carries. */
 export function Warnings({ chain, custody = true }: { chain: ChainPublic | null; custody?: boolean }) {

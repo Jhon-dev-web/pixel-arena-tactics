@@ -48,6 +48,17 @@ export interface PassPlan {
   buyerTokenAccount: string;
   intentAt: string;
   chain: ChainPublic;
+  /** the reference the payment transaction must carry in an SPL Memo instruction ("pa1:pass:<ref>"); older servers send none */
+  memo?: string;
+}
+
+/** A payment that reached the game but could not be matched to a purchase (queued for the owner). `signature` is the code the player keeps. */
+export interface UnmatchedPayment {
+  signature: string;
+  reason: string;
+  purpose: 'pass' | 'market';
+  amountUnits: string;
+  createdAt: string;
 }
 
 export interface MarketApi {
@@ -62,13 +73,15 @@ export interface MarketApi {
   cancelReservation(reservationId: string): Promise<Result>;
   reservationStatus(reservationId: string): Promise<Result<{ reservation: ReservationView }>>;
   /** a recent blockhash for the transaction the wallet signs (the browser never calls the node) */
-  prepare(reservationId: string): Promise<Result<{ blockhash: string; lastValidBlockHeight: number }>>;
+  prepare(reservationId: string, payer?: string): Promise<Result<{ blockhash: string; lastValidBlockHeight: number }>>;
   submitPayment(reservationId: string, signature: string): Promise<Result<{ status: string; reservation: ReservationView | null; certificateId?: string | null; materialId?: string; quantity?: number }>>;
   overview(): Promise<Result<MarketOverview>>;
   ack(certificateIds: string[]): Promise<Result<{ acked: number }>>;
   passPrice(): Promise<Result<{ priceUnits: number; priceUsdc: string; chain: ChainPublic }>>;
   passStart(): Promise<Result<PassPlan>>;
-  passPrepare(): Promise<Result<{ blockhash: string; lastValidBlockHeight: number }>>;
+  passPrepare(payer?: string): Promise<Result<{ blockhash: string; lastValidBlockHeight: number }>>;
+  /** the payments of this player that reached the game but are waiting for the owner */
+  passExceptions(): Promise<Result<{ exceptions: UnmatchedPayment[] }>>;
   passSubmit(signature: string): Promise<Result<{ status: string; livemode?: boolean }>>;
 }
 
@@ -101,13 +114,14 @@ export function createMarketApi(transport: MarketTransport = supabaseMarketTrans
     reserve: (listingId) => call('market-buy', { action: 'reserve', listingId }),
     cancelReservation: (reservationId) => call('market-buy', { action: 'cancel', reservationId }),
     reservationStatus: (reservationId) => call('market-buy', { action: 'status', reservationId }),
-    prepare: (reservationId) => call('market-buy', { action: 'prepare', reservationId }),
+    prepare: (reservationId, payer) => call('market-buy', { action: 'prepare', reservationId, ...(payer ? { payer } : {}) }),
     submitPayment: (reservationId, signature) => call('market-buy', { action: 'submit', reservationId, signature }),
     overview: () => call('market-my', { action: 'overview' }),
     ack: (certificateIds) => call('market-my', { action: 'ack', certificateIds }),
     passPrice: () => call('pass-crypto', { action: 'price' }),
     passStart: () => call('pass-crypto', { action: 'start' }),
-    passPrepare: () => call('pass-crypto', { action: 'prepare' }),
+    passPrepare: (payer) => call('pass-crypto', { action: 'prepare', ...(payer ? { payer } : {}) }),
+    passExceptions: () => call('pass-crypto', { action: 'exceptions' }),
     passSubmit: (signature) => call('pass-crypto', { action: 'submit', signature }),
   };
 }

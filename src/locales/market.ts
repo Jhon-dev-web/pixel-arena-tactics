@@ -139,7 +139,11 @@ const pt: Tree = {
     sendFailed: 'A carteira não enviou a transação. Nada foi cobrado.',
     wrongAccount: 'A carteira usou outra conta, não a que está ligada ao jogo. Escolha a conta ligada e tente de novo.',
     unsupported: 'Esta carteira é antiga demais para pagar por aqui. Atualize a Phantom ou a Solflare, ou pague por outra carteira e cole a assinatura.',
+    selfPayment: 'Esta é a carteira que recebe os pagamentos do jogo; pague com outra conta.',
+    unmatched: 'Recebemos um pagamento que não conseguimos ligar à sua compra. Ele foi registrado e será resolvido; guarde este código: {code}',
     fail: {
+      self_payment: 'Esta é a carteira que recebe os pagamentos do jogo; pague com outra conta.',
+      not_your_payment: 'Esse pagamento leva a referência de outra conta do jogo. Quem pagou deve enviá-lo por lá.',
       bad_signature: 'Isso não parece a assinatura de uma transação Solana (são cerca de 88 letras e números).',
       not_found_tx: 'A rede ainda não encontrou essa transação. Espere alguns segundos e verifique de novo.',
       unconfirmed: 'A rede ainda não finalizou essa transação. Verifique de novo em instantes.',
@@ -232,6 +236,7 @@ const pt: Tree = {
     alreadyRefund: 'Esta conta já tinha o Passe quando o pagamento chegou. A devolução é feita manualmente: fale com o suporte e guarde a assinatura.',
     testNote: 'Rede de teste (devnet): o Passe funciona no jogo, mas não conta para a meta de vendas nem para o ranking.',
     noIntent: 'Clique em "Ver como pagar" primeiro.',
+    waitingTitle: 'Pagamentos aguardando resolução',
     fail: { generic: 'Não foi possível verificar agora. Nada foi consumido.' },
   },
 };
@@ -370,7 +375,11 @@ const en: Tree = {
     sendFailed: 'The wallet did not send the transaction. Nothing was charged.',
     wrongAccount: 'The wallet used another account, not the one linked to the game. Pick the linked account and try again.',
     unsupported: 'This wallet is too old to pay from here. Update Phantom or Solflare, or pay from another wallet and paste the signature.',
+    selfPayment: 'This is the wallet that receives the game\'s payments; pay with another account.',
+    unmatched: 'We received a payment that we could not link to your purchase. It was recorded and will be resolved; keep this code: {code}',
     fail: {
+      self_payment: 'This is the wallet that receives the game\'s payments; pay with another account.',
+      not_your_payment: 'That payment carries the reference of another game account. Whoever paid must send it from there.',
       bad_signature: 'That does not look like a Solana transaction signature (about 88 letters and numbers).',
       not_found_tx: 'The network has not found that transaction yet. Wait a few seconds and verify again.',
       unconfirmed: 'The network has not finalized that transaction yet. Verify again in a moment.',
@@ -463,6 +472,7 @@ const en: Tree = {
     alreadyRefund: 'This account already had the Pass when the payment arrived. The refund is made by hand: contact support and keep the signature.',
     testNote: 'Test network (devnet): the Pass works in the game but does not count toward the sales goal or the ranking.',
     noIntent: 'Click "See how to pay" first.',
+    waitingTitle: 'Payments waiting to be resolved',
     fail: { generic: 'Could not verify now. Nothing was consumed.' },
   },
 };

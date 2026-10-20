@@ -11,7 +11,7 @@ export const RETRY_REASONS = new Set(['unconfirmed', 'not_found_tx', 'rpc_error'
 
 export type SubmitOutcome =
   | { kind: 'recorded'; reservation: ReservationView | null; status: string; certificateId?: string }
-  | { kind: 'refused'; reason: string }
+  | { kind: 'refused'; reason: string; /** the signature to quote when the payment reached the game but could not be matched (it is queued for the owner) */ code?: string }
   | { kind: 'pending'; reason: string }
   | { kind: 'unreachable' }
   | { kind: 'stopped' };
@@ -43,7 +43,7 @@ export async function submitWithPolling(api: MarketApi, reservationId: string, s
       throw err;
     }
     if (!('reason' in r)) return { kind: 'recorded', reservation: r.reservation, status: r.status, ...(r.certificateId ? { certificateId: r.certificateId } : {}) };
-    if (!RETRY_REASONS.has(r.reason)) return { kind: 'refused', reason: r.reason };
+    if (!RETRY_REASONS.has(r.reason)) return { kind: 'refused', reason: r.reason, ...(typeof r.extra?.code === 'string' ? { code: r.extra.code } : {}) };
     last = { kind: 'pending', reason: r.reason };
     opts.onPending?.({ reason: r.reason });
     await sleep(interval);
@@ -51,20 +51,23 @@ export async function submitWithPolling(api: MarketApi, reservationId: string, s
   return last; // still not ready after the patience: the player can press "verify" again, nothing was consumed
 }
 
-export type PayFailure = 'noProvider' | 'rejected' | 'wrongAccount' | 'unsupported' | 'unreachable' | 'blockhash' | 'failed';
+export type PayFailure = 'noProvider' | 'rejected' | 'wrongAccount' | 'unsupported' | 'unreachable' | 'blockhash' | 'selfPayment' | 'failed';
 
 /**
  * Asks the wallet to pay the reservation: the SERVER hands over a fresh blockhash, the transaction is built here from the reservation's own amounts and addresses (the seller's share and the game's
  * fee, in ONE transaction), and the wallet signs and sends it after the player approves on its own screen. Resolves with the signature.
  */
 export async function payReservationFromWallet(api: MarketApi, reservation: ReservationView, walletAddress: string): Promise<{ ok: true; signature: string } | { ok: false; failure: PayFailure; open?: string }> {
+  // Paying from the game's own address (or as the seller) nets zero: refused here and by the server's prepare, before the wallet is even opened.
+  if (walletAddress === reservation.feeAddress || walletAddress === reservation.sellerAddress) return { ok: false, failure: 'selfPayment' };
   try {
     const session = await connectSolWallet(undefined, walletAddress);
-    const prepared = await api.prepare(reservation.id);
-    if ('reason' in prepared) return { ok: false, failure: 'blockhash' };
+    const prepared = await api.prepare(reservation.id, walletAddress);
+    if ('reason' in prepared) return { ok: false, failure: prepared.reason === 'self_payment' ? 'selfPayment' : 'blockhash' };
     const tx = buildSolTransfersTx({
       payer: walletAddress,
       blockhash: prepared.blockhash,
+      memo: reservation.memo,
       transfers: [
         { to: reservation.sellerAddress, lamports: reservation.sellerLamports },
         { to: reservation.feeAddress, lamports: reservation.feeLamports },

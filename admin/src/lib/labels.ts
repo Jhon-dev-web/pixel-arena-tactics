@@ -1,5 +1,5 @@
 // Portuguese labels for the codes the database returns.
-import type { OpsFlagKey, OpsSeverity } from './types';
+import type { OpsFlagKey, OpsSeverity, PaymentExceptionReason, PaymentExceptionStatus } from './types';
 
 export const PASS_SOURCE_LABEL: Record<string, string> = {
   stripe: 'Cartão (Stripe)',
@@ -121,3 +121,19 @@ export function actorLabel(actor: string | null | undefined): string {
 
 export const REPORT_KIND_LABEL: Record<string, string> = { anomaly: 'Anomalia', daily: 'Revisão diária', incident: 'Incidente' };
 export const reportKindLabel = (k: string | null | undefined): string => (k ? (REPORT_KIND_LABEL[k] ?? k) : '—');
+
+// ---- Payments to resolve ----
+
+export const EXCEPTION_REASON: Record<PaymentExceptionReason, { label: string; hint: string; tone: 'warn' | 'bad' | 'info' }> = {
+  no_memo: { label: 'Sem referência', hint: 'Chegou sem a referência do jogo e de uma carteira que não é a ligada.', tone: 'warn' },
+  wrong_memo: { label: 'Referência errada', hint: 'Levava uma referência que não é a deste jogador.', tone: 'warn' },
+  short_amount: { label: 'Valor menor', hint: 'Chegou menos do que o preço. O resto não foi pago.', tone: 'bad' },
+  too_early: { label: 'Antes da compra', hint: 'Foi feito antes de a compra começar (reserva ou intenção).', tone: 'info' },
+  wrong_sender: { label: 'Pagadores diferentes', hint: 'As transferências saíram de carteiras diferentes ou de um endereço que recebe.', tone: 'warn' },
+  already_owned: { label: 'Já tinha o Passe', hint: 'O jogador já tinha o Passe quando o pagamento chegou: devolver.', tone: 'bad' },
+  duplicate: { label: 'Pagamento repetido', hint: 'Um segundo pagamento para uma compra já paga ou um item que já foi vendido: devolver.', tone: 'bad' },
+};
+export const exceptionReasonInfo = (r: string): { label: string; hint: string; tone: 'warn' | 'bad' | 'info' } => EXCEPTION_REASON[r as PaymentExceptionReason] ?? { label: r, hint: '', tone: 'info' };
+
+export const EXCEPTION_STATUS_LABEL: Record<PaymentExceptionStatus, string> = { open: 'Em aberto', granted: 'Passe concedido', refunded: 'Devolvido', resolved: 'Casou depois' };
+export const exceptionStatusLabel = (s: string): string => EXCEPTION_STATUS_LABEL[s as PaymentExceptionStatus] ?? s;

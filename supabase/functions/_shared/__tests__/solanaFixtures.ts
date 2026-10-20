@@ -1,5 +1,6 @@
 import { encodeBase58 } from '../chain/base58.ts';
 import type { RpcClient } from '../chain/rpc.ts';
+import { MEMO_PROGRAM_ID } from '../chain/memo.ts';
 import { SOLANA_GENESIS_HASHES, SOLANA_USDC_MINT_MAINNET, SYSTEM_PROGRAM_ID, SolanaConfig, TOKEN_PROGRAM_ID } from '../chain/solana.ts';
 
 // Hand written Solana JSON-RPC answers in the exact shape of `getTransaction` with encoding "jsonParsed" (what the verifier reads). No network, no node: a FakeSolana holds a ledger of
@@ -38,6 +39,8 @@ export interface FakeTx {
   /** instructions of another program that merely LOOK like a transfer (program id is not the system program) */
   decoyTransfers: Transfer[];
   tokens: TokenMove[];
+  /** texts of SPL Memo instructions (top level) */
+  memos: string[];
 }
 
 export const sysIx = (t: Transfer) => ({ program: 'system', programId: SYSTEM_PROGRAM_ID, parsed: { type: 'transfer', info: { source: t.source, destination: t.destination, lamports: t.lamports } }, stackHeight: null });
@@ -64,7 +67,7 @@ export class FakeSolana implements RpcClient {
   add(over: Partial<FakeTx> = {}): string {
     this.n++;
     const signature = sig(this.n);
-    this.txs.set(signature, { slot: 300_000_000 + this.n, blockTime: Math.floor(this.clockMs() / 1000), err: null, transfers: [], innerTransfers: [], decoyTransfers: [], tokens: [], ...over });
+    this.txs.set(signature, { slot: 300_000_000 + this.n, blockTime: Math.floor(this.clockMs() / 1000), err: null, transfers: [], innerTransfers: [], decoyTransfers: [], tokens: [], memos: [], ...over });
     return signature;
   }
 
@@ -115,6 +118,7 @@ export class FakeSolana implements RpcClient {
               recentBlockhash: addr(9),
               instructions: [
                 ...tx.transfers.map(sysIx),
+                ...tx.memos.map((text) => ({ program: 'spl-memo', programId: MEMO_PROGRAM_ID, parsed: text, stackHeight: null })),
                 ...tx.decoyTransfers.map((t) => ({ program: 'spl-token', programId: TOKEN_PROGRAM_ID, parsed: { type: 'transfer', info: { source: t.source, destination: t.destination, lamports: t.lamports } }, stackHeight: null })),
               ],
             },

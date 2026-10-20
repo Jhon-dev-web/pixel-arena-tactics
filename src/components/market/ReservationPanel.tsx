@@ -8,7 +8,8 @@ import { SolIcon } from './icons';
 import { clock, copyText, fmtSol, msLeft, shortAddress } from './format';
 import UsdLine from './UsdLine';
 import { Warnings } from './WalletPanel';
-import { AccountMismatch, mismatchText, useOpenAccount } from './AccountMismatch';
+import { AccountMismatch } from './AccountMismatch';
+import { mismatchText, useOpenAccount } from './openAccount';
 import { Button, Panel, StatList, StatRow, TextField } from '../ui';
 
 interface PayState {
@@ -25,7 +26,7 @@ const failText = (reason: string): string => {
   return text === key ? mt('pay.fail.generic') : text;
 };
 
-const PAY_FAILURE_KEY = { noProvider: 'wallet.noProvider', rejected: 'wallet.rejected', wrongAccount: 'pay.wrongAccount', unsupported: 'pay.unsupported', unreachable: 'unreachable', blockhash: 'pay.fail.rpc_error', failed: 'pay.sendFailed' } as const;
+const PAY_FAILURE_KEY = { noProvider: 'wallet.noProvider', rejected: 'wallet.rejected', wrongAccount: 'pay.wrongAccount', unsupported: 'pay.unsupported', unreachable: 'unreachable', blockhash: 'pay.fail.rpc_error', selfPayment: 'pay.selfPayment', failed: 'pay.sendFailed' } as const;
 
 // The payment of a reservation: ONE transaction from the player's wallet with two SOL transfers, the seller's share and the game's fee (so a failure halfway cannot leave a half payment). The wallet
 // signs and sends it (the amounts and addresses are the server's); or he pastes the signature of a transaction he already made. The server verifies; this screen only shows where the payment stands.
@@ -77,7 +78,7 @@ export default function ReservationPanel({
       patch({ busy: false, message: null, error: false });
       if (out.status === 'refund_due') setNote(mt('pay.refundDue'));
       onChanged();
-    } else if (out.kind === 'refused') patch({ busy: false, message: failText(out.reason), error: true });
+    } else if (out.kind === 'refused') patch({ busy: false, message: out.code ? `${failText(out.reason)} ${mt('pay.unmatched', { code: out.code })}` : failText(out.reason), error: true });
     else if (out.kind === 'pending') patch({ busy: false, message: failText(out.reason), error: false });
     else if (out.kind === 'unreachable') patch({ busy: false, message: mt('unreachable'), error: true });
     else patch({ busy: false });

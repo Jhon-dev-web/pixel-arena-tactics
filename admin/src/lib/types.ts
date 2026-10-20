@@ -498,3 +498,42 @@ export interface AiCost {
   months: { month: string; cost_usd: number; runs: number }[];
   by_model: { model: string; runs: number; cost_usd: number }[];
 }
+
+// ---- Payments to resolve (supabase/migrations/0022_payment_fixes.sql) -----------------------------------------------------------------------------------------------
+
+export type PaymentExceptionStatus = 'open' | 'granted' | 'refunded' | 'resolved';
+export type PaymentExceptionReason = 'no_memo' | 'wrong_memo' | 'short_amount' | 'too_early' | 'wrong_sender' | 'already_owned' | 'duplicate';
+
+export interface PaymentExceptionRow {
+  id: string;
+  signature: string;
+  purpose: 'pass' | 'market';
+  reason: PaymentExceptionReason;
+  status: PaymentExceptionStatus;
+  livemode: boolean;
+  user_id: string | null;
+  username: string | null;
+  /** the wallet linked to the player NOW (to compare with who paid) */
+  linked_wallet: string | null;
+  /** other players who submitted the same signature */
+  claimed_by: string[];
+  reservation_id: string | null;
+  payer_address: string | null;
+  receiver_address: string;
+  /** USDC base units (6 decimals) for the Pass, lamports for a sale */
+  amount_units: number | string;
+  memo: string | null;
+  block_time: string | null;
+  /** the entitlement id (granted) or the refund transaction signature (refunded) */
+  resolution_ref: string | null;
+  note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export type PaymentExceptionsPage = Page<PaymentExceptionRow> & { open: number };
+export interface PaymentExceptionsQuery {
+  status: 'open' | 'resolved' | 'all';
+  page: number;
+  pageSize: number;
+}

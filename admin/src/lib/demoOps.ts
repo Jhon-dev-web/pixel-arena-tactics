@@ -2,7 +2,7 @@
 // Like demo.ts it is imported only by a build made with VITE_ADMIN_DEMO=1 and never touches the network or the client library.
 import { ApiError } from './api';
 import type { AdminApi } from './api';
-import type { AiCost, AiReportRow, OpsEvent, OpsFlagKey, OpsFlagRow, OpsIncident, OpsOverview, Page, PlayerRow } from './types';
+import type { AiCost, AiReportRow, OpsEvent, OpsFlagKey, OpsFlagRow, OpsIncident, OpsOverview, Page, PaymentExceptionRow, PlayerRow } from './types';
 
 const MIN = 60_000;
 const HOUR = 3_600_000;
@@ -142,11 +142,28 @@ export function buildOps(players: Pick<PlayerRow, 'user_id' | 'username'>[]) {
   return { flags, incidents, events, reports, cost };
 }
 
-type OpsApi = Pick<AdminApi, 'opsOverview' | 'aiReports' | 'aiCost' | 'setOpsFlag' | 'ackReport'>;
+/** INVENTED unmatched payments for the demo page: a Pass paid from another account, a short payment, a duplicate, one already refunded. */
+export function buildPaymentExceptions(players: Pick<PlayerRow, 'user_id' | 'username'>[]): PaymentExceptionRow[] {
+  const [a, b] = players;
+  const base = { livemode: false, claimed_by: [] as string[], reservation_id: null, receiver_address: 'DemoRecv1111111111111111111111111111111111', memo: null, block_time: null, resolution_ref: null, note: null, resolved_at: null };
+  return [
+    { ...base, id: 'demo-pay-1', signature: '5DemoSig1111111111111111111111111111111111111111111111111111111111111111111111111111111x', purpose: 'pass', reason: 'no_memo', status: 'open', user_id: a.user_id, username: a.username, linked_wallet: 'DemoLinked11111111111111111111111111111111aa', payer_address: 'DemoOther111111111111111111111111111111111bb', amount_units: 10_000_000, created_at: iso(20 * MIN) },
+    { ...base, id: 'demo-pay-2', signature: '5DemoSig2222222222222222222222222222222222222222222222222222222222222222222222222222222x', purpose: 'pass', reason: 'short_amount', status: 'open', user_id: b.user_id, username: b.username, linked_wallet: 'DemoLinked22222222222222222222222222222222cc', payer_address: 'DemoLinked22222222222222222222222222222222cc', amount_units: 4_000_000, memo: 'pa1:pass:0123456789abcdef0123456789abcdef', created_at: iso(3 * HOUR) },
+    { ...base, id: 'demo-pay-3', signature: '5DemoSig3333333333333333333333333333333333333333333333333333333333333333333333333333333x', purpose: 'market', reason: 'duplicate', status: 'open', user_id: a.user_id, username: a.username, linked_wallet: 'DemoLinked11111111111111111111111111111111aa', payer_address: 'DemoLinked11111111111111111111111111111111aa', amount_units: 1_000_000_000, created_at: iso(DAY) },
+    { ...base, id: 'demo-pay-4', signature: '5DemoSig4444444444444444444444444444444444444444444444444444444444444444444444444444444x', purpose: 'pass', reason: 'already_owned', status: 'refunded', user_id: b.user_id, username: b.username, linked_wallet: null, payer_address: 'DemoOther222222222222222222222222222222222dd', amount_units: 10_000_000, resolution_ref: '5DemoRefund44444444444444444444444444444444444444444444444444444444444444444444444444444', created_at: iso(5 * DAY), resolved_at: iso(4 * DAY) },
+  ];
+}
+
+type OpsApi = Pick<AdminApi, 'opsOverview' | 'aiReports' | 'aiCost' | 'setOpsFlag' | 'ackReport' | 'paymentExceptions'>;
 
 export function createDemoOpsApi(players: Pick<PlayerRow, 'user_id' | 'username'>[]): OpsApi {
   const ops = buildOps(players);
+  const payments = buildPaymentExceptions(players);
   return {
+    paymentExceptions(q) {
+      const rows = payments.filter((x) => q.status === 'all' || (q.status === 'open' ? x.status === 'open' : x.status !== 'open')).map((x) => ({ ...x }));
+      return delay({ ...paginate(rows, q.page, q.pageSize), open: payments.filter((x) => x.status === 'open').length });
+    },
     opsOverview() {
       const out: OpsOverview = {
         flags: ops.flags.map((f) => ({ ...f })),

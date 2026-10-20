@@ -4,15 +4,17 @@ import { buildUsdcTransferTx } from './solTx';
 import { WalletError, assertOpenAccount, connectSolWallet } from './wallet';
 
 // Paying the Adventurer Pass in USDC from the player's wallet: the SERVER hands over a fresh blockhash, the transaction is built here from the plan's own amounts and token accounts, and the wallet signs
-// and sends it after the player approves on its own screen. Before anything is built the account that is open in the wallet RIGHT NOW must be the linked one.
+// and sends it after the player approves on its own screen, with the server's reference in an SPL Memo so the payment is recognised even when it is not made from the linked wallet. Before anything is built the account that is open in the wallet RIGHT NOW must be the linked one.
 
 export type PassPayResult = { ok: true; signature: string } | { ok: false; failure: PayFailure; open?: string };
 
 export async function payPassFromWallet(api: MarketApi, plan: PassPlan): Promise<PassPayResult> {
+  // The receiving address is the game's: paying from it nets zero (the money would go from the game to the game). Refused here and by the server's prepare, before the wallet is opened.
+  if (plan.buyerAddress === plan.receiveAddress) return { ok: false, failure: 'selfPayment' };
   try {
     const session = await connectSolWallet(undefined, plan.buyerAddress);
-    const prepared = await api.passPrepare();
-    if ('reason' in prepared) return { ok: false, failure: 'blockhash' };
+    const prepared = await api.passPrepare(plan.buyerAddress);
+    if ('reason' in prepared) return { ok: false, failure: prepared.reason === 'self_payment' ? 'selfPayment' : 'blockhash' };
     const tx = buildUsdcTransferTx({
       payer: plan.buyerAddress,
       blockhash: prepared.blockhash,
@@ -21,6 +23,7 @@ export async function payPassFromWallet(api: MarketApi, plan: PassPlan): Promise
       mint: plan.chain.usdcMint,
       units: plan.priceUnits,
       decimals: plan.decimals,
+      memo: plan.memo,
     });
     // the player may have switched account in the wallet since connecting: never send from an account that is not the linked one
     assertOpenAccount(session, plan.buyerAddress);

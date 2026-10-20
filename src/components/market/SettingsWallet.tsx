@@ -7,7 +7,8 @@ import { mt } from '../../locales/market';
 import { Button, Panel } from '../ui';
 import { shortAddress } from './format';
 import { LINK_MESSAGE_KEY } from './linkMessages';
-import { AccountMismatch, useOpenAccount } from './AccountMismatch';
+import { AccountMismatch } from './AccountMismatch';
+import { useOpenAccount } from './openAccount';
 
 // Settings > Carteira Solana: the wallet linked to the account (masked) and the button to link or change it. It runs the SAME link flow as the Market's wallet tab (runLinkFlow: the wallet signs one
 // message, nothing moves). Web only and behind the market flag: App.tsx loads this file lazily and only there, so the desktop bundle never carries it.

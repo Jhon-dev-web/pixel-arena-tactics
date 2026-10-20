@@ -1,6 +1,6 @@
 import { CERT_COLUMNS, CertRow, toCertificateView } from '../items/view.ts';
 import { MARKET_RULES, MARKET_VERIFY_BUCKET } from './rules.ts';
-import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoStore, PassGrantOutcome, PaymentRow, RecordOutcome, ReservationRow, ReserveOutcome } from './store.ts';
+import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoStore, PassGrantOutcome, PaymentExceptionStore, PaymentRow, RecordExceptionArgs, RecordOutcome, ReservationRow, ReserveOutcome, UserException } from './store.ts';
 import { LISTING_ITEM_COLUMNS } from './types.ts';
 import type { ListRefusal, MyListingView, ReservationPayment, ReservationStatus, ReserveRefusal, SaleView } from './types.ts';
 
@@ -91,6 +91,40 @@ async function paymentsOf(d: Db, reservationId: string): Promise<ReservationPaym
   return rows.map((r) => ({ leg: r.leg === 'extra' ? ('extra' as const) : ('sale' as const), signature: r.tx_hash, status: r.status }));
 }
 
+/** The two calls both stores share: write an unmatched payment to the owner's queue (migration 0022), and close the row when the payment is matched after all. */
+function exceptionFns(d: Db): PaymentExceptionStore {
+  return {
+    async recordException(a: RecordExceptionArgs) {
+      const r = await d.rpc<{ status?: unknown }>(
+        'payment_exception_record',
+        {
+          p_signature: a.signature,
+          p_chain_id: a.chainId,
+          p_livemode: a.livemode,
+          p_purpose: a.purpose,
+          p_reason: a.reason,
+          p_user_id: a.userId,
+          p_reservation_id: a.reservationId,
+          p_payer: a.payer,
+          p_receiver: a.receiver,
+          p_amount_units: a.amountUnits.toString(),
+          p_memo: a.memo,
+          p_block_time: a.blockTimeMs === null ? null : new Date(a.blockTimeMs).toISOString(),
+        },
+        'exception_record',
+      );
+      if (r.status === 'recorded' || r.status === 'exists' || r.status === 'applied') return r.status;
+      throw new Error('exception_record_bad_answer');
+    },
+    async closeException(signature: string) {
+      return (await d.rpc<unknown>('payment_exception_close', { p_signature: signature }, 'exception_close')) === true;
+    },
+    async notePayer(signature: string, payer: string) {
+      await d.rpc<unknown>('chain_payment_set_payer', { p_tx_hash: signature, p_payer: payer }, 'payer_note');
+    },
+  };
+}
+
 async function takeBudget(d: Db, userId: string): Promise<boolean> {
   // the generic atomic bucket of migration 0010: the first look starts with an hour of refill, capped at the capacity
   const r = await d.rpc<{ ok?: unknown }>(
@@ -108,6 +142,7 @@ async function takeBudget(d: Db, userId: string): Promise<boolean> {
 export function createMarketStore(cfg: MarketDbConfig): MarketStore {
   const d = db(cfg);
   return {
+    ...exceptionFns(d),
     async expireDue() {
       await d.rpc('market_expire_due', { p_limit: 50 }, 'expire_due');
     },
@@ -358,6 +393,22 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
 export function createPassCryptoStore(cfg: MarketDbConfig): PassCryptoStore {
   const d = db(cfg);
   return {
+    ...exceptionFns(d),
+    async passRef(userId) {
+      const ref = await d.rpc<unknown>('pass_crypto_ref', { p_user_id: userId }, 'pass_ref');
+      if (typeof ref !== 'string' || !/^[0-9a-f]{32}$/.test(ref)) throw new Error('pass_ref_bad_answer');
+      return ref;
+    },
+    async passRefOwner(ref) {
+      const q = new URLSearchParams({ select: 'user_id', ref: `eq.${ref}`, limit: '1' });
+      const rows = await d.rows<{ user_id: string }>('pass_payment_refs', q, 'pass_ref_read');
+      return rows[0]?.user_id ?? null;
+    },
+    async openExceptions(userId) {
+      const q = new URLSearchParams({ select: 'signature,reason,purpose,amount_units,created_at', user_id: `eq.${userId}`, status: 'eq.open', order: 'created_at.desc', limit: '20' });
+      const rows = await d.rows<{ signature: string; reason: UserException['reason']; purpose: UserException['purpose']; amount_units: string | number; created_at: string }>('payment_exceptions', q, 'exceptions_read');
+      return rows.map((r) => ({ signature: r.signature, reason: r.reason, purpose: r.purpose, amountUnits: String(r.amount_units), createdAt: r.created_at }));
+    },
     async hasActivePass(userId) {
       const q = new URLSearchParams({ select: 'id', user_id: `eq.${userId}`, kind: 'eq.adventurer_pass', status: 'eq.active', limit: '1' });
       return (await d.rows<unknown>('entitlements', q, 'entitlement_read')).length > 0;

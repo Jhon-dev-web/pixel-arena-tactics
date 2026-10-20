@@ -77,6 +77,11 @@ Dependências (explicadas): **nenhuma nova no jogo** e **nenhum SDK da Solana em
 7. Quebre de propósito, para ver as recusas: cole a assinatura de uma transação que pagou só o vendedor; pagar de outra carteira; colar a mesma assinatura em duas reservas; deixar a reserva vencer e pagar depois; pagar depois de outro comprador reservar (deve virar `refund_due`: veja a fila na seção 8); cancelar anúncio reservado.
 8. Passe: "Pagar com USDC (Solana)" com uma terceira conta; confira `entitlements` (`crypto_sol`, `livemode = false`: dá as vantagens no jogo, mas **não** sobe o medidor nem rankeia). Teste também sem a conta de USDC do recebedor: a tela deve dizer "ainda não está pronto" e não cobrar.
 9. Reenvie a compra com o nó fora do ar (troque o segredo por uma URL inválida): a tela deve dizer "tente de novo" e **nada** é consumido.
+10. **Duas contas na Phantom** (trocar de carteira e pagar de outra conta, migration 0022). Crie na Phantom (devnet) a **Conta 1**, a **Conta 2** e a **Conta 3**. **A conta que recebe os pagamentos do jogo (`PASS_RECEIVE_ADDRESS`, ou `MARKET_FEE_ADDRESS`) nunca paga**: não a use como comprador (o jogo recusa com «Esta é a carteira que recebe os pagamentos do jogo; pague com outra conta.»). Dê SOL e USDC de teste à Conta 1 e à Conta 2.
+    - **Trocar de carteira:** ligue a Conta 1 (Configurações > Carteira Solana). Na Phantom, selecione a **Conta 2**. A tela deve avisar sozinha: «A carteira ligada (…) é diferente da conta aberta na Phantom (…): ligar esta?». Toque em «Ligar esta conta» (ou em «Trocar de carteira»): a Phantom pede **de novo** a aprovação e uma **nova assinatura**; o endereço mostrado passa a ser o da Conta 2. Tocar em «Trocar de carteira» **sem** mudar de conta na Phantom diz «Esta já era a carteira ligada».
+    - **Pagamento bloqueado se a conta aberta não é a ligada:** com a Conta 1 ligada e a Conta 2 aberta na Phantom, o botão «Pagar na carteira» do Passe fica desligado e a tela mostra o aviso e o botão de religar. Nada é enviado.
+    - **Pagar de outra conta com a referência:** o jogo monta a transação com a referência (um *Memo* `pa1:pass:…` ou `pa1:sale:<reserva>`; veja-o no solscan, na transação). O servidor reconhece o pagamento por ela, de **qualquer** conta do mesmo jogador (a carteira ligada é só um sinal; o evento `paid_from_other_wallet` em `market_events` registra quando foi outra).
+    - **Pagamento que não casa:** pague o Passe da Conta 3 **à mão** (um `spl-token transfer` ou outra carteira, sem Memo) e cole a assinatura: a tela mostra «Recebemos um pagamento que não conseguimos ligar à sua compra… guarde este código: …». A linha aparece no painel de administração, em **Pagamentos a resolver**, e em `select * from public.payment_exceptions`. Pague também **menos** de 10 USDC com o Memo certo: mesma coisa, motivo «Valor menor».
 
 ## 4. Números e regras (fonte única: `supabase/functions/_shared/market/rules.ts` e `chain/solMoney.ts`; a migration só tem a faixa absoluta de 0,001 a 1.000 SOL como `check`)
 
@@ -99,6 +104,7 @@ Taxa 5% (arredondada para cima ao lamport); preço de 0,001 a **50 SOL** (o teto
 O nó está na rede esperada (`getGenesisHash`); a transação existe no nível **`finalized`** (`getTransaction` com `jsonParsed` e `maxSupportedTransactionVersion: 0`) e `meta.err` é nulo; o horário do bloco é **posterior** à reserva (ou à intenção do Passe).
 - **Venda (SOL):** somando as transferências `SystemProgram.transfer` (as de primeiro nível **e as das instruções internas**) que saíram do endereço **ligado** do comprador: **para o vendedor** pelo menos `preço - taxa` e **para o endereço de taxas do jogo** pelo menos a taxa, em lamports, **na mesma transação**. Outro pagador, outro destinatário, ou valor menor é recusado. Instruções de outro programa que só *parecem* uma transferência não contam.
 - **Passe (USDC):** a variação (depois menos antes) dos saldos de token do **mint oficial** cujo dono é a carteira do jogo é pelo menos o preço, e o saldo de USDC do **comprador** caiu pelo menos o preço (outro token, ou casas decimais diferentes, é recusado).
+**Referência (Memo):** toda transação que o jogo monta leva, como última instrução, um SPL Memo (programa `MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`, assinado por quem paga) com `pa1:sale:<id da reserva>` (venda) ou `pa1:pass:<referência do jogador>` (Passe; 32 caracteres hexadecimais aleatórios, guardados em `pass_payment_refs`, só entregues ao dono). Com o Memo certo o pagamento vale **de qualquer carteira do mesmo jogador** (uma só para as duas transferências de uma venda). Sem Memo, vale como antes: só se quem pagou é a carteira **ligada**. Por que isso é seguro: (1) a reserva (e a referência do Passe) está **amarrada ao jogador no servidor**, e o jogador que envia a assinatura tem de ser o dono dela (`store.reservation(userId, id)`); (2) a assinatura da transação é **de uso único** (chave primária de `chain_payments`), então copiar o Memo ou a transação da cadeia não permite repetir nada; (3) o Memo só **seleciona** a compra, não dá permissão para nada: quem copiasse o Memo de outro jogador receberia `not_your_payment` (a transação com a referência de outra conta não é sua para enviar) e não cria linha nenhuma em nome dele; (4) quantias e destinatários continuam sendo os da reserva/preço, conferidos na cadeia. Pagar da própria carteira que recebe (ou, numa venda, como o vendedor) não move dinheiro e é recusado: no cliente, no `prepare` do servidor (`self_payment`) e na verificação.
 As quantias e endereços vêm da **reserva guardada no servidor**, nunca do pedido. O banco confere de novo (defesa), consome a assinatura numa transação e só então vende. Nó fora do ar ou transação ainda não finalizada = "tente de novo", nada é consumido.
 
 ## 7. Exportar o livro de taxas para o contador
@@ -144,6 +150,47 @@ O jogador também vê as assinaturas na aba Histórico. Procedimento:
 6. Auditoria de tudo: `select * from public.market_events order by id desc;` (só cresce) e os eventos de certificado em `item_certificate_events`.
 7. Fraude: revogue o certificado (`update public.item_certificates set status = 'revoked' where id = '<id>';`) ou cancele o anúncio; contas marcadas em `arena_private.item_account_flags` **não conseguem anunciar** (consulte antes de liberar).
 8. Reembolso de um Passe pago em USDC: `update public.entitlements set status = 'refunded' where provider_ref = '<assinatura>';` e devolver o valor em USDC pela carteira.
+
+## 8b. Pagamentos que deram errado (migration 0022, painel «Pagamentos a resolver»)
+
+**O que acontece.** Qualquer pagamento **verificado na cadeia** que chegou ao endereço de recebimento do jogo mas **não pôde ser ligado a uma compra** vai para a fila `public.payment_exceptions` (uma linha por assinatura, para sempre; enviar a mesma duas vezes não duplica). Nada se perde em silêncio. Motivos (`reason`):
+
+| motivo | quando |
+|---|---|
+| `no_memo` | sem a referência do jogo e de uma carteira que não é a ligada |
+| `wrong_memo` | levava uma referência que não é a do jogador que enviou |
+| `short_amount` | chegou menos do que o preço (pagamento parcial) |
+| `too_early` | feito antes da intenção do Passe / da reserva |
+| `wrong_sender` | (venda) as transferências saíram de carteiras diferentes ou de um endereço que recebe |
+| `already_owned` | (Passe) o jogador já tinha o Passe: devolver |
+| `duplicate` | (venda) segundo pagamento de uma reserva já paga, ou item que já foi vendido: devolver |
+
+Não entram na fila (não há o que resolver): transação que **não chegou** ao endereço do jogo (`wrong_recipient`), que falhou, que ainda não finalizou (o jogo continua perguntando) e o **auto-pagamento** (a carteira que recebe pagando a si mesma: o saldo líquido é zero; o jogo recusa antes, com «Esta é a carteira que recebe os pagamentos do jogo; pague com outra conta.»).
+
+**O que o jogador vê.** Ao enviar a assinatura: «Recebemos um pagamento que não conseguimos ligar à sua compra. Ele foi registrado e será resolvido; guarde este código: <assinatura>». O código é a assinatura da transação. Na tela do Passe, a lista «Pagamentos aguardando resolução» o mostra de novo depois de recarregar (`pass-crypto` ação `exceptions`).
+
+**O que você vê.** No painel de administração, menu **Pagamentos a resolver**: quando, jogador, o quê (Passe ou mercado), quanto chegou (USDC ou SOL), o motivo, **com que carteira pagou comparada com a carteira ligada do jogador**, a transação no solscan e o estado. A página só **lê**; resolver é SQL, que você roda no editor SQL do Supabase como dono (a página copia o comando com a assinatura já preenchida).
+
+**Como resolver** (sempre confira a transação no solscan e, se a carteira que pagou não é a ligada do jogador, peça uma prova antes: ele assina uma mensagem com a carteira que pagou):
+
+1. **O pagamento é dele e o valor está certo → conceder o Passe.** Cria o Passe com origem `grant` e a assinatura como referência (o mesmo pagamento nunca concede duas vezes) e fecha a linha. Recusa linha fechada, que não seja do Passe, ou jogador que já tem o Passe.
+   ```sql
+   select arena_private.payment_exception_grant_pass('<assinatura>');
+   ```
+2. **Valor errado, Passe repetido ou compra que não aconteceu → devolver** pela sua carteira (para `payer_address`) e marcar a linha com a assinatura da transação de devolução:
+   ```sql
+   select arena_private.payment_exception_mark_refunded('<assinatura>', '<assinatura da transação de devolução>');
+   ```
+3. Pagamento **parcial** de um Passe: o Passe exige o valor inteiro em UMA transação, então a saída limpa é **devolver** (passo 2) e o jogador pagar de novo. Se você preferir aceitar o que chegou (por exemplo, um desconto combinado com o jogador), use o passo 1: a concessão não confere o valor.
+4. Consultas úteis:
+   ```sql
+   select created_at, purpose, reason, status, user_id, payer_address, amount_units, signature from public.payment_exceptions where status = 'open' order by created_at;
+   select * from public.market_events where kind in ('payment_exception_granted', 'payment_exception_refunded', 'paid_from_other_wallet') order by id desc;
+   ```
+   `amount_units` é em unidades do USDC (÷ 1e6) para o Passe e em lamports (÷ 1e9) para uma venda. `claimed_by` lista outros jogadores que enviaram a mesma assinatura (a primeira linha é do primeiro que enviou; o dono da carteira que pagou é quem tem direito).
+5. Quando o jogador reenvia, de forma correta, uma assinatura que estava na fila (por exemplo, depois de ligar a carteira certa), a linha se fecha sozinha como «Casou depois».
+
+**Deploy desta mudança:** aplique `0022_payment_fixes.sql` (projeto de dev primeiro) e **reimplante `pass-crypto` e `market-buy`** (as duas mudaram de comportamento); `market-wallet`, `market-list` e `market-my` compartilham o código, reimplante-as também por segurança. Reimplante e **só então** publique o jogo novo: o jogo antigo continua funcionando com o servidor novo (sem Memo, vale a regra da carteira ligada), mas o jogo novo espera o campo `memo` do servidor novo.
 
 ## 9. Nota legal (responsabilidade sua, não é aconselhamento jurídico)
 

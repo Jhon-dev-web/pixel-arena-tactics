@@ -1,10 +1,13 @@
 import { decodeBase58 } from '../../../supabase/functions/_shared/chain/base58';
+import { MEMO_PROGRAM_ID, isBuildableMemo } from '../../../supabase/functions/_shared/chain/memo';
 import { SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../../../supabase/functions/_shared/chain/solana';
 
 // Hand serialised Solana transactions: the smallest reliable way to ask a wallet to pay. NO Solana SDK is loaded into the game (@solana/web3.js is ~400 KB minified and its supply chain was hit by a
 // compromised release in December 2024); the two shapes the market needs are a handful of bytes each:
 //   * buildSolTransfersTx: a LEGACY transaction with N SystemProgram.transfer instructions (the seller's share and the game's fee in ONE transaction);
 //   * buildUsdcTransferTx: a legacy transaction with ONE SPL Token transferChecked instruction (the Adventurer Pass, in USDC).
+// Every payment may carry a REFERENCE: an SPL Memo instruction (the Memo program, signed by the payer) with the text the server handed over, so the server recognises the payment by it, from any wallet of
+// the same player (chain/memo.ts). It is the last instruction, after the transfers.
 // The result is the wire format with an EMPTY signature slot: `1 signature (64 zero bytes) + message`. The wallet signs and sends it (Wallet Standard `solana:signAndSendTransaction`). The recent
 // blockhash comes from the SERVER (the node URL may hold an API key, so the browser never calls the node), and every amount and address comes from the server's reservation.
 //
@@ -98,20 +101,34 @@ function serialize(keys: Key[], blockhash: string, instructions: (index: (a: str
 /** SystemProgram.transfer data: instruction 2 as a u32, then the lamports as a u64 (12 bytes). */
 const systemTransferData = (lamports: number | bigint): Uint8Array => concat([[2, 0, 0, 0], u64le(lamports)]);
 
+/** The Memo instruction: the text as UTF-8 data, the payer as the (signing) account. */
+function memoInstruction(memo: string, payer: string, index: (a: string) => number): Instruction {
+  if (!isBuildableMemo(memo)) throw new RangeError('bad memo');
+  return { programIndex: index(MEMO_PROGRAM_ID), accountIndexes: [index(payer)], data: new TextEncoder().encode(memo) };
+}
+
 export interface SolTransferPlan {
   payer: string;
   blockhash: string;
   transfers: { to: string; lamports: number }[];
+  /** the reference the server handed over (reservation.memo); without it no memo is added */
+  memo?: string;
 }
 
 /** One legacy transaction, the payer is the fee payer and the only signer, with a SystemProgram.transfer for each entry. */
 export function buildSolTransfersTx(plan: SolTransferPlan): Uint8Array {
   if (plan.transfers.length === 0 || plan.transfers.length > 8) throw new RangeError('bad transfers');
   for (const t of plan.transfers) if (!Number.isSafeInteger(t.lamports) || t.lamports < 1 || t.to === plan.payer) throw new RangeError('bad transfer');
-  const keys: Key[] = [{ address: plan.payer, signer: true, writable: true }, ...plan.transfers.map((t) => ({ address: t.to, signer: false, writable: true })), { address: SYSTEM_PROGRAM_ID, signer: false, writable: false }];
-  return serialize(keys, plan.blockhash, (index) =>
-    plan.transfers.map((t) => ({ programIndex: index(SYSTEM_PROGRAM_ID), accountIndexes: [index(plan.payer), index(t.to)], data: systemTransferData(t.lamports) })),
-  );
+  const keys: Key[] = [
+    { address: plan.payer, signer: true, writable: true },
+    ...plan.transfers.map((t) => ({ address: t.to, signer: false, writable: true })),
+    { address: SYSTEM_PROGRAM_ID, signer: false, writable: false },
+    ...(plan.memo !== undefined ? [{ address: MEMO_PROGRAM_ID, signer: false, writable: false }] : []),
+  ];
+  return serialize(keys, plan.blockhash, (index) => [
+    ...plan.transfers.map((t) => ({ programIndex: index(SYSTEM_PROGRAM_ID), accountIndexes: [index(plan.payer), index(t.to)], data: systemTransferData(t.lamports) })),
+    ...(plan.memo !== undefined ? [memoInstruction(plan.memo, plan.payer, index)] : []),
+  ]);
 }
 
 export interface UsdcTransferPlan {
@@ -123,6 +140,8 @@ export interface UsdcTransferPlan {
   /** base units (6 decimals for USDC) */
   units: number;
   decimals: number;
+  /** the reference the server handed over (plan.memo); without it no memo is added */
+  memo?: string;
 }
 
 /** One legacy transaction with one SPL Token `transferChecked` (instruction 12: amount u64 + decimals u8) from the payer's token account to the receiver's. The mint is checked by the token program. */
@@ -134,6 +153,7 @@ export function buildUsdcTransferTx(plan: UsdcTransferPlan): Uint8Array {
     { address: plan.destinationTokenAccount, signer: false, writable: true },
     { address: plan.mint, signer: false, writable: false },
     { address: TOKEN_PROGRAM_ID, signer: false, writable: false },
+    ...(plan.memo !== undefined ? [{ address: MEMO_PROGRAM_ID, signer: false, writable: false }] : []),
   ];
   return serialize(keys, plan.blockhash, (index) => [
     {
@@ -142,5 +162,6 @@ export function buildUsdcTransferTx(plan: UsdcTransferPlan): Uint8Array {
       accountIndexes: [index(plan.sourceTokenAccount), index(plan.mint), index(plan.destinationTokenAccount), index(plan.payer)],
       data: concat([[12], u64le(plan.units), [plan.decimals]]),
     },
+    ...(plan.memo !== undefined ? [memoInstruction(plan.memo, plan.payer, index)] : []),
   ]);
 }

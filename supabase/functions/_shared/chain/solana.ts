@@ -1,4 +1,5 @@
 import { decodeBase58, isSolAddress } from './base58.ts';
+import { MEMO_PROGRAM_ID } from './memo.ts';
 import { RpcClient } from './rpc.ts';
 import { DEFAULT_PASS_PRICE_USDC_UNITS, USDC_DECIMALS, parseUsdcAmount } from './solMoney.ts';
 
@@ -128,6 +129,10 @@ export interface VerifiedSolPayment {
   blockTime: number;
   /** SOL sales: lamports moved from the buyer, per recipient. Pass: the USDC units received by the receiving address. */
   paid: { to: string; amount: bigint }[];
+  /** SOL sales: the wallet that actually paid (the linked one, or the one that carried the reservation's memo) */
+  payer?: string;
+  /** SOL sales: true when the payment was recognised by the reservation's memo rather than by the linked address */
+  viaMemo?: boolean;
 }
 
 export type SolVerifyResult = { ok: true; payment: VerifiedSolPayment } | { ok: false; reason: SolVerifyFailure };
@@ -140,6 +145,37 @@ export interface SolSaleExpectation {
   payouts: { to: string; minLamports: bigint }[];
   /** the transaction must be in a block at or after this moment (ms): the reservation time */
   notBeforeMs: number;
+  /**
+   * The reference of the reservation (chain/memo.ts). A transaction that carries it in a Memo instruction may be paid by ANY wallet (a single one for both transfers): the reservation is bound to the
+   * player on the server, the signature is single use and the memo selects nothing else. Without it, only `buyer` (the linked address) counts, as before.
+   */
+  memo?: string;
+  /** called with what the transaction showed, before the checks decide (so a refused payment that did reach the game can be queued for the owner) */
+  onInspect?: (i: SolSaleInspection) => void;
+}
+
+/** What a SOL sale transaction showed, whether or not it was accepted. */
+export interface SolSaleInspection {
+  /** the one wallet that paid the owed addresses, or null when none did / several different ones did */
+  payer: string | null;
+  /** lamports that reached the owed addresses, from anybody */
+  reachedLamports: bigint;
+  memos: string[];
+  slot: number;
+  blockTime: number;
+  viaMemo: boolean;
+}
+
+export interface UsdcInspection {
+  signature: string;
+  slot: number;
+  /** seconds since the epoch, from the block */
+  blockTime: number;
+  /** the net USDC the receiving wallet gained (0 or less: nothing reached it) */
+  receivedUnits: bigint;
+  /** every other wallet whose USDC went down, with how much */
+  payers: { owner: string; units: bigint }[];
+  memos: string[];
 }
 
 export interface UsdcExpectation {
@@ -234,6 +270,18 @@ function systemTransfers(tx: RawTx): SystemTransfer[] {
 
 const tooEarly = (blockTime: number, notBeforeMs: number): boolean => blockTime < Math.floor(notBeforeMs / 1000);
 
+/** The texts of the Memo instructions of the transaction (top level only: a program cannot add a memo to a payment it did not sign). */
+export function memosOf(tx: RawTx): string[] {
+  const top = tx.transaction?.message?.instructions;
+  if (!Array.isArray(top)) return [];
+  const out: string[] = [];
+  for (const ix of top) {
+    const i = ix as RawInstruction | null;
+    if (i && typeof i === 'object' && i.programId === MEMO_PROGRAM_ID && typeof i.parsed === 'string' && i.parsed.length <= 600) out.push(i.parsed);
+  }
+  return out;
+}
+
 /** Verifies the ONE transaction that pays a sale: the seller's share and the game's fee, both from the buyer's linked address. */
 export async function verifySolSale(rpc: RpcClient, cfg: SolanaConfig, exp: SolSaleExpectation): Promise<SolVerifyResult> {
   if (typeof exp.signature !== 'string' || !isSignatureText(exp.signature)) return { ok: false, reason: 'bad_signature' };
@@ -247,14 +295,30 @@ export async function verifySolSale(rpc: RpcClient, cfg: SolanaConfig, exp: SolS
     const owed = new Map<string, bigint>();
     for (const p of exp.payouts) owed.set(p.to, (owed.get(p.to) ?? 0n) + p.minLamports);
 
+    // Who paid the owed addresses, and did the transaction carry the reservation's memo? With the memo, a single wallet paying all of it is the buyer, whichever of his wallets it is.
+    const memos = memosOf(got.tx);
+    const viaMemo = exp.memo !== undefined && memos.includes(exp.memo);
+    const sources = new Set<string>();
+    let reached = 0n;
+    for (const t of transfers) {
+      if (!owed.has(t.destination)) continue;
+      sources.add(t.source);
+      reached += t.lamports;
+    }
+    const soleSource = sources.size === 1 ? [...sources][0] : null;
+    exp.onInspect?.({ payer: soleSource, reachedLamports: reached, memos, slot: got.slot, blockTime: got.blockTime, viaMemo });
+    const buyer = viaMemo ? soleSource : exp.buyer;
+
     for (const to of owed.keys()) if (!transfers.some((t) => t.destination === to)) return { ok: false, reason: 'wrong_recipient' };
+    // paying yourself nets nothing: the payer can never be one of the addresses that must be paid
+    if (buyer === null || owed.has(buyer)) return { ok: false, reason: 'wrong_sender' };
     const fromBuyer = new Map<string, bigint>();
-    for (const t of transfers) if (t.source === exp.buyer) fromBuyer.set(t.destination, (fromBuyer.get(t.destination) ?? 0n) + t.lamports);
+    for (const t of transfers) if (t.source === buyer) fromBuyer.set(t.destination, (fromBuyer.get(t.destination) ?? 0n) + t.lamports);
     for (const to of owed.keys()) if (!fromBuyer.has(to)) return { ok: false, reason: 'wrong_sender' };
     for (const [to, min] of owed) if ((fromBuyer.get(to) ?? 0n) < min) return { ok: false, reason: 'short_amount' };
     if (tooEarly(got.blockTime, exp.notBeforeMs)) return { ok: false, reason: 'too_early' };
 
-    return { ok: true, payment: { signature: exp.signature, slot: got.slot, blockTime: got.blockTime, paid: [...owed.keys()].map((to) => ({ to, amount: fromBuyer.get(to) ?? 0n })) } };
+    return { ok: true, payment: { signature: exp.signature, slot: got.slot, blockTime: got.blockTime, paid: [...owed.keys()].map((to) => ({ to, amount: fromBuyer.get(to) ?? 0n })), payer: buyer, viaMemo } };
   } catch {
     return { ok: false, reason: 'rpc_error' };
   }
@@ -309,6 +373,33 @@ export async function verifyUsdcPayment(rpc: RpcClient, cfg: SolanaConfig, exp: 
     if (tooEarly(got.blockTime, exp.notBeforeMs)) return { ok: false, reason: 'too_early' };
 
     return { ok: true, payment: { signature: exp.signature, slot: got.slot, blockTime: got.blockTime, paid: [{ to: exp.receiver, amount: received.delta }] } };
+  } catch {
+    return { ok: false, reason: 'rpc_error' };
+  }
+}
+
+/**
+ * What a finalized transaction did with the official USDC around the receiving wallet, WITHOUT deciding whether it pays a purchase: how much the receiver gained, which wallets paid, and the memos.
+ * The caller (pass-crypto) matches it to the player's reference and the price. Fails only when the transaction is unusable or never touched the receiver's USDC.
+ */
+export async function inspectUsdcTransfer(rpc: RpcClient, cfg: SolanaConfig, exp: { signature: string; receiver: string }): Promise<{ ok: true; inspection: UsdcInspection } | { ok: false; reason: SolVerifyFailure }> {
+  if (typeof exp.signature !== 'string' || !isSignatureText(exp.signature)) return { ok: false, reason: 'bad_signature' };
+  try {
+    const got = await fetchFinalized(rpc, cfg, exp.signature);
+    if ('reason' in got) return got;
+    const all = [...tokenEntries(got.tx.meta?.preTokenBalances), ...tokenEntries(got.tx.meta?.postTokenBalances)];
+    if (all.length === 0) return { ok: false, reason: 'no_transfer' };
+    if (!all.some((e) => e.owner === exp.receiver)) return { ok: false, reason: 'wrong_recipient' };
+    const received = netChange(got.tx, exp.receiver, cfg.usdcMint);
+    if (!received || (received.decimals !== null && received.decimals !== USDC_DECIMALS)) return { ok: false, reason: 'wrong_mint' };
+    const owners = new Set<string>();
+    for (const e of all) if (typeof e.owner === 'string' && e.mint === cfg.usdcMint && e.owner !== exp.receiver) owners.add(e.owner);
+    const payers: { owner: string; units: bigint }[] = [];
+    for (const owner of owners) {
+      const change = netChange(got.tx, owner, cfg.usdcMint);
+      if (change && change.delta < 0n) payers.push({ owner, units: -change.delta });
+    }
+    return { ok: true, inspection: { signature: exp.signature, slot: got.slot, blockTime: got.blockTime, receivedUnits: received.delta, payers, memos: memosOf(got.tx) } };
   } catch {
     return { ok: false, reason: 'rpc_error' };
   }

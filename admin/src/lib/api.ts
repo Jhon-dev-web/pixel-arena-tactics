@@ -4,8 +4,9 @@
 // which refuses anyone who is not in arena_private.admins. No service key is, or may ever be, in this app.
 import { flagsArgs, legendaryArgs, marketArgs, playerArgs } from './filters';
 import type { OpsRpcName } from './opsRpcNames';
+import type { PaymentRpcName } from './paymentRpcNames';
 import type { RpcName } from './rpcNames';
-import type { AiCost, AiReportRow, AiReportsQuery, Economy, FlagsPage, FlagsQuery, League, LegendaryPage, LegendaryQuery, ListingRow, MarketPage, MarketQuery, OpsFlagKey, OpsOverview, Overview, Page, PlayerDetail, PlayerQuery, PlayerRow, SaleRow, SeriesDay, Waitlist } from './types';
+import type { AiCost, AiReportRow, AiReportsQuery, Economy, FlagsPage, FlagsQuery, League, LegendaryPage, LegendaryQuery, ListingRow, MarketPage, MarketQuery, OpsFlagKey, OpsOverview, Overview, Page, PlayerDetail, PaymentExceptionsPage, PaymentExceptionsQuery, PlayerQuery, PlayerRow, SaleRow, SeriesDay, Waitlist } from './types';
 
 export interface AdminApi {
   overview(): Promise<Overview>;
@@ -25,6 +26,8 @@ export interface AdminApi {
   /** The only way to switch a flag off. A note (3-300 characters) is mandatory in both directions: it is logged with who did it. */
   setOpsFlag(key: OpsFlagKey, value: boolean, note: string): Promise<{ flag: OpsFlagKey; value: boolean; changed: boolean }>;
   ackReport(id: string): Promise<{ id: string; acknowledged: boolean }>;
+  // ---- payments to resolve (0022): ONE read; resolving is SQL the owner runs by hand ----
+  paymentExceptions(q: PaymentExceptionsQuery): Promise<PaymentExceptionsPage>;
 }
 
 /** What the app needs from a Supabase client (so tests can pass a fake). */
@@ -53,7 +56,7 @@ export function toError(error: { message: string; code?: string }): Error {
 }
 
 export function createRpcApi(client: RpcClient): AdminApi {
-  async function call<T>(name: RpcName | OpsRpcName, args?: Record<string, unknown>): Promise<T> {
+  async function call<T>(name: RpcName | OpsRpcName | PaymentRpcName, args?: Record<string, unknown>): Promise<T> {
     const { data, error } = await client.rpc(name, args);
     if (error) throw toError(error);
     return data as T;
@@ -74,5 +77,6 @@ export function createRpcApi(client: RpcClient): AdminApi {
     aiCost: () => call<AiCost>('admin_ai_cost'),
     setOpsFlag: (key, value, note) => call('admin_set_ops_flag', { p_key: key, p_value: value, p_note: note }),
     ackReport: (id) => call('admin_ack_report', { p_id: id }),
+    paymentExceptions: (q) => call<PaymentExceptionsPage>('admin_payment_exceptions', { p_status: q.status, p_page: q.page, p_page_size: q.pageSize }),
   };
 }

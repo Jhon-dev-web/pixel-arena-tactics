@@ -1,7 +1,7 @@
 import { splitLamports } from '../chain/solMoney.ts';
 import type { CertificateView } from '../items/types.ts';
 import { MARKET_RULES } from '../market/rules.ts';
-import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoStore, PassGrantOutcome, PaymentRow, RecordOutcome, RecordPaymentArgs, ReservationRow, ReserveOutcome } from '../market/store.ts';
+import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoStore, PassGrantOutcome, PaymentRow, RecordExceptionArgs, RecordOutcome, RecordPaymentArgs, ReservationRow, ReserveOutcome, UserException } from '../market/store.ts';
 import type { ListRefusal, MyListingView, ReservationPayment, SaleView } from '../market/types.ts';
 import { FakeMaterialStore } from './fakeMaterialStore.ts';
 
@@ -79,6 +79,10 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
   verifyBudgetDefault = 1000;
   entitlements: { userId: string; source: string; providerRef: string; status: string; livemode: boolean }[] = [];
   intents = new Map<string, number>();
+  /** the Pass references (migration 0022) */
+  passRefs = new Map<string, string>();
+  /** the owner's queue of unmatched payments (migration 0022): the same one-row-per-signature rule as the table */
+  exceptions: (RecordExceptionArgs & { status: 'open' | 'granted' | 'refunded' | 'resolved'; claimedBy: string[] })[] = [];
   /** the balances of tradeable materials (migration 0015): the same object a test can run claim -> list -> buy on */
   materials = new FakeMaterialStore();
   private seq = 0;
@@ -498,6 +502,48 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
       }
     }
     return n;
+  }
+
+  // ---- the queue of unmatched payments (payment_exception_record / payment_exception_close) ----
+  async recordException(a: RecordExceptionArgs): Promise<'recorded' | 'exists' | 'applied'> {
+    if (this.paid.get(a.signature)?.status === 'applied') return 'applied';
+    const had = this.exceptions.find((x) => x.signature === a.signature);
+    if (had) {
+      if (a.userId && had.userId !== a.userId && !had.claimedBy.includes(a.userId)) had.claimedBy.push(a.userId);
+      return 'exists';
+    }
+    this.exceptions.push({ ...a, status: 'open', claimedBy: [] });
+    return 'recorded';
+  }
+
+  async closeException(signature: string): Promise<boolean> {
+    const x = this.exceptions.find((e) => e.signature === signature && e.status === 'open');
+    if (!x) return false;
+    x.status = 'resolved';
+    return true;
+  }
+
+  async notePayer(signature: string, payer: string): Promise<void> {
+    const p = this.paid.get(signature);
+    if (p) p.fromAddress = payer;
+  }
+
+  async passRef(userId: string): Promise<string> {
+    let ref = this.passRefs.get(userId);
+    if (!ref) {
+      ref = `${this.passRefs.size + 1}`.padStart(32, 'a');
+      this.passRefs.set(userId, ref);
+    }
+    return ref;
+  }
+
+  async passRefOwner(ref: string): Promise<string | null> {
+    for (const [userId, r] of this.passRefs) if (r === ref) return userId;
+    return null;
+  }
+
+  async openExceptions(userId: string): Promise<UserException[]> {
+    return this.exceptions.filter((x) => x.userId === userId && x.status === 'open').map((x) => ({ signature: x.signature, reason: x.reason, purpose: x.purpose, amountUnits: x.amountUnits.toString(), createdAt: new Date(this.nowMs).toISOString() }));
   }
 
   // ---- the USDC Pass (pass_crypto_start / pass_crypto_grant) ----

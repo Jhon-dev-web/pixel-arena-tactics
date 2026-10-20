@@ -815,8 +815,8 @@ describe('the USDC Pass (pass-crypto)', () => {
     const tx = usdc(m, WALLET[USER_B], PASS_ADDRESS);
     await m.pass({ action: 'submit', signature: tx }, USER_B);
     const again = await m.pass({ action: 'submit', signature: tx }, USER_B);
-    expect(again.status).toBe(409);
-    expect(again.body.reason).toBe('already_owned');
+    expect(again.status).toBe(200); // the same player, the same signature: the same answer (a replay), never a second Pass
+    expect(again.body).toMatchObject({ ok: true, status: 'granted', replay: true });
     expect(m.store.entitlements).toHaveLength(1);
   });
 
@@ -837,12 +837,16 @@ describe('the USDC Pass (pass-crypto)', () => {
     m.store.nowMs += 10_000;
     await m.pass({ action: 'start' }, USER_B);
     m.store.nowMs += 60_000;
-    const reason = async (tx: string) => (await m.pass({ action: 'submit', signature: tx }, USER_B)).body.reason;
-    expect(await reason(usdc(m, WALLET[USER_B], PASS_ADDRESS, 9_999_999))).toBe('short_amount');
+    // a payment that reached the receiving wallet but cannot be matched is not "refused and forgotten": it answers payment_unmatched with the reason in `why` (and is queued, see paymentFixes.test.ts)
+    const reason = async (tx: string) => {
+      const r = (await m.pass({ action: 'submit', signature: tx }, USER_B)).body;
+      return r.reason === 'payment_unmatched' ? `unmatched:${String(r.why)}` : r.reason;
+    };
+    expect(await reason(usdc(m, WALLET[USER_B], PASS_ADDRESS, 9_999_999))).toBe('unmatched:short_amount');
     expect(await reason(usdc(m, WALLET[USER_B], FEE_ADDRESS))).toBe('wrong_recipient');
-    expect(await reason(usdc(m, WALLET[USER_C], PASS_ADDRESS))).toBe('wrong_sender');
+    expect(await reason(usdc(m, WALLET[USER_C], PASS_ADDRESS))).toBe('unmatched:no_memo'); // another wallet and no reference: not his to claim, kept for the owner
     expect(await reason(usdc(m, WALLET[USER_B], PASS_ADDRESS, 10_000_000, {}, addr(99)))).toBe('wrong_mint');
-    expect(await reason(early)).toBe('too_early');
+    expect(await reason(early)).toBe('unmatched:too_early');
     expect(await reason(usdc(m, WALLET[USER_B], PASS_ADDRESS, 10_000_000, { err: { InstructionError: [0, 'x'] } }))).toBe('tx_failed');
     expect(m.store.entitlements).toHaveLength(0);
     // a signature somebody else already used for the Pass
@@ -897,7 +901,7 @@ describe('the USDC Pass (pass-crypto)', () => {
     expect((await m.pass({ action: 'price' }, USER_B)).body).toMatchObject({ priceUnits: 12_500_000, priceUsdc: '12.50' });
     await m.pass({ action: 'start' }, USER_B);
     m.store.nowMs += 60_000;
-    expect((await m.pass({ action: 'submit', signature: usdc(m, WALLET[USER_B], PASS_ADDRESS, 10_000_000) }, USER_B)).body.reason).toBe('short_amount');
+    expect((await m.pass({ action: 'submit', signature: usdc(m, WALLET[USER_B], PASS_ADDRESS, 10_000_000) }, USER_B)).body).toMatchObject({ reason: 'payment_unmatched', why: 'short_amount' });
     expect((await m.pass({ action: 'submit', signature: usdc(m, WALLET[USER_B], PASS_ADDRESS, 12_500_000) }, USER_B)).body.status).toBe('granted');
   });
 });
