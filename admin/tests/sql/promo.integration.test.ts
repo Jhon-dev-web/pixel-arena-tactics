@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import type { PGlite } from '@electric-sql/pglite';
 import { as, createDb } from './harness';
 
-// Migration 0027 part C: promo codes. Run for real in an in-memory Postgres; every call is made under `set role anon` / `authenticated`.
+// Migration 0027 part C: promo codes (0028 adds Gold / Eter / potion rewards: credits.integration.test.ts). Run for real in an in-memory Postgres; every call is made under `set role anon` / `authenticated`.
 let db: PGlite;
 
 const U = (n: number) => `00000000-0000-4000-8000-0000000005${String(n).padStart(2, '0')}`;
@@ -59,7 +59,7 @@ describe('creating codes', () => {
   test('refuses bad arguments', async () => {
     await expect(create(0)).rejects.toThrow(/PROMO_BAD_COUNT/);
     await expect(create(501)).rejects.toThrow(/PROMO_BAD_COUNT/);
-    await expect(create(1, 'gold')).rejects.toThrow(/PROMO_BAD_REWARD/);
+    await expect(create(1, 'diamonds')).rejects.toThrow(/PROMO_BAD_REWARD/);
     await expect(create(1, 'pass', 0)).rejects.toThrow(/PROMO_BAD_MAX_USES/);
     await expect(create(1, 'pass', 100001)).rejects.toThrow(/PROMO_BAD_MAX_USES/);
     await expect(create(1, 'pass', 1, new Date(Date.now() - 60_000).toISOString())).rejects.toThrow(/PROMO_BAD_EXPIRY/);
@@ -84,7 +84,7 @@ describe('creating codes', () => {
   });
   test('the table itself refuses a code of the wrong shape or a reward it does not know', async () => {
     await expect(db.query(`insert into arena_private.promo_codes (code, reward_kind, max_uses, created_by, note) values ('abc', 'pass', 1, $1, 'xxx')`, [OWNER])).rejects.toThrow();
-    await expect(db.query(`insert into arena_private.promo_codes (code, reward_kind, max_uses, created_by, note) values ('ABCDEFGHJK', 'gold', 1, $1, 'xxx')`, [OWNER])).rejects.toThrow();
+    await expect(db.query(`insert into arena_private.promo_codes (code, reward_kind, max_uses, created_by, note) values ('ABCDEFGHJK', 'diamonds', 1, $1, 'xxx')`, [OWNER])).rejects.toThrow();
   });
 });
 

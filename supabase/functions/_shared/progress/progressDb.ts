@@ -131,6 +131,17 @@ export function createProgressStore(cfg: ProgressDbConfig): ProgressStore {
       return { id: rows[0].id };
     },
 
+    // Migration 0028: the promo credits the game claimed and no accepted snapshot has counted (service role only).
+    async pendingCredits(userId: string) {
+      const raw = await rpc<{ gold?: unknown; shards?: unknown; consumable?: unknown; through?: unknown } | null>('progress_credits_pending', { p_user_id: userId }, 'credits_read');
+      const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.min(Math.floor(v), 1e12) : 0);
+      return { credits: { gold: n(raw?.gold), shards: n(raw?.shards), consumable: n(raw?.consumable) }, through: typeof raw?.through === 'string' ? raw.through : null };
+    },
+
+    async markCreditsCounted(userId: string, through: string) {
+      await rpc<unknown>('progress_credits_mark_counted', { p_user_id: userId, p_through: through }, 'credits_mark');
+    },
+
     async applyProfessionsToSeason(args) {
       const res = await doFetch(`${base}/rpc/season_apply_professions`, {
         method: 'POST',

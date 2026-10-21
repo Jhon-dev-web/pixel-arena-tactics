@@ -54,6 +54,7 @@ import { legacyXpPotionCount, legacyXpPotionGold, withoutLegacyXpPotion } from '
 import { DEFAULT_INVENTORY_CAPACITY, normalizeInventoryCapacity } from './inventory';
 import { migrateLegacyPouch } from './legacyPouch';
 import { emptyStash, sanitizeStash, StashState } from './stash';
+import { appliedCreditsField } from './appliedCredits';
 import { emptyMerchant, MerchantState, sanitizeMerchant } from './merchant';
 import { emptyWholesale, sanitizeWholesale, WholesaleState } from './wholesale';
 import { emptyPouchDay, migratePouchFaces, PouchCerts, PouchDayState, sanitizeLegacyPouchCerts, sanitizePouchCerts, sanitizePouchDay } from './goldPouch';
@@ -263,6 +264,8 @@ export interface SaveData {
   // The hero looks (gear.ts HERO_LOOKS, never the peasant) he has already worn: the first time each one is worn there is a one-off toast and portrait flash (sprites.ts
   // withLookMoment). Loads as every look up to the armor he wears now, so only a look he really reaches later ever celebrates. Replaces the old heroKnighted flag.
   seenLooks?: HeroBaseLook[];
+  // Ids of the server credits (promo codes that give Gold, Eter or potions, migration 0028) this save has already applied; each credit is applied once (promoRewards.ts). Capped, oldest first.
+  appliedCredits?: string[];
   // Stash slots from Stash Deeds, beyond the upgrade ladder (seasonItems.ts, capped at +20 over all seasons).
   stashBonusSlots: number;
   dungeonCheckpoints: number[];
@@ -1440,6 +1443,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
         activeSkin: sanitizeActiveSkin(parsed.activeSkin, cosmetics, hasBattlePass),
         seenLooks: sanitizeSeenLooks(rawParsed.seenLooks, rawParsed.heroKnighted === true, heroBaseLook({ gearInstances, equipped: { armor: armorId } as EquippedGear })),
         stashBonusSlots: sanitizeStashBonus(parsed.stashBonusSlots),
+        ...appliedCreditsField(parsed.appliedCredits),
         dungeonCheckpoints,
         skillTree: sanitizeSkillTree(parsed.skillTree, playerLevel(xp), hasBattlePass),
         gardenSlots,

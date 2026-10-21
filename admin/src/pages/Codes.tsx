@@ -11,15 +11,18 @@ import {
   PROMO_USES_MAX,
   promoErrorText,
   promoFormProblem,
-  promoRewardLabel,
+  PROMO_AMOUNT_MAX,
+  PROMO_POTIONS,
+  promoRewardText,
   type PromoCodeRow,
+  type PromoRewardKind,
   type PromoStatus,
 } from '../lib/actions';
 import { AccessDeniedError } from '../lib/api';
 import { errorText } from '../lib/auth';
 import { fmtAgo, fmtDateTime, fmtInt } from '../lib/format';
 
-// "Códigos": promo codes for the Adventurer Pass (migration 0027 part C). Creating and disabling WRITE (admin-only in the database, audited); the list only reads. A code is secret until the owner hands it out:
+// "Códigos": promo codes for the Adventurer Pass, Ouro, Éter or one potion (migration 0027 part C, rewards from 0028). Creating and disabling WRITE (admin-only in the database, audited); the list only reads. A code is secret until the owner hands it out:
 // it appears here, on the screen of an admin, and nowhere else.
 async function copy(text: string): Promise<boolean> {
   try {
@@ -65,6 +68,9 @@ export default function Codes() {
   const [maxUses, setMaxUses] = useState('1');
   const [day, setDay] = useState('');
   const [note, setNote] = useState('');
+  const [reward, setReward] = useState<PromoRewardKind>('pass');
+  const [itemId, setItemId] = useState(PROMO_POTIONS[0].id);
+  const [amountText, setAmountText] = useState('');
   const [asked, setAsked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +78,14 @@ export default function Codes() {
 
   const n = Number(count);
   const uses = Number(maxUses);
-  const problem = promoFormProblem({ count: n, maxUses: uses, note });
+  const amount = Number(amountText);
+  const problem = promoFormProblem({ count: n, maxUses: uses, note, reward, itemId, amount });
+  const rewardNow = promoRewardText({ reward_kind: reward, reward_item_id: reward === 'consumable' ? itemId : null, reward_amount: reward === 'pass' ? null : amount });
+  const pickReward = (next: PromoRewardKind) => {
+    setReward(next);
+    setAsked(false);
+    setAmountText(next === 'gold' ? '10000' : next === 'shards' ? '50' : next === 'consumable' ? '5' : '');
+  };
   const expiresAt = day ? endOfDayIso(day) : null;
 
   async function create() {
@@ -80,7 +93,7 @@ export default function Codes() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api.createPromoCodes({ count: n, reward: 'pass', maxUses: uses, expiresAt, note: note.trim() });
+      const r = await api.createPromoCodes({ count: n, reward, itemId: reward === 'consumable' ? itemId : null, amount: reward === 'pass' ? null : amount, maxUses: uses, expiresAt, note: note.trim() });
       setMade(r.codes);
       setAsked(false);
       setNote('');
@@ -126,7 +139,7 @@ export default function Codes() {
         </span>
       ),
     },
-    { key: 'reward', header: 'Recompensa', narrow: 'hide', cell: (r) => promoRewardLabel(r.reward_kind) },
+    { key: 'reward', header: 'Recompensa', narrow: 'hide', cell: (r) => promoRewardText(r) },
     {
       key: 'uses',
       header: 'Usos',
@@ -164,8 +177,8 @@ export default function Codes() {
         <div>
           <h1>Códigos promocionais</h1>
           <p>
-            Códigos que o jogador digita em Configurações para ganhar o Passe de Aventureiro da temporada atual. Cada código vale uma vez por conta, até o limite de usos e a validade que você escolher. O Passe do código dá as vantagens e entra no
-            ranking, mas não conta como venda (meta e receita).{demo ? ' (dados de demonstração)' : ''}
+            Códigos que o jogador digita em Configurações. Cada código dá UMA recompensa à sua escolha: o Passe de Aventureiro da temporada atual, Ouro, Éter ou uma poção. Vale uma vez por conta, até o limite de usos e a validade que você escolher. O Passe
+            do código dá as vantagens e entra no ranking, mas não conta como venda (meta e receita). Ouro, Éter e poções chegam ao herói na próxima vez que o jogo abrir ou voltar ao foco, e não disparam alerta no ranking.{demo ? ' (dados de demonstração)' : ''}
           </p>
         </div>
         <div className="head-actions">
@@ -190,10 +203,29 @@ export default function Codes() {
             <input className="input" type="number" inputMode="numeric" min={1} max={PROMO_COUNT_MAX} value={count} onChange={(e) => setCount(e.target.value)} />
           </Field>
           <Field label="Recompensa">
-            <select className="input" value="pass" onChange={() => undefined} aria-label="Recompensa">
+            <select className="input" value={reward} onChange={(e) => pickReward(e.target.value as PromoRewardKind)} aria-label="Recompensa">
               <option value="pass">Passe de Aventureiro</option>
+              <option value="gold">Ouro</option>
+              <option value="shards">Éter</option>
+              <option value="consumable">Poção</option>
             </select>
           </Field>
+          {reward === 'consumable' ? (
+            <Field label="Qual poção">
+              <select className="input" value={itemId} onChange={(e) => setItemId(e.target.value)} aria-label="Qual poção">
+                {PROMO_POTIONS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : null}
+          {reward !== 'pass' ? (
+            <Field label={`Quantidade por conta (até ${fmtInt(PROMO_AMOUNT_MAX[reward])})`}>
+              <input className="input" type="number" inputMode="numeric" min={1} max={PROMO_AMOUNT_MAX[reward]} value={amountText} onChange={(e) => setAmountText(e.target.value)} aria-label="Quantidade da recompensa" />
+            </Field>
+          ) : null}
           <Field label="Usos por código (contas diferentes)">
             <input className="input" type="number" inputMode="numeric" min={1} max={PROMO_USES_MAX} value={maxUses} onChange={(e) => setMaxUses(e.target.value)} />
           </Field>
@@ -222,8 +254,8 @@ export default function Codes() {
             }}
           >
             <p>
-              Gerar <strong>{fmtInt(n)}</strong> {n === 1 ? 'código' : 'códigos'} de <strong>Passe de Aventureiro</strong>, cada um com <strong>{fmtInt(uses)}</strong> {uses === 1 ? 'uso' : 'usos'}
-              {expiresAt ? <>, válido até <strong>{day.split('-').reverse().join('/')}</strong></> : ', sem validade'}? Quem usar ganha o Passe da temporada atual de graça. Isso fica registrado com o seu nome.
+              Gerar <strong>{fmtInt(n)}</strong> {n === 1 ? 'código' : 'códigos'} de <strong>{rewardNow}</strong>, cada um com <strong>{fmtInt(uses)}</strong> {uses === 1 ? 'uso' : 'usos'}
+              {expiresAt ? <>, válido até <strong>{day.split('-').reverse().join('/')}</strong></> : ', sem validade'}? {reward === 'pass' ? 'Quem usar ganha o Passe da temporada atual de graça.' : `Quem usar ganha ${rewardNow} de graça, uma vez por conta.`} Isso fica registrado com o seu nome.
             </p>
             <div className="action-confirm-actions">
               <button type="submit" className="btn primary" disabled={busy}>
@@ -304,7 +336,7 @@ export default function Codes() {
         />
       </Card>
       <p className="faint" style={{ marginTop: 10 }}>
-        «Esgotado» = todos os usos já foram feitos. «Expirado» = passou da validade. Desativar é definitivo (para outro lote, gere novos códigos). O jogador que já tem Passe nesta temporada recebe «você já tem o Passe» e o código não é gasto.
+        «Esgotado» = todos os usos já foram feitos. «Expirado» = passou da validade. Desativar é definitivo (para outro lote, gere novos códigos). O jogador que já tem Passe nesta temporada recebe «você já tem o Passe» e um código de Passe não é gasto (os de Ouro, Éter e poção funcionam normalmente).
       </p>
     </>
   );

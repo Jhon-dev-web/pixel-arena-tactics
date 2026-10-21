@@ -95,6 +95,14 @@ export const BOUNDS = {
   /** Gold earned per hour (any source, selling included). SOURCE: generous: the long sim earns well under 30,000 a DAY; this is a flag-level bound that mostly catches edited gold. */
   goldPerHour: 100_000,
 
+  // ---- balances a server CREDIT can raise (migration 0028: promo codes). Gains are measured against the previous accepted snapshot; claimed-and-not-yet-counted credits are added to the allowance ----
+  /** Potion units (bag + stash) that may appear per server day without a credit: crafted batches, Shop purchases and Pass rewards. SOURCE: ESTIMATE, flag-level and generous (the bag holds a few thousand units at most); it catches edited stacks, not rounding. */
+  consumableUnitsPerDay: 5_000,
+  /** Eter (shards) per server day: boss kills, delivery orders and Pass rewards pay tens, not hundreds. SOURCE: ESTIMATE, generous. */
+  shardsPerDay: 1_000,
+  /** Gold that may arrive in a snapshot although it was not EARNED by this hero: Gold Pouches opened (a transfer between players, up to tunables goldPouch.perDay x the large face value per creator), per server day. SOURCE: estimate. */
+  goldTransferPerDay: 250_000,
+
   // ---- counters per server day (theoretical; a daily allowance resets at local midnight, so a day's worth can arrive just before and just after it: +1 day) ------
   /** Dungeon runs per day: 10 free (tunables dungeon.freeSessionsPerDay) + 10 bought with Shards (extraSessionShardCost = 5). */
   dungeonRunsPerDay: 20,

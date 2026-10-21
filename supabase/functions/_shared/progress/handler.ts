@@ -1,7 +1,7 @@
 import { AuthConfig, getAuthenticatedUserId } from '../auth.ts';
 import { json } from '../http.ts';
 import { isPaused, type OpsFlagReader } from '../ops/flags.ts';
-import { HistoryPoint, Verdict, evaluateSnapshot } from './evaluate.ts';
+import { Credits, HistoryPoint, Verdict, evaluateSnapshot } from './evaluate.ts';
 import { LEAGUE_RESET_RETRY_S, declaredLeagueEpochMs, effectiveAccountStartMs } from './league.ts';
 import { ProfessionId, ProgressMetrics, computeScore, extractMetrics, professionScores, scoreParts } from './metrics.ts';
 
@@ -65,6 +65,13 @@ export interface ProgressStore {
   lastSnapshot(userId: string, sinceMs?: number): Promise<StoredSnapshot | null>;
   /** The account's first and latest `ok` snapshots as history points. A flagged or rejected snapshot is never a baseline. `sinceMs`: only snapshots created at or after it. */
   acceptedHistory(userId: string, sinceMs?: number): Promise<{ first: HistoryPoint | null; last: HistoryPoint | null }>;
+  /**
+   * The server credits (migration 0028, promo codes) the game has claimed and no accepted snapshot has counted yet, and `through` (opaque: hand it back to markCreditsCounted). Optional: absent (older fakes, migration
+   * not applied) = no credits. The handler treats a failure here as "none": a missing ledger never stops a snapshot.
+   */
+  pendingCredits?(userId: string): Promise<{ credits: Credits; through: string | null }>;
+  /** Marks every credit up to `through` as counted. Called ONLY after an `ok` snapshot used them, so a credit is spent exactly once. */
+  markCreditsCounted?(userId: string, through: string): Promise<void>;
   /** Inserts the row (created_at = the database clock) and returns its id. */
   insertSnapshot(row: NewSnapshot): Promise<{ id: string }>;
   /** Hands the snapshot to the season ranking (migration 0005). Absent until the ranking is wired. */
@@ -183,6 +190,15 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
 
     const [entitled, accountCreatedMs, history] = await Promise.all([deps.store.hasActivePass(userId), deps.store.accountCreatedAtMs(userId), deps.store.acceptedHistory(userId, sinceMs)]);
     const saveRevision = character.revision;
+    // Promo credits the game claimed since the last accepted snapshot widen the balance allowance by exactly their amount (evaluate.ts balanceChecks). Never fatal: without the ledger the allowance is just play.
+    let pending: { credits: Credits; through: string | null } | null = null;
+    if (deps.store.pendingCredits) {
+      try {
+        pending = await deps.store.pendingCredits(userId);
+      } catch (err) {
+        console.error('[submit-progress] credits unavailable', err instanceof Error ? err.message : 'unknown');
+      }
+    }
     const evaluation = evaluateSnapshot(metrics, {
       nowMs: now,
       // After the reset the account is as old as the League: a fresh hero is judged on its new run, never on the years of the account.
@@ -193,6 +209,7 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
       saveRevision,
       first: history.first,
       previous: history.last,
+      credits: pending?.credits,
     });
 
     const rec = blob as Record<string, unknown>;
@@ -208,6 +225,15 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
       reasons: evaluation.reasons,
     });
     slotClaimed = false; // spent for real: a snapshot exists
+
+    // The credits were used by an ACCEPTED snapshot: they are spent. A flagged or rejected one leaves them for the next, so an honest player is never punished for a bad snapshot and a credit never counts twice.
+    if (evaluation.verdict === 'ok' && pending?.through && deps.store.markCreditsCounted) {
+      try {
+        await deps.store.markCreditsCounted(userId, pending.through);
+      } catch (err) {
+        console.error('[submit-progress] credits not marked', err instanceof Error ? err.message : 'unknown');
+      }
+    }
 
     const score = computeScore(metrics);
     // League scoring paused by the owner or the watchdog: nothing reaches the ranking. The next snapshot after the flag is cleared brings the account up to date (scores only ever go up to the best snapshot).

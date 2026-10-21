@@ -98,7 +98,7 @@ export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminAp
     paymentExceptions: (q) => call<PaymentExceptionsPage>('admin_payment_exceptions', { p_status: q.status, p_page: q.page, p_page_size: q.pageSize }),
     grantPass: (userId, note) => call<GrantPassResult>('admin_grant_pass', { p_user: userId, p_note: note }),
     revokePass: (userId, note) => call<RevokePassResult>('admin_revoke_pass', { p_user: userId, p_note: note }),
-    createPromoCodes: (a) => call<{ codes: string[] }>('admin_create_promo_codes', { p_count: a.count, p_reward: a.reward, p_max_uses: a.maxUses, p_expires_at: a.expiresAt, p_note: a.note }),
+    createPromoCodes: (a) => call<{ codes: string[] }>('admin_create_promo_codes', { p_count: a.count, p_reward: a.reward, p_max_uses: a.maxUses, p_expires_at: a.expiresAt, p_note: a.note, p_item_id: a.reward === 'consumable' ? (a.itemId ?? null) : null, p_amount: a.reward === 'pass' ? null : (a.amount ?? null) }),
     listPromoCodes: () => call<PromoCodeRow[]>('admin_list_promo_codes'),
     disablePromoCode: (code) => call<{ status: 'disabled' | 'already' }>('admin_disable_promo_code', { p_code: code }),
     deleteUser: (userId, confirm) => (extras.deleteUser ? extras.deleteUser(userId, confirm) : Promise.resolve<DeleteUserResult>({ ok: false, reason: 'unavailable' })),

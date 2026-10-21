@@ -15,7 +15,8 @@ import { enableNotifications, notificationsActive, notifyPermission, saveNotifyP
 import { MaterialPrefs, materialPrefs } from '../game/tradeableMaterials';
 import { maskEmail } from '../lib/maskEmail';
 import { fetchPassSource, PassSourceId } from '../lib/passSource';
-import { looksLikePromoCode, PromoOutcome, redeemPromoCode } from '../lib/promo';
+import { looksLikePromoCode, PromoOutcome, PromoResult, redeemPromoDetailed } from '../lib/promo';
+import { promoRewardText } from '../game/promoText';
 import { manualReduceMotion, setManualReduceMotion, subscribeMotion, systemReducesMotion } from '../lib/motionPref';
 import { cleanEmail, safeHttpsUrl, SUPPORT } from '../lib/supportConfig';
 import { Button, Chip, ModalShell, Panel, SelectField } from './ui';
@@ -25,7 +26,7 @@ import { Button, Chip, ModalShell, Panel, SelectField } from './ui';
 // Importing and resetting replace the hero, so both ask first (what is about to be loaded / a typed word), and App keeps a backup of the current hero before it replaces anything.
 
 const PROMO_MESSAGE: Record<PromoOutcome, string> = {
-  ok: 'settings.promoOk',
+  ok: 'settings.promoOkGeneric',
   invalid: 'settings.promoInvalid',
   expired: 'settings.promoExpired',
   exhausted: 'settings.promoExhausted',
@@ -154,16 +155,16 @@ export default function SettingsModal({
   // Promo code (online only): the server decides; this only sends the text and tells the answer in plain words.
   const [promoText, setPromoText] = useState('');
   const [promoBusy, setPromoBusy] = useState(false);
-  const [promoResult, setPromoResult] = useState<PromoOutcome | null>(null);
+  const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
   const promoOnline = accountConfigured && isServerPassSource();
   const redeemPromo = async () => {
     if (promoBusy || promoText.trim() === '') return;
     setPromoBusy(true);
     setPromoResult(null);
-    const outcome = looksLikePromoCode(promoText) ? await redeemPromoCode(promoText) : 'invalid';
+    const result: PromoResult = looksLikePromoCode(promoText) ? await redeemPromoDetailed(promoText) : { outcome: 'invalid', reward: null };
     setPromoBusy(false);
-    setPromoResult(outcome);
-    if (outcome === 'ok') {
+    setPromoResult(result);
+    if (result.outcome === 'ok') {
       setPromoText('');
       onPromoRedeemed?.();
     }
@@ -321,8 +322,8 @@ export default function SettingsModal({
                   </Button>
                 </div>
                 {promoResult && (
-                  <p className={promoResult === 'ok' ? 'st-hint' : 'ui-alert bad'} role="status" data-testid="promo-result" data-outcome={promoResult}>
-                    {t(PROMO_MESSAGE[promoResult])}
+                  <p className={promoResult.outcome === 'ok' ? 'st-hint' : 'ui-alert bad'} role="status" data-testid="promo-result" data-outcome={promoResult.outcome} data-reward={promoResult.reward?.kind}>
+                    {promoResult.outcome === 'ok' && promoResult.reward ? promoRewardText(promoResult.reward) : t(PROMO_MESSAGE[promoResult.outcome])}
                   </p>
                 )}
               </form>

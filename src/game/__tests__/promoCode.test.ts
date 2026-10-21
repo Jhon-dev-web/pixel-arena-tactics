@@ -109,8 +109,13 @@ describe('texts', () => {
     }
     for (const outcome of ['promoOk', 'promoInvalid', 'promoExpired', 'promoExhausted', 'promoAlreadyRedeemed', 'promoHasPass', 'promoRateLimited', 'promoOffline', 'promoError']) expect((pt.settings as Record<string, string>)[outcome], outcome).toBeTruthy();
   });
-  it('the texts do not promise Gold or Éter (a code gives the Pass only)', () => {
-    for (const k of keys(pt)) expect((pt.settings as Record<string, string>)[k], k).not.toMatch(/ouro|éter|ether|aether|gold/i);
-    for (const k of keys(en)) expect((en.settings as Record<string, string>)[k], k).not.toMatch(/gold|aether/i);
+  it('the hint and the reward sentences name what a code can give (Pass, Gold, Éter, potions) in both languages', () => {
+    expect(pt.settings.promoHint).toMatch(/Passe/);
+    expect(pt.settings.promoHint).toMatch(/Ouro/);
+    expect(pt.settings.promoHint).toMatch(/Éter/);
+    expect(en.settings.promoHint).toMatch(/Gold/);
+    expect(en.settings.promoHint).toMatch(/Aether/);
+    expect(pt.settings.promoGotGold).toContain('{n}');
+    expect(pt.settings.promoGotConsumable).toContain('{name}');
   });
 });

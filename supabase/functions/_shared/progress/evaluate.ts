@@ -9,6 +9,7 @@ import { PEAK_KEYS, Peak, ProgressMetrics, levelPosition, maxPeak, peakOf } from
 //                    XP_RATE, XP_RATE_TOTAL, LEVEL_PACE, LEVEL_PACE_TOTAL, FLOOR_PACE, FLOOR_PACE_TOTAL, DEPTH_PACE, DEPTH_PACE_TOTAL,
 //                    SECONDS_PLAYED_EXCEEDS_CLOCK, SECONDS_PLAYED_EXCEEDS_CLOCK_TOTAL,
 //                    MINING_XP_RATE, WOODCUTTING_XP_RATE, GARDENING_XP_RATE (profession skill XP per server hour, with _TOTAL too),
+//                    GOLD_BALANCE_JUMP, SHARDS_BALANCE_JUMP, POTIONS_BALANCE_JUMP (a balance rose by more than play, trade and the server credits allow; migration 0028),
 //                    KILLS_RATE, GOLD_RATE, DUNGEON_RUNS_RATE, DUNGEON_FLOORS_RATE, BOSSES_RATE, UNIQUES_RATE, ACHIEVEMENTS_RATE (each also with the _TOTAL suffix, against the first snapshot)
 //   FLAG only:       RESTORED_OLDER_SAVE (a counter went down), SAVE_REVISION_BACKWARDS, PASS_FLAG_WITHOUT_ENTITLEMENT, BASELINE_AHEAD_OF_ACCOUNT_AGE
 //                    (BASELINE_AHEAD_OF_ACCOUNT_AGE is REJECT-level once the first League has reset the heroes: input.sinceReset)
@@ -45,6 +46,18 @@ export interface EvalInput {
   /** The account's first and latest ACCEPTED snapshot: only `ok` snapshots count (a flagged or rejected one is never a baseline). null when there is none yet. */
   first: HistoryPoint | null;
   previous: HistoryPoint | null;
+  /**
+   * The server CREDITS (migration 0028, promo codes) that were claimed by the game and not yet counted by an accepted snapshot: the balances may rise by this much on top of what play allows. The caller passes them from
+   * arena_private.progress_credits_pending and marks them counted ONLY when this evaluation comes back `ok` (handler.ts), so a credit is spent once. Absent = none.
+   */
+  credits?: Credits;
+}
+
+/** Claimed, not yet counted server credits: Gold, Eter and potion units. */
+export interface Credits {
+  gold: number;
+  shards: number;
+  consumable: number;
 }
 
 export interface Evaluation {
@@ -159,6 +172,26 @@ function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedM
   if (secondsGained > secondsAllowed) f.add('SECONDS_PLAYED_EXCEEDS_CLOCK' + suffix, 'reject');
 }
 
+/**
+ * Balances that a server credit can raise: Gold, Eter and potion units. A balance goes DOWN when spent, so unlike the counters above it is compared with the previous ACCEPTED snapshot's own value (not a peak), and only a rise counts.
+ * The rise a save may show = what play and trade allow in that time + the credits the server says were claimed and not yet counted. A balance jump with no credit behind it is an edited save.
+ * No previous value (a snapshot stored before these fields were read) = no check. Verdict like the other rate rules: flag above the allowance, reject above twice it.
+ */
+function balanceChecks(f: Findings, cur: ProgressMetrics, prev: ProgressMetrics, elapsedMs: number, credits: Credits | undefined): void {
+  const days = Math.max(0, elapsedMs) / DAY_MS;
+  const hours = Math.max(0, elapsedMs) / HOUR_MS;
+  const c = { gold: Math.max(0, credits?.gold ?? 0), shards: Math.max(0, credits?.shards ?? 0), consumable: Math.max(0, credits?.consumable ?? 0) };
+  const rules: { code: string; cur: number | undefined; prev: number | undefined; allowed: number }[] = [
+    { code: 'GOLD_BALANCE_JUMP', cur: cur.gold, prev: prev.gold, allowed: BOUNDS.goldPerHour * (hours + BOUNDS.burstHours) + BOUNDS.goldTransferPerDay * (days + BOUNDS.dayBurst) + c.gold },
+    { code: 'SHARDS_BALANCE_JUMP', cur: cur.shards, prev: prev.shards, allowed: BOUNDS.shardsPerDay * (days + BOUNDS.dayBurst) + c.shards },
+    { code: 'POTIONS_BALANCE_JUMP', cur: cur.consumableUnits, prev: prev.consumableUnits, allowed: BOUNDS.consumableUnitsPerDay * (days + BOUNDS.dayBurst) + c.consumable },
+  ];
+  for (const r of rules) {
+    if (typeof r.cur !== 'number' || typeof r.prev !== 'number') continue;
+    f.check(r.code, Math.max(0, r.cur - r.prev), r.allowed, r.allowed * REJECT_FACTOR);
+  }
+}
+
 export function evaluateSnapshot(cur: ProgressMetrics, input: EvalInput): Evaluation {
   const f = new Findings();
   const { previous, first } = input;
@@ -205,6 +238,7 @@ export function evaluateSnapshot(cur: ProgressMetrics, input: EvalInput): Evalua
   }
 
   growthChecks(f, cur, previous.peak, input.nowMs - previous.atMs, '', input.nowMs, input.leagueEpochMs);
+  balanceChecks(f, cur, previous.metrics, input.nowMs - previous.atMs, input.credits);
   growthChecks(f, cur, peakOf(first.metrics), input.nowMs - first.atMs, '_TOTAL', input.nowMs, input.leagueEpochMs);
 
   const verdict = f.verdict;

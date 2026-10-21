@@ -140,7 +140,7 @@ describe('promo codes', () => {
     await api.listPromoCodes();
     await api.disablePromoCode('ABCDEFGHJK');
     expect(calls).toEqual([
-      { name: 'admin_create_promo_codes', args: { p_count: 5, p_reward: 'pass', p_max_uses: 2, p_expires_at: '2026-12-01T02:59:59.000Z', p_note: 'sorteio' } },
+      { name: 'admin_create_promo_codes', args: { p_count: 5, p_reward: 'pass', p_max_uses: 2, p_expires_at: '2026-12-01T02:59:59.000Z', p_note: 'sorteio', p_item_id: null, p_amount: null } },
       { name: 'admin_list_promo_codes', args: undefined },
       { name: 'admin_disable_promo_code', args: { p_code: 'ABCDEFGHJK' } },
     ]);

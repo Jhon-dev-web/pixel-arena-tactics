@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BOUNDS, burstXp, daysAtFloor, daysAtLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from '../progress/bounds.ts';
-import { EvalInput, HistoryPoint, evaluateSnapshot } from '../progress/evaluate.ts';
+import { Credits, EvalInput, HistoryPoint, evaluateSnapshot } from '../progress/evaluate.ts';
 import { createProgressStore } from '../progress/progressDb.ts';
 import { MAX_BODY_BYTES, NewSnapshot, ProfessionApplyStatus, ProgressStore, SNAPSHOT_MIN_INTERVAL_MS, SeasonApplyStatus, StoredSnapshot, canonicalJson, handleSubmitProgress } from '../progress/handler.ts';
 import { ProgressMetrics, computeScore, extractMetrics, levelFromXp, levelPosition, paragonFromXp, peakOf, professionLevelFromXp, professionScores, splitScore } from '../progress/metrics.ts';
@@ -54,6 +54,10 @@ interface Overrides {
   hasBattlePass?: boolean;
   premium?: number[];
   stashBonusSlots?: number;
+  /** The balances a promo credit can raise (migration 0028): Gold, Eter, potion units in the bag. */
+  balGold?: number;
+  shards?: number;
+  potions?: number;
   /** worn: true = the piece is in an equipped slot of the save (the level gate is about wearing); otherwise it sits in the bag. */
   templates?: { templateId: string; rarity?: string; worn?: boolean }[];
 }
@@ -77,6 +81,9 @@ function blob(o: Overrides = {}) {
     hasBattlePass: o.hasBattlePass ?? false,
     claimedPassRewards: { free: [], premium: o.premium ?? [] },
     stashBonusSlots: o.stashBonusSlots ?? 0,
+    gold: o.balGold ?? 0,
+    shards: o.shards ?? 0,
+    consumables: { small_hp: o.potions ?? 0 },
     gearInstances: Object.fromEntries((o.templates ?? []).map((t, i) => [`gi_${i}`, { id: `gi_${i}`, templateId: t.templateId, rarity: t.rarity ?? 'common' }])),
     equipped: Object.fromEntries((o.templates ?? []).flatMap((t, i) => (t.worn ? [[`slot${i}`, `gi_${i}`]] : []))),
     schemaVersion: 2,
@@ -403,6 +410,20 @@ class MemoryProgressStore implements ProgressStore {
     const ok = this.rows.filter((r) => r.userId === userId && r.verdict === 'ok' && (sinceMs === undefined || r.createdAtMs >= sinceMs));
     const pt = (r: (typeof ok)[number]): HistoryPoint => ({ atMs: r.createdAtMs, metrics: r.metrics, peak: r.peak, saveRevision: r.saveRevision });
     return { first: ok[0] ? pt(ok[0]) : null, last: ok.length ? pt(ok[ok.length - 1]) : null };
+  }
+  // The promo credit ledger (migration 0028): a claimed credit counts until an accepted snapshot marks it. `creditsThrow` models the migration not being applied.
+  credits: { gold: number; shards: number; consumable: number; claimedAtMs: number; counted: boolean }[] = [];
+  creditsThrow = false;
+  markCalls = 0;
+  async pendingCredits() {
+    if (this.creditsThrow) throw new Error('credits_read_404');
+    const open = this.credits.filter((c) => !c.counted);
+    const sum = (k: 'gold' | 'shards' | 'consumable') => open.reduce((a, c) => a + c[k], 0);
+    return { credits: { gold: sum('gold'), shards: sum('shards'), consumable: sum('consumable') }, through: open.length ? String(Math.max(...open.map((c) => c.claimedAtMs))) : null };
+  }
+  async markCreditsCounted(_userId: string, through: string) {
+    this.markCalls++;
+    for (const c of this.credits) if (c.claimedAtMs <= Number(through)) c.counted = true;
   }
   async insertSnapshot(row: NewSnapshot) {
     const id = `snap-${this.rows.length + 1}`;
@@ -1012,5 +1033,130 @@ describe('League events widen the XP bound only while one runs (Rodada 22)', () 
   it('more than the cap above the plain bound is still a flag during an event', () => {
     const inv = ev('invasion');
     expect(verdictFor(inv.start + 20 * HOUR, 2, 1.3, EPOCH).reasons).toContain('XP_RATE');
+  });
+});
+
+// ---- server credits: promo rewards never flag, a forged jump does (migration 0028) -------------------------------------------------------------
+describe('balance jumps and server credits (evaluate)', () => {
+  const MIN = 60_000;
+  const base = { xp: xpAtPosition(10), floor: 5 };
+  const verdict = (prevO: Overrides, curO: Overrides, credits?: Credits, minutes = 11) => {
+    const prev = point(T0, m({ ...base, ...prevO }));
+    return evaluateSnapshot(m({ ...base, ...curO }), { nowMs: T0 + minutes * MIN, accountCreatedMs: T0 - 30 * DAY, entitled: true, saveRevision: 2, first: prev, previous: prev, ...(credits ? { credits } : {}) });
+  };
+
+  it('Gold: a jump beyond what play and trade allow is flagged WITHOUT a credit and passes WITH the claimed credit', () => {
+    const jump = { balGold: 3_000_000 };
+    const without = verdict({ balGold: 1000 }, jump);
+    expect(without.reasons).toContain('GOLD_BALANCE_JUMP');
+    expect(without.verdict).not.toBe('ok');
+    const withCredit = verdict({ balGold: 1000 }, jump, { gold: 2_000_000, shards: 0, consumable: 0 });
+    expect(withCredit.reasons).not.toContain('GOLD_BALANCE_JUMP');
+    expect(withCredit.verdict).toBe('ok');
+  });
+
+  it('Eter: the same, and the credit is for ITS balance only', () => {
+    expect(verdict({ shards: 10 }, { shards: 3000 }).reasons).toContain('SHARDS_BALANCE_JUMP');
+    expect(verdict({ shards: 10 }, { shards: 3000 }, { gold: 0, shards: 2500, consumable: 0 }).verdict).toBe('ok');
+    // a Gold credit does not excuse an Eter jump
+    expect(verdict({ shards: 10 }, { shards: 3000 }, { gold: 1_000_000, shards: 0, consumable: 0 }).reasons).toContain('SHARDS_BALANCE_JUMP');
+  });
+
+  it('potions: units in the bag and the stash; the credit widens the allowance by exactly its amount', () => {
+    expect(verdict({ potions: 10 }, { potions: 5100 }).reasons).toContain('POTIONS_BALANCE_JUMP');
+    expect(verdict({ potions: 10 }, { potions: 5100 }, { gold: 0, shards: 0, consumable: 100 }).verdict).toBe('ok');
+    expect(verdict({ potions: 10 }, { potions: 5100 }, { gold: 0, shards: 0, consumable: 20 }).reasons).toContain('POTIONS_BALANCE_JUMP');
+  });
+
+  it('spending is never a jump, a small rise is fine, and a previous snapshot without the balances has nothing to compare with', () => {
+    expect(verdict({ balGold: 900_000, shards: 500, potions: 400 }, { balGold: 10, shards: 0, potions: 0 }).verdict).toBe('ok');
+    expect(verdict({ balGold: 1000, shards: 10, potions: 10 }, { balGold: 90_000, shards: 100, potions: 200 }).verdict).toBe('ok');
+    const prevMetrics = m(base);
+    delete (prevMetrics as { gold?: number }).gold;
+    delete (prevMetrics as { shards?: number }).shards;
+    delete (prevMetrics as { consumableUnits?: number }).consumableUnits;
+    const prev = point(T0, prevMetrics);
+    const out = evaluateSnapshot(m({ ...base, balGold: 9e9, shards: 9e6, potions: 9e6 }), { nowMs: T0 + 11 * MIN, accountCreatedMs: T0 - 30 * DAY, entitled: true, saveRevision: 2, first: prev, previous: prev });
+    expect(out.verdict).toBe('ok');
+  });
+
+  it('a garbage balance in the save is read as 0 and the stash counts too', () => {
+    const dirty = extractMetrics({ ...blob(), gold: 'lots', shards: -4, consumables: { small_hp: 3, large_hp: 'x' }, stash: { consumables: { small_hp: 7 } } }) as ProgressMetrics;
+    expect(dirty.gold).toBe(0);
+    expect(dirty.shards).toBe(0);
+    expect(dirty.consumableUnits).toBe(10);
+  });
+});
+
+describe('submit-progress counts a claimed promo credit once (handler)', () => {
+  const MIN = 60_000;
+  const first = () => blob({ xp: xpAtPosition(5), balGold: 100 });
+  const next = (store: MemoryProgressStore, gold: number) => {
+    store.now += 11 * MIN;
+    return handleSubmitProgress(request(blob({ xp: xpAtPosition(5), balGold: gold })), deps(store)).then((r) => r.json());
+  };
+
+  it('a reward of 1,000,000 Gold rides on top of what play allows: ok, and the credit is marked counted', async () => {
+    const store = new MemoryProgressStore();
+    await handleSubmitProgress(request(first()), deps(store));
+    store.credits.push({ gold: 1_000_000, shards: 0, consumable: 0, claimedAtMs: store.now + MIN, counted: false });
+    const body = await next(store, 2_000_100); // +2,000,000: more than play allows (about 1.4 million), within play + the credit
+    expect(body.verdict).toBe('ok');
+    expect(store.credits[0].counted).toBe(true);
+    expect(store.markCalls).toBe(1);
+  });
+
+  it('the SAME jump with no credit is flagged, nothing is marked', async () => {
+    const store = new MemoryProgressStore();
+    await handleSubmitProgress(request(first()), deps(store));
+    const body = await next(store, 2_000_100);
+    expect(body.verdict).toBe('flagged');
+    expect(body.reasons).toContain('GOLD_BALANCE_JUMP');
+    expect(store.markCalls).toBe(0);
+  });
+
+  it('a credit counts ONCE: the next snapshot cannot reuse it for another jump', async () => {
+    const store = new MemoryProgressStore();
+    await handleSubmitProgress(request(first()), deps(store));
+    store.credits.push({ gold: 1_000_000, shards: 0, consumable: 0, claimedAtMs: store.now + MIN, counted: false });
+    expect((await next(store, 2_000_100)).verdict).toBe('ok');
+    // another +2,000,000 straight after: the credit is spent, so it is flagged
+    const again = await next(store, 4_000_100);
+    expect(again.verdict).toBe('flagged');
+    expect(again.reasons).toContain('GOLD_BALANCE_JUMP');
+  });
+
+  it('a flagged snapshot does not spend the credit: it waits for the next accepted one', async () => {
+    const store = new MemoryProgressStore();
+    await handleSubmitProgress(request(first()), deps(store));
+    store.credits.push({ gold: 1_000_000, shards: 0, consumable: 0, claimedAtMs: store.now + MIN, counted: false });
+    expect((await next(store, 3_500_000)).verdict).toBe('flagged'); // more than play plus the credit
+    expect(store.credits[0].counted).toBe(false);
+    expect((await next(store, 2_000_100)).verdict).toBe('ok'); // an honest save with the reward
+    expect(store.credits[0].counted).toBe(true);
+  });
+
+  it('a credit claimed while a snapshot was being judged is left for the next one (marked only up to what was read)', async () => {
+    const store = new MemoryProgressStore();
+    await handleSubmitProgress(request(first()), deps(store));
+    store.credits.push({ gold: 10, shards: 0, consumable: 0, claimedAtMs: store.now + MIN, counted: false });
+    const read = store.pendingCredits.bind(store);
+    store.pendingCredits = async () => {
+      const r = await read();
+      store.credits.push({ gold: 500, shards: 0, consumable: 0, claimedAtMs: store.now + 20 * MIN, counted: false });
+      return r;
+    };
+    await next(store, 200);
+    expect(store.credits.map((c) => c.counted)).toEqual([true, false]);
+  });
+
+  it('a ledger that cannot be read (migration not applied) never stops a snapshot: it is judged on play alone', async () => {
+    const store = new MemoryProgressStore();
+    store.creditsThrow = true;
+    await handleSubmitProgress(request(first()), deps(store));
+    const body = await next(store, 2_000_100);
+    expect(body.verdict).toBe('flagged');
+    expect(store.rows).toHaveLength(2);
+    expect(store.markCalls).toBe(0);
   });
 });

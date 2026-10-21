@@ -46,6 +46,10 @@ export interface ProgressMetrics {
   premiumClaims: number; // premium Pass track rewards claimed
   stashBonusSlots: number; // Pass-sourced stash slots
   gateViolations: string[]; // gear template ids that exist below their level / floor gate (max 5)
+  // The BALANCES a promo credit can raise (migration 0028): Gold, Eter (shards) and the number of potion units (bag + stash). Optional: a snapshot stored before they were read has none, and then there is no baseline to compare with.
+  gold?: number;
+  shards?: number;
+  consumableUnits?: number;
 }
 
 // Hard clamps so a tampered giant cannot overflow a bigint, a jsonb column or a comparison. Far above anything playable.
@@ -58,6 +62,18 @@ const num = (v: unknown, max: number): number => {
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** Total units in a { id: count } record (the potions of the bag or the stash), each count clamped; garbage is 0. */
+const unitsOf = (v: unknown): number => {
+  if (!isObj(v)) return 0;
+  let total = 0;
+  let seen = 0;
+  for (const n of Object.values(v)) {
+    if (++seen > 200) break;
+    total += num(n, 1e9);
+  }
+  return Math.min(total, CAPS.counter);
+};
 
 export const PROFESSIONS = ['mining', 'woodcutting', 'gardening'] as const;
 export type ProfessionId = (typeof PROFESSIONS)[number];
@@ -189,6 +205,9 @@ export function extractMetrics(blob: unknown): ProgressMetrics | null {
     premiumClaims: Array.isArray(claimedPass.premium) ? Math.min(claimedPass.premium.length, 1000) : 0,
     stashBonusSlots: num(blob.stashBonusSlots, 1000),
     gateViolations: violations,
+    gold: num(blob.gold, CAPS.counter),
+    shards: num(blob.shards, CAPS.counter),
+    consumableUnits: unitsOf(blob.consumables) + unitsOf(isObj(blob.stash) ? blob.stash.consumables : undefined),
   };
 }
 

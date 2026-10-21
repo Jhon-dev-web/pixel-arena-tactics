@@ -48,6 +48,9 @@ import { usePassEntitlementVersion } from './game/usePassEntitlement';
 import { fetchReferralStatus } from './lib/referral';
 import { InvitesPage } from './components/InvitesPanel';
 import { applyReferralCosmetics } from './game/referralRewards';
+import { applyServerCredits } from './game/promoRewards';
+import { promoRewardsToast } from './game/promoText';
+import { fetchCreditsToApply } from './lib/serverCredits';
 import { getServerResetAt, needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
 import LeagueResetModal from './components/LeagueResetModal';
 import { applyBuyConsumable, CraftFailure } from './game/craftActions';
@@ -192,6 +195,9 @@ const gearText = (key: string): string => t(`gear.${key}`);
 const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
 
 const REFERRAL_POLL_MS = 30 * 60 * 1000;
+/** Server credits (promo codes that give Gold, Éter or potions): asked at login, when the tab comes back, and right after a redeem; this is only the slow safety net while the tab stays open and visible. */
+const CREDITS_POLL_MS = 10 * 60 * 1000;
+const CREDITS_FOCUS_GAP_MS = 20 * 1000;
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'offline';
 
@@ -1678,6 +1684,57 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       stopPolling();
     };
   }, [userId, configured]);
+  // Server credits (migration 0028): a promo code can give Gold, Éter or potions. The SERVER keeps a ledger; here the game CLAIMS what is owed and applies each credit to the save exactly once (the save remembers the ids,
+  // game/promoRewards.ts), then says so in a toast. Online only, nothing in the browser's storage. At login it also asks for what was claimed in the last days (a claim whose answer got lost); on focus and after a redeem
+  // it only claims. A claimed-but-unsaved credit is never lost: the server still lists it as claimed and the next login re-applies the ids the save does not have.
+  const commitCreditsRef = useRef<(next: SaveData, toast: string) => void>(() => undefined);
+  commitCreditsRef.current = (next, toast) => {
+    commitSave(next, { important: true });
+    showToast(toast);
+  };
+  const syncCreditsRef = useRef<(recover: boolean) => Promise<void>>(async () => undefined);
+  useEffect(() => {
+    if (!userId || !configured) {
+      syncCreditsRef.current = async () => undefined;
+      return;
+    }
+    let stopped = false;
+    let busy = false;
+    let lastAt = 0;
+    const sync = async (recover: boolean) => {
+      if (busy || stopped) return;
+      busy = true;
+      try {
+        const credits = await fetchCreditsToApply({ recover });
+        if (stopped || !credits || credits.length === 0) return;
+        const { save: next, applied } = applyServerCredits(saveRef.current, credits);
+        if (applied.length > 0) commitCreditsRef.current(next, promoRewardsToast(applied.map((c) => ({ kind: c.kind, itemId: c.itemId, amount: c.amount }))));
+      } finally {
+        lastAt = Date.now();
+        busy = false;
+      }
+    };
+    syncCreditsRef.current = sync;
+    let first = true;
+    const stopPolling = startPolling({
+      intervalMs: CREDITS_POLL_MS,
+      startDelayMs: 0,
+      run: () => {
+        const recover = first;
+        first = false;
+        return sync(recover);
+      },
+    });
+    const onFocus = () => {
+      if (Date.now() - lastAt > CREDITS_FOCUS_GAP_MS) void sync(false);
+    };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      stopped = true;
+      stopPolling();
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [userId, configured]);
   const dismissLeagueNotice = () => {
     const s = saveRef.current;
     if (s.league) commitSave({ ...s, league: { ...s.league, noticeSeen: true } });
@@ -2860,6 +2917,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onPromoRedeemed={() => {
             // the server wrote the Pass: ask it again, so the perks (and the "Ativo" chip) show up without a reload
             if (userId) void recheckServerPass(userId);
+            // a code for Gold, Éter or potions: claim what the server now owes and apply it
+            void syncCreditsRef.current(false);
           }}
           onSignOut={() => {
             setSettingsOpen(false);
