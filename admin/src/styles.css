@@ -1096,3 +1096,70 @@ dl.facts dd {
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* ---------- overview: attention, freshness, folds ---------- */
+.attention-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.attention-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: start;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--warn);
+  border-radius: var(--radius);
+}
+.attention-item.bad {
+  border-left-color: var(--bad);
+}
+.attention-item p {
+  margin: 2px 0 0;
+}
+.attention .notice {
+  margin-bottom: 8px;
+}
+@media (max-width: 560px) {
+  .attention-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.freshness {
+  margin: 8px 0 0;
+  color: var(--faint);
+  font-size: 12px;
+}
+.freshness .late {
+  color: var(--warn);
+  font-weight: 600;
+}
+.fold {
+  margin-bottom: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.fold > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style-position: inside;
+}
+.fold[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+.fold-body {
+  padding: 14px 16px 16px;
+}
+.notice .btn {
+  margin-left: 6px;
+}

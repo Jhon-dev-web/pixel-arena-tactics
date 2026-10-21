@@ -51,9 +51,16 @@ const COLUMNS: Column<PlayerRow>[] = [
 
 const SORT_HEADERS = new Set<string>(['username', 'level', 'last_seen']);
 
+/** Links from other pages open this one already filtered: #/jogadores?q=texto, ?alertas=1 (only accounts with alerts), ?passe=expired|yes|no|history. */
+function initialQuery(): PlayerQuery {
+  const passe = hashParam('passe');
+  const base = defaultPlayerQuery();
+  return { ...base, search: hashParam('q'), filters: { ...(hashParam('alertas') === '1' ? { flagged: true } : {}), ...(passe === 'yes' || passe === 'no' || passe === 'expired' || passe === 'history' ? { pass: passe } : {}) } };
+}
+
 export default function PlayersPage() {
   const { api } = useApp();
-  const [q, setQ] = useState<PlayerQuery>(() => ({ ...defaultPlayerQuery(), search: hashParam('q') }));
+  const [q, setQ] = useState<PlayerQuery>(() => initialQuery());
   const [openId, setOpenId] = useState<string | null>(null);
   const search = useDebounced(q.search, 350);
   const query: PlayerQuery = { ...q, search };

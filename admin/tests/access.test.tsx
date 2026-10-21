@@ -102,7 +102,7 @@ describe('access', () => {
     }
     expect(await screen.findByRole('heading', { name: 'Visão geral' })).toBeTruthy();
     await waitFor(() => expect(calls).toContain('overview'));
-    expect(await screen.findByText(/atualizado há/)).toBeTruthy();
+    expect((await screen.findAllByText(/Consulta atualizada às/)).length).toBeGreaterThan(0);
   });
 
   test('the database refusing a call later (not an admin any more) sends the app back to "Acesso negado"', async () => {
