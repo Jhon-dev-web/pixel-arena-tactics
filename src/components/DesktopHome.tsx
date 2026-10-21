@@ -1,4 +1,4 @@
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import SpriteSheet from './SpriteSheet';
 import { MonsterPortrait } from './HuntParts';
 import GearIcon from './GearIcon';
@@ -34,6 +34,7 @@ import { ownsAdventurerPass } from '../game/entitlements';
 import { readyActivities } from '../game/claimAll';
 import { nextStep, NextStepTarget } from '../game/nextStep';
 import { nextStepLine } from './nextStepText';
+import useIsPhone from '../hooks/useIsPhone';
 import EventsPanel from './events/EventsPanel';
 import type { ProfessionId } from '../game/leagueEvents';
 
@@ -120,6 +121,9 @@ export default function DesktopHome({
   onOpenNextStep: (target: NextStepTarget) => void;
   onPickProfession: (profession: ProfessionId) => void;
 }) {
+  const phone = useIsPhone();
+  // UI-only state (never saved): the phone block with the equipment slots starts folded.
+  const [gearOpen, setGearOpen] = useState(false);
   const now = Date.now();
   const owner = ownsAdventurerPass(save);
   const ready = readyActivities(save, now);
@@ -165,6 +169,32 @@ export default function DesktopHome({
 
   const dungeonProgress = save.highestDungeonFloor / MAX_DUNGEON_FLOOR;
 
+  // The eight equipment slots. Beside the hero on a wide screen; on a phone they sit in their own block below the shortcuts so the first screen is the hero summary and what to do now.
+  const slotsGrid = (
+    <div className="hm-slots">
+      {[...INSTANCED_SLOTS, 'relic' as const].map((slot) => {
+        const view = slot === 'relic' ? (equipped.relic ? { item: equipped.relic, instance: null } : null) : equipped[slot];
+        const name = view ? (view.instance ? gearInstanceLabel(view.instance) : t(`gear.${view.item.nameKey}`)) : '—';
+        const rarity = (view ? viewRarity(view) : 'common') as CardRarity;
+        return (
+          <div className={`hm-slot${view ? '' : ' empty'}`} key={slot}>
+            <ItemFrame rarity={rarity} size="sm">
+              {view ? <GearIcon item={view.item} /> : null}
+            </ItemFrame>
+            <div className="hm-slot-text">
+              <span className="hm-slot-label">{gearText(slot)}</span>
+              <span className="hm-slot-name" title={name}>
+                {name}
+                {view && <UniqueTag templateId={view.item.id} />}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+
   return (
     <Screen label={t('camp.title')}>
       <ScreenLayout
@@ -191,27 +221,7 @@ export default function DesktopHome({
                   <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
                 </button>
               </div>
-              <div className="hm-slots">
-                {[...INSTANCED_SLOTS, 'relic' as const].map((slot) => {
-                  const view = slot === 'relic' ? (equipped.relic ? { item: equipped.relic, instance: null } : null) : equipped[slot];
-                  const name = view ? (view.instance ? gearInstanceLabel(view.instance) : t(`gear.${view.item.nameKey}`)) : '—';
-                  const rarity = (view ? viewRarity(view) : 'common') as CardRarity;
-                  return (
-                    <div className={`hm-slot${view ? '' : ' empty'}`} key={slot}>
-                      <ItemFrame rarity={rarity} size="sm">
-                        {view ? <GearIcon item={view.item} /> : null}
-                      </ItemFrame>
-                      <div className="hm-slot-text">
-                        <span className="hm-slot-label">{gearText(slot)}</span>
-                        <span className="hm-slot-name" title={name}>
-                          {name}
-                          {view && <UniqueTag templateId={view.item.id} />}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {!phone && slotsGrid}
             </Panel>
 
             {/* Atividade atual */}
@@ -356,6 +366,21 @@ export default function DesktopHome({
                 </Button>
               </div>
             </Panel>
+
+            {/* Equipamento: só no celular, abaixo dos atalhos (no computador os espaços ficam ao lado do herói) */}
+            {phone && (
+              <Panel
+                title={t('camp.equipmentTitle')}
+                className={`hm-gear-panel${gearOpen ? '' : ' folded'}`}
+                actions={
+                  <Button size="sm" onClick={() => setGearOpen((v) => !v)} aria-expanded={gearOpen} aria-controls="hm-gear-slots">
+                    {gearOpen ? t('camp.equipmentHide') : t('camp.equipmentShow')}
+                  </Button>
+                }
+              >
+                {gearOpen ? <div id="hm-gear-slots">{slotsGrid}</div> : null}
+              </Panel>
+            )}
 
             {/* Eventos da Liga */}
             <EventsPanel save={save} onPickProfession={onPickProfession} />

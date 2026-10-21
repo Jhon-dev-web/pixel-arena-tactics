@@ -752,3 +752,10 @@
   border-top: 3px solid var(--c-bad);
   transform: rotate(-35deg);
 }
+
+/* phone: the equipment block, folded to its title bar until the player opens it */
+.hm-gear-panel.folded .ui-panel-head {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}

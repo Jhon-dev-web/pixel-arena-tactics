@@ -1533,3 +1533,10 @@
   border-radius: 999px;
   white-space: nowrap;
 }
+
+/* a phone's top bar has no room for the activity pill next to the name (it sat on top of the level line); the Camp's "current activity" block and the side menu's badges carry it there */
+@media (max-width: 480px) {
+  .desktop-topbar .activity-chip {
+    display: none;
+  }
+}
