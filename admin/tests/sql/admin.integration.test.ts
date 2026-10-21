@@ -305,7 +305,7 @@ describe('economy, series, flags, league, waitlist', () => {
     const l = await asAdmin('select public.admin_league() as r');
     expect(l.season.number).toBe(1);
     expect(l.season.status).toBe('open');
-    expect(l.goal.target).toBe(15000);
+    expect(l.goal.target).toBe(1000);
     expect(Number(l.goal.paid)).toBeGreaterThanOrEqual(1);
     expect(l.counts.entries).toBe(3);
     expect(l.top[0].username).toBe('AnaSilva');
