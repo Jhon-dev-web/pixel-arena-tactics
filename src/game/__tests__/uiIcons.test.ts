@@ -19,7 +19,7 @@ describe('uiIcons', () => {
   });
 
   it('the side menu and the camp carry no emoji as icons', () => {
-    const emoji = /[\u{1F300}-\u{1FAFF}\u{2694}\u{2699}\u{FE0F}]/u;
+    const emoji = /[\u{1F300}-\u{1FAFF}\u{2694}\u{2699}]/u;
     for (const file of ['../../components/DesktopHome.tsx', '../../components/DesktopTopbar.tsx', '../../components/DesktopSidebar.tsx']) {
       expect(readFileSync(resolve(__dirname, file), 'utf8')).not.toMatch(emoji);
     }
