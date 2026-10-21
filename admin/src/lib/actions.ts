@@ -32,6 +32,7 @@ export function deleteRefusalText(r: Extract<DeleteUserResult, { ok: false }>): 
     case 'CONFIRM_MISMATCH':
       return 'O nome digitado não é o nome desta conta. Nada foi apagado.';
     case 'blocked':
+      if (r.constraint === 'market_sale_in_progress') return 'Esta conta está no meio de uma venda no mercado (uma reserva pode estar sendo paga agora). Espere até 30 minutos e tente de novo. Nada foi apagado.';
       return `O banco protege o histórico desta conta (restrição ${r.constraint ?? 'desconhecida'}${r.table ? ` em ${r.table}` : ''}), então ela não pode ser apagada pelo painel. Nada foi apagado.`;
     case 'session':
       return 'Sua sessão expirou. Entre de novo e repita.';

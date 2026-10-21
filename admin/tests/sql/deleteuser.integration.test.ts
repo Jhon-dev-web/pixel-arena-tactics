@@ -125,6 +125,25 @@ describe('the happy path', () => {
   });
 });
 
+describe('never in the middle of a sale (0031)', () => {
+  test('a pending reservation blocks deleting the seller and the buyer; once it ends, both pass again', async () => {
+    const listing = '20000000-0000-4000-8000-000000000001'; // Bruno's open listing (seed)
+    await db.query(`update public.market_listings set status = 'reserved' where id = $1`, [listing]);
+    await db.query(
+      `insert into public.market_reservations (id, listing_id, buyer_id, buyer_address, seller_address, fee_address, price_lamports, fee_lamports, seller_lamports, chain_id, livemode, expires_at, grace_until)
+       values ('30000000-0000-4000-8000-0000000000aa', $1, $2, 'AnaWa11et1111111111111111111111111111', 'BrunoWa11et11111111111111111111111111', 'QwnerWa11et111111111111111111111111111', 2000000000, 100000000, 1900000000, 103, false, now() + interval '30 minutes', now() + interval '2 hours')`,
+      [listing, ANA],
+    );
+    for (const [id, name] of [[BRUNO, 'Bruno'], [ANA, 'AnaSilva']] as const) {
+      expect(await prepare(OWNER, 'authenticated', id, name)).toEqual({ status: 'blocked', constraint: 'market_sale_in_progress', table: 'market_reservations' });
+      expect(await exists(id)).toBe(true);
+    }
+    await db.query(`update public.market_reservations set status = 'expired' where id = '30000000-0000-4000-8000-0000000000aa'`);
+    await db.query(`update public.market_listings set status = 'open' where id = $1`, [listing]);
+    for (const [id, name] of [[BRUNO, 'Bruno'], [ANA, 'AnaSilva']] as const) expect((await prepare(OWNER, 'authenticated', id, name)).status).toBe('ok');
+  });
+});
+
 describe('a seller whose piece was bought and resold (0029)', () => {
   test('Carla can be deleted; Bruno keeps the bought copy (still "bought"), its listing and the sale record', async () => {
     expect((await prepare(OWNER, 'authenticated', CARLA, 'Carla')).status).toBe('ok');
