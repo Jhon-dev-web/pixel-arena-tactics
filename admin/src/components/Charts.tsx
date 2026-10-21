@@ -1,5 +1,5 @@
 // Small SVG charts (no chart library): a line chart and a bar chart (grouped or stacked). Colors come from CSS classes (s1..s6), so both themes work.
-// Every point carries a <title>, so hovering (or a screen reader) gives the exact value.
+// Every point carries a <title>, so hovering (or a screen reader) gives the exact value. Below each chart a toggle opens the SAME numbers as a table (exact values, no hover needed, works on a phone and with a screen reader). Line series also differ by dash pattern, not only by color.
 import { fmtCompact } from '../lib/format';
 
 export interface ChartSeries {
@@ -59,17 +59,62 @@ function Axes({ labels, ticks, top, H, axis, xAt }: { labels: string[]; ticks: n
   );
 }
 
-export function Legend({ series }: { series: ChartSeries[] }) {
+/** Dash patterns for the line series (the first stays solid), so two lines are told apart without color. */
+export const DASHES = ['', '7 4', '2 3', '9 3 2 3', '4 2', '1 3'];
+
+export function Legend({ series, lines = false }: { series: ChartSeries[]; lines?: boolean }) {
   if (series.length < 2) return null;
   return (
     <div className="legend">
-      {series.map((s) => (
+      {series.map((s, i) => (
         <span key={s.name}>
-          <i className={`s${s.tone}`} />
+          {lines ? (
+            <svg className={`legend-line s${s.tone}`} width="22" height="8" viewBox="0 0 22 8" aria-hidden="true">
+              <line x1="0" y1="4" x2="22" y2="4" strokeDasharray={DASHES[i % DASHES.length] || undefined} />
+            </svg>
+          ) : (
+            <i className={`s${s.tone}`} />
+          )}
           {s.name}
         </span>
       ))}
     </div>
+  );
+}
+
+/** The numbers behind a chart, as a table inside a native <details> (closed by default). Same formatting as the tooltips. */
+export function ChartData({ label, labels, series, tip }: { label: string; labels: string[]; series: ChartSeries[]; tip: (n: number) => string }) {
+  return (
+    <details className="chart-data">
+      <summary>Ver os valores em tabela</summary>
+      <div className="table-wrap">
+        <table className="data">
+          <caption className="sr-only">{label}: valores por dia</caption>
+          <thead>
+            <tr>
+              <th scope="col">Dia</th>
+              {series.map((s) => (
+                <th scope="col" key={s.name} className="num">
+                  {s.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {labels.map((l, i) => (
+              <tr key={i}>
+                <th scope="row">{l}</th>
+                {series.map((s) => (
+                  <td key={s.name} className="num">
+                    {tip(s.values[i] ?? 0)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 
@@ -85,12 +130,12 @@ export function LineChart({ labels, series, axis = fmtCompact, tip = (n) => Stri
     <div>
       <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
         <Axes labels={labels} ticks={ticks} top={top} H={H} axis={axis} xAt={x} />
-        {series.map((s) => {
+        {series.map((s, si) => {
           const pts = s.values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
           return (
             <g key={s.name}>
               {s.values.length > 1 ? <path className={`area s${s.tone}`} d={`M${x(0).toFixed(1)},${y(0)} L${pts.join(' L')} L${x(s.values.length - 1).toFixed(1)},${y(0)} Z`} stroke="none" /> : null}
-              <polyline className={`line s${s.tone}`} points={pts.join(' ')} />
+              <polyline className={`line s${s.tone}`} points={pts.join(' ')} strokeDasharray={DASHES[si % DASHES.length] || undefined} />
               {s.values.map((v, i) => (
                 <circle key={i} className={`s${s.tone}`} cx={x(i)} cy={y(v)} r={labels.length > 40 ? 2 : 3} stroke="none">
                   <title>{`${labels[i]} · ${s.name}: ${tip(v)}`}</title>
@@ -100,7 +145,8 @@ export function LineChart({ labels, series, axis = fmtCompact, tip = (n) => Stri
           );
         })}
       </svg>
-      <Legend series={series} />
+      <Legend series={series} lines />
+      <ChartData label={label} labels={labels} series={series} tip={tip} />
     </div>
   );
 }
@@ -143,6 +189,7 @@ export function BarChart({ labels, series, axis = fmtCompact, tip = (n) => Strin
         })}
       </svg>
       <Legend series={series} />
+      <ChartData label={label} labels={labels} series={series} tip={tip} />
     </div>
   );
 }

@@ -1257,3 +1257,35 @@ dl.facts dd {
     white-space: nowrap;
   }
 }
+
+/* ---------- chart data table, line legend, drawer root ---------- */
+.legend-line {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px;
+  fill: none;
+}
+.legend-line line {
+  stroke-width: 2;
+}
+.chart-data {
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+.chart-data > summary {
+  cursor: pointer;
+  color: var(--accent);
+  width: fit-content;
+}
+.chart-data .table-wrap {
+  max-height: 260px;
+  overflow: auto;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.chart-data th[scope='row'] {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
