@@ -8,6 +8,7 @@ import { usePassEntitlementVersion } from '../game/usePassEntitlement';
 import { passPurchaseEnabled } from '../game/passServer';
 import { useOpsState } from '../lib/opsStatus';
 import { seasonNumber, seasonRemainingMs } from '../game/seasons';
+import { useLeagueResetAt } from '../game/leagueReset';
 import type { HeroSheet } from '../game/sprites';
 import HeroThumb from './HeroThumb';
 import { FRAMES, getSkinDef, getFrameDef, STASH_BONUS_CAP, STASH_DEED_SLOTS } from '../game/seasonItems';
@@ -231,8 +232,11 @@ export default function BattlePassView({
 }) {
   usePassEntitlementVersion(); // the server's answer (owned, season) can arrive after the first paint
   const owner = ownsAdventurerPass(save);
+  // Until the League opens the game is in the pre-season (an open test): the hero shows that, not a season countdown that has no meaning yet.
+  const leagueResetAt = useLeagueResetAt();
   // Web build (server mode): the button starts a checkout once the owner switches sales on (VITE_PASS_PURCHASE_ENABLED), "Em breve" until then. Offline/desktop: as before.
   const server = isServerPassSource();
+  const preseason = leagueResetAt === null || (leagueResetAt === undefined && !server);
   const ops = useOpsState();
   const salesPaused = server && ops.passSalesPaused; // the owner / watchdog paused Pass sales: no checkout is started, and the player is told why
   const canBuy = (server ? passPurchaseEnabled : ADVENTURER_PASS_TESTABLE) && !salesPaused;
@@ -441,8 +445,8 @@ export default function BattlePassView({
           <div className="pa-hero-shade" aria-hidden />
           <div className="pa-hero-content">
             <div className="pa-hero-meta">
-              <Chip tone="gold">{t('battlePass.season', { n: season })}</Chip>
-              <span className="pa-hero-time">{remainingText(seasonRemainingMs(season, now))}</span>
+              <Chip tone="gold">{preseason ? t('battlePass.preseason') : t('battlePass.season', { n: season })}</Chip>
+              {!preseason && <span className="pa-hero-time">{remainingText(seasonRemainingMs(season, now))}</span>}
               <Chip tone={owner ? 'good' : 'plain'}>{owner ? t('battlePass.statusActive') : t('battlePass.statusFree')}</Chip>
             </div>
             <div className="pa-level">

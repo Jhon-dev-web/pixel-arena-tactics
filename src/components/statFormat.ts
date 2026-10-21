@@ -12,8 +12,6 @@ export const fmtDec = (n: number, digits = 1, trim = true): string => {
   return activeLocale === 'pt' ? s.replace('.', ',') : s;
 };
 
-export const STAT_ICON: Record<StatId, string> = { maxHp: '❤️', damage: '⚔️', critChance: '💥', critMult: '🔥', defense: '🛡️', attackSpeed: '⚡', lifesteal: '🩸', regen: '💚', reflect: '🪞', gold: '🪙', xp: '📘' };
-
 export const statName = (id: StatId): string => t(`statsPanel.stat_${id}`);
 
 // The value a stat is SHOWN as (the panel's total). Defense is the share of damage it removes, not the raw sum the items and lines add up in.

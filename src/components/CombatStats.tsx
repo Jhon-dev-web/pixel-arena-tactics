@@ -3,7 +3,7 @@ import { t } from '../locales';
 import { mitigationFraction } from '../game/derivedStats';
 import { formatNumber, SaveData } from '../game/engine';
 import { StatBreakdown, StatId, StatRow } from '../game/statBreakdown';
-import { fmtDec, fmtDelta, fmtLeft, fmtLine, fmtStat, sourceLabel, STAT_ICON, statName } from './statFormat';
+import { fmtDec, fmtDelta, fmtLeft, fmtLine, fmtStat, sourceLabel, statName } from './statFormat';
 import { useStatBreakdown } from './useStatBreakdown';
 import ActiveBuffs from './ActiveBuffs';
 
@@ -128,7 +128,7 @@ export function CombatStatsGrid({ save }: { save: SaveData }) {
               data-ui
             >
               <span>
-                {STAT_ICON[id]} {statName(id)}
+                {statName(id)}
               </span>
               <span className={id === 'maxHp' || id === 'damage' ? 'num-abbr' : undefined}>{fmtStat(id, row.now)}</span>
               {buffed && (

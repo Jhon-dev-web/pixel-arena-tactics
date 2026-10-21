@@ -147,6 +147,15 @@ export function maxCraftQty(save: SaveData, kind: CraftJobKind, recipeId: string
   return lo;
 }
 
+/** The quantity a batch actually runs: what the picker holds, held between 1 and the most the hero can afford. One place, so the label, the action and the feedback never disagree. */
+export function clampCraftQty(save: SaveData, kind: CraftJobKind, recipeId: string, qty: number): number {
+  // what the hero is busy with is the notice's business (a click on a busy hero explains it); here only what he could afford
+  const idle: SaveData = { ...save, activeHuntingZone: null, activeOreId: null, activeWoodId: null, craftJob: null };
+  const max = Math.max(1, maxCraftQty(idle, kind, recipeId));
+  const n = Math.floor(Number.isFinite(qty) ? qty : 1);
+  return Math.max(1, Math.min(max, n));
+}
+
 /** The gear pieces a forge batch would eat (cheapest first, the order the units take them) - for the confirmation of valuable ones. */
 export function planBatchIngredients(save: SaveData, recipeId: string, qty: number): GearInstance[] | null {
   const item = getGear(recipeId);

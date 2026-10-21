@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { t } from '../locales';
 import { SaveData } from '../game/engine';
-import { craftTimeLeftMs, craftUnitMs, craftUnitsFinished, maxCraftQty } from '../game/craftJob';
+import { clampCraftQty, craftTimeLeftMs, craftUnitMs, craftUnitsFinished, maxCraftQty } from '../game/craftJob';
 import type { CraftJobKind } from '../game/craftJobTypes';
 import { Meter, SecondaryButton } from './ui';
 
@@ -40,7 +40,7 @@ export function QtyPicker({
 }) {
   // what the hero is busy with is the notice's business (a click on a busy hero explains it); here only what he could afford
   const max = maxCraftQty({ ...save, activeHuntingZone: null, activeOreId: null, activeWoodId: null, craftJob: null }, kind, recipeId);
-  const shown = Math.max(1, Math.min(qty, Math.max(1, max)));
+  const shown = clampCraftQty(save, kind, recipeId, qty);
   const set = (n: number) => onChange(Math.max(1, Math.min(Math.max(1, max), Math.floor(Number.isFinite(n) ? n : 1))));
   return (
     <div className="craft-qty" data-ui>

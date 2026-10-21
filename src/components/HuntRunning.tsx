@@ -152,7 +152,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
           <p className="hs-line ok">{t('hunting.invFits', { n: inv.used, m: inv.capacity })}</p>
         ) : (
           <div className="hs-line bad">
-            {t('hunting.invMissing', { n: inv.missingSlots })}
+            {t(inv.missingSlots === 1 ? 'hunting.invMissingOne' : 'hunting.invMissing', { n: inv.missingSlots })}
             {inv.leftBehind.map((i) => (
               <span className="hs-lost" key={i.itemId}>
                 <MatIcon id={i.itemId} />

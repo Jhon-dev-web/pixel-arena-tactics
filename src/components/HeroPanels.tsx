@@ -85,7 +85,7 @@ function EquipSlotCard({ slot, view, requiredLevel }: { slot: GearSlot; view: Eq
             +{fmtSubstat(s)} {t(`rarity.${substatNameKey(s.type)}`)}
           </span>
         ))}
-        {requiredLevel ? <span className="pg-line sub">{'⚠ '}{t('inventory.requiresLevel', { n: requiredLevel })}</span> : null}
+        {requiredLevel ? <span className="pg-line sub">{t('inventory.requiresLevel', { n: requiredLevel })}</span> : null}
       </div>
       {view.instance && <span className={`hero-durability${durClass(dur)}`}>{t('forge.durability', { n: dur, m: MAX_DURABILITY })}</span>}
     </ItemCard>
@@ -202,7 +202,7 @@ export function TitlesPanel({
             disabled={!unlocked}
             data-ui
           >
-            <TitleIcon src={def.iconUrl} fallback="🎖️" className="title-icon" />
+            <TitleIcon src={def.iconUrl} fallback="" className="title-icon" />
             <div className="title-row-main">
               <span className="title-name">{t(`titles.${def.nameKey}`)}</span>
               {!unlocked && <span className="title-req">{t(`titles.${def.reqKey}`)}</span>}

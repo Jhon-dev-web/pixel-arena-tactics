@@ -23,6 +23,7 @@ import { UniqueDrop } from '../game/uniques';
 import { isServerItemAuthority } from '../game/itemAuthority';
 import { getTitleDef } from '../game/titles';
 import GemIcon from './GemIcon';
+import PixelIcon from './PixelIcon';
 import UniqueDrops from './UniqueDrops';
 import RelicDrops from './RelicDrops';
 import { defeatSummary, DefeatSummary } from '../game/defeatSummary';
@@ -329,7 +330,7 @@ export default function BattleModal({
       setPlayerAnim('attack');
       setPlayerLunge(true);
       setEnemyFlash(true);
-      addFloat('e', crit ? `💥 CRIT! -${dmg}` : `-${dmg}`, crit ? 'crit' : 'damage');
+      addFloat('e', crit ? `CRIT! -${dmg}` : `-${dmg}`, crit ? 'crit' : 'damage');
       if (res.devastating) playStrike('devastating');
       else if (res.crush) playStrike('crush');
       if (res.counter) playStrike('counter');
@@ -379,7 +380,7 @@ export default function BattleModal({
         hp.current.e = Math.max(0, hp.current.e - back);
         totalDmgRef.current += back;
         setEnemyHp(hp.current.e);
-        addFloat('e', `↩ -${back}`, 'reflect');
+        addFloat('e', `-${back}`, 'reflect');
       }
       window.setTimeout(() => {
         setEnemyLunge(false);
@@ -413,7 +414,7 @@ export default function BattleModal({
         hp.current.e = Math.max(0, hp.current.e - tick.damage);
         totalDmgRef.current += tick.damage;
         setEnemyHp(hp.current.e);
-        addFloat('e', `🔥 -${tick.damage}`, 'burn');
+        addFloat('e', `-${tick.damage}`, 'burn');
         if (hp.current.e <= 0) {
           burnRef.current = null;
           setEnemyBurning(false);
@@ -660,7 +661,7 @@ export default function BattleModal({
         const titleDef = reward.titleId ? getTitleDef(reward.titleId) : undefined;
         return (
           <div className="milestone-card" key={floor}>
-            <div className="milestone-title">🏆 {t('dungeon.milestoneCleared', { n: floor })}</div>
+            <div className="milestone-title">{t('dungeon.milestoneCleared', { n: floor })}</div>
             <div className="milestone-rewards">
               <span className="floor-drop">
                 <span className="mat-icon">
@@ -672,13 +673,13 @@ export default function BattleModal({
                 const gemDef = getGem(gid);
                 return (
                   <span className="floor-drop" key={gid}>
-                    <span className="mat-icon">{gemDef ? <GemIcon item={gemDef} /> : '💎'}</span>
+                    <span className="mat-icon">{gemDef ? <GemIcon item={gemDef} /> : <PixelIcon name="gem" />}</span>
                     <span>+{qty as number}</span>
                   </span>
                 );
               })}
             </div>
-            {titleDef && <div className="milestone-title-unlocked">🎖️ {t(`titles.${titleDef.nameKey}`)}</div>}
+            {titleDef && <div className="milestone-title-unlocked"><PixelIcon name="title" /> {t(`titles.${titleDef.nameKey}`)}</div>}
           </div>
         );
       })}
@@ -798,8 +799,8 @@ export default function BattleModal({
           <div className="battle-hud enemy">
             <span className="hp-label">
               <span className="hp-name-text">{enemyText(currentVisual.nameKey)}</span>
-              {milestone === 'boss' && <span className="miniboss-tag boss">👑 {t('dungeon.mainBoss')}</span>}
-              {milestone === 'checkpoint' && <span className="miniboss-tag">💀 {t('dungeon.miniBoss')}</span>}
+              {milestone === 'boss' && <span className="miniboss-tag boss">{t('dungeon.mainBoss')}</span>}
+              {milestone === 'checkpoint' && <span className="miniboss-tag">{t('dungeon.miniBoss')}</span>}
             </span>
             <div className="battle-hp-row">
               <div className="bar hp enemy-hp">
@@ -840,7 +841,7 @@ export default function BattleModal({
             />
             {enemyBurning && (
               <span className="burn-flame" title={t('profile.burnTitle')} aria-hidden="true">
-                🔥
+                <PixelIcon name="dungeon" />
               </span>
             )}
             <FxLayer side="e" items={fxStage.items} done={fxStage.done} scale={fxScale} />
@@ -871,7 +872,7 @@ export default function BattleModal({
                     {renderLoot(tensionGoldPreview, {}, 0, tensionMilestoneReward.gems)}
                     {tensionMilestoneReward.titleId && (
                       <div className="milestone-title-unlocked">
-                        🎖️ {t(`titles.${getTitleDef(tensionMilestoneReward.titleId)?.nameKey ?? ''}`)}
+                        <PixelIcon name="title" /> {t(`titles.${getTitleDef(tensionMilestoneReward.titleId)?.nameKey ?? ''}`)}
                       </div>
                     )}
                   </>

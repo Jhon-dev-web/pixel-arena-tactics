@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSave, normalizeSave, SaveData } from '../engine';
-import { cancelCraftJob, craftUnitsDue, maxCraftQty, prepaidForgeSave, resolveCraftJob, settleForgeUnit, startCraftJob } from '../craftJob';
+import { cancelCraftJob, clampCraftQty, craftBlock, craftUnitsDue, maxCraftQty, prepaidForgeSave, resolveCraftJob, settleForgeUnit, startCraftJob } from '../craftJob';
 import { forgeAction } from '../itemActions';
 import { createItemApi } from '../itemServer';
 import { getGear } from '../gear';
@@ -55,6 +55,28 @@ describe('batch production: refining', () => {
     expect(maxCraftQty(withMats(base(), { copper: 23 }), 'refine', 'smelt_copper')).toBe(4); // materials: 23 / 5
     expect(maxCraftQty(withMats(base({ gold: 70 }), { copper: 500 }), 'refine', 'smelt_copper')).toBe(2); // gold: 70 / 35
     expect(maxCraftQty(withMats(base(), { copper: 2 }), 'refine', 'smelt_copper')).toBe(0);
+  });
+
+  it('a stale picker value (13) is held to what the hero can afford now (6): the label, the action and the start agree', () => {
+    // the picker once held 13; the materials have since shrunk to 6 units' worth
+    const s = withMats(base(), { copper: 30 });
+    expect(maxCraftQty(s, 'refine', 'smelt_copper')).toBe(6);
+    const n = clampCraftQty(s, 'refine', 'smelt_copper', 13);
+    expect(n).toBe(6);
+    expect(craftBlock(s, 'refine', 'smelt_copper', n)).toBeNull();
+    expect(startCraftJob(s, 'refine', 'smelt_copper', n, T0).ok).toBe(true);
+    // the raw value would have been refused, producing nothing: that is the bug the clamp prevents
+    expect(startCraftJob(s, 'refine', 'smelt_copper', 13, T0).ok).toBe(false);
+    expect(craftBlock(s, 'refine', 'smelt_copper', 13)).not.toBeNull();
+  });
+
+  it('clampCraftQty keeps the value in 1..max, and 1 when nothing is affordable', () => {
+    const s = withMats(base(), { copper: 23 });
+    expect(clampCraftQty(s, 'refine', 'smelt_copper', 0)).toBe(1);
+    expect(clampCraftQty(s, 'refine', 'smelt_copper', 3)).toBe(3);
+    expect(clampCraftQty(s, 'refine', 'smelt_copper', 99)).toBe(4);
+    expect(clampCraftQty(s, 'refine', 'smelt_copper', Number.NaN)).toBe(1);
+    expect(clampCraftQty(withMats(base(), { copper: 2 }), 'refine', 'smelt_copper', 5)).toBe(1);
   });
 
   it('a per-recipe override changes the time of one recipe only', () => {

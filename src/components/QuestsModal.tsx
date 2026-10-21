@@ -1,3 +1,4 @@
+import PixelIcon from './PixelIcon';
 import { useState } from 'react';
 import { activeLocale, fmtNum, t } from '../locales';
 import { patrimony, pouchGoldHeld } from '../game/goldPouch';
@@ -118,7 +119,7 @@ export default function QuestsModal({
           <Rewards gold={q.gold} shards={q.shards} />
         </div>
         <p className="qs-desc">{questText(q.descKey)}</p>
-        {title && <Chip tone="gold">🎖️ {t(`titles.${title.nameKey}`)}</Chip>}
+        {title && <Chip tone="gold"><PixelIcon name="title" /> {t(`titles.${title.nameKey}`)}</Chip>}
         <div className="qs-progress">
           <Meter pct={pct} done={complete} label={questText(q.nameKey)} />
           <span className="qs-count">{t('quests.progress', { n: fmtNum(progress), m: fmtNum(q.target) })}</span>

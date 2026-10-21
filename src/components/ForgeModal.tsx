@@ -46,7 +46,7 @@ import GemIcon from './GemIcon';
 import StashHint from './StashHint';
 import ConsumableIcon from './ConsumableIcon';
 import { QtyPicker, CraftJobPanel } from './CraftQty';
-import { planBatchIngredients } from '../game/craftJob';
+import { clampCraftQty, craftBlock, planBatchIngredients } from '../game/craftJob';
 import { ChipRow, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout, SecondaryButton, Tabs } from './ui';
 import type { TabItem } from './ui';
 
@@ -196,9 +196,14 @@ export default function ForgeView({
   // Only the shared inventory stands in the way (everything else is in order): the card says so instead of just greying out.
   const blockedByBag = (item: GearItem): boolean => save.gold >= item.cost && applyForge(save, item.id, { level }).reason === 'capacity';
 
+  // the quantity the batch really runs: the picker's raw value held to what the hero can afford now
+  const qtyFor = (id: string): number => clampCraftQty(save, 'forge', id, qty);
   const doForge = (id: string, consumedIds?: string[]) => {
     const item = getGear(id);
-    onForge(id, consumedIds, sealOn && sealCount > 0 && !!item && isInstancedSlot(item.slot), qty);
+    const n = qtyFor(id);
+    const startable = craftBlock(save, 'forge', id, n) === null;
+    onForge(id, consumedIds, sealOn && sealCount > 0 && !!item && isInstancedSlot(item.slot), n);
+    if (!startable) return;
     setJustForged(id);
     window.setTimeout(() => setJustForged(null), 1500);
   };
@@ -207,7 +212,7 @@ export default function ForgeView({
   // exactly which pieces go.
   const handleForge = (id: string) => {
     const item = getGear(id);
-    const plan = item ? planBatchIngredients(save, id, Math.max(1, qty)) : null;
+    const plan = item ? planBatchIngredients(save, id, qtyFor(id)) : null;
     if (plan && plan.some(isRelevantInstance)) {
       setPendingForge({ id, ids: plan.map((i) => i.id) });
       return;
@@ -362,7 +367,7 @@ export default function ForgeView({
 
               <QtyPicker save={save} kind="forge" recipeId={current.id} qty={qty} onChange={setQty} />
               <PrimaryButton block className={justForged === current.id ? 'forged' : undefined} onClick={() => handleForge(current.id)} disabled={!canForge(current)}>
-                {justForged === current.id ? t('forge.forged') : qty > 1 ? t('craft.start', { n: qty }) : t('forge.forge')}
+                {justForged === current.id ? t('forge.forged') : qtyFor(current.id) > 1 ? t('craft.start', { n: qtyFor(current.id) }) : t('forge.forge')}
               </PrimaryButton>
               {!canForge(current) && !blockedByBag(current) && (
                 <span className="craft-bag-full fg-blocked" role="status">

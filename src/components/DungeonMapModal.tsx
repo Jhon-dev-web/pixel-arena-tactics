@@ -49,8 +49,8 @@ export default function DungeonMapModal({
         title={
           <>
             {dungeonText(biome.nameKey)}
-            {isDungeonBoss(floor) && <span className="dm-mark"> 👑</span>}
-            {!isDungeonBoss(floor) && isDungeonCheckpoint(floor) && <span className="dm-mark"> 💀</span>}
+            {isDungeonBoss(floor) && <span className="dm-mark"> · {t('dungeon.mainBoss')}</span>}
+            {!isDungeonBoss(floor) && isDungeonCheckpoint(floor) && <span className="dm-mark"> · {t('dungeon.miniBoss')}</span>}
           </>
         }
         actions={<Chip tone="gold">{t('dungeon.floorProgress', { n: floor, m: MAX_DUNGEON_FLOOR })}</Chip>}
@@ -58,7 +58,7 @@ export default function DungeonMapModal({
         <StatList>
           <StatRow label={dungeonText('recommendedCp')} value={fmtNum(recommendedCp)} tone={cpInsufficient ? 'bad' : 'plain'} />
           <StatRow label={dungeonText('cpLabelYou')} value={fmtNum(playerCp)} tone="gold" />
-          {milestone && <StatRow label={milestone.boss ? '👑 ' + dungeonText('nextBoss') : '💀 ' + dungeonText('nextCheckpoint')} value={t('dungeon.floorProgress', { n: milestone.floor, m: MAX_DUNGEON_FLOOR })} />}
+          {milestone && <StatRow label={milestone.boss ? dungeonText('nextBoss') : dungeonText('nextCheckpoint')} value={t('dungeon.floorProgress', { n: milestone.floor, m: MAX_DUNGEON_FLOOR })} />}
         </StatList>
         <p className="dm-sessions">
           {freeSessionsLeft > 0 ? t('dungeon.sessionsLeft', { n: freeSessionsLeft, m: T.dungeon.freeSessionsPerDay }) : t('dungeon.sessionsPaidNotice', { n: T.dungeon.extraSessionShardCost })}
@@ -75,7 +75,7 @@ export default function DungeonMapModal({
         data-testid="depths-card"
         title={
           <>
-            🕳️ {dungeonText('depthsTitle')}
+            {dungeonText('depthsTitle')}
             {paragon > 0 && <span className="dm-paragon">{t('paragon.short', { n: paragon })}</span>}
           </>
         }
@@ -90,7 +90,6 @@ export default function DungeonMapModal({
             </StatList>
             <p className="ui-note">{dungeonText('depthCpHint').replace('{n}', fmtDec(growthPct))}</p>
             <p className="ui-note">
-              👑{' '}
               {dungeonText('depthsBossEvery').replace('{n}', String(T.depths.bossEvery)).replace('{r}', String(bossInfo.shards))}
             </p>
             {depthCpLow && <p className="ui-alert bad">{t('dungeon.cpWarning', { n: depthCp })}</p>}

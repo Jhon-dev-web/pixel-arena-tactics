@@ -17,6 +17,12 @@ let current = resolve();
 export let activeLocale: Locale = current;
 let localeListener: (() => void) | null = null;
 
+/** Keeps <html lang> equal to the chosen language (screen readers, the browser's translate offer). */
+function syncDocumentLang(): void {
+  if (typeof document !== 'undefined') document.documentElement.lang = current;
+}
+syncDocumentLang();
+
 function read(locale: Locale, path: string): unknown {
   return path.split('.').reduce<unknown>(
     (node, key) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[key] : undefined),
@@ -39,6 +45,7 @@ export function reloadLocale(): void {
   if (next === current) return;
   current = next;
   activeLocale = next;
+  syncDocumentLang();
   localeListener?.();
 }
 
@@ -47,6 +54,7 @@ export function setLocale(next: Locale): void {
   deviceStorage.setItem('locale', next);
   current = next;
   activeLocale = next;
+  syncDocumentLang();
   localeListener?.();
 }
 

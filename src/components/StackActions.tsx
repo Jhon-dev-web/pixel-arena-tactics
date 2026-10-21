@@ -101,7 +101,7 @@ export default function StackActions({
             }}
             disabled={quote.units <= 0}
           >
-            {armed === 'sell' ? t('merchant.confirmSellAll') : quote.units <= 0 ? t('merchant.noBudget') : t('merchant.sell', { n: fmtNum(quote.units), g: fmtNum(quote.gold) })}
+            {armed === 'sell' ? (quote.units < units ? t('merchant.confirmSellPart', { n: fmtNum(quote.units), m: fmtNum(units) }) : t('merchant.confirmSellAll')) : quote.units <= 0 ? t('merchant.noBudget') : t('merchant.sell', { n: fmtNum(quote.units), g: fmtNum(quote.gold) })}
           </Button>
         )}
         <Button
