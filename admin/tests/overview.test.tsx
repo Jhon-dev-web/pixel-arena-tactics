@@ -49,20 +49,43 @@ describe('Overview opens with what needs attention', () => {
     expect(hrefs).toContain('#/jogadores?alertas=1');
     // the "refund due" count comes from another table and says so
     expect(block.textContent).toContain('diferente da fila «Pagamentos a resolver»');
-    // the block comes BEFORE the core numbers
+    // the four indicators come first, then the pending list, then the data blocks and the history
     const h2s = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(h2s.indexOf('Precisa de atenção')).toBeLessThan(h2s.indexOf('Números centrais'));
+    expect(h2s.indexOf('Precisa de atenção')).toBeLessThan(h2s.indexOf('Passe de Aventureiro'));
+    expect(h2s.indexOf('Passe de Aventureiro')).toBeLessThan(h2s.indexOf('Histórico diário'));
   });
 
-  test('then 6 core numbers, each with the idea of "online agora" next to them', async () => {
+  test('four indicators on top, with “online estimado” explained next to them', async () => {
     setup();
-    await screen.findByText('Online agora');
-    const core = screen.getByRole('heading', { name: 'Números centrais' }).nextElementSibling as HTMLElement;
-    expect(core.querySelectorAll('.kpi')).toHaveLength(6);
-    expect(core.textContent).toContain('Passe válido nesta temporada');
-    expect(core.textContent).toContain('não depende da validade atual');
-    expect(core.parentElement!.textContent).toContain('Online agora” = personagens salvos nos últimos 5 min');
+    await screen.findByText('Online estimado');
+    const facts = document.querySelector('.ov-facts') as HTMLElement;
+    expect(facts.querySelectorAll('.ov-fact')).toHaveLength(4);
+    for (const label of ['Online estimado', 'Jogando hoje', 'Contas criadas', 'Passe válido na temporada']) expect(facts.textContent).toContain(label);
+    expect(document.body.textContent).toContain('Online estimado” = personagens salvos nos últimos 5 min');
     expect(screen.getAllByText(/Consulta atualizada às/).length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('Passe and Mercado are two aligned data blocks (labels and values, SOL and USDC never summed)', async () => {
+    setup();
+    const pass = (await heading('Passe de Aventureiro')).closest('section') as HTMLElement;
+    const market = screen.getByRole('heading', { name: 'Mercado' }).closest('section') as HTMLElement;
+    expect(pass.textContent).toContain('USDC recebido');
+    expect(pass.textContent).toContain('Meta do Passe');
+    expect(market.textContent).toContain('Taxas recebidas');
+    expect(market.textContent).toMatch(/SOL/);
+    expect(market.textContent).not.toMatch(/USDC/);
+    expect(pass.parentElement).toBe(market.parentElement);
+  });
+
+  test('NO chart anywhere on the page: no svg, no image role, no progress bar, even with every fold open', async () => {
+    setup();
+    await screen.findByText('Online estimado');
+    await screen.findByText('Tabela por dia');
+    document.querySelectorAll('details').forEach((d) => d.setAttribute('open', ''));
+    expect(document.querySelector('svg.chart')).toBeNull();
+    expect(document.querySelector('.bars, .track, [role="progressbar"], [role="img"], canvas')).toBeNull();
+    // the only svg left is the refresh icon of the button
+    expect(document.querySelectorAll('svg').length).toBeLessThanOrEqual(1);
   });
 
   test('a source that fails is listed as NOT checked, and the page never says everything is fine', async () => {
@@ -102,56 +125,83 @@ describe('Overview opens with what needs attention', () => {
     setup({ overview: async () => empty, paymentExceptions: async () => ({ total: 0, page: 0, page_size: 1, rows: [], open: 0 }), opsOverview: async () => ({ ...ops, flags: ops.flags.map((f) => ({ ...f, value: false })), incidents: [], open_reports: 0 }) });
     expect(await screen.findByText(/ainda não tem nenhum jogador cadastrado/)).toBeTruthy();
     expect(screen.getByText(/sem dados, isso não diz nada sobre a saúde do jogo/)).toBeTruthy();
-    expect(screen.queryByText('Online agora')).toBeNull();
+    expect(screen.queryByText('Online estimado')).toBeNull();
   });
 });
 
 describe('each block fails and recovers on its own', () => {
-  test('only series() failing: a clear error with its own retry, the numbers stay, and it is never a skeleton or zero revenue', async () => {
+  test('only series() failing: a clear error with its own retry, the numbers stay, and it is never a skeleton or a table of zeros', async () => {
     let fail = true;
     const seed = createDemoApi();
     const { calls } = setup({ series: async (d) => (fail ? Promise.reject(new Error('timeout na série')) : seed.series(d)) });
-    await screen.findByText('Online agora');
-    const failed = await screen.findByText(/Não foi possível carregar os gráficos: timeout na série/);
+    await screen.findByText('Online estimado');
+    const failed = await screen.findByText(/Não foi possível carregar o histórico diário: timeout na série/);
     const box = failed.closest('.notice') as HTMLElement;
     expect(box.getAttribute('role')).toBe('alert');
-    expect(document.querySelector('svg.chart')).toBeNull();
+    expect(document.querySelector('table.ov-table')).toBeNull();
     expect(document.body.textContent).not.toContain('US$ 0,00');
-    expect(screen.getByRole('heading', { name: 'Últimos 30 dias' }).nextElementSibling?.getAttribute('aria-busy')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Histórico diário' }).nextElementSibling?.getAttribute('aria-busy')).toBeNull();
     const seriesCalls = () => calls.filter((c) => c === 'series').length;
     const ovCalls = calls.filter((c) => c === 'overview').length;
     fail = false;
     fireEvent.click(within(box).getByRole('button', { name: 'Tentar de novo' }));
-    await waitFor(() => expect(document.querySelectorAll('svg.chart').length).toBe(6));
+    await waitFor(() => expect(document.querySelector('table.ov-table')).not.toBeNull());
     expect(seriesCalls()).toBe(2);
-    expect(calls.filter((c) => c === 'overview').length).toBe(ovCalls); // the retry touched only the charts
-    expect(screen.queryByText(/Não foi possível carregar os gráficos/)).toBeNull();
+    expect(calls.filter((c) => c === 'overview').length).toBe(ovCalls); // the retry touched only the history
+    expect(screen.queryByText(/Não foi possível carregar o histórico diário/)).toBeNull();
   });
 
-  test('only overview() failing: the charts still show, and the numbers say they failed (no invented zeros)', async () => {
+  test('only overview() failing: the history still shows, and the numbers say they failed (no invented zeros)', async () => {
     setup({ overview: async () => Promise.reject(new Error('banco indisponível')) });
     expect(await screen.findByText(/Não foi possível carregar os números do jogo: banco indisponível/)).toBeTruthy();
-    await waitFor(() => expect(document.querySelectorAll('svg.chart').length).toBe(6));
-    expect(screen.queryByText('Online agora')).toBeNull();
+    await waitFor(() => expect(document.querySelector('table.ov-table')).not.toBeNull());
+    expect(screen.queryByText('Online estimado')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Passe de Aventureiro' })).toBeNull();
+  });
+
+  test('only opsOverview() failing: the routines list says it could not check, not that all is in order', async () => {
+    setup({ opsOverview: async () => Promise.reject(new Error('sem acesso')) });
+    await screen.findByText('Online estimado');
+    const title = await screen.findByText('Estado das rotinas');
+    const fold = title.closest('details') as HTMLElement;
+    await waitFor(() => expect(fold.textContent).toContain('Não foi possível consultar o vigia'));
+    expect(fold.textContent).toContain('não quer dizer que estão em dia');
+    expect(screen.getByText('não foi possível consultar')).toBeTruthy();
   });
 
   test('a later refresh that fails keeps the previous data and marks it as stale', async () => {
     let n = 0;
     const seed = createDemoApi();
     setup({ series: async (d) => (++n === 1 ? seed.series(d) : Promise.reject(new Error('caiu na atualização'))) });
-    await waitFor(() => expect(document.querySelectorAll('svg.chart').length).toBe(6));
+    await waitFor(() => expect(document.querySelector('table.ov-table')).not.toBeNull());
     fireEvent.click(screen.getByRole('button', { name: /Atualizar tudo/ }));
-    const warn = await screen.findByText(/Não foi possível atualizar os gráficos/);
+    const warn = await screen.findByText(/Não foi possível atualizar o histórico diário/);
     expect(warn.closest('.notice')?.className).toContain('warn');
     expect(warn.textContent).toContain('da consulta das');
-    expect(document.querySelectorAll('svg.chart').length).toBe(6); // still there
+    expect(document.querySelector('table.ov-table')).not.toBeNull(); // still there
   });
 
-  test('a series that legitimately has no days is "empty", not an error and not a chart of zeros', async () => {
+  test('a series that legitimately has no days is "empty", not an error and not a table of zeros', async () => {
     setup({ series: async () => [] });
     expect(await screen.findByText(/não devolveu nenhum dia/)).toBeTruthy();
-    expect(document.querySelector('svg.chart')).toBeNull();
-    expect(screen.queryByText(/Não foi possível carregar os gráficos/)).toBeNull();
+    expect(document.querySelector('table.ov-table')).toBeNull();
+    expect(screen.queryByText(/Não foi possível carregar o histórico diário/)).toBeNull();
+  });
+});
+
+describe('the daily history is a table', () => {
+  test('7 rows (newest first) by default, all 30 days after expanding, and back', async () => {
+    setup();
+    await screen.findByText('Tabela por dia');
+    const rows = () => document.querySelectorAll('table.ov-table tbody tr').length;
+    expect(rows()).toBe(7);
+    const all = screen.getByRole('button', { name: 'Mostrar todos os 30 dias' });
+    expect(all.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(all);
+    expect(rows()).toBe(30);
+    fireEvent.click(screen.getByRole('button', { name: /Mostrar só os últimos 7 dias/ }));
+    expect(rows()).toBe(7);
+    expect(document.querySelectorAll('table.ov-table thead th[scope="col"]').length).toBeGreaterThanOrEqual(10);
   });
 });
 
@@ -161,7 +211,7 @@ describe('the age of the information', () => {
     const real = await base.overview();
     const old = new Date(Date.now() - 30 * 3600 * 1000).toISOString();
     setup({ overview: async () => ({ ...real, freshness: { ...real.freshness, player_cache_refreshed_at: old, gold_captured_at: old, daily_captured_at: old } }) });
-    await screen.findByText('Online agora');
+    await screen.findByText('Online estimado');
     const att = (await heading('Precisa de atenção')).closest('section') as HTMLElement;
     await waitFor(() => expect(att.textContent).toContain('Os dados agregados estão atrasados'));
     expect(att.textContent).toContain('A rotina diária está atrasada');

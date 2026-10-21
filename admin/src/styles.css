@@ -1419,3 +1419,204 @@ dl.facts dd {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* ---------- overview: data only (no charts). Neutral, compact, discreet separators ---------- */
+.ov-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 4px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.ov-fact {
+  padding: 12px 16px 12px 0;
+  min-width: 0;
+}
+.ov-fact + .ov-fact {
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+.ov-fact dt {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+.ov-fact dd {
+  margin: 2px 0;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ov-fact small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.ov-fact.warn dd {
+  color: var(--warn);
+}
+.ov-sectionhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 6px;
+}
+.ov-sectionhead h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+.ov-attention {
+  margin-top: 22px;
+}
+.ov-pending {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+.ov-pending li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.ov-pending-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ov-pending-text .muted {
+  font-size: 12.5px;
+}
+.ov-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 40px;
+  margin-top: 22px;
+  align-items: start;
+}
+.ov-sheet h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+.ov-subtitle {
+  margin: 2px 0 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: left;
+}
+.ov-ledger {
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+.ov-ledger > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.ov-ledger dt {
+  color: var(--muted);
+  min-width: 0;
+}
+.ov-ledger dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ov-ledger .total dt {
+  color: var(--text);
+  font-weight: 600;
+}
+.ov-ledger .total dd {
+  font-size: 17px;
+  font-weight: 650;
+}
+.ov-ledger .warn dd {
+  color: var(--warn);
+  font-weight: 600;
+}
+.ov-fold {
+  border-bottom: 1px solid var(--border);
+}
+.ov-fold > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 16px;
+  padding: 11px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.ov-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.ov-fold > summary::before {
+  content: '▸';
+  color: var(--faint);
+  margin-right: 8px;
+}
+.ov-fold[open] > summary::before {
+  content: '▾';
+}
+.ov-fold-title {
+  flex: 1;
+  font-weight: 600;
+}
+.ov-fold > summary small {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.ov-fold-body {
+  padding: 0 0 12px;
+}
+.ov-fold-actions {
+  padding: 10px 0 12px;
+}
+table.ov-table caption {
+  text-align: left;
+  padding: 0 0 6px;
+}
+table.ov-table tbody th {
+  text-align: left;
+  font-weight: 550;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .ov-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ov-fact:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .ov-fact:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+  .ov-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ov-pending li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .ov-pending li .btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .ov-ledger > div {
+    flex-wrap: wrap;
+    gap: 2px 12px;
+  }
+}
