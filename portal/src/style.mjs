@@ -373,6 +373,9 @@ html { scroll-behavior: smooth; }
 .h-cd-tiles i { margin-top: 4px; font-style: normal; font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase; color: #aab1b6; }
 .h-cd-date { margin: 10px 0 0; font-size: .8125rem; color: #c7cbd0; }
 .h-cd-tiles[hidden] { display: none; }
+.h-pioneer { display: flex; gap: 14px; align-items: center; max-width: 520px; margin-top: 14px; padding: 12px 16px; border: 1px solid #8f6bd099; background: linear-gradient(90deg,#2a1a44cc,#070a0dd9); }
+.h-pioneer p { margin: 0; font-size: .875rem; line-height: 1.45; color: #e2dccd; }
+.h-pioneer strong { display: block; margin-bottom: 2px; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-hi); }
 @media (max-width: 420px) { .h-cd-tiles span { min-width: 0; flex: 1; } .h-cd-tiles b { font-size: 1.6rem; } .h-countdown { width: auto; } }
 .button.h-gold { min-height: 54px; padding: 12px 30px; color: #1c1206; font-weight: 700; font-size: 1rem; border: 1px solid #f0cf8a; background: linear-gradient(180deg,#f3d795,#dfaa55 55%,#c58d3c); box-shadow: 0 6px 22px #d9a94f33, inset 0 1px #fff6; gap: 10px; }
 .button.h-gold:hover { background: linear-gradient(180deg,#f9e3ae,#e8b867 55%,#d09947); }

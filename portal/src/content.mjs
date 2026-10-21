@@ -455,6 +455,10 @@ export const home = {
     started: l('O playtest começou!', 'The playtest has started!'),
     startedNote: l('Deixe seu e-mail para receber o link do jogo.', 'Leave your email to get the link to the game.'),
   },
+  pioneer: {
+    eyebrow: l('Kit Pioneiro', 'Pioneer Kit'),
+    body: l('Jogue a pré-temporada e chegue ao nível 10: ganhe o Kit Pioneiro (título Pioneiro, moldura exclusiva e baú de começo) quando a Temporada 1 abrir.', 'Play the pre-season and reach level 10: get the Pioneer Kit (Pioneer title, exclusive frame and starter chest) when Season 1 opens.'),
+  },
   season: {
     eyebrow: l('Temporada 1', 'Season 1'), title: l('Pré-temporada', 'Pre-season'), tagline: l('Teste seu progresso antes da primeira temporada oficial.', 'Test your progress before the first official season.'),
     bullets: [
