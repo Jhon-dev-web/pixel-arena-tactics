@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AsyncBlock, Freshness } from '../components/Block';
-import { Icon, Notice, Pill, SectionTitle } from '../components/ui';
+import { Icon, Notice, Pill } from '../components/ui';
 import { type AsyncState, useApp, useAsync, useInterval, useNow } from '../hooks';
 import { liveOwnersBySource, materialsTotal, passMeasures, passRevenue, summarizeItems, testPassOwners } from '../lib/aggregate';
 import { buildAttention } from '../lib/attention';
@@ -12,7 +12,7 @@ import type { OpsOverview, Overview, PaymentExceptionsPage, SeriesDay } from '..
 
 // "Visão geral": numbers, tables and lists only. There is NO chart on this page (owner's decision, 21/10/2026): goals and distributions are text.
 const REFRESH_MS = 60_000;
-const HISTORY_DEFAULT_ROWS = 7;
+const ACTIVITY_DEFAULT_DAYS = 14;
 
 export default function OverviewPage() {
   const { demo } = useApp();
@@ -22,6 +22,8 @@ export default function OverviewPage() {
   const pay = useAsync((api) => api.paymentExceptions({ status: 'open', page: 0, pageSize: 1 }), []);
   const ops = useAsync((api) => api.opsOverview(), []);
   const now = useNow(1000);
+  const [allDays, setAllDays] = useState(false);
+  const activityDays = allDays ? 30 : ACTIVITY_DEFAULT_DAYS;
 
   function reloadAll() {
     ov.reload();
@@ -49,10 +51,29 @@ export default function OverviewPage() {
       </div>
 
       <AsyncBlock state={ov} label="os números do jogo" now={now} skeleton={96} isEmpty={(o) => o.players.registered === 0 && o.players.characters === 0} empty="O banco ainda não tem nenhum jogador cadastrado. Sem dados, não há o que medir: isto não é um sinal de que está tudo bem.">
-        {(o) => <CoreFacts ov={o} queriedAt={ov.loadedAt} />}
+        {(o) => <Tiles ov={o} series={series} queriedAt={ov.loadedAt} now={now} />}
       </AsyncBlock>
 
       <AttentionBlock ov={ov} pay={pay} ops={ops} now={now} />
+
+      <div className="ov-columns ov-main">
+        <section aria-labelledby="ov-activity" className="ov-col-wide">
+          <div className="ov-sectionhead">
+            <h2 id="ov-activity">{`Atividade — últimos ${activityDays} dias`}</h2>
+          </div>
+          <AsyncBlock
+            state={series}
+            label="o histórico diário"
+            now={now}
+            skeleton={160}
+            isEmpty={(s) => s.length === 0}
+            empty="A consulta funcionou, mas não devolveu nenhum dia. A tabela fica vazia de propósito, em vez de mostrar receita zero. Confira se a rotina diária já rodou (docs/ADMIN.md, seção 4)."
+          >
+            {(s) => <ActivityTable series={s} queriedAt={series.loadedAt} ov={ov.data} now={now} all={allDays} onToggle={() => setAllDays((v) => !v)} />}
+          </AsyncBlock>
+        </section>
+        {ov.data && !(ov.data.players.registered === 0 && ov.data.players.characters === 0) ? <RaritySheet ov={ov.data} queriedAt={ov.loadedAt} /> : null}
+      </div>
 
       {ov.data && !(ov.data.players.registered === 0 && ov.data.players.characters === 0) ? (
         <>
@@ -63,18 +84,6 @@ export default function OverviewPage() {
           <Freshness queriedAt={ov.loadedAt} note="receita e vendas são de todo o período; a validade só muda o número de Passes válidos; mercado: só vendas reais, as de teste (devnet) aparecem à parte" />
         </>
       ) : null}
-
-      <SectionTitle>Histórico diário</SectionTitle>
-      <AsyncBlock
-        state={series}
-        label="o histórico diário"
-        now={now}
-        skeleton={160}
-        isEmpty={(s) => s.length === 0}
-        empty="A consulta funcionou, mas não devolveu nenhum dia. A tabela fica vazia de propósito, em vez de mostrar receita zero. Confira se a rotina diária já rodou (docs/ADMIN.md, seção 4)."
-      >
-        {(s) => <HistoryTable series={s} queriedAt={series.loadedAt} ov={ov.data} now={now} />}
-      </AsyncBlock>
 
       {ov.data ? <Lists ov={ov.data} ops={ops} queriedAt={ov.loadedAt} now={now} /> : null}
 
@@ -87,38 +96,52 @@ export default function OverviewPage() {
   );
 }
 
-// ---- Four indicators ------------------------------------------------------------------------------------------------------------------------------------------------
+// ---- Tiles ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-function Fact({ label, value, note, warn }: { label: string; value: ReactNode; note: ReactNode; warn?: boolean }) {
+function Tile({ label, value, note, live, warn }: { label: string; value: ReactNode; note?: ReactNode; live?: boolean; warn?: boolean }) {
   return (
-    <div className={`ov-fact${warn ? ' warn' : ''}`}>
+    <div className={`ov-tile${live ? ' live' : ''}${warn ? ' warn' : ''}`}>
       <dt>{label}</dt>
       <dd>{value}</dd>
-      <small>{note}</small>
+      {note ? <small>{note}</small> : null}
     </div>
   );
 }
 
-function CoreFacts({ ov, queriedAt }: { ov: Overview; queriedAt: number | null }) {
+function Tiles({ ov, series, queriedAt, now }: { ov: Overview; series: AsyncState<SeriesDay[]>; queriedAt: number | null; now: number }) {
   const p = ov.players;
   const passM = passMeasures(ov.pass);
+  const items = summarizeItems(ov.items);
+  const fresh = ov.freshness;
+  // "Hoje" tiles come from the daily history (a different query): the newest day it has. If it failed or is still loading, the tile says so; it is never a zero.
+  const last = series.data && series.data.length > 0 ? series.data[series.data.length - 1] : null;
+  const noDay = series.error && !series.data ? 'histórico indisponível' : series.data ? 'sem dias no histórico' : 'consultando…';
+  const dayNote = last ? `dia ${fmtDay(last.day)}` : noDay;
   return (
     <>
-      <dl className="ov-facts">
-        <Fact label="Online estimado" value={fmtInt(p.online_now)} note={`salvaram nos últimos ${p.online_window_minutes} min (quem joga sem salvar não conta)`} />
-        <Fact label="Jogando hoje" value={fmtInt(p.active_today)} note={`${fmtInt(p.active_7d)} em 7 dias · ${fmtInt(p.active_30d)} em 30 dias`} />
-        <Fact label="Contas criadas" value={fmtInt(p.registered)} note={`+${fmtInt(p.signups_today)} hoje · +${fmtInt(p.signups_7d)} em 7 dias · +${fmtInt(p.signups_30d)} em 30`} />
+      <dl className="ov-tiles">
+        <Tile label="Jogadores" value={fmtInt(p.registered)} note={`${fmtInt(p.confirmed)} confirmados · ${fmtInt(p.characters)} personagens`} />
+        <Tile label="Online agora" value={fmtInt(p.online_now)} note={`estimado: salvaram nos últimos ${p.online_window_minutes} min`} live />
+        <Tile label="Jogando hoje" value={fmtInt(p.active_today)} note={`${fmtInt(p.active_7d)} em 7 dias · ${fmtInt(p.active_30d)} em 30`} />
+        <Tile label="Contas novas hoje" value={`+${fmtInt(p.signups_today)}`} note={`+${fmtInt(p.signups_7d)} em 7 dias · +${fmtInt(p.signups_30d)} em 30`} />
         {passM.known ? (
-          <Fact label="Passe válido na temporada" value={fmtInt(passM.validNow)} note={`${passM.season ? `Temporada ${passM.season}` : 'temporada atual'} · ${fmtInt(passM.history)} já tiveram um Passe`} />
+          <Tile label="Passe válido" value={fmtInt(passM.validNow)} note={`${passM.season ? `Temporada ${passM.season}` : 'temporada atual'} · ${fmtInt(passM.history)} no histórico`} />
         ) : (
-          <Fact label="Histórico de Passes" value={fmtInt(passM.history)} note="não diz se ainda vale: aplicar a migração 0026" warn />
+          <Tile label="Histórico de Passes" value={fmtInt(passM.history)} note="não diz se ainda vale: aplicar a migração 0026" warn />
         )}
+        <Tile label="Itens certificados" value={fmtInt(items.existing)} note={`${fmtInt(items.listed)} à venda`} />
+        <Tile label="Ouro nos saves" value={fmtInt(fresh.gold_total)} note={fresh.player_cache_refreshed_at ? `cache ${fmtAgo(fresh.player_cache_refreshed_at, now)}` : 'cache nunca atualizado'} />
+        <Tile label="Bolsas de ouro" value={fmtInt(ov.pouches.outstanding)} note={`${fmtInt(ov.pouches.outstanding_gold)} de ouro em face`} />
+        <Tile label="Anúncios abertos" value={fmtInt(ov.market.listings_open)} note={`${fmtInt(ov.market.listings_open_items)} itens · ${fmtInt(ov.market.listings_open_materials)} materiais`} />
+        <Tile label="Taxas do mercado" value={fmtSol(ov.collected.fees_lamports, 4)} note="5% das vendas reais · SOL" />
+        <Tile label="Hoje: vendas" value={last ? fmtInt(last.sales) : '—'} note={dayNote} />
+        <Tile label="Hoje: receita" value={last ? fmtUsd(last.pass_revenue_usd) : '—'} note={last ? `${dayNote} · estimada, só Passes` : dayNote} />
       </dl>
       <Freshness
         queriedAt={queriedAt}
         note={
           <>
-            “Online estimado” = personagens salvos nos últimos {p.online_window_minutes} min; “jogando hoje” começa à meia-noite de {ov.timezone}.
+            “Online agora” é estimado: personagens salvos nos últimos {p.online_window_minutes} min (quem joga sem salvar não conta); “jogando hoje” começa à meia-noite de {ov.timezone}. Os dois blocos “Hoje” vêm do histórico diário.
           </>
         }
       />
@@ -258,85 +281,125 @@ function MarketSheet({ ov }: { ov: Overview }) {
   );
 }
 
-// ---- Daily history, as a table --------------------------------------------------------------------------------------------------------------------------------------
+// ---- Activity table (always visible) and items by rarity -------------------------------------------------------------------------------------------------------
 
-function HistoryTable({ series, queriedAt, ov, now }: { series: SeriesDay[]; queriedAt: number | null; ov: Overview | null; now: number }) {
-  const [all, setAll] = useState(false);
+function ActivityTable({ series, queriedAt, ov, now, all, onToggle }: { series: SeriesDay[]; queriedAt: number | null; ov: Overview | null; now: number; all: boolean; onToggle: () => void }) {
   const agg = ov ? aggregateStatus(ov.freshness, now) : null;
   const days = [...series].reverse(); // newest first
-  const shown = all ? days : days.slice(0, HISTORY_DEFAULT_ROWS);
-  const hasCard = series.some((d) => d.pass_stripe > 0);
+  const shown = all ? days : days.slice(0, ACTIVITY_DEFAULT_DAYS);
   const sol = (l: number) => String(Math.round(lamportsToSol(l) * 10000) / 10000).replace('.', ',');
   return (
     <>
-      <details className="ov-fold">
-        <summary>
-          <span className="ov-fold-title">Tabela por dia</span>
-          <small>{all ? `${days.length} dias` : `últimos ${Math.min(HISTORY_DEFAULT_ROWS, days.length)} de ${days.length} dias`}</small>
-        </summary>
-        <div className="table-wrap">
-          <table className="data ov-table">
-            <caption className="ov-subtitle">Mais recente primeiro · dias no fuso {ov?.timezone ?? 'configurado'} · receita estimada</caption>
-            <thead>
-              <tr>
-                <th scope="col">Dia</th>
-                <th scope="col" className="num">Cadastros</th>
-                <th scope="col" className="num">Ativos</th>
-                <th scope="col" className="num">Passes USDC</th>
-                {hasCard ? <th scope="col" className="num">Passes cartão</th> : null}
-                <th scope="col" className="num">Passes convite</th>
-                <th scope="col" className="num">Passes concessão</th>
-                <th scope="col" className="num">Passes teste</th>
-                <th scope="col" className="num">Receita (US$)</th>
-                <th scope="col" className="num">Vendas</th>
-                <th scope="col" className="num">Volume (SOL)</th>
-                <th scope="col" className="num">Taxas (SOL)</th>
-                <th scope="col" className="num">Lendários</th>
-                <th scope="col" className="num">Únicos</th>
-                <th scope="col" className="num">Bolsas criadas</th>
-                <th scope="col" className="num">Bolsas abertas</th>
+      <div className="table-wrap">
+        <table className="data ov-table ov-compact">
+          <caption className="ov-subtitle">Mais recente primeiro · dias no fuso {ov?.timezone ?? 'configurado'} · receita estimada · SOL à parte do dólar</caption>
+          <thead>
+            <tr>
+              <th scope="col">Dia</th>
+              <th scope="col" className="num">Contas novas</th>
+              <th scope="col" className="num">Ativos</th>
+              <th scope="col" className="num">Passes pagos</th>
+              <th scope="col" className="num">Receita (US$)</th>
+              <th scope="col" className="num">Vendas</th>
+              <th scope="col" className="num">Volume (SOL)</th>
+              <th scope="col" className="num">Taxa (SOL)</th>
+              <th scope="col" className="num">Lendários</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((d) => (
+              <tr key={d.day}>
+                <th scope="row">{fmtDay(d.day)}</th>
+                <td className="num">{fmtInt(d.signups)}</td>
+                <td className="num">{fmtInt(d.active_players)}</td>
+                <td className="num">{fmtInt(d.pass_usdc + d.pass_stripe)}</td>
+                <td className="num">{fmtUsd(d.pass_revenue_usd)}</td>
+                <td className="num">{fmtInt(d.sales)}</td>
+                <td className="num">{sol(d.volume_lamports)}</td>
+                <td className="num">{sol(d.fee_lamports)}</td>
+                <td className="num">{fmtInt(d.legendaries)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {shown.map((d) => (
-                <tr key={d.day}>
-                  <th scope="row">{fmtDay(d.day)}</th>
-                  <td className="num">{fmtInt(d.signups)}</td>
-                  <td className="num">{fmtInt(d.active_players)}</td>
-                  <td className="num">{fmtInt(d.pass_usdc)}</td>
-                  {hasCard ? <td className="num">{fmtInt(d.pass_stripe)}</td> : null}
-                  <td className="num">{fmtInt(d.pass_referral)}</td>
-                  <td className="num">{fmtInt(d.pass_grant)}</td>
-                  <td className="num">{fmtInt(d.pass_test)}</td>
-                  <td className="num">{fmtUsd(d.pass_revenue_usd)}</td>
-                  <td className="num">{fmtInt(d.sales)}</td>
-                  <td className="num">{sol(d.volume_lamports)}</td>
-                  <td className="num">{sol(d.fee_lamports)}</td>
-                  <td className="num">{fmtInt(d.legendaries)}</td>
-                  <td className="num">{fmtInt(d.uniques)}</td>
-                  <td className="num">{fmtInt(d.pouches_minted)}</td>
-                  <td className="num">{fmtInt(d.pouches_opened)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {days.length > ACTIVITY_DEFAULT_DAYS ? (
+        <div className="ov-fold-actions">
+          <button type="button" className="btn" aria-expanded={all} onClick={onToggle}>
+            {all ? `Ver só ${ACTIVITY_DEFAULT_DAYS} dias` : `Ver ${days.length} dias`}
+          </button>
         </div>
-        {days.length > HISTORY_DEFAULT_ROWS ? (
-          <div className="ov-fold-actions">
-            <button type="button" className="btn" aria-expanded={all} onClick={() => setAll((v) => !v)}>
-              {all ? `Mostrar só os últimos ${HISTORY_DEFAULT_ROWS} dias` : `Mostrar todos os ${days.length} dias`}
-            </button>
-          </div>
-        ) : null}
-      </details>
+      ) : null}
       <Freshness
         queriedAt={queriedAt}
         aggregatedAt={agg?.daily.at ?? null}
         aggregateLate={agg ? agg.daily.state !== 'fresh' : false}
         aggregateNote={agg ? 'jogadores ativos por dia vêm da rotina diária' : 'jogadores ativos por dia vêm da rotina diária; a idade dela aparece quando os números do jogo carregarem'}
-        note="a receita por dia é estimada"
+        note="a receita por dia é estimada; “Passes pagos” = USDC + cartão (convites, concessões e testes ficam de fora)"
       />
     </>
+  );
+}
+
+const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+const RARITY_TEXT: Record<string, string> = { common: 'Comum', uncommon: 'Incomum', rare: 'Raro', epic: 'Épico', legendary: 'Lendário', unique: 'Único' };
+type RarityView = 'existing' | 'listed' | 'burned';
+const RARITY_VIEWS: { id: RarityView; label: string; match: (status: string) => boolean }[] = [
+  { id: 'existing', label: 'Existentes', match: (s) => s === 'held' || s === 'listed' },
+  { id: 'listed', label: 'À venda', match: (s) => s === 'listed' },
+  { id: 'burned', label: 'Queimados', match: (s) => s === 'burned' },
+];
+
+function RaritySheet({ ov, queriedAt }: { ov: Overview; queriedAt: number | null }) {
+  const [view, setView] = useState<RarityView>('existing');
+  const match = (RARITY_VIEWS.find((v) => v.id === view) ?? RARITY_VIEWS[0]).match;
+  const counts = new Map<string, number>();
+  // Gold Pouches have no rarity and are a tile of their own; "Único" is the item kind, counted apart from the gear rarities.
+  for (const g of ov.items) {
+    if (g.kind === 'gold_pouch' || !match(g.status)) continue;
+    const key = g.kind === 'unique' ? 'unique' : (g.rarity ?? 'sem raridade');
+    counts.set(key, (counts.get(key) ?? 0) + g.count);
+  }
+  const extra = [...counts.keys()].filter((k) => !RARITY_ORDER.includes(k) && k !== 'unique');
+  const keys = [...RARITY_ORDER, ...extra, 'unique'];
+  const total = [...counts.values()].reduce((a, b) => a + b, 0);
+  return (
+    <section aria-labelledby="ov-rarity" className="ov-col-narrow">
+      <div className="ov-sectionhead">
+        <h2 id="ov-rarity">Itens por raridade</h2>
+      </div>
+      <div className="ov-tabs" role="group" aria-label="Estado dos itens">
+        {RARITY_VIEWS.map((v) => (
+          <button key={v.id} type="button" className="ov-tab" aria-pressed={view === v.id} onClick={() => setView(v.id)}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+      <table className="data ov-compact">
+        <caption className="ov-subtitle">Itens certificados de equipamento e únicos · bolsas de ouro e materiais ficam à parte</caption>
+        <thead>
+          <tr>
+            <th scope="col">Raridade</th>
+            <th scope="col" className="num">Itens</th>
+          </tr>
+        </thead>
+        <tbody>
+          {keys.map((k) => (
+            <tr key={k}>
+              <th scope="row">
+                <span className={`rar-pill rar-${RARITY_ORDER.includes(k) || k === 'unique' ? k : 'other'}`}>{RARITY_TEXT[k] ?? k}</span>
+              </th>
+              <td className="num">{fmtInt(counts.get(k) ?? 0)}</td>
+            </tr>
+          ))}
+          <tr className="total">
+            <th scope="row">Total</th>
+            <td className="num">{fmtInt(total)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <Freshness queriedAt={queriedAt} note="consulta direta dos certificados; cópias compradas contam como itens que existem" />
+    </section>
   );
 }
 
@@ -361,7 +424,6 @@ function Lists({ ov, ops, queriedAt, now }: { ov: Overview; ops: AsyncState<OpsO
   const agg = aggregateStatus(fresh, now);
   return (
     <>
-      <SectionTitle>Listas</SectionTitle>
       <Fold title="Itens e circulação" hint={`${fmtInt(items.existing)} itens certificados`}>
         <Ledger
           rows={[

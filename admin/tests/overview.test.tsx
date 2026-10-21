@@ -52,17 +52,41 @@ describe('Overview opens with what needs attention', () => {
     // the four indicators come first, then the pending list, then the data blocks and the history
     const h2s = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(h2s.indexOf('Precisa de atenção')).toBeLessThan(h2s.indexOf('Passe de Aventureiro'));
-    expect(h2s.indexOf('Passe de Aventureiro')).toBeLessThan(h2s.indexOf('Histórico diário'));
+    expect(h2s.findIndex((t) => t?.startsWith('Atividade'))).toBeLessThan(h2s.indexOf('Passe de Aventureiro'));
   });
 
-  test('four indicators on top, with “online estimado” explained next to them', async () => {
+  test('a dense grid of equal tiles on top, with “online agora” explained and mapped to real fields', async () => {
     setup();
-    await screen.findByText('Online estimado');
-    const facts = document.querySelector('.ov-facts') as HTMLElement;
-    expect(facts.querySelectorAll('.ov-fact')).toHaveLength(4);
-    for (const label of ['Online estimado', 'Jogando hoje', 'Contas criadas', 'Passe válido na temporada']) expect(facts.textContent).toContain(label);
-    expect(document.body.textContent).toContain('Online estimado” = personagens salvos nos últimos 5 min');
+    await screen.findByText('Online agora');
+    const tiles = document.querySelector('.ov-tiles') as HTMLElement;
+    expect(tiles.querySelectorAll('.ov-tile').length).toBeGreaterThanOrEqual(10);
+    for (const label of ['Jogadores', 'Online agora', 'Jogando hoje', 'Contas novas hoje', 'Passe válido', 'Itens certificados', 'Ouro nos saves', 'Bolsas de ouro', 'Anúncios abertos', 'Taxas do mercado', 'Hoje: vendas', 'Hoje: receita']) expect(tiles.textContent).toContain(label);
+    expect(tiles.querySelectorAll('.ov-tile.live')).toHaveLength(1);
+    expect(document.body.textContent).toContain('Online agora” é estimado: personagens salvos nos últimos 5 min');
     expect(screen.getAllByText(/Consulta atualizada às/).length).toBeGreaterThanOrEqual(2);
+    // tiles come before the attention list, which comes before the activity table
+    const h2s = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(h2s.findIndex((t) => t?.startsWith('Atividade'))).toBeGreaterThan(h2s.indexOf('Precisa de atenção'));
+  });
+
+  test('the “Hoje” tiles say so when the daily history is unavailable, never a zero', async () => {
+    setup({ series: async () => Promise.reject(new Error('sem série')) });
+    await screen.findByText('Online agora');
+    const tile = (label: string) => screen.getByText(label).closest('.ov-tile') as HTMLElement;
+    await waitFor(() => expect(tile('Hoje: vendas').textContent).toContain('histórico indisponível'));
+    expect(tile('Hoje: vendas').querySelector('dd')?.textContent).toBe('—');
+    expect(tile('Hoje: receita').querySelector('dd')?.textContent).toBe('—');
+  });
+
+  test('items by rarity: a table with the six rarities and a total, switchable by state', async () => {
+    setup();
+    const sec = (await heading('Itens por raridade')).closest('section') as HTMLElement;
+    for (const r of ['Comum', 'Incomum', 'Raro', 'Épico', 'Lendário', 'Único', 'Total']) expect(within(sec).getByText(r)).toBeTruthy();
+    const cell = (label: string) => (within(sec).getByText(label).closest('tr') as HTMLElement).querySelector('td')?.textContent;
+    const existing = cell('Total');
+    fireEvent.click(within(sec).getByRole('button', { name: 'À venda' }));
+    expect(cell('Total')).not.toBe(existing);
+    expect(within(sec).getByRole('button', { name: 'À venda' }).getAttribute('aria-pressed')).toBe('true');
   });
 
   test('Passe and Mercado are two aligned data blocks (labels and values, SOL and USDC never summed)', async () => {
@@ -79,8 +103,8 @@ describe('Overview opens with what needs attention', () => {
 
   test('NO chart anywhere on the page: no svg, no image role, no progress bar, even with every fold open', async () => {
     setup();
-    await screen.findByText('Online estimado');
-    await screen.findByText('Tabela por dia');
+    await screen.findByText('Online agora');
+    await screen.findByText('Itens por raridade');
     document.querySelectorAll('details').forEach((d) => d.setAttribute('open', ''));
     expect(document.querySelector('svg.chart')).toBeNull();
     expect(document.querySelector('.bars, .track, [role="progressbar"], [role="img"], canvas')).toBeNull();
@@ -125,7 +149,7 @@ describe('Overview opens with what needs attention', () => {
     setup({ overview: async () => empty, paymentExceptions: async () => ({ total: 0, page: 0, page_size: 1, rows: [], open: 0 }), opsOverview: async () => ({ ...ops, flags: ops.flags.map((f) => ({ ...f, value: false })), incidents: [], open_reports: 0 }) });
     expect(await screen.findByText(/ainda não tem nenhum jogador cadastrado/)).toBeTruthy();
     expect(screen.getByText(/sem dados, isso não diz nada sobre a saúde do jogo/)).toBeTruthy();
-    expect(screen.queryByText('Online estimado')).toBeNull();
+    expect(screen.queryByText('Online agora')).toBeNull();
   });
 });
 
@@ -134,13 +158,13 @@ describe('each block fails and recovers on its own', () => {
     let fail = true;
     const seed = createDemoApi();
     const { calls } = setup({ series: async (d) => (fail ? Promise.reject(new Error('timeout na série')) : seed.series(d)) });
-    await screen.findByText('Online estimado');
+    await screen.findByText('Online agora');
     const failed = await screen.findByText(/Não foi possível carregar o histórico diário: timeout na série/);
     const box = failed.closest('.notice') as HTMLElement;
     expect(box.getAttribute('role')).toBe('alert');
     expect(document.querySelector('table.ov-table')).toBeNull();
     expect(document.body.textContent).not.toContain('US$ 0,00');
-    expect(screen.getByRole('heading', { name: 'Histórico diário' }).nextElementSibling?.getAttribute('aria-busy')).toBeNull();
+    expect(screen.getByRole('heading', { name: /Atividade — últimos/ }).parentElement?.nextElementSibling?.getAttribute('aria-busy')).toBeNull();
     const seriesCalls = () => calls.filter((c) => c === 'series').length;
     const ovCalls = calls.filter((c) => c === 'overview').length;
     fail = false;
@@ -155,13 +179,13 @@ describe('each block fails and recovers on its own', () => {
     setup({ overview: async () => Promise.reject(new Error('banco indisponível')) });
     expect(await screen.findByText(/Não foi possível carregar os números do jogo: banco indisponível/)).toBeTruthy();
     await waitFor(() => expect(document.querySelector('table.ov-table')).not.toBeNull());
-    expect(screen.queryByText('Online estimado')).toBeNull();
+    expect(screen.queryByText('Online agora')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Passe de Aventureiro' })).toBeNull();
   });
 
   test('only opsOverview() failing: the routines list says it could not check, not that all is in order', async () => {
     setup({ opsOverview: async () => Promise.reject(new Error('sem acesso')) });
-    await screen.findByText('Online estimado');
+    await screen.findByText('Online agora');
     const title = await screen.findByText('Estado das rotinas');
     const fold = title.closest('details') as HTMLElement;
     await waitFor(() => expect(fold.textContent).toContain('Não foi possível consultar o vigia'));
@@ -189,19 +213,22 @@ describe('each block fails and recovers on its own', () => {
   });
 });
 
-describe('the daily history is a table', () => {
-  test('7 rows (newest first) by default, all 30 days after expanding, and back', async () => {
+describe('the activity table', () => {
+  test('14 rows visible without clicking (newest first), 30 after the toggle, and back', async () => {
     setup();
-    await screen.findByText('Tabela por dia');
-    const rows = () => document.querySelectorAll('table.ov-table tbody tr').length;
-    expect(rows()).toBe(7);
-    const all = screen.getByRole('button', { name: 'Mostrar todos os 30 dias' });
+    await heading('Atividade — últimos 14 dias');
+    await waitFor(() => expect(document.querySelectorAll('table.ov-table tbody tr').length).toBeGreaterThan(0));
+    const rows = () => document.querySelectorAll('table.ov-table')[0].querySelectorAll('tbody tr').length;
+    expect(document.querySelector('table.ov-table')?.closest('details')).toBeNull();
+    expect(rows()).toBe(14);
+    const all = screen.getByRole('button', { name: 'Ver 30 dias' });
     expect(all.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(all);
     expect(rows()).toBe(30);
-    fireEvent.click(screen.getByRole('button', { name: /Mostrar só os últimos 7 dias/ }));
-    expect(rows()).toBe(7);
-    expect(document.querySelectorAll('table.ov-table thead th[scope="col"]').length).toBeGreaterThanOrEqual(10);
+    expect(screen.getByRole('heading', { name: 'Atividade — últimos 30 dias' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Ver só 14 dias/ }));
+    expect(rows()).toBe(14);
+    expect(document.querySelectorAll('table.ov-table thead th[scope="col"]').length).toBeGreaterThanOrEqual(8);
   });
 });
 
@@ -211,7 +238,7 @@ describe('the age of the information', () => {
     const real = await base.overview();
     const old = new Date(Date.now() - 30 * 3600 * 1000).toISOString();
     setup({ overview: async () => ({ ...real, freshness: { ...real.freshness, player_cache_refreshed_at: old, gold_captured_at: old, daily_captured_at: old } }) });
-    await screen.findByText('Online estimado');
+    await screen.findByText('Online agora');
     const att = (await heading('Precisa de atenção')).closest('section') as HTMLElement;
     await waitFor(() => expect(att.textContent).toContain('Os dados agregados estão atrasados'));
     expect(att.textContent).toContain('A rotina diária está atrasada');
