@@ -178,7 +178,14 @@ assert.ok(passClosed.includes('Em breve') && passClosed.includes('A venda ainda 
 const closedEverywhere = (renderSite('pt').map(item => item.html).join(' ') + renderSite('en').map(item => item.html).join(' ')).replace(/data-labels="[^"]*"/g, ''); // the labels attribute carries every label, used or not
 assert.ok(!/US\$ ?10|Comprar o Passe|Buy the Pass|Pagamento seguro|Secure payment|Stripe|comprar=passe/.test(closedEverywhere), 'closed: no price, no buy link, no Stripe line anywhere');
 assert.ok(!pageOf('pt', 'pass').html.includes('Política de reembolso'));
-assert.ok(renderSite('pt').find(item => item.route === '').html.includes('aria-disabled="true">Jogar grátis · Em breve'));
+{ // without the game address, the hero button leads to the e-mail sign-up; with the sign-up off too, it is the disabled "Em breve" button
+  const saved = config.waitlistEnabled;
+  config.waitlistEnabled = true;
+  assert.ok(renderSite('pt').find(item => item.route === '').html.includes('href="#waitlist-home">Quero ser avisado'));
+  config.waitlistEnabled = false;
+  assert.ok(renderSite('pt').find(item => item.route === '').html.includes('aria-disabled="true">Jogar grátis · Em breve'));
+  config.waitlistEnabled = saved;
+}
 assert.ok(!renderSite('pt').find(item => item.route === '').html.includes('Em desenvolvimento ativo'), 'no "in active development" on the home page');
 assert.ok(renderSite('pt').find(item => item.route === 'faq').html.includes('em desenvolvimento ativo'), 'the status line lives in the FAQ');
 assert.ok(renderSite('pt').find(item => item.route === '').html.includes('Progressão idle com disputa de temporada.'));
@@ -220,6 +227,7 @@ assert.ok(page('pt', 'pass').includes('href="https://jogo.example.test/play?x=1&
 
 // ---- the footer: company fields only when filled, legal links only when live -------------------------------------------------------------------------------
 reset();
+config.company = { legalName: null, cnpj: null, supportEmail: null };
 const footerOf = html => html.match(/<footer>[\s\S]*<\/footer>/)[0];
 const emptyFooter = footerOf(page('pt', ''));
 assert.ok(!emptyFooter.includes('footer-trust') && !/CNPJ|Suporte|Stripe|mailto|null|undefined/.test(emptyFooter), 'no company, no live legal page: nothing is rendered, not even a placeholder');

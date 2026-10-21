@@ -20,8 +20,8 @@ const l = localized;
 // "anon" key (it is public by design and protected by the database rules). The service key must NEVER be written here.
 export const config = {
   playUrl: null, passSalesOpen: false, passPrice: '10 USDC', siteUrl: null,
-  company: { legalName: null, cnpj: null, supportEmail: null },
-  legalLive: { terms: false, privacy: false, refund: false, seasonRules: false }, waitlistEnabled: false, referralEnabled: false,
+  company: { legalName: null, cnpj: null, supportEmail: 'arenaidlesupport@gmail.com' },
+  legalLive: { terms: false, privacy: false, refund: false, seasonRules: false }, waitlistEnabled: true, referralEnabled: false,
   supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Idle', pageSize: 8,
 };
 // Text that depends on the owner settings is computed when read (getters), so a changed setting changes every page at once.
@@ -327,7 +327,8 @@ export const legalPlaceholder = l('Texto a ser fornecido pelo responsável do jo
 export const waitlist = {
   eyebrow: l('Lançamento', 'Launch'),
   title: l('Avise-me no lançamento', 'Notify me at launch'),
-  lead: l('Deixe seu e-mail para ser avisado quando o Arena Idle abrir. Só o aviso do lançamento, nada de spam.', 'Leave your email to hear when Arena Idle opens. Just the launch notice, no spam.'),
+  lead: l('Deixe seu e-mail para ser avisado quando o teste aberto e o lançamento do Arena Idle começarem. Só esses avisos, nada de spam.', 'Leave your email to hear when the Arena Idle open test and launch begin. Just those notices, no spam.'),
+  join: l('Quero ser avisado', 'Notify me'),
   compactLead: l('Quer saber quando a Liga e o jogo abrem? Deixe seu e-mail.', 'Want to know when the League and the game open? Leave your email.'),
   emailLabel: l('Seu e-mail', 'Your email'),
   emailPlaceholder: l('voce@exemplo.com', 'you@example.com'),

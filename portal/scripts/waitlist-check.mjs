@@ -19,8 +19,8 @@ const page = (lang, route = '') => pageOf(lang, route).html;
 const all = lang => renderSite(lang).map(item => item.html).join('\n');
 const blocks = html => html.match(/<section class="section waitlist[\s\S]*?<\/section>/g) ?? [];
 
-// ---- off by default: nothing at all ------------------------------------------------------------------------------------------------------------
-assert.equal(config.waitlistEnabled, false, 'the waitlist is off by default');
+// ---- off: nothing at all (the published config turns it on for the playtest sign-up) ------------------------------------------------------------
+config.waitlistEnabled = false;
 for (const lang of ['pt', 'en']) {
   const everything = all(lang);
   assert.ok(!/data-waitlist|waitlist\.js|waitlist-core|Avise-me|Notify me at launch|name="hp"/.test(everything), lang + ': off = no block, no script, no text');
@@ -279,4 +279,4 @@ assert.equal(countsText({ active: 0, paying: 0, goal: null }, 'pt', countLabels)
 assert.equal(countsText(null, 'pt', countLabels), '');
 
 reset();
-console.log('PASS: waitlist block (off by default, markup, consent, honeypot, states, escaping, parity), unsubscribe page, pure module and CSP.');
+console.log('PASS: waitlist block (off = nothing, markup, consent, honeypot, states, escaping, parity), unsubscribe page, pure module and CSP.');
