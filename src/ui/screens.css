@@ -974,7 +974,7 @@
 .fg-recipe.selected {
   border-color: var(--c-gold-300);
   background: linear-gradient(180deg, #3a2a14, #1e150b);
-  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.35);
+  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.35), inset 6px 0 0 var(--c-gold-300);
 }
 .fg-recipe.focus:not(.selected) {
   border-color: var(--c-info);
@@ -1538,5 +1538,42 @@
 @media (max-width: 480px) {
   .desktop-topbar .activity-chip {
     display: none;
+  }
+}
+
+/* Forge on a phone: the craft panel opens right under the picked recipe, full width inside the list (not sticky, not a second column) */
+.fg-panel-wrap.inline {
+  position: static;
+  grid-column: 1 / -1;
+}
+.fg-recipe {
+  scroll-margin-top: calc(var(--topbar-h, 56px) + var(--sp-3));
+}
+
+/* phone: the nine forge categories are one row you swipe, not five rows that push the recipes off the first screen */
+@media (max-width: 700px) {
+  .fg-categories {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: var(--sp-1);
+    -webkit-overflow-scrolling: touch;
+  }
+  .fg-categories .ui-chip {
+    flex: 0 0 auto;
+  }
+}
+
+/* not only red: a missing amount carries a mark, and a blocked produce button says why */
+.fg-req-qty.missing::before {
+  content: '! ';
+}
+@media (max-width: 700px) {
+  /* the craft panel inside the list: what it takes, the quantity and the button first; the item's description, stats and comparison after them (the row above already names it) */
+  .fg-panel.ui-panel .fg-desc,
+  .fg-panel.ui-panel .gear-stat-list,
+  .fg-panel.ui-panel .appearance-line,
+  .fg-panel.ui-panel .set-lines,
+  .fg-panel.ui-panel .item-compare {
+    order: 2;
   }
 }

@@ -1,5 +1,6 @@
 import PixelIcon from './PixelIcon';
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Fragment, ReactNode, useEffect, useRef, useState } from 'react';
+import useIsPhone from '../hooks/useIsPhone';
 import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
 import { effectiveRepairCost, playerLevel, SaveData } from '../game/engine';
@@ -169,6 +170,7 @@ export default function ForgeView({
   // the recipe shown in the craft panel (the first of the category until one is picked)
   const [selectedId, setSelectedId] = useState<string | null>(focusItemId ?? null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [pendingForge, setPendingForge] = useState<{ id: string; ids: string[] } | null>(null);
   // Blacksmith's Seal (season reward): the toggle is on offer only while one is held; the forge spends it only when the forge really happens (gearInstances.applyForge).
   const sealCount = save.consumables?.forge_seal ?? 0;
@@ -236,13 +238,15 @@ export default function ForgeView({
   };
 
   // The recipe the craft panel shows: the picked one, else (a category change, first open) the first of the category; `focusItemId` (from "Usar em...") starts on its recipe.
+  const phone = useIsPhone();
   const categoryItems = forgeRecipes(forgeCategory);
   const current = categoryItems.find((i) => i.id === selectedId) ?? categoryItems[0] ?? null;
   const pickRecipe = (id: string) => {
     setSelectedId(id);
     setQty(1);
     // when the craft panel sits under the list (a narrow page) bring it into view; side by side it is already visible, so 'nearest' leaves the page alone
-    window.setTimeout(() => panelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
+    // phone: the panel opens under the row, so bring the row to the top; narrow tablet: the panel under the list; wide: it is already on screen
+    window.setTimeout(() => (phone ? rowRefs.current[id] : panelRef.current)?.scrollIntoView({ block: phone ? 'start' : 'nearest', behavior: 'smooth' }), 0);
   };
 
   // the requirement rows of a recipe: what the player has against what it takes
@@ -263,6 +267,112 @@ export default function ForgeView({
     if ((item.recipe?.shards ?? 0) > 0) rows.push({ key: 'shards', icon: <img src="/assets/icons/shards.png" alt="" />, label: t('ui.shardsX', { n: '' }).replace(/[\d\s×x]+/g, '').trim() || t('inventory.reforgeShard'), have: save.shards, need: item.recipe?.shards ?? 0 });
     return rows;
   };
+
+  // The craft panel of the picked recipe: the selection, what it needs, the quantity and the produce button together. Wide screens: the right column. Phone: it opens right under the picked row of the list.
+  const craftPanel = current ? (
+        <div className={`fg-panel-wrap${phone ? ' inline' : ''}`} ref={panelRef}>
+          <Panel
+            title={gearText(current.nameKey)}
+            className={`fg-panel ${rarityClass(current)}`}
+            icon={
+              <ItemFrame size="md">
+                <GearIcon item={current} />
+              </ItemFrame>
+            }
+          >
+            <div className="fg-panel-body">
+              <p className="fg-desc">{gearText(current.descKey)}</p>
+              <div className="gear-stat-list">
+                {gearStatLines(current).map((l) => (
+                  <span className={`gear-stat gear-stat-${l.kind}`} key={l.kind}>
+                    {l.text}
+                  </span>
+                ))}
+              </div>
+              <AppearanceLine item={current} />
+              <SetNote item={current} save={save} />
+              <ItemCompare save={save} slot={current.slot} templateId={current.id} />
+
+              <div className="fg-reqs" role="list">
+                {reqRows(current).map((r) => {
+                  const short = r.have < r.need;
+                  return (
+                    <div className="fg-req" role="listitem" key={r.key}>
+                      <span className="fg-req-icon" aria-hidden>
+                        {r.icon}
+                      </span>
+                      <span className="fg-req-label">{r.label}</span>
+                      <span className={`fg-req-qty${short ? ' missing' : ''}`}>
+                        {r.plain ? `${fmtNum(r.need)}` : `${fmtNum(r.have)} / ${fmtNum(r.need)}`}
+                      </span>
+                      {r.stash && <StashHint kind="material" id={r.stash} need={r.need} />}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {blockedByBag(current) && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
+
+              {sealCount > 0 && forgeCategory !== 'relic' && (
+                <button className={`forge-seal-toggle${sealOn ? ' on' : ''}`} onClick={() => setSealOn(!sealOn)} aria-pressed={sealOn} data-ui>
+                  <img className="forge-seal-icon" src="/assets/icons/forge_seal.png" alt="" />
+                  <span className="forge-seal-text">
+                    <span className="forge-seal-name">{t('forge.useSeal')}</span>
+                    <span className="forge-seal-hint">{t('forge.sealHint', { n: sealCount })}</span>
+                  </span>
+                  <span className="forge-seal-state">{sealOn ? t('forge.sealOn') : t('forge.sealOff')}</span>
+                </button>
+              )}
+
+              {pendingForge && (
+                <div className="salvage-preview forge-confirm">
+                  <span className="salvage-preview-label">{t('forge.confirmIngredients')}</span>
+                  {pendingForge.ids
+                    .filter((id) => save.gearInstances[id])
+                    .map((id) => (
+                      <span className="floor-drop forge-confirm-item" key={id}>
+                        <span className="forge-confirm-name">
+                          {gearInstanceLabel(save.gearInstances[id])}
+                          <UniqueTag templateId={save.gearInstances[id].templateId} />
+                        </span>
+                        {save.gearInstances[id].sockets.length > 0 && (
+                          <span className="forge-confirm-gems">
+                            {t('forge.gemsBack', {
+                              list: save.gearInstances[id].sockets.map((g) => gemText(getGem(g)?.nameKey ?? g)).join(', '),
+                            })}
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  <PrimaryButton
+                    block
+                    onClick={() => {
+                      const p = pendingForge;
+                      setPendingForge(null);
+                      doForge(p.id, p.ids);
+                    }}
+                  >
+                    {t('forge.confirmForge')}
+                  </PrimaryButton>
+                  <SecondaryButton block onClick={() => setPendingForge(null)}>
+                    {t('forge.cancel')}
+                  </SecondaryButton>
+                </div>
+              )}
+
+              <QtyPicker save={save} kind="forge" recipeId={current.id} qty={qty} onChange={setQty} />
+              <PrimaryButton block className={justForged === current.id ? 'forged' : undefined} onClick={() => handleForge(current.id)} disabled={!canForge(current)}>
+                {justForged === current.id ? t('forge.forged') : qty > 1 ? t('craft.start', { n: qty }) : t('forge.forge')}
+              </PrimaryButton>
+              {!canForge(current) && !blockedByBag(current) && (
+                <span className="craft-bag-full fg-blocked" role="status">
+                  {t('forge.missing')}
+                </span>
+              )}
+            </div>
+          </Panel>
+        </div>
+  ) : null;
 
   const tabItems: TabItem<ForgeTab>[] = [
     { id: 'forge', label: t('forge.forgeTab'), icon: <img src="/assets/icons/steel.png" alt="" /> },
@@ -310,12 +420,15 @@ export default function ForgeView({
                       const ok = canForge(item);
                       const selected = current?.id === item.id;
                       return (
+                        <Fragment key={item.id}>
                         <button
-                          key={item.id}
                           className={`fg-recipe ${rarityClass(item)}${selected ? ' selected' : ''}${ok ? ' ok' : ''}${item.id === focusItemId ? ' focus' : ''}`}
                           onClick={() => pickRecipe(item.id)}
                           aria-pressed={selected}
                           data-recipe-id={item.id}
+                          ref={(el) => {
+                            rowRefs.current[item.id] = el;
+                          }}
                           data-ui
                         >
                           <ItemFrame>
@@ -337,113 +450,15 @@ export default function ForgeView({
                             </span>
                           )}
                         </button>
+                        {phone && selected && craftPanel}
+                        </Fragment>
                       );
                     })}
                   </div>
                 )}
               </>
             }
-            side={
-              current && (
-                <div className="fg-panel-wrap" ref={panelRef}>
-                  <Panel
-                    title={gearText(current.nameKey)}
-                    className={`fg-panel ${rarityClass(current)}`}
-                    icon={
-                      <ItemFrame size="md">
-                        <GearIcon item={current} />
-                      </ItemFrame>
-                    }
-                  >
-                    <div className="fg-panel-body">
-                      <p className="fg-desc">{gearText(current.descKey)}</p>
-                      <div className="gear-stat-list">
-                        {gearStatLines(current).map((l) => (
-                          <span className={`gear-stat gear-stat-${l.kind}`} key={l.kind}>
-                            {l.text}
-                          </span>
-                        ))}
-                      </div>
-                      <AppearanceLine item={current} />
-                      <SetNote item={current} save={save} />
-                      <ItemCompare save={save} slot={current.slot} templateId={current.id} />
-
-                      <div className="fg-reqs" role="list">
-                        {reqRows(current).map((r) => {
-                          const short = r.have < r.need;
-                          return (
-                            <div className="fg-req" role="listitem" key={r.key}>
-                              <span className="fg-req-icon" aria-hidden>
-                                {r.icon}
-                              </span>
-                              <span className="fg-req-label">{r.label}</span>
-                              <span className={`fg-req-qty${short ? ' missing' : ''}`}>
-                                {r.plain ? `${fmtNum(r.need)}` : `${fmtNum(r.have)} / ${fmtNum(r.need)}`}
-                              </span>
-                              {r.stash && <StashHint kind="material" id={r.stash} need={r.need} />}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {blockedByBag(current) && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
-
-                      {sealCount > 0 && forgeCategory !== 'relic' && (
-                        <button className={`forge-seal-toggle${sealOn ? ' on' : ''}`} onClick={() => setSealOn(!sealOn)} aria-pressed={sealOn} data-ui>
-                          <img className="forge-seal-icon" src="/assets/icons/forge_seal.png" alt="" />
-                          <span className="forge-seal-text">
-                            <span className="forge-seal-name">{t('forge.useSeal')}</span>
-                            <span className="forge-seal-hint">{t('forge.sealHint', { n: sealCount })}</span>
-                          </span>
-                          <span className="forge-seal-state">{sealOn ? t('forge.sealOn') : t('forge.sealOff')}</span>
-                        </button>
-                      )}
-
-                      {pendingForge && (
-                        <div className="salvage-preview forge-confirm">
-                          <span className="salvage-preview-label">{t('forge.confirmIngredients')}</span>
-                          {pendingForge.ids
-                            .filter((id) => save.gearInstances[id])
-                            .map((id) => (
-                              <span className="floor-drop forge-confirm-item" key={id}>
-                                <span className="forge-confirm-name">
-                                  {gearInstanceLabel(save.gearInstances[id])}
-                                  <UniqueTag templateId={save.gearInstances[id].templateId} />
-                                </span>
-                                {save.gearInstances[id].sockets.length > 0 && (
-                                  <span className="forge-confirm-gems">
-                                    {t('forge.gemsBack', {
-                                      list: save.gearInstances[id].sockets.map((g) => gemText(getGem(g)?.nameKey ?? g)).join(', '),
-                                    })}
-                                  </span>
-                                )}
-                              </span>
-                            ))}
-                          <PrimaryButton
-                            block
-                            onClick={() => {
-                              const p = pendingForge;
-                              setPendingForge(null);
-                              doForge(p.id, p.ids);
-                            }}
-                          >
-                            {t('forge.confirmForge')}
-                          </PrimaryButton>
-                          <SecondaryButton block onClick={() => setPendingForge(null)}>
-                            {t('forge.cancel')}
-                          </SecondaryButton>
-                        </div>
-                      )}
-
-                      <QtyPicker save={save} kind="forge" recipeId={current.id} qty={qty} onChange={setQty} />
-                      <PrimaryButton block className={justForged === current.id ? 'forged' : undefined} onClick={() => handleForge(current.id)} disabled={!canForge(current)}>
-                        {justForged === current.id ? t('forge.forged') : qty > 1 ? t('craft.start', { n: qty }) : t('forge.forge')}
-                      </PrimaryButton>
-                    </div>
-                  </Panel>
-                </div>
-              )
-            }
+            side={phone ? undefined : craftPanel}
           />
         )}
 

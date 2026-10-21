@@ -189,7 +189,7 @@ export default function HuntSelection({
               </div>
             </div>
 
-            <Panel title={t('hunting.materialsTitle')}>
+            <Panel title={t('hunting.materialsTitle')} className="hs-p-mats">
               <div className="hs-mats">
                 {zone.drops.map((d) => (
                   <span className="hs-mat" key={d.material}>
@@ -209,7 +209,7 @@ export default function HuntSelection({
 
             {zoneOpen && (
               <>
-                <Panel title={t('hunting.depthTitle')}>
+                <Panel title={t('hunting.depthTitle')} className="hs-p-depth">
                   <p className="hs-hint">{t('hunting.depthExplain')}</p>
                   <div className="hs-depths" role="radiogroup" aria-label={t('hunting.depthTitle')}>
                     {HUNTING_DEPTHS.map((def, i) => (
@@ -226,7 +226,7 @@ export default function HuntSelection({
                   </div>
                 </Panel>
 
-                <Panel title={t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })}>
+                <Panel title={t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })} className="hs-p-sub">
                   <Meter pct={maxed ? 100 : (Math.min(progress.promotionWins, required) / required) * 100} tone="xp" label={t('hunting.subLevelBar', { n: progress.ceiling, m: T.hunting.subLevels })} />
                   <p className="hs-meter-text">{maxed ? t('hunting.subLevelMax') : promotionLine(progress.promotionWins, required, progress.ceiling)}</p>
                   <p className="hs-hint">{t('hunting.subLevelExplain')}</p>

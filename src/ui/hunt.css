@@ -82,7 +82,7 @@
 }
 .hs-zone.selected {
   border-color: var(--c-gold-300);
-  box-shadow: var(--sh-card), 0 0 0 1px rgba(255, 215, 106, 0.4);
+  box-shadow: var(--sh-card), 0 0 0 1px rgba(255, 215, 106, 0.4), inset 6px 0 0 var(--c-gold-300);
 }
 .hs-zone.state-locked {
   color: var(--c-text-muted);
@@ -294,7 +294,7 @@
 }
 .hs-depth.active {
   border-color: var(--c-gold-300);
-  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.4);
+  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.4), inset 6px 0 0 var(--c-gold-300);
 }
 .hs-depth.locked {
   opacity: 0.6;
@@ -483,8 +483,28 @@
     min-height: 130px;
     padding: var(--sp-3);
   }
+  /* one pane at a time: the choice (banner, depth) is followed at once by the start button, then what it costs (inventory, cap, overflow warning); the reading
+     material (drops, promotion) comes after. In-flow, not fixed: the button never covers the depth cards. */
+  .hs-banner {
+    order: 1;
+  }
+  .hs-p-depth {
+    order: 2;
+  }
   .hs-foot {
-    bottom: calc(-1 * var(--sp-4));
+    order: 3;
+    position: static;
+    padding: 0;
+    background: none;
+  }
+  .hs-facts {
+    order: 4;
+  }
+  .hs-p-mats {
+    order: 5;
+  }
+  .hs-p-sub {
+    order: 6;
   }
 }
 @media (min-width: 900px) {
@@ -501,8 +521,4 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
-@media (max-width: 599px) {
-  .hs-foot {
-    bottom: calc(-1 * var(--sp-3) - env(safe-area-inset-bottom, 0px));
-  }
-}
+
