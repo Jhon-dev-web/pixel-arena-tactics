@@ -1,6 +1,7 @@
 // Chooses the real backend (Supabase) or, in a build made with VITE_ADMIN_DEMO=1, a fake one with invented data (for screenshots and for working on the layout).
 // The demo module is imported dynamically behind a build-time constant, so a normal build contains none of it (a test checks the built bundle).
 import { createClient } from '@supabase/supabase-js';
+import { parseDeleteResponse, type DeleteUserResult } from './actions';
 import { type AdminApi, createRpcApi } from './api';
 import type { AuthPort } from './auth';
 import { signInMessage } from './auth';
@@ -50,5 +51,27 @@ export async function createBackend(): Promise<BackendResult> {
       return () => data.subscription.unsubscribe();
     },
   };
-  return { ok: true, backend: { auth, api: createRpcApi(client), demo: false, env: environmentFromBuild(false) } };
+  // The one call that is not an rpc: the Edge Function that deletes an account. It carries the signed-in admin's own session token (verified by the platform, and again by the database, which insists the caller is an admin).
+  async function deleteUser(userId: string, confirm: string): Promise<DeleteUserResult> {
+    const { data } = await client.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return { ok: false, reason: 'session' };
+    try {
+      const res = await fetch(`${String(url).replace(/\/$/, '')}/functions/v1/admin-delete-user`, {
+        method: 'POST',
+        headers: { apikey: String(anon), authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, confirm_username: confirm }),
+      });
+      let body: unknown = null;
+      try {
+        body = await res.json();
+      } catch {
+        body = null;
+      }
+      return parseDeleteResponse(res.status, body);
+    } catch {
+      return { ok: false, reason: 'unavailable' };
+    }
+  }
+  return { ok: true, backend: { auth, api: createRpcApi(client, { deleteUser }), demo: false, env: environmentFromBuild(false) } };
 }

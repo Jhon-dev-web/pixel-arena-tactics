@@ -91,3 +91,18 @@ describe('createRpcApi', () => {
     expect(toError({ message: 'boom' })).toBeInstanceOf(ApiError);
   });
 });
+
+describe('deleteUser (the Edge Function, not an rpc)', () => {
+  test('without the backend wiring it says unavailable and never touches the rpc client', async () => {
+    const { client, calls } = fake(() => ({ data: {}, error: null }));
+    expect(await createRpcApi(client).deleteUser('00000000-0000-4000-8000-000000000001', 'Ana')).toEqual({ ok: false, reason: 'unavailable' });
+    expect(calls).toEqual([]);
+  });
+  test('with the wiring it passes the id and the typed name through untouched', async () => {
+    const { client } = fake(() => ({ data: {}, error: null }));
+    const seen: unknown[][] = [];
+    const api = createRpcApi(client, { deleteUser: async (...a) => (seen.push(a), { ok: true as const, username: 'Ana' }) });
+    expect(await api.deleteUser('00000000-0000-4000-8000-000000000001', 'Ana')).toEqual({ ok: true, username: 'Ana' });
+    expect(seen).toEqual([['00000000-0000-4000-8000-000000000001', 'Ana']]);
+  });
+});

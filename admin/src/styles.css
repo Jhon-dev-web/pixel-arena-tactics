@@ -1308,3 +1308,44 @@ dl.facts dd {
     margin-top: 4px;
   }
 }
+
+/* ---------- account actions (migration 0027) ---------- */
+.btn.danger {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
+}
+.btn.danger:hover:not(:disabled) {
+  background: var(--bad);
+  filter: brightness(1.08);
+}
+.btn.danger-outline {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.action-confirm {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+.action-confirm p {
+  margin: 0 0 8px;
+}
+.action-confirm.danger {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+.action-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}

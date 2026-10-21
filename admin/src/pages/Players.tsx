@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { AccountActions } from '../components/AccountActions';
 import { Drawer } from '../components/Drawer';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
 import { Card, DefList, ExternalLink, Field, Notice, PassBadge, Pill, Skeleton } from '../components/ui';
@@ -170,12 +171,12 @@ export default function PlayersPage() {
         “Passe válido” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nível, andar e profundeza vêm da rotina de cache (atualizada a cada poucas horas); “atividade recente” é o último salvamento do personagem.
       </p>
 
-      {openId ? <PlayerDrawer id={openId} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} /> : null}
+      {openId ? <PlayerDrawer id={openId} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} onDeleted={() => { setOpenId(null); list.reload(); }} /> : null}
     </>
   );
 }
 
-function PlayerDrawer({ id, summary, onClose }: { id: string; summary: PlayerRow | null; onClose: () => void }) {
+function PlayerDrawer({ id, summary, onClose, onDeleted }: { id: string; summary: PlayerRow | null; onClose: () => void; onDeleted: () => void }) {
   const detail = useAsync((a) => a.playerDetail(id), [id]);
   const [reveal, setReveal] = useState(false);
   const close = useCallback(onClose, [onClose]);
@@ -378,6 +379,8 @@ function PlayerDrawer({ id, summary, onClose }: { id: string; summary: PlayerRow
               ))}
             </section>
           ) : null}
+
+          <AccountActions subject={{ userId: id, username: d.account.username, heroName: d.character?.hero_name ?? null, email: d.account.email }} onDeleted={onDeleted} />
         </>
       )}
     </Drawer>

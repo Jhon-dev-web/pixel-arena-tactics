@@ -2,6 +2,7 @@
 // called with the signed-in admin's session.
 // The anon key is public by design (it is in every browser that opens the game); what protects the data is the function itself,
 // which refuses anyone who is not in arena_private.admins. No service key is, or may ever be, in this app.
+import type { DeleteUserResult } from './actions';
 import { flagsArgs, legendaryArgs, marketArgs, playerArgs } from './filters';
 import type { OpsRpcName } from './opsRpcNames';
 import type { PaymentRpcName } from './paymentRpcNames';
@@ -28,6 +29,9 @@ export interface AdminApi {
   ackReport(id: string): Promise<{ id: string; acknowledged: boolean }>;
   // ---- payments to resolve (0022): ONE read; resolving is SQL the owner runs by hand ----
   paymentExceptions(q: PaymentExceptionsQuery): Promise<PaymentExceptionsPage>;
+  // ---- actions that WRITE (0027): each is admin-only in the database and leaves an audit row ----
+  /** Deletes an account through the Edge Function admin-delete-user. `confirm` is the name the owner typed. Never throws for a refusal: the result says why. */
+  deleteUser(userId: string, confirm: string): Promise<DeleteUserResult>;
 }
 
 /** What the app needs from a Supabase client (so tests can pass a fake). */
@@ -55,7 +59,12 @@ export function toError(error: { message: string; code?: string }): Error {
   return new ApiError(error.message);
 }
 
-export function createRpcApi(client: RpcClient): AdminApi {
+/** The calls that are not PostgREST rpc (the Edge Function). Supplied by backend.ts, which owns the session token. */
+export interface ApiExtras {
+  deleteUser?: AdminApi['deleteUser'];
+}
+
+export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminApi {
   async function call<T>(name: RpcName | OpsRpcName | PaymentRpcName, args?: Record<string, unknown>): Promise<T> {
     const { data, error } = await client.rpc(name, args);
     if (error) throw toError(error);
@@ -78,5 +87,6 @@ export function createRpcApi(client: RpcClient): AdminApi {
     setOpsFlag: (key, value, note) => call('admin_set_ops_flag', { p_key: key, p_value: value, p_note: note }),
     ackReport: (id) => call('admin_ack_report', { p_id: id }),
     paymentExceptions: (q) => call<PaymentExceptionsPage>('admin_payment_exceptions', { p_status: q.status, p_page: q.page, p_page_size: q.pageSize }),
+    deleteUser: (userId, confirm) => (extras.deleteUser ? extras.deleteUser(userId, confirm) : Promise.resolve<DeleteUserResult>({ ok: false, reason: 'unavailable' })),
   };
 }

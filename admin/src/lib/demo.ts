@@ -593,6 +593,14 @@ export function createDemoApi(): AdminApi {
       const out: FlagsPage = { ...page, reasons: [...counts.entries()].map(([code, players]) => ({ code, players })).sort((a, b) => b.players - a.players), reset_at: w.overview.league.reset_at };
       return delay(out);
     },
+    async deleteUser(userId, confirm) {
+      const i = w.players.findIndex((p) => p.user_id === userId);
+      if (i < 0) return delay({ ok: false as const, reason: 'USER_NOT_FOUND' as const });
+      const name = (w.players[i].username ?? w.players[i].hero_name ?? '').toLowerCase();
+      if (!name || confirm.trim().toLowerCase() !== name) return delay({ ok: false as const, reason: 'CONFIRM_MISMATCH' as const });
+      const [gone] = w.players.splice(i, 1);
+      return delay({ ok: true as const, username: gone.username });
+    },
     league: (_season, top) => delay({ ...w.league, top: w.league.top.slice(0, top) }),
     waitlist: (days) => delay({ ...w.waitlist, days, by_day: w.waitlist.by_day.slice(-Math.min(days, 30)) }),
   };

@@ -8,6 +8,8 @@ export const EDGE_ENV_NAMES = [
   'STRIPE_PRICE_ADVENTURER_PASS',
   'STRIPE_WEBHOOK_SECRET',
   'APP_ORIGIN',
+  // The admin dashboard's own origin (CORS of admin-delete-user), kept apart from APP_ORIGIN so the game's functions never answer the dashboard and vice versa.
+  'ADMIN_ORIGIN',
   // The Solana market and the USDC Pass (docs/MARKET_SOLANA.md). SOLANA_RPC_URL may carry the provider's API key: it is read here and used by the chain module only, never logged or returned.
   'SOLANA_RPC_URL',
   'SOLANA_CLUSTER',

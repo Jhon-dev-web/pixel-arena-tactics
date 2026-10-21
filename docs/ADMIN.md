@@ -106,3 +106,29 @@ VITE_ADMIN_DEMO=1 npm run dev   # painel com dados inventados (porta 5225), sem 
 `npm test` roda as migrations **0001 a 0026 de verdade** num Postgres em memória (PGlite, só em testes), semeia um mundo pequeno e chama cada função como `authenticated` e `anon`: confere permissões, os números, a classificação de Lendários (garantia, Selo, Caça, Chefe, peça vendida com dono atual), que cada função roda em transação somente leitura e que as rotinas de agregação funcionam. Isso **não substitui** o plano de teste SQL no Supabase de desenvolvimento (PGlite não é o Postgres do Supabase: papéis, `auth` e `pg_cron` são simulados ou ausentes).
 
 O app não faz parte do `tsc`, do `eslint` nem do `vitest` do jogo (excluído como o `portal/`).
+
+## 7. Ações do painel (migration `0027_admin_actions.sql`, ainda não aplicada)
+
+AVISO: **nada disto foi aplicado, implantado ou executado contra um serviço real por este trabalho.** A `0027` e a função `admin-delete-user` só existem no repositório. O painel deixa de ser somente leitura: além dos dois interruptores da seção 1, ele agora pode **apagar uma conta**, **ativar/revogar o Passe** e **gerar códigos promocionais**. Toda ação de escrita segue as mesmas regras:
+
+- **Só administrador.** Cada função começa perguntando `public.is_admin()` e levanta `ADMIN_ONLY` se a resposta for não. A conta de um jogador comum, mesmo logada, recebe a recusa; `anon` recebe "permission denied". O painel só mostra o botão depois do acesso confirmado, mas **quem protege é o banco**.
+- **Do lado do servidor.** Nada é decidido no navegador. Nenhuma chave de serviço entra no painel.
+- **Auditada.** Cada ação grava uma linha em `arena_private.admin_audit` (`id`, `admin_id`, `action`, `target_user`, `details`, `at`). A tabela é **só de acréscimo** (um gatilho recusa `update` e `delete`) e não guarda chave estrangeira para o alvo: o registro "quem apagou quem" sobrevive à conta apagada. Para ler: `select * from arena_private.admin_audit order by id desc limit 50;`.
+- **Confirmada na tela.** Cada botão abre uma confirmação dentro do painel lateral, com as palavras do que vai acontecer.
+
+Botões que gravam levam a marca «grava» (borda tracejada), como os interruptores.
+
+### 7.1 Apagar uma conta
+
+Botão **Apagar conta…** no fim do painel do jogador. A confirmação diz que é **irreversível** e pede que o dono **digite o nome da conta** (nome de usuário; se não houver, o nome do herói; se não houver nenhum dos dois, o e-mail completo). O botão só habilita quando o texto é igual (maiúsculas e minúsculas não importam).
+
+O que acontece, em ordem (Edge Function `admin-delete-user`, JWT verificado):
+1. O painel chama a função com o token da sessão do dono (nunca a chave de serviço).
+2. A função chama `public.admin_delete_user_prepare(user_id, texto digitado)` **com o token do dono**, então `auth.uid()` no banco é o dono. O banco recusa: quem não é admin (`ADMIN_ONLY`), apagar a si mesmo (`ADMIN_DELETE_SELF`), apagar qualquer admin (`ADMIN_DELETE_ADMIN`; tire a linha de `arena_private.admins` antes, à mão), conta inexistente (`USER_NOT_FOUND`) e nome digitado diferente (`CONFIRM_MISMATCH`).
+3. O banco faz um **ensaio da exclusão** dentro de uma sub-transação sempre desfeita. Se alguma chave estrangeira sem cascata (ou gatilho) impedir, responde `blocked` (com o nome da restrição) e grava `delete_user_blocked`; **nada é apagado**.
+4. Só então grava a linha `delete_user` (**antes** de apagar) e a função usa a chave de serviço, no servidor, para chamar `auth.admin.deleteUser` (exclusão definitiva). As cascatas apagam herói, saves, snapshots, Passe, carteira, anúncios abertos, convites etc.
+5. O resultado entra no registro (`delete_user_done` ou `delete_user_failed`).
+
+**Quais tabelas travam a exclusão (verificado nos testes SQL):** todas as chaves estrangeiras para `auth.users` têm `on delete cascade` ou `set null`. O que trava está um nível adiante, no mercado: `item_certificates.origin_certificate_id` (a cópia de um item vendido aponta para o certificado original do vendedor), `market_listings.certificate_id` e `market_reservations.listing_id` (sem cascata, de propósito: o rastro financeiro sobrevive). Na prática: **quem vendeu ou comprou itens no mercado normalmente não pode ser apagado pelo painel** (o painel mostra a restrição e nada é apagado). Contas sem histórico de mercado (a maioria, e todas as de teste) saem sem problema. Mudar isso é decisão de produto: seria preciso trocar essas três chaves por `on delete set null` (e tirar o `not null` de `market_reservations.listing_id`).
+
+**Implantação:** segredo novo `ADMIN_ORIGIN` (a origem https exata do painel, para CORS) e `npx supabase@2.121.0 functions deploy admin-delete-user --project-ref <ref> --use-api` (com verificação de JWT **ligada**, o padrão). Sem `ADMIN_ORIGIN` a função responde 503 e o painel diz que ela não está disponível.
