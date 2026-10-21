@@ -75,13 +75,16 @@ describe('what it refuses', () => {
 });
 
 describe('the dry run finds a foreign key that would block the real deletion', () => {
-  test('Carla sold a piece whose copy lives on with a buyer: blocked, audited, nothing deleted', async () => {
-    const r = await prepare(OWNER, 'authenticated', CARLA, 'Carla');
-    expect(r).toMatchObject({ status: 'blocked', table: 'item_certificates', constraint: 'item_certificates_origin_certificate_id_fkey' });
-    expect(await exists(CARLA)).toBe(true);
+  test('a foreign key without a cascade: blocked, audited, nothing deleted', async () => {
+    await db.query(`create table public.zz_blocker (user_id uuid references auth.users (id))`);
+    await db.query(`insert into public.zz_blocker values ($1)`, [ELOA]);
+    const r = await prepare(OWNER, 'authenticated', ELOA, 'Eloa');
+    expect(r).toMatchObject({ status: 'blocked', table: 'zz_blocker' });
+    expect(await exists(ELOA)).toBe(true);
     const rows = await audit('delete_user_blocked');
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ admin_id: OWNER, target_user: CARLA });
+    expect(rows[0]).toMatchObject({ admin_id: OWNER, target_user: ELOA });
+    await db.query(`drop table public.zz_blocker`);
   });
   test('accounts with game data but no market history pass the dry run (and the dry run deleted nothing)', async () => {
     for (const [id, name] of [[ANA, 'AnaSilva'], [ELOA, 'Eloa'], [BRUNO, 'Bruno']] as const) {
@@ -119,6 +122,20 @@ describe('the happy path', () => {
     expect(Number(await rec(OWNER, 'delete_user_failed'))).toBeGreaterThan(0);
     await expect(rec(OWNER, 'grant_pass')).rejects.toThrow(/AUDIT_BAD_ACTION/);
     await expect(rec(BRUNO, 'delete_user_done')).rejects.toThrow(/AUDIT_BAD_ADMIN/);
+  });
+});
+
+describe('a seller whose piece was bought and resold (0029)', () => {
+  test('Carla can be deleted; Bruno keeps the bought copy (still "bought"), its listing and the sale record', async () => {
+    expect((await prepare(OWNER, 'authenticated', CARLA, 'Carla')).status).toBe('ok');
+    await db.query(`delete from auth.users where id = $1`, [CARLA]);
+    expect(await exists(CARLA)).toBe(false);
+    const copy = (await db.query<any>(`select user_id, status, origin_certificate_id from public.item_certificates where user_id = $1 and request_id = 'bought-1'`, [BRUNO])).rows;
+    expect(copy).toHaveLength(1);
+    expect(copy[0].status).toBe('listed');
+    expect(copy[0].origin_certificate_id).not.toBeNull();
+    expect((await db.query<any>(`select count(*)::int as n from public.market_listings where seller_id = $1 and status = 'open'`, [BRUNO])).rows[0].n).toBe(1);
+    expect((await db.query<any>(`select count(*)::int as n from public.market_sales where seller_id = $1`, [CARLA])).rows[0].n).toBe(2);
   });
 });
 

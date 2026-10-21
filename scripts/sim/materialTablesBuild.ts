@@ -7,6 +7,7 @@ import { ORE_TIERS } from '../../src/game/ores';
 import { WOOD_TIERS } from '../../src/game/woodcutting';
 import { TRADEABLE_MATERIALS } from '../../src/game/tradeableMaterials';
 import { GARDEN_SLOTS } from '../../src/game/engine';
+import { HERO_SKILLS } from '../../src/game/heroSkills';
 import T from '../../src/game/tunables';
 
 /** Slack on every ceiling: rounding of the claim time, the Lure and every small bonus the formulas below do not list one by one. */
@@ -17,7 +18,7 @@ export function buildMaterialTables() {
   const depthMax = (rarity: 'common' | 'uncommon' | 'rare') => Math.max(...HUNTING_DEPTHS.map((d) => d.dropMultiplier[rarity]));
   const subBonus = { common: T.hunting.subLevelDropBonusCommon, uncommon: T.hunting.subLevelDropBonusUncommon, rare: T.hunting.subLevelDropBonusRare };
   const subMax = (rarity: 'common' | 'uncommon' | 'rare') => 1 + subBonus[rarity] * (T.hunting.subLevels - 1);
-  const scentRanks = 2; // heroSkills.ts: skill('h_scent', 'hunter', 2)
+  const scentRanks = HERO_SKILLS.find((s) => s.id === 'h_scent')!.maxRank;
   const materialsMult = 1 + scentRanks * T.heroSkills.scentMaterials;
   const passMult = T.battlePass.dropRateMultiplier;
 

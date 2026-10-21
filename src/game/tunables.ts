@@ -615,7 +615,7 @@ const T = DebugPanel.define({
     bastionCooldownMs: { value: 60000, min: 5000, max: 600000, step: 5000, label: 'Ultimo Bastiao: Hunting cooldown (ms of combat time)' },
     // Cacador
     greedGold: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Ganancia: extra Gold per rank (outside the gear cap)' },
-    scentMaterials: { value: 0.07, min: 0, max: 0.3, step: 0.005, label: 'Faro: Hunting material yield per rank' },
+    scentMaterials: { value: 0.0334, min: 0, max: 0.3, step: 0.0001, label: 'Faro: Hunting material yield per rank (3 ranks = +10%, the same as the Pass)' },
     quickLearnerXp: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Aprendiz Veloz: character XP per rank' },
     packerSlots: { value: 2, min: 0, max: 10, step: 1, label: 'Mochileiro: inventory slots per rank' },
     gathererYield: { value: 0.06, min: 0, max: 0.3, step: 0.005, label: 'Coletor: Mining and Woodcutting yield per rank' },

@@ -328,6 +328,7 @@ grant execute on function public.admin_revoke_pass(uuid, text) to authenticated;
 -- PART C. Promo codes.
 -- =======================================================================================================================================
 -- The owner generates codes in the dashboard; a player types one in Settings > "Codigo promocional". For now a code gives ONE thing: the Adventurer Pass (reward_kind 'pass').
+--   (SUPERSEDED by 0028: codes can now also give Gold, Eter and potions through a server credit ledger. The note below explains why that needed a ledger.)
 --
 --   * Gold / Aether are NOT rewards here on purpose. The server never writes the save: gold and Aether live in the client save, and submit-progress only BOUNDS what a save may claim from play (time, floors, drops).
 --     There is no server-side "credit" that the bounds add to the allowance (referral cosmetics and titles are applied by the client from a server-granted record, and carry no number the bounds see). A promo

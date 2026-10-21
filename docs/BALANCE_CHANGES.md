@@ -3563,7 +3563,7 @@ O ritmo a partir do dia 14 e o do dia 60 não mudaram (diferenças dentro do ru�
 
 Golpe de Fúria, Mestre de Armas, Pele Dura, Muralha, Espinhos, Último Bastião e os capstones ficam. Espinhos continua abaixo da faixa no nível 100 (1,0% por ponto) e o Devastador (capstone, 1 ponto) em ~12%; não foram pedidos. Postura Firme na Caça: só as lutas de promoção de sub-nível e a Caçada ao Alvo (as únicas de risco) recebem a redução; lutas comuns não mudam (a build de quem não tem a habilidade é idêntica bit a bit).
 
-**Faro (Caçador) não mudou:** +21% de materiais, contra +10% do Passe, e empilha (x1,33 com o Passe). Fica como decisão do dono.
+**Faro (Caçador) não mudou aqui:** +21% de materiais, contra +10% do Passe. O dono decidiu depois: +10% (Rodada 30).
 
 **Medido** (`npm run sim:skills`, funções reais; Guerreiro/Guardião completos, 19 pontos, margem de duelo):
 
@@ -3577,3 +3577,9 @@ Golpe de Fúria, Mestre de Armas, Pele Dura, Muralha, Espinhos, Último Bastião
 Olho Clínico ficou em +2,6% por posto (e não nos 4% do relatório) porque o alcance das Profundezas é sensível a crítico: com 3,4% o Guerreiro ganhava 3 profundidades. O Guerreiro completo cedeu ~4 pontos de duelo e ~6% do ganho de kills/h na Caça (dentro dos 10% pedidos).
 
 `npm run sim` (20 seeds x 21 dias, antes -> depois): nível mediano no dia 5 / 7 / 14 / 21 = 22 / 35 / 46 / 49 -> 22 / 35 / 46 / 49; chegada ao andar 50 mediana 12,5 -> 13 e chefe 50 14 -> 13,5 (dentro do ruído; o chefe 50 já estava fora da meta antes). Nenhum marco de nível mudou.
+
+## Rodada 30 — Faro igual ao Passe (2026-10-21)
+
+Decisão do dono: o **Faro** (Caçador) passa de +7 / 14 / 21% para **+3,3 / 6,7 / 10%** de materiais na Caça (`T.heroSkills.scentMaterials` 0,07 -> 0,0334), o mesmo que o Passe (+10%). Com o Passe, empilha em x1,21 (antes x1,33).
+
+O teto de materiais por hora do servidor (`npm run material:tables`) contava o Faro com 2 pontos (confundia o tier da habilidade com o número de pontos); agora lê o máximo real (3 pontos) de `heroSkills.ts`. Com o novo valor, o teto ficou um pouco mais baixo que antes (x1,10 em vez de x1,14 pelo Faro).

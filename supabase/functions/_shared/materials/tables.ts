@@ -43,28 +43,28 @@ export const MATERIAL_CLASS: Readonly<Record<string, 'common' | 'uncommon' | 'ra
 /** Hunting: the most units an hour of each drop of each zone (the most economic rolls an hour x chance x best depth x best sub-level x Pass x Faro x Lure, with a small slack). */
 export const HUNT_CEILING: Readonly<Record<string, Readonly<Record<string, number>>>> = {
   "demon_glade": {
-    "leather_scrap": 138.80212500000002,
-    "demon_claw": 138.659991624,
-    "demon_core": 16.005994804800004
+    "leather_scrap": 133.95622625000001,
+    "demon_claw": 133.81905507432,
+    "demon_core": 15.447189021264004
   },
   "blood_marsh": {
-    "bone_fragment": 155.45838000000003,
-    "concentrated_blood": 155.992490577,
-    "corrupted_crystal": 24.008992207200006
+    "bone_fragment": 150.03097340000002,
+    "concentrated_blood": 150.54643695861,
+    "corrupted_crystal": 23.170783531896003
   },
   "demon_rift": {
-    "leather_scrap": 177.66672,
-    "demon_claw": 181.9912390065,
-    "demon_core": 40.01498701200001,
-    "rift_shard": 43.3312473825,
-    "fiend_horn": 3.8871701668800003
+    "leather_scrap": 171.4639696,
+    "demon_claw": 175.63750978504495,
+    "demon_core": 38.61797255316001,
+    "rift_shard": 41.81845471072501,
+    "fiend_horn": 3.7514601908784
   },
   "blood_abyss": {
-    "bone_fragment": 66.62502,
-    "concentrated_blood": 62.396996230800006,
-    "corrupted_crystal": 12.118824637920003,
-    "abyssal_marrow": 22.87889861796,
-    "blood_heart": 4.801798441440002
+    "bone_fragment": 64.2989886,
+    "concentrated_blood": 60.218574783444005,
+    "corrupted_crystal": 11.695728830385605,
+    "abyssal_marrow": 22.080144087262802,
+    "blood_heart": 4.6341567063792
   }
 };
 
