@@ -20,7 +20,7 @@ const l = localized;
 // the data is unavailable: it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
 // "anon" key (it is public by design and protected by the database rules). The service key must NEVER be written here.
 export const config = {
-  playtestAt: '2026-10-31T23:00:00Z', // 31/10, 20h Brasília (UTC-3)
+  playtestAt: '2026-10-31T06:00:00Z', // 31/10, 3h da manhã de Brasília (UTC-3)
   playUrl: null, passSalesOpen: false, passPrice: '10 USDC', siteUrl: null,
   company: { legalName: 'HOURAN', cnpj: null, supportEmail: 'arenaidlesupport@gmail.com' },
   legalLive: { terms: false, privacy: true, refund: false, seasonRules: false }, waitlistEnabled: true, referralEnabled: false,
@@ -451,7 +451,7 @@ export const home = {
   countdown: {
     label: l('O playtest começa em', 'The playtest starts in'),
     units: [l('dias', 'days'), l('horas', 'hours'), l('min', 'min'), l('seg', 'sec')],
-    date: l('31 de outubro, às 20h (horário de Brasília)', 'October 31, 8 pm Brasília time (UTC−3)'),
+    date: l('31 de outubro, às 3h da manhã (horário de Brasília)', 'October 31, 3 am Brasília time (UTC−3)'),
     started: l('O playtest começou!', 'The playtest has started!'),
     startedNote: l('Deixe seu e-mail para receber o link do jogo.', 'Leave your email to get the link to the game.'),
   },
