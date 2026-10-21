@@ -3,6 +3,7 @@ import { Icon, Notice, Skeleton, type IconName } from './components/ui';
 import { AppContext } from './hooks';
 import { type Access, resolveAccess } from './lib/auth';
 import type { Backend } from './lib/backend';
+import { describeEnvironment, type EnvInfo } from './lib/environment';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const Players = lazy(() => import('./pages/Players'));
@@ -110,11 +111,10 @@ export function LoginScreen({ backend, onDone }: { backend: Backend; onDone: () 
     <main className="center-screen">
       <form className="card auth-card" onSubmit={submit}>
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            A
-          </span>
+          <img className="brand-emblem" src="/emblem.png" alt="" width="28" height="28" />
           <span>Arena Idle · Admin</span>
         </div>
+        <EnvChip env={envOf(backend)} />
         <h1>Entrar</h1>
         <p>Use a conta de administrador do jogo.</p>
         <label className="field">
@@ -164,6 +164,21 @@ export function ConfigMissing() {
   );
 }
 
+/** What the panel is connected to, from public build settings. The real/test flag of each record stays on the record: this chip is about the app, not about a row. */
+function envOf(backend: Backend): EnvInfo {
+  return backend.env ?? describeEnvironment({ demo: backend.demo });
+}
+
+export function EnvChip({ env }: { env: EnvInfo }) {
+  return (
+    <div className={`env-chip env-${env.kind}`} role="status" title={env.detail}>
+      <strong>{env.label}</strong>
+      {env.ref ? <span className="mono">{env.ref.slice(0, 8)}</span> : null}
+      <span className="sr-only">. {env.detail}</span>
+    </div>
+  );
+}
+
 function Shell({ backend, email, onSignOut }: { backend: Backend; email: string | null; onSignOut: () => void }) {
   const route = useRoute();
   const Page = PAGES[route];
@@ -171,14 +186,13 @@ function Shell({ backend, email, onSignOut }: { backend: Backend; email: string 
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            A
-          </span>
+          <img className="brand-emblem" src="/emblem.png" alt="" width="28" height="28" />
           <span>
             Arena Idle
-            <small>Painel do dono{backend.demo ? ' · demonstração' : ''}</small>
+            <small>Painel do dono</small>
           </span>
         </div>
+        <EnvChip env={envOf(backend)} />
         <nav className="nav" aria-label="Seções">
           {ROUTES.map((r) => (
             <a key={r.id} href={`#/${r.id}`} aria-current={r.id === route ? 'page' : undefined}>

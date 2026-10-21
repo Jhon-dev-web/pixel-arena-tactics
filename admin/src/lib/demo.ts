@@ -4,6 +4,7 @@ import type { AdminApi } from './api';
 import type { AuthPort } from './auth';
 import { createDemoOpsApi } from './demoOps';
 import type { Backend } from './backend';
+import { describeEnvironment } from './environment';
 import { maskEmail } from './format';
 import type {
   Economy,
@@ -621,5 +622,5 @@ export function createDemoBackend(): Backend {
       return () => listeners.delete(cb);
     },
   };
-  return { auth, api: createDemoApi(), demo: true };
+  return { auth, api: createDemoApi(), demo: true, env: describeEnvironment({ demo: true }) };
 }

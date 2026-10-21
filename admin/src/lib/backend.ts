@@ -4,11 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 import { type AdminApi, createRpcApi } from './api';
 import type { AuthPort } from './auth';
 import { signInMessage } from './auth';
+import { type EnvInfo, environmentFromBuild } from './environment';
 
 export interface Backend {
   auth: AuthPort;
   api: AdminApi;
   demo: boolean;
+  /** Which environment this build is connected to (shown in the shell). Absent = not declared. */
+  env?: EnvInfo;
 }
 
 export type BackendResult = { ok: true; backend: Backend } | { ok: false; reason: 'missing-config' };
@@ -47,5 +50,5 @@ export async function createBackend(): Promise<BackendResult> {
       return () => data.subscription.unsubscribe();
     },
   };
-  return { ok: true, backend: { auth, api: createRpcApi(client), demo: false } };
+  return { ok: true, backend: { auth, api: createRpcApi(client), demo: false, env: environmentFromBuild(false) } };
 }

@@ -1198,3 +1198,62 @@ dl.facts dd {
   align-items: center;
   gap: 6px 10px;
 }
+
+/* ---------- brand emblem and connected environment ---------- */
+.brand-emblem {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  image-rendering: auto;
+  object-fit: contain;
+}
+.env-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 10px 10px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.env-chip strong {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.env-chip .mono {
+  color: var(--faint);
+}
+.env-demo {
+  border-style: dashed;
+}
+.env-teste {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+.env-producao {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-color: transparent;
+}
+.env-inconsistente,
+.env-desconhecido {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: transparent;
+}
+.auth-card .env-chip {
+  margin: 0 0 12px;
+  align-self: flex-start;
+}
+@media (max-width: 860px) {
+  .env-chip {
+    margin: 0 4px 0 0;
+    flex: none;
+    white-space: nowrap;
+  }
+}

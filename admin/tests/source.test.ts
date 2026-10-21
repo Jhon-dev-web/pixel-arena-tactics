@@ -48,9 +48,9 @@ describe('the source only calls the admin functions (reads, and the two audited 
     }
   });
 
-  test('the environment variables read are the two public names (plus the demo flag)', () => {
+  test('the environment variables read are the two Supabase names, the demo flag and the two public environment labels', () => {
     const names = new Set<string>();
     for (const { text } of sources) for (const m of text.matchAll(/import\.meta\.env\.([A-Z_]+)/g)) names.add(m[1]);
-    expect([...names].sort()).toEqual(['VITE_ADMIN_DEMO', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_URL']);
+    expect([...names].sort()).toEqual(['VITE_ADMIN_DEMO', 'VITE_ADMIN_ENV', 'VITE_ADMIN_PRODUCTION_REF', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_URL']);
   });
 });
