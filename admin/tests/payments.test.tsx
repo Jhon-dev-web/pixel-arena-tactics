@@ -126,3 +126,30 @@ describe('the helpers and the api', () => {
     expect(PAYMENT_RPC_NAMES).toEqual(['admin_payment_exceptions']);
   });
 });
+
+describe('reading a row before reaching the SQL helper (A05)', () => {
+  test('value with currency, network, origin and reason come before the column that only copies SQL', async () => {
+    setup();
+    const table = await screen.findByRole('table', { name: 'Pagamentos a resolver' });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(3));
+    const headers = within(table).getAllByRole('columnheader').map((h) => h.textContent ?? '');
+    const at = (re: RegExp) => headers.findIndex((h) => re.test(h));
+    const sql = at(/copia SQL/);
+    expect(sql).toBe(headers.length - 1);
+    for (const re of [/Valor \(moeda\)/, /Rede/, /Origem/, /Motivo/]) expect(at(re)).toBeGreaterThanOrEqual(0), expect(at(re)).toBeLessThan(sql);
+    expect(table.textContent).toContain('Solana');
+    expect(table.textContent).toContain('teste (devnet)');
+    expect(headers[sql]).toContain('não executa nada');
+  });
+
+  test('a failed load offers a retry and the table does not claim the queue is empty', async () => {
+    let fail = true;
+    const base = createDemoApi();
+    setup({ paymentExceptions: async (q) => (fail ? Promise.reject(new Error('sem rede')) : base.paymentExceptions(q)) });
+    expect(await screen.findByText(/Não foi possível carregar: sem rede/)).toBeTruthy();
+    expect(document.body.textContent).not.toContain('Nenhum pagamento em aberto');
+    fail = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+    await waitFor(() => expect(screen.queryByText(/Não foi possível carregar/)).toBeNull());
+  });
+});

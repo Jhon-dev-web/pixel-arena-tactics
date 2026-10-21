@@ -58,11 +58,28 @@ const COLUMNS: Column<PaymentExceptionRow>[] = [
       </span>
     ),
   },
-  { key: 'what', header: 'O quê', cell: (r) => (r.purpose === 'pass' ? 'Passe do Aventureiro' : 'Compra no mercado') },
-  { key: 'amount', header: 'Chegou', align: 'num', cell: (r) => amountText(r) },
+  {
+    key: 'amount',
+    header: 'Valor (moeda)',
+    cell: (r) => (
+      <span>
+        <strong>{amountText(r)}</strong>
+        <div className="faint">{r.purpose === 'pass' ? 'Passe do Aventureiro' : 'Compra no mercado'}</div>
+      </span>
+    ),
+  },
+  {
+    key: 'net',
+    header: 'Rede',
+    cell: (r) => (
+      <span>
+        Solana {r.livemode ? <Pill tone="good">real</Pill> : <Pill tone="warn">teste (devnet)</Pill>}
+      </span>
+    ),
+  },
   {
     key: 'why',
-    header: 'Por que não casou',
+    header: 'Motivo (por que não casou)',
     cell: (r) => (
       <span>
         <Pill tone={exceptionReasonInfo(r.reason).tone}>{exceptionReasonInfo(r.reason).label}</Pill>
@@ -72,7 +89,7 @@ const COLUMNS: Column<PaymentExceptionRow>[] = [
   },
   {
     key: 'payer',
-    header: 'Pagou com',
+    header: 'Origem (quem pagou)',
     cell: (r) => (
       <span>
         {r.payer_address ? (
@@ -97,7 +114,6 @@ const COLUMNS: Column<PaymentExceptionRow>[] = [
       </ExternalLink>
     ),
   },
-  { key: 'net', header: 'Rede', cell: (r) => (r.livemode ? <Pill tone="good">real</Pill> : <Pill tone="warn">teste</Pill>) },
   {
     key: 'status',
     header: 'Estado',
@@ -110,12 +126,12 @@ const COLUMNS: Column<PaymentExceptionRow>[] = [
   },
   {
     key: 'sql',
-    header: 'Resolver',
+    header: 'Só copia SQL (não executa nada)',
     cell: (r) =>
       r.status !== 'open' ? (
         DASH
       ) : (
-        <span className="row-actions">
+        <span className="row-actions" title="Estes botões só copiam o texto do SQL para a área de transferência. Quem roda é você, no editor SQL do Supabase.">
           {r.purpose === 'pass' && r.user_id ? <CopyButton text={grantSql(r.signature)} label="Copiar SQL: conceder o Passe" /> : null}
           <CopyButton text={refundSql(r.signature)} label="Copiar SQL: marcar devolvido" />
         </span>
@@ -155,7 +171,14 @@ export default function PagamentosPage() {
         </div>
       </div>
 
-      {data.error ? <Notice tone="bad">Não foi possível carregar: {data.error}</Notice> : null}
+      {data.error ? (
+        <Notice tone="bad">
+          Não foi possível carregar: {data.error}{' '}
+          <button type="button" className="btn" onClick={() => data.reload()}>
+            Tentar de novo
+          </button>
+        </Notice>
+      ) : null}
       {open !== null && open > 0 ? <Notice tone="warn">{open === 1 ? '1 pagamento espera por você.' : `${fmtInt(open)} pagamentos esperam por você.`} O jogador já viu o código dele na tela do Passe.</Notice> : null}
 
       <div className="kpis" style={{ margin: '12px 0' }}>
@@ -182,7 +205,7 @@ export default function PagamentosPage() {
       </div>
 
       <Card flush>
-        <DataTable<PaymentExceptionRow> caption="Pagamentos a resolver" columns={COLUMNS} rows={data.data?.rows ?? []} rowKey={(r) => r.id} loading={data.loading} empty={status === 'open' ? 'Nenhum pagamento em aberto. Tudo certo.' : 'Nada para mostrar.'} />
+        <DataTable<PaymentExceptionRow> caption="Pagamentos a resolver" columns={COLUMNS} rows={data.data?.rows ?? []} rowKey={(r) => r.id} loading={data.loading} empty={data.error && !data.data ? 'A lista não carregou (veja o aviso acima).' : status === 'open' ? 'Nenhum pagamento em aberto. Tudo certo.' : 'Nada para mostrar.'} />
         <Pager page={page} total={data.data?.total ?? 0} size={PAGE_SIZE} onPage={setPage} />
       </Card>
 
