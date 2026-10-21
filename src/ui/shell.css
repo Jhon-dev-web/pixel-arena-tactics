@@ -728,3 +728,27 @@
     animation: none;
   }
 }
+
+/* pixel icons inside the top-bar buttons; the sound toggle is a note, struck through when muted (no emoji) */
+.desktop-topbar-settings .pixel-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.topbar-sound {
+  position: relative;
+  line-height: 1;
+}
+.topbar-sound.off {
+  color: var(--c-text-muted);
+}
+.topbar-sound.off::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 50%;
+  border-top: 3px solid var(--c-bad);
+  transform: rotate(-35deg);
+}

@@ -22,10 +22,10 @@
     "cta": "Let's begin"
   },
   "welcome": {
-    "title": "🏕️ Welcome to Camp!",
+    "title": "Welcome to Camp!",
     "idleTip": "This is an idle game — your hero keeps progressing even with the game closed.",
     "startTip": "Tap Mining, Woodcutting, or Open Hunt to start an activity, then come back later to collect the results.",
-    "saveWarning": "⚠️ Your progress is tied to your account. If you're not signed in, it stays only on this browser/device.",
+    "saveWarning": "Your progress is tied to your account. If you're not signed in, it stays only on this browser/device.",
     "cta": "Got it, let's go!"
   },
   "auth": {
@@ -493,8 +493,8 @@
   },
   "camp": {
     "title": "Base Camp",
-    "enterArena": "⚔️ DUNGEON",
-    "returnCamp": "🏕️ Return to Camp",
+    "enterArena": "DUNGEON",
+    "returnCamp": "Return to Camp",
     "training": "Training...",
     "level": "Lv {n}",
     "xp": "XP: {n}",

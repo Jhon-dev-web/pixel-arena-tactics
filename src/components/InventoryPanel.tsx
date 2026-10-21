@@ -1,3 +1,4 @@
+import PixelIcon from './PixelIcon';
 import { useContext, useEffect, useState } from 'react';
 import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { fmtNum, t } from '../locales';
@@ -349,7 +350,7 @@ export default function InventoryPanel({
                 </span>
                 {tradeTag(inst) && (
                   <span className={`inv-trade-tag ${tradeTag(inst)}`} title={t(`inventory.${tradeTag(inst) === 'tradeable' ? 'tradeable' : 'bound'}`)} aria-label={t(`inventory.${tradeTag(inst) === 'tradeable' ? 'tradeable' : 'bound'}`)}>
-                    {tradeTag(inst) === 'tradeable' ? '◆' : '🔒'}
+                    {tradeTag(inst) === 'tradeable' ? '◆' : <PixelIcon name="lock" className="sm" />}
                   </span>
                 )}
               </button>

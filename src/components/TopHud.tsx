@@ -34,7 +34,7 @@ export default function TopHud({
           <div className="profile-stats">
             <span className="level">{levelLabel(save, true)}</span>
             <span className="cp-inline">
-              ⚔️ CP <span className="num-abbr">{formatNumber(computeCP(save))}</span>
+              CP <span className="num-abbr">{formatNumber(computeCP(save))}</span>
             </span>
           </div>
         </div>

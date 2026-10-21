@@ -1,4 +1,5 @@
 import { t } from '../locales';
+import PixelIcon from './PixelIcon';
 import { Button, ModalShell } from './ui';
 
 export default function AdminModal({
@@ -19,7 +20,7 @@ export default function AdminModal({
   onClose: () => void;
 }) {
   return (
-    <ModalShell className="admin-modal" icon={<span aria-hidden>🛠️</span>} title={t('admin.title')} closeLabel={t('ui.close')} onClose={onClose}>
+    <ModalShell className="admin-modal" icon={<PixelIcon name="admin" />} title={t('admin.title')} closeLabel={t('ui.close')} onClose={onClose}>
       <div className="ui-cq admin-list">
         <Button block onClick={onGold}>
           {t('admin.gold')}

@@ -22,10 +22,10 @@
     "cta": "Vamos começar"
   },
   "welcome": {
-    "title": "🏕️ Bem-vindo ao Acampamento!",
+    "title": "Bem-vindo ao Acampamento!",
     "idleTip": "Este é um jogo idle — seu herói continua progredindo mesmo com o jogo fechado.",
     "startTip": "Toque em Mineração, Lenhaçaria ou Caça Aberta pra iniciar uma atividade, depois volte mais tarde pra coletar o resultado.",
-    "saveWarning": "⚠️ Seu progresso fica vinculado à sua conta. Se você não estiver logado, ele fica só neste navegador/aparelho.",
+    "saveWarning": "Seu progresso fica vinculado à sua conta. Se você não estiver logado, ele fica só neste navegador/aparelho.",
     "cta": "Entendi, vamos lá!"
   },
   "auth": {
@@ -493,8 +493,8 @@
   },
   "camp": {
     "title": "Acampamento",
-    "enterArena": "⚔️ MASMORRA",
-    "returnCamp": "🏕️ Voltar ao Acampamento",
+    "enterArena": "MASMORRA",
+    "returnCamp": "Voltar ao Acampamento",
     "training": "Treinando...",
     "level": "Nv {n}",
     "xp": "XP: {n}",

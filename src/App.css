@@ -2883,3 +2883,10 @@ button[data-ui]:focus-visible {
 }
 
 /* ===== first League reset (leagueReset.ts) ===== */
+
+/* the small pixel icon: beside a label, a lock marker, a stat line */
+.pixel-icon.sm {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+}

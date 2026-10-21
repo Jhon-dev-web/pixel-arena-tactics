@@ -1,3 +1,4 @@
+import PixelIcon from './PixelIcon';
 import { useState } from 'react';
 import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
@@ -72,7 +73,7 @@ export default function ShopModal({
   const tabs: TabItem<ShopTab>[] = [
     { id: 'buy', label: t('shop.buyTab') },
     { id: 'sell', label: t('shop.sellTab') },
-    { id: 'wholesale', label: wholesaleUnlocked(save) ? t('shop.wholesaleTab') : `🔒 ${t('shop.wholesaleTab')}` },
+    { id: 'wholesale', label: wholesaleUnlocked(save) ? t('shop.wholesaleTab') : <><PixelIcon name="lock" className="sm" /> {t('shop.wholesaleTab')}</> },
     { id: 'pouch', label: t('shop.pouchTab') },
   ];
 

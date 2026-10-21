@@ -102,6 +102,7 @@ import SkillsView from './components/SkillsView';
 import DungeonMapModal from './components/DungeonMapModal';
 import HuntModal from './components/HuntModal';
 import HuntNavMini from './components/HuntNavMini';
+import PixelIcon from './components/PixelIcon';
 import BattleModal from './components/BattleModal';
 import DeliveryModal from './components/DeliveryModal';
 import MiningModal from './components/MiningModal';
@@ -2392,53 +2393,53 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     {
       key: 'main',
       items: [
-        { key: 'hero', icon: '🧝', label: t('nav.hero'), active: activeView === 'personagem', badge: attributePointsAvailable(save) > 0, onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
-        { key: 'skills', icon: <img className="pixel-icon" src="/assets/icons/skill_path_warrior.png" alt="" />, label: t('nav.skills'), active: activeView === 'skills', badge: skillPointsAvailable(save, level) > 0, tutorialTarget: 'skills', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('skills'); } },
-        { key: 'hunt', icon: <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
-        { key: 'dungeon', icon: <img className="pixel-icon" src="/assets/icons/dragon_flameblade.png" alt="" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
-        { key: 'quests', icon: <img className="pixel-icon" src="/assets/icons/nav_quests.png" alt="" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) + periodClaimable(save, Date.now(), ownsAdventurerPass(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
-        { key: 'codex', icon: '📖', label: t('codex.nav'), active: codexOpen, onClick: () => { closeDrawer(); playSfx('click'); setCodexOpen(true); } },
+        { key: 'hero', icon: <PixelIcon name="hero" />, label: t('nav.hero'), active: activeView === 'personagem', badge: attributePointsAvailable(save) > 0, onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
+        { key: 'skills', icon: <PixelIcon name="skills" />, label: t('nav.skills'), active: activeView === 'skills', badge: skillPointsAvailable(save, level) > 0, tutorialTarget: 'skills', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('skills'); } },
+        { key: 'hunt', icon: <PixelIcon name="hunt" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
+        { key: 'dungeon', icon: <PixelIcon name="dungeon" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
+        { key: 'quests', icon: <PixelIcon name="quests" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) + periodClaimable(save, Date.now(), ownsAdventurerPass(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
+        { key: 'codex', icon: <PixelIcon name="codex" />, label: t('codex.nav'), active: codexOpen, onClick: () => { closeDrawer(); playSfx('click'); setCodexOpen(true); } },
       ],
     },
     {
       key: 'professions',
       header: t('nav.groupProfessions'),
       items: [
-        { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, label: t('nav.mining'), active: mineOpen, badge: computeMiningStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
-        { key: 'woodcutting', icon: <img className="pixel-icon" src="/assets/icons/oak_wood.png" alt="" />, label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
-        { key: 'garden', icon: <img className="pixel-icon" src="/assets/icons/common_herb.png" alt="" />, label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { closeDrawer(); playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
-        { key: 'oficios', icon: <img className="pixel-icon" src="/assets/icons/refine_catalyst.png" alt="" />, label: t('nav.oficios'), active: activeView === 'oficios', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('oficios'); } },
+        { key: 'mining', icon: <PixelIcon name="mining" />, label: t('nav.mining'), active: mineOpen, badge: computeMiningStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
+        { key: 'woodcutting', icon: <PixelIcon name="woodcutting" />, label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
+        { key: 'garden', icon: <PixelIcon name="garden" />, label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { closeDrawer(); playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
+        { key: 'oficios', icon: <PixelIcon name="oficios" />, label: t('nav.oficios'), active: activeView === 'oficios', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('oficios'); } },
       ],
     },
     {
       key: 'equipment',
       header: t('nav.groupEquipment'),
       items: [
-        { key: 'forge', icon: <img className="pixel-icon" src="/assets/icons/steel.png" alt="" />, label: t('nav.forge'), active: activeView === 'forja', tutorialTarget: 'forge', onClick: () => {
+        { key: 'forge', icon: <PixelIcon name="forge" />, label: t('nav.forge'), active: activeView === 'forja', tutorialTarget: 'forge', onClick: () => {
             closeDrawer();
             playSfx('click');
             setActiveView('forja');
             if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
           } },
-        { key: 'inventory', icon: <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />, label: t('nav.inventory'), active: bagOpen, onClick: () => { closeDrawer(); playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
+        { key: 'inventory', icon: <PixelIcon name="inventory" />, label: t('nav.inventory'), active: bagOpen, onClick: () => { closeDrawer(); playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
       ],
     },
     {
       key: 'economy',
       header: t('nav.groupEconomy'),
       items: [
-        { key: 'deliveries', icon: <img className="pixel-icon" src="/assets/icons/expedition_ticket_2h.png" alt="" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
-        { key: 'battlePass', icon: <img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />, label: t('nav.battlePass'), active: activeView === 'passe', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('passe'); } },
+        { key: 'deliveries', icon: <PixelIcon name="deliveries" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
+        { key: 'battlePass', icon: <PixelIcon name="pass" />, label: t('nav.battlePass'), active: activeView === 'passe', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('passe'); } },
         // Inviting friends is online only (an account holds the code): no entry in the offline / desktop build.
-        ...(configured ? [{ key: 'invites', icon: '🤝', label: t('invites.nav'), active: activeView === 'convites', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('convites'); } }] : []),
-        { key: 'shop', icon: <img className="pixel-icon" src="/assets/icons/gold.png" alt="" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopTab('buy'); setShopOpen(true); } },
-        ...(marketOn ? [{ key: 'market', icon: <img className="pixel-icon" src="/assets/icons/gold_pouch.png" alt="" />, label: mt('title'), active: activeView === 'mercado', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('mercado'); } }] : []),
+        ...(configured ? [{ key: 'invites', icon: <PixelIcon name="invites" />, label: t('invites.nav'), active: activeView === 'convites', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('convites'); } }] : []),
+        { key: 'shop', icon: <PixelIcon name="shop" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopTab('buy'); setShopOpen(true); } },
+        ...(marketOn ? [{ key: 'market', icon: <PixelIcon name="market" />, label: mt('title'), active: activeView === 'mercado', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('mercado'); } }] : []),
       ],
     },
     {
       key: 'settings',
       items: [
-        { key: 'settings', icon: '⚙️', label: t('nav.settings'), active: settingsOpen, onClick: () => { closeDrawer(); playSfx('click'); setSettingsOpen(true); } },
+        { key: 'settings', icon: <PixelIcon name="settings" />, label: t('nav.settings'), active: settingsOpen, onClick: () => { closeDrawer(); playSfx('click'); setSettingsOpen(true); } },
       ],
     },
   ];
@@ -2553,7 +2554,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       </div>
       {import.meta.env.DEV && !adminOpen && (
         <button className="dev-admin-fab" onClick={() => setAdminOpen(true)} aria-label="Admin" data-ui>
-          ⚙️
+          <PixelIcon name="admin" />
         </button>
       )}
 

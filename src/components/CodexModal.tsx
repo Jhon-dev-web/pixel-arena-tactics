@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import PixelIcon from './PixelIcon';
 import { fmtNum, fmtPrice, t } from '../locales';
 import { merchantPrice } from '../game/merchant';
 import { wholesaleUnitPrice } from '../game/wholesale';
@@ -325,7 +326,7 @@ export default function CodexModal({ save, onClose }: { save: SaveData; onClose:
   return (
     <ModalShell
       className="cx-modal"
-      icon={<span aria-hidden>📖</span>}
+      icon={<PixelIcon name="codex" />}
       title={t('codex.title')}
       subtitle={t('codex.overall', { pct: progress.overall.pct, n: progress.overall.found, m: progress.overall.total })}
       closeLabel={t('ui.close')}

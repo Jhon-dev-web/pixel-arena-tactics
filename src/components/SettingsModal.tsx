@@ -1,4 +1,5 @@
 import { ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import PixelIcon from './PixelIcon';
 import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { activeLocale, Locale, locales, t } from '../locales';
 import { SaveData, playerLevel } from '../game/engine';
@@ -202,7 +203,7 @@ export default function SettingsModal({
   const prefs = materialPrefs(save);
 
   return (
-    <ModalShell className="st-modal" icon={<span>⚙️</span>} title={t('settings.title')} closeLabel={t('ui.close')} onClose={onClose}>
+    <ModalShell className="st-modal" icon={<PixelIcon name="settings" />} title={t('settings.title')} closeLabel={t('ui.close')} onClose={onClose}>
       <div className="ui-cq">
         <div className="st-grid">
           <Panel title={t('settings.groupAccount')} className="st-panel" data-settings="account">

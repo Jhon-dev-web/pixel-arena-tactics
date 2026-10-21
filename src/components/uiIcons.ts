@@ -1,0 +1,34 @@
+// One picture per activity / screen of the game, used by every place that names it (side menu, Camp, page headers, buttons), so the same thing never shows two different drawings.
+// All are existing pixel-art PNGs in public/assets; where the game has no drawing made for a screen (invites, settings), the closest existing one stands in until the owner's art exists.
+export const UI_ICON = {
+  camp: '/assets/icons/camp_stash.png',
+  hero: '/assets/gear_icons/armor_iron.png',
+  skills: '/assets/icons/skill_path_warrior.png',
+  hunt: '/assets/icons/demon_claw.png',
+  dungeon: '/assets/icons/dragon_flameblade.png',
+  quests: '/assets/icons/nav_quests.png',
+  codex: '/assets/icons/skill_h_quick_learner.png',
+  mining: '/assets/icons/nav_mining.png',
+  woodcutting: '/assets/icons/oak_wood.png',
+  garden: '/assets/icons/common_herb.png',
+  oficios: '/assets/icons/refine_catalyst.png',
+  forge: '/assets/icons/steel.png',
+  inventory: '/assets/icons/nav_bag.png',
+  deliveries: '/assets/icons/expedition_ticket_2h.png',
+  pass: '/assets/icons/nav_battlepass.png',
+  invites: '/assets/icons/warchief_totem.png',
+  shop: '/assets/icons/gold.png',
+  market: '/assets/icons/gold_pouch.png',
+  settings: '/assets/icons/repair_kit.png',
+  admin: '/assets/icons/master_repair_kit.png',
+  level: '/assets/icons/xp_potion.png',
+  lock: '/assets/icons/garden_plot_locked.png',
+  gem: '/assets/icons/gem_ruby.png',
+  title: '/assets/icons/season_emblem.png',
+  marketBuy: '/assets/icons/gold_pouch_small.png',
+  marketSell: '/assets/icons/gold.png',
+  marketOffers: '/assets/icons/camp_stash.png',
+  marketHistory: '/assets/icons/nav_quests.png',
+} as const;
+
+export type UiIconName = keyof typeof UI_ICON;

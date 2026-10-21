@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import PixelIcon from './PixelIcon';
 import { activeLocale, t } from '../locales';
 import { copyText } from '../lib/errorLog';
 import { fetchInvite, fetchReferralTiers, gameInviteLink, shareLinks, tierProgress } from '../lib/referral';
@@ -140,7 +141,7 @@ export function InvitesPage({ online }: { online: boolean }) {
   if (!online) return null;
   return (
     <Screen label={t('invites.nav')} className="pa-page">
-      <PageHeader icon="🤝" title={t('invites.nav')} />
+      <PageHeader icon={<PixelIcon name="invites" />} title={t('invites.nav')} />
       <InvitesPanel online />
     </Screen>
   );

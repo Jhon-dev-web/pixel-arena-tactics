@@ -1,3 +1,4 @@
+import PixelIcon from './PixelIcon';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
@@ -247,7 +248,7 @@ export default function ForgeView({
   // the requirement rows of a recipe: what the player has against what it takes
   const reqRows = (item: GearItem): ReqRow[] => {
     const rows: ReqRow[] = [{ key: 'gold', icon: <img src={Assets.icons.gold.url} alt="" />, label: t('inventory.reforgeGold'), have: save.gold, need: item.cost }];
-    if ((item.recipe?.requiredLevel ?? 0) > 0) rows.push({ key: 'level', icon: <span>⭐</span>, label: t('forge.levelReq', { n: item.recipe?.requiredLevel ?? 0 }), have: level, need: item.recipe?.requiredLevel ?? 0, plain: true });
+    if ((item.recipe?.requiredLevel ?? 0) > 0) rows.push({ key: 'level', icon: <PixelIcon name="level" />, label: t('forge.levelReq', { n: item.recipe?.requiredLevel ?? 0 }), have: level, need: item.recipe?.requiredLevel ?? 0, plain: true });
     for (const [itemId, count] of Object.entries(item.recipe?.items ?? {})) {
       const g = getGear(itemId);
       rows.push({ key: `item-${itemId}`, icon: <GearIcon item={g} />, label: gearText(g.nameKey), have: countUsableInstances(save, itemId), need: count as number });
@@ -257,7 +258,7 @@ export default function ForgeView({
     }
     for (const [gid, count] of Object.entries(item.recipe?.gems ?? {})) {
       const g = getGem(gid);
-      rows.push({ key: `gem-${gid}`, icon: g ? <GemIcon item={g} /> : <span>💎</span>, label: g ? gemText(g.nameKey) : gid, have: save.gems[gid as GemId] ?? 0, need: count as number });
+      rows.push({ key: `gem-${gid}`, icon: g ? <GemIcon item={g} /> : <PixelIcon name="gem" />, label: g ? gemText(g.nameKey) : gid, have: save.gems[gid as GemId] ?? 0, need: count as number });
     }
     if ((item.recipe?.shards ?? 0) > 0) rows.push({ key: 'shards', icon: <img src="/assets/icons/shards.png" alt="" />, label: t('ui.shardsX', { n: '' }).replace(/[\d\s×x]+/g, '').trim() || t('inventory.reforgeShard'), have: save.shards, need: item.recipe?.shards ?? 0 });
     return rows;

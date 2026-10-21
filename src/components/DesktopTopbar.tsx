@@ -1,3 +1,4 @@
+import PixelIcon from './PixelIcon';
 import SpriteSheet from './SpriteSheet';
 import { t } from '../locales';
 import { levelLabel } from './levelLabel';
@@ -89,10 +90,12 @@ export default function DesktopTopbar({
           {formatNumber(save.shards)}
         </span>
         <button className="desktop-topbar-settings" onClick={onToggleMute} aria-label={t('tooltips.mute')} data-ui>
-          {muted ? '🔇' : '🔊'}
+          <span className={`topbar-sound${muted ? ' off' : ''}`} aria-hidden>
+            ♪
+          </span>
         </button>
         <button className="desktop-topbar-settings" onClick={onOpenSettings} aria-label={t('settings.title')} data-ui>
-          ⚙️
+          <PixelIcon name="settings" />
         </button>
       </div>
     </header>

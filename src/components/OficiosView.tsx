@@ -1,3 +1,4 @@
+import PixelIcon from './PixelIcon';
 import { ReactNode, useEffect, useState } from 'react';
 import Assets from '../assets.json';
 import { fmtNum, t } from '../locales';
@@ -88,7 +89,7 @@ export default function OficiosView({
   const stationRecipes: RefiningRecipe[] = category === 'potions' ? [] : refiningRecipesForStation(category);
 
   const goldRow = (cost: number): Req => ({ key: 'gold', icon: <img src={Assets.icons.gold.url} alt="" />, label: t('inventory.reforgeGold'), have: save.gold, need: cost });
-  const levelRow = (required: number): Req => ({ key: 'level', icon: <span>⭐</span>, label: t('forge.levelReq', { n: required }), have: level, need: required, plain: true });
+  const levelRow = (required: number): Req => ({ key: 'level', icon: <PixelIcon name="level" />, label: t('forge.levelReq', { n: required }), have: level, need: required, plain: true });
   const inputRows = (input: Record<string, number | undefined>): Req[] =>
     Object.entries(input).map(([mid, count]) => ({
       key: `in-${mid}`,

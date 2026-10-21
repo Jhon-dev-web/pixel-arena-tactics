@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import PixelIcon from './PixelIcon';
+import type { UiIconName } from './uiIcons';
 import type { MarketOverview, ReservationView } from '../../supabase/functions/_shared/market/types';
 import { playerLevel, type SaveData } from '../game/engine';
 import { MarketUnreachable, PublicListing, fetchPublicListings, marketApi } from '../game/market/api';
@@ -21,11 +23,11 @@ import type { TabItem } from './ui';
 import '../market.css';
 
 type Tab = 'buy' | 'sell' | 'offers' | 'history' | 'wallet';
-const TABS: { id: Exclude<Tab, 'wallet'>; icon: string }[] = [
-  { id: 'buy', icon: '🛒' },
-  { id: 'sell', icon: '🏷️' },
-  { id: 'offers', icon: '📦' },
-  { id: 'history', icon: '🕒' },
+const TABS: { id: Exclude<Tab, 'wallet'>; icon: UiIconName }[] = [
+  { id: 'buy', icon: 'marketBuy' },
+  { id: 'sell', icon: 'marketSell' },
+  { id: 'offers', icon: 'marketOffers' },
+  { id: 'history', icon: 'marketHistory' },
 ];
 
 // The player market as a main screen of the game shell (web only, behind VITE_MARKET_ENABLED; this whole module, its text and its styles are a lazy chunk the desktop / Steam build never contains).
@@ -115,7 +117,7 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
   const tabs: TabItem<Tab>[] = TABS.map(({ id, icon }) => ({
     id,
     label: mt(`tabs.${id}`),
-    icon: <span aria-hidden>{icon}</span>,
+    icon: <PixelIcon name={icon} />,
   }));
 
   const main = (

@@ -1,3 +1,4 @@
+import PixelIcon from './PixelIcon';
 import { t } from '../locales';
 import { SaveData, computeCP, playerLevel } from '../game/engine';
 import { GearSlot, INSTANCED_SLOTS, MAX_DURABILITY, getGear } from '../game/gear';
@@ -132,7 +133,7 @@ export function AttributesPanel({ save, onAttrChange, onSuggest }: { save: SaveD
 
       <div className="hero-cp-bar">
         <span className="hero-cp-icon" aria-hidden>
-          ⚔️
+          <PixelIcon name="hero" className="sm" />
         </span>
         <span>
           <CpLine save={save} />
@@ -208,7 +209,7 @@ export function TitlesPanel({
             </div>
             {isActive && <span className="title-tag">{t('titles.active')}</span>}
             {unlocked && !isActive && <span className="title-tag equip">{t('titles.equip')}</span>}
-            {!unlocked && <span className="title-lock">🔒</span>}
+            {!unlocked && <span className="title-lock"><PixelIcon name="lock" className="sm" /></span>}
           </button>
         );
       })}

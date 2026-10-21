@@ -3,6 +3,7 @@ import SpriteSheet from './SpriteSheet';
 import { MonsterPortrait } from './HuntParts';
 import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
+import PixelIcon from './PixelIcon';
 import { Button, Chip, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout } from './ui';
 import type { CardRarity } from './ui';
 import { INSTANCED_SLOTS } from '../game/gear';
@@ -148,9 +149,9 @@ export default function DesktopHome({
   const deliveryDone = !!activeDelivery && deliveryRemaining <= 0;
 
   const skillDefs: { key: SkillId; icon: ReactNode; name: string; xp: number }[] = [
-    { key: 'mining', icon: <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />, name: t('nav.mining'), xp: save.skillXp.mining },
-    { key: 'woodcutting', icon: '🪓', name: t('nav.woodcutting'), xp: save.skillXp.woodcutting },
-    { key: 'gardening', icon: '🌱', name: t('nav.garden'), xp: save.skillXp.gardening },
+    { key: 'mining', icon: <PixelIcon name="mining" />, name: t('nav.mining'), xp: save.skillXp.mining },
+    { key: 'woodcutting', icon: <PixelIcon name="woodcutting" />, name: t('nav.woodcutting'), xp: save.skillXp.woodcutting },
+    { key: 'gardening', icon: <PixelIcon name="garden" />, name: t('nav.garden'), xp: save.skillXp.gardening },
   ];
 
   // Counted time and cap of the running hunt come from the engine's own status (the Battle Pass can lengthen the cap); it replays the session, so it
@@ -169,7 +170,7 @@ export default function DesktopHome({
       <ScreenLayout
         main={
           <>
-            <PageHeader icon={<img className="pixel-icon" src="/assets/icons/camp_stash.png" alt="" />} title={t('camp.title')} subtitle={t('camp.resting')} />
+            <PageHeader icon={<PixelIcon name="camp" />} title={t('camp.title')} subtitle={t('camp.resting')} />
 
             {/* Hero */}
             <Panel className="hm-hero">
@@ -186,7 +187,7 @@ export default function DesktopHome({
                   <div className="bar-fill xp-fill" style={{ width: `${Math.round(heroProgress * 100)}%` }} />
                 </div>
                 <button className={`hm-bag${invTone(inventorySlotsUsed(save), inventoryCapacity(save))}`} onClick={onOpenInventory} data-ui>
-                  <img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />
+                  <PixelIcon name="inventory" />
                   <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
                 </button>
               </div>
@@ -262,7 +263,7 @@ export default function DesktopHome({
                 {rewardWaiting && (
                   <button className="hm-act" onClick={onOpenHunt} data-ui>
                     <span className="hm-act-icon">
-                      <img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />
+                      <PixelIcon name="hunt" />
                     </span>
                     <div className="hm-act-info">
                       <span className="hm-act-name">{t('home.hunting')}</span>
@@ -274,7 +275,7 @@ export default function DesktopHome({
                 {mining.oreId && (
                   <button className="hm-act" onClick={onOpenMining} data-ui>
                     <span className="hm-act-icon">
-                      <img className="pixel-icon" src="/assets/icons/nav_mining.png" alt="" />
+                      <PixelIcon name="mining" />
                     </span>
                     <div className="hm-act-info">
                       <span className="hm-act-name">{t('home.mining')}</span>
@@ -290,7 +291,9 @@ export default function DesktopHome({
                 )}
                 {woodcutting.woodId && (
                   <button className="hm-act" onClick={onOpenWoodcutting} data-ui>
-                    <span className="hm-act-icon">🪓</span>
+                    <span className="hm-act-icon">
+                      <PixelIcon name="woodcutting" />
+                    </span>
                     <div className="hm-act-info">
                       <span className="hm-act-name">{t('home.woodcutting')}</span>
                       <span className="hm-act-detail">{woodText(getWoodTier(woodcutting.woodId)?.nameKey ?? '')}</span>
@@ -305,7 +308,9 @@ export default function DesktopHome({
                 )}
                 {(gardenGrowing > 0 || gardenReady > 0) && (
                   <button className="hm-act" onClick={onOpenGarden} data-ui>
-                    <span className="hm-act-icon">🌱</span>
+                    <span className="hm-act-icon">
+                      <PixelIcon name="garden" />
+                    </span>
                     <div className="hm-act-info">
                       <span className="hm-act-name">{t('tooltips.garden')}</span>
                       <span className="hm-act-detail">{t('home.gardenStatus', { n: gardenReady, m: gardenGrowing + gardenReady })}</span>
@@ -319,7 +324,9 @@ export default function DesktopHome({
                 )}
                 {activeDelivery && (
                   <button className="hm-act" onClick={onOpenExpedition} data-ui>
-                    <span className="hm-act-icon">🏕️</span>
+                    <span className="hm-act-icon">
+                      <PixelIcon name="deliveries" />
+                    </span>
                     <div className="hm-act-info">
                       <span className="hm-act-name">{t('home.delivery')}</span>
                       <span className="hm-act-detail">{deliveryDone ? t('home.deliveryReady') : formatRemaining(deliveryRemaining)}</span>
@@ -335,17 +342,17 @@ export default function DesktopHome({
             {/* Ações rápidas */}
             <Panel title={t('home.quickActionsTitle')}>
               <div className="hm-quick">
-                <PrimaryButton block onClick={onOpenDungeon}>
+                <PrimaryButton block onClick={onOpenDungeon} icon={<PixelIcon name="dungeon" />}>
                   {t('camp.enterArena')}
                 </PrimaryButton>
-                <Button block onClick={onOpenHunt}>
-                  🏹 {t('tooltips.hunt')}
+                <Button block onClick={onOpenHunt} icon={<PixelIcon name="hunt" />}>
+                  {t('tooltips.hunt')}
                 </Button>
-                <Button block onClick={onOpenForge}>
+                <Button block onClick={onOpenForge} icon={<PixelIcon name="forge" />}>
                   {t('ui.forge')}
                 </Button>
-                <Button block onClick={onOpenExpedition}>
-                  🏕️ {t('nav.deliveries')}
+                <Button block onClick={onOpenExpedition} icon={<PixelIcon name="deliveries" />}>
+                  {t('nav.deliveries')}
                 </Button>
               </div>
             </Panel>
@@ -356,13 +363,13 @@ export default function DesktopHome({
             {/* Progressão */}
             <Panel title={t('home.progressionTitle')}>
               <div className="hm-skills">
-                <SkillRow icon="⚔️" name={t('home.hero')} level={level} cap={MAX_LEVEL} progress={heroProgress} />
+                <SkillRow icon={<PixelIcon name="hero" />} name={t('home.hero')} level={level} cap={MAX_LEVEL} progress={heroProgress} />
                 {skillDefs.map((s) => (
                   <SkillRow key={s.key} icon={s.icon} name={s.name} level={skillLevel(s.xp, s.key)} cap={75} progress={skillLevelProgress(s.xp, s.key)} />
                 ))}
                 <div className="hm-skill">
                   <span className="hm-skill-icon" aria-hidden>
-                    ⚔️
+                    <PixelIcon name="dungeon" />
                   </span>
                   <div className="hm-skill-info">
                     <div className="hm-skill-head">

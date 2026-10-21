@@ -1,3 +1,4 @@
+import PixelIcon from './PixelIcon';
 import { useState } from 'react';
 import { fmtNum, fmtPrice, t } from '../locales';
 import { SaveData } from '../game/engine';
@@ -30,7 +31,7 @@ export default function WholesalePanel({ save, onSell }: { save: SaveData; onSel
 
   if (!wholesaleUnlocked(save)) {
     return (
-      <Panel tone="inset" className="ws-locked" title={`🔒 ${t('wholesale.title')}`}>
+      <Panel tone="inset" className="ws-locked" title={<><PixelIcon name="lock" className="sm" /> {t('wholesale.title')}</>}>
         <p className="ui-note">{t('wholesale.locked', { n: wholesaleUnlockFloor() })}</p>
         <p className="ui-note">{t('wholesale.explain', { rate: Math.round(T.wholesale.priceRate * 100) })}</p>
       </Panel>
