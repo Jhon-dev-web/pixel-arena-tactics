@@ -2,7 +2,10 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MIGRATIONS_DIR } from './harness';
-import { PROFESSION_XP_TO_LEVEL, XP_TO_LEVEL } from '../../../supabase/functions/_shared/progress/tables';
+import { pathToFileURL } from 'node:url';
+
+// Loaded by path at run time, not imported: the admin build (tsc on this folder alone, as on Vercel) cannot see files outside admin/.
+const TABLES = pathToFileURL(join(MIGRATIONS_DIR, '..', 'functions', '_shared', 'progress', 'tables.ts')).href;
 
 // Static checks of supabase/migrations/0034_admin_player_full.sql.
 const raw = readFileSync(join(MIGRATIONS_DIR, '0034_admin_player_full.sql'), 'utf8');
@@ -22,7 +25,8 @@ describe('0034_admin_player_full.sql', () => {
     expect(code).toMatch(/grant execute on function public\.admin_player_full\(uuid\) to authenticated;/);
   });
 
-  test('the level tables are the same as the Edge Function copy', () => {
+  test('the level tables are the same as the Edge Function copy', async () => {
+    const { PROFESSION_XP_TO_LEVEL, XP_TO_LEVEL } = (await import(/* @vite-ignore */ TABLES)) as { XP_TO_LEVEL: readonly number[]; PROFESSION_XP_TO_LEVEL: Record<'mining' | 'woodcutting' | 'gardening', readonly number[]> };
     const arrays = [...code.matchAll(/array\[([0-9,]+)\]::numeric\[\]/g)].map((m) => m[1].split(',').map(Number));
     expect(arrays).toEqual([[...XP_TO_LEVEL], [...PROFESSION_XP_TO_LEVEL.mining], [...PROFESSION_XP_TO_LEVEL.woodcutting], [...PROFESSION_XP_TO_LEVEL.gardening]]);
   });
