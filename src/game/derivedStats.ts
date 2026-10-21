@@ -95,7 +95,7 @@ export interface CombatStats {
   strikes?: StrikeStats; // the auto-triggered strikes (Golpe Esmagador / Furia / Duplo / Contra-ataque / Devastador), see resolveHeroHit
   block?: number; // chance that an enemy hit is blocked completely (Bloqueio)
   bastion?: boolean; // Ultimo Bastiao: a lethal hit leaves the hero at 1 HP and heals (bastionHp)
-  bossReduction?: number; // share of the damage taken on boss / checkpoint floors negated (Postura Firme, Dungeon only)
+  bossReduction?: number; // share of the damage taken on boss / checkpoint floors negated (Postura Firme: Dungeon boss floors, plus Hunting promotion and Target fights)
   skillGold?: number; // percent extra Gold from Ganancia, outside the gear cap (like the tonic and the Pass)
   matMult?: number; // Hunting material yield multiplier (Faro); uniques and relics never see it
   uniqueMult?: number; // Hunting unique drop chance multiplier (Sorte Grande)

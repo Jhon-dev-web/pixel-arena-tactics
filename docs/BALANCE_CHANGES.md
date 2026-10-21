@@ -3544,3 +3544,36 @@ O ritmo a partir do dia 14 e o do dia 60 não mudaram (diferenças dentro do ru�
 **Guarda dos dias 1 a 21 (T4), explícita:** nível no fim do dia 2 / 3 / 5 / 14 = 12-16 / 12-16 / 20-32 / 44-60 (antes 20-28 / 20-29 / -, 45-60). Continuam valendo: primeira sessão termina no andar >= 8, primeira peça forjada até o dia 2, chefe do 25 nos dias 4-6 (dia 5), I1 a I4.
 
 **Anti-trapaça.** `seasonTables.gen.ts` regenerada (`XP_TO_LEVEL`). `levelPace` foi mantida como o lado mais folgado: os seeds mais rápidos agora chegam ao 24 / 28 no dia 4 (eram 2 / 3) e ao 51-92 cerca de 1 dia mais tarde; nenhum jogador honesto passa a ser marcado.
+
+## Rodada 29 — cada ponto de habilidade vale quase o mesmo (2026-10-21)
+
+**Motivo.** Auditoria da Caça e das habilidades (relatório de 21/10): Golpe Esmagador valia 7,3% de duelo por ponto, Olho Clínico e Sangria menos de 2%, Bloqueio 5,5% por ponto (CP quase igual ao Esmagador), Postura Firme não fazia nada na Caça e Segundo Fôlego quase nada. Aprovado pelo dono em 21/10: só Guerreiro e Guardião; o caminho do Caçador (economia) não muda.
+
+**Mudança** (`T.heroSkills`; pontos gastos ficam como estão, o máximo de postos não mudou, nenhum reembolso):
+
+| Habilidade | Antes (postos 1/2/3) | Depois | Valor de duelo por ponto (nv. 60) |
+| --- | --- | --- | --- |
+| Golpe Esmagador | +60 / 90 / 120% | +28 / 42 / 56% | 7,3% -> 3,4% |
+| Olho Clínico | +2,4 / 4,8 / 7,2% crítico | +2,6 / 5,2 / 7,8% | 1,9% -> 2,1% |
+| Execução | +11 / 22 / 33% | +12,5 / 25 / 37,5% | 2,6% -> 3,0% |
+| Sangria | 4 / 7 / 10% por s | 6 / 11 / 15% por s | 1,8% -> 2,6% |
+| Segundo Fôlego | 0,11 / 0,22 / 0,33% da vida por s | 0,2 / 0,4 / 0,6% | 1,1% -> 2,0% |
+| Postura Firme | -6 / 12 / 18%, só chefes da Masmorra | -8 / 16 / 24%, chefes da Masmorra e lutas de promoção e de Alvo da Caça | 1,8% -> 2,6% |
+| Bloqueio | 4 / 7 / 10%; contra-ataque +60 / 90 / 120% | 3 / 5 / 7%; contra-ataque +40 / 60 / 80% | 5,5% -> 3,2% |
+
+Golpe de Fúria, Mestre de Armas, Pele Dura, Muralha, Espinhos, Último Bastião e os capstones ficam. Espinhos continua abaixo da faixa no nível 100 (1,0% por ponto) e o Devastador (capstone, 1 ponto) em ~12%; não foram pedidos. Postura Firme na Caça: só as lutas de promoção de sub-nível e a Caçada ao Alvo (as únicas de risco) recebem a redução; lutas comuns não mudam (a build de quem não tem a habilidade é idêntica bit a bit).
+
+**Faro (Caçador) não mudou:** +21% de materiais, contra +10% do Passe, e empilha (x1,33 com o Passe). Fica como decisão do dono.
+
+**Medido** (`npm run sim:skills`, funções reais; Guerreiro/Guardião completos, 19 pontos, margem de duelo):
+
+| | antes | depois |
+| --- | --- | --- |
+| Guerreiro completo nv. 30 / 60 / 100 | +75,6 / +73,8 / +73,1% | +71,4 / +69,3 / +67,7% |
+| Guardião completo nv. 30 / 60 / 100 | +69,9 / +69,6 / +68,9% | +69,3 / +69,7 / +72,2% |
+| Guerreiro completo, herói CP ~1 000 na Fenda: kills/h / materiais/h | +77,3% / +61,8% | +72,7% / +59,7% |
+| alcance nas Profundezas (comum, paragon 0 / 10 / 20) | 21 / 23 / 26 | 21 / 23 / 26 |
+
+Olho Clínico ficou em +2,6% por posto (e não nos 4% do relatório) porque o alcance das Profundezas é sensível a crítico: com 3,4% o Guerreiro ganhava 3 profundidades. O Guerreiro completo cedeu ~4 pontos de duelo e ~6% do ganho de kills/h na Caça (dentro dos 10% pedidos).
+
+`npm run sim` (20 seeds x 21 dias, antes -> depois): nível mediano no dia 5 / 7 / 14 / 21 = 22 / 35 / 46 / 49 -> 22 / 35 / 46 / 49; chegada ao andar 50 mediana 12,5 -> 13 e chefe 50 14 -> 13,5 (dentro do ruído; o chefe 50 já estava fora da meta antes). Nenhum marco de nível mudou.

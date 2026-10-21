@@ -1,7 +1,7 @@
 import { MaterialId } from './materials';
 import { UniqueDrop, rollUniqueDrop } from './uniques';
 import { HuntingDrop, HuntingDepth, HuntingUnique, effectiveDropChance } from './huntingZones';
-import { BurnState, StrikeStats, StrikeTally, applyDamageReduction, bastionHp, bleedSpec, echoDamage, furyHitDamage, igniteBurn, nextBurnTickAt, newStrikeState, reflectedDamage, regenAmount, registerBlock, resolveHeroHit, tally, tickBurn } from './derivedStats';
+import { BurnState, StrikeStats, StrikeTally, applyDamageReduction, bastionHp, bleedSpec, bossDamage, echoDamage, furyHitDamage, igniteBurn, nextBurnTickAt, newStrikeState, reflectedDamage, regenAmount, registerBlock, resolveHeroHit, tally, tickBurn } from './derivedStats';
 import T from './tunables';
 import { economicRollFractionForFight } from './huntEconomy';
 import { inRelativeWindows } from './huntSession';
@@ -58,6 +58,7 @@ export interface HuntCombatBuild {
   strikes?: StrikeStats;
   block?: number;
   bastion?: boolean;
+  bossReduction?: number; // Postura Firme: share of the damage negated in the risky fights of Hunting (promotion attempts and the League Target)
   matMult?: number;
   uniqueMult?: number;
 }
@@ -315,7 +316,7 @@ export function simulateHuntingSession(
   // One full, fresh-HP attempt at `subLevel`. Returns null if the session's remaining idle time ran
   // out mid-fight (that attempt doesn't count either way — nothing to persist from an unfinished fight).
   // Event order at equal times: hero hit, enemy hit, burn tick, regeneration tick (scripts/sim/driver.ts runDungeon uses the same).
-  const attempt = (subLevel: number, startHp: number, target?: { hp: number; dmg: number }) => {
+  const attempt = (subLevel: number, startHp: number, target?: { hp: number; dmg: number }, risky = false) => {
     const base = enemyStatsAt(zoneCfg, subLevel);
     // League events: a harder enemy for the whole window (Fenda), the escalating wave (Invasao: more HP and damage for every run of fights won) and the Target (a single, much stronger enemy).
     const ev = eventWindowAt(sessionMs - timeLeft);
@@ -383,7 +384,8 @@ export function simulateHuntingSession(
         const polished = !!timeline?.polishWindows && inRelativeWindows(timeline.polishWindows, sessionMs - timeLeft + t);
         const blocked = !!build.block && blockRng() < build.block;
         if (blocked) registerBlock(strikeState, build.strikes);
-        const dmgTaken = blocked ? 0 : stoned || polished ? applyDamageReduction(enemy.dmg, (stoned ? (timeline!.reductionStone ?? build.reduction) : build.reduction) + (polished ? (timeline!.reductionPolish ?? 0) : 0)) : dmgTakenBase;
+        const rawTaken = blocked ? 0 : stoned || polished ? applyDamageReduction(enemy.dmg, (stoned ? (timeline!.reductionStone ?? build.reduction) : build.reduction) + (polished ? (timeline!.reductionPolish ?? 0) : 0)) : dmgTakenBase;
+        const dmgTaken = risky && rawTaken > 0 ? bossDamage(rawTaken, build.bossReduction) : rawTaken;
         hpRef.hp -= dmgTaken;
         // Ultimo Bastiao: a lethal hit leaves 1 HP plus a heal, once per bastionCooldownMs of combat time.
         const clock = sessionMs - timeLeft + t;
@@ -451,7 +453,7 @@ export function simulateHuntingSession(
   // time like any fight, only pays out (and promotes) if won, and either way restarts the win counter.
   while (timeLeft > 0) {
     if (ceiling < promotion.maxLevel && promotionWins >= promotion.requiredWins(ceiling) && (promotion.allowed?.(ceiling + 1) ?? true)) {
-      const r = attempt(ceiling + 1, build.playerMax);
+      const r = attempt(ceiling + 1, build.playerMax, undefined, true);
       if (!r) break;
       promotionWins = 0;
       if (r.win) {
@@ -472,7 +474,7 @@ export function simulateHuntingSession(
     const ev = eventWindowAt(sessionMs - timeLeft);
     if (!ev?.targetEvery) eventWins = 0;
     if (ev?.targetEvery && eventWins >= ev.targetEvery) {
-      const r = attempt(ceiling, build.playerMax, { hp: ev.targetHp ?? 1, dmg: ev.targetDmg ?? 1 });
+      const r = attempt(ceiling, build.playerMax, { hp: ev.targetHp ?? 1, dmg: ev.targetDmg ?? 1 }, true);
       if (!r) break;
       eventWins = 0;
       if (r.win) {

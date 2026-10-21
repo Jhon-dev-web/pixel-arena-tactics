@@ -785,6 +785,7 @@ export function buildHuntSimSetup(
     ...(stats.strikes ? { strikes: stats.strikes } : {}),
     ...(stats.block ? { block: stats.block } : {}),
     ...(stats.bastion ? { bastion: true } : {}),
+    ...(stats.bossReduction ? { bossReduction: stats.bossReduction } : {}),
     ...(stats.matMult ? { matMult: stats.matMult } : {}),
     ...(stats.uniqueMult ? { uniqueMult: stats.uniqueMult } : {}),
   };

@@ -980,7 +980,7 @@
       "g_bulwark": { "name": "Muralha", "desc": "+{n}% sobre o total de resistência." },
       "g_thorns": { "name": "Espinhos", "desc": "+{n}% de reflexo de dano, somado ao da armadura e do escudo." },
       "g_second_wind": { "name": "Segundo Fôlego", "desc": "Recupera {n}% da vida máxima por segundo em combate." },
-      "g_firm_stance": { "name": "Postura Firme", "desc": "-{n}% de dano recebido nos andares de chefe e mini-chefe (só na Masmorra)." },
+      "g_firm_stance": { "name": "Postura Firme", "desc": "-{n}% de dano recebido nos andares de chefe e mini-chefe da Masmorra e nas lutas de promoção e de Alvo da Caça." },
       "g_block": { "name": "Bloqueio", "desc": "{n}% de chance de bloquear um golpe por completo. Contra-ataque: seu próximo golpe depois de um bloqueio causa +{c}% de dano.", "trigger": "Contra-ataque depois de bloquear: +{r1}% / +{r2}% / +{r3}% de dano." },
       "g_last_bastion": { "name": "Último Bastião", "trigger": "Em um golpe fatal.", "desc": "Um golpe fatal deixa você com {hp} de vida e cura {heal}% da vida máxima. Uma vez por incursão na Masmorra; na Caça, a cada {s} s de combate." },
       "h_light_step": { "name": "Golpe Duplo", "desc": "{n}% de chance de um golpe atacar duas vezes (o eco causa {e}% do dano).", "trigger": "Chance por golpe: {r1}% / {r2}% / {r3}%." },

@@ -702,9 +702,25 @@ describe('the Dungeon driver (mirror of BattleModal) and the hunting simulation 
     expect(cp).toBeDefined();
     // a plain floor: the skill changes nothing
     expect(survive(base, 33)).toBe(survive(bare, 33));
-    // Hunting never reads it: the hunting build has no field for it
+    // Hunting reads it for the risky fights only: the hunting build carries it
     const { build } = buildHuntSimSetup(base, getHuntingZone('demon_glade')!, 'shallow', buildHuntSession(base, NOW), NOW, []);
-    expect(build).not.toHaveProperty('bossReduction');
+    expect(build.bossReduction).toBeCloseTo(3 * T.heroSkills.firmStanceReduction, 9);
+    expect(buildHuntSimSetup(bare, getHuntingZone('demon_glade')!, 'shallow', buildHuntSession(bare, NOW), NOW, []).build).not.toHaveProperty('bossReduction');
+  });
+
+  it('Firm Stance in Hunting: a promotion attempt the hero would lose is won with it, while ordinary fights are untouched', () => {
+    // level 1: 10 damage a hit (harmless); level 2 (the promotion): 112 a hit; 1000 HP survives 8 of them but not 9, and the enemy needs 9 s to die
+    const zone = { ...baseZone, baseEnemyDmg: 10, dmgGrowth: 10.2 };
+    const promo = { maxLevel: 2, requiredWins: () => 1 };
+    const run = (extra: Partial<HuntCombatBuild>) => simulateHuntingSession({ ...baseBuild, playerMax: 1000, ...extra }, zone, { ceiling: 1, promotionWins: 0 }, 40_000, noPotions, 'seed', promo);
+    const plain = run({});
+    const firm = run({ bossReduction: 0.1 });
+    expect(plain.promotions).toBe(0);
+    expect(plain.promotionLosses).toBeGreaterThanOrEqual(1);
+    expect(firm.promotions).toBe(1);
+    // with no promotion on offer the build is bit-for-bit what it was
+    const flat = (extra: Partial<HuntCombatBuild>) => simulateHuntingSession({ ...baseBuild, playerMax: 1000, ...extra }, zone, { ceiling: 1, promotionWins: 0 }, 40_000, noPotions, 'seed', one);
+    expect(flat({ bossReduction: 0.5 })).toEqual(flat({}));
   });
 
   it('Block in the Dungeon uses the loop RNG: pinned high never blocks, pinned low always does', () => {
@@ -942,16 +958,16 @@ describe('skill descriptions show the numbers the engine really uses', () => {
       setLocale(before);
     }
   });
-  it('the strikes are the numbers of the design: 60/90/120 every 5th hit, x3 every third crush, 35/45/55 every 8 s', () => {
-    expect([1, 2, 3].map((r) => Math.round(skillEffects({ w_heavy_blow: r }).strikes!.crushBonus! * 100))).toEqual([60, 90, 120]);
+  it('the strikes are the numbers of the design: 28/42/56 every 5th hit, x3 every third crush, 35/45/55 every 8 s', () => {
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ w_heavy_blow: r }).strikes!.crushBonus! * 100))).toEqual([28, 42, 56]);
     expect(T.heroSkills.crushEvery).toBe(5);
     expect(T.heroSkills.devastatingEvery).toBe(3);
     expect(T.heroSkills.devastatingMult).toBe(3);
     expect([1, 2, 3].map((r) => Math.round(skillEffects({ w_fury: r }).strikes!.furyPct! * 100))).toEqual([35, 45, 55]);
     expect(T.heroSkills.furyEveryMs).toBe(8000);
-    expect([1, 2, 3].map((r) => Math.round(skillEffects({ w_bleed: r }).bleed * 100))).toEqual([4, 7, 10]);
-    expect([1, 2, 3].map((r) => Math.round(skillEffects({ g_block: r }).blockChance * 100))).toEqual([4, 7, 10]);
-    expect([1, 2, 3].map((r) => Math.round(skillEffects({ g_block: r }).strikes!.counter! * 100))).toEqual([60, 90, 120]);
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ w_bleed: r }).bleed * 100))).toEqual([6, 11, 15]);
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ g_block: r }).blockChance * 100))).toEqual([3, 5, 7]);
+    expect([1, 2, 3].map((r) => Math.round(skillEffects({ g_block: r }).strikes!.counter! * 100))).toEqual([40, 60, 80]);
     expect([1, 2, 3].map((r) => Math.round(skillEffects({ h_light_step: r }).strikes!.doubleChance! * 100))).toEqual([8, 12, 16]);
     expect(T.heroSkills.doubleDmgPct).toBe(0.6);
   });
