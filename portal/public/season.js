@@ -27,6 +27,7 @@ if (root) {
     tabs: [...root.querySelectorAll('[data-profession-tab]')],
     status: $('[data-season-status]'),
     pre: $('[data-season-pre]'),
+    later: $('[data-season-later]'),
   };
   let current = { mode: null, season: null };
   let profession = PROFESSIONS[0];
@@ -49,6 +50,7 @@ if (root) {
     // The page title says "Pré-temporada" until the server says the League is open.
     if (el.status) el.status.textContent = view.open ? labels.openTitle : labels.heroStatus;
     if (el.pre) el.pre.hidden = Boolean(view.open);
+    if (el.later) el.later.hidden = Boolean(view.open);
     if (view.open) {
       el.closed.hidden = true;
       el.open.hidden = false;
