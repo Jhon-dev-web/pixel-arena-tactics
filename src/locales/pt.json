@@ -1078,6 +1078,8 @@
     "groupEconomy": "ECONOMIA",
     "quests": "Missões",
     "openMenu": "Abrir menu",
+    "mainNavigation": "Navegação principal",
+    "attention": "Pede sua atenção",
     "closeMenu": "Fechar menu",
     "openProfile": "Abrir perfil"
   },

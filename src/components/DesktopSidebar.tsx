@@ -1,4 +1,5 @@
 import { Fragment, ReactNode } from 'react';
+import { t } from '../locales';
 
 export interface DesktopNavItem {
   key: string;
@@ -26,7 +27,7 @@ export interface DesktopNavGroup {
 // "collapse to icon-only" toggle is just a CSS class away — no restructuring needed later.
 export default function DesktopSidebar({ groups, onLogoClick }: { groups: DesktopNavGroup[]; onLogoClick?: () => void }) {
   return (
-    <nav className="desktop-sidebar" aria-label="Main navigation">
+    <nav className="desktop-sidebar" aria-label={t('nav.mainNavigation')}>
       {onLogoClick ? (
         <button className="desktop-sidebar-brand desktop-sidebar-brand-btn" onClick={onLogoClick} data-ui>
           ARENA IDLE
@@ -43,13 +44,14 @@ export default function DesktopSidebar({ groups, onLogoClick }: { groups: Deskto
                 <button
                   className={`desktop-nav-item${item.active ? ' active' : ''}`}
                   onClick={item.onClick}
+                  aria-current={item.active ? 'page' : undefined}
                   data-tutorial-target={item.tutorialTarget}
                   data-ui
                 >
                   {item.active && <span className="desktop-nav-indicator" />}
                   <span className="desktop-nav-icon">{item.icon}</span>
                   <span className="desktop-nav-label">{item.label}</span>
-                  {item.badge && <span className="desktop-nav-badge" />}
+                  {item.badge && <span className="desktop-nav-badge" role="img" aria-label={t('nav.attention')} />}
                 </button>
                 {item.extra}
               </Fragment>

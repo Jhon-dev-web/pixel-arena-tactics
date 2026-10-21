@@ -1078,6 +1078,8 @@
     "groupEconomy": "ECONOMY",
     "quests": "Quests",
     "openMenu": "Open menu",
+    "mainNavigation": "Main navigation",
+    "attention": "Needs your attention",
     "closeMenu": "Close menu",
     "openProfile": "Open profile"
   },
