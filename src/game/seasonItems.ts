@@ -42,6 +42,8 @@ export const FRAMES: FrameDef[] = [
   { id: 'frame_season_gold', nameKey: 'frame_season_gold', descKey: 'frame_season_gold_d' },
   // The portrait frame of the invite program (referralRewards.ts): not on the Pass track, granted by the server when three invited people qualify.
   { id: 'frame_recruiter', nameKey: 'frame_recruiter', descKey: 'frame_recruiter_d' },
+  // The portrait frame of the Pioneer kit (leagueReset.ts): granted with the Pioneer title to the players of the open pre-season when the first League resets the heroes. Not on the Pass track.
+  { id: 'frame_pioneer', nameKey: 'frame_pioneer', descKey: 'frame_pioneer_d' },
 ];
 
 export const getFrameDef = (id: string): FrameDef | undefined => FRAMES.find((f) => f.id === id);

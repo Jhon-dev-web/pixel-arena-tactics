@@ -2387,6 +2387,14 @@ button[data-ui]:focus-visible {
 .portrait-frame.frame-recruiter::after {
   filter: drop-shadow(0 0 3px rgba(111, 180, 240, 0.7));
 }
+.portrait-frame.frame-pioneer {
+  --frame-c: #7fe0cf;
+  border-color: #c8844a !important;
+  box-shadow: 0 0 0 2px #3a2010, 0 0 0 4px #c8844a, 0 0 0 6px #123a38, 0 0 0 8px #3fbfae, 0 0 16px rgba(63, 191, 174, 0.4) !important;
+}
+.portrait-frame.frame-pioneer::after {
+  filter: drop-shadow(0 0 3px rgba(63, 191, 174, 0.7));
+}
 .portrait-frame.avatar,
 .desktop-topbar-avatar.portrait-frame {
   --frame-s: 7px;
@@ -2397,6 +2405,10 @@ button[data-ui]:focus-visible {
 .portrait-frame.frame-recruiter.avatar,
 .desktop-topbar-avatar.portrait-frame.frame-recruiter {
   box-shadow: 0 0 0 1px #10304d, 0 0 0 2px #6fb4f0 !important;
+}
+.portrait-frame.frame-pioneer.avatar,
+.desktop-topbar-avatar.portrait-frame.frame-pioneer {
+  box-shadow: 0 0 0 1px #3a2010, 0 0 0 2px #c8844a, 0 0 0 3px #123a38, 0 0 0 4px #3fbfae !important;
 }
 .desktop-topbar-avatar {
   display: inline-flex;

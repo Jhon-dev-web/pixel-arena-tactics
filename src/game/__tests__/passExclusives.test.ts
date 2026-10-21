@@ -368,8 +368,8 @@ describe('portrait frame (frame_season_gold)', () => {
     expect(applySelectFrame({ ...defaultSave(), cosmetics: ['x'] }, 'x')).toBeNull();
     expect(normalizeSave(wire({ ...defaultSave(), activeFrame: 'frame_season_gold' })).activeFrame).toBeNull();
     expect(normalizeSave(wire({ ...defaultSave(), cosmetics: ['frame_season_gold'], activeFrame: 'frame_season_gold' })).activeFrame).toBe('frame_season_gold');
-    // the season gold frame is on the Pass track; the Recruiter frame is the invite program's (referralRewards.ts), never on the track
-    expect(FRAMES.map((f) => f.id)).toEqual(['frame_season_gold', 'frame_recruiter']);
+    // the season gold frame is on the Pass track; the Recruiter frame is the invite program's (referralRewards.ts) and the Pioneer frame the testers' kit (leagueReset.ts), never on the track
+    expect(FRAMES.map((f) => f.id)).toEqual(['frame_season_gold', 'frame_recruiter', 'frame_pioneer']);
     expect(BATTLE_PASS_TRACK.some((l) => l.premium.id === 'frame_recruiter' || l.free.id === 'frame_recruiter')).toBe(false);
   });
 });

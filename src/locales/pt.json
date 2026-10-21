@@ -18,7 +18,8 @@
     "title": "A Liga começou. Todos largaram juntos.",
     "what": "A pré-temporada era um teste aberto. Agora que a Liga da Temporada começou, todos os heróis online recomeçaram do zero, no mesmo instante: ninguém leva vantagem do que fez antes.",
     "kept": "Continuam com você: a sua conta, o seu nome e o Passe do Aventureiro. O herói de antes ficou guardado só neste aparelho, como lembrança, e não pode ser trazido de volta para o jogo online.",
-    "pioneer": "Obrigado por testar! Você recebeu o título Pioneiro: só um enfeite, sem atributos.",
+    "pioneer": "Obrigado por testar! Você recebeu o Kit Pioneiro: o título Pioneiro e a Moldura de Pioneiro (só enfeite, sem atributos) e um baú inicial com {gold} de Ouro e {potions} poções de cura.",
+    "chestToast": "Baú do Kit Pioneiro: +{gold} de Ouro e +{potions} poções de cura.",
     "cta": "Vamos começar"
   },
   "welcome": {
@@ -1879,7 +1880,9 @@
     "title_recruitment_legend": "Lenda do Recrutamento",
     "req_recruitment_legend": "Tenha 25 convites ativos (convites)",
     "frame_recruiter": "Moldura do Recrutador",
-    "frame_recruiter_d": "Uma moldura azul em volta do retrato do herói. Prêmio dos convites. Só enfeite."
+    "frame_recruiter_d": "Uma moldura azul em volta do retrato do herói. Prêmio dos convites. Só enfeite.",
+    "frame_pioneer": "Moldura de Pioneiro",
+    "frame_pioneer_d": "Uma moldura dupla de bronze e verde-água em volta do retrato do herói. Agradecimento aos jogadores da pré-temporada aberta. Só enfeite."
   },
   "mastery": {
     "title": "Próximos desbloqueios",

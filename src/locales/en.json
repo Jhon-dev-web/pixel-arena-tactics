@@ -18,7 +18,8 @@
     "title": "The League has begun. Everyone started together.",
     "what": "The pre-season was an open test. Now that the Season League has begun, every online hero started again from zero at the same moment: nobody keeps an edge from what they did before.",
     "kept": "What stays with you: your account, your name and the Adventurer's Pass. Your previous hero was kept on this device only, as a memory, and cannot be brought back into the online game.",
-    "pioneer": "Thank you for testing! You received the Pioneer title: decoration only, no stats.",
+    "pioneer": "Thank you for testing! You received the Pioneer Kit: the Pioneer title and the Pioneer frame (decoration only, no stats) and a starter chest with {gold} Gold and {potions} healing potions.",
+    "chestToast": "Pioneer Kit chest: +{gold} Gold and +{potions} healing potions.",
     "cta": "Let's begin"
   },
   "welcome": {
@@ -1879,7 +1880,9 @@
     "title_recruitment_legend": "Recruitment Legend",
     "req_recruitment_legend": "Have 25 active invites (invites)",
     "frame_recruiter": "Recruiter Frame",
-    "frame_recruiter_d": "A blue frame around the hero portrait. A reward of the invites. Purely cosmetic."
+    "frame_recruiter_d": "A blue frame around the hero portrait. A reward of the invites. Purely cosmetic.",
+    "frame_pioneer": "Pioneer Frame",
+    "frame_pioneer_d": "A bronze and teal double frame around the hero portrait. A thank-you to the players of the open pre-season. Purely cosmetic."
   },
   "mastery": {
     "title": "Upcoming unlocks",

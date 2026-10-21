@@ -49,6 +49,7 @@ import { fetchReferralStatus } from './lib/referral';
 import { InvitesPage } from './components/InvitesPanel';
 import { applyReferralCosmetics } from './game/referralRewards';
 import { applyServerCredits } from './game/promoRewards';
+import { isPioneerCredit } from './game/pioneerKit';
 import { promoRewardsToast } from './game/promoText';
 import { fetchCreditsToApply } from './lib/serverCredits';
 import { getServerResetAt, needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
@@ -1634,6 +1635,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const check = async () => {
       if (busy) return;
       busy = true;
+      let replaced = false;
       try {
         // Once the League opened its reset moment never changes (set-once on the server): a known one is not asked again, only an unknown one (League not open yet, or never answered) is.
         const knownAt = getServerResetAt();
@@ -1649,11 +1651,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         const outcome = await settleLeague(repository, server, { accountId: userId, resetAt, applyPass: (s) => applyServerPass(s, getServerPassOwned(), Date.now()) });
         if (stopped) return;
         adoptLeagueRef.current(outcome.save, outcome.revision);
+        replaced = outcome.reset;
       } catch {
         /* the server could not be asked or written: the next resume or tick tries again */
       } finally {
         leagueSwapRef.current = false;
         busy = false;
+        // The Pioneer kit's chest (migration 0033) was put in the credit ledger by the reset itself: claim it now, with the recovery of recently claimed credits (a credit claimed a moment
+        // ago, while the old hero was still being replaced, comes back by id and lands on the new hero). Only once the swap is over: the credit sync waits while the hero is being replaced.
+        if (replaced) void syncCreditsRef.current(true);
       }
     };
     // now, then every 5 minutes (+-10 %) while the tab is visible; coming back to an overdue tab asks again within a couple of seconds (lib/poller.ts)
@@ -1703,12 +1709,25 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     let lastAt = 0;
     const sync = async (recover: boolean) => {
       if (busy || stopped) return;
+      // A hero from before the League reset is about to be replaced: a credit applied to it would be wiped with it. Wait for the new hero (the reset check calls this again).
+      if (leagueSwapRef.current || needsLeagueReset(saveRef.current, getServerResetAt())) return;
       busy = true;
       try {
         const credits = await fetchCreditsToApply({ recover });
         if (stopped || !credits || credits.length === 0) return;
         const { save: next, applied } = applyServerCredits(saveRef.current, credits);
-        if (applied.length > 0) commitCreditsRef.current(next, promoRewardsToast(applied.map((c) => ({ kind: c.kind, itemId: c.itemId, amount: c.amount }))));
+        if (applied.length > 0) {
+          const chest = applied.filter(isPioneerCredit);
+          const rest = applied.filter((c) => !isPioneerCredit(c));
+          const parts: string[] = [];
+          if (chest.length > 0) {
+            const gold = chest.filter((c) => c.kind === 'gold').reduce((n, c) => n + c.amount, 0);
+            const potions = chest.filter((c) => c.kind === 'consumable').reduce((n, c) => n + c.amount, 0);
+            parts.push(t('leagueReset.chestToast', { gold: fmtNum(gold), potions: fmtNum(potions) }));
+          }
+          if (rest.length > 0) parts.push(promoRewardsToast(rest.map((c) => ({ kind: c.kind, itemId: c.itemId, amount: c.amount }))));
+          commitCreditsRef.current(next, parts.join(' · '));
+        }
       } finally {
         lastAt = Date.now();
         busy = false;

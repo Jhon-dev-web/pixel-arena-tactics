@@ -15,6 +15,8 @@ import { SaveConflictError, SaveRepository } from './saveRepository';
 
 /** The cosmetic title the testers receive (titles.ts). No stats, nothing tradeable. */
 export const PIONEER_TITLE_ID = 'title_pioneer';
+/** The portrait frame that comes with it (seasonItems.ts FRAMES). Cosmetic only. The third part of the Pioneer kit, the starter chest, is a server credit (pioneerKit.ts). */
+export const PIONEER_FRAME_ID = 'frame_pioneer';
 
 const RESET_AT_CACHE_KEY = 'arena.leagueResetAt.v1';
 /** The old hero is kept on this device only, as a memory. Nothing in the game reads this key: it is never imported, offered or restored (a test pins that). */
@@ -130,11 +132,14 @@ export const isPreResetSave = (save: Pick<SaveData, 'league'>, resetAt: number |
 /** Submitting a pre-reset hero would only be told to wait by the server (409): the client does not even try. */
 export const shouldHoldSubmission = (save: Pick<SaveData, 'league'>, resetAt: number | null | undefined): boolean => needsLeagueReset(save, resetAt);
 
-const withPioneer = (cosmetics: string[]): string[] => (cosmetics.includes(PIONEER_TITLE_ID) ? cosmetics : [...cosmetics, PIONEER_TITLE_ID]);
+const withPioneer = (cosmetics: string[]): string[] => {
+  const missing = [PIONEER_TITLE_ID, PIONEER_FRAME_ID].filter((id) => !cosmetics.includes(id));
+  return missing.length === 0 ? cosmetics : [...cosmetics, ...missing];
+};
 
 /**
  * The fresh hero. Kept from the old one: only its name. The Pass entitlement is applied by the caller (applyServerPass), as for every save entering the game. `pioneer` null = the
- * question could not be asked (it is asked again later); true grants the title.
+ * question could not be asked (it is asked again later); true grants the title and the frame.
  */
 export function buildLeagueHero(old: Pick<SaveData, 'heroName'>, resetAt: number, pioneer: boolean | null): SaveData {
   const fresh = defaultSave();
