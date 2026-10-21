@@ -67,8 +67,8 @@ export function createProgressStore(cfg: ProgressDbConfig): ProgressStore {
 
   return {
     async hasActivePass(userId: string) {
-      const q = new URLSearchParams({ select: 'id', user_id: `eq.${userId}`, kind: 'eq.adventurer_pass', status: 'eq.active', limit: '1' });
-      return (await getRows<unknown>('entitlements', q, 'entitlement_read')).length > 0;
+      // Migration 0025: a Pass counts only while it covers the current season.
+      return (await rpc<unknown>('pass_owned_now', { p_user_id: userId }, 'entitlement_read')) === true;
     },
 
     // revision + save_data in ONE read, so the hash compared with the posted blob belongs to the revision the snapshot records. Never created_at (the owner can edit it).

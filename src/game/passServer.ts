@@ -1,7 +1,7 @@
 import { deviceStorage } from '../lib/deviceStore';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeSave, SaveData } from './engine';
-import { setServerPassOwned } from './entitlements';
+import { setServerPassStatus } from './entitlements';
 import { withSessionWindow } from './huntSession';
 
 // The web build's side of the Adventurer Pass: the Pass is a row in the server's `entitlements` table (supabase/migrations/0003_entitlements.sql) that only
@@ -19,10 +19,32 @@ export const passPurchaseEnabled: boolean = import.meta.env.VITE_PASS_PURCHASE_E
  * (network, not signed in). RLS lets a user select only his own rows, so no user id is sent.
  */
 export async function fetchServerPassOwned(): Promise<boolean> {
+  return (await fetchServerPassStatus()).owned;
+}
+
+/**
+ * What the server says about the account's Pass (migration 0025, public.my_pass_status): the Pass belongs to a season, so "owned" means it covers the CURRENT season.
+ * validThrough = the last season of the newest Pass the account ever held (null: never had one); currentSeason = the season a Pass bought now would cover.
+ */
+export interface PassStatus {
+  owned: boolean;
+  validThrough: number | null;
+  currentSeason: number | null;
+}
+
+const seasonOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 1000 ? v : null);
+
+/** Maps the server's answer. Anything that is not a clear "owned: true" is NOT owned (fail closed); a season that is not a small positive integer is dropped. */
+export function mapPassStatus(raw: unknown): PassStatus {
+  const r = raw && typeof raw === 'object' ? (raw as { owned?: unknown; valid_through?: unknown; current_season?: unknown }) : {};
+  return { owned: r.owned === true, validThrough: seasonOrNull(r.valid_through), currentSeason: seasonOrNull(r.current_season) };
+}
+
+export async function fetchServerPassStatus(): Promise<PassStatus> {
   if (!supabase) throw new Error('not_configured');
-  const { data, error } = await supabase.from('entitlements').select('id').eq('kind', 'adventurer_pass').eq('status', 'active').limit(1);
+  const { data, error } = await supabase.rpc('my_pass_status');
   if (error) throw new Error('entitlement_read_failed');
-  return (data?.length ?? 0) > 0;
+  return mapPassStatus(data);
 }
 
 // ---- Offline grace cache ------------------------------------------------------------------------------------------------------------------
@@ -81,19 +103,37 @@ export async function resolvePassOwned(
   }
 }
 
+/** Like resolvePassOwned, but keeps the season facts too. A cache answer carries none (the cache stores only the yes/no). */
+export async function resolvePassStatus(
+  userId: string,
+  deps: { fetchStatus?: () => Promise<PassStatus>; storage?: StorageLike | null; now?: () => number } = {},
+): Promise<{ status: PassStatus; from: PassResolution['from'] }> {
+  const fetchStatus = deps.fetchStatus ?? fetchServerPassStatus;
+  const now = deps.now ?? Date.now;
+  const storage = deps.storage === undefined ? defaultStorage() : deps.storage;
+  try {
+    const status = await fetchStatus();
+    writePassCache(userId, status.owned, now(), storage);
+    return { status, from: 'server' };
+  } catch {
+    const cached = readPassCache(userId, now(), storage);
+    return { status: { owned: cached === true, validThrough: null, currentSeason: null }, from: cached === null ? 'none' : 'cache' };
+  }
+}
+
 /** Fetch (with cache fallback) and publish the result to the entitlement store the whole game reads. */
 export async function refreshServerPass(userId: string): Promise<PassResolution> {
-  const r = await resolvePassOwned(userId);
-  setServerPassOwned(r.owned);
-  return r;
+  const r = await resolvePassStatus(userId);
+  setServerPassStatus(r.status);
+  return { owned: r.status.owned, from: r.from };
 }
 
 /** Mid-session recheck: a failure changes nothing (a hiccup must not take the Pass away); only a real server answer updates the store and the cache. */
 export async function recheckServerPass(userId: string): Promise<void> {
   try {
-    const owned = await fetchServerPassOwned();
-    writePassCache(userId, owned, Date.now());
-    setServerPassOwned(owned);
+    const status = await fetchServerPassStatus();
+    writePassCache(userId, status.owned, Date.now());
+    setServerPassStatus(status);
   } catch {
     /* keep what we have */
   }

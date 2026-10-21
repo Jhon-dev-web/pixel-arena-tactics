@@ -24,10 +24,11 @@ export function createRestStore(cfg: DbConfig): Store {
 
   return {
     async hasActiveEntitlement(userId: string, kind: EntitlementKind) {
-      const q = new URLSearchParams({ select: 'id', user_id: `eq.${userId}`, kind: `eq.${kind}`, status: 'eq.active', limit: '1' });
-      const res = await request(`entitlements?${q}`, { headers: headers() });
+      // Migration 0025: "has" means a Pass that covers the CURRENT season (public.pass_owned_now); an ended Season-1 Pass can be bought again.
+      if (kind !== 'adventurer_pass') return false;
+      const res = await request('rpc/pass_owned_now', { method: 'POST', headers: headers(), body: JSON.stringify({ p_user_id: userId }) });
       if (!res.ok) throw failure('entitlement_read', res);
-      return ((await res.json()) as unknown[]).length > 0;
+      return (await res.json()) === true;
     },
 
     // One rpc = one transaction under a per-user lock (migration 0007 checkout_claim). The numbers are the same constants the pure decision uses.

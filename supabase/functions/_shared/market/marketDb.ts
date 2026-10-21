@@ -410,8 +410,8 @@ export function createPassCryptoStore(cfg: MarketDbConfig): PassCryptoStore {
       return rows.map((r) => ({ signature: r.signature, reason: r.reason, purpose: r.purpose, amountUnits: String(r.amount_units), createdAt: r.created_at }));
     },
     async hasActivePass(userId) {
-      const q = new URLSearchParams({ select: 'id', user_id: `eq.${userId}`, kind: 'eq.adventurer_pass', status: 'eq.active', limit: '1' });
-      return (await d.rows<unknown>('entitlements', q, 'entitlement_read')).length > 0;
+      // Migration 0025: a Pass counts only while it covers the current season (an ended one can be bought again).
+      return (await d.rpc<unknown>('pass_owned_now', { p_user_id: userId }, 'entitlement_read')) === true;
     },
     wallet: (userId) => walletOf(d, userId),
     async startIntent(userId) {

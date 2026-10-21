@@ -9,7 +9,7 @@ const KNOWN: PassSourceId[] = ['stripe', 'mercadopago', 'crypto_bsc', 'crypto_so
 export async function fetchPassSource(): Promise<PassSourceId | null> {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase.from('entitlements').select('source').eq('kind', 'adventurer_pass').eq('status', 'active').limit(1);
+    const { data, error } = await supabase.from('entitlements').select('source').eq('kind', 'adventurer_pass').eq('status', 'active').order('valid_through_season', { ascending: false }).limit(1);
     if (error || !data?.length) return null;
     const source = String((data[0] as { source?: unknown }).source);
     return (KNOWN as string[]).includes(source) ? (source as PassSourceId) : null;

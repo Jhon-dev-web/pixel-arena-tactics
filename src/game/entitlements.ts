@@ -14,6 +14,7 @@ import T from './tunables';
 type PassSource = 'save' | 'server';
 let passSource: PassSource = 'save';
 let serverOwned = false;
+let seasonInfo: { validThrough: number | null; currentSeason: number | null } = { validThrough: null, currentSeason: null };
 let version = 0;
 const listeners = new Set<() => void>();
 const bump = () => {
@@ -24,7 +25,10 @@ const bump = () => {
 export function setPassSource(source: PassSource): void {
   if (passSource === source) return;
   passSource = source;
-  if (source === 'save') serverOwned = false;
+  if (source === 'save') {
+    serverOwned = false;
+    seasonInfo = { validThrough: null, currentSeason: null };
+  }
   bump();
 }
 export const isServerPassSource = (): boolean => passSource === 'server';
@@ -34,6 +38,33 @@ export function setServerPassOwned(owned: boolean): void {
   if (serverOwned === owned) return;
   serverOwned = owned;
   bump();
+}
+
+// The Pass belongs to a season (migration 0025): an account whose Pass covered an earlier season is NOT an owner (perks off), and the game tells him which season ended and which to buy.
+// What the Pass already gave (claimed rewards, titles, cosmetics) lives in the save and stays.
+export interface PassSeasonInfo {
+  /** The last season the account's newest Pass covered, or null when it never had one. */
+  validThrough: number | null;
+  /** The season a Pass bought now covers (1 while the pre-season / Season 1 runs). Null until the server has answered. */
+  currentSeason: number | null;
+}
+export const getPassSeasonInfo = (): PassSeasonInfo => seasonInfo;
+/** Owned, plus what the server said about seasons. */
+export function setServerPassStatus(status: { owned: boolean; validThrough: number | null; currentSeason: number | null }): void {
+  const changed = seasonInfo.validThrough !== status.validThrough || seasonInfo.currentSeason !== status.currentSeason;
+  seasonInfo = { validThrough: status.validThrough, currentSeason: status.currentSeason };
+  if (serverOwned !== status.owned) {
+    serverOwned = status.owned;
+    bump();
+  } else if (changed) {
+    bump();
+  }
+}
+/** The Season-1 owner whose Pass ended: the season it covered, and the one to buy. Null for an owner, for someone who never had a Pass, and when the server has not said. */
+export function expiredPassSeason(): { ended: number; buy: number } | null {
+  if (passSource !== 'server' || serverOwned) return null;
+  const { validThrough, currentSeason } = seasonInfo;
+  return validThrough !== null && currentSeason !== null && validThrough < currentSeason ? { ended: validThrough, buy: currentSeason } : null;
 }
 // For React (useSyncExternalStore): the snapshot changes whenever the source or the server answer changes.
 export const subscribePassEntitlement = (l: () => void): (() => void) => {

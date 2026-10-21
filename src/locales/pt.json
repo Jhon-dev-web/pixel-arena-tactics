@@ -1736,6 +1736,8 @@
     "activateTest": "Ativar (teste)",
     "comingSoon": "Em breve",
     "buy": "Comprar o Passe",
+    "buySeason": "Comprar o Passe da Temporada {n}",
+    "expired": "Seu Passe da Temporada {ended} terminou. Compre o Passe da Temporada {n} para continuar.",
     "opening": "Abrindo o pagamento…",
     "comingSoonWeb": "Em breve",
     "confirming": "Confirmando pagamento…",

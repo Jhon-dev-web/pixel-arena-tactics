@@ -5,7 +5,7 @@ import UsernameOnboarding from '../components/UsernameOnboarding';
 import { Button, Dialog } from '../components/ui';
 import App from '../App';
 import { SaveData } from '../game/engine';
-import { getServerPassOwned, setPassSource, setServerPassOwned } from '../game/entitlements';
+import { getServerPassOwned, setPassSource, setServerPassStatus } from '../game/entitlements';
 import { setItemAuthority } from '../game/itemAuthority';
 import { applyServerPass, refreshServerPass } from '../game/passServer';
 import { buildNewLeagueHero, readLeagueResetAt, settleLeague } from '../game/leagueReset';
@@ -75,7 +75,7 @@ export default function GameShell() {
     }
 
     if (status !== 'authenticated' || !user) {
-      setServerPassOwned(false);
+      setServerPassStatus({ owned: false, validThrough: null, currentSeason: null });
       setSyncedSave(null);
       clearMemoryStore();
       setUsername(null);

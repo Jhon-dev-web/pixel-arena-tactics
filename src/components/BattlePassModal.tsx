@@ -3,7 +3,8 @@ import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { battlePassXpForLevel, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/engine';
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
-import { ADVENTURER_PASS_TESTABLE, isServerPassSource, ownsAdventurerPass } from '../game/entitlements';
+import { ADVENTURER_PASS_TESTABLE, expiredPassSeason, getPassSeasonInfo, isServerPassSource, ownsAdventurerPass } from '../game/entitlements';
+import { usePassEntitlementVersion } from '../game/usePassEntitlement';
 import { passPurchaseEnabled } from '../game/passServer';
 import { useOpsState } from '../lib/opsStatus';
 import { seasonNumber, seasonRemainingMs } from '../game/seasons';
@@ -228,14 +229,24 @@ export default function BattlePassView({
   /** Online only: opens the "Convidar amigos" page. Shown as a one-line hint to someone who does not own the Pass yet. */
   onOpenInvites?: () => void;
 }) {
+  usePassEntitlementVersion(); // the server's answer (owned, season) can arrive after the first paint
   const owner = ownsAdventurerPass(save);
   // Web build (server mode): the button starts a checkout once the owner switches sales on (VITE_PASS_PURCHASE_ENABLED), "Em breve" until then. Offline/desktop: as before.
   const server = isServerPassSource();
   const ops = useOpsState();
   const salesPaused = server && ops.passSalesPaused; // the owner / watchdog paused Pass sales: no checkout is started, and the player is told why
   const canBuy = (server ? passPurchaseEnabled : ADVENTURER_PASS_TESTABLE) && !salesPaused;
+  // The Pass belongs to a season: the buy button names the one being bought, and a Pass that has ended says so (perks off; what it already gave stays).
+  const buySeason = server ? getPassSeasonInfo().currentSeason : null;
+  const expired = server ? expiredPassSeason() : null;
   const buyLabel = server
-    ? t(passPurchaseEnabled ? (passFlow === 'starting' ? 'battlePass.opening' : 'battlePass.buy') : 'battlePass.comingSoonWeb')
+    ? passPurchaseEnabled
+      ? passFlow === 'starting'
+        ? t('battlePass.opening')
+        : buySeason !== null
+          ? t('battlePass.buySeason', { n: buySeason })
+          : t('battlePass.buy')
+      : t('battlePass.comingSoonWeb')
     : t(ADVENTURER_PASS_TESTABLE ? 'battlePass.activateTest' : 'battlePass.comingSoon');
   // The Pass is sold through the extra option only: on the web build with it present and the card checkout off, it is the only buy control (no card button).
   const showMainBuy = !server || passPurchaseEnabled || !buyExtra;
@@ -407,6 +418,11 @@ export default function BattlePassView({
           )}
           {buyExtra}
         </div>
+      )}
+      {!owner && expired && (
+        <p className="pa-note" role="status" data-testid="pass-expired">
+          {t('battlePass.expired', { ended: expired.ended, n: expired.buy })}
+        </p>
       )}
       {!owner && (
         <p className="pa-buy-blurbs">
