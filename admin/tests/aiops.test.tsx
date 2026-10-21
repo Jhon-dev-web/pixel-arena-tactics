@@ -202,3 +202,67 @@ describe('evidence chips', () => {
     expect(screen.getByText('Motivo: PACE_TOO_FAST')).toBeTruthy();
   });
 });
+
+describe('IA e operação: three groups, what writes, and "not deployed" is not "no incident" (A06)', () => {
+  test('the page is grouped into Estado da operação, Incidentes and Relatórios da IA, in that order', async () => {
+    setup();
+    await screen.findByText('Modo manutenção', { selector: 'strong' });
+    const groups = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(groups).toEqual(['Estado da operação', 'Incidentes', 'Relatórios da IA']);
+    const estado = screen.getByRole('heading', { name: 'Estado da operação' }).closest('section')!;
+    expect(estado.textContent).toContain('Modo manutenção');
+    expect(estado.textContent).not.toContain('Marcar como lido');
+  });
+
+  test('the controls that write are marked as writing, and "Marcar como lido" says it does not resolve anything', async () => {
+    setup();
+    await screen.findByText('Modo manutenção', { selector: 'strong' });
+    const rows = within(screen.getByRole('heading', { name: 'Estado da operação' }).closest('section')!).getAllByRole('button', { name: /^(Ligar|Desligar) / });
+    expect(rows.length).toBe(4);
+    for (const b of rows) expect(b.textContent).toContain('grava');
+    const ia = screen.getByRole('heading', { name: 'Relatórios da IA' }).closest('section')!;
+    expect(ia.textContent).toContain('não resolve nada, não fecha incidente');
+    const ack = within(ia).getAllByRole('button', { name: 'Marcar como lido' })[0];
+    expect(ack.getAttribute('title')).toContain('Não resolve nada');
+    expect(ia.textContent).toContain('só marca a leitura; não resolve nem fecha nada');
+    expect(ia.textContent).toContain('sugestão, não executada');
+    // the read-only group is labelled as such
+    expect(screen.getByText('só leitura')).toBeTruthy();
+  });
+
+  test('a watchdog that never ran is "serviço não implantado", not "nenhum incidente"', async () => {
+    const base = createDemoApi();
+    const ov = await base.opsOverview();
+    setup({ opsOverview: async () => ({ ...ov, incidents: [], checks: [] }) });
+    expect(await screen.findByText(/Serviço não implantado ou sem execuções/)).toBeTruthy();
+    expect(screen.getByText(/Isto não é o mesmo que «nenhum incidente»|não.*é o mesmo que «nenhum incidente»/)).toBeTruthy();
+    expect(screen.queryByText('Nenhum incidente aberto nas verificações do vigia.')).toBeNull();
+    expect(document.body.textContent).toContain('o vigia não está verificando');
+  });
+
+  test('a watchdog that checks and finds nothing says exactly that', async () => {
+    const base = createDemoApi();
+    const ov = await base.opsOverview();
+    setup({ opsOverview: async () => ({ ...ov, incidents: [], checks: [{ check: 'db', consecutive_failures: 0, first_failed_at: null, last_ok_at: new Date().toISOString(), last_checked_at: new Date().toISOString() }] }) });
+    expect(await screen.findByText('Nenhum incidente aberto nas verificações do vigia.')).toBeTruthy();
+    expect(screen.queryByText(/Serviço não implantado/)).toBeNull();
+  });
+
+  test('a watchdog that stopped checking is called late', async () => {
+    const base = createDemoApi();
+    const ov = await base.opsOverview();
+    const old = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+    setup({ opsOverview: async () => ({ ...ov, checks: [{ check: 'db', consecutive_failures: 0, first_failed_at: null, last_ok_at: old, last_checked_at: old }] }) });
+    expect(await screen.findByText(/O vigia não verifica há/)).toBeTruthy();
+  });
+
+  test('an AI that never ran says so; a failed overview shows no "no incident" line at all', async () => {
+    const base = createDemoApi();
+    setup({ aiCost: async () => ({ month_to_date_usd: 0, projected_month_usd: 0, runs_today: 0, months: [], by_model: [] }), opsOverview: async () => Promise.reject(new ApiError('falhou')) });
+    expect(await screen.findByText(/A IA ainda não rodou nenhuma vez/)).toBeTruthy();
+    expect((await screen.findAllByText(/Não foi possível carregar o estado da operação: falhou/)).length).toBe(1);
+    expect(screen.getAllByRole('button', { name: 'Tentar de novo' }).length).toBeGreaterThanOrEqual(2);
+    expect(document.body.textContent).not.toContain('Nenhum incidente aberto');
+    void base;
+  });
+});

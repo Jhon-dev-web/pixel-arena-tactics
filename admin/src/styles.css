@@ -1163,3 +1163,38 @@ dl.facts dd {
 .notice .btn {
   margin-left: 6px;
 }
+
+/* ---------- AI operations: the three groups, and what writes ---------- */
+.group {
+  margin-top: 28px;
+  padding-top: 4px;
+}
+.group-title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 650;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--border);
+}
+.subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.subhead .mini-title {
+  margin: 0;
+}
+.write-legend {
+  margin-top: 6px;
+}
+.btn.write {
+  border-style: dashed;
+  border-color: var(--warn);
+}
+.inline-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}

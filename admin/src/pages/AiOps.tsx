@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { DataTable, Pager, type Column } from '../components/Table';
-import { Card, Icon, Kpi, Notice, Pill, SectionTitle, Skeleton } from '../components/ui';
-import { useApp, useAsync, useInterval } from '../hooks';
+import { AsyncBlock, Freshness } from '../components/Block';
+import { Card, Icon, Kpi, Notice, Pill } from '../components/ui';
+import { useApp, useAsync, useInterval, useNow } from '../hooks';
 import { AccessDeniedError } from '../lib/api';
 import { errorText } from '../lib/auth';
 import { fmtAgo, fmtDateTime, fmtInt, fmtUsd, shortId } from '../lib/format';
 import { actionLabel, actorLabel, categoryLabel, checkLabel, eventKindLabel, FLAG_INFO, FLAG_ORDER, reportKindLabel, severityLabel, severityTone } from '../lib/labels';
+import { aiNeverRan, watchdogState } from '../lib/opsState';
 import type { AiReportRow, OpsEvent, OpsFlagKey, OpsFlagRow, OpsIncident, ReportEvidence, ReportStatus } from '../lib/types';
 
 const REFRESH_MS = 60_000;
@@ -100,9 +102,11 @@ export default function AiOpsPage() {
     }
   }
 
+  const now = useNow(1000);
   const flags = ov.data ? FLAG_ORDER.map((k) => ov.data!.flags.find((f) => f.key === k)).filter((f): f is OpsFlagRow => Boolean(f)) : [];
   const on = flags.filter((f) => f.value);
   const c = cost.data;
+  const dog = ov.data ? watchdogState(ov.data.checks, now) : null;
 
   return (
     <>
@@ -110,8 +114,11 @@ export default function AiOpsPage() {
         <div>
           <h1>IA e operação</h1>
           <p>
-            Os quatro interruptores de segurança, os incidentes do vigia automático e o que a IA achou. A IA só <strong>aconselha</strong>: ela nunca bane, reembolsa, mexe em saves nem em dinheiro, e o vigia só <strong>liga</strong> pausas, nunca desliga.
+            Três partes: o estado da operação, os incidentes do vigia e os relatórios da IA. A IA só <strong>aconselha</strong>: ela nunca bane, reembolsa, mexe em saves nem em dinheiro, e o vigia só <strong>liga</strong> pausas, nunca desliga.
             {demo ? ' (dados de demonstração)' : ''}
+          </p>
+          <p className="write-legend">
+            <Pill tone="warn">grava</Pill> marca o que escreve no banco, com o seu nome: só os interruptores e o «Marcar como lido». Todo o resto desta página apenas lê.
           </p>
         </div>
         <div className="head-actions">
@@ -122,174 +129,234 @@ export default function AiOpsPage() {
         </div>
       </div>
 
-      {ov.error ? <Notice tone="bad">Não foi possível carregar: {ov.error}</Notice> : null}
       {actionError ? <Notice tone="bad">{actionError}</Notice> : null}
       {saved ? <Notice>{saved}</Notice> : null}
-      {on.length > 0 ? (
-        <Notice tone="warn">
-          {on.length === 1 ? '1 interruptor está ligado' : `${on.length} interruptores estão ligados`}: {on.map((f) => FLAG_INFO[f.key].label).join(', ')}. O vigia nunca desliga sozinho; quando o problema passar, desligue aqui.
-        </Notice>
-      ) : null}
 
-      <div className="kpis" style={{ margin: '12px 0' }}>
-        <Kpi label="Incidentes abertos" value={ov.data ? fmtInt(ov.data.incidents.length) : '…'} tone={ov.data && ov.data.incidents.length > 0 ? 'bad' : 'good'} sub="vigia automático, a cada 5 min" />
-        <Kpi label="Relatórios da IA não lidos" value={ov.data ? fmtInt(ov.data.open_reports) : '…'} tone={ov.data && ov.data.open_reports > 0 ? 'warn' : undefined} />
-        <Kpi label="Custo da IA neste mês" value={c ? fmtUsd(c.month_to_date_usd) : '…'} sub={c ? `projeção do mês: ${fmtUsd(c.projected_month_usd)} (estimativa)` : undefined} />
-        <Kpi label="Chamadas à IA hoje" value={c ? fmtInt(c.runs_today) : '…'} sub="limite diário configurável (AI_AUDITOR_MAX_RUNS_PER_DAY)" />
-      </div>
+      {/* ---------------------------------------------------------------- Estado da operação */}
+      <section aria-labelledby="grp-estado" className="group">
+        <h2 id="grp-estado" className="group-title">
+          Estado da operação
+        </h2>
+        <AsyncBlock state={ov} label="o estado da operação" now={now} skeleton={140}>
+          {() => (
+            <>
+              {on.length > 0 ? (
+                <Notice tone="warn">
+                  {on.length === 1 ? '1 interruptor está ligado' : `${on.length} interruptores estão ligados`}: {on.map((f) => FLAG_INFO[f.key].label).join(', ')}. O vigia nunca desliga sozinho; quando o problema passar, desligue aqui.
+                </Notice>
+              ) : (
+                <Notice>Nenhuma pausa de segurança ativa: o jogo funciona sem pausas.</Notice>
+              )}
+              <div className="subhead">
+                <h3 className="mini-title">Interruptores de segurança</h3>
+                <Pill tone="warn">grava</Pill>
+              </div>
+              <p className="faint">Ligar ou desligar muda o jogo para todos em até 5 minutos e fica registrado com o seu nome e o motivo.</p>
+              <Card flush>
+                <ul className="flag-list">
+                  {flags.map((f) => (
+                    <li key={f.key} className="flag-row">
+                      <div className="flag-main">
+                        <div className="flag-title">
+                          <strong>{FLAG_INFO[f.key].label}</strong>
+                          <Pill tone={f.value ? 'bad' : 'good'}>{f.value ? 'Ligada' : 'Desligada'}</Pill>
+                        </div>
+                        <p className="muted">{FLAG_INFO[f.key].what}</p>
+                        <p className="faint">
+                          {f.changed_by === 'migration' ? 'Nunca foi alterada.' : `Alterada ${fmtAgo(f.changed_at)} por ${actorLabel(f.changed_by)}${f.note ? `: «${f.note}»` : '.'}`}
+                        </p>
+                      </div>
+                      <div className="flag-actions">
+                        <button type="button" className={`btn write${f.value ? '' : ' primary'}`} onClick={() => ask(f.key, !f.value)} disabled={busy || (pending !== null && pending.key !== f.key)} aria-label={`${f.value ? 'Desligar' : 'Ligar'} ${FLAG_INFO[f.key].label}`}>
+                          {f.value ? 'Desligar' : 'Ligar'} <span aria-hidden="true">· grava</span>
+                        </button>
+                      </div>
+                      {pending?.key === f.key ? (
+                        <form
+                          className="flag-confirm"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            void confirm();
+                          }}
+                          aria-label={`Confirmar: ${pending.target ? 'ligar' : 'desligar'} ${FLAG_INFO[f.key].label}`}
+                        >
+                          <p>
+                            {pending.target ? (
+                              <>
+                                Ligar <strong>{FLAG_INFO[f.key].label}</strong>? {FLAG_INFO[f.key].what} Todos os jogadores sentem isso em até 5 minutos.
+                              </>
+                            ) : (
+                              <>
+                                Desligar <strong>{FLAG_INFO[f.key].label}</strong>? Tudo volta a funcionar para todos em até 5 minutos. Se o problema ainda existir, o vigia liga de novo.
+                              </>
+                            )}
+                          </p>
+                          <label className="field">
+                            <span>Motivo (fica registrado com o seu nome, mínimo {NOTE_MIN} letras)</span>
+                            <input className="input" value={note} maxLength={NOTE_MAX} onChange={(e) => setNote(e.target.value)} autoFocus placeholder="ex.: nó da Solana voltou, pagamentos conferidos" />
+                          </label>
+                          <div className="flag-confirm-actions">
+                            <button type="submit" className="btn primary" disabled={busy || note.trim().length < NOTE_MIN}>
+                              {busy ? 'Salvando…' : 'Confirmar'}
+                            </button>
+                            <button type="button" className="btn" onClick={() => setPending(null)} disabled={busy}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </form>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </>
+          )}
+        </AsyncBlock>
+        <Freshness queriedAt={ov.loadedAt} note="o estado dos interruptores vem do banco a cada consulta" />
+      </section>
 
-      <SectionTitle>Interruptores</SectionTitle>
-      <Card flush>
-        {!ov.data ? (
-          <div className="card-body">
-            <Skeleton height={120} />
-          </div>
-        ) : (
-          <ul className="flag-list">
-            {flags.map((f) => (
-              <li key={f.key} className="flag-row">
-                <div className="flag-main">
-                  <div className="flag-title">
-                    <strong>{FLAG_INFO[f.key].label}</strong>
-                    <Pill tone={f.value ? 'bad' : 'good'}>{f.value ? 'Ligada' : 'Desligada'}</Pill>
-                  </div>
-                  <p className="muted">{FLAG_INFO[f.key].what}</p>
-                  <p className="faint">
-                    {f.changed_by === 'migration' ? 'Nunca foi alterada.' : `Alterada ${fmtAgo(f.changed_at)} por ${actorLabel(f.changed_by)}${f.note ? `: «${f.note}»` : '.'}`}
-                  </p>
-                </div>
-                <div className="flag-actions">
-                  <button type="button" className={`btn${f.value ? '' : ' primary'}`} onClick={() => ask(f.key, !f.value)} disabled={busy || (pending !== null && pending.key !== f.key)} aria-label={`${f.value ? 'Desligar' : 'Ligar'} ${FLAG_INFO[f.key].label}`}>
-                    {f.value ? 'Desligar' : 'Ligar'}
-                  </button>
-                </div>
-                {pending?.key === f.key ? (
-                  <form
-                    className="flag-confirm"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void confirm();
-                    }}
-                    aria-label={`Confirmar: ${pending.target ? 'ligar' : 'desligar'} ${FLAG_INFO[f.key].label}`}
-                  >
-                    <p>
-                      {pending.target ? (
-                        <>
-                          Ligar <strong>{FLAG_INFO[f.key].label}</strong>? {FLAG_INFO[f.key].what} Todos os jogadores sentem isso em até 5 minutos.
-                        </>
-                      ) : (
-                        <>
-                          Desligar <strong>{FLAG_INFO[f.key].label}</strong>? Tudo volta a funcionar para todos em até 5 minutos. Se o problema ainda existir, o vigia liga de novo.
-                        </>
-                      )}
-                    </p>
-                    <label className="field">
-                      <span>Motivo (fica registrado com o seu nome, mínimo {NOTE_MIN} letras)</span>
-                      <input className="input" value={note} maxLength={NOTE_MAX} onChange={(e) => setNote(e.target.value)} autoFocus placeholder="ex.: nó da Solana voltou, pagamentos conferidos" />
-                    </label>
-                    <div className="flag-confirm-actions">
-                      <button type="submit" className="btn primary" disabled={busy || note.trim().length < NOTE_MIN}>
-                        {busy ? 'Salvando…' : 'Confirmar'}
-                      </button>
-                      <button type="button" className="btn" onClick={() => setPending(null)} disabled={busy}>
-                        Cancelar
-                      </button>
-                    </div>
-                  </form>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {/* ---------------------------------------------------------------- Incidentes */}
+      <section aria-labelledby="grp-incidentes" className="group">
+        <h2 id="grp-incidentes" className="group-title">
+          Incidentes
+        </h2>
+        <Pill>só leitura</Pill>
+        <AsyncBlock state={ov} label="os incidentes" now={now} skeleton={100}>
+          {(o) => (
+            <>
+              {dog?.state === 'not-deployed' ? (
+                <Notice tone="warn">
+                  <strong>Serviço não implantado ou sem execuções:</strong> o vigia ainda não registrou nenhuma verificação. Isto <strong>não</strong> é o mesmo que «nenhum incidente»: ninguém está olhando. Veja docs/AI_OPS.md para implantar (precisa de segredos e agendamento).
+                </Notice>
+              ) : dog?.state === 'late' ? (
+                <Notice tone="warn">
+                  O vigia não verifica há {fmtAgo(dog.lastCheckedAt)} (deveria ser a cada 5 minutos). A lista abaixo pode estar desatualizada.
+                </Notice>
+              ) : null}
+              <div className="kpis" style={{ margin: '12px 0' }}>
+                <Kpi label="Incidentes abertos" value={fmtInt(o.incidents.length)} tone={o.incidents.length > 0 ? 'bad' : dog?.state === 'running' ? 'good' : 'warn'} sub={dog?.state === 'running' ? `vigia verificou ${fmtAgo(dog.lastCheckedAt)}` : dog?.state === 'late' ? 'vigia atrasado' : 'vigia sem execuções'} />
+              </div>
+              <Card flush>
+                <DataTable<OpsIncident>
+                  caption="Incidentes abertos"
+                  columns={INCIDENT_COLUMNS}
+                  rows={o.incidents}
+                  rowKey={(r) => r.id}
+                  loading={ov.loading && !ov.data}
+                  empty={dog?.state === 'running' ? 'Nenhum incidente aberto nas verificações do vigia.' : 'Nenhum incidente registrado, mas o vigia não está verificando (veja o aviso acima).'}
+                />
+              </Card>
+              {o.checks.some((k) => k.consecutive_failures > 0) ? (
+                <p className="faint" style={{ marginTop: 8 }}>
+                  Verificações falhando agora: {o.checks.filter((k) => k.consecutive_failures > 0).map((k) => `${checkLabel(k.check)} (${k.consecutive_failures} seguidas)`).join(', ')}.
+                </p>
+              ) : null}
+              <h3 className="mini-title" style={{ marginTop: 18 }}>
+                Registro recente
+              </h3>
+              <Card flush>
+                <DataTable<OpsEvent> caption="Registro de operação" columns={EVENT_COLUMNS} rows={o.recent_events} rowKey={(r) => String(r.id)} loading={ov.loading && !ov.data} empty="Nada registrado ainda." />
+              </Card>
+            </>
+          )}
+        </AsyncBlock>
+        <Freshness queriedAt={ov.loadedAt} />
+      </section>
 
-      <SectionTitle>Incidentes abertos</SectionTitle>
-      <Card flush>
-        <DataTable<OpsIncident>
-          caption="Incidentes abertos"
-          columns={INCIDENT_COLUMNS}
-          rows={ov.data?.incidents ?? []}
-          rowKey={(r) => r.id}
-          loading={ov.loading && !ov.data}
-          empty="Nenhum incidente aberto. Tudo respondendo."
-        />
-      </Card>
-      {ov.data && ov.data.checks.some((k) => k.consecutive_failures > 0) ? (
-        <p className="faint" style={{ marginTop: 8 }}>
-          Verificações falhando agora: {ov.data.checks.filter((k) => k.consecutive_failures > 0).map((k) => `${checkLabel(k.check)} (${k.consecutive_failures} seguidas)`).join(', ')}.
+      {/* ---------------------------------------------------------------- Relatórios da IA */}
+      <section aria-labelledby="grp-ia" className="group">
+        <h2 id="grp-ia" className="group-title">
+          Relatórios da IA
+        </h2>
+        <p className="faint">
+          Conselhos com evidências para você conferir. Nada aqui foi executado e nenhum relatório é uma sentença contra um jogador. <strong>«Marcar como lido»</strong> <Pill tone="warn">grava</Pill> só tira o relatório da fila de não lidos: não resolve nada, não fecha incidente e não liga nem desliga pausa.
         </p>
-      ) : null}
-
-      <SectionTitle>Relatórios da IA</SectionTitle>
-      <div className="toolbar">
-        <div className="tabs" role="group" aria-label="Filtro dos relatórios">
-          {(['open', 'acknowledged', 'all'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              aria-pressed={status === s}
-              onClick={() => {
-                setStatus(s);
-                setPage(0);
-              }}
-            >
-              {s === 'open' ? 'Não lidos' : s === 'acknowledged' ? 'Lidos' : 'Todos'}
-            </button>
-          ))}
+        {c && aiNeverRan(c) ? (
+          <Notice tone="warn">
+            <strong>A IA ainda não rodou nenhuma vez</strong> (sem custo registrado em nenhum mês): o serviço pode não estar implantado ou faltar a chave. «Nenhum relatório» abaixo, nesse caso, quer dizer que ninguém analisou nada.
+          </Notice>
+        ) : null}
+        <div className="kpis" style={{ margin: '12px 0' }}>
+          <Kpi label="Relatórios da IA não lidos" value={ov.data ? fmtInt(ov.data.open_reports) : ov.error ? '—' : '…'} tone={ov.data && ov.data.open_reports > 0 ? 'warn' : undefined} sub="lido não é o mesmo que resolvido" />
+          <Kpi label="Custo da IA neste mês" value={c ? fmtUsd(c.month_to_date_usd) : cost.error ? '—' : '…'} sub={c ? `projeção do mês: ${fmtUsd(c.projected_month_usd)} (estimativa)` : cost.error ? 'não carregou' : undefined} />
+          <Kpi label="Chamadas à IA hoje" value={c ? fmtInt(c.runs_today) : cost.error ? '—' : '…'} sub="limite diário configurável (AI_AUDITOR_MAX_RUNS_PER_DAY)" />
         </div>
-        <span className="faint">Os mais graves primeiro. A IA aconselha; quem decide é você.</span>
-      </div>
-      {reports.error ? <Notice tone="bad">Não foi possível carregar os relatórios: {reports.error}</Notice> : null}
-      <div className="stack">
-        {reports.data && reports.data.rows.length === 0 ? <Notice>{status === 'open' ? 'Nenhum relatório novo.' : 'Nenhum relatório aqui.'}</Notice> : null}
-        {!reports.data && reports.loading ? <Skeleton height={90} /> : null}
-        {reports.data?.rows.map((r) => (
-          <ReportCard key={r.id} r={r} onAck={() => void acknowledge(r.id)} acking={acking === r.id} />
-        ))}
-      </div>
-      {reports.data ? <Pager page={page} total={reports.data.total} size={PAGE_SIZE} onPage={setPage} /> : null}
-
-      <SectionTitle>Custo da IA</SectionTitle>
-      <Card>
-        {!c ? (
-          <Skeleton height={60} />
-        ) : (
-          <div className="grid-2">
-            <div>
-              <h3 className="mini-title">Por mês</h3>
-              {c.months.length === 0 ? <p className="faint">Nenhuma chamada ainda.</p> : (
-                <ul className="plain-list">
-                  {c.months.map((m) => (
-                    <li key={m.month}>
-                      <span className="mono">{m.month}</span> <strong>{fmtUsd(m.cost_usd)}</strong> <span className="faint">{fmtInt(m.runs)} execuções</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div>
-              <h3 className="mini-title">Por modelo (este mês)</h3>
-              {c.by_model.length === 0 ? <p className="faint">Nenhuma chamada este mês.</p> : (
-                <ul className="plain-list">
-                  {c.by_model.map((m) => (
-                    <li key={m.model}>
-                      <span className="mono">{m.model}</span> <strong>{fmtUsd(m.cost_usd)}</strong> <span className="faint">{fmtInt(m.runs)} execuções</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+        <div className="toolbar">
+          <div className="tabs" role="group" aria-label="Filtro dos relatórios">
+            {(['open', 'acknowledged', 'all'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={status === s}
+                onClick={() => {
+                  setStatus(s);
+                  setPage(0);
+                }}
+              >
+                {s === 'open' ? 'Não lidos' : s === 'acknowledged' ? 'Lidos' : 'Todos'}
+              </button>
+            ))}
           </div>
-        )}
-        <p className="faint" style={{ marginTop: 10 }}>
-          Valores estimados a partir dos tokens usados e da tabela de preços pública; não são a fatura. A fatura real fica no console da Anthropic.
-        </p>
-      </Card>
+          <span className="faint">Os mais graves primeiro. A IA aconselha; quem decide é você.</span>
+        </div>
+        <AsyncBlock state={reports} label="os relatórios" now={now} skeleton={90}>
+          {(r) => (
+            <>
+              <div className="stack">
+                {r.rows.length === 0 ? <Notice>{status === 'open' ? 'Nenhum relatório novo.' : 'Nenhum relatório aqui.'}</Notice> : null}
+                {r.rows.map((row) => (
+                  <ReportCard key={row.id} r={row} onAck={() => void acknowledge(row.id)} acking={acking === row.id} />
+                ))}
+              </div>
+              <Pager page={page} total={r.total} size={PAGE_SIZE} onPage={setPage} />
+            </>
+          )}
+        </AsyncBlock>
 
-      <SectionTitle>Registro recente</SectionTitle>
-      <Card flush>
-        <DataTable<OpsEvent> caption="Registro de operação" columns={EVENT_COLUMNS} rows={ov.data?.recent_events ?? []} rowKey={(r) => String(r.id)} loading={ov.loading && !ov.data} empty="Nada registrado ainda." />
-      </Card>
+        <h3 className="mini-title" style={{ marginTop: 18 }}>
+          Custo da IA
+        </h3>
+        <AsyncBlock state={cost} label="o custo da IA" now={now} skeleton={60}>
+          {(k) => (
+            <Card>
+              <div className="grid-2">
+                <div>
+                  <h3 className="mini-title">Por mês</h3>
+                  {k.months.length === 0 ? (
+                    <p className="faint">Nenhuma chamada ainda.</p>
+                  ) : (
+                    <ul className="plain-list">
+                      {k.months.map((m) => (
+                        <li key={m.month}>
+                          <span className="mono">{m.month}</span> <strong>{fmtUsd(m.cost_usd)}</strong> <span className="faint">{fmtInt(m.runs)} execuções</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <h3 className="mini-title">Por modelo (este mês)</h3>
+                  {k.by_model.length === 0 ? (
+                    <p className="faint">Nenhuma chamada este mês.</p>
+                  ) : (
+                    <ul className="plain-list">
+                      {k.by_model.map((m) => (
+                        <li key={m.model}>
+                          <span className="mono">{m.model}</span> <strong>{fmtUsd(m.cost_usd)}</strong> <span className="faint">{fmtInt(m.runs)} execuções</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              <p className="faint" style={{ marginTop: 10 }}>
+                Valores estimados a partir dos tokens usados e da tabela de preços pública; não são a fatura. A fatura real fica no console da Anthropic.
+              </p>
+            </Card>
+          )}
+        </AsyncBlock>
+        <Freshness queriedAt={reports.loadedAt} />
+      </section>
     </>
   );
 }
@@ -333,7 +400,7 @@ function ReportCard({ r, onAck, acking }: { r: AiReportRow; onAck: () => void; a
                 <div className="report-head">
                   <Pill tone={severityTone(f.severity)}>{severityLabel(f.severity)}</Pill>
                   <strong>{categoryLabel(f.category)}</strong>
-                  <span className="faint">Conselho: {actionLabel(f.suggested_action)}</span>
+                  <span className="faint">Conselho: {actionLabel(f.suggested_action)} (sugestão, não executada)</span>
                 </div>
                 <p>{f.summary}</p>
                 {f.evidence.length > 0 ? (
@@ -353,9 +420,13 @@ function ReportCard({ r, onAck, acking }: { r: AiReportRow; onAck: () => void; a
           {r.acknowledged_at ? (
             <span className="faint">Lido {fmtAgo(r.acknowledged_at)}</span>
           ) : (
-            <button type="button" className="btn" onClick={onAck} disabled={acking}>
-              {acking ? 'Salvando…' : 'Marcar como lido'}
-            </button>
+            <span className="inline-actions">
+              <button type="button" className="btn write" onClick={onAck} disabled={acking} title="Grava no banco, com o seu nome, que você leu. Não resolve nada.">
+                {acking ? 'Salvando…' : 'Marcar como lido'}
+              </button>
+              <Pill tone="warn">grava</Pill>
+              <span className="faint">só marca a leitura; não resolve nem fecha nada</span>
+            </span>
           )}
         </div>
       </div>
