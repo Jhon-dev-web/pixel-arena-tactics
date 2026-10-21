@@ -81,7 +81,7 @@ describe('Pioneer kit: starter chest (server credits, migration 0033)', () => {
   it('the potion is a basic healing potion on the promo list (the ledger accepts it) and the amounts are modest', () => {
     expect(isPromoConsumable(PIONEER_KIT.potionId)).toBe(true);
     expect(PIONEER_KIT.potionAmount).toBeGreaterThanOrEqual(3);
-    expect(PIONEER_KIT.potionAmount).toBeLessThanOrEqual(5);
+    expect(PIONEER_KIT.potionAmount).toBeLessThanOrEqual(10);
     expect(PIONEER_KIT.minLevel).toBe(10);
   });
 

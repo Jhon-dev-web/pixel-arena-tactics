@@ -13,9 +13,9 @@
 -- grants nothing). Flagged / rejected snapshots do not count.
 --
 -- THE AMOUNTS (the ONE place on the server is arena_private.pioneer_kit(); src/game/pioneerKit.ts mirrors it and a test pins the two together):
---   Gold    60       about ONE hour of early-game Gold income: an hour of Hunting at level 1 is worth ~27 Gold sold to the merchant (BALANCE_CHANGES.md, "27 Ouro/h no nivel 1") and a Delivery order pays 25 to
---                    40 Gold/h (DELIVERY_ORDERS.md, ECONOMIC_REFERENCE.md), so ~27 + ~33 = 60. It is a nudge for the first hour, not an economy lever.
---   Potion  4 x small_hp (the basic healing potion, 30 Gold in the shop: ~120 Gold of value, inside the 3 to 5 the owner asked for; small_hp is on arena_private.promo_consumable_ids(), so the
+--   Gold    500      owner's decision (2026-10-21): enough to be worth announcing (about a first day of early-game income: ~27 Gold/h from Hunting at level 1 plus Delivery
+--                    orders at 25 to 40 Gold/h), still far from deciding the League ranking.
+--   Potion  10 x small_hp (the basic healing potion, 30 Gold in the shop: ~300 Gold of value; small_hp is on arena_private.promo_consumable_ids(), so the
 --           ledger accepts it and it is never a tradeable good).
 --   Level   10 (the same level the invite program calls an "active" player).
 --
@@ -57,7 +57,7 @@ language sql
 immutable
 set search_path = ''
 as $$
-  select pg_catalog.jsonb_build_object('min_level', 10, 'gold', 60, 'potion_id', 'small_hp', 'potion_amount', 4);
+  select pg_catalog.jsonb_build_object('min_level', 10, 'gold', 500, 'potion_id', 'small_hp', 'potion_amount', 10);
 $$;
 
 revoke all on function arena_private.pioneer_kit() from public, anon, authenticated;

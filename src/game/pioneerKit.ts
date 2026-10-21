@@ -7,9 +7,9 @@ import type { ServerCredit } from './promoRewards';
 export const PIONEER_KIT = {
   /** Hero level the account reached in the pre-season (an accepted server snapshot) to qualify. */
   minLevel: 10,
-  gold: 60,
+  gold: 500,
   potionId: 'small_hp',
-  potionAmount: 4,
+  potionAmount: 10,
 } as const;
 
 /** The source_ref values the server writes for the chest (arena_private.server_credits, source 'pioneer'). */

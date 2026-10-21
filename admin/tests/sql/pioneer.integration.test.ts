@@ -62,8 +62,8 @@ describe('when the League opens (reset_at is stamped)', () => {
     for (const u of [VET, EDGE, MIXED]) {
       const rows = await credits(u);
       expect(rows.map((r) => [r.kind, r.item_id, r.amount, r.source, r.source_ref]), u).toEqual([
-        ['gold', null, 60, 'pioneer', 'pioneer-gold'],
-        ['consumable', 'small_hp', 4, 'pioneer', 'pioneer-potion'],
+        ['gold', null, 500, 'pioneer', 'pioneer-gold'],
+        ['consumable', 'small_hp', 10, 'pioneer', 'pioneer-potion'],
       ]);
       expect(rows.every((r) => r.claimed_at === null && r.counted_at === null)).toBe(true);
     }
@@ -97,13 +97,13 @@ describe('when the League opens (reset_at is stamped)', () => {
   test('the player claims the chest once; the audit counts it so the balance jump never flags him', async () => {
     const got = await claim(VET);
     expect(got.map((r) => [r.kind, r.item_id, r.amount, r.source_ref]).sort()).toEqual([
-      ['consumable', 'small_hp', 4, 'pioneer-potion'],
-      ['gold', null, 60, 'pioneer-gold'],
+      ['consumable', 'small_hp', 10, 'pioneer-potion'],
+      ['gold', null, 500, 'pioneer-gold'],
     ]);
     expect(await claim(VET)).toEqual([]); // a second claim hands over nothing
     const p = await pending(VET);
-    expect(p.gold).toBe(60);
-    expect(p.consumable).toBe(4);
+    expect(p.gold).toBe(500);
+    expect(p.consumable).toBe(10);
     // a player with nothing owed claims nothing, and one player cannot claim another's chest
     expect(await claim(LOW)).toEqual([]);
     expect((await credits(EDGE)).every((r) => r.claimed_at === null)).toBe(true);
