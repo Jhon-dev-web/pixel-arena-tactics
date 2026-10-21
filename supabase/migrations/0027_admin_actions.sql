@@ -9,6 +9,18 @@
 --
 -- Nothing here touches the game tables' data. Every new function is security definer with search_path = '', revoked from public / anon, and granted only to the role that needs it.
 -- See each part's header for its rules, and docs/ADMIN.md (section "Ações do painel") for the operation guide.
+--
+-- ROLLBACK (by hand; it deletes the audit log and the promo codes, so export them first if they matter; Passes already given by codes stay as 'promo' rows, so revoke or re-source them before step 4):
+--   1. drop function if exists public.redeem_promo_code(text);  drop function if exists public.admin_disable_promo_code(text);  drop function if exists public.admin_list_promo_codes();
+--      drop function if exists public.admin_create_promo_codes(integer, text, integer, timestamptz, text);
+--      drop function if exists arena_private.promo_attempts_blocked(uuid);  drop function if exists arena_private.promo_normalize(text);
+--   2. drop table if exists arena_private.promo_redemptions;  drop table if exists arena_private.promo_codes;
+--   3. drop function if exists public.admin_revoke_pass(uuid, text);  drop function if exists public.admin_grant_pass(uuid, text);  drop function if exists arena_private.admin_clean_note(text);
+--   4. alter table public.entitlements drop constraint if exists entitlements_source_check;
+--      alter table public.entitlements add constraint entitlements_source_check check (source in ('stripe', 'mercadopago', 'crypto_bsc', 'crypto_sol', 'grant', 'referral'));   -- only when no 'promo' row exists
+--   5. drop function if exists public.admin_audit_record(uuid, text, uuid, jsonb);  drop function if exists public.admin_delete_user_prepare(uuid, text);
+--      drop trigger if exists admin_audit_append_only on arena_private.admin_audit;  drop table if exists arena_private.admin_audit;
+--      drop function if exists arena_private.admin_audit_add(text, uuid, jsonb);  drop function if exists arena_private.admin_audit_append_only();
 
 create schema if not exists arena_private;
 revoke all on schema arena_private from public, anon, authenticated;
@@ -311,3 +323,316 @@ $$;
 
 revoke all on function public.admin_revoke_pass(uuid, text) from public, anon, authenticated;
 grant execute on function public.admin_revoke_pass(uuid, text) to authenticated;
+
+-- =======================================================================================================================================
+-- PART C. Promo codes.
+-- =======================================================================================================================================
+-- The owner generates codes in the dashboard; a player types one in Settings > "Codigo promocional". For now a code gives ONE thing: the Adventurer Pass (reward_kind 'pass').
+--
+--   * Gold / Aether are NOT rewards here on purpose. The server never writes the save: gold and Aether live in the client save, and submit-progress only BOUNDS what a save may claim from play (time, floors, drops).
+--     There is no server-side "credit" that the bounds add to the allowance (referral cosmetics and titles are applied by the client from a server-granted record, and carry no number the bounds see). A promo
+--     amount would therefore either be rejected as impossible progress or be a free edit of the save. What it would take: a server-owned credit ledger (a table of granted amounts) that submit-progress adds to
+--     the allowed total, and a claim step that moves it into the save. Not built here.
+--   * The Pass a code gives is an entitlement with source 'promo' (livemode true), stamped with the current season by the 0025 trigger. RANKING: it counts, exactly like a 'grant' (owns_ranking_pass only asks
+--     livemode or 'grant', and the row is livemode). It does NOT count in paid_pass_count (the goal and the public meter), in the revenue (card / USDC only) or as a "paying" friend in the invite rewards:
+--     all three list their sources explicitly and 'promo' is not among them.
+--   * Codes are 10 characters of the invite alphabet (no I O 0 1), random (gen_random_uuid bytes). They all have the same length, so none is a prefix of another.
+--   * A code works for `max_uses` accounts (one use per account), until `expires_at` (null = no expiry), while `active`.
+--   * Guessing is rate limited per account: every attempt that does not end in a redemption counts, 10 per hour (arena_private.waitlist_limits, bucket 'promo:<user>'); the 11th is refused even with a good code.
+--     The answers: invalid (unknown or disabled), expired, exhausted, already_redeemed, already_has_pass, rate_limited.
+--   * A player who already holds a Pass covering the current season gets 'already_has_pass' and the code is NOT consumed.
+
+create table if not exists arena_private.promo_codes (
+  code text primary key,
+  reward_kind text not null,
+  max_uses integer not null,
+  uses integer not null default 0,
+  expires_at timestamptz,
+  -- plain uuid, like the audit log: who made the code outlives the account
+  created_by uuid not null,
+  created_at timestamptz not null default pg_catalog.now(),
+  note text not null,
+  active boolean not null default true,
+  constraint promo_codes_code_shape check (code ~ '^[A-HJ-NP-Z2-9]{10}$'),
+  constraint promo_codes_reward_check check (reward_kind in ('pass')),
+  constraint promo_codes_max_uses_check check (max_uses between 1 and 100000),
+  constraint promo_codes_uses_check check (uses between 0 and max_uses),
+  constraint promo_codes_note_check check (pg_catalog.char_length(note) between 3 and 300)
+);
+
+create index if not exists promo_codes_created_idx on arena_private.promo_codes (created_at desc);
+
+alter table arena_private.promo_codes enable row level security;
+revoke all on table arena_private.promo_codes from public, anon, authenticated;
+
+create table if not exists arena_private.promo_redemptions (
+  code text not null references arena_private.promo_codes (code),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  at timestamptz not null default pg_catalog.now(),
+  constraint promo_redemptions_unique unique (code, user_id)
+);
+
+create index if not exists promo_redemptions_user_idx on arena_private.promo_redemptions (user_id);
+
+alter table arena_private.promo_redemptions enable row level security;
+revoke all on table arena_private.promo_redemptions from public, anon, authenticated;
+
+-- 'promo' is a source of entitlements (everything the earlier migrations allowed, plus this one).
+alter table public.entitlements drop constraint if exists entitlements_source_check;
+alter table public.entitlements
+  add constraint entitlements_source_check check (source in ('stripe', 'mercadopago', 'crypto_bsc', 'crypto_sol', 'grant', 'referral', 'promo'));
+
+-- The code as a player may type it ("abcde-fghjk", spaces, lower case) -> the canonical 10 characters, or null when it cannot be a code.
+create or replace function arena_private.promo_normalize(p_code text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case when pg_catalog.upper(pg_catalog.regexp_replace(coalesce(p_code, ''), '[\s-]', '', 'g')) ~ '^[A-HJ-NP-Z2-9]{10}$'
+              then pg_catalog.upper(pg_catalog.regexp_replace(coalesce(p_code, ''), '[\s-]', '', 'g')) end;
+$$;
+
+revoke all on function arena_private.promo_normalize(text) from public, anon, authenticated;
+
+-- Has this account used up its 10 attempts of the current hour? Reads the same fixed window waitlist_hit counts in (it does not count by itself).
+create or replace function arena_private.promo_attempts_blocked(p_user uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((
+    select l.hits
+    from arena_private.waitlist_limits as l
+    where l.bucket = 'promo:' || p_user::text
+      and l.window_start = pg_catalog.to_timestamp(pg_catalog.floor(pg_catalog.date_part('epoch', pg_catalog.now()) / 3600) * 3600)
+  ), 0) >= 10;
+$$;
+
+revoke all on function arena_private.promo_attempts_blocked(uuid) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+-- public.admin_create_promo_codes(p_count, p_reward, p_max_uses, p_expires_at, p_note) -> {codes: [...]}
+--   1 to 500 codes per call; reward 'pass'; max_uses 1 to 100000; expiry in the future or null; a note (3 to 300). Audited ('create_promo_codes'); the codes themselves are not copied into the audit log.
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+create or replace function public.admin_create_promo_codes(p_count integer, p_reward text, p_max_uses integer, p_expires_at timestamptz, p_note text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_note text;
+  v_admin uuid;
+  v_codes text[] := '{}';
+  v_code text;
+  v_try integer;
+  i integer;
+begin
+  if not public.is_admin() then
+    raise exception using errcode = '42501', message = 'ADMIN_ONLY';
+  end if;
+  v_admin := (select auth.uid());
+  v_note := arena_private.admin_clean_note(p_note);
+  if p_count is null or p_count < 1 or p_count > 500 then
+    raise exception using errcode = '22023', message = 'PROMO_BAD_COUNT';
+  end if;
+  if p_reward is null or p_reward not in ('pass') then
+    raise exception using errcode = '22023', message = 'PROMO_BAD_REWARD';
+  end if;
+  if p_max_uses is null or p_max_uses < 1 or p_max_uses > 100000 then
+    raise exception using errcode = '22023', message = 'PROMO_BAD_MAX_USES';
+  end if;
+  if p_expires_at is not null and p_expires_at <= pg_catalog.now() then
+    raise exception using errcode = '22023', message = 'PROMO_BAD_EXPIRY';
+  end if;
+
+  for i in 1..p_count loop
+    v_try := 0;
+    loop
+      v_try := v_try + 1;
+      v_code := arena_private.new_invite_code();
+      begin
+        insert into arena_private.promo_codes (code, reward_kind, max_uses, expires_at, created_by, note)
+        values (v_code, p_reward, p_max_uses, p_expires_at, v_admin, v_note);
+        exit;
+      exception when unique_violation then
+        if v_try >= 8 then
+          raise;
+        end if;
+      end;
+    end loop;
+    v_codes := pg_catalog.array_append(v_codes, v_code);
+  end loop;
+
+  perform arena_private.admin_audit_add(
+    'create_promo_codes',
+    null,
+    pg_catalog.jsonb_build_object('count', p_count, 'reward', p_reward, 'max_uses', p_max_uses, 'expires_at', p_expires_at, 'note', v_note)
+  );
+  return pg_catalog.jsonb_build_object('codes', pg_catalog.to_jsonb(v_codes));
+end;
+$$;
+
+revoke all on function public.admin_create_promo_codes(integer, text, integer, timestamptz, text) from public, anon, authenticated;
+grant execute on function public.admin_create_promo_codes(integer, text, integer, timestamptz, text) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+-- public.admin_list_promo_codes() -> the newest 1000 codes: code, reward, uses / max, expiry, created, note and a status (active | disabled | expired | exhausted) computed now.
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+create or replace function public.admin_list_promo_codes()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_admin() then
+    raise exception using errcode = '42501', message = 'ADMIN_ONLY';
+  end if;
+  return coalesce((
+    select pg_catalog.jsonb_agg(x.j order by x.created_at desc, x.code)
+    from (
+      select
+        c.created_at,
+        c.code,
+        pg_catalog.jsonb_build_object(
+          'code', c.code,
+          'reward_kind', c.reward_kind,
+          'max_uses', c.max_uses,
+          'uses', c.uses,
+          'expires_at', c.expires_at,
+          'active', c.active,
+          'created_at', c.created_at,
+          'created_by', c.created_by,
+          'note', c.note,
+          'last_redeemed_at', (select pg_catalog.max(r.at) from arena_private.promo_redemptions as r where r.code = c.code),
+          'status', case
+            when not c.active then 'disabled'
+            when c.expires_at is not null and c.expires_at <= pg_catalog.now() then 'expired'
+            when c.uses >= c.max_uses then 'exhausted'
+            else 'active'
+          end
+        ) as j
+      from arena_private.promo_codes as c
+      order by c.created_at desc, c.code
+      limit 1000
+    ) as x
+  ), '[]'::jsonb);
+end;
+$$;
+
+revoke all on function public.admin_list_promo_codes() from public, anon, authenticated;
+grant execute on function public.admin_list_promo_codes() to authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+-- public.admin_disable_promo_code(p_code): stops a code from being redeemed (redemptions already made stay). Idempotent. Audited ('disable_promo_code', with the code: the log is admin-only).
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+create or replace function public.admin_disable_promo_code(p_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_code text;
+  v_active boolean;
+begin
+  if not public.is_admin() then
+    raise exception using errcode = '42501', message = 'ADMIN_ONLY';
+  end if;
+  v_code := arena_private.promo_normalize(p_code);
+  if v_code is null then
+    raise exception using errcode = '22023', message = 'PROMO_NOT_FOUND';
+  end if;
+  select c.active into v_active from arena_private.promo_codes as c where c.code = v_code for update;
+  if not found then
+    raise exception using errcode = '22023', message = 'PROMO_NOT_FOUND';
+  end if;
+  if not v_active then
+    return pg_catalog.jsonb_build_object('status', 'already');
+  end if;
+  update arena_private.promo_codes as c set active = false where c.code = v_code;
+  perform arena_private.admin_audit_add('disable_promo_code', null, pg_catalog.jsonb_build_object('code', v_code));
+  return pg_catalog.jsonb_build_object('status', 'disabled');
+end;
+$$;
+
+revoke all on function public.admin_disable_promo_code(text) from public, anon, authenticated;
+grant execute on function public.admin_disable_promo_code(text) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+-- public.redeem_promo_code(p_code): the player's side. Answers for auth.uid() only (an id is never taken from the call).
+--   {status:'ok', reward:'pass', season}                  redeemed: uses + 1, one redemption row, and the Pass (source 'promo') for the current season
+--   {status:'invalid'}          not a code, unknown, or disabled          {status:'expired'}     past expires_at
+--   {status:'exhausted'}        uses reached max_uses                      {status:'already_redeemed'}  this account used this code already
+--   {status:'already_has_pass'} he already holds a Pass for the current season: the code is NOT consumed
+--   {status:'rate_limited'}     10 attempts that did not redeem in the last hour (the answer comes BEFORE the code is looked at)
+-- Every answer that is not 'ok' and not 'rate_limited' counts as an attempt. The code row is locked (FOR UPDATE), so two accounts racing for the last use cannot both win, and the account is locked too.
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+create or replace function public.redeem_promo_code(p_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_code text;
+  v_row arena_private.promo_codes%rowtype;
+  v_season integer;
+  v_status text;
+begin
+  if v_user is null then
+    raise exception using errcode = '42501', message = 'AUTH_REQUIRED';
+  end if;
+  if arena_private.promo_attempts_blocked(v_user) then
+    return pg_catalog.jsonb_build_object('status', 'rate_limited');
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('promo_user:' || v_user::text, 27));
+
+  v_code := arena_private.promo_normalize(p_code);
+  if v_code is null then
+    v_status := 'invalid';
+  else
+    select * into v_row from arena_private.promo_codes as c where c.code = v_code for update;
+    if not found or not v_row.active then
+      v_status := 'invalid';
+    elsif v_row.expires_at is not null and v_row.expires_at <= pg_catalog.now() then
+      v_status := 'expired';
+    elsif exists (select 1 from arena_private.promo_redemptions as r where r.code = v_code and r.user_id = v_user) then
+      v_status := 'already_redeemed';
+    elsif v_row.uses >= v_row.max_uses then
+      v_status := 'exhausted';
+    else
+      v_season := arena_private.current_pass_season();
+      if exists (
+        select 1 from public.entitlements as e
+        where e.user_id = v_user and e.kind = 'adventurer_pass' and e.status = 'active' and e.valid_through_season >= v_season
+      ) then
+        v_status := 'already_has_pass';
+      else
+        begin
+          update arena_private.promo_codes as c set uses = c.uses + 1 where c.code = v_code;
+          insert into arena_private.promo_redemptions (code, user_id) values (v_code, v_user);
+          insert into public.entitlements (user_id, kind, source, provider_ref, status, livemode)
+          values (v_user, 'adventurer_pass', 'promo', 'promo-' || v_code || '-' || v_user::text, 'active', true);
+          return pg_catalog.jsonb_build_object('status', 'ok', 'reward', v_row.reward_kind, 'season', v_season);
+        exception when unique_violation then
+          -- a purchase landed between the check and the insert (the one-active-Pass-per-season index): the use and the redemption above are rolled back with this block
+          v_status := 'already_has_pass';
+        end;
+      end if;
+    end if;
+  end if;
+
+  perform arena_private.waitlist_hit('promo:' || v_user::text, 3600, 10);
+  return pg_catalog.jsonb_build_object('status', v_status);
+end;
+$$;
+
+revoke all on function public.redeem_promo_code(text) from public, anon, authenticated;
+grant execute on function public.redeem_promo_code(text) to authenticated;

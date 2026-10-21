@@ -119,7 +119,8 @@ describe('grantPass / revokePass', () => {
       { name: 'admin_grant_pass', args: { p_user: '00000000-0000-4000-8000-000000000001', p_note: 'cortesia' } },
       { name: 'admin_revoke_pass', args: { p_user: '00000000-0000-4000-8000-000000000001', p_note: 'engano' } },
     ]);
-    expect(calls.map((c) => c.name)).toEqual([...ACTION_RPC_NAMES]);
+    expect(calls.map((c) => c.name)).toEqual(['admin_grant_pass', 'admin_revoke_pass']);
+    for (const c of calls) expect(ACTION_RPC_NAMES as readonly string[]).toContain(c.name);
   });
   test('"not an admin" becomes the access-denied error, a missing note stays a readable ApiError', async () => {
     const denied = fake(() => ({ data: null, error: { message: 'ADMIN_ONLY', code: '42501' } }));
@@ -128,5 +129,24 @@ describe('grantPass / revokePass', () => {
     const err = await createRpcApi(noNote.client).revokePass('x', '').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect(actionErrorText((err as Error).message)).toMatch(/motivo/);
+  });
+});
+
+describe('promo codes', () => {
+  test('create / list / disable call their own functions with named arguments', async () => {
+    const { client, calls } = fake(() => ({ data: { codes: [] }, error: null }));
+    const api = createRpcApi(client);
+    await api.createPromoCodes({ count: 5, reward: 'pass', maxUses: 2, expiresAt: '2026-12-01T02:59:59.000Z', note: 'sorteio' });
+    await api.listPromoCodes();
+    await api.disablePromoCode('ABCDEFGHJK');
+    expect(calls).toEqual([
+      { name: 'admin_create_promo_codes', args: { p_count: 5, p_reward: 'pass', p_max_uses: 2, p_expires_at: '2026-12-01T02:59:59.000Z', p_note: 'sorteio' } },
+      { name: 'admin_list_promo_codes', args: undefined },
+      { name: 'admin_disable_promo_code', args: { p_code: 'ABCDEFGHJK' } },
+    ]);
+    for (const c of calls) expect(ACTION_RPC_NAMES as readonly string[]).toContain(c.name);
+  });
+  test('the player function redeem_promo_code is NOT part of the dashboard (it belongs to the game)', () => {
+    expect(ACTION_RPC_NAMES as readonly string[]).not.toContain('redeem_promo_code');
   });
 });

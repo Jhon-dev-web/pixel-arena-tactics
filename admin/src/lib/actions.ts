@@ -73,3 +73,66 @@ export function actionErrorText(message: string): string {
   if (/ADMIN_ONLY/.test(message)) return 'O servidor recusou: esta conta não é de administrador.';
   return message;
 }
+
+// ---- Promo codes (public.admin_create_promo_codes / admin_list_promo_codes / admin_disable_promo_code) ----------------------------------------------------------------------
+
+export type PromoStatus = 'active' | 'disabled' | 'expired' | 'exhausted';
+
+export interface PromoCodeRow {
+  code: string;
+  reward_kind: 'pass';
+  max_uses: number;
+  uses: number;
+  expires_at: string | null;
+  active: boolean;
+  created_at: string;
+  created_by: string;
+  note: string;
+  last_redeemed_at: string | null;
+  status: PromoStatus;
+}
+
+export interface CreatePromoArgs {
+  count: number;
+  reward: 'pass';
+  maxUses: number;
+  /** ISO moment, or null for a code that never expires. */
+  expiresAt: string | null;
+  note: string;
+}
+
+export const PROMO_COUNT_MAX = 500;
+export const PROMO_USES_MAX = 100000;
+
+/** "ABCDEFGHJK" -> "ABCDE-FGHJK" (easier to read aloud and to type; the game accepts it with or without the dash). */
+export const formatPromoCode = (code: string): string => (code.length === 10 ? `${code.slice(0, 5)}-${code.slice(5)}` : code);
+
+export const PROMO_REWARD_LABEL: Record<string, string> = { pass: 'Passe de Aventureiro' };
+export const promoRewardLabel = (k: string): string => PROMO_REWARD_LABEL[k] ?? k;
+
+export const PROMO_STATUS_LABEL: Record<PromoStatus, string> = { active: 'Ativo', disabled: 'Desativado', expired: 'Expirado', exhausted: 'Esgotado' };
+
+/** The end of a calendar day (local time) as an ISO moment, from the value of an <input type="date"> ("2026-11-30"). Empty or invalid -> null. A day in the past is returned as it is: the database refuses it. */
+export function endOfDayIso(day: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 0);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** Why a form is not ready, in plain words (null = ready). The database checks the same limits again. */
+export function promoFormProblem(f: { count: number; maxUses: number; note: string }): string | null {
+  if (!Number.isInteger(f.count) || f.count < 1 || f.count > PROMO_COUNT_MAX) return `A quantidade de códigos vai de 1 a ${PROMO_COUNT_MAX}.`;
+  if (!Number.isInteger(f.maxUses) || f.maxUses < 1 || f.maxUses > PROMO_USES_MAX) return `Os usos por código vão de 1 a ${PROMO_USES_MAX}.`;
+  if (f.note.trim().length < NOTE_MIN) return `Escreva uma nota (pelo menos ${NOTE_MIN} letras): ela mostra para que serve o lote.`;
+  return null;
+}
+
+export function promoErrorText(message: string): string {
+  if (/PROMO_BAD_COUNT/.test(message)) return `A quantidade de códigos vai de 1 a ${PROMO_COUNT_MAX}.`;
+  if (/PROMO_BAD_MAX_USES/.test(message)) return `Os usos por código vão de 1 a ${PROMO_USES_MAX}.`;
+  if (/PROMO_BAD_REWARD/.test(message)) return 'Recompensa desconhecida.';
+  if (/PROMO_BAD_EXPIRY/.test(message)) return 'A data de validade precisa estar no futuro.';
+  if (/PROMO_NOT_FOUND/.test(message)) return 'Código não encontrado.';
+  return actionErrorText(message);
+}

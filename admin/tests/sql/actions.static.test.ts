@@ -33,7 +33,7 @@ const PUBLIC_API = fns.filter((f) => f.qualified.startsWith('public.'));
 
 describe('0027_admin_actions.sql: every function is locked down', () => {
   test('there are functions to check', () => {
-    expect(fns.length).toBeGreaterThanOrEqual(4);
+    expect(fns.length).toBeGreaterThanOrEqual(12);
   });
 
   test('security definer with an empty search_path, or an explicit invoker that is also pinned', () => {

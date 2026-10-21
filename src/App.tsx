@@ -2857,6 +2857,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           }}
           accountConfigured={configured}
           accountEmail={user?.email ?? null}
+          onPromoRedeemed={() => {
+            // the server wrote the Pass: ask it again, so the perks (and the "Ativo" chip) show up without a reload
+            if (userId) void recheckServerPass(userId);
+          }}
           onSignOut={() => {
             setSettingsOpen(false);
             void handleSignOut();

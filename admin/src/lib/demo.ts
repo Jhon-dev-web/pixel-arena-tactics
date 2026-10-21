@@ -1,5 +1,6 @@
 // A fake backend with INVENTED data, used only by a build made with VITE_ADMIN_DEMO=1 (screenshots, layout work). It follows the same contract as the database
 // functions (search, sort, filters, paging, masked e-mails), so every control on every page works against it. It never touches the network.
+import type { PromoCodeRow } from './actions';
 import { ApiError, type AdminApi } from './api';
 import type { AuthPort } from './auth';
 import { createDemoOpsApi } from './demoOps';
@@ -478,8 +479,16 @@ function paginate<T>(rows: T[], page: number, size: number): Page<T> {
 
 const delay = <T>(v: T, ms = 120): Promise<T> => new Promise((res) => setTimeout(() => res(v), ms));
 
+const PROMO_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
 export function createDemoApi(): AdminApi {
   const w = build();
+  const promos: PromoCodeRow[] = [
+    { code: 'DEMKA2B3C4', reward_kind: 'pass', max_uses: 10, uses: 3, expires_at: iso(-14 * DAY), active: true, created_at: iso(6 * DAY), created_by: uid(1), note: 'sorteio do Discord', last_redeemed_at: iso(2 * HOUR), status: 'active' },
+    { code: 'DEMKK5M6N7', reward_kind: 'pass', max_uses: 1, uses: 1, expires_at: null, active: true, created_at: iso(9 * DAY), created_by: uid(1), note: 'presente para streamer', last_redeemed_at: iso(5 * DAY), status: 'exhausted' },
+    { code: 'DEMKP8Q9R2', reward_kind: 'pass', max_uses: 50, uses: 12, expires_at: iso(2 * DAY), active: false, created_at: iso(20 * DAY), created_by: uid(1), note: 'campanha encerrada antes do prazo', last_redeemed_at: iso(10 * DAY), status: 'disabled' },
+  ];
+  const promoStatus = (p: PromoCodeRow): PromoCodeRow['status'] => (!p.active ? 'disabled' : p.expires_at && new Date(p.expires_at).getTime() <= Date.now() ? 'expired' : p.uses >= p.max_uses ? 'exhausted' : 'active');
   return {
     ...createDemoOpsApi(w.players),
     overview: () => delay({ ...w.overview, generated_at: new Date().toISOString() }),
@@ -592,6 +601,28 @@ export function createDemoApi(): AdminApi {
       const page = paginate(rows, q.page, q.pageSize);
       const out: FlagsPage = { ...page, reasons: [...counts.entries()].map(([code, players]) => ({ code, players })).sort((a, b) => b.players - a.players), reset_at: w.overview.league.reset_at };
       return delay(out);
+    },
+    async createPromoCodes(a) {
+      if (a.note.trim().length < 3) throw new ApiError('ADMIN_NOTE_REQUIRED');
+      if (!Number.isInteger(a.count) || a.count < 1 || a.count > 500) throw new ApiError('PROMO_BAD_COUNT');
+      if (!Number.isInteger(a.maxUses) || a.maxUses < 1 || a.maxUses > 100000) throw new ApiError('PROMO_BAD_MAX_USES');
+      if (a.expiresAt && new Date(a.expiresAt).getTime() <= Date.now()) throw new ApiError('PROMO_BAD_EXPIRY');
+      const codes: string[] = [];
+      for (let i = 0; i < a.count; i++) {
+        let code = '';
+        for (let k = 0; k < 10; k++) code += PROMO_ALPHABET[Math.floor(Math.random() * PROMO_ALPHABET.length)];
+        codes.push(code);
+        promos.unshift({ code, reward_kind: 'pass', max_uses: a.maxUses, uses: 0, expires_at: a.expiresAt, active: true, created_at: new Date().toISOString(), created_by: uid(1), note: a.note.trim(), last_redeemed_at: null, status: 'active' });
+      }
+      return delay({ codes });
+    },
+    listPromoCodes: () => delay(promos.map((p) => ({ ...p, status: promoStatus(p) }))),
+    async disablePromoCode(code) {
+      const p = promos.find((x) => x.code === code.replace(/[s-]/g, '').toUpperCase());
+      if (!p) throw new ApiError('PROMO_NOT_FOUND');
+      if (!p.active) return delay({ status: 'already' as const });
+      p.active = false;
+      return delay({ status: 'disabled' as const });
     },
     async grantPass(userId, note) {
       const p = w.players.find((x) => x.user_id === userId);

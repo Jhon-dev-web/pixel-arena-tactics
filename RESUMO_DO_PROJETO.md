@@ -16,10 +16,10 @@ Monetização: o **Passe de Aventureiro** (US$ 10, pago **só em USDC na rede So
 |---|---|
 | `src/` | O jogo (React 18 + Vite + TypeScript). Lógica em `src/game/`, telas em `src/components/`, casca/layout em `src/shell/`, textos em `src/locales/pt.json` e `en.json` (sempre manter os dois iguais). |
 | `public/assets/` | Sprites, ícones, fundos, músicas e efeitos. Folhas de personagem são PNG 1024×1024 em grade 4×4 (linhas: parado, ataque, dano, morte). |
-| `supabase/migrations/` | Banco (Postgres no Supabase), migrações `0001` a `0026`; `0001` a `0025` estão aplicadas no projeto de teste, a `0026` (painel do dono, Passe da temporada) ainda **não**. |
-| `supabase/functions/` | Edge Functions (Deno): progresso, materiais, itens, mercado, Passe em USDC, lista de espera, auditor de IA e vigia. Código comum em `_shared/`. |
+| `supabase/migrations/` | Banco (Postgres no Supabase), migrações `0001` a `0027`; `0001` a `0025` estão aplicadas no projeto de teste, a `0026` (painel do dono, Passe da temporada) e a `0027` (ações do painel, códigos promocionais) ainda **não**. |
+| `supabase/functions/` | Edge Functions (Deno): progresso, materiais, itens, mercado, Passe em USDC, lista de espera, auditor de IA, vigia e `admin-delete-user` (apagar conta pelo painel). Código comum em `_shared/`. |
 | `portal/` | Site público (estático, gerado por `node scripts/build.mjs`), com Liga/Temporada, Passe, roadmap, FAQ e cadastro por e-mail. |
-| `admin/` | Painel do dono, projeto separado (React + Vite), só leitura. |
+| `admin/` | Painel do dono, projeto separado (React + Vite): lê quase tudo e tem poucas escritas auditadas (docs/ADMIN.md seção 7). |
 | `scripts/` | Simulações de economia/progressão (`scripts/sim`), arte (`scripts/art`), checagens de build. |
 | `docs/` | Documentos de projeto: economia, mercado, Passe, temporada, lista de espera, admin, IA. |
 | `desktop/` | Electron, parado (sem versão PC). |
@@ -88,7 +88,7 @@ Na raiz (Node 22+):
 
 ## 8. Painel de administração (`admin/`)
 
-- Projeto separado do jogo, só leitura, para o dono. Páginas: Visão geral, Jogadores, Economia, Mercado, Lendários, Liga, Pagamentos, Lista de espera e IA/Operações.
+- Projeto separado do jogo, para o dono. Páginas: Visão geral, Jogadores, Economia, Mercado, Lendários, Liga, Pagamentos, Lista de espera, Códigos e IA/Operações. Escritas (só admin, no servidor, auditadas em `arena_private.admin_audit`, confirmadas na tela; migração `0027`, a aplicar): apagar conta (Edge Function `admin-delete-user`, segredo `ADMIN_ORIGIN`), ativar/revogar o Passe de uma conta, gerar/desativar códigos promocionais (o jogador resgata em Configurações; dá o Passe da temporada, conta para o ranking, não conta como venda). Ouro/Éter como recompensa de código não existe (docs/ADMIN.md 7.3).
 - Acesso só para quem está em `arena_private.admins`: `insert into arena_private.admins (user_id, note) select id, 'dono' from auth.users where email = '...';`
 - Lê o banco por funções `admin_*` (migração `0020`). A migração `0026_admin_pass_season.sql` (a aplicar) faz `admin_overview`, `admin_players` e `admin_player_detail` mostrarem o Passe **válido nesta temporada** e o **histórico de Passes** como duas medidas; a receita continua de todo o período. Enquanto não for aplicada, o painel avisa que só conhece o histórico. A Visão geral abre com «Precisa de atenção», a IA e operação é dividida em estado, incidentes e relatórios, e a casca mostra o ambiente conectado (variáveis públicas `VITE_ADMIN_ENV` e `VITE_ADMIN_PRODUCTION_REF`).
 - IA de operações (`0021`, `ai-auditor`, `ops-watchdog`, `docs/AI_OPS.md`): só aconselha e só pode LIGAR pausas; ainda não implantada (precisa de `ANTHROPIC_API_KEY`, `OPS_CRON_SECRET` e webhook).

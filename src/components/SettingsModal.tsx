@@ -15,6 +15,7 @@ import { enableNotifications, notificationsActive, notifyPermission, saveNotifyP
 import { MaterialPrefs, materialPrefs } from '../game/tradeableMaterials';
 import { maskEmail } from '../lib/maskEmail';
 import { fetchPassSource, PassSourceId } from '../lib/passSource';
+import { looksLikePromoCode, PromoOutcome, redeemPromoCode } from '../lib/promo';
 import { manualReduceMotion, setManualReduceMotion, subscribeMotion, systemReducesMotion } from '../lib/motionPref';
 import { cleanEmail, safeHttpsUrl, SUPPORT } from '../lib/supportConfig';
 import { Button, Chip, ModalShell, Panel, SelectField } from './ui';
@@ -22,6 +23,18 @@ import { Button, Chip, ModalShell, Panel, SelectField } from './ui';
 // Settings, in panels: Conta (the account, masked), Passe (read-only), the wallet (web only, handed in as `walletSlot`), Jogo (language, the two audio channels, fullscreen, notifications, reduced motion, the
 // tradeable-material spending order, the tutorial), Dados (export, import and reset of the save), Suporte (the error report and whatever contact / legal links the owner has configured) and Sobre.
 // Importing and resetting replace the hero, so both ask first (what is about to be loaded / a typed word), and App keeps a backup of the current hero before it replaces anything.
+
+const PROMO_MESSAGE: Record<PromoOutcome, string> = {
+  ok: 'settings.promoOk',
+  invalid: 'settings.promoInvalid',
+  expired: 'settings.promoExpired',
+  exhausted: 'settings.promoExhausted',
+  already_redeemed: 'settings.promoAlreadyRedeemed',
+  already_has_pass: 'settings.promoHasPass',
+  rate_limited: 'settings.promoRateLimited',
+  offline: 'settings.promoOffline',
+  error: 'settings.promoError',
+};
 
 function Row({ label, hint, children, testId }: { label: ReactNode; hint?: ReactNode; children?: ReactNode; testId?: string }) {
   return (
@@ -52,6 +65,7 @@ export default function SettingsModal({
   onResetSave,
   onMaterialPrefs,
   walletSlot,
+  onPromoRedeemed,
   onClose,
 }: {
   save: SaveData;
@@ -72,6 +86,8 @@ export default function SettingsModal({
   onMaterialPrefs: (patch: Partial<MaterialPrefs>) => void;
   // The Solana wallet panel (the market's link flow): only passed in the web build with the market on, so the desktop build carries none of it.
   walletSlot?: ReactNode;
+  // The server accepted a promo code and wrote a Pass: the app asks the server about the Pass again so the perks show up at once.
+  onPromoRedeemed?: () => void;
   onClose: () => void;
 }) {
   const fullscreen = useFullscreen();
@@ -134,6 +150,24 @@ export default function SettingsModal({
       live = false;
     };
   }, [accountConfigured, passOwned]);
+
+  // Promo code (online only): the server decides; this only sends the text and tells the answer in plain words.
+  const [promoText, setPromoText] = useState('');
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoResult, setPromoResult] = useState<PromoOutcome | null>(null);
+  const promoOnline = accountConfigured && isServerPassSource();
+  const redeemPromo = async () => {
+    if (promoBusy || promoText.trim() === '') return;
+    setPromoBusy(true);
+    setPromoResult(null);
+    const outcome = looksLikePromoCode(promoText) ? await redeemPromoCode(promoText) : 'invalid';
+    setPromoBusy(false);
+    setPromoResult(outcome);
+    if (outcome === 'ok') {
+      setPromoText('');
+      onPromoRedeemed?.();
+    }
+  };
 
   const username = useContext(UsernameContext);
   const [deleteInfo, setDeleteInfo] = useState(false);
@@ -254,6 +288,44 @@ export default function SettingsModal({
               <Row label={t('settings.passHow')}>
                 <span className="st-value">{passHow ? t(`settings.passSource_${passHow}`) : isServerPassSource() ? '...' : t('settings.passLocal')}</span>
               </Row>
+            )}
+            {promoOnline && (
+              <form
+                className="st-promo"
+                data-settings="promo"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void redeemPromo();
+                }}
+              >
+                <span className="st-label">{t('settings.promoTitle')}</span>
+                <span className="st-hint">{t('settings.promoHint')}</span>
+                <div className="st-channel-row">
+                  <input
+                    className="st-input"
+                    value={promoText}
+                    onChange={(e) => {
+                      setPromoText(e.target.value);
+                      setPromoResult(null);
+                    }}
+                    placeholder={t('settings.promoPlaceholder')}
+                    aria-label={t('settings.promoTitle')}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    maxLength={24}
+                    data-ui
+                  />
+                  <Button size="sm" type="submit" disabled={promoBusy || promoText.trim() === ''}>
+                    {promoBusy ? t('settings.promoWorking') : t('settings.promoRedeem')}
+                  </Button>
+                </div>
+                {promoResult && (
+                  <p className={promoResult === 'ok' ? 'st-hint' : 'ui-alert bad'} role="status" data-testid="promo-result" data-outcome={promoResult}>
+                    {t(PROMO_MESSAGE[promoResult])}
+                  </p>
+                )}
+              </form>
             )}
           </Panel>
 

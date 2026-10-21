@@ -8,6 +8,7 @@ export const PASS_SOURCE_LABEL: Record<string, string> = {
   mercadopago: 'Mercado Pago',
   grant: 'Concessão manual',
   referral: 'Indicação',
+  promo: 'Código promocional',
 };
 
 export const passSourceLabel = (s: string | null | undefined): string => (s ? (PASS_SOURCE_LABEL[s] ?? s) : 'Sem Passe');

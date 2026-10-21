@@ -14,6 +14,7 @@ const League = lazy(() => import('./pages/League'));
 const Waitlist = lazy(() => import('./pages/WaitlistPage'));
 const AiOps = lazy(() => import('./pages/AiOps'));
 const Pagamentos = lazy(() => import('./pages/Pagamentos'));
+const Codes = lazy(() => import('./pages/Codes'));
 
 export const ROUTES: { id: string; label: string; icon: IconName }[] = [
   { id: 'visao-geral', label: 'Visão geral', icon: 'overview' },
@@ -24,6 +25,7 @@ export const ROUTES: { id: string; label: string; icon: IconName }[] = [
   { id: 'liga', label: 'Liga', icon: 'league' },
   { id: 'espera', label: 'Lista de espera', icon: 'waitlist' },
   { id: 'pagamentos', label: 'Pagamentos a resolver', icon: 'economy' },
+  { id: 'codigos', label: 'Códigos', icon: 'ticket' },
   { id: 'ia-operacao', label: 'IA e operação', icon: 'shield' },
 ];
 
@@ -36,6 +38,7 @@ const PAGES: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
   liga: League,
   espera: Waitlist,
   pagamentos: Pagamentos,
+  codigos: Codes,
   'ia-operacao': AiOps,
 };
 

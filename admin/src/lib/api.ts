@@ -3,7 +3,7 @@
 // The anon key is public by design (it is in every browser that opens the game); what protects the data is the function itself,
 // which refuses anyone who is not in arena_private.admins. No service key is, or may ever be, in this app.
 import type { ActionRpcName } from './actionRpcNames';
-import type { DeleteUserResult, GrantPassResult, RevokePassResult } from './actions';
+import type { CreatePromoArgs, DeleteUserResult, GrantPassResult, PromoCodeRow, RevokePassResult } from './actions';
 import { flagsArgs, legendaryArgs, marketArgs, playerArgs } from './filters';
 import type { OpsRpcName } from './opsRpcNames';
 import type { PaymentRpcName } from './paymentRpcNames';
@@ -37,6 +37,10 @@ export interface AdminApi {
   grantPass(userId: string, note: string): Promise<GrantPassResult>;
   /** Revokes the Pass(es) that cover the current season. */
   revokePass(userId: string, note: string): Promise<RevokePassResult>;
+  /** Generates promo codes (1 to 500) and returns them. */
+  createPromoCodes(a: CreatePromoArgs): Promise<{ codes: string[] }>;
+  listPromoCodes(): Promise<PromoCodeRow[]>;
+  disablePromoCode(code: string): Promise<{ status: 'disabled' | 'already' }>;
 }
 
 /** What the app needs from a Supabase client (so tests can pass a fake). */
@@ -94,6 +98,9 @@ export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminAp
     paymentExceptions: (q) => call<PaymentExceptionsPage>('admin_payment_exceptions', { p_status: q.status, p_page: q.page, p_page_size: q.pageSize }),
     grantPass: (userId, note) => call<GrantPassResult>('admin_grant_pass', { p_user: userId, p_note: note }),
     revokePass: (userId, note) => call<RevokePassResult>('admin_revoke_pass', { p_user: userId, p_note: note }),
+    createPromoCodes: (a) => call<{ codes: string[] }>('admin_create_promo_codes', { p_count: a.count, p_reward: a.reward, p_max_uses: a.maxUses, p_expires_at: a.expiresAt, p_note: a.note }),
+    listPromoCodes: () => call<PromoCodeRow[]>('admin_list_promo_codes'),
+    disablePromoCode: (code) => call<{ status: 'disabled' | 'already' }>('admin_disable_promo_code', { p_code: code }),
     deleteUser: (userId, confirm) => (extras.deleteUser ? extras.deleteUser(userId, confirm) : Promise.resolve<DeleteUserResult>({ ok: false, reason: 'unavailable' })),
   };
 }

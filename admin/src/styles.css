@@ -1349,3 +1349,27 @@ dl.facts dd {
   gap: 8px;
   margin-top: 10px;
 }
+
+/* ---------- promo codes ---------- */
+.promo-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.promo-form-actions {
+  display: flex;
+  align-items: end;
+}
+.promo-made {
+  margin-top: 14px;
+}
+.promo-made textarea {
+  width: 100%;
+  resize: vertical;
+  letter-spacing: 0.04em;
+}
+.code-text {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}

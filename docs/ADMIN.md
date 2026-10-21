@@ -2,7 +2,7 @@
 
 AVISO: **nada disto foi aplicado, implantado ou executado contra um serviço real por este trabalho.** A migration `0020_admin.sql` não foi aplicada, nenhum projeto Supabase ou Vercel foi tocado, nenhuma chave foi lida ou escrita. O código está no repositório; o painel só funciona depois dos passos abaixo. Os valores de segredos ficam só nos painéis; aqui há apenas nomes.
 
-O painel é um app **separado do jogo e do portal** (pasta `admin/`, `package.json` próprio, projeto Vercel próprio). Não parece com o jogo de propósito. **Somente leitura, com duas exceções auditadas** na página “IA e operação” (migration `0021_ai_ops.sql`, ainda não aplicada): ligar/desligar um dos quatro interruptores de segurança (com motivo obrigatório, registrado com o seu nome) e marcar um relatório da IA como lido. Todo o resto só lê.
+O painel é um app **separado do jogo e do portal** (pasta `admin/`, `package.json` próprio, projeto Vercel próprio). Não parece com o jogo de propósito. **Quase tudo só lê.** As escritas, todas só para administrador e todas auditadas: na página “IA e operação” (migration `0021_ai_ops.sql`) ligar/desligar um dos quatro interruptores de segurança (com motivo obrigatório) e marcar um relatório da IA como lido; e, na migration `0027_admin_actions.sql` (seção 7), **apagar uma conta**, **ativar/revogar o Passe** (no painel do jogador) e **gerar/desativar códigos promocionais** (página «Códigos»).
 
 ## 1. O que ele mostra
 
@@ -15,6 +15,7 @@ O painel é um app **separado do jogo e do portal** (pasta `admin/`, `package.js
 | **Economia** | Ouro nos saves (total, média, mediana, percentil 90, maior saldo, parte dos 10 mais ricos, série diária, maiores saldos), Bolsas de Ouro (em circulação, criadas, abertas, por tamanho), materiais negociáveis, itens certificados por tipo, raridade e estado, volume em SOL. |
 | **Liga** | Temporada, datas, meta de Passes pagos e progresso, topo do ranking com “aparece no ranking público?”, e a **fila de auditoria antifraude** (alertas de progresso e de itens, motivos mais comuns). |
 | **Lista de espera** | Total, por dia, por origem, indicações ignoradas e quem mais indicou (e-mails mascarados), quantos já criaram conta. |
+| **Códigos** | Gerar códigos promocionais do Passe (quantidade, usos, validade, nota), ver quanto cada um foi usado e desativar (seção 7.3). **Grava.** |
 | **IA e operação** | Três grupos: **Estado da operação**, **Incidentes** e **Relatórios da IA**; os controles que gravam (interruptores e «Marcar como lido») levam a marca «grava», e «lido» não é «resolvido». «Serviço não implantado» (o vigia nunca verificou) aparece à parte de «nenhum incidente». Os quatro interruptores (`maintenance_mode`, `market_paused`, `season_scoring_paused`, `pass_sales_paused`) com botões Ligar/Desligar e confirmação com motivo, incidentes abertos do vigia automático, relatórios da IA do mais grave ao menos grave (com links para o jogador e a venda envolvidos e botão “Marcar como lido”), custo estimado da IA no mês e o registro recente. Guia completo, segredos e roteiro de incidente em `docs/AI_OPS.md`. |
 
 Cada tabela tem **Exportar CSV** (lê todas as páginas do filtro atual, até 10.000 linhas). O CSV neutraliza células que começam com `=`, `+`, `-` ou `@` (nome de jogador não executa fórmula na planilha).
@@ -43,7 +44,7 @@ Cada tabela tem **Exportar CSV** (lê todas as páginas do filtro atual, até 10
   3. **Mantenha a lista de admins mínima** (idealmente só você). Remova quem sair: `delete from arena_private.admins where user_id = '<id>';`.
   4. Não compartilhe o endereço do painel nem o ligue a partir do jogo ou do portal (não há link nenhum).
 - **LGPD**: e-mails de jogadores e da lista de espera só são visíveis a admins; nas tabelas aparecem **mascarados** (`an***@exemplo.com`) e o completo só no painel de detalhes de um jogador. Use-os apenas para suporte e auditoria. Esta rodada **não grava** quem viu qual e-mail (o painel é somente leitura); os logs de API do Supabase registram as chamadas. Se quiser um registro de acessos, é uma próxima rodada.
-- Limites conhecidos: o ouro vem de saves enviados pelo cliente; “online” é aproximação; o painel não faz nada contra jogadores (liberar alertas, desqualificar, conceder Passe continuam sendo SQL, como na documentação da Liga).
+- Limites conhecidos: o ouro vem de saves enviados pelo cliente; “online” é aproximação; o painel não libera alertas nem desqualifica jogadores (continua sendo SQL, como na documentação da Liga); conceder/revogar o Passe e apagar contas agora têm botão (seção 7).
 
 ## 3. Aplicar a migration e virar admin
 
@@ -141,3 +142,30 @@ No painel do jogador, **Ativar o Passe** (aparece quando a conta não tem Passe 
 - `public.admin_revoke_pass(p_user, p_note)`: marca como `revoked` o(s) Passe(s) **ativo(s) que cobrem a temporada atual** (o histórico fica; um Passe antigo que já não cobre nada não é tocado). Devolve as origens revogadas. Sem Passe para revogar devolve `none` e não grava. Registro: `revoke_pass` com motivo, temporada, origens e ids. **Revogar um Passe pago não devolve dinheiro**: a confirmação avisa e o estorno é feito por fora.
 - Efeito no jogo: o jogo relê o Passe ao voltar para a aba (a cada 5 min) ou ao abrir; as vantagens somem/aparecem sem recarregar.
 - Contagens: o Passe concedido **vale para as vantagens e para o ranking** (a regra `owns_ranking_pass` já deixava `grant` entrar), mas **não conta** na meta/medidor de Passes pagos (`paid_pass_count`) nem na receita, e não conta como "pagante" nos convites.
+
+### 7.3 Códigos promocionais
+
+Página **Códigos** do painel + **Configurações > Passe de Aventureiro > Código promocional** no jogo (só online). Um código dá **o Passe de Aventureiro da temporada atual** e mais nada (ver "Ouro e Éter" abaixo).
+
+**No painel.** Gerar: quantidade (1 a 500), recompensa (por enquanto só o Passe), usos por código (1 a 100.000, contas diferentes), validade opcional (fim do dia escolhido) e uma nota obrigatória (para que serve o lote). O painel mostra o que vai acontecer, pede confirmação, e depois mostra os códigos gerados num campo copiável («Copiar todos»). A lista mostra cada código com usos / máximo, validade, estado (**Ativo**, **Esgotado**, **Expirado**, **Desativado**), nota, e os botões **Copiar** e **Desativar** (com confirmação; definitivo). Funções: `admin_create_promo_codes(p_count, p_reward, p_max_uses, p_expires_at, p_note)`, `admin_list_promo_codes()`, `admin_disable_promo_code(p_code)`; as três só para administrador e as duas que mudam algo gravam no registro de ações (`create_promo_codes` sem os códigos; `disable_promo_code` com o código).
+
+**Os códigos.** 10 caracteres do alfabeto de convites (sem I, O, 0, 1), sorteados no banco; todos têm o mesmo tamanho, então nenhum é prefixo de outro. Mostrados como `ABCDE-FGHJK`; o jogo aceita com ou sem traço, espaço ou minúsculas. Tabelas `arena_private.promo_codes` (código único, recompensa, `max_uses`, `uses`, `expires_at`, `created_by`, `created_at`, `note`, `active`) e `arena_private.promo_redemptions` (código, conta, momento; único por código e conta). Nenhuma das duas é legível por `anon` ou `authenticated`.
+
+**Resgate (`public.redeem_promo_code(p_code)`, só `authenticated`).** Respostas: `ok` (usos + 1, uma linha de resgate e o Passe), `invalid` (não existe, ou foi desativado: a resposta não diz qual), `expired`, `exhausted`, `already_redeemed` (esta conta já usou este código), `already_has_pass` (já tem Passe que cobre a temporada atual: **o código não é gasto**), `rate_limited`. A linha do código é travada (`FOR UPDATE`) e a conta também, então duas contas disputando o último uso não ganham as duas, e uma compra que chegue no meio desfaz o resgate. **Limite de tentativas:** 10 por conta por hora (mesma tabela e mesma função de janela da lista de espera, balde `promo:<conta>`); toda resposta que não é `ok` conta (inclusive `already_has_pass` e `already_redeemed`, que diriam a quem chuta que o código é real); a 11ª é recusada **antes** de olhar o código, mesmo que seja o certo. O espaço de códigos é 32^10 (cerca de 10^15).
+
+**O Passe de um código.** Linha em `entitlements` com `source 'promo'`, `livemode true`, carimbada com a temporada atual pelo gatilho da `0025`. A `0027` acrescenta `'promo'` à restrição `entitlements_source_check`.
+- **Ranking: conta**, como uma concessão (`owns_ranking_pass` só pergunta `livemode` ou `grant`, e a linha é `livemode`). Não há regra encontrada que proíba isso; se o dono quiser o contrário, é trocar essa linha da função.
+- **Não conta** em `paid_pass_count` (meta e medidor público), **nem na receita** (só cartão e USDC), **nem como "pagante"** nas recompensas de convite: as três listam as origens pagas explicitamente e `promo` não está entre elas. No painel a origem aparece como «Código promocional».
+
+**Ouro e Éter: não incluídos, de propósito.** Ouro e Éter vivem no save que o cliente envia; o servidor só **limita** o que um save pode alegar a partir do jogo (`submit-progress`: tempo, andares, drops). Não existe um "crédito concedido pelo servidor" que esses limites somem à franquia (os cosméticos e títulos dos convites são registros que o cliente aplica e não carregam número que os limites vejam). Um código de ouro seria ou recusado como progresso impossível ou uma edição livre do save. O que seria preciso: uma tabela de créditos concedidos (servidor) que o `submit-progress` some ao total permitido, e um passo de "resgatar" no jogo que mova o crédito para o save. Não foi construído.
+
+**Efeito no jogo.** Depois do `ok` o jogo pergunta de novo ao servidor pelo Passe (`recheckServerPass`): as vantagens e o chip «Ativo» aparecem sem recarregar, e «Obtido por» mostra «Código promocional».
+
+### 7.4 Aplicar e implantar (nada foi feito)
+
+1. Aplicar a `0027_admin_actions.sql` (primeiro no projeto de teste): `npx supabase@2.121.0 db push --yes`. Só cria tabelas novas e funções, e troca a restrição `entitlements_source_check`. O rollback está no cabeçalho do arquivo.
+2. Segredo `ADMIN_ORIGIN` e deploy de `admin-delete-user` (seção 7.1). Os códigos e o Passe manual **não** precisam da função: só da migration.
+3. Publicar o painel novo (seção 5) e o jogo novo (a caixa de código fica em Configurações, só na versão online).
+4. Conferir (SQL, como dono): `select * from arena_private.admin_audit order by id desc limit 20;` depois de cada ação de teste.
+
+Testes: `admin/tests/sql/deleteuser.integration.test.ts`, `passgrant.integration.test.ts`, `promo.integration.test.ts` (rodam a `0027` de verdade em PGlite: não-admin recusado, registro escrito, idempotência, validade, usos máximos, resgate duplo, limite de tentativas, "já tem Passe" sem gastar o código, mudança de temporada), `actions.static.test.ts` (todas as funções com `search_path` vazio, revogadas de `public`/`anon`, concedidas só a `authenticated`/`service_role`, e `is_admin()` antes de qualquer coisa), `supabase/functions/_shared/__tests__/adminDeleteUser.test.ts` (função de apagar conta) e `src/game/__tests__/promoCode.test.ts` (jogo).

@@ -41,6 +41,12 @@ describe('the source only calls the admin functions (reads, and the two audited 
     expect(users).toEqual(['components/AccountActions.tsx']);
   });
 
+  test('creating and disabling promo codes are asked for from the Códigos page only (and the api / demo modules)', () => {
+    const users = sources.filter((s) => /\.(createPromoCodes|disablePromoCode)\(/.test(s.text) && !/(api|demo)\.ts$/.test(s.f)).map((s) => s.f.replace(/\\/g, '/'));
+    expect(users).toEqual(['pages/Codes.tsx']);
+    expect(sources.some((s) => /redeem_promo_code/.test(s.text))).toBe(false);
+  });
+
   test('the only literal rpc() call is is_admin (the ten admin functions go through the typed list)', () => {
     const names = new Set<string>();
     for (const { text } of sources) for (const m of text.matchAll(/rpc\(\s*['"]([a-z_]+)['"]/g)) names.add(m[1]);
