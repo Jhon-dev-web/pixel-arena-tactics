@@ -119,14 +119,14 @@ Na raiz (Node 22+):
 
 ### No ar no teste
 - **Jogo** (https://arena-idle-teste.vercel.app): herói novo do dono nas 8 armaduras; Forja e Passe como páginas (iguais Ofícios); produção em lote com tempo; uma tarefa por vez; sem emojis (ícones de pixel); Acampamento, Caça e Forja reorganizados no celular; convites pelo jogo; resgate de código promocional em Configurações; habilidades de Guerreiro/Guardião rebalanceadas (2–3,4% por ponto); sem taxas de drop na tela.
-- **Servidor de teste**: migrações até `0029`; Passe por temporada (`0025`), ranking com permissão corrigida (`0023`), convites por conta (`0024`), painel (`0026`/`0027`), créditos do servidor (`0028`); IA e vigia agendados.
+- **Servidor de teste**: migrações até `0032`; Passe por temporada (`0025`), ranking com permissão corrigida (`0023`), convites por conta (`0024`), painel (`0026`/`0027`), créditos do servidor (`0028`); IA e vigia agendados.
 - **Portal de teste** (https://arena-idle-portal-teste.vercel.app): página inicial no estilo da arte do dono; o redesign completo é de outra thread ("Redesign do site").
 - **Painel** (https://arena-idle-admin-teste.vercel.app, protegido pela Vercel): Precisa de atenção, Passe válido x histórico, apagar conta, ativar/revogar Passe, Códigos com escolha de prêmio, IA e operação.
 
 ### Pendente
 - **Dono**: login no painel testado e funcionando (21/10); webhook do Discord para alertas (`OPS_ALERT_WEBHOOK_URL`) "depois"; política de privacidade e endereço oficial do site antes de abrir o cadastro por e-mail (a thread do redesign cuida do portal); regulamento/termos da Liga e do Passe (checagem jurídica é dele); preço do Passe da Temporada 2 (ainda não decidido); plano Pro + projeto de produção perto do lançamento.
 - **Decisões abertas**: Faro (Caçador) decidido em 21/10: +10%, igual ao Passe (Rodada 30); meta da Temporada 1 decidida: 1.000 Passes pagos (migração `0030`); lançamento do jogo e da venda do Passe planejado para 31/10; Ouro/Éter por código existem, mas os limites dos novos alertas `GOLD_/SHARDS_/POTIONS_BALANCE_JUMP` em `_shared/progress/bounds.ts` são estimativas (ajustar se houver alerta falso).
-- **Técnico**: migração `0029` aplicada no teste (21/10), funções do mercado e jogo republicados; larguras de tablet (700–899 px) não foram vistas; Stripe e `create-checkout`/`stripe-webhook` seguem dormentes.
+- **Técnico**: migrações `0029`–`0032` aplicadas no teste (21/10; 0031 impede apagar conta no meio de venda, 0032 anula reservas no reset da Liga); jogo, painel e funções republicados; larguras de tablet (700–899 px) não foram vistas; Stripe e `create-checkout`/`stripe-webhook` seguem dormentes.
 - `melhorias.md` (raiz, não versionado) é uma revisão externa: itens do jogo e do painel já feitos; P02 e P05 do portal conflitam com o plano do dono e não foram aprovados.
 
 ### Armadilhas aprendidas
