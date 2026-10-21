@@ -1,7 +1,7 @@
 import { BarChart, LineChart } from '../components/Charts';
 import { Bars, Card, Icon, Kpi, Notice, Progress, SectionTitle, Skeleton } from '../components/ui';
 import { useApp, useAsync, useInterval, useNow } from '../hooks';
-import { liveOwnersBySource, materialsTotal, passRevenue, summarizeItems, testPassOwners } from '../lib/aggregate';
+import { liveOwnersBySource, materialsTotal, passMeasures, passRevenue, summarizeItems, testPassOwners } from '../lib/aggregate';
 import { fmtAgo, fmtDay, fmtInt, fmtPercent, fmtSol, fmtUsd, lamportsToSol, updatedLabel, agoFromSeconds } from '../lib/format';
 import { passSourceLabel, seasonStatusLabel } from '../lib/labels';
 import type { Overview, SeriesDay } from '../lib/types';
@@ -66,8 +66,10 @@ function Body({ ov, series, now }: { ov: Overview; series: SeriesDay[] | null; n
   const test = ov.market.test;
   const rev = passRevenue(ov.pass);
   const items = summarizeItems(ov.items);
-  const owners = liveOwnersBySource(ov.pass.by_source);
-  const testOwners = testPassOwners(ov.pass.by_source);
+  const passM = passMeasures(ov.pass);
+  const measure = passM.known ? 'valid_now' : 'active';
+  const owners = liveOwnersBySource(ov.pass.by_source, measure);
+  const testOwners = testPassOwners(ov.pass.by_source, measure);
   const goalTarget = ov.pass.goal_target || ov.league.goal_target || 0;
   const fresh = ov.freshness;
   const labels = (series ?? []).map((d) => fmtDay(d.day));
@@ -86,14 +88,21 @@ function Body({ ov, series, now }: { ov: Overview; series: SeriesDay[] | null; n
 
       <SectionTitle>Passe do Aventureiro</SectionTitle>
       <div className="kpis">
-        <Kpi label="Passes ativos" value={fmtInt(ov.pass.owners_active)} sub={goalTarget ? `${fmtInt(ov.pass.goal_paid)} pagos de ${fmtInt(goalTarget)} da meta` : undefined} />
+        {passM.known ? (
+          <>
+            <Kpi label="Passe válido nesta temporada" value={fmtInt(passM.validNow)} sub={`${passM.season ? `Temporada ${passM.season}` : 'temporada atual'}${passM.ranking != null ? ` · ${fmtInt(passM.ranking)} no ranking` : ''}${goalTarget ? ` · ${fmtInt(ov.pass.goal_paid)} pagos de ${fmtInt(goalTarget)} da meta` : ''}`} />
+            <Kpi label="Histórico de Passes" value={fmtInt(passM.history)} sub={`contas que já tiveram Passe${passM.expired ? ` · ${fmtInt(passM.expired)} sem validade agora` : ''}`} />
+          </>
+        ) : (
+          <Kpi label="Histórico de Passes" value={fmtInt(passM.history)} sub="não diz se ainda vale: aplicar a migração 0026" tone="warn" />
+        )}
         <Kpi label="Receita estimada" value={fmtUsd(rev.total)} sub={rev.card > 0 ? `USDC ${fmtUsd(rev.usdc)} + cartão ${fmtUsd(rev.card)}` : `USDC ${fmtUsd(rev.usdc)}`} tone="good" />
         <Kpi label="Vendas em USDC" value={fmtInt(ov.pass.usdc_payments_live)} sub={`${fmtUsd(ov.pass.usdc_live)} recebidos${ov.pass.usdc_to_refund > 0 ? ` · ${fmtUsd(ov.pass.usdc_to_refund)} a devolver` : ''}`} tone={ov.pass.usdc_to_refund > 0 ? 'warn' : undefined} />
         {(ov.pass.card_sold_live > 0 || ov.pass.card_refunded_live > 0) && <Kpi label="Vendas no cartão (legado)" value={fmtInt(ov.pass.card_sold_live)} sub={`× ${fmtUsd(ov.pass.card_price_usd)} · ${fmtInt(ov.pass.card_refunded_live)} reembolsadas`} />}
       </div>
       <div className="grid-2" style={{ marginTop: 12 }}>
-        <Card title="Passes ativos por origem" note={testOwners ? `fora disto: ${fmtInt(testOwners)} de teste` : undefined}>
-          {owners.length === 0 ? <p className="muted">Nenhum Passe ativo ainda.</p> : <Bars rows={owners.map((o, i) => ({ label: passSourceLabel(o.source), value: o.active, tone: ((i % 6) + 1) as 1 })) } format={fmtInt} />}
+        <Card title={passM.known ? 'Passe válido nesta temporada, por origem' : 'Histórico de Passes, por origem'} note={testOwners ? `fora disto: ${fmtInt(testOwners)} de teste` : undefined}>
+          {owners.length === 0 ? <p className="muted">{passM.known ? 'Nenhum Passe vale nesta temporada.' : 'Nenhum Passe ainda.'}</p> : <Bars rows={owners.map((o, i) => ({ label: passSourceLabel(o.source), value: o.active, tone: ((i % 6) + 1) as 1 })) } format={fmtInt} />}
         </Card>
         <Card title="Meta do Passe" note="abre a Liga paga">
           {goalTarget ? (

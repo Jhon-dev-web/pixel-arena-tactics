@@ -111,6 +111,10 @@ function build(): World {
       stats_at: iso(Math.floor(r() * 5 * HOUR)),
       pass_source: source,
       pass_livemode: source ? source !== 'grant' : null,
+      pass_valid_now: Boolean(source),
+      pass_ranking: Boolean(source),
+      pass_history: source ? 1 : 0,
+      pass_valid_through: source ? 1 : null,
       wallet: source === 'crypto_sol' || r() < 0.18 ? addr(r) : null,
       open_flags: flags,
       item_flags: r() < 0.03 ? 1 : 0,
@@ -302,14 +306,20 @@ function build(): World {
     },
     pass: {
       by_source: [
-        { source: 'stripe', livemode: true, active: 846, refunded: 12, revoked: 0 },
-        { source: 'stripe', livemode: false, active: 6, refunded: 0, revoked: 0 },
-        { source: 'crypto_sol', livemode: true, active: 311, refunded: 0, revoked: 0 },
-        { source: 'crypto_sol', livemode: false, active: 4, refunded: 0, revoked: 0 },
-        { source: 'referral', livemode: true, active: 22, refunded: 0, revoked: 0 },
-        { source: 'grant', livemode: false, active: 15, refunded: 0, revoked: 1 },
+        { source: 'stripe', livemode: true, active: 846, valid_now: 846, refunded: 12, revoked: 0 },
+        { source: 'stripe', livemode: false, active: 6, valid_now: 6, refunded: 0, revoked: 0 },
+        { source: 'crypto_sol', livemode: true, active: 311, valid_now: 311, refunded: 0, revoked: 0 },
+        { source: 'crypto_sol', livemode: false, active: 4, valid_now: 4, refunded: 0, revoked: 0 },
+        { source: 'referral', livemode: true, active: 22, valid_now: 22, refunded: 0, revoked: 0 },
+        { source: 'grant', livemode: false, active: 15, valid_now: 15, refunded: 0, revoked: 1 },
       ],
       owners_active: 1204,
+      // The demo sits in the pre-season / Season 1: every Pass still covers the current season.
+      current_season: 1,
+      owners_history: 1204,
+      owners_valid_now: 1204,
+      owners_valid_ranking: 1194,
+      owners_expired: 0,
       card_price_usd: 10,
       card_sold_live: 846,
       card_refunded_live: 12,
@@ -476,7 +486,7 @@ export function createDemoApi(): AdminApi {
       const s = q.search.trim().toLowerCase();
       let rows = w.players.filter((p) => !s || p.user_id === s || p.username?.toLowerCase().includes(s) || p.hero_name?.toLowerCase().includes(s) || p.email.toLowerCase().includes(s));
       if (q.filters.online) rows = rows.filter((p) => p.online);
-      if (q.filters.pass) rows = rows.filter((p) => Boolean(p.pass_source) === (q.filters.pass === 'yes'));
+      if (q.filters.pass) rows = rows.filter((p) => (q.filters.pass === 'yes' ? p.pass_valid_now : q.filters.pass === 'no' ? !p.pass_valid_now : q.filters.pass === 'expired' ? !p.pass_valid_now && (p.pass_history ?? 0) > 0 : (p.pass_history ?? 0) > 0));
       if (q.filters.flagged) rows = rows.filter((p) => p.open_flags > 0 || p.item_flags > 0);
       if (q.filters.wallet) rows = rows.filter((p) => p.wallet);
       const key = (p: PlayerRow): number | string => {
@@ -513,7 +523,8 @@ export function createDemoApi(): AdminApi {
         account: { user_id: p.user_id, email: p.email, email_confirmed_at: p.created_at, created_at: p.created_at, last_sign_in_at: p.last_seen, username: p.username, username_set_at: p.created_at },
         character: { hero_name: p.hero_name ?? '', revision: 412, schema_version: 14, imported_from_legacy: false, created_at: p.created_at, updated_at: p.last_seen ?? p.created_at },
         stats: { hero_level: p.hero_level, paragon_level: p.paragon_level, highest_floor: p.highest_floor, deepest_depth: p.deepest_depth, gold: p.gold, items_common: 31, items_rare: 12, items_epic: 4, items_legendary: p.items_held > 6 ? 1 : 0, refreshed_at: p.stats_at ?? p.created_at },
-        entitlements: p.pass_source ? [{ kind: 'adventurer_pass', source: p.pass_source, provider_ref: 'pi_3Demo' + p.user_id.slice(-6), status: 'active', livemode: p.pass_livemode ?? false, granted_at: p.created_at }] : [],
+        entitlements: p.pass_source ? [{ kind: 'adventurer_pass', source: p.pass_source, provider_ref: 'pi_3Demo' + p.user_id.slice(-6), status: 'active', livemode: p.pass_livemode ?? false, granted_at: p.created_at, valid_through_season: 1, valid_now: true }] : [],
+        pass: { current_season: 1, valid_now: Boolean(p.pass_valid_now), ranking_eligible: Boolean(p.pass_ranking), history: p.pass_history ?? 0, valid_through: p.pass_valid_through ?? null },
         wallet: p.wallet ? { address: p.wallet, chain_id: 101, linked_at: p.created_at } : null,
         snapshots: [0, 1, 2].map((i) => ({ created_at: iso(i * 3 * HOUR + 600_000), verdict: i === 1 && p.open_flags ? 'flagged' : 'ok', reasons: i === 1 && p.open_flags ? ['PACE_TOO_FAST'] : [], app_version: '0.9.4', hero_level: p.hero_level, paragon_level: p.paragon_level, highest_floor: p.highest_floor, deepest_depth: p.deepest_depth, seconds_played: 80_000 - i * 900 })),
         open_flags: p.open_flags ? [{ created_at: iso(3 * HOUR), verdict: 'flagged', reasons: ['PACE_TOO_FAST', 'GOLD_JUMP'] }] : [],

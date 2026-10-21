@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react';
+import { playerPassState } from '../lib/aggregate';
+import { passSourceLabel } from '../lib/labels';
+import type { PlayerRow } from '../lib/types';
 import { ratio } from '../lib/format';
 
 const PATHS: Record<string, string> = {
@@ -133,5 +136,39 @@ export function DefList({ rows }: { rows: [string, ReactNode][] }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+/**
+ * The Pass of one account in a table cell: valid this season (with its origin and real/test), expired (had one that no longer covers the season), unknown (the database does not say: migration 0026 not applied) or none.
+ * "Válido" is what the game uses for the perks; the ranking line is the separate ranking rule (a test-mode Pass does not rank).
+ */
+export function PassBadge({ p }: { p: Pick<PlayerRow, 'pass_source' | 'pass_livemode' | 'pass_valid_now' | 'pass_ranking' | 'pass_history' | 'pass_valid_through'> }) {
+  const state = playerPassState(p);
+  if (state === 'none') return <span className="faint">sem Passe</span>;
+  const real = p.pass_livemode || p.pass_source === 'grant';
+  const origin = `${passSourceLabel(p.pass_source)}${real ? '' : ' (teste)'}`;
+  if (state === 'valid') {
+    return (
+      <span>
+        <Pill tone={real ? 'good' : 'warn'}>Válido</Pill>
+        <div className="faint">{origin}</div>
+        {p.pass_ranking === false ? <div className="faint">fora do ranking</div> : null}
+      </span>
+    );
+  }
+  if (state === 'expired') {
+    return (
+      <span>
+        <Pill tone="warn">Expirado</Pill>
+        <div className="faint">{p.pass_valid_through ? `valeu até a Temporada ${p.pass_valid_through}` : 'sem validade agora'} · {origin}</div>
+      </span>
+    );
+  }
+  return (
+    <span>
+      <Pill>Histórico</Pill>
+      <div className="faint">{origin} · validade desconhecida</div>
+    </span>
   );
 }

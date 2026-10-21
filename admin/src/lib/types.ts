@@ -10,7 +10,10 @@ export interface Page<T> {
 export interface PassSourceRow {
   source: string;
   livemode: boolean;
+  /** Every active row, whatever season it covered (history). */
   active: number;
+  /** Active rows that cover the CURRENT season (migration 0026; absent before it is applied). */
+  valid_now?: number;
   refunded: number;
   revoked: number;
 }
@@ -71,7 +74,17 @@ export interface Overview {
   };
   pass: {
     by_source: PassSourceRow[];
+    /** Accounts that ever held an active Pass (history; the old meaning, kept by 0026). */
     owners_active: number;
+    /** Migration 0026 (absent until it is applied): the season a Pass bought now covers, and the distinct measures. */
+    current_season?: number;
+    owners_history?: number;
+    /** Accounts whose Pass gives the perks now (owns_adventurer_pass). */
+    owners_valid_now?: number;
+    /** Accounts that count for the ranking now (owns_ranking_pass: live or granted). */
+    owners_valid_ranking?: number;
+    /** Had a Pass, none covers the current season. */
+    owners_expired?: number;
     card_price_usd: number;
     card_sold_live: number;
     card_refunded_live: number;
@@ -136,6 +149,11 @@ export interface PlayerRow {
   stats_at: string | null;
   pass_source: string | null;
   pass_livemode: boolean | null;
+  /** Migration 0026 (absent until it is applied): the Pass gives the perks now / counts for the ranking now / active rows ever / last season covered. */
+  pass_valid_now?: boolean;
+  pass_ranking?: boolean;
+  pass_history?: number;
+  pass_valid_through?: number | null;
   wallet: string | null;
   open_flags: number;
   item_flags: number;
@@ -147,7 +165,8 @@ export interface PlayerRow {
 
 export interface PlayerFilters {
   online?: boolean;
-  pass?: 'yes' | 'no';
+  /** yes = valid now, no = not valid now, expired = had one but none valid now, history = ever had one */
+  pass?: 'yes' | 'no' | 'expired' | 'history';
   flagged?: boolean;
   wallet?: boolean;
 }
@@ -167,7 +186,9 @@ export interface PlayerDetail {
   account: { user_id: string; email: string | null; email_confirmed_at: string | null; created_at: string; last_sign_in_at: string | null; username: string | null; username_set_at: string | null };
   character: { hero_name: string; revision: number; schema_version: number; imported_from_legacy: boolean; created_at: string; updated_at: string } | null;
   stats: { hero_level: number | null; paragon_level: number | null; highest_floor: number | null; deepest_depth: number | null; gold: number | null; items_common: number | null; items_rare: number | null; items_epic: number | null; items_legendary: number | null; refreshed_at: string } | null;
-  entitlements: { kind: string; source: string; provider_ref: string; status: string; livemode: boolean; granted_at: string }[];
+  entitlements: { kind: string; source: string; provider_ref: string; status: string; livemode: boolean; granted_at: string; valid_through_season?: number; valid_now?: boolean }[];
+  /** Migration 0026 */
+  pass?: { current_season: number; valid_now: boolean; ranking_eligible: boolean; history: number; valid_through: number | null };
   wallet: { address: string; chain_id: number; linked_at: string } | null;
   snapshots: { created_at: string; verdict: string; reasons: string[]; app_version: string | null; hero_level: number | null; paragon_level: number | null; highest_floor: number | null; deepest_depth: number | null; seconds_played: number | null }[];
   open_flags: { created_at: string; verdict: string; reasons: string[] }[];

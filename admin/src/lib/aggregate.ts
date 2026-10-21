@@ -32,18 +32,18 @@ export function summarizeItems(groups: ItemGroup[]): ItemSummary {
   };
 }
 
-/** Active Passes by source, live ones only (a test-mode Pass is shown apart). */
-export function liveOwnersBySource(rows: PassSourceRow[]): { source: string; active: number }[] {
+/** Passes by source, live ones only (a test-mode Pass is shown apart). `measure` is 'active' (history: every active row) or 'valid_now' (covers the current season; falls back to history when the database does not say). */
+export function liveOwnersBySource(rows: PassSourceRow[], measure: 'active' | 'valid_now' = 'active'): { source: string; active: number }[] {
   const by = new Map<string, number>();
   for (const r of rows) {
     if (!r.livemode && r.source !== 'grant') continue;
-    by.set(r.source, (by.get(r.source) ?? 0) + r.active);
+    by.set(r.source, (by.get(r.source) ?? 0) + (measure === 'valid_now' ? (r.valid_now ?? r.active) : r.active));
   }
   return [...by.entries()].map(([source, active]) => ({ source, active })).sort((a, b) => b.active - a.active);
 }
 
-export function testPassOwners(rows: PassSourceRow[]): number {
-  return sum(rows.filter((r) => !r.livemode && r.source !== 'grant').map((r) => r.active));
+export function testPassOwners(rows: PassSourceRow[], measure: 'active' | 'valid_now' = 'active'): number {
+  return sum(rows.filter((r) => !r.livemode && r.source !== 'grant').map((r) => (measure === 'valid_now' ? (r.valid_now ?? r.active) : r.active)));
 }
 
 /** Revenue estimate: live card sales times the owner's configured price, plus the USDC actually received. */
@@ -63,4 +63,37 @@ export function sumSeries(series: SeriesDay[], key: Exclude<keyof SeriesDay, 'da
 
 export function materialsTotal(rows: { qty: number; listed: number }[]): number {
   return sum(rows.map((r) => Number(r.qty) + Number(r.listed)));
+}
+
+// ---- The Pass: "valid this season" and "history" are two measures (migration 0026) -------------------------------------------------------------------------------------
+
+export interface PassMeasures {
+  /** False until migration 0026 is applied: the database then only knows the history. */
+  known: boolean;
+  season: number | null;
+  validNow: number | null;
+  ranking: number | null;
+  /** Accounts that ever held an active Pass, whatever season it covered. */
+  history: number;
+  expired: number | null;
+}
+
+export function passMeasures(pass: Overview['pass']): PassMeasures {
+  const known = typeof pass.owners_valid_now === 'number';
+  return {
+    known,
+    season: pass.current_season ?? null,
+    validNow: known ? pass.owners_valid_now! : null,
+    ranking: typeof pass.owners_valid_ranking === 'number' ? pass.owners_valid_ranking : null,
+    history: pass.owners_history ?? pass.owners_active,
+    expired: typeof pass.owners_expired === 'number' ? pass.owners_expired : null,
+  };
+}
+
+export type PassState = 'valid' | 'expired' | 'none' | 'unknown';
+
+/** What the Pass of one account is right now. `unknown` = a Pass exists but the database does not say whether it is still valid (migration 0026 not applied). */
+export function playerPassState(p: { pass_source: string | null; pass_valid_now?: boolean; pass_history?: number }): PassState {
+  if (typeof p.pass_valid_now === 'boolean') return p.pass_valid_now ? 'valid' : (p.pass_history ?? (p.pass_source ? 1 : 0)) > 0 ? 'expired' : 'none';
+  return p.pass_source ? 'unknown' : 'none';
 }

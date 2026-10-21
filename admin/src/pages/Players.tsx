@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Drawer } from '../components/Drawer';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
-import { Card, DefList, ExternalLink, Field, Notice, Pill, Skeleton } from '../components/ui';
+import { Card, DefList, ExternalLink, Field, Notice, PassBadge, Pill, Skeleton } from '../components/ui';
 import { hashParam, useApp, useAsync, useDebounced } from '../hooks';
 import { activeFilterCount, defaultPlayerQuery, EXPORT_PAGE_SIZE, toggleSort } from '../lib/filters';
 import { DASH, fmtDateTime, fmtGold, fmtInt, fmtSol, fmtAgo, shortAddress, shortId, solscanAccount, solscanTx } from '../lib/format';
@@ -10,27 +10,46 @@ import type { PlayerFilters, PlayerQuery, PlayerRow, PlayerSort } from '../lib/t
 
 const levelText = (p: PlayerRow): string => (p.hero_level == null ? DASH : p.paragon_level ? `${p.hero_level} + P${p.paragon_level}` : String(p.hero_level));
 
+// Summary columns: who, how recently they played, how far they are, whether the Pass is valid now, alerts. Gold, wallet, items, trades and the rest are in the detail panel (click a row or press Enter).
 const COLUMNS: Column<PlayerRow>[] = [
-  { key: 'username', header: 'Jogador', sortKey: 'username', cell: (p) => (
-    <span>
-      {p.online ? <span className="dot live" title="online agora" /> : null} <strong>{p.username ?? <span className="faint">(sem nome)</span>}</strong>
-      <div className="faint">{p.email_masked ?? DASH}</div>
-    </span>
-  ) },
-  { key: 'level', header: 'Nível', sortKey: 'level', align: 'num', cell: (p) => levelText(p) },
-  { key: 'floor', header: 'Andar', sortKey: 'floor', align: 'num', cell: (p) => (p.highest_floor == null ? DASH : fmtInt(p.highest_floor)) },
-  { key: 'depth', header: 'Profundeza', sortKey: 'depth', align: 'num', cell: (p) => (p.deepest_depth == null ? DASH : fmtInt(p.deepest_depth)) },
-  { key: 'gold', header: 'Ouro (save)', sortKey: 'gold', align: 'num', cell: (p) => fmtGold(p.gold) },
-  { key: 'last_seen', header: 'Visto por último', sortKey: 'last_seen', cell: (p) => <span title={fmtDateTime(p.last_seen)}>{p.online ? 'agora' : fmtAgo(p.last_seen)}</span> },
-  { key: 'created', header: 'Cadastro', sortKey: 'created', cell: (p) => fmtDateTime(p.created_at).slice(0, 10) },
-  { key: 'pass', header: 'Passe', cell: (p) => (p.pass_source ? <Pill tone={p.pass_livemode || p.pass_source === 'grant' ? 'good' : 'warn'}>{passSourceLabel(p.pass_source)}{p.pass_livemode || p.pass_source === 'grant' ? '' : ' (teste)'}</Pill> : <span className="faint">—</span>) },
-  { key: 'wallet', header: 'Carteira', cell: (p) => (p.wallet ? <span className="mono" title={p.wallet}>{shortAddress(p.wallet)}</span> : <span className="faint">—</span>) },
-  { key: 'items', header: 'Itens', align: 'num', cell: (p) => fmtInt(p.items_held) },
-  { key: 'trades', header: 'Vendas / compras', align: 'num', cell: (p) => `${p.sales} / ${p.purchases}` },
-  { key: 'flags', header: 'Alertas', cell: (p) => (p.open_flags + p.item_flags > 0 ? <Pill tone="bad">{p.open_flags + p.item_flags}</Pill> : <span className="faint">—</span>) },
+  {
+    key: 'username',
+    header: 'Jogador',
+    sortKey: 'username',
+    cell: (p) => (
+      <span>
+        {p.online ? <span className="dot live" title="online agora" /> : null} <strong>{p.username ?? <span className="faint">(sem nome)</span>}</strong>
+        <div className="faint">{p.email_masked ?? DASH}</div>
+      </span>
+    ),
+  },
+  {
+    key: 'last_seen',
+    header: 'Atividade recente',
+    sortKey: 'last_seen',
+    cell: (p) => (
+      <span title={fmtDateTime(p.last_seen)}>
+        {p.online ? 'agora' : fmtAgo(p.last_seen)}
+        <div className="faint">{p.last_seen ? 'último salvamento' : 'nunca salvou'}</div>
+      </span>
+    ),
+  },
+  {
+    key: 'level',
+    header: 'Progresso',
+    sortKey: 'level',
+    cell: (p) => (
+      <span>
+        <strong>{p.hero_level == null ? DASH : `Nível ${levelText(p)}`}</strong>
+        <div className="faint">{p.highest_floor == null ? 'sem dados no cache' : `andar ${fmtInt(p.highest_floor)}${p.deepest_depth ? ` · profundeza ${fmtInt(p.deepest_depth)}` : ''}`}</div>
+      </span>
+    ),
+  },
+  { key: 'pass', header: 'Passe válido', cell: (p) => <PassBadge p={p} /> },
+  { key: 'flags', header: 'Alertas', cell: (p) => (p.open_flags + p.item_flags > 0 ? <Pill tone="bad">{p.open_flags + p.item_flags} a investigar</Pill> : <span className="faint">nenhum</span>) },
 ];
 
-const SORT_HEADERS = new Set<string>(['username', 'level', 'floor', 'depth', 'gold', 'last_seen', 'created']);
+const SORT_HEADERS = new Set<string>(['username', 'level', 'last_seen']);
 
 export default function PlayersPage() {
   const { api } = useApp();
@@ -48,15 +67,15 @@ export default function PlayersPage() {
       <div className="page-head">
         <div>
           <h1>Jogadores</h1>
-          <p>Quem são, quando jogaram, o que têm. O e-mail aparece mascarado; o completo só no painel de detalhes.</p>
+          <p>Quem são, quando jogaram, até onde foram e se o Passe vale nesta temporada. O resto está no painel de detalhes (clique na linha). O e-mail aparece mascarado; o completo só no detalhe.</p>
         </div>
         <div className="head-actions">
           <ExportButton
             filename="jogadores"
             pageSize={EXPORT_PAGE_SIZE}
             fetchPage={(page) => api.players({ ...query, page, pageSize: EXPORT_PAGE_SIZE })}
-            headers={['id', 'jogador', 'heroi', 'email_mascarado', 'cadastro', 'visto_por_ultimo', 'online', 'nivel', 'paragon', 'andar', 'profundeza', 'ouro_no_save', 'passe', 'passe_real', 'carteira', 'alertas_progresso', 'alertas_itens', 'itens', 'vendas', 'compras']}
-            toRow={(p) => [p.user_id, p.username, p.hero_name, p.email_masked, p.created_at, p.last_seen, p.online, p.hero_level, p.paragon_level, p.highest_floor, p.deepest_depth, p.gold, p.pass_source, p.pass_livemode, p.wallet, p.open_flags, p.item_flags, p.items_held, p.sales, p.purchases]}
+            headers={['id', 'jogador', 'heroi', 'email_mascarado', 'cadastro', 'visto_por_ultimo', 'online', 'nivel', 'paragon', 'andar', 'profundeza', 'ouro_no_save', 'passe_valido_agora', 'passe_ranking', 'passes_no_historico', 'passe_valido_ate_temporada', 'passe_origem', 'passe_real', 'carteira', 'alertas_progresso', 'alertas_itens', 'itens', 'vendas', 'compras']}
+            toRow={(p) => [p.user_id, p.username, p.hero_name, p.email_masked, p.created_at, p.last_seen, p.online, p.hero_level, p.paragon_level, p.highest_floor, p.deepest_depth, p.gold, p.pass_valid_now, p.pass_ranking, p.pass_history, p.pass_valid_through, p.pass_source, p.pass_livemode, p.wallet, p.open_flags, p.item_flags, p.items_held, p.sales, p.purchases]}
           />
         </div>
       </div>
@@ -81,8 +100,10 @@ export default function PlayersPage() {
         <Field label="Passe">
           <select className="select" value={q.filters.pass ?? ''} onChange={(e) => setFilter({ pass: (e.target.value || undefined) as PlayerFilters['pass'] })}>
             <option value="">Todos</option>
-            <option value="yes">Com Passe</option>
-            <option value="no">Sem Passe</option>
+            <option value="yes">Válido nesta temporada</option>
+            <option value="no">Sem Passe válido agora</option>
+            <option value="expired">Expirado (já teve)</option>
+            <option value="history">Já teve Passe (histórico)</option>
           </select>
         </Field>
         <label className="check">
@@ -101,7 +122,14 @@ export default function PlayersPage() {
         ) : null}
       </div>
 
-      {list.error ? <Notice tone="bad">Não foi possível carregar: {list.error}</Notice> : null}
+      {list.error ? (
+        <Notice tone="bad">
+          Não foi possível carregar: {list.error}{' '}
+          <button type="button" className="btn" onClick={() => list.reload()}>
+            Tentar de novo
+          </button>
+        </Notice>
+      ) : null}
       <Card flush>
         <DataTable
           caption="Jogadores"
@@ -117,7 +145,7 @@ export default function PlayersPage() {
         <Pager page={q.page} total={list.data?.total ?? 0} size={q.pageSize} onPage={(page) => setQ((s) => ({ ...s, page }))} />
       </Card>
       <p className="faint" style={{ marginTop: 10 }}>
-        Nível, andar, profundeza e ouro vêm da rotina de cache (atualizada a cada poucas horas); “visto por último” é o último salvamento do personagem.
+        “Passe válido” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nível, andar e profundeza vêm da rotina de cache (atualizada a cada poucas horas); “atividade recente” é o último salvamento do personagem.
       </p>
 
       {openId ? <PlayerDrawer id={openId} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} /> : null}
@@ -132,18 +160,40 @@ function PlayerDrawer({ id, summary, onClose }: { id: string; summary: PlayerRow
   const d = detail.data;
   return (
     <Drawer title={summary?.username ?? d?.account.username ?? 'Jogador'} subtitle={<span className="mono">{shortId(id)}</span>} onClose={close}>
-      {detail.error ? <Notice tone="bad">{detail.error}</Notice> : null}
+      {detail.error ? (
+        <Notice tone="bad">
+          {detail.error}{' '}
+          <button type="button" className="btn" onClick={() => detail.reload()}>
+            Tentar de novo
+          </button>
+        </Notice>
+      ) : null}
       {!d ? (
         detail.loading ? (
           <>
             <Skeleton height={20} />
             <Skeleton height={120} />
           </>
-        ) : (
+        ) : detail.error ? null : (
           <Notice>Conta não encontrada.</Notice>
         )
       ) : (
         <>
+          {summary ? (
+            <section>
+              <h3>Resumo</h3>
+              <DefList
+                rows={[
+                  ['Ouro no save', summary.gold == null ? DASH : fmtGold(summary.gold)],
+                  ['Itens', `${fmtInt(summary.items_held)} com o jogador · ${fmtInt(summary.items_listed)} à venda`],
+                  ['Vendas / compras', `${fmtInt(summary.sales)} / ${fmtInt(summary.purchases)}`],
+                  ['Cadastro', fmtDateTime(summary.created_at)],
+                  ['Carteira', summary.wallet ? <span className="mono" title={summary.wallet}>{shortAddress(summary.wallet)}</span> : 'sem carteira'],
+                ]}
+              />
+            </section>
+          ) : null}
+
           <section>
             <h3>Conta</h3>
             <DefList
@@ -187,12 +237,24 @@ function PlayerDrawer({ id, summary, onClose }: { id: string; summary: PlayerRow
 
           <section>
             <h3>Passe e carteira</h3>
+            {d.pass ? (
+              <DefList
+                rows={[
+                  ['Válido nesta temporada', <span key="v"><Pill tone={d.pass.valid_now ? 'good' : 'warn'}>{d.pass.valid_now ? 'sim' : 'não'}</Pill> <span className="faint">temporada atual: {d.pass.current_season}{d.pass.valid_through ? ` · último Passe cobre até a ${d.pass.valid_through}` : ''}</span></span>],
+                  ['Entra no ranking', <span key="r"><Pill tone={d.pass.ranking_eligible ? 'good' : 'warn'}>{d.pass.ranking_eligible ? 'sim' : 'não'}</Pill> <span className="faint">regra do ranking: Passe real ou concedido e válido agora</span></span>],
+                  ['Histórico de Passes', `${fmtInt(d.pass.history)} ${d.pass.history === 1 ? 'Passe ativo registrado' : 'Passes ativos registrados'}`],
+                ]}
+              />
+            ) : (
+              <Notice tone="warn">O banco ainda não diz se o Passe vale nesta temporada (migração 0026 não aplicada). Abaixo, só o histórico.</Notice>
+            )}
             {d.entitlements.length === 0 ? <p className="muted">Sem Passe.</p> : (
               <div className="stack">
                 {d.entitlements.map((e, i) => (
                   <div key={i}>
                     <Pill tone={e.status === 'active' ? (e.livemode || e.source === 'grant' ? 'good' : 'warn') : 'bad'}>{passSourceLabel(e.source)}</Pill> {statusLabel(e.status)}
-                    {e.livemode || e.source === 'grant' ? '' : ' · teste'} · {fmtDateTime(e.granted_at)} <span className="faint mono">{e.provider_ref.slice(0, 18)}</span>
+                    {e.livemode || e.source === 'grant' ? '' : ' · teste'}
+                    {e.valid_through_season != null ? ` · cobre até a Temporada ${e.valid_through_season}${e.status === 'active' ? (e.valid_now ? ' (vale agora)' : ' (expirado)') : ''}` : ''} · {fmtDateTime(e.granted_at)} <span className="faint mono">{e.provider_ref.slice(0, 18)}</span>
                   </div>
                 ))}
               </div>
