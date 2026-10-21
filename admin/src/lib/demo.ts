@@ -1,6 +1,6 @@
 // A fake backend with INVENTED data, used only by a build made with VITE_ADMIN_DEMO=1 (screenshots, layout work). It follows the same contract as the database
 // functions (search, sort, filters, paging, masked e-mails), so every control on every page works against it. It never touches the network.
-import type { AdminApi } from './api';
+import { ApiError, type AdminApi } from './api';
 import type { AuthPort } from './auth';
 import { createDemoOpsApi } from './demoOps';
 import type { Backend } from './backend';
@@ -592,6 +592,33 @@ export function createDemoApi(): AdminApi {
       const page = paginate(rows, q.page, q.pageSize);
       const out: FlagsPage = { ...page, reasons: [...counts.entries()].map(([code, players]) => ({ code, players })).sort((a, b) => b.players - a.players), reset_at: w.overview.league.reset_at };
       return delay(out);
+    },
+    async grantPass(userId, note) {
+      const p = w.players.find((x) => x.user_id === userId);
+      if (!p) throw new ApiError('USER_NOT_FOUND');
+      if (note.trim().length < 3) throw new ApiError('ADMIN_NOTE_REQUIRED');
+      if (p.pass_valid_now) return delay({ status: 'already' as const, season: 1 });
+      p.pass_source = 'grant';
+      p.pass_livemode = true;
+      p.pass_valid_now = true;
+      p.pass_ranking = true;
+      p.pass_history = (p.pass_history ?? 0) + 1;
+      p.pass_valid_through = 1;
+      return delay({ status: 'granted' as const, season: 1 });
+    },
+    async revokePass(userId, note) {
+      const p = w.players.find((x) => x.user_id === userId);
+      if (!p) throw new ApiError('USER_NOT_FOUND');
+      if (note.trim().length < 3) throw new ApiError('ADMIN_NOTE_REQUIRED');
+      if (!p.pass_valid_now) return delay({ status: 'none' as const, season: 1 });
+      const sources = [p.pass_source ?? 'grant'];
+      p.pass_source = null;
+      p.pass_livemode = null;
+      p.pass_valid_now = false;
+      p.pass_ranking = false;
+      p.pass_history = Math.max(0, (p.pass_history ?? 1) - 1);
+      p.pass_valid_through = null;
+      return delay({ status: 'revoked' as const, season: 1, sources });
     },
     async deleteUser(userId, confirm) {
       const i = w.players.findIndex((p) => p.user_id === userId);

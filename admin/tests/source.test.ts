@@ -36,8 +36,8 @@ describe('the source only calls the admin functions (reads, and the two audited 
     expect(users).toEqual(['pages/AiOps.tsx']);
   });
 
-  test('deleting an account is asked for from ONE component (and the api / backend / demo modules)', () => {
-    const users = sources.filter((s) => /\.deleteUser\(/.test(s.text) && !/(api|backend|demo)\.ts$/.test(s.f)).map((s) => s.f.replace(/\\/g, '/'));
+  test('deleting an account and granting or revoking the Pass are asked for from ONE component (and the api / backend / demo modules)', () => {
+    const users = sources.filter((s) => /\.(deleteUser|grantPass|revokePass)\(/.test(s.text) && !/(api|backend|demo)\.ts$/.test(s.f)).map((s) => s.f.replace(/\\/g, '/'));
     expect(users).toEqual(['components/AccountActions.tsx']);
   });
 

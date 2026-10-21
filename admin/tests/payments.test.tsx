@@ -82,7 +82,8 @@ describe('the page', () => {
     await waitFor(() => expect(written).toHaveLength(1));
     expect(written[0]).toMatch(/^select arena_private\.payment_exception_grant_pass\('5DemoSig1/);
     expect(written[0]).not.toContain('<');
-    expect(Object.keys(createDemoApi()).filter((k) => /resolve|grant|refund/i.test(k))).toEqual([]);
+    // (grantPass / revokePass exist since 0027 but belong to the player panel; resolving a payment exception is still SQL only)
+    expect(Object.keys(createDemoApi()).filter((k) => /resolve|grant|refund/i.test(k) && !/^(grantPass|revokePass)$/.test(k))).toEqual([]);
   });
 
   test('explains how to resolve one with the two documented SQL calls', async () => {

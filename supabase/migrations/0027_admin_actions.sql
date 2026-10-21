@@ -190,3 +190,124 @@ $$;
 
 revoke all on function public.admin_audit_record(uuid, text, uuid, jsonb) from public, anon, authenticated;
 grant execute on function public.admin_audit_record(uuid, text, uuid, jsonb) to service_role;
+
+-- =======================================================================================================================================
+-- PART B. Grant and revoke the Adventurer Pass by hand.
+-- =======================================================================================================================================
+-- A note is mandatory on both (3 to 300 characters): it goes into the audit row, so "why" is never lost.
+create or replace function arena_private.admin_clean_note(p_note text)
+returns text
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v_note text := nullif(pg_catalog.btrim(coalesce(p_note, '')), '');
+begin
+  if v_note is null or pg_catalog.char_length(v_note) < 3 then
+    raise exception using errcode = '22023', message = 'ADMIN_NOTE_REQUIRED';
+  end if;
+  if pg_catalog.char_length(v_note) > 300 then
+    raise exception using errcode = '22023', message = 'ADMIN_NOTE_TOO_LONG';
+  end if;
+  return v_note;
+end;
+$$;
+
+revoke all on function arena_private.admin_clean_note(text) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+-- public.admin_grant_pass(p_user, p_note): gives the account an Adventurer Pass for the CURRENT season (arena_private.current_pass_season(); the 0025 trigger stamps valid_through_season on insert, whoever inserts).
+--   * source 'grant', livemode true: the same rows the owner used to insert by hand. They give the perks, count for the ranking (owns_ranking_pass lets 'grant' in) and do NOT count in paid_pass_count / the goal / the revenue.
+--   * idempotent: an account that already holds an active Pass covering the current season gets {status:'already'} and nothing is written (no second Pass, no audit row for a non-event).
+--   * the audit row 'grant_pass' carries the note, the season and the entitlement id.
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+create or replace function public.admin_grant_pass(p_user uuid, p_note text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_note text;
+  v_season integer;
+  v_id uuid;
+begin
+  if not public.is_admin() then
+    raise exception using errcode = '42501', message = 'ADMIN_ONLY';
+  end if;
+  v_note := arena_private.admin_clean_note(p_note);
+  if p_user is null or not exists (select 1 from auth.users as u where u.id = p_user) then
+    raise exception using errcode = '22023', message = 'USER_NOT_FOUND';
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('admin_pass:' || p_user::text, 27));
+  v_season := arena_private.current_pass_season();
+  if exists (
+    select 1 from public.entitlements as e
+    where e.user_id = p_user and e.kind = 'adventurer_pass' and e.status = 'active' and e.valid_through_season >= v_season
+  ) then
+    return pg_catalog.jsonb_build_object('status', 'already', 'season', v_season);
+  end if;
+
+  begin
+    insert into public.entitlements (user_id, kind, source, provider_ref, status, livemode)
+    values (p_user, 'adventurer_pass', 'grant', 'admin-grant-' || pg_catalog.gen_random_uuid()::text, 'active', true)
+    returning id into v_id;
+  exception when unique_violation then
+    -- the one-active-Pass-per-season index won a race with a purchase: nothing to add
+    return pg_catalog.jsonb_build_object('status', 'already', 'season', v_season);
+  end;
+
+  perform arena_private.admin_audit_add('grant_pass', p_user, pg_catalog.jsonb_build_object('note', v_note, 'season', v_season, 'entitlement_id', v_id));
+  return pg_catalog.jsonb_build_object('status', 'granted', 'season', v_season, 'entitlement_id', v_id);
+end;
+$$;
+
+revoke all on function public.admin_grant_pass(uuid, text) from public, anon, authenticated;
+grant execute on function public.admin_grant_pass(uuid, text) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+-- public.admin_revoke_pass(p_user, p_note): marks the account's active Pass(es) that cover the CURRENT season as 'revoked' (history stays). Any source: a paid Pass revoked here is not refunded by this function
+-- (that is money, done by hand); the answer lists the sources revoked so the audit row and the screen say what was taken away. An older Pass that no longer covers anything is left alone.
+--   {status:'revoked', season, sources:[...]} | {status:'none', season} (nothing to revoke: no audit row)
+-- ---------------------------------------------------------------------------------------------------------------------------------------
+create or replace function public.admin_revoke_pass(p_user uuid, p_note text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_note text;
+  v_season integer;
+  v_sources text[];
+  v_ids uuid[];
+begin
+  if not public.is_admin() then
+    raise exception using errcode = '42501', message = 'ADMIN_ONLY';
+  end if;
+  v_note := arena_private.admin_clean_note(p_note);
+  if p_user is null or not exists (select 1 from auth.users as u where u.id = p_user) then
+    raise exception using errcode = '22023', message = 'USER_NOT_FOUND';
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('admin_pass:' || p_user::text, 27));
+  v_season := arena_private.current_pass_season();
+
+  with revoked as (
+    update public.entitlements as e
+       set status = 'revoked'
+     where e.user_id = p_user and e.kind = 'adventurer_pass' and e.status = 'active' and e.valid_through_season >= v_season
+    returning e.id, e.source
+  )
+  select pg_catalog.array_agg(r.source order by r.source), pg_catalog.array_agg(r.id) into v_sources, v_ids from revoked as r;
+
+  if v_ids is null then
+    return pg_catalog.jsonb_build_object('status', 'none', 'season', v_season);
+  end if;
+  perform arena_private.admin_audit_add('revoke_pass', p_user, pg_catalog.jsonb_build_object('note', v_note, 'season', v_season, 'sources', v_sources, 'entitlement_ids', v_ids));
+  return pg_catalog.jsonb_build_object('status', 'revoked', 'season', v_season, 'sources', v_sources);
+end;
+$$;
+
+revoke all on function public.admin_revoke_pass(uuid, text) from public, anon, authenticated;
+grant execute on function public.admin_revoke_pass(uuid, text) to authenticated;

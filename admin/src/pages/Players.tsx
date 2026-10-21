@@ -171,12 +171,12 @@ export default function PlayersPage() {
         “Passe válido” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nível, andar e profundeza vêm da rotina de cache (atualizada a cada poucas horas); “atividade recente” é o último salvamento do personagem.
       </p>
 
-      {openId ? <PlayerDrawer id={openId} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} onDeleted={() => { setOpenId(null); list.reload(); }} /> : null}
+      {openId ? <PlayerDrawer id={openId} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} onDeleted={() => { setOpenId(null); list.reload(); }} onListChanged={() => list.reload()} /> : null}
     </>
   );
 }
 
-function PlayerDrawer({ id, summary, onClose, onDeleted }: { id: string; summary: PlayerRow | null; onClose: () => void; onDeleted: () => void }) {
+function PlayerDrawer({ id, summary, onClose, onDeleted, onListChanged }: { id: string; summary: PlayerRow | null; onClose: () => void; onDeleted: () => void; onListChanged: () => void }) {
   const detail = useAsync((a) => a.playerDetail(id), [id]);
   const [reveal, setReveal] = useState(false);
   const close = useCallback(onClose, [onClose]);
@@ -380,7 +380,21 @@ function PlayerDrawer({ id, summary, onClose, onDeleted }: { id: string; summary
             </section>
           ) : null}
 
-          <AccountActions subject={{ userId: id, username: d.account.username, heroName: d.character?.hero_name ?? null, email: d.account.email }} onDeleted={onDeleted} />
+          <AccountActions
+            subject={{
+              userId: id,
+              username: d.account.username,
+              heroName: d.character?.hero_name ?? null,
+              email: d.account.email,
+              pass: d.pass ? { valid_now: d.pass.valid_now, current_season: d.pass.current_season } : null,
+              currentSources: d.entitlements.filter((e) => e.status === 'active' && e.valid_now !== false).map((e) => e.source),
+            }}
+            onDeleted={onDeleted}
+            onChanged={() => {
+              detail.reload();
+              onListChanged();
+            }}
+          />
         </>
       )}
     </Drawer>

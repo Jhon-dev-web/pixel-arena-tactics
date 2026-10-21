@@ -39,7 +39,7 @@ describe('0027_admin_actions.sql: every function is locked down', () => {
   test('security definer with an empty search_path, or an explicit invoker that is also pinned', () => {
     for (const f of fns) {
       expect(f.chunk, f.qualified).toMatch(/set search_path = ''/);
-      expect(f.chunk, f.qualified).toMatch(/security definer|language sql\s+(immutable|stable)/);
+      expect(f.chunk, f.qualified).toMatch(/security definer|\b(immutable|stable)\b/);
     }
   });
 

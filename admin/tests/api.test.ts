@@ -3,6 +3,8 @@ import { AccessDeniedError, ApiError, createRpcApi, toError, type RpcClient } fr
 import { defaultLegendaryQuery, defaultMarketQuery, defaultPlayerQuery } from '../src/lib/filters';
 import { OPS_READ_RPC_NAMES, OPS_WRITE_RPC_NAMES } from '../src/lib/opsRpcNames';
 import { RPC_NAMES } from '../src/lib/rpcNames';
+import { ACTION_RPC_NAMES } from '../src/lib/actionRpcNames';
+import { actionErrorText } from '../src/lib/actions';
 
 function fake(answer: (name: string, args?: Record<string, unknown>) => { data: unknown; error: { message: string; code?: string } | null }) {
   const calls: { name: string; args?: Record<string, unknown> }[] = [];
@@ -104,5 +106,27 @@ describe('deleteUser (the Edge Function, not an rpc)', () => {
     const api = createRpcApi(client, { deleteUser: async (...a) => (seen.push(a), { ok: true as const, username: 'Ana' }) });
     expect(await api.deleteUser('00000000-0000-4000-8000-000000000001', 'Ana')).toEqual({ ok: true, username: 'Ana' });
     expect(seen).toEqual([['00000000-0000-4000-8000-000000000001', 'Ana']]);
+  });
+});
+
+describe('grantPass / revokePass', () => {
+  test('call their own functions with the user and the note, and nothing else', async () => {
+    const { client, calls } = fake(() => ({ data: { status: 'granted', season: 1 }, error: null }));
+    const api = createRpcApi(client);
+    await api.grantPass('00000000-0000-4000-8000-000000000001', 'cortesia');
+    await api.revokePass('00000000-0000-4000-8000-000000000001', 'engano');
+    expect(calls).toEqual([
+      { name: 'admin_grant_pass', args: { p_user: '00000000-0000-4000-8000-000000000001', p_note: 'cortesia' } },
+      { name: 'admin_revoke_pass', args: { p_user: '00000000-0000-4000-8000-000000000001', p_note: 'engano' } },
+    ]);
+    expect(calls.map((c) => c.name)).toEqual([...ACTION_RPC_NAMES]);
+  });
+  test('"not an admin" becomes the access-denied error, a missing note stays a readable ApiError', async () => {
+    const denied = fake(() => ({ data: null, error: { message: 'ADMIN_ONLY', code: '42501' } }));
+    await expect(createRpcApi(denied.client).grantPass('x', 'abc')).rejects.toBeInstanceOf(AccessDeniedError);
+    const noNote = fake(() => ({ data: null, error: { message: 'ADMIN_NOTE_REQUIRED', code: '22023' } }));
+    const err = await createRpcApi(noNote.client).revokePass('x', '').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(actionErrorText((err as Error).message)).toMatch(/motivo/);
   });
 });

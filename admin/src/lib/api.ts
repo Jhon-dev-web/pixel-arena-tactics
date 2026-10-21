@@ -2,7 +2,8 @@
 // called with the signed-in admin's session.
 // The anon key is public by design (it is in every browser that opens the game); what protects the data is the function itself,
 // which refuses anyone who is not in arena_private.admins. No service key is, or may ever be, in this app.
-import type { DeleteUserResult } from './actions';
+import type { ActionRpcName } from './actionRpcNames';
+import type { DeleteUserResult, GrantPassResult, RevokePassResult } from './actions';
 import { flagsArgs, legendaryArgs, marketArgs, playerArgs } from './filters';
 import type { OpsRpcName } from './opsRpcNames';
 import type { PaymentRpcName } from './paymentRpcNames';
@@ -32,6 +33,10 @@ export interface AdminApi {
   // ---- actions that WRITE (0027): each is admin-only in the database and leaves an audit row ----
   /** Deletes an account through the Edge Function admin-delete-user. `confirm` is the name the owner typed. Never throws for a refusal: the result says why. */
   deleteUser(userId: string, confirm: string): Promise<DeleteUserResult>;
+  /** Gives the account a Pass for the current season (idempotent: 'already' when it holds one). A note is mandatory and goes into the audit row. */
+  grantPass(userId: string, note: string): Promise<GrantPassResult>;
+  /** Revokes the Pass(es) that cover the current season. */
+  revokePass(userId: string, note: string): Promise<RevokePassResult>;
 }
 
 /** What the app needs from a Supabase client (so tests can pass a fake). */
@@ -65,7 +70,7 @@ export interface ApiExtras {
 }
 
 export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminApi {
-  async function call<T>(name: RpcName | OpsRpcName | PaymentRpcName, args?: Record<string, unknown>): Promise<T> {
+  async function call<T>(name: RpcName | OpsRpcName | PaymentRpcName | ActionRpcName, args?: Record<string, unknown>): Promise<T> {
     const { data, error } = await client.rpc(name, args);
     if (error) throw toError(error);
     return data as T;
@@ -87,6 +92,8 @@ export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminAp
     setOpsFlag: (key, value, note) => call('admin_set_ops_flag', { p_key: key, p_value: value, p_note: note }),
     ackReport: (id) => call('admin_ack_report', { p_id: id }),
     paymentExceptions: (q) => call<PaymentExceptionsPage>('admin_payment_exceptions', { p_status: q.status, p_page: q.page, p_page_size: q.pageSize }),
+    grantPass: (userId, note) => call<GrantPassResult>('admin_grant_pass', { p_user: userId, p_note: note }),
+    revokePass: (userId, note) => call<RevokePassResult>('admin_revoke_pass', { p_user: userId, p_note: note }),
     deleteUser: (userId, confirm) => (extras.deleteUser ? extras.deleteUser(userId, confirm) : Promise.resolve<DeleteUserResult>({ ok: false, reason: 'unavailable' })),
   };
 }

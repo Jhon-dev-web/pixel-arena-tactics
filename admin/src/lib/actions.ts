@@ -46,3 +46,30 @@ export function deleteRefusalText(r: Extract<DeleteUserResult, { ok: false }>): 
 export function deleteConfirmName(p: { username: string | null; heroName: string | null; email: string | null }): string | null {
   return p.username?.trim() || p.heroName?.trim() || p.email?.trim() || null;
 }
+
+// ---- Grant / revoke the Pass (public.admin_grant_pass / admin_revoke_pass) ----------------------------------------------------------------------------------------------------
+
+export const NOTE_MIN = 3;
+export const NOTE_MAX = 300;
+
+export interface GrantPassResult {
+  status: 'granted' | 'already';
+  season: number;
+  entitlement_id?: string;
+}
+
+export interface RevokePassResult {
+  status: 'revoked' | 'none';
+  season: number;
+  /** The sources of the Pass(es) taken away ('grant', 'stripe', ...). */
+  sources?: string[];
+}
+
+/** Plain words for the errors the action functions raise. Anything else is shown as the server sent it. */
+export function actionErrorText(message: string): string {
+  if (/ADMIN_NOTE_REQUIRED/.test(message)) return `Escreva o motivo (pelo menos ${NOTE_MIN} letras). Ele fica registrado com o seu nome.`;
+  if (/ADMIN_NOTE_TOO_LONG/.test(message)) return `O motivo é longo demais (no máximo ${NOTE_MAX} letras).`;
+  if (/USER_NOT_FOUND/.test(message)) return 'Conta não encontrada (talvez já tenha sido apagada).';
+  if (/ADMIN_ONLY/.test(message)) return 'O servidor recusou: esta conta não é de administrador.';
+  return message;
+}

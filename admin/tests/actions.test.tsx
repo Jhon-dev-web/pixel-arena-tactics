@@ -132,3 +132,76 @@ describe('deleting an account from the player panel', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
 });
+
+async function openPlayerWhere(match: RegExp) {
+  const table = await screen.findByRole('table', { name: 'Jogadores' });
+  await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(10));
+  const row = within(table).getAllByRole('row').slice(1).find((r) => match.test(r.textContent ?? ''))!;
+  expect(row).toBeTruthy();
+  fireEvent.click(row);
+  const dialog = await screen.findByRole('dialog');
+  await within(dialog).findByRole('region', { name: 'Ações na conta' });
+  return dialog;
+}
+
+describe('granting and revoking the Pass from the player panel', () => {
+  test('an account without a valid Pass is offered "Ativar", never "Revogar"; the note is mandatory; the call carries the id and the note', async () => {
+    const { calls } = setup();
+    const dialog = await openPlayerWhere(/sem Passe/);
+    expect(within(dialog).queryByRole('button', { name: /Revogar o Passe/ })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: /Ativar o Passe/ }));
+    const form = within(dialog).getByRole('form', { name: 'Confirmar: ativar o Passe' });
+    expect(form.textContent).toContain('Não conta como venda');
+    const submit = within(form).getByRole('button', { name: 'Ativar o Passe' }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.change(within(form).getByRole('textbox'), { target: { value: 'ab' } });
+    expect(submit.disabled).toBe(true);
+    expect(calls.some((c) => c.name === 'grantPass')).toBe(false);
+    fireEvent.change(within(form).getByRole('textbox'), { target: { value: '  cortesia para testador ' } });
+    expect(submit.disabled).toBe(false);
+    fireEvent.click(submit);
+    await waitFor(() => expect(calls.some((c) => c.name === 'grantPass')).toBe(true));
+    expect(calls.find((c) => c.name === 'grantPass')!.args[1]).toBe('cortesia para testador');
+    await within(dialog).findByText(/Passe ativado para a Temporada 1/);
+    // the panel reloaded: the account now has a Pass, so the offer flips
+    await within(dialog).findByRole('button', { name: /Revogar o Passe/ });
+    expect(within(dialog).queryByRole('button', { name: /Ativar o Passe/ })).toBeNull();
+  });
+
+  test('revoking says when the Pass was PAID, asks for a note, and flips the offer back', async () => {
+    const { calls } = setup();
+    const dialog = await openPlayerWhere(/Cartão \(Stripe\)/);
+    fireEvent.click(within(dialog).getByRole('button', { name: /Revogar o Passe/ }));
+    const form = within(dialog).getByRole('form', { name: 'Confirmar: revogar o Passe' });
+    expect(form.textContent).toContain('Este Passe foi pago');
+    expect(form.textContent).toContain('não devolve dinheiro');
+    const submit = within(form).getByRole('button', { name: 'Revogar o Passe' }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.change(within(form).getByRole('textbox'), { target: { value: 'estorno feito por fora' } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(calls.some((c) => c.name === 'revokePass')).toBe(true));
+    expect(calls.find((c) => c.name === 'revokePass')!.args[1]).toBe('estorno feito por fora');
+    await within(dialog).findByText(/Passe revogado/);
+    await within(dialog).findByRole('button', { name: /Ativar o Passe/ });
+  });
+
+  test('a server error is shown in plain words and the panel stays', async () => {
+    const { ApiError } = await import('../src/lib/api');
+    setup({ grantPass: async () => Promise.reject(new ApiError('ADMIN_NOTE_REQUIRED')) });
+    const dialog = await openPlayerWhere(/sem Passe/);
+    fireEvent.click(within(dialog).getByRole('button', { name: /Ativar o Passe/ }));
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'motivo válido' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ativar o Passe' }));
+    await within(dialog).findByText(/Escreva o motivo/);
+  });
+
+  test('a refusal that says "not an admin" sends the app back to the access-denied screen', async () => {
+    const { AccessDeniedError } = await import('../src/lib/api');
+    const { denied } = setup({ revokePass: async () => Promise.reject(new AccessDeniedError()) });
+    const dialog = await openPlayerWhere(/Válido/);
+    fireEvent.click(within(dialog).getByRole('button', { name: /Revogar o Passe/ }));
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'motivo válido' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Revogar o Passe' }));
+    await waitFor(() => expect(denied).toHaveBeenCalled());
+  });
+});
