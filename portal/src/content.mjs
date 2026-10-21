@@ -20,8 +20,8 @@ const l = localized;
 // "anon" key (it is public by design and protected by the database rules). The service key must NEVER be written here.
 export const config = {
   playUrl: null, passSalesOpen: false, passPrice: '10 USDC', siteUrl: null,
-  company: { legalName: null, cnpj: null, supportEmail: 'arenaidlesupport@gmail.com' },
-  legalLive: { terms: false, privacy: false, refund: false, seasonRules: false }, waitlistEnabled: true, referralEnabled: false,
+  company: { legalName: 'HOURAN', cnpj: null, supportEmail: 'arenaidlesupport@gmail.com' },
+  legalLive: { terms: false, privacy: true, refund: false, seasonRules: false }, waitlistEnabled: true, referralEnabled: false,
   supabaseUrl: null, supabaseAnonKey: null, community: [], brand: 'Arena Idle', pageSize: 8,
 };
 // Text that depends on the owner settings is computed when read (getters), so a changed setting changes every page at once.
@@ -318,9 +318,64 @@ export const descriptions = {
   news: l('Novidades e comunicados do desenvolvimento do jogo.', 'News and updates from the game’s development.'),
   play: l('Como jogar: o jogo roda grátis no navegador.', 'How to play: the game runs free in your browser.'),
 };
+// Privacy Policy of the e-mail sign-up (owner-approved 2026-10-21: controller "HOURAN", no CNPJ). It covers the site and the sign-up list only, not the game.
+const lgH = text => ({ type: 'heading', level: 2, text });
+const lgP = (...parts) => ({ type: 'paragraph', content: parts.map(part => typeof part === 'string' ? { type: 'text', text: part } : part) });
+const lgList = (...items) => ({ type: 'list', ordered: false, items: items.map(item => [{ type: 'text', text: item }]) });
+const lgMail = { type: 'strong', text: 'arenaidlesupport@gmail.com' };
+const privacyBody = {
+  pt: [
+    lgP('Atualizada em 21 de outubro de 2026.'),
+    lgH('1. Quem cuida dos seus dados'),
+    lgP('O Arena Idle é mantido por HOURAN ("nós"), responsável pelos dados descritos aqui. Para qualquer assunto sobre seus dados, escreva para ', lgMail, '.'),
+    lgH('2. O que coletamos quando você deixa seu e-mail'),
+    lgList('Seu e-mail.', 'O idioma da página (português ou inglês).', 'A origem da visita, quando existir (por exemplo, o site ou a rede social de onde você veio).', 'A data e a hora da inscrição e do seu consentimento.', 'Um código cifrado (hash) do seu endereço IP e da sua rede. O IP em si nunca é guardado; o código serve só para impedir cadastros em massa e abuso.'),
+    lgP('Não pedimos nome, telefone, documento ou dados de pagamento nesta inscrição. O site não usa cookies de publicidade nem rastreadores de terceiros.'),
+    lgH('3. Para que usamos'),
+    lgList('Para avisar você quando o teste aberto e o lançamento do Arena Idle começarem.', 'Para saber quantas pessoas se interessaram e planejar o teste.', 'Para proteger a lista contra cadastros automáticos e abuso.'),
+    lgP('Não vendemos, não alugamos e não compartilhamos seu e-mail para publicidade de terceiros.'),
+    lgH('4. Base legal'),
+    lgP('Usamos seus dados com base no seu consentimento (LGPD, art. 7º, I), dado ao marcar a caixa da inscrição. O código cifrado do IP é usado com base no legítimo interesse de evitar fraude e abuso (art. 7º, IX).'),
+    lgH('5. Quem processa os dados por nós'),
+    lgP('Usamos serviços que guardam ou transmitem os dados em nosso nome, só para o site funcionar: Supabase (banco de dados e funções do servidor), Vercel (hospedagem do site) e, quando enviarmos os avisos, um serviço de envio de e-mail. Esses serviços podem guardar dados em servidores fora do Brasil.'),
+    lgH('6. Por quanto tempo guardamos'),
+    lgList('E-mail e datas: até o lançamento oficial do jogo ou até você cancelar, o que vier primeiro, e no máximo 12 meses após a inscrição.', 'Código cifrado do IP e da rede: apagado quando não for mais necessário para controlar abuso, no máximo 30 dias após o lançamento.'),
+    lgH('7. Seus direitos'),
+    lgList('Cancelar os avisos pelo link de cancelamento dos e-mails ou escrevendo para arenaidlesupport@gmail.com.', 'Pedir uma cópia, a correção ou a exclusão dos seus dados.', 'Retirar seu consentimento, sem afetar o que foi feito antes.', 'Reclamar à ANPD (Autoridade Nacional de Proteção de Dados).'),
+    lgP('Respondemos em até 15 dias.'),
+    lgH('8. Menores de idade'),
+    lgP('A inscrição é para quem tem 18 anos ou mais, ou a partir de 13 anos com autorização dos responsáveis. Se soubermos que alguém mais novo se inscreveu, apagamos os dados.'),
+    lgH('9. Mudanças nesta política'),
+    lgP('Se mudarmos esta política, publicaremos a nova versão nesta página com a data de atualização. Mudanças importantes serão avisadas por e-mail a quem estiver na lista.'),
+  ],
+  en: [
+    lgP('Updated on October 21, 2026.'),
+    lgH('1. Who looks after your data'),
+    lgP('Arena Idle is run by HOURAN ("we"), responsible for the data described here. For anything about your data, write to ', lgMail, '.'),
+    lgH('2. What we collect when you leave your email'),
+    lgList('Your email.', 'The language of the page (Portuguese or English).', 'Where the visit came from, when known (for example, the site or social network you came from).', 'The date and time of the sign-up and of your consent.', 'An encrypted code (hash) of your IP address and network. The IP itself is never stored; the code is only used to stop mass sign-ups and abuse.'),
+    lgP('We do not ask for a name, phone number, ID or payment details in this sign-up. The site uses no advertising cookies and no third-party trackers.'),
+    lgH('3. What we use it for'),
+    lgList('To let you know when the Arena Idle open test and launch begin.', 'To know how many people are interested and plan the test.', 'To protect the list against automated sign-ups and abuse.'),
+    lgP('We do not sell, rent or share your email for third-party advertising.'),
+    lgH('4. Legal basis'),
+    lgP('We use your data based on your consent (Brazilian LGPD, art. 7, I), given by ticking the sign-up box. The encrypted IP code is used based on the legitimate interest of preventing fraud and abuse (art. 7, IX).'),
+    lgH('5. Who processes the data for us'),
+    lgP('We use services that store or send the data on our behalf, only to run the site: Supabase (database and server functions), Vercel (site hosting) and, when we send the notices, an email delivery service. These services may store data on servers outside Brazil.'),
+    lgH('6. How long we keep it'),
+    lgList('Email and dates: until the official launch of the game or until you cancel, whichever comes first, and at most 12 months after the sign-up.', 'Encrypted IP and network code: deleted once it is no longer needed against abuse, at most 30 days after launch.'),
+    lgH('7. Your rights'),
+    lgList('Cancel the notices with the cancel link in the emails or by writing to arenaidlesupport@gmail.com.', 'Ask for a copy, a correction or the deletion of your data.', 'Withdraw your consent, without affecting what was done before.', 'Complain to the ANPD (Brazilian Data Protection Authority).'),
+    lgP('We answer within 15 days.'),
+    lgH('8. Minors'),
+    lgP('The sign-up is for people aged 18 or over, or from 13 with a parent or guardian’s permission. If we learn that someone younger signed up, we delete the data.'),
+    lgH('9. Changes to this policy'),
+    lgP('If we change this policy, we will publish the new version on this page with the update date. Important changes will be announced by email to the people on the list.'),
+  ],
+};
 // Legal pages are owner-provided text. They exist only as clearly marked placeholders; the footer links one only when its `flag` in config.legalLive is true (real text in place).
 export const legal = [
-  { route: 'privacy', flag: 'privacy', title: l('Política de Privacidade', 'Privacy Policy') },
+  { route: 'privacy', flag: 'privacy', title: l('Política de Privacidade', 'Privacy Policy'), body: privacyBody },
   { route: 'terms', flag: 'terms', title: l('Termos de Uso', 'Terms of Use') },
   { route: 'refund', flag: 'refund', title: l('Política de Reembolso', 'Refund Policy') },
   { route: 'season-rules', flag: 'seasonRules', title: l('Regulamento da Liga', 'League Rules') },

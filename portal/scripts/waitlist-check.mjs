@@ -29,6 +29,7 @@ for (const lang of ['pt', 'en']) {
 
 // ---- on, with the Supabase address ------------------------------------------------------------------------------------------------------------------
 config.waitlistEnabled = true;
+config.legalLive.privacy = false; // the published config has it on; start from the unpublished case
 config.supabaseUrl = 'https://abcdefghij.supabase.co';
 const home = page('pt');
 const [homeBlock] = blocks(home);
@@ -72,13 +73,15 @@ for (const key of ['registered', 'badEmail', 'needConsent', 'rateLimited', 'fail
 assert.equal(labels.registered, 'Você está na lista. Avisaremos quando o Arena Idle abrir.');
 
 // ---- the privacy link: only when that page is published ----------------------------------------------------------------------------------------------
+const privacy = legal.find(item => item.route === 'privacy');
+const publishedPrivacy = privacy.body;
+privacy.body = undefined;
 config.legalLive.privacy = true;
 assert.ok(!blocks(page('pt'))[0].includes('/pt/privacy/'), 'a flag without text links nothing');
-const privacy = legal.find(item => item.route === 'privacy');
 privacy.body = { pt: [{ type: 'paragraph', content: [{ type: 'text', text: 'Texto.' }] }], en: [{ type: 'paragraph', content: [{ type: 'text', text: 'Text.' }] }] };
 assert.ok(blocks(page('pt'))[0].includes('<a class="" href="/pt/privacy/">Política de Privacidade</a>'));
 assert.ok(blocks(page('en'))[0].includes('href="/en/privacy/">Privacy Policy</a>'));
-privacy.body = undefined;
+privacy.body = publishedPrivacy;
 reset();
 config.waitlistEnabled = true;
 config.supabaseUrl = 'https://abcdefghij.supabase.co';
@@ -204,7 +207,7 @@ assert.equal(refLabels.shareText, 'Vem jogar Arena Idle comigo! Entre na lista d
 assert.ok(blocks(page('pt', 'season'))[0].includes('id="waitlist-season-link"'));
 // pt / en have the same markup
 const refHomeEn = blocks(page('en'))[0];
-assert.equal(shape(refHomeEn), shape(refHome));
+assert.equal(shape(refHomeEn).replace('/en/privacy/', '/pt/privacy/'), shape(refHome)); // only the language of the privacy link differs
 assert.ok(refHomeEn.includes('<h3>Your invite link</h3>') && refHomeEn.includes('10 friends who buy the Pass: a free Adventurer’s Pass'));
 assert.equal(JSON.parse(unescapeAttr(refHomeEn.match(/data-labels="([^"]*)"/)[1])).shareText, 'Come play Arena Idle with me! Join the launch list: {url}');
 for (const key of Object.keys(referral)) assert.ok(key === 'tiers' ? referral.tiers.every(t => t.pt && t.en) : referral[key].pt && referral[key].en, 'both languages: ' + key);

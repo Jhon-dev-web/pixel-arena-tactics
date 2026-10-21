@@ -228,6 +228,7 @@ assert.ok(page('pt', 'pass').includes('href="https://jogo.example.test/play?x=1&
 // ---- the footer: company fields only when filled, legal links only when live -------------------------------------------------------------------------------
 reset();
 config.company = { legalName: null, cnpj: null, supportEmail: null };
+config.legalLive = { terms: false, privacy: false, refund: false, seasonRules: false };
 const footerOf = html => html.match(/<footer>[\s\S]*<\/footer>/)[0];
 const emptyFooter = footerOf(page('pt', ''));
 assert.ok(!emptyFooter.includes('footer-trust') && !/CNPJ|Suporte|Stripe|mailto|null|undefined/.test(emptyFooter), 'no company, no live legal page: nothing is rendered, not even a placeholder');
@@ -264,7 +265,8 @@ assert.ok(head(page('pt', 'championship')).includes('noindex,follow') && head(pa
 const everything = renderSite('pt').map(item => ({ ...item, lang: 'pt' })).concat(renderSite('en').map(item => ({ ...item, lang: 'en' })));
 const sitemap = sitemapXml(config.siteUrl, everything);
 assert.ok(sitemap.includes('<loc>https://portal.example.test/pt/season/</loc>') && sitemap.includes('<loc>https://portal.example.test/en/</loc>'));
-assert.ok(!/championship|terms|privacy|refund|season-rules/.test(sitemap), 'redirect and placeholder pages are not in the sitemap');
+assert.ok(!/championship|terms|refund|season-rules/.test(sitemap), 'redirect and placeholder pages are not in the sitemap');
+assert.ok(sitemap.includes('<loc>https://portal.example.test/pt/privacy/</loc>'), 'the published Privacy Policy is in the sitemap');
 assert.ok(robotsTxt(config.siteUrl).includes('Sitemap: https://portal.example.test/sitemap.xml'));
 reset();
 console.log('PASS: Liga page, meter states, pure module, escaping, season picking, Pass flag, footer, legal links and sharing tags.');
