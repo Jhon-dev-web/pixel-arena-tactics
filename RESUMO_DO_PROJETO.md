@@ -16,7 +16,7 @@ Monetização: o **Passe de Aventureiro** (US$ 10, pago **só em USDC na rede So
 |---|---|
 | `src/` | O jogo (React 18 + Vite + TypeScript). Lógica em `src/game/`, telas em `src/components/`, casca/layout em `src/shell/`, textos em `src/locales/pt.json` e `en.json` (sempre manter os dois iguais). |
 | `public/assets/` | Sprites, ícones, fundos, músicas e efeitos. Folhas de personagem são PNG 1024×1024 em grade 4×4 (linhas: parado, ataque, dano, morte). |
-| `supabase/migrations/` | Banco (Postgres no Supabase), migrações `0001` a `0027`; `0001` a `0025` estão aplicadas no projeto de teste, a `0026` (painel do dono, Passe da temporada) e a `0027` (ações do painel, códigos promocionais) ainda **não**. |
+| `supabase/migrations/` | Banco (Postgres no Supabase), migrações `0001` a `0028`, **todas aplicadas** no projeto de teste. |
 | `supabase/functions/` | Edge Functions (Deno): progresso, materiais, itens, mercado, Passe em USDC, lista de espera, auditor de IA, vigia e `admin-delete-user` (apagar conta pelo painel). Código comum em `_shared/`. |
 | `portal/` | Site público (estático, gerado por `node scripts/build.mjs`), com Liga/Temporada, Passe, roadmap, FAQ e cadastro por e-mail. |
 | `admin/` | Painel do dono, projeto separado (React + Vite): lê quase tudo e tem poucas escritas auditadas (docs/ADMIN.md seção 7). |
@@ -88,18 +88,20 @@ Na raiz (Node 22+):
 
 ## 8. Painel de administração (`admin/`)
 
-- Projeto separado do jogo, para o dono. Páginas: Visão geral, Jogadores, Economia, Mercado, Lendários, Liga, Pagamentos, Lista de espera, Códigos e IA/Operações. Escritas (só admin, no servidor, auditadas em `arena_private.admin_audit`, confirmadas na tela; migração `0027`, a aplicar): apagar conta (Edge Function `admin-delete-user`, segredo `ADMIN_ORIGIN`), ativar/revogar o Passe de uma conta, gerar/desativar códigos promocionais (o jogador resgata em Configurações; dá o Passe da temporada, conta para o ranking, não conta como venda). Ouro/Éter como recompensa de código não existe (docs/ADMIN.md 7.3).
+- Projeto separado do jogo, para o dono. Páginas: Visão geral, Jogadores, Economia, Mercado, Lendários, Liga, Pagamentos, Lista de espera, Códigos e IA/Operações. Escritas (só admin, no servidor, auditadas em `arena_private.admin_audit`, confirmadas na tela; migração `0027`): apagar conta (Edge Function `admin-delete-user`, segredo `ADMIN_ORIGIN`), ativar/revogar o Passe de uma conta, gerar/desativar códigos promocionais (o jogador resgata em Configurações; o dono escolhe o prêmio: Passe da temporada, Ouro (até 1.000.000), Éter (até 10.000) ou Poção (19 tipos, até 100). Passe de código conta para o ranking e não conta como venda. Ouro/Éter/poções viram crédito do servidor (`arena_private.server_credits`, migração `0028`) que o jogo resgata uma vez e que a checagem de progresso desconta; itens de mercado nunca são prêmio).
 - Acesso só para quem está em `arena_private.admins`: `insert into arena_private.admins (user_id, note) select id, 'dono' from auth.users where email = '...';`
-- Lê o banco por funções `admin_*` (migração `0020`). A migração `0026_admin_pass_season.sql` (a aplicar) faz `admin_overview`, `admin_players` e `admin_player_detail` mostrarem o Passe **válido nesta temporada** e o **histórico de Passes** como duas medidas; a receita continua de todo o período. Enquanto não for aplicada, o painel avisa que só conhece o histórico. A Visão geral abre com «Precisa de atenção», a IA e operação é dividida em estado, incidentes e relatórios, e a casca mostra o ambiente conectado (variáveis públicas `VITE_ADMIN_ENV` e `VITE_ADMIN_PRODUCTION_REF`).
-- IA de operações (`0021`, `ai-auditor`, `ops-watchdog`, `docs/AI_OPS.md`): só aconselha e só pode LIGAR pausas; ainda não implantada (precisa de `ANTHROPIC_API_KEY`, `OPS_CRON_SECRET` e webhook).
+- Lê o banco por funções `admin_*` (migração `0020`). A migração `0026_admin_pass_season.sql` faz `admin_overview`, `admin_players` e `admin_player_detail` mostrarem o Passe **válido nesta temporada** e o **histórico de Passes** como duas medidas; a receita continua de todo o período. A Visão geral abre com «Precisa de atenção», a IA e operação é dividida em estado, incidentes e relatórios, e a casca mostra o ambiente conectado (variáveis públicas `VITE_ADMIN_ENV` e `VITE_ADMIN_PRODUCTION_REF`).
+- IA de operações (`0021`, `ai-auditor`, `ops-watchdog`, `docs/AI_OPS.md`): só aconselha e só pode LIGAR pausas. **Implantada no teste em 21/10**: segredos `ANTHROPIC_API_KEY` e `OPS_CRON_SECRET` postos pelo dono, pg_cron/pg_net ligados, 4 agendamentos (vigia a cada 5 min, IA de hora em hora e diária às 09:15 UTC, limpeza diária). Falta o webhook do Discord (`OPS_ALERT_WEBHOOK_URL`), que o dono quer fazer depois.
 
 ## 9. Ambientes
 
-- **Supabase de teste**: projeto `ncufhkoyphktvmhmivxa` (plano grátis). Migrações via `npx supabase@2.121.0 db push --yes`; funções via `npx supabase@2.121.0 functions deploy <nome> --project-ref ncufhkoyphktvmhmivxa --use-api` (as de lista de espera com `--no-verify-jwt`). Segredos de Solana em devnet (`SOLANA_RPC_URL`, `SOLANA_CLUSTER=devnet`, `MARKET_FEE_ADDRESS`, `SOLANA_USDC_MINT`), mais `APP_ORIGIN`, `PORTAL_ORIGIN`, `WAITLIST_SECRET`. Um projeto Pro de produção será criado perto do lançamento.
+- **Supabase de teste**: projeto `ncufhkoyphktvmhmivxa` (plano grátis). Migrações via `npx supabase@2.121.0 db push --yes`; funções via `npx supabase@2.121.0 functions deploy <nome> --project-ref ncufhkoyphktvmhmivxa --use-api` (as de lista de espera com `--no-verify-jwt`). Segredos de Solana em devnet (`SOLANA_RPC_URL`, `SOLANA_CLUSTER=devnet`, `MARKET_FEE_ADDRESS`, `SOLANA_USDC_MINT`), mais `APP_ORIGIN`, `PORTAL_ORIGIN`, `WAITLIST_SECRET`, `ADMIN_ORIGIN`, `ANTHROPIC_API_KEY`, `OPS_CRON_SECRET`. Claude **não consegue gravar segredos** (o modo automático bloqueia): o dono põe no painel do Supabase; nunca peça a chave pelo chat. Um projeto Pro de produção será criado perto do lançamento.
 - **Vercel** (equipe "houran"):
   - Jogo de teste: projeto `pixel-arena-tactics`, endereço fixo https://arena-idle-teste.vercel.app. Publicar sempre como prévia (nunca `--prod`) com `--build-env VITE_SUPABASE_URL=... VITE_SUPABASE_ANON_KEY=... VITE_MARKET_ENABLED=true VITE_SEASON_RANKING_ENABLED=true` e depois `vercel alias set <deploy> arena-idle-teste.vercel.app`.
   - Portal de teste: projeto `arena-idle-portal-teste`, https://arena-idle-portal-teste.vercel.app (publicado com `playUrl` e Supabase de teste preenchidos só na hora, sem commitar).
-  - Admin de teste: projeto `arena-idle-admin`, https://arena-idle-admin-teste.vercel.app.
+  - Admin de teste: projeto `arena-idle-admin` (pasta `admin/`), https://arena-idle-admin-teste.vercel.app. Publicar de dentro de `admin/` com `--build-env VITE_SUPABASE_URL=... VITE_SUPABASE_ANON_KEY=... VITE_ADMIN_ENV=teste` e `vercel alias set`.
+  - A proteção da Vercel foi **desligada** no projeto do jogo (amigos jogam pelo link). A chave anon pública sai de `npx supabase@2.121.0 projects api-keys --project-ref ncufhkoyphktvmhmivxa -o json` (filtrar `anon`).
+  - Ao publicar, pegue a URL do deploy do próprio output do comando: o push no GitHub também gera um deploy de prévia SEM as variáveis (não use esse).
 - Branch de trabalho: `claude/project-thread-ppdm57` (base `develop`).
 
 ## 10. Regras para quem mexer no código
@@ -112,3 +114,26 @@ Na raiz (Node 22+):
 - Ao testar no navegador, fechar todas as abas depois (a música do jogo continua tocando).
 - Ações irreversíveis (produção, banco de produção, apagar dados, mensagens para fora) só com pedido explícito do dono.
 - Documentos de detalhe: `docs/WEB_LAUNCH.md`, `docs/MARKET_SOLANA.md`, `docs/PASS_SALES.md`, `docs/SEASON_RANKING.md`, `docs/WAITLIST.md`, `docs/ADMIN.md`, `docs/AI_OPS.md`, `docs/BALANCE_CHANGES.md`.
+
+## 11. Estado em 21/10/2026 (passagem de thread)
+
+### No ar no teste
+- **Jogo** (https://arena-idle-teste.vercel.app): herói novo do dono nas 8 armaduras; Forja e Passe como páginas (iguais Ofícios); produção em lote com tempo; uma tarefa por vez; sem emojis (ícones de pixel); Acampamento, Caça e Forja reorganizados no celular; convites pelo jogo; resgate de código promocional em Configurações; habilidades de Guerreiro/Guardião rebalanceadas (2–3,4% por ponto); sem taxas de drop na tela.
+- **Servidor de teste**: migrações até `0028`; Passe por temporada (`0025`), ranking com permissão corrigida (`0023`), convites por conta (`0024`), painel (`0026`/`0027`), créditos do servidor (`0028`); IA e vigia agendados.
+- **Portal de teste** (https://arena-idle-portal-teste.vercel.app): página inicial no estilo da arte do dono; o redesign completo é de outra thread ("Redesign do site").
+- **Painel** (https://arena-idle-admin-teste.vercel.app, protegido pela Vercel): Precisa de atenção, Passe válido x histórico, apagar conta, ativar/revogar Passe, Códigos com escolha de prêmio, IA e operação.
+
+### Pendente
+- **Dono**: testar o login no painel (precisa estar em `arena_private.admins`); webhook do Discord para alertas (`OPS_ALERT_WEBHOOK_URL`) "depois"; política de privacidade e endereço oficial do site antes de abrir o cadastro por e-mail (a thread do redesign cuida do portal); regulamento/termos da Liga e do Passe (checagem jurídica é dele); preço do Passe da Temporada 2 (ainda não decidido); plano Pro + projeto de produção perto do lançamento.
+- **Decisões abertas**: a habilidade **Faro** (Caçador) dá +21% de materiais, mais que os +10% do Passe — dono ainda não decidiu; Ouro/Éter por código existem, mas os limites dos novos alertas `GOLD_/SHARDS_/POTIONS_BALANCE_JUMP` em `_shared/progress/bounds.ts` são estimativas (ajustar se houver alerta falso).
+- **Técnico**: o painel não consegue apagar quem vendeu item que foi revendido (chaves do mercado sem cascata: `item_certificates.origin_certificate_id`, `market_listings.certificate_id`, `market_reservations.listing_id`); `docs/INVENTORY.md` ainda diz que bônus do Passe são "para sempre"; o cabeçalho da `0027` ainda diz que códigos não dão Ouro/Éter; larguras de tablet (700–899 px) não foram vistas; Stripe e `create-checkout`/`stripe-webhook` seguem dormentes.
+- `melhorias.md` (raiz, não versionado) é uma revisão externa: itens do jogo e do painel já feitos; P02 e P05 do portal conflitam com o plano do dono e não foram aprovados.
+
+### Armadilhas aprendidas
+- Publicar artifact/link: primeiro publicar, depois usar a URL do resultado (nunca adivinhar).
+- Fechar todas as abas do navegador integrado depois de testar (a música do jogo continua tocando para o dono).
+- Testes SQL em PGlite rodam como superusuário: permissões de `anon`/`authenticated` precisam de teste explícito com `set role` (o ranking quebrou por isso).
+- Windows com `core.autocrlf=true`: testes que fazem `split('\n')` em arquivos do repo devem usar `/\r?\n/`.
+- Duas threads trabalham na mesma pasta e branch: sempre `git pull --rebase` antes de enviar e adicionar só os próprios arquivos (nunca `git add -A`).
+- `supabase db dump` precisa de Docker (não há); faça migrações idempotentes com bloco de rollback no cabeçalho.
+- O executor (subagente) que apaga "arquivos de rascunho" pode apagar trabalho do diretor: dizer explicitamente quais caminhos ele pode tocar.
