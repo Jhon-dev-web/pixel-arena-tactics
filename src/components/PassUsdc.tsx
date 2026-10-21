@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { mt } from '../locales/market';
 import { MarketUnreachable, PassPlan, UnmatchedPayment, marketApi } from '../game/market/api';
 import { runLinkFlow } from '../game/market/linkFlow';
-import { RETRY_REASONS } from '../game/market/payFlow';
-import { payPassFromWallet } from '../game/market/passPay';
-import { PASS_PENDING_KEY, PAUSED_RETRY_MS, clearPending, isHeldReason, isPausedReason, loadPending, savePending } from '../game/market/pendingPayment';
+import { elapsedSeconds } from '../game/market/payFlow';
+import { PassSubmitOutcome, payPassFromWallet, submitPassWithPolling } from '../game/market/passPay';
+import { PASS_PENDING_KEY, PAUSED_RETRY_MS, clearPending, isPausedReason, loadPending, savePending } from '../game/market/pendingPayment';
 import { listSolWallets } from '../game/market/wallet';
 import { AccountMismatch } from './market/AccountMismatch';
 import { mismatchText, useOpenAccount } from './market/openAccount';
@@ -109,6 +109,23 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
     [],
   );
 
+  // The signature goes to the server the moment the wallet returns it (no initial delay) and is asked again every 2 s at first (game/market/payFlow.ts confirmRetryDelayMs) while the network says
+  // "not yet"; the screen shows "Confirmando o pagamento na rede... N s" and blocks every button meanwhile.
+  const [confirmSince, setConfirmSince] = useState<number | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (confirmSince === null) return undefined;
+    const id = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [confirmSince]);
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
   const submit = async (sig: string, wallet?: string): Promise<void> => {
     savePending(PASS_PENDING_KEY, sig, wallet ?? plan?.buyerAddress);
     if (retryTimer.current !== null) {
@@ -116,61 +133,53 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
       retryTimer.current = null;
     }
     setBusy(true);
-    say(mt('pay.checking'));
+    const startedAt = Date.now();
+    setClockNow(startedAt);
+    setConfirmSince(startedAt);
+    setMessage(null);
+    let out: PassSubmitOutcome;
     try {
-      for (let i = 0; i < 36; i++) {
-        const r = await marketApi.passSubmit(sig);
-        if (!('reason' in r)) {
-          clearPending(PASS_PENDING_KEY);
-          say(mt('pass.granted'));
-          grantedRef.current();
-          setBusy(false);
-          return;
-        }
-        if (r.reason === 'payment_unmatched') {
-          clearPending(PASS_PENDING_KEY); // queued for the owner: the code below is what the player keeps
-          // it reached the game's wallet but could not be linked to this purchase: recorded for the owner, the signature is the code
-          const code = typeof (r.extra as { code?: unknown } | undefined)?.code === 'string' ? String((r.extra as { code: string }).code) : sig;
-          setMessage(null); // the waiting list below shows the code
-          setWaiting((w) => (w.some((x) => x.signature === code) ? w : [{ signature: code, reason: 'unmatched', purpose: 'pass', amountUnits: '0', createdAt: '' }, ...w]));
-          setBusy(false);
-          return;
-        }
-        if (r.reason === 'already_owned') {
-          clearPending(PASS_PENDING_KEY);
-          say((r.extra as { refundDue?: boolean } | undefined)?.refundDue ? mt('pass.alreadyRefund') : mt('pass.already'), !!(r.extra as { refundDue?: boolean } | undefined)?.refundDue);
-          setBusy(false);
-          return;
-        }
-        if (!RETRY_REASONS.has(r.reason)) {
-          if (isHeldReason(r.reason)) {
-            // paused or busy: the payment may be perfectly good, so the signature stays saved and is asked again later
-            const key = `pay.fail.${r.reason}`;
-            const text = mt(key);
-            say(text === key ? mt('pass.fail.generic') : text);
-            if (isPausedReason(r.reason)) {
-              retryTimer.current = window.setTimeout(() => {
-                retryTimer.current = null;
-                void submit(sig, wallet);
-              }, PAUSED_RETRY_MS);
-            }
-            setBusy(false);
-            return;
-          }
-          if (r.reason !== 'no_intent') clearPending(PASS_PENDING_KEY); // without a started purchase the server cannot match it yet: keep it
-          const key = `pay.fail.${r.reason}`;
-          const text = mt(key);
-          say(r.reason === 'no_intent' ? mt('pass.noIntent') : text === key ? mt('pass.fail.generic') : text, true);
-          setBusy(false);
-          return;
-        }
-        say(r.reason === 'unconfirmed' ? mt('pay.confirming') : mt('pay.fail.not_found_tx'));
-        await new Promise((res) => setTimeout(res, 5000));
-      }
+      out = await submitPassWithPolling(marketApi, sig, { isCancelled: () => !aliveRef.current });
     } catch {
-      say(mt('unreachable'), true);
+      out = { kind: 'unreachable' };
     }
+    if (!aliveRef.current) return;
+    setConfirmSince(null);
     setBusy(false);
+    if (out.kind === 'granted') {
+      clearPending(PASS_PENDING_KEY);
+      say(mt('pass.granted'));
+      grantedRef.current();
+    } else if (out.kind === 'unmatched') {
+      clearPending(PASS_PENDING_KEY); // queued for the owner: the code below is what the player keeps
+      // it reached the game's wallet but could not be linked to this purchase: recorded for the owner, the signature is the code
+      setMessage(null); // the waiting list below shows the code
+      setWaiting((w) => (w.some((x) => x.signature === out.code) ? w : [{ signature: out.code, reason: 'unmatched', purpose: 'pass', amountUnits: '0', createdAt: '' }, ...w]));
+    } else if (out.kind === 'alreadyOwned') {
+      clearPending(PASS_PENDING_KEY);
+      say(out.refundDue ? mt('pass.alreadyRefund') : mt('pass.already'), out.refundDue);
+    } else if (out.kind === 'held') {
+      // paused or busy: the payment may be perfectly good, so the signature stays saved and is asked again later
+      const key = `pay.fail.${out.reason}`;
+      const text = mt(key);
+      say(text === key ? mt('pass.fail.generic') : text);
+      if (isPausedReason(out.reason)) {
+        retryTimer.current = window.setTimeout(() => {
+          retryTimer.current = null;
+          void submit(sig, wallet);
+        }, PAUSED_RETRY_MS);
+      }
+    } else if (out.kind === 'refused') {
+      if (out.reason !== 'no_intent') clearPending(PASS_PENDING_KEY); // without a started purchase the server cannot match it yet: keep it
+      const key = `pay.fail.${out.reason}`;
+      const text = mt(key);
+      say(out.reason === 'no_intent' ? mt('pass.noIntent') : text === key ? mt('pass.fail.generic') : text, true);
+    } else if (out.kind === 'pending') {
+      // still not seen after the patience: nothing was consumed and the signature stays saved; "verify" asks again
+      const key = `pay.fail.${out.reason}`;
+      const text = mt(key);
+      say(text === key ? mt('pay.confirming') : text);
+    } else if (out.kind === 'unreachable') say(mt('unreachable'), true);
   };
 
   // A signature remembered from before (the page was reloaded or the screen closed while the payment was being confirmed): the verification resumes by itself, for the same linked wallet only.
@@ -276,7 +285,7 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
           )}
           <AccountMismatch linked={plan.buyerAddress} open={watched.open} walletName={watched.walletName} onRelink={() => void relink()} busy={busy} />
           <Button variant="primary" block disabled={busy || plan.buyerAddress === plan.receiveAddress || (watched.open !== null && watched.open !== plan.buyerAddress)} onClick={() => void payFromWallet()}>
-            {mt('pay.payFromWallet')}
+            {busy ? mt('processing') : mt('pay.payFromWallet')}
           </Button>
           <TextField
             label={mt('pass.hash')}
@@ -288,7 +297,7 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
             spellCheck={false}
           />
           <Button block disabled={busy || signature.length < 40} onClick={() => void submit(signature)}>
-            {mt('pay.submit')}
+            {busy ? mt('processing') : mt('pay.submit')}
           </Button>
           {!plan.chain.livemode && <p className="ui-note">{mt('pass.testNote')}</p>}
         </>
@@ -303,10 +312,16 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
           ))}
         </div>
       )}
-      {message && (
-        <p className={`ui-alert${message.error ? ' bad' : ''}`} role="status">
-          {message.text}
+      {confirmSince !== null ? (
+        <p className="ui-alert" role="status" data-testid="pass-confirming">
+          {mt('pay.confirmingTimer', { s: elapsedSeconds(confirmSince, clockNow) })}
         </p>
+      ) : (
+        message && (
+          <p className={`ui-alert${message.error ? ' bad' : ''}`} role="status">
+            {message.text}
+          </p>
+        )
       )}
       {!plan && !busy && (
         <Button block onClick={() => void start()}>

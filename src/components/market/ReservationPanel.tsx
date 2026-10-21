@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MarketApi } from '../../game/market/api';
-import { paymentDone, payReservationFromWallet, submitWithPolling } from '../../game/market/payFlow';
+import { elapsedSeconds, paymentDone, payReservationFromWallet, submitWithPolling } from '../../game/market/payFlow';
+import type { MarketChange } from '../../game/market/liveState';
 import { PAUSED_RETRY_MS, clearPending, isHeldReason, isPausedReason, loadPending, marketPendingKey, savePending } from '../../game/market/pendingPayment';
 import { explorerTxUrl } from '../../game/market/wallet';
 import { mt } from '../../locales/market';
@@ -36,6 +37,7 @@ export default function ReservationPanel({
   reservation: initial,
   walletAddress,
   solUsd,
+  onApplied,
   onChanged,
   onClose,
   bagFull,
@@ -44,7 +46,10 @@ export default function ReservationPanel({
   reservation: ReservationView;
   walletAddress: string | null;
   solUsd: number | null;
-  onChanged: () => void;
+  /** the server's answer, to show on the screen at once */
+  onApplied?: (change: MarketChange) => void;
+  /** reads the changed lists from the server and brings a bought item into the bag; the buttons stay blocked until it is done */
+  onChanged: () => void | Promise<void>;
   onClose: () => void;
   bagFull: boolean;
 }) {
@@ -52,6 +57,9 @@ export default function ReservationPanel({
   const [pay, setPay] = useState<PayState>(blank());
   const [now, setNow] = useState(() => Date.now());
   const [note, setNote] = useState<string | null>(null);
+  // set while the signature is being confirmed on the network: the "Confirmando o pagamento na rede... N s" line (the clock above ticks every second)
+  const [confirmSince, setConfirmSince] = useState<number | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const alive = useRef(true);
   const retryTimer = useRef<number | null>(null);
   const resumed = useRef<string | null>(null);
@@ -95,12 +103,14 @@ export default function ReservationPanel({
       window.clearTimeout(retryTimer.current);
       retryTimer.current = null;
     }
-    patch({ busy: true, message: mt('pay.checking'), error: false });
+    // the signature goes to the server NOW (no delay); while the network says "not yet" it is asked again every 2 s (payFlow.confirmRetryDelayMs)
+    patch({ busy: true, message: null, error: false });
+    if (alive.current) setConfirmSince(Date.now());
     const out = await submitWithPolling(api, res.id, signature, {
       isCancelled: () => !alive.current,
-      onPending: (p) => patch({ message: p.reason === 'unconfirmed' ? mt('pay.confirming') : mt('pay.fail.not_found_tx'), error: false }),
     }).catch(() => ({ kind: 'unreachable' as const }));
     if (!alive.current) return;
+    setConfirmSince(null);
     if (out.kind === 'recorded' || (out.kind === 'refused' && !isHeldReason(out.reason))) clearPending(pendingKey);
     if (out.kind === 'refused' && isPausedReason(out.reason)) {
       // the payment is on the network and saved here: ask again later, on its own
@@ -110,10 +120,14 @@ export default function ReservationPanel({
       }, PAUSED_RETRY_MS);
     }
     if (out.kind === 'recorded') {
-      if (out.reservation) setRes(out.reservation);
-      patch({ busy: false, message: null, error: false });
+      if (out.reservation) {
+        setRes(out.reservation);
+        onApplied?.({ kind: 'paid', reservation: out.reservation }); // sold: the offer leaves the browse list and the panel says so at once
+      }
+      patch({ message: mt('processing'), error: false });
       if (out.status === 'refund_due') setNote(mt('pay.refundDue'));
-      onChanged();
+      await onChanged(); // the bought item comes into the bag and the lists are read again; the panel stays blocked until then
+      patch({ busy: false, message: null, error: false });
     } else if (out.kind === 'refused') patch({ busy: false, message: out.code ? `${failText(out.reason)} ${mt('pay.unmatched', { code: out.code })}` : failText(out.reason), error: true });
     else if (out.kind === 'pending') patch({ busy: false, message: failText(out.reason), error: false });
     else if (out.kind === 'unreachable') patch({ busy: false, message: mt('unreachable'), error: true });
@@ -122,7 +136,7 @@ export default function ReservationPanel({
 
   const payFromWallet = async () => {
     if (!walletAddress) return;
-    patch({ busy: true, message: null, error: false });
+    patch({ busy: true, message: mt('processing'), error: false });
     const r = await payReservationFromWallet(api, res, walletAddress);
     if ('failure' in r) {
       patch({ busy: false, message: r.failure === 'wrongAccount' && walletAddress ? mismatchText(walletAddress, r.open, watched.walletName) : mt(PAY_FAILURE_KEY[r.failure]), error: true });
@@ -134,12 +148,16 @@ export default function ReservationPanel({
   };
 
   const cancel = async () => {
+    if (cancelling) return;
+    setCancelling(true);
     const r = await api.cancelReservation(res.id).catch(() => null);
     if (r && 'reason' in r && r.reason === 'has_payment') {
       setNote(mt('pay.cancelBlocked'));
+      if (alive.current) setCancelling(false);
       return;
     }
-    onChanged();
+    if (r && !('reason' in r)) onApplied?.({ kind: 'reservationReleased', reservation: res }); // the offer is open again in the browse list at once
+    await onChanged();
     onClose();
   };
 
@@ -220,7 +238,7 @@ export default function ReservationPanel({
                 <AccountMismatch linked={walletAddress} open={watched.open} walletName={watched.walletName} locked />
                 <p className="ui-note">{mt('pay.checkWallet')}</p>
                 <Button variant="primary" block disabled={pay.busy || !walletAddress || (watched.open !== null && watched.open !== walletAddress)} onClick={() => void payFromWallet()}>
-                  {pay.busy ? mt('pay.checking') : mt('pay.payFromWallet')}
+                  {pay.busy ? mt('processing') : mt('pay.payFromWallet')}
                 </Button>
                 <TextField
                   label={mt('pay.orPaste')}
@@ -232,14 +250,20 @@ export default function ReservationPanel({
                   spellCheck={false}
                 />
                 <Button block disabled={pay.busy || pay.signature.length < 40} onClick={() => void verify(pay.signature)}>
-                  {pay.busy ? mt('pay.checking') : mt('pay.submit')}
+                  {pay.busy ? mt('processing') : mt('pay.submit')}
                 </Button>
               </>
             )}
-            {pay.message && (
-              <p className={`ui-alert${pay.error ? ' bad' : ''}`} role="status">
-                {pay.message}
+            {confirmSince !== null ? (
+              <p className="ui-alert" role="status" data-testid="pay-confirming">
+                {mt('pay.confirmingTimer', { s: elapsedSeconds(confirmSince, now) })}
               </p>
+            ) : (
+              pay.message && (
+                <p className={`ui-alert${pay.error ? ' bad' : ''}`} role="status">
+                  {pay.message}
+                </p>
+              )
             )}
           </Panel>
         </>
@@ -250,7 +274,11 @@ export default function ReservationPanel({
         </p>
       )}
       <div className="mk-row">
-        {!sold && !refund && <Button onClick={() => void cancel()}>{mt('pay.cancel')}</Button>}
+        {!sold && !refund && (
+          <Button disabled={cancelling || pay.busy} onClick={() => void cancel()}>
+            {cancelling ? mt('processing') : mt('pay.cancel')}
+          </Button>
+        )}
         {(sold || refund) && (
           <Button variant="primary" onClick={onClose}>
             {mt('close')}

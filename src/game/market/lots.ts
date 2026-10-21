@@ -39,7 +39,7 @@ export function lotQuote(priceText: string, quantity: number): LotQuote | null {
   return isMaterialTotalLamports(totalLamports) ? { unitPriceMicro, quantity, totalLamports } : null;
 }
 
-export type LotOutcome = { ok: true; listingId: string } | { ok: false; reason: string };
+export type LotOutcome = { ok: true; listingId: string; expiresAt: string } | { ok: false; reason: string };
 
 /**
  * Puts a lot on the market: the server lists it first (checks the balance, the wallet, the limits and moves the units into escrow), and only then the units leave the bag. The request id outlives a
@@ -59,5 +59,5 @@ export async function listLot(d: { api: MarketApi; getSave: () => SaveData; appl
   const next = take > 0 ? removeTradeableUnits(save, materialId, take) : null;
   if (next) d.applySave(next);
   clearIntent(key);
-  return { ok: true, listingId: r.listingId };
+  return { ok: true, listingId: r.listingId, expiresAt: r.expiresAt };
 }

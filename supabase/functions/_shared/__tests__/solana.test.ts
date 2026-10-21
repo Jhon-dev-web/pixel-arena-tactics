@@ -142,7 +142,7 @@ describe('verifying a SOL sale: ONE transaction with the seller transfer and the
     expect(c.methods).toContain('getTransaction');
   });
 
-  it('asks for the transaction at commitment finalized, jsonParsed, versioned transactions allowed', async () => {
+  it('asks for the transaction at commitment confirmed (not finalized: the payment shows in 1 to 2 seconds), jsonParsed, versioned transactions allowed', async () => {
     const asked: unknown[][] = [];
     const c = chain();
     const s = c.sale(BUYER, pays);
@@ -152,7 +152,7 @@ describe('verifying a SOL sale: ONE transaction with the seller transfer and the
       return real(m, p);
     };
     await verifySolSale(c, MAINNET, expectSale(s));
-    expect(asked[0]).toEqual([s, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 0 }]);
+    expect(asked[0]).toEqual([s, { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]);
   });
 
   it('pays more than needed: accepted (the excess is a gift)', async () => {

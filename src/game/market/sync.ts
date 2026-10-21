@@ -67,7 +67,7 @@ export async function syncMarketOnce(d: SyncDeps): Promise<SyncResult> {
   return result;
 }
 
-export type ListOutcome = { ok: true; listingId: string } | { ok: false; reason: string };
+export type ListOutcome = { ok: true; listingId: string; expiresAt: string } | { ok: false; reason: string };
 
 /**
  * Puts one entry on the market: the SERVER lists it first (it checks the certificate, the wallet, the limits), and only then the item leaves the save. If the game closes in between,
@@ -78,7 +78,7 @@ export async function listForSale(d: Pick<SyncDeps, 'api' | 'getSave' | 'applySa
   if ('reason' in r) return { ok: false, reason: r.reason };
   const next = removeListedItem(d.getSave(), certificate);
   if (next !== d.getSave()) d.applySave(next);
-  return { ok: true, listingId: r.listingId };
+  return { ok: true, listingId: r.listingId, expiresAt: r.expiresAt };
 }
 
 let inflight: Promise<SyncResult> | null = null;

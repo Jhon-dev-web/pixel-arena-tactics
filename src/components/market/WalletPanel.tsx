@@ -21,8 +21,8 @@ export function Warnings({ chain, custody = true }: { chain: ChainPublic | null;
   );
 }
 
-export default function WalletPanel({ api, chain, wallet, onChanged }: { api: MarketApi; chain: ChainPublic | null; wallet: { address: string } | null; onChanged: () => void }) {
-  const [busy, setBusy] = useState<null | 'connecting' | 'signing'>(null);
+export default function WalletPanel({ api, chain, wallet, onChanged }: { api: MarketApi; chain: ChainPublic | null; wallet: { address: string } | null; onChanged: () => void | Promise<void> }) {
+  const [busy, setBusy] = useState<null | 'connecting' | 'signing' | 'updating'>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [choices, setChoices] = useState<string[] | null>(null);
@@ -33,11 +33,15 @@ export default function WalletPanel({ api, chain, wallet, onChanged }: { api: Ma
     setMessage(null);
     setChoices(null);
     const r = await runLinkFlow(api, preferred, undefined, setBusy);
-    setBusy(null);
-    if ('failure' in r) setMessage(mt(LINK_MESSAGE_KEY[r.failure]));
-    else {
+    if ('failure' in r) {
+      setBusy(null);
+      setMessage(mt(LINK_MESSAGE_KEY[r.failure]));
+    } else {
+      // the server linked it: read the account again (the new address shows in the header and here) and only then free the buttons
+      setBusy('updating');
+      await onChanged();
+      setBusy(null);
       setMessage(mt(r.unchanged ? 'wallet.unchanged' : 'wallet.done'));
-      onChanged();
     }
   };
 
@@ -89,7 +93,7 @@ export default function WalletPanel({ api, chain, wallet, onChanged }: { api: Ma
           <AccountMismatch linked={wallet.address} open={watched.open} walletName={watched.walletName} onRelink={() => void start()} busy={busy !== null} />
           <p className="ui-note">{mt('wallet.changeHint')}</p>
           <Button onClick={() => void start()} disabled={!chain || busy !== null}>
-            {busy === 'signing' ? mt('wallet.signing') : mt('wallet.change')}
+            {busy === 'signing' ? mt('wallet.signing') : busy === 'updating' ? mt('processing') : mt('wallet.change')}
           </Button>
           {picker}
         </div>
@@ -97,7 +101,7 @@ export default function WalletPanel({ api, chain, wallet, onChanged }: { api: Ma
         <div className="mk-wallet">
           <p className="mk-text">{mt('wallet.none')}</p>
           <Button variant="primary" onClick={() => void start()} disabled={!chain || busy !== null}>
-            {busy === 'signing' ? mt('wallet.signing') : mt('wallet.connect')}
+            {busy === 'signing' ? mt('wallet.signing') : busy === 'updating' ? mt('processing') : mt('wallet.connect')}
           </Button>
           {picker}
         </div>

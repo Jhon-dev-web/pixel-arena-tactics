@@ -115,8 +115,11 @@ describe('the screens use it', () => {
       expect(src).toContain('savePending(');
       expect(src).toContain('loadPending(');
       expect(src).toContain('clearPending(');
-      expect(src).toContain('isHeldReason(');
       expect(src).toContain('PAUSED_RETRY_MS');
     }
+    expect(panel).toContain('isHeldReason(');
+    // the Pass screen asks submitPassWithPolling, which tells a held answer (paused / busy: keep the signature) from a final one
+    expect(pass).toContain('isPausedReason(');
+    expect(readFileSync('src/game/market/passPay.ts', 'utf8')).toContain('isHeldReason(');
   });
 });

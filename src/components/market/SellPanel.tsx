@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { MARKET_MAX_PRICE_LAMPORTS, MARKET_MIN_PRICE_LAMPORTS, SOL_PRICE_STEP_LAMPORTS, splitLamports } from '../../../supabase/functions/_shared/chain/solMoney';
-import type { MarketOverview } from '../../../supabase/functions/_shared/market/types';
+import type { MarketItemView, MarketOverview } from '../../../supabase/functions/_shared/market/types';
 import type { SaveData } from '../../game/engine';
 import { MarketApi } from '../../game/market/api';
 import { SellableEntry, sellableEntries, socketedButCertified, unsellableReasons } from '../../game/market/items';
 import { getCertificate, useCertificatesVersion } from '../../game/itemCerts';
 import { listForSale } from '../../game/market/sync';
+import { MarketChange, myListingFrom } from '../../game/market/liveState';
 import { LotQuote, listLot, lotQuote, sellableLots } from '../../game/market/lots';
 import type { MaterialId } from '../../game/materials';
 import { MARKET_RULES } from '../../../supabase/functions/_shared/market/rules';
@@ -18,6 +19,9 @@ import { SolIcon } from './icons';
 import { fmtSol, parsePriceInput } from './format';
 import UsdLine from './UsdLine';
 import { itemName } from './names';
+
+/** What the offer holds, in the shape the overview uses (so the new offer can be shown before the server is asked again). */
+const marketItemOf = (i: ItemLike): MarketItemView => ({ kind: i.kind, templateId: i.templateId, rarity: i.rarity, tier: i.tier, substats: i.substats as MarketItemView['substats'], goldAmount: i.goldAmount, ...(i.quantity !== undefined ? { quantity: i.quantity } : {}), ...(i.unitPriceMicro !== undefined ? { unitPriceMicro: i.unitPriceMicro } : {}) });
 
 const itemOf = (e: SellableEntry): ItemLike => {
   const cert = getCertificate(e.certificateId);
@@ -67,17 +71,21 @@ export interface SellFlowProps {
   feePercent: number;
   solUsd: number | null;
   host: { getSave: () => SaveData; applySave: (s: SaveData) => void };
-  onChanged: () => void;
+  /** a server answer to apply to the lists on screen AT ONCE (the new offer shows in "Minhas ofertas" before anything is asked again) */
+  onApplied?: (change: MarketChange) => void;
+  /** asks the server once for the lists the action changed (and brings a delivered item into the bag); the button stays blocked until it is done */
+  onChanged: () => void | Promise<void>;
 }
 
 // The state of the "create offer" flow, shared by the item picker (main area), the offer form (side) and the list of my offers. Only the server's certificates decide what is sellable; the price is
 // checked here for the form (the server checks it again), and publishing is two steps (the item leaves the inventory: it is asked once).
-export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onChanged }: SellFlowProps) {
+export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onApplied, onChanged }: SellFlowProps) {
   const [picked, setPickedRaw] = useState<string | null>(null);
   const [priceText, setPriceText] = useState('');
   const [qty, setQty] = useState(1);
   const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const inflight = useRef(false); // a second click in the same frame, before the screen re-rendered, is ignored too
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
   const certVersion = useCertificatesVersion(); // the server's list changed: what is sellable may have too
@@ -105,22 +113,25 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onC
   };
 
   const publish = async () => {
-    if (!group || !valid || busy) return;
+    if (!group || !valid || busy || inflight.current) return;
     if (!armed) {
       setArmed(true);
       return;
     }
+    inflight.current = true;
     setBusy(true);
     setMessage(null);
     if (lotInfo && lot) {
       try {
         const r = await listLot({ api, getSave: host.getSave, applySave: host.applySave }, lotInfo.id, lot.quantity, lot.unitPriceMicro);
         if ('listingId' in r) {
+          const item = marketItemOf({ ...(group.item as ItemLike), quantity: lot.quantity, unitPriceMicro: lot.unitPriceMicro });
+          onApplied?.({ kind: 'listed', listing: myListingFrom({ id: r.listingId, certificateId: null, priceLamports: lot.totalLamports, item, expiresAt: r.expiresAt, now: Date.now() }) });
           setMessage({ text: mt('sell.listed'), error: false });
           setPickedRaw(null);
           setPriceText('');
           setQty(1);
-          onChanged();
+          await onChanged(); // the button stays blocked until the lists are read again from the server
         } else {
           const key = `sell.fail.${'reason' in r ? r.reason : 'generic'}`;
           const text = mt(key);
@@ -131,6 +142,7 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onC
       }
       setArmed(false);
       setBusy(false);
+      inflight.current = false;
       return;
     }
     let done = 0;
@@ -145,6 +157,7 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onC
           break;
         }
         done += 1;
+        onApplied?.({ kind: 'listed', listing: myListingFrom({ id: r.listingId, certificateId: entry.certificateId, priceLamports: unitLamports as number, item: marketItemOf(group.item), expiresAt: r.expiresAt, now: Date.now() }) });
       }
       if (done === count) {
         setMessage({ text: mt('sell.listed'), error: false });
@@ -152,28 +165,33 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onC
         setPriceText('');
         setQty(1);
       }
-      if (done > 0) onChanged();
+      if (done > 0) await onChanged();
     } catch {
       setMessage({ text: mt('unreachable'), error: true });
     }
     setArmed(false);
     setBusy(false);
+    inflight.current = false;
   };
 
   const cancel = async (listingId: string) => {
+    if (inflight.current) return;
+    inflight.current = true;
     setBusy(true);
     setMessage(null);
     try {
       const r = await api.cancelListing(listingId);
       if ('reason' in r) setMessage({ text: r.reason === 'reserved' ? mt('sell.cancelReserved') : mt('sell.fail.generic'), error: true });
       else {
+        onApplied?.({ kind: 'cancelled', listingId });
         setMessage({ text: mt('sell.cancelled'), error: false });
-        onChanged();
+        await onChanged(); // the item / units come back into the bag here, then the lists are read again
       }
     } catch {
       setMessage({ text: mt('unreachable'), error: true });
     }
     setBusy(false);
+    inflight.current = false;
   };
 
   const live = (overview?.listings ?? []).filter((l) => l.status === 'open' || l.status === 'reserved');
@@ -297,7 +315,7 @@ export function OfferForm({ flow }: { flow: SellFlow }) {
       {!flow.hasWallet && <p className="ui-alert bad">{mt('sell.needWallet')}</p>}
       {flow.armed && <p className="ui-alert">{mt('sell.confirmHint')}</p>}
       <Button variant="primary" block disabled={!flow.group || !flow.valid || flow.busy || !flow.hasWallet} onClick={() => void flow.publish()}>
-        {flow.busy ? mt('loading') : flow.armed ? mt('sell.confirm') : mt('sell.form.publish')}
+        {flow.busy ? mt('processing') : flow.armed ? mt('sell.confirm') : mt('sell.form.publish')}
       </Button>
       {flow.message && (
         <p className={`ui-alert${flow.message.error ? ' bad' : ' good'}`} role="status">
@@ -333,7 +351,7 @@ export function MyOffers({ flow }: { flow: SellFlow }) {
             <div className="mk-listing-more">
               <span className="ui-note">{mt('sell.expires', { d: Math.max(0, Math.ceil((Date.parse(l.expiresAt) - Date.now()) / 86_400_000)) })}</span>
               <Button size="sm" disabled={flow.busy || l.status === 'reserved'} onClick={() => void flow.cancel(l.id)}>
-                {mt('sell.cancel')}
+                {flow.busy ? mt('processing') : mt('sell.cancel')}
               </Button>
             </div>
           </li>

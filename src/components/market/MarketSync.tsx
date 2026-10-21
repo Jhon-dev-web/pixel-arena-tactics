@@ -6,7 +6,9 @@ import { syncMaterials } from '../../game/market/materialSync';
 import { MarketHost, syncDepsFor } from './marketDeps';
 import { startPolling } from '../../lib/poller';
 
-// Renders nothing. While the market is switched on (web build, signed in) it keeps the save and the server's certificates in line: items listed or sold leave the save, bought or returned items
+// Renders nothing. THE SAFETY NET, not the way actions show up: every click on the market screens is one server request whose answer is applied to the screen and the save at once (MarketScreen,
+// game/market/liveState.ts). This pass only catches what an action could not finish (a closed tab, a lost answer, a full bag, a sale that happened while the player was away).
+// While the market is switched on (web build, signed in) it keeps the save and the server's certificates in line: items listed or sold leave the save, bought or returned items
 // come in from their certificate, and each delivery is acknowledged only after the server confirmed a save that has the item (game/market/sync.ts).
 // A pass every 10 minutes (it is 3 to 4 requests), paused while the tab is hidden and jittered (lib/poller.ts); the market screens run a pass of their own when the player opens them, and a
 // delivery that waits for a confirmed save looks again every few seconds (SOON_MS) for a little while.

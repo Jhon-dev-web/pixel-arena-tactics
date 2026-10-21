@@ -4,18 +4,26 @@ import { RpcClient } from './rpc.ts';
 import { DEFAULT_PASS_PRICE_USDC_UNITS, USDC_DECIMALS, parseUsdcAmount } from './solMoney.ts';
 
 // The Solana side of the market and the Pass: the configuration read from secrets BY NAME, and the verification of a payment by asking a JSON-RPC node (the URL is the secret
-// SOLANA_RPC_URL; the provider is the owner's choice) with `getTransaction` at commitment `finalized`.
+// SOLANA_RPC_URL; the provider is the owner's choice) with `getTransaction` at commitment `confirmed` (SOLANA_VERIFY_COMMITMENT below).
 //
 // NON-CUSTODIAL: this module only READS the chain. The game never holds a key, never signs, never sends a transaction (the player's own wallet does).
 //
 // What "verified" means, all of it required:
-//   * the node is on the cluster we expect (getGenesisHash), the transaction is FINALIZED and `meta.err` is null (a transaction the cluster has not finalized yet is "not yet", never accepted);
+//   * the node is on the cluster we expect (getGenesisHash), the transaction is CONFIRMED (more than two thirds of the stake voted for its block) and `meta.err` is null (a transaction the cluster has not confirmed yet is "not yet", never accepted);
 //   * SALE (SOL): ONE transaction carries both SystemProgram transfers. The sum of the transfers FROM the buyer's linked address TO the seller is at least 95% of the price and TO the game's fee
 //     address at least 5% (lamports; instructions inside inner instructions count too). Any other sender, recipient or short amount is refused;
 //   * PASS (USDC): the net change of the USDC token balances OWNED by the receiving address is at least the price, and the buyer's own USDC balance went down by at least the price (the mint is the
 //     official USDC mint of the cluster; any other token is refused);
 //   * the block time is not older than the reservation / intent it is paid for.
 // A transaction signature can be spent ONCE: that part is the database's (a primary key on the signature, migration 0013), not this module's.
+
+/**
+ * The commitment a payment is verified at. `confirmed` is about 1 to 2 seconds after the wallet sends; `finalized` is about 13 seconds later still (owner rule of 2026-10-21: a click is a request and
+ * what the player paid for must show at once). `confirmed` means more than two thirds of the stake voted for the block, and a confirmed block has not been rolled back on mainnet-beta, so for a
+ * one-off payment of this size the remaining risk is negligible. Replay protection does not depend on the level: a signature is consumed ONCE by the database (primary key, migration 0013), so a
+ * retry, a second tab or a re-sent hash can never pay twice. `processed` is NOT acceptable (one leader's block, it can be dropped).
+ */
+export const SOLANA_VERIFY_COMMITMENT = 'confirmed' as const;
 
 export const SOLANA_CLUSTERS = ['mainnet-beta', 'devnet'] as const;
 export type SolanaCluster = (typeof SOLANA_CLUSTERS)[number];
@@ -209,8 +217,8 @@ interface RawTx {
 
 const asNumber = (v: unknown): number | null => (typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? v : null);
 
-/** getTransaction at `finalized`, or the reason it is not usable yet. */
-async function fetchFinalized(rpc: RpcClient, cfg: SolanaConfig, signature: string): Promise<{ ok: true; tx: RawTx; slot: number; blockTime: number } | { ok: false; reason: SolVerifyFailure }> {
+/** getTransaction at SOLANA_VERIFY_COMMITMENT, or the reason it is not usable yet. */
+async function fetchVerified(rpc: RpcClient, cfg: SolanaConfig, signature: string): Promise<{ ok: true; tx: RawTx; slot: number; blockTime: number } | { ok: false; reason: SolVerifyFailure }> {
   const known = genesisChecked.get(rpc) ?? new Set<string>();
   if (!known.has(cfg.cluster)) {
     const genesis = await rpc.call('getGenesisHash', []);
@@ -219,9 +227,9 @@ async function fetchFinalized(rpc: RpcClient, cfg: SolanaConfig, signature: stri
     genesisChecked.set(rpc, known);
   }
 
-  const raw = (await rpc.call('getTransaction', [signature, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 0 }])) as RawTx | null;
+  const raw = (await rpc.call('getTransaction', [signature, { encoding: 'jsonParsed', commitment: SOLANA_VERIFY_COMMITMENT, maxSupportedTransactionVersion: 0 }])) as RawTx | null;
   if (raw === null || raw === undefined) {
-    // Not finalized yet (or never seen). The signature status tells which, so the screen can say "waiting for the network" instead of "not found".
+    // Not confirmed yet (or never seen). The signature status tells which, so the screen can say "waiting for the network" instead of "not found".
     const st = (await rpc.call('getSignatureStatuses', [[signature], { searchTransactionHistory: true }])) as { value?: unknown } | null;
     const entry = st && Array.isArray(st.value) ? (st.value[0] as { err?: unknown } | null) : null;
     if (!entry) return { ok: false, reason: 'not_found' };
@@ -286,7 +294,7 @@ export function memosOf(tx: RawTx): string[] {
 export async function verifySolSale(rpc: RpcClient, cfg: SolanaConfig, exp: SolSaleExpectation): Promise<SolVerifyResult> {
   if (typeof exp.signature !== 'string' || !isSignatureText(exp.signature)) return { ok: false, reason: 'bad_signature' };
   try {
-    const got = await fetchFinalized(rpc, cfg, exp.signature);
+    const got = await fetchVerified(rpc, cfg, exp.signature);
     if ('reason' in got) return got; // ("in", not ".ok": the game's tests compile this file without strict null checks, where the discriminant does not narrow)
     const transfers = systemTransfers(got.tx);
     if (transfers.length === 0) return { ok: false, reason: 'no_transfer' };
@@ -358,7 +366,7 @@ function netChange(tx: RawTx, owner: string, mint: string): { delta: bigint; dec
 export async function verifyUsdcPayment(rpc: RpcClient, cfg: SolanaConfig, exp: UsdcExpectation): Promise<SolVerifyResult> {
   if (typeof exp.signature !== 'string' || !isSignatureText(exp.signature)) return { ok: false, reason: 'bad_signature' };
   try {
-    const got = await fetchFinalized(rpc, cfg, exp.signature);
+    const got = await fetchVerified(rpc, cfg, exp.signature);
     if ('reason' in got) return got; // ("in", not ".ok": the game's tests compile this file without strict null checks, where the discriminant does not narrow)
     const all = [...tokenEntries(got.tx.meta?.preTokenBalances), ...tokenEntries(got.tx.meta?.postTokenBalances)];
     if (all.length === 0) return { ok: false, reason: 'no_transfer' };
@@ -379,13 +387,13 @@ export async function verifyUsdcPayment(rpc: RpcClient, cfg: SolanaConfig, exp: 
 }
 
 /**
- * What a finalized transaction did with the official USDC around the receiving wallet, WITHOUT deciding whether it pays a purchase: how much the receiver gained, which wallets paid, and the memos.
+ * What a confirmed transaction did with the official USDC around the receiving wallet, WITHOUT deciding whether it pays a purchase: how much the receiver gained, which wallets paid, and the memos.
  * The caller (pass-crypto) matches it to the player's reference and the price. Fails only when the transaction is unusable or never touched the receiver's USDC.
  */
 export async function inspectUsdcTransfer(rpc: RpcClient, cfg: SolanaConfig, exp: { signature: string; receiver: string }): Promise<{ ok: true; inspection: UsdcInspection } | { ok: false; reason: SolVerifyFailure }> {
   if (typeof exp.signature !== 'string' || !isSignatureText(exp.signature)) return { ok: false, reason: 'bad_signature' };
   try {
-    const got = await fetchFinalized(rpc, cfg, exp.signature);
+    const got = await fetchVerified(rpc, cfg, exp.signature);
     if ('reason' in got) return got;
     const all = [...tokenEntries(got.tx.meta?.preTokenBalances), ...tokenEntries(got.tx.meta?.postTokenBalances)];
     if (all.length === 0) return { ok: false, reason: 'no_transfer' };

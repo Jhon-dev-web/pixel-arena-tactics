@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import PixelIcon from './PixelIcon';
 import type { UiIconName } from './uiIcons';
 import type { MarketOverview, ReservationView } from '../../supabase/functions/_shared/market/types';
 import { playerLevel, type SaveData } from '../game/engine';
 import { PublicListing, fetchPublicListings, marketApi } from '../game/market/api';
+import { MarketChange, applyMarketChange, makeReadSequence } from '../game/market/liveState';
 import { syncMarket } from '../game/market/sync';
 import { syncMaterials } from '../game/market/materialSync';
 import { activeLocale, t } from '../locales';
@@ -45,10 +46,15 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
   const [bagFull, setBagFull] = useState(false);
   const ops = useOpsState(); // the owner / watchdog can pause the market: say so plainly instead of letting every button fail
 
+  // Every read is numbered: an older answer that arrives after a newer one never overwrites it (the screen would flash back to a list from before the click).
+  const reads = useRef(makeReadSequence());
+
   const refresh = useCallback(async () => {
     setLoading(true);
+    const n = reads.current.next();
     try {
       const [ov, pub] = await Promise.all([marketApi.overview(), fetchPublicListings()]);
+      if (!reads.current.isLatest(n)) return;
       if ('reason' in ov) setError(ov.reason === 'unavailable' ? mt('unavailable') : mt('unreachable'));
       else {
         setError(null);
@@ -60,22 +66,34 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
     } catch {
       setError(mt('unreachable')); // any failure of the two reads (network, parsing) reads the same to the player: nothing changed, try again
     }
-    setLoading(false);
+    if (reads.current.isLatest(n)) setLoading(false);
+  }, []);
+
+  // A server answer is applied to the lists on screen at once (liveState.ts); the read that follows replaces this local view with the server's.
+  const apply = useCallback((change: MarketChange) => {
+    reads.current.next(); // a read that is still on its way was asked BEFORE this answer: its lists are older, so it must not land on top
+    setOverview((o) => applyMarketChange({ overview: o, listings: [] }, change).overview);
+    setListings((l) => applyMarketChange({ overview: null, listings: l }, change).listings);
+    if (change.kind === 'reserved') setActive(change.reservation);
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
+  // After an action: read the lists it changed from the server (once, no cache) and bring what the server holds for this account into the bag (a bought item, a cancelled offer's item or units), both
+  // at the same time. The caller keeps its button blocked until this resolves. Never throws.
   const afterChange = useCallback(async () => {
-    try {
-      const r = await syncMarket(syncDepsFor(host));
-      await syncMaterials(host).catch(() => undefined); // (a failure is retried by the background pass)
-      setBagFull(r.waitingForRoom > 0);
-    } catch {
-      /* the background pass tries again */
-    }
-    await refresh();
+    const deliver = async () => {
+      try {
+        const r = await syncMarket(syncDepsFor(host));
+        await syncMaterials(host).catch(() => undefined); // (a failure is retried by the background safety-net pass)
+        setBagFull(r.waitingForRoom > 0);
+      } catch {
+        /* the background pass tries again */
+      }
+    };
+    await Promise.all([refresh(), deliver()]);
   }, [host, refresh]);
 
   const reserve = async (listing: PublicListing) => {
@@ -92,17 +110,17 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
         const key = `browse.fail.${r.reason}`;
         const text = mt(key);
         setFailure(text === key ? mt('browse.fail.generic') : text);
-      } else setActive(r.reservation);
+      } else apply({ kind: 'reserved', reservation: r.reservation });
     } catch {
       setFailure(mt('unreachable'));
     }
     setBusyId(null);
-    void refresh();
+    await refresh();
   };
 
   const wallet = overview?.wallet ?? null;
   const chain = overview?.chain ?? null;
-  const flow = useSellFlow({ api: marketApi, save, overview, feePercent: chain?.feePercent ?? 5, solUsd: overview?.solUsd ?? null, host, onChanged: () => void afterChange() });
+  const flow = useSellFlow({ api: marketApi, save, overview, feePercent: chain?.feePercent ?? 5, solUsd: overview?.solUsd ?? null, host, onApplied: apply, onChanged: afterChange });
 
   // "Vender no Mercado" from the inventory: open the Sell tab with that tradeable material picked
   useEffect(() => {
@@ -155,11 +173,9 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
                 walletAddress={wallet?.address ?? null}
                 solUsd={overview?.solUsd ?? null}
                 bagFull={bagFull}
-                onChanged={() => void afterChange()}
-                onClose={() => {
-                  setActive(null);
-                  void refresh();
-                }}
+                onApplied={apply}
+                onChanged={afterChange}
+                onClose={() => setActive(null)}
               />
             ) : (
               <BrowsePanel listings={listings} feePercent={chain?.feePercent ?? 5} solUsd={overview?.solUsd ?? null} busyId={busyId} failure={failure} onReserve={(l) => void reserve(l)} heroLevel={playerLevel(save.xp)} />
@@ -169,7 +185,7 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
         {tab === 'sell' && <SellPicker flow={flow} />}
         {tab === 'offers' && <MyOffers flow={flow} />}
         {tab === 'history' && <HistoryPanel overview={overview} cluster={chain?.cluster ?? 'mainnet-beta'} />}
-        {tab === 'wallet' && <WalletPanel api={marketApi} chain={chain} wallet={wallet} onChanged={() => void refresh()} />}
+        {tab === 'wallet' && <WalletPanel api={marketApi} chain={chain} wallet={wallet} onChanged={refresh} />}
       </div>
     </>
   );
