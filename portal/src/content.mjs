@@ -121,7 +121,7 @@ export const seasonPage = {
     { question: l('Quem pode ganhar o prêmio?', 'Who can win the prize?'), answer: l('Só quem tem o Passe de Aventureiro. Não é sorteio: vence quem chegar mais longe, e os primeiros colocados passam por auditoria antes do pagamento. A divisão entre as posições e o valor final saem no regulamento antes da abertura.', 'Only Adventurer’s Pass owners. It is not a raffle: whoever gets furthest wins, and the top finishers are audited before payment. The split among places and the final amount are published in the rules before it opens.') },
     { question: l('O que acontece com meu herói da pré-temporada?', 'What happens to my pre-season hero?'), answer: l('Quando a Temporada 1 começar, todos os heróis online recomeçam do zero, uma única vez. O Passe e o seu nome continuam.', 'When Season 1 begins, every online hero starts again from zero, once. Your Pass and your name stay.') },
     { question: l('O que abre junto com a Temporada 1?', 'What opens with Season 1?'), answer: l('O ranking com prêmio em dinheiro e o Mercado de jogadores, onde você negocia peças raras, materiais e Bolsas de Ouro com outros jogadores.', 'The ranking with a cash prize and the Player market, where you trade rare pieces, materials and Gold Pouches with other players.') },
-    { question: l('Preciso comprar o Passe de novo a cada temporada?', 'Do I buy the Pass again every season?'), answer: l('Não. O Passe é uma compra única e vale para todas as temporadas.', 'No. The Pass is a one-time purchase and counts for every season.') },
+    { question: l('O Passe vale para todas as temporadas?', 'Does the Pass count for every season?'), answer: l('Não. O Passe vale para a pré-temporada e para a Temporada 1. Ele não se renova sozinho.', 'No. The Pass counts for the pre-season and Season 1. It does not renew on its own.') },
   ],
   eyebrow: l('Competição', 'Competition'),
   title: l('Liga da Temporada', 'Season League'),
@@ -197,8 +197,8 @@ export const roadmap = [
   {
     id: 'pass', get status() { return config.passSalesOpen ? 'available' : 'development'; }, title: l('Passe de Aventureiro', 'Adventurer’s Pass'),
     body: dyn(
-      () => 'Desbloqueio permanente com a Temporada do Passe de 60 dias, trilha de recompensas e vantagens. ' + (config.passSalesOpen ? 'A compra está aberta.' : 'A venda abre em breve.'),
-      () => 'A permanent unlock with the 60-day Pass Season, a reward track and perks. ' + (config.passSalesOpen ? 'Buying it is open.' : 'The sale opens soon.'),
+      () => 'Vale para a pré-temporada e a Temporada 1, com a trilha de recompensas de 60 dias e vantagens. ' + (config.passSalesOpen ? 'A compra está aberta.' : 'A venda abre em breve.'),
+      () => 'Counts for the pre-season and Season 1, with the 60-day reward track and perks. ' + (config.passSalesOpen ? 'Buying it is open.' : 'The sale opens soon.'),
     ),
   },
   { id: 'onboarding', status: 'available', title: l('Primeiros passos e conforto', 'Getting started and comfort'), body: l('Tutorial, resumo ao voltar, notificações, português e inglês, controle de som, no navegador do computador ou do celular.', 'A tutorial, welcome-back summary, notifications, Portuguese and English, sound controls, in the browser on your computer or phone.') },
@@ -231,7 +231,7 @@ export const articles = [
         { type: 'heading', level: 2, text: 'Metas e conforto' },
         list(['Missões diárias e semanais, sequência de login e uma lista longa de conquistas.', 'O Códice registra tudo o que você descobre.', 'Um resumo ao voltar mostra o que aconteceu enquanto você estava fora.', 'Português e inglês, no navegador do computador ou do celular.']),
         { type: 'heading', level: 2, text: 'Passe de Aventureiro' },
-        para('O Passe é um desbloqueio permanente, com a Temporada do Passe de 60 dias e uma trilha de recompensas.'),
+        para('O Passe vale para a pré-temporada e a Temporada 1, com a Temporada do Passe de 60 dias e uma trilha de recompensas.'),
         { type: 'heading', level: 2, text: 'O que ainda não existe' },
         list(['Um mercado de jogadores está planejado, sem data.', 'A Liga da Temporada começa quando a meta de Passes for alcançada; até lá roda uma pré-temporada sem prêmio.']),
       ],
@@ -246,7 +246,7 @@ export const articles = [
         { type: 'heading', level: 2, text: 'Goals and comfort' },
         list(['Daily and weekly quests, a login streak and a long list of achievements.', 'The Codex records everything you discover.', 'A welcome-back summary shows what happened while you were away.', 'Portuguese and English, in the browser on your computer or phone.']),
         { type: 'heading', level: 2, text: 'Adventurer’s Pass' },
-        para('The Pass is a permanent unlock, with the 60-day Pass Season and a reward track.'),
+        para('The Pass counts for the pre-season and Season 1, with the 60-day Pass Season and a reward track.'),
         { type: 'heading', level: 2, text: 'What does not exist yet' },
         list(['A player market is planned, with no date.', 'The Season League begins when the Pass goal is reached; until then a pre-season with no prize runs.']),
       ],
@@ -255,12 +255,12 @@ export const articles = [
 ];
 export const futureRoutes = ['rankings', 'seasons', 'account', 'profile', 'marketplace'];
 const freeAnswer = dyn(
-  () => 'Sim. O jogo base é grátis no navegador. O Passe de Aventureiro é opcional: um desbloqueio permanente com vantagens, a Temporada do Passe e itens exclusivos. ' + (config.passSalesOpen ? `O Passe custa ${config.passPrice}, em pagamento único e sem renovação.` : 'A venda do Passe abre em breve.'),
-  () => 'Yes. The base game is free in the browser. The Adventurer’s Pass is optional: a permanent unlock with perks, the Pass Season and exclusive items. ' + (config.passSalesOpen ? `The Pass costs ${config.passPrice}, one-time payment, no renewal.` : 'The Pass sale opens soon.'),
+  () => 'Sim. O jogo base é grátis no navegador. O Passe de Aventureiro é opcional: vale para a pré-temporada e a Temporada 1, com vantagens, a Temporada do Passe e itens exclusivos. ' + (config.passSalesOpen ? `O Passe custa ${config.passPrice}, em pagamento único.` : 'A venda do Passe abre em breve.'),
+  () => 'Yes. The base game is free in the browser. The Adventurer’s Pass is optional: it counts for the pre-season and Season 1, with perks, the Pass Season and exclusive items. ' + (config.passSalesOpen ? `The Pass costs ${config.passPrice}, a single payment.` : 'The Pass sale opens soon.'),
 );
 const passAnswer = dyn(
-  () => 'Um desbloqueio permanente com a Temporada do Passe de 60 dias, uma trilha de recompensas, vantagens de conveniência e progressão, cosméticos e itens exclusivos. ' + (config.passSalesOpen ? 'A compra está aberta: pagamento único, sem renovação.' : 'A compra ainda não abriu.'),
-  () => 'A permanent unlock with the 60-day Pass Season, a reward track, convenience and progression perks, cosmetics and exclusive items. ' + (config.passSalesOpen ? 'Buying it is open: one-time payment, no renewal.' : 'Buying it has not opened yet.'),
+  () => 'Vale para a pré-temporada e a Temporada 1, com a Temporada do Passe de 60 dias, uma trilha de recompensas, vantagens de conveniência e progressão, cosméticos e itens exclusivos. ' + (config.passSalesOpen ? 'A compra está aberta: pagamento único.' : 'A compra ainda não abriu.'),
+  () => 'It counts for the pre-season and Season 1, with the 60-day Pass Season, a reward track, convenience and progression perks, cosmetics and exclusive items. ' + (config.passSalesOpen ? 'Buying it is open: a single payment.' : 'Buying it has not opened yet.'),
 );
 const playAnswer = dyn(
   () => config.playUrl ? 'Sim. Use o botão Jogar grátis: o jogo roda direto no navegador.' : 'Em breve. O endereço oficial do jogo ainda será confirmado e o botão Jogar grátis passa a funcionar quando ele estiver no ar.',
@@ -306,8 +306,8 @@ export const descriptions = {
   about: l('O que é o jogo: um RPG idle em que o Herói caça, minera e forja enquanto você está fora, e você decide como evoluir.', 'What the game is: an idle RPG where your Hero hunts, mines and forges while you are away and you decide how to grow.'),
   systems: l('Herói, profissões, Caça, Forja, Masmorra de 100 andares e Profundezas: os sistemas do jogo e como eles se conectam.', 'Hero, professions, Hunting, the Forge, a 100-floor Dungeon and the Depths: the game’s systems and how they connect.'),
   pass: dyn(
-    () => config.passSalesOpen ? `O Passe de Aventureiro: desbloqueio permanente, ${config.passPrice}, pagamento único e sem renovação, com vantagens e a Temporada do Passe.` : 'O Passe de Aventureiro chega em breve: desbloqueio permanente com vantagens, a Temporada do Passe e acesso à Liga da Temporada.',
-    () => config.passSalesOpen ? `The Adventurer’s Pass: a permanent unlock, ${config.passPrice}, one-time payment, no renewal, with perks and the Pass Season.` : 'The Adventurer’s Pass is coming soon: a permanent unlock with perks, the Pass Season and access to the Season League.',
+    () => config.passSalesOpen ? `O Passe de Aventureiro: vale para a pré-temporada e a Temporada 1, ${config.passPrice} em pagamento único, com vantagens e a Temporada do Passe.` : 'O Passe de Aventureiro chega em breve: vale para a pré-temporada e a Temporada 1, com vantagens, a Temporada do Passe e acesso à Liga da Temporada.',
+    () => config.passSalesOpen ? `The Adventurer’s Pass: counts for the pre-season and Season 1, ${config.passPrice} in a single payment, with perks and the Pass Season.` : 'The Adventurer’s Pass is coming soon: it counts for the pre-season and Season 1, with perks, the Pass Season and access to the Season League.',
   ),
   season: l('A Liga da Temporada: competição com prêmio em dinheiro (mínimo de US$ 1.000), meta de Passes da comunidade e rankings ao vivo.', 'The Season League: a competition with a cash prize (US$ 1,000 minimum), the community Pass goal and live rankings.'),
   roadmap: l('O estado de cada parte do jogo: o que já existe, o que está em desenvolvimento e o que vem depois.', 'Where each part of the game stands: what exists, what is in development and what comes next.'),
@@ -397,7 +397,7 @@ export const home = {
     lengthLabel: l('Temporada 1', 'Season 1'), length: l('60 dias de disputa', '60 days of contest'), cta: l('Ver a Temporada', 'See the Season'), art: l('Taça dourada da Temporada', 'Golden Season trophy'),
   },
   pass: {
-    eyebrow: l('Passe', 'Pass'), title: l('Passe do Aventureiro', 'Adventurer’s Pass'), tagline: l('Compre uma vez. O Passe é seu para sempre.', 'Buy once. The Pass is yours forever.'),
+    eyebrow: l('Passe', 'Pass'), title: l('Passe do Aventureiro', 'Adventurer’s Pass'), tagline: l('Vale para a pré-temporada e toda a Temporada 1.', 'Counts for the pre-season and all of Season 1.'),
     bullets: [
       { icon: 'rise', title: l('Bônus de progresso', 'Progress bonus'), body: l('Mais Ouro e materiais, reparo mais barato.', 'More Gold and materials, cheaper repair.') },
       { icon: 'shield', title: l('Mais conforto', 'More comfort'), body: l('Mais espaço e mais tempo acumulando com o jogo fechado.', 'More room and longer accumulation while the game is closed.') },
