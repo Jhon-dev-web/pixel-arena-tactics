@@ -365,6 +365,15 @@ html { scroll-behavior: smooth; }
 .hero-epic h1 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2rem,3.6vw,3.35rem); line-height: 1.1; max-width: 560px; margin: 0 0 18px; color: #f6efe0; text-shadow: 0 2px 14px #000c; }
 .hero-epic .h-sub { max-width: 520px; font-size: 1.0625rem; color: #d3d0c6; margin: 0; text-shadow: 0 1px 8px #000; }
 .hero-epic .actions { margin-top: 26px; }
+.h-countdown { margin-top: 28px; width: max-content; max-width: 100%; padding: 16px 18px 14px; border: 1px solid #b8914a99; background: #070a0dd9; }
+.h-cd-label { margin: 0 0 10px; font-size: .75rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-hi); }
+.h-cd-tiles { display: flex; gap: 10px; }
+.h-cd-tiles span { display: grid; justify-items: center; min-width: 68px; padding: 8px 6px 6px; border: 1px solid #b8914a66; background: #0c1316; }
+.h-cd-tiles b { font-family: var(--cinzel); font-size: 2rem; line-height: 1; color: #f6efe0; font-variant-numeric: tabular-nums; }
+.h-cd-tiles i { margin-top: 4px; font-style: normal; font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase; color: #aab1b6; }
+.h-cd-date { margin: 10px 0 0; font-size: .8125rem; color: #c7cbd0; }
+.h-cd-tiles[hidden] { display: none; }
+@media (max-width: 420px) { .h-cd-tiles span { min-width: 0; flex: 1; } .h-cd-tiles b { font-size: 1.6rem; } .h-countdown { width: auto; } }
 .button.h-gold { min-height: 54px; padding: 12px 30px; color: #1c1206; font-weight: 700; font-size: 1rem; border: 1px solid #f0cf8a; background: linear-gradient(180deg,#f3d795,#dfaa55 55%,#c58d3c); box-shadow: 0 6px 22px #d9a94f33, inset 0 1px #fff6; gap: 10px; }
 .button.h-gold:hover { background: linear-gradient(180deg,#f9e3ae,#e8b867 55%,#d09947); }
 .button.h-gold.disabled { background: #151a1d; color: #9a9f9f; border-color: #5a5440; box-shadow: none; }

@@ -14,11 +14,13 @@ const l = localized;
 //                  counter appears only when the database flag arena_private.portal_flags.show_waitlist_count is on AND supabaseAnonKey is set.
 //  referralEnabled true (and waitlistEnabled true): after signing up the person sees "Seu link de convite" (copy + WhatsApp / X / Telegram share links) and the in-game reward list. The rewards are
 //                  granted by the server (docs/WAITLIST.md); only turn this on when you are ready to promise them. The link is built from siteUrl (or the page's own origin when siteUrl is null).
+//  playtestAt      start of the open playtest (ISO date with Z). The Home shows a live countdown to it; when it passes, the box says the playtest has started. null: no countdown.
 // community stays empty until official channels exist.
 // supabaseUrl / supabaseAnonKey feed the live numbers of the Liga da Temporada page (Pass meter and rankings). Both stay null until the owner fills them, and the page then says
 // the data is unavailable: it never shows a made-up number. supabaseUrl is the project address (https://<project-ref>.supabase.co); supabaseAnonKey is the PUBLIC
 // "anon" key (it is public by design and protected by the database rules). The service key must NEVER be written here.
 export const config = {
+  playtestAt: '2026-10-31T23:00:00Z', // 31/10, 20h Brasília (UTC-3)
   playUrl: null, passSalesOpen: false, passPrice: '10 USDC', siteUrl: null,
   company: { legalName: 'HOURAN', cnpj: null, supportEmail: 'arenaidlesupport@gmail.com' },
   legalLive: { terms: false, privacy: true, refund: false, seasonRules: false }, waitlistEnabled: true, referralEnabled: false,
@@ -446,6 +448,13 @@ export const home = {
   sub: l('Evolua seu herói, desenvolva profissões, conquiste equipamentos raros e dispute as melhores posições a cada temporada.', 'Grow your hero, train professions, earn rare gear and compete for the top spots every season.'),
   learn: l('Conhecer o jogo', 'Discover the game'),
   playtest: l('Entrar no Playtest', 'Join the Playtest'),
+  countdown: {
+    label: l('O playtest começa em', 'The playtest starts in'),
+    units: [l('dias', 'days'), l('horas', 'hours'), l('min', 'min'), l('seg', 'sec')],
+    date: l('31 de outubro, às 20h (horário de Brasília)', 'October 31, 8 pm Brasília time (UTC−3)'),
+    started: l('O playtest começou!', 'The playtest has started!'),
+    startedNote: l('Deixe seu e-mail para receber o link do jogo.', 'Leave your email to get the link to the game.'),
+  },
   season: {
     eyebrow: l('Temporada 1', 'Season 1'), title: l('Pré-temporada', 'Pre-season'), tagline: l('Teste seu progresso antes da primeira temporada oficial.', 'Test your progress before the first official season.'),
     bullets: [
