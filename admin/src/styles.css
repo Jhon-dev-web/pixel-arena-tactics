@@ -1289,3 +1289,22 @@ dl.facts dd {
   font-weight: 600;
   white-space: nowrap;
 }
+.attention-item .pill {
+  justify-self: start;
+}
+
+/* phones: the Pass and alerts columns fold into the player cell */
+.show-narrow {
+  display: none;
+}
+@media (max-width: 560px) {
+  .hide-narrow {
+    display: none;
+  }
+  .show-narrow.badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+}

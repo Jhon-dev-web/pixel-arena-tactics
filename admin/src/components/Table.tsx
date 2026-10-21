@@ -10,6 +10,8 @@ export interface Column<T> {
   /** Cell content on screen. */
   cell: (row: T) => ReactNode;
   align?: 'num';
+  /** 'hide' = not shown on a phone (its content is repeated in a compact form inside another cell). */
+  narrow?: 'hide';
   /** Present when the database can sort by this column. */
   sortKey?: string;
 }
@@ -49,7 +51,7 @@ export function DataTable<T>({
             {columns.map((c) => {
               const active = sort && c.sortKey === sort.key;
               return (
-                <th key={c.key} className={c.align === 'num' ? 'num' : ''} aria-sort={active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <th key={c.key} className={`${c.align === 'num' ? 'num' : ''}${c.narrow === 'hide' ? ' hide-narrow' : ''}`.trim()} aria-sort={active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
                   {c.sortKey && onSort ? (
                     <button type="button" onClick={() => onSort(c.sortKey!)}>
                       {c.header}
@@ -80,7 +82,7 @@ export function DataTable<T>({
                 onKeyDown={onRowClick ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onRowClick(row)) : undefined}
               >
                 {columns.map((c) => (
-                  <td key={c.key} className={c.align === 'num' ? 'num' : ''}>
+                  <td key={c.key} className={`${c.align === 'num' ? 'num' : ''}${c.narrow === 'hide' ? ' hide-narrow' : ''}`.trim()}>
                     {c.cell(row)}
                   </td>
                 ))}

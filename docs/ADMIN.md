@@ -8,14 +8,14 @@ O painel é um app **separado do jogo e do portal** (pasta `admin/`, `package.js
 
 | Página | O que responde |
 | --- | --- |
-| **Visão geral** | Online agora (salvou nos últimos 5 min), cadastros (total, hoje, 7 e 30 dias), jogando hoje / 7 / 30 dias, lista de espera, Passes ativos por origem (cartão, USDC, indicação, concessão; real e teste), receita estimada do Passe, vendas e volume do mercado em SOL, taxas do jogo (5%), arrecadado na Solana (taxas em SOL + Passes em USDC), itens certificados, Bolsas de Ouro em circulação, materiais negociáveis, estado da Liga. Seis gráficos dos últimos 30 dias. Atualiza sozinha a cada 60 s com “atualizado há X s”. |
-| **Jogadores** | Tabela buscável (nome, herói, e-mail, id) e ordenável (visto por último, cadastro, nível, andar, profundeza, ouro, nome), com filtros (online, com/sem Passe, com alertas, com carteira). Linha clicável abre o painel lateral: conta, progresso, Passe, carteira, alertas, itens, últimas negociações, Liga. **O e-mail aparece mascarado; o completo só ao clicar em “Mostrar e-mail completo”.** |
+| **Visão geral** | **Abre com «Precisa de atenção»** (só com o que o banco já devolve: pagamentos a resolver, pausas de segurança ligadas, incidentes, relatórios da IA não lidos, alertas de progresso e de itens, devoluções marcadas, rotinas atrasadas), cada item com link para a página; depois seis números centrais, e o resto («mais números») logo abaixo. Cada bloco carrega e falha sozinho (carregando, vazio, falhou, dado anterior mantido), com «Tentar de novo» próprio, e mostra «consulta atualizada às» e «dados agregados até». Online agora (salvou nos últimos 5 min), cadastros (total, hoje, 7 e 30 dias), jogando hoje / 7 / 30 dias, lista de espera, **Passe válido nesta temporada** e **histórico de Passes** (duas medidas, migration `0026`), por origem (cartão, USDC, indicação, concessão; real e teste), receita estimada do Passe, vendas e volume do mercado em SOL, taxas do jogo (5%), arrecadado na Solana (taxas em SOL + Passes em USDC), itens certificados, Bolsas de Ouro em circulação, materiais negociáveis, estado da Liga. Seis gráficos dos últimos 30 dias, cada um com a tabela dos valores exatos («Ver os valores em tabela»). Atualiza sozinha a cada 60 s com “atualizado há X s”. |
+| **Jogadores** | Tabela buscável (nome, herói, e-mail, id) com cinco colunas de resumo (jogador, atividade recente, progresso, Passe válido, alertas) e ordenável também por cadastro, andar, profundeza e ouro, com filtros (online, Passe: válido nesta temporada / sem Passe válido / expirado / já teve, com alertas, com carteira). Linha clicável abre o painel lateral (com foco preso nele e a página de trás inerte): conta, progresso, Passe, carteira, alertas, itens, últimas negociações, Liga. **O e-mail aparece mascarado; o completo só ao clicar em “Mostrar e-mail completo”.** |
 | **Lendários** | Todo Lendário e todo item único já emitido: quando, para quem, nível (tier) e slot, **origem** (forja, garantia/pity, Selo, Caça, Chefe), **estado** (com o jogador, à venda, vendido, vinculado, consumido, revogado) e dono atual (uma peça vendida mostra o comprador). Filtros e busca. |
 | **Mercado** | Vendas e anúncios com preço, taxa, quanto o vendedor recebeu, comprador, vendedor, rede (real ou teste) e **link da transação na Solscan**. Totais do filtro. |
 | **Economia** | Ouro nos saves (total, média, mediana, percentil 90, maior saldo, parte dos 10 mais ricos, série diária, maiores saldos), Bolsas de Ouro (em circulação, criadas, abertas, por tamanho), materiais negociáveis, itens certificados por tipo, raridade e estado, volume em SOL. |
 | **Liga** | Temporada, datas, meta de Passes pagos e progresso, topo do ranking com “aparece no ranking público?”, e a **fila de auditoria antifraude** (alertas de progresso e de itens, motivos mais comuns). |
 | **Lista de espera** | Total, por dia, por origem, indicações ignoradas e quem mais indicou (e-mails mascarados), quantos já criaram conta. |
-| **IA e operação** | Os quatro interruptores (`maintenance_mode`, `market_paused`, `season_scoring_paused`, `pass_sales_paused`) com botões Ligar/Desligar e confirmação com motivo, incidentes abertos do vigia automático, relatórios da IA do mais grave ao menos grave (com links para o jogador e a venda envolvidos e botão “Marcar como lido”), custo estimado da IA no mês e o registro recente. Guia completo, segredos e roteiro de incidente em `docs/AI_OPS.md`. |
+| **IA e operação** | Três grupos: **Estado da operação**, **Incidentes** e **Relatórios da IA**; os controles que gravam (interruptores e «Marcar como lido») levam a marca «grava», e «lido» não é «resolvido». «Serviço não implantado» (o vigia nunca verificou) aparece à parte de «nenhum incidente». Os quatro interruptores (`maintenance_mode`, `market_paused`, `season_scoring_paused`, `pass_sales_paused`) com botões Ligar/Desligar e confirmação com motivo, incidentes abertos do vigia automático, relatórios da IA do mais grave ao menos grave (com links para o jogador e a venda envolvidos e botão “Marcar como lido”), custo estimado da IA no mês e o registro recente. Guia completo, segredos e roteiro de incidente em `docs/AI_OPS.md`. |
 
 Cada tabela tem **Exportar CSV** (lê todas as páginas do filtro atual, até 10.000 linhas). O CSV neutraliza células que começam com `=`, `+`, `-` ou `@` (nome de jogador não executa fórmula na planilha).
 
@@ -48,6 +48,7 @@ Cada tabela tem **Exportar CSV** (lê todas as páginas do filtro atual, até 10
 ## 3. Aplicar a migration e virar admin
 
 1. **Primeiro no projeto de desenvolvimento** (SQL Editor ou `supabase db push`), depois das migrations 0001 a 0019. A `0020_admin.sql` só cria tabelas novas (`arena_private.admins`, `admin_config`, `admin_template_info`, `admin_player_cache`, `admin_gold_daily`, `admin_daily`), índices nas tabelas existentes e funções. Não altera colunas, políticas nem dados do jogo. O rollback está no cabeçalho do arquivo.
+   **Passe da temporada:** depois da `0025`, aplique também a `0026_admin_pass_season.sql` (só recria `admin_overview`, `admin_players` e `admin_player_detail` para mostrarem o Passe válido nesta temporada e o histórico; idempotente, não toca nos dados). Sem ela o painel funciona, mas avisa que só conhece o histórico de Passes.
 2. Torne-se admin (SQL Editor, com a conta do jogo já criada, e-mail confirmado):
    ```sql
    insert into arena_private.admins (user_id, note)
@@ -86,6 +87,7 @@ A primeira execução completa lê todos os saves uma vez (pode levar alguns min
 2. **Environment Variables** do projeto (só estes dois nomes; os valores estão em Supabase > Project Settings > API):
    - `VITE_SUPABASE_URL` (a URL do projeto)
    - `VITE_SUPABASE_ANON_KEY` (a chave **anon**, nunca a `service_role`)
+   - Recomendadas, públicas (aparecem no painel como etiqueta do ambiente, sem segredo): `VITE_ADMIN_ENV` = `teste` ou `producao`, e `VITE_ADMIN_PRODUCTION_REF` = a referência do projeto Supabase de produção (a primeira parte do endereço, `xxxx` em `https://xxxx.supabase.co`). Com as duas, o painel confere a afirmação e mostra «Ambiente inconsistente» se o deploy estiver trocado. Sem elas mostra «Ambiente não declarado». Isto é o ambiente do **painel**; o campo real/teste de cada pagamento ou Passe continua em cada linha.
    São variáveis de build: depois de mudar, faça novo deploy. **Nunca** defina `VITE_ADMIN_DEMO` (é só do modo de demonstração e a build normal nem contém esse código).
 3. Domínio: um subdomínio seu e discreto, por exemplo `admin.<seu-dominio>`. **Não linke** o painel a partir do jogo nem do portal.
 4. Em Supabase > Authentication > URL Configuration, nada precisa mudar: o painel usa e-mail e senha, sem redirecionamento.
@@ -96,11 +98,11 @@ A primeira execução completa lê todos os saves uma vez (pode levar alguns min
 ```
 cd admin
 npm ci
-npm test            # 160+ testes: SQL estático, SQL de verdade (PGlite), formatação, CSV, filtros, caminho "acesso negado", bundle e cabeçalhos
+npm test            # 300+ testes: SQL estático, SQL de verdade (PGlite), formatação, CSV, filtros, caminho "acesso negado", bundle e cabeçalhos
 npm run build       # tsc + vite build
 VITE_ADMIN_DEMO=1 npm run dev   # painel com dados inventados (porta 5225), sem rede
 ```
 
-`npm test` roda as migrations **0001 a 0020 de verdade** num Postgres em memória (PGlite, só em testes), semeia um mundo pequeno e chama cada função como `authenticated` e `anon`: confere permissões, os números, a classificação de Lendários (garantia, Selo, Caça, Chefe, peça vendida com dono atual), que cada função roda em transação somente leitura e que as rotinas de agregação funcionam. Isso **não substitui** o plano de teste SQL no Supabase de desenvolvimento (PGlite não é o Postgres do Supabase: papéis, `auth` e `pg_cron` são simulados ou ausentes).
+`npm test` roda as migrations **0001 a 0026 de verdade** num Postgres em memória (PGlite, só em testes), semeia um mundo pequeno e chama cada função como `authenticated` e `anon`: confere permissões, os números, a classificação de Lendários (garantia, Selo, Caça, Chefe, peça vendida com dono atual), que cada função roda em transação somente leitura e que as rotinas de agregação funcionam. Isso **não substitui** o plano de teste SQL no Supabase de desenvolvimento (PGlite não é o Postgres do Supabase: papéis, `auth` e `pg_cron` são simulados ou ausentes).
 
 O app não faz parte do `tsc`, do `eslint` nem do `vitest` do jogo (excluído como o `portal/`).

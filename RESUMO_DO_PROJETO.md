@@ -16,7 +16,7 @@ Monetização: o **Passe de Aventureiro** (US$ 10, pago **só em USDC na rede So
 |---|---|
 | `src/` | O jogo (React 18 + Vite + TypeScript). Lógica em `src/game/`, telas em `src/components/`, casca/layout em `src/shell/`, textos em `src/locales/pt.json` e `en.json` (sempre manter os dois iguais). |
 | `public/assets/` | Sprites, ícones, fundos, músicas e efeitos. Folhas de personagem são PNG 1024×1024 em grade 4×4 (linhas: parado, ataque, dano, morte). |
-| `supabase/migrations/` | Banco (Postgres no Supabase), migrações `0001` a `0025`, todas aplicadas no projeto de teste. |
+| `supabase/migrations/` | Banco (Postgres no Supabase), migrações `0001` a `0026`; `0001` a `0025` estão aplicadas no projeto de teste, a `0026` (painel do dono, Passe da temporada) ainda **não**. |
 | `supabase/functions/` | Edge Functions (Deno): progresso, materiais, itens, mercado, Passe em USDC, lista de espera, auditor de IA e vigia. Código comum em `_shared/`. |
 | `portal/` | Site público (estático, gerado por `node scripts/build.mjs`), com Liga/Temporada, Passe, roadmap, FAQ e cadastro por e-mail. |
 | `admin/` | Painel do dono, projeto separado (React + Vite), só leitura. |
@@ -90,7 +90,7 @@ Na raiz (Node 22+):
 
 - Projeto separado do jogo, só leitura, para o dono. Páginas: Visão geral, Jogadores, Economia, Mercado, Lendários, Liga, Pagamentos, Lista de espera e IA/Operações.
 - Acesso só para quem está em `arena_private.admins`: `insert into arena_private.admins (user_id, note) select id, 'dono' from auth.users where email = '...';`
-- Lê o banco por funções `admin_*` (migração `0020`). Pendente: `admin_overview`, `admin_players` e `admin_player_detail` ainda contam qualquer Passe ativo, não só os da temporada atual.
+- Lê o banco por funções `admin_*` (migração `0020`). A migração `0026_admin_pass_season.sql` (a aplicar) faz `admin_overview`, `admin_players` e `admin_player_detail` mostrarem o Passe **válido nesta temporada** e o **histórico de Passes** como duas medidas; a receita continua de todo o período. Enquanto não for aplicada, o painel avisa que só conhece o histórico. A Visão geral abre com «Precisa de atenção», a IA e operação é dividida em estado, incidentes e relatórios, e a casca mostra o ambiente conectado (variáveis públicas `VITE_ADMIN_ENV` e `VITE_ADMIN_PRODUCTION_REF`).
 - IA de operações (`0021`, `ai-auditor`, `ops-watchdog`, `docs/AI_OPS.md`): só aconselha e só pode LIGAR pausas; ainda não implantada (precisa de `ANTHROPIC_API_KEY`, `OPS_CRON_SECRET` e webhook).
 
 ## 9. Ambientes

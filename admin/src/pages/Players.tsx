@@ -3,12 +3,26 @@ import { Drawer } from '../components/Drawer';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
 import { Card, DefList, ExternalLink, Field, Notice, PassBadge, Pill, Skeleton } from '../components/ui';
 import { hashParam, useApp, useAsync, useDebounced } from '../hooks';
+import { playerPassState } from '../lib/aggregate';
 import { activeFilterCount, defaultPlayerQuery, EXPORT_PAGE_SIZE, toggleSort } from '../lib/filters';
 import { DASH, fmtDateTime, fmtGold, fmtInt, fmtSol, fmtAgo, shortAddress, shortId, solscanAccount, solscanTx } from '../lib/format';
 import { kindLabel, passSourceLabel, rarityLabel, statusLabel } from '../lib/labels';
 import type { PlayerFilters, PlayerQuery, PlayerRow, PlayerSort } from '../lib/types';
 
 const levelText = (p: PlayerRow): string => (p.hero_level == null ? DASH : p.paragon_level ? `${p.hero_level} + P${p.paragon_level}` : String(p.hero_level));
+
+/** On a phone the Pass and the alerts columns are hidden; the same two facts appear here, under the player's name, so the table never needs a sideways scroll to answer "does he have a valid Pass, is anything wrong". */
+function PhoneBadges({ p }: { p: PlayerRow }) {
+  const state = playerPassState(p);
+  const alerts = p.open_flags + p.item_flags;
+  if (state === 'none' && alerts === 0) return null;
+  return (
+    <span className="show-narrow badges">
+      {state === 'valid' ? <Pill tone="good">Passe válido</Pill> : state === 'expired' ? <Pill tone="warn">Passe expirado</Pill> : state === 'unknown' ? <Pill>Passe (histórico)</Pill> : null}
+      {alerts > 0 ? <Pill tone="bad">{alerts} a investigar</Pill> : null}
+    </span>
+  );
+}
 
 // Summary columns: who, how recently they played, how far they are, whether the Pass is valid now, alerts. Gold, wallet, items, trades and the rest are in the detail panel (click a row or press Enter).
 const COLUMNS: Column<PlayerRow>[] = [
@@ -20,6 +34,7 @@ const COLUMNS: Column<PlayerRow>[] = [
       <span>
         {p.online ? <span className="dot live" title="online agora" /> : null} <strong>{p.username ?? <span className="faint">(sem nome)</span>}</strong>
         <div className="faint">{p.email_masked ?? DASH}</div>
+        <PhoneBadges p={p} />
       </span>
     ),
   },
@@ -45,8 +60,8 @@ const COLUMNS: Column<PlayerRow>[] = [
       </span>
     ),
   },
-  { key: 'pass', header: 'Passe válido', cell: (p) => <PassBadge p={p} /> },
-  { key: 'flags', header: 'Alertas', cell: (p) => (p.open_flags + p.item_flags > 0 ? <Pill tone="bad">{p.open_flags + p.item_flags} a investigar</Pill> : <span className="faint">nenhum</span>) },
+  { key: 'pass', header: 'Passe válido', narrow: 'hide', cell: (p) => <PassBadge p={p} /> },
+  { key: 'flags', header: 'Alertas', narrow: 'hide', cell: (p) => (p.open_flags + p.item_flags > 0 ? <Pill tone="bad">{p.open_flags + p.item_flags} a investigar</Pill> : <span className="faint">nenhum</span>) },
 ];
 
 const SORT_HEADERS = new Set<string>(['username', 'level', 'last_seen']);
