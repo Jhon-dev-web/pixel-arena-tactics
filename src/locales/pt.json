@@ -108,7 +108,7 @@
     "deleteWrite": "Escreva para",
     "deleteSoon": "O contato do suporte ainda não foi divulgado.",
     "passStatus": "Situação",
-    "passOwned": "Ativo, permanente",
+    "passOwned": "Ativo · Pré-temporada e Temporada 1",
     "passNotOwned": "Não ativo",
     "passHow": "Obtido por",
     "passLocal": "Neste aparelho",
@@ -1797,7 +1797,7 @@
     "claimAllDone": "{n} recompensas resgatadas.",
     "claimAllBlocked": "{c} resgatadas. {n} com item não couberam no inventário e continuam esperando: abra espaço e tente de novo.",
     "ownedNote": "Passe de Aventureiro ativo. Obrigado por jogar!",
-    "buyBlurb": "Compra única, sem validade: trilha premium com itens exclusivos, armazém de {h} h, mais materiais, mais ouro, pedidos extras, mais espaço no inventário e no Baú e reparo mais barato.",
+    "buyBlurb": "Pagamento único, válido na pré-temporada e na Temporada 1: trilha premium com itens exclusivos, armazém de {h} h, mais materiais, mais ouro, pedidos extras, mais espaço no inventário e no Baú e reparo mais barato.",
     "close": "Fechar",
     "rewardGold": "Ouro",
     "rewardShards": "Éter"
@@ -2154,7 +2154,7 @@
     "statusTitle": "Sua situação",
     "elig": {
       "eligible": "Você está concorrendo. O jogo envia seu progresso ao servidor a cada 10 minutos e a pontuação é calculada lá.",
-      "needs_pass": "Você precisa do Passe do Aventureiro para entrar no ranking. Ele vale para todas as temporadas.",
+      "needs_pass": "Você precisa do Passe do Aventureiro para entrar no ranking. O Passe vale para a pré-temporada e a Temporada 1.",
       "needs_email": "Confirme seu e-mail para concorrer: abra o link que enviamos quando você criou a conta.",
       "flagged": "O servidor achou seu progresso rápido demais ou estranho, e ele não está contando por enquanto. Jogando normalmente, volta a contar sozinho. A conta pode ser revisada pelo organizador.",
       "disqualified": "Esta conta foi desclassificada desta temporada.",

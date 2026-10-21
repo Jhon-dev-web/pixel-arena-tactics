@@ -68,7 +68,7 @@ describe('the Pass panel', () => {
     expect(html).toContain('Passe de Aventureiro');
     expect(html).toContain('Não ativo');
     const owned = render({ save: { ...defaultSave(), hasBattlePass: true } });
-    expect(owned).toContain('Ativo, permanente');
+    expect(owned).toContain('Ativo · Pré-temporada e Temporada 1');
     expect(owned).toContain('Neste aparelho');
   });
 });

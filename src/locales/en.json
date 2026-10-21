@@ -108,7 +108,7 @@
     "deleteWrite": "Write to",
     "deleteSoon": "The support contact has not been published yet.",
     "passStatus": "Status",
-    "passOwned": "Active, permanent",
+    "passOwned": "Active · Pre-season and Season 1",
     "passNotOwned": "Not active",
     "passHow": "Obtained by",
     "passLocal": "On this device",
@@ -1797,7 +1797,7 @@
     "claimAllDone": "{n} rewards claimed.",
     "claimAllBlocked": "{c} claimed. {n} item rewards did not fit the inventory and are still waiting: make room and try again.",
     "ownedNote": "Adventurer's Pass active. Thanks for playing!",
-    "buyBlurb": "One-time purchase, never expires: a premium track with exclusive items, {h} h storage, more materials, more gold, extra orders, more inventory and stash space and cheaper repairs.",
+    "buyBlurb": "One-time payment, valid for the pre-season and Season 1: a premium track with exclusive items, {h} h storage, more materials, more gold, extra orders, more inventory and stash space and cheaper repairs.",
     "close": "Close",
     "rewardGold": "Gold",
     "rewardShards": "Aether"
@@ -2154,7 +2154,7 @@
     "statusTitle": "Your status",
     "elig": {
       "eligible": "You are in the race. The game sends your progress to the server every 10 minutes and the score is worked out there.",
-      "needs_pass": "You need the Adventurer Pass to enter the ranking. It is valid for every season.",
+      "needs_pass": "You need the Adventurer Pass to enter the ranking. The Pass covers the pre-season and Season 1.",
       "needs_email": "Confirm your e-mail to compete: open the link we sent when you created the account.",
       "flagged": "The server found your progress too fast or odd, and it is not counting for now. Playing normally, it starts counting again by itself. The organizer may review the account.",
       "disqualified": "This account was disqualified from this season.",
