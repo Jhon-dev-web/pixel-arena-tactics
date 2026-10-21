@@ -201,6 +201,137 @@ export interface PlayerDetail {
   referral_rewards: { metric: string; min_count: number; kind: string; reward_ref: string; granted_at: string }[];
 }
 
+/** One piece of gear read live from the save (migration 0034). */
+export interface FullGear {
+  id: string;
+  template_id: string | null;
+  rarity: string | null;
+  upgrade: number | null;
+  durability: number | null;
+  reforge_count: number | null;
+  lapidar_count: number | null;
+  sockets: string[];
+  substats: unknown[];
+  bound: boolean;
+  certified: boolean;
+  equipped_slot: string | null;
+  tier: number | null;
+  slot: string | null;
+}
+
+export type CountMap = Record<string, number>;
+
+/** What the save says (migration 0034, admin_player_full). Numbers are null when the save holds a wrong type. */
+export interface FullSave {
+  hero_name: string;
+  revision: number;
+  schema_version: number;
+  updated_at: string;
+  created_at: string;
+  imported_from_legacy: boolean;
+  level: number;
+  paragon_level: number;
+  xp: number;
+  gold: number | null;
+  shards: number | null;
+  victories: number | null;
+  highest_dungeon_floor: number | null;
+  attributes: { str: number | null; vit: number | null; agi: number | null; res: number | null };
+  weapon_level: number | null;
+  armor_level: number | null;
+  counters: {
+    kills: number | null;
+    gold_earned: number | null;
+    seconds_played: number | null;
+    hunt_seconds: number | null;
+    deepest_depth: number | null;
+    bosses_killed: number | null;
+    dungeon_runs: number | null;
+    dungeon_floors: number | null;
+    items_forged: number | null;
+    uniques_found: number | null;
+    refine_success: number | null;
+    refine_fail: number | null;
+    deliveries: number | null;
+    potions_brewed: number | null;
+    forged_by_rarity: CountMap;
+  };
+  professions: { id: 'mining' | 'woodcutting' | 'gardening'; xp: number; level: number; active: string | null }[];
+  hunting: { zone: string | null; depth: number | string | null; unlocked_zones: string[]; progress: Record<string, { ceiling?: number; promotionWins?: number }> };
+  dungeon: { checkpoints: number[]; sessions_today: number | null };
+  skill_tree: { active_set: number | null; respec_used: boolean; sets: Record<string, number>[]; spent: number[] };
+  gear: FullGear[];
+  equipped: Record<string, string | null>;
+  inventory: CountMap;
+  inventory_capacity: number | null;
+  stash: { level: number | null; materials: CountMap; consumables: CountMap; gear: CountMap; bonus_slots: number | null };
+  materials: CountMap;
+  tradeable_materials: CountMap;
+  potions: CountMap;
+  consumables: CountMap;
+  gems: CountMap;
+  pass: { has_flag: boolean; level: number | null; xp: number | null; season: number | null; claimed_free: number[]; claimed_premium: number[] };
+  cosmetics: string[];
+  active_title: string | null;
+  active_frame: string | null;
+  active_skin: string | null;
+  applied_credits: number;
+  craft_job: unknown;
+  league: unknown;
+}
+
+export interface FullCredit {
+  id: string;
+  kind: 'gold' | 'shards' | 'consumable';
+  item_id: string | null;
+  amount: number;
+  source: string;
+  source_ref: string;
+  created_at: string;
+  claimed_at: string | null;
+  counted_at: string | null;
+}
+
+export interface FullInvitee {
+  user_id: string;
+  username: string | null;
+  created_at: string;
+  qualified_at: string | null;
+  ignored_reason: string | null;
+}
+
+/** The live read of one account (migration 0034, public.admin_player_full). The e-mail is not in it. */
+export interface PlayerFull {
+  generated_at: string;
+  has_character: boolean;
+  save: FullSave | null;
+  progress: {
+    latest_verdict: string | null;
+    counts: { ok: number; flagged: number; rejected: number; total: number };
+    snapshots: { created_at: string; verdict: string; reasons: string[]; app_version: string | null; hero_level: number | null; paragon_level: number | null; highest_floor: number | null; gold: number | null; shards: number | null; seconds_played: number | null }[];
+  };
+  credits: { unclaimed: number; claimed: number; rows: FullCredit[] };
+  promo: { code: string; at: string; reward_kind: string | null; reward_item_id: string | null; reward_amount: number | null; note: string | null }[];
+  market: {
+    listing_counts: CountMap;
+    listings: { id: string; status: string; price_lamports: number; material_id: string | null; material_qty: number | null; template_id: string | null; rarity: string | null; created_at: string; expires_at: string; closed_at: string | null }[];
+    reservations: { id: string; status: string; price_lamports: number; livemode: boolean; created_at: string; expires_at: string }[];
+    sold: { count: number; lamports: number };
+    bought: { count: number; lamports: number };
+  };
+  invites: {
+    code: string | null;
+    invited_by: { user_id: string; username: string | null; created_at: string; ignored_reason: string | null; qualified_at: string | null } | null;
+    invited_total: number;
+    invited_qualified: number;
+    invited_ignored: number;
+    invited: FullInvitee[];
+    rewards: { metric: string; min_count: number; kind: string; reward_ref: string; granted_at: string }[];
+  };
+  waitlist: { created_at: string; source: string | null; locale: string; qualified_at: string | null; unsubscribed_at: string | null; referral_ignored: string | null; was_referred: boolean; invited: number; invited_qualified: number } | null;
+  audit: { at: string; action: string; details: Record<string, unknown>; admin_id: string; admin_username: string | null }[];
+}
+
 export type LegendarySource = 'forge' | 'pity' | 'seal' | 'drop' | 'boss';
 export type LegendaryStatus = 'held' | 'listed' | 'sold' | 'bound' | 'burned' | 'revoked';
 

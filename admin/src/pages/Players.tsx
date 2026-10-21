@@ -2,14 +2,17 @@ import { useCallback, useState } from 'react';
 import { AccountActions } from '../components/AccountActions';
 import { Drawer } from '../components/Drawer';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
+import { FullAudit, FullCredits, FullHero, FullInventory, FullInvites, FullMarket, FullMaterials, FullMissingNotice, FullPassSave, FullProgress, FullSummary } from '../components/PlayerFullView';
 import { Card, DefList, ExternalLink, Field, Notice, PassBadge, Pill, Skeleton } from '../components/ui';
 import { hashParam, useApp, useAsync, useDebounced } from '../hooks';
 import { playerPassState } from '../lib/aggregate';
 import { activeFilterCount, defaultPlayerQuery, EXPORT_PAGE_SIZE, toggleSort } from '../lib/filters';
-import { DASH, fmtDateTime, fmtGold, fmtInt, fmtSol, fmtAgo, shortAddress, shortId, solscanAccount, solscanTx } from '../lib/format';
+import { DASH, fmtDateTime, fmtGold, fmtInt, fmtAgo, shortAddress, shortId, solscanAccount } from '../lib/format';
+import { normalizeFull } from '../lib/full';
 import { kindLabel, passSourceLabel, rarityLabel, statusLabel } from '../lib/labels';
 import type { PlayerFilters, PlayerQuery, PlayerRow, PlayerSort } from '../lib/types';
 
+const CACHE_HINT = 'atualiza pela rotina';
 const levelText = (p: PlayerRow): string => (p.hero_level == null ? DASH : p.paragon_level ? `${p.hero_level} + P${p.paragon_level}` : String(p.hero_level));
 
 /** On a phone the Pass and the alerts columns are hidden; the same two facts appear here, under the player's name, so the table never needs a sideways scroll to answer "does he have a valid Pass, is anything wrong". */
@@ -56,8 +59,8 @@ const COLUMNS: Column<PlayerRow>[] = [
     sortKey: 'level',
     cell: (p) => (
       <span>
-        <strong>{p.hero_level == null ? DASH : `Nível ${levelText(p)}`}</strong>
-        <div className="faint">{p.highest_floor == null ? 'sem dados no cache' : `andar ${fmtInt(p.highest_floor)}${p.deepest_depth ? ` · profundeza ${fmtInt(p.deepest_depth)}` : ''}`}</div>
+        <strong>{p.hero_level == null ? <span title={CACHE_HINT}>{DASH}</span> : `Nível ${levelText(p)}`}</strong>
+        <div className="faint">{p.highest_floor == null ? <span title={CACHE_HINT}>{DASH}</span> : `andar ${fmtInt(p.highest_floor)}${p.deepest_depth ? ` · profundeza ${fmtInt(p.deepest_depth)}` : ''}`}</div>
       </span>
     ),
   },
@@ -168,7 +171,7 @@ export default function PlayersPage() {
         <Pager page={q.page} total={list.data?.total ?? 0} size={q.pageSize} onPage={(page) => setQ((s) => ({ ...s, page }))} />
       </Card>
       <p className="faint" style={{ marginTop: 10 }}>
-        “Passe válido” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nível, andar e profundeza vêm da rotina de cache (atualizada a cada poucas horas); “atividade recente” é o último salvamento do personagem.
+        “Passe válido” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nesta lista, nível, andar e profundeza vêm da rotina de cache (atualizada a cada poucas horas; um traço significa que a rotina ainda não passou pela conta). O painel de detalhes lê o save ao vivo. “Atividade recente” é o último salvamento do personagem.
       </p>
 
       {openId ? <PlayerDrawer id={openId} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} onDeleted={() => { setOpenId(null); list.reload(); }} onListChanged={() => list.reload()} /> : null}
@@ -178,6 +181,8 @@ export default function PlayersPage() {
 
 function PlayerDrawer({ id, summary, onClose, onDeleted, onListChanged }: { id: string; summary: PlayerRow | null; onClose: () => void; onDeleted: () => void; onListChanged: () => void }) {
   const detail = useAsync((a) => a.playerDetail(id), [id]);
+  const liveRaw = useAsync((a) => a.playerFull(id), [id]);
+  const full = liveRaw.data === undefined ? null : normalizeFull(liveRaw.data);
   const [reveal, setReveal] = useState(false);
   const close = useCallback(onClose, [onClose]);
   const d = detail.data;
@@ -202,20 +207,7 @@ function PlayerDrawer({ id, summary, onClose, onDeleted, onListChanged }: { id: 
         )
       ) : (
         <>
-          {summary ? (
-            <section>
-              <h3>Resumo</h3>
-              <DefList
-                rows={[
-                  ['Ouro no save', summary.gold == null ? DASH : fmtGold(summary.gold)],
-                  ['Itens', `${fmtInt(summary.items_held)} com o jogador · ${fmtInt(summary.items_listed)} à venda`],
-                  ['Vendas / compras', `${fmtInt(summary.sales)} / ${fmtInt(summary.purchases)}`],
-                  ['Cadastro', fmtDateTime(summary.created_at)],
-                  ['Carteira', summary.wallet ? <span className="mono" title={summary.wallet}>{shortAddress(summary.wallet)}</span> : 'sem carteira'],
-                ]}
-              />
-            </section>
-          ) : null}
+          {full ? <FullSummary full={full} summary={summary} detail={d} /> : liveRaw.loading ? <Skeleton height={90} /> : liveRaw.error ? <FullMissingNotice message={liveRaw.error} /> : null}
 
           <section>
             <h3>Conta</h3>
@@ -240,23 +232,33 @@ function PlayerDrawer({ id, summary, onClose, onDeleted, onListChanged }: { id: 
             />
           </section>
 
-          <section>
-            <h3>Progresso</h3>
-            {d.stats ? (
-              <DefList
-                rows={[
-                  ['Nível', d.stats.hero_level == null ? DASH : `${d.stats.hero_level}${d.stats.paragon_level ? ` + Paragon ${d.stats.paragon_level}` : ''}`],
-                  ['Andar mais alto', fmtInt(d.stats.highest_floor)],
-                  ['Profundeza', fmtInt(d.stats.deepest_depth)],
-                  ['Ouro no save', fmtGold(d.stats.gold)],
-                  ['Itens no save', `${fmtInt(d.stats.items_common)} comuns · ${fmtInt(d.stats.items_rare)} raros · ${fmtInt(d.stats.items_epic)} épicos · ${fmtInt(d.stats.items_legendary)} lendários`],
-                  ['Dados de', fmtDateTime(d.stats.refreshed_at)],
-                ]}
-              />
-            ) : (
-              <p className="muted">Ainda sem dados de progresso (a rotina de cache não passou por esta conta).</p>
-            )}
-          </section>
+          {full ? (
+            <>
+              <FullHero full={full} />
+              <FullInventory full={full} />
+              <FullMaterials full={full} detail={d} />
+              <FullProgress full={full} />
+            </>
+          ) : liveRaw.loading ? null : (
+            <section>
+              <h3>Progresso</h3>
+              {d.stats ? (
+                <DefList
+                  rows={[
+                    ['Nível', d.stats.hero_level == null ? DASH : `${d.stats.hero_level}${d.stats.paragon_level ? ` + Paragon ${d.stats.paragon_level}` : ''}`],
+                    ['Andar mais alto', fmtInt(d.stats.highest_floor)],
+                    ['Profundeza', fmtInt(d.stats.deepest_depth)],
+                    ['Ouro no save', fmtGold(d.stats.gold)],
+                    ['Itens no save', `${fmtInt(d.stats.items_common)} comuns · ${fmtInt(d.stats.items_rare)} raros · ${fmtInt(d.stats.items_epic)} épicos · ${fmtInt(d.stats.items_legendary)} lendários`],
+                    ['Dados de', fmtDateTime(d.stats.refreshed_at)],
+                  ]}
+                />
+              ) : (
+                <p className="muted">Ainda sem dados de progresso (a rotina de cache não passou por esta conta).</p>
+              )}
+            </section>
+  
+          )}
 
           <section>
             <h3>Passe e carteira</h3>
@@ -282,6 +284,7 @@ function PlayerDrawer({ id, summary, onClose, onDeleted, onListChanged }: { id: 
                 ))}
               </div>
             )}
+            {full ? <FullPassSave full={full} detail={d} /> : null}
             <p>
               {d.wallet ? (
                 <>
@@ -339,35 +342,14 @@ function PlayerDrawer({ id, summary, onClose, onDeleted, onListChanged }: { id: 
             )}
           </section>
 
-          <section>
-            <h3>Últimas negociações</h3>
-            {d.sales.length === 0 ? <p className="muted">Sem vendas nem compras.</p> : (
-              <div className="table-wrap">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th>Quando</th>
-                      <th>Papel</th>
-                      <th>Item</th>
-                      <th className="num">Preço</th>
-                      <th>Transação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.sales.map((s) => (
-                      <tr key={s.id}>
-                        <td>{fmtDateTime(s.sold_at)}</td>
-                        <td>{s.role === 'seller' ? 'vendeu' : 'comprou'}</td>
-                        <td>{s.material_id ? `${fmtInt(s.material_qty)} × ${s.material_id}` : s.item_template}</td>
-                        <td className="num">{fmtSol(s.price_lamports)}</td>
-                        <td><ExternalLink href={solscanTx(s.tx_signature, s.livemode)}><span className="mono">{shortAddress(s.tx_signature, 4, 4)}</span></ExternalLink></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+          {full ? (
+            <>
+              <FullMarket full={full} detail={d} />
+              <FullCredits full={full} />
+              <FullInvites full={full} />
+              <FullAudit full={full} />
+            </>
+          ) : null}
 
           {d.season_entries.length ? (
             <section>

@@ -9,6 +9,8 @@ import { describeEnvironment } from './environment';
 import { maskEmail } from './format';
 import type {
   Economy,
+  FullGear,
+  FullSave,
   FlagRow,
   FlagsPage,
   GoldDaily,
@@ -21,6 +23,7 @@ import type {
   Overview,
   Page,
   PlayerDetail,
+  PlayerFull,
   PlayerRow,
   SaleRow,
   SeriesDay,
@@ -550,6 +553,103 @@ export function createDemoApi(): AdminApi {
         referral_rewards: [],
       };
       return delay(detail);
+    },
+    async playerFull(userId) {
+      const p = w.players.find((x) => x.user_id === userId);
+      if (!p) return delay(null);
+      const level = p.hero_level ?? 1;
+      const rarities = ['common', 'rare', 'epic', 'legendary'] as const;
+      const gear: FullGear[] = TEMPLATES.filter((t) => t.kind === 'gear').map((t, i) => ({
+        id: `gi_${i}`,
+        template_id: t.id,
+        rarity: rarities[Math.min(3, i % 4)],
+        upgrade: i,
+        durability: 100 - i * 7,
+        reforge_count: i % 2,
+        lapidar_count: null,
+        sockets: i === 1 ? ['ruby'] : [],
+        substats: i % 2 ? [{ id: 'crit', value: 2 }] : [],
+        bound: i < 3,
+        certified: i % 2 === 0,
+        equipped_slot: i < 4 ? t.slot : null,
+        tier: t.tier,
+        slot: t.slot,
+      }));
+      const save: FullSave = {
+        hero_name: p.hero_name ?? '',
+        revision: 412,
+        schema_version: 14,
+        updated_at: p.last_seen ?? p.created_at,
+        created_at: p.created_at,
+        imported_from_legacy: false,
+        level,
+        paragon_level: p.paragon_level ?? 0,
+        xp: level * 12_000,
+        gold: p.gold ?? 0,
+        shards: 140,
+        victories: 380,
+        highest_dungeon_floor: p.highest_floor ?? 0,
+        attributes: { str: 20 + level, vit: 18 + level, agi: 10, res: 8 },
+        weapon_level: 4,
+        armor_level: 3,
+        counters: { kills: 5400, gold_earned: (p.gold ?? 0) * 3, seconds_played: 80_000, hunt_seconds: 52_000, deepest_depth: p.deepest_depth ?? 0, bosses_killed: 12, dungeon_runs: 60, dungeon_floors: 310, items_forged: 44, uniques_found: 2, refine_success: 30, refine_fail: 9, deliveries: 15, potions_brewed: 21, forged_by_rarity: { common: 30, rare: 10, epic: 4, legendary: 0 } },
+        professions: [
+          { id: 'mining', xp: 5200, level: 36, active: 'iron_ore' },
+          { id: 'woodcutting', xp: 900, level: 20, active: null },
+          { id: 'gardening', xp: 120, level: 11, active: null },
+        ],
+        hunting: { zone: 'forest', depth: 2, unlocked_zones: ['forest', 'cave', 'swamp'], progress: { 'forest:2': { ceiling: 6, promotionWins: 2 } } },
+        dungeon: { checkpoints: [25, 50], sessions_today: 1 },
+        skill_tree: { active_set: 0, respec_used: false, sets: [{ power: 3, guard: 2 }, {}], spent: [5, 0] },
+        gear,
+        equipped: { weapon: 'gi_0', armor: 'gi_2', helmet: 'gi_3', gloves: null, boots: null, ring: null, shield: null, relic: null },
+        inventory: { sword_relic: 1 },
+        inventory_capacity: 60,
+        stash: { level: 3, materials: { coal: 40 }, consumables: { small_hp: 6 }, gear: {}, bonus_slots: p.pass_source ? 3 : 0 },
+        materials: { iron_ore: 320, oak_log: 90, herb_bundle: 14 },
+        tradeable_materials: { iron_ore: 20 },
+        potions: { hp: 12, stamina: 4, elixir: 1 },
+        consumables: { repair_kit: 3 },
+        gems: { ruby: 2, sapphire: 1, emerald: 0 },
+        pass: { has_flag: Boolean(p.pass_valid_now), level: p.pass_valid_now ? 12 : 0, xp: p.pass_valid_now ? 340 : 0, season: 1, claimed_free: [1, 2, 3], claimed_premium: p.pass_valid_now ? [1, 2] : [] },
+        cosmetics: p.pass_valid_now ? ['title_pioneer', 'frame_pioneer'] : [],
+        active_title: p.pass_valid_now ? 'title_pioneer' : null,
+        active_frame: p.pass_valid_now ? 'frame_pioneer' : null,
+        active_skin: null,
+        applied_credits: 2,
+        craft_job: null,
+        league: null,
+      };
+      const full: PlayerFull = {
+        generated_at: new Date(NOW).toISOString(),
+        has_character: true,
+        save,
+        progress: {
+          latest_verdict: p.open_flags ? 'flagged' : 'ok',
+          counts: { ok: 8, flagged: p.open_flags ? 1 : 0, rejected: 0, total: p.open_flags ? 9 : 8 },
+          snapshots: [0, 1, 2].map((i) => ({ created_at: iso(i * 3 * HOUR + 600_000), verdict: i === 0 && p.open_flags ? 'flagged' : 'ok', reasons: i === 0 && p.open_flags ? ['PACE_TOO_FAST'] : [], app_version: '0.9.4', hero_level: level, paragon_level: p.paragon_level, highest_floor: p.highest_floor, gold: Math.max(0, (p.gold ?? 0) - i * 800), shards: 140, seconds_played: 80_000 - i * 900 })),
+        },
+        credits: {
+          unclaimed: 0,
+          claimed: 2,
+          rows: [
+            { id: 'c1', kind: 'gold', item_id: null, amount: 500, source: 'pioneer', source_ref: 'pioneer-gold', created_at: iso(5 * DAY), claimed_at: iso(5 * DAY - HOUR), counted_at: iso(5 * DAY - 2 * HOUR) },
+            { id: 'c2', kind: 'consumable', item_id: 'small_hp', amount: 10, source: 'pioneer', source_ref: 'pioneer-potion', created_at: iso(5 * DAY), claimed_at: iso(5 * DAY - HOUR), counted_at: null },
+          ],
+        },
+        promo: [],
+        market: {
+          listing_counts: { open: 1, sold: 2 },
+          listings: [{ id: 'l1', status: 'open', price_lamports: 2_000_000_000, material_id: null, material_qty: null, template_id: 'dragonbone_blade', rarity: 'epic', created_at: iso(DAY), expires_at: iso(-2 * DAY), closed_at: null }],
+          reservations: [],
+          sold: { count: p.sales, lamports: p.sales * 1_000_000_000 },
+          bought: { count: p.purchases, lamports: p.purchases * 1_000_000_000 },
+        },
+        invites: { code: 'KLMNPQRSTU', invited_by: null, invited_total: 3, invited_qualified: 2, invited_ignored: 0, invited: [], rewards: [] },
+        waitlist: null,
+        audit: p.pass_source === 'grant' ? [{ at: iso(2 * DAY), action: 'grant_pass', details: { note: 'cortesia de lançamento' }, admin_id: '00000000-0000-4000-8000-0000000000a1', admin_username: 'Dono' }] : [],
+      };
+      return delay(full);
     },
     async legendaries(q) {
       const s = q.search.trim().toLowerCase();

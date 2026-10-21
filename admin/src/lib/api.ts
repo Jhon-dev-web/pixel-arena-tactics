@@ -4,16 +4,19 @@
 // which refuses anyone who is not in arena_private.admins. No service key is, or may ever be, in this app.
 import type { ActionRpcName } from './actionRpcNames';
 import type { CreatePromoArgs, DeleteUserResult, GrantPassResult, PromoCodeRow, RevokePassResult } from './actions';
+import type { FullRpcName } from './fullRpcNames';
 import { flagsArgs, legendaryArgs, marketArgs, playerArgs } from './filters';
 import type { OpsRpcName } from './opsRpcNames';
 import type { PaymentRpcName } from './paymentRpcNames';
 import type { RpcName } from './rpcNames';
-import type { AiCost, AiReportRow, AiReportsQuery, Economy, FlagsPage, FlagsQuery, League, LegendaryPage, LegendaryQuery, ListingRow, MarketPage, MarketQuery, OpsFlagKey, OpsOverview, Overview, Page, PlayerDetail, PaymentExceptionsPage, PaymentExceptionsQuery, PlayerQuery, PlayerRow, SaleRow, SeriesDay, Waitlist } from './types';
+import type { AiCost, AiReportRow, AiReportsQuery, Economy, FlagsPage, FlagsQuery, League, LegendaryPage, LegendaryQuery, ListingRow, MarketPage, MarketQuery, OpsFlagKey, OpsOverview, Overview, Page, PlayerDetail, PlayerFull, PaymentExceptionsPage, PaymentExceptionsQuery, PlayerQuery, PlayerRow, SaleRow, SeriesDay, Waitlist } from './types';
 
 export interface AdminApi {
   overview(): Promise<Overview>;
   players(q: PlayerQuery): Promise<Page<PlayerRow>>;
   playerDetail(userId: string): Promise<PlayerDetail | null>;
+  /** Migration 0034: everything the server has for ONE account, read live from the save (not from the cache). Null for an unknown id. */
+  playerFull(userId: string): Promise<PlayerFull | null>;
   legendaries(q: LegendaryQuery): Promise<LegendaryPage>;
   market(q: MarketQuery): Promise<MarketPage<SaleRow> | MarketPage<ListingRow>>;
   economy(): Promise<Economy>;
@@ -74,7 +77,7 @@ export interface ApiExtras {
 }
 
 export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminApi {
-  async function call<T>(name: RpcName | OpsRpcName | PaymentRpcName | ActionRpcName, args?: Record<string, unknown>): Promise<T> {
+  async function call<T>(name: RpcName | FullRpcName | OpsRpcName | PaymentRpcName | ActionRpcName, args?: Record<string, unknown>): Promise<T> {
     const { data, error } = await client.rpc(name, args);
     if (error) throw toError(error);
     return data as T;
@@ -83,6 +86,7 @@ export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminAp
     overview: () => call<Overview>('admin_overview'),
     players: (q) => call<Page<PlayerRow>>('admin_players', playerArgs(q)),
     playerDetail: (userId) => call<PlayerDetail | null>('admin_player_detail', { p_user_id: userId }),
+    playerFull: (userId) => call<PlayerFull | null>('admin_player_full', { p_user_id: userId }),
     legendaries: (q) => call<LegendaryPage>('admin_legendaries', legendaryArgs(q)),
     market: (q) => call<MarketPage<SaleRow> | MarketPage<ListingRow>>('admin_market', marketArgs(q)),
     economy: () => call<Economy>('admin_economy'),

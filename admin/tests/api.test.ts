@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { AccessDeniedError, ApiError, createRpcApi, toError, type RpcClient } from '../src/lib/api';
 import { defaultLegendaryQuery, defaultMarketQuery, defaultPlayerQuery } from '../src/lib/filters';
 import { OPS_READ_RPC_NAMES, OPS_WRITE_RPC_NAMES } from '../src/lib/opsRpcNames';
+import { FULL_RPC_NAMES } from '../src/lib/fullRpcNames';
 import { RPC_NAMES } from '../src/lib/rpcNames';
 import { ACTION_RPC_NAMES } from '../src/lib/actionRpcNames';
 import { actionErrorText } from '../src/lib/actions';
@@ -37,6 +38,20 @@ describe('createRpcApi', () => {
     expect(calls[2].args).toEqual({ p_user_id: '00000000-0000-4000-8000-000000000001' });
     expect(calls[6].args).toEqual({ p_days: 30 });
     expect(calls[8].args).toEqual({ p_season: null, p_top: 50 });
+  });
+
+  test('the live account read calls its own function with the named argument', async () => {
+    const { client, calls } = fake(() => ({ data: { has_character: true }, error: null }));
+    const api = createRpcApi(client);
+    const r = await api.playerFull('00000000-0000-4000-8000-000000000001');
+    expect(r).toEqual({ has_character: true });
+    expect(calls).toEqual([{ name: 'admin_player_full', args: { p_user_id: '00000000-0000-4000-8000-000000000001' } }]);
+    expect(FULL_RPC_NAMES).toEqual(['admin_player_full']);
+  });
+
+  test('a non-admin answer to the live read is an access error, not a crash', async () => {
+    const { client } = fake(() => ({ data: null, error: { message: 'ADMIN_ONLY', code: '42501' } }));
+    await expect(createRpcApi(client).playerFull('x')).rejects.toBeInstanceOf(AccessDeniedError);
   });
 
   test('the app never calls anything but the admin functions (no table access, no write)', async () => {

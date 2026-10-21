@@ -1373,3 +1373,49 @@ dl.facts dd {
   font-weight: 600;
   letter-spacing: 0.06em;
 }
+
+/* ---------- drawer: foldable sections of the live account read ---------- */
+.fold {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.fold > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  list-style: none;
+}
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+.fold > summary::before {
+  content: '▸';
+  color: var(--faint);
+  margin-right: 8px;
+}
+.fold[open] > summary::before {
+  content: '▾';
+}
+.fold-title {
+  font-weight: 600;
+  flex: 1;
+}
+.fold-hint {
+  font-size: 12.5px;
+  text-align: right;
+}
+.fold-body {
+  padding: 4px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fold-sub {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}

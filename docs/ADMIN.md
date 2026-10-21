@@ -48,7 +48,7 @@ Cada tabela tem **Exportar CSV** (lê todas as páginas do filtro atual, até 10
 
 ## 3. Aplicar a migration e virar admin
 
-1. **Primeiro no projeto de desenvolvimento** (SQL Editor ou `supabase db push`), depois das migrations 0001 a 0019. A `0020_admin.sql` só cria tabelas novas (`arena_private.admins`, `admin_config`, `admin_template_info`, `admin_player_cache`, `admin_gold_daily`, `admin_daily`), índices nas tabelas existentes e funções. Não altera colunas, políticas nem dados do jogo. O rollback está no cabeçalho do arquivo.
+1. **Primeiro no projeto de desenvolvimento** (SQL Editor ou `supabase db push`), depois das migrations 0001 a 0019. **Detalhe do jogador ao vivo:** aplique também a `0034_admin_player_full.sql` (função `admin_player_full`, só leitura; sem ela o detalhe volta a usar o cache e avisa). A `0020_admin.sql` só cria tabelas novas (`arena_private.admins`, `admin_config`, `admin_template_info`, `admin_player_cache`, `admin_gold_daily`, `admin_daily`), índices nas tabelas existentes e funções. Não altera colunas, políticas nem dados do jogo. O rollback está no cabeçalho do arquivo.
    **Passe da temporada:** depois da `0025`, aplique também a `0026_admin_pass_season.sql` (só recria `admin_overview`, `admin_players` e `admin_player_detail` para mostrarem o Passe válido nesta temporada e o histórico; idempotente, não toca nos dados). Sem ela o painel funciona, mas avisa que só conhece o histórico de Passes.
 2. Torne-se admin (SQL Editor, com a conta do jogo já criada, e-mail confirmado):
    ```sql
@@ -80,7 +80,9 @@ select cron.schedule('arena-admin-daily', '*/15 * * * *', $$select arena_private
 select cron.schedule('arena-admin-aggregates', '5 */6 * * *', $$select arena_private.admin_refresh_aggregates()$$);
 ```
 
-A primeira execução completa lê todos os saves uma vez (pode levar alguns minutos com muitas contas): rode fora do horário de pico. As seguintes só tocam saves que mudaram. Para cancelar: `select cron.unschedule('arena-admin-daily'); select cron.unschedule('arena-admin-aggregates');`. Sem as rotinas o painel funciona, mas “Jogadores” mostra nível/ouro vazios, “Economia” mostra um aviso no lugar do ouro e a série “jogadores ativos” fica zerada.
+A migração `0034_admin_player_full.sql` tenta fazer isto sozinha quando o `pg_cron` está disponível (agenda as duas rotinas e preenche o cache uma vez); se não estiver, ela só avisa e você segue os passos acima.
+
+A primeira execução completa lê todos os saves uma vez (pode levar alguns minutos com muitas contas): rode fora do horário de pico. As seguintes só tocam saves que mudaram. Para cancelar: `select cron.unschedule('arena-admin-daily'); select cron.unschedule('arena-admin-aggregates');`. Sem as rotinas o painel funciona: o painel de detalhes de um jogador lê o save ao vivo (`admin_player_full`, migração 0034), mas a lista “Jogadores” mostra nível/ouro como um traço (“atualiza pela rotina”), “Economia” mostra um aviso no lugar do ouro e a série “jogadores ativos” fica zerada.
 
 ## 5. Publicar o painel na Vercel (projeto separado)
 

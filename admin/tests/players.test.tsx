@@ -5,6 +5,7 @@ import PlayersPage from '../src/pages/Players';
 import { AppContext } from '../src/hooks';
 import type { AdminApi } from '../src/lib/api';
 import { createDemoApi } from '../src/lib/demo';
+import { defaultPlayerQuery } from '../src/lib/filters';
 
 afterEach(() => {
   cleanup();
@@ -77,5 +78,43 @@ describe('Players (A05)', () => {
     const { calls } = setup();
     await screen.findByRole('table', { name: 'Jogadores' });
     expect(calls.find((c) => c.name === 'players')!.args[0]).toMatchObject({ filters: { flagged: true, pass: 'expired' } });
+  });
+
+  test('the drawer reads the account live: every section is there and the cache message is gone', async () => {
+    const { calls } = setup();
+    const table = await screen.findByRole('table', { name: 'Jogadores' });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(10));
+    fireEvent.click(within(table).getAllByRole('row')[1]);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => expect(within(dialog).getByText('Inventário e baú')).toBeTruthy());
+    for (const title of ['Resumo', 'Herói', 'Inventário e baú', 'Materiais e poções', 'Progresso e auditoria', 'Passe e carteira', 'Mercado', 'Créditos e códigos', 'Convites', 'Registro de ações']) expect(dialog.textContent).toContain(title);
+    for (const label of ['Éter (cristais)', 'Equipamentos no save', 'Passe marcado no save', 'Profissões']) expect(dialog.textContent).toContain(label);
+    expect(dialog.textContent).not.toContain('a rotina de cache não passou');
+    expect(calls.some((c) => c.name === 'playerFull')).toBe(true);
+    // the long sections are folded (native details) and open on click
+    const folds = dialog.querySelectorAll('details.fold');
+    expect(folds.length).toBeGreaterThanOrEqual(7);
+  });
+
+  test('when the live function is not in the database yet, the drawer says so and falls back to the cache block', async () => {
+    setup({ playerFull: () => Promise.reject(new Error('function public.admin_player_full does not exist')) });
+    const table = await screen.findByRole('table', { name: 'Jogadores' });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(10));
+    fireEvent.click(within(table).getAllByRole('row')[1]);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => expect(dialog.textContent).toContain('0034_admin_player_full'));
+    expect(dialog.textContent).toContain('Progresso');
+    expect(dialog.textContent).toContain('Passe e carteira');
+  });
+
+  test('in the list, a missing cache value is a dash with the tooltip "atualiza pela rotina", never a zero', async () => {
+    const base = createDemoApi();
+    const page = await base.players(defaultPlayerQuery());
+    const rows = page.rows.map((r, i) => (i === 0 ? { ...r, hero_level: null, highest_floor: null, gold: null, username: 'SemCache' } : r));
+    setup({ players: () => Promise.resolve({ ...page, rows }) });
+    const table = await screen.findByRole('table', { name: 'Jogadores' });
+    const row = (await within(table).findByText('SemCache')).closest('tr')!;
+    expect(row.querySelectorAll('[title="atualiza pela rotina"]').length).toBe(2);
+    expect(row.textContent).not.toMatch(/Nível 0|andar 0/);
   });
 });
