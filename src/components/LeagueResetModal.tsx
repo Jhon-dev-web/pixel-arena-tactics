@@ -17,7 +17,7 @@ export default function LeagueResetModal({ pioneer, onClose }: { pioneer: boolea
     >
       <p>{t('leagueReset.what')}</p>
       <p>{t('leagueReset.kept')}</p>
-      {pioneer && <p className="ui-alert good">{t('leagueReset.pioneer', { gold: fmtNum(PIONEER_KIT.gold), potions: fmtNum(PIONEER_KIT.potionAmount) })}</p>}
+      {pioneer && <p className="ui-alert good">{t('leagueReset.pioneer', { gold: fmtNum(PIONEER_KIT.gold), potions: fmtNum(PIONEER_KIT.potionAmount), xp: fmtNum(PIONEER_KIT.xpAmount) })}</p>}
     </Dialog>
   );
 }

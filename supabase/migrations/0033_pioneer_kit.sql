@@ -17,10 +17,11 @@
 --                    orders at 25 to 40 Gold/h), still far from deciding the League ranking.
 --   Potion  10 x small_hp (the basic healing potion, 30 Gold in the shop: ~300 Gold of value; small_hp is on arena_private.promo_consumable_ids(), so the
 --           ledger accepts it and it is never a tradeable good).
+--   XP      1 x knowledge_elixir (Elixir do Conhecimento, +25% Hunting XP for 4 h; owner's decision 2026-10-21; on promo_consumable_ids()).
 --   Level   10 (the same level the invite program calls an "active" player).
 --
 -- WHAT THIS FILE DOES
---   1. server_credits.source also accepts 'pioneer' (the check of 0028 allowed only 'promo'). The ledger rows are ('pioneer', 'pioneer-gold') and ('pioneer', 'pioneer-potion') per user: server_credits_once
+--   1. server_credits.source also accepts 'pioneer' (the check of 0028 allowed only 'promo'). The ledger rows are ('pioneer', 'pioneer-gold'), ('pioneer', 'pioneer-potion') and ('pioneer', 'pioneer-xp') per user: server_credits_once
 --      (source, source_ref, user_id) makes a second grant impossible.
 --   2. arena_private.pioneer_kit() the amounts; arena_private.is_pioneer(user, reset_at) the rule.
 --   3. arena_private.grant_pioneer_credits(reset_at) inserts the two rows for every qualifying account (on conflict do nothing: idempotent). A NEW trigger on arena_private.season_goal (it fires the one
@@ -57,7 +58,7 @@ language sql
 immutable
 set search_path = ''
 as $$
-  select pg_catalog.jsonb_build_object('min_level', 10, 'gold', 500, 'potion_id', 'small_hp', 'potion_amount', 10);
+  select pg_catalog.jsonb_build_object('min_level', 10, 'gold', 500, 'potion_id', 'small_hp', 'potion_amount', 10, 'xp_id', 'knowledge_elixir', 'xp_amount', 1);
 $$;
 
 revoke all on function arena_private.pioneer_kit() from public, anon, authenticated;
@@ -84,7 +85,7 @@ revoke all on function arena_private.is_pioneer(uuid, timestamptz) from public, 
 -- ---------------------------------------------------------------------------------------------------------------------------------------
 -- 3. The grant (idempotent) and its trigger.
 -- ---------------------------------------------------------------------------------------------------------------------------------------
--- Inserts the chest (one Gold credit and one potion credit) for every qualifying account. Returns how many rows it inserted. Running it again inserts nothing (server_credits_once).
+-- Inserts the chest (one Gold credit, one potion credit and one XP elixir credit) for every qualifying account. Returns how many rows it inserted. Running it again inserts nothing (server_credits_once).
 create or replace function arena_private.grant_pioneer_credits(p_reset_at timestamptz)
 returns integer
 language plpgsql
@@ -111,7 +112,8 @@ begin
     cross join (
       values
         ('gold'::text, null::text, (v_kit ->> 'gold')::integer, 'pioneer-gold'::text),
-        ('consumable'::text, v_kit ->> 'potion_id', (v_kit ->> 'potion_amount')::integer, 'pioneer-potion'::text)
+        ('consumable'::text, v_kit ->> 'potion_id', (v_kit ->> 'potion_amount')::integer, 'pioneer-potion'::text),
+        ('consumable'::text, v_kit ->> 'xp_id', (v_kit ->> 'xp_amount')::integer, 'pioneer-xp'::text)
     ) as c (kind, item_id, amount, source_ref)
     on conflict on constraint server_credits_once do nothing
     returning 1

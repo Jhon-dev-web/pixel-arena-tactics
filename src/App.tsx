@@ -49,7 +49,7 @@ import { fetchReferralStatus } from './lib/referral';
 import { InvitesPage } from './components/InvitesPanel';
 import { applyReferralCosmetics } from './game/referralRewards';
 import { applyServerCredits } from './game/promoRewards';
-import { isPioneerCredit } from './game/pioneerKit';
+import { isPioneerCredit, PIONEER_KIT } from './game/pioneerKit';
 import { promoRewardsToast } from './game/promoText';
 import { fetchCreditsToApply } from './lib/serverCredits';
 import { getServerResetAt, needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
@@ -1722,8 +1722,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           const parts: string[] = [];
           if (chest.length > 0) {
             const gold = chest.filter((c) => c.kind === 'gold').reduce((n, c) => n + c.amount, 0);
-            const potions = chest.filter((c) => c.kind === 'consumable').reduce((n, c) => n + c.amount, 0);
-            parts.push(t('leagueReset.chestToast', { gold: fmtNum(gold), potions: fmtNum(potions) }));
+            const potions = chest.filter((c) => c.kind === 'consumable' && c.itemId === PIONEER_KIT.potionId).reduce((n, c) => n + c.amount, 0);
+            const xp = chest.filter((c) => c.kind === 'consumable' && c.itemId === PIONEER_KIT.xpId).reduce((n, c) => n + c.amount, 0);
+            parts.push(t('leagueReset.chestToast', { gold: fmtNum(gold), potions: fmtNum(potions), xp: fmtNum(xp) }));
           }
           if (rest.length > 0) parts.push(promoRewardsToast(rest.map((c) => ({ kind: c.kind, itemId: c.itemId, amount: c.amount }))));
           commitCreditsRef.current(next, parts.join(' · '));

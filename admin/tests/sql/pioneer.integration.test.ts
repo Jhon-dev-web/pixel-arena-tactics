@@ -58,12 +58,13 @@ describe('when the League opens (reset_at is stamped)', () => {
     await snap(LATE, 'ok', 30, "now() + interval '5 minutes'");
   }, 60_000);
 
-  test('a level 10+ account with an accepted snapshot gets exactly one Gold credit and one potion credit, source pioneer', async () => {
+  test('a level 10+ account with an accepted snapshot gets exactly one Gold, one potion and one XP elixir credit, source pioneer', async () => {
     for (const u of [VET, EDGE, MIXED]) {
       const rows = await credits(u);
       expect(rows.map((r) => [r.kind, r.item_id, r.amount, r.source, r.source_ref]), u).toEqual([
         ['gold', null, 500, 'pioneer', 'pioneer-gold'],
         ['consumable', 'small_hp', 10, 'pioneer', 'pioneer-potion'],
+        ['consumable', 'knowledge_elixir', 1, 'pioneer', 'pioneer-xp'],
       ]);
       expect(rows.every((r) => r.claimed_at === null && r.counted_at === null)).toBe(true);
     }
@@ -71,7 +72,7 @@ describe('when the League opens (reset_at is stamped)', () => {
 
   test('level below 10, flagged / rejected only, no snapshot and post-reset accounts get nothing', async () => {
     for (const u of [LOW, FLAGGED, REJECTED, NONE, LATE]) expect(await credits(u), u).toEqual([]);
-    expect(await pioneerRows()).toBe(6);
+    expect(await pioneerRows()).toBe(9);
   });
 
   test('the title / frame question (my_pioneer) follows the same rule', async () => {
@@ -83,10 +84,10 @@ describe('when the League opens (reset_at is stamped)', () => {
   test('firing again gives no duplicates (server_credits_once), and the stamp itself cannot move', async () => {
     const reset = (await db.query<any>('select reset_at from arena_private.season_goal where id')).rows[0].reset_at;
     expect((await db.query<any>(`select arena_private.grant_pioneer_credits($1::timestamptz) as r`, [reset])).rows[0].r).toBe(0);
-    expect((await credits(VET)).length).toBe(2);
-    expect((await credits(MIXED)).length).toBe(2);
+    expect((await credits(VET)).length).toBe(3);
+    expect((await credits(MIXED)).length).toBe(3);
     await expect(db.query(`update arena_private.season_goal set reset_at = now()`)).rejects.toThrow(/LEAGUE_RESET_IS_SET_ONCE/);
-    expect(await pioneerRows()).toBe(6);
+    expect(await pioneerRows()).toBe(9);
   });
 
   test('the table refuses a hand-made duplicate of a pioneer credit and an unknown source', async () => {
@@ -97,13 +98,14 @@ describe('when the League opens (reset_at is stamped)', () => {
   test('the player claims the chest once; the audit counts it so the balance jump never flags him', async () => {
     const got = await claim(VET);
     expect(got.map((r) => [r.kind, r.item_id, r.amount, r.source_ref]).sort()).toEqual([
+      ['consumable', 'knowledge_elixir', 1, 'pioneer-xp'],
       ['consumable', 'small_hp', 10, 'pioneer-potion'],
       ['gold', null, 500, 'pioneer-gold'],
     ]);
     expect(await claim(VET)).toEqual([]); // a second claim hands over nothing
     const p = await pending(VET);
     expect(p.gold).toBe(500);
-    expect(p.consumable).toBe(10);
+    expect(p.consumable).toBe(11);
     // a player with nothing owed claims nothing, and one player cannot claim another's chest
     expect(await claim(LOW)).toEqual([]);
     expect((await credits(EDGE)).every((r) => r.claimed_at === null)).toBe(true);

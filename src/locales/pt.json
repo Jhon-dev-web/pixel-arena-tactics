@@ -18,8 +18,8 @@
     "title": "A Liga começou. Todos largaram juntos.",
     "what": "A pré-temporada era um teste aberto. Agora que a Liga da Temporada começou, todos os heróis online recomeçaram do zero, no mesmo instante: ninguém leva vantagem do que fez antes.",
     "kept": "Continuam com você: a sua conta, o seu nome e o Passe do Aventureiro. O herói de antes ficou guardado só neste aparelho, como lembrança, e não pode ser trazido de volta para o jogo online.",
-    "pioneer": "Obrigado por testar! Você recebeu o Kit Pioneiro: o título Pioneiro e a Moldura de Pioneiro (só enfeite, sem atributos) e um baú inicial com {gold} de Ouro e {potions} poções de cura.",
-    "chestToast": "Baú do Kit Pioneiro: +{gold} de Ouro e +{potions} poções de cura.",
+    "pioneer": "Obrigado por testar! Você recebeu o Kit Pioneiro: o título Pioneiro e a Moldura de Pioneiro (só enfeite, sem atributos) e um baú inicial com {gold} de Ouro, {potions} poções de cura e {xp} Elixir do Conhecimento.",
+    "chestToast": "Baú do Kit Pioneiro: +{gold} de Ouro, +{potions} poções de cura e +{xp} Elixir do Conhecimento.",
     "cta": "Vamos começar"
   },
   "welcome": {

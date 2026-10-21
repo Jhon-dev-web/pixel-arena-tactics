@@ -70,9 +70,9 @@ describe('Pioneer kit: title and frame (cosmetic, client side)', () => {
 
 describe('Pioneer kit: starter chest (server credits, migration 0033)', () => {
   it('the TS constants and the migration agree (the ONE server place is arena_private.pioneer_kit())', () => {
-    const m = /jsonb_build_object\('min_level', (\d+), 'gold', (\d+), 'potion_id', '(\w+)', 'potion_amount', (\d+)\)/.exec(sql);
+    const m = /jsonb_build_object\('min_level', (\d+), 'gold', (\d+), 'potion_id', '(\w+)', 'potion_amount', (\d+), 'xp_id', '(\w+)', 'xp_amount', (\d+)\)/.exec(sql);
     expect(m).not.toBeNull();
-    expect({ minLevel: Number(m![1]), gold: Number(m![2]), potionId: m![3], potionAmount: Number(m![4]) }).toEqual(PIONEER_KIT);
+    expect({ minLevel: Number(m![1]), gold: Number(m![2]), potionId: m![3], potionAmount: Number(m![4]), xpId: m![5], xpAmount: Number(m![6]) }).toEqual(PIONEER_KIT);
     // the source refs written by the grant function are the ones the game recognises
     for (const ref of PIONEER_SOURCE_REFS) expect(sql).toContain(`'${ref}'`);
     expect(sql).toContain("source in ('promo', 'pioneer')");
