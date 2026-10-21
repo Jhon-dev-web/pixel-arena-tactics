@@ -159,6 +159,11 @@ describe('plausibility: time and units', () => {
     const unknown = await s.claim({ requestId: 'hunt:x:1', activity: 'hunt', place: 'moon_base', durationMs: HOUR, units: { leather_scrap: 5 } });
     expect(unknown.status).toBe(400);
     expect(unknown.body.reason).toBe('unknown_place');
+    for (const place of ['constructor', '__proto__', 'toString']) {
+      const proto = await s.claim({ requestId: `hunt:p:${place}`, activity: 'hunt', place, durationMs: HOUR, units: { leather_scrap: 5 } });
+      expect(proto.status).toBe(400);
+      expect(proto.body.reason).toBe('unknown_place');
+    }
 
     const young = makeMaterialServer({ rng: NEVER });
     young.store.items.accountCreatedMs = young.store.nowMs - DAY; // one day old

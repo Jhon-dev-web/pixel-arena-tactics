@@ -103,7 +103,7 @@ export async function handleMaterialClaim(req: Request, deps: MaterialDeps): Pro
     let timeBucket: { bucket: string; perHour: number; capacity: number };
     if (body.activity === 'hunt') {
       const zone = HUNT_ZONES.find((z) => z.id === body.place);
-      const ceilings = HUNT_CEILING[body.place];
+      const ceilings = Object.prototype.hasOwnProperty.call(HUNT_CEILING, body.place) ? HUNT_CEILING[body.place] : undefined;
       if (!zone || !ceilings) return refuse('unknown_place', null);
       if (tooEarly(Math.max(daysAtFloor(zone.unlockFloor), daysAtLevel(zone.unlockLevel)))) return refuse('too_early', 'MATERIAL_ZONE_TOO_EARLY', { zoneId: zone.id, ageDays: Math.floor(ageDays) });
       ceilingPerHour = (id) => ceilings[id] ?? null;

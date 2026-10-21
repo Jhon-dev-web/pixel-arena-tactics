@@ -406,6 +406,22 @@ describe('the minting limits close the bot gap (Rodada 22)', () => {
 });
 
 describe('gold pouches', () => {
+  it('refuses ids that only exist on Object.prototype (constructor, __proto__, toString) with a 400', async () => {
+    const s = oldServer();
+    s.store.accountCreatedMs = s.store.nowMs - 30 * DAY;
+    let n = 100;
+    for (const id of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']) {
+      const pouch = await s.mint({ kind: 'pouch', requestId: REQ(n++), pouchId: id });
+      expect(pouch.status).toBe(400);
+      expect(pouch.body).toEqual({ ok: false, reason: 'unknown_template' });
+      const forge = await s.mint({ kind: 'forge', requestId: REQ(n++), templateId: id });
+      expect(forge.status).toBe(400);
+      expect(forge.body).toEqual({ ok: false, reason: 'unknown_template' });
+    }
+    expect(s.store.certs).toHaveLength(0);
+    expect(s.store.buckets.size).toBe(0); // nothing was charged for them
+  });
+
   it('certifies a pouch with its face value', async () => {
     const s = oldServer();
     s.store.accountCreatedMs = s.store.nowMs - 30 * DAY;

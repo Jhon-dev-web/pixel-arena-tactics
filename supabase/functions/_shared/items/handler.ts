@@ -178,7 +178,8 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
     let answered: { template: StoredTemplate; certificates: NewCertificate[]; caps: DayCap[]; burnIds: string[]; source: NewCertificate['source']; pity?: { expect: number; next: number } };
 
     if (body.kind === 'forge') {
-      const tpl = FORGE_TEMPLATES[body.templateId];
+      // own keys only: an id like 'constructor' or '__proto__' must not resolve to something on Object.prototype
+      const tpl = Object.prototype.hasOwnProperty.call(FORGE_TEMPLATES, body.templateId) ? FORGE_TEMPLATES[body.templateId] : undefined;
       if (!tpl) return refuse('unknown_template', null);
       if (tooEarly(daysAtLevel(tpl.levelGate))) return refuse('too_early', 'FORGE_TOO_EARLY', { templateId: body.templateId, ageDays: Math.floor(ageDays) });
       if (body.seal && !(await deps.store.hasActivePass(userId))) return refuse('seal_pass_required', 'SEAL_WITHOUT_PASS', { templateId: body.templateId });
@@ -238,7 +239,7 @@ export async function handleMintItem(req: Request, deps: ItemDeps): Promise<Resp
       const drops = rollBossUniques(body.stages.slice(0, allowed), luck, (id) => UNIQUE_TEMPLATES[id]?.tier ?? 0, deps.rng);
       answered = await uniqueAnswer('boss_drop', drops, allowed);
     } else {
-      const face = (POUCH_TABLE.faces as Record<string, number>)[body.pouchId];
+      const face = Object.prototype.hasOwnProperty.call(POUCH_TABLE.faces, body.pouchId) ? (POUCH_TABLE.faces as Record<string, number>)[body.pouchId] : undefined;
       if (face === undefined) return refuse('unknown_template', null);
       const takes: TokenTake[] = [
         { bucket: 'pouch_count', cost: 1, ratePerHour: ITEM_BOUNDS.pouchCountPerHour, capacity: ITEM_BOUNDS.pouchCountCapacity },

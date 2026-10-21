@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MarketApi } from '../../game/market/api';
 import { paymentDone, payReservationFromWallet, submitWithPolling } from '../../game/market/payFlow';
+import { PAUSED_RETRY_MS, clearPending, isHeldReason, isPausedReason, loadPending, marketPendingKey, savePending } from '../../game/market/pendingPayment';
 import { explorerTxUrl } from '../../game/market/wallet';
 import { mt } from '../../locales/market';
 import type { ReservationView } from '../../../supabase/functions/_shared/market/types';
@@ -52,6 +53,8 @@ export default function ReservationPanel({
   const [now, setNow] = useState(() => Date.now());
   const [note, setNote] = useState<string | null>(null);
   const alive = useRef(true);
+  const retryTimer = useRef<number | null>(null);
+  const resumed = useRef<string | null>(null);
   const watched = useOpenAccount(walletAddress !== null);
 
   useEffect(() => {
@@ -60,19 +63,52 @@ export default function ReservationPanel({
     return () => {
       alive.current = false;
       window.clearInterval(id);
+      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
     };
   }, []);
   useEffect(() => setRes(initial), [initial]);
 
+  // A signature remembered from before (the page was reloaded or the screen closed while the payment was being confirmed): the verification resumes by itself.
+  useEffect(() => {
+    if (resumed.current === res.id) return;
+    const key = marketPendingKey(res.id);
+    const saved = loadPending(key);
+    if (!saved) return;
+    if (res.status === 'paid' || res.status === 'refund_due' || res.status === 'refunded' || res.status === 'cancelled' || paymentDone(res)) {
+      clearPending(key);
+      return;
+    }
+    resumed.current = res.id;
+    setPay((s) => ({ ...s, signature: saved.signature }));
+    void verify(saved.signature);
+    // verify is recreated every render; the resume is keyed by the reservation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [res.id]);
+
   const patch = (p: Partial<PayState>) => alive.current && setPay((s) => ({ ...s, ...p }));
 
-  const verify = async (signature: string) => {
+  const verify = async (signature: string): Promise<void> => {
+    // the wallet already sent it (or the player pasted it): keep the signature until the server gives a final answer, so a reload or a pause never loses it
+    const pendingKey = marketPendingKey(res.id);
+    savePending(pendingKey, signature, walletAddress ?? undefined);
+    if (retryTimer.current !== null) {
+      window.clearTimeout(retryTimer.current);
+      retryTimer.current = null;
+    }
     patch({ busy: true, message: mt('pay.checking'), error: false });
     const out = await submitWithPolling(api, res.id, signature, {
       isCancelled: () => !alive.current,
       onPending: (p) => patch({ message: p.reason === 'unconfirmed' ? mt('pay.confirming') : mt('pay.fail.not_found_tx'), error: false }),
     }).catch(() => ({ kind: 'unreachable' as const }));
     if (!alive.current) return;
+    if (out.kind === 'recorded' || (out.kind === 'refused' && !isHeldReason(out.reason))) clearPending(pendingKey);
+    if (out.kind === 'refused' && isPausedReason(out.reason)) {
+      // the payment is on the network and saved here: ask again later, on its own
+      retryTimer.current = window.setTimeout(() => {
+        retryTimer.current = null;
+        if (alive.current) void verify(signature);
+      }, PAUSED_RETRY_MS);
+    }
     if (out.kind === 'recorded') {
       if (out.reservation) setRes(out.reservation);
       patch({ busy: false, message: null, error: false });
@@ -92,6 +128,7 @@ export default function ReservationPanel({
       patch({ busy: false, message: r.failure === 'wrongAccount' && walletAddress ? mismatchText(walletAddress, r.open, watched.walletName) : mt(PAY_FAILURE_KEY[r.failure]), error: true });
       return;
     }
+    savePending(marketPendingKey(res.id), r.signature, walletAddress);
     patch({ signature: r.signature, message: mt('pay.sentHash') });
     await verify(r.signature);
   };

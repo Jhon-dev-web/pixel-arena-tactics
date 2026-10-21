@@ -3,7 +3,7 @@ import PixelIcon from './PixelIcon';
 import type { UiIconName } from './uiIcons';
 import type { MarketOverview, ReservationView } from '../../supabase/functions/_shared/market/types';
 import { playerLevel, type SaveData } from '../game/engine';
-import { MarketUnreachable, PublicListing, fetchPublicListings, marketApi } from '../game/market/api';
+import { PublicListing, fetchPublicListings, marketApi } from '../game/market/api';
 import { syncMarket } from '../game/market/sync';
 import { syncMaterials } from '../game/market/materialSync';
 import { activeLocale, t } from '../locales';
@@ -57,8 +57,8 @@ export default function MarketScreen({ save, host, pick = null, onPickUsed }: { 
         setActive((cur) => cur ?? ov.reservation);
       }
       setListings(pub);
-    } catch (err) {
-      setError(err instanceof MarketUnreachable ? mt('unreachable') : mt('unreachable'));
+    } catch {
+      setError(mt('unreachable')); // any failure of the two reads (network, parsing) reads the same to the player: nothing changed, try again
     }
     setLoading(false);
   }, []);

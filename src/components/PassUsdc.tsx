@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { mt } from '../locales/market';
 import { MarketUnreachable, PassPlan, UnmatchedPayment, marketApi } from '../game/market/api';
 import { runLinkFlow } from '../game/market/linkFlow';
 import { RETRY_REASONS } from '../game/market/payFlow';
 import { payPassFromWallet } from '../game/market/passPay';
+import { PASS_PENDING_KEY, PAUSED_RETRY_MS, clearPending, isHeldReason, isPausedReason, loadPending, savePending } from '../game/market/pendingPayment';
 import { listSolWallets } from '../game/market/wallet';
 import { AccountMismatch } from './market/AccountMismatch';
 import { mismatchText, useOpenAccount } from './market/openAccount';
@@ -95,19 +96,39 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
     setBusy(false);
   };
 
-  const submit = async (sig: string) => {
+  // the payment is on the network but the server has not confirmed it: the signature stays saved in this browser until the server gives a final answer
+  const retryTimer = useRef<number | null>(null);
+  const grantedRef = useRef(onGranted);
+  useEffect(() => {
+    grantedRef.current = onGranted;
+  }, [onGranted]);
+  useEffect(
+    () => () => {
+      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
+    },
+    [],
+  );
+
+  const submit = async (sig: string, wallet?: string): Promise<void> => {
+    savePending(PASS_PENDING_KEY, sig, wallet ?? plan?.buyerAddress);
+    if (retryTimer.current !== null) {
+      window.clearTimeout(retryTimer.current);
+      retryTimer.current = null;
+    }
     setBusy(true);
     say(mt('pay.checking'));
     try {
       for (let i = 0; i < 36; i++) {
         const r = await marketApi.passSubmit(sig);
         if (!('reason' in r)) {
+          clearPending(PASS_PENDING_KEY);
           say(mt('pass.granted'));
-          onGranted();
+          grantedRef.current();
           setBusy(false);
           return;
         }
         if (r.reason === 'payment_unmatched') {
+          clearPending(PASS_PENDING_KEY); // queued for the owner: the code below is what the player keeps
           // it reached the game's wallet but could not be linked to this purchase: recorded for the owner, the signature is the code
           const code = typeof (r.extra as { code?: unknown } | undefined)?.code === 'string' ? String((r.extra as { code: string }).code) : sig;
           setMessage(null); // the waiting list below shows the code
@@ -116,11 +137,27 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
           return;
         }
         if (r.reason === 'already_owned') {
+          clearPending(PASS_PENDING_KEY);
           say((r.extra as { refundDue?: boolean } | undefined)?.refundDue ? mt('pass.alreadyRefund') : mt('pass.already'), !!(r.extra as { refundDue?: boolean } | undefined)?.refundDue);
           setBusy(false);
           return;
         }
         if (!RETRY_REASONS.has(r.reason)) {
+          if (isHeldReason(r.reason)) {
+            // paused or busy: the payment may be perfectly good, so the signature stays saved and is asked again later
+            const key = `pay.fail.${r.reason}`;
+            const text = mt(key);
+            say(text === key ? mt('pass.fail.generic') : text);
+            if (isPausedReason(r.reason)) {
+              retryTimer.current = window.setTimeout(() => {
+                retryTimer.current = null;
+                void submit(sig, wallet);
+              }, PAUSED_RETRY_MS);
+            }
+            setBusy(false);
+            return;
+          }
+          if (r.reason !== 'no_intent') clearPending(PASS_PENDING_KEY); // without a started purchase the server cannot match it yet: keep it
           const key = `pay.fail.${r.reason}`;
           const text = mt(key);
           say(r.reason === 'no_intent' ? mt('pass.noIntent') : text === key ? mt('pass.fail.generic') : text, true);
@@ -135,6 +172,31 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
     }
     setBusy(false);
   };
+
+  // A signature remembered from before (the page was reloaded or the screen closed while the payment was being confirmed): the verification resumes by itself, for the same linked wallet only.
+  useEffect(() => {
+    const saved = loadPending(PASS_PENDING_KEY);
+    if (!saved) return;
+    let alive = true;
+    void (async () => {
+      try {
+        if (saved.wallet) {
+          const st = await marketApi.walletStatus();
+          if (!alive || 'reason' in st || st.wallet?.address !== saved.wallet) return;
+        }
+        setOpen(true);
+        setSignature(saved.signature);
+        await submit(saved.signature, saved.wallet);
+      } catch {
+        /* the next time the screen opens it tries again */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // runs once when the Pass screen opens; submit is recreated every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const watched = useOpenAccount(plan !== null);
 
@@ -170,7 +232,7 @@ export default function PassUsdc({ onGranted, autoOpen = false }: { onGranted: (
       return;
     }
     setSignature(paid.signature);
-    await submit(paid.signature);
+    await submit(paid.signature, plan.buyerAddress);
   };
 
   if (!open) {
