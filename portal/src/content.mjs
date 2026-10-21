@@ -465,13 +465,13 @@ export const home = {
     lengthLabel: l('Temporada 1', 'Season 1'), length: l('60 dias de disputa', '60 days of contest'), cta: l('Ver a Temporada', 'See the Season'), art: l('Taça dourada da Temporada', 'Golden Season trophy'),
   },
   pass: {
-    eyebrow: l('Passe', 'Pass'), title: l('Passe do Aventureiro', 'Adventurer’s Pass'), tagline: l('Vale para a pré-temporada e toda a Temporada 1.', 'Counts for the pre-season and all of Season 1.'),
+    eyebrow: l('Passe', 'Pass'), title: l('Passe de Aventureiro', 'Adventurer’s Pass'), tagline: l('Vale para a pré-temporada e toda a Temporada 1.', 'Counts for the pre-season and all of Season 1.'),
     bullets: [
       { icon: 'rise', title: l('Bônus de progresso', 'Progress bonus'), body: l('Mais Ouro e materiais, reparo mais barato.', 'More Gold and materials, cheaper repair.') },
       { icon: 'shield', title: l('Mais conforto', 'More comfort'), body: l('Mais espaço e mais tempo acumulando com o jogo fechado.', 'More room and longer accumulation while the game is closed.') },
       { icon: 'crown', title: l('Acesso à Temporada', 'Season access'), body: l('Só quem tem o Passe disputa o ranking e o prêmio.', 'Only Pass owners compete for the ranking and the prize.') },
     ],
-    once: l('Pagamento único', 'One-time payment'), saleLabel: l('Venda', 'Sale'), soon: l('Em breve', 'Soon'), cta: l('Ver benefícios do Passe', 'See the Pass benefits'), art: l('Carta dourada do Passe do Aventureiro', 'Golden card of the Adventurer’s Pass'),
+    once: l('Pagamento único', 'One-time payment'), saleLabel: l('Venda', 'Sale'), soon: l('Em breve', 'Soon'), cta: l('Ver benefícios do Passe', 'See the Pass benefits'), art: l('Carta dourada do Passe de Aventureiro', 'Golden card of the Adventurer’s Pass'),
   },
   features: [
     { icon: 'hero', title: l('Progressão idle', 'Idle progression'), body: l('Seu herói evolui, mesmo offline.', 'Your hero grows, even offline.') },
