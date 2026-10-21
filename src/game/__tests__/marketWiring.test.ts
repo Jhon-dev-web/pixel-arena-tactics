@@ -50,7 +50,7 @@ describe('the desktop build', () => {
     for (const lazyImport of ["import('./components/MarketScreen')", "import('./components/market/MarketSync')", "import('./components/PassUsdc')"]) {
       expect(app).toMatch(new RegExp(`MARKET_BUILD \\? lazy\\(\\(\\) => ${lazyImport.replace(/[().]/g, '\\$&')}\\) : null`));
     }
-    const staticMarket = app.split('\n').filter((l) => /^import .* from '.*(market|Market|PassUsdc)/.test(l));
+    const staticMarket = app.split(/\r?\n/).filter((l) => /^import .* from '.*(market|Market|PassUsdc)/.test(l));
     expect(staticMarket).toEqual([
       "import { marketEnabled } from './game/marketFlag';",
       "import type { MarketHost } from './components/market/marketDeps';",
