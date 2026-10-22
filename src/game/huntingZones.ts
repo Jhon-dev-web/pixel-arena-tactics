@@ -100,7 +100,13 @@ export interface HuntingZoneDef {
   enemyId: HuntingEnemyId;
   cp: number;
   goldPerHour: number;
-  xpPerHour: number;
+  // Rodada 31: the hero XP of ONE kill of this zone's monster at sub-level 1, Raso depth, before the depth (xpMultiplier), the size of the monster at its sub-level (the HP growth), the zone's own
+  // sub-level bonus (xpPerSubLevel), the Relic and the Knowledge Elixir. The XP of a Hunting session is the sum of the XP of its kills (huntCombat.ts creditFight), so a hero that kills faster earns more
+  // (until the pace fraction of huntEconomy.ts trims it). zoneReferenceXpPerHour() is what an hour at the reference pace pays.
+  xpPerKill: number;
+  // Kills an hour of the zone's reference monster (sub-level 1) by a hero exactly at the zone's recommended CP, as measured on the ladder builds of scripts/sim (npm run sim:xpbuilds prints it): the pace at which
+  // a hero earns exactly the zone's reference rate (xpPerKill x xpRefKph). A slower hero earns in proportion, a faster one more, with diminishing returns (huntEconomy.ts xpPaceFractionForFight).
+  xpRefKph: number;
   drops: HuntingDrop[];
   offlineCapHours: number;
   unlockFloor: number;
@@ -233,7 +239,7 @@ export function effectiveDropChance(entry: HuntingDrop, depth: HuntingDepth, sub
 // job belongs entirely to time-capped Expeditions. Hunting stays a pure crafting-input + character
 // XP faucet: gold here is symbolic pocket change (a few coins/hour), never worth farming for wealth.
 // Materials only ever drop here — never in the Dungeon — and accrue slowly by design:
-// xpPerHour (1.75k-6.95k) is still large relative to goldPerHour. Balance pass 2026-10-10 (docs/BALANCE_CHANGES.md): it was 17.5k-69.5k, which
+// the XP of an hour of kills at the reference pace (xpPerKill x xpRefKph, 1.75k-8.8k since Rodada 31; it was the xpPerHour field) is still large relative to goldPerHour. Balance pass 2026-10-10 (docs/BALANCE_CHANGES.md): it was 17.5k-69.5k, which
 // put a fresh hero at level 39 after ONE 4 h hunt and made the recipe level gates (10/20/25) meaningless; all four zones were scaled by the
 // same 0.1 so their ratios are unchanged. Reaching character level 90 needs ~168M XP; at these rates Hunting is a minor share of it and the
 // delivery orders (deliveries.xpPerHour*, untouched) carry most of the idle XP. Dungeon farming stays pointless as an XP source — Dungeon still grants no material/XP idle
@@ -264,7 +270,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     shallowEnemyHp: 180,
     shallowEnemyDmg: 4,
     goldPerHour: 3,
-    xpPerHour: 1750,
+    xpPerKill: 7.1,
+    xpRefKph: 210,
     drops: [
       { material: 'leather_scrap', rarity: 'common', chance: 0.25, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.08, qty: 1 },
@@ -290,7 +297,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'blood_monster',
     cp: 492,
     goldPerHour: 5,
-    xpPerHour: 2900,
+    xpPerKill: 16.4,
+    xpRefKph: 150,
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.28, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.09, qty: 1 },
@@ -312,7 +320,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'rift_fiend',
     cp: 1068,
     goldPerHour: 8,
-    xpPerHour: 6000,
+    xpPerKill: 40.8,
+    xpRefKph: 125,
     drops: [
       { material: 'leather_scrap', rarity: 'common', chance: 0.32, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.105, qty: 1 },
@@ -336,7 +345,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     enemyId: 'blood_abomination',
     cp: 1607,
     goldPerHour: 12,
-    xpPerHour: 8800,
+    xpPerKill: 51.6,
+    xpRefKph: 145,
     drops: [
       { material: 'bone_fragment', rarity: 'common', chance: 0.12, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.036, qty: 1 },
@@ -361,6 +371,12 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     baseEnemyDmg: 28,
   },
 ];
+
+// The XP an hour of Hunting pays a hero that kills exactly at the reference pace (xpRefKph kills an hour of the reference monster, no bonus): the yardstick the zone
+// numbers were set by (it was the zone's xpPerHour before Rodada 31, when XP was paid by fight time) and the base the server bounds use.
+export function zoneReferenceXpPerHour(zone: HuntingZoneDef): number {
+  return zone.xpPerKill * zone.xpRefKph;
+}
 
 export function getHuntingZone(id: string): HuntingZoneDef | undefined {
   return HUNTING_ZONES.find((z) => z.id === id);

@@ -989,9 +989,9 @@ describe('zone level gates in the XP bound (Rodada 22)', () => {
   it('a hero under the level of a zone is judged by the best zone his level has opened, one at the level by that zone', () => {
     // floor 80 opens the last zone by the floor; the level must open it too
     expect(xpPerHourAt(80, 59)).toBeLessThan(xpPerHourAt(80, 60));
-    expect(xpPerHourAt(80, 59)).toBeCloseTo(6000 * BOUNDS.huntXpFactor, 6); // zone 3 (level 40)
-    expect(xpPerHourAt(80, 39)).toBeCloseTo(2900 * BOUNDS.huntXpFactor, 6); // zone 2
-    expect(xpPerHourAt(80, 60)).toBeCloseTo(8800 * BOUNDS.huntXpFactor, 6); // 8,750 until Rodada 26, 10,000 until Rodada 24
+    expect(xpPerHourAt(80, 59)).toBeCloseTo(6120 * BOUNDS.huntXpFactor, 6); // zone 3 (level 40); Rodada 31: the zone's reference-pace rate x the pace cap (it was 6,000 by fight time)
+    expect(xpPerHourAt(80, 39)).toBeCloseTo(2952 * BOUNDS.huntXpFactor, 6); // zone 2 (2,900 by fight time)
+    expect(xpPerHourAt(80, 60)).toBeCloseTo(8978 * BOUNDS.huntXpFactor, 6); // 8,800 by fight time until Rodada 31, 8,750 until Rodada 26, 10,000 until Rodada 24
     expect(xpPerHourAt(80)).toBe(xpPerHourAt(80, 100)); // without a level: the old, looser check
     expect(burstXp(80, 59)).toBeLessThan(burstXp(80, 60));
   });

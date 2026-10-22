@@ -3,7 +3,7 @@ import { UniqueDrop, rollUniqueDrop } from './uniques';
 import { HuntingDrop, HuntingDepth, HuntingUnique, effectiveDropChance } from './huntingZones';
 import { BurnState, StrikeStats, StrikeTally, applyDamageReduction, bastionHp, bleedSpec, bossDamage, echoDamage, furyHitDamage, igniteBurn, nextBurnTickAt, newStrikeState, reflectedDamage, regenAmount, registerBlock, resolveHeroHit, tally, tickBurn } from './derivedStats';
 import T from './tunables';
-import { economicRollFractionForFight } from './huntEconomy';
+import { economicRollFractionForFight, xpPaceFractionForFight } from './huntEconomy';
 import { inRelativeWindows } from './huntSession';
 import type { HuntEventWindow } from './leagueEvents';
 
@@ -50,7 +50,7 @@ export interface HuntCombatBuild {
   reflect: number;
   hpRegenPct: number;
   goldBonusPct?: number; // gear gold bonus (CombatStats.goldBonus): raises the Gold of the fight time, not the XP or the drops
-  xpBonusPct?: number; // the Season Relic (CombatStats.xpBonus): raises the character XP of the fight time, not the Gold or the drops
+  xpBonusPct?: number; // the Season Relic (CombatStats.xpBonus): raises the character XP of every kill, not the Gold or the drops
   // Hero skills (heroSkills.ts), all optional = the hero has none: Sangria (a second damage-over-time beside burn), Golpe Devastador (every Nth hit), Bloqueio
   // (rolled on its OWN seeded stream, so the fight, crit, drop and promotion outcomes of a hero without it are bit-for-bit unchanged), Ultimo Bastiao, Faro (material
   // yield) and Sorte Grande (unique chance; only the threshold the unique draw is compared against changes, never the stream).
@@ -71,8 +71,12 @@ export interface HuntZoneCombatCfg {
   dmgGrowth: number;
   depthMult: number; // shared hp/dmg multiplier for the chosen depth
   goldPerHour: number;
-  xpPerHour: number; // already includes the depth's xpMultiplier
-  // Rodada 22: extra XP per sub-level above 1 (0.02 = +2% a sub-level, +18% at 10), 0 / absent for every zone but the last. Applied to the fight time of each WON fight, by the
+  // Rodada 31: hero XP is paid PER KILL. XP of the zone's reference monster (sub-level 1 of the depth, HP = baseEnemyHp x depthMult), the zone's xpPerKill x the depth's xpMultiplier; a kill
+  // is worth that times hpRel = the HP of the enemy that fell / that reference HP (a bigger monster gives more: sub-level, League wave, Target), times (1 + xpPerSubLevel x (s - 1)) in the zones that pay
+  // extra for it; the pace fraction of huntEconomy.ts (xpPaceFractionForFight) then trims the kills of a hero that takes monster HP down much faster than xpRefKph. Zero = no XP (tests).
+  xpPerKill: number;
+  xpRefKph?: number; // kills/h of the reference monster by a hero exactly at the zone's recommended CP (the zone's xpRefKph); absent = T.hunting.xpReferenceKillsPerHour
+  // Rodada 22: extra XP per sub-level above 1 (0.02 = +2% a sub-level, +18% at 10), 0 / absent for every zone but the last. Applied to each kill, by the
   // sub-level of the enemy that was defeated (a promotion win counts at the new level), so a hero that only reaches sub-level 3 earns +4% and no more.
   xpPerSubLevel?: number;
   drops: HuntingDrop[];
@@ -100,7 +104,7 @@ export interface HuntTimeline {
   hasteWindows?: [number, number][];
   precisionWindows?: [number, number][];
   fortuneWindows?: [number, number][];
-  // Rodada 20: the Knowledge Elixir adds `xpBuffPct` to the XP of the fight time its window covers (a fight counts by the moment it ENDS, like the Fortune Tonic's Gold).
+  // Rodada 20: the Knowledge Elixir adds `xpBuffPct` to the XP of the kills its window covers (a kill counts by the moment it ENDS, like the Fortune Tonic's Gold).
   knowledgeWindows?: [number, number][];
   xpBuffPct?: number;
   reductionStone?: number;
@@ -174,8 +178,8 @@ export interface HuntSessionResult {
   kills: number; // fights won this session (promotion wins included) - display only, nothing else reads it
   defeats: number; // fights lost this session (promotion losses included) - display only
   potionsUsed: HuntPotionStock;
-  fightTimeUsedMs: number; // total ms across every COMPLETED (won) fight — the only time that earns reward
-  xpFightMs: number; // the same fight time weighted by the XP of its sub-level (equal to fightTimeUsedMs for a zone without xpPerSubLevel)
+  fightTimeUsedMs: number; // total ms across every COMPLETED (won) fight — the time that earns Gold
+  xpBase: number; // the XP of the kills of the session before the Knowledge Elixir and the Relic / Aprendiz Veloz bonus (float; xpReady is its floor after them)
   xpReady: number;
   goldReady: number;
   drops: Partial<Record<MaterialId, number>>;
@@ -224,14 +228,14 @@ export function simulateHuntingSession(
   let timeLeft = sessionMs;
   let fightTimeUsedMs = 0;
   let fortuneFightMs = 0; // fight time that ended inside a Fortune Tonic window (extra gold)
-  let xpFightMs = 0; // fight time x the XP of the sub-level it was won at (zoneCfg.xpPerSubLevel) and of the League event running
+  let xpBase = 0; // the XP of every kill, summed (see creditFight)
   // League events: the run of fights won since the last defeat (the streak and the wave), the fights won toward the next Target, and the buffs the Target gave in this session.
   let streak = 0;
   let eventWins = 0;
   const targetBuffs: { from: number; to: number; pct: number }[] = [];
   // The hero event window the moment `t` (session-relative ms) falls in, or undefined.
   const eventWindowAt = (t: number): HuntEventWindow | undefined => timeline?.eventWindows?.find((w) => w.from <= t && t < w.to);
-  let knowledgeXpFightMs = 0; // the same, for the part inside a Knowledge Elixir window
+  let knowledgeXp = 0; // the same, for the kills that ended inside a Knowledge Elixir window
   let potionCooldownUntil = 0;
   let ceiling = Math.min(promotion.maxLevel, Math.max(1, Math.floor(start.ceiling)));
   let promotionWins = ceiling >= promotion.maxLevel ? 0 : Math.max(0, Math.floor(start.promotionWins));
@@ -264,9 +268,12 @@ export function simulateHuntingSession(
     }
   };
 
-  // A won fight of `fightMs` at `subLevel`: its time goes to the reward (fightTimeUsedMs), to the Fortune / Knowledge windows it ended in, and weighted by the sub-level's XP.
+  // A won fight of `fightMs` at `subLevel` (the kill): its time goes to the Gold of the session and to the Fortune window it ended in, and the KILL pays its XP (Rodada 31).
+  // XP of a kill = the zone's xpPerKill x the monster's size (hpRel: its HP over the reference monster's: sub-level, League wave, Target) x the sub-level bonus of the zone x the League event bonus x the pace
+  // fraction (huntEconomy.ts xpPaceFractionForFight: 1 up to the reference pace, shrinking above it, so a build that kills several times faster than the reference earns only a
+  // bounded extra). A faster hero therefore earns proportionally more XP per hour, until the pace fraction takes over.
   // `timeLeft` is already reduced by the fight, so sessionMs - timeLeft is the moment it ended.
-  const creditFight = (fightMs: number, subLevel: number) => {
+  const creditFight = (fightMs: number, subLevel: number, hpRel: number) => {
     fightTimeUsedMs += fightMs;
     const at = sessionMs - timeLeft;
     let eventPct = 0;
@@ -277,10 +284,11 @@ export function simulateHuntingSession(
       for (const b of targetBuffs) if (b.from < at && at <= b.to) eventPct += b.pct;
       eventPct = Math.min(eventPct, timeline?.eventXpCap ?? 0.15);
     }
-    const weight = (1 + Math.max(0, zoneCfg.xpPerSubLevel ?? 0) * (Math.max(1, subLevel) - 1)) * (1 + eventPct);
-    xpFightMs += fightMs * weight;
+    const level = Math.max(1, subLevel);
+    const kill = zoneCfg.xpPerKill * hpRel * (1 + Math.max(0, zoneCfg.xpPerSubLevel ?? 0) * (level - 1)) * (1 + eventPct) * xpPaceFractionForFight(fightMs, hpRel, zoneCfg.xpRefKph);
+    xpBase += kill;
     if (timeline?.fortuneWindows && inRelativeWindows(timeline.fortuneWindows, at)) fortuneFightMs += fightMs;
-    if (timeline?.knowledgeWindows && inRelativeWindows(timeline.knowledgeWindows, at)) knowledgeXpFightMs += fightMs * weight; // fight time that ended inside a Knowledge Elixir window (extra XP)
+    if (timeline?.knowledgeWindows && inRelativeWindows(timeline.knowledgeWindows, at)) knowledgeXp += kill; // a kill that ended inside a Knowledge Elixir window (extra XP)
   };
 
   const tryAutoPotion = (now: number, hpRef: { hp: number }) => {
@@ -444,7 +452,7 @@ export function simulateHuntingSession(
     }
     timeLeft -= t;
     if (furyNext !== Infinity) furyLeft = Math.max(1, furyNext - t);
-    return { win: true, timeMs: t, hpAfter: hpRef.hp };
+    return { win: true, timeMs: t, hpAfter: hpRef.hp, hpRel: enemy.hp / Math.max(1, zoneCfg.baseEnemyHp * zoneCfg.depthMult) };
   };
 
   // The session starts directly at the saved ceiling — there is no climb and no free attempt at higher
@@ -458,7 +466,7 @@ export function simulateHuntingSession(
       promotionWins = 0;
       if (r.win) {
         kills++;
-        creditFight(r.timeMs, ceiling + 1);
+        creditFight(r.timeMs, ceiling + 1, r.hpRel);
         streak++;
         rollDropsForOneClear(ceiling + 1, r.timeMs);
         ceiling++;
@@ -479,7 +487,7 @@ export function simulateHuntingSession(
       eventWins = 0;
       if (r.win) {
         kills++;
-        creditFight(r.timeMs, ceiling);
+        creditFight(r.timeMs, ceiling, r.hpRel);
         streak++;
         const end = sessionMs - timeLeft;
         targetBuffs.push({ from: end, to: end + (ev.targetBuffHours ?? 0) * 3600 * 1000, pct: ev.targetBuffPct ?? 0 });
@@ -493,7 +501,7 @@ export function simulateHuntingSession(
     if (!r) break;
     if (r.win) {
       kills++;
-      creditFight(r.timeMs, ceiling);
+      creditFight(r.timeMs, ceiling, r.hpRel);
       streak++;
       if (ev?.targetEvery) eventWins++;
       rollDropsForOneClear(ceiling, r.timeMs);
@@ -516,8 +524,8 @@ export function simulateHuntingSession(
     defeats,
     potionsUsed,
     fightTimeUsedMs,
-    xpFightMs,
-    xpReady: Math.floor(((xpFightMs + knowledgeXpFightMs * (timeline?.xpBuffPct ?? 0)) / (3600 * 1000)) * zoneCfg.xpPerHour * (1 + (build.xpBonusPct ?? 0) / 100)),
+    xpBase,
+    xpReady: Math.floor((xpBase + knowledgeXp * (timeline?.xpBuffPct ?? 0)) * (1 + (build.xpBonusPct ?? 0) / 100)),
     goldReady: Math.floor((hours * (1 + (build.goldBonusPct ?? 0) / 100) + (fortuneFightMs / (3600 * 1000)) * (timeline?.fortuneGoldPct ?? 0)) * zoneCfg.goldPerHour),
     drops,
     uniques,

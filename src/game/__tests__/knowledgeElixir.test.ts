@@ -53,7 +53,7 @@ describe('the Knowledge Elixir: +25% Hunting XP for 4 hours, one at a time', () 
     expect(applyElixir(give(strong(), 0), 'knowledge_elixir', NOW)).toBeNull();
   });
 
-  it('adds exactly 25% to the Hunting XP of the fight time it covers, and nothing to Gold or drops', () => {
+  it('adds exactly 25% to the Hunting XP of the kills it covers, and nothing to Gold or drops', () => {
     const base = strong();
     const start = NOW - 3 * HOUR;
     const plain = applyHuntStart(base, 'blood_marsh', 'shallow', start)!;

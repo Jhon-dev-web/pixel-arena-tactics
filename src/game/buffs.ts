@@ -188,7 +188,7 @@ export interface TemporaryEffect {
   item: ConsumableId | null; // blessed comes from the Forge's blessed repair
   stat: EffectStat;
   // multiplier: multiplies the hit with the other damage buffs. add: adds to the sum of its stat (defense: the raw resistance sum, crit: absolute points, speed: the same
-  // bonus a relic gives, gold: added to gear + Pass + Ganancia, dropChance / gatherYield: the share of the base, huntXp: the share of the Hunting XP of the fight time it covers).
+  // bonus a relic gives, gold: added to gear + Pass + Ganancia, dropChance / gatherYield: the share of the base, huntXp: the share of the Hunting XP of the kills it covers).
   how: 'multiplier' | 'add';
   value: number; // a fraction: 0.2 = +20%
   minutes: number | null; // null = until the next Dungeon run spends it

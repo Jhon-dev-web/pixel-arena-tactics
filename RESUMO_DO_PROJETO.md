@@ -37,7 +37,7 @@ Na raiz (Node 22+):
 ## 4. O jogo
 
 ### Atividades
-- **Caça** (`huntingZones.ts`, `huntLifecycle.ts`): fonte principal de materiais e a **única fonte de XP do herói**. Armazena por 6 h (10 h com o Passe).
+- **Caça** (`huntingZones.ts`, `huntLifecycle.ts`): fonte principal de materiais e a **única fonte de XP do herói**. Armazena por 6 h (10 h com o Passe). Desde a Rodada 31 o XP é **por abate** (cada monstro derrotado dá XP, como num RPG; quem mata mais rápido junta mais, com um teto de ritmo contra fuga) e os materiais também saem por abate, com a chance de cada drop (teto econômico por hora no `huntEconomy.ts`).
 - **Mineração e Lenhador** (`gathering.ts`, `woodcutting.ts`): minérios e madeira, com níveis próprios.
 - **Horta** (`garden.ts`): roda sempre em paralelo.
 - **Masmorra** (`dungeon.ts`, `waves.ts`, `depths.ts`): andares, chefes, profundezas; combate animado.

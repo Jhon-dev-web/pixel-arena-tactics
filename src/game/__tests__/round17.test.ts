@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HUNTING_ZONES, effectiveDropChance, getHuntingZone } from '../huntingZones';
+import { HUNTING_ZONES, effectiveDropChance, getHuntingZone, zoneReferenceXpPerHour } from '../huntingZones';
 import { refineHuntMaterials } from '../gear';
 import { baseGoldValue } from '../economy';
 import { merchantPrice } from '../merchant';
@@ -42,7 +42,7 @@ describe('Round 17: the late zones drop what the late game can use', () => {
     expect(cut('demon_rift', 'fiend_horn')).toBeLessThanOrEqual(cut('demon_rift', 'leather_scrap'));
     expect(getHuntingZone('demon_glade')!.drops.map((d) => d.chance)).toEqual([0.25, 0.08, 0.007]);
     expect(getHuntingZone('blood_marsh')!.drops.map((d) => d.chance)).toEqual([0.28, 0.09, 0.0105]);
-    expect(HUNTING_ZONES.map((z) => z.xpPerHour)).toEqual([1750, 2900, 6000, 8800]); // the last zone was 13,000 until Rodada 22, 10,000 until Rodada 24 and 8,750 until Rodada 26 (its sub-levels pay up to +45% now)
+    expect(HUNTING_ZONES.map((z) => Math.round(zoneReferenceXpPerHour(z)))).toEqual([1491, 2460, 5100, 7482]); // Rodada 31: XP is per kill now (xpPerKill x the reference pace); since Rodada 31 an hour at the reference pace pays 85% of what the zone paid by fight time (1,750 / 2,900 / 6,000 / 8,800): the pace cap (1.2) and the faster-than-reference heroes bring the average back,  // the last zone was 13,000 until Rodada 22, 10,000 until Rodada 24 and 8,750 until Rodada 26 (its sub-levels pay up to +45% now)
   });
 
   it('the hours of hunting of a tier 5 set, a tier 6 set, +0 -> +8, +8 -> +12 and one Lapidar stay within 10% of round 16', () => {

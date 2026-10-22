@@ -1,7 +1,8 @@
 // The game numbers the server needs (see seasonTables.gen.ts, which writes them to supabase/functions/_shared/progress/tables.ts).
 import { MAX_LEVEL, xpForNextLevel, xpToReachLevel } from '../../src/game/engine';
 import { GEAR, GearItem, gearRequiredLevel } from '../../src/game/gear';
-import { HUNTING_ZONES } from '../../src/game/huntingZones';
+import { HUNTING_ZONES, zoneReferenceXpPerHour } from '../../src/game/huntingZones';
+import { huntingXpPaceCap } from '../../src/game/huntEconomy';
 import { LEAGUE_EVENT_SLOTS } from '../../src/game/leagueEvents';
 import { skillXpToReachLevel } from '../../src/game/skills';
 import T from '../../src/game/tunables';
@@ -34,7 +35,7 @@ export function buildTables() {
     levelGates,
     floorGates,
     eventSlots: LEAGUE_EVENT_SLOTS.map((s) => ({ id: s.id, kind: s.kind, startHour: s.startHour, hours: s.hours })),
-    zoneFloors: HUNTING_ZONES.map((z) => ({ id: z.id, unlockFloor: z.unlockFloor, unlockLevel: z.unlockLevel ?? 0, xpPerHour: z.xpPerHour, xpPerSubLevel: z.xpPerSubLevel ?? 0 })),
+    zoneFloors: HUNTING_ZONES.map((z) => ({ id: z.id, unlockFloor: z.unlockFloor, unlockLevel: z.unlockLevel ?? 0, xpPerHour: Math.round(zoneReferenceXpPerHour(z) * huntingXpPaceCap()), xpPerSubLevel: z.xpPerSubLevel ?? 0 })),
   };
 }
 

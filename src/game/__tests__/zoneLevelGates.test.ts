@@ -5,7 +5,7 @@ import { applyHuntStart } from '../huntLifecycle';
 import { estimateHuntYield } from '../huntEstimate';
 import { simulateHuntingSession } from '../huntCombat';
 import { HuntSession } from '../huntSession';
-import { getHuntingZone, HUNTING_ZONES, isDepthUnlocked, isZoneOpen, isZoneUnlocked, openZoneIds, recommendedCpForDepth, subLevelCpRequired, unlockedZoneIds } from '../huntingZones';
+import { getHuntingZone, HUNTING_ZONES, isDepthUnlocked, isZoneOpen, isZoneUnlocked, openZoneIds, recommendedCpForDepth, subLevelCpRequired, unlockedZoneIds, zoneReferenceXpPerHour } from '../huntingZones';
 import { startBlockedReason, zoneLockedText, zoneState } from '../huntView';
 import T from '../tunables';
 import pt from '../../locales/pt.json';
@@ -95,10 +95,11 @@ describe('zone 4: a bonus XP per sub-level and a CP for each', () => {
       return estimateHuntYield(s, zone, 'shallow')!.xpPerHour;
     };
     const base = per('blood_abyss', 1);
-    expect(base).toBeGreaterThan(abyss.xpPerHour * 0.9);
-    expect(per('blood_abyss', 6) / base).toBeCloseTo(1 + 5 * abyss.xpPerSubLevel!, 2);
-    expect(per('blood_abyss', 10) / base).toBeCloseTo(1 + 9 * abyss.xpPerSubLevel!, 2);
-    expect(per('demon_rift', 10) / per('demon_rift', 1)).toBeCloseTo(1, 2);
+    expect(base).toBeGreaterThan(zoneReferenceXpPerHour(abyss) * 0.9);
+    // Rodada 31: XP is per kill, so the sub-level's +% is the kill's; a deeper sub-level's monsters also take longer, which can pull a hero out of the pace cap by a couple of points
+    expect(per('blood_abyss', 6) / base).toBeCloseTo(1 + 5 * abyss.xpPerSubLevel!, 1);
+    expect(per('blood_abyss', 10) / base).toBeCloseTo(1 + 9 * abyss.xpPerSubLevel!, 1);
+    expect(per('demon_rift', 10) / per('demon_rift', 1)).toBeCloseTo(1, 1);
   });
 
   const sessionOf = (save: SaveData, depth: 'shallow' | 'deep') => {

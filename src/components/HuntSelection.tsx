@@ -248,6 +248,7 @@ export default function HuntSelection({
                       {t('hunting.overflowWarning', { t: fmtSpan(Math.max(overflowIn, 1 / 60) * 3600 * 1000), h: capHours })} <WholesaleLink hint />
                     </p>
                   )}
+                  <p className="hs-hint">{t('hunting.xpKillExplain')}</p>
                   <p className="hs-hint">{t('hunting.invExplain')}</p>
                 </Panel>
               </>

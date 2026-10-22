@@ -69,7 +69,7 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
     for (const zid of Object.keys(NEW)) {
       const zone = getHuntingZone(zid)!;
       for (const depth of ['shallow', 'deep'] as const) {
-        const cfg: HuntZoneCombatCfg = { baseEnemyHp: 20_000, baseEnemyDmg: 1, enemyAtkMs: 1000, hpGrowth: 0, dmgGrowth: 0, depthMult: 1, goldPerHour: 0, xpPerHour: 0, drops: zone.drops, depth, dropRateMult: 1 };
+        const cfg: HuntZoneCombatCfg = { baseEnemyHp: 20_000, baseEnemyDmg: 1, enemyAtkMs: 1000, hpGrowth: 0, dmgGrowth: 0, depthMult: 1, goldPerHour: 0, xpPerKill: 0, drops: zone.drops, depth, dropRateMult: 1 };
         const r = simulateHuntingSession(build, cfg, { ceiling: 1, promotionWins: 0 }, 900 * HOUR, noPotions, `rates:${zid}:${depth}`, { maxLevel: 1, requiredWins: () => 1 });
         const f = economicRollFractionForFight(20_000, 1);
         expect(r.kills).toBeGreaterThan(100_000);

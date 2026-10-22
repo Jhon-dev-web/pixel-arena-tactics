@@ -25,6 +25,7 @@
     "sim:flow": "vitest run --config vitest.sim.config.ts materialFlow --silent=false --reporter=default",
     "sim:recipes": "vitest run --config vitest.sim.config.ts recipeTune --silent=false --reporter=default",
     "sim:skills": "vitest run --config vitest.sim.config.ts skillAudit --silent=false --reporter=default",
+    "sim:xpbuilds": "vitest run --config vitest.sim.config.ts huntXpBuilds --silent=false --reporter=default",
     "sim:long": "node scripts/sim/long.mjs",
     "sim:econ": "node scripts/sim/leagueEcon.mjs",
     "sim:sublevels": "vitest run --config vitest.sim.config.ts subLevelReach --silent=false --reporter=default",

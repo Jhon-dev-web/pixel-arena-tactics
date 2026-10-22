@@ -397,7 +397,7 @@ const baseZone: HuntZoneCombatCfg = {
   dmgGrowth: 0,
   depthMult: 1,
   goldPerHour: 0,
-  xpPerHour: 0,
+  xpPerKill: 0,
   drops: [],
   depth: 'shallow',
   dropRateMult: 1,

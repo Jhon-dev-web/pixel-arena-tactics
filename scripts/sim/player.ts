@@ -755,6 +755,7 @@ export class Player {
           this.ledger.elixir.coveredHours += Math.max(0, Math.min(to, s.huntingOfflineStart + p.pendingMs) - Math.max(w.from, s.huntingOfflineStart)) / HOUR;
         }
         this.ledger.hours.hunt += hours;
+        if (process.env.SIM_HUNTLOG) console.log(`HUNTLOG t=${(this.now / 86400000).toFixed(2)} ${huntKey} h=${hours.toFixed(2)} sub ${p.startCeiling}->${p.ceilingSubLevel} kills=${p.kills} xp=${p.xp} cp=${computeCP(this.S)} lvl=${playerLevel(this.S.xp)}`);
         this.trace.push(`   collected hunt ${huntKey} ${hours.toFixed(2)} h of ${(p.timeMs / HOUR).toFixed(2)} h elapsed, sub-level ${p.startCeiling}->${p.ceilingSubLevel}, kills ${p.kills}`);
         const hz = (this.ledger.hunt[huntKey] ??= { hours: 0, units: {} });
         hz.hours += hours;
@@ -1748,7 +1749,7 @@ export class Player {
   // needs drops); with nothing missing, the highest-XP zone unlocked by the Dungeon floor.
   private startHunt(deficit: Mats = {}): boolean {
     const cp = computeCP(this.S);
-    const zones = HUNTING_ZONES.filter((z) => isZoneOpen(z, this.S.highestDungeonFloor, playerLevel(this.S.xp))).sort((a, b) => b.xpPerHour - a.xpPerHour);
+    const zones = HUNTING_ZONES.filter((z) => isZoneOpen(z, this.S.highestDungeonFloor, playerLevel(this.S.xp))).sort((a, b) => b.xpPerKill - a.xpPerKill);
     let wantedMat: MaterialId | null = null;
     let wantedHours = 0;
     for (const m of HUNT_MATS) {
@@ -1762,7 +1763,7 @@ export class Player {
     }
     if (wantedMat) {
       const chanceOf = (z: (typeof zones)[number]) => z.drops.find((d) => d.material === wantedMat)?.chance ?? 0;
-      zones.sort((a, b) => chanceOf(b) - chanceOf(a) || b.xpPerHour - a.xpPerHour);
+      zones.sort((a, b) => chanceOf(b) - chanceOf(a) || b.xpPerKill - a.xpPerKill);
       // The smart player goes where the XP is whenever the last zone drops the material he is short of too.
       const last = HUNTING_ZONES[HUNTING_ZONES.length - 1];
       if (this.opts.smart && chanceOf(last) > 0 && zones.includes(last)) zones.splice(0, zones.length, last, ...zones.filter((z) => z !== last));

@@ -1,7 +1,8 @@
 // Recomputes, from the game's own tunables, the THEORETICAL values behind supabase/functions/_shared/progress/bounds.ts, so `npm run season:bounds` can print them next to
 // the constants and seasonProgress.test.ts can fail the day the game gets faster than the table says.
 import { relicXpBonusPct } from '../../src/game/gear';
-import { HUNTING_DEPTHS, HUNTING_ZONES } from '../../src/game/huntingZones';
+import { HUNTING_DEPTHS, HUNTING_ZONES, zoneReferenceXpPerHour } from '../../src/game/huntingZones';
+import { huntingXpPaceCap } from '../../src/game/huntEconomy';
 import { MAX_GARDEN_PLOTS, PLANTS, plantHarvestXp } from '../../src/game/garden';
 import { BASE_GATHER_POWER } from '../../src/game/skills';
 import T from '../../src/game/tunables';
@@ -13,7 +14,8 @@ export function deriveBounds() {
   const xpBonus = relicXpBonusPct('season_emblem') / 100 + 3 * T.heroSkills.quickLearnerXp;
   // Rodada 22: the last zone pays +xpPerSubLevel XP for every sub-level above 1 (+18% at sub-level 10), so its best rate is the base rate x that.
   const subLevelBonus = Math.max(...HUNTING_ZONES.map((z) => 1 + (z.xpPerSubLevel ?? 0) * (T.hunting.subLevels - 1)));
-  const bestZone = Math.max(...HUNTING_ZONES.map((z) => z.xpPerHour * (1 + (z.xpPerSubLevel ?? 0) * (T.hunting.subLevels - 1))));
+  // Rodada 31: XP is paid per kill; an hour of kills pays at most the zone's reference-pace rate x the pace cap (huntEconomy.ts xpPaceFractionForFight), whatever the build.
+  const bestZone = Math.max(...HUNTING_ZONES.map((z) => zoneReferenceXpPerHour(z) * huntingXpPaceCap() * (1 + (z.xpPerSubLevel ?? 0) * (T.hunting.subLevels - 1))));
   const deepest = Math.max(...HUNTING_DEPTHS.map((d) => d.xpMultiplier));
   const potion = 1 + T.consumables.knowledgeXpPct;
   const huntPerHour = bestZone * deepest * (1 + xpBonus) * potion;

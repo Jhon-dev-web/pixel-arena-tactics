@@ -806,7 +806,8 @@ export function buildHuntSimSetup(
     depthMult: depthDef.cpMultiplier,
     // Depth never touches gold — Hunting stays a non-currency faucet by design at every depth.
     goldPerHour: zone.goldPerHour,
-    xpPerHour: zone.xpPerHour * depthDef.xpMultiplier,
+    xpPerKill: zone.xpPerKill * depthDef.xpMultiplier,
+    xpRefKph: zone.xpRefKph,
     ...(zone.xpPerSubLevel ? { xpPerSubLevel: zone.xpPerSubLevel } : {}),
     drops: zone.drops,
     uniques: zone.uniques,

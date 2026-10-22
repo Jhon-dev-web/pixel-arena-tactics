@@ -43,9 +43,9 @@ export const BOUNDS = {
   // ---- XP --------------------------------------------------------------------------------------------------------------------------------------
   /**
    * XP per server hour, THEORETICAL, at the end of the game (floor 100). Since the League (Rodada 20) HUNTING IS THE ONLY SOURCE of hero XP (no Dungeon, no delivery order, no instant
-   * potion), so this is one product. Recomputed by season:bounds = 23,223 since Rodada 26 (22,375 after Rodada 24, 21,476 after Rodada 22; 25,000 kept: the server factor below still counts a 5% Relic bonus
+   * potion), so this is one product. Recomputed by season:bounds = 23,694 since Rodada 31 (23,223 after Rodada 26, 22,375 after Rodada 24, 21,476 after Rodada 22; 25,000 kept: the server factor below still counts a 5% Relic bonus
    * that no item carries since Rodada 19, as a margin); xpPerHourAt(floor) below scales it with the floor:
-   *   best zone 8,800 xp/h (huntingZones.ts; it was 13,000 before Rodada 22, 10,000 before Rodada 24 and 8,750 before Rodada 26) x 1.45 (the last zone pays +5% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels; it was +4.5% / 1.405 and +2% / 1.18) x deep depth 1.3
+   *   best zone 8,978 xp/h (Rodada 31: XP is paid PER KILL, so the hour is no longer a zone number: it is the zone's reference-pace rate xpPerKill x xpRefKph = 7,482 x the pace cap 1.2 that no build passes, huntEconomy.ts xpPaceFractionForFight; it was 8,800 by fight time, 13,000 before Rodada 22, 10,000 before Rodada 24 and 8,750 before Rodada 26) x 1.45 (the last zone pays +5% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels; it was +4.5% / 1.405 and +2% / 1.18) x deep depth 1.3
    *   x (1 + 12% bonuses: Aprendiz Veloz 3 ranks x 4%; +5% for a Season Relic that carried XP, margin) x 1.25 (the Knowledge Elixir, tunables consumables.knowledgeXpPct, running the whole
    *   time: the best and only potion; the Pass adds no XP).
    * It used to be 60,000: 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, which are gone.

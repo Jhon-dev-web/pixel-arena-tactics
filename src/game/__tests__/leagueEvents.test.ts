@@ -207,7 +207,12 @@ describe('hero events change only the Hunting XP, and by little', () => {
     const plain = computeHuntingStatus({ ...s, huntSession: { ...s.huntSession!, league: undefined } }, now).xpReady;
     s = { ...s, huntSession: { ...s.huntSession!, eventXp: [{ from: startedAt, to: now + HOUR_MS, pct: 0.1 }, { from: startedAt, to: now + HOUR_MS, pct: 0.1 }, { from: startedAt, to: now + HOUR_MS, pct: 0.1 }] } };
     const stacked = computeHuntingStatus(s, now).xpReady;
-    expect(stacked).toBeLessThanOrEqual(Math.ceil(plain * (1 + EVENT_XP_CAP)) + 1); // the XP is a whole number (each side is floored): a point of rounding is allowed, a percent is not
+    // Rodada 31: the XP of a kill scales with the monster's HP, and the Invasion's wave makes the monsters bigger, so the run under the League is not the plain run x 1.15 any more. The cap is checked where it acts:
+    // the three buffs plus the streak give exactly what ONE buff of the cap gives (the sum is cut at EVENT_XP_CAP), and a bigger sum than the cap changes nothing.
+    const one = computeHuntingStatus({ ...s, huntSession: { ...s.huntSession!, eventXp: [{ from: startedAt, to: now + HOUR_MS, pct: EVENT_XP_CAP }] } }, now).xpReady;
+    const twice = computeHuntingStatus({ ...s, huntSession: { ...s.huntSession!, eventXp: [{ from: startedAt, to: now + HOUR_MS, pct: 0.5 }, { from: startedAt, to: now + HOUR_MS, pct: 0.5 }] } }, now).xpReady;
+    expect(stacked).toBe(one);
+    expect(twice).toBe(one);
     expect(stacked / plain).toBeGreaterThan(1.12); // and it does reach the cap
   });
 });

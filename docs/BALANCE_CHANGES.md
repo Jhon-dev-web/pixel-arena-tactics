@@ -3583,3 +3583,154 @@ Olho Clínico ficou em +2,6% por posto (e não nos 4% do relatório) porque o al
 Decisão do dono: o **Faro** (Caçador) passa de +7 / 14 / 21% para **+3,3 / 6,7 / 10%** de materiais na Caça (`T.heroSkills.scentMaterials` 0,07 -> 0,0334), o mesmo que o Passe (+10%). Com o Passe, empilha em x1,21 (antes x1,33).
 
 O teto de materiais por hora do servidor (`npm run material:tables`) contava o Faro com 2 pontos (confundia o tier da habilidade com o número de pontos); agora lê o máximo real (3 pontos) de `heroSkills.ts`. Com o novo valor, o teto ficou um pouco mais baixo que antes (x1,10 em vez de x1,14 pelo Faro).
+
+## Rodada 31 — XP por abate na Caça (2026-10-22)
+
+**Motivo.** Decisão do dono (22/10): "o XP da Caça deve ser por abate, como nos RPGs: cada monstro dá XP quando morre (alguns RPGs dão um XP mínimo por monstro), e matar tem chance de dropar itens". Uma simulação de 100 jogadores mostrou que o XP era pago pelo **tempo de luta** (`xpPerHour` x tempo das lutas vencidas): o caminho do Guerreiro (+55 a 64% de abates por hora, Rodada 29) ganhava ~0% de XP a mais, e quem matava mais rápido não subia mais rápido. Agora cada abate paga o seu XP; o drop de material já era por abate e não mudou.
+
+### 1. A regra
+
+XP de um abate (`huntCombat.ts`, `creditFight`):
+
+```
+XP do abate = xpPerKill da zona
+            x multiplicador de XP da profundidade (Raso 1 / Denso 1,15 / Profundo 1,30)
+            x tamanho do monstro  (HP do monstro derrotado / HP do monstro de referência da zona na profundidade:
+                                   1 no nível 1 da zona, +8% por nível (1,72 no nível 10), mais a onda da Invasão e o Alvo da Liga)
+            x (1 + bônus de nível da zona)        (só o Abismo: +5% por nível acima do 1)
+            x (1 + bônus de evento da Liga)       (já limitado a +15%, como antes)
+            x fração de ritmo                      (seção 2)
+  depois:   + 25% nos abates que terminaram dentro da janela do Elixir do Conhecimento (como antes, agora por abate)
+            x (1 + Relíquia da Temporada + Aprendiz Veloz)   (multiplica cada abate)
+```
+
+Um abate vencido sempre paga. Luta perdida, luta que não terminou antes do fim da sessão e Alvo perdido não pagam. A conta continua sendo a **mesma simulação com semente** de antes (`simulateHuntingSession`), então o XP de uma Caça parada (resgate, offline até 6 h / 10 h com o Passe) sai igual toda vez que a tela pergunta e é calculado dos abates da própria sessão. O resultado novo `xpBase` substitui `xpFightMs`.
+
+Valor por zona (`HUNTING_ZONES`: `xpPerKill` e `xpRefKph`; `zoneReferenceXpPerHour` = o produto, o "XP por hora no ritmo de referência"):
+
+| Zona | xpPerKill | xpRefKph (abates/h do monstro de referência de um herói no CP recomendado) | XP/h no ritmo de referência | antes (`xpPerHour`, por tempo) |
+| --- | --: | --: | --: | --: |
+| Clareira dos Demônios | 7,1 | 210 | 1 491 | 1 750 |
+| Pântano de Sangue | 16,4 | 150 | 2 460 | 2 900 |
+| Fenda Demoníaca | 40,8 | 125 | 5 100 | 6 000 |
+| Abismo de Sangue | 51,6 | 145 | 7 482 | 8 800 |
+
+`xpRefKph` foi **medido**: abates por hora no nível 1 da zona de um herói da escada de `scripts/sim/ladder.ts` com CP igual ao recomendado (Clareira 210 [Raso, monstro de 180 HP], Pântano ~148, Fenda ~124, Abismo ~145). O `xpPerKill` é esse ritmo vezes o ritmo antigo, mais um fator de 0,85 (seção 3). O campo `xpPerHour` da zona saiu; quem precisa de "XP por hora" (servidor, simulações) usa `zoneReferenceXpPerHour`.
+
+### 2. Teto de ritmo (contra a fuga)
+
+Sem freio, o XP por abate seria uma corrida armamentista: um herói com equipamento muito acima da zona mata em 2 s e sobe 8x mais rápido que quem está no CP da zona. O freio é a mesma ideia do teto econômico dos materiais (`huntEconomy.ts`), com referência própria (`xpPaceFractionForFight`):
+
+```
+x = abates/h x tamanho do monstro / xpRefKph             (quantos "monstros de referência" por hora o herói derruba)
+XP/h = taxa de referência da zona x x                    para x <= 1   (cada abate paga cheio: mais rápido = proporcionalmente mais XP)
+XP/h = taxa de referência da zona x min(1,2, raiz(x))    para x > 1    (a velocidade extra rende cada vez menos, até 1,2x)
+```
+
+Por abate isso é a fração `min(1, raiz(K/ritmo), 1,2 x K/ritmo)`, calculada **luta por luta** (o ritmo de cada luta e o tamanho do monstro que caiu), então segue causal em sessões que sobem de nível de zona. `T.hunting.xpPaceCap` (1,2) é o único botão; `T.hunting.xpReferenceKillsPerHour` (150) só vale para uma zona sem `xpRefKph` (testes). O tamanho do monstro está no ritmo porque monstro maior leva mais tempo para morrer: um herói no CP do Raso e outro no do Profundo ficam no mesmo `x`, e a profundidade paga só o seu multiplicador (+15% / +30%, como antes).
+
+**Drops** (conferido): `rollDropsForOneClear` roda **uma vez por abate vencido** (a vitória de promoção também), com a chance de cada entrada (base x profundidade x nível da zona x Passe x Faro x Isca) e a fração econômica de `huntEconomy.ts` (rolagens por hora <= 1,75 x o ritmo de referência dos materiais, 220 abates/h no nível 1). Esse teto por hora **fica** (é o que segura a inflação de materiais e os limites do servidor); é diferente do teto do XP. As lutas, os críticos e os drops de um herói são **idênticos bit a bit** aos de antes (só o XP mudou: `npm run sim:skills` imprime o mesmo texto antes e depois, inclusive as parcelas de dano da Caça), e `npm run material:tables` não gerou diferença.
+
+### 3. Calibração
+
+O jogador de referência do simulador caça na zona mais alta aberta e na maior profundidade que o CP permite, então fica em `x` entre ~1 e ~1,5. O fator 0,85 e o teto 1,2 foram escolhidos para que ele ganhe **em média o mesmo XP de antes**: 1,2 x 0,85 = 1,02 para quem está no teto (o dono do Passe e o comprador do conjunto), raiz(1,3) x 0,85 = 0,97 para o jogador comum, e abaixo do ritmo de referência ganha-se proporcionalmente menos. Medido com `npm run sim:econ` A, P, PB (6 seeds x 60 dias; "antes" medido no HEAD, o mesmo código sem esta rodada) para três pares (teto, fator):
+
+| (teto, fator) | A (sem Passe) dia 14 / 30 / 60 | P (Passe) dia 14 / 30 / 60 | PB (comprador) dia 30 / 45 / 60 |
+| --- | --- | --- | --- |
+| antes | 47,1 / 56,1 / 69,8 | 50,1 / 64,0 / 82,8 | 71,1 / 84,7 / 95,2 |
+| 1,5 x 0,80 | 47,5 / 57,8 / 71,3 | 50,9 / 65,5 / 86,3 | 75,7 / 90,0 / 101,0 |
+| 1,3 x 0,85 | 47,5 / 56,7 / 70,5 | 51,0 / 65,3 / 83,5 | 73,9 / 87,8 / 98,4 |
+| **1,2 x 0,85 (escolhido)** | **46,8 / 55,1 / 69,5** | **49,7 / 62,8 / 82,0** | **72,0 / 85,6 / 96,1** |
+
+Teto maior dá mais XP a quem mata muito mais rápido que a zona pede, e esses são justamente os mais fortes (o comprador do conjunto Lendário passa do nível 100 antes do dia 60 com 1,5, o que a Liga não quer, e passa dos âncoras do servidor `levelPace`). Com 1,2 o comprador fica ~1 nível acima de antes no dia 60 e abaixo das âncoras. Se o dono quiser dar mais peso à velocidade, o botão é `xpPaceCap` (e o fator, para o jogador comum voltar ao mesmo ponto); a tabela acima mostra o preço.
+
+### 4. Antes e depois
+
+`npm run sim` (20 seeds x 21 dias, cenário A, mediana (mín–máx)), "antes" = o HEAD:
+
+| Dia | 2 | 3 | 5 | 7 | 10 | 14 | 21 |
+| --- | --: | --: | --: | --: | --: | --: | --: |
+| antes | 14 | 14 | 22 (22–29) | 35 (32–38) | 41 (40–43) | 46 (44–48) | 49 (47–50) |
+| depois | 13 | 13 | 29 (22–29) | 35 (31–37) | 42 (40–43) | 46 (45–49) | 48 (48–53) |
+
+- **Dia 5 (22 -> 29) é um empate de moeda, não de XP:** os dois lados têm a mesma faixa (22–29): o nível salta de ~14 para ~29 quando a terceira Caça é resgatada, e a mediana de 20 seeds cai de um lado ou do outro dependendo de a metade das seeds já ter resgatado até o fim do dia 5 (a mesma ressalva da Rodada 28). Dia 6: 31 -> 29; dia 7 igual; dias 10 a 21 dentro de 1 nível.
+- **Primeira Caça (6 h, conta nova): 10 445 -> 8 979 XP**, nível 13 em vez de 14 (alvo 12–16, `T4` ok). O herói novo está abaixo do ritmo de referência da Clareira e ganha proporcionalmente.
+- Marcos: segunda zona dia 5 igual; chegada ao andar 50 13 -> 14, chefe 50 13,5 -> 14,5 (dentro do ruído; o `T6` que estava fora da meta ficou "ok"). Passe (P) dia 7 / 14 / 21: 44 / 50 / 56 -> 43 / 49 / 56.
+- `npm run sim:econ` A, P, PB (6 seeds x 60 dias; nível mediano no fim do dia):
+
+| | dia 3 | 7 | 14 | 30 | 45 | 60 | XP/dia d31–60 | zona 4 abre (dia) |
+| --- | --: | --: | --: | --: | --: | --: | --: | --: |
+| A antes | 15,0 | 35,2 | 47,1 | 56,1 | 62,2 | 69,8 | 111k | 45 |
+| A depois | 14,0 | 35,0 | 46,8 | 55,1 | 61,4 | 69,5 | 115k | 49 |
+| P antes | 19,2 | 43,6 | 50,1 | 64,0 | 74,4 | 82,8 | 211k | 26 |
+| P depois | 17,8 | 43,6 | 49,7 | 62,8 | 72,2 | 82,0 | 206k | 29,5 |
+| PB antes | 19,2 | 43,6 | 54,9 | 71,1 | 84,7 | 95,2 | 343k | 20,5 |
+| PB depois | 17,8 | 43,6 | 55,9 | 72,0 | 85,6 | 96,1 | 353k | 19,5 |
+
+  (O documento da Rodada 28 cita 70,8 / 81,6 no dia 60 para A / P; no HEAD de hoje a mesma ferramenta dá 69,8 / 82,8, que é o "antes" usado aqui.)
+- **A Masmorra não mudou:** `npm run sim:skills` (que mede a Masmorra e as habilidades) imprime exatamente o mesmo texto antes e depois.
+
+### 5. XP/h por build e a diferença entre a mais lenta e a mais rápida
+
+`npm run sim:xpbuilds` (novo; `scripts/sim/huntXpBuilds.sim.ts`): mesmo herói, mesma zona, 4 h, só muda a build (caminho de habilidades completo; atributos 35/30/20/15). "CP ~ Nx" é o CP do herói sobre o recomendado da zona. XP/h por hora de Caça:
+
+| Herói / zona | build | kills/h | XP/h antes | XP/h depois | depois vs. antes |
+| --- | --- | --: | --: | --: | --: |
+| nv. 20, tier 2 +4 (CP ~1,1x) / Pântano | sem habilidades | 120 | 2 896 | 2 674 | -8% |
+| | Guerreiro | 144 | 2 896 | 2 908 | 0% |
+| | Guardião | 120 | 2 896 | 2 674 | -8% |
+| | Caçador | 125 | 2 897 | 2 735 | -6% |
+| nv. 40, tier 3 +0 (CP ~0,85x) / Fenda | sem habilidades | 86 | 5 995 | 4 940 | -18% |
+| | Guerreiro | 110 | 5 985 | 5 786 | -3% |
+| | Guardião | 85 | 5 989 | 4 925 | -18% |
+| | Caçador | 93 | 5 996 | 5 255 | -12% |
+| nv. 40, tier 3 +4 (CP ~1,1x) / Fenda | sem habilidades | 113 | 5 989 | 5 840 | -2% |
+| | Guerreiro | 144 | 5 990 | 6 109 | +2% |
+| | Guardião | 113 | 5 990 | 5 841 | -2% |
+| | Caçador | 122 | 5 998 | 6 013 | 0% |
+| nv. 50, tier 3 +8 (CP ~1x) / Abismo | sem habilidades | 155 | 8 786 | 7 679 | -13% |
+| | Guerreiro | 209 | 8 792 | 8 782 | 0% |
+| | Guardião | 156 | 8 793 | 7 704 | -12% |
+| | Caçador | 169 | 9 148 | 8 382 | -8% |
+| nv. 60, tier 4 +4 (CP ~1,16x) / Abismo | sem habilidades | 177 | 8 795 | 8 250 | -6% |
+| | Guerreiro | 235 | 9 233 | 9 410 | +2% |
+| | Guardião | 166 | 9 225 | 8 695 | -6% |
+| | Caçador | 195 | 9 844 | 9 603 | -2% |
+| nv. 45, tier 3 +8 (CP ~1,35x) / Fenda | todas | 147 a 188 | 5 992 a 5 997 | 6 111 a 6 117 | +2% |
+| nv. 75, tier 5 +8 (CP ~1,9x) / Abismo | sem habilidades / Guerreiro / Guardião / Caçador | 357 / 506 / 350 / 391 | 10 526 / 10 961 / 10 947 / 11 796 | 10 740 / 11 183 / 11 169 / 12 036 | +2% |
+| nv. 100, tier 6 +8 (CP ~2x) / Abismo Profundo | sem habilidades / Guerreiro / Guardião / Caçador | 459 / 708 / 453 / 499 | 14 251 / 14 813 / 14 780 / 15 965 | 14 540 / 15 114 / 15 080 / 16 288 | +2% |
+
+(Em tudo o que está acima do ritmo de referência, o Caçador ainda ganha os +12% do Aprendiz Veloz, como antes.)
+
+**Diferença entre a build mais lenta e a mais rápida** (o melhor e o pior dos 20 pares caminho x distribuição de pontos, mesmo equipamento e zona; "antes" era x1,00 em quase tudo, só o Aprendiz Veloz separava):
+
+| Herói / zona | antes: lenta -> rápida | depois: lenta -> rápida | razão |
+| --- | --- | --- | --: |
+| nv. 20, tier 2 +4 (CP ~1,1x) / Pântano | 2 892 -> 2 900 | tudo VIT 2 192 -> Guerreiro + tudo STR 2 951 | x1,35 |
+| nv. 40, tier 3 +0 (CP ~0,85x) / Fenda | 5 972 -> 6 000 | tudo RES 3 131 -> Guerreiro + tudo STR 6 101 | x1,95 |
+| nv. 40, tier 3 +4 (CP ~1,1x) / Fenda | 5 980 -> 5 999 | tudo RES 4 423 -> Caçador + tudo STR 6 117 | x1,38 |
+| nv. 45, tier 3 +8 (CP ~1,35x) / Fenda | 5 985 -> 5 999 | tudo VIT 5 456 -> Caçador + tudo AGI 6 118 | x1,12 |
+| nv. 50, tier 3 +8 (CP ~1x) / Abismo | 8 777 -> 9 152 | tudo RES 4 941 -> Caçador + tudo STR 8 977 | x1,82 |
+| nv. 60, tier 4 +4 (CP ~1,16x) / Abismo | 8 782 -> 9 855 | tudo RES 5 328 -> Caçador + tudo STR 9 946 | x1,87 |
+| nv. 75, tier 5 +8 (CP ~1,9x) / Abismo | 10 093 -> 11 800 | tudo VIT 10 293 -> Caçador + tudo AGI 12 040 | x1,17 |
+| nv. 100, tier 6 +8 / Abismo Profundo | 13 673 -> 15 969 | tudo VIT 13 950 -> Caçador + tudo AGI 16 292 | x1,17 |
+
+Lendo a tabela: **entre os caminhos de habilidade completos com pontos equilibrados, a diferença é pequena** (Guerreiro +5% a +17% sobre o Guardião quando o herói está entre 0,85x e 1,16x o CP da zona; zero acima de ~1,3x, onde o teto de 1,2x já age em todos). As razões grandes (x1,8 a x1,95) vêm de distribuições de atributos extremas (tudo RES contra tudo STR) num herói que está abaixo do CP da zona: o herói que só defende mata devagar e ganha na proporção, que é a regra pedida. **Não há fuga:** o XP de abates de qualquer herói é no máximo 1,2x a taxa de referência da zona (nenhuma build passa disso, pelo teto; sem contar os bônus que já existiam: Aprendiz Veloz +12%, Relíquia, Elixir +25% e eventos +15%), e o Guerreiro completo não passa do dono do Passe nem do comprador (tabela da seção 3). A diferença é maior abaixo do CP da zona (onde a velocidade decide se a Caça rende ou não) do que acima dele (onde o equipamento já sobra).
+
+**Limite honesto da regra:** um Guerreiro que já está bem acima do CP da zona (>= ~1,3x) ganha o mesmo XP/h que um Guardião no mesmo lugar. O ganho de matar mais rápido acontece enquanto a zona ainda "aperta" e some quando o herói sobra; para continuar ganhando mais ele sobe de profundidade (+15% / +30% de XP por abate) e de nível da zona (o Abismo paga +5% por nível). Subir o teto (`xpPaceCap`) dá mais peso à velocidade, ao custo de levar o comprador do conjunto Lendário ao nível 98 a 101 no dia 60 (seção 3).
+
+### 6. O que dependia do XP/h
+
+- **Aprendiz Veloz** (+4% por posto, até +12%) e **Relíquia da Temporada**: multiplicam o XP de **cada abate** (era o XP do tempo de luta). Mesmo efeito por hora para quem não muda de ritmo.
+- **Elixir do Conhecimento** (+25% por 4 h reais): soma 25% do XP dos abates que terminaram dentro da janela (era do tempo de luta). Teste atualizado.
+- **Eventos da Liga** (Invasão, Alvo, Fenda...): o bônus (+15% no máximo, todos somados) continua multiplicando cada abate. O monstro maior da onda e o Alvo (2x HP) pagam em proporção ao HP; a Invasão fica neutra em XP por hora, a Fenda continua só mais dura. O teste de teto foi reescrito para checar o corte em 15% exatamente (a corrida dentro da Liga deixou de ser "a corrida simples x 1,15").
+- **Passe de Aventureiro:** nenhuma vantagem do Passe toca o XP do herói (o XP do Passe é o da trilha, outra coisa; os +15% de Ouro e +10% de material não mudaram). A vantagem de XP do dono continua vindo do armazém de 10 h (mais abates por visita) e do CP maior.
+- **Estimativa na tela de Caça:** `huntEstimate.ts` roda a mesma simulação, então o "vence sempre / arriscado / não vence" segue certo; a tela **não** mostra XP/h nem drop (regra do dono). Texto novo em `hunting.xpKillExplain` ("cada monstro derrotado dá XP... passado um certo ritmo, a velocidade extra rende cada vez menos"), mais `h_quick_learner`, `knowledge_elixir_d`, `depthExplain` e `subLevelXp` reescritos para "por monstro derrotado", em pt e en.
+- **Servidor** (`supabase/functions/_shared/progress/`): a tabela de zonas (`tables.ts`, gerada por `npm run season:tables`) guarda por zona a taxa máxima que qualquer build alcança (`xpPerKill x xpRefKph x xpPaceCap`): 1 750 / 2 900 / 6 000 / 8 800 -> **1 789 / 2 952 / 6 120 / 8 978** por hora (+2%). O teto teórico de XP por hora recalculado (`npm run season:bounds`) vai de 23 223 para **23 694**; `BOUNDS.xpPerHour` continua **25 000** (margem de 5,5%, a mesma ideia de antes). A tabela de ritmo de nível (`levelPace`) não mudou: o jogador mais rápido do simulador (comprador do conjunto Lendário, 6 seeds) fica em 85,6 / 91,0 / 96,1 nos dias 45 / 52 / 60 (mais rápido 86,2 / 91,5 / 96,5), abaixo das âncoras do servidor (88 no 45, 92 no 51, ~97,5 no 60), e o servidor só sinaliza a partir de 2x. Ninguém honesto é marcado. Os testes do servidor e de `seasonProgress` foram atualizados (`6 120`, `2 952`, `8 978`).
+- **Testes:** `huntXpPerKill.test.ts` (12 testes: abate cheio abaixo do ritmo, dobro de velocidade = dobro de XP, tamanho do monstro, bônus, Elixir, fração de ritmo, teto 1,2x, determinismo); ajustados `leagueEvents`, `zoneLevelGates`, `round17`, `seasonProgress`, `progress` (servidor) e os testes que construíam a configuração da zona com `xpPerHour`.
+
+### 7. Riscos e notas
+
+- Uma Caça **em andamento** quando esta versão entrar no ar é recalculada com a regra nova (a simulação parte do início da sessão): o XP pendente dela muda de -18% a +2% conforme o herói. A recompensa já congelada em `pendingHuntReward` não muda.
+- Um herói **muito acima** do CP da zona (ex.: nível 12 com conjunto tier 2 na Clareira) ganha até 1,2x a taxa de referência (2% acima do XP/h de antes na Clareira, +20% sobre o ritmo de referência), não mais que isso. O herói **abaixo** do CP da zona ganha menos que antes (até -18% no CP 0,85x): é a regra pedida.
+- `scripts/sim/player.ts` ganhou `SIM_HUNTLOG=1` (imprime cada Caça resgatada: zona, horas, nível de zona, abates, XP, CP) e `package.json` o script `sim:xpbuilds`.

@@ -322,6 +322,10 @@ const T = DebugPanel.define({
     // K_ref(subLevel) = economicReferenceKillsPerHour / (1 + subLevelHpGrowth x (subLevel - 1)).
     economicReferenceKillsPerHour: { value: 220, min: 10, max: 2000, step: 10, label: 'Reference kills/h (sub-level 1) for economic material rolls' },
     economicRollCap: { value: 1.75, min: 1, max: 5, step: 0.05, label: 'Max economic roll multiplier over the reference pace' },
+    // Rodada 31: hero XP is paid per KILL (zone xpPerKill, huntingZones.ts). A hero that takes monster HP down slower than the zone's xpRefKph (kills/h of the reference monster) earns in proportion to his kills; above
+    // it the extra speed pays sqrt() more, never more than xpPaceCap times the zone's reference-pace rate (huntEconomy.ts xpPaceFractionForFight). xpReferenceKillsPerHour is only the fallback for a zone config without one.
+    xpReferenceKillsPerHour: { value: 150, min: 10, max: 2000, step: 10, label: 'Fallback reference kills/h for a zone without its own xpRefKph' },
+    xpPaceCap: { value: 1.2, min: 1, max: 5, step: 0.05, label: 'Most hourly XP a fast build earns, as a multiple of the zone rate at the reference pace' },
     subLevelDmgGrowth: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'Enemy damage growth per sub-level' },
     enemyAtkMs: { value: 1800, min: 800, max: 4000, step: 100, label: 'Hunting enemy attack interval (ms)' },
     // Sub-level mastery: wins banked at the CURRENT ceiling sub-level before the hunt automatically
