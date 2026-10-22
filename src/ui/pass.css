@@ -30,6 +30,10 @@
   border: var(--bw-thin) solid var(--c-gold-line);
   border-radius: var(--r-lg);
 }
+.pa-hero.compact,
+.pa-hero.compact .pa-hero-content {
+  min-height: 104px;
+}
 .pa-hero-art {
   position: absolute;
   inset: 0;
@@ -179,6 +183,38 @@
   outline: 2px solid var(--c-gold-300);
   outline-offset: 2px;
 }
+.pa-rowlabels {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: none;
+  width: 68px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-right: var(--sp-1);
+  background: #15101d;
+  box-shadow: 6px 0 8px -4px rgba(0, 0, 0, 0.6);
+}
+.pa-rowlabel-spacer {
+  height: 30px;
+}
+.pa-rowlabel {
+  min-height: 134px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--c-text);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.pa-rowlabel.premium {
+  color: var(--c-gold-300);
+  border-color: #5c4a2c;
+}
 .pa-col {
   flex: none;
   width: 118px;
@@ -195,6 +231,8 @@
 .pa-lvl {
   display: flex;
   justify-content: center;
+  align-items: center;
+  height: 30px;
 }
 .pa-lvl-num {
   min-width: 36px;
@@ -234,11 +272,10 @@
   border-radius: var(--r-md);
   cursor: default;
 }
-.pa-col.featured .pa-card {
-  min-height: 130px;
-}
+.pa-card,
+.pa-col.featured .pa-card,
 .pa-col.supreme .pa-card {
-  min-height: 134px;
+  min-height: 134px; /* one height for every card keeps the free and premium rows level across columns */
 }
 .pa-card.premium {
   border-color: #5c4a2c;
@@ -386,6 +423,27 @@
 
 /* a phone: the track is a list, one row per level (free | premium), a featured level is a boxed column */
 @media (max-width: 640px) {
+  /* the labels become a header row over the free | premium columns, kept in view while the list scrolls */
+  .pa-rowlabels {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--sp-2);
+    top: 0;
+    left: auto;
+    width: auto;
+    padding: var(--sp-1) 0;
+    box-shadow: 0 6px 8px -6px rgba(0, 0, 0, 0.7);
+  }
+  .pa-rowlabel {
+    min-height: 0;
+    padding: var(--sp-1) 0;
+  }
+  .pa-rowlabel-spacer {
+    height: auto;
+  }
+  .pa-lvl {
+    height: auto;
+  }
   .pa-track {
     flex-direction: column;
     overflow: visible;

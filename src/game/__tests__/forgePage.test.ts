@@ -41,7 +41,7 @@ describe('empty equipment slots', () => {
   it('show no placeholder picture (character panel and home)', () => {
     const panel = stripComments(read('src/components/HeroPanels.tsx'));
     expect(panel).not.toMatch(/GearIcon item=\{\{/);
-    expect(panel).toMatch(/icon=\{null\}/);
+    expect(panel).toMatch(/pg-slot empty/);
     const home = stripComments(read('src/components/DesktopHome.tsx'));
     expect(home).not.toContain('hm-slot-empty');
   });

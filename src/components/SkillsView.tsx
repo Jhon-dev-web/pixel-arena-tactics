@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { fmtNum, t } from '../locales';
-import { skillText } from './skillText';
+import { skillText, skillsSummaryText } from './skillText';
 import { FxPreview } from './SkillFx';
 import { SKILL_FX, SkillFxId } from '../game/skillFx';
 import { fmtSkillNumber } from './skillText';
@@ -299,16 +299,10 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
 
 // The small card on the Personagem screen: the points waiting and the way into the full screen.
 export function SkillsSummary({ save, onOpen }: { save: SaveData; onOpen: () => void }) {
-  const level = playerLevel(save.xp);
-  const spent = useMemo(() => pointsSpent(activeSkillRanks(save)), [save]);
-  const free = Math.max(0, skillPointsEarned(level) - spent);
-  const next = nextSkillPointLevel(level);
+  const text = useMemo(() => skillsSummaryText(save), [save]);
   return (
     <div className="sk-summary">
-      <p>
-        {free > 0 ? t('heroSkills.ui.summaryFree', { n: free }) : skillPointsEarned(level) === 0 ? t('heroSkills.ui.firstPoint', { n: next ?? 5 }) : t('heroSkills.ui.summarySpent', { n: spent })}
-        {free === 0 && next !== null && skillPointsEarned(level) > 0 ? ` ${t('heroSkills.ui.nextPoint', { n: next })}` : ''}
-      </p>
+      <p>{text}</p>
       <Button variant="primary" onClick={onOpen}>
         {t('heroSkills.ui.open')}
       </Button>

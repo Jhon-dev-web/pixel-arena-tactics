@@ -11,6 +11,7 @@ import GearIcon from './GearIcon';
 import MaterialIcon from './MaterialIcon';
 import ConsumableIcon from './ConsumableIcon';
 import { Button, Dialog, StatList, StatRow } from './ui';
+import FreeSpace from './FreeSpace';
 
 // The Baú do acampamento: its slots (the same stack rule as the inventory), the item the player picked, and the upgrade dialog.
 // Moving things in and out is done from the item detail (InventoryPanel); here only what lives in the stash is shown.
@@ -62,14 +63,15 @@ export default function StashPane({
     ...materialItems.flatMap((m) => stackCells(stash.materials[m.id] ?? 0).map((n, i) => ({ key: `m:${m.id}:${i}`, kind: 'material' as StackKind, id: m.id, n, icon: <MaterialIcon item={m} />, name: matText(m.nameKey) }))),
     ...consumableItems.flatMap((c) => stackCells(stash.consumables[c.id] ?? 0).map((n, i) => ({ key: `c:${c.id}:${i}`, kind: 'consumable' as StackKind, id: c.id, n, icon: <ConsumableIcon item={c} />, name: t(`consumables.${c.nameKey}`) }))),
   ];
-  const empties = Math.max(0, capacity - cells.length);
 
   return (
     <>
       <div className="inventory-summary">
-        <span className={`inventory-summary-chip${used > capacity ? ' over' : ''}`}>
-          <img className="inline-icon" src="/assets/icons/camp_stash.png" alt="" /> {t('stash.space', { n: used, m: capacity })}
-        </span>
+        {used > capacity && (
+          <span className="inventory-summary-chip over" role="status">
+            {t('stash.space', { n: used, m: capacity })} · {t('inventory.overCapacity')}
+          </span>
+        )}
         <button className="inventory-expand-btn" onClick={() => setUpgradeOpen(true)} aria-label={t('stash.upgradeTitle')} data-ui>
           +
         </button>
@@ -83,9 +85,7 @@ export default function StashPane({
             <span className="inv-qty">×{fmtNum(c.n)}</span>
           </button>
         ))}
-        {Array.from({ length: empties }).map((_, i) => (
-          <span key={`e${i}`} className="inv-slot empty" />
-        ))}
+        <FreeSpace free={Math.max(0, capacity - used)} />
       </div>
 
       {upgradeOpen && (

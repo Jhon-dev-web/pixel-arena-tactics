@@ -3,21 +3,72 @@
 /* =====================================================================================================================================
    PERSONAGEM
    ===================================================================================================================================== */
-.pg-hero {
+/* the page: the hero summary on top, then (wide) the main column beside the side column. On a narrow screen both columns dissolve into one stack in reading order: summary, equipment, inventory,
+   the item sheet (right under the grid), attributes, skills, titles. */
+.pg-layout {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+}
+.pg-main,
+.pg-side {
+  display: contents;
+}
+.pg-hero {
+  order: 0;
+}
+.pg-equip-panel {
+  order: 1;
+}
+.pg-bag-panel {
+  order: 2;
+}
+.pg-host {
+  order: 3;
+  min-width: 0;
+}
+.pg-attrs-panel {
+  order: 4;
+}
+#pg-skills {
+  order: 5;
+}
+#pg-titles {
+  order: 6;
+}
+@container ui (min-width: 980px) {
+  .pg-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  }
+  .pg-main,
+  .pg-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+    min-width: 0;
+  }
+}
+
+/* the compact hero summary */
+.pg-hero {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
   gap: var(--sp-4);
   align-items: center;
+  padding: var(--sp-3) var(--sp-4);
 }
 .pg-portrait {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 132px;
-  height: 132px;
+  width: 96px;
+  height: 96px;
   background: radial-gradient(circle at 50% 38%, rgba(255, 215, 106, 0.12), transparent 65%), var(--c-inset);
   border: var(--bw) solid var(--c-gold-line-strong);
   border-radius: var(--r-lg);
+  overflow: hidden;
 }
 .pg-hero-body {
   display: flex;
@@ -28,6 +79,7 @@
 }
 .pg-hero-name {
   margin: 0;
+  max-width: 100%;
   font-size: var(--fs-title);
   color: var(--c-text);
   text-shadow: 0 2px 0 #000;
@@ -47,34 +99,172 @@
   font-size: var(--fs-body);
   padding: 2px var(--sp-3);
 }
+.pg-xp {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  max-width: 360px;
+}
+.pg-xp .hm-bar {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+.pg-xp-text {
+  flex: 0 0 auto;
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
 @container ui (max-width: 520px) {
   .pg-hero {
-    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-columns: 76px minmax(0, 1fr);
     gap: var(--sp-3);
+    padding: var(--sp-3);
   }
   .pg-portrait {
-    width: 84px;
-    height: 84px;
+    width: 76px;
+    height: 76px;
   }
 }
 
-/* the equipment cards */
+/* the equipment slots: eight compact places, four to a row on a desktop */
 .pg-equip-grid {
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  margin-top: var(--sp-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(132px, 24%), 1fr));
+  gap: var(--sp-2);
 }
-.pg-equip-grid:first-child {
-  margin-top: 0;
+.pg-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+  min-height: 114px;
+  padding: var(--sp-2) var(--sp-3);
+  font: inherit;
+  font-size: var(--fs-body);
+  text-align: left;
+  color: var(--c-text);
+  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-card);
 }
-.pg-equip.unique {
+button.pg-slot {
+  cursor: pointer;
+}
+button.pg-slot:hover {
   border-color: var(--c-gold-line-strong);
 }
-.pg-equip.empty {
-  opacity: 0.6;
-  border-style: dashed;
+button.pg-slot:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
-.pg-equip.empty .ui-item-rarity {
+.pg-slot.r-rare {
+  border-color: var(--rar-rare);
+}
+.pg-slot.r-epic {
+  border-color: var(--rar-epic);
+}
+.pg-slot.r-legendary {
+  border-color: var(--rar-legendary);
+}
+.pg-slot.unique {
+  border-color: var(--c-gold-line-strong);
+}
+.pg-slot.broken {
+  border-color: var(--c-bad);
+}
+.pg-slot.selected,
+.pg-slot.selected.r-rare,
+.pg-slot.selected.r-epic,
+.pg-slot.selected.r-legendary {
+  border-color: var(--c-gold-300);
+  box-shadow: var(--sh-card), 0 0 0 1px rgba(255, 215, 106, 0.45), var(--sh-glow);
+}
+.pg-slot-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.pg-slot-id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pg-slot-cat {
+  font-size: var(--fs-small);
+  line-height: var(--lh-tight);
+  text-transform: uppercase;
   color: var(--c-text-muted);
+}
+.pg-slot-rar {
+  font-size: var(--fs-small);
+  line-height: var(--lh-tight);
+  color: var(--rar-common);
+}
+.pg-slot-rar.r-rare {
+  color: var(--rar-rare);
+}
+.pg-slot-rar.r-epic {
+  color: var(--rar-epic);
+}
+.pg-slot-rar.r-legendary {
+  color: var(--rar-legendary);
+}
+.pg-slot-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  /* a name breaks only BETWEEN words (or at a hyphenation point) */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+}
+.pg-slot-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+  margin-top: auto;
+}
+.pg-flag {
+  font-size: var(--fs-small);
+  line-height: var(--lh-tight);
+  color: var(--c-text-muted);
+}
+.pg-flag.warn {
+  color: var(--c-warn);
+}
+.pg-flag.bad {
+  color: var(--c-bad);
+}
+.pg-flag.info {
+  color: var(--c-info);
+}
+/* an empty slot: smaller, quiet, nothing to press */
+.pg-slot.empty {
+  gap: 2px;
+  min-height: 56px;
+  justify-content: center;
+  background: transparent;
+  border-style: dashed;
+  box-shadow: none;
+}
+.pg-slot-empty {
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+.pg-equip-panel .set-lines {
+  margin-top: var(--sp-3);
+}
+.pg-equip-panel .ui-alert {
+  margin-top: var(--sp-2);
 }
 .pg-lines {
   display: flex;
@@ -271,6 +461,54 @@
 .attrs-header.has-points {
   border-color: var(--c-gold-300);
   box-shadow: var(--sh-glow);
+}
+/* the attributes: the combat stats as a label / value list (a tap or hover on a row still opens its breakdown), CP as plain information, then the point rows */
+.pg-attrs-panel .hero-stats-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.pg-attrs-panel .hero-stat-cell.stat-cell {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--sp-3);
+  min-height: 36px;
+  padding: var(--sp-2) var(--sp-1);
+  background: transparent;
+  border: 0;
+  border-bottom: var(--bw-thin) solid var(--c-line);
+  border-radius: 0;
+}
+.pg-attrs-panel .hero-stat-cell.stat-cell.buffed {
+  background: rgba(111, 224, 138, 0.06);
+}
+.pg-attrs-panel .hero-stat-cell.stat-cell:hover,
+.pg-attrs-panel .hero-stat-cell.stat-cell.open {
+  background: var(--c-surface-3);
+}
+.pg-attrs-panel .hero-stat-cell.stat-cell > span:nth-child(2),
+.pg-attrs-panel .hero-stat-cell.stat-cell > span.num-abbr:nth-child(2) {
+  align-self: auto;
+  color: var(--c-text);
+}
+.pg-attrs-panel .hero-stat-cell.stat-cell.buffed > span:nth-child(2) {
+  color: var(--c-good);
+}
+.pg-attrs-panel .hero-stat-cell.stat-cell .stat-buff {
+  flex: 1 0 100%;
+  align-self: auto;
+  text-align: left;
+}
+@media (pointer: coarse) {
+  .pg-attrs-panel .hero-stat-cell.stat-cell {
+    min-height: var(--tap);
+  }
+}
+.pg-cp-row {
+  padding: var(--sp-2) var(--sp-1);
+  font-size: var(--fs-body);
+  color: var(--c-gold-200);
 }
 .pg-attrs-panel > * + * {
   margin-top: var(--sp-3);
@@ -833,6 +1071,118 @@
   background: transparent;
   border-color: var(--c-line);
   cursor: default;
+}
+
+/* the item sheet host: beside the grid on a wide screen, right under it on a narrow one (only while something is picked) */
+.pg-host .inv-detail-backdrop,
+.pg-host .inv-detail-backdrop.open {
+  position: static;
+  display: block;
+  padding: 0;
+  background: none;
+  z-index: auto;
+}
+.pg-host .inv-detail-backdrop .inv-detail {
+  display: none;
+  width: 100%;
+  max-height: none;
+  box-shadow: var(--sh-panel);
+}
+.pg-host .inv-detail-backdrop.open .inv-detail {
+  display: flex;
+}
+.pg-host .inv-detail-close {
+  position: static;
+  width: auto;
+  min-height: var(--tap);
+  margin: 0;
+  padding: 0 var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-body);
+  border-radius: var(--r-sm);
+}
+.inv-close-text {
+  display: none;
+}
+.pg-host .inv-close-text {
+  display: inline;
+}
+@container ui (max-width: 979px) {
+  .pg-host:not(:has(.inv-detail-backdrop.open)) {
+    display: none;
+  }
+}
+@container ui (min-width: 980px) {
+  .pg-host .inv-detail-backdrop .inv-detail {
+    display: flex;
+  }
+  .pg-host .inv-detail-close {
+    display: none;
+  }
+}
+
+/* the quiet end of a storage grid: the free slots as a line, not as a field of empty boxes */
+.inv-free {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--sp-1) 0;
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
+
+/* "Habilidades" and "Títulos e aparência": a title and its one-line summary, the body opens below */
+.pg-fold {
+  padding: 0;
+}
+.pg-fold-sum {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  min-height: var(--tap);
+  padding: var(--sp-2) var(--sp-4);
+  list-style: none;
+  cursor: pointer;
+  border-radius: var(--r-lg);
+}
+.pg-fold-sum::-webkit-details-marker {
+  display: none;
+}
+.pg-fold-sum:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.pg-fold-sum .ui-panel-title {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.pg-fold-hint {
+  flex: 1 1 160px;
+  min-width: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text-dim);
+  overflow-wrap: break-word;
+}
+.pg-fold-chev {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  margin: 0 var(--sp-1) 3px auto;
+  border-right: 2px solid var(--c-gold-300);
+  border-bottom: 2px solid var(--c-gold-300);
+  transform: rotate(45deg);
+}
+.pg-fold[open] > .pg-fold-sum .pg-fold-chev {
+  margin-bottom: 0;
+  margin-top: 5px;
+  transform: rotate(-135deg);
+}
+.pg-fold-body {
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border-top: var(--bw-thin) solid rgba(255, 215, 106, 0.2);
 }
 
 /* a wide screen: the grid and the detail side by side (the Inventory screen) */

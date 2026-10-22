@@ -7,11 +7,10 @@ import { Chip, Panel } from './ui';
 
 // The list of what a profession unlocks, in level order (mastery.ts professionUnlocks): tiers / plants and the four mastery perks, with what is already done dimmed.
 // Shown in the Mining / Woodcutting screen and in the Garden, so every profession always shows its next reward.
-export default function UnlockList({ skill, level }: { skill: SkillId; level: number }) {
+export default function UnlockList({ skill, level, collapsed = false }: { skill: SkillId; level: number; collapsed?: boolean }) {
   const entries = professionUnlocks(skill);
   const upcoming = entries.filter((e) => e.level > level).length;
-  return (
-    <Panel title={t('mastery.title')} actions={<Chip tone="gold">{upcoming}</Chip>} aria-label={t('mastery.title')} data-testid="unlock-list">
+  const list = (
       <ul className="pf-unlocks">
         {entries.map((e) => {
           const done = level >= e.level;
@@ -39,6 +38,22 @@ export default function UnlockList({ skill, level }: { skill: SkillId; level: nu
           );
         })}
       </ul>
+  );
+  if (collapsed) {
+    return (
+      <Panel aria-label={t('mastery.title')} data-testid="unlock-list">
+        <details className="pf-collapse">
+          <summary className="pf-collapse-sum">
+            {t('mastery.title')} <Chip tone="gold">{upcoming}</Chip>
+          </summary>
+          {list}
+        </details>
+      </Panel>
+    );
+  }
+  return (
+    <Panel title={t('mastery.title')} actions={<Chip tone="gold">{upcoming}</Chip>} aria-label={t('mastery.title')} data-testid="unlock-list">
+      {list}
     </Panel>
   );
 }

@@ -91,6 +91,25 @@
   margin-top: var(--sp-3);
 }
 
+.pf-busy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+}
+.pf-collapse-sum {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--c-gold-300);
+}
+.pf-collapse[open] .pf-collapse-sum {
+  margin-bottom: var(--sp-2);
+}
+
 /* ---------- the unlock list ---------- */
 .pf-unlocks {
   display: flex;
@@ -358,14 +377,77 @@
 .of-tabs {
   margin-bottom: var(--sp-4);
 }
-.of-grid {
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+.of-layout .ui-main {
+  gap: var(--sp-4);
 }
-.of-card .fg-reqs {
+.of-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.of-group-title,
+.of-group-toggle {
+  margin: 0;
+  font: inherit;
+  font-size: var(--fs-section);
+  line-height: 1.3;
+  color: var(--c-text);
+}
+.of-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  color: var(--c-text-muted);
+  background: transparent;
+  border: var(--bw) dashed var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.of-group-toggle:hover {
+  border-color: var(--c-gold-line-strong);
+}
+.of-list {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+/* what the hero can make now stands out; the list never needs the sheet to say so */
+.of-row.ok {
+  border-color: var(--c-gold-line-strong);
+}
+.of-row.ok .fg-recipe-name {
+  color: var(--c-gold-300);
+}
+/* level-locked: one compact line, dimmed, the level instead of the stock */
+.of-row.locked {
+  padding: var(--sp-1) var(--sp-3);
+  min-height: 44px;
+  opacity: 0.85;
+  background: var(--c-surface-2);
+}
+.of-row.locked.selected {
+  opacity: 1;
+}
+.of-lock {
+  font-size: var(--fs-body);
+  color: var(--c-warn, var(--c-text-muted));
+}
+.of-sheet .of-stock {
   margin: 0;
 }
-.of-card .ui-alert {
-  margin-top: 0;
+.of-sheet .fg-reqs {
+  margin: 0;
+}
+.of-sheet .ui-alert {
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .of-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .of-made {
   filter: brightness(1.2);

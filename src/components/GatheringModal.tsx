@@ -13,6 +13,7 @@ import T from '../game/tunables';
 import { WOOD_TIERS } from '../game/woodcutting';
 import SkillLevelBadge from './SkillLevelBadge';
 import UnlockList from './UnlockList';
+import { gatherBusyWith, gatherSessionView } from '../game/gatherView';
 import { Button, Chip, ItemCard, ModalShell, Panel, ScreenLayout } from './ui';
 import type { CardRarity } from './ui';
 import { Meter } from './HuntParts';
@@ -95,13 +96,16 @@ export default function GatheringModal({
   const progress = status.capMs <= 0 ? 0 : Math.max(0, Math.min(1, status.pendingMs / status.capMs));
   const hunting = !!save.activeHuntingZone;
   const otherBusy = mining ? !!save.activeWoodId : !!save.activeOreId;
-  const blocked = hunting || otherBusy;
-  const blockedMsg = hunting ? t('hunting.busyOther') : t(mining ? 'woodcutting.busyOther' : 'mining.busyOther');
+  const busyWith = gatherBusyWith(save, kind);
+  const blocked = hunting || otherBusy || busyWith !== null;
+  const blockedMsg = hunting ? t('hunting.busyOther') : otherBusy ? t(mining ? 'woodcutting.busyOther' : 'mining.busyOther') : t('gathering.busyBody');
+  const sessionView = gatherSessionView(status, Math.max(0, now - startedAt));
   // what the inventory would have no room for if the session were collected now (gathering leaves the excess behind)
   const leftNow = activeId ? (addWithOverflow(save, { materials: { [activeId]: units } }).leftover.materials[activeId as MaterialId] ?? 0) : 0;
   const brew = isBuffActive(save, 'gatherer', now);
   const capHours = status.capMs / MS_H;
 
+  const nextLockedId = tiers.find((tr) => level < tr.requiredLevel)?.id;
   const TIER_RARITY: CardRarity[] = ['common', 'common', 'rare', 'epic', 'legendary'];
   const iconOf = (mid: string) => <img className="pixel-icon" src={materialIconUrl(mid as MaterialId)} alt="" draggable={false} />;
 
@@ -118,9 +122,10 @@ export default function GatheringModal({
         </SkillLevelBadge>
       </Panel>
       {activeId && (
-        <Panel tone="gold" title={t('gathering.running')} icon={iconOf(activeId)} actions={<Chip>{t('gathering.since', { t: formatDuration(Math.max(0, now - startedAt)) })}</Chip>}>
-          <Meter pct={progress * 100} tone={status.full ? 'full' : undefined} label={t(`${ns}.title`)} />
-          <p className="pf-line">{status.full ? t(`${ns}.full`) : t('gathering.storageFill', { cur: fmtHours(status.pendingMs / MS_H), cap: fmtHours(capHours) })}</p>
+        <Panel tone="gold" title={sessionView.state === 'full' ? t('gathering.fullReady') : t('gathering.running')} icon={iconOf(activeId)} actions={<Chip>{t('gathering.since', { t: formatDuration(Math.max(0, now - startedAt)) })}</Chip>}>
+          <Meter pct={progress * 100} tone={status.full ? 'full' : undefined} label={t(`${ns}.capProgress`, { cur: fmtHours(status.pendingMs / MS_H), cap: fmtHours(capHours) })} />
+          <p className="pf-line">{t(sessionView.state === 'full' ? 'gathering.producedFull' : 'gathering.producedRunning', { cur: formatDuration(sessionView.producedMs), cap: formatDuration(sessionView.capMs) })}</p>
+          {sessionView.state === 'full' && sessionView.idleMs >= 60000 && <p className="ui-note">{t('gathering.idleFull', { t: formatDuration(sessionView.idleMs) })}</p>}
           <p className="pf-ready">
             <img className="inline-icon" src={materialIconUrl(activeId as MaterialId)} alt="" /> +{fmtNum(units)} · +{fmtNum(units * T.skills.xpPerUnit)} XP
           </p>
@@ -146,8 +151,17 @@ export default function GatheringModal({
   const main = (
     <>
       <Panel title={t(`${ns}.title`)}>
+        {busyWith && (
+          <div className="ui-alert bad pf-busy" role="status" data-testid="gather-busy">
+            <strong>{t('gathering.busyTitle', { activity: t(`busy.${busyWith}`) })}</strong>
+            <span>{t('gathering.busyBody')}</span>
+          </div>
+        )}
         <div className="ui-grid pf-tiers">
           {tiers.map((tier, ti) => {
+            const unlocked0 = level >= tier.requiredLevel;
+            // Only the NEXT locked tier gets a card; the rest wait in the collapsed unlock list below.
+            if (!unlocked0 && tier.id !== nextLockedId) return null;
             const unlocked = level >= tier.requiredLevel;
             const isActive = activeId === tier.id;
             const name = t(mining ? `ore.${tier.nameKey}` : `wood.${tier.nameKey}`);
@@ -158,7 +172,7 @@ export default function GatheringModal({
                 icon={iconOf(tier.id)}
                 rarity={TIER_RARITY[Math.min(ti, TIER_RARITY.length - 1)]}
                 name={name}
-                tag={<Chip tone={isActive ? 'good' : unlocked ? 'gold' : 'plain'}>{isActive ? t('gathering.activeTier') : t(`${ns}.levelReq`, { n: tier.requiredLevel })}</Chip>}
+                tag={<Chip tone={isActive ? 'good' : unlocked ? 'gold' : 'info'}>{isActive ? t('gathering.activeTier') : unlocked ? t(`${ns}.levelReq`, { n: tier.requiredLevel }) : t('gathering.nextUnlock')}</Chip>}
                 selected={isActive}
                 action={
                   unlocked && !isActive ? (
@@ -169,11 +183,9 @@ export default function GatheringModal({
                 }
               >
                 {unlocked ? (
-                  !isActive && blocked && <p className="ui-note">{blockedMsg}</p>
+                  !isActive && blocked && !busyWith && <p className="ui-note">{blockedMsg}</p>
                 ) : (
-                  <p className="ui-note">
-                    {t(`${ns}.locked`, { n: tier.requiredLevel })} · {t('gathering.levelsToGo', { n: tier.requiredLevel - level })}
-                  </p>
+                  <p className="ui-note">{t('gathering.nextUnlockLine', { n: tier.requiredLevel, left: t('gathering.levelsToGo', { n: tier.requiredLevel - level }) })}</p>
                 )}
               </ItemCard>
             );
@@ -181,7 +193,7 @@ export default function GatheringModal({
         </div>
         {activeId && <p className="ui-note pf-switch">{t('gathering.switchHint')}</p>}
       </Panel>
-      <UnlockList skill={kind} level={level} />
+      <UnlockList skill={kind} level={level} collapsed />
     </>
   );
 

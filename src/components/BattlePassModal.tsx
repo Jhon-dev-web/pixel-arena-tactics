@@ -372,6 +372,27 @@ export default function BattlePassView({
 
   const highlights = seasonHighlights();
 
+  // The perks list: before the track for someone shopping for the Pass (benefits first), after the track for an owner (the track is what they come back to check).
+  const perksSection = (
+  <section className={`pa-perks${owner ? ' on' : ' off'}`} aria-label={t('battlePass.perksTitle')}>
+    <div className="pa-perks-head">
+      <span className="pa-perks-title">{t('battlePass.perksTitle')}</span>
+      <Chip tone={owner ? 'good' : 'plain'}>{owner ? t('battlePass.perkOn') : t('battlePass.perkOff')}</Chip>
+    </div>
+    <ul className="pa-perk-list">
+      {perks.map((p) => (
+        <li className="pa-perk" key={p.key}>
+          <img className="pa-perk-icon" src={p.icon} alt="" draggable={false} />
+          <span className="pa-perk-text">
+            <span className="pa-perk-label">{p.label}</span>
+            <span className="pa-perk-sub">{p.sub}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  </section>
+  );
+
   const tabs: TabItem<'track' | 'season'>[] = [
     { id: 'track', label: t('seasonRanking.tabTrack') },
     { id: 'season', label: t('seasonRanking.tab') },
@@ -440,7 +461,7 @@ export default function BattlePassView({
   return (
     <Screen label={t('battlePass.title')} className="pa-page">
       <PageHeader icon={<img className="pixel-icon" src="/assets/icons/nav_battlepass.png" alt="" />} title={t('battlePass.title')} />
-        <header className="pa-hero">
+        <header className={`pa-hero${owner ? ' compact' : ''}`}>
           <img className="pa-hero-art" src="/assets/backgrounds/battlepass_season.png" alt="" draggable={false} />
           <div className="pa-hero-shade" aria-hidden />
           <div className="pa-hero-content">
@@ -462,23 +483,7 @@ export default function BattlePassView({
           <SeasonRankingPanel online={server} ownsPass={owner} />
         ) : (
           <>
-            <section className={`pa-perks${owner ? ' on' : ' off'}`} aria-label={t('battlePass.perksTitle')}>
-              <div className="pa-perks-head">
-                <span className="pa-perks-title">{t('battlePass.perksTitle')}</span>
-                <Chip tone={owner ? 'good' : 'plain'}>{owner ? t('battlePass.perkOn') : t('battlePass.perkOff')}</Chip>
-              </div>
-              <ul className="pa-perk-list">
-                {perks.map((p) => (
-                  <li className="pa-perk" key={p.key}>
-                    <img className="pa-perk-icon" src={p.icon} alt="" draggable={false} />
-                    <span className="pa-perk-text">
-                      <span className="pa-perk-label">{p.label}</span>
-                      <span className="pa-perk-sub">{p.sub}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {!owner && perksSection}
 
             {!owner && onOpenInvites && (
               <p className="pa-invite-hint rf-invite-hint" data-testid="pass-invite-hint">
@@ -522,6 +527,11 @@ export default function BattlePassView({
                 }}
                 onKeyDown={onKeyDown}
               >
+                <div className="pa-rowlabels" aria-hidden>
+                  <span className="pa-rowlabel-spacer" />
+                  <span className="pa-rowlabel free">{t('battlePass.colFree')}</span>
+                  <span className="pa-rowlabel premium">{t('battlePass.colPremium')}</span>
+                </div>
                 {BATTLE_PASS_TRACK.map((lvl) => {
                   const featured = FEATURED_LEVELS.has(lvl.level);
                   const reached = lvl.level <= level;
@@ -542,6 +552,8 @@ export default function BattlePassView({
                 })}
               </div>
             </Panel>
+
+            {owner && perksSection}
 
             <Panel title={t('battlePass.highlightsTitle')}>
               <ul className="pa-hl-list">

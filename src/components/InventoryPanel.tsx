@@ -1,5 +1,6 @@
 import PixelIcon from './PixelIcon';
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useConfirmKeys } from '../hooks/useConfirmKeys';
 import { fmtNum, t } from '../locales';
 import { BUFF_ITEM, buffRemainingMs, isBuffActive } from '../game/buffs';
@@ -32,6 +33,7 @@ import UniqueTag from './UniqueTag';
 import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
 import StashHint from './StashHint';
+import FreeSpace from './FreeSpace';
 import LapidarPanel from './LapidarPanel';
 import { Button, Chip, ChipRow, Dialog, SearchField, StatList, StatRow, Tabs } from './ui';
 import { normalOf, tradeableOf } from '../game/tradeableMaterials';
@@ -75,6 +77,8 @@ function formatBuffLeft(ms: number): string {
 
 type SelKind = 'gear' | 'material' | 'consumable';
 type Variant = 'normal' | 'tradeable';
+// What is picked: the stack lives in the inventory or in the Baú; `variant` 'tradeable' is a material's tradeable stack.
+export type BagSelection = { src: 'bag' | 'stash'; kind: SelKind; id: string; variant?: Variant };
 
 // A type holding more than one stack of STACK_LIMIT occupies several slots: the unit count shown in each of them.
 const stackCells = (qty: number): number[] => Array.from({ length: slotsForQty(qty) }, (_, i) => Math.min(STACK_LIMIT, qty - i * STACK_LIMIT));
@@ -90,6 +94,9 @@ export default function InventoryPanel({
   onUseConsumable,
   onExpand,
   layout = 'compact',
+  selected: selectedProp,
+  onSelectedChange,
+  detailHost,
 }: {
   save: SaveData;
   onEquip: (id: string) => void;
@@ -103,6 +110,11 @@ export default function InventoryPanel({
   onExpand: () => void;
   // 'wide': the bag and the item detail side by side when the screen is wide enough (the Inventory screen); 'compact': the grid on its own, the detail below it (a wide screen) or as a sheet (a phone) - embedded in Personagem.
   layout?: 'wide' | 'compact';
+  // Personagem owns the pick (so a worn piece can be picked from the equipment slots too) and the place where the item sheet is drawn: `detailHost` undefined = the sheet is part of this panel (the Inventory
+  // modal); an element = the sheet is drawn there (the same single sheet, wherever the page puts it); null = that element is not mounted yet.
+  selected?: BagSelection | null;
+  onSelectedChange?: (sel: BagSelection | null) => void;
+  detailHost?: HTMLElement | null;
 }) {
   // stash / merchant / "Usar em..." actions come from App through the context (see bagContext.ts)
   const bag = useContext(BagContext);
@@ -110,7 +122,10 @@ export default function InventoryPanel({
   const [tab, setTab] = useState<'all' | 'equipment' | 'materials' | 'consumables' | 'tradeable'>('all');
   // src: where the picked stack lives (the inventory or the Baú). Phones show one pane at a time.
   // variant: a material's tradeable stack is a stack of its own (the same icon, a badge, its own actions)
-  const [selected, setSelected] = useState<{ src: 'bag' | 'stash'; kind: SelKind; id: string; variant?: Variant } | null>(null);
+  const [selectedOwn, setSelectedOwn] = useState<BagSelection | null>(null);
+  const controlled = selectedProp !== undefined;
+  const selected = controlled ? selectedProp : selectedOwn;
+  const setSelected = useCallback((sel: BagSelection | null) => (controlled ? onSelectedChange?.(sel) : setSelectedOwn(sel)), [controlled, onSelectedChange]);
   const [pane, setPane] = useState<'bag' | 'stash'>('bag');
   const [query, setQuery] = useState('');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -159,6 +174,14 @@ export default function InventoryPanel({
     setConfirmEquip(false);
   };
 
+  // the pick can also change from outside (a worn piece picked on the equipment slots): an armed question never follows the pick to another piece
+  const pickKey = selected ? `${selected.src}:${selected.kind}:${selected.id}:${selected.variant ?? ''}` : '';
+  useEffect(() => {
+    setConfirmDiscard(false);
+    setConfirmSalvage(false);
+    setConfirmEquip(false);
+  }, [pickKey]);
+
   const fromStash = selected?.src === 'stash';
   const selectedInstance = selected?.kind === 'gear' && !fromStash ? resolveGearInstance(save, selected.id)?.instance ?? null : null;
   const selectedGear: GearItem | null =
@@ -196,7 +219,7 @@ export default function InventoryPanel({
   // what was picked is gone (moved, sold, discarded): nothing left to show a detail for
   useEffect(() => {
     if (selected && selQty <= 0) setSelected(null);
-  }, [selected, selQty]);
+  }, [selected, selQty, setSelected]);
 
   const salvageReason = selected?.kind === 'gear' && !fromStash ? salvageBlockReason(save, selected.id) : null;
   const salvagePreview = selectedGear ? getSalvageReturn(selectedGear) : null;
@@ -246,204 +269,22 @@ export default function InventoryPanel({
 
   const cellsShown = gearInstances.length + [...stackableGear.map((g) => save.inventory[g.id]), ...materialItems.flatMap((m) => [m.qty, m.trade]), ...consumableItems.map((c) => c.qty)].reduce((sum, q) => sum + slotsForQty(q), 0);
 
-  return (
-    <div className={`inv-root ${layout}`}>
-      <Tabs<'bag' | 'stash'>
-        className="inv-pane-tabs"
-        label={t('inventory.title')}
-        value={pane}
-        onChange={setPane}
-        items={[
-          { id: 'bag', label: `${t('inventory.bagTitle')} ${slots}/${capacity}` },
-          { id: 'stash', icon: <img src="/assets/icons/camp_stash.png" alt="" />, label: `${t('stash.title')} ${stashSlotsUsed(save)}/${stashCapacity(save)}` },
-        ]}
-      />
-      <div className="inv-panes">
-      <section className={`inv-pane inv-pane-bag${pane === 'bag' ? ' active' : ''}`}>
-      <div className="inventory-summary">
-        <span className={`inventory-summary-chip${slots > capacity ? ' over' : ''}`} title={slots > capacity ? t('inventory.overCapacity') : undefined}>
-          {t('inventory.space', { n: slots, m: capacity })}
-          {slots > capacity && ` · ${t('inventory.overCapacity')}`}
-        </span>
-        <Button size="sm" className="inventory-expand-btn" onClick={() => setExpandOpen(true)} aria-label={t('inventory.expandTitle')}>
-          +
-        </Button>
-        <Button size="sm" className="inv-storeall" onClick={() => bag?.storeAllMaterials()} disabled={!materialItems.length}>
-          {t('stash.storeAllMaterials')}
-        </Button>
-      </div>
-
-      {expandOpen && (
-        <Dialog
-          title={t('inventory.expandTitle')}
-          footer={
-            <>
-              {expansion && (
-                <Button
-                  variant="primary"
-                  block
-                  disabled={!canAffordExpansion}
-                  onClick={() => {
-                    onExpand();
-                    setExpandOpen(false);
-                  }}
-                >
-                  {t('inventory.confirmExpand')}
-                </Button>
-              )}
-              <Button block onClick={() => setExpandOpen(false)}>
-                {t('inventory.cancel')}
-              </Button>
-            </>
-          }
-        >
-          <StatList>
-            <StatRow label={t('inventory.currentCapacity')} value={capacity} />
-            {expansion && (
-              <>
-                <StatRow label={t('inventory.newCapacity')} value={expansion.nextCapacity} />
-                <StatRow label={t('inventory.expandCost')} value={`${fmtNum(expansion.goldCost)} ${t('inventory.reforgeGold')}`} tone={canAffordExpansion ? 'gold' : 'bad'} />
-              </>
-            )}
-          </StatList>
-          {!expansion && <p className="ui-note">{t('inventory.maxCapacityReached')}</p>}
-        </Dialog>
+  // The item sheet: one element, drawn inside this panel (the modal: a sheet over the screen on a phone, beside the grid on a wide one) or in `detailHost` (Personagem).
+  const sheetHeader = (
+    <>
+      {selected && (
+        <button className="inv-detail-close" onClick={() => setSelected(null)} aria-label={t('inventory.closeDetails')} title={t('inventory.closeDetails')} data-ui>
+          <span aria-hidden>✕</span>
+          <span className="inv-close-text">{t('inventory.closeDetails')}</span>
+        </button>
       )}
-
-      <div className="inv-toolbar">
-        <SearchField label={t('inventory.search')} placeholder={t('inventory.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
-        <ChipRow<'all' | 'equipment' | 'materials' | 'consumables' | 'tradeable'>
-          className="inv-tabs"
-          label={t('inventory.title')}
-          value={tab}
-          onChange={setTab}
-          items={[
-            { id: 'all', label: t('inventory.all') },
-            { id: 'equipment', label: t('inventory.equipment') },
-            { id: 'materials', label: t('inventory.materials') },
-            { id: 'consumables', label: t('inventory.consumables') },
-            { id: 'tradeable', label: t('tradeable.filter') },
-          ]}
-        />
-      </div>
-
-      <div className="inv-grid">
-        {showEquipment &&
-          gearInstances.map((inst) => {
-            const g = getGear(inst.templateId);
-            const equipped = isInstanceEquipped(save, inst.id);
-            return (
-              <button
-                key={inst.id}
-                className={`inv-slot ${rarityClass(g)} ${rarClass(inst.rarity)}${g.unique ? ' unique' : ''}${selected?.kind === 'gear' && selected.id === inst.id ? ' active' : ''}`}
-                onClick={() => select('gear', inst.id)}
-                title={gearInstanceLabel(inst)}
-                aria-label={gearInstanceLabel(inst)}
-                data-ui
-              >
-                <span className="inv-icon">
-                  <GearIcon item={g} />
-                </span>
-                <span className="inv-qty">
-                  {refineTag(clampRefine(inst.upgrade)).trim()}
-                  {equipped ? ' ✓' : ''}
-                </span>
-                {tradeTag(inst) && (
-                  <span className={`inv-trade-tag ${tradeTag(inst)}`} title={t(`inventory.${tradeTag(inst) === 'tradeable' ? 'tradeable' : 'bound'}`)} aria-label={t(`inventory.${tradeTag(inst) === 'tradeable' ? 'tradeable' : 'bound'}`)}>
-                    {tradeTag(inst) === 'tradeable' ? '◆' : <PixelIcon name="lock" className="sm" />}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        {showEquipment &&
-          stackableGear.flatMap((g) =>
-            stackCells(save.inventory[g.id]).map((n, i) => (
-              <button
-                key={`${g.id}:${i}`}
-                className={`inv-slot ${rarityClass(g)} ${rarClass(undefined)}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
-                onClick={() => select('gear', g.id)}
-                title={gearText(g.nameKey)}
-                aria-label={`${gearText(g.nameKey)} ×${fmtNum(n)}`}
-                data-ui
-              >
-                <span className="inv-icon">
-                  <GearIcon item={g} />
-                </span>
-                <span className="inv-qty">×{fmtNum(n)}</span>
-              </button>
-            )),
-          )}
-        {showMaterials &&
-          materialItems.flatMap((m) => [
-            ...stackCells(m.qty).map((n, i) => (
-              <button
-                key={`${m.id}:${i}`}
-                className={`inv-slot${selected?.kind === 'material' && selected.id === m.id && selected.variant !== 'tradeable' ? ' active' : ''}`}
-                onClick={() => select('material', m.id)}
-                title={matText(m.nameKey)}
-                aria-label={`${matText(m.nameKey)} ×${fmtNum(n)}`}
-                data-ui
-              >
-                <span className="inv-icon">
-                  <MaterialIcon item={m} />
-                </span>
-                <span className="inv-qty">×{fmtNum(n)}</span>
-              </button>
-            )),
-            // the tradeable units of the same material: another stack, the same icon, a gold corner and the diamond (the market's mark)
-            ...stackCells(m.trade).map((n, i) => (
-              <button
-                key={`${m.id}:t${i}`}
-                className={`inv-slot tradeable-mat${selected?.kind === 'material' && selected.id === m.id && selected.variant === 'tradeable' ? ' active' : ''}`}
-                onClick={() => select('material', m.id, 'bag', 'tradeable')}
-                title={`${matText(m.nameKey)} · ${t('tradeable.tag')}`}
-                aria-label={t('tradeable.tileLabel', { name: matText(m.nameKey), n: fmtNum(n) })}
-                data-ui
-              >
-                <span className="inv-icon">
-                  <MaterialIcon item={m} />
-                </span>
-                <span className="inv-trade-tag tradeable" aria-hidden>
-                  ◆
-                </span>
-                <span className="inv-qty">×{fmtNum(n)}</span>
-              </button>
-            )),
-          ])}
-        {showConsumables &&
-          consumableItems.flatMap((c) =>
-            stackCells(c.qty).map((n, i) => (
-              <button
-                key={`${c.id}:${i}`}
-                className={`inv-slot${selected?.kind === 'consumable' && selected.id === c.id ? ' active' : ''}`}
-                onClick={() => select('consumable', c.id)}
-                title={conText(c.nameKey)}
-                aria-label={`${conText(c.nameKey)} ×${fmtNum(n)}`}
-                data-ui
-              >
-                <span className="inv-icon">
-                  <ConsumableIcon item={c} />
-                </span>
-                <span className="inv-qty">×{fmtNum(n)}</span>
-              </button>
-            )),
-          )}
-        {cellsShown === 0 && !!needle && <p className="inv-nomatch">{t('inventory.noMatches')}</p>}
-        {Array.from({ length: Math.max(0, (needle ? 0 : 24) - cellsShown) }).map((_, i) => (
-          <span key={`empty-${i}`} className="inv-slot empty" />
-        ))}
-      </div>
-      </section>
-
-      <section className={`inv-pane inv-pane-stash${pane === 'stash' ? ' active' : ''}`}>
-        <StashPane save={save} selected={fromStash && selected ? { kind: selected.kind, id: selected.id } : null} onSelect={(sel) => select(sel.kind, sel.id, 'stash')} onUpgrade={() => bag?.upgradeStash()} />
-      </section>
-      </div>
-
-      <div className={`inv-detail-backdrop${selected ? ' open' : ''}`} onClick={() => setSelected(null)}>
+    </>
+  );
+  const detailSheet = (
+    <div className={`inv-detail-backdrop${selected ? ' open' : ''}`} onClick={() => setSelected(null)}>
       <div className="inv-detail" onClick={(event) => event.stopPropagation()}>
-        {selected && <button className="inv-detail-close" onClick={() => setSelected(null)} aria-label={t('ui.close')} data-ui>✕</button>}
+        {sheetHeader}
+
         {selectedGear ? (
           <>
             <div className="inv-detail-name">
@@ -703,7 +544,205 @@ export default function InventoryPanel({
           </div>
         )}
       </div>
+    </div>
+  );
+
+  return (
+    <div className={`inv-root ${layout}`}>
+      <Tabs<'bag' | 'stash'>
+        className="inv-pane-tabs"
+        label={t('inventory.title')}
+        value={pane}
+        onChange={setPane}
+        items={[
+          { id: 'bag', label: `${t('inventory.bagTitle')} ${slots}/${capacity}` },
+          { id: 'stash', icon: <img src="/assets/icons/camp_stash.png" alt="" />, label: `${t('stash.title')} ${stashSlotsUsed(save)}/${stashCapacity(save)}` },
+        ]}
+      />
+      <div className="inv-panes">
+      <section className={`inv-pane inv-pane-bag${pane === 'bag' ? ' active' : ''}`}>
+      <div className="inventory-summary">
+        {slots > capacity && (
+          <span className="inventory-summary-chip over" role="status">
+            {t('inventory.space', { n: slots, m: capacity })} · {t('inventory.overCapacity')}
+          </span>
+        )}
+        <Button size="sm" className="inventory-expand-btn" onClick={() => setExpandOpen(true)} aria-label={t('inventory.expandTitle')}>
+          +
+        </Button>
+        <Button size="sm" className="inv-storeall" onClick={() => bag?.storeAllMaterials()} disabled={!materialItems.length}>
+          {t('stash.storeAllMaterials')}
+        </Button>
       </div>
+
+      {expandOpen && (
+        <Dialog
+          title={t('inventory.expandTitle')}
+          footer={
+            <>
+              {expansion && (
+                <Button
+                  variant="primary"
+                  block
+                  disabled={!canAffordExpansion}
+                  onClick={() => {
+                    onExpand();
+                    setExpandOpen(false);
+                  }}
+                >
+                  {t('inventory.confirmExpand')}
+                </Button>
+              )}
+              <Button block onClick={() => setExpandOpen(false)}>
+                {t('inventory.cancel')}
+              </Button>
+            </>
+          }
+        >
+          <StatList>
+            <StatRow label={t('inventory.currentCapacity')} value={capacity} />
+            {expansion && (
+              <>
+                <StatRow label={t('inventory.newCapacity')} value={expansion.nextCapacity} />
+                <StatRow label={t('inventory.expandCost')} value={`${fmtNum(expansion.goldCost)} ${t('inventory.reforgeGold')}`} tone={canAffordExpansion ? 'gold' : 'bad'} />
+              </>
+            )}
+          </StatList>
+          {!expansion && <p className="ui-note">{t('inventory.maxCapacityReached')}</p>}
+        </Dialog>
+      )}
+
+      <div className="inv-toolbar">
+        <SearchField label={t('inventory.search')} placeholder={t('inventory.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <ChipRow<'all' | 'equipment' | 'materials' | 'consumables' | 'tradeable'>
+          className="inv-tabs"
+          label={t('inventory.title')}
+          value={tab}
+          onChange={setTab}
+          items={[
+            { id: 'all', label: t('inventory.all') },
+            { id: 'equipment', label: t('inventory.equipment') },
+            { id: 'materials', label: t('inventory.materials') },
+            { id: 'consumables', label: t('inventory.consumables') },
+            { id: 'tradeable', label: t('tradeable.filter') },
+          ]}
+        />
+      </div>
+
+      <div className="inv-grid">
+        {showEquipment &&
+          gearInstances.map((inst) => {
+            const g = getGear(inst.templateId);
+            const equipped = isInstanceEquipped(save, inst.id);
+            return (
+              <button
+                key={inst.id}
+                className={`inv-slot ${rarityClass(g)} ${rarClass(inst.rarity)}${g.unique ? ' unique' : ''}${selected?.kind === 'gear' && selected.id === inst.id ? ' active' : ''}`}
+                onClick={() => select('gear', inst.id)}
+                title={gearInstanceLabel(inst)}
+                aria-label={gearInstanceLabel(inst)}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <GearIcon item={g} />
+                </span>
+                <span className="inv-qty">
+                  {refineTag(clampRefine(inst.upgrade)).trim()}
+                  {equipped ? ' ✓' : ''}
+                </span>
+                {tradeTag(inst) && (
+                  <span className={`inv-trade-tag ${tradeTag(inst)}`} title={t(`inventory.${tradeTag(inst) === 'tradeable' ? 'tradeable' : 'bound'}`)} aria-label={t(`inventory.${tradeTag(inst) === 'tradeable' ? 'tradeable' : 'bound'}`)}>
+                    {tradeTag(inst) === 'tradeable' ? '◆' : <PixelIcon name="lock" className="sm" />}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        {showEquipment &&
+          stackableGear.flatMap((g) =>
+            stackCells(save.inventory[g.id]).map((n, i) => (
+              <button
+                key={`${g.id}:${i}`}
+                className={`inv-slot ${rarityClass(g)} ${rarClass(undefined)}${selected?.kind === 'gear' && selected.id === g.id ? ' active' : ''}`}
+                onClick={() => select('gear', g.id)}
+                title={gearText(g.nameKey)}
+                aria-label={`${gearText(g.nameKey)} ×${fmtNum(n)}`}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <GearIcon item={g} />
+                </span>
+                <span className="inv-qty">×{fmtNum(n)}</span>
+              </button>
+            )),
+          )}
+        {showMaterials &&
+          materialItems.flatMap((m) => [
+            ...stackCells(m.qty).map((n, i) => (
+              <button
+                key={`${m.id}:${i}`}
+                className={`inv-slot${selected?.kind === 'material' && selected.id === m.id && selected.variant !== 'tradeable' ? ' active' : ''}`}
+                onClick={() => select('material', m.id)}
+                title={matText(m.nameKey)}
+                aria-label={`${matText(m.nameKey)} ×${fmtNum(n)}`}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <MaterialIcon item={m} />
+                </span>
+                <span className="inv-qty">×{fmtNum(n)}</span>
+              </button>
+            )),
+            // the tradeable units of the same material: another stack, the same icon, a gold corner and the diamond (the market's mark)
+            ...stackCells(m.trade).map((n, i) => (
+              <button
+                key={`${m.id}:t${i}`}
+                className={`inv-slot tradeable-mat${selected?.kind === 'material' && selected.id === m.id && selected.variant === 'tradeable' ? ' active' : ''}`}
+                onClick={() => select('material', m.id, 'bag', 'tradeable')}
+                title={`${matText(m.nameKey)} · ${t('tradeable.tag')}`}
+                aria-label={t('tradeable.tileLabel', { name: matText(m.nameKey), n: fmtNum(n) })}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <MaterialIcon item={m} />
+                </span>
+                <span className="inv-trade-tag tradeable" aria-hidden>
+                  ◆
+                </span>
+                <span className="inv-qty">×{fmtNum(n)}</span>
+              </button>
+            )),
+          ])}
+        {showConsumables &&
+          consumableItems.flatMap((c) =>
+            stackCells(c.qty).map((n, i) => (
+              <button
+                key={`${c.id}:${i}`}
+                className={`inv-slot${selected?.kind === 'consumable' && selected.id === c.id ? ' active' : ''}`}
+                onClick={() => select('consumable', c.id)}
+                title={conText(c.nameKey)}
+                aria-label={`${conText(c.nameKey)} ×${fmtNum(n)}`}
+                data-ui
+              >
+                <span className="inv-icon">
+                  <ConsumableIcon item={c} />
+                </span>
+                <span className="inv-qty">×{fmtNum(n)}</span>
+              </button>
+            )),
+          )}
+        {cellsShown === 0 && !!needle && <p className="inv-nomatch">{t('inventory.noMatches')}</p>}
+        {!needle && tab === 'all' && <FreeSpace free={Math.max(0, capacity - slots)} />}
+      </div>
+      </section>
+
+      <section className={`inv-pane inv-pane-stash${pane === 'stash' ? ' active' : ''}`}>
+        <StashPane save={save} selected={fromStash && selected ? { kind: selected.kind, id: selected.id } : null} onSelect={(sel) => select(sel.kind, sel.id, 'stash')} onUpgrade={() => bag?.upgradeStash()} />
+      </section>
+      </div>
+
+      {detailHost === undefined ? detailSheet : detailHost ? createPortal(detailSheet, detailHost) : null}
     </div>
   );
 }
+

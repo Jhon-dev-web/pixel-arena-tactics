@@ -579,6 +579,9 @@
     "mat_blood_heart": "Blood Heart"
   },
   "inventory": {
+    "freeSlots": "{n} free slots",
+    "noFreeSlots": "No free slots",
+    "closeDetails": "Close details",
     "appearance": "Appearance:",
     "appearanceHint": "this armor changes the hero's look.",
     "title": "Inventory",
@@ -679,6 +682,11 @@
   "profile": {
     "title": "HERO PROFILE",
     "subtitle": "• Level {n}",
+    "slotEmpty": "Empty",
+    "slotDur": "Dur. {n}%",
+    "slotGems": "Gems {n}",
+    "xpProgress": "XP {n}%",
+    "titlesFold": "Titles and appearance",
     "equipTab": "Equipment",
     "attrsTab": "Attributes",
     "titlesTab": "Titles",
@@ -1917,7 +1925,15 @@
     "switch": "Switch to this tier",
     "levelsToGo": "{n} levels to go",
     "switchHint": "Switching tier collects what has piled up before starting the new one.",
-    "passNextSession": "The Pass's longer storage and bonus apply from the next session."
+    "passNextSession": "The Pass's longer storage and bonus apply from the next session.",
+    "fullReady": "Storage full — ready to collect",
+    "producedFull": "Produced {cur} of {cap} (limit)",
+    "producedRunning": "Produced so far: {cur} of {cap}",
+    "idleFull": "Idle for {t}: anything past the limit does not pile up.",
+    "busyTitle": "Hero busy: {activity}",
+    "busyBody": "Stop or finish that activity to start here. Nothing is switched or cancelled for you.",
+    "nextUnlock": "Next unlock",
+    "nextUnlockLine": "Level {n} · {left}"
   },
   "stash": {
     "title": "Stash",
@@ -2329,5 +2345,20 @@
     "hud": "Hero: {activity}",
     "hudCraft": "Producing {done}/{total}",
     "stopped": "Stopped. You can start the new activity."
+  },
+  "oficios": {
+    "recipes": "Recipes",
+    "available": "Available ({n})",
+    "lockedGroup": "Locked by level ({n})",
+    "levelRow": "Hero level",
+    "ready": "Can be made",
+    "empty": "No recipes at this station.",
+    "stock": "You have {n}",
+    "needs": "Needs",
+    "blockLevel": "Your hero needs level {n} for this recipe.",
+    "blockMaterials": "Not enough materials for this quantity.",
+    "blockGold": "Not enough Gold for this quantity.",
+    "blockOther": "This recipe is not available yet.",
+    "blockBusy": "Your hero is in {activity}. Finish or cancel it to craft."
   }
 }

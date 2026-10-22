@@ -579,6 +579,9 @@
     "mat_blood_heart": "Coração de Sangue"
   },
   "inventory": {
+    "freeSlots": "{n} espaços livres",
+    "noFreeSlots": "Sem espaço livre",
+    "closeDetails": "Fechar detalhes",
     "appearance": "Aparência:",
     "appearanceHint": "esta armadura muda o visual do herói.",
     "title": "Inventário",
@@ -679,6 +682,11 @@
   "profile": {
     "title": "PERFIL DO HERÓI",
     "subtitle": "• Nível {n}",
+    "slotEmpty": "Vazio",
+    "slotDur": "Durab. {n}%",
+    "slotGems": "Gemas {n}",
+    "xpProgress": "XP {n}%",
+    "titlesFold": "Títulos e aparência",
     "equipTab": "Equipamento",
     "attrsTab": "Atributos",
     "titlesTab": "Títulos",
@@ -1917,7 +1925,15 @@
     "switch": "Trocar para este tier",
     "levelsToGo": "faltam {n} níveis",
     "switchHint": "Trocar de tier coleta o que já foi acumulado antes de começar o novo.",
-    "passNextSession": "O armazém maior e o bônus do Passe valem a partir da próxima sessão."
+    "passNextSession": "O armazém maior e o bônus do Passe valem a partir da próxima sessão.",
+    "fullReady": "Armazém cheio — pronto para coletar",
+    "producedFull": "Produziu {cur} de {cap} (limite)",
+    "producedRunning": "Produzido até agora: {cur} de {cap}",
+    "idleFull": "Parado há {t}: o que passa do limite não acumula.",
+    "busyTitle": "Herói ocupado: {activity}",
+    "busyBody": "Pare ou conclua essa atividade para começar aqui. Nada é trocado ou cancelado sozinho.",
+    "nextUnlock": "Próximo desbloqueio",
+    "nextUnlockLine": "Nível {n} · {left}"
   },
   "stash": {
     "title": "Baú",
@@ -2329,5 +2345,20 @@
     "hud": "Herói: {activity}",
     "hudCraft": "Produzindo {done}/{total}",
     "stopped": "Parado. Você já pode iniciar a nova atividade."
+  },
+  "oficios": {
+    "recipes": "Receitas",
+    "available": "Disponíveis ({n})",
+    "lockedGroup": "Bloqueadas por nível ({n})",
+    "levelRow": "Nível do herói",
+    "ready": "Pode produzir",
+    "empty": "Nenhuma receita nesta estação.",
+    "stock": "Você tem {n}",
+    "needs": "Precisa de",
+    "blockLevel": "Seu herói precisa do nível {n} para esta receita.",
+    "blockMaterials": "Faltam materiais para esta quantidade.",
+    "blockGold": "Ouro insuficiente para esta quantidade.",
+    "blockOther": "Esta receita ainda não está disponível.",
+    "blockBusy": "Seu herói está em {activity}. Termine ou cancele para produzir."
   }
 }
