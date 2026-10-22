@@ -2370,3 +2370,11 @@ dl.facts dd {
 .drawer {
   width: min(640px, 100vw);
 }
+details.players-note > summary {
+  cursor: pointer;
+  color: var(--faint);
+  font-size: 12.5px;
+}
+details.players-note p {
+  margin: 6px 0 0;
+}

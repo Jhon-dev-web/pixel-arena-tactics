@@ -188,7 +188,7 @@ export default function PlayersPage() {
       <div className="page-head">
         <div>
           <h1>Jogadores</h1>
-          <p>Busque uma conta e clique na linha para abrir a ficha completa. O e-mail aparece mascarado; o completo só na ficha.</p>
+          <p>Clique num jogador para abrir a ficha.</p>
         </div>
         <div className="head-actions">
           <ExportButton
@@ -266,9 +266,10 @@ export default function PlayersPage() {
           selectedKey={openId}
         />
         <Pager page={q.page} total={list.data?.total ?? 0} size={q.pageSize} onPage={(page) => setQ((s) => ({ ...s, page }))} />
-        <p className="faint players-note">
-          “Passe” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nível, ouro e andar desta lista vêm da rotina de cache (atualizada a cada poucas horas; um traço quer dizer que ela ainda não passou pela conta). A ficha lê o save ao vivo. “Último acesso” é o último salvamento do personagem.
-        </p>
+        <details className="players-note">
+          <summary>Como ler esta lista</summary>
+          <p className="faint">“Passe” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nível, ouro e andar desta lista vêm da rotina de cache (atualizada a cada poucas horas; um traço quer dizer que ela ainda não passou pela conta). A ficha lê o save ao vivo. “Último acesso” é o último salvamento do personagem.</p>
+        </details>
       </section>
 
       {openId ? <PlayerDrawer key={openId} id={openId} pane={side} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} onDeleted={() => { setOpenId(null); list.reload(); }} onListChanged={() => list.reload()} /> : null}
