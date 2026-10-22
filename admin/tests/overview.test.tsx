@@ -49,38 +49,76 @@ describe('Overview opens with what needs attention', () => {
     expect(hrefs).toContain('#/jogadores?alertas=1');
     // the "refund due" count comes from another table and says so
     expect(block.textContent).toContain('diferente da fila «Pagamentos a resolver»');
-    // the four indicators come first, then the pending list, then the data blocks and the history
+    // the pending list comes first, then the four numbers, the sections and, last, the daily history
     const h2s = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(h2s[0]).toBe('Precisa de atenção');
     expect(h2s.indexOf('Precisa de atenção')).toBeLessThan(h2s.indexOf('Passe de Aventureiro'));
-    expect(h2s.findIndex((t) => t?.startsWith('Atividade'))).toBeLessThan(h2s.indexOf('Passe de Aventureiro'));
+    expect(h2s.findIndex((t) => t?.startsWith('Atividade'))).toBeGreaterThan(h2s.indexOf('Passe de Aventureiro'));
   });
 
-  test('a dense grid of equal tiles on top, with “online agora” explained and mapped to real fields', async () => {
+  test('only four big numbers, after the pending list, with “online agora” explained and mapped to real fields', async () => {
     setup();
     await screen.findByText('Online agora');
     const tiles = document.querySelector('.ov-tiles') as HTMLElement;
-    expect(tiles.querySelectorAll('.ov-tile').length).toBeGreaterThanOrEqual(10);
-    for (const label of ['Jogadores', 'Online agora', 'Jogando hoje', 'Contas novas hoje', 'Passe válido', 'Itens certificados', 'Ouro nos saves', 'Bolsas de ouro', 'Anúncios abertos', 'Taxas do mercado', 'Hoje: vendas', 'Hoje: receita']) expect(tiles.textContent).toContain(label);
+    expect(tiles.querySelectorAll('.ov-tile')).toHaveLength(4);
+    for (const label of ['Online agora', 'Jogando hoje', 'Jogadores', 'Passe válido']) expect(tiles.textContent).toContain(label);
+    expect(tiles.textContent).toMatch(/\+[\d.]+ hoje/); // new accounts today live under "Jogadores"
     expect(tiles.querySelectorAll('.ov-tile.live')).toHaveLength(1);
     expect(document.body.textContent).toContain('Online agora” é estimado: personagens salvos nos últimos 5 min');
     expect(screen.getAllByText(/Consulta atualizada às/).length).toBeGreaterThanOrEqual(2);
-    // tiles come before the attention list, which comes before the activity table
-    const h2s = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(h2s.findIndex((t) => t?.startsWith('Atividade'))).toBeGreaterThan(h2s.indexOf('Precisa de atenção'));
+    const attention = screen.getByRole('heading', { name: 'Precisa de atenção' });
+    expect(attention.compareDocumentPosition(tiles) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  test('the “Hoje” tiles say so when the daily history is unavailable, never a zero', async () => {
+  test('the numbers that left the tiles are still on the page, in their sections', async () => {
+    setup();
+    await screen.findByText('Online agora');
+    document.querySelectorAll('details').forEach((d) => d.setAttribute('open', ''));
+    const text = document.body.textContent ?? '';
+    for (const label of ['Itens certificados existentes', 'Bolsas de Ouro não abertas', 'Ouro nos saves', 'Anúncios abertos', 'Taxas recebidas (5%)']) expect(text).toContain(label);
+    await waitFor(() => expect(document.querySelector('table.ov-table')).not.toBeNull());
+    for (const col of ['Vendas', 'Receita (US$)', 'Contas novas']) expect(document.querySelector('table.ov-table thead')?.textContent).toContain(col);
+  });
+
+  test('the four numbers do not depend on the daily history: it failing never shows a zero', async () => {
     setup({ series: async () => Promise.reject(new Error('sem série')) });
     await screen.findByText('Online agora');
-    const tile = (label: string) => screen.getByText(label).closest('.ov-tile') as HTMLElement;
-    await waitFor(() => expect(tile('Hoje: vendas').textContent).toContain('histórico indisponível'));
-    expect(tile('Hoje: vendas').querySelector('dd')?.textContent).toBe('—');
-    expect(tile('Hoje: receita').querySelector('dd')?.textContent).toBe('—');
+    expect(document.querySelectorAll('.ov-tile')).toHaveLength(4);
+    expect(await screen.findByText(/Não foi possível carregar o histórico diário/)).toBeTruthy();
+    expect(document.body.textContent).not.toContain('US$ 0,00');
+  });
+
+  test('each section opens and closes, and the choice is remembered on this device', async () => {
+    window.localStorage.clear();
+    setup();
+    const title = await heading('Liga e alertas');
+    const box = title.closest('details') as HTMLDetailsElement;
+    expect(box.open).toBe(false);
+    box.open = true;
+    fireEvent(box, new Event('toggle'));
+    await waitFor(() => expect(window.localStorage.getItem('admin-open:league')).toBe('1'));
+    expect((screen.getByRole('heading', { name: 'Passe de Aventureiro' }).closest('details') as HTMLDetailsElement).open).toBe(true);
+    const links = within(box).getAllByRole('link').map((a) => a.getAttribute('href'));
+    expect(links).toContain('#/liga');
+    expect(links).toContain('#/jogadores?alertas=1');
+    window.localStorage.clear();
+  });
+
+  test('the waiting list is read only when its section is opened', async () => {
+    window.localStorage.clear();
+    const { calls } = setup();
+    const box = (await heading('Lista de espera')).closest('details') as HTMLDetailsElement;
+    expect(calls).not.toContain('waitlist');
+    box.open = true;
+    fireEvent(box, new Event('toggle'));
+    await waitFor(() => expect(calls).toContain('waitlist'));
+    expect(await within(box).findByText('Na lista')).toBeTruthy();
+    window.localStorage.clear();
   });
 
   test('items by rarity: a table with the six rarities and a total, switchable by state', async () => {
     setup();
-    const sec = (await heading('Itens por raridade')).closest('section') as HTMLElement;
+    const sec = (await heading('Itens por raridade')).closest('details') as HTMLElement;
     for (const r of ['Comum', 'Incomum', 'Raro', 'Épico', 'Lendário', 'Único', 'Total']) expect(within(sec).getByText(r)).toBeTruthy();
     const cell = (label: string) => (within(sec).getByText(label).closest('tr') as HTMLElement).querySelector('td')?.textContent;
     const existing = cell('Total');
@@ -91,14 +129,15 @@ describe('Overview opens with what needs attention', () => {
 
   test('Passe and Mercado are two aligned data blocks (labels and values, SOL and USDC never summed)', async () => {
     setup();
-    const pass = (await heading('Passe de Aventureiro')).closest('section') as HTMLElement;
-    const market = screen.getByRole('heading', { name: 'Mercado' }).closest('section') as HTMLElement;
+    const pass = (await heading('Passe de Aventureiro')).closest('details') as HTMLElement;
+    const market = screen.getByRole('heading', { name: 'Mercado' }).closest('details') as HTMLElement;
     expect(pass.textContent).toContain('USDC recebido');
     expect(pass.textContent).toContain('Meta do Passe');
     expect(market.textContent).toContain('Taxas recebidas');
     expect(market.textContent).toMatch(/SOL/);
     expect(market.textContent).not.toMatch(/USDC/);
     expect(pass.parentElement).toBe(market.parentElement);
+    expect((pass as HTMLDetailsElement).open && (market as HTMLDetailsElement).open).toBe(true); // open by default
   });
 
   test('NO chart anywhere on the page: no svg, no image role, no progress bar, even with every fold open', async () => {
@@ -108,8 +147,9 @@ describe('Overview opens with what needs attention', () => {
     document.querySelectorAll('details').forEach((d) => d.setAttribute('open', ''));
     expect(document.querySelector('svg.chart')).toBeNull();
     expect(document.querySelector('.bars, .track, [role="progressbar"], [role="img"], canvas')).toBeNull();
-    // the only svg left is the refresh icon of the button
-    expect(document.querySelectorAll('svg').length).toBeLessThanOrEqual(1);
+    // every svg left is a small decorative icon, hidden from screen readers
+    const svgs = Array.from(document.querySelectorAll('svg'));
+    expect(svgs.every((s) => s.getAttribute('aria-hidden') === 'true' && !s.classList.contains('chart'))).toBe(true);
   });
 
   test('a source that fails is listed as NOT checked, and the page never says everything is fine', async () => {

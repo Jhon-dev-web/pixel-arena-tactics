@@ -2,12 +2,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { BarChart, LineChart } from '../src/components/Charts';
 import { Drawer } from '../src/components/Drawer';
 import PlayersPage from '../src/pages/Players';
 import { AppContext } from '../src/hooks';
 import { createDemoApi } from '../src/lib/demo';
-import { fmtInt } from '../src/lib/format';
 
 afterEach(() => cleanup());
 
@@ -129,40 +127,5 @@ describe('the side panel is a real modal dialog (A08)', () => {
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(document.activeElement).toBe(row);
-  });
-});
-
-describe('charts give their exact values without hover (A08)', () => {
-  const labels = ['01/10', '02/10', '03/10'];
-
-  test('a line chart: a closed-by-default table with every value, the period and the series names', () => {
-    render(<LineChart label="Cadastros por dia" labels={labels} tip={fmtInt} series={[{ name: 'Cadastros', tone: 1, values: [1200, 0, 7] }, { name: 'Ativos', tone: 3, values: [5, 6, 7] }]} />);
-    const details = document.querySelector('details.chart-data') as HTMLDetailsElement;
-    expect(details.open).toBe(false);
-    expect(within(details).getByText('Ver os valores em tabela')).toBeTruthy();
-    const table = details.querySelector('table')!;
-    expect([...table.querySelectorAll('thead th')].map((h) => h.textContent)).toEqual(['Dia', 'Cadastros', 'Ativos']);
-    expect([...table.querySelectorAll('tbody tr')].map((r) => [...r.children].map((c) => c.textContent))).toEqual([
-      ['01/10', '1.200', '5'],
-      ['02/10', '0', '6'],
-      ['03/10', '7', '7'],
-    ]);
-    expect(table.querySelector('caption')!.textContent).toBe('Cadastros por dia: valores por dia');
-  });
-
-  test('line series also differ by dash pattern, not only by color', () => {
-    render(<LineChart label="x" labels={labels} series={[{ name: 'A', tone: 1, values: [1, 2, 3] }, { name: 'B', tone: 3, values: [3, 2, 1] }]} />);
-    const dashes = [...document.querySelectorAll('polyline')].map((p) => p.getAttribute('stroke-dasharray'));
-    expect(dashes).toEqual([null, '7 4']);
-    expect(document.querySelectorAll('.legend svg.legend-line').length).toBe(2);
-  });
-
-  test('a stacked bar chart gets the same table, formatted like its tooltips', () => {
-    render(<BarChart stacked label="Vendas" labels={labels} tip={(n) => `${n} un.`} series={[{ name: 'USDC', tone: 3, values: [1, 2, 3] }, { name: 'Cartão', tone: 1, values: [0, 1, 0] }]} />);
-    const table = document.querySelector('details.chart-data table')!;
-    expect(table.textContent).toContain('2 un.');
-    expect(table.querySelectorAll('tbody tr')).toHaveLength(3);
-    // the tooltip text and the table agree
-    expect(document.querySelector('rect title')!.textContent).toBe('01/10 · USDC: 1 un.');
   });
 });

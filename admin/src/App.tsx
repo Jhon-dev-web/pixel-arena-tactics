@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon, Notice, Skeleton, type IconName } from './components/ui';
-import { AppContext } from './hooks';
+import { AppContext, useAsync, useInterval } from './hooks';
 import { type Access, resolveAccess } from './lib/auth';
 import type { Backend } from './lib/backend';
 import { describeEnvironment, type EnvInfo } from './lib/environment';
@@ -15,18 +15,30 @@ const Waitlist = lazy(() => import('./pages/WaitlistPage'));
 const AiOps = lazy(() => import('./pages/AiOps'));
 const Pagamentos = lazy(() => import('./pages/Pagamentos'));
 const Codes = lazy(() => import('./pages/Codes'));
+const Tools = lazy(() => import('./pages/Tools'));
 
-export const ROUTES: { id: string; label: string; icon: IconName }[] = [
-  { id: 'visao-geral', label: 'Visão geral', icon: 'overview' },
+/** The three screens of the menu (owner's request, 22/10/2026: organized, simple, few tabs). Every other page hangs under one of them. */
+export type Section = 'visao-geral' | 'jogadores' | 'ferramentas';
+
+export const NAV: { id: Section; label: string; icon: IconName }[] = [
+  { id: 'visao-geral', label: 'Hoje', icon: 'home' },
   { id: 'jogadores', label: 'Jogadores', icon: 'players' },
-  { id: 'lendarios', label: 'Lendários', icon: 'legendary' },
-  { id: 'mercado', label: 'Mercado', icon: 'market' },
-  { id: 'economia', label: 'Economia', icon: 'economy' },
-  { id: 'liga', label: 'Liga', icon: 'league' },
-  { id: 'espera', label: 'Lista de espera', icon: 'waitlist' },
-  { id: 'pagamentos', label: 'Pagamentos a resolver', icon: 'economy' },
-  { id: 'codigos', label: 'Códigos', icon: 'ticket' },
-  { id: 'ia-operacao', label: 'IA e operação', icon: 'shield' },
+  { id: 'ferramentas', label: 'Ferramentas', icon: 'tools' },
+];
+
+/** Every page of the app. The detail pages are opened from "Hoje" or "Ferramentas" and keep their old addresses, so links from the AI reports still work. */
+export const ROUTES: { id: string; label: string; icon: IconName; section: Section }[] = [
+  { id: 'visao-geral', label: 'Hoje', icon: 'home', section: 'visao-geral' },
+  { id: 'jogadores', label: 'Jogadores', icon: 'players', section: 'jogadores' },
+  { id: 'ferramentas', label: 'Ferramentas', icon: 'tools', section: 'ferramentas' },
+  { id: 'lendarios', label: 'Lendários', icon: 'legendary', section: 'visao-geral' },
+  { id: 'mercado', label: 'Mercado', icon: 'market', section: 'visao-geral' },
+  { id: 'economia', label: 'Economia', icon: 'economy', section: 'visao-geral' },
+  { id: 'liga', label: 'Liga', icon: 'league', section: 'visao-geral' },
+  { id: 'espera', label: 'Lista de espera', icon: 'waitlist', section: 'visao-geral' },
+  { id: 'pagamentos', label: 'Pagamentos a resolver', icon: 'economy', section: 'ferramentas' },
+  { id: 'codigos', label: 'Códigos', icon: 'ticket', section: 'ferramentas' },
+  { id: 'ia-operacao', label: 'IA e operação', icon: 'shield', section: 'ferramentas' },
 ];
 
 const PAGES: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
@@ -40,6 +52,7 @@ const PAGES: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
   pagamentos: Pagamentos,
   codigos: Codes,
   'ia-operacao': AiOps,
+  ferramentas: Tools,
 };
 
 export function routeFromHash(hash: string): string {
@@ -59,12 +72,13 @@ function useRoute(): string {
 
 type Theme = 'light' | 'dark' | 'auto';
 
+/** Dark (night blue and gold) unless the owner picked the light theme with the button; the choice is remembered on this device. */
 function readTheme(): Theme {
   try {
     const t = window.localStorage.getItem('admin-theme');
-    return t === 'light' || t === 'dark' ? t : 'auto';
+    return t === 'light' || t === 'dark' ? t : 'dark';
   } catch {
-    return 'auto';
+    return 'dark';
   }
 }
 
@@ -182,9 +196,23 @@ export function EnvChip({ env }: { env: EnvInfo }) {
   );
 }
 
+/** The red number on "Ferramentas": open payments plus unread AI reports. A query that fails shows nothing here (the "Hoje" page says it could not check). */
+function useToolsCount(): number {
+  const pay = useAsync((api) => api.paymentExceptions({ status: 'open', page: 0, pageSize: 1 }), []);
+  const ops = useAsync((api) => api.opsOverview(), []);
+  useInterval(() => {
+    pay.reload();
+    ops.reload();
+  }, 60_000);
+  return (pay.data?.open ?? 0) + (ops.data?.open_reports ?? 0);
+}
+
 function Shell({ backend, email, onSignOut }: { backend: Backend; email: string | null; onSignOut: () => void }) {
   const route = useRoute();
   const Page = PAGES[route];
+  const current = ROUTES.find((r) => r.id === route) ?? ROUTES[0];
+  const parent = NAV.find((n) => n.id === current.section) ?? NAV[0];
+  const toolsCount = useToolsCount();
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -192,15 +220,21 @@ function Shell({ backend, email, onSignOut }: { backend: Backend; email: string 
           <img className="brand-emblem" src="/emblem.png" alt="" width="28" height="28" />
           <span>
             Arena Idle
-            <small>Painel do dono</small>
+            <small>Administração</small>
           </span>
         </div>
         <EnvChip env={envOf(backend)} />
         <nav className="nav" aria-label="Seções">
-          {ROUTES.map((r) => (
-            <a key={r.id} href={`#/${r.id}`} aria-current={r.id === route ? 'page' : undefined}>
+          {NAV.map((r) => (
+            <a key={r.id} href={`#/${r.id}`} aria-current={r.id === route ? 'page' : r.id === current.section ? 'location' : undefined}>
               <Icon name={r.icon} />
               {r.label}
+              {r.id === 'ferramentas' && toolsCount > 0 ? (
+                <span className="nav-count" title="pagamentos em aberto e relatórios da IA não lidos">
+                  {toolsCount}
+                  <span className="sr-only"> pendentes</span>
+                </span>
+              ) : null}
             </a>
           ))}
         </nav>
@@ -217,6 +251,16 @@ function Shell({ backend, email, onSignOut }: { backend: Backend; email: string 
         </div>
       </aside>
       <main className="main" id="conteudo">
+        {current.id !== parent.id ? (
+          <nav className="crumb" aria-label="Caminho">
+            <a href={`#/${parent.id}`}>
+              <Icon name="back" />
+              {parent.label}
+            </a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{current.label}</span>
+          </nav>
+        ) : null}
         <Suspense fallback={<Skeleton height={240} />}>
           <Page />
         </Suspense>

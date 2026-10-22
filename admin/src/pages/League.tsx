@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
-import { Bars, Card, Field, Kpi, Notice, Pill, Progress, SectionTitle, Skeleton } from '../components/ui';
+import { Card, CountTable, Field, Kpi, Notice, Pill, SectionTitle, Skeleton } from '../components/ui';
 import { useApp, useAsync, useDebounced } from '../hooks';
 import { defaultFlagsQuery, EXPORT_PAGE_SIZE } from '../lib/filters';
 import { DASH, fmtDateTime, fmtInt, fmtPercent, shortId } from '../lib/format';
@@ -78,7 +78,6 @@ export default function LeaguePage() {
             <Card title="Meta de Passes pagos">
               {goal ? (
                 <div className="stack">
-                  <Progress value={goal.paid} target={goal.target} label="Passes pagos até a meta" />
                   <div>
                     <strong>{fmtInt(goal.paid)}</strong> de {fmtInt(goal.target)} ({fmtPercent(goal.target ? goal.paid / goal.target : 0, 1)})
                   </div>
@@ -127,7 +126,7 @@ export default function LeaguePage() {
           <Pager page={fq.page} total={flags.data?.total ?? 0} size={fq.pageSize} onPage={(page) => setFq((s) => ({ ...s, page }))} />
         </Card>
         <Card title="Motivos mais comuns" note="jogadores por código">
-          {flags.data && flags.data.reasons.length ? <Bars rows={flags.data.reasons.slice(0, 10).map((r, i) => ({ label: r.code, value: r.players, tone: ((i % 6) + 1) as 1 }))} format={fmtInt} /> : <p className="muted">Sem alertas.</p>}
+          {flags.data && flags.data.reasons.length ? <CountTable caption="Motivos mais comuns" head="Código" rows={flags.data.reasons.slice(0, 10).map((r) => ({ label: r.code, value: r.players }))} format={fmtInt} /> : <p className="muted">Sem alertas.</p>}
         </Card>
       </div>
       <p className="faint" style={{ marginTop: 10 }}>

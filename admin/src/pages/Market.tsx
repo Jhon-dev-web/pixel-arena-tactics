@@ -150,7 +150,7 @@ export default function MarketPageView() {
         <Pager page={q.page} total={data.data?.total ?? 0} size={q.pageSize} onPage={(page) => setQ((s) => ({ ...s, page }))} />
       </Card>
       <p className="faint" style={{ marginTop: 10 }}>
-        Preços em SOL (1 SOL = 1.000.000.000 lamports). Vendas de teste (devnet) não são dinheiro real e ficam fora dos totais da Visão geral. O link abre a Solscan, um site externo.
+        Preços em SOL (1 SOL = 1.000.000.000 lamports). Vendas de teste (devnet) não são dinheiro real e ficam fora dos totais da tela Hoje. O link abre a Solscan, um site externo.
       </p>
     </>
   );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
-import { Bars, Card, Field, Notice, Pill } from '../components/ui';
+import { Card, CountTable, Field, Notice, Pill } from '../components/ui';
 import { useApp, useAsync, useDebounced } from '../hooks';
 import { activeFilterCount, dayEndIso, dayStartIso, defaultLegendaryQuery, EXPORT_PAGE_SIZE } from '../lib/filters';
 import { DASH, fmtDateTime, fmtInt, shortId } from '../lib/format';
@@ -57,11 +57,11 @@ export default function LegendariesPage() {
       {summary ? (
         <div className="grid-2" style={{ marginBottom: 12 }}>
           <Card title="Por origem">
-            <Bars rows={SOURCES.filter((s) => summary.by_source[s]).map((s, i) => ({ label: sourceLabel(s), value: summary.by_source[s], tone: ((i % 6) + 1) as 1 }))} format={fmtInt} />
+            <CountTable caption="Lendários por origem" head="Origem" share rows={SOURCES.filter((s) => summary.by_source[s]).map((s) => ({ label: sourceLabel(s), value: summary.by_source[s] }))} format={fmtInt} />
             {Object.keys(summary.by_source).length === 0 ? <p className="muted">Nada neste filtro.</p> : null}
           </Card>
           <Card title="Por estado">
-            <Bars rows={STATUSES.filter((s) => summary.by_status[s]).map((s, i) => ({ label: statusLabel(s), value: summary.by_status[s], tone: ((i % 6) + 1) as 1 }))} format={fmtInt} />
+            <CountTable caption="Lendários por estado" head="Estado" share rows={STATUSES.filter((s) => summary.by_status[s]).map((s) => ({ label: statusLabel(s), value: summary.by_status[s] }))} format={fmtInt} />
             {Object.keys(summary.by_status).length === 0 ? <p className="muted">Nada neste filtro.</p> : null}
           </Card>
         </div>

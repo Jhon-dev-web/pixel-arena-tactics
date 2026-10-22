@@ -30,6 +30,7 @@ export function DataTable<T>({
   sort,
   onSort,
   onRowClick,
+  selectedKey,
   caption,
 }: {
   columns: Column<T>[];
@@ -40,6 +41,8 @@ export function DataTable<T>({
   sort?: SortState;
   onSort?: (key: string) => void;
   onRowClick?: (row: T) => void;
+  /** The row whose details are open beside the table (highlighted). */
+  selectedKey?: string | null;
   caption: string;
 }) {
   return (
@@ -76,7 +79,8 @@ export function DataTable<T>({
             rows.map((row) => (
               <tr
                 key={rowKey(row)}
-                className={onRowClick ? 'click' : ''}
+                className={`${onRowClick ? 'click' : ''}${selectedKey != null && rowKey(row) === selectedKey ? ' selected' : ''}`.trim()}
+                aria-selected={selectedKey != null ? rowKey(row) === selectedKey : undefined}
                 tabIndex={onRowClick ? 0 : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 onKeyDown={onRowClick ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onRowClick(row)) : undefined}

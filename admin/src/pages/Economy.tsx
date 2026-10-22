@@ -1,6 +1,5 @@
-import { LineChart } from '../components/Charts';
 import { DataTable, type Column } from '../components/Table';
-import { Bars, Card, Icon, Kpi, Notice, SectionTitle, Skeleton } from '../components/ui';
+import { Card, CountTable, Icon, Kpi, Notice, SectionTitle, Skeleton } from '../components/ui';
 import { useAsync } from '../hooks';
 import { materialsTotal, summarizeItems } from '../lib/aggregate';
 import { fmtAgo, fmtDay, fmtGold, fmtInt, fmtPercent, fmtSol, humanize } from '../lib/format';
@@ -81,7 +80,6 @@ function Body({ e, now }: { e: Economy; now: number }) {
   const items = summarizeItems(e.items);
   const rows = itemRows(e.items);
   const series = e.gold_series;
-  const labels = series.map((d) => fmtDay(d.day));
   return (
     <>
       <SectionTitle>Ouro nos saves</SectionTitle>
@@ -97,8 +95,8 @@ function Body({ e, now }: { e: Economy; now: number }) {
             <Kpi label="10 mais ricos" value={fmtPercent(g.top10_share, 1)} sub="parte do ouro total" />
           </div>
           <div className="grid-2" style={{ marginTop: 12 }}>
-            <Card title="Ouro total ao longo do tempo" note="um ponto por dia">
-              <LineChart label="Ouro total declarado pelos saves por dia" labels={labels} axis={(n) => fmtInt(n / 1000) + ' mil'} tip={fmtGold} series={[{ name: 'Ouro total', tone: 2, values: series.map((d) => Number(d.gold_total)) }]} />
+            <Card flush title="Ouro total por dia" note="mais recente primeiro">
+              <CountTable caption="Ouro total declarado pelos saves por dia" head="Dia" rows={[...series].reverse().slice(0, 30).map((d) => ({ label: fmtDay(d.day), value: Number(d.gold_total) }))} format={fmtGold} />
             </Card>
             <Card title="Maiores saldos" note="declarado pelos saves">
               <DataTable
@@ -124,8 +122,8 @@ function Body({ e, now }: { e: Economy; now: number }) {
         <Kpi label="Abertas" value={fmtInt(e.pouches.opened)} sub={`${fmtGold(e.pouches.opened_gold)} de ouro devolvido`} />
       </div>
       <div style={{ marginTop: 12 }}>
-        <Card title="Em circulação por tamanho">
-          {e.pouches_by_id.length === 0 ? <p className="muted">Nenhuma Bolsa em circulação.</p> : <Bars rows={e.pouches_by_id.map((p, i) => ({ label: `${humanize(p.pouch_id)} (${fmtInt(p.count)})`, value: p.gold, tone: ((i % 6) + 1) as 1 }))} format={(n) => `${fmtGold(n)} de ouro`} />}
+        <Card flush title="Em circulação por tamanho">
+          {e.pouches_by_id.length === 0 ? <p className="muted">Nenhuma Bolsa em circulação.</p> : <CountTable caption="Bolsas de Ouro em circulação por tamanho" head="Bolsa" rows={e.pouches_by_id.map((p) => ({ label: `${humanize(p.pouch_id)} (${fmtInt(p.count)})`, value: p.gold }))} format={(n) => `${fmtGold(n)} de ouro`} />}
         </Card>
       </div>
 

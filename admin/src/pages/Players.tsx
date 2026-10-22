@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AccountActions } from '../components/AccountActions';
 import { Drawer } from '../components/Drawer';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
 import { FullAudit, FullCredits, FullHero, FullInventory, FullInvites, FullMarket, FullMaterials, FullMissingNotice, FullPassSave, FullProgress, FullSummary } from '../components/PlayerFullView';
-import { Card, DefList, ExternalLink, Field, Notice, PassBadge, Pill, Skeleton } from '../components/ui';
+import { Card, DefList, ExternalLink, Field, Icon, Notice, PassBadge, Pill, Skeleton } from '../components/ui';
 import { hashParam, useApp, useAsync, useDebounced } from '../hooks';
 import { playerPassState } from '../lib/aggregate';
 import { activeFilterCount, defaultPlayerQuery, EXPORT_PAGE_SIZE, toggleSort } from '../lib/filters';
@@ -36,9 +36,18 @@ const COLUMNS: Column<PlayerRow>[] = [
     sortKey: 'username',
     cell: (p) => (
       <span>
-        {p.online ? <span className="dot live" title="online agora" /> : null} <strong>{p.username ?? <span className="faint">(sem nome)</span>}</strong>
-        <div className="faint">{p.email_masked ?? DASH}</div>
-        <PhoneBadges p={p} />
+        <span className="who">
+          <span className="monogram" aria-hidden="true">
+            {(p.hero_name ?? p.username ?? '?').trim().charAt(0).toUpperCase() || '?'}
+            {p.online ? <span className="dot live" /> : null}
+          </span>
+          <span>
+            {p.online ? <span className="sr-only">online agora, </span> : null}
+            <strong>{p.username ?? <span className="faint">(sem nome)</span>}</strong>
+            <div className="faint">{p.email_masked ?? DASH}</div>
+            <PhoneBadges p={p} />
+          </span>
+        </span>
       </span>
     ),
   },
@@ -70,6 +79,20 @@ const COLUMNS: Column<PlayerRow>[] = [
 
 const SORT_HEADERS = new Set<string>(['username', 'level', 'last_seen']);
 
+/** On a wide screen the account opens BESIDE the list (the owner keeps both in view); on a phone or a narrow window it opens as a modal panel. */
+const WIDE = '(min-width: 1180px)';
+function useWide(): boolean {
+  const query = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(WIDE) : null;
+  const [wide, setWide] = useState(() => Boolean(query?.matches));
+  useEffect(() => {
+    if (!query) return;
+    const on = () => setWide(query.matches);
+    query.addEventListener?.('change', on);
+    return () => query.removeEventListener?.('change', on);
+  }, [query]);
+  return wide;
+}
+
 /** Links from other pages open this one already filtered: #/jogadores?q=texto, ?alertas=1 (only accounts with alerts), ?passe=expired|yes|no|history. */
 function initialQuery(): PlayerQuery {
   const passe = hashParam('passe');
@@ -81,6 +104,8 @@ export default function PlayersPage() {
   const { api } = useApp();
   const [q, setQ] = useState<PlayerQuery>(() => initialQuery());
   const [openId, setOpenId] = useState<string | null>(null);
+  const wide = useWide();
+  const side = Boolean(openId && wide);
   const search = useDebounced(q.search, 350);
   const query: PlayerQuery = { ...q, search };
   const list = useAsync((a) => a.players(query), [JSON.stringify(query)]);
@@ -106,6 +131,8 @@ export default function PlayersPage() {
         </div>
       </div>
 
+      <div className={side ? 'players-split' : undefined}>
+      <div className="players-list">
       <div className="toolbar">
         <div className="grow">
           <Field label="Buscar">
@@ -167,6 +194,7 @@ export default function PlayersPage() {
           sort={{ key: q.sort, dir: q.dir }}
           onSort={(k) => SORT_HEADERS.has(k) && setQ((s) => toggleSort(s, k as PlayerSort))}
           onRowClick={(p) => setOpenId(p.user_id)}
+          selectedKey={openId}
         />
         <Pager page={q.page} total={list.data?.total ?? 0} size={q.pageSize} onPage={(page) => setQ((s) => ({ ...s, page }))} />
       </Card>
@@ -174,20 +202,23 @@ export default function PlayersPage() {
         “Passe válido” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nesta lista, nível, andar e profundeza vêm da rotina de cache (atualizada a cada poucas horas; um traço significa que a rotina ainda não passou pela conta). O painel de detalhes lê o save ao vivo. “Atividade recente” é o último salvamento do personagem.
       </p>
 
-      {openId ? <PlayerDrawer id={openId} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} onDeleted={() => { setOpenId(null); list.reload(); }} onListChanged={() => list.reload()} /> : null}
+      </div>
+      {openId ? <PlayerDrawer key={openId} id={openId} pane={side} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} onDeleted={() => { setOpenId(null); list.reload(); }} onListChanged={() => list.reload()} /> : null}
+      </div>
     </>
   );
 }
 
-function PlayerDrawer({ id, summary, onClose, onDeleted, onListChanged }: { id: string; summary: PlayerRow | null; onClose: () => void; onDeleted: () => void; onListChanged: () => void }) {
+function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: { id: string; pane: boolean; summary: PlayerRow | null; onClose: () => void; onDeleted: () => void; onListChanged: () => void }) {
   const detail = useAsync((a) => a.playerDetail(id), [id]);
   const liveRaw = useAsync((a) => a.playerFull(id), [id]);
   const full = liveRaw.data === undefined ? null : normalizeFull(liveRaw.data);
   const [reveal, setReveal] = useState(false);
   const close = useCallback(onClose, [onClose]);
   const d = detail.data;
-  return (
-    <Drawer title={summary?.username ?? d?.account.username ?? 'Jogador'} subtitle={<span className="mono">{shortId(id)}</span>} onClose={close}>
+  const title = summary?.username ?? d?.account.username ?? 'Jogador';
+  const content = (
+    <>
       {detail.error ? (
         <Notice tone="bad">
           {detail.error}{' '}
@@ -379,6 +410,27 @@ function PlayerDrawer({ id, summary, onClose, onDeleted, onListChanged }: { id: 
           />
         </>
       )}
-    </Drawer>
+    </>
+  );
+  if (!pane) {
+    return (
+      <Drawer title={title} subtitle={<span className="mono">{shortId(id)}</span>} onClose={close}>
+        {content}
+      </Drawer>
+    );
+  }
+  return (
+    <aside className="player-pane" aria-label={`Ficha de ${title}`}>
+      <div className="drawer-head">
+        <div>
+          <h2>{title}</h2>
+          <div className="muted mono">{shortId(id)}</div>
+        </div>
+        <button type="button" className="btn ghost" onClick={close} aria-label="Fechar ficha">
+          <Icon name="close" />
+        </button>
+      </div>
+      <div className="drawer-body">{content}</div>
+    </aside>
   );
 }

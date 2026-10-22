@@ -83,7 +83,7 @@ describe('access', () => {
     expect(screen.getByText(/jogador@exemplo\.com/)).toBeTruthy();
     expect(isAdmin).toHaveBeenCalledTimes(1);
     expect(calls).toEqual([]);
-    expect(screen.queryByText('Visão geral')).toBeNull();
+    expect(screen.queryByText('Hoje')).toBeNull();
     expect(screen.queryByRole('navigation')).toBeNull();
     // the only thing left to do is leave
     fireEvent.click(screen.getByRole('button', { name: 'Sair' }));
@@ -97,10 +97,9 @@ describe('access', () => {
     const { auth } = fakeAuth({ session: { email: 'dono@exemplo.com' }, admin: true });
     render(<App backend={backend(auth, api)} />);
     const nav = await screen.findByRole('navigation', { name: 'Seções' });
-    for (const label of ['Visão geral', 'Jogadores', 'Lendários', 'Mercado', 'Economia', 'Liga', 'Lista de espera', 'IA e operação']) {
-      expect(nav.textContent).toContain(label);
-    }
-    expect(await screen.findByRole('heading', { name: 'Visão geral' })).toBeTruthy();
+    // three screens only (owner's request, 22/10/2026); the other pages open from inside them
+    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.replace(/\d+ pendentes$/, '').trim())).toEqual(['Hoje', 'Jogadores', 'Ferramentas']);
+    expect(await screen.findByRole('heading', { name: 'Hoje', level: 1 })).toBeTruthy();
     await waitFor(() => expect(calls).toContain('overview'));
     expect((await screen.findAllByText(/Consulta atualizada às/)).length).toBeGreaterThan(0);
   });

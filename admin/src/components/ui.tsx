@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { playerPassState } from '../lib/aggregate';
 import { passSourceLabel } from '../lib/labels';
 import type { PlayerRow } from '../lib/types';
-import { ratio } from '../lib/format';
+import { fmtPercent } from '../lib/format';
 
 const PATHS: Record<string, string> = {
   overview: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -22,6 +22,19 @@ const PATHS: Record<string, string> = {
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   ticket: 'M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4zM14 6v12',
   shield: 'M12 2l8 3v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5zM9 12l2 2 4-4',
+  home: 'M3 11l9-8 9 8M5 9.5V21h5v-6h4v6h5V9.5',
+  tools: 'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z',
+  back: 'M15 18l-6-6 6-6',
+  next: 'M9 18l6-6-6-6',
+  pulse: 'M3 12h4l3-8 4 16 3-8h4',
+  user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  userplus: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6',
+  scroll: 'M8 3h11a2 2 0 0 1 2 2v2h-4M8 3a2 2 0 0 0-2 2v12a3 3 0 0 1-3 3h12a3 3 0 0 0 3-3V7M10 8h5M10 12h5',
+  coin: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v10M15 9.5c0-1-1.3-1.6-3-1.6s-3 .6-3 1.7 1.2 1.6 3 2 3 .9 3 2-1.3 1.7-3 1.7-3-.6-3-1.6',
+  box: 'M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  mail: 'M3 5h18v14H3zM3 6l9 7 9-7',
+  alert: 'M12 3l10 18H2zM12 10v5M12 18h.01',
 };
 
 export type IconName = keyof typeof PATHS;
@@ -81,31 +94,30 @@ export function Notice({ tone, children }: { tone?: 'warn' | 'bad'; children: Re
   );
 }
 
-export function Progress({ value, target, label }: { value: number; target: number; label?: string }) {
-  const pct = ratio(value, target) * 100;
+/** Counts as a plain table, one row per entry, with an optional share column. No bars: the owner wants only data (21/10/2026). */
+export function CountTable({ rows, format, caption, head = 'Item', share }: { rows: { label: string; value: number }[]; format: (n: number) => string; caption: string; head?: string; share?: boolean }) {
+  const total = rows.reduce((t, r) => t + r.value, 0);
   return (
-    <div role="progressbar" aria-valuemin={0} aria-valuemax={target} aria-valuenow={Math.min(value, target)} aria-label={label} className="progress">
-      <div ref={(el) => { if (el) el.style.width = `${pct}%`; }} />
-    </div>
-  );
-}
-
-/** Horizontal bars: one row per entry, scaled to the largest. */
-export function Bars({ rows, format }: { rows: { label: string; value: number; tone?: 1 | 2 | 3 | 4 | 5 | 6 }[]; format: (n: number) => string }) {
-  const max = Math.max(1, ...rows.map((r) => r.value));
-  return (
-    <div className="bars">
-      {rows.map((r) => (
-        <div className="row" key={r.label}>
-          <span className="tight" title={r.label}>
-            {r.label}
-          </span>
-          <div className="track">
-            <div className={`s${r.tone ?? 1}`} ref={(el) => { if (el) el.style.width = `${(r.value / max) * 100}%`; }} />
-          </div>
-          <span className="muted">{format(r.value)}</span>
-        </div>
-      ))}
+    <div className="table-wrap">
+      <table className="data">
+        <caption className="sr-only">{caption}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{head}</th>
+            <th scope="col" className="num">Quantidade</th>
+            {share ? <th scope="col" className="num">%</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label}>
+              <td>{r.label}</td>
+              <td className="num">{format(r.value)}</td>
+              {share ? <td className="num">{total ? fmtPercent(r.value / total, 1) : '—'}</td> : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

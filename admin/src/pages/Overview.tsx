@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AsyncBlock, Freshness } from '../components/Block';
-import { Icon, Notice, Pill } from '../components/ui';
+import { Icon, Notice, Pill, type IconName } from '../components/ui';
 import { type AsyncState, useApp, useAsync, useInterval, useNow } from '../hooks';
 import { liveOwnersBySource, materialsTotal, passMeasures, passRevenue, summarizeItems, testPassOwners } from '../lib/aggregate';
 import { buildAttention } from '../lib/attention';
@@ -10,7 +10,7 @@ import { checkLabel, FLAG_INFO, FLAG_ORDER, passSourceLabel, seasonStatusLabel }
 import { watchdogState } from '../lib/opsState';
 import type { OpsOverview, Overview, PaymentExceptionsPage, SeriesDay } from '../lib/types';
 
-// "Visão geral": numbers, tables and lists only. There is NO chart on this page (owner's decision, 21/10/2026): goals and distributions are text.
+// "Hoje" (route visao-geral): numbers, tables and lists only. There is NO chart on this page (owner's decision, 21/10/2026): goals and distributions are text.
 const REFRESH_MS = 60_000;
 const ACTIVITY_DEFAULT_DAYS = 14;
 
@@ -33,13 +33,15 @@ export default function OverviewPage() {
   }
   useInterval(reloadAll, REFRESH_MS);
 
+  const hasPlayers = ov.data != null && !(ov.data.players.registered === 0 && ov.data.players.characters === 0);
+
   return (
     <>
       <div className="page-head">
         <div>
-          <h1>Visão geral</h1>
+          <h1>Hoje</h1>
           <p>
-            Só números e tabelas. Cada bloco diz de quando é. A tela se atualiza sozinha a cada 60 segundos{demo ? ' (dados de demonstração)' : ''}.
+            O que precisa de você, os números principais e o resumo de cada área (toque no título para abrir). Atualiza sozinho a cada minuto{demo ? ' (dados de demonstração)' : ''}.
           </p>
         </div>
         <div className="head-actions">
@@ -50,42 +52,36 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      <AsyncBlock state={ov} label="os números do jogo" now={now} skeleton={96} isEmpty={(o) => o.players.registered === 0 && o.players.characters === 0} empty="O banco ainda não tem nenhum jogador cadastrado. Sem dados, não há o que medir: isto não é um sinal de que está tudo bem.">
-        {(o) => <Tiles ov={o} series={series} queriedAt={ov.loadedAt} now={now} />}
-      </AsyncBlock>
-
       <AttentionBlock ov={ov} pay={pay} ops={ops} now={now} />
 
-      <div className="ov-columns ov-main">
-        <section aria-labelledby="ov-activity" className="ov-col-wide">
-          <div className="ov-sectionhead">
-            <h2 id="ov-activity">{`Atividade — últimos ${activityDays} dias`}</h2>
-          </div>
-          <AsyncBlock
-            state={series}
-            label="o histórico diário"
-            now={now}
-            skeleton={160}
-            isEmpty={(s) => s.length === 0}
-            empty="A consulta funcionou, mas não devolveu nenhum dia. A tabela fica vazia de propósito, em vez de mostrar receita zero. Confira se a rotina diária já rodou (docs/ADMIN.md, seção 4)."
-          >
-            {(s) => <ActivityTable series={s} queriedAt={series.loadedAt} ov={ov.data} now={now} all={allDays} onToggle={() => setAllDays((v) => !v)} />}
-          </AsyncBlock>
-        </section>
-        {ov.data && !(ov.data.players.registered === 0 && ov.data.players.characters === 0) ? <RaritySheet ov={ov.data} queriedAt={ov.loadedAt} /> : null}
-      </div>
+      <AsyncBlock state={ov} label="os números do jogo" now={now} skeleton={96} isEmpty={(o) => o.players.registered === 0 && o.players.characters === 0} empty="O banco ainda não tem nenhum jogador cadastrado. Sem dados, não há o que medir: isto não é um sinal de que está tudo bem.">
+        {(o) => <Tiles ov={o} queriedAt={ov.loadedAt} />}
+      </AsyncBlock>
 
-      {ov.data && !(ov.data.players.registered === 0 && ov.data.players.characters === 0) ? (
-        <>
-          <div className="ov-columns">
-            <PassSheet ov={ov.data} />
-            <MarketSheet ov={ov.data} />
-          </div>
-          <Freshness queriedAt={ov.loadedAt} note="receita e vendas são de todo o período; a validade só muda o número de Passes válidos; mercado: só vendas reais, as de teste (devnet) aparecem à parte" />
-        </>
+      {ov.data && hasPlayers ? (
+        <div className="ov-sections">
+          <PassSheet ov={ov.data} />
+          <MarketSheet ov={ov.data} queriedAt={ov.loadedAt} />
+          <RaritySheet ov={ov.data} queriedAt={ov.loadedAt} />
+          <Lists ov={ov.data} ops={ops} queriedAt={ov.loadedAt} now={now} />
+        </div>
       ) : null}
 
-      {ov.data ? <Lists ov={ov.data} ops={ops} queriedAt={ov.loadedAt} now={now} /> : null}
+      <section aria-labelledby="ov-activity" className="ov-activity">
+        <div className="ov-sectionhead">
+          <h2 id="ov-activity">{`Atividade — últimos ${activityDays} dias`}</h2>
+        </div>
+        <AsyncBlock
+          state={series}
+          label="o histórico diário"
+          now={now}
+          skeleton={160}
+          isEmpty={(s) => s.length === 0}
+          empty="A consulta funcionou, mas não devolveu nenhum dia. A tabela fica vazia de propósito, em vez de mostrar receita zero. Confira se a rotina diária já rodou (docs/ADMIN.md, seção 4)."
+        >
+          {(s) => <ActivityTable series={s} queriedAt={series.loadedAt} ov={ov.data} now={now} all={allDays} onToggle={() => setAllDays((v) => !v)} />}
+        </AsyncBlock>
+      </section>
 
       {ov.data ? (
         <p className="faint" style={{ marginTop: 18 }}>
@@ -98,9 +94,12 @@ export default function OverviewPage() {
 
 // ---- Tiles ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-function Tile({ label, value, note, live, warn }: { label: string; value: ReactNode; note?: ReactNode; live?: boolean; warn?: boolean }) {
+function Tile({ icon, label, value, note, live, warn }: { icon: IconName; label: string; value: ReactNode; note?: ReactNode; live?: boolean; warn?: boolean }) {
   return (
     <div className={`ov-tile${live ? ' live' : ''}${warn ? ' warn' : ''}`}>
+      <span className="ov-tile-icon">
+        <Icon name={icon} />
+      </span>
       <dt>{label}</dt>
       <dd>{value}</dd>
       {note ? <small>{note}</small> : null}
@@ -108,40 +107,26 @@ function Tile({ label, value, note, live, warn }: { label: string; value: ReactN
   );
 }
 
-function Tiles({ ov, series, queriedAt, now }: { ov: Overview; series: AsyncState<SeriesDay[]>; queriedAt: number | null; now: number }) {
+function Tiles({ ov, queriedAt }: { ov: Overview; queriedAt: number | null }) {
   const p = ov.players;
   const passM = passMeasures(ov.pass);
-  const items = summarizeItems(ov.items);
-  const fresh = ov.freshness;
-  // "Hoje" tiles come from the daily history (a different query): the newest day it has. If it failed or is still loading, the tile says so; it is never a zero.
-  const last = series.data && series.data.length > 0 ? series.data[series.data.length - 1] : null;
-  const noDay = series.error && !series.data ? 'histórico indisponível' : series.data ? 'sem dias no histórico' : 'consultando…';
-  const dayNote = last ? `dia ${fmtDay(last.day)}` : noDay;
   return (
     <>
       <dl className="ov-tiles">
-        <Tile label="Jogadores" value={fmtInt(p.registered)} note={`${fmtInt(p.confirmed)} confirmados · ${fmtInt(p.characters)} personagens`} />
-        <Tile label="Online agora" value={fmtInt(p.online_now)} note={`estimado: salvaram nos últimos ${p.online_window_minutes} min`} live />
-        <Tile label="Jogando hoje" value={fmtInt(p.active_today)} note={`${fmtInt(p.active_7d)} em 7 dias · ${fmtInt(p.active_30d)} em 30`} />
-        <Tile label="Contas novas hoje" value={`+${fmtInt(p.signups_today)}`} note={`+${fmtInt(p.signups_7d)} em 7 dias · +${fmtInt(p.signups_30d)} em 30`} />
+        <Tile icon="pulse" label="Online agora" value={fmtInt(p.online_now)} note={`estimado: salvaram nos últimos ${p.online_window_minutes} min`} live />
+        <Tile icon="user" label="Jogando hoje" value={fmtInt(p.active_today)} note={`${fmtInt(p.active_7d)} em 7 dias · ${fmtInt(p.active_30d)} em 30`} />
+        <Tile icon="players" label="Jogadores" value={fmtInt(p.registered)} note={`+${fmtInt(p.signups_today)} hoje · +${fmtInt(p.signups_7d)} em 7 dias · ${fmtInt(p.confirmed)} confirmados`} />
         {passM.known ? (
-          <Tile label="Passe válido" value={fmtInt(passM.validNow)} note={`${passM.season ? `Temporada ${passM.season}` : 'temporada atual'} · ${fmtInt(passM.history)} no histórico`} />
+          <Tile icon="scroll" label="Passe válido" value={fmtInt(passM.validNow)} note={`${passM.season ? `Temporada ${passM.season}` : 'temporada atual'} · ${fmtInt(passM.history)} no histórico`} />
         ) : (
-          <Tile label="Histórico de Passes" value={fmtInt(passM.history)} note="não diz se ainda vale: aplicar a migração 0026" warn />
+          <Tile icon="scroll" label="Histórico de Passes" value={fmtInt(passM.history)} note="não diz se ainda vale: aplicar a migração 0026" warn />
         )}
-        <Tile label="Itens certificados" value={fmtInt(items.existing)} note={`${fmtInt(items.listed)} à venda`} />
-        <Tile label="Ouro nos saves" value={fmtInt(fresh.gold_total)} note={fresh.player_cache_refreshed_at ? `cache ${fmtAgo(fresh.player_cache_refreshed_at, now)}` : 'cache nunca atualizado'} />
-        <Tile label="Bolsas de ouro" value={fmtInt(ov.pouches.outstanding)} note={`${fmtInt(ov.pouches.outstanding_gold)} de ouro em face`} />
-        <Tile label="Anúncios abertos" value={fmtInt(ov.market.listings_open)} note={`${fmtInt(ov.market.listings_open_items)} itens · ${fmtInt(ov.market.listings_open_materials)} materiais`} />
-        <Tile label="Taxas do mercado" value={fmtSol(ov.collected.fees_lamports, 4)} note="5% das vendas reais · SOL" />
-        <Tile label="Hoje: vendas" value={last ? fmtInt(last.sales) : '—'} note={dayNote} />
-        <Tile label="Hoje: receita" value={last ? fmtUsd(last.pass_revenue_usd) : '—'} note={last ? `${dayNote} · estimada, só Passes` : dayNote} />
       </dl>
       <Freshness
         queriedAt={queriedAt}
         note={
           <>
-            “Online agora” é estimado: personagens salvos nos últimos {p.online_window_minutes} min (quem joga sem salvar não conta); “jogando hoje” começa à meia-noite de {ov.timezone}. Os dois blocos “Hoje” vêm do histórico diário.
+            “Online agora” é estimado: personagens salvos nos últimos {p.online_window_minutes} min (quem joga sem salvar não conta); “jogando hoje” começa à meia-noite de {ov.timezone}. Vendas e receita de cada dia estão na tabela “Atividade”, no fim da página.
           </>
         }
       />
@@ -206,6 +191,59 @@ function AttentionBlock({ ov, pay, ops, now }: { ov: AsyncState<Overview>; pay: 
   );
 }
 
+// ---- Sections: a title that opens and closes (a native <details>), remembered on this device ----------------------------------------------------------------------
+
+function readOpen(id: string, fallback: boolean): boolean {
+  try {
+    const v = window.localStorage.getItem(`admin-open:${id}`);
+    return v === '1' ? true : v === '0' ? false : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function Section({ id, icon, title, hint, open = false, more, children }: { id: string; icon: IconName; title: string; hint?: ReactNode; open?: boolean; more?: { href: string; label: string }[]; children: ReactNode | ((open: boolean) => ReactNode) }) {
+  const [isOpen, setOpen] = useState(() => readOpen(id, open));
+  return (
+    <details
+      className="ov-fold"
+      open={isOpen}
+      onToggle={(e) => {
+        const now = (e.currentTarget as HTMLDetailsElement).open;
+        setOpen(now);
+        try {
+          window.localStorage.setItem(`admin-open:${id}`, now ? '1' : '0');
+        } catch {
+          /* private window: not remembered */
+        }
+      }}
+    >
+      <summary>
+        <span className="ov-fold-icon">
+          <Icon name={icon} />
+        </span>
+        <h2 id={`ov-${id}`} className="ov-fold-title">
+          {title}
+        </h2>
+        {hint ? <small>{hint}</small> : null}
+      </summary>
+      <div className="ov-fold-body">
+        {typeof children === 'function' ? children(isOpen) : children}
+        {more && more.length ? (
+          <div className="ov-more">
+            {more.map((m) => (
+              <a key={m.href} className="btn" href={m.href}>
+                {m.label}
+                <Icon name="next" />
+              </a>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 // ---- Two aligned data blocks: Passe and Mercado ---------------------------------------------------------------------------------------------------------------------
 
 function Ledger({ rows }: { rows: { label: string; value: ReactNode; total?: boolean; warn?: boolean }[] }) {
@@ -250,15 +288,15 @@ function PassSheet({ ov }: { ov: Overview }) {
     value: goalTarget ? `${fmtInt(ov.pass.goal_paid)} de ${fmtInt(goalTarget)} · ${fmtPercent(ov.pass.goal_paid / goalTarget, 1)}` : 'meta não configurada',
   });
   return (
-    <section className="ov-sheet" aria-labelledby="ov-pass">
-      <h2 id="ov-pass">Passe de Aventureiro</h2>
+    <Section id="pass" icon="scroll" title="Passe de Aventureiro" hint={`${fmtUsd(rev.total)} · ${fmtInt(passM.known ? passM.validNow : passM.history)} ${passM.known ? 'válidos' : 'no histórico'}`} open>
       <p className="ov-subtitle">Recebimentos desde o início · USDC{passM.known && passM.season ? ` · validade: Temporada ${passM.season}` : ''}</p>
       <Ledger rows={rows} />
-    </section>
+      <p className="freshness">Receita e vendas são de todo o período; a validade só muda o número de Passes válidos.</p>
+    </Section>
   );
 }
 
-function MarketSheet({ ov }: { ov: Overview }) {
+function MarketSheet({ ov, queriedAt }: { ov: Overview; queriedAt: number | null }) {
   const live = ov.market.live;
   const test = ov.market.test;
   const rows: { label: string; value: ReactNode; total?: boolean; warn?: boolean }[] = [
@@ -273,11 +311,11 @@ function MarketSheet({ ov }: { ov: Overview }) {
   ];
   if (test?.sales) rows.push({ label: 'Vendas de teste (devnet, à parte)', value: fmtInt(test.sales) });
   return (
-    <section className="ov-sheet" aria-labelledby="ov-market">
-      <h2 id="ov-market">Mercado</h2>
+    <Section id="market" icon="market" title="Mercado" hint={`${fmtSol(ov.collected.fees_lamports, 4)} em taxas · ${fmtInt(ov.market.listings_open)} anúncios`} open more={[{ href: '#/mercado', label: 'Ver vendas e anúncios' }]}>
       <p className="ov-subtitle">Acumulado · somente vendas reais · SOL</p>
       <Ledger rows={rows} />
-    </section>
+      <Freshness queriedAt={queriedAt} note="só vendas reais; as de teste (devnet) aparecem à parte" />
+    </Section>
   );
 }
 
@@ -364,10 +402,7 @@ function RaritySheet({ ov, queriedAt }: { ov: Overview; queriedAt: number | null
   const keys = [...RARITY_ORDER, ...extra, 'unique'];
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
   return (
-    <section aria-labelledby="ov-rarity" className="ov-col-narrow">
-      <div className="ov-sectionhead">
-        <h2 id="ov-rarity">Itens por raridade</h2>
-      </div>
+    <Section id="rarity" icon="legendary" title="Itens por raridade" hint={`${fmtInt(total)} ${(RARITY_VIEWS.find((v) => v.id === view) ?? RARITY_VIEWS[0]).label.toLowerCase()}`} more={[{ href: '#/lendarios', label: 'Ver todos os Lendários' }]}>
       <div className="ov-tabs" role="group" aria-label="Estado dos itens">
         {RARITY_VIEWS.map((v) => (
           <button key={v.id} type="button" className="ov-tab" aria-pressed={view === v.id} onClick={() => setView(v.id)}>
@@ -399,23 +434,11 @@ function RaritySheet({ ov, queriedAt }: { ov: Overview; queriedAt: number | null
         </tbody>
       </table>
       <Freshness queriedAt={queriedAt} note="consulta direta dos certificados; cópias compradas contam como itens que existem" />
-    </section>
+    </Section>
   );
 }
 
 // ---- Expandable lists: items, routines, league ----------------------------------------------------------------------------------------------------------------------
-
-function Fold({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
-  return (
-    <details className="ov-fold">
-      <summary>
-        <span className="ov-fold-title">{title}</span>
-        {hint ? <small>{hint}</small> : null}
-      </summary>
-      <div className="ov-fold-body">{children}</div>
-    </details>
-  );
-}
 
 function Lists({ ov, ops, queriedAt, now }: { ov: Overview; ops: AsyncState<OpsOverview>; queriedAt: number | null; now: number }) {
   const items = summarizeItems(ov.items);
@@ -424,7 +447,7 @@ function Lists({ ov, ops, queriedAt, now }: { ov: Overview; ops: AsyncState<OpsO
   const agg = aggregateStatus(fresh, now);
   return (
     <>
-      <Fold title="Itens e circulação" hint={`${fmtInt(items.existing)} itens certificados`}>
+      <Section id="items" icon="box" title="Itens e circulação" hint={`${fmtInt(items.existing)} itens certificados`} more={[{ href: '#/economia', label: 'Ver economia completa' }]}>
         <Ledger
           rows={[
             { label: 'Itens certificados existentes', value: fmtInt(items.existing) },
@@ -440,13 +463,9 @@ function Lists({ ov, ops, queriedAt, now }: { ov: Overview; ops: AsyncState<OpsO
           ]}
         />
         <Freshness queriedAt={queriedAt} aggregatedAt={agg.cache.at} aggregateLate={agg.cache.state !== 'fresh'} aggregateNote="ouro vem do cache dos saves; os itens e bolsas são consulta direta" />
-      </Fold>
+      </Section>
 
-      <Fold title="Estado das rotinas" hint={routinesHint(ops, now)}>
-        <RoutinesList ov={ov} ops={ops} now={now} />
-      </Fold>
-
-      <Fold title="Liga e alertas" hint={ov.league.season ? `Temporada ${ov.league.season.number} — ${seasonStatusLabel(ov.league.season.status)}` : 'nenhuma temporada aberta'}>
+      <Section id="league" icon="league" title="Liga e alertas" hint={ov.league.season ? `Temporada ${ov.league.season.number} — ${seasonStatusLabel(ov.league.season.status)}` : 'nenhuma temporada aberta'} more={[{ href: '#/liga', label: 'Ver ranking e auditoria' }, { href: '#/jogadores?alertas=1', label: 'Jogadores com alerta' }]}>
         <Ledger
           rows={[
             { label: 'Temporada', value: ov.league.season ? `${ov.league.season.number} — ${seasonStatusLabel(ov.league.season.status)}` : 'nenhuma aberta' },
@@ -457,7 +476,15 @@ function Lists({ ov, ops, queriedAt, now }: { ov: Overview; ops: AsyncState<OpsO
           ]}
         />
         <Freshness queriedAt={queriedAt} note="um alerta é um sinal para investigar, não uma sentença" />
-      </Fold>
+      </Section>
+
+      <Section id="waitlist" icon="mail" title="Lista de espera" hint="abra para consultar" more={[{ href: '#/espera', label: 'Ver origens e indicações' }]}>
+        {(open) => (open ? <WaitlistSummary /> : null)}
+      </Section>
+
+      <Section id="routines" icon="clock" title="Estado das rotinas" hint={routinesHint(ops, now)}>
+        <RoutinesList ov={ov} ops={ops} now={now} />
+      </Section>
     </>
   );
 }
@@ -517,8 +544,38 @@ function RoutinesList({ ov, ops, now }: { ov: Overview; ops: AsyncState<OpsOverv
         <Notice tone="warn">Não foi possível atualizar a operação: {ops.error}. Acima estão os dados anteriores, da consulta das {clockTime(ops.loadedAt)}.</Notice>
       ) : null}
       <p className="freshness">
-        Operação consultada às {clockTime(ops.loadedAt)} · mais detalhes em <a href="#/ia-operacao">IA e operação</a>
+        Operação consultada às {clockTime(ops.loadedAt)} · mais detalhes em <a href="#/ia-operacao">Ferramentas › IA e operação</a>
       </p>
     </>
+  );
+}
+
+/** The waiting list, read only when its section is opened (one more query the owner does not always need). */
+function WaitlistSummary() {
+  const w = useAsync((api) => api.waitlist(30), []);
+  const now = useNow(5000);
+  return (
+    <AsyncBlock state={w} label="a lista de espera" now={now} skeleton={80}>
+      {(d) => {
+        const t = d.totals;
+        const period = d.by_day.reduce((a, x) => a + x.count, 0);
+        return (
+          <>
+            <Ledger
+              rows={[
+                { label: 'Na lista', value: `${fmtInt(t.total)} · ${fmtInt(t.active)} ativos · ${fmtInt(t.unsubscribed)} saíram`, total: true },
+                { label: 'Entraram em 30 dias', value: fmtInt(period) },
+                { label: 'Chegaram por indicação', value: `${fmtInt(t.referred)} · ${fmtPercent(t.total ? t.referred / t.total : 0)}` },
+                { label: 'Indicados qualificados', value: fmtInt(t.qualified) },
+                { label: 'Já criaram conta no jogo', value: `${fmtInt(t.registered_in_game)} · ${fmtPercent(t.total ? t.registered_in_game / t.total : 0)}` },
+                { label: 'Convites dentro do jogo', value: `${fmtInt(t.account_referred ?? 0)} · ${fmtInt(t.account_qualified ?? 0)} qualificados` },
+                { label: 'Idioma', value: `${fmtInt(t.locale_pt)} pt · ${fmtInt(t.locale_en)} en` },
+              ]}
+            />
+            <Freshness queriedAt={w.loadedAt} note="e-mails ficam mascarados; quem mais indicou está na página da lista de espera" />
+          </>
+        );
+      }}
+    </AsyncBlock>
   );
 }

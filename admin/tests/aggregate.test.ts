@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest';
 import { liveOwnersBySource, materialsTotal, passRevenue, summarizeItems, sumSeries, testPassOwners } from '../src/lib/aggregate';
-import { niceScale } from '../src/components/Charts';
 import type { ItemGroup, Overview, PassSourceRow, SeriesDay } from '../src/lib/types';
 
 const g = (kind: string, rarity: string | null, status: string, count: number, bought = false): ItemGroup => ({ kind, rarity, status, bound: false, bought, count });
@@ -44,15 +43,5 @@ describe('series and materials', () => {
     const s = [{ day: 'a', sales: 2, signups: 5 }, { day: 'b', sales: 3, signups: 1 }] as unknown as SeriesDay[];
     expect(sumSeries(s, 'sales')).toBe(5);
     expect(materialsTotal([{ qty: 100, listed: 20 }, { qty: 5, listed: 0 }])).toBe(125);
-  });
-});
-
-describe('niceScale', () => {
-  test('rounds the top up to a readable number with four steps', () => {
-    expect(niceScale(87)).toEqual({ top: 100, ticks: [0, 25, 50, 75, 100] });
-    expect(niceScale(7)).toEqual({ top: 8, ticks: [0, 2, 4, 6, 8] });
-    expect(niceScale(0)).toEqual({ top: 4, ticks: [0, 1, 2, 3, 4] });
-    expect(niceScale(Number.NaN).top).toBe(4);
-    expect(niceScale(1_230_000).top).toBeGreaterThanOrEqual(1_230_000);
   });
 });

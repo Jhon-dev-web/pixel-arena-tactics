@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { BarChart } from '../components/Charts';
 import { DataTable, type Column } from '../components/Table';
-import { Bars, Card, Field, Kpi, Notice, SectionTitle, Skeleton } from '../components/ui';
+import { Card, CountTable, Field, Kpi, Notice, SectionTitle, Skeleton } from '../components/ui';
 import { useAsync } from '../hooks';
 import { csvFilename, downloadCsv, toCsv } from '../lib/csv';
 import { fmtDate, fmtDay, fmtInt, fmtPercent } from '../lib/format';
@@ -74,16 +73,16 @@ function Body({ w }: { w: Waitlist }) {
       </div>
 
       <SectionTitle>Por dia</SectionTitle>
-      <Card title={`Cadastros por dia — ${w.days} dias`}>
-        <BarChart label="Cadastros na lista de espera por dia" labels={w.by_day.map((d) => fmtDay(d.day))} axis={fmtInt} tip={fmtInt} series={[{ name: 'Cadastros', tone: 1, values: w.by_day.map((d) => d.count) }]} />
+      <Card flush title={`Cadastros por dia — ${w.days} dias`} note="mais recente primeiro">
+        <CountTable caption="Cadastros na lista de espera por dia" head="Dia" rows={[...w.by_day].reverse().map((d) => ({ label: fmtDay(d.day), value: d.count }))} format={fmtInt} />
       </Card>
 
       <div className="grid-2" style={{ marginTop: 12 }}>
         <Card title="Por origem" note="utm_source ou site de origem">
-          <Bars rows={w.by_source.slice(0, 12).map((s, i) => ({ label: s.source, value: s.count, tone: ((i % 6) + 1) as 1 }))} format={fmtInt} />
+          <CountTable caption="Cadastros por origem" head="Origem" share rows={w.by_source.slice(0, 12).map((s) => ({ label: s.source, value: s.count }))} format={fmtInt} />
         </Card>
         <Card title="Indicações ignoradas" note="por que um link de convite não contou">
-          {w.referral_ignored.length === 0 ? <p className="muted">Nenhuma.</p> : <Bars rows={w.referral_ignored.map((s, i) => ({ label: IGNORED_LABEL[s.referral_ignored] ?? s.referral_ignored, value: s.count, tone: ((i % 6) + 1) as 1 }))} format={fmtInt} />}
+          {w.referral_ignored.length === 0 ? <p className="muted">Nenhuma.</p> : <CountTable caption="Indicações ignoradas" head="Motivo" rows={w.referral_ignored.map((s) => ({ label: IGNORED_LABEL[s.referral_ignored] ?? s.referral_ignored, value: s.count }))} format={fmtInt} />}
         </Card>
       </div>
 
