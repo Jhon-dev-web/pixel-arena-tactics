@@ -2239,3 +2239,134 @@ dl.facts dd {
     grid-template-columns: minmax(0, 1.25fr) minmax(400px, 1fr);
   }
 }
+
+/* ---------- account sheet, round 2 (22/10/2026): tabs always visible, one card per subject ---------- */
+.pf-panel[hidden] {
+  display: none;
+}
+.pf-tabs {
+  flex: none;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  margin: 0;
+}
+.player-pane .pf-tabs {
+  top: 0;
+}
+.pf-panel {
+  gap: 12px;
+  padding-top: 12px;
+}
+.pf-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.pf-stat {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  min-width: 0;
+}
+.pf-stat dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.pf-stat dt svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+  flex: none;
+}
+.pf-stat dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.pf-card,
+.pf-panel > details.fold,
+.pf-panel > section {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  min-width: 0;
+}
+.pf-card h3,
+.pf-panel > section h3 {
+  margin: 0 0 6px !important;
+  color: var(--accent) !important;
+}
+.pf-card dl.facts > .contents:last-child dt,
+.pf-card dl.facts > .contents:last-child dd {
+  border-bottom: 0;
+}
+.pf-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.btn-sm {
+  min-height: 26px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.pf-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.pf-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.pf-ok {
+  margin: 0;
+  color: var(--good);
+}
+.pf-more {
+  margin-top: 8px;
+}
+.pf-more > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 4px 0;
+}
+.pf-foot {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+.pf-actions {
+  padding: 12px 14px;
+  border: 1px solid var(--bad-soft);
+  border-radius: 10px;
+}
+@media (max-width: 560px) {
+  .pf-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pf-list li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .pf-list li .faint {
+    grid-column: 1 / -1;
+  }
+}
+.drawer {
+  width: min(640px, 100vw);
+}

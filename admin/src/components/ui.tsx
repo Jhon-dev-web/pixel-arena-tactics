@@ -172,6 +172,7 @@ const FACT_ICONS: Record<string, IconName> = {
   'Válido nesta temporada': 'scroll',
   'Entra no ranking': 'league',
   'Histórico de Passes': 'scroll',
+  Carteira: 'wallet',
 };
 
 export function DefList({ rows }: { rows: [string, ReactNode][] }) {

@@ -104,7 +104,7 @@ describe('Players (A05)', () => {
     fireEvent.click(within(table).getAllByRole('row')[1]);
     const dialog = await screen.findByRole('dialog');
     await waitFor(() => expect(within(dialog).getByText('Inventário e baú')).toBeTruthy());
-    for (const title of ['Resumo', 'Herói', 'Inventário e baú', 'Materiais e poções', 'Progresso e auditoria', 'Passe e carteira', 'Mercado', 'Créditos e códigos', 'Convites', 'Registro de ações']) expect(dialog.textContent).toContain(title);
+    for (const title of ['Resumo', 'Herói', 'Inventário e baú', 'Materiais e poções', 'Progresso e auditoria', 'Passe de Aventureiro', 'Mercado', 'Créditos e códigos', 'Convites', 'Registro de ações']) expect(dialog.textContent).toContain(title);
     for (const label of ['Éter (cristais)', 'Equipamentos no save', 'Passe marcado no save', 'Profissões']) expect(dialog.textContent).toContain(label);
     expect(dialog.textContent).not.toContain('a rotina de cache não passou');
     expect(calls.some((c) => c.name === 'playerFull')).toBe(true);
@@ -121,7 +121,7 @@ describe('Players (A05)', () => {
     const dialog = await screen.findByRole('dialog');
     await waitFor(() => expect(dialog.textContent).toContain('0034_admin_player_full'));
     expect(dialog.textContent).toContain('Progresso');
-    expect(dialog.textContent).toContain('Passe e carteira');
+    expect(dialog.textContent).toContain('Passe de Aventureiro');
   });
 
   test('in the list, a missing cache value is a dash with the tooltip "atualiza pela rotina", never a zero', async () => {

@@ -15,7 +15,7 @@ function focusables(root: HTMLElement): HTMLElement[] {
  *  - focus moves into the panel when it opens and goes BACK to the element that opened it when it closes (a table row, for instance);
  *  - Escape and a click on the dark area close it.
  */
-export function Drawer({ title, subtitle, onClose, children }: { title: string; subtitle?: ReactNode; onClose: () => void; children: ReactNode }) {
+export function Drawer({ title, subtitle, header, onClose, children }: { title: string; subtitle?: ReactNode; /** Replaces the default title row (it must bring its own close button). */ header?: (close: () => void) => ReactNode; onClose: () => void; children: ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -83,7 +83,7 @@ export function Drawer({ title, subtitle, onClose, children }: { title: string; 
     <div ref={root} className="drawer-root">
       <div className="scrim" onClick={() => closeRef.current()} aria-hidden="true" />
       <div className="drawer" role="dialog" aria-modal="true" aria-label={title} ref={panel} tabIndex={-1}>
-        <div className="drawer-head">
+        {header ? header(() => closeRef.current()) : <div className="drawer-head">
           <div>
             <h2>{title}</h2>
             {subtitle ? <div className="muted">{subtitle}</div> : null}
@@ -91,7 +91,7 @@ export function Drawer({ title, subtitle, onClose, children }: { title: string; 
           <button type="button" className="btn ghost" onClick={() => closeRef.current()} aria-label="Fechar">
             <Icon name="close" />
           </button>
-        </div>
+        </div>}
         <div className="drawer-body">{children}</div>
       </div>
     </div>,

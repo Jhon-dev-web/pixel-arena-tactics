@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { AccountActions } from '../components/AccountActions';
 import { Drawer } from '../components/Drawer';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
-import { FullAudit, FullCredits, FullHero, FullInventory, FullInvites, FullMarket, FullMaterials, FullMissingNotice, FullPassSave, FullProgress, FullSummary } from '../components/PlayerFullView';
-import { DefList, ExternalLink, Field, Icon, Notice, Pill, Skeleton } from '../components/ui';
+import { FullAudit, FullCredits, FullHero, FullInventory, FullInvites, FullMarket, FullMaterials, FullMissingNotice, FullPassSave, FullProgress } from '../components/PlayerFullView';
+import { DefList, ExternalLink, Field, Icon, Notice, Pill, Skeleton, type IconName } from '../components/ui';
 import { hashParam, useApp, useAsync, useDebounced } from '../hooks';
 import { playerPassState } from '../lib/aggregate';
 import { activeFilterCount, defaultPlayerQuery, EXPORT_PAGE_SIZE, toggleSort } from '../lib/filters';
 import { DASH, fmtDateTime, fmtGold, fmtInt, fmtAgo, shortAddress, shortId, solscanAccount } from '../lib/format';
-import { normalizeFull } from '../lib/full';
+import { normalizeFull, rarityTally } from '../lib/full';
 import { kindLabel, passSourceLabel, rarityLabel, statusLabel } from '../lib/labels';
 import type { PlayerFilters, PlayerQuery, PlayerRow, PlayerSort } from '../lib/types';
 
@@ -96,6 +96,33 @@ const SHEET_TABS: { id: SheetTab; label: string }[] = [
   { id: 'progresso', label: 'Progresso' },
   { id: 'atividade', label: 'Atividade' },
 ];
+
+/** The account's main numbers, read live from the save, as small tiles (like the owner's example). */
+function StatTiles({ full, summary }: { full: NonNullable<ReturnType<typeof normalizeFull>>; summary: PlayerRow | null }) {
+  const sv = full.save;
+  if (!sv) return <Notice tone="warn">Esta conta ainda não tem personagem salvo: não há nada de jogo para mostrar.</Notice>;
+  const tiles: { icon: IconName; label: string; value: string }[] = [
+    { icon: 'star', label: 'Nível', value: `${sv.level}${sv.paragon_level ? ` + P${fmtInt(sv.paragon_level)}` : ''}` },
+    { icon: 'coin', label: 'Ouro no save', value: fmtInt(sv.gold) },
+    { icon: 'gem', label: 'Éter (cristais)', value: fmtInt(sv.shards) },
+    { icon: 'stairs', label: 'Andar mais alto', value: fmtInt(sv.highest_dungeon_floor) },
+    { icon: 'down', label: 'Profundeza', value: fmtInt(sv.counters.deepest_depth) },
+    { icon: 'trade', label: 'Vendas / compras', value: summary ? `${fmtInt(summary.sales)} / ${fmtInt(summary.purchases)}` : `${fmtInt(full.market.sold.count)} / ${fmtInt(full.market.bought.count)}` },
+  ];
+  return (
+    <dl className="pf-stats">
+      {tiles.map((t) => (
+        <div key={t.label} className="pf-stat">
+          <dt>
+            <Icon name={t.icon} />
+            {t.label}
+          </dt>
+          <dd>{t.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 /** The top of the account sheet: initial, name, online or last seen, masked e-mail. */
 function SheetHead({ title, summary, id, onClose }: { title: string; summary: PlayerRow | null; id: string; onClose?: () => void }) {
@@ -261,7 +288,6 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
   const title = summary?.username ?? d?.account.username ?? 'Jogador';
   const content = (
     <>
-      {pane ? null : <SheetHead title={title} summary={summary} id={id} />}
       {detail.error ? (
         <Notice tone="bad">
           {detail.error}{' '}
@@ -289,85 +315,91 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
             ))}
           </div>
           <div role="tabpanel" id={`pf-${id}-resumo`} aria-labelledby={`pf-${id}-tab-resumo`} hidden={tab !== 'resumo'} className="pf-panel">
-          {full ? <FullSummary full={full} summary={summary} detail={d} /> : liveRaw.loading ? <Skeleton height={90} /> : liveRaw.error ? <FullMissingNotice message={liveRaw.error} /> : null}
+            {full ? <StatTiles full={full} summary={summary} /> : liveRaw.loading ? <Skeleton height={90} /> : liveRaw.error ? <FullMissingNotice message={liveRaw.error} /> : null}
 
-          <section>
-            <h3>Passe e carteira</h3>
-            {d.pass ? (
+            <section className="pf-card">
+              <h3>Passe de Aventureiro</h3>
+              {d.pass ? (
+                <DefList
+                  rows={[
+                    ['Válido nesta temporada', <span key="v" className="pf-inline"><Pill tone={d.pass.valid_now ? 'good' : 'warn'}>{d.pass.valid_now ? 'sim' : 'não'}</Pill> <span className="faint">Temporada {d.pass.current_season}{d.pass.valid_through ? ` · cobre até a ${d.pass.valid_through}` : ''}</span></span>],
+                    ['Entra no ranking', <Pill key="r" tone={d.pass.ranking_eligible ? 'good' : 'warn'}>{d.pass.ranking_eligible ? 'sim' : 'não'}</Pill>],
+                    ['Histórico de Passes', d.pass.history ? `${fmtInt(d.pass.history)} ${d.pass.history === 1 ? 'registrado' : 'registrados'}` : 'nenhum'],
+                    ['Carteira', d.wallet ? <ExternalLink key="w" href={solscanAccount(d.wallet.address, d.wallet.chain_id === 101)}><span className="mono">{shortAddress(d.wallet.address, 6, 6)}</span></ExternalLink> : 'não ligada'],
+                  ]}
+                />
+              ) : (
+                <Notice tone="warn">O banco ainda não diz se o Passe vale nesta temporada (migração 0026 não aplicada).</Notice>
+              )}
+              {d.entitlements.length ? (
+                <ul className="pf-list">
+                  {d.entitlements.map((e, i) => (
+                    <li key={i}>
+                      <Pill tone={e.status === 'active' ? (e.livemode || e.source === 'grant' ? 'good' : 'warn') : 'bad'}>{passSourceLabel(e.source)}</Pill>
+                      <span>
+                        {statusLabel(e.status)}
+                        {e.livemode || e.source === 'grant' ? '' : ' · teste'}
+                        {e.valid_through_season != null ? ` · até a Temporada ${e.valid_through_season}` : ''}
+                      </span>
+                      <span className="faint">{fmtDateTime(e.granted_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {full ? (
+                <details className="pf-more">
+                  <summary>Passe dentro do jogo (nível, recompensas, aparência)</summary>
+                  <FullPassSave full={full} detail={d} />
+                </details>
+              ) : null}
+            </section>
+
+            <section className="pf-card">
+              <h3>Alertas{d.open_flags.length + d.item_flags.length ? ` (${d.open_flags.length + d.item_flags.length})` : ''}</h3>
+              {d.open_flags.length + d.item_flags.length === 0 ? (
+                <p className="pf-ok">Nenhum alerta aberto.</p>
+              ) : (
+                <ul className="pf-list">
+                  {d.open_flags.map((f, i) => (
+                    <li key={`p${i}`}>
+                      <Pill tone={f.verdict === 'rejected' ? 'bad' : 'warn'}>{f.verdict === 'rejected' ? 'rejeitado' : 'sinalizado'}</Pill>
+                      <span className="mono">{f.reasons.join(', ') || '—'}</span>
+                      <span className="faint">{fmtDateTime(f.created_at)}</span>
+                    </li>
+                  ))}
+                  {d.item_flags.map((f, i) => (
+                    <li key={`i${i}`}>
+                      <Pill tone="warn">itens</Pill>
+                      <span className="mono">{f.code}</span>
+                      <span className="faint">{fmtDateTime(f.created_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="pf-card">
+              <h3>Conta</h3>
               <DefList
                 rows={[
-                  ['Válido nesta temporada', <span key="v"><Pill tone={d.pass.valid_now ? 'good' : 'warn'}>{d.pass.valid_now ? 'sim' : 'não'}</Pill> <span className="faint">temporada atual: {d.pass.current_season}{d.pass.valid_through ? ` · último Passe cobre até a ${d.pass.valid_through}` : ''}</span></span>],
-                  ['Entra no ranking', <span key="r"><Pill tone={d.pass.ranking_eligible ? 'good' : 'warn'}>{d.pass.ranking_eligible ? 'sim' : 'não'}</Pill> <span className="faint">regra do ranking: Passe real ou concedido e válido agora</span></span>],
-                  ['Histórico de Passes', `${fmtInt(d.pass.history)} ${d.pass.history === 1 ? 'Passe ativo registrado' : 'Passes ativos registrados'}`],
+                  [
+                    'E-mail',
+                    <span key="e" className="pf-inline">
+                      <span className="mono">{reveal ? d.account.email ?? DASH : summary?.email_masked ?? '***'}</span>
+                      <button type="button" className="btn btn-sm" onClick={() => setReveal((v) => !v)}>
+                        {reveal ? 'Ocultar' : 'Mostrar e-mail completo'}
+                      </button>
+                    </span>,
+                  ],
+                  ['Confirmado', d.account.email_confirmed_at ? fmtDateTime(d.account.email_confirmed_at) : 'não'],
+                  ['Cadastro', fmtDateTime(d.account.created_at)],
+                  ['Último login', fmtDateTime(d.account.last_sign_in_at)],
+                  ['Último salvamento', d.character ? `${fmtDateTime(d.character.updated_at)} · revisão ${fmtInt(d.character.revision)}` : 'sem personagem'],
+                  ['Importado de save local', d.character?.imported_from_legacy ? 'sim' : 'não'],
                 ]}
               />
-            ) : (
-              <Notice tone="warn">O banco ainda não diz se o Passe vale nesta temporada (migração 0026 não aplicada). Abaixo, só o histórico.</Notice>
-            )}
-            {d.entitlements.length === 0 ? <p className="muted">Sem Passe.</p> : (
-              <div className="stack">
-                {d.entitlements.map((e, i) => (
-                  <div key={i}>
-                    <Pill tone={e.status === 'active' ? (e.livemode || e.source === 'grant' ? 'good' : 'warn') : 'bad'}>{passSourceLabel(e.source)}</Pill> {statusLabel(e.status)}
-                    {e.livemode || e.source === 'grant' ? '' : ' · teste'}
-                    {e.valid_through_season != null ? ` · cobre até a Temporada ${e.valid_through_season}${e.status === 'active' ? (e.valid_now ? ' (vale agora)' : ' (expirado)') : ''}` : ''} · {fmtDateTime(e.granted_at)} <span className="faint mono">{e.provider_ref.slice(0, 18)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {full ? <FullPassSave full={full} detail={d} /> : null}
-            <p>
-              {d.wallet ? (
-                <>
-                  Carteira: <ExternalLink href={solscanAccount(d.wallet.address, d.wallet.chain_id === 101)}><span className="mono">{shortAddress(d.wallet.address, 6, 6)}</span></ExternalLink> (ligada em {fmtDateTime(d.wallet.linked_at)})
-                </>
-              ) : (
-                <span className="muted">Sem carteira ligada.</span>
-              )}
-            </p>
-          </section>
-
-          <section>
-            <h3>Alertas</h3>
-            {d.open_flags.length + d.item_flags.length === 0 ? <p className="muted">Nenhum alerta aberto.</p> : (
-              <div className="stack">
-                {d.open_flags.map((f, i) => (
-                  <div key={`p${i}`}>
-                    <Pill tone={f.verdict === 'rejected' ? 'bad' : 'warn'}>{f.verdict === 'rejected' ? 'rejeitado' : 'sinalizado'}</Pill> {fmtDateTime(f.created_at)} · <span className="mono">{f.reasons.join(', ') || '—'}</span>
-                  </div>
-                ))}
-                {d.item_flags.map((f, i) => (
-                  <div key={`i${i}`}>
-                    <Pill tone="warn">itens</Pill> {fmtDateTime(f.created_at)} · <span className="mono">{f.code}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section>
-            <h3>Conta</h3>
-            <DefList
-              rows={[
-                [
-                  'E-mail',
-                  <span key="e">
-                    <span className="mono">{reveal ? d.account.email ?? DASH : summary?.email_masked ?? '***'}</span>{' '}
-                    <button type="button" className="btn" onClick={() => setReveal((v) => !v)}>
-                      {reveal ? 'Ocultar' : 'Mostrar e-mail completo'}
-                    </button>
-                  </span>,
-                ],
-                ['Confirmado', d.account.email_confirmed_at ? fmtDateTime(d.account.email_confirmed_at) : 'não'],
-                ['Cadastro', fmtDateTime(d.account.created_at)],
-                ['Último login', fmtDateTime(d.account.last_sign_in_at)],
-                ['Herói', d.character ? `${d.character.hero_name} (revisão ${fmtInt(d.character.revision)})` : 'sem personagem'],
-                ['Último salvamento', fmtDateTime(d.character?.updated_at)],
-                ['Importado de save local', d.character?.imported_from_legacy ? 'sim' : 'não'],
-              ]}
-            />
-          </section>
-
+              {full ? <p className="faint pf-foot">Dados lidos do save às {fmtDateTime(full.generated_at)}.</p> : null}
+            </section>
           </div>
           <div role="tabpanel" id={`pf-${id}-heroi`} aria-labelledby={`pf-${id}-tab-heroi`} hidden={tab !== 'heroi'} className="pf-panel">
           {full ? <FullHero full={full} /> : <p className="muted">{liveRaw.loading ? 'Lendo o save…' : 'Sem dados do herói ao vivo.'}</p>}
@@ -375,6 +407,13 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
           <div role="tabpanel" id={`pf-${id}-itens`} aria-labelledby={`pf-${id}-tab-itens`} hidden={tab !== 'itens'} className="pf-panel">
           {full ? (
             <>
+              {full.save ? (
+                <DefList
+                  rows={[
+                    ['Equipamentos no save', (() => { const t = rarityTally(full.save.gear); return `${fmtInt(full.save.gear.length)} (${t.common} comuns · ${t.rare} raros · ${t.epic} épicos · ${t.legendary} lendários)`; })()],
+                  ]}
+                />
+              ) : null}
               <FullInventory full={full} />
               <FullMaterials full={full} detail={d} />
             </>
@@ -480,7 +519,7 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
   );
   if (!pane) {
     return (
-      <Drawer title={title} subtitle={<span className="mono">{shortId(id)}</span>} onClose={close}>
+      <Drawer title={title} header={(x) => <SheetHead title={title} summary={summary} id={id} onClose={x} />} onClose={close}>
         {content}
       </Drawer>
     );
