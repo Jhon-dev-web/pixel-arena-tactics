@@ -2347,6 +2347,8 @@
     "stopped": "Parado. Você já pode iniciar a nova atividade."
   },
   "oficios": {
+    "groupPotions": "Poções",
+    "groupTransmutation": "Transmutação",
     "recipes": "Receitas",
     "available": "Disponíveis ({n})",
     "lockedGroup": "Bloqueadas por nível ({n})",

@@ -452,3 +452,13 @@
 .of-made {
   filter: brightness(1.2);
 }
+.of-subhead {
+  margin: var(--sp-2) 0 0;
+  font: inherit;
+  font-size: var(--fs-section);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--c-text);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--c-border, rgba(255, 255, 255, 0.15));
+}

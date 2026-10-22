@@ -2347,6 +2347,8 @@
     "stopped": "Stopped. You can start the new activity."
   },
   "oficios": {
+    "groupPotions": "Potions",
+    "groupTransmutation": "Transmutation",
     "recipes": "Recipes",
     "available": "Available ({n})",
     "lockedGroup": "Locked by level ({n})",

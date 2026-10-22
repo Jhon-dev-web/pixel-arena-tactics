@@ -2067,7 +2067,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // "Usar em..." from an item: open the screen that consumes it, focused on the first recipe that does.
   const [forgeFocus, setForgeFocus] = useState<{ tab: ForgeTab; itemId?: string; nonce: number } | null>(null);
   useEffect(() => { if (activeView !== 'forja') setForgeFocus(null); }, [activeView]); // the deep link is spent once the Forge page is left
-  const [oficiosFocus, setOficiosFocus] = useState<{ category: RefiningStation | 'potions'; recipeId: string } | null>(null);
+  const [oficiosFocus, setOficiosFocus] = useState<{ category: RefiningStation; recipeId: string } | null>(null);
   const openUse = (use: ItemUse) => {
     playSfx('click');
     const first = use.refs[0];
@@ -2077,7 +2077,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       setActiveView('forja');
     } else if (use.kind === 'refine' || use.kind === 'alchemy') {
       setBagOpen(false);
-      setOficiosFocus({ category: use.kind === 'alchemy' ? 'potions' : refiningRecipeById(first)?.station ?? 'furnace', recipeId: first });
+      setOficiosFocus({ category: use.kind === 'alchemy' ? 'alchemy' : refiningRecipeById(first)?.station ?? 'furnace', recipeId: first });
       setActiveView('oficios');
     } else if (use.kind === 'delivery') {
       setBagOpen(false);

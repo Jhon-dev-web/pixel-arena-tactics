@@ -15,7 +15,7 @@ import { QtyPicker, CraftJobPanel } from './CraftQty';
 import { clampCraftQty, craftBlock } from '../game/craftJob';
 import type { CraftJobKind } from '../game/craftJobTypes';
 import { heroActivity } from '../game/activity';
-import { oficioBlockKind, oficioLocked, orderOficios, pickOficioId } from '../game/oficiosList';
+import { oficioBlockKind, orderOficios, pickOficioId } from '../game/oficiosList';
 import useIsPhone from '../hooks/useIsPhone';
 import { ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout, Tabs } from './ui';
 import type { TabItem } from './ui';
@@ -65,6 +65,8 @@ interface Recipe {
   gold: number;
   input: Record<string, number | undefined>;
   desc?: string;
+  // the 'alchemy' tab holds two groups under sub-headings: potions first, then the material transmutations
+  group?: 'potions' | 'transmutation';
 }
 
 // Ofícios as its own main-content area, built like the Forja: a station tab row, a compact list of recipes (what the hero can make first and highlighted, what a level still locks
@@ -84,15 +86,15 @@ export default function OficiosView({
   onCraftPotion: (recipeId: string, qty: number) => void;
   onCancelCraft?: () => void;
   craftStalled?: boolean;
-  // Opened from an item's "Usar em...": the station (or 'potions') to open and the recipe to bring into view.
-  focus?: { category: RefiningStation | 'potions'; recipeId: string } | null;
+  // Opened from an item's "Usar em...": the station to open (potions are in 'alchemy') and the recipe to bring into view.
+  focus?: { category: RefiningStation; recipeId: string } | null;
 }) {
   const phone = useIsPhone();
-  const [category, setCategory] = useState<RefiningStation | 'potions'>(focus?.category ?? REFINE_CATEGORIES[0].id);
+  const [category, setCategory] = useState<RefiningStation>(focus?.category ?? REFINE_CATEGORIES[0].id);
   // the recipe picked at each station (the deep link picks one for its station)
   const [picked, setPicked] = useState<Record<string, string>>(focus ? { [focus.category]: focus.recipeId } : {});
   const [justMade, setJustMade] = useState<string | null>(null);
-  const [openLocked, setOpenLocked] = useState(false);
+  const [openLocked, setOpenLocked] = useState<Record<string, boolean>>({});
   const rowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const panelRef = useRef<HTMLDivElement | null>(null);
   const level = playerLevel(save.xp);
@@ -108,14 +110,15 @@ export default function OficiosView({
   // the hero's own busy state is a separate notice (a click on a busy hero explains it); a recipe is "craftable" by what it asks of the stock
   const idle: SaveData = { ...save, activeHuntingZone: null, activeOreId: null, activeWoodId: null, craftJob: null };
 
-  const recipes: Recipe[] =
-    category === 'potions'
+  const potionRecipes: Recipe[] =
+    category === 'alchemy'
       ? POTION_RECIPES.filter((recipe) => potionRecipeInTier(recipe, save.highestDungeonFloor, level)).map((recipe) => {
           const key = potionRecipeKey(recipe);
           const consumable = getConsumable(recipe.id)!;
           return {
             id: key,
             kind: 'potion' as const,
+            group: 'potions' as const,
             requiredLevel: recipe.requiredLevel,
             craftable: craftBlock(idle, 'potion', key, 1) === null,
             name: `${conText(consumable.nameKey)}${recipe.zoneTier ? ` · ${t('forge.knowledgeTier', { n: recipe.zoneTier })}` : ''}`,
@@ -126,21 +129,34 @@ export default function OficiosView({
             desc: conText(consumable.descKey),
           };
         })
-      : refiningRecipesForStation(category).map((recipe) => ({
-          id: recipe.id,
-          kind: 'refine' as const,
-          requiredLevel: recipe.requiredLevel,
-          craftable: craftBlock(idle, 'refine', recipe.id, 1) === null,
-          // the four dust recipes make the same item: the name says what each one eats
-          name: `${recipe.outputQty}× ${matText(`mat_${recipe.output}`)}${recipe.station === 'dust' ? ` (${matText(`mat_${Object.keys(recipe.input)[0]}`)})` : ''}`,
-          icon: <MaterialIcon item={getMaterial(recipe.output)!} />,
-          owned: save.materials[recipe.output] ?? 0,
-          gold: recipe.cost,
-          input: recipe.input,
-        }));
+      : [];
+  const refineRecipes: Recipe[] = refiningRecipesForStation(category).map((recipe) => ({
+    id: recipe.id,
+    kind: 'refine' as const,
+    group: category === 'alchemy' ? ('transmutation' as const) : undefined,
+    requiredLevel: recipe.requiredLevel,
+    craftable: craftBlock(idle, 'refine', recipe.id, 1) === null,
+    // the four dust recipes make the same item: the name says what each one eats
+    name: `${recipe.outputQty}× ${matText(`mat_${recipe.output}`)}${recipe.station === 'dust' ? ` (${matText(`mat_${Object.keys(recipe.input)[0]}`)})` : ''}`,
+    icon: <MaterialIcon item={getMaterial(recipe.output)!} />,
+    owned: save.materials[recipe.output] ?? 0,
+    gold: recipe.cost,
+    input: recipe.input,
+  }));
+  const recipes: Recipe[] = [...potionRecipes, ...refineRecipes];
+  // list groups: one untitled group per station, two titled ones (potions, transmutation) at the alchemy tab; each keeps its own available-first / locked-compacted order
+  const groups = (
+    category === 'alchemy'
+      ? [
+          { key: 'potions', title: t('oficios.groupPotions') as string | null, items: potionRecipes },
+          { key: 'transmutation', title: t('oficios.groupTransmutation') as string | null, items: refineRecipes },
+        ]
+      : [{ key: 'all', title: null as string | null, items: refineRecipes }]
+  )
+    .filter((g) => g.items.length > 0)
+    .map((g) => ({ ...g, ...orderOficios(g.items, level) }));
 
-  const { available, locked } = orderOficios(recipes, level);
-  const currentId = pickOficioId(recipes, level, picked[category]);
+  const currentId = pickOficioId(groups.flatMap((g) => [...g.available, ...g.locked]), level, picked[category]);
   const current = recipes.find((r) => r.id === currentId) ?? null;
 
   const pick = (id: string) => {
@@ -243,9 +259,6 @@ export default function OficiosView({
     );
   };
 
-  // a picked locked recipe keeps its group open
-  const lockedOpen = openLocked || (current !== null && oficioLocked(current.requiredLevel, level));
-
   return (
     <Screen label={t('nav.oficios')} className="of-page">
       <PageHeader icon={<img className="pixel-icon" src="/assets/icons/refine_catalyst.png" alt="" />} title={t('nav.oficios')} />
@@ -260,7 +273,7 @@ export default function OficiosView({
         stalled={craftStalled}
         onCancel={() => onCancelCraft?.()}
       />
-      <Tabs items={tabs} value={category} onChange={(id) => setCategory(id as RefiningStation | 'potions')} label={t('nav.oficios')} className="of-tabs" />
+      <Tabs items={tabs} value={category} onChange={(id) => setCategory(id as RefiningStation)} label={t('nav.oficios')} className="of-tabs" />
       <ScreenLayout
         className="fg-layout of-layout"
         main={
@@ -268,21 +281,30 @@ export default function OficiosView({
             <span className="socket-none">{t('oficios.empty')}</span>
           ) : (
             <>
-              {available.length > 0 && (
-                <section className="of-group" aria-label={t('oficios.recipes')}>
-                  <h3 className="of-group-title">{t('oficios.available', { n: available.length })}</h3>
-                  <div className="fg-recipes of-list">{available.map((r) => row(r, false))}</div>
-                </section>
-              )}
-              {locked.length > 0 && (
-                <section className="of-group" aria-label={t('oficios.lockedGroup', { n: locked.length })}>
-                  <button className="of-group-toggle" onClick={() => setOpenLocked(!lockedOpen)} aria-expanded={lockedOpen} data-ui>
-                    <span>{t('oficios.lockedGroup', { n: locked.length })}</span>
-                    <span aria-hidden>{lockedOpen ? '▾' : '▸'}</span>
-                  </button>
-                  {lockedOpen && <div className="fg-recipes of-list of-list-locked">{locked.map((r) => row(r, true))}</div>}
-                </section>
-              )}
+              {groups.map((g) => {
+                // a picked locked recipe keeps its group open
+                const lockedOpen = !!openLocked[g.key] || (current !== null && g.locked.some((r) => r.id === current.id));
+                return (
+                  <Fragment key={g.key}>
+                    {g.title && <h2 className="of-subhead">{g.title}</h2>}
+                    {g.available.length > 0 && (
+                      <section className="of-group" aria-label={g.title ?? t('oficios.recipes')}>
+                        <h3 className="of-group-title">{t('oficios.available', { n: g.available.length })}</h3>
+                        <div className="fg-recipes of-list">{g.available.map((r) => row(r, false))}</div>
+                      </section>
+                    )}
+                    {g.locked.length > 0 && (
+                      <section className="of-group" aria-label={t('oficios.lockedGroup', { n: g.locked.length })}>
+                        <button className="of-group-toggle" onClick={() => setOpenLocked({ ...openLocked, [g.key]: !lockedOpen })} aria-expanded={lockedOpen} data-ui>
+                          <span>{t('oficios.lockedGroup', { n: g.locked.length })}</span>
+                          <span aria-hidden>{lockedOpen ? '▾' : '▸'}</span>
+                        </button>
+                        {lockedOpen && <div className="fg-recipes of-list of-list-locked">{g.locked.map((r) => row(r, true))}</div>}
+                      </section>
+                    )}
+                  </Fragment>
+                );
+              })}
             </>
           )
         }
