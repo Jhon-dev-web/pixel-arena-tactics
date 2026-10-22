@@ -35,6 +35,17 @@ const PATHS: Record<string, string> = {
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
   mail: 'M3 5h18v14H3zM3 6l9 7 9-7',
   alert: 'M12 3l10 18H2zM12 10v5M12 18h.01',
+  star: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z',
+  gem: 'M6 3h12l4 6-10 12L2 9zM2 9h20M12 21L8 9l4-6 4 6z',
+  stairs: 'M3 21h5v-5h5v-5h5V6h3M3 21V3',
+  down: 'M12 3v14M6 11l6 6 6-6M4 21h16',
+  sword: 'M14.5 3H21v6.5L10 20.5 3.5 14zM6 17l-3 3M8.5 15.5l-2-2',
+  calendar: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
+  save: 'M5 3h11l3 3v15H5zM8 3v6h7V3M8 21v-7h8v7',
+  check: 'M20 6L9 17l-5-5',
+  login: 'M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',
+  wallet: 'M3 7a2 2 0 0 1 2-2h13v4M3 7v12a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 15h.01',
+  trade: 'M7 7h13l-3-3M17 17H4l3 3',
 };
 
 export type IconName = keyof typeof PATHS;
@@ -139,12 +150,43 @@ export function ExternalLink({ href, children, title }: { href: string; children
   );
 }
 
+/** A small icon before the labels the owner reads most in the account sheet (like his example screen). Labels without one get none. */
+const FACT_ICONS: Record<string, IconName> = {
+  Nível: 'star',
+  'Ouro no save': 'coin',
+  'Éter (cristais)': 'gem',
+  'Andar mais alto na masmorra': 'stairs',
+  'Andar mais alto': 'stairs',
+  'Profundeza mais funda': 'down',
+  Profundeza: 'down',
+  'Equipamentos no save': 'sword',
+  'Itens certificados': 'ticket',
+  'Vendas / compras': 'trade',
+  'Último salvamento': 'save',
+  Cadastro: 'calendar',
+  'Dados lidos em': 'clock',
+  'E-mail': 'mail',
+  Confirmado: 'check',
+  'Último login': 'login',
+  Herói: 'user',
+  'Válido nesta temporada': 'scroll',
+  'Entra no ranking': 'league',
+  'Histórico de Passes': 'scroll',
+};
+
 export function DefList({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl className="facts">
       {rows.map(([k, v]) => (
         <div key={k} className="contents">
-          <dt>{k}</dt>
+          <dt>
+            {FACT_ICONS[k] ? (
+              <span className="fact-icon">
+                <Icon name={FACT_ICONS[k]} />
+              </span>
+            ) : null}
+            {k}
+          </dt>
           <dd>{v}</dd>
         </div>
       ))}

@@ -33,13 +33,30 @@ function setup(override: Partial<AdminApi> = {}) {
 }
 
 describe('Players (A05)', () => {
-  test('the table keeps five summary columns: player, recent activity, progress, valid Pass, alerts', async () => {
+  test('one line per player: name, level, gold, Pass, last seen, alerts (the owner example)', async () => {
     setup();
     const table = await screen.findByRole('table', { name: 'Jogadores' });
     await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(10));
-    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼]/g, ''))).toEqual(['Jogador', 'Atividade recente', 'Progresso', 'Passe válido', 'Alertas']);
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼]/g, ''))).toEqual(['Jogador', 'Nível', 'Ouro', 'Passe', 'Último acesso', 'Alertas']);
     expect(table.textContent).not.toContain('Ouro (save)');
-    expect(table.textContent).toMatch(/Nível \d+/);
+    expect(table.querySelector('tbody td.num strong')?.textContent).toMatch(/^\d+/);
+  });
+
+  test('the account sheet has tabs, Resumo open first, and the actions always at the bottom', async () => {
+    setup();
+    const table = await screen.findByRole('table', { name: 'Jogadores' });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(10));
+    fireEvent.click(within(table).getAllByRole('row')[1]);
+    const dialog = await screen.findByRole('dialog');
+    const tabs = await within(dialog).findAllByRole('tab');
+    expect(tabs.map((x) => x.textContent)).toEqual(['Resumo', 'Herói', 'Itens', 'Progresso', 'Atividade']);
+    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+    const visible = () => within(dialog).getAllByRole('tabpanel', { hidden: true }).filter((x) => !x.hidden);
+    expect(visible()).toHaveLength(1);
+    fireEvent.click(tabs[2]);
+    expect(tabs[2].getAttribute('aria-selected')).toBe('true');
+    expect(visible()[0].textContent).toContain('Itens certificados');
+    expect(within(dialog).getByRole('region', { name: 'Ações na conta' })).toBeTruthy();
   });
 
   test('e-mails stay masked in the table', async () => {

@@ -2092,3 +2092,150 @@ table.data tbody tr.selected td:first-child {
     padding-left: 40px;
   }
 }
+
+/* ---------- Jogadores like the owner's example (22/10/2026): compact list in a card, sheet with tabs ---------- */
+.players-card {
+  padding: 0;
+  overflow: hidden;
+}
+.players-tools {
+  padding: 14px 14px 10px;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+  align-items: end;
+}
+.players-card .pager {
+  padding: 10px 14px;
+}
+.players-note {
+  margin: 0;
+  padding: 0 14px 14px;
+  font-size: 12.5px;
+}
+.players-card table.data td {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  vertical-align: middle;
+}
+.who-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.who-text .faint {
+  font-size: 12.5px;
+}
+.players-card .monogram {
+  width: 32px;
+  height: 32px;
+}
+.gold-num {
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+dl.facts {
+  gap: 0 16px;
+}
+dl.facts dt,
+dl.facts dd {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+dl.facts dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+dl.facts dd {
+  font-variant-numeric: tabular-nums;
+}
+.fact-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  color: var(--accent);
+  flex: none;
+}
+.fact-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.pf-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-body > .pf-head {
+  padding: 0 0 12px;
+}
+.pf-head-text {
+  flex: 1;
+  min-width: 0;
+}
+.pf-head-text h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+}
+.pf-head-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.monogram.big {
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  font-size: 22px;
+}
+.player-pane .pf-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+}
+.pf-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.pf-tab {
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pf-tab[aria-selected='true'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.pf-tab:hover {
+  color: var(--text);
+}
+.pf-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.pf-actions {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.player-pane .drawer-body {
+  padding: 12px 16px 16px;
+}
+@media (min-width: 1180px) {
+  .players-split {
+    grid-template-columns: minmax(0, 1.25fr) minmax(400px, 1fr);
+  }
+}

@@ -3,7 +3,7 @@ import { AccountActions } from '../components/AccountActions';
 import { Drawer } from '../components/Drawer';
 import { DataTable, ExportButton, Pager, type Column } from '../components/Table';
 import { FullAudit, FullCredits, FullHero, FullInventory, FullInvites, FullMarket, FullMaterials, FullMissingNotice, FullPassSave, FullProgress, FullSummary } from '../components/PlayerFullView';
-import { Card, DefList, ExternalLink, Field, Icon, Notice, PassBadge, Pill, Skeleton } from '../components/ui';
+import { DefList, ExternalLink, Field, Icon, Notice, Pill, Skeleton } from '../components/ui';
 import { hashParam, useApp, useAsync, useDebounced } from '../hooks';
 import { playerPassState } from '../lib/aggregate';
 import { activeFilterCount, defaultPlayerQuery, EXPORT_PAGE_SIZE, toggleSort } from '../lib/filters';
@@ -28,56 +28,99 @@ function PhoneBadges({ p }: { p: PlayerRow }) {
   );
 }
 
-// Summary columns: who, how recently they played, how far they are, whether the Pass is valid now, alerts. Gold, wallet, items, trades and the rest are in the detail panel (click a row or press Enter).
+/** The Pass in one word, for the list (origin in the tooltip). The full story (origin, real/test, ranking) is in the account sheet. */
+function PassCell({ p }: { p: PlayerRow }) {
+  const state = playerPassState(p);
+  if (state === 'none') return <span className="faint" title="sem Passe">{DASH}<span className="sr-only">sem Passe</span></span>;
+  const real = p.pass_livemode || p.pass_source === 'grant';
+  const origin = `${passSourceLabel(p.pass_source)}${real ? '' : ' (teste)'}`;
+  if (state === 'valid') return <span title={`${origin}${p.pass_ranking === false ? ' · fora do ranking' : ''}`}><Pill tone={real ? 'good' : 'warn'}>{real ? 'Válido' : 'Válido (teste)'}</Pill><span className="sr-only">, {origin}</span></span>;
+  if (state === 'expired') return <span title={origin}><Pill tone="warn">Expirado</Pill><span className="sr-only">, {origin}</span></span>;
+  return <span title={`${origin} · validade desconhecida`}><Pill>Histórico</Pill></span>;
+}
+
+// One line per player: who (name and masked e-mail), level, gold, the Pass, last seen, alerts. Everything else is in the account sheet (click a row or press Enter).
 const COLUMNS: Column<PlayerRow>[] = [
   {
     key: 'username',
     header: 'Jogador',
     sortKey: 'username',
     cell: (p) => (
-      <span>
-        <span className="who">
-          <span className="monogram" aria-hidden="true">
-            {(p.hero_name ?? p.username ?? '?').trim().charAt(0).toUpperCase() || '?'}
-            {p.online ? <span className="dot live" /> : null}
-          </span>
-          <span>
-            {p.online ? <span className="sr-only">online agora, </span> : null}
-            <strong>{p.username ?? <span className="faint">(sem nome)</span>}</strong>
-            <div className="faint">{p.email_masked ?? DASH}</div>
-            <PhoneBadges p={p} />
-          </span>
+      <span className="who">
+        <span className="monogram" aria-hidden="true">
+          {(p.hero_name ?? p.username ?? '?').trim().charAt(0).toUpperCase() || '?'}
+          {p.online ? <span className="dot live" /> : null}
+        </span>
+        <span className="who-text">
+          {p.online ? <span className="sr-only">online agora, </span> : null}
+          <strong>{p.username ?? <span className="faint">(sem nome)</span>}</strong>
+          <span className="faint">{p.email_masked ?? DASH}</span>
+          <PhoneBadges p={p} />
         </span>
       </span>
     ),
   },
   {
-    key: 'last_seen',
-    header: 'Atividade recente',
-    sortKey: 'last_seen',
+    key: 'level',
+    header: 'Nível',
+    sortKey: 'level',
+    align: 'num',
     cell: (p) => (
-      <span title={fmtDateTime(p.last_seen)}>
-        {p.online ? 'agora' : fmtAgo(p.last_seen)}
-        <div className="faint">{p.last_seen ? 'último salvamento' : 'nunca salvou'}</div>
+      <span title={p.highest_floor == null ? CACHE_HINT : `andar ${fmtInt(p.highest_floor)}${p.deepest_depth ? ` · profundeza ${fmtInt(p.deepest_depth)}` : ''}`}>
+        <strong>{p.hero_level == null ? DASH : levelText(p)}</strong>
       </span>
     ),
+  },
+  { key: 'gold', header: 'Ouro', sortKey: 'gold', align: 'num', narrow: 'hide', cell: (p) => (p.gold == null ? <span className="faint" title={CACHE_HINT}>{DASH}</span> : <span className="gold-num">{fmtInt(p.gold)}</span>) },
+  { key: 'pass', header: 'Passe', narrow: 'hide', cell: (p) => <PassCell p={p} /> },
+  {
+    key: 'last_seen',
+    header: 'Último acesso',
+    sortKey: 'last_seen',
+    cell: (p) => <span title={p.last_seen ? `último salvamento: ${fmtDateTime(p.last_seen)}` : 'nunca salvou'}>{p.online ? 'agora' : p.last_seen ? fmtAgo(p.last_seen) : 'nunca'}</span>,
   },
   {
-    key: 'level',
-    header: 'Progresso',
-    sortKey: 'level',
-    cell: (p) => (
-      <span>
-        <strong>{p.hero_level == null ? <span title={CACHE_HINT}>{DASH}</span> : `Nível ${levelText(p)}`}</strong>
-        <div className="faint">{p.highest_floor == null ? <span title={CACHE_HINT}>{DASH}</span> : `andar ${fmtInt(p.highest_floor)}${p.deepest_depth ? ` · profundeza ${fmtInt(p.deepest_depth)}` : ''}`}</div>
-      </span>
-    ),
+    key: 'flags',
+    header: 'Alertas',
+    narrow: 'hide',
+    align: 'num',
+    cell: (p) => (p.open_flags + p.item_flags > 0 ? <span title={`${p.open_flags + p.item_flags} alertas a investigar`}><Pill tone="bad">{p.open_flags + p.item_flags}</Pill></span> : <span className="faint">{DASH}</span>),
   },
-  { key: 'pass', header: 'Passe válido', narrow: 'hide', cell: (p) => <PassBadge p={p} /> },
-  { key: 'flags', header: 'Alertas', narrow: 'hide', cell: (p) => (p.open_flags + p.item_flags > 0 ? <Pill tone="bad">{p.open_flags + p.item_flags} a investigar</Pill> : <span className="faint">nenhum</span>) },
 ];
 
-const SORT_HEADERS = new Set<string>(['username', 'level', 'last_seen']);
+type SheetTab = 'resumo' | 'heroi' | 'itens' | 'progresso' | 'atividade';
+const SHEET_TABS: { id: SheetTab; label: string }[] = [
+  { id: 'resumo', label: 'Resumo' },
+  { id: 'heroi', label: 'Herói' },
+  { id: 'itens', label: 'Itens' },
+  { id: 'progresso', label: 'Progresso' },
+  { id: 'atividade', label: 'Atividade' },
+];
+
+/** The top of the account sheet: initial, name, online or last seen, masked e-mail. */
+function SheetHead({ title, summary, id, onClose }: { title: string; summary: PlayerRow | null; id: string; onClose?: () => void }) {
+  return (
+    <div className="pf-head">
+      <span className="monogram big" aria-hidden="true">
+        {(summary?.hero_name ?? title).trim().charAt(0).toUpperCase() || '?'}
+      </span>
+      <div className="pf-head-text">
+        {onClose ? <h2>{title}</h2> : null}
+        <div className="pf-head-line">
+          {summary?.online ? <Pill tone="good">Online</Pill> : summary?.last_seen ? <span className="faint">visto {fmtAgo(summary.last_seen)}</span> : null}
+          <span className="mono faint">{summary?.email_masked ?? shortId(id)}</span>
+        </div>
+      </div>
+      {onClose ? (
+        <button type="button" className="btn ghost" onClick={onClose} aria-label="Fechar ficha">
+          <Icon name="close" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+const SORT_HEADERS = new Set<string>(['username', 'level', 'last_seen', 'gold']);
 
 /** On a wide screen the account opens BESIDE the list (the owner keeps both in view); on a phone or a narrow window it opens as a modal panel. */
 const WIDE = '(min-width: 1180px)';
@@ -118,7 +161,7 @@ export default function PlayersPage() {
       <div className="page-head">
         <div>
           <h1>Jogadores</h1>
-          <p>Quem são, quando jogaram, até onde foram e se o Passe vale nesta temporada. O resto está no painel de detalhes (clique na linha). O e-mail aparece mascarado; o completo só no detalhe.</p>
+          <p>Busque uma conta e clique na linha para abrir a ficha completa. O e-mail aparece mascarado; o completo só na ficha.</p>
         </div>
         <div className="head-actions">
           <ExportButton
@@ -132,8 +175,8 @@ export default function PlayersPage() {
       </div>
 
       <div className={side ? 'players-split' : undefined}>
-      <div className="players-list">
-      <div className="toolbar">
+      <section className="card players-card players-list">
+      <div className="toolbar players-tools">
         <div className="grow">
           <Field label="Buscar">
             <input className="input" type="search" placeholder="nome do jogador, herói, e-mail ou id" value={q.search} onChange={(e) => setQ((s) => ({ ...s, search: e.target.value, page: 0 }))} aria-label="Buscar jogador" />
@@ -183,7 +226,6 @@ export default function PlayersPage() {
           </button>
         </Notice>
       ) : null}
-      <Card flush>
         <DataTable
           caption="Jogadores"
           columns={COLUMNS}
@@ -197,12 +239,11 @@ export default function PlayersPage() {
           selectedKey={openId}
         />
         <Pager page={q.page} total={list.data?.total ?? 0} size={q.pageSize} onPage={(page) => setQ((s) => ({ ...s, page }))} />
-      </Card>
-      <p className="faint" style={{ marginTop: 10 }}>
-        “Passe válido” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nesta lista, nível, andar e profundeza vêm da rotina de cache (atualizada a cada poucas horas; um traço significa que a rotina ainda não passou pela conta). O painel de detalhes lê o save ao vivo. “Atividade recente” é o último salvamento do personagem.
-      </p>
+        <p className="faint players-note">
+          “Passe” segue a regra do jogo: vale para a temporada atual (a pré-temporada e a Temporada 1 usam o mesmo Passe). Nível, ouro e andar desta lista vêm da rotina de cache (atualizada a cada poucas horas; um traço quer dizer que ela ainda não passou pela conta). A ficha lê o save ao vivo. “Último acesso” é o último salvamento do personagem.
+        </p>
+      </section>
 
-      </div>
       {openId ? <PlayerDrawer key={openId} id={openId} pane={side} summary={list.data?.rows.find((r) => r.user_id === openId) ?? null} onClose={() => setOpenId(null)} onDeleted={() => { setOpenId(null); list.reload(); }} onListChanged={() => list.reload()} /> : null}
       </div>
     </>
@@ -214,11 +255,13 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
   const liveRaw = useAsync((a) => a.playerFull(id), [id]);
   const full = liveRaw.data === undefined ? null : normalizeFull(liveRaw.data);
   const [reveal, setReveal] = useState(false);
+  const [tab, setTab] = useState<SheetTab>('resumo');
   const close = useCallback(onClose, [onClose]);
   const d = detail.data;
   const title = summary?.username ?? d?.account.username ?? 'Jogador';
   const content = (
     <>
+      {pane ? null : <SheetHead title={title} summary={summary} id={id} />}
       {detail.error ? (
         <Notice tone="bad">
           {detail.error}{' '}
@@ -238,58 +281,15 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
         )
       ) : (
         <>
+          <div className="pf-tabs" role="tablist" aria-label="Partes da ficha">
+            {SHEET_TABS.map((t) => (
+              <button key={t.id} type="button" role="tab" id={`pf-${id}-tab-${t.id}`} aria-controls={`pf-${id}-${t.id}`} aria-selected={tab === t.id} className="pf-tab" onClick={() => setTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div role="tabpanel" id={`pf-${id}-resumo`} aria-labelledby={`pf-${id}-tab-resumo`} hidden={tab !== 'resumo'} className="pf-panel">
           {full ? <FullSummary full={full} summary={summary} detail={d} /> : liveRaw.loading ? <Skeleton height={90} /> : liveRaw.error ? <FullMissingNotice message={liveRaw.error} /> : null}
-
-          <section>
-            <h3>Conta</h3>
-            <DefList
-              rows={[
-                [
-                  'E-mail',
-                  <span key="e">
-                    <span className="mono">{reveal ? d.account.email ?? DASH : summary?.email_masked ?? '***'}</span>{' '}
-                    <button type="button" className="btn" onClick={() => setReveal((v) => !v)}>
-                      {reveal ? 'Ocultar' : 'Mostrar e-mail completo'}
-                    </button>
-                  </span>,
-                ],
-                ['Confirmado', d.account.email_confirmed_at ? fmtDateTime(d.account.email_confirmed_at) : 'não'],
-                ['Cadastro', fmtDateTime(d.account.created_at)],
-                ['Último login', fmtDateTime(d.account.last_sign_in_at)],
-                ['Herói', d.character ? `${d.character.hero_name} (revisão ${fmtInt(d.character.revision)})` : 'sem personagem'],
-                ['Último salvamento', fmtDateTime(d.character?.updated_at)],
-                ['Importado de save local', d.character?.imported_from_legacy ? 'sim' : 'não'],
-              ]}
-            />
-          </section>
-
-          {full ? (
-            <>
-              <FullHero full={full} />
-              <FullInventory full={full} />
-              <FullMaterials full={full} detail={d} />
-              <FullProgress full={full} />
-            </>
-          ) : liveRaw.loading ? null : (
-            <section>
-              <h3>Progresso</h3>
-              {d.stats ? (
-                <DefList
-                  rows={[
-                    ['Nível', d.stats.hero_level == null ? DASH : `${d.stats.hero_level}${d.stats.paragon_level ? ` + Paragon ${d.stats.paragon_level}` : ''}`],
-                    ['Andar mais alto', fmtInt(d.stats.highest_floor)],
-                    ['Profundeza', fmtInt(d.stats.deepest_depth)],
-                    ['Ouro no save', fmtGold(d.stats.gold)],
-                    ['Itens no save', `${fmtInt(d.stats.items_common)} comuns · ${fmtInt(d.stats.items_rare)} raros · ${fmtInt(d.stats.items_epic)} épicos · ${fmtInt(d.stats.items_legendary)} lendários`],
-                    ['Dados de', fmtDateTime(d.stats.refreshed_at)],
-                  ]}
-                />
-              ) : (
-                <p className="muted">Ainda sem dados de progresso (a rotina de cache não passou por esta conta).</p>
-              )}
-            </section>
-  
-          )}
 
           <section>
             <h3>Passe e carteira</h3>
@@ -346,6 +346,40 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
           </section>
 
           <section>
+            <h3>Conta</h3>
+            <DefList
+              rows={[
+                [
+                  'E-mail',
+                  <span key="e">
+                    <span className="mono">{reveal ? d.account.email ?? DASH : summary?.email_masked ?? '***'}</span>{' '}
+                    <button type="button" className="btn" onClick={() => setReveal((v) => !v)}>
+                      {reveal ? 'Ocultar' : 'Mostrar e-mail completo'}
+                    </button>
+                  </span>,
+                ],
+                ['Confirmado', d.account.email_confirmed_at ? fmtDateTime(d.account.email_confirmed_at) : 'não'],
+                ['Cadastro', fmtDateTime(d.account.created_at)],
+                ['Último login', fmtDateTime(d.account.last_sign_in_at)],
+                ['Herói', d.character ? `${d.character.hero_name} (revisão ${fmtInt(d.character.revision)})` : 'sem personagem'],
+                ['Último salvamento', fmtDateTime(d.character?.updated_at)],
+                ['Importado de save local', d.character?.imported_from_legacy ? 'sim' : 'não'],
+              ]}
+            />
+          </section>
+
+          </div>
+          <div role="tabpanel" id={`pf-${id}-heroi`} aria-labelledby={`pf-${id}-tab-heroi`} hidden={tab !== 'heroi'} className="pf-panel">
+          {full ? <FullHero full={full} /> : <p className="muted">{liveRaw.loading ? 'Lendo o save…' : 'Sem dados do herói ao vivo.'}</p>}
+          </div>
+          <div role="tabpanel" id={`pf-${id}-itens`} aria-labelledby={`pf-${id}-tab-itens`} hidden={tab !== 'itens'} className="pf-panel">
+          {full ? (
+            <>
+              <FullInventory full={full} />
+              <FullMaterials full={full} detail={d} />
+            </>
+          ) : null}
+          <section>
             <h3>Itens certificados</h3>
             {d.certificates.length === 0 ? <p className="muted">Nenhum item certificado.</p> : (
               <div className="table-wrap">
@@ -373,14 +407,32 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
             )}
           </section>
 
+          </div>
+          <div role="tabpanel" id={`pf-${id}-progresso`} aria-labelledby={`pf-${id}-tab-progresso`} hidden={tab !== 'progresso'} className="pf-panel">
           {full ? (
             <>
-              <FullMarket full={full} detail={d} />
-              <FullCredits full={full} />
-              <FullInvites full={full} />
-              <FullAudit full={full} />
+              <FullProgress full={full} />
             </>
-          ) : null}
+          ) : liveRaw.loading ? null : (
+            <section>
+              <h3>Progresso</h3>
+              {d.stats ? (
+                <DefList
+                  rows={[
+                    ['Nível', d.stats.hero_level == null ? DASH : `${d.stats.hero_level}${d.stats.paragon_level ? ` + Paragon ${d.stats.paragon_level}` : ''}`],
+                    ['Andar mais alto', fmtInt(d.stats.highest_floor)],
+                    ['Profundeza', fmtInt(d.stats.deepest_depth)],
+                    ['Ouro no save', fmtGold(d.stats.gold)],
+                    ['Itens no save', `${fmtInt(d.stats.items_common)} comuns · ${fmtInt(d.stats.items_rare)} raros · ${fmtInt(d.stats.items_epic)} épicos · ${fmtInt(d.stats.items_legendary)} lendários`],
+                    ['Dados de', fmtDateTime(d.stats.refreshed_at)],
+                  ]}
+                />
+              ) : (
+                <p className="muted">Ainda sem dados de progresso (a rotina de cache não passou por esta conta).</p>
+              )}
+            </section>
+  
+          )}
 
           {d.season_entries.length ? (
             <section>
@@ -393,6 +445,19 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
             </section>
           ) : null}
 
+          </div>
+          <div role="tabpanel" id={`pf-${id}-atividade`} aria-labelledby={`pf-${id}-tab-atividade`} hidden={tab !== 'atividade'} className="pf-panel">
+          {full ? (
+            <>
+              <FullMarket full={full} detail={d} />
+              <FullCredits full={full} />
+              <FullInvites full={full} />
+              <FullAudit full={full} />
+            </>
+          ) : null}
+
+          </div>
+          <div className="pf-actions">
           <AccountActions
             subject={{
               userId: id,
@@ -408,6 +473,7 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
               onListChanged();
             }}
           />
+          </div>
         </>
       )}
     </>
@@ -421,15 +487,7 @@ function PlayerDrawer({ id, pane, summary, onClose, onDeleted, onListChanged }: 
   }
   return (
     <aside className="player-pane" aria-label={`Ficha de ${title}`}>
-      <div className="drawer-head">
-        <div>
-          <h2>{title}</h2>
-          <div className="muted mono">{shortId(id)}</div>
-        </div>
-        <button type="button" className="btn ghost" onClick={close} aria-label="Fechar ficha">
-          <Icon name="close" />
-        </button>
-      </div>
+      <SheetHead title={title} summary={summary} id={id} onClose={close} />
       <div className="drawer-body">{content}</div>
     </aside>
   );
