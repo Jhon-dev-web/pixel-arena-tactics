@@ -104,6 +104,7 @@ export default function DesktopHome({
   onOpenPass,
   onOpenNextStep,
   onPickProfession,
+  onOpenCalendar,
 }: {
   save: SaveData;
   spriteUrl: string;
@@ -120,6 +121,7 @@ export default function DesktopHome({
   onOpenPass: () => void;
   onOpenNextStep: (target: NextStepTarget) => void;
   onPickProfession: (profession: ProfessionId) => void;
+  onOpenCalendar?: () => void;
 }) {
   const phone = useIsPhone();
   // UI-only state (never saved): the phone block with the equipment slots starts folded.
@@ -383,7 +385,7 @@ export default function DesktopHome({
             )}
 
             {/* Eventos da Liga */}
-            <EventsPanel save={save} onPickProfession={onPickProfession} />
+            <EventsPanel save={save} onPickProfession={onPickProfession} onOpenCalendar={onOpenCalendar} />
 
             {/* Progressão */}
             <Panel title={t('home.progressionTitle')}>

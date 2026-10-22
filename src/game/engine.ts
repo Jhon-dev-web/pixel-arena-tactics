@@ -1,7 +1,7 @@
 import { deviceStorage, isPrefKey } from '../lib/deviceStore';
 import { LeagueMark, sanitizeLeagueMark } from './leagueMark';
 import { getLeagueEpoch } from './leagueClock';
-import { activeEventBuffs, EVENT_XP_CAP, EventBuffs, EventPick, eventGatherBonusHours, huntEventWindows, sanitizeEventBuffs, sanitizeEventPick } from './leagueEvents';
+import { activeEventBuffs, datedEventWindows, EVENT_XP_CAP, EventBuffs, EventPick, eventGatherBonusHours, huntEventWindows, sanitizeEventBuffs, sanitizeEventPick } from './leagueEvents';
 import T from './tunables';
 import { grantDailyPassKit, ownsAdventurerPass } from './entitlements';
 import { sanitizeActiveFrame, sanitizeActiveSkin, sanitizeStashBonus } from './seasonItems';
@@ -713,8 +713,18 @@ export function buildHuntSession(save: SaveData, startedAt: number): HuntSession
     tonics: runningTonicWindows(save, startedAt, startedAt),
     // League events (leagueEvents.ts): the calendar the session is played under, fixed when it starts (no League = no events), and the event buffs already earned.
     ...(getLeagueEpoch() !== null ? { league: getLeagueEpoch()! } : {}),
+    ...(datedSessionEvents(startedAt).length > 0 ? { datedEvents: datedSessionEvents(startedAt) } : {}),
     ...(activeEventBuffs(save, startedAt).length > 0 ? { eventXp: activeEventBuffs(save, startedAt) } : {}),
   };
+}
+
+// The dated pre-season events (migration 0035) that touch the first 48 hours of a session starting at `startedAt`, as the session keeps them (absolute ms). None without the server calendar.
+function datedSessionEvents(startedAt: number): { id: string; kind: 'hero' | 'profession' | 'final'; startMs: number; endMs: number }[] {
+  const horizon = startedAt + 48 * 3600 * 1000;
+  return datedEventWindows(getLeagueEpoch())
+    .filter((w) => w.endMs > startedAt && w.startMs < horizon)
+    .slice(0, 8)
+    .map((w) => ({ id: w.id, kind: w.kind, startMs: w.startMs, endMs: w.endMs }));
 }
 
 // The event buffs of a session as session-relative windows (fractions kept).
@@ -828,7 +838,7 @@ export function buildHuntSimSetup(
     fortuneWindows: relativeWindows(session.tonics?.fortune ?? [], startedAt),
     knowledgeWindows: relativeWindows(session.tonics?.knowledge ?? [], startedAt),
     xpBuffPct: T.consumables.knowledgeXpPct,
-    ...(session.league ? { eventWindows: huntEventWindows(session.league, startedAt, 48 * 3600 * 1000), eventXpCap: EVENT_XP_CAP } : {}),
+    ...(session.league || session.datedEvents?.length ? { eventWindows: huntEventWindows(session.league ?? null, startedAt, 48 * 3600 * 1000, session.datedEvents ?? []), eventXpCap: EVENT_XP_CAP } : {}),
     ...(session.eventXp && session.eventXp.length > 0 ? { eventBuffs: relativeEventBuffs(session.eventXp, startedAt), eventXpCap: EVENT_XP_CAP } : {}),
     sharpWindows: relativeWindows(session.tonics?.sharpened ?? [], startedAt),
     polishWindows: relativeWindows(session.tonics?.polished ?? [], startedAt),

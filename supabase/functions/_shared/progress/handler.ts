@@ -1,6 +1,7 @@
 import { AuthConfig, getAuthenticatedUserId } from '../auth.ts';
 import { json } from '../http.ts';
 import { isPaused, type OpsFlagReader } from '../ops/flags.ts';
+import type { DatedWindow } from './bounds.ts';
 import { Credits, HistoryPoint, Verdict, evaluateSnapshot } from './evaluate.ts';
 import { LEAGUE_RESET_RETRY_S, declaredLeagueEpochMs, effectiveAccountStartMs } from './league.ts';
 import { ProfessionId, ProgressMetrics, computeScore, extractMetrics, professionScores, scoreParts } from './metrics.ts';
@@ -61,6 +62,11 @@ export interface ProgressStore {
    * Everything below that reads snapshots takes `sinceMs` = this value: a snapshot created before it is not history any more.
    */
   resetAtMs?(): Promise<number | null>;
+  /**
+   * The dated pre-season events of the server calendar (public.calendar_events(), migration 0035), as windows in ms. They widen the XP allowances like a League event of the same kind (evaluate.ts), so
+   * an honest player is never flagged for an event. Optional: absent (older fakes, migration not applied) = none. The handler treats a failure as "none": a missing calendar never stops a snapshot.
+   */
+  datedEvents?(): Promise<DatedWindow[]>;
   /** The newest snapshot of any verdict (the answer for a throttled call). `sinceMs`: only snapshots created at or after it. */
   lastSnapshot(userId: string, sinceMs?: number): Promise<StoredSnapshot | null>;
   /** The account's first and latest `ok` snapshots as history points. A flagged or rejected snapshot is never a baseline. `sinceMs`: only snapshots created at or after it. */
@@ -199,12 +205,21 @@ export async function handleSubmitProgress(req: Request, deps: ProgressDeps): Pr
         console.error('[submit-progress] credits unavailable', err instanceof Error ? err.message : 'unknown');
       }
     }
+    let datedEvents: DatedWindow[] = [];
+    if (deps.store.datedEvents) {
+      try {
+        datedEvents = await deps.store.datedEvents();
+      } catch (err) {
+        console.error('[submit-progress] event calendar unavailable', err instanceof Error ? err.message : 'unknown');
+      }
+    }
     const evaluation = evaluateSnapshot(metrics, {
       nowMs: now,
       // After the reset the account is as old as the League: a fresh hero is judged on its new run, never on the years of the account.
       accountCreatedMs: effectiveAccountStartMs(accountCreatedMs, resetAtMs),
       sinceReset: resetAtMs !== null,
       leagueEpochMs: resetAtMs,
+      datedEvents,
       entitled,
       saveRevision,
       first: history.first,

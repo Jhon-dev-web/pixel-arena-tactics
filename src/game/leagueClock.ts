@@ -14,3 +14,28 @@ export const getLeagueEpoch = (): number | null => epoch;
 export function setLeagueEpoch(ms: number | null | undefined): void {
   epoch = typeof ms === 'number' && Number.isFinite(ms) && ms > 0 ? ms : null;
 }
+
+// ---- the dated (pre-season) events -----------------------------------------------------------------------------------------------------------
+// Before the League opens the server publishes a calendar of events on REAL dates (public.calendar_events(), migration 0035; the table is arena_private.event_calendar). The game reads it
+// (eventCalendar.ts) and parks the rows here, in memory only, so the pure game code can see them next to the League clock. Same rule as above: nothing here is read from the device clock
+// and nothing is persisted. The offline / desktop build never asks, so this stays empty there.
+
+/** One dated event as the server hands it out, in ms. `id` is a LeagueEventId (leagueEvents.ts validates it before it gets here). */
+export interface DatedEvent {
+  id: string;
+  kind: 'hero' | 'profession' | 'final';
+  startMs: number;
+  endMs: number;
+}
+
+let dated: readonly DatedEvent[] = [];
+
+export const getDatedEvents = (): readonly DatedEvent[] => dated;
+
+/** Replaces the dated events (an empty list clears them). Keeps only well-formed rows and sorts them by start. */
+export function setDatedEvents(list: readonly DatedEvent[] | null | undefined): void {
+  dated = (list ?? [])
+    .filter((e) => e && typeof e.id === 'string' && Number.isFinite(e.startMs) && Number.isFinite(e.endMs) && e.endMs > e.startMs && e.startMs > 0)
+    .slice()
+    .sort((a, b) => a.startMs - b.startMs);
+}

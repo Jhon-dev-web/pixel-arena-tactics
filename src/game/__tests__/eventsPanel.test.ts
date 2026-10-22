@@ -11,7 +11,8 @@ import { setLocale } from '../../locales';
 
 // The "Eventos" panel: what the model says in every state of the League clock, and the markup in both languages.
 const EPOCH = Date.UTC(2026, 9, 20);
-const win = (id: string, nth = 0) => leagueEventWindows(EPOCH).filter((w) => w.id === id)[nth];
+// the nth event of that id from League day 25 on (the light weeks before it are tested in leagueEvents.test.ts)
+const win = (id: string, nth = 0) => leagueEventWindows(EPOCH).filter((w) => w.id === id && w.startMs >= EPOCH + 24 * DAY_MS)[nth];
 const save = defaultSave();
 
 beforeEach(() => {
@@ -28,7 +29,7 @@ describe('the model', () => {
     expect(eventsView(undefined, EPOCH, save).mode).toBe('hidden');
     const pre = eventsView(null, EPOCH, save);
     expect(pre.mode).toBe('preseason');
-    expect(pre.preview).toHaveLength(12);
+    expect(pre.preview).toHaveLength(18);
     expect(pre.current).toBeNull();
     const inv = win('invasion');
     const run = eventsView(EPOCH, inv.startMs + 2 * HOUR_MS, save);
@@ -45,7 +46,7 @@ describe('the model', () => {
     expect(wait.mode).toBe('waiting');
     expect(wait.next?.id).toBe('mining_fever');
     expect(wait.msToNext).toBe(win('mining_fever').startMs - (win('invasion').endMs + HOUR_MS));
-    expect(eventsView(EPOCH, EPOCH + 10 * DAY_MS, save).mode).toBe('waiting'); // before day 25
+    expect(eventsView(EPOCH, EPOCH + 23.5 * DAY_MS, save).mode).toBe('waiting'); // the rest day before day 25
     expect(eventsView(EPOCH, EPOCH + 61 * DAY_MS, save).mode).toBe('over');
   });
 
@@ -82,13 +83,13 @@ describe('the panel', () => {
     expect(getLeagueEpoch()).toBeNull();
     const pt = render();
     expect(pt).toContain('data-testid="events-preseason"');
-    expect(pt).toContain('Eventos da Liga');
-    expect(pt).toContain('dias 25 a 60');
+    expect(pt).toContain('Eventos');
+    expect(pt).toContain('dias 3 a 60');
     expect(pt).toContain('Ver calend');
     setLocale('en');
     const en = render();
-    expect(en).toContain('League events');
-    expect(en).toContain('from day 25 to 60');
+    expect(en).toContain('Events');
+    expect(en).toContain('from day 3 to 60');
   });
 
   it('during an event it shows its name, its line, how long is left, the next event and the cap', async () => {

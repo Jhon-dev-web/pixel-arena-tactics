@@ -187,14 +187,32 @@ export const BOUNDS = {
   floorCapRejectSlack: 5,
 } as const;
 
-/** Hours of [fromMs, toMs] that fall inside an event of one of `kinds` (the League opened at `epochMs`; no epoch = no events = 0). */
-export function eventHoursBetween(epochMs: number | null | undefined, fromMs: number, toMs: number, kinds: readonly ('hero' | 'profession' | 'final')[]): number {
-  if (typeof epochMs !== 'number' || !Number.isFinite(epochMs) || !(toMs > fromMs)) return 0;
+/** A dated (pre-season) event as the server calendar holds it (public.calendar_events(), migration 0035), in ms. */
+export interface DatedWindow {
+  kind: 'hero' | 'profession' | 'final';
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * Hours of [fromMs, toMs] that fall inside an event of one of `kinds`: the League's events (the League opened at `epochMs`; no epoch = no League events) and the dated pre-season events `dated`
+ * (cut at the League opening when there is one, exactly as the game cuts them: an event never overlaps the League, so no hour is counted twice). No events at all = 0.
+ */
+export function eventHoursBetween(epochMs: number | null | undefined, fromMs: number, toMs: number, kinds: readonly ('hero' | 'profession' | 'final')[], dated: readonly DatedWindow[] = []): number {
+  if (!(toMs > fromMs)) return 0;
+  const hasEpoch = typeof epochMs === 'number' && Number.isFinite(epochMs);
   let ms = 0;
-  for (const e of EVENT_SLOTS) {
-    if (!kinds.includes(e.kind)) continue;
-    const a = epochMs + e.startHour * 3_600_000;
-    ms += Math.max(0, Math.min(toMs, a + e.hours * 3_600_000) - Math.max(fromMs, a));
+  if (hasEpoch) {
+    for (const e of EVENT_SLOTS) {
+      if (!kinds.includes(e.kind)) continue;
+      const a = epochMs + e.startHour * 3_600_000;
+      ms += Math.max(0, Math.min(toMs, a + e.hours * 3_600_000) - Math.max(fromMs, a));
+    }
+  }
+  for (const d of dated) {
+    if (!kinds.includes(d.kind)) continue;
+    const end = hasEpoch ? Math.min(d.endMs, epochMs) : d.endMs;
+    ms += Math.max(0, Math.min(toMs, end) - Math.max(fromMs, d.startMs));
   }
   return ms / 3_600_000;
 }

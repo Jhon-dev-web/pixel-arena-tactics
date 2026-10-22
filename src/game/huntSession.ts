@@ -38,6 +38,8 @@ export interface HuntSession {
   // Rodada 22 (leagueEvents.ts). `league`: the server's League opening (leagueClock.ts) the moment the session STARTED, so the event calendar of the session is fixed with it (null / absent = no League:
   // no events). `eventXp`: the timed Hunting XP buffs the player had earned at the start, and every one earned while it ran (from then on, never for the time already hunted); `pct` is a fraction.
   league?: number;
+  // The dated pre-season events (leagueClock.ts, migration 0035) that overlapped the first 48 h of the session when it started, absolute ms; same trust model as `league` (the server bound is what counts).
+  datedEvents?: { id: string; kind: 'hero' | 'profession' | 'final'; startMs: number; endMs: number }[];
   eventXp?: { from: number; to: number; pct: number }[];
 }
 
@@ -234,8 +236,23 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
     storageFlat: true,
     ...(finiteNum(r.passGold) && r.passGold > 0 && r.passGold <= 100 ? { passGold: r.passGold } : {}),
     ...(finiteNum(r.league) && r.league > 0 && r.league <= MAX_MS ? { league: Math.floor(r.league) } : {}),
+    ...(sanitizeDatedEvents(r.datedEvents).length > 0 ? { datedEvents: sanitizeDatedEvents(r.datedEvents) } : {}),
     ...(sanitizeEventXp(r.eventXp).length > 0 ? { eventXp: sanitizeEventXp(r.eventXp) } : {}),
   };
+}
+
+const DATED_KINDS = ['hero', 'profession', 'final'] as const;
+// The dated events of a session: a known kind, a short id, finite increasing moments, at most 8.
+function sanitizeDatedEvents(raw: unknown): NonNullable<HuntSession['datedEvents']> {
+  if (!Array.isArray(raw)) return [];
+  const out: NonNullable<HuntSession['datedEvents']> = [];
+  for (const e of raw as { id?: unknown; kind?: unknown; startMs?: unknown; endMs?: unknown }[]) {
+    if (!e || typeof e.id !== 'string' || e.id.length > 32 || !DATED_KINDS.includes(e.kind as (typeof DATED_KINDS)[number]) || !finiteNum(e.startMs) || !finiteNum(e.endMs)) continue;
+    if (e.startMs <= 0 || e.endMs > MAX_MS || e.endMs <= e.startMs) continue;
+    out.push({ id: e.id, kind: e.kind as (typeof DATED_KINDS)[number], startMs: Math.floor(e.startMs), endMs: Math.floor(e.endMs) });
+    if (out.length >= 8) break;
+  }
+  return out;
 }
 
 // The event buffs of a session: finite windows, a fraction between 0 and 0.5 (no rule gives more), at most MAX_WINDOWS.

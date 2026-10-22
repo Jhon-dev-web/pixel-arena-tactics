@@ -1,4 +1,4 @@
-import { BOUNDS, eventHoursBetween, PACE_FAST_FACTOR, PACE_FLAG_FACTOR, PACE_REJECT_FACTOR, REJECT_FACTOR, burstXp, daysAtFloor, daysAtLevel, floorCapForLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from './bounds.ts';
+import { BOUNDS, DatedWindow, eventHoursBetween, PACE_FAST_FACTOR, PACE_FLAG_FACTOR, PACE_REJECT_FACTOR, REJECT_FACTOR, burstXp, daysAtFloor, daysAtLevel, floorCapForLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from './bounds.ts';
 import { PEAK_KEYS, Peak, ProgressMetrics, levelPosition, maxPeak, peakOf } from './metrics.ts';
 
 // The plausibility audit. Pure: given the metrics of a new snapshot, the server's own history of the account and the server clock, it says ok / flagged / rejected and why.
@@ -37,6 +37,8 @@ export interface EvalInput {
   entitled: boolean;
   /** The server's League opening (public.league_reset_at(), ms), or null before it: the event calendar hangs from it, and only while an event runs may XP be a little faster (bounds.ts eventHeroBonus). */
   leagueEpochMs?: number | null;
+  /** The dated pre-season events of the server calendar (public.calendar_events(), migration 0035): they widen the same allowances as a League event of the same kind, and are cut at the League opening. Absent = none. */
+  datedEvents?: readonly DatedWindow[];
   saveRevision: number;
   /**
    * true once the first League has reset every online hero (league_reset_at is set). `accountCreatedMs` is then already max(account created, reset_at) and `first` / `previous` only
@@ -124,13 +126,13 @@ class Findings {
 }
 
 /** The growth checks between a reference point (the previous snapshot, or the first one) and the new metrics. `suffix` is '' or '_TOTAL'. */
-function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedMs: number, suffix: string, nowMs: number, epochMs: number | null | undefined): void {
+function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedMs: number, suffix: string, nowMs: number, epochMs: number | null | undefined, dated: readonly DatedWindow[] = []): void {
   const hours = Math.max(0, elapsedMs) / HOUR_MS;
   const days = Math.max(0, elapsedMs) / DAY_MS;
   // League events: hours of the gap during which a hero / profession event ran. They widen the XP rate by their cap, only for those hours, and the burst (a reward earned earlier, claimed now) by one cap.
   const sinceMs = nowMs - Math.max(0, elapsedMs);
-  const heroEventHours = eventHoursBetween(epochMs, sinceMs, nowMs, ['hero', 'final']);
-  const professionEventHours = eventHoursBetween(epochMs, sinceMs, nowMs, ['profession']);
+  const heroEventHours = eventHoursBetween(epochMs, sinceMs, nowMs, ['hero', 'final'], dated);
+  const professionEventHours = eventHoursBetween(epochMs, sinceMs, nowMs, ['profession'], dated);
 
   // XP: the best open zone for this hero's floor, per server hour (Hunting is the only source of hero XP), plus ONE burst (a reward earned before the reference point and claimed now).
   const burst = burstXp(cur.highestFloor, cur.heroLevel) * (1 + (heroEventHours > 0 ? BOUNDS.eventHeroBonus : 0));
@@ -237,9 +239,9 @@ export function evaluateSnapshot(cur: ProgressMetrics, input: EvalInput): Evalua
     }
   }
 
-  growthChecks(f, cur, previous.peak, input.nowMs - previous.atMs, '', input.nowMs, input.leagueEpochMs);
+  growthChecks(f, cur, previous.peak, input.nowMs - previous.atMs, '', input.nowMs, input.leagueEpochMs, input.datedEvents);
   balanceChecks(f, cur, previous.metrics, input.nowMs - previous.atMs, input.credits);
-  growthChecks(f, cur, peakOf(first.metrics), input.nowMs - first.atMs, '_TOTAL', input.nowMs, input.leagueEpochMs);
+  growthChecks(f, cur, peakOf(first.metrics), input.nowMs - first.atMs, '_TOTAL', input.nowMs, input.leagueEpochMs, input.datedEvents);
 
   const verdict = f.verdict;
   return { verdict, reasons: f.codes, peak: verdict === 'ok' ? maxPeak(previous.peak, peakOf(cur)) : previous.peak };

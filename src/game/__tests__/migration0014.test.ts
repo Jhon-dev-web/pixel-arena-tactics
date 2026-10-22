@@ -5,17 +5,22 @@ import { LEAGUE_EVENT_SLOTS } from '../leagueEvents';
 import { EVENT_SLOTS } from '../../../supabase/functions/_shared/progress/tables';
 
 // (This test lives with the game's tests, not next to the Edge Functions: it compares the SQL with the game's own table, and the functions' strict compile must not pull the game in.)
-// Migration 0014 is SQL that was never run from this repo: these tests read the file and pin that its calendar IS the game's (src/game/leagueEvents.ts), cell by cell, and that the one function it
-// adds is read-only and exposes nothing but the calendar. The SQL TEST PLAN at the end of the file is what proves it against a real database.
+// Migration 0014 created public.league_events(); migration 0035 (event calendar) REPLACED it with the calendar of days 3 to 60. These tests read the CURRENT definition (the one in 0035) and pin that its
+// calendar IS the game's (src/game/leagueEvents.ts), cell by cell, and that the function is read-only and exposes nothing but the calendar. 0014 stays as the history (its own rows are the old 12 events).
+// The SQL TEST PLAN at the end of each file is what proves it against a real database.
 
 const root = resolve(__dirname, '../../..');
-const sql = readFileSync(resolve(root, 'supabase/migrations/0014_economy_events.sql'), 'utf8');
+const sql014 = readFileSync(resolve(root, 'supabase/migrations/0014_economy_events.sql'), 'utf8');
+const sql35 = readFileSync(resolve(root, 'supabase/migrations/0035_event_calendar.sql'), 'utf8').replace(/\r\n/g, '\n');
+// the current definition of league_events(): the block of 0035 from its create to its grant
+const fn = sql35.slice(sql35.indexOf('create or replace function public.league_events()'+String.fromCharCode(10)+'returns table'), sql35.indexOf('grant execute on function public.league_events()'));
+const sql = fn + 'grant execute on function public.league_events() to anon, authenticated, service_role;\n';
 const code = sql
   .split('\n')
   .filter((l) => !l.trim().startsWith('--'))
   .join('\n');
 
-describe('0014: public.league_events()', () => {
+describe('0035 (replacing 0014): public.league_events()', () => {
   const rows = [...code.matchAll(/\((\d+), '(\w+)', '(\w+)', (\d+), (\d+)\)/g)].map((m) => ({ slot: Number(m[1]), id: m[2], kind: m[3], startHour: Number(m[4]), hours: Number(m[5]) }));
 
   it('has exactly the rows of the game\'s calendar, in order', () => {
@@ -57,9 +62,12 @@ describe('0014: public.league_events()', () => {
   });
 
   it('carries its rollback and its SQL test plan, and says it was not applied', () => {
-    expect(sql).toContain('-- ROLLBACK (by hand');
-    expect(sql).toContain('drop function if exists public.league_events();');
-    expect(sql).toContain('-- SQL TEST PLAN');
-    expect(sql).toContain('NOT APPLIED');
+    expect(sql014).toContain('-- ROLLBACK (by hand');
+    expect(sql014).toContain('drop function if exists public.league_events();');
+    expect(sql014).toContain('-- SQL TEST PLAN');
+    expect(sql35).toContain('-- ROLLBACK (by hand');
+    expect(sql35).toContain('-- SQL TEST PLAN');
+    expect(sql35).toContain('NOT APPLIED');
+    expect(sql35).toContain('re-run the `create or replace function public.league_events()` block of 0014');
   });
 });

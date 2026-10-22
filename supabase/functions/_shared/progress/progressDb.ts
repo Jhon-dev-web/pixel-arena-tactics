@@ -1,6 +1,7 @@
 import type { HistoryPoint, Verdict } from './evaluate.ts';
 import type { NewSnapshot, ProfessionApplyStatus, ProgressStore, SeasonApplyStatus, StoredSnapshot } from './handler.ts';
 import { Peak, ProgressMetrics, peakOf } from './metrics.ts';
+import type { DatedWindow } from './bounds.ts';
 
 // The real ProgressStore: PostgREST over fetch with the SERVICE ROLE key (injected by the Supabase Edge runtime; never logged, never returned).
 // Values go through URLSearchParams / JSON, never concatenated into a filter by hand. Errors carry the status only (bodies can echo data).
@@ -98,6 +99,20 @@ export function createProgressStore(cfg: ProgressDbConfig): ProgressStore {
       const at = await rpc<string | null>('league_reset_at', {}, 'league_reset_read');
       const ms = typeof at === 'string' ? Date.parse(at) : Number.NaN;
       return Number.isFinite(ms) ? ms : null;
+    },
+
+    // public.calendar_events() (migration 0035): the pre-season events on real dates. Only those widen the allowances here (the League's own come from the reset moment).
+    async datedEvents() {
+      const rows = await rpc<{ source?: unknown; kind?: unknown; starts_at?: unknown; ends_at?: unknown }[]>('calendar_events', {}, 'calendar_read');
+      const out: DatedWindow[] = [];
+      for (const r of Array.isArray(rows) ? rows : []) {
+        const kind = r.kind;
+        const startMs = typeof r.starts_at === 'string' ? Date.parse(r.starts_at) : Number.NaN;
+        const endMs = typeof r.ends_at === 'string' ? Date.parse(r.ends_at) : Number.NaN;
+        if (r.source !== 'preseason' || (kind !== 'hero' && kind !== 'profession' && kind !== 'final') || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) continue;
+        out.push({ kind, startMs, endMs });
+      }
+      return out;
     },
 
     async lastSnapshot(userId: string, sinceMs?: number) {

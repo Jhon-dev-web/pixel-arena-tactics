@@ -1,11 +1,16 @@
 import type { SaveData } from './engine';
-import { getLeagueEpoch } from './leagueClock';
+import { getDatedEvents, getLeagueEpoch } from './leagueClock';
+import type { DatedEvent } from './leagueClock';
 
-// LEAGUE EVENTS (Rodada 22, docs/BALANCE_CHANGES.md and docs/SEASON_RANKING.md). A calendar for days 25 to 60 of the League, one event at a time, hero events (Hunting XP) and profession
+// LEAGUE EVENTS (Rodada 22, docs/BALANCE_CHANGES.md and docs/SEASON_RANKING.md). A calendar for days 3 to 60 of the League (the first version had days 25 to 60; the lighter days 3 to 23 came with the event calendar, docs/EVENT_CALENDAR.md), one event at a time, hero events (Hunting XP) and profession
 // events (Mining / Woodcutting / Garden) taking turns, announced ahead in the game ("Eventos" panel) and readable by the portal (public.league_events(), migration 0014).
 //
 // THE CLOCK. Every event is a fixed offset, in hours, from the SERVER's League opening (leagueClock.ts, public.league_reset_at()). Nothing reads the device clock: a hero cannot move an event by
 // setting his phone forward, and the offline / desktop build (no League) has no events at all. The SQL function and this table are the same calendar; migration0014.test.ts compares them.
+//
+// PRE-SEASON EVENTS ON REAL DATES (migration 0035, docs/EVENT_CALENDAR.md). Before the League opens the server publishes a table of events with real start and end moments (public.calendar_events()); the game
+// parks them in leagueClock.ts (setDatedEvents) and they play EXACTLY like League events: the same ids, the same rules, the same caps. When the League opens they stop (a dated window is cut at the League
+// opening, so an event never overlaps the League). Offline there is no server, so no dated events either.
 //
 // EVERY BONUS IS SMALL AND IT IS BOUNDED. The numbers below are what the anti-cheat bound has to allow (supabase/functions/_shared/progress/bounds.ts eventXpFactor / eventProfessionFactor), so an
 // honest player is never flagged for playing an event. Events do not make buying items more decisive: the hero bonuses either need nothing a set gives (a streak of won fights, a bought-by-time
@@ -14,11 +19,13 @@ import { getLeagueEpoch } from './leagueClock';
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 24 * HOUR_MS;
 
-/** League day on which the calendar starts, and the last League day. */
+/** League day on which the full calendar starts, and the last League day. The lighter first weeks start earlier (EVENTS_FIRST_DAY). */
 export const EVENTS_FROM_DAY = 25;
+/** League day of the very first event (the light weeks, days 3 to 23). */
+export const EVENTS_FIRST_DAY = 3;
 export const LEAGUE_LAST_DAY = 60;
 
-export type LeagueEventId = 'invasion' | 'target_hunt' | 'dungeon_race' | 'grand_delivery' | 'time_rift' | 'mining_fever' | 'crafts_festival' | 'profession_week' | 'final_race';
+export type LeagueEventId = 'launch_festival' | 'invasion' | 'target_hunt' | 'dungeon_race' | 'grand_delivery' | 'time_rift' | 'mining_fever' | 'crafts_festival' | 'profession_week' | 'final_race';
 /** hero: Hunting XP. profession: Mining / Woodcutting / Garden. final: the last five days, a small bonus for meeting the daily goals. */
 export type LeagueEventKind = 'hero' | 'profession' | 'final';
 
@@ -33,10 +40,19 @@ export interface LeagueEventSlot {
 const day = (leagueDay: number): number => (leagueDay - 1) * 24;
 
 /**
- * The calendar. One event at a time, a day of rest between two events, hero and profession events taking turns and never the same event twice in a row. Four of the events come twice
- * (Invasao, Febre da Mineracao, Semana das Profissoes). The Corrida Final owns the last five days (days 56 to 60), after a hero event and a day of rest.
+ * The calendar. One event at a time, a day of rest between two events, hero and profession events taking turns and never the same event twice in a row. Days 3 to 23 are the LIGHT weeks (one
+ * weekend-like hero event per week and a profession day: three of each); from day 25 the full calendar of Rodada 22. The Corrida Final owns the last five days (days 56 to 60), after a hero
+ * event and a day of rest. The Festival de Abertura (launch_festival) only exists on real dates, in the pre-season.
  */
 export const LEAGUE_EVENT_SLOTS: readonly LeagueEventSlot[] = [
+  // the light weeks (days 3 to 23)
+  { id: 'invasion', kind: 'hero', startHour: day(3), hours: 48 },
+  { id: 'mining_fever', kind: 'profession', startHour: day(6), hours: 24 },
+  { id: 'dungeon_race', kind: 'hero', startHour: day(10), hours: 36 },
+  { id: 'crafts_festival', kind: 'profession', startHour: day(13), hours: 48 },
+  { id: 'target_hunt', kind: 'hero', startHour: day(17), hours: 48 },
+  { id: 'profession_week', kind: 'profession', startHour: day(21), hours: 72 },
+  // the full calendar (days 25 to 60)
   { id: 'invasion', kind: 'hero', startHour: day(25), hours: 48 },
   { id: 'mining_fever', kind: 'profession', startHour: day(28), hours: 24 },
   { id: 'target_hunt', kind: 'hero', startHour: day(30), hours: 48 },
@@ -80,6 +96,8 @@ export interface HuntEventRules {
 export const HUNT_EVENT_RULES: Partial<Record<LeagueEventId, HuntEventRules>> = {
   // Invasao de Monstros (48 h): the waves escalate with every fight won in a row; the further the hero stands without falling, the more XP (+1% per 50 fights, up to +10%). A defeat ends the wave.
   invasion: { streakStep: 50, streakGain: 0.01, streakCap: 0.1, escalateEvery: 100, escalatePct: 0.03, escalateCap: 0.3 },
+  // Festival de Abertura (the launch weekend of the pre-season, real dates only): exactly the Invasao rules, nothing new.
+  launch_festival: { streakStep: 50, streakGain: 0.01, streakCap: 0.1, escalateEvery: 100, escalatePct: 0.03, escalateCap: 0.3 },
   // Cacada ao Alvo (48 h): a rare monster every 300 fights that only a hero with the power beats; +8% XP for an hour and a half when he does.
   target_hunt: { targetEvery: 300, targetHp: 2, targetDmg: 1.5, targetBuffPct: 0.08, targetBuffHours: 1.5 },
   // Fenda Temporal (24 h): the enemies hit 25% harder, and a streak of won fights during the automatic hunt raises XP (+1% per 25 fights, up to +10%).
@@ -131,25 +149,53 @@ export interface LeagueEventWindow {
   endMs: number;
 }
 
+/** The League events only (hours counted from the League opening). */
 export function leagueEventWindows(epoch: number): LeagueEventWindow[] {
   return LEAGUE_EVENT_SLOTS.map((s, index) => ({ id: s.id, kind: s.kind, index, startMs: epoch + s.startHour * HOUR_MS, endMs: epoch + (s.startHour + s.hours) * HOUR_MS }));
+}
+
+const EVENT_IDS: readonly LeagueEventId[] = ['launch_festival', 'invasion', 'target_hunt', 'dungeon_race', 'grand_delivery', 'time_rift', 'mining_fever', 'crafts_festival', 'profession_week', 'final_race'];
+export const isLeagueEventId = (id: unknown): id is LeagueEventId => typeof id === 'string' && (EVENT_IDS as readonly string[]).includes(id);
+
+/** Index base of the dated windows (LEAGUE_EVENT_SLOTS indexes stay below it). */
+export const DATED_INDEX_BASE = 1000;
+
+/**
+ * The dated (pre-season) events as windows, cut at the League opening when there is one: a dated event never overlaps the League (it ends where the League begins, or is dropped when it
+ * starts after). `dated` defaults to what the server published (leagueClock.ts getDatedEvents).
+ */
+export function datedEventWindows(epoch: number | null, dated: readonly DatedEvent[] = getDatedEvents()): LeagueEventWindow[] {
+  const out: LeagueEventWindow[] = [];
+  dated.forEach((e, i) => {
+    if (!isLeagueEventId(e.id)) return;
+    const endMs = epoch === null ? e.endMs : Math.min(e.endMs, epoch);
+    if (!(endMs > e.startMs)) return;
+    out.push({ id: e.id, kind: e.kind, index: DATED_INDEX_BASE + i, startMs: e.startMs, endMs });
+  });
+  return out.sort((a, b) => a.startMs - b.startMs);
+}
+
+/** EVERY event window in absolute time: the dated pre-season ones, then the League's (when the League clock is known). The one list every rule below reads. */
+export function eventWindows(epoch: number | null, dated?: readonly DatedEvent[]): LeagueEventWindow[] {
+  const d = datedEventWindows(epoch, dated);
+  return epoch === null ? d : [...d, ...leagueEventWindows(epoch)];
 }
 
 /** League day (1 = the day the League opened) at `now`; 0 or less before it opened. */
 export const leagueDayAt = (epoch: number, now: number): number => Math.floor((now - epoch) / DAY_MS) + 1;
 
 /** The event running at `now` (start inclusive, end exclusive), or null. */
-export function eventAt(epoch: number, now: number): LeagueEventWindow | null {
-  return leagueEventWindows(epoch).find((w) => w.startMs <= now && now < w.endMs) ?? null;
+export function eventAt(epoch: number | null, now: number): LeagueEventWindow | null {
+  return eventWindows(epoch).find((w) => w.startMs <= now && now < w.endMs) ?? null;
 }
 
 /** The next event that has not started at `now`, or null when the calendar is over. */
-export function nextEventAfter(epoch: number, now: number): LeagueEventWindow | null {
-  return leagueEventWindows(epoch).find((w) => w.startMs > now) ?? null;
+export function nextEventAfter(epoch: number | null, now: number): LeagueEventWindow | null {
+  return eventWindows(epoch).find((w) => w.startMs > now) ?? null;
 }
 
 /** The running event and the next one, for the "Eventos" panel. */
-export function eventsNow(epoch: number, now: number): { current: LeagueEventWindow | null; next: LeagueEventWindow | null } {
+export function eventsNow(epoch: number | null, now: number): { current: LeagueEventWindow | null; next: LeagueEventWindow | null } {
   return { current: eventAt(epoch, now), next: nextEventAfter(epoch, now) };
 }
 
@@ -170,9 +216,9 @@ export interface HuntEventWindow extends HuntEventRules {
 }
 
 /** The hero events that overlap [startedAt, startedAt + horizonMs], as windows relative to the session start. */
-export function huntEventWindows(epoch: number, startedAt: number, horizonMs: number): HuntEventWindow[] {
+export function huntEventWindows(epoch: number | null, startedAt: number, horizonMs: number, dated?: readonly DatedEvent[]): HuntEventWindow[] {
   const out: HuntEventWindow[] = [];
-  for (const w of leagueEventWindows(epoch)) {
+  for (const w of eventWindows(epoch, dated)) {
     const rules = HUNT_EVENT_RULES[w.id];
     if (!rules || w.endMs <= startedAt || w.startMs >= startedAt + horizonMs) continue;
     out.push({ id: w.id, ...rules, from: Math.max(0, w.startMs - startedAt), to: w.endMs - startedAt });
@@ -216,7 +262,7 @@ export function activeEventBuffs(save: Pick<SaveData, 'eventBuffs'>, now: number
  * event right now, or the save is not one that may get it. A Hunting session that is running gets the window from now on, never for the time already hunted.
  */
 export function grantEventBuff(save: SaveData, src: EventBuffSource, now: number, epoch: number | null = getLeagueEpoch()): SaveData {
-  if (epoch === null || !Number.isFinite(now)) return save;
+  if (!Number.isFinite(now)) return save;
   const running = eventAt(epoch, now);
   if (!running || running.id !== src) return save;
   const rule = EVENT_BUFF_RULES[src];
@@ -240,7 +286,7 @@ export function bossStagesCleared(startFloor: number, stages: number): number {
 
 /** Corrida da Masmorra: the Gold and the buff a finished Dungeon run earns for the bosses it cleared. `gold` 0 and the same save when there is nothing to pay. */
 export function applyDungeonRace(save: SaveData, startFloor: number, stages: number, now: number, epoch: number | null = getLeagueEpoch()): { save: SaveData; gold: number } {
-  if (epoch === null || stages <= 0) return { save, gold: 0 };
+  if (stages <= 0) return { save, gold: 0 };
   const bosses = bossStagesCleared(startFloor, stages);
   if (bosses <= 0 || eventAt(epoch, now)?.id !== 'dungeon_race') return { save, gold: 0 };
   const gold = bosses * (EVENT_BUFF_RULES.dungeon_race.goldPerBoss ?? 0);
@@ -250,7 +296,7 @@ export function applyDungeonRace(save: SaveData, startFloor: number, stages: num
 
 /** Corrida Final: the day the fourth daily goal is claimed the buff starts (a second claim the same day just renews it). */
 export function applyFinalRaceClaim(save: SaveData, now: number, epoch: number | null = getLeagueEpoch()): SaveData {
-  if (epoch === null || eventAt(epoch, now)?.id !== 'final_race') return save;
+  if (eventAt(epoch, now)?.id !== 'final_race') return save;
   return save.quests.dailyClaimed.length >= 4 ? grantEventBuff(save, 'final_race', now, epoch) : save;
 }
 
@@ -275,7 +321,7 @@ export function pickedProfession(save: Pick<SaveData, 'eventPick'>, window: Leag
 
 /** Picks `profession` for the Semana das Profissoes running at `now` (the pick is final for that week). null when no such week is running or one profession was already picked. */
 export function applyProfessionPick(save: SaveData, profession: ProfessionId, now: number, epoch: number | null = getLeagueEpoch()): SaveData | null {
-  if (epoch === null || !PROFESSION_IDS.includes(profession)) return null;
+  if (!PROFESSION_IDS.includes(profession)) return null;
   const week = eventAt(epoch, now);
   if (!week || week.id !== 'profession_week' || pickedProfession(save, week)) return null;
   return { ...save, eventPick: { at: week.startMs, profession } };
@@ -286,9 +332,9 @@ export function applyProfessionPick(save: SaveData, profession: ProfessionId, no
  * only). Like the Gatherer Brew it only counts the part of the session the event really covered.
  */
 export function eventGatherBonusHours(kind: 'mining' | 'woodcutting', startMs: number, pendingMs: number, epoch: number | null = getLeagueEpoch()): number {
-  if (epoch === null || kind !== 'mining' || !(pendingMs > 0) || !Number.isFinite(startMs)) return 0;
+  if (kind !== 'mining' || !(pendingMs > 0) || !Number.isFinite(startMs)) return 0;
   let hours = 0;
-  for (const w of leagueEventWindows(epoch)) if (w.id === 'mining_fever') hours += (overlap(startMs, startMs + pendingMs, w.startMs, w.endMs) / HOUR_MS) * PROFESSION_EVENT_RULES.mining_fever.miningUnitsPct;
+  for (const w of eventWindows(epoch)) if (w.id === 'mining_fever') hours += (overlap(startMs, startMs + pendingMs, w.startMs, w.endMs) / HOUR_MS) * PROFESSION_EVENT_RULES.mining_fever.miningUnitsPct;
   return hours;
 }
 
@@ -297,10 +343,10 @@ export function eventGatherBonusHours(kind: 'mining' | 'woodcutting', startMs: n
  * startMs = endMs and counts the window it falls in whole.
  */
 export function eventSkillXpMultiplier(save: Pick<SaveData, 'eventPick'>, profession: ProfessionId, startMs: number, endMs: number, epoch: number | null = getLeagueEpoch()): number {
-  if (epoch === null || !Number.isFinite(startMs) || !Number.isFinite(endMs)) return 1;
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return 1;
   const span = endMs - startMs;
   let bonus = 0;
-  for (const w of leagueEventWindows(epoch)) {
+  for (const w of eventWindows(epoch)) {
     let pct = 0;
     if (w.id === 'crafts_festival') pct = PROFESSION_EVENT_RULES.crafts_festival.skillXpPct;
     else if (w.id === 'profession_week' && pickedProfession(save, w) === profession) pct = PROFESSION_EVENT_RULES.profession_week.pickedSkillXpPct;

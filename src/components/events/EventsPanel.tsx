@@ -25,12 +25,14 @@ const eventDesc = (id: string): string => t(`events.desc_${id}`);
 const kindLabel = (kind: 'hero' | 'profession' | 'final'): string => t(`events.kind_${kind}`);
 const dayText = (from: number, to: number): string => (from === to ? t('events.day', { a: from }) : t('events.days', { a: from, b: to }));
 
-export default function EventsPanel({ save, onPickProfession }: { save: Pick<SaveData, 'eventBuffs' | 'eventPick'>; onPickProfession: (profession: ProfessionId) => void }) {
+export default function EventsPanel({ save, onPickProfession, onOpenCalendar }: { save: Pick<SaveData, 'eventBuffs' | 'eventPick'>; onPickProfession: (profession: ProfessionId) => void; onOpenCalendar?: () => void }) {
   const resetAt = useLeagueResetAt();
   const now = useNow(30_000);
   const [open, setOpen] = useState(false);
   const view = eventsView(resetAt, now, save);
   if (view.mode === 'hidden') return null;
+  const preseason = view.mode === 'preseason';
+  const running = !!view.current; // a League event, or (before the League) a dated one of the server calendar
 
   return (
     <Panel title={t('events.title')} className="ev-panel" data-testid="events-panel">
@@ -56,7 +58,7 @@ export default function EventsPanel({ save, onPickProfession }: { save: Pick<Sav
         </div>
       )}
 
-      {view.mode === 'running' && view.current && (
+      {running && view.current && (
         <div className="ev-block" data-testid="events-running">
           <div className="ev-head">
             <span className="ev-name">{eventName(view.current.id)}</span>
@@ -85,7 +87,7 @@ export default function EventsPanel({ save, onPickProfession }: { save: Pick<Sav
         </div>
       )}
 
-      {view.mode === 'waiting' && (
+      {(view.mode === 'waiting' || (preseason && !running && !!view.next)) && (
         <p className="ev-lead" data-testid="events-waiting">
           {t('events.noneNow')}
         </p>
@@ -96,7 +98,7 @@ export default function EventsPanel({ save, onPickProfession }: { save: Pick<Sav
         </p>
       )}
 
-      {view.next && (view.mode === 'running' || view.mode === 'waiting') && (
+      {view.next && (view.mode === 'running' || view.mode === 'waiting' || preseason) && (
         <div className="ev-next" data-testid="events-next">
           <span className="ev-next-label">{t('events.next')}</span>
           <span className="ev-name">{eventName(view.next.id)}</span>
@@ -111,7 +113,12 @@ export default function EventsPanel({ save, onPickProfession }: { save: Pick<Sav
           ))}
         </ul>
       )}
-      {(view.mode === 'running' || view.mode === 'waiting') && <p className="ev-foot">{t('events.capNote')}</p>}
+      {(view.mode === 'running' || view.mode === 'waiting' || (preseason && (running || !!view.next))) && <p className="ev-foot">{t('events.capNote')}</p>}
+      {onOpenCalendar && (
+        <Button size="sm" className="ev-toggle ev-open-calendar" onClick={onOpenCalendar} data-testid="events-open-calendar">
+          {t('events.openCalendar')}
+        </Button>
+      )}
     </Panel>
   );
 }

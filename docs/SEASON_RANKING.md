@@ -310,7 +310,7 @@ O rollback da `0009` (no cabeçalho do arquivo) remove as funções e os trigger
 
 Nada disto rodou contra um banco ou um Supabase de verdade: a SQL é lida por testes estáticos (`supabase/functions/_shared/__tests__/migration0009.test.ts`) e a lógica do jogo e da auditoria por testes com banco simulado. Rode o plano de testes SQL da `0009` e um ensaio completo (login com um herói antigo, abrir a Liga à mão, recarregar, duas abas) no projeto de desenvolvimento antes de produção.
 
-## 11. Eventos da Liga (migration `0014_economy_events.sql`, Rodada 22)
+## 11. Eventos da Liga (migration `0014_economy_events.sql`, Rodada 22; calendário com datas reais na `0035`, seção 11.3b)
 
 Um calendário de eventos para os dias 25 a 60 da Liga, **no relógio do servidor**: cada evento é um número fixo de horas depois de `league_reset_at()` (o momento da seção 10). Um evento por vez, **um dia de descanso entre dois**, eventos de herói (XP de Caça) e de profissão (Mineração / Lenhador / Horta) se alternando, nunca o mesmo evento duas vezes seguidas, e a **Corrida Final** nos 5 últimos dias (56 a 60). O build offline / desktop não tem Liga e portanto não tem eventos. O texto, os números e a medição estão em [`BALANCE_CHANGES.md`](BALANCE_CHANGES.md) (Rodada 22, seção 5); aqui fica o que interessa ao ranking.
 
@@ -318,20 +318,28 @@ Um calendário de eventos para os dias 25 a 60 da Liga, **no relógio do servido
 
 | # | Dias | Evento | Tipo | Horas |
 | --: | --- | --- | --- | --: |
-| 1 | 25-26 | Invasão de Monstros | herói | 48 |
-| 2 | 28 | Febre da Mineração | profissão | 24 |
-| 3 | 30-31 | Caçada ao Alvo | herói | 48 |
-| 4 | 33-35 | Semana das Profissões (o jogador escolhe uma) | profissão | 72 |
-| 5 | 37-38 | Corrida da Masmorra | herói | 36 |
-| 6 | 40-41 | Festival dos Ofícios | profissão | 48 |
-| 7 | 43 | Grande Entrega | herói | 24 |
-| 8 | 45 | Febre da Mineração | profissão | 24 |
-| 9 | 47 | Fenda Temporal | herói | 24 |
-| 10 | 49-51 | Semana das Profissões | profissão | 72 |
-| 11 | 53-54 | Invasão de Monstros | herói | 48 |
-| 12 | 56-60 | Corrida Final | final | 120 |
+| 1 | 3-4 | Invasão de Monstros | herói | 48 |
+| 2 | 6 | Febre da Mineração | profissão | 24 |
+| 3 | 10-11 | Corrida da Masmorra | herói | 36 |
+| 4 | 13-14 | Festival dos Ofícios | profissão | 48 |
+| 5 | 17-18 | Caçada ao Alvo | herói | 48 |
+| 6 | 21-23 | Semana das Profissões (o jogador escolhe uma) | profissão | 72 |
+| 7 | 25-26 | Invasão de Monstros | herói | 48 |
+| 8 | 28 | Febre da Mineração | profissão | 24 |
+| 9 | 30-31 | Caçada ao Alvo | herói | 48 |
+| 10 | 33-35 | Semana das Profissões | profissão | 72 |
+| 11 | 37-38 | Corrida da Masmorra | herói | 36 |
+| 12 | 40-41 | Festival dos Ofícios | profissão | 48 |
+| 13 | 43 | Grande Entrega | herói | 24 |
+| 14 | 45 | Febre da Mineração | profissão | 24 |
+| 15 | 47 | Fenda Temporal | herói | 24 |
+| 16 | 49-51 | Semana das Profissões | profissão | 72 |
+| 17 | 53-54 | Invasão de Monstros | herói | 48 |
+| 18 | 56-60 | Corrida Final | final | 120 |
 
-A tabela mora em `src/game/leagueEvents.ts` (`LEAGUE_EVENT_SLOTS`); `npm run season:tables` copia para `supabase/functions/_shared/progress/tables.ts` (`EVENT_SLOTS`, usada pelos limites); a `0014` tem as mesmas 12 linhas num `values (...)`, e o teste `migration0014.test.ts` compara célula por célula as três.
+(Os slots 1 a 6, dias 3 a 23, são as semanas leves, de 2026-10-22: um evento de herói "de fim de semana" por semana e um dia de profissão. Os slots 7 a 18 são o calendário original da Rodada 22, sem mudança. Quem lê a lista antiga de 12 eventos na migration `0014` está lendo a versão anterior: a definição vigente de `league_events()` é a da `0035`.)
+
+A tabela mora em `src/game/leagueEvents.ts` (`LEAGUE_EVENT_SLOTS`); `npm run season:tables` copia para `supabase/functions/_shared/progress/tables.ts` (`EVENT_SLOTS`, usada pelos limites); a `0035` (que substituiu a `league_events()` da `0014`) tem as mesmas 18 linhas num `values (...)`, e o teste `migration0014.test.ts` compara célula por célula as três.
 
 ### 11.2 O que o portal lê
 
@@ -348,6 +356,37 @@ Os bônus são pequenos e **limitados**: os de XP de Caça dos eventos de herói
 | ritmo (`LEVEL_PACE`, `FLOOR_PACE`) | tabela da seed mais rápida (agora incluindo o dono que comprou um conjunto) | a mesma tabela (a simulação dessa tabela já jogou os eventos) |
 
 `EvalInput.leagueEpochMs` vem de `league_reset_at()`; sem Liga (`null`), sem folga nenhuma. Testes: `progress.test.ts` ("League events widen the XP bound only while one runs"), `leagueEvents.test.ts` ("the anti-cheat bound allows exactly what the events give").
+
+### 11.3b Calendário de eventos com datas reais e semanas leves da Liga (migration `0035_event_calendar.sql`, 2026-10-22)
+
+Visão geral e tabela de datas para o dono: `docs/EVENT_CALENDAR.md`. Em resumo:
+
+- **Pré-temporada.** A tabela `arena_private.event_calendar` guarda eventos em datas reais (horário de Brasília, escritas com `-03`). A migração já traz o Festival de Abertura (31/10 a 02/11) e oito semanas de ritmo (quarta: dia de profissão; sexta 18h a domingo 23h59: evento de herói). Os eventos usam **os mesmos ids, regras e tetos** dos eventos da Liga (`launch_festival` = as regras da Invasão). Nada de economia nova.
+- **A leitura** é `public.calendar_events(p_from, p_to)` (somente leitura, `security definer`, legível por `anon` e `authenticated`): devolve os eventos da pré-temporada e, depois que a Liga abrir, os eventos da Liga já com datas (`source` = `preseason` ou `league`). **Os eventos da pré-temporada param sozinhos quando a Liga abre**: uma linha que começa depois da abertura não aparece, e uma que está rodando é cortada na abertura (`ends_at = reset_at`). Um evento nunca se sobrepõe ao reset.
+- **O jogo** busca o calendário ao entrar e a cada 15 minutos (só online; o build offline/desktop não tem eventos) e aplica os eventos datados exatamente como os da Liga. A auditoria (`submit-progress`) lê a mesma função e alarga os limites só nas horas em que um evento datado rodava, cortado na abertura da Liga. Se a leitura falhar, não há folga (nunca bloqueia um snapshot).
+- **Como mudar (SQL Editor, como dono; o servidor aceita só uma linha por vez sem sobreposição):**
+
+```sql
+-- ver o calendário
+select id, event_id, starts_at at time zone 'America/Sao_Paulo' as inicio, ends_at at time zone 'America/Sao_Paulo' as fim, note
+from arena_private.event_calendar order by starts_at;
+
+-- adicionar um evento (kind é preenchido sozinho; ids válidos: launch_festival, invasion, target_hunt, dungeon_race,
+-- grand_delivery, time_rift, mining_fever, crafts_festival, profession_week; no máximo 7 dias de duração)
+insert into arena_private.event_calendar (event_id, starts_at, ends_at, note)
+values ('invasion', '2026-12-31 18:00-03', '2027-01-03 00:00-03', 'Réveillon');
+
+-- mover um evento
+update arena_private.event_calendar set starts_at = '2026-11-13 12:00-03', ends_at = '2026-11-16 00:00-03' where id = 4;
+
+-- apagar um evento
+delete from arena_private.event_calendar where id = 4;
+```
+
+  Se a nova linha se sobrepuser a outra, o banco recusa com "this event overlaps another one". Eventos já passados podem ficar na tabela (só aparecem em "Passados"). Para parar um evento que já começou, apague a linha (o jogo para de aplicar na próxima leitura, em até 15 minutos) ou mova `ends_at`.
+- **Semanas leves da Liga (dias 3 a 23).** `league_events()` ganhou seis eventos antes do calendário original (tabela acima), mantendo um evento por vez, um dia de descanso entre dois e o `EVENT_XP_CAP` de +15%.
+- **Testes:** `src/game/__tests__/eventCalendar.test.ts` (semente, regras dos eventos datados, corte na abertura da Liga, tela do calendário), `migration0014.test.ts` (a `league_events()` da `0035` contra a tabela do jogo), `progress.test.ts` ("dated pre-season events widen the bounds only while one runs").
+- **Implantar:** aplicar a `0035` e republicar a função `submit-progress` (ela passou a ler `calendar_events()`).
 
 ### 11.4 O que o dono precisa decidir
 

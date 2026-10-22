@@ -47,6 +47,8 @@ import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned,
 import { usePassEntitlementVersion } from './game/usePassEntitlement';
 import { fetchReferralStatus } from './lib/referral';
 import { InvitesPage } from './components/InvitesPanel';
+import CalendarScreen from './components/calendar/CalendarScreen';
+import { applyDevMockFromUrl, loadEventCalendar } from './game/eventCalendar';
 import { applyReferralCosmetics } from './game/referralRewards';
 import { applyServerCredits } from './game/promoRewards';
 import { isPioneerCredit, PIONEER_KIT } from './game/pioneerKit';
@@ -225,7 +227,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
-  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado' | 'passe' | 'convites' | 'forja'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado' | 'passe' | 'convites' | 'forja' | 'calendario'>('home');
   // A tradeable material the player asked to sell from the inventory: the market opens on its Sell tab with it picked (once).
   const [marketPick, setMarketPick] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -1690,6 +1692,13 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       stopPolling();
     };
   }, [userId, configured]);
+  // The event calendar (migration 0035, game/eventCalendar.ts): the server's dated pre-season events and the League's dates. Read at login and every 15 minutes while the tab is visible (lib/poller.ts); the
+  // events play from the server's word only (nothing in the browser's storage). Online only: the offline build has no events. In development `?calendarMock=1` loads a sample calendar.
+  useEffect(() => {
+    if (import.meta.env.DEV) applyDevMockFromUrl();
+    if (!userId || !configured) return;
+    return startPolling({ intervalMs: 15 * 60 * 1000, startDelayMs: 0, run: () => loadEventCalendar() });
+  }, [userId, configured]);
   // Server credits (migration 0028): a promo code can give Gold, Éter or potions. The SERVER keeps a ledger; here the game CLAIMS what is owed and applies each credit to the save exactly once (the save remembers the ids,
   // game/promoRewards.ts), then says so in a toast. Online only, nothing in the browser's storage. At login it also asks for what was claimed in the last days (a claim whose answer got lost); on focus and after a redeem
   // it only claims. A claimed-but-unsaved credit is never lost: the server still lists it as claimed and the next login re-applies the ids the save does not have.
@@ -2476,6 +2485,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         { key: 'dungeon', icon: <PixelIcon name="dungeon" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
         { key: 'quests', icon: <PixelIcon name="quests" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) + periodClaimable(save, Date.now(), ownsAdventurerPass(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
         { key: 'codex', icon: <PixelIcon name="codex" />, label: t('codex.nav'), active: codexOpen, onClick: () => { closeDrawer(); playSfx('click'); setCodexOpen(true); } },
+        { key: 'calendar', icon: <PixelIcon name="calendar" />, label: t('calendar.nav'), active: activeView === 'calendario', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('calendario'); } },
       ],
     },
     {
@@ -2561,6 +2571,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onOpenPass={() => { playSfx('click'); openPassView(); }}
               onOpenNextStep={openNextStep}
               onPickProfession={pickProfession}
+              onOpenCalendar={() => { playSfx('click'); setActiveView('calendario'); }}
             />
           )}
           {activeView === 'personagem' && (
@@ -2609,6 +2620,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             />
           )}
           {activeView === 'convites' && configured && <InvitesPage online />}
+          {activeView === 'calendario' && <CalendarScreen />}
           {activeView === 'forja' && (
             <ForgeView
               key={forgeFocus?.nonce ?? 'free'}

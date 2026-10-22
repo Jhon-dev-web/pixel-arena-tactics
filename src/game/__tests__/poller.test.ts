@@ -194,7 +194,7 @@ describe('every periodic remote call goes through the poller', () => {
       expect(read(f), f).toContain('startPolling');
     }
     const app = read('App.tsx');
-    expect(app.split('startPolling({').length - 1).toBe(3); // the League check, the referral read and the server credits claim
+    expect(app.split('startPolling({').length - 1).toBe(4); // the League check, the referral read, the event calendar read and the server credits claim
     expect(app).not.toMatch(/setInterval\([^)]*(fetchReferralStatus|readLeagueResetAt)/);
   });
 });

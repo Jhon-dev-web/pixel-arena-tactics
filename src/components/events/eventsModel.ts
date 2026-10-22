@@ -25,19 +25,20 @@ export interface EventsView {
 export function eventsView(resetAt: number | null | undefined, now: number, save: Pick<SaveData, 'eventBuffs' | 'eventPick'>): EventsView {
   const base: EventsView = { mode: 'hidden', current: null, next: null, msToEnd: 0, msToNext: 0, leagueDay: 0, pick: { open: false, chosen: null }, buffs: [], preview: [] };
   if (resetAt === undefined) return base;
-  if (resetAt === null) return { ...base, mode: 'preseason', preview: leagueEventPreview() };
+  // Before the League the events are the dated ones of the server calendar (leagueClock.ts getDatedEvents; none offline or before the calendar is read); after it, the dated ones that are over and the League's.
   const current = eventAt(resetAt, now);
   const next = nextEventAfter(resetAt, now);
   const buffs = activeEventBuffs(save, now).map((b) => ({ pct: b.pct, msLeft: b.to - now }));
   const chosen = current ? pickedProfession(save, current) : null;
   return {
     ...base,
-    mode: current ? 'running' : next ? 'waiting' : 'over',
+    mode: resetAt === null ? 'preseason' : current ? 'running' : next ? 'waiting' : 'over',
+    preview: resetAt === null ? leagueEventPreview() : [],
     current,
     next,
     msToEnd: current ? current.endMs - now : 0,
     msToNext: next ? next.startMs - now : 0,
-    leagueDay: leagueDayAt(resetAt, now),
+    leagueDay: resetAt === null ? 0 : leagueDayAt(resetAt, now),
     pick: { open: current?.id === 'profession_week' && chosen === null, chosen },
     buffs,
   };

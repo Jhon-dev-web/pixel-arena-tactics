@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOUNDS, burstXp, daysAtFloor, daysAtLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from '../progress/bounds.ts';
+import { BOUNDS, burstXp, daysAtFloor, eventHoursBetween, daysAtLevel, professionBurstXp, professionXpPerHour, xpPerHourAt } from '../progress/bounds.ts';
 import { Credits, EvalInput, HistoryPoint, evaluateSnapshot } from '../progress/evaluate.ts';
 import { createProgressStore } from '../progress/progressDb.ts';
 import { MAX_BODY_BYTES, NewSnapshot, ProfessionApplyStatus, ProgressStore, SNAPSHOT_MIN_INTERVAL_MS, SeasonApplyStatus, StoredSnapshot, canonicalJson, handleSubmitProgress } from '../progress/handler.ts';
@@ -1158,5 +1158,75 @@ describe('submit-progress counts a claimed promo credit once (handler)', () => {
     expect(body.verdict).toBe('flagged');
     expect(store.rows).toHaveLength(2);
     expect(store.markCalls).toBe(0);
+  });
+});
+
+// ---- dated pre-season events (migration 0035): the same allowance as a League event, only while one runs, cut at the League opening ----------------
+describe('dated pre-season events widen the bounds only while one runs (migration 0035)', () => {
+  const START = T0 - 10 * HOUR;
+  const HERO = { kind: 'hero' as const, startMs: START, endMs: START + 54 * HOUR };
+  const PROF = { kind: 'profession' as const, startMs: START + 100 * HOUR, endMs: START + 124 * HOUR };
+  const xpAllowedBase = (hours: number, level: number) => xpPerHourAt(100, level) * hours + burstXp(100, level);
+
+  function verdictFor(nowMs: number, hours: number, gainFactor: number, extra: { leagueEpochMs?: number | null; datedEvents?: readonly { kind: 'hero' | 'profession' | 'final'; startMs: number; endMs: number }[] }) {
+    const level = 80;
+    const x0 = XP_TO_LEVEL[level - 1];
+    const prev = m({ xp: x0, floor: 100 });
+    const cur = m({ xp: x0 + Math.floor(xpAllowedBase(hours, level) * gainFactor), floor: 100 });
+    const p = point(nowMs - hours * HOUR, prev);
+    return evaluateSnapshot(cur, { nowMs, accountCreatedMs: T0 - 30 * DAY, entitled: true, saveRevision: 2, first: p, previous: p, ...extra });
+  }
+
+  it('counts the hours of a dated event by kind, and cuts it at the League opening', () => {
+    expect(eventHoursBetween(null, START - 5 * HOUR, START + 5 * HOUR, ['hero'], [HERO])).toBe(5);
+    expect(eventHoursBetween(null, START - 5 * HOUR, START + 5 * HOUR, ['profession'], [HERO])).toBe(0);
+    expect(eventHoursBetween(null, 0, 1e13, ['hero', 'final'], [HERO])).toBe(54);
+    // the League opened 20 hours into the event: only those 20 hours count, and no hour is counted twice with the League's own table
+    const epoch = START + 20 * HOUR;
+    expect(eventHoursBetween(epoch, START, epoch, ['hero'], [HERO])).toBe(20);
+    expect(eventHoursBetween(epoch, epoch, epoch + 40 * HOUR, ['hero'], [HERO])).toBe(0);
+    // no dated events and no epoch: nothing
+    expect(eventHoursBetween(null, 0, 1e13, ['hero', 'final'])).toBe(0);
+  });
+
+  it('10% more than the plain XP bound is fine during a dated hero event and flagged outside one', () => {
+    const during = START + 30 * HOUR;
+    expect(verdictFor(during, 2, 1.1, { datedEvents: [HERO] }).reasons).not.toContain('XP_RATE');
+    expect(verdictFor(during, 2, 1.1, {}).reasons).toContain('XP_RATE');
+    expect(verdictFor(HERO.endMs + 6 * HOUR, 2, 1.1, { datedEvents: [HERO] }).reasons).toContain('XP_RATE');
+    // more than the cap above the bound is still a flag during the event
+    expect(verdictFor(during, 2, 1.3, { datedEvents: [HERO] }).reasons).toContain('XP_RATE');
+  });
+
+  it('a dated profession event does not widen the Hunting XP bound', () => {
+    expect(verdictFor(PROF.startMs + 10 * HOUR, 2, 1.1, { datedEvents: [PROF] }).reasons).toContain('XP_RATE');
+  });
+
+  it('a dated event is cut at the League opening: after it, only the League table widens the bound', () => {
+    const epoch = START + 20 * HOUR;
+    expect(verdictFor(START + 30 * HOUR, 2, 1.1, { leagueEpochMs: epoch, datedEvents: [HERO] }).reasons).toContain('XP_RATE');
+    expect(verdictFor(START + 19 * HOUR, 2, 1.1, { datedEvents: [HERO] }).reasons).not.toContain('XP_RATE');
+  });
+
+  it('the store reads public.calendar_events() and keeps only the pre-season rows with a known kind and sane dates', async () => {
+    const rows = [
+      { source: 'preseason', kind: 'hero', starts_at: '2026-10-31T03:00:00+00:00', ends_at: '2026-11-03T03:00:00+00:00' },
+      { source: 'league', kind: 'hero', starts_at: '2026-11-22T14:00:00+00:00', ends_at: '2026-11-24T14:00:00+00:00' },
+      { source: 'preseason', kind: 'nope', starts_at: '2026-11-04T03:00:00+00:00', ends_at: '2026-11-05T03:00:00+00:00' },
+      { source: 'preseason', kind: 'profession', starts_at: '2026-11-05T03:00:00+00:00', ends_at: '2026-11-04T03:00:00+00:00' },
+      { source: 'preseason', kind: 'profession', starts_at: '2026-11-11T03:00:00+00:00', ends_at: '2026-11-12T03:00:00+00:00' },
+    ];
+    const seen: string[] = [];
+    const fetchFn = (async (url: string) => {
+      seen.push(String(url));
+      return new Response(JSON.stringify(rows), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const store = createProgressStore({ supabaseUrl: 'https://p.test', serviceRoleKey: 'k', fetchFn });
+    const out = await store.datedEvents!();
+    expect(seen[0]).toContain('/rest/v1/rpc/calendar_events');
+    expect(out).toEqual([
+      { kind: 'hero', startMs: Date.parse('2026-10-31T03:00:00+00:00'), endMs: Date.parse('2026-11-03T03:00:00+00:00') },
+      { kind: 'profession', startMs: Date.parse('2026-11-11T03:00:00+00:00'), endMs: Date.parse('2026-11-12T03:00:00+00:00') },
+    ]);
   });
 });

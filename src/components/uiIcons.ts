@@ -17,6 +17,7 @@ export const UI_ICON = {
   deliveries: '/assets/icons/expedition_ticket_2h.png',
   pass: '/assets/icons/nav_battlepass.png',
   invites: '/assets/icons/warchief_totem.png',
+  calendar: '/assets/icons/season_emblem.png',
   shop: '/assets/icons/gold.png',
   market: '/assets/icons/gold_pouch.png',
   settings: '/assets/icons/repair_kit.png',

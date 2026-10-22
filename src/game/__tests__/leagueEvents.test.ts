@@ -12,6 +12,7 @@ import {
   EVENT_HERO_FACTOR,
   EVENT_PROFESSION_FACTOR,
   EVENT_XP_CAP,
+  EVENTS_FIRST_DAY,
   EVENTS_FROM_DAY,
   HOUR_MS,
   LEAGUE_EVENT_SLOTS,
@@ -39,9 +40,10 @@ import { EVENT_SLOTS } from '../../../supabase/functions/_shared/progress/tables
 import pt from '../../locales/pt.json';
 import en from '../../locales/en.json';
 
-// Rodada 22: League events. A calendar of days 25 to 60 hung from the SERVER's League opening, small bonuses that the anti-cheat bound allows exactly, and nothing at all without a League clock.
+// Rodada 22: League events. A calendar of days 3 to 60 (the first 24 days lighter) hung from the SERVER's League opening, small bonuses that the anti-cheat bound allows exactly, and nothing at all without a League clock.
 const EPOCH = Date.UTC(2026, 9, 20);
-const slot = (id: string, nth = 0) => leagueEventWindows(EPOCH).filter((w) => w.id === id)[nth];
+// `slot`: the nth event of that id in the FULL calendar (League day 25 on); the light weeks (days 3 to 23) have their own tests below.
+const slot = (id: string, nth = 0) => leagueEventWindows(EPOCH).filter((w) => w.id === id && w.startMs >= EPOCH + (EVENTS_FROM_DAY - 1) * DAY_MS)[nth];
 const NOW0 = new Date(2026, 5, 20, 12, 0, 0).getTime();
 
 beforeEach(() => {
@@ -57,9 +59,10 @@ afterEach(() => {
 describe('the calendar', () => {
   const w = leagueEventWindows(EPOCH);
 
-  it('12 events inside days 25 to 60, in order, with the lengths the design asked for', () => {
-    expect(w).toHaveLength(12);
-    expect(w[0].startMs).toBe(EPOCH + (EVENTS_FROM_DAY - 1) * DAY_MS);
+  it('18 events inside days 3 to 60, in order, with the lengths the design asked for', () => {
+    expect(w).toHaveLength(18);
+    expect(w[0].startMs).toBe(EPOCH + (EVENTS_FIRST_DAY - 1) * DAY_MS);
+    expect(w.filter((x) => x.startMs >= EPOCH + (EVENTS_FROM_DAY - 1) * DAY_MS)).toHaveLength(12);
     expect(w[w.length - 1].endMs).toBe(EPOCH + LEAGUE_LAST_DAY * DAY_MS);
     const hours = (id: string) => [...new Set(LEAGUE_EVENT_SLOTS.filter((s) => s.id === id).map((s) => s.hours))];
     expect(hours('invasion')).toEqual([48]);
@@ -70,7 +73,7 @@ describe('the calendar', () => {
     expect(hours('time_rift')).toEqual([24]);
     expect(hours('mining_fever')).toEqual([24]);
     expect(hours('crafts_festival')).toEqual([48]);
-    expect(LEAGUE_EVENT_SLOTS.filter((s) => s.id === 'crafts_festival')).toHaveLength(1);
+    expect(LEAGUE_EVENT_SLOTS.filter((s) => s.id === 'crafts_festival')).toHaveLength(2); // one in the light weeks, one in the full calendar
     expect(hours('profession_week')).toEqual([72]);
     expect(hours('final_race')).toEqual([120]);
     expect(new Set(LEAGUE_EVENT_SLOTS.map((s) => s.id)).size).toBe(9);
@@ -82,7 +85,7 @@ describe('the calendar', () => {
       expect(w[i].id).not.toBe(w[i - 1].id);
       if (w[i].kind !== 'final') expect(w[i].kind).not.toBe(w[i - 1].kind);
     }
-    expect(w.slice(0, -1).map((x) => x.kind)).toEqual(['hero', 'profession', 'hero', 'profession', 'hero', 'profession', 'hero', 'profession', 'hero', 'profession', 'hero']);
+    expect(w.slice(0, -1).map((x) => x.kind)).toEqual(Array.from({ length: 17 }, (_, i) => (i % 2 === 0 ? 'hero' : 'profession')));
     const last = w[w.length - 1];
     expect(last.id).toBe('final_race');
     expect(last.startMs).toBe(EPOCH + 55 * DAY_MS); // League day 56
@@ -108,10 +111,11 @@ describe('the calendar', () => {
 
   it('shows the calendar before the League as League days ("na Liga")', () => {
     const p = leagueEventPreview();
-    expect(p).toHaveLength(12);
-    expect(p[0]).toMatchObject({ id: 'invasion', fromDay: 25, toDay: 26, hours: 48 });
+    expect(p).toHaveLength(18);
+    expect(p[0]).toMatchObject({ id: 'invasion', fromDay: 3, toDay: 4, hours: 48 });
+    expect(p[6]).toMatchObject({ id: 'invasion', fromDay: 25, toDay: 26, hours: 48 });
     expect(p[p.length - 1]).toMatchObject({ id: 'final_race', fromDay: 56, toDay: 60, hours: 120 });
-    expect(p[4]).toMatchObject({ id: 'dungeon_race', fromDay: 37, toDay: 38, hours: 36 });
+    expect(p[10]).toMatchObject({ id: 'dungeon_race', fromDay: 37, toDay: 38, hours: 36 });
   });
 
   it('the server\'s copy of the calendar (generated into progress/tables.ts) is the same table', () => {
