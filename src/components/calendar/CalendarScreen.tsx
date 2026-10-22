@@ -177,8 +177,6 @@ export default function CalendarScreen() {
       {view.mode === 'ready' && (
         <>
           <p className="cal-tz">{t('calendar.timezone', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })}</p>
-          <MonthPanel view={view} now={now} />
-
           <Panel title={t('calendar.nowTitle')} className="cal-section" data-testid="cal-now">
             {view.current.length > 0 ? (
               <ul className="cal-list">
@@ -202,6 +200,9 @@ export default function CalendarScreen() {
               <p className="cal-note">{view.entries.length === 0 ? t('calendar.empty') : t('calendar.noUpcoming')}</p>
             )}
           </Panel>
+
+          {/* what is on now and what comes next first (the question a player opens this screen with); the month grid is the overview below them */}
+          <MonthPanel view={view} now={now} />
 
           {view.past.length > 0 && (
             <Panel

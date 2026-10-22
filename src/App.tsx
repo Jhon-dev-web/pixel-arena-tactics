@@ -128,7 +128,7 @@ import { WelcomeBackAction } from './components/welcomeBackText';
 import { awayLongEnough, buildWelcomeBack, readLastSeen, WelcomeBackSummary, writeLastSeen } from './game/welcomeBack';
 import { attributePointsAvailable, NextStepTarget } from './game/nextStep';
 import { suggestedSpend } from './game/attributes';
-import { GUIDED_DESCENT_FLOOR, nextTutorialStep, tutorialStepDone } from './game/tutorialSteps';
+import { GUIDED_DESCENT_FLOOR, nextTutorialStep, stepWhenHuntScreenClosed, tutorialStepDone } from './game/tutorialSteps';
 import { extendLevelUp, LevelUpSummary } from './game/levelUp';
 import LevelUpBanner from './components/LevelUpBanner';
 import { highlightTarget } from './components/highlight';
@@ -523,6 +523,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   useEffect(() => {
     if (tutorialStep === 'points') setActiveView('personagem');
   }, [tutorialStep]);
+  // "Start the hunt" is waiting but the Hunt screen is not open (the player closed it, or reloaded in the middle of the step): go back one step so the card points
+  // at the Caça entry again instead of talking about a button that is not on screen.
+  useEffect(() => {
+    if (tutorialStep && stepWhenHuntScreenClosed(tutorialStep, huntOpen, save) !== tutorialStep) {
+      updateTutorial({ ...saveRef.current.tutorial, initial: 'in_progress', initialStep: 'hunt' });
+      setTutorialStep('hunt');
+    }
+    // updateTutorial is recreated every render; the inputs are the step and whether the screen is open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialStep, huntOpen]);
 
   const replayTutorial = () => {
     setActiveView('home');
@@ -2550,6 +2560,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             onOpenSettings={() => { playSfx('click'); setSettingsOpen(true); }}
             onOpenMenu={() => setDrawerOpen(true)}
             showMenuButton={!isDesktop}
+            menuBadge={desktopNavGroups.some((group) => group.items.some((item) => item.badge && item.key !== 'hunt'))}
             muted={muted}
             onToggleMute={toggleMute}
             syncStatus={saveStatus}

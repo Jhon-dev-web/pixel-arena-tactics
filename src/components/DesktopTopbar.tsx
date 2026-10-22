@@ -23,6 +23,7 @@ export default function DesktopTopbar({
   muted,
   onToggleMute,
   syncStatus,
+  menuBadge = false,
 }: {
   save: SaveData;
   spriteUrl: string;
@@ -35,6 +36,8 @@ export default function DesktopTopbar({
   // Phase 1 backend migration: server-save sync state, purely informational (§20/§23) — never gates
   // gameplay, just tells the player whether their last change made it to the server.
   syncStatus?: 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'offline';
+  // Phone: some entry of the closed menu has something waiting (a claim, a point to spend); a dot on the button says so.
+  menuBadge?: boolean;
 }) {
   const displayName = useDisplayName(save.heroName);
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
@@ -55,6 +58,7 @@ export default function DesktopTopbar({
       {showMenuButton && (
         <button className="desktop-topbar-menu" onClick={onOpenMenu} aria-label={t('nav.openMenu')} data-ui>
           ☰
+          {menuBadge && <span className="desktop-topbar-menu-dot" aria-hidden="true" />}
         </button>
       )}
       <button className="desktop-topbar-profile" onClick={onOpenProfile} data-tutorial-target="hero" data-ui>

@@ -318,6 +318,8 @@ export default function ForgeView({
 
               {blockedByBag(current) && <span className="craft-bag-full">{t('inventory.bagFullAction')}</span>}
 
+              {reqRows(current).some((r) => r.key.startsWith('mat-') && r.have < r.need) && <p className="fg-where-hint">{t('forge.whereHint')}</p>}
+
               {sealCount > 0 && forgeCategory !== 'relic' && (
                 <button className={`forge-seal-toggle${sealOn ? ' on' : ''}`} onClick={() => setSealOn(!sealOn)} aria-pressed={sealOn} data-ui>
                   <img className="forge-seal-icon" src="/assets/icons/forge_seal.png" alt="" />

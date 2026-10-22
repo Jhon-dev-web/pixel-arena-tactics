@@ -9,7 +9,7 @@ import WholesaleLink from './WholesaleLink';
 import { fmtNum, t } from '../locales';
 import { buildCombatStats, computeHuntingStatus, huntPromotionRequiredWins, SaveData } from '../game/engine';
 import T from '../game/tunables';
-import { DEFAULT_HUNTING_DEPTH, getHuntingZone, huntingEnemyNameKey } from '../game/huntingZones';
+import { DEFAULT_HUNTING_DEPTH, getHuntingZone, huntingEnemyNameKey, recommendedCpForDepth } from '../game/huntingZones';
 import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
 import { estimateHuntYield } from '../game/huntEstimate';
 import { getMaterial, MaterialId } from '../game/materials';
@@ -85,7 +85,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
         <ActiveBuffs save={save} skip={['gatherer']} />
       </HuntBattleView>
       <p className="hs-depthline">
-        {t(`hunting.depth_${depth}`)} · {t('dungeon.cp', { n: fmtNum(zone.cp) })}
+        {t(`hunting.depth_${depth}`)} · {t('dungeon.cp', { n: fmtNum(recommendedCpForDepth(zone, depth)) })}
       </p>
     </Panel>
   );

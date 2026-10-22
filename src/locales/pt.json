@@ -241,7 +241,7 @@
     },
     "final": {
       "title": "Agora é com você.",
-      "body": "Sua caça está rodando; volte depois para colher e gastar os pontos de cada nível."
+      "body": "Sua caça está rodando; volte depois para colher. Enquanto isso, resgate a recompensa do dia em Missões."
     },
     "garden": {
       "title": "Horta",
@@ -912,6 +912,7 @@
     "equipped": "EQUIPADO",
     "cost": "Custo",
     "missing": "Materiais insuficientes",
+    "whereHint": "Faltam materiais? Caça, Mineração e Lenhador dão a matéria-prima; em Ofícios a Fornalha, o Curtume e a Carpintaria a refinam.",
     "durability": "Durabilidade: {n} / {m}",
     "broken": "[QUEBRADO]",
     "repairTab": "Reparo",
@@ -1590,7 +1591,7 @@
     "q_economy": "Economia Ativa",
     "q_economy_d": "Compre 2 poções ou elixires",
     "q_explorer": "Explorador",
-    "q_explorer_d": "Conclua 1 Entrega",
+    "q_explorer_d": "Conclua 1 Pedido",
     "a_first_blood": "Primeiro Sangue",
     "a_first_blood_d": "Derrote seu primeiro monstro",
     "a_cp150": "Poder Crescente",

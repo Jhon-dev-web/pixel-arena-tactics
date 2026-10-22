@@ -241,7 +241,7 @@
     },
     "final": {
       "title": "Now it's up to you.",
-      "body": "Your hunt is running; come back later to collect and spend each level's points."
+      "body": "Your hunt is running; come back later to collect. Meanwhile, claim today's reward in Quests."
     },
     "garden": {
       "title": "Garden",
@@ -915,6 +915,7 @@
     "equipped": "EQUIPPED",
     "cost": "Cost",
     "missing": "Missing materials",
+    "whereHint": "Missing materials? Hunting, Mining and Woodcutting give the raw material; in Crafting the Furnace, Tannery and Carpentry refine it.",
     "durability": "Durability: {n} / {m}",
     "broken": "[QUEBRADO]",
     "repair": "Repair",
@@ -1590,7 +1591,7 @@
     "q_economy": "Active Economy",
     "q_economy_d": "Buy 2 potions or elixirs",
     "q_explorer": "Explorer",
-    "q_explorer_d": "Complete 1 Delivery",
+    "q_explorer_d": "Complete 1 Order",
     "a_first_blood": "First Blood",
     "a_first_blood_d": "Defeat your first monster",
     "a_cp150": "Growing Power",

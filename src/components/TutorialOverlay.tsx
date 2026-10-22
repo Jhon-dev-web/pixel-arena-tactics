@@ -65,7 +65,8 @@ export default function TutorialOverlay({
     update(true);
     const onViewportChange = () => update();
     const observer = new MutationObserver(() => update());
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Class changes too: the phone's hunt screen swaps its list pane for the detail pane by a class, which brings the start button into view without adding a node.
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     window.addEventListener('resize', onViewportChange);
     window.addEventListener('scroll', onViewportChange, true);
     // A target inside the sliding nav drawer is measured while it is still moving: measure again when the slide ends.

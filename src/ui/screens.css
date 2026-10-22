@@ -1927,3 +1927,8 @@ button.pg-slot:focus-visible {
     order: 2;
   }
 }
+.fg-where-hint {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--c-text-muted);
+}

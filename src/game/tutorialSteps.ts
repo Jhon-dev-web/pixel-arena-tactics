@@ -32,3 +32,9 @@ export function tutorialStepDone(step: InitialTutorialStep, save: SaveData): boo
 
 // The floor where the guided first descent stops and asks the hero to retreat with the loot.
 export const GUIDED_DESCENT_FLOOR = 5;
+
+// "Start the hunt" waits on the Hunt screen. When that screen is not open (the player closed it, or reloaded in the middle of the step) and no hunt runs, the card goes back one
+// step, to the one that points at the Caça entry; otherwise the card would talk about a button that is not on screen.
+export function stepWhenHuntScreenClosed(step: InitialTutorialStep, huntScreenOpen: boolean, save: Pick<SaveData, 'activeHuntingZone'>): InitialTutorialStep {
+  return step === 'huntModal' && !huntScreenOpen && !save.activeHuntingZone ? 'hunt' : step;
+}
