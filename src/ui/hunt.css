@@ -375,6 +375,31 @@
   background: linear-gradient(180deg, transparent, #0f0a17 28%);
 }
 
+/* the order of the detail pane, at every width */
+/* The choice (banner, depth) is followed at once by the start button, then what it costs (inventory, cap, overflow warning); the reading material (drops, promotion)
+   comes after. At every width. In-flow, not fixed: the button never covers the depth cards. */
+.hs-banner {
+  order: 1;
+}
+.hs-p-depth {
+  order: 2;
+}
+.hs-detail .hs-foot {
+  order: 3;
+  position: static;
+  padding: 0;
+  background: none;
+}
+.hs-facts {
+  order: 4;
+}
+.hs-p-mats {
+  order: 5;
+}
+.hs-p-sub {
+  order: 6;
+}
+
 /* ---------- the hunt in progress ---------- */
 .hs-stagepanel {
   padding: var(--sp-3);
@@ -476,35 +501,9 @@
   .hs-back {
     display: inline-flex;
   }
-  .hs-depths {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .hs-banner {
     min-height: 130px;
     padding: var(--sp-3);
-  }
-  /* one pane at a time: the choice (banner, depth) is followed at once by the start button, then what it costs (inventory, cap, overflow warning); the reading
-     material (drops, promotion) comes after. In-flow, not fixed: the button never covers the depth cards. */
-  .hs-banner {
-    order: 1;
-  }
-  .hs-p-depth {
-    order: 2;
-  }
-  .hs-foot {
-    order: 3;
-    position: static;
-    padding: 0;
-    background: none;
-  }
-  .hs-facts {
-    order: 4;
-  }
-  .hs-p-mats {
-    order: 5;
-  }
-  .hs-p-sub {
-    order: 6;
   }
 }
 @media (min-width: 900px) {

@@ -174,20 +174,24 @@ export default function QuestsModal({
             );
           })}
         </div>
-        <p className="qs-today">
-          {[
-            item ? `${t(`consumables.${item.id}`)} ×${item.n}` : '',
-            streak.reward.gold > 0 ? `${fmtNum(streak.reward.gold)} ${t('quests.goldWord')}` : '',
-            streak.reward.shards > 0 ? `${streak.reward.shards} ${t('quests.shardsWord')}` : '',
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
         {streak.broken && !streak.claimedToday && <p className="ui-alert bad">{t('quests.streakBroken')}</p>}
         {streak.saver && !streak.claimedToday && <p className="ui-alert good">{t('quests.streakSaverNow')}</p>}
-        <ClaimButton claimed={streak.claimedToday} ready onClick={onClaimStreak} label={t('quests.streakClaim', { n: streak.day })} />
-        {streak.claimedToday && <p className="ui-note">{t('quests.streakDone', { n: streak.day >= STREAK_DAYS ? 1 : streak.day + 1 })}</p>}
-        <p className="ui-note">{ownsPass ? (streak.saverAvailable ? t('quests.streakSaverReady') : t('quests.streakSaverUsed')) : t('quests.streakPassHint')}</p>
+        <div className="qs-streak-act">
+          <p className="qs-today">
+            {[
+              item ? `${t(`consumables.${item.id}`)} ×${item.n}` : '',
+              streak.reward.gold > 0 ? `${fmtNum(streak.reward.gold)} ${t('quests.goldWord')}` : '',
+              streak.reward.shards > 0 ? `${streak.reward.shards} ${t('quests.shardsWord')}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+          <ClaimButton claimed={streak.claimedToday} ready onClick={onClaimStreak} label={t('quests.streakClaim', { n: streak.day })} />
+        </div>
+        <p className="ui-note">
+          {streak.claimedToday ? `${t('quests.streakDone', { n: streak.day >= STREAK_DAYS ? 1 : streak.day + 1 })} ` : ''}
+          {ownsPass ? (streak.saverAvailable ? t('quests.streakSaverReady') : t('quests.streakSaverUsed')) : t('quests.streakPassHint')}
+        </p>
       </Panel>
     );
   };

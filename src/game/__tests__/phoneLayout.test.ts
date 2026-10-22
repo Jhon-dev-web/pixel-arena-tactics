@@ -28,10 +28,11 @@ describe('phone layouts and accessible names', () => {
     expect(src).not.toMatch(/localStorage|deviceStorage/);
   });
 
-  it('the hunt start button is in-flow (not sticky) on a phone', () => {
+  it('the hunt start button is in-flow (not sticky) in the zone detail, at every width, right after the depth choice', () => {
     const css = read('ui/hunt.css');
-    const phone = css.slice(css.indexOf('@media (max-width: 899px)'), css.indexOf('@media (min-width: 900px)'));
-    expect(phone).toMatch(/\.hs-foot\s*\{[^}]*position:\s*static/);
+    expect(css).toMatch(/\.hs-detail \.hs-foot\s*\{[^}]*position:\s*static/);
+    expect(css).toMatch(/\.hs-p-depth\s*\{[^}]*order:\s*2/);
+    expect(css).toMatch(/\.hs-detail \.hs-foot\s*\{[^}]*order:\s*3/);
   });
 
   it('the forge opens the craft panel under the picked recipe on a phone', () => {

@@ -171,7 +171,7 @@ export default function DesktopHome({
 
   const dungeonProgress = save.highestDungeonFloor / MAX_DUNGEON_FLOOR;
 
-  // The eight equipment slots. Beside the hero on a wide screen; on a phone they sit in their own block below the shortcuts so the first screen is the hero summary and what to do now.
+  // The eight equipment slots. After the current activity on a wider screen; on a phone they sit in their own folded block below the shortcuts so the first screen is the hero summary and what to do now.
   const slotsGrid = (
     <div className="hm-slots">
       {[...INSTANCED_SLOTS, 'relic' as const].map((slot) => {
@@ -223,7 +223,6 @@ export default function DesktopHome({
                   <span>{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
                 </button>
               </div>
-              {!phone && slotsGrid}
             </Panel>
 
             {/* Atividade atual */}
@@ -347,6 +346,13 @@ export default function DesktopHome({
                 )}
               </div>
             </Panel>
+
+            {/* Equipamento detalhado: depois da atividade atual (no celular fica dobrado abaixo dos atalhos) */}
+            {!phone && (
+              <Panel title={t('camp.equipmentTitle')} className="hm-gear-wide">
+                {slotsGrid}
+              </Panel>
+            )}
           </>
         }
         side={
@@ -369,20 +375,18 @@ export default function DesktopHome({
               </div>
             </Panel>
 
-            {/* Equipamento: só no celular, abaixo dos atalhos (no computador os espaços ficam ao lado do herói) */}
-            {phone && (
-              <Panel
-                title={t('camp.equipmentTitle')}
-                className={`hm-gear-panel${gearOpen ? '' : ' folded'}`}
-                actions={
-                  <Button size="sm" onClick={() => setGearOpen((v) => !v)} aria-expanded={gearOpen} aria-controls="hm-gear-slots">
-                    {gearOpen ? t('camp.equipmentHide') : t('camp.equipmentShow')}
-                  </Button>
-                }
-              >
-                {gearOpen ? <div id="hm-gear-slots">{slotsGrid}</div> : null}
-              </Panel>
-            )}
+            {/* Equipamento dobrado: onde a coluna é estreita (celular, tablet), abaixo dos atalhos; na coluna larga o painel aberto fica no centro, depois da atividade */}
+            <Panel
+              title={t('camp.equipmentTitle')}
+              className={`hm-gear-panel hm-gear-narrow${gearOpen ? '' : ' folded'}`}
+              actions={
+                <Button size="sm" onClick={() => setGearOpen((v) => !v)} aria-expanded={gearOpen} aria-controls="hm-gear-slots">
+                  {gearOpen ? t('camp.equipmentHide') : t('camp.equipmentShow')}
+                </Button>
+              }
+            >
+              {gearOpen ? <div id="hm-gear-slots">{slotsGrid}</div> : null}
+            </Panel>
 
             {/* Eventos da Liga */}
             <EventsPanel save={save} onPickProfession={onPickProfession} onOpenCalendar={onOpenCalendar} />

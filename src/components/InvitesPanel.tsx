@@ -20,7 +20,6 @@ export function InvitesView({ state, link, copied = false, onCopy, onRetry }: { 
   return (
     <Panel title={t('settings.invitesTitle')} className="st-panel rf-panel" data-settings="invites">
       <p className="st-hint">{t('settings.invitesHint')}</p>
-      <p className="st-hint" data-testid="invite-rule">{t('settings.invitesRule')}</p>
       {state.phase === 'loading' && <p className="st-hint">{t('settings.invitesLoading')}</p>}
       {state.phase === 'error' && (
         <div className="st-actions">
@@ -76,6 +75,10 @@ function InvitesBody({ status, tiers, link, copied, onCopy }: { status: Referral
 
       <p className="rf-counts" data-testid="invite-counts">
         {goal !== null ? t('settings.invitesCounts', { n: status.qualified, m: status.paying, goal }) : t('settings.invitesCountsNoGoal', { n: status.qualified, m: status.paying })}
+      </p>
+
+      <p className="st-hint" data-testid="invite-rule">
+        {t('settings.invitesRule')}
       </p>
 
       <div className="rf-tiers">

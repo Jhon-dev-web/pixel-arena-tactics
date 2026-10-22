@@ -97,7 +97,7 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
   const blockText = (def: HeroSkillDef): string | null => {
     // The reason shown is the one the player can act on first: a maxed skill, then a tier that is not open yet, then the points.
     if (rankOf(draft, def.id) >= def.maxRank) return t('heroSkills.ui.maxed');
-    if (pathPoints(draft, def.path) < tierRequirement(def.tier)) return t('heroSkills.ui.needsPath', { n: tierRequirement(def.tier) });
+    if (pathPoints(draft, def.path) < tierRequirement(def.tier)) return t('heroSkills.ui.needsPath', { n: tierRequirement(def.tier), have: pathPoints(draft, def.path) });
     if (available < 1) return t('heroSkills.ui.noPoints');
     return null;
   };
@@ -152,6 +152,7 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
         actions={<Chip tone="gold">{t('heroSkills.ui.pathPoints', { n: pathPoints(draft, path) })}</Chip>}
       >
         <p className="sk-col-identity">{t(`heroSkills.paths.${path}.identity`)}</p>
+        <p className="sk-col-legend">{t('heroSkills.ui.tierLegend', { a: tierRequirement(2), b: tierRequirement(3), c: tierRequirement(4) })}</p>
         <div className="sk-tiers">
           {tiers.map((tier) => (
             <div className={`sk-row sk-tier-${tier}`} key={tier}>
@@ -201,12 +202,17 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
 
         <div className="sk-cols">{SKILL_PATH_IDS.map(renderPath)}</div>
 
-        <div className="sk-bottom">
-          <Panel className="sk-detail" aria-live="polite">
+        {/* The dock: the selected skill and the pending allocation (+ ponto, Aplicar, Desfazer) in ONE block that stays at the foot of the screen while the trees scroll. */}
+        <Panel className="sk-dock" aria-live="polite">
+          <div className="sk-detail">
             <ItemFrame size="lg" rarity={rankOf(draft, shown.id) >= shown.maxRank ? 'legendary' : 'common'}>
               <img className="sk-detail-icon" src={shown.icon} alt="" />
             </ItemFrame>
-            {fxOf(shown.id) && <FxPreview fx={fxOf(shown.id)!} />}
+            {fxOf(shown.id) && (
+              <span className="sk-fx">
+                <FxPreview fx={fxOf(shown.id)!} />
+              </span>
+            )}
             <div className="sk-detail-body">
               <div className="sk-detail-head">
                 <h3 className="sk-detail-name">{t(`heroSkills.skills.${shown.id}.name`)}</h3>
@@ -218,9 +224,11 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
                   {t('heroSkills.ui.trigger')} {triggerText(shown.id)}
                 </p>
               )}
-              <p className="sk-detail-line">
-                <b>{t('heroSkills.ui.current')}</b> {shownRank > 0 ? skillText(shown.id, shownRank) : t('heroSkills.ui.none')}
-              </p>
+              {shownRank > 0 && (
+                <p className="sk-detail-line">
+                  <b>{t('heroSkills.ui.current')}</b> {skillText(shown.id, shownRank)}
+                </p>
+              )}
               {shownRank < shown.maxRank && (
                 <p className="sk-detail-line next">
                   <b>{t('heroSkills.ui.next')}</b> {skillText(shown.id, shownRank + 1)}
@@ -228,20 +236,22 @@ export default function SkillsView({ save, battleActive, onApply, onRespec, onSw
               )}
               {lockReason && <p className="sk-detail-lock">{lockReason}</p>}
             </div>
+          </div>
+          <div className="sk-apply-row">
             <Button variant="primary" className="sk-detail-add" disabled={!canAddShown} onClick={() => add(shown.id)}>
               + {t('heroSkills.ui.add')}
             </Button>
-          </Panel>
+            <Button variant={pending > 0 ? 'primary' : 'secondary'} disabled={pending === 0} onClick={() => onApply(draft)}>
+              {pending > 0 ? t('heroSkills.ui.applyN', { n: pending }) : t('heroSkills.ui.apply')}
+            </Button>
+            <Button disabled={pending === 0} onClick={() => setDraft(committed)}>
+              {t('heroSkills.ui.undo')}
+            </Button>
+          </div>
+        </Panel>
 
+        <div className="sk-bottom">
           <Panel className="sk-actions">
-            <div className="sk-apply-row">
-              <Button variant="primary" disabled={pending === 0} onClick={() => onApply(draft)}>
-                {pending > 0 ? t('heroSkills.ui.applyN', { n: pending }) : t('heroSkills.ui.apply')}
-              </Button>
-              <Button disabled={pending === 0} onClick={() => setDraft(committed)}>
-                {t('heroSkills.ui.undo')}
-              </Button>
-            </div>
             <div className="sk-loadouts" role="group" aria-label={t('heroSkills.ui.loadouts')}>
               <Button variant={active === 0 ? 'primary' : 'secondary'} aria-pressed={active === 0} disabled={battleActive && active !== 0} onClick={() => onSwitchLoadout(0)}>
                 {t('heroSkills.ui.set1')}

@@ -3,7 +3,9 @@
   gap: var(--sp-4);
 }
 .shop-grid {
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  /* auto-fit: a row with few cards (the 3 consumables, the 3 gems) uses its width instead of leaving empty tracks, and no card grows past 300px */
+  grid-template-columns: repeat(auto-fit, minmax(210px, 300px));
+  justify-content: start;
 }
 @container ui (max-width: 520px) {
   .shop-grid {
@@ -39,6 +41,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
+}
+.shop-cur {
+  font-size: var(--fs-small);
+  font-weight: 400;
+  color: var(--c-text-muted);
 }
 .shop-budget,
 .ws-intro,

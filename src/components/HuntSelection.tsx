@@ -178,7 +178,10 @@ export default function HuntSelection({
                 <FramedSprite src={huntingEnemySpriteUrl(zone.enemyId)} art={enemyArt} box="120px" height={0.9 * enemyArt.height} row={0} still />
               </div>
               <div className="hs-banner-text">
-                <span className="hs-banner-monstername">{monsterName(zone)}</span>
+                <span className="hs-banner-monstername">
+                  {monsterName(zone)}
+                  {zoneOpen && ` · ${t(`hunting.depth_${depth}`)}`}
+                </span>
                 <span className="hs-banner-zone">{zoneName(zone)}</span>
                 <span className="hs-banner-cp">
                   {zoneOpen ? t('hunting.cpLine', { rec: fmtNum(recommendedCpForDepth(zone, depth)), you: fmtNum(playerCp) }) : t(zoneLockedText(zone).key, zoneLockedText(zone).vars)}

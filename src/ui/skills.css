@@ -196,23 +196,80 @@
   box-shadow: none;
 }
 
-/* the detail and the actions */
-.sk-bottom {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+/* the dock (the selected skill + the pending allocation, kept at the foot of the screen while the trees scroll) and the loadouts */
+/* On a wide area it is one compact row that floats at the foot while the window is shorter than the whole page (a laptop); on a narrow area it is one block after the tree. */
+.sk-dock {
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-3);
-  align-items: stretch;
 }
-@container ui (max-width: 759px) {
-  .sk-bottom {
-    grid-template-columns: minmax(0, 1fr);
+@container ui (min-width: 760px) {
+  .sk-dock {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-5);
+  }
+  .sk-dock > .sk-detail {
+    flex: 1 1 auto;
+  }
+  .sk-dock > .sk-apply-row {
+    flex: 0 0 auto;
+    width: 300px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sk-dock > .sk-apply-row > .sk-detail-add {
+    grid-column: 1 / -1;
+  }
+}
+/* a tall phone: the same floating block, a little tighter */
+@media (min-height: 760px) {
+  @container ui (max-width: 759px) {
+    .sk-dock {
+      position: sticky;
+      bottom: calc(-1 * var(--sp-6));
+      z-index: var(--z-sticky);
+      padding: var(--sp-3);
+      gap: var(--sp-2);
+      background: var(--c-surface-1);
+      box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.55), var(--sh-panel);
+    }
+    .sk-dock .sk-detail-line,
+    .sk-dock .sk-detail-lock {
+      font-size: var(--fs-small);
+    }
+  }
+}
+@media (max-height: 899px) {
+  @container ui (min-width: 760px) {
+    .sk-dock {
+      position: sticky;
+      bottom: calc(-1 * var(--sp-6));
+      z-index: var(--z-sticky);
+      background: var(--c-surface-1);
+      box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.55), var(--sh-panel);
+    }
+    .sk-fx {
+      display: none;
+    }
   }
 }
 .sk-detail {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-4);
+  min-width: 0;
+}
+.sk-fx {
+  flex: 0 0 auto;
+}
+@container ui (max-width: 759px) {
+  .sk-fx {
+    display: none;
+  }
+  .sk-detail {
+    gap: var(--sp-3);
+    align-items: flex-start;
+  }
 }
 .sk-detail-icon {
   width: 100%;
@@ -224,7 +281,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-1);
 }
 .sk-detail-head {
   display: flex;
@@ -263,29 +320,25 @@
   font-size: var(--fs-small);
   color: var(--c-bad);
 }
-.sk-detail-add {
-  flex: 0 0 auto;
-}
-@container ui (max-width: 759px) {
-  .sk-detail-add {
-    width: 100%;
-  }
+.sk-apply-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
 }
 .sk-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-3);
-  justify-content: center;
-}
-.sk-apply-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: var(--sp-2);
 }
 .sk-loadouts {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--sp-2);
+  flex: 1 1 280px;
+}
+.sk-actions > .ui-btn {
+  flex: 1 1 200px;
 }
 .sk-set-locked {
   flex-wrap: wrap;
@@ -298,9 +351,16 @@
 }
 .sk-actions .ui-alert {
   margin: 0;
+  flex: 1 1 100%;
 }
 .sk-cost {
   color: var(--c-gold-300);
+}
+.sk-col-legend {
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+  overflow-wrap: anywhere;
 }
 
 /* the small card of the Personagem screen */

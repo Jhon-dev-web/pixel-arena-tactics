@@ -71,14 +71,16 @@ function Plot({
   const title = gardenText('plotName').replace('{n}', String(index + 1));
 
   if (lock.locked) {
+    // A locked plot is one short row (padlock, name, the level it needs), not a full card.
     return (
-      <ItemCard
-        className="gd-plot locked"
-        icon={<img className="pixel-icon" src="/assets/icons/garden_plot_locked.png" alt="" />}
-        name={title}
-        rarityLabel={gardenText('plotLockedBody')}
-        tag={<Chip>{gardenText('plotLockedLevel').replace('{n}', String(lock.level))}</Chip>}
-      />
+      <div className="gd-plot locked" role="group" aria-label={`${title} - ${gardenText('plotLockedBody')}`}>
+        <img className="pixel-icon" src="/assets/icons/garden_plot_locked.png" alt="" />
+        <span className="gd-lock-name">
+          {title}
+          <span className="gd-lock-body">{gardenText('plotLockedBody')}</span>
+        </span>
+        <Chip>{gardenText('plotLockedLevel').replace('{n}', String(lock.level))}</Chip>
+      </div>
     );
   }
 
@@ -144,14 +146,15 @@ function Plot({
       }
     >
       <p className="gd-yield">{gardenText('yield').replace('{qty}', String(def.qty)).replace('{name}', matText(def.material))}</p>
-      <Meter pct={pct} tone={status.ready ? 'xp' : undefined} label={gardenText(def.nameKey)} />
-      {status.ready ? (
-        <p className="gd-time ready">{gardenText('readyLong')}</p>
-      ) : (
-        <p className="gd-time">
-          <span>{formatRemaining(status.remainingMs)}</span>
-          <span>{pct}%</span>
-        </p>
+      {/* Ready is said once, by the "Pronto" tag and the green frame; the bar and the time only matter while it grows. */}
+      {!status.ready && (
+        <>
+          <Meter pct={pct} label={gardenText(def.nameKey)} />
+          <p className="gd-time">
+            <span>{formatRemaining(status.remainingMs)}</span>
+            <span>{pct}%</span>
+          </p>
+        </>
       )}
     </ItemCard>
   );
@@ -280,7 +283,7 @@ export default function GardenModal({
       <Panel title={gardenText('slotsTitle')}>
         <div className="ui-grid gd-plots">
           {statuses.map((status, i) => (
-            <div className="gd-plot-wrap" key={i}>
+            <div className={`gd-plot-wrap${i >= openPlots ? ' is-locked' : ''}`} key={i}>
               <Plot
                 index={i}
                 status={status}
@@ -310,7 +313,7 @@ export default function GardenModal({
           ))}
         </div>
       </Panel>
-      <UnlockList skill="gardening" level={gardeningLevel} />
+      <UnlockList skill="gardening" level={gardeningLevel} collapsed />
     </>
   );
 

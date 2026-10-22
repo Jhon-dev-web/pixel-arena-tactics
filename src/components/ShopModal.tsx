@@ -25,12 +25,14 @@ const costLabel = (): string => t('forge.cost');
 
 type ShopTab = 'buy' | 'sell' | 'wholesale' | 'pouch';
 
-// A price: the currency icon and the number.
-function Price({ icon, n }: { icon: string; n: number | string }) {
+// A price: the currency icon, the number and the currency's NAME (the icon alone is not enough to tell Ouro from Éter, for a screen reader or at a glance).
+function Price({ icon, n, currency }: { icon: string; n: number | string; currency: string }) {
   return (
-    <span className="shop-price">
+    <span className="shop-price" aria-label={`${n} ${currency}`}>
       <img className="inline-icon" src={icon} alt="" />
-      {n}
+      <span aria-hidden="true">
+        {n} <span className="shop-cur">{currency}</span>
+      </span>
     </span>
   );
 }
@@ -165,7 +167,7 @@ export default function ShopModal({
                       qty={qty > 0 ? fmtNum(qty) : undefined}
                       name={conText(c.nameKey)}
                       tag={<span className="shop-have">{t('shop.youHave', { n: qty })}</span>}
-                      rows={[{ label: `${costLabel()}`, value: <Price icon={Assets.icons.gold.url} n={c.cost} />, tone: save.gold < c.cost ? 'bad' : 'gold' }]}
+                      rows={[{ label: `${costLabel()}`, value: <Price icon={Assets.icons.gold.url} n={fmtNum(c.cost)} currency={t('quests.goldWord')} />, tone: save.gold < c.cost ? 'bad' : 'gold' }]}
                       action={
                         <Button block variant="primary" onClick={() => onBuyConsumable(c.id)} disabled={disabled}>
                           {bagFull ? t('shop.bagFull') : t('gear.buy')}
@@ -191,7 +193,7 @@ export default function ShopModal({
                       qty={owned > 0 ? fmtNum(owned) : undefined}
                       name={gemText(g.nameKey)}
                       tag={<span className="shop-have">{t('shop.youOwn', { n: owned })}</span>}
-                      rows={[{ label: `${costLabel()}`, value: <Price icon="/assets/icons/shards.png" n={g.shardCost} />, tone: disabled ? 'bad' : 'gold' }]}
+                      rows={[{ label: `${costLabel()}`, value: <Price icon="/assets/icons/shards.png" n={fmtNum(g.shardCost)} currency={t('quests.shardsWord')} />, tone: disabled ? 'bad' : 'gold' }]}
                       action={
                         <Button block variant="primary" onClick={() => onBuyGem(g.id)} disabled={disabled}>
                           {t('gear.buy')}

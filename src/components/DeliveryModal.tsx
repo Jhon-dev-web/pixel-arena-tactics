@@ -65,7 +65,9 @@ function RequirementIcon({ item }: { item: MaterialDef }) {
 function Requirements({ offer, save }: { offer: DeliveryOffer; save: SaveData }) {
   return (
     <div className="ord-block">
-      <span className="ord-label">{dText('requires')}</span>
+      <span className="ord-label">
+        {dText('requires')} <span className="ord-label-sub">{dText('haveNeed')}</span>
+      </span>
       <div className="fg-reqs" role="list">
         {(Object.entries(offer.items) as [MaterialId, number][]).map(([id, need]) => {
           const def = getMaterial(id);
@@ -74,8 +76,11 @@ function Requirements({ offer, save }: { offer: DeliveryOffer; save: SaveData })
             <div className="fg-req" role="listitem" key={id}>
               {def && <RequirementIcon item={def} />}
               <span className="fg-req-label">{def ? t(`materials.${def.nameKey}`) : id}</span>
-              <span className={`fg-req-qty${have < need ? ' missing' : ''}`}>
-                {fmtNum(Math.min(have, 99999))} / {fmtNum(need)}
+              <span className="ord-qty">
+                <span className={`fg-req-qty${have < need ? ' missing' : ''}`}>
+                  {fmtNum(Math.min(have, 99999))} / {fmtNum(need)}
+                </span>
+                {have < need && <span className="ord-short">{dText('short', { n: fmtNum(need - have) })}</span>}
               </span>
               <StashHint kind="material" id={id} need={need} />
             </div>

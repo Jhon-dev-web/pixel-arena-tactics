@@ -70,6 +70,21 @@
   text-transform: uppercase;
   color: var(--c-gold-500);
 }
+.ord-label-sub {
+  text-transform: none;
+  color: var(--c-text-muted);
+}
+.ord-qty {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+.ord-short {
+  font-size: var(--fs-small);
+  color: var(--c-bad);
+}
 .ord-rewards {
   display: flex;
   flex-wrap: wrap;

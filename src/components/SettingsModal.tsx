@@ -256,9 +256,14 @@ export default function SettingsModal({
                   <Button size="sm" onClick={onSignOut}>
                     {t('settings.signOut')}
                   </Button>
-                  <Button size="sm" variant="danger" onClick={() => setDeleteInfo(!deleteInfo)} aria-expanded={deleteInfo}>
-                    {t('settings.deleteAccount')}
-                  </Button>
+                </div>
+                <div className="st-danger">
+                  <span className="st-hint">{t('settings.dangerZone')}</span>
+                  <div className="st-actions">
+                    <Button size="sm" variant="danger" onClick={() => setDeleteInfo(!deleteInfo)} aria-expanded={deleteInfo}>
+                      {t('settings.deleteAccount')}
+                    </Button>
+                  </div>
                 </div>
                 {deleteInfo && (
                   <div className="ui-alert st-delete" role="note" data-testid="delete-account-info">
@@ -343,8 +348,10 @@ export default function SettingsModal({
               </SelectField>
             </Row>
 
-            {channel(t('settings.music'), audio.music, audio.musicMuted, onMusicVolume, onToggleMusicMute)}
-            {channel(t('settings.effects'), audio.sfx, audio.sfxMuted, onSfxVolume, onToggleSfxMute)}
+            <div className="st-channels">
+              {channel(t('settings.music'), audio.music, audio.musicMuted, onMusicVolume, onToggleMusicMute)}
+              {channel(t('settings.effects'), audio.sfx, audio.sfxMuted, onSfxVolume, onToggleSfxMute)}
+            </div>
 
             {fullscreen.supported && (
               <Row label={t('settings.fullscreen')} hint={fullscreen.active ? t('settings.on') : t('settings.off')}>
@@ -437,10 +444,13 @@ export default function SettingsModal({
             )}
 
             {!resetting ? (
-              <div className="st-actions">
-                <Button size="sm" variant="danger" onClick={() => setResetting(true)}>
-                  {t('settings.reset')}
-                </Button>
+              <div className="st-danger">
+                <span className="st-hint">{t('settings.dangerZone')}</span>
+                <div className="st-actions">
+                  <Button size="sm" variant="danger" onClick={() => setResetting(true)}>
+                    {t('settings.reset')}
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="ui-alert bad st-confirm" role="alertdialog" aria-label={t('settings.reset')}>
