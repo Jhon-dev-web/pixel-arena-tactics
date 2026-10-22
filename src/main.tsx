@@ -11,6 +11,7 @@ import pt from "./locales/pt.json";
 import { installGlobalErrorHandlers } from "./lib/errorLog";
 import { captureBuyIntent } from "./game/passServer";
 import { captureInvite } from "./lib/inviteMemory";
+import { captureDiscordReturn } from "./lib/discordTask";
 import { applyMotionPref } from "./lib/motionPref";
 import { installNetStats } from "./lib/netStats";
 
@@ -25,6 +26,9 @@ captureBuyIntent();
 
 // The invite link (/?ref=CODE): the code is kept in MEMORY only (nothing saved in the browser) and taken out of the address bar; the login screen and the sign-up use it.
 captureInvite();
+
+// The Discord task's redirect (/?discord=ok|not_member|used|error): kept in MEMORY only and taken out of the address bar; the game shows one message after login (App).
+captureDiscordReturn();
 
 // DEV only: `window.__uiAudit()` lists raw locale keys, NaN / undefined, horizontal overflow and unnamed buttons on the current screen (the same checker as `npm run smoke:ui`).
 if (import.meta.env.DEV) {

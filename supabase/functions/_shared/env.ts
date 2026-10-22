@@ -33,6 +33,10 @@ export const EDGE_ENV_NAMES = [
   'OPS_CRON_SECRET',
   'OPS_ALERT_WEBHOOK_URL',
   'OPS_ALERT_EMAIL_TO',
+  // The Discord community task (docs/DISCORD_TASK.md): the OAuth2 application's id and secret (the secret is read by discord-link-callback only and never logged or returned) and the id of the game's Discord server.
+  'DISCORD_CLIENT_ID',
+  'DISCORD_CLIENT_SECRET',
+  'DISCORD_GUILD_ID',
 ] as const;
 
 export type EdgeEnv = Partial<Record<(typeof EDGE_ENV_NAMES)[number], string>>;

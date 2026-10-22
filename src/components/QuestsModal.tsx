@@ -15,12 +15,13 @@ import { SET_FAMILIES } from '../game/gear';
 import { getHuntingZone } from '../game/huntingZones';
 import { paragonLevel } from '../game/paragon';
 import { achievementSummary, ACHIEVEMENT_CATEGORIES, QUESTS_DAILY, QUESTS_ACHIEVEMENTS, QuestDef, isClaimed, isComplete, questProgress } from '../game/quests';
+import CommunityTasks from './CommunityTasks';
 import { Button, Chip, Meter, ModalShell, Panel, StatList, StatRow, Tabs } from './ui';
 import type { TabItem } from './ui';
 
 const questText = (k: string): string => t(`quests.${k}`);
 
-type Tab = 'daily' | 'weekly' | 'achievements' | 'stats';
+type Tab = 'daily' | 'weekly' | 'achievements' | 'stats' | 'community';
 
 // "2d 5h" / "7h 12min" / "40min": the time left until the weekly goals reset.
 function formatLeft(ms: number): string {
@@ -79,6 +80,7 @@ export default function QuestsModal({
   onClaimWeekly,
   onClaimWeeklyBonus,
   onClaimStreak,
+  online = false,
   onClose,
 }: {
   save: SaveData;
@@ -87,6 +89,8 @@ export default function QuestsModal({
   onClaimWeekly: (id: WeeklyGoalId) => void;
   onClaimWeeklyBonus: () => void;
   onClaimStreak: () => void;
+  /** Web build with an account: shows the "Comunidade" tab (community tasks, the server's word). Offline / desktop: no such tab. */
+  online?: boolean;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('daily');
@@ -104,6 +108,7 @@ export default function QuestsModal({
     { id: 'weekly', label: t('quests.weeklyTab'), dot: weekly.claimable > 0 },
     { id: 'achievements', label: t('quests.achievementsTab'), dot: achievementReady },
     { id: 'stats', label: t('quests.statsTab') },
+    ...(online ? [{ id: 'community' as const, label: t('quests.communityTab') }] : []),
   ];
 
   const card = (q: QuestDef) => {
@@ -297,6 +302,7 @@ export default function QuestsModal({
             })}
           </>
         )}
+        {tab === 'community' && online && <CommunityTasks />}
         {tab === 'stats' && (
           <div className="qs-stats">
             {statRows.map((g) => (

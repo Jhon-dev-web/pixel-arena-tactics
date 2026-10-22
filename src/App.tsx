@@ -52,6 +52,8 @@ import { applyDevMockFromUrl, loadEventCalendar } from './game/eventCalendar';
 import { applyReferralCosmetics } from './game/referralRewards';
 import { applyServerCredits } from './game/promoRewards';
 import { isPioneerCredit, PIONEER_KIT } from './game/pioneerKit';
+import { isDiscordCredit } from './game/discordTask';
+import { takeDiscordReturn } from './lib/discordTask';
 import { promoRewardsToast } from './game/promoText';
 import { fetchCreditsToApply } from './lib/serverCredits';
 import { getServerResetAt, needsLeagueReset, needsPioneerCheck, PIONEER_TITLE_ID, readLeagueResetAt, settleLeague } from './game/leagueReset';
@@ -1702,6 +1704,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       stopPolling();
     };
   }, [userId, configured]);
+  // The Discord task's return (/?discord=..., captured in main.tsx): after login the game says what happened, once. The server already holds the verdict; this is only the message.
+  const discordToastRef = useRef(showToast);
+  discordToastRef.current = showToast;
+  useEffect(() => {
+    if (!userId || !configured) return;
+    const back = takeDiscordReturn();
+    if (!back) return;
+    const key = { ok: 'discord.returnOk', not_member: 'discord.returnNotMember', used: 'discord.returnUsed', error: 'discord.returnError' }[back];
+    discordToastRef.current(t(key));
+  }, [userId, configured]);
   // The event calendar (migration 0035, game/eventCalendar.ts): the server's dated pre-season events and the League's dates. Read at login and every 15 minutes while the tab is visible (lib/poller.ts); the
   // events play from the server's word only (nothing in the browser's storage). Online only: the offline build has no events. In development `?calendarMock=1` loads a sample calendar.
   useEffect(() => {
@@ -1737,7 +1749,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         const { save: next, applied } = applyServerCredits(saveRef.current, credits);
         if (applied.length > 0) {
           const chest = applied.filter(isPioneerCredit);
-          const rest = applied.filter((c) => !isPioneerCredit(c));
+          const discord = applied.filter(isDiscordCredit);
+          const rest = applied.filter((c) => !isPioneerCredit(c) && !isDiscordCredit(c));
           const parts: string[] = [];
           if (chest.length > 0) {
             const gold = chest.filter((c) => c.kind === 'gold').reduce((n, c) => n + c.amount, 0);
@@ -1745,6 +1758,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             const xp = chest.filter((c) => c.kind === 'consumable' && c.itemId === PIONEER_KIT.xpId).reduce((n, c) => n + c.amount, 0);
             parts.push(t('leagueReset.chestToast', { gold: fmtNum(gold), potions: fmtNum(potions), xp: fmtNum(xp) }));
           }
+          if (discord.length > 0) parts.push(t('discord.creditToast', { n: fmtNum(discord.filter((c) => c.kind === 'gold').reduce((n, c) => n + c.amount, 0)) }));
           if (rest.length > 0) parts.push(promoRewardsToast(rest.map((c) => ({ kind: c.kind, itemId: c.itemId, amount: c.amount }))));
           commitCreditsRef.current(next, parts.join(' · '));
         }
@@ -2816,6 +2830,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           onClaimWeekly={claimWeekly}
           onClaimWeeklyBonus={claimWeeklyAll}
           onClaimStreak={claimStreakReward}
+          online={configured}
           onClose={() => {
             playSfx('click');
             setQuestsOpen(false);
