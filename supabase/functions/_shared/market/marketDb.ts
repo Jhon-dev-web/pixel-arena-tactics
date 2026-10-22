@@ -171,8 +171,8 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
       throw new Error('wallet_set_bad_answer');
     },
 
-    async list(userId, certificateId, priceLamports) {
-      const r = await d.rpc<{ status?: unknown; reason?: unknown; listing_id?: unknown; expires_at?: unknown }>(
+    async list(userId, certificateId, priceLamports, pouch) {
+      const r = await d.rpc<{ status?: unknown; reason?: unknown; listing_id?: unknown; expires_at?: unknown; floor_lamports?: unknown }>(
         'market_list',
         {
           p_user_id: userId,
@@ -183,11 +183,13 @@ export function createMarketStore(cfg: MarketDbConfig): MarketStore {
           p_max_per_day: MARKET_RULES.maxListingsPerDay,
           p_min_lamports: MARKET_RULES.minPriceLamports,
           p_max_lamports: MARKET_RULES.maxPriceLamports,
+          p_pouch_floor_usd_micro: pouch ? pouch.usdMicroPer1000 : null,
+          p_sol_usd_micro: pouch ? pouch.solUsdMicro : null,
         },
         'market_list',
       );
       if (r.status === 'listed' && typeof r.listing_id === 'string' && typeof r.expires_at === 'string') return { status: 'listed', listingId: r.listing_id, expiresAtMs: Date.parse(r.expires_at) };
-      if (r.status === 'refused' && typeof r.reason === 'string') return { status: 'refused', reason: r.reason as Exclude<ListRefusal, 'bad_request' | 'unavailable'> };
+      if (r.status === 'refused' && typeof r.reason === 'string') return { status: 'refused', reason: r.reason as Exclude<ListRefusal, 'bad_request' | 'unavailable'>, ...(typeof r.floor_lamports === 'number' ? { floorLamports: r.floor_lamports } : {}) };
       throw new Error('market_list_bad_answer');
     },
 

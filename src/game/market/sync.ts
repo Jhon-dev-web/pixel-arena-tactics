@@ -67,7 +67,8 @@ export async function syncMarketOnce(d: SyncDeps): Promise<SyncResult> {
   return result;
 }
 
-export type ListOutcome = { ok: true; listingId: string; expiresAt: string } | { ok: false; reason: string };
+/** A refusal of the server; `floorLamports` comes with 'below_pouch_floor' (the least a Gold Pouch may cost right now). */
+export type ListOutcome = { ok: true; listingId: string; expiresAt: string } | { ok: false; reason: string; floorLamports?: number };
 
 /**
  * Puts one entry on the market: the SERVER lists it first (it checks the certificate, the wallet, the limits), and only then the item leaves the save. If the game closes in between,
@@ -75,7 +76,7 @@ export type ListOutcome = { ok: true; listingId: string; expiresAt: string } | {
  */
 export async function listForSale(d: Pick<SyncDeps, 'api' | 'getSave' | 'applySave'>, entry: SellableEntry, certificate: Pick<CertificateView, 'id' | 'kind' | 'templateId'>, priceLamports: number): Promise<ListOutcome> {
   const r = await d.api.list(entry.certificateId, priceLamports);
-  if ('reason' in r) return { ok: false, reason: r.reason };
+  if ('reason' in r) return { ok: false, reason: r.reason, ...(typeof r.extra?.floorLamports === 'number' ? { floorLamports: r.extra.floorLamports } : {}) };
   const next = removeListedItem(d.getSave(), certificate);
   if (next !== d.getSave()) d.applySave(next);
   return { ok: true, listingId: r.listingId, expiresAt: r.expiresAt };

@@ -16,7 +16,7 @@ export interface ChainPublic {
   feePercent: number;
 }
 
-export type ListRefusal = 'bad_request' | 'no_wallet' | 'flagged' | 'price' | 'not_found' | 'already_listed' | 'not_held' | 'bound' | 'not_in_save' | 'limit_active' | 'limit_day' | 'not_enough' | 'unavailable';
+export type ListRefusal = 'bad_request' | 'no_wallet' | 'flagged' | 'price' | 'not_found' | 'already_listed' | 'not_held' | 'bound' | 'not_in_save' | 'limit_active' | 'limit_day' | 'not_enough' | 'below_pouch_floor' | 'pouch_rate_unavailable' | 'unavailable';
 export type ReserveRefusal = 'bad_request' | 'no_wallet' | 'reservation_exists' | 'rate_limited' | 'not_found' | 'reserved' | 'not_open' | 'own_listing' | 'unavailable';
 export type SubmitRefusal =
   | 'bad_request'

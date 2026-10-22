@@ -111,6 +111,11 @@ export interface PaymentExceptionStore {
   notePayer(signature: string, payer: string): Promise<void>;
 }
 
+export interface PouchFloorArgs {
+  usdMicroPer1000: number;
+  solUsdMicro: number | null;
+}
+
 export interface MarketStore extends PaymentExceptionStore {
   /** sweeps stale reservations and expired listings (best effort; every read path also tidies what it touches) */
   expireDue(): Promise<void>;
@@ -123,7 +128,8 @@ export interface MarketStore extends PaymentExceptionStore {
   takeNonce(userId: string, nonce: string): Promise<string | null>;
   setWallet(userId: string, address: string, chainId: number): Promise<'linked' | 'unchanged' | 'busy' | 'address_taken'>;
 
-  list(userId: string, certificateId: string, priceLamports: number): Promise<{ status: 'listed'; listingId: string; expiresAtMs: number } | { status: 'refused'; reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'> }>;
+  /** `pouch` = the Gold Pouch floor: the dollars per 1,000 Gold (micro-USD) and the server's SOL price (micro-USD per SOL, null = unknown). The database applies it to certificates of kind gold_pouch only (migration 0036); a refusal 'below_pouch_floor' carries the floor in lamports. */
+  list(userId: string, certificateId: string, priceLamports: number, pouch?: PouchFloorArgs): Promise<{ status: 'listed'; listingId: string; expiresAtMs: number } | { status: 'refused'; reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'>; floorLamports?: number }>;
   /** Lists a LOT of one tradeable material: the units leave the seller's balance into escrow in the listing (migration 0015). `requestId` makes a retry return the same listing. */
   listMaterial(userId: string, args: { requestId: string; materialId: string; quantity: number; unitPriceMicro: number }): Promise<{ status: 'listed'; listingId: string; expiresAtMs: number } | { status: 'refused'; reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'> }>;
   /** A cancelled listing returns an item (certificate) or the units of a lot of materials to the seller (as a delivery the game collects). */

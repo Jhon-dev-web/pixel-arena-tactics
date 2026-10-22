@@ -1,6 +1,6 @@
 import { SolSaleInspection, SolVerifyFailure, cleanSolAddress, fetchRecentBlockhash, normalizeSolSignature, verifySolSale } from '../chain/solana.ts';
 import { isGameMemo, saleMemo } from '../chain/memo.ts';
-import { isMaterialTotalLamports, isPriceLamports, isUnitPriceMicro, materialTotalLamports } from '../chain/solMoney.ts';
+import { POUCH_FLOOR_USD_MICRO_PER_1000_GOLD, isMaterialTotalLamports, isPriceLamports, isUnitPriceMicro, materialTotalLamports, solUsdMicro } from '../chain/solMoney.ts';
 import { MATERIAL_IDS } from '../materials/tables.ts';
 import { MARKET_RULES } from './rules.ts';
 import { UUID_RE, json } from '../http.ts';
@@ -31,6 +31,9 @@ const LIST_STATUS: Record<Exclude<ListRefusal, 'bad_request' | 'unavailable'>, n
   limit_active: 429,
   limit_day: 429,
   not_enough: 409,
+  // the Gold Pouch floor (migration 0036): below it is a plain 400 with the floor in the answer; no SOL price to convert it is the server's "try again" (503), nothing was changed
+  below_pouch_floor: 400,
+  pouch_rate_unavailable: 503,
 };
 
 const RESERVE_STATUS: Record<Exclude<ReserveRefusal, 'bad_request' | 'unavailable'>, number> = {
@@ -100,8 +103,15 @@ export async function handleMarketList(req: Request, deps: MarketDeps): Promise<
     if ((body.action === 'list' || body.action === 'list_material') && (await isPaused(deps.opsFlags, 'market_paused'))) return pausedResponse('market_paused', cors);
     if (body.action === 'list') {
       if (!isUuid(body.certificateId) || !isPriceLamports(body.priceLamports)) return json({ ok: false, reason: (isUuid(body.certificateId) ? 'price' : 'bad_request') satisfies ListRefusal }, 400, cors);
-      const r = await deps.store.list(userId, body.certificateId.toLowerCase(), body.priceLamports);
-      if (r.status === 'refused') return json({ ok: false, reason: r.reason }, LIST_STATUS[r.reason], cors);
+      // The server's USD per SOL (cached, never the player's number) turns the Gold Pouch floor (US$ per 1,000 Gold) into lamports INSIDE the listing transaction; a read that fails is "unknown", never a guess.
+      let rate: number | null = null;
+      try {
+        rate = solUsdMicro(await deps.solUsd());
+      } catch {
+        rate = null;
+      }
+      const r = await deps.store.list(userId, body.certificateId.toLowerCase(), body.priceLamports, { usdMicroPer1000: POUCH_FLOOR_USD_MICRO_PER_1000_GOLD, solUsdMicro: rate });
+      if (r.status === 'refused') return json({ ok: false, reason: r.reason, ...(r.floorLamports !== undefined ? { floorLamports: r.floorLamports } : {}) }, LIST_STATUS[r.reason], cors);
       return json({ ok: true, listingId: r.listingId, expiresAt: iso(r.expiresAtMs) }, 200, cors);
     }
     // A LOT of one tradeable material: bought whole (never in parts), priced per unit in micro-SOL (up to 6 decimals), a total of at least 0.001 SOL. The units leave the seller's balance into escrow.

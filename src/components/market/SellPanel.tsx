@@ -11,7 +11,7 @@ import { LotQuote, listLot, lotQuote, sellableLots } from '../../game/market/lot
 import type { MaterialId } from '../../game/materials';
 import { MARKET_RULES } from '../../../supabase/functions/_shared/market/rules';
 import { rarityDef } from '../../game/rarity';
-import { fmtNum, t } from '../../locales';
+import { fmtDec, fmtNum, t } from '../../locales';
 import { mt } from '../../locales/market';
 import ItemCard, { ItemArt, ItemLike, frameOf } from './ItemCard';
 import { Button, Chip, Panel, SelectField, StatList, StatRow } from '../ui';
@@ -19,6 +19,8 @@ import { SolIcon } from './icons';
 import { fmtSol, parsePriceInput } from './format';
 import UsdLine from './UsdLine';
 import { itemName } from './names';
+import { listFailureText, pouchStartPrice } from './listFailure';
+import { pouchFloorOf } from '../../game/market/pouchFloor';
 
 /** What the offer holds, in the shape the overview uses (so the new offer can be shown before the server is asked again). */
 const marketItemOf = (i: ItemLike): MarketItemView => ({ kind: i.kind, templateId: i.templateId, rarity: i.rarity, tier: i.tier, substats: i.substats as MarketItemView['substats'], goldAmount: i.goldAmount, ...(i.quantity !== undefined ? { quantity: i.quantity } : {}), ...(i.unitPriceMicro !== undefined ? { unitPriceMicro: i.unitPriceMicro } : {}) });
@@ -75,13 +77,18 @@ export interface SellFlowProps {
   onApplied?: (change: MarketChange) => void;
   /** asks the server once for the lists the action changed (and brings a delivered item into the bag); the button stays blocked until it is done */
   onChanged: () => void | Promise<void>;
+  /** the item the form starts on (tests render a picked item; the game starts with none) */
+  initialPicked?: string;
 }
 
 // The state of the "create offer" flow, shared by the item picker (main area), the offer form (side) and the list of my offers. Only the server's certificates decide what is sellable; the price is
 // checked here for the form (the server checks it again), and publishing is two steps (the item leaves the inventory: it is asked once).
-export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onApplied, onChanged }: SellFlowProps) {
-  const [picked, setPickedRaw] = useState<string | null>(null);
-  const [priceText, setPriceText] = useState('');
+export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onApplied, onChanged, initialPicked }: SellFlowProps) {
+  const [picked, setPickedRaw] = useState<string | null>(initialPicked ?? null);
+  const [priceText, setPriceText] = useState(() => {
+    const g = initialPicked ? groupEntries(sellableEntries(save)).find((x) => x.key === initialPicked) : undefined;
+    return g && g.entries[0]?.kind === 'gold_pouch' ? pouchStartPrice(g.entries.slice(0, 1), solUsd) : '';
+  });
   const [qty, setQty] = useState(1);
   const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -101,12 +108,21 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onA
   const unitLamports = parsePriceInput(priceText);
   // a lot: the price typed is the price of ONE unit (up to 6 decimals) and the lot is bought whole, so what is checked and split is the lot's total
   const lot: LotQuote | null = lotInfo ? lotQuote(priceText, count) : null;
-  const valid = lotInfo ? lot !== null : unitLamports !== null && unitLamports >= MARKET_MIN_PRICE_LAMPORTS && unitLamports <= MARKET_MAX_PRICE_LAMPORTS && unitLamports % SOL_PRICE_STEP_LAMPORTS === 0;
+  // a Gold Pouch has a floor in USD (US$ 0.25 per 1,000 Gold), turned into SOL at the SERVER's price; the server enforces it again. Without a price a pouch cannot be priced here, so it stays blocked.
+  const floor = group && group.entries[0]?.kind === 'gold_pouch' ? pouchFloorOf(group.entries.slice(0, count), solUsd) : null;
+  const generalOk = unitLamports !== null && unitLamports >= MARKET_MIN_PRICE_LAMPORTS && unitLamports <= MARKET_MAX_PRICE_LAMPORTS && unitLamports % SOL_PRICE_STEP_LAMPORTS === 0;
+  const belowFloor = !!floor && floor.lamports !== null && unitLamports !== null && unitLamports < floor.lamports;
+  const valid = lotInfo ? lot !== null : generalOk && (!floor || (floor.lamports !== null && (unitLamports as number) >= floor.lamports));
   const split = valid ? splitLamports(lotInfo ? (lot as LotQuote).totalLamports : (unitLamports as number)) : null;
   const hasWallet = !!overview?.wallet;
 
   const setPicked = (key: string | null) => {
     setPickedRaw(key);
+    // a pouch starts at its floor (the player raises it from there); the other items keep what was typed
+    const next = groups.find((g) => g.key === key);
+    if (next && next.entries[0]?.kind === 'gold_pouch') {
+      setPriceText(pouchStartPrice(next.entries.slice(0, 1), solUsd));
+    }
     setQty(1);
     setArmed(false);
     setMessage(null);
@@ -133,9 +149,7 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onA
           setQty(1);
           await onChanged(); // the button stays blocked until the lists are read again from the server
         } else {
-          const key = `sell.fail.${'reason' in r ? r.reason : 'generic'}`;
-          const text = mt(key);
-          setMessage({ text: text === key ? mt('sell.fail.generic') : text, error: true });
+          setMessage({ text: listFailureText('reason' in r ? r.reason : 'generic'), error: true });
         }
       } catch {
         setMessage({ text: mt('unreachable'), error: true });
@@ -151,9 +165,7 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onA
         const cert = getCertificate(entry.certificateId);
         const r = await listForSale({ api, getSave: host.getSave, applySave: host.applySave }, entry, cert ?? { id: entry.certificateId, kind: entry.kind, templateId: entry.kind === 'gold_pouch' ? entry.pouchId : entry.instance.templateId }, unitLamports as number);
         if ('reason' in r) {
-          const key = `sell.fail.${r.reason}`;
-          const text = mt(key);
-          setMessage({ text: text === key ? mt('sell.fail.generic') : text, error: true });
+          setMessage({ text: listFailureText(r.reason, r.floorLamports), error: true });
           break;
         }
         done += 1;
@@ -195,7 +207,7 @@ export function useSellFlow({ api, save, overview, feePercent, solUsd, host, onA
   };
 
   const live = (overview?.listings ?? []).filter((l) => l.status === 'open' || l.status === 'reserved');
-  return { isLot: !!lotInfo, lot, groups, picked, setPicked, group, priceText, setPriceText: (v: string) => { setPriceText(v); setArmed(false); }, qty: count, maxQty, setQty: (n: number) => { setQty(Math.min(Math.max(1, n), maxQty)); setArmed(false); }, armed, busy, message, socketed, blocked, valid, split, hasWallet, feePercent, solUsd, publish, cancel, live };
+  return { isLot: !!lotInfo, lot, groups, picked, setPicked, group, priceText, setPriceText: (v: string) => { setPriceText(v); setArmed(false); }, qty: count, maxQty, setQty: (n: number) => { setQty(Math.min(Math.max(1, n), maxQty)); setArmed(false); }, armed, busy, message, socketed, blocked, valid, floor, belowFloor, split, hasWallet, feePercent, solUsd, publish, cancel, live };
 }
 export type SellFlow = ReturnType<typeof useSellFlow>;
 
@@ -304,7 +316,13 @@ export function OfferForm({ flow }: { flow: SellFlow }) {
           <input inputMode="decimal" value={flow.priceText} onChange={(e) => flow.setPriceText(e.target.value)} placeholder={flow.isLot ? '0,000000' : '0,000'} maxLength={11} autoComplete="off" disabled={flow.busy} />
         </span>
       </label>
-      <p className="ui-note">{mt(flow.isLot ? 'sell.priceHintLot' : 'sell.priceHint', { min: fmtSol(MARKET_MIN_PRICE_LAMPORTS), max: fmtSol(MARKET_MAX_PRICE_LAMPORTS) })}</p>
+      {pouch && flow.floor ? (
+        <>
+          <p className="ui-note mk-floor">{flow.floor.lamports !== null ? mt('sell.pouchFloor', { min: fmtSol(flow.floor.lamports), usd: fmtDec(flow.floor.usd, 2, true) }) : mt('sell.pouchFloorNoRate', { usd: fmtDec(flow.floor.usd, 2, true) })}</p>
+          {flow.belowFloor && <p className="ui-alert bad">{mt('sell.pouchFloorBelow')}</p>}
+        </>
+      ) : null}
+      <p className="ui-note">{mt(flow.isLot ? 'sell.priceHintLot' : 'sell.priceHint', { min: fmtSol(pouch && flow.floor?.lamports ? flow.floor.lamports : MARKET_MIN_PRICE_LAMPORTS), max: fmtSol(MARKET_MAX_PRICE_LAMPORTS) })}</p>
       {flow.isLot && <p className="ui-note">{mt('sell.wholeLotNote', { n: fmtNum(MARKET_RULES.maxMaterialQtyPerListing) })}</p>}
       <StatList className="mk-calc">
         {flow.lot && <StatRow label={mt('sell.form.lotTotal')} value={<><SolIcon /> {fmtSol(flow.lot.totalLamports)}</>} tone="gold" />}

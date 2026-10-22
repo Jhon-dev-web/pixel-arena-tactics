@@ -23,7 +23,9 @@ const m12 = stripComments(raw12);
 const m10 = stripComments(read('supabase/migrations/0010_item_certificates.sql'));
 const m13 = stripComments(read('supabase/migrations/0013_solana.sql'));
 // Migration 0013 (Solana) REPLACES some functions of 0011 / 0012: the TypeScript is pinned to the latest definition of each one.
-const latestSql = (name: string): string => (m13.includes(`create or replace function public.${name}(`) ? m13 : m11);
+// Migration 0036 (the Gold Pouch price floor) replaces market_list again, with two more arguments.
+const m36 = stripComments(read('supabase/migrations/0036_pouch_price_floor.sql'));
+const latestSql = (name: string): string => (m36.includes(`create or replace function public.${name}(`) ? m36 : m13.includes(`create or replace function public.${name}(`) ? m13 : m11);
 const latestPassSql = (name: string): string => (m13.includes(`create or replace function public.${name}(`) ? m13 : m12);
 const marketDb = read('supabase/functions/_shared/market/marketDb.ts');
 

@@ -1,7 +1,7 @@
-import { splitLamports } from '../chain/solMoney.ts';
+import { MARKET_MIN_PRICE_LAMPORTS, SOL_PRICE_STEP_LAMPORTS, splitLamports } from '../chain/solMoney.ts';
 import type { CertificateView } from '../items/types.ts';
 import { MARKET_RULES } from '../market/rules.ts';
-import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoStore, PassGrantOutcome, PaymentRow, RecordExceptionArgs, RecordOutcome, RecordPaymentArgs, ReservationRow, ReserveOutcome, UserException } from '../market/store.ts';
+import type { CancelReservationOutcome, MarketStore, OverviewRows, PassCryptoStore, PassGrantOutcome, PaymentRow, PouchFloorArgs, RecordExceptionArgs, RecordOutcome, RecordPaymentArgs, ReservationRow, ReserveOutcome, UserException } from '../market/store.ts';
 import type { ListRefusal, MyListingView, ReservationPayment, SaleView } from '../market/types.ts';
 import { FakeMaterialStore } from './fakeMaterialStore.ts';
 
@@ -219,8 +219,8 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
   }
 
   // ---- market_list ----
-  async list(userId: string, certificateId: string, priceLamports: number) {
-    const refuse = (reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'>) => ({ status: 'refused' as const, reason });
+  async list(userId: string, certificateId: string, priceLamports: number, pouch?: PouchFloorArgs) {
+    const refuse = (reason: Exclude<ListRefusal, 'bad_request' | 'unavailable'>, floorLamports?: number) => ({ status: 'refused' as const, reason, ...(floorLamports !== undefined ? { floorLamports } : {}) });
     const w = this.wallets.get(userId);
     if (!w) return refuse('no_wallet');
     if (this.flagged.has(userId)) return refuse('flagged');
@@ -231,6 +231,12 @@ export class FakeMarketStore implements MarketStore, PassCryptoStore {
     if (c.status !== 'held') return refuse('not_held');
     if (c.bound) return refuse('bound');
     if (!c.inSave) return refuse('not_in_save');
+    // the Gold Pouch floor (migration 0036): the same sum as the SQL, with the numbers the handler passed in
+    if (c.kind === 'gold_pouch' && pouch) {
+      if (pouch.solUsdMicro === null || pouch.solUsdMicro < 1) return refuse('pouch_rate_unavailable');
+      const floor = Math.max(MARKET_MIN_PRICE_LAMPORTS, Math.ceil(((c.goldAmount ?? 0) * pouch.usdMicroPer1000) / pouch.solUsdMicro) * SOL_PRICE_STEP_LAMPORTS);
+      if (priceLamports < floor) return refuse('below_pouch_floor', floor);
+    }
     const mine = [...this.listings.values()].filter((l) => l.sellerId === userId);
     if (mine.filter((l) => l.status === 'open' || l.status === 'reserved').length >= MARKET_RULES.maxActiveListings) return refuse('limit_active');
     if (mine.filter((l) => l.createdAtMs > this.nowMs - DAY).length >= MARKET_RULES.maxListingsPerDay) return refuse('limit_day');

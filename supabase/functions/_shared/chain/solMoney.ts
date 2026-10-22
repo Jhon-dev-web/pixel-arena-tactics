@@ -18,6 +18,32 @@ export const MARKET_MAX_PRICE_LAMPORTS = 50 * LAMPORTS_PER_SOL;
 /** The widest bound the database enforces on its own (migration 0013): 1,000 SOL. */
 export const MARKET_ABSOLUTE_MAX_PRICE_LAMPORTS = 1000 * LAMPORTS_PER_SOL;
 
+// ---- Gold Pouch price floor (owner decision 2026-10-22): a pouch cannot be listed below US$ 0.25 per 1,000 Gold of face value; above it the price is free. ----
+/** THE one constant of the floor: US$ 0.25 per 1,000 Gold, in micro-dollars (1 micro-USD = US$ 0.000001). Small (2,000) = US$ 0.50, medium (5,000) = US$ 1.25, large (20,000) = US$ 5.00. The server and the game both import it. */
+export const POUCH_FLOOR_USD_MICRO_PER_1000_GOLD = 250_000;
+
+/** The server's USD per SOL as whole micro-dollars per SOL (150.2 -> 150200000), or null when it is not a usable price. */
+export function solUsdMicro(solUsd: number | null | undefined): number | null {
+  if (typeof solUsd !== 'number' || !Number.isFinite(solUsd) || solUsd <= 0) return null;
+  const micro = Math.round(solUsd * 1_000_000);
+  return micro >= 1 ? micro : null;
+}
+
+/**
+ * The least a Gold Pouch of `goldAmount` Gold may be listed for, in lamports: goldAmount / 1,000 x US$ 0.25 converted at the SOL price and ROUNDED UP to the price step (0.001 SOL), so the floor is never
+ * under its dollar value. Pure integer math (goldAmount x 250,000 stays far inside 2^53): steps = ceil(goldAmount x microUsdPer1000 / solUsdMicro). Never below the general minimum. null when the SOL
+ * price is unusable (the caller refuses to list a pouch then). The SQL function market_list (migration 0036) does the same sum with the same two numbers.
+ */
+export function pouchFloorLamports(goldAmount: number, solUsd: number | null | undefined): number | null {
+  const rate = solUsdMicro(solUsd);
+  if (rate === null || !Number.isSafeInteger(goldAmount) || goldAmount < 1) return null;
+  const steps = Math.floor((goldAmount * POUCH_FLOOR_USD_MICRO_PER_1000_GOLD + rate - 1) / rate);
+  return Math.max(MARKET_MIN_PRICE_LAMPORTS, steps * SOL_PRICE_STEP_LAMPORTS);
+}
+
+/** The floor in US dollars for the screen text ("US$ 0.50"): goldAmount / 1,000 x US$ 0.25. */
+export const pouchFloorUsd = (goldAmount: number): number => (goldAmount * POUCH_FLOOR_USD_MICRO_PER_1000_GOLD) / 1_000_000_000;
+
 // ---- tradeable materials (docs/MARKET_FOUNDATION.md "Materiais negociaveis"): a lot of one material is priced PER UNIT, in micro-SOL (1 micro-SOL = 0.000001 SOL = 1,000 lamports), so the unit price has up to 6 decimals ----
 /** 1,000 lamports = 0.000001 SOL: the step of a unit price. */
 export const LAMPORTS_PER_MICRO_SOL = 1000;
