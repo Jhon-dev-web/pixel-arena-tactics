@@ -689,3 +689,32 @@ export interface PaymentExceptionsQuery {
   page: number;
   pageSize: number;
 }
+
+/** One account of the playtest "Top por nível" (migration 0037): level and date come from the server-judged progress submissions, never from the save. */
+export interface TopLevelRow {
+  rank: number;
+  user_id: string;
+  username: string | null;
+  hero_name: string | null;
+  /** hero level + Paragon level */
+  level: number;
+  hero_level: number;
+  paragon_level: number;
+  /** Server time of the first accepted submission that showed this level (the tie-break). */
+  reached_at: string;
+  last_seen: string | null;
+  online: boolean;
+  pass_valid_now: boolean;
+  pass_source: string | null;
+  pass_livemode: boolean | null;
+  open_flags: number;
+  item_flags: number;
+}
+
+export interface TopLevelPage {
+  until: string;
+  limit: number;
+  /** Accounts with at least one accepted submission up to the cut-off. */
+  ranked: number;
+  rows: TopLevelRow[];
+}

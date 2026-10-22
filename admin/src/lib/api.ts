@@ -5,11 +5,12 @@
 import type { ActionRpcName } from './actionRpcNames';
 import type { CreatePromoArgs, DeleteUserResult, GrantPassResult, PromoCodeRow, RevokePassResult } from './actions';
 import type { FullRpcName } from './fullRpcNames';
+import type { TopRpcName } from './topRpcNames';
 import { flagsArgs, legendaryArgs, marketArgs, playerArgs } from './filters';
 import type { OpsRpcName } from './opsRpcNames';
 import type { PaymentRpcName } from './paymentRpcNames';
 import type { RpcName } from './rpcNames';
-import type { AiCost, AiReportRow, AiReportsQuery, Economy, FlagsPage, FlagsQuery, League, LegendaryPage, LegendaryQuery, ListingRow, MarketPage, MarketQuery, OpsFlagKey, OpsOverview, Overview, Page, PlayerDetail, PlayerFull, PaymentExceptionsPage, PaymentExceptionsQuery, PlayerQuery, PlayerRow, SaleRow, SeriesDay, Waitlist } from './types';
+import type { AiCost, AiReportRow, AiReportsQuery, Economy, FlagsPage, FlagsQuery, League, LegendaryPage, LegendaryQuery, ListingRow, MarketPage, MarketQuery, OpsFlagKey, OpsOverview, Overview, Page, PlayerDetail, PlayerFull, PaymentExceptionsPage, PaymentExceptionsQuery, PlayerQuery, PlayerRow, SaleRow, SeriesDay, TopLevelPage, Waitlist } from './types';
 
 export interface AdminApi {
   overview(): Promise<Overview>;
@@ -17,6 +18,8 @@ export interface AdminApi {
   playerDetail(userId: string): Promise<PlayerDetail | null>;
   /** Migration 0034: everything the server has for ONE account, read live from the save (not from the cache). Null for an unknown id. */
   playerFull(userId: string): Promise<PlayerFull | null>;
+  /** Migration 0037: the accounts with the highest level up to a cut-off (null = now), ties to whoever got there first. */
+  topLevel(limit: number, until: string | null): Promise<TopLevelPage>;
   legendaries(q: LegendaryQuery): Promise<LegendaryPage>;
   market(q: MarketQuery): Promise<MarketPage<SaleRow> | MarketPage<ListingRow>>;
   economy(): Promise<Economy>;
@@ -77,7 +80,7 @@ export interface ApiExtras {
 }
 
 export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminApi {
-  async function call<T>(name: RpcName | FullRpcName | OpsRpcName | PaymentRpcName | ActionRpcName, args?: Record<string, unknown>): Promise<T> {
+  async function call<T>(name: RpcName | FullRpcName | TopRpcName | OpsRpcName | PaymentRpcName | ActionRpcName, args?: Record<string, unknown>): Promise<T> {
     const { data, error } = await client.rpc(name, args);
     if (error) throw toError(error);
     return data as T;
@@ -87,6 +90,7 @@ export function createRpcApi(client: RpcClient, extras: ApiExtras = {}): AdminAp
     players: (q) => call<Page<PlayerRow>>('admin_players', playerArgs(q)),
     playerDetail: (userId) => call<PlayerDetail | null>('admin_player_detail', { p_user_id: userId }),
     playerFull: (userId) => call<PlayerFull | null>('admin_player_full', { p_user_id: userId }),
+    topLevel: (limit, until) => call<TopLevelPage>('admin_top_level', { p_limit: limit, p_until: until }),
     legendaries: (q) => call<LegendaryPage>('admin_legendaries', legendaryArgs(q)),
     market: (q) => call<MarketPage<SaleRow> | MarketPage<ListingRow>>('admin_market', marketArgs(q)),
     economy: () => call<Economy>('admin_economy'),

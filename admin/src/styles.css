@@ -2378,3 +2378,22 @@ details.players-note > summary {
 details.players-note p {
   margin: 6px 0 0;
 }
+.top-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.top-summary > span:first-child {
+  flex: 1;
+  min-width: 200px;
+}
+.bad-text {
+  color: var(--bad);
+  font-size: 12.5px;
+}
+.players-card > .notice {
+  margin: 10px 14px;
+}

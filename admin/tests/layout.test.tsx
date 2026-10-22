@@ -10,6 +10,7 @@ import LeaguePage from '../src/pages/League';
 import LegendariesPage from '../src/pages/Legendaries';
 import PlayersPage from '../src/pages/Players';
 import ToolsPage from '../src/pages/Tools';
+import TopLevelPage from '../src/pages/TopLevel';
 import WaitlistPage from '../src/pages/WaitlistPage';
 
 // The panel reorganized into three screens (owner's request, 22/10/2026): "Hoje", "Jogadores", "Ferramentas".
@@ -37,7 +38,7 @@ describe('the menu', () => {
   test('three screens; every other page hangs under one of them and keeps its old address', () => {
     expect(NAV.map((n) => n.label)).toEqual(['Hoje', 'Jogadores', 'Ferramentas']);
     for (const r of ROUTES) expect(NAV.map((n) => n.id)).toContain(r.section);
-    expect(ROUTES.filter((r) => r.section === 'ferramentas').map((r) => r.id)).toEqual(['ferramentas', 'pagamentos', 'codigos', 'ia-operacao']);
+    expect(ROUTES.filter((r) => r.section === 'ferramentas').map((r) => r.id)).toEqual(['ferramentas', 'pagamentos', 'codigos', 'ia-operacao', 'premio-playtest']);
     expect(ROUTES.filter((r) => r.section === 'visao-geral').map((r) => r.id)).toEqual(['visao-geral', 'lendarios', 'mercado', 'economia', 'liga', 'espera']);
     expect(routeFromHash('#/mercado?q=sale-1')).toBe('mercado');
     expect(routeFromHash('#/qualquer-coisa')).toBe('visao-geral');
@@ -67,7 +68,7 @@ describe('Ferramentas', () => {
     withApi(<ToolsPage />);
     await waitFor(() => expect(document.body.textContent).toContain('em aberto'));
     const links = Array.from(document.querySelectorAll('a.tool-card'));
-    expect(links.map((a) => a.getAttribute('href'))).toEqual(['#/pagamentos', '#/codigos', '#/ia-operacao', '#/ia-operacao']);
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['#/pagamentos', '#/premio-playtest', '#/codigos', '#/ia-operacao', '#/ia-operacao']);
     expect(document.body.textContent).toContain('pausa ligada');
     expect(document.body.textContent).toMatch(/\d+ ativos?/);
   });
@@ -122,5 +123,44 @@ describe('Jogadores: list and account side by side on a wide screen', () => {
     fireEvent.click(within(table).getAllByRole('row')[1]);
     expect(await screen.findByRole('dialog')).toBeTruthy();
     expect(screen.queryByRole('complementary')).toBeNull();
+  });
+});
+
+describe('Prêmio do playtest: Top 25 por nível', () => {
+  test('25 rows ranked by level, each with the date it was reached', async () => {
+    withApi(<TopLevelPage />);
+    const table = await screen.findByRole('table', { name: 'Top por nível' });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBe(26));
+    const levels = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => Number((r.querySelectorAll('td')[2].textContent ?? '').split(' ')[0]));
+    expect([...levels].sort((a, b) => b - a)).toEqual(levels);
+    expect(table.textContent).toMatch(/\d{2}\/\d{2}\/\d{4}/);
+  });
+
+  test('"give to all that are missing" asks first, then grants one by one with the note and the position', async () => {
+    const calls: unknown[][] = [];
+    const base = createDemoApi();
+    withApi(<TopLevelPage />, {
+      grantPass: async (userId: string, note: string) => {
+        calls.push([userId, note]);
+        return base.grantPass(userId, note);
+      },
+    });
+    const all = await screen.findByRole('button', { name: /Dar o Passe aos \d+ que faltam/ });
+    const n = Number(all.textContent?.match(/\d+/)?.[0]);
+    expect(n).toBeGreaterThan(0);
+    fireEvent.click(all);
+    expect(calls).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Sim, dar o Passe' }));
+    await waitFor(() => expect(calls).toHaveLength(n), { timeout: 15_000 });
+    expect(String(calls[0][1])).toMatch(/^Prêmio do playtest: Top 25 por nível \(posição \d+\)$/);
+    expect(await screen.findByText(`${n} Passes dados.`, {}, { timeout: 5_000 })).toBeTruthy();
+  });
+
+  test('a missing database function says which migration to apply', async () => {
+    withApi(<TopLevelPage />, { topLevel: async () => Promise.reject(new Error('function public.admin_top_level does not exist')) });
+    expect(await screen.findByText(/migração 0037/)).toBeTruthy();
   });
 });

@@ -37,8 +37,11 @@ describe('the source only calls the admin functions (reads, and the two audited 
   });
 
   test('deleting an account and granting or revoking the Pass are asked for from ONE component (and the api / backend / demo modules)', () => {
-    const users = sources.filter((s) => /\.(deleteUser|grantPass|revokePass)\(/.test(s.text) && !/(api|backend|demo)\.ts$/.test(s.f)).map((s) => s.f.replace(/\\/g, '/'));
+    const users = sources.filter((s) => /\.(deleteUser|revokePass)\(/.test(s.text) && !/(api|backend|demo)\.ts$/.test(s.f)).map((s) => s.f.replace(/\\/g, '/'));
     expect(users).toEqual(['components/AccountActions.tsx']);
+    // granting also from the playtest prize list (owner's decision, 22/10/2026: the Top 25 by level get the Pass), always with a note and a confirmation
+    const granters = sources.filter((s) => /\.grantPass\(/.test(s.text) && !/(api|backend|demo)\.ts$/.test(s.f)).map((s) => s.f.replace(/\\/g, '/'));
+    expect(granters.sort()).toEqual(['components/AccountActions.tsx', 'pages/TopLevel.tsx']);
   });
 
   test('creating and disabling promo codes are asked for from the Códigos page only (and the api / demo modules)', () => {

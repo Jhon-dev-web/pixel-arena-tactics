@@ -65,6 +65,9 @@ export default function ToolsPage() {
         <ToolCard href="#/pagamentos" icon="coin" title="Pagamentos a resolver" status={payState}>
           Pagamentos que chegaram sem uma compra correspondente. Os botões copiam o SQL para você rodar; o painel não executa nada sozinho.
         </ToolCard>
+        <ToolCard href="#/premio-playtest" icon="league" title="Prêmio do playtest: Top 25 por nível" status={{ text: 'Passe sem sorteio', tone: 'info' }}>
+          Os 25 heróis de nível mais alto, com a data em que chegaram (empate: quem chegou primeiro), e o botão para dar o Passe a cada um ou a todos de uma vez.
+        </ToolCard>
         <ToolCard href="#/codigos" icon="ticket" title="Códigos promocionais" status={codeState}>
           Criar códigos de Passe, ouro, Éter ou poção, ver quantos foram usados e desativar.
         </ToolCard>

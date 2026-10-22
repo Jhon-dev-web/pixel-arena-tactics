@@ -728,6 +728,32 @@ export function createDemoApi(): AdminApi {
       p.active = false;
       return delay({ status: 'disabled' as const });
     },
+    async topLevel(limit, until) {
+      // Invented dates: the higher the level, the earlier it was reached (with a few ties), so the tie-break is visible.
+      const cut = until ? Date.parse(until) : Date.now();
+      const all = w.players
+        .filter((p) => p.hero_level != null)
+        .map((p, i) => ({ p, level: (p.hero_level ?? 0) + (p.paragon_level ?? 0), at: cut - ((i * 37) % 300) * 60_000 - 3_600_000 }))
+        .sort((a, b) => b.level - a.level || a.at - b.at || a.p.user_id.localeCompare(b.p.user_id));
+      const rows = all.slice(0, Math.min(Math.max(limit, 1), 200)).map(({ p, level, at }, i) => ({
+        rank: i + 1,
+        user_id: p.user_id,
+        username: p.username,
+        hero_name: p.hero_name,
+        level,
+        hero_level: p.hero_level ?? 0,
+        paragon_level: p.paragon_level ?? 0,
+        reached_at: new Date(at).toISOString(),
+        last_seen: p.last_seen,
+        online: p.online,
+        pass_valid_now: Boolean(p.pass_valid_now),
+        pass_source: p.pass_source,
+        pass_livemode: p.pass_livemode,
+        open_flags: p.open_flags,
+        item_flags: p.item_flags,
+      }));
+      return delay({ until: new Date(cut).toISOString(), limit, ranked: all.length, rows });
+    },
     async grantPass(userId, note) {
       const p = w.players.find((x) => x.user_id === userId);
       if (!p) throw new ApiError('USER_NOT_FOUND');

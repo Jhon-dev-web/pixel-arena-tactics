@@ -16,6 +16,7 @@ const AiOps = lazy(() => import('./pages/AiOps'));
 const Pagamentos = lazy(() => import('./pages/Pagamentos'));
 const Codes = lazy(() => import('./pages/Codes'));
 const Tools = lazy(() => import('./pages/Tools'));
+const TopLevel = lazy(() => import('./pages/TopLevel'));
 
 /** The three screens of the menu (owner's request, 22/10/2026: organized, simple, few tabs). Every other page hangs under one of them. */
 export type Section = 'visao-geral' | 'jogadores' | 'ferramentas';
@@ -39,6 +40,7 @@ export const ROUTES: { id: string; label: string; icon: IconName; section: Secti
   { id: 'pagamentos', label: 'Pagamentos a resolver', icon: 'economy', section: 'ferramentas' },
   { id: 'codigos', label: 'Códigos', icon: 'ticket', section: 'ferramentas' },
   { id: 'ia-operacao', label: 'IA e operação', icon: 'shield', section: 'ferramentas' },
+  { id: 'premio-playtest', label: 'Prêmio do playtest', icon: 'league', section: 'ferramentas' },
 ];
 
 const PAGES: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
@@ -53,6 +55,7 @@ const PAGES: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
   codigos: Codes,
   'ia-operacao': AiOps,
   ferramentas: Tools,
+  'premio-playtest': TopLevel,
 };
 
 export function routeFromHash(hash: string): string {
