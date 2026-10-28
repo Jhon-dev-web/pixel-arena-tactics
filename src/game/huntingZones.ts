@@ -105,7 +105,12 @@ export interface HuntingZoneDef {
   id: string;
   nameKey: string;
   enemyId: HuntingEnemyId;
+  // The recommended CP of the shallow depth: ADVICE shown to the player (and the yardstick the enemy numbers were set against), not a lock since 28/10.
   cp: number;
+  // The equipment index (gearIndex.ts) the shallow depth asks to be STARTED; dense and deep add the depth's gearOffset (depthGearRequired). Declared, class-neutral, and the equivalent of what the CP gate asked of the
+  // plate / sword hero (ln CP = 5.419 + 0.555 x index, scripts/sim/classReach.sim.ts): the CP moved by class (archer 0.77-0.99 and mage 0.78-1.18 of the warrior at the same gear) and by every change of combat, so
+  // a hero in the same gear was let into a depth as a warrior and kept out as an archer.
+  depthGear: number;
   goldPerHour: number;
   // Rodada 31: the hero XP of ONE kill of this zone's monster at sub-level 1, Raso depth, before the depth (xpMultiplier), the size of the monster at its sub-level (the HP growth), the zone's own
   // sub-level bonus (xpPerSubLevel), the Relic and the Knowledge Elixir. The XP of a Hunting session is the sum of the XP of its kills (huntCombat.ts creditFight), so a hero that kills faster earns more
@@ -120,12 +125,16 @@ export interface HuntingZoneDef {
   // Rodada 22: the hero level that also opens the zone (in addition to the Dungeon floor). Absent = the floor alone opens it. Zone 3 asks level 40 and zone 4 level 60, so a hero
   // that bought gear cannot walk into the last zones on day 3: the XP of the League is paced by levels, not by the Dungeon floor alone.
   unlockLevel?: number;
-  // Rodada 22: a zone whose sub-levels pay more XP the deeper they go (+xpPerSubLevel per sub-level above 1, so +18% at sub-level 10 with 0.02) and that asks CP for each of them: the hero
-  // is PROMOTED to sub-level N only while his CP is at least recommendedCpForDepth x subLevelCpGrowth^(N - 1) (subLevelCpRequired), so the later sub-levels need the CP of tier 5 and 6 gear.
-  // The fights themselves keep the global sub-level growth (they are easy for a hero over the CP): the gate is the CP, not a lucky win that would trap the hero on a level he cannot farm.
-  // Absent = the usual flat XP and no CP gate.
+  // A zone whose sub-levels pay more XP the deeper they go (+xpPerSubLevel per sub-level above 1) and that PACES them by equipment: the hero is PROMOTED to sub-level N only while his equipment index
+  // (gearIndex.ts: tier + refine + rarity of the seven worn pieces, class-neutral) is at least subLevelGear.base + the depth's gearOffset + subLevelGear.step x (N - 1) (subLevelGearRequired); the promotion
+  // fight still has to be won. WHAT THE GATE IS (measured 28/10, scripts/sim/classReach.sim.ts): not a test of whether the hero can fight there. The fights keep the global sub-level growth and a tier 2-3
+  // common set already wins sub-level 10 of the abyss (index 2.4 to 4.0); the gate asks 3.9 to 7.4 there and 5.35 to 8.9 in the throne, three or four tiers more. It is a marker of progression pace: the
+  // sub-levels pay XP (+5% each), so they are handed out as the hero's gear grows. Until 28/10 the same gate was written in CP (recommendedCp x 1.23^(N-1)); the CP is measured from the stats, so it moved by
+  // class (archer 0.77-0.99 and mage 0.78-1.18 of the warrior at the same gear) and every time combat changed, and the old text claimed the gate protected the hero from "a lucky win" that would trap him.
+  // RULE (gearIndex.test.ts): the last sub-level of the deepest depth of every gated zone must be reachable with the best gear in the game (BEST_GEAR_INDEX); the throne of phase 7 broke it.
+  // Absent = the usual flat XP and no gate.
   xpPerSubLevel?: number;
-  subLevelCpGrowth?: number;
+  subLevelGear?: { base: number; step: number };
   // Sub-level-1, Raso-depth enemy stats — real combat stats (see huntCombat.ts), not decorative.
   // Used as-is for Denso/Profundo (scaled by the depth's cpMultiplier) and for Raso too, UNLESS the
   // zone defines its own shallow* override below.
@@ -168,6 +177,8 @@ export interface HuntingDepthDef {
   id: HuntingDepth;
   nameKey: string;
   cpMultiplier: number;
+  // Added to the equipment index a sub-level of this depth asks (subLevelGearRequired): the same step in tiers that cpMultiplier is in CP (ln(1.15) / 0.554 = 0.25, ln(1.3) / 0.554 = 0.47, rounded).
+  gearOffset: number;
   xpMultiplier: number;
   dropMultiplier: Record<DropRarity, number>;
 }
@@ -177,6 +188,7 @@ export const HUNTING_DEPTHS: HuntingDepthDef[] = [
     id: 'shallow',
     nameKey: 'depth_shallow',
     cpMultiplier: 1,
+    gearOffset: 0,
     xpMultiplier: 1,
     dropMultiplier: { common: 1, uncommon: 0.7, rare: 0.4 },
   },
@@ -184,6 +196,7 @@ export const HUNTING_DEPTHS: HuntingDepthDef[] = [
     id: 'dense',
     nameKey: 'depth_dense',
     cpMultiplier: 1.15,
+    gearOffset: 0.25,
     xpMultiplier: 1.15,
     dropMultiplier: { common: 1, uncommon: 1.15, rare: 0.9 },
   },
@@ -191,6 +204,7 @@ export const HUNTING_DEPTHS: HuntingDepthDef[] = [
     id: 'deep',
     nameKey: 'depth_deep',
     cpMultiplier: 1.3,
+    gearOffset: 0.5,
     xpMultiplier: 1.3,
     dropMultiplier: { common: 0.9, uncommon: 1.65, rare: 1.8 },
   },
@@ -207,14 +221,19 @@ export function recommendedCpForDepth(zone: HuntingZoneDef, depth: HuntingDepth)
   return Math.round(zone.cp * getHuntingDepthDef(depth).cpMultiplier);
 }
 
-export function isDepthUnlocked(zone: HuntingZoneDef, depth: HuntingDepth, playerCp: number): boolean {
-  return playerCp >= recommendedCpForDepth(zone, depth);
+// The equipment index a hunt of this zone at this depth asks to be started.
+export function depthGearRequired(zone: HuntingZoneDef, depth: HuntingDepth): number {
+  return Math.round((zone.depthGear + getHuntingDepthDef(depth).gearOffset) * 1000) / 1000;
 }
 
-// The CP a hero needs to be promoted to `subLevel` of this zone at this depth: 0 for a zone without a gate and for sub-level 1.
-export function subLevelCpRequired(zone: HuntingZoneDef, depth: HuntingDepth, subLevel: number): number {
-  if (!zone.subLevelCpGrowth || !(subLevel > 1)) return 0;
-  return Math.round(recommendedCpForDepth(zone, depth) * Math.pow(zone.subLevelCpGrowth, Math.floor(subLevel) - 1));
+export function isDepthUnlocked(zone: HuntingZoneDef, depth: HuntingDepth, gearIndex: number): boolean {
+  return gearIndex >= depthGearRequired(zone, depth);
+}
+
+// The equipment index a hero needs to be promoted to `subLevel` of this zone at this depth: 0 for a zone without a gate and for sub-level 1.
+export function subLevelGearRequired(zone: HuntingZoneDef, depth: HuntingDepth, subLevel: number): number {
+  if (!zone.subLevelGear || !(subLevel > 1)) return 0;
+  return Math.round((zone.subLevelGear.base + getHuntingDepthDef(depth).gearOffset + zone.subLevelGear.step * (Math.floor(subLevel) - 1)) * 1000) / 1000;
 }
 
 // Shared sub-level sanitizer: non-finite -> 1, otherwise floored and clamped to 1..T.hunting.subLevels.
@@ -273,6 +292,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     nameKey: 'hunt1',
     enemyId: 'demon',
     cp: 144,
+    depthGear: 0,
     shallowCp: 50,
     shallowEnemyHp: 180,
     shallowEnemyDmg: 4,
@@ -308,6 +328,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     nameKey: 'hunt2',
     enemyId: 'blood_monster',
     cp: 492,
+    depthGear: 1.4,
     goldPerHour: 5,
     xpPerKill: 16.4,
     xpRefKph: 150,
@@ -333,6 +354,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     nameKey: 'hunt3',
     enemyId: 'rift_fiend',
     cp: 1068,
+    depthGear: 2.8,
     goldPerHour: 8,
     xpPerKill: 40.8,
     xpRefKph: 125,
@@ -358,6 +380,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     nameKey: 'hunt4',
     enemyId: 'blood_abomination',
     cp: 1607,
+    depthGear: 3.5,
     goldPerHour: 12,
     xpPerKill: 51.6,
     xpRefKph: 145,
@@ -380,13 +403,16 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     // and a Legendary one two more than that (npm run sim:rarity), the fastest free set (Legendary +8) ends day 60 on 97.9 and a non-buyer Pass owner who plays smart on 82-84 (docs/BALANCE_CHANGES.md Rodada 26).
     // The sub-levels are where the power of the set becomes levels: (Rodada 24: sub-level 10 asked 15.6k CP in the deep depth; Rodada 26: 13.5k, which a Legendary set of tier 6 reaches, an Epic one of tier 6 +8 stops at 9 and a Common one at 7).
     xpPerSubLevel: 0.05,
-    subLevelCpGrowth: 1.23,
+    // Equipment-index gate (28/10), the old CP gate (recommended CP x 1.23^(N-1)) read for the plate / sword hero is base 3.5; 3.7 is the smallest base that keeps the Rodada 26 promise that an Epic set opens two sub-levels over a Common one (itemBalance.test.ts), with the Epic worth 0.65; +0.375 a sub-level, +0.25 / +0.5 for the dense / deep depth.
+    subLevelGear: { base: 3.7, step: 0.375 },
     baseEnemyHp: 7200,
     baseEnemyDmg: 28,
   },
   // Classes & equipment, phase 7: the fifth zone, for the second half of the season (day ~30 to 60), when the hero sits in the abyss. Every number extends the curve of the four before it, none is a new rule:
   //  - cp 3,600: the CP of a zone grows 3.4x, 2.2x, 1.5x; this one is 2.2x the abyss (3,600 is a T5+0 Common set at level 75, 3,126 in `npm run sim:sublevels`, plus a little), so the deep depth (x1.3 = 4,680)
-  //    opens where abyss sub-level 5 does, and its own sub-level gate (x1.23 as in the abyss) reaches sub-level 7 with a Legendary T6+8 set (17,974) and stops short of 10.
+  //    opens where abyss sub-level 5 does. Its sub-level gate (subLevelGear) was written in CP and copied from the abyss (x1.23 on a base 2.24x bigger): sub-level 10 of the deep depth asked 30,157 CP, which only the best
+  //    hero the game can build has (31,794), and the archer and the mage (0.77-0.99 and 0.78-1.18 of the warrior's CP at the same gear) were a sub-level or two behind. It is now an equipment index (28/10): base 4.5, so that
+  //    sub-level 10 of the deep depth asks 8.375 and the best gear (8.6) reaches it. Combat there is winnable from index 3.0 to 4.0 (classReach.sim.ts), so the base is a pacing choice, not a measured capacity.
   //  - baseEnemyHp x baseEnemyDmg grows with the CP squared (abyss 201.6k at 1,607, rift 91.2k at 1,068): 16,000 x 63 = 1.008M at 3,600, and the HP/damage ratio (254) is the abyss's (257).
   //  - xpPerKill 70 x xpRefKph 140 = 9,800 an hour at the reference pace, +31% over the abyss (7,482), after +47% and +65% of the two before; the abyss at sub-level 7 pays 67 a kill, so a hero who moves up
   //    earns more from the first sub-level on (+5% a sub-level, as the abyss).
@@ -399,6 +425,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     nameKey: 'hunt5',
     enemyId: 'abyss_sovereign',
     cp: 3600,
+    depthGear: 5,
     goldPerHour: 16,
     xpPerKill: 70,
     xpRefKph: 140,
@@ -416,7 +443,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     unlockFloor: 90,
     unlockLevel: 75,
     xpPerSubLevel: 0.05,
-    subLevelCpGrowth: 1.23,
+    subLevelGear: { base: 4.5, step: 0.375 },
     baseEnemyHp: 16000,
     baseEnemyDmg: 63,
   },

@@ -9,7 +9,7 @@ import { dungeonEnemyKindForFloor, isDungeonBoss, isDungeonCheckpoint } from '..
 import { getEnemyDef } from '../../src/game/enemies';
 import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
 import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
-import { gearOnly } from './duel';
+import { HeroMode, withMode } from './duel';
 
 export const TIER_GEAR: Record<number, [string, string]> = {
   1: ['bronze_dagger', 'bronze_leather'],
@@ -40,7 +40,11 @@ export interface LadderBuild {
   hero: SaveData;
 }
 
-export function buildHero(level: number, tier: number, refine: number, floor = 1): SaveData {
+// The heroes of the recommended-CP table (cpTable.gen.ts writes it, balance.test.ts checks it): the real player has the rotation, so the table is built with it (the class affinity stays out: it is measured with the classes).
+export const TABLE_MODE: HeroMode = 'rotation';
+// `mode`: which parts of the real player the hero carries (duel.ts HeroMode). The default is 'gear' (the empty rotation of the equipment audits and of round14 / round17); the recommended-CP table is built with the
+// rotation on (ladder(mode), cpTable.gen.ts), because the real player has it.
+export function buildHero(level: number, tier: number, refine: number, floor = 1, mode: HeroMode = 'gear'): SaveData {
   let hero: SaveData = { ...defaultSave(), xp: xpToReachLevel(level), highestDungeonFloor: floor };
   if (tier > 0) {
     const instances = { ...hero.gearInstances };
@@ -53,7 +57,7 @@ export function buildHero(level: number, tier: number, refine: number, floor = 1
     }
     hero = { ...hero, gearInstances: instances, equipped };
   }
-  return gearOnly(spendAttributePoints(hero)); // gear-only: see duel.ts gearOnly (and the REVIEW IN PHASE 8 of recommendedCp.ts)
+  return withMode(spendAttributePoints(hero), mode); // 'gear' = gear-only: see duel.ts gearOnly
 }
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 23, 26, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100];
@@ -62,24 +66,24 @@ const REFINES = [0, 4, 8];
 // floors 87-100 were all "no build clears this" and took the extrapolated value.
 const DEEP_REFINES = [10, 12];
 
-export function ladder(): LadderBuild[] {
+export function ladder(mode: HeroMode = TABLE_MODE): LadderBuild[] {
   // The brand-new hero, with its first three attribute points still unspent (CP 58): this is the CP a new player sees on floor 1.
-  const fresh = gearOnly({ ...defaultSave(), highestDungeonFloor: 1 });
+  const fresh = withMode({ ...defaultSave(), highestDungeonFloor: 1 }, mode);
   const out: LadderBuild[] = [{ label: 'fresh (points unspent)', level: 1, tier: 0, refine: 0, cp: computeCP(fresh), hero: fresh }];
   for (const level of LEVELS) {
-    out.push(mk(level, 0, 0));
+    out.push(mk(level, 0, 0, mode));
     for (const tier of [1, 2, 3, 4, 5, 6]) {
       // a build only exists once the level lets the player craft that tier (the weapon's recipe level)
       if (level < (getGear(TIER_GEAR[tier][0]).recipe?.requiredLevel ?? 0)) continue;
-      for (const r of REFINES) out.push(mk(level, tier, r));
-      if (tier >= 5 && level >= 60) for (const r of DEEP_REFINES) out.push(mk(level, tier, r));
+      for (const r of REFINES) out.push(mk(level, tier, r, mode));
+      if (tier >= 5 && level >= 60) for (const r of DEEP_REFINES) out.push(mk(level, tier, r, mode));
     }
   }
   return out.sort((a, b) => a.cp - b.cp);
 }
 
-function mk(level: number, tier: number, refine: number): LadderBuild {
-  const hero = buildHero(level, tier, refine);
+function mk(level: number, tier: number, refine: number, mode: HeroMode): LadderBuild {
+  const hero = buildHero(level, tier, refine, 1, mode);
   return { label: tier === 0 ? `Lv${level} starter` : `Lv${level} T${tier}+${refine}`, level, tier, refine, cp: computeCP(hero), hero };
 }
 
@@ -205,4 +209,19 @@ export function uncleared(builds: LadderBuild[], raw: number[], now: number): { 
     floors.push({ floor, power: stagePower(floor), bestBuild: best.label, bestCp: best.cp, bestWinRate: Math.round(bestRate * 100), neededCp: Math.round(Math.exp(a + b * Math.log(stagePower(floor)))) });
   });
   return { floors, fit: { a, b } };
+}
+
+// The five pieces of the tier besides the weapon and the armor (helmet, gloves, boots, ring, shield), common, at `refine`, worn by `save`: a hero with the whole set. The Hunting depth gate asks an EQUIPMENT INDEX
+// (gearIndex.ts, divisor always 7), and the heroes of `duel.ts hero()` wear only a weapon and an armor, so a test that needs one to START a hunt wears the rest of the set with this.
+// `only` limits it to some slots (a hero that must not reach the three weight pieces of the class affinity, which a save round trip switches back on).
+export function wearFullSet<S extends SaveData>(save: S, tier: number, refine: number, only?: string[]): S {
+  const instances = { ...save.gearInstances };
+  const equipped = { ...save.equipped } as unknown as Record<string, string | null>;
+  for (const [slot, tpl] of TIER_EXTRAS[tier]) {
+    if (only && !only.includes(slot)) continue;
+    const inst = createGearInstance(tpl, { id: `gi_${tpl}`, origin: 'craft', rarity: 'common', substats: [], upgrade: refine });
+    instances[inst.id] = inst;
+    equipped[slot] = inst.id;
+  }
+  return { ...save, gearInstances: instances, equipped: equipped as unknown as SaveData['equipped'] };
 }

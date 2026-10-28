@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hero } from '../../../scripts/sim/duel';
+import { wearFullSet } from '../../../scripts/sim/ladder';
 import { computeHuntingStatus, computeMiningStatus, defaultSave, normalizeSave, SaveData, xpToReachLevel } from '../engine';
 import { applyHuntStart } from '../huntLifecycle';
 import { applyDeliveryClaim } from '../deliveries';
@@ -143,7 +144,7 @@ describe('no League clock, no events', () => {
     expect(applyProfessionPick(s, 'mining', NOW0)).toBeNull();
     expect(eventGatherBonusHours('mining', NOW0 - 5 * HOUR_MS, 5 * HOUR_MS)).toBe(0);
     expect(eventSkillXpMultiplier(s, 'mining', NOW0 - HOUR_MS, NOW0)).toBe(1);
-    const h = { ...hero('5', 8, { level: 100, rarity: 'legendary' }), highestDungeonFloor: 100 };
+    const h = { ...wearFullSet(hero('5', 8, { level: 100, rarity: 'epic' }), 2, 4), highestDungeonFloor: 100 };
     const started = applyHuntStart(h, 'blood_abyss', 'shallow', NOW0 - 3 * HOUR_MS)!;
     expect(started.huntSession!.league).toBeUndefined();
   });
@@ -151,7 +152,7 @@ describe('no League clock, no events', () => {
 
 // ---- the hunts ------------------------------------------------------------------------------------------------------------------------------------
 
-const strong = (): SaveData => ({ ...hero('5', 8, { level: 100, rarity: 'legendary' }), xp: xpToReachLevel(100), highestDungeonFloor: 100 });
+const strong = (): SaveData => ({ ...wearFullSet(hero('5', 8, { level: 100, rarity: 'epic' }), 2, 4), xp: xpToReachLevel(100), highestDungeonFloor: 100 });
 /** A save that starts hunting `zone` 3 hours before `now`, under a League whose event `id` is running the whole time. */
 function huntDuring(id: string, save = strong(), zone = 'blood_abyss', depth: 'shallow' | 'deep' = 'shallow', hours = 3) {
   const w = slot(id);
@@ -191,6 +192,18 @@ describe('hero events change only the Hunting XP, and by little', () => {
     // the window rules say what the Target is
     const win = huntEventWindows(EPOCH, strongRun.startedAt, 6 * HOUR_MS).find((x) => x.id === 'target_hunt')!;
     expect(win).toMatchObject({ targetEvery: 300, targetHp: 2, targetDmg: 1.5, targetBuffPct: 0.08, targetBuffHours: 1.5 });
+  });
+
+  // The test above uses a hero of about 1.9 kills a minute on purpose: the Target buff of a win (+8 % for an hour and a half) STACKS with the ones of the wins before it (huntCombat.ts creditFight sums targetBuffs), and
+  // a Target comes every 300 fights, so the faster the hero kills the more buffs overlap. Measured (28/10, tier 5 hero in the abyss, 6 h): 1,667 kills -> x1.087, 2,269 -> x1.115, 3,008 -> x1.128, and 3,008 kills
+  // with the sub-level gates off gives x1.128 too, so it is the kill rate, not the fixture's progression. The real cap is EVENT_XP_CAP (+15 %), which is also what the server bound allows; the card says +8 %.
+  it('Cacada ao Alvo: for a FAST hero the buffs of several wins overlap, and the total still never passes the event cap', () => {
+    const fast = { ...wearFullSet(hero('5', 8, { level: 100, rarity: 'legendary' }), 5, 8), xp: xpToReachLevel(100), highestDungeonFloor: 100 };
+    const r = huntDuring('target_hunt', fast, 'blood_abyss', 'shallow', 6);
+    const ratio = r.event.xpReady / r.plain.xpReady;
+    expect(r.plain.kills).toBeGreaterThan(2500);
+    expect(ratio).toBeGreaterThan(1.1); // more than the +8 % of the card: the overlap
+    expect(ratio).toBeLessThanOrEqual(1 + EVENT_XP_CAP + 0.005); // and never more than the cap
   });
 
   it('only the hero events build Hunting windows, and only the ones that overlap the session', () => {

@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hero } from '../../../scripts/sim/duel';
+import { wearFullSet } from '../../../scripts/sim/ladder';
 import { buildHuntSession, computeHuntingStatus, defaultSave, normalizeSave, SaveData, xpToReachLevel } from '../engine';
 import { applyElixir } from '../elixirs';
 import { applyHuntClaim, applyHuntStart, applyHuntStop } from '../huntLifecycle';
@@ -25,7 +26,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
-const strong = (floor = 60): SaveData => ({ ...hero('4g', 4, { level: 60 }), highestDungeonFloor: floor, unlockedHuntingZones: unlockedZoneIds(floor) });
+const strong = (floor = 60): SaveData => ({ ...wearFullSet(hero('4g', 4, { level: 60 }), 4, 4), highestDungeonFloor: floor, unlockedHuntingZones: unlockedZoneIds(floor) });
 const give = (s: SaveData, n = 1): SaveData => ({ ...s, consumables: { ...s.consumables, knowledge_elixir: n } });
 const mats = (s: SaveData, m: Partial<Record<string, number>>): SaveData => ({ ...s, materials: { ...emptyMaterials(), ...s.materials, ...m } as SaveData['materials'] });
 

@@ -4,13 +4,14 @@ import { createGearInstance, equippedSubstatTotals } from '../gearInstances';
 import { cargoReferenceValue } from '../economy';
 import type { MaterialId } from '../materials';
 import { GOLD_BONUS_CAP, RARITIES, Rarity, SUBSTATS, medianSubstatValue, rollRarity, rollSubstats } from '../rarity';
-import { duel, hero, MAIN_TIERS, repFloor, tierNum, withoutSetBonuses } from '../../../scripts/sim/duel';
+import { duel, hero, MAIN_TIERS, repFloor, tierNum, withNeutralReturns, withoutSetBonuses } from '../../../scripts/sim/duel';
 import { withSeededRandom } from '../../../scripts/sim/driver';
 import { pieceGain } from '../../../scripts/sim/tierSteps';
 import { CLOTH_LINES, GEAR, GearItem, LEATHER_LINES, SWORD_TWINS, WEAPON_CRIT_KEEP, WEAPON_KEEP, WEAPON_LINES, gearRequiredLevel, getGear, isInstancedSlot, setFamiliesOf } from '../gear';
 import { buildHero } from '../../../scripts/sim/ladder';
 import { rarityHero } from '../../../scripts/sim/rarityHero';
-import { getHuntingZone, subLevelCpRequired } from '../huntingZones';
+import { getHuntingZone, subLevelGearRequired } from '../huntingZones';
+import { equipmentIndex } from '../gearIndex';
 import T from '../tunables';
 
 // Rules of the item balance round (docs/ITEM_BALANCE_AUDIT.md, docs/BALANCE_CHANGES.md "Rodada 3"):
@@ -18,6 +19,10 @@ import T from '../tunables';
 //   R5  a full seven-piece set (Rodada 26): rare 1.10-1.25 times the CP of a common one, epic 1.30-1.55, legendary 1.9-2.4, and the step epic -> legendary is at least 1.5 times;
 //   R2  no combat substat worth more than 2x another at its median roll (goldBonus exempt, capped at +25 % in total);
 //   R4  forge chances are 61 / 25 / 10 / 4 (Rodada 9 had 63 / 25 / 10 / 2; Rodada 26 doubled the Legendary because the market had too few and added a pity after 40 forges of tier 4+).
+
+// The parity tests of the light lines judge the numbers the GENERATOR solves (gear.ts RETURNS_BASE: the CP-parity solution); the live pieces carry the phase 8 dial on top of them (gear.ts RETURN_SCALE), which is
+// the class balance and is measured on the axes (scripts/sim/classBalance.sim.ts), not on CP. This keeps the guard on a stale generated block exactly as strict as it was.
+const neutral = (fn: () => void) => () => withNeutralReturns(fn);
 
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
@@ -78,15 +83,15 @@ describe('R5: what a rarity is worth for a whole set (the buyer view)', () => {
     });
   }
 
-  // Rodada 26: the Hunting sub-levels (the Abyss CP gate) are where a rarity becomes levels. Same full set, same refine: the Epic opens two sub-levels more than the Common, the Legendary two more than the Epic
+  // Rodada 26: the Hunting sub-levels (the Abyss gate, an equipment index since 28/10) are where a rarity becomes levels. Same full set, same refine: the Epic opens two sub-levels more than the Common, the Legendary two more than the Epic
   // (the last one at tier 6, where the ten sub-levels run out).
   for (const [tier, level, refine] of [[4, 62, 8], [5, 75, 8], [6, 90, 8]] as [number, number, number][]) {
     it(`tier ${tier} +${refine}: the Epic set opens two more sub-levels than the Common one, the Legendary reaches the top`, () => {
       const zone = getHuntingZone('blood_abyss')!;
       const reach = (r: Rarity): number => {
-        const cp = computeCP(rarityHero(level, tier, refine, r));
+        const index = equipmentIndex(rarityHero(level, tier, refine, r));
         let n = 1;
-        while (n < T.hunting.subLevels && cp >= subLevelCpRequired(zone, 'deep', n + 1)) n++;
+        while (n < T.hunting.subLevels && index >= subLevelGearRequired(zone, 'deep', n + 1)) n++;
         return n;
       };
       expect(reach('epic') - reach('common'), 'epic over common').toBeGreaterThanOrEqual(2);
@@ -237,7 +242,7 @@ describe('R7: the leather line', () => {
   };
 
   for (const t of [1, 2, 3, 4, 5, 6]) {
-    it(`tier ${t}: a full leather set (armor, helmet, gloves, boots, quiver) is within +-5 % of the CP of the full plate set, at +0, +4 and +8, with and without the set bonuses`, () => {
+    it(`tier ${t}: a full leather set (armor, helmet, gloves, boots, quiver) is within +-5 % of the CP of the full plate set, at +0, +4 and +8, with and without the set bonuses`, neutral(() => {
       for (const refine of [0, 4, 8]) {
         const plateNo = computeCP_noSets(setHero(t, false, refine));
         const leatherNo = computeCP_noSets(setHero(t, true, refine));
@@ -247,7 +252,7 @@ describe('R7: the leather line', () => {
         expect(r, `+${refine} with the set bonuses`).toBeGreaterThanOrEqual(0.95);
         expect(r, `+${refine} with the set bonuses`).toBeLessThanOrEqual(1.05);
       }
-    });
+    }));
   }
 
   it('every leather piece is the lighter twin of a plate piece: same price and level gate, 60 % of the defense, crit and attack speed instead of reflect, and its own set family and look', () => {
@@ -271,9 +276,9 @@ describe('R7: the leather line', () => {
     }
   });
 
-  it('a leather piece is never below the plate piece of the tier before it in the power it adds (the lighter weight is a trade, not a downgrade)', () => {
-    for (const l of LEATHER_LINES) for (let i = 1; i < 6; i++) expect(pieceGain(l.ids[i]), `${l.ids[i]} vs ${l.twins[i - 1]}`).toBeGreaterThan(pieceGain(l.twins[i - 1]));
-  });
+  // (the cross-line check "adds more CP than the piece of the tier before" lived here until 28/10. CP stopped being the judge of class fairness (docs/CLASSES_E_EQUIPAMENTOS.md 2.5) and stopped opening and
+  // closing anything (the Hunting depth and sub-level gates read the equipment index now, gearIndex.ts), so it no longer protects a promise. What replaces it is TWO guards: R8 at the end of this file (no piece
+  // is strictly dominated by a lower-tier one) and classAxes.test.ts (each class beats its own axis by 15-20 % and none falls more than 10 % behind on the others).)
 
   it('cost parity: from tier 3 a leather piece asks for every hunting / refined family its plate twin asks for, and the total reference cost (Gold + materials) is within 15 % of the twin', () => {
     const own = (id: string): number => {
@@ -333,7 +338,7 @@ describe('R7: the cloth line', () => {
   };
 
   for (const t of [1, 2, 3, 4, 5, 6]) {
-    it(`tier ${t}: a full cloth set (robe, hood, gloves, boots, tome) is within +-5 % of the CP of the full plate set, at +0, +4 and +8, with and without the set bonuses`, () => {
+    it(`tier ${t}: a full cloth set (robe, hood, gloves, boots, tome) is within +-5 % of the CP of the full plate set, at +0, +4 and +8, with and without the set bonuses`, neutral(() => {
       for (const refine of [0, 4, 8]) {
         const noSets = computeCP_noSets(setHero(t, true, refine)) / computeCP_noSets(setHero(t, false, refine));
         expect(noSets, `+${refine} pieces only`).toBeGreaterThanOrEqual(0.95);
@@ -342,7 +347,7 @@ describe('R7: the cloth line', () => {
         expect(sets, `+${refine} with the set bonuses`).toBeGreaterThanOrEqual(0.95);
         expect(sets, `+${refine} with the set bonuses`).toBeLessThanOrEqual(1.05);
       }
-    });
+    }));
   }
 
   it('every cloth piece is the lighter twin of a plate piece: same price and level gate, 60 % of the defense, crit multiplier and regeneration instead of reflect and crit chance, and its own set family and look', () => {
@@ -369,9 +374,9 @@ describe('R7: the cloth line', () => {
     }
   });
 
-  it('a cloth piece is never below the plate piece of the tier before it in the power it adds (the lighter weight is a trade, not a downgrade)', () => {
-    for (const l of CLOTH_LINES) for (let i = 1; i < 6; i++) expect(pieceGain(l.ids[i]), `${l.ids[i]} vs ${l.twins[i - 1]}`).toBeGreaterThan(pieceGain(l.twins[i - 1]));
-  });
+  // (the cross-line check "adds more CP than the piece of the tier before" lived here until 28/10. CP stopped being the judge of class fairness (docs/CLASSES_E_EQUIPAMENTOS.md 2.5) and stopped opening and
+  // closing anything (the Hunting depth and sub-level gates read the equipment index now, gearIndex.ts), so it no longer protects a promise. What replaces it is TWO guards: R8 at the end of this file (no piece
+  // is strictly dominated by a lower-tier one) and classAxes.test.ts (each class beats its own axis by 15-20 % and none falls more than 10 % behind on the others).)
 
   it('cost parity: from tier 3 a cloth piece asks for every hunting / refined family its plate twin asks for, and the total reference cost (Gold + materials) is within 15 % of the twin', () => {
     const own = (id: string): number => {
@@ -432,7 +437,7 @@ describe('R7: the weapon lines', () => {
 
   for (const l of WEAPON_LINES) {
     for (const t of [1, 2, 3, 4, 5, 6]) {
-      it(`${l.line} tier ${t} (${l.ids[t - 1]}): within +-5 % of the CP of the sword, at +0, +4 and +8, with and without the set bonuses`, () => {
+      it(`${l.line} tier ${t} (${l.ids[t - 1]}): within +-5 % of the CP of the sword, at +0, +4 and +8, with and without the set bonuses`, neutral(() => {
         for (const refine of [0, 4, 8]) {
           const noSets = computeCP_noSets(swapWeapon(t, l.ids[t - 1], refine)) / computeCP_noSets(swapWeapon(t, undefined, refine));
           expect(noSets, `+${refine} pieces only`).toBeGreaterThanOrEqual(0.95);
@@ -441,7 +446,7 @@ describe('R7: the weapon lines', () => {
           expect(sets, `+${refine} with the set bonuses`).toBeGreaterThanOrEqual(0.95);
           expect(sets, `+${refine} with the set bonuses`).toBeLessThanOrEqual(1.05);
         }
-      });
+      }));
     }
   }
 
@@ -516,9 +521,9 @@ describe('R7: the weapon lines', () => {
     }
   });
 
-  it('a weapon is never below the sword of the tier before it in the power it adds (the lighter line is a trade, not a downgrade)', () => {
-    for (const l of WEAPON_LINES) for (let i = 1; i < 6; i++) expect(pieceGain(l.ids[i]), `${l.ids[i]} vs ${SWORD_TWINS[i - 1]}`).toBeGreaterThan(pieceGain(SWORD_TWINS[i - 1]));
-  });
+  // (the cross-line check "adds more CP than the piece of the tier before" lived here until 28/10. CP stopped being the judge of class fairness (docs/CLASSES_E_EQUIPAMENTOS.md 2.5) and stopped opening and
+  // closing anything (the Hunting depth and sub-level gates read the equipment index now, gearIndex.ts), so it no longer protects a promise. What replaces it is TWO guards: R8 at the end of this file (no piece
+  // is strictly dominated by a lower-tier one) and classAxes.test.ts (each class beats its own axis by 15-20 % and none falls more than 10 % behind on the others).)
 
   it('cost parity: from tier 3 a weapon asks for every hunting / refined family its sword asks for, and the total reference cost (Gold + materials) is within 15 % of the sword', () => {
     const own = (id: string): number => {
@@ -601,5 +606,34 @@ describe('R6: a unique is 10-15 % better than the crafted twin of the tier the h
     expect(getGear('overlord_greataxe').burn).toBeUndefined();
     expect(getGear('bonecrusher_maul').line).toBeUndefined();
     expect(getGear('bonecrusher_maul').burn).toBe(true);
+  });
+});
+
+// --- R8: no piece is dominated by a piece of a lower tier (classes reform, phase 8) -----------------------------------------------------------------------------------------------------
+// An ADDITIONAL promise to the player, next to the CP checks above (which stay: CP parity is a structural requirement of the Hunting sub-level gate even though it is not the measure of fairness). A piece of a
+// higher tier must never be WORSE IN EVERYTHING than a piece of the same slot he could already forge at a lower tier, whatever its line. Worse in some stats and better in others is a trade; worse in all is a trap.
+describe('R8: no crafted piece is strictly dominated by a lower-tier piece of the same slot', () => {
+  const STATS = ['damage', 'critChance', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'attackSpeedBonus', 'hpRegenPct'] as const;
+  const val = (g: GearItem, k: (typeof STATS)[number]): number => g[k] ?? 0;
+  // q dominates p when q is at least as good in every stat (the burn counts) and better in at least one
+  const dominates = (q: GearItem, p: GearItem): boolean =>
+    STATS.every((k) => val(q, k) >= val(p, k)) && (q.burn || !p.burn) && (STATS.some((k) => val(q, k) > val(p, k)) || (q.burn && !p.burn));
+  const crafted = GEAR.filter((g) => g.recipe && !g.unique && isInstancedSlot(g.slot));
+  const newPieces = crafted.filter((g) => g.weight === 'leather' || g.weight === 'cloth' || g.line === 'bow' || g.line === 'crossbow' || g.line === 'staff' || g.line === 'scepter');
+
+  it('the 84 pieces of the classes reform are all checked', () => {
+    expect(newPieces).toHaveLength(84);
+  });
+
+  it('none of them (tier 2 and up) is worse in every stat than a piece of its slot from a lower tier, of any line', () => {
+    for (const p of newPieces) {
+      for (const q of crafted.filter((x) => x.slot === p.slot && (x.tier ?? 0) < (p.tier ?? 0))) expect(dominates(q, p), `${p.id} (tier ${p.tier}) is dominated by ${q.id} (tier ${q.tier})`).toBe(false);
+    }
+  });
+
+  it('the same holds for every other crafted piece (the original lines were never dominated and must stay so)', () => {
+    for (const p of crafted.filter((g) => !newPieces.includes(g))) {
+      for (const q of crafted.filter((x) => x.slot === p.slot && (x.tier ?? 0) < (p.tier ?? 0))) expect(dominates(q, p), `${p.id} is dominated by ${q.id}`).toBe(false);
+    }
   });
 });

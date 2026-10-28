@@ -7,6 +7,7 @@ import CalendarScreen from '../../components/calendar/CalendarScreen';
 import { calendarView, formatEnd, monthGrid, monthOf, shiftMonth } from '../../components/calendar/calendarModel';
 import { eventsView } from '../../components/events/eventsModel';
 import { hero } from '../../../scripts/sim/duel';
+import { wearFullSet } from '../../../scripts/sim/ladder';
 import { applyHuntStart } from '../huntLifecycle';
 import { computeHuntingStatus, defaultSave, SaveData, xpToReachLevel } from '../engine';
 import { sanitizeHuntSession } from '../huntSession';
@@ -371,7 +372,7 @@ describe('the Calendario screen', () => {
 });
 
 describe('a Hunting session under a dated event', () => {
-  const strong = (): SaveData => ({ ...hero('5', 8, { level: 100, rarity: 'legendary' }), xp: xpToReachLevel(100), highestDungeonFloor: 100 });
+  const strong = (): SaveData => ({ ...wearFullSet(hero('5', 8, { level: 100, rarity: 'legendary' }), 2, 4), xp: xpToReachLevel(100), highestDungeonFloor: 100 });
   const run = (withEvent: boolean) => {
     const w = seed.find((s) => s.id === 'launch_festival')!;
     const now = w.startMs + 5 * HOUR_MS;

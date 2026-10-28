@@ -25,6 +25,8 @@ export interface TimeWindow {
 
 export interface HuntSession {
   stats: CombatStats;
+  // The equipment index (gearIndex.ts) the hero had when the session STARTED, which the sub-level gate of the zone reads (a session saved before it existed reads the live one).
+  gearIndex?: number;
   blessed: boolean;
   strength: TimeWindow[];
   attack: TimeWindow[];
@@ -229,6 +231,7 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
       // AGI and the speed bonus feed the Haste Tonic's interval; a session saved before they existed falls back to dividing heroMs.
       ...(n(s.agi, 0, ceil) !== null ? { agi: n(s.agi, 0, ceil)!, speedBonus: n(s.speedBonus, 0, 10) ?? 0 } : {}),
     },
+    ...(finiteNum(r.gearIndex) && r.gearIndex >= 0 && r.gearIndex <= 20 ? { gearIndex: r.gearIndex } : {}),
     blessed: r.blessed === true,
     strength: sanitizeWindows(r.strength),
     attack: sanitizeWindows(r.attack),

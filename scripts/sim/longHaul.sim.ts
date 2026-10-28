@@ -1,3 +1,6 @@
+// REPRODUCIBILITY (phase 8, 2026-10-28): a (scenario, seed) pair is byte-identical from run to run, whatever the order of the seeds in a process and the number of processes (checked: A:1 three times, PW:1, XPG:1 and P:1 twice
+// in parallel). What changes a table between two rounds is the CODE under the sim, the number of seeds (a table is a median across them), the days and the scenarios - not the random numbers. `LONG_TABLES=1 npm run sim:long`
+// pins the last three and writes manifest.meta with the HEAD it was played on. (docs/CLASSES_E_EQUIPAMENTOS.md 5.1.5 attributed the drift to the simulator; it was not.)
 // Long-horizon progression simulation: days 1-180 for a normal player (scenario A, 2 check-ins a day, no Pass) and for an Adventurer Pass owner (scenario P).
 // Run it with `npm run sim:long` (scripts/sim/long.mjs spreads the seeds over a few processes, then prints the report). It asserts nothing and is NOT part of `npm test`.
 //

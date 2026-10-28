@@ -24,6 +24,8 @@ import { estimateHuntYield, HuntYieldEstimate } from '../game/huntEstimate';
 import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInventory';
 import { MaterialId } from '../game/materials';
 import WholesaleLink from './WholesaleLink';
+import SubLevelNeed from './SubLevelNeed';
+import { equipmentIndex } from '../game/gearIndex';
 import { defaultZone, depthsOpen, fmtSpan, matName, startBlockedReason, subLevelNotes, zoneDifficulty, zoneLockedText, zoneState } from '../game/huntView';
 import { Button, Chip, ModalShell, Panel } from './ui';
 
@@ -80,7 +82,8 @@ export default function HuntSelection({
   onClose: () => void;
 }) {
   const playerCp = computeCP(save);
-  const [zoneId, setZoneId] = useState(() => defaultZone(HUNTING_ZONES, save, playerCp).id);
+  const gear = equipmentIndex(save); // the depth gate asks equipment, the CP is shown as advice
+  const [zoneId, setZoneId] = useState(() => defaultZone(HUNTING_ZONES, save, gear).id);
   const [depthByZone, setDepthByZone] = useState<Record<string, HuntingDepth>>({});
   // Phones show one pane at a time: the zone list first, then the chosen zone's detail.
   const [step, setStep] = useState<'list' | 'detail'>('list');
@@ -105,7 +108,7 @@ export default function HuntSelection({
   const progress = getHuntProgress(save, zone.id, depth);
   const required = huntPromotionRequiredWins(progress.ceiling);
   const maxed = progress.ceiling >= T.hunting.subLevels;
-  const blocked = startBlockedReason(save, zone, depth, playerCp);
+  const blocked = startBlockedReason(save, zone, depth, gear);
   // The inventory the hunt would meet: its free space now, and whether this hero's estimated yield would overflow it before the storage cap (an estimate).
   const depthEstimate = estimates[HUNTING_DEPTHS.findIndex((d) => d.id === depth)] ?? null;
   const passActive = ownsAdventurerPass(save);
@@ -114,7 +117,7 @@ export default function HuntSelection({
   const inv = huntInventoryStatus(save, zone.id, {});
   const perHour: Partial<Record<MaterialId, number>> = {};
   for (const m of depthEstimate?.materialsPerHour ?? []) perHour[m.material] = m.perHour;
-  const headChip = chipOf(!zoneOpen, zoneDifficulty(zone, depth, playerCp, depthEstimate?.outlook ?? null));
+  const headChip = chipOf(!zoneOpen, zoneDifficulty(zone, depth, gear, depthEstimate?.outlook ?? null));
   const overflowIn = zoneOpen && depthEstimate && depthEstimate.outlook !== 'cannot' ? hoursUntilInventoryFull(save, zone.id, {}, perHour, capHours) : null;
   const notes = subLevelNotes(zone, depth, progress.ceiling);
 
@@ -135,8 +138,8 @@ export default function HuntSelection({
           <Panel title={t('hunting.zonesTitle')} className="hs-zones">
             <div className="hs-zone-list">
               {HUNTING_ZONES.map((z) => {
-                const zs = zoneState(z, save, playerCp);
-                const rowChip = chipOf(zs === 'locked', zoneDifficulty(z, 'shallow', playerCp, shallowOutlooks[z.id] ?? null));
+                const zs = zoneState(z, save, gear);
+                const rowChip = chipOf(zs === 'locked', zoneDifficulty(z, 'shallow', gear, shallowOutlooks[z.id] ?? null));
                 return (
                   <button
                     type="button"
@@ -157,7 +160,7 @@ export default function HuntSelection({
                       ) : (
                         <>
                           <span className="hs-zone-sub">{t('hunting.cpNeeded', { n: fmtNum(recommendedCpForDepth(z, 'shallow')) })}</span>
-                          <span className="hs-zone-sub">{t('hunting.depthsOpen', { n: depthsOpen(z, playerCp), m: HUNTING_DEPTHS.length })}</span>
+                          <span className="hs-zone-sub">{t('hunting.depthsOpen', { n: depthsOpen(z, gear), m: HUNTING_DEPTHS.length })}</span>
                         </>
                       )}
                       <Chip tone={rowChip.tone}>{rowChip.label}</Chip>
@@ -221,7 +224,7 @@ export default function HuntSelection({
                         zone={zone}
                         depthId={def.id}
                         selected={depth === def.id}
-                        unlocked={isDepthUnlocked(zone, def.id, playerCp)}
+                        unlocked={isDepthUnlocked(zone, def.id, gear)}
                         estimate={estimates[i] ?? null}
                         onPick={() => setDepthByZone((prev) => ({ ...prev, [zone.id]: def.id }))}
                       />
@@ -234,7 +237,7 @@ export default function HuntSelection({
                   <p className="hs-meter-text">{maxed ? t('hunting.subLevelMax') : promotionLine(progress.promotionWins, required, progress.ceiling)}</p>
                   <p className="hs-hint">{t('hunting.subLevelExplain')}</p>
                   {notes.xpPct > 0 && <p className="hs-hint">{t('hunting.subLevelXp', { n: notes.xpPct })}</p>}
-                  {!maxed && notes.nextCp > 0 && <p className="hs-hint">{t('hunting.subLevelNeedCp', { cp: fmtNum(notes.nextCp) })}</p>}
+                  {!maxed && notes.nextGear > 0 && <SubLevelNeed required={notes.nextGear} />}
                 </Panel>
 
                 <Panel tone="inset" className="hs-facts">

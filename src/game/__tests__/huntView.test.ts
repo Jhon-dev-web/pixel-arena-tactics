@@ -24,21 +24,24 @@ describe('Hunt screen helpers', () => {
   it('zone state: locked by floor, hard when not even the shallow depth is open, ok otherwise', () => {
     const [glade, marsh] = HUNTING_ZONES;
     const save = { ...defaultSave(), highestDungeonFloor: 30 };
-    expect(zoneState(glade, save, 100)).toBe('ok');
-    expect(zoneState(marsh, save, 100)).toBe('hard');
-    expect(zoneState(marsh, save, 10_000)).toBe('ok');
-    expect(zoneState(marsh, { ...save, highestDungeonFloor: 5 }, 10_000)).toBe('locked');
-    expect(depthsOpen(marsh, 10_000)).toBe(3);
-    expect(depthsOpen(marsh, 100)).toBe(0);
-    expect(defaultZone(HUNTING_ZONES, save, 100).id).toBe(glade.id);
+    // the third argument is the equipment index (gearIndex.ts): a fresh hero is 0, the marsh asks 1.4 to start and 1.9 for its deep depth
+    expect(zoneState(glade, save, 0)).toBe('ok');
+    expect(zoneState(marsh, save, 0)).toBe('hard');
+    expect(zoneState(marsh, save, 8)).toBe('ok');
+    expect(zoneState(marsh, { ...save, highestDungeonFloor: 5 }, 8)).toBe('locked');
+    expect(depthsOpen(marsh, 8)).toBe(3);
+    expect(depthsOpen(marsh, 0)).toBe(0);
+    expect(depthsOpen(marsh, 1.5)).toBe(1);
+    expect(defaultZone(HUNTING_ZONES, save, 0).id).toBe(glade.id);
   });
 
-  it('says why a hunt cannot start, in the order floor, CP, pending reward, busy hero', () => {
+  it('says why a hunt cannot start, in the order floor, equipment, pending reward, busy hero', () => {
     const [glade, marsh] = HUNTING_ZONES;
     const save = defaultSave();
-    expect(startBlockedReason(save, glade, 'shallow', 100)).toBeNull();
-    expect(startBlockedReason(save, marsh, 'shallow', 10_000)?.key).toBe('hunting.startLocked');
-    expect(startBlockedReason({ ...save, highestDungeonFloor: 30 }, marsh, 'shallow', 100)?.key).toBe('hunting.startNeedCp');
-    expect(startBlockedReason({ ...save, activeOreId: 'copper' }, glade, 'shallow', 100)?.key).toBe('hunting.startBusy');
+    expect(startBlockedReason(save, glade, 'shallow', 0)).toBeNull();
+    expect(startBlockedReason(save, marsh, 'shallow', 8)?.key).toBe('hunting.startLocked');
+    // the marsh shallow asks index 1.4: "a tier 1 +4 set" is the smallest common set that reaches it
+    expect(startBlockedReason({ ...save, highestDungeonFloor: 30 }, marsh, 'shallow', 0)).toEqual({ key: 'hunting.startNeedGear', vars: { tier: 1, refine: 4 } });
+    expect(startBlockedReason({ ...save, activeOreId: 'copper' }, glade, 'shallow', 0)?.key).toBe('hunting.startBusy');
   });
 });

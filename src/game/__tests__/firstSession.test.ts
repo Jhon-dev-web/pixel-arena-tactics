@@ -9,7 +9,7 @@ import { GUIDED_DESCENT_FLOOR, nextTutorialStep, TUTORIAL_ORDER, tutorialStepDon
 import { defeatGoldKept } from '../waves';
 import T from '../tunables';
 import { ATTRIBUTE_POINTS_PER_LEVEL, extendLevelUp, levelUpSummary } from '../levelUp';
-import { HUNTING_ZONES, recommendedCpForDepth } from '../huntingZones';
+import { depthGearRequired, HUNTING_ZONES } from '../huntingZones';
 import { zoneDifficulty } from '../huntView';
 
 // The XP at which a hero reaches `level`.
@@ -150,11 +150,12 @@ describe('level-up summary', () => {
 
 describe('hunt zone difficulty', () => {
   const zone = HUNTING_ZONES[0];
-  const need = recommendedCpForDepth(zone, 'shallow');
+  const need = depthGearRequired(HUNTING_ZONES[1], 'shallow'); // the marsh: the first depth that asks equipment (the glade shallow asks none, a brand-new hero starts there)
 
-  it('under the CP the depth asks for is "too strong", whatever the estimate says', () => {
-    expect(zoneDifficulty(zone, 'shallow', need - 1, 'always')).toBe('tooStrong');
-    expect(zoneDifficulty(zone, 'shallow', 0, null)).toBe('tooStrong');
+  it('under the equipment index the depth asks for is "too strong", whatever the estimate says', () => {
+    expect(zoneDifficulty(HUNTING_ZONES[1], 'shallow', need - 0.1, 'always')).toBe('tooStrong');
+    expect(zoneDifficulty(HUNTING_ZONES[1], 'shallow', 0, null)).toBe('tooStrong');
+    expect(zoneDifficulty(zone, 'shallow', 0, 'always')).toBe('ready'); // the glade shallow: a fresh hero (index 0) can start it
   });
 
   it('startable: the estimate decides between ready, risky and too strong', () => {
@@ -164,11 +165,12 @@ describe('hunt zone difficulty', () => {
     expect(zoneDifficulty(zone, 'shallow', need, 'cannot')).toBe('tooStrong');
   });
 
-  it('a zone is never "ready" for a hero who cannot start it (the CP line and the chip agree)', () => {
+  it('a zone is never "ready" for a hero who cannot start it (the equipment line and the chip agree)', () => {
     for (const z of HUNTING_ZONES) {
-      for (const cp of [0, 58, 200, 5000]) {
-        const required = recommendedCpForDepth(z, 'shallow');
-        if (cp < required) expect(zoneDifficulty(z, 'shallow', cp, 'always')).toBe('tooStrong');
+      for (const gear of [0, 1, 2.5, 4, 8]) {
+        const required = depthGearRequired(z, 'shallow');
+        if (gear < required) expect(zoneDifficulty(z, 'shallow', gear, 'always')).toBe('tooStrong');
+        else expect(zoneDifficulty(z, 'shallow', gear, 'always')).toBe('ready');
       }
     }
   });

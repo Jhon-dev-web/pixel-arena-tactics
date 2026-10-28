@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import T, { setTunableListener } from './game/tunables';
 import {
   addBattlePassXp,
-  computeCP,
   computeGardenStatuses,
   isBuffActive,
   computeMiningStatus,
@@ -140,6 +139,7 @@ import { highlightTarget } from './components/highlight';
 import { crossedMilestoneFloors, getMilestoneReward, MAX_DUNGEON_FLOOR } from './game/dungeon';
 import { RunRewards } from './game/waves';
 import { depthsUnlocked, nextDepthStage } from './game/depths';
+import { equipmentIndex } from './game/gearIndex';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneOpen, unlockedZoneIds } from './game/huntingZones';
 import { ExpeditionRewards, expeditionRewards, getExpedition } from './game/expedition';
 import { isDeliveryReady } from './game/deliveries';
@@ -1796,7 +1796,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const zone = getHuntingZone(zoneId);
     if (!zone || !isZoneOpen(zone, s.highestDungeonFloor, playerLevel(s.xp))) return;
     if (s.activeHuntingZone === zoneId && s.activeHuntingDepth === depth) return;
-    if (!isDepthUnlocked(zone, depth, computeCP(s))) return;
+    if (!isDepthUnlocked(zone, depth, equipmentIndex(s))) return;
     if (s.craftJob) {
       setBusyNotice('craft');
       return;

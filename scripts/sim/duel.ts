@@ -9,9 +9,9 @@ import { getEnemyDef } from '../../src/game/enemies';
 import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
 import type { CombatStats } from '../../src/game/derivedStats';
 import T from '../../src/game/tunables';
-import { spendAttributePoints } from './driver';
+import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
 import { SET_DEFS } from '../../src/game/setBonuses';
-import { SET_FAMILIES } from '../../src/game/gear';
+import { getGear, RETURNS_BASE, SET_FAMILIES } from '../../src/game/gear';
 
 // Weapon + armor of each tier and the character level that can craft them. Tier 4 has two pairs (gilded / dragon).
 export const PAIRS: Record<string, [string, string, number]> = {
@@ -32,6 +32,24 @@ export function withoutSetBonuses<T>(fn: () => T): T {
     return fn();
   } finally {
     SET_FAMILIES.forEach((f, i) => (SET_DEFS[f].thresholds = saved[i]));
+  }
+}
+// Runs fn with the returned stats of the light lines at their CP-parity solution (gear.ts RETURN_SCALE = 1): the numbers the generator solves and the parity tests of itemBalance.test.ts judge. The live pieces carry the dial.
+export function withNeutralReturns<T>(fn: () => T): T {
+  const saved: [Record<string, number | undefined>, Record<string, number | undefined>][] = [];
+  for (const [id, base] of Object.entries(RETURNS_BASE)) {
+    const g = getGear(id) as unknown as Record<string, number | undefined>;
+    const keep: Record<string, number | undefined> = {};
+    for (const k of Object.keys(base)) {
+      keep[k] = g[k];
+      g[k] = (base as Record<string, number | undefined>)[k] || undefined;
+    }
+    saved.push([g, keep]);
+  }
+  try {
+    return fn();
+  } finally {
+    for (const [g, keep] of saved) Object.assign(g, keep);
   }
 }
 export const MAIN_TIERS = ['1', '2', '3', '4g', '5', '6'];
@@ -63,6 +81,17 @@ export function automaticRotation<S extends SaveData>(s: S): S {
   delete out.rotation;
   return out as S;
 }
+// The hero a real player is: the automatic rotation AND the class affinity (nothing switched off). The class balance measures (classBalance.sim.ts) use this one.
+export function realHero<S extends SaveData>(s: S): S {
+  const out = { ...automaticRotation(s) } as Partial<SaveData>;
+  delete out.noAffinity;
+  return out as S;
+}
+// Which parts of the real player a measure switches on: 'gear' = none (gearOnly), 'rotation' = the equipment abilities only, 'real' = rotation and class affinity.
+export type HeroMode = 'gear' | 'rotation' | 'real';
+export function withMode<S extends SaveData>(s: S, mode: HeroMode): S {
+  return mode === 'gear' ? gearOnly(s) : mode === 'rotation' ? { ...automaticRotation(s), noAffinity: true } : realHero(s);
+}
 
 // A level-appropriate hero wearing the weapon + armor pair of a tier at a refine level, attribute points spread 35/30/20/15.
 export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveData {
@@ -93,8 +122,8 @@ export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveDat
 // Continuous: the in-game integer rounding of the enemy hit is left out so a stat's value is not hidden by +-1 steps.
 // Hero skills (heroSkills.ts): bleed is a second burn, the Devastating Strike raises the average hit, Block removes a share of the enemy hits, Firm Stance cuts the
 // hit on a boss / checkpoint floor (`boss`), and Last Bastion adds the heal to the pool in the share of fights T.advanced.cpBastionWeight says it is ready for.
-// REVIEW IN PHASE 8: this closed-form model mirrors the CP and does NOT know the rotation of the equipment abilities (abilities.ts, phase 4): the balance pass would calibrate with it blind to them. Teach it the rotation (or
-// measure with the real loops) before trusting its margins for a hero that has one.
+// This closed form mirrors the CP and does NOT know the rotation of the equipment abilities, ON PURPOSE: it serves the GEAR-ONLY heroes of the equipment audits (see gearOnly above), whose rotation is empty.
+// A measure of a hero WITH a rotation does not use it: it runs the real loop (driver.ts runDungeon) through bossKill / floorFight below, or the real Hunting engine (classBalance.sim.ts).
 export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number, stats?: CombatStats, boss = false) {
   const c = stats ?? buildCombatStats(s);
   const cc = Math.max(0, Math.min(1, c.critChance));
@@ -152,3 +181,25 @@ export function huntEnemyAt(zone: { baseEnemyHp: number; baseEnemyDmg: number; s
     dmg: (zone.shallowEnemyDmg ?? zone.baseEnemyDmg) * (1 + T.hunting.subLevelDmgGrowth * (sub - 1)),
   };
 }
+
+// ---- the real loop, for heroes WITH a rotation (phase 8) -------------------------------------------------------------------------------------------------------------------------------------------------
+// The closed form above cannot see the rotation, so the class balance does not use it: it plays the very loop the game plays (driver.ts runDungeon, which calls the same ability functions as BattleModal).
+export interface BossKill {
+  ms: number; // average time to kill the boss, over `seeds` seeded runs
+  taken: number; // average damage the boss would have dealt over that time, in max HPs of the hero (the hero cannot die in this measure)
+}
+// Time to kill the boss of a floor (isDungeonBoss: 25 / 50 / 75 / 100). The hero arrives the way he does in a real climb: `warmup` floors of the biome before it, so the cooldowns are in a random
+// phase and the carry bucket of the mage is full of the floors before; only the LAST wave is measured. The hero is immortal here: this is the speed of the kill, not whether he survives it.
+export function bossKill(s: SaveData, bossFloor: number, now: number, seeds = 24, warmup = 4): BossKill {
+  const start = { ...s, highestDungeonFloor: bossFloor - warmup };
+  const max = combatMax(s);
+  let ms = 0;
+  let taken = 0;
+  for (let i = 0; i < seeds; i++) {
+    const run = withSeededRandom(5000 + i, () => runDungeon(start, now, warmup + 1, undefined, { immortal: true, trackWaves: true }));
+    ms += run.waveMs![run.waveMs!.length - 1];
+    taken += run.waveTaken![run.waveTaken!.length - 1] / max;
+  }
+  return { ms: ms / seeds, taken: taken / seeds };
+}
+const combatMax = (s: SaveData): number => buildCombatStats(s).maxHp;

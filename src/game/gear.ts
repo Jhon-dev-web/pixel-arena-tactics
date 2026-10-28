@@ -273,6 +273,18 @@ const LEATHER_CONVERSION: Record<string, [number, number]> = {
 };
 // END weightBudget.gen
 const round4 = (x: number): number => Math.round(x * 10000) / 10000;
+// THE DIAL OF THE RETURNED STATS (classes reform, phase 8, 2026-10-28). The generator (scripts/sim/weightBudget.gen.ts) solves how much each light weight and each light weapon returns so that the set / the weapon is worth
+// the CP of its plate / sword twin. The phase 8 measurement showed that CP parity is NOT class fairness: CP counts damage and effective HP as equally valuable, but in Hunting and against a boss nobody dies, so the
+// leather set (all of it returned as crit chance and attack speed) killed 50 % faster than the plate set at the same CP. The returned stats are therefore multiplied by these factors when the piece is built, and the
+// generated blocks stay what they are (the CP-parity solution), so the generator and the parity tests keep working on the neutral numbers (RETURNS_BASE). 1 = the CP-parity solution; below 1 the line trades damage for
+// nothing, on purpose. LEFT AT 1 (NEUTRAL, 28/10): the profile that cut the totals (leather 0.75, cloth 0.75, bow 0.1, crossbow 0.3) brought the damage per second of the classes together but dropped the archer's and the
+// mage's CP to ~0.75 of the warrior's, and the Hunting sub-level gate reads that CP (huntingZones.ts subLevelCpRequired, engine.ts computeHuntingStatus): REJECTED by the coordinator. CP parity is a structural
+// requirement of the gate, though not a measure of fairness. A change of COMPOSITION at constant CP (less damage, more effective HP) is what is being studied (scripts/sim/classBalance.sim.ts SIM_MIX).
+// Each factor is the lever of ONE class on ONE axis (docs/CLASSES_E_EQUIPAMENTOS.md 2.5): change them with the axis table of scripts/sim/classBalance.sim.ts in front of you.
+export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.75, cloth: 0.75, bow: 0.1, crossbow: 0.3, staff: 1, scepter: 1 };
+// piece id -> the returned stats BEFORE the dial (what the generator solved); itemBalance.test.ts / the generator read the parity on these
+export const RETURNS_BASE: Record<string, Partial<Record<'critChance' | 'attackSpeedBonus' | 'critMultBonus' | 'hpRegenPct', number>>> = {};
+const dial = (x: number, f: number, decimals = 4): number => Math.round(x * f * 10 ** decimals) / 10 ** decimals;
 const LEATHER_HANDLES = ['wood_handle_common', 'wood_handle_oak', 'wood_handle_ebony', 'wood_handle_elven', 'wood_handle_ancient', 'wood_handle_ancient'] as const;
 for (const line of LEATHER_LINES) {
   line.ids.forEach((id, i) => {
@@ -311,8 +323,9 @@ for (const line of LEATHER_LINES) {
     if (twin.maxHp) piece.maxHp = Math.round(twin.maxHp * LEATHER_KEEP);
     if (twin.resistance) piece.resistance = round4(twin.resistance * LEATHER_KEEP);
     if (line.slot === 'gloves' && twin.damage) piece.damage = Math.round(twin.damage * LEATHER_KEEP);
-    if (crit > 0) piece.critChance = crit;
-    if (speed > 0) piece.attackSpeedBonus = speed;
+    RETURNS_BASE[id] = { critChance: crit, attackSpeedBonus: speed };
+    if (crit > 0) piece.critChance = dial(crit, RETURN_SCALE.leather);
+    if (speed > 0) piece.attackSpeedBonus = dial(speed, RETURN_SCALE.leather);
     GEAR.push(piece);
   });
 }
@@ -411,8 +424,9 @@ for (const line of CLOTH_LINES) {
     if (twin.maxHp) piece.maxHp = Math.round(twin.maxHp * CLOTH_KEEP);
     if (twin.resistance) piece.resistance = round4(twin.resistance * CLOTH_KEEP);
     if (line.slot === 'gloves' && twin.damage) piece.damage = Math.round(twin.damage * CLOTH_KEEP);
-    if (critMult > 0) piece.critMultBonus = critMult;
-    if (regen > 0) piece.hpRegenPct = regen;
+    RETURNS_BASE[id] = { critMultBonus: critMult, hpRegenPct: regen };
+    if (critMult > 0) piece.critMultBonus = dial(critMult, RETURN_SCALE.cloth);
+    if (regen > 0) piece.hpRegenPct = dial(regen, RETURN_SCALE.cloth, 5);
     GEAR.push(piece);
   });
 }
@@ -507,9 +521,11 @@ for (const line of WEAPON_LINES) {
     };
     const crit = (twin.critChance ?? 0) * WEAPON_CRIT_KEEP[line.line] + (conv.critChance ?? 0);
     if (crit > 0) piece.critChance = round4(crit);
-    if (conv.attackSpeedBonus) piece.attackSpeedBonus = conv.attackSpeedBonus;
-    if (conv.critMultBonus) piece.critMultBonus = conv.critMultBonus;
-    if (conv.hpRegenPct) piece.hpRegenPct = conv.hpRegenPct;
+    RETURNS_BASE[id] = { attackSpeedBonus: conv.attackSpeedBonus, critMultBonus: conv.critMultBonus, hpRegenPct: conv.hpRegenPct };
+    const wf = RETURN_SCALE[line.line];
+    if (conv.attackSpeedBonus) piece.attackSpeedBonus = dial(conv.attackSpeedBonus, wf);
+    if (conv.critMultBonus) piece.critMultBonus = dial(conv.critMultBonus, wf);
+    if (conv.hpRegenPct) piece.hpRegenPct = dial(conv.hpRegenPct, wf, 5);
     if (line.line === 'staff') piece.burn = true;
     GEAR.push(piece);
   });

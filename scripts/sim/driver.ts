@@ -100,6 +100,9 @@ export interface DungeonRun {
   crits: number;
   enemyHits: number;
   damageTaken: number;
+  // Only present with `opts.trackWaves` (the run object is pinned bit for bit by abilitiesIdentity.test.ts against the golden file, so it grows no field for everybody):
+  waveMs?: number[]; // the combat time of every wave of the run (intermissions left out): the kill time of a boss is the last entry
+  waveTaken?: number[]; // the damage the hero took in every wave
 }
 
 // Mirrors BattleModal.tsx: both sides start their attack timers when a wave starts, the hero swings every heroMs and the
@@ -108,7 +111,8 @@ export interface DungeonRun {
 // `maxStages` (diagnostics only): stop with a retreat after that many cleared floors, so a probe of one floor does not keep climbing.
 // `startStage` (long-horizon sim): the stage the run starts on when it is not the hero's own floor, i.e. a Profundezas run (nextDepthStage). A depth run has no last floor and no
 // milestone to bank (BattleModal.startNextWave / the tension window only apply to floors), so it goes on until death or the low-HP retreat.
-export function runDungeon(save: SaveData, now: number, maxStages = Infinity, startStage?: number): DungeonRun {
+// `opts.immortal` (balance measures only, phase 8): the hero cannot die, so a run measures how long he needs to kill (and how much he would have taken) even where he would lose. Nothing else changes.
+export function runDungeon(save: SaveData, now: number, maxStages = Infinity, startStage?: number, opts: { immortal?: boolean; trackWaves?: boolean } = {}): DungeonRun {
   // Tonics running when the run starts (Stoneskin / Haste / Precision) cover the whole climb: a run is minutes, a tonic lasts 30.
   const combat = activeTonicStats(buildCombatStats(save), save, now);
   const playerMax = combat.maxHp;
@@ -139,6 +143,10 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
   let clock = 0;
   let stage = startFloor;
   let stages = 0;
+  const waveMs: number[] = [];
+  const waveTaken: number[] = [];
+  let waveStart: number;
+  let takenAtStart: number;
   let complete = false;
   let outcome: 'retreat' | 'defeat' = 'retreat';
   const acc: { gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; gems: Partial<Record<GemId, number>>; uniques: UniqueDrop[]; relics: string[] } = { gold: 0, drops: {}, shards: 0, gems: {}, uniques: [], relics: [] };
@@ -175,6 +183,8 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
   waves: for (;;) {
     const def = getEnemyDef(dungeonEnemyKindForFloor(stage));
     const enemyMax = stageEnemyHp(def, stage);
+    waveStart = clock;
+    takenAtStart = damageTaken;
     const carriedIn = startAbilityFight(ab, enemyMax); // a carry from the last fight comes in as damage already taken
     let enemyHp = enemyMax - carriedIn;
     totalDamage += carriedIn;
@@ -238,7 +248,9 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
           damageTaken += taken;
         }
         enemyNext += def.atkSpeedMs;
-        if (hp <= 0) {
+        if (hp <= 0 && opts.immortal) {
+          hp = playerMax;
+        } else if (hp <= 0) {
           if (combat.bastion && !bastionUsed) {
             bastionUsed = true;
             hp = bastionHp(playerMax);
@@ -286,6 +298,8 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
     }
 
     // wave cleared
+    waveMs.push(clock - waveStart);
+    waveTaken.push(damageTaken - takenAtStart);
     if (furyNext !== Infinity) furyLeft = Math.max(1, furyNext - clock);
     const r = waveRewards(getBiomeForFloor(stage), stage, combat.bossLootMult ?? 1);
     acc.gold += r.gold;
@@ -337,6 +351,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
     crits,
     enemyHits,
     damageTaken,
+    ...(opts.trackWaves ? { waveMs, waveTaken } : {}),
   };
 }
 

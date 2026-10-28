@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { applyDungeonRun, runDungeon, withSeededRandom } from '../../../scripts/sim/driver';
 import { gearOnly, hero } from '../../../scripts/sim/duel';
+import { wearFullSet } from '../../../scripts/sim/ladder';
 import { BUFF_ITEM, TIMED_BUFF_KINDS, activeTonicStats, buffMinutes, goldMultiplier, hasteIntervalMs, temporaryEffects, BuffKind } from '../buffs';
 import { applyElixir, ElixirId } from '../elixirs';
 import {
@@ -49,7 +50,7 @@ const drink = (s: SaveData, ...ids: ElixirId[]): SaveData => ids.reduce((acc, id
 
 // A hero with no weapon: no crit, no burn, no reflect, so a Dungeon hit is one exact number (a deterministic probe).
 const bare = (): SaveData => gearOnly({ ...defaultSave(), xp: xpToReachLevel(15), str: 20, vit: 10, agi: 8, res: 6, highestDungeonFloor: 6 }); // gear-only: an empty rotation, see scripts/sim/duel.ts
-const geared = (): SaveData => ({ ...hero('2', 3, { level: 30 }), highestDungeonFloor: 20 });
+const geared = (): SaveData => ({ ...wearFullSet(hero('2', 3, { level: 30 }), 2, 3), highestDungeonFloor: 20 });
 
 // One floor of the Dungeon, the way BattleModal fights it (scripts/sim/driver.ts runDungeon).
 const oneFloor = (s: SaveData, seed = 1) => withSeededRandom(seed, () => runDungeon(s, NOW, 1));
@@ -215,7 +216,7 @@ describe('Dungeon: Gold = 1 + gear (cap 25) + Pass + Ganancia + Fortune, all add
 describe('Hunting: the session replays every effect from its frozen stats and its time windows', () => {
   // A mid hero in an easy zone: fights are long enough to feel the damage / speed / crit buffs, and the session has hundreds of them.
   const START = NOW;
-  const strong = (): SaveData => ({ ...hero('3', 5, { level: 40 }), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) });
+  const strong = (): SaveData => ({ ...wearFullSet(hero('3', 5, { level: 40 }), 3, 5), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) });
   const start = (s: SaveData, offset = 0, zone = 'blood_marsh', depth: 'shallow' | 'dense' = 'dense'): SaveData => applyHuntStart({ ...s, huntingOfflineStart: START + offset }, zone, depth, START + offset)!;
   // the same without the unlock checks (a hero below the recommended CP of the depth, the marginal case the defence effects are for)
   const startRaw = (s: SaveData, offset: number): SaveData => ({ ...s, activeHuntingZone: 'blood_marsh', activeHuntingDepth: 'dense', huntingOfflineStart: START + offset, huntSession: buildHuntSession({ ...s, activeHuntingZone: 'blood_marsh' }, START + offset) });
@@ -416,7 +417,7 @@ describe('gear: every equipped slot and every stat it declares reaches the comba
 
 describe('the freeze of a Hunting session never loses an effect', () => {
   it('elixirs / tonics drunk during a hunt are recorded as windows in the session and survive a reload', () => {
-    const s0 = give({ ...hero('3', 3, { level: 40 }), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) }, { strength_elixir: 1, atk_elixir: 1, haste_tonic: 1, fortune_tonic: 1, stoneskin_tonic: 1, precision_elixir: 1, sharpening_stone: 1, armor_polish: 1, hunter_lure: 1 });
+    const s0 = give({ ...wearFullSet(hero('3', 3, { level: 40 }), 3, 3), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) }, { strength_elixir: 1, atk_elixir: 1, haste_tonic: 1, fortune_tonic: 1, stoneskin_tonic: 1, precision_elixir: 1, sharpening_stone: 1, armor_polish: 1, hunter_lure: 1 });
     let s = applyHuntStart(s0, 'blood_marsh', 'dense', NOW)!;
     const kinds: ElixirId[] = ['strength_elixir', 'atk_elixir', 'haste_tonic', 'fortune_tonic', 'stoneskin_tonic', 'precision_elixir', 'sharpening_stone', 'armor_polish', 'hunter_lure'];
     for (const id of kinds) s = applyElixir(s, id, NOW + 10 * MIN)!;
@@ -430,7 +431,7 @@ describe('the freeze of a Hunting session never loses an effect', () => {
   });
 
   it('the session keeps its stats from the start: gear or attributes changed during the hunt do not count until the next hunt (and an elixir does)', () => {
-    const s0 = { ...hero('3', 3, { level: 40 }), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) };
+    const s0 = { ...wearFullSet(hero('3', 3, { level: 40 }), 3, 3), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) };
     const started = applyHuntStart(s0, 'blood_marsh', 'dense', NOW)!;
     const richer = { ...started, str: started.str + 50 };
     expect(computeHuntingStatus(richer, NOW + 4 * HOUR)).toEqual(computeHuntingStatus(started, NOW + 4 * HOUR));
@@ -438,7 +439,7 @@ describe('the freeze of a Hunting session never loses an effect', () => {
   });
 
   it('a tampered or reloaded session keeps what the Haste Tonic needs (agi + speedBonus), so the tonic keeps the 400 ms floor after a reload', () => {
-    const s = applyHuntStart({ ...hero('3', 3, { level: 40 }), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) }, 'blood_marsh', 'dense', NOW)!;
+    const s = applyHuntStart({ ...wearFullSet(hero('3', 3, { level: 40 }), 3, 3), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) }, 'blood_marsh', 'dense', NOW)!;
     const back = normalizeSave(JSON.parse(JSON.stringify(s)));
     expect(hasteIntervalMs(back.huntSession!.stats)).toBe(hasteIntervalMs(s.huntSession!.stats));
   });
@@ -446,7 +447,7 @@ describe('the freeze of a Hunting session never loses an effect', () => {
 
 describe('the frozen-session notice of the running hunt', () => {
   it('does not fire after a reload (the rebuilt stats are the same numbers in another key order) and does when gear or attributes changed', () => {
-    const s0 = { ...hero('3', 3, { level: 40 }), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) };
+    const s0 = { ...wearFullSet(hero('3', 3, { level: 40 }), 3, 3, ['ring', 'boots']), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) }; // two pieces more, but fewer than the three of one weight that switch the class affinity on
     const s = applyHuntStart(s0, 'blood_marsh', 'dense', NOW)!;
     expect(sessionStatsDiffer(s.huntSession!.stats, buildCombatStats(s))).toBe(false);
     const back = normalizeSave(JSON.parse(JSON.stringify(s)));

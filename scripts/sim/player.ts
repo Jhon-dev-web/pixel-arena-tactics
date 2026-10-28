@@ -298,6 +298,17 @@ export function equippedTier(s: SaveData, slot: 'weapon' | 'armor'): number {
   return resolveEquipped(s)[slot].item.tier ?? 0;
 }
 
+// WHICH LINE THE SIMULATED PLAYER FORGES (phase 8, docs/CLASSES_E_EQUIPAMENTOS.md 5.1.5). Before the classes reform a slot had ONE piece per tier, so "the cheapest piece of the next tier" was unambiguous. Since phases 2-3 the
+// armor slots have three (plate, leather, cloth, all the same price) and the weapon slot six lines, and the policy below breaks the tie by CP: it ended up buying leather bracers it could not make (no sinew in its Hunting plan)
+// and stalled (the Pass owner's day-60 floor fell from 90 to 80). The sim player is the WARRIOR the game balances its progression around, so by default he forges only the plate line (sword and axe) and the ring; SIM_LINE=leather|cloth
+// asks for an archer / a mage instead (the policy still has no fibre planting, so a mage stalls: the debt of 5.1.5).
+const SIM_LINE: 'plate' | 'leather' | 'cloth' = (process.env.SIM_LINE as 'plate' | 'leather' | 'cloth' | undefined) ?? 'plate';
+function inSimLine(g: { slot: string; line?: string; weight?: string }): boolean {
+  if (g.slot === 'ring') return true; // the ring has one piece per tier, shared by every class
+  const line = g.slot === 'weapon' ? (g.line === 'bow' || g.line === 'crossbow' ? 'leather' : g.line === 'staff' || g.line === 'scepter' ? 'cloth' : 'plate') : (g.weight ?? 'plate');
+  return line === SIM_LINE;
+}
+
 // Crafting priority inside one tier: weapon > armor > gloves > helmet > shield > boots > ring (Rodada 3, shield added in Rodada 6). The extra slots only have
 // one piece per tier and the "1 of the previous tier" chain, so a slot is simply the next tier above the best piece owned.
 export const CRAFT_PRIORITY = ['weapon', 'armor', 'gloves', 'helmet', 'shield', 'boots', 'ring'] as const;
@@ -308,7 +319,7 @@ export function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
   const plans: Plan[] = [];
   for (const slot of CRAFT_PRIORITY) {
     const owned = bestTier(s, slot);
-    const cands = GEAR.filter((g) => g.slot === slot && g.recipe && (g.tier ?? 0) > owned);
+    const cands = GEAR.filter((g) => g.slot === slot && g.recipe && (g.tier ?? 0) > owned && inSimLine(g));
     if (cands.length === 0) continue;
     const minTier = Math.min(...cands.map((g) => g.tier ?? 0));
     const atTier = cands.filter((g) => (g.tier ?? 0) === minTier);

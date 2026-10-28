@@ -30,11 +30,15 @@ it('prints the depth reach of end-game heroes', () => {
     ...[0, 10, 30, 50].map((p): [string, Rarity, number, number] => [`legendary T6+10, paragon ${p}`, 'legendary', p, 10]),
     ...[0, 10, 30, 40, 50].map((p): [string, Rarity, number, number] => [`legendary T6+12, paragon ${p}`, 'legendary', p, 12]),
   ];
-  const lines = [`T.depths hp ${T.depths.hpGrowth} dmg ${T.depths.dmgGrowth} boss x${T.depths.bossHpMult}/x${T.depths.bossDmgMult}; paragon ${T.paragon.damagePerLevel}/level cap ${T.paragon.maxBonus}`, 'hero | CP | deepest depth cleared | recommended CP at that depth + 1'];
+  const lines: string[] = [];
+  lines.push(`T.depths hp ${T.depths.hpGrowth} dmg ${T.depths.dmgGrowth} boss x${T.depths.bossHpMult}/x${T.depths.bossDmgMult}; paragon ${T.paragon.damagePerLevel}/level cap ${T.paragon.maxBonus}`, 'hero | CP (gear only) | depth (gear only) | CP (rotation) | depth (rotation) | recommended CP at the rotation depth + 1');
   for (const [label, rarity, paragon, refine] of cases) {
     const hero = gearHero(rarity, paragon, refine);
     const reach = depthReach(hero);
-    lines.push(`${label} | ${computeCP(hero)} | ${reach} | ${recommendedCpForDepth(reach + 1)}`);
+    // the same hero as a real player: the automatic rotation on (the class affinity stays off here, it is measured with the classes)
+    const real = gearHero(rarity, paragon, refine, 'rotation');
+    const realReach = depthReach(real);
+    lines.push(`${label} | ${computeCP(hero)} | ${reach} | ${computeCP(real)} | ${realReach} | ${recommendedCpForDepth(realReach + 1)}`);
   }
   const s = depthScale(stageOfDepth(50));
   lines.push(`depth 50 multipliers: hp x${s.hp.toFixed(2)} dmg x${s.dmg.toFixed(2)}`);

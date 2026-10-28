@@ -453,6 +453,42 @@ Ou seja: **os números que estão commitados não saem de novo nem do código in
 
 O que a fase 7 tem de fazer: dar ao simulador **política de plantio de fibra e foco de zona**, tornar a semente fixa para a rodada que gera tabelas, e só então substituir os valores derivados por medidos — apertando os tetos, que hoje estão folgados de propósito.
 
+### 5.1.6 O portão de sub-nível da zona 5 está fora do alcance e pune quem tem CP menor (achado na fase 8, 28/10; NÃO consertado)
+
+O portão (`subLevelCpRequired`, `huntingZones.ts`) vale só em `blood_abyss` e `abyss_throne` (`subLevelCpGrowth: 1,23`), e `engine.ts computeHuntingStatus` o aplica com o CP do herói. A zona 5 herdou o 1,23 da zona 4 com uma base 2,24× maior (3600 contra 1607); o portão da zona 4 foi calibrado contra o alcance real (Rodada 22), o da zona 5 nunca. Medido com `scripts/sim/classGate.sim.ts`:
+
+| CP pedido pelo sub-nível 10 | raso | médio | fundo |
+|---|---|---|---|
+| `blood_abyss` | 10.355 | 11.908 | 13.461 |
+| `abyss_throne` | 23.198 | 26.678 | 30.157 |
+
+- O herói mais forte que o jogo monta (lendário T6 +12, paragon 50, guerreiro, com rotação e afinidade) tem CP **31.794**: o sub-nível 10 do trono fundo existe só para ele. O 17.191 de `recommendedCp.ts` (andar 100) é o teto da escada de comuns, não o teto do jogo; os sub-níveis 8 e 9 (19.933 e 24.518) pedem um build épico ou lendário.
+- As classes de luz abrem **menos** sub-níveis que o guerreiro, só por terem CP menor (herói T6 +12, nível 100, razões 1,000 / 0,890 / 0,822): no trono fundo guerreiro 4, arqueiro 3, mago 3; em `blood_abyss` fundo 8, 7, 7. Todas as três vencem as lutas do sub-nível 10 em todas as zonas (0 derrotas em 4 h): quem limita é o portão, não o combate.
+- Cada sub-nível vale cerca de 4% de XP por hora (medido: 11.668 no 7 contra 12.118 no 8, `blood_abyss` raso).
+
+Isto vale com os números de hoje, antes de qualquer ajuste de equilíbrio. Não foi consertado de propósito: mexer na curva muda o alvo do equilíbrio das classes. Achatar a curva piora a diferença entre classes (um mesmo déficit de CP vale mais níveis).
+
+**Método (para quem for regerar o portão).** Um número de portão tem de ser regerado quando muda o que ele mede, como as tabelas geradas. O da zona 4 foi calibrado contra combate real em 22/10 (`subLevelReach.sim.ts`) e envelheceu em silêncio quando as habilidades, a afinidade e as três classes mudaram o que "alcance" significa; o da zona 5 nasceu copiado. `scripts/sim/classReach.sim.ts` refaz a medição com as três classes (75 heróis: 3 classes x 25 equipamentos, 2 h por sub-nível):
+- Em `blood_abyss` o combate **não discrimina**: um herói T3 +8 comum já vence o sub-nível 10 nos três fundos (em 98% das lutas). O CP do mais fraco que vence cada sub-nível fica em 669 a 976, contra 1.977 a 13.461 que o portão pede. Isto é coerente com o comentário da Rodada 22 ("o portão é o CP, não uma vitória de sorte"): o portão é uma **válvula de progressão** (cada sub-nível vale ~4% de XP), não uma medida de capacidade. Calibrá-lo por combate o dissolveria.
+- Em `abyss_throne` o combate discrimina (o T3 +8 guerreiro alcança 5, 2 e 0 nos três fundos), mas **o CP não separa quem vence de quem perde**: no fundo, no sub-nível 10, o mais fraco que vence tem CP 1.991 e o mais forte que perde tem 3.411. O mago T3 (CP 1.861) alcança 9 e o guerreiro T3 (CP 2.117) alcança 0.
+- A razão de CP das classes contra o guerreiro, no mesmo equipamento, vai de 0,77 a 1,05 e depende da raridade (o mago lendário passa o guerreiro, o comum perde 22%): nenhuma constante por classe conserta o portão.
+
+**Conserto feito em 28/10 (fase 8): o portão passa a pedir um índice de equipamento, não CP.**
+- `src/game/gearIndex.ts`: índice = soma, nos 7 slots, de `tier + 0,1 x refino + bônus de raridade` (raro 0,25, épico 0,65, lendário 1,4), dividida **sempre por 7**; slot vazio vale 0 (tirar a pior peça baixa o índice, e há teste). O melhor equipamento do jogo (T6 +12, tudo lendário) vale 8,6. Os pesos saíram da regressão do CP do guerreiro (por tier 0,553; por refino 0,056; raro 0,135; épico 0,322; lendário 0,795; em tiers: 0,10 / 0,24 / 0,58 / 1,44). O épico declarado é 0,65 e não 0,58 porque a promessa da Rodada 26 ("o épico abre dois sub-níveis acima do comum", `itemBalance.test.ts`) não fecha com 0,58 em nenhuma base abaixo de 3,7.
+- `huntingZones.ts`: `subLevelGear: { base, step }` por zona e `gearOffset` por fundo (0, 0,25, 0,5). `blood_abyss`: base 3,7, passo 0,375; `abyss_throne`: base 4,5, passo 0,375. A base 3,7 do abismo é a menor que mantém a promessa da Rodada 26 (a equivalência com o portão antigo para o guerreiro de placa e espada dá 3,5).
+- O índice é congelado na sessão de Caça (`HuntSession.gearIndex`), como os stats.
+- **Regra, com teste:** o último sub-nível do fundo mais difícil de toda zona com portão tem de ser alcançável com o melhor equipamento do jogo (`zoneLevelGates.test.ts`). O trono pede 8,375 no sub-nível 10 do fundo (melhor equipamento: 8,6); o abismo pede 7,575.
+- Textos: `hunting.subLevelNeedGear` ("... seu equipamento precisa valer o de um conjunto tier {tier} +{refine}.") e, quando nem um conjunto comum alcança (acima de T6 +12 = 7,2), `hunting.subLevelNeedGearRarity` (com a raridade).
+
+- **O fundo (raso / médio / fundo) também passou a pedir índice** (`HuntingZoneDef.depthGear` + `gearOffset` do fundo, `depthGearRequired`, `isDepthUnlocked(zone, depth, índice)`): glade 0, marsh 1,4, rift 2,8, abismo 3,5, trono 5,0, mais 0 / 0,25 / 0,5 (equivalente ao CP que o fundo pedia ao guerreiro de placa e espada, ln CP = 5,419 + 0,555 x índice). O CP recomendado (`recommendedCpForDepth`) segue só como conselho na tela. Antes, com o mesmo equipamento, o arqueiro era barrado de fundos que o guerreiro abria (T3 +8: abismo médio e fundo; T4 +0: abismo médio e fundo; T5 +0: trono raso); agora os três abrem os mesmos (`scripts/sim/depthGate.sim.ts`).
+- A promessa "cada classe +15 a 20% no seu eixo, no máximo -10% nos outros" tem guarda: `classAxes.test.ts` (tier 6 +8). Os dois testes de CP entre linhas (couro, pano e armas "nunca abaixo do tier anterior") foram trocados por ele e pelo R8, porque o CP deixou de abrir e fechar qualquer coisa.
+
+- **O eixo de andares satura em T6.** Com um conjunto comum de tier 6 todas as classes param entre os andares 84 e 89 (guerreiro 88, arqueiro 85, mago 83 em T6 +8), então o eixo não diferencia ali e a liderança do guerreiro é de +3 a +5%. O alvo de +15 a +20% vale **onde o eixo discrimina** (T2 a T5; em T3 +8 os andares são 59 / 59 / 39), não foi trocada a medida para fabricar diferença. Está como `todo` em `classAxes.test.ts`.
+- **O mago não tem parede no andar 40: tem ritmo.** Onde cada classe para (`scripts/sim/floorWall.sim.ts`): T3 +8 guerreiro 59, arqueiro 59, mago 39; T4 +0: 59 / 39 / 49; T4 +8: 74 / 69 / 59; T5 +0: 74 / 69 / 59; T5 +8: 79 / 78 / 76; T6 +8: 88 / 85 / 83. O mago passa o checkpoint do 40 em T4 +0 (para no 49) e a diferença para o guerreiro some com o tier (20, 10, 15, 15, 3, 5 andares): é o eixo do guerreiro funcionando, não uma mecânica faltando.
+- **Cacada ao Alvo paga mais que o +8% do cartão a heróis rápidos.** As bonificações de vários alvos vencidos se somam (`huntCombat.ts` soma `targetBuffs`) e um alvo vem a cada 300 abates: 1.667 abates em 6 h dão x1,087, 2.269 dão x1,115, 3.008 dão x1,128. O teto real é `EVENT_XP_CAP` (+15%), igual ao limite do servidor; a taxa depende da velocidade do herói, não do fixture. Há teste para o herói rápido.
+
+**Antifraude (passo 1b, medido com `scripts/sim/classPeak.sim.ts`).** O pico honesto de XP/h é **0,95** de `BOUNDS.xpPerHour` (24.825 medidos, 31.031 com o Elixir; trono fundo, sub-nível 10, herói T6 +12 lendário), igual para as três classes porque o teto de ritmo (1,2x) trava antes, e o limite já supõe o sub-nível 10 da melhor zona; material em 0,46 de `HUNT_CEILING` por hora. A folga é de 5%: **qualquer mudança no teto de ritmo (`xpPaceCap`) ou no XP por abate da zona 5 tem de remedir isto**, porque 0,95 é pouca folga para marcar jogador honesto.
+
 ## 6. Respondido pelo dono em 28/10
 
 1. **Data: não existe.** "esquece 31/10 eu tava testando site". O playtest de 31/10 nunca foi firme. Como o **congelamento de conteúdo de 22/10 existia por causa daquela data, ele cai junto**: esta reforma é a linha principal de trabalho e pode levar o tempo que precisar.

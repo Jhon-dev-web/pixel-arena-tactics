@@ -1,12 +1,12 @@
 import {
   addBattlePassXp,
   buildHuntSession,
-  computeCP,
   computeHuntingStatus,
   playerLevel,
   SaveData,
   withHuntProgress,
 } from './engine';
+import { equipmentIndex } from './gearIndex';
 import { DEFAULT_HUNTING_DEPTH, getHuntingZone, HuntingDepth, isDepthUnlocked, isZoneOpen } from './huntingZones';
 import { HuntItem, PendingHuntReward } from './huntSession';
 import { UniqueDrop, addUniqueInstance } from './uniques';
@@ -197,7 +197,7 @@ export function huntClaimBlocked(claimed: SaveData): boolean {
 function canRequestHunt(save: SaveData, zoneId: string, depth: HuntingDepth): boolean {
   const zone = getHuntingZone(zoneId);
   if (!zone) return false;
-  if (!isZoneOpen(zone, save.highestDungeonFloor, playerLevel(save.xp)) || !isDepthUnlocked(zone, depth, computeCP(save))) return false;
+  if (!isZoneOpen(zone, save.highestDungeonFloor, playerLevel(save.xp)) || !isDepthUnlocked(zone, depth, equipmentIndex(save))) return false;
   if (save.activeOreId || save.activeWoodId || save.craftJob) return false;
   return !(save.activeHuntingZone === zoneId && save.activeHuntingDepth === depth);
 }
