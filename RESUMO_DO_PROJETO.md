@@ -42,7 +42,7 @@ Na raiz (Node 22+):
 - **Horta** (`garden.ts`): roda sempre em paralelo.
 - **Masmorra** (`dungeon.ts`, `waves.ts`, `depths.ts`): andares, chefes, profundezas; combate animado.
 - **Forja** (página própria, igual Ofícios): forjar, melhorar, reparar e gemas. Raridades Comum/Incomum/Raro/Épico/Lendário (Lendário 4% com garantia na 41ª forja de tier 4+).
-- **Ofícios**: refino (barras, cabos, couro curtido etc.) e poções.
+- **Ofícios**: refino (Fornalha, Curtume, Carpintaria, Pó de Refino) e **Alquimia** (poções e transmutação na mesma aba, desde 22/10).
 - **Pedidos** de entrega, **Missões**, **Códice**, **Habilidades**, **Inventário** e **Baú**.
 
 ### Regras importantes
@@ -76,6 +76,7 @@ Na raiz (Node 22+):
 - Só na rede **Solana**. Itens e Bolsas de Ouro com preço em **SOL**; taxa do jogo de 5% para a carteira `MARKET_FEE_ADDRESS`.
 - Bolsas de Ouro de 2k / 5k / 20k (taxa de 10% sem Passe, 5% com Passe; 3 por dia).
 - Revenda é permitida, sem espera.
+- **Piso das Bolsas de Ouro**: US$ 0,25 por 1.000 de Ouro, convertido em SOL pela cotação (`0036`, precisa do segredo `SOL_USD_PRICE_URL`). Itens: só o mínimo geral de 0,001 SOL.
 - O pagamento leva um memo SPL (`pa1:pass:<ref>` ou `pa1:sale:<reserva>`); pagamento sem correspondência vai para a fila `payment_exceptions`. Pagar com a mesma carteira que recebe é recusado.
 
 ## 7. Portal (`portal/`)
@@ -115,25 +116,58 @@ Na raiz (Node 22+):
 - Ações irreversíveis (produção, banco de produção, apagar dados, mensagens para fora) só com pedido explícito do dono.
 - Documentos de detalhe: `docs/WEB_LAUNCH.md`, `docs/MARKET_SOLANA.md`, `docs/PASS_SALES.md`, `docs/SEASON_RANKING.md`, `docs/WAITLIST.md`, `docs/ADMIN.md`, `docs/AI_OPS.md`, `docs/BALANCE_CHANGES.md`.
 
-## 11. Estado em 21/10/2026 (passagem de thread)
+## 11. Estado em 28/10/2026 (passagem de thread DIRETOR)
 
-### No ar no teste
-- **Jogo** (https://arena-idle-teste.vercel.app): herói novo do dono nas 8 armaduras; Forja e Passe como páginas (iguais Ofícios); produção em lote com tempo; uma tarefa por vez; sem emojis (ícones de pixel); Acampamento, Caça e Forja reorganizados no celular; convites pelo jogo; resgate de código promocional em Configurações; habilidades de Guerreiro/Guardião rebalanceadas (2–3,4% por ponto); sem taxas de drop na tela.
-- **Servidor de teste**: migrações até `0035`; Passe por temporada (`0025`), ranking com permissão corrigida (`0023`), convites por conta (`0024`), painel (`0026`/`0027`), créditos do servidor (`0028`); IA e vigia agendados.
-- **Portal de teste** (https://arena-idle-portal-teste.vercel.app): página inicial no estilo da arte do dono; o redesign completo é de outra thread ("Redesign do site").
-- **Painel** (https://arena-idle-admin-teste.vercel.app, protegido pela Vercel): desde 22/10 só **3 telas** no menu (pedido do dono: simples, poucas abas). **Hoje** = Precisa de atenção, 4 números, seções que abrem e fecham (Passe, Mercado, raridade, itens, Liga, lista de espera, rotinas) e a tabela diária; **Jogadores** = lista e ficha lado a lado no computador (modal no celular), com ativar/revogar Passe e apagar conta; **Ferramentas** = Pagamentos a resolver, Códigos, interruptores e IA. Mercado, Lendários, Economia, Liga e Lista de espera continuam como páginas de detalhe abertas a partir de Hoje (mesmos endereços). Tema azul-noite e dourado por padrão; **nenhum gráfico em lugar nenhum**, só tabelas.
+Nada novo foi commitado entre 22/10 e 28/10. O último commit desta frente é `5731c40` (22/10). O jogo está em **congelamento de conteúdo** desde 22/10 (decisão do dono): até o lançamento, só correção de erro; conteúdo novo só depois, com dados de jogadores reais.
 
-### Pendente
-- **Dono**: login no painel testado e funcionando (21/10); webhook do Discord para alertas (`OPS_ALERT_WEBHOOK_URL`) "depois"; política de privacidade e endereço oficial do site antes de abrir o cadastro por e-mail (a thread do redesign cuida do portal); regulamento/termos da Liga e do Passe (checagem jurídica é dele); preço do Passe da Temporada 2 (ainda não decidido); plano Pro + projeto de produção perto do lançamento.
-- **Decisões abertas**: Faro (Caçador) decidido em 21/10: +10%, igual ao Passe (Rodada 30); meta da Temporada 1 decidida: 1.000 Passes pagos (migração `0030`); lançamento do jogo e da venda do Passe planejado para 31/10; Ouro/Éter por código existem, mas os limites dos novos alertas `GOLD_/SHARDS_/POTIONS_BALANCE_JUMP` em `_shared/progress/bounds.ts` são estimativas (ajustar se houver alerta falso).
-- **Técnico**: migrações `0029`–`0032` aplicadas no teste (21/10; 0031 impede apagar conta no meio de venda, 0032 anula reservas no reset da Liga; 0033 Kit Pioneiro: título, moldura, 500 Ouro, 10 poções, 1 Elixir do Conhecimento para nível 10+ na abertura da Liga; 0034 ficha completa da conta no painel; 0035 calendário de eventos: pré-temporada com datas reais a partir de 31/10 e dias 1–24 da Liga, tela Calendário no jogo, `docs/EVENT_CALENDAR.md`). Jogo e painel republicados às 18h40 do dia 21 a partir de uma cópia limpa do commit (`git archive HEAD`), porque outras threads deixam arquivos pela metade na pasta); jogo, painel e funções republicados; larguras de tablet (700–899 px) não foram vistas; Stripe e `create-checkout`/`stripe-webhook` seguem dormentes.
-- `melhorias.md` (raiz, não versionado) é uma revisão externa: itens do jogo e do painel já feitos; P02 e P05 do portal conflitam com o plano do dono e não foram aprovados.
+### No ar no teste (https://arena-idle-teste.vercel.app)
+- **Jogo completo para o playtest de 31/10**: Caça, Masmorra, Mineração, Lenhador, Horta, Forja, Ofícios, Pedidos, Missões, Códice, Habilidades, Inventário/Baú, Passe, Mercado, Convites, Calendário.
+- **Mudanças de 21–22/10 já publicadas:**
+  - **XP por abate na Caça** (Rodada 31): cada monstro dá XP; quem mata mais rápido ganha mais, com teto de 1,2x o ritmo da zona. O jogador médio sobe no mesmo ritmo de antes.
+  - **Faro (Caçador)** = +10%, igual ao Passe (Rodada 30).
+  - **Kit Pioneiro** (migração `0033`): título Pioneiro, Moldura de Pioneiro, 500 de Ouro, 10 poções de cura e 1 Elixir do Conhecimento para quem chegou ao nível 10 na pré-temporada (conferido pelos snapshots do servidor), entregue sozinho na abertura da Temporada 1.
+  - **Calendário de eventos** (migração `0035`, `docs/EVENT_CALENDAR.md`): Festival de Abertura 31/10–02/11; evento de herói toda sexta 18h a domingo; dia de profissão toda quarta, até o fim de dezembro; 6 eventos novos nos dias 1–24 da Liga; tela "Calendário" no menu. As datas ficam na tabela `arena_private.event_calendar` (o dono muda por SQL, sem publicar o jogo).
+  - **Telas refeitas**: Personagem (mockup do dono: equipamentos compactos, Inventário/Baú logo abaixo, ficha do item ao lado); trilha do Passe acima das vantagens; Mineração/Lenhador com "Armazém cheio"; Ofícios em lista + ficha (Poções agora dentro de **Alquimia**); segunda passada em Habilidades, Missões, Horta, Caça, Acampamento, Pedidos, Loja, Convites e Configurações; larguras de tablet conferidas; primeiros minutos do jogador novo revisados (tutorial e dicas).
+  - **Mercado**: cada ação vai ao servidor e atualiza a tela na hora; pagamento conferido com o compromisso `confirmed` da Solana (1–2 s); a assinatura do pagamento fica guardada no aparelho até o servidor confirmar (única exceção aprovada à regra de não guardar nada no navegador); item reservado no reset da Liga é anulado (`0032`); não se apaga conta no meio de uma venda (`0031`).
+  - **Piso da Bolsa de Ouro** (migração `0036`): US$ 0,25 por 1.000 de Ouro (pequena US$ 0,50, média 1,25, grande 5,00), convertido em SOL pela cotação. **Itens não têm piso** (decisão do dono).
+- **Servidor de teste**: migrações aplicadas até **`0036`**.
+- **Painel** (https://arena-idle-admin-teste.vercel.app): é da **thread do painel do administrador** (aberta em 22/10). Esta thread DIRETOR não mexe em `admin/`.
+
+### Pendente — esperando o dono
+- **Aplicar `0037` e `0038` no banco de teste** (precisa da autorização dele): `0037` = Top 25 por nível no painel (thread do painel); `0038` = tarefa do Discord. `db push` aplica as duas juntas, na ordem.
+- **Tarefa do Discord** (`docs/DISCORD_TASK.md`, código pronto em `5731c40`): ele cria o app no portal do Discord e põe `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` e `DISCORD_GUILD_ID` no Supabase, e manda o link de convite do servidor (vai em `VITE_DISCORD_INVITE_URL` no build do jogo). Depois: implantar `discord-link-start` (com JWT) e `discord-link-callback` (`--no-verify-jwt`) e republicar o jogo. Prêmio: 500 de Ouro, entregue na abertura da Temporada 1. Em 28/10 os segredos ainda não existiam.
+- **`SOL_USD_PRICE_URL`** no Supabase (valor público: `https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd`). Sem ele, o servidor recusa anunciar Bolsas de Ouro. Em 28/10 ainda não existia.
+- **Produção para 31/10**: plano Pro do Supabase + projeto `arena-idle-producao` (região São Paulo), carteira Solana real, endereço oficial do site. Ele disse que são simples; assim que tiver, montar o servidor de produção (migrações 0001–0038, funções, segredos) e publicar.
+- **Textos legais**: termos de uso e regulamento da Liga, **com critério de desempate perto do nível 100** (a simulação mostrou que o topo fica apertado).
+- **Prêmio do playtest**: os **25 heróis de nível mais alto** ganham o Passe, por mérito (**nunca sorteio**: no Brasil, sorteio promocional exige autorização do governo). Data de corte ainda não definida. Entrega pelo painel (thread do painel).
+- **Códigos de divulgação** (código postado no X/Discord e resgatado no jogo): "depois veremos". Lembrar: o Ouro da pré-temporada zera na abertura da Liga, então prêmio em Ouro precisa cair depois da abertura (como o Kit Pioneiro).
+
+### Decisões do dono que ainda estão abertas
+- Mineração e Lenhador darem XP de herói (hoje dividir o tempo com eles custa cerca de 14 níveis em 60 dias).
+- Quinta zona de Caça para a segunda metade da temporada (do dia ~30 ao 60 o herói fica na zona 4).
+- Preço do Passe da Temporada 2.
+- Pagamento por cartão: o **Stripe** voltou como opção (cartão do mundo todo), mas o lançamento será **só com carteiras (USDC)** para medir cadastros; o Stripe fica pronto e desligado até ele criar a conta. Botão "Comprar SOL com Pix": recomendada a MoonPay (Ramp de reserva), não é para 31/10. Vender SOL dentro do jogo foi descartado (regras do Banco Central).
+- Pontos de interface que ele decide: "Resgatar tudo [Passe]" desabilitado para quem não tem Passe; "Resgatar e Sair" não sai da Caça; duas confirmações ao recuar na Masmorra; Passe grátis mostra 11 vantagens antes da trilha. A Forja do primeiro item (corrente longa de materiais) ele decidiu **deixar como está**.
+
+### Estudos e documentos desta fase
+- Estimativas de lançamento (Claude Doc): https://claude.ai/artifact/12TuEjxi3sFxzE3SfQQxbZ — cenário realista ~6.000 cadastros, ~120 Passes, ~US$ 1.600 em 60 dias com pagamento só em cripto.
+- Simulação de 100 jogadores (Claude Doc): https://claude.ai/artifact/Fgd54HnWShtk3V5LfT4mPM — frequência de jogo pesa mais que a build; Passe ≈ +8 níveis no dia 60 (90% vem do armazém de 10 h); gastar no mercado ajuda pouco; jogador grátis compete; Guardião domina a Masmorra e Caçador a Caça. Revalidada em 22/10 com XP por abate + eventos: ritmo certo, e nenhum jogador honesto é marcado pelo antifraude (pior caso 0,59 do limite).
+- Ordem das publicações no Discord/X (Claude Doc): https://claude.ai/artifact/SbE4ibamScuFkfSWDeS4UC — 12 posts em formato de diário de desenvolvimento; nunca prometer ganho nem publicar preço de item. Artes de posts feitas por outra thread em `docs/marketing/discord/` (não versionado).
+- `melhorias.md`, `docs/REVISAO_INTERFACES_JOGO.md` e `docs/mockups/` (não versionados): revisões e mockups externos; o que foi aprovado já está feito.
+
+### Como trabalhar (o que funcionou)
+- O dono escreve em português e costuma sair para trabalhar dizendo "você está no comando": publicar no **ambiente de teste** é esperado, inclusive banco e funções de teste. Produção, dinheiro real e regras do jogo só com decisão dele.
+- Diretor (Opus) planeja e revisa; executores (subagentes Sonnet) fazem. Dizer a cada executor quais arquivos pode tocar, que não faça commit, e que feche abas e servidores no fim.
+- **Publicar sempre de uma cópia limpa do commit** (`git archive HEAD | tar -x -C <pasta temporária>` e copiar `.vercel/`), porque outras threads deixam arquivos pela metade na pasta; conferir `"status": "ok"` no output antes do `vercel alias set`.
+- Commits: `git add` só dos próprios arquivos e `git pull --rebase --autostash` antes do push.
 
 ### Armadilhas aprendidas
 - Publicar artifact/link: primeiro publicar, depois usar a URL do resultado (nunca adivinhar).
 - Fechar todas as abas do navegador integrado depois de testar (a música do jogo continua tocando para o dono).
-- Testes SQL em PGlite rodam como superusuário: permissões de `anon`/`authenticated` precisam de teste explícito com `set role` (o ranking quebrou por isso).
+- Executores que tiram screenshots com Edge/Chrome headless podem deixar centenas de processos abertos (perfil `arena-shot-*`), e aí os testes estouram o tempo: conferir e encerrar só os processos `--headless` com esse perfil.
+- Testes SQL em PGlite rodam como superusuário: permissões de `anon`/`authenticated` precisam de teste explícito com `set role`.
 - Windows com `core.autocrlf=true`: testes que fazem `split('\n')` em arquivos do repo devem usar `/\r?\n/`.
-- Duas threads trabalham na mesma pasta e branch: sempre `git pull --rebase` antes de enviar e adicionar só os próprios arquivos (nunca `git add -A`).
 - `supabase db dump` precisa de Docker (não há); faça migrações idempotentes com bloco de rollback no cabeçalho.
-- O executor (subagente) que apaga "arquivos de rascunho" pode apagar trabalho do diretor: dizer explicitamente quais caminhos ele pode tocar.
+- Migração nova que lê `reset_at` precisa entrar na lista do `migration0009.test.ts`.
+- A cota grátis da Vercel é de 100 publicações por dia; o build automático por push está desligado por isso.
+- O executor que apaga "arquivos de rascunho" pode apagar trabalho do diretor: dizer explicitamente quais caminhos ele pode tocar.
