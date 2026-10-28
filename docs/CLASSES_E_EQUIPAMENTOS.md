@@ -190,11 +190,22 @@ Os gates de nível seguem os que já existem: T1 nível 1, T2 10, T3 25, T4 50, 
 
 ### 2.5 Como se prova que as três classes ficaram justas
 
-São duas medidas diferentes, e misturá-las é o jeito mais fácil de errar esta reforma.
+> **CORREÇÃO DE RUMO, 28/10, depois da medição da fase 8. Leia isto antes do resto da seção.**
+>
+> **A paridade de CP era a medida errada de justiça, e ela escondeu um desequilíbrio grande.** A medição mostrou o arqueiro ganhando nos **três** eixos: +50% de abates na Caça (o eixo do mago), +53 a +80% em chefe, e empate ou vitória em profundidade de Masmorra. O mago ficou **18% pior** no eixo que era dele.
+>
+> **A causa é estrutural, não de calibração.** O CP é a média geométrica de dano e vida efetiva — ele trata os dois como igualmente valiosos. Mas **na Caça e contra chefe o herói não morre**, então vida efetiva ali não vale nada e só o dano conta. Um conjunto que troca vida por dano marca "empatado" no CP e ganha de verdade em dois dos três eixos. Em T6: arqueiro com **2841 de dano por segundo contra 1738 do guerreiro (+63%)**, tendo **12% menos CP**.
+>
+> **O alvo passa a ser o eixo, não o CP.** O que o jogador sente são os três eixos; o CP é um número interno. A partir daqui:
+> - **O CP deixa de ser o juiz do equilíbrio.** Ele volta a ser o que sempre foi bom em ser: a régua da dificuldade recomendada e das checagens do servidor.
+> - A paridade de ±5% de CP **deixa de ser requisito**. Se o mago precisar de 10% mais CP que o guerreiro para ganhar a Caça enquanto o guerreiro ganha a Masmorra, está certo.
+> - **A medida de justiça é a tabela de eixos abaixo**, medida no motor real, não em fórmula fechada.
+>
+> **Duas lições que valem além deste jogo:** uma medida agregada (CP) pode estar correta e ainda assim ser a medida errada, quando o cenário real anula um dos seus termos. E a medição tem de rodar no motor de verdade — a fórmula fechada do CP teria aprovado este desequilíbrio para sempre.
 
-**1. Paridade de CP** — só sobre a parte de stat (vida, resistência, crítico, velocidade). Conjunto completo dos três pesos, no mesmo tier, dentro de **±5% de CP** um do outro. Garante que nenhum peso seja simplesmente equipamento pior. Teste: `itemBalance.test.ts`.
+**1. Paridade de CP** — só sobre a parte de stat. Mantida como **sinal de diagnóstico** (um peso muito fora indica erro de orçamento), **não como requisito**. Teste: `itemBalance.test.ts`.
 
-**2. Vantagem de papel** — splash e tiro de abertura **não aparecem no CP de um duelo**: área não faz nada numa luta só, e tiro de abertura vale muito em luta curta e quase nada em luta longa. Então a vantagem de cada classe se mede na simulação, em três eixos:
+**2. Vantagem de papel — esta é a medida que manda.** Medida no motor real de Caça, de chefe e de Masmorra, com a rotação automática e a afinidade ligadas, cada classe lida contra a média das outras duas:
 
 | Eixo | Quem deve ganhar | Medida |
 |---|---|---|
@@ -215,7 +226,33 @@ Então "mago mata 25% mais rápido" vira só **+11,8%** de XP por hora, abaixo d
 | **+16%** | **1,35×** |
 | +20% (o teto) | 1,44× ou mais |
 
-**Alvo corrigido:** cada classe **15–20% melhor** no seu próprio eixo (não 25%: o teto de XP torna 25% impossível sem o dono mudar o tunable) e **no máximo ~10% pior** nos outros dois. Para o mago isso significa calibrar a área (hoje a habilidade `carry`) para uma limpeza em torno de **1,35× mais rápida** — bem mais do que a intuição sugere. Quem calibrasse "no que parece razoável" pararia em +5% e a classe não existiria.
+**Alvo:** cada classe **15–20% melhor** no seu próprio eixo (não 25%: o teto de XP torna 25% impossível sem o dono mudar o tunable) e **no máximo ~10% pior** nos outros dois.
+
+**Onde estávamos em 28/10, medido** (cada classe contra a média das outras duas, T6 +8):
+
+| Eixo | Guerreiro | Arqueiro | Mago | Alvo |
+|---|---|---|---|---|
+| Abates/h na Caça | −25% | **+52%** | −16% | mago +15 a +20% |
+| Velocidade em chefe | −25% | **+80%** | −29% | arqueiro +15 a +20% |
+| Profundidade na Masmorra | +1% | +4% | −5% | guerreiro +15 a +20% |
+
+Nenhuma célula no alvo, e o arqueiro ganhando tudo.
+
+**O que a decomposição ensinou, e que muda onde se mexe:**
+
+| Camada | Quanto move |
+|---|---|
+| Equipamento sozinho | o desequilíbrio inteiro (arqueiro já +53% só de equipamento) |
+| Rotação | +11 a +14% para as três, **sem mudar a ordem** |
+| Afinidade | no máximo +1,4% |
+
+Ou seja: **a identidade de classe não está vindo das habilidades**, e não vai vir enquanto elas renderem o mesmo para todo mundo. A área do mago quadruplicada rende +8% — o tamanho do transbordo não é a alavanca; **a recarga e o teto do transbordo** são.
+
+**Onde mexer, em ordem:**
+
+1. **O dano por segundo do equipamento.** O arqueiro tem +63% sobre o guerreiro em T6. Isso é a mistura de stat do couro e do arco (velocidade × crítico, que se multiplicam), contra placa (vida × resistência, que não viram dano nenhum). A regra continua a mesma: mexe-se na **mistura de stat**, nunca no peso do CP.
+2. **A área do mago.** Recarga curta e teto de transbordo alto, não transbordo maior.
+3. **Uma vantagem de Masmorra que o guerreiro sinta.** Hoje ele empata com o arqueiro mesmo com mais vida efetiva, porque o arqueiro mata rápido demais para apanhar. Falta algo que só a sobrevivência longa recompense.
 
 **Consequência metodológica, descoberta na fase 5.** Os testes que comparam equipamento (`itemBalance`, `craftedStatsAudit`) têm de medir com a **rotação vazia**, e isso não é contornar teste: é controle experimental. Cada arma concede habilidades diferentes, então comparar arco contra espada com rotação ligada deixa de comparar equipamento e passa a comparar equipamento mais habilidade de brinde — a paridade de ±5% medida assim não significaria nada. Existe um helper único para esse herói "só equipamento", com o motivo escrito ao lado. A vantagem das habilidades é medida à parte, aqui na fase 8.
 
