@@ -48,24 +48,76 @@ As seis linhas de arma (campo `line` em `gear.ts`):
 | Mago | `staff` | lento e pesado, **área** + queimadura |
 | Mago | `scepter` | mais rápido, **área** menor + roubo de vida |
 
-### 2.2 As duas mecânicas novas de combate
+### 2.2 Habilidades de equipamento e a rotação
 
-Hoje os três papéis acabariam todos sendo "dano". Para o Arqueiro e o Mago existirem de verdade no combate automático, entram **duas** mecânicas, e só duas:
+> **Mudança de rumo do dono, 28/10 (substitui o desenho anterior desta seção).** A versão original tinha duas mecânicas passivas: `splashPct` (o cajado respingava uma fatia no próximo inimigo) e `openingShots` (o arco atrasava o primeiro ataque do inimigo). O dono pediu para ir mais perto do Albion: **cada arma tem habilidades**, as peças de armadura também podem ter, e o jogador **escolhe quais usar e em que ordem**, com tudo rodando automático. Isto é melhor e substitui aquilo: área e tiro de abertura deixam de ser número passivo e viram **habilidades**, que aparecem na tela com nome e efeito em vez de sumirem numa ficha de stat.
 
-**`openingShots` (Arqueiro)** — número de ataques que o herói dá antes do inimigo conseguir responder. À distância, o inimigo precisa chegar perto. Implementação: o primeiro ataque do inimigo naquela luta atrasa `openingShots × heroMs`. Vale em toda luta nova (cada abate na Caça, cada onda na Masmorra), por isso rende mais onde há muitas lutas curtas.
+#### O modelo
 
-**`splashPct` (Mago)** — fatia de cada golpe que também atinge o **próximo** inimigo da fila. O inimigo seguinte começa a luta já machucado. Numa fila de abates, isso vira a classe de produção: mais abates por hora na Caça, que é XP e material por abate desde a Rodada 31.
+- Cada **linha de arma** dá **3 habilidades**, além do ataque básico. São elas que dão o sabor da classe.
+- Cada **peso de armadura** dá **1 habilidade** pelo peitoral: mais defensiva e situacional.
+- O jogador monta uma **rotação de até 4 habilidades**, em ordem de prioridade. O ataque básico não ocupa espaço: é o que acontece quando nada está pronto.
+- O combate é automático: a cada momento em que o herói atacaria, ele percorre a rotação de cima para baixo e **dispara a primeira habilidade fora de recarga**; se nenhuma estiver pronta, dá o ataque básico.
 
-Os dois campos são **opcionais**: um herói sem arma de arqueiro/mago passa pelo mesmo caminho de código bit a bit igual ao de hoje.
+Isso põe a decisão do jogador exatamente onde um idle aguenta: **montar a rotação**, não apertar botão. E conversa com a regra de design do projeto ("não é um jogo para ficar assistindo"): a rotação é escolhida uma vez e rende por horas.
 
-Além disso, `blockChance` (que já existe em `CombatStats`, hoje só vindo de Habilidades) passa a poder vir de **escudo**, fechando a identidade do Guerreiro sem código novo de combate.
+#### O motor já existe — construir em cima, não ao lado
 
-Onde mexer, nos três laços que precisam concordar (é a armadilha clássica deste repositório):
+Pela terceira vez nesta reforma, metade do trabalho já está feita:
+
+- `derivedStats.ts` já tem `StrikeStats` / `StrikeState` / `resolveHeroHit`: golpes que disparam sozinhos **por contador de acertos** (Golpe Esmagador a cada N) e **por tempo** (Fúria a cada `furyEveryMs`), com estado atravessando lutas dentro da sessão.
+- `skillFx.ts` e `skillFx.atlas.ts` já são um sistema de efeito visual completo: folha de sprites por efeito, âncora (`target` / `hero` / `heroFeet`), nome flutuante, tremor de tela, escala por tamanho de tela.
+- `huntCombat.ts` já carrega `furyLeft` de luta para luta e sorteia em fluxos separados por efeito.
+
+Então uma habilidade é **um gatilho + um efeito + uma entrada de FX**, tudo com peça correspondente já pronta. O que falta é a generalização: recarga em segundos, a lista de prioridade, e os efeitos que o motor ainda não sabe fazer (atingir a fila, atrasar o inimigo, curar, escudo temporário).
+
+#### O conjunto fechado de efeitos
+
+Pequeno de propósito: cada efeito tem de funcionar **nos três laços** (seção abaixo), e um conjunto aberto vira dívida.
+
+| Efeito | O que faz |
+|---|---|
+| `strike` | um golpe de X% do dano do herói |
+| `cleave` | atinge o inimigo atual **e os N seguintes da fila** |
+| `volley` | N golpes rápidos de X% cada |
+| `dot` | aplica queimadura/sangramento (reusa `DotSpec`, que já existe) |
+| `guard` | reduz o dano recebido por X segundos |
+| `heal` | cura X% da vida máxima |
+| `haste` | velocidade de ataque por X segundos |
+| `opener` | atrasa o primeiro ataque do inimigo na luta |
+
+`cleave` é o que era `splashPct`; `opener` é o que era `openingShots`. Os dois sobrevivem, agora como habilidade.
+
+#### As 21 habilidades
+
+**Guerreiro — Espada:** Golpe Firme (`strike` forte) · Estocada Dupla (`volley` 2×) · Brecha (`strike` + `guard`)
+**Guerreiro — Machado:** Rachadura (`strike` muito forte, recarga longa) · Giro Brutal (`cleave` 2) · Sangria (`dot`)
+**Arqueiro — Arco:** Tiro Certeiro (`strike`, sempre crítico) · Chuva de Flechas (`volley` 3×) · Tiro de Abertura (`opener`)
+**Arqueiro — Besta:** Virote Perfurante (`strike` pesado) · Tiro Duplo (`volley` 2×) · Tiro Fatal (`strike` + dano crítico)
+**Mago — Cajado:** Explosão Arcana (`cleave` na fila) · Chamas (`dot` forte) · Nova (`cleave` + `guard`)
+**Mago — Cetro:** Drenar Vida (`strike` + `heal`) · Pulso Sombrio (`cleave` 2) · Bênção (`heal` + `haste`)
+**Peitorais:** Postura de Ferro (placa, `guard`) · Esquiva (couro, `haste`) · Fôlego Arcano (tecido, `heal`)
+
+Os números de cada uma (percentual e recarga) saem da calibração da seção 2.5, não da intuição.
+
+#### O que isto não muda
+
+O perfil de stat dos três pesos (seção 2.4) **continua valendo**: ele é a camada passiva, as habilidades são a ativa. A fase 2 não é desperdiçada.
+
+`blockChance`, que já existe em `CombatStats` e hoje só vem de Habilidades, passa a poder vir de **escudo** — fechando a identidade do Guerreiro sem código novo de combate.
+
+#### Onde mexer
+
+Os três laços que precisam concordar (é a armadilha clássica deste repositório):
 1. `src/game/huntCombat.ts` — laço de eventos da Caça
 2. `src/components/BattleModal.tsx` — laço por quadro da Masmorra
 3. `scripts/sim/driver.ts` — espelho do segundo, usado pelas simulações
 
-E em `derivedStats.ts` → `combatPowerCore`, com peso próprio (`cpSplashWeight`, `cpOpeningWeight`) em `T.advanced`, como todo efeito fechado já tem.
+E em `derivedStats.ts` → `combatPowerCore`. **Atenção:** o CP hoje é fórmula fechada, e o dano de uma rotação depende das recargas. A rotação tem de virar um **multiplicador médio de dano por segundo** calculado da própria rotação (soma de `efeito ÷ recarga`, mais o básico no tempo que sobra) e entrar no `dps`. Sem isso o CP mente, e o CP alimenta a curva de dificuldade e o antifraude.
+
+#### Nome na tela
+
+Já existe uma página **"Habilidades"** (as passivas de Guerreiro/Guardião/Caçador, compradas com ponto por nível). Duas coisas com o mesmo nome confundem. Proposta levada ao dono em 28/10: a nova se chama **"Rotação"** (ou "Combate") e a antiga mantém "Habilidades", por já estar no ar. Aguardando a palavra dele.
 
 ### 2.3 Afinidade: a classe aparece sozinha
 
@@ -260,6 +312,7 @@ Mantida a **regra de cadeia** que já vale: cada peça consome 1 peça do tier a
 - **Personagem**: selo de afinidade ao lado da ficha do item. Sem arte de herói nova: as armaduras novas **não** trocam a folha do herói (`ARMOR_LOOKS` só cobre a linha de placa, e continua assim).
 - **Mercado**: as peças novas seguem as mesmas regras (só Épico/Lendário/Único, nunca equipado, forjado online). Três linhas em vez de uma multiplicam a variedade negociável — é o que faz a taxa de 5% render.
 - **Habilidades**: os três caminhos atuais (Guerreiro / Guardião / Caçador) continuam valendo com qualquer equipamento. Um quarto caminho arcano fica para depois da reforma, não entra aqui.
+- **Rotação** (tela nova, seção 2.2): as habilidades que o equipamento vestido concede, e os 4 espaços em ordem de prioridade que o jogador monta. É a única tela realmente nova da reforma.
 
 ---
 
@@ -269,16 +322,18 @@ Cada fase fecha com os portões obrigatórios (`npx tsc -b --noEmit`, `npm test`
 
 | # | Fase | O que entrega |
 |---|---|---|
-| 1 | Materiais e cadeias | 13 materiais novos, 5 plantas, estação Tecelagem, traduções pt/en. Zero mudança de combate. |
-| 2 | Linhas de armadura | Gerador `weightBudget.gen.ts` (seção 2.4) + couro e tecido: armadura, elmo, luvas, botas, mão secundária (aljava e grimório). Inclui a correção de `FAMILY_BY_TIER` (seção 2.3) e as 12 famílias de conjunto novas. |
-| 3 | Linhas de arma | Arco, besta, cajado, cetro: 24 peças. |
-| 4 | Combate | `splashPct` e `openingShots` nos três laços, `blockChance` em escudo, pesos no CP, **e os tetos do antifraude da seção 2.6 no mesmo deploy**. |
-| 5 | Afinidade | `affinity.ts` e o selo na tela de Personagem. |
-| 6 | Encaixe | Filtro da Forja, quinta zona de Caça, drops novos, regras de mercado/salvagem/únicos. |
-| 7 | Equilíbrio | As duas medidas da seção 2.5: paridade de CP (±5%) e vantagem de papel (15–20%), a revalidação dos 100 jogadores, e a dívida da seção 5.1.2. |
-| 8 | Limpeza | Stripe e Pix fora do código, resumo em `docs/PAGAMENTOS_DESCARTADOS.md`; 4 ajustes de interface. |
+| 1 | Materiais e cadeias | ✅ `363681e`. 13 materiais, 5 plantas, estação Tecelagem, traduções. Zero mudança de combate. |
+| 2a | Linha de couro | ✅ `e874ca0`. 30 peças do arqueiro, 6 famílias, o gerador `weightBudget.gen.ts`, a correção de `FAMILY_BY_TIER`, e o conserto do dado morto (seção 5.1.1). |
+| 2b | Linha de tecido | As 30 peças do mago, 6 famílias, `CLOTH_CONVERSION` no mesmo gerador. |
+| 3 | Linhas de arma | Arco, besta, cajado, cetro: 24 peças. A arma ainda não lê `attackSpeedBonus` nem `hpRegenPct` (um teste fixa isso hoje) — esta fase abre esse caminho. |
+| 4 | **Motor de habilidades** | O gatilho generalizado (recarga em segundos), a rotação de 4 espaços por prioridade, e os 8 efeitos da seção 2.2 nos **três laços**. Inclui o multiplicador de rotação no CP, sem o qual o CP mente. |
+| 5 | **As 21 habilidades e a tela** | As 18 de arma e 3 de peitoral, os efeitos visuais (o motor de `skillFx` já existe), e a tela de Rotação. |
+| 6 | Afinidade | `affinity.ts` devolvendo um `SetEffect`, somado no mesmo ponto que o bônus de conjunto (seção 2.3), e o selo na tela de Personagem. |
+| 7 | Encaixe | Filtro da Forja, quinta zona de Caça, os drops novos nas zonas 3 e 4 (com chave de fluxo própria, seção 5.1.2), regras de mercado/salvagem/únicos. |
+| 8 | Equilíbrio | As medidas da seção 2.5: paridade de CP (±5%) e vantagem de papel (15–20%), agora medida com rotação; a revalidação dos 100 jogadores; a dívida da seção 5.1.3. |
+| 9 | Limpeza | Stripe e Pix fora do código, resumo em `docs/PAGAMENTOS_DESCARTADOS.md`; 4 ajustes de interface. |
 
-Os ícones dos itens novos entram pelo caminho que já existe (`iconPending.ts` e a reserva do `MaterialIcon`) e podem ser gerados depois; nenhuma fase depende de arte.
+Os ícones dos itens entram pelo caminho que já existe (`iconPending.ts`). **Atualização 28/10:** o dono autorizou gerá-los em pixel art; os 4 primeiros da linha de couro foram feitos e aprovados quanto ao estilo (32×32, contorno escuro, fundo transparente, igual aos que já existem). Nenhuma fase depende de arte.
 
 ---
 
@@ -300,7 +355,13 @@ Como o perfil de couro é velocidade de ataque e o de tecido é regeneração (s
 
 Convenção a respeitar ao acumular: em `equippedExtraStats`, `critChance` e `reflect` aplicam só `durabilityFactor`; `maxHp`, `damage`, `resistance` e `critMult` aplicam durabilidade **e** multiplicador de raridade. Os dois campos novos entram como o `critChance` (só durabilidade): são fração de efeito, não stat escalado por raridade.
 
-### 5.1.2 O simulador não é reprodutível (achado na fase 1)
+### 5.1.2 Drops novos nas zonas 3 e 4 precisam de fluxo próprio (achado na fase 1)
+
+Em `huntCombat.ts`, **todos os drops marcados `ownStream` de uma zona dividem UM gerador** (`ownRng`) e são sorteados **na ordem do array**, a cada abate. Inserir um `ownStream` numa zona que já tem outros desloca os números dos antigos: a estatística continua a mesma, mas uma sessão repetida da mesma semente passa a dar outro resultado para `rift_shard`, `fiend_horn`, `abyssal_marrow` e `blood_heart`. Quem estivesse no meio de uma caça no Rift veria o resultado mudar.
+
+Por isso a fase 1 pôs os materiais novos **só na glade e no marsh**, que não tinham nenhum `ownStream` anterior. A fase 7, ao levá-los às zonas 3 e 4 (que as armas tier 5 e 6 vão exigir), precisa de uma **chave de fluxo própria** (por exemplo `seedKey + ':class'`) em vez de mais um `ownStream`. O aviso está escrito em `huntingZones.ts`, ao lado dos drops.
+
+### 5.1.3 O simulador não é reprodutível (achado na fase 1)
 
 Ao gerar os picos honestos do antifraude (`HONEST_PEAK_DAY_UNITS` em `rates.ts`, usado por `bounds.ts` para o teto diário de unidades negociáveis), apareceu o seguinte, conferido em três rodadas, inclusive num extrato limpo do HEAD **sem nenhuma alteração**:
 
