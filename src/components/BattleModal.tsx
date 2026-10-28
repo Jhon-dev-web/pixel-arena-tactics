@@ -8,7 +8,8 @@ import { getConsumable } from '../game/consumables';
 import { ConsumableId } from '../game/consumables';
 import { EnemyDef, getEnemyDef } from '../game/enemies';
 import { BurnState, applyDamageModifiers, applyDamageReduction, StrikeTally, bastionHp, bleedSpec, bossDamage, echoDamage, furyHitDamage, igniteBurn, newStrikeState, reflectedDamage, regenAmount, registerBlock, resolveHeroHit, tally, tickBurn } from '../game/derivedStats';
-import { SKILL_FX, FX_PATH_COLOR, SkillFxId } from '../game/skillFx';
+import { SKILL_FX, fxColor, SkillFxId } from '../game/skillFx';
+import { abilityDotAt, fireAbility, guardDamage, hastedMs, newAbilityRuntime, pickAbility, startAbilityFight, tickAbilityDot } from '../game/abilities';
 import { FxLayer } from './SkillFx';
 import { useFxScale, useFxStage } from '../hooks/useSkillFx';
 import StrikeLines from './StrikeLines';
@@ -152,6 +153,9 @@ export default function BattleModal({
   const tallyRef = useRef<StrikeTally>({});
   const totalDmgRef = useRef(0);
   const furyNextRef = useRef(0);
+  // Equipment abilities (game/abilities.ts, the same functions the hunting simulation and the driver call): cooldowns, guard / haste windows, the burn and the carry bucket live for the whole run, on the combat clock.
+  const abilityRef = useRef(newAbilityRuntime());
+  const enemyActedRef = useRef(false); // the enemy has attacked in this fight (an opener is only ready before it does)
   const [skillLines, setSkillLines] = useState<{ tally: StrikeTally; total: number } | null>(null);
   const [hud, setHud] = useState({ crush: 0, fury: 0, bastion: false });
   const fxStage = useFxStage();
@@ -188,7 +192,7 @@ export default function BattleModal({
   const playStrike = (id: SkillFxId) => {
     const def = SKILL_FX[id];
     playFxRef.current(id);
-    if (def.callout) addFloat(def.side, t(`heroSkills.fx.${id}`), 'skill', { left: `${def.left}%`, top: def.top, ['--fx-color' as string]: FX_PATH_COLOR[def.path] } as CSSProperties);
+    if (def.callout) addFloat(def.side, t(`heroSkills.fx.${id}`), 'skill', { left: `${def.left}%`, top: def.top, ['--fx-color' as string]: fxColor(id) } as CSSProperties);
   };
 
   const endCombat = (outcome: 'retreat' | 'defeat') => {
@@ -253,9 +257,13 @@ export default function BattleModal({
       stageRef.current = next;
       setStage(next);
       const nmax = enemyHpForStage(next);
-      hp.current.e = nmax;
+      // A carry from the last fight (abilities.ts) comes in as damage the new enemy has already taken.
+      const carriedIn = startAbilityFight(abilityRef.current, nmax);
+      hp.current.e = nmax - carriedIn;
+      totalDmgRef.current += carriedIn;
+      enemyActedRef.current = false;
       setEnemyMax(nmax);
-      setEnemyHp(nmax);
+      setEnemyHp(nmax - carriedIn);
       setMilestone(isDungeonBoss(next) ? 'boss' : isDungeonCheckpoint(next) ? 'checkpoint' : null);
       setWaveClear(null);
       setHeroProgress(0);
@@ -312,9 +320,13 @@ export default function BattleModal({
       const base = Math.max(1, Math.round(plain * res.mult));
       if (res.crush) tally(tallyRef.current, res.devastating ? 'w_devastating_strike' : 'w_heavy_blow', afterCrush - plain);
       if (res.counter) tally(tallyRef.current, 'g_block', base - afterCrush);
-      let dmg = base;
+      // Equipment abilities: the first ability of the rotation that is ready takes the place of the basic swing (abilities.ts); a hero without a rotation never enters this branch.
+      const picked = combat.rotation ? pickAbility(abilityRef.current, combat.rotation, clockRef.current, enemyActedRef.current) : null;
+      const fired = picked ? fireAbility(abilityRef.current, picked, clockRef.current, base, total, playerMax) : null;
+      const swung = fired ? fired.dmg : base;
+      let dmg = swung;
       if (res.double) {
-        const echo = echoDamage(base);
+        const echo = echoDamage(swung);
         dmg += echo;
         tally(tallyRef.current, 'h_light_step', echo);
       }
@@ -335,6 +347,16 @@ export default function BattleModal({
       else if (res.crush) playStrike('crush');
       if (res.counter) playStrike('counter');
       if (res.double) playStrike('double');
+      if (fired) {
+        playStrike(fired.def.fx);
+        if (fired.heal > 0) {
+          hp.current.p = Math.min(playerMax, hp.current.p + fired.heal);
+          setPlayerHp(hp.current.p);
+          addFloat('p', `+${fired.heal}`, 'heal');
+        }
+        // The enemy attack timer is real time, which the speed toggle shortens, so the delay is too.
+        enemyNextAtkRef.current += fired.enemyDelayMs / speedRef.current;
+      }
       if (combat.lifesteal > 0) {
         const heal = Math.max(1, Math.round(dmg * (combat.lifesteal / 100)));
         hp.current.p = Math.min(playerMax, hp.current.p + heal);
@@ -360,7 +382,8 @@ export default function BattleModal({
       const reducedBoss = isDungeonBoss(st) || isDungeonCheckpoint(st) ? bossDamage(reduced, combat.bossReduction) : reduced;
       const blocked = !!combat.block && Math.random() < combat.block;
       if (blocked) registerBlock(strikeRef.current, combat.strikes);
-      const eFinal = blocked ? 0 : reducedBoss;
+      enemyActedRef.current = true;
+      const eFinal = guardDamage(abilityRef.current, clockRef.current, blocked ? 0 : reducedBoss);
       hp.current.p = Math.max(0, hp.current.p - eFinal);
       setEnemyAnim('attack');
       setEnemyLunge(true);
@@ -466,6 +489,20 @@ export default function BattleModal({
           return false;
         }
       }
+      while (abilityDotAt(abilityRef.current) <= clock) {
+        const dot = tickAbilityDot(abilityRef.current);
+        hp.current.e = Math.max(0, hp.current.e - dot);
+        totalDmgRef.current += dot;
+        setEnemyHp(hp.current.e);
+        addFloat('e', `-${dot}`, 'burn');
+        if (hp.current.e <= 0) {
+          burnRef.current = null;
+          bleedRef.current = null;
+          setEnemyBurning(false);
+          clearWave();
+          return false;
+        }
+      }
       if (!burnRef.current) setEnemyBurning(false);
       return true;
     };
@@ -526,7 +563,7 @@ export default function BattleModal({
         setHud((h) => (h.crush === crush && Math.abs(h.fury - fury) < 0.02 ? h : { ...h, crush, fury }));
       }
 
-      const heroMs = activeTonicStats(combat, save, Date.now()).heroMs;
+      const heroMs = hastedMs(abilityRef.current, clockRef.current, activeTonicStats(combat, save, Date.now()).heroMs);
       const heroInterval = heroMs / spd;
       const heroElapsed = now - heroNextAtkRef.current;
       setHeroProgress(Math.min(1, heroElapsed / heroInterval));

@@ -50,8 +50,15 @@ describe('skill effect sheets', () => {
     const ids = Object.keys(SKILL_FX) as SkillFxId[];
     for (const id of ids) {
       const d = SKILL_FX[id];
-      expect(HERO_SKILLS.some((s) => s.id === d.skill), id).toBe(true);
-      if (id !== 'counter') expect(d.fx.kind, id).toBe('sprite');
+      // An equipment ability (abilities.ts) belongs to no hero skill and has no sheet yet: it uses the CSS reserve, with a colour of its own.
+      if (id.startsWith('ab_')) {
+        expect(d.skill, id).toBeUndefined();
+        expect(d.fx.kind, id).toBe('css');
+        expect(d.color, id).toMatch(/^#[0-9a-f]{6}$/);
+      } else {
+        expect(HERO_SKILLS.some((s) => s.id === d.skill), id).toBe(true);
+        if (id !== 'counter') expect(d.fx.kind, id).toBe('sprite');
+      }
       expect(fxDuration(d.fx), id).toBeGreaterThan(0);
       for (const table of [en, pt]) expect(typeof (table as unknown as { heroSkills: { fx: Record<string, string> } }).heroSkills.fx[id], id).toBe('string');
     }

@@ -891,9 +891,9 @@ describe('CP values the combat skills and never punishes a rank', () => {
 
   it('a stats object without the skill fields still gives a finite CP, and hostile skill values stay finite', () => {
     const st = buildCombatStats(heroes[2]);
-    expect(Number.isFinite(combatPowerCore(st))).toBe(true);
+    expect(Number.isFinite(combatPowerCore(st, null))).toBe(true);
     for (const bad of [Number.NaN, -5, Infinity, 1e30]) {
-      const v = combatPowerCore({ ...st, bleed: bad, strikes: { crushEvery: bad, crushBonus: bad, furyPct: bad, counter: bad, doubleChance: bad }, block: bad, bossReduction: bad });
+      const v = combatPowerCore({ ...st, bleed: bad, strikes: { crushEvery: bad, crushBonus: bad, furyPct: bad, counter: bad, doubleChance: bad }, block: bad, bossReduction: bad }, null);
       expect(Number.isFinite(v), String(bad)).toBe(true);
       expect(v).toBeGreaterThan(0);
     }

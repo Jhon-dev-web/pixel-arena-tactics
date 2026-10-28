@@ -79,6 +79,8 @@ export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveDat
 // Continuous: the in-game integer rounding of the enemy hit is left out so a stat's value is not hidden by +-1 steps.
 // Hero skills (heroSkills.ts): bleed is a second burn, the Devastating Strike raises the average hit, Block removes a share of the enemy hits, Firm Stance cuts the
 // hit on a boss / checkpoint floor (`boss`), and Last Bastion adds the heal to the pool in the share of fights T.advanced.cpBastionWeight says it is ready for.
+// REVIEW IN PHASE 8: this closed-form model mirrors the CP and does NOT know the rotation of the equipment abilities (abilities.ts, phase 4): the balance pass would calibrate with it blind to them. Teach it the rotation (or
+// measure with the real loops) before trusting its margins for a hero that has one.
 export function duelVs(s: SaveData, enemyHp: number, enemyDmg: number, enemyMs: number, stats?: CombatStats, boss = false) {
   const c = stats ?? buildCombatStats(s);
   const cc = Math.max(0, Math.min(1, c.critChance));

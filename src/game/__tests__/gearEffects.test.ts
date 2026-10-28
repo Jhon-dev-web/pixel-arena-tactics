@@ -376,20 +376,20 @@ describe('CP values the effects and never punishes them', () => {
     for (const h of heroes) {
       const c = buildCombatStats(h);
       const off: CombatStats = { ...c, burn: false, reflect: 0, hpRegenPct: 0 };
-      const core = combatPowerCore(off);
-      expect(combatPowerCore({ ...off, burn: true })).toBeGreaterThan(core);
-      expect(combatPowerCore({ ...off, reflect: 0.2 })).toBeGreaterThan(core);
-      expect(combatPowerCore({ ...off, hpRegenPct: 0.009 })).toBeGreaterThan(core);
+      const core = combatPowerCore(off, null);
+      expect(combatPowerCore({ ...off, burn: true }, null)).toBeGreaterThan(core);
+      expect(combatPowerCore({ ...off, reflect: 0.2 }, null)).toBeGreaterThan(core);
+      expect(combatPowerCore({ ...off, hpRegenPct: 0.009 }, null)).toBeGreaterThan(core);
       // monotone in the size of the effect
-      expect(combatPowerCore({ ...off, reflect: 0.3 })).toBeGreaterThanOrEqual(combatPowerCore({ ...off, reflect: 0.2 }));
-      expect(combatPowerCore({ ...off, hpRegenPct: 0.02 })).toBeGreaterThanOrEqual(combatPowerCore({ ...off, hpRegenPct: 0.009 }));
+      expect(combatPowerCore({ ...off, reflect: 0.3 }, null)).toBeGreaterThanOrEqual(combatPowerCore({ ...off, reflect: 0.2 }, null));
+      expect(combatPowerCore({ ...off, hpRegenPct: 0.02 }, null)).toBeGreaterThanOrEqual(combatPowerCore({ ...off, hpRegenPct: 0.009 }, null));
     }
   });
 
   it('a stats object from before the effects existed (no fields) still gives a finite CP', () => {
     const c = buildCombatStats(heroes[1]) as Partial<CombatStats>;
     const old = { maxHp: c.maxHp, dmgBase: c.dmgBase, critChance: c.critChance, critMult: c.critMult, heroMs: c.heroMs, reduction: c.reduction, lifesteal: c.lifesteal } as CombatStats;
-    expect(Number.isFinite(combatPowerCore(old))).toBe(true);
+    expect(Number.isFinite(combatPowerCore(old, null))).toBe(true);
   });
 
   it('turning an effect off in the data never raises CP (burn on weapons, reflect on armors)', () => {

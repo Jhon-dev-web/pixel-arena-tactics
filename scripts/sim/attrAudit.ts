@@ -69,13 +69,14 @@ export interface PointValue {
 export const VALUE_STEP = 10;
 export function pointValue(h: SaveData, floor = repFloor(h), step = VALUE_STEP): PointValue {
   const p0 = duel(h, floor).P;
-  const c0 = combatPowerCore(buildCombatStats(h));
+  // null: this audit measures what the primary attributes do and leaves the equipment rotation out on purpose.
+  const c0 = combatPowerCore(buildCombatStats(h), null);
   const real = {} as Attrs;
   const cp = {} as Attrs;
   for (const a of ATTRS) {
     const s = { ...h, [a]: h[a] + step };
     real[a] = logPct(duel(s, floor).P, p0) / step;
-    cp[a] = (2 * logPct(combatPowerCore(buildCombatStats(s)), c0)) / step;
+    cp[a] = (2 * logPct(combatPowerCore(buildCombatStats(s), null), c0)) / step;
   }
   return { floor, real, cp };
 }

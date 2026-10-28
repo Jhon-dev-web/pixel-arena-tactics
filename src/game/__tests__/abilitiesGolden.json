@@ -1,0 +1,1071 @@
+{
+ "hunt": {
+  "plain/plain": {
+   "ceilingSubLevel": 5,
+   "promotionWins": 0,
+   "promotions": 4,
+   "promotionLosses": 0,
+   "kills": 1788,
+   "defeats": 0,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 14397300,
+   "xpBase": 24966,
+   "xpReady": 24966,
+   "goldReady": 399,
+   "drops": {
+    "leather_scrap": 439,
+    "demon_claw": 105,
+    "beast_sinew": 220
+   },
+   "uniques": [],
+   "liveSnapshot": {
+    "subLevel": 5,
+    "heroHp": 1459,
+    "heroMax": 1500,
+    "enemyHp": 900,
+    "enemyMax": 1260
+   },
+   "skillTally": {},
+   "totalDamage": 2397960
+  },
+  "plain/timeline+potions": {
+   "ceilingSubLevel": 6,
+   "promotionWins": 0,
+   "promotions": 3,
+   "promotionLosses": 0,
+   "kills": 4038,
+   "defeats": 0,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 25194000,
+   "xpBase": 58604.570504,
+   "xpReady": 58604,
+   "goldReady": 12695,
+   "drops": {
+    "demon_claw": 191,
+    "leather_scrap": 839,
+    "beast_sinew": 427
+   },
+   "uniques": [
+    {
+     "templateId": "x",
+     "rarity": "common",
+     "substats": [
+      {
+       "type": "lifesteal",
+       "value": 2.4
+      }
+     ]
+    },
+    {
+     "templateId": "x",
+     "rarity": "common",
+     "substats": [
+      {
+       "type": "lifesteal",
+       "value": 2.4
+      }
+     ]
+    },
+    {
+     "templateId": "x",
+     "rarity": "rare",
+     "substats": [
+      {
+       "type": "defense",
+       "value": 4
+      },
+      {
+       "type": "critRate",
+       "value": 5
+      }
+     ]
+    },
+    {
+     "templateId": "x",
+     "rarity": "rare",
+     "substats": [
+      {
+       "type": "lifesteal",
+       "value": 1.5
+      },
+      {
+       "type": "defense",
+       "value": 5
+      }
+     ]
+    }
+   ],
+   "liveSnapshot": {
+    "subLevel": 6,
+    "heroHp": 1328,
+    "heroMax": 1500,
+    "enemyHp": 390,
+    "enemyMax": 1350
+   },
+   "skillTally": {},
+   "totalDamage": 5709400
+  },
+  "gear/plain": {
+   "ceilingSubLevel": 5,
+   "promotionWins": 0,
+   "promotions": 4,
+   "promotionLosses": 0,
+   "kills": 1893,
+   "defeats": 0,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 14395500,
+   "xpBase": 26436,
+   "xpReady": 27757,
+   "goldReady": 439,
+   "drops": {
+    "beast_sinew": 215,
+    "leather_scrap": 428,
+    "demon_claw": 104
+   },
+   "uniques": [],
+   "liveSnapshot": {
+    "subLevel": 5,
+    "heroHp": 1457,
+    "heroMax": 1500,
+    "enemyHp": 267,
+    "enemyMax": 1260
+   },
+   "skillTally": {},
+   "totalDamage": 2488883
+  },
+  "gear/timeline+potions": {
+   "ceilingSubLevel": 6,
+   "promotionWins": 0,
+   "promotions": 3,
+   "promotionLosses": 0,
+   "kills": 4105,
+   "defeats": 0,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 25193000,
+   "xpBase": 59716.70499,
+   "xpReady": 62702,
+   "goldReady": 12767,
+   "drops": {
+    "beast_sinew": 433,
+    "demon_claw": 212,
+    "leather_scrap": 837
+   },
+   "uniques": [
+    {
+     "templateId": "x",
+     "rarity": "common",
+     "substats": [
+      {
+       "type": "lifesteal",
+       "value": 2.4
+      }
+     ]
+    }
+   ],
+   "liveSnapshot": {
+    "subLevel": 6,
+    "heroHp": 1453,
+    "heroMax": 1500,
+    "enemyHp": 332,
+    "enemyMax": 1350
+   },
+   "skillTally": {},
+   "totalDamage": 5919169
+  },
+  "skills/plain": {
+   "ceilingSubLevel": 5,
+   "promotionWins": 0,
+   "promotions": 4,
+   "promotionLosses": 0,
+   "kills": 2724,
+   "defeats": 0,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 14395219,
+   "xpBase": 36695.361943,
+   "xpReady": 36695,
+   "goldReady": 399,
+   "drops": {
+    "beast_sinew": 283,
+    "leather_scrap": 545,
+    "demon_claw": 120
+   },
+   "uniques": [],
+   "liveSnapshot": {
+    "subLevel": 5,
+    "heroHp": 1377,
+    "heroMax": 1500,
+    "enemyHp": 579,
+    "enemyMax": 1260
+   },
+   "skillTally": {
+    "w_bleed": {
+     "n": 10720,
+     "dmg": 74216
+    },
+    "h_light_step": {
+     "n": 3188,
+     "dmg": 380574
+    },
+    "w_heavy_blow": {
+     "n": 2645,
+     "dmg": 199020
+    },
+    "w_fury": {
+     "n": 1799,
+     "dmg": 259056
+    },
+    "w_devastating_strike": {
+     "n": 1322,
+     "dmg": 397680
+    },
+    "g_block": {
+     "n": 1537,
+     "dmg": 146010
+    }
+   },
+   "totalDamage": 3847676
+  },
+  "skills/timeline+potions": {
+   "ceilingSubLevel": 6,
+   "promotionWins": 0,
+   "promotions": 3,
+   "promotionLosses": 0,
+   "kills": 5752,
+   "defeats": 0,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 25195748,
+   "xpBase": 73868.581817,
+   "xpReady": 73868,
+   "goldReady": 12698,
+   "drops": {
+    "beast_sinew": 502,
+    "leather_scrap": 1054,
+    "demon_claw": 263
+   },
+   "uniques": [
+    {
+     "templateId": "x",
+     "rarity": "rare",
+     "substats": [
+      {
+       "type": "maxHp",
+       "value": 7
+      },
+      {
+       "type": "critDamage",
+       "value": 66
+      }
+     ]
+    },
+    {
+     "templateId": "x",
+     "rarity": "rare",
+     "substats": [
+      {
+       "type": "critDamage",
+       "value": 86
+      },
+      {
+       "type": "maxHp",
+       "value": 7
+      }
+     ]
+    },
+    {
+     "templateId": "x",
+     "rarity": "common",
+     "substats": [
+      {
+       "type": "maxHp",
+       "value": 6
+      }
+     ]
+    },
+    {
+     "templateId": "x",
+     "rarity": "legendary",
+     "substats": [
+      {
+       "type": "maxHp",
+       "value": 11.9
+      },
+      {
+       "type": "critRate",
+       "value": 5.1
+      },
+      {
+       "type": "defense",
+       "value": 6.8
+      },
+      {
+       "type": "goldBonus",
+       "value": 5.1
+      }
+     ]
+    },
+    {
+     "templateId": "x",
+     "rarity": "epic",
+     "substats": [
+      {
+       "type": "maxHp",
+       "value": 8
+      },
+      {
+       "type": "goldBonus",
+       "value": 3
+      },
+      {
+       "type": "critRate",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "liveSnapshot": {
+    "subLevel": 6,
+    "heroHp": 1457,
+    "heroMax": 1500,
+    "enemyHp": 237,
+    "enemyMax": 1350
+   },
+   "skillTally": {
+    "h_light_step": {
+     "n": 5931,
+     "dmg": 883095
+    },
+    "g_block": {
+     "n": 2539,
+     "dmg": 304562
+    },
+    "w_bleed": {
+     "n": 17221,
+     "dmg": 143787
+    },
+    "w_heavy_blow": {
+     "n": 4918,
+     "dmg": 466845
+    },
+    "w_fury": {
+     "n": 3149,
+     "dmg": 550632
+    },
+    "w_devastating_strike": {
+     "n": 2459,
+     "dmg": 944300
+    }
+   },
+   "totalDamage": 8935831
+  },
+  "weak/plain": {
+   "ceilingSubLevel": 2,
+   "promotionWins": 2,
+   "promotions": 1,
+   "promotionLosses": 20,
+   "kills": 129,
+   "defeats": 815,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 1999800,
+   "xpBase": 1299,
+   "xpReady": 1299,
+   "goldReady": 55,
+   "drops": {
+    "leather_scrap": 54,
+    "beast_sinew": 22,
+    "demon_claw": 9
+   },
+   "uniques": [],
+   "liveSnapshot": {
+    "subLevel": 2,
+    "heroHp": 400,
+    "heroMax": 400,
+    "enemyHp": 910,
+    "enemyMax": 990
+   },
+   "skillTally": {},
+   "totalDamage": 771320
+  },
+  "weak/timeline+potions": {
+   "ceilingSubLevel": 6,
+   "promotionWins": 0,
+   "promotions": 3,
+   "promotionLosses": 0,
+   "kills": 3227,
+   "defeats": 599,
+   "potionsUsed": {
+    "greater_elixir": 2,
+    "large_hp": 0,
+    "small_hp": 1
+   },
+   "fightTimeUsedMs": 17997600,
+   "xpBase": 46474.529414,
+   "xpReady": 46474,
+   "goldReady": 10498,
+   "drops": {
+    "leather_scrap": 620,
+    "demon_claw": 178,
+    "beast_sinew": 345
+   },
+   "uniques": [],
+   "liveSnapshot": {
+    "subLevel": 6,
+    "heroHp": 188,
+    "heroMax": 400,
+    "enemyHp": 1070,
+    "enemyMax": 1350
+   },
+   "skillTally": {},
+   "totalDamage": 4910170
+  },
+  "engine/2": {
+   "ceilingSubLevel": 4,
+   "promotionWins": 0,
+   "promotions": 3,
+   "promotionLosses": 0,
+   "kills": 2547,
+   "defeats": 0,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 10799862.068965,
+   "xpBase": 5367.531448,
+   "xpReady": 5367,
+   "goldReady": 8,
+   "drops": {
+    "leather_scrap": 242,
+    "beast_sinew": 30,
+    "demon_claw": 59,
+    "demon_core": 2
+   },
+   "uniques": [],
+   "liveSnapshot": {
+    "subLevel": 4,
+    "heroHp": 324,
+    "heroMax": 324,
+    "enemyHp": 223,
+    "enemyMax": 223
+   },
+   "skillTally": {
+    "w_heavy_blow": {
+     "n": 1902,
+     "dmg": 53043
+    }
+   },
+   "totalDamage": 699549
+  },
+  "engine/4g": {
+   "ceilingSubLevel": 4,
+   "promotionWins": 0,
+   "promotions": 3,
+   "promotionLosses": 0,
+   "kills": 7963,
+   "defeats": 0,
+   "potionsUsed": {
+    "greater_elixir": 0,
+    "large_hp": 0,
+    "small_hp": 0
+   },
+   "fightTimeUsedMs": 10799812.612613,
+   "xpBase": 5367.506868,
+   "xpReady": 5367,
+   "goldReady": 8,
+   "drops": {
+    "leather_scrap": 236,
+    "demon_claw": 67,
+    "beast_sinew": 28,
+    "demon_core": 5
+   },
+   "uniques": [],
+   "liveSnapshot": {
+    "subLevel": 4,
+    "heroHp": 1018,
+    "heroMax": 1018,
+    "enemyHp": 223,
+    "enemyMax": 223
+   },
+   "skillTally": {
+    "w_heavy_blow": {
+     "n": 2160,
+     "dmg": 326292
+    },
+    "w_fury": {
+     "n": 1349,
+     "dmg": 465405
+    }
+   },
+   "totalDamage": 3708862
+  }
+ },
+ "dungeon": {
+  "dungeon/t2": {
+   "startFloor": 6,
+   "stages": 12,
+   "outcome": "retreat",
+   "complete": false,
+   "seconds": 42.334831,
+   "rewards": {
+    "gold": 130,
+    "drops": {},
+    "shards": 2,
+    "gems": {},
+    "uniques": [],
+    "relics": [],
+    "stages": 12
+   },
+   "potionsUsed": 0,
+   "skillTally": {},
+   "totalDamage": 1860,
+   "heroHits": 28,
+   "crits": 2,
+   "enemyHits": 16,
+   "damageTaken": 213
+  },
+  "stats/t2": {
+   "maxHp": 345,
+   "dmgBase": 61.972,
+   "critChance": 0.075,
+   "critMult": 2,
+   "heroMs": 1119.101124,
+   "agi": 9,
+   "speedBonus": 0,
+   "reduction": 0.11,
+   "lifesteal": 0,
+   "burn": false,
+   "reflect": 0,
+   "hpRegenPct": 0,
+   "goldBonus": 0,
+   "xpBonus": 0
+  },
+  "cp/t2": 302,
+  "dungeon/t3warrior": {
+   "startFloor": 18,
+   "stages": 8,
+   "outcome": "retreat",
+   "complete": false,
+   "seconds": 23.42449,
+   "rewards": {
+    "gold": 227,
+    "drops": {},
+    "shards": 7,
+    "gems": {
+     "ruby": 1
+    },
+    "uniques": [],
+    "relics": [],
+    "stages": 8
+   },
+   "potionsUsed": 0,
+   "skillTally": {
+    "w_heavy_blow": {
+     "n": 3,
+     "dmg": 228
+    },
+    "w_fury": {
+     "n": 2,
+     "dmg": 450
+    }
+   },
+   "totalDamage": 2927,
+   "heroHits": 15,
+   "crits": 1,
+   "enemyHits": 6,
+   "damageTaken": 358
+  },
+  "stats/t3warrior": {
+   "maxHp": 639,
+   "dmgBase": 136.2765,
+   "critChance": 0.125,
+   "critMult": 2,
+   "heroMs": 1053.061224,
+   "agi": 18,
+   "speedBonus": 0,
+   "reduction": 0.195,
+   "lifesteal": 0,
+   "burn": false,
+   "reflect": 0.2,
+   "hpRegenPct": 0,
+   "goldBonus": 0,
+   "xpBonus": 0,
+   "strikes": {
+    "crushEvery": 5,
+    "crushBonus": 0.56,
+    "furyPct": 0.55
+   }
+  },
+  "cp/t3warrior": 788,
+  "dungeon/t3guardian": {
+   "startFloor": 18,
+   "stages": 8,
+   "outcome": "retreat",
+   "complete": false,
+   "seconds": 28.061224,
+   "rewards": {
+    "gold": 254,
+    "drops": {},
+    "shards": 7,
+    "gems": {
+     "sapphire": 1
+    },
+    "uniques": [],
+    "relics": [],
+    "stages": 8
+   },
+   "potionsUsed": 0,
+   "skillTally": {},
+   "totalDamage": 2962,
+   "heroHits": 20,
+   "crits": 1,
+   "enemyHits": 9,
+   "damageTaken": 519
+  },
+  "stats/t3guardian": {
+   "maxHp": 687,
+   "dmgBase": 136.2765,
+   "critChance": 0.125,
+   "critMult": 2,
+   "heroMs": 1053.061224,
+   "agi": 18,
+   "speedBonus": 0,
+   "reduction": 0.23595,
+   "lifesteal": 0,
+   "burn": false,
+   "reflect": 0.2,
+   "hpRegenPct": 0,
+   "goldBonus": 0,
+   "xpBonus": 0
+  },
+  "cp/t3guardian": 731,
+  "dungeon/t4hunter": {
+   "startFloor": 30,
+   "stages": 0,
+   "outcome": "defeat",
+   "complete": false,
+   "seconds": 8.5,
+   "rewards": {
+    "gold": 0,
+    "drops": {},
+    "shards": 0,
+    "gems": {},
+    "uniques": [],
+    "relics": [],
+    "stages": 0
+   },
+   "potionsUsed": 0,
+   "skillTally": {
+    "h_light_step": {
+     "n": 2,
+     "dmg": 378
+    }
+   },
+   "totalDamage": 2444,
+   "heroHits": 8,
+   "crits": 1,
+   "enemyHits": 5,
+   "damageTaken": 1055
+  },
+  "stats/t4hunter": {
+   "maxHp": 1018,
+   "dmgBase": 209.8225,
+   "critChance": 0.17,
+   "critMult": 2,
+   "heroMs": 976.576577,
+   "agi": 31,
+   "speedBonus": 0,
+   "reduction": 0.275,
+   "lifesteal": 0,
+   "burn": false,
+   "reflect": 0.21,
+   "hpRegenPct": 0,
+   "goldBonus": 0,
+   "xpBonus": 4,
+   "strikes": {
+    "doubleChance": 0.16
+   },
+   "skillGold": 12,
+   "matMult": 1.1002
+  },
+  "cp/t4hunter": 1244,
+  "save/default": {
+   "gold": 0,
+   "victories": 0,
+   "shards": 0,
+   "xp": 0,
+   "weaponLevel": 1,
+   "armorLevel": 1,
+   "schemaVersion": 2,
+   "xpCurve": 4,
+   "gearInstances": {
+    "st_wooden_club": {
+     "id": "st_wooden_club",
+     "templateId": "wooden_club",
+     "rarity": "common",
+     "substats": [],
+     "upgrade": 0,
+     "sockets": [],
+     "durability": 100,
+     "reforgeCount": 0,
+     "createdAt": 0,
+     "origin": "starter",
+     "bound": true
+    },
+    "st_ragged_clothes": {
+     "id": "st_ragged_clothes",
+     "templateId": "ragged_clothes",
+     "rarity": "common",
+     "substats": [],
+     "upgrade": 0,
+     "sockets": [],
+     "durability": 100,
+     "reforgeCount": 0,
+     "createdAt": 0,
+     "origin": "starter",
+     "bound": true
+    }
+   },
+   "inventory": {},
+   "equipped": {
+    "relic": null,
+    "helmet": null,
+    "gloves": null,
+    "boots": null,
+    "ring": null,
+    "shield": null,
+    "weapon": "st_wooden_club",
+    "armor": "st_ragged_clothes"
+   },
+   "inventoryCapacity": 26,
+   "inventoryBonusSlots": 0,
+   "pouchMigrated": false,
+   "stash": {
+    "level": 0,
+    "materials": {},
+    "consumables": {},
+    "gear": {}
+   },
+   "merchant": {
+    "day": "",
+    "earned": 0
+   },
+   "wholesale": {
+    "day": "",
+    "sold": {}
+   },
+   "pouchDay": {
+    "day": "",
+    "made": 0
+   },
+   "pouchFacesV2": true,
+   "highestDungeonFloor": 1,
+   "heroName": "Hero",
+   "str": 0,
+   "vit": 0,
+   "agi": 0,
+   "res": 0,
+   "skillTree": {
+    "active": 0,
+    "sets": [
+     {},
+     {}
+    ],
+    "respecUsed": false
+   },
+   "materials": {
+    "iron": 0,
+    "steel": 0,
+    "leather": 0,
+    "essence": 0,
+    "dragon_scales": 0,
+    "copper": 0,
+    "copper_bar": 0,
+    "silver": 0,
+    "gold_ore": 0,
+    "obsidian": 0,
+    "silver_ingot": 0,
+    "gold_bar": 0,
+    "refined_obsidian": 0,
+    "leather_scrap": 0,
+    "demon_claw": 0,
+    "demon_core": 0,
+    "bone_fragment": 0,
+    "concentrated_blood": 0,
+    "corrupted_crystal": 0,
+    "rift_shard": 0,
+    "fiend_horn": 0,
+    "abyssal_marrow": 0,
+    "blood_heart": 0,
+    "common_herb": 0,
+    "energy_herb": 0,
+    "uncommon_root": 0,
+    "crimson_mushroom": 0,
+    "rare_flower": 0,
+    "iron_thistle": 0,
+    "gold_blossom": 0,
+    "swift_grass": 0,
+    "moon_lily": 0,
+    "silver_sage": 0,
+    "dusk_orchid": 0,
+    "elder_root": 0,
+    "refining_dust": 0,
+    "common_wood": 0,
+    "oak_wood": 0,
+    "ebony_wood": 0,
+    "elven_wood": 0,
+    "ancient_wood": 0,
+    "wood_handle_common": 0,
+    "wood_handle_oak": 0,
+    "wood_handle_ebony": 0,
+    "wood_handle_elven": 0,
+    "wood_handle_ancient": 0,
+    "flax": 0,
+    "cotton": 0,
+    "wild_silk": 0,
+    "moonweave": 0,
+    "voidsilk": 0,
+    "cloth_linen": 0,
+    "cloth_cotton": 0,
+    "cloth_silk": 0,
+    "cloth_moon": 0,
+    "cloth_void": 0,
+    "beast_sinew": 0,
+    "feather": 0,
+    "arcane_dust": 0
+   },
+   "potions": {
+    "hp": 0,
+    "stamina": 0,
+    "elixir": 0
+   },
+   "consumables": {
+    "small_hp": 0,
+    "large_hp": 0,
+    "atk_elixir": 0,
+    "refine_catalyst": 0,
+    "expedition_ticket_1h": 0,
+    "expedition_ticket_2h": 0,
+    "expedition_ticket_4h": 0,
+    "knowledge_elixir": 0,
+    "greater_elixir": 0,
+    "strength_elixir": 0,
+    "stoneskin_tonic": 0,
+    "fortune_tonic": 0,
+    "haste_tonic": 0,
+    "gatherer_brew": 0,
+    "precision_elixir": 0,
+    "whetstone_oil": 0,
+    "fertilizer": 0,
+    "repair_kit": 0,
+    "master_repair_kit": 0,
+    "sharpening_stone": 0,
+    "armor_polish": 0,
+    "hunter_lure": 0,
+    "prospector_tonic": 0,
+    "forge_seal": 0,
+    "stash_deed": 0,
+    "gold_pouch_s": 0,
+    "gold_pouch_m": 0,
+    "gold_pouch_l": 0
+   },
+   "expeditions": [],
+   "deliveries": {
+    "seq": 0,
+    "offers": [],
+    "active": null,
+    "rerollDay": "",
+    "rerollsUsed": 0
+   },
+   "gems": {
+    "ruby": 0,
+    "sapphire": 0,
+    "emerald": 0
+   },
+   "blessed": false,
+   "quests": {
+    "dailyDay": "Wed Oct 28 2026",
+    "daily": {
+     "kills": 0,
+     "forge": 0,
+     "purchases": 0,
+     "deliveries": 0
+    },
+    "dailyClaimed": [],
+    "counters": {
+     "kills": 0,
+     "maxFloorCleared": 0,
+     "maxRefineEver": 0
+    },
+    "claimed": [],
+    "weekly": {
+     "week": "2026-10-26",
+     "band": 1,
+     "base": {
+      "hunt": 0,
+      "deliveries": 0,
+      "gather": 0,
+      "forge": 0,
+      "floors": 0
+     },
+     "claimed": [],
+     "bonusClaimed": false
+    },
+    "streak": {
+     "last": "",
+     "count": 0,
+     "saverWeek": ""
+    }
+   },
+   "activeOreId": null,
+   "lastMiningClaim": 0,
+   "miningCapHours": 6,
+   "activeWoodId": null,
+   "lastWoodcuttingClaim": 0,
+   "woodcuttingCapHours": 6,
+   "skillXp": {
+    "mining": 0,
+    "woodcutting": 0,
+    "gardening": 0
+   },
+   "activeHuntingZone": null,
+   "activeHuntingDepth": null,
+   "huntingOfflineStart": 0,
+   "huntProgress": {},
+   "huntSession": null,
+   "pendingHuntReward": null,
+   "unlockedHuntingZones": [
+    "demon_glade"
+   ],
+   "hasBattlePass": false,
+   "miningPass": null,
+   "woodcuttingPass": null,
+   "battlePassLevel": 1,
+   "battlePassXp": 0,
+   "claimedPassRewards": {
+    "free": [],
+    "premium": []
+   },
+   "passSeason": 1,
+   "pendingSeasonSummary": null,
+   "cosmetics": [],
+   "activeTitle": null,
+   "activeFrame": null,
+   "activeSkin": null,
+   "seenLooks": [],
+   "stashBonusSlots": 0,
+   "dungeonCheckpoints": [],
+   "gardenSlots": [
+    {
+     "plantId": null,
+     "startedAt": 0,
+     "lastPlantId": null
+    },
+    {
+     "plantId": null,
+     "startedAt": 0,
+     "lastPlantId": null
+    },
+    {
+     "plantId": null,
+     "startedAt": 0,
+     "lastPlantId": null
+    },
+    {
+     "plantId": null,
+     "startedAt": 0,
+     "lastPlantId": null
+    },
+    {
+     "plantId": null,
+     "startedAt": 0,
+     "lastPlantId": null
+    },
+    {
+     "plantId": null,
+     "startedAt": 0,
+     "lastPlantId": null
+    }
+   ],
+   "activeBuff": null,
+   "attackBuff": null,
+   "buffs": {},
+   "dungeonSessionsDay": "Wed Oct 28 2026",
+   "dungeonSessionsUsed": 0,
+   "seenTooltips": [],
+   "seenWelcome": false,
+   "tutorial": {
+    "initial": "pending",
+    "initialStep": "intro",
+    "seen": [],
+    "automatic": true
+   },
+   "autoPotionThreshold": 0.35,
+   "autoPotionPriority": "large_first",
+   "stats": {
+    "kills": 0,
+    "killsByZone": {},
+    "dungeonKills": {},
+    "goldEarned": 0,
+    "itemsForged": 0,
+    "forgedByRarity": {
+     "common": 0,
+     "rare": 0,
+     "epic": 0,
+     "legendary": 0
+    },
+    "uniquesFound": 0,
+    "refineSuccess": 0,
+    "refineFail": 0,
+    "lapidations": 0,
+    "deliveries": 0,
+    "oreGathered": 0,
+    "woodGathered": 0,
+    "plantsHarvested": 0,
+    "potionsBrewed": 0,
+    "dungeonRuns": 0,
+    "bossesKilled": 0,
+    "secondsPlayed": 0,
+    "completedSets": [],
+    "deepestDepth": 0,
+    "huntSeconds": 0,
+    "dungeonFloors": 0,
+    "wholesaleUnits": 0,
+    "wholesaleGold": 0,
+    "pouchGoldOpened": 0,
+    "forgePity": 0
+   },
+   "codex": {
+    "items": [],
+    "materials": [],
+    "monsters": []
+   }
+  }
+ }
+}

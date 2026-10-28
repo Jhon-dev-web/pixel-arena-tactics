@@ -1,4 +1,6 @@
 import T from './tunables';
+// TYPES ONLY: abilities.ts imports this file (igniteBurn, tickBurn), so this one must never import a value from it (a cycle with values both ways breaks on evaluation order). engine.ts, which knows both, computes the rotation terms.
+import type { AbilityId, RotationCp } from './abilities';
 
 // The 3-layer stat model, formalized:
 //
@@ -100,6 +102,8 @@ export interface CombatStats {
   matMult?: number; // Hunting material yield multiplier (Faro); uniques and relics never see it
   uniqueMult?: number; // Hunting unique drop chance multiplier (Sorte Grande)
   bossLootMult?: number; // Dungeon boss unique / relic chance multiplier (Sorte Grande)
+  // Equipment abilities (abilities.ts): the rotation of the hero, in order of priority, already limited to what his worn gear grants. Present only when it is not empty, so a hero without one has exactly the stats it always had.
+  rotation?: AbilityId[];
 }
 
 // STR -> pre-modifier hit damage. Hybrid: a flat part plus a part that scales with (base hit + weapon):
@@ -275,7 +279,9 @@ function safeStat(x: number, max: number): number {
   return Number.isFinite(x) ? Math.min(max, Math.max(0, x)) : 0;
 }
 
-export function combatPowerCore(stats: CombatStats): number {
+// `rot`: what the hero's rotation is worth (abilities.ts rotationCpTerms, computed by engine.cpOfStats); null = no rotation, and every line below is the closed form it always was.
+// `rot` is REQUIRED on purpose (no default): a caller that forgets it would get a CP that silently ignores the rotation. Pass null explicitly when the rotation is to be left out.
+export function combatPowerCore(stats: CombatStats, rot: RotationCp | null): number {
   const ceiling = T.advanced.cpInputCeiling;
   const cc = safeStat(stats.critChance, 1);
   const critMult = Math.max(1, safeStat(stats.critMult, ceiling));
@@ -300,16 +306,20 @@ export function combatPowerCore(stats: CombatStats): number {
     gain += safeStat(st.doubleChance ?? 0, 1) * T.heroSkills.doubleDmgPct + Math.min(0.9, safeStat(stats.block ?? 0, 1)) * safeStat(st.counter ?? 0, 10);
     flurryDps = (dmgBase * safeStat(st.furyPct ?? 0, 10) * T.heroSkills.furyHits * 1000) / T.heroSkills.furyEveryMs;
   }
-  const hitsDps = hits * (1 + T.advanced.cpStrikeWeight * gain);
+  const hitsBase = hits * (1 + T.advanced.cpStrikeWeight * gain);
+  const hitsDps = rot ? hitsBase * (1 + rot.swingGain) * rot.hasteMult : hitsBase;
   const burnDps = stats.burn === true ? T.advanced.cpBurnWeight * dmgBase * T.battle.burnPctPerSec * (1000 / T.battle.effectTickMs) : 0;
   const bleedDps = T.advanced.cpBleedWeight * dmgBase * safeStat(stats.bleed ?? 0, 1) * (1000 / T.battle.effectTickMs);
-  const dps = hitsDps * (1 + (T.advanced.cpReflectWeight * reflect) / (1 + reduction)) + burnDps + bleedDps + T.advanced.cpStrikeWeight * flurryDps;
+  const abilityDotDps = rot ? rot.dotPerBase * dmgBase : 0;
+  const dps = hitsDps * (1 + (T.advanced.cpReflectWeight * reflect) / (1 + reduction)) + burnDps + bleedDps + T.advanced.cpStrikeWeight * flurryDps + abilityDotDps;
   // Block removes a share of the hits, Firm Stance a share of the damage of the fights against bosses, Last Bastion heals once in a share of the fights.
   const block = Math.min(0.9, safeStat(stats.block ?? 0, 1)) * T.advanced.cpBlockWeight;
   const bossCut = Math.min(0.9, safeStat(stats.bossReduction ?? 0, 1)) * T.advanced.cpBossShare;
   const bastion = stats.bastion === true ? T.advanced.cpBastionWeight * T.heroSkills.bastionHealPct : 0;
-  const ehp = (effectiveHp(safeStat(stats.maxHp, ceiling), reduction) * (1 + bastion)) / ((1 - block) * (1 - bossCut));
-  const regen = safeStat(stats.hpRegenPct, 1) * (1000 / T.battle.effectTickMs);
+  const ehpBase = (effectiveHp(safeStat(stats.maxHp, ceiling), reduction) * (1 + bastion)) / ((1 - block) * (1 - bossCut));
+  const ehp = rot ? ehpBase * rot.ehpMult : ehpBase;
+  const regenBase = safeStat(stats.hpRegenPct, 1) * (1000 / T.battle.effectTickMs);
+  const regen = rot ? regenBase + rot.regen : regenBase;
   const regenSigma = hitsDps > 0 ? (T.advanced.cpRegenWeight * regen * ehp) / hitsDps : 0;
   const sigma = Math.min(Math.min(0.95, T.advanced.cpSustainSigmaCap), (safeStat(stats.lifesteal, ceiling) / 100) * (1 + reduction) + regenSigma);
   return Math.sqrt((dps * ehp) / (1 - sigma));

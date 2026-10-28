@@ -1225,6 +1225,13 @@
       "bastion": "Last Bastion!",
       "double": "Double Strike!",
       "counter": "Counterattack!",
+      "ab_firm_strike": "Firm Strike!",
+      "ab_arrow_rain": "Arrow Rain!",
+      "ab_opening_shot": "Opening Shot!",
+      "ab_arcane_burst": "Arcane Burst!",
+      "ab_flames": "Flames!",
+      "ab_blessing": "Blessing!",
+      "ab_iron_stance": "Iron Stance!",
       "line": "{name} ×{n} — {p}% of damage"
     },
     "ui": {

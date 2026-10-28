@@ -1225,6 +1225,13 @@
       "bastion": "Último Bastião!",
       "double": "Golpe Duplo!",
       "counter": "Contra-ataque!",
+      "ab_firm_strike": "Golpe Firme!",
+      "ab_arrow_rain": "Chuva de Flechas!",
+      "ab_opening_shot": "Tiro de Abertura!",
+      "ab_arcane_burst": "Explosão Arcana!",
+      "ab_flames": "Chamas!",
+      "ab_blessing": "Bênção!",
+      "ab_iron_stance": "Postura de Ferro!",
       "line": "{name} ×{n} — {p}% do dano"
     },
     "ui": {

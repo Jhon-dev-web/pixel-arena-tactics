@@ -64,6 +64,7 @@ import { PendingMaterialClaim, sanitizeMaterialClaims } from './materialClaims';
 import { BurningBatch, MaterialPrefs, TradeableMap, sanitizeBurning, sanitizeBurns, sanitizeMaterialPrefs, sanitizeTradeable } from './tradeableMaterials';
 import { isServerItemAuthority } from './itemAuthority';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
+import { AbilityId, grantedAbilities, rotationCpTerms, sanitizeRotation } from './abilities';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
 export { buffRemainingMs, isBuffActive };
@@ -210,6 +211,9 @@ export interface SaveData {
   res: number;
   // Hero skills (heroSkills.ts): the allocation(s) of the skill points earned every few levels and the free-respec flag. Old saves load with nothing spent.
   skillTree: SkillTreeState;
+  // Equipment abilities (abilities.ts): the rotation, up to T.abilities.rotationSlots ids in order of priority, limited to what the worn gear grants. ABSENT = empty (an old save has none and fights exactly as it always did);
+  // normalizeSave drops the field when nothing is left, so an empty rotation and a missing one are the same thing.
+  rotation?: AbilityId[];
   materials: Materials;
   potions: { hp: number; stamina: number; elixir: number };
   consumables: Record<ConsumableId, number>;
@@ -351,6 +355,16 @@ export interface StatParts {
   paragon?: boolean;
 }
 
+// The abilities the WORN weapon and chestpiece grant (abilities.ts grantedAbilities), in definition order, and the rotation of the save limited to them. Both read only the gear, so they can run on a
+// half-built save (normalizeSave) as well as on a finished one.
+export function equippedAbilities(save: Parameters<typeof resolveEquipped>[0]): AbilityId[] {
+  const { weapon, armor } = resolveEquipped(save);
+  return grantedAbilities(weapon.item.line, armor.item.weight);
+}
+export function activeRotation(save: Parameters<typeof resolveEquipped>[0] & { rotation?: unknown }): AbilityId[] {
+  return save.rotation === undefined ? [] : sanitizeRotation(save.rotation, equippedAbilities(save));
+}
+
 export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatStats {
   const { weapon: weaponView, armor: armorView, relic } = resolveEquipped(save);
   const weapon = weaponView.item;
@@ -412,6 +426,9 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
   if (fx.materialsMult !== 1) stats.matMult = fx.materialsMult;
   if (fx.huntUniqueMult !== 1) stats.uniqueMult = fx.huntUniqueMult;
   if (fx.bossLootMult !== 1) stats.bossLootMult = fx.bossLootMult;
+  // Equipment abilities: only a hero with a (non-empty) rotation carries the field.
+  const rotation = activeRotation(save);
+  if (rotation.length > 0) stats.rotation = rotation;
   return stats;
 }
 
@@ -446,7 +463,9 @@ export function computeCP(save: SaveData): number {
 
 // The same rating for any CombatStats (the hero panel's "CP now" feeds it the stats with the elixirs applied).
 export function cpOfStats(stats: CombatStats): number {
-  return Math.round(CP_SCALE * combatPowerCore(stats));
+  // The rotation is worth a long-run average per second (abilities.ts); derivedStats.ts cannot import it (it would be an import cycle), so it is computed here and handed in.
+  const heroMs = Number.isFinite(stats.heroMs) && stats.heroMs > 0 ? stats.heroMs : T.battle.heroAttackMs;
+  return Math.round(CP_SCALE * combatPowerCore(stats, rotationCpTerms(stats.rotation, heroMs)));
 }
 
 // Adventurer Pass convenience perks (owners only, see entitlements.ts): a longer offline window and a small material yield bump (Hunting / Mining /
@@ -801,6 +820,7 @@ export function buildHuntSimSetup(
     ...(stats.bossReduction ? { bossReduction: stats.bossReduction } : {}),
     ...(stats.matMult ? { matMult: stats.matMult } : {}),
     ...(stats.uniqueMult ? { uniqueMult: stats.uniqueMult } : {}),
+    ...(stats.rotation && stats.rotation.length > 0 ? { rotation: stats.rotation } : {}),
   };
 
   // Raso-only override (see HuntingZoneDef.shallowCp/shallowEnemyHp/shallowEnemyDmg) — currently only
@@ -1477,6 +1497,10 @@ export function normalizeSave(rawInput: unknown): SaveData {
         codex: emptyCodex(),
       };
       loaded.codex = normalizeCodex(parsed.codex, loaded);
+      // The rotation (abilities.ts): only what the worn gear grants, no repeats, at most the slots; nothing left = the field is gone (an old save never had it).
+      const rotation = sanitizeRotation(parsed.rotation, equippedAbilities(loaded));
+      if (rotation.length > 0) loaded.rotation = rotation;
+      else delete (loaded as unknown as Record<string, unknown>).rotation;
       sanitizeTradeableFields(loaded, parsed as unknown as Record<string, unknown>);
       // Weekly goals and the login streak (weekly.ts): an old save has neither and starts its first week now; a new UTC week snapshots the counters again.
       loaded.quests = { ...loaded.quests, weekly: rollWeekly(sanitizeWeekly(q.weekly, loaded.stats, loadNow, playerLevel(loaded.xp)), loaded.stats, loadNow, playerLevel(loaded.xp)), streak: sanitizeStreak(q.streak) };

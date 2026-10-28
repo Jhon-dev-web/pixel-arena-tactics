@@ -44,6 +44,7 @@ import { isClaimed, isComplete, QUESTS_ACHIEVEMENTS, QUESTS_DAILY, QuestContext 
 import { questMaxRefine } from '../../src/game/gearInstances';
 import { activeTonicStats, goldMultiplier, isBuffActive } from '../../src/game/buffs';
 import T from '../../src/game/tunables';
+import { AbilityId, abilityDotAt, fireAbility, guardDamage, hastedMs, newAbilityRuntime, pickAbility, startAbilityFight, tickAbilityDot } from '../../src/game/abilities';
 import { ownsAdventurerPass } from '../../src/game/entitlements';
 import { HeroSkillId, activeSkillRanks, addRank, addRankBlock, pointsSpent, rankOf, saveSkillEffects, skillPointsEarned } from '../../src/game/heroSkills';
 
@@ -93,6 +94,7 @@ export interface DungeonRun {
   potionsUsed: number;
   skillTally: StrikeTally; // display only: what each strike did (BattleModal counts the same for its result screen)
   totalDamage: number;
+  abilityFired?: Partial<Record<AbilityId, number>>; // how many times each equipment ability fired; only present when the hero has a rotation
   // Diagnostics for the temporary-effects audit (temporaryEffects.test.ts): hero swings, how many were crits, enemy hits that landed and the HP they took off.
   heroHits: number;
   crits: number;
@@ -131,6 +133,9 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
   let damageTaken = 0;
   let furyLeft = T.heroSkills.furyEveryMs;
   let bastionUsed = false; // Ultimo Bastiao: once per run
+  // Equipment abilities (src/game/abilities.ts, the functions BattleModal calls): their clock is the combat clock, which does not run during the intermission between waves (BattleModal's does not either).
+  const ab = newAbilityRuntime();
+  let skippedMs = 0;
   let clock = 0;
   let stage = startFloor;
   let stages = 0;
@@ -169,7 +174,11 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
   let guard = 0;
   waves: for (;;) {
     const def = getEnemyDef(dungeonEnemyKindForFloor(stage));
-    let enemyHp = stageEnemyHp(def, stage);
+    const enemyMax = stageEnemyHp(def, stage);
+    const carriedIn = startAbilityFight(ab, enemyMax); // a carry from the last fight comes in as damage already taken
+    let enemyHp = enemyMax - carriedIn;
+    totalDamage += carriedIn;
+    let enemyActed = false; // an opener is only ready before the enemy has attacked
     // Postura Firme: boss and checkpoint floors only (BattleModal.monsterAttack does the same two steps).
     const reduced = applyDamageReduction(stageEnemyDmg(def, stage), combat.reduction);
     const hitTaken = isDungeonBoss(stage) || isDungeonCheckpoint(stage) ? bossDamage(reduced, combat.bossReduction) : reduced;
@@ -186,7 +195,8 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
       if (++guard > 5_000_000) throw new Error('dungeon loop did not terminate');
       const burnNext = nextBurnTickAt(burn);
       const bleedNext = nextBurnTickAt(bleed);
-      const next = Math.min(heroNext, enemyNext, burnNext, bleedNext, furyNext, regenNext);
+      const abDotNext = abilityDotAt(ab) + skippedMs; // the ability burn, from the ability clock to this one
+      const next = Math.min(heroNext, enemyNext, burnNext, bleedNext, abDotNext, furyNext, regenNext);
       clock = next;
       if (heroNext === next) {
         const crit = Math.random() < combat.critChance;
@@ -198,9 +208,12 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
         const base = Math.max(1, Math.round(plain * res.mult));
         if (res.crush) tally(skillTally, res.devastating ? 'w_devastating_strike' : 'w_heavy_blow', afterCrush - plain);
         if (res.counter) tally(skillTally, 'g_block', base - afterCrush);
-        let dmg = base;
+        const picked = combat.rotation ? pickAbility(ab, combat.rotation, clock - skippedMs, enemyActed) : null;
+        const fired = picked ? fireAbility(ab, picked, clock - skippedMs, base, heroBase, playerMax) : null;
+        const swung = fired ? fired.dmg : base;
+        let dmg = swung;
         if (res.double) {
-          const echo = echoDamage(base);
+          const echo = echoDamage(swung);
           dmg += echo;
           tally(skillTally, 'h_light_step', echo);
         }
@@ -209,14 +222,20 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
         if (combat.burn) burn = igniteBurn(burn, clock, heroBase);
         if (bleedDot) bleed = igniteBurn(bleed, clock, heroBase, bleedDot);
         if (combat.lifesteal > 0) hp = Math.min(playerMax, hp + Math.max(1, Math.round(dmg * (combat.lifesteal / 100))));
-        heroNext += combat.heroMs;
+        if (fired) {
+          if (fired.heal > 0) hp = Math.min(playerMax, hp + fired.heal);
+          enemyNext += fired.enemyDelayMs;
+        }
+        heroNext += hastedMs(ab, clock - skippedMs, combat.heroMs);
       } else if (enemyNext === next) {
         const blocked = !!combat.block && Math.random() < combat.block; // Bloqueio: the loop's normal RNG
         if (blocked) registerBlock(strikeState, combat.strikes);
-        hp = Math.max(0, hp - (blocked ? 0 : hitTaken));
+        enemyActed = true;
+        const taken = guardDamage(ab, clock - skippedMs, hitTaken); // an ability guard cuts the hit (same call as BattleModal.monsterAttack)
+        hp = Math.max(0, hp - (blocked ? 0 : taken));
         if (!blocked) {
           enemyHits++;
-          damageTaken += hitTaken;
+          damageTaken += taken;
         }
         enemyNext += def.atkSpeedMs;
         if (hp <= 0) {
@@ -228,8 +247,9 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
             break waves;
           }
         }
-        enemyHp = Math.max(0, enemyHp - (blocked ? 0 : reflected));
-        if (!blocked) totalDamage += reflected;
+        const back = taken === hitTaken ? reflected : reflectedDamage(taken, combat.reflect);
+        enemyHp = Math.max(0, enemyHp - (blocked ? 0 : back));
+        if (!blocked) totalDamage += back;
       } else if (burnNext === next) {
         const tick = tickBurn(burn!);
         enemyHp = Math.max(0, enemyHp - tick.damage);
@@ -241,6 +261,10 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
         totalDamage += tick.damage;
         tally(skillTally, 'w_bleed', tick.damage);
         bleed = tick.burn;
+      } else if (abDotNext === next) {
+        const dot = tickAbilityDot(ab);
+        enemyHp = Math.max(0, enemyHp - dot);
+        totalDamage += dot;
       } else if (furyNext === next) {
         const per = furyHitDamage(heroBase, combat.strikes);
         let sum = 0;
@@ -277,6 +301,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
     if (depthRun) {
       if (hp / playerMax <= LOW_HP_RETREAT) break; // voluntary retreat
       clock += T.battle.intermissionMs;
+      skippedMs += T.battle.intermissionMs;
     } else if (isDungeonBoss(stage)) {
       // Tension window: bank the run when this milestone has not been claimed yet (a defeat would forfeit it), otherwise push on.
       const unclaimed = !save.dungeonCheckpoints.includes(stage);
@@ -291,6 +316,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
       }
       if (hp / playerMax <= LOW_HP_RETREAT) break; // voluntary retreat
       clock += T.battle.intermissionMs;
+      skippedMs += T.battle.intermissionMs;
     }
     stage += 1;
   }
@@ -306,6 +332,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
     potionsUsed: startPotions - (stock.greater_elixir + stock.large_hp + stock.small_hp),
     skillTally,
     totalDamage,
+    ...(combat.rotation && combat.rotation.length > 0 ? { abilityFired: ab.fired } : {}),
     heroHits,
     crits,
     enemyHits,

@@ -666,6 +666,41 @@ const T = DebugPanel.define({
     actionGap: { value: 12, min: 0, max: 40, step: 1, cssVar: '--action-gap', unit: 'px', label: 'Action button gap' },
     fontSize: { value: 12, min: 8, max: 20, step: 1, cssVar: '--font-size', unit: 'px', label: 'UI font size' },
   },
+  // Equipment abilities and the rotation (abilities.ts; classes reform, phase 4, docs/CLASSES_E_EQUIPAMENTOS.md 2.2). EVERY NUMBER BELOW IS PROVISIONAL: phase 8 (the balance pass) calibrates them against the class parity
+  // and the role edge of section 2.5; until then they only have to be sane, not tuned. Percentages are shares of the hero's swing (the basic attack they replace), times are combat-clock ms.
+  abilities: {
+    _label: 'Equipment abilities (provisional, phase 8 calibrates)',
+    rotationSlots: { value: 4, min: 1, max: 6, step: 1, label: 'Rotation: abilities the hero can line up' },
+    // carry: the damage that spills over into the NEXT enemy. The bucket fills during a fight; the next enemy enters with min(bucket, its max HP x carryCapPct) already taken, and the bucket is emptied
+    // either way (what is left over does not chain into the fight after).
+    carryCapPct: { value: 0.5, min: 0, max: 0.9, step: 0.05, label: 'Carry: most of the next enemy max HP the spill can take (share)' },
+    // Golpe Firme (sword, strike): this swing hits for firmStrikePct of the damage.
+    firmStrikePct: { value: 1.8, min: 1, max: 5, step: 0.1, label: 'Golpe Firme: damage of the swing (x)' },
+    firmStrikeCdMs: { value: 6000, min: 1000, max: 60000, step: 500, label: 'Golpe Firme: cooldown (ms)' },
+    // Chuva de Flechas (bow, volley): arrowRainHits hits of arrowRainPct each.
+    arrowRainHits: { value: 3, min: 2, max: 8, step: 1, label: 'Chuva de Flechas: hits' },
+    arrowRainPct: { value: 0.6, min: 0.1, max: 2, step: 0.05, label: 'Chuva de Flechas: damage of each hit (x)' },
+    arrowRainCdMs: { value: 8000, min: 1000, max: 60000, step: 500, label: 'Chuva de Flechas: cooldown (ms)' },
+    // Chamas (staff, dot): a burn of flamesPct of the hit per tick (T.battle.effectTickMs) for flamesDurationMs, in its own slot beside the weapon burn and Sangria.
+    flamesPct: { value: 0.12, min: 0.01, max: 0.5, step: 0.01, label: 'Chamas: damage per tick (share of the hit)' },
+    flamesDurationMs: { value: 4000, min: 1000, max: 10000, step: 500, label: 'Chamas: duration (ms)' },
+    flamesCdMs: { value: 7000, min: 1000, max: 60000, step: 500, label: 'Chamas: cooldown (ms)' },
+    // Explosao Arcana (staff, carry): the swing is a normal one and arcaneBurstPct of it goes to the bucket.
+    arcaneBurstPct: { value: 0.8, min: 0.1, max: 3, step: 0.05, label: 'Explosao Arcana: share of the swing that spills over' },
+    arcaneBurstCdMs: { value: 9000, min: 1000, max: 60000, step: 500, label: 'Explosao Arcana: cooldown (ms)' },
+    // Bencao (scepter, heal + haste).
+    blessingHealPct: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Bencao: max HP healed (share)' },
+    blessingHastePct: { value: 0.3, min: 0, max: 1, step: 0.05, label: 'Bencao: attack speed bonus' },
+    blessingHasteMs: { value: 5000, min: 1000, max: 30000, step: 500, label: 'Bencao: haste duration (ms)' },
+    blessingCdMs: { value: 20000, min: 1000, max: 120000, step: 500, label: 'Bencao: cooldown (ms)' },
+    // Postura de Ferro (plate chestpiece, guard).
+    ironStanceReduction: { value: 0.4, min: 0, max: 0.9, step: 0.05, label: 'Postura de Ferro: damage taken cut (share)' },
+    ironStanceMs: { value: 5000, min: 1000, max: 30000, step: 500, label: 'Postura de Ferro: duration (ms)' },
+    ironStanceCdMs: { value: 18000, min: 1000, max: 120000, step: 500, label: 'Postura de Ferro: cooldown (ms)' },
+    // Tiro de Abertura (bow, opener): delays the enemy's FIRST attack of the fight; it is only ready while the enemy has not acted yet.
+    openingShotDelayMs: { value: 2000, min: 0, max: 10000, step: 250, label: 'Tiro de Abertura: delay of the first enemy attack (ms)' },
+    openingShotCdMs: { value: 5000, min: 0, max: 60000, step: 500, label: 'Tiro de Abertura: cooldown (ms)' },
+  },
   advanced: {
     _label: 'Advanced',
     enemyBaseHp: { value: 100, min: 30, max: 400, step: 5, label: 'Enemy base HP' },
@@ -704,6 +739,12 @@ const T = DebugPanel.define({
     cpBlockWeight: { value: 1, min: 0, max: 2, step: 0.05, label: 'CP: Block weight' },
     cpBossShare: { value: 0.3, min: 0, max: 1, step: 0.05, label: 'CP: weight of Firm Stance (share of fights against bosses)' },
     cpBastionWeight: { value: 0.3, min: 0, max: 2, step: 0.05, label: 'CP: Last Bastion weight' },
+    // Equipment abilities in CP (abilities.ts rotationCpTerms; provisional like the abilities, phase 8 calibrates). Strike / volley damage counts in full, the spill of a carry at carryWeight (the cap, the fights it never reaches
+    // and the queue it cannot chain through take the rest), the ability burn at cpBurnWeight, heal as regeneration (cpRegenWeight), guard and haste for the share of the time they are up.
+    cpAbilityStrikeWeight: { value: 1, min: 0, max: 2, step: 0.05, label: 'CP: ability strike / volley weight' },
+    cpAbilityCarryWeight: { value: 0.5, min: 0, max: 2, step: 0.05, label: 'CP: ability carry weight' },
+    cpAbilityGuardWeight: { value: 1, min: 0, max: 2, step: 0.05, label: 'CP: ability guard weight' },
+    cpAbilityHasteWeight: { value: 1, min: 0, max: 2, step: 0.05, label: 'CP: ability haste weight' },
     // Math-safety ceiling for each CP input (NOT a gameplay limit): keeps tampered values from overflowing to Infinity.
     cpInputCeiling: { value: 1000000000000, min: 1000000, max: 1000000000000000, step: 1000000, label: 'CP: per-input safety ceiling' },
     // Overflow guard only (NOT a points rule): keeps a tampered/garbage STR from overflowing the damage math to Infinity.

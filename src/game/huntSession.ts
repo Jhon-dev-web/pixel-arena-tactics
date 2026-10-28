@@ -3,6 +3,7 @@ import { getMaterial, MaterialId } from './materials';
 import { UniqueDrop, sanitizeUniqueDrops } from './uniques';
 import { HUNTING_DEPTHS, HuntingDepth } from './huntingZones';
 import T from './tunables';
+import { sanitizeRotation } from './abilities';
 import { HUNT_BUFF_KINDS, type TimedBuffKind } from './buffs';
 
 // Persistent state of ONE Hunting session and of the reward it leaves behind. Pure data + helpers, no engine import
@@ -223,6 +224,8 @@ export function sanitizeHuntSession(raw: unknown): HuntSession | null {
       ...(n(s.matMult, 1, 10) && n(s.matMult, 1, 10) !== 1 ? { matMult: n(s.matMult, 1, 10)! } : {}),
       ...(n(s.uniqueMult, 1, 10) && n(s.uniqueMult, 1, 10) !== 1 ? { uniqueMult: n(s.uniqueMult, 1, 10)! } : {}),
       ...(n(s.bossLootMult, 1, 10) && n(s.bossLootMult, 1, 10) !== 1 ? { bossLootMult: n(s.bossLootMult, 1, 10)! } : {}),
+      // Equipment abilities (abilities.ts): the rotation frozen at the start of the session (known ids, no repeats, at most the slots); a session saved before they existed has none.
+      ...(sanitizeRotation(s.rotation).length > 0 ? { rotation: sanitizeRotation(s.rotation) } : {}),
       // AGI and the speed bonus feed the Haste Tonic's interval; a session saved before they existed falls back to dividing heroMs.
       ...(n(s.agi, 0, ceil) !== null ? { agi: n(s.agi, 0, ceil)!, speedBonus: n(s.speedBonus, 0, 10) ?? 0 } : {}),
     },

@@ -2,6 +2,7 @@ import { MaterialId } from './materials';
 import { UniqueDrop, rollUniqueDrop } from './uniques';
 import { HuntingDrop, HuntingDepth, HuntingUnique, effectiveDropChance } from './huntingZones';
 import { BurnState, StrikeStats, StrikeTally, applyDamageReduction, bastionHp, bleedSpec, bossDamage, echoDamage, furyHitDamage, igniteBurn, nextBurnTickAt, newStrikeState, reflectedDamage, regenAmount, registerBlock, resolveHeroHit, tally, tickBurn } from './derivedStats';
+import { AbilityId, abilityDotAt, fireAbility, guardDamage, hastedMs, newAbilityRuntime, pickAbility, startAbilityFight, tickAbilityDot } from './abilities';
 import T from './tunables';
 import { economicRollFractionForFight, xpPaceFractionForFight } from './huntEconomy';
 import { inRelativeWindows } from './huntSession';
@@ -61,6 +62,8 @@ export interface HuntCombatBuild {
   bossReduction?: number; // Postura Firme: share of the damage negated in the risky fights of Hunting (promotion attempts and the League Target)
   matMult?: number;
   uniqueMult?: number;
+  // Equipment abilities (abilities.ts): the rotation, in order of priority. Absent or empty = the hero swings the basic attack only, through exactly the same code. Deterministic, it draws no random number.
+  rotation?: AbilityId[];
 }
 
 export interface HuntZoneCombatCfg {
@@ -188,6 +191,8 @@ export interface HuntSessionResult {
   // Display only (nothing reads them to decide anything): what each skill strike did, and the total damage the hero side dealt.
   skillTally: StrikeTally;
   totalDamage: number;
+  // How many times each equipment ability fired (abilities.ts). Only present when the build has a rotation, so a hero without one gets exactly the result object it always got.
+  abilityFired?: Partial<Record<AbilityId, number>>;
 }
 
 function enemyStatsAt(cfg: HuntZoneCombatCfg, subLevel: number) {
@@ -223,6 +228,8 @@ export function simulateHuntingSession(
   const skillTally: StrikeTally = {};
   let totalDamage = 0;
   let furyLeft = T.heroSkills.furyEveryMs; // combat time until the next flurry; carried from fight to fight so short fights still reach it
+  // Equipment abilities: cooldowns, the guard / haste windows and the carry bucket live for the whole session, on its clock (the fight time, session-relative), like furyLeft.
+  const ab = newAbilityRuntime();
   let bastionReadyAt = 0; // session clock (ms) from which Ultimo Bastiao can save the hero again
 
   let timeLeft = sessionMs;
@@ -335,7 +342,12 @@ export function simulateHuntingSession(
     const dmgTakenBase = applyDamageReduction(enemy.dmg, build.reduction);
     const regen = regenAmount(build.playerMax, build.hpRegenPct);
     const hpRef = { hp: startHp };
-    let enemyHp = enemy.hp;
+    // A carry from the previous fight (abilities.ts) comes in as damage the new enemy has already taken; the session clock at the start of this fight is `fightAt`.
+    const fightAt = sessionMs - timeLeft;
+    const carriedIn = startAbilityFight(ab, enemy.hp);
+    let enemyHp = enemy.hp - carriedIn;
+    totalDamage += carriedIn;
+    let enemyActed = false; // the enemy has attacked in this fight (an opener is only ready before it does)
     let heroNext = build.heroMs;
     let enemyNext = enemy.atkMs;
     let regenNext = regen > 0 ? T.battle.effectTickMs : Infinity;
@@ -351,7 +363,8 @@ export function simulateHuntingSession(
     while (hpRef.hp > 0 && enemyHp > 0) {
       const burnNext = nextBurnTickAt(burn);
       const bleedNext = nextBurnTickAt(bleed);
-      const nextEvent = Math.min(heroNext, enemyNext, burnNext, bleedNext, furyNext, regenNext);
+      const abDotNext = abilityDotAt(ab) - fightAt; // the ability burn, from the session clock to this fight's
+      const nextEvent = Math.min(heroNext, enemyNext, burnNext, bleedNext, abDotNext, furyNext, regenNext);
       if (nextEvent > timeLeft) return null;
       t = nextEvent;
       if (heroNext === nextEvent) {
@@ -372,9 +385,13 @@ export function simulateHuntingSession(
         const base = Math.max(1, Math.round(plain * res.mult));
         if (res.crush) tally(skillTally, res.devastating ? 'w_devastating_strike' : 'w_heavy_blow', afterCrush - plain);
         if (res.counter) tally(skillTally, 'g_block', base - afterCrush);
-        let dmg = base;
+        // Equipment abilities: the first ability of the rotation that is ready takes the place of the basic swing (abilities.ts); a hero without a rotation never enters this branch.
+        const picked = build.rotation ? pickAbility(ab, build.rotation, atHit, enemyActed) : null;
+        const fired = picked ? fireAbility(ab, picked, atHit, base, hitBase, build.playerMax) : null;
+        const swung = fired ? fired.dmg : base;
+        let dmg = swung;
         if (res.double) {
-          const echo = echoDamage(base);
+          const echo = echoDamage(swung);
           dmg += echo;
           tally(skillTally, 'h_light_step', echo);
         }
@@ -385,15 +402,20 @@ export function simulateHuntingSession(
         if (build.lifestealPct > 0) {
           hpRef.hp = Math.min(build.playerMax, hpRef.hp + Math.max(1, Math.round(dmg * (build.lifestealPct / 100))));
         }
+        if (fired) {
+          if (fired.heal > 0) hpRef.hp = Math.min(build.playerMax, hpRef.hp + fired.heal);
+          enemyNext += fired.enemyDelayMs;
+        }
         const hasted = !!timeline?.hasteWindows && inRelativeWindows(timeline.hasteWindows, atHit);
-        heroNext += hasted ? (timeline!.heroMsHaste ?? build.heroMs) : build.heroMs;
+        heroNext += hastedMs(ab, atHit, hasted ? (timeline!.heroMsHaste ?? build.heroMs) : build.heroMs);
       } else if (enemyNext === nextEvent) {
         const stoned = !!timeline?.stoneWindows && inRelativeWindows(timeline.stoneWindows, sessionMs - timeLeft + t);
         const polished = !!timeline?.polishWindows && inRelativeWindows(timeline.polishWindows, sessionMs - timeLeft + t);
         const blocked = !!build.block && blockRng() < build.block;
         if (blocked) registerBlock(strikeState, build.strikes);
         const rawTaken = blocked ? 0 : stoned || polished ? applyDamageReduction(enemy.dmg, (stoned ? (timeline!.reductionStone ?? build.reduction) : build.reduction) + (polished ? (timeline!.reductionPolish ?? 0) : 0)) : dmgTakenBase;
-        const dmgTaken = risky && rawTaken > 0 ? bossDamage(rawTaken, build.bossReduction) : rawTaken;
+        enemyActed = true;
+        const dmgTaken = guardDamage(ab, fightAt + t, risky && rawTaken > 0 ? bossDamage(rawTaken, build.bossReduction) : rawTaken);
         hpRef.hp -= dmgTaken;
         // Ultimo Bastiao: a lethal hit leaves 1 HP plus a heal, once per bastionCooldownMs of combat time.
         const clock = sessionMs - timeLeft + t;
@@ -418,6 +440,10 @@ export function simulateHuntingSession(
         totalDamage += tick.damage;
         tally(skillTally, 'w_bleed', tick.damage);
         bleed = tick.burn;
+      } else if (abDotNext === nextEvent) {
+        const dot = tickAbilityDot(ab);
+        enemyHp -= dot;
+        totalDamage += dot;
       } else if (furyNext === nextEvent) {
         // The flurry: furyHits extra hits of a share of the current hit. They carry the on-hit effects at their own reduced damage and never advance the Esmagador counter.
         let hitBase = build.heroDmgBase;
@@ -532,5 +558,6 @@ export function simulateHuntingSession(
     liveSnapshot,
     skillTally,
     totalDamage,
+    ...(build.rotation && build.rotation.length > 0 ? { abilityFired: ab.fired } : {}),
   };
 }
