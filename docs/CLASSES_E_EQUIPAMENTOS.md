@@ -275,14 +275,32 @@ Cada fase fecha com os portões obrigatórios (`npx tsc -b --noEmit`, `npm test`
 | 4 | Combate | `splashPct` e `openingShots` nos três laços, `blockChance` em escudo, pesos no CP, **e os tetos do antifraude da seção 2.6 no mesmo deploy**. |
 | 5 | Afinidade | `affinity.ts` e o selo na tela de Personagem. |
 | 6 | Encaixe | Filtro da Forja, quinta zona de Caça, drops novos, regras de mercado/salvagem/únicos. |
-| 7 | Equilíbrio | As duas medidas da seção 2.5: paridade de CP (±5%) e vantagem de papel (15–20%), a revalidação dos 100 jogadores, e a dívida da seção 2.8. |
+| 7 | Equilíbrio | As duas medidas da seção 2.5: paridade de CP (±5%) e vantagem de papel (15–20%), a revalidação dos 100 jogadores, e a dívida da seção 5.1.2. |
 | 8 | Limpeza | Stripe e Pix fora do código, resumo em `docs/PAGAMENTOS_DESCARTADOS.md`; 4 ajustes de interface. |
 
 Os ícones dos itens novos entram pelo caminho que já existe (`iconPending.ts` e a reserva do `MaterialIcon`) e podem ser gerados depois; nenhuma fase depende de arte.
 
 ---
 
-### 2.8 Dívida que a fase 1 descobriu: o simulador não é reprodutível
+## 5.1 Armadilhas e dívidas encontradas durante a execução
+
+Cada uma destas foi conferida com número no código, não presumida. Elas estão aqui, e não só no commit, porque a fase seguinte precisa delas.
+
+### 5.1.1 Velocidade e regeneração em peça são dado morto (achado na fase 2)
+
+Conferido em 28/10, antes de escrever a linha de couro. **Uma peça instanciada que carregue `attackSpeedBonus` ou `hpRegenPct` não tem efeito nenhum no combate hoje:**
+
+- `gearInstances.ts` → `ExtraSlotStats` tem só `maxHp, damage, critChance, critMult, resistance, reflect`.
+- `engine.ts` → `speedBonus = (relic?.attackSpeedBonus ?? 0) + set.attackSpeedBonus`
+- `engine.ts` → `hpRegenPct = (relic?.hpRegenPct ?? 0) + fx.hpRegenPct + set.hpRegenPct`
+
+Isto é, os dois campos só funcionam vindos de **relíquia, habilidade ou bônus de conjunto**. É a mesma armadilha que o comentário de `LIVE_STAT_FIELDS` em `gear.ts` descreve: `burn`, `reflect` e outros já ficaram dado morto por muito tempo.
+
+Como o perfil de couro é velocidade de ataque e o de tecido é regeneração (seção 2.4), **a fase 2 não é uma fase de dados**: ela começa estendendo `ExtraSlotStats` e a montagem em `engine.ts`, com um caso em `gearEffects.test.ts` que prove que o bônus vindo de uma *peça* (não de relíquia) muda `heroMs` e a regeneração. O piso de 400 ms de `heroAttackIntervalMs` continua sendo o teto natural do empilhamento.
+
+Convenção a respeitar ao acumular: em `equippedExtraStats`, `critChance` e `reflect` aplicam só `durabilityFactor`; `maxHp`, `damage`, `resistance` e `critMult` aplicam durabilidade **e** multiplicador de raridade. Os dois campos novos entram como o `critChance` (só durabilidade): são fração de efeito, não stat escalado por raridade.
+
+### 5.1.2 O simulador não é reprodutível (achado na fase 1)
 
 Ao gerar os picos honestos do antifraude (`HONEST_PEAK_DAY_UNITS` em `rates.ts`, usado por `bounds.ts` para o teto diário de unidades negociáveis), apareceu o seguinte, conferido em três rodadas, inclusive num extrato limpo do HEAD **sem nenhuma alteração**:
 
