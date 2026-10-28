@@ -131,10 +131,9 @@ describe('the decision table: which failure switches which flag ON', () => {
     ['market functions failing once: a blip, nothing happens', [state('market_path', 1)], true, []],
     ['the Solana node unreachable 3 runs in a row (payment verification)', [state('solana_rpc', 3)], true, ['market_paused']],
     ['the Solana node unreachable twice: not yet', [state('solana_rpc', 2)], true, []],
-    // checkout / webhook
-    ['checkout or webhook errors twice', [state('payments_path', 2)], true, ['pass_sales_paused']],
-    ['Stripe backlog twice', [state('stripe_backlog', 2)], true, ['pass_sales_paused']],
-    ['checkout failing does not touch the market', [state('payments_path', 5)], true, ['pass_sales_paused']],
+    // Pass payment (pass-crypto)
+    ['Pass payment errors twice', [state('payments_path', 2)], true, ['pass_sales_paused']],
+    ['Pass payment failing does not touch the market', [state('payments_path', 5)], true, ['pass_sales_paused']],
     // scoring
     ['submit-progress failing during an open League', [state('progress_path', 2)], true, ['season_scoring_paused']],
     ['submit-progress failing with NO League open: nothing to protect', [state('progress_path', 9)], false, []],
@@ -190,11 +189,8 @@ describe('what the counters say', () => {
     expect(failing(counts({}))).toEqual([]);
     expect(failing(counts({ 'market-buy': 4, 'market-list': 4 }))).toEqual(['market_path']); // 8 across the market functions
     expect(failing(counts({ 'market-buy': 7 }))).toEqual([]);
-    expect(failing(counts({ 'create-checkout': 3, 'stripe-webhook': 2 }))).toEqual(['payments_path']);
     expect(failing(counts({ 'pass-crypto': 5 }))).toEqual(['payments_path']);
     expect(failing(counts({ 'submit-progress': 15 }))).toEqual(['progress_path']);
-    expect(failing(counts({}, { unprocessed: 3, oldestUnprocessedSeconds: 900, errors: 0 }))).toEqual(['stripe_backlog']);
-    expect(failing(counts({}, { unprocessed: 1, oldestUnprocessedSeconds: 700, errors: 2 }))).toEqual(['stripe_backlog']);
     expect(failing(counts({ unrelated: 500 }))).toEqual([]);
     expect(PATH_FUNCTIONS.market_path).toContain('market-buy');
   });
@@ -269,7 +265,7 @@ describe('runWatchdog', () => {
 
   it('checkout errors pause the Pass sales only; progress errors pause scoring only (and only while a League is open)', async () => {
     const a = setup();
-    a.store.counts.functionErrors = { 'create-checkout': 9 };
+    a.store.counts.functionErrors = { 'pass-crypto': 9 };
     await a.tick();
     await a.tick();
     expect(a.store.flags).toMatchObject({ pass_sales_paused: true, market_paused: false, season_scoring_paused: false });

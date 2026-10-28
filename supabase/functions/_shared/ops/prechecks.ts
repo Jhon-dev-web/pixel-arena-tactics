@@ -183,11 +183,6 @@ export function runPrechecks(agg: Aggregates): Signal[] {
   if (revSev) {
     add({ id: 'payments:reversals', category: 'payments', severity: revSev, summary: `${agg.payments.refunded} reembolso(s) e ${agg.payments.revokedDisputes} disputa(s) de Passe na janela.`, evidence: [{ type: 'metric', id: 'refunded', label: `${agg.payments.refunded}` }, { type: 'metric', id: 'disputes', label: `${agg.payments.revokedDisputes}` }] });
   }
-  const evSev = pick(agg.payments.eventErrors, T.paymentEventErrorsMedium, T.paymentEventErrorsHigh);
-  if (evSev) add({ id: 'payments:event_errors', category: 'payments', severity: evSev, summary: `${agg.payments.eventErrors} evento(s) do webhook de pagamento terminaram em erro.`, evidence: [{ type: 'metric', id: 'event_errors', label: `${agg.payments.eventErrors}` }] });
-  if (agg.payments.eventsUnprocessed10min >= T.unprocessedEventsHigh) {
-    add({ id: 'payments:unprocessed', category: 'payments', severity: 'high', summary: `${agg.payments.eventsUnprocessed10min} evento(s) de pagamento parados há mais de 10 minutos sem processar.`, evidence: [{ type: 'metric', id: 'unprocessed_10min', label: `${agg.payments.eventsUnprocessed10min}` }] });
-  }
 
   // ---- function errors ----
   for (const f of agg.errors.byFunction) {

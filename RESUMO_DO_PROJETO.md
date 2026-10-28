@@ -8,7 +8,7 @@ Atualizado em 21/10/2026. Este é o documento de entrada para quem (pessoa ou ag
 
 O herói progride sozinho enquanto o jogador está fora: caça monstros, minera, corta madeira, cuida da horta, forja equipamentos e desce a masmorra. O jogador volta, recolhe, equipa e decide o próximo passo. A regra de design é "não é um jogo para ficar assistindo": a caça é uma cena pequena no mapa mais o inventário, e a arena com combate animado só aparece na Masmorra.
 
-Monetização: o **Passe de Aventureiro** (US$ 10, pago **só em USDC na rede Solana**) e uma taxa de 5% no **mercado entre jogadores** (itens vendidos em **SOL**, sem custódia: o comprador paga direto à carteira do vendedor). Não há Stripe ativo (o código existe, mas está desligado). Não há NFT nem token próprio.
+Monetização: o **Passe de Aventureiro** (US$ 10, pago **só em USDC na rede Solana**) e uma taxa de 5% no **mercado entre jogadores** (itens vendidos em **SOL**, sem custódia: o comprador paga direto à carteira do vendedor). O Stripe foi retirado em 28/10 (as Edge Functions foram apagadas; Pix nunca foi feito): resumo guardado em `docs/PAGAMENTOS_DESCARTADOS.md`. Não há NFT nem token próprio.
 
 ## 2. Repositório
 
@@ -146,7 +146,7 @@ Nada novo foi commitado entre 22/10 e 28/10. O último commit desta frente é `5
 - Mineração e Lenhador darem XP de herói (hoje dividir o tempo com eles custa cerca de 14 níveis em 60 dias).
 - Quinta zona de Caça para a segunda metade da temporada (do dia ~30 ao 60 o herói fica na zona 4).
 - Preço do Passe da Temporada 2.
-- Pagamento por cartão: o **Stripe** voltou como opção (cartão do mundo todo), mas o lançamento será **só com carteiras (USDC)** para medir cadastros; o Stripe fica pronto e desligado até ele criar a conta. Botão "Comprar SOL com Pix": recomendada a MoonPay (Ramp de reserva), não é para 31/10. Vender SOL dentro do jogo foi descartado (regras do Banco Central).
+- Pagamento por cartão: o Stripe foi **retirado em 28/10** (funções apagadas; resumo em `docs/PAGAMENTOS_DESCARTADOS.md`); o Passe é só com carteiras (USDC). Pix nunca foi feito e não vai ter. Botão "Comprar SOL com Pix": recomendada a MoonPay (Ramp de reserva), não é para 31/10. Vender SOL dentro do jogo foi descartado (regras do Banco Central).
 - Pontos de interface que ele decide: "Resgatar tudo [Passe]" desabilitado para quem não tem Passe; "Resgatar e Sair" não sai da Caça; duas confirmações ao recuar na Masmorra; Passe grátis mostra 11 vantagens antes da trilha. A Forja do primeiro item (corrente longa de materiais) ele decidiu **deixar como está**.
 
 ### Estudos e documentos desta fase

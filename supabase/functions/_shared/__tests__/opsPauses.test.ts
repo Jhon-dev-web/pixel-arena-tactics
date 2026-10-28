@@ -160,11 +160,7 @@ describe('pass_sales_paused on the card checkout', () => {
     expect(res.status).toBe(502); // reached the (deliberately failing) store: not refused as paused
   });
 
-  it('the Stripe webhook is never paused: money already taken must still be recorded', () => {
-    const idx = readFileSync(resolve(root, 'supabase/functions/stripe-webhook/index.ts'), 'utf8');
-    expect(idx).not.toContain('opsFlags');
-    expect(readFileSync(resolve(root, 'supabase/functions/_shared/webhook.ts'), 'utf8')).not.toMatch(/ops\/flags|isPaused/);
-  });
+  // The "Stripe webhook is never paused" test was removed: the stripe-webhook function was retired on 2026-10-28 (see docs/PAGAMENTOS_DESCARTADOS.md).
 });
 
 describe('season_scoring_paused on submit-progress', () => {
@@ -243,8 +239,8 @@ describe('the Edge Function wiring', () => {
   const read = (fn: string) => readFileSync(resolve(root, `supabase/functions/${fn}/index.ts`), 'utf8');
 
   it('every flag-aware function passes the reader, and every watched function is wrapped by the 5xx monitor', () => {
-    for (const fn of ['submit-progress', 'market-list', 'market-buy', 'pass-crypto', 'create-checkout']) expect(read(fn), fn).toContain('opsFlags: ops.flags');
-    for (const fn of ['submit-progress', 'market-list', 'market-buy', 'market-my', 'market-wallet', 'pass-crypto', 'create-checkout', 'stripe-webhook']) {
+    for (const fn of ['submit-progress', 'market-list', 'market-buy', 'pass-crypto']) expect(read(fn), fn).toContain('opsFlags: ops.flags');
+    for (const fn of ['submit-progress', 'market-list', 'market-buy', 'market-my', 'market-wallet', 'pass-crypto']) {
       expect(read(fn), fn).toContain(`withOpsMonitor('${fn}'`);
       expect(read(fn), fn).toContain('ops.report');
     }

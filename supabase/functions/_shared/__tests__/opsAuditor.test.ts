@@ -111,8 +111,6 @@ describe('the deterministic pre-checks', () => {
     expect(byId['referral_cluster:subnet:eeeeeeee']).toMatchObject({ severity: 'medium' });
     expect(byId['referral_cluster:inviter:w1']).toMatchObject({ severity: 'high' });
     expect(byId['payments:reversals']).toMatchObject({ severity: 'high' });
-    expect(byId['payments:event_errors']).toMatchObject({ severity: 'high' });
-    expect(byId['payments:unprocessed']).toMatchObject({ severity: 'high' });
     expect(byId['errors:market-buy']).toMatchObject({ severity: 'high' });
     expect(byId['errors:submit-progress']).toMatchObject({ severity: 'medium' });
   });

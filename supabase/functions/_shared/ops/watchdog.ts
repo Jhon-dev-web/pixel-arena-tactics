@@ -12,7 +12,7 @@ import type { Severity } from './types.ts';
 // The watchdog: health checks of the game's critical paths, incidents, a small set of AUTOMATIC and REVERSIBLE pauses, and an alert. It NEVER switches a flag off (the database function it uses only knows "on");
 // a human clears flags in the admin panel. The AI only writes a one-paragraph explanation of the incident (advisory text that goes into the alert).
 
-export const CHECK_NAMES = ['db', 'key_rpcs', 'market_path', 'payments_path', 'progress_path', 'solana_rpc', 'stripe_backlog'] as const;
+export const CHECK_NAMES = ['db', 'key_rpcs', 'market_path', 'payments_path', 'progress_path', 'solana_rpc'] as const;
 export type CheckName = (typeof CHECK_NAMES)[number];
 
 export const WATCHDOG = {
@@ -27,8 +27,6 @@ export const WATCHDOG = {
   marketErrorsFail: 8,
   paymentsErrorsFail: 5,
   progressErrorsFail: 15,
-  /** Webhook events stuck unprocessed for 10+ minutes (and event errors) that make the Stripe backlog "failing". */
-  backlogFail: 3,
   /** The database counts as UNREACHABLE for the maintenance banner after failing this long. */
   dbDownSeconds: 180,
 } as const;
@@ -36,7 +34,7 @@ export const WATCHDOG = {
 /** Which Edge Function belongs to which path. */
 export const PATH_FUNCTIONS = {
   market_path: ['market-list', 'market-buy', 'market-wallet', 'market-my'],
-  payments_path: ['create-checkout', 'stripe-webhook', 'pass-crypto'],
+  payments_path: ['pass-crypto'],
   progress_path: ['submit-progress'],
 } as const;
 
@@ -115,14 +113,8 @@ const RULES: Record<CheckName, Rule> = {
   payments_path: {
     openAfter: 2,
     severity: 'high',
-    summary: 'As funções de pagamento do Passe (checkout, webhook, USDC) estão devolvendo erros.',
-    pauses: () => [{ flag: 'pass_sales_paused', why: 'checkout ou webhook falhando repetidamente' }],
-  },
-  stripe_backlog: {
-    openAfter: 2,
-    severity: 'high',
-    summary: 'Há eventos do Stripe parados sem processar (fila acumulando).',
-    pauses: () => [{ flag: 'pass_sales_paused', why: 'fila do webhook de pagamento acumulando' }],
+    summary: 'A função de pagamento do Passe (USDC) está devolvendo erros.',
+    pauses: () => [{ flag: 'pass_sales_paused', why: 'pagamento do Passe falhando repetidamente' }],
   },
 };
 
@@ -181,7 +173,7 @@ export function createSolanaProbe(rpcUrl: string | undefined, fetchFn: typeof fe
 
 const sumErrors = (counts: HealthCounts, fns: readonly string[]): number => fns.reduce((n, f) => n + (counts.functionErrors[f] ?? 0), 0);
 
-/** Pure: what the 5xx counters and the payment backlog say. */
+/** Pure: what the 5xx counters say. */
 export function evaluateCounts(counts: HealthCounts): CheckResult[] {
   const market = sumErrors(counts, PATH_FUNCTIONS.market_path);
   const pay = sumErrors(counts, PATH_FUNCTIONS.payments_path);
@@ -190,11 +182,6 @@ export function evaluateCounts(counts: HealthCounts): CheckResult[] {
     { check: 'market_path', ok: market < WATCHDOG.marketErrorsFail, detail: { errors: market, window_minutes: WATCHDOG.functionWindowMinutes } },
     { check: 'payments_path', ok: pay < WATCHDOG.paymentsErrorsFail, detail: { errors: pay, window_minutes: WATCHDOG.functionWindowMinutes } },
     { check: 'progress_path', ok: progress < WATCHDOG.progressErrorsFail, detail: { errors: progress, window_minutes: WATCHDOG.functionWindowMinutes } },
-    {
-      check: 'stripe_backlog',
-      ok: counts.payments.unprocessed + counts.payments.errors < WATCHDOG.backlogFail,
-      detail: { unprocessed: counts.payments.unprocessed, oldest_seconds: counts.payments.oldestUnprocessedSeconds, event_errors: counts.payments.errors },
-    },
   ];
 }
 
