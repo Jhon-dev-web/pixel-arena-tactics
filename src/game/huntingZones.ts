@@ -85,8 +85,9 @@ export function artGeometry(art: SheetArt): { cx: number; cy: number; size: numb
 }
 
 // Map background of a zone's hunt scene (assets.json `background.hunt_<zone id>`, 400x144; the walkable ground is its dark bottom band).
-// A zone without a map of its own borrows another zone's strip (zone 5 uses the abyss one until its own is drawn).
-const ZONE_BACKGROUND_SOURCE: Record<string, string> = { abyss_throne: 'blood_abyss' };
+// A zone without a map of its own borrows another zone's strip: put `<zone id>: '<other zone id>'` here, and delete the entry once its own PNG exists.
+// Empty today — zone 5 (abyss_throne) borrowed the abyss strip until hunt_abyss_throne.png was drawn (classes reform, phase 7).
+const ZONE_BACKGROUND_SOURCE: Record<string, string> = {};
 export function huntingZoneBackgroundUrl(zoneId: string): string {
   return `/assets/backgrounds/hunt_${ZONE_BACKGROUND_SOURCE[zoneId] ?? zoneId}.png`;
 }

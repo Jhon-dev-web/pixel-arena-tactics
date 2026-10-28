@@ -756,6 +756,11 @@
       "url": "/assets/backgrounds/hunt_blood_abyss.png",
       "description": "Pixel art crimson abyss with bone spikes, 400x144 side-view strip; walkable ground is the dark band at the bottom (Blood Abyss hunt scene)",
       "metadata": {}
+    },
+    "hunt_abyss_throne": {
+      "url": "/assets/backgrounds/hunt_abyss_throne.png",
+      "description": "Pixel art abyssal throne hall, colossal obsidian colonnade receding to a violet-lit throne, 400x144 side-view strip; walkable ground is the tiled band at the bottom (Throne of the Eternal Abyss hunt scene, zone 5)",
+      "metadata": {}
     }
   },
   "sfx": {
