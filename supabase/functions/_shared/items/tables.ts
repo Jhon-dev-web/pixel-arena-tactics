@@ -570,6 +570,126 @@ export const FORGE_TEMPLATES: Readonly<Record<string, { tier: number; slot: stri
     "tier": 6,
     "slot": "shield",
     "levelGate": 98
+  },
+  "short_bow": {
+    "tier": 1,
+    "slot": "weapon",
+    "levelGate": 0
+  },
+  "hunting_bow": {
+    "tier": 2,
+    "slot": "weapon",
+    "levelGate": 10
+  },
+  "long_bow": {
+    "tier": 3,
+    "slot": "weapon",
+    "levelGate": 25
+  },
+  "elven_bow": {
+    "tier": 4,
+    "slot": "weapon",
+    "levelGate": 50
+  },
+  "moon_bow": {
+    "tier": 5,
+    "slot": "weapon",
+    "levelGate": 70
+  },
+  "abyssal_bow": {
+    "tier": 6,
+    "slot": "weapon",
+    "levelGate": 90
+  },
+  "light_crossbow": {
+    "tier": 1,
+    "slot": "weapon",
+    "levelGate": 0
+  },
+  "iron_crossbow": {
+    "tier": 2,
+    "slot": "weapon",
+    "levelGate": 10
+  },
+  "steel_crossbow": {
+    "tier": 3,
+    "slot": "weapon",
+    "levelGate": 25
+  },
+  "gilded_crossbow": {
+    "tier": 4,
+    "slot": "weapon",
+    "levelGate": 50
+  },
+  "voidsteel_crossbow": {
+    "tier": 5,
+    "slot": "weapon",
+    "levelGate": 70
+  },
+  "abyssal_crossbow": {
+    "tier": 6,
+    "slot": "weapon",
+    "levelGate": 90
+  },
+  "apprentice_staff": {
+    "tier": 1,
+    "slot": "weapon",
+    "levelGate": 0
+  },
+  "oak_staff": {
+    "tier": 2,
+    "slot": "weapon",
+    "levelGate": 10
+  },
+  "ebony_staff": {
+    "tier": 3,
+    "slot": "weapon",
+    "levelGate": 25
+  },
+  "elven_staff": {
+    "tier": 4,
+    "slot": "weapon",
+    "levelGate": 50
+  },
+  "lunar_staff": {
+    "tier": 5,
+    "slot": "weapon",
+    "levelGate": 70
+  },
+  "voidweave_staff": {
+    "tier": 6,
+    "slot": "weapon",
+    "levelGate": 90
+  },
+  "copper_scepter": {
+    "tier": 1,
+    "slot": "weapon",
+    "levelGate": 0
+  },
+  "iron_scepter": {
+    "tier": 2,
+    "slot": "weapon",
+    "levelGate": 10
+  },
+  "silver_scepter": {
+    "tier": 3,
+    "slot": "weapon",
+    "levelGate": 25
+  },
+  "gold_scepter": {
+    "tier": 4,
+    "slot": "weapon",
+    "levelGate": 50
+  },
+  "obsidian_scepter": {
+    "tier": 5,
+    "slot": "weapon",
+    "levelGate": 70
+  },
+  "abyssal_scepter": {
+    "tier": 6,
+    "slot": "weapon",
+    "levelGate": 90
   }
 };
 

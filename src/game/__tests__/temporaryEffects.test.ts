@@ -402,13 +402,12 @@ describe('gear: every equipped slot and every stat it declares reaches the comba
   it('every stat a gear template declares exists in the engine for ITS slot (a field on the wrong slot would be silently ignored)', () => {
     // The relic-only fields are read from the relic; the others are read from every instanced slot through equippedExtraStats / weapon / armor.
     const RELIC_ONLY = ['damagePct', 'lifestealPct', 'goldBonusPct', 'xpBonusPct'] as const;
-    // Classes reform, phase 2a: attack speed and regeneration are also read from the armor and the four extra armor slots (gearInstances.equippedExtraStats), never from the weapon.
-    const NOT_ON_WEAPON = ['hpRegenPct', 'attackSpeedBonus'] as const;
+    // Classes reform: attack speed and regeneration are read from the armor and the extra slots (phase 2a) and from the WEAPON (phase 3: the bow carries speed, the scepter regeneration), all through
+    // gearInstances.equippedExtraStats. The crit multiplier of the weapon (crossbow, staff) goes the same way. gearEffects.test.ts proves each of the three reaches the combat stats from a weapon.
     const WEAPON_ONLY = ['burn'] as const;
     const ARMOR_AND_SHIELD = ['reflect'] as const;
     for (const g of GEAR) {
       if (g.slot !== 'relic') for (const f of RELIC_ONLY) expect((g as unknown as Record<string, unknown>)[f], `${g.id}.${f} is only read from the relic slot`).toBeUndefined();
-      if (g.slot === 'weapon') for (const f of NOT_ON_WEAPON) expect((g as unknown as Record<string, unknown>)[f], `${g.id}.${f} is not read from the weapon`).toBeUndefined();
       if (g.slot !== 'weapon') for (const f of WEAPON_ONLY) expect((g as unknown as Record<string, unknown>)[f], `${g.id}.${f} is only read from the weapon`).toBeUndefined();
       if (g.slot !== 'armor' && g.slot !== 'shield') for (const f of ARMOR_AND_SHIELD) expect((g as unknown as Record<string, unknown>)[f], `${g.id}.${f}`).toBeUndefined();
     }

@@ -375,6 +375,18 @@ export function equippedExtraStats(save: GearState): ExtraSlotStats {
     t.attackSpeedBonus += (item.attackSpeedBonus ?? 0) * f;
     t.hpRegenPct += (item.hpRegenPct ?? 0) * f;
   }
+  // The WEAPON has its own path for damage and crit chance (buildCombatStats: effectiveDamage / effectiveCrit with the weapon's own durability and rarity), so those two are NOT added again here - that would
+  // count them twice. The three fields that path never read (crit multiplier, attack speed, regeneration) were dead data on a weapon - the bow, crossbow, staff and scepter lines (classes reform, phase 3)
+  // depend on them - so they are summed here, with the factors the armor and the extra slots use: durability and rarity for the crit multiplier, durability alone for the two fractions of effect.
+  const weaponView = views.weapon;
+  if (weaponView?.instance) {
+    const { item, instance } = weaponView;
+    const f = durabilityFactor(instance.durability);
+    const r = rarityStatMult(instance.rarity);
+    t.critMult += (item.critMultBonus ?? 0) * f * r;
+    t.attackSpeedBonus += (item.attackSpeedBonus ?? 0) * f;
+    t.hpRegenPct += (item.hpRegenPct ?? 0) * f;
+  }
   for (const slot of EXTRA_SLOTS) {
     const v = views[slot];
     if (!v?.instance) continue;

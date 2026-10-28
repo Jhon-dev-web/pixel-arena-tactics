@@ -48,8 +48,9 @@ export interface GearItem {
   goldBonusPct?: number;
   // Season Relic (Adventurer Pass): percent extra CHARACTER XP from Hunting (3 = 3 %); no combat effect.
   xpBonusPct?: number;
-  // Weapon family: 'axe' is the second weapon line (more damage, less crit, no burn). Forge grouping only.
-  line?: 'axe';
+  // Weapon family. An ABSENT line means SWORD (the original line, untouched so old saves stay identical, like an absent `weight` means plate): do not "fix" that into a check for a 'sword' value, no piece carries it.
+  // 'axe' is the second line (more damage, less crit, no burn); 'bow', 'crossbow', 'staff' and 'scepter' are the classes reform's (phase 3). Forge grouping and the set family of the weapon (weaponWeight).
+  line?: WeaponLine;
   // WARNING: an ABSENT weight means PLATE. Plate is the original line, left untouched so old saves stay identical, so it has no value of its own; 'leather' (phase 2a) and 'cloth' (phase 2b) are added the same way.
   // The tests that measure only the original line filter by `!weight` - do not "fix" that into a check for a plate value, there is none.
   // Armor weight (classes reform, docs/CLASSES_E_EQUIPAMENTOS.md 2.1): only the pieces of a weight other than plate carry it, so every plate piece keeps exactly the data it always had.
@@ -73,6 +74,11 @@ export const SET_FAMILIES = ['bronze', 'iron', 'steel', 'gilded', 'dragon', 'voi
 export type SetFamily = (typeof SET_FAMILIES)[number];
 // Plate is the weight every piece had before the reform, so it is the one with no `weight` field.
 export type ArmorWeight = 'leather' | 'cloth';
+export type WeaponLine = 'sword' | 'axe' | 'bow' | 'crossbow' | 'staff' | 'scepter';
+// The armor weight a weapon counts for when the set families are assigned: the bow and the crossbow are the archer's (leather), the staff and the scepter the mage's (cloth). The sword and the axe have none,
+// so they stay in the plate family of their tier exactly as before.
+const LINE_WEIGHT: Partial<Record<WeaponLine, ArmorWeight>> = { bow: 'leather', crossbow: 'leather', staff: 'cloth', scepter: 'cloth' };
+const weaponWeight = (g: GearItem): ArmorWeight | undefined => g.weight ?? (g.line ? LINE_WEIGHT[g.line] : undefined);
 const FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'bronze', 2: 'iron', 3: 'steel', 4: 'gilded', 5: 'voidsteel', 6: 'abyssal' };
 const LEATHER_FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'hide', 2: 'scout', 3: 'ranger', 4: 'hunter', 5: 'nightstalker', 6: 'abyssalhide' };
 const CLOTH_FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'linen', 2: 'homespun', 3: 'silk', 4: 'arcane', 5: 'lunar', 6: 'voidweave' };
@@ -411,6 +417,104 @@ for (const line of CLOTH_LINES) {
   });
 }
 
+// --- Weapon lines (classes reform, phase 3; docs/CLASSES_E_EQUIPAMENTOS.md 2.1, 2.4): the bow and the crossbow (archer), the staff and the scepter (mage) ---
+// Derived from the SWORD of the same tier exactly as the armor lines are derived from their plate twins: every weapon keeps WEAPON_KEEP of the sword's damage and the sword's crit chance as its own
+// base (without it the scepter, which returns only regeneration, could not close its CP parity inside the sustain limit) and returns the rest as the stats of its line, in the amounts scripts/sim/weightBudget.gen.ts solves per tier so the weapon is worth the CP of the sword (a lone weapon, plate
+// everywhere else: the full-set parity of the armor lines is not touched). The bow returns attack speed (crit multiplier only as overflow), the crossbow and the staff crit multiplier, the scepter regeneration;
+// the staff burns at every tier (the mage's fire; the sword only from tier 5, and the other lines never). The returned stats are written into the block between the markers; itemBalance.test.ts fails if it goes stale.
+// A weapon counts for the set family of the WEIGHT of its class (weaponWeight above): bow and crossbow for the leather family of the tier, staff and scepter for the cloth one, so five leather pieces and a bow
+// close the archer's set. The sword and the axe stay exactly as they were (plate family).
+// The share of the sword's crit chance a weapon keeps as its own base. The bow keeps half (like the axe, which also trades crit for something else): the leather armor already carries the crit chance of the archer, and a
+// bow that stacked the same stat saturated it (see REVIEW IN PHASE 8 below). The bow's budget is returned as attack speed instead.
+export const WEAPON_CRIT_KEEP: Record<'bow' | 'crossbow' | 'staff' | 'scepter', number> = { bow: 0.5, crossbow: 1, staff: 1, scepter: 1 };
+export const WEAPON_KEEP: Record<'bow' | 'crossbow' | 'staff' | 'scepter', number> = { bow: 0.7, crossbow: 0.85, staff: 0.75, scepter: 0.8 };
+export const SWORD_TWINS = ['bronze_dagger', 'iron_short_sword', 'steel_greatsword', 'gilded_warblade', 'voidsteel_blade', 'abyssal_greatblade'] as const;
+export const WEAPON_LINES: { line: 'bow' | 'crossbow' | 'staff' | 'scepter'; ids: string[]; leather?: number[]; sinew?: number[]; dust?: number[]; handles: number[]; hunt: number[] }[] = [
+  { line: 'bow', ids: ['short_bow', 'hunting_bow', 'long_bow', 'elven_bow', 'moon_bow', 'abyssal_bow'], leather: [8, 7, 8, 8, 10, 10], sinew: [8, 12, 14, 20, 28, 36], handles: [1, 1, 1, 2, 2, 3], hunt: [0, 0.45, 0.8, 0.9, 1, 0.95] },
+  { line: 'crossbow', ids: ['light_crossbow', 'iron_crossbow', 'steel_crossbow', 'gilded_crossbow', 'voidsteel_crossbow', 'abyssal_crossbow'], leather: [7, 6, 7, 7, 9, 9], sinew: [8, 12, 16, 22, 30, 40], handles: [2, 2, 1, 2, 2, 3], hunt: [0, 0.45, 0.8, 0.9, 1, 0.95] },
+  { line: 'staff', ids: ['apprentice_staff', 'oak_staff', 'ebony_staff', 'elven_staff', 'lunar_staff', 'voidweave_staff'], dust: [0, 0, 2, 3, 4, 5], handles: [4, 3, 2, 3, 3, 4], hunt: [1, 1, 0.95, 1, 1.05, 1.1] },
+  // REVIEW IN PHASE 8 (crit chance, the whole game): at tier 6 +8 the hero's crit chance already nears the engine's 1.0 clip on refine (0.04 a piece, 0.28 over seven pieces), the ring (0.145) and the leather line alone; with the PURE
+  // sword it is 0.984. That pressure predates the classes reform and is not the leather line's fault; substats, gems and the Olho Agucado skill add on top of it and are clipped. The bow was moved to attack speed for this reason.
+  // REVIEW IN PHASE 8: a mage in the full cloth set plus the tier-6 scepter carries about 0.062 hpRegenPct (+8, set bonuses on: cloth pieces ~0.037, set bonus 0.004, scepter 0.020). CP overvalues regeneration (it enters
+  // through sigma, capped), the same caveat as the cloth line (phase 2b): the real Dungeon fight is probably worth more to this mage than his CP says, so this number is a candidate for revision once the abilities exist.
+  { line: 'scepter', ids: ['copper_scepter', 'iron_scepter', 'silver_scepter', 'gold_scepter', 'obsidian_scepter', 'abyssal_scepter'], dust: [0, 0, 2, 2, 3, 4], handles: [2, 3, 2, 3, 3, 4], hunt: [2, 1, 0.95, 1, 1.05, 1.1] },
+];
+// piece id -> the returned stats of its line: written by scripts/sim/weightBudget.gen.ts, do not edit by hand.
+// BEGIN weightBudget.weapon.gen
+const WEAPON_CONVERSION: Record<string, { critChance?: number; attackSpeedBonus?: number; critMultBonus?: number; hpRegenPct?: number }> = {
+  short_bow: { attackSpeedBonus: 0.2147 },
+  hunting_bow: { attackSpeedBonus: 0.2522 },
+  long_bow: { attackSpeedBonus: 0.3116 },
+  elven_bow: { attackSpeedBonus: 0.3381 },
+  moon_bow: { attackSpeedBonus: 0.4591 },
+  abyssal_bow: { attackSpeedBonus: 0.5011 },
+  light_crossbow: { critMultBonus: 0.4888 },
+  iron_crossbow: { critMultBonus: 0.4964 },
+  steel_crossbow: { critMultBonus: 0.5127 },
+  gilded_crossbow: { critMultBonus: 0.5502 },
+  voidsteel_crossbow: { critMultBonus: 0.593 },
+  abyssal_crossbow: { critMultBonus: 0.6064 },
+  apprentice_staff: { critMultBonus: 0.5616 },
+  oak_staff: { critMultBonus: 0.6515 },
+  ebony_staff: { critMultBonus: 0.7264 },
+  elven_staff: { critMultBonus: 0.7435 },
+  lunar_staff: { critMultBonus: 0.8297 },
+  voidweave_staff: { critMultBonus: 0.864 },
+  copper_scepter: { hpRegenPct: 0.00584 },
+  iron_scepter: { hpRegenPct: 0.00752 },
+  silver_scepter: { hpRegenPct: 0.0105 },
+  gold_scepter: { hpRegenPct: 0.01095 },
+  obsidian_scepter: { hpRegenPct: 0.01661 },
+  abyssal_scepter: { hpRegenPct: 0.02025 },
+};
+// END weightBudget.weapon.gen
+for (const line of WEAPON_LINES) {
+  line.ids.forEach((id, i) => {
+    const twin = GEAR.find((g) => g.id === SWORD_TWINS[i]) as GearItem;
+    const conv = WEAPON_CONVERSION[id] ?? {};
+    // Tiers 1 and 2 of the staff and the scepter ask for NO arcane dust, for the reason the cloth line gives (it falls only in the marsh, dungeon floor 26+: a new mage must not be locked out of his own first
+    // weapon): they are the tier's wood handle (several, the staff is a long piece of wood) and whatever else the sword asks for. From tier 3 the dust is the second signature of the line.
+    const materials: Partial<Record<MaterialId, number>> = {};
+    if (line.leather) materials.leather = line.leather[i];
+    if (line.sinew) materials.beast_sinew = line.sinew[i];
+    materials[LEATHER_HANDLES[i]] = line.handles[i];
+    if (line.dust && line.dust[i] > 0) materials.arcane_dust = line.dust[i];
+    // The hunting and refined families the sword of the tier asks for, scaled by hunt[i] like the armor lines do (without them the weapon would cost a fraction of its twin and skip the late zones). Leather,
+    // scrap and handles are the line's own identity above and are not copied.
+    for (const [m, q] of Object.entries(twin.recipe?.materials ?? {}) as [MaterialId, number][]) {
+      if (m === 'leather' || m === 'leather_scrap' || m.startsWith('wood_handle_')) continue;
+      const n = Math.round(q * line.hunt[i]);
+      if (n > 0) materials[m] = (materials[m] ?? 0) + n;
+    }
+    const prev = i > 0 ? line.ids[i - 1] : undefined;
+    const piece: GearItem = {
+      id,
+      slot: 'weapon',
+      line: line.line,
+      nameKey: id,
+      descKey: id + '_d',
+      materialKey: line.line === 'bow' || line.line === 'crossbow' ? 'material_leather' : 'material_cloth',
+      icon: '/assets/icons/' + id + '.png',
+      cost: twin.cost,
+      tier: i + 1,
+      damage: Math.round((twin.damage ?? 0) * WEAPON_KEEP[line.line]),
+      // the chain rule every line follows: one piece of the previous tier of THIS line (the lines never mix), two for the tier-2 weapon
+      recipe: {
+        ...(prev ? { items: { [prev]: i === 1 ? 2 : 1 } } : {}),
+        materials,
+        ...(twin.recipe?.requiredLevel ? { requiredLevel: twin.recipe.requiredLevel } : {}),
+      },
+    };
+    const crit = (twin.critChance ?? 0) * WEAPON_CRIT_KEEP[line.line] + (conv.critChance ?? 0);
+    if (crit > 0) piece.critChance = round4(crit);
+    if (conv.attackSpeedBonus) piece.attackSpeedBonus = conv.attackSpeedBonus;
+    if (conv.critMultBonus) piece.critMultBonus = conv.critMultBonus;
+    if (conv.hpRegenPct) piece.hpRegenPct = conv.hpRegenPct;
+    if (line.line === 'staff') piece.burn = true;
+    GEAR.push(piece);
+  });
+}
+
 // The hero's look per ARMOR template: the armor in the armor slot decides which sheet the hero is drawn with (heroLook in sprites.ts). The order of HERO_LOOKS is the
 // progression order (used to tell which looks a hero has already outgrown). Every armor template must be keyed here (gear.test / heroLook.test check it), so a new armor
 // cannot ship without a look; uniques take their twin's (UNIQUE_DEFS.like). Weapon, helmet, shield and the other slots never change the sprite.
@@ -519,7 +623,7 @@ const GEAR_BY_ID: Record<string, GearItem> = Object.fromEntries(GEAR.map((g) => 
 for (const g of GEAR) {
   if (g.slot === 'relic' || !(g.tier && g.tier >= 1)) continue;
   const base = g.salvageLike ? GEAR_BY_ID[g.salvageLike] : g;
-  g.setFamily = base.materialKey === 'material_dragon' ? 'dragon' : (base.weight === 'leather' ? LEATHER_FAMILY_BY_TIER : base.weight === 'cloth' ? CLOTH_FAMILY_BY_TIER : FAMILY_BY_TIER)[base.tier as number];
+  g.setFamily = base.materialKey === 'material_dragon' ? 'dragon' : (weaponWeight(base) === 'leather' ? LEATHER_FAMILY_BY_TIER : weaponWeight(base) === 'cloth' ? CLOTH_FAMILY_BY_TIER : FAMILY_BY_TIER)[base.tier as number];
 }
 
 // The families a piece counts for: its own, and a dragon piece also counts as a gilded one (it is the gilded weapon / armor made better, and the family only has

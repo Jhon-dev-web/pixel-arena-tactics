@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeCP, SaveData } from '../engine';
+import { buildCombatStats, computeCP, SaveData } from '../engine';
 import { createGearInstance, equippedSubstatTotals } from '../gearInstances';
 import { cargoReferenceValue } from '../economy';
 import type { MaterialId } from '../materials';
@@ -7,7 +7,7 @@ import { GOLD_BONUS_CAP, RARITIES, Rarity, SUBSTATS, medianSubstatValue, rollRar
 import { duel, hero, MAIN_TIERS, repFloor, tierNum, withoutSetBonuses } from '../../../scripts/sim/duel';
 import { withSeededRandom } from '../../../scripts/sim/driver';
 import { pieceGain } from '../../../scripts/sim/tierSteps';
-import { CLOTH_LINES, GEAR, GearItem, LEATHER_LINES, gearRequiredLevel, getGear, isInstancedSlot } from '../gear';
+import { CLOTH_LINES, GEAR, GearItem, LEATHER_LINES, SWORD_TWINS, WEAPON_CRIT_KEEP, WEAPON_KEEP, WEAPON_LINES, gearRequiredLevel, getGear, isInstancedSlot, setFamiliesOf } from '../gear';
 import { buildHero } from '../../../scripts/sim/ladder';
 import { rarityHero } from '../../../scripts/sim/rarityHero';
 import { getHuntingZone, subLevelCpRequired } from '../huntingZones';
@@ -157,8 +157,11 @@ function lineChains(): GearItem[][] {
 describe('R5: every crafted tier is a real upgrade', () => {
   const chains = lineChains();
 
-  it('eighteen lines (the eight plate ones - sword, axe, armor, helmet, gloves, boots, ring, shield - and the five leather and the five cloth ones), each one chain from tier 1 to tier 6 with no dead end', () => {
-    expect(chains).toHaveLength(8 + 5 + 5);
+  it('twenty-two lines (the eight plate ones - sword, axe, armor, helmet, gloves, boots, ring, shield - the five leather and the five cloth ones, and the four weapon lines of the classes reform), each one chain from tier 1 to tier 6 with no dead end', () => {
+    expect(chains).toHaveLength(8 + 5 + 5 + 4);
+    // the weapon chains never mix: sword (no `line`), axe, bow, crossbow, staff, scepter, six lines of six pieces
+    expect(chains.filter((c) => c[0].slot === 'weapon').map((c) => c[0].line ?? 'sword').sort()).toEqual(['axe', 'bow', 'crossbow', 'scepter', 'staff', 'sword']);
+    for (const c of chains.filter((x) => x[0].slot === 'weapon' && x[0].line)) expect(new Set(c.map((g) => g.line)).size, c[0].id).toBe(1);
     expect(chains.filter((c) => c[0].weight === 'leather').map((c) => c[0].slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'shield']);
     expect(chains.filter((c) => c[0].weight === 'cloth').map((c) => c[0].slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'shield']);
     const inChains = new Set(chains.flat().map((g) => g.id));
@@ -409,6 +412,162 @@ describe('R7: the cloth line', () => {
     for (let t = 0; t < 6; t++) {
       const setDust = CLOTH_LINES.reduce((a, l) => a + (getGear(l.ids[t]).recipe!.materials!.arcane_dust ?? 0), 0);
       expect(setDust, `tier ${t + 1} set`).toBeLessThanOrEqual(14);
+    }
+  });
+});
+// --- R7 (weapons): the bow, crossbow, staff and scepter (classes reform, phase 3; docs/CLASSES_E_EQUIPAMENTOS.md 2.1, 2.4) ----------------------------------------------------------------
+// A weapon is judged against the SWORD of its tier: the same reference hero with the weapon in the weapon slot (plate everywhere else) must be worth the sword's CP, at +0, +4 and +8, with and without
+// the set bonuses. The returned stats come from the same generator (WEAPON_CONVERSION) and this test fails when they go stale. Every stat of a line only goes UP with the tier: a promise to the player,
+// harder than the +-5 % band, so a tier that cannot satisfy both is reported by the generator and never fixed by relaxing the ladder.
+describe('R7: the weapon lines', () => {
+  const TIER_LEVEL = [1, 10, 25, 50, 70, 90];
+  const swapWeapon = (t: number, weaponId: string | undefined, refine: number): SaveData => {
+    const h = buildHero(TIER_LEVEL[t - 1], t, refine);
+    if (!weaponId) return h;
+    const inst = createGearInstance(weaponId, { id: `gi_wpn_${weaponId}`, origin: 'craft', rarity: 'common', substats: [], upgrade: refine });
+    return { ...h, gearInstances: { ...h.gearInstances, [inst.id]: inst }, equipped: { ...h.equipped, weapon: inst.id } };
+  };
+  const FIELDS = ['damage', 'critChance', 'attackSpeedBonus', 'critMultBonus', 'hpRegenPct'] as const;
+  const RETURNS: Record<string, readonly (typeof FIELDS)[number][]> = { bow: ['attackSpeedBonus', 'critMultBonus'], crossbow: ['critMultBonus'], staff: ['critMultBonus'], scepter: ['hpRegenPct'] };
+
+  for (const l of WEAPON_LINES) {
+    for (const t of [1, 2, 3, 4, 5, 6]) {
+      it(`${l.line} tier ${t} (${l.ids[t - 1]}): within +-5 % of the CP of the sword, at +0, +4 and +8, with and without the set bonuses`, () => {
+        for (const refine of [0, 4, 8]) {
+          const noSets = computeCP_noSets(swapWeapon(t, l.ids[t - 1], refine)) / computeCP_noSets(swapWeapon(t, undefined, refine));
+          expect(noSets, `+${refine} pieces only`).toBeGreaterThanOrEqual(0.95);
+          expect(noSets, `+${refine} pieces only`).toBeLessThanOrEqual(1.05);
+          const sets = computeCP(swapWeapon(t, l.ids[t - 1], refine)) / computeCP(swapWeapon(t, undefined, refine));
+          expect(sets, `+${refine} with the set bonuses`).toBeGreaterThanOrEqual(0.95);
+          expect(sets, `+${refine} with the set bonuses`).toBeLessThanOrEqual(1.05);
+        }
+      });
+    }
+  }
+
+  it('every weapon is the lighter twin of the sword of its tier: same price and level gate, its share of the damage and the sword\'s crit chance, the stats of its line, the staff burns at every tier and nobody else does', () => {
+    for (const l of WEAPON_LINES) {
+      l.ids.forEach((id, i) => {
+        const p = getGear(id);
+        const twin = getGear(SWORD_TWINS[i]);
+        expect(p.slot, id).toBe('weapon');
+        expect(p.line, id).toBe(l.line);
+        expect(p.weight, id).toBeUndefined(); // the weight is the armor's; a weapon takes its family from its line
+        expect(p.materialKey, id).toBe(l.line === 'bow' || l.line === 'crossbow' ? 'material_leather' : 'material_cloth');
+        expect(p.tier, id).toBe(i + 1);
+        expect(p.cost, id).toBe(twin.cost);
+        expect(gearRequiredLevel(p), id).toBe(gearRequiredLevel(twin));
+        expect(p.damage, id).toBe(Math.round(twin.damage! * WEAPON_KEEP[l.line]));
+        // the sword's crit chance is the weapon's own base; the bow keeps half of it (its budget goes to attack speed, the leather armor carries the crit chance)
+        expect(p.critChance, id).toBe(Math.round(twin.critChance! * WEAPON_CRIT_KEEP[l.line] * 10000) / 10000);
+        // the bow's crit multiplier is an overflow only: required for the other lines, optional for the bow
+        for (const f of RETURNS[l.line]) if (!(l.line === 'bow' && f === 'critMultBonus')) expect(p[f] ?? 0, `${id}.${f}`).toBeGreaterThan(0);
+        for (const f of FIELDS) if (f !== 'damage' && f !== 'critChance' && !RETURNS[l.line].includes(f)) expect(p[f], `${id}.${f} is not part of the ${l.line}`).toBeUndefined();
+        expect(p.burn === true, id).toBe(l.line === 'staff');
+        expect(p.reflect, id).toBeUndefined();
+      });
+    }
+    // the sword and the axe are exactly what they were: no line on the sword, no weight, plate families
+    for (const id of SWORD_TWINS) {
+      expect(getGear(id).line, id).toBeUndefined();
+      expect(getGear(id).weight, id).toBeUndefined();
+    }
+    expect(['bronze', 'iron', 'steel', 'gilded', 'voidsteel', 'abyssal']).toEqual(SWORD_TWINS.map((id) => getGear(id).setFamily));
+    expect(getGear('bronze_hatchet').setFamily).toBe('bronze');
+  });
+
+  it('each stat of a line is strictly higher at the next tier (damage, total crit chance and the line\'s returned stats), the proof of "the next tier is never worse"', () => {
+    for (const l of WEAPON_LINES) {
+      const fields = ['damage', 'critChance', ...RETURNS[l.line].filter((f) => f !== 'critChance' && !(l.line === 'bow' && f === 'critMultBonus'))] as (typeof FIELDS)[number][];
+      if (l.line === 'bow') for (let i = 1; i < 6; i++) if (getGear(l.ids[i - 1]).critMultBonus) expect(getGear(l.ids[i]).critMultBonus ?? 0, l.ids[i]).toBeGreaterThan(getGear(l.ids[i - 1]).critMultBonus!);
+      for (let i = 1; i < 6; i++) for (const f of fields) expect(getGear(l.ids[i])[f] as number, `${l.ids[i]}.${f} vs ${l.ids[i - 1]}`).toBeGreaterThan(getGear(l.ids[i - 1])[f] as number);
+    }
+  });
+
+  it('the archer (the full leather set of the tier, the bow and the ring, at +0 / +4 / +8, set bonuses on) never wastes crit chance past 0.95 and keeps 450 ms of attack interval: the bow carries speed, the armor carries crit chance', () => {
+    for (const bowId of WEAPON_LINES[0].ids) {
+      const t = getGear(bowId).tier!;
+      for (const refine of [0, 4, 8]) {
+        const h = swapWeapon(t, bowId, refine);
+        const inst = { ...h.gearInstances };
+        const eq = { ...h.equipped } as unknown as Record<string, string | null>;
+        for (const l of LEATHER_LINES) {
+          const i = createGearInstance(l.ids[t - 1], { id: `gi_arch_${l.ids[t - 1]}`, origin: 'craft', rarity: 'common', substats: [], upgrade: refine });
+          inst[i.id] = i;
+          eq[l.slot] = i.id;
+        }
+        const st = buildCombatStats({ ...h, gearInstances: inst, equipped: eq as unknown as SaveData['equipped'] });
+        expect(st.critChance, `${bowId} +${refine} crit`).toBeLessThanOrEqual(0.95);
+        expect(st.heroMs, `${bowId} +${refine} ms`).toBeGreaterThanOrEqual(450);
+      }
+    }
+  });
+
+  it('the set family of a weapon is the one of the WEIGHT of its class: bow and crossbow count for the leather family of the tier, staff and scepter for the cloth one, so five leather pieces and a bow close the archer\'s set', () => {
+    const LEATHER = ['hide', 'scout', 'ranger', 'hunter', 'nightstalker', 'abyssalhide'];
+    const CLOTH = ['linen', 'homespun', 'silk', 'arcane', 'lunar', 'voidweave'];
+    for (const l of WEAPON_LINES) l.ids.forEach((id, i) => expect(setFamiliesOf(getGear(id)), id).toEqual([(l.line === 'bow' || l.line === 'crossbow' ? LEATHER : CLOTH)[i]]));
+    // a real set: the five leather pieces of a tier plus the bow are six pieces of the family (the bonus thresholds are 3 and 5, so the bow counts and a mixed set still needs its five)
+    for (let i = 0; i < 6; i++) {
+      const worn = [...LEATHER_LINES.map((x) => getGear(x.ids[i])), getGear(WEAPON_LINES[0].ids[i])];
+      expect(worn.filter((g) => setFamiliesOf(g).includes(LEATHER[i] as never)), LEATHER[i]).toHaveLength(6);
+      const mage = [...CLOTH_LINES.map((x) => getGear(x.ids[i])), getGear(WEAPON_LINES[2].ids[i])];
+      expect(mage.filter((g) => setFamiliesOf(g).includes(CLOTH[i] as never)), CLOTH[i]).toHaveLength(6);
+    }
+  });
+
+  it('a weapon is never below the sword of the tier before it in the power it adds (the lighter line is a trade, not a downgrade)', () => {
+    for (const l of WEAPON_LINES) for (let i = 1; i < 6; i++) expect(pieceGain(l.ids[i]), `${l.ids[i]} vs ${SWORD_TWINS[i - 1]}`).toBeGreaterThan(pieceGain(SWORD_TWINS[i - 1]));
+  });
+
+  it('cost parity: from tier 3 a weapon asks for every hunting / refined family its sword asks for, and the total reference cost (Gold + materials) is within 15 % of the sword', () => {
+    const own = (id: string): number => {
+      const g = getGear(id);
+      const r = g.recipe!;
+      const gems = Object.values(r.gems ?? {}).reduce((a, b) => a + (b as number), 0);
+      return g.cost + cargoReferenceValue((r.materials ?? {}) as Partial<Record<MaterialId, number>>) + (gems + (r.shards ?? 0)) * 4;
+    };
+    for (const l of WEAPON_LINES) {
+      l.ids.forEach((id, i) => {
+        const ratio = own(id) / own(SWORD_TWINS[i]);
+        expect(ratio, `${id}: ${ratio.toFixed(3)}`).toBeGreaterThanOrEqual(0.85);
+        expect(ratio, `${id}: ${ratio.toFixed(3)}`).toBeLessThanOrEqual(1.15);
+        if (i >= 2) {
+          const mine = getGear(id).recipe!.materials!;
+          for (const m of Object.keys(getGear(SWORD_TWINS[i]).recipe!.materials!)) if (m !== 'leather' && m !== 'leather_scrap' && !m.startsWith('wood_handle_')) expect(mine[m as MaterialId], `${id} asks for ${m}`).toBeGreaterThan(0);
+        }
+      });
+    }
+  });
+
+  it('the recipes follow the supply and the chain: one piece of the previous tier of the SAME line (two at tier 2), the wood handle of the tier, sinew (bow, crossbow) or arcane dust from tier 3 (staff, scepter) in amounts a few sessions can pay', () => {
+    const HANDLES = ['wood_handle_common', 'wood_handle_oak', 'wood_handle_ebony', 'wood_handle_elven', 'wood_handle_ancient', 'wood_handle_ancient'];
+    for (const l of WEAPON_LINES) {
+      l.ids.forEach((id, i) => {
+        const r = getGear(id).recipe!;
+        const m = r.materials!;
+        if (i === 0) expect(r.items, id).toBeUndefined();
+        else expect(r.items, id).toEqual({ [l.ids[i - 1]]: i === 1 ? 2 : 1 });
+        // the handle of the tier is in every recipe (the sword's handle count is not copied: the identity above decides it)
+        expect(m[HANDLES[i] as MaterialId], `${id} handle`).toBeGreaterThan(0);
+        expect(Object.keys(m).filter((k) => k.startsWith('wood_handle_')), id).toEqual([HANDLES[i]]);
+        if (l.line === 'bow' || l.line === 'crossbow') {
+          // a 4 h session gives about 17 sinew to a new hero and 48 to a strong one
+          expect(m.leather, id).toBeGreaterThan(0);
+          expect(m.beast_sinew, id).toBeGreaterThan(0);
+          expect(m.beast_sinew!, id).toBeLessThanOrEqual(48);
+          expect(m.arcane_dust, id).toBeUndefined();
+        } else {
+          // the dust falls only in the marsh (floor 26+, about 5 in a session of a strong hero): tiers 1 and 2 ask for none, so a new mage is never locked out of his first weapon
+          if (i < 2) expect(m.arcane_dust, id).toBeUndefined();
+          else {
+            expect(m.arcane_dust, id).toBeGreaterThan(0);
+            expect(m.arcane_dust!, id).toBeLessThanOrEqual(5);
+          }
+          expect(m.leather, id).toBeUndefined();
+          expect(m.beast_sinew, id).toBeUndefined();
+        }
+      });
     }
   });
 });

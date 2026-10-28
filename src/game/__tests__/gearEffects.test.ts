@@ -13,6 +13,7 @@ import {
 import { CombatStats, applyDamageModifiers, applyDamageReduction, combatPowerCore, heroAttackIntervalMs, igniteBurn, nextBurnTickAt, reflectedDamage, regenAmount, tickBurn, BurnState } from '../derivedStats';
 import { GEAR, GearItem, LIVE_STAT_FIELDS, META_FIELDS, getGear } from '../gear';
 import { applyEquipInstance, createGearInstance } from '../gearInstances';
+import { rarityStatMult } from '../rarity';
 import { HuntCombatBuild, HuntPotionCfg, HuntZoneCombatCfg, simulateHuntingSession } from '../huntCombat';
 import { sanitizeHuntSession } from '../huntSession';
 import { getHuntingZone } from '../huntingZones';
@@ -180,6 +181,42 @@ describe('attack speed bonus', () => {
     });
     const without = buildCombatStats(wear(h, 'iron_chainmail')).critChance;
     lend('iron_chainmail', 'critChance', 0.05, () => expect(buildCombatStats(wear(h, 'iron_chainmail')).critChance - without).toBeCloseTo(0.05, 9));
+  });
+
+  // Classes reform, phase 3: the WEAPON carries them too (the bow: attack speed; the scepter: regeneration; the crossbow and the staff: crit multiplier). Before, "not on the weapon" was a fixed test.
+  it('a worn weapon shortens heroMs through the same floored derivation (the 400 ms floor still holds), adds regeneration and crit multiplier, and counts nothing twice', () => {
+    const h = hero('3', 0, { level: 30 });
+    const plain = buildCombatStats(wear(h, 'iron_short_sword'));
+    lend('iron_short_sword', 'attackSpeedBonus', 0.1, () => {
+      const s = buildCombatStats(wear(h, 'iron_short_sword'));
+      expect(s.speedBonus).toBeCloseTo(plain.speedBonus + 0.1, 9);
+      expect(s.heroMs).toBeLessThan(plain.heroMs);
+      expect(s.heroMs).toBeCloseTo(heroAttackIntervalMs(h.agi, plain.speedBonus + 0.1), 6);
+      // the weapon's own path is untouched: same hit, same crit chance (a field the weapon path already reads is never added a second time)
+      expect(s.dmgBase).toBe(plain.dmgBase);
+      expect(s.critChance).toBe(plain.critChance);
+    });
+    lend('iron_short_sword', 'attackSpeedBonus', 50, () => expect(buildCombatStats(wear(h, 'iron_short_sword')).heroMs).toBe(T.battle.heroMinMs));
+    lend('iron_short_sword', 'hpRegenPct', 0.004, () => expect(buildCombatStats(wear(h, 'iron_short_sword')).hpRegenPct).toBeCloseTo(plain.hpRegenPct + 0.004, 9));
+    // the crit multiplier follows the armor's convention (durability AND rarity); the two fractions of effect take durability alone
+    const epic = (t: string): SaveData => {
+      const inst = createGearInstance(t, { id: 'w_epic_' + t, origin: 'craft', rarity: 'epic', substats: [] });
+      return applyEquipInstance({ ...h, gearInstances: { ...h.gearInstances, [inst.id]: inst } }, inst.id) as SaveData;
+    };
+    const plainEpic = buildCombatStats(epic('iron_short_sword'));
+    const g = getGear('iron_short_sword');
+    const before = [g.critMultBonus, g.attackSpeedBonus, g.hpRegenPct];
+    g.critMultBonus = 0.4;
+    g.attackSpeedBonus = 0.05;
+    g.hpRegenPct = 0.002;
+    try {
+      const s = buildCombatStats(epic('iron_short_sword'));
+      expect(s.critMult - plainEpic.critMult).toBeCloseTo(0.4 * rarityStatMult('epic'), 9);
+      expect(s.speedBonus - plainEpic.speedBonus).toBeCloseTo(0.05, 9);
+      expect(s.hpRegenPct - plainEpic.hpRegenPct).toBeCloseTo(0.002, 9);
+    } finally {
+      [g.critMultBonus, g.attackSpeedBonus, g.hpRegenPct] = before;
+    }
   });
 });
 
@@ -464,7 +501,9 @@ describe('the effects as data', () => {
   });
 
   it('weapons: burn on the dragon line and above only', () => {
-    expect(GEAR.filter((g) => g.burn && !g.unique).map((g) => g.id)).toEqual(['dragon_flameblade', 'voidsteel_blade', 'abyssal_greatblade']);
+    // the sword line burns from the dragon blade up; the staff (classes reform, phase 3) burns at every tier, and no other new line does
+    expect(GEAR.filter((g) => g.burn && !g.unique && g.line !== 'staff').map((g) => g.id)).toEqual(['dragon_flameblade', 'voidsteel_blade', 'abyssal_greatblade']);
+    expect(GEAR.filter((g) => g.line === 'staff').every((g) => g.burn === true)).toBe(true);
   });
 
   it('a save that holds a relic by template id loads unchanged (no migration needed)', () => {

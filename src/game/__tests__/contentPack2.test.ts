@@ -293,7 +293,9 @@ describe('axes: the second weapon line', () => {
       expect((a.critChance as number) / (sw.critChance as number), k).toBeGreaterThanOrEqual(0.45);
       expect((a.critChance as number) / (sw.critChance as number), k).toBeLessThanOrEqual(0.55);
     }
-    expect(GEAR.filter((g) => g.burn && !g.unique).map((g) => g.id)).toEqual(['dragon_flameblade', 'voidsteel_blade', 'abyssal_greatblade']);
+    // the sword line burns from the dragon blade up; the staff (classes reform, phase 3) burns at every tier, and no other new line does
+    expect(GEAR.filter((g) => g.burn && !g.unique && g.line !== 'staff').map((g) => g.id)).toEqual(['dragon_flameblade', 'voidsteel_blade', 'abyssal_greatblade']);
+    expect(GEAR.filter((g) => g.line === 'staff').every((g) => g.burn === true)).toBe(true);
   });
 
   it('axe against sword of the same tier, real duel margin: within 5 % at levels 30 / 60 / 90; the axe wins with little crit, the sword with a crit-heavy build', () => {

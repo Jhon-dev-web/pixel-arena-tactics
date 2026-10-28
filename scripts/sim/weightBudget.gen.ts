@@ -29,7 +29,7 @@ import { resolve } from 'node:path';
 import { buildCombatStats, computeCP } from '../../src/game/engine';
 import { createGearInstance } from '../../src/game/gearInstances';
 import { effectiveHp } from '../../src/game/derivedStats';
-import { CLOTH_LINES, getGear, LEATHER_LINES } from '../../src/game/gear';
+import { CLOTH_LINES, getGear, LEATHER_LINES, SWORD_TWINS, WEAPON_CRIT_KEEP, WEAPON_LINES } from '../../src/game/gear';
 import T from '../../src/game/tunables';
 import { buildHero } from './ladder';
 import { pieceGain } from './tierSteps';
@@ -454,11 +454,225 @@ function solveAndWrite(w: WeightSpec): void {
     }
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Phase 3: the weapon lines (bow, crossbow, staff, scepter). The molde is the same, with one slot instead of five: the weapon keeps WEAPON_KEEP of the SWORD's damage (and the sword's crit chance, its own base like
+// the axe's), and the stats of its line are solved so that the hero wearing it is worth the CP of the same hero wearing the sword of the tier (plate everywhere else, the reference hero of the tier at +0 / +4 / +8,
+// with and without the set bonuses: the same six conditions). Hard constraints first, then parity inside them (the lesson of phase 2b):
+//   - every stat the player reads on the piece (total crit chance, attack speed, crit multiplier, regeneration) is STRICTLY increasing with the tier;
+//   - the CP the piece adds to the fixed reference hero (pieceGain, the chain rule R5 of itemBalance.test.ts) grows by at least STEP_TARGET a tier;
+//   - the regeneration keeps the reference hero's sigma under the sustain limit of the cloth line (SIGMA_LIMIT);
+//   - the speed of the bow never takes the hero past the 400 ms floor (nothing above it is worth CP, so the number would lie);
+//   - every one of the six conditions stays inside +-WORST_DRIFT of the sword.
+// A tier for which no choice satisfies all of that is NOT forced: the generator throws and says which constraint breaks.
+// Candidates per tier: parity offsets e in a grid (the weapon sits 1 + e times the sword's CP at the middle of its six conditions) and, for the bow, the share rho of the speed against the crit chance that
+// the half-power rule gives (the CP of the crit chance alone equals the CP of the speed alone); a dynamic program over the six tiers picks the least total e^2 among the paths that respect the ladders.
+type WField = 'critChance' | 'attackSpeedBonus' | 'critMultBonus' | 'hpRegenPct';
+interface WeaponSpec {
+  line: 'bow' | 'crossbow' | 'staff' | 'scepter';
+  ids: string[];
+  fields: WField[]; // the returned stats; for the bow two (crit chance ADDED to the sword's, speed), otherwise one
+  sustain: boolean;
+}
+const WDEC: Record<WField, number> = { critChance: 4, attackSpeedBonus: 4, critMultBonus: 4, hpRegenPct: 5 };
+const WMAX: Record<WField, number> = { critChance: 0.9, attackSpeedBonus: 3, critMultBonus: 20, hpRegenPct: 0.5 };
+const WFIELDS_OF: Record<WeaponSpec['line'], WField[]> = {
+  bow: ['attackSpeedBonus', 'critMultBonus'],
+  crossbow: ['critMultBonus'],
+  staff: ['critMultBonus'],
+  scepter: ['hpRegenPct'],
+};
+const WEAPONS: WeaponSpec[] = WEAPON_LINES.map((l) => ({ line: l.line, ids: l.ids, fields: WFIELDS_OF[l.line], sustain: l.line === 'scepter' }));
+type WVals = Partial<Record<WField, number>>;
+const swordOf = (t: number) => getGear(SWORD_TWINS[t - 1]);
+
+// Lends the returned stats to the weapon of tier t (in memory only); the crit chance of the piece is the sword's plus the returned part.
+function lendW(spec: WeaponSpec, t: number, vals: WVals): void {
+  const g = getGear(spec.ids[t - 1]) as unknown as Record<string, number | undefined>;
+  const crit = rnd((swordOf(t).critChance ?? 0) * WEAPON_CRIT_KEEP[spec.line] + (vals.critChance ?? 0), 4);
+  g.critChance = crit > 0 ? crit : undefined;
+  for (const f of ['attackSpeedBonus', 'critMultBonus', 'hpRegenPct'] as const) g[f] = (vals[f] ?? 0) > 0 ? vals[f] : undefined;
+}
+// the reference hero of tier t, with the weapon of the line instead of the sword
+function heroW(spec: WeaponSpec, t: number, refine: number): SaveData {
+  const h = buildHero(TIER_LEVEL[t - 1], t, refine);
+  const id = spec.ids[t - 1];
+  const inst = createGearInstance(id, { id: `gi_w_${id}`, origin: 'craft', rarity: 'common', substats: [], upgrade: refine });
+  return { ...h, gearInstances: { ...h.gearInstances, [inst.id]: inst }, equipped: { ...h.equipped, weapon: inst.id } };
+}
+const cpOf = (h: SaveData, sets: boolean): number => (sets ? computeCP(h) : withoutSetBonuses(() => computeCP(h)));
+const swordMemo = new Map<string, number>();
+const swordCP = (t: number, refine: number, sets: boolean): number => {
+  const k = `${t}:${refine}:${sets}`;
+  let v = swordMemo.get(k);
+  if (v === undefined) swordMemo.set(k, (v = cpOf(buildHero(TIER_LEVEL[t - 1], t, refine), sets)));
+  return v;
+};
+function ratiosW(spec: WeaponSpec, t: number, vals: WVals): number[] {
+  lendW(spec, t, vals);
+  return CONDITIONS.map(([r, st]) => cpOf(heroW(spec, t, r), st) / swordCP(t, r, st));
+}
+const worstSigmaW = (spec: WeaponSpec, t: number, vals: WVals): number => {
+  lendW(spec, t, vals);
+  return Math.max(...[0, 4, 8].map((r) => sigmaOf(heroW(spec, t, r))));
+};
+
+// The archer of tier t: the full leather set of the tier and the bow (plus the plate ring of the reference hero), at the refine level r.
+const BOW_MAX_CRIT = 0.95; // the engine clips crit chance at 1; the archer stays under this, so no point of it is thrown away
+const BOW_MIN_MS = 450; // the attack-interval floor is 400 ms; the archer keeps this much room
+function archerHero(spec: WeaponSpec, t: number, refine: number): SaveData {
+  const h = heroW(spec, t, refine);
+  const instances = { ...h.gearInstances };
+  const equipped = { ...h.equipped } as unknown as Record<string, string | null>;
+  for (const l of LEATHER_LINES) {
+    const inst = createGearInstance(l.ids[t - 1], { id: `gi_arch_${l.ids[t - 1]}`, origin: 'craft', rarity: 'common', substats: [], upgrade: refine });
+    instances[inst.id] = inst;
+    equipped[l.slot] = inst.id;
+  }
+  return { ...h, gearInstances: instances, equipped: equipped as unknown as SaveData['equipped'] };
+}
+function archerOk(spec: WeaponSpec, t: number, vals: WVals): boolean {
+  lendW(spec, t, vals);
+  return [0, 4, 8].every((r) => {
+    const s = buildCombatStats(archerHero(spec, t, r));
+    return s.critChance <= BOW_MAX_CRIT && s.heroMs >= BOW_MIN_MS;
+  });
+}
+// the largest bow speed that keeps the archer's interval at BOW_MIN_MS or more
+function bowSpeedCap(spec: WeaponSpec, t: number): number {
+  const ok = (y: number): boolean => { lendW(spec, t, { attackSpeedBonus: y }); return buildCombatStats(archerHero(spec, t, 0)).heroMs >= BOW_MIN_MS; };
+  let lo = 0, hi = WMAX.attackSpeedBonus;
+  if (ok(hi)) return hi;
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (ok(mid)) lo = mid; else hi = mid; }
+  return lo;
+}
+
+interface WCand {
+  vals: WVals;
+  e: number;
+  total: Partial<Record<WField, number>>; // what the player reads on the piece
+  ratios: number[];
+  gain: number;
+  rho?: number;
+}
+const W_OFFSETS = Array.from({ length: 19 }, (_, k) => -0.045 + k * 0.005);
+
+function candidates(spec: WeaponSpec, t: number): WCand[] {
+  const out: WCand[] = [];
+  const sword = swordOf(t);
+  const mk = (vals: WVals, rho?: number): WCand | undefined => {
+    const v: WVals = {};
+    for (const f of spec.fields) v[f] = rnd(vals[f] ?? 0, WDEC[f]);
+    const rs = ratiosW(spec, t, v);
+    if (Math.max(...rs) > 1 + WORST_DRIFT || Math.min(...rs) < 1 - WORST_DRIFT) return undefined;
+    if (spec.sustain && worstSigmaW(spec, t, v) > SIGMA_LIMIT) return undefined;
+    // the archer (full leather set + the bow, plate ring) must not waste crit chance past the cap and must keep room under the attack-interval floor, at every refine, set bonuses on
+    if (spec.line === 'bow' && !archerOk(spec, t, v)) return undefined;
+    const total: WCand['total'] = { critChance: rnd((sword.critChance ?? 0) * WEAPON_CRIT_KEEP[spec.line] + (v.critChance ?? 0), 4) };
+    for (const f of spec.fields) if (f !== 'critChance') total[f] = v[f];
+    lendW(spec, t, v);
+    return { vals: v, e: midrange(rs) - 1, total, ratios: rs, gain: pieceGain(spec.ids[t - 1]), rho };
+  };
+  if (spec.fields.length === 1) {
+    const f = spec.fields[0];
+    const mid = (x: number): number => midrange(ratiosW(spec, t, { [f]: x }));
+    for (const e of W_OFFSETS) {
+      if (mid(WMAX[f]) < 1 + e || mid(0) > 1 + e) continue;
+      const x = bisect((v) => mid(v), 1 + e, 0, WMAX[f]);
+      const c = mk({ [f]: x });
+      if (c) out.push(c);
+    }
+    return out;
+  }
+  // the bow: its crit chance is a fixed fraction of the sword's (WEAPON_CRIT_KEEP), so the armor (crit chance) and the bow (speed) never stack the same stat: it returns its budget as attack speed, and as crit
+  // multiplier only if the speed reaches the cap that keeps the archer (full leather set, +8, the bow, the ring) above BOW_MIN_MS. The same archer must stay under BOW_MAX_CRIT of crit chance (mk checks it).
+  const ycap = bowSpeedCap(spec, t);
+  const at = (y: number, m: number): WVals => ({ attackSpeedBonus: y, critMultBonus: m });
+  const mid = (y: number, m: number): number => midrange(ratiosW(spec, t, at(y, m)));
+  for (const e of W_OFFSETS) {
+    if (mid(0, 0) > 1 + e) continue;
+    if (mid(ycap, 0) >= 1 + e) {
+      const y = bisect((v) => mid(v, 0), 1 + e, 0, ycap);
+      const c = mk(at(y, 0));
+      if (c) out.push(c);
+    } else if (mid(ycap, WMAX.critMultBonus) >= 1 + e) {
+      const m = bisect((v) => mid(ycap, v), 1 + e, 0, WMAX.critMultBonus);
+      const c = mk(at(ycap, m));
+      if (c) out.push(c);
+    }
+  }
+  return out;
+}
+
+const W_STEP = STEP_TARGET;
+function solveWeaponLine(spec: WeaponSpec): WCand[] {
+  const cands = [1, 2, 3, 4, 5, 6].map((t) => candidates(spec, t));
+  cands.forEach((c, i) => console.log(`[${spec.line}] T${i + 1}: ${c.length} candidates inside the rule`));
+  cands.forEach((c, i) => { if (c.length === 0) throw new Error(`${spec.line} tier ${i + 1}: no choice of ${spec.fields.join(' + ')} keeps the six conditions inside +-${WORST_DRIFT * 100} % of the sword (and under the sustain / speed limits)`); });
+  const fieldsOf = ['critChance', ...spec.fields.filter((f) => f !== 'critChance')] as WField[];
+  // every stat the player reads goes up; an optional stat (the bow's overflow into crit multiplier) may be absent at both tiers
+  const ladder = (a: WCand, b: WCand): boolean => fieldsOf.every((f) => (b.total[f] ?? 0) > (a.total[f] ?? 0) || ((a.total[f] ?? 0) === 0 && (b.total[f] ?? 0) === 0 && f === 'critMultBonus'));
+  const step = (a: WCand, b: WCand): boolean => b.gain / a.gain >= W_STEP;
+  const run = (useLadder: boolean, useStep: boolean): { path?: WCand[] } => {
+    const cost = cands.map((c) => c.map(() => Infinity));
+    const from = cands.map((c) => c.map(() => -1));
+    cands[0].forEach((c, k) => (cost[0][k] = c.e * c.e));
+    for (let t = 1; t < 6; t++)
+      cands[t].forEach((c, k) =>
+        cands[t - 1].forEach((p, j) => {
+          if (!Number.isFinite(cost[t - 1][j])) return;
+          if (useLadder && !ladder(p, c)) return;
+          if (useStep && !step(p, c)) return;
+          const v = cost[t - 1][j] + c.e * c.e;
+          if (v < cost[t][k]) { cost[t][k] = v; from[t][k] = j; }
+        }),
+      );
+    let k = cost[5].indexOf(Math.min(...cost[5]));
+    if (!Number.isFinite(cost[5][k])) return {};
+    const path: WCand[] = [];
+    for (let t = 5; t >= 0; t--) { path[t] = cands[t][k]; k = from[t][k]; }
+    return { path };
+  };
+  const full = run(true, true);
+  if (!full.path) {
+    const noStep = run(true, false);
+    const noLadder = run(false, true);
+    throw new Error(`${spec.line}: no path through the six tiers with every stat increasing AND every chain step >= ${W_STEP}. Ladder only: ${noStep.path ? 'feasible' : 'infeasible'}; steps only: ${noLadder.path ? 'feasible' : 'infeasible'}.`);
+  }
+  return full.path;
+}
+
+function solveWeapons(): void {
+  const rows: string[] = [];
+  const lines: string[] = [];
+  for (const spec of WEAPONS) {
+    const path = solveWeaponLine(spec);
+    path.forEach((c, i) => {
+      const t = i + 1;
+      lendW(spec, t, c.vals);
+      const rs = c.ratios.map((r) => r.toFixed(4));
+      const sg = spec.sustain ? `  sigma ${worstSigmaW(spec, t, c.vals).toFixed(3)} / ${SIGMA_LIMIT.toFixed(3)}` : '';
+      const step = i > 0 ? `  step ${(c.gain / path[i - 1].gain).toFixed(3)}` : '';
+      rows.push(`${spec.line} T${t} ${spec.ids[i]}  ${spec.fields.map((f) => `${f} ${c.vals[f]}`).join('  ')}${c.rho ? ` (rho ${c.rho})` : ''}  total crit ${c.total.critChance}  weapon/sword CP: pieces +0 ${rs[0]} +4 ${rs[1]} +8 ${rs[2]} | sets +0 ${rs[3]} +4 ${rs[4]} +8 ${rs[5]}  gain ${c.gain.toFixed(3)}${step}${sg}`);
+      lines.push(`  ${spec.ids[i]}: { ${spec.fields.filter((f) => (c.vals[f] ?? 0) > 0).map((f) => `${f}: ${c.vals[f]}`).join(', ')} },`);
+    });
+  }
+  console.log('\n' + rows.join('\n'));
+  const block = `// BEGIN weightBudget.weapon.gen\nconst WEAPON_CONVERSION: Record<string, { critChance?: number; attackSpeedBonus?: number; critMultBonus?: number; hpRegenPct?: number }> = {\n${lines.join('\n')}\n};\n// END weightBudget.weapon.gen`;
+  const src = readFileSync(GEAR_TS, 'utf8');
+  const re = /\/\/ BEGIN weightBudget\.weapon\.gen\r?\n[\s\S]*?\/\/ END weightBudget\.weapon\.gen/;
+  expect(re.test(src), 'markers of the weapons in gear.ts').toBe(true);
+  const eol = src.includes('\r\n') ? '\r\n' : '\n';
+  writeFileSync(GEAR_TS, src.replace(re, () => block.split('\n').join(eol)));
+}
+
 describe('weight budget generator', () => {
   it('solves the leather conversion per tier and writes the block into gear.ts', () => {
     solveAndWrite(LEATHER);
   });
   it('solves the cloth conversion per tier (crit multiplier + regeneration, regeneration kept under the sustain guard) and writes the block into gear.ts', () => {
     solveAndWrite(CLOTH);
+  });
+  it('solves the weapon lines (bow, crossbow, staff, scepter) against the sword of the tier and writes the block into gear.ts', () => {
+    solveWeapons();
   });
 });

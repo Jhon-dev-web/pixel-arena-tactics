@@ -325,12 +325,12 @@ Cada fase fecha com os portões obrigatórios (`npx tsc -b --noEmit`, `npm test`
 | 1 | Materiais e cadeias | ✅ `363681e`. 13 materiais, 5 plantas, estação Tecelagem, traduções. Zero mudança de combate. |
 | 2a | Linha de couro | ✅ `e874ca0`. 30 peças do arqueiro, 6 famílias, o gerador `weightBudget.gen.ts`, a correção de `FAMILY_BY_TIER`, e o conserto do dado morto (seção 5.1.1). |
 | 2b | Linha de tecido | As 30 peças do mago, 6 famílias, `CLOTH_CONVERSION` no mesmo gerador. |
-| 3 | Linhas de arma | Arco, besta, cajado, cetro: 24 peças. A arma ainda não lê `attackSpeedBonus` nem `hpRegenPct` (um teste fixa isso hoje) — esta fase abre esse caminho. |
+| 3 | Linhas de arma | ✅ Arco, besta, cajado, cetro: 24 peças, e o caminho da arma aberto para `attackSpeedBonus` / `hpRegenPct` / `critMultBonus`. Ver a medição de conjunto de classe em 5.1.4. |
 | 4 | **Motor de habilidades** | O gatilho generalizado (recarga em segundos), a rotação de 4 espaços por prioridade, e os 8 efeitos da seção 2.2 nos **três laços**. Inclui o multiplicador de rotação no CP, sem o qual o CP mente. |
 | 5 | **As 21 habilidades e a tela** | As 18 de arma e 3 de peitoral, os efeitos visuais (o motor de `skillFx` já existe), e a tela de Rotação. |
 | 6 | Afinidade | `affinity.ts` devolvendo um `SetEffect`, somado no mesmo ponto que o bônus de conjunto (seção 2.3), e o selo na tela de Personagem. |
 | 7 | Encaixe | Filtro da Forja, quinta zona de Caça, os drops novos nas zonas 3 e 4 (com chave de fluxo própria, seção 5.1.2), regras de mercado/salvagem/únicos. |
-| 8 | Equilíbrio | As medidas da seção 2.5: paridade de CP (±5%) e vantagem de papel (15–20%), agora medida com rotação; a revalidação dos 100 jogadores; a dívida da seção 5.1.3. |
+| 8 | Equilíbrio | As medidas da seção 2.5: paridade de CP (±5%) e vantagem de papel (15–20%), agora medida com rotação; a revalidação dos 100 jogadores; a dívida da seção 5.1.5. |
 | 9 | Limpeza | Stripe e Pix fora do código, resumo em `docs/PAGAMENTOS_DESCARTADOS.md`; 4 ajustes de interface. |
 
 Os ícones dos itens entram pelo caminho que já existe (`iconPending.ts`). **Atualização 28/10:** o dono autorizou gerá-los em pixel art; os 4 primeiros da linha de couro foram feitos e aprovados quanto ao estilo (32×32, contorno escuro, fundo transparente, igual aos que já existem). Nenhuma fase depende de arte.
@@ -361,7 +361,37 @@ Em `huntCombat.ts`, **todos os drops marcados `ownStream` de uma zona dividem UM
 
 Por isso a fase 1 pôs os materiais novos **só na glade e no marsh**, que não tinham nenhum `ownStream` anterior. A fase 7, ao levá-los às zonas 3 e 4 (que as armas tier 5 e 6 vão exigir), precisa de uma **chave de fluxo própria** (por exemplo `seedKey + ':class'`) em vez de mais um `ownStream`. O aviso está escrito em `huntingZones.ts`, ao lado dos drops.
 
-### 5.1.3 O simulador não é reprodutível (achado na fase 1)
+### 5.1.3 O crítico do jogo já está perto do teto no fim (achado na fase 3)
+
+Medido no herói de referência do tier 6, conjunto completo a **+8**:
+
+| Origem | Chance de crítico |
+|---|---|
+| Refino (0,04 por peça × 7) | 0,28 |
+| Anel do tier | 0,145 |
+| Linha de couro (conjunto) | 0,32 |
+| **Conjunto de couro + espada pura** | **0,984** |
+
+O motor corta `critChance` em 1,0 (`buildCombatStats`). Ou seja, **o jogo já chega quase no teto sem nenhuma arma de arqueiro**, e substatutos, gemas e a habilidade Olho Aguçado somam por cima e são descartados. Isso é pressão anterior a esta reforma e não é culpa da linha de couro.
+
+Consequência imediata na fase 3: a primeira versão do arco também empilhava chance de crítico e **estourava o teto (1,16 no T6 +8), jogando fora ~16% do que o jogador comprava**. A correção não foi calibrar, foi **separar os eixos**: a armadura de couro dá chance de crítico, o **arco dá velocidade de ataque**, a besta dá multiplicador de crítico. Cada peça do arqueiro passou a fazer uma coisa. O arco mantém metade do crítico da espada (`WEAPON_CRIT_KEEP`), e o gerador carrega a restrição como filtro duro (`critChance` ≤ 0,95 e `heroMs` ≥ 450 ms no conjunto completo a +8), com teste em `itemBalance.test.ts`.
+
+**Fica para a fase 8:** a besta ainda chega a 0,984 no T6 +8, porque mantém o crítico da espada inteiro. Não desperdiça (está abaixo de 1,0), mas qualquer substatuto de crítico corta. A alavanca de verdade é o crítico plano do refino e o do anel, que valem para todas as classes.
+
+### 5.1.4 Conjunto de classe: a medição que a fase 8 herda
+
+CP do conjunto completo de cada classe contra placa + espada, nas 6 condições (+0/+4/+8, com e sem bônus de conjunto). **Medição, não teste** — a calibração é da fase 8, quando as habilidades existirem e mudarem tudo isto:
+
+| Combinação | Faixa | T6 a +8 |
+|---|---|---|
+| Arqueiro com arco | 0,965 – 1,002 | 468 ms, crítico 0,864 |
+| Arqueiro com besta | 1,003 – 1,080 | 639 ms, crítico 0,984 |
+| Mago com cajado | 0,915 – 1,029 | 878 ms |
+| Mago com cetro | 0,920 – 1,065 | 878 ms |
+
+A faixa do arqueiro com arco fechou (era 0,926 – 1,007 antes do conserto da saturação). As outras três continuam largas de propósito: **não calibrar agora**. O alvo da seção 2.5 (±5% por conjunto de classe) é da fase 8.
+
+### 5.1.5 O simulador não é reprodutível (achado na fase 1)
 
 Ao gerar os picos honestos do antifraude (`HONEST_PEAK_DAY_UNITS` em `rates.ts`, usado por `bounds.ts` para o teto diário de unidades negociáveis), apareceu o seguinte, conferido em três rodadas, inclusive num extrato limpo do HEAD **sem nenhuma alteração**:
 

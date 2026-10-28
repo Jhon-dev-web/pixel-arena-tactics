@@ -119,11 +119,12 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
   });
 
   it('every new material has real uses: tier 5 recipes take the Rift pair, tier 6 recipes the Abyss pair, every slot, axes and shields included', () => {
-    // the plate lines: the leather line (classes reform, phase 2a) is made from leather and sinew, not from the Hunting pairs of the late zones
+    // the plate lines and the four weapon lines of the classes reform (phase 3), which copy the hunting families of the sword of their tier: the armor lines of the leather and cloth weights (phase 2) are made from leather / cloth and sinew / dust, not from the Hunting pairs of the late zones
     const t5 = GEAR.filter((g) => g.tier === 5 && g.recipe && !g.unique && !g.weight);
     const t6 = GEAR.filter((g) => g.tier === 6 && g.recipe && !g.unique && !g.weight);
-    expect(t5.map((g) => g.slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'ring', 'shield', 'weapon', 'weapon']);
-    expect(t6.map((g) => g.slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'ring', 'shield', 'weapon', 'weapon']);
+    const WEAPONS_OF_THE_TIER = ['weapon', 'weapon', 'weapon', 'weapon', 'weapon', 'weapon']; // sword, axe, bow, crossbow, staff, scepter
+    expect(t5.map((g) => g.slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'ring', 'shield', ...WEAPONS_OF_THE_TIER]);
+    expect(t6.map((g) => g.slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'ring', 'shield', ...WEAPONS_OF_THE_TIER]);
     for (const g of t5) {
       const m = g.recipe!.materials!;
       expect((m.rift_shard ?? 0) + (m.fiend_horn ?? 0), g.id).toBeGreaterThan(0);

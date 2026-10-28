@@ -85,7 +85,8 @@ const none = (): Add => ({ hit: 0, critChance: 0, critMult: 0, reduction: 0, max
 
 // The fields each slot's code reads. A piece that declares a field outside its slot's list is data the engine ignores.
 const READS: Record<GearSlot, (keyof GearItem)[]> = {
-  weapon: ['damage', 'critChance', 'burn'],
+  // Classes reform, phase 3: the weapon also carries crit multiplier (crossbow, staff), attack speed (bow) and regeneration (scepter), summed by gearInstances.equippedExtraStats; its damage and crit chance keep the weapon's own path.
+  weapon: ['damage', 'critChance', 'burn', 'critMultBonus', 'attackSpeedBonus', 'hpRegenPct'],
   // Classes reform, phase 2a: attack speed and regeneration reach the combat from every instanced armor slot (gearInstances.equippedExtraStats), and the armor reads the crit fields too.
   armor: ['maxHp', 'resistance', 'reflect', 'critChance', 'critMultBonus', 'attackSpeedBonus', 'hpRegenPct'],
   helmet: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect', 'attackSpeedBonus', 'hpRegenPct'],
@@ -118,6 +119,10 @@ function pieceAdds(item: GearItem, level: number, dur: number, rarity: Rarity): 
     a.hit = Math.round((item.damage ?? 0) * pct) * f * r;
     a.critChance = ((item.critChance ?? 0) + refineFlat(lvl)) * f;
     a.burn = !!item.burn;
+    // the three fields the weapon path never read before the weapon lines: crit multiplier (durability and rarity), attack speed and regeneration (durability alone)
+    a.critMult = (item.critMultBonus ?? 0) * f * r;
+    a.speedBonus = (item.attackSpeedBonus ?? 0) * f;
+    a.hpRegenPct = (item.hpRegenPct ?? 0) * f;
     return a;
   }
   if (item.slot === 'armor') {
