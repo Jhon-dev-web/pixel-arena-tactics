@@ -150,10 +150,9 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'arcane_dust', nameKey: 'mat_arcane_dust', icon: '✨', iconUrl: '/assets/icons/arcane_dust.png', packSize: 3, packCost: 120, sellValue: 22 },
 ];
 
-// Materiais cujo consumidor chega numa fase seguinte da reforma de classes (docs/CLASSES_E_EQUIPAMENTOS.md):
-// os tecidos e os drops das linhas de arqueiro e mago só passam a ser gastos quando os equipamentos
-// das fases 2 e 3 entrarem. Tire o id daqui no mesmo commit que criar a receita que o consome.
-export const MATERIAL_CONSUMER_PENDING: readonly MaterialId[] = ['cloth_linen', 'cloth_cotton', 'cloth_silk', 'cloth_moon', 'cloth_void', 'arcane_dust'];
+// Materiais cujo consumidor chega numa fase seguinte da reforma de classes (docs/CLASSES_E_EQUIPAMENTOS.md). Vazia desde a fase 2b: os tecidos e o pó arcano passaram a ser gastos pela linha de tecido.
+// Se uma fase futura criar um material antes da receita que o consome, liste o id aqui e tire no mesmo commit que criar a receita.
+export const MATERIAL_CONSUMER_PENDING: readonly MaterialId[] = [];
 
 export function getMaterial(id: MaterialId): MaterialDef | undefined {
   return MATERIALS.find((m) => m.id === id);

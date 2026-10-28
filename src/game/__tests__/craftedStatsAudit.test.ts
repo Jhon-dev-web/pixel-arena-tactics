@@ -633,7 +633,7 @@ describe('tier N+1 is never worse than tier N on its line', () => {
     const key = `${g.slot}${g.line ? ':' + g.line : ''}${g.weight ? ':' + g.weight : ''}`;
     lines.set(key, [...(lines.get(key) ?? []), g]);
   }
-  const FIELDS: (keyof GearItem)[] = ['damage', 'critChance', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'attackSpeedBonus', 'cost'];
+  const FIELDS: (keyof GearItem)[] = ['damage', 'critChance', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'attackSpeedBonus', 'hpRegenPct', 'cost'];
 
   for (const [key, pieces] of lines) {
     it(`${key}: every declared stat, the required level, the price and the CP only go up`, () => {

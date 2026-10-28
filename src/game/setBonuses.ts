@@ -47,6 +47,13 @@ export const SET_DEFS: Record<SetFamily, SetDef> = {
   hunter: { family: 'hunter', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.05 }, { critMultBonus: 0.1 }] },
   nightstalker: { family: 'nightstalker', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.06 }, { critMultBonus: 0.15 }] },
   abyssalhide: { family: 'abyssalhide', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.07 }, { critMultBonus: 0.18 }] },
+  // The six cloth families (classes reform, phase 2b): the mage's themes, regeneration and crit damage, the same size as the plate ones of their tier, the last tiers a bit larger.
+  linen: { family: 'linen', thresholds: [3, 5], effects: [{ hpRegenPct: 0.002 }, { critMultBonus: 0.05 }] },
+  homespun: { family: 'homespun', thresholds: [3, 5], effects: [{ hpRegenPct: 0.002 }, { critMultBonus: 0.06 }] },
+  silk: { family: 'silk', thresholds: [3, 5], effects: [{ hpRegenPct: 0.003 }, { critMultBonus: 0.1 }] },
+  arcane: { family: 'arcane', thresholds: [3, 5], effects: [{ hpRegenPct: 0.003 }, { critMultBonus: 0.1 }] },
+  lunar: { family: 'lunar', thresholds: [3, 5], effects: [{ hpRegenPct: 0.004 }, { critMultBonus: 0.15 }] },
+  voidweave: { family: 'voidweave', thresholds: [3, 5], effects: [{ hpRegenPct: 0.004 }, { critMultBonus: 0.18 }] },
 };
 
 export interface ActiveSetBonus {

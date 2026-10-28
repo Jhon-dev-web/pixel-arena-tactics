@@ -420,6 +420,156 @@ export const FORGE_TEMPLATES: Readonly<Record<string, { tier: number; slot: stri
     "tier": 6,
     "slot": "shield",
     "levelGate": 98
+  },
+  "linen_robe": {
+    "tier": 1,
+    "slot": "armor",
+    "levelGate": 0
+  },
+  "homespun_robe": {
+    "tier": 2,
+    "slot": "armor",
+    "levelGate": 10
+  },
+  "silk_vestment": {
+    "tier": 3,
+    "slot": "armor",
+    "levelGate": 25
+  },
+  "arcane_robe": {
+    "tier": 4,
+    "slot": "armor",
+    "levelGate": 50
+  },
+  "lunar_robe": {
+    "tier": 5,
+    "slot": "armor",
+    "levelGate": 70
+  },
+  "voidweave_shroud": {
+    "tier": 6,
+    "slot": "armor",
+    "levelGate": 90
+  },
+  "linen_hood": {
+    "tier": 1,
+    "slot": "helmet",
+    "levelGate": 0
+  },
+  "homespun_hood": {
+    "tier": 2,
+    "slot": "helmet",
+    "levelGate": 10
+  },
+  "silk_circlet": {
+    "tier": 3,
+    "slot": "helmet",
+    "levelGate": 25
+  },
+  "arcane_crown": {
+    "tier": 4,
+    "slot": "helmet",
+    "levelGate": 50
+  },
+  "lunar_circlet": {
+    "tier": 5,
+    "slot": "helmet",
+    "levelGate": 72
+  },
+  "voidweave_crown": {
+    "tier": 6,
+    "slot": "helmet",
+    "levelGate": 92
+  },
+  "linen_wraps": {
+    "tier": 1,
+    "slot": "gloves",
+    "levelGate": 0
+  },
+  "homespun_gloves": {
+    "tier": 2,
+    "slot": "gloves",
+    "levelGate": 10
+  },
+  "silk_gloves": {
+    "tier": 3,
+    "slot": "gloves",
+    "levelGate": 25
+  },
+  "arcane_gloves": {
+    "tier": 4,
+    "slot": "gloves",
+    "levelGate": 50
+  },
+  "lunar_gloves": {
+    "tier": 5,
+    "slot": "gloves",
+    "levelGate": 74
+  },
+  "voidweave_gloves": {
+    "tier": 6,
+    "slot": "gloves",
+    "levelGate": 94
+  },
+  "linen_sandals": {
+    "tier": 1,
+    "slot": "boots",
+    "levelGate": 0
+  },
+  "homespun_shoes": {
+    "tier": 2,
+    "slot": "boots",
+    "levelGate": 10
+  },
+  "silk_slippers": {
+    "tier": 3,
+    "slot": "boots",
+    "levelGate": 25
+  },
+  "arcane_sandals": {
+    "tier": 4,
+    "slot": "boots",
+    "levelGate": 50
+  },
+  "lunar_boots": {
+    "tier": 5,
+    "slot": "boots",
+    "levelGate": 76
+  },
+  "voidweave_boots": {
+    "tier": 6,
+    "slot": "boots",
+    "levelGate": 96
+  },
+  "apprentice_tome": {
+    "tier": 1,
+    "slot": "shield",
+    "levelGate": 0
+  },
+  "adept_tome": {
+    "tier": 2,
+    "slot": "shield",
+    "levelGate": 10
+  },
+  "scholar_tome": {
+    "tier": 3,
+    "slot": "shield",
+    "levelGate": 25
+  },
+  "arcane_tome": {
+    "tier": 4,
+    "slot": "shield",
+    "levelGate": 50
+  },
+  "lunar_tome": {
+    "tier": 5,
+    "slot": "shield",
+    "levelGate": 78
+  },
+  "voidweave_tome": {
+    "tier": 6,
+    "slot": "shield",
+    "levelGate": 98
   }
 };
 

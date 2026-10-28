@@ -50,8 +50,8 @@ export interface GearItem {
   xpBonusPct?: number;
   // Weapon family: 'axe' is the second weapon line (more damage, less crit, no burn). Forge grouping only.
   line?: 'axe';
-  // WARNING: an ABSENT weight means PLATE. Plate is the original line, left untouched so old saves stay identical, so it has no value of its own; phase 2b adds 'cloth' the same way
-  // 'leather' is added now. The tests that measure only the original line filter by `!weight` - do not "fix" that into a check for a plate value, there is none.
+  // WARNING: an ABSENT weight means PLATE. Plate is the original line, left untouched so old saves stay identical, so it has no value of its own; 'leather' (phase 2a) and 'cloth' (phase 2b) are added the same way.
+  // The tests that measure only the original line filter by `!weight` - do not "fix" that into a check for a plate value, there is none.
   // Armor weight (classes reform, docs/CLASSES_E_EQUIPAMENTOS.md 2.1): only the pieces of a weight other than plate carry it, so every plate piece keeps exactly the data it always had.
   // It decides the set family (tier x weight) and groups the forge / balance comparisons; combat never reads it.
   weight?: ArmorWeight;
@@ -67,14 +67,15 @@ export interface GearItem {
 }
 
 // The crafted families are one per (tier x armor weight): the seven plate ones (one per tier, plus the dragon pieces, the tier-4 weapon and armor made from the gilded ones; names
-// follow the pieces gilded_*, voidsteel_*, abyssal_*, not the materials) and the six leather ones (classes reform, phase 2a). A piece counts for the family of its OWN weight, so a
-// mixed set (leather boots, plate helmet) never gets the five-piece bonus of either.
-export const SET_FAMILIES = ['bronze', 'iron', 'steel', 'gilded', 'dragon', 'voidsteel', 'abyssal', 'hide', 'scout', 'ranger', 'hunter', 'nightstalker', 'abyssalhide'] as const;
+// follow the pieces gilded_*, voidsteel_*, abyssal_*, not the materials), the six leather ones (classes reform, phase 2a) and the six cloth ones (phase 2b). A piece counts for the family of its OWN weight, so a
+// mixed set (leather boots, plate helmet, cloth gloves) never gets the five-piece bonus of any of them.
+export const SET_FAMILIES = ['bronze', 'iron', 'steel', 'gilded', 'dragon', 'voidsteel', 'abyssal', 'hide', 'scout', 'ranger', 'hunter', 'nightstalker', 'abyssalhide', 'linen', 'homespun', 'silk', 'arcane', 'lunar', 'voidweave'] as const;
 export type SetFamily = (typeof SET_FAMILIES)[number];
 // Plate is the weight every piece had before the reform, so it is the one with no `weight` field.
-export type ArmorWeight = 'leather';
+export type ArmorWeight = 'leather' | 'cloth';
 const FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'bronze', 2: 'iron', 3: 'steel', 4: 'gilded', 5: 'voidsteel', 6: 'abyssal' };
 const LEATHER_FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'hide', 2: 'scout', 3: 'ranger', 4: 'hunter', 5: 'nightstalker', 6: 'abyssalhide' };
+const CLOTH_FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'linen', 2: 'homespun', 3: 'silk', 4: 'arcane', 5: 'lunar', 6: 'voidweave' };
 
 // Every key a GEAR entry may carry. LIVE_STAT_FIELDS are the numeric / boolean fields that feed combat (engine.ts buildCombatStats, directly or via
 // gearInstances.equippedExtraStats); META_FIELDS are identity, cost and display data. gearEffects.test.ts checks every entry against both lists
@@ -310,6 +311,106 @@ for (const line of LEATHER_LINES) {
   });
 }
 
+// --- Cloth line (classes reform, phase 2b; docs/CLASSES_E_EQUIPAMENTOS.md 2.1, 2.4): the mage's armor, helmet, gloves, boots and off hand (the grimoire, in the shield slot) ---
+// The mirror of the leather line above, and derived the same way: every piece keeps CLOTH_KEEP of its plate twin's defense and returns the rest as crit damage and regeneration, in the amounts that
+// scripts/sim/weightBudget.gen.ts solves per tier so a full cloth set is worth the CP of the plate set of the same tier. The twin's reflect and crit chance are not kept (the gloves' damage is, at 60 %).
+// The generator also keeps the regeneration it hands out under 80 % (SIGMA_SHARE in weightBudget.gen.ts) of the sustain cap of the CP (cpSustainSigmaCap): past that, every extra point of regeneration stops being worth CP and the
+// parity could only be closed by inflating a number the engine no longer credits; whatever the regeneration cannot carry goes to the crit multiplier.
+// Unlike the leather line, the cloth fit is centered on the spread of the six conditions (+0 / +4 / +8, with and without set bonuses): its returned stats do not grow with the refine level the way plate defense does.
+// The two conversion numbers per piece live in the block between the markers: the generator rewrites it (npx vitest run --config vitest.sim.config.ts weightBudget), and itemBalance.test.ts fails if it goes stale.
+export const CLOTH_KEEP = 0.6;
+export const CLOTH_LINES: { slot: GearSlot; ids: string[]; twins: string[]; cloth: number[]; dust: number[]; hunt: number[] }[] = [
+  // TIERS 1-2 ASK FOR NO ARCANE DUST, on purpose: the dust falls only in the marsh, which opens at dungeon floor 26, so asking for one unit would lock a new mage out of his own first piece until then — the
+  // opposite of a starter line. The side effect is worth keeping: each class is now born in a different activity — the warrior in MINING (ore -> bars), the archer in HUNTING (hide and sinew) and the mage
+  // in the GARDEN (fibre -> cloth through the Weaving station), which finally gives the Garden a reason to exist beyond potions.
+  // Quantities are sized against the real supply AND the cost of the plate twin. Arcane dust falls only in the marsh (about 5 in a 4 h session of a strong hero), so the line asks for a few units: a whole
+  // set is 0 units at tiers 1-2, 5 at tier 3 and 12 at tier 6. The tier's cloth (5 fibres each, from the Garden through the Weaving station) is dear in reference Gold (a tier-5 cloth is worth 363 reference Gold, a sinew 2.5), so from
+  // tier 3 the cloth that fits is a handful and the rest of the cost comes from the hunting / refined families of the twin (hunt[i], like the leather line, never below 0.5 so no family rounds to zero).
+  // The cloth of tier 6 is the tier-5 one, like the wood handle of the tier-6 weapons. Every piece lands within 15 % of its twin's cost (itemBalance.test.ts R7 holds it).
+  { slot: 'armor', ids: ['linen_robe', 'homespun_robe', 'silk_vestment', 'arcane_robe', 'lunar_robe', 'voidweave_shroud'], twins: ['bronze_leather', 'iron_chainmail', 'steel_plate', 'gilded_aegis', 'voidsteel_plate', 'abyssal_bulwark'], cloth: [5, 3, 4, 2, 5, 2], dust: [0, 0, 1, 2, 3, 3], hunt: [0, 0.45, 0.6, 0.6, 0.75, 0.7] },
+  { slot: 'helmet', ids: ['linen_hood', 'homespun_hood', 'silk_circlet', 'arcane_crown', 'lunar_circlet', 'voidweave_crown'], twins: ['bronze_helm', 'iron_helm', 'steel_helm', 'gilded_helm', 'voidsteel_helm', 'abyssal_helm'], cloth: [2, 2, 1, 1, 4, 1], dust: [0, 0, 1, 1, 2, 2], hunt: [0, 0, 0.75, 0.55, 0.65, 0.65] },
+  { slot: 'gloves', ids: ['linen_wraps', 'homespun_gloves', 'silk_gloves', 'arcane_gloves', 'lunar_gloves', 'voidweave_gloves'], twins: ['leather_gloves', 'iron_gauntlets', 'steel_gauntlets', 'gilded_gauntlets', 'voidsteel_gauntlets', 'abyssal_gauntlets'], cloth: [2, 2, 1, 1, 4, 1], dust: [0, 0, 1, 1, 2, 2], hunt: [0, 0, 0.75, 0.55, 0.65, 0.65] },
+  { slot: 'boots', ids: ['linen_sandals', 'homespun_shoes', 'silk_slippers', 'arcane_sandals', 'lunar_boots', 'voidweave_boots'], twins: ['leather_boots', 'iron_greaves', 'steel_greaves', 'gilded_greaves', 'voidsteel_greaves', 'abyssal_greaves'], cloth: [2, 2, 1, 1, 4, 1], dust: [0, 0, 1, 1, 2, 2], hunt: [0, 0, 0.75, 0.55, 0.65, 0.65] },
+  { slot: 'shield', ids: ['apprentice_tome', 'adept_tome', 'scholar_tome', 'arcane_tome', 'lunar_tome', 'voidweave_tome'], twins: ['bronze_buckler', 'iron_shield', 'steel_kite_shield', 'gilded_shield', 'voidsteel_shield', 'abyssal_shield'], cloth: [2, 2, 1, 1, 4, 1], dust: [0, 0, 1, 2, 2, 3], hunt: [0.55, 0.75, 0.75, 0.65, 0.55, 0.7] },
+];
+// piece id -> [critMultBonus, hpRegenPct]: written by scripts/sim/weightBudget.gen.ts, do not edit by hand.
+// BEGIN weightBudget.cloth.gen
+const CLOTH_CONVERSION: Record<string, [number, number]> = {
+  linen_robe: [0.6339, 0.00831],
+  linen_hood: [0.2116, 0.00277],
+  linen_wraps: [0.3527, 0.00462],
+  linen_sandals: [0.2376, 0.00312],
+  apprentice_tome: [0.2643, 0.00347],
+  homespun_robe: [0.6712, 0.0091],
+  homespun_hood: [0.2241, 0.00304],
+  homespun_gloves: [0.3734, 0.00507],
+  homespun_shoes: [0.2515, 0.00341],
+  adept_tome: [0.2798, 0.0038],
+  silk_vestment: [0.7271, 0.00973],
+  silk_circlet: [0.2427, 0.00325],
+  silk_gloves: [0.4045, 0.00541],
+  silk_slippers: [0.2725, 0.00364],
+  scholar_tome: [0.3031, 0.00405],
+  arcane_robe: [0.7502, 0.01061],
+  arcane_crown: [0.2505, 0.00354],
+  arcane_gloves: [0.4174, 0.0059],
+  arcane_sandals: [0.2812, 0.00397],
+  arcane_tome: [0.3128, 0.00442],
+  lunar_robe: [0.7831, 0.01192],
+  lunar_circlet: [0.2614, 0.00398],
+  lunar_gloves: [0.4356, 0.00663],
+  lunar_boots: [0.2935, 0.00447],
+  lunar_tome: [0.3264, 0.00497],
+  voidweave_shroud: [0.8203, 0.01392],
+  voidweave_crown: [0.2739, 0.00465],
+  voidweave_gloves: [0.4564, 0.00775],
+  voidweave_boots: [0.3074, 0.00522],
+  voidweave_tome: [0.342, 0.0058],
+};
+// END weightBudget.cloth.gen
+const CLOTH_FABRICS = ['cloth_linen', 'cloth_cotton', 'cloth_silk', 'cloth_moon', 'cloth_void', 'cloth_void'] as const;
+for (const line of CLOTH_LINES) {
+  line.ids.forEach((id, i) => {
+    const twin = GEAR.find((g) => g.id === line.twins[i]) as GearItem;
+    const [critMult, regen] = CLOTH_CONVERSION[id] ?? [0, 0];
+    // Each class line is born in a different activity: the warrior in Mining, the archer in Hunting, the mage in the GARDEN (fibre -> Weaving -> cloth). Arcane dust falls only in the marsh (floor 26+),
+    // so tiers 1 and 2 ask for none: the first mage pieces must not sit behind a zone the hero has not reached. From tier 3 the dust is the second signature of the line.
+    const materials: Partial<Record<MaterialId, number>> = { [CLOTH_FABRICS[i]]: line.cloth[i] };
+    if (line.dust[i] > 0) materials.arcane_dust = line.dust[i];
+    // The hunting and refined families the plate twin of the tier already asks for, scaled by hunt[i] exactly as the leather line does it (same reason: without them a tier-5 piece would need nothing
+    // from the late zones, and the cheap tiers would cost a fraction of their twin). Leather, scrap and handles are the plate / leather lines' own identity and are not copied.
+    for (const [m, q] of Object.entries(twin.recipe?.materials ?? {}) as [MaterialId, number][]) {
+      if (m === 'leather' || m === 'leather_scrap' || m.startsWith('wood_handle_')) continue;
+      const n = Math.round(q * line.hunt[i]);
+      if (n > 0) materials[m] = (materials[m] ?? 0) + n;
+    }
+    const prev = i > 0 ? line.ids[i - 1] : undefined;
+    const piece: GearItem = {
+      id,
+      slot: line.slot,
+      nameKey: id,
+      descKey: id + '_d',
+      materialKey: 'material_cloth',
+      icon: '/assets/icons/' + id + '.png',
+      cost: twin.cost,
+      tier: i + 1,
+      weight: 'cloth',
+      recipe: {
+        // one piece of the previous tier of the slot, two for the tier-2 armor: the chain rule every line follows (itemBalance.test.ts)
+        ...(prev ? { items: { [prev]: i === 1 && line.slot === 'armor' ? 2 : 1 } } : {}),
+        materials,
+        ...(twin.recipe?.requiredLevel ? { requiredLevel: twin.recipe.requiredLevel } : {}),
+      },
+    };
+    if (twin.maxHp) piece.maxHp = Math.round(twin.maxHp * CLOTH_KEEP);
+    if (twin.resistance) piece.resistance = round4(twin.resistance * CLOTH_KEEP);
+    if (line.slot === 'gloves' && twin.damage) piece.damage = Math.round(twin.damage * CLOTH_KEEP);
+    if (critMult > 0) piece.critMultBonus = critMult;
+    if (regen > 0) piece.hpRegenPct = regen;
+    GEAR.push(piece);
+  });
+}
+
 // The hero's look per ARMOR template: the armor in the armor slot decides which sheet the hero is drawn with (heroLook in sprites.ts). The order of HERO_LOOKS is the
 // progression order (used to tell which looks a hero has already outgrown). Every armor template must be keyed here (gear.test / heroLook.test check it), so a new armor
 // cannot ship without a look; uniques take their twin's (UNIQUE_DEFS.like). Weapon, helmet, shield and the other slots never change the sprite.
@@ -336,6 +437,13 @@ export const ARMOR_LOOKS: Record<string, HeroBaseLook> = {
   hunter_leather: 'hero_dark_knight',
   nightstalker_leather: 'hero_voidsteel_v2',
   abyssal_leather: 'hero_abyssal_v2',
+  // Same on purpose for the cloth robes (phase 2b): no cloth hero art either, so each robe shows the look of the plate armor of its tier.
+  linen_robe: 'hero_bronze_v2',
+  homespun_robe: 'hero_iron_v2',
+  silk_vestment: 'hero_steel_v2',
+  arcane_robe: 'hero_dark_knight',
+  lunar_robe: 'hero_voidsteel_v2',
+  voidweave_shroud: 'hero_abyssal_v2',
 };
 for (const g of GEAR) if (g.slot === 'armor') g.look = ARMOR_LOOKS[g.id];
 
@@ -411,7 +519,7 @@ const GEAR_BY_ID: Record<string, GearItem> = Object.fromEntries(GEAR.map((g) => 
 for (const g of GEAR) {
   if (g.slot === 'relic' || !(g.tier && g.tier >= 1)) continue;
   const base = g.salvageLike ? GEAR_BY_ID[g.salvageLike] : g;
-  g.setFamily = base.materialKey === 'material_dragon' ? 'dragon' : (base.weight === 'leather' ? LEATHER_FAMILY_BY_TIER : FAMILY_BY_TIER)[base.tier as number];
+  g.setFamily = base.materialKey === 'material_dragon' ? 'dragon' : (base.weight === 'leather' ? LEATHER_FAMILY_BY_TIER : base.weight === 'cloth' ? CLOTH_FAMILY_BY_TIER : FAMILY_BY_TIER)[base.tier as number];
 }
 
 // The families a piece counts for: its own, and a dragon piece also counts as a gilded one (it is the gilded weapon / armor made better, and the family only has

@@ -7,7 +7,7 @@ import { GOLD_BONUS_CAP, RARITIES, Rarity, SUBSTATS, medianSubstatValue, rollRar
 import { duel, hero, MAIN_TIERS, repFloor, tierNum, withoutSetBonuses } from '../../../scripts/sim/duel';
 import { withSeededRandom } from '../../../scripts/sim/driver';
 import { pieceGain } from '../../../scripts/sim/tierSteps';
-import { GEAR, GearItem, LEATHER_LINES, gearRequiredLevel, getGear, isInstancedSlot } from '../gear';
+import { CLOTH_LINES, GEAR, GearItem, LEATHER_LINES, gearRequiredLevel, getGear, isInstancedSlot } from '../gear';
 import { buildHero } from '../../../scripts/sim/ladder';
 import { rarityHero } from '../../../scripts/sim/rarityHero';
 import { getHuntingZone, subLevelCpRequired } from '../huntingZones';
@@ -135,7 +135,7 @@ describe('R2: combat substats are worth about the same at their median roll', ()
 // to a reference hero grows by a real step each tier. Uniques are worth about 10-15 % more than the crafted twin of the tier the hero has at their source.
 
 const MAIN_STAT: Record<string, 'damage' | 'maxHp' | 'resistance' | 'critChance'> = { weapon: 'damage', armor: 'maxHp', helmet: 'maxHp', gloves: 'damage', boots: 'resistance', ring: 'critChance', shield: 'resistance' };
-const NUMERIC = ['damage', 'maxHp', 'critChance', 'critMultBonus', 'resistance', 'reflect', 'attackSpeedBonus'] as const;
+const NUMERIC = ['damage', 'maxHp', 'critChance', 'critMultBonus', 'resistance', 'reflect', 'attackSpeedBonus', 'hpRegenPct'] as const;
 
 // The chains: start at each tier-1 recipe and follow "the piece whose recipe consumes this one".
 function lineChains(): GearItem[][] {
@@ -157,9 +157,10 @@ function lineChains(): GearItem[][] {
 describe('R5: every crafted tier is a real upgrade', () => {
   const chains = lineChains();
 
-  it('thirteen lines (the eight plate ones - sword, axe, armor, helmet, gloves, boots, ring, shield - and the five leather ones), each one chain from tier 1 to tier 6 with no dead end', () => {
-    expect(chains).toHaveLength(8 + 5);
+  it('eighteen lines (the eight plate ones - sword, axe, armor, helmet, gloves, boots, ring, shield - and the five leather and the five cloth ones), each one chain from tier 1 to tier 6 with no dead end', () => {
+    expect(chains).toHaveLength(8 + 5 + 5);
     expect(chains.filter((c) => c[0].weight === 'leather').map((c) => c[0].slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'shield']);
+    expect(chains.filter((c) => c[0].weight === 'cloth').map((c) => c[0].slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'shield']);
     const inChains = new Set(chains.flat().map((g) => g.id));
     for (const g of GEAR.filter((x) => x.recipe && !x.unique && isInstancedSlot(x.slot))) expect(inChains.has(g.id), `${g.id} is on a chain`).toBe(true);
     for (const c of chains) {
@@ -307,6 +308,107 @@ describe('R7: the leather line', () => {
         const handles = Object.keys(m).filter((k) => k.startsWith('wood_handle_'));
         expect(handles, id).toEqual(l.handle ? [HANDLES[i]] : []);
       });
+    }
+  });
+});
+
+// --- R7 (cloth): the cloth line (classes reform, phase 2b; docs/CLASSES_E_EQUIPAMENTOS.md 2.4) ----------------------------------------------------------------------------------------
+// Same rules as the leather line, with the cloth's own profile: crit multiplier + regeneration instead of crit chance + attack speed. The numbers come from the same generator (CLOTH_CONVERSION).
+describe('R7: the cloth line', () => {
+  const TIER_LEVEL = [1, 10, 25, 50, 70, 90];
+  const setHero = (t: number, cloth: boolean, refine: number): SaveData => {
+    const h = buildHero(TIER_LEVEL[t - 1], t, refine);
+    if (!cloth) return h;
+    const instances = { ...h.gearInstances };
+    const equipped = { ...h.equipped } as unknown as Record<string, string | null>;
+    for (const l of CLOTH_LINES) {
+      const inst = createGearInstance(l.ids[t - 1], { id: `gi_cloth_${l.ids[t - 1]}`, origin: 'craft', rarity: 'common', substats: [], upgrade: refine });
+      instances[inst.id] = inst;
+      equipped[l.slot] = inst.id;
+    }
+    return { ...h, gearInstances: instances, equipped: equipped as unknown as SaveData['equipped'] };
+  };
+
+  for (const t of [1, 2, 3, 4, 5, 6]) {
+    it(`tier ${t}: a full cloth set (robe, hood, gloves, boots, tome) is within +-5 % of the CP of the full plate set, at +0, +4 and +8, with and without the set bonuses`, () => {
+      for (const refine of [0, 4, 8]) {
+        const noSets = computeCP_noSets(setHero(t, true, refine)) / computeCP_noSets(setHero(t, false, refine));
+        expect(noSets, `+${refine} pieces only`).toBeGreaterThanOrEqual(0.95);
+        expect(noSets, `+${refine} pieces only`).toBeLessThanOrEqual(1.05);
+        const sets = computeCP(setHero(t, true, refine)) / computeCP(setHero(t, false, refine));
+        expect(sets, `+${refine} with the set bonuses`).toBeGreaterThanOrEqual(0.95);
+        expect(sets, `+${refine} with the set bonuses`).toBeLessThanOrEqual(1.05);
+      }
+    });
+  }
+
+  it('every cloth piece is the lighter twin of a plate piece: same price and level gate, 60 % of the defense, crit multiplier and regeneration instead of reflect and crit chance, and its own set family and look', () => {
+    for (const l of CLOTH_LINES) {
+      l.ids.forEach((id, i) => {
+        const p = getGear(id);
+        const twin = getGear(l.twins[i]);
+        expect(p.weight, id).toBe('cloth');
+        expect(p.materialKey, id).toBe('material_cloth');
+        expect(p.tier, id).toBe(i + 1);
+        expect(p.cost, id).toBe(twin.cost);
+        expect(gearRequiredLevel(p), id).toBe(gearRequiredLevel(twin));
+        expect(p.critMultBonus ?? 0, id).toBeGreaterThan(0);
+        expect(p.hpRegenPct ?? 0, id).toBeGreaterThan(0);
+        expect(p.reflect, id).toBeUndefined();
+        expect(p.critChance, id).toBeUndefined();
+        expect(p.attackSpeedBonus, id).toBeUndefined();
+        if (twin.maxHp) expect(p.maxHp, id).toBe(Math.round(twin.maxHp * 0.6));
+        if (twin.resistance) expect(p.resistance!, id).toBeCloseTo(twin.resistance * 0.6, 4);
+        if (l.slot === 'gloves') expect(p.damage, id).toBe(Math.round(twin.damage! * 0.6));
+        expect(p.setFamily, id).toBe((['linen', 'homespun', 'silk', 'arcane', 'lunar', 'voidweave'] as const)[i]);
+        if (l.slot === 'armor') expect(p.look, id).toBe(twin.look);
+      });
+    }
+  });
+
+  it('a cloth piece is never below the plate piece of the tier before it in the power it adds (the lighter weight is a trade, not a downgrade)', () => {
+    for (const l of CLOTH_LINES) for (let i = 1; i < 6; i++) expect(pieceGain(l.ids[i]), `${l.ids[i]} vs ${l.twins[i - 1]}`).toBeGreaterThan(pieceGain(l.twins[i - 1]));
+  });
+
+  it('cost parity: from tier 3 a cloth piece asks for every hunting / refined family its plate twin asks for, and the total reference cost (Gold + materials) is within 15 % of the twin', () => {
+    const own = (id: string): number => {
+      const g = getGear(id);
+      const r = g.recipe!;
+      const gems = Object.values(r.gems ?? {}).reduce((a, b) => a + (b as number), 0);
+      return g.cost + cargoReferenceValue((r.materials ?? {}) as Partial<Record<MaterialId, number>>) + (gems + (r.shards ?? 0)) * 4;
+    };
+    for (const l of CLOTH_LINES) {
+      l.ids.forEach((id, i) => {
+        const ratio = own(id) / own(l.twins[i]);
+        expect(ratio, `${id}: ${ratio.toFixed(3)}`).toBeGreaterThanOrEqual(0.85);
+        expect(ratio, `${id}: ${ratio.toFixed(3)}`).toBeLessThanOrEqual(1.15);
+        if (i >= 2) {
+          const mine = getGear(id).recipe!.materials!;
+          for (const m of Object.keys(getGear(l.twins[i]).recipe!.materials!)) if (m !== 'leather' && m !== 'leather_scrap' && !m.startsWith('wood_handle_')) expect(mine[m as MaterialId], `${id} asks for ${m}`).toBeGreaterThan(0);
+        }
+      });
+    }
+  });
+
+  it('the recipes follow the supply: the cloth of the tier (from the Garden) + arcane dust from tier 3 (a few units: it falls only in the marsh, about 5 in a 4 h session of a strong hero), no wood handle, no leather', () => {
+    const FABRICS = ['cloth_linen', 'cloth_cotton', 'cloth_silk', 'cloth_moon', 'cloth_void', 'cloth_void'];
+    for (const l of CLOTH_LINES) {
+      l.ids.forEach((id, i) => {
+        const m = getGear(id).recipe!.materials!;
+        expect(m[FABRICS[i] as MaterialId], `${id} cloth`).toBeGreaterThan(0);
+        // dust falls only in the marsh (floor 26+): tiers 1 and 2 ask for none, so the first mage pieces never sit behind a zone the hero has not reached
+        if (i < 2) expect(m.arcane_dust, `${id} dust`).toBeUndefined();
+        else {
+          expect(m.arcane_dust, `${id} dust`).toBeGreaterThan(0);
+          expect(m.arcane_dust!, `${id} dust`).toBeLessThanOrEqual(3);
+        }
+        expect(Object.keys(m).filter((k) => k.startsWith('wood_handle_') || k === 'leather' || k === 'leather_scrap'), id).toEqual([]);
+      });
+    }
+    // a whole set of one tier is a few sessions of dust, never a wall
+    for (let t = 0; t < 6; t++) {
+      const setDust = CLOTH_LINES.reduce((a, l) => a + (getGear(l.ids[t]).recipe!.materials!.arcane_dust ?? 0), 0);
+      expect(setDust, `tier ${t + 1} set`).toBeLessThanOrEqual(14);
     }
   });
 });
