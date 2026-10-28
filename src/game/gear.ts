@@ -78,7 +78,7 @@ export type WeaponLine = 'sword' | 'axe' | 'bow' | 'crossbow' | 'staff' | 'scept
 // The armor weight a weapon counts for when the set families are assigned: the bow and the crossbow are the archer's (leather), the staff and the scepter the mage's (cloth). The sword and the axe have none,
 // so they stay in the plate family of their tier exactly as before.
 const LINE_WEIGHT: Partial<Record<WeaponLine, ArmorWeight>> = { bow: 'leather', crossbow: 'leather', staff: 'cloth', scepter: 'cloth' };
-const weaponWeight = (g: GearItem): ArmorWeight | undefined => g.weight ?? (g.line ? LINE_WEIGHT[g.line] : undefined);
+export const weaponWeight = (g: GearItem): ArmorWeight | undefined => g.weight ?? (g.line ? LINE_WEIGHT[g.line] : undefined);
 const FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'bronze', 2: 'iron', 3: 'steel', 4: 'gilded', 5: 'voidsteel', 6: 'abyssal' };
 const LEATHER_FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'hide', 2: 'scout', 3: 'ranger', 4: 'hunter', 5: 'nightstalker', 6: 'abyssalhide' };
 const CLOTH_FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'linen', 2: 'homespun', 3: 'silk', 4: 'arcane', 5: 'lunar', 6: 'voidweave' };

@@ -966,8 +966,21 @@
       "hpRegenPct": "Regenerates +{v}% of HP/s",
       "damagePct": "+{v}% final damage",
       "lifestealPct": "+{v}% lifesteal",
-      "goldBonusPct": "+{v}% gold"
+      "goldBonusPct": "+{v}% gold",
+      "maxHpPct": "+{v}% max HP"
     }
+  },
+  "affinity": {
+    "title": "Affinity",
+    "head": "{w} {n}/5",
+    "weight": { "plate": "Plate", "leather": "Leather", "cloth": "Cloth" },
+    "style": { "warrior": "Warrior style", "archer": "Archer style", "mage": "Mage style" },
+    "weapons": { "plate": "sword or axe", "leather": "bow or crossbow", "cloth": "staff or scepter" },
+    "classOn": "What you wear matches the {style}.",
+    "reflection": "It reflects what is worn, it is not an attribute of the hero: swap the pieces and it changes.",
+    "next": "{missing} more pieces for the {step}-piece bonus: {effect}",
+    "nextOne": "1 more piece for the {step}-piece bonus: {effect}",
+    "nextWeapon": "With a {w} weapon ({weapons}): {effect}"
   },
   "shop": {
     "title": "Shop",

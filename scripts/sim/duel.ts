@@ -55,7 +55,8 @@ export interface HeroOpts {
 // compare equipment PLUS a free ability, a confounder: a +-5 % CP parity measured like that no longer means anything. So these heroes carry an EMPTY rotation on purpose. This is a methodological choice, not a
 // patch: the CP parity is about the STAT part, and the edge the abilities give is measured separately in the simulator in phase 8 (docs/CLASSES_E_EQUIPAMENTOS.md 2.5). A tool that needs the real player's
 // automatic rotation uses automaticRotation().
-export const gearOnly = <S extends SaveData>(s: S): S => ({ ...s, rotation: [] });
+// The class affinity (affinity.ts) is left out for the same reason: each weight brings a DIFFERENT effect, so with it in the comparison would no longer measure the gear (it is measured with the classes in phase 8).
+export const gearOnly = <S extends SaveData>(s: S): S => ({ ...s, rotation: [], noAffinity: true });
 // The same hero as a real player who never opened the Taticas screen: no field, so the rotation follows the worn gear.
 export function automaticRotation<S extends SaveData>(s: S): S {
   const out = { ...s } as Partial<SaveData>;

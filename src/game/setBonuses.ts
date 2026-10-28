@@ -19,10 +19,11 @@ export interface SetEffect {
   damagePct?: number; // final damage, a share of the hit after STR (like the Warchief Totem)
   lifestealPct?: number; // percent of the damage dealt healed per hit
   goldBonusPct?: number; // percent extra Gold, inside the same 25 % cap as the substats
+  maxHpPct?: number; // share of the whole max HP pool (like Thick Skin), added by the class affinity (affinity.ts); no tier family carries it
 }
 export type SetEffectKey = keyof SetEffect;
 export type SetEffectTotals = Record<SetEffectKey, number>;
-export const SET_EFFECT_KEYS: SetEffectKey[] = ['attackSpeedBonus', 'critMultBonus', 'resistance', 'hpRegenPct', 'damagePct', 'lifestealPct', 'goldBonusPct'];
+export const SET_EFFECT_KEYS: SetEffectKey[] = ['attackSpeedBonus', 'critMultBonus', 'resistance', 'hpRegenPct', 'damagePct', 'lifestealPct', 'goldBonusPct', 'maxHpPct'];
 
 export interface SetDef {
   family: SetFamily;
@@ -68,7 +69,7 @@ export interface SetBonuses {
   totals: SetEffectTotals;
 }
 
-export const emptySetTotals = (): SetEffectTotals => ({ attackSpeedBonus: 0, critMultBonus: 0, resistance: 0, hpRegenPct: 0, damagePct: 0, lifestealPct: 0, goldBonusPct: 0 });
+export const emptySetTotals = (): SetEffectTotals => ({ attackSpeedBonus: 0, critMultBonus: 0, resistance: 0, hpRegenPct: 0, damagePct: 0, lifestealPct: 0, goldBonusPct: 0, maxHpPct: 0 });
 
 // How many of the worn pieces belong to each family. Empty slots (null / undefined) and pieces without a family (starters, relics) count for none.
 export function setCounts(equipped: readonly (GearItem | null | undefined)[]): Record<SetFamily, number> {

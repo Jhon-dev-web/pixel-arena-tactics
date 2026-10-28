@@ -36,7 +36,8 @@ import { LifetimeStats, emptyStats, normalizeStats, StatsBackfill } from './stat
 import { rollWeekly, sanitizeStreak, sanitizeWeekly } from './weekly';
 import { CodexState, emptyCodex, normalizeCodex } from './codex';
 import { Rarity, rarityStatMult } from './rarity';
-import { emptySetTotals, setBonuses } from './setBonuses';
+import { affinityBonuses } from './affinity';
+import { emptySetTotals, setBonuses, SET_EFFECT_KEYS } from './setBonuses';
 import { MAX_DUNGEON_FLOOR, MILESTONE_FLOORS } from './dungeon';
 import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHuntingZone, HUNTING_DEPTHS, HUNTING_ZONES, HuntingDepth, HuntingZoneDef, subLevelCpRequired } from './huntingZones';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
@@ -213,6 +214,9 @@ export interface SaveData {
   skillTree: SkillTreeState;
   // Equipment abilities (abilities.ts): the player's rotation, up to T.abilities.rotationSlots ids in order of priority. ABSENT = automatic (the default of the worn gear, effectiveRotation); [] = cleared on purpose.
   rotation?: AbilityId[];
+  // MEASUREMENT ONLY, not a player option: the game never writes it and normalizeSave deletes it on load, so it can never persist in a real save. True leaves the class affinity (affinity.ts) out of buildCombatStats, as the
+  // empty rotation leaves the abilities out. It lives on the save because scripts/sim/duel.ts gearOnly() transforms a save and has no way to pass `parts`.
+  noAffinity?: boolean;
   materials: Materials;
   potions: { hp: number; stamina: number; elixir: number };
   consumables: Record<ConsumableId, number>;
@@ -397,6 +401,11 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
   const extra = equippedExtraStats(save);
   // Set bonuses (setBonuses.ts): the crafted tier families worn, added to the same numbers the relic and the gear feed.
   const set = parts.sets === false ? emptySetTotals() : setBonuses(equippedSetItems(save)).totals;
+  // The class affinity (affinity.ts) is the SAME kind of effect and goes into the SAME totals: one mechanic, two reasons to earn it, never a second accumulator.
+  if (parts.sets !== false && !save.noAffinity) {
+    const aff = affinityBonuses(equippedSetItems(save)).totals;
+    for (const k of SET_EFFECT_KEYS) set[k] += aff[k];
+  }
 
   // Flat base hit (avg of attackMin/attackMax) plus the weapon term W (refine, durability, rarity); STR is applied on top
   // of that sum by strengthAdjustedDamage (derivedStats.ts). blessed/Elixir/crit come later, at the call sites.
@@ -405,7 +414,8 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
   const fx = saveSkillEffects(save);
   const speedBonus = (relic?.attackSpeedBonus ?? 0) + set.attackSpeedBonus + extra.attackSpeedBonus;
   const stats: CombatStats = {
-    maxHp: playerMaxHp(save),
+    // maxHpPct (affinity): a share of the whole pool, applied here because the totals are only known in this function. Every fight reads stats.maxHp, and playerMaxHp has no other caller in the game.
+    maxHp: set.maxHpPct > 0 ? Math.round(playerMaxHp(save) * (1 + set.maxHpPct)) : playerMaxHp(save),
     // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
     // grows the weapon term W before STR scales it.
     dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + set.damagePct) * (1 + (parts.paragon === false ? 0 : paragonDamageBonus(paragonLevel(save.xp)))),
@@ -1515,6 +1525,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
       // purpose). It is NOT cut down to the gear here: that happens when it is read, so a weapon change cannot silently turn a choice into an empty one.
       if (Array.isArray(parsed.rotation)) loaded.rotation = sanitizeRotation(parsed.rotation);
       else delete (loaded as unknown as Record<string, unknown>).rotation;
+      delete (loaded as unknown as Record<string, unknown>).noAffinity; // measurement switch (see SaveData): never persists
       sanitizeTradeableFields(loaded, parsed as unknown as Record<string, unknown>);
       // Weekly goals and the login streak (weekly.ts): an old save has neither and starts its first week now; a new UTC week snapshots the counters again.
       loaded.quests = { ...loaded.quests, weekly: rollWeekly(sanitizeWeekly(q.weekly, loaded.stats, loadNow, playerLevel(loaded.xp)), loaded.stats, loadNow, playerLevel(loaded.xp)), streak: sanitizeStreak(q.streak) };

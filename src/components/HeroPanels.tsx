@@ -11,6 +11,7 @@ import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import TitleIcon from './TitleIcon';
 import { SetLines } from './SetBonus';
+import { AffinitySeal } from './AffinitySeal';
 import { FRAMES, SKINS } from '../game/seasonItems';
 import { heroBaseLook } from '../game/sprites';
 import HeroThumb from './HeroThumb';
@@ -121,6 +122,7 @@ export function EquipmentPanel({ save, selectedId, onSelect }: { save: SaveData;
         <EquipSlot slot="relic" view={equipped.relic ? { item: equipped.relic, instance: null } : null} selected={isSel(equipped.relic?.id)} onSelect={onSelect} />
       </div>
       <SetLines save={save} />
+      <AffinitySeal save={save} />
       {above.map((a) => (
         <p className="ui-alert bad" key={a.slot} role="status">
           {gearText(getGear(a.templateId).nameKey)}: {t('inventory.wornAboveLevel', { n: a.requiredLevel })}

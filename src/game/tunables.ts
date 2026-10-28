@@ -666,6 +666,30 @@ const T = DebugPanel.define({
     actionGap: { value: 12, min: 0, max: 40, step: 1, cssVar: '--action-gap', unit: 'px', label: 'Action button gap' },
     fontSize: { value: 12, min: 8, max: 20, step: 1, cssVar: '--font-size', unit: 'px', label: 'UI font size' },
   },
+  // Class affinity (affinity.ts; classes reform, phase 6, docs/CLASSES_E_EQUIPAMENTOS.md 2.3): 3 / 5 pieces of the same armor WEIGHT over the five weight slots (armor, helmet, gloves, boots, shield), any tier, and a
+  // matching weapon on top of the five. Each step REPLACES the one below it (the five-piece line is the whole bonus at 5, not 3 + 5), except the weapon step, which ADDS to the five-piece bonus. Units are SetEffect's.
+  // EVERY NUMBER IS SMALL ON PURPOSE, and this is a design decision, not an economy one: do NOT "fix" them upwards. The game already pays uniformity once, with the set bonus (same TIER), and the owner asked that
+  // mixing pieces be GOOD (leather boots with an iron helm). If the affinity (same WEIGHT) were large too, the two would add up and push everybody towards one pure set, against that. So the three-piece step is
+  // about half of the first step of a set, the five-piece one about the first step, and the weapon a small extra. What makes mixing worth it is the stat profile of each weight (docs section 2.4), not this bonus.
+  // The ceiling is a RULE, tested (affinity.test.ts): every stat of the affinity stays below the same stat of the WEAKEST set of that weight (bronze / iron for plate, hide for leather, linen for cloth), so completing a set
+  // always pays more than just wearing the weight: the set is the progression reward, the affinity only a nudge. If a number ends up above it, lower the number, never the test. maxHpPct has no set to compare with (no tier family
+  // carries it), so it is kept small by the same logic.
+  // Provisional: phase 8 calibrates with the classes in play.
+  affinity: {
+    _label: 'Class affinity (small on purpose, see the comment; provisional, phase 8)',
+    warriorResist3: { value: 0.012, min: 0, max: 0.2, step: 0.005, label: 'Warrior, 3 plate pieces: resistance' },
+    warriorResist5: { value: 0.02, min: 0, max: 0.2, step: 0.005, label: 'Warrior, 5 plate pieces: resistance' },
+    warriorHp5: { value: 0.02, min: 0, max: 0.3, step: 0.005, label: 'Warrior, 5 plate pieces: max HP (share)' },
+    warriorHpClass: { value: 0.01, min: 0, max: 0.3, step: 0.005, label: 'Warrior, 5 + sword/axe: extra max HP (share)' },
+    archerSpeed3: { value: 0.012, min: 0, max: 0.2, step: 0.005, label: 'Archer, 3 leather pieces: attack speed' },
+    archerSpeed5: { value: 0.02, min: 0, max: 0.2, step: 0.005, label: 'Archer, 5 leather pieces: attack speed' },
+    archerCrit5: { value: 0.03, min: 0, max: 0.5, step: 0.005, label: 'Archer, 5 leather pieces: crit damage' },
+    archerSpeedClass: { value: 0.01, min: 0, max: 0.2, step: 0.005, label: 'Archer, 5 + bow/crossbow: extra attack speed' },
+    mageCrit3: { value: 0.02, min: 0, max: 0.5, step: 0.005, label: 'Mage, 3 cloth pieces: crit damage' },
+    mageCrit5: { value: 0.03, min: 0, max: 0.5, step: 0.005, label: 'Mage, 5 cloth pieces: crit damage' },
+    mageRegen5: { value: 0.001, min: 0, max: 0.02, step: 0.0005, label: 'Mage, 5 cloth pieces: regeneration (max HP share per second)' },
+    mageRegenClass: { value: 0.0005, min: 0, max: 0.02, step: 0.0005, label: 'Mage, 5 + staff/scepter: extra regeneration' },
+  },
   // Equipment abilities and the rotation (abilities.ts; classes reform, phase 4, docs/CLASSES_E_EQUIPAMENTOS.md 2.2). EVERY NUMBER BELOW IS PROVISIONAL: phase 8 (the balance pass) calibrates them against the class parity
   // and the role edge of section 2.5; until then they only have to be sane, not tuned. Percentages are shares of the hero's swing (the basic attack they replace), times are combat-clock ms.
   abilities: {

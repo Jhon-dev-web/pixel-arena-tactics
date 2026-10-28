@@ -966,8 +966,21 @@
       "hpRegenPct": "Regenera +{v}% da vida/s",
       "damagePct": "+{v}% dano final",
       "lifestealPct": "+{v}% roubo de vida",
-      "goldBonusPct": "+{v}% ouro"
+      "goldBonusPct": "+{v}% ouro",
+      "maxHpPct": "+{v}% vida máxima"
     }
+  },
+  "affinity": {
+    "title": "Afinidade",
+    "head": "{w} {n}/5",
+    "weight": { "plate": "Placa", "leather": "Couro", "cloth": "Tecido" },
+    "style": { "warrior": "estilo Guerreiro", "archer": "estilo Arqueiro", "mage": "estilo Mago" },
+    "weapons": { "plate": "espada ou machado", "leather": "arco ou besta", "cloth": "cajado ou cetro" },
+    "classOn": "O que você veste combina com o {style}.",
+    "reflection": "É o reflexo do que está vestido, não um atributo do herói: troque as peças e ele muda.",
+    "next": "Faltam {missing} peças para o bônus de {step}: {effect}",
+    "nextOne": "Falta 1 peça para o bônus de {step}: {effect}",
+    "nextWeapon": "Com uma arma de {w} ({weapons}): {effect}"
   },
   "shop": {
     "title": "Loja",

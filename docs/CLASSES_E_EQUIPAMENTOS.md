@@ -148,7 +148,9 @@ Conta as 5 peças de peso (armadura, elmo, luvas, botas, mão secundária) e olh
 - Com a **arma da família** combinando, o bônus cheio vira o bônus de classe:
   - **Guerreiro** (placa + espada/machado): +% vida máxima, +% resistência.
   - **Arqueiro** (couro + arco/besta): +% velocidade de ataque, +crítico.
-  - **Mago** (tecido + cajado/cetro): +% área, +% dano de queimadura.
+  - **Mago** (tecido + cajado/cetro): +% multiplicador de crítico, +% regeneração.
+
+> **Correção de 28/10, fase 6.** Esta linha dizia "+% área, +% dano de queimadura", o que ficou para trás quando a seção 2.2 mudou de rumo: área virou **habilidade** (`carry`), não stat passivo, e o bônus de afinidade usa o tipo `SetEffect`, que não tem campo de área. O tema do Mago na camada passiva é o mesmo da armadura de tecido (seção 2.4): multiplicador de crítico e regeneração.
 
 Misturar não dá bônus de afinidade, mas **mantém o stat de cada peça**. É assim que o exemplo do dono funciona: bota de couro por velocidade + elmo de ferro por vida é uma escolha legítima, às vezes melhor que o conjunto puro para um objetivo específico. O jogo nunca escreve "sua classe é X": a tela de Personagem mostra a afinidade atual como um selo, e pronto.
 
