@@ -43,6 +43,14 @@ export const RAW_REFERENCE_GOLD: Partial<Record<MaterialId, number>> = {
   fiend_horn: 256.5,
   abyssal_marrow: 110,
   blood_heart: 451,
+  // Classes & equipment phase 1 (docs/CLASSES_E_EQUIPAMENTOS.md): accessory drops of the archer and mage lines (sinew in the glade at 0.03, feather in the marsh at 0.02, dust in the marsh at 0.004).
+  // DELIBERATELY BELOW what the ANCHOR * sqrt(S * D) rule would give. By that rule, against the same-zone material of the same class, they would be about 5.8 (sinew vs the scrap's 0.25), 7.5
+  // (feather vs the bone's 0.28) and 21 (dust vs the blood's 0.09) — they are that much scarcer. These stay at the value of their common / uncommon peers because they are ACCESSORY inputs, not
+  // the backbone of a zone, and because nothing consumes them yet: with no demand their worth cannot be validated, and under-valuing is the safe direction (it cannot open a Gold faucet, and the
+  // merchant hour-value guards in round17.test.ts / stashMerchant.test.ts stay inside their limits). Phase 3 revisits all three once the bow / staff recipes exist and the real demand is known.
+  beast_sinew: 2.5,
+  feather: 3,
+  arcane_dust: 6,
   // Garden
   common_herb: 4,
   energy_herb: 3,
@@ -58,6 +66,12 @@ export const RAW_REFERENCE_GOLD: Partial<Record<MaterialId, number>> = {
   silver_sage: 16,
   dusk_orchid: 48,
   elder_root: 64,
+  // Classes & equipment phase 1 fibers: value = 4 / units per plot-hour, matching the existing plant of the same pace and rarity (flax 1.0/h = common_herb, cotton 0.67/h = iron_thistle, wild silk 0.2/h = gold_blossom, moonweave 0.1/h = moon_lily, voidsilk 0.0625/h = elder_root). The cloths are processed: derived from the Weaving recipes, no entry here.
+  flax: 4,
+  cotton: 6,
+  wild_silk: 20,
+  moonweave: 45,
+  voidsilk: 64,
   // Mining
   copper: 3.5,
   iron: 3.5,

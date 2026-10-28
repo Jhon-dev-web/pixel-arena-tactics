@@ -20,9 +20,12 @@ describe('balance decisions (docs/BALANCE_CHANGES.md)', () => {
     expect(T.battle.defeatGoldKept).toBe(0.75);
   });
 
-  it('the first two zones drop three material types, the two late ones five (their own uncommon + rare on top of the old three)', () => {
+  it('the first two zones drop three material types, the two late ones five (their own uncommon + rare on top of the old three), plus the ownStream drops of the classes reform phase 1 in the first two zones only (sinew in the glade; feather and arcane dust in the marsh)', () => {
     const count = Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, z.drops.length]));
-    expect(count).toEqual({ demon_glade: 3, blood_marsh: 3, demon_rift: 5, blood_abyss: 5 });
+    expect(count).toEqual({ demon_glade: 4, blood_marsh: 5, demon_rift: 5, blood_abyss: 5 });
+    // the original drops (three per zone, five for the late ones) are still there, untouched
+    const original = Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, z.drops.filter((d) => !['beast_sinew', 'feather', 'arcane_dust'].includes(d.material)).length]));
+    expect(original).toEqual({ demon_glade: 3, blood_marsh: 3, demon_rift: 5, blood_abyss: 5 });
   });
 });
 
@@ -38,9 +41,11 @@ describe('Hunt loot goes into the inventory (no separate container)', () => {
       expect(planHuntClaim(stopped, reward).leftBehind).toEqual([]);
       const claimed = applyHuntClaim(stopped, reward.id)!;
       expect(inventorySlotsUsed(claimed)).toBeLessThanOrEqual(DEFAULT_INVENTORY_CAPACITY);
-      if (Object.values(reward.drops).filter((n) => (n ?? 0) > 0).length === 3) allThree++;
+      // the three ORIGINAL types of the zone (the phase 1 drops of the classes reform are extra, ownStream)
+      const original = ['leather_scrap', 'demon_claw', 'demon_core'] as const;
+      if (original.every((m) => (reward.drops[m] ?? 0) > 0)) allThree++;
     }
-    expect(allThree).toBeGreaterThan(0); // the 4 h session really did produce the three types at least once
+    expect(allThree).toBeGreaterThan(0); // the 4 h session really did produce the three original types at least once
   });
 
   it('the Adventurer Pass perk adds inventory slots for its owner, for good (it never expires)', () => {

@@ -2,7 +2,7 @@
 // The server cannot import the game, so these are copies; src/game/__tests__/materialServer.test.ts fails when they go stale.
 
 /** The materials that can have a tradeable variant: what a Hunting, Mining, Woodcutting or Garden claim produces. */
-export const MATERIAL_IDS: readonly string[] = ["iron","copper","silver","gold_ore","obsidian","leather_scrap","demon_claw","demon_core","bone_fragment","concentrated_blood","corrupted_crystal","rift_shard","fiend_horn","abyssal_marrow","blood_heart","common_herb","energy_herb","uncommon_root","crimson_mushroom","rare_flower","iron_thistle","gold_blossom","swift_grass","moon_lily","silver_sage","dusk_orchid","elder_root","common_wood","oak_wood","ebony_wood","elven_wood","ancient_wood"];
+export const MATERIAL_IDS: readonly string[] = ["iron","copper","silver","gold_ore","obsidian","leather_scrap","demon_claw","demon_core","bone_fragment","concentrated_blood","corrupted_crystal","rift_shard","fiend_horn","abyssal_marrow","blood_heart","common_herb","energy_herb","uncommon_root","crimson_mushroom","rare_flower","iron_thistle","gold_blossom","swift_grass","moon_lily","silver_sage","dusk_orchid","elder_root","common_wood","oak_wood","ebony_wood","elven_wood","ancient_wood","flax","cotton","wild_silk","moonweave","voidsilk","beast_sinew","feather","arcane_dust"];
 
 /** How the game classes each material (a Hunting drop's own rarity, the tier of an ore or a wood, a plant's rarity): rates.ts gives each class its chance. */
 export const MATERIAL_CLASS: Readonly<Record<string, 'common' | 'uncommon' | 'rare'>> = {
@@ -28,12 +28,20 @@ export const MATERIAL_CLASS: Readonly<Record<string, 'common' | 'uncommon' | 'ra
   "silver_sage": "uncommon",
   "dusk_orchid": "rare",
   "elder_root": "rare",
+  "flax": "common",
+  "cotton": "common",
+  "wild_silk": "uncommon",
+  "moonweave": "rare",
+  "voidsilk": "rare",
   "leather_scrap": "common",
   "demon_claw": "uncommon",
   "demon_core": "rare",
+  "beast_sinew": "common",
   "bone_fragment": "common",
   "concentrated_blood": "uncommon",
   "corrupted_crystal": "rare",
+  "feather": "common",
+  "arcane_dust": "uncommon",
   "rift_shard": "uncommon",
   "fiend_horn": "rare",
   "abyssal_marrow": "uncommon",
@@ -45,12 +53,15 @@ export const HUNT_CEILING: Readonly<Record<string, Readonly<Record<string, numbe
   "demon_glade": {
     "leather_scrap": 133.95622625000001,
     "demon_claw": 133.81905507432,
-    "demon_core": 15.447189021264004
+    "demon_core": 15.447189021264004,
+    "beast_sinew": 16.07474715
   },
   "blood_marsh": {
     "bone_fragment": 150.03097340000002,
     "concentrated_blood": 150.54643695861,
-    "corrupted_crystal": 23.170783531896003
+    "corrupted_crystal": 23.170783531896003,
+    "feather": 10.7164981,
+    "arcane_dust": 6.690952753716001
   },
   "demon_rift": {
     "leather_scrap": 171.4639696,
@@ -130,6 +141,31 @@ export const GARDEN_TABLE: Readonly<Record<string, { baseQty: number; durationMs
     "perPlotHour": 0.213
   },
   "elder_root": {
+    "baseQty": 1,
+    "durationMs": 57600000,
+    "perPlotHour": 0.16
+  },
+  "flax": {
+    "baseQty": 2,
+    "durationMs": 7200000,
+    "perPlotHour": 1.278
+  },
+  "cotton": {
+    "baseQty": 2,
+    "durationMs": 10800000,
+    "perPlotHour": 0.852
+  },
+  "wild_silk": {
+    "baseQty": 1,
+    "durationMs": 18000000,
+    "perPlotHour": 0.256
+  },
+  "moonweave": {
+    "baseQty": 1,
+    "durationMs": 36000000,
+    "perPlotHour": 0.256
+  },
+  "voidsilk": {
     "baseQty": 1,
     "durationMs": 57600000,
     "perPlotHour": 0.16

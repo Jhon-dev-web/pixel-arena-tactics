@@ -53,7 +53,7 @@ describe('which materials have a tradeable variant', () => {
   it('exactly the ones a claim produces: ores, woods, garden plants and the Hunting drops', () => {
     const produced = new Set<string>([...ORE_TIERS.map((o) => o.id), ...WOOD_TIERS.map((w) => w.id), ...PLANTS.map((p) => p.material), ...HUNTING_ZONES.flatMap((z) => z.drops.map((d) => d.material))]);
     expect([...TRADEABLE_MATERIALS].sort()).toEqual([...produced].sort());
-    expect(TRADEABLE_MATERIALS).toHaveLength(32);
+    expect(TRADEABLE_MATERIALS).toHaveLength(40);
   });
 
   it('bars, handles, dust and the shop materials never do (they are made or bought, not claimed)', () => {

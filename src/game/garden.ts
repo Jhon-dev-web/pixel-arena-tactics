@@ -3,7 +3,7 @@ import T from './tunables';
 
 // Ids are stable: they are what saves store in gardenSlots and what the materials are keyed by. Only the visible names
 // changed with Garden 2.0 (common_herb is now "Erva Medicinal", uncommon_root "Raiz Amarga", rare_flower "Flor Carmesim").
-export type PlantId = 'common_herb' | 'energy_herb' | 'uncommon_root' | 'crimson_mushroom' | 'rare_flower' | 'iron_thistle' | 'gold_blossom' | 'swift_grass' | 'moon_lily' | 'silver_sage' | 'dusk_orchid' | 'elder_root';
+export type PlantId = 'common_herb' | 'energy_herb' | 'uncommon_root' | 'crimson_mushroom' | 'rare_flower' | 'iron_thistle' | 'gold_blossom' | 'swift_grass' | 'moon_lily' | 'silver_sage' | 'dusk_orchid' | 'elder_root' | 'flax' | 'cotton' | 'wild_silk' | 'moonweave' | 'voidsilk';
 
 export interface PlantDef {
   id: PlantId;
@@ -43,6 +43,12 @@ export const PLANTS: PlantDef[] = [
   { id: 'silver_sage', nameKey: 'plant_silver_sage', descKey: 'plant_silver_sage_d', useKey: 'plant_silver_sage_use', icon: '🌱', iconUrl: '/assets/icons/silver_sage.png', rarity: 'uncommon', material: 'silver_sage', qty: 2, durationMs: 8 * HOUR, requiredLevel: 50 },
   { id: 'dusk_orchid', nameKey: 'plant_dusk_orchid', descKey: 'plant_dusk_orchid_d', useKey: 'plant_dusk_orchid_use', icon: '🪻', iconUrl: '/assets/icons/dusk_orchid.png', rarity: 'rare', material: 'dusk_orchid', qty: 1, durationMs: 12 * HOUR, requiredLevel: 60 },
   { id: 'elder_root', nameKey: 'plant_elder_root', descKey: 'plant_elder_root_d', useKey: 'plant_elder_root_use', icon: '🫚', iconUrl: '/assets/icons/elder_root.png', rarity: 'rare', material: 'elder_root', qty: 1, durationMs: 16 * HOUR, requiredLevel: 70 },
+  // Classes & equipment, phase 1 (docs/CLASSES_E_EQUIPAMENTOS.md): the fibers feed the Weaving station (refining.ts), giving the Garden a purpose beyond potions. Level gates mirror the existing plants (1 / 10 / 25 / 50 / 70).
+  { id: 'flax', nameKey: 'plant_flax', descKey: 'plant_flax_d', useKey: 'plant_flax_use', icon: '🌾', iconUrl: '/assets/icons/flax.png', rarity: 'common', material: 'flax', qty: 2, durationMs: 2 * HOUR, requiredLevel: 1 },
+  { id: 'cotton', nameKey: 'plant_cotton', descKey: 'plant_cotton_d', useKey: 'plant_cotton_use', icon: '☁️', iconUrl: '/assets/icons/cotton.png', rarity: 'common', material: 'cotton', qty: 2, durationMs: 3 * HOUR, requiredLevel: 10 },
+  { id: 'wild_silk', nameKey: 'plant_wild_silk', descKey: 'plant_wild_silk_d', useKey: 'plant_wild_silk_use', icon: '🕸️', iconUrl: '/assets/icons/wild_silk.png', rarity: 'uncommon', material: 'wild_silk', qty: 1, durationMs: 5 * HOUR, requiredLevel: 25 },
+  { id: 'moonweave', nameKey: 'plant_moonweave', descKey: 'plant_moonweave_d', useKey: 'plant_moonweave_use', icon: '🌙', iconUrl: '/assets/icons/moonweave.png', rarity: 'rare', material: 'moonweave', qty: 1, durationMs: 10 * HOUR, requiredLevel: 50 },
+  { id: 'voidsilk', nameKey: 'plant_voidsilk', descKey: 'plant_voidsilk_d', useKey: 'plant_voidsilk_use', icon: '🖤', iconUrl: '/assets/icons/voidsilk.png', rarity: 'rare', material: 'voidsilk', qty: 1, durationMs: 16 * HOUR, requiredLevel: 70 },
 ];
 
 // Plots: the first GARDEN_START_PLOTS are open from the start; the next ones unlock with the Gardening SKILL level (not character level). Old saves with 4

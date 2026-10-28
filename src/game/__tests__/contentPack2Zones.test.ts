@@ -5,7 +5,7 @@ import { HuntCombatBuild, HuntPotionCfg, HuntZoneCombatCfg, simulateHuntingSessi
 import { HUNTING_ZONES, effectiveDropChance, getHuntingZone } from '../huntingZones';
 import { economicRollFractionForFight } from '../huntEconomy';
 import { estimateHuntYield } from '../huntEstimate';
-import { getMaterial, MATERIALS, MaterialId } from '../materials';
+import { getMaterial, MATERIALS, MATERIAL_CONSUMER_PENDING, MaterialId } from '../materials';
 import { baseGoldValue } from '../economy';
 import { merchantPrice } from '../merchant';
 import { usesOf } from '../itemUses';
@@ -19,6 +19,8 @@ const HOUR = 3600 * 1000;
 
 describe('zone materials of the Demon Rift and the Blood Abyss', () => {
   const NEW: Record<string, [MaterialId, MaterialId]> = { demon_rift: ['rift_shard', 'fiend_horn'], blood_abyss: ['abyssal_marrow', 'blood_heart'] };
+  // Drops per zone: the original ones (five for the late zones, three for the first two) plus the ownStream drops of the classes reform, phase 1, only in the first two zones (beast_sinew in the glade, feather and arcane_dust in the marsh).
+  const DROP_COUNT: Record<string, number> = { demon_glade: 4, blood_marsh: 5, demon_rift: 5, blood_abyss: 5 };
 
   it('each late zone keeps its old three drops (the Rift ones untouched, the Abyss ones cut in round 17) and adds an uncommon + a rare of its own', () => {
     const rift = getHuntingZone('demon_rift')!;
@@ -28,7 +30,8 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
     expect(abyss.drops.slice(0, 3).map((d) => [d.material, d.rarity, d.chance])).toEqual([['bone_fragment', 'common', 0.12], ['concentrated_blood', 'uncommon', 0.036], ['corrupted_crystal', 'rare', 0.0053]]);
     for (const [zid, [unc, rare]] of Object.entries(NEW)) {
       const z = getHuntingZone(zid)!;
-      expect(z.drops).toHaveLength(5);
+      expect(z.drops).toHaveLength(DROP_COUNT[zid]);
+      expect(z.drops.filter((d) => !['beast_sinew', 'feather', 'arcane_dust'].includes(d.material))).toHaveLength(5);
       const u = z.drops.find((d) => d.material === unc)!;
       const r = z.drops.find((d) => d.material === rare)!;
       expect(u.rarity).toBe('uncommon');
@@ -36,8 +39,8 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
       // Round 17 chances (docs/BALANCE_CHANGES.md): the zone's own pair was cut (shard to a quarter, the other three to an eighth of round 16)
       expect({ [unc]: u.chance, [rare]: r.chance }).toEqual(zid === 'demon_rift' ? { rift_shard: 0.025, fiend_horn: 0.0017 } : { abyssal_marrow: 0.0132, blood_heart: 0.0021 });
     }
-    expect(getHuntingZone('demon_glade')!.drops).toHaveLength(3);
-    expect(getHuntingZone('blood_marsh')!.drops).toHaveLength(3);
+    expect(getHuntingZone('demon_glade')!.drops).toHaveLength(DROP_COUNT.demon_glade);
+    expect(getHuntingZone('blood_marsh')!.drops).toHaveLength(DROP_COUNT.blood_marsh);
   });
 
   it('the new drops are rolled on their own stream: the old drops, kills, XP and gold of a session are bit-for-bit what they were', () => {
@@ -84,11 +87,11 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
     }
   });
 
-  it('the hunt estimate, the selection data and the claim order show all five drops', () => {
+  it('the hunt estimate, the selection data and the claim order show every drop of the zone', () => {
     const h = hero('5', 4, { level: 75 });
     for (const [zid, [unc, rare]] of Object.entries(NEW)) {
       const e = estimateHuntYield({ ...h, highestDungeonFloor: 90 }, zid, 'shallow')!;
-      expect(e.materialsPerHour).toHaveLength(5);
+      expect(e.materialsPerHour).toHaveLength(DROP_COUNT[zid]);
       expect(e.materialsPerHour.map((m) => m.material)).toContain(unc);
       expect(e.materialsPerHour.map((m) => m.material)).toContain(rare);
       const zone = getHuntingZone(zid)!;
@@ -146,6 +149,7 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
     const ids = new Set(MATERIALS.map((m) => m.id as string));
     for (const g of GEAR) for (const m of Object.keys(g.recipe?.materials ?? {})) expect(ids.has(m), `${g.id}: ${m}`).toBe(true);
     for (const z of HUNTING_ZONES) for (const d of z.drops) expect(ids.has(d.material)).toBe(true);
-    for (const m of MATERIALS) expect(usesOf('material', m.id).length, m.id).toBeGreaterThan(0);
+    // the only exception: materials whose consumer arrives in a later phase of the classes reform (materials.ts MATERIAL_CONSUMER_PENDING; stashMerchant.test.ts keeps that list from going stale)
+    for (const m of MATERIALS) if (!MATERIAL_CONSUMER_PENDING.includes(m.id)) expect(usesOf('material', m.id).length, m.id).toBeGreaterThan(0);
   });
 });

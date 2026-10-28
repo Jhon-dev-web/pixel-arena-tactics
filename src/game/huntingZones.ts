@@ -276,6 +276,11 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'leather_scrap', rarity: 'common', chance: 0.25, qty: 1 },
       { material: 'demon_claw', rarity: 'uncommon', chance: 0.08, qty: 1 },
       { material: 'demon_core', rarity: 'rare', chance: 0.007, qty: 1 },
+      // Classes & equipment, phase 1 (docs/CLASSES_E_EQUIPAMENTOS.md): the new accessory drops (beast_sinew here, feather and arcane_dust in the marsh) are ownStream, so no existing session's roll order moves.
+      // WARNING: every ownStream drop of a zone shares ONE generator in huntCombat.ts (ownRng) and is rolled in ARRAY ORDER on every kill, so inserting an ownStream drop into a zone that already has others (demon_rift, blood_abyss)
+      // shifts the numbers of the older ones (rift_shard, fiend_horn, abyssal_marrow, blood_heart): same statistics, but a session replayed from the same seed gives other results. That is why the glade and the marsh (no earlier ownStream drop) are
+      // the only zones that got the phase 1 drops. Whoever adds them to zones 3 and 4 in phase 3 needs a stream key of their own in huntCombat.ts (e.g. seedKey + ':class') instead of ownStream.
+      { material: 'beast_sinew', rarity: 'common', chance: 0.03, qty: 1, ownStream: true },
     ],
     // Rodada 22: the chances below are the Rodada 9 ones cut again (zones 1 and 2 x0.4, zone 3 and 4 to 0.000008): in the 60-day sim the owner of the Pass (20 h of Hunting a day) found 5 to 7 uniques
     // of any kind, a plain player (6 h a day) 2 to 3; now 1 to 2 for the plain player and 3 to 4 for the owner who hunts all day (docs/BALANCE_CHANGES.md Rodada 22).
@@ -303,6 +308,8 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'bone_fragment', rarity: 'common', chance: 0.28, qty: 1 },
       { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.09, qty: 1 },
       { material: 'corrupted_crystal', rarity: 'rare', chance: 0.0105, qty: 1 },
+      { material: 'feather', rarity: 'common', chance: 0.02, qty: 1, ownStream: true },
+      { material: 'arcane_dust', rarity: 'uncommon', chance: 0.004, qty: 1, ownStream: true },
     ],
     uniques: [
       { itemId: 'bloodbound_cleaver', chance: 0.000006 },

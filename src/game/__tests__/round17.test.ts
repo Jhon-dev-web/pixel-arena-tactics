@@ -40,8 +40,9 @@ describe('Round 17: the late zones drop what the late game can use', () => {
     const cut = (id: string, m: string) => getHuntingZone(id)!.drops.find((d) => d.material === m)!.chance / was[m];
     for (const m of ['corrupted_crystal', 'abyssal_marrow', 'blood_heart']) expect(cut('blood_abyss', m)).toBeLessThanOrEqual(cut('blood_abyss', 'bone_fragment'));
     expect(cut('demon_rift', 'fiend_horn')).toBeLessThanOrEqual(cut('demon_rift', 'leather_scrap'));
-    expect(getHuntingZone('demon_glade')!.drops.map((d) => d.chance)).toEqual([0.25, 0.08, 0.007]);
-    expect(getHuntingZone('blood_marsh')!.drops.map((d) => d.chance)).toEqual([0.28, 0.09, 0.0105]);
+    // ownStream marks what was added after these zones were set (classes reform, phase 1): the test is about the original three
+    expect(getHuntingZone('demon_glade')!.drops.filter((d) => !d.ownStream).map((d) => d.chance)).toEqual([0.25, 0.08, 0.007]);
+    expect(getHuntingZone('blood_marsh')!.drops.filter((d) => !d.ownStream).map((d) => d.chance)).toEqual([0.28, 0.09, 0.0105]);
     expect(HUNTING_ZONES.map((z) => Math.round(zoneReferenceXpPerHour(z)))).toEqual([1491, 2460, 5100, 7482]); // Rodada 31: XP is per kill now (xpPerKill x the reference pace); since Rodada 31 an hour at the reference pace pays 85% of what the zone paid by fight time (1,750 / 2,900 / 6,000 / 8,800): the pace cap (1.2) and the faster-than-reference heroes bring the average back,  // the last zone was 13,000 until Rodada 22, 10,000 until Rodada 24 and 8,750 until Rodada 26 (its sub-levels pay up to +45% now)
   });
 

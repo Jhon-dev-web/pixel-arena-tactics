@@ -28,7 +28,7 @@ import {
 } from '../merchant';
 import { applyDiscard } from '../bagActions';
 import { baseGoldValue } from '../economy';
-import { MATERIALS, MaterialId } from '../materials';
+import { MATERIALS, MATERIAL_CONSUMER_PENDING, MaterialId } from '../materials';
 import { CONSUMABLES, ConsumableId } from '../consumables';
 import { GEAR, isInstancedSlot } from '../gear';
 import { REFINING_RECIPES } from '../refining';
@@ -303,8 +303,16 @@ describe('discard', () => {
 
 describe('usesOf: where an item is consumed, from the real recipe data', () => {
   it('every material has at least one use (or is flagged), and the flags are exactly the unused ones', () => {
-    expect(materialsWithoutUse().sort()).toEqual([...MATERIALS_WITHOUT_USE].sort());
-    for (const m of MATERIALS) if (!MATERIALS_WITHOUT_USE.includes(m.id)) expect(usesOf('material', m.id).length, m.id).toBeGreaterThan(0);
+    // MATERIAL_CONSUMER_PENDING (materials.ts) is the only other exception: materials whose consumer arrives in a later phase of the classes reform
+    const flagged = [...MATERIALS_WITHOUT_USE, ...MATERIAL_CONSUMER_PENDING];
+    expect(materialsWithoutUse().sort()).toEqual([...flagged].sort());
+    for (const m of MATERIALS) if (!flagged.includes(m.id)) expect(usesOf('material', m.id).length, m.id).toBeGreaterThan(0);
+  });
+
+  it('MATERIAL_CONSUMER_PENDING never goes stale: every id in it still has no consumer (take it out in the commit that adds the recipe that spends it)', () => {
+    const stale = MATERIAL_CONSUMER_PENDING.filter((id) => usesOf('material', id).length > 0);
+    expect(stale, 'these now have a consumer: remove them from MATERIAL_CONSUMER_PENDING in materials.ts').toEqual([]);
+    expect(new Set(MATERIAL_CONSUMER_PENDING).size).toBe(MATERIAL_CONSUMER_PENDING.length);
   });
 
   it('every consumable has a use or is flagged', () => {

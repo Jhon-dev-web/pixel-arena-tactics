@@ -37,6 +37,11 @@ export const TRADEABLE_CHANCE: Readonly<Record<string, number>> = {
   moon_lily: 0.03,
   dusk_orchid: 0.03,
   elder_root: 0.03,
+  flax: 0.03,
+  cotton: 0.03,
+  wild_silk: 0.02,
+  moonweave: 0.03,
+  voidsilk: 0.03,
   // Hunting drops
   leather_scrap: 0.03,
   bone_fragment: 0.03,
@@ -48,6 +53,9 @@ export const TRADEABLE_CHANCE: Readonly<Record<string, number>> = {
   fiend_horn: 0.03,
   blood_heart: 0.03,
   abyssal_marrow: 0.03,
+  beast_sinew: 0.03,
+  feather: 0.03,
+  arcane_dust: 0.02,
 };
 
 /** The materials whose chance is NOT the rate of their game class (see above). */
@@ -91,4 +99,20 @@ export const HONEST_PEAK_DAY_UNITS: Readonly<Record<string, number>> = {
   ebony_wood: 811,
   elven_wood: 1076,
   ancient_wood: 1435,
+  // The 5 fibers (classes reform, phase 1): an ANALYTIC limit, not a measurement. The simulator does not grow fiber yet, so there is nothing to measure; the number is the Garden's own ceiling,
+  // tables.ts garden[material].perPlotHour x GARDEN_SLOTS (6) x 24 h, rounded DOWN (materialServer.test.ts requires a peak never above the ceiling it is checked against, and rounding up would exceed it by a fraction). It is loose on purpose (perPlotHour already carries the ceiling slack), so an honest player is never cut; while the cloth has no consumer the risk is small.
+  // Phase 7 (balance) replaces these five with a measured value.
+  // The 3 Hunting drops of the classes reform, phase 1 (beast_sinew in the glade, feather and arcane_dust in the marsh): derived by PROPORTION to the same-zone, same-class materials already in this table, and set above what the simulator measured
+  // (74 / 89 / 60). Why: the simulated players split their time between zones and activities, while a dedicated player can hunt one zone all day (a strong hero gets ~48 sinew in a 4 h session, and a Pass owner's 10 h stash passes 100 in a day),
+  // so the measured peak understates the honest player and would flag a lucky one. The proportions: feather 1237 x 0.02/0.28 (against bone_fragment, same zone) = 88; beast_sinew against leather_scrap = 138; arcane_dust (proportion to concentrated_blood gives ~55) is raised to 90 by the same reasoning, since its measured 60 is the same understatement.
+  // The simulator varies 5-10% between runs and the values of the OLD materials above do not reproduce even from a clean extract of HEAD, so no finer number would mean more. The 2x margin of bounds.ts absorbs the rest.
+  // Phase 7 (balance) replaces these with a measurement once the simulator has a planting policy and a zone-focus policy.
+  beast_sinew: 140,
+  feather: 134,
+  arcane_dust: 90,
+  flax: 184,
+  cotton: 122,
+  wild_silk: 36,
+  moonweave: 36,
+  voidsilk: 23,
 };

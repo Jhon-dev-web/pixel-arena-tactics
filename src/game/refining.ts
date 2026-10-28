@@ -1,6 +1,6 @@
 import { MaterialId } from './materials';
 
-export type RefiningStation = 'furnace' | 'tannery' | 'alchemy' | 'dust' | 'carpentry';
+export type RefiningStation = 'furnace' | 'tannery' | 'alchemy' | 'dust' | 'carpentry' | 'weaving';
 
 export interface RefiningRecipe {
   id: string;
@@ -81,6 +81,15 @@ export const REFINING_RECIPES: RefiningRecipe[] = [
   { id: 'craft_handle_ebony', station: 'carpentry', output: 'wood_handle_ebony', outputQty: 1, input: { ebony_wood: 5 }, cost: 5, requiredLevel: 25 },
   { id: 'craft_handle_elven', station: 'carpentry', output: 'wood_handle_elven', outputQty: 1, input: { elven_wood: 5 }, cost: 3, requiredLevel: 50 },
   { id: 'craft_handle_ancient', station: 'carpentry', output: 'wood_handle_ancient', outputQty: 1, input: { ancient_wood: 5 }, cost: 2, requiredLevel: 70 },
+  // Weaving: the Garden's fiber-to-cloth station (docs/CLASSES_E_EQUIPAMENTOS.md, phase 1). Same 5:1 ratio and the same declining-per-tier gold cost as the Carpentry above, for the same reason: higher tiers
+  // convert faster per hour of harvesting, so the nominal per-conversion price falls while the real gold burden per hour stays proportional, and it stays low in absolute terms against the 2-5k/day Gold budget.
+  // EXCEPTION to the declining cost: the last two tiers (moon 8, void 10) stop going down and go back up. The merchant buys back 15% of the reference value (floored per unit), and the cloth is worth the fibers plus a 10% processing premium, so with the usual 3 and 2 Gold
+  // fiber -> cloth -> sell would be an arbitrage (stashMerchant.test.ts ARBITRAGE SCAN: 3+30 < 37 and 2+45 < 53). The arbitrage guard matters more than the symmetry of the table.
+  { id: 'weave_linen', station: 'weaving', output: 'cloth_linen', outputQty: 1, input: { flax: 5 }, cost: 10, requiredLevel: 1 },
+  { id: 'weave_cotton', station: 'weaving', output: 'cloth_cotton', outputQty: 1, input: { cotton: 5 }, cost: 8, requiredLevel: 10 },
+  { id: 'weave_silk', station: 'weaving', output: 'cloth_silk', outputQty: 1, input: { wild_silk: 5 }, cost: 5, requiredLevel: 25 },
+  { id: 'weave_moon', station: 'weaving', output: 'cloth_moon', outputQty: 1, input: { moonweave: 5 }, cost: 8, requiredLevel: 50 },
+  { id: 'weave_void', station: 'weaving', output: 'cloth_void', outputQty: 1, input: { voidsilk: 5 }, cost: 10, requiredLevel: 70 },
 ];
 
 export function getRefiningRecipe(id: string): RefiningRecipe | undefined {

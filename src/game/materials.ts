@@ -46,7 +46,20 @@ export type MaterialId =
   | 'wood_handle_oak'
   | 'wood_handle_ebony'
   | 'wood_handle_elven'
-  | 'wood_handle_ancient';
+  | 'wood_handle_ancient'
+  | 'flax'
+  | 'cotton'
+  | 'wild_silk'
+  | 'moonweave'
+  | 'voidsilk'
+  | 'cloth_linen'
+  | 'cloth_cotton'
+  | 'cloth_silk'
+  | 'cloth_moon'
+  | 'cloth_void'
+  | 'beast_sinew'
+  | 'feather'
+  | 'arcane_dust';
 
 export type DropRarity = 'common' | 'uncommon' | 'rare';
 
@@ -119,7 +132,28 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'wood_handle_ebony', nameKey: 'mat_wood_handle_ebony', icon: '🥢', iconUrl: '/assets/icons/wood_handle_ebony.png', packSize: 1, packCost: 0, sellValue: 80 },
   { id: 'wood_handle_elven', nameKey: 'mat_wood_handle_elven', icon: '🥢', iconUrl: '/assets/icons/wood_handle_elven.png', packSize: 1, packCost: 0, sellValue: 180 },
   { id: 'wood_handle_ancient', nameKey: 'mat_wood_handle_ancient', icon: '🥢', iconUrl: '/assets/icons/wood_handle_ancient.png', packSize: 1, packCost: 0, sellValue: 360 },
+  // Classes & equipment, phase 1 (docs/CLASSES_E_EQUIPAMENTOS.md): fibers are Garden harvests (the raw input of the Weaving station), sellable in the Shop like the other plants. Art pending (iconPending.ts).
+  { id: 'flax', nameKey: 'mat_flax', icon: '🌾', iconUrl: '/assets/icons/flax.png', packSize: 5, packCost: 20, sellValue: 3 },
+  { id: 'cotton', nameKey: 'mat_cotton', icon: '☁️', iconUrl: '/assets/icons/cotton.png', packSize: 5, packCost: 30, sellValue: 5 },
+  { id: 'wild_silk', nameKey: 'mat_wild_silk', icon: '🕸️', iconUrl: '/assets/icons/wild_silk.png', packSize: 2, packCost: 140, sellValue: 20 },
+  { id: 'moonweave', nameKey: 'mat_moonweave', icon: '🌙', iconUrl: '/assets/icons/moonweave.png', packSize: 1, packCost: 320, sellValue: 70 },
+  { id: 'voidsilk', nameKey: 'mat_voidsilk', icon: '🖤', iconUrl: '/assets/icons/voidsilk.png', packSize: 1, packCost: 460, sellValue: 100 },
+  // Weaving-refined cloth — never harvested/dropped directly, only produced by converting the fibers above (packCost 0, like the wood handles).
+  { id: 'cloth_linen', nameKey: 'mat_cloth_linen', icon: '🧵', iconUrl: '/assets/icons/cloth_linen.png', packSize: 1, packCost: 0, sellValue: 12 },
+  { id: 'cloth_cotton', nameKey: 'mat_cloth_cotton', icon: '🧵', iconUrl: '/assets/icons/cloth_cotton.png', packSize: 1, packCost: 0, sellValue: 32 },
+  { id: 'cloth_silk', nameKey: 'mat_cloth_silk', icon: '🧵', iconUrl: '/assets/icons/cloth_silk.png', packSize: 1, packCost: 0, sellValue: 80 },
+  { id: 'cloth_moon', nameKey: 'mat_cloth_moon', icon: '🧵', iconUrl: '/assets/icons/cloth_moon.png', packSize: 1, packCost: 0, sellValue: 180 },
+  { id: 'cloth_void', nameKey: 'mat_cloth_void', icon: '🧵', iconUrl: '/assets/icons/cloth_void.png', packSize: 1, packCost: 0, sellValue: 360 },
+  // New Hunting drops for the leather and cloth gear lines (tendon: bow strings; feather: quivers; arcane dust: staves, scepters, grimoires). Art pending.
+  { id: 'beast_sinew', nameKey: 'mat_beast_sinew', icon: '🧶', iconUrl: '/assets/icons/beast_sinew.png', packSize: 5, packCost: 30, sellValue: 4 },
+  { id: 'feather', nameKey: 'mat_feather', icon: '🪶', iconUrl: '/assets/icons/feather.png', packSize: 5, packCost: 30, sellValue: 4 },
+  { id: 'arcane_dust', nameKey: 'mat_arcane_dust', icon: '✨', iconUrl: '/assets/icons/arcane_dust.png', packSize: 3, packCost: 120, sellValue: 22 },
 ];
+
+// Materiais cujo consumidor chega numa fase seguinte da reforma de classes (docs/CLASSES_E_EQUIPAMENTOS.md):
+// os tecidos e os drops das linhas de arqueiro e mago só passam a ser gastos quando os equipamentos
+// das fases 2 e 3 entrarem. Tire o id daqui no mesmo commit que criar a receita que o consome.
+export const MATERIAL_CONSUMER_PENDING: readonly MaterialId[] = ['cloth_linen', 'cloth_cotton', 'cloth_silk', 'cloth_moon', 'cloth_void', 'beast_sinew', 'feather', 'arcane_dust'];
 
 export function getMaterial(id: MaterialId): MaterialDef | undefined {
   return MATERIALS.find((m) => m.id === id);
@@ -177,6 +211,19 @@ export function emptyMaterials(): Materials {
     wood_handle_ebony: 0,
     wood_handle_elven: 0,
     wood_handle_ancient: 0,
+    flax: 0,
+    cotton: 0,
+    wild_silk: 0,
+    moonweave: 0,
+    voidsilk: 0,
+    cloth_linen: 0,
+    cloth_cotton: 0,
+    cloth_silk: 0,
+    cloth_moon: 0,
+    cloth_void: 0,
+    beast_sinew: 0,
+    feather: 0,
+    arcane_dust: 0,
   };
 }
 
