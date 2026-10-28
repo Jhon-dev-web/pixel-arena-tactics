@@ -30,7 +30,20 @@ Paralelizar: só o que for **genuinamente disjunto**. Neste repositório quase t
 
 Nunca prometer "acordar sozinho mais tarde": não existe temporizador, só existem despertares.
 
-## 3. Quando a lista acabar, procurar melhoria
+## 3. Teste bom, teste inútil
+
+**Todo teste novo tem de proteger uma regra que quebraria em silêncio.** Nada de teste que só repete o que o código já diz.
+
+A diferença, na prática:
+
+- **Vale a pena:** um campo de equipamento que não chega ao combate; uma peça de tier 6 que sai pior que a de tier 3; um herói que perde uma poção ao entrar numa zona nova; uma regra de mercado que ignora peças novas; um comentário ou tabela gerada que envelheceu. **Nada disso dá sinal na tela** — foi tudo pego por teste nesta reforma.
+- **Não vale:** afirmar que uma constante vale o que vale; refazer em teste a conta que a função já faz; cobrir caminho que nenhum jogador percorre.
+
+Quando um guarda de equilíbrio ou de economia acende, **o número é que está errado, não o teste**. Afrouxar o teste para passar é o jeito mais rápido de perder a rede inteira.
+
+A suíte inteira roda em cerca de 36 segundos, então não há motivo para rodar menos que ela antes de um commit.
+
+## 4. Quando a lista acabar, procurar melhoria
 
 Terminada a última tarefa, **não ficar parado**: procurar trabalho de melhoria e começar. Dizer ao dono o que escolheu e por quê.
 
@@ -51,7 +64,7 @@ Terminada a última tarefa, **não ficar parado**: procurar trabalho de melhoria
 
 Na dúvida entre as duas listas, é da segunda.
 
-## 4. O que o dono quer ver numa resposta
+## 5. O que o dono quer ver numa resposta
 
 Ele lê no celular e costuma estar fora. Então:
 - **o resultado primeiro**, não o caminho;
