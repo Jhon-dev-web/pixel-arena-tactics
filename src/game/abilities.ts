@@ -51,6 +51,7 @@ export interface AbilityDef {
   // An ability can carry more than one effect (Bencao is a heal AND a haste), so this is a list.
   effects: AbilityEffect[];
   fx: SkillFxId; // the entry of skillFx.ts that plays when it fires
+  icon: string; // /assets/icons/ab_<id>.png (same shape as HeroSkillDef.icon); required, a test checks the file exists
 }
 
 // Definition order is the order of the default rotation (defaultRotation) and of the lists shown to the player.
@@ -66,6 +67,11 @@ export const ABILITY_IDS: readonly AbilityId[] = [
 
 // Built from the tunables on every call so the debug panel keeps working (the loops read only the few numbers they need; this is not a hot path beyond a handful of cheap objects per swing).
 export function abilityDef(id: AbilityId): AbilityDef | undefined {
+  const def = abilityBody(id);
+  return def && { ...def, icon: `/assets/icons/ab_${id}.png` };
+}
+
+function abilityBody(id: AbilityId): Omit<AbilityDef, 'icon'> | undefined {
   const a = T.abilities;
   switch (id) {
     case 'firm_strike':

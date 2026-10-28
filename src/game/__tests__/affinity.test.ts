@@ -86,6 +86,20 @@ describe('the steps', () => {
     }
   });
 
+  it('the seal text never names the same effect twice: the step and the weapon step are summed by key (leather 5 + bow: ONE attack speed)', () => {
+    const cases = [[...PLATE5, 'iron_short_sword'], [...LEATHER5, 'short_bow'], [...CLOTH5, 'oak_staff'], LEATHER5, PLATE5.slice(0, 3)];
+    for (const ids of cases) {
+      const view = affinityView(worn(ids))!;
+      const keys = view.now.flatMap((e) => SET_EFFECT_KEYS.filter((key) => e[key]));
+      expect(new Set(keys).size, ids.join()).toBe(keys.length);
+    }
+    const leather = affinityView(worn([...LEATHER5, 'short_bow']))!;
+    const d = affinityDefs().leather;
+    expect(leather.now).toHaveLength(1);
+    expect(leather.now[0].attackSpeedBonus).toBeCloseTo((d.five.attackSpeedBonus ?? 0) + (d.weapon.attackSpeedBonus ?? 0), 10);
+    expect(leather.now[0].critMultBonus).toBe(d.five.critMultBonus);
+  });
+
   it('a weapon of ANOTHER weight, or 4 pieces + the weapon, is not the class step', () => {
     expect(affinityBonuses(worn([...LEATHER5, 'oak_staff'])).classActive).toBe(false);
     expect(total([...LEATHER5, 'oak_staff'])).toEqual(total(LEATHER5));

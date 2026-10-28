@@ -93,5 +93,9 @@ export function affinityView(equipped: readonly (GearItem | null | undefined)[])
   if (a.step === 0) next = { kind: 'three', missing: AFFINITY_THREE - a.pieces, effect: def.three };
   else if (a.step === 3) next = { kind: 'five', missing: AFFINITY_FIVE - a.pieces, effect: def.five };
   else if (!a.classActive) next = { kind: 'weapon', missing: 1, effect: def.weapon };
-  return { weight: a.weight, cls: CLASS_OF_WEIGHT[a.weight], pieces: a.pieces, step: a.step, classActive: a.classActive, now: a.effects, next };
+  // The step and the weapon step can name the SAME stat (leather: attack speed in both): the seal shows ONE effect with the keys summed, never the same stat twice.
+  const merged: SetEffect = {};
+  for (const k of SET_EFFECT_KEYS) if (a.totals[k] !== 0) merged[k] = a.totals[k];
+  const now = Object.keys(merged).length > 0 ? [merged] : [];
+  return { weight: a.weight, cls: CLASS_OF_WEIGHT[a.weight], pieces: a.pieces, step: a.step, classActive: a.classActive, now, next };
 }

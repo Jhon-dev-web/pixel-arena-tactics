@@ -118,6 +118,14 @@ describe('the 21 abilities are complete and tell the truth', () => {
     expect(looks.size).toBe(8);
   });
 
+  it('each declares an icon and the file exists in public/assets/icons', () => {
+    for (const id of ABILITY_IDS) {
+      const icon = abilityDef(id)!.icon;
+      expect(icon, id).toBe(`/assets/icons/ab_${id}.png`);
+      expect(fs.existsSync(path.resolve(__dirname, '../../../public', icon.slice(1))), icon).toBe(true);
+    }
+  });
+
   it('no text promises a guaranteed critical hit: the bow and crossbow strikes are described as the heavy swings they are', () => {
     for (const lang of ['pt', 'en']) {
       const raw = fs.readFileSync(path.resolve(__dirname, `../../locales/${lang}.json`), 'utf8');
