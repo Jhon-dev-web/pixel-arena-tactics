@@ -286,6 +286,12 @@
   border: var(--bw-thin) solid #8a3a32;
   border-radius: var(--r-md);
 }
+.battle .retreat-ask-lost p {
+  margin: 0;
+}
+.battle .retreat-ask-lost p + p {
+  margin-top: var(--sp-2);
+}
 .battle .tension-actions {
   flex-direction: column;
   gap: var(--sp-2);

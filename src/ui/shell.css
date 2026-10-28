@@ -534,6 +534,20 @@
   height: 16px;
   image-rendering: pixelated;
 }
+/* "Resgatar tudo" without the Pass: the button stays (disabled) and this one line says why, with a way to the Pass */
+.hm-claim-lock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-small);
+  color: var(--c-text-dim);
+}
+.hm-claim-lock > span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .hm-next {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

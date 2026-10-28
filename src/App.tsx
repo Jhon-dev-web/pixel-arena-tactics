@@ -24,7 +24,7 @@ import { SaveScheduler, UploadOutcome, flushCloudSave, setActiveSaveScheduler } 
 import { isImportantChange } from './game/saveImportance';
 import { snapshotPrefs, subscribePrefs } from './lib/deviceStore';
 import { useAuth } from './auth/AuthContext';
-import { applyHuntClaim, applyHuntStop, huntClaimBlocked, needsServerUniques, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
+import { applyHuntClaim, applyHuntStart, applyHuntStop, huntClaimBlocked, needsServerUniques, planHuntClaim, requestHuntStart } from './game/huntLifecycle';
 import { isServerItemAuthority } from './game/itemAuthority';
 import { fetchMyCertificates, itemApi, newRequestId } from './game/itemServer';
 import { ActionFail, changeAction, changeVoidsCertificate, createPouchAction, discardPouchAction, equipAction, forgeAction, openPouchAction, removeAction, resolveHuntUniques, settleBossClaim } from './game/itemActions';
@@ -44,7 +44,7 @@ import { goldMultiplier } from './game/buffs';
 import { applyBattlePassClaim, settleSeason } from './game/battlepass';
 import { applySelectSkin, applySelectFrame, applyUseStashDeed, STASH_BONUS_CAP, STASH_DEED_SLOTS } from './game/seasonItems';
 import { getServerPassOwned, grantDailyPassKit, isServerPassSource, ownsAdventurerPass, purchaseAdventurerPass, setServerPassOwned } from './game/entitlements';
-import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned, hasBuyIntent, pollPassOwned, recheckServerPass, startCheckout, takeCheckoutReturn, passPurchaseEnabled } from './game/passServer';
+import { applyServerPass, buyIntentAction, clearBuyIntent, fetchServerPassOwned, hasBuyIntent, pollPassOwned, recheckServerPass } from './game/passServer';
 import { usePassEntitlementVersion } from './game/usePassEntitlement';
 import { fetchReferralStatus } from './lib/referral';
 import { InvitesPage } from './components/InvitesPanel';
@@ -256,6 +256,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [welcome, setWelcome] = useState<{ summary: WelcomeBackSummary; canClaimAll: boolean } | null>(null);
   // The pending hunt reward screen can be set aside to make room in the inventory first (shortcut from the screen itself); the hunt screen brings it back.
   const [rewardHidden, setRewardHidden] = useState(false);
+  // True when the session that left the pending reward was ended to START something else (another zone, another activity): the reward screen then offers no "keep hunting".
+  const [huntLeaving, setHuntLeaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   // The hero does one task at a time (activity.ts): what he is busy with when the player asks for another (BusyNotice), and whether the forge job waits on something (a full bag).
   const [busyNotice, setBusyNotice] = useState<HeroActivity | null>(null);
@@ -429,10 +431,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   useSeasonSubmit(seasonRankingEnabled && configured && !!userId, save);
   const [passFlow, setPassFlow] = useState<PassFlow>('idle');
   const confirmRun = useRef(0);
-  // After the payment page: poll the entitlement for a short time (the webhook may take a moment) and say what happened.
-  const cancelPassConfirm = () => {
-    confirmRun.current++;
-  };
+  // After a USDC payment: poll the entitlement for a short time (the server may take a moment to record it) and say what happened.
   const confirmPassPurchase = () => {
     const run = ++confirmRun.current;
     setPassFlow('confirming');
@@ -445,15 +444,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       } else setPassFlow('pending');
     });
   };
-  useEffect(() => {
-    if (!userId || !isServerPassSource() || takeCheckoutReturn() !== 'success') return;
-    openPassView();
-    confirmPassPurchase();
-    return cancelPassConfirm;
-    // once per page load, for the signed-in account
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-  // Coming back to the tab after a while re-asks the server (a refund or a manual grant shows up without a reload); coming back from the payment page with Back resets the button.
+  // Coming back to the tab after a while re-asks the server (a refund or a manual grant shows up without a reload).
   useEffect(() => {
     if (!userId || !isServerPassSource()) return;
     let last = Date.now();
@@ -463,15 +454,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         void recheckServerPass(userId);
       }
     };
-    const onShow = (e: PageTransitionEvent) => {
-      if (e.persisted) setPassFlow((f) => (f === 'starting' ? 'idle' : f));
-    };
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('pageshow', onShow);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('pageshow', onShow);
-    };
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [userId]);
 
   // A delivery from the market (or a listing that left the bag) is acknowledged only once the server holds a save that has it: it is uploaded at once.
@@ -1836,17 +1820,23 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!next) return;
     playSfx('click');
     commitSave(next);
-    if (s.activeHuntingZone && next.pendingHuntReward) showToast(t('hunting.switchClaimFirst'));
+    if (s.activeHuntingZone && next.pendingHuntReward) {
+      setHuntLeaving(true);
+      showToast(t('hunting.switchClaimFirst'));
+    }
   };
 
-  const stopHunt = () => {
+  // `leaving`: the hunt is ended to start another activity, so the reward screen does not offer to keep hunting. The "Resgatar" button of the hunt screen is not leaving.
+  const stopHunt = (leaving = false) => {
     const next = applyHuntStop(saveRef.current, Date.now());
     if (!next) return;
     playSfx('click');
+    setHuntLeaving(leaving);
     commitSave(next);
   };
 
-  const confirmHuntReward = () => {
+  // `keepHunting`: after the claim, the same zone and depth start again at once (a new session from now), so "claim" never ends the hunt by itself.
+  const confirmHuntReward = (keepHunting = false) => {
     const pending = saveRef.current.pendingHuntReward;
     if (!pending) return;
     // Web build: the server rolls the unique drops of this reward first (bounded by server time) and certifies them; unreachable = the claim waits, nothing is lost.
@@ -1861,42 +1851,37 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         const refused = (r as { refused?: string }).refused;
         if (refused) showToast(t('items.huntNoUniques', { r: refused }));
         else if (r.uniques > 0) showToast(t('items.huntUniques', { n: r.uniques }));
-        claimHuntReward();
+        claimHuntReward(keepHunting);
       });
       return;
     }
-    claimHuntReward();
+    claimHuntReward(keepHunting);
   };
-  const claimHuntReward = () => {
+  const claimHuntReward = (keepHunting = false) => {
     const pending = saveRef.current.pendingHuntReward;
     if (!pending) return;
     const plan = planHuntClaim(saveRef.current, pending);
     const next = applyHuntClaim(saveRef.current, pending.id);
     if (!next) return;
     playSfx('victory');
-    commitSave(next);
     setRewardHidden(false);
+    setHuntLeaving(false);
     // Uniques (and units owed from before the inventory rule) the bag had no room for stay pending (held); drops without room are gone and said so.
     const lostUnits = plan.leftBehind.reduce((sum, i) => sum + i.count, 0);
-    if (huntClaimBlocked(next)) showToast(t('hunting.uniquesHeldToast'));
+    const held = huntClaimBlocked(next);
+    // Keep hunting: only when the whole reward was collected (nothing held) and the same zone and depth can start again; otherwise the claim stands and the hunt is simply over.
+    const resumed = keepHunting && !held ? applyHuntStart(next, pending.zoneId, pending.depth, Date.now()) : null;
+    commitSave(resumed ?? next);
+    if (held) showToast(t('hunting.uniquesHeldToast'));
+    else if (keepHunting && !resumed) showToast(t('hunting.continueFailed'));
     else if (lostUnits > 0) showToast(t('hunting.leftBehindToast', { n: fmtNum(lostUnits) }));
   };
 
-  // Web (server mode): the button opens Stripe Checkout through the create-checkout function; the entitlement arrives by webhook. Offline/desktop build: entitlements.ts,
-  // where a DEV build grants the Pass for testing and a production build shows a disabled button (Steam will sell it).
-  const purchaseBattlePass = async () => {
+  // Web (server mode): this button does nothing; the Pass is paid in USDC (PassUsdc, under the buy button) and the server records it. Offline/desktop build:
+  // entitlements.ts, where a DEV build grants the Pass for testing and a production build shows a disabled button.
+  const purchaseBattlePass = () => {
     playSfx('click');
-    if (isServerPassSource()) {
-      if (!passPurchaseEnabled || passFlow === 'starting') return;
-      setPassFlow('starting');
-      const started = await startCheckout();
-      if (started.ok) return; // the browser is leaving for the payment page
-      setPassFlow('idle');
-      const reason = (started as { reason?: string }).reason;
-      if (reason === 'already_owned' && userId) void recheckServerPass(userId);
-      else showToast(t(reason === 'rate_limited' ? 'battlePass.checkoutRateLimited' : 'battlePass.checkoutError'));
-      return;
-    }
+    if (isServerPassSource()) return;
     const res = purchaseAdventurerPass(saveRef.current, Date.now());
     if (!res.ok) return;
     setSaveBoth(res.save);
@@ -1904,16 +1889,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   };
 
   // The "Comprar o Passe" link of the website (/?comprar=passe, captured in main.tsx): once signed in, open the Pass modal and, with sales on and the account not owning the
-  // Pass according to the server, highlight the buy button. It never starts the checkout: the player clicks to go to Stripe. Runs once per page load (a ref, so React StrictMode's second effect pass does not lose it).
+  // Pass according to the server, highlight the buy button. It never starts a payment: the player taps. Runs once per page load (a ref, so React StrictMode's second effect pass does not lose it).
   const buyIntentDone = useRef(false);
   useEffect(() => {
     if (!userId || !isServerPassSource() || buyIntentDone.current || !hasBuyIntent()) return;
     buyIntentDone.current = true;
     clearBuyIntent();
     openPassView();
-    if (!passPurchaseEnabled && !marketOn) return;
+    if (!marketOn) return;
     fetchServerPassOwned()
-      .then((owned) => setHighlightBuy(buyIntentAction(passPurchaseEnabled || marketOn, owned) === 'highlight'))
+      .then((owned) => setHighlightBuy(buyIntentAction(marketOn, owned) === 'highlight'))
       .catch(() => undefined);
     // once per page load, for the signed-in account
   }, [userId, passVersion]);
@@ -2258,7 +2243,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     else if (activity === 'mining') claimMining();
     else if (activity === 'woodcutting') claimWoodcutting();
     else {
-      stopHunt();
+      stopHunt(true);
       setHuntOpen(true); // the reward the stop leaves is claimed on the hunt screen
       setRewardHidden(false);
     }
@@ -2742,7 +2727,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         <HuntModal
           save={save}
           onStartHunt={startHunt}
-          onStopHunt={stopHunt}
+          onStopHunt={() => stopHunt()}
           onClose={() => {
             playSfx('click');
             setHuntOpen(false);
@@ -2824,6 +2809,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
           save={save}
           reward={save.pendingHuntReward}
           subLevels={T.hunting.subLevels}
+          canContinue={!huntLeaving}
           onClaim={confirmHuntReward}
           onOpenInventory={() => {
             playSfx('click');

@@ -133,6 +133,11 @@ export default function BattleModal({
   const speedRef = useRef<1 | 2>(1);
   const stageRef = useRef(startFloor);
   const clearedRef = useRef(0);
+  // The "Recuar" confirmation: while it is open the fight is paused (the loop skips its frames and, on resume, shifts the attack timers by the time spent paused),
+  // so thinking about it can never cost the hero his life. `retreatAsk` is a snapshot taken when it opened, so the text cannot change under the player's eyes.
+  const pausedRef = useRef(false);
+  const pausedAtRef = useRef(0);
+  const [retreatAsk, setRetreatAsk] = useState<{ stage: number; fighting: boolean; cleared: number; gold: number; items: number } | null>(null);
   const bossStagesRef = useRef<number[]>([]);
   const accumRef = useRef<{ gold: number; drops: Partial<Record<MaterialId, number>>; shards: number; gems: Partial<Record<GemId, number>>; uniques: UniqueDrop[]; relics: string[]; count: number }>({
     gold: 0,
@@ -209,6 +214,21 @@ export default function BattleModal({
     if (outcome === 'defeat') setDefeatInfo(defeatSummary(save, stageRef.current, clearedRef.current, acc.gold, gold));
   };
 
+  const askRetreat = () => {
+    if (phaseRef.current !== 'battle' && phaseRef.current !== 'intermission') return;
+    pausedRef.current = true;
+    setRetreatAsk({ stage: stageRef.current, fighting: phaseRef.current === 'battle', cleared: clearedRef.current, gold: accumRef.current.gold, items: accumRef.current.count });
+  };
+  const stayInFight = () => {
+    pausedRef.current = false;
+    setRetreatAsk(null);
+  };
+  const confirmRetreat = () => {
+    pausedRef.current = false;
+    setRetreatAsk(null);
+    endCombat('retreat');
+  };
+
   const handleTensionRetreat = () => {
     setTensionFloor(null);
     endCombat('retreat');
@@ -247,6 +267,10 @@ export default function BattleModal({
 
     const startNextWave = () => {
       if (phaseRef.current !== 'intermission') return;
+      if (pausedRef.current) {
+        window.setTimeout(startNextWave, 150); // the retreat question is open: the next wave waits for the answer
+        return;
+      }
       const next = stageRef.current + 1;
       // The floors end at 100 (that run is complete); a Profundezas run (it started past floor 100) has no end: only death or the retreat button stop it.
       if (next > MAX_DUNGEON_FLOOR && !isDepthStage(startFloor)) {
@@ -549,6 +573,18 @@ export default function BattleModal({
     const step = (now: number) => {
       raf = requestAnimationFrame(step);
       if (phaseRef.current !== 'battle') return;
+      if (pausedRef.current) {
+        if (!pausedAtRef.current) pausedAtRef.current = now;
+        lastFrameRef.current = now;
+        return;
+      }
+      if (pausedAtRef.current) {
+        const gap = now - pausedAtRef.current;
+        pausedAtRef.current = 0;
+        heroNextAtkRef.current += gap;
+        enemyNextAtkRef.current += gap;
+        potionCooldownUntilRef.current += gap;
+      }
       const spd = speedRef.current;
       // dt is capped so a backgrounded tab does not dump seconds of burn and regeneration into one frame.
       clockRef.current += Math.min(250, Math.max(0, now - lastFrameRef.current)) * spd;
@@ -728,6 +764,8 @@ export default function BattleModal({
   const tensionMilestoneReward =
     tensionFloor !== null && !save.dungeonCheckpoints.includes(tensionFloor) ? getMilestoneReward(tensionFloor) : null;
   const tensionGoldPreview = accumGold + (tensionMilestoneReward?.gold ?? 0);
+  // Entries to the Masmorra still free today (this descent already used one): the same count the entry screen shows, so the question can say what descending again costs.
+  const entriesLeft = Math.max(0, T.dungeon.freeSessionsPerDay - (save.dungeonSessionsDay === new Date().toDateString() ? save.dungeonSessionsUsed : 0));
   const guidedTension = tensionFloor !== null && guidedStopFloor !== undefined && tensionFloor === guidedStopFloor && !isDungeonBoss(tensionFloor);
 
   return (
@@ -742,7 +780,7 @@ export default function BattleModal({
               {dungeonText('speed').replace('{n}', String(speed))}
             </Button>
           </div>
-          <Button size="sm" variant="danger" className="battle-run" onClick={() => endCombat('retreat')} disabled={phase === 'retreat' || phase === 'defeat'}>
+          <Button size="sm" variant="danger" className="battle-run" onClick={askRetreat} disabled={phase === 'retreat' || phase === 'defeat'}>
             {t('dungeon.retreat')}
           </Button>
         </div>
@@ -897,6 +935,35 @@ export default function BattleModal({
           )}
         </div>
         </div>
+
+        {retreatAsk && tensionFloor === null && (phase === 'battle' || phase === 'intermission') && (
+          <div className="battle-result retreat-ask" role="alertdialog" aria-modal="true" aria-label={t('dungeon.retreatAskTitle')}>
+            <div className="battle-result-panel tension-panel">
+              <h2 className="result-title win">{t('dungeon.retreatAskTitle')}</h2>
+              <p className="tension-subtitle">
+                {retreatAsk.cleared > 0
+                  ? t('dungeon.retreatAskKept', { gold: retreatAsk.gold, items: retreatAsk.items, floors: retreatAsk.cleared })
+                  : t('dungeon.retreatAskKeptNone')}
+              </p>
+              <div className="tension-warning retreat-ask-lost">
+                <p>
+                  {retreatAsk.fighting
+                    ? t('dungeon.retreatAskLostFight', { where: isDepthStage(retreatAsk.stage) ? t('dungeon.depthLabel', { n: depthOfStage(retreatAsk.stage) }) : t('dungeon.floorLabel', { n: retreatAsk.stage }) })
+                    : t('dungeon.retreatAskLostRun')}
+                </p>
+                <p>{entriesLeft > 0 ? t('dungeon.retreatAskEntryFree', { n: entriesLeft }) : t('dungeon.retreatAskEntryPaid', { n: T.dungeon.extraSessionShardCost })}</p>
+              </div>
+              <div className="tension-actions">
+                <Button variant="primary" block onClick={stayInFight}>
+                  {t('dungeon.retreatAskStay')}
+                </Button>
+                <Button variant="danger" block onClick={confirmRetreat}>
+                  {t('dungeon.retreatAskGo')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {tensionFloor !== null && (
           <div className="battle-result tension-window">

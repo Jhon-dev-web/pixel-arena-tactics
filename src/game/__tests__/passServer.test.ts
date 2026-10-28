@@ -11,14 +11,11 @@ import {
   captureBuyIntent,
   clearBuyIntent,
   hasBuyIntent,
-  isTrustedCheckoutUrl,
   PASS_CACHE_KEY,
   PASS_CACHE_MAX_AGE_MS,
-  passPurchaseEnabled,
   pollPassOwned,
   readPassCache,
   resolvePassOwned,
-  startCheckout,
   writePassCache,
 } from '../passServer';
 import { applySelectSkin } from '../seasonItems';
@@ -166,21 +163,6 @@ describe('waiting for the webhook after checkout', () => {
   });
 });
 
-describe('starting a purchase', () => {
-  it('only a Stripe-hosted https Checkout URL is ever navigated to', () => {
-    expect(isTrustedCheckoutUrl('https://checkout.stripe.com/c/pay/cs_test_1')).toBe(true);
-    for (const bad of ['http://checkout.stripe.com/x', 'https://evil.test/x', 'https://checkout.stripe.com.evil.test/x', 'javascript:alert(1)', '', null, 42]) {
-      expect(isTrustedCheckoutUrl(bad)).toBe(false);
-    }
-  });
-  it('is unavailable (no network call) while the sales flag is off, the shipped default', async () => {
-    expect(passPurchaseEnabled).toBe(false);
-    let redirected = false;
-    expect(await startCheckout(() => void (redirected = true))).toEqual({ ok: false, reason: 'unavailable' });
-    expect(redirected).toBe(false);
-  });
-});
-
 describe('the buy link from the website (?comprar=passe)', () => {
   const store = () => {
     const m = new Map<string, string>();
@@ -212,25 +194,20 @@ describe('the buy link from the website (?comprar=passe)', () => {
     expect(s.raw.has(BUY_INTENT_KEY)).toBe(false);
   });
 
-  it('highlights the buy button only with sales on AND an account the server says does not own the Pass; otherwise it just opens the modal', () => {
+  it('highlights the buy button only with the payment on AND an account the server says does not own the Pass; otherwise it just opens the modal', () => {
     expect(buyIntentAction(true, false)).toBe('highlight');
     expect(buyIntentAction(true, true)).toBe('open'); // already owned
     expect(buyIntentAction(true, null)).toBe('open'); // the server could not be asked: never guess
-    expect(buyIntentAction(false, false)).toBe('open'); // VITE_PASS_PURCHASE_ENABLED off: harmless
+    expect(buyIntentAction(false, false)).toBe('open'); // the USDC payment is off (VITE_MARKET_ENABLED): harmless
   });
 
-  it('the link never starts a checkout by itself: the buy-intent effect in App calls neither startCheckout nor purchaseBattlePass, only the modal and the highlight', () => {
+  it('the link never starts a payment by itself: the buy-intent effect in App does not call purchaseBattlePass, only the modal and the highlight', () => {
     const app = readFileSync(resolve(__dirname, '../../App.tsx'), 'utf8');
     const start = app.indexOf('const buyIntentDone = useRef(false);');
     expect(start).toBeGreaterThan(-1);
     const effect = app.slice(start, app.indexOf('}, [userId, passVersion]);', start));
-    expect(effect).not.toMatch(/startCheckout|purchaseBattlePass|create-checkout/);
+    expect(effect).not.toMatch(/purchaseBattlePass|create-checkout|checkout/);
     expect(effect).toContain('openPassView()');
     expect(effect).toContain('setHighlightBuy(');
-  });
-
-  it('with the flag off (the test build) startCheckout stays unavailable, so the link can never reach a payment page', async () => {
-    expect(passPurchaseEnabled).toBe(false);
-    expect(await startCheckout(() => undefined)).toEqual({ ok: false, reason: 'unavailable' });
   });
 });

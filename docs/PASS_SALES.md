@@ -2,7 +2,9 @@
 
 > **Decisão do dono (2026-10-21), substitui a de 2026-10-20 logo abaixo: o Stripe VOLTA.** O Passe é vendido por cartão (Brasil e exterior, Apple Pay / Google Pay e Pix quando o Stripe oferecer na conta) pelo Stripe Checkout, **e** em USDC na Solana para quem já tem carteira. Seguir as seções 1 a 6 deste documento (modo de teste primeiro). O Asaas foi considerado e descartado. **Atualização do mesmo dia:** o dono vai lançar o teste só com carteiras (USDC) para medir quantos cadastros consegue; o Stripe continua pronto e desligado até ele criar a conta.
 
-> **Decisão do dono (2026-10-20): sem Stripe. O Passe é vendido SOMENTE em USDC na rede Solana, pela carteira do jogador.** O caminho de lançamento é o USDC (`VITE_MARKET_ENABLED`, função `pass-crypto`, veja [`MARKET_SOLANA.md`](MARKET_SOLANA.md)); o modal do Passe mostra só a opção USDC e o portal/FAQ falam só em USDC. **Tudo o que este documento diz sobre Stripe (seções 0 a 3 sobre checkout, 5, e os testes de cartão) é OPCIONAL e fica DESLIGADO**: o código (`create-checkout`, `stripe-webhook`, `VITE_PASS_PURCHASE_ENABLED`) continua no repositório, dormente, para o futuro. Não configure Stripe para lançar. As origens `stripe` já existentes em `entitlements` continuam valendo e aparecem no painel como "cartão (legado)".
+> **Decisão do dono (2026-10-20): sem Stripe. O Passe é vendido SOMENTE em USDC na rede Solana, pela carteira do jogador.** O caminho de lançamento é o USDC (`VITE_MARKET_ENABLED`, função `pass-crypto`, veja [`MARKET_SOLANA.md`](MARKET_SOLANA.md)); o modal do Passe mostra só a opção USDC e o portal/FAQ falam só em USDC.
+>
+> **ATUALIZAÇÃO 2026-10-28: o Stripe foi RETIRADO do código, não está mais dormente.** As Edge Functions `create-checkout` e `stripe-webhook`, o caminho de checkout do cliente e a variável `VITE_PASS_PURCHASE_ENABLED` **deixaram de existir**. Tudo o que este documento diz sobre Stripe (seções 0 a 3, 5 e os testes de cartão) é **histórico**, não instrução: seguir aqueles passos hoje não liga nada. O que existia, por que saiu e **como reativar** está em [`PAGAMENTOS_DESCARTADOS.md`](PAGAMENTOS_DESCARTADOS.md). As origens `stripe` já existentes em `entitlements` continuam valendo e aparecem no painel como "cartão (legado)".
 
 AVISO: **nada disto foi aplicado em produção por este trabalho.** Nenhuma migration foi aplicada, nenhuma função foi implantada, nenhum projeto Supabase, Stripe ou Vercel foi tocado, nenhuma chave foi lida ou escrita. O código está no repositório e a venda continua DESLIGADA até você seguir os passos abaixo. Os valores de segredos ficam só nos painéis; aqui há apenas nomes.
 
@@ -56,14 +58,14 @@ Copie o "Signing secret" (`whsec_...`) para o segredo `STRIPE_WEBHOOK_SECRET`.
 ## 6. Variáveis na Vercel
 
 - `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (já descritas em `docs/WEB_LAUNCH.md`), do mesmo projeto Supabase onde as funções estão.
-- `VITE_PASS_PURCHASE_ENABLED`: `true` liga o botão de compra. Ausente ou qualquer outro valor: o botão fica em "Em breve" (padrão). É uma variável de build do Vite: depois de mudar, faça um novo deploy.
+- ~~`VITE_PASS_PURCHASE_ENABLED`~~: **não existe mais** (retirada em 28/10 com o Stripe). Nada no jogo a lê. Hoje quem decide se o botão de compra aparece é `VITE_MARKET_ENABLED`, porque o pagamento é em USDC.
 - Nunca coloque chave do Stripe ou service role em variável `VITE_*`.
 
 A CSP do `vercel.json` não precisou mudar: o checkout é um redirecionamento de página inteira para `checkout.stripe.com` (a CSP não restringe navegação) e a chamada à função `create-checkout` vai para `https://*.supabase.co`, que já estava liberado em `connect-src`. Foi conferido localmente servindo o build com os cabeçalhos do `vercel.json`: a página carrega sem violações no console.
 
 ## 7. Testar em modo de teste
 
-1. Projeto de dev com tudo acima e `VITE_PASS_PURCHASE_ENABLED=true` no ambiente Preview.
+1. Projeto de dev com tudo acima no ambiente Preview. (A variável `VITE_PASS_PURCHASE_ENABLED` não existe mais desde 28/10.)
 2. Entre com uma conta de teste, abra o Passe, clique em comprar. Na página do Stripe use o cartão de teste publicado `4242 4242 4242 4242`, qualquer data futura, qualquer CVC.
 3. Ao voltar o jogo mostra "Confirmando pagamento…" e depois o sucesso; se o webhook demorar, "Ainda processando. Volte em instantes." com botão "Verificar de novo".
 4. Conferir: uma linha em `entitlements` (source `stripe`, status `active`) e o evento em `payment_events` com resultado `granted`. Reenviar o mesmo evento pelo painel do Stripe não cria segunda linha.
@@ -91,7 +93,7 @@ Revogar ou registrar reembolso manual: `update public.entitlements set status = 
 - `APP_ORIGIN` só com o domínio real. Conferir Site URL do Supabase e a CSP no site publicado.
 - Textos legais da seção 3 de `docs/WEB_LAUNCH.md` (reembolso, termos, privacidade) publicados e linkados antes de cobrar de verdade.
 - Uma compra real pequena sua, seguida de reembolso, para ver o ciclo completo em live.
-- Só então ligar `VITE_PASS_PURCHASE_ENABLED=true` em Production.
+- Histórico: aqui se ligava `VITE_PASS_PURCHASE_ENABLED=true` em Production. Essa variável não existe mais desde 28/10; hoje o botão depende de `VITE_MARKET_ENABLED`.
 
 ## 10. O que NÃO foi testado de verdade
 

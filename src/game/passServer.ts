@@ -5,12 +5,9 @@ import { setServerPassStatus } from './entitlements';
 import { withSessionWindow } from './huntSession';
 
 // The web build's side of the Adventurer Pass: the Pass is a row in the server's `entitlements` table (supabase/migrations/0003_entitlements.sql) that only
-// the payment webhook (or the owner, by hand) can write. This file reads it, caches the answer briefly, starts a purchase, and keeps the save in line.
+// the payment webhook (or the owner, by hand) can write. This file reads it, caches the answer briefly, and keeps the save in line. The Pass is bought in USDC (src/components/PassUsdc.tsx); nothing here starts a payment.
 // Season / championship code that must know "does this account own the Pass?" calls fetchServerPassOwned() below (and, on the server, the SQL function
 // arena_private.owns_adventurer_pass); it must never trust save.hasBattlePass.
-
-/** Purchase UI is shipped switched off: until the owner sets VITE_PASS_PURCHASE_ENABLED=true the Pass button stays on "Em breve". */
-export const passPurchaseEnabled: boolean = import.meta.env.VITE_PASS_PURCHASE_ENABLED === 'true';
 
 // ---- Reading the entitlement --------------------------------------------------------------------------------------------------------------
 
@@ -155,7 +152,7 @@ export function applyServerPass(save: SaveData, owned: boolean, now: number): Sa
   return { ...cleaned, huntSession: cleaned.huntSession ? { ...cleaned.huntSession, pass: [] } : cleaned.huntSession };
 }
 
-// ---- Waiting for the webhook after checkout -----------------------------------------------------------------------------------------------
+// ---- Waiting for the payment to be recorded -----------------------------------------------------------------------------------------------
 export const PASS_POLL_INTERVAL_MS = 2000;
 export const PASS_POLL_MAX_MS = 40_000;
 
@@ -179,41 +176,11 @@ export async function pollPassOwned(
   return opts.isCancelled?.() ? 'cancelled' : 'pending';
 }
 
-// ---- Starting a purchase ------------------------------------------------------------------------------------------------------------------
-export type CheckoutStart = { ok: true } | { ok: false; reason: 'unavailable' | 'already_owned' | 'rate_limited' | 'failed' };
-
-/** Only a Stripe-hosted Checkout page may be navigated to: the URL comes back from our function, but a top-level redirect is checked anyway. */
-export function isTrustedCheckoutUrl(url: unknown): url is string {
-  if (typeof url !== 'string') return false;
-  try {
-    const u = new URL(url);
-    return u.protocol === 'https:' && u.hostname === 'checkout.stripe.com';
-  } catch {
-    return false;
-  }
-}
-
-/** Calls the create-checkout function (the user's JWT is attached by supabase-js; no user id is sent) and redirects the browser to Stripe. */
-export async function startCheckout(redirect: (url: string) => void = (url) => window.location.assign(url)): Promise<CheckoutStart> {
-  if (!supabase || !passPurchaseEnabled) return { ok: false, reason: 'unavailable' };
-  const { data, error } = await supabase.functions.invoke('create-checkout', { method: 'POST' });
-  if (error) {
-    const status = (error as { context?: { status?: number } }).context?.status;
-    if (status === 409) return { ok: false, reason: 'already_owned' };
-    if (status === 429) return { ok: false, reason: 'rate_limited' };
-    return { ok: false, reason: status === 503 ? 'unavailable' : 'failed' };
-  }
-  const url = (data as { url?: unknown } | null)?.url;
-  if (!isTrustedCheckoutUrl(url)) return { ok: false, reason: 'failed' };
-  redirect(url);
-  return { ok: true };
-}
-
 // ---- The "buy the Pass" link from the website ---------------------------------------------------------------------------------------------
-// The public site (portal/) links to `<play url>/?comprar=passe`. The site cannot run the checkout (it needs the player's login), so the game catches the marker as
+// The public site (portal/) links to `<play url>/?comprar=passe`. The site cannot run the payment (it needs the player's login and wallet), so the game catches the marker as
 // early as possible (main.tsx), takes it out of the address bar and remembers it for this tab (sessionStorage, 30 minutes) so it survives the login screen and an
-// e-mail-confirmation reload. Once signed in, App opens the Pass modal and, only when VITE_PASS_PURCHASE_ENABLED is on and the server says the account does not own
-// the Pass, HIGHLIGHTS the buy button. It never starts the checkout by itself: a link must not lead to a payment page without a click; the player presses the button.
+// e-mail-confirmation reload. Once signed in, App opens the Pass modal and, only when the USDC payment is on (VITE_MARKET_ENABLED) and the server says the account does not own
+// the Pass, HIGHLIGHTS the buy button. It never starts a payment by itself: a link must not lead to a payment without a tap; the player presses the button.
 export const BUY_INTENT_PARAM = 'comprar';
 export const BUY_INTENT_VALUE = 'passe';
 export const BUY_INTENT_KEY = 'arena.buyIntent.v1';
@@ -279,32 +246,9 @@ export function clearBuyIntent(storage: SessionStorageLike | null = defaultSessi
 }
 
 /**
- * What to do once the player is signed in on the web build with a buy intent. The modal always opens; 'highlight' = also draw attention to the buy button (sales on and the
- * server says the account does not own the Pass). NEVER a checkout: the player clicks. `owned` is the SERVER's answer (null = it could not be asked: never guess).
+ * What to do once the player is signed in on the web build with a buy intent. The modal always opens; 'highlight' = also draw attention to the buy button (payment on and the
+ * server says the account does not own the Pass). NEVER a payment: the player taps. `owned` is the SERVER's answer (null = it could not be asked: never guess).
  */
-export function buyIntentAction(purchaseEnabled: boolean, owned: boolean | null): 'open' | 'highlight' {
-  return purchaseEnabled && owned === false ? 'highlight' : 'open';
-}
-
-// ---- Coming back from checkout ------------------------------------------------------------------------------------------------------------
-export type CheckoutReturn = 'success' | 'cancel' | null;
-let returnTaken = false;
-let returnValue: CheckoutReturn = null;
-
-/** Reads the ?pass=success|cancel marker the checkout success/cancel URLs carry, once per page load, and removes it from the address bar. */
-export function takeCheckoutReturn(): CheckoutReturn {
-  if (returnTaken || typeof window === 'undefined') return returnValue;
-  returnTaken = true;
-  try {
-    const url = new URL(window.location.href);
-    const marker = url.searchParams.get('pass');
-    if (marker === 'success' || marker === 'cancel') {
-      returnValue = marker;
-      url.searchParams.delete('pass');
-      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
-    }
-  } catch {
-    /* no URL access: no marker */
-  }
-  return returnValue;
+export function buyIntentAction(paymentOn: boolean, owned: boolean | null): 'open' | 'highlight' {
+  return paymentOn && owned === false ? 'highlight' : 'open';
 }

@@ -235,7 +235,7 @@ export default function DesktopHome({
                     {ready.count > 0 && <span className="hm-count">{ready.count}</span>}
                   </Button>
                 ) : (
-                  <Button variant="secondary" size="sm" onClick={onOpenPass} title={t('claimAll.lockedHint')}>
+                  <Button variant="secondary" size="sm" disabled aria-describedby="hm-claim-lock" title={t('claimAll.lockedHint')}>
                     <img className="hm-lock" src="/assets/icons/garden_plot_locked.png" alt="" />
                     {t('claimAll.button')}
                     <Chip tone="gold">{t('claimAll.passBadge')}</Chip>
@@ -243,6 +243,14 @@ export default function DesktopHome({
                 )
               }
             >
+              {!owner && (
+                <p className="hm-claim-lock" id="hm-claim-lock">
+                  <span>{t('claimAll.lockedLine')}</span>
+                  <Button size="sm" onClick={onOpenPass}>
+                    {t('claimAll.seePass')}
+                  </Button>
+                </p>
+              )}
               {(step.id !== 'running' || !anyActivity) && (
                 <div className="hm-next">
                   <span className="hm-next-label">{t('nextStep.label')}</span>

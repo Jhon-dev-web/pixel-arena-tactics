@@ -25,13 +25,17 @@ export default function HuntRewardModal({
   save,
   reward,
   subLevels,
+  canContinue,
   onClaim,
   onOpenInventory,
 }: {
   save: SaveData;
   reward: PendingHuntReward;
   subLevels: number;
-  onClaim: () => void;
+  /** False when the session was ended to start something else: the only answer is then to collect. */
+  canContinue: boolean;
+  /** `keepHunting`: collect and start the same zone and depth again; false = collect and leave the hunt ended. */
+  onClaim: (keepHunting: boolean) => void;
   onOpenInventory: () => void;
 }) {
   const { timeMs, pendingMs, gold, xp, ceilingSubLevel, startCeiling, promotionWins, promotionRequired, lost } = reward;
@@ -71,9 +75,20 @@ export default function HuntRewardModal({
         ) : undefined
       }
       footer={
-        <Button variant="primary" block onClick={onClaim}>
-          {t(held ? 'hunting.claimHeld' : 'hunting.claimAndExit')}
-        </Button>
+        held || !canContinue ? (
+          <Button variant="primary" block onClick={() => onClaim(false)}>
+            {t(held ? 'hunting.claimHeld' : 'hunting.claim')}
+          </Button>
+        ) : (
+          <>
+            <Button variant="primary" block onClick={() => onClaim(true)}>
+              {t('hunting.claimAndContinue')}
+            </Button>
+            <Button block onClick={() => onClaim(false)}>
+              {t('hunting.claimAndStop')}
+            </Button>
+          </>
+        )
       }
     >
       {isSession && (

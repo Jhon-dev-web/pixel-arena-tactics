@@ -208,7 +208,8 @@ describe('the banner and the notices', () => {
     expect(read('src/components/MarketScreen.tsx')).toMatch(/ops\.marketPaused[\s\S]*ops-market-paused|ops-market-paused[\s\S]*ops\.marketPaused/);
     const pass = read('src/components/BattlePassModal.tsx');
     expect(pass).toContain('const salesPaused = server && ops.passSalesPaused;');
-    expect(pass).toMatch(/const canBuy = \(server \? passPurchaseEnabled : ADVENTURER_PASS_TESTABLE\) && !salesPaused;/);
+    expect(pass).toContain('data-testid="ops-pass-paused"');
+    expect(pass).toContain("t('ops.passSalesPaused')");
     expect(read('src/components/SeasonRankingPanel.tsx')).toContain('ops.scoringPaused');
   });
 

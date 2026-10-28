@@ -3,9 +3,8 @@ import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { battlePassXpForLevel, MAX_BATTLE_PASS_LEVEL, SaveData } from '../game/engine';
 import { BATTLE_PASS_TRACK, BattlePassReward } from '../game/battlepass';
-import { ADVENTURER_PASS_TESTABLE, expiredPassSeason, getPassSeasonInfo, isServerPassSource, ownsAdventurerPass } from '../game/entitlements';
+import { ADVENTURER_PASS_TESTABLE, expiredPassSeason, isServerPassSource, ownsAdventurerPass } from '../game/entitlements';
 import { usePassEntitlementVersion } from '../game/usePassEntitlement';
-import { passPurchaseEnabled } from '../game/passServer';
 import { useOpsState } from '../lib/opsStatus';
 import { seasonNumber, seasonRemainingMs } from '../game/seasons';
 import { useLeagueResetAt } from '../game/leagueReset';
@@ -33,9 +32,8 @@ const FREE_PASS_INVITES = DEFAULT_REFERRAL_TIERS.find((tier) => tier.kind === 'p
 // The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; a vertical list on a phone),
 // the season's exclusives generated from the track data, and the footer with "claim all" and (for non-owners) the purchase button.
 
-// Where the web purchase stands: idle -> starting (calling create-checkout, then the browser leaves for the payment page) -> back on the site: confirming (polling the
-// server) -> confirmed, or pending ("still processing, come back in a moment").
-export type PassFlow = 'idle' | 'starting' | 'confirming' | 'confirmed' | 'pending';
+// Where the web purchase stands: idle -> after a payment: confirming (polling the server) -> confirmed, or pending ("still processing, come back in a moment").
+export type PassFlow = 'idle' | 'confirming' | 'confirmed' | 'pending';
 
 // Levels whose rewards are the season's headline items: bigger cards, art at 64 px.
 const FEATURED_LEVELS = new Set([8, 10, 15, 18, 20, 27, 30]);
@@ -223,7 +221,7 @@ export default function BattlePassView({
   highlightBuy?: boolean;
   passFlow: PassFlow;
   onRecheck: () => void;
-  /** A second way to pay, rendered under the main buy button (an extra payment option of the web build; nothing in the desktop build). */
+  /** The way to pay on the web build (App hands it in): rendered under the main buy button, and when present it is the only buy control. Nothing in the desktop build. */
   buyExtra?: ReactNode;
   onClaim: (level: number, track: 'free' | 'premium') => void;
   onClaimAll: () => { claimed: number; blocked: number };
@@ -234,26 +232,17 @@ export default function BattlePassView({
   const owner = ownsAdventurerPass(save);
   // Until the League opens the game is in the pre-season (an open test): the hero shows that, not a season countdown that has no meaning yet.
   const leagueResetAt = useLeagueResetAt();
-  // Web build (server mode): the button starts a checkout once the owner switches sales on (VITE_PASS_PURCHASE_ENABLED), "Em breve" until then. Offline/desktop: as before.
+  // Web build (server mode): the Pass is paid through buyExtra; without it the main button only says "Em breve". Offline/desktop: as before.
   const server = isServerPassSource();
   const preseason = leagueResetAt === null || (leagueResetAt === undefined && !server);
   const ops = useOpsState();
-  const salesPaused = server && ops.passSalesPaused; // the owner / watchdog paused Pass sales: no checkout is started, and the player is told why
-  const canBuy = (server ? passPurchaseEnabled : ADVENTURER_PASS_TESTABLE) && !salesPaused;
-  // The Pass belongs to a season: the buy button names the one being bought, and a Pass that has ended says so (perks off; what it already gave stays).
-  const buySeason = server ? getPassSeasonInfo().currentSeason : null;
+  const salesPaused = server && ops.passSalesPaused; // the owner / watchdog paused Pass sales: the player is told why
+  const canBuy = !server && ADVENTURER_PASS_TESTABLE;
+  // The Pass belongs to a season: a Pass that has ended says so (perks off; what it already gave stays).
   const expired = server ? expiredPassSeason() : null;
-  const buyLabel = server
-    ? passPurchaseEnabled
-      ? passFlow === 'starting'
-        ? t('battlePass.opening')
-        : buySeason !== null
-          ? t('battlePass.buySeason', { n: buySeason })
-          : t('battlePass.buy')
-      : t('battlePass.comingSoonWeb')
-    : t(ADVENTURER_PASS_TESTABLE ? 'battlePass.activateTest' : 'battlePass.comingSoon');
-  // The Pass is sold through the extra option only: on the web build with it present and the card checkout off, it is the only buy control (no card button).
-  const showMainBuy = !server || passPurchaseEnabled || !buyExtra;
+  const buyLabel = server ? t('battlePass.comingSoonWeb') : t(ADVENTURER_PASS_TESTABLE ? 'battlePass.activateTest' : 'battlePass.comingSoon');
+  // The Pass is sold through that one option only: on the web build with it present it is the only buy control (no main button).
+  const showMainBuy = !server || !buyExtra;
   const now = Date.now();
   // The season shown is never behind the one the save settled (a clock set back keeps the stored one).
   const season = Math.max(save.passSeason, seasonNumber(now));
@@ -426,7 +415,7 @@ export default function BattlePassView({
               className={`pa-buy-btn${highlightBuy ? ' pa-buy-highlight' : ''}`}
               data-highlight={highlightBuy ? 'true' : undefined}
               onClick={onActivate}
-              disabled={!canBuy || passFlow === 'starting' || passFlow === 'confirming'}
+              disabled={!canBuy || passFlow === 'confirming'}
             >
               {buyLabel}
             </Button>
@@ -452,7 +441,6 @@ export default function BattlePassView({
       {!owner && (
         <p className="pa-buy-blurbs">
           <span>{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
-          {server && passPurchaseEnabled && !buyExtra && <span>{t('battlePass.priceOnCheckout')}</span>}
         </p>
       )}
     </Panel>

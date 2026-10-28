@@ -95,13 +95,11 @@ describe('what the Pass already gave stays when it ends', () => {
 });
 
 describe('the words', () => {
-  it('the expired message and the buy label name the seasons (pt and en)', () => {
+  it('the expired message names the seasons (pt and en)', () => {
     const pt = ptJson.battlePass as Record<string, string>;
     const en = enJson.battlePass as Record<string, string>;
     expect(pt.expired.replace('{ended}', '1').replace('{n}', '2')).toBe('Seu Passe da Temporada 1 terminou. Compre o Passe da Temporada 2 para continuar.');
     expect(en.expired).toContain('{ended}');
     expect(en.expired).toContain('{n}');
-    expect(pt.buySeason).toContain('{n}');
-    expect(en.buySeason).toContain('{n}');
   });
 });
