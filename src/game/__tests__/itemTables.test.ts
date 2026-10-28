@@ -56,7 +56,7 @@ describe('items/tables.ts is exactly what `npm run item:tables` would write now'
 
   it('the rolls per hour the unique chances are sized for stay under the most any build can reach', () => {
     for (const z of tables.HUNT_ZONES) {
-      expect(z.rollsPerHour, z.id).toBeGreaterThan(0);
+      if (z.uniques.length > 0) expect(z.rollsPerHour, z.id).toBeGreaterThan(0); // zone 5 has no uniques, so no rolls are sized for it
       expect(z.rollsPerHour, z.id).toBeLessThanOrEqual(tables.MAX_ROLLS_PER_HOUR);
       expect(z.unlockFloor).toBe(HUNTING_ZONES.find((g) => g.id === z.id)?.unlockFloor);
     }

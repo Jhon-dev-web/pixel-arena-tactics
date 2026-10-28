@@ -43,14 +43,25 @@ export const BOUNDS = {
   // ---- XP --------------------------------------------------------------------------------------------------------------------------------------
   /**
    * XP per server hour, THEORETICAL, at the end of the game (floor 100). Since the League (Rodada 20) HUNTING IS THE ONLY SOURCE of hero XP (no Dungeon, no delivery order, no instant
-   * potion), so this is one product. Recomputed by season:bounds = 23,694 since Rodada 31 (23,223 after Rodada 26, 22,375 after Rodada 24, 21,476 after Rodada 22; 25,000 kept: the server factor below still counts a 5% Relic bonus
-   * that no item carries since Rodada 19, as a margin); xpPerHourAt(floor) below scales it with the floor:
-   *   best zone 8,978 xp/h (Rodada 31: XP is paid PER KILL, so the hour is no longer a zone number: it is the zone's reference-pace rate xpPerKill x xpRefKph = 7,482 x the pace cap 1.2 that no build passes, huntEconomy.ts xpPaceFractionForFight; it was 8,800 by fight time, 13,000 before Rodada 22, 10,000 before Rodada 24 and 8,750 before Rodada 26) x 1.45 (the last zone pays +5% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels; it was +4.5% / 1.405 and +2% / 1.18) x deep depth 1.3
-   *   x (1 + 12% bonuses: Aprendiz Veloz 3 ranks x 4%; +5% for a Season Relic that carried XP, margin) x 1.25 (the Knowledge Elixir, tunables consumables.knowledgeXpPct, running the whole
-   *   time: the best and only potion; the Pass adds no XP).
-   * It used to be 60,000: 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, which are gone.
+   * potion), so this is one product. xpPerHourAt(floor) below scales it with the floor.
+   *
+   * DERIVED, NOT CHOSEN. This is a PICTURE OF THE CONTENT, not a security knob: it answers "the most an honest hero can earn in an hour". Holding it below what the game really pays does not
+   * make the server safer — it makes the server REFUSE LEGITIMATE PROGRESS, which is the worst failure an anti-cheat bound can have. So it goes up whenever the content pays more.
+   *
+   * Current derivation (classes reform, phase 7): zone 5 (abyss_throne) is the best zone, xpPerKill 70 x xpRefKph 140 = 9,800 at the reference pace.
+   *   9,800 x 1.2 (pace cap, huntEconomy.ts xpPaceFractionForFight, which no build passes) x 1.45 (the zone pays +5% a sub-level above 1, huntingZones.ts xpPerSubLevel, 9 sub-levels)
+   *   x 1.3 (deep depth) x 1.12 (bonuses: Aprendiz Veloz 3 ranks x 4%, plus 5% for a Season Relic that carried XP, kept as margin) x 1.25 (the Knowledge Elixir running the whole time,
+   *   tunables consumables.knowledgeXpPct: the best and only potion; the Pass adds no XP) = 31,034.64, x 1.05 explicit margin = 32,586.4, rounded up to 32,600.
+   * With the old 25,000 the server would have refused the progress of anyone who moved to zone 5.
+   *
+   * It MUST be recomputed (npm run season:bounds; seasonProgress.test.ts fails when it is stale) every time a zone is added or the XP of a zone (xpPerKill, xpRefKph, xpPerSubLevel) changes.
+   *
+   * HISTORY (all superseded; kept so the shape of past changes is readable): 25,000 held from Rodada 19 to the classes reform, while season:bounds read 23,694 after Rodada 31, 23,223 after
+   * Rodada 26, 22,375 after Rodada 24 and 21,476 after Rodada 22 — the gap was margin. The best zone was then zone 4 at 7,482 x 1.2 = 8,978 (8,800 by fight time before Rodada 31; 13,000
+   * before Rodada 22, 10,000 before Rodada 24, 8,750 before Rodada 26), and the sub-level bonus was +4.5% / 1.405 and +2% / 1.18 before it was +5%. Before the League it was 60,000:
+   * 19,773 of Hunting plus 5,391 of delivery orders and 34,325 of Dungeon runs, both of which are gone.
    */
-  xpPerHour: 25_000,
+  xpPerHour: 32_600,
   // ---- League events (Rodada 22: src/game/leagueEvents.ts; the calendar is EVENT_SLOTS) -----------------------------------------------------------------------------------
   /** While a hero event (or the Corrida Final) runs, Hunting XP may be this much higher than the rate above: leagueEvents.ts EVENT_XP_CAP, all the hero-event bonuses together never pass it. */
   eventHeroBonus: 0.15,

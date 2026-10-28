@@ -1,0 +1,20 @@
+import { GearItem, weaponWeight } from '../game/gear';
+import { AffinityClass, AffinityWeight, CLASS_OF_WEIGHT } from '../game/affinity';
+
+// The Forge's class filter (classes reform, phase 7): a view over the recipe list, never a rule. 'all' is the default and always on offer, because mixing the three lines is legitimate in this game.
+export type ForgeClassFilter = 'all' | AffinityClass;
+export const FORGE_CLASS_FILTERS: ForgeClassFilter[] = ['all', 'warrior', 'archer', 'mage'];
+
+// The class a piece belongs to by what it is made of: a missing `weight` means plate, a missing `line` means sword (both are the warrior's), the bow / crossbow are the archer's and the staff / scepter the mage's.
+// The ring and the relic carry no weight and no class: they belong to every filter.
+export function forgeClassOf(g: GearItem): AffinityClass | null {
+  if (g.slot === 'ring' || g.slot === 'relic') return null;
+  const weight: AffinityWeight = g.slot === 'weapon' ? weaponWeight(g) ?? 'plate' : g.weight ?? 'plate';
+  return CLASS_OF_WEIGHT[weight];
+}
+
+export function matchesForgeClass(g: GearItem, filter: ForgeClassFilter): boolean {
+  if (filter === 'all') return true;
+  const cls = forgeClassOf(g);
+  return cls === null || cls === filter;
+}

@@ -76,6 +76,16 @@ export const HUNT_CEILING: Readonly<Record<string, Readonly<Record<string, numbe
     "corrupted_crystal": 11.695728830385605,
     "abyssal_marrow": 22.080144087262802,
     "blood_heart": 4.6341567063792
+  },
+  "abyss_throne": {
+    "bone_fragment": 64.2989886,
+    "concentrated_blood": 60.218574783444005,
+    "corrupted_crystal": 11.695728830385605,
+    "abyssal_marrow": 22.080144087262802,
+    "blood_heart": 4.6341567063792,
+    "beast_sinew": 16.07474715,
+    "feather": 10.7164981,
+    "arcane_dust": 6.690952753716001
   }
 };
 

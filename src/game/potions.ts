@@ -16,10 +16,14 @@ export interface PotionRecipe {
 
 export const potionRecipeKey = (r: PotionRecipe): string => r.key ?? r.id;
 
-// The best Hunting zone the hero has opened (Dungeon floor AND hero level), 1..4 (the order of HUNTING_ZONES is the order they unlock in).
+// The Knowledge Elixir has one recipe per zone of the first four; zone 5 (phase 7 of the classes reform) has none of its own, so a hero there keeps making the tier-4 recipe instead of losing the elixir.
+// The count is limited ON PURPOSE to the first four zones: the elixir has recipes only up to T4 (see POTION recipes below). Do not widen it without adding the T5 recipe (knowledgeElixir.test.ts guards it).
+const KNOWLEDGE_ELIXIR_TIERS = 4;
+
+// The best Hunting zone the hero has opened (Dungeon floor AND hero level), 1..4 (the order of HUNTING_ZONES is the order they unlock in; a fifth zone counts as the fourth here).
 export function bestZoneTier(highestDungeonFloor: number, heroLevel: number): number {
   let tier = 1;
-  HUNTING_ZONES.forEach((z, i) => {
+  HUNTING_ZONES.slice(0, KNOWLEDGE_ELIXIR_TIERS).forEach((z, i) => {
     if (isZoneOpen(z, highestDungeonFloor, heroLevel)) tier = i + 1;
   });
   return tier;

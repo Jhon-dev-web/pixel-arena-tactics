@@ -1661,7 +1661,8 @@ body {
 }
 /* the darker creatures need a faint rim on the dark maps (rift, abyss) to stay readable */
 .hunt-stage.zone-demon_rift .hunt-side.enemy .hunt-frame,
-.hunt-stage.zone-blood_abyss .hunt-side.enemy .hunt-frame {
+.hunt-stage.zone-blood_abyss .hunt-side.enemy .hunt-frame,
+.hunt-stage.zone-abyss_throne .hunt-side.enemy .hunt-frame {
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.22));
 }
 .hunt-frame.flip {

@@ -120,7 +120,7 @@ describe('the pace fraction: kills pay in full up to the zone\'s reference pace,
 
   it('the zones keep the rate they paid by fight time: xpPerKill x xpRefKph is 1,750 / 2,900 / 6,000 / 8,800 an hour at the reference pace (within the round-off of the per-kill number), and every zone has both numbers', () => {
     const was = [1750, 2900, 6000, 8800];
-    HUNTING_ZONES.forEach((z, i) => {
+    HUNTING_ZONES.slice(0, 4).forEach((z, i) => {
       expect(z.xpPerKill).toBeGreaterThan(0);
       expect(z.xpRefKph).toBeGreaterThan(0);
       const ratio = zoneReferenceXpPerHour(z) / was[i];
@@ -128,5 +128,10 @@ describe('the pace fraction: kills pay in full up to the zone\'s reference pace,
       expect(ratio, z.id).toBeLessThan(1.02);
     });
     expect(T.hunting.xpPaceCap).toBeGreaterThanOrEqual(1);
+    // zone 5 (classes reform, phase 7) never paid by fight time: it has both numbers and pays more an hour than the zone before it
+    const [abyss, throne] = [HUNTING_ZONES[3], HUNTING_ZONES[4]];
+    expect(throne.xpPerKill).toBeGreaterThan(0);
+    expect(throne.xpRefKph).toBeGreaterThan(0);
+    expect(zoneReferenceXpPerHour(throne)).toBeGreaterThan(zoneReferenceXpPerHour(abyss));
   });
 });

@@ -43,7 +43,7 @@ describe('Round 17: the late zones drop what the late game can use', () => {
     // ownStream marks what was added after these zones were set (classes reform, phase 1): the test is about the original three
     expect(getHuntingZone('demon_glade')!.drops.filter((d) => !d.ownStream).map((d) => d.chance)).toEqual([0.25, 0.08, 0.007]);
     expect(getHuntingZone('blood_marsh')!.drops.filter((d) => !d.ownStream).map((d) => d.chance)).toEqual([0.28, 0.09, 0.0105]);
-    expect(HUNTING_ZONES.map((z) => Math.round(zoneReferenceXpPerHour(z)))).toEqual([1491, 2460, 5100, 7482]); // Rodada 31: XP is per kill now (xpPerKill x the reference pace); since Rodada 31 an hour at the reference pace pays 85% of what the zone paid by fight time (1,750 / 2,900 / 6,000 / 8,800): the pace cap (1.2) and the faster-than-reference heroes bring the average back,  // the last zone was 13,000 until Rodada 22, 10,000 until Rodada 24 and 8,750 until Rodada 26 (its sub-levels pay up to +45% now)
+    expect(HUNTING_ZONES.slice(0, 4).map((z) => Math.round(zoneReferenceXpPerHour(z)))).toEqual([1491, 2460, 5100, 7482]); // Rodada 31: XP is per kill now (xpPerKill x the reference pace); since Rodada 31 an hour at the reference pace pays 85% of what the zone paid by fight time (1,750 / 2,900 / 6,000 / 8,800): the pace cap (1.2) and the faster-than-reference heroes bring the average back,  // the last zone was 13,000 until Rodada 22, 10,000 until Rodada 24 and 8,750 until Rodada 26 (its sub-levels pay up to +45% now)
   });
 
   it('the hours of hunting of a tier 5 set, a tier 6 set, +0 -> +8, +8 -> +12 and one Lapidar stay within 10% of round 16', () => {

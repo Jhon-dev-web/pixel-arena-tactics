@@ -49,6 +49,7 @@ import { QtyPicker, CraftJobPanel } from './CraftQty';
 import { clampCraftQty, craftBlock, planBatchIngredients } from '../game/craftJob';
 import { ChipRow, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout, SecondaryButton, Tabs } from './ui';
 import type { TabItem } from './ui';
+import { FORGE_CLASS_FILTERS, ForgeClassFilter, matchesForgeClass } from './forgeFilter';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -107,7 +108,8 @@ const CATEGORY_LABEL_KEY: Record<ForgeCategory, string> = {
   relic: 'relicsSection',
 };
 const categoryOf = (g: GearItem): ForgeCategory => (g.line === 'axe' ? 'axe' : (g.slot as ForgeCategory));
-const forgeRecipes = (cat: ForgeCategory): GearItem[] => gearBySlot(cat === 'axe' ? 'weapon' : cat).filter((g) => g.recipe && !g.unique && categoryOf(g) === cat);
+const forgeRecipes = (cat: ForgeCategory, classFilter: ForgeClassFilter = 'all'): GearItem[] =>
+  gearBySlot(cat === 'axe' ? 'weapon' : cat).filter((g) => g.recipe && !g.unique && categoryOf(g) === cat && matchesForgeClass(g, classFilter));
 
 // The brief result line of a forge / refine, glowing in the colour of its rarity (round11.css .reveal); `id` restarts the animation for every new result.
 export interface ForgeReveal {
@@ -155,6 +157,13 @@ export default function ForgeView({
   const focusItem = focusItemId ? getGear(focusItemId) : undefined;
   const [tab, setTab] = useState<ForgeTab>(initialTab && allowedTabs.includes(initialTab) ? initialTab : allowedTabs[0] ?? 'forge');
   const [forgeCategory, setForgeCategoryRaw] = useState<ForgeCategory>(() => (focusItem && FORGE_CATEGORIES.includes(categoryOf(focusItem)) ? categoryOf(focusItem) : 'weapon'));
+  // The class filter (Guerreiro / Arqueiro / Mago, or all): a view over every category, 'all' by default; a change drops the picked recipe like a category change does.
+  const [classFilter, setClassFilterRaw] = useState<ForgeClassFilter>('all');
+  const setClassFilter = (f: ForgeClassFilter) => {
+    setClassFilterRaw(f);
+    setSelectedId(null);
+    setQty(1);
+  };
   // a category change drops the picked recipe: the panel falls back to the first of the new category
   const setForgeCategory = (cat: ForgeCategory) => {
     setForgeCategoryRaw(cat);
@@ -244,7 +253,7 @@ export default function ForgeView({
 
   // The recipe the craft panel shows: the picked one, else (a category change, first open) the first of the category; `focusItemId` (from "Usar em...") starts on its recipe.
   const phone = useIsPhone();
-  const categoryItems = forgeRecipes(forgeCategory);
+  const categoryItems = forgeRecipes(forgeCategory, classFilter);
   const current = categoryItems.find((i) => i.id === selectedId) ?? categoryItems[0] ?? null;
   const pickRecipe = (id: string) => {
     setSelectedId(id);
@@ -415,12 +424,19 @@ export default function ForgeView({
                     label={t('forge.forgeTab')}
                     value={forgeCategory}
                     onChange={setForgeCategory}
-                    items={FORGE_CATEGORIES.map((cat) => ({ id: cat, label: `${t(`forge.${CATEGORY_LABEL_KEY[cat]}`)} (${forgeRecipes(cat).length})` }))}
+                    items={FORGE_CATEGORIES.map((cat) => ({ id: cat, label: `${t(`forge.${CATEGORY_LABEL_KEY[cat]}`)} (${forgeRecipes(cat, classFilter).length})` }))}
+                  />
+                  <ChipRow<ForgeClassFilter>
+                    className="fg-categories fg-classes"
+                    label={t('forge.classFilter')}
+                    value={classFilter}
+                    onChange={setClassFilter}
+                    items={FORGE_CLASS_FILTERS.map((f) => ({ id: f, label: t(`forge.class_${f}`) }))}
                   />
                   <span className="fg-space">{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
                 </div>
                 {categoryItems.length === 0 ? (
-                  <span className="socket-none">{t('forge.noCategoryRecipes')}</span>
+                  <span className="socket-none">{t(classFilter === 'all' ? 'forge.noCategoryRecipes' : 'forge.noClassRecipes')}</span>
                 ) : (
                   <div className="fg-recipes">
                     {categoryItems.map((item) => {

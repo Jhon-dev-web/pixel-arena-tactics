@@ -22,10 +22,10 @@ describe('balance decisions (docs/BALANCE_CHANGES.md)', () => {
 
   it('the first two zones drop three material types, the two late ones five (their own uncommon + rare on top of the old three), plus the ownStream drops of the classes reform phase 1 in the first two zones only (sinew in the glade; feather and arcane dust in the marsh)', () => {
     const count = Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, z.drops.length]));
-    expect(count).toEqual({ demon_glade: 4, blood_marsh: 5, demon_rift: 5, blood_abyss: 5 });
+    expect(count).toEqual({ demon_glade: 4, blood_marsh: 5, demon_rift: 5, blood_abyss: 5, abyss_throne: 8 }); // zone 5 (phase 7): the abyss's five plus the three class materials, all ownStream
     // the original drops (three per zone, five for the late ones) are still there, untouched
     const original = Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, z.drops.filter((d) => !['beast_sinew', 'feather', 'arcane_dust'].includes(d.material)).length]));
-    expect(original).toEqual({ demon_glade: 3, blood_marsh: 3, demon_rift: 5, blood_abyss: 5 });
+    expect(original).toEqual({ demon_glade: 3, blood_marsh: 3, demon_rift: 5, blood_abyss: 5, abyss_throne: 5 });
   });
 });
 

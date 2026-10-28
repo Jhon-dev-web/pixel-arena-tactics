@@ -121,6 +121,14 @@ describe('the recipe: one per Hunting zone tier, only the best open zone is list
     expect(recipes.map((r) => r.cost)).toEqual([77, 135, 192, 250]);
   });
 
+  it('a level 75 hero in zone 5 keeps the Knowledge Elixir: zone 5 counts as tier 4 because the elixir has recipes only up to T4', () => {
+    expect(bestZoneTier(90, 75)).toBe(4);
+    expect(bestZoneTier(100, 100)).toBe(4);
+    const t4 = recipes.find((r) => r.zoneTier === 4)!;
+    expect(potionRecipeInTier(t4, 90, 75)).toBe(true);
+    expect(recipes.filter((r) => potionRecipeInTier(r, 90, 75))).toHaveLength(1);
+  });
+
   it('bestZoneTier follows the zone unlock floors, and a recipe of another tier is neither listed nor craftable', () => {
     expect([0, 25, 26, 50, 51, 75, 76, 100].map((floor) => bestZoneTier(floor, 100))).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
     // Rodada 22: zone 3 also asks hero level 40 and zone 4 level 60

@@ -2,13 +2,15 @@ import { DropRarity, MaterialId } from './materials';
 import T from './tunables';
 import type { HeroSheet } from './sprites';
 
-export type HuntingEnemyId = 'demon' | 'blood_monster' | 'rift_fiend' | 'blood_abomination';
+export type HuntingEnemyId = 'demon' | 'blood_monster' | 'rift_fiend' | 'blood_abomination' | 'abyss_sovereign';
 
 const HUNTING_ENEMY_SPRITES: Record<HuntingEnemyId, string> = {
   demon: '/assets/monsters/demon.png',
   blood_monster: '/assets/monsters/blood_monster.png',
   rift_fiend: '/assets/monsters/rift_fiend.png',
   blood_abomination: '/assets/monsters/blood_abomination.png',
+  // Zone 5 (classes & equipment, phase 7) has no sheet of its own yet: the sovereign wears the abomination's until its art is drawn (a new PNG and a new row in HUNTING_ENEMY_ART are all it takes).
+  abyss_sovereign: '/assets/monsters/blood_abomination.png',
 };
 
 export function huntingEnemySpriteUrl(id: HuntingEnemyId): string {
@@ -21,6 +23,7 @@ const HUNTING_ENEMY_NAME_KEYS: Record<HuntingEnemyId, string> = {
   blood_monster: 'huntBloodMonster',
   rift_fiend: 'huntRiftFiend',
   blood_abomination: 'huntBloodAbomination',
+  abyss_sovereign: 'huntAbyssSovereign',
 };
 
 export function huntingEnemyNameKey(id: HuntingEnemyId): string {
@@ -50,6 +53,7 @@ const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
   blood_monster: { cell: 172, box: [57, 28, 112, 146], lie: 146, height: 0.95 },
   rift_fiend: { cell: 176, box: [57, 26, 106, 149], lie: 147, height: 1.1 },
   blood_abomination: { cell: 172, box: [58, 25, 111, 146], lie: 146, height: 1.15 },
+  abyss_sovereign: { cell: 172, box: [58, 25, 111, 146], lie: 146, height: 1.25 },
 };
 
 // The hero's sheets, same measurement (frame 0 of the idle row), one entry per HeroSheet (sprites.ts). Every sheet stands on y = 251..253 (feet within 2 sheet pixels of each
@@ -81,8 +85,10 @@ export function artGeometry(art: SheetArt): { cx: number; cy: number; size: numb
 }
 
 // Map background of a zone's hunt scene (assets.json `background.hunt_<zone id>`, 400x144; the walkable ground is its dark bottom band).
+// A zone without a map of its own borrows another zone's strip (zone 5 uses the abyss one until its own is drawn).
+const ZONE_BACKGROUND_SOURCE: Record<string, string> = { abyss_throne: 'blood_abyss' };
 export function huntingZoneBackgroundUrl(zoneId: string): string {
-  return `/assets/backgrounds/hunt_${zoneId}.png`;
+  return `/assets/backgrounds/hunt_${ZONE_BACKGROUND_SOURCE[zoneId] ?? zoneId}.png`;
 }
 
 export interface HuntingDrop {
@@ -376,6 +382,42 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
     subLevelCpGrowth: 1.23,
     baseEnemyHp: 7200,
     baseEnemyDmg: 28,
+  },
+  // Classes & equipment, phase 7: the fifth zone, for the second half of the season (day ~30 to 60), when the hero sits in the abyss. Every number extends the curve of the four before it, none is a new rule:
+  //  - cp 3,600: the CP of a zone grows 3.4x, 2.2x, 1.5x; this one is 2.2x the abyss (3,600 is a T5+0 Common set at level 75, 3,126 in `npm run sim:sublevels`, plus a little), so the deep depth (x1.3 = 4,680)
+  //    opens where abyss sub-level 5 does, and its own sub-level gate (x1.23 as in the abyss) reaches sub-level 7 with a Legendary T6+8 set (17,974) and stops short of 10.
+  //  - baseEnemyHp x baseEnemyDmg grows with the CP squared (abyss 201.6k at 1,607, rift 91.2k at 1,068): 16,000 x 63 = 1.008M at 3,600, and the HP/damage ratio (254) is the abyss's (257).
+  //  - xpPerKill 70 x xpRefKph 140 = 9,800 an hour at the reference pace, +31% over the abyss (7,482), after +47% and +65% of the two before; the abyss at sub-level 7 pays 67 a kill, so a hero who moves up
+  //    earns more from the first sub-level on (+5% a sub-level, as the abyss).
+  //  - unlockFloor 90 and unlockLevel 75: the level is the real gate (a hero reaches 75 around day 40; the buyer of the Pass around day 33); the floor only keeps it behind the Dungeon like every other zone.
+  //  - Drops: the abyss's own materials at the abyss's chances, so a hero who moves up keeps the same material an hour, plus the three class materials (sinew, feather, dust) at the glade's and the marsh's chances.
+  //    The zone is new, so every drop that can be ownStream is (nothing older to preserve).
+  //  - No uniques: the nine unique pieces are tied to zones 1-4 and a unique is a tradeable good whose rarity is the owner's call; a new one needs a new piece (and art), not a number.
+  {
+    id: 'abyss_throne',
+    nameKey: 'hunt5',
+    enemyId: 'abyss_sovereign',
+    cp: 3600,
+    goldPerHour: 16,
+    xpPerKill: 70,
+    xpRefKph: 140,
+    drops: [
+      { material: 'bone_fragment', rarity: 'common', chance: 0.12, qty: 1 },
+      { material: 'concentrated_blood', rarity: 'uncommon', chance: 0.036, qty: 1 },
+      { material: 'corrupted_crystal', rarity: 'rare', chance: 0.0053, qty: 1 },
+      { material: 'abyssal_marrow', rarity: 'uncommon', chance: 0.0132, qty: 1, ownStream: true },
+      { material: 'blood_heart', rarity: 'rare', chance: 0.0021, qty: 1, ownStream: true },
+      { material: 'beast_sinew', rarity: 'common', chance: 0.03, qty: 1, ownStream: true },
+      { material: 'feather', rarity: 'common', chance: 0.02, qty: 1, ownStream: true },
+      { material: 'arcane_dust', rarity: 'uncommon', chance: 0.004, qty: 1, ownStream: true },
+    ],
+    offlineCapHours: 6,
+    unlockFloor: 90,
+    unlockLevel: 75,
+    xpPerSubLevel: 0.05,
+    subLevelCpGrowth: 1.23,
+    baseEnemyHp: 16000,
+    baseEnemyDmg: 63,
   },
 ];
 

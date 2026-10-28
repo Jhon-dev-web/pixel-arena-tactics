@@ -679,6 +679,7 @@
     "huntBloodMonster": "Horror do Pântano",
     "huntRiftFiend": "Demônio da Fenda",
     "huntBloodAbomination": "Abominação de Sangue",
+    "huntAbyssSovereign": "Soberano do Abismo",
     "bossName": "CHEFE: {n}"
   },
   "camp": {
@@ -1150,7 +1151,13 @@
     "cancel": "Cancelar",
     "gemsBack": "Gemas devolvidas ao estoque: {list}",
     "shieldsSection": "Escudos",
-    "axesSection": "Machados"
+    "axesSection": "Machados",
+    "classFilter": "Classe",
+    "class_all": "Todas",
+    "class_warrior": "Guerreiro",
+    "class_archer": "Arqueiro",
+    "class_mage": "Mago",
+    "noClassRecipes": "Nenhuma peça desta classe nesta categoria. Escolha Todas para ver tudo."
   },
   "rarity": {
     "rar_common": "Comum",
@@ -1450,6 +1457,7 @@
     "hunt2": "Pântano de Sangue",
     "hunt3": "Fenda Demoníaca",
     "hunt4": "Abismo de Sangue Ancestral",
+    "hunt5": "Trono do Abismo Eterno",
     "cp": "Rec: {n} CP",
     "drops": "Drops",
     "sessionsLeft": "Entradas grátis hoje: {n} de {m}",
@@ -1996,6 +2004,8 @@
     "a_hunt_rift_d": "Derrote 1.500 monstros na Fenda Demoníaca",
     "a_hunt_abyss": "Caçador do Abismo",
     "a_hunt_abyss_d": "Derrote 2.000 monstros no Abismo de Sangue Ancestral",
+    "a_hunt_throne": "Caçador do Trono",
+    "a_hunt_throne_d": "Derrote 2.500 monstros no Trono do Abismo Eterno",
     "a_forge_1": "Primeira Peça",
     "a_forge_1_d": "Forje sua primeira peça",
     "a_forge_25": "Aprendiz de Forja",

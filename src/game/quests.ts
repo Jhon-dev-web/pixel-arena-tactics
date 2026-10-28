@@ -139,6 +139,8 @@ export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   ach('ACH_HUNT_MARSH', 'hunting', 'zone_kills', 1000, 300, 0, { arg: 'blood_marsh' }),
   ach('ACH_HUNT_RIFT', 'hunting', 'zone_kills', 1500, 500, 0, { arg: 'demon_rift' }),
   ach('ACH_HUNT_ABYSS', 'hunting', 'zone_kills', 2000, 800, 2, { arg: 'blood_abyss' }),
+  // Zone 5 (classes reform, phase 7): the same step as the four before it (500 / 1,000 / 1,500 / 2,000 kills, 150 / 300 / 500 / 800 Gold).
+  ach('ACH_HUNT_THRONE', 'hunting', 'zone_kills', 2500, 1200, 3, { arg: 'abyss_throne' }),
   // forging
   ach('ACH_FORGE_1', 'forging', 'forged_total', 1, 50, 0),
   ach('ACH_FORGE_25', 'forging', 'forged_total', 25, 200, 0),

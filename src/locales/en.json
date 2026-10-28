@@ -679,6 +679,7 @@
     "huntBloodMonster": "Marsh Horror",
     "huntRiftFiend": "Rift Fiend",
     "huntBloodAbomination": "Blood Abomination",
+    "huntAbyssSovereign": "Abyss Sovereign",
     "bossName": "BOSS: {n}"
   },
   "camp": {
@@ -1150,7 +1151,13 @@
     "cancel": "Cancel",
     "gemsBack": "Gems returned to your stock: {list}",
     "shieldsSection": "Shields",
-    "axesSection": "Axes"
+    "axesSection": "Axes",
+    "classFilter": "Class",
+    "class_all": "All",
+    "class_warrior": "Warrior",
+    "class_archer": "Archer",
+    "class_mage": "Mage",
+    "noClassRecipes": "No piece of this class in this category. Pick All to see everything."
   },
   "rarity": {
     "rar_common": "Common",
@@ -1450,6 +1457,7 @@
     "hunt2": "Blood Marsh",
     "hunt3": "Demonic Rift",
     "hunt4": "Ancestral Blood Abyss",
+    "hunt5": "Throne of the Eternal Abyss",
     "cp": "Rec: {n} CP",
     "drops": "Drops",
     "sessionsLeft": "Free entries today: {n} of {m}",
@@ -1996,6 +2004,8 @@
     "a_hunt_rift_d": "Defeat 1,500 monsters in the Demonic Rift",
     "a_hunt_abyss": "Abyss Hunter",
     "a_hunt_abyss_d": "Defeat 2,000 monsters in the Ancestral Blood Abyss",
+    "a_hunt_throne": "Throne Hunter",
+    "a_hunt_throne_d": "Defeat 2,500 monsters in the Throne of the Eternal Abyss",
     "a_forge_1": "First Piece",
     "a_forge_1_d": "Forge your first piece",
     "a_forge_25": "Forge Apprentice",

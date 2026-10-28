@@ -27,7 +27,7 @@ const rift = getHuntingZone('demon_rift')!;
 
 describe('the hero level opens zones 3 and 4', () => {
   it('zone 3 asks level 40 and zone 4 level 60, the first two ask none', () => {
-    expect(HUNTING_ZONES.map((z) => z.unlockLevel ?? 0)).toEqual([0, 0, 40, 60]);
+    expect(HUNTING_ZONES.map((z) => z.unlockLevel ?? 0)).toEqual([0, 0, 40, 60, 75]); // zone 5 (classes reform, phase 7) asks level 75
     expect(isZoneOpen(rift, 51, 39)).toBe(false);
     expect(isZoneOpen(rift, 51, 40)).toBe(true);
     expect(isZoneOpen(rift, 50, 100)).toBe(false); // the floor still counts
@@ -36,7 +36,10 @@ describe('the hero level opens zones 3 and 4', () => {
     expect(isZoneOpen(abyss, 75, 100)).toBe(false);
     expect(openZoneIds(100, 1)).toEqual(['demon_glade', 'blood_marsh']);
     expect(openZoneIds(100, 40)).toEqual(['demon_glade', 'blood_marsh', 'demon_rift']);
-    expect(openZoneIds(100, 60)).toEqual(HUNTING_ZONES.map((z) => z.id));
+    expect(openZoneIds(100, 60)).toEqual(HUNTING_ZONES.slice(0, 4).map((z) => z.id));
+    expect(openZoneIds(89, 100)).toEqual(HUNTING_ZONES.slice(0, 4).map((z) => z.id)); // the floor of zone 5 (90) counts
+    expect(openZoneIds(90, 74)).toEqual(HUNTING_ZONES.slice(0, 4).map((z) => z.id)); // and so does its level
+    expect(openZoneIds(90, 75)).toEqual(HUNTING_ZONES.map((z) => z.id));
   });
 
   it('the zone is still DISCOVERED by the floor alone (save.unlockedHuntingZones), the level is checked when a hunt starts', () => {
@@ -78,7 +81,7 @@ describe('zone 4: a bonus XP per sub-level and a CP for each', () => {
   it('the CP of sub-level N is the zone\'s recommended CP at the depth x growth^(N - 1), and only the last zone has a gate', () => {
     expect(abyss.xpPerSubLevel).toBe(0.05);
     expect(abyss.subLevelCpGrowth).toBe(1.23);
-    expect(HUNTING_ZONES.filter((z) => z.subLevelCpGrowth).map((z) => z.id)).toEqual(['blood_abyss']);
+    expect(HUNTING_ZONES.filter((z) => z.subLevelCpGrowth).map((z) => z.id)).toEqual(['blood_abyss', 'abyss_throne']);
     expect(subLevelCpRequired(abyss, 'deep', 1)).toBe(0);
     expect(subLevelCpRequired(abyss, 'deep', 2)).toBe(Math.round(recommendedCpForDepth(abyss, 'deep') * 1.23));
     expect(subLevelCpRequired(abyss, 'deep', 10)).toBe(Math.round(recommendedCpForDepth(abyss, 'deep') * Math.pow(1.23, 9)));
