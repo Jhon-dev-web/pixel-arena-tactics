@@ -153,7 +153,7 @@ export const MATERIALS: MaterialDef[] = [
 // Materiais cujo consumidor chega numa fase seguinte da reforma de classes (docs/CLASSES_E_EQUIPAMENTOS.md):
 // os tecidos e os drops das linhas de arqueiro e mago só passam a ser gastos quando os equipamentos
 // das fases 2 e 3 entrarem. Tire o id daqui no mesmo commit que criar a receita que o consome.
-export const MATERIAL_CONSUMER_PENDING: readonly MaterialId[] = ['cloth_linen', 'cloth_cotton', 'cloth_silk', 'cloth_moon', 'cloth_void', 'beast_sinew', 'feather', 'arcane_dust'];
+export const MATERIAL_CONSUMER_PENDING: readonly MaterialId[] = ['cloth_linen', 'cloth_cotton', 'cloth_silk', 'cloth_moon', 'cloth_void', 'arcane_dust'];
 
 export function getMaterial(id: MaterialId): MaterialDef | undefined {
   return MATERIALS.find((m) => m.id === id);

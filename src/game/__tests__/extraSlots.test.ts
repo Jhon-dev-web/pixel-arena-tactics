@@ -200,7 +200,8 @@ describe('old saves load', () => {
 });
 
 describe('content pack 1: catalog', () => {
-  const forged = GEAR.filter((g) => EXTRA5.includes(g.slot as (typeof EXTRA5)[number]) && !g.unique);
+  // the plate lines (the leather line has its own checks in itemBalance.test.ts: it is made of other materials, so these ratios do not apply)
+  const forged = GEAR.filter((g) => EXTRA5.includes(g.slot as (typeof EXTRA5)[number]) && !g.unique && !g.weight);
   const uniques = GEAR.filter((g) => g.unique);
 
   it('30 forged pieces: six tiers per slot, the same level gate as the weapon / armor of the tier, previous tier of the same slot from tier 2', () => {

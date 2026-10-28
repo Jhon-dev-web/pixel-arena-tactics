@@ -233,7 +233,7 @@ describe('icons point at files that exist under public/', () => {
     for (const g of GEAR) {
       const url = g.iconUrl ?? g.icon;
       expect(url, g.id).toBeTruthy();
-      expect(exists(url as string), `${g.id} -> ${url}`).toBe(true);
+      expect(existsOrPending(url as string), `${g.id} -> ${url}`).toBe(true); // art still to be drawn is listed in iconPending.ts, which the test above keeps honest
     }
   });
 

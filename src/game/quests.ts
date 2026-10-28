@@ -164,6 +164,13 @@ export const QUESTS_ACHIEVEMENTS: QuestDef[] = [
   ach('ACH_SET_DRAGON', 'sets', 'set_complete', 1, 500, 2, { arg: 'dragon' }),
   ach('ACH_SET_VOIDSTEEL', 'sets', 'set_complete', 1, 800, 3, { arg: 'voidsteel' }),
   ach('ACH_SET_ABYSSAL', 'sets', 'set_complete', 1, 1200, 4, { arg: 'abyssal' }),
+  // the leather families (classes reform, phase 2a): the reward of the plate family of the same tier, no new number
+  ach('ACH_SET_HIDE', 'sets', 'set_complete', 1, 100, 0, { arg: 'hide' }),
+  ach('ACH_SET_SCOUT', 'sets', 'set_complete', 1, 200, 0, { arg: 'scout' }),
+  ach('ACH_SET_RANGER', 'sets', 'set_complete', 1, 300, 0, { arg: 'ranger' }),
+  ach('ACH_SET_HUNTER', 'sets', 'set_complete', 1, 500, 2, { arg: 'hunter' }),
+  ach('ACH_SET_NIGHTSTALKER', 'sets', 'set_complete', 1, 800, 3, { arg: 'nightstalker' }),
+  ach('ACH_SET_ABYSSALHIDE', 'sets', 'set_complete', 1, 1200, 4, { arg: 'abyssalhide' }),
   ach('ACH_SET_ALL', 'sets', 'sets_all', 7, 3000, 10, { titleId: 'title_set_collector' }),
   // professions (level 75 is the cap)
   ach('ACH_MINING_25', 'professions', 'skill_level', 25, 200, 0, { arg: 'mining' }),

@@ -354,11 +354,27 @@ export interface ExtraSlotStats {
   critMult: number;
   resistance: number;
   reflect: number; // shield: adds to the armor's reflect, scaled by durability only (like the armor's)
+  // Fractions of effect (not stats scaled by rarity), so durability is their only factor, like critChance: +0.05 attack speed / +0.003 of max HP per second.
+  attackSpeedBonus: number; // folded into the attack interval by engine.ts (heroAttackIntervalMs), so the 400 ms floor still caps any stack
+  hpRegenPct: number;
 }
 
 export function equippedExtraStats(save: GearState): ExtraSlotStats {
-  const t: ExtraSlotStats = { maxHp: 0, damage: 0, critChance: 0, critMult: 0, resistance: 0, reflect: 0 };
+  const t: ExtraSlotStats = { maxHp: 0, damage: 0, critChance: 0, critMult: 0, resistance: 0, reflect: 0, attackSpeedBonus: 0, hpRegenPct: 0 };
   const views = resolveEquipped(save);
+  // The ARMOR is not an extra slot (buildCombatStats / playerMaxHp read its maxHp, resistance and reflect on their own path), but the fields that path never read
+  // (crit chance, crit multiplier, attack speed, regeneration) would be dead data on an armor - the light armor lines depend on them - so they are summed here.
+  // maxHp / resistance / reflect / damage are deliberately NOT added again for the armor.
+  const armorView = views.armor;
+  if (armorView?.instance) {
+    const { item, instance } = armorView;
+    const f = durabilityFactor(instance.durability);
+    const r = rarityStatMult(instance.rarity);
+    if (item.critChance) t.critChance += effectiveCrit(item, viewRefine(armorView)) * f;
+    t.critMult += (item.critMultBonus ?? 0) * f * r;
+    t.attackSpeedBonus += (item.attackSpeedBonus ?? 0) * f;
+    t.hpRegenPct += (item.hpRegenPct ?? 0) * f;
+  }
   for (const slot of EXTRA_SLOTS) {
     const v = views[slot];
     if (!v?.instance) continue;
@@ -372,6 +388,8 @@ export function equippedExtraStats(save: GearState): ExtraSlotStats {
     if (item.resistance) t.resistance += effectiveResistance(item, lvl) * f * r;
     t.critMult += (item.critMultBonus ?? 0) * f * r;
     t.reflect += (item.reflect ?? 0) * f;
+    t.attackSpeedBonus += (item.attackSpeedBonus ?? 0) * f;
+    t.hpRegenPct += (item.hpRegenPct ?? 0) * f;
   }
   return t;
 }

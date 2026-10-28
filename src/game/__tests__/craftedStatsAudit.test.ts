@@ -86,12 +86,13 @@ const none = (): Add => ({ hit: 0, critChance: 0, critMult: 0, reduction: 0, max
 // The fields each slot's code reads. A piece that declares a field outside its slot's list is data the engine ignores.
 const READS: Record<GearSlot, (keyof GearItem)[]> = {
   weapon: ['damage', 'critChance', 'burn'],
-  armor: ['maxHp', 'resistance', 'reflect'],
-  helmet: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect'],
-  gloves: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect'],
-  boots: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect'],
-  ring: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect'],
-  shield: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect'],
+  // Classes reform, phase 2a: attack speed and regeneration reach the combat from every instanced armor slot (gearInstances.equippedExtraStats), and the armor reads the crit fields too.
+  armor: ['maxHp', 'resistance', 'reflect', 'critChance', 'critMultBonus', 'attackSpeedBonus', 'hpRegenPct'],
+  helmet: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect', 'attackSpeedBonus', 'hpRegenPct'],
+  gloves: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect', 'attackSpeedBonus', 'hpRegenPct'],
+  boots: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect', 'attackSpeedBonus', 'hpRegenPct'],
+  ring: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect', 'attackSpeedBonus', 'hpRegenPct'],
+  shield: ['maxHp', 'damage', 'critChance', 'resistance', 'critMultBonus', 'reflect', 'attackSpeedBonus', 'hpRegenPct'],
   relic: ['hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct', 'critChance', 'critMultBonus', 'xpBonusPct'],
 };
 const DECLARED_FIELDS: (keyof GearItem)[] = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct', 'xpBonusPct'];
@@ -123,6 +124,11 @@ function pieceAdds(item: GearItem, level: number, dur: number, rarity: Rarity): 
     a.maxHp = Math.round((item.maxHp ?? 0) * pct) * f * r;
     a.reduction = ((item.resistance ?? 0) + refineFlat(lvl)) * f * r;
     a.reflect = (item.reflect ?? 0) * f;
+    // the fields the armor path never read before the leather line: crit chance (with the refine flat, only when declared), crit multiplier, attack speed and regeneration
+    if (item.critChance) a.critChance = (item.critChance + refineFlat(lvl)) * f;
+    a.critMult = (item.critMultBonus ?? 0) * f * r;
+    a.speedBonus = (item.attackSpeedBonus ?? 0) * f;
+    a.hpRegenPct = (item.hpRegenPct ?? 0) * f;
     return a;
   }
   // helmet, gloves, boots, ring, shield: only the fields the template declares count (a helmet without a crit chance gets no refine crit)
@@ -132,6 +138,8 @@ function pieceAdds(item: GearItem, level: number, dur: number, rarity: Rarity): 
   if (item.resistance) a.reduction = (item.resistance + refineFlat(lvl)) * f * r;
   a.critMult = (item.critMultBonus ?? 0) * f * r;
   a.reflect = (item.reflect ?? 0) * f;
+  a.speedBonus = (item.attackSpeedBonus ?? 0) * f;
+  a.hpRegenPct = (item.hpRegenPct ?? 0) * f;
   return a;
 }
 
@@ -263,7 +271,8 @@ describe('every craftable recipe at every rarity and refine: the engine adds exa
         for (const k of ['dmgBase', 'maxHp', 'critChance', 'reduction'] as const) expect(cur[k], `${item.id} +${l} ${k}`).toBeGreaterThanOrEqual(prev[k]);
         // a base of 4 damage x 1.1 rounds back to 4 (leather gloves +1): every other piece and level moves by a whole point
         if (item.damage && Math.round(item.damage * (1 + refinePct(l))) > Math.round(item.damage * (1 + refinePct(l - 1)))) expect(cur.dmgBase, `${item.id} +${l} damage`).toBeGreaterThan(prev.dmgBase);
-        if (item.maxHp) expect(cur.maxHp, `${item.id} +${l} maxHp`).toBeGreaterThan(prev.maxHp);
+        // the same rounding case for a tiny max HP (the 7-HP leather shoes: +1 and +2 both round to 8)
+        if (item.maxHp && Math.round(item.maxHp * (1 + refinePct(l))) > Math.round(item.maxHp * (1 + refinePct(l - 1)))) expect(cur.maxHp, `${item.id} +${l} maxHp`).toBeGreaterThan(prev.maxHp);
         if (item.resistance || item.slot === 'weapon' || item.slot === 'armor') expect(cur.reduction + cur.critChance, `${item.id} +${l} flat`).toBeGreaterThan(prev.reduction + prev.critChance);
         prev = cur;
       }
@@ -407,7 +416,7 @@ describe('set bonuses: every threshold of every family adds what SET_DEFS says, 
         const without = buildCombatStats(s, { sets: false });
         const counts = SET_FAMILIES.map((f) => worn.filter((w) => setFamiliesOf(w).includes(f)).length);
         // the expected sum of every reached bonus of every family, from SET_DEFS and the worn pieces alone
-        let speed = 0, critMult = 0, resistance = 0, regen = 0, dmgPct = 0, lifesteal = 0, gold = 0;
+        let speed = worn.reduce((a, w) => a + (w.attackSpeedBonus ?? 0), 0), critMult = 0, resistance = 0, regen = 0, dmgPct = 0, lifesteal = 0, gold = 0;
         SET_FAMILIES.forEach((f, i) => SET_DEFS[f].thresholds.forEach((need, k) => {
           if (counts[i] < need) return;
           const e = SET_DEFS[f].effects[k];
@@ -621,10 +630,10 @@ describe('what the forge preview and the cards show is what the engine does', ()
 describe('tier N+1 is never worse than tier N on its line', () => {
   const lines = new Map<string, GearItem[]>();
   for (const g of CRAFTABLE.filter((x) => x.slot !== 'relic')) {
-    const key = `${g.slot}${g.line ? ':' + g.line : ''}`;
+    const key = `${g.slot}${g.line ? ':' + g.line : ''}${g.weight ? ':' + g.weight : ''}`;
     lines.set(key, [...(lines.get(key) ?? []), g]);
   }
-  const FIELDS: (keyof GearItem)[] = ['damage', 'critChance', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'cost'];
+  const FIELDS: (keyof GearItem)[] = ['damage', 'critChance', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'attackSpeedBonus', 'cost'];
 
   for (const [key, pieces] of lines) {
     it(`${key}: every declared stat, the required level, the price and the CP only go up`, () => {

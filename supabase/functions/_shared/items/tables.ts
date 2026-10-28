@@ -270,6 +270,156 @@ export const FORGE_TEMPLATES: Readonly<Record<string, { tier: number; slot: stri
     "tier": 6,
     "slot": "shield",
     "levelGate": 98
+  },
+  "hide_jerkin": {
+    "tier": 1,
+    "slot": "armor",
+    "levelGate": 0
+  },
+  "scout_leather": {
+    "tier": 2,
+    "slot": "armor",
+    "levelGate": 10
+  },
+  "ranger_leather": {
+    "tier": 3,
+    "slot": "armor",
+    "levelGate": 25
+  },
+  "hunter_leather": {
+    "tier": 4,
+    "slot": "armor",
+    "levelGate": 50
+  },
+  "nightstalker_leather": {
+    "tier": 5,
+    "slot": "armor",
+    "levelGate": 70
+  },
+  "abyssal_leather": {
+    "tier": 6,
+    "slot": "armor",
+    "levelGate": 90
+  },
+  "hide_cap": {
+    "tier": 1,
+    "slot": "helmet",
+    "levelGate": 0
+  },
+  "scout_hood": {
+    "tier": 2,
+    "slot": "helmet",
+    "levelGate": 10
+  },
+  "ranger_hood": {
+    "tier": 3,
+    "slot": "helmet",
+    "levelGate": 25
+  },
+  "hunter_hood": {
+    "tier": 4,
+    "slot": "helmet",
+    "levelGate": 50
+  },
+  "nightstalker_hood": {
+    "tier": 5,
+    "slot": "helmet",
+    "levelGate": 72
+  },
+  "abyssal_hood": {
+    "tier": 6,
+    "slot": "helmet",
+    "levelGate": 92
+  },
+  "hide_bracers": {
+    "tier": 1,
+    "slot": "gloves",
+    "levelGate": 0
+  },
+  "scout_bracers": {
+    "tier": 2,
+    "slot": "gloves",
+    "levelGate": 10
+  },
+  "ranger_bracers": {
+    "tier": 3,
+    "slot": "gloves",
+    "levelGate": 25
+  },
+  "hunter_bracers": {
+    "tier": 4,
+    "slot": "gloves",
+    "levelGate": 50
+  },
+  "nightstalker_bracers": {
+    "tier": 5,
+    "slot": "gloves",
+    "levelGate": 74
+  },
+  "abyssal_bracers": {
+    "tier": 6,
+    "slot": "gloves",
+    "levelGate": 94
+  },
+  "hide_shoes": {
+    "tier": 1,
+    "slot": "boots",
+    "levelGate": 0
+  },
+  "scout_boots": {
+    "tier": 2,
+    "slot": "boots",
+    "levelGate": 10
+  },
+  "ranger_boots": {
+    "tier": 3,
+    "slot": "boots",
+    "levelGate": 25
+  },
+  "hunter_boots": {
+    "tier": 4,
+    "slot": "boots",
+    "levelGate": 50
+  },
+  "nightstalker_boots": {
+    "tier": 5,
+    "slot": "boots",
+    "levelGate": 76
+  },
+  "abyssal_boots": {
+    "tier": 6,
+    "slot": "boots",
+    "levelGate": 96
+  },
+  "hide_quiver": {
+    "tier": 1,
+    "slot": "shield",
+    "levelGate": 0
+  },
+  "scout_quiver": {
+    "tier": 2,
+    "slot": "shield",
+    "levelGate": 10
+  },
+  "ranger_quiver": {
+    "tier": 3,
+    "slot": "shield",
+    "levelGate": 25
+  },
+  "hunter_quiver": {
+    "tier": 4,
+    "slot": "shield",
+    "levelGate": 50
+  },
+  "nightstalker_quiver": {
+    "tier": 5,
+    "slot": "shield",
+    "levelGate": 78
+  },
+  "abyssal_quiver": {
+    "tier": 6,
+    "slot": "shield",
+    "levelGate": 98
   }
 };
 

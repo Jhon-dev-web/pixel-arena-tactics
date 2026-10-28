@@ -50,6 +50,11 @@ export interface GearItem {
   xpBonusPct?: number;
   // Weapon family: 'axe' is the second weapon line (more damage, less crit, no burn). Forge grouping only.
   line?: 'axe';
+  // WARNING: an ABSENT weight means PLATE. Plate is the original line, left untouched so old saves stay identical, so it has no value of its own; phase 2b adds 'cloth' the same way
+  // 'leather' is added now. The tests that measure only the original line filter by `!weight` - do not "fix" that into a check for a plate value, there is none.
+  // Armor weight (classes reform, docs/CLASSES_E_EQUIPAMENTOS.md 2.1): only the pieces of a weight other than plate carry it, so every plate piece keeps exactly the data it always had.
+  // It decides the set family (tier x weight) and groups the forge / balance comparisons; combat never reads it.
+  weight?: ArmorWeight;
   // Unique pieces (uniques.ts): drop-only (no recipe, never forged), one extra guaranteed substat slot. `salvageLike` is the forged piece
   // whose recipe sets what salvaging one returns.
   unique?: boolean;
@@ -61,18 +66,22 @@ export interface GearItem {
   setFamily?: SetFamily;
 }
 
-// The seven crafted families: one per tier, plus the dragon pieces (the tier-4 weapon and armor made from the gilded ones). Names follow the pieces (gilded_*,
-// voidsteel_*, abyssal_*), not the materials.
-export const SET_FAMILIES = ['bronze', 'iron', 'steel', 'gilded', 'dragon', 'voidsteel', 'abyssal'] as const;
+// The crafted families are one per (tier x armor weight): the seven plate ones (one per tier, plus the dragon pieces, the tier-4 weapon and armor made from the gilded ones; names
+// follow the pieces gilded_*, voidsteel_*, abyssal_*, not the materials) and the six leather ones (classes reform, phase 2a). A piece counts for the family of its OWN weight, so a
+// mixed set (leather boots, plate helmet) never gets the five-piece bonus of either.
+export const SET_FAMILIES = ['bronze', 'iron', 'steel', 'gilded', 'dragon', 'voidsteel', 'abyssal', 'hide', 'scout', 'ranger', 'hunter', 'nightstalker', 'abyssalhide'] as const;
 export type SetFamily = (typeof SET_FAMILIES)[number];
+// Plate is the weight every piece had before the reform, so it is the one with no `weight` field.
+export type ArmorWeight = 'leather';
 const FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'bronze', 2: 'iron', 3: 'steel', 4: 'gilded', 5: 'voidsteel', 6: 'abyssal' };
+const LEATHER_FAMILY_BY_TIER: Record<number, SetFamily> = { 1: 'hide', 2: 'scout', 3: 'ranger', 4: 'hunter', 5: 'nightstalker', 6: 'abyssalhide' };
 
 // Every key a GEAR entry may carry. LIVE_STAT_FIELDS are the numeric / boolean fields that feed combat (engine.ts buildCombatStats, directly or via
 // gearInstances.equippedExtraStats); META_FIELDS are identity, cost and display data. gearEffects.test.ts checks every entry against both lists
 // and that equipping each live field really changes the combat stats, so a field nothing reads (burn, reflect, focusHpBonus and
 // attackStaminaReduction were dead data for a long time) cannot come back silently.
 export const LIVE_STAT_FIELDS = ['damage', 'critChance', 'burn', 'maxHp', 'resistance', 'reflect', 'critMultBonus', 'hpRegenPct', 'attackSpeedBonus', 'damagePct', 'lifestealPct', 'goldBonusPct'] as const; // xpBonusPct is still read (relicXpBonusPct) but no item carries it any more: the Season Emblem lost its XP bonus
-export const META_FIELDS = ['setFamily', 'look', 'id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line'] as const;
+export const META_FIELDS = ['setFamily', 'look', 'id', 'slot', 'nameKey', 'descKey', 'materialKey', 'iconUrl', 'iconSheet', 'icon', 'cost', 'recipe', 'tier', 'unique', 'source', 'salvageLike', 'line', 'weight'] as const;
 
 // Weapon, armor, helmet, gloves, boots, ring and shield are the INSTANCED slots: each owned piece is its own object with its own rarity, substats,
 // refine level, sockets and durability (see gearInstances.ts). Everything else (relics) stays a stackable template id.
@@ -205,6 +214,102 @@ export const GEAR: GearItem[] = [
   { id: 'season_emblem', slot: 'relic', nameKey: 'season_emblem', descKey: 'season_emblem_d', icon: '/assets/icons/season_emblem.png', cost: 0, damagePct: 0.02, goldBonusPct: 5 },
 ];
 
+// --- Leather line (classes reform, phase 2a; docs/CLASSES_E_EQUIPAMENTOS.md 2.1, 2.4): the archer's armor, helmet, gloves, boots and off hand (the quiver, in the shield slot) ---
+// Nothing here is hand-tuned. Every piece is DERIVED from its plate twin of the same tier and slot (the quiver's twin is the shield of the tier): it keeps LEATHER_KEEP of the defense
+// (max HP and resistance; the gloves, which have none, keep it of their damage) and returns the rest as crit chance and attack speed, in the amounts that
+// scripts/sim/weightBudget.gen.ts solves per tier so a full leather set is worth the CP of the plate set of the same tier. The twin's reflect and crit are not kept: reflect
+// is what plate is FOR, and the crit the plate gloves carry is part of the budget returned below.
+// The two conversion numbers per piece live in the block between the markers: the generator rewrites it (npx vitest run --config vitest.sim.config.ts weightBudget), and itemBalance.test.ts fails if it goes stale.
+export const LEATHER_KEEP = 0.6;
+export const LEATHER_LINES: { slot: GearSlot; ids: string[]; twins: string[]; leather: number[]; sinew: number[]; feather?: number[]; handle: boolean; hunt: number[] }[] = [
+  // Quantities are sized against the real supply (one 4 h session of Hunting: about 17 sinew for a new hero, 48 for a strong one in the glade; about 32 feathers in the marsh):
+  // the biggest piece of the line (the tier-6 armor) is under one session of sinew, a full set of one tier a few hours. The wood handle is the tier's, like the weapons'.
+  { slot: 'armor', ids: ['hide_jerkin', 'scout_leather', 'ranger_leather', 'hunter_leather', 'nightstalker_leather', 'abyssal_leather'], twins: ['bronze_leather', 'iron_chainmail', 'steel_plate', 'gilded_aegis', 'voidsteel_plate', 'abyssal_bulwark'], leather: [7, 6, 8, 10, 12, 14], sinew: [4, 7, 12, 18, 24, 30], handle: true, hunt: [0, 0.45, 0.75, 0.85, 1, 0.9] },
+  { slot: 'helmet', ids: ['hide_cap', 'scout_hood', 'ranger_hood', 'hunter_hood', 'nightstalker_hood', 'abyssal_hood'], twins: ['bronze_helm', 'iron_helm', 'steel_helm', 'gilded_helm', 'voidsteel_helm', 'abyssal_helm'], leather: [3, 3, 4, 5, 6, 7], sinew: [2, 4, 6, 9, 12, 15], handle: true, hunt: [0, 0, 0.75, 0.8, 0.95, 0.8] },
+  { slot: 'gloves', ids: ['hide_bracers', 'scout_bracers', 'ranger_bracers', 'hunter_bracers', 'nightstalker_bracers', 'abyssal_bracers'], twins: ['leather_gloves', 'iron_gauntlets', 'steel_gauntlets', 'gilded_gauntlets', 'voidsteel_gauntlets', 'abyssal_gauntlets'], leather: [3, 3, 4, 5, 6, 7], sinew: [2, 4, 6, 9, 12, 15], handle: true, hunt: [0, 0, 0.75, 0.8, 0.95, 0.8] },
+  { slot: 'boots', ids: ['hide_shoes', 'scout_boots', 'ranger_boots', 'hunter_boots', 'nightstalker_boots', 'abyssal_boots'], twins: ['leather_boots', 'iron_greaves', 'steel_greaves', 'gilded_greaves', 'voidsteel_greaves', 'abyssal_greaves'], leather: [3, 3, 4, 5, 6, 7], sinew: [2, 4, 6, 9, 12, 15], handle: true, hunt: [0, 0, 0.75, 0.8, 0.95, 0.8] },
+  { slot: 'shield', ids: ['hide_quiver', 'scout_quiver', 'ranger_quiver', 'hunter_quiver', 'nightstalker_quiver', 'abyssal_quiver'], twins: ['bronze_buckler', 'iron_shield', 'steel_kite_shield', 'gilded_shield', 'voidsteel_shield', 'abyssal_shield'], leather: [3, 3, 4, 5, 6, 7], sinew: [2, 4, 6, 9, 12, 15], feather: [4, 6, 10, 14, 18, 24], handle: false, hunt: [0.55, 0.75, 0.8, 0.9, 1, 0.85] },
+];
+// piece id -> [critChance, attackSpeedBonus]: written by scripts/sim/weightBudget.gen.ts, do not edit by hand.
+// BEGIN weightBudget.gen
+const LEATHER_CONVERSION: Record<string, [number, number]> = {
+  hide_jerkin: [0.0708, 0.0738],
+  hide_cap: [0.0237, 0.0246],
+  hide_bracers: [0.0394, 0.0411],
+  hide_shoes: [0.0265, 0.0277],
+  hide_quiver: [0.0295, 0.0308],
+  scout_leather: [0.0789, 0.0798],
+  scout_hood: [0.0263, 0.0266],
+  scout_bracers: [0.0439, 0.0444],
+  scout_boots: [0.0296, 0.0299],
+  scout_quiver: [0.0329, 0.0333],
+  ranger_leather: [0.0922, 0.0937],
+  ranger_hood: [0.0308, 0.0313],
+  ranger_bracers: [0.0513, 0.0521],
+  ranger_boots: [0.0345, 0.0351],
+  ranger_quiver: [0.0384, 0.039],
+  hunter_leather: [0.1003, 0.1006],
+  hunter_hood: [0.0335, 0.0336],
+  hunter_bracers: [0.0558, 0.056],
+  hunter_boots: [0.0376, 0.0377],
+  hunter_quiver: [0.0418, 0.0419],
+  nightstalker_leather: [0.1085, 0.105],
+  nightstalker_hood: [0.0362, 0.035],
+  nightstalker_bracers: [0.0604, 0.0584],
+  nightstalker_boots: [0.0407, 0.0393],
+  nightstalker_quiver: [0.0452, 0.0438],
+  abyssal_leather: [0.1191, 0.1132],
+  abyssal_hood: [0.0397, 0.0378],
+  abyssal_bracers: [0.0662, 0.063],
+  abyssal_boots: [0.0446, 0.0424],
+  abyssal_quiver: [0.0496, 0.0472],
+};
+// END weightBudget.gen
+const round4 = (x: number): number => Math.round(x * 10000) / 10000;
+const LEATHER_HANDLES = ['wood_handle_common', 'wood_handle_oak', 'wood_handle_ebony', 'wood_handle_elven', 'wood_handle_ancient', 'wood_handle_ancient'] as const;
+for (const line of LEATHER_LINES) {
+  line.ids.forEach((id, i) => {
+    const twin = GEAR.find((g) => g.id === line.twins[i]) as GearItem;
+    const [crit, speed] = LEATHER_CONVERSION[id] ?? [0, 0];
+    const materials: Partial<Record<MaterialId, number>> = { leather: line.leather[i], beast_sinew: line.sinew[i] };
+    if (line.feather) materials.feather = line.feather[i];
+    if (line.handle) materials[LEATHER_HANDLES[i]] = 1;
+    // The hunting and refined families the plate twin of the tier already asks for (bone, blood, crystal, rift / abyss pairs, bars, obsidian...), scaled by hunt[i] so the piece costs
+    // about what its twin does (itemBalance.test.ts R7 holds it inside +-15 %). Without them a tier-5 leather piece would need nothing from the late zones. Leather, scrap and
+    // handles are the line's own identity above and are not copied. Where hunt[i] is 0 (tiers 1-2 mostly: their twins ask for a bar or two of copper / iron, a few gold of value) the
+    // leather, sinew and handle already cost what the twin does, so nothing is copied.
+    for (const [m, q] of Object.entries(twin.recipe?.materials ?? {}) as [MaterialId, number][]) {
+      if (m === 'leather' || m === 'leather_scrap' || m.startsWith('wood_handle_')) continue;
+      const n = Math.round(q * line.hunt[i]);
+      if (n > 0) materials[m] = (materials[m] ?? 0) + n;
+    }
+    const prev = i > 0 ? line.ids[i - 1] : undefined;
+    const piece: GearItem = {
+      id,
+      slot: line.slot,
+      nameKey: id,
+      descKey: id + '_d',
+      materialKey: 'material_leather',
+      icon: '/assets/icons/' + id + '.png',
+      cost: twin.cost,
+      tier: i + 1,
+      weight: 'leather',
+      recipe: {
+        // one piece of the previous tier of the slot, two for the tier-2 armor: the chain rule every line follows (itemBalance.test.ts)
+        ...(prev ? { items: { [prev]: i === 1 && line.slot === 'armor' ? 2 : 1 } } : {}),
+        materials,
+        ...(twin.recipe?.requiredLevel ? { requiredLevel: twin.recipe.requiredLevel } : {}),
+      },
+    };
+    if (twin.maxHp) piece.maxHp = Math.round(twin.maxHp * LEATHER_KEEP);
+    if (twin.resistance) piece.resistance = round4(twin.resistance * LEATHER_KEEP);
+    if (line.slot === 'gloves' && twin.damage) piece.damage = Math.round(twin.damage * LEATHER_KEEP);
+    if (crit > 0) piece.critChance = crit;
+    if (speed > 0) piece.attackSpeedBonus = speed;
+    GEAR.push(piece);
+  });
+}
+
 // The hero's look per ARMOR template: the armor in the armor slot decides which sheet the hero is drawn with (heroLook in sprites.ts). The order of HERO_LOOKS is the
 // progression order (used to tell which looks a hero has already outgrown). Every armor template must be keyed here (gear.test / heroLook.test check it), so a new armor
 // cannot ship without a look; uniques take their twin's (UNIQUE_DEFS.like). Weapon, helmet, shield and the other slots never change the sprite.
@@ -223,6 +328,14 @@ export const ARMOR_LOOKS: Record<string, HeroBaseLook> = {
   dragon_scale_armor: 'hero_dragon_v2',
   voidsteel_plate: 'hero_voidsteel_v2',
   abyssal_bulwark: 'hero_abyssal_v2',
+  // On purpose: there is no leather hero art (the owner decided no new hero art for the reform), so every leather armor shows the look of the plate armor of the SAME tier. The hero
+  // still progresses visually as he climbs the tiers, and no art has to be drawn.
+  hide_jerkin: 'hero_bronze_v2',
+  scout_leather: 'hero_iron_v2',
+  ranger_leather: 'hero_steel_v2',
+  hunter_leather: 'hero_dark_knight',
+  nightstalker_leather: 'hero_voidsteel_v2',
+  abyssal_leather: 'hero_abyssal_v2',
 };
 for (const g of GEAR) if (g.slot === 'armor') g.look = ARMOR_LOOKS[g.id];
 
@@ -298,7 +411,7 @@ const GEAR_BY_ID: Record<string, GearItem> = Object.fromEntries(GEAR.map((g) => 
 for (const g of GEAR) {
   if (g.slot === 'relic' || !(g.tier && g.tier >= 1)) continue;
   const base = g.salvageLike ? GEAR_BY_ID[g.salvageLike] : g;
-  g.setFamily = base.materialKey === 'material_dragon' ? 'dragon' : FAMILY_BY_TIER[base.tier as number];
+  g.setFamily = base.materialKey === 'material_dragon' ? 'dragon' : (base.weight === 'leather' ? LEATHER_FAMILY_BY_TIER : FAMILY_BY_TIER)[base.tier as number];
 }
 
 // The families a piece counts for: its own, and a dragon piece also counts as a gilded one (it is the gilded weapon / armor made better, and the family only has

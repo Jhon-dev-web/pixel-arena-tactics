@@ -132,6 +132,55 @@ describe('attack speed bonus', () => {
     const b = buildCombatStats(withRelic(h, 'amulet_swiftness')).heroMs;
     expect(b).toBeCloseTo(a / (1 + getGear('amulet_swiftness').attackSpeedBonus!), 6);
   });
+
+  // Attack speed and regeneration used to reach the combat only from a relic, a skill or a set: a helmet / gloves / boots / ring / shield (or an armor) that carried them was
+  // dead data. The bonus is lent to real templates for the length of the check (the lines that carry it are covered by the dead-field guard below) and restored.
+  const wear = (s: SaveData, templateId: string): SaveData => {
+    const inst = createGearInstance(templateId, { id: 'w_' + templateId, origin: 'craft', rarity: 'common', substats: [] });
+    return applyEquipInstance({ ...s, gearInstances: { ...s.gearInstances, [inst.id]: inst } }, inst.id) as SaveData;
+  };
+  const lend = <K extends 'attackSpeedBonus' | 'hpRegenPct' | 'critChance'>(id: string, field: K, value: number, fn: () => void) => {
+    const g = getGear(id);
+    const before = g[field];
+    g[field] = value;
+    try {
+      fn();
+    } finally {
+      g[field] = before;
+    }
+  };
+
+  it('an instanced piece (not a relic) shortens heroMs through the same floored derivation, and a worn armor does too', () => {
+    const h = hero('3', 0, { level: 30 });
+    const base = buildCombatStats(h);
+    for (const [id, slotItem] of [['iron_greaves', 'boots'], ['iron_helm', 'helmet'], ['iron_gauntlets', 'gloves'], ['iron_shield', 'shield'], ['silver_ring', 'ring']] as const) {
+      lend(id, 'attackSpeedBonus', 0.1, () => {
+        const s = buildCombatStats(wear(h, id));
+        expect(s.speedBonus, slotItem).toBeCloseTo(base.speedBonus + 0.1, 9);
+        expect(s.heroMs, slotItem).toBeLessThan(base.heroMs);
+        expect(s.heroMs, slotItem).toBeCloseTo(heroAttackIntervalMs(h.agi, base.speedBonus + 0.1), 6);
+      });
+    }
+    // the armor is not an extra slot, but its speed has to count as well
+    lend('iron_chainmail', 'attackSpeedBonus', 0.1, () => {
+      const s = buildCombatStats(wear(h, 'iron_chainmail'));
+      expect(s.heroMs).toBeCloseTo(heroAttackIntervalMs(h.agi, base.speedBonus + 0.1), 6);
+    });
+    // and the 400 ms floor still caps a huge stack
+    lend('iron_greaves', 'attackSpeedBonus', 50, () => expect(buildCombatStats(wear(h, 'iron_greaves')).heroMs).toBe(T.battle.heroMinMs));
+  });
+
+  it('an instanced piece adds regeneration on top of the relic, and an armor crit chance reaches the hero', () => {
+    const h = hero('3', 0, { level: 30 });
+    const base = buildCombatStats(h);
+    lend('iron_helm', 'hpRegenPct', 0.004, () => {
+      expect(buildCombatStats(wear(h, 'iron_helm')).hpRegenPct).toBeCloseTo(base.hpRegenPct + 0.004, 9);
+      const both = buildCombatStats(withRelic(wear(h, 'iron_helm'), 'ring_vitality')).hpRegenPct;
+      expect(both).toBeCloseTo(base.hpRegenPct + 0.004 + getGear('ring_vitality').hpRegenPct!, 9);
+    });
+    const without = buildCombatStats(wear(h, 'iron_chainmail')).critChance;
+    lend('iron_chainmail', 'critChance', 0.05, () => expect(buildCombatStats(wear(h, 'iron_chainmail')).critChance - without).toBeCloseTo(0.05, 9));
+  });
 });
 
 // --- the three combat loops agree ------------------------------------------------------------------------------------------------

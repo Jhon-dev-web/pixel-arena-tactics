@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { computeCP } from '../engine';
+import { computeCP, SaveData } from '../engine';
 import { createGearInstance, equippedSubstatTotals } from '../gearInstances';
+import { cargoReferenceValue } from '../economy';
+import type { MaterialId } from '../materials';
 import { GOLD_BONUS_CAP, RARITIES, Rarity, SUBSTATS, medianSubstatValue, rollRarity, rollSubstats } from '../rarity';
-import { duel, hero, MAIN_TIERS, repFloor, tierNum } from '../../../scripts/sim/duel';
+import { duel, hero, MAIN_TIERS, repFloor, tierNum, withoutSetBonuses } from '../../../scripts/sim/duel';
 import { withSeededRandom } from '../../../scripts/sim/driver';
 import { pieceGain } from '../../../scripts/sim/tierSteps';
-import { GEAR, GearItem, getGear, isInstancedSlot } from '../gear';
+import { GEAR, GearItem, LEATHER_LINES, gearRequiredLevel, getGear, isInstancedSlot } from '../gear';
+import { buildHero } from '../../../scripts/sim/ladder';
 import { rarityHero } from '../../../scripts/sim/rarityHero';
 import { getHuntingZone, subLevelCpRequired } from '../huntingZones';
 import T from '../tunables';
@@ -132,7 +135,7 @@ describe('R2: combat substats are worth about the same at their median roll', ()
 // to a reference hero grows by a real step each tier. Uniques are worth about 10-15 % more than the crafted twin of the tier the hero has at their source.
 
 const MAIN_STAT: Record<string, 'damage' | 'maxHp' | 'resistance' | 'critChance'> = { weapon: 'damage', armor: 'maxHp', helmet: 'maxHp', gloves: 'damage', boots: 'resistance', ring: 'critChance', shield: 'resistance' };
-const NUMERIC = ['damage', 'maxHp', 'critChance', 'critMultBonus', 'resistance', 'reflect'] as const;
+const NUMERIC = ['damage', 'maxHp', 'critChance', 'critMultBonus', 'resistance', 'reflect', 'attackSpeedBonus'] as const;
 
 // The chains: start at each tier-1 recipe and follow "the piece whose recipe consumes this one".
 function lineChains(): GearItem[][] {
@@ -154,8 +157,9 @@ function lineChains(): GearItem[][] {
 describe('R5: every crafted tier is a real upgrade', () => {
   const chains = lineChains();
 
-  it('eight lines (sword, axe, armor, helmet, gloves, boots, ring, shield), each one chain from tier 1 to tier 6 with no dead end', () => {
-    expect(chains).toHaveLength(8);
+  it('thirteen lines (the eight plate ones - sword, axe, armor, helmet, gloves, boots, ring, shield - and the five leather ones), each one chain from tier 1 to tier 6 with no dead end', () => {
+    expect(chains).toHaveLength(8 + 5);
+    expect(chains.filter((c) => c[0].weight === 'leather').map((c) => c[0].slot).sort()).toEqual(['armor', 'boots', 'gloves', 'helmet', 'shield']);
     const inChains = new Set(chains.flat().map((g) => g.id));
     for (const g of GEAR.filter((x) => x.recipe && !x.unique && isInstancedSlot(x.slot))) expect(inChains.has(g.id), `${g.id} is on a chain`).toBe(true);
     for (const c of chains) {
@@ -200,12 +204,115 @@ describe('R5: every crafted tier is a real upgrade', () => {
     for (const id of dragon) expect(Object.keys(getGear(id).recipe?.items ?? {})).toEqual([id === 'dragon_flameblade' ? 'gilded_warblade' : 'gilded_aegis']);
     for (const g of GEAR.filter((x) => x.recipe && !x.unique && isInstancedSlot(x.slot))) {
       const main = MAIN_STAT[g.slot];
-      for (const o of GEAR.filter((x) => x.slot === g.slot && x.line === g.line && x.recipe && !x.unique && (x.tier ?? 0) < (g.tier ?? 0))) {
+      // inside a weight: plate and leather of one slot trade the main stat for crit and speed, so the higher tier of a lighter weight is judged against its own line here and against the
+      // plate line by the power it adds (the next test)
+      for (const o of GEAR.filter((x) => x.slot === g.slot && x.line === g.line && x.weight === g.weight && x.recipe && !x.unique && (x.tier ?? 0) < (g.tier ?? 0))) {
         expect(g[main] as number, `${g.id} (tier ${g.tier}) vs ${o.id} (tier ${o.tier})`).toBeGreaterThan(o[main] as number);
       }
     }
   });
 });
+
+// --- R7: the leather line (classes reform, phase 2a; docs/CLASSES_E_EQUIPAMENTOS.md 2.4) ---------------------------------------------------------------------------------------------
+// Parity is measured, not asserted by construction: the numbers come from scripts/sim/weightBudget.gen.ts, which solves them against the real CP, and this test fails when they go stale
+// (a plate number changed, or somebody edited LEATHER_CONVERSION by hand).
+describe('R7: the leather line', () => {
+  const TIER_LEVEL = [1, 10, 25, 50, 70, 90];
+  // the reference hero of tier t with the five weight pieces swapped for the leather ones (or not)
+  const setHero = (t: number, leather: boolean, refine: number): SaveData => {
+    const h = buildHero(TIER_LEVEL[t - 1], t, refine);
+    if (!leather) return h;
+    const instances = { ...h.gearInstances };
+    const equipped = { ...h.equipped } as unknown as Record<string, string | null>;
+    for (const l of LEATHER_LINES) {
+      const inst = createGearInstance(l.ids[t - 1], { id: `gi_leather_${l.ids[t - 1]}`, origin: 'craft', rarity: 'common', substats: [], upgrade: refine });
+      instances[inst.id] = inst;
+      equipped[l.slot] = inst.id;
+    }
+    return { ...h, gearInstances: instances, equipped: equipped as unknown as SaveData['equipped'] };
+  };
+
+  for (const t of [1, 2, 3, 4, 5, 6]) {
+    it(`tier ${t}: a full leather set (armor, helmet, gloves, boots, quiver) is within +-5 % of the CP of the full plate set, at +0, +4 and +8, with and without the set bonuses`, () => {
+      for (const refine of [0, 4, 8]) {
+        const plateNo = computeCP_noSets(setHero(t, false, refine));
+        const leatherNo = computeCP_noSets(setHero(t, true, refine));
+        expect(leatherNo / plateNo, `+${refine} pieces only`).toBeGreaterThanOrEqual(0.95);
+        expect(leatherNo / plateNo, `+${refine} pieces only`).toBeLessThanOrEqual(1.05);
+        const r = computeCP(setHero(t, true, refine)) / computeCP(setHero(t, false, refine));
+        expect(r, `+${refine} with the set bonuses`).toBeGreaterThanOrEqual(0.95);
+        expect(r, `+${refine} with the set bonuses`).toBeLessThanOrEqual(1.05);
+      }
+    });
+  }
+
+  it('every leather piece is the lighter twin of a plate piece: same price and level gate, 60 % of the defense, crit and attack speed instead of reflect, and its own set family and look', () => {
+    for (const l of LEATHER_LINES) {
+      l.ids.forEach((id, i) => {
+        const p = getGear(id);
+        const twin = getGear(l.twins[i]);
+        expect(p.weight, id).toBe('leather');
+        expect(p.materialKey, id).toBe('material_leather');
+        expect(p.tier, id).toBe(i + 1);
+        expect(p.cost, id).toBe(twin.cost);
+        expect(gearRequiredLevel(p), id).toBe(gearRequiredLevel(twin));
+        expect(p.critChance ?? 0, id).toBeGreaterThan(0);
+        expect(p.attackSpeedBonus ?? 0, id).toBeGreaterThan(0);
+        expect(p.reflect, id).toBeUndefined();
+        if (twin.maxHp) expect(p.maxHp, id).toBe(Math.round(twin.maxHp * 0.6));
+        if (twin.resistance) expect(p.resistance!, id).toBeCloseTo(twin.resistance * 0.6, 4);
+        expect(p.setFamily, id).toBe((['hide', 'scout', 'ranger', 'hunter', 'nightstalker', 'abyssalhide'] as const)[i]);
+        if (l.slot === 'armor') expect(p.look, id).toBe(twin.look);
+      });
+    }
+  });
+
+  it('a leather piece is never below the plate piece of the tier before it in the power it adds (the lighter weight is a trade, not a downgrade)', () => {
+    for (const l of LEATHER_LINES) for (let i = 1; i < 6; i++) expect(pieceGain(l.ids[i]), `${l.ids[i]} vs ${l.twins[i - 1]}`).toBeGreaterThan(pieceGain(l.twins[i - 1]));
+  });
+
+  it('cost parity: from tier 3 a leather piece asks for every hunting / refined family its plate twin asks for, and the total reference cost (Gold + materials) is within 15 % of the twin', () => {
+    const own = (id: string): number => {
+      const g = getGear(id);
+      const r = g.recipe!;
+      const gems = Object.values(r.gems ?? {}).reduce((a, b) => a + (b as number), 0);
+      return g.cost + cargoReferenceValue((r.materials ?? {}) as Partial<Record<MaterialId, number>>) + (gems + (r.shards ?? 0)) * 4;
+    };
+    for (const l of LEATHER_LINES) {
+      l.ids.forEach((id, i) => {
+        const ratio = own(id) / own(l.twins[i]);
+        expect(ratio, `${id}: ${ratio.toFixed(3)}`).toBeGreaterThanOrEqual(0.85);
+        expect(ratio, `${id}: ${ratio.toFixed(3)}`).toBeLessThanOrEqual(1.15);
+        if (i >= 2) {
+          const mine = getGear(id).recipe!.materials!;
+          for (const m of Object.keys(getGear(l.twins[i]).recipe!.materials!)) if (m !== 'leather' && m !== 'leather_scrap' && !m.startsWith('wood_handle_')) expect(mine[m as MaterialId], `${id} asks for ${m}`).toBeGreaterThan(0);
+        }
+      });
+    }
+  });
+
+  it('the recipes follow the supply: leather + sinew (+ feather in the quiver, + the wood handle of the tier elsewhere), the quantities a few Hunting sessions can pay', () => {
+    const HANDLES = ['wood_handle_common', 'wood_handle_oak', 'wood_handle_ebony', 'wood_handle_elven', 'wood_handle_ancient', 'wood_handle_ancient'];
+    for (const l of LEATHER_LINES) {
+      l.ids.forEach((id, i) => {
+        const m = getGear(id).recipe!.materials!;
+        expect(m.leather, id).toBeGreaterThan(0);
+        // a 4 h session gives about 17 sinew to a new hero and 48 to a strong one; 32 feathers
+        expect(m.beast_sinew, id).toBeGreaterThan(0);
+        expect(m.beast_sinew!, id).toBeLessThanOrEqual(48);
+        if (l.feather) {
+          expect(m.feather!, id).toBeGreaterThan(0);
+          expect(m.feather!, id).toBeLessThanOrEqual(32);
+        } else expect(m.feather, id).toBeUndefined();
+        const handles = Object.keys(m).filter((k) => k.startsWith('wood_handle_'));
+        expect(handles, id).toEqual(l.handle ? [HANDLES[i]] : []);
+      });
+    }
+  });
+});
+function computeCP_noSets(h: SaveData): number {
+  return withoutSetBonuses(() => computeCP(h));
+}
 
 describe('R6: a unique is 10-15 % better than the crafted twin of the tier the hero has at its source, and never obsolete', () => {
   // The tier craftable where the unique drops: Hunting zone -> the tier the zone is hunted at; boss floor -> the tier of the next level gate (25 -> 3, 50 -> 4, 75 -> 5, 100 -> 6).

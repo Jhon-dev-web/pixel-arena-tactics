@@ -375,7 +375,7 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
   const baseDmg = (T.combat.attackMin + T.combat.attackMax) / 2;
   // Hero skills (heroSkills.ts): every effect enters the Layer-2 numbers here and nowhere else.
   const fx = saveSkillEffects(save);
-  const speedBonus = (relic?.attackSpeedBonus ?? 0) + set.attackSpeedBonus;
+  const speedBonus = (relic?.attackSpeedBonus ?? 0) + set.attackSpeedBonus + extra.attackSpeedBonus;
   const stats: CombatStats = {
     maxHp: playerMaxHp(save),
     // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
@@ -397,7 +397,7 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
     burn: !!weapon.burn,
     // Reflect scales with the armor's durability like its resistance does (a broken armor reflects less), not with rarity; the shield's and Espinhos' add to it.
     reflect: (armor.reflect ?? 0) * aFactor + extra.reflect + fx.reflect,
-    hpRegenPct: (relic?.hpRegenPct ?? 0) + fx.hpRegenPct + set.hpRegenPct,
+    hpRegenPct: (relic?.hpRegenPct ?? 0) + fx.hpRegenPct + set.hpRegenPct + extra.hpRegenPct,
     // Gold bonus (substats + Goblin Lucky Coin, capped): the Dungeon pays it through buffs.goldMultiplier, Hunting through the session's frozen stats.
     goldBonus: subs.goldBonus,
     xpBonus: (relic?.xpBonusPct ?? 0) + Math.round(fx.xpPct * 10000) / 100,

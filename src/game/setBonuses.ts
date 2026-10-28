@@ -40,6 +40,13 @@ export const SET_DEFS: Record<SetFamily, SetDef> = {
   dragon: { family: 'dragon', thresholds: [2], effects: [{ lifestealPct: 2 }] },
   voidsteel: { family: 'voidsteel', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.06 }, { critMultBonus: 0.15 }] },
   abyssal: { family: 'abyssal', thresholds: [3, 5], effects: [{ damagePct: 0.07 }, { attackSpeedBonus: 0.06 }] },
+  // The six leather families (classes reform, phase 2a): the archer's themes, attack speed and crit damage, the same size as the plate ones of their tier, the last tiers a bit larger.
+  hide: { family: 'hide', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.04 }, { critMultBonus: 0.05 }] },
+  scout: { family: 'scout', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.04 }, { critMultBonus: 0.06 }] },
+  ranger: { family: 'ranger', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.04 }, { critMultBonus: 0.1 }] },
+  hunter: { family: 'hunter', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.05 }, { critMultBonus: 0.1 }] },
+  nightstalker: { family: 'nightstalker', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.06 }, { critMultBonus: 0.15 }] },
+  abyssalhide: { family: 'abyssalhide', thresholds: [3, 5], effects: [{ attackSpeedBonus: 0.07 }, { critMultBonus: 0.18 }] },
 };
 
 export interface ActiveSetBonus {

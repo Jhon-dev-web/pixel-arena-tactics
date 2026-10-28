@@ -151,7 +151,7 @@ describe('shield slot', () => {
   });
 
   it('six forged tiers with the level gate of the armor of the tier, 1 shield of the previous tier from tier 2, wood handle of the tier, hunt materials', () => {
-    const line = GEAR.filter((g) => g.slot === 'shield' && !g.unique).sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0));
+    const line = GEAR.filter((g) => g.slot === 'shield' && !g.unique && !g.weight).sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0));
     expect(line.map((g) => g.id)).toEqual(IN_TIER_ORDER.map((k) => SHIELDS[k]));
     line.forEach((g, i) => {
       // Round 15: the shield of tiers 5 and 6 opens 8 levels after the weapon / armor of the tier (78 and 98)
@@ -528,7 +528,7 @@ describe('boss relics', () => {
 // ---------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------------------------
 describe('catalog: names, descriptions, icons of the content pack', () => {
-  const pack: GearItem[] = GEAR.filter((g) => g.slot === 'shield' || (g.line === 'axe' && !g.unique) || (g.slot === 'relic' && !g.recipe));
+  const pack: GearItem[] = GEAR.filter((g) => (g.slot === 'shield' && !g.weight) || (g.line === 'axe' && !g.unique) || (g.slot === 'relic' && !g.recipe));
   it('every new piece has pt and en names and digit-free descriptions, and an icon file', () => {
     const files = new Set(Object.keys(import.meta.glob('/public/assets/icons/*.png')));
     expect(pack).toHaveLength(6 + 2 + 6 + 4 + 1); // + the Season Relic (Adventurer Pass)
