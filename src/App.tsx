@@ -8,6 +8,7 @@ import {
   computeMiningStatus,
   computeWoodcuttingStatus,
   defaultSave,
+  applyRotation,
   effectiveRepairCost,
   playerLevel,
   ContextualTutorialId,
@@ -64,6 +65,7 @@ import type { CraftJobKind } from './game/craftJobTypes';
 import { HeroActivity } from './game/activity';
 import BusyNotice from './components/BusyNotice';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
+import type { AbilityId } from './game/abilities';
 import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, saveSkillEffects, skillPointsAvailable } from './game/heroSkills';
 import { applyReforge } from './game/reforge';
 import { applyLapidar } from './game/lapidar';
@@ -107,6 +109,7 @@ import OficiosView from './components/OficiosView';
 import InventoryModal from './components/InventoryModal';
 import PersonagemView from './components/PersonagemView';
 import SkillsView from './components/SkillsView';
+import TaticasView from './components/TaticasView';
 import DungeonMapModal from './components/DungeonMapModal';
 import HuntModal from './components/HuntModal';
 import HuntNavMini from './components/HuntNavMini';
@@ -229,7 +232,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // "Personagem" and "Ofícios" are main-content areas now (sidebar swaps them in, like Home),
   // not modals — see PersonagemView.tsx / OficiosView.tsx.
-  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'mercado' | 'passe' | 'convites' | 'forja' | 'calendario'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'personagem' | 'oficios' | 'skills' | 'tactics' | 'mercado' | 'passe' | 'convites' | 'forja' | 'calendario'>('home');
   // A tradeable material the player asked to sell from the inventory: the market opens on its Sell tab with it picked (once).
   const [marketPick, setMarketPick] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -2343,6 +2346,13 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth(r.save);
     showToast(t('heroSkills.ui.toastApplied'));
   };
+  // Tactics (abilities.ts): the rotation draft lives in the screen; this commits it.
+  const applyTactics = (draft: AbilityId[] | null) => {
+    const s = saveRef.current;
+    playSfx('click');
+    setSaveBoth(applyRotation(s, draft));
+    showToast(t('tactics.toastApplied'));
+  };
   const respecSkills = () => {
     const s = saveRef.current;
     const r = applyRespec(s, playerLevel(s.xp), battleFloor !== null);
@@ -2505,6 +2515,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       items: [
         { key: 'hero', icon: <PixelIcon name="hero" />, label: t('nav.hero'), active: activeView === 'personagem', badge: attributePointsAvailable(save) > 0, onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
         { key: 'skills', icon: <PixelIcon name="skills" />, label: t('nav.skills'), active: activeView === 'skills', badge: skillPointsAvailable(save, level) > 0, tutorialTarget: 'skills', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('skills'); } },
+        { key: 'tactics', icon: <PixelIcon name="tactics" />, label: t('nav.tactics'), active: activeView === 'tactics', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('tactics'); } },
         { key: 'hunt', icon: <PixelIcon name="hunt" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
         { key: 'dungeon', icon: <PixelIcon name="dungeon" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
         { key: 'quests', icon: <PixelIcon name="quests" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) + periodClaimable(save, Date.now(), ownsAdventurerPass(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
@@ -2619,6 +2630,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onOpenSkills={() => { playSfx('click'); setActiveView('skills'); }}
             />
           )}
+          {activeView === 'tactics' && <TaticasView save={save} onApply={applyTactics} />}
           {activeView === 'skills' && (
             <SkillsView save={save} battleActive={battleFloor !== null} onApply={applySkills} onRespec={respecSkills} onSwitchLoadout={switchLoadout} onOpenPass={() => { playSfx('click'); openPassView(); }} />
           )}

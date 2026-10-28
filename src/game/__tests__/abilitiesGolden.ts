@@ -81,7 +81,7 @@ export function huntScenarios(extra: Record<string, unknown> = {}): Record<strin
   }
   // The real engine path: a ladder hero (with the Warrior skills) fighting the real first zone.
   for (const [key, level, refine] of [['2', 12, 4], ['4g', 52, 6]] as [string, number, number][]) {
-    const h = spendSkillPoints(hero(key, refine, { level }), 'warrior');
+    const h = { ...spendSkillPoints(hero(key, refine, { level }), 'warrior'), rotation: [] }; // an EMPTY rotation (phase 5: an absent one is the automatic default now)
     const z = getHuntingZone('demon_glade')!;
     const session: HuntSession = { stats: buildCombatStats(h), blessed: false, strength: [], attack: [], pass: [], tonics: {} };
     const setup = buildHuntSimSetup(h, z, 'shallow', session, 0, []);
@@ -94,10 +94,11 @@ export function huntScenarios(extra: Record<string, unknown> = {}): Record<strin
 export function dungeonScenarios(): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const heroes: Record<string, SaveData> = {
-    t2: { ...hero('2', 3, { level: 15 }), highestDungeonFloor: 6 },
-    t3warrior: { ...spendSkillPoints(hero('3', 5, { level: 30 }), 'warrior'), highestDungeonFloor: 18 },
-    t3guardian: { ...spendSkillPoints(hero('3', 5, { level: 30 }), 'guardian'), highestDungeonFloor: 18 },
-    t4hunter: { ...spendSkillPoints(hero('4g', 6, { level: 52 }), 'hunter'), highestDungeonFloor: 30 },
+    // Phase 5 (2026-10-28): every hero carries an explicit EMPTY rotation, because an ABSENT one now means the automatic default (effectiveRotation). The golden is the proof about the empty rotation.
+    t2: { ...hero('2', 3, { level: 15 }), rotation: [], highestDungeonFloor: 6 },
+    t3warrior: { ...spendSkillPoints(hero('3', 5, { level: 30 }), 'warrior'), rotation: [], highestDungeonFloor: 18 },
+    t3guardian: { ...spendSkillPoints(hero('3', 5, { level: 30 }), 'guardian'), rotation: [], highestDungeonFloor: 18 },
+    t4hunter: { ...spendSkillPoints(hero('4g', 6, { level: 52 }), 'hunter'), rotation: [], highestDungeonFloor: 30 },
   };
   for (const [name, h] of Object.entries(heroes)) {
     out[`dungeon/${name}`] = withSeededRandom(7, () => runDungeon(h, 1_700_000_000_000, 12));
@@ -105,6 +106,7 @@ export function dungeonScenarios(): Record<string, unknown> {
     out[`cp/${name}`] = computeCP(h);
   }
   // The wall-clock stamps of a fresh save are not part of the comparison.
-  out['save/default'] = JSON.parse(JSON.stringify(normalizeSave(JSON.parse(JSON.stringify(defaultSave()))), (_k, x) => (typeof x === 'number' && x > 1e12 ? 0 : x)));
+  const fresh = normalizeSave(JSON.parse(JSON.stringify(defaultSave()))); // stays exactly as recorded: loading a save no longer writes a rotation (phase 5, it is derived), so it still matches the golden
+  out['save/default'] = JSON.parse(JSON.stringify(fresh, (_k, x) => (typeof x === 'number' && x > 1e12 ? 0 : x)));
   return clean(out) as Record<string, unknown>;
 }

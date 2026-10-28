@@ -700,6 +700,58 @@ const T = DebugPanel.define({
     // Tiro de Abertura (bow, opener): delays the enemy's FIRST attack of the fight; it is only ready while the enemy has not acted yet.
     openingShotDelayMs: { value: 2000, min: 0, max: 10000, step: 250, label: 'Tiro de Abertura: delay of the first enemy attack (ms)' },
     openingShotCdMs: { value: 5000, min: 0, max: 60000, step: 500, label: 'Tiro de Abertura: cooldown (ms)' },
+    // The 14 abilities of phase 5 (the rest of the 21 of docs/CLASSES_E_EQUIPAMENTOS.md 2.2). PROVISIONAL like the rest: a bigger effect has a longer cooldown; phase 8 calibrates all of them.
+    // Estocada Dupla (sword, volley).
+    doubleThrustHits: { value: 2, min: 2, max: 8, step: 1, label: 'Estocada Dupla: hits' },
+    doubleThrustPct: { value: 0.7, min: 0.1, max: 2, step: 0.05, label: 'Estocada Dupla: damage of each hit (x)' },
+    doubleThrustCdMs: { value: 7000, min: 1000, max: 120000, step: 500, label: 'Estocada Dupla: cooldown (ms)' },
+    // Brecha (sword, strike + guard).
+    breachPct: { value: 1.3, min: 1, max: 5, step: 0.1, label: 'Brecha: damage of the swing (x)' },
+    breachReduction: { value: 0.25, min: 0, max: 0.9, step: 0.05, label: 'Brecha: damage taken cut (share)' },
+    breachGuardMs: { value: 3000, min: 1000, max: 30000, step: 500, label: 'Brecha: guard duration (ms)' },
+    breachCdMs: { value: 12000, min: 1000, max: 120000, step: 500, label: 'Brecha: cooldown (ms)' },
+    // Rachadura (axe, a very strong strike with a long cooldown).
+    riftPct: { value: 2.8, min: 1, max: 6, step: 0.1, label: 'Rachadura: damage of the swing (x)' },
+    riftCdMs: { value: 14000, min: 1000, max: 120000, step: 500, label: 'Rachadura: cooldown (ms)' },
+    // Giro Brutal (axe, carry).
+    brutalSpinPct: { value: 1, min: 0.1, max: 3, step: 0.05, label: 'Giro Brutal: share of the swing that spills over' },
+    brutalSpinCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Giro Brutal: cooldown (ms)' },
+    // Sangria (axe, dot): a burn of its own in the ability slot, a bleed in words.
+    laceratePct: { value: 0.15, min: 0.01, max: 0.5, step: 0.01, label: 'Sangria: damage per tick (share of the hit)' },
+    lacerateDurationMs: { value: 5000, min: 1000, max: 10000, step: 500, label: 'Sangria: duration (ms)' },
+    lacerateCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Sangria: cooldown (ms)' },
+    // Tiro Potente (bow, strike; the doc calls it Tiro Certeiro, "always a crit"). The 8 effects have no guaranteed crit, so it is a plain heavy strike of the size of one crit (T.battle.critMult = 2), named for its force, not its aim. It stacks with a crit that rolls on the same swing.
+    trueShotPct: { value: 2, min: 1, max: 5, step: 0.1, label: 'Tiro Potente: damage of the swing (x)' },
+    trueShotCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Tiro Potente: cooldown (ms)' },
+    // Virote Perfurante (crossbow, heavy strike).
+    piercingBoltPct: { value: 2.4, min: 1, max: 6, step: 0.1, label: 'Virote Perfurante: damage of the swing (x)' },
+    piercingBoltCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Virote Perfurante: cooldown (ms)' },
+    // Tiro Duplo (crossbow, volley).
+    doubleShotHits: { value: 2, min: 2, max: 8, step: 1, label: 'Tiro Duplo: hits' },
+    doubleShotPct: { value: 0.9, min: 0.1, max: 2, step: 0.05, label: 'Tiro Duplo: damage of each hit (x)' },
+    doubleShotCdMs: { value: 8000, min: 1000, max: 120000, step: 500, label: 'Tiro Duplo: cooldown (ms)' },
+    // Tiro Fatal (crossbow, strike + crit damage). "Crit damage" has no effect of its own either: it is the heaviest strike of the game, with the longest cooldown of the weapon abilities.
+    fatalShotPct: { value: 3.2, min: 1, max: 8, step: 0.1, label: 'Tiro Fatal: damage of the swing (x)' },
+    fatalShotCdMs: { value: 16000, min: 1000, max: 120000, step: 500, label: 'Tiro Fatal: cooldown (ms)' },
+    // Nova (staff, carry + guard).
+    novaPct: { value: 0.6, min: 0.1, max: 3, step: 0.05, label: 'Nova: share of the swing that spills over' },
+    novaReduction: { value: 0.25, min: 0, max: 0.9, step: 0.05, label: 'Nova: damage taken cut (share)' },
+    novaGuardMs: { value: 3000, min: 1000, max: 30000, step: 500, label: 'Nova: guard duration (ms)' },
+    novaCdMs: { value: 14000, min: 1000, max: 120000, step: 500, label: 'Nova: cooldown (ms)' },
+    // Drenar Vida (scepter, strike + heal).
+    drainLifePct: { value: 1.4, min: 1, max: 5, step: 0.1, label: 'Drenar Vida: damage of the swing (x)' },
+    drainLifeHealPct: { value: 0.06, min: 0, max: 1, step: 0.01, label: 'Drenar Vida: max HP healed (share)' },
+    drainLifeCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Drenar Vida: cooldown (ms)' },
+    // Pulso Sombrio (scepter, carry).
+    darkPulsePct: { value: 0.8, min: 0.1, max: 3, step: 0.05, label: 'Pulso Sombrio: share of the swing that spills over' },
+    darkPulseCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Pulso Sombrio: cooldown (ms)' },
+    // Esquiva (leather chestpiece, haste).
+    dodgeHastePct: { value: 0.35, min: 0, max: 1, step: 0.05, label: 'Esquiva: attack speed bonus' },
+    dodgeHasteMs: { value: 4000, min: 1000, max: 30000, step: 500, label: 'Esquiva: haste duration (ms)' },
+    dodgeCdMs: { value: 16000, min: 1000, max: 120000, step: 500, label: 'Esquiva: cooldown (ms)' },
+    // Folego Arcano (cloth chestpiece, heal).
+    arcaneBreathHealPct: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Folego Arcano: max HP healed (share)' },
+    arcaneBreathCdMs: { value: 18000, min: 1000, max: 120000, step: 500, label: 'Folego Arcano: cooldown (ms)' },
   },
   advanced: {
     _label: 'Advanced',

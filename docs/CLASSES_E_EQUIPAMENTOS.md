@@ -92,13 +92,15 @@ Pequeno de propósito: cada efeito tem de funcionar **nos três laços** (seçã
 
 **Guerreiro — Espada:** Golpe Firme (`strike` forte) · Estocada Dupla (`volley` 2×) · Brecha (`strike` + `guard`)
 **Guerreiro — Machado:** Rachadura (`strike` muito forte, recarga longa) · Giro Brutal (`cleave` 2) · Sangria (`dot`)
-**Arqueiro — Arco:** Tiro Certeiro (`strike`, sempre crítico) · Chuva de Flechas (`volley` 3×) · Tiro de Abertura (`opener`)
+**Arqueiro — Arco:** Tiro Potente (`strike` forte) · Chuva de Flechas (`volley` 3×) · Tiro de Abertura (`opener`)
 **Arqueiro — Besta:** Virote Perfurante (`strike` pesado) · Tiro Duplo (`volley` 2×) · Tiro Fatal (`strike` + dano crítico)
 **Mago — Cajado:** Explosão Arcana (`cleave` na fila) · Chamas (`dot` forte) · Nova (`cleave` + `guard`)
 **Mago — Cetro:** Drenar Vida (`strike` + `heal`) · Pulso Sombrio (`cleave` 2) · Bênção (`heal` + `haste`)
 **Peitorais:** Postura de Ferro (placa, `guard`) · Esquiva (couro, `haste`) · Fôlego Arcano (tecido, `heal`)
 
 Os números de cada uma (percentual e recarga) saem da calibração da seção 2.5, não da intuição.
+
+> **Correção de 28/10, durante a fase 5.** A lista original trazia "Tiro Certeiro (sempre crítico)". O conjunto de 8 efeitos é fechado de propósito e crítico garantido pediria um nono, então a habilidade virou um golpe forte e **foi renomeada para Tiro Potente** — um nome que promete precisão enquanto a mecânica entrega força seria uma mentira na tela, e o jogador monta a build confiando nela sem nunca descobrir. Há um teste varrendo os textos de pt e en atrás de "crit", "certeiro", "sempre" e "always", para que a promessa não volte.
 
 #### O que isto não muda
 
@@ -211,7 +213,11 @@ Então "mago mata 25% mais rápido" vira só **+11,8%** de XP por hora, abaixo d
 | **+16%** | **1,35×** |
 | +20% (o teto) | 1,44× ou mais |
 
-**Alvo corrigido:** cada classe **15–20% melhor** no seu próprio eixo (não 25%: o teto de XP torna 25% impossível sem o dono mudar o tunable) e **no máximo ~10% pior** nos outros dois. Para o mago isso significa calibrar `splashPct` para uma limpeza em torno de **1,35× mais rápida** — bem mais área do que a intuição sugere. Um executor que calibrasse a área "no que parece razoável" pararia em +5% e a classe não existiria.
+**Alvo corrigido:** cada classe **15–20% melhor** no seu próprio eixo (não 25%: o teto de XP torna 25% impossível sem o dono mudar o tunable) e **no máximo ~10% pior** nos outros dois. Para o mago isso significa calibrar a área (hoje a habilidade `carry`) para uma limpeza em torno de **1,35× mais rápida** — bem mais do que a intuição sugere. Quem calibrasse "no que parece razoável" pararia em +5% e a classe não existiria.
+
+**Consequência metodológica, descoberta na fase 5.** Os testes que comparam equipamento (`itemBalance`, `craftedStatsAudit`) têm de medir com a **rotação vazia**, e isso não é contornar teste: é controle experimental. Cada arma concede habilidades diferentes, então comparar arco contra espada com rotação ligada deixa de comparar equipamento e passa a comparar equipamento mais habilidade de brinde — a paridade de ±5% medida assim não significaria nada. Existe um helper único para esse herói "só equipamento", com o motivo escrito ao lado. A vantagem das habilidades é medida à parte, aqui na fase 8.
+
+Uma exceção importante: **`recommendedCp` é a curva do jogador de verdade**, e o jogador de verdade vai ter rotação. Ela segue gerada sem rotação por ora (os números das habilidades são provisórios), com um `REVIEW IN PHASE 8` no código. Se a fase 8 esquecer de regerá-la, a dificuldade recomendada fica abaixo do que o jogador aguenta e ninguém vai entender por quê.
 
 Conferir também o outro lado: área forte na Masmorra, onde as ondas são filas de inimigos, não pode tornar os andares triviais. A fase 4 mede os dois.
 

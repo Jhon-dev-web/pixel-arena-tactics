@@ -4,6 +4,7 @@ export const UI_ICON = {
   camp: '/assets/icons/camp_stash.png',
   hero: '/assets/gear_icons/armor_iron.png',
   skills: '/assets/icons/skill_path_warrior.png',
+  tactics: '/assets/icons/skill_w_weapon_master.png',
   hunt: '/assets/icons/demon_claw.png',
   dungeon: '/assets/icons/dragon_flameblade.png',
   quests: '/assets/icons/nav_quests.png',

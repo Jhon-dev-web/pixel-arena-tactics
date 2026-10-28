@@ -4,7 +4,7 @@ import { computeCP, defaultSave, SaveData, xpToReachLevel } from '../../src/game
 import { createGearInstance } from '../../src/game/gearInstances';
 import { getGear } from '../../src/game/gear';
 import { spendAttributePoints } from './driver';
-import { withoutSetBonuses } from './duel';
+import { gearOnly, withoutSetBonuses } from './duel';
 import { TIER_EXTRAS, TIER_GEAR } from './ladder';
 
 // One chain per line, tier 1 .. 6 (the gilded / dragon fork of tier 4 is one chain, see gear.ts).
@@ -31,7 +31,7 @@ export function referenceHero(): SaveData {
     equipped[slot] = inst.id;
   }
   h = { ...h, gearInstances: instances, equipped: equipped as unknown as SaveData['equipped'] };
-  return spendAttributePoints(h);
+  return gearOnly(spendAttributePoints(h)); // gear-only: see duel.ts gearOnly
 }
 
 // CP gain of wearing `tpl` (common +4) in its slot over the empty slot, on the reference hero.

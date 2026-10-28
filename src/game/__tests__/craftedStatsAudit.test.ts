@@ -11,7 +11,7 @@ import { getHuntingZone } from '../huntingZones';
 import { sanitizeHuntSession } from '../huntSession';
 import { goldMultiplier } from '../buffs';
 import { gearStatLines, GearStatKind } from '../../components/gearStats';
-import { duelVs, repFloor } from '../../../scripts/sim/duel';
+import { duelVs, gearOnly, repFloor } from '../../../scripts/sim/duel';
 import { gearLevelGate } from '../../../scripts/sim/seasonTablesBuild';
 import { runDungeon } from '../../../scripts/sim/driver';
 import { dungeonEnemyKindForFloor } from '../dungeon';
@@ -41,7 +41,8 @@ const REFINES = [0, 4, 8, 12];
 const DURABILITIES = [100, 50, 29, 0];
 
 // A bare hero (no points in any attribute, so STR does not scale the hit), level 50 (below the paragon), the zero-stat starters worn.
-const bare = (): SaveData => ({ ...defaultSave(), xp: xpToReachLevel(50), str: 0, vit: 0, agi: 0, res: 0 });
+// gear-only (empty rotation): this audit measures one stat of one piece, see scripts/sim/duel.ts gearOnly
+const bare = (): SaveData => gearOnly({ ...defaultSave(), xp: xpToReachLevel(50), str: 0, vit: 0, agi: 0, res: 0 });
 
 interface Wear {
   rarity?: Rarity;

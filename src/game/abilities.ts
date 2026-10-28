@@ -3,8 +3,7 @@ import { BurnState, igniteBurn, nextBurnTickAt, tickBurn } from './derivedStats'
 import type { ArmorWeight, WeaponLine } from './gear';
 import type { SkillFxId } from './skillFx';
 
-// REVIEW IN PHASE 5: the BattleModal (Dungeon) calls these functions but could not be run in a test, and without the rotation screen no build can be put together in the real game. Whoever does phase 5 must open the game and
-// SEE a rotation fire in a real Dungeon run, not only in the simulator's mirror (scripts/sim/driver.ts).
+// REVIEW (director): confirm a rotation fires in a REAL Dungeon run (BattleModal.tsx calls these functions but could not be run in a test); the simulator's mirror is scripts/sim/driver.ts.
 //
 // Equipment abilities and the rotation (classes reform, phase 4; the design is docs/CLASSES_E_EQUIPAMENTOS.md 2.2).
 //
@@ -21,7 +20,14 @@ import type { SkillFxId } from './skillFx';
 // All times are in the caller's ABILITY CLOCK (ms): a clock that only runs while the hero is fighting and carries over from fight to fight inside a session / a Dungeon run (huntCombat.ts: the session
 // time, BattleModal.tsx: the combat clock, the driver: the clock without the intermissions). Cooldowns are `readyAt` stamps on that clock.
 
-export type AbilityId = 'firm_strike' | 'arrow_rain' | 'opening_shot' | 'arcane_burst' | 'flames' | 'blessing' | 'iron_stance';
+export type AbilityId =
+  | 'firm_strike' | 'double_thrust' | 'breach' // sword
+  | 'rift' | 'brutal_spin' | 'lacerate' // axe
+  | 'arrow_rain' | 'opening_shot' | 'true_shot' // bow
+  | 'piercing_bolt' | 'double_shot' | 'fatal_shot' // crossbow
+  | 'arcane_burst' | 'flames' | 'nova' // staff
+  | 'blessing' | 'drain_life' | 'dark_pulse' // scepter
+  | 'iron_stance' | 'dodge' | 'arcane_breath'; // chestpieces: plate, leather, cloth
 
 // Plate is the weight every piece had before the reform, so it has no `weight` field on the item (gear.ts); as an ability source it needs a name of its own.
 export type BodyWeight = ArmorWeight | 'plate';
@@ -48,7 +54,15 @@ export interface AbilityDef {
 }
 
 // Definition order is the order of the default rotation (defaultRotation) and of the lists shown to the player.
-export const ABILITY_IDS: readonly AbilityId[] = ['firm_strike', 'arrow_rain', 'opening_shot', 'arcane_burst', 'flames', 'blessing', 'iron_stance'];
+export const ABILITY_IDS: readonly AbilityId[] = [
+  'firm_strike', 'double_thrust', 'breach',
+  'rift', 'brutal_spin', 'lacerate',
+  'arrow_rain', 'opening_shot', 'true_shot',
+  'piercing_bolt', 'double_shot', 'fatal_shot',
+  'arcane_burst', 'flames', 'nova',
+  'blessing', 'drain_life', 'dark_pulse',
+  'iron_stance', 'dodge', 'arcane_breath',
+];
 
 // Built from the tunables on every call so the debug panel keeps working (the loops read only the few numbers they need; this is not a hot path beyond a handful of cheap objects per swing).
 export function abilityDef(id: AbilityId): AbilityDef | undefined {
@@ -77,6 +91,61 @@ export function abilityDef(id: AbilityId): AbilityDef | undefined {
       };
     case 'iron_stance':
       return { id, source: { weight: 'plate' }, cooldownMs: a.ironStanceCdMs, effects: [{ kind: 'guard', reduction: a.ironStanceReduction, durationMs: a.ironStanceMs }], fx: 'ab_iron_stance' };
+    case 'double_thrust':
+      return { id, source: { line: 'sword' }, cooldownMs: a.doubleThrustCdMs, effects: [{ kind: 'volley', hits: a.doubleThrustHits, pct: a.doubleThrustPct }], fx: 'ab_double_thrust' };
+    case 'breach':
+      return {
+        id,
+        source: { line: 'sword' },
+        cooldownMs: a.breachCdMs,
+        effects: [
+          { kind: 'strike', pct: a.breachPct },
+          { kind: 'guard', reduction: a.breachReduction, durationMs: a.breachGuardMs },
+        ],
+        fx: 'ab_breach',
+      };
+    case 'rift':
+      return { id, source: { line: 'axe' }, cooldownMs: a.riftCdMs, effects: [{ kind: 'strike', pct: a.riftPct }], fx: 'ab_rift' };
+    case 'brutal_spin':
+      return { id, source: { line: 'axe' }, cooldownMs: a.brutalSpinCdMs, effects: [{ kind: 'carry', pct: a.brutalSpinPct }], fx: 'ab_brutal_spin' };
+    case 'lacerate':
+      return { id, source: { line: 'axe' }, cooldownMs: a.lacerateCdMs, effects: [{ kind: 'dot', pctPerSec: a.laceratePct, durationMs: a.lacerateDurationMs }], fx: 'ab_lacerate' };
+    case 'true_shot':
+      return { id, source: { line: 'bow' }, cooldownMs: a.trueShotCdMs, effects: [{ kind: 'strike', pct: a.trueShotPct }], fx: 'ab_true_shot' };
+    case 'piercing_bolt':
+      return { id, source: { line: 'crossbow' }, cooldownMs: a.piercingBoltCdMs, effects: [{ kind: 'strike', pct: a.piercingBoltPct }], fx: 'ab_piercing_bolt' };
+    case 'double_shot':
+      return { id, source: { line: 'crossbow' }, cooldownMs: a.doubleShotCdMs, effects: [{ kind: 'volley', hits: a.doubleShotHits, pct: a.doubleShotPct }], fx: 'ab_double_shot' };
+    case 'fatal_shot':
+      return { id, source: { line: 'crossbow' }, cooldownMs: a.fatalShotCdMs, effects: [{ kind: 'strike', pct: a.fatalShotPct }], fx: 'ab_fatal_shot' };
+    case 'nova':
+      return {
+        id,
+        source: { line: 'staff' },
+        cooldownMs: a.novaCdMs,
+        effects: [
+          { kind: 'carry', pct: a.novaPct },
+          { kind: 'guard', reduction: a.novaReduction, durationMs: a.novaGuardMs },
+        ],
+        fx: 'ab_nova',
+      };
+    case 'drain_life':
+      return {
+        id,
+        source: { line: 'scepter' },
+        cooldownMs: a.drainLifeCdMs,
+        effects: [
+          { kind: 'strike', pct: a.drainLifePct },
+          { kind: 'heal', pct: a.drainLifeHealPct },
+        ],
+        fx: 'ab_drain_life',
+      };
+    case 'dark_pulse':
+      return { id, source: { line: 'scepter' }, cooldownMs: a.darkPulseCdMs, effects: [{ kind: 'carry', pct: a.darkPulsePct }], fx: 'ab_dark_pulse' };
+    case 'dodge':
+      return { id, source: { weight: 'leather' }, cooldownMs: a.dodgeCdMs, effects: [{ kind: 'haste', speedPct: a.dodgeHastePct, durationMs: a.dodgeHasteMs }], fx: 'ab_dodge' };
+    case 'arcane_breath':
+      return { id, source: { weight: 'cloth' }, cooldownMs: a.arcaneBreathCdMs, effects: [{ kind: 'heal', pct: a.arcaneBreathHealPct }], fx: 'ab_arcane_breath' };
     default:
       return undefined;
   }
@@ -98,8 +167,9 @@ export function grantedAbilities(weaponLine: WeaponLine | undefined, armorWeight
 
 // The rotation a hero gets when he has not chosen one: everything his gear grants, in definition order, up to the slots. The save does NOT store it (an old save without `rotation` has an EMPTY one,
 // so nothing changes for it); the screen of phase 5 uses it for its "default" button.
-// DECIDED (owner/director, phase 4): when the rotation screen exists (phase 5), a save WITHOUT a rotation gets defaultRotation(), not an empty one. In an idle game most players never open the screen, and they must not
-// keep their gear switched off while the ones who open it get an edge. It is NOT applied in phase 4 because it would change the result of every existing save and break the bit-for-bit identity this phase promises.
+// DECIDED (owner/director, phase 4) AND APPLIED IN PHASE 5 (2026-10-28): a LOADED save WITHOUT a rotation gets defaultRotation() (engine.ts normalizeSave / loadedRotation), not an empty one. In an idle game most players never
+// open the screen, and they must not keep their gear switched off while the ones who open it get an edge. A stored EMPTY list is a player who cleared his rotation on purpose and stays empty. The identity with the
+// pre-engine golden file now holds for a hero with an EMPTY rotation (abilitiesIdentity.test.ts); the fill itself is proved in defaultRotation.test.ts.
 export const defaultRotation = (granted: readonly AbilityId[]): AbilityId[] => granted.slice(0, T.abilities.rotationSlots);
 
 // Sanitizes a rotation like sanitizeSkillTree does a skill allocation: only known ids, only the ones `granted` allows (omit it to skip that check, e.g. for a session that froze its rotation),

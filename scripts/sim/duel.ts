@@ -50,6 +50,19 @@ export interface HeroOpts {
   wSockets?: GemId[];
 }
 
+// GEAR-ONLY HEROES (classes reform, phase 5, 2026-10-28). A save with no `rotation` field is AUTOMATIC: the equipment abilities of the worn gear are switched on (engine.ts effectiveRotation). The heroes of the
+// balance tools and tests measure EQUIPMENT (leather set vs plate set, one weapon line vs another, one stat per piece), and every weapon / chestpiece grants different abilities, so leaving the rotation on would
+// compare equipment PLUS a free ability, a confounder: a +-5 % CP parity measured like that no longer means anything. So these heroes carry an EMPTY rotation on purpose. This is a methodological choice, not a
+// patch: the CP parity is about the STAT part, and the edge the abilities give is measured separately in the simulator in phase 8 (docs/CLASSES_E_EQUIPAMENTOS.md 2.5). A tool that needs the real player's
+// automatic rotation uses automaticRotation().
+export const gearOnly = <S extends SaveData>(s: S): S => ({ ...s, rotation: [] });
+// The same hero as a real player who never opened the Taticas screen: no field, so the rotation follows the worn gear.
+export function automaticRotation<S extends SaveData>(s: S): S {
+  const out = { ...s } as Partial<SaveData>;
+  delete out.rotation;
+  return out as S;
+}
+
 // A level-appropriate hero wearing the weapon + armor pair of a tier at a refine level, attribute points spread 35/30/20/15.
 export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveData {
   const [swordId, a, lvl] = PAIRS[pairKey];
@@ -70,7 +83,7 @@ export function hero(pairKey: string, refine: number, o: HeroOpts = {}): SaveDat
   }
   h = { ...h, gearInstances: instances, equipped };
   h = spendAttributePoints(h);
-  return o.attrs ? { ...h, ...o.attrs } : h;
+  return gearOnly(o.attrs ? { ...h, ...o.attrs } : h);
 }
 
 // Duel margin P = (time the hero survives) / (time the hero needs to kill one enemy), closed form: expected crits, lifesteal, resistance,

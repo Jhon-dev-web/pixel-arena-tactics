@@ -2469,6 +2469,182 @@ button[data-ui]:focus-visible {
     opacity: 0;
   }
 }
+/* The equipment abilities (abilities.ts, skillFx.ts): no sprite sheets, EIGHT hard-edged CSS flashes, one per combat effect, so the player learns to read the kind of an ability at a glance
+   (the floating name says which one). Every flash plays once, centred on its anchor, in steps() so it stays pixel-crisp. */
+.skfx-ab {
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  background: none;
+}
+/* strike: one hard diagonal slash, white core and gold edge */
+.skfx-ab-strike {
+  width: 76px;
+  height: 12px;
+  margin: -6px 0 0 -38px;
+  background: #fff6d0;
+  box-shadow: 0 0 0 4px #ffb347, 0 0 0 8px rgba(255, 94, 58, 0.55);
+  transform: rotate(-35deg);
+  animation: skfxAbStrike 0.36s steps(5) forwards;
+}
+@keyframes skfxAbStrike {
+  from {
+    transform: rotate(-35deg) scaleX(0.1);
+    opacity: 1;
+  }
+  60% {
+    transform: rotate(-35deg) scaleX(1);
+    opacity: 1;
+  }
+  to {
+    transform: rotate(-35deg) scaleX(1.1);
+    opacity: 0;
+  }
+}
+/* volley: three quick streaks that rain down side by side */
+.skfx-ab-volley {
+  width: 6px;
+  height: 30px;
+  margin: -15px 0 0 -3px;
+  background: #e8ffd0;
+  box-shadow: -22px 8px 0 #8be89a, 22px 8px 0 #8be89a, -22px 8px 0 2px rgba(60, 130, 80, 0.5), 22px 8px 0 2px rgba(60, 130, 80, 0.5), 0 0 0 2px rgba(60, 130, 80, 0.5);
+  animation: skfxAbVolley 0.36s steps(4) forwards;
+}
+@keyframes skfxAbVolley {
+  from {
+    transform: translateY(-26px);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(8px);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+}
+/* dot (burn / bleed): embers that rise and die out */
+.skfx-ab-dot {
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  background: #ffd27a;
+  box-shadow: -16px 10px 0 #ff7a3a, 14px 6px 0 #ff5a3a, -6px 18px 0 #ffb347, 8px 20px 0 #d6402a;
+  animation: skfxAbDot 0.4s steps(5) forwards;
+}
+@keyframes skfxAbDot {
+  from {
+    transform: translateY(14px);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-22px);
+    opacity: 0;
+  }
+}
+/* carry (the spill to the next enemy): a square ring that swells outward */
+.skfx-ab-carry {
+  border: 6px solid #c9a0ff;
+  box-shadow: inset 0 0 0 4px #7a4fd0, 0 0 0 3px rgba(40, 20, 80, 0.6);
+  animation: skfxAbCarry 0.42s steps(5) forwards;
+}
+@keyframes skfxAbCarry {
+  from {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+/* guard: a solid shield-like block that snaps in and settles */
+.skfx-ab-guard {
+  width: 44px;
+  height: 52px;
+  margin: -26px 0 0 -22px;
+  border: 5px solid #cfe0ff;
+  border-radius: 4px 4px 22px 22px;
+  background: rgba(90, 143, 224, 0.55);
+  box-shadow: inset 0 0 0 4px #5a8fe0;
+  animation: skfxAbGuard 0.42s steps(4) forwards;
+}
+@keyframes skfxAbGuard {
+  from {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  35% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+/* heal: a plus sign that floats up */
+.skfx-ab-heal {
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  background: linear-gradient(#9dffb0, #9dffb0) center / 100% 10px no-repeat, linear-gradient(#9dffb0, #9dffb0) center / 10px 100% no-repeat;
+  filter: drop-shadow(0 0 0 #1c6b34) drop-shadow(3px 3px 0 #1c6b34);
+  animation: skfxAbHeal 0.42s steps(5) forwards;
+}
+@keyframes skfxAbHeal {
+  from {
+    transform: translateY(14px) scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-20px) scale(1.1);
+    opacity: 0;
+  }
+}
+/* haste: three speed lines that slide past */
+.skfx-ab-haste {
+  width: 40px;
+  height: 5px;
+  margin: -3px 0 0 -20px;
+  background: #b8f4ff;
+  box-shadow: 8px -12px 0 #6ad0f0, -6px 12px 0 #6ad0f0;
+  animation: skfxAbHaste 0.36s steps(4) forwards;
+}
+@keyframes skfxAbHaste {
+  from {
+    transform: translateX(26px) scaleX(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-30px) scaleX(1.3);
+    opacity: 0;
+  }
+}
+/* opener: one thin vertical beam that falls on the target and stops it */
+.skfx-ab-opener {
+  width: 6px;
+  height: 64px;
+  margin: -32px 0 0 -3px;
+  background: #fffbe0;
+  box-shadow: 0 0 0 3px #ffd54a, 0 0 0 6px rgba(255, 213, 74, 0.35);
+  animation: skfxAbOpener 0.3s steps(3) forwards;
+}
+@keyframes skfxAbOpener {
+  from {
+    transform: translateY(-40px) scaleY(0.2);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(0) scaleY(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(0) scaleY(1);
+    opacity: 0;
+  }
+}
 .battle-stage.shake,
 .hunt-stage.shake {
   animation: skShake 0.15s steps(3) 1;
@@ -2901,4 +3077,131 @@ button[data-ui]:focus-visible {
   width: 16px;
   height: 16px;
   vertical-align: -3px;
+}
+/* =====================================================================
+   TATICAS (TaticasView.tsx): the equipment abilities and the rotation. Same tokens as the Habilidades screen; the four type sizes only (title, section, body, small).
+   ===================================================================== */
+.tc-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.tc-slots,
+.tc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.tc-slot,
+.tc-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-md);
+}
+.tc-slot.filled {
+  border-color: var(--c-gold-300);
+}
+.tc-card.used {
+  opacity: 0.75;
+}
+.tc-slot-n {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-200);
+  border: var(--bw) solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+}
+.tc-slot-body,
+.tc-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.tc-slot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.tc-name {
+  margin: 0;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-gold-200);
+}
+.tc-effect,
+.tc-slot-empty {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-muted);
+  overflow-wrap: anywhere;
+}
+.tc-slot-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--sp-2);
+}
+.tc-apply-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+.tc-dropped {
+  margin-top: var(--sp-2);
+  color: var(--c-warn);
+}
+.tc-rotation .ui-note {
+  margin-top: var(--sp-2);
+}
+.tc-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+  align-items: start;
+}
+/* a phone: everything in one column, the buttons of a slot / card go UNDER its text so nothing is squeezed, and each button keeps a comfortable target */
+@container ui (max-width: 759px) {
+  .tc-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tc-slot,
+  .tc-card {
+    flex-wrap: wrap;
+  }
+  .tc-slot-body,
+  .tc-card-body {
+    flex: 1 1 calc(100% - 44px);
+  }
+  .tc-slot-actions {
+    flex: 1 1 100%;
+  }
+  .tc-slot-actions .ui-btn {
+    flex: 1 1 0;
+  }
+  .tc-card > .ui-btn {
+    flex: 1 1 100%;
+  }
+  .tc-slot-empty {
+    flex: 1 1 calc(100% - 44px);
+  }
 }

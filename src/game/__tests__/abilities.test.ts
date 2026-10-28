@@ -6,7 +6,7 @@ import path from 'node:path';
 vi.mock('../waves', async (orig) => ({ ...(await orig<typeof import('../waves')>()), stageEnemyHp: () => 1500, stageEnemyDmg: () => 1 }));
 
 import { runDungeon } from '../../../scripts/sim/driver';
-import { hero } from '../../../scripts/sim/duel';
+import { automaticRotation, hero } from '../../../scripts/sim/duel';
 import {
   ABILITY_IDS,
   AbilityId,
@@ -25,7 +25,7 @@ import {
   tickAbilityDot,
 } from '../abilities';
 import { HuntCombatBuild, HuntPotionCfg, HuntZoneCombatCfg, simulateHuntingSession } from '../huntCombat';
-import { activeRotation, buildCombatStats, combatModifiersFromSave, computeCP, cpOfStats, normalizeSave, SaveData } from '../engine';
+import { effectiveRotation, buildCombatStats, combatModifiersFromSave, computeCP, cpOfStats, normalizeSave, SaveData } from '../engine';
 import { applyDamageModifiers, combatPowerCore } from '../derivedStats';
 import { dungeonEnemyKindForFloor } from '../dungeon';
 import { getEnemyDef } from '../enemies';
@@ -73,8 +73,9 @@ afterEach(() => {
 });
 
 describe('the model', () => {
-  it('seven abilities, one per combat effect (the eighth, cleave, is the carry), each with a skillFx entry and a source', () => {
-    expect([...ABILITY_IDS].sort()).toEqual(['arcane_burst', 'arrow_rain', 'blessing', 'firm_strike', 'flames', 'iron_stance', 'opening_shot']);
+  it('twenty-one abilities (3 per weapon line, 1 per chestpiece weight), over the 8 effects, each with a skillFx entry and a source', () => {
+    expect(ABILITY_IDS).toHaveLength(21);
+    expect(new Set(ABILITY_IDS).size).toBe(21);
     const kinds = new Set<string>();
     for (const id of ABILITY_IDS) {
       const d = abilityDef(id)!;
@@ -87,12 +88,13 @@ describe('the model', () => {
   });
 
   it('the worn weapon line and chestpiece weight grant them (an absent line is the sword, an absent weight is plate), in definition order', () => {
-    expect(grantedAbilities(undefined, undefined)).toEqual(['firm_strike', 'iron_stance']);
-    expect(grantedAbilities('bow', undefined)).toEqual(['arrow_rain', 'opening_shot', 'iron_stance']);
-    expect(grantedAbilities('staff', 'cloth')).toEqual(['arcane_burst', 'flames']);
-    expect(grantedAbilities('scepter', 'cloth')).toEqual(['blessing']);
-    expect(grantedAbilities('axe', 'leather')).toEqual([]);
-    expect(defaultRotation(grantedAbilities('bow', undefined))).toEqual(['arrow_rain', 'opening_shot', 'iron_stance']);
+    expect(grantedAbilities(undefined, undefined)).toEqual(['firm_strike', 'double_thrust', 'breach', 'iron_stance']);
+    expect(grantedAbilities('bow', undefined)).toEqual(['arrow_rain', 'opening_shot', 'true_shot', 'iron_stance']);
+    expect(grantedAbilities('staff', 'cloth')).toEqual(['arcane_burst', 'flames', 'nova', 'arcane_breath']);
+    expect(grantedAbilities('scepter', 'cloth')).toEqual(['blessing', 'drain_life', 'dark_pulse', 'arcane_breath']);
+    expect(grantedAbilities('axe', 'leather')).toEqual(['rift', 'brutal_spin', 'lacerate', 'dodge']);
+    expect(grantedAbilities('crossbow', 'leather')).toEqual(['piercing_bolt', 'double_shot', 'fatal_shot', 'dodge']);
+    expect(defaultRotation(grantedAbilities('bow', undefined))).toEqual(['arrow_rain', 'opening_shot', 'true_shot', 'iron_stance']);
     expect(defaultRotation(ABILITY_IDS)).toHaveLength(4);
   });
 });
@@ -103,30 +105,31 @@ describe('the rotation in the save', () => {
     expect(sanitizeRotation('firm_strike')).toEqual([]);
     expect(sanitizeRotation(['bogus', 3, null, 'firm_strike', 'firm_strike', 'flames'])).toEqual(['firm_strike', 'flames']);
     expect(sanitizeRotation([...ABILITY_IDS])).toHaveLength(4);
-    expect(sanitizeRotation([...ABILITY_IDS].reverse()).slice(0, 2)).toEqual(['iron_stance', 'blessing']);
+    expect(sanitizeRotation([...ABILITY_IDS].reverse()).slice(0, 2)).toEqual(['arcane_breath', 'dodge']);
     expect(sanitizeRotation(['firm_strike', 'arrow_rain', 'iron_stance'], grantedAbilities(undefined, undefined))).toEqual(['firm_strike', 'iron_stance']);
   });
 
-  it('an old save has no rotation, a stored one is cut down to the worn gear, and an empty result removes the field', () => {
+  // Phase 5 (2026-10-28): an ABSENT rotation is the automatic default now (defaultRotation.test.ts). What stays true here: a stored list keeps only known ids, no repeats (it is cut down to the worn gear when READ,
+  // effectiveRotation), and a stored EMPTY list (a rotation cleared on purpose) stays empty.
+  it('a stored rotation keeps known ids without repeats, and an explicit empty list stays empty', () => {
     const sword = hero('2', 3, { level: 15 });
-    expect('rotation' in normalizeSave(JSON.parse(JSON.stringify(sword)))).toBe(false);
     const stored = (rotation: unknown) => normalizeSave(JSON.parse(JSON.stringify({ ...sword, rotation })));
-    expect(stored(['arrow_rain', 'firm_strike', 'bogus', 'firm_strike']).rotation).toEqual(['firm_strike']);
-    expect('rotation' in stored(['arrow_rain'])).toBe(false);
-    expect('rotation' in stored([])).toBe(false);
+    expect(stored(['arrow_rain', 'firm_strike', 'bogus', 'firm_strike']).rotation).toEqual(['arrow_rain', 'firm_strike']);
+    expect(effectiveRotation(stored(['arrow_rain', 'firm_strike', 'bogus', 'firm_strike']))).toEqual(['firm_strike']);
     expect('rotation' in stored('nope')).toBe(false);
+    expect(stored([]).rotation).toEqual([]);
     const bow = hero('2', 3, { level: 15, weapon: 'hunting_bow' });
     expect(normalizeSave(JSON.parse(JSON.stringify({ ...bow, rotation: ['opening_shot', 'arrow_rain'] }))).rotation).toEqual(['opening_shot', 'arrow_rain']);
   });
 
   it('the combat stats carry the rotation only when there is one, and only what the worn gear grants right now', () => {
     const sword = hero('2', 3, { level: 15 });
-    expect('rotation' in buildCombatStats(sword)).toBe(false);
+    expect(buildCombatStats(automaticRotation(sword)).rotation).toEqual(['firm_strike', 'double_thrust', 'breach', 'iron_stance']); // absent = automatic (hero() is gear-only)
     expect('rotation' in buildCombatStats({ ...sword, rotation: [] })).toBe(false);
     expect(buildCombatStats({ ...sword, rotation: ['firm_strike', 'iron_stance'] }).rotation).toEqual(['firm_strike', 'iron_stance']);
     // the gear changed after the rotation was saved: the bow's abilities are not granted by a sword
     expect(buildCombatStats({ ...sword, rotation: ['arrow_rain', 'firm_strike'] }).rotation).toEqual(['firm_strike']);
-    expect(activeRotation({ ...sword, rotation: ['arrow_rain'] })).toEqual([]);
+    expect(effectiveRotation({ ...sword, rotation: ['arrow_rain'] })).toEqual([]);
   });
 
   it('a Hunting session freezes the rotation with the rest of the stats and gets it back after a reload', () => {
@@ -136,7 +139,7 @@ describe('the rotation in the save', () => {
     expect(session?.stats.rotation).toEqual(['firm_strike']);
     expect(sessionStatsDiffer(session!.stats, stats)).toBe(false);
     expect(sessionStatsDiffer(session!.stats, buildCombatStats({ ...h, rotation: [] }))).toBe(true);
-    const plain = sanitizeHuntSession({ stats: buildCombatStats(hero('2', 3, { level: 15 })), blessed: false, strength: [], attack: [], pass: [], tonics: {} });
+    const plain = sanitizeHuntSession({ stats: buildCombatStats({ ...hero('2', 3, { level: 15 }), rotation: [] }), blessed: false, strength: [], attack: [], pass: [], tonics: {} });
     expect('rotation' in plain!.stats).toBe(false);
   });
 });
@@ -386,8 +389,8 @@ describe('the Combat Power', () => {
   const cpOf = (weapon: string | undefined, rotation: AbilityId[]) => computeCP({ ...hero('4g', 6, { level: 52, ...(weapon ? { weapon } : {}) }), rotation });
 
   it('an empty rotation is exactly the CP it always was; a rotation raises it', () => {
-    const base = hero('4g', 6, { level: 52 });
-    expect(computeCP({ ...base, rotation: [] })).toBe(computeCP(base));
+    const base = { ...hero('4g', 6, { level: 52 }), rotation: [] };
+    expect(computeCP(automaticRotation(hero('4g', 6, { level: 52 })))).toBeGreaterThan(computeCP(base)); // the automatic default (no field) is worth more than an empty one
     expect(cpOf(undefined, ['firm_strike'])).toBeGreaterThan(computeCP(base));
     expect(cpOf(undefined, ['firm_strike', 'iron_stance'])).toBeGreaterThan(cpOf(undefined, ['firm_strike']));
   });

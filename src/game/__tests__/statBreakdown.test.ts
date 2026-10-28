@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runDungeon, mulberry32, withSeededRandom } from '../../../scripts/sim/driver';
-import { hero } from '../../../scripts/sim/duel';
+import { gearOnly, hero } from '../../../scripts/sim/duel';
 import { BUFF_ITEM, activeTonicStats, buffRemainingMs, goldMultiplier, TIMED_BUFF_KINDS } from '../buffs';
 import { applyDamageModifiers, applyDamageReduction } from '../derivedStats';
 import { applyElixir, ElixirId } from '../elixirs';
@@ -136,7 +136,7 @@ describe('the breakdown IS the engine: totals equal what the fight uses, for ran
 });
 
 describe('the figures the panel shows are the figures the fights use', () => {
-  const probe = (): SaveData => ({ ...defaultSave(), xp: xpToReachLevel(15), str: 20, vit: 10, agi: 8, res: 6, highestDungeonFloor: 6 });
+  const probe = (): SaveData => gearOnly({ ...defaultSave(), xp: xpToReachLevel(15), str: 20, vit: 10, agi: 8, res: 6, highestDungeonFloor: 6 }); // gear-only: an empty rotation, see scripts/sim/duel.ts
 
   it('Dungeon: hit, swing interval and damage taken of a real run match the "now" column', () => {
     const buffed = { ...drink(probe(), 'strength_elixir', 'atk_elixir', 'sharpening_stone', 'haste_tonic', 'stoneskin_tonic', 'armor_polish'), blessed: true };

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { applyDungeonRun, runDungeon, withSeededRandom } from '../../../scripts/sim/driver';
-import { hero } from '../../../scripts/sim/duel';
+import { gearOnly, hero } from '../../../scripts/sim/duel';
 import { BUFF_ITEM, TIMED_BUFF_KINDS, activeTonicStats, buffMinutes, goldMultiplier, hasteIntervalMs, temporaryEffects, BuffKind } from '../buffs';
 import { applyElixir, ElixirId } from '../elixirs';
 import {
@@ -48,7 +48,7 @@ const give = (s: SaveData, items: Partial<Record<string, number>>): SaveData => 
 const drink = (s: SaveData, ...ids: ElixirId[]): SaveData => ids.reduce((acc, id) => applyElixir(give(acc, { [id]: 1 }), id, NOW - 1000)!, s);
 
 // A hero with no weapon: no crit, no burn, no reflect, so a Dungeon hit is one exact number (a deterministic probe).
-const bare = (): SaveData => ({ ...defaultSave(), xp: xpToReachLevel(15), str: 20, vit: 10, agi: 8, res: 6, highestDungeonFloor: 6 });
+const bare = (): SaveData => gearOnly({ ...defaultSave(), xp: xpToReachLevel(15), str: 20, vit: 10, agi: 8, res: 6, highestDungeonFloor: 6 }); // gear-only: an empty rotation, see scripts/sim/duel.ts
 const geared = (): SaveData => ({ ...hero('2', 3, { level: 30 }), highestDungeonFloor: 20 });
 
 // One floor of the Dungeon, the way BattleModal fights it (scripts/sim/driver.ts runDungeon).

@@ -64,7 +64,7 @@ import { PendingMaterialClaim, sanitizeMaterialClaims } from './materialClaims';
 import { BurningBatch, MaterialPrefs, TradeableMap, sanitizeBurning, sanitizeBurns, sanitizeMaterialPrefs, sanitizeTradeable } from './tradeableMaterials';
 import { isServerItemAuthority } from './itemAuthority';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
-import { AbilityId, grantedAbilities, rotationCpTerms, sanitizeRotation } from './abilities';
+import { AbilityId, defaultRotation, grantedAbilities, rotationCpTerms, sanitizeRotation } from './abilities';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
 export { buffRemainingMs, isBuffActive };
@@ -211,8 +211,7 @@ export interface SaveData {
   res: number;
   // Hero skills (heroSkills.ts): the allocation(s) of the skill points earned every few levels and the free-respec flag. Old saves load with nothing spent.
   skillTree: SkillTreeState;
-  // Equipment abilities (abilities.ts): the rotation, up to T.abilities.rotationSlots ids in order of priority, limited to what the worn gear grants. ABSENT = empty (an old save has none and fights exactly as it always did);
-  // normalizeSave drops the field when nothing is left, so an empty rotation and a missing one are the same thing.
+  // Equipment abilities (abilities.ts): the player's rotation, up to T.abilities.rotationSlots ids in order of priority. ABSENT = automatic (the default of the worn gear, effectiveRotation); [] = cleared on purpose.
   rotation?: AbilityId[];
   materials: Materials;
   potions: { hp: number; stamina: number; elixir: number };
@@ -361,8 +360,23 @@ export function equippedAbilities(save: Parameters<typeof resolveEquipped>[0]): 
   const { weapon, armor } = resolveEquipped(save);
   return grantedAbilities(weapon.item.line, armor.item.weight);
 }
-export function activeRotation(save: Parameters<typeof resolveEquipped>[0] & { rotation?: unknown }): AbilityId[] {
-  return save.rotation === undefined ? [] : sanitizeRotation(save.rotation, equippedAbilities(save));
+// The rotation IN FORCE, derived on the spot and never written by the game on its own (classes reform, phase 5, 2026-10-28):
+//  - `rotation` ABSENT = automatic: the default of the gear worn RIGHT NOW (defaultRotation), so changing weapon changes the abilities at once, with no reload and no migration;
+//  - `rotation: []` = the player cleared it on purpose: stays empty;
+//  - `rotation: [...]` = the player's choice: kept, cut down to what the worn gear grants.
+// Combat (buildCombatStats), the CP and the Taticas screen read THIS, never the raw field.
+export function effectiveRotation(save: Parameters<typeof resolveEquipped>[0] & { rotation?: unknown }): AbilityId[] {
+  const granted = equippedAbilities(save);
+  return save.rotation === undefined ? defaultRotation(granted) : sanitizeRotation(save.rotation, granted);
+}
+// The Taticas screen commits here: a list (the player's choice, cut down to the worn gear; [] = cleared on purpose) or null = back to automatic (the field is removed).
+export function applyRotation<S extends SaveData>(save: S, draft: readonly AbilityId[] | null): S {
+  if (draft === null) {
+    const rest = { ...save } as Partial<SaveData>;
+    delete rest.rotation;
+    return rest as S;
+  }
+  return { ...save, rotation: sanitizeRotation(draft, equippedAbilities(save)) };
 }
 
 export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatStats {
@@ -427,7 +441,7 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
   if (fx.huntUniqueMult !== 1) stats.uniqueMult = fx.huntUniqueMult;
   if (fx.bossLootMult !== 1) stats.bossLootMult = fx.bossLootMult;
   // Equipment abilities: only a hero with a (non-empty) rotation carries the field.
-  const rotation = activeRotation(save);
+  const rotation = effectiveRotation(save);
   if (rotation.length > 0) stats.rotation = rotation;
   return stats;
 }
@@ -1497,9 +1511,9 @@ export function normalizeSave(rawInput: unknown): SaveData {
         codex: emptyCodex(),
       };
       loaded.codex = normalizeCodex(parsed.codex, loaded);
-      // The rotation (abilities.ts): only what the worn gear grants, no repeats, at most the slots; nothing left = the field is gone (an old save never had it).
-      const rotation = sanitizeRotation(parsed.rotation, equippedAbilities(loaded));
-      if (rotation.length > 0) loaded.rotation = rotation;
+      // The rotation (abilities.ts): ABSENT stays absent (= automatic, derived from the worn gear by effectiveRotation); a stored list keeps its known ids, no repeats, at most the slots (an explicit [] stays: cleared on
+      // purpose). It is NOT cut down to the gear here: that happens when it is read, so a weapon change cannot silently turn a choice into an empty one.
+      if (Array.isArray(parsed.rotation)) loaded.rotation = sanitizeRotation(parsed.rotation);
       else delete (loaded as unknown as Record<string, unknown>).rotation;
       sanitizeTradeableFields(loaded, parsed as unknown as Record<string, unknown>);
       // Weekly goals and the login streak (weekly.ts): an old save has neither and starts its first week now; a new UTC week snapshots the counters again.

@@ -7,7 +7,16 @@ import type { HeroSkillId, SkillPathId } from './heroSkills';
 
 export type SkillFxId = 'crush' | 'fury' | 'bleed' | 'devastating' | 'block' | 'bastion' | 'double' | 'counter' | AbilityFxId;
 // The equipment abilities (abilities.ts), one entry each.
-export type AbilityFxId = 'ab_firm_strike' | 'ab_arrow_rain' | 'ab_opening_shot' | 'ab_arcane_burst' | 'ab_flames' | 'ab_blessing' | 'ab_iron_stance';
+export type AbilityFxId =
+  | 'ab_firm_strike' | 'ab_double_thrust' | 'ab_breach'
+  | 'ab_rift' | 'ab_brutal_spin' | 'ab_lacerate'
+  | 'ab_arrow_rain' | 'ab_opening_shot' | 'ab_true_shot'
+  | 'ab_piercing_bolt' | 'ab_double_shot' | 'ab_fatal_shot'
+  | 'ab_arcane_burst' | 'ab_flames' | 'ab_nova'
+  | 'ab_blessing' | 'ab_drain_life' | 'ab_dark_pulse'
+  | 'ab_iron_stance' | 'ab_dodge' | 'ab_arcane_breath';
+// The eight looks an ability flash can have, one per combat effect (abilities.ts AbilityEffectKind); App.css draws each as .skfx-ab-<kind>.
+export type AbilityFlash = 'strike' | 'volley' | 'dot' | 'carry' | 'guard' | 'heal' | 'haste' | 'opener';
 export type FxAnchor = 'target' | 'hero' | 'heroFeet'; // target = the centre of the enemy (the one hit), hero = the hero, heroFeet = the hero's feet (the pillar of the Bastiao)
 
 export type SkillFxEntry =
@@ -27,7 +36,7 @@ export interface SkillFxDef {
 }
 
 const sprite = (name: string, anchor: FxAnchor): SkillFxEntry => ({ kind: 'sprite', atlas: FX_ATLAS[name], anchor });
-const css = (ms: number, anchor: FxAnchor): SkillFxEntry => ({ kind: 'css', className: 'skfx-css-counter', anchor, ms });
+const abFlash = (kind: AbilityFlash, ms: number, anchor: FxAnchor): SkillFxEntry => ({ kind: 'css', className: `skfx-ab skfx-ab-${kind}`, anchor, ms });
 
 export const SKILL_FX: Record<SkillFxId, SkillFxDef> = {
   crush: { skill: 'w_heavy_blow', path: 'warrior', fx: sprite('fx_crushing_blow', 'target'), callout: true, side: 'e', left: 50, top: -34, shake: true },
@@ -39,16 +48,29 @@ export const SKILL_FX: Record<SkillFxId, SkillFxDef> = {
   double: { skill: 'h_light_step', path: 'hunter', fx: sprite('fx_double_strike', 'target'), callout: true, side: 'e', left: 72, top: -22, shake: false },
   // No sprite sheet for the counter yet: the CSS fallback of the layer (a hard-edged flash on the target), plus its callout.
   counter: { skill: 'g_block', path: 'guardian', fx: { kind: 'css', className: 'skfx-css-counter', anchor: 'target', ms: 360 }, callout: true, side: 'e', left: 76, top: -4, shake: false },
-  // REVIEW IN PHASE 5: the 7 abilities share the same CSS reserve, so they look like the same flash and only the floating name and the colour tell them apart. Distinct art needs src/App.css, which was out of scope in phase 4.
-  // Equipment abilities (abilities.ts, classes reform phase 4). No sprite sheet exists for any of them yet, so all seven use the CSS reserve of the layer (the hard-edged flash the counter uses), anchored where the
-  // ability acts; the callout (heroSkills.fx.<id>) is what tells them apart until the art arrives with the screen of phase 5. Each has its own column so two abilities in one frame never overlap.
-  ab_firm_strike: { path: 'warrior', color: '#ff8a7a', fx: css(360, 'target'), callout: true, side: 'e', left: 50, top: -34, shake: true },
-  ab_arrow_rain: { path: 'hunter', color: '#8be89a', fx: css(360, 'target'), callout: true, side: 'e', left: 28, top: -20, shake: false },
-  ab_opening_shot: { path: 'hunter', color: '#8be89a', fx: css(300, 'target'), callout: true, side: 'e', left: 70, top: -4, shake: false },
-  ab_arcane_burst: { path: 'guardian', color: '#c9a0ff', fx: css(420, 'target'), callout: true, side: 'e', left: 40, top: -30, shake: true },
-  ab_flames: { path: 'warrior', color: '#ffb35a', fx: css(360, 'target'), callout: true, side: 'e', left: 62, top: -12, shake: false },
-  ab_blessing: { path: 'guardian', color: '#ffe58a', fx: css(420, 'hero'), callout: true, side: 'p', left: 50, top: -26, shake: false },
-  ab_iron_stance: { path: 'guardian', color: '#8ab4ff', fx: css(420, 'hero'), callout: true, side: 'p', left: 30, top: -10, shake: false },
+  // Equipment abilities (abilities.ts). No sprite sheet exists for any of them, so each plays one of EIGHT CSS flashes, one per combat effect (strike, volley, dot, carry, guard, heal, haste, opener; App.css .skfx-ab-*), anchored
+  // where the ability acts; the callout (heroSkills.fx.<id>) names the exact one. Each has its own column so two abilities in one frame never overlap.
+  ab_firm_strike: { path: 'warrior', color: '#ff8a7a', fx: abFlash('strike', 360, 'target'), callout: true, side: 'e', left: 50, top: -34, shake: true },
+  ab_double_thrust: { path: 'warrior', color: '#ff8a7a', fx: abFlash('volley', 360, 'target'), callout: true, side: 'e', left: 30, top: -22, shake: false },
+  ab_breach: { path: 'warrior', color: '#ff8a7a', fx: abFlash('strike', 360, 'target'), callout: true, side: 'e', left: 66, top: -10, shake: true },
+  ab_rift: { path: 'warrior', color: '#ff9a5a', fx: abFlash('strike', 420, 'target'), callout: true, side: 'e', left: 44, top: -38, shake: true },
+  ab_brutal_spin: { path: 'warrior', color: '#ff9a5a', fx: abFlash('carry', 420, 'target'), callout: true, side: 'e', left: 58, top: -16, shake: false },
+  ab_lacerate: { path: 'warrior', color: '#e0645a', fx: abFlash('dot', 360, 'target'), callout: true, side: 'e', left: 24, top: 0, shake: false },
+  ab_arrow_rain: { path: 'hunter', color: '#8be89a', fx: abFlash('volley', 360, 'target'), callout: true, side: 'e', left: 28, top: -20, shake: false },
+  ab_opening_shot: { path: 'hunter', color: '#8be89a', fx: abFlash('opener', 300, 'target'), callout: true, side: 'e', left: 70, top: -4, shake: false },
+  ab_true_shot: { path: 'hunter', color: '#a6f0b0', fx: abFlash('strike', 360, 'target'), callout: true, side: 'e', left: 48, top: -30, shake: false },
+  ab_piercing_bolt: { path: 'hunter', color: '#8be89a', fx: abFlash('strike', 360, 'target'), callout: true, side: 'e', left: 36, top: -26, shake: true },
+  ab_double_shot: { path: 'hunter', color: '#a6f0b0', fx: abFlash('volley', 360, 'target'), callout: true, side: 'e', left: 64, top: -20, shake: false },
+  ab_fatal_shot: { path: 'hunter', color: '#d6f08b', fx: abFlash('strike', 420, 'target'), callout: true, side: 'e', left: 50, top: -36, shake: true },
+  ab_arcane_burst: { path: 'guardian', color: '#c9a0ff', fx: abFlash('carry', 420, 'target'), callout: true, side: 'e', left: 40, top: -30, shake: true },
+  ab_flames: { path: 'warrior', color: '#ffb35a', fx: abFlash('dot', 360, 'target'), callout: true, side: 'e', left: 62, top: -12, shake: false },
+  ab_nova: { path: 'guardian', color: '#c9a0ff', fx: abFlash('carry', 420, 'target'), callout: true, side: 'e', left: 54, top: -22, shake: true },
+  ab_blessing: { path: 'guardian', color: '#ffe58a', fx: abFlash('heal', 420, 'hero'), callout: true, side: 'p', left: 50, top: -26, shake: false },
+  ab_drain_life: { path: 'guardian', color: '#d68aff', fx: abFlash('strike', 360, 'target'), callout: true, side: 'e', left: 46, top: -28, shake: false },
+  ab_dark_pulse: { path: 'guardian', color: '#a07ae0', fx: abFlash('carry', 420, 'target'), callout: true, side: 'e', left: 32, top: -18, shake: false },
+  ab_iron_stance: { path: 'guardian', color: '#8ab4ff', fx: abFlash('guard', 420, 'hero'), callout: true, side: 'p', left: 30, top: -10, shake: false },
+  ab_dodge: { path: 'hunter', color: '#8be89a', fx: abFlash('haste', 360, 'hero'), callout: true, side: 'p', left: 68, top: -14, shake: false },
+  ab_arcane_breath: { path: 'guardian', color: '#8affd0', fx: abFlash('heal', 420, 'hero'), callout: true, side: 'p', left: 46, top: -30, shake: false },
 };
 
 export const FX_PATH_COLOR: Record<SkillPathId, string> = { warrior: '#ff8a7a', guardian: '#8ab4ff', hunter: '#8be89a' };

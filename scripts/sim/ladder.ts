@@ -9,6 +9,7 @@ import { dungeonEnemyKindForFloor, isDungeonBoss, isDungeonCheckpoint } from '..
 import { getEnemyDef } from '../../src/game/enemies';
 import { stageEnemyDmg, stageEnemyHp } from '../../src/game/waves';
 import { runDungeon, spendAttributePoints, withSeededRandom } from './driver';
+import { gearOnly } from './duel';
 
 export const TIER_GEAR: Record<number, [string, string]> = {
   1: ['bronze_dagger', 'bronze_leather'],
@@ -52,7 +53,7 @@ export function buildHero(level: number, tier: number, refine: number, floor = 1
     }
     hero = { ...hero, gearInstances: instances, equipped };
   }
-  return spendAttributePoints(hero);
+  return gearOnly(spendAttributePoints(hero)); // gear-only: see duel.ts gearOnly (and the REVIEW IN PHASE 8 of recommendedCp.ts)
 }
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 23, 26, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100];
@@ -63,7 +64,7 @@ const DEEP_REFINES = [10, 12];
 
 export function ladder(): LadderBuild[] {
   // The brand-new hero, with its first three attribute points still unspent (CP 58): this is the CP a new player sees on floor 1.
-  const fresh = { ...defaultSave(), highestDungeonFloor: 1 };
+  const fresh = gearOnly({ ...defaultSave(), highestDungeonFloor: 1 });
   const out: LadderBuild[] = [{ label: 'fresh (points unspent)', level: 1, tier: 0, refine: 0, cp: computeCP(fresh), hero: fresh }];
   for (const level of LEVELS) {
     out.push(mk(level, 0, 0));
