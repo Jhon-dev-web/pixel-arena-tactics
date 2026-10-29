@@ -66,7 +66,7 @@ import { PendingMaterialClaim, sanitizeMaterialClaims } from './materialClaims';
 import { BurningBatch, MaterialPrefs, TradeableMap, sanitizeBurning, sanitizeBurns, sanitizeMaterialPrefs, sanitizeTradeable } from './tradeableMaterials';
 import { isServerItemAuthority } from './itemAuthority';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
-import { AbilityId, abilityCdScale, defaultRotation, grantedAbilities, rotationCpTerms, sanitizeRotation } from './abilities';
+import { AbilityId, abilityCdScale, defaultRotation, fillRotation, grantedAbilities, rotationCpTerms, sanitizeRotation } from './abilities';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
 export { buffRemainingMs, isBuffActive };
@@ -369,13 +369,13 @@ export function equippedAbilities(save: Parameters<typeof resolveEquipped>[0]): 
 // The rotation IN FORCE, derived on the spot and never written by the game on its own (classes reform, phase 5, 2026-10-28):
 //  - `rotation` ABSENT = automatic: the default of the gear worn RIGHT NOW (defaultRotation), so changing weapon changes the abilities at once, with no reload and no migration;
 //  - `rotation: []` = the player cleared it on purpose: stays empty;
-//  - `rotation: [...]` = the player's choice: kept, cut down to what the worn gear grants.
+//  - `rotation: [...]` = the player's choice: kept in his order and cut down to what the worn gear grants; the places a gear change emptied are refilled with what the worn gear grants (fillRotation).
 // Combat (buildCombatStats), the CP and the Taticas screen read THIS, never the raw field.
 export function effectiveRotation(save: Parameters<typeof resolveEquipped>[0] & { rotation?: unknown }): AbilityId[] {
   const granted = equippedAbilities(save);
-  return save.rotation === undefined ? defaultRotation(granted) : sanitizeRotation(save.rotation, granted);
+  return save.rotation === undefined ? defaultRotation(granted) : fillRotation(save.rotation, granted);
 }
-// The Taticas screen commits here: a list (the player's choice, cut down to the worn gear; [] = cleared on purpose) or null = back to automatic (the field is removed).
+// The Taticas screen commits here: a list (the player's choice, cut down to the worn gear and stored as it is: never refilled, so a short list he picked stays short; [] = cleared on purpose) or null = back to automatic (the field is removed).
 export function applyRotation<S extends SaveData>(save: S, draft: readonly AbilityId[] | null): S {
   if (draft === null) {
     const rest = { ...save } as Partial<SaveData>;
@@ -1529,7 +1529,7 @@ export function normalizeSave(rawInput: unknown): SaveData {
       };
       loaded.codex = normalizeCodex(parsed.codex, loaded);
       // The rotation (abilities.ts): ABSENT stays absent (= automatic, derived from the worn gear by effectiveRotation); a stored list keeps its known ids, no repeats, at most the slots (an explicit [] stays: cleared on
-      // purpose). It is NOT cut down to the gear here: that happens when it is read, so a weapon change cannot silently turn a choice into an empty one.
+      // purpose). It is NOT cut down to the gear here: that happens when it is read (effectiveRotation, which also refills the places a weapon change emptied), so a weapon change cannot silently turn a choice into an empty one.
       if (Array.isArray(parsed.rotation)) loaded.rotation = sanitizeRotation(parsed.rotation);
       else delete (loaded as unknown as Record<string, unknown>).rotation;
       delete (loaded as unknown as Record<string, unknown>).noAffinity; // measurement switch (see SaveData): never persists

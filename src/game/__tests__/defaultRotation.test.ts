@@ -72,10 +72,12 @@ describe('a save with no rotation is automatic', () => {
     expect('rotation' in staff).toBe(false);
   });
 
-  it('a rotation the player chose is kept in his order and does NOT follow the gear: it is only cut down to what the gear grants', () => {
+  // The order he chose is his and the gear never reshuffles it; what a gear change empties is refilled from the gear he now wears (fillRotation, 2026-10-29), instead of leaving him fighting with fewer
+  // abilities than his gear grants. The stored field is untouched, so putting the old weapon back brings his own list straight back.
+  it('a rotation the player chose keeps his order, and the places a gear change empties are refilled', () => {
     const chosen = { ...sword, rotation: ['iron_stance', 'firm_strike'] as AbilityId[] };
-    expect(effectiveRotation(chosen)).toEqual(['iron_stance', 'firm_strike']);
-    expect(effectiveRotation(wear(chosen, 'weapon', 'short_bow'))).toEqual(['iron_stance']);
+    expect(effectiveRotation(chosen)).toEqual(['iron_stance', 'firm_strike']); // nothing was cut: a short list he picked stays short
+    expect(effectiveRotation(wear(chosen, 'weapon', 'short_bow'))).toEqual(['iron_stance', 'arrow_rain', 'opening_shot', 'true_shot']);
     expect(normalizeSave(wire({ ...sword, rotation: ['arrow_rain', 'breach', 'bogus', 'breach'] })).rotation).toEqual(['arrow_rain', 'breach']);
   });
 

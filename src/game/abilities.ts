@@ -204,6 +204,27 @@ export function sanitizeRotation(raw: unknown, granted?: readonly AbilityId[]): 
   return out;
 }
 
+// The rotation of a save that HAS one, read against the gear worn now (engine.ts effectiveRotation is the only caller). The stored list is the player's choice and is never rewritten by this:
+//  - nothing in it was dropped by a gear change (every id is still granted, or the list is [] = cleared on purpose): his choice stands exactly, short of the slots or not;
+//  - something was dropped (the weapon or chestpiece that gave it is gone): each dropped id is replaced IN ITS PLACE by the next ability the worn gear grants that is not already in the rotation (definition
+//    order, the same as defaultRotation), then any slot still free at the end is filled the same way. The ids he kept never move, so his order survives; if the gear has fewer abilities than the holes, the
+//    holes close up. The result is never longer than the slots, has no repeats and holds only granted ids.
+// Because the stored list keeps the dropped ids, putting the old weapon back gives him back his own rotation untouched.
+export function fillRotation(raw: unknown, granted: readonly AbilityId[]): AbilityId[] {
+  const stored = sanitizeRotation(raw);
+  const kept = stored.filter((id) => granted.includes(id));
+  if (kept.length === stored.length) return kept;
+  const spare = granted.filter((id) => !kept.includes(id));
+  let next = 0;
+  const out: AbilityId[] = [];
+  for (const id of stored) {
+    if (granted.includes(id)) out.push(id);
+    else if (next < spare.length) out.push(spare[next++]);
+  }
+  while (out.length < T.abilities.rotationSlots && next < spare.length) out.push(spare[next++]);
+  return out;
+}
+
 // --- The combat state ---------------------------------------------------------------------------------------------------------------------------------
 
 export interface AbilityRuntime {

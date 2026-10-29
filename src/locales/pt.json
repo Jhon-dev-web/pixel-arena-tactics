@@ -1365,6 +1365,7 @@
     "saved": "Tudo aplicado",
     "toastApplied": "Rotação aplicada",
     "dropped": "Uma habilidade saiu da rotação porque o equipamento que a dava não está mais vestido.",
+    "droppedFilled": "Os lugares que a troca de equipamento esvaziou já foram preenchidos com o que você veste agora.",
     "when": "Vale a partir da próxima luta. Uma Caça em andamento mantém a rotação com que começou.",
     "line": { "sword": "Espada", "axe": "Machado", "bow": "Arco", "crossbow": "Besta", "staff": "Cajado", "scepter": "Cetro" },
     "body": { "plate": "Placa", "leather": "Couro", "cloth": "Tecido" },

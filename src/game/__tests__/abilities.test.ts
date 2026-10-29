@@ -109,13 +109,14 @@ describe('the rotation in the save', () => {
     expect(sanitizeRotation(['firm_strike', 'arrow_rain', 'iron_stance'], grantedAbilities(undefined, undefined))).toEqual(['firm_strike', 'iron_stance']);
   });
 
-  // Phase 5 (2026-10-28): an ABSENT rotation is the automatic default now (defaultRotation.test.ts). What stays true here: a stored list keeps only known ids, no repeats (it is cut down to the worn gear when READ,
-  // effectiveRotation), and a stored EMPTY list (a rotation cleared on purpose) stays empty.
+  // Phase 5 (2026-10-28): an ABSENT rotation is the automatic default now (defaultRotation.test.ts). What stays true here: a stored list keeps only known ids, no repeats, and a stored EMPTY list (a rotation cleared on
+  // purpose) stays empty. What the SAVE holds is still the player's literal choice; the refill of 2026-10-29 (fillRotation) happens when it is READ, so the stored field below is unchanged by it.
   it('a stored rotation keeps known ids without repeats, and an explicit empty list stays empty', () => {
     const sword = hero('2', 3, { level: 15 });
     const stored = (rotation: unknown) => normalizeSave(JSON.parse(JSON.stringify({ ...sword, rotation })));
     expect(stored(['arrow_rain', 'firm_strike', 'bogus', 'firm_strike']).rotation).toEqual(['arrow_rain', 'firm_strike']);
-    expect(effectiveRotation(stored(['arrow_rain', 'firm_strike', 'bogus', 'firm_strike']))).toEqual(['firm_strike']);
+    // read with a sword on: the bow's arrow_rain is gone and its place is taken by what the sword grants (fillRotation), the chosen firm_strike never moves
+    expect(effectiveRotation(stored(['arrow_rain', 'firm_strike', 'bogus', 'firm_strike']))).toEqual(['double_thrust', 'firm_strike', 'breach', 'iron_stance']);
     expect('rotation' in stored('nope')).toBe(false);
     expect(stored([]).rotation).toEqual([]);
     const bow = hero('2', 3, { level: 15, weapon: 'hunting_bow' });
@@ -127,9 +128,10 @@ describe('the rotation in the save', () => {
     expect(buildCombatStats(automaticRotation(sword)).rotation).toEqual(['firm_strike', 'double_thrust', 'breach', 'iron_stance']); // absent = automatic (hero() is gear-only)
     expect('rotation' in buildCombatStats({ ...sword, rotation: [] })).toBe(false);
     expect(buildCombatStats({ ...sword, rotation: ['firm_strike', 'iron_stance'] }).rotation).toEqual(['firm_strike', 'iron_stance']);
-    // the gear changed after the rotation was saved: the bow's abilities are not granted by a sword
-    expect(buildCombatStats({ ...sword, rotation: ['arrow_rain', 'firm_strike'] }).rotation).toEqual(['firm_strike']);
-    expect(effectiveRotation({ ...sword, rotation: ['arrow_rain'] })).toEqual([]);
+    // the gear changed after the rotation was saved: the bow's abilities are not granted by a sword, and their places are refilled instead of left empty (fillRotation, 2026-10-29), so the hero never
+    // goes into combat with fewer abilities than his gear grants just because he swapped a weapon
+    expect(buildCombatStats({ ...sword, rotation: ['arrow_rain', 'firm_strike'] }).rotation).toEqual(['double_thrust', 'firm_strike', 'breach', 'iron_stance']);
+    expect(effectiveRotation({ ...sword, rotation: ['arrow_rain'] })).toEqual(['firm_strike', 'double_thrust', 'breach', 'iron_stance']);
   });
 
   it('a Hunting session freezes the rotation with the rest of the stats and gets it back after a reload', () => {

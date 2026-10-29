@@ -83,8 +83,11 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
   }, [cardOpen]);
 
   const pending = auto !== committedAuto || draft.join(',') !== committedKey;
-  // The stored list still names something the worn gear no longer grants: it left the rotation by itself (activeRotation), and the screen says so once, calmly.
-  const dropped = Array.isArray(save.rotation) && save.rotation.some((id) => !granted.includes(id));
+  // The stored list still names something the worn gear no longer grants: it left the rotation by itself (effectiveRotation), and the screen says so once, calmly.
+  const stored = save.rotation ?? [];
+  const dropped = stored.some((id) => !granted.includes(id));
+  // ...and when the rotation in force then took abilities of the worn gear into those places (fillRotation), the note says the places were refilled, so the player is not surprised by what he sees in the rows.
+  const refilled = dropped && committed.some((id) => !stored.includes(id));
 
   const add = (id: AbilityId) => {
     if (draft.includes(id) || draft.length >= slots) return;
@@ -211,7 +214,7 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
           {granted.length > 0 && <p className="ui-note tc-hint">{emptySlot !== null ? t('tactics.emptyHint', { n: emptySlot + 1 }) : t('tactics.pickHint')}</p>}
           {auto && granted.length > 0 && <p className="ui-note tc-auto">{t('tactics.auto')}</p>}
           {draft.length === 0 && granted.length > 0 && <p className="ui-note">{t('tactics.emptyAll')}</p>}
-          {dropped && <p className="ui-note tc-dropped">{t('tactics.dropped')}</p>}
+          {dropped && <p className="ui-note tc-dropped">{t(refilled ? 'tactics.droppedFilled' : 'tactics.dropped')}</p>}
           <div className="tc-apply-row">
             <Button variant={pending ? 'primary' : 'secondary'} disabled={!pending} onClick={() => onApply(auto ? null : draft)}>
               {pending ? t('tactics.applyPending') : t('tactics.apply')}

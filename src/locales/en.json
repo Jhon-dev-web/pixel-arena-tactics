@@ -1365,6 +1365,7 @@
     "saved": "Everything applied",
     "toastApplied": "Rotation applied",
     "dropped": "An ability left the rotation because the gear that gave it is no longer worn.",
+    "droppedFilled": "The places your gear change emptied were filled with what you wear now.",
     "when": "Takes effect from the next fight. A Hunt in progress keeps the rotation it started with.",
     "line": { "sword": "Sword", "axe": "Axe", "bow": "Bow", "crossbow": "Crossbow", "staff": "Staff", "scepter": "Scepter" },
     "body": { "plate": "Plate", "leather": "Leather", "cloth": "Cloth" },
