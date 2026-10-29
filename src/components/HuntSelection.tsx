@@ -16,6 +16,7 @@ import {
   huntingEnemyNameKey,
   huntingEnemySpriteUrl,
   huntingZoneBackgroundUrl,
+  depthGearRequired,
   isDepthUnlocked,
   isZoneOpen,
   recommendedCpForDepth,
@@ -25,7 +26,7 @@ import { huntInventoryStatus, hoursUntilInventoryFull } from '../game/huntInvent
 import { MaterialId } from '../game/materials';
 import WholesaleLink from './WholesaleLink';
 import SubLevelNeed from './SubLevelNeed';
-import { equipmentIndex } from '../game/gearIndex';
+import { equipmentIndex, gearSetFor } from '../game/gearIndex';
 import { defaultZone, depthsOpen, fmtSpan, matName, startBlockedReason, subLevelNotes, zoneDifficulty, zoneLockedText, zoneState } from '../game/huntView';
 import { Button, Chip, ModalShell, Panel } from './ui';
 
@@ -52,6 +53,7 @@ function DepthOption({
 }) {
   const def = HUNTING_DEPTHS.find((d) => d.id === depthId)!;
   const recommended = recommendedCpForDepth(zone, depthId);
+  const needed = gearSetFor(depthGearRequired(zone, depthId));
   return (
     <button type="button" className={`hs-depth${selected ? ' active' : ''}${unlocked ? '' : ' locked'}`} onClick={onPick} role="radio" aria-checked={selected} data-ui>
       <span className="hs-depth-head">
@@ -59,7 +61,7 @@ function DepthOption({
         <span className="hs-depth-cp">{t('dungeon.cp', { n: fmtNum(recommended) })}</span>
       </span>
       {!unlocked || !estimate ? (
-        <span className="hs-depth-lock">{t('hunting.depthLocked', { n: fmtNum(recommended) })}</span>
+        <span className="hs-depth-lock">{t('hunting.depthLocked', { tier: needed.tier, refine: needed.refine })}</span>
       ) : (
         <>
           <span className="hs-depth-tags">
@@ -159,7 +161,7 @@ export default function HuntSelection({
                         <span className="hs-zone-sub">{t(zoneLockedText(z).key, zoneLockedText(z).vars)}</span>
                       ) : (
                         <>
-                          <span className="hs-zone-sub">{t('hunting.cpNeeded', { n: fmtNum(recommendedCpForDepth(z, 'shallow')) })}</span>
+                          <span className="hs-zone-sub">{t('hunting.cpSuggested', { n: fmtNum(recommendedCpForDepth(z, 'shallow')) })}</span>
                           <span className="hs-zone-sub">{t('hunting.depthsOpen', { n: depthsOpen(z, gear), m: HUNTING_DEPTHS.length })}</span>
                         </>
                       )}
