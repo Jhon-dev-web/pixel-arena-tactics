@@ -280,7 +280,8 @@ const round4 = (x: number): number => Math.round(x * 10000) / 10000;
 // nothing, on purpose; above 1 it is paid more than the parity (the staff, 1.14: the mage's boss time at tier 4 needed it, see docs/CLASSES_E_EQUIPAMENTOS.md 5.1.6). Nothing reads CP as a gate any more (the Hunting and
 // Dungeon gates read the equipment index, gearIndex.ts), so the dial is free of the CP parity. Each factor is the lever of ONE class on ONE axis (docs/CLASSES_E_EQUIPAMENTOS.md 2.5): change them with the axis table
 // of scripts/sim/classBalance.sim.ts in front of you, and run classAxes.test.ts.
-export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.6, cloth: 0.75, bow: 0.45, crossbow: 0.3, staff: 1.14, scepter: 1 };
+// The crossbow went from 0.3 to 0.15 on 29/10 together with WEAPON_CRIT_KEEP / WEAPON_KEEP below: measured with all SIX weapons (scripts/tools/classAxesWide.tool.ts) the crossbow at 0.3 led Hunting, the mage's axis, by 11.5 % at tier 4.
+export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.6, cloth: 0.75, bow: 0.45, crossbow: 0.15, staff: 1.14, scepter: 1 };
 // piece id -> the returned stats BEFORE the dial (what the generator solved); itemBalance.test.ts / the generator read the parity on these
 export const RETURNS_BASE: Record<string, Partial<Record<'critChance' | 'attackSpeedBonus' | 'critMultBonus' | 'hpRegenPct', number>>> = {};
 const dial = (x: number, f: number, decimals = 4): number => Math.round(x * f * 10 ** decimals) / 10 ** decimals;
@@ -439,8 +440,10 @@ for (const line of CLOTH_LINES) {
 // close the archer's set. The sword and the axe stay exactly as they were (plate family).
 // The share of the sword's crit chance a weapon keeps as its own base. The bow keeps half (like the axe, which also trades crit for something else): the leather armor already carries the crit chance of the archer, and a
 // bow that stacked the same stat saturated it (see REVIEW IN PHASE 8 below). The bow's budget is returned as attack speed instead.
-export const WEAPON_CRIT_KEEP: Record<'bow' | 'crossbow' | 'staff' | 'scepter', number> = { bow: 0.5, crossbow: 1, staff: 1, scepter: 1 };
-export const WEAPON_KEEP: Record<'bow' | 'crossbow' | 'staff' | 'scepter', number> = { bow: 0.7, crossbow: 0.85, staff: 0.75, scepter: 0.8 };
+// The crossbow keeps half too since 29/10 (it kept all of it before): with the sword's whole crit chance and 85 % of its damage it was number one on all three axes at tier 4 and led Hunting. Now it is the archer's slow heavy
+// weapon (75 % of the damage, the bow's crit, its budget returned as crit multiplier) and it stays at or under the mage in Hunting; classAxes.test.ts holds that for all six weapons. The generated block below was re-solved for it.
+export const WEAPON_CRIT_KEEP: Record<'bow' | 'crossbow' | 'staff' | 'scepter', number> = { bow: 0.5, crossbow: 0.5, staff: 1, scepter: 1 };
+export const WEAPON_KEEP: Record<'bow' | 'crossbow' | 'staff' | 'scepter', number> = { bow: 0.7, crossbow: 0.75, staff: 0.75, scepter: 0.8 };
 export const SWORD_TWINS = ['bronze_dagger', 'iron_short_sword', 'steel_greatsword', 'gilded_warblade', 'voidsteel_blade', 'abyssal_greatblade'] as const;
 export const WEAPON_LINES: { line: 'bow' | 'crossbow' | 'staff' | 'scepter'; ids: string[]; leather?: number[]; sinew?: number[]; dust?: number[]; handles: number[]; hunt: number[] }[] = [
   { line: 'bow', ids: ['short_bow', 'hunting_bow', 'long_bow', 'elven_bow', 'moon_bow', 'abyssal_bow'], leather: [8, 7, 8, 8, 10, 10], sinew: [8, 12, 14, 20, 28, 36], handles: [1, 1, 1, 2, 2, 3], hunt: [0, 0.45, 0.8, 0.9, 1, 0.95] },
@@ -461,12 +464,12 @@ const WEAPON_CONVERSION: Record<string, { critChance?: number; attackSpeedBonus?
   elven_bow: { attackSpeedBonus: 0.3381 },
   moon_bow: { attackSpeedBonus: 0.4591 },
   abyssal_bow: { attackSpeedBonus: 0.5011 },
-  light_crossbow: { critMultBonus: 0.4888 },
-  iron_crossbow: { critMultBonus: 0.4964 },
-  steel_crossbow: { critMultBonus: 0.5127 },
-  gilded_crossbow: { critMultBonus: 0.5502 },
-  voidsteel_crossbow: { critMultBonus: 0.593 },
-  abyssal_crossbow: { critMultBonus: 0.6064 },
+  light_crossbow: { critMultBonus: 1.2673 },
+  iron_crossbow: { critMultBonus: 1.3355 },
+  steel_crossbow: { critMultBonus: 1.4206 },
+  gilded_crossbow: { critMultBonus: 1.4849 },
+  voidsteel_crossbow: { critMultBonus: 1.6991 },
+  abyssal_crossbow: { critMultBonus: 1.76 },
   apprentice_staff: { critMultBonus: 0.5616 },
   oak_staff: { critMultBonus: 0.6515 },
   ebony_staff: { critMultBonus: 0.7264 },

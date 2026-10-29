@@ -721,7 +721,7 @@ const T = DebugPanel.define({
     blessingHealPct: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Bencao: max HP healed (share)' },
     blessingHastePct: { value: 0.3, min: 0, max: 1, step: 0.05, label: 'Bencao: attack speed bonus' },
     blessingHasteMs: { value: 5000, min: 1000, max: 30000, step: 500, label: 'Bencao: haste duration (ms)' },
-    blessingCdMs: { value: 20000, min: 1000, max: 120000, step: 500, label: 'Bencao: cooldown (ms)' },
+    blessingCdMs: { value: 14000, min: 1000, max: 120000, step: 500, label: 'Bencao: cooldown (ms)' },
     // Postura de Ferro (plate chestpiece, guard).
     ironStanceReduction: { value: 0.4, min: 0, max: 0.9, step: 0.05, label: 'Postura de Ferro: damage taken cut (share)' },
     ironStanceMs: { value: 5000, min: 1000, max: 30000, step: 500, label: 'Postura de Ferro: duration (ms)' },
@@ -739,11 +739,13 @@ const T = DebugPanel.define({
     breachReduction: { value: 0.25, min: 0, max: 0.9, step: 0.05, label: 'Brecha: damage taken cut (share)' },
     breachGuardMs: { value: 3000, min: 1000, max: 30000, step: 500, label: 'Brecha: guard duration (ms)' },
     breachCdMs: { value: 12000, min: 1000, max: 120000, step: 500, label: 'Brecha: cooldown (ms)' },
-    // Rachadura (axe, a very strong strike with a long cooldown).
-    riftPct: { value: 2.8, min: 1, max: 6, step: 0.1, label: 'Rachadura: damage of the swing (x)' },
-    riftCdMs: { value: 14000, min: 1000, max: 120000, step: 500, label: 'Rachadura: cooldown (ms)' },
+    // Rachadura (axe, a very strong strike with a long cooldown). 29/10: riftPct 2.8 -> 3.6, riftCdMs 14000 -> 10000, brutalSpinPct 1 -> 1.6, Drenar Vida 1.4 -> 2.0 / 10000 -> 8000, Pulso Sombrio 0.8 -> 1.6, Bencao cd 20000 -> 14000: the axe sat 8-9 % under the sword
+    // in Hunting and the boss, the scepter 29 % under the staff, with nothing in return (six-weapon table, scripts/tools/classAxesWide.tool.ts). The axe now wins Hunting by 1-2 %, the scepter wins the floors (+17 % over the staff at tier 4).
+    // The gear of both is untouched on purpose: the axe is held within 5 % of the sword in a duel by contentPack2.test.ts, and in a duel these abilities do not count.
+    riftPct: { value: 3.6, min: 1, max: 6, step: 0.1, label: 'Rachadura: damage of the swing (x)' },
+    riftCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Rachadura: cooldown (ms)' },
     // Giro Brutal (axe, carry).
-    brutalSpinPct: { value: 1, min: 0.1, max: 3, step: 0.05, label: 'Giro Brutal: share of the swing that spills over' },
+    brutalSpinPct: { value: 1.6, min: 0.1, max: 3, step: 0.05, label: 'Giro Brutal: share of the swing that spills over' },
     brutalSpinCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Giro Brutal: cooldown (ms)' },
     // Sangria (axe, dot): a burn of its own in the ability slot, a bleed in words.
     laceratePct: { value: 0.15, min: 0.01, max: 0.5, step: 0.01, label: 'Sangria: damage per tick (share of the hit)' },
@@ -768,11 +770,11 @@ const T = DebugPanel.define({
     novaGuardMs: { value: 3000, min: 1000, max: 30000, step: 500, label: 'Nova: guard duration (ms)' },
     novaCdMs: { value: 6000, min: 1000, max: 120000, step: 500, label: 'Nova: cooldown (ms)' },
     // Drenar Vida (scepter, strike + heal).
-    drainLifePct: { value: 1.4, min: 1, max: 5, step: 0.1, label: 'Drenar Vida: damage of the swing (x)' },
+    drainLifePct: { value: 2.0, min: 1, max: 5, step: 0.1, label: 'Drenar Vida: damage of the swing (x)' },
     drainLifeHealPct: { value: 0.06, min: 0, max: 1, step: 0.01, label: 'Drenar Vida: max HP healed (share)' },
-    drainLifeCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Drenar Vida: cooldown (ms)' },
+    drainLifeCdMs: { value: 8000, min: 1000, max: 120000, step: 500, label: 'Drenar Vida: cooldown (ms)' },
     // Pulso Sombrio (scepter, carry).
-    darkPulsePct: { value: 0.8, min: 0.1, max: 3, step: 0.05, label: 'Pulso Sombrio: share of the swing that spills over' },
+    darkPulsePct: { value: 1.6, min: 0.1, max: 3, step: 0.05, label: 'Pulso Sombrio: share of the swing that spills over' },
     darkPulseCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Pulso Sombrio: cooldown (ms)' },
     // Arrancada / Surge (leather chestpiece): a burst of attack speed, NOT an evasion. It was called Esquiva / Dodge until 29/10, which promised the player a dodge the game never had.
     dodgeHastePct: { value: 0.35, min: 0, max: 1, step: 0.05, label: 'Arrancada: attack speed bonus' },

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { axisLeads } from '../../../scripts/sim/classAxes';
+import { bossKill } from '../../../scripts/sim/duel';
+import { clearRate } from '../../../scripts/sim/ladder';
+import { CLASS_MAIN, CLASS_VARIANTS, classHero, ClassBuild } from '../../../scripts/sim/classHero';
+import { buildHuntSession, computeHuntingStatus, huntProgressKey, SaveData } from '../engine';
+import T from '../tunables';
 
 // THE PROMISE THE CLASSES REFORM MAKES (docs/CLASSES_E_EQUIPAMENTOS.md 2.5, 28/10): each class is 15-20 % better than the others on ITS OWN axis and not more than 10 % behind on the other two. Not "the same CP":
 // CP counts damage and effective HP as equals, and in Hunting and against a boss nobody dies, so it approves an imbalance forever (the phase 8 measurement: at the same CP the archer killed 50 % faster than the
@@ -63,4 +68,91 @@ describe('class axes at tier 6 +8', () => {
   // warrior is +3 to +5 %. The 15-20 % target of the depth is meant where the axis discriminates (tier 2 to 5; at tier 3 +8 the floors are 59 / 59 / 39). Measuring it somewhere else to manufacture a difference would be
   // choosing the ruler by the result; tier 4 is guarded above, tier 3 and 5 stay unmeasured on purpose.
   it.todo('the mage at tier 3 +8 is not more than 10 % behind on the boss and does not stop at floor 39');
+});
+
+// ALL SIX WEAPONS ON THE TABLE (29/10). The guards above read only the main weapon of each class (sword, bow, staff). The other three (axe, crossbow, scepter) are real choices the player can make, and measured
+// alone they broke the design in silence: the crossbow led Hunting (the mage's axis) by 11.5 % at tier 4 and was number one on all three axes, the scepter sat 29 % under the staff in Hunting, the axe 8-9 % under the sword
+// and nothing made up for it. Each build is measured exactly like the guard (same hero, same hunting zone and pin, same boss loop, same depth loop, same seeds) and read against the mean of the three MAIN builds:
+// Hunting = kills an hour, Boss = speed of the four biome bosses (each over the mean of the mains at that boss, then averaged), Depth = deepest floor. scripts/tools/classAxesWide.tool.ts prints the same table.
+const NOW = new Date(2026, 5, 20, 12, 0, 0).getTime();
+const BOSSES = [25, 50, 75, 100];
+type Axis = 'hunting' | 'boss' | 'depth';
+const AXES: Axis[] = ['hunting', 'boss', 'depth'];
+const OWNER: Record<Axis, ClassBuild['cls']> = { hunting: 'mage', boss: 'archer', depth: 'warrior' };
+
+function killsPerHour(h: SaveData, zoneId: string, pin: number): number {
+  const saved = T.hunting.subLevels;
+  (T.hunting as { subLevels: number }).subLevels = pin;
+  try {
+    let kills = 0;
+    let hours = 0;
+    for (let i = 0; i < 3; i++) {
+      const t0 = NOW + i * 7_919_000;
+      let save: SaveData = { ...h, activeHuntingZone: zoneId, activeHuntingDepth: 'shallow', huntingOfflineStart: t0 };
+      save = { ...save, huntProgress: { ...save.huntProgress, [huntProgressKey(zoneId, 'shallow')]: { ceiling: pin, promotionWins: 0 } } };
+      save = { ...save, huntSession: buildHuntSession(save, t0) };
+      const st = computeHuntingStatus(save, t0 + 4 * 3600 * 1000);
+      kills += st.kills;
+      hours += st.pendingMs / 3600_000;
+    }
+    return kills / hours;
+  } finally {
+    (T.hunting as { subLevels: number }).subLevels = saved;
+  }
+}
+
+function floorReach(h: SaveData): number {
+  let reach = 0;
+  for (let f = 1; f <= 100; f++) {
+    if (clearRate(h, f, NOW, 3) < 2 / 3) break;
+    reach = f;
+  }
+  return reach;
+}
+
+// score[axis] of each of the six builds (1.00 = the mean of the three mains), in the order warrior, warrior (axe), archer, archer (crossbow), mage, mage (scepter)
+function sixBuilds(tier: number, level: number, zone: string, pin: number): { b: ClassBuild; score: Record<Axis, number> }[] {
+  const builds = [CLASS_MAIN[0], CLASS_VARIANTS[0], CLASS_MAIN[1], CLASS_VARIANTS[1], CLASS_MAIN[2], CLASS_VARIANTS[2]];
+  const rows = builds.map((b) => {
+    const h = classHero(b, level, tier, 8, 'real');
+    return { b, kph: killsPerHour(h, zone, pin), speeds: BOSSES.map((f) => 1 / bossKill(h, f, NOW, 24).ms), reach: floorReach(h) };
+  });
+  const mains = [0, 2, 4];
+  const mean = (f: (r: (typeof rows)[number]) => number): number => mains.reduce((a, i) => a + f(rows[i]), 0) / mains.length;
+  const bossRef = BOSSES.map((_, k) => mean((r) => r.speeds[k]));
+  const kphRef = mean((r) => r.kph);
+  const reachRef = mean((r) => r.reach);
+  return rows.map((r) => ({
+    b: r.b,
+    score: { hunting: r.kph / kphRef, boss: r.speeds.reduce((a, s, k) => a + s / bossRef[k], 0) / BOSSES.length, depth: r.reach / reachRef },
+  }));
+}
+
+describe.each([
+  { label: 'tier 6 +8 (level 100)', tier: 6, level: 100, zone: 'blood_abyss', pin: 7 },
+  { label: 'tier 4 +8 (level 62)', tier: 4, level: 62, zone: 'blood_abyss', pin: 5 },
+])('the six weapons, $label', ({ tier, level, zone, pin }) => {
+  const rows = sixBuilds(tier, level, zone, pin);
+  const get = (id: string) => rows.find((r) => r.b.id === id)!;
+
+  it('no build leads an axis that is not its class by more than 10 % (against the best build of the class that owns it)', () => {
+    for (const axis of AXES) {
+      const ownerBest = Math.max(...rows.filter((r) => r.b.cls === OWNER[axis]).map((r) => r.score[axis]));
+      for (const r of rows.filter((x) => x.b.cls !== OWNER[axis])) {
+        expect(r.score[axis] / ownerBest - 1, `${r.b.id} on ${axis}`).toBeLessThanOrEqual(0.1);
+      }
+    }
+  });
+
+  it("the crossbow does not lead Hunting: it stays at or under the best mage build (the archer's slow heavy weapon, not a second mage)", () => {
+    const mageBest = Math.max(get('mage').score.hunting, get('mage (scepter)').score.hunting);
+    expect(get('archer (crossbow)').score.hunting).toBeLessThanOrEqual(mageBest);
+  });
+
+  it('the axe and the scepter are each better than their twin weapon on at least one axis (a real choice, not a punishment)', () => {
+    for (const [variant, twin] of [['warrior (axe)', 'warrior'], ['mage (scepter)', 'mage']] as const) {
+      const wins = AXES.filter((axis) => get(variant).score[axis] > get(twin).score[axis]);
+      expect(wins.length, `${variant} beats ${twin} on no axis`).toBeGreaterThan(0);
+    }
+  });
 });
