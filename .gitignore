@@ -37,3 +37,6 @@ smoke-out/
 # Public portal build output (portal/ is its own static site)
 portal/dist/
 portal/node_modules/
+
+# TypeScript incremental build state: a build artifact, never source
+*.tsbuildinfo

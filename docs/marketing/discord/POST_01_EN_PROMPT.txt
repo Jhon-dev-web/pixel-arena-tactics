@@ -1,0 +1,8 @@
+Use case: text-localization.
+Input image 1 is the edit target: the finished Arena Idle Discord announcement poster.
+Change ONLY the Portuguese text into English. Preserve the complete artwork, same exact three heroes and their clothes/bronze/dragon armor, swords, environment, pixel texture, lighting, palette, framing, resolution, and main ARENA IDLE heading. No redesign and no additional elements.
+Replace the subtitle "O MESMO HERÓI. NOVAS ARMADURAS." with exactly:
+"SAME HERO. NEW ARMOR."
+Replace the small bottom line "RPG IDLE NO NAVEGADOR" with exactly:
+"BROWSER IDLE RPG"
+Keep the ARENA IDLE brand heading unchanged. Use the same existing gold pixel lettering style, clean spacing and centering. Make the subtitle large and readable in the available width, without stretching individual letters. No other text. No misspellings, no watermark.
