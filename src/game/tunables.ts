@@ -828,7 +828,6 @@ const T = DebugPanel.define({
     // VIT -> max HP: vitHpPerPoint + vitHpPerLevel x character level per point (4.5 at level 0, 7.5 at level 100). Rodada 8: a flat 5 made a point worth 2% of an early
     // hero's HP and 0.2% of a level-100 hero's; growing with the level keeps it worth about the same share (docs/BALANCE_CHANGES.md).
     vitHpPerPoint: { value: 4.5, min: 0, max: 50, step: 0.5, label: 'Max HP per VIT point (before the level part)' },
-    agiDodgePerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Dodge chance per AGI point' },
     resResistPerPoint: { value: 0.005, min: 0, max: 0.05, step: 0.001, label: 'Damage resist per RES point' },
     resHpPerPoint: { value: 2, min: 0, max: 20, step: 0.25, label: 'Max HP per RES point (the secondary benefit of RES)' },
     vitHpPerLevel: { value: 0.03, min: 0, max: 1, step: 0.005, label: 'Extra max HP per VIT point for each character level' },

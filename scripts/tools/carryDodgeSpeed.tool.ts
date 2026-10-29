@@ -8,7 +8,7 @@
 //   carry  = abilities.ts 'carry' effect: arcane_burst + nova (staff), dark_pulse (scepter), brutal_spin (axe). The spill is `round(base x pct)` per fire (abilities.ts:285), `base` = the damage of THAT swing; the bucket is
 //            emptied into the NEXT enemy at the start of a fight (abilities.ts:309-316, huntCombat.ts:350, driver.ts:188). The bow, the crossbow and the sword have NO carry ability.
 //   dodge  = abilities.ts 'dodge' (the leather chestpiece, so both archer builds): attack speed +35 % for 4000 ms, cooldown 16000 ms (tunables abilities.dodgeHaste*, dodgeCdMs). It is a haste, not an evasion chance:
-//            tunables advanced.agiDodgePerPoint exists but nothing reads it.
+//            the tunable advanced.agiDodgePerPoint said "Dodge chance per AGI point" and nothing read it; it was removed on 29/10.
 //
 // THE SCENARIOS (all by PARAMETER inside this tool: the tunables are set for the length of one measure and put back in a finally; no game file is touched):
 //   S0  the engine as it is

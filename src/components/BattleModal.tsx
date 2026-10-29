@@ -37,6 +37,7 @@ const biomeText = (k: string): string => t(`dungeon.${k}`);
 const materialName = (mid: string): string => t(`materials.mat_${mid}`);
 const materialIcon = (mid: string): string => materialIconUrl(mid as MaterialId);
 const enemyDefForFloor = (floor: number): EnemyDef => getEnemyDef(dungeonEnemyKindForFloor(floor));
+import { stepAttackClock } from '../game/attackClock';
 
 // Every timed effect that matters in a Dungeon fight, with the item that starts it (the gatherer brew and the prospector tonic are Mining / Woodcutting tonics and the hunter lure a Hunting one: not shown here).
 const BATTLE_BUFFS = (Object.entries(BUFF_ITEM) as [ConsumableId, BuffKind][])
@@ -603,8 +604,9 @@ export default function BattleModal({
       const heroInterval = heroMs / spd;
       const heroElapsed = now - heroNextAtkRef.current;
       setHeroProgress(Math.min(1, heroElapsed / heroInterval));
-      if (heroElapsed >= heroInterval) {
-        heroNextAtkRef.current = now;
+      const heroStep = stepAttackClock(heroNextAtkRef.current, now, heroInterval);
+      if (heroStep.fire) {
+        heroNextAtkRef.current = heroStep.nextAt;
         heroAttack();
         if (phaseRef.current !== 'battle') return;
       }
@@ -612,8 +614,9 @@ export default function BattleModal({
       const enemyInterval = enemyDefForFloor(stageRef.current).atkSpeedMs / spd;
       const enemyElapsed = now - enemyNextAtkRef.current;
       setEnemyProgress(Math.min(1, enemyElapsed / enemyInterval));
-      if (enemyElapsed >= enemyInterval) {
-        enemyNextAtkRef.current = now;
+      const enemyStep = stepAttackClock(enemyNextAtkRef.current, now, enemyInterval);
+      if (enemyStep.fire) {
+        enemyNextAtkRef.current = enemyStep.nextAt;
         monsterAttack();
       }
     };
