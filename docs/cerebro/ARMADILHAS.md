@@ -188,3 +188,47 @@ A ferramenta `scripts/tools/classAxesWide.tool.ts` mede as duas armas de cada cl
 **Como evitar.** Quando uma regra diz "toda X faz Y", o teste precisa medir todas as X, ou dizer no próprio nome e no comentário **quais** mede. E quem lê "o guarda passa" deve perguntar primeiro: passa **sobre o quê**?
 
 > Mesma família da lição da seção 2.5 de `CLASSES_E_EQUIPAMENTOS.md`: uma medida pode estar correta e ser a medida errada.
+
+---
+
+## 11. O guarda do antifraude existe, mas a conta que o alimenta não sabe da sua mudança
+
+**Sintoma.** Você muda um número do jogo que aumenta o que o jogador ganha. Roda a suíte inteira: verde, inclusive o teste que compara o jogo com os limites do servidor. Ainda assim, o servidor vai marcar jogador honesto como trapaceiro.
+
+**Caso real (29/10/2026).** O Adubo passou a pagar +25% de XP de Jardinagem quando a economia de tempo dele é desperdiçada. O servidor aceita no máximo `BOUNDS.gardenLongestPlantXp` por canteiro numa colheita: 80. Com o bônus, uma planta de 16 h paga **100**. O guarda `seasonProgress.test.ts` compara o limite com um valor **derivado do jogo**, e continuou verde — porque a derivação (`scripts/sim/seasonBoundsDerive.ts`) calculava `max(plantHarvestXp(p))`, a planta **crua**, e não sabia que existia um bônus na colheita.
+
+**A lição, que é mais larga que o caso.** Um guarda derivado só protege o que a **derivação** enxerga. Quando a derivação e o jogo divergem, o guarda fica verde e errado — o pior dos dois mundos, porque ele dá a sensação de que foi conferido.
+
+**O que fazer.** Ao mexer num número que o servidor limita, não pergunte "o teste passou?". Pergunte: **"a conta que gera esse limite conhece a minha mudança?"** Abra a derivação e procure o seu número lá dentro. Se ele não estiver, o guarda é cego, e consertar a derivação vem **antes** de mexer no limite.
+
+**Como confirmar que o conserto vale.** Depois de ensinar a derivação, volte o limite ao valor antigo e veja o guarda **ficar vermelho**. Se ele continuar verde, a derivação ainda não está vendo.
+
+**E o limite mora no servidor.** `supabase/functions/_shared/**` só vale para o jogador depois de `supabase functions deploy`. Commit não publica. Ver item 7.
+
+---
+
+## 12. Uma busca numérica conserta pelo caminho mais curto, não pelo caminho certo
+
+**Sintoma.** Você pede a um executor (ou a um script) que ache números que satisfaçam uma regra. Ele acha. A regra passa, os testes ficam verdes — e a arma que ele ajustou virou um brinquedo.
+
+**Caso real (29/10/2026).** A regra era "a besta não lidera a Caça". Dava para cumprir de duas formas: **encolher o dano** do golpe ou **alongar a recarga**. A busca encolheu, porque mexer num multiplicador é o caminho numericamente mais curto. Resultado: `piercingBoltPct` foi parar em **1,2, que é o `min` do próprio tunable**, com recarga de 12 s — pior que a Brecha da espada (1,3 na mesma recarga). As três habilidades da besta viraram as mais fracas do jogo, e a arma passou a ganhar o eixo dela só pela estatística do equipamento.
+
+**A lição.** Uma regra diz o que tem de ser verdade, não **como**. Se duas alavancas satisfazem a mesma regra e uma delas destrói a identidade da coisa, a busca vai escolher a que o otimizador achar mais barata, que raramente é a que o jogador sente.
+
+**O que fazer.** Fixe a **forma** antes de soltar a busca: "esta arma é de poucos golpes enormes, então nenhum multiplicador principal abaixo de 2,5; para equilibrar, mexa só nas recargas". Aí a busca tem liberdade onde não dói e não tem onde dói.
+
+**Sinal de alarme.** Um valor parado no `min` ou no `max` do próprio tunable quase nunca é uma escolha de desenho: é a busca batendo na parede. Quando vir um, desconfie do método, não do número.
+
+---
+
+## 13. Regra demais para alavanca de menos
+
+**Sintoma.** Fechar o equilíbrio exige centenas de simulações de busca, as margens finais ficam em 1 a 2% (dentro do ruído de semente) e, ao mexer em qualquer coisa, três outras saem do lugar.
+
+**Caso real (29/10/2026).** A tabela de eixos pedia, nos tiers 4 e 6: cada classe liderando estritamente o seu eixo, ninguém liderando eixo alheio por mais de 10%, **e** cada uma das seis armas ganhando da gêmea em algum eixo. São mais de vinte exigências simultâneas. Mas os três eixos (Caça, chefe, andares) medem quase a mesma coisa — dano por tempo — em três **tamanhos de luta**, então o sistema tem perto de **três** graus de liberdade reais, não vinte. Foram ~130 buscas para achar um ponto, e o ponto saiu com habilidades mortas e papéis invertendo entre tiers.
+
+**A lição.** Antes de perseguir uma regra, conte os graus de liberdade. Se as suas métricas são correlacionadas, exigir sinais independentes delas é pedir o impossível, e o que sai do outro lado são números na beirada que nenhum jogador sente e que quebram ao primeiro toque.
+
+**O que fazer.** Prefira regra **declarada** a regra **disputada**: em vez de "cada arma tem de vencer em algum eixo", diga qual arma é de luta curta e qual é de luta longa, e guarde só o **sinal** da diferença, com margem acima do ruído medido. E deixe o motor separar sozinho onde ele já separa: o desperdício de golpe (dano jogado fora num inimigo quase morto) pesa na luta curta e some na longa, então poucos golpes enormes perdem a Caça e ganham o chefe **sem ninguém calibrar**.
+
+**Teste com margem menor que o ruído não é guarda.** Meça o ruído de semente antes de escolher a margem.
