@@ -6,7 +6,7 @@
 import { buildHuntSession, computeHuntingStatus, huntProgressKey, SaveData } from '../../src/game/engine';
 import type { HuntingDepth } from '../../src/game/huntingZones';
 import T from '../../src/game/tunables';
-import { bossKill } from './duel';
+import { bossKill, HeroMode } from './duel';
 import { clearRate } from './ladder';
 import { CLASS_MAIN, classHero } from './classHero';
 
@@ -50,8 +50,8 @@ export interface AxisLeads {
   depth: number[];
 }
 
-export function axisLeads(tier: number, level: number, refine: number, zoneId = 'blood_abyss', pin = 7): AxisLeads {
-  const heroes = CLASS_MAIN.map((b) => classHero(b, level, tier, refine, 'real'));
+export function axisLeads(tier: number, level: number, refine: number, zoneId = 'blood_abyss', pin = 7, mode: HeroMode = 'real'): AxisLeads {
+  const heroes = CLASS_MAIN.map((b) => classHero(b, level, tier, refine, mode));
   const kph = heroes.map((h) => killsPerHour(h, zoneId, 'shallow', pin, 3));
   const boss = [25, 50, 75, 100].map((f) => heroes.map((h) => 1 / bossKill(h, f, NOW, 24).ms));
   const reach = heroes.map((h) => floorReach(h));

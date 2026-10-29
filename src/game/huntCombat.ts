@@ -64,6 +64,7 @@ export interface HuntCombatBuild {
   uniqueMult?: number;
   // Equipment abilities (abilities.ts): the rotation, in order of priority. Absent or empty = the hero swings the basic attack only, through exactly the same code. Deterministic, it draws no random number.
   rotation?: AbilityId[];
+  cdScale?: number; // abilities.ts abilityCdScale: the multiplier of every cooldown
 }
 
 export interface HuntZoneCombatCfg {
@@ -387,7 +388,7 @@ export function simulateHuntingSession(
         if (res.counter) tally(skillTally, 'g_block', base - afterCrush);
         // Equipment abilities: the first ability of the rotation that is ready takes the place of the basic swing (abilities.ts); a hero without a rotation never enters this branch.
         const picked = build.rotation ? pickAbility(ab, build.rotation, atHit, enemyActed) : null;
-        const fired = picked ? fireAbility(ab, picked, atHit, base, hitBase, build.playerMax) : null;
+        const fired = picked ? fireAbility(ab, picked, atHit, base, hitBase, build.playerMax, build.cdScale) : null;
         const swung = fired ? fired.dmg : base;
         let dmg = swung;
         if (res.double) {

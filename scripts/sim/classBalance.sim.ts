@@ -56,6 +56,7 @@ interface Tier {
 const TIERS: Tier[] = [
   { label: 'T2 +4 (nível 20)', tier: 2, level: 20, refine: 4, hunts: [['blood_marsh', 'shallow']] },
   { label: 'T3 +8 (nível 45)', tier: 3, level: 45, refine: 8, hunts: [['demon_rift', 'shallow']] },
+  { label: 'T4 +8 (nível 62)', tier: 4, level: 62, refine: 8, hunts: [['blood_abyss', 'shallow']] },
   { label: 'T6 +8 (nível 100)', tier: 6, level: 100, refine: 8, hunts: [['blood_abyss', 'shallow'], ['blood_abyss', 'deep']] },
 ];
 const ONLY_TIER = process.env.CLASS_TIER ? Number(process.env.CLASS_TIER) : 0;

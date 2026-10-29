@@ -323,7 +323,7 @@ describe('the three loops agree', () => {
       burn: stats.burn === true,
       reflect: stats.reflect ?? 0,
       hpRegenPct: stats.hpRegenPct ?? 0,
-      ...(stats.rotation ? { rotation: stats.rotation } : {}),
+      ...(stats.rotation ? { rotation: stats.rotation, ...(stats.cdScale ? { cdScale: stats.cdScale } : {}) } : {}),
     };
     // (the clock of the driver adds the intermissions in floating point, so the cut is a millisecond past the last kill; the next fight is seconds long)
     const fightMs = Math.ceil(run.seconds * 1000 - (WAVES - 1) * T.battle.intermissionMs) + 1;

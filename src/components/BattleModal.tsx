@@ -346,7 +346,7 @@ export default function BattleModal({
       if (res.counter) tally(tallyRef.current, 'g_block', base - afterCrush);
       // Equipment abilities: the first ability of the rotation that is ready takes the place of the basic swing (abilities.ts); a hero without a rotation never enters this branch.
       const picked = combat.rotation ? pickAbility(abilityRef.current, combat.rotation, clockRef.current, enemyActedRef.current) : null;
-      const fired = picked ? fireAbility(abilityRef.current, picked, clockRef.current, base, total, playerMax) : null;
+      const fired = picked ? fireAbility(abilityRef.current, picked, clockRef.current, base, total, playerMax, combat.cdScale) : null;
       const swung = fired ? fired.dmg : base;
       let dmg = swung;
       if (res.double) {

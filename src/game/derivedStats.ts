@@ -104,6 +104,8 @@ export interface CombatStats {
   bossLootMult?: number; // Dungeon boss unique / relic chance multiplier (Sorte Grande)
   // Equipment abilities (abilities.ts): the rotation of the hero, in order of priority, already limited to what his worn gear grants. Present only when it is not empty, so a hero without one has exactly the stats it always had.
   rotation?: AbilityId[];
+  // Multiplier of every ability cooldown (abilities.ts abilityCdScale: the cooldowns are in average swings). Present only with a rotation and when it is not 1 (level 100 and up).
+  cdScale?: number;
 }
 
 // STR -> pre-modifier hit damage. Hybrid: a flat part plus a part that scales with (base hit + weapon):

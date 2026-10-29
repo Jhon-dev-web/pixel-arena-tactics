@@ -219,7 +219,7 @@ export function runDungeon(save: SaveData, now: number, maxStages = Infinity, st
         if (res.crush) tally(skillTally, res.devastating ? 'w_devastating_strike' : 'w_heavy_blow', afterCrush - plain);
         if (res.counter) tally(skillTally, 'g_block', base - afterCrush);
         const picked = combat.rotation ? pickAbility(ab, combat.rotation, clock - skippedMs, enemyActed) : null;
-        const fired = picked ? fireAbility(ab, picked, clock - skippedMs, base, heroBase, playerMax) : null;
+        const fired = picked ? fireAbility(ab, picked, clock - skippedMs, base, heroBase, playerMax, combat.cdScale) : null;
         const swung = fired ? fired.dmg : base;
         let dmg = swung;
         if (res.double) {
