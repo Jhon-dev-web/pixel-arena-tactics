@@ -312,6 +312,9 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       // shifts the numbers of the older ones (rift_shard, fiend_horn, abyssal_marrow, blood_heart): same statistics, but a session replayed from the same seed gives other results. That is why the glade and the marsh (no earlier ownStream drop) are
       // the only zones that got the phase 1 drops. They were added to zones 3 and 4 on 29/10 with a stream key of their own (classStream, seedKey + ':class' in huntCombat.ts), exactly so the older ownStream drops keep their numbers.
       { material: 'beast_sinew', rarity: 'common', chance: 0.03, qty: 1, ownStream: true },
+      // The archer's first quiver (tier 1) asks for 4 feathers and the feather used to drop only from the marsh (floor 26) on, so on day 1 the archer stopped at 4 of his 5 leather pieces. The feather is the archer's material, so it
+      // drops where the archer starts: same chance as the marsh and the throne, on the class stream (classStream) because the glade's shared ownRng already feeds beast_sinew in array order.
+      { material: 'feather', rarity: 'common', chance: 0.02, qty: 1, ownStream: true, classStream: true },
     ],
     // Rodada 22: the chances below are the Rodada 9 ones cut again (zones 1 and 2 x0.4, zone 3 and 4 to 0.000008): in the 60-day sim the owner of the Pass (20 h of Hunting a day) found 5 to 7 uniques
     // of any kind, a plain player (6 h a day) 2 to 3; now 1 to 2 for the plain player and 3 to 4 for the owner who hunts all day (docs/BALANCE_CHANGES.md Rodada 22).

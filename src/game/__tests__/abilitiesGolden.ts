@@ -82,7 +82,10 @@ export function huntScenarios(extra: Record<string, unknown> = {}): Record<strin
   // The real engine path: a ladder hero (with the Warrior skills) fighting the real first zone.
   for (const [key, level, refine] of [['2', 12, 4], ['4g', 52, 6]] as [string, number, number][]) {
     const h = { ...spendSkillPoints(hero(key, refine, { level }), 'warrior'), rotation: [] }; // an EMPTY rotation (phase 5: an absent one is the automatic default now)
-    const z = getHuntingZone('demon_glade')!;
+    // The glade AS THE GOLDEN WAS RECORDED: the entries of the later class-material streams (classStream: the glade's feather, 29/10) are left out, because this file proves the abilities engine adds nothing to a session,
+    // not that the zone's drop table never grows. abilitiesGolden.json is untouched and every old number is still compared exactly.
+    const zone = getHuntingZone('demon_glade')!;
+    const z = { ...zone, drops: zone.drops.filter((d) => !d.classStream) };
     const session: HuntSession = { stats: buildCombatStats(h), blessed: false, strength: [], attack: [], pass: [], tonics: {} };
     const setup = buildHuntSimSetup(h, z, 'shallow', session, 0, []);
     const build = { ...setup.build, ...extra } as HuntCombatBuild;

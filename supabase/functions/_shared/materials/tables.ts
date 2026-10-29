@@ -37,10 +37,10 @@ export const MATERIAL_CLASS: Readonly<Record<string, 'common' | 'uncommon' | 'ra
   "demon_claw": "uncommon",
   "demon_core": "rare",
   "beast_sinew": "common",
+  "feather": "common",
   "bone_fragment": "common",
   "concentrated_blood": "uncommon",
   "corrupted_crystal": "rare",
-  "feather": "common",
   "arcane_dust": "uncommon",
   "rift_shard": "uncommon",
   "fiend_horn": "rare",
@@ -54,7 +54,8 @@ export const HUNT_CEILING: Readonly<Record<string, Readonly<Record<string, numbe
     "leather_scrap": 133.95622625000001,
     "demon_claw": 133.81905507432,
     "demon_core": 15.447189021264004,
-    "beast_sinew": 16.07474715
+    "beast_sinew": 16.07474715,
+    "feather": 10.7164981
   },
   "blood_marsh": {
     "bone_fragment": 150.03097340000002,
