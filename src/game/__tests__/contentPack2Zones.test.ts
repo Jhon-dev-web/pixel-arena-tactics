@@ -20,7 +20,7 @@ const HOUR = 3600 * 1000;
 describe('zone materials of the Demon Rift and the Blood Abyss', () => {
   const NEW: Record<string, [MaterialId, MaterialId]> = { demon_rift: ['rift_shard', 'fiend_horn'], blood_abyss: ['abyssal_marrow', 'blood_heart'] };
   // Drops per zone: the original ones (five for the late zones, three for the first two) plus the ownStream drops of the classes reform, phase 1, only in the first two zones (beast_sinew in the glade, feather and arcane_dust in the marsh).
-  const DROP_COUNT: Record<string, number> = { demon_glade: 4, blood_marsh: 5, demon_rift: 5, blood_abyss: 5 };
+  const DROP_COUNT: Record<string, number> = { demon_glade: 4, blood_marsh: 5, demon_rift: 8, blood_abyss: 8 }; // the five of their own + the three class materials (29/10)
 
   it('each late zone keeps its old three drops (the Rift ones untouched, the Abyss ones cut in round 17) and adds an uncommon + a rare of its own', () => {
     const rift = getHuntingZone('demon_rift')!;
@@ -41,6 +41,25 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
     }
     expect(getHuntingZone('demon_glade')!.drops).toHaveLength(DROP_COUNT.demon_glade);
     expect(getHuntingZone('blood_marsh')!.drops).toHaveLength(DROP_COUNT.blood_marsh);
+  });
+
+  // The class materials of the rift and the abyss (sinew, feather, arcane dust; 29/10) roll on a stream of their OWN (classStream), not on the zone's shared ownRng: if they did, they would move the numbers of the older
+  // ownStream drops (rift_shard, fiend_horn, abyssal_marrow, blood_heart) of every session in progress. Nothing on screen shows it; a replay from the same seed is the only way to see it.
+  it('the class materials of the rift and the abyss move none of the older ownStream drops of their zone', () => {
+    for (const zid of ['demon_rift', 'blood_abyss']) {
+      const zone = getHuntingZone(zid)!;
+      expect(zone.drops.filter((d) => d.classStream).map((d) => d.material)).toEqual(['beast_sinew', 'feather', 'arcane_dust']);
+      const h = hero('5', 4, { level: 75 });
+      const mk = (drops: typeof zone.drops) => {
+        const { build, zoneCfg, potionCfg, timeline } = buildHuntSimSetup(h, { ...zone, drops }, 'dense', buildHuntSession(h, NOW), NOW, []);
+        return simulateHuntingSession(build, zoneCfg, { ceiling: 3, promotionWins: 0 }, 5 * HOUR, potionCfg, `${zid}:seed`, { maxLevel: 12, requiredWins: () => 5 }, timeline);
+      };
+      const full = mk(zone.drops);
+      const without = mk(zone.drops.filter((d) => !d.classStream));
+      for (const d of zone.drops.filter((x) => !x.classStream)) expect(full.drops[d.material], `${zid} ${d.material}`).toBe(without.drops[d.material]);
+      for (const m of ['beast_sinew', 'feather', 'arcane_dust'] as const) expect(without.drops[m] ?? 0).toBe(0);
+      expect((full.drops.beast_sinew ?? 0) + (full.drops.feather ?? 0)).toBeGreaterThan(0);
+    }
   });
 
   it('the new drops are rolled on their own stream: the old drops, kills, XP and gold of a session are bit-for-bit what they were', () => {

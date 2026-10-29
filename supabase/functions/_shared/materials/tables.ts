@@ -68,14 +68,20 @@ export const HUNT_CEILING: Readonly<Record<string, Readonly<Record<string, numbe
     "demon_claw": 175.63750978504495,
     "demon_core": 38.61797255316001,
     "rift_shard": 41.81845471072501,
-    "fiend_horn": 3.7514601908784
+    "fiend_horn": 3.7514601908784,
+    "beast_sinew": 16.07474715,
+    "feather": 10.7164981,
+    "arcane_dust": 8.826965155008002
   },
   "blood_abyss": {
     "bone_fragment": 64.2989886,
     "concentrated_blood": 60.218574783444005,
     "corrupted_crystal": 11.695728830385605,
     "abyssal_marrow": 22.080144087262802,
-    "blood_heart": 4.6341567063792
+    "blood_heart": 4.6341567063792,
+    "beast_sinew": 16.07474715,
+    "feather": 10.7164981,
+    "arcane_dust": 8.826965155008002
   },
   "abyss_throne": {
     "bone_fragment": 64.2989886,

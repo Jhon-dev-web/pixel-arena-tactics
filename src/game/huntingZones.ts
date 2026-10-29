@@ -99,6 +99,10 @@ export interface HuntingDrop {
   qty: number; // amount granted per successful proc
   // Rolled on its own seeded stream (huntCombat.ts), so adding an entry to a zone moves no fight, crit or older drop of its session.
   ownStream?: boolean;
+  // The class materials added to zones that ALREADY had ownStream drops (demon_rift, blood_abyss; 29/10): they roll on a stream of their own (huntCombat.ts classRng, seedKey + ':class') instead of the zone's shared ownRng,
+  // so the older ownStream drops (rift_shard, fiend_horn, abyssal_marrow, blood_heart) of a session in progress, or replayed from the same seed, keep exactly the numbers they had. Set together with ownStream (it marks the entry
+  // as an addition, which the tests that read the original drops rely on); classStream only chooses WHICH of the two side streams it draws from.
+  classStream?: boolean;
 }
 
 export interface HuntingZoneDef {
@@ -306,7 +310,7 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       // Classes & equipment, phase 1 (docs/CLASSES_E_EQUIPAMENTOS.md): the new accessory drops (beast_sinew here, feather and arcane_dust in the marsh) are ownStream, so no existing session's roll order moves.
       // WARNING: every ownStream drop of a zone shares ONE generator in huntCombat.ts (ownRng) and is rolled in ARRAY ORDER on every kill, so inserting an ownStream drop into a zone that already has others (demon_rift, blood_abyss)
       // shifts the numbers of the older ones (rift_shard, fiend_horn, abyssal_marrow, blood_heart): same statistics, but a session replayed from the same seed gives other results. That is why the glade and the marsh (no earlier ownStream drop) are
-      // the only zones that got the phase 1 drops. Whoever adds them to zones 3 and 4 in phase 3 needs a stream key of their own in huntCombat.ts (e.g. seedKey + ':class') instead of ownStream.
+      // the only zones that got the phase 1 drops. They were added to zones 3 and 4 on 29/10 with a stream key of their own (classStream, seedKey + ':class' in huntCombat.ts), exactly so the older ownStream drops keep their numbers.
       { material: 'beast_sinew', rarity: 'common', chance: 0.03, qty: 1, ownStream: true },
     ],
     // Rodada 22: the chances below are the Rodada 9 ones cut again (zones 1 and 2 x0.4, zone 3 and 4 to 0.000008): in the 60-day sim the owner of the Pass (20 h of Hunting a day) found 5 to 7 uniques
@@ -364,6 +368,11 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'demon_core', rarity: 'rare', chance: 0.0175, qty: 1 },
       { material: 'rift_shard', rarity: 'uncommon', chance: 0.025, qty: 1, ownStream: true },
       { material: 'fiend_horn', rarity: 'rare', chance: 0.0017, qty: 1, ownStream: true },
+      // The class materials (29/10): the same chances as the glade, the marsh and the throne, on their own stream (see HuntingDrop.classStream). Without them the supply of the leather and cloth lines stopped at the marsh
+      // for the whole stretch where the hero needs tier 3 to 5 sets (zones 3 and 4, day ~20 to ~60).
+      { material: 'beast_sinew', rarity: 'common', chance: 0.03, qty: 1, ownStream: true, classStream: true },
+      { material: 'feather', rarity: 'common', chance: 0.02, qty: 1, ownStream: true, classStream: true },
+      { material: 'arcane_dust', rarity: 'rare', chance: 0.004, qty: 1, ownStream: true, classStream: true }, // 'rare' HERE: at 0.4 % it is scarcer than the zone's own rare, so the label has to say so (the label is a field of the ENTRY, the marsh and the throne keep 'uncommon')
     ],
     uniques: [
       { itemId: 'riftwalker_boots', chance: 0.000008 },
@@ -390,6 +399,9 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       { material: 'corrupted_crystal', rarity: 'rare', chance: 0.0053, qty: 1 },
       { material: 'abyssal_marrow', rarity: 'uncommon', chance: 0.0132, qty: 1, ownStream: true },
       { material: 'blood_heart', rarity: 'rare', chance: 0.0021, qty: 1, ownStream: true },
+      { material: 'beast_sinew', rarity: 'common', chance: 0.03, qty: 1, ownStream: true, classStream: true },
+      { material: 'feather', rarity: 'common', chance: 0.02, qty: 1, ownStream: true, classStream: true },
+      { material: 'arcane_dust', rarity: 'rare', chance: 0.004, qty: 1, ownStream: true, classStream: true }, // 'rare' HERE: at 0.4 % it is scarcer than the zone's own rare, so the label has to say so (the label is a field of the ENTRY, the marsh and the throne keep 'uncommon')
     ],
     uniques: [
       { itemId: 'abyss_heart_ring', chance: 0.000008 },

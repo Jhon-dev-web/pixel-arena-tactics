@@ -107,7 +107,8 @@ export const HONEST_PEAK_DAY_UNITS: Readonly<Record<string, number>> = {
   // so the measured peak understates the honest player and would flag a lucky one. The proportions: feather 1237 x 0.02/0.28 (against bone_fragment, same zone) = 88; beast_sinew against leather_scrap = 138; arcane_dust (proportion to concentrated_blood gives ~55) is raised to 90 by the same reasoning, since its measured 60 is the same understatement.
   // The simulator varies 5-10% between runs and the values of the OLD materials above do not reproduce even from a clean extract of HEAD, so no finer number would mean more. The 2x margin of bounds.ts absorbs the rest.
   // Phase 7 (balance) replaces these with a measurement once the simulator has a planting policy and a zone-focus policy.
-  beast_sinew: 140,
+  // beast_sinew: MEASURED on 29/10 (LONG_TABLES=1, 6 seeds, 60 days: 218), no longer the proportion of 140 above. The old value described a hero who got sinew only in the glade and the throne; since the rift and the abyss drop it too (classStream, huntingZones.ts) the honest best day is higher (the worst honest day was 0.76 of the old daily cap of 9, 0.49 of the new 14). feather (134, measured 148) and arcane_dust (90, measured 75) keep the proportion values above: their caps do not move.
+  beast_sinew: 218,
   feather: 134,
   arcane_dust: 90,
   flax: 184,

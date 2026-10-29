@@ -220,6 +220,8 @@ export function simulateHuntingSession(
   const uniqueRng = mulberry32(hashSeed(seedKey + ':unique'));
   // Drop entries flagged `ownStream` (a zone's later additions) draw from their own stream too, for the same reason.
   const ownRng = mulberry32(hashSeed(seedKey + ':zone'));
+  // The class materials of the zones that already had ownStream drops (classStream, huntingZones.ts) have a stream of their own, so adding them moved no older drop of the zone.
+  const classRng = mulberry32(hashSeed(seedKey + ':class'));
   // Block rolls (Bloqueio) have their own stream for the same reason; it is only drawn from when the hero has the skill.
   const blockRng = mulberry32(hashSeed(seedKey + ':block'));
   const uniques: UniqueDrop[] = [];
@@ -267,7 +269,7 @@ export function simulateHuntingSession(
     for (const entry of zoneCfg.drops) {
       const lured = !!timeline?.baitWindows && entry.rarity !== 'common' && inRelativeWindows(timeline.baitWindows, sessionMs - timeLeft);
       const chance = effectiveDropChance(entry, zoneCfg.depth, subLevel) * dropMult * economicFraction * (lured ? 1 + (timeline!.baitDropPct ?? 0) : 1);
-      if ((entry.ownStream ? ownRng() : rng()) < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
+      if ((entry.classStream ? classRng() : entry.ownStream ? ownRng() : rng()) < chance) drops[entry.material] = (drops[entry.material] ?? 0) + entry.qty;
     }
     // Unique pieces: base chance x the same economic fraction as the materials (no depth / sub-level / Battle Pass multiplier). They never touch
     // the material stacks (they are not materials); the claim delivers them as gear instances.
