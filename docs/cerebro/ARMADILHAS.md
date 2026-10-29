@@ -166,3 +166,25 @@ A de fim de linha que também estava nessa lista virou o item 4 acima, com a cau
 - Uma bandeira de "sem conexão" que nunca expirava parecia explicar tudo. Explicava um defeito **real e separado** — qualquer jogador com uma falha de rede passageira ficava preso até recarregar — mas não aquele caso, porque o laço de `useTradeableSync` já tentava a cada 30 s e falhava sempre pelo mesmo motivo.
 
 **O que fazer.** Antes de consertar, ter **uma** medição que distinga as hipóteses. E, quando o conserto for feito por outro motivo, escrever no commit que ele não era a causa daquele caso — senão o histórico guarda a explicação errada.
+
+---
+
+## 10. Um guarda que mede uma amostra pode passar com a regra quebrada fora dela
+
+**Sintoma.** O teste está verde, o documento diz "cada classe lidera o seu eixo", e mesmo assim uma das armas do jogo faz o contrário. Ninguém vê, porque nada acende.
+
+**Causa.** O guarda `src/game/__tests__/classAxes.test.ts` mede **uma arma por classe**: espada, arco e cajado. A regra é sobre a **classe**, mas só três das seis armas foram medidas. A besta (segunda arma do arqueiro) lidera a Caça, que é o eixo do mago, e nenhum teste a compara com o mago. Cetro e machado ficam bem atrás da arma gêmea e também passam despercebidos. Medido em 29/10/2026; os números estão em [`CLASSES_E_EQUIPAMENTOS.md` seção 5.1.7](../CLASSES_E_EQUIPAMENTOS.md).
+
+**O erro de leitura que leva a isso:** ver o guarda verde e concluir que o desenho está cumprido. Ele só prova o que mede.
+
+**O comando que decide:**
+
+```
+npx vitest run --config vitest.sim.config.ts classAxesWide --silent=false --reporter=default
+```
+
+A ferramenta `scripts/tools/classAxesWide.tool.ts` mede as duas armas de cada classe (12 montagens, tiers 4 e 6) do mesmo jeito que o guarda, e os números dela reproduzem os do guarda casa a casa para as armas principais. Ela só imprime; não afirma nada, então não protege contra regressão. Quem decidir que a regra vale para todas as armas tem de levar a cobertura para o guarda.
+
+**Como evitar.** Quando uma regra diz "toda X faz Y", o teste precisa medir todas as X, ou dizer no próprio nome e no comentário **quais** mede. E quem lê "o guarda passa" deve perguntar primeiro: passa **sobre o quê**?
+
+> Mesma família da lição da seção 2.5 de `CLASSES_E_EQUIPAMENTOS.md`: uma medida pode estar correta e ser a medida errada.
