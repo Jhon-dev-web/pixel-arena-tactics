@@ -1062,7 +1062,7 @@
     "whetstone_oil_active": "Weapon and armor restored by 30% durability!",
     "whetstone_oil_full": "Weapon and armor are already at full durability.",
     "fertilizer": "Fertilizer",
-    "fertilizer_d": "Use on a growing plot: removes 50% of the remaining time (once per planting)",
+    "fertilizer_d": "Use on a growing plot: removes 50% of the remaining time (once per planting). If the plant is left waiting after it is ready, the harvest pays +25% Gardening XP.",
     "repair_kit": "Repair Kit",
     "repair_kit_d": "Restores 60% durability to the equipped weapon and armor",
     "repair_kit_active": "Weapon and armor restored by 60% durability!",
@@ -1271,7 +1271,7 @@
       "ab_nova": "Nova!",
       "ab_drain_life": "Drain Life!",
       "ab_dark_pulse": "Dark Pulse!",
-      "ab_dodge": "Dodge!",
+      "ab_dodge": "Surge!",
       "ab_arcane_breath": "Arcane Breath!",
       "line": "{name} ×{n} — {p}% of damage"
     },
@@ -1399,7 +1399,7 @@
         "drain_life": "Drain Life",
         "dark_pulse": "Dark Pulse",
         "iron_stance": "Iron Stance",
-        "dodge": "Dodge",
+        "dodge": "Surge",
         "arcane_breath": "Arcane Breath"
     }
   },

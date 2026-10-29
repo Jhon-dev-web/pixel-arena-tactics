@@ -244,6 +244,11 @@ const T = DebugPanel.define({
     precisionCritPoints: { value: 0.08, min: 0, max: 0.5, step: 0.01, label: 'Precision Elixir: absolute crit chance points' },
     whetstoneDurability: { value: 30, min: 1, max: 100, step: 1, label: 'Whetstone Oil: durability points restored to the equipped weapon AND armor' },
     fertilizerSkipPct: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Fertilizer: share of the REMAINING growth time removed (once per planting)' },
+    // The Fertilizer is a time saving, and a plant that is done by the visit anyway has nothing left to save: at a 12 h or 24 h gap no plant of the Garden ever needs it (measured on 29/10: +0%,
+    // the unit spent for nothing). When the plant had been ready for at least as long as the Fertilizer saves by the time it is harvested, the saving was wasted and the harvest pays this share of
+    // extra Gardening XP instead (XP, not units: a plant yields 1 or 2 units, so a unit bonus cannot be smaller than +50%, and the old guard of garden3.test.ts caps this visit pattern at +40%).
+    // 0 = the old behaviour (nothing back). It never fires for a visitor the saving did help (every gap up to 8 h), so those rows do not move.
+    fertilizerIdleXpPct: { value: 0.25, min: 0, max: 1, step: 0.05, label: 'Fertilizer: extra Gardening XP on the harvest when its time saving was wasted (the plant sat ready as long as the Fertilizer saves)' },
   },
   // Round 12 consumables (docs/BALANCE_CHANGES.md, Rodada 12). They reuse the timed-buff machinery of the tonics above. CAP: all the NEW consumables that can be active at once
   // raise the hero's damage by at most newConsumableCap (only the Sharpening Stone does) and the yield of any one activity by at most newConsumableCap (the Lure for Hunting,
@@ -769,10 +774,10 @@ const T = DebugPanel.define({
     // Pulso Sombrio (scepter, carry).
     darkPulsePct: { value: 0.8, min: 0.1, max: 3, step: 0.05, label: 'Pulso Sombrio: share of the swing that spills over' },
     darkPulseCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Pulso Sombrio: cooldown (ms)' },
-    // Esquiva (leather chestpiece, haste).
-    dodgeHastePct: { value: 0.35, min: 0, max: 1, step: 0.05, label: 'Esquiva: attack speed bonus' },
-    dodgeHasteMs: { value: 4000, min: 1000, max: 30000, step: 500, label: 'Esquiva: haste duration (ms)' },
-    dodgeCdMs: { value: 16000, min: 1000, max: 120000, step: 500, label: 'Esquiva: cooldown (ms)' },
+    // Arrancada / Surge (leather chestpiece): a burst of attack speed, NOT an evasion. It was called Esquiva / Dodge until 29/10, which promised the player a dodge the game never had.
+    dodgeHastePct: { value: 0.35, min: 0, max: 1, step: 0.05, label: 'Arrancada: attack speed bonus' },
+    dodgeHasteMs: { value: 4000, min: 1000, max: 30000, step: 500, label: 'Arrancada: haste duration (ms)' },
+    dodgeCdMs: { value: 16000, min: 1000, max: 120000, step: 500, label: 'Arrancada: cooldown (ms)' },
     // Folego Arcano (cloth chestpiece, heal).
     arcaneBreathHealPct: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'Folego Arcano: max HP healed (share)' },
     arcaneBreathCdMs: { value: 18000, min: 1000, max: 120000, step: 500, label: 'Folego Arcano: cooldown (ms)' },

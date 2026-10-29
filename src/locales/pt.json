@@ -1062,7 +1062,7 @@
     "whetstone_oil_active": "Arma e armadura restauradas em 30% de durabilidade!",
     "whetstone_oil_full": "Arma e armadura já estão com a durabilidade cheia.",
     "fertilizer": "Adubo",
-    "fertilizer_d": "Use em um canteiro em crescimento: remove 50% do tempo restante (uma vez por plantio)",
+    "fertilizer_d": "Use em um canteiro em crescimento: remove 50% do tempo restante (uma vez por plantio). Se a planta ficar pronta e esperar por você, a colheita rende +25% de XP de Jardinagem.",
     "repair_kit": "Kit de Reparo",
     "repair_kit_d": "Restaura 60% da durabilidade da arma e da armadura equipadas",
     "repair_kit_active": "Arma e armadura restauradas em 60% de durabilidade!",
@@ -1271,7 +1271,7 @@
       "ab_nova": "Nova!",
       "ab_drain_life": "Drenar Vida!",
       "ab_dark_pulse": "Pulso Sombrio!",
-      "ab_dodge": "Esquiva!",
+      "ab_dodge": "Arrancada!",
       "ab_arcane_breath": "Fôlego Arcano!",
       "line": "{name} ×{n} — {p}% do dano"
     },
@@ -1399,7 +1399,7 @@
         "drain_life": "Drenar Vida",
         "dark_pulse": "Pulso Sombrio",
         "iron_stance": "Postura de Ferro",
-        "dodge": "Esquiva",
+        "dodge": "Arrancada",
         "arcane_breath": "Fôlego Arcano"
     }
   },

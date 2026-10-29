@@ -63,7 +63,7 @@ export function applyHarvest(save: SaveData, slotIndices: number[], now: number)
     }
     bag = placed.save;
     gardenSlots[i] = { plantId: null, startedAt: 0, lastPlantId: def.id, fertilized: false };
-    harvested.push({ slot: i, plantId: def.id, material: def.material, qty, xp: Math.round(plantHarvestXp(def) * eventSkillXpMultiplier(save, 'gardening', now, now)), ...(dust > 0 ? { dust } : {}) });
+    harvested.push({ slot: i, plantId: def.id, material: def.material, qty, xp: Math.round(plantHarvestXp(def) * (1 + fertilizerIdleXpPct(save, i, status.elapsedMs, status.durationMs)) * eventSkillXpMultiplier(save, 'gardening', now, now)), ...(dust > 0 ? { dust } : {}) });
   }
   if (harvested.length === 0 && blocked.length === 0) return null;
   // Web build: what was harvested is reported for the server's roll of which units are tradeable (materialClaims.ts). The time it covers is the growth time of each harvested plant, added up.
@@ -82,6 +82,16 @@ export function applyHarvest(save: SaveData, slotIndices: number[], now: number)
     harvested,
     blocked,
   };
+}
+
+// A fertilized plot whose plant had ALREADY been ready for at least as long as the Fertilizer saved (T.tonics.fertilizerSkipPct of the growth time, the most it can save) when it is harvested:
+// the saving bought nothing (the visitor came back after the plant's normal time anyway), so the harvest pays T.tonics.fertilizerIdleXpPct more Gardening XP instead. A visitor whose plant was
+// still growing without the Fertilizer (the saving mattered) gets exactly what he always got. `elapsedMs` counts from the shifted start, so "elapsed >= duration x (1 + skip)" is "sat ready for
+// at least the saving". Applied late (the saving was less than the maximum) it is stricter, never looser: no bonus is ever paid for a saving that did matter.
+// It is a share of the plant's own XP (25% today), far below the x2 the time saving itself gives a frequent visitor, and never paid on top of that saving.
+export function fertilizerIdleXpPct(save: SaveData, slotIndex: number, elapsedMs: number, durationMs: number): number {
+  if (save.gardenSlots[slotIndex]?.fertilized !== true) return 0;
+  return elapsedMs >= durationMs * (1 + T.tonics.fertilizerSkipPct) ? T.tonics.fertilizerIdleXpPct : 0;
 }
 
 export function readySlots(save: SaveData, now: number): number[] {

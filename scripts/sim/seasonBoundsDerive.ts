@@ -29,7 +29,9 @@ export function deriveBounds() {
   const woodcuttingPerHour = gatherPower * T.woodcutting.woodRatePerPower * gatherYield * T.skills.xpPerUnit;
   const gardenSpeed = (1 / (1 - 2 * T.mastery.gardenSpeedPct)) * (1 / (1 - T.tonics.fertilizerSkipPct));
   const gardeningPerHour = MAX_GARDEN_PLOTS * T.skills.gardenXpPerHour * gardenSpeed;
-  const longestPlantXp = Math.max(...PLANTS.map((p) => plantHarvestXp(p)));
+  // The most Gardening XP ONE harvested plot can pay: the longest plant, plus the Fertilizer bonus the harvest adds when its time saving was wasted (gardenActions.ts fertilizerIdleXpPct).
+  // Without the bonus here the server bound stays at the bare plant and an honest player who fertilizes a 16 h plant and comes back late is flagged.
+  const longestPlantXp = Math.max(...PLANTS.map((p) => plantHarvestXp(p))) * (1 + T.tonics.fertilizerIdleXpPct);
 
   const xpPerHour = huntPerHour;
   return {

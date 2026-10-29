@@ -98,7 +98,7 @@ export const BOUNDS = {
   /** A Fertilizer on a fresh planting halves its growth (x2 XP per hour; tunables tonics.fertilizerSkipPct 0.5) and the two speed perks cut 10% (1 / 0.9 = 1.11, rounded up to 1.12). */
   gardenSpeedFactor: 2 * 1.12,
   /** The longest plant (elder_root, 16 h x 5 XP): one ready harvest per plot may be claimed late, so a snapshot can carry one of each. */
-  gardenLongestPlantXp: 80,
+  gardenLongestPlantXp: 100, // the 16 h plant pays 80, plus the 25% the Fertilizer adds when its time saving was wasted (29/10). seasonProgress.test.ts derives it from the game.
 
   // ---- counters per server hour (theoretical) -----------------------------------------------------------------------------------------------
   /** Kills per hour: one kill per 0.4 s at the highest attack speed (base interval minus 300 AGI points x 4.7 ms, attributes.ts), rounded up. SOURCE: ESTIMATE, not measured: nothing in the sims counts kills per hour; a flag-level bound that catches edited counters, not a precise limit. */
