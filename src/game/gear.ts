@@ -277,11 +277,10 @@ const round4 = (x: number): number => Math.round(x * 10000) / 10000;
 // the CP of its plate / sword twin. The phase 8 measurement showed that CP parity is NOT class fairness: CP counts damage and effective HP as equally valuable, but in Hunting and against a boss nobody dies, so the
 // leather set (all of it returned as crit chance and attack speed) killed 50 % faster than the plate set at the same CP. The returned stats are therefore multiplied by these factors when the piece is built, and the
 // generated blocks stay what they are (the CP-parity solution), so the generator and the parity tests keep working on the neutral numbers (RETURNS_BASE). 1 = the CP-parity solution; below 1 the line trades damage for
-// nothing, on purpose. LEFT AT 1 (NEUTRAL, 28/10): the profile that cut the totals (leather 0.75, cloth 0.75, bow 0.1, crossbow 0.3) brought the damage per second of the classes together but dropped the archer's and the
-// mage's CP to ~0.75 of the warrior's, and the Hunting sub-level gate reads that CP (huntingZones.ts subLevelCpRequired, engine.ts computeHuntingStatus): REJECTED by the coordinator. CP parity is a structural
-// requirement of the gate, though not a measure of fairness. A change of COMPOSITION at constant CP (less damage, more effective HP) is what is being studied (scripts/sim/classBalance.sim.ts SIM_MIX).
-// Each factor is the lever of ONE class on ONE axis (docs/CLASSES_E_EQUIPAMENTOS.md 2.5): change them with the axis table of scripts/sim/classBalance.sim.ts in front of you.
-export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.6, cloth: 0.75, bow: 0.45, crossbow: 0.3, staff: 1, scepter: 1 };
+// nothing, on purpose; above 1 it is paid more than the parity (the staff, 1.14: the mage's boss time at tier 4 needed it, see docs/CLASSES_E_EQUIPAMENTOS.md 5.1.6). Nothing reads CP as a gate any more (the Hunting and
+// Dungeon gates read the equipment index, gearIndex.ts), so the dial is free of the CP parity. Each factor is the lever of ONE class on ONE axis (docs/CLASSES_E_EQUIPAMENTOS.md 2.5): change them with the axis table
+// of scripts/sim/classBalance.sim.ts in front of you, and run classAxes.test.ts.
+export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.6, cloth: 0.75, bow: 0.45, crossbow: 0.3, staff: 1.14, scepter: 1 };
 // piece id -> the returned stats BEFORE the dial (what the generator solved); itemBalance.test.ts / the generator read the parity on these
 export const RETURNS_BASE: Record<string, Partial<Record<'critChance' | 'attackSpeedBonus' | 'critMultBonus' | 'hpRegenPct', number>>> = {};
 const dial = (x: number, f: number, decimals = 4): number => Math.round(x * f * 10 ** decimals) / 10 ** decimals;

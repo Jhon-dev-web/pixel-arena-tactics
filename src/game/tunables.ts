@@ -699,18 +699,18 @@ const T = DebugPanel.define({
     // either way (what is left over does not chain into the fight after).
     carryCapPct: { value: 0.7, min: 0, max: 0.9, step: 0.05, label: 'Carry: most of the next enemy max HP the spill can take (share)' },
     // Golpe Firme (sword, strike): this swing hits for firmStrikePct of the damage.
-    firmStrikePct: { value: 2.7, min: 1, max: 5, step: 0.1, label: 'Golpe Firme: damage of the swing (x)' },
+    firmStrikePct: { value: 2.3, min: 1, max: 5, step: 0.1, label: 'Golpe Firme: damage of the swing (x)' },
     firmStrikeCdMs: { value: 4500, min: 1000, max: 60000, step: 500, label: 'Golpe Firme: cooldown (ms)' },
     // Chuva de Flechas (bow, volley): arrowRainHits hits of arrowRainPct each.
     arrowRainHits: { value: 3, min: 2, max: 8, step: 1, label: 'Chuva de Flechas: hits' },
-    arrowRainPct: { value: 0.6, min: 0.1, max: 2, step: 0.05, label: 'Chuva de Flechas: damage of each hit (x)' },
+    arrowRainPct: { value: 0.4, min: 0.1, max: 2, step: 0.05, label: 'Chuva de Flechas: damage of each hit (x)' },
     arrowRainCdMs: { value: 8000, min: 1000, max: 60000, step: 500, label: 'Chuva de Flechas: cooldown (ms)' },
     // Chamas (staff, dot): a burn of flamesPct of the hit per tick (T.battle.effectTickMs) for flamesDurationMs, in its own slot beside the weapon burn and Sangria.
     flamesPct: { value: 0.12, min: 0.01, max: 0.5, step: 0.01, label: 'Chamas: damage per tick (share of the hit)' },
     flamesDurationMs: { value: 4000, min: 1000, max: 10000, step: 500, label: 'Chamas: duration (ms)' },
     flamesCdMs: { value: 7000, min: 1000, max: 60000, step: 500, label: 'Chamas: cooldown (ms)' },
     // Explosao Arcana (staff, carry): the swing is a normal one and arcaneBurstPct of it goes to the bucket.
-    arcaneBurstPct: { value: 2.1, min: 0.1, max: 3, step: 0.05, label: 'Explosao Arcana: share of the swing that spills over' },
+    arcaneBurstPct: { value: 1.5, min: 0.1, max: 3, step: 0.05, label: 'Explosao Arcana: share of the swing that spills over' },
     arcaneBurstCdMs: { value: 5000, min: 1000, max: 60000, step: 500, label: 'Explosao Arcana: cooldown (ms)' },
     // Bencao (scepter, heal + haste).
     blessingHealPct: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Bencao: max HP healed (share)' },
@@ -722,7 +722,7 @@ const T = DebugPanel.define({
     ironStanceMs: { value: 5000, min: 1000, max: 30000, step: 500, label: 'Postura de Ferro: duration (ms)' },
     ironStanceCdMs: { value: 18000, min: 1000, max: 120000, step: 500, label: 'Postura de Ferro: cooldown (ms)' },
     // Tiro de Abertura (bow, opener): delays the enemy's FIRST attack of the fight; it is only ready while the enemy has not acted yet.
-    openingShotDelayMs: { value: 2000, min: 0, max: 10000, step: 250, label: 'Tiro de Abertura: delay of the first enemy attack (ms)' },
+    openingShotDelayMs: { value: 500, min: 0, max: 10000, step: 250, label: 'Tiro de Abertura: delay of the first enemy attack (ms)' },
     openingShotCdMs: { value: 5000, min: 0, max: 60000, step: 500, label: 'Tiro de Abertura: cooldown (ms)' },
     // The 14 abilities of phase 5 (the rest of the 21 of docs/CLASSES_E_EQUIPAMENTOS.md 2.2). PROVISIONAL like the rest: a bigger effect has a longer cooldown; phase 8 calibrates all of them.
     // Estocada Dupla (sword, volley).
@@ -745,7 +745,7 @@ const T = DebugPanel.define({
     lacerateDurationMs: { value: 5000, min: 1000, max: 10000, step: 500, label: 'Sangria: duration (ms)' },
     lacerateCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Sangria: cooldown (ms)' },
     // Tiro Potente (bow, strike; the doc calls it Tiro Certeiro, "always a crit"). The 8 effects have no guaranteed crit, so it is a plain heavy strike of the size of one crit (T.battle.critMult = 2), named for its force, not its aim. It stacks with a crit that rolls on the same swing.
-    trueShotPct: { value: 1.7, min: 1, max: 5, step: 0.1, label: 'Tiro Potente: damage of the swing (x)' },
+    trueShotPct: { value: 1.4, min: 1, max: 5, step: 0.1, label: 'Tiro Potente: damage of the swing (x)' },
     trueShotCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Tiro Potente: cooldown (ms)' },
     // Virote Perfurante (crossbow, heavy strike).
     piercingBoltPct: { value: 2.4, min: 1, max: 6, step: 0.1, label: 'Virote Perfurante: damage of the swing (x)' },
@@ -758,7 +758,7 @@ const T = DebugPanel.define({
     fatalShotPct: { value: 3.2, min: 1, max: 8, step: 0.1, label: 'Tiro Fatal: damage of the swing (x)' },
     fatalShotCdMs: { value: 16000, min: 1000, max: 120000, step: 500, label: 'Tiro Fatal: cooldown (ms)' },
     // Nova (staff, carry + guard).
-    novaPct: { value: 2.1, min: 0.1, max: 3, step: 0.05, label: 'Nova: share of the swing that spills over' },
+    novaPct: { value: 2.05, min: 0.1, max: 3, step: 0.05, label: 'Nova: share of the swing that spills over' },
     novaReduction: { value: 0.25, min: 0, max: 0.9, step: 0.05, label: 'Nova: damage taken cut (share)' },
     novaGuardMs: { value: 3000, min: 1000, max: 30000, step: 500, label: 'Nova: guard duration (ms)' },
     novaCdMs: { value: 6000, min: 1000, max: 120000, step: 500, label: 'Nova: cooldown (ms)' },
