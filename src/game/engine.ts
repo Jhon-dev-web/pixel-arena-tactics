@@ -66,7 +66,7 @@ import { PendingMaterialClaim, sanitizeMaterialClaims } from './materialClaims';
 import { BurningBatch, MaterialPrefs, TradeableMap, sanitizeBurning, sanitizeBurns, sanitizeMaterialPrefs, sanitizeTradeable } from './tradeableMaterials';
 import { isServerItemAuthority } from './itemAuthority';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
-import { AbilityId, defaultRotation, grantedAbilities, rotationCpTerms, sanitizeRotation } from './abilities';
+import { AbilityId, abilityCdScale, defaultRotation, grantedAbilities, rotationCpTerms, sanitizeRotation } from './abilities';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
 export { buffRemainingMs, isBuffActive };
@@ -360,10 +360,11 @@ export interface StatParts {
 }
 
 // The abilities the WORN weapon and chestpiece grant (abilities.ts grantedAbilities), in definition order, and the rotation of the save limited to them. Both read only the gear, so they can run on a
-// half-built save (normalizeSave) as well as on a finished one.
+// half-built save (normalizeSave) as well as on a finished one. A TIER 0 piece (the starting club and rags) grants nothing, each slot on its own: a hero with a tier 1 sword and the starting rags gets the
+// sword's techniques and none from the body. The rule is the tier, not a list of ids, so any pre-progression piece added later is covered.
 export function equippedAbilities(save: Parameters<typeof resolveEquipped>[0]): AbilityId[] {
   const { weapon, armor } = resolveEquipped(save);
-  return grantedAbilities(weapon.item.line, armor.item.weight);
+  return grantedAbilities(weapon.item.tier === 0 ? null : weapon.item.line, armor.item.tier === 0 ? null : armor.item.weight);
 }
 // The rotation IN FORCE, derived on the spot and never written by the game on its own (classes reform, phase 5, 2026-10-28):
 //  - `rotation` ABSENT = automatic: the default of the gear worn RIGHT NOW (defaultRotation), so changing weapon changes the abilities at once, with no reload and no migration;
@@ -453,7 +454,11 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
   if (fx.bossLootMult !== 1) stats.bossLootMult = fx.bossLootMult;
   // Equipment abilities: only a hero with a (non-empty) rotation carries the field.
   const rotation = effectiveRotation(save);
-  if (rotation.length > 0) stats.rotation = rotation;
+  if (rotation.length > 0) {
+    stats.rotation = rotation;
+    const cdScale = abilityCdScale(playerLevel(save.xp));
+    if (cdScale !== 1) stats.cdScale = cdScale;
+  }
   return stats;
 }
 
@@ -490,7 +495,7 @@ export function computeCP(save: SaveData): number {
 export function cpOfStats(stats: CombatStats): number {
   // The rotation is worth a long-run average per second (abilities.ts); derivedStats.ts cannot import it (it would be an import cycle), so it is computed here and handed in.
   const heroMs = Number.isFinite(stats.heroMs) && stats.heroMs > 0 ? stats.heroMs : T.battle.heroAttackMs;
-  return Math.round(CP_SCALE * combatPowerCore(stats, rotationCpTerms(stats.rotation, heroMs)));
+  return Math.round(CP_SCALE * combatPowerCore(stats, rotationCpTerms(stats.rotation, heroMs, stats.cdScale)));
 }
 
 // Adventurer Pass convenience perks (owners only, see entitlements.ts): a longer offline window and a small material yield bump (Hunting / Mining /
@@ -846,7 +851,7 @@ export function buildHuntSimSetup(
     ...(stats.bossReduction ? { bossReduction: stats.bossReduction } : {}),
     ...(stats.matMult ? { matMult: stats.matMult } : {}),
     ...(stats.uniqueMult ? { uniqueMult: stats.uniqueMult } : {}),
-    ...(stats.rotation && stats.rotation.length > 0 ? { rotation: stats.rotation } : {}),
+    ...(stats.rotation && stats.rotation.length > 0 ? { rotation: stats.rotation, ...(stats.cdScale ? { cdScale: stats.cdScale } : {}) } : {}),
   };
 
   // Raso-only override (see HuntingZoneDef.shallowCp/shallowEnemyHp/shallowEnemyDmg) — currently only

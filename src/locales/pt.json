@@ -1331,6 +1331,7 @@
     "slot": "Espaço {n}",
     "empty": "Vazio. Escolha uma habilidade abaixo.",
     "emptyAll": "A rotação está vazia: o herói só dá o ataque básico.",
+    "noGear": "O equipamento inicial não dá habilidades. Equipe uma arma ou um peitoral de tier 1 em diante e as técnicas dele aparecem aqui.",
     "up": "Subir",
     "down": "Descer",
     "remove": "Tirar",

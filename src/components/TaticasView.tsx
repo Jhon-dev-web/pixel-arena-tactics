@@ -3,12 +3,12 @@ import { t } from '../locales';
 import T from '../game/tunables';
 import { SaveData, effectiveRotation, equippedAbilities } from '../game/engine';
 import { AbilityEffect, AbilityId, abilityDef, defaultRotation } from '../game/abilities';
-import { Button, Chip, ItemFrame, PageHeader, Panel, Screen } from './ui';
+import { Button, Chip, Dialog, ItemFrame, PageHeader, Panel, Screen } from './ui';
 import PixelIcon from './PixelIcon';
 
 // "Taticas": the abilities that the WORN gear grants (abilities.ts) and the rotation. The rotation is a list of four rows (position, icon, name, source, cooldown, and up / down on the row itself: one tap per
 // move; taking one out stays in the detail card, there is no room for a third 44px button on a phone); what the gear grants is a grid of icons below it (images only, on purpose: the owner asked for it) (one group per SOURCE: the weapon,
-// the chestpiece, and any slot that starts granting later), and tapping an icon or a row opens its card (name, what it does, cooldown) with the buttons to add it, take it out and move it up or down. Same pattern as the
+// the chestpiece, and any slot that starts granting later), and tapping an icon or a row opens its CARD (a small dialog: icon, name, source, cooldown, every effect, and the buttons to add it, take it out and move it up or down). Same pattern as the
 // Habilidades screen (SkillsView): moving things only changes a DRAFT held here, "Aplicar" commits it, "Desfazer" drops it. Every number in the text comes from the definition (abilityDef).
 
 const seconds = (ms: number): number => Math.round((ms / 1000) * 10) / 10;
@@ -63,6 +63,19 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
     setDraftList(committedKey ? (committedKey.split(',') as AbilityId[]) : []);
     setAuto(committedAuto);
   }, [committedKey, committedAuto]);
+
+  // Escape closes the card first (stopPropagation: the same pattern as the bag-expansion dialog, so nothing behind it also reacts).
+  const cardOpen = selected !== null;
+  useEffect(() => {
+    if (!cardOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setSelected(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [cardOpen]);
 
   const pending = auto !== committedAuto || draft.join(',') !== committedKey;
   // The stored list still names something the worn gear no longer grants: it left the rotation by itself (activeRotation), and the screen says so once, calmly.
@@ -184,9 +197,15 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
 
       <div className="tc-root">
         <Panel title={t('tactics.rotation')} className="tc-rotation" aria-live="polite">
-          <ol className="tc-rows">{Array.from({ length: slots }, (_, i) => renderSlot(i))}</ol>
-          {auto && <p className="ui-note tc-auto">{t('tactics.auto')}</p>}
-          {draft.length === 0 && <p className="ui-note">{t('tactics.emptyAll')}</p>}
+          {granted.length === 0 ? (
+            // the starting gear (tier 0) grants nothing: say why it is empty and what to do, instead of four rows that ask for a pick from a grid that is not there
+            <p className="ui-note tc-nogear">{t('tactics.noGear')}</p>
+          ) : (
+            <ol className="tc-rows">{Array.from({ length: slots }, (_, i) => renderSlot(i))}</ol>
+          )}
+          {granted.length > 0 && <p className="ui-note tc-hint">{emptySlot !== null ? t('tactics.emptyHint', { n: emptySlot + 1 }) : t('tactics.pickHint')}</p>}
+          {auto && granted.length > 0 && <p className="ui-note tc-auto">{t('tactics.auto')}</p>}
+          {draft.length === 0 && granted.length > 0 && <p className="ui-note">{t('tactics.emptyAll')}</p>}
           {dropped && <p className="ui-note tc-dropped">{t('tactics.dropped')}</p>}
           <div className="tc-apply-row">
             <Button variant={pending ? 'primary' : 'secondary'} disabled={!pending} onClick={() => onApply(auto ? null : draft)}>
@@ -240,27 +259,15 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
           </Panel>
         ))}
 
-        <Panel className="tc-dock" aria-live="polite">
-          {shown ? (
-            <>
-              <div className="tc-detail">
-                <ItemFrame size="lg" rarity={shownAt >= 0 ? 'legendary' : 'common'}>
-                  <img className="tc-detail-icon" src={shown.icon} alt="" />
-                </ItemFrame>
-                <div className="tc-detail-body">
-                  <div className="tc-detail-head">
-                    <h3 className="tc-name">{name(shown.id)}</h3>
-                    <Chip>{t('tactics.cooldown', { s: seconds(shown.cooldownMs) })}</Chip>
-                    {shownAt >= 0 && <Chip tone="gold">{t('tactics.position', { n: shownAt + 1, m: slots })}</Chip>}
-                  </div>
-                  {shown.effects.map((e, i) => (
-                    <p className="tc-effect" key={i}>
-                      {effectText(e)}
-                    </p>
-                  ))}
-                </div>
-              </div>
-              <div className="tc-actions">
+        {shown && (
+          <Dialog
+            className="tc-card"
+            title={name(shown.id)}
+            subtitle={origin(shown.id)}
+            onClose={() => setSelected(null)}
+            closeLabel={t('ui.close')}
+            footer={
+              <div className="tc-card-actions">
                 {shownAt >= 0 ? (
                   <>
                     <Button disabled={shownAt === 0} onClick={() => move(shownAt, -1)}>
@@ -269,7 +276,13 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
                     <Button disabled={shownAt === draft.length - 1} onClick={() => move(shownAt, 1)}>
                       {t('tactics.down')}
                     </Button>
-                    <Button variant="danger" onClick={() => remove(shown.id)}>
+                    <Button
+                      variant="danger"
+                      onClick={() => {
+                        remove(shown.id);
+                        setSelected(null);
+                      }}
+                    >
                       {t('tactics.remove')}
                     </Button>
                   </>
@@ -279,11 +292,24 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
                   </Button>
                 )}
               </div>
-            </>
-          ) : (
-            <p className="ui-note tc-hint">{emptySlot !== null ? t('tactics.emptyHint', { n: emptySlot + 1 }) : t('tactics.pickHint')}</p>
-          )}
-        </Panel>
+            }
+          >
+            <div className="tc-card-top">
+              <ItemFrame size="lg" rarity={shownAt >= 0 ? 'legendary' : 'common'}>
+                <img className="tc-detail-icon" src={shown.icon} alt="" />
+              </ItemFrame>
+              <div className="tc-card-chips">
+                <Chip>{t('tactics.cooldown', { s: seconds(shown.cooldownMs) })}</Chip>
+                {shownAt >= 0 && <Chip tone="gold">{t('tactics.position', { n: shownAt + 1, m: slots })}</Chip>}
+              </div>
+            </div>
+            {shown.effects.map((e, i) => (
+              <p className="tc-effect" key={i}>
+                {effectText(e)}
+              </p>
+            ))}
+          </Dialog>
+        )}
       </div>
     </Screen>
   );

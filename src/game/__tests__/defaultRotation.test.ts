@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { automaticRotation, hero } from '../../../scripts/sim/duel';
-import { applyRotation, buildCombatStats, computeCP, effectiveRotation, normalizeSave, SaveData } from '../engine';
+import { applyRotation, buildCombatStats, computeCP, defaultSave, effectiveRotation, equippedAbilities, normalizeSave, SaveData } from '../engine';
 import { ABILITY_IDS, AbilityId, abilityDef, defaultRotation, grantedAbilities } from '../abilities';
 import { GEAR } from '../gear';
 import { createGearInstance } from '../gearInstances';
@@ -23,6 +23,24 @@ function wear(base: SaveData, slot: 'weapon' | 'armor', templateId: string): Sav
 const clothChest = GEAR.find((g) => g.slot === 'armor' && g.weight === 'cloth')!.id;
 const leatherChest = GEAR.find((g) => g.slot === 'armor' && g.weight === 'leather')!.id;
 const SWORD_PLATE = ['firm_strike', 'double_thrust', 'breach', 'iron_stance'];
+
+// The starting club and rags are tier 0: neither a sword nor plate. Before 28/10 the "absent line = sword, absent weight = plate" default (abilities.ts) gave them the sword's and plate's techniques, and the owner
+// opened Taticas with the starting gear and saw abilities. Nothing on a green screen would show it coming back (the abilities just work), so this is the guard.
+describe('the starting gear grants no ability (tier 0)', () => {
+  const fresh = defaultSave();
+  it('a new save has no equipped ability, no rotation in force and no ability in combat', () => {
+    expect(equippedAbilities(fresh)).toEqual([]);
+    expect(effectiveRotation(fresh)).toEqual([]);
+    expect(buildCombatStats(fresh).rotation ?? []).toEqual([]);
+  });
+  it('each slot counts on its own: a tier 1 sword gives the sword techniques and none from the starting rags, and a tier 1 chestpiece gives the body ones and none from the club', () => {
+    const swordTier1 = GEAR.find((g) => g.slot === 'weapon' && g.tier === 1 && !g.line)!.id;
+    const plateTier1 = GEAR.find((g) => g.slot === 'armor' && g.tier === 1 && !g.weight)!.id;
+    expect(equippedAbilities(wear(fresh, 'weapon', swordTier1))).toEqual(['firm_strike', 'double_thrust', 'breach']);
+    expect(equippedAbilities(wear(fresh, 'armor', plateTier1))).toEqual(['iron_stance']);
+    expect(equippedAbilities(wear(wear(fresh, 'weapon', swordTier1), 'armor', plateTier1))).toEqual(SWORD_PLATE);
+  });
+});
 
 describe('a save with no rotation is automatic', () => {
   // hero() is GEAR-ONLY (an empty rotation, for the balance tools): the player who never opened the screen is automaticRotation()

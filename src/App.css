@@ -3291,36 +3291,10 @@ button[data-ui]:focus-visible {
   color: var(--c-text-muted);
   overflow-wrap: anywhere;
 }
-.tc-detail {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-4);
-  min-width: 0;
-}
 .tc-detail-icon {
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
-}
-.tc-detail-body {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-.tc-detail-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-1) var(--sp-3);
-}
-.tc-name {
-  margin: 0;
-  font-family: inherit;
-  font-size: var(--fs-body);
-  font-weight: 700;
-  color: var(--c-gold-200);
 }
 .tc-effect,
 .tc-hint {
@@ -3330,7 +3304,7 @@ button[data-ui]:focus-visible {
   color: var(--c-text-muted);
   overflow-wrap: anywhere;
 }
-.tc-actions,
+.tc-card-actions,
 .tc-apply-row {
   /* Three EQUAL columns used to cut the longest label: at 375px each one is 83px and "Automatica"
      is one unbreakable word that needs more, so it spilled over its own border. Sizing to the label
@@ -3341,7 +3315,7 @@ button[data-ui]:focus-visible {
   gap: var(--sp-2);
   margin-top: var(--sp-3);
 }
-.tc-actions .ui-btn,
+.tc-card-actions .ui-btn,
 .tc-apply-row .ui-btn {
   min-height: var(--tap);
   flex: 1 1 auto;
@@ -3353,12 +3327,29 @@ button[data-ui]:focus-visible {
 .tc-rotation .ui-note {
   margin-top: var(--sp-2);
 }
+/* the card of one ability (a Dialog): the icon beside its chips, then the effects; on a phone the card is 351px wide (375 less the 12px of the backdrop on each side), 323px inside the body */
+.tc-card-actions {
+  margin-top: 0;
+}
+.tc-card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.tc-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.tc-card .ui-modal-close {
+  width: var(--tap);
+  height: var(--tap);
+}
 /* a phone: three icons to a row in the grid, so each tile stays big enough to read and to touch */
 @container ui (max-width: 759px) {
   .tc-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .tc-detail {
-    gap: var(--sp-3);
   }
 }

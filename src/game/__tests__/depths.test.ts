@@ -61,7 +61,7 @@ describe('Profundezas: floors 1-100 behave exactly as before', () => {
     }
     // floors 1-50 are exactly the Round 14 numbers (the late factor is 1 there)
     for (let floor = 1; floor <= 50; floor++) expect(lateFactor(floor, T.battle.lateHpGrowth, T.battle.lateHpGrowth2) + lateFactor(floor, T.battle.lateDmgGrowth, T.battle.lateDmgGrowth2), `floor ${floor}`).toBe(2);
-    // Classes reform, phase 8: the table is regenerated with the automatic rotation on (the real player has it), which moved these two anchors by -1.2 % and +4.1 % (was 1848 and 3862; the sword abilities, the cooldown scale and the tier 4 round came afterwards: 1826 and 4019 before the last, see classAxes.test.ts); the floors themselves did not change.
+    // Classes reform, phase 8: the table is regenerated with the automatic rotation on (the real player has it), which moved these two anchors by -1.2 % and +4.1 % (was 1848 and 3862; the sword abilities, the cooldown scale and the tier 4 round came afterwards: 1826 and 4019 before the last, see classAxes.test.ts); the floors themselves did not change. The tier 0 gear (the starting club and rags) stopped granting abilities on 28/10 and the table was regenerated again: the fresh hero went from 72 to 58 and floors 50 and 75 did not move (the ladder's heroes from tier 1 up are unchanged).
     expect(recommendedCpForFloor(50)).toBe(1859);
     expect(recommendedCpForFloor(75)).toBe(3925);
   });

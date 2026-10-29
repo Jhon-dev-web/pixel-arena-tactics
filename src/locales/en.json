@@ -1331,6 +1331,7 @@
     "slot": "Slot {n}",
     "empty": "Empty. Pick an ability below.",
     "emptyAll": "The rotation is empty: the hero only throws the basic attack.",
+    "noGear": "Starting gear grants no abilities. Equip a tier 1 or higher weapon or chestpiece and its techniques appear here.",
     "up": "Up",
     "down": "Down",
     "remove": "Remove",

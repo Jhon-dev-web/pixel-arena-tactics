@@ -1,5 +1,5 @@
 import T from './tunables';
-import { BurnState, igniteBurn, nextBurnTickAt, tickBurn } from './derivedStats';
+import { BurnState, heroAttackIntervalMs, igniteBurn, nextBurnTickAt, tickBurn } from './derivedStats';
 import type { ArmorWeight, WeaponLine } from './gear';
 import type { SkillFxId } from './skillFx';
 
@@ -157,14 +157,27 @@ function abilityBody(id: AbilityId): Omit<AbilityDef, 'icon'> | undefined {
   }
 }
 
+// THE COOLDOWNS ARE IN AVERAGE SWINGS, NOT IN MILLISECONDS (phase 8, 28/10/2026). A cooldown is written in ms (tunables), but what it means is "how many swings fit in it": a low-level hero swings slower, so the same
+// 4,500 ms is fewer swings and the ability fires more often per swing, and a fight is longer in ms. Measured (scripts/sim/abilityShare.sim.ts): the share of the speed that comes from abilities rose from 0.24 (tier 6) to
+// 0.33 (tier 2) for the warrior in Hunting and from 0.17 to 0.33 against the boss, and the class with the strongest ability won the long-fight axes at low tiers (the warrior's Firm Strike took the boss axis from the
+// archer at tier 3). So every cooldown is multiplied by the hero's attack interval from AGI alone (weapon and armor speed left out) over the one of a level 100 hero: 1 at level 100 (tier 6 and the whole endgame are
+// untouched), 1.33 at level 1. It reads the LEVEL (AGI at the 20 % share of the points the balance policy spends), not the real AGI, so a build that piles into AGI does not also shorten its cooldowns.
+export const ABILITY_AGI_PER_LEVEL = 0.6;
+export function abilityCdScale(level: number): number {
+  const lv = Math.max(1, Math.min(100, Math.floor(level)));
+  return Math.round((heroAttackIntervalMs(lv * ABILITY_AGI_PER_LEVEL, 0) / heroAttackIntervalMs(100 * ABILITY_AGI_PER_LEVEL, 0)) * 1000) / 1000;
+}
+
 export const isAbilityId = (x: unknown): x is AbilityId => typeof x === 'string' && (ABILITY_IDS as readonly string[]).includes(x);
 
 // --- What the worn gear grants, and the rotation -----------------------------------------------------------------------------------------------------------
 
-// The abilities a weapon line and an armor weight grant, in definition order. An ABSENT line is the sword and an ABSENT weight is plate (gear.ts: the original lines carry no value of their own).
-export function grantedAbilities(weaponLine: WeaponLine | undefined, armorWeight: ArmorWeight | undefined): AbilityId[] {
-  const line = weaponLine ?? 'sword';
-  const weight: BodyWeight = armorWeight ?? 'plate';
+// The abilities a weapon line and an armor weight grant, in definition order. An ABSENT (undefined) line is the sword and an ABSENT weight is plate (gear.ts: the original lines of tier 1 and up carry no value of
+// their own, and they ARE sword and plate). NULL means "this piece grants nothing": equippedAbilities passes it for a tier 0 piece (the starting club and rags), which is neither a sword nor plate and would
+// otherwise inherit their techniques through the default above (the owner opened Taticas with the starting gear and saw abilities).
+export function grantedAbilities(weaponLine: WeaponLine | undefined | null, armorWeight: ArmorWeight | undefined | null): AbilityId[] {
+  const line = weaponLine === null ? null : weaponLine ?? 'sword';
+  const weight: BodyWeight | null = armorWeight === null ? null : armorWeight ?? 'plate';
   return ABILITY_IDS.filter((id) => {
     const s = abilityDef(id)!.source;
     return 'line' in s ? s.line === line : s.weight === weight;
@@ -228,8 +241,8 @@ export interface AbilityFire {
 
 // Fires `def` on the swing whose damage would have been `base` (after the crit and the strikes of heroSkills.ts); `hitBase` is the hero's pre-crit hit, the number the burn is taken from (the
 // same one the weapon burn and Sangria use). Starts the cooldown, opens the guard / haste windows, lights the burn, fills the bucket, and says what the loop has to apply.
-export function fireAbility(rt: AbilityRuntime, def: AbilityDef, now: number, base: number, hitBase: number, playerMax: number): AbilityFire {
-  rt.readyAt[def.id] = now + def.cooldownMs;
+export function fireAbility(rt: AbilityRuntime, def: AbilityDef, now: number, base: number, hitBase: number, playerMax: number, cdScale = 1): AbilityFire {
+  rt.readyAt[def.id] = now + Math.round(def.cooldownMs * cdScale);
   rt.fired[def.id] = (rt.fired[def.id] ?? 0) + 1;
   let hits = 1;
   let mult = 1;
@@ -312,7 +325,7 @@ export interface RotationCp {
   regen: number; // share of max HP healed per second (before cpRegenWeight)
   ehpMult: number; // multiplies the effective HP (the guard)
 }
-export function rotationCpTerms(rotation: readonly AbilityId[] | undefined, heroMs: number): RotationCp | null {
+export function rotationCpTerms(rotation: readonly AbilityId[] | undefined, heroMs: number, cdScale = 1): RotationCp | null {
   if (!rotation || rotation.length === 0 || !(heroMs > 0)) return null;
   const adv = T.advanced;
   let avail = 1 / heroMs; // swings per ms still free for the next ability
@@ -324,7 +337,7 @@ export function rotationCpTerms(rotation: readonly AbilityId[] | undefined, hero
     if (!def || seen.includes(id)) continue;
     seen.push(id);
     if (def.effects.some((e) => e.kind === 'opener')) continue;
-    const cd = Math.max(heroMs, Math.ceil(Math.max(0, def.cooldownMs) / heroMs - 1e-9) * heroMs);
+    const cd = Math.max(heroMs, Math.ceil(Math.max(0, def.cooldownMs * cdScale) / heroMs - 1e-9) * heroMs);
     const rate = Math.min(avail, 1 / cd); // fires per ms
     if (!(rate > 0)) continue;
     avail -= rate;
