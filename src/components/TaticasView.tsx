@@ -6,8 +6,9 @@ import { AbilityEffect, AbilityId, abilityDef, defaultRotation } from '../game/a
 import { Button, Chip, ItemFrame, PageHeader, Panel, Screen } from './ui';
 import PixelIcon from './PixelIcon';
 
-// "Taticas": the abilities that the WORN gear grants (abilities.ts) and the rotation. The screen is a grid of icons: the four rotation slots on top, what the gear grants below (one group per SOURCE: the weapon,
-// the chestpiece, and any slot that starts granting later), and tapping any icon opens its card (name, what it does, cooldown) with the buttons to add it, take it out and move it up or down. Same pattern as the
+// "Taticas": the abilities that the WORN gear grants (abilities.ts) and the rotation. The rotation is a list of four rows (position, icon, name, source, cooldown, and up / down on the row itself: one tap per
+// move; taking one out stays in the detail card, there is no room for a third 44px button on a phone); what the gear grants is a grid of icons below it (images only, on purpose: the owner asked for it) (one group per SOURCE: the weapon,
+// the chestpiece, and any slot that starts granting later), and tapping an icon or a row opens its card (name, what it does, cooldown) with the buttons to add it, take it out and move it up or down. Same pattern as the
 // Habilidades screen (SkillsView): moving things only changes a DRAFT held here, "Aplicar" commits it, "Desfazer" drops it. Every number in the text comes from the definition (abilityDef).
 
 const seconds = (ms: number): number => Math.round((ms / 1000) * 10) / 10;
@@ -81,6 +82,11 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
   };
 
   const name = (id: AbilityId) => t(`tactics.names.${id}`);
+  // "Arma: Espada" / "Peitoral: Placa": where an ability comes from, the same words as the title of its group in the grid
+  const origin = (id: AbilityId): string => {
+    const s = abilityDef(id)!.source;
+    return 'line' in s ? t('tactics.fromWeapon', { name: t(`tactics.line.${s.line}`) }) : t('tactics.fromBody', { name: t(`tactics.body.${s.weight}`) });
+  };
   const defaults = defaultRotation(granted);
   const goAuto = () => {
     setDraftList(defaults);
@@ -102,35 +108,67 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
     const key = 'line' in s ? `line:${s.line}` : `weight:${s.weight}`;
     let g = groups.find((x) => x.key === key);
     if (!g) {
-      g = { key, title: 'line' in s ? t('tactics.fromWeapon', { name: t(`tactics.line.${s.line}`) }) : t('tactics.fromBody', { name: t(`tactics.body.${s.weight}`) }), ids: [] };
+      g = { key, title: origin(id), ids: [] };
       groups.push(g);
     }
     g.ids.push(id);
   }
 
+  // A rotation row. A filled one: the main part opens the card of the ability (as before), and the two buttons on the row move it up or down. An empty one is the target of the next pick.
   const renderSlot = (index: number) => {
     const id = draft[index];
     const def = id ? abilityDef(id) : undefined;
-    return (
-      <li key={index}>
-        <button
-          type="button"
-          className={`tc-tile tc-slot${def ? ' filled' : ''}${def && shownId === def.id ? ' selected' : ''}${!def && emptySlot === index ? ' selected' : ''}`}
-          aria-pressed={def ? shownId === def.id : emptySlot === index}
-          aria-label={def ? t('tactics.slotAria', { n: index + 1, name: name(def.id) }) : t('tactics.emptySlot', { n: index + 1 })}
-          onClick={() => {
-            if (def) open(def.id);
-            else {
+    if (!def) {
+      return (
+        <li key={index} className="tc-row">
+          <button
+            type="button"
+            className={`tc-row-main empty${emptySlot === index ? ' selected' : ''}`}
+            aria-pressed={emptySlot === index}
+            aria-label={t('tactics.emptySlot', { n: index + 1 })}
+            onClick={() => {
               setSelected(null);
               setEmptySlot(index);
-            }
-          }}
+            }}
+          >
+            <span className="tc-row-n" aria-hidden="true">
+              {index + 1}
+            </span>
+            <span className="tc-row-empty">{t('tactics.empty')}</span>
+          </button>
+        </li>
+      );
+    }
+    const label = name(def.id);
+    return (
+      <li key={index} className="tc-row">
+        <button
+          type="button"
+          className={`tc-row-main filled${shownId === def.id ? ' selected' : ''}`}
+          aria-pressed={shownId === def.id}
+          aria-label={t('tactics.slotAria', { n: index + 1, name: label })}
+          onClick={() => open(def.id)}
         >
-          <span className="tc-n" aria-hidden="true">
+          <span className="tc-row-n" aria-hidden="true">
             {index + 1}
           </span>
-          {def && <img className="tc-icon" src={def.icon} alt="" />}
+          <img className="tc-row-icon" src={def.icon} alt="" />
+          <span className="tc-row-text">
+            <span className="tc-row-name">{label}</span>
+            <span className="tc-row-meta">
+              <span>{origin(def.id)}</span>
+              <span>{t('tactics.cooldown', { s: seconds(def.cooldownMs) })}</span>
+            </span>
+          </span>
         </button>
+        <div className="tc-row-actions">
+          <Button className="tc-step" disabled={index === 0} aria-label={`${t('tactics.up')}: ${label}`} onClick={() => move(index, -1)}>
+            <span aria-hidden="true">{'\u25B2'}</span>
+          </Button>
+          <Button className="tc-step" disabled={index === draft.length - 1} aria-label={`${t('tactics.down')}: ${label}`} onClick={() => move(index, 1)}>
+            <span aria-hidden="true">{'\u25BC'}</span>
+          </Button>
+        </div>
       </li>
     );
   };
@@ -146,7 +184,7 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
 
       <div className="tc-root">
         <Panel title={t('tactics.rotation')} className="tc-rotation" aria-live="polite">
-          <ol className="tc-slots">{Array.from({ length: slots }, (_, i) => renderSlot(i))}</ol>
+          <ol className="tc-rows">{Array.from({ length: slots }, (_, i) => renderSlot(i))}</ol>
           {auto && <p className="ui-note tc-auto">{t('tactics.auto')}</p>}
           {draft.length === 0 && <p className="ui-note">{t('tactics.emptyAll')}</p>}
           {dropped && <p className="ui-note tc-dropped">{t('tactics.dropped')}</p>}

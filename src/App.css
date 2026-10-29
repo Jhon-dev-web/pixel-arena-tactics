@@ -3088,7 +3088,6 @@ button[data-ui]:focus-visible {
   gap: var(--sp-4);
   min-width: 0;
 }
-.tc-slots,
 .tc-grid {
   list-style: none;
   margin: 0;
@@ -3096,13 +3095,9 @@ button[data-ui]:focus-visible {
   display: grid;
   gap: var(--sp-2);
 }
-.tc-slots {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
 .tc-grid {
   grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
 }
-.tc-slots > li,
 .tc-grid > li {
   min-width: 0;
 }
@@ -3139,14 +3134,6 @@ button[data-ui]:focus-visible {
   outline: 2px solid var(--c-gold-300);
   outline-offset: 2px;
 }
-.tc-slot:not(.filled) {
-  border-style: dashed;
-  border-color: var(--c-line);
-  background: var(--c-inset);
-}
-.tc-slot.filled {
-  border-color: var(--c-gold-300);
-}
 .tc-pick.used .tc-icon {
   opacity: 0.55;
 }
@@ -3175,13 +3162,125 @@ button[data-ui]:focus-visible {
   border: var(--bw) solid var(--c-line-strong);
   border-radius: var(--r-sm);
 }
-.tc-slot:not(.filled) .tc-n {
-  position: static;
-  height: auto;
-  background: none;
-  border: 0;
+/* the rotation: four rows. MEASURED on a 375px phone: the row is 276px wide (not the 320 of the first estimate). The account, in px:
+   276 = main 180 + gap 4 + actions 92 (two 44px step buttons + 4 between)
+   180 = border 4 + padding 8 + position digit 8 + gap 4 + icon 28 + gap 6 + TEXT 122
+   Departure Mono advances 0.636em (350/550 in the font file): 13px name = 8.27px a letter, so 'Estocada Dupla' (14) needs 115.8px and fits on one line; the 15-letter 'Explosao Arcana' (124) and the 16-17 letter
+   names wrap at the space; the 11px source / cooldown are 7px a letter and wrap under the name (flex-wrap). The remove button is NOT on the row (it is in the detail card): three 44px buttons would have left 30px of text. */
+.tc-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.tc-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.tc-row-main {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: calc(var(--tap) + var(--sp-2));
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  font-family: inherit;
+  text-align: left;
+  color: var(--c-text);
+  background: radial-gradient(circle at 20% 50%, #1d1628, var(--c-inset) 75%);
+  border: var(--bw) solid var(--c-gold-300);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  box-shadow: var(--sh-card);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.tc-row-main.empty {
+  border-style: dashed;
+  border-color: var(--c-line);
+  background: var(--c-inset);
+  box-shadow: none;
+}
+.tc-row-main:hover,
+.tc-row-main.selected {
+  border-color: var(--c-gold-300);
+}
+.tc-row-main.selected {
+  box-shadow: var(--sh-card), var(--sh-glow);
+}
+.tc-row-main:focus-visible {
+  outline: 2px solid var(--c-gold-300);
+  outline-offset: 2px;
+}
+.tc-row-n {
+  flex: 0 0 8px;
+  width: 8px;
+  text-align: center;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--c-gold-200);
+}
+.tc-row-main.empty .tc-row-n {
   color: var(--c-text-muted);
+}
+.tc-row-icon {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  margin-right: 2px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.tc-row-text {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tc-row-name {
   font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--c-gold-200);
+  overflow-wrap: anywhere;
+}
+.tc-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-2);
+  font-size: var(--fs-small);
+  line-height: 1.2;
+  color: var(--c-text-muted);
+}
+.tc-row-meta > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tc-row-empty {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--fs-small);
+  line-height: 1.2;
+  color: var(--c-text-muted);
+}
+.tc-row-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.tc-row-actions .tc-step {
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
 }
 .tc-label {
   flex: 0 0 auto;
@@ -3233,15 +3332,19 @@ button[data-ui]:focus-visible {
 }
 .tc-actions,
 .tc-apply-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  /* Three EQUAL columns used to cut the longest label: at 375px each one is 83px and "Automatica"
+     is one unbreakable word that needs more, so it spilled over its own border. Sizing to the label
+     instead keeps every button whole, and a label that grows in any language wraps to a second line
+     rather than being clipped. */
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-2);
   margin-top: var(--sp-3);
 }
 .tc-actions .ui-btn,
 .tc-apply-row .ui-btn {
   min-height: var(--tap);
+  flex: 1 1 auto;
 }
 .tc-dropped {
   margin-top: var(--sp-2);
