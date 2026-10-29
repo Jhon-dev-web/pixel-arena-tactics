@@ -3,7 +3,7 @@
 
 # Valor econômico de referência (baseGoldValue)
 
-Código: `src/game/economy.ts`. **É só referência**: nada vende, compra, converte ou paga com ele. Não existe venda para NPC, o módulo é funções puras que nunca recebem nem devolvem um save, e nenhum outro arquivo do jogo o importa (um teste garante isso). No futuro P2P o preço é livre e pode ficar acima ou abaixo. Os campos legados `sellValue`/`packCost` do catálogo continuam sem uso; foram lidos aqui só como razão de raridade.
+Código: `src/game/economy.ts`. **É a régua de valor do jogo**, não um preço de loja: o módulo é de funções puras que nunca recebem nem devolvem um save. Ele é a base do preço que o mercador do Baú paga (`merchant.ts`: `floor(priceRate x baseGoldValue)`) e do atacadista (`wholesale.ts`), dimensiona a carga dos Pedidos (`deliveries.ts`, onde nunca paga nada) e ordena listas (`legacyPouch.ts`, `huntLifecycle.ts`). Há venda para NPC no jogo (o atacadista e o mercador do Baú). No futuro P2P o preço é livre e pode ficar acima ou abaixo. Os campos legados `sellValue`/`packCost` do catálogo continuam sem uso; foram lidos aqui só como razão de raridade.
 
 ## Âncora
 

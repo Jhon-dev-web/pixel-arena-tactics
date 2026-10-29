@@ -1,6 +1,6 @@
 # IA e operação: vigia automático e auditor de IA
 
-AVISO: **nada disto foi aplicado, implantado ou executado contra um serviço real por este trabalho.** A migration `0021_ai_ops.sql` não foi aplicada, nenhuma Edge Function foi publicada, nenhum agendamento foi criado, nenhuma chave foi lida ou escrita e a API da Anthropic nunca foi chamada (os testes usam um modelo falso). Tudo abaixo vale depois que **você** faz os passos da seção 5. Valores de segredos ficam só nos painéis; aqui há apenas nomes.
+**Estado de implantação:** a migration `0021_ai_ops.sql` e as funções `ops-watchdog` e `ai-auditor` estão no repositório; o estado do que está no ar vive só em `RESUMO_DO_PROJETO.md`, seção 7. Os testes usam um modelo falso, não a API da Anthropic. Os passos da seção 5 valem para um projeto onde ainda não foram feitos. O pagamento do Passe é por carteira (USDC na Solana); o Stripe saiu em 28/10 (decisão em `docs/PAGAMENTOS_DESCARTADOS.md`). Valores de segredos ficam só nos painéis; aqui há apenas nomes.
 
 Pedido que originou isto: *“colocar uma IA para verificar algumas mudanças; se precisar de API a gente conversa; se o servidor cair, deixar um agente no comando”*. A resposta é: **uma IA que aconselha e um vigia que só consegue pausar.**
 
@@ -12,7 +12,7 @@ Um **vigia** (sem IA no caminho crítico) confere de 5 em 5 minutos se o jogo es
 
 | O que | Quem faz | Automático? |
 | --- | --- | --- |
-| Conferir banco, funções-chave, taxa de erro das funções, nó da Solana, fila de eventos do Stripe | Vigia (`ops-watchdog`), a cada 5 min | Sim |
+| Conferir banco, funções-chave, taxa de erro das funções, nó da Solana | Vigia (`ops-watchdog`), a cada 5 min | Sim |
 | **Ligar** `market_paused`, `pass_sales_paused`, `season_scoring_paused` ou `maintenance_mode` | Vigia, pela tabela de decisão da seção 3 | **Sim, só ligar** |
 | **Desligar** qualquer interruptor | **Só você**, no painel (“IA e operação”), com motivo | Nunca automático |
 | Abrir incidente e mandar alerta (um por incidente, lembrete a cada 30 min, um aviso de “resolvido”) | Vigia | Sim |
@@ -32,7 +32,7 @@ Ficam em `arena_private.ops_flags` (tudo desligado por padrão). O jogo, o porta
 | `maintenance_mode` | Faixa de manutenção no topo do jogo (login incluso). Não bloqueia nada sozinha. | Tudo |
 | `market_paused` | `market-list` (anunciar), `market-buy` (reservar, preparar, enviar pagamento) respondem 503 “pausado”. O jogo mostra um aviso na tela do mercado. | Cancelar anúncio ou reserva, ver status e histórico (`market-my`), ligar carteira |
 | `season_scoring_paused` | `submit-progress` continua julgando e guardando o snapshot (a trilha de auditoria segue), mas **não entrega nada ao ranking** (resposta `season: "paused"`). | Todo o resto do jogo |
-| `pass_sales_paused` | `create-checkout` (cartão) e `pass-crypto` (`start`, `prepare`, `submit`) respondem 503. O botão de compra do Passe fica desabilitado com um aviso. | **O webhook do Stripe nunca é pausado** (dinheiro já recebido tem que ser registrado), reembolsos, o preço do Passe em USDC |
+| `pass_sales_paused` | `pass-crypto` (`start`, `prepare`, `submit`) responde 503. O botão de compra do Passe fica desabilitado com um aviso. | Reembolsos, o preço do Passe em USDC |
 
 ### Tabela de decisão do vigia (só liga; nunca desliga)
 
@@ -40,8 +40,7 @@ Ficam em `arena_private.ops_flags` (tudo desligado por padrão). O jogo, o porta
 | --- | --- | --- |
 | Funções do mercado com 8+ erros 5xx em 10 min | 2 | `market_paused` |
 | Nó da Solana não responde (`getHealth`) | 3 | `market_paused` |
-| `create-checkout`, `stripe-webhook` ou `pass-crypto` com 5+ erros em 10 min | 2 | `pass_sales_paused` |
-| 3+ eventos do Stripe parados há mais de 10 min (ou erros de evento) | 2 | `pass_sales_paused` |
+| `pass-crypto` com 5+ erros em 10 min (`payments_path` em `watchdog.ts`) | 2 | `pass_sales_paused` |
 | `submit-progress` com 15+ erros em 10 min, **com uma Liga aberta** | 2 | `season_scoring_paused` |
 | Funções-chave do banco (`ops_status`, `league_reset_at`) lentas ou falhando, **com Liga aberta** | 3 | `season_scoring_paused` |
 | Banco lento (> 3 s) ou sem resposta, **com Liga aberta** | 2 | `season_scoring_paused` |
@@ -127,7 +126,7 @@ Para 50 mil jogadores o custo **não cresce com o número de jogadores** (as lis
    | `OPS_ALERT_EMAIL_TO` | Reservado | Ainda sem uso: documentado para um alerta por e-mail futuro. |
 
 6. **Publicar as funções** (sem JWT, porque quem chama é o agendador e a autenticação é o segredo):
-   `supabase functions deploy ops-watchdog --no-verify-jwt` e `supabase functions deploy ai-auditor --no-verify-jwt`. Republique também `market-list`, `market-buy`, `market-my`, `market-wallet`, `pass-crypto`, `create-checkout`, `stripe-webhook` e `submit-progress` (agora leem as flags e contam erros 5xx). **Ordem:** aplique a migration **antes** de republicar essas funções (sem a migration elas funcionam, só não contam erros nem leem flags).
+   `supabase functions deploy ops-watchdog --no-verify-jwt` e `supabase functions deploy ai-auditor --no-verify-jwt`. Republique também `market-list`, `market-buy`, `market-my`, `market-wallet`, `pass-crypto` e `submit-progress` (agora leem as flags e contam erros 5xx). **Ordem:** aplique a migration **antes** de republicar essas funções (sem a migration elas funcionam, só não contam erros nem leem flags).
 7. **Agendar** (seção 6).
 8. **Testar uma vez à mão** (no SQL Editor, trocando `<ref>`): chame o vigia com `net.http_post` como no agendamento e olhe a página “IA e operação”. Depois chame o auditor com `{"mode":"daily"}`: sem sinais ele grava um relatório “Sem sinais nas últimas 24 horas”.
 9. **Painel**: faça o deploy do `admin/` (nova página “IA e operação”). **Jogo**: faça o deploy do jogo para a faixa de manutenção e os avisos de pausa.
@@ -164,7 +163,7 @@ Cadastre num monitor gratuito (UptimeRobot, Better Stack, Freshping ou Cronitor;
 | --- | --- | --- | --- |
 | “Funções do mercado devolvendo erros” + `market_paused` | `market-*` com muitos 5xx | Logs da função no Supabase; o nó da Solana (`SOLANA_RPC_URL`); cotação (`SOL_USD_PRICE_URL`) | Quando os logs estiverem limpos e o nó responder, desligue `market_paused`. Pagamentos que jogadores já mandaram e que não foram registrados: veja “reembolsos devidos” na página Mercado depois de reabrir. |
 | “Nó da Solana não responde” + `market_paused` | `getHealth` falhando 3 vezes | Status do provedor de RPC; troque a URL se preciso | Desligue `market_paused` depois que o nó responder. |
-| “Pagamentos do Passe” ou “Fila de eventos do Stripe” + `pass_sales_paused` | checkout/webhook com erro, ou eventos parados | Stripe -> Developers -> Webhooks (entregas falhando?); logs de `stripe-webhook`. **Nenhum pagamento é perdido:** o Stripe reenvia eventos por dias | Corrija, reenvie os eventos parados pelo Stripe, confira que `payment_events` ficou sem pendentes, desligue `pass_sales_paused`. |
+| “Pagamentos do Passe” + `pass_sales_paused` | `pass-crypto` com erros (5+ em 10 min) | Logs de `pass-crypto` no Supabase; o nó da Solana (`SOLANA_RPC_URL`) | Corrija a causa e desligue `pass_sales_paused` quando os logs estiverem limpos. |
 | “Envio de progresso” ou “banco” + `season_scoring_paused` | `submit-progress` ou o banco degradados durante a Liga | Logs, desempenho do banco | Desligue `season_scoring_paused`. Os snapshots continuaram sendo guardados; o próximo envio de cada jogador (a cada 10 min) atualiza o ranking. |
 | “Banco de dados” crítico + `maintenance_mode` e as outras | Banco fora por 3+ min | Status do Supabase; uso de disco/CPU | Quando o banco voltar, desligue as flags **uma a uma**, conferindo cada área. |
 | Relatório da IA de gravidade alta (Discord) | Padrão suspeito (preço 20x, vai e volta, salto de nível, pico de Lendários) | Clique nas evidências do relatório (jogador, venda) e investigue na página Jogadores/Mercado/Liga | A IA só aconselha. Banir, reembolsar ou corrigir um save são decisões e ações **suas**, fora do código. Marque como lido quando tratar. |
@@ -191,7 +190,7 @@ Verificado por testes (nenhum contra serviço real):
 - Auditor com **modelo falso**: esquema estrito (JSON inválido e ação fora da lista rejeitados), portão, injeção em nomes de usuário, guardas de custo, de-duplicação de alertas.
 - Vigia com banco falso: tabela de decisão, “nunca desliga”, limite de alertas, banco inacessível.
 - O SDK oficial montando a requisição certa (com `fetch` falso, sem rede).
-- Pausas em `market-list`, `market-buy`, `pass-crypto`, `create-checkout` e `submit-progress`, e a faixa/avisos do jogo.
+- Pausas em `market-list`, `market-buy`, `pass-crypto` e `submit-progress`, e a faixa/avisos do jogo.
 
 **Não verificado** (precisa do seu ambiente): a migration no Supabase real; a resposta real da API (o formato exato de `output_config.format` e do parâmetro `fallbacks` seguiu a documentação, mas nunca foi chamado); que os modelos `claude-haiku-5-5` e `claude-opus-5-5` estejam liberados na sua organização; `pg_cron`/`pg_net`/`vault` no seu plano; o webhook do Discord; a aparência da faixa e do painel num navegador (não houve teste visual); se os limiares geram poucos falsos positivos com dados reais; o custo real (as contas da seção 4 são estimativas).
 

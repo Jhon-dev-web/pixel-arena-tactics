@@ -3,22 +3,24 @@
 
 # Backend Phase 1 — conta + persistência
 
+> **Estado atual (29/10/2026).** Este documento nasceu como a especificação da fase 1 e as seções abaixo ainda são citadas pelo código e pelas migrations (por isso os títulos não mudaram). O que mudou depois da fase 1: o `SaveData` continua sendo enviado inteiro pelo cliente, mas o servidor **não o aceita às cegas** nem é só um cofre. `submit-progress` (`supabase/functions/submit-progress`, regras em `supabase/functions/_shared/progress/`) confere o progresso contra limites por hora e por dia; o que vale dinheiro é sorteado no servidor (raridade da forja, drops únicos, quais materiais saem negociáveis: `material-claim`, `material-sync`, `mint-item`, `bind-item`); itens negociáveis nascem com certificado do servidor (`supabase/functions/_shared/items/`); e o ranking só confia em tempo e snapshots do servidor (migration `0004`). Onde o texto abaixo disser "esta fase" ou "ainda não é autoridade", leia como o estado da fase 1.
+
 > Nota (2026-10-10): o token ONE foi removido do jogo (lançamento na Steam, sem Web3); as menções a ONE abaixo são históricas.
 
 ## Escopo desta fase
 
 **Fase 1 = identidade + persistência.** O servidor (Supabase) agora ARMAZENA o `SaveData` do jogador,
-mas ainda **não é autoridade** sobre Gold, Shards, ONE, gear, inventário, RNG ou timers — o cliente
-continua calculando tudo e enviando o `SaveData` inteiro para persistência, exatamente como fazia com o
-`localStorage`. Só o "onde fica salvo" mudou.
+mas na fase 1 ainda **não era autoridade** sobre Gold, Shards, ONE (removido do jogo em 10/10), gear, inventário, RNG ou timers — o cliente
+continuava calculando tudo e enviando o `SaveData` inteiro para persistência, exatamente como fazia com o
+`localStorage`. Só o "onde fica salvo" mudou. (Hoje a autoridade é parcial: ver o quadro de estado no topo.)
 
 **Fase 2+ = autoridade econômica.** Endpoints dedicados para currencies/inventory/gear_instances,
 validação server-side de RNG e timers, e transações atômicas ficam para depois — ver a auditoria técnica
 completa (mapa de save, localStorage, RNG, timers, sistemas server-side vs client-side) já produzida
 nesta mesma linha de trabalho.
 
-Não trate esta fase como "pronto para dinheiro real". Um save ainda pode ser adulterado no cliente antes
-de ser enviado ao servidor — o servidor apenas guarda o que o cliente mandar.
+Não trate o que está nesta seção como "pronto para dinheiro real". Na fase 1 um save podia ser adulterado no cliente antes
+de ser enviado ao servidor e o servidor apenas guardava o que o cliente mandasse; as camadas que mudaram isso estão listadas no quadro de estado no topo.
 
 ## Como configurar um projeto Supabase
 
@@ -176,6 +178,8 @@ Decisão do dono: "não quero nada salvo em navegadores, deve ficar tudo no serv
 
 ## Limitações de segurança conhecidas desta fase
 
+(Da fase 1. As conferências do servidor que vieram depois estão no quadro de estado no topo; nenhuma delas torna o `SaveData` inteiro autoritativo no servidor.)
+
 - O `SaveData` inteiro ainda é enviado pelo cliente sem nenhuma validação server-side de Gold/gear/RNG/
   timers — um cliente adulterado pode mandar qualquer coisa, e o servidor grava.
 - RLS protege "de quem é a linha", não "o que está dentro dela".
@@ -186,10 +190,10 @@ Decisão do dono: "não quero nada salvo em navegadores, deve ficar tudo no serv
 Essas limitações são esperadas e documentadas — ver a auditoria técnica completa para o que precisa
 mudar nas próximas fases (Fase 2: currencies + inventory + gear_instances server-authoritative).
 
-## Próxima fase
+## Próxima fase (como foi planejada na fase 1)
 
 Fase 2 — mover Gold/Shards/inventário/gear_instances para autoridade do servidor (endpoints dedicados,
-transações atômicas, RNG/timers server-side).
+transações atômicas, RNG/timers server-side). Isso foi feito em parte, só para o que vale dinheiro (quadro de estado no topo); Gold, inventário e timers continuam sendo calculados pelo cliente e conferidos por limites, não por simulação no servidor.
 
 ## Limites do upload e o que o servidor deve validar depois (adicionado em 2026-10-13)
 

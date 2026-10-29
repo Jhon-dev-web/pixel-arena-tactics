@@ -4,7 +4,7 @@ Criado em 22/10/2026 a pedido do dono ("planeje eventos e adicione um calendári
 
 ## Em uma frase
 
-Até a Liga abrir, o jogo tem eventos em **datas reais** (horário de Brasília): uma abertura de três dias e depois um ritmo fixo por semana. Quando a Liga abrir (os 1.000 Passes vendidos, data desconhecida), os eventos de data real **param sozinhos** e o calendário da Liga (por dia da Liga) assume. O jogador vê tudo na tela **Calendário** (menu lateral), com as datas e horas no fuso dele.
+Até a Liga abrir, o jogo tem eventos em **datas reais** (horário de Brasília): uma abertura de três dias e depois um ritmo fixo por semana. Quando a Liga abrir (a meta de 1.000 Passes pagos, padrão da migration `0030_season_goal_1000.sql`; data desconhecida), os eventos de data real **param sozinhos** e o calendário da Liga (por dia da Liga) assume. O jogador vê tudo na tela **Calendário** (menu lateral), com as datas e horas no fuso dele.
 
 Nada de economia nova: todos os eventos usam as **mesmas regras e os mesmos tetos** dos eventos da Liga que já existiam (o bônus de XP de Caça de todos os eventos somados nunca passa de +15%).
 

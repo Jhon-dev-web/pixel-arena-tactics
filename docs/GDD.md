@@ -85,7 +85,7 @@ Seis **linhas de arma**, duas por classe: espada e machado (Guerreiro), arco e b
 
 **O que a reforma de 28/10 acrescentou:** 84 peças novas. Trinta de couro, trinta de tecido e vinte e quatro armas (arco, besta, cajado, cetro). Nenhum número das peças antigas mudou.
 
-Os números das peças novas **não foram escritos à mão**: um gerador resolve, por tier, a conversão que faz o conjunto completo de cada peso valer o mesmo poder de combate que o de placa, dentro de ±5%. Duas regras duras governam esse gerador: **a peça do tier seguinte nunca pode ser pior** em nenhum stat, e o custo de cada peça fica a 15% do custo da gêmea de placa.
+Os números das peças novas **não foram escritos à mão**: um gerador resolve, por tier, a conversão que faz o conjunto completo de cada peso valer o mesmo poder de combate que o de placa, dentro de ±5%. Isso foi só o ponto de partida: a fase 8 mostrou que poder de combate não mede justiça, e os retornos das linhas leves ganharam um ajuste (`RETURN_SCALE` em `gear.ts`), de modo que a paridade de poder de combate não vale mais; o juiz é a tabela de eixos. Duas regras duras governam esse gerador: **a peça do tier seguinte nunca pode ser pior** em nenhum stat, e o custo de cada peça fica a 15% do custo da gêmea de placa.
 
 ---
 
@@ -95,7 +95,7 @@ Os números das peças novas **não foram escritos à mão**: um gerador resolve
 
 **Como funciona.** A cada momento em que o herói atacaria, ele percorre a rotação de cima para baixo e **dispara a primeira que estiver fora de recarga**. Se nenhuma estiver pronta, dá o ataque básico. Tudo automático: o que o jogador decide é a rotação, não o botão. É a decisão que cabe num idle — escolhida uma vez, rende por horas.
 
-**A tela Táticas** é uma grade de ícones agrupada pela peça que concede ("Arma: Espada", "Peitoral: Placa"). Tocar num ícone abre a ficha com a recarga, a posição e o que ele faz em palavras. Quatro espaços, com Subir, Descer e Tirar. Mexer altera só um rascunho; "Aplicar" confirma.
+**A tela Táticas** tem a rotação no alto, em quatro linhas (posição, ícone, nome, de qual peça vem, recarga, e as setas de subir e descer na própria linha), e embaixo o que o equipamento concede, só em imagens, agrupado pela peça ("Arma: Espada", "Peitoral: Placa"). Tocar numa habilidade abre um card com tudo sobre ela (recarga, todos os efeitos, a posição) e os botões de colocar, subir, descer e tirar. Mexer altera só um rascunho; "Aplicar" confirma. **O equipamento inicial (a clava e as roupas esfarrapadas, tier 0) não concede habilidade nenhuma**: com ele a tela explica o motivo e a rotação fica vazia; as técnicas aparecem com a primeira peça de tier 1 em diante.
 
 **O modo automático.** Quem nunca abrir a tela não fica com o equipamento desligado: a rotação é montada a partir do que está vestido, **na hora**. Trocar de espada para arco repõe as habilidades do arco imediatamente, sem recarregar o jogo. Só quando o jogador escolhe à mão a lista passa a ser dele.
 
@@ -171,7 +171,7 @@ O que ele dá: armazém de 10 h em vez de 6, +15% de ouro, +10% de materiais, ma
 
 **Convites.** Pelo próprio jogo, por link, sem e-mail. Convite ativo = o amigo chegou ao nível 10. As recompensas vão do título Recrutador (1 convite) até um Passe grátis quando 10 convidados compram o deles.
 
-**Eventos.** Festival de abertura, evento de herói toda sexta à noite até domingo, dia de profissão nas quartas. As datas ficam no banco, então o dono muda sem publicar o jogo de novo.
+**Eventos.** Evento de herói toda sexta à noite até domingo, dia de profissão nas quartas, e um Festival de Abertura. As datas ficam no banco, então o dono muda sem publicar o jogo de novo; a migration `0035` ainda semeia o Festival em 31/10 a 02/11, a data do playtest cancelado.
 
 ---
 
@@ -211,7 +211,7 @@ Esses tetos **não são travas de segurança arbitrárias: são um retrato do co
 
 **A IA de operações** (um vigia a cada 5 minutos e um auditor de hora em hora) observa o jogo e só **aconselha**. A única coisa que ela pode fazer sozinha é **ligar** uma pausa; desligar é sempre do dono.
 
-**Ambientes.** Supabase e Vercel. Hoje existe só o de teste; o de produção será criado perto do lançamento.
+**Ambientes.** Supabase e Vercel. Hoje existe só o de teste; o de produção será criado quando houver data de lançamento.
 
 ---
 
@@ -236,7 +236,7 @@ Esses tetos **não são travas de segurança arbitrárias: são um retrato do co
 
 **O que falta:**
 
-- **Fase 8, o equilíbrio:** medir as três classes com as habilidades ligadas e provar que cada uma é melhor no que deveria ser boa, sem nenhuma virar obrigatória. Em andamento.
+- **Fase 8, o equilíbrio:** fechada para os tiers 6 e 4 (a tabela de eixos de `classAxes.test.ts` trava cada classe no seu eixo); o tier 3 ficou fora do alvo por decisão. Ver `docs/CLASSES_E_EQUIPAMENTOS.md`, seção 5.1.6.
 - Limpar os textos de Stripe na interface e quatro ajustes de interface pendentes.
 - Arte própria do monstro da zona 5 (o cenário já tem).
 - Publicar tudo no ambiente de teste.

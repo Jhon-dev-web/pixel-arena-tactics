@@ -256,7 +256,7 @@ Ou seja: **a identidade de classe não está vindo das habilidades**, e não vai
 
 **Consequência metodológica, descoberta na fase 5.** Os testes que comparam equipamento (`itemBalance`, `craftedStatsAudit`) têm de medir com a **rotação vazia**, e isso não é contornar teste: é controle experimental. Cada arma concede habilidades diferentes, então comparar arco contra espada com rotação ligada deixa de comparar equipamento e passa a comparar equipamento mais habilidade de brinde — a paridade de ±5% medida assim não significaria nada. Existe um helper único para esse herói "só equipamento", com o motivo escrito ao lado. A vantagem das habilidades é medida à parte, aqui na fase 8.
 
-Uma exceção importante: **`recommendedCp` é a curva do jogador de verdade**, e o jogador de verdade vai ter rotação. Ela segue gerada sem rotação por ora (os números das habilidades são provisórios), com um `REVIEW IN PHASE 8` no código. Se a fase 8 esquecer de regerá-la, a dificuldade recomendada fica abaixo do que o jogador aguenta e ninguém vai entender por quê.
+Uma exceção importante: **`recommendedCp` é a curva do jogador de verdade**, e o jogador de verdade vai ter rotação. Na fase 8 (28/10) ela passou a ser gerada com a rotação ligada (`npm run sim:cp`) e tem de ser regerada sempre que as habilidades, a escala das recargas ou o equipamento inicial mudarem; se esquecerem, a dificuldade recomendada fica abaixo do que o jogador aguenta e ninguém vai entender por quê.
 
 Conferir também o outro lado: área forte na Masmorra, onde as ondas são filas de inimigos, não pode tornar os andares triviais. A fase 4 mede os dois.
 
@@ -265,7 +265,7 @@ Conferir também o outro lado: área forte na Masmorra, onde as ondas são filas
 1. Implementar `splashPct` e `openingShots` (fase 4).
 2. **Medir** no simulador o que elas valem de verdade: ganho de abates por hora, queda no tempo de chefe.
 3. Só então fixar `cpSplashWeight` e `cpOpeningWeight` **a partir da medição**.
-4. Por último, resolver o orçamento de stat para a paridade de CP.
+4. Por último, resolver o orçamento de stat para a paridade de CP. (Esse alvo foi aposentado em 28/10: ver o aviso de correção de rumo no início da seção 2.5.)
 
 Se a paridade não fechar no passo 4, mexe-se na **mistura de stat**, nunca no peso do CP — o peso do CP é um retrato do valor real, não uma alavanca de equilíbrio.
 
@@ -375,8 +375,8 @@ Cada fase fecha com os portões obrigatórios (`npx tsc -b --noEmit`, `npm test`
 | 5 | **As 21 habilidades e a tela** | As 18 de arma e 3 de peitoral, os efeitos visuais (o motor de `skillFx` já existe), e a tela de Rotação. |
 | 6 | Afinidade | `affinity.ts` devolvendo um `SetEffect`, somado no mesmo ponto que o bônus de conjunto (seção 2.3), e o selo na tela de Personagem. |
 | 7 | Encaixe | Filtro da Forja, quinta zona de Caça, os drops novos nas zonas 3 e 4 (com chave de fluxo própria, seção 5.1.2), regras de mercado/salvagem/únicos. |
-| 8 | Equilíbrio | As medidas da seção 2.5: paridade de CP (±5%) e vantagem de papel (15–20%), agora medida com rotação; a revalidação dos 100 jogadores; a dívida da seção 5.1.5. |
-| 9 | Limpeza | Stripe e Pix fora do código, resumo em `docs/PAGAMENTOS_DESCARTADOS.md`; 4 ajustes de interface. |
+| 8 | Equilíbrio | As medidas da seção 2.5: vantagem de papel (15–20%) medida com rotação (a paridade de CP ±5% foi aposentada como medida de justiça); a revalidação dos 100 jogadores; a dívida da seção 5.1.5. |
+| 9 | Limpeza | Stripe e Pix fora das funções e do cliente (código compartilhado de checkout ainda existe em `supabase/functions/_shared/`), resumo em `docs/PAGAMENTOS_DESCARTADOS.md`; 4 ajustes de interface. |
 
 Os ícones dos itens entram pelo caminho que já existe (`iconPending.ts`). **Atualização 28/10:** o dono autorizou gerá-los em pixel art; os 4 primeiros da linha de couro foram feitos e aprovados quanto ao estilo (32×32, contorno escuro, fundo transparente, igual aos que já existem). Nenhuma fase depende de arte.
 
@@ -453,7 +453,7 @@ Ou seja: **os números que estão commitados não saem de novo nem do código in
 
 O que a fase 7 tem de fazer: dar ao simulador **política de plantio de fibra e foco de zona**, tornar a semente fixa para a rodada que gera tabelas, e só então substituir os valores derivados por medidos — apertando os tetos, que hoje estão folgados de propósito.
 
-### 5.1.6 O portão de sub-nível da zona 5 está fora do alcance e pune quem tem CP menor (achado na fase 8, 28/10; NÃO consertado)
+### 5.1.6 O portão de sub-nível da zona 5 está fora do alcance e pune quem tem CP menor (achado na fase 8, 28/10; CONSERTADO no mesmo dia: o portão passou a pedir um índice de equipamento, ver abaixo)
 
 O portão (`subLevelCpRequired`, `huntingZones.ts`) vale só em `blood_abyss` e `abyss_throne` (`subLevelCpGrowth: 1,23`), e `engine.ts computeHuntingStatus` o aplica com o CP do herói. A zona 5 herdou o 1,23 da zona 4 com uma base 2,24× maior (3600 contra 1607); o portão da zona 4 foi calibrado contra o alcance real (Rodada 22), o da zona 5 nunca. Medido com `scripts/sim/classGate.sim.ts`:
 

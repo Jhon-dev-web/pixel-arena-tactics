@@ -1,8 +1,8 @@
 # Fundação do mercado de jogadores: certificados de item
 
-Esta rodada não abre o mercado. Ela garante uma coisa: **uma peça negociável só chega ao mercado se o SERVIDOR emitiu um certificado para ela.** O save continua sendo do cliente (jogo normal, offline e desktop não mudam), mas o que vale dinheiro (SOL, na rodada seguinte) passa a ser o certificado, que o jogador não consegue escrever.
+Este documento descreve a base do mercado, que garante uma coisa: **uma peça negociável só chega ao mercado se o SERVIDOR emitiu um certificado para ela.** O save continua sendo enviado pelo cliente (e conferido pelo servidor em `submit-progress`; nos builds sem backend a autoridade de itens é `local`, `itemAuthority.ts`), mas o que vale dinheiro (SOL, na rodada seguinte) passa a ser o certificado, que o jogador não consegue escrever.
 
-Código: `supabase/migrations/0010_item_certificates.sql` (não aplicada), `supabase/functions/_shared/items/**`, funções `mint-item` e `bind-item`, e no jogo `src/game/itemActions.ts`, `itemServer.ts`, `itemCerts.ts`, `itemAuthority.ts`, `bossClaims.ts`.
+Código: `supabase/migrations/0010_item_certificates.sql`, `supabase/functions/_shared/items/**`, funções `mint-item` e `bind-item`, e no jogo `src/game/itemActions.ts`, `itemServer.ts`, `itemCerts.ts`, `itemAuthority.ts`, `bossClaims.ts`.
 
 ## O que é certificado
 
@@ -83,7 +83,7 @@ Tudo o que já existe (Épicas, Lendárias, únicos, Bolsas) continua utilizáve
 - ~~Perder a resposta de uma forja ou de uma Bolsa deixava um certificado órfão.~~ **Corrigido na rodada do mercado:** o jogo guarda o `requestId` da ação não terminada (`src/game/mintIntents.ts`, no navegador, por um dia) e a próxima tentativa idêntica usa o mesmo id, então o servidor devolve o resultado guardado em vez de rolar de novo. Sobra apenas o caso de o jogador nunca repetir a ação (o certificado fica no servidor sem a peça, inofensivo).
 - ~~Descartar Bolsa certificada pelo menu de empilháveis não queimava o certificado.~~ **Corrigido:** `discardPouchAction` queima no servidor os certificados das Bolsas jogadas fora (as sem certificado primeiro, depois as certificadas pelo fim da lista, como ao abrir) antes de a quantidade cair; sem servidor a ação é bloqueada.
 
-## Passos do dono (nada foi aplicado nem publicado por esta rodada)
+## Passos do dono (para um projeto novo; o que já está no ar: `RESUMO_DO_PROJETO.md`, seção 7)
 
 1. Aplicar `supabase/migrations/0010_item_certificates.sql` (depois da 0009), primeiro no projeto de desenvolvimento, e rodar o PLANO DE TESTE SQL (A a K) que está no fim do arquivo. Reversão: bloco `ROLLBACK` no topo do arquivo.
 2. Publicar as funções novas: `mint-item` e `bind-item` (com a verificação de JWT ligada, que é o padrão), com o segredo `APP_ORIGIN` já existente.
@@ -143,7 +143,7 @@ Marcas na auditoria (`arena_private.item_account_flags`; uma conta com marca **n
 
 Sem servidor, **nenhuma variante negociável existe**: os redutores não enfileiram relato (`isServerItemAuthority()`), e um save importado com unidades negociáveis as perde ao carregar (`stripTradeable`). Saves antigos carregam como sempre, sem nenhum campo novo.
 
-### Passos do dono (nada foi aplicado nem publicado)
+### Passos do dono (para um projeto novo; o que já está no ar: `RESUMO_DO_PROJETO.md`, seção 7)
 
 1. Aplicar `supabase/migrations/0015_tradeable_materials.sql` **depois da 0014** (primeiro no projeto de desenvolvimento) e rodar o PLANO DE TESTE SQL (A a N) no fim do arquivo. Ela **substitui** `item_take_tokens` (ganha `whole`), `market_cancel_listing`, `market_record_payment`, `market_release_stale` e a função da reinicialização da Liga, e a visão `market_listings_public`. Reversão: bloco `ROLLBACK` no topo.
 2. Publicar as funções novas `material-claim` e `material-sync` (verificação de JWT ligada, o padrão; segredo `APP_ORIGIN`). **Reimplantar também `market-list`, `market-buy` e `market-my`** (mudaram: lotes).

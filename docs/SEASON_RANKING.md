@@ -1,6 +1,6 @@
 # Como rodar uma temporada com prêmio (ranking da Temporada)
 
-AVISO: **nada disto foi aplicado em lugar nenhum por este trabalho.** Nenhuma migration foi aplicada, nenhuma função foi implantada, nenhum projeto Supabase, Stripe ou Vercel foi tocado, e o Deno e um Supabase de verdade nunca rodaram contra este código (só os testes do Vitest, com banco e rede simulados). Os valores de segredos ficam só nos painéis; aqui há apenas nomes. O ranking nasce **desligado**: com `VITE_SEASON_RANKING_ENABLED` ausente, a tela some e o jogo não envia nada.
+**Estado de implantação:** o código e as migrations estão no repositório; o estado do que está no ar vive só em `RESUMO_DO_PROJETO.md`, seção 7. Os testes usam banco e rede simulados. Os valores de segredos ficam só nos painéis; aqui há apenas nomes. O ranking nasce **desligado**: com `VITE_SEASON_RANKING_ENABLED` ausente, a tela some e o jogo não envia nada.
 
 O prêmio é um **valor fixo que você escolhe**. Ele nunca é descrito, no jogo, no portal ou nos textos legais, como parte da receita do Passe. O código não guarda nem inventa valor nenhum: o campo `seasons.prize_note` é um texto livre que só você escreve.
 
@@ -158,7 +158,7 @@ Para corrigir de propósito uma pontuação depois do congelamento (não deveria
 ## 6. Ordem de lançamento (junto com os outros documentos)
 
 1. [`WEB_LAUNCH.md`](WEB_LAUNCH.md) seções 2 e 3: projetos Supabase separados (dev e produção), **confirmação de e-mail LIGADA**, backups, URLs de autenticação, e os textos legais de Privacidade e Termos publicados.
-2. [`PASS_SALES.md`](PASS_SALES.md): migration `0003`, funções de pagamento, Stripe em modo de teste, depois live. O ranking só aceita quem tem o Passe **no servidor**; sem isso ninguém é elegível.
+2. [`PASS_SALES.md`](PASS_SALES.md): como o Passe é vendido hoje (USDC), migration `0003` e as de pagamento (o roteiro do Stripe, inativo, está no fim de [`PAGAMENTOS_DESCARTADOS.md`](PAGAMENTOS_DESCARTADOS.md)). O ranking só aceita quem tem o Passe **no servidor**; sem isso ninguém é elegível.
 3. Migrations `0004` e `0005` no projeto de dev; plano de testes SQL; depois em produção.
 4. Função `submit-progress` no dev, com JWT ligado e `APP_ORIGIN`.
 5. Preview na Vercel com `VITE_SEASON_RANKING_ENABLED=true` e contas de teste: confira que aparecem linhas em `progress_snapshots`, que um save editado vira `rejected`/`flagged`, que uma conta sem Passe recebe `no_pass`, que uma sem e-mail confirmado recebe `email_unconfirmed`, e que o ranking mostra só posição, nome e números.
@@ -198,7 +198,7 @@ No jogo e no site a temporada valendo aparece como "Temporada valendo" e a pré-
 ### 8.2 Como a meta abre a temporada valendo
 
 - A meta mora **no banco**, numa tabela privada de uma linha: `arena_private.season_goal (target = 1000 desde a migration `0030`, season_number = 1, opened_at)`. Só a service role (ou você, no SQL Editor) lê e altera; o público não a vê: desde a migration `0008`, nem `target` nem o número de Passes vendidos saem do servidor. O `pass_meter()` devolve só uma fração de progresso. **Para mudar a meta:** `update arena_private.season_goal set target = 1000;` no SQL Editor (1 a 10 000 000); a barra pública se ajusta e o número continua secreto.
-- "Passe pago" = linha em `entitlements` com `kind = 'adventurer_pass'`, `status = 'active'`, `source` `stripe` ou `mercadopago` **e `livemode = true`** (migration `0007`). **Concessões manuais (`grant`), reembolsados, revogados e compras feitas com chaves de TESTE do Stripe nunca contam para a meta (1.000 Passes).**
+- "Passe pago" = linha em `entitlements` com `kind = 'adventurer_pass'`, `status = 'active'`, `source` em `stripe`, `mercadopago`, `crypto_bsc` ou `crypto_sol` **e `livemode = true`** (a contagem é `arena_private.paid_pass_count()`, migration `0025`; o Stripe saiu em 28/10, então hoje as origens novas são cripto; a regra de quem pontua no ranking, `owns_ranking_pass`, é da `0007`). **Concessões manuais (`grant`), reembolsados, revogados e compras feitas com chaves de TESTE do Stripe nunca contam para a meta (1.000 Passes).**
 - Quando a contagem chega ao `target`, a temporada `season_number` (precisa estar `upcoming`) passa a `open` com `starts_at` = agora do servidor, `ends_at` = +60 dias e `freeze_at` = +58 dias; a pré-temporada passa a `closed` (a classificação dela fica guardada, congelada) e a temporada valendo **começa do zero para todos**. Isso acontece **uma única vez**: `opened_at` é gravado e nunca mais se tenta. Uma temporada já fechada nunca reabre sozinha.
 - Mecanismo (o mais simples que é robusto): um trigger `AFTER INSERT/UPDATE OF status` em `entitlements` chama `arena_private.try_open_paid_season()`, que **trava a linha da meta antes de contar**. Duas compras simultâneas se enfileiram nessa trava, então a segunda sempre enxerga a primeira e a compra que bate a meta não se perde. A chamada está dentro de um bloco de exceção: se algo der errado, vira só um aviso no log e **nunca** desfaz nem bloqueia um pagamento. O código do webhook não foi alterado.
 

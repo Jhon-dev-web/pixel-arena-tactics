@@ -1,6 +1,6 @@
 # Painel do dono (admin)
 
-AVISO: **nada disto foi aplicado, implantado ou executado contra um serviço real por este trabalho.** A migration `0020_admin.sql` não foi aplicada, nenhum projeto Supabase ou Vercel foi tocado, nenhuma chave foi lida ou escrita. O código está no repositório; o painel só funciona depois dos passos abaixo. Os valores de segredos ficam só nos painéis; aqui há apenas nomes.
+**Estado de implantação:** o código e as migrations (`0020` em diante) estão no repositório; o estado do que está no ar vive só em `RESUMO_DO_PROJETO.md`, seção 7. O painel só funciona depois dos passos abaixo. O pagamento do Passe é por carteira (USDC na Solana); o Stripe saiu em 28/10 (decisão em `docs/PAGAMENTOS_DESCARTADOS.md`). Os valores de segredos ficam só nos painéis; aqui há apenas nomes.
 
 O painel é um app **separado do jogo e do portal** (pasta `admin/`, `package.json` próprio, projeto Vercel próprio). Não parece com o jogo de propósito. **Quase tudo só lê.** As escritas, todas só para administrador e todas auditadas: na página “IA e operação” (migration `0021_ai_ops.sql`) ligar/desligar um dos quatro interruptores de segurança (com motivo obrigatório) e marcar um relatório da IA como lido; e, na migration `0027_admin_actions.sql` (seção 7), **apagar uma conta**, **ativar/revogar o Passe** (no painel do jogador) e **gerar/desativar códigos promocionais** (página «Códigos»).
 
@@ -24,7 +24,7 @@ Cada tabela tem **Exportar CSV** (lê todas as páginas do filtro atual, até 10
 
 - **Online agora**: personagens salvos nos últimos 5 minutos (`characters.updated_at`; configurável em `arena_private.admin_config`). É uma aproximação: quem joga sem salvar não conta.
 - **Jogando hoje / 7 / 30 dias**: personagens salvos no período. “Hoje” começa à meia-noite do fuso configurado (padrão `America/Sao_Paulo`). A série diária de jogadores ativos vem de `arena_private.admin_daily`, preenchida pela rotina (seção 4), porque a retenção (0019) afina snapshots antigos e a história não poderia ser refeita depois.
-- **Receita do Passe**: vendas no cartão reais (`entitlements`, origem `stripe`, `livemode`, ativas) **× o preço guardado em `admin_config.pass_price_card_usd` (padrão 10.00)** + o **USDC realmente recebido** (`chain_payments`, `purpose = 'pass'`, aplicado, real). O preço verdadeiro vive no Stripe; o painel só guarda sua cópia para estimar. Reembolsos aparecem à parte. Passes de teste, concessões e indicações **não** entram na receita.
+- **Receita do Passe**: vendas no cartão reais **antigas** (`entitlements`, origem `stripe`, `livemode`, ativas; não há mais venda nova por cartão) **× o preço guardado em `admin_config.pass_price_card_usd` (padrão 10.00)** + o **USDC realmente recebido** (`chain_payments`, `purpose = 'pass'`, aplicado, real). O painel só guarda uma cópia desse preço para estimar a receita dos Passes antigos por cartão; o Passe novo é pago em USDC (`docs/MARKET_SOLANA.md`). Reembolsos aparecem à parte. Passes de teste, concessões e indicações **não** entram na receita.
 - **Arrecadado na Solana**: taxas de 5% das vendas reais (`market_sales.fee_lamports`, `livemode`) + USDC dos Passes. Vendas de teste (devnet) ficam fora dos totais e aparecem marcadas.
 - **Ouro em circulação**: **declarado pelos saves**, que o cliente envia (não é saldo auditado). Vem do agregado diário, **nunca de uma varredura ao vivo** dos saves.
 - **Garantia (pity) em Lendários**: classificação aproximada. É forja de tier ≥ 4 depois de 40 forjas desse tipo sem Lendário, contada pelo histórico de pedidos de criação (`item_mint_requests`). Se esse histórico for apagado pela retenção (`request_cache_days`), a classificação cai para “Forja”.
@@ -58,7 +58,7 @@ Cada tabela tem **Exportar CSV** (lê todas as páginas do filtro atual, até 10
 3. Confira os valores do painel (opcional):
    ```sql
    select * from arena_private.admin_config;
-   update arena_private.admin_config set value = '10.00' where key = 'pass_price_card_usd';  -- seu preço real no Stripe
+   update arena_private.admin_config set value = '10.00' where key = 'pass_price_card_usd';  -- só estima a receita dos Passes antigos por cartão
    update arena_private.admin_config set value = 'America/Sao_Paulo' where key = 'timezone';
    ```
 4. **Plano de teste SQL** no fim do arquivo `0020_admin.sql` (A a E): um jogador comum recebe `ADMIN_ONLY` em toda função, `anon` recebe “permission denied”, o admin recebe os dados, e as rotinas não são chamáveis por um cliente.
@@ -112,7 +112,7 @@ O app não faz parte do `tsc`, do `eslint` nem do `vitest` do jogo (excluído co
 
 ## 7. Ações do painel (migration `0027_admin_actions.sql`, ainda não aplicada)
 
-AVISO: **nada disto foi aplicado, implantado ou executado contra um serviço real por este trabalho.** A `0027` e a função `admin-delete-user` só existem no repositório. O painel deixa de ser somente leitura: além dos dois interruptores da seção 1, ele agora pode **apagar uma conta**, **ativar/revogar o Passe** e **gerar códigos promocionais**. Toda ação de escrita segue as mesmas regras:
+**Estado de implantação:** a `0027` e a função `admin-delete-user` estão no repositório (`supabase/migrations/0027*.sql`, `supabase/functions/admin-delete-user`); o que está no ar está em `RESUMO_DO_PROJETO.md`, seção 7. O painel deixa de ser somente leitura: além dos dois interruptores da seção 1, ele agora pode **apagar uma conta**, **ativar/revogar o Passe** e **gerar códigos promocionais**. Toda ação de escrita segue as mesmas regras:
 
 - **Só administrador.** Cada função começa perguntando `public.is_admin()` e levanta `ADMIN_ONLY` se a resposta for não. A conta de um jogador comum, mesmo logada, recebe a recusa; `anon` recebe "permission denied". O painel só mostra o botão depois do acesso confirmado, mas **quem protege é o banco**.
 - **Do lado do servidor.** Nada é decidido no navegador. Nenhuma chave de serviço entra no painel.
@@ -157,7 +157,7 @@ Página **Códigos** do painel + **Configurações > Passe de Aventureiro > Cód
 
 **O Passe de um código.** Linha em `entitlements` com `source 'promo'`, `livemode true`, carimbada com a temporada atual pelo gatilho da `0025`. A `0027` acrescenta `'promo'` à restrição `entitlements_source_check`.
 - **Ranking: conta**, como uma concessão (`owns_ranking_pass` só pergunta `livemode` ou `grant`, e a linha é `livemode`). Não há regra encontrada que proíba isso; se o dono quiser o contrário, é trocar essa linha da função.
-- **Não conta** em `paid_pass_count` (meta e medidor público), **nem na receita** (só cartão e USDC), **nem como "pagante"** nas recompensas de convite: as três listam as origens pagas explicitamente e `promo` não está entre elas. No painel a origem aparece como «Código promocional».
+- **Não conta** em `paid_pass_count` (meta e medidor público), **nem na receita** (só as vendas pagas: cartão antigo e USDC), **nem como "pagante"** nas recompensas de convite: as três listam as origens pagas explicitamente e `promo` não está entre elas. No painel a origem aparece como «Código promocional».
 
 **Ouro, Éter e poções (migration `0028_server_credits.sql`).** O servidor nunca escreve o save e o `submit-progress` só limita o que um save pode alegar, então um número de código precisa de um **livro de créditos** do servidor. Ele existe agora: `arena_private.server_credits` (`id`, `user_id`, `kind` ouro/Éter/poção, `item_id`, `amount`, `source 'promo'`, `source_ref` = o código, `created_at`, `claimed_at`, `counted_at`; único por código e conta; sem acesso para `anon`/`authenticated`; apaga junto com a conta). Fluxo:
 
