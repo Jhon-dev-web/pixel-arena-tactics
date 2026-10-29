@@ -281,7 +281,7 @@ const round4 = (x: number): number => Math.round(x * 10000) / 10000;
 // mage's CP to ~0.75 of the warrior's, and the Hunting sub-level gate reads that CP (huntingZones.ts subLevelCpRequired, engine.ts computeHuntingStatus): REJECTED by the coordinator. CP parity is a structural
 // requirement of the gate, though not a measure of fairness. A change of COMPOSITION at constant CP (less damage, more effective HP) is what is being studied (scripts/sim/classBalance.sim.ts SIM_MIX).
 // Each factor is the lever of ONE class on ONE axis (docs/CLASSES_E_EQUIPAMENTOS.md 2.5): change them with the axis table of scripts/sim/classBalance.sim.ts in front of you.
-export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.75, cloth: 0.75, bow: 0.1, crossbow: 0.3, staff: 1, scepter: 1 };
+export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.6, cloth: 0.75, bow: 0.45, crossbow: 0.3, staff: 1, scepter: 1 };
 // piece id -> the returned stats BEFORE the dial (what the generator solved); itemBalance.test.ts / the generator read the parity on these
 export const RETURNS_BASE: Record<string, Partial<Record<'critChance' | 'attackSpeedBonus' | 'critMultBonus' | 'hpRegenPct', number>>> = {};
 const dial = (x: number, f: number, decimals = 4): number => Math.round(x * f * 10 ** decimals) / 10 ** decimals;

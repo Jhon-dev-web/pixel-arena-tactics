@@ -699,7 +699,7 @@ const T = DebugPanel.define({
     // either way (what is left over does not chain into the fight after).
     carryCapPct: { value: 0.7, min: 0, max: 0.9, step: 0.05, label: 'Carry: most of the next enemy max HP the spill can take (share)' },
     // Golpe Firme (sword, strike): this swing hits for firmStrikePct of the damage.
-    firmStrikePct: { value: 2.4, min: 1, max: 5, step: 0.1, label: 'Golpe Firme: damage of the swing (x)' },
+    firmStrikePct: { value: 2.7, min: 1, max: 5, step: 0.1, label: 'Golpe Firme: damage of the swing (x)' },
     firmStrikeCdMs: { value: 4500, min: 1000, max: 60000, step: 500, label: 'Golpe Firme: cooldown (ms)' },
     // Chuva de Flechas (bow, volley): arrowRainHits hits of arrowRainPct each.
     arrowRainHits: { value: 3, min: 2, max: 8, step: 1, label: 'Chuva de Flechas: hits' },
@@ -710,7 +710,7 @@ const T = DebugPanel.define({
     flamesDurationMs: { value: 4000, min: 1000, max: 10000, step: 500, label: 'Chamas: duration (ms)' },
     flamesCdMs: { value: 7000, min: 1000, max: 60000, step: 500, label: 'Chamas: cooldown (ms)' },
     // Explosao Arcana (staff, carry): the swing is a normal one and arcaneBurstPct of it goes to the bucket.
-    arcaneBurstPct: { value: 1.9, min: 0.1, max: 3, step: 0.05, label: 'Explosao Arcana: share of the swing that spills over' },
+    arcaneBurstPct: { value: 2.1, min: 0.1, max: 3, step: 0.05, label: 'Explosao Arcana: share of the swing that spills over' },
     arcaneBurstCdMs: { value: 5000, min: 1000, max: 60000, step: 500, label: 'Explosao Arcana: cooldown (ms)' },
     // Bencao (scepter, heal + haste).
     blessingHealPct: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Bencao: max HP healed (share)' },
@@ -758,7 +758,7 @@ const T = DebugPanel.define({
     fatalShotPct: { value: 3.2, min: 1, max: 8, step: 0.1, label: 'Tiro Fatal: damage of the swing (x)' },
     fatalShotCdMs: { value: 16000, min: 1000, max: 120000, step: 500, label: 'Tiro Fatal: cooldown (ms)' },
     // Nova (staff, carry + guard).
-    novaPct: { value: 1.9, min: 0.1, max: 3, step: 0.05, label: 'Nova: share of the swing that spills over' },
+    novaPct: { value: 2.1, min: 0.1, max: 3, step: 0.05, label: 'Nova: share of the swing that spills over' },
     novaReduction: { value: 0.25, min: 0, max: 0.9, step: 0.05, label: 'Nova: damage taken cut (share)' },
     novaGuardMs: { value: 3000, min: 1000, max: 30000, step: 500, label: 'Nova: guard duration (ms)' },
     novaCdMs: { value: 6000, min: 1000, max: 120000, step: 500, label: 'Nova: cooldown (ms)' },
