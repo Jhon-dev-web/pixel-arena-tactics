@@ -203,6 +203,16 @@ function rawCrit(h: SaveData): { weapon: number; subs: number; extra: number; ra
 
 // The margin of the best owner build over the best build of any other class, on an axis (what "the class leads its axis" means in the guard): > 0 = leads.
 const ownerMargin = (rows: Row[], ax: Axis): number => Math.max(...rows.filter((r) => r.b.cls === OWNER[ax]).map((r) => r.score[ax])) / Math.max(...rows.filter((r) => r.b.cls !== OWNER[ax]).map((r) => r.score[ax])) - 1;
+// the guard's old measure of a class: its value against the mean of the other two MAIN builds (rows 0, 2, 4)
+function mainLeads(rows: Row[]): Record<Axis, number[]> {
+  const m = [rows[0], rows[2], rows[4]];
+  const leadOf = (v: number[], i: number): number => v[i] / ((v.reduce((a, b) => a + b, 0) - v[i]) / (v.length - 1)) - 1;
+  return {
+    hunting: m.map((_, i) => leadOf(m.map((r) => r.kph), i)),
+    boss: m.map((_, i) => BOSSES.reduce((a, _b, k) => a + leadOf(m.map((r) => r.speeds[k]), i), 0) / BOSSES.length),
+    depth: m.map((_, i) => leadOf(m.map((r) => r.reach), i)),
+  };
+}
 const mean = (v: number[]): number => v.reduce((a, b) => a + b, 0) / v.length;
 const std = (v: number[]): number => Math.sqrt(v.reduce((a, b) => a + (b - mean(v)) ** 2, 0) / Math.max(1, v.length - 1));
 
@@ -310,6 +320,15 @@ it('prints the wide class-axis table, the twin pairs by tier, the seed noise, th
     out.push('  Margem da classe dona sobre a melhor build de qualquer outra classe, por eixo (> 0 = lidera):');
     out.push(`  ${pad('', 10)}${AXES.map((ax) => pad(`${AXIS_PT[ax]} media  desvio   min    max`, 34)).join('')}`);
     for (const s of setups) out.push(`  T${s.tier}        ${AXES.map((ax) => pad(f(series[s.tier].map((rows) => ownerMargin(rows, ax))), 34)).join('')}`);
+    out.push('');
+    // The three MAIN builds read the way the old guard read them (each class against the mean of the other two; the boss lead averaged over the four bosses), over the same seed sets.
+    out.push('  Liderancas das tres armas principais (cada classe contra a media das outras duas; guerreiro / arqueiro / mago), ao longo dos conjuntos de sementes:');
+    for (const s of setups.filter((x) => x.full)) {
+      for (const ax of AXES) {
+        const per = [0, 1, 2].map((c) => series[s.tier].map((rows) => mainLeads(rows)[ax][c]));
+        out.push(`  T${s.tier} ${pad(AXIS_PT[ax], 8)}${['guerreiro', 'arqueiro', 'mago'].map((n, c) => `${n} ${f(per[c])}`).join('   ')}`);
+      }
+    }
     out.push('');
   } else {
     out.push('  Margem da classe dona sobre a melhor build de qualquer outra classe, por eixo (> 0 = lidera):');
