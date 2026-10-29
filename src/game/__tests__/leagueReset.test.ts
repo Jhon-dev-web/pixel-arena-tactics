@@ -378,8 +378,8 @@ describe('the marker on the save and the texts', () => {
     expect(en.leagueReset.preseasonWarning).toBe('The pre-season is an open test: when the League begins, every online hero starts again from zero. Your Pass and your name stay.');
   });
 
-  it('the warning is placed on the season tab, the welcome screen and the sign-in gate', () => {
-    for (const f of ['components/SeasonRankingPanel.tsx', 'components/WelcomeModal.tsx', 'components/AuthScreen.tsx']) {
+  it('the warning is placed on the season tab and the sign-in gate', () => {
+    for (const f of ['components/SeasonRankingPanel.tsx', 'components/AuthScreen.tsx']) {
       expect(readFileSync(resolve(__dirname, '../..', f), 'utf8'), f).toContain('<PreseasonResetNotice');
     }
   });

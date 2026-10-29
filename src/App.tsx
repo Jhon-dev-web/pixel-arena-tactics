@@ -199,7 +199,7 @@ const gearText = (key: string): string => t(`gear.${key}`);
 
 // First-view tooltips for the Camp side-rail icons — order matches the rail top-to-bottom. Admin (dev
 // only) is deliberately excluded: it doesn't exist in a production build, so there's nothing to
-// introduce to a real player. See FirstViewTooltip.tsx / SaveData.seenTooltips.
+// introduce to a real player. The queue below (tooltipQueue / activeTooltip) writes SaveData.seenTooltips, but no component renders a tooltip any more (FirstViewTooltip.tsx was deleted as dead code).
 const TOOLTIP_IDS = ['mining', 'woodcutting', 'garden', 'hunt', 'battlepass', 'bag', 'quests', 'mute', 'settings'] as const;
 
 const REFERRAL_POLL_MS = 30 * 60 * 1000;
@@ -307,7 +307,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const marketFns = useRef<{ apply: (s: SaveData) => void; toast: (m: string) => void }>({ apply: () => undefined, toast: () => undefined });
   const marketHost = useMemo<MarketHost>(() => ({ getSave: () => saveRef.current, applySave: (next) => marketFns.current.apply(next), notify: (m) => marketFns.current.toast(m) }), []);
 
-  // Character XP is intentionally never shown as a number anywhere in the UI (see TopHud/HeroModal/HuntModal/HuntRewardModal) and only Hunting pays it (since the League,
+  // Character XP is intentionally never shown as a number anywhere in the UI (see HeroPanels/HuntModal/HuntRewardModal) and only Hunting pays it (since the League,
   // Rodada 20) — a level-up toast is the only XP-gain feedback left, so it's centralized here (setSaveBoth) rather than duplicated at every call site.
   const celebrateLook = (look: string, armorNameKey: string) => {
     playSfx('victory');

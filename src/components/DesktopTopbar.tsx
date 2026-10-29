@@ -10,7 +10,7 @@ import { portraitFrameClass } from '../game/seasonItems';
 import ActivityChip from './ActivityChip';
 
 // Top bar shared by desktop (fixed sidebar alongside it) and mobile (hamburger + drawer instead) —
-// same data as the old mobile-only TopHud, just laid out wider on desktop. CP is deliberately left
+// same data as the old mobile top bar (since deleted), just laid out wider on desktop. CP is deliberately left
 // out here: it already has a prominent spot on the Hero/Personagem card, so showing it twice at once
 // is pure redundancy (see the Home polish pass).
 export default function DesktopTopbar({
