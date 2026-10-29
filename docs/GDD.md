@@ -45,7 +45,7 @@ Um herói por conta, do nível 1 ao 100. Ele não tem classe: tem atributos, hab
 | Agilidade | velocidade de ataque (com retorno decrescente, piso de 400 ms) |
 | Resistência | redução de dano (fórmula assintótica, nunca chega a 100%) |
 
-**Habilidades passivas.** Um ponto a cada 5 níveis, em três caminhos de 7 habilidades: **Guerreiro** (dano, crítico, sangramento), **Guardião** (vida, bloqueio, espinhos) e **Caçador** (ouro, material, XP, espaço de bolsa). São passivas e automáticas; algumas disparam golpes sozinhas, por contador ou por tempo. Quem tem o Passe tem dois conjuntos de pontos e troca entre eles sem custo.
+**Habilidades passivas.** Um ponto a cada 5 níveis, em três caminhos de 7 habilidades: **Brutalidade** (dano, crítico, sangramento), **Resiliência** (vida, bloqueio, espinhos) e **Riqueza** (ouro, material, XP, espaço de bolsa). São passivas e automáticas; algumas disparam golpes sozinhas, por contador ou por tempo. Quem tem o Passe tem dois conjuntos de pontos e troca entre eles sem custo.
 
 **De onde vem o XP.** Só da **Caça**, e **por abate**: cada monstro derrubado paga, proporcional ao tamanho dele. Quem mata mais rápido sobe mais rápido, até um teto de ritmo que impede uma build de disparar na frente. Masmorra, Pedidos e poções não dão XP de herói.
 

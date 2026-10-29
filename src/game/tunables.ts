@@ -583,7 +583,7 @@ const T = DebugPanel.define({
     tier2Req: { value: 2, min: 0, max: 20, step: 1, label: 'Points in the path needed for tier 2' },
     tier3Req: { value: 5, min: 0, max: 20, step: 1, label: 'Points in the path needed for tier 3' },
     capstoneReq: { value: 10, min: 0, max: 20, step: 1, label: 'Points in the path needed for the capstone' },
-    // Guerreiro
+    // Brutalidade (path id warrior)
     // Golpes (auto-triggered strikes): Golpe Esmagador every crushEvery hits (+crushBonusBase + rank x crushBonusStep damage on that hit), Golpe de Furia every furyEveryMs of
     // combat (furyHits extra hits at furyDmgBase + rank x furyDmgStep of the hit), Golpe Duplo (doubleBase + rank x doubleStep chance, the echo hits for doubleDmgPct), Contra-ataque
     // (the next hit after a block, counterBase + rank x counterStep damage) and Golpe Devastador (every devastatingEvery-th crush deals devastatingMult x instead of its bonus).
@@ -607,7 +607,7 @@ const T = DebugPanel.define({
     bleedStep: { value: 0.045, min: 0, max: 0.3, step: 0.005, label: 'Sangria: share of the hit dealt per second, per rank' },
     bleedDurationMs: { value: 3000, min: 1000, max: 10000, step: 500, label: 'Sangria: duration after the last hit (ms)' },
     weaponMasterPct: { value: 0.035, min: 0, max: 0.3, step: 0.005, label: 'Mestre de Armas: weapon base damage per rank' },
-    // Guardiao
+    // Resiliencia (path id guardian)
     thickSkinHp: { value: 0.025, min: 0, max: 0.3, step: 0.005, label: 'Pele Dura: max HP per rank' },
     bulwarkRes: { value: 0.07, min: 0, max: 0.3, step: 0.005, label: 'Muralha: resistance sum per rank (multiplier)' },
     thornsReflect: { value: 0.08, min: 0, max: 0.2, step: 0.005, label: 'Espinhos: reflect per rank (absolute)' },
@@ -617,7 +617,7 @@ const T = DebugPanel.define({
     blockStep: { value: 0.02, min: 0, max: 0.3, step: 0.005, label: 'Bloqueio: chance to block a hit per rank' },
     bastionHealPct: { value: 0.25, min: 0, max: 1, step: 0.05, label: 'Ultimo Bastiao: max HP healed after the save' },
     bastionCooldownMs: { value: 60000, min: 5000, max: 600000, step: 5000, label: 'Ultimo Bastiao: Hunting cooldown (ms of combat time)' },
-    // Cacador
+    // Riqueza (path id hunter)
     greedGold: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Ganancia: extra Gold per rank (outside the gear cap)' },
     scentMaterials: { value: 0.0334, min: 0, max: 0.3, step: 0.0001, label: 'Faro: Hunting material yield per rank (3 ranks = +10%, the same as the Pass)' },
     quickLearnerXp: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'Aprendiz Veloz: character XP per rank' },

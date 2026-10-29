@@ -270,7 +270,7 @@
     },
     "skills": {
       "title": "Skills",
-      "body": "Every {n} levels you earn a skill point. Spend it on Warrior, Guardian or Hunter: everything is automatic."
+      "body": "Every {n} levels you earn a skill point. Spend it on Brutality, Resilience or Wealth: everything is automatic."
     }
   },
   "ui": {
@@ -1209,9 +1209,9 @@
   },
   "heroSkills": {
     "paths": {
-      "warrior": { "name": "Warrior", "identity": "Damage, crits and bleeding" },
-      "guardian": { "name": "Guardian", "identity": "Defense, block and reflect" },
-      "hunter": { "name": "Hunter", "identity": "Pace and economy" }
+      "warrior": { "name": "Brutality", "identity": "Damage, crits and bleeding" },
+      "guardian": { "name": "Resilience", "identity": "Defense, block and reflect" },
+      "hunter": { "name": "Wealth", "identity": "Pace and economy" }
     },
     "skills": {
       "w_heavy_blow": { "name": "Crushing Blow", "desc": "Every {every} hits of yours, a crushing blow deals +{n}% damage.", "trigger": "Every {every} hits: +{r1}% / +{r2}% / +{r3}% damage." },

@@ -4,7 +4,7 @@ import { ownsAdventurerPass } from './entitlements';
 import { relicXpBonusPct } from './gear';
 import type { StrikeStats } from './derivedStats';
 
-// Hero skills: three paths (Guerreiro, Guardiao, Cacador) of passive skills the hero buys with skill points. 1 point every T.heroSkills.pointEveryLevels character
+// Hero skills: three paths (Brutalidade, Resiliencia, Riqueza; ids warrior, guardian, hunter) of passive skills the hero buys with skill points. 1 point every T.heroSkills.pointEveryLevels character
 // levels (level 5, 10, ... 100 = 20 points), separate from the STR / VIT / AGI / RES points. Everything here is PASSIVE and automatic: the effects reach combat only
 // through buildCombatStats (engine.ts) so the Dungeon, Hunting and the simulator agree, and the economy ones through the single function each system already has.
 //

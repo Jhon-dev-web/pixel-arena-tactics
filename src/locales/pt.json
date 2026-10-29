@@ -270,7 +270,7 @@
     },
     "skills": {
       "title": "Habilidades",
-      "body": "A cada {n} níveis você ganha um ponto de habilidade. Gaste em Guerreiro, Guardião ou Caçador: tudo é automático."
+      "body": "A cada {n} níveis você ganha um ponto de habilidade. Gaste em Brutalidade, Resiliência ou Riqueza: tudo é automático."
     }
   },
   "ui": {
@@ -1209,9 +1209,9 @@
   },
   "heroSkills": {
     "paths": {
-      "warrior": { "name": "Guerreiro", "identity": "Dano, críticos e sangria" },
-      "guardian": { "name": "Guardião", "identity": "Defesa, bloqueio e reflexo" },
-      "hunter": { "name": "Caçador", "identity": "Ritmo e economia" }
+      "warrior": { "name": "Brutalidade", "identity": "Dano, críticos e sangria" },
+      "guardian": { "name": "Resiliência", "identity": "Defesa, bloqueio e reflexo" },
+      "hunter": { "name": "Riqueza", "identity": "Ritmo e economia" }
     },
     "skills": {
       "w_heavy_blow": { "name": "Golpe Esmagador", "desc": "A cada {every} golpes seus, um golpe esmagador causa +{n}% de dano.", "trigger": "A cada {every} golpes: +{r1}% / +{r2}% / +{r3}% de dano." },
