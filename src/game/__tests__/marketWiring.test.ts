@@ -8,7 +8,10 @@ import { MARKET_TEXT } from '../../locales/market';
 // same things. See scripts/check-desktop.mjs for the real bundle check, run below.
 
 const root = path.resolve(__dirname, '../../..');
-const read = (p: string): string => readFileSync(path.resolve(root, p), 'utf8');
+// Line endings are normalized because git checks these files out with CRLF on Windows (core.autocrlf), while the
+// assertions below are written with LF: without this, a fresh clone fails on Windows and passes on CI, which is the
+// worst way for a test to be wrong. Nothing else about the content is touched.
+const read = (p: string): string => readFileSync(path.resolve(root, p), 'utf8').replace(/\r\n/g, '\n');
 const walk = (dir: string): string[] =>
   readdirSync(path.resolve(root, dir)).flatMap((n) => {
     const rel = `${dir}/${n}`;

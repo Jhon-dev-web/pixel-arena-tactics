@@ -6,7 +6,10 @@ import { describe, expect, it } from 'vitest';
 // proves it against a real database (docs/SEASON_RANKING.md and docs/PASS_SALES.md tell the owner to run it in the dev project first).
 
 const root = resolve(__dirname, '../../../..');
-const m7 = readFileSync(resolve(root, 'supabase/migrations/0007_review_fixes.sql'), 'utf8');
+// Line endings are normalized because git checks these files out with CRLF on Windows (core.autocrlf), while the
+// multi-line assertions below are written with LF: without this, a fresh clone fails on Windows and passes on CI.
+const read = (p: string): string => readFileSync(resolve(root, p), 'utf8').replace(/\r\n/g, '\n');
+const m7 = read('supabase/migrations/0007_review_fixes.sql');
 const code = m7
   .split('\n')
   .filter((l) => !l.trim().startsWith('--'))
@@ -38,7 +41,7 @@ describe('0007 B1: account age and characters.created_at', () => {
   });
 
   it('the client roles keep exactly the columns the save flow writes, and created_at / updated_at / id are not among them', () => {
-    const repo = readFileSync(resolve(root, 'src/game/saveRepository.ts'), 'utf8');
+    const repo = read('src/game/saveRepository.ts');
     const keysOf = (call: string): string[] => {
       const at = repo.indexOf(call);
       expect(at, call).toBeGreaterThan(-1);
@@ -65,7 +68,7 @@ describe('0007 B1: account age and characters.created_at', () => {
 
 describe('0007 B3: save size and the atomic snapshot slot', () => {
   it('the save_data ceiling is the same number as MAX_SAVE_UPLOAD_BYTES (288 KiB)', () => {
-    const upload = readFileSync(resolve(root, 'src/game/saveUpload.ts'), 'utf8');
+    const upload = read('src/game/saveUpload.ts');
     expect(/MAX_SAVE_UPLOAD_BYTES = 288 \* 1024;/.test(upload)).toBe(true);
     const m = /check \(pg_catalog\.pg_column_size\(save_data\) <= (\d+)\) not valid/.exec(code);
     expect(m).not.toBeNull();
