@@ -267,8 +267,16 @@ export function bossDamage(damage: number, bossReduction: number | undefined): n
   return bossReduction && bossReduction > 0 ? Math.max(1, Math.round(damage * (1 - Math.min(0.9, bossReduction)))) : damage;
 }
 
+// Crit chance is held at 100 % (it is a probability), and what a hero stacks past it is NOT thrown away: it comes back as crit multiplier. At 100 % one more point of chance would have been worth
+// (critMult - 1) points of damage; `share` of that is paid as multiplier instead (T.combat.critOverflowShare), so critMult' = critMult + share * excess * (critMult - 1). A hero at exactly 100 % (or below) gets nothing:
+// the result is the multiplier it already had. buildCombatStats is the only caller and feeds BOTH the fight and the CP (combatPowerCore reads the stats it returns), so neither can disagree with the other.
+export function critOverflow(rawChance: number, critMult: number, share: number = T.combat.critOverflowShare): { chance: number; mult: number } {
+  const excess = Number.isFinite(rawChance) ? Math.max(0, rawChance - 1) : 0;
+  return { chance: Math.min(1, rawChance), mult: critMult + share * excess * Math.max(0, critMult - 1) };
+}
+
 // Combat Power core (unscaled): geometric mean of expected DPS and effective HP, times a sustain multiplier.
-//   cc    = clamp(critChance, 0, 1)                         (CP-only protection; real combat is not touched)
+//   cc    = clamp(critChance, 0, 1)                         (the chance arrives already held at 1 by buildCombatStats, whose excess is in critMult; this clamp only protects against a tampered save)
 //   hits  = dmgBase * (1000 / heroMs) * (1 + cc * (critMult - 1))
 //   dps   = hits * (1 + reflectW * reflect / (1 + reduction)) + burnW * dmgBase * burnPct * (1000 / tick)     (reflect and burn only when the gear has them)
 //   ehp   = maxHp * (1 + reduction)

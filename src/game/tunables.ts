@@ -36,6 +36,8 @@ const T = DebugPanel.define({
     attackMin: { value: 10, min: 5, max: 80, step: 1, label: 'Attack damage (min)' },
     attackMax: { value: 15, min: 5, max: 100, step: 1, label: 'Attack damage (max)' },
     critMult: { value: 2, min: 1.5, max: 4, step: 0.1, label: 'Critical multiplier (×)' },
+    // Crit chance past 100 % (engine.ts holds the chance at 1): this share of what the excess would have been worth as chance turns into crit multiplier instead (derivedStats.ts critOverflow). 0 = the old clip, 1 = as if the chance were never capped.
+    critOverflowShare: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Crit chance over 100 % converted to crit damage (share)' },
     attackStamina: { value: 15, min: 0, max: 60, step: 1, label: 'Attack stamina cost', onChange: bump },
     shieldStamina: { value: 25, min: 0, max: 60, step: 1, label: 'Shield stamina cost', onChange: bump },
     shieldReduction: { value: 0.7, min: 0.1, max: 0.95, step: 0.05, label: 'Shield damage reduction' },

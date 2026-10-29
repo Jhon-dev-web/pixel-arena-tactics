@@ -43,7 +43,7 @@ import { DEFAULT_HUNTING_DEPTH, DEFAULT_HUNTING_ZONE, getHuntingDepthDef, getHun
 import { equipmentIndex } from './gearIndex';
 import { HuntCombatBuild, HuntLiveSnapshot, HuntPotionCfg, HuntPotionStock, HuntProgress, HuntTimeline, HuntZoneCombatCfg, simulateHuntingSession } from './huntCombat';
 import { HuntSession, PendingHuntReward, huntValidMs, relativeWindows, sanitizeHuntSession, sanitizePendingHuntReward, windowCovers, withPermanentPassWindow, LEGACY_PASS_CAP_HOURS } from './huntSession';
-import { applyDamageModifiers, BLESSED_DAMAGE_PCT, combatPowerCore, CombatModifiers, CombatStats, heroAttackIntervalMs, strengthAdjustedDamage, StrikeTally } from './derivedStats';
+import { applyDamageModifiers, BLESSED_DAMAGE_PCT, combatPowerCore, CombatModifiers, CombatStats, critOverflow, heroAttackIntervalMs, strengthAdjustedDamage, StrikeTally } from './derivedStats';
 import { DEFAULT_ORE_TIER, getOreTier, ORE_TIERS } from './ores';
 import { getWoodTier, WOOD_TIERS } from './woodcutting';
 import { CraftJob, sanitizeCraftJob } from './craftJobTypes';
@@ -415,16 +415,19 @@ export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatS
   // Hero skills (heroSkills.ts): every effect enters the Layer-2 numbers here and nowhere else.
   const fx = saveSkillEffects(save);
   const speedBonus = (relic?.attackSpeedBonus ?? 0) + set.attackSpeedBonus + extra.attackSpeedBonus;
+  const rawCrit = effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance;
+  const rawMult = T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus + set.critMultBonus;
+  const crit = critOverflow(rawCrit, rawMult);
   const stats: CombatStats = {
     // maxHpPct (affinity): a share of the whole pool, applied here because the totals are only known in this function. Every fight reads stats.maxHp, and playerMaxHp has no other caller in the game.
     maxHp: set.maxHpPct > 0 ? Math.round(playerMaxHp(save) * (1 + set.maxHpPct)) : playerMaxHp(save),
     // Boss relic damagePct (Warchief Totem): a share of the FINAL hit, applied after STR, before blessed / elixirs. Golpe Pesado is another such share; Mestre de Armas
     // grows the weapon term W before STR scales it.
     dmgBase: strengthAdjustedDamage(baseDmg + effectiveDamage(weapon, wLvl) * wFactor * wRarity * (1 + fx.weaponPct) + extra.damage, save.str) * (1 + (relic?.damagePct ?? 0)) * (1 + set.damagePct) * (1 + (parts.paragon === false ? 0 : paragonDamageBonus(paragonLevel(save.xp)))),
-    // Never above 100 %: a hero who stacks crit rate on every piece (substats, refine, ring, gloves, relic) is simply always critical. Unclamped, a total over 1 made the Hunting session fail
-    // sanitizeHuntSession (critChance is checked against 0..1) and the session was rebuilt from the live save WITHOUT its Pass cap (10 h became 6 h): Rodada 24, docs/BALANCE_CHANGES.md.
-    critChance: Math.min(1, effectiveCrit(weapon, wLvl) * wFactor + subs.critRate / 100 + extra.critChance + (relic?.critChance ?? 0) + fx.critChance),
-    critMult: T.combat.critMult + (relic?.critMultBonus ?? 0) + gems.critDamageBonus + subs.critDamage / 100 + extra.critMult + fx.critMultBonus + set.critMultBonus,
+    // The chance is never above 100 % (a probability; a total over 1 made the Hunting session fail sanitizeHuntSession, which checks critChance against 0..1, so the session was rebuilt from the live save
+    // WITHOUT its Pass cap, 10 h became 6 h: Rodada 24, docs/BALANCE_CHANGES.md). What goes past 100 % is not lost: derivedStats.ts critOverflow turns part of it into crit multiplier (computed just above).
+    critChance: crit.chance,
+    critMult: crit.mult,
     // AGI -> attack interval: hyperbolic curve with a 400 ms floor and sanitized input, see derivedStats.ts.
     // The relic's attackSpeedBonus (and the skills') enter the same derivation, so the 400 ms floor still caps them.
     heroMs: heroAttackIntervalMs(save.agi, speedBonus),
