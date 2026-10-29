@@ -2657,7 +2657,7 @@
     "name_invasion": "Invasão de Monstros",
     "desc_invasion": "Ondas que crescem. Cada sequência de lutas vencidas sem cair rende mais XP de Caça (+1% a cada 50, até +10%) e os inimigos ficam mais fortes a cada 100 vitórias seguidas. Uma derrota termina a onda.",
     "name_target_hunt": "Caçada ao Alvo",
-    "desc_target_hunt": "Um alvo raro aparece a cada 300 lutas vencidas: o dobro da vida e 1,5 vez o dano. Quem o derrota ganha +8% de XP de Caça por 1h30.",
+    "desc_target_hunt": "Um alvo raro aparece a cada 300 lutas vencidas: o dobro da vida e 1,5 vez o dano. Quem o derrota ganha +8% de XP de Caça por 1h30, e os bônus se acumulam até +15%.",
     "name_dungeon_race": "Corrida da Masmorra",
     "desc_dungeon_race": "Cada chefe da Masmorra derrotado paga 120 de Ouro e +8% de XP de Caça por 4 h.",
     "name_grand_delivery": "Grande Entrega",

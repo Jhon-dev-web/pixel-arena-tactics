@@ -2657,7 +2657,7 @@
     "name_invasion": "Monster Invasion",
     "desc_invasion": "Waves that grow. Every run of fights won without falling pays more Hunting XP (+1% per 50, up to +10%) and the enemies get stronger every 100 wins in a row. A defeat ends the wave.",
     "name_target_hunt": "Target Hunt",
-    "desc_target_hunt": "A rare target shows up every 300 fights won: twice the HP and 1.5 times the damage. Whoever beats it gets +8% Hunting XP for 1h30.",
+    "desc_target_hunt": "A rare target shows up every 300 fights won: twice the HP and 1.5 times the damage. Whoever beats it gets +8% Hunting XP for 1h30, and the bonuses stack up to +15%.",
     "name_dungeon_race": "Dungeon Race",
     "desc_dungeon_race": "Each Dungeon boss beaten pays 120 Gold and +8% Hunting XP for 4 h.",
     "name_grand_delivery": "Grand Delivery",
