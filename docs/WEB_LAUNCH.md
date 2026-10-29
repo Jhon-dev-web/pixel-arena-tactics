@@ -105,6 +105,31 @@ Por que a A: (1) a CSP do jogo (`vercel.json` da raiz, com `connect-src https://
 3. Preencher `config.playUrl`, remover o `noindex`, rodar `npm run build`, `npm run check` e `node scripts/editorial-check.mjs` em `portal/`, publicar o portal.
 4. Só então anunciar. Textos legais (seção 3) antes de qualquer cadastro aberto ao público.
 
+### 5.6 Publicar o jogo no ambiente de teste (e por que a URL descartável quebra tudo)
+
+O ambiente de teste tem um endereço fixo, `https://arena-idle-teste.vercel.app`, e **só ele** está autorizado nas funções. As funções do Supabase leem o segredo `APP_ORIGIN`, uma lista de origens exatas (`supabase/functions/_shared/http.ts`, `parseAllowedOrigins`); uma origem que não esteja nela não recebe o cabeçalho `Access-Control-Allow-Origin`.
+
+**Publicar são dois passos, sempre os dois:**
+
+1. `npx vercel deploy --yes`: cria a publicação e imprime a URL dela (`pixel-arena-tactics-<hash>-houran.vercel.app`). Essa URL é **descartável**: cada `deploy` cria uma nova, e nenhuma está em `APP_ORIGIN`.
+2. `npx vercel alias set <url-da-publicação> arena-idle-teste.vercel.app`: aponta o endereço fixo para a build nova.
+
+**Nunca entregue a URL descartável a ninguém.** Só `https://arena-idle-teste.vercel.app` funciona. O passo 2 não é opcional, e é o endereço do passo 2 que vai para o dono ou para quem for testar.
+
+**O sintoma de quem erra isso** é enganoso: o jogo diz **"Sem conexão com o servidor"** (`items.unreachable`) e o jogador fica sem poder gastar material negociável, com **todas** as funções saudáveis. O navegador faz o preflight (`OPTIONS`), recebe 204 **sem** `Access-Control-Allow-Origin`, e a chamada falha antes de sair da máquina; o jogo a trata como servidor fora do ar (`ItemServerUnreachable`). Tentar de novo não adianta, porque falha sempre pelo mesmo motivo. Antes de suspeitar das funções, do código ou da bandeira de conexão, confira a origem.
+
+**O comando que confirma** (cabeçalho na saída = liberado; nenhuma saída = bloqueado):
+
+```
+curl -s -i -X OPTIONS https://ncufhkoyphktvmhmivxa.supabase.co/functions/v1/mint-item -H "Origin: https://arena-idle-teste.vercel.app" | grep -i access-control-allow-origin
+```
+
+Para saber se uma URL descartável é a culpada, rode o mesmo comando trocando o `Origin` por ela: sem saída, esse é o problema.
+
+**O painel e o portal têm alias e segredos próprios.** As funções do painel (`admin-*`) leem `ADMIN_ORIGIN` e as da lista de espera do portal (`waitlist-*`) leem `PORTAL_ORIGIN`, cada um com a sua origem exata. Os alias fixos de teste, conferidos com o comando acima em 29/10/2026, são `https://arena-idle-admin-teste.vercel.app` e `https://arena-idle-portal-teste.vercel.app`. Repare que o alias **sem** o `-teste` (`arena-idle-admin.vercel.app`) é bloqueado: o nome parecido não basta, a origem tem de ser exata. A regra é a mesma: publicar, apontar o alias do respectivo projeto e entregar só o alias. Não reaproveite o `APP_ORIGIN` para eles nem o contrário.
+
+**A regra que vale junto: republique as funções quando `supabase/functions/_shared/**` muda.** Uma função publicada leva uma cópia do `_shared` do momento do deploy; mudar o `_shared` no repositório não muda o que está no ar. Confira contra o que está **publicado**, não contra `git status` nem contra o commit: `supabase functions list` mostra o `updated_at` de cada função, e ele tem de ser **posterior** à última mudança em `_shared` (o horário do último commit que tocou nele). Função mais velha que o `_shared` = republicar.
+
 ## 6. A página "Temporada" do portal (Passes adquiridos e rankings)
 
 O portal ganhou a página `/pt/season/` e `/en/season/` (item "Temporada" no menu): barra de progresso (sem números), botão "Comprar o Passe", ranking geral (top 50) e um ranking por profissão (Mineração, Lenhador, Horta). Ela lê os números **direto do Supabase, no navegador**, com a chave pública `anon` e `fetch` simples (sem SDK). Como o portal nunca recebe variáveis de ambiente, os dois valores ficam em `config`, em `portal/src/content.mjs`, e depois são commitados.
