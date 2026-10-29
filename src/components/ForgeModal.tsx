@@ -39,6 +39,7 @@ import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import { gearStatLines } from './gearStats';
 import ItemCompare from './ItemCompare';
+import ItemIdentity from './ItemIdentity';
 import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
 import MaterialIcon from './MaterialIcon';
@@ -296,6 +297,7 @@ export default function ForgeView({
           >
             <div className="fg-panel-body">
               <p className="fg-desc">{gearText(current.descKey)}</p>
+              <ItemIdentity item={current} />
               <div className="gear-stat-list">
                 {gearStatLines(current).map((l) => (
                   <span className={`gear-stat gear-stat-${l.kind}`} key={l.kind}>

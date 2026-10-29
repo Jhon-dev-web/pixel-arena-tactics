@@ -983,6 +983,12 @@
     "nextOne": "Falta 1 peça para o bônus de {step}: {effect}",
     "nextWeapon": "Com uma arma de {w} ({weapons}): {effect}"
   },
+  "itemIdentity": {
+    "armor": "Peso {weight} · {style}",
+    "weapon": "Arma: {line} · {style}",
+    "grants": "Concede {n} habilidades (Táticas)",
+    "grantsOne": "Concede 1 habilidade (Táticas)"
+  },
   "shop": {
     "title": "Loja",
     "potionHp": "Poção de Vida Menor",

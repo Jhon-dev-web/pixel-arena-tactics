@@ -983,6 +983,12 @@
     "nextOne": "1 more piece for the {step}-piece bonus: {effect}",
     "nextWeapon": "With a {w} weapon ({weapons}): {effect}"
   },
+  "itemIdentity": {
+    "armor": "{weight} weight · {style}",
+    "weapon": "Weapon: {line} · {style}",
+    "grants": "Grants {n} abilities (Tactics)",
+    "grantsOne": "Grants 1 ability (Tactics)"
+  },
   "shop": {
     "title": "Shop",
     "potionHp": "Lesser Health Potion",

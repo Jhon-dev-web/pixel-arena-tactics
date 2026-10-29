@@ -29,6 +29,7 @@ import ConsumableIcon from './ConsumableIcon';
 import { gearInstanceLabel, refineTag } from './gearLabel';
 import { gearStatLines } from './gearStats';
 import ItemCompare from './ItemCompare';
+import ItemIdentity from './ItemIdentity';
 import UniqueTag from './UniqueTag';
 import { AppearanceLine } from './HeroThumb';
 import { SetNote } from './SetBonus';
@@ -300,6 +301,7 @@ export default function InventoryPanel({
               {isEquipped && <span className="inv-qty">{t('inventory.equipped')}</span>}
             </div>
             <div className="inv-detail-desc">{gearText(selectedGear.descKey)}</div>
+            <ItemIdentity item={selectedGear} />
             <AppearanceLine item={selectedGear} />
             <div className="gear-stat-list">
               {gearStatLines(selectedGear, selectedLevel, selectedRarity).map((l) => (

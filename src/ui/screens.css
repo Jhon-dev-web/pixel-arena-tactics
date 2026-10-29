@@ -1921,6 +1921,7 @@ button.pg-slot:focus-visible {
   /* the craft panel inside the list: what it takes, the quantity and the button first; the item's description, stats and comparison after them (the row above already names it) */
   .fg-panel.ui-panel .fg-desc,
   .fg-panel.ui-panel .gear-stat-list,
+  .fg-panel.ui-panel .item-identity,
   .fg-panel.ui-panel .appearance-line,
   .fg-panel.ui-panel .set-lines,
   .fg-panel.ui-panel .item-compare {
@@ -1930,5 +1931,22 @@ button.pg-slot:focus-visible {
 .fg-where-hint {
   margin: 0;
   font-size: var(--fs-body);
+  color: var(--c-text-muted);
+}
+
+/* the identity strip under an item's description: the weight / style it counts for and the abilities it grants (components/ItemIdentity.tsx). Two lines at most, each under 33 characters, so it fits a 375 px phone */
+.item-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--c-text-dim);
+  background: var(--c-inset);
+  border-left: var(--bw-thin) solid var(--c-line-strong);
+  border-radius: var(--r-md);
+}
+.item-identity-abilities {
   color: var(--c-text-muted);
 }
