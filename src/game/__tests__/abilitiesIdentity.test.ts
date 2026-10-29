@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { hero } from '../../../scripts/sim/duel';
@@ -18,6 +18,14 @@ import { dungeonScenarios, huntScenarios } from './abilitiesGolden';
 const GOLDEN = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'abilitiesGolden.json'), 'utf8')) as { hunt: unknown; dungeon: unknown };
 
 describe('a hero with an EMPTY rotation fights exactly as before the abilities engine', () => {
+  // The fresh save in the golden file carries the DAY it was recorded on (dungeonSessionsDay, dailyDay: 'Wed Oct 28 2026'), so without a fixed clock this test fails every day after the recording (it did on
+  // 29/10, with no change to the game). The clock is pinned to the recording day; the golden bytes are untouched and every number is still compared exactly.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 28, 12, 0, 0));
+  });
+  afterEach(() => vi.useRealTimers());
+
   it('Hunting: every session of the golden file comes out identical (no rotation field at all)', () => {
     expect(huntScenarios()).toEqual(GOLDEN.hunt);
   });

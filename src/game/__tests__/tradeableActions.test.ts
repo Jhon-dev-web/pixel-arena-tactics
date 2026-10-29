@@ -7,7 +7,7 @@ import { setItemAuthority } from '../itemAuthority';
 import { ItemServerUnreachable } from '../itemServer';
 import { MaterialApi, createMaterialApi } from '../materialServer';
 import { flushBurns, planSync, resolveNextClaim, runSync } from '../tradeableActions';
-import { isTradeableReachable, setTradeableReachable } from '../tradeableStatus';
+import { TRADEABLE_RETRY_AFTER_MS, isTradeableReachable, setTradeableReachable } from '../tradeableStatus';
 import { gateTradeableUse, reconcileTradeable, tradeableOf, materialPrefs, withMaterialPrefs, listTradeable } from '../tradeableMaterials';
 import { USER_A, makeMaterialServer } from '../../../supabase/functions/_shared/__tests__/fakeMaterialStore';
 import { MATERIAL_BOUNDS } from '../../../supabase/functions/_shared/materials/bounds';
@@ -333,5 +333,63 @@ describe('preferences', () => {
     expect(materialPrefs(defaultSave())).toEqual({ useTradeableFirst: false, useAcked: false });
     const s = withMaterialPrefs(defaultSave(), { useTradeableFirst: true, useAcked: true });
     expect(normalizeSave(JSON.parse(JSON.stringify(s))).materialPrefs).toEqual({ useTradeableFirst: true, useAcked: true });
+  });
+});
+
+// A failure of the item server EXPIRES (tradeableStatus.ts). The gate refuses a spend and returns before anything calls the server, and the flag used to go back up only after a call that succeeded, so a
+// player whose server had been down once stayed locked out until he reloaded the page (the owner, 28/10). After TRADEABLE_RETRY_AFTER_MS the flag stops saying "down": that gives back the right to TRY
+// (the burn goes to the server and is answered there), never the right to act without an answer.
+describe('the unreachable flag expires', () => {
+  const gate = () => gateTradeableUse({ iron: 2 }, { server: true, reachable: isTradeableReachable(), acked: true, npc: false });
+  const claimed = () => applyHuntClaim(huntedSave(), huntedSave().pendingHuntReward!.id)!;
+
+  it('blocks after a failure, lets the next attempt through after the wait, and that attempt really calls the server', async () => {
+    const server = makeMaterialServer({ rng: lcg(5) });
+    const net = { down: true, calls: 0 };
+    const api = apiFor(server, net);
+    const save = claimed();
+    expect((await resolveNextClaim(api, () => save)).status).toBe('unreachable');
+    expect(gate()).toBe('blocked');
+    vi.setSystemTime(START + TRADEABLE_RETRY_AFTER_MS - 1);
+    expect(gate()).toBe('blocked');
+    vi.setSystemTime(START + TRADEABLE_RETRY_AFTER_MS);
+    expect(gate()).not.toBe('blocked');
+    // the server is back: the attempt is a real call and unlocks for good
+    net.down = false;
+    const before = net.calls;
+    expect((await resolveNextClaim(api, () => save)).status).toBe('applied');
+    expect(net.calls).toBe(before + 1);
+    vi.setSystemTime(START + 10 * TRADEABLE_RETRY_AFTER_MS);
+    expect(gate()).not.toBe('blocked');
+  });
+
+  it('a second failure blocks again and the wait starts over from that failure', async () => {
+    const server = makeMaterialServer({ rng: lcg(5) });
+    const net = { down: true, calls: 0 };
+    const api = apiFor(server, net);
+    const save = claimed();
+    await resolveNextClaim(api, () => save);
+    vi.setSystemTime(START + TRADEABLE_RETRY_AFTER_MS + 5_000);
+    expect(gate()).not.toBe('blocked');
+    expect((await resolveNextClaim(api, () => save)).status).toBe('unreachable');
+    expect(gate()).toBe('blocked');
+    vi.setSystemTime(START + 2 * TRADEABLE_RETRY_AFTER_MS + 4_999);
+    expect(gate()).toBe('blocked');
+    vi.setSystemTime(START + 2 * TRADEABLE_RETRY_AFTER_MS + 5_000);
+    expect(gate()).not.toBe('blocked');
+  });
+
+  it('a browser that reports itself offline blocks at once and does not wait for the clock', () => {
+    setTradeableReachable(false);
+    vi.setSystemTime(START + 10 * TRADEABLE_RETRY_AFTER_MS);
+    expect(gate()).not.toBe('blocked');
+    vi.stubGlobal('navigator', { onLine: false });
+    try {
+      expect(gate()).toBe('blocked');
+      setTradeableReachable(true);
+      expect(gate()).toBe('blocked');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
