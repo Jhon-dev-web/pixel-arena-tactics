@@ -40,7 +40,9 @@ A saída natural existe e é parte do desenho: classe é só equipamento, então
 
 **A tela de Táticas mostra só as imagens** das habilidades concedidas, e as informações aparecem ao tocar. Pedido textual dele. O nome ao lado vale para a **rotação** (quatro itens), não para a grade.
 
-**Habilidades vêm de todo o equipamento vestido**, não só das armas — ele corrigiu isso explicitamente depois de eu ter entendido errado.
+**Habilidades vêm de todo o equipamento vestido**, não só das armas — ele corrigiu isso explicitamente depois de eu ter entendido errado: *"não só da arma. E sim dos equipamentos em geral, o que tiver equipado"*.
+
+> **O código ainda não cumpre isto por inteiro** (achado em 29/10 por uma auditoria): `equippedAbilities` (`engine.ts`) lê **só a arma e o peitoral**. Elmo, luvas, botas, mão secundária e anel não concedem nada. Entregamos a leitura estreita ("não só da arma") e não a larga ("o que tiver equipado"). A proposta de redesenho que ele mandou em 29/10 pede exatamente a larga (elmo, peitoral e botas com habilidade própria), o que sugere que é isso que ele sempre quis. **Não trate como pendência fechada nem como decisão cumprida: está em aberto com ele.**
 
 **O eixo de cada classe** (a tabela de alvos está em [`CLASSES_E_EQUIPAMENTOS.md`](../CLASSES_E_EQUIPAMENTOS.md)): mago lidera a Caça, arqueiro lidera os chefes, guerreiro lidera a masmorra.
 
