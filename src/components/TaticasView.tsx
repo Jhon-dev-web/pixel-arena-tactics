@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { t } from '../locales';
 import T from '../game/tunables';
 import { SaveData, effectiveRotation, equippedAbilities } from '../game/engine';
-import { AbilityEffect, AbilityId, abilityDef, defaultRotation } from '../game/abilities';
+import { AbilityEffect, AbilityId, abilityCdScale, abilityDef, defaultRotation } from '../game/abilities';
+import { playerLevel } from '../game/engine';
 import { Button, Chip, Dialog, ItemFrame, PageHeader, Panel, Screen } from './ui';
 import PixelIcon from './PixelIcon';
 
@@ -44,6 +45,10 @@ export interface TaticasViewProps {
 
 export default function TaticasView({ save, onApply }: TaticasViewProps) {
   const slots = T.abilities.rotationSlots;
+  // The cooldown the player actually gets. Every cooldown is multiplied by abilityCdScale(level) in combat
+  // (abilities.ts, engine.ts), so showing the raw tunable told a level 40 hero "4.5s" for a 5.3s ability.
+  const cdScale = abilityCdScale(playerLevel(save.xp));
+  const shownCooldown = (ms: number): number => seconds(ms * cdScale);
   const granted = equippedAbilities(save);
   const committed = effectiveRotation(save);
   const committedKey = committed.join(',');
@@ -170,7 +175,7 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
             <span className="tc-row-name">{label}</span>
             <span className="tc-row-meta">
               <span>{origin(def.id)}</span>
-              <span>{t('tactics.cooldown', { s: seconds(def.cooldownMs) })}</span>
+              <span>{t('tactics.cooldown', { s: shownCooldown(def.cooldownMs) })}</span>
             </span>
           </span>
         </button>
@@ -241,7 +246,7 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
                       type="button"
                       className={`tc-tile tc-pick${at >= 0 ? ' used' : ''}${shownId === id ? ' selected' : ''}`}
                       aria-pressed={shownId === id}
-                      aria-label={t('tactics.grantedAria', { name: name(id), s: seconds(def.cooldownMs) })}
+                      aria-label={t('tactics.grantedAria', { name: name(id), s: shownCooldown(def.cooldownMs) })}
                       onClick={() => open(id)}
                     >
                       <img className="tc-icon" src={def.icon} alt="" />
@@ -299,7 +304,7 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
                 <img className="tc-detail-icon" src={shown.icon} alt="" />
               </ItemFrame>
               <div className="tc-card-chips">
-                <Chip>{t('tactics.cooldown', { s: seconds(shown.cooldownMs) })}</Chip>
+                <Chip>{t('tactics.cooldown', { s: shownCooldown(shown.cooldownMs) })}</Chip>
                 {shownAt >= 0 && <Chip tone="gold">{t('tactics.position', { n: shownAt + 1, m: slots })}</Chip>}
               </div>
             </div>

@@ -6,6 +6,7 @@ import TaticasView from '../../components/TaticasView';
 import { setLocale, t } from '../../locales';
 import { automaticRotation, hero } from '../../../scripts/sim/duel';
 import { defaultSave, effectiveRotation } from '../engine';
+import { AbilityId, abilityCdScale, abilityDef } from '../abilities';
 
 // The rotation on the Taticas screen is a list of rows, and the whole point of the rows is that the player moves an ability with ONE tap on its own row (before, he had to select it and then use the footer). The
 // grid of what the gear grants stays images only. Nothing here can show on a green screen if it breaks: a row that lost its name, its source or one of its two buttons still renders.
@@ -57,6 +58,31 @@ describe('Taticas with the starting gear (tier 0)', () => {
       expect(html).not.toContain('class="tc-grid"');
     }
     expect(t('tactics.noGear')).not.toBe('tactics.noGear');
+  });
+});
+
+// Found by a review on 29/10 reading the screen against the engine: every cooldown is multiplied by abilityCdScale(level) since the AGI scaling landed that morning, and the screen was still printing the raw
+// tunable. A level 40 hero read "4.5s" for an ability that fires every 5.3s. The number on the screen has to be the number the player gets, and this is the guard that keeps it that way.
+describe('Taticas: the cooldown shown is the one the hero gets', () => {
+  beforeEach(() => setLocale('pt'));
+  const label = (level: number, id: AbilityId): string => {
+    const save = automaticRotation(hero('2', 3, { level }));
+    const html = renderToStaticMarkup(h(TaticasView, { save, onApply: () => undefined }));
+    const row = html.split('class="tc-row"').slice(1)[effectiveRotation(save).indexOf(id)];
+    return row.slice(row.indexOf('tc-row-meta'));
+  };
+
+  it('a low level hero sees a LONGER cooldown than the raw tunable, and a level 100 hero sees the raw one', () => {
+    const id = effectiveRotation(automaticRotation(hero('2', 3, { level: 15 })))[0];
+    const raw = abilityDef(id)!.cooldownMs;
+    const seconds = (ms: number): number => Math.round((ms / 1000) * 10) / 10;
+
+    expect(abilityCdScale(15)).toBeGreaterThan(1);
+    expect(abilityCdScale(100)).toBe(1);
+    expect(label(15, id)).toContain(t('tactics.cooldown', { s: seconds(raw * abilityCdScale(15)) }));
+    expect(label(100, id)).toContain(t('tactics.cooldown', { s: seconds(raw) }));
+    // the bug this replaces: the two levels printed the same number
+    expect(label(15, id)).not.toBe(label(100, id));
   });
 });
 
