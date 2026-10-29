@@ -129,7 +129,17 @@ Veja `src/game/__tests__/abilitiesIdentity.test.ts`. **`abilitiesGolden.json` n�
 
 ---
 
-## 7. Medir no lugar errado faz o conserto parecer inútil
+## 7. Um teste de concorrência que pisca
+
+**Sintoma.** `supabase/functions/_shared/__tests__/progress.test.ts`, no caso "two parallel calls store exactly one snapshot", falhou uma vez e passou ao rodar de novo, sozinho (79 testes) e na suíte inteira. Observado em 29/10/2026.
+
+**O que fazer.** Não é motivo para parar o trabalho nem para mexer no teste. Mas **não o ignore em silêncio**: se acender de novo, é teste que depende de tempo e precisa ser prendido a um relógio, como foi feito em `abilitiesIdentity.test.ts`. Anote aqui a data da próxima vez, para a terceira ocorrência virar tarefa.
+
+Ocorrências: 29/10/2026.
+
+---
+
+## 8. Medir no lugar errado faz o conserto parecer inútil
 
 **Sintoma.** Você conserta a causa e o problema continua.
 
