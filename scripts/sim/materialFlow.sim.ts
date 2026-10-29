@@ -1,6 +1,6 @@
 // Material flow ledger (Rodada 9, docs/MATERIAL_FLOW.md). Run it with `npm run sim:flow`; it prints Markdown (Portuguese) and asserts nothing.
 //
-// It plays the progression simulation's scenario A (Guerreiro, 2 check-ins a day, non-owner) and the same player owning the Adventurer Pass for 21 days x
+// It plays the progression simulation's scenario A (Guerreiro, 2 check-ins a day, non-owner) and the same player owning the Adventurer Pass for SIM_DAYS days (21 by default) x
 // 20 seeds (SIM_SEEDS / SIM_DAYS override) and reads the per-material ledger the Player keeps (player.ts DayLedger.flow): what entered the inventory (hunting,
 // mining, woodcutting, garden), what the stations made, what each sink consumed (forge incl. the tanning / smelting chain, refine+, alchemy, stash upgrades,
 // delivery orders, refining dust, merchant, discard), what a claim left behind, and the stock (bag + stash) at the end of the day. Medians over the seeds.
@@ -15,6 +15,7 @@ import { slotsForQty } from '../../src/game/inventory';
 import { GEAR } from '../../src/game/gear';
 import { GEMS } from '../../src/game/gems';
 import { HUNTING_ZONES, HUNTING_DEPTHS } from '../../src/game/huntingZones';
+import { PLANTS } from '../../src/game/garden';
 import { RARITIES } from '../../src/game/rarity';
 import { MATERIALS, MaterialId } from '../../src/game/materials';
 import { REFINING_RECIPES } from '../../src/game/refining';
@@ -23,18 +24,25 @@ import { WOOD_TIERS } from '../../src/game/woodcutting';
 import T from '../../src/game/tunables';
 import { STAGE_FARM, huntRate, setHours, setNeed } from './setCost';
 import { mulberry32, withSeededRandom } from './driver';
-import { DISPOSAL_SINKS, DaySnapshot, FlowSink, Player, PlayerOptions, REAL_USE_SINKS } from './player';
+import { DISPOSAL_SINKS, DaySnapshot, FlowSink, Player, PlayerOptions, REAL_USE_SINKS, SIM_CLASSES, SimClass } from './player';
 
 const SEEDS = Number(process.env.SIM_SEEDS ?? 20);
 const DAYS = Number(process.env.SIM_DAYS ?? 21);
 const START = new Date(2026, 5, 1, 0, 0, 0).getTime();
-const STAGES = [1, 3, 7, 14, 21].filter((d) => d <= DAYS);
+// SIM_CLASS=warrior|archer|mage plays the whole report with that class (default: the warrior); an unknown name stops the run instead of silently playing the warrior.
+const CLS = process.env.SIM_CLASS as SimClass | undefined;
+if (CLS && !SIM_CLASSES.includes(CLS)) throw new Error(`SIM_CLASS=${CLS}: expected one of ${SIM_CLASSES.join(', ')}`);
+// The days the report reads (verdicts, windows): the usual milestones up to SIM_DAYS, then SIM_DAYS itself, so a 60-day run reads up to day 60 and not up to day 21.
+const MILESTONES = [1, 3, 7, 14, 21, 30, 45, 60, 90, 120, 180, 240, 365];
+const STAGES = [...MILESTONES.filter((d) => d <= DAYS), ...(MILESTONES.includes(DAYS) ? [] : [DAYS])];
+// The windows of the Éter / gems table: day 1 to the first milestone after it, then each stretch between two milestones (1-3, 4-7, 8-14, 15-21, ... for the default run).
+const WINDOWS: [number, number][] = STAGES.length > 1 ? STAGES.slice(1).map((d, i) => [i === 0 ? 1 : STAGES[i] + 1, d] as [number, number]) : [[1, DAYS]];
 
 type Run = DaySnapshot[];
 function playOne(seed: number, opts: PlayerOptions): Run {
   return withSeededRandom(seed * 7919 + 13, () => {
     const jitter = mulberry32(seed * 104729 + 7);
-    const player = new Player((t) => vi.setSystemTime(t), START, opts);
+    const player = new Player((t) => vi.setSystemTime(t), START, { ...(CLS ? { cls: CLS } : {}), ...opts });
     for (let d = 0; d < DAYS; d++) player.playDay(d, jitter);
     return player.snapshots;
   });
@@ -78,13 +86,16 @@ const share = (runs: Run[], m: string, day: number): number => {
   return i > 0 ? Math.min(1, cum(runs, real(m), day) / i) : NaN;
 };
 
-const HUNT_IDS: MaterialId[] = ['leather_scrap', 'demon_claw', 'demon_core', 'bone_fragment', 'concentrated_blood', 'corrupted_crystal', 'rift_shard', 'fiend_horn', 'abyssal_marrow', 'blood_heart'];
+// The Hunting materials are whatever the zones drop (huntingZones.ts HuntingDrop), in the order the zones list them: a hand-written list went stale the day the class materials (sinew, feather,
+// arcane dust) entered the zones, and they were printed as "horta" (garden). The label of a material is read from where the game gets it from, never from a list kept here.
+const HUNT_IDS: MaterialId[] = [...new Set(HUNTING_ZONES.flatMap((z) => z.drops.map((d) => d.material)))];
 const kindOf = (m: string): string => {
   if (HUNT_IDS.includes(m as MaterialId)) return 'caça';
   if (ORE_TIERS.some((o) => o.id === m)) return 'minério';
   if (WOOD_TIERS.some((w) => w.id === m)) return 'madeira';
+  if (PLANTS.some((p) => p.material === m)) return 'horta';
   if (REFINING_RECIPES.some((r) => r.output === m)) return 'estação';
-  return 'horta';
+  return 'outro';
 };
 const rarityNote = (m: string): string => {
   for (const z of HUNTING_ZONES) for (const d of z.drops) if (d.material === m) return d.rarity;
@@ -146,7 +157,7 @@ function zoneTable(runs: Run[]): string[] {
     const mats = zone ? zone.drops.map((d) => d.material) : [];
     rows.push([k, `${hours.length}/${runs.length}`, num(median(hours), 1), mats.map((m) => `${m} ${num(per(m), 1)}/h`).join(' · ')]);
   }
-  return table(['zona:profundidade', 'seeds que caçaram', 'horas (mediana, 21 dias)', 'unidades por hora (mediana)'], rows);
+  return table(['zona:profundidade', 'seeds que caçaram', `horas (mediana, ${DAYS} dias)`, 'unidades por hora (mediana)'], rows);
 }
 
 // Uniques delivered by the hunts, per zone: per 100 simulated days, per hunting hour and the expected days of a normal 6 h a day for ANY unique of the zone, for one specific
@@ -180,7 +191,7 @@ function uniqueTable(runs: Run[]): string[] {
 }
 
 function currencyTable(runs: Run[]): string[] {
-  const windows: [number, number][] = [[1, 3], [4, 7], [8, 14], [15, 21]].filter(([a]) => a <= DAYS) as [number, number][];
+  const windows = WINDOWS;
   const out: string[][] = [];
   const tags = (pick: (d: DaySnapshot) => Record<string, number>) => {
     const s = new Set<string>();
@@ -236,7 +247,7 @@ function setTables(): string[] {
   return out;
 }
 
-// Production per hour of every hunting material at the stage where it is farmed, next to what one full set needs: the analytic view for tiers the 21-day sim barely reaches.
+// Production per hour of every hunting material at the stage where it is farmed, next to what one full set needs: the analytic view for tiers a short sim barely reaches.
 function analyticTable(): string[] {
   const rows: string[][] = [];
   for (const m of HUNT_IDS as string[]) {
@@ -308,7 +319,7 @@ describe('material flow', () => {
       a.push(playOne(seed, {}));
       p.push(playOne(seed, { pass: true }));
     }
-    // Rodada 12: the same player A with the new sinks of the first 21 days (repair kit, prospector tonic, hunter lure + the bulk dust recipes are NOT driven: dust is disposal in this ledger)
+    // Rodada 12: the same player A with the new sinks of the days it plays (repair kit, prospector tonic, hunter lure + the bulk dust recipes are NOT driven: dust is disposal in this ledger)
     const sinks: Run[] = [];
     if (process.env.FLOW_SINKS !== '0') for (let seed = 1; seed <= SEEDS; seed++) sinks.push(playOne(seed, { sinks: true }));
     const out: string[] = [];
@@ -316,7 +327,7 @@ describe('material flow', () => {
     const resid: Record<string, number> = {};
     for (const r of a) for (const d of r) for (const [m, f] of Object.entries(d.ledger.flow)) resid[m] = Math.max(resid[m] ?? 0, Math.abs(f.residual));
     console.log('RESID', JSON.stringify(Object.fromEntries(Object.entries(resid).filter(([, v]) => v > 0))));
-    out.push(`Seeds: ${SEEDS} · dias: ${DAYS} · medianas entre seeds · resíduo máximo do livro-razão (estoque que o livro não explica): ${num(residual, 1)} unidades.`, '');
+    out.push(`Classe: ${CLS ?? 'warrior'} · Seeds: ${SEEDS} · dias: ${DAYS} · medianas entre seeds · resíduo máximo do livro-razão (estoque que o livro não explica): ${num(residual, 1)} unidades.`, '');
     const hunt = HUNT_IDS as string[];
     const others = (runs: Run[]) => activeIds(runs).filter((m) => !hunt.includes(m));
     out.push('## Herói novo', '', ...freshReport());

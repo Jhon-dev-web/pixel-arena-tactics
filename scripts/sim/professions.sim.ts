@@ -4,7 +4,7 @@
 import { describe, it } from 'vitest';
 import { GEAR, upgradeCost } from '../../src/game/gear';
 import { baseGoldValue } from '../../src/game/economy';
-import { PLANTS, plantHarvestXp, GARDEN_PLOT_UNLOCK_LEVELS, GARDEN_START_PLOTS } from '../../src/game/garden';
+import { PLANTS, plantHarvestXp, GARDEN_PLOT_UNLOCK_LEVELS, GARDEN_START_PLOTS, unlockedGardenPlots } from '../../src/game/garden';
 import { applyFertilizer, applyHarvest, applyPlant } from '../../src/game/gardenActions';
 import { computeGardenSlotStatus, defaultSave, SaveData } from '../../src/game/engine';
 import { MATERIALS, MaterialId } from '../../src/game/materials';
@@ -75,15 +75,17 @@ function gardenDays(level: number, plots: number, visitGapH: number): number {
 }
 
 // Garden output of a player who visits every `gapH` hours for `days` days, with or without Fertilizer on every planting, for the best single plant at
-// Gardening `level`: units harvested and plot-hours harvested (= Gardening XP / 5).
-function gardenOutput(level: number, gapH: number, days: number, fertilize: boolean): { plant: string; units: number; plotHours: number } {
-  let best = { plant: '-', units: 0, plotHours: 0 };
+// Gardening `level`: units harvested, plot-hours harvested (= Gardening XP / 5) and the Fertilizers actually spent.
+// The bag is emptied after every harvest and the Fertilizer is handed over one unit at a time: the audit measures the plots, not the inventory. (It used to stock 9999 Fertilizers in the bag
+// up front; they filled the bag's slots, every harvest was refused as "no room" and the whole table printed zeros.)
+function gardenOutput(level: number, gapH: number, days: number, fertilize: boolean): { plant: string; units: number; plotHours: number; fertilizers: number } {
+  let best = { plant: '-', units: 0, plotHours: 0, fertilizers: 0 };
   for (const p of PLANTS.filter((x) => x.requiredLevel <= level)) {
     let s: SaveData = { ...defaultSave(), skillXp: { mining: 0, woodcutting: 0, gardening: skillXpToReachLevel(level, 'gardening') } };
-    s = { ...s, consumables: { ...s.consumables, fertilizer: 9999 } };
     const t0 = new Date(2026, 5, 1, 8, 0, 0).getTime();
     let units = 0;
     let plotHours = 0;
+    let fertilizers = 0;
     for (let step = 0; step * gapH < days * 24; step++) {
       const at = t0 + step * gapH * HOUR;
       const ready = s.gardenSlots.map((_, i) => i).filter((i) => computeGardenSlotStatus(s, at, i).ready);
@@ -93,13 +95,20 @@ function gardenOutput(level: number, gapH: number, days: number, fertilize: bool
           units += h.qty;
           plotHours += PLANTS.find((x) => x.id === h.plantId)!.durationMs / HOUR;
         }
-        s = res.save;
+        s = { ...res.save, materials: Object.fromEntries(Object.keys(res.save.materials).map((m) => [m, 0])) as SaveData['materials'] }; // what was harvested is counted above; the bag starts empty again
       }
       const planted = applyPlant(s, p.id, s.gardenSlots.map((_, i) => i), at);
       if (planted) s = planted;
-      if (fertilize) for (let i = 0; i < s.gardenSlots.length; i++) s = applyFertilizer(s, i, at) ?? s;
+      if (fertilize) {
+        for (let i = 0; i < s.gardenSlots.length; i++) {
+          const used = applyFertilizer({ ...s, consumables: { ...s.consumables, fertilizer: 1 } }, i, at);
+          if (!used) continue;
+          s = { ...used, consumables: { ...used.consumables, fertilizer: 0 } };
+          fertilizers++;
+        }
+      }
     }
-    if (plotHours > best.plotHours) best = { plant: p.id, units, plotHours };
+    if (plotHours > best.plotHours) best = { plant: p.id, units, plotHours, fertilizers };
   }
   return best;
 }
@@ -204,14 +213,16 @@ describe('professions audit', () => {
     out.push('');
     out.push(...table(['Nível', 'XP acumulado', `Dias com ${GARDEN_START_PLOTS} canteiros (visitas de 12 h)`, `Dias com ${GARDEN_START_PLOTS + 1}`, `Dias com ${GARDEN_START_PLOTS + GARDEN_PLOT_UNLOCK_LEVELS.length}`], [10, 20, 30, 40, 45, 50, 60, 75].map((lv) => [String(lv), f(skillXpToReachLevel(lv, 'gardening'), 0), String(gardenDays(lv, GARDEN_START_PLOTS, 12)), String(gardenDays(lv, GARDEN_START_PLOTS + 1, 12)), String(gardenDays(lv, GARDEN_START_PLOTS + 2, 12))])));
     out.push('');
-    out.push('Adubo em TODO plantio (14 dias, Jardinagem 45 = 5 canteiros, a melhor planta única para o padrão de visita):');
+    const fertLevel = 45;
+    const fertDays = 14;
+    out.push(`Adubo em TODO plantio (${fertDays} dias, Jardinagem ${fertLevel} = ${unlockedGardenPlots(fertLevel)} canteiros, a melhor planta única para o padrão de visita; os adubos são contados, não estimados):`);
     out.push('');
     const fertRows = [24, 12, 8, 6, 4].map((gap) => {
-      const a = gardenOutput(45, gap, 14, false);
-      const b = gardenOutput(45, gap, 14, true);
-      return [`a cada ${gap} h`, `${a.plant}: ${f(a.plotHours / 14, 1)} canteiro-h/dia`, `${b.plant}: ${f(b.plotHours / 14, 1)} canteiro-h/dia`, `+${f((b.plotHours / a.plotHours - 1) * 100, 0)}%`, f(b.plotHours / 14 / 5 / 4, 1)];
+      const a = gardenOutput(fertLevel, gap, fertDays, false);
+      const b = gardenOutput(fertLevel, gap, fertDays, true);
+      return [`a cada ${gap} h`, `${a.plant}: ${f(a.plotHours / fertDays, 1)} canteiro-h/dia`, `${b.plant}: ${f(b.plotHours / fertDays, 1)} canteiro-h/dia`, `+${f((b.plotHours / a.plotHours - 1) * 100, 0)}%`, f(b.fertilizers / fertDays, 1)];
     });
-    out.push(...table(['Visitas', 'Sem Adubo', 'Com Adubo', 'Diferença de produção', 'Adubos por dia (aprox.)'], fertRows));
+    out.push(...table(['Visitas', 'Sem Adubo', 'Com Adubo', 'Diferença de produção', 'Adubos gastos por dia (contados)'], fertRows));
     out.push('');
     console.log('\n' + out.join('\n') + '\n');
   });

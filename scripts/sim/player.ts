@@ -12,11 +12,13 @@ import {
   resolveEquipped,
   GearInstance,
   createGearInstance,
+  equippedSetItems,
 } from '../../src/game/gearInstances';
 import { Rarity, rollSubstats } from '../../src/game/rarity';
 import { applyProfessionPick } from '../../src/game/leagueEvents';
 import { computeCP, effectiveRepairCost, playerLevel, SaveData, defaultSave } from '../../src/game/engine';
-import { BASE_MAX_REFINE, GEAR, getGear, INSTANCED_SLOTS, maxRefineFor, upgradeCost } from '../../src/game/gear';
+import { BASE_MAX_REFINE, GEAR, GearItem, getGear, INSTANCED_SLOTS, maxRefineFor, upgradeCost, weaponWeight } from '../../src/game/gear';
+import { affinityBonuses, AffinityBonuses, AffinityClass, AffinityWeight, CLASS_OF_WEIGHT } from '../../src/game/affinity';
 import { applyLapidar, canAffordLapidar, getLapidarCost, lapidarBlock } from '../../src/game/lapidar';
 import { GEMS, GemId, socketsForTier } from '../../src/game/gems';
 import { MaterialId, MATERIALS } from '../../src/game/materials';
@@ -285,11 +287,12 @@ export function planFor(s: SaveData, tpl: string, bagOnly = false): Plan {
   return plan;
 }
 
-function bestTier(s: SaveData, slot: string): number {
+// The best tier owned in a slot; with a `line`, only the pieces of that class line count (a plate unique that dropped for a mage is not his tier-3 armor: it must not stop him from forging the cloth one).
+function bestTier(s: SaveData, slot: string, line?: SimLine): number {
   let best = 0;
   for (const i of Object.values(s.gearInstances)) {
     const it = getGear(i.templateId);
-    if (it?.slot === slot) best = Math.max(best, it.tier ?? 0);
+    if (it?.slot === slot && (!line || inSimLine(it, line))) best = Math.max(best, it.tier ?? 0);
   }
   return best;
 }
@@ -300,13 +303,30 @@ export function equippedTier(s: SaveData, slot: 'weapon' | 'armor'): number {
 
 // WHICH LINE THE SIMULATED PLAYER FORGES (phase 8, docs/CLASSES_E_EQUIPAMENTOS.md 5.1.5). Before the classes reform a slot had ONE piece per tier, so "the cheapest piece of the next tier" was unambiguous. Since phases 2-3 the
 // armor slots have three (plate, leather, cloth, all the same price) and the weapon slot six lines, and the policy below breaks the tie by CP: it ended up buying leather bracers it could not make (no sinew in its Hunting plan)
-// and stalled (the Pass owner's day-60 floor fell from 90 to 80). The sim player is the WARRIOR the game balances its progression around, so by default he forges only the plate line (sword and axe) and the ring; SIM_LINE=leather|cloth
-// asks for an archer / a mage instead (the policy still has no fibre planting, so a mage stalls: the debt of 5.1.5).
-const SIM_LINE: 'plate' | 'leather' | 'cloth' = (process.env.SIM_LINE as 'plate' | 'leather' | 'cloth' | undefined) ?? 'plate';
-function inSimLine(g: { slot: string; line?: string; weight?: string }): boolean {
+// and stalled (the Pass owner's day-60 floor fell from 90 to 80). So the player commits to ONE class: he forges only the five armor pieces of its weight, the weapon of the same weight and the ring (shared by every class), which is
+// exactly what switches the class bonus on (affinity.ts classActive). The class is the caller's choice (PlayerOptions.cls); the default is the WARRIOR the game balances its progression around, or what SIM_LINE=leather|cloth says
+// (kept for the shell scripts that set it before the option existed).
+export type SimClass = AffinityClass;
+export type SimWeapon = 'sword' | 'axe' | 'bow' | 'crossbow' | 'staff' | 'scepter';
+export const SIM_CLASSES: SimClass[] = ['warrior', 'archer', 'mage'];
+export interface SimLine {
+  weight: AffinityWeight;
+  weapon?: SimWeapon; // one weapon line of that weight (the sword or the axe, ...); undefined = whichever of the weight the policy prefers (price, then CP)
+}
+const WEIGHT_OF_CLASS = Object.fromEntries(Object.entries(CLASS_OF_WEIGHT).map(([w, c]) => [c, w])) as Record<AffinityClass, AffinityWeight>;
+const ENV_WEIGHT = process.env.SIM_LINE as AffinityWeight | undefined;
+export function simLine(cls?: SimClass, weapon?: SimWeapon): SimLine {
+  const weight = cls ? WEIGHT_OF_CLASS[cls] : ENV_WEIGHT && ENV_WEIGHT in CLASS_OF_WEIGHT ? ENV_WEIGHT : 'plate';
+  if (weapon && (weaponWeightOf(weapon) ?? 'plate') !== weight) throw new Error(`weapon ${weapon} does not belong to the ${CLASS_OF_WEIGHT[weight]} class`);
+  return { weight, ...(weapon ? { weapon } : {}) };
+}
+// The sword is the ABSENCE of a line (gear.ts), the axe a line of the plate weight.
+const weaponWeightOf = (w: SimWeapon): AffinityWeight | undefined => (w === 'sword' || w === 'axe' ? 'plate' : w === 'bow' || w === 'crossbow' ? 'leather' : 'cloth');
+const DEFAULT_LINE: SimLine = simLine();
+function inSimLine(g: GearItem, line: SimLine): boolean {
   if (g.slot === 'ring') return true; // the ring has one piece per tier, shared by every class
-  const line = g.slot === 'weapon' ? (g.line === 'bow' || g.line === 'crossbow' ? 'leather' : g.line === 'staff' || g.line === 'scepter' ? 'cloth' : 'plate') : (g.weight ?? 'plate');
-  return line === SIM_LINE;
+  if (g.slot === 'weapon') return (weaponWeight(g) ?? 'plate') === line.weight && (!line.weapon || (g.line ?? 'sword') === line.weapon);
+  return (g.weight ?? 'plate') === line.weight;
 }
 
 // Crafting priority inside one tier: weapon > armor > gloves > helmet > shield > boots > ring (Rodada 3, shield added in Rodada 6). The extra slots only have
@@ -315,11 +335,11 @@ export const CRAFT_PRIORITY = ['weapon', 'armor', 'gloves', 'helmet', 'shield', 
 
 // The next thing worth crafting: the lowest tier first (slot priority on a tie), skipping a slot that is blocked on something
 // no activity can fetch when another one is not.
-export function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
+export function chooseTarget(s: SaveData, bagOnly = false, line: SimLine = DEFAULT_LINE): Plan | null {
   const plans: Plan[] = [];
   for (const slot of CRAFT_PRIORITY) {
-    const owned = bestTier(s, slot);
-    const cands = GEAR.filter((g) => g.slot === slot && g.recipe && (g.tier ?? 0) > owned && inSimLine(g));
+    const owned = bestTier(s, slot, line);
+    const cands = GEAR.filter((g) => g.slot === slot && g.recipe && (g.tier ?? 0) > owned && inSimLine(g, line));
     if (cands.length === 0) continue;
     const minTier = Math.min(...cands.map((g) => g.tier ?? 0));
     const atTier = cands.filter((g) => (g.tier ?? 0) === minTier);
@@ -335,7 +355,7 @@ export function chooseTarget(s: SaveData, bagOnly = false): Plan | null {
   // whole tier-2 set (RELIC_AFTER_TIER), so it never delays the weapon / armor of a tier but does not wait for tier 4 either.
   const relic = chooseRelic(s, bagOnly);
   if (relic) plans.push(relic);
-  const owned = (p: Plan) => (p.slot === 'relic' ? RELIC_AFTER_TIER : bestTier(s, p.slot));
+  const owned = (p: Plan) => (p.slot === 'relic' ? RELIC_AFTER_TIER : bestTier(s, p.slot, line));
   plans.sort((a, b) => Number(a.blocked) - Number(b.blocked) || owned(a) - owned(b) || priority(a) - priority(b));
   return plans[0] ?? null;
 }
@@ -388,6 +408,10 @@ const CHECKIN_HOURS = [9, 21]; // two visits a day, 12 hours apart
 const JITTER_MS = 90 * 60 * 1000;
 
 export interface PlayerOptions {
+  // The class the player commits to (see SimLine): warrior = plate set + sword or axe, archer = leather set + bow or crossbow, mage = cloth set + staff or scepter. `weapon` pins one weapon line of the class.
+  // Default: the warrior (or SIM_LINE, see simLine). `Player.affinity().classActive` says whether the class bonus is really on.
+  cls?: SimClass;
+  weapon?: SimWeapon;
   // Diagnostic only (not a scenario of the report): never accept a delivery order, to isolate how much of the XP / gold comes from Hunting
   // and the Dungeon alone.
   noOrders?: boolean;
@@ -477,6 +501,10 @@ export class Player {
   private fake: (t: number) => void;
   private visit: 'first' | 'second' = 'first';
   private opts: PlayerOptions;
+  // The class line this player forges (opts.cls / opts.weapon) and the Hunting materials his plan has to keep an eye on: the ten the warrior's chain uses plus the class materials of his line
+  // (beast_sinew / feather for leather, arcane_dust for cloth) that the Hunting zones drop. For the warrior the second part is empty, so his policy is exactly the one it always was.
+  readonly line: SimLine;
+  private huntMats: MaterialId[];
   trace: string[] = []; // one line per decision, for debugging a policy
   // Rodada 25: pieces of `opts.schedule` delivered so far (index in the list) and what was delivered when (day 0-based, hero level at the moment).
   private delivered = new Set<number>();
@@ -495,11 +523,21 @@ export class Player {
 
   constructor(setClock: (t: number) => void, startAt: number, opts: PlayerOptions = {}) {
     this.opts = opts;
+    this.line = simLine(opts.cls, opts.weapon);
+    const huntDrops = new Set<string>(HUNTING_ZONES.flatMap((z) => z.drops.map((d) => d.material as string)));
+    const lineMats = new Set<string>();
+    for (const g of GEAR) if (g.recipe && g.slot !== 'ring' && inSimLine(g, this.line)) for (const m of Object.keys(g.recipe.materials ?? {})) if (huntDrops.has(m) && !HUNT_MATS.includes(m as MaterialId)) lineMats.add(m);
+    this.huntMats = [...HUNT_MATS, ...(lineMats as Set<MaterialId>)];
     this.fake = setClock;
     this.now = startAt;
     this.fake(startAt);
     this.S = defaultSave();
     this.S = { ...this.S, lastMiningClaim: startAt, lastWoodcuttingClaim: startAt, huntingOfflineStart: startAt, hasBattlePass: !!opts.pass };
+  }
+
+  // The class affinity the hero wears right now (the game's own affinityBonuses over the worn pieces): `classActive` is true only with five pieces of the weight AND the weapon of the same weight.
+  affinity(): AffinityBonuses {
+    return affinityBonuses(equippedSetItems(this.S));
   }
 
   // ---- material flow ledger (hunting materials only; bag + stash)
@@ -585,7 +623,7 @@ export class Player {
 
   // What stands between the hero and his next step, in words: the gear craft (level gate, Éter / gems, materials, Gold, or ready) and the Dungeon (the CP wall).
   private blockers(): { gear: string; dungeon: string } {
-    const t = chooseTarget(this.S);
+    const t = chooseTarget(this.S, false, this.line);
     let gear = 'tudo forjado';
     if (t) {
       const lvl = playerLevel(this.S.xp);
@@ -633,7 +671,7 @@ export class Player {
       shards: this.S.shards,
       skills: { mining: skillLevel(this.S.skillXp.mining, 'mining'), woodcutting: skillLevel(this.S.skillXp.woodcutting, 'woodcutting'), gardening: skillLevel(this.S.skillXp.gardening, 'gardening') },
       skillXp: { mining: this.S.skillXp.mining, woodcutting: this.S.skillXp.woodcutting, gardening: this.S.skillXp.gardening },
-      tiers: Object.fromEntries(CRAFT_PRIORITY.map((slot) => [slot, bestTier(this.S, slot)])),
+      tiers: Object.fromEntries(CRAFT_PRIORITY.map((slot) => [slot, bestTier(this.S, slot, this.line)])),
       stashLevel: this.S.stash.level,
       stashSlots: stashSlotsUsed(this.S),
       ledger: this.ledger,
@@ -720,7 +758,7 @@ export class Player {
   private buyNeeds() {
     const o = this.opts.freeNeeds;
     if (!o?.gold) return;
-    const t = chooseTarget(this.S);
+    const t = chooseTarget(this.S, false, this.line);
     if (!t || t.impossible || t.blocked || Object.keys(t.deficit).length > 0 || this.S.gold >= t.gold) return;
     const lack = Math.ceil(t.gold - this.S.gold);
     this.S = { ...this.S, gold: this.S.gold + lack };
@@ -847,7 +885,7 @@ export class Player {
     const add = (m: Mats) => {
       for (const [k, v] of Object.entries(m) as [MaterialId, number][]) out[k] = (out[k] ?? 0) + v;
     };
-    const t = chooseTarget(this.S);
+    const t = chooseTarget(this.S, false, this.line);
     if (t) add(t.needs);
     const sp = this.stashPlan();
     if (sp) add(sp.needs);
@@ -933,7 +971,7 @@ export class Player {
     const free = () => bagFreeSlots(this.S, this.now);
     if (free() >= want) return;
     const chain = new Set<string>();
-    const t = chooseTarget(this.S);
+    const t = chooseTarget(this.S, false, this.line);
     if (t) {
       for (const tpl of t.crafts) for (const sub of Object.keys(getGear(tpl).recipe?.items ?? {})) chain.add(sub);
     }
@@ -1022,7 +1060,7 @@ export class Player {
     if (!q || !sp || sp.blocked || Object.keys(sp.deficit).length > 0) return;
     // the first two upgrades are cheap and ignore the gold set aside for the next craft; later ones respect it
     if (this.S.gold - sp.gold < (this.S.stash.level < 2 ? 0 : this.goldReserve())) return;
-    const t = chooseTarget(this.S);
+    const t = chooseTarget(this.S, false, this.line);
     // the craft keeps what it needs: the upgrade only takes units beyond that
     for (const [m, n] of Object.entries(sp.needs) as [MaterialId, number][]) if ((t?.needs[m] ?? 0) > 0 && owned(this.S, m, false) - n < (t?.needs[m] ?? 0)) return;
     this.makeRoom(2);
@@ -1113,7 +1151,7 @@ export class Player {
     }
     const lvl = skillLevel(this.S.skillXp.gardening, 'gardening');
     const unlocked = PLANTS.filter((p) => p.requiredLevel <= lvl);
-    const deficit: Mats = { ...(chooseTarget(this.S)?.deficit ?? {}) };
+    const deficit: Mats = { ...(chooseTarget(this.S, false, this.line)?.deficit ?? {}) };
     // plants the tonic recipes need (the policy keeps TONIC_STOCK of each in the bag), asked for after the gear
     for (const id of [...COMBAT_TONICS, 'gatherer_brew'] as const) {
       const rec = POTION_RECIPES.find((r) => r.id === id)!;
@@ -1209,7 +1247,7 @@ export class Player {
       const rec = POTION_RECIPES.find((r) => r.id === id)!;
       if (this.S.gold - rec.cost < reserve) continue;
       // plants the next craft is waiting for are not spent on a tonic
-      const t = chooseTarget(this.S);
+      const t = chooseTarget(this.S, false, this.line);
       if (t && Object.entries(rec.input).some(([m, q]) => (t.deficit[m as MaterialId] ?? 0) > 0 && (this.S.materials[m as MaterialId] ?? 0) - (q as number) < (t.deficit[m as MaterialId] ?? 0))) continue;
       const flowBefore = this.flowMark();
       const next = craftPotion(this.S, id);
@@ -1233,7 +1271,7 @@ export class Player {
       const rec = this.knowledgeRecipe();
       if (!rec || this.S.gold - rec.cost < reserve) return;
       // ingredients the next gear craft is waiting for are not spent on an elixir
-      const t = chooseTarget(this.S);
+      const t = chooseTarget(this.S, false, this.line);
       if (t && Object.entries(rec.input).some(([m, q]) => (t.deficit[m as MaterialId] ?? 0) > 0 && (this.S.materials[m as MaterialId] ?? 0) - (q as number) < (t.deficit[m as MaterialId] ?? 0))) return;
       const flowBefore = this.flowMark();
       const next = craftPotion(this.S, potionRecipeKey(rec));
@@ -1260,15 +1298,15 @@ export class Player {
   // Gold that is not up for grabs (potions, refining, bag): the price of the next craft, saved up from the start (not while
   // that craft is blocked on something gold cannot fix - level, gems, shards).
   private goldReserve(): number {
-    const target = chooseTarget(this.S);
+    const target = chooseTarget(this.S, false, this.line);
     return target && !target.blocked ? target.gold : 0;
   }
 
   private tryCraft(): boolean {
     // the stash is storage: what the craft needs comes over to the bag first, and only the bag counts from here on
-    const wanted = chooseTarget(this.S);
+    const wanted = chooseTarget(this.S, false, this.line);
     if (wanted && !wanted.blocked && this.S.gold >= wanted.gold) this.bring(wanted.needs);
-    const target = chooseTarget(this.S, true);
+    const target = chooseTarget(this.S, true, this.line);
     if (!target || target.blocked || Object.keys(target.deficit).length > 0 || this.S.gold < target.gold) return false;
     // refining stations first, then the crafts in tier order
     let s = this.S;
@@ -1316,7 +1354,9 @@ export class Player {
       const tierOf = (id: string) => getGear(id)?.tier ?? 0;
       let bestTier = this.opts.long ? tierOf(resolveEquipped(this.S)[slot]?.item?.id ?? '') : 0;
       for (const i of listGearInstances(this.S)) {
-        if (getGear(i.templateId)?.slot !== slot || isInstanceEquipped(this.S, i.id)) continue;
+        const cand = getGear(i.templateId);
+        // A committed class wears only the pieces of its line (a plate unique that dropped for the mage would switch his class bonus off), whatever the CP of the other piece says.
+        if (cand?.slot !== slot || isInstanceEquipped(this.S, i.id) || !inSimLine(cand, this.line)) continue;
         const trial = applyEquipInstance(this.S, i.id);
         if (!trial) continue;
         const cp = computeCP(trial);
@@ -1347,7 +1387,7 @@ export class Player {
 
   // App.tsx buyGem (501-508): a gem costs shards. Buys what the next craft is missing.
   private buyGemsForTarget() {
-    const target = chooseTarget(this.S);
+    const target = chooseTarget(this.S, false, this.line);
     if (!target) return;
     for (const [g, need] of Object.entries(target.gems) as [GemId, number][]) {
       const def = GEMS.find((x) => x.id === g)!;
@@ -1360,7 +1400,7 @@ export class Player {
   }
 
   private socketSpareGems() {
-    const target = chooseTarget(this.S);
+    const target = chooseTarget(this.S, false, this.line);
     const keep = target?.gems ?? {};
     for (const slot of ['weapon', 'armor'] as const) {
       const eq = resolveEquipped(this.S)[slot];
@@ -1519,7 +1559,7 @@ export class Player {
   }
 
   private reservedUnits(m: MaterialId): number {
-    const t = chooseTarget(this.S);
+    const t = chooseTarget(this.S, false, this.line);
     if (!t) return 0;
     return Math.min(this.S.materials[m] ?? 0, (t.deficit[m] ?? 0) + (m === 'leather_scrap' ? 9 : 0));
   }
@@ -1588,7 +1628,7 @@ export class Player {
     if (this.opts.noOrders) return;
     this.S = ensureDeliveryOffers(this.S, this.now, Math.random, !!(this.opts.pass || this.opts.deliveriesOnly));
     if (this.S.deliveries.active) return;
-    const target = chooseTarget(this.S);
+    const target = chooseTarget(this.S, false, this.line);
     const reserved: Mats = {};
     if (target) {
       // everything the next craft consumes (recipe + refining inputs) stays out of the cargo
@@ -1638,7 +1678,7 @@ export class Player {
   private startActivity() {
     if (this.opts.greedy && this.startBestXp()) return;
     if ((this.opts.specialist === 'mining' || this.opts.specialist === 'woodcutting') && this.startSpecialistGathering(this.opts.specialist)) return;
-    const target = chooseTarget(this.S);
+    const target = chooseTarget(this.S, false, this.line);
     const deficit: Mats = { ...(target?.deficit ?? {}) };
     // refine materials count as demand once the craft itself is covered
     if (!target || Object.keys(deficit).length === 0) {
@@ -1701,7 +1741,7 @@ export class Player {
     const mine = hoursFor('mining', ORE_IDS, ORE_TIERS);
     const wood = hoursFor('woodcutting', WOOD_IDS, WOOD_TIERS);
     let huntH = 0;
-    for (const m of HUNT_MATS) {
+    for (const m of this.huntMats) {
       const short = deficit[m] ?? 0;
       if (short > 0) huntH = Math.max(huntH, short / ((this.huntUnits[m] ?? 1) / this.huntHours));
     }
@@ -1737,7 +1777,7 @@ export class Player {
     }
     // a hunt that is about to start must not overflow if a check-in can prevent it: make room for what it usually brings back
     const perHour: Mats = {};
-    for (const m of HUNT_MATS) perHour[m] = Math.floor(((this.huntUnits[m] ?? 0) / this.huntHours) * 6);
+    for (const m of this.huntMats) perHour[m] = Math.floor(((this.huntUnits[m] ?? 0) / this.huntHours) * 6);
     this.makeRoom(this.slotsForecast(perHour));
     this.startHunt(deficit);
   }
@@ -1763,7 +1803,7 @@ export class Player {
     const zones = HUNTING_ZONES.filter((z) => isZoneOpen(z, this.S.highestDungeonFloor, playerLevel(this.S.xp))).sort((a, b) => b.xpPerKill - a.xpPerKill);
     let wantedMat: MaterialId | null = null;
     let wantedHours = 0;
-    for (const m of HUNT_MATS) {
+    for (const m of this.huntMats) {
       const short = deficit[m] ?? 0;
       if (short <= 0 || !zones.some((z) => z.drops.some((d) => d.material === m))) continue;
       const h = short / ((this.huntUnits[m] ?? 1) / this.huntHours);
