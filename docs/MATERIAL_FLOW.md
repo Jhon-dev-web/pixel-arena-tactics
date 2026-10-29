@@ -801,7 +801,7 @@ Forjas esperadas do mesmo item: épico ou melhor 1 / 0,12 = **8,3**; lendário 1
 - Arbitragem (nenhuma receita vende por mais do que custa), orçamento do mercador, `usesOf`, paridade de textos pt/en e saves antigos: testes verdes (`npm test`, 623 testes).
 - Orçamento do mercador, dias 3 / 7 / 14: antes +0 / +20,7 / +25,7%, depois +0 / +21,1 / +25,7% (máximo ~35%).
 - Inventário: o jogador atento perde 0,5% (meta < 5%); o descuidado enche pela primeira vez no dia 6 (meta 3–6) e perde 83% do que a caça traz (antes 55%: as receitas maiores seguram mais material em estoque, e o descuidado não arruma).
-- B3, herói novo: a primeira sessão de 4 h traz 160 Farrapos, 49 Garras e 2 Núcleos e ocupa 4 dos 26 espaços (teto 6); o primeiro Couro de 21 Farrapos cobre a Adaga de Bronze (7 Couros) e a primeira peça forjada continua no dia 2.
+- B3, herói novo: a primeira sessão de 4 h traz 160 Farrapos, 49 Garras e 2 Núcleos e ocupa 4 dos 26 espaços (teto 6); o primeiro Couro de 21 Farrapos cobre a Espada Curta de Bronze (7 Couros) e a primeira peça forjada continua no dia 2.
 
 ### 6.9 Decisões para o diretor
 

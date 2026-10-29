@@ -12,10 +12,10 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 
 | Peça | Tier | Linha | Atributos | Habilidades |
 | --- | --- | --- | --- | --- |
-| Adaga de Bronze | 1 | Espada | Dano 12; Taxa de Crítico +3% | Golpe Firme, Estocada Dupla, Brecha |
+| Espada Curta de Bronze | 1 | Espada | Dano 12; Taxa de Crítico +3% | Golpe Firme, Estocada Dupla, Brecha |
 | Machadinha de Bronze | 1 | Machado | Dano 13; Taxa de Crítico +1,5% | Rachadura, Giro Brutal, Sangria |
 | Espada Curta de Ferro | 2 | Espada | Dano 30; Taxa de Crítico +6% | Golpe Firme, Estocada Dupla, Brecha |
-| Adaga da Presa Demoníaca — peça única, só por drop | 2 | Espada | Dano 35; Taxa de Crítico +6,5% | Golpe Firme, Estocada Dupla, Brecha |
+| Lâmina da Presa Demoníaca — peça única, só por drop | 2 | Espada | Dano 35; Taxa de Crítico +6,5% | Golpe Firme, Estocada Dupla, Brecha |
 | Machado de Batalha de Ferro | 2 | Machado | Dano 32; Taxa de Crítico +3% | Rachadura, Giro Brutal, Sangria |
 | Montante de Aço | 3 | Espada | Dano 65; Taxa de Crítico +10% | Golpe Firme, Estocada Dupla, Brecha |
 | Cutelo Atado ao Sangue — peça única, só por drop | 3 | Espada | Dano 75; Taxa de Crítico +10,8% | Golpe Firme, Estocada Dupla, Brecha |
@@ -26,7 +26,7 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 | Lâmina de Aço do Vazio | 5 | Espada | Dano 160; Taxa de Crítico +20%; Queima o inimigo | Golpe Firme, Estocada Dupla, Brecha |
 | Cutelo de Aço do Vazio | 5 | Machado | Dano 187; Taxa de Crítico +10% | Rachadura, Giro Brutal, Sangria |
 | Grande Lâmina Abissal | 6 | Espada | Dano 240; Taxa de Crítico +24%; Queima o inimigo | Golpe Firme, Estocada Dupla, Brecha |
-| Malho Quebra-Ossos — peça única, só por drop | 6 | Espada | Dano 276; Taxa de Crítico +25,9%; Queima o inimigo | Golpe Firme, Estocada Dupla, Brecha |
+| Montante Quebra-Ossos — peça única, só por drop | 6 | Espada | Dano 276; Taxa de Crítico +25,9%; Queima o inimigo | Golpe Firme, Estocada Dupla, Brecha |
 | Ceifador Abissal | 6 | Machado | Dano 288; Taxa de Crítico +12% | Rachadura, Giro Brutal, Sangria |
 | Machado Grande do Senhor Supremo — peça única, só por drop; cai do chefe do andar 100 | 6 | Machado | Dano 331; Taxa de Crítico +13% | Rachadura, Giro Brutal, Sangria |
 
@@ -34,9 +34,9 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 
 | Peça | Tier | Atributos | Habilidades |
 | --- | --- | --- | --- |
-| Couro Reforçado com Bronze | 1 | PV Máx +40; Defesa +3% | Postura de Ferro |
+| Peitoral de Bronze Reforçado | 1 | PV Máx +40; Defesa +3% | Postura de Ferro |
 | Cota de Malha de Ferro | 2 | PV Máx +90; Defesa +6% | Postura de Ferro |
-| Colete de Couro Demoníaco — peça única, só por drop | 2 | PV Máx +103; Defesa +6,5% | Postura de Ferro |
+| Peitoral de Placa Demoníaca — peça única, só por drop | 2 | PV Máx +103; Defesa +6,5% | Postura de Ferro |
 | Placa de Aço Completa | 3 | PV Máx +160; Defesa +10%; Reflexo 20% do dano sofrido | Postura de Ferro |
 | Placa Veia de Sangue — peça única, só por drop | 3 | PV Máx +184; Defesa +10,8%; Reflexo 21,6% do dano sofrido | Postura de Ferro |
 | Armadura de Escamas de Dragão | 4 | PV Máx +280; Defesa +16%; Reflexo 23% do dano sofrido | Postura de Ferro |
@@ -53,7 +53,7 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 | Elmo de Aço | 3 | PV Máx +70; Defesa +1,9% |
 | Coroa do Rei Goblin — peça única, só por drop; cai do chefe do andar 25 | 3 | PV Máx +81; Defesa +2,1% |
 | Elmo Dourado | 4 | PV Máx +109; Defesa +2,6% |
-| Capuz de Sombras — peça única, só por drop | 4 | PV Máx +125; Defesa +2,8% |
+| Elmo de Sombras — peça única, só por drop | 4 | PV Máx +125; Defesa +2,8% |
 | Elmo de Aço do Vazio | 5 | PV Máx +153; Defesa +3,2% |
 | Elmo Abissal | 6 | PV Máx +192; Defesa +3,8% |
 
@@ -61,7 +61,7 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 
 | Peça | Tier | Atributos |
 | --- | --- | --- |
-| Luvas de Couro | 1 | Dano 4; Taxa de Crítico +2% |
+| Manoplas de Bronze | 1 | Dano 4; Taxa de Crítico +2% |
 | Manoplas de Ferro | 2 | Dano 7; Taxa de Crítico +2,5% |
 | Manoplas de Aço | 3 | Dano 13; Taxa de Crítico +3% |
 | Manoplas Douradas | 4 | Dano 18; Taxa de Crítico +3,5% |
@@ -73,7 +73,7 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 
 | Peça | Tier | Atributos |
 | --- | --- | --- |
-| Botas de Couro | 1 | PV Máx +12; Defesa +6,5% |
+| Grevas de Bronze | 1 | PV Máx +12; Defesa +6,5% |
 | Grevas de Ferro | 2 | PV Máx +22; Defesa +8% |
 | Grevas de Aço | 3 | PV Máx +35; Defesa +10% |
 | Grevas Douradas | 4 | PV Máx +50; Defesa +12% |
@@ -81,7 +81,7 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 | Grevas de Aço do Vazio | 5 | PV Máx +68; Defesa +15% |
 | Grevas Abissais | 6 | PV Máx +88; Defesa +17,8% |
 
-### Guerreiro: Escudo (8)
+### Guerreiro: Mão secundária (8)
 
 | Peça | Tier | Atributos |
 | --- | --- | --- |
@@ -157,7 +157,7 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 | Botas do Espreitador | 5 | Taxa de Crítico +2,4%; Vel. Ataque +2,4%; PV Máx +41; Defesa +9% |
 | Botas Abissais | 6 | Taxa de Crítico +2,7%; Vel. Ataque +2,5%; PV Máx +53; Defesa +10,7% |
 
-### Arqueiro: Escudo (6)
+### Arqueiro: Mão secundária (6)
 
 | Peça | Tier | Atributos |
 | --- | --- | --- |
@@ -231,7 +231,7 @@ Existem **158 peças** de equipamento hoje: **56** do Guerreiro, **42** do Arque
 | Botas Lunares | 5 | Dano Crítico +22%; PV Máx +41; Defesa +9%; Regenera 0,3% da vida/s |
 | Botas do Vazio | 6 | Dano Crítico +23,1%; PV Máx +53; Defesa +10,7%; Regenera 0,4% da vida/s |
 
-### Mago: Escudo (6)
+### Mago: Mão secundária (6)
 
 | Peça | Tier | Atributos |
 | --- | --- | --- |

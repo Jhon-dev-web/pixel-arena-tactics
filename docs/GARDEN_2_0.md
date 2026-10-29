@@ -163,7 +163,7 @@ O Adubo é usado no cartão do canteiro (botão "Adubar", só aparece com Adubo 
 
 ## 4. Equipamento que consome a Horta
 
-Anéis: Cobre +2 Erva Medicinal, Prata +2 Cardo de Ferro, Ouro +1 Flor Dourada, Rubi +1 Flor Dourada +1 Cogumelo Rubro, Obsidiana +1 Lírio Lunar, Abissal +2 Lírio Lunar. Luvas e Botas de Couro +1 Erva Medicinal cada (curtimento). Mais: Erva Medicinal 10:1 para Pó passou a 8:1 (auditoria das profissões).
+Anéis: Cobre +2 Erva Medicinal, Prata +2 Cardo de Ferro, Ouro +1 Flor Dourada, Rubi +1 Flor Dourada +1 Cogumelo Rubro, Obsidiana +1 Lírio Lunar, Abissal +2 Lírio Lunar. Manoplas e Grevas de Bronze +1 Erva Medicinal cada (curtimento). Mais: Erva Medicinal 10:1 para Pó passou a 8:1 (auditoria das profissões).
 Linha do tempo medida (cenário A, dia em que a primeira peça de cada tier aparece, mediana das seeds que chegam): luvas T3 9 -> 9, botas T3 10 -> 11, anel T3 12 -> 13, elmo T3 9 -> 10; tiers 1 e 2 sem mudança (dias 3 e 5,5 a 6). Nenhum atraso acima de 1 dia: a quantidade de planta não foi reduzida.
 
 ## 5. Orçamentos medidos
