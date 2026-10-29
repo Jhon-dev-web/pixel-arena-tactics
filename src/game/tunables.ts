@@ -721,7 +721,7 @@ const T = DebugPanel.define({
     arcaneBurstCdMs: { value: 5000, min: 1000, max: 60000, step: 500, label: 'Explosao Arcana: cooldown (ms)' },
     // Bencao (scepter, heal + haste).
     blessingHealPct: { value: 0.15, min: 0, max: 1, step: 0.01, label: 'Bencao: max HP healed (share)' },
-    blessingHastePct: { value: 0.3, min: 0, max: 1, step: 0.05, label: 'Bencao: attack speed bonus' },
+    blessingHastePct: { value: 0.45, min: 0, max: 1, step: 0.05, label: 'Bencao: attack speed bonus' },
     blessingHasteMs: { value: 5000, min: 1000, max: 30000, step: 500, label: 'Bencao: haste duration (ms)' },
     blessingCdMs: { value: 14000, min: 1000, max: 120000, step: 500, label: 'Bencao: cooldown (ms)' },
     // Postura de Ferro (plate chestpiece, guard).
@@ -744,35 +744,39 @@ const T = DebugPanel.define({
     // Rachadura (axe, a very strong strike with a long cooldown). 29/10: riftPct 2.8 -> 3.6, riftCdMs 14000 -> 10000, brutalSpinPct 1 -> 1.6, Drenar Vida 1.4 -> 2.0 / 10000 -> 8000, Pulso Sombrio 0.8 -> 1.6, Bencao cd 20000 -> 14000: the axe sat 8-9 % under the sword
     // in Hunting and the boss, the scepter 29 % under the staff, with nothing in return (six-weapon table, scripts/tools/classAxesWide.tool.ts). The axe now wins Hunting by 1-2 %, the scepter wins the floors (+17 % over the staff at tier 4).
     // The gear of both is untouched on purpose: the axe is held within 5 % of the sword in a duel by contentPack2.test.ts, and in a duel these abilities do not count.
-    riftPct: { value: 3.6, min: 1, max: 6, step: 0.1, label: 'Rachadura: damage of the swing (x)' },
-    riftCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Rachadura: cooldown (ms)' },
+    // SECOND ROUND, 29/10 (six-weapon table, scripts/tools/classAxesWide.tool.ts; guarded by classAxes.test.ts): the first round left the sword with no axis against the axe at tier 4 (the axe won Hunting AND the boss), the scepter
+    // tied the warrior on the floors, and the crossbow beat the bow everywhere. Axe: riftPct 3.6 -> 3.0, riftCdMs 10000 -> 12000, brutalSpinPct 1.6 -> 2.4, brutalSpinCdMs 10000 -> 9500, lacerateCdMs 9000 -> 8000 (the axe wins Hunting
+    // through the carry and the sword wins the boss, at both tiers). Scepter: Drenar Vida 2.0 -> 3.5, Bencao haste 0.3 -> 0.45 (the scepter now wins the boss from the staff; its floors fell to the staff's, see RETURN_SCALE.scepter in gear.ts).
+    // Crossbow: bolt 2.4 -> 1.2 / cd 10000 -> 12000, double shot 0.9 -> 0.5, fatal shot 3.2 -> 2.6 / cd 16000 -> 18000, and a per-tier dial (WEAPON_RETURN_BY_TIER in gear.ts).
+    riftPct: { value: 3, min: 1, max: 6, step: 0.1, label: 'Rachadura: damage of the swing (x)' },
+    riftCdMs: { value: 12000, min: 1000, max: 120000, step: 500, label: 'Rachadura: cooldown (ms)' },
     // Giro Brutal (axe, carry).
-    brutalSpinPct: { value: 1.6, min: 0.1, max: 3, step: 0.05, label: 'Giro Brutal: share of the swing that spills over' },
-    brutalSpinCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Giro Brutal: cooldown (ms)' },
+    brutalSpinPct: { value: 2.4, min: 0.1, max: 3, step: 0.05, label: 'Giro Brutal: share of the swing that spills over' },
+    brutalSpinCdMs: { value: 9500, min: 1000, max: 120000, step: 500, label: 'Giro Brutal: cooldown (ms)' },
     // Sangria (axe, dot): a burn of its own in the ability slot, a bleed in words.
     laceratePct: { value: 0.15, min: 0.01, max: 0.5, step: 0.01, label: 'Sangria: damage per tick (share of the hit)' },
     lacerateDurationMs: { value: 5000, min: 1000, max: 10000, step: 500, label: 'Sangria: duration (ms)' },
-    lacerateCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Sangria: cooldown (ms)' },
+    lacerateCdMs: { value: 8000, min: 1000, max: 120000, step: 500, label: 'Sangria: cooldown (ms)' },
     // Tiro Potente (bow, strike; the doc calls it Tiro Certeiro, "always a crit"). The 8 effects have no guaranteed crit, so it is a plain heavy strike of the size of one crit (T.battle.critMult = 2), named for its force, not its aim. It stacks with a crit that rolls on the same swing.
     trueShotPct: { value: 1.4, min: 1, max: 5, step: 0.1, label: 'Tiro Potente: damage of the swing (x)' },
     trueShotCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Tiro Potente: cooldown (ms)' },
     // Virote Perfurante (crossbow, heavy strike).
-    piercingBoltPct: { value: 2.4, min: 1, max: 6, step: 0.1, label: 'Virote Perfurante: damage of the swing (x)' },
-    piercingBoltCdMs: { value: 10000, min: 1000, max: 120000, step: 500, label: 'Virote Perfurante: cooldown (ms)' },
+    piercingBoltPct: { value: 1.2, min: 1, max: 6, step: 0.1, label: 'Virote Perfurante: damage of the swing (x)' },
+    piercingBoltCdMs: { value: 12000, min: 1000, max: 120000, step: 500, label: 'Virote Perfurante: cooldown (ms)' },
     // Tiro Duplo (crossbow, volley).
     doubleShotHits: { value: 2, min: 2, max: 8, step: 1, label: 'Tiro Duplo: hits' },
-    doubleShotPct: { value: 0.9, min: 0.1, max: 2, step: 0.05, label: 'Tiro Duplo: damage of each hit (x)' },
+    doubleShotPct: { value: 0.5, min: 0.1, max: 2, step: 0.05, label: 'Tiro Duplo: damage of each hit (x)' },
     doubleShotCdMs: { value: 8000, min: 1000, max: 120000, step: 500, label: 'Tiro Duplo: cooldown (ms)' },
     // Tiro Fatal (crossbow, strike + crit damage). "Crit damage" has no effect of its own either: it is the heaviest strike of the game, with the longest cooldown of the weapon abilities.
-    fatalShotPct: { value: 3.2, min: 1, max: 8, step: 0.1, label: 'Tiro Fatal: damage of the swing (x)' },
-    fatalShotCdMs: { value: 16000, min: 1000, max: 120000, step: 500, label: 'Tiro Fatal: cooldown (ms)' },
+    fatalShotPct: { value: 2.6, min: 1, max: 8, step: 0.1, label: 'Tiro Fatal: damage of the swing (x)' },
+    fatalShotCdMs: { value: 18000, min: 1000, max: 120000, step: 500, label: 'Tiro Fatal: cooldown (ms)' },
     // Nova (staff, carry + guard).
     novaPct: { value: 2.05, min: 0.1, max: 3, step: 0.05, label: 'Nova: share of the swing that spills over' },
     novaReduction: { value: 0.25, min: 0, max: 0.9, step: 0.05, label: 'Nova: damage taken cut (share)' },
     novaGuardMs: { value: 3000, min: 1000, max: 30000, step: 500, label: 'Nova: guard duration (ms)' },
     novaCdMs: { value: 6000, min: 1000, max: 120000, step: 500, label: 'Nova: cooldown (ms)' },
     // Drenar Vida (scepter, strike + heal).
-    drainLifePct: { value: 2.0, min: 1, max: 5, step: 0.1, label: 'Drenar Vida: damage of the swing (x)' },
+    drainLifePct: { value: 3.5, min: 1, max: 5, step: 0.1, label: 'Drenar Vida: damage of the swing (x)' },
     drainLifeHealPct: { value: 0.06, min: 0, max: 1, step: 0.01, label: 'Drenar Vida: max HP healed (share)' },
     drainLifeCdMs: { value: 8000, min: 1000, max: 120000, step: 500, label: 'Drenar Vida: cooldown (ms)' },
     // Pulso Sombrio (scepter, carry).

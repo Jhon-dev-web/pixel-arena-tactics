@@ -149,10 +149,23 @@ describe.each([
     expect(get('archer (crossbow)').score.hunting).toBeLessThanOrEqual(mageBest);
   });
 
-  it('the axe and the scepter are each better than their twin weapon on at least one axis (a real choice, not a punishment)', () => {
-    for (const [variant, twin] of [['warrior (axe)', 'warrior'], ['mage (scepter)', 'mage']] as const) {
-      const wins = AXES.filter((axis) => get(variant).score[axis] > get(twin).score[axis]);
-      expect(wins.length, `${variant} beats ${twin} on no axis`).toBeGreaterThan(0);
+  // SECOND ROUND (29/10). The first round fixed the crossbow, the axe and the scepter and moved the trap: the warrior no longer LED the floors (sword, axe, crossbow and scepter all reached floor 69 at tier 4: a tie), and the
+  // bow became the archer's dead option (the crossbow beat it on all three axes). Both are rules of the design, and neither lit anything, so these two tests close them for all six weapons.
+  it('each class leads ITS axis with every build counted, strictly: the best mage build leads Hunting, the best archer build the boss, the best warrior build the floors (leading is not tying)', () => {
+    for (const axis of AXES) {
+      const best = (cls: ClassBuild['cls']): number => Math.max(...rows.filter((r) => r.b.cls === cls).map((r) => r.score[axis]));
+      for (const cls of (['warrior', 'archer', 'mage'] as const).filter((c) => c !== OWNER[axis])) {
+        expect(best(OWNER[axis]), `${OWNER[axis]} against ${cls} on ${axis}`).toBeGreaterThan(best(cls));
+      }
+    }
+  });
+
+  it('every weapon beats its twin on at least one axis, in both directions (the sword and the axe, the bow and the crossbow, the staff and the scepter: a real choice, never a punishment, never a dead option)', () => {
+    for (const [a, b] of [['warrior', 'warrior (axe)'], ['archer', 'archer (crossbow)'], ['mage', 'mage (scepter)']] as const) {
+      for (const [winner, loser] of [[a, b], [b, a]] as const) {
+        const wins = AXES.filter((axis) => get(winner).score[axis] > get(loser).score[axis]);
+        expect(wins.length, `${winner} beats ${loser} on no axis`).toBeGreaterThan(0);
+      }
     }
   });
 });

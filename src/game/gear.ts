@@ -281,7 +281,15 @@ const round4 = (x: number): number => Math.round(x * 10000) / 10000;
 // Dungeon gates read the equipment index, gearIndex.ts), so the dial is free of the CP parity. Each factor is the lever of ONE class on ONE axis (docs/CLASSES_E_EQUIPAMENTOS.md 2.5): change them with the axis table
 // of scripts/sim/classBalance.sim.ts in front of you, and run classAxes.test.ts.
 // The crossbow went from 0.3 to 0.15 on 29/10 together with WEAPON_CRIT_KEEP / WEAPON_KEEP below: measured with all SIX weapons (scripts/tools/classAxesWide.tool.ts) the crossbow at 0.3 led Hunting, the mage's axis, by 11.5 % at tier 4.
-export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.6, cloth: 0.75, bow: 0.45, crossbow: 0.15, staff: 1.14, scepter: 1 };
+// The scepter went from 1 to 0.85 on 29/10 (second round of the six-weapon pass): its regeneration was the whole reason it reached floor 69 at tier 4, which tied it with the warrior on the floors axis (the warrior has to LEAD
+// it). Regeneration is a pure survival stat (the immortal boss measure and Hunting do not read it), so this moves only the floors; the scepter's damage went up in tunables.ts to win the boss axis from the staff instead.
+export const RETURN_SCALE: Record<'leather' | 'cloth' | 'bow' | 'crossbow' | 'staff' | 'scepter', number> = { leather: 0.6, cloth: 0.75, bow: 0.45, crossbow: 0.15, staff: 1.14, scepter: 0.85 };
+// THE SHAPE OF A WEAPON DIAL OVER THE TIERS (29/10, second round of the six-weapon pass). RETURN_SCALE is one number per line; the crossbow needed two: measured with all six weapons (scripts/tools/classAxesWide.tool.ts), at tier 4 it
+// out-did the bow on every axis and reached floor 69 (a tie with the warrior), while at tier 6 it only just beat the bow on Hunting and lost the boss. One number cannot move tier 4 down and tier 6 up, because the crit multiplier the
+// crossbow returns grows with the tier (the generated block), so the dial hits the late tiers harder. This array multiplies RETURN_SCALE per tier (index 0 = tier 1; absent = flat). The crossbow's is low up to tier 4 and high at tier 6:
+// the heavy weapon is a late one. It stays strictly increasing tier over tier (itemBalance.test.ts holds that), and tiers 1-3 follow tier 4 on purpose (a bigger dial there would put tier 3 above tier 4). Neutral (parity) tools
+// read RETURNS_BASE, which this does not touch.
+export const WEAPON_RETURN_BY_TIER: Partial<Record<'bow' | 'crossbow' | 'staff' | 'scepter', readonly number[]>> = { crossbow: [0.4, 0.4, 0.4, 0.4, 0.95, 1.5] };
 // piece id -> the returned stats BEFORE the dial (what the generator solved); itemBalance.test.ts / the generator read the parity on these
 export const RETURNS_BASE: Record<string, Partial<Record<'critChance' | 'attackSpeedBonus' | 'critMultBonus' | 'hpRegenPct', number>>> = {};
 const dial = (x: number, f: number, decimals = 4): number => Math.round(x * f * 10 ** decimals) / 10 ** decimals;
@@ -524,7 +532,7 @@ for (const line of WEAPON_LINES) {
     const crit = (twin.critChance ?? 0) * WEAPON_CRIT_KEEP[line.line] + (conv.critChance ?? 0);
     if (crit > 0) piece.critChance = round4(crit);
     RETURNS_BASE[id] = { attackSpeedBonus: conv.attackSpeedBonus, critMultBonus: conv.critMultBonus, hpRegenPct: conv.hpRegenPct };
-    const wf = RETURN_SCALE[line.line];
+    const wf = RETURN_SCALE[line.line] * (WEAPON_RETURN_BY_TIER[line.line]?.[i] ?? 1);
     if (conv.attackSpeedBonus) piece.attackSpeedBonus = dial(conv.attackSpeedBonus, wf);
     if (conv.critMultBonus) piece.critMultBonus = dial(conv.critMultBonus, wf);
     if (conv.hpRegenPct) piece.hpRegenPct = dial(conv.hpRegenPct, wf, 5);
