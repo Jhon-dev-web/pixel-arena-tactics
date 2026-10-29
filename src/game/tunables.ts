@@ -760,16 +760,21 @@ const T = DebugPanel.define({
     // Tiro Potente (bow, strike; the doc calls it Tiro Certeiro, "always a crit"). The 8 effects have no guaranteed crit, so it is a plain heavy strike of the size of one crit (T.battle.critMult = 2), named for its force, not its aim. It stacks with a crit that rolls on the same swing.
     trueShotPct: { value: 1.4, min: 1, max: 5, step: 0.1, label: 'Tiro Potente: damage of the swing (x)' },
     trueShotCdMs: { value: 9000, min: 1000, max: 120000, step: 500, label: 'Tiro Potente: cooldown (ms)' },
+    // THE CROSSBOW IS THE WEAPON OF FEW HUGE SWINGS (30/10, third round of the six-weapon pass; supersedes the shrink of the second round, 'bolt 2.4 -> 1.2' above). The second round made the crossbow lose to the bow by shrinking its three
+    // abilities until the bolt sat at 1.2 (the minimum of its own tunable) and the double shot at 1.0 in total (two hits of 0.5: no gain over one swing at all). That bought the guard its rule and cost the weapon its identity. The shape is back
+    // (bolt 3.0, double shot 2 x 1.25, fatal shot 5.0: nothing under 2.5) and the BALANCE MOVED TO THE COOLDOWNS ONLY (36 / 32 / 54 s): with 12 / 8 / 18 s the same shapes took +22 to +27 % over the bow in Hunting and +6 to +24 % on the
+    // boss at every tier, i.e. the bow became a dead option (classAxes.test.ts, 'no weapon is worse than its twin on all three axes'). At 36 / 32 / 54 s the crossbow is +2 to +6 % over the bow in Hunting, within -9 / +1 % on the boss, 11 to 17 %
+    // under the best mage in Hunting. Measured by scripts/tools/classAxesWide.tool.ts (tiers 2-6, 96 seeds a boss). A cooldown here is long on purpose: the crossbow fires three times a minute, each shot a big one.
     // Virote Perfurante (crossbow, heavy strike).
-    piercingBoltPct: { value: 1.2, min: 1, max: 6, step: 0.1, label: 'Virote Perfurante: damage of the swing (x)' },
-    piercingBoltCdMs: { value: 12000, min: 1000, max: 120000, step: 500, label: 'Virote Perfurante: cooldown (ms)' },
+    piercingBoltPct: { value: 3, min: 1, max: 6, step: 0.1, label: 'Virote Perfurante: damage of the swing (x)' },
+    piercingBoltCdMs: { value: 36000, min: 1000, max: 120000, step: 500, label: 'Virote Perfurante: cooldown (ms)' },
     // Tiro Duplo (crossbow, volley).
     doubleShotHits: { value: 2, min: 2, max: 8, step: 1, label: 'Tiro Duplo: hits' },
-    doubleShotPct: { value: 0.5, min: 0.1, max: 2, step: 0.05, label: 'Tiro Duplo: damage of each hit (x)' },
-    doubleShotCdMs: { value: 8000, min: 1000, max: 120000, step: 500, label: 'Tiro Duplo: cooldown (ms)' },
+    doubleShotPct: { value: 1.25, min: 0.1, max: 2, step: 0.05, label: 'Tiro Duplo: damage of each hit (x)' },
+    doubleShotCdMs: { value: 32000, min: 1000, max: 120000, step: 500, label: 'Tiro Duplo: cooldown (ms)' },
     // Tiro Fatal (crossbow, strike + crit damage). "Crit damage" has no effect of its own either: it is the heaviest strike of the game, with the longest cooldown of the weapon abilities.
-    fatalShotPct: { value: 2.6, min: 1, max: 8, step: 0.1, label: 'Tiro Fatal: damage of the swing (x)' },
-    fatalShotCdMs: { value: 18000, min: 1000, max: 120000, step: 500, label: 'Tiro Fatal: cooldown (ms)' },
+    fatalShotPct: { value: 5, min: 1, max: 8, step: 0.1, label: 'Tiro Fatal: damage of the swing (x)' },
+    fatalShotCdMs: { value: 54000, min: 1000, max: 120000, step: 500, label: 'Tiro Fatal: cooldown (ms)' },
     // Nova (staff, carry + guard).
     novaPct: { value: 2.05, min: 0.1, max: 3, step: 0.05, label: 'Nova: share of the swing that spills over' },
     novaReduction: { value: 0.25, min: 0, max: 0.9, step: 0.05, label: 'Nova: damage taken cut (share)' },
