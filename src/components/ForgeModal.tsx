@@ -49,7 +49,7 @@ import { QtyPicker, CraftJobPanel } from './CraftQty';
 import { clampCraftQty, craftBlock, planBatchIngredients } from '../game/craftJob';
 import { ChipRow, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout, SecondaryButton, Tabs } from './ui';
 import type { TabItem } from './ui';
-import { FORGE_CLASS_FILTERS, ForgeClassFilter, matchesForgeClass } from './forgeFilter';
+import { FORGE_CLASS_FILTERS, ForgeClassFilter, matchesForgeClass, showForgeClassNote } from './forgeFilter';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -435,6 +435,7 @@ export default function ForgeView({
                   />
                   <span className="fg-space">{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
                 </div>
+                {showForgeClassNote(save.stats.itemsForged, classFilter) && <p className="ui-note">{t('forge.classNote')}</p>}
                 {categoryItems.length === 0 ? (
                   <span className="socket-none">{t(classFilter === 'all' ? 'forge.noCategoryRecipes' : 'forge.noClassRecipes')}</span>
                 ) : (

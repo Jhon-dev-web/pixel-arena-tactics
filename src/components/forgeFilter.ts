@@ -18,3 +18,7 @@ export function matchesForgeClass(g: GearItem, filter: ForgeClassFilter): boolea
   const cls = forgeClassOf(g);
   return cls === null || cls === filter;
 }
+
+// The note of the first forge (where the class comes from: the leading armor WEIGHT, affinity.ts, never a slot and never this filter): on offer only while the hero has forged nothing yet (the lifetime counter stats.itemsForged, no field of its own) and
+// the class filter is on 'all', so it never sits on top of a list the player already narrowed. It goes away with the first forge, not when it is seen. A League reset starts a fresh hero (defaultSave), so it comes back then.
+export const showForgeClassNote = (itemsForged: number, filter: ForgeClassFilter): boolean => itemsForged === 0 && filter === 'all';

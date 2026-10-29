@@ -1153,6 +1153,7 @@
     "shieldsSection": "Off-hand",
     "axesSection": "Axes",
     "classFilter": "Class",
+    "classNote": "Your class comes from what the hero wears: plate is warrior, leather is archer, cloth is mage. Mixing is allowed.",
     "class_all": "All",
     "class_warrior": "Warrior",
     "class_archer": "Archer",

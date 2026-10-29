@@ -1153,6 +1153,7 @@
     "shieldsSection": "Mão secundária",
     "axesSection": "Machados",
     "classFilter": "Classe",
+    "classNote": "A classe vem do que o herói veste: placa é guerreiro, couro é arqueiro, tecido é mago. Pode misturar.",
     "class_all": "Todas",
     "class_warrior": "Guerreiro",
     "class_archer": "Arqueiro",
