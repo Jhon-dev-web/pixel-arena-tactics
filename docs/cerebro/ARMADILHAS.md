@@ -139,7 +139,24 @@ Ocorrências: 29/10/2026.
 
 ---
 
-## 8. Medir no lugar errado faz o conserto parecer inútil
+## 8. Herdadas de direções anteriores
+
+Estas vieram da seção 11 do `RESUMO_DO_PROJETO.md`, escritas por quem dirigiu o projeto antes. **Não foram medidas por mim**, e estão aqui por serem caras de redescobrir. Quem confirmar ou desmentir uma delas, anote a data ao lado.
+
+- **A cota grátis da Vercel é de 100 publicações por dia.** Por isso o build automático por push está desligado.
+- **Testes SQL em PGlite rodam como superusuário.** Permissão de `anon` e `authenticated` precisa de teste explícito com `set role`, senão o teste passa sem provar nada.
+- **`supabase db dump` precisa de Docker**, que não existe nesta máquina. Por isso as migrações são idempotentes e trazem um bloco de rollback no cabeçalho.
+- **Migração nova que lê `reset_at`** precisa entrar na lista do `migration0009.test.ts`.
+- **Executores que tiram screenshots com navegador headless** podem deixar centenas de processos abertos (perfil `arena-shot-*`) e fazer os testes estourarem o tempo. Encerre só os `--headless` desse perfil.
+- **Executor que apaga "arquivos de rascunho" pode apagar trabalho do diretor.** Diga sempre, explicitamente, quais caminhos ele pode tocar.
+- **Publicar artifact ou link:** publique primeiro e use a URL que o resultado devolve; nunca adivinhe o endereço.
+- **Feche as abas do navegador integrado depois de testar** — a música do jogo continua tocando para o dono.
+
+A de fim de linha que também estava nessa lista virou o item 4 acima, com a causa medida.
+
+---
+
+## 9. Medir no lugar errado faz o conserto parecer inútil
 
 **Sintoma.** Você conserta a causa e o problema continua.
 
