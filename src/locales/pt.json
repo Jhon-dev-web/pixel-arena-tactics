@@ -1164,6 +1164,7 @@
     "shieldsSection": "Mão secundária",
     "axesSection": "Machados",
     "classFilter": "Classe",
+    "earlier": "Anteriores ({n})",
     "classNote": "A classe vem do que o herói veste: placa é guerreiro, couro é arqueiro, tecido é mago. Pode misturar.",
     "class_all": "Todas",
     "class_warrior": "Guerreiro",
@@ -1371,6 +1372,7 @@
     "toastApplied": "Rotação aplicada",
     "dropped": "Uma habilidade saiu da rotação porque o equipamento que a dava não está mais vestido.",
     "droppedFilled": "Os lugares que a troca de equipamento esvaziou já foram preenchidos com o que você veste agora.",
+    "howTo": "Como funciona",
     "when": "Vale a partir da próxima luta. Uma Caça em andamento mantém a rotação com que começou.",
     "line": { "sword": "Espada", "axe": "Machado", "bow": "Arco", "crossbow": "Besta", "staff": "Cajado", "scepter": "Cetro" },
     "body": { "plate": "Placa", "leather": "Couro", "cloth": "Tecido" },
@@ -1434,7 +1436,9 @@
     "mainNavigation": "Navegação principal",
     "attention": "Pede sua atenção",
     "closeMenu": "Fechar menu",
-    "openProfile": "Abrir perfil"
+    "openProfile": "Abrir perfil",
+    "heroEntry": "Herói",
+    "professionsEntry": "Profissões"
   },
   "home": {
     "activityTitle": "Atividade Atual",
@@ -1599,6 +1603,10 @@
     "stateLocked": "Bloqueada",
     "depthsOpen": "{n} de {m} profundidades",
     "back": "Voltar",
+    "zoneLevels": "Nível {a}–{b}",
+    "moreDetails": "Mais detalhes",
+    "summary": "Resumo",
+    "versus": "Combate",
     "materialsTitle": "Materiais",
     "uniquesTitle": "Peças únicas",
     "uniqueRare": "raro",

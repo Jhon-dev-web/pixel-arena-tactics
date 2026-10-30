@@ -1556,13 +1556,13 @@ body {
 
 /* the arena: laid out like the Dungeon battle, tinted per zone */
 .hunt-stage {
-  --hm: clamp(120px, 34vw, 200px);
+  --hm: clamp(96px, 32vw, 150px);
   position: relative;
   isolation: isolate;
   display: flex;
   flex-direction: column;
-  min-height: 300px;
-  padding: 10px 12px 10px;
+  gap: 8px;
+  padding: 10px 10px;
   overflow: hidden;
   border: 2px solid #3a2a4a;
   border-radius: 10px;
@@ -1584,12 +1584,7 @@ body {
   inset: 0;
   z-index: -1;
   /* only as dark as the plates need to stay readable */
-  background: linear-gradient(180deg, rgba(10, 6, 16, 0.6) 0%, rgba(10, 6, 16, 0.18) 34%, rgba(10, 6, 16, 0) 52%);
-}
-.hunt-stage-top {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  background: linear-gradient(180deg, rgba(10, 6, 16, 0.6) 0%, rgba(10, 6, 16, 0.12) 32%, rgba(10, 6, 16, 0.12) 68%, rgba(10, 6, 16, 0.6) 100%);
 }
 .hunt-stage .battle-hud {
   padding: 6px 10px 8px;
@@ -1609,22 +1604,32 @@ body {
   color: #ffd76a;
   font-size: var(--fs-small);
 }
-/* the two stand on the ground band (the dark bottom ~12% of the map strip) */
+/* the two fighters, each in its own box, with the swords between: the monster's life is above them and the hero's below */
 .hunt-stage-arena {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 5%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: end;
-  justify-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   pointer-events: none;
+}
+.hunt-vs {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  color: #ffd76a;
+  filter: drop-shadow(0 2px 0 #000);
 }
 .hunt-side {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  flex: 0 0 auto;
+  box-sizing: content-box;
+  width: var(--hm);
+  height: var(--hm);
+  background: rgba(10, 6, 16, 0.3);
+  border: 2px solid rgba(255, 215, 106, 0.35);
+  border-radius: 8px;
   transition: transform 0.2s ease-out, filter 0.15s ease-out;
 }
 .hunt-side.player.lunge {
@@ -1683,7 +1688,7 @@ body {
   }
 }
 .hunt-stage-buffs {
-  margin-top: 6px;
+  margin: 0;
 }
 .hunt-stage-buffs .active-buffs {
   margin: 0;
@@ -1749,45 +1754,20 @@ body {
 }
 
 /* ----- the scene's size per width (the screens around it live in ui/hunt.css) ----- */
-@media (min-width: 1024px) {
+@media (min-width: 600px) {
   .hunt-stage {
-    --hm: clamp(150px, 15vw, 200px);
-    min-height: 300px;
-    aspect-ratio: 16 / 9;
-    /* min-height + aspect-ratio transfer a 533px automatic min-width, which pushed the arena over the stats column at ~1024px */
-    min-width: 0;
-    width: 100%;
-  }
-}
-@media (min-width: 600px) and (max-width: 1023px) {
-  .hunt-stage {
-    --hm: clamp(140px, 22vw, 190px);
-    min-height: 340px;
+    --hm: 150px;
   }
 }
 @media (max-width: 599px) {
   .hunt-stage {
-    --hm: clamp(112px, 36vw, 150px);
-    min-height: 310px;
-    padding: 8px 8px 8px;
-  }
-  .hunt-stage-top {
-    gap: 6px;
+    padding: 8px;
   }
   .hunt-stage .battle-hud {
     padding: 5px 6px 6px;
   }
   .hunt-stage .hp-num {
     font-size: var(--fs-small);
-  }
-  .hunt-stage .hp-label {
-    flex-wrap: wrap;
-    gap: 0 8px;
-  }
-  .hunt-stage .hp-name-text {
-    white-space: normal;
-    overflow-wrap: anywhere;
-    line-height: 1.3;
   }
 }
 

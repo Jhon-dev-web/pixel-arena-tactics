@@ -1164,6 +1164,7 @@
     "shieldsSection": "Off-hand",
     "axesSection": "Axes",
     "classFilter": "Class",
+    "earlier": "Earlier ({n})",
     "classNote": "Your class comes from what the hero wears: plate is warrior, leather is archer, cloth is mage. Mixing is allowed.",
     "class_all": "All",
     "class_warrior": "Warrior",
@@ -1371,6 +1372,7 @@
     "toastApplied": "Rotation applied",
     "dropped": "An ability left the rotation because the gear that gave it is no longer worn.",
     "droppedFilled": "The places your gear change emptied were filled with what you wear now.",
+    "howTo": "How it works",
     "when": "Takes effect from the next fight. A Hunt in progress keeps the rotation it started with.",
     "line": { "sword": "Sword", "axe": "Axe", "bow": "Bow", "crossbow": "Crossbow", "staff": "Staff", "scepter": "Scepter" },
     "body": { "plate": "Plate", "leather": "Leather", "cloth": "Cloth" },
@@ -1434,7 +1436,9 @@
     "mainNavigation": "Main navigation",
     "attention": "Needs your attention",
     "closeMenu": "Close menu",
-    "openProfile": "Open profile"
+    "openProfile": "Open profile",
+    "heroEntry": "Hero",
+    "professionsEntry": "Professions"
   },
   "home": {
     "activityTitle": "Current Activity",
@@ -1599,6 +1603,10 @@
     "stateLocked": "Locked",
     "depthsOpen": "{n} of {m} depths",
     "back": "Back",
+    "zoneLevels": "Level {a}–{b}",
+    "moreDetails": "More details",
+    "summary": "Summary",
+    "versus": "Fight",
     "materialsTitle": "Materials",
     "uniquesTitle": "Unique pieces",
     "uniqueRare": "rare",

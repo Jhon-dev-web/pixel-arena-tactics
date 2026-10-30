@@ -58,36 +58,92 @@
 .hs-zone-list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-}
-.hs-zone {
-  display: flex;
-  align-items: center;
   gap: var(--sp-3);
-  min-width: 0;
+}
+/* step 1: a big card per place, the monster on its own map, the name and the level range on a plate at the bottom */
+.hs-zone {
+  position: relative;
+  display: block;
   width: 100%;
-  padding: var(--sp-3);
+  min-width: 0;
+  min-height: 168px;
+  padding: 0;
+  overflow: hidden;
   font-family: inherit;
   font-size: var(--fs-body);
   text-align: left;
   color: var(--c-text);
-  background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
+  background: #0b0711;
   border: var(--bw) solid var(--c-line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-lg);
   box-shadow: var(--sh-card);
   cursor: pointer;
+}
+.hs-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bg) center bottom / cover no-repeat;
+  image-rendering: pixelated;
+  opacity: 0.85;
 }
 .hs-zone:hover {
   border-color: var(--c-gold-line);
 }
 .hs-zone.selected {
   border-color: var(--c-gold-300);
-  box-shadow: var(--sh-card), 0 0 0 1px rgba(255, 215, 106, 0.4), inset 6px 0 0 var(--c-gold-300);
+  box-shadow: var(--sh-card), 0 0 0 1px rgba(255, 215, 106, 0.4);
 }
 .hs-zone.state-locked {
   color: var(--c-text-muted);
 }
-.hs-zone.state-locked .hs-portrait {
+.hs-zone.state-locked::before {
+  filter: grayscale(1) brightness(0.5);
+}
+.hs-zone.state-locked .hs-zone-art {
+  filter: grayscale(1) brightness(0.45);
+}
+.hs-zone-art {
+  position: absolute;
+  left: 50%;
+  bottom: 52px;
+  display: block;
+  width: 104px;
+  height: 104px;
+  transform: translateX(-50%);
+}
+.hs-zone-chip {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  z-index: 2;
+}
+.hs-zone-plate {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(11, 7, 17, 0.85);
+  border-top: var(--bw-thin) solid var(--c-gold-line);
+}
+.hs-zone-name {
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  overflow-wrap: break-word;
+}
+.hs-zone-sub {
+  font-size: var(--fs-body);
+  color: var(--c-text-dim);
+}
+.hs-zone.state-locked .hs-zone-sub {
+  color: var(--c-text-muted);
+}
+.hs-portrait {
   filter: grayscale(1) brightness(0.55);
 }
 .hs-zone-info {
@@ -129,6 +185,9 @@
   display: none;
   align-self: flex-start;
 }
+.hs-detail .ui-btn.hs-back {
+  min-height: var(--tap);
+}
 .ui-tag.tier-common {
   color: var(--c-good);
   background: rgba(111, 224, 138, 0.12);
@@ -145,14 +204,16 @@
   border-color: #7a4cc0;
 }
 
-/* the banner: the zone's own map strip behind the monster */
+/* the banner of step 2: the zone's own map strip behind the monster, centred */
 .hs-banner {
   position: relative;
   display: flex;
-  align-items: flex-end;
-  gap: var(--sp-4);
-  min-height: 150px;
-  padding: var(--sp-3) var(--sp-4);
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-1);
+  min-height: 176px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
   overflow: hidden;
   background: #0b0711;
   border: var(--bw-thin) solid var(--c-gold-line);
@@ -163,15 +224,15 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--bg) center / cover no-repeat;
+  background: var(--bg) center bottom / cover no-repeat;
   image-rendering: pixelated;
-  opacity: 0.75;
+  opacity: 0.85;
 }
 .hs-banner::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(11, 7, 17, 0.1), rgba(11, 7, 17, 0.88) 70%);
+  background: linear-gradient(180deg, rgba(11, 7, 17, 0) 40%, rgba(11, 7, 17, 0.88) 100%);
 }
 .hs-banner.locked::before {
   filter: grayscale(1) brightness(0.5);
@@ -180,28 +241,33 @@
   filter: grayscale(1) brightness(0.45);
 }
 .hs-banner-monster,
-.hs-banner-text {
+.hs-banner-text,
+.hs-banner-chip {
   position: relative;
   z-index: 1;
 }
+.hs-banner-chip {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+}
 .hs-banner-monster {
   flex: 0 0 auto;
-  width: 120px;
-  height: 120px;
+  width: 104px;
+  height: 104px;
 }
 .hs-banner-text {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: var(--sp-1);
-  margin-left: auto;
-  min-width: 0;
-  max-width: 62%;
-  text-align: right;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  text-align: center;
 }
 .hs-banner-monstername {
   font-size: var(--fs-body);
-  color: var(--c-text-dim);
+  color: var(--c-text);
+  text-shadow: 0 1px 0 #000;
 }
 .hs-banner-zone {
   font-family: var(--font-body);
@@ -212,28 +278,25 @@
   text-shadow: 0 2px 0 #000;
   overflow-wrap: anywhere;
 }
-.hs-banner-cp {
-  font-size: var(--fs-body);
-  color: var(--c-text);
-  text-shadow: 0 1px 0 #000;
-}
 
-.hs-mats {
+.hs-drops {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: var(--sp-3) var(--sp-2);
+}
+.hs-drop {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-}
-.hs-mat {
-  display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
-  font-size: var(--fs-body);
-  background: var(--c-inset);
-  border: var(--bw-thin) solid var(--c-line);
-  border-radius: var(--r-md);
+  gap: var(--sp-1);
+  min-width: 0;
+  text-align: center;
 }
-.hs-mat .mat-icon,
+.hs-drop-name {
+  font-size: var(--fs-small);
+  color: var(--c-text-dim);
+  overflow-wrap: anywhere;
+}
 .hs-lost .mat-icon {
   width: 28px;
   height: 28px;
@@ -267,22 +330,24 @@
   image-rendering: pixelated;
 }
 
-/* the depth cards */
+/* step 2: the three depths in a row */
 .hs-depths {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--sp-3);
-  margin-top: var(--sp-3);
+  gap: var(--sp-2);
 }
 .hs-depth {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
   min-width: 0;
-  padding: var(--sp-3);
+  min-height: 72px;
+  padding: var(--sp-2);
   font-family: inherit;
   font-size: var(--fs-body);
-  text-align: left;
+  text-align: center;
   color: var(--c-text);
   background: linear-gradient(180deg, var(--c-surface-2), #150e1d);
   border: var(--bw) solid var(--c-line);
@@ -294,34 +359,31 @@
 }
 .hs-depth.active {
   border-color: var(--c-gold-300);
-  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.4), inset 6px 0 0 var(--c-gold-300);
+  background: linear-gradient(180deg, #3a2a10, #1d140a);
+  box-shadow: 0 0 0 1px rgba(255, 215, 106, 0.4);
 }
 .hs-depth.locked {
   opacity: 0.6;
-}
-.hs-depth-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-2);
 }
 .hs-depth-name {
   font-weight: 700;
   color: var(--c-gold-300);
 }
-.hs-depth-cp,
-.hs-depth-level {
-  font-size: var(--fs-small);
-  color: var(--c-text-muted);
+.hs-depth .ui-tag {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: var(--lh-tight);
 }
 .hs-depth-lock {
+  font-size: var(--fs-small);
+  line-height: var(--lh-tight);
   color: var(--c-text-muted);
 }
-.hs-depth-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
+.hs-cpline {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-body);
+  color: var(--c-text);
 }
 .hs-depth-rows {
   display: flex;
@@ -376,8 +438,8 @@
 }
 
 /* the order of the detail pane, at every width */
-/* The choice (banner, depth) is followed at once by the start button, then what it costs (inventory, cap, overflow warning); the reading material (drops, promotion)
-   comes after. At every width. In-flow, not fixed: the button never covers the depth cards. */
+/* The choice (banner, depth) is followed at once by the start button, then the warnings (a nearly full inventory), then what drops there; the reading material
+   (zone level, caps, how XP works) waits behind "Mais detalhes". At every width. In-flow, not fixed: the button never covers the depth buttons. */
 .hs-banner {
   order: 1;
 }
@@ -390,25 +452,115 @@
   padding: 0;
   background: none;
 }
-.hs-facts {
+.hs-warns {
   order: 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
 }
 .hs-p-mats {
   order: 5;
 }
-.hs-p-sub {
+.hs-more {
   order: 6;
 }
-
-/* ---------- the hunt in progress ---------- */
-.hs-stagepanel {
-  padding: var(--sp-3);
+.hs-more > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 var(--sp-3);
+  font-weight: 700;
+  color: var(--c-gold-200);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  list-style: none;
 }
-.hs-depthline {
-  margin-top: var(--sp-2);
-  text-align: center;
+.hs-more > summary::-webkit-details-marker {
+  display: none;
+}
+.hs-more > summary::before {
+  content: '+';
+  width: 1.4em;
+  color: var(--c-gold-300);
+}
+.hs-more[open] > summary::before {
+  content: '-';
+}
+.hs-more[open] > summary {
+  margin-bottom: var(--sp-3);
+}
+.hs-more > .ui-panel + .ui-panel {
+  margin-top: var(--sp-3);
+}
+
+/* the close button of the hunt screens is a full touch target */
+.hs-modal .ui-modal-close {
+  width: var(--tap);
+  height: var(--tap);
+}
+
+/* ---------- the hunt in progress: small and calm ---------- */
+.hs-run {
+  width: 100%;
+  max-width: 560px;
+  margin-inline: auto;
+  gap: var(--sp-3);
+}
+/* stays in reach while the summary (or anything under the scene) is scrolled through */
+.hs-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  background: #130d1c;
+}
+.hs-topbar .hs-time {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  line-height: var(--lh-tight);
+}
+.hs-topbtn {
+  flex: 0 0 auto;
+  padding-inline: var(--sp-3);
+}
+.hunt-stage-buffs:empty {
+  display: none;
+}
+/* the monster's plate runs the full width above the fighters, like the hero's under them */
+.hunt-stage .battle-hud.enemy {
+  align-items: stretch;
+}
+.hunt-stage .battle-hud.enemy .hp-label {
+  justify-content: flex-start;
+}
+.hunt-stage .hp-name-text {
+  flex: 0 1 auto;
+}
+.hs-found {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0 var(--sp-3);
+  font-family: inherit;
   font-size: var(--fs-body);
-  color: var(--c-text-dim);
+  font-weight: 700;
+  color: var(--c-gold-200);
+  background: rgba(255, 200, 80, 0.07);
+  border: var(--bw-thin) solid var(--c-gold-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.hs-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
 }
 .hs-time {
   margin: 0 0 var(--sp-3);
@@ -417,7 +569,7 @@
   color: var(--c-gold-300);
 }
 .hs-banner-full {
-  margin-top: var(--sp-2);
+  margin: 0;
   font-size: var(--fs-body);
   color: var(--c-bad);
 }
@@ -501,10 +653,6 @@
   .hs-back {
     display: inline-flex;
   }
-  .hs-banner {
-    min-height: 130px;
-    padding: var(--sp-3);
-  }
 }
 @media (min-width: 900px) {
   .hs-cols {
@@ -515,9 +663,3 @@
     top: 0;
   }
 }
-@container ui (max-width: 640px) {
-  .hs-depths {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-

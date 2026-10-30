@@ -4,7 +4,7 @@ import T from '../game/tunables';
 import { HeroSheet, heroSheetUrl } from '../game/sprites';
 import { HuntLiveSnapshot } from '../game/huntCombat';
 import { artGeometry, HERO_ART, huntingEnemyArt, huntingEnemySpriteUrl, huntingZoneBackgroundUrl, HuntingZoneDef } from '../game/huntingZones';
-import { FramedSprite } from './HuntParts';
+import { FramedSprite, SwordsMark } from './HuntParts';
 import { StrikeStats } from '../game/derivedStats';
 import { FX_PATH_COLOR, SKILL_FX, SkillFxId } from '../game/skillFx';
 import { FxLayer } from './SkillFx';
@@ -169,43 +169,46 @@ export default function HuntBattleView({
   const enemyArt = huntingEnemyArt(zone.enemyId);
   const stageStyle: CSSProperties & Record<'--bg', string> = { '--bg': `url(${huntingZoneBackgroundUrl(zone.id)})` };
 
+  const enemyHud = (
+    <div className="battle-hud enemy">
+      <span className="hp-label">
+        <span className="hp-name-text">{monsterName}</span>
+        <span className="hunt-plate-level">{t('hunting.levelShort', { n: level })}</span>
+      </span>
+      <div className="battle-hp-row">
+        <div className="bar hp enemy-hp">
+          <div className="bar-fill enemy-hp-fill" style={{ width: `${bars ? hpPct(bars.enemyHp, bars.enemyMax) : 100}%` }} />
+        </div>
+        {bars && (
+          <span className="hp-num">
+            {Math.round(bars.enemyHp)} / {bars.enemyMax}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+  const heroHud = (
+    <div className="battle-hud hero">
+      <span className="hp-label">
+        <span className="hp-name-text">{heroName}</span>
+      </span>
+      <div className="battle-hp-row">
+        <div className="bar hp">
+          <div className="bar-fill hp-fill" style={{ width: `${bars ? hpPct(bars.heroHp, bars.heroMax) : 100}%` }} />
+        </div>
+        {bars && (
+          <span className="hp-num">
+            {Math.round(bars.heroHp)} / {bars.heroMax}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  // The order of the hunt screen: the monster's life on top, the two fighters in their boxes with the swords between, the hero's life under them. Only the layout lives here; what moves is the scene above.
   return (
     <div className={`hunt-stage zone-${zone.id}${fx.shaking ? ' shake' : ''}`} style={stageStyle}>
-      <div className="hunt-stage-top">
-        <div className="battle-hud hero">
-          <span className="hp-label">
-            <span className="hp-name-text">{heroName}</span>
-          </span>
-          <div className="battle-hp-row">
-            <div className="bar hp">
-              <div className="bar-fill hp-fill" style={{ width: `${bars ? hpPct(bars.heroHp, bars.heroMax) : 100}%` }} />
-            </div>
-            {bars && (
-              <span className="hp-num">
-                {Math.round(bars.heroHp)} / {bars.heroMax}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="battle-hud enemy">
-          <span className="hp-label">
-            <span className="hp-name-text">{monsterName}</span>
-            <span className="hunt-plate-level">{t('hunting.levelShort', { n: level })}</span>
-          </span>
-          <div className="battle-hp-row">
-            <div className="bar hp enemy-hp">
-              <div className="bar-fill enemy-hp-fill" style={{ width: `${bars ? hpPct(bars.enemyHp, bars.enemyMax) : 100}%` }} />
-            </div>
-            {bars && (
-              <span className="hp-num">
-                {Math.round(bars.enemyHp)} / {bars.enemyMax}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {children && <div className="hunt-stage-buffs">{children}</div>}
+      {enemyHud}
 
       <div className="hunt-stage-arena">
         <div className={`hunt-side player${active && (kind === 'hero' || kind === 'kill') ? ' lunge' : ''}${active && kind === 'monster' ? ' flinch' : ''}`}>
@@ -217,6 +220,7 @@ export default function HuntBattleView({
             </span>
           ))}
         </div>
+        <SwordsMark label={t('hunting.versus')} />
         <div
           className={`hunt-side enemy${active && kind === 'monster' ? ' lunge' : ''}${active && kind === 'hero' ? ' flash' : ''}${kind === 'arrive' && !reduced ? ' arriving' : ''}`}
           key={kind === 'arrive' ? `arrive-${n}` : 'fight'}
@@ -241,6 +245,10 @@ export default function HuntBattleView({
           ))}
         </div>
       </div>
+
+      {heroHud}
+
+      {children && <div className="hunt-stage-buffs">{children}</div>}
     </div>
   );
 }

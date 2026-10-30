@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { promotionLine } from './promotionLine';
 import ActiveBuffs from './ActiveBuffs';
 import HuntBattleView from './HuntBattleView';
@@ -19,14 +19,17 @@ import SubLevelNeed from './SubLevelNeed';
 import { useDisplayName } from '../game/usernameContext';
 import { sessionStatsDiffer } from '../game/huntSession';
 import { isServerItemAuthority } from '../game/itemAuthority';
-import { Button, ItemFrame, ModalShell, Panel, ScreenLayout, StatList, StatRow } from './ui';
+import { Button, ItemFrame, ModalShell, Panel, StatList, StatRow } from './ui';
 import type { CardRarity } from './ui';
 
+// the frame colour of a drop: common = plain, refined = blue, noble = purple
+const dropTier = (rarity: string | undefined): CardRarity => (rarity === 'rare' ? 'epic' : rarity === 'uncommon' ? 'rare' : 'common');
 const MS_PER_HOUR = 3600 * 1000;
 // The inventory-full extrapolation from a handful of seconds of hunting is noise; it uses the zone's estimate until the first minute is in.
 const RATE_MIN_MS = 60 * 1000;
 
-// The hunt in progress: the arena on one side, the live numbers of the session on the other. Every figure comes from computeHuntingStatus (the
+// The hunt in progress, small and calm: a top bar (time, Resumo, Resgatar), the scene (monster life, the two fighters, hero life) and only the warnings that need an action.
+// Everything else (the numbers, the loot, the pieces found, the zone level) is behind Resumo. Every figure comes from computeHuntingStatus (the
 // same replay that decides the reward when the hunt stops) — nothing here accrues anything.
 export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveData; onStopHunt: () => void; onClose: () => void }) {
   const [now, setNow] = useState(() => Date.now());
@@ -41,6 +44,14 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
+
+  const [summary, setSummary] = useState(false);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const toggleSummary = () => setSummary((v) => !v);
+  // opening the summary brings it into view (it sits under the scene)
+  useEffect(() => {
+    if (summary) summaryRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [summary]);
 
   const heroName = useDisplayName(save.heroName);
   const zone = save.activeHuntingZone ? getHuntingZone(save.activeHuntingZone) : undefined;
@@ -68,56 +79,54 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
   const maxed = status.ceilingSubLevel >= T.hunting.subLevels;
   const frozen = !!save.huntSession && sessionStatsDiffer(save.huntSession.stats, buildCombatStats(save));
 
-  const tierOf = (r: string | undefined): CardRarity => (r === 'rare' ? 'epic' : r === 'uncommon' ? 'rare' : 'common');
   const stage = (
-    <Panel className="hs-stagepanel">
-      <HuntBattleView
-        zone={zone}
-        heroSheet={heroSheet(save)}
-        heroName={heroName}
-        monsterName={t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)}
-        monsterLevel={status.ceilingSubLevel}
-        snapshot={status.liveSnapshot}
-        decor={(() => {
-          const st = save.huntSession?.stats ?? buildCombatStats(save);
-          return { strikes: st.strikes, bleed: st.bleed, block: st.block };
-        })()}
-      >
-        <ActiveBuffs save={save} skip={['gatherer']} />
-      </HuntBattleView>
-      <p className="hs-depthline">
-        {t(`hunting.depth_${depth}`)} · {t('dungeon.cp', { n: fmtNum(recommendedCpForDepth(zone, depth)) })}
-      </p>
-    </Panel>
+    <HuntBattleView
+      zone={zone}
+      heroSheet={heroSheet(save)}
+      heroName={heroName}
+      monsterName={t(`enemies.${huntingEnemyNameKey(zone.enemyId)}`)}
+      monsterLevel={status.ceilingSubLevel}
+      snapshot={status.liveSnapshot}
+      decor={(() => {
+        const st = save.huntSession?.stats ?? buildCombatStats(save);
+        return { strikes: st.strikes, bleed: st.bleed, block: st.block };
+      })()}
+    >
+      <ActiveBuffs save={save} skip={['gatherer']} />
+    </HuntBattleView>
   );
 
-  const main = (
+  // What stays in sight without opening the summary: the inventory warning with the list of what would be left behind (it is the thing to act on before claiming),
+  // the "claim to continue" notice, and a tap-through to the unique pieces found.
+  const alerts = (
     <>
-      {stage}
-      <Panel title={t('hunting.uniquesFound')}>
-        {isServerItemAuthority() ? (
-          <p className="hs-meter-text">{t('hunting.uniquesServerNote')}</p>
-        ) : status.uniques.length > 0 ? (
-          <UniqueDrops drops={status.uniques} />
-        ) : (
-          <p className="hs-meter-text">{t('hunting.noUniques')}</p>
-        )}
-      </Panel>
-      <Panel title={t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })}>
-        <Meter pct={maxed ? 100 : (Math.min(status.promotionWins, required) / required) * 100} tone="xp" label={t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })} />
-        <p className="hs-meter-text">{maxed ? t('hunting.subLevelMax') : promotionLine(status.promotionWins, required, status.ceilingSubLevel)}</p>
-        {status.ceilingSubLevel > status.startCeiling && <p className="hs-promoted">{t('hunting.promotedRange', { a: status.startCeiling, b: status.ceilingSubLevel })}</p>}
-        <p className="hs-hint">{t('hunting.subLevelExplain')}</p>
-        {subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct > 0 && <p className="hs-hint">{t('hunting.subLevelXp', { n: subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct })}</p>}
-        {!maxed && status.nextSubLevelGear > 0 && <SubLevelNeed required={status.nextSubLevelGear} />}
-      </Panel>
+      {status.full && <p className="hs-banner-full">{t('hunting.capFull')}</p>}
+      {!inv.fits && (
+        <Panel tone="inset" className="hs-left hs-alert">
+          <p className="hs-line bad">{t(inv.missingSlots === 1 ? 'hunting.invMissingOne' : 'hunting.invMissing', { n: inv.missingSlots })}</p>
+          <div className="hs-lostlist">
+            {inv.leftBehind.map((i) => (
+              <span className="hs-lost" key={i.itemId}>
+                <MatIcon id={i.itemId} />
+                <span>{t('hunting.invLeftOf', { n: fmtNum(i.count), name: matName(i.itemId) })}</span>
+              </span>
+            ))}
+          </div>
+          <WholesaleLink hint />
+        </Panel>
+      )}
+      {status.uniques.length > 0 && (
+        <button type="button" className="hs-found" onClick={() => setSummary(true)} data-ui>
+          {t('hunting.uniquesFound')}: {status.uniques.length}
+        </button>
+      )}
     </>
   );
 
-  const side = (
-    <>
+  // The summary: the numbers of the session, the loot so far, the pieces found, the zone level and the notices. Opened by the button on the top bar.
+  const summaryPanel = (
+    <div className="hs-summary" id="hs-summary" ref={summaryRef}>
       <Panel tone={status.full ? 'gold' : 'plain'}>
-        <p className="hs-time">{t('hunting.timeHunting', { t: fmtSpan(elapsedMs) })}</p>
         <Meter pct={status.capMs <= 0 ? 0 : (status.pendingMs / status.capMs) * 100} tone={status.full ? 'full' : undefined} label={t('hunting.capProgress', { cur: fmtSpan(status.pendingMs), cap: fmtSpan(status.capMs) })} />
         <p className="hs-meter-text">{t('hunting.capProgress', { cur: fmtSpan(status.pendingMs), cap: fmtSpan(status.capMs) })}</p>
         {!status.full && <p className="hs-meter-text">{t('hunting.capLeft', { t: fmtSpan(status.capMs - status.pendingMs) })}</p>}
@@ -140,7 +149,7 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
             const def = getMaterial(item.itemId);
             return (
               <div className={`hs-loot-cell${item.count > 0 ? '' : ' empty'}`} key={item.itemId} title={matName(item.itemId)}>
-                <ItemFrame rarity={tierOf(entry?.rarity)} qty={fmtNum(item.count)}>
+                <ItemFrame rarity={dropTier(entry?.rarity)} qty={fmtNum(item.count)}>
                   {def && <MaterialIcon item={def} />}
                 </ItemFrame>
                 <span className="hs-loot-rate">{matName(item.itemId)}</span>
@@ -149,21 +158,27 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
           })}
         </div>
         <p className="hs-hint">{t('hunting.collectedGoesTo')}</p>
-        {inv.fits ? (
-          <p className="hs-line ok">{t('hunting.invFits', { n: inv.used, m: inv.capacity })}</p>
-        ) : (
-          <div className="hs-line bad">
-            {t(inv.missingSlots === 1 ? 'hunting.invMissingOne' : 'hunting.invMissing', { n: inv.missingSlots })}
-            {inv.leftBehind.map((i) => (
-              <span className="hs-lost" key={i.itemId}>
-                <MatIcon id={i.itemId} />
-                <span>{t('hunting.invLeftOf', { n: fmtNum(i.count), name: matName(i.itemId) })}</span>
-              </span>
-            ))}
-            <WholesaleLink hint />
-          </div>
-        )}
+        {inv.fits && <p className="hs-line ok">{t('hunting.invFits', { n: inv.used, m: inv.capacity })}</p>}
         {fullIn !== null && <p className="hs-line eta">{t('hunting.invFullIn', { t: fmtSpan(Math.max(fullIn, 1 / 60) * MS_PER_HOUR) })}</p>}
+      </Panel>
+
+      <Panel title={t('hunting.uniquesFound')}>
+        {isServerItemAuthority() ? (
+          <p className="hs-meter-text">{t('hunting.uniquesServerNote')}</p>
+        ) : status.uniques.length > 0 ? (
+          <UniqueDrops drops={status.uniques} />
+        ) : (
+          <p className="hs-meter-text">{t('hunting.noUniques')}</p>
+        )}
+      </Panel>
+
+      <Panel title={t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })}>
+        <Meter pct={maxed ? 100 : (Math.min(status.promotionWins, required) / required) * 100} tone="xp" label={t('hunting.subLevelBar', { n: status.ceilingSubLevel, m: T.hunting.subLevels })} />
+        <p className="hs-meter-text">{maxed ? t('hunting.subLevelMax') : promotionLine(status.promotionWins, required, status.ceilingSubLevel)}</p>
+        {status.ceilingSubLevel > status.startCeiling && <p className="hs-promoted">{t('hunting.promotedRange', { a: status.startCeiling, b: status.ceilingSubLevel })}</p>}
+        <p className="hs-hint">{t('hunting.subLevelExplain')}</p>
+        {subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct > 0 && <p className="hs-hint">{t('hunting.subLevelXp', { n: subLevelNotes(zone, depth, status.ceilingSubLevel).xpPct })}</p>}
+        {!maxed && status.nextSubLevelGear > 0 && <SubLevelNeed required={status.nextSubLevelGear} />}
       </Panel>
 
       {frozen && (
@@ -171,7 +186,8 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
           <p>{t('hunting.sessionFrozen')}</p>
         </Panel>
       )}
-    </>
+      <p className="hs-hint center">{t('hunting.stopHint')}</p>
+    </div>
   );
 
   return (
@@ -179,18 +195,24 @@ export default function HuntRunning({ save, onStopHunt, onClose }: { save: SaveD
       className="hs-modal running"
       tutorialTarget="hunt-modal"
       icon={<img className="pixel-icon" src="/assets/icons/demon_claw.png" alt="" />}
-      title={t('hunting.runningIn', { zone: t(`dungeon.${zone.nameKey}`) })}
+      title={t(`dungeon.${zone.nameKey}`)}
+      subtitle={`${t(`hunting.depth_${depth}`)} · ${t('dungeon.cp', { n: fmtNum(recommendedCpForDepth(zone, depth)) })}`}
       closeLabel={t('ui.close')}
       onClose={onClose}
     >
-      <div className="ui-cq hs">
-        <ScreenLayout main={main} side={side} className="hs-layout" />
-        <div className="hs-foot">
-          <Button variant="primary" block className="hunt-claim" onClick={onStopHunt}>
+      <div className="hs hs-run">
+        <div className="hs-topbar">
+          <span className="hs-time">{t('hunting.timeHunting', { t: fmtSpan(elapsedMs) })}</span>
+          <Button className="hs-topbtn" onClick={toggleSummary} aria-expanded={summary} aria-controls="hs-summary">
+            {t('hunting.summary')}
+          </Button>
+          <Button variant="primary" className="hs-topbtn hunt-claim" onClick={onStopHunt}>
             {t('hunting.stop')}
           </Button>
-          <p className="hs-hint center">{t('hunting.stopHint')}</p>
         </div>
+        {stage}
+        {alerts}
+        {summary && summaryPanel}
       </div>
     </ModalShell>
   );

@@ -97,3 +97,13 @@ export function ZoneUniques({ itemIds }: { itemIds: string[] }) {
     </div>
   );
 }
+
+// Two crossed swords, the "fight" mark between the two fighters of the hunt scene (drawn, so it needs no art file).
+export function SwordsMark({ label }: { label: string }) {
+  return (
+    <svg className="hunt-vs" viewBox="0 0 24 24" role="img" aria-label={label} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="square">
+      <path d="M5 4l14 14M19 4L5 18" />
+      <path d="M3 7l4-4M21 7l-4-4M6 21l-3-3M18 21l3-3" strokeWidth="2.2" />
+    </svg>
+  );
+}
