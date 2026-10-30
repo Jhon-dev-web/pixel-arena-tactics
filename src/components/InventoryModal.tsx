@@ -2,7 +2,6 @@ import { t } from '../locales';
 import { SaveData } from '../game/engine';
 import InventoryPanel from './InventoryPanel';
 import { ModalShell } from './ui';
-import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 
 // The sidebar's direct "Inventário" entry: a big work surface (the shared ModalShell) around the same InventoryPanel that also renders embedded inside PersonagemView, sharing all state/handlers.
 export default function InventoryModal({
@@ -34,7 +33,6 @@ export default function InventoryModal({
       tutorialTarget="inventory-modal"
       icon={<img className="pixel-icon" src="/assets/icons/nav_bag.png" alt="" />}
       title={t('inventory.title')}
-      subtitle={t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}
       closeLabel={t('ui.close')}
       onClose={onClose}
     >

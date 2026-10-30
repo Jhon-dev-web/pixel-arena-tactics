@@ -29,8 +29,8 @@ import type { TabItem } from './ui';
 // The paying-friends goal of the free Pass (the owner may move it on the server; the hint falls back to the default tier).
 const FREE_PASS_INVITES = DEFAULT_REFERRAL_TIERS.find((tier) => tier.kind === 'pass')?.minCount ?? 10;
 
-// The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; a vertical list on a phone),
-// the season's exclusives generated from the track data, and the footer with "claim all" and (for non-owners) the purchase button.
+// The Adventurer Pass screen: season key art, perks, a horizontal track (free reward above, premium below, one column per level; it scrolls sideways on a phone too),
+// the season's exclusives generated from the track data, and the footer (stuck to the foot of the page) with "claim all" and (for non-owners) the purchase button.
 
 // Where the web purchase stands: idle -> after a payment: confirming (polling the server) -> confirmed, or pending ("still processing, come back in a moment").
 export type PassFlow = 'idle' | 'confirming' | 'confirmed' | 'pending';
@@ -38,7 +38,6 @@ export type PassFlow = 'idle' | 'confirming' | 'confirmed' | 'pending';
 // Levels whose rewards are the season's headline items: bigger cards, art at 64 px.
 const FEATURED_LEVELS = new Set([8, 10, 15, 18, 20, 27, 30]);
 
-const PHONE_QUERY = '(max-width: 640px)';
 const COLUMN_STEP = 140; // px one arrow key press moves the horizontal track
 
 interface RewardView {
@@ -264,19 +263,15 @@ export default function BattlePassView({
     0,
   );
 
-  // The track opens centred on the player's current level (horizontal scroller) or scrolls the row into view (phone list).
+  // The track opens centred on the player's current level (a horizontal scroller, on a phone too).
   const goToMyLevel = useCallback((smooth: boolean) => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const col = scroller.querySelector<HTMLElement>(`[data-level="${level}"]`);
     if (!col) return;
-    const horizontal = scroller.scrollWidth > scroller.clientWidth + 1 && !window.matchMedia(PHONE_QUERY).matches;
-    if (horizontal) {
-      const left = col.offsetLeft - (scroller.clientWidth - col.clientWidth) / 2;
-      scroller.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
-    } else if (smooth) {
-      col.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }
+    if (scroller.scrollWidth <= scroller.clientWidth + 1) return;
+    const left = col.offsetLeft - (scroller.clientWidth - col.clientWidth) / 2;
+    scroller.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
   }, [level]);
 
   useEffect(() => {
@@ -290,7 +285,7 @@ export default function BattlePassView({
     const el = scrollerRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if (window.matchMedia(PHONE_QUERY).matches || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
       const max = el.scrollWidth - el.clientWidth;
       if (max <= 0) return;
       if ((e.deltaY > 0 && el.scrollLeft >= max - 1) || (e.deltaY < 0 && el.scrollLeft <= 0)) return;
@@ -303,7 +298,7 @@ export default function BattlePassView({
 
   // Drag with the mouse (touch keeps its native panning).
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.pointerType !== 'mouse' || e.button !== 0 || window.matchMedia(PHONE_QUERY).matches) return;
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
     const el = scrollerRef.current;
     if (!el) return;
     drag.current = { x: e.clientX, left: el.scrollLeft, moved: false, id: e.pointerId };
@@ -334,7 +329,7 @@ export default function BattlePassView({
 
   const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     const el = scrollerRef.current;
-    if (!el || window.matchMedia(PHONE_QUERY).matches) return;
+    if (!el) return;
     if (e.key === 'ArrowRight') el.scrollBy({ left: COLUMN_STEP, behavior: 'smooth' });
     else if (e.key === 'ArrowLeft') el.scrollBy({ left: -COLUMN_STEP, behavior: 'smooth' });
     else if (e.key === 'Home') el.scrollTo({ left: 0, behavior: 'smooth' });
@@ -389,7 +384,7 @@ export default function BattlePassView({
 
   // The bar under the scrolling body: "claim all" on the left, the purchase (when the Pass is not owned) on the right.
   const footer = (
-    <Panel className="pa-foot">
+    <Panel className="pa-foot ui-bar">
       <div className="pa-foot-main">
         <Button variant="primary" className="pa-claimall" onClick={claimAll} disabled={claimableCount === 0}>
           {t('battlePass.claimAll')}
@@ -436,11 +431,6 @@ export default function BattlePassView({
       {!owner && expired && (
         <p className="pa-note" role="status" data-testid="pass-expired">
           {t('battlePass.expired', { ended: expired.ended, n: expired.buy })}
-        </p>
-      )}
-      {!owner && (
-        <p className="pa-buy-blurbs">
-          <span>{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</span>
         </p>
       )}
     </Panel>
@@ -565,6 +555,9 @@ export default function BattlePassView({
             <p className="pa-howxp">
               <strong>{t('battlePass.howXp')}</strong> {t('battlePass.xpFloor', { n: T.battlePass.xpPerFloor })} · {t('battlePass.xpHunt')} · {t('battlePass.xpGather')}
             </p>
+
+            {/* what the purchase gives: it sits in the page, just above the stuck bar, so the bar itself stays one row tall */}
+            {!owner && <p className="pa-buy-blurbs">{t('battlePass.buyBlurb', { h: T.battlePass.capHours })}</p>}
           </>
         )}
       {footer}

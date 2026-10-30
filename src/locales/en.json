@@ -80,7 +80,6 @@
     "mining": "Mining",
     "woodcutting": "Woodcutting",
     "garden": "Garden",
-    "hunt": "Open Hunt",
     "battlepass": "Adventurer's Pass",
     "bag": "Backpack",
     "quests": "Quests",
@@ -688,7 +687,6 @@
   },
   "camp": {
     "title": "Base Camp",
-    "enterArena": "DUNGEON",
     "returnCamp": "Return to Camp",
     "training": "Training...",
     "level": "Lv {n}",
@@ -1448,11 +1446,7 @@
     "woodcutting": "Woodcutting",
     "gardenStatus": "{n}/{m} plots ready",
     "delivery": "Order",
-    "deliveryReady": "Ready to collect",
-    "progressionTitle": "Progression",
-    "hero": "Character",
-    "dungeon": "Dungeon",
-    "quickActionsTitle": "Quick Actions"
+    "deliveryReady": "Ready to collect"
   },
     "levelUp": {
     "title": "Level up! Lv {n}",
@@ -1895,14 +1889,13 @@
     "plant_voidsilk": "Voidsilk",
     "plant_voidsilk_d": "Dark silk from a long crop, the rarest fiber in the Garden",
     "plant_voidsilk_use": "Used for: Void Cloth",
-    "plotLockedLevel": "Gardening Lv {n}",
     "plotLockedBody": "Locked plot",
+    "moreSlots": "+{n} locked plots (Gardening Lv {levels})",
     "fertilize": "Fertilize",
     "fertilized": "Fertilized",
     "fertilizeHint": "Removes 50% of the remaining time · you have {n}",
     "fertilizeToast": "Plot fertilized: half the remaining time removed.",
     "nextUnlock": "Next unlock: {name} (Lv {n})",
-    "nextPlot": "Next plot: Lv {n}",
     "allUnlocked": "Everything unlocked",
     "plotsOpen": "{n} of {max} plots open",
     "bagFull": "Inventory full! The harvest stays ready."
@@ -2478,8 +2471,6 @@
     "button": "Claim all",
     "hint": "Claims everything that has finished at once: hunting, mining, woodcutting, ready garden plots and the delivery order",
     "lockedHint": "Adventurer Pass perk: claims everything that has finished with one tap",
-    "lockedLine": "Exclusive to the Adventurer's Pass.",
-    "seePass": "See the Pass",
     "passBadge": "Pass",
     "nothing": "Nothing has finished to claim right now.",
     "ok": "Nice",

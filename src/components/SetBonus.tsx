@@ -2,22 +2,14 @@ import { t } from '../locales';
 import { GearItem, setFamiliesOf } from '../game/gear';
 import { equippedSetItems } from '../game/gearInstances';
 import type { SaveData } from '../game/engine';
-import { SET_DEFS, SetFamilyView, setCounts, setFamilyView, wornSetViews } from '../game/setBonuses';
+import { SET_DEFS, setCounts, setFamilyView, wornSetViews } from '../game/setBonuses';
 import { setEffectText, setFamilyName } from './setText';
+import { progressLabel, worthListing } from './setLines';
 
 // Set bonuses on screen (game/setBonuses.ts): the "Conjunto" lines of the equipment panel, and the note under an item / a forge recipe that says which set the
 // piece belongs to and what its bonuses are (the words are in setText.ts).
 
-// "Aço 3/5": the family and how many of the highest threshold's pieces are worn.
-const progressLabel = (v: SetFamilyView): string => `${setFamilyName(v.family)} ${Math.min(v.count, v.max)}/${v.max}`;
-
-// A family is listed when a bonus is active or the next one is one piece away (two for a three-piece step): the quiet middle ground between hiding the sets and
-// listing every family the hero owns one piece of.
-function worthListing(v: SetFamilyView): boolean {
-  if (v.steps.some((s) => s.active)) return true;
-  const first = v.steps[0].pieces;
-  return v.count >= first - 1;
-}
+// "Aço 3/5" and the "worth listing" rule live in setLines.ts (the folded line of the equipment panel reads the same text).
 
 export function SetLines({ save }: { save: SaveData }) {
   const views = wornSetViews(equippedSetItems(save)).filter(worthListing);

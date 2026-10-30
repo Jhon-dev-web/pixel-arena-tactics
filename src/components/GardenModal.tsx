@@ -35,9 +35,6 @@ function formatDuration(ms: number): string {
   return `${m}m`;
 }
 
-// Plots 5 and 6 unlock with the Gardening level (garden.ts GARDEN_PLOT_UNLOCK_LEVELS): a locked plot renders the padlock card with the level it needs.
-type PlotLock = { locked: true; level: number } | { locked?: false };
-
 function Plot({
   index,
   status,
@@ -46,7 +43,6 @@ function Plot({
   armedUproot,
   fertilized,
   fertilizerQty,
-  lock = {},
   onPick,
   onPlantAgain,
   onHarvest,
@@ -60,7 +56,6 @@ function Plot({
   armedUproot: boolean;
   fertilized: boolean;
   fertilizerQty: number;
-  lock?: PlotLock;
   onPick: () => void;
   onPlantAgain: (plantId: string) => void;
   onHarvest: () => void;
@@ -69,20 +64,6 @@ function Plot({
 }) {
   const def = status.plantId ? getPlant(status.plantId) : undefined;
   const title = gardenText('plotName').replace('{n}', String(index + 1));
-
-  if (lock.locked) {
-    // A locked plot is one short row (padlock, name, the level it needs), not a full card.
-    return (
-      <div className="gd-plot locked" role="group" aria-label={`${title} - ${gardenText('plotLockedBody')}`}>
-        <img className="pixel-icon" src="/assets/icons/garden_plot_locked.png" alt="" />
-        <span className="gd-lock-name">
-          {title}
-          <span className="gd-lock-body">{gardenText('plotLockedBody')}</span>
-        </span>
-        <Chip>{gardenText('plotLockedLevel').replace('{n}', String(lock.level))}</Chip>
-      </div>
-    );
-  }
 
   if (!def) {
     const canAgain = !!lastPlant && gardeningLevel >= lastPlant.requiredLevel;
@@ -219,7 +200,8 @@ export default function GardenModal({
   const openPlots = unlockedGardenPlots(gardeningLevel);
   const emptyIdx = statuses.flatMap((s, i) => (s.plantId || i >= openPlots ? [] : [i]));
   const nextPlant = PLANTS.filter((p) => p.requiredLevel > gardeningLevel).sort((a, b) => a.requiredLevel - b.requiredLevel)[0];
-  const nextPlotLevel = openPlots < GARDEN_SLOTS ? plotUnlockLevel(openPlots) : 0;
+  // the locked plots are ONE row ("+4 canteiros trancados (Jardinagem Nv 15, 25, 40, 60)"), not one row each
+  const lockedLevels = Array.from({ length: GARDEN_SLOTS - openPlots }, (_, k) => plotUnlockLevel(openPlots + k));
   const fertilizerQty = save.consumables.fertilizer ?? 0;
   const readyIdx = readySlots(save, now);
   // ready plots whose yield has no room in the inventory (a harvest is refused for them; the crop stays ready)
@@ -261,10 +243,6 @@ export default function GardenModal({
       <Panel>
         <SkillLevelBadge xp={save.skillXp.gardening} labelKey="garden.skillLabel" skillId="gardening">
           <p className="pf-meta">
-            {gardenText('plotsOpen').replace('{n}', String(openPlots)).replace('{max}', String(GARDEN_SLOTS))}
-            {nextPlotLevel > 0 && ` · ${gardenText('nextPlot').replace('{n}', String(nextPlotLevel))}`}
-          </p>
-          <p className="pf-meta">
             {nextPlant ? gardenText('nextUnlock').replace('{name}', gardenText(nextPlant.nameKey)).replace('{n}', String(nextPlant.requiredLevel)) : gardenText('allUnlocked')}
           </p>
         </SkillLevelBadge>
@@ -282,8 +260,8 @@ export default function GardenModal({
       )}
       <Panel title={gardenText('slotsTitle')}>
         <div className="ui-grid gd-plots">
-          {statuses.map((status, i) => (
-            <div className={`gd-plot-wrap${i >= openPlots ? ' is-locked' : ''}`} key={i}>
+          {statuses.slice(0, openPlots).map((status, i) => (
+            <div className="gd-plot-wrap" key={i}>
               <Plot
                 index={i}
                 status={status}
@@ -292,7 +270,6 @@ export default function GardenModal({
                 armedUproot={armedUproot === i}
                 fertilized={!!save.gardenSlots[i]?.fertilized}
                 fertilizerQty={fertilizerQty}
-                lock={i >= openPlots ? { locked: true, level: plotUnlockLevel(i) } : {}}
                 onFertilize={() => onFertilize(i)}
                 onPick={() => {
                   setPlantAll(false);
@@ -311,6 +288,14 @@ export default function GardenModal({
                 ))}
             </div>
           ))}
+          {lockedLevels.length > 0 && (
+            <div className="gd-plot-wrap is-locked">
+              <div className="gd-plot locked" role="group" aria-label={gardenText('moreSlots').replace('{n}', String(lockedLevels.length)).replace('{levels}', lockedLevels.join(', '))}>
+                <img className="pixel-icon" src="/assets/icons/garden_plot_locked.png" alt="" />
+                <span className="gd-lock-name">{gardenText('moreSlots').replace('{n}', String(lockedLevels.length)).replace('{levels}', lockedLevels.join(', '))}</span>
+              </div>
+            </div>
+          )}
         </div>
       </Panel>
       <UnlockList skill="gardening" level={gardeningLevel} collapsed />
@@ -323,12 +308,12 @@ export default function GardenModal({
       tutorialTarget="garden-modal"
       icon={<img className="pixel-icon" src="/assets/icons/common_herb.png" alt="" />}
       title={gardenText('title')}
-      subtitle={t('skills.level', { n: gardeningLevel })}
+      subtitle={`${t('skills.level', { n: gardeningLevel })} · ${gardenText('plotsOpen').replace('{n}', String(openPlots)).replace('{max}', String(GARDEN_SLOTS))}`}
       closeLabel={t('ui.close')}
       onClose={onClose}
     >
       <div className="ui-cq">
-        <ScreenLayout main={main} side={summary} sideFirst className="pf-layout" />
+        <ScreenLayout main={main} side={summary} className="pf-layout" />
       </div>
 
       {pickerFor !== null && (

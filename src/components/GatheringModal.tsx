@@ -150,7 +150,8 @@ export default function GatheringModal({
 
   const main = (
     <>
-      <Panel title={t(`${ns}.title`)}>
+      {/* no title of its own: the modal already says "Mineração" / "Lenhador" in its header */}
+      <Panel>
         {busyWith && (
           <div className="ui-alert bad pf-busy" role="status" data-testid="gather-busy">
             <strong>{t('gathering.busyTitle', { activity: t(`busy.${busyWith}`) })}</strong>

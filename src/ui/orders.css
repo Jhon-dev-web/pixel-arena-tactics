@@ -108,7 +108,40 @@
   image-rendering: pixelated;
 }
 .ord-accept {
-  margin-top: auto;
+  flex: 1 1 140px;
+}
+/* the closed order card: the pay and the button on one line, the requirement rows behind one tap */
+.ord-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+}
+.ord-line > .ord-block {
+  flex: 1 1 auto;
+}
+.ord-more {
+  display: flex;
+  flex-direction: column;
+}
+.ord-more[open] {
+  gap: var(--sp-2);
+}
+.ord-more-sum {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  cursor: pointer;
+  font-size: var(--fs-small);
+  color: var(--c-text-dim);
+}
+.ord-more-sum.short {
+  color: var(--c-bad);
+}
+.ord-more-sum.short::before {
+  content: '! ';
+  white-space: pre;
 }
 /* the requirement icon: the emoji until the remote image has really arrived */
 .ord-req-icon {

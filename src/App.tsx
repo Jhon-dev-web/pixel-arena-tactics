@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import T, { setTunableListener } from './game/tunables';
 import {
   addBattlePassXp,
@@ -153,6 +154,10 @@ import { recordDungeonRun, trackSave } from './game/statsTracking';
 import TutorialOverlay from './components/TutorialOverlay';
 import SettingsModal from './components/SettingsModal';
 import DesktopSidebar, { DesktopNavGroup } from './components/DesktopSidebar';
+import SectionTabs from './components/SectionTabs';
+import { NAV_ENTRIES, entryBadge, entryOf, visibleScreens } from './components/navMap';
+import type { EntryId, ScreenId } from './components/navMap';
+import type { TabItem } from './components/ui';
 import DesktopTopbar from './components/DesktopTopbar';
 import DesktopHome from './components/DesktopHome';
 import MobileDrawer from './components/MobileDrawer';
@@ -2494,61 +2499,126 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const closeDrawer = () => setDrawerOpen(false);
 
+  // The side menu has eight entries (navMap.ts); the screens that used to have an entry of their own are tabs of one of them, or sit on the top bar / the gear.
+  // Every screen keeps the state flag it always had (a view, or a modal), so a shortcut that opens it directly (next step, tutorials, "use in...") is unchanged.
+  const nowMs = Date.now();
+  const forgeSocketsHint = () => {
+    if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
+  };
+  const closeGroupModals = () => {
+    setMineOpen(false);
+    setWoodOpen(false);
+    setGardenOpen(false);
+    setExpeditionOpen(false);
+    setShopOpen(false);
+  };
+  const goScreen = (id: ScreenId) => {
+    closeGroupModals();
+    switch (id) {
+      case 'home': playSfx('click'); setActiveView('home'); break;
+      case 'personagem': playSfx('click'); setActiveView('personagem'); break;
+      case 'skills': playSfx('click'); setActiveView('skills'); break;
+      case 'tactics': playSfx('click'); setActiveView('tactics'); break;
+      case 'oficios': playSfx('click'); setActiveView('oficios'); break;
+      case 'forge': playSfx('click'); setActiveView('forja'); forgeSocketsHint(); break;
+      case 'pass': playSfx('click'); setActiveView('passe'); break;
+      case 'market': playSfx('click'); setActiveView('mercado'); break;
+      case 'calendar': playSfx('click'); setActiveView('calendario'); break;
+      case 'invites': playSfx('click'); setActiveView('convites'); break;
+      case 'hunt': openHunt(); break;
+      case 'dungeon': openDungeon(); break;
+      case 'mining': playSfx('click'); setMineOpen(true); openContextTutorial('mining'); break;
+      case 'woodcutting': playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); break;
+      case 'garden': playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); break;
+      case 'shop': playSfx('click'); setShopTab('buy'); setShopOpen(true); break;
+      case 'deliveries': openExpedition(); break;
+      case 'quests': playSfx('click'); setQuestsOpen(true); break;
+      case 'codex': playSfx('click'); setCodexOpen(true); break;
+      case 'inventory': playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); break;
+      case 'settings': playSfx('click'); setSettingsOpen(true); break;
+    }
+  };
+
+  // The screen the player is on: an open modal over the page, else the page.
+  const viewScreen: Record<typeof activeView, ScreenId> = { home: 'home', personagem: 'personagem', oficios: 'oficios', skills: 'skills', tactics: 'tactics', mercado: 'market', passe: 'pass', convites: 'invites', forja: 'forge', calendario: 'calendar' };
+  const modalScreen: ScreenId | null = gardenOpen ? 'garden' : woodOpen ? 'woodcutting' : mineOpen ? 'mining' : expeditionOpen ? 'deliveries' : shopOpen ? 'shop' : huntOpen ? 'hunt' : dungeonOpen ? 'dungeon' : null;
+  const currentScreen: ScreenId = modalScreen ?? viewScreen[activeView];
+  const activeEntry: EntryId | null = entryOf(currentScreen);
+
+  // What waits for the player, per screen; an entry shows a dot when any of its screens does.
+  const screenBadges: Partial<Record<ScreenId, boolean>> = {
+    personagem: attributePointsAvailable(save) > 0,
+    skills: skillPointsAvailable(save, level) > 0,
+    hunt: !!save.activeHuntingZone,
+    mining: computeMiningStatus(save, nowMs).full,
+    woodcutting: computeWoodcuttingStatus(save, nowMs).full,
+    garden: computeGardenStatuses(save, nowMs).some((s) => s.ready),
+    deliveries: isDeliveryReady(save, nowMs) || save.expeditions.some((e) => nowMs >= e.endsAt),
+  };
+  const questsBadge = claimableCount(save.quests, questContext(save)) + periodClaimable(save, nowMs, ownsAdventurerPass(save)) > 0;
+
+  // The market tab exists only in the web build with the market on (the text is behind the same constant as the screen, so the desktop bundle has none of it).
+  const marketTab = marketOn ? { label: mt('title') } : undefined;
+  const screenLabel: Partial<Record<ScreenId, string>> = {
+    personagem: t('nav.hero'), skills: t('nav.skills'), tactics: t('nav.tactics'), mining: t('nav.mining'), woodcutting: t('nav.woodcutting'), garden: t('nav.garden'),
+    oficios: t('nav.oficios'), shop: t('nav.shop'), deliveries: t('nav.deliveries'), market: marketTab?.label,
+  };
+  const screenIcon: Partial<Record<ScreenId, ReactNode>> = {
+    personagem: <PixelIcon name="hero" />, skills: <PixelIcon name="skills" />, tactics: <PixelIcon name="tactics" />, mining: <PixelIcon name="mining" />,
+    woodcutting: <PixelIcon name="woodcutting" />, garden: <PixelIcon name="garden" />, oficios: <PixelIcon name="oficios" />, shop: <PixelIcon name="shop" />,
+    deliveries: <PixelIcon name="deliveries" />, market: <PixelIcon name="market" />,
+  };
+  const entryLook: Record<EntryId, { icon: ReactNode; label: string }> = {
+    camp: { icon: <PixelIcon name="camp" />, label: t('camp.title') },
+    hero: { icon: <PixelIcon name="hero" />, label: t('nav.heroEntry') },
+    hunt: { icon: <PixelIcon name="hunt" />, label: t('nav.hunt') },
+    dungeon: { icon: <PixelIcon name="dungeon" />, label: t('nav.dungeon') },
+    professions: { icon: <PixelIcon name="mining" />, label: t('nav.professionsEntry') },
+    forge: { icon: <PixelIcon name="forge" />, label: t('nav.forge') },
+    shop: { icon: <PixelIcon name="shop" />, label: t('nav.shop') },
+    pass: { icon: <PixelIcon name="pass" />, label: t('nav.battlePass') },
+  };
+  const onlineScreens = { market: marketOn, account: configured };
+
   const desktopNavGroups: DesktopNavGroup[] = [
     {
       key: 'main',
-      items: [
-        { key: 'hero', icon: <PixelIcon name="hero" />, label: t('nav.hero'), active: activeView === 'personagem', badge: attributePointsAvailable(save) > 0, onClick: () => { closeDrawer(); playSfx('click'); setActiveView('personagem'); } },
-        { key: 'skills', icon: <PixelIcon name="skills" />, label: t('nav.skills'), active: activeView === 'skills', badge: skillPointsAvailable(save, level) > 0, tutorialTarget: 'skills', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('skills'); } },
-        { key: 'tactics', icon: <PixelIcon name="tactics" />, label: t('nav.tactics'), active: activeView === 'tactics', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('tactics'); } },
-        { key: 'hunt', icon: <PixelIcon name="hunt" />, label: t('nav.hunt'), active: huntOpen, badge: !!save.activeHuntingZone, extra: save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined, tutorialTarget: 'hunt', onClick: () => { closeDrawer(); openHunt(); } },
-        { key: 'dungeon', icon: <PixelIcon name="dungeon" />, label: t('nav.dungeon'), active: dungeonOpen, tutorialTarget: 'dungeon', onClick: () => { closeDrawer(); openDungeon(); } },
-        { key: 'quests', icon: <PixelIcon name="quests" />, label: t('nav.quests'), active: questsOpen, badge: claimableCount(save.quests, questContext(save)) + periodClaimable(save, Date.now(), ownsAdventurerPass(save)) > 0, onClick: () => { closeDrawer(); playSfx('click'); setQuestsOpen(true); } },
-        { key: 'codex', icon: <PixelIcon name="codex" />, label: t('codex.nav'), active: codexOpen, onClick: () => { closeDrawer(); playSfx('click'); setCodexOpen(true); } },
-        { key: 'calendar', icon: <PixelIcon name="calendar" />, label: t('calendar.nav'), active: activeView === 'calendario', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('calendario'); } },
-      ],
+      items: NAV_ENTRIES.map((entry) => {
+        const look = entryLook[entry.id];
+        return {
+          key: entry.id,
+          icon: look.icon,
+          label: look.label,
+          active: activeEntry === entry.id,
+          badge: entryBadge(entry, screenBadges),
+          extra: entry.id === 'hunt' && save.activeHuntingZone ? <HuntNavMini save={save} onOpen={() => { closeDrawer(); openHunt(); }} /> : undefined,
+          tutorialTarget: entry.id === 'hero' ? 'skills' : entry.id === 'hunt' ? 'hunt' : entry.id === 'dungeon' ? 'dungeon' : entry.id === 'forge' ? 'forge' : undefined,
+          onClick: () => { closeDrawer(); goScreen(entry.screens[0]); },
+        };
+      }),
     },
-    {
-      key: 'professions',
-      header: t('nav.groupProfessions'),
-      items: [
-        { key: 'mining', icon: <PixelIcon name="mining" />, label: t('nav.mining'), active: mineOpen, badge: computeMiningStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setMineOpen(true); openContextTutorial('mining'); } },
-        { key: 'woodcutting', icon: <PixelIcon name="woodcutting" />, label: t('nav.woodcutting'), active: woodOpen, badge: computeWoodcuttingStatus(save, Date.now()).full, onClick: () => { closeDrawer(); playSfx('click'); setWoodOpen(true); openContextTutorial('woodcutting'); } },
-        { key: 'garden', icon: <PixelIcon name="garden" />, label: t('nav.garden'), active: gardenOpen, badge: computeGardenStatuses(save, Date.now()).some((s) => s.ready), onClick: () => { closeDrawer(); playSfx('click'); setGardenOpen(true); openContextTutorial('garden'); } },
-        { key: 'oficios', icon: <PixelIcon name="oficios" />, label: t('nav.oficios'), active: activeView === 'oficios', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('oficios'); } },
-      ],
-    },
-    {
-      key: 'equipment',
-      header: t('nav.groupEquipment'),
-      items: [
-        { key: 'forge', icon: <PixelIcon name="forge" />, label: t('nav.forge'), active: activeView === 'forja', tutorialTarget: 'forge', onClick: () => {
-            closeDrawer();
-            playSfx('click');
-            setActiveView('forja');
-            if (Object.values(saveRef.current.gearInstances).some((item) => (getGear(item.templateId)?.tier ?? 0) >= 1)) openContextTutorial('sockets');
-          } },
-        { key: 'inventory', icon: <PixelIcon name="inventory" />, label: t('nav.inventory'), active: bagOpen, onClick: () => { closeDrawer(); playSfx('click'); setBagOpen(true); openContextTutorial('reforge'); } },
-      ],
-    },
-    {
-      key: 'economy',
-      header: t('nav.groupEconomy'),
-      items: [
-        { key: 'deliveries', icon: <PixelIcon name="deliveries" />, label: t('nav.deliveries'), active: expeditionOpen, badge: isDeliveryReady(save, Date.now()) || save.expeditions.some((e) => Date.now() >= e.endsAt), onClick: () => { closeDrawer(); openExpedition(); } },
-        { key: 'battlePass', icon: <PixelIcon name="pass" />, label: t('nav.battlePass'), active: activeView === 'passe', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('passe'); } },
-        // Inviting friends is online only (an account holds the code): no entry in the offline / desktop build.
-        ...(configured ? [{ key: 'invites', icon: <PixelIcon name="invites" />, label: t('invites.nav'), active: activeView === 'convites', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('convites'); } }] : []),
-        { key: 'shop', icon: <PixelIcon name="shop" />, label: t('nav.shop'), active: shopOpen, onClick: () => { closeDrawer(); playSfx('click'); setShopTab('buy'); setShopOpen(true); } },
-        ...(marketOn ? [{ key: 'market', icon: <PixelIcon name="market" />, label: mt('title'), active: activeView === 'mercado', onClick: () => { closeDrawer(); playSfx('click'); setActiveView('mercado'); } }] : []),
-      ],
-    },
-    {
-      key: 'settings',
-      items: [
-        { key: 'settings', icon: <PixelIcon name="settings" />, label: t('nav.settings'), active: settingsOpen, onClick: () => { closeDrawer(); playSfx('click'); setSettingsOpen(true); } },
-      ],
-    },
+  ];
+
+  // The tabs of the entry the player is in (only for an entry with more than one screen).
+  const tabEntry = NAV_ENTRIES.find((e) => e.id === activeEntry && visibleScreens(e, onlineScreens).length > 1);
+  const tabItems: TabItem<ScreenId>[] = tabEntry
+    ? visibleScreens(tabEntry, onlineScreens).map((id) => ({ id, label: screenLabel[id] ?? id, icon: screenIcon[id], dot: !!screenBadges[id] }))
+    : [];
+  const modalTabSelector: Partial<Record<ScreenId, string>> = {
+    mining: '[data-tutorial-target="mining-modal"]',
+    woodcutting: '[data-tutorial-target="woodcutting-modal"]',
+    garden: '[data-tutorial-target="garden-modal"]',
+    deliveries: '[data-tutorial-target="deliveries-modal"]',
+    shop: '.ui-modal.shop-modal',
+  };
+  const sectionTabs = tabEntry ? (
+    <SectionTabs items={tabItems} value={currentScreen} onChange={(id) => goScreen(id)} label={entryLook[tabEntry.id].label} modalSelector={modalTabSelector[currentScreen]} />
+  ) : null;
+  const gearItems = [
+    { key: 'settings', label: t('nav.settings'), icon: <PixelIcon name="settings" />, onClick: () => goScreen('settings') },
+    { key: 'codex', label: t('codex.nav'), icon: <PixelIcon name="codex" />, onClick: () => goScreen('codex') },
+    { key: 'calendar', label: t('calendar.nav'), icon: <PixelIcon name="calendar" />, onClick: () => goScreen('calendar') },
+    ...(configured ? [{ key: 'invites', label: t('invites.nav'), icon: <PixelIcon name="invites" />, onClick: () => goScreen('invites') }] : []),
   ];
 
   return (
@@ -2567,7 +2637,9 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             save={save}
             spriteUrl={heroSpriteUrl}
             onOpenProfile={() => setActiveView('personagem')}
-            onOpenSettings={() => { playSfx('click'); setSettingsOpen(true); }}
+            onOpenQuests={() => goScreen('quests')}
+            questsBadge={questsBadge}
+            gearItems={gearItems}
             onOpenMenu={() => setDrawerOpen(true)}
             showMenuButton={!isDesktop}
             menuBadge={desktopNavGroups.some((group) => group.items.some((item) => item.badge && item.key !== 'hunt'))}
@@ -2575,19 +2647,18 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
             onToggleMute={toggleMute}
             syncStatus={saveStatus}
           />
+          {sectionTabs}
           {activeView === 'home' && (
             <DesktopHome
               save={save}
               spriteUrl={heroSpriteUrl}
               onOpenHero={() => setActiveView('personagem')}
               onOpenHunt={openHunt}
-              onOpenDungeon={openDungeon}
-              onOpenForge={() => { playSfx('click'); setActiveView('forja'); }}
               onOpenExpedition={openExpedition}
               onOpenMining={() => { playSfx('click'); setMineOpen(true); }}
               onOpenWoodcutting={() => { playSfx('click'); setWoodOpen(true); }}
               onOpenGarden={() => { playSfx('click'); setGardenOpen(true); }}
-              onOpenInventory={() => { playSfx('click'); setBagOpen(true); }}
+              onOpenInventory={() => goScreen('inventory')}
               onClaimAll={claimEverything}
               onOpenPass={() => { playSfx('click'); openPassView(); }}
               onOpenNextStep={openNextStep}

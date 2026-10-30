@@ -1,10 +1,10 @@
-import { ReactNode, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import SpriteSheet from './SpriteSheet';
 import { MonsterPortrait } from './HuntParts';
 import GearIcon from './GearIcon';
 import UniqueTag from './UniqueTag';
 import PixelIcon from './PixelIcon';
-import { Button, Chip, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout } from './ui';
+import { Button, Chip, ItemFrame, PageHeader, Panel, Screen, ScreenLayout } from './ui';
 import type { CardRarity } from './ui';
 import { INSTANCED_SLOTS } from '../game/gear';
 import { gearInstanceLabel } from './gearLabel';
@@ -18,15 +18,11 @@ import {
   computeWoodcuttingStatus,
   computeGardenStatuses,
   formatNumber,
-  playerLevel,
-  MAX_LEVEL,
 } from '../game/engine';
 import { resolveEquipped, viewRarity } from '../game/gearInstances';
-import { skillLevel, skillLevelProgress, SkillId } from '../game/skills';
 import { getOreTier } from '../game/ores';
 import { getWoodTier } from '../game/woodcutting';
 import { getHuntingZone } from '../game/huntingZones';
-import { getBiomeForFloor, nextMilestone, MAX_DUNGEON_FLOOR } from '../game/dungeon';
 import { inventoryCapacity, inventorySlotsUsed } from '../game/inventory';
 import { useDisplayName } from '../game/usernameContext';
 import { portraitFrameClass } from '../game/seasonItems';
@@ -64,37 +60,13 @@ function formatElapsed(ms: number): string {
   return h > 0 ? `${h}h${pad(m)}` : `${m}min`;
 }
 
-function SkillRow({ icon, name, level, cap, progress }: { icon: ReactNode; name: string; level: number; cap: number; progress: number }) {
-  return (
-    <div className="hm-skill">
-      <span className="hm-skill-icon" aria-hidden>
-        {icon}
-      </span>
-      <div className="hm-skill-info">
-        <div className="hm-skill-head">
-          <span className="hm-skill-name">{name}</span>
-          <span className="hm-skill-level">
-            {t('skills.level', { n: level })}
-            {level >= cap ? ' (MAX)' : ''}
-          </span>
-        </div>
-        <div className="bar hm-bar">
-          <div className="bar-fill xp-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// The Home dashboard in the shared screen layout: the camp header, the hero and the current activity on the left; the quick actions and the progression in the summary column on the right
+// The Home dashboard in the shared screen layout: the camp header, the hero and the current activity on the left; the folded equipment and the events in the summary column on the right
 // (under them on a phone). Same data and handlers as before; only the presentation moved onto the shared pieces (src/components/ui).
 export default function DesktopHome({
   save,
   spriteUrl,
   onOpenHero,
   onOpenHunt,
-  onOpenDungeon,
-  onOpenForge,
   onOpenExpedition,
   onOpenMining,
   onOpenWoodcutting,
@@ -110,8 +82,6 @@ export default function DesktopHome({
   spriteUrl: string;
   onOpenHero: () => void;
   onOpenHunt: () => void;
-  onOpenDungeon: () => void;
-  onOpenForge: () => void;
   onOpenExpedition: () => void;
   onOpenMining: () => void;
   onOpenWoodcutting: () => void;
@@ -130,7 +100,6 @@ export default function DesktopHome({
   const owner = ownsAdventurerPass(save);
   const ready = readyActivities(save, now);
   const displayName = useDisplayName(save.heroName);
-  const level = playerLevel(save.xp);
   const heroProgress = levelBarProgress(save);
   const cp = computeCP(save);
   const equipped = resolveEquipped(save);
@@ -147,18 +116,9 @@ export default function DesktopHome({
   const step = useMemo(() => nextStep(save), [save]);
   const anyActivity = !!hunting || rewardWaiting || !!mining.oreId || !!woodcutting.woodId;
 
-  const biome = getBiomeForFloor(save.highestDungeonFloor);
-  const milestone = nextMilestone(save.highestDungeonFloor);
-
   const activeDelivery = save.deliveries.active;
   const deliveryRemaining = activeDelivery ? activeDelivery.endsAt - now : 0;
   const deliveryDone = !!activeDelivery && deliveryRemaining <= 0;
-
-  const skillDefs: { key: SkillId; icon: ReactNode; name: string; xp: number }[] = [
-    { key: 'mining', icon: <PixelIcon name="mining" />, name: t('nav.mining'), xp: save.skillXp.mining },
-    { key: 'woodcutting', icon: <PixelIcon name="woodcutting" />, name: t('nav.woodcutting'), xp: save.skillXp.woodcutting },
-    { key: 'gardening', icon: <PixelIcon name="garden" />, name: t('nav.garden'), xp: save.skillXp.gardening },
-  ];
 
   // Counted time and cap of the running hunt come from the engine's own status (the Battle Pass can lengthen the cap); it replays the session, so it
   // is recomputed every 10 s rather than on every render.
@@ -169,9 +129,7 @@ export default function DesktopHome({
   const huntingCapMs = huntStatus?.capMs ?? 0;
   const huntingProgress = huntingCapMs > 0 ? Math.min(1, huntingElapsedMs / huntingCapMs) : 0;
 
-  const dungeonProgress = save.highestDungeonFloor / MAX_DUNGEON_FLOOR;
-
-  // The eight equipment slots. After the current activity on a wider screen; on a phone they sit in their own folded block below the shortcuts so the first screen is the hero summary and what to do now.
+  // The eight equipment slots. After the current activity on a wider screen; on a phone they sit in their own folded block below the activity so the first screen is the hero summary and what to do now.
   const slotsGrid = (
     <div className="hm-slots">
       {[...INSTANCED_SLOTS, 'relic' as const].map((slot) => {
@@ -235,7 +193,8 @@ export default function DesktopHome({
                     {ready.count > 0 && <span className="hm-count">{ready.count}</span>}
                   </Button>
                 ) : (
-                  <Button variant="secondary" size="sm" disabled aria-describedby="hm-claim-lock" title={t('claimAll.lockedHint')}>
+                  // Without the Pass the whole sale is this one locked button: it keeps the promise visible and takes the player to the Pass.
+                  <Button variant="secondary" size="sm" onClick={onOpenPass} aria-label={`${t('claimAll.button')}: ${t('claimAll.lockedHint')}`} title={t('claimAll.lockedHint')}>
                     <img className="hm-lock" src="/assets/icons/garden_plot_locked.png" alt="" />
                     {t('claimAll.button')}
                     <Chip tone="gold">{t('claimAll.passBadge')}</Chip>
@@ -243,14 +202,6 @@ export default function DesktopHome({
                 )
               }
             >
-              {!owner && (
-                <p className="hm-claim-lock" id="hm-claim-lock">
-                  <span>{t('claimAll.lockedLine')}</span>
-                  <Button size="sm" onClick={onOpenPass}>
-                    {t('claimAll.seePass')}
-                  </Button>
-                </p>
-              )}
               {(step.id !== 'running' || !anyActivity) && (
                 <div className="hm-next">
                   <span className="hm-next-label">{t('nextStep.label')}</span>
@@ -355,7 +306,7 @@ export default function DesktopHome({
               </div>
             </Panel>
 
-            {/* Equipamento detalhado: depois da atividade atual (no celular fica dobrado abaixo dos atalhos) */}
+            {/* Equipamento detalhado: depois da atividade atual (no celular fica dobrado na coluna de resumo) */}
             {!phone && (
               <Panel title={t('camp.equipmentTitle')} className="hm-gear-wide">
                 {slotsGrid}
@@ -365,25 +316,7 @@ export default function DesktopHome({
         }
         side={
           <>
-            {/* Ações rápidas */}
-            <Panel title={t('home.quickActionsTitle')}>
-              <div className="hm-quick">
-                <PrimaryButton block onClick={onOpenDungeon} icon={<PixelIcon name="dungeon" />}>
-                  {t('camp.enterArena')}
-                </PrimaryButton>
-                <Button block onClick={onOpenHunt} icon={<PixelIcon name="hunt" />}>
-                  {t('tooltips.hunt')}
-                </Button>
-                <Button block onClick={onOpenForge} icon={<PixelIcon name="forge" />}>
-                  {t('ui.forge')}
-                </Button>
-                <Button block onClick={onOpenExpedition} icon={<PixelIcon name="deliveries" />}>
-                  {t('nav.deliveries')}
-                </Button>
-              </div>
-            </Panel>
-
-            {/* Equipamento dobrado: onde a coluna é estreita (celular, tablet), abaixo dos atalhos; na coluna larga o painel aberto fica no centro, depois da atividade */}
+            {/* Equipamento dobrado: onde a coluna é estreita (celular, tablet), abaixo da atividade; na coluna larga o painel aberto fica no centro, depois da atividade */}
             <Panel
               title={t('camp.equipmentTitle')}
               className={`hm-gear-panel hm-gear-narrow${gearOpen ? '' : ' folded'}`}
@@ -399,38 +332,6 @@ export default function DesktopHome({
             {/* Eventos da Liga */}
             <EventsPanel save={save} onPickProfession={onPickProfession} onOpenCalendar={onOpenCalendar} />
 
-            {/* Progressão */}
-            <Panel title={t('home.progressionTitle')}>
-              <div className="hm-skills">
-                <SkillRow icon={<PixelIcon name="hero" />} name={t('home.hero')} level={level} cap={MAX_LEVEL} progress={heroProgress} />
-                {skillDefs.map((s) => (
-                  <SkillRow key={s.key} icon={s.icon} name={s.name} level={skillLevel(s.xp, s.key)} cap={75} progress={skillLevelProgress(s.xp, s.key)} />
-                ))}
-                <div className="hm-skill">
-                  <span className="hm-skill-icon" aria-hidden>
-                    <PixelIcon name="dungeon" />
-                  </span>
-                  <div className="hm-skill-info">
-                    <div className="hm-skill-head">
-                      <span className="hm-skill-name">{t('home.dungeon')}</span>
-                      <span className="hm-skill-level">{dText('floorLabel', { n: save.highestDungeonFloor })}</span>
-                    </div>
-                    <div className="bar hm-bar">
-                      <div className="bar-fill xp-fill" style={{ width: `${Math.round(dungeonProgress * 100)}%` }} />
-                    </div>
-                    <div className="hm-skill-detail">
-                      <span>{dText(biome.nameKey)}</span>
-                      {milestone && (
-                        <span className="hm-skill-next">
-                          {milestone.boss ? dText('nextBoss') : dText('nextCheckpoint')}: {dText('floorLabel', { n: milestone.floor })}
-                        </span>
-                      )}
-                      {!milestone && <span>{dText('floorLabel', { n: MAX_DUNGEON_FLOOR })}</span>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Panel>
           </>
         }
       />

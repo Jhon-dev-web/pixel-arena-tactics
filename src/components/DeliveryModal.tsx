@@ -31,6 +31,12 @@ function formatDuration(ms: number): string {
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
 }
 
+// How many of an order's materials the hero already holds ("2/3"): the closed card says it on one line, the rows open with a tap.
+const requirementCount = (offer: DeliveryOffer, save: SaveData): { met: number; total: number } => {
+  const entries = Object.entries(offer.items) as [MaterialId, number][];
+  return { met: entries.filter(([id, need]) => (save.materials[id] ?? 0) >= need).length, total: entries.length };
+};
+
 // What an order pays: the gold and (when there are any) the Éter.
 function Rewards({ gold, shards }: { gold: number; shards: number }) {
   return (
@@ -213,25 +219,34 @@ export default function DeliveryModal({
       <div className="ord-grid">
         {save.deliveries.offers.slice(0, offerCount(passActive)).map((offer) => {
           const affordable = canAffordOffer(save, offer);
+          const reqs = requirementCount(offer, save);
           return (
             <article className={`ui-item ord-card rarity-${deliveryRarity(offer.dist)}`} key={offer.id}>
               <div className="ord-card-head">
                 <h4 className="ui-item-name">{dText(`dest_${offer.arch}_${offer.dest}`)}</h4>
                 <Chip tone="gold">{formatDuration(offer.durationMs)}</Chip>
               </div>
-              <div className="ord-chips">
-                <Chip>{dText(`arch_${offer.arch}`)}</Chip>
-                <Chip tone="info">{dText('distance', { d: dText(`dist_${offer.dist}`) })}</Chip>
-                <span className={`ord-rarity rarity-${deliveryRarity(offer.dist)}`}>{rarityLabel(offer)}</span>
+              {/* the closed card: where, how long, what it pays and the button. The kind, the distance and the material rows open with a tap. */}
+              <div className="ord-line">
+                <div className="ord-block">
+                  <span className="ord-label">{dText('receives')}</span>
+                  <Rewards gold={deliveryGold(offer, passActive)} shards={offer.shards} />
+                </div>
+                <Button variant={!!active || !affordable ? 'secondary' : 'primary'} className="ord-accept" onClick={() => onAccept(offer.id)} disabled={!!active || !affordable}>
+                  {!active && !affordable ? dText('missing') : dText('accept')}
+                </Button>
               </div>
-              <Requirements offer={offer} save={save} />
-              <div className="ord-block">
-                <span className="ord-label">{dText('receives')}</span>
-                <Rewards gold={deliveryGold(offer, passActive)} shards={offer.shards} />
-              </div>
-              <Button variant={!!active || !affordable ? 'secondary' : 'primary'} block className="ord-accept" onClick={() => onAccept(offer.id)} disabled={!!active || !affordable}>
-                {!active && !affordable ? dText('missing') : dText('accept')}
-              </Button>
+              <details className="ord-more">
+                <summary className={`ord-more-sum${reqs.met < reqs.total ? ' short' : ''}`}>
+                  {dText('requires')} {reqs.met}/{reqs.total}
+                </summary>
+                <div className="ord-chips">
+                  <Chip>{dText(`arch_${offer.arch}`)}</Chip>
+                  <Chip tone="info">{dText('distance', { d: dText(`dist_${offer.dist}`) })}</Chip>
+                  <span className={`ord-rarity rarity-${deliveryRarity(offer.dist)}`}>{rarityLabel(offer)}</span>
+                </div>
+                <Requirements offer={offer} save={save} />
+              </details>
             </article>
           );
         })}

@@ -1,6 +1,6 @@
 import PixelIcon from './PixelIcon';
 import { t } from '../locales';
-import { SaveData, playerLevel } from '../game/engine';
+import { SaveData } from '../game/engine';
 import { GearSlot, INSTANCED_SLOTS, getGear } from '../game/gear';
 import { EquippedView, resolveEquipped, viewDurability, viewRarity, viewRefine, wornAboveLevel } from '../game/gearInstances';
 import { Rarity, rarityDef } from '../game/rarity';
@@ -12,11 +12,12 @@ import UniqueTag from './UniqueTag';
 import TitleIcon from './TitleIcon';
 import { SetLines } from './SetBonus';
 import { AffinitySeal } from './AffinitySeal';
+import { affinityHead, attrPointsLeft, setLineHeads } from './setLines';
 import { FRAMES, SKINS } from '../game/seasonItems';
 import { heroBaseLook } from '../game/sprites';
 import HeroThumb from './HeroThumb';
 import { CombatStatsGrid, CpLine } from './CombatStats';
-import { Button, ItemFrame } from './ui';
+import { ItemFrame } from './ui';
 
 // The three "Personagem" panels — extracted from what used to be HeroModal's three tabs, so the
 // Personagem view (desktop area + mobile stack, see PersonagemView.tsx) and any future modal reuse
@@ -105,6 +106,22 @@ function EquipSlot({ slot, view, requiredLevel, selected, onSelect }: { slot: Ge
   );
 }
 
+// The set bonus and the class affinity are 340 px of text: the panel shows ONE line with both heads ("Conjunto Aço 5/5 · Afinidade Placa 5/5") and the full lines open under it with a tap.
+function SetFold({ save }: { save: SaveData }) {
+  const heads = [...setLineHeads(save), affinityHead(save)].filter((h): h is string => !!h);
+  if (heads.length === 0) return null;
+  return (
+    <details className="pg-setfold">
+      <summary className="pg-setfold-sum">
+        <span className="pg-setfold-text">{heads.join(' · ')}</span>
+        <span className="pg-fold-chev" aria-hidden />
+      </summary>
+      <SetLines save={save} />
+      <AffinitySeal save={save} />
+    </details>
+  );
+}
+
 export function EquipmentPanel({ save, selectedId, onSelect }: { save: SaveData; selectedId?: string | null; onSelect?: (id: string) => void }) {
   const equipped = resolveEquipped(save);
   // Old saves: a piece worn above the hero's level stays on (nothing is taken away silently) but is flagged here and in the bag.
@@ -121,8 +138,7 @@ export function EquipmentPanel({ save, selectedId, onSelect }: { save: SaveData;
         })}
         <EquipSlot slot="relic" view={equipped.relic ? { item: equipped.relic, instance: null } : null} selected={isSel(equipped.relic?.id)} onSelect={onSelect} />
       </div>
-      <SetLines save={save} />
-      <AffinitySeal save={save} />
+      <SetFold save={save} />
       {above.map((a) => (
         <p className="ui-alert bad" key={a.slot} role="status">
           {gearText(getGear(a.templateId).nameKey)}: {t('inventory.wornAboveLevel', { n: a.requiredLevel })}
@@ -132,12 +148,8 @@ export function EquipmentPanel({ save, selectedId, onSelect }: { save: SaveData;
   );
 }
 
-export function AttributesPanel({ save, onAttrChange, onSuggest }: { save: SaveData; onAttrChange: (attr: AttrKey, delta: number) => void; onSuggest?: () => void }) {
-  const level = playerLevel(save.xp);
-
-  const totalPoints = level * 3;
-  const spent = save.str + save.vit + save.agi + save.res;
-  const remaining = Math.max(0, totalPoints - spent);
+export function AttributesPanel({ save, onAttrChange }: { save: SaveData; onAttrChange: (attr: AttrKey, delta: number) => void }) {
+  const remaining = attrPointsLeft(save);
 
   return (
     <>
@@ -153,11 +165,6 @@ export function AttributesPanel({ save, onAttrChange, onSuggest }: { save: SaveD
       <div className={`attrs-header${remaining > 0 ? ' has-points' : ''}`}>
         <span>{t('attributes.points', { n: remaining })}</span>
       </div>
-      {remaining > 0 && onSuggest && (
-        <Button variant="primary" block onClick={onSuggest} data-tutorial-target="attrs-suggest">
-          {t('attributes.suggest')}
-        </Button>
-      )}
       <div className="pg-attrs">
         {ATTRS.map((a) => (
           <div className="pg-attr" key={a.key}>

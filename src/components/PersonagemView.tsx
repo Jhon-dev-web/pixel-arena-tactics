@@ -4,6 +4,8 @@ import { levelLabel, levelBarProgress } from './levelLabel';
 import { useDisplayName } from '../game/usernameContext';
 import SpriteSheet from './SpriteSheet';
 import { EquipmentPanel, AttributesPanel, TitlesPanel, AttrKey } from './HeroPanels';
+import { attrPointsLeft } from './setLines';
+import useIsPhone from '../hooks/useIsPhone';
 import InventoryPanel, { BagSelection } from './InventoryPanel';
 import { SkillsSummary } from './SkillsView';
 import { skillsSummaryText } from './skillText';
@@ -11,15 +13,17 @@ import { SaveData } from '../game/engine';
 import { CpLine } from './CombatStats';
 import { getTitleDef } from '../game/titles';
 import { portraitFrameClass } from '../game/seasonItems';
-import { Chip, PageHeader, Panel, Screen } from './ui';
+import { Button, Chip, PageHeader, Panel, Screen } from './ui';
 
-// A collapsible section ("Habilidades", "Títulos e aparência"): a native <details> (keyboard and touch work, the state is the browser's), closed by default, with its one-line summary beside the title.
-function Fold({ title, hint, children, id }: { title: ReactNode; hint?: ReactNode; children: ReactNode; id?: string }) {
+// A collapsible section ("Habilidades", "Títulos e aparência", "Atributos"): a native <details> (keyboard and touch work, the state is the browser's), closed by default, with its one-line summary beside the title.
+// `action` is a button that lives in the summary (it stays in reach while the fold is closed); `open` is only the starting state, the player's own toggling is never undone.
+function Fold({ title, hint, children, id, className = '', open, action, highlight }: { title: ReactNode; hint?: ReactNode; children: ReactNode; id?: string; className?: string; open?: boolean; action?: ReactNode; highlight?: string }) {
   return (
-    <details className="ui-panel pg-fold" id={id}>
+    <details className={`ui-panel pg-fold${className ? ` ${className}` : ''}`} id={id} open={open} data-highlight={highlight}>
       <summary className="pg-fold-sum">
         <span className="ui-panel-title">{title}</span>
         {hint && <span className="pg-fold-hint">{hint}</span>}
+        {action}
         <span className="pg-fold-chev" aria-hidden />
       </summary>
       <div className="pg-fold-body">{children}</div>
@@ -67,6 +71,8 @@ export default function PersonagemView({
   onOpenSkills: () => void;
 }) {
   const displayName = useDisplayName(save.heroName);
+  const phone = useIsPhone();
+  const pointsLeft = attrPointsLeft(save);
   const progress = levelBarProgress(save);
   const pct = Math.round(progress * 100);
   const titleDef = save.activeTitle ? getTitleDef(save.activeTitle) : undefined;
@@ -151,9 +157,32 @@ export default function PersonagemView({
 
         <div className="pg-side">
           <div className="pg-host" ref={setHost} aria-label={t('inventory.title')} />
-          <Panel title={t('profile.attrsTab')} data-highlight="attrs" className="pg-attrs-panel">
-            <AttributesPanel save={save} onAttrChange={onAttrChange} onSuggest={onSuggestAttrs} />
-          </Panel>
+          {/* closed on a phone (the combat table and the four rows were a third of the page); the points to spend and the "Sugerir" button stay on the summary line */}
+          <Fold
+            title={t('profile.attrsTab')}
+            hint={pointsLeft > 0 ? <span className="pg-points-hint">{t('attributes.points', { n: pointsLeft })}</span> : undefined}
+            id="pg-attrs"
+            className="pg-attrs-panel"
+            open={!phone}
+            highlight="attrs"
+            action={
+              pointsLeft > 0 && onSuggestAttrs ? (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={(e) => {
+                    e.preventDefault(); // a tap on the button must not also toggle the fold
+                    onSuggestAttrs();
+                  }}
+                  data-tutorial-target="attrs-suggest"
+                >
+                  {t('attributes.suggest')}
+                </Button>
+              ) : undefined
+            }
+          >
+            <AttributesPanel save={save} onAttrChange={onAttrChange} />
+          </Fold>
         </div>
       </div>
     </Screen>

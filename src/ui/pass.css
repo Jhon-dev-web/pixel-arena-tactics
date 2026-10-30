@@ -11,9 +11,15 @@
 .ui-screen.pa-page > * {
   flex: 0 0 auto;
 }
-/* the claim-all / buy bar, in the page flow */
+/* the claim-all / buy bar: stuck to the foot of the page, so the main action of the paid screen is never scrolled away */
 
 .pa-foot {
+  position: sticky;
+  bottom: calc(-1 * var(--sp-6));
+  z-index: 3;
+  max-height: 46vh;
+  overflow-y: auto;
+  box-shadow: 0 -10px 14px -6px rgba(0, 0, 0, 0.7);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -421,106 +427,17 @@
   image-rendering: pixelated;
 }
 
-/* a phone: the track is a list, one row per level (free | premium), a featured level is a boxed column */
+/* a phone: the track keeps scrolling sideways like on a wide area (30 levels in a column were 4.4k px between the player and the buy button); the labels column is a bit narrower */
 @media (max-width: 640px) {
-  /* the labels become a header row over the free | premium columns, kept in view while the list scrolls */
   .pa-rowlabels {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--sp-2);
-    top: 0;
-    left: auto;
-    width: auto;
-    padding: var(--sp-1) 0;
-    box-shadow: 0 6px 8px -6px rgba(0, 0, 0, 0.7);
+    width: 56px;
   }
   .pa-rowlabel {
-    min-height: 0;
-    padding: var(--sp-1) 0;
-  }
-  .pa-rowlabel-spacer {
-    height: auto;
-  }
-  .pa-lvl {
-    height: auto;
+    padding: 0 var(--sp-1);
   }
   .pa-track {
-    flex-direction: column;
-    overflow: visible;
-    cursor: default;
-    padding: var(--sp-1) 0 var(--sp-2);
-    gap: var(--sp-2);
-  }
-  .pa-col,
-  .pa-col.featured,
-  .pa-col.supreme {
-    width: auto;
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: 'lvl free premium';
-    gap: var(--sp-2);
-    align-items: stretch;
-  }
-  .pa-col.featured,
-  .pa-col.supreme {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'lvl' 'free' 'premium';
-    padding: var(--sp-2);
-    border: var(--bw) solid var(--c-gold-line-strong);
-    border-radius: var(--r-md);
-    background: rgba(255, 215, 106, 0.05);
-  }
-  .pa-lvl {
-    grid-area: lvl;
-    align-items: center;
-  }
-  .pa-col.featured .pa-lvl,
-  .pa-col.supreme .pa-lvl {
-    justify-content: flex-start;
-  }
-  .pa-lvl-num {
-    min-width: 0;
-    width: 36px;
-    padding: var(--sp-1) 0;
-    box-sizing: border-box;
-  }
-  .pa-card.free {
-    grid-area: free;
-  }
-  .pa-card.premium {
-    grid-area: premium;
-  }
-  .pa-card,
-  .pa-col.featured .pa-card,
-  .pa-col.supreme .pa-card {
-    min-height: 76px;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: var(--sp-2);
-    padding: 22px var(--sp-2) var(--sp-2);
-    text-align: left;
-  }
-  .pa-col.featured .pa-card,
-  .pa-col.supreme .pa-card {
-    min-height: 100px;
-    padding: 24px var(--sp-3) var(--sp-3);
-  }
-  .pa-card-text {
-    align-items: flex-start;
-    flex: 1 1 auto;
-  }
-  .pa-card-art,
-  .pa-col.featured .pa-card-art,
-  .pa-col.supreme .pa-card-art {
-    flex: none;
-    height: auto;
-  }
-  .pa-col:not(.featured):not(.supreme) .pa-art {
-    width: 28px;
-    height: 28px;
-  }
-  .pa-card-name {
-    -webkit-line-clamp: 3;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
 }
 
@@ -620,7 +537,6 @@
   max-width: 460px;
 }
 .pa-buy-blurbs {
-  flex: 1 0 100%;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
@@ -655,7 +571,7 @@
   }
   .pa-foot-main,
   .pa-buy {
-    flex: 1 1 150px;
+    flex: 1 1 110px;
   }
   .pa-buy {
     align-items: stretch;

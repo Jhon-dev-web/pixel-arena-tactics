@@ -161,24 +161,37 @@ export default function QuestsModal({
     const item = streak.reward.item;
     return (
       <Panel className="qs-streak" title={t('quests.streakTitle')} actions={<Chip tone="gold">{t('quests.streakDays', { n: streak.day, m: STREAK_DAYS })}</Chip>} data-streak-day={streak.day}>
-        <div className="qs-days">
-          {Array.from({ length: STREAK_DAYS }, (_, i) => i + 1).map((d) => {
-            const r = streakReward(d, band);
-            const state = d <= doneDays ? ' done' : d === streak.day ? ' today' : '';
-            return (
-              <div className={`qs-day${state}`} key={d} data-streak-pip={d}>
-                <span className="qs-day-n">{d <= doneDays ? '✓' : d}</span>
-                {r.item ? <ConsumableIcon item={getConsumable(r.item.id)!} className="inline-icon" /> : <img className="inline-icon" src={Assets.icons.gold.url} alt="" />}
-                <span className="qs-day-r">{r.gold > 0 ? fmtNum(r.gold) : `×${r.item?.n ?? 0}`}</span>
-                {r.shards > 0 && (
-                  <span className="qs-day-r shards">
-                    <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {r.shards}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {/* the seven days are one line of dots (done / today / to come); what each day pays opens with a tap */}
+        <details className="qs-days-fold">
+          <summary className="qs-days-sum" aria-label={t('quests.streakTitle')}>
+            <span className="qs-dots" aria-hidden>
+              {Array.from({ length: STREAK_DAYS }, (_, i) => i + 1).map((d) => (
+                <span className={`qs-dot${d <= doneDays ? ' done' : d === streak.day ? ' today' : ''}`} key={d}>
+                  {d <= doneDays ? '✓' : d}
+                </span>
+              ))}
+            </span>
+            <span className="pg-fold-chev" aria-hidden />
+          </summary>
+          <div className="qs-days">
+            {Array.from({ length: STREAK_DAYS }, (_, i) => i + 1).map((d) => {
+              const r = streakReward(d, band);
+              const state = d <= doneDays ? ' done' : d === streak.day ? ' today' : '';
+              return (
+                <div className={`qs-day${state}`} key={d} data-streak-pip={d}>
+                  <span className="qs-day-n">{d <= doneDays ? '✓' : d}</span>
+                  {r.item ? <ConsumableIcon item={getConsumable(r.item.id)!} className="inline-icon" /> : <img className="inline-icon" src={Assets.icons.gold.url} alt="" />}
+                  <span className="qs-day-r">{r.gold > 0 ? fmtNum(r.gold) : `×${r.item?.n ?? 0}`}</span>
+                  {r.shards > 0 && (
+                    <span className="qs-day-r shards">
+                      <img className="inline-icon" src="/assets/icons/shards.png" alt="" /> {r.shards}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </details>
         {streak.broken && !streak.claimedToday && <p className="ui-alert bad">{t('quests.streakBroken')}</p>}
         {streak.saver && !streak.claimedToday && <p className="ui-alert good">{t('quests.streakSaverNow')}</p>}
         <div className="qs-streak-act">

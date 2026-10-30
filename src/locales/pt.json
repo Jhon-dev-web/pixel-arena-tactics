@@ -80,7 +80,6 @@
     "mining": "Mineração",
     "woodcutting": "Lenhaçaria",
     "garden": "Horta",
-    "hunt": "Caça Aberta",
     "battlepass": "Passe de Aventureiro",
     "bag": "Mochila",
     "quests": "Missões",
@@ -688,7 +687,6 @@
   },
   "camp": {
     "title": "Acampamento",
-    "enterArena": "MASMORRA",
     "returnCamp": "Voltar ao Acampamento",
     "training": "Treinando...",
     "level": "Nv {n}",
@@ -1448,11 +1446,7 @@
     "woodcutting": "Cortando madeira",
     "gardenStatus": "{n}/{m} canteiros prontos",
     "delivery": "Pedido",
-    "deliveryReady": "Pronto para coletar",
-    "progressionTitle": "Progressão",
-    "hero": "Personagem",
-    "dungeon": "Masmorra",
-    "quickActionsTitle": "Ações Rápidas"
+    "deliveryReady": "Pronto para coletar"
   },
     "levelUp": {
     "title": "Subiu de nível! Nv {n}",
@@ -1895,14 +1889,13 @@
     "plant_voidsilk": "Seda-do-vazio",
     "plant_voidsilk_d": "Seda escura de um cultivo longo, a fibra mais rara da Horta",
     "plant_voidsilk_use": "Usos: Tecido do vazio",
-    "plotLockedLevel": "Jardinagem Nv {n}",
     "plotLockedBody": "Canteiro bloqueado",
+    "moreSlots": "+{n} canteiros trancados (Jardinagem Nv {levels})",
     "fertilize": "Adubar",
     "fertilized": "Adubado",
     "fertilizeHint": "Remove 50% do tempo restante · você tem {n}",
     "fertilizeToast": "Canteiro adubado: metade do tempo restante removida.",
     "nextUnlock": "Próximo desbloqueio: {name} (Nv {n})",
-    "nextPlot": "Próximo canteiro: Nv {n}",
     "allUnlocked": "Tudo desbloqueado",
     "plotsOpen": "{n} de {max} canteiros abertos",
     "bagFull": "Inventário cheio! A colheita espera pronta."
@@ -2478,8 +2471,6 @@
     "button": "Resgatar tudo",
     "hint": "Resgata de uma vez tudo o que já terminou: caça, mineração, lenhador, canteiros prontos e o pedido",
     "lockedHint": "Exclusivo do Passe de Aventureiro: resgata tudo o que terminou com um toque",
-    "lockedLine": "Exclusivo do Passe de Aventureiro.",
-    "seePass": "Ver o Passe",
     "passBadge": "Passe",
     "nothing": "Nada terminado para resgatar agora.",
     "ok": "Beleza",

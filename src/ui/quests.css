@@ -101,6 +101,57 @@
 .qs-streak > .ui-panel-head {
   margin-bottom: 0;
 }
+/* the seven days of the streak as one line of dots; the full days open under it */
+.qs-days-fold > .qs-days {
+  margin-top: var(--sp-2);
+}
+.qs-days-sum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: var(--tap);
+  list-style: none;
+  cursor: pointer;
+}
+.qs-days-sum::-webkit-details-marker {
+  display: none;
+}
+.qs-days-sum:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.qs-dots {
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.qs-dot {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--sp-1) 0;
+  text-align: center;
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+  background: var(--c-inset);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-sm);
+}
+.qs-dot.today {
+  color: var(--c-gold-200);
+  border-color: var(--c-gold-300);
+  box-shadow: var(--sh-glow);
+}
+.qs-dot.done {
+  color: var(--c-good);
+  opacity: 0.75;
+}
+.qs-days-fold[open] > .qs-days-sum .pg-fold-chev {
+  margin-bottom: 0;
+  margin-top: 5px;
+  transform: rotate(-135deg);
+}
 .qs-days {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

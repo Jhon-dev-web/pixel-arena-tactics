@@ -16,11 +16,12 @@ describe('the Forge is a page', () => {
     expect(app).toContain("'forja'");
     expect(app).not.toMatch(/forgeOpen|setForgeOpen|<ForgeModal/);
     expect(app).toMatch(/<ForgeView/);
-    expect(app).toMatch(/active: activeView === 'forja'/);
+    // the menu entry is active when the page in view is the Forge (viewScreen maps the view onto the screen the menu knows)
+    expect(app).toMatch(/forja: 'forge'/);
   });
 
-  it('every entry point switches the view (nav, home shortcut, next step, "Usar em...")', () => {
-    expect((app.match(/setActiveView\('forja'\)/g) ?? []).length).toBeGreaterThanOrEqual(4);
+  it('every entry point switches the view (nav, next step, "Usar em..."; the camp no longer has a forge shortcut)', () => {
+    expect((app.match(/setActiveView\('forja'\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
 
   it('keeps the deep link: the focus carries its tab and recipe and remounts the page', () => {

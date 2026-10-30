@@ -13,9 +13,12 @@ describe('uiIcons', () => {
 
   it('the shared pictures of an activity are the ones the side menu uses (no second drawing in the Camp)', () => {
     const app = readFileSync(resolve(__dirname, '../../App.tsx'), 'utf8');
-    for (const name of ['hero', 'skills', 'hunt', 'dungeon', 'quests', 'codex', 'mining', 'woodcutting', 'garden', 'oficios', 'forge', 'inventory', 'deliveries', 'pass', 'settings']) {
+    for (const name of ['hero', 'skills', 'hunt', 'dungeon', 'codex', 'mining', 'woodcutting', 'garden', 'oficios', 'forge', 'deliveries', 'pass', 'settings']) {
       expect(app, name).toContain(`<PixelIcon name="${name}" />`);
     }
+    // the quests button (top bar) and the bag button (camp) draw their own, from the same table
+    expect(readFileSync(resolve(__dirname, '../../components/DesktopTopbar.tsx'), 'utf8')).toContain('<PixelIcon name="quests" />');
+    expect(readFileSync(resolve(__dirname, '../../components/DesktopHome.tsx'), 'utf8')).toContain('<PixelIcon name="inventory" />');
   });
 
   it('the side menu and the camp carry no emoji as icons', () => {

@@ -51,7 +51,8 @@ import { clampCraftQty, craftBlock, planBatchIngredients } from '../game/craftJo
 import { ChipRow, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout, SecondaryButton, Tabs } from './ui';
 import type { TabItem } from './ui';
 import { wornIngredientHints } from './forgeWornHint';
-import { FORGE_CLASS_FILTERS, ForgeClassFilter, matchesForgeClass, showForgeClassNote } from './forgeFilter';
+import { FORGE_CLASS_FILTERS, ForgeClassFilter, defaultForgeClass, matchesForgeClass, showForgeClassNote } from './forgeFilter';
+import { earlierRecipeIds } from './forgeFold';
 
 const gearText = (k: string): string => t(`gear.${k}`);
 const matText = (k: string): string => t(`materials.${k}`);
@@ -159,8 +160,8 @@ export default function ForgeView({
   const focusItem = focusItemId ? getGear(focusItemId) : undefined;
   const [tab, setTab] = useState<ForgeTab>(initialTab && allowedTabs.includes(initialTab) ? initialTab : allowedTabs[0] ?? 'forge');
   const [forgeCategory, setForgeCategoryRaw] = useState<ForgeCategory>(() => (focusItem && FORGE_CATEGORIES.includes(categoryOf(focusItem)) ? categoryOf(focusItem) : 'weapon'));
-  // The class filter (Guerreiro / Arqueiro / Mago, or all): a view over every category, 'all' by default; a change drops the picked recipe like a category change does.
-  const [classFilter, setClassFilterRaw] = useState<ForgeClassFilter>('all');
+  // The class filter (Guerreiro / Arqueiro / Mago, or all): a view over every category, opening on the hero's own class when he wears one (forgeFilter.ts), on 'all' when he does not or when "Usar em..." brought a recipe; a change drops the picked recipe like a category change does.
+  const [classFilter, setClassFilterRaw] = useState<ForgeClassFilter>(() => (focusItem ? 'all' : defaultForgeClass(save)));
   const setClassFilter = (f: ForgeClassFilter) => {
     setClassFilterRaw(f);
     setSelectedId(null);
@@ -178,6 +179,8 @@ export default function ForgeView({
   }, [focusItemId]);
   const [justForged, setJustForged] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
+  // The "Anteriores (n)" fold (forgeFold.ts): closed, unless the recipe brought in by "Usar em..." sits in it.
+  const [showEarlier, setShowEarlier] = useState(() => !!focusItemId && earlierRecipeIds(save, playerLevel(save.xp)).has(focusItemId));
   // the recipe shown in the craft panel (the first of the category until one is picked)
   const [selectedId, setSelectedId] = useState<string | null>(focusItemId ?? null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -256,8 +259,18 @@ export default function ForgeView({
   // The recipe the craft panel shows: the picked one, else (a category change, first open) the first of the category; `focusItemId` (from "Usar em...") starts on its recipe.
   const phone = useIsPhone();
   const categoryItems = forgeRecipes(forgeCategory, classFilter);
-  const current = categoryItems.find((i) => i.id === selectedId) ?? categoryItems[0] ?? null;
+  // The list opens on what is worth forging now: the recipes the hero has moved past fold into "Anteriores (n)" (forgeFold.ts decides, over every recipe, never over the filter). The order stays the tier order, so forging never moves a row under the player's finger.
+  const earlierIds = earlierRecipeIds(save, level);
+  const mainItems = categoryItems.filter((i) => !earlierIds.has(i.id));
+  const earlierItems = categoryItems.filter((i) => earlierIds.has(i.id));
+  const shownItems = showEarlier ? [...mainItems, ...earlierItems] : mainItems;
+  // On a phone the craft panel opens under the row the player taps (it is 900 px tall: opened by default it sat in the middle of the list); on a wide page the side column starts on the first recipe.
+  const current = shownItems.find((i) => i.id === selectedId) ?? (phone ? null : shownItems[0] ?? null);
   const pickRecipe = (id: string) => {
+    if (phone && id === selectedId) {
+      setSelectedId(null); // a second tap on the open row closes its panel
+      return;
+    }
     setSelectedId(id);
     setQty(1);
     // when the craft panel sits under the list (a narrow page) bring it into view; side by side it is already visible, so 'nearest' leaves the page alone
@@ -398,6 +411,49 @@ export default function ForgeView({
         </div>
   ) : null;
 
+  // one recipe of the list; on a phone the craft panel opens right under the picked row
+  const renderRow = (item: GearItem) => {
+  const ok = canForge(item);
+  const selected = current?.id === item.id;
+  return (
+    <Fragment key={item.id}>
+    <button
+      className={`fg-recipe ${rarityClass(item)}${selected ? ' selected' : ''}${ok ? ' ok' : ''}${item.id === focusItemId ? ' focus' : ''}`}
+      onClick={() => pickRecipe(item.id)}
+      aria-pressed={selected}
+      data-recipe-id={item.id}
+      ref={(el) => {
+        rowRefs.current[item.id] = el;
+      }}
+      data-ui
+    >
+      <ItemFrame>
+        <GearIcon item={item} />
+      </ItemFrame>
+      <span className="fg-recipe-text">
+        <span className="fg-recipe-name">{gearText(item.nameKey)}</span>
+        {item.materialKey && (
+          <span className={`gear-material ${item.materialKey.replace('material_', '')}`}>
+            {rarityIcon(item.materialKey) && <img className="rarity-icon" src={rarityIcon(item.materialKey)} alt="" />}
+            {gearText(item.materialKey)}
+          </span>
+        )}
+        <span className="fg-recipe-stats">{gearStatLines(item).map((l) => l.text).join(' · ')}</span>
+      </span>
+      {ok && (
+        <span className="fg-ready" aria-hidden>
+          ✓
+        </span>
+      )}
+    </button>
+    {phone && selected && craftPanel}
+    </Fragment>
+  );
+                    };
+
+  // the one-line subtitle is two numbers: the gold and the bag space (the space used to sit in the toolbar, a line of its own)
+  const headSub = `${t('ui.owned', { n: fmtNum(save.gold) })} · ${t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}`;
+
   const tabItems: TabItem<ForgeTab>[] = [
     { id: 'forge', label: t('forge.forgeTab'), icon: <img src="/assets/icons/steel.png" alt="" /> },
     { id: 'upgrade', label: t('forge.upgradeTab'), icon: <img src="/assets/icons/refine_catalyst.png" alt="" /> },
@@ -407,7 +463,7 @@ export default function ForgeView({
 
   return (
     <Screen label={title ?? t('forge.title')} className="fg-page" data-tutorial-target="forge-modal">
-      <PageHeader icon={<img className="pixel-icon" src="/assets/icons/steel.png" alt="" />} title={title ?? t('forge.title')} subtitle={t('ui.owned', { n: fmtNum(save.gold) })} />
+      <PageHeader icon={<img className="pixel-icon" src="/assets/icons/steel.png" alt="" />} title={title ?? t('forge.title')} subtitle={headSub} />
       <div className="fg-root">
         <CraftJobPanel save={save} name={(rid) => gearText(getGear(rid)?.nameKey ?? rid)} stalled={craftStalled} onCancel={() => onCancelCraft?.()} />
         {/* a slot of its own: the result line appearing / going away never moves the list under the player's finger */}
@@ -441,51 +497,19 @@ export default function ForgeView({
                     onChange={setClassFilter}
                     items={FORGE_CLASS_FILTERS.map((f) => ({ id: f, label: t(`forge.class_${f}`) }))}
                   />
-                  <span className="fg-space">{t('inventory.space', { n: inventorySlotsUsed(save), m: inventoryCapacity(save) })}</span>
                 </div>
                 {showForgeClassNote(save.stats.itemsForged, classFilter) && <p className="ui-note">{t('forge.classNote')}</p>}
                 {categoryItems.length === 0 ? (
                   <span className="socket-none">{t(classFilter === 'all' ? 'forge.noCategoryRecipes' : 'forge.noClassRecipes')}</span>
                 ) : (
                   <div className="fg-recipes">
-                    {categoryItems.map((item) => {
-                      const ok = canForge(item);
-                      const selected = current?.id === item.id;
-                      return (
-                        <Fragment key={item.id}>
-                        <button
-                          className={`fg-recipe ${rarityClass(item)}${selected ? ' selected' : ''}${ok ? ' ok' : ''}${item.id === focusItemId ? ' focus' : ''}`}
-                          onClick={() => pickRecipe(item.id)}
-                          aria-pressed={selected}
-                          data-recipe-id={item.id}
-                          ref={(el) => {
-                            rowRefs.current[item.id] = el;
-                          }}
-                          data-ui
-                        >
-                          <ItemFrame>
-                            <GearIcon item={item} />
-                          </ItemFrame>
-                          <span className="fg-recipe-text">
-                            <span className="fg-recipe-name">{gearText(item.nameKey)}</span>
-                            {item.materialKey && (
-                              <span className={`gear-material ${item.materialKey.replace('material_', '')}`}>
-                                {rarityIcon(item.materialKey) && <img className="rarity-icon" src={rarityIcon(item.materialKey)} alt="" />}
-                                {gearText(item.materialKey)}
-                              </span>
-                            )}
-                            <span className="fg-recipe-stats">{gearStatLines(item).map((l) => l.text).join(' · ')}</span>
-                          </span>
-                          {ok && (
-                            <span className="fg-ready" aria-hidden>
-                              ✓
-                            </span>
-                          )}
-                        </button>
-                        {phone && selected && craftPanel}
-                        </Fragment>
-                      );
-                    })}
+                    {mainItems.map(renderRow)}
+                    {earlierItems.length > 0 && (
+                      <button className="fg-earlier" onClick={() => setShowEarlier(!showEarlier)} aria-expanded={showEarlier} data-ui>
+                        {t('forge.earlier', { n: earlierItems.length })} <span aria-hidden>{showEarlier ? '▴' : '▾'}</span>
+                      </button>
+                    )}
+                    {showEarlier && earlierItems.map(renderRow)}
                   </div>
                 )}
               </>

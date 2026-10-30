@@ -199,7 +199,6 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
       <PageHeader
         icon={<PixelIcon name="tactics" />}
         title={t('tactics.title')}
-        subtitle={t('tactics.rule')}
         actions={<Chip tone={draft.length > 0 ? 'gold' : 'plain'}>{t('tactics.filled', { n: draft.length, m: slots })}</Chip>}
       />
 
@@ -211,30 +210,26 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
           ) : (
             <ol className="tc-rows">{Array.from({ length: slots }, (_, i) => renderSlot(i))}</ol>
           )}
-          {granted.length > 0 && <p className="ui-note tc-hint">{emptySlot !== null ? t('tactics.emptyHint', { n: emptySlot + 1 }) : t('tactics.pickHint')}</p>}
-          {auto && granted.length > 0 && <p className="ui-note tc-auto">{t('tactics.auto')}</p>}
+          {/* ONE line of state (what is applied, whether it follows the gear), or the answer to the empty slot just tapped; the help text sits behind "Como funciona" */}
+          {granted.length > 0 && (
+            <div className="tc-state-row">
+              <p className="ui-note tc-state" role="status">
+                {emptySlot !== null ? t('tactics.emptyHint', { n: emptySlot + 1 }) : [pending ? t('tactics.pending') : t('tactics.saved'), auto ? t('tactics.auto') : null].filter(Boolean).join(' · ')}
+              </p>
+              <Button size="sm" disabled={auto} onClick={goAuto}>
+                {t('tactics.default')}
+              </Button>
+            </div>
+          )}
           {draft.length === 0 && granted.length > 0 && <p className="ui-note">{t('tactics.emptyAll')}</p>}
+          {/* the one note about a SILENT loss (a technique left with the weapon swap): it stays in view */}
           {dropped && <p className="ui-note tc-dropped">{t(refilled ? 'tactics.droppedFilled' : 'tactics.dropped')}</p>}
-          <div className="tc-apply-row">
-            <Button variant={pending ? 'primary' : 'secondary'} disabled={!pending} onClick={() => onApply(auto ? null : draft)}>
-              {pending ? t('tactics.applyPending') : t('tactics.apply')}
-            </Button>
-            <Button
-              disabled={!pending}
-              onClick={() => {
-                setDraftList(committed);
-                setAuto(committedAuto);
-              }}
-            >
-              {t('tactics.undo')}
-            </Button>
-            <Button disabled={auto} onClick={goAuto}>
-              {t('tactics.default')}
-            </Button>
-          </div>
-          <p className="ui-note">
-            {pending ? t('tactics.pending') : t('tactics.saved')}. {t('tactics.when')}
-          </p>
+          <details className="tc-how">
+            <summary className="tc-how-sum">{t('tactics.howTo')}</summary>
+            <p className="ui-note">{t('tactics.rule')}</p>
+            <p className="ui-note">{t('tactics.pickHint')}</p>
+            <p className="ui-note">{t('tactics.when')}</p>
+          </details>
         </Panel>
 
         {groups.map((g) => (
@@ -266,6 +261,24 @@ export default function TaticasView({ save, onApply }: TaticasViewProps) {
             </ul>
           </Panel>
         ))}
+
+        {/* the buttons come AFTER the techniques the player picks from, and stay in reach at the foot of the page */}
+        <Panel className="tc-apply ui-bar">
+          <div className="tc-apply-row">
+            <Button variant={pending ? 'primary' : 'secondary'} disabled={!pending} onClick={() => onApply(auto ? null : draft)}>
+              {pending ? t('tactics.applyPending') : t('tactics.apply')}
+            </Button>
+            <Button
+              disabled={!pending}
+              onClick={() => {
+                setDraftList(committed);
+                setAuto(committedAuto);
+              }}
+            >
+              {t('tactics.undo')}
+            </Button>
+          </div>
+        </Panel>
 
         {shown && (
           <Dialog

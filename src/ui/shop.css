@@ -12,13 +12,75 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* the buy list: one row per item (icon, name, price and button on the first line, what it does under them) */
+.shop-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.shop-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-areas: 'icon name buy' 'desc desc desc';
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.shop-row-icon {
+  grid-area: icon;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
+.shop-row-icon .pixel-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.shop-row-qty {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  padding: 0 4px;
+  font-size: var(--fs-small);
+  line-height: 1.3;
+  color: var(--c-text);
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: var(--r-xs);
+}
+.shop-row-name {
+  grid-area: name;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  overflow-wrap: anywhere;
+}
+.shop-row-buy {
+  grid-area: buy;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+  font-size: var(--fs-small);
+}
+.shop-row-desc {
+  grid-area: desc;
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--c-text-dim);
+}
 .shop-have {
   font-size: var(--fs-small);
   color: var(--c-text-muted);
-}
-.shop-desc {
-  color: var(--c-text-dim);
-  font-size: var(--fs-body);
 }
 .shop-each {
   font-size: var(--fs-body);

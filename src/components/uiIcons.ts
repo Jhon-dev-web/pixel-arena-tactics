@@ -1,5 +1,5 @@
 // One picture per activity / screen of the game, used by every place that names it (side menu, Camp, page headers, buttons), so the same thing never shows two different drawings.
-// All are existing pixel-art PNGs in public/assets; where the game has no drawing made for a screen (invites, settings), the closest existing one stands in until the owner's art exists.
+// All are existing pixel-art PNGs in public/assets; where the game has no drawing made for a screen (invites), the closest existing one stands in until the owner's art exists.
 export const UI_ICON = {
   camp: '/assets/icons/camp_stash.png',
   hero: '/assets/gear_icons/armor_iron.png',
@@ -21,7 +21,7 @@ export const UI_ICON = {
   calendar: '/assets/icons/season_emblem.png',
   shop: '/assets/icons/gold.png',
   market: '/assets/icons/gold_pouch.png',
-  settings: '/assets/icons/repair_kit.png',
+  settings: '/assets/icons/nav_settings.png',
   admin: '/assets/icons/master_repair_kit.png',
   level: '/assets/icons/xp_potion.png',
   lock: '/assets/icons/garden_plot_locked.png',

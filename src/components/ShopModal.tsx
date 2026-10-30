@@ -1,5 +1,5 @@
 import PixelIcon from './PixelIcon';
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { fmtNum, t } from '../locales';
 import Assets from '../assets.json';
 import { SaveData, playerLevel } from '../game/engine';
@@ -21,7 +21,6 @@ import type { TabItem } from './ui';
 
 const conText = (k: string): string => t(`consumables.${k}`);
 const gemText = (k: string): string => t(`gems.${k}`);
-const costLabel = (): string => t('forge.cost');
 
 type ShopTab = 'buy' | 'sell' | 'wholesale' | 'pouch';
 
@@ -34,6 +33,26 @@ function Price({ icon, n, currency }: { icon: string; n: number | string; curren
         {n} <span className="shop-cur">{currency}</span>
       </span>
     </span>
+  );
+}
+
+// One line of the buy list: the icon with the stack it holds, the name and what it does, the price and the Comprar button. (It was a 194 px card per item, so the gems sat on the second screen.)
+function ShopRow({ icon, qty, name, have, desc, price, action }: { icon: ReactNode; qty?: string; name: string; have: string; desc: string; price: ReactNode; action: ReactNode }) {
+  return (
+    <article className="shop-row">
+      <span className="shop-row-icon">
+        {icon}
+        {qty && <span className="shop-row-qty">{qty}</span>}
+      </span>
+      <span className="shop-row-name">
+        {name} <span className="shop-have">{have}</span>
+      </span>
+      <span className="shop-row-buy">
+        {price}
+        {action}
+      </span>
+      <span className="shop-row-desc">{desc}</span>
+    </article>
   );
 }
 
@@ -155,53 +174,51 @@ export default function ShopModal({
         {tab === 'buy' && (
           <>
             <Panel title={t('shop.consumables')}>
-              <div className="ui-grid shop-grid">
+              <div className="shop-rows">
                 {CONSUMABLES.filter((c) => c.purchasable).map((c) => {
                   const qty = save.consumables?.[c.id] ?? 0;
                   const bagFull = qty === 0 && slots >= capacity;
                   const disabled = save.gold < c.cost || qty >= CONSUMABLE_STACK || bagFull;
                   return (
-                    <ItemCard
+                    <ShopRow
                       key={c.id}
                       icon={<ConsumableIcon item={c} className="pixel-icon" />}
                       qty={qty > 0 ? fmtNum(qty) : undefined}
                       name={conText(c.nameKey)}
-                      tag={<span className="shop-have">{t('shop.youHave', { n: qty })}</span>}
-                      rows={[{ label: `${costLabel()}`, value: <Price icon={Assets.icons.gold.url} n={fmtNum(c.cost)} currency={t('quests.goldWord')} />, tone: save.gold < c.cost ? 'bad' : 'gold' }]}
+                      have={t('shop.youHave', { n: qty })}
+                      desc={conText(c.descKey)}
+                      price={<Price icon={Assets.icons.gold.url} n={fmtNum(c.cost)} currency={t('quests.goldWord')} />}
                       action={
-                        <Button block variant="primary" onClick={() => onBuyConsumable(c.id)} disabled={disabled}>
+                        <Button size="sm" variant="primary" onClick={() => onBuyConsumable(c.id)} disabled={disabled}>
                           {bagFull ? t('shop.bagFull') : t('gear.buy')}
                         </Button>
                       }
-                    >
-                      <p className="shop-desc">{conText(c.descKey)}</p>
-                    </ItemCard>
+                    />
                   );
                 })}
               </div>
             </Panel>
 
             <Panel title={t('shop.gems')} icon={<img src="/assets/icons/gem_ruby.png" alt="" />}>
-              <div className="ui-grid shop-grid">
+              <div className="shop-rows">
                 {GEMS.map((g) => {
                   const owned = save.gems?.[g.id] ?? 0;
                   const disabled = save.shards < g.shardCost;
                   return (
-                    <ItemCard
+                    <ShopRow
                       key={g.id}
                       icon={<GemIcon item={g} className="pixel-icon" />}
                       qty={owned > 0 ? fmtNum(owned) : undefined}
                       name={gemText(g.nameKey)}
-                      tag={<span className="shop-have">{t('shop.youOwn', { n: owned })}</span>}
-                      rows={[{ label: `${costLabel()}`, value: <Price icon="/assets/icons/shards.png" n={fmtNum(g.shardCost)} currency={t('quests.shardsWord')} />, tone: disabled ? 'bad' : 'gold' }]}
+                      have={t('shop.youOwn', { n: owned })}
+                      desc={gemText(g.descKey)}
+                      price={<Price icon="/assets/icons/shards.png" n={fmtNum(g.shardCost)} currency={t('quests.shardsWord')} />}
                       action={
-                        <Button block variant="primary" onClick={() => onBuyGem(g.id)} disabled={disabled}>
+                        <Button size="sm" variant="primary" onClick={() => onBuyGem(g.id)} disabled={disabled}>
                           {t('gear.buy')}
                         </Button>
                       }
-                    >
-                      <p className="shop-desc">{gemText(g.descKey)}</p>
-                    </ItemCard>
+                    />
                   );
                 })}
               </div>
