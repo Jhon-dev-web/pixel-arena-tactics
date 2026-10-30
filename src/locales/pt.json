@@ -1634,6 +1634,7 @@
     "capProgress": "{cur} de {cap} contados",
     "kills": "Abates",
     "winsLosses": "Vitórias / Derrotas",
+    "heroDown": "Herói derrotado",
     "xpEarned": "XP ganho",
     "goldEarned": "Ouro ganho",
     "collected": "Coletado",

@@ -1634,6 +1634,7 @@
     "capProgress": "{cur} of {cap} counted",
     "kills": "Kills",
     "winsLosses": "Wins / Losses",
+    "heroDown": "Hero defeated",
     "xpEarned": "XP earned",
     "goldEarned": "Gold earned",
     "collected": "Collected",

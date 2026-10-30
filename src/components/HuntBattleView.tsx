@@ -10,7 +10,7 @@ import { FX_PATH_COLOR, SKILL_FX, SkillFxId } from '../game/skillFx';
 import { FxLayer } from './SkillFx';
 import { useFxScale, useFxStage } from '../hooks/useSkillFx';
 import { reducedMotion, subscribeMotion } from '../lib/motionPref';
-import { SCENE_FALL_MS, SCENE_POSE_MS, SceneEvent, sceneStep } from './huntSceneEvents';
+import { FightTally, SCENE_DEFEAT_MS, SCENE_FALL_MS, SCENE_POSE_MS, SceneEvent, fightEnded, sceneStep } from './huntSceneEvents';
 
 // What the hero has learned that shows in the scene (CombatStats of the running session). The scene is decorative: it never drives the simulation, so these strikes play on its own
 // beat at a believable cadence derived from the same parameters (every Nth decorative hit is an Esmagador, ...), never implying a specific result. Passive-only builds look as before.
@@ -26,7 +26,8 @@ const ROW = { idle: 0, attack: 1, hurt: 2, death: 3 };
 const HERO_HEIGHT = 0.9;
 
 // The decorative loop, one beat per visual pulse (T.hunting.tickMs): the hero hits, the monster hits back, and now and then the monster falls and a new one walks in.
-type Beat = 'hero' | 'monster' | 'kill' | 'arrive';
+// 'defeat' is only played when the game's counters say the hero lost the fight (huntSceneEvents.ts): he falls, the monster stays standing.
+type Beat = 'hero' | 'monster' | 'kill' | 'arrive' | 'defeat';
 const BEATS: Beat[] = ['hero', 'monster', 'hero', 'monster', 'kill', 'arrive'];
 const ACTION_MS = 700; // how long an attack / hurt pose lasts inside a beat
 
@@ -51,6 +52,7 @@ export default function HuntBattleView({
   monsterName,
   monsterLevel,
   snapshot,
+  tally,
   decor,
   children,
 }: {
@@ -60,6 +62,7 @@ export default function HuntBattleView({
   monsterName: string;
   monsterLevel: number;
   snapshot: HuntLiveSnapshot | null;
+  tally?: FightTally; // fights won / lost so far (the session's own counters): what tells a defeat from a win when the monster changes
   decor?: StrikeDecor;
   children?: ReactNode; // tonic badges under the plates
 }) {
@@ -131,40 +134,67 @@ export default function HuntBattleView({
   const [shown, setShown] = useState<HuntLiveSnapshot | null>(snapshot);
   const shownRef = useRef<HuntLiveSnapshot | null>(snapshot);
   const lastBlow = useRef<SceneEvent | null>(null);
-  const snapKey = snapshot ? `${snapshot.subLevel}|${snapshot.heroHp}|${snapshot.enemyHp}|${snapshot.enemyMax}` : '';
+  const tallyRef = useRef<FightTally | undefined>(tally);
+  // While the hero's fall plays the bars show the fight he lost (his life at 0, the monster with what it still had), not the new fight that already started in the numbers.
+  const [held, setHeld] = useState<HuntLiveSnapshot | null>(null);
+  const timersRef = useRef<number[]>([]);
+  const later = (ms: number, fn: () => void) => void timersRef.current.push(window.setTimeout(fn, ms));
+  useEffect(() => () => timersRef.current.forEach((id) => window.clearTimeout(id)), []);
+  const snapKey = snapshot ? `${snapshot.subLevel}|${snapshot.heroHp}|${snapshot.enemyHp}|${snapshot.enemyMax}|${tally?.kills ?? ''}|${tally?.defeats ?? ''}` : '';
   useEffect(() => {
+    const ended = tally && tallyRef.current ? fightEnded(tallyRef.current, tally) : undefined; // no counters: the scene cannot tell a win from a defeat and shows neither
+    tallyRef.current = tally;
+    // A lost fight is read from the counters, never guessed: the hero falls and the monster stays up while the bars of that fight are held.
+    const fall = (heldBars: HuntLiveSnapshot, then: () => void) => {
+      setHeld(heldBars);
+      later(SCENE_DEFEAT_MS, () => {
+        setHeld(null);
+        then();
+      });
+    };
     if (!driven) {
+      // reduced motion (or no snapshot): nothing moves, but a lost fight still shows as one (the bars of that fight and the "Derrotado" tag), never as a clean change of monster
+      const step = sceneStep(shownRef.current, snapshot, null, ended);
       shownRef.current = snapshot;
       setShown(snapshot);
+      if (step.event === 'hero_falls' && step.held) fall(step.held, () => undefined);
       return;
     }
-    const step = sceneStep(shownRef.current, snapshot, lastBlow.current);
+    const step = sceneStep(shownRef.current, snapshot, lastBlow.current, ended);
     shownRef.current = step.shown;
     setShown(step.shown);
     if (!step.event) return;
     lastBlow.current = step.event;
-    const timers: number[] = [];
+    setHeld(null);
+    // a pose that was scheduled is only played if nothing newer has been played since
     const play = (kind: Beat, holdMs: number | null) => {
       const n = ++stepRef.current;
       setBeat({ kind, n, active: true });
       decorate(kind);
-      if (holdMs !== null) timers.push(window.setTimeout(() => setBeat((b) => (b.n === n ? { ...b, active: false } : b)), holdMs));
+      if (holdMs !== null) later(holdMs, () => setBeat((b) => (b.n === n ? { ...b, active: false } : b)));
+      return n;
     };
+    const next = (from: number, ms: number, kind: Beat) => later(ms, () => stepRef.current === from && play(kind, null));
     if (step.event === 'new_fight') {
-      play('kill', null);
-      timers.push(window.setTimeout(() => play('arrive', null), SCENE_FALL_MS));
+      next(play('kill', null), SCENE_FALL_MS, 'arrive');
+    } else if (step.event === 'hero_falls' && step.held) {
+      const n = play('defeat', null);
+      fall(step.held, () => stepRef.current === n && play('arrive', null));
+    } else if (step.event === 'next_fight') {
+      play('arrive', null);
     } else {
       play(step.event === 'hero_strikes' ? 'hero' : 'monster', SCENE_POSE_MS);
     }
-    return () => timers.forEach((id) => window.clearTimeout(id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapKey, driven]);
 
   const { kind, active, n } = reduced ? { kind: 'arrive' as Beat, active: false, n: 0 } : beat;
-  const heroRow = active && (kind === 'hero' || kind === 'kill') ? ROW.attack : active && kind === 'monster' ? ROW.hurt : ROW.idle;
+  // a lost fight: the hero is the one who is down (the knocked-out row, greyed and laid back by hunt.css) and the monster is left standing, in its idle pose
+  const down = held !== null;
+  const heroRow = down ? ROW.death : active && (kind === 'hero' || kind === 'kill') ? ROW.attack : active && kind === 'monster' ? ROW.hurt : ROW.idle;
   const monsterRow = kind === 'kill' ? ROW.death : active && kind === 'hero' ? ROW.hurt : active && kind === 'monster' ? ROW.attack : ROW.idle;
-  // the bars show the scene's own numbers while it plays the blows one at a time; without a driven scene they are the live ones
-  const bars = driven ? shown ?? snapshot : snapshot;
+  // the bars show the scene's own numbers while it plays the blows one at a time; without a driven scene they are the live ones; a lost fight holds its own last numbers while the hero is down
+  const bars = held ?? (driven ? shown ?? snapshot : snapshot);
   const level = bars?.subLevel ?? monsterLevel;
   const enemyArt = huntingEnemyArt(zone.enemyId);
   const stageStyle: CSSProperties & Record<'--bg', string> = { '--bg': `url(${huntingZoneBackgroundUrl(zone.id)})` };
@@ -211,8 +241,13 @@ export default function HuntBattleView({
       {enemyHud}
 
       <div className="hunt-stage-arena">
-        <div className={`hunt-side player${active && (kind === 'hero' || kind === 'kill') ? ' lunge' : ''}${active && kind === 'monster' ? ' flinch' : ''}`}>
-          <FramedSprite src={heroSheetUrl(heroSheet)} art={HERO_ART[heroSheet]} box="var(--hm)" height={heroHeight} row={heroRow} restart={n * 2 + (active ? 1 : 0)} still={reduced} />
+        <div className={`hunt-side player${!down && active && (kind === 'hero' || kind === 'kill') ? ' lunge' : ''}${!down && active && kind === 'monster' ? ' flinch' : ''}${down ? ' down' : ''}`}>
+          <FramedSprite src={heroSheetUrl(heroSheet)} art={HERO_ART[heroSheet]} box="var(--hm)" height={heroHeight} row={heroRow} restart={down ? -1 - n : n * 2 + (active ? 1 : 0)} still={reduced} once={down} />
+          {down && (
+            <span className="hunt-defeat-tag" role="status">
+              {t('hunting.heroDown')}
+            </span>
+          )}
           <FxLayer side="p" items={fx.items} done={fx.done} scale={fxScale} />
           {calls.filter((c) => SKILL_FX[c.fx].side === 'p').map((c) => (
             <span key={c.id} className="float float-skill" style={{ left: `${SKILL_FX[c.fx].left}%`, top: SKILL_FX[c.fx].top, ['--fx-color' as string]: FX_PATH_COLOR[SKILL_FX[c.fx].path] } as CSSProperties}>

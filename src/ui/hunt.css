@@ -663,3 +663,30 @@
     top: 0;
   }
 }
+
+/* A lost fight (HuntBattleView, 'hero_falls'): the hero is the one who goes down, laid back and greyed, with a tag, while the monster stays standing. The monster is left alone on purpose. */
+.hunt-side.player.down {
+  border-color: rgba(255, 106, 106, 0.7);
+}
+.hunt-side.player.down .hunt-frame {
+  transform-origin: 50% 100%;
+  transform: translateX(42%) rotate(-75deg);
+  filter: grayscale(0.7) brightness(0.7);
+  transition: transform 0.35s ease-in, filter 0.35s ease-in;
+}
+.hunt-defeat-tag {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 2px var(--sp-2);
+  font-size: var(--fs-small);
+  font-weight: 800;
+  white-space: nowrap;
+  color: #ffb1a4;
+  background: rgba(40, 8, 12, 0.85);
+  border: var(--bw-thin) solid rgba(255, 106, 106, 0.7);
+  border-radius: var(--r-md);
+  pointer-events: none;
+}
