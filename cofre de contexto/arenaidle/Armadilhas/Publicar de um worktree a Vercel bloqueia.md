@@ -11,3 +11,5 @@
 **Não confie na saída vazia.** A primeira suspeita foi o `| tail` escondendo o progresso. Ele escondia mesmo, mas o bloqueio era o problema de verdade.
 
 Relacionadas: [[A função publicada não é a função do repositório]], [[Sem conexão com o servidor com o servidor inteiro no ar]], [[Os seis portões]].
+
+**Quando a árvore principal tem trabalho em andamento (30/10):** um `git clone` limpo em pasta temporária, com o `origin` apontando para o GitHub e a pasta `.vercel` copiada, publicou Ready. Assim sai só o commit escolhido.
