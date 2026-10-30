@@ -25,15 +25,17 @@ describe('dungeon enemy visuals', () => {
     expect(dungeonEnemyVisualForFloor(50)).toMatchObject({ spriteUrl: sheets.orc_warchief.url, nameKey: 'orcWarchief' });
     expect(dungeonEnemyVisualForFloor(75)).toMatchObject({ spriteUrl: sheets.lich.url, nameKey: 'soulLich' });
     for (let f = 76; f <= 99; f++) {
-      expect(dungeonEnemyVisualForFloor(f)).toMatchObject({ spriteUrl: sheets.death_knight.url, nameKey: 'deathKnight' });
+      // the lair's even floors are the stone golem's (biomeVariety.test.ts); the odd ones are still the knight's
+      if (f % 2 === 0) expect(dungeonEnemyVisualForFloor(f).nameKey).toBe('stoneGolem');
+      else expect(dungeonEnemyVisualForFloor(f)).toMatchObject({ spriteUrl: sheets.death_knight.url, nameKey: 'deathKnight' });
     }
     expect(dungeonEnemyVisualForFloor(100)).toMatchObject({ spriteUrl: sheets.boss.url, nameKey: 'minotaurWarlord' });
     expect(en.enemies.goblinKing).toBe('Goblin King');
     expect(pt.enemies.deathKnight).toBe('Cavaleiro da Morte');
   });
 
-  it('leaves every other floor on its old sprite and name (the goblin forest alternates with the wolf: forestVariety.test.ts)', () => {
-    for (const f of floors.filter((x) => x < 76 && x % 25 !== 0 && !(x < 25 && x % 2 === 0))) {
+  it('leaves every other floor on its old sprite and name (every biome alternates on its even floors: forestVariety.test.ts, biomeVariety.test.ts)', () => {
+    for (const f of floors.filter((x) => x < 76 && x % 25 !== 0 && x % 2 === 1)) {
       const kind = dungeonEnemyKindForFloor(f);
       expect(dungeonEnemyVisualForFloor(f)).toMatchObject({ spriteUrl: enemySpriteUrl(kind), nameKey: getEnemyDef(kind).nameKey });
     }

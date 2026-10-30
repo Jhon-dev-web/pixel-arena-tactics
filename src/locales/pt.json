@@ -665,6 +665,9 @@
   "enemies": {
     "goblinRogue": "Goblin Ladino",
     "forestWolf": "Lobo da Mata",
+    "warBoar": "Javali de Guerra",
+    "cryptWraith": "Espectro da Cripta",
+    "stoneGolem": "Golem de Pedra",
     "orcBerserker": "Orc Berserker",
     "skeletonWarlock": "Esqueleto Bruxo",
     "minotaurWarlord": "Senhor da Guerra Minotauro",

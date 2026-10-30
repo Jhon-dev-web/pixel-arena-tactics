@@ -114,6 +114,14 @@ const BATTLE_ENEMY_SIZE = 'calc(var(--sprite-size, 132px) * 1.1)';
 // (the battle screen flips every enemy), and its body is anchored on the same ground line in all sixteen frames.
 const FOREST_WOLF = { spriteUrl: '/assets/spritesheets/forest_wolf.png', nameKey: 'forestWolf' };
 
+// The other three biomes got the same treatment, for the same reason (25 floors, one monster): the even floors show a second, differently shaped monster that belongs to the
+// biome, the odd ones keep the old one and the boss floors stay as they were. Still presentation only: the kind (orc / warlock / boss) is what the stats come from.
+// orc camp: a war boar, the camp's mount (a heavy quadruped against the upright orc). Warlock crypt: a wraith, a shrouded spirit (against the thin skeleton with a staff).
+// Minotaur lair: a labyrinth stone golem (a wide hulk against the slim death knight; the lair's regular floors are the knight's, see below). All three sheets face right.
+const ORC_BOAR = { spriteUrl: '/assets/spritesheets/war_boar.png', nameKey: 'warBoar' };
+const CRYPT_WRAITH = { spriteUrl: '/assets/spritesheets/crypt_wraith.png', nameKey: 'cryptWraith' };
+const LAIR_GOLEM = { spriteUrl: '/assets/spritesheets/stone_golem.png', nameKey: 'stoneGolem' };
+
 const BOSS_VISUALS: Record<number, { spriteUrl: string; nameKey: string }> = {
   25: { spriteUrl: Assets.spritesheets.goblin_king.url, nameKey: 'goblinKing' },
   50: { spriteUrl: Assets.spritesheets.orc_warchief.url, nameKey: 'orcWarchief' },
@@ -129,8 +137,12 @@ export function dungeonEnemyVisualForFloor(floor: number): DungeonEnemyVisual {
   }
   const boss = BOSS_VISUALS[floor];
   if (boss) return { ...boss, size: BATTLE_ENEMY_SIZE };
-  if (floor >= 76 && floor <= 99) return { spriteUrl: Assets.spritesheets.death_knight.url, nameKey: 'deathKnight', size: BATTLE_ENEMY_SIZE };
+  if (floor >= 76 && floor <= 99) return floor % 2 === 0 ? { ...LAIR_GOLEM, size: BATTLE_ENEMY_SIZE } : { spriteUrl: Assets.spritesheets.death_knight.url, nameKey: 'deathKnight', size: BATTLE_ENEMY_SIZE };
   const kind = dungeonEnemyKindForFloor(floor);
-  if (kind === 'goblin' && floor % 2 === 0) return { ...FOREST_WOLF, size: BATTLE_ENEMY_SIZE };
+  if (floor % 2 === 0) {
+    if (kind === 'goblin') return { ...FOREST_WOLF, size: BATTLE_ENEMY_SIZE };
+    if (kind === 'orc') return { ...ORC_BOAR, size: BATTLE_ENEMY_SIZE };
+    if (kind === 'warlock') return { ...CRYPT_WRAITH, size: BATTLE_ENEMY_SIZE };
+  }
   return { spriteUrl: enemySpriteUrl(kind), nameKey: getEnemyDef(kind).nameKey, size: BATTLE_ENEMY_SIZE };
 }
