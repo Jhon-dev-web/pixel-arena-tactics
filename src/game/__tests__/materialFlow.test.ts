@@ -58,14 +58,17 @@ describe('Rodada 9: material flow', () => {
     expect(setNeed(6).blood_heart).toBeGreaterThan(0);
   });
 
-  it('B3: the first 4 h hunt of a brand-new hero pays the first pieces and fills at most 6 of the 26 slots', () => {
+  it('B3: the first 4 h hunt of a brand-new hero pays the first pieces and fills at most 8 of the 26 slots', () => {
     const START = new Date(2026, 5, 1, 9, 0, 0).getTime();
     const s0 = { ...defaultSave(), huntingOfflineStart: START };
     const s1 = requestHuntStart(s0, 'demon_glade', 'shallow', START)!;
     const st = withSeededRandom(4242, () => computeHuntingStatus(s1, START + 4 * HOUR));
     const drops = st.drops as Record<string, number>;
     const slots = Object.values(drops).reduce((a, q) => a + slotsForQty(q), 0);
-    expect(slots).toBeLessThanOrEqual(6);
+    // THE RULE: a new hero's first hunt must not clog his bag (a third of the 26 slots at most, so he can still pick up the first pieces, the potions and the next gathering). It was 6, the exact size of the first session (couro 2 slots + claw,
+    // sinew, core, feather) with no headroom at all. On 30/10 the owner decided to drip flax and cotton into the glade for the mage (huntingZones.ts, both rare and on the class stream): any session may now bring one pile of each, +2 slots, hence 8.
+    // 8 of 26 still keeps the rule (the first session fills under a third of the bag); this is a deliberate product change, NOT a loosening to make a failing number pass. Raising the number again needs another product reason.
+    expect(slots).toBeLessThanOrEqual(8);
     // the first craft of the policy is the dagger: its leather comes from the scrap of that first session
     const dagger = getGear('bronze_dagger').recipe!.materials!;
     expect((drops.leather_scrap ?? 0) / 3).toBeGreaterThanOrEqual(dagger.leather as number);

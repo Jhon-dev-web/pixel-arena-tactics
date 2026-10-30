@@ -315,6 +315,14 @@ export const HUNTING_ZONES: HuntingZoneDef[] = [
       // The archer's first quiver (tier 1) asks for 4 feathers and the feather used to drop only from the marsh (floor 26) on, so on day 1 the archer stopped at 4 of his 5 leather pieces. The feather is the archer's material, so it
       // drops where the archer starts: same chance as the marsh and the throne, on the class stream (classStream) because the glade's shared ownRng already feeds beast_sinew in array order.
       { material: 'feather', rarity: 'common', chance: 0.02, qty: 1, ownStream: true, classStream: true },
+      // The mage's fibre (30/10): a DRIP of flax and cotton on top of the Garden, not a second source. The Garden alone left the mage short of a few units of flax and cotton at every craft from day 6 to 19 (his tier-2 set came on day
+      // 13-16, the warrior's on 4-5, the archer's on 5-6); with this drip it comes a day or three earlier and, in the day 10-19 window, at most a fifth of his flax and a third of his cotton fall here even with the Pass (it was 38 % and 46 % at 0.1 % and 0.07 %: too much), the rest from the Garden (scripts/tools/classDoor.tool.ts,
+      // fiberShare.tool.ts). It has to be the GLADE: the mage is still here (the marsh opens at floor 26 and he gets there only around day 10, when the hole is closing). wild_silk, the tier-3 fibre, is NOT dropped on purpose: in the same
+      // measurement a drop of it supplied 100 % of the mage's silk and the Garden stopped being planted. The labels follow the chance, like arcane_dust below: 0.07 % and 0.05 % are scarcer than the glade's own rare (demon_core 0.7 %), so they
+      // are 'rare' HERE, which also means the deep depth and the sub-levels multiply them (x1.8, and up to x2.1 more) for the hero who hunts deep, as intended. On the class stream, after feather: the glade's older drops (beast_sinew, on the shared
+      // ownRng) keep their numbers; only the feather of the glade, which is from the same day (29/10), draws other numbers from the second kill of a session on.
+      { material: 'flax', rarity: 'rare', chance: 0.0007, qty: 1, ownStream: true, classStream: true },
+      { material: 'cotton', rarity: 'rare', chance: 0.0005, qty: 1, ownStream: true, classStream: true },
     ],
     // Rodada 22: the chances below are the Rodada 9 ones cut again (zones 1 and 2 x0.4, zone 3 and 4 to 0.000008): in the 60-day sim the owner of the Pass (20 h of Hunting a day) found 5 to 7 uniques
     // of any kind, a plain player (6 h a day) 2 to 3; now 1 to 2 for the plain player and 3 to 4 for the owner who hunts all day (docs/BALANCE_CHANGES.md Rodada 22).

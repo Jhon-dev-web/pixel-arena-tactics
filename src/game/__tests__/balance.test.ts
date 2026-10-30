@@ -22,9 +22,9 @@ describe('balance decisions (docs/BALANCE_CHANGES.md)', () => {
 
   it('the first two zones drop three material types, the two late ones five (their own uncommon + rare on top of the old three), plus the class materials (sinew in the glade; feather and arcane dust in the marsh; all three in the rift, the abyss and the throne)', () => {
     const count = Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, z.drops.length]));
-    expect(count).toEqual({ demon_glade: 5, blood_marsh: 5, demon_rift: 8, blood_abyss: 8, abyss_throne: 8 }); // zones 3 and 4 got the three class materials on 29/10 (classStream), zone 5 had them from phase 7
+    expect(count).toEqual({ demon_glade: 7, blood_marsh: 5, demon_rift: 8, blood_abyss: 8, abyss_throne: 8 }); // the glade has the mage's flax and cotton since 30/10 (classStream); zones 3 and 4 got the three class materials on 29/10 (classStream), zone 5 had them from phase 7
     // the original drops (three per zone, five for the late ones) are still there, untouched
-    const original = Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, z.drops.filter((d) => !['beast_sinew', 'feather', 'arcane_dust'].includes(d.material)).length]));
+    const original = Object.fromEntries(HUNTING_ZONES.map((z) => [z.id, z.drops.filter((d) => !['beast_sinew', 'feather', 'arcane_dust', 'flax', 'cotton'].includes(d.material)).length]));
     expect(original).toEqual({ demon_glade: 3, blood_marsh: 3, demon_rift: 5, blood_abyss: 5, abyss_throne: 5 });
   });
 });

@@ -20,7 +20,7 @@ const HOUR = 3600 * 1000;
 describe('zone materials of the Demon Rift and the Blood Abyss', () => {
   const NEW: Record<string, [MaterialId, MaterialId]> = { demon_rift: ['rift_shard', 'fiend_horn'], blood_abyss: ['abyssal_marrow', 'blood_heart'] };
   // Drops per zone: the original ones (five for the late zones, three for the first two) plus the ownStream drops of the classes reform, phase 1, only in the first two zones (beast_sinew in the glade, feather and arcane_dust in the marsh).
-  const DROP_COUNT: Record<string, number> = { demon_glade: 5, blood_marsh: 5, demon_rift: 8, blood_abyss: 8 }; // the five of their own + the three class materials (29/10)
+  const DROP_COUNT: Record<string, number> = { demon_glade: 7, blood_marsh: 5, demon_rift: 8, blood_abyss: 8 }; // the zone's own + the class materials (29/10; the glade also has the mage's flax and cotton since 30/10)
 
   it('each late zone keeps its old three drops (the Rift ones untouched, the Abyss ones cut in round 17) and adds an uncommon + a rare of its own', () => {
     const rift = getHuntingZone('demon_rift')!;
@@ -31,7 +31,7 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
     for (const [zid, [unc, rare]] of Object.entries(NEW)) {
       const z = getHuntingZone(zid)!;
       expect(z.drops).toHaveLength(DROP_COUNT[zid]);
-      expect(z.drops.filter((d) => !['beast_sinew', 'feather', 'arcane_dust'].includes(d.material))).toHaveLength(5);
+      expect(z.drops.filter((d) => !['beast_sinew', 'feather', 'arcane_dust', 'flax', 'cotton'].includes(d.material))).toHaveLength(5);
       const u = z.drops.find((d) => d.material === unc)!;
       const r = z.drops.find((d) => d.material === rare)!;
       expect(u.rarity).toBe('uncommon');
@@ -46,7 +46,7 @@ describe('zone materials of the Demon Rift and the Blood Abyss', () => {
   // The class materials of the rift and the abyss (sinew, feather, arcane dust; 29/10) roll on a stream of their OWN (classStream), not on the zone's shared ownRng: if they did, they would move the numbers of the older
   // ownStream drops (rift_shard, fiend_horn, abyssal_marrow, blood_heart) of every session in progress. Nothing on screen shows it; a replay from the same seed is the only way to see it.
   it('the class materials added later (the rift, the abyss and the feather of the glade) move none of the older ownStream drops of their zone', () => {
-    for (const [zid, added] of [['demon_rift', ['beast_sinew', 'feather', 'arcane_dust']], ['blood_abyss', ['beast_sinew', 'feather', 'arcane_dust']], ['demon_glade', ['feather']]] as const) {
+    for (const [zid, added] of [['demon_rift', ['beast_sinew', 'feather', 'arcane_dust']], ['blood_abyss', ['beast_sinew', 'feather', 'arcane_dust']], ['demon_glade', ['feather', 'flax', 'cotton']]] as const) {
       const zone = getHuntingZone(zid)!;
       expect(zone.drops.filter((d) => d.classStream).map((d) => d.material)).toEqual(added);
       const h = hero('5', 4, { level: 75 });

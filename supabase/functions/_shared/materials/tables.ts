@@ -28,8 +28,8 @@ export const MATERIAL_CLASS: Readonly<Record<string, 'common' | 'uncommon' | 'ra
   "silver_sage": "uncommon",
   "dusk_orchid": "rare",
   "elder_root": "rare",
-  "flax": "common",
-  "cotton": "common",
+  "flax": "rare",
+  "cotton": "rare",
   "wild_silk": "uncommon",
   "moonweave": "rare",
   "voidsilk": "rare",
@@ -55,7 +55,9 @@ export const HUNT_CEILING: Readonly<Record<string, Readonly<Record<string, numbe
     "demon_claw": 133.81905507432,
     "demon_core": 15.447189021264004,
     "beast_sinew": 16.07474715,
-    "feather": 10.7164981
+    "feather": 10.7164981,
+    "flax": 1.5447189021264003,
+    "cotton": 1.1033706443760003
   },
   "blood_marsh": {
     "bone_fragment": 150.03097340000002,
