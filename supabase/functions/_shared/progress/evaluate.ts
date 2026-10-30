@@ -165,7 +165,12 @@ function growthChecks(f: Findings, cur: ProgressMetrics, refPeak: Peak, elapsedM
   f.check('FLOOR_PACE' + suffix, floorDays, PACE_FLAG_FACTOR * days + BOUNDS.floorPaceSlackDays, PACE_REJECT_FACTOR * days + BOUNDS.floorPaceSlackDays);
   f.note('FAST_FLOOR_PACE' + suffix, floorDays, PACE_FAST_FACTOR * days + BOUNDS.floorPaceSlackDays, PACE_FLAG_FACTOR * days + BOUNDS.floorPaceSlackDays);
   const depthGained = Math.max(0, cur.deepestDepth - refPeak.deepestDepth);
-  f.check('DEPTH_PACE' + suffix, depthGained, PACE_FLAG_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst, PACE_REJECT_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst);
+  // THE FIRST DESCENT: the first Profundezas run goes on until the hero dies (one run, minutes), so a person who had never gone down lands on the CP wall in ONE visit, however short the gap; after it the depth only
+  // creeps up. So while the reference point has no depth at all, the first descent may carry up to firstDiveFlag (flag) / firstDiveReject (reject) in total, whatever the days, and never LESS than the pace line below.
+  const firstDescent = refPeak.deepestDepth === 0;
+  const depthFlagAt = PACE_FLAG_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst;
+  const depthRejectAt = PACE_REJECT_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst;
+  f.check('DEPTH_PACE' + suffix, depthGained, firstDescent ? Math.max(depthFlagAt, BOUNDS.firstDescentFlag) : depthFlagAt, firstDescent ? Math.max(depthRejectAt, BOUNDS.firstDescentReject) : depthRejectAt);
   f.note('FAST_DEPTH_PACE' + suffix, depthGained, PACE_FAST_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst, PACE_FLAG_FACTOR * BOUNDS.depthPerDayFastest * days + BOUNDS.depthBurst);
 
   // Play time cannot outrun the clock. Impossible, not merely unlikely: reject only.

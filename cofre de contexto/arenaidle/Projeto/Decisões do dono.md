@@ -34,7 +34,7 @@ Foi levado a ele porque há dinheiro real envolvido (prêmio mínimo de US$ 1.00
 
 A saída natural existe e é parte do desenho: classe é só equipamento, então quem quiser competir pode vestir placa para a corrida da masmorra.
 
-**`FLOOR_PACE` mede com números velhos e afrouxar a defesa é dele** (30/10/2026): ver [[2026-10-30 — Antifraude rejeitava jogador honesto no dia 2]]. Perdoar as contas marcadas é passo dele, no banco dele.
+**Ritmo de andar e primeira descida** (30/10/2026): o dono entregou o equilíbrio à direção ("quero você no comando"). `FLOOR_PACE` e a primeira descida (`DEPTH_PACE`) foram remedidos em 30/10/2026 com 186 corridas (144 honestas e 42 de compradores), depois de corrigir o comprador simulado, que vestia peça acima do nível. Andar: 6,6 / 8,4 / 9,2 / 9,3 dias para 50 / 75 / 90 / 100. Primeira descida: marca acima de 94, rejeita acima de 149, só quando a profundidade anterior é 0. O diretor decidiu pelo mandato do dono. O que o trapaceiro ganha está em `bounds.ts`; a função só vale depois de republicar `submit-progress`. Ver [[2026-10-30 — Antifraude rejeitava jogador honesto no dia 2]].
 
 ---
 

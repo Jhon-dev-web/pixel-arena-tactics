@@ -19,7 +19,7 @@ Lista montada em 29–30/10/2026 a partir do `RESUMO_DO_PROJETO.md` (seção 7),
 - Preço do Passe da Temporada 2 ("não interessa agora", 28/10).
 
 **Equilíbrio e produto**
-- **`FLOOR_PACE` medido com números velhos** (honesto chega ao andar 50 no dia 6, tabela diz 8; marca 1 dono do Passe em 12, não rejeita ninguém). Afrouxar enfraquece a defesa contra trapaça ([[Tabela medida uma vez envelhece quando o jogo muda]]).
+- **Republicar `submit-progress`** para valer o ritmo de andar e a primeira descida novos: ordem do dono. Republicar não perdoa marcas antigas.
 - **Habilidades vêm só da arma e do peitoral**; ele pediu a leitura larga duas vezes ([[Decisões do dono]]).
 - **A decisão grande:** refazer o combate com o catálogo novo (seis slots por build, maestria por família, ~90 habilidades) ou terminar o que existe. Nada foi começado.
 - **"Couro (5) + cajado" e "peito de couro + placa"**, os melhores builds da medição de 29/10 de manhã (`docs/AUDITORIA_CLASSES_2026-10-29.md` seção 7). Opções do documento: o transbordo e a Arrancada deixarem de escalar com a velocidade; habilidades da arma só com o peitoral do mesmo peso; ou trocar a meta "classe pura +15%" por "nenhum build acima de +X% em mais de um eixo". **Depois dessa medição as armas foram reequilibradas e não achei nova medição das misturas.**

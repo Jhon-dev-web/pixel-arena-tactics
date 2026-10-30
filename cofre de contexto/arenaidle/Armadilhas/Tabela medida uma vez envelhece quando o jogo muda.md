@@ -21,4 +21,4 @@ Ligações: [[2026-10-30 — Antifraude rejeitava jogador honesto no dia 2]] · 
 
 **Alarme falso que a medição derrubou.** `LEVEL_PACE` em 1,39 parecia um problema. Era a recontagem do próprio simulador, que ignora o XP em rajada que o `evaluate.ts` desconta. Pelo avaliador real nunca disparou em 24 jogadores ao longo de 60 dias.
 
-**Fica em aberto.** `FLOOR_PACE` também foi medido com números velhos: o honesto chega ao andar 50 no dia 6 e a tabela diz 8. Hoje isso marca 1 dono do Passe em 12 e não rejeita ninguém. Ajustar afrouxa a defesa contra trapaça, então é decisão do dono e não foi feito. Ver [[O que está em aberto]].
+**Depois.** `FLOOR_PACE` e a primeira descida (`DEPTH_PACE`) foram remedidos em 30/10/2026 com 186 corridas (144 honestas e 42 de compradores), depois de corrigir o comprador simulado, que vestia peça acima do nível. Andar: 6,6 / 8,4 / 9,2 / 9,3 dias para 50 / 75 / 90 / 100. Primeira descida: marca acima de 94, rejeita acima de 149, só quando a profundidade anterior é 0. O diretor decidiu pelo mandato do dono. O que o trapaceiro ganha está em `bounds.ts`; a função só vale depois de republicar `submit-progress`.

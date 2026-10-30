@@ -159,25 +159,54 @@ export const BOUNDS = {
     [200, 264],
   ] as const,
   /** Highest dungeon floor against the day the fastest seed first stood on it. Rodada 26 re-measured it (floor 50 on day 9, 75 on day 9, 90 on day 10, 100 on day 10: not faster than the table, which is kept). SOURCE (Rodada 24, every Pass-owner policy, fastest of 6 seeds each): floor 8 on day 1, 25 on day 2, 50 on day 8, 75 on day 9, 90 on day 10, 100 on day 10 (11 here: the days must increase; the buyer's tier 4+ Legendary set, which is 2.1 times the CP of a Common one since Rodada 24;
-   * the plain owner needs until day 56, Rodada 22 had 100 on day 39 for the buyer). The Dungeon floors pay no XP and do not rank, so this table is only the plausibility check of the floor counter. */
+   * the plain owner needs until day 56, Rodada 22 had 100 on day 39 for the buyer). The Dungeon floors pay no XP and do not rank, so this table is only the plausibility check of the floor counter.
+   *
+   * RE-MEASURED 30/10 for the player who takes off the piece he is about to upgrade (scripts/sim/player.ts `wornIngredients`: what a real player does and the Forge now says, 56a84f9; it brings the warrior to tier 3 2 to 3 days sooner).
+   * With the anchors of Rodada 26 (50 on day 8, 75 on 9, 90 on 10, 100 on 11) the real evaluator FLAGGED honest players of that policy with FLOOR_PACE: mage seed 6 on day 11 (floor 40 -> 52 in one visit) and the Pass mage seed 2 on day 6 (28 -> 40).
+   * Between floor 25 and 50 the table climbed 0.24 "fastest-seed days" a floor, so a dozen floors (9 after the 3 of step slack) is 2.2 of them against the 2.0 a half-day visit allows.
+   * MEASURED: `WORN=1 npx vitest run --config vitest.sim.config.ts wornAntifraud --silent=false --reporter=default` (scripts/tools/wornAntifraud.tool.ts): the three classes, plain and Pass owner, seeds 1 to 12, 60 days, a snapshot after every visit through the real
+   * evaluateSnapshot = 72 honest runs with wornIngredients and the same 72 without it; and with BUYER=PB|PBE|PBR|PBER|PBG|PBEG|PBRG, seeds 1 to 6, 60 days = 42 buyer runs (the policies of `npm run sim:econ`, wornIngredients on, and, since 30/10, a buyer who OBEYS the level gate of the
+   * piece: scripts/sim/leagueEcon.sim.ts used to empty the recipe's ingredients and with them the gate the piece inherits, so the old buyer wore tier 5 and 6 at level 41 and was rejected with GEAR_BELOW_GATE; an earlier draft of these anchors was fitted to that impossible player and was dropped).
+   * The earliest honest day on each anchor: floor 50 on day 5.4 (the plain warrior and the greedy Epic buyer), 75, 90 and 100 all on day 7.9 (the buyers PBER and PBR: at level 50 the tier 5 set lands and the floor goes from the 60s to 100 in a visit or two).
+   * METHOD: the anchors are the tightest (latest) ones for which EVERY visit of the 186 runs (144 honest + 42 buyers, the first-snapshot and since-first checks included) stays under 1/1.2 of the FLOOR_PACE flag line (floor-days gained / (2 x days + 1)); a grid search over the four anchors, 0.1 day steps.
+   * The worst visit is 0.83 (the Pass mage's 28 -> 40, then the +8 buyer's 64 -> 100), against 1.08 with the Rodada 26 anchors (the mage's 40 -> 52) and 1.07 / 1.14 if the anchors were simply the earliest days.
+   * What a cheater with a fresh account and no other limit (the level cap and the level pace still bind) can stand on before this rule flags him, Rodada 26 table -> this one: 1 day: 32 -> 33 floors; 2 days: 41 -> 44; 3 days: 49 -> 59; 4 days: 78 -> 89; 5 days or more: floor 100 either way.
+   * Segments, days a floor: 0.125, 0.059, 0.184 (was 0.24), 0.072 (was 0.04), 0.053 (was 0.067), 0.01 (was 0.1). The 25 -> 50 and 90 -> 100 segments got looser, 50 -> 75 got steeper (the buyers' climb there is covered by the measurement above). */
   floorPace: [
     [0, 0],
     [8, 1],
     [25, 2],
-    [50, 8],
-    [75, 9],
-    [90, 10],
-    [100, 11],
+    [50, 6.6],
+    [75, 8.4],
+    [90, 9.2],
+    [100, 9.3],
   ] as const,
-  /** Profundezas depth cleared per day by the fastest seed: 0 to about 30 in the first 3 days after the floor-100 boss (Cenario P, days 90 to 110). Depth is capped by the CP wall at about 44. */
+  /** Profundezas depth cleared per day by the fastest seed, AFTER the first descent: the hero keeps dying at the CP wall, so the depth only creeps up (the worst honest visit after the first descent, 186 runs: 16 depths in half a day, 0.73 of the flag line; wornAntifraud.tool.ts). The first descent itself is firstDescentFlag / firstDescentReject below. */
   depthPerDayFastest: 12,
   /** One-off allowance when a depth jump follows a long gap: the sims show 10 depths in the first day. */
   depthBurst: 10,
+  /**
+   * THE FIRST DESCENT (evaluate.ts: only while the reference snapshot has deepestDepth 0). The first Profundezas run goes on until the hero dies, so a hero who never went down lands on the CP wall in ONE run (minutes), however short the gap since the last snapshot: 24 to 41 depths
+   * for the honest plain / Pass warriors (72 runs of 60 days), 30 to 78 for the 42 buyers of `npm run sim:econ` (seeds 1 to 6, wornIngredients on, a buyer that obeys the level gate of the piece). The wall, not a pace, sets it, and the old line (2 x 12 depths a day + 10: 22 in half a day,
+   * rejected above 28) REJECTED honest players: 4 plain / Pass warriors on day 49 to 60 and, before the buyer was fixed, most buyers. Depth ranks the championship, so the margins are asymmetric: flag above the biggest measured x 1.2 (78 -> 94), reject above it x 1.9 (78 -> 149).
+   * What a cheater gains: ONCE, the first claim of depth may be up to 94 unflagged (was 22 in half a day, 34 in a day) and up to 149 unrejected (was 28 / 46); from then on every claim is held to the old line (24 a day + 10 flag, 36 a day + 10 reject).
+   */
+  firstDescentFlag: 94,
+  firstDescentReject: 149,
 
   // ---- coupling: how high a floor a hero of a given level has been seen on -------------------------------------------------------------------------------
   /**
    * [hero level, highest floor]: the flag line. Above it the snapshot is flagged, above floorCapRejectFactor x it + floorCapRejectSlack it is rejected (a flag already takes the account out of the ranking
    * that counts, so an honest hero must sit UNDER this line, not just under the reject line).
+   *
+   * RE-MEASURED AGAIN 30/10 FOR THE PLAYER WHO TAKES OFF THE PIECE HE UPGRADES (wornIngredients: the warrior is at tier 3 by level 32, floor 63, not floor 50 at level 36). The 29/10 measurement below was made with the old policy and
+   * with the plain / Pass WARRIOR only. Now: `npx vitest run --config vitest.sim.config.ts wornAntifraud` (scripts/tools/wornAntifraud.tool.ts), the three classes, plain and Pass owner, seeds 1 to 12, 60 days, a snapshot after every visit, 72 runs with wornIngredients and the same 72
+   * without it, plus the 42 runs of the 7 buyers (seeds 1 to 6, with a buyer that obeys the level gate of the piece, see floorPace above); same METHOD (the running maximum of the worst honest floor at that level or below, x 1.2, rounded up, capped at floor 100). The line this gave, by level
+   * (worst honest floor -> line): 1: 25 (the mage, whose first Hunting claim has not paid a level yet on day 2) -> 30, 13: 28 -> 34, 17: 34 -> 41, 22: 36 -> 44, 29: 40 -> 48, 32: 63 -> 76, 36: 70 -> 84, 40: 75 -> 90, 42: 76 -> 92, 43: 77 -> 93, and from level 50 the buyer's 100 (the tier 5 set lands at level 50).
+   * The points below keep every level at or above that line (no honest snapshot is above 1/1.2 of it) and, from level 46, stay at 100 as before: the measured buyers need it only from level 50, but progress.test.ts walks a player along the pace tables and the floor table reaches floor 100 about a day before the level table reaches level 50, so a line under 100 at levels 46 to 49 flags that player. The line is therefore at or above the 29/10 one at every level.
+   * With the 29/10 table the real evaluator, on the same runs: the old policy had 4 of 12 plain mages and 1 Pass mage REJECTED on day 2 (level 1, floor 25, cap 12; reject above 21.8) and the worn policy had 3 plain warriors FLAGGED for up to 12 days at levels 32 to 40 (floors 58 to 75).
+   * WHAT A CHEATER GAINS (floor that stays unflagged / that is not rejected, by level, 29/10 -> 30/10): level 1: 12 / 22 -> 30 / 47; level 5: 19 / 31 -> 31 / 49; level 13: 32 / 50 -> 34 / 53; level 17: 36 / 55 -> 41 / 62; level 30: 48 / 72 -> 57 / 85; level 32: 57 / 85 -> 76 / 111;
+   * level 36: 60 / 89 -> 84 / 123; level 40: 70 / 103 -> 90 / 131; level 42: 90 -> 92 (flag); level 45: 92 -> 98 (flag); level 46 on: 100 -> 100. The biggest gifts are at levels 1 to 5 (a floor-25 mage at level 1 is honest) and 30 to 40, where the worn-pieces warrior is ahead. The floor-pace and level-pace rules still bound the speed.
    *
    * RE-MEASURED 29/10 (it had gone stale: since Rodada 28 the first levels cost 3.3x and the table below still said "level 24 floor 25", so the honest hero of day 2, floor 25 at level 13, was REJECTED).
    * The floor comes from the CP of the gear and the level from the Hunting XP, and ONE Hunting claim pays both: the plain player's first 6 h claim is level 13 plus the materials of a floor-25 set.
@@ -191,20 +220,19 @@ export const BOUNDS = {
    * is a long tail (one Legendary of luck is floor 75 at level 42, where the mean is 44 and 2 deviations reach 59), and a bound that flags the luckiest honest seed is the failure this table exists to avoid.
    * It is meant to be LOOSER than what the old table said at every level (the old one was 14 at level 13 and 52 at level 42): a floor is capped by FLOOR_PACE as well, in days, which is what stops a
    * hero that climbs too fast; this rule only says "a floor this high needs a level this high", and a table that flags the honest hero is worse than a loose one.
-   * Rodada 20 / 22 / 24 (the old points, all superseded): 1:12, 13:14, 24:36, 37:44, 44:56, 46:85, 48:100.
+   * Rodada 20 / 22 / 24 (the old points, all superseded): 1:12, 13:14, 24:36, 37:44, 44:56, 46:85, 48:100. 29/10 (superseded by the 30/10 table): 1:12, 13:32, 17:36, 30:48, 32:57, 36:60, 40:70, 41:83, 42:90, 45:92, 46:100.
    * honestPlayerAntifraud.test.ts fails the day an honest simulated player is rejected (or flagged) again; the 12-seed, 60-day detail (who would be rejected, by which rule) is section C2 of scripts/sim/classAntifraud.sim.ts.
    */
   floorCapByLevel: [
-    [1, 12],
-    [13, 32],
-    [17, 36],
-    [30, 48],
-    [32, 57],
-    [36, 60],
-    [40, 70],
-    [41, 83],
-    [42, 90],
-    [45, 92],
+    [1, 30],
+    [13, 34],
+    [17, 41],
+    [22, 44],
+    [29, 48],
+    [32, 76],
+    [36, 84],
+    [40, 90],
+    [43, 93],
     [46, 100],
     [70, 100],
   ] as const,

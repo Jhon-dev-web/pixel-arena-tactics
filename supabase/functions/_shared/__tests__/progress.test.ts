@@ -343,7 +343,7 @@ describe('bounds table', () => {
     for (const t of [BOUNDS.levelPace, BOUNDS.floorPace]) for (let i = 1; i < t.length; i++) expect(t[i][1]).toBeGreaterThan(t[i - 1][1]);
     expect(daysAtLevel(51)).toBe(11);
     expect(daysAtLevel(55.5)).toBeCloseTo(11 + (7 * 4.5) / 9, 6);
-    expect(daysAtFloor(100)).toBe(11);
+    expect(daysAtFloor(100)).toBe(9.3);
     expect(daysAtLevel(0.5)).toBe(0);
   });
 });

@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import T from '../../src/game/tunables';
-import { GEAR, getGear } from '../../src/game/gear';
+import { GEAR, gearRequiredLevel, getGear } from '../../src/game/gear';
 import { HUNTING_ZONES } from '../../src/game/huntingZones';
 import { RARITIES, Rarity } from '../../src/game/rarity';
 import { MAX_LEVEL, playerLevel, xpForNextLevel, xpToReachLevel } from '../../src/game/engine';
@@ -70,9 +70,13 @@ if (process.env.LEAGUE_EVENTS !== '0') setLeagueEpoch(START);
 
 const opts = POLICIES[POLICY];
 if (opts?.buyer) {
-  // Market gear costs the buyer no materials and no Gold (the level gate of the recipe stays: he cannot wear a piece he could not have forged at his level).
+  // Market gear costs the buyer no materials and no Gold (the level gate of the piece stays, pinned below: he cannot wear a piece above his level).
+  const gates = new Map<string, number>(GEAR.map((g) => [g.id, gearRequiredLevel(g)]));
   for (const g of GEAR) {
     if (g.recipe && (g.tier ?? 0) >= opts.buyer.fromTier && (g.tier ?? 0) <= (opts.buyer.toTier ?? 99) && !(g as { unique?: boolean }).unique) {
+      // Emptying `items` also empties the level gate the piece INHERITS from its ingredient (gearRequiredLevel walks recipe.items), so the gate is computed first and pinned as the recipe's own: the buyer
+      // may not wear a piece above his level. (Before 30/10 it was lost: the simulated buyer wore tier 5 and 6 at level 41, which the game does not allow and the server rejects as GEAR_BELOW_GATE.)
+      g.recipe.requiredLevel = gates.get(g.id);
       g.recipe.materials = {} as never;
       g.recipe.items = {} as never;
       (g.recipe as { gems?: unknown }).gems = undefined;

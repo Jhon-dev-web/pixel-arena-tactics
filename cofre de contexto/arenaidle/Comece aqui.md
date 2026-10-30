@@ -49,6 +49,7 @@ Medir e provar:
 - [[Um guarda que mede uma amostra pode passar com a regra quebrada fora dela]]
 - [[Guarda derivado não enxerga a sua mudança]]
 - [[Tabela medida uma vez envelhece quando o jogo muda]]
+- [[O botão de desenvolvimento encolhe a tela só no servidor local]]
 
 Equilibrar:
 - [[Uma busca numérica conserta pelo caminho mais curto]]

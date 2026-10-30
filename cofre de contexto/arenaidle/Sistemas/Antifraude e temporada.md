@@ -42,6 +42,6 @@ Está em `SEASON_RANKING.md` (seção 2, "O que isto NÃO protege"): trapaceiro 
 
 ## Ainda em aberto
 
-- **`FLOOR_PACE` foi medido com números velhos** (o honesto chega ao andar 50 no dia 6; a tabela diz 8). Hoje marca 1 dono do Passe em 12 e não rejeita ninguém. Afrouxar é decisão do dono.
+- `FLOOR_PACE` e a primeira descida (`DEPTH_PACE`) foram remedidos em 30/10/2026 com 186 corridas (144 honestas e 42 de compradores), depois de corrigir o comprador simulado, que vestia peça acima do nível. Andar: 6,6 / 8,4 / 9,2 / 9,3 dias para 50 / 75 / 90 / 100. Primeira descida: marca acima de 94, rejeita acima de 149, só quando a profundidade anterior é 0. O diretor decidiu pelo mandato do dono. O que o trapaceiro ganha está em `bounds.ts`; a função só vale depois de republicar `submit-progress`.
 - A vigilância (`ops-watchdog`, `ai-auditor`) roda com limites antigos até alguém publicá-las com `--no-verify-jwt` (o modo automático bloqueia).
 - Ver [[O que está em aberto]].

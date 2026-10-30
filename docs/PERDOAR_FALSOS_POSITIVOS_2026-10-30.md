@@ -49,7 +49,7 @@ select public.progress_clear_flags(
 
 Rode o passo 1 de novo: a lista tem de vir vazia. O guarda que faltava existe agora (`src/game/__tests__/honestPlayerAntifraud.test.ts`): ele falha se qualquer jogador honesto simulado for rejeitado **ou** marcado, então este defeito não volta em silêncio.
 
-**Ainda em aberto:** o `FLOOR_PACE` também foi medido com números velhos — o honesto chega ao andar 50 no dia 6 e a tabela diz 8. Hoje isso marca 1 dono do Passe em 12, e não rejeita ninguém. Ajustar afrouxa a defesa contra trapaça, então é decisão do dono e não foi feito.
+**Depois:** o `FLOOR_PACE` e a primeira descida (`DEPTH_PACE`) foram remedidos em 30/10; os números e o que o trapaceiro ganha estão em `supabase/functions/_shared/progress/bounds.ts`.
 
 ## Resultado, conferido em 30/10/2026
 
