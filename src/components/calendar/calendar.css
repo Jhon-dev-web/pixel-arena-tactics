@@ -1,15 +1,10 @@
 /* The Calendario screen (CalendarScreen.tsx): a month grid with the events as coloured bars, and the lists under it. Only design tokens; four type sizes (title, section, body, small).
    Mobile first: on a narrow screen the bars are thin strips (the day's events open under the grid when it is tapped), from 560 px of screen width the bars carry the name. */
-.cal-page .cal-tz,
 .cal-page .cal-note {
   margin: 0;
   color: var(--c-text-dim);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-}
-.cal-page .cal-tz {
-  color: var(--c-text-muted);
-  font-size: var(--fs-small);
 }
 .cal-page .cal-state {
   display: flex;
@@ -241,4 +236,36 @@
   margin: 0;
   color: var(--c-good);
   font-size: var(--fs-body);
+}
+
+/* a card that is one row (name, kind, dates) and opens to its text; the chevron is the one the other folds use */
+.cal-fold-sum {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--tap);
+  list-style: none;
+  cursor: pointer;
+}
+.cal-fold-sum::-webkit-details-marker {
+  display: none;
+}
+.cal-fold-sum:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.cal-fold-head {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.cal-fold[open] > .cal-fold-sum .pg-fold-chev {
+  margin-bottom: 0;
+  margin-top: 5px;
+  transform: rotate(-135deg);
+}
+.cal-fold[open] > .cal-item-desc {
+  margin-top: var(--sp-2);
 }

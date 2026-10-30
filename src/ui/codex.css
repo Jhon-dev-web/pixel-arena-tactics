@@ -16,11 +16,28 @@
     align-items: center;
   }
 }
+/* the count of the tab ("Descobertos: n de m"): one plain line under the tabs on a phone; on a wide screen it is the empty state of the summary column (.cx-hint) instead */
+.cx-count {
+  display: none;
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--c-text-muted);
+}
 .cx-hint {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
   color: var(--c-text-dim);
+}
+@container ui (max-width: 560px) {
+  .cx-count {
+    display: block;
+  }
+  /* the empty summary column goes too, or its gap stays */
+  .cx-hint,
+  .ui-side:has(> .cx-hint) {
+    display: none;
+  }
 }
 .cx-grid {
   display: grid;

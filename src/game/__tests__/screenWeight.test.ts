@@ -2,6 +2,8 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import BattlePassView from '../../components/BattlePassModal';
+import CalendarScreen from '../../components/calendar/CalendarScreen';
+import CodexModal from '../../components/CodexModal';
 import DeliveryModal from '../../components/DeliveryModal';
 import ForgeView from '../../components/ForgeModal';
 import GardenModal from '../../components/GardenModal';
@@ -14,6 +16,8 @@ import TaticasView from '../../components/TaticasView';
 import { setLocale, t } from '../../locales';
 import { automaticRotation, hero } from '../../../scripts/sim/duel';
 import { defaultSave, effectiveRotation, SaveData } from '../engine';
+import { codexProgress } from '../codex';
+import { applyCalendarEvents, devMockCalendar } from '../eventCalendar';
 import { xpToReachLevel } from '../heroLevel';
 import { ensureDeliveryOffers } from '../deliveries';
 import { inventoryCapacity, inventorySlotsUsed } from '../inventory';
@@ -155,6 +159,16 @@ const SCREENS: { name: string; render: () => string; modal: boolean }[] = [
   },
   { name: 'Mineração', modal: true, render: () => html(h(GatheringModal, { kind: 'mining', save: level40(), onStart: noop, onClaim: noop, onCancel: noop, onClose: noop })) },
   { name: 'Lenhador', modal: true, render: () => html(h(GatheringModal, { kind: 'woodcutting', save: level40(), onStart: noop, onClaim: noop, onCancel: noop, onClose: noop })) },
+  { name: 'Códice', modal: true, render: () => html(h(CodexModal, { save: level40(), onClose: noop })) },
+  {
+    // a screen, not a modal (it has its own PageHeader); the sample calendar is the one the dev build loads with ?calendarMock=1
+    name: 'Calendário',
+    modal: false,
+    render: () => {
+      applyCalendarEvents(devMockCalendar());
+      return html(h(CalendarScreen));
+    },
+  },
   {
     name: 'Inventário',
     modal: true,
@@ -271,5 +285,26 @@ describe('what the lean screens still say', () => {
     expect(bar).toContain('pa-buy-btn');
     expect(bar).toContain('pa-claimall');
     expect(out).toContain(t('battlePass.buyBlurb', { h: T.battlePass.capHours }).slice(0, 20));
+  });
+
+  it('Códice: the gear tab is one row per slot (a fold with its count) and only the first slot starts open', () => {
+    const out = SCREENS.find((x) => x.name === 'Códice')!.render();
+    expect((out.match(/<details class="ui-panel pg-fold"/g) ?? []).length, 'every slot of the gear tab is a fold: eleven open panels were 5,4 screens on a phone').toBeGreaterThanOrEqual(6);
+    expect(out.match(/<details class="ui-panel pg-fold" open=""/g) ?? []).toHaveLength(1);
+    const gear = codexProgress(level40().codex).items;
+    expect(out).toContain(t('codex.hint', { n: gear.found, m: gear.total })); // the count of the tab is still on the screen, as one plain line
+  });
+
+  it('Calendário: only the next event is an open card; the other upcoming ones, Passados and Liga are folds that hold their text', () => {
+    const out = SCREENS.find((x) => x.name === 'Calendário')!.render();
+    const upcoming = out.slice(out.indexOf('data-testid="cal-upcoming"'), out.indexOf('data-testid="cal-month"'));
+    const cards = (upcoming.match(/data-testid="cal-item"/g) ?? []).length;
+    const folded = (upcoming.match(/class="cal-fold"/g) ?? []).length;
+    expect(cards, 'the sample has several upcoming events').toBeGreaterThan(2);
+    expect(cards - folded).toBe(1);
+    expect(upcoming).toContain(t('events.startsIn', { t: '' }).slice(0, 6)); // and that one open card is the one with the countdown
+    expect(out).toContain('<details class="ui-panel pg-fold cal-section" data-testid="cal-past"');
+    expect(out).toContain('<details class="ui-panel pg-fold cal-section" data-testid="cal-league"');
+    expect(out).toContain(t('calendar.leagueNote')); // the League note moved inside its fold, it did not go away
   });
 });

@@ -2552,7 +2552,7 @@
     "tab_materials": "Materials",
     "tab_monsters": "Monsters",
     "overall": "{pct}% discovered ({n} of {m})",
-    "hint": "Tap a tile for details. Discovered: {n} of {m}.",
+    "hint": "Discovered: {n} of {m}.",
     "unknown": "???",
     "tier": "Tier {n}",
     "set": "{name} set",
@@ -2692,7 +2692,6 @@
   "calendar": {
     "nav": "Calendar",
     "title": "Calendar",
-    "subtitle": "Game and League events, with dates and times in your time zone.",
     "timezone": "Times are in your time zone ({tz}).",
     "offline": "Events are only in the online game. Sign in with your account to see the calendar.",
     "loading": "Loading the calendar...",
@@ -2712,9 +2711,7 @@
     "leagueNote": "These events happen in the League. The dates appear when the League opens.",
     "leagueDay": "League: day {a}",
     "leagueDays": "League: days {a} to {b}",
-    "fromTo": "{a} until {b}",
-    "show": "Show ({n})",
-    "hide": "Hide"
+    "fromTo": "{a} until {b}"
   },
   "tradeable": {
     "tag": "Tradeable",

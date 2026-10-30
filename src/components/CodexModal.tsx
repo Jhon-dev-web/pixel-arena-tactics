@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import PixelIcon from './PixelIcon';
 import { fmtNum, fmtPrice, t } from '../locales';
 import { merchantPrice } from '../game/merchant';
@@ -206,6 +206,13 @@ export default function CodexModal({ save, onClose }: { save: SaveData; onClose:
   const found = new Set(codex[tab]);
   const pick = (id: string) => setSelected((s) => ({ ...s, [tab]: s[tab] === id ? null : id }));
   const sel = selected[tab];
+  // On a phone the detail sits above the list: a tile tapped far down would open it out of sight, so bring it into view ('nearest' leaves a wide page, where it is already in view, alone).
+  useEffect(() => {
+    if (sel !== null) document.querySelector(`[data-codex-detail="${sel}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [sel]);
+  const count = t('codex.hint', { n: progress[tab].found, m: progress[tab].total });
+  // the gear tab is a list of slots: only the first one starts open, the others are one row each (the name and how many of it are found)
+  const firstSlot = GEAR_SLOT_ORDER.find((slot) => CODEX_ITEMS.some((g) => g.slot === slot));
 
   const tabs: TabItem<CodexTab>[] = CODEX_TABS.map((id) => ({
     id,
@@ -219,7 +226,7 @@ export default function CodexModal({ save, onClose }: { save: SaveData; onClose:
   const detail =
     sel === null ? (
       <Panel tone="inset" className="cx-hint">
-        <p>{t('codex.hint', { n: progress[tab].found, m: progress[tab].total })}</p>
+        <p>{count}</p>
         <Meter pct={progress[tab].pct} done={progress[tab].pct >= 100} thin label={t(`codex.tab_${tab}`)} />
       </Panel>
     ) : tab === 'items' ? (
@@ -254,33 +261,34 @@ export default function CodexModal({ save, onClose }: { save: SaveData; onClose:
           if (list.length === 0) return null;
           const n = list.filter((g) => found.has(g.id)).length;
           return (
-            <Panel
-              key={slot}
-              title={t(`gear.${slot}`)}
-              actions={
+            <details key={slot} className="ui-panel pg-fold" open={slot === firstSlot}>
+              <summary className="pg-fold-sum">
+                <span className="ui-panel-title">{t(`gear.${slot}`)}</span>
                 <Chip tone={n === list.length ? 'good' : 'gold'}>
                   {n}/{list.length}
                 </Chip>
-              }
-            >
-              <div className="cx-grid">
-                {list.map((g) => (
-                  <button
-                    key={g.id}
-                    className={`cx-tile${found.has(g.id) ? '' : ' unknown'}${sel === g.id ? ' selected' : ''}${g.unique ? ' unique' : ''}`}
-                    onClick={() => pick(g.id)}
-                    title={found.has(g.id) ? gearName(g) : '???'}
-                    aria-label={found.has(g.id) ? gearName(g) : t('codex.unknown')}
-                    aria-pressed={sel === g.id}
-                    data-ui
-                  >
-                    <ItemFrame rarity={g.unique ? 'legendary' : 'common'}>
-                      <GearIcon item={g} />
-                    </ItemFrame>
-                  </button>
-                ))}
+                <span className="pg-fold-chev" aria-hidden />
+              </summary>
+              <div className="pg-fold-body">
+                <div className="cx-grid">
+                  {list.map((g) => (
+                    <button
+                      key={g.id}
+                      className={`cx-tile${found.has(g.id) ? '' : ' unknown'}${sel === g.id ? ' selected' : ''}${g.unique ? ' unique' : ''}`}
+                      onClick={() => pick(g.id)}
+                      title={found.has(g.id) ? gearName(g) : '???'}
+                      aria-label={found.has(g.id) ? gearName(g) : t('codex.unknown')}
+                      aria-pressed={sel === g.id}
+                      data-ui
+                    >
+                      <ItemFrame rarity={g.unique ? 'legendary' : 'common'}>
+                        <GearIcon item={g} />
+                      </ItemFrame>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </Panel>
+            </details>
           );
         })}
 
@@ -335,6 +343,7 @@ export default function CodexModal({ save, onClose }: { save: SaveData; onClose:
       <div className="ui-cq cx-root">
         <Meter pct={progress.overall.pct} done={progress.overall.pct >= 100} label={t('codex.title')} />
         <Tabs<CodexTab> items={tabs} value={tab} onChange={setTab} label={t('codex.title')} />
+        <p className="cx-count">{count}</p>
         <ScreenLayout sideFirst main={main} side={detail} />
       </div>
     </ModalShell>

@@ -2552,7 +2552,7 @@
     "tab_materials": "Materiais",
     "tab_monsters": "Monstros",
     "overall": "{pct}% descoberto ({n} de {m})",
-    "hint": "Toque num quadro para ver os detalhes. Descobertos: {n} de {m}.",
+    "hint": "Descobertos: {n} de {m}.",
     "unknown": "???",
     "tier": "Tier {n}",
     "set": "Conjunto {name}",
@@ -2692,7 +2692,6 @@
   "calendar": {
     "nav": "Calendário",
     "title": "Calendário",
-    "subtitle": "Eventos do jogo e da Liga, com datas e horários no seu fuso.",
     "timezone": "Horários no seu fuso horário ({tz}).",
     "offline": "Eventos só no jogo online. Entre com sua conta para ver o calendário.",
     "loading": "Carregando o calendário...",
@@ -2712,9 +2711,7 @@
     "leagueNote": "Estes eventos acontecem na Liga. As datas aparecem quando a Liga abrir.",
     "leagueDay": "Liga: dia {a}",
     "leagueDays": "Liga: dias {a} a {b}",
-    "fromTo": "{a} até {b}",
-    "show": "Ver ({n})",
-    "hide": "Esconder"
+    "fromTo": "{a} até {b}"
   },
   "tradeable": {
     "tag": "Negociável",

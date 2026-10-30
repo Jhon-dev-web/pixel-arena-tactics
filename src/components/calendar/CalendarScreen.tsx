@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Button, Chip, PageHeader, Panel, Screen } from '../ui';
 import PixelIcon from '../PixelIcon';
 import { activeLocale, t } from '../../locales';
@@ -10,7 +10,8 @@ import { CalendarEntry, CalendarView, calendarView, formatDayTitle, formatEnd, f
 import './calendar.css';
 
 // The "Calendario" screen (docs/EVENT_CALENDAR.md): a month grid with the events as coloured bars (hero / profession / final), and under it the list: "Agora", "Proximos", "Passados". Dates and times are
-// the PLAYER's local time. Before the League opens its events are listed as "Liga: dia N" in their own section (they get dates when it opens). The offline / desktop build has no server calendar: the
+// the PLAYER's local time (the header says which zone). On a phone only what is running and the next event are open cards; every other event is a one-row fold (name, kind, dates) that opens to its text, and
+// "Passados" / "Liga" are folds too (docs/INTERFACE_ENXUTA_2026-10-30.md). Before the League opens its events are listed as "Liga: dia N" in their own section (they get dates when it opens). The offline / desktop build has no server calendar: the
 // screen says so. The data is the server's word (eventCalendar.ts); nothing here changes any rule.
 
 const KIND_TONE = { hero: 'gold', profession: 'info', final: 'good' } as const;
@@ -27,18 +28,63 @@ function useNow(everyMs: number): number {
   return now;
 }
 
-/** One event of the list: name, kind, local dates, what it does, and a countdown when it is the running or the next one. */
-function EventItem({ entry, countdownKind, ms }: { entry: CalendarEntry; countdownKind?: 'ends' | 'starts'; ms?: number }) {
-  return (
-    <li className={`cal-item cal-${entry.kind}`} data-testid="cal-item">
+/** One event of the list: name, kind, local dates, what it does, and a countdown when it is the running or the next one. `fold`: the card is one row (name, kind, dates) that opens to the text. */
+function EventCard({ kind, name, when, desc, count, fold, testId }: { kind: LeagueEventKind; name: string; when: string; desc: string; count?: string; fold?: boolean; testId?: string }) {
+  const head = (
+    <>
       <div className="cal-item-head">
-        <span className="cal-item-name">{eventName(entry.id)}</span>
-        <Chip tone={KIND_TONE[entry.kind]}>{kindLabel(entry.kind)}</Chip>
+        <span className="cal-item-name">{name}</span>
+        <Chip tone={KIND_TONE[kind]}>{kindLabel(kind)}</Chip>
       </div>
-      <p className="cal-item-when">{t('calendar.fromTo', { a: formatStart(entry.startMs, activeLocale), b: formatEnd(entry.endMs, activeLocale) })}</p>
-      <p className="cal-item-desc">{eventDesc(entry.id)}</p>
-      {countdownKind && ms !== undefined && <p className="cal-item-count">{t(countdownKind === 'ends' ? 'events.endsIn' : 'events.startsIn', { t: countdown(ms) })}</p>}
+      <p className="cal-item-when">{when}</p>
+    </>
+  );
+  return (
+    <li className={`cal-item cal-${kind}`} data-testid={testId}>
+      {fold ? (
+        <details className="cal-fold">
+          <summary className="cal-fold-sum">
+            <div className="cal-fold-head">{head}</div>
+            <span className="pg-fold-chev" aria-hidden />
+          </summary>
+          <p className="cal-item-desc">{desc}</p>
+        </details>
+      ) : (
+        <>
+          {head}
+          <p className="cal-item-desc">{desc}</p>
+          {count && <p className="cal-item-count">{count}</p>}
+        </>
+      )}
     </li>
+  );
+}
+
+function EventItem({ entry, countdownKind, ms, fold }: { entry: CalendarEntry; countdownKind?: 'ends' | 'starts'; ms?: number; fold?: boolean }) {
+  return (
+    <EventCard
+      kind={entry.kind}
+      name={eventName(entry.id)}
+      when={t('calendar.fromTo', { a: formatStart(entry.startMs, activeLocale), b: formatEnd(entry.endMs, activeLocale) })}
+      desc={eventDesc(entry.id)}
+      count={countdownKind && ms !== undefined ? t(countdownKind === 'ends' ? 'events.endsIn' : 'events.startsIn', { t: countdown(ms) }) : undefined}
+      fold={fold}
+      testId="cal-item"
+    />
+  );
+}
+
+/** "Passados" and "Liga": a native fold (closed), the count of what is inside beside the title. */
+function ListFold({ title, n, testId, children }: { title: string; n: number; testId: string; children: ReactNode }) {
+  return (
+    <details className="ui-panel pg-fold cal-section" data-testid={testId}>
+      <summary className="pg-fold-sum">
+        <span className="ui-panel-title">{title}</span>
+        <Chip>{n}</Chip>
+        <span className="pg-fold-chev" aria-hidden />
+      </summary>
+      <div className="pg-fold-body">{children}</div>
+    </details>
   );
 }
 
@@ -146,14 +192,12 @@ export default function CalendarScreen() {
   const cal = useEventCalendar();
   const resetAt = useLeagueResetAt();
   const now = useNow(30_000);
-  const [showPast, setShowPast] = useState(false);
-  const [showLeague, setShowLeague] = useState(false);
   // the League clock is unknown only while it is being asked: with a calendar in hand the screen treats it as "before the League" until the answer arrives
   const view = calendarView(cal.status, cal.events, resetAt === undefined && cal.status === 'ready' ? null : resetAt, now);
 
   return (
     <Screen label={t('calendar.title')} className="pa-page cal-page" data-testid="calendar-screen">
-      <PageHeader icon={<PixelIcon name="calendar" />} title={t('calendar.title')} subtitle={t('calendar.subtitle')} />
+      <PageHeader icon={<PixelIcon name="calendar" />} title={t('calendar.title')} subtitle={view.mode === 'ready' ? t('calendar.timezone', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone }) : undefined} />
 
       {view.mode === 'offline' && (
         <Panel className="cal-state" data-testid="calendar-offline">
@@ -176,7 +220,6 @@ export default function CalendarScreen() {
 
       {view.mode === 'ready' && (
         <>
-          <p className="cal-tz">{t('calendar.timezone', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })}</p>
           <Panel title={t('calendar.nowTitle')} className="cal-section" data-testid="cal-now">
             {view.current.length > 0 ? (
               <ul className="cal-list">
@@ -193,7 +236,7 @@ export default function CalendarScreen() {
             {view.upcoming.length > 0 ? (
               <ul className="cal-list">
                 {view.upcoming.map((e, i) => (
-                  <EventItem key={e.key} entry={e} {...(i === 0 ? { countdownKind: 'starts' as const, ms: e.startMs - now } : {})} />
+                  <EventItem key={e.key} entry={e} fold={i > 0} {...(i === 0 ? { countdownKind: 'starts' as const, ms: e.startMs - now } : {})} />
                 ))}
               </ul>
             ) : (
@@ -205,53 +248,32 @@ export default function CalendarScreen() {
           <MonthPanel view={view} now={now} />
 
           {view.past.length > 0 && (
-            <Panel
-              title={t('calendar.pastTitle')}
-              className="cal-section"
-              data-testid="cal-past"
-              actions={
-                <Button size="sm" onClick={() => setShowPast(!showPast)} aria-expanded={showPast}>
-                  {showPast ? t('calendar.hide') : t('calendar.show', { n: view.past.length })}
-                </Button>
-              }
-            >
-              {showPast && (
-                <ul className="cal-list">
-                  {view.past.slice(0, 20).map((e) => (
-                    <EventItem key={e.key} entry={e} />
-                  ))}
-                </ul>
-              )}
-            </Panel>
+            <ListFold title={t('calendar.pastTitle')} n={view.past.length} testId="cal-past">
+              <ul className="cal-list">
+                {view.past.slice(0, 20).map((e) => (
+                  <EventItem key={e.key} entry={e} fold />
+                ))}
+              </ul>
+            </ListFold>
           )}
 
           {view.leaguePreview && (
-            <Panel
-              title={t('calendar.leagueTitle')}
-              className="cal-section"
-              data-testid="cal-league"
-              actions={
-                <Button size="sm" onClick={() => setShowLeague(!showLeague)} aria-expanded={showLeague}>
-                  {showLeague ? t('calendar.hide') : t('calendar.show', { n: view.leaguePreview.length })}
-                </Button>
-              }
-            >
+            <ListFold title={t('calendar.leagueTitle')} n={view.leaguePreview.length} testId="cal-league">
               <p className="cal-note">{t('calendar.leagueNote')}</p>
-              {showLeague && (
-                <ul className="cal-list">
-                  {view.leaguePreview.map((e, i) => (
-                    <li key={i} className={`cal-item cal-${e.kind}`} data-testid="cal-league-item">
-                      <div className="cal-item-head">
-                        <span className="cal-item-name">{eventName(e.id)}</span>
-                        <Chip tone={KIND_TONE[e.kind]}>{kindLabel(e.kind)}</Chip>
-                      </div>
-                      <p className="cal-item-when">{e.fromDay === e.toDay ? t('calendar.leagueDay', { a: e.fromDay }) : t('calendar.leagueDays', { a: e.fromDay, b: e.toDay })}</p>
-                      <p className="cal-item-desc">{eventDesc(e.id)}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
+              <ul className="cal-list">
+                {view.leaguePreview.map((e, i) => (
+                  <EventCard
+                    key={i}
+                    kind={e.kind}
+                    name={eventName(e.id)}
+                    when={e.fromDay === e.toDay ? t('calendar.leagueDay', { a: e.fromDay }) : t('calendar.leagueDays', { a: e.fromDay, b: e.toDay })}
+                    desc={eventDesc(e.id)}
+                    fold
+                    testId="cal-league-item"
+                  />
+                ))}
+              </ul>
+            </ListFold>
           )}
         </>
       )}
