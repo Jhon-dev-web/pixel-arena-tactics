@@ -27,7 +27,7 @@ it('prints the share of each fibre that came from Hunting', () => {
     const best: Record<string, number> = {};
     withSeededRandom(seed * 7919 + 13, () => {
       const jitter = mulberry32(seed * 104729 + 7);
-      const p = new Player((t) => vi.setSystemTime(t), START, { cls: 'mage', pass: process.env.SIM_PASS === '1' });
+      const p = new Player((t) => vi.setSystemTime(t), START, { cls: 'mage', pass: process.env.SIM_PASS === '1', wornIngredients: process.env.SIM_WORN !== '0', plantFibre: process.env.SIM_FIBRE !== '0' });
       for (let d = 0; d < DAYS; d++) {
         p.playDay(d, jitter);
         const s = p.snapshots[p.snapshots.length - 1];

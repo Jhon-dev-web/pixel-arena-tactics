@@ -3,6 +3,7 @@
 import {
   applyEquipInstance,
   applyDiscardInstance,
+  applyUnequipSlot,
   applyForge,
   applyRepair,
   applySocketGem,
@@ -17,7 +18,7 @@ import {
 import { Rarity, rollSubstats } from '../../src/game/rarity';
 import { applyProfessionPick } from '../../src/game/leagueEvents';
 import { computeCP, effectiveRepairCost, playerLevel, SaveData, defaultSave } from '../../src/game/engine';
-import { BASE_MAX_REFINE, GEAR, GearItem, getGear, INSTANCED_SLOTS, maxRefineFor, upgradeCost, weaponWeight } from '../../src/game/gear';
+import { BASE_MAX_REFINE, CLOTH_LINES, GEAR, GearItem, getGear, INSTANCED_SLOTS, maxRefineFor, upgradeCost, weaponWeight } from '../../src/game/gear';
 import { affinityBonuses, AffinityBonuses, AffinityClass, AffinityWeight, CLASS_OF_WEIGHT } from '../../src/game/affinity';
 import { applyLapidar, canAffordLapidar, getLapidarCost, lapidarBlock } from '../../src/game/lapidar';
 import { GEMS, GemId, socketsForTier } from '../../src/game/gems';
@@ -200,16 +201,16 @@ interface Plan {
 
 const recipeFor = (m: MaterialId) => REFINING_RECIPES.find((r) => r.output === m && r.station !== 'dust');
 
-function unequippedCounts(s: SaveData): Record<string, number> {
+function unequippedCounts(s: SaveData, countWorn = false): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const i of Object.values(s.gearInstances)) if (!isInstanceEquipped(s, i.id)) out[i.templateId] = (out[i.templateId] ?? 0) + 1;
+  for (const i of Object.values(s.gearInstances)) if (countWorn || !isInstanceEquipped(s, i.id)) out[i.templateId] = (out[i.templateId] ?? 0) + 1;
   return out;
 }
 
 // `bagOnly`: count only what the inventory holds (recipes consume nothing else); otherwise the stash counts as available (it can be brought over).
 const owned = (s: SaveData, m: MaterialId, bagOnly: boolean): number => (s.materials[m] ?? 0) + (bagOnly ? 0 : s.stash?.materials[m] ?? 0);
 
-export function planFor(s: SaveData, tpl: string, bagOnly = false): Plan {
+export function planFor(s: SaveData, tpl: string, bagOnly = false, countWorn = false): Plan {
   const item = getGear(tpl);
   const plan: Plan = {
     tpl,
@@ -225,7 +226,7 @@ export function planFor(s: SaveData, tpl: string, bagOnly = false): Plan {
     blocked: false,
     impossible: false,
   };
-  const haveItems = unequippedCounts(s);
+  const haveItems = unequippedCounts(s, countWorn);
   const need: Mats = {};
   const walk = (id: string, count: number) => {
     for (let i = 0; i < count; i++) {
@@ -312,6 +313,9 @@ export const SIM_CLASSES: SimClass[] = ['warrior', 'archer', 'mage'];
 export interface SimLine {
   weight: AffinityWeight;
   weapon?: SimWeapon; // one weapon line of that weight (the sword or the axe, ...); undefined = whichever of the weight the policy prefers (price, then CP)
+  // The piece he WEARS counts as the ingredient of the next tier and is taken off right before the forge (what a player does: the game only consumes unequipped copies, planForgeIngredients). Without it the plan
+  // forges a second copy of the worn piece, and of the piece under it, at every step: the chain is paid again and again.
+  wornIngredients?: boolean;
 }
 const WEIGHT_OF_CLASS = Object.fromEntries(Object.entries(CLASS_OF_WEIGHT).map(([w, c]) => [c, w])) as Record<AffinityClass, AffinityWeight>;
 const ENV_WEIGHT = process.env.SIM_LINE as AffinityWeight | undefined;
@@ -347,7 +351,7 @@ export function chooseTarget(s: SaveData, bagOnly = false, line: SimLine = DEFAU
     // climbed first (its plan crafts fewer pieces), then the one that gives the better CP.
     const cheapest = Math.min(...atTier.map((g) => g.cost));
     const ties = atTier.filter((g) => g.cost === cheapest);
-    const p = ties.length === 1 ? planFor(s, ties[0].id, bagOnly) : bestWeaponPlan(s, ties, bagOnly);
+    const p = ties.length === 1 ? planFor(s, ties[0].id, bagOnly, !!line.wornIngredients) : bestWeaponPlan(s, ties, bagOnly, !!line.wornIngredients);
     if (!p.impossible) plans.push(p);
   }
   const priority = (p: Plan) => CRAFT_PRIORITY.indexOf(p.slot as (typeof CRAFT_PRIORITY)[number]);
@@ -367,8 +371,8 @@ function cpWith(s: SaveData, tpl: string): number {
   return trial ? computeCP(trial) : 0;
 }
 
-function bestWeaponPlan(s: SaveData, items: { id: string }[], bagOnly: boolean): Plan {
-  const scored = items.map((g) => ({ plan: planFor(s, g.id, bagOnly), cp: cpWith(s, g.id) }));
+function bestWeaponPlan(s: SaveData, items: { id: string }[], bagOnly: boolean, countWorn = false): Plan {
+  const scored = items.map((g) => ({ plan: planFor(s, g.id, bagOnly, countWorn), cp: cpWith(s, g.id) }));
   scored.sort((a, b) => Number(a.plan.impossible) - Number(b.plan.impossible) || a.plan.crafts.length - b.plan.crafts.length || b.cp - a.cp);
   return scored[0].plan;
 }
@@ -415,6 +419,10 @@ export interface PlayerOptions {
   // Diagnostic only (not a scenario of the report): never accept a delivery order, to isolate how much of the XP / gold comes from Hunting
   // and the Dungeon alone.
   noOrders?: boolean;
+  // The player takes off the piece he is about to upgrade (see SimLine.wornIngredients). Default off: every other sim keeps the policy it was calibrated with.
+  wornIngredients?: boolean;
+  // false = the mage's Garden plants only what the next craft asks for (the policy before 30/10: the plots went to tonics and long plants while the fibre of the set waited). Default on; the switch exists to measure.
+  plantFibre?: boolean;
   // false = the policy never crafts or drinks the Garden 3.0 tonics (the control run of the tonic budget check).
   tonics?: boolean;
   // Profession scenarios (not part of the balance targets): `garden` plants / harvests the plots at every visit (what the next craft
@@ -523,7 +531,7 @@ export class Player {
 
   constructor(setClock: (t: number) => void, startAt: number, opts: PlayerOptions = {}) {
     this.opts = opts;
-    this.line = simLine(opts.cls, opts.weapon);
+    this.line = { ...simLine(opts.cls, opts.weapon), ...(opts.wornIngredients ? { wornIngredients: true } : {}) };
     const huntDrops = new Set<string>(HUNTING_ZONES.flatMap((z) => z.drops.map((d) => d.material as string)));
     const lineMats = new Set<string>();
     for (const g of GEAR) if (g.recipe && g.slot !== 'ring' && inSimLine(g, this.line)) for (const m of Object.keys(g.recipe.materials ?? {})) if (huntDrops.has(m) && !HUNT_MATS.includes(m as MaterialId)) lineMats.add(m);
@@ -1151,7 +1159,8 @@ export class Player {
     }
     const lvl = skillLevel(this.S.skillXp.gardening, 'gardening');
     const unlocked = PLANTS.filter((p) => p.requiredLevel <= lvl);
-    const deficit: Mats = { ...(chooseTarget(this.S, false, this.line)?.deficit ?? {}) };
+    const gearDeficit: Mats = { ...(chooseTarget(this.S, false, this.line)?.deficit ?? {}) };
+    const deficit: Mats = { ...gearDeficit };
     // plants the tonic recipes need (the policy keeps TONIC_STOCK of each in the bag), asked for after the gear
     for (const id of [...COMBAT_TONICS, 'gatherer_brew'] as const) {
       const rec = POTION_RECIPES.find((r) => r.id === id)!;
@@ -1170,13 +1179,80 @@ export class Player {
         if (short > 0 && PLANTS.some((p) => p.material === m) && !(m in deficit)) deficit[m] = short;
       }
     }
+    let empty = this.S.gardenSlots.map((sl, i) => (sl.plantId ? -1 : i)).filter((i) => i >= 0);
+    // A MAGE'S GARDEN IS HIS FORGE: his whole class line is fibre -> cloth, so a plot is never left to a plant the next craft is not asking for while the line still has fibre to grow. The plots are shared out
+    // among the fibres the line is missing (the backlog of fibreBacklog), the biggest gap first, the way a player who plans the set would; what the backlog does not take goes to the rule below.
+    // 1) the plants the next craft is waiting for (its plots first, so a ring that asks for two herbs is not starved by the fibre), 2) the fibre of the stage the set is working on, 3) the fibre of the next stage.
+    const byPlant = new Map<string, number[]>();
+    const give = (plantId: string, slot: number) => {
+      byPlant.set(plantId, [...(byPlant.get(plantId) ?? []), slot]);
+      empty = empty.filter((i) => i !== slot);
+    };
+    const [now, ahead] = this.fibreBacklog();
+    if (this.line.weight === 'cloth' && this.opts.plantFibre !== false) {
+      for (const p of unlocked.filter((x) => (gearDeficit[x.material] ?? 0) > 0 && x.durationMs <= 10 * HOUR).sort((x, y) => (gearDeficit[y.material] ?? 0) - (gearDeficit[x.material] ?? 0))) {
+        for (let need = gearDeficit[p.material] ?? 0; need > 0 && empty.length > 0; need -= p.qty) {
+          give(p.id, empty[0]);
+          // what is planted for the craft also covers the same fibre of the backlog
+          let q = p.qty;
+          for (const part of [now, ahead]) {
+            const take = Math.min(q, part[p.material] ?? 0);
+            if (take > 0) part[p.material] = (part[p.material] ?? 0) - take;
+            q -= take;
+          }
+        }
+      }
+      for (const backlog of [now, ahead]) {
+        for (const slot of [...empty]) {
+          const cand = unlocked.filter((x) => x.durationMs <= 10 * HOUR && (backlog[x.material] ?? 0) > 0).sort((x, y) => (backlog[y.material] ?? 0) - (backlog[x.material] ?? 0))[0];
+          if (!cand) break;
+          backlog[cand.material] = (backlog[cand.material] ?? 0) - cand.qty;
+          give(cand.id, slot);
+        }
+      }
+    }
+    for (const [id, slots] of byPlant) this.S = applyPlant(this.S, id, slots, this.now) ?? this.S;
     const wanted = unlocked.filter((p) => (deficit[p.material] ?? 0) > 0).sort((a, b) => (deficit[b.material] ?? 0) - (deficit[a.material] ?? 0))[0];
     const longest = [...unlocked].filter((p) => p.durationMs <= 10 * HOUR).sort((a, b) => b.durationMs - a.durationMs)[0];
     const pick = wanted ?? longest;
-    if (!pick) return;
-    const empty = this.S.gardenSlots.map((sl, i) => (sl.plantId ? -1 : i)).filter((i) => i >= 0);
+    if (!pick || empty.length === 0) return;
     const next = applyPlant(this.S, pick.id, empty, this.now);
     if (next) this.S = next;
+  }
+
+  // The fibre (garden units, by material) a cloth-line player still has to grow, in two parts: `now` is the cloth of every piece from the one above what he owns in each slot up to the tier the whole set is working on
+  // (the lowest tier owned plus one), `ahead` the tier after that (one stage of look-ahead, so a plot is not left to a plant nothing asks for). 5 fibres a cloth through the Weaving station, minus the fibre and the
+  // cloth already in the bag. The tier-2 armor also eats a second tier-1 armor (gear.ts chain rule), counted here. Both empty for the other classes: their lines ask for no garden plant.
+  private fibreBacklog(): [Mats, Mats] {
+    if (this.line.weight !== 'cloth') return [{}, {}];
+    const owned = CLOTH_LINES.map((l) => bestTier(this.S, l.slot, this.line));
+    const stage = Math.min(...owned) + 1;
+    const need: [Mats, Mats] = [{}, {}];
+    CLOTH_LINES.forEach((l, li) => {
+      for (let tier = owned[li] + 1; tier <= Math.min(stage + 1, l.ids.length); tier++) {
+        const ids = tier === 2 && l.slot === 'armor' && owned[li] === 1 ? [l.ids[0], l.ids[1]] : [l.ids[tier - 1]];
+        for (const id of ids) {
+          for (const [m, q] of Object.entries(getGear(id)?.recipe?.materials ?? {}) as [MaterialId, number][]) {
+            const weave = REFINING_RECIPES.find((r) => r.station === 'weaving' && r.output === m);
+            if (!weave) continue;
+            const [[fibre, per]] = Object.entries(weave.input) as [MaterialId, number][];
+            const into = need[tier <= stage ? 0 : 1];
+            into[fibre] = (into[fibre] ?? 0) + q * per;
+          }
+        }
+      }
+    });
+    // what is already in the bag is spent on the stage in hand first
+    for (const m of new Set([...Object.keys(need[0]), ...Object.keys(need[1])]) as Set<MaterialId>) {
+      const weave = REFINING_RECIPES.find((r) => r.station === 'weaving' && m in r.input);
+      let held = (this.S.materials[m] ?? 0) + (weave ? (this.S.materials[weave.output as MaterialId] ?? 0) * (weave.input[m] ?? 0) : 0);
+      for (const part of need) {
+        const take = Math.min(held, part[m] ?? 0);
+        held -= take;
+        if (part[m] !== undefined) part[m] = (part[m] ?? 0) - take;
+      }
+    }
+    return need;
   }
 
   private claimQuestsNow() {
@@ -1326,6 +1402,7 @@ export class Player {
     for (const tpl of target.crafts) {
       const tier = getGear(tpl)?.tier ?? 0;
       const bought = this.opts.buyer && tier >= this.opts.buyer.fromTier && tier <= (this.opts.buyer.toTier ?? 99) ? { rarity: this.opts.buyer.rarity, substats: rollSubstats(this.opts.buyer.rarity, tier) } : undefined;
+      if (this.line.wornIngredients) this.takeOffIngredients(tpl);
       const res = applyForge(this.S, tpl, { level: playerLevel(this.S.xp), now: this.now, ...(bought ? { roll: bought } : {}) });
       if (!res.ok || !res.save) break;
       if (res.instance) this.forged.push({ day: this.day, tier, rarity: res.instance.rarity });
@@ -1342,6 +1419,17 @@ export class Player {
     }
     this.equipBest();
     return crafted;
+  }
+
+  // Takes off the worn pieces the forge of `tpl` is about to consume, when no unequipped copy of that template is there (the game only eats unequipped ones).
+  private takeOffIngredients(tpl: string) {
+    for (const [id, n] of Object.entries(getGear(tpl)?.recipe?.items ?? {}) as [string, number][]) {
+      const free = Object.values(this.S.gearInstances).filter((i) => i.templateId === id && !isInstanceEquipped(this.S, i.id)).length;
+      if (free >= n) continue;
+      const slot = getGear(id)?.slot as (typeof INSTANCED_SLOTS)[number];
+      const worn = Object.values(this.S.gearInstances).find((i) => i.templateId === id && isInstanceEquipped(this.S, i.id));
+      if (worn && slot) this.S = applyUnequipSlot(this.S, slot);
+    }
   }
 
   // Wear whatever gives the best CP (the game's own computeCP) in each slot.
@@ -1632,7 +1720,7 @@ export class Player {
     const reserved: Mats = {};
     if (target) {
       // everything the next craft consumes (recipe + refining inputs) stays out of the cargo
-      const t = planFor(this.S, target.tpl);
+      const t = planFor(this.S, target.tpl, false, !!this.line.wornIngredients);
       for (const tpl of t.crafts) {
         for (const [m, q] of Object.entries(getGear(tpl).recipe?.materials ?? {}) as [MaterialId, number][]) reserved[m] = (reserved[m] ?? 0) + q;
       }
