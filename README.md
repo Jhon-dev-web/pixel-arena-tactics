@@ -21,14 +21,14 @@ Node 22 ou mais novo.
 npx tsc -b --noEmit && npm test && npx eslint . && npm run build && npm run check:bundle && npm run check:desktop
 ```
 
-Os seis têm de passar. Rode-os numa cópia limpa de `HEAD`, não na árvore de trabalho — ver `docs/cerebro/ARMADILHAS.md`.
+Os seis têm de passar. Rode-os numa cópia limpa de `HEAD`, não na árvore de trabalho — ver a pasta `Armadilhas/` do cofre de contexto.
 
 ## Onde está o quê
 
 | | |
 |---|---|
 | [`RESUMO_DO_PROJETO.md`](RESUMO_DO_PROJETO.md) | **Comece aqui.** O projeto inteiro: jogo, ambientes, estado atual, o que está pendente. |
-| [`docs/cerebro/`](docs/cerebro/) | Decisões do dono, armadilhas e defeitos já pagos. A leitura que mais economiza tempo. |
+| [`cofre de contexto/arenaidle/`](cofre de contexto/arenaidle/Comece%20aqui.md) | **O segundo cérebro** (vault do Obsidian): decisões do dono, armadilhas, defeitos já pagos e o que cada guarda protege. A leitura que mais economiza tempo. |
 | [`CLAUDE.md`](CLAUDE.md) · [`AGENTS.md`](AGENTS.md) | Como trabalhar no repositório e quais portões rodar. |
 | [`docs/GDD.md`](docs/GDD.md) | O jogo como desenho. |
 | [`docs/EQUIPAMENTOS.md`](docs/EQUIPAMENTOS.md) | As 158 peças, por classe (arquivo gerado). |

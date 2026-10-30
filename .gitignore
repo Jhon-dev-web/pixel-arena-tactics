@@ -40,3 +40,6 @@ portal/node_modules/
 
 # TypeScript incremental build state: a build artifact, never source
 *.tsbuildinfo
+
+# Obsidian: the vault notes (cofre de contexto/*/) are the project brain and ARE committed; the personal Obsidian config of each vault is not
+cofre de contexto/*/.obsidian/

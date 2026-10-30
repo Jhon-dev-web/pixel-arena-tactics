@@ -31,7 +31,8 @@ O herói progride sozinho enquanto o jogador está fora: caça monstros, minera,
 | `portal/` | Site público estático (`node scripts/build.mjs`). |
 | `admin/` | Painel do dono, projeto separado. **Outra frente trabalha nele: não mexa.** |
 | `scripts/sim/` | Simulações de economia, progressão e equilíbrio, e os geradores de tabela. |
-| `docs/` | Documentos de projeto. Comece por `docs/cerebro/`. |
+| `docs/` | Documentos de projeto (desenho, economia, auditorias). |
+| `cofre de contexto/arenaidle/` | O segundo cérebro, em vault do Obsidian. **Comece por `Comece aqui.md`.** |
 | `desktop/` | Electron herdado, parado. Continua no repositório e o portão `check:desktop` garante que o código de mercado não entra nesse pacote (a Valve proíbe negociação de cripto). Steam foi cancelada; ninguém publica isso. |
 
 ---
@@ -42,7 +43,7 @@ Node 22+. Na raiz:
 
 - `npm run dev` — jogo local.
 - **Os seis portões obrigatórios antes de qualquer commit:** `npx tsc -b --noEmit`, `npm test` (**162 arquivos, 4.335 testes**, ~36 s), `npx eslint .` (0 erros; 10 avisos antigos de `react-refresh` são esperados), `npm run build`, `npm run check:bundle`, `npm run check:desktop`.
-- **Rode os portões numa cópia limpa de `HEAD`, não na árvore de trabalho.** Já aconteceu de `HEAD` não compilar com todos os portões verdes, porque arquivos ficaram sem commit. O passo a passo está em `docs/cerebro/ARMADILHAS.md` item 3.
+- **Rode os portões numa cópia limpa de `HEAD`, não na árvore de trabalho.** Já aconteceu de `HEAD` não compilar com todos os portões verdes, porque arquivos ficaram sem commit. O passo a passo está na pasta `Armadilhas/` do cofre de contexto.
 - Simulações em `package.json` (`npm run sim:cp`, `sim:long`, e as de classe). **Não rebalanceie número sem pedido do dono.**
 - Portal: em `portal/`, `npm run build`, `check`, `check:season`, `check:waitlist`.
 - Admin: em `admin/`, `npm run build`, `npm test`.
@@ -90,7 +91,7 @@ npx vercel deploy --yes
 npx vercel alias set <url-da-publicação> arena-idle-teste.vercel.app
 ```
 
-A URL que o `deploy` imprime é **descartável** e não está em `APP_ORIGIN`: entregá-la a alguém faz o jogo dizer "Sem conexão com o servidor" com todas as funções saudáveis. O procedimento completo e o comando que confirma estão em [`docs/WEB_LAUNCH.md` §5.6](docs/WEB_LAUNCH.md) e em `docs/cerebro/ARMADILHAS.md` item 1.
+A URL que o `deploy` imprime é **descartável** e não está em `APP_ORIGIN`: entregá-la a alguém faz o jogo dizer "Sem conexão com o servidor" com todas as funções saudáveis. O procedimento completo e o comando que confirma estão em [`docs/WEB_LAUNCH.md` §5.6](docs/WEB_LAUNCH.md) e na pasta `Armadilhas/` do cofre de contexto.
 
 **Republicar as funções** quando `supabase/functions/_shared/**` mudar — a função publicada carrega a cópia do `_shared` do momento do deploy. Confira contra o que está no ar (`supabase functions list` → `updated_at`), **nunca contra `git status`**.
 
@@ -130,7 +131,7 @@ A URL que o `deploy` imprime é **descartável** e não está em `APP_ORIGIN`: e
 
 ## 9. Regras do dono
 
-Estão em [`docs/cerebro/DECISOES_DO_DONO.md`](docs/cerebro/DECISOES_DO_DONO.md), com a data e o motivo de cada uma. **Leia antes de "consertar" qualquer coisa que pareça errada** — várias decisões dele parecem defeito para quem olha só o código.
+Estão em [`Projeto/Decisões do dono.md`](cofre%20de%20contexto/arenaidle/Projeto/Decis%C3%B5es%20do%20dono.md), dentro do cofre de contexto, com a data e o motivo de cada uma. **Leia antes de "consertar" qualquer coisa que pareça errada** — várias decisões dele parecem defeito para quem olha só o código.
 
 As que mais pegam quem chega:
 - o desempate do campeonato favorece o guerreiro **de propósito**;
@@ -150,7 +151,7 @@ O resumo do resumo: o dono escreve em português, lê no celular e costuma estar
 ## 11. Por onde começar a ler
 
 1. [`AGENTS.md`](AGENTS.md) e [`CLAUDE.md`](CLAUDE.md) — como trabalhar e quais portões rodar.
-2. [`docs/cerebro/`](docs/cerebro/) — decisões do dono, armadilhas e defeitos já pagos. **É a leitura que mais economiza tempo.**
+2. [O cofre de contexto](cofre%20de%20contexto/arenaidle/Comece%20aqui.md) — vault do Obsidian com as decisões do dono, as armadilhas, os defeitos já pagos e o que cada guarda protege. **É a leitura que mais economiza tempo.**
 3. Este arquivo.
 4. [`docs/GDD.md`](docs/GDD.md) — o jogo como desenho.
 5. [`docs/CLASSES_E_EQUIPAMENTOS.md`](docs/CLASSES_E_EQUIPAMENTOS.md) e [`docs/EQUIPAMENTOS.md`](docs/EQUIPAMENTOS.md).
