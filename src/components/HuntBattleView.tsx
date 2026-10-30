@@ -10,7 +10,7 @@ import { FX_PATH_COLOR, SKILL_FX, SkillFxId } from '../game/skillFx';
 import { FxLayer } from './SkillFx';
 import { useFxScale, useFxStage } from '../hooks/useSkillFx';
 import { reducedMotion, subscribeMotion } from '../lib/motionPref';
-import { SCENE_FALL_MS, SCENE_POSE_MS, SCENE_STEP_MS, sceneEvents } from './huntSceneEvents';
+import { SCENE_FALL_MS, SCENE_POSE_MS, SceneEvent, sceneStep } from './huntSceneEvents';
 
 // What the hero has learned that shows in the scene (CombatStats of the running session). The scene is decorative: it never drives the simulation, so these strikes play on its own
 // beat at a believable cadence derived from the same parameters (every Nth decorative hit is an Esmagador, ...), never implying a specific result. Passive-only builds look as before.
@@ -128,30 +128,33 @@ export default function HuntBattleView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced, driven]);
 
-  const prevSnap = useRef<HuntLiveSnapshot | null>(null);
+  const [shown, setShown] = useState<HuntLiveSnapshot | null>(snapshot);
+  const shownRef = useRef<HuntLiveSnapshot | null>(snapshot);
+  const lastBlow = useRef<SceneEvent | null>(null);
   const snapKey = snapshot ? `${snapshot.subLevel}|${snapshot.heroHp}|${snapshot.enemyHp}|${snapshot.enemyMax}` : '';
   useEffect(() => {
-    const before = prevSnap.current;
-    prevSnap.current = snapshot;
-    if (!driven) return;
-    const events = sceneEvents(before, snapshot);
-    if (events.length === 0) return;
+    if (!driven) {
+      shownRef.current = snapshot;
+      setShown(snapshot);
+      return;
+    }
+    const step = sceneStep(shownRef.current, snapshot, lastBlow.current);
+    shownRef.current = step.shown;
+    setShown(step.shown);
+    if (!step.event) return;
+    lastBlow.current = step.event;
     const timers: number[] = [];
-    const play = (kind: Beat, at: number, holdMs: number | null) => {
-      timers.push(
-        window.setTimeout(() => {
-          const n = ++stepRef.current;
-          setBeat({ kind, n, active: true });
-          decorate(kind);
-          if (holdMs !== null) timers.push(window.setTimeout(() => setBeat((b) => (b.n === n ? { ...b, active: false } : b)), holdMs));
-        }, at),
-      );
+    const play = (kind: Beat, holdMs: number | null) => {
+      const n = ++stepRef.current;
+      setBeat({ kind, n, active: true });
+      decorate(kind);
+      if (holdMs !== null) timers.push(window.setTimeout(() => setBeat((b) => (b.n === n ? { ...b, active: false } : b)), holdMs));
     };
-    if (events[0] === 'new_fight') {
-      play('kill', 0, null);
-      play('arrive', SCENE_FALL_MS, null);
+    if (step.event === 'new_fight') {
+      play('kill', null);
+      timers.push(window.setTimeout(() => play('arrive', null), SCENE_FALL_MS));
     } else {
-      events.forEach((e, i) => play(e === 'hero_strikes' ? 'hero' : 'monster', i * SCENE_STEP_MS, SCENE_POSE_MS));
+      play(step.event === 'hero_strikes' ? 'hero' : 'monster', SCENE_POSE_MS);
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,7 +163,9 @@ export default function HuntBattleView({
   const { kind, active, n } = reduced ? { kind: 'arrive' as Beat, active: false, n: 0 } : beat;
   const heroRow = active && (kind === 'hero' || kind === 'kill') ? ROW.attack : active && kind === 'monster' ? ROW.hurt : ROW.idle;
   const monsterRow = kind === 'kill' ? ROW.death : active && kind === 'hero' ? ROW.hurt : active && kind === 'monster' ? ROW.attack : ROW.idle;
-  const level = snapshot?.subLevel ?? monsterLevel;
+  // the bars show the scene's own numbers while it plays the blows one at a time; without a driven scene they are the live ones
+  const bars = driven ? shown ?? snapshot : snapshot;
+  const level = bars?.subLevel ?? monsterLevel;
   const enemyArt = huntingEnemyArt(zone.enemyId);
   const stageStyle: CSSProperties & Record<'--bg', string> = { '--bg': `url(${huntingZoneBackgroundUrl(zone.id)})` };
 
@@ -173,11 +178,11 @@ export default function HuntBattleView({
           </span>
           <div className="battle-hp-row">
             <div className="bar hp">
-              <div className="bar-fill hp-fill" style={{ width: `${snapshot ? hpPct(snapshot.heroHp, snapshot.heroMax) : 100}%` }} />
+              <div className="bar-fill hp-fill" style={{ width: `${bars ? hpPct(bars.heroHp, bars.heroMax) : 100}%` }} />
             </div>
-            {snapshot && (
+            {bars && (
               <span className="hp-num">
-                {Math.round(snapshot.heroHp)} / {snapshot.heroMax}
+                {Math.round(bars.heroHp)} / {bars.heroMax}
               </span>
             )}
           </div>
@@ -189,11 +194,11 @@ export default function HuntBattleView({
           </span>
           <div className="battle-hp-row">
             <div className="bar hp enemy-hp">
-              <div className="bar-fill enemy-hp-fill" style={{ width: `${snapshot ? hpPct(snapshot.enemyHp, snapshot.enemyMax) : 100}%` }} />
+              <div className="bar-fill enemy-hp-fill" style={{ width: `${bars ? hpPct(bars.enemyHp, bars.enemyMax) : 100}%` }} />
             </div>
-            {snapshot && (
+            {bars && (
               <span className="hp-num">
-                {Math.round(snapshot.enemyHp)} / {snapshot.enemyMax}
+                {Math.round(bars.enemyHp)} / {bars.enemyMax}
               </span>
             )}
           </div>
