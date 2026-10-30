@@ -24,4 +24,4 @@ npx vitest run --config vitest.sim.config.ts classAxesWide --silent=false --repo
 
 E leia o desvio dela (`AXES_NOISE=k` re-mede cada par com k conjuntos de sementes) **antes** de escolher qualquer margem. Margem menor que o ruído é teste que acende ou dorme pela semente.
 
-Descendente desta armadilha: o texto `docs/CLASSES_E_EQUIPAMENTOS.md` seção 5.1.7 descreve o estado **anterior** a estas rodadas (ver [[Classes e equipamento]]).
+O histórico completo, com a tabela de rodadas e as faixas que o guarda afirma, está em `docs/CLASSES_E_EQUIPAMENTOS.md` seção 5.1.7 (ver [[Classes e equipamento]]).

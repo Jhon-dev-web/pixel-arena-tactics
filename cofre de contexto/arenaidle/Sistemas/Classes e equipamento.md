@@ -35,9 +35,9 @@ O desenho completo vive em `docs/GDD.md` (seções 4 a 6) e `docs/CLASSES_E_EQUI
 - Não há papel fixo nem sinal declarado entre gêmeas, porque medido isso não existe neste motor ([[A tabela de eixos julga classes, não armas gêmeas]]).
 - As faixas carregam mínimo, máximo e desvio medidos. O que é ruído demais (andares do arqueiro e do mago no tier 4) não afirma nada.
 - **O tier 3 está fora dos alvos de classe por decisão** (`it.todo` no arquivo: o mago no tier 3 +8 não fica a mais de 10% atrás no chefe e não para no andar 39).
-- Resultado segundo as mensagens de `e5aad93` e `c407e7c`: mago lidera a Caça, arqueiro o chefe, guerreiro os andares (69 contra 59 no tier 4, 89 contra 86 no tier 6). Para os números de hoje, **rode a ferramenta**, não confie neste parágrafo ([[Ferramentas de medição]]).
+- Resultado segundo as mensagens de `e5aad93` e `c407e7c`: mago lidera a Caça, arqueiro o chefe, guerreiro os andares (69 contra 59 no tier 4, 89 contra 86 no tier 6; no guarda de hoje, "ninguém passa o guerreiro", com empate permitido). Para os números de hoje, **rode a ferramenta**, não confie neste parágrafo ([[Ferramentas de medição]]).
 
-> **Aviso.** A seção 5.1.7 de `docs/CLASSES_E_EQUIPAMENTOS.md` descreve o estado de **antes** das rodadas de 29–30/10: diz que "nada foi mudado", que a besta lidera a Caça e que o guarda mede três armas. Nada disso vale mais. Também a linha 546 desse documento ("se o guarda passa a medir as seis armas") está respondida. O documento não foi atualizado quando o código mudou, e é exatamente o defeito de [[Números e promessas que envelhecem calados]]. Corrigir é trabalho de documento pendente ([[O que está em aberto]]).
+> **Onde está o histórico.** `docs/CLASSES_E_EQUIPAMENTOS.md` seção 5.1.7 foi reescrita e conta as quatro rodadas das armas (`d4aea06`, `e5aad93`, `c407e7c`, `145af9e`), o que o guarda afirma hoje e o que ainda é do dono decidir. Esta nota aponta para lá e não repete. A lição está em [[A tabela de eixos julga classes, não armas gêmeas]].
 
 ## Armas e crítico
 

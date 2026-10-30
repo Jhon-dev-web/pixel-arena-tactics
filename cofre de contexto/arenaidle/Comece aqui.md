@@ -111,7 +111,7 @@ Esta é a camada de aprendizado. O que descreve o jogo e o processo vive nos doc
 - `CLAUDE.md` — como diretor e executor trabalham, e o que pode ser feito sem perguntar
 - `AGENTS.md` — os portões obrigatórios antes de qualquer commit
 - `docs/GDD.md` — o jogo como desenho
-- `docs/CLASSES_E_EQUIPAMENTOS.md` — a reforma de classes, com as medições (a seção 5.1.7 está **desatualizada**, ver [[Classes e equipamento]])
+- `docs/CLASSES_E_EQUIPAMENTOS.md` — a reforma de classes, com as medições (a seção 5.1.7 conta as quatro rodadas das armas e a regra que sobrou, ver [[Classes e equipamento]] e [[A tabela de eixos julga classes, não armas gêmeas]])
 - `docs/EQUIPAMENTOS.md` — o catálogo de peças, **gerado**
 - `docs/SEASON_RANKING.md`, `docs/WEB_LAUNCH.md` (publicar, passo do alias na seção 5.6), `docs/PERDOAR_FALSOS_POSITIVOS_2026-10-30.md`
 - `docs/CORRENTE_DO_JOGO_2026-10-29.md`, `docs/PRIMEIRA_HORA_2026-10-29.md`, `docs/AUDITORIA_CLASSES_2026-10-29.md`, `docs/REVISAO_2026-10-29.md` — as medições e revisões do dia 29

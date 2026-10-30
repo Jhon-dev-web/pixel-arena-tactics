@@ -18,6 +18,6 @@ Data: 29/10/2026 (achado) a 30/10/2026 (rodadas de conserto). Commits: `1359a1f`
 
 **Rodada 4 (`145af9e`).** Os blocos antigos por classe amostravam 3 sementes de andar e 24 de chefe, e parte das faixas que afirmavam era sorte das sementes. Reamostrado a 96 de chefe e 9 de andar sobre 8 conjuntos, as faixas ganharam mínimo, máximo e desvio escritos ao lado, e o que é ruído demais passou a não afirmar nada.
 
-**Estado depois das rodadas** (por `e5aad93` e `c407e7c`): mago lidera a Caça, arqueiro lidera o chefe, guerreiro lidera os andares (69 contra 59 no tier 4, 89 contra 86 no tier 6), ninguém lidera eixo alheio por mais de 10%. **Atenção:** o documento `docs/CLASSES_E_EQUIPAMENTOS.md` seção 5.1.7 ainda descreve o estado **anterior** a estas rodadas (diz "nada foi mudado" e que o guarda mede três armas). Ver [[Classes e equipamento]].
+**Estado depois das rodadas** (por `e5aad93` e `c407e7c`): mago lidera a Caça, arqueiro lidera o chefe, guerreiro lidera os andares (69 contra 59 no tier 4, 89 contra 86 no tier 6; no bloco das seis armas do guarda de hoje vale "ninguém passa o guerreiro", empate permitido), ninguém lidera eixo alheio por mais de 10%. A seção 5.1.7 de `docs/CLASSES_E_EQUIPAMENTOS.md` conta esta história com os números; ver [[Classes e equipamento]].
 
 **Custo conhecido que o commit declara.** Em `e5aad93`, o kit da besta ficou o mais fraco do jogo (esse é o motivo de a rodada 3 existir). Em `c407e7c`, o preço de arma de golpes raros é que a besta fica atrás do mago na Caça em todos os tiers por desenho.

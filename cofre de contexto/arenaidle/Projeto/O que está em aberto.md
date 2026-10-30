@@ -33,7 +33,6 @@ Lista montada em 29–30/10/2026 a partir do `RESUMO_DO_PROJETO.md` (seção 7),
 
 ## Trabalho permitido sem perguntar (`CLAUDE.md` seção 4)
 
-- **Corrigir `docs/CLASSES_E_EQUIPAMENTOS.md` seção 5.1.7 e a linha 546.** Descrevem o estado de antes das rodadas das armas ([[Classes e equipamento]]). É o defeito mais comum do repositório.
 - **Atualizar os documentos que ainda enganam** (`RESUMO_DO_PROJETO.md` seção 12: `ADMIN`, `AI_OPS`, `MARKET_SOLANA`, `MARKET_FOUNDATION`, `SEASON_RANKING`, `WEB_LAUNCH`, `EVENT_CALENDAR`, `INVENTORY`, `ECONOMIC_REFERENCE`, `UI_REVIEW`, `backend-phase1`).
 - **Apagar a pilha de Stripe/BSC em `_shared`** e o teste que a protege, e corrigir `providers/README.md` (promete Pix). Antes, conferir que nenhuma função a importa por outro motivo (`docs/REVISAO_2026-10-29.md`).
 - **Os outros achados da revisão de 29/10 que não vi fechados:** um ciclo de importação de 32 módulos em `src/game/`, TypeScript sem `strict`, um único arquivo JS de 1,33 MB (só o mercado carrega sob demanda), três `useEffect` de `App.tsx` com dependência faltando, e `App.tsx` com quase 3.000 linhas. Nenhum dos commits de 29–30/10 que li os fecha.
