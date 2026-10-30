@@ -50,6 +50,7 @@ import { QtyPicker, CraftJobPanel } from './CraftQty';
 import { clampCraftQty, craftBlock, planBatchIngredients } from '../game/craftJob';
 import { ChipRow, ItemFrame, PageHeader, Panel, PrimaryButton, Screen, ScreenLayout, SecondaryButton, Tabs } from './ui';
 import type { TabItem } from './ui';
+import { wornIngredientHints } from './forgeWornHint';
 import { FORGE_CLASS_FILTERS, ForgeClassFilter, matchesForgeClass, showForgeClassNote } from './forgeFilter';
 
 const gearText = (k: string): string => t(`gear.${k}`);
@@ -284,6 +285,7 @@ export default function ForgeView({
   };
 
   // The craft panel of the picked recipe: the selection, what it needs, the quantity and the produce button together. Wide screens: the right column. Phone: it opens right under the picked row of the list.
+  const wornHints = current ? wornIngredientHints(save, current) : [];
   const craftPanel = current ? (
         <div className={`fg-panel-wrap${phone ? ' inline' : ''}`} ref={panelRef}>
           <Panel
@@ -312,8 +314,10 @@ export default function ForgeView({
               <div className="fg-reqs" role="list">
                 {reqRows(current).map((r) => {
                   const short = r.have < r.need;
+                  const worn = r.key.startsWith('item-') && wornHints.some((h) => `item-${h.templateId}` === r.key);
                   return (
-                    <div className="fg-req" role="listitem" key={r.key}>
+                    <Fragment key={r.key}>
+                    <div className="fg-req" role="listitem">
                       <span className="fg-req-icon" aria-hidden>
                         {r.icon}
                       </span>
@@ -323,6 +327,8 @@ export default function ForgeView({
                       </span>
                       {r.stash && <StashHint kind="material" id={r.stash} need={r.need} />}
                     </div>
+                    {worn && <p className="fg-worn-hint" role="status">{t('forge.wornIngredient')}</p>}
+                    </Fragment>
                   );
                 })}
               </div>

@@ -1928,6 +1928,12 @@ button.pg-slot:focus-visible {
     order: 2;
   }
 }
+.fg-worn-hint {
+  margin: -2px 0 2px;
+  font-size: var(--fs-body);
+  color: var(--c-text-muted);
+}
+
 .fg-where-hint {
   margin: 0;
   font-size: var(--fs-body);

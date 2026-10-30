@@ -1135,6 +1135,7 @@
     "equipped": "EQUIPPED",
     "cost": "Cost",
     "missing": "Missing materials",
+    "wornIngredient": "You wear this: take it off.",
     "whereHint": "Missing materials? Hunting, Mining and Woodcutting give the raw material; in Crafting the Furnace, Tannery and Carpentry refine it.",
     "durability": "Durability: {n} / {m}",
     "broken": "[QUEBRADO]",

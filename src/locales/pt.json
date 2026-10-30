@@ -1132,6 +1132,7 @@
     "equipped": "EQUIPADO",
     "cost": "Custo",
     "missing": "Materiais insuficientes",
+    "wornIngredient": "Está vestida: tire para usar.",
     "whereHint": "Faltam materiais? Caça, Mineração e Lenhador dão a matéria-prima; em Ofícios a Fornalha, o Curtume e a Carpintaria a refinam.",
     "durability": "Durabilidade: {n} / {m}",
     "broken": "[QUEBRADO]",
