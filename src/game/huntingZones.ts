@@ -9,8 +9,7 @@ const HUNTING_ENEMY_SPRITES: Record<HuntingEnemyId, string> = {
   blood_monster: '/assets/monsters/blood_monster.png',
   rift_fiend: '/assets/monsters/rift_fiend.png',
   blood_abomination: '/assets/monsters/blood_abomination.png',
-  // Zone 5 (classes & equipment, phase 7) has no sheet of its own yet: the sovereign wears the abomination's until its art is drawn (a new PNG and a new row in HUNTING_ENEMY_ART are all it takes).
-  abyss_sovereign: '/assets/monsters/blood_abomination.png',
+  abyss_sovereign: '/assets/monsters/abyss_sovereign.png',
 };
 
 export function huntingEnemySpriteUrl(id: HuntingEnemyId): string {
@@ -53,7 +52,9 @@ const HUNTING_ENEMY_ART: Record<HuntingEnemyId, HuntingEnemyArt> = {
   blood_monster: { cell: 172, box: [57, 28, 112, 146], lie: 146, height: 0.95 },
   rift_fiend: { cell: 176, box: [57, 26, 106, 149], lie: 147, height: 1.1 },
   blood_abomination: { cell: 172, box: [58, 25, 111, 146], lie: 146, height: 1.15 },
-  abyss_sovereign: { cell: 172, box: [58, 25, 111, 146], lie: 146, height: 1.25 },
+  // His own sheet since 30/10 (it used to borrow the abomination's, art and box alike). The box is measured on the new idle frame; `height` stays 1.25 because it is a multiple of HERO_HEIGHT and not of the
+  // drawing, so the sovereign keeps the size zone 5 always meant him to have even though the new sprite is 137 px of body against the abomination's 121.
+  abyss_sovereign: { cell: 172, box: [48, 13, 130, 150], lie: 150, height: 1.25 },
 };
 
 // The hero's sheets, same measurement (frame 0 of the idle row), one entry per HeroSheet (sprites.ts). Every sheet stands on y = 251..253 (feet within 2 sheet pixels of each
