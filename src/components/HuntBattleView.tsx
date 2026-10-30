@@ -10,6 +10,7 @@ import { FX_PATH_COLOR, SKILL_FX, SkillFxId } from '../game/skillFx';
 import { FxLayer } from './SkillFx';
 import { useFxScale, useFxStage } from '../hooks/useSkillFx';
 import { reducedMotion, subscribeMotion } from '../lib/motionPref';
+import { SCENE_FALL_MS, SCENE_POSE_MS, SCENE_STEP_MS, sceneEvents } from './huntSceneEvents';
 
 // What the hero has learned that shows in the scene (CombatStats of the running session). The scene is decorative: it never drives the simulation, so these strikes play on its own
 // beat at a believable cadence derived from the same parameters (every Nth decorative hit is an Esmagador, ...), never implying a specific result. Passive-only builds look as before.
@@ -106,9 +107,11 @@ export default function HuntBattleView({
   const [beat, setBeat] = useState<{ kind: Beat; n: number; active: boolean }>({ kind: 'arrive', n: 0, active: false });
   const stepRef = useRef(0);
   const resetRef = useRef<number | null>(null);
+  // With a snapshot the scene follows the HP: each change of the live numbers plays the matching blows (huntSceneEvents.ts). Without one, or with reduced motion, the old decorative loop runs.
+  const driven = !!snapshot && !reduced;
 
   useEffect(() => {
-    if (reduced) return;
+    if (reduced || driven) return;
     const iv = window.setInterval(() => {
       const kind = BEATS[stepRef.current % BEATS.length];
       stepRef.current += 1;
@@ -123,7 +126,36 @@ export default function HuntBattleView({
       if (resetRef.current) window.clearTimeout(resetRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced]);
+  }, [reduced, driven]);
+
+  const prevSnap = useRef<HuntLiveSnapshot | null>(null);
+  const snapKey = snapshot ? `${snapshot.subLevel}|${snapshot.heroHp}|${snapshot.enemyHp}|${snapshot.enemyMax}` : '';
+  useEffect(() => {
+    const before = prevSnap.current;
+    prevSnap.current = snapshot;
+    if (!driven) return;
+    const events = sceneEvents(before, snapshot);
+    if (events.length === 0) return;
+    const timers: number[] = [];
+    const play = (kind: Beat, at: number, holdMs: number | null) => {
+      timers.push(
+        window.setTimeout(() => {
+          const n = ++stepRef.current;
+          setBeat({ kind, n, active: true });
+          decorate(kind);
+          if (holdMs !== null) timers.push(window.setTimeout(() => setBeat((b) => (b.n === n ? { ...b, active: false } : b)), holdMs));
+        }, at),
+      );
+    };
+    if (events[0] === 'new_fight') {
+      play('kill', 0, null);
+      play('arrive', SCENE_FALL_MS, null);
+    } else {
+      events.forEach((e, i) => play(e === 'hero_strikes' ? 'hero' : 'monster', i * SCENE_STEP_MS, SCENE_POSE_MS));
+    }
+    return () => timers.forEach((id) => window.clearTimeout(id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapKey, driven]);
 
   const { kind, active, n } = reduced ? { kind: 'arrive' as Beat, active: false, n: 0 } : beat;
   const heroRow = active && (kind === 'hero' || kind === 'kill') ? ROW.attack : active && kind === 'monster' ? ROW.hurt : ROW.idle;
