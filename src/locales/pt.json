@@ -664,6 +664,7 @@
   },
   "enemies": {
     "goblinRogue": "Goblin Ladino",
+    "forestWolf": "Lobo da Mata",
     "orcBerserker": "Orc Berserker",
     "skeletonWarlock": "Esqueleto Bruxo",
     "minotaurWarlord": "Senhor da Guerra Minotauro",

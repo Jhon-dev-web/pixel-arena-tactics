@@ -32,8 +32,8 @@ describe('dungeon enemy visuals', () => {
     expect(pt.enemies.deathKnight).toBe('Cavaleiro da Morte');
   });
 
-  it('leaves every other floor on its old sprite and name', () => {
-    for (const f of floors.filter((x) => x < 76 && x % 25 !== 0)) {
+  it('leaves every other floor on its old sprite and name (the goblin forest alternates with the wolf: forestVariety.test.ts)', () => {
+    for (const f of floors.filter((x) => x < 76 && x % 25 !== 0 && !(x < 25 && x % 2 === 0))) {
       const kind = dungeonEnemyKindForFloor(f);
       expect(dungeonEnemyVisualForFloor(f)).toMatchObject({ spriteUrl: enemySpriteUrl(kind), nameKey: getEnemyDef(kind).nameKey });
     }

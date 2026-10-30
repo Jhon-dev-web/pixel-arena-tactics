@@ -109,6 +109,11 @@ export interface DungeonEnemyVisual {
 
 const BATTLE_ENEMY_SIZE = 'calc(var(--sprite-size, 132px) * 1.1)';
 
+// The goblin forest used to be one monster for 24 floors in a row. Its second regular monster takes the even floors (the goblin keeps the odd ones, so floor 1 is still the goblin
+// and floor 25 is still the king): same biome, same stats (dungeonEnemyKindForFloor still says 'goblin'), only the sheet and the name change. Like goblin.png the sheet faces right
+// (the battle screen flips every enemy), and its body is anchored on the same ground line in all sixteen frames.
+const FOREST_WOLF = { spriteUrl: '/assets/spritesheets/forest_wolf.png', nameKey: 'forestWolf' };
+
 const BOSS_VISUALS: Record<number, { spriteUrl: string; nameKey: string }> = {
   25: { spriteUrl: Assets.spritesheets.goblin_king.url, nameKey: 'goblinKing' },
   50: { spriteUrl: Assets.spritesheets.orc_warchief.url, nameKey: 'orcWarchief' },
@@ -126,5 +131,6 @@ export function dungeonEnemyVisualForFloor(floor: number): DungeonEnemyVisual {
   if (boss) return { ...boss, size: BATTLE_ENEMY_SIZE };
   if (floor >= 76 && floor <= 99) return { spriteUrl: Assets.spritesheets.death_knight.url, nameKey: 'deathKnight', size: BATTLE_ENEMY_SIZE };
   const kind = dungeonEnemyKindForFloor(floor);
+  if (kind === 'goblin' && floor % 2 === 0) return { ...FOREST_WOLF, size: BATTLE_ENEMY_SIZE };
   return { spriteUrl: enemySpriteUrl(kind), nameKey: getEnemyDef(kind).nameKey, size: BATTLE_ENEMY_SIZE };
 }

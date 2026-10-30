@@ -664,6 +664,7 @@
   },
   "enemies": {
     "goblinRogue": "Goblin Rogue",
+    "forestWolf": "Forest Wolf",
     "orcBerserker": "Orc Berserker",
     "skeletonWarlock": "Skeleton Warlock",
     "minotaurWarlord": "Minotaur Warlord",

@@ -93,8 +93,8 @@ describe('codex discovery', () => {
     // a hunt win discovers its monster; a dungeon run discovers the floors' monsters
     const hunted = trackSave(gone, recordKills(gone, 'demon_glade', 5));
     expect(hunted.codex.monsters).toContain('demon');
-    const ran = trackSave(hunted, recordDungeonRun(hunted, 24, 3));
-    expect(ran.codex.monsters).toContain('goblinRogue');
+    const ran = trackSave(hunted, recordDungeonRun(hunted, 23, 3));
+    expect(ran.codex.monsters).toEqual(expect.arrayContaining(['goblinRogue', 'forestWolf']));
     expect(ran.stats.dungeonKills.goblinRogue).toBeGreaterThan(0);
     expect(discoveredFromSave(ran).monsters).toEqual(expect.arrayContaining(['demon', 'goblinRogue']));
   });
