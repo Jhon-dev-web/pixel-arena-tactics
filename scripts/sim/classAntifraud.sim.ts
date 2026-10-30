@@ -17,6 +17,8 @@ import { TRADEABLE_CHANCE } from '../../supabase/functions/_shared/materials/rat
 import { MATERIAL_BOUNDS } from '../../supabase/functions/_shared/materials/bounds';
 import { HUNT_CEILING } from '../../supabase/functions/_shared/materials/tables';
 import { BOUNDS, daysAtFloor, daysAtLevel, floorCapForLevel, PACE_FLAG_FACTOR } from '../../supabase/functions/_shared/progress/bounds';
+import { evaluateSnapshot, HistoryPoint } from '../../supabase/functions/_shared/progress/evaluate';
+import { extractMetrics, maxPeak, peakOf } from '../../supabase/functions/_shared/progress/metrics';
 import { CLASS_MAIN, classHero } from './classHero';
 
 const OUT = process.env.LONG_OUT ?? path.join(os.tmpdir(), 'arena-long');
@@ -28,6 +30,8 @@ interface Day {
   mat: Record<string, number[]>;
   level: number;
   floor: number;
+  depth?: number;
+  xp?: { dungeon: number; hunt: number; order: number; other: number }; // the XP that came in that day, by source
 }
 interface Run {
   scenario: string;
@@ -110,6 +114,58 @@ it('prints the anti-cheat margin of the three classes', () => {
   out.push(`- andar acima do teto do nível (FLOOR_ABOVE_LEVEL_CAP): pior ${f(capWorst)} (${capWho})`);
   out.push(`- ritmo de andares (FLOOR_PACE): pior ${f(floorWorst)} (${floorWho})`);
   out.push(`- ritmo de nível (LEVEL_PACE): pior ${f(levelWorst)}`, '');
+
+  // ---- C2. what the REAL server (progress/evaluate.ts evaluateSnapshot, not a re-count of it) would answer to each honest player, one snapshot a day. "Marked" is a nuisance; "rejected" is lost progress.
+  // The history is kept the way the server keeps it: only an `ok` snapshot becomes the baseline, so a rejected day does not move it. Only the hero XP, floor and depth are replayed (the runs hold no
+  // kill, Gold or profession counters, so those rules cannot fire here): the reasons that appear are the ones that decide this question.
+  const DAY_MS = 86_400_000;
+  const T0 = new Date(2026, 5, 1, 0, 0, 0).getTime();
+  const tally: Record<string, { players: number; rejected: number; flaggedOnly: number; rejectedDays: number; days: number; firstReject: number[]; reasons: Record<string, number> }> = {};
+  const rejectedWho: string[] = [];
+  for (const r of honest) {
+    const t = (tally[r.scenario] ??= { players: 0, rejected: 0, flaggedOnly: 0, rejectedDays: 0, days: 0, firstReject: [], reasons: {} });
+    t.players++;
+    let cum = 0;
+    let first: HistoryPoint | null = null;
+    let previous: HistoryPoint | null = null;
+    let everRejected = false;
+    let everFlagged = false;
+    const pass = r.scenario.startsWith('P') || r.scenario.startsWith('XP');
+    r.days.forEach((d, i) => {
+      cum += d.xp ? d.xp.dungeon + d.xp.hunt + d.xp.order + d.xp.other : 0;
+      const m = extractMetrics({ xp: cum, highestDungeonFloor: d.floor, stats: { deepestDepth: d.depth ?? 0, secondsPlayed: (i + 1) * 3600 }, hasBattlePass: pass });
+      if (!m) return;
+      const atMs = T0 + i * DAY_MS + 12 * 3_600_000;
+      const ev = evaluateSnapshot(m, { nowMs: atMs, accountCreatedMs: T0, entitled: pass, saveRevision: i + 1, first, previous });
+      t.days++;
+      for (const c of ev.reasons) t.reasons[c] = (t.reasons[c] ?? 0) + 1;
+      if (ev.verdict === 'rejected') {
+        t.rejectedDays++;
+        if (!everRejected) {
+          t.firstReject.push(i + 1);
+          rejectedWho.push(`${r.scenario}${r.seed} dia ${i + 1}: ${ev.reasons.join(', ')} (nível ${m.heroLevel}, andar ${d.floor}, teto ${f(floorCapForLevel(m.heroLevel), 1)})`);
+        }
+        everRejected = true;
+      } else if (ev.verdict === 'flagged') everFlagged = true;
+      if (ev.verdict === 'ok') {
+        const pt: HistoryPoint = { atMs, metrics: m, peak: maxPeak(previous?.peak ?? null, peakOf(m)), saveRevision: i + 1 };
+        first ??= pt;
+        previous = pt;
+      }
+    });
+    if (everRejected) t.rejected++;
+    else if (everFlagged) t.flaggedOnly++;
+  }
+  out.push('## C2. Veredito do servidor de verdade (evaluateSnapshot) sobre os mesmos jogadores honestos, um snapshot por dia', '');
+  out.push('| cenário | jogadores | REJEITADOS alguma vez | só marcados | dias rejeitados / dias | 1º dia de rejeição (min, mediana, máx) |', '| --- | --: | --: | --: | --: | --- |');
+  for (const [sc, t] of Object.entries(tally)) {
+    const fr = [...t.firstReject].sort((a, b) => a - b);
+    out.push(`| ${sc} | ${t.players} | ${t.rejected} | ${t.flaggedOnly} | ${t.rejectedDays} / ${t.days} | ${fr.length ? `${fr[0]}, ${fr[Math.floor(fr.length / 2)]}, ${fr[fr.length - 1]}` : '-'} |`);
+  }
+  out.push('', 'Motivos (contagem de snapshots-dia, marcados ou rejeitados):');
+  for (const [sc, t] of Object.entries(tally)) out.push(`- ${sc}: ${Object.entries(t.reasons).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} ${n}`).join(', ') || 'nenhum'}`);
+  if (rejectedWho.length) out.push('', 'Primeira rejeição de cada jogador rejeitado:', ...rejectedWho.map((x) => `- ${x}`));
+  out.push('');
 
   // ---- B. units an hour per class, per zone, against the hourly ceiling and against the warrior
   // For every hunting material: the biggest class/warrior ratio over every hero / zone / depth where the warrior makes at least 2 units an hour (below that the ratio is noise), and the biggest share of the hourly ceiling.

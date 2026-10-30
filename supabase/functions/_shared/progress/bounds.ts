@@ -176,21 +176,36 @@ export const BOUNDS = {
 
   // ---- coupling: how high a floor a hero of a given level has been seen on -------------------------------------------------------------------------------
   /**
-   * [hero level, highest floor] = the best floor any sim seed (A or P) stood on at a hero level up to that one, with ~20% room (more at the low levels, where the pace tables interpolate between sparse anchors). SOURCE (Rodada 20, 6 seeds x 60 days): level 1 to 13 floor 10, 24 floor 25,
-   * 37 floor 30, 44 floor 40, 50 floor 70, 57 floor 76, 63 floor 78, 70 floor 85. The Dungeon pays no XP any more, so a hero can stand on floor 10 at level 1 (it was floor 5 at level 1).
-   * Rodada 22 (the owner who bought a Legendary tier 4+ set, `npm run sim:econ` PB): level 44 floor 40, level 50 floor 86, 57 floor 88, 63 floor 89, 70 floor 100; so from level 50 on the cap is the last floor.
-   * Rodada 24 (the Legendary set is 2.1 times a Common one, the seven buyer policies of `npm run sim:econ`): level 44 floor 40, level 47 floor 82 (a lucky tier 3 Legendary), level 50 floor 100; the cap is the last floor from level 48.
+   * [hero level, highest floor]: the flag line. Above it the snapshot is flagged, above floorCapRejectFactor x it + floorCapRejectSlack it is rejected (a flag already takes the account out of the ranking
+   * that counts, so an honest hero must sit UNDER this line, not just under the reject line).
+   *
+   * RE-MEASURED 29/10 (it had gone stale: since Rodada 28 the first levels cost 3.3x and the table below still said "level 24 floor 25", so the honest hero of day 2, floor 25 at level 13, was REJECTED).
+   * The floor comes from the CP of the gear and the level from the Hunting XP, and ONE Hunting claim pays both: the plain player's first 6 h claim is level 13 plus the materials of a floor-25 set.
+   * METHOD: for every level L, the highest floor ANY honest run had stood on at a hero level up to L (the running maximum, so the line never goes down), times 1.2 (the 20% room this table always had),
+   * rounded up; the points below are the levels where that line steps up. Evidence, all on the code of 29/10: a snapshot after EVERY visit (twice a day) of 12 seeds each of the plain player A and of the
+   * Pass owner P, 60 days (the Player of scripts/sim/player.ts with its check-in hooked, the same seeds as `npm run sim:long`; honestPlayerAntifraud.test.ts replays the same way), plus the day-end of the 42 runs of the buyers PB, PBE, PBR, PBER, PBG, PBEG, PBRG
+   * (`npm run sim:econ`, 6 seeds each, 40 days). Worst honest floor at that level or below, and the line it gives:
+   *   level  1: 10 -> 12    level 13: 26 -> 32    level 17-28: 30 -> 36    level 30: 40 -> 48    level 32: 47 -> 57    level 36: 50 -> 60    level 40: 58 -> 70    level 41: 69 -> 83
+   *   level 42: 75 -> 90    level 45: 76 -> 92    level 46: 87 (a buyer) -> 105, above the last floor, so 100: from level 46 on nothing can be flagged by this rule (the pace checks above are what limit a floor then).
+   * The mean + 2 standard deviations over the same 66 runs is under that line at every level (25 at level 13, 59 at level 42, 85 at level 46), but it is NOT what sets the line: the spread of floors at a level
+   * is a long tail (one Legendary of luck is floor 75 at level 42, where the mean is 44 and 2 deviations reach 59), and a bound that flags the luckiest honest seed is the failure this table exists to avoid.
+   * It is meant to be LOOSER than what the old table said at every level (the old one was 14 at level 13 and 52 at level 42): a floor is capped by FLOOR_PACE as well, in days, which is what stops a
+   * hero that climbs too fast; this rule only says "a floor this high needs a level this high", and a table that flags the honest hero is worse than a loose one.
+   * Rodada 20 / 22 / 24 (the old points, all superseded): 1:12, 13:14, 24:36, 37:44, 44:56, 46:85, 48:100.
+   * honestPlayerAntifraud.test.ts fails the day an honest simulated player is rejected (or flagged) again; the 12-seed, 60-day detail (who would be rejected, by which rule) is section C2 of scripts/sim/classAntifraud.sim.ts.
    */
   floorCapByLevel: [
     [1, 12],
-    [13, 14],
-    [24, 36],
-    [37, 44],
-    [44, 56],
-    [46, 85],
-    [48, 100],
-    [57, 100],
-    [63, 100],
+    [13, 32],
+    [17, 36],
+    [30, 48],
+    [32, 57],
+    [36, 60],
+    [40, 70],
+    [41, 83],
+    [42, 90],
+    [45, 92],
+    [46, 100],
     [70, 100],
   ] as const,
   /** Above the cap x this + 5 floors the snapshot is rejected (between the cap and that it is flagged). */
