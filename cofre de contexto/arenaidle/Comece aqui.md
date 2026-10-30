@@ -36,6 +36,7 @@ Coisas que parecem uma e são outra. O fio comum: **conferir o artefato cômodo 
 Publicar, servidor e portões:
 - [[Sem conexão com o servidor com o servidor inteiro no ar]]
 - [[A função publicada não é a função do repositório]]
+- [[Publicar de um worktree a Vercel bloqueia]]
 - [[Os portões verdes podem estar mentindo]]
 - [[Testes que passam só na sua máquina (fim de linha)]]
 - [[Teste que depende da data de hoje]]
