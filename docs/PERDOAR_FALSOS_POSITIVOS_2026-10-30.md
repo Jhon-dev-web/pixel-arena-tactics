@@ -50,3 +50,9 @@ select public.progress_clear_flags(
 Rode o passo 1 de novo: a lista tem de vir vazia. O guarda que faltava existe agora (`src/game/__tests__/honestPlayerAntifraud.test.ts`): ele falha se qualquer jogador honesto simulado for rejeitado **ou** marcado, então este defeito não volta em silêncio.
 
 **Ainda em aberto:** o `FLOOR_PACE` também foi medido com números velhos — o honesto chega ao andar 50 no dia 6 e a tabela diz 8. Hoje isso marca 1 dono do Passe em 12, e não rejeita ninguém. Ajustar afrouxa a defesa contra trapaça, então é decisão do dono e não foi feito.
+
+## Resultado, conferido em 30/10/2026
+
+**Não havia ninguém para perdoar.** No banco havia 99 envios de 5 contas, e nenhum com `FLOOR_ABOVE_LEVEL_CAP`. O defeito foi medido em jogadores simulados e não atingiu nenhuma conta real. Nada foi alterado no banco.
+
+Existe uma única conta com rejeições, por outro motivo: 49 envios em 20/10 com `PASS_FEATURES_WITHOUT_ENTITLEMENT` (recompensas premium sem Passe ativo). Ela não entra nesta receita.
