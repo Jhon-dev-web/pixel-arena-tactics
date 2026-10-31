@@ -10,8 +10,8 @@ Medido em 31/10/2026 com a Caça real (`scripts/tools/huntMatters.tool.ts`): her
 | Só a arma lendária | +44% a +63% | 4 a 5 acima |
 | Só outra peça lendária | +10% a +26% | 1 a 6 acima |
 | Refino +6 | +59% a +75% | 7 a 14 acima |
-| Relíquia | 0% a +15% | Depende do efeito; a de ouro não muda vitórias |
-| Sem nenhuma habilidade da arma e da armadura | Perde quase tudo | 5 a 19 abaixo |
+| Relíquia (medida no guerreiro) | 0% a +15% | Depende do efeito; a de ouro não muda vitórias |
+| Sem nenhuma habilidade da arma e da armadura | -63% a -100% | 5 a 19 abaixo |
 | Só a ordem das habilidades (Táticas) | No máximo 3% | Quase nada |
 | Pontos de habilidade, caminho Guerreiro | +26% a +32% | 1 a 2 acima |
 | Pontos de habilidade, caminho Caçador | +7% a +13%, e +14% a +31% de materiais | 0 a 1 acima |
