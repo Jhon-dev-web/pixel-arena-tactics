@@ -30,7 +30,6 @@ export default function DungeonMapModal({
   const recommendedCp = recommendedCpForFloor(floor);
   const playerCp = computeCP(save);
   const cpInsufficient = playerCp < recommendedCp;
-  const huntingBusy = !!save.activeHuntingZone;
   const sessionsUsedToday = save.dungeonSessionsDay === new Date().toDateString() ? save.dungeonSessionsUsed : 0;
   const freeSessionsLeft = Math.max(0, T.dungeon.freeSessionsPerDay - sessionsUsedToday);
   // Profundezas (depths.ts): open once the floor-100 boss has fallen; a run starts one below the deepest depth cleared.
@@ -64,8 +63,7 @@ export default function DungeonMapModal({
           {freeSessionsLeft > 0 ? t('dungeon.sessionsLeft', { n: freeSessionsLeft, m: T.dungeon.freeSessionsPerDay }) : t('dungeon.sessionsPaidNotice', { n: T.dungeon.extraSessionShardCost })}
         </p>
         {cpInsufficient && <p className="ui-alert bad">{t('dungeon.cpWarning', { n: recommendedCp })}</p>}
-        {huntingBusy && <p className="ui-alert bad">{t('hunting.busyOther')}</p>}
-        <Button variant="primary" block className="dm-enter" onClick={onEnterDungeon} disabled={huntingBusy} data-tutorial-target="dungeon-start">
+        <Button variant="primary" block className="dm-enter" onClick={onEnterDungeon} data-tutorial-target="dungeon-start">
           {dungeonText('enterDungeon')}
         </Button>
       </Panel>
@@ -93,7 +91,7 @@ export default function DungeonMapModal({
               {dungeonText('depthsBossEvery').replace('{n}', String(T.depths.bossEvery)).replace('{r}', String(bossInfo.shards))}
             </p>
             {depthCpLow && <p className="ui-alert bad">{t('dungeon.cpWarning', { n: depthCp })}</p>}
-            <Button variant="primary" block onClick={onEnterDepths} disabled={huntingBusy}>
+            <Button variant="primary" block onClick={onEnterDepths}>
               {dungeonText('depthsEnter')}
             </Button>
           </>

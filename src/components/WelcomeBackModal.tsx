@@ -1,13 +1,18 @@
 import { useEffect } from 'react';
-import { t } from '../locales';
+import { fmtNum, t } from '../locales';
 import { playSfx } from '../game/audio';
-import { welcomeRowText, WelcomeBackAction } from './welcomeBackText';
+import { awaySubtitle, welcomeRowText, WelcomeBackAction } from './welcomeBackText';
 import { WelcomeBackSummary } from '../game/welcomeBack';
+import { getMaterial } from '../game/materials';
+import { UI_ICON } from './uiIcons';
+import MaterialIcon from './MaterialIcon';
 import WholesaleLink from './WholesaleLink';
-import { Button, Dialog } from './ui';
+import { Button, Dialog, ItemFrame } from './ui';
 
-// One quiet card listing what finished while the player was away. Every row has ONE button: it opens the screen of that activity, or collects it where a free
-// collect action already exists (mining, woodcutting, garden, delivery). The Pass-only "Resgatar tudo" shows up for owners only.
+// What finished while the player was away, one card per activity: its icon and name, one short line (where, time counted, wins), the materials as icons with their amount (the rarest first; the
+// ones past the limit are counted as "+N"), the gold and XP when the activity already worked them out, short badges ("Armazém cheio", a unique piece), and ONE full-width button: it opens the screen
+// of that activity (the Hunt, whose reward is claimed there) or collects it where a free collect action already exists (mining, woodcutting, garden, delivery). "Depois" is a quiet button below;
+// the Pass-only "Resgatar tudo" shows up for owners only.
 
 export default function WelcomeBackModal({
   summary,
@@ -35,7 +40,7 @@ export default function WelcomeBackModal({
       className="wb-modal"
       tone="win"
       title={t('welcomeBack.title')}
-      subtitle={t('welcomeBack.hint')}
+      subtitle={awaySubtitle(summary.awayMs)}
       footer={
         <>
           {canClaimAll && (
@@ -43,7 +48,7 @@ export default function WelcomeBackModal({
               {t('claimAll.button')}
             </Button>
           )}
-          <Button block onClick={onClose}>
+          <Button size="sm" className="wb-later" block onClick={onClose}>
             {t('welcomeBack.close')}
           </Button>
         </>
@@ -52,14 +57,48 @@ export default function WelcomeBackModal({
       <ul className="dlg-list">
         {summary.rows.map((row) => {
           const text = welcomeRowText(row);
+          const hasStats = text.mats.length > 0 || text.gold > 0 || text.xp > 0;
           return (
-            <li className={`dlg-row wb-row${text.rare ? ' wb-rare' : ''}${text.glow ? ` reveal rv-${text.glow}` : ''}`} key={row.kind}>
-              <div className="dlg-row-text">
-                <span className="dlg-row-name">{text.title}</span>
-                <span className="dlg-row-detail">{text.detail}</span>
-                {text.note && <span className="dlg-row-note">{text.note}</span>}
+            <li className={`wb-card${text.rare ? ' wb-rare' : ''}${text.glow ? ` reveal rv-${text.glow}` : ''}`} key={row.kind}>
+              <div className="wb-head">
+                <img className="wb-icon pixel-icon" src={UI_ICON[text.icon]} alt="" draggable={false} />
+                <div className="wb-head-text">
+                  <span className="wb-name">{text.title}</span>
+                  <span className="wb-detail">{text.detail}</span>
+                </div>
+                {text.badges.length > 0 && (
+                  <span className="wb-badges">
+                    {text.badges.map((b) => (
+                      <span className={`ui-tag ${b.tone}`} key={b.text}>
+                        {b.text}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </div>
-              <Button size="sm" onClick={() => onAction(text.action)}>
+              {hasStats && (
+                <div className="wb-stats">
+                  {text.mats.map((m) => {
+                    const def = getMaterial(m.id);
+                    return (
+                      <span className="wb-mat" key={m.id} title={m.name} role="img" aria-label={`${m.name} x${fmtNum(m.n)}`}>
+                        <ItemFrame size="sm" rarity={m.tier} qty={fmtNum(m.n)}>
+                          {def && <MaterialIcon item={def} />}
+                        </ItemFrame>
+                      </span>
+                    );
+                  })}
+                  {text.more > 0 && <span className="wb-more">+{text.more}</span>}
+                  {text.gold > 0 && (
+                    <span className="wb-gain gold">
+                      <img className="pixel-icon" src={UI_ICON.shop} alt="" draggable={false} />
+                      {fmtNum(text.gold)}
+                    </span>
+                  )}
+                  {text.xp > 0 && <span className="wb-gain xp">{t('welcomeBack.xp', { n: fmtNum(text.xp) })}</span>}
+                </div>
+              )}
+              <Button variant="primary" block onClick={() => onAction(text.action)}>
                 {text.button}
               </Button>
             </li>

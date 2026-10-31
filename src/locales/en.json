@@ -1572,7 +1572,6 @@
     "claimAndStop": "Claim and stop hunting",
     "continueFailed": "Claimed, but the hunt could not continue right now. Start it again.",
     "noneReady": "No rewards accumulated yet.",
-    "busyOther": "Your hero is on an Open Hunt. Stop hunting before starting another activity.",
     "tier_common": "Common",
     "tier_uncommon": "Refined",
     "tier_rare": "Noble",
@@ -1624,7 +1623,6 @@
     "subLevelNeedGear": "To reach the next level of this zone, your gear must match a tier {tier} +{refine} set.",
     "subLevelNeedGearRarity": "To reach the next level of this zone, your gear must match a tier {tier} +{refine} {rarity} set.",
     "startNeedGear": "Requires gear equivalent to tier {tier} +{refine}",
-    "startBusy": "Hero busy with another activity",
     "startClaimFirst": "Claim the reward first",
     "runningIn": "Hunting in {zone}",
     "levelShort": "Level {n}",
@@ -1768,9 +1766,7 @@
     "skillLabel": "Mining",
     "available": "Mine Here",
     "locked": "Requires Level {n}",
-    "busyDungeon": "Your hero is mining. Cancel or collect resources at the Mine before entering combat.",
-    "busyBattle": "You can't start mining with an active dungeon run. Retreat from battle first.",
-    "busyOther": "Your hero is mining. Stop that before starting another activity."
+    "busyBattle": "You can't start mining with an active dungeon run. Retreat from battle first."
   },
   "ore": {
     "ore_copper": "Copper",
@@ -1791,7 +1787,6 @@
     "skillLabel": "Woodcutting",
     "available": "Chop Here",
     "locked": "Requires Level {n}",
-    "busyOther": "Your hero is woodcutting. Stop that before starting another activity.",
     "busyBattle": "You can't start woodcutting with an active dungeon run. Retreat from battle first."
   },
   "wood": {
@@ -2336,8 +2331,6 @@
     "producedFull": "Produced {cur} of {cap} (limit)",
     "producedRunning": "Produced so far: {cur} of {cap}",
     "idleFull": "Idle for {t}: anything past the limit does not pile up.",
-    "busyTitle": "Hero busy: {activity}",
-    "busyBody": "Stop or finish that activity to start here. Nothing is switched or cancelled for you.",
     "nextUnlock": "Next unlock",
     "nextUnlockLine": "Level {n} · {left}"
   },
@@ -2490,11 +2483,14 @@
   "welcomeBack": {
     "title": "Welcome back",
     "hint": "While you were away:",
+    "away": "You were away for {time}",
     "hunt": "Hunt",
     "huntDetail": "{zone} · {time} · {n} wins",
+    "gatherDetail": "{name} · {time}",
     "uniqueFound": "{n} unique piece!",
-    "capHit": "storage full, the hero stopped",
-    "open": "Open",
+    "capHit": "Storage full",
+    "xp": "{n} XP",
+    "viewRewards": "View rewards",
     "collect": "Collect",
     "close": "Later"
   },
@@ -2763,21 +2759,25 @@
     "minutes": "{m} min {s} s"
   },
   "busy": {
-    "title": "Hero busy",
+    "title": "Switch activity?",
     "heroIn": "Your hero is in {activity}.",
-    "hunt": "Open Hunt",
+    "hunt": "Hunt",
     "mining": "Mining",
     "woodcutting": "Woodcutting",
     "craft": "Production",
     "dungeon": "the Dungeon",
-    "stopHunt": "Stop hunting",
-    "stopMining": "Stop and collect mining",
-    "stopWoodcutting": "Stop and collect woodcutting",
-    "stopCraft": "Cancel production",
-    "keep": "Keep going",
+    "whatHappens_hunt": "What was hunted so far waits on the reward screen.",
+    "whatHappens_mining": "What was mined so far is collected now.",
+    "whatHappens_woodcutting": "What was chopped so far is collected now.",
+    "whatHappens_craft": "What is already made stays. What is left is refunded.",
+    "stopAndStart": "Stop and start {next}",
+    "stopForge": "Stop and forge",
+    "stopProduce": "Stop and craft",
+    "cancelForge": "Cancel and forge",
+    "cancelProduce": "Cancel and craft",
+    "keep": "Keep {activity}",
     "hud": "Hero: {activity}",
-    "hudCraft": "Producing {done}/{total}",
-    "stopped": "Stopped. You can start the new activity."
+    "hudCraft": "Producing {done}/{total}"
   },
   "oficios": {
     "groupPotions": "Potions",
@@ -2794,6 +2794,6 @@
     "blockMaterials": "Not enough materials for this quantity.",
     "blockGold": "Not enough Gold for this quantity.",
     "blockOther": "This recipe is not available yet.",
-    "blockBusy": "Your hero is in {activity}. Finish or cancel it to craft."
+    "blockBusy": "Your hero is in {activity}. If you craft, you choose whether he switches activity."
   }
 }

@@ -7,7 +7,7 @@ import { applyDeliveryAccept, ensureDeliveryOffers } from '../deliveries';
 import { HUNTING_ZONES } from '../huntingZones';
 import { emptyMaterials } from '../materials';
 import { skillXpToReachLevel } from '../skills';
-import { awayLongEnough, buildWelcomeBack, readLastSeen, WELCOME_BACK_AWAY_MS, writeLastSeen } from '../welcomeBack';
+import { awayFor, awayLongEnough, buildWelcomeBack, readLastSeen, splitMaterials, writeLastSeen } from '../welcomeBack';
 import { buildLeagueHero, buildNewLeagueHero } from '../leagueReset';
 import { welcomeRowText } from '../../components/welcomeBackText';
 import { mulberry32 } from '../../../scripts/sim/driver';
@@ -27,10 +27,28 @@ describe('welcome back summary (welcomeBack.ts)', () => {
     expect(buildWelcomeBack(base(), T0 + 5 * HOUR).rows).toEqual([]);
   });
 
-  it('is away only after ten minutes; an unknown last visit is a first session, never "away"', () => {
-    expect(awayLongEnough(T0, T0 + WELCOME_BACK_AWAY_MS - 1)).toBe(false);
-    expect(awayLongEnough(T0, T0 + WELCOME_BACK_AWAY_MS)).toBe(true);
+  // The owner's rule is "half an hour": written in minutes here on purpose, so changing the limit in the code cannot pass by moving a constant along with it.
+  it("29 minutes away shows nothing, 30 shows the summary, counted from the account's own last-seen stamp", () => {
+    const MIN = 60 * 1000;
+    const mining = applyStartGathering(base(), 'mining', 'copper', T0)!.save;
+    const left = 'half-hour-account';
+    writeLastSeen(T0, left);
+    const at = (minutes: number) => {
+      const now = T0 + minutes * MIN;
+      return awayLongEnough(readLastSeen(left), now) ? buildWelcomeBack(mining, now).rows.length : 0;
+    };
+    expect(at(29)).toBe(0);
+    expect(at(30)).toBeGreaterThan(0);
+    // a stamp that was never written is a first session, never "away"
+    expect(awayLongEnough(readLastSeen('never-seen-account'), T0 + 5 * HOUR)).toBe(false);
     expect(awayLongEnough(null, T0)).toBe(false);
+  });
+
+  it('says how long the player was away, and nothing when the last visit is unknown or not in the past', () => {
+    expect(awayFor(T0, T0 + 17 * HOUR + 2 * 60 * 1000)).toBe(17 * HOUR + 2 * 60 * 1000);
+    expect(awayFor(null, T0)).toBeNull();
+    expect(awayFor(T0 + HOUR, T0)).toBeNull();
+    expect(awayFor(Number.NaN, T0)).toBeNull();
   });
 
   it('a brand-new hero (online create path and league-reset rebuild) is idle with nothing produced, and has no last visit', () => {
@@ -47,7 +65,7 @@ describe('welcome back summary (welcomeBack.ts)', () => {
     expect(awayLongEnough(readLastSeen('new-account'), T0 + 5 * HOUR)).toBe(false);
   });
 
-  it('a returning player (stamp older than ten minutes) still gets the summary', () => {
+  it('a returning player (stamp older than half an hour) still gets the summary', () => {
     writeLastSeen(T0, 'returning');
     const mining = applyStartGathering(base(), 'mining', 'copper', T0)!.save;
     const now = T0 + 3 * HOUR;
@@ -62,11 +80,38 @@ describe('welcome back summary (welcomeBack.ts)', () => {
     if (mid?.kind !== 'hunt') return;
     expect(mid.kills).toBeGreaterThan(0);
     expect(mid.timeMs).toBe(3 * HOUR);
-    expect(mid.top.length).toBeGreaterThan(0);
-    expect(mid.top.length).toBeLessThanOrEqual(3);
+    expect(mid.mats.length).toBeGreaterThan(0);
     expect(mid.capHit).toBe(false);
     const past = buildWelcomeBack(started, T0 + 200 * HOUR).rows.find((r) => r.kind === 'hunt');
     expect(past && past.kind === 'hunt' && past.capHit).toBe(true);
+  });
+
+  it('a card shows at most four materials and counts the rest as "+N": nothing is hidden in silence', () => {
+    const started = applyHuntStart(base(), HUNTING_ZONES[0].id, 'shallow', T0)!;
+    const row = buildWelcomeBack(started, T0 + 200 * HOUR).rows.find((r) => r.kind === 'hunt');
+    expect(row?.kind).toBe('hunt');
+    if (row?.kind !== 'hunt') return;
+    // the row keeps everything the hunt found; this zone drops more than four kinds over 200 hours, so the limit really bites
+    expect(row.mats.length).toBeGreaterThan(4);
+    const text = welcomeRowText(row);
+    expect(text.mats.length).toBe(4);
+    expect(text.more).toBe(row.mats.length - 4);
+    expect(text.mats.map((m) => m.id)).toEqual(row.mats.slice(0, 4).map((m) => m.id));
+    // and the pure split agrees on the edges
+    const five = row.mats.slice(0, 5);
+    expect(splitMaterials(five.slice(0, 4))).toEqual({ shown: five.slice(0, 4), more: 0 });
+    expect(splitMaterials(five)).toEqual({ shown: five.slice(0, 4), more: 1 });
+  });
+
+  it('a full storage is a badge on the card, not a piece of its sentence', () => {
+    const started = applyHuntStart(base(), HUNTING_ZONES[0].id, 'shallow', T0)!;
+    const row = buildWelcomeBack(started, T0 + 200 * HOUR).rows.find((r) => r.kind === 'hunt');
+    if (row?.kind !== 'hunt') throw new Error('no hunt row');
+    expect(row.capHit).toBe(true);
+    const text = welcomeRowText(row);
+    expect(text.badges.length).toBe(1);
+    expect(text.detail).not.toContain(text.badges[0].text);
+    expect(welcomeRowText({ ...row, capHit: false }).badges).toEqual([]);
   });
 
   it('a hunt whose reward already waits is not listed (its own screen shows it)', () => {

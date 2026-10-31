@@ -21,18 +21,8 @@
   border-radius: var(--r-md);
   font-size: var(--fs-body);
 }
-.dlg-row.wb-rare {
-  border-color: var(--c-gold-line);
-}
 .dlg-row > .dlg-row-name {
   flex: 0 1 auto;
-}
-.dlg-row-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1 1 auto;
-  min-width: 0;
 }
 .dlg-row-name {
   font-weight: 700;
@@ -46,12 +36,95 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.dlg-row-text .dlg-row-detail {
-  text-align: left;
+
+/* "Bem-vindo de volta": one card per activity (icon + name + one short line, the materials as icons, the gold and XP, badges, one full-width button) */
+.wb-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--c-inset);
+  border: var(--bw-thin) solid var(--c-line);
+  border-radius: var(--r-md);
+  font-size: var(--fs-body);
 }
-.dlg-row-note {
+.wb-card.wb-rare {
+  border-color: var(--c-gold-line);
+}
+.wb-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.wb-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.wb-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.wb-name {
+  font-weight: 700;
+  color: var(--c-text);
+  overflow-wrap: anywhere;
+}
+.wb-detail {
   font-size: var(--fs-small);
+  color: var(--c-text-dim);
+  overflow-wrap: anywhere;
+}
+.wb-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.wb-badges .ui-tag {
+  white-space: normal;
+  text-align: center;
+}
+.wb-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.wb-more {
+  font-weight: 700;
+  color: var(--c-text-dim);
+}
+.wb-gain {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-weight: 700;
   color: var(--c-gold-300);
+}
+.wb-gain.xp {
+  color: var(--c-info);
+}
+.wb-gain img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+/* "Depois": quiet next to the cards' gold buttons, so it never reads as the main action */
+.ui-btn.wb-later {
+  color: var(--c-text-dim);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* the gold and Éter of a reward */

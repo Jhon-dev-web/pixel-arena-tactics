@@ -1572,7 +1572,6 @@
     "claimAndStop": "Resgatar e parar a caça",
     "continueFailed": "Resgatado, mas a caça não pôde continuar agora. Inicie-a de novo.",
     "noneReady": "Nenhuma recompensa acumulada ainda.",
-    "busyOther": "Seu herói está em Caça Aberta. Pare a caça antes de iniciar outra atividade.",
     "tier_common": "Comum",
     "tier_uncommon": "Refino",
     "tier_rare": "Nobre",
@@ -1624,7 +1623,6 @@
     "subLevelNeedGear": "Para subir ao próximo nível desta zona, seu equipamento precisa valer o de um conjunto tier {tier} +{refine}.",
     "subLevelNeedGearRarity": "Para subir ao próximo nível desta zona, seu equipamento precisa valer o de um conjunto {rarity} tier {tier} +{refine}.",
     "startNeedGear": "Requer equipamento equivalente a tier {tier} +{refine}",
-    "startBusy": "Herói ocupado em outra atividade",
     "startClaimFirst": "Resgate a recompensa antes",
     "runningIn": "Caçando em {zone}",
     "levelShort": "Nível {n}",
@@ -1768,9 +1766,7 @@
     "skillLabel": "Mineração",
     "available": "Minerar Aqui",
     "locked": "Requer Nível {n}",
-    "busyDungeon": "Seu herói está minerando. Cancele ou colete os recursos na Mina antes de entrar em combate.",
-    "busyBattle": "Você não pode iniciar a mineração com uma masmorra em andamento. Recue da batalha primeiro.",
-    "busyOther": "Seu herói está minerando. Pare antes de iniciar outra atividade."
+    "busyBattle": "Você não pode iniciar a mineração com uma masmorra em andamento. Recue da batalha primeiro."
   },
   "ore": {
     "ore_copper": "Cobre",
@@ -1791,7 +1787,6 @@
     "skillLabel": "Lenhador",
     "available": "Cortar Aqui",
     "locked": "Requer Nível {n}",
-    "busyOther": "Seu herói está na Lenhaçaria. Pare antes de iniciar outra atividade.",
     "busyBattle": "Você não pode iniciar a lenhaçaria com uma masmorra em andamento. Recue da batalha primeiro."
   },
   "wood": {
@@ -2336,8 +2331,6 @@
     "producedFull": "Produziu {cur} de {cap} (limite)",
     "producedRunning": "Produzido até agora: {cur} de {cap}",
     "idleFull": "Parado há {t}: o que passa do limite não acumula.",
-    "busyTitle": "Herói ocupado: {activity}",
-    "busyBody": "Pare ou conclua essa atividade para começar aqui. Nada é trocado ou cancelado sozinho.",
     "nextUnlock": "Próximo desbloqueio",
     "nextUnlockLine": "Nível {n} · {left}"
   },
@@ -2490,11 +2483,14 @@
   "welcomeBack": {
     "title": "Bem-vindo de volta",
     "hint": "Enquanto você esteve fora:",
+    "away": "Você ficou fora por {time}",
     "hunt": "Caça",
     "huntDetail": "{zone} · {time} · {n} vitórias",
+    "gatherDetail": "{name} · {time}",
     "uniqueFound": "{n} peça única!",
-    "capHit": "armazém cheio, o herói parou",
-    "open": "Abrir",
+    "capHit": "Armazém cheio",
+    "xp": "{n} XP",
+    "viewRewards": "Ver recompensas",
     "collect": "Coletar",
     "close": "Depois"
   },
@@ -2763,21 +2759,25 @@
     "minutes": "{m} min {s} s"
   },
   "busy": {
-    "title": "Herói ocupado",
+    "title": "Trocar de atividade?",
     "heroIn": "Seu herói está em {activity}.",
-    "hunt": "Caça Aberta",
+    "hunt": "Caça",
     "mining": "Mineração",
-    "woodcutting": "Lenhaçaria",
+    "woodcutting": "Lenhador",
     "craft": "Produção",
     "dungeon": "Masmorra",
-    "stopHunt": "Parar a caça",
-    "stopMining": "Parar e coletar a mineração",
-    "stopWoodcutting": "Parar e coletar a lenhaçaria",
-    "stopCraft": "Cancelar produção",
-    "keep": "Continuar",
+    "whatHappens_hunt": "O que já foi caçado espera na tela de recompensa.",
+    "whatHappens_mining": "O que já foi minerado é coletado agora.",
+    "whatHappens_woodcutting": "O que já foi cortado é coletado agora.",
+    "whatHappens_craft": "O que já foi feito fica. O que falta é devolvido.",
+    "stopAndStart": "Parar e começar {next}",
+    "stopForge": "Parar e forjar",
+    "stopProduce": "Parar e produzir",
+    "cancelForge": "Cancelar e forjar",
+    "cancelProduce": "Cancelar e produzir",
+    "keep": "Manter {activity}",
     "hud": "Herói: {activity}",
-    "hudCraft": "Produzindo {done}/{total}",
-    "stopped": "Parado. Você já pode iniciar a nova atividade."
+    "hudCraft": "Produzindo {done}/{total}"
   },
   "oficios": {
     "groupPotions": "Poções",
@@ -2794,6 +2794,6 @@
     "blockMaterials": "Faltam materiais para esta quantidade.",
     "blockGold": "Ouro insuficiente para esta quantidade.",
     "blockOther": "Esta receita ainda não está disponível.",
-    "blockBusy": "Seu herói está em {activity}. Termine ou cancele para produzir."
+    "blockBusy": "Seu herói está em {activity}. Ao produzir, você escolhe se ele troca de atividade."
   }
 }

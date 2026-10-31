@@ -12,18 +12,36 @@ import { UniqueDrop } from './uniques';
 //
 // A hunt whose reward is already waiting (pendingHuntReward) is NOT listed: that reward has its own mandatory screen.
 
-// The longest absence that is not worth a summary (the window regaining focus after a short alt-tab).
-export const WELCOME_BACK_AWAY_MS = 10 * 60 * 1000;
-const TOP_MATERIALS = 3;
+// The longest absence that is not worth a summary: under half an hour away (an alt-tab, a lunch call, the phone locked for a while) nothing is shown.
+export const WELCOME_BACK_AWAY_MS = 30 * 60 * 1000;
+
+// How many materials a card shows as icons; the others are counted ("+N"), never dropped silently.
+export const WELCOME_MATERIALS_SHOWN = 4;
+
+export interface WelcomeMaterial {
+  id: MaterialId;
+  n: number;
+}
+// The first `limit` materials (the list already comes rarest first) and how many were left out.
+export function splitMaterials(all: WelcomeMaterial[], limit = WELCOME_MATERIALS_SHOWN): { shown: WelcomeMaterial[]; more: number } {
+  return { shown: all.slice(0, limit), more: Math.max(0, all.length - limit) };
+}
 
 export type WelcomeBackRow =
-  | { kind: 'hunt'; zoneId: string; timeMs: number; kills: number; gold: number; top: { id: MaterialId; n: number }[]; uniques: number; capHit: boolean }
+  | { kind: 'hunt'; zoneId: string; timeMs: number; kills: number; gold: number; xp: number; mats: WelcomeMaterial[]; uniques: number; capHit: boolean }
   | { kind: 'mining' | 'woodcutting'; material: MaterialId; units: number; gold: number; timeMs: number; capHit: boolean }
   | { kind: 'garden'; ready: number }
   | { kind: 'delivery' };
 
 export interface WelcomeBackSummary {
   rows: WelcomeBackRow[];
+  // How long the player was away (the modal says so); left out when the last visit is not known.
+  awayMs?: number;
+}
+
+// How long ago the game was last seen alive, or null when that is not known (or not a real past moment).
+export function awayFor(lastSeen: number | null, now: number): number | null {
+  return lastSeen !== null && Number.isFinite(lastSeen) && now > lastSeen ? now - lastSeen : null;
 }
 
 // Whether the player has been away long enough: `lastSeen` is the last time THIS account's game was seen alive. null = never recorded = the first session of
@@ -41,16 +59,16 @@ export function buildWelcomeBack(save: SaveData, now: number): WelcomeBackSummar
     const st = computeHuntingStatus(save, now);
     const ids = (Object.keys(st.drops) as MaterialId[]).filter((id) => (st.drops[id] ?? 0) > 0);
     if (st.kills > 0 || ids.length > 0) {
-      const top = claimOrder(save.activeHuntingZone, ids)
-        .slice(0, TOP_MATERIALS)
-        .map((id) => ({ id, n: st.drops[id] ?? 0 }));
+      // Every material the hunt found, rarest first (the order the reward screen uses); the card decides how many to show and counts the rest.
+      const mats = claimOrder(save.activeHuntingZone, ids).map((id) => ({ id, n: st.drops[id] ?? 0 }));
       rows.push({
         kind: 'hunt',
         zoneId: save.activeHuntingZone,
         timeMs: st.pendingMs,
         kills: st.kills,
         gold: st.goldReady,
-        top,
+        xp: st.xpReady,
+        mats,
         uniques: countUniques(st.uniques),
         capHit: st.full && st.capMs > 0,
       });

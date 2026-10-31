@@ -35,13 +35,13 @@ describe('Hunt screen helpers', () => {
     expect(defaultZone(HUNTING_ZONES, save, 0).id).toBe(glade.id);
   });
 
-  it('says why a hunt cannot start, in the order floor, equipment, pending reward, busy hero', () => {
+  it('says why a hunt cannot start, in the order floor, equipment, pending reward (a hero busy in mining is no reason: Start asks to switch)', () => {
     const [glade, marsh] = HUNTING_ZONES;
     const save = defaultSave();
     expect(startBlockedReason(save, glade, 'shallow', 0)).toBeNull();
     expect(startBlockedReason(save, marsh, 'shallow', 8)?.key).toBe('hunting.startLocked');
     // the marsh shallow asks index 1.4: "a tier 1 +4 set" is the smallest common set that reaches it
     expect(startBlockedReason({ ...save, highestDungeonFloor: 30 }, marsh, 'shallow', 0)).toEqual({ key: 'hunting.startNeedGear', vars: { tier: 1, refine: 4 } });
-    expect(startBlockedReason({ ...save, activeOreId: 'copper' }, glade, 'shallow', 0)?.key).toBe('hunting.startBusy');
+    expect(startBlockedReason({ ...save, activeOreId: 'copper' }, glade, 'shallow', 0)).toBeNull();
   });
 });

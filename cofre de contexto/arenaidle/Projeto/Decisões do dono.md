@@ -111,3 +111,5 @@ A saída natural existe e é parte do desenho: classe é só equipamento, então
 ## Decisão grande em aberto
 
 Em 29/10 ele disse que está "quase refazendo este jogo" e enviou uma proposta de catálogo novo de habilidades (seis slots por build, maestria por família, ~90 habilidades). **Nada disso foi começado**, porque refazer o combate e terminar o que existe são trabalhos diferentes e ele ainda não escolheu (`RESUMO_DO_PROJETO.md` seção 7). Ver [[O que está em aberto]].
+
+**Bem-vindo de volta e troca de atividade** (31/10/2026): o Bem-vindo só aparece depois de 30 minutos fora. Toda troca de atividade pergunta com a mesma tela, de qualquer lugar, e um toque para a antiga e começa a nova. A regra de uma tarefa por vez não mudou. Guarda: `taskSwitch.test.ts`.

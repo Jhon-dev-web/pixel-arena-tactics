@@ -62,7 +62,7 @@ import LeagueResetModal from './components/LeagueResetModal';
 import { applyBuyConsumable, CraftFailure } from './game/craftActions';
 import { cancelCraftJob, craftUnitsDue, prepaidForgeSave, resolveCraftJob, settleForgeUnit, startCraftJob } from './game/craftJob';
 import type { CraftJobKind } from './game/craftJobTypes';
-import { HeroActivity } from './game/activity';
+import { acceptSwitch, askSwitch, busyBlocker, keepActivity, NO_SWITCH, rewardClaimed, rewardSetAside, TaskRequest, TaskSwitchState, waitForReward } from './game/activity';
 import BusyNotice from './components/BusyNotice';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
 import type { AbilityId } from './game/abilities';
@@ -130,7 +130,7 @@ import ClaimAllModal from './components/ClaimAllModal';
 import { applyClaimAll, ClaimAllLine, readyActivities } from './game/claimAll';
 import WelcomeBackModal from './components/WelcomeBackModal';
 import { WelcomeBackAction } from './components/welcomeBackText';
-import { awayLongEnough, buildWelcomeBack, readLastSeen, WelcomeBackSummary, writeLastSeen } from './game/welcomeBack';
+import { awayFor, awayLongEnough, buildWelcomeBack, readLastSeen, WelcomeBackSummary, writeLastSeen } from './game/welcomeBack';
 import { attributePointsAvailable, NextStepTarget } from './game/nextStep';
 import { suggestedSpend } from './game/attributes';
 import { GUIDED_DESCENT_FLOOR, nextTutorialStep, stepWhenHuntScreenClosed, tutorialStepDone } from './game/tutorialSteps';
@@ -264,8 +264,22 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // True when the session that left the pending reward was ended to START something else (another zone, another activity): the reward screen then offers no "keep hunting".
   const [huntLeaving, setHuntLeaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  // The hero does one task at a time (activity.ts): what he is busy with when the player asks for another (BusyNotice), and whether the forge job waits on something (a full bag).
-  const [busyNotice, setBusyNotice] = useState<HeroActivity | null>(null);
+  // The hero does one task at a time (activity.ts). Asking for another while he is busy ends in ONE question (BusyNotice) from every screen; `taskSwitch` holds that question with the task asked for
+  // (and, after a hunt was ended for it, the task waiting for the reward to be claimed). The ref mirrors it so the async paths (the forge cancel, the reward claim) read the current value.
+  const [taskSwitch, setTaskSwitchState] = useState<TaskSwitchState>(NO_SWITCH);
+  const taskSwitchRef = useRef<TaskSwitchState>(NO_SWITCH);
+  const setTaskSwitch = (next: TaskSwitchState) => {
+    taskSwitchRef.current = next;
+    setTaskSwitchState(next);
+  };
+  // True while a task asked for through the question is being started: if the hero is somehow still busy then, the start gives up quietly instead of asking again.
+  const resumingTaskRef = useRef(false);
+  // A task waiting for a hunt reward is forgotten the moment the player leaves that reward without claiming it (set aside to make room in the bag, or gone by another way): nothing starts later by surprise.
+  useEffect(() => {
+    const waiting = taskSwitchRef.current.afterReward;
+    if (waiting && (rewardHidden || save.pendingHuntReward?.id !== waiting.rewardId)) setTaskSwitch(rewardSetAside());
+  }, [rewardHidden, save.pendingHuntReward]);
+  // Whether the forge job waits on something (a full bag).
   const [craftStalled, setCraftStalled] = useState(false);
   // The brief rarity-coloured line on the forge result (ForgeModal `reveal`): what was just forged / refined, glowing in the colour of its rarity.
   const [forgeReveal, setForgeReveal] = useState<ForgeReveal | null>(null);
@@ -891,35 +905,54 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     }
   };
 
+  // Every way of asking for a task (Mining, Woodcutting, the Hunt, a Dungeon run, a Forge / Oficios batch) goes through here when the hero may be busy: true = the caller stops, because either the
+  // question "Trocar de atividade?" is now open (with `task` waiting behind it) or, when this start is itself the one the question led to, the hero is still busy and the start gives up without asking again.
+  // `startable`: whether the hero could start `task` once free (a locked tier, say, cannot): then nothing is asked, because stopping what he does would only end in a refusal.
+  const askBeforeSwitch = (s: SaveData, task: TaskRequest, startable = true): boolean => {
+    const busy = busyBlocker(s, task);
+    if (!busy) return false;
+    if (startable && !resumingTaskRef.current) {
+      playSfx('click');
+      setTaskSwitch(askSwitch(busy, task));
+    }
+    return true;
+  };
+
+  // Whether a gathering tier could start on a hero with nothing else going on (what the task would meet once the old one is stopped).
+  const canStartGathering = (s: SaveData, kind: 'mining' | 'woodcutting', tierId: string): boolean =>
+    !!applyStartGathering({ ...s, activeHuntingZone: null, activeOreId: null, activeWoodId: null, craftJob: null }, kind, tierId, Date.now());
+
+  // Starts a task the player asked for earlier, with the choice he made (what the question carried). The start runs its own checks again, so a task that cannot start shows its own notice.
+  const startTask = (task: TaskRequest) => {
+    resumingTaskRef.current = true;
+    try {
+      if (task.kind === 'mining') startMining(task.oreId);
+      else if (task.kind === 'woodcutting') startWoodcutting(task.woodId);
+      else if (task.kind === 'hunt') startHunt(task.zoneId, task.depth);
+      else if (task.kind === 'dungeon') startSession(task.depths);
+      else startBatch(task.craft, task.recipeId, task.qty, task.seal);
+    } finally {
+      resumingTaskRef.current = false;
+    }
+  };
+  const startTaskRef = useRef(startTask);
+  startTaskRef.current = startTask;
+
   // A "session" is one full Dungeon attempt (enter -> climb until death or voluntary retreat), capped
   // per-day (see freeSessionsPerDay/extraSessionShardCost below).
   const startSession = (depths: boolean) => {
     const s = saveRef.current;
     if (depths && !depthsUnlocked(s)) return;
-    if (s.craftJob) {
-      setBusyNotice('craft');
-      return;
-    }
-    if (s.activeOreId) {
-      showToast(t('mining.busyDungeon'));
-      return;
-    }
-    if (s.activeWoodId) {
-      showToast(t('woodcutting.busyOther'));
-      return;
-    }
-    if (s.activeHuntingZone) {
-      showToast(t('hunting.busyOther'));
-      return;
-    }
     const today = new Date().toDateString();
     const used = s.dungeonSessionsDay === today ? s.dungeonSessionsUsed : 0;
     const cost = T.dungeon.extraSessionShardCost;
+    // Out of runs and short of Éter: said before the hero is asked to drop what he is doing for a run that could not start anyway.
+    if (used >= T.dungeon.freeSessionsPerDay && s.shards < cost) {
+      showToast(t('dungeon.sessionsExhausted', { n: cost }));
+      return;
+    }
+    if (askBeforeSwitch(s, { kind: 'dungeon', depths })) return;
     if (used >= T.dungeon.freeSessionsPerDay) {
-      if (s.shards < cost) {
-        showToast(t('dungeon.sessionsExhausted', { n: cost }));
-        return;
-      }
       setSaveBoth({ ...s, shards: s.shards - cost, dungeonSessionsDay: today, dungeonSessionsUsed: used + 1 });
       showToast(t('dungeon.extraSessionPaid', { n: cost }));
     } else {
@@ -1286,22 +1319,12 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
 
   const startMining = (oreId: string) => {
     const s = saveRef.current;
-    if (s.craftJob) {
-      setBusyNotice('craft');
-      return;
-    }
     if (battleFloor !== null) {
       showToast(t('mining.busyBattle'));
       return;
     }
-    if (s.activeWoodId) {
-      showToast(t('woodcutting.busyOther'));
-      return;
-    }
-    if (s.activeHuntingZone) {
-      showToast(t('hunting.busyOther'));
-      return;
-    }
+    // Another task in the way (the Hunt, Woodcutting, a production batch): the question "Trocar de atividade?" first.
+    if (askBeforeSwitch(s, { kind: 'mining', oreId }, canStartGathering(s, 'mining', oreId))) return;
     // Switching tiers collects the running session first (gathering.ts), so nothing mined is thrown away.
     const started = applyStartGathering(s, 'mining', oreId, Date.now());
     if (!started) return;
@@ -1350,7 +1373,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     finish(res);
   };
 
-  // Welcome back: shown on load and when the window comes back after ten minutes or more away, never over the tutorial / first run, a dungeon fight or the
+  // Welcome back: shown on load and when the window comes back after half an hour or more away (WELCOME_BACK_AWAY_MS), never over the tutorial / first run, a dungeon fight or the
   // mandatory hunt reward. The last-seen stamp is a local convenience (welcomeBack.ts), refreshed while the game is open and when it loses focus.
   const seenId = user?.id ?? null;
   const welcomeBlockedRef = useRef(false);
@@ -1365,13 +1388,15 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   useEffect(() => {
     const check = () => {
       const now = Date.now();
-      const away = awayLongEnough(readLastSeen(seenId), now);
+      const lastSeen = readLastSeen(seenId);
+      const away = awayLongEnough(lastSeen, now);
       writeLastSeen(now, seenId);
       if (!away || welcomeBlockedRef.current) return;
       const s = saveRef.current;
       const summary = buildWelcomeBack(s, now);
       if (summary.rows.length === 0) return;
-      setWelcome({ summary, canClaimAll: ownsAdventurerPass(s) && readyActivities(s, now).count > 0 });
+      const awayMs = awayFor(lastSeen, now);
+      setWelcome({ summary: awayMs === null ? summary : { ...summary, awayMs }, canClaimAll: ownsAdventurerPass(s) && readyActivities(s, now).count > 0 });
     };
     const leave = () => {
       writeLastSeen(Date.now(), seenId);
@@ -1420,7 +1445,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       setWelcome((w) => {
         if (!w) return w;
         const rows = w.summary.rows.filter((r) => r.kind !== kind);
-        return rows.length === 0 ? null : { ...w, summary: { rows } };
+        return rows.length === 0 ? null : { ...w, summary: { ...w.summary, rows } };
       });
     const now = Date.now();
     if (action === 'hunt') {
@@ -1486,22 +1511,11 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   // Mirrors startMining/claimMining/cancelMining exactly — see gathering.ts and woodcutting.ts/computeWoodcuttingStatus.
   const startWoodcutting = (woodId: string) => {
     const s = saveRef.current;
-    if (s.craftJob) {
-      setBusyNotice('craft');
-      return;
-    }
     if (battleFloor !== null) {
       showToast(t('woodcutting.busyBattle'));
       return;
     }
-    if (s.activeOreId) {
-      showToast(t('mining.busyOther'));
-      return;
-    }
-    if (s.activeHuntingZone) {
-      showToast(t('hunting.busyOther'));
-      return;
-    }
+    if (askBeforeSwitch(s, { kind: 'woodcutting', woodId }, canStartGathering(s, 'woodcutting', woodId))) return;
     const started = applyStartGathering(s, 'woodcutting', woodId, Date.now());
     if (!started) return;
     playSfx('click');
@@ -1802,23 +1816,13 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     if (!zone || !isZoneOpen(zone, s.highestDungeonFloor, playerLevel(s.xp))) return;
     if (s.activeHuntingZone === zoneId && s.activeHuntingDepth === depth) return;
     if (!isDepthUnlocked(zone, depth, equipmentIndex(s))) return;
-    if (s.craftJob) {
-      setBusyNotice('craft');
-      return;
-    }
     if (s.pendingHuntReward) {
       setRewardHidden(false);
       showToast(t('hunting.claimFirst'));
       return;
     }
-    if (s.activeOreId) {
-      showToast(t('mining.busyDungeon'));
-      return;
-    }
-    if (s.activeWoodId) {
-      showToast(t('woodcutting.busyOther'));
-      return;
-    }
+    // Mining, Woodcutting or a production batch in the way: the question "Trocar de atividade?" first. (Another hunt session is not "another task": see below.)
+    if (askBeforeSwitch(s, { kind: 'hunt', zoneId, depth })) return;
     // While another session runs this only ENDS it and opens its reward (never a silent claim): the new zone is picked
     // after collecting.
     const next = requestHuntStart(s, zoneId, depth, Date.now());
@@ -1877,6 +1881,10 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     // Keep hunting: only when the whole reward was collected (nothing held) and the same zone and depth can start again; otherwise the claim stands and the hunt is simply over.
     const resumed = keepHunting && !held ? applyHuntStart(next, pending.zoneId, pending.depth, Date.now()) : null;
     commitSave(resumed ?? next);
+    // The hunt was ended for another task: it starts now, with the player's choice. Before the toasts below, so what the claim has to say (units left behind, pieces held) is what stays on screen.
+    const waiting = rewardClaimed(taskSwitchRef.current, pending.id);
+    setTaskSwitch(waiting.next);
+    if (waiting.start) startTask(waiting.start);
     if (held) showToast(t('hunting.uniquesHeldToast'));
     else if (keepHunting && !resumed) showToast(t('hunting.continueFailed'));
     else if (lostUnits > 0) showToast(t('hunting.leftBehindToast', { n: fmtNum(lostUnits) }));
@@ -2156,10 +2164,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
   const startBatch = (kind: CraftJobKind, recipeId: string, qty: number, seal?: boolean) => {
     const res = startCraftJob(saveRef.current, kind, recipeId, qty, Date.now(), { seal });
     if (!res.ok || !res.save) {
-      if (res.reason === 'busy' && res.busyWith) {
-        playSfx('click');
-        setBusyNotice(res.busyWith);
-      } else if (res.reason === 'bag' || res.reason === 'capacity') showToast(t(kind === 'forge' ? 'forge.gearFull' : 'inventory.bagFullAction', { n: inventoryCapacity(saveRef.current) }));
+      if (res.reason === 'busy' && res.busyWith) askBeforeSwitch(saveRef.current, { kind: 'craft', craft: kind, recipeId, qty, seal });
+      else if (res.reason === 'bag' || res.reason === 'capacity') showToast(t(kind === 'forge' ? 'forge.gearFull' : 'inventory.bagFullAction', { n: inventoryCapacity(saveRef.current) }));
       return;
     }
     playSfx('click');
@@ -2217,7 +2223,8 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     return () => window.clearInterval(id);
   }, []);
 
-  const cancelCraft = () => {
+  // `then`: what to do once the job is gone (the task the player swapped it for).
+  const cancelCraft = (then?: () => void) => {
     const done = () => {
       const { save: next, refundedUnits } = cancelCraftJob(saveRef.current);
       setSaveBoth(next);
@@ -2226,12 +2233,16 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
       showToast(t('craft.cancelled', { n: refundedUnits }));
     };
     const job = saveRef.current.craftJob;
-    if (!job) return;
+    if (!job) {
+      then?.();
+      return;
+    }
     if (job.kind === 'forge') {
       // pieces that were finished in time are delivered first (they stay); then the rest is refunded
       void withItemLock(async () => {
         await settleForgeDue();
         if (saveRef.current.craftJob) done();
+        then?.();
       });
       return;
     }
@@ -2239,19 +2250,31 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     const resolved = resolveCraftJob(saveRef.current, Date.now());
     if (resolved !== saveRef.current) setSaveBoth(resolved);
     if (resolved.craftJob) done();
+    then?.();
   };
 
-  // Stops what the hero is doing so another task can start (BusyNotice): each activity's own stop / claim.
-  const stopActivity = (activity: HeroActivity) => {
-    setBusyNotice(null);
-    if (activity === 'craft') cancelCraft();
-    else if (activity === 'mining') claimMining();
-    else if (activity === 'woodcutting') claimWoodcutting();
-    else {
+  // "Parar e começar" of the question (BusyNotice): each activity's own stop / claim (nothing is paid twice or lost), then the task the player asked for starts with his choice. Mining and Woodcutting
+  // hand over what they gathered, a production batch refunds what it had not made, and the Hunt leaves its reward screen: the new task waits for that claim (and is forgotten if the player sets the reward aside).
+  const switchActivity = () => {
+    const accepted = acceptSwitch(taskSwitchRef.current);
+    setTaskSwitch(NO_SWITCH);
+    if (!accepted) return;
+    const { stop, task } = accepted;
+    if (stop === 'hunt') {
       stopHunt(true);
-      setHuntOpen(true); // the reward the stop leaves is claimed on the hunt screen
+      const reward = saveRef.current.pendingHuntReward;
+      if (!reward) return;
       setRewardHidden(false);
+      setTaskSwitch(waitForReward(task, reward.id));
+      return;
     }
+    if (stop === 'craft') {
+      cancelCraft(() => startTaskRef.current(task));
+      return;
+    }
+    if (stop === 'mining') claimMining();
+    else claimWoodcutting();
+    startTask(task);
   };
 
   const forgeItem = (id: string, _consumedIds?: string[], useSeal?: boolean, qty = 1) => startBatch('forge', id, qty, useSeal);
@@ -2975,7 +2998,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
         />
       )}
 
-      {busyNotice && <BusyNotice activity={busyNotice} onStop={() => stopActivity(busyNotice)} onKeep={() => setBusyNotice(null)} />}
+      {taskSwitch.asking && <BusyNotice activity={taskSwitch.asking.activity} next={taskSwitch.asking.task} onStop={switchActivity} onKeep={() => setTaskSwitch(keepActivity())} />}
       {toast && <div className="toast">{toast}</div>}
 
       {levelUp && (

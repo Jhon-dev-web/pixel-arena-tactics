@@ -54,7 +54,8 @@ export function depthsOpen(zone: HuntingZoneDef, gear: number): number {
   return HUNTING_DEPTHS.filter((d) => isDepthUnlocked(zone, d.id, gear)).length;
 }
 
-// Why "Start Hunt" is not available for this zone + depth right now (a locale key + vars), or null when it is.
+// Why "Start Hunt" is not available for this zone + depth right now (a locale key + vars), or null when it is. The hero being in another task is NOT a reason: tapping Start then asks
+// "Trocar de atividade?" (App.tsx askBeforeSwitch), the same on every screen that starts a task.
 export function startBlockedReason(save: SaveData, zone: HuntingZoneDef, depth: HuntingDepth, gear: number): { key: string; vars?: Record<string, number> } | null {
   if (!isZoneOpen(zone, save.highestDungeonFloor, playerLevel(save.xp))) return zoneLockedText(zone);
   if (!isDepthUnlocked(zone, depth, gear)) {
@@ -62,7 +63,6 @@ export function startBlockedReason(save: SaveData, zone: HuntingZoneDef, depth: 
     return { key: 'hunting.startNeedGear', vars: { tier: set.tier, refine: set.refine } };
   }
   if (save.pendingHuntReward) return { key: 'hunting.startClaimFirst' };
-  if (save.activeOreId || save.activeWoodId) return { key: 'hunting.startBusy' };
   return null;
 }
 

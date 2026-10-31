@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gatherBusyWith, gatherSessionView } from '../gatherView';
+import { gatherSessionView } from '../gatherView';
 
 const H = 3600 * 1000;
 
@@ -26,20 +26,5 @@ describe('gatherSessionView', () => {
 
   it('a zero cap is never "full"', () => {
     expect(gatherSessionView({ capMs: 0, pendingMs: 0, full: true }, H).state).toBe('running');
-  });
-});
-
-describe('gatherBusyWith', () => {
-  const idle = { activeHuntingZone: null, activeOreId: null, activeWoodId: null, craftJob: null };
-  it('is null when nothing else keeps the hero busy', () => {
-    expect(gatherBusyWith(idle, 'mining')).toBeNull();
-  });
-  it('names the other activity', () => {
-    expect(gatherBusyWith({ ...idle, activeWoodId: 'common_wood' }, 'mining')).toBe('woodcutting');
-    expect(gatherBusyWith({ ...idle, activeOreId: 'copper' }, 'woodcutting')).toBe('mining');
-    expect(gatherBusyWith({ ...idle, activeHuntingZone: 'demon_glade' }, 'mining')).toBe('hunt');
-  });
-  it("the screen's own session is not 'another' activity", () => {
-    expect(gatherBusyWith({ ...idle, activeOreId: 'copper' }, 'mining')).toBeNull();
   });
 });

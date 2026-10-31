@@ -13,7 +13,7 @@ import T from '../game/tunables';
 import { WOOD_TIERS } from '../game/woodcutting';
 import SkillLevelBadge from './SkillLevelBadge';
 import UnlockList from './UnlockList';
-import { gatherBusyWith, gatherSessionView } from '../game/gatherView';
+import { gatherSessionView } from '../game/gatherView';
 import { Button, Chip, ItemCard, ModalShell, Panel, ScreenLayout } from './ui';
 import type { CardRarity } from './ui';
 import { Meter } from './HuntParts';
@@ -94,11 +94,6 @@ export default function GatheringModal({
   // A running session keeps the Pass it started with (cap and yield); the Pass bought mid-session only applies from the next one.
   const passActive = activeId ? status.passCoversSession : passNow;
   const progress = status.capMs <= 0 ? 0 : Math.max(0, Math.min(1, status.pendingMs / status.capMs));
-  const hunting = !!save.activeHuntingZone;
-  const otherBusy = mining ? !!save.activeWoodId : !!save.activeOreId;
-  const busyWith = gatherBusyWith(save, kind);
-  const blocked = hunting || otherBusy || busyWith !== null;
-  const blockedMsg = hunting ? t('hunting.busyOther') : otherBusy ? t(mining ? 'woodcutting.busyOther' : 'mining.busyOther') : t('gathering.busyBody');
   const sessionView = gatherSessionView(status, Math.max(0, now - startedAt));
   // what the inventory would have no room for if the session were collected now (gathering leaves the excess behind)
   const leftNow = activeId ? (addWithOverflow(save, { materials: { [activeId]: units } }).leftover.materials[activeId as MaterialId] ?? 0) : 0;
@@ -152,12 +147,6 @@ export default function GatheringModal({
     <>
       {/* no title of its own: the modal already says "Mineração" / "Lenhador" in its header */}
       <Panel>
-        {busyWith && (
-          <div className="ui-alert bad pf-busy" role="status" data-testid="gather-busy">
-            <strong>{t('gathering.busyTitle', { activity: t(`busy.${busyWith}`) })}</strong>
-            <span>{t('gathering.busyBody')}</span>
-          </div>
-        )}
         <div className="ui-grid pf-tiers">
           {tiers.map((tier, ti) => {
             const unlocked0 = level >= tier.requiredLevel;
@@ -177,17 +166,13 @@ export default function GatheringModal({
                 selected={isActive}
                 action={
                   unlocked && !isActive ? (
-                    <Button block onClick={() => onStart(tier.id)} disabled={blocked} title={blocked ? blockedMsg : undefined}>
+                    <Button block onClick={() => onStart(tier.id)}>
                       {activeId ? t('gathering.switch') : t(`${ns}.available`)}
                     </Button>
                   ) : undefined
                 }
               >
-                {unlocked ? (
-                  !isActive && blocked && !busyWith && <p className="ui-note">{blockedMsg}</p>
-                ) : (
-                  <p className="ui-note">{t('gathering.nextUnlockLine', { n: tier.requiredLevel, left: t('gathering.levelsToGo', { n: tier.requiredLevel - level }) })}</p>
-                )}
+                {!unlocked && <p className="ui-note">{t('gathering.nextUnlockLine', { n: tier.requiredLevel, left: t('gathering.levelsToGo', { n: tier.requiredLevel - level }) })}</p>}
               </ItemCard>
             );
           })}
