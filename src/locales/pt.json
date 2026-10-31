@@ -2140,6 +2140,8 @@
     "a_played_100h_d": "Jogue por 100 horas",
     "statsTab": "Estatísticas",
     "communityTab": "Comunidade",
+    "readyTitle": "Prontas para resgatar",
+
     "summary": "{n} de {m} conquistas resgatadas",
     "titleToast": "Título desbloqueado: {name}",
     "cat_combat": "Combate",

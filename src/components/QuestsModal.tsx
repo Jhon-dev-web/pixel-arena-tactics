@@ -16,6 +16,7 @@ import { getHuntingZone } from '../game/huntingZones';
 import { paragonLevel } from '../game/paragon';
 import { achievementSummary, ACHIEVEMENT_CATEGORIES, QUESTS_DAILY, QUESTS_ACHIEVEMENTS, QuestDef, isClaimed, isComplete, questProgress } from '../game/quests';
 import CommunityTasks from './CommunityTasks';
+import { byClaimOrder } from './questOrder';
 import { Button, Chip, Meter, ModalShell, Panel, StatList, StatRow, Tabs } from './ui';
 import type { TabItem } from './ui';
 
@@ -101,7 +102,11 @@ export default function QuestsModal({
   const band = weeklyBand(level);
   const streak = streakStatus(save.quests.streak, now, ownsPass, level);
   const dailyReady = QUESTS_DAILY.some((q) => isComplete(q, save.quests, ctx) && !isClaimed(q, save.quests));
-  const achievementReady = QUESTS_ACHIEVEMENTS.some((q) => isComplete(q, save.quests, ctx) && !isClaimed(q, save.quests));
+  const questReady = (q: QuestDef) => isComplete(q, save.quests, ctx) && !isClaimed(q, save.quests);
+  const questClaimed = (q: QuestDef) => isClaimed(q, save.quests);
+  // A finished achievement could sit in the last category, screens below: what can be claimed gets its own block on top, and leaves its category until it is claimed.
+  const achievementsReady = QUESTS_ACHIEVEMENTS.filter(questReady);
+  const achievementReady = achievementsReady.length > 0;
 
   const tabs: TabItem<Tab>[] = [
     { id: 'daily', label: t('quests.dailyTab'), dot: !streak.claimedToday || dailyReady },
@@ -276,7 +281,7 @@ export default function QuestsModal({
         {tab === 'daily' && (
           <>
             {streakPanel()}
-            <div className="qs-grid">{QUESTS_DAILY.map(card)}</div>
+            <div className="qs-grid">{byClaimOrder(QUESTS_DAILY, questReady, questClaimed).map(card)}</div>
           </>
         )}
         {tab === 'weekly' && (
@@ -286,7 +291,7 @@ export default function QuestsModal({
               <Chip tone="info">{t('quests.weeklyResets', { time: formatLeft(weekly.resetsAt - now) })}</Chip>
             </Panel>
             <div className="qs-grid">
-              {weekly.goals.map(weeklyCard)}
+              {byClaimOrder(weekly.goals, (g) => g.complete && !g.claimed, (g) => g.claimed).map(weeklyCard)}
               <article className={`ui-item qs-card bonus${weekly.bonusClaimed ? ' claimed' : ''}`} data-weekly-id="bonus">
                 <div className="qs-card-head">
                   <h4 className="ui-item-name">{t('quests.weeklyBonus')}</h4>
@@ -304,8 +309,13 @@ export default function QuestsModal({
               <span>{t('quests.summary', { n: summary.done, m: summary.total })}</span>
               <Meter pct={summary.total > 0 ? (summary.done / summary.total) * 100 : 0} thin label={t('quests.summary', { n: summary.done, m: summary.total })} />
             </Panel>
+            {achievementReady && (
+              <Panel title={t('quests.readyTitle')} className="qs-ready">
+                <div className="qs-grid">{achievementsReady.map(card)}</div>
+              </Panel>
+            )}
             {ACHIEVEMENT_CATEGORIES.map((cat) => {
-              const list = QUESTS_ACHIEVEMENTS.filter((q) => q.category === cat);
+              const list = byClaimOrder(QUESTS_ACHIEVEMENTS.filter((q) => q.category === cat && !questReady(q)), questReady, questClaimed);
               if (list.length === 0) return null;
               return (
                 <Panel key={cat} title={t(`quests.cat_${cat}`)}>

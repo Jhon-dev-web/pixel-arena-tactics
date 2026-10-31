@@ -2140,6 +2140,8 @@
     "a_played_100h_d": "Play for 100 hours",
     "statsTab": "Statistics",
     "communityTab": "Community",
+    "readyTitle": "Ready to claim",
+
     "summary": "{n} of {m} achievements claimed",
     "titleToast": "Title unlocked: {name}",
     "cat_combat": "Combat",
