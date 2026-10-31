@@ -26,6 +26,6 @@ Medido em 31/10/2026 com a Caça real (`scripts/tools/huntMatters.tool.ts`): her
 - **Zona nova no raso paga menos XP que a anterior no fundo.** Guerreiro raro tier 4: 15 mil no fundo do Abismo, 7 mil no raso do Trono.
 - **Queda brusca:** de 99% de vitórias para 0% em três lugares.
 - **Agilidade é o pior atributo:** tudo em agilidade não vence nenhuma luta no lugar de referência, e +21 pontos dão de 0% a +3%, ou até perdem. Força dá de +4% a +9%.
-- **Táticas:** as 4 habilidades cabem nas 4 vagas, então a única escolha é a ordem, e ela quase não muda nada porque todas saem assim que recarregam. Se fossem 3 vagas, deixar uma de fora seria escolha de verdade: guerreiro vai de 64 a 72 vitórias por hora conforme a que fica de fora. Mudar pede nova rodada de equilíbrio. A decisão é do dono.
+- **Táticas:** as 4 habilidades cabem nas 4 vagas, então a única escolha era a ordem, e ela quase não mudava nada porque todas saem assim que recarregam. Se fossem 3 vagas, deixar uma de fora seria escolha de verdade: guerreiro vai de 64 a 72 vitórias por hora conforme a que fica de fora. Decidido em 31/10: sem vagas, todas automáticas (ver [[Decisões do dono]]).
 
 Ver [[Classes e equipamento]] e [[Caça e masmorra]].

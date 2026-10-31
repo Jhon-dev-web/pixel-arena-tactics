@@ -1336,42 +1336,119 @@
   },
   "tactics": {
     "title": "Tactics",
-    "rule": "The hero uses the first ability that is ready, from top to bottom. If none is ready, he throws the basic attack.",
-    "rotation": "Rotation",
-    "filled": "{n} of {m}",
-    "slot": "Slot {n}",
-    "empty": "Empty. Pick an ability below.",
-    "emptyAll": "The rotation is empty: the hero only throws the basic attack.",
     "noGear": "Starting gear grants no abilities. Equip a tier 1 or higher weapon or chestpiece and its techniques appear here.",
-    "up": "Up",
-    "down": "Down",
-    "remove": "Remove",
-    "add": "Add",
-    "inRotation": "In rotation: #{n}",
-    "full": "Rotation full",
-    "granted": "What your gear gives",
     "fromWeapon": "Weapon: {name}",
     "fromBody": "Chestpiece: {name}",
     "cooldown": "Cooldown {s}s",
-    "pickHint": "Tap an ability to see what it does.",
-    "emptySlot": "Slot {n}, empty",
-    "emptyHint": "Slot {n} is empty. Tap an ability and use Add to rotation.",
-    "addRotation": "Add to rotation",
-    "position": "Position {n} of {m}",
-    "slotAria": "Slot {n}: {name}",
-    "grantedAria": "{name}, cooldown {s}s",
-    "apply": "Apply",
-    "applyPending": "Apply changes",
-    "undo": "Undo",
-    "auto": "Automatic: follows your gear.",
-    "default": "Automatic",
-    "pending": "Changes not applied yet",
-    "saved": "Everything applied",
-    "toastApplied": "Rotation applied",
-    "dropped": "An ability left the rotation because the gear that gave it is no longer worn.",
-    "droppedFilled": "The places your gear change emptied were filled with what you wear now.",
-    "howTo": "How it works",
-    "when": "Takes effect from the next fight. A Hunt in progress keeps the rotation it started with.",
+    "basic": {
+      "title": "Basic attack",
+      "hit": "{n} damage per hit",
+      "every": "every {s} s"
+    },
+    "auto": {
+      "title": "Automatic abilities",
+      "rule": "They fire by themselves as soon as they recharge. The one with the longer cooldown fires less often."
+    },
+    "passives": {
+      "title": "Passives",
+      "intro": "They stay on all the time and work by themselves when their condition happens. The numbers are your hero's right now.",
+      "none": "Your hero has no passives yet. They come from gear (burn, reflect, life steal, regeneration) and from skill points.",
+      "when": "When",
+      "from": "From"
+    },
+    "src": {
+      "weapon": "Weapon",
+      "armor": "Chestpiece",
+      "helmet": "Helmet",
+      "gloves": "Gloves",
+      "boots": "Boots",
+      "ring": "Ring",
+      "shield": "Shield",
+      "relic": "Relic",
+      "affix": "Piece bonuses",
+      "set": "Set",
+      "skill": "Skill {name}"
+    },
+    "passive": {
+      "burn": {
+        "name": "Burn",
+        "when": "you land a hit",
+        "what": "The monster burns: {pct}% of the hit (about {dmg} damage) every {tick} s, for {s} s. It does not stack: a new hit only renews the time.",
+        "rate": "No cooldown: renews on each hit of yours."
+      },
+      "reflect": {
+        "name": "Reflect",
+        "when": "the monster hits you and you are still standing",
+        "what": "It takes back {pct}% of the damage you took.",
+        "rate": "No cooldown: on every hit taken. A blocked hit does not reflect."
+      },
+      "lifesteal": {
+        "name": "Life steal",
+        "when": "you land a hit",
+        "what": "You recover {pct}% of the damage of the hit. Burn, bleed, fury and reflect do not heal.",
+        "rate": "No cooldown: on every hit of yours."
+      },
+      "regen": {
+        "name": "Regeneration",
+        "when": "you are fighting",
+        "what": "You recover {hp} HP ({pct}% of max HP) every {tick} s.",
+        "rate": "Cooldown {tick} s, during the fight only."
+      },
+      "bleed": {
+        "name": "Bleed",
+        "when": "you land a hit",
+        "what": "The monster bleeds: {pct}% of the hit (about {dmg} damage) every {tick} s, up to {s} s after the last hit. Adds to the weapon's burn.",
+        "rate": "No cooldown: renews on each hit of yours."
+      },
+      "crush": {
+        "name": "Crushing Blow",
+        "when": "every {every} hits of yours",
+        "what": "That hit deals +{pct}% damage.",
+        "rate": "No cooldown: it counts your hits, not time."
+      },
+      "devastating": {
+        "name": "Devastating Strike",
+        "when": "every {hits} hits of yours (one in every {k} Crushing Blows)",
+        "what": "That hit deals {mult} times the damage, instead of the Crushing Blow bonus.",
+        "rate": "No cooldown: it counts your hits, not time."
+      },
+      "fury": {
+        "name": "Fury Strike",
+        "when": "every {s} s of fighting",
+        "what": "{hits} extra hits in a row, each with {pct}% of the hit's damage.",
+        "rate": "Cooldown {s} s of fighting."
+      },
+      "double": {
+        "name": "Double Strike",
+        "when": "you land a hit",
+        "what": "{pct}% chance of an extra hit, with {e}% of the hit's damage.",
+        "rate": "No cooldown: one roll on each hit of yours."
+      },
+      "block": {
+        "name": "Block",
+        "when": "the monster hits you",
+        "what": "{pct}% chance to block the hit completely: you take no damage.",
+        "rate": "No cooldown: one roll on each hit taken."
+      },
+      "counter": {
+        "name": "Counterattack",
+        "when": "you block a hit",
+        "what": "Your next hit deals +{pct}% damage.",
+        "rate": "No cooldown: it applies to the next hit after each block."
+      },
+      "bossStance": {
+        "name": "Firm Stance",
+        "when": "you face a boss: Dungeon boss and mini-boss floors, Hunting promotion and Target fights",
+        "what": "You take {pct}% less damage.",
+        "rate": "No cooldown: it holds for the whole fight."
+      },
+      "bastion": {
+        "name": "Last Bastion",
+        "when": "a hit would be fatal",
+        "what": "Instead of falling, you are left with {hp} HP and recover {heal}% of max HP.",
+        "rate": "Dungeon: once per run. Hunting: cooldown of {s} s of fighting."
+      }
+    },
     "line": { "sword": "Sword", "axe": "Axe", "bow": "Bow", "crossbow": "Crossbow", "staff": "Staff", "scepter": "Scepter" },
     "body": { "plate": "Plate", "leather": "Leather", "cloth": "Cloth" },
     "effect": {

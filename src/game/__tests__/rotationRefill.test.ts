@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { automaticRotation, hero } from '../../../scripts/sim/duel';
-import { applyRotation, buildCombatStats, computeCP, effectiveRotation, equippedAbilities, normalizeSave, SaveData } from '../engine';
+import { buildCombatStats, computeCP, effectiveRotation, equippedAbilities, normalizeSave, SaveData } from '../engine';
 import { ABILITY_IDS, AbilityId, defaultRotation, fillRotation } from '../abilities';
 import { GEAR } from '../gear';
 import { createGearInstance } from '../gearInstances';
 import T from '../tunables';
 
-// The hole this closes: a hero who CHOSE a rotation changes weapon, the abilities of the old weapon leave his list and the places stay empty. He keeps fighting with fewer abilities than the gear gives him, and
-// nothing on the screen says so (an idle player rarely opens Taticas). The rotation in force (effectiveRotation) now refills those places from the worn gear. Nothing here shows up on a green screen: the hero
-// simply fights with less, so each rule below is a guard.
-// Three states stay what they were: ABSENT = automatic (the default of the worn gear), [] = cleared on purpose (stays empty), a short list the player picked on gear that still grants all of it (stays short).
+// How the engine reads a rotation LIST. Since 2026-10-31 no real hero has one (the Taticas screen offers no choice and normalizeSave drops the field on load: tacticsAutomatic.test.ts), but the measuring tools and
+// the guards still build heroes with an empty or a partial list, so the engine keeps this reading, and these rules keep it honest. Before, a hero who chose a rotation and changed weapon kept fighting with fewer
+// abilities than his gear gave him; the rotation in force (effectiveRotation) refills those places from the worn gear. Nothing here shows up on a green screen: the hero simply fights with less, so each rule is a guard.
+// Three states: ABSENT = automatic (the default of the worn gear), [] = no ability (the gear-only heroes of the audits), a short list on gear that still grants all of it (stays short).
 
 const wire = (s: unknown) => JSON.parse(JSON.stringify(s)) as Record<string, unknown>;
 const slots = () => T.abilities.rotationSlots;
@@ -60,11 +60,10 @@ describe('a weapon change refills the places it emptied', () => {
     expect(fillRotation(['arrow_rain', 'firm_strike'], [])).toEqual([]);
   });
 
-  it('the stored choice is never rewritten: putting the old weapon back gives him his own rotation untouched', () => {
+  it('the stored list is never rewritten: putting the old weapon back gives the same list untouched', () => {
     const chosen = choose(sword, ['breach', 'iron_stance', 'firm_strike']);
     const bow = wear(chosen, 'weapon', SHORT_BOW);
     expect(bow.rotation).toEqual(['breach', 'iron_stance', 'firm_strike']);
-    expect(applyRotation(bow, null).rotation).toBeUndefined();
     const back = { ...bow, equipped: chosen.equipped };
     expect(effectiveRotation(back)).toEqual(['breach', 'iron_stance', 'firm_strike']);
   });
@@ -93,28 +92,18 @@ describe('what the refill must NOT touch', () => {
       expect(effectiveRotation(choose(sword, picked))).toEqual(picked);
       expect(buildCombatStats(choose(sword, picked)).rotation).toEqual(picked);
     }
-    // what the Taticas screen stores is exactly the choice, so applying a short list is a choice that stays
-    expect(effectiveRotation(applyRotation(sword, ['firm_strike']))).toEqual(['firm_strike']);
-    // and once the screen has stored the refilled list, it is his choice: it holds as it is
+    // a list that already is the refilled one holds as it is
     const bow = wear(choose(sword, ['breach', 'iron_stance', 'firm_strike']), 'weapon', SHORT_BOW);
-    const applied = applyRotation(bow, effectiveRotation(bow));
-    expect(applied.rotation).toEqual(effectiveRotation(bow));
-    expect(effectiveRotation(applied)).toEqual(effectiveRotation(bow));
+    const refilled = choose(bow, effectiveRotation(bow));
+    expect(effectiveRotation(refilled)).toEqual(effectiveRotation(bow));
   });
 
-  it('an old save loads exactly as before: the refill is on READ only, loading writes nothing and keeps the stored list', () => {
-    const chosen = choose(sword, ['breach', 'iron_stance', 'firm_strike']);
-    const bow = wear(chosen, 'weapon', SHORT_BOW);
+  it('an old save with a list of its own loads automatic: the field is dropped (tacticsAutomatic.test.ts proves it on the real loading path)', () => {
+    const bow = wear(choose(sword, ['breach', 'iron_stance', 'firm_strike']), 'weapon', SHORT_BOW);
     const loaded = normalizeSave(wire(bow));
-    expect(loaded.rotation).toEqual(['breach', 'iron_stance', 'firm_strike']); // not the refilled one
-    expect(effectiveRotation(loaded)).toEqual(effectiveRotation(bow));
+    expect('rotation' in loaded).toBe(false);
+    expect(effectiveRotation(loaded)).toEqual(defaultRotation(equippedAbilities(bow)));
     expect(normalizeSave(wire(loaded))).toEqual(loaded);
-    // an old save whose rotation still matches the gear loads with the very same rotation in force
-    const same = normalizeSave(wire(choose(sword, ['firm_strike', 'iron_stance'])));
-    expect(same.rotation).toEqual(['firm_strike', 'iron_stance']);
-    expect(effectiveRotation(same)).toEqual(['firm_strike', 'iron_stance']);
-    // and junk in the stored list is still dropped by loading (known ids, no repeats), as before
-    expect(normalizeSave(wire(choose(sword, ['firm_strike', 'bogus', 'firm_strike'] as AbilityId[]))).rotation).toEqual(['firm_strike']);
   });
 });
 

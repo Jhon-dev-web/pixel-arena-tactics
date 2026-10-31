@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { applyDungeonRun, runDungeon, withSeededRandom } from '../../../scripts/sim/driver';
-import { gearOnly, hero } from '../../../scripts/sim/duel';
+import { automaticRotation, gearOnly, hero } from '../../../scripts/sim/duel';
 import { wearFullSet } from '../../../scripts/sim/ladder';
 import { BUFF_ITEM, TIMED_BUFF_KINDS, activeTonicStats, buffMinutes, goldMultiplier, hasteIntervalMs, temporaryEffects, BuffKind } from '../buffs';
 import { applyElixir, ElixirId } from '../elixirs';
@@ -447,7 +447,8 @@ describe('the freeze of a Hunting session never loses an effect', () => {
 
 describe('the frozen-session notice of the running hunt', () => {
   it('does not fire after a reload (the rebuilt stats are the same numbers in another key order) and does when gear or attributes changed', () => {
-    const s0 = { ...wearFullSet(hero('3', 3, { level: 40 }), 3, 3, ['ring', 'boots']), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) }; // two pieces more, but fewer than the three of one weight that switch the class affinity on
+    // the hero a real player is (automatic: a loaded save never carries a rotation of its own), so the session and the reloaded save agree on the abilities
+    const s0 = { ...wearFullSet(automaticRotation(hero('3', 3, { level: 40 })), 3, 3, ['ring', 'boots']), highestDungeonFloor: 60, unlockedHuntingZones: unlockedZoneIds(60) }; // two pieces more, but fewer than the three of one weight that switch the class affinity on
     const s = applyHuntStart(s0, 'blood_marsh', 'dense', NOW)!;
     expect(sessionStatsDiffer(s.huntSession!.stats, buildCombatStats(s))).toBe(false);
     const back = normalizeSave(JSON.parse(JSON.stringify(s)));

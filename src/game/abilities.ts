@@ -7,9 +7,10 @@ import type { SkillFxId } from './skillFx';
 //
 // Equipment abilities and the rotation (classes reform, phase 4; the design is docs/CLASSES_E_EQUIPAMENTOS.md 2.2).
 //
-// A weapon line gives abilities, so does the chestpiece's weight. The hero lines up to T.abilities.rotationSlots of the ones his WORN gear grants (the save's `rotation`), in order of
-// priority, and the combat is automatic: every time the hero would swing, the loop goes down the rotation and fires the FIRST ability that is off cooldown in place of the basic attack; when
-// none is ready, the basic attack. An ability swing is never worse than the basic swing it replaces (the strike and the volley hit harder, the others hit as a normal swing and add their effect).
+// A weapon line gives abilities, so does the chestpiece's weight. The hero ALWAYS uses every one of the ones his WORN gear grants (the player does not choose: the gear grants at most T.abilities.rotationSlots,
+// so they all fit; the Taticas screen only shows them), in definition order, and the combat is automatic: every time the hero would swing, the loop goes down the rotation and fires the FIRST ability that is off
+// cooldown in place of the basic attack; when none is ready, the basic attack. An ability swing is never worse than the basic swing it replaces (the strike and the volley hit harder, the others hit as a normal
+// swing and add their effect). The loops still take a rotation LIST (the measuring tools and the guards build heroes with an empty or a partial one), the game only ever hands them the automatic one.
 //
 // Both Hunting and the Dungeon fight ONE enemy at a time, so "area" cannot mean "several at once": the `carry` effect is damage that spills over into the NEXT enemy of the same run (see carry below).
 //
@@ -184,15 +185,14 @@ export function grantedAbilities(weaponLine: WeaponLine | undefined | null, armo
   });
 }
 
-// The rotation a hero gets when he has not chosen one: everything his gear grants, in definition order, up to the slots. The save does NOT store it (an old save without `rotation` has an EMPTY one,
-// so nothing changes for it); the screen of phase 5 uses it for its "default" button.
-// DECIDED (owner/director, phase 4) AND APPLIED IN PHASE 5 (2026-10-28): a LOADED save WITHOUT a rotation gets defaultRotation() (engine.ts normalizeSave / loadedRotation), not an empty one. In an idle game most players never
-// open the screen, and they must not keep their gear switched off while the ones who open it get an edge. A stored EMPTY list is a player who cleared his rotation on purpose and stays empty. The identity with the
-// pre-engine golden file now holds for a hero with an EMPTY rotation (abilitiesIdentity.test.ts); the fill itself is proved in defaultRotation.test.ts.
+// The rotation of every real hero: everything his gear grants, in definition order, up to the slots. The save does NOT store it (engine.ts normalizeSave drops the field on load and nothing writes it), it is
+// derived from the worn gear on every read (effectiveRotation), so a weapon change changes the abilities at once.
+// DECIDED (owner/director, 2026-10-31): the Taticas screen has no choice any more. Measured: the weapon grants 3 abilities and the chestpiece 1, the slots are 4, so every one of them already fit and the order
+// moved at most 5 % of the wins per hour in Hunting. The identity with the pre-engine golden file holds for a hero with an EMPTY rotation (abilitiesIdentity.test.ts), which only the measuring tools build.
 export const defaultRotation = (granted: readonly AbilityId[]): AbilityId[] => granted.slice(0, T.abilities.rotationSlots);
 
 // Sanitizes a rotation like sanitizeSkillTree does a skill allocation: only known ids, only the ones `granted` allows (omit it to skip that check, e.g. for a session that froze its rotation),
-// no repeats, at most the slots, order kept. Anything that is not a list is the empty rotation.
+// no repeats, at most the slots, order kept. Anything that is not a list is the empty rotation. (huntSession.ts reads a frozen session's rotation through it.)
 export function sanitizeRotation(raw: unknown, granted?: readonly AbilityId[]): AbilityId[] {
   if (!Array.isArray(raw)) return [];
   const out: AbilityId[] = [];
@@ -204,12 +204,12 @@ export function sanitizeRotation(raw: unknown, granted?: readonly AbilityId[]): 
   return out;
 }
 
-// The rotation of a save that HAS one, read against the gear worn now (engine.ts effectiveRotation is the only caller). The stored list is the player's choice and is never rewritten by this:
-//  - nothing in it was dropped by a gear change (every id is still granted, or the list is [] = cleared on purpose): his choice stands exactly, short of the slots or not;
+// The rotation of a hero that HAS a list (only the measuring tools and the guards build one; a real hero is automatic), read against the gear worn now (engine.ts effectiveRotation is the only caller). The list is never rewritten by this:
+//  - nothing in it was dropped by a gear change (every id is still granted, or the list is []): the list stands exactly, short of the slots or not;
 //  - something was dropped (the weapon or chestpiece that gave it is gone): each dropped id is replaced IN ITS PLACE by the next ability the worn gear grants that is not already in the rotation (definition
-//    order, the same as defaultRotation), then any slot still free at the end is filled the same way. The ids he kept never move, so his order survives; if the gear has fewer abilities than the holes, the
+//    order, the same as defaultRotation), then any slot still free at the end is filled the same way. The ids kept never move, so the order survives; if the gear has fewer abilities than the holes, the
 //    holes close up. The result is never longer than the slots, has no repeats and holds only granted ids.
-// Because the stored list keeps the dropped ids, putting the old weapon back gives him back his own rotation untouched.
+// Because the stored list keeps the dropped ids, putting the old weapon back gives the same list back untouched.
 export function fillRotation(raw: unknown, granted: readonly AbilityId[]): AbilityId[] {
   const stored = sanitizeRotation(raw);
   const kept = stored.filter((id) => granted.includes(id));

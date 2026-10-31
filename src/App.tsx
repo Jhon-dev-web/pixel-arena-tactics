@@ -8,7 +8,6 @@ import {
   computeMiningStatus,
   computeWoodcuttingStatus,
   defaultSave,
-  applyRotation,
   effectiveRepairCost,
   playerLevel,
   ContextualTutorialId,
@@ -65,7 +64,6 @@ import type { CraftJobKind } from './game/craftJobTypes';
 import { acceptSwitch, askSwitch, busyBlocker, keepActivity, NO_SWITCH, rewardClaimed, rewardSetAside, TaskRequest, TaskSwitchState, waitForReward } from './game/activity';
 import BusyNotice from './components/BusyNotice';
 import { DURABILITY_LOSS_PER_STAGE, GEAR, getGear, isInstancedSlot } from './game/gear';
-import type { AbilityId } from './game/abilities';
 import { SkillRanks, applyLoadoutSwitch, applyRespec, applySkillAllocation, saveSkillEffects, skillPointsAvailable } from './game/heroSkills';
 import { applyReforge } from './game/reforge';
 import { applyLapidar } from './game/lapidar';
@@ -2359,13 +2357,6 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
     setSaveBoth(r.save);
     showToast(t('heroSkills.ui.toastApplied'));
   };
-  // Tactics (abilities.ts): the rotation draft lives in the screen; this commits it.
-  const applyTactics = (draft: AbilityId[] | null) => {
-    const s = saveRef.current;
-    playSfx('click');
-    setSaveBoth(applyRotation(s, draft));
-    showToast(t('tactics.toastApplied'));
-  };
   const respecSkills = () => {
     const s = saveRef.current;
     const r = applyRespec(s, playerLevel(s.xp), battleFloor !== null);
@@ -2709,7 +2700,7 @@ function App({ repository, initialSave, initialRevision }: AppProps) {
               onOpenSkills={() => { playSfx('click'); setActiveView('skills'); }}
             />
           )}
-          {activeView === 'tactics' && <TaticasView save={save} onApply={applyTactics} />}
+          {activeView === 'tactics' && <TaticasView save={save} />}
           {activeView === 'skills' && (
             <SkillsView save={save} battleActive={battleFloor !== null} onApply={applySkills} onRespec={respecSkills} onSwitchLoadout={switchLoadout} onOpenPass={() => { playSfx('click'); openPassView(); }} />
           )}

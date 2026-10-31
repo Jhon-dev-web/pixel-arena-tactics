@@ -1,19 +1,27 @@
-import { useEffect, useState } from 'react';
-import { t } from '../locales';
+import { useMemo } from 'react';
+import { activeLocale, t } from '../locales';
 import T from '../game/tunables';
-import { SaveData, effectiveRotation, equippedAbilities } from '../game/engine';
-import { AbilityEffect, AbilityId, abilityCdScale, abilityDef, defaultRotation } from '../game/abilities';
-import { playerLevel } from '../game/engine';
-import { Button, Chip, Dialog, ItemFrame, PageHeader, Panel, Screen } from './ui';
+import { SaveData, buildCombatStats, effectiveRotation, playerLevel } from '../game/engine';
+import { AbilityEffect, AbilityId, abilityCdScale, abilityDef } from '../game/abilities';
+import { resolveEquipped } from '../game/gearInstances';
+import { Chip, PageHeader, Panel, Screen } from './ui';
 import PixelIcon from './PixelIcon';
+import { PassiveFrom, PassiveLine, tacticsPassives } from './tacticsPassives';
 
-// "Taticas": the abilities that the WORN gear grants (abilities.ts) and the rotation. The rotation is a list of four rows (position, icon, name, source, cooldown, and up / down on the row itself: one tap per
-// move; taking one out stays in the detail card, there is no room for a third 44px button on a phone); what the gear grants is a grid of icons below it (images only, on purpose: the owner asked for it) (one group per SOURCE: the weapon,
-// the chestpiece, and any slot that starts granting later), and tapping an icon or a row opens its CARD (a small dialog: icon, name, source, cooldown, every effect, and the buttons to add it, take it out and move it up or down). Same pattern as the
-// Habilidades screen (SkillsView): moving things only changes a DRAFT held here, "Aplicar" commits it, "Desfazer" drops it. Every number in the text comes from the definition (abilityDef).
+// "Taticas": how the hero fights, with NOTHING to choose. Three blocks, in the order the fight uses them:
+//  1. the basic attack (the weapon worn, the damage of a hit and the real interval between hits, from buildCombatStats);
+//  2. the abilities the worn gear grants (abilities.ts), every one of them used by itself as soon as it recharges: icon, name, where it comes from, the cooldown the hero really gets and what it does;
+//  3. the passives (tacticsPassives.ts): what the gear and the skills do by themselves when something happens in the fight (a hit taken, a hit given, a tick of combat), each with when it works and its recharge,
+//     or what is true instead of a recharge. Only what THIS hero has. Plain numbers (damage, life, resistance) stay on the Personagem screen.
+// The rotation in force is derived from the gear (effectiveRotation): the gear grants no more abilities than there are slots, so all of them fit, and the player never orders them. Every number in the text comes from the
+// definition (abilityDef, the tunables) or from the hero's real combat stats; the locale files hold none.
 
-const seconds = (ms: number): number => Math.round((ms / 1000) * 10) / 10;
+// One decimal, with the comma of the language: "1,0" in Portuguese, "1.0" in English.
+const decimal = (n: number): string => (Math.round(n * 10) / 10).toFixed(1).replace('.', activeLocale === 'pt' ? ',' : '.');
+const seconds = (ms: number): string => decimal(ms / 1000);
 const pct = (share: number): number => Math.round(share * 100);
+// A number of a passive line as it is printed: whole numbers as they are, the rest with one decimal and the comma of the language.
+const printable = (params: Record<string, number>): Record<string, string> => Object.fromEntries(Object.entries(params).map(([k, v]) => [k, Number.isInteger(v) ? String(v) : decimal(v)]));
 
 // One effect in words (locale tactics.effect.<kind>).
 function effectText(e: AbilityEffect): string {
@@ -37,299 +45,127 @@ function effectText(e: AbilityEffect): string {
   }
 }
 
-export interface TaticasViewProps {
-  save: SaveData;
-  // a list = the player's choice ([] = cleared on purpose); null = back to automatic (follows the worn gear)
-  onApply: (draft: AbilityId[] | null) => void;
+// "Arma: Espada" / "Peitoral: Placa": where an ability comes from.
+function origin(id: AbilityId): string {
+  const s = abilityDef(id)!.source;
+  return 'line' in s ? t('tactics.fromWeapon', { name: t(`tactics.line.${s.line}`) }) : t('tactics.fromBody', { name: t(`tactics.body.${s.weight}`) });
 }
 
-export default function TaticasView({ save, onApply }: TaticasViewProps) {
-  const slots = T.abilities.rotationSlots;
-  // The cooldown the player actually gets. Every cooldown is multiplied by abilityCdScale(level) in combat
-  // (abilities.ts, engine.ts), so showing the raw tunable told a level 40 hero "4.5s" for a 5.3s ability.
-  const cdScale = abilityCdScale(playerLevel(save.xp));
-  const shownCooldown = (ms: number): number => seconds(ms * cdScale);
-  const granted = equippedAbilities(save);
-  const committed = effectiveRotation(save);
-  const committedKey = committed.join(',');
-  const committedAuto = save.rotation === undefined;
-  const [draft, setDraftList] = useState<AbilityId[]>(committed);
-  const [auto, setAuto] = useState(committedAuto);
-  // The ability whose card is open (null = none yet). A tap on an empty slot opens the "empty" hint instead.
-  const [selected, setSelected] = useState<AbilityId | null>(null);
-  const [emptySlot, setEmptySlot] = useState<number | null>(null);
-  // Any change by hand leaves the automatic mode; "Automatica" goes back to it.
-  const setDraft = (next: AbilityId[]) => {
-    setDraftList(next);
-    setAuto(false);
-  };
-  // The draft starts over whenever what is in force changes (applied here, or the gear changed under an automatic rotation).
-  useEffect(() => {
-    setDraftList(committedKey ? (committedKey.split(',') as AbilityId[]) : []);
-    setAuto(committedAuto);
-  }, [committedKey, committedAuto]);
-
-  // Escape closes the card first (stopPropagation: the same pattern as the bag-expansion dialog, so nothing behind it also reacts).
-  const cardOpen = selected !== null;
-  useEffect(() => {
-    if (!cardOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      setSelected(null);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [cardOpen]);
-
-  const pending = auto !== committedAuto || draft.join(',') !== committedKey;
-  // The stored list still names something the worn gear no longer grants: it left the rotation by itself (effectiveRotation), and the screen says so once, calmly.
-  const stored = save.rotation ?? [];
-  const dropped = stored.some((id) => !granted.includes(id));
-  // ...and when the rotation in force then took abilities of the worn gear into those places (fillRotation), the note says the places were refilled, so the player is not surprised by what he sees in the rows.
-  const refilled = dropped && committed.some((id) => !stored.includes(id));
-
-  const add = (id: AbilityId) => {
-    if (draft.includes(id) || draft.length >= slots) return;
-    setDraft([...draft, id]);
-  };
-  const remove = (id: AbilityId) => setDraft(draft.filter((x) => x !== id));
-  const move = (index: number, by: -1 | 1) => {
-    const to = index + by;
-    if (to < 0 || to >= draft.length) return;
-    const next = [...draft];
-    [next[index], next[to]] = [next[to], next[index]];
-    setDraft(next);
-  };
-
-  const name = (id: AbilityId) => t(`tactics.names.${id}`);
-  // "Arma: Espada" / "Peitoral: Placa": where an ability comes from, the same words as the title of its group in the grid
-  const origin = (id: AbilityId): string => {
-    const s = abilityDef(id)!.source;
-    return 'line' in s ? t('tactics.fromWeapon', { name: t(`tactics.line.${s.line}`) }) : t('tactics.fromBody', { name: t(`tactics.body.${s.weight}`) });
-  };
-  const defaults = defaultRotation(granted);
-  const goAuto = () => {
-    setDraftList(defaults);
-    setAuto(true);
-  };
-  const open = (id: AbilityId) => {
-    setSelected(id);
-    setEmptySlot(null);
-  };
-
-  // The card shows an ability that is granted by the worn weapon or is still in the draft (never one that is neither).
-  const shownId = selected && (granted.includes(selected) || draft.includes(selected)) ? selected : null;
-  const shown = shownId ? abilityDef(shownId) : undefined;
-  const shownAt = shownId ? draft.indexOf(shownId) : -1;
-  // One group per source of the granted abilities, in definition order. A new source (another slot granting abilities) only needs a case in groupTitle.
-  const groups: { key: string; title: string; ids: AbilityId[] }[] = [];
-  for (const id of granted) {
-    const s = abilityDef(id)!.source;
-    const key = 'line' in s ? `line:${s.line}` : `weight:${s.weight}`;
-    let g = groups.find((x) => x.key === key);
-    if (!g) {
-      g = { key, title: origin(id), ids: [] };
-      groups.push(g);
-    }
-    g.ids.push(id);
+// "Escudo", "Relíquia", "Habilidade Espinhos": one contributor of a passive.
+function fromText(f: PassiveFrom): string {
+  switch (f.kind) {
+    case 'slot':
+      return t(`tactics.src.${f.slot}`);
+    case 'skill':
+      return t('tactics.src.skill', { name: t(`heroSkills.skills.${f.id}.name`) });
+    default:
+      return t(`tactics.src.${f.kind}`);
   }
+}
 
-  // A rotation row. A filled one: the main part opens the card of the ability (as before), and the two buttons on the row move it up or down. An empty one is the target of the next pick.
-  const renderSlot = (index: number) => {
-    const id = draft[index];
-    const def = id ? abilityDef(id) : undefined;
-    if (!def) {
-      return (
-        <li key={index} className="tc-row">
-          <button
-            type="button"
-            className={`tc-row-main empty${emptySlot === index ? ' selected' : ''}`}
-            aria-pressed={emptySlot === index}
-            aria-label={t('tactics.emptySlot', { n: index + 1 })}
-            onClick={() => {
-              setSelected(null);
-              setEmptySlot(index);
-            }}
-          >
-            <span className="tc-row-n" aria-hidden="true">
-              {index + 1}
-            </span>
-            <span className="tc-row-empty">{t('tactics.empty')}</span>
-          </button>
-        </li>
-      );
-    }
-    const label = name(def.id);
-    return (
-      <li key={index} className="tc-row">
-        <button
-          type="button"
-          className={`tc-row-main filled${shownId === def.id ? ' selected' : ''}`}
-          aria-pressed={shownId === def.id}
-          aria-label={t('tactics.slotAria', { n: index + 1, name: label })}
-          onClick={() => open(def.id)}
-        >
-          <span className="tc-row-n" aria-hidden="true">
-            {index + 1}
-          </span>
-          <img className="tc-row-icon" src={def.icon} alt="" />
-          <span className="tc-row-text">
-            <span className="tc-row-name">{label}</span>
-            <span className="tc-row-meta">
-              <span>{origin(def.id)}</span>
-              <span>{t('tactics.cooldown', { s: shownCooldown(def.cooldownMs) })}</span>
-            </span>
-          </span>
-        </button>
-        <div className="tc-row-actions">
-          <Button className="tc-step" disabled={index === 0} aria-label={`${t('tactics.up')}: ${label}`} onClick={() => move(index, -1)}>
-            <span aria-hidden="true">{'\u25B2'}</span>
-          </Button>
-          <Button className="tc-step" disabled={index === draft.length - 1} aria-label={`${t('tactics.down')}: ${label}`} onClick={() => move(index, 1)}>
-            <span aria-hidden="true">{'\u25BC'}</span>
-          </Button>
-        </div>
-      </li>
-    );
-  };
+export interface TaticasViewProps {
+  save: SaveData;
+}
+
+function PassiveRow({ line }: { line: PassiveLine }) {
+  const key = `tactics.passive.${line.id}`;
+  const params = printable(line.params);
+  return (
+    <li className="tc-ps">
+      <span className="tc-ps-head">
+        <span className="tc-ps-name">{t(`${key}.name`)}</span>
+        <span className="tc-ps-from">
+          {t('tactics.passives.from')}: {line.from.map(fromText).join(', ')}
+        </span>
+      </span>
+      <span className="tc-ps-when">
+        <strong>{t('tactics.passives.when')}:</strong> {t(`${key}.when`, params)}
+      </span>
+      <span className="tc-ps-what">{t(`${key}.what`, params)}</span>
+      <span className="tc-ps-rate">{t(`${key}.rate`, params)}</span>
+    </li>
+  );
+}
+
+export default function TaticasView({ save }: TaticasViewProps) {
+  // The cooldown the hero actually gets: every cooldown is multiplied by abilityCdScale(level) in combat (abilities.ts, engine.ts).
+  const cdScale = abilityCdScale(playerLevel(save.xp));
+  const shownCooldown = (ms: number): string => seconds(ms * cdScale);
+  const stats = useMemo(() => buildCombatStats(save), [save]);
+  const passives = useMemo(() => tacticsPassives(save), [save]);
+  // What the combat fires: every ability the worn gear grants (the starting gear grants none).
+  const abilities = effectiveRotation(save);
+  const weapon = resolveEquipped(save).weapon.item;
 
   return (
     <Screen label={t('tactics.title')} className="tactics-view" data-highlight="tactics-view">
-      <PageHeader
-        icon={<PixelIcon name="tactics" />}
-        title={t('tactics.title')}
-        actions={<Chip tone={draft.length > 0 ? 'gold' : 'plain'}>{t('tactics.filled', { n: draft.length, m: slots })}</Chip>}
-      />
+      <PageHeader icon={<PixelIcon name="tactics" />} title={t('tactics.title')} />
 
       <div className="tc-root">
-        <Panel title={t('tactics.rotation')} className="tc-rotation" aria-live="polite">
-          {granted.length === 0 ? (
-            // the starting gear (tier 0) grants nothing: say why it is empty and what to do, instead of four rows that ask for a pick from a grid that is not there
+        <Panel title={t('tactics.basic.title')} className="tc-basic">
+          <p className="tc-basic-row">
+            <span className="tc-basic-weapon">{t(`gear.${weapon.nameKey}`)}</span>
+            <span className="tc-basic-meta">
+              <span>{t('tactics.basic.hit', { n: Math.round(stats.dmgBase) })}</span>
+              <span>{t('tactics.basic.every', { s: seconds(stats.heroMs) })}</span>
+            </span>
+          </p>
+        </Panel>
+
+        <Panel title={t('tactics.auto.title')} className="tc-auto">
+          {abilities.length === 0 ? (
+            // the starting gear (tier 0) grants nothing: say why it is empty and what to do
             <p className="ui-note tc-nogear">{t('tactics.noGear')}</p>
           ) : (
-            <ol className="tc-rows">{Array.from({ length: slots }, (_, i) => renderSlot(i))}</ol>
-          )}
-          {/* ONE line of state (what is applied, whether it follows the gear), or the answer to the empty slot just tapped; the help text sits behind "Como funciona" */}
-          {granted.length > 0 && (
-            <div className="tc-state-row">
-              <p className="ui-note tc-state" role="status">
-                {emptySlot !== null ? t('tactics.emptyHint', { n: emptySlot + 1 }) : [pending ? t('tactics.pending') : t('tactics.saved'), auto ? t('tactics.auto') : null].filter(Boolean).join(' · ')}
-              </p>
-              <Button size="sm" disabled={auto} onClick={goAuto}>
-                {t('tactics.default')}
-              </Button>
-            </div>
-          )}
-          {draft.length === 0 && granted.length > 0 && <p className="ui-note">{t('tactics.emptyAll')}</p>}
-          {/* the one note about a SILENT loss (a technique left with the weapon swap): it stays in view */}
-          {dropped && <p className="ui-note tc-dropped">{t(refilled ? 'tactics.droppedFilled' : 'tactics.dropped')}</p>}
-          <details className="tc-how">
-            <summary className="tc-how-sum">{t('tactics.howTo')}</summary>
-            <p className="ui-note">{t('tactics.rule')}</p>
-            <p className="ui-note">{t('tactics.pickHint')}</p>
-            <p className="ui-note">{t('tactics.when')}</p>
-          </details>
-        </Panel>
-
-        {groups.map((g) => (
-          <Panel as="section" key={g.key} title={g.title} className="tc-group" actions={<Chip>{t('tactics.granted')}</Chip>}>
-            <ul className="tc-grid">
-              {g.ids.map((id) => {
-                const def = abilityDef(id)!;
-                const at = draft.indexOf(id);
-                return (
-                  <li key={id}>
-                    <button
-                      type="button"
-                      className={`tc-tile tc-pick${at >= 0 ? ' used' : ''}${shownId === id ? ' selected' : ''}`}
-                      aria-pressed={shownId === id}
-                      aria-label={t('tactics.grantedAria', { name: name(id), s: shownCooldown(def.cooldownMs) })}
-                      onClick={() => open(id)}
-                    >
-                      <img className="tc-icon" src={def.icon} alt="" />
-                      {at >= 0 && (
-                        <span className="tc-n" aria-hidden="true">
-                          {at + 1}
+            <>
+              <p className="ui-note tc-auto-rule">{t('tactics.auto.rule')}</p>
+              <ul className="tc-ab-list">
+                {abilities.map((id) => {
+                  const def = abilityDef(id)!;
+                  return (
+                    <li key={id} className="tc-ab">
+                      <img className="tc-ab-icon" src={def.icon} alt="" />
+                      <div className="tc-ab-body">
+                        <span className="tc-ab-name">{t(`tactics.names.${id}`)}</span>
+                        <span className="tc-ab-meta">
+                          <span>{origin(id)}</span>
+                          <span>{t('tactics.cooldown', { s: shownCooldown(def.cooldownMs) })}</span>
                         </span>
-                      )}
-                      <span className="tc-label">{name(id)}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </Panel>
-        ))}
-
-        {/* the buttons come AFTER the techniques the player picks from, and stay in reach at the foot of the page */}
-        <Panel className="tc-apply ui-bar">
-          <div className="tc-apply-row">
-            <Button variant={pending ? 'primary' : 'secondary'} disabled={!pending} onClick={() => onApply(auto ? null : draft)}>
-              {pending ? t('tactics.applyPending') : t('tactics.apply')}
-            </Button>
-            <Button
-              disabled={!pending}
-              onClick={() => {
-                setDraftList(committed);
-                setAuto(committedAuto);
-              }}
-            >
-              {t('tactics.undo')}
-            </Button>
-          </div>
+                        {def.effects.map((e, i) => (
+                          <span className="tc-ab-fx" key={i}>
+                            {effectText(e)}
+                          </span>
+                        ))}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </Panel>
 
-        {shown && (
-          <Dialog
-            className="tc-card"
-            title={name(shown.id)}
-            subtitle={origin(shown.id)}
-            onClose={() => setSelected(null)}
-            closeLabel={t('ui.close')}
-            footer={
-              <div className="tc-card-actions">
-                {shownAt >= 0 ? (
-                  <>
-                    <Button disabled={shownAt === 0} onClick={() => move(shownAt, -1)}>
-                      {t('tactics.up')}
-                    </Button>
-                    <Button disabled={shownAt === draft.length - 1} onClick={() => move(shownAt, 1)}>
-                      {t('tactics.down')}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      onClick={() => {
-                        remove(shown.id);
-                        setSelected(null);
-                      }}
-                    >
-                      {t('tactics.remove')}
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="primary" disabled={draft.length >= slots} onClick={() => add(shown.id)}>
-                    {draft.length >= slots ? t('tactics.full') : t('tactics.addRotation')}
-                  </Button>
-                )}
-              </div>
-            }
-          >
-            <div className="tc-card-top">
-              <ItemFrame size="lg" rarity={shownAt >= 0 ? 'legendary' : 'common'}>
-                <img className="tc-detail-icon" src={shown.icon} alt="" />
-              </ItemFrame>
-              <div className="tc-card-chips">
-                <Chip>{t('tactics.cooldown', { s: shownCooldown(shown.cooldownMs) })}</Chip>
-                {shownAt >= 0 && <Chip tone="gold">{t('tactics.position', { n: shownAt + 1, m: slots })}</Chip>}
-              </div>
+        {passives.length === 0 ? (
+          <Panel title={t('tactics.passives.title')} className="tc-passives">
+            <p className="ui-note">{t('tactics.passives.none')}</p>
+          </Panel>
+        ) : (
+          // a fold (the same one as Personagem's): a hero with many passives does not push the rest of the page down; with a few it starts open
+          <details className="ui-panel pg-fold tc-passives" open={passives.length <= 3}>
+            <summary className="pg-fold-sum">
+              <span className="ui-panel-title">{t('tactics.passives.title')}</span>
+              <Chip tone="gold">{passives.length}</Chip>
+              <span className="pg-fold-chev" aria-hidden />
+            </summary>
+            <div className="pg-fold-body">
+              <p className="ui-note tc-passives-intro">{t('tactics.passives.intro')}</p>
+              <ul className="tc-ps-list">
+                {passives.map((line) => (
+                  <PassiveRow key={line.id} line={line} />
+                ))}
+              </ul>
             </div>
-            {shown.effects.map((e, i) => (
-              <p className="tc-effect" key={i}>
-                {effectText(e)}
-              </p>
-            ))}
-          </Dialog>
+          </details>
         )}
       </div>
     </Screen>

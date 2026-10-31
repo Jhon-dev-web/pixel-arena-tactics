@@ -43,7 +43,7 @@ import { socketsForTier } from '../gems';
 import T from '../tunables';
 import en from '../../locales/en.json';
 import pt from '../../locales/pt.json';
-import { duel, hero, repFloor, withoutSetBonuses } from '../../../scripts/sim/duel';
+import { automaticRotation, duel, hero, repFloor, withoutSetBonuses } from '../../../scripts/sim/duel';
 import { TIER_EXTRAS } from '../../../scripts/sim/ladder';
 import { runDungeon, withSeededRandom } from '../../../scripts/sim/driver';
 
@@ -123,12 +123,12 @@ describe('shield slot', () => {
     const h = { ...hero('2', 3, { extra: [shieldOf('2')] }), xp: xpToReachLevel(20) };
     const round = normalizeSave(wire(h));
     expect(round.equipped.shield).toBe(h.equipped.shield);
-    expect(computeCP(round)).toBe(computeCP(h));
+    expect(computeCP(round)).toBe(computeCP(automaticRotation(h))); // a loaded save is automatic (the gear-only hero's empty rotation is not stored)
     const old = wire(hero('2', 3));
     delete (old.equipped as Record<string, unknown>).shield;
     const s = normalizeSave(old);
     expect(s.equipped.shield).toBeNull();
-    expect(computeCP(s)).toBe(computeCP(hero('2', 3)));
+    expect(computeCP(s)).toBe(computeCP(automaticRotation(hero('2', 3))));
     // a wrong pointer (an instance that is not a shield, a stale string, a number) is dropped
     const bad = wire(h);
     (bad.equipped as Record<string, unknown>).shield = h.equipped.weapon;

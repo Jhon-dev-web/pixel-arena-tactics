@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { automaticRotation, hero } from '../../../scripts/sim/duel';
-import { applyRotation, buildCombatStats, computeCP, defaultSave, effectiveRotation, equippedAbilities, normalizeSave, SaveData } from '../engine';
+import { buildCombatStats, computeCP, defaultSave, effectiveRotation, equippedAbilities, normalizeSave, SaveData } from '../engine';
 import { ABILITY_IDS, AbilityId, abilityDef, defaultRotation, grantedAbilities } from '../abilities';
 import { GEAR } from '../gear';
 import { createGearInstance } from '../gearInstances';
@@ -10,7 +10,8 @@ import { SKILL_FX } from '../skillFx';
 import { t } from '../../locales';
 
 // Classes reform, phase 5 (2026-10-28): the default rotation is ON, and it is DERIVED, never stored. A save with NO `rotation` field is AUTOMATIC: the rotation in force is the default of the gear worn
-// right now (effectiveRotation), so a weapon change changes the abilities at once. `rotation: []` = cleared on purpose. `rotation: [...]` = the player's choice, cut down to the gear when read.
+// right now (effectiveRotation), so a weapon change changes the abilities at once. Since 2026-10-31 EVERY real hero is automatic: loading drops the field (tacticsAutomatic.test.ts). `rotation: []` and
+// `rotation: [...]` only exist on heroes the measuring tools and the guards build, and the engine still reads them (the empty one is the identity with the pre-engine golden file).
 // This does NOT loosen the identity test (abilitiesIdentity.test.ts): that one still proves, against the same golden bytes, that a hero with an EMPTY rotation fights exactly as before the engine existed.
 
 const wire = (s: unknown) => JSON.parse(JSON.stringify(s)) as Record<string, unknown>;
@@ -74,11 +75,11 @@ describe('a save with no rotation is automatic', () => {
 
   // The order he chose is his and the gear never reshuffles it; what a gear change empties is refilled from the gear he now wears (fillRotation, 2026-10-29), instead of leaving him fighting with fewer
   // abilities than his gear grants. The stored field is untouched, so putting the old weapon back brings his own list straight back.
-  it('a rotation the player chose keeps his order, and the places a gear change empties are refilled', () => {
+  it('a list a tool built keeps its order, and the places a gear change empties are refilled (a loaded save never has one)', () => {
     const chosen = { ...sword, rotation: ['iron_stance', 'firm_strike'] as AbilityId[] };
-    expect(effectiveRotation(chosen)).toEqual(['iron_stance', 'firm_strike']); // nothing was cut: a short list he picked stays short
+    expect(effectiveRotation(chosen)).toEqual(['iron_stance', 'firm_strike']); // nothing was cut: a short list stays short
     expect(effectiveRotation(wear(chosen, 'weapon', 'short_bow'))).toEqual(['iron_stance', 'arrow_rain', 'opening_shot', 'true_shot']);
-    expect(normalizeSave(wire({ ...sword, rotation: ['arrow_rain', 'breach', 'bogus', 'breach'] })).rotation).toEqual(['arrow_rain', 'breach']);
+    expect('rotation' in normalizeSave(wire({ ...sword, rotation: ['arrow_rain', 'breach', 'bogus', 'breach'] }))).toBe(false);
   });
 
   it('unusable stored values are dropped and the hero is automatic again', () => {
@@ -89,30 +90,17 @@ describe('a save with no rotation is automatic', () => {
     }
   });
 
-  it('an explicit EMPTY rotation (cleared on purpose in the screen) stays empty: the basic attack only', () => {
-    const cleared = normalizeSave(wire({ ...sword, rotation: [] }));
-    expect(cleared.rotation).toEqual([]);
+  it('an EMPTY rotation stays empty in memory (the gear-only heroes of the audits: the basic attack only), but a LOADED save with one is automatic', () => {
+    const cleared = { ...sword, rotation: [] as AbilityId[] };
     expect(effectiveRotation(cleared)).toEqual([]);
     expect('rotation' in buildCombatStats(cleared)).toBe(false);
-    expect(normalizeSave(wire(cleared)).rotation).toEqual([]);
+    const loaded = normalizeSave(wire(cleared));
+    expect('rotation' in loaded).toBe(false);
+    expect(effectiveRotation(loaded)).toEqual(SWORD_PLATE);
   });
 
   it('the automatic default raises the Combat Power over the same hero with an empty rotation', () => {
     expect(computeCP(sword)).toBeGreaterThan(computeCP({ ...sword, rotation: [] }));
-  });
-});
-
-describe('applying a rotation from the Taticas screen', () => {
-  const sword = automaticRotation(hero('2', 3, { level: 15 }));
-  it('a list is stored cut down to the worn gear, [] is stored as [] (and survives a reload), null goes back to automatic (the field is removed)', () => {
-    expect(applyRotation(sword, ['breach', 'firm_strike']).rotation).toEqual(['breach', 'firm_strike']);
-    expect(applyRotation(sword, ['arrow_rain', 'breach', 'breach'] as AbilityId[]).rotation).toEqual(['breach']);
-    const cleared = applyRotation(sword, []);
-    expect(cleared.rotation).toEqual([]);
-    expect(normalizeSave(wire(cleared)).rotation).toEqual([]);
-    const back = applyRotation(cleared, null);
-    expect('rotation' in back).toBe(false);
-    expect(effectiveRotation(back)).toEqual(SWORD_PLATE);
   });
 });
 

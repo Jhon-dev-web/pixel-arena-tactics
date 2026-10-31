@@ -15,7 +15,7 @@ import ShopModal from '../../components/ShopModal';
 import TaticasView from '../../components/TaticasView';
 import { setLocale, t } from '../../locales';
 import { automaticRotation, hero } from '../../../scripts/sim/duel';
-import { defaultSave, effectiveRotation, SaveData } from '../engine';
+import { defaultSave, SaveData } from '../engine';
 import { codexProgress } from '../codex';
 import { applyCalendarEvents, devMockCalendar } from '../eventCalendar';
 import { xpToReachLevel } from '../heroLevel';
@@ -123,7 +123,7 @@ const SCREENS: { name: string; render: () => string; modal: boolean }[] = [
     modal: false,
     render: () => html(h(BattlePassView, { save: level40(), onActivate: noop, passFlow: 'idle', onRecheck: noop, onClaim: noop, onClaimAll: () => ({ claimed: 0, blocked: 0 }) })),
   },
-  { name: 'Táticas', modal: false, render: () => html(h(TaticasView, { save: automaticRotation(hero('2', 3, { level: 40 })), onApply: noop })) },
+  { name: 'Táticas', modal: false, render: () => html(h(TaticasView, { save: automaticRotation(hero('2', 3, { level: 40 })) })) },
   {
     name: 'Horta',
     modal: true,
@@ -247,15 +247,6 @@ describe('what the lean screens still say', () => {
     );
     const sum = out.slice(out.indexOf('pg-setfold-sum'), out.indexOf('</summary>', out.indexOf('pg-setfold-sum')));
     expect(sum).toContain(t('affinity.title'));
-  });
-
-  it('Táticas: the note about a technique that left with the gear (tactics.dropped) is still in view', () => {
-    const base = automaticRotation(hero('2', 3, { level: 40 }));
-    const granted = effectiveRotation(base);
-    // a stored rotation that names an ability the worn gear no longer grants
-    const stale = { ...base, rotation: [...granted, 'nope' as never] };
-    const out = html(h(TaticasView, { save: stale, onApply: noop }));
-    expect(out).toMatch(new RegExp(`${t('tactics.dropped').slice(0, 25)}|${t('tactics.droppedFilled').slice(0, 25)}`));
   });
 
   it('Horta: the full-bag warning stays above the plots, and the locked plots are one row that lists their levels', () => {

@@ -5,84 +5,116 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import TaticasView from '../../components/TaticasView';
 import { setLocale, t } from '../../locales';
 import { automaticRotation, hero } from '../../../scripts/sim/duel';
-import { defaultSave, effectiveRotation } from '../engine';
+import { buildCombatStats, defaultSave, effectiveRotation, SaveData } from '../engine';
 import { AbilityId, abilityCdScale, abilityDef } from '../abilities';
+import { GEAR } from '../gear';
+import { createGearInstance } from '../gearInstances';
 
-// The rotation on the Taticas screen is a list of rows, and the whole point of the rows is that the player moves an ability with ONE tap on its own row (before, he had to select it and then use the footer). The
-// grid of what the gear grants stays images only. Nothing here can show on a green screen if it breaks: a row that lost its name, its source or one of its two buttons still renders.
-describe('Taticas: the rotation rows', () => {
+// The Taticas screen (2026-10-31) has three blocks and NOTHING to choose: the basic attack, the abilities the worn gear grants (every one of them fires by itself), and the passives. What can break without any sign on
+// a green screen: an ability that lost its cooldown or one of its effects, a cooldown that went back to the raw tunable (the 29/10 bug: a level 40 hero read 4.5 s for an ability that fires every 5.3 s), a basic attack
+// that prints a made-up interval, or a control that comes back and promises a choice the engine no longer reads.
+
+const render = (save: SaveData): string => renderToStaticMarkup(h(TaticasView, { save }));
+// the same one-decimal format as the screen, with the comma of Portuguese
+const dec = (n: number): string => (Math.round(n * 10) / 10).toFixed(1).replace('.', ',');
+const wear = (base: SaveData, slot: 'weapon' | 'armor', templateId: string): SaveData => {
+  const inst = createGearInstance(templateId, { id: `gi_test_${templateId}`, origin: 'craft', rarity: 'common', substats: [], upgrade: 0 });
+  return { ...base, gearInstances: { ...base.gearInstances, [inst.id]: inst }, equipped: { ...base.equipped, [slot]: inst.id } };
+};
+// the rows of the abilities block, one string per ability, in the order of the screen
+const abilityRows = (html: string): string[] => html.split('class="tc-ab"').slice(1).map((r) => r.slice(0, r.indexOf('</li>')));
+
+describe('Taticas: the abilities block', () => {
   beforeEach(() => setLocale('pt'));
   const save = automaticRotation(hero('2', 3, { level: 15 }));
-  const html = renderToStaticMarkup(h(TaticasView, { save, onApply: () => undefined }));
-  const rotation = effectiveRotation(save);
+  const html = render(save);
+  const granted = effectiveRotation(save);
 
-  it('every filled row carries its name, its source, its cooldown and the up and down buttons', () => {
-    expect(rotation.length).toBeGreaterThan(1);
-    const rows = html.split('class="tc-row"').slice(1);
-    expect(rows.length).toBe(4);
-    rotation.forEach((id, i) => {
-      const row = rows[i];
-      expect(row, id).toContain(t(`tactics.names.${id}`));
-      expect(row, id).toMatch(/(Arma|Peitoral): /);
-      expect(row, id).toContain('Recarga ');
-      for (const k of ['up', 'down']) expect(row, `${id} ${k}`).toContain(`aria-label="${t(`tactics.${k}`)}: ${t(`tactics.names.${id}`)}"`);
+  it('every ability the gear grants has its row, with name, source, icon and every effect in words, and no more rows than that', () => {
+    expect(granted.length).toBeGreaterThan(1);
+    const rows = abilityRows(html);
+    expect(rows).toHaveLength(granted.length);
+    granted.forEach((id, i) => {
+      const def = abilityDef(id)!;
+      expect(rows[i], id).toContain(t(`tactics.names.${id}`));
+      expect(rows[i], id).toMatch(/(Arma|Peitoral): /);
+      expect(rows[i], id).toContain(def.icon);
+      expect((rows[i].match(/class="tc-ab-fx"/g) ?? []).length, `${id} effects`).toBe(def.effects.length);
     });
   });
 
-  it('the first row cannot go up and the last filled one cannot go down', () => {
-    const rows = html.split('class="tc-row"').slice(1);
-    const up = (row: string) => new RegExp(`<button[^>]*disabled=""[^>]*aria-label="${t('tactics.up')}:`).test(row) || new RegExp(`<button[^>]*aria-label="${t('tactics.up')}:[^>]*disabled=""`).test(row);
-    const down = (row: string) => new RegExp(`<button[^>]*disabled=""[^>]*aria-label="${t('tactics.down')}:`).test(row) || new RegExp(`<button[^>]*aria-label="${t('tactics.down')}:[^>]*disabled=""`).test(row);
-    expect(up(rows[0])).toBe(true);
-    expect(up(rows[1])).toBe(false);
-    expect(down(rows[rotation.length - 1])).toBe(true);
-    expect(down(rows[0])).toBe(false);
+  it('says that they fire by themselves, and that the longer cooldown fires less often', () => {
+    expect(html).toContain(t('tactics.auto.rule'));
   });
 
-  it('the grid of what the gear grants keeps the images only: no cooldown or source text on its tiles', () => {
-    const grid = html.slice(html.indexOf('class="tc-grid"'));
-    const tiles = grid.slice(0, grid.indexOf('</ul>'));
-    expect(tiles).not.toContain('Recarga ');
-    expect(tiles).not.toContain('Arma: ');
-  });
-});
-
-describe('Taticas with the starting gear (tier 0)', () => {
-  beforeEach(() => setLocale('pt'));
-  it('says why it is empty and what to do, in both languages, instead of showing empty rows', () => {
-    for (const lang of ['pt', 'en'] as const) {
-      setLocale(lang);
-      const html = renderToStaticMarkup(h(TaticasView, { save: defaultSave(), onApply: () => undefined }));
-      expect(html).toContain(t('tactics.noGear'));
-      expect(html).not.toContain('class="tc-row"');
-      expect(html).not.toContain('class="tc-grid"');
-    }
-    expect(t('tactics.noGear')).not.toBe('tactics.noGear');
-  });
-});
-
-// Found by a review on 29/10 reading the screen against the engine: every cooldown is multiplied by abilityCdScale(level) since the AGI scaling landed that morning, and the screen was still printing the raw
-// tunable. A level 40 hero read "4.5s" for an ability that fires every 5.3s. The number on the screen has to be the number the player gets, and this is the guard that keeps it that way.
-describe('Taticas: the cooldown shown is the one the hero gets', () => {
-  beforeEach(() => setLocale('pt'));
-  const label = (level: number, id: AbilityId): string => {
-    const save = automaticRotation(hero('2', 3, { level }));
-    const html = renderToStaticMarkup(h(TaticasView, { save, onApply: () => undefined }));
-    const row = html.split('class="tc-row"').slice(1)[effectiveRotation(save).indexOf(id)];
-    return row.slice(row.indexOf('tc-row-meta'));
-  };
-
-  it('a low level hero sees a LONGER cooldown than the raw tunable, and a level 100 hero sees the raw one', () => {
-    const id = effectiveRotation(automaticRotation(hero('2', 3, { level: 15 })))[0];
+  it('the cooldown shown is the one the hero gets: longer than the raw tunable at a low level, the raw one at level 100', () => {
+    const rowOf = (level: number, id: AbilityId): string => {
+      const s = automaticRotation(hero('2', 3, { level }));
+      return abilityRows(render(s))[effectiveRotation(s).indexOf(id)];
+    };
+    const id = granted[0];
     const raw = abilityDef(id)!.cooldownMs;
-    const seconds = (ms: number): number => Math.round((ms / 1000) * 10) / 10;
-
     expect(abilityCdScale(15)).toBeGreaterThan(1);
     expect(abilityCdScale(100)).toBe(1);
-    expect(label(15, id)).toContain(t('tactics.cooldown', { s: seconds(raw * abilityCdScale(15)) }));
-    expect(label(100, id)).toContain(t('tactics.cooldown', { s: seconds(raw) }));
-    // the bug this replaces: the two levels printed the same number
-    expect(label(15, id)).not.toBe(label(100, id));
+    expect(rowOf(15, id)).toContain(t('tactics.cooldown', { s: dec((raw * abilityCdScale(15)) / 1000) }));
+    expect(rowOf(100, id)).toContain(t('tactics.cooldown', { s: dec(raw / 1000) }));
+    expect(rowOf(15, id)).not.toBe(rowOf(100, id)); // the bug this replaces: the two levels printed the same number
+  });
+
+  it('every ability of every weapon line and chestpiece weight shows its own real cooldown', () => {
+    const weapons = ['iron_short_sword', 'short_bow', 'oak_staff'];
+    const chests = [GEAR.find((g) => g.slot === 'armor' && g.weight === 'leather')!.id, GEAR.find((g) => g.slot === 'armor' && g.weight === 'cloth')!.id];
+    for (const w of weapons) {
+      for (const c of chests) {
+        const s = wear(wear(automaticRotation(hero('2', 3, { level: 40 })), 'weapon', w), 'armor', c);
+        const rows = abilityRows(render(s));
+        const ids = effectiveRotation(s);
+        expect(rows).toHaveLength(ids.length);
+        ids.forEach((id, i) => expect(rows[i], `${w} + ${c}: ${id}`).toContain(t('tactics.cooldown', { s: dec((abilityDef(id)!.cooldownMs * abilityCdScale(40)) / 1000) })));
+      }
+    }
+  });
+});
+
+describe('Taticas: the basic attack', () => {
+  beforeEach(() => setLocale('pt'));
+
+  it('shows the weapon worn, the damage of a hit and the real interval between hits (they move with the gear and the AGI)', () => {
+    const slow = automaticRotation({ ...hero('2', 3, { level: 40 }), agi: 0 });
+    const quick = automaticRotation({ ...hero('2', 3, { level: 40 }), agi: 300 });
+    for (const s of [slow, quick]) {
+      const stats = buildCombatStats(s);
+      const html = render(s);
+      expect(html).toContain(t('tactics.basic.hit', { n: Math.round(stats.dmgBase) }));
+      expect(html).toContain(t('tactics.basic.every', { s: dec(stats.heroMs / 1000) }));
+      expect(html).toContain(t('gear.iron_short_sword'));
+    }
+    expect(buildCombatStats(slow).heroMs).toBeGreaterThan(buildCombatStats(quick).heroMs);
+    expect(render(slow)).not.toBe(render(quick));
+  });
+
+  it('is there with the starting gear too, in both languages, beside the note that the gear grants no ability', () => {
+    for (const lang of ['pt', 'en'] as const) {
+      setLocale(lang);
+      const html = render(defaultSave());
+      expect(html).toContain(t('tactics.basic.title'));
+      expect(html).toContain(t('gear.wooden_club'));
+      expect(html).toContain(t('tactics.noGear'));
+      expect(html).not.toContain('class="tc-ab"');
+      expect(t('tactics.noGear')).not.toBe('tactics.noGear');
+    }
+  });
+});
+
+describe('Taticas: nothing to choose', () => {
+  beforeEach(() => setLocale('pt'));
+  it('has no button, no list to order and nothing that apply or undo, for a hero with abilities and passives and for one with neither', () => {
+    for (const s of [automaticRotation(hero('3', 3, { level: 40 })), defaultSave()]) {
+      const html = render(s);
+      expect(html).not.toContain('<button');
+      expect(html).not.toContain('ui-btn');
+      expect(html).not.toContain('aria-pressed');
+    }
   });
 });
 

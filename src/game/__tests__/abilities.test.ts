@@ -109,18 +109,17 @@ describe('the rotation in the save', () => {
     expect(sanitizeRotation(['firm_strike', 'arrow_rain', 'iron_stance'], grantedAbilities(undefined, undefined))).toEqual(['firm_strike', 'iron_stance']);
   });
 
-  // Phase 5 (2026-10-28): an ABSENT rotation is the automatic default now (defaultRotation.test.ts). What stays true here: a stored list keeps only known ids, no repeats, and a stored EMPTY list (a rotation cleared on
-  // purpose) stays empty. What the SAVE holds is still the player's literal choice; the refill of 2026-10-29 (fillRotation) happens when it is READ, so the stored field below is unchanged by it.
-  it('a stored rotation keeps known ids without repeats, and an explicit empty list stays empty', () => {
+  // Phase 5 (2026-10-28): an ABSENT rotation is the automatic default. 2026-10-31: the Taticas screen offers no choice, so LOADING drops whatever an older save stored (its own list, [] cleared on purpose, junk) and the
+  // hero comes back automatic (tacticsAutomatic.test.ts proves it on every weapon and chestpiece). The engine still READS a list on a hero a tool built in memory (the next test, and rotationRefill.test.ts).
+  it('a loaded save never keeps a stored rotation: a list, an empty list and junk all come back automatic', () => {
     const sword = hero('2', 3, { level: 15 });
     const stored = (rotation: unknown) => normalizeSave(JSON.parse(JSON.stringify({ ...sword, rotation })));
-    expect(stored(['arrow_rain', 'firm_strike', 'bogus', 'firm_strike']).rotation).toEqual(['arrow_rain', 'firm_strike']);
-    // read with a sword on: the bow's arrow_rain is gone and its place is taken by what the sword grants (fillRotation), the chosen firm_strike never moves
-    expect(effectiveRotation(stored(['arrow_rain', 'firm_strike', 'bogus', 'firm_strike']))).toEqual(['double_thrust', 'firm_strike', 'breach', 'iron_stance']);
-    expect('rotation' in stored('nope')).toBe(false);
-    expect(stored([]).rotation).toEqual([]);
+    for (const rotation of [['arrow_rain', 'firm_strike', 'bogus', 'firm_strike'], [], 'nope', null]) {
+      expect('rotation' in stored(rotation), JSON.stringify(rotation)).toBe(false);
+      expect(effectiveRotation(stored(rotation)), JSON.stringify(rotation)).toEqual(['firm_strike', 'double_thrust', 'breach', 'iron_stance']);
+    }
     const bow = hero('2', 3, { level: 15, weapon: 'hunting_bow' });
-    expect(normalizeSave(JSON.parse(JSON.stringify({ ...bow, rotation: ['opening_shot', 'arrow_rain'] }))).rotation).toEqual(['opening_shot', 'arrow_rain']);
+    expect(effectiveRotation(normalizeSave(JSON.parse(JSON.stringify({ ...bow, rotation: ['opening_shot'] }))))).toEqual(['arrow_rain', 'opening_shot', 'true_shot', 'iron_stance']);
   });
 
   it('the combat stats carry the rotation only when there is one, and only what the worn gear grants right now', () => {

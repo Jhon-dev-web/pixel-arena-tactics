@@ -1336,42 +1336,119 @@
   },
   "tactics": {
     "title": "Táticas",
-    "rule": "O herói usa a primeira habilidade pronta, de cima para baixo. Se nenhuma estiver pronta, dá o ataque básico.",
-    "rotation": "Rotação",
-    "filled": "{n} de {m}",
-    "slot": "Espaço {n}",
-    "empty": "Vazio. Escolha uma habilidade abaixo.",
-    "emptyAll": "A rotação está vazia: o herói só dá o ataque básico.",
     "noGear": "O equipamento inicial não dá habilidades. Equipe uma arma ou um peitoral de tier 1 em diante e as técnicas dele aparecem aqui.",
-    "up": "Subir",
-    "down": "Descer",
-    "remove": "Tirar",
-    "add": "Colocar",
-    "inRotation": "Na rotação: {n}º",
-    "full": "Rotação cheia",
-    "granted": "O que seu equipamento dá",
     "fromWeapon": "Arma: {name}",
     "fromBody": "Peitoral: {name}",
     "cooldown": "Recarga {s}s",
-    "pickHint": "Toque numa habilidade para ver o que ela faz.",
-    "emptySlot": "Espaço {n}, vazio",
-    "emptyHint": "Espaço {n} vazio. Toque numa habilidade e use Colocar na rotação.",
-    "addRotation": "Colocar na rotação",
-    "position": "Posição {n} de {m}",
-    "slotAria": "Espaço {n}: {name}",
-    "grantedAria": "{name}, recarga {s}s",
-    "apply": "Aplicar",
-    "applyPending": "Aplicar mudanças",
-    "undo": "Desfazer",
-    "auto": "Automática: acompanha o seu equipamento.",
-    "default": "Automática",
-    "pending": "Mudanças ainda não aplicadas",
-    "saved": "Tudo aplicado",
-    "toastApplied": "Rotação aplicada",
-    "dropped": "Uma habilidade saiu da rotação porque o equipamento que a dava não está mais vestido.",
-    "droppedFilled": "Os lugares que a troca de equipamento esvaziou já foram preenchidos com o que você veste agora.",
-    "howTo": "Como funciona",
-    "when": "Vale a partir da próxima luta. Uma Caça em andamento mantém a rotação com que começou.",
+    "basic": {
+      "title": "Ataque básico",
+      "hit": "{n} de dano por golpe",
+      "every": "a cada {s} s"
+    },
+    "auto": {
+      "title": "Habilidades automáticas",
+      "rule": "Saem sozinhas assim que recarregam. A de recarga maior sai menos vezes."
+    },
+    "passives": {
+      "title": "Passivas",
+      "intro": "Ficam ativas o tempo todo e funcionam sozinhas quando a condição acontece. Os números são os do seu herói agora.",
+      "none": "Seu herói ainda não tem passivas. Elas vêm do equipamento (queimadura, reflexo, roubo de vida, regeneração) e dos pontos de habilidade.",
+      "when": "Quando",
+      "from": "Vem de"
+    },
+    "src": {
+      "weapon": "Arma",
+      "armor": "Peitoral",
+      "helmet": "Elmo",
+      "gloves": "Luvas",
+      "boots": "Botas",
+      "ring": "Anel",
+      "shield": "Escudo",
+      "relic": "Relíquia",
+      "affix": "Bônus das peças",
+      "set": "Conjunto",
+      "skill": "Habilidade {name}"
+    },
+    "passive": {
+      "burn": {
+        "name": "Queimadura",
+        "when": "você acerta um golpe",
+        "what": "O monstro queima: {pct}% do golpe (cerca de {dmg} de dano) a cada {tick} s, durante {s} s. Não acumula: um golpe novo só renova o tempo.",
+        "rate": "Sem recarga: renova a cada golpe seu."
+      },
+      "reflect": {
+        "name": "Reflexo",
+        "when": "o monstro te acerta e você continua de pé",
+        "what": "Ele leva de volta {pct}% do dano que você sofreu.",
+        "rate": "Sem recarga: a cada golpe recebido. Golpe bloqueado não reflete."
+      },
+      "lifesteal": {
+        "name": "Roubo de vida",
+        "when": "você acerta um golpe",
+        "what": "Você recupera {pct}% do dano do golpe. Queimadura, sangria, fúria e reflexo não curam.",
+        "rate": "Sem recarga: a cada golpe seu."
+      },
+      "regen": {
+        "name": "Regeneração",
+        "when": "você está lutando",
+        "what": "Você recupera {hp} de vida ({pct}% da vida máxima) a cada {tick} s.",
+        "rate": "Recarga {tick} s, só durante a luta."
+      },
+      "bleed": {
+        "name": "Sangria",
+        "when": "você acerta um golpe",
+        "what": "O monstro sangra: {pct}% do golpe (cerca de {dmg} de dano) a cada {tick} s, até {s} s depois do último golpe. Soma com a queimadura da arma.",
+        "rate": "Sem recarga: renova a cada golpe seu."
+      },
+      "crush": {
+        "name": "Golpe Esmagador",
+        "when": "a cada {every} golpes seus",
+        "what": "Esse golpe causa +{pct}% de dano.",
+        "rate": "Sem recarga: conta os seus golpes, não o tempo."
+      },
+      "devastating": {
+        "name": "Golpe Devastador",
+        "when": "a cada {hits} golpes seus (um em cada {k} Golpes Esmagadores)",
+        "what": "Esse golpe causa {mult} vezes o dano, no lugar do bônus do Golpe Esmagador.",
+        "rate": "Sem recarga: conta os seus golpes, não o tempo."
+      },
+      "fury": {
+        "name": "Golpe de Fúria",
+        "when": "a cada {s} s de luta",
+        "what": "{hits} golpes extras seguidos, cada um com {pct}% do dano do golpe.",
+        "rate": "Recarga {s} s de luta."
+      },
+      "double": {
+        "name": "Golpe Duplo",
+        "when": "você acerta um golpe",
+        "what": "{pct}% de chance de um golpe extra, com {e}% do dano do golpe.",
+        "rate": "Sem recarga: um sorteio a cada golpe seu."
+      },
+      "block": {
+        "name": "Bloqueio",
+        "when": "o monstro te acerta",
+        "what": "{pct}% de chance de bloquear o golpe por completo: você não sofre dano.",
+        "rate": "Sem recarga: um sorteio a cada golpe recebido."
+      },
+      "counter": {
+        "name": "Contra-ataque",
+        "when": "você bloqueia um golpe",
+        "what": "Seu próximo golpe causa +{pct}% de dano.",
+        "rate": "Sem recarga: vale para o próximo golpe depois de cada bloqueio."
+      },
+      "bossStance": {
+        "name": "Postura Firme",
+        "when": "o monstro é um chefe: andares de chefe e mini-chefe da Masmorra, lutas de promoção e de Alvo da Caça",
+        "what": "Você recebe {pct}% menos dano.",
+        "rate": "Sem recarga: vale durante a luta toda."
+      },
+      "bastion": {
+        "name": "Último Bastião",
+        "when": "um golpe seria fatal",
+        "what": "Em vez de cair, você fica com {hp} de vida e recupera {heal}% da vida máxima.",
+        "rate": "Masmorra: uma vez por incursão. Caça: recarga de {s} s de luta."
+      }
+    },
     "line": { "sword": "Espada", "axe": "Machado", "bow": "Arco", "crossbow": "Besta", "staff": "Cajado", "scepter": "Cetro" },
     "body": { "plate": "Placa", "leather": "Couro", "cloth": "Tecido" },
     "effect": {

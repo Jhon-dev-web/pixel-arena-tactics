@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { hero } from '../../../scripts/sim/duel';
+import { hero, realHero } from '../../../scripts/sim/duel';
 import { buildCombatStats, computeCP, normalizeSave } from '../engine';
 import { dungeonScenarios, huntScenarios } from './abilitiesGolden';
 
@@ -43,12 +43,15 @@ describe('a hero with an EMPTY rotation fights exactly as before the abilities e
     for (const r of Object.values(sessions)) expect('abilityFired' in r).toBe(false);
   });
 
-  it('a loaded save that stores an explicit empty rotation keeps it, and is the same hero as the raw one with an empty rotation: stats and CP', () => {
+  // 2026-10-31: loading no longer keeps an empty rotation (nobody can clear it on purpose any more): the save comes back as the real player, with every ability of the gear. The IDENTITY with the golden file is about
+  // the empty-rotation hero the measuring tools build in memory, which the other tests of this file still run; this one pins what loading does with the stored empty list.
+  it('a loaded save that stores an explicit empty rotation comes back automatic: the same hero as the real player of that gear, stats and CP', () => {
     const base = { ...hero('3', 5, { level: 30 }), rotation: [] };
     const s = normalizeSave(JSON.parse(JSON.stringify(base)));
-    expect(s.rotation).toEqual([]);
-    expect('rotation' in buildCombatStats(s)).toBe(false);
-    expect(buildCombatStats(s)).toEqual(buildCombatStats(base));
-    expect(computeCP(s)).toBe(computeCP(base));
+    expect('rotation' in s).toBe(false);
+    expect(buildCombatStats(s).rotation?.length).toBeGreaterThan(0);
+    expect(buildCombatStats(s)).toEqual(buildCombatStats(realHero(base)));
+    expect(computeCP(s)).toBe(computeCP(realHero(base)));
+    expect(computeCP(s)).toBeGreaterThan(computeCP(base));
   });
 });

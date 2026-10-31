@@ -66,7 +66,7 @@ import { PendingMaterialClaim, sanitizeMaterialClaims } from './materialClaims';
 import { BurningBatch, MaterialPrefs, TradeableMap, sanitizeBurning, sanitizeBurns, sanitizeMaterialPrefs, sanitizeTradeable } from './tradeableMaterials';
 import { isServerItemAuthority } from './itemAuthority';
 import { SkillTreeState, emptySkillTree, sanitizeSkillTree, saveSkillEffects } from './heroSkills';
-import { AbilityId, abilityCdScale, defaultRotation, fillRotation, grantedAbilities, rotationCpTerms, sanitizeRotation } from './abilities';
+import { AbilityId, abilityCdScale, defaultRotation, fillRotation, grantedAbilities, rotationCpTerms } from './abilities';
 import { BuffKind, buffExpiry, buffMinutes, buffRemainingMs, gathererBonusHours, prospectBonusHours, HUNT_BUFF_KINDS, isBuffActive, TIMED_BUFF_KINDS, TimedBuff, TimedBuffKind, TonicWindows, hasteIntervalMs, precisionCrit, stoneskinReduction } from './buffs';
 
 export { buffRemainingMs, isBuffActive };
@@ -213,7 +213,8 @@ export interface SaveData {
   res: number;
   // Hero skills (heroSkills.ts): the allocation(s) of the skill points earned every few levels and the free-respec flag. Old saves load with nothing spent.
   skillTree: SkillTreeState;
-  // Equipment abilities (abilities.ts): the player's rotation, up to T.abilities.rotationSlots ids in order of priority. ABSENT = automatic (the default of the worn gear, effectiveRotation); [] = cleared on purpose.
+  // Equipment abilities (abilities.ts): MEASUREMENT ONLY, not a player option. The game never writes it and normalizeSave deletes it on load, so a real hero is ALWAYS automatic: every ability the worn gear
+  // grants is used (effectiveRotation). The measuring tools and the guards build heroes with a rotation of their own on purpose (scripts/sim/duel.ts gearOnly: []), so the engine still reads it.
   rotation?: AbilityId[];
   // MEASUREMENT ONLY, not a player option: the game never writes it and normalizeSave deletes it on load, so it can never persist in a real save. True leaves the class affinity (affinity.ts) out of buildCombatStats, as the
   // empty rotation leaves the abilities out. It lives on the save because scripts/sim/duel.ts gearOnly() transforms a save and has no way to pass `parts`.
@@ -366,23 +367,15 @@ export function equippedAbilities(save: Parameters<typeof resolveEquipped>[0]): 
   const { weapon, armor } = resolveEquipped(save);
   return grantedAbilities(weapon.item.tier === 0 ? null : weapon.item.line, armor.item.tier === 0 ? null : armor.item.weight);
 }
-// The rotation IN FORCE, derived on the spot and never written by the game on its own (classes reform, phase 5, 2026-10-28):
-//  - `rotation` ABSENT = automatic: the default of the gear worn RIGHT NOW (defaultRotation), so changing weapon changes the abilities at once, with no reload and no migration;
-//  - `rotation: []` = the player cleared it on purpose: stays empty;
-//  - `rotation: [...]` = the player's choice: kept in his order and cut down to what the worn gear grants; the places a gear change emptied are refilled with what the worn gear grants (fillRotation).
+// The rotation IN FORCE, derived on the spot (classes reform, phase 5, 2026-10-28; the player's choice was taken out on 2026-10-31):
+//  - `rotation` ABSENT = automatic: the default of the gear worn RIGHT NOW (defaultRotation), so changing weapon changes the abilities at once, with no reload and no migration. This is what EVERY real hero has:
+//    a loaded save never carries the field (normalizeSave) and nothing in the game writes it;
+//  - `rotation: []` / `rotation: [...]` exist only on heroes built by the measuring tools and the guards: [] = no ability (the gear-only heroes of the audits), a list = kept in its order and cut down to what the worn
+//    gear grants, the places a gear change emptied refilled with what the worn gear grants (fillRotation).
 // Combat (buildCombatStats), the CP and the Taticas screen read THIS, never the raw field.
 export function effectiveRotation(save: Parameters<typeof resolveEquipped>[0] & { rotation?: unknown }): AbilityId[] {
   const granted = equippedAbilities(save);
   return save.rotation === undefined ? defaultRotation(granted) : fillRotation(save.rotation, granted);
-}
-// The Taticas screen commits here: a list (the player's choice, cut down to the worn gear and stored as it is: never refilled, so a short list he picked stays short; [] = cleared on purpose) or null = back to automatic (the field is removed).
-export function applyRotation<S extends SaveData>(save: S, draft: readonly AbilityId[] | null): S {
-  if (draft === null) {
-    const rest = { ...save } as Partial<SaveData>;
-    delete rest.rotation;
-    return rest as S;
-  }
-  return { ...save, rotation: sanitizeRotation(draft, equippedAbilities(save)) };
 }
 
 export function buildCombatStats(save: SaveData, parts: StatParts = {}): CombatStats {
@@ -1531,10 +1524,9 @@ export function normalizeSave(rawInput: unknown): SaveData {
         codex: emptyCodex(),
       };
       loaded.codex = normalizeCodex(parsed.codex, loaded);
-      // The rotation (abilities.ts): ABSENT stays absent (= automatic, derived from the worn gear by effectiveRotation); a stored list keeps its known ids, no repeats, at most the slots (an explicit [] stays: cleared on
-      // purpose). It is NOT cut down to the gear here: that happens when it is read (effectiveRotation, which also refills the places a weapon change emptied), so a weapon change cannot silently turn a choice into an empty one.
-      if (Array.isArray(parsed.rotation)) loaded.rotation = sanitizeRotation(parsed.rotation);
-      else delete (loaded as unknown as Record<string, unknown>).rotation;
+      // The rotation (abilities.ts): a loaded hero is ALWAYS automatic (2026-10-31, the Taticas screen no longer offers a choice: the gear grants at most as many abilities as there are slots, so all of them fit).
+      // Whatever an older save stored (its own list, or [] cleared on purpose) is dropped here, so effectiveRotation derives every ability the worn gear grants.
+      delete (loaded as unknown as Record<string, unknown>).rotation;
       delete (loaded as unknown as Record<string, unknown>).noAffinity; // measurement switch (see SaveData): never persists
       sanitizeTradeableFields(loaded, parsed as unknown as Record<string, unknown>);
       // Weekly goals and the login streak (weekly.ts): an old save has neither and starts its first week now; a new UTC week snapshots the counters again.

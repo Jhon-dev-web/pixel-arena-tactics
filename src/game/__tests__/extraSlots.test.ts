@@ -37,7 +37,7 @@ import { GearInstance } from '../gearInstances';
 import { UNIQUE_BOSS_DROPS, UniqueDrop, addUniqueInstance, rollBossUniques, rollUniqueDrop } from '../uniques';
 import T from '../tunables';
 import { withSeededRandom } from '../../../scripts/sim/driver';
-import { hero, withoutSetBonuses } from '../../../scripts/sim/duel';
+import { automaticRotation, hero, withoutSetBonuses } from '../../../scripts/sim/duel';
 
 const EXTRA = ['helmet', 'gloves', 'boots', 'ring'] as const;
 // Content pack 2 adds the shield as a fifth extra slot (its own tests are in contentPack2.test.ts).
@@ -175,7 +175,7 @@ describe('old saves load', () => {
     (old.equipped as Record<string, unknown>) = { weapon: base.equipped.weapon, armor: base.equipped.armor, relic: null, shield: null, helmet: null };
     const s = normalizeSave(old);
     for (const slot of EXTRA) expect(s.equipped[slot]).toBeNull();
-    expect(computeCP(s)).toBe(computeCP(base));
+    expect(computeCP(s)).toBe(computeCP(automaticRotation(base))); // a loaded save is automatic (the gear-only hero's empty rotation is not stored)
     expect(s.equipped.weapon).toBe(base.equipped.weapon);
   });
 
